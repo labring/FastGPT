@@ -134,6 +134,17 @@ const systemToolInputSchema = {
   required: ['payload']
 };
 
+const getModelToolSchema = (schema: unknown): unknown => {
+  if (Array.isArray(schema)) return schema.map(getModelToolSchema);
+  if (!schema || typeof schema !== 'object') return schema;
+
+  return Object.fromEntries(
+    Object.entries(schema)
+      .filter(([key]) => key !== 'isToolParam')
+      .map(([key, value]) => [key, getModelToolSchema(value)])
+  );
+};
+
 const mcpTool = {
   name: 'search',
   description: 'Search docs',
@@ -614,7 +625,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.name).toBe('mcp_app0');
     expect(tools[0].requestSchema.function.description).toBe('mcp_app name/search: Search docs');
-    expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
     expect(tools[0].version).toBe('fixed-version');
     expect(tools[0].toolConfig?.mcpToolSet).toMatchObject({
@@ -638,7 +649,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].name).toBe('search');
     expect(tools[0].requestSchema.function.name).toBe('mcp_appsearch');
     expect(tools[0].requestSchema.function.description).toBe('search: Search docs');
-    expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
   });
 
@@ -712,7 +723,7 @@ describe('getAgentRuntimeTools schema loading', () => {
         FlowNodeInputTypeEnum.reference
       ]
     });
-    expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
   });
 
   it('loads a selected MCP tool whose name starts with slash', async () => {
@@ -736,7 +747,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].id).toBe('123_appsearch');
     expect(tools[0].requestSchema.function.name).toBe('t123_appsearch');
-    expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
   });
 
   it('uses the current MCP toolset when an Agent snapshot has a stripped schema', async () => {
@@ -770,7 +781,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     });
 
     expect(tools).toHaveLength(1);
-    expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
   });
 
   it('fills stripped selected MCP tool schema from runtime children', async () => {
@@ -789,7 +800,7 @@ describe('getAgentRuntimeTools schema loading', () => {
 
     expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.stripped_mcp_app);
     expect(tools).toHaveLength(1);
-    expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
   });
 
   it('loads legacy MCP toolset children from stored child tool data', async () => {
@@ -809,7 +820,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.legacy_mcp_app);
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.name).toBe('legacy_mcp_app0');
-    expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-legacy_mcp_app/search');
   });
 
@@ -831,7 +842,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].id).toBe('legacy_mcp_appsearch');
     expect(tools[0].name).toBe('search');
-    expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-legacy_mcp_app/search');
   });
 
@@ -859,7 +870,9 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.name).toBe('http_app0');
     expect(tools[0].requestSchema.function.description).toBe('http_app name/create: Create record');
-    expect(tools[0].requestSchema.function.parameters).toEqual(httpRequestSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual(
+      getModelToolSchema(httpRequestSchema)
+    );
     expect(tools[0].requestSchema.function.parameters).not.toEqual(httpInputSchema);
     expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_app/create');
     expect(tools[0].version).toBe('fixed-version');
@@ -880,7 +893,9 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].name).toBe('create');
     expect(tools[0].requestSchema.function.name).toBe('http_appcreate');
     expect(tools[0].requestSchema.function.description).toBe('create: Create record');
-    expect(tools[0].requestSchema.function.parameters).toEqual(httpRequestSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual(
+      getModelToolSchema(httpRequestSchema)
+    );
     expect(tools[0].requestSchema.function.parameters).not.toEqual(httpInputSchema);
     expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_app/create');
   });
@@ -984,7 +999,9 @@ describe('getAgentRuntimeTools schema loading', () => {
 
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.name).toBe('gpjj5s');
-    expect(tools[0].requestSchema.function.parameters).toEqual(systemToolInputSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual(
+      getModelToolSchema(systemToolInputSchema)
+    );
   });
 
   it('uses saved modes before recommendations and recommends modes for new inputs', async () => {
