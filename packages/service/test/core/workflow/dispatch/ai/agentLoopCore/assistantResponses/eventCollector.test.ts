@@ -275,4 +275,46 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
       })
     ]);
   });
+
+  it('keeps workflow tool calls visible while hiding child assistant output', () => {
+    const collector = createAgentLoopCoreAssistantEventCollector({
+      getToolInfo: (name) => ({
+        name,
+        avatar: '',
+        hideChildResponses: name === 'workflow_tool'
+      })
+    });
+    const call = createToolCall({
+      id: 'call_workflow',
+      name: 'workflow_tool'
+    });
+
+    collector.emitEvent({ type: 'tool_call', call });
+    collector.emitEvent({
+      type: 'tool_run_end',
+      call,
+      rawResponse: 'workflow result',
+      response: 'workflow result',
+      seconds: 0.1,
+      assistantMessages: [
+        {
+          role: 'assistant',
+          content: 'workflow answer'
+        }
+      ]
+    });
+
+    expect(collector.assistantResponses).toEqual([
+      expect.objectContaining({
+        id: 'call_workflow',
+        tools: [expect.objectContaining({ response: 'workflow result' })]
+      }),
+      {
+        hideInUI: true,
+        text: {
+          content: 'workflow answer'
+        }
+      }
+    ]);
+  });
 });

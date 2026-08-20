@@ -383,16 +383,18 @@ export const createAgentLoopCoreAssistantEventCollector = ({
         }
 
         if (event.assistantMessages?.length) {
+          const shouldHideChildResponses = getToolInfo?.(functionName)?.hideChildResponses;
           const childAssistantResponses = buildAgentLoopCoreAssistantResponsesFromMessages({
             messages: event.assistantMessages,
             reserveTool: true,
             reserveReason: true,
             getToolInfo
           }).map((value) =>
-            !showReasoning && value.reasoning
+            shouldHideChildResponses || (!showReasoning && value.reasoning)
               ? {
                   ...value,
-                  hideReason: true
+                  ...(shouldHideChildResponses ? { hideInUI: true } : {}),
+                  ...(!showReasoning && value.reasoning ? { hideReason: true } : {})
                 }
               : value
           );
