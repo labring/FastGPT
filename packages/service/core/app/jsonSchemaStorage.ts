@@ -1,73 +1,124 @@
-const JsonSchemaStorageKeys = new Set([
-  'inputSchema',
-  'outputSchema',
-  'requestSchema',
-  'responseSchema',
-  'secretSchema'
-]);
+export type ToolSetStorageType = 'mcp' | 'http';
+
+const ToolSetConfigKey: Record<ToolSetStorageType, 'mcpToolSet' | 'httpToolSet'> = {
+  mcp: 'mcpToolSet',
+  http: 'httpToolSet'
+};
+
+const JsonSchemaStorageKeys: Record<ToolSetStorageType, ReadonlySet<string>> = {
+  mcp: new Set(['inputSchema']),
+  http: new Set(['inputSchema', 'outputSchema', 'requestSchema', 'responseSchema', 'secretSchema'])
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const transformNodeValue = (
-  value: unknown,
+const transformToolSetNodes = <T>(
+  nodes: T,
+  type: ToolSetStorageType,
   transformSchema: (schema: unknown) => unknown
-): unknown => {
-  // 只转换已知工具 Schema 字段，避免影响工作流中的其他 JSON 配置。
-  if (Array.isArray(value)) {
-    return value.map((item) => transformNodeValue(item, transformSchema));
-  }
-  if (!isRecord(value)) return value;
+): T => {
+  if (!Array.isArray(nodes)) return nodes;
 
-  return Object.fromEntries(
-    Object.entries(value).map(([key, child]) => {
-      if (JsonSchemaStorageKeys.has(key)) {
-        return [key, transformSchema(child)];
+  const toolSetKey = ToolSetConfigKey[type];
+  const schemaKeys = JsonSchemaStorageKeys[type];
+  let changed = false;
+
+  const transformedNodes = nodes.map((node) => {
+    if (!isRecord(node) || !isRecord(node.toolConfig)) return node;
+
+    const toolSet = node.toolConfig[toolSetKey];
+    if (!isRecord(toolSet) || !Array.isArray(toolSet.toolList)) return node;
+
+    let nodeChanged = false;
+    const toolList = toolSet.toolList.map((tool) => {
+      if (!isRecord(tool)) return tool;
+
+      let toolChanged = false;
+      const transformedTool = Object.fromEntries(
+        Object.entries(tool).map(([key, value]) => {
+          if (!schemaKeys.has(key)) return [key, value];
+
+          const transformedValue = transformSchema(value);
+          if (transformedValue !== value) {
+            toolChanged = true;
+            nodeChanged = true;
+            changed = true;
+          }
+          return [key, transformedValue];
+        })
+      );
+
+      return toolChanged ? transformedTool : tool;
+    });
+
+    if (!nodeChanged) return node;
+
+    return {
+      ...node,
+      toolConfig: {
+        ...node.toolConfig,
+        [toolSetKey]: {
+          ...toolSet,
+          toolList
+        }
       }
-
-      return [key, transformNodeValue(child, transformSchema)];
-    })
-  );
-};
-
-/** 将工作流工具 JSON Schema 编码为 Mongo 可安全存储的字符串。 */
-export const encodeWorkflowNodesForStorage = (nodes: unknown): unknown =>
-  transformNodeValue(nodes, (schema) =>
-    schema && typeof schema === 'object' ? JSON.stringify(schema) : schema
-  );
-
-/** 将 Mongo 中的工具 JSON Schema 字符串恢复为运行时对象。 */
-export const decodeWorkflowNodesFromStorage = (nodes: unknown): unknown =>
-  transformNodeValue(nodes, (schema) => {
-    if (schema === undefined || schema === null) return schema;
-    if (typeof schema !== 'string') {
-      throw new TypeError('Stored tool JSON Schema must be a string');
-    }
-    return JSON.parse(schema);
+    };
   });
 
-/**
- * 将历史工作流中的 object JSON Schema 清洗为字符串，供升级脚本批量写回原始 Mongo 数据。
- * 已经是字符串的数据保持不变，未发生转换时保留原 nodes 引用。
- * 升级脚本需要通过 Model.collection 读取原始文档，避免触发严格的运行时解码。
- */
-export const cleanWorkflowToolJsonSchemasForStorage = (
-  nodes: unknown
+  return (changed ? transformedNodes : nodes) as T;
+};
+
+const encodeSchema = (schema: unknown) =>
+  schema && typeof schema === 'object' ? JSON.stringify(schema) : schema;
+
+const decodeSchema = (schema: unknown) => {
+  // 历史数据可能仍是 object，读取时保留兼容性，迁移接口负责后续转换。
+  if (schema === undefined || schema === null || typeof schema === 'object') return schema;
+  if (typeof schema !== 'string') {
+    throw new TypeError('Stored tool JSON Schema must be a string');
+  }
+  return JSON.parse(schema);
+};
+
+/** 将 MCP 工具节点中的 JSON Schema 编码为 Mongo 可安全存储的字符串。 */
+export const encodeMcpToolSetNodesForStorage = <T>(nodes: T): T =>
+  transformToolSetNodes(nodes, 'mcp', encodeSchema);
+
+/** 将 HTTP 工具节点中的 JSON Schema 编码为 Mongo 可安全存储的字符串。 */
+export const encodeHttpToolSetNodesForStorage = <T>(nodes: T): T =>
+  transformToolSetNodes(nodes, 'http', encodeSchema);
+
+/** 将 Mongo 中的 MCP 工具 JSON Schema 恢复为运行时对象。 */
+export const decodeMcpToolSetNodesFromStorage = <T>(nodes: T): T =>
+  transformToolSetNodes(nodes, 'mcp', decodeSchema);
+
+/** 将 Mongo 中的 HTTP 工具 JSON Schema 恢复为运行时对象。 */
+export const decodeHttpToolSetNodesFromStorage = <T>(nodes: T): T =>
+  transformToolSetNodes(nodes, 'http', decodeSchema);
+
+/** 解码工作流中可能存在的 MCP/HTTP 工具节点，普通节点不会被修改。 */
+export const decodeToolSetNodesFromStorage = <T>(nodes: T): T =>
+  decodeHttpToolSetNodesFromStorage(decodeMcpToolSetNodesFromStorage(nodes));
+
+/** 清洗指定工具类型的历史 object JSON Schema，供升级脚本批量写回原始 Mongo 数据。 */
+export const cleanToolSetJsonSchemasForStorage = <T>(
+  nodes: T,
+  type: ToolSetStorageType
 ): {
-  nodes: unknown;
+  nodes: T;
   changed: boolean;
   convertedSchemaCount: number;
 } => {
   let convertedSchemaCount = 0;
-  const cleanedNodes = transformNodeValue(nodes, (schema) => {
+  const cleanedNodes = transformToolSetNodes(nodes, type, (schema) => {
     if (!schema || typeof schema !== 'object') return schema;
-
     convertedSchemaCount += 1;
     return JSON.stringify(schema);
   });
 
   return {
-    nodes: convertedSchemaCount > 0 ? cleanedNodes : nodes,
+    nodes: cleanedNodes,
     changed: convertedSchemaCount > 0,
     convertedSchemaCount
   };

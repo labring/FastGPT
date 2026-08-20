@@ -13,6 +13,7 @@ import {
   type GetAppVersionDetailResponseType
 } from '@fastgpt/global/openapi/core/app/version/api';
 import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
+import { decodeToolSetNodesFromStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
 
 async function handler(req: NextApiRequest): Promise<GetAppVersionDetailResponseType> {
   const { versionId, appId } = parseApiInput({
@@ -33,7 +34,7 @@ async function handler(req: NextApiRequest): Promise<GetAppVersionDetailResponse
   }
 
   await rewriteAppWorkflowToDetail({
-    nodes: result.nodes,
+    nodes: decodeToolSetNodesFromStorage(result.nodes),
     teamId,
     ownerTmbId: app.tmbId,
     isRoot,
@@ -42,7 +43,7 @@ async function handler(req: NextApiRequest): Promise<GetAppVersionDetailResponse
   // 历史版本只迁移该版本自身的系统配置节点，不继承当前应用 chatConfig，
   // 避免当前配置占位导致该版本中的欢迎语、定时任务等旧值被丢弃。
   const normalizedWorkflow = normalizeWorkflowConfig({
-    nodes: result.nodes,
+    nodes: decodeToolSetNodesFromStorage(result.nodes),
     edges: result.edges,
     chatConfig: result.chatConfig
   });

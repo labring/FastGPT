@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-  cleanWorkflowToolJsonSchemasForStorage,
-  decodeWorkflowNodesFromStorage,
-  encodeWorkflowNodesForStorage
+  cleanToolSetJsonSchemasForStorage,
+  decodeHttpToolSetNodesFromStorage,
+  decodeMcpToolSetNodesFromStorage,
+  encodeHttpToolSetNodesForStorage,
+  encodeMcpToolSetNodesForStorage
 } from '@fastgpt/service/core/app/jsonSchemaStorage';
 
 describe('workflow JSON Schema storage codec', () => {
@@ -33,13 +35,14 @@ describe('workflow JSON Schema storage codec', () => {
       }
     ];
 
-    const encoded = encodeWorkflowNodesForStorage(nodes) as any[];
+    const encodedMcp = encodeMcpToolSetNodesForStorage(nodes) as any[];
+    const encodedHttp = encodeHttpToolSetNodesForStorage(nodes) as any[];
 
-    expect(typeof encoded[0].toolConfig.mcpToolSet.toolList[0].inputSchema).toBe('string');
-    expect(typeof encoded[0].toolConfig.httpToolSet.toolList[0].inputSchema).toBe('string');
-    expect(typeof encoded[0].toolConfig.httpToolSet.toolList[0].outputSchema).toBe('string');
-    expect(typeof encoded[0].toolConfig.httpToolSet.toolList[0].requestSchema).toBe('string');
-    expect(encoded[0].toolConfig.mcpToolSet.toolList[0].inputSchema).toContain('$schema');
+    expect(typeof encodedMcp[0].toolConfig.mcpToolSet.toolList[0].inputSchema).toBe('string');
+    expect(typeof encodedHttp[0].toolConfig.httpToolSet.toolList[0].inputSchema).toBe('string');
+    expect(typeof encodedHttp[0].toolConfig.httpToolSet.toolList[0].outputSchema).toBe('string');
+    expect(typeof encodedHttp[0].toolConfig.httpToolSet.toolList[0].requestSchema).toBe('string');
+    expect(encodedMcp[0].toolConfig.mcpToolSet.toolList[0].inputSchema).toContain('$schema');
   });
 
   it('decodes stored strings', () => {
@@ -54,7 +57,7 @@ describe('workflow JSON Schema storage codec', () => {
       }
     ];
 
-    expect(decodeWorkflowNodesFromStorage(stored)).toEqual([
+    expect(decodeMcpToolSetNodesFromStorage(stored)).toEqual([
       {
         toolConfig: {
           mcpToolSet: {
@@ -65,18 +68,29 @@ describe('workflow JSON Schema storage codec', () => {
     ]);
   });
 
-  it('rejects historical object schemas during runtime reads', () => {
-    expect(() =>
-      decodeWorkflowNodesFromStorage([
-        {
-          toolConfig: {
-            mcpToolSet: {
-              toolList: [{ inputSchema: { type: 'object' } }]
-            }
+  it('preserves historical object schemas during runtime reads', () => {
+    const nodes = [
+      { toolConfig: { mcpToolSet: { toolList: [{ inputSchema: { type: 'object' } }] } } }
+    ];
+    expect(decodeMcpToolSetNodesFromStorage(nodes)).toEqual(nodes);
+  });
+
+  it('does not transform schema-like fields outside the selected tool set', () => {
+    const nodes = [
+      {
+        inputs: [{ inputSchema: { type: 'object' } }],
+        toolConfig: {
+          httpToolSet: {
+            toolList: [{ inputSchema: { type: 'object' } }]
           }
         }
-      ])
-    ).toThrow('Stored tool JSON Schema must be a string');
+      }
+    ];
+
+    const encoded = encodeHttpToolSetNodesForStorage(nodes) as any[];
+
+    expect(encoded[0].inputs[0].inputSchema).toEqual({ type: 'object' });
+    expect(typeof encoded[0].toolConfig.httpToolSet.toolList[0].inputSchema).toBe('string');
   });
 
   it('cleans historical object schemas for upgrade scripts', () => {
@@ -99,15 +113,18 @@ describe('workflow JSON Schema storage codec', () => {
       }
     ];
 
-    const result = cleanWorkflowToolJsonSchemasForStorage(nodes);
+    const mcpResult = cleanToolSetJsonSchemasForStorage(nodes, 'mcp');
+    const httpResult = cleanToolSetJsonSchemasForStorage(nodes, 'http');
 
-    expect(result.changed).toBe(true);
-    expect(result.convertedSchemaCount).toBe(3);
-    expect(result.nodes).not.toBe(nodes);
-    expect((result.nodes as any[])[0].toolConfig.httpToolSet.toolList[0].requestSchema).toBe(
+    expect(mcpResult.convertedSchemaCount).toBe(1);
+    expect(httpResult.convertedSchemaCount).toBe(3);
+    expect((httpResult.nodes as any[])[0].toolConfig.mcpToolSet.toolList[0].inputSchema).toEqual({
+      type: 'object'
+    });
+    expect((httpResult.nodes as any[])[0].toolConfig.httpToolSet.toolList[0].requestSchema).toBe(
       JSON.stringify({ type: 'object' })
     );
-    expect(decodeWorkflowNodesFromStorage(result.nodes)).toEqual([
+    expect(decodeHttpToolSetNodesFromStorage(httpResult.nodes)).toEqual([
       {
         toolConfig: {
           mcpToolSet: {
@@ -138,7 +155,7 @@ describe('workflow JSON Schema storage codec', () => {
       }
     ];
 
-    expect(cleanWorkflowToolJsonSchemasForStorage(nodes)).toEqual({
+    expect(cleanToolSetJsonSchemasForStorage(nodes, 'mcp')).toEqual({
       nodes,
       changed: false,
       convertedSchemaCount: 0

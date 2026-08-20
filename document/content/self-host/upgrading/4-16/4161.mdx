@@ -32,9 +32,9 @@ upgradeTags:
 1. 在 4.16.0 版本先完成 `initHttpToolSchema`，将手动 HTTP 工具的历史数组参数转换为标准 JSON Schema。
 2. 升级到 4.16.1 后，再执行本节的 `initToolJsonSchemaStorage`。
 
-已经在 4.16.0 完成 `initHttpToolSchema` 的环境无需重复执行。4.16.1 会检查 4.16.0 负责的 HTTP 工具应用及其历史版本；如果这些数据仍包含旧数组类型，接口会拒绝执行，避免旧数据被直接转换为字符串。工作流应用内的 HTTP 节点不属于 4.16.0 的迁移范围，仍由 4.16.1 的 Schema 存储迁移处理。
+已经在 4.16.0 完成 `initHttpToolSchema` 的环境无需重复执行。4.16.1 会检查 4.16.0 负责的 HTTP 工具应用及其历史版本；如果这些数据仍包含旧数组类型，接口会拒绝执行，避免旧数据被直接转换为字符串。迁移只处理 MCP/HTTP 工具应用及其历史版本，不处理普通工作流应用。
 
-4.16.1 将工作流工具的 JSON Schema 统一为字符串存储。请先执行 dry-run：
+4.16.1 将 MCP/HTTP 工具的 JSON Schema 统一为字符串存储。请先执行 dry-run：
 
 ```bash
 curl -X POST 'https://你的域名/api/admin/4161/initToolJsonSchemaStorage' \

@@ -6,7 +6,10 @@ import { isLegacyManualHttpToolArrayType } from '@fastgpt/global/core/app/tool/h
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import type { Model, Types } from '@fastgpt/service/common/mongo';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { cleanWorkflowToolJsonSchemasForStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
+import {
+  cleanToolSetJsonSchemasForStorage,
+  type ToolSetStorageType
+} from '@fastgpt/service/core/app/jsonSchemaStorage';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
@@ -53,14 +56,17 @@ const createStats = (): MigrationStats => ({
 const isRecord = (value: unknown): value is UnknownRecord =>
   !!value && typeof value === 'object' && !Array.isArray(value);
 
-const objectSchemaQuery = (fieldName: WorkflowFieldName) => ({
+const objectSchemaQuery = (fieldName: WorkflowFieldName, type: ToolSetStorageType) => ({
   $or: [
-    { [`${fieldName}.toolConfig.mcpToolSet.toolList.inputSchema`]: { $type: 'object' } },
-    { [`${fieldName}.toolConfig.httpToolSet.toolList.inputSchema`]: { $type: 'object' } },
-    { [`${fieldName}.toolConfig.httpToolSet.toolList.outputSchema`]: { $type: 'object' } },
-    { [`${fieldName}.toolConfig.httpToolSet.toolList.requestSchema`]: { $type: 'object' } },
-    { [`${fieldName}.toolConfig.httpToolSet.toolList.responseSchema`]: { $type: 'object' } },
-    { [`${fieldName}.toolConfig.httpToolSet.toolList.secretSchema`]: { $type: 'object' } }
+    ...(type === 'mcp'
+      ? [{ [`${fieldName}.toolConfig.mcpToolSet.toolList.inputSchema`]: { $type: 'object' } }]
+      : [
+          { [`${fieldName}.toolConfig.httpToolSet.toolList.inputSchema`]: { $type: 'object' } },
+          { [`${fieldName}.toolConfig.httpToolSet.toolList.outputSchema`]: { $type: 'object' } },
+          { [`${fieldName}.toolConfig.httpToolSet.toolList.requestSchema`]: { $type: 'object' } },
+          { [`${fieldName}.toolConfig.httpToolSet.toolList.responseSchema`]: { $type: 'object' } },
+          { [`${fieldName}.toolConfig.httpToolSet.toolList.secretSchema`]: { $type: 'object' } }
+        ])
   ]
 });
 
@@ -92,17 +98,19 @@ const hasLegacyManualHttpToolSchemas = (nodes: unknown): boolean => {
 const assertManualHttpToolSchemaMigrationCompleted = async ({
   model,
   fieldName,
+  toolType,
   baseQuery,
   options
 }: {
   model: Model<any>;
   fieldName: WorkflowFieldName;
+  toolType: ToolSetStorageType;
   baseQuery: Record<string, unknown>;
   options: InitToolJsonSchemaStorageBody;
 }): Promise<void> => {
   const cursor = model.collection
     .find(
-      { $and: [baseQuery, objectSchemaQuery(fieldName)] },
+      { $and: [baseQuery, objectSchemaQuery(fieldName, toolType)] },
       { projection: { _id: 1, [fieldName]: 1 } }
     )
     .batchSize(options.batchSize);
@@ -120,15 +128,22 @@ const assertManualHttpToolSchemaMigrationCompleted = async ({
 const migrateCollection = async ({
   model,
   fieldName,
+  toolType,
+  baseQuery,
   options
 }: {
   model: Model<any>;
   fieldName: WorkflowFieldName;
+  toolType: ToolSetStorageType;
+  baseQuery: Record<string, unknown>;
   options: InitToolJsonSchemaStorageBody;
 }): Promise<MigrationStats> => {
   const stats = createStats();
   const cursor = model.collection
-    .find(objectSchemaQuery(fieldName), { projection: { _id: 1, [fieldName]: 1 } })
+    .find(
+      { $and: [baseQuery, objectSchemaQuery(fieldName, toolType)] },
+      { projection: { _id: 1, [fieldName]: 1 } }
+    )
     .batchSize(options.batchSize);
   let documents: WorkflowDocument[] = [];
 
@@ -137,7 +152,7 @@ const migrateCollection = async ({
     stats.scannedDocumentCount += documents.length;
 
     for (const document of documents) {
-      const result = cleanWorkflowToolJsonSchemasForStorage(document[fieldName]);
+      const result = cleanToolSetJsonSchemasForStorage(document[fieldName], toolType);
       if (!result.changed) continue;
 
       stats.changedDocumentCount += 1;
@@ -183,34 +198,73 @@ const mergeStats = (statsList: MigrationStats[]): MigrationStats =>
 export async function runToolJsonSchemaStorageMigration(
   options: InitToolJsonSchemaStorageBody
 ): Promise<InitToolJsonSchemaStorageResponse> {
-  const httpToolAppIds: Types.ObjectId[] = [];
-  const appCursor = MongoApp.collection
-    .find({ type: AppTypeEnum.httpToolSet }, { projection: { _id: 1 } })
-    .batchSize(options.batchSize);
+  const getToolAppIds = async (type: AppTypeEnum): Promise<Types.ObjectId[]> => {
+    const ids: Types.ObjectId[] = [];
+    const cursor = MongoApp.collection
+      .find({ type }, { projection: { _id: 1 } })
+      .batchSize(options.batchSize);
 
-  for await (const document of appCursor) {
-    httpToolAppIds.push(document._id as Types.ObjectId);
-  }
+    for await (const document of cursor) {
+      ids.push(document._id as Types.ObjectId);
+    }
+    return ids;
+  };
+
+  const [mcpToolAppIds, httpToolAppIds] = await Promise.all([
+    getToolAppIds(AppTypeEnum.mcpToolSet),
+    getToolAppIds(AppTypeEnum.httpToolSet)
+  ]);
 
   await Promise.all([
     assertManualHttpToolSchemaMigrationCompleted({
       model: MongoApp,
       fieldName: 'modules',
+      toolType: 'http',
       baseQuery: { type: AppTypeEnum.httpToolSet },
       options
     }),
     assertManualHttpToolSchemaMigrationCompleted({
       model: MongoAppVersion,
       fieldName: 'nodes',
+      toolType: 'http',
       baseQuery: { appId: { $in: httpToolAppIds } },
       options
     })
   ]);
 
-  const [apps, appVersions] = await Promise.all([
-    migrateCollection({ model: MongoApp, fieldName: 'modules', options }),
-    migrateCollection({ model: MongoAppVersion, fieldName: 'nodes', options })
+  const [mcpApps, httpApps, mcpAppVersions, httpAppVersions] = await Promise.all([
+    migrateCollection({
+      model: MongoApp,
+      fieldName: 'modules',
+      toolType: 'mcp',
+      baseQuery: { type: AppTypeEnum.mcpToolSet },
+      options
+    }),
+    migrateCollection({
+      model: MongoApp,
+      fieldName: 'modules',
+      toolType: 'http',
+      baseQuery: { type: AppTypeEnum.httpToolSet },
+      options
+    }),
+    migrateCollection({
+      model: MongoAppVersion,
+      fieldName: 'nodes',
+      toolType: 'mcp',
+      baseQuery: { appId: { $in: mcpToolAppIds } },
+      options
+    }),
+    migrateCollection({
+      model: MongoAppVersion,
+      fieldName: 'nodes',
+      toolType: 'http',
+      baseQuery: { appId: { $in: httpToolAppIds } },
+      options
+    })
   ]);
+
+  const apps = mergeStats([mcpApps, httpApps]);
+  const appVersions = mergeStats([mcpAppVersions, httpAppVersions]);
 
   return InitToolJsonSchemaStorageResponseSchema.parse({
     dryRun: options.dryRun,

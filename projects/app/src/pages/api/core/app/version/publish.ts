@@ -43,7 +43,6 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   });
 
   const normalizedWorkflow = normalizeWorkflowConfig({ nodes, edges, chatConfig });
-
   await beforeUpdateAppFormat({
     nodes: normalizedWorkflow.nodes,
     teamId

@@ -32,9 +32,9 @@ Run the migrations in this release order:
 1. On version 4.16.0, complete `initHttpToolSchema` first. This converts legacy manual HTTP array parameters to standard JSON Schema.
 2. Upgrade to version 4.16.1, then run `initToolJsonSchemaStorage` from this section.
 
-Environments that already completed `initHttpToolSchema` on 4.16.0 do not need to run it again. Version 4.16.1 checks the HTTP tool applications and historical versions covered by the 4.16.0 migration; it refuses to run when legacy array types remain there, so they are not converted directly to strings. HTTP nodes inside workflow applications are outside the 4.16.0 migration scope and are handled by the 4.16.1 schema storage migration.
+Environments that already completed `initHttpToolSchema` on 4.16.0 do not need to run it again. Version 4.16.1 checks the HTTP tool applications and historical versions covered by the 4.16.0 migration; it refuses to run when legacy array types remain there, so they are not converted directly to strings. The migration only processes MCP/HTTP tool applications and their historical versions; ordinary workflow applications are excluded.
 
-V4.16.1 stores workflow tool JSON Schemas as strings. Run a dry run first:
+V4.16.1 stores MCP/HTTP tool JSON Schemas as strings. Run a dry run first:
 
 ```bash
 curl -X POST 'https://你的域名/api/admin/4161/initToolJsonSchemaStorage' \

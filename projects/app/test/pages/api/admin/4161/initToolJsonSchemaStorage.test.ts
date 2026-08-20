@@ -101,7 +101,7 @@ describe('initToolJsonSchemaStorage migration', () => {
       teamId,
       tmbId,
       name: 'Legacy toolset',
-      type: 'mcpToolSet',
+      type: AppTypeEnum.mcpToolSet,
       modules: [createLegacyNode()]
     });
 
@@ -111,7 +111,7 @@ describe('initToolJsonSchemaStorage migration', () => {
     expect(mocks.authCert).toHaveBeenCalledWith({ req: expect.anything(), authRoot: true });
     expect(result).toMatchObject({
       dryRun: true,
-      apps: { changedDocumentCount: 1, modifiedDocumentCount: 0, convertedSchemaCount: 6 }
+      apps: { changedDocumentCount: 1, modifiedDocumentCount: 0, convertedSchemaCount: 1 }
     });
     expect(typeof (stored?.modules as any[])[0].toolConfig.mcpToolSet.toolList[0].inputSchema).toBe(
       'object'
@@ -124,7 +124,7 @@ describe('initToolJsonSchemaStorage migration', () => {
       teamId,
       tmbId,
       name: 'Legacy toolset',
-      type: 'mcpToolSet',
+      type: AppTypeEnum.mcpToolSet,
       modules: [createLegacyNode()]
     });
     await MongoAppVersion.collection.insertOne({
@@ -143,14 +143,14 @@ describe('initToolJsonSchemaStorage migration', () => {
       scannedDocumentCount: 2,
       changedDocumentCount: 2,
       modifiedDocumentCount: 2,
-      convertedSchemaCount: 12
+      convertedSchemaCount: 2
     });
     expect(typeof (app?.modules as any[])[0].toolConfig.mcpToolSet.toolList[0].inputSchema).toBe(
       'string'
     );
     expect(
       typeof (version?.nodes as any[])[0].toolConfig.httpToolSet.toolList[0].requestSchema
-    ).toBe('string');
+    ).toBe('object');
   });
 
   it('stores schemas already normalized by the 4.16.0 migration', async () => {
@@ -246,16 +246,16 @@ describe('initToolJsonSchemaStorage migration', () => {
     const version = await MongoAppVersion.collection.findOne({ appId: workflowAppId as any });
 
     expect(result.total).toMatchObject({
-      scannedDocumentCount: 2,
-      changedDocumentCount: 2,
-      modifiedDocumentCount: 2,
-      convertedSchemaCount: 2
+      scannedDocumentCount: 0,
+      changedDocumentCount: 0,
+      modifiedDocumentCount: 0,
+      convertedSchemaCount: 0
     });
     expect(typeof (app?.modules as any[])[0].toolConfig.httpToolSet.toolList[0].inputSchema).toBe(
-      'string'
+      'object'
     );
     expect(typeof (version?.nodes as any[])[0].toolConfig.httpToolSet.toolList[0].inputSchema).toBe(
-      'string'
+      'object'
     );
   });
 });

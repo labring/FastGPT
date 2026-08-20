@@ -3,10 +3,6 @@ const { Schema } = connectionMongo;
 import { type AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { AppCollectionName, chatConfigType } from '../schema';
 import { TeamMemberCollectionName } from '@fastgpt/global/support/user/team/constant';
-import {
-  decodeWorkflowNodesFromStorage,
-  encodeWorkflowNodesForStorage
-} from '../jsonSchemaStorage';
 
 export const AppVersionCollectionName = 'app_versions';
 
@@ -28,8 +24,6 @@ const AppVersionSchema = new Schema(
     },
     nodes: {
       type: Array,
-      set: encodeWorkflowNodesForStorage,
-      get: decodeWorkflowNodesFromStorage,
       default: []
     },
     edges: {
@@ -53,18 +47,6 @@ const AppVersionSchema = new Schema(
     minimize: false
   }
 );
-
-AppVersionSchema.post(/^find/, (docs) => {
-  if (Array.isArray(docs)) {
-    docs.forEach((doc) => {
-      if (!doc.$__) {
-        doc.nodes = decodeWorkflowNodesFromStorage(doc.nodes);
-      }
-    });
-  } else if (docs && !docs.$__) {
-    docs.nodes = decodeWorkflowNodesFromStorage(docs.nodes);
-  }
-});
 
 defineIndex(AppVersionSchema, { key: { appId: 1, time: -1 } });
 
