@@ -163,7 +163,7 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
         name: (name || '').trim() || t('app:unnamed_app'),
         intro: (intro || '').trim(),
         type: appType,
-        modules: workflow.nodes,
+        nodes: workflow.nodes,
         edges: workflow.edges || [],
         chatConfig: workflow.chatConfig,
         utmParams: getUtmParams()

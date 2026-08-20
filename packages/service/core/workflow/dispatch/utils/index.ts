@@ -33,6 +33,8 @@ import type { WorkflowResponseType } from '../type';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { parsetMcpToolConfig } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { getHTTPToolList } from '../../../app/http';
+import { getWorkflowResourceContext } from '../../utils/context';
+import { assertWorkflowResource, filterWorkflowToolList } from '../../utils/resource';
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   getSavedToolInputSelectedType,
@@ -587,6 +589,12 @@ export const rewriteRuntimeWorkFlow = async ({
   };
 
   const getAuthorizedToolSet = async (toolSetId: string) => {
+    const resourceContext = getWorkflowResourceContext();
+    if (resourceContext) {
+      assertWorkflowResource({ context: resourceContext, type: 'tool', id: toolSetId });
+      return resourceContext.appMap.get(toolSetId);
+    }
+
     try {
       return (
         await authAppByTmbId({
@@ -655,7 +663,11 @@ export const rewriteRuntimeWorkFlow = async ({
 
           const app = await getAuthorizedToolSet(toolSetId);
           if (!app) continue;
-          const toolList = (await getMCPChildren(app)) as RuntimeMcpTool[];
+          const toolList = filterWorkflowToolList({
+            context: getWorkflowResourceContext(),
+            appId: String(app._id),
+            tools: (await getMCPChildren(app)) as RuntimeMcpTool[]
+          });
 
           const savedDescriptionMap = new Map(
             (mcpToolsetVal.toolList ?? []).map((tool) => [tool.name, tool.description])
@@ -689,7 +701,11 @@ export const rewriteRuntimeWorkFlow = async ({
           const app = await getAuthorizedToolSet(toolSetId);
           if (!app) continue;
 
-          const toolList = await getHTTPToolList(app);
+          const toolList = filterWorkflowToolList({
+            context: getWorkflowResourceContext(),
+            appId: String(app._id),
+            tools: await getHTTPToolList(app)
+          });
 
           const savedDescriptionMap = new Map(
             (httpToolsetVal.toolList ?? []).map((tool) => [tool.name, tool.description])
@@ -754,7 +770,11 @@ export const rewriteRuntimeWorkFlow = async ({
     const toolListMap = new Map<string, RuntimeMcpTool[]>();
     await Promise.all(
       toolsets.map(async (toolset) => {
-        const toolList = (await getMCPChildren(toolset)) as RuntimeMcpTool[];
+        const toolList = filterWorkflowToolList({
+          context: getWorkflowResourceContext(),
+          appId: String(toolset._id),
+          tools: (await getMCPChildren(toolset)) as RuntimeMcpTool[]
+        });
         toolListMap.set(String(toolset._id), toolList);
       })
     );
@@ -798,7 +818,14 @@ export const rewriteRuntimeWorkFlow = async ({
     const toolListMap = new Map<string, HttpToolConfigType[]>();
     await Promise.all(
       toolsets.map(async (toolset) => {
-        toolListMap.set(String(toolset._id), await getHTTPToolList(toolset));
+        toolListMap.set(
+          String(toolset._id),
+          filterWorkflowToolList({
+            context: getWorkflowResourceContext(),
+            appId: String(toolset._id),
+            tools: await getHTTPToolList(toolset)
+          })
+        );
       })
     );
     httpToolNodes.forEach((node) => {

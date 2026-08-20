@@ -548,7 +548,8 @@ const EditForm = ({
             name: item.name,
             avatar: item.avatar,
             vectorModel: item.vectorModel,
-            isDeleted: item.isDeleted
+            isDeleted: item.isDeleted,
+            permissionDenied: item.permissionDenied
           }))}
           onClose={onCloseDatasetSelect}
           onChange={(e) => {

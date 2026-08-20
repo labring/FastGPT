@@ -13,7 +13,7 @@ import {
   ModalFooter,
   Textarea
 } from '@chakra-ui/react';
-import type { AppSchemaType } from '@fastgpt/global/core/app/type';
+import type { AppDetailType } from '@fastgpt/global/core/app/type';
 import { AppRoleList } from '@fastgpt/global/support/permission/app/constant';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -51,7 +51,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
 
   // submit config
   const { runAsync: saveSubmitSuccess, loading: btnLoading } = useRequest(
-    async (data: AppSchemaType) => {
+    async (data: AppDetailType) => {
       await updateAppDetail({
         name: data.name,
         avatar: data.avatar,

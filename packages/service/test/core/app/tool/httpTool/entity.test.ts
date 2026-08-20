@@ -1,8 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockMongoAppFind } = vi.hoisted(() => ({
-  mockMongoAppFind: vi.fn()
-}));
+const { mockMongoAppFind, mockMongoAppVersionAggregate, mockMongoAppVersionFind } = vi.hoisted(
+  () => ({
+    mockMongoAppFind: vi.fn(),
+    mockMongoAppVersionAggregate: vi.fn(),
+    mockMongoAppVersionFind: vi.fn()
+  })
+);
 
 vi.mock('@fastgpt/service/core/app/schema', () => ({
   MongoApp: {
@@ -10,69 +14,37 @@ vi.mock('@fastgpt/service/core/app/schema', () => ({
   }
 }));
 
-import { getHttpToolsets } from '@fastgpt/service/core/app/tool/httpTool/entity';
+vi.mock('@fastgpt/service/core/app/version/schema', () => ({
+  MongoAppVersion: {
+    find: mockMongoAppVersionFind,
+    aggregate: mockMongoAppVersionAggregate
+  }
+}));
 
-const setupFindReturn = (result: any) => {
-  const leanFn = vi.fn().mockResolvedValue(result);
-  mockMongoAppFind.mockReturnValue({ lean: leanFn });
-  return { leanFn };
-};
+import { getHttpToolsets } from '@fastgpt/service/core/app/tool/httpTool/entity';
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockMongoAppVersionAggregate.mockResolvedValue([]);
+  mockMongoAppVersionFind.mockReturnValue({ lean: vi.fn().mockResolvedValue([]) });
 });
 
 describe('getHttpToolsets', () => {
-  it('should query MongoApp with teamId, ids, and field, and return lean result', async () => {
-    const docs = [
-      { _id: 'id1', modules: [{ toolConfig: { httpToolSet: { toolList: [] } } }] },
-      { _id: 'id2', modules: [] }
-    ];
-    const { leanFn } = setupFindReturn(docs);
-
-    const field = { _id: true, modules: true };
+  it('returns toolset metadata without attaching workflow nodes', async () => {
+    mockMongoAppFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([{ _id: 'id1', publishedVersionId: 'version-id' }])
+    });
     const res = await getHttpToolsets({
       teamId: 'team1',
-      ids: ['id1', 'id2'],
-      field
+      ids: ['id1'],
+      field: { _id: true }
     });
-
-    expect(mockMongoAppFind).toHaveBeenCalledTimes(1);
-    expect(mockMongoAppFind).toHaveBeenCalledWith(
-      { teamId: 'team1', _id: { $in: ['id1', 'id2'] } },
-      field
-    );
-    expect(leanFn).toHaveBeenCalledTimes(1);
-    expect(res).toBe(docs);
-  });
-
-  it('should pass undefined field when not provided', async () => {
-    setupFindReturn([]);
-
-    await getHttpToolsets({ teamId: 'team1', ids: ['id1'] });
 
     expect(mockMongoAppFind).toHaveBeenCalledWith(
       { teamId: 'team1', _id: { $in: ['id1'] } },
-      undefined
+      { _id: true, publishedVersionId: true }
     );
-  });
-
-  it('should handle empty ids array', async () => {
-    const { leanFn } = setupFindReturn([]);
-
-    const res = await getHttpToolsets({ teamId: 'team1', ids: [] });
-
-    expect(mockMongoAppFind).toHaveBeenCalledWith({ teamId: 'team1', _id: { $in: [] } }, undefined);
-    expect(leanFn).toHaveBeenCalledTimes(1);
-    expect(res).toEqual([]);
-  });
-
-  it('should propagate rejection from lean()', async () => {
-    const leanFn = vi.fn().mockRejectedValue(new Error('db error'));
-    mockMongoAppFind.mockReturnValue({ lean: leanFn });
-
-    await expect(
-      getHttpToolsets({ teamId: 'team1', ids: ['id1'], field: { _id: true } })
-    ).rejects.toThrow('db error');
+    expect(res).toEqual([{ _id: 'id1', publishedVersionId: 'version-id' }]);
+    expect(mockMongoAppVersionFind).not.toHaveBeenCalled();
   });
 });

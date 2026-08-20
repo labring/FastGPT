@@ -22,7 +22,7 @@ async function handler(
     querySchema: GetLatestAppVersionQuerySchema
   }).query;
 
-  const { app, isRoot, teamId } = await authApp({
+  const { app, isRoot, teamId, tmbId } = await authApp({
     req,
     authToken: true,
     appId,
@@ -35,8 +35,10 @@ async function handler(
     nodes: version.nodes,
     teamId,
     isRoot,
+    viewerTmbId: tmbId,
     ownerTmbId: app.tmbId,
-    lang: getLocale(req)
+    lang: getLocale(req),
+    resources: version.resources
   });
 
   return GetLatestAppVersionResponseSchema.parse(version);

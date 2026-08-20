@@ -41,10 +41,10 @@ describe('test getClbsWithInfo', () => {
     const users = await getFakeUsers(3);
     const orgs = await getFakeOrgs();
     const groups = await getFakeGroups(3);
-    const app = await Call<CreateAppBodyType, null, string>(createAppAPI, {
+    const app = await Call<CreateAppBodyType, Record<string, never>, string>(createAppAPI, {
       auth: users.owner,
       body: {
-        modules: [],
+        nodes: [],
         name: 'test',
         type: AppTypeEnum.simple
       }

@@ -95,6 +95,8 @@ const ToolSelect = ({
           const toolError =
             formatToolError(item.pluginData?.error) ||
             (isOffline ? 'common:error.tool_not_exist' : undefined);
+          const permissionDenied = !!item.pluginData?.permissionDenied;
+          const hasToolError = !!toolError || permissionDenied;
 
           const isUnconfigured = item.configStatus === 'waitingForConfig';
           const isDebugTool = isDebugToolSource(item.source);
@@ -102,7 +104,11 @@ const ToolSelect = ({
           return (
             <MyTooltip
               key={getToolIdentityKey(item.pluginId || item.id, item.source)}
-              label={item.intro}
+              label={
+                permissionDenied
+                  ? t('common:core.workflow.check.resource_no_permission')
+                  : item.intro
+              }
             >
               <Grid
                 overflow={'hidden'}
@@ -116,10 +122,10 @@ const ToolSelect = ({
                 bg={'white'}
                 borderRadius={'6px'}
                 border={'base'}
-                borderColor={toolError ? 'red.600' : 'myGray.200'}
+                borderColor={hasToolError ? 'red.600' : 'myGray.200'}
                 userSelect={'none'}
                 _hover={{
-                  borderColor: toolError ? 'red.600' : 'primary.300',
+                  borderColor: hasToolError ? 'red.600' : 'primary.300',
                   '.delete': {
                     display: 'flex'
                   },
@@ -149,6 +155,14 @@ const ToolSelect = ({
                       </MyTag>
                     </MyTooltip>
                   )}
+                  {permissionDenied && (
+                    <MyTag colorSchema="red" type="fill" className="unHoverStyle">
+                      <MyIcon name="common/error" w="14px" mr={1} />
+                      <Box color="red.600" maxW="150px" className="textEllipsis">
+                        {t('common:core.workflow.check.resource_no_permission')}
+                      </Box>
+                    </MyTag>
+                  )}
                   {toolError && (
                     <MyTag colorSchema="red" type="fill" className="unHoverStyle">
                       <MyIcon name={'common/error'} w={'14px'} mr={1} />
@@ -163,7 +177,7 @@ const ToolSelect = ({
                     </MyTag>
                   )}
                   {isDebugTool && <DebugToolTag className="unHoverStyle" />}
-                  {!toolError && (
+                  {!hasToolError && (
                     <MyIconButton
                       className="hoverStyle"
                       display={'none'}

@@ -19,10 +19,7 @@ import { assertToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
 import { getHTTPToolRuntimeSchemas } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { assertMCPUrlNotInternal, getMCPChildren, MCPClient } from '../../../../../../app/mcp';
 import { getHTTPToolList, runHTTPTool } from '../../../../../../app/http';
-import {
-  decodeHttpToolSetNodesFromStorage,
-  decodeMcpToolSetNodesFromStorage
-} from '../../../../../../app/jsonSchemaStorage';
+import { getAppVersionById } from '../../../../../../app/version/controller';
 import {
   HttpToolSetRuntimeConfigSchema,
   McpToolSetRuntimeConfigSchema
@@ -35,8 +32,12 @@ import { SystemToolRepo } from '../../../../../../app/tool/systemTool/systemTool
 import { computedSystemToolUsage } from '../../../../../../app/tool/runtime/utils';
 import { InvokeProcessor } from '../../../../../../../support/invoke/invoke';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
-import { authAppByTmbId } from '../../../../../../../support/permission/app/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import {
+  filterWorkflowToolList,
+  isWorkflowResourceError,
+  loadWorkflowAppResource
+} from '../../../../../utils/resource';
+import { getWorkflowResourceContext } from '../../../../../utils/context';
 import { getWorkflowAppId } from '../../../../utils/source';
 import {
   assertTeamPluginSourceAccess,
@@ -64,6 +65,7 @@ export type Props = {
   uid: ChatDispatchProps['uid'];
   variableState: ChatDispatchProps['variableState'];
   workflowStreamResponse: ChatDispatchProps['workflowStreamResponse'];
+  dynamic?: boolean;
 };
 
 export const dispatchTool = async ({
@@ -74,8 +76,10 @@ export const dispatchTool = async ({
   chatId,
   uid,
   variableState,
-  workflowStreamResponse
+  workflowStreamResponse,
+  dynamic = false
 }: Props): Promise<DispatchSubAppResponse> => {
+  const resourceContext = dynamic ? undefined : getWorkflowResourceContext();
   const getNodeResponse = ({
     result,
     response
@@ -134,14 +138,14 @@ export const dispatchTool = async ({
      * Agent 工具调用也会按持久化 toolId 解析 HTTP/MCP 父工具集。
      * 这里必须使用当前运行工作流的 tmbId 做运行时授权，防止绕过保存阶段的脏引用被模型调用执行。
      */
-    const authRuntimeToolset = async (parentId: string) =>
-      (
-        await authAppByTmbId({
-          tmbId: runningAppInfo.tmbId,
-          appId: parentId,
-          per: ReadPermissionVal
-        })
-      ).app;
+    const authRuntimeToolset = async (parentId: string, toolName?: string) =>
+      loadWorkflowAppResource({
+        tmbId: runningUserInfo.tmbId,
+        appId: parentId,
+        type: 'tool',
+        toolName,
+        dynamic
+      });
 
     if (toolConfig?.systemTool?.toolId) {
       const toolSource = getSystemToolSource();
@@ -256,12 +260,17 @@ export const dispatchTool = async ({
       if (!parentId || !toolName) {
         return Promise.reject(`Invalid MCP tool id: ${toolConfig.mcpTool.toolId}`);
       }
-      const app = await authRuntimeToolset(parentId);
+      const app = await authRuntimeToolset(parentId, toolName);
+      const workflow = await getAppVersionById({ appId: parentId, app });
       const mcpToolSet = McpToolSetRuntimeConfigSchema.safeParse(
-        decodeMcpToolSetNodesFromStorage(app.modules)[0]?.toolConfig?.mcpToolSet
+        workflow.nodes[0]?.toolConfig?.mcpToolSet
       ).data;
-      const mcpToolList = await getMCPChildren(app);
-      if (!mcpToolSet && !mcpToolList.length) {
+      const mcpToolList = filterWorkflowToolList({
+        context: resourceContext,
+        appId: parentId,
+        tools: await getMCPChildren(app, workflow)
+      });
+      if (!mcpToolSet || !mcpToolList.length) {
         return Promise.reject(`MCP tool set is missing`);
       }
       const mcpTool = getToolNameCandidates(toolName)
@@ -302,12 +311,21 @@ export const dispatchTool = async ({
       if (!parentId || !toolName) {
         return Promise.reject(`Invalid HTTP tool id: ${toolConfig.httpTool.toolId}`);
       }
-      const app = await authRuntimeToolset(parentId);
+      const app = await authRuntimeToolset(parentId, toolName);
+      const workflow = await getAppVersionById({
+        appId: parentId,
+        versionId: version,
+        app
+      });
       const toolSetData = HttpToolSetRuntimeConfigSchema.safeParse(
-        decodeHttpToolSetNodesFromStorage(app.modules)[0]?.toolConfig?.httpToolSet
+        workflow.nodes[0]?.toolConfig?.httpToolSet
       ).data;
-      const toolList = await getHTTPToolList(app);
-      if (!toolSetData && !toolList.length) {
+      const toolList = filterWorkflowToolList({
+        context: resourceContext,
+        appId: parentId,
+        tools: await getHTTPToolList(app, workflow)
+      });
+      if (!toolSetData || !toolList.length) {
         return Promise.reject(`HTTP tool set not found: ${toolConfig.httpTool.toolId}`);
       }
 
@@ -360,6 +378,7 @@ export const dispatchTool = async ({
       return getErrResponse("Can't find the tool");
     }
   } catch (error) {
+    if (isWorkflowResourceError(error)) throw error;
     if (toolConfig?.systemTool?.toolId) {
       pushTrack.runSystemTool({
         teamId: runningUserInfo.teamId,

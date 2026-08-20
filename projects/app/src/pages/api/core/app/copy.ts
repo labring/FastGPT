@@ -21,9 +21,9 @@ import {
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   encodeHttpToolSetNodesForStorage,
-  encodeMcpToolSetNodesForStorage,
-  decodeToolSetNodesFromStorage
+  encodeMcpToolSetNodesForStorage
 } from '@fastgpt/service/core/app/jsonSchemaStorage';
+import { getAppDraftWorkflow } from '@fastgpt/service/core/app/version/controller';
 
 async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppResponseType> {
   const { appId: sourceAppId } = parseApiInput({
@@ -51,12 +51,13 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
       session
     });
 
-    const storageModules = (() => {
+    const draftWorkflow = await getAppDraftWorkflow(app._id);
+    const storageNodes = (() => {
       if (app.type === AppTypeEnum.mcpToolSet) {
-        return encodeMcpToolSetNodesForStorage(app.modules);
+        return encodeMcpToolSetNodesForStorage(draftWorkflow.nodes);
       }
       if (app.type === AppTypeEnum.httpToolSet) {
-        return encodeHttpToolSetNodesForStorage(app.modules);
+        return encodeHttpToolSetNodesForStorage(draftWorkflow.nodes);
       }
       // 普通应用必须写入 onCreateApp 清洗后的 workflow，不能用原始存储数据绕过模型校验。
       return undefined;
@@ -67,10 +68,10 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
       intro: app.intro,
       avatar,
       type: app.type,
-      modules: decodeToolSetNodesFromStorage(app.modules),
-      storageModules,
-      edges: app.edges,
-      chatConfig: app.chatConfig,
+      nodes: draftWorkflow.nodes,
+      storageNodes,
+      edges: draftWorkflow.edges,
+      chatConfig: draftWorkflow.chatConfig,
       teamId: app.teamId,
       tmbId,
       pluginData: app.pluginData,

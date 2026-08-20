@@ -7,7 +7,7 @@ const {
   createLLMResponseMock,
   defaultSearchDatasetDataMock,
   filterDatasetsByTmbIdMock,
-  findDatasetByIdMock,
+  loadWorkflowDatasetResourceMock,
   getDatasetSearchVlmModelMock,
   formatModelChars2PointsMock
 } = vi.hoisted(() => ({
@@ -15,7 +15,7 @@ const {
   createLLMResponseMock: vi.fn(),
   defaultSearchDatasetDataMock: vi.fn(),
   filterDatasetsByTmbIdMock: vi.fn(),
-  findDatasetByIdMock: vi.fn(),
+  loadWorkflowDatasetResourceMock: vi.fn(),
   getDatasetSearchVlmModelMock: vi.fn(),
   formatModelChars2PointsMock: vi.fn()
 }));
@@ -28,11 +28,8 @@ vi.mock('@fastgpt/service/core/dataset/search/vlm', () => ({
   getDatasetSearchVlmModel: getDatasetSearchVlmModelMock
 }));
 
-vi.mock('@fastgpt/service/core/dataset/schema', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@fastgpt/service/core/dataset/schema')>()),
-  MongoDataset: {
-    findById: findDatasetByIdMock
-  }
+vi.mock('@fastgpt/service/core/workflow/utils/resource', () => ({
+  loadWorkflowDatasetResource: loadWorkflowDatasetResourceMock
 }));
 
 vi.mock('@fastgpt/service/core/dataset/utils', () => ({
@@ -109,11 +106,9 @@ describe('dispatchAgentDatasetSearch', () => {
       name: 'vlm-model name',
       config: { vision: true }
     });
-    findDatasetByIdMock.mockReturnValue({
-      lean: vi.fn().mockResolvedValue({
-        vectorModel: 'embedding-model',
-        vlmModel: 'vlm-model'
-      })
+    loadWorkflowDatasetResourceMock.mockResolvedValue({
+      vectorModel: 'embedding-model',
+      vlmModel: 'vlm-model'
     });
     filterDatasetsByTmbIdMock.mockImplementation(async ({ datasetIds }) => datasetIds);
     countPromptTokensMock.mockResolvedValue(100);
@@ -432,7 +427,7 @@ describe('dispatchAgentDatasetSearch', () => {
     expect(result).toEqual({
       response: 'No authorized dataset selected'
     });
-    expect(findDatasetByIdMock).not.toHaveBeenCalled();
+    expect(loadWorkflowDatasetResourceMock).not.toHaveBeenCalled();
     expect(defaultSearchDatasetDataMock).not.toHaveBeenCalled();
   });
 

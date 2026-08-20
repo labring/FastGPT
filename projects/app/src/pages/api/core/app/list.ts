@@ -1,4 +1,5 @@
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { NextAPI } from '@/service/middleware/entry';
 import {
   PerResourceTypeEnum,
@@ -18,9 +19,10 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { isInteractiveNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import { isPrivateResourceByCollaborators, sumPer } from '@fastgpt/global/support/permission/utils';
 import { getResourcePermissionsByTeam } from '@fastgpt/service/support/permission/resourcePermissionService';
+import { Types } from '@fastgpt/service/common/mongo';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   ListAppBodySchema,
@@ -28,7 +30,6 @@ import {
   type ListAppBodyType,
   type ListAppResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
-import { Types } from '@fastgpt/service/common/mongo';
 
 /*
   获取 APP 列表权限
@@ -143,12 +144,45 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
 
   const myApps = await MongoApp.find(
     { ...findAppsQuery, deleteTime: null },
-    '_id parentId avatar type name intro tmbId createTime updateTime pluginData inheritPermission modules',
+    '_id parentId avatar type name intro tmbId createTime updateTime pluginData inheritPermission publishedVersionId',
     { limit }
   )
     .sort({ ...appListSortMongoMap[sort ?? AppListSortEnum.updateTimeDesc], _id: -1 })
     .lean();
 
+  /**
+   * 评测选应用会过滤含表单输入 / 用户选择节点的工作流。
+   * 只扫当前 publishedVersionId 对应 Version 的 nodes，不读 App.modules。
+   */
+  const getInteractiveAppIdSet = async () => {
+    const pointerIds = myApps
+      .map((app) => app.publishedVersionId)
+      .filter((id): id is NonNullable<typeof id> => !!id && Types.ObjectId.isValid(String(id)));
+    if (pointerIds.length === 0) return new Set<string>();
+
+    const versions = await MongoAppVersion.find(
+      { _id: { $in: pointerIds } },
+      { _id: 1, appId: 1, nodes: 1 }
+    ).lean();
+    const versionById = new Map(versions.map((version) => [String(version._id), version]));
+    const ids = new Set<string>();
+
+    for (const app of myApps) {
+      const version = app.publishedVersionId
+        ? versionById.get(String(app.publishedVersionId))
+        : undefined;
+      if (!version || String(version.appId) !== String(app._id)) continue;
+      if ((version.nodes ?? []).some((node) => isInteractiveNodeType(node.flowNodeType))) {
+        ids.add(String(app._id));
+      }
+    }
+
+    return ids;
+  };
+
+  const interactiveAppIds = await getInteractiveAppIdSet();
+
+  // Add app permission and filter apps by read permission
   const formatApps = myApps
     .map((app) => {
       const { Per, privateApp } = (() => {
@@ -174,10 +208,8 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
           privateApp: isPrivateResourceByCollaborators({ resourceClbs })
         };
       })();
-      const { modules, ...rest } = app;
-      const hasInteractiveNode = modules?.some((item) =>
-        [FlowNodeTypeEnum.formInput, FlowNodeTypeEnum.userSelect].includes(item.flowNodeType)
-      );
+
+      const { publishedVersionId: _publishedVersionId, ...rest } = app;
       return {
         ...rest,
         avatar: app.avatar,
@@ -186,7 +218,7 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
         parentId: app.parentId,
         permission: Per,
         private: privateApp,
-        hasInteractiveNode
+        hasInteractiveNode: interactiveAppIds.has(String(app._id))
       };
     })
     .filter((app) => app.permission.hasReadPer);

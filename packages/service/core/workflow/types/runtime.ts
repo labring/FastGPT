@@ -1,5 +1,5 @@
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import type { AppSchemaType } from '@fastgpt/global/core/app/type';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
 import type { AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
 import type {
@@ -90,7 +90,7 @@ export type ChatDispatchProps = {
   histories: ChatItemMiniType[];
   variableState: WorkflowVariableStateLike; // global variable state
   query: UserChatItemValueItemType[]; // trigger query
-  chatConfig: AppSchemaType['chatConfig'];
+  chatConfig?: AppChatConfigType;
   lastInteractive?: WorkflowInteractiveResponseType; // last interactive response
   stream: boolean;
   retainDatasetCite?: boolean;
@@ -101,6 +101,9 @@ export type ChatDispatchProps = {
   apiVersion?: 'v1' | 'v2';
 
   workflowDispatchDeep: number;
+
+  /** 当前节点的资源输入是否来自工作流引用，动态资源回退到运行人权限。 */
+  dynamicDataset?: boolean;
 
   responseAllData?: boolean;
   responseDetail?: boolean;
