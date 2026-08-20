@@ -10,6 +10,10 @@ export const getAppLatestVersion = async (
   app?: AppSchemaType,
   options?: { skipAgentToolMigration?: boolean }
 ) => {
+  const migrationApp =
+    options?.skipAgentToolMigration || app
+      ? app
+      : ((await MongoApp.findById(appId).lean()) as AppSchemaType | null | undefined);
   const version = await MongoAppVersion.findOne({
     appId,
     isPublish: true
@@ -28,7 +32,9 @@ export const getAppLatestVersion = async (
         edges: version.edges,
         chatConfig: version.chatConfig
       },
-      options?.skipAgentToolMigration ? { migrateAgentTools: false } : getWorkflowMigrationOptions()
+      options?.skipAgentToolMigration
+        ? { migrateAgentTools: false }
+        : getWorkflowMigrationOptions({ teamId: migrationApp?.teamId })
     );
     return {
       versionId: String(version._id),
@@ -38,11 +44,13 @@ export const getAppLatestVersion = async (
   }
   const normalizedWorkflow = await migrateWorkflowToCurrent(
     {
-      nodes: app?.modules ?? [],
-      edges: app?.edges ?? [],
-      chatConfig: app?.chatConfig
+      nodes: migrationApp?.modules ?? [],
+      edges: migrationApp?.edges ?? [],
+      chatConfig: migrationApp?.chatConfig
     },
-    options?.skipAgentToolMigration ? { migrateAgentTools: false } : getWorkflowMigrationOptions()
+    options?.skipAgentToolMigration
+      ? { migrateAgentTools: false }
+      : getWorkflowMigrationOptions({ teamId: migrationApp?.teamId })
   );
   return {
     versionId: migrationApp?.pluginData?.nodeVersion,
@@ -70,13 +78,19 @@ export const getAppVersionById = async ({
     }).lean();
 
     if (version) {
+      const migrationApp =
+        skipAgentToolMigration || app
+          ? app
+          : ((await MongoApp.findById(appId).lean()) as AppSchemaType | null | undefined);
       const normalizedWorkflow = await migrateWorkflowToCurrent(
         {
           nodes: version.nodes,
           edges: version.edges,
           chatConfig: version.chatConfig
         },
-        skipAgentToolMigration ? { migrateAgentTools: false } : getWorkflowMigrationOptions()
+        skipAgentToolMigration
+          ? { migrateAgentTools: false }
+          : getWorkflowMigrationOptions({ teamId: migrationApp?.teamId })
       );
       return {
         versionId: String(version._id),

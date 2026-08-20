@@ -45,7 +45,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
 
   const normalizedWorkflow = await migrateWorkflowToCurrent(
     { nodes, edges, chatConfig },
-    getWorkflowMigrationOptions()
+    getWorkflowMigrationOptions({ teamId })
   );
   await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes });
   if (isPublish) {

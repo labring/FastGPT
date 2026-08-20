@@ -192,7 +192,7 @@ export const onCreateApp = async ({
       edges: edges ?? [],
       chatConfig
     },
-    getWorkflowMigrationOptions()
+    getWorkflowMigrationOptions({ teamId })
   );
   await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes });
   if (!AppFolderTypeList.includes(type!)) {
@@ -330,7 +330,7 @@ export const onUpdateAppWorkflow = async ({
       edges: edges ?? [],
       chatConfig
     },
-    getWorkflowMigrationOptions()
+    getWorkflowMigrationOptions({ teamId })
   );
   await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });
 

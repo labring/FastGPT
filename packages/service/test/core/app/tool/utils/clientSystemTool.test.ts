@@ -22,7 +22,10 @@ vi.mock('@fastgpt/service/core/plugin/teamPluginPolicy', async (importOriginal) 
   assertTeamPluginSourceAccess: mocks.assertTeamPluginSourceAccess
 }));
 
-import { getClientSystemToolPreviewNode } from '@fastgpt/service/core/app/tool/utils/client';
+import {
+  getClientSystemToolPreviewNode,
+  getWorkflowMigrationOptions
+} from '@fastgpt/service/core/app/tool/utils/client';
 
 describe('getClientSystemToolPreviewNode', () => {
   beforeEach(() => {
@@ -390,6 +393,44 @@ describe('getClientSystemToolPreviewNode', () => {
       toolId: 'systemTool-weather',
       source: 'teamId:team-1'
     });
+  });
+
+  it('passes App team context to the workflow migration resolver', async () => {
+    mocks.getSystemToolDetail.mockResolvedValueOnce({
+      id: 'systemTool-weather',
+      version: '1.0.0',
+      status: 1,
+      source: 'teamId:team-1',
+      isToolSet: false,
+      avatar: 'weather.svg',
+      name: 'Weather',
+      intro: 'Weather query',
+      author: 'FastGPT',
+      tags: [],
+      toolDescription: 'Weather query',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      hasSystemSecret: false,
+      inputSchema: {
+        type: 'object',
+        properties: {
+          city: { type: 'string', title: 'City' }
+        }
+      }
+    });
+
+    const result = await getWorkflowMigrationOptions({ teamId: 'team-1' }).resolveToolDefinition?.({
+      id: 'systemTool-weather',
+      source: 'teamId:team-1'
+    });
+
+    expect(mocks.assertTeamPluginSourceAccess).toHaveBeenCalledWith({
+      teamId: 'team-1',
+      source: 'teamId:team-1',
+      pluginId: 'weather'
+    });
+    expect(result?.inputs).toHaveLength(1);
   });
 
   it('writes explicit debug source into system toolset config', async () => {

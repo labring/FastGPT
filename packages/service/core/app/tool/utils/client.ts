@@ -563,13 +563,16 @@ export async function getClientToolPreviewNode({
  * 为 workflow 历史 Agent 工具补齐当前输入定义。
  * @see {migrateWorkflowToCurrent} - Workflow migration entrypoint.
  */
-export const getWorkflowMigrationOptions = (): WorkflowMigrationOptions => ({
+export const getWorkflowMigrationOptions = ({
+  teamId
+}: { teamId?: string } = {}): WorkflowMigrationOptions => ({
   resolveToolDefinition: async ({ id, version, source }) => {
     try {
       const preview = await getClientToolPreviewNode({
         appId: id,
         versionId: version,
-        source
+        source,
+        teamId
       });
       return { inputs: preview.inputs };
     } catch {

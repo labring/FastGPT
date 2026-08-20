@@ -39,7 +39,7 @@ async function handler(req: NextApiRequest): Promise<GetAppVersionDetailResponse
       edges: result.edges,
       chatConfig: result.chatConfig
     },
-    getWorkflowMigrationOptions()
+    getWorkflowMigrationOptions({ teamId })
   );
   await rewriteAppWorkflowToDetail({
     nodes: normalizedWorkflow.nodes,
