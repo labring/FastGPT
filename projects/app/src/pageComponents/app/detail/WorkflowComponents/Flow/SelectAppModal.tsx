@@ -8,7 +8,7 @@ import {
   type GetResourceFolderListProps,
   type GetResourceListItemResponse
 } from '@fastgpt/global/common/parentFolder/type';
-import { getMyApps } from '@/web/core/app/api';
+import { getAllApps } from '@/web/core/app/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 const SelectAppModal = ({
@@ -27,7 +27,7 @@ const SelectAppModal = ({
 
   const getAppList = useCallback(
     async ({ parentId }: GetResourceFolderListProps) => {
-      return getMyApps({
+      return getAllApps({
         parentId,
         type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow]
       }).then((res) =>

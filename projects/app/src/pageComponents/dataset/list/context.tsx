@@ -1,5 +1,6 @@
 'use client';
 import {
+  getAllDatasets,
   getDatasetPaths,
   putDatasetById,
   getDatasets,
@@ -16,6 +17,7 @@ import { useRouter } from 'next/router';
 import React, { useCallback, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useScrollPagination, type ScrollListType } from '@fastgpt/web/hooks/useScrollPagination';
 import { type UpdateDatasetBody } from '@fastgpt/global/openapi/core/dataset/api';
 import dynamic from 'next/dynamic';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -38,10 +40,11 @@ const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
 export type DatasetContextType = {
   myDatasets: DatasetListItemType[];
-  loadMyDatasets: () => Promise<DatasetListItemType[]>;
+  loadMyDatasets: () => Promise<void>;
   refetchPaths: () => void;
   refetchFolderDetail: () => Promise<DatasetItemType | undefined>;
   isFetchingDatasets: boolean;
+  ScrollData: ScrollListType;
   setMoveDatasetId: (id: string) => void;
   paths: ParentTreePathItemType[];
   folderDetail?: DatasetItemType;
@@ -57,6 +60,7 @@ export type DatasetContextType = {
 
 export const DatasetsContext = createContext<DatasetContextType>({
   isFetchingDatasets: false,
+  ScrollData: () => <></>,
   setMoveDatasetId: () => {},
   refetchPaths: () => {},
   paths: [],
@@ -64,7 +68,7 @@ export const DatasetsContext = createContext<DatasetContextType>({
   editedDataset: {} as any,
   setEditedDataset: () => {},
   onDelDataset: () => Promise.resolve(),
-  loadMyDatasets: function (): Promise<DatasetListItemType[]> {
+  loadMyDatasets: function (): Promise<void> {
     throw new Error('Function not implemented.');
   },
   refetchFolderDetail: function (): Promise<DatasetItemType | undefined> {
@@ -116,19 +120,21 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
 
   const {
     data: myDatasets = [],
-    runAsync: loadMyDatasets,
-    loading: isFetchingDatasets
-  } = useRequest(
-    () =>
+    fetchData,
+    ScrollData,
+    isLoading: isFetchingDatasets
+  } = useScrollPagination(
+    ({ offset = 0, pageSize = 50 }) =>
       getDatasets({
         searchKey,
         parentId,
+        offset,
+        pageSize,
         ...(listType ? { type: listType } : {}),
         ...(applyToolbarFilters ? { sort: listFilters.sort } : {}),
         ...(tmbIds !== undefined ? { tmbIds } : {})
       }),
     {
-      manual: false,
       refreshDeps: [
         parentId,
         searchKey,
@@ -138,9 +144,12 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
         feConfigs.isPlus,
         isPc
       ],
-      throttleWait: 300
+      pageSize: 50,
+      throttleWait: 300,
+      refreshOnWindowFocus: false
     }
   );
+  const loadMyDatasets = useCallback(() => fetchData({ init: true }), [fetchData]);
 
   const { data: folderDetail, runAsync: refetchFolderDetail } = useRequest(
     () => (parentId ? getDatasetById(parentId) : Promise.resolve(undefined)),
@@ -178,7 +187,7 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
 
   const getDatasetFolderList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
     return (
-      await getDatasets({
+      await getAllDatasets({
         parentId,
         type: DatasetTypeEnum.folder
       })
@@ -199,6 +208,7 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
 
   const contextValue = {
     isFetchingDatasets,
+    ScrollData,
     setMoveDatasetId,
     paths,
     refetchPaths,

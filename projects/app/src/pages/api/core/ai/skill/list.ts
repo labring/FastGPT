@@ -57,8 +57,8 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
     category,
     type,
     skillIds: selectedSkillIds,
-    page,
-    pageSize,
+    page: isSkillIdsQuery ? undefined : (page ?? 1),
+    pageSize: isSkillIdsQuery ? undefined : (pageSize ?? 50),
     withAppCount,
     sort,
     tmbIds

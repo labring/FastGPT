@@ -1,4 +1,4 @@
-import { getDatasets, getDatasetPaths } from '@/web/core/dataset/api';
+import { getAllDatasets, getDatasetPaths } from '@/web/core/dataset/api';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import React, { type Dispatch, useState } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -77,7 +77,7 @@ export function useDatasetSelect() {
   } = useRequest(
     async () => {
       const result = await Promise.all([
-        getDatasets({ parentId, searchKey }),
+        getAllDatasets({ parentId, searchKey }),
         // Only get paths when not searching
         searchKey.trim()
           ? Promise.resolve([])

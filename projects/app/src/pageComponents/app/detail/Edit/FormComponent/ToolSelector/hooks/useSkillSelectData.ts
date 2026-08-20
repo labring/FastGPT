@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getSkillList } from '@/web/core/skill/api';
+import { getAllSkillList } from '@/web/core/skill/api';
 import type { ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
@@ -25,7 +25,7 @@ export const useSkillSelectData = () => {
     refreshAsync: refreshSkillList
   } = useRequest(
     async () => {
-      const { list } = await getSkillList({
+      const list = await getAllSkillList({
         source: 'mine',
         parentId,
         searchKey: searchKey || undefined,

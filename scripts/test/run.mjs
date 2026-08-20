@@ -47,9 +47,7 @@ const parseUnitScopes = (scopeValue) => {
   return [...new Set(expandedScopes)];
 };
 
-/**
- * 将测试模式、范围和路径解析为顺序执行计划，集中维护根目录测试入口的语义。
- */
+/** Resolve the root test mode and scope into an ordered execution plan. */
 export const resolveTestPlan = ({ args = [], modeValue, scopeValue } = {}) => {
   if (args.length > 0) {
     if (modeValue || scopeValue) {
@@ -95,7 +93,6 @@ export const resolveTestPlan = ({ args = [], modeValue, scopeValue } = {}) => {
     throw new Error('FASTGPT_TEST_MODE=all does not accept FASTGPT_TEST_SCOPE');
   }
 
-  // all 保留原 test:all 的语义：workspace 单测完成后再跑 service 集成测试。
   const unitScopes = parseUnitScopes(mode === 'all' ? 'workspace' : scopeValue);
   const selectedWorkspaces = unitScopes.filter((scope) => scope in workspaceFilters);
   const plan = [];
