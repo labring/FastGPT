@@ -1,6 +1,4 @@
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
+import { useDisclosure } from '@chakra-ui/react';
 import React from 'react';
 import { useTranslation } from 'next-i18next';
 import type { ChatInputGuideConfigType } from '@fastgpt/global/core/app/type';
@@ -8,9 +6,9 @@ import { getCountChatInputGuideTotal } from '@/web/core/chat/inputGuide/api';
 import { useQuery } from '@tanstack/react-query';
 import { defaultChatInputGuideConfig } from '@fastgpt/global/core/app/constants';
 import ChatFunctionTip from '../Tip';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import InputGuideConfigModal from './InputGuideConfigModal';
 import dynamic from 'next/dynamic';
+import AppConfigItem, { AppConfigItemAction } from '../AppConfigItem';
 
 const LexiconConfigModal = dynamic(() => import('./LexiconConfigModal'), {
   ssr: false
@@ -48,25 +46,17 @@ const InputGuideConfig = ({
     : t('common:core.app.whisper.Close');
 
   return (
-    <Flex alignItems={'center'}>
-      <MyIcon name={'core/app/inputGuides'} mr={2} w={'20px'} />
-      <Flex alignItems={'center'}>
-        <FormLabel>{t('app:input_guide')}</FormLabel>
-        <ChatFunctionTip type={'inputGuide'} />
-      </Flex>
-      <Box flex={1} />
-      <MyTooltip label={t('app:config_input_guide')}>
-        <Button
-          variant={'transparentBase'}
-          iconSpacing={1}
-          size={'sm'}
-          mr={'-5px'}
-          color={'myGray.600'}
-          onClick={onOpen}
-        >
-          {statusText}
-        </Button>
-      </MyTooltip>
+    <>
+      <AppConfigItem
+        icon={'core/app/inputGuides'}
+        label={t('app:input_guide')}
+        tip={<ChatFunctionTip type={'inputGuide'} />}
+        action={
+          <AppConfigItemAction tooltip={t('app:config_input_guide')} onClick={onOpen}>
+            {statusText}
+          </AppConfigItemAction>
+        }
+      />
 
       <InputGuideConfigModal
         isOpen={isOpen}
@@ -78,7 +68,7 @@ const InputGuideConfig = ({
       />
 
       {isOpenLexiconConfig && <LexiconConfigModal appId={appId} onClose={onCloseLexiconConfig} />}
-    </Flex>
+    </>
   );
 };
 

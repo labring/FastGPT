@@ -1,16 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import {
-  Box,
-  Button,
-  Flex,
-  Table,
-  Thead,
-  Tr,
-  Th,
-  Td,
-  TableContainer,
-  Tbody
-} from '@chakra-ui/react';
+import { Box, Flex, Table, Thead, Tr, Th, Td, TableContainer, Tbody } from '@chakra-ui/react';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import {
   VariableInputEnum,
@@ -22,7 +11,6 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
 import ChatFunctionTip from './Tip';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import DndDrag, {
   Draggable,
@@ -31,6 +19,7 @@ import DndDrag, {
   type DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag';
 import VariableEditModal from './VariableEditModal';
+import AppConfigItem, { AppConfigItemAction } from './AppConfigItem';
 
 export const defaultVariable: VariableItemType = {
   key: '',
@@ -90,25 +79,22 @@ const VariableEdit = ({
   return (
     <Box className="nodrag">
       {/* Row box */}
-      <Flex alignItems={'center'}>
-        <MyIcon name={'core/app/simpleMode/variable'} w={'20px'} />
-        <FormLabel ml={2}>{t('common:core.module.Variable')}</FormLabel>
-        <ChatFunctionTip type={'variable'} />
-        <Box flex={1} />
-        <Button
-          variant={'transparentBase'}
-          leftIcon={<SmallAddIcon />}
-          iconSpacing={1}
-          size={'sm'}
-          color={'myGray.600'}
-          mr={'-5px'}
-          onClick={() => {
-            setEditingVariable(addVariable());
-          }}
-        >
-          {t('common:add_new')}
-        </Button>
-      </Flex>
+      <AppConfigItem
+        icon={'core/app/simpleMode/variable'}
+        label={t('common:core.module.Variable')}
+        tip={<ChatFunctionTip type={'variable'} />}
+        action={
+          <AppConfigItemAction
+            tooltip={t('common:add_new')}
+            leftIcon={<SmallAddIcon />}
+            onClick={() => {
+              setEditingVariable(addVariable());
+            }}
+          >
+            {t('common:add_new')}
+          </AppConfigItemAction>
+        }
+      />
       {/* Form render */}
       {formatVariables.length > 0 && (
         <TableContainer mt={2} borderRadius={'md'} overflow={'hidden'} borderWidth={'1px'}>

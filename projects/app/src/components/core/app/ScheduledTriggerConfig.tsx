@@ -1,18 +1,7 @@
-import {
-  Box,
-  Button,
-  Flex,
-  ModalBody,
-  useDisclosure,
-  Switch,
-  Textarea,
-  HStack
-} from '@chakra-ui/react';
+import { Box, Flex, ModalBody, useDisclosure, Switch, Textarea } from '@chakra-ui/react';
 import React, { useCallback, useEffect } from 'react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { type AppScheduledTriggerConfigType } from '@fastgpt/global/core/app/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import TimezoneSelect from '@fastgpt/web/components/common/MySelect/TimezoneSelect';
@@ -21,6 +10,7 @@ import ScheduleTimeSelect, {
   defaultCronString
 } from '@fastgpt/web/components/common/MySelect/CronSelector';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import AppConfigItem, { AppConfigItemAction } from './AppConfigItem';
 
 const ScheduledTriggerConfig = ({
   value,
@@ -63,25 +53,16 @@ const ScheduledTriggerConfig = ({
 
   return (
     <>
-      <Flex alignItems={'center'}>
-        <MyIcon name={'core/app/schedulePlan'} w={'20px'} />
-        <HStack ml={2} flex={1} spacing={1}>
-          <FormLabel color={'myGray.600'}>{t('common:core.app.Interval timer run')}</FormLabel>
-          <QuestionTip label={t('common:core.app.Interval timer tip')} />
-        </HStack>
-        <MyTooltip label={t('common:core.app.Config schedule plan')}>
-          <Button
-            variant={'transparentBase'}
-            iconSpacing={1}
-            size={'sm'}
-            mr={'-5px'}
-            color={'myGray.600'}
-            onClick={onOpen}
-          >
+      <AppConfigItem
+        icon={'core/app/schedulePlan'}
+        label={t('common:core.app.Interval timer run')}
+        tip={<QuestionTip ml={1} label={t('common:core.app.Interval timer tip')} />}
+        action={
+          <AppConfigItemAction tooltip={t('common:core.app.Config schedule plan')} onClick={onOpen}>
             {cronString2Label(value?.cronString ?? '', t)}
-          </Button>
-        </MyTooltip>
-      </Flex>
+          </AppConfigItemAction>
+        }
+      />
 
       <MyModal
         isOpen={isOpen}

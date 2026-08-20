@@ -1,9 +1,6 @@
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import {
   Box,
   Button,
-  Flex,
   useDisclosure,
   HStack,
   type BoxProps,
@@ -24,6 +21,7 @@ import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import { FileTypeSelectorPanel } from '@fastgpt/web/components/core/app/FileTypeSelector';
 import { getUserFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
+import AppConfigItem, { AppConfigItemAction } from './AppConfigItem';
 
 const FileSelect = ({
   value = defaultAppSelectFileConfig,
@@ -57,26 +55,24 @@ const FileSelect = ({
     : t('common:core.app.whisper.Close');
 
   return (
-    <Flex alignItems={'center'}>
-      <MyIcon name={'core/app/simpleMode/file'} mr={2} w={'20px'} />
-      <FormLabel {...labelStyle}>{t('app:file_upload')}</FormLabel>
-      <ChatFunctionTip type={'file'} />
-      <Box flex={1} />
-      <MyTooltip label={t('app:config_file_upload')}>
-        <Button
-          variant={'transparentBase'}
-          iconSpacing={1}
-          size={'sm'}
-          mr={'-5px'}
-          color={'myGray.600'}
-          onClick={() => {
-            setLocalValue(value);
-            onOpen();
-          }}
-        >
-          {formLabel}
-        </Button>
-      </MyTooltip>
+    <>
+      <AppConfigItem
+        icon={'core/app/simpleMode/file'}
+        label={t('app:file_upload')}
+        labelProps={labelStyle}
+        tip={<ChatFunctionTip type={'file'} />}
+        action={
+          <AppConfigItemAction
+            tooltip={t('app:config_file_upload')}
+            onClick={() => {
+              setLocalValue(value);
+              onOpen();
+            }}
+          >
+            {formLabel}
+          </AppConfigItemAction>
+        }
+      />
       <MyModal
         title={t('app:file_upload')}
         isOpen={isOpen}
@@ -171,7 +167,7 @@ const FileSelect = ({
           </HStack>
         )}
       </MyModal>
-    </Flex>
+    </>
   );
 };
 
