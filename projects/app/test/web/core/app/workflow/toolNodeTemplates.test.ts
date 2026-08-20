@@ -15,6 +15,11 @@ import { IfElseNode } from '@fastgpt/global/core/workflow/template/system/ifElse
 import { ParallelRunNode } from '@fastgpt/global/core/workflow/template/system/parallelRun/parallelRun';
 import { LoopRunNode } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http468';
+import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
+import { CanonicalWorkflowDataSchema } from '@fastgpt/global/core/workflow/migration';
+import { PublishAppBodySchema } from '@fastgpt/global/openapi/core/app/version/api';
+import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
+import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 
 describe('workflow tool node templates', () => {
   it('marks supported nodes as tool-connectable', () => {
@@ -123,5 +128,23 @@ describe('workflow tool node templates', () => {
         );
       });
     });
+  });
+
+  it('keeps every registered tool template canonical through frontend save serialization', () => {
+    const toolNodes = moduleTemplatesFlat
+      .filter((template) => template.isTool === true)
+      .map((template, index) =>
+        nodeTemplate2FlowNode({
+          template,
+          position: { x: index * 100, y: 0 },
+          t: ((key: string) => key) as any
+        })
+      );
+    const workflow = uiWorkflow2StoreWorkflow({ nodes: toolNodes, edges: [], chatConfig: {} });
+
+    expect(CanonicalWorkflowDataSchema.safeParse({ ...workflow, chatConfig: {} }).success).toBe(
+      true
+    );
+    expect(PublishAppBodySchema.safeParse({ ...workflow, chatConfig: {} }).success).toBe(true);
   });
 });

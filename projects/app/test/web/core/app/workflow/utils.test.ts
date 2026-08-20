@@ -1833,6 +1833,43 @@ describe('checkWorkflowNodeIssues', () => {
     expect(result.extract.map((issue) => issue.code)).toContain('context_extract_empty');
   });
 
+  it('allows Agent-generated tool inputs on code nodes', () => {
+    const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall);
+    const codeNode = makeNode('code-tool', FlowNodeTypeEnum.code, {
+      inputs: [
+        {
+          key: 'query',
+          label: 'Query',
+          toolDescription: 'Search query',
+          required: true,
+          canEdit: true,
+          defaultToAgentGenerated: true,
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.reference]
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, toolCallNode, codeNode],
+      edges: [
+        { id: 'e-start-tool-call', source: 'start', target: 'tool-call', type: EDGE_TYPE },
+        {
+          id: 'e-tool-call-code',
+          source: 'tool-call',
+          sourceHandle: NodeOutputKeyEnum.selectedTools,
+          target: 'code-tool',
+          targetHandle: NodeOutputKeyEnum.selectedTools,
+          type: EDGE_TYPE
+        }
+      ]
+    });
+
+    expect(result['code-tool']?.map((issue) => issue.code) ?? []).not.toContain(
+      'code_input_incomplete'
+    );
+  });
+
   it('clears single node errors after configuration is fixed', () => {
     const requiredNode = makeNode('required', FlowNodeTypeEnum.answerNode, {
       inputs: [

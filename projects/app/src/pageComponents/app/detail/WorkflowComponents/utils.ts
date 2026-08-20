@@ -114,8 +114,8 @@ export const uiWorkflow2StoreWorkflow = ({
         getNodeById,
         childrenNodeIdListMap
       }),
-      outputs: item.data.outputs,
-      isFolded: item.data.isFolded,
+      // 仅用于画布的函数不能持久化，也不属于严格 API Schema。
+      outputs: item.data.outputs.map(({ invalidCondition: _, ...output }) => output),
       pluginId: item.data.pluginId,
       toolConfig: item.data.toolConfig,
       catchError: item.data.catchError
