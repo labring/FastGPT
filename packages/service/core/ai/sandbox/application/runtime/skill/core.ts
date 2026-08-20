@@ -15,6 +15,8 @@ import { getAgentSandboxSkillMaxBytes } from '../../../config';
 import { joinSandboxPath } from '../../../utils';
 import { authSkillByTmbId } from '../../../../../../support/permission/skill/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { getWorkflowResourceContext } from '../../../../../workflow/utils/context';
+import { assertWorkflowResource } from '../../../../../workflow/utils/resource';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { Readable } from 'node:stream';
 
@@ -137,13 +139,15 @@ export const injectAgentSkillFilesToSandbox = async ({
   skillIds,
   teamId,
   tmbId,
-  workDirectory
+  workDirectory,
+  dynamic = false
 }: {
   sandbox: ISandbox;
   skillIds: string[];
   teamId: string;
   tmbId: string;
   workDirectory: string;
+  dynamic?: boolean;
 }): Promise<DeployedSkillVersion[]> => {
   const skillsRootPath = getRuntimeSkillsRootPath(workDirectory);
   await sandbox.createDirectories([skillsRootPath]);
@@ -178,11 +182,17 @@ export const injectAgentSkillFilesToSandbox = async ({
     return [];
   }
 
-  const teamSkills = await MongoAgentSkills.find({
-    _id: { $in: skillIds },
-    teamId,
-    deleteTime: null
-  });
+  const resourceContext = getWorkflowResourceContext();
+  const teamSkills =
+    resourceContext && !dynamic
+      ? skillIds
+          .map((skillId) => resourceContext.skillMap.get(skillId))
+          .filter((skill): skill is NonNullable<typeof skill> => !!skill)
+      : await MongoAgentSkills.find({
+          _id: { $in: skillIds },
+          teamId,
+          deleteTime: null
+        });
   if (teamSkills.length === 0) {
     logger.warn('[Agent Skills] No valid skills found from input skillIds', { skillIds });
     await cleanupStaleDirs(new Set());
@@ -193,11 +203,19 @@ export const injectAgentSkillFilesToSandbox = async ({
     await Promise.all(
       teamSkills.map(async (skill) => {
         try {
-          await authSkillByTmbId({
-            tmbId,
-            skillId: String(skill._id),
-            per: ReadPermissionVal
-          });
+          if (resourceContext && !dynamic) {
+            assertWorkflowResource({
+              context: resourceContext,
+              type: 'skill',
+              id: String(skill._id)
+            });
+          } else {
+            await authSkillByTmbId({
+              tmbId,
+              skillId: String(skill._id),
+              per: ReadPermissionVal
+            });
+          }
           return skill;
         } catch (error) {
           if (error !== SkillErrEnum.unAuthSkill && error !== SkillErrEnum.unExist) {

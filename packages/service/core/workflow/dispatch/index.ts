@@ -77,6 +77,7 @@ import { getWorkflowNodeRunParams } from './utils/runtime';
 import type { AgentSandboxPrepareAction } from './ai/agent/sub/sandbox';
 import { getWorkflowSource } from './utils/source';
 import { prepareWorkflowFileContext } from '../utils/fileContext';
+import type { WorkflowResourceContext } from '../utils/resource';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -101,6 +102,8 @@ type Props = Omit<
   maxFileAmount: number;
   /** 已按团队配置优先、系统配置兜底计算完成的单文件读取上限。 */
   maxBytesPerFile: number;
+  /** App 入口选中 Version 的资源快照；Test/Debug 传入当前请求临时快照。 */
+  resourceContext?: WorkflowResourceContext;
 };
 type NodeResponseType = DispatchNodeResultType<{
   [key: string]: any;
@@ -340,7 +343,8 @@ export async function dispatchWorkFlow({
       {
         mcpClientMemory: {},
         fileContext,
-        fileRegistrar
+        fileRegistrar,
+        resourceContext: data.resourceContext
       },
       (ctx) => {
         runWorkflow({
@@ -1075,9 +1079,8 @@ export class WorkflowQueue {
             formatResponseData
           : nodeResponsesForDisplay.find((item) => item.id === formatResponseData?.id);
       const childResponsesForQueue = this.data.nodeResponseSink
-        ? childResponsesForDisplay.flatMap(
-            (item) =>
-              persistedNodeResponses.filter((persistedItem) => persistedItem.id === item.id)
+        ? childResponsesForDisplay.flatMap((item) =>
+            persistedNodeResponses.filter((persistedItem) => persistedItem.id === item.id)
           )
         : childResponsesForDisplay;
       const shouldDropPersistedNodeResponses = !!this.data.nodeResponseSink;

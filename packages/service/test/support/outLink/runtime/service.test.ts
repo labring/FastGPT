@@ -25,6 +25,7 @@ import { getWorkflowFileLimits } from '@fastgpt/service/core/workflow/utils/file
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 vi.mock('@fastgpt/service/core/app/schema', () => ({
+  AppCollectionName: 'apps',
   MongoApp: { findById: vi.fn() }
 }));
 vi.mock('@fastgpt/service/core/app/version/controller', () => ({

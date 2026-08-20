@@ -105,11 +105,9 @@ const AppSchema = new Schema(
     scheduledTriggerNextTime: {
       type: Date
     },
-    resourceRefs: {
-      skillIds: {
-        type: [String],
-        default: []
-      }
+    resources: {
+      type: Array,
+      default: []
     },
     inheritPermission: {
       type: Boolean,
@@ -138,7 +136,11 @@ const AppSchema = new Schema(
 defineIndex(AppSchema, { key: { teamId: 1, updateTime: -1 } });
 defineIndex(AppSchema, { key: { teamId: 1, type: 1 } });
 defineIndex(AppSchema, {
-  key: { teamId: 1, deleteTime: 1, 'resourceRefs.skillIds': 1 }
+  key: { teamId: 1, deleteTime: 1, 'resources.type': 1, 'resources.id': 1 }
+});
+defineIndex(AppSchema, {
+  key: { teamId: 1, deleteTime: 1, 'resourceRefs.skillIds': 1 },
+  deprecated: true
 });
 
 // Schedule

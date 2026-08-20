@@ -167,12 +167,40 @@ export const AppChatConfigTypeSchema = z.object({
 });
 export type AppChatConfigType = z.infer<typeof AppChatConfigTypeSchema>;
 
-export const AppResourceRefsSchema = z.object({
-  skillIds: z.array(z.string()).default([]).meta({
-    description: '应用发布版本引用的技能 ID 列表'
+const AppResourceToolDataSchema = z.object({
+  toolNames: z.array(z.string()).optional().meta({
+    description: 'MCP/HTTP 工具集允许执行的子工具名；为空表示整个工具集'
   })
 });
-export type AppResourceRefsType = z.infer<typeof AppResourceRefsSchema>;
+
+const AppResourceModelDataSchema = z.object({
+  modelType: z.enum(['llm', 'rerank', 'tts']).meta({
+    description: '模型资源类型'
+  })
+});
+
+export const AppResourceSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('tool'),
+    id: z.string(),
+    data: AppResourceToolDataSchema.optional()
+  }),
+  z.object({
+    type: z.literal('model'),
+    id: z.string(),
+    data: AppResourceModelDataSchema
+  }),
+  z.object({
+    type: z.enum(['agent', 'dataset', 'skill']),
+    id: z.string()
+  })
+]);
+export type AppResource = z.infer<typeof AppResourceSchema>;
+export const AppResourceTypeSchema = z.enum(['tool', 'model', 'agent', 'dataset', 'skill']);
+export type AppResourceType = z.infer<typeof AppResourceTypeSchema>;
+
+export const AppResourcesSchema = z.array(AppResourceSchema).default([]);
+export type AppResourcesType = z.infer<typeof AppResourcesSchema>;
 
 // Mongo Collection
 export const AppSchemaTypeSchema = z.object({
@@ -216,7 +244,7 @@ export const AppSchemaTypeSchema = z.object({
   chatConfig: AppChatConfigTypeSchema,
   scheduledTriggerConfig: AppScheduledTriggerConfigTypeSchema.optional(),
   scheduledTriggerNextTime: z.coerce.date().optional(),
-  resourceRefs: AppResourceRefsSchema.optional(),
+  resources: AppResourcesSchema,
   inheritPermission: BoolSchema.optional(),
 
   // if access the app by favourite or quick

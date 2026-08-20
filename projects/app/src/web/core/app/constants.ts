@@ -18,6 +18,7 @@ export const defaultApp: AppDetailType = {
   teamId: '',
   tmbId: '',
   edges: [],
+  resources: [],
   version: 'v2',
   permission: new AppPermission(),
   inheritPermission: false

@@ -145,7 +145,7 @@ describe('POST /api/core/ai/skill/list', () => {
     expect(res.data.list.map((item) => String(item._id))).toEqual([String(inheritedSkill._id)]);
   });
 
-  it('appCount 基于已发布版本的 resourceRefs，草稿保存不影响统计', async () => {
+  it('appCount 基于已发布版本的 resources，草稿保存不影响统计', async () => {
     const user = await getUser(`agent-skill-list-published-refs-${getNanoid(6)}`);
 
     const [publishedSkill, draftSkill] = await MongoAgentSkills.create([
@@ -197,7 +197,7 @@ describe('POST /api/core/ai/skill/list', () => {
       tmbId: user.tmbId
     });
     await expect(MongoApp.findById(appId).lean()).resolves.toMatchObject({
-      resourceRefs: { skillIds: [String(publishedSkill._id)] }
+      resources: [{ type: 'skill', id: String(publishedSkill._id) }]
     });
 
     const draftSaveRes = await Call(publishHandler, {
@@ -213,7 +213,7 @@ describe('POST /api/core/ai/skill/list', () => {
     });
     expect(draftSaveRes.code).toBe(200);
     await expect(MongoApp.findById(appId).lean()).resolves.toMatchObject({
-      resourceRefs: { skillIds: [String(publishedSkill._id)] }
+      resources: [{ type: 'skill', id: String(publishedSkill._id) }]
     });
 
     const draftRes = await Call<ListSkillsQuery, Record<string, never>, ListSkillsResponse>(
@@ -246,7 +246,7 @@ describe('POST /api/core/ai/skill/list', () => {
     });
     expect(publishRes.code).toBe(200);
     await expect(MongoApp.findById(appId).lean()).resolves.toMatchObject({
-      resourceRefs: { skillIds: [String(draftSkill._id)] }
+      resources: [{ type: 'skill', id: String(draftSkill._id) }]
     });
 
     const publishedRes = await Call<ListSkillsQuery, Record<string, never>, ListSkillsResponse>(
@@ -271,9 +271,11 @@ describe('POST /api/core/ai/skill/list', () => {
     })
       .sort({ time: -1, _id: -1 })
       .lean();
-    expect(latestPublishedVersion?.resourceRefs?.skillIds).toEqual([String(draftSkill._id)]);
-    await MongoApp.updateOne({ _id: appId }, { $set: { resourceRefs: { skillIds: [] } } });
-    const clearedAppRefsRes = await Call<
+    expect(latestPublishedVersion?.resources).toEqual([
+      { type: 'skill', id: String(draftSkill._id) }
+    ]);
+    await MongoApp.updateOne({ _id: appId }, { $set: { resources: [] } });
+    const clearedAppResourcesRes = await Call<
       ListSkillsQuery,
       Record<string, never>,
       ListSkillsResponse
@@ -284,9 +286,9 @@ describe('POST /api/core/ai/skill/list', () => {
         parentId: null
       }
     });
-    const getClearedAppRefsCount = (skillId: string) =>
-      clearedAppRefsRes.data.list.find((item) => String(item._id) === skillId)?.appCount;
-    expect(getClearedAppRefsCount(String(publishedSkill._id))).toBe(0);
-    expect(getClearedAppRefsCount(String(draftSkill._id))).toBe(0);
+    const getClearedAppResourcesCount = (skillId: string) =>
+      clearedAppResourcesRes.data.list.find((item) => String(item._id) === skillId)?.appCount;
+    expect(getClearedAppResourcesCount(String(publishedSkill._id))).toBe(0);
+    expect(getClearedAppResourcesCount(String(draftSkill._id))).toBe(0);
   });
 });

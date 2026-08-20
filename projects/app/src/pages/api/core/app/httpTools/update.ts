@@ -49,7 +49,8 @@ async function handler(
     await MongoApp.findByIdAndUpdate(
       appId,
       {
-        modules: storageNodes
+        modules: storageNodes,
+        resources: []
       },
       { session }
     );
@@ -58,7 +59,8 @@ async function handler(
       { appId },
       {
         $set: {
-          nodes: storageNodes
+          nodes: storageNodes,
+          resources: []
         }
       },
       { session }

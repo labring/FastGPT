@@ -110,6 +110,28 @@ describe('getAppLatestVersion', () => {
     expect(result.chatConfig.welcomeConfig?.welcomeText).toBe('Legacy welcome');
   });
 
+  it('derives fallback resources from the current app workflow', async () => {
+    findOneMock.mockReturnValue({
+      sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(undefined) })
+    });
+
+    const result = await getAppLatestVersion('app-id', {
+      modules: [
+        {
+          nodeId: 'agent-node',
+          name: 'Agent',
+          flowNodeType: FlowNodeTypeEnum.appModule,
+          pluginId: 'current-agent-id',
+          inputs: [],
+          outputs: []
+        }
+      ],
+      resources: [{ type: 'skill', id: 'stale-skill-id' }]
+    } as any);
+
+    expect(result.resources).toEqual([{ type: 'agent', id: 'current-agent-id' }]);
+  });
+
   it('preserves a legacy version config when the current app config differs', async () => {
     const version = {
       _id: '507f1f77bcf86cd799439011',

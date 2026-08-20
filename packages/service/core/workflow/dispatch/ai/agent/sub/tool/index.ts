@@ -25,8 +25,7 @@ import { pluginClient } from '../../../../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../../../../app/tool/systemTool/systemTool.repo';
 import { InvokeProcessor } from '../../../../../../../support/invoke/invoke';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
-import { authAppByTmbId } from '../../../../../../../support/permission/app/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { loadWorkflowAppResource } from '../../../../../utils/resource';
 import { getWorkflowAppId } from '../../../../utils/source';
 import {
   assertTeamPluginSourceAccess,
@@ -54,6 +53,7 @@ export type Props = {
   uid: ChatDispatchProps['uid'];
   variableState: ChatDispatchProps['variableState'];
   workflowStreamResponse: ChatDispatchProps['workflowStreamResponse'];
+  dynamic?: boolean;
 };
 
 export const dispatchTool = async ({
@@ -64,7 +64,8 @@ export const dispatchTool = async ({
   chatId,
   uid,
   variableState,
-  workflowStreamResponse
+  workflowStreamResponse,
+  dynamic = false
 }: Props): Promise<DispatchSubAppResponse> => {
   const getNodeResponse = ({
     result,
@@ -124,11 +125,13 @@ export const dispatchTool = async ({
      * Agent 工具调用也会按持久化 toolId 解析 HTTP/MCP 父工具集。
      * 这里必须使用当前运行工作流的 tmbId 做运行时授权，防止绕过保存阶段的脏引用被模型调用执行。
      */
-    const authRuntimeToolset = async (parentId: string) => {
-      await authAppByTmbId({
-        tmbId: runningAppInfo.tmbId,
+    const authRuntimeToolset = async (parentId: string, toolName: string) => {
+      await loadWorkflowAppResource({
+        tmbId: runningUserInfo.tmbId,
         appId: parentId,
-        per: ReadPermissionVal
+        type: 'tool',
+        toolName,
+        dynamic
       });
     };
 
@@ -248,7 +251,7 @@ export const dispatchTool = async ({
       if (!parentId || !toolName) {
         return Promise.reject(`Invalid MCP tool id: ${toolConfig.mcpTool.toolId}`);
       }
-      await authRuntimeToolset(parentId);
+      await authRuntimeToolset(parentId, toolName);
 
       const tool = await getAppVersionById({
         appId: parentId,
@@ -282,7 +285,7 @@ export const dispatchTool = async ({
       if (!parentId || !toolName) {
         return Promise.reject(`Invalid HTTP tool id: ${toolConfig.httpTool.toolId}`);
       }
-      await authRuntimeToolset(parentId);
+      await authRuntimeToolset(parentId, toolName);
 
       const toolset = await getAppVersionById({
         appId: parentId,

@@ -102,6 +102,9 @@ export type ChatDispatchProps = {
 
   workflowDispatchDeep: number;
 
+  /** 当前节点的资源输入是否来自工作流引用，动态资源回退到运行人权限。 */
+  dynamicDataset?: boolean;
+
   responseAllData?: boolean;
   responseDetail?: boolean;
   nodeResponseParentId?: string; // 传递给 child，用于设置 nodeResponse 的 parentId

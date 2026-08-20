@@ -3,7 +3,7 @@ import { ParentIdSchema } from '../../../../common/parentFolder/type';
 import { AppTypeEnum } from '../../../../core/app/constants';
 import {
   AppChatConfigTypeSchema,
-  AppResourceRefsSchema,
+  AppResourcesSchema,
   AppScheduledTriggerConfigTypeSchema,
   VariableItemTypeSchema,
   AppSchemaTypeSchema,
@@ -307,8 +307,8 @@ export const GetAppDetailResponseSchema = AppSchemaTypeSchema.extend({
   scheduledTriggerNextTime: z.coerce.date().optional().meta({
     description: '下一次定时触发时间'
   }),
-  resourceRefs: AppResourceRefsSchema.optional().meta({
-    description: '应用发布后引用的外部资源集合'
+  resources: AppResourcesSchema.meta({
+    description: '应用当前正式版本引用的资源集合'
   }),
   inheritPermission: BoolSchema.optional().meta({
     description: '是否继承父级文件夹权限'

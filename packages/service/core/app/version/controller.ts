@@ -3,6 +3,7 @@ import { MongoAppVersion } from './schema';
 import { Types } from '../../../common/mongo';
 import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 import { decodeToolSetNodesFromStorage } from '../jsonSchemaStorage';
+import { extractAppResources } from '../resources';
 
 export const getAppLatestVersion = async (appId: string, app?: AppSchemaType) => {
   const version = await MongoAppVersion.findOne({
@@ -25,6 +26,7 @@ export const getAppLatestVersion = async (appId: string, app?: AppSchemaType) =>
     return {
       versionId: String(version._id),
       versionName: version.versionName,
+      resources: version.resources ?? [],
       ...normalizedWorkflow
     };
   }
@@ -36,6 +38,11 @@ export const getAppLatestVersion = async (appId: string, app?: AppSchemaType) =>
   return {
     versionId: app?.pluginData?.nodeVersion,
     versionName: app?.name,
+    // 历史 App 没有正式 Version 时，工作副本才是实际运行配置；不能复用可能被普通保存留旧的缓存。
+    resources: extractAppResources({
+      nodes: normalizedWorkflow.nodes,
+      chatConfig: normalizedWorkflow.chatConfig
+    }),
     ...normalizedWorkflow
   };
 };
@@ -65,6 +72,7 @@ export const getAppVersionById = async ({
       return {
         versionId: String(version._id),
         versionName: version.versionName,
+        resources: version.resources ?? [],
         ...normalizedWorkflow
       };
     }

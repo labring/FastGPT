@@ -10,8 +10,7 @@ import {
   splitToolsetToolPluginId
 } from '@fastgpt/global/core/app/tool/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { authAppByTmbId } from '../../../../../../../support/permission/app/auth';
+import { loadWorkflowAppResource } from '../../../../../utils/resource';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
   FlowNodeInputTypeEnum,
@@ -94,11 +93,13 @@ const getAgentRuntimeToolId = ({ pluginId, source }: { pluginId: string; source?
 export const getAgentRuntimeTools = async ({
   tools,
   tmbId,
-  lang
+  lang,
+  dynamic = false
 }: {
   tools: AgentToolType[];
   tmbId: string;
   lang?: localeType;
+  dynamic?: boolean;
 }): Promise<SubAppInitType[]> => {
   let teamIdPromise: Promise<string> | undefined;
   const getCurrentTeamId = async () => {
@@ -560,11 +561,12 @@ export const getAgentRuntimeTools = async ({
           tool.toolConfig?.systemToolSet?.source;
         // 工具间整体并发；单个 App 类工具必须先鉴权拿到 app，才能读取对应版本节点。
         const authAppPromise = authAppId
-          ? authAppByTmbId({
+          ? loadWorkflowAppResource({
               tmbId,
               appId: authAppId,
-              per: ReadPermissionVal
-            })
+              type: 'tool',
+              dynamic
+            }).then((app) => ({ app }))
           : Promise.resolve(undefined);
 
         const [authResult, toolNode] = await Promise.all([
@@ -693,6 +695,7 @@ export const getAgentRuntimeTools = async ({
           return {
             type: 'tool',
             id: runtimeId,
+            dynamic,
             name: child.name,
             avatar: child.avatar,
             // MCP/HTTP 子工具节点默认 version 为空；固定版本由父工具集决定。

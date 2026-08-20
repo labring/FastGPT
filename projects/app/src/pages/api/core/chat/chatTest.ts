@@ -59,6 +59,10 @@ import {
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { APP_SANDBOX_ENABLED_CHAT_METADATA_KEY } from '@fastgpt/global/core/ai/sandbox/constants';
 import { isAppSandboxEnabledInNodes } from '@fastgpt/global/core/workflow/utils';
+import { extractAppResources } from '@fastgpt/service/core/app/resources';
+import { checkAppResourceReadPermissions } from '@fastgpt/service/support/permission/app/resource';
+import { loadWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
+import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let streamResponseContext: WorkflowStreamResponseContext | undefined;
@@ -88,11 +92,31 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   try {
     /* user auth */
-    const { app, teamId, tmbId } = await authApp({
+    const { app, teamId, tmbId, isRoot } = await authApp({
       req,
       authToken: true,
       appId,
       per: ReadPermissionVal
+    });
+    const normalizedWorkflow = normalizeWorkflowConfig({
+      nodes,
+      edges,
+      chatConfig: chatConfig ?? app.chatConfig
+    });
+    const workflowNodes = normalizedWorkflow.nodes;
+    const workflowEdges = normalizedWorkflow.edges;
+    const workflowChatConfig = normalizedWorkflow.chatConfig;
+    const resourceContext = await loadWorkflowResourceContext({
+      resources: extractAppResources({
+        nodes: workflowNodes,
+        chatConfig: workflowChatConfig
+      }),
+      teamId
+    });
+    await checkAppResourceReadPermissions({
+      resources: resourceContext.resources,
+      tmbId,
+      isRoot
     });
 
     // 类型获取
@@ -115,7 +139,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const userQuestion: UserChatItemType = await (async () => {
       if (isPlugin) {
         return serverGetWorkflowToolRunUserQuery({
-          pluginInputs: getWorkflowToolInputsFromStoreNodes(nodes),
+          pluginInputs: getWorkflowToolInputsFromStoreNodes(workflowNodes),
           variables,
           files: variables.files
         });
@@ -139,7 +163,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     })();
 
     // 获取历史记录
-    const limit = getMaxHistoryLimitFromNodes(nodes);
+    const limit = getMaxHistoryLimitFromNodes(workflowNodes);
     const chatSource = {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: String(app._id)
@@ -177,7 +201,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const interactive = getLastInteractiveValue(newHistories);
 
     // Get runtimeNodes
-    let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, interactive));
+    let runtimeNodes = storeNodes2RuntimeNodes(
+      workflowNodes,
+      getWorkflowEntryNodeIds(workflowNodes, interactive)
+    );
     if (isPlugin) {
       runtimeNodes = updateWorkflowToolInputByVariables(runtimeNodes, variables);
       variables = {};
@@ -190,7 +217,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       maxBytesPerFile
     } = await prepareWorkflowFileQuery({
       teamId: String(teamId),
-      chatConfig,
+      chatConfig: workflowChatConfig,
       query: userQuestion.value
     });
     const workflowUserQuestion: UserChatItemType = {
@@ -262,13 +289,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       chatId: runningChatId,
       responseChatItemId,
       runtimeNodes,
-      runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
+      runtimeEdges: storeEdges2RuntimeEdges(workflowEdges, interactive),
       variables,
       query: removeEmptyUserInput(workflowQuery),
       maxFileAmount,
       maxBytesPerFile,
       lastInteractive: interactive,
-      chatConfig,
+      chatConfig: workflowChatConfig,
       histories: newHistories,
       stream: true,
       maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
@@ -278,7 +305,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       nodeResponseWriteConfig: {
         persistToDb: preparedRound.shouldPersistChatRound,
         retainInMemory: false
-      }
+      },
+      resourceContext
     });
 
     streamResponseContext.responseWrite(workflowSseEvent.answerStop());
@@ -296,8 +324,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       chatId: runningChatId,
       teamId,
       tmbId: tmbId,
-      nodes,
-      appChatConfig: chatConfig,
+      nodes: workflowNodes,
+      appChatConfig: workflowChatConfig,
       variables: newVariables,
       source,
       sourceName: appName || '',
@@ -306,7 +334,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       durationSeconds,
       metadata: {
         originIp,
-        [APP_SANDBOX_ENABLED_CHAT_METADATA_KEY]: isAppSandboxEnabledInNodes(nodes)
+        [APP_SANDBOX_ENABLED_CHAT_METADATA_KEY]: isAppSandboxEnabledInNodes(workflowNodes)
       },
       nodeResponseSummary
     };

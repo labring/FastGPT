@@ -36,11 +36,9 @@ const AppVersionSchema = new Schema(
     isPublish: Boolean,
     isAutoSave: Boolean,
     versionName: String,
-    resourceRefs: {
-      skillIds: {
-        type: [String],
-        default: []
-      }
+    resources: {
+      type: Array,
+      default: []
     }
   },
   {
@@ -49,6 +47,9 @@ const AppVersionSchema = new Schema(
 );
 
 defineIndex(AppVersionSchema, { key: { appId: 1, time: -1 } });
+defineIndex(AppVersionSchema, {
+  key: { appId: 1, 'resources.type': 1, 'resources.id': 1 }
+});
 
 export const MongoAppVersion = getMongoModel<AppVersionSchemaType>(
   AppVersionCollectionName,

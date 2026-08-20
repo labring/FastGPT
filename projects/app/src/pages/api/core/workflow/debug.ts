@@ -8,7 +8,10 @@ import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/ut
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
-import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  getLastInteractiveValue,
+  storeEdges2RuntimeEdges
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { createChatUsageRecord } from '@fastgpt/service/support/wallet/usage/controller';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -23,6 +26,10 @@ import {
   getWorkflowFinalResponseData
 } from '@/service/core/workflow/nodeResponse';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { extractAppResources } from '@fastgpt/service/core/app/resources';
+import { checkAppResourceReadPermissions } from '@fastgpt/service/support/permission/app/resource';
+import { loadWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
+import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 
 async function handler(req: NextApiRequest, res: NextApiResponse): Promise<WorkflowDebugResponse> {
   const {
@@ -39,7 +46,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
   } = parseApiInput({ req, bodySchema: WorkflowDebugBodySchema }).body;
 
   /* user auth */
-  const [{ tmbId }, { app }] = await Promise.all([
+  const [{ tmbId, isRoot }, { app }] = await Promise.all([
     authCert({
       req,
       authToken: true
@@ -58,7 +65,23 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
         source: UsageSourceEnum.fastgpt
       });
   const responseChatItemId = getNanoid();
-  const workflowChatConfig = chatConfig ?? app.chatConfig;
+  const normalizedWorkflow = normalizeWorkflowConfig({
+    nodes,
+    edges,
+    chatConfig: chatConfig ?? app.chatConfig
+  });
+  const workflowNodes = normalizedWorkflow.nodes;
+  const workflowEdges = normalizedWorkflow.edges;
+  const workflowChatConfig = normalizedWorkflow.chatConfig;
+  const resourceContext = await loadWorkflowResourceContext({
+    resources: extractAppResources({ nodes: workflowNodes, chatConfig: workflowChatConfig }),
+    teamId: String(app.teamId)
+  });
+  await checkAppResourceReadPermissions({
+    resources: resourceContext.resources,
+    tmbId,
+    isRoot
+  });
   const {
     query: workflowQuery,
     maxFileAmount,
@@ -87,8 +110,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
     runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
     chatId: debugChatId ?? getNanoid(),
     responseChatItemId,
-    runtimeNodes: nodes,
-    runtimeEdges: edges,
+    runtimeNodes: workflowNodes,
+    runtimeEdges: storeEdges2RuntimeEdges(workflowEdges),
     defaultSkipNodeQueue: skipNodeQueue,
     lastInteractive: interactive,
     variables,
@@ -102,7 +125,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
     nodeResponseWriteConfig: {
       persistToDb: false,
       retainInMemory: true
-    }
+    },
+    resourceContext
   });
   const nodeResponses = composeDebugNodeResponseMap({
     detailTree: getWorkflowFinalResponseData({
