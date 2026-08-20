@@ -13,10 +13,16 @@ export const getMcpToolsets = ({
 }): Promise<AppSchemaType[]> => {
   return MongoApp.find({ teamId, _id: { $in: ids } }, field)
     .lean()
-    .then((apps) =>
-      apps.map((app) => ({
-        ...app,
-        modules: decodeMcpToolSetNodesFromStorage(app.modules)
-      }))
-    );
+    .then((apps) => {
+      let changed = false;
+      const decodedApps = apps.map((app) => {
+        const modules = decodeMcpToolSetNodesFromStorage(app.modules);
+        if (modules === app.modules) return app;
+
+        changed = true;
+        return { ...app, modules };
+      });
+
+      return changed ? decodedApps : apps;
+    });
 };

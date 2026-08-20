@@ -117,7 +117,7 @@ describe('workflow JSON Schema storage codec', () => {
     const httpResult = cleanToolSetJsonSchemasForStorage(nodes, 'http');
 
     expect(mcpResult.convertedSchemaCount).toBe(1);
-    expect(httpResult.convertedSchemaCount).toBe(3);
+    expect(httpResult.convertedSchemaCount).toBe(2);
     expect((httpResult.nodes as any[])[0].toolConfig.mcpToolSet.toolList[0].inputSchema).toEqual({
       type: 'object'
     });

@@ -13,10 +13,16 @@ export const getHttpToolsets = ({
 }): Promise<AppSchemaType[]> => {
   return MongoApp.find({ teamId, _id: { $in: ids } }, field)
     .lean()
-    .then((apps) =>
-      apps.map((app) => ({
-        ...app,
-        modules: decodeHttpToolSetNodesFromStorage(app.modules)
-      }))
-    );
+    .then((apps) => {
+      let changed = false;
+      const decodedApps = apps.map((app) => {
+        const modules = decodeHttpToolSetNodesFromStorage(app.modules);
+        if (modules === app.modules) return app;
+
+        changed = true;
+        return { ...app, modules };
+      });
+
+      return changed ? decodedApps : apps;
+    });
 };
