@@ -13,7 +13,9 @@ export const SelectedAgentSkillItemTypeSchema = z.object({
   name: z.string(),
   description: z.string().default(''),
   avatar: z.string().optional(),
-  isDeleted: z.boolean().default(false)
+  isDeleted: z.boolean().default(false),
+  /** 实体存在但不在当前版本资源快照内（保存时被无权限丢弃），运行时 assertWorkflowResource 会拒绝。 */
+  permissionDenied: z.boolean().optional()
 });
 export type SelectedAgentSkillItemType = z.infer<typeof SelectedAgentSkillItemTypeSchema>;
 export const StoredSelectedAgentSkillItemTypeSchema = SelectedAgentSkillItemTypeSchema.pick({

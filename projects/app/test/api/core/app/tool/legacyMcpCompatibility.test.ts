@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { getUser } from '@test/datas/users';
 import { Call as callAPI } from '@test/utils/request';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   FlowNodeTypeEnum,
@@ -25,11 +26,12 @@ vi.mock('@fastgpt/service/core/app/mcp', async (importOriginal) => ({
   })
 }));
 vi.mock('@fastgpt/service/core/workflow/utils/context', () => ({
-  getWorkflowContext: () => ({ mcpClientMemory: {} })
+  getWorkflowContext: () => ({ mcpClientMemory: {} }),
+  getWorkflowResourceContext: () => undefined
 }));
 const Call: typeof callAPI = (handler, props) => callAPI(handler, { headers: {}, ...props });
 
-describe('legacy MCP resource compatibility without migration', () => {
+describe('legacy MCP resource compatibility after Version migration', () => {
   it.each(['children-map', 'children-single', 'inline-empty-id'] as const)(
     'adds, stores and executes %s resources without changing historical records',
     async (generation) => {
@@ -85,6 +87,30 @@ describe('legacy MCP resource compatibility without migration', () => {
         edges: [],
         version: 'v2'
       });
+      const versionNode = {
+        ...sourceNode,
+        inputs: [],
+        toolConfig: {
+          mcpToolSet: {
+            url,
+            headerSecret: headers,
+            toolList: [tool]
+          }
+        }
+      };
+      const publishedVersion = await MongoAppVersion.create({
+        tmbId: auth.tmbId,
+        appId: parent._id,
+        nodes: [versionNode],
+        edges: [],
+        chatConfig: {},
+        versionName: 'Legacy MCP',
+        isPublish: true
+      });
+      await MongoApp.updateOne(
+        { _id: parent._id },
+        { $set: { publishedVersionId: publishedVersion._id } }
+      );
       const sourceIds = [parent._id];
       if (generation !== 'inline-empty-id') {
         const child = await MongoApp.create({
@@ -140,7 +166,7 @@ describe('legacy MCP resource compatibility without migration', () => {
         body: {
           name: 'Workflow',
           type: AppTypeEnum.workflow,
-          modules: [
+          nodes: [
             { ...toolsetPreview.data, nodeId: 'set-node' },
             { ...childPreview.data, nodeId: 'single-node' }
           ],
@@ -148,9 +174,11 @@ describe('legacy MCP resource compatibility without migration', () => {
         }
       });
       expect(created.error).toBeUndefined();
-      const stored = await MongoApp.findById(String(created.data)).lean();
-      expect(JSON.stringify(stored!.modules)).not.toContain('inputSchema');
-      const nodes = storeNodes2RuntimeNodes(stored!.modules, ['set-node', 'single-node']);
+      const stored = await MongoAppVersion.findOne({ appId: String(created.data) })
+        .sort({ time: -1 })
+        .lean();
+      expect(JSON.stringify(stored!.nodes)).not.toContain('inputSchema');
+      const nodes = storeNodes2RuntimeNodes(stored!.nodes, ['set-node', 'single-node']);
       await rewriteRuntimeWorkFlow({ teamId: auth.teamId, tmbId: auth.tmbId, nodes, edges: [] });
       expect(nodes).toHaveLength(2);
       nodes.forEach((node) =>
@@ -195,10 +223,7 @@ describe('legacy MCP resource compatibility without migration', () => {
         chatId: 'debug'
       } as any);
       expect(agentResult.errorMessage).toBeUndefined();
-      const expectedHeaders =
-        generation === 'children-single'
-          ? { Authorization: 'legacy-token' }
-          : { Authorization: 'legacy-token', 'X-Key': 'api-key' };
+      const expectedHeaders = { Authorization: 'legacy-token', 'X-Key': 'api-key' };
       expect(mocks.clientOptions).toHaveBeenCalledTimes(2);
       mocks.clientOptions.mock.calls.forEach(([options]) =>
         expect(options).toEqual({ url, headers: expectedHeaders })

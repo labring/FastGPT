@@ -8,13 +8,14 @@ import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { findAppsForList } from '@fastgpt/service/core/app/entity';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { isInteractiveNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import { isPrivateResourceByCollaborators, sumPer } from '@fastgpt/global/support/permission/utils';
 import { getResourcePermissionsByTeam } from '@fastgpt/service/support/permission/resourcePermissionService';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -137,7 +138,7 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
     return;
   })();
 
-  const listField = `_id parentId avatar type name intro tmbId createTime updateTime pluginData inheritPermission modules${
+  const listField = `_id parentId avatar type name intro tmbId createTime updateTime pluginData inheritPermission publishedVersionId${
     pinnedFirst ? ' isPinned' : ''
   }`;
 
@@ -148,6 +149,29 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
     pinnedFirst,
     limit
   });
+
+  const pointerIds = myApps
+    .map((app) => app.publishedVersionId)
+    .filter((id): id is NonNullable<typeof id> => !!id && Types.ObjectId.isValid(String(id)));
+  const versions =
+    pointerIds.length > 0
+      ? await MongoAppVersion.find(
+          { _id: { $in: pointerIds } },
+          { _id: 1, appId: 1, nodes: 1 }
+        ).lean()
+      : [];
+  const versionById = new Map(versions.map((version) => [String(version._id), version]));
+  const interactiveAppIds = new Set(
+    myApps.flatMap((app) => {
+      const version = app.publishedVersionId
+        ? versionById.get(String(app.publishedVersionId))
+        : undefined;
+      return version && String(version.appId) === String(app._id) &&
+        (version.nodes ?? []).some((node) => isInteractiveNodeType(node.flowNodeType))
+        ? [String(app._id)]
+        : [];
+    })
+  );
 
   const formatApps = myApps
     .map((app) => {
@@ -174,10 +198,7 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
           privateApp: isPrivateResourceByCollaborators({ resourceClbs })
         };
       })();
-      const { modules, ...rest } = app;
-      const hasInteractiveNode = modules?.some((item) =>
-        [FlowNodeTypeEnum.formInput, FlowNodeTypeEnum.userSelect].includes(item.flowNodeType)
-      );
+      const { publishedVersionId: _publishedVersionId, ...rest } = app;
       return {
         ...rest,
         avatar: app.avatar,
@@ -186,7 +207,7 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
         parentId: app.parentId,
         permission: Per,
         private: privateApp,
-        hasInteractiveNode
+        hasInteractiveNode: interactiveAppIds.has(String(app._id))
       };
     })
     .filter((app) => app.permission.hasReadPer);

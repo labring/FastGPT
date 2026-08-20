@@ -18,8 +18,6 @@ import {
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { authWorkflowToolByTmbId } from '../../../../support/permission/app/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { computedAppToolUsage, getAppToolOutputError } from '../../../app/tool/runtime/utils';
 import { getNodeErrResponse } from '../utils';
 import { serverGetWorkflowToolRunUserQuery } from '../../../app/tool/workflowTool/utils';
@@ -39,6 +37,7 @@ import {
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
 import { getRuntimeNodeResponseSummary } from '../utils';
 import { runWithDerivedWorkflowFileContext } from '../../utils/context';
+import { createWorkflowChildResourceContext, loadWorkflowAppResource } from '../../utils/resource';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
@@ -71,6 +70,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   }
 
   let workflowTool: AppToolRuntimeType | undefined;
+  let workflowToolResourceContext;
 
   try {
     // Adapt <= 4.10 system tool
@@ -102,10 +102,10 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     // 仅在 personal 分支需要 toolData 来判断 pluginDetail 的可见性
     const toolData =
       source === AppToolSourceEnum.personal
-        ? await authWorkflowToolByTmbId({
+        ? await loadWorkflowAppResource({
             appId,
-            tmbId: runningAppInfo.tmbId,
-            per: ReadPermissionVal
+            tmbId: props.runningUserInfo.tmbId,
+            type: 'tool'
           })
         : undefined;
 
@@ -115,6 +115,10 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         versionId: version,
         app: toolData
       });
+      workflowToolResourceContext = await createWorkflowChildResourceContext(
+        toolVersion.resources,
+        String(toolData.teamId)
+      );
 
       workflowTool = {
         id: String(toolData._id),
@@ -248,6 +252,8 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     } = await runWithDerivedWorkflowFileContext({
       histories: props.histories,
       files: childFileInputs,
+      // 系统/商业工作流不属于父 App 的资源快照；个人工作流才切换到自己的 Version 快照。
+      resourceContext: workflowToolResourceContext ?? null,
       fn: async ({ resolveInputFile, histories: childHistories, filterFiles }) => {
         const childRuntimeNodes = runtimeNodes.map((node) =>
           node.flowNodeType === FlowNodeTypeEnum.pluginInput

@@ -8,6 +8,7 @@ import { rewriteAppWorkflowToDetail } from '@fastgpt/service/core/app/utils';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
+import { resolveStoredAppResources } from '@fastgpt/service/core/app/resources';
 import {
   GetAppVersionDetailQuerySchema,
   GetAppVersionDetailResponseSchema,
@@ -21,7 +22,7 @@ async function handler(req: NextApiRequest): Promise<GetAppVersionDetailResponse
     querySchema: GetAppVersionDetailQuerySchema
   }).query;
 
-  const { app, teamId, isRoot } = await authApp({
+  const { app, teamId, tmbId, isRoot } = await authApp({
     req,
     authToken: true,
     appId,
@@ -41,16 +42,26 @@ async function handler(req: NextApiRequest): Promise<GetAppVersionDetailResponse
     edges: result.edges,
     chatConfig: result.chatConfig
   });
+  // 历史版本可能尚未完成资源快照迁移，缺失或非法快照需要按该版本内容回退提取。
+  const resources = resolveStoredAppResources({
+    resources: result.resources,
+    nodes: normalizedWorkflow.nodes,
+    chatConfig: normalizedWorkflow.chatConfig,
+    resourceRefs: (result as { resourceRefs?: unknown }).resourceRefs
+  });
   await rewriteAppWorkflowToDetail({
     nodes: normalizedWorkflow.nodes,
     teamId,
+    viewerTmbId: tmbId,
     ownerTmbId: app.tmbId,
     isRoot,
-    lang: getLocale(req)
+    lang: getLocale(req),
+    resources
   });
   return GetAppVersionDetailResponseSchema.parse({
     ...result,
     ...normalizedWorkflow,
+    resources,
     versionName: result?.versionName ?? formatTime2YMDHM(result?.time)
   });
 }

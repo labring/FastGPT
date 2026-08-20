@@ -16,6 +16,7 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { updateAppPin } from '@fastgpt/service/core/app/controller';
+import { onCreateApp } from '@/pages/api/core/app/create';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getFakeUsers, getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
@@ -260,46 +261,51 @@ describe('POST /api/core/app/list', () => {
     expect(empty.data).toEqual({ list: [], total: 0 });
   });
 
-  it('derives the interactive-node flag from the projected flow node type', async () => {
-    const { owner } = await getFakeUsers(1);
-    await MongoApp.create([
-      {
-        name: 'Interactive app',
-        type: AppTypeEnum.workflow,
-        teamId: owner.teamId,
-        tmbId: owner.tmbId,
-        modules: [
-          {
-            flowNodeType: FlowNodeTypeEnum.formInput,
-            inputs: [{ key: 'large-input', value: 'content that the list response does not need' }]
-          }
-        ]
-      },
-      {
-        name: 'Regular app',
-        type: AppTypeEnum.workflow,
-        teamId: owner.teamId,
-        tmbId: owner.tmbId,
-        modules: [{ flowNodeType: FlowNodeTypeEnum.chatNode, inputs: [] }]
-      }
-    ]);
-
-    const response = await Call<ListAppBodyType, Record<string, never>, ListAppResponseType>(
-      handler,
-      {
-        auth: owner,
-        body: { type: AppTypeEnum.workflow }
-      }
+  it('reads hasInteractiveNode from published version nodes', async () => {
+    const owner = await getUser(`app-list-interactive-${getNanoid(6)}`);
+    const startNode = {
+      nodeId: 'start-1',
+      flowNodeType: FlowNodeTypeEnum.workflowStart,
+      name: 'Start',
+      inputs: [],
+      outputs: []
+    };
+    const formInputNode = {
+      nodeId: 'form-1',
+      flowNodeType: FlowNodeTypeEnum.formInput,
+      name: 'Form',
+      inputs: [],
+      outputs: []
+    };
+    const interactiveAppId = await onCreateApp({
+      name: 'interactive app',
+      intro: '',
+      type: AppTypeEnum.workflow,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      nodes: [startNode, formInputNode]
+    });
+    const leftoverModulesAppId = await onCreateApp({
+      name: 'leftover modules app',
+      intro: '',
+      type: AppTypeEnum.workflow,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      nodes: [startNode]
+    });
+    await MongoApp.collection.updateOne(
+      { _id: new Types.ObjectId(leftoverModulesAppId) },
+      { $set: { modules: [formInputNode] } }
     );
-
-    expect(response.code).toBe(200);
-    expect(response.data).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: 'Interactive app', hasInteractiveNode: true }),
-        expect.objectContaining({ name: 'Regular app', hasInteractiveNode: false })
-      ])
-    );
-    expect(response.data.every((app) => !('modules' in app))).toBe(true);
+    const res = await Call<ListAppBodyType, Record<string, never>, ListAppResponseType>(handler, {
+      auth: owner,
+      body: {}
+    });
+    const findApp = (appId: string) => res.data.find((item) => String(item._id) === appId);
+    expect(res.code).toBe(200);
+    expect(findApp(interactiveAppId)?.hasInteractiveNode).toBe(true);
+    expect(findApp(leftoverModulesAppId)?.hasInteractiveNode).toBe(false);
+    expect(res.data.every((app) => !('modules' in app))).toBe(true);
   });
 
   it('returns only apps covered by the current member resource permission group', async () => {
@@ -401,6 +407,41 @@ describe('POST /api/core/app/list', () => {
     expect(res.data.total).toBe(3);
     expect(res.data.list).toHaveLength(1);
     expect(res.data.list[0].name).toBe('App 2');
+  });
+
+  it('applies permission filtering before the search limit', async () => {
+    const { owner, members } = await getFakeUsers(2);
+    const [permittedApp] = await MongoApp.create([
+      {
+        name: 'needle permitted app',
+        type: AppTypeEnum.workflow,
+        teamId: owner.teamId,
+        tmbId: owner.tmbId
+      }
+    ]);
+    await MongoApp.create(
+      Array.from({ length: 60 }, (_, index) => ({
+        name: `needle inaccessible app ${String(index).padStart(2, '0')}`,
+        type: AppTypeEnum.workflow,
+        teamId: owner.teamId,
+        tmbId: owner.tmbId
+      }))
+    );
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.app,
+      teamId: owner.teamId,
+      resourceId: permittedApp._id,
+      tmbId: members[0].tmbId,
+      permission: ReadPermissionVal
+    });
+    const response = await Call<ListAppBodyType, Record<string, never>, ListAppResponseType>(
+      handler,
+      { auth: members[0], body: { searchKey: 'needle' } }
+    );
+    expect(response.code).toBe(200);
+    expect(response.data).toEqual([
+      expect.objectContaining({ _id: String(permittedApp._id), name: 'needle permitted app' })
+    ]);
   });
 
   it('defaults to recently modified order and supports createTime sort', async () => {

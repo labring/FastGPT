@@ -150,6 +150,19 @@ describe('dispatchTool runtime toolset auth', () => {
         ]
       }
     });
+    getAppVersionByIdMock.mockResolvedValue({
+      nodes: [
+        {
+          toolConfig: {
+            httpToolSet: {
+              baseUrl: 'https://example.com',
+              toolList: [tool],
+              apiSchemaStr: '{"openapi":"3.0.0","paths":{}}'
+            }
+          }
+        }
+      ]
+    });
     getHTTPToolListMock.mockResolvedValue([tool]);
     runHTTPToolMock.mockResolvedValue({ data: { ok: true } });
     const toolConfig = { httpTool: { toolId: 'http-victim-toolset/legacy_search' } };
@@ -171,7 +184,7 @@ describe('dispatchTool runtime toolset auth', () => {
       expect(rejected.errorMessage).toContain('validation failed');
     }
     expect(runHTTPToolMock).not.toHaveBeenCalled();
-    expect(getAppVersionByIdMock).not.toHaveBeenCalled();
+    expect(getAppVersionByIdMock).toHaveBeenCalled();
     expect(tool).toEqual(original);
   });
 
@@ -209,6 +222,19 @@ describe('dispatchTool runtime toolset auth', () => {
           ]
         }
       });
+      getAppVersionByIdMock.mockResolvedValue({
+        nodes: [
+          {
+            toolConfig: {
+              [key]: {
+                url: 'https://latest.example.com/mcp',
+                baseUrl: 'https://latest.example.com',
+                toolList: [tool]
+              }
+            }
+          }
+        ]
+      });
       getMCPChildrenMock.mockResolvedValue([tool]);
       getHTTPToolListMock.mockResolvedValue([tool]);
       mcpToolCallMock.mockResolvedValue({ ok: true });
@@ -243,7 +269,7 @@ describe('dispatchTool runtime toolset auth', () => {
           params: { query: 'latest' }
         });
       }
-      expect(getAppVersionByIdMock).not.toHaveBeenCalled();
+      expect(getAppVersionByIdMock).toHaveBeenCalled();
       expect(authAppByTmbIdMock).toHaveBeenCalledWith({
         tmbId: 'attacker-tmb',
         appId: 'victim-toolset',
@@ -371,6 +397,25 @@ describe('dispatchTool runtime toolset auth', () => {
         method: 'post'
       }
     ]);
+    getAppVersionByIdMock.mockResolvedValueOnce({
+      nodes: [
+        {
+          toolConfig: {
+            httpToolSet: {
+              baseUrl: 'https://example.com',
+              toolList: [
+                {
+                  name: 'sandbox_echo',
+                  description: 'Sandbox echo',
+                  path: '/echo',
+                  method: 'post'
+                }
+              ]
+            }
+          }
+        }
+      ]
+    });
     runHTTPToolMock.mockResolvedValueOnce({
       data: {
         ok: true
@@ -390,7 +435,7 @@ describe('dispatchTool runtime toolset auth', () => {
       appId: 'victim-toolset',
       per: ReadPermissionVal
     });
-    expect(getAppVersionByIdMock).not.toHaveBeenCalled();
+    expect(getAppVersionByIdMock).toHaveBeenCalled();
     expect(runHTTPToolMock).toHaveBeenCalledWith(
       expect.objectContaining({
         baseUrl: 'https://example.com',

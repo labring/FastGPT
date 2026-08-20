@@ -20,7 +20,6 @@ import { MongoChatSetting } from '@fastgpt/service/core/chat/setting/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoAppLogKeys } from '@fastgpt/service/core/app/logs/logkeysSchema';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
 
@@ -155,8 +154,7 @@ describe('App Delete API Integration', () => {
       name: 'Test App for Deletion',
       teamId: rootUser.teamId,
       tmbId: rootUser.tmbId,
-      type: AppTypeEnum.simple,
-      modules: []
+      type: AppTypeEnum.simple
     });
 
     // Mock the queue to avoid actual background deletion
@@ -211,8 +209,7 @@ describe('App Delete API Integration', () => {
       teamId: rootUser.teamId,
       tmbId: rootUser.tmbId,
       type: AppTypeEnum.simple,
-      parentId: testFolder._id,
-      modules: []
+      parentId: testFolder._id
     });
 
     // Mock the queue
@@ -247,8 +244,7 @@ describe('App Delete API Integration', () => {
       name: 'Workflow Tool App for API Delete',
       teamId: rootUser.teamId,
       tmbId: rootUser.tmbId,
-      type: AppTypeEnum.workflowTool,
-      modules: []
+      type: AppTypeEnum.workflowTool
     });
     const pluginId = `commercial-api-delete-test-${Date.now()}`;
 
@@ -310,18 +306,6 @@ describe('App Delete Data Cleanup Verification', () => {
       teamId: teamId,
       tmbId: rootUser.tmbId,
       type: AppTypeEnum.simple,
-      modules: [
-        {
-          flowPosition: { x: 100, y: 100 },
-          inputs: [],
-          outputs: [],
-          avatar: '/test/avatar.png',
-          name: 'Test Module',
-          intro: 'Test module intro',
-          flowType: FlowNodeTypeEnum.chatNode,
-          version: '1.0'
-        }
-      ],
       avatar: '/test/app-avatar.png'
     });
     appId = String(testApp._id);
@@ -365,8 +349,7 @@ describe('App Delete Data Cleanup Verification', () => {
         name: 'Parent App',
         teamId: teamId,
         tmbId: rootUser.tmbId,
-        type: AppTypeEnum.simple,
-        modules: []
+        type: AppTypeEnum.simple
       });
 
       const childApp = await MongoApp.create({
@@ -374,8 +357,7 @@ describe('App Delete Data Cleanup Verification', () => {
         teamId: teamId,
         tmbId: rootUser.tmbId,
         type: AppTypeEnum.simple,
-        parentId: parentApp._id,
-        modules: []
+        parentId: parentApp._id
       });
 
       // 为子应用创建相关数据
@@ -414,16 +396,14 @@ describe('App Delete Data Cleanup Verification', () => {
         name: 'Safety Parent App',
         teamId,
         tmbId: rootUser.tmbId,
-        type: AppTypeEnum.simple,
-        modules: []
+        type: AppTypeEnum.simple
       });
       const childApp = await MongoApp.create({
         name: 'Safety Child App',
         teamId,
         tmbId: rootUser.tmbId,
         type: AppTypeEnum.simple,
-        parentId: parentApp._id,
-        modules: []
+        parentId: parentApp._id
       });
       await MongoApp.updateOne({ _id: parentApp._id }, { deleteTime: new Date() });
 
@@ -445,8 +425,7 @@ describe('App Delete Data Cleanup Verification', () => {
         name: 'Test App 2',
         teamId: teamId,
         tmbId: rootUser.tmbId,
-        type: AppTypeEnum.simple,
-        modules: []
+        type: AppTypeEnum.simple
       });
 
       const app2Id = String(app2._id);
@@ -480,8 +459,7 @@ describe('App Delete Data Cleanup Verification', () => {
         name: 'Workflow Tool App',
         teamId,
         tmbId: rootUser.tmbId,
-        type: AppTypeEnum.workflowTool,
-        modules: []
+        type: AppTypeEnum.workflowTool
       });
       const workflowToolAppId = String(workflowToolApp._id);
       const pluginId = `commercial-delete-test-${Date.now()}`;
