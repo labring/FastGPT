@@ -1,19 +1,19 @@
-import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { transactionRunner, userRepository, teamRepository } from '@fastgpt/service/common/dal';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
 /* update user info */
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   UpdateUserAccountBodySchema,
-  UpdateUserAccountResponseSchema,
   type UpdateUserAccountBody,
   type UpdateUserAccountResponse
 } from '@fastgpt/global/openapi/support/user/account/update/api';
+
+const logger = getLogger(LogCategories.MODULE.USER.ACCOUNT);
 
 export type UserAccountUpdateQuery = Record<string, never>;
 
@@ -27,30 +27,40 @@ async function handler(
   }).body;
 
   const { tmbId } = await authCert({ req, authToken: true });
-  // const user = await getUserDetail({ tmbId });
 
-  // 更新对应的记录
-  await mongoSessionRun(async (session) => {
-    const tmb = await MongoTeamMember.findById(tmbId).session(session);
+  const tmb = await teamRepository.findMemberById(tmbId);
+  if (!tmb) {
+    return Promise.reject('can not find it');
+  }
+
+  // user 字段与 tmb 头像在同一个 DAL 事务内更新，避免混用两种事务上下文。
+  await transactionRunner.withTransaction(async (context) => {
     if (timezone || language) {
-      await MongoUser.updateOne(
-        {
-          _id: tmb?.userId
-        },
+      await userRepository.updateById(
+        tmb.userId,
         {
           ...(timezone && { timezone }),
           ...(language && { language })
-        }
-      ).session(session);
+        },
+        context
+      );
     }
     // if avatar, update team member avatar
     if (avatar) {
-      await MongoTeamMember.updateOne({ _id: tmbId }, { avatar }).session(session);
-
-      await getS3AvatarSource().refreshAvatar(avatar, tmb?.avatar, session);
+      await teamRepository.updateMemberAvatar(tmbId, avatar, context);
     }
   });
 
-  return UpdateUserAccountResponseSchema.parse({});
+  // S3 头像刷新（含 MongoS3TTL 清理）在事务提交后执行：best-effort，
+  // 避免把 s3_ttl 集合拖进 DAL 事务；失败只记录日志，不影响更新结果。
+  if (avatar && avatar !== tmb.avatar) {
+    try {
+      await getS3AvatarSource().refreshAvatar(avatar, tmb.avatar);
+    } catch (error) {
+      logger.warn('Avatar refresh failed after account update', { error, tmbId });
+    }
+  }
+
+  return {};
 }
 export default NextAPI(handler);

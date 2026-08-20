@@ -4,10 +4,15 @@ import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 import { initTeamFreePlan } from '@fastgpt/service/support/wallet/sub/utils';
 import type { UpdatePasswordByOldBodyType } from '@fastgpt/global/openapi/support/user/account/password/api';
 import { Call } from '@test/utils/request';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
+
+const oldPassword = hashStr('oldpassword');
+const newPassword = hashStr('newpassword');
+const wrongPassword = hashStr('wrongpassword');
 
 describe('updatePasswordByOld API', () => {
   let testUser: any;
@@ -17,7 +22,7 @@ describe('updatePasswordByOld API', () => {
   beforeEach(async () => {
     testUser = await MongoUser.create({
       username: 'testuser',
-      password: 'oldhashpassword',
+      password: 'oldpassword',
       status: UserStatusEnum.active
     });
     testTeam = await MongoTeam.create({
@@ -43,23 +48,36 @@ describe('updatePasswordByOld API', () => {
   });
 
   it('should update password successfully with correct old password', async () => {
-    const res = await Call<UpdatePasswordByOldBodyType, object, any>(updatePasswordApi.default, {
-      body: { oldPsw: 'oldhashpassword', newPsw: 'newhashpassword' },
-      auth: makeAuth(testUser, testTeam, testTmb) as any
-    });
+    const res = await Call<UpdatePasswordByOldBodyType, Record<string, never>, any>(
+      updatePasswordApi.default,
+      {
+        body: { oldPsw: oldPassword, newPsw: newPassword },
+        auth: makeAuth(testUser, testTeam, testTmb) as any
+      }
+    );
 
     expect(res.code).toBe(200);
+    expect(res.data).toBeUndefined();
 
     const updatedUser = await MongoUser.findById(testUser._id).select('+password');
     expect(updatedUser?.password).toBeDefined();
     expect(updatedUser?.passwordUpdateTime).toBeDefined();
+    await expect(
+      MongoUser.collection.findOne({ _id: testUser._id, password: newPassword })
+    ).resolves.not.toBeNull();
+    await expect(
+      MongoUser.collection.findOne({ _id: testUser._id, password: oldPassword })
+    ).resolves.toBeNull();
   });
 
   it('should reject when old password is incorrect', async () => {
-    const res = await Call<UpdatePasswordByOldBodyType, object, any>(updatePasswordApi.default, {
-      body: { oldPsw: 'wrongpassword', newPsw: 'newhashpassword' },
-      auth: makeAuth(testUser, testTeam, testTmb) as any
-    });
+    const res = await Call<UpdatePasswordByOldBodyType, Record<string, never>, any>(
+      updatePasswordApi.default,
+      {
+        body: { oldPsw: wrongPassword, newPsw: newPassword },
+        auth: makeAuth(testUser, testTeam, testTmb) as any
+      }
+    );
 
     expect(res.code).toBe(500);
 
@@ -69,17 +87,20 @@ describe('updatePasswordByOld API', () => {
   });
 
   it('should reject when old and new passwords are the same', async () => {
-    const res = await Call<UpdatePasswordByOldBodyType, object, any>(updatePasswordApi.default, {
-      body: { oldPsw: 'oldhashpassword', newPsw: 'oldhashpassword' },
-      auth: makeAuth(testUser, testTeam, testTmb) as any
-    });
+    const res = await Call<UpdatePasswordByOldBodyType, Record<string, never>, any>(
+      updatePasswordApi.default,
+      {
+        body: { oldPsw: oldPassword, newPsw: oldPassword },
+        auth: makeAuth(testUser, testTeam, testTmb) as any
+      }
+    );
 
     expect(res.code).toBe(500);
   });
 
   it('should reject when oldPsw is missing', async () => {
-    const res = await Call<any, object, any>(updatePasswordApi.default, {
-      body: { newPsw: 'newhashpassword' },
+    const res = await Call<any, Record<string, never>, any>(updatePasswordApi.default, {
+      body: { newPsw: newPassword },
       auth: makeAuth(testUser, testTeam, testTmb) as any
     });
 
@@ -88,8 +109,8 @@ describe('updatePasswordByOld API', () => {
   });
 
   it('should reject when newPsw is missing', async () => {
-    const res = await Call<any, object, any>(updatePasswordApi.default, {
-      body: { oldPsw: 'oldhashpassword' },
+    const res = await Call<any, Record<string, never>, any>(updatePasswordApi.default, {
+      body: { oldPsw: oldPassword },
       auth: makeAuth(testUser, testTeam, testTmb) as any
     });
 
@@ -108,9 +129,12 @@ describe('updatePasswordByOld API', () => {
   });
 
   it('should reject request without authentication', async () => {
-    const res = await Call<UpdatePasswordByOldBodyType, object, any>(updatePasswordApi.default, {
-      body: { oldPsw: 'oldhashpassword', newPsw: 'newhashpassword' }
-    });
+    const res = await Call<UpdatePasswordByOldBodyType, Record<string, never>, any>(
+      updatePasswordApi.default,
+      {
+        body: { oldPsw: oldPassword, newPsw: newPassword }
+      }
+    );
 
     expect(res.code).toBe(500);
   });
@@ -119,8 +143,8 @@ describe('updatePasswordByOld API', () => {
 
   it('should reject oldPsw as MongoDB operator object ($ne injection)', async () => {
     // GHSA-jxvr-h2vx-p73r Step 3: oldPsw: {"$ne": ""} bypasses old password check
-    const res = await Call<any, object, any>(updatePasswordApi.default, {
-      body: { oldPsw: { $ne: '' }, newPsw: 'newhashpassword' },
+    const res = await Call<any, Record<string, never>, any>(updatePasswordApi.default, {
+      body: { oldPsw: { $ne: '' }, newPsw: newPassword },
       auth: makeAuth(testUser, testTeam, testTmb) as any
     });
 
@@ -134,8 +158,8 @@ describe('updatePasswordByOld API', () => {
   });
 
   it('should reject oldPsw with $regex injection', async () => {
-    const res = await Call<any, object, any>(updatePasswordApi.default, {
-      body: { oldPsw: { $regex: '.*' }, newPsw: 'newhashpassword' },
+    const res = await Call<any, Record<string, never>, any>(updatePasswordApi.default, {
+      body: { oldPsw: { $regex: '.*' }, newPsw: newPassword },
       auth: makeAuth(testUser, testTeam, testTmb) as any
     });
 
@@ -144,8 +168,8 @@ describe('updatePasswordByOld API', () => {
   });
 
   it('should reject newPsw as non-string type', async () => {
-    const res = await Call<any, object, any>(updatePasswordApi.default, {
-      body: { oldPsw: 'oldhashpassword', newPsw: { $ne: '' } },
+    const res = await Call<any, Record<string, never>, any>(updatePasswordApi.default, {
+      body: { oldPsw: oldPassword, newPsw: { $ne: '' } },
       auth: makeAuth(testUser, testTeam, testTmb) as any
     });
 

@@ -13,7 +13,7 @@ export default defineConfig({
       enabled: true,
       reporter: ['text', 'text-summary', 'html', 'json-summary', 'json'],
       reportOnFailure: true,
-      include: ['redis/**/*.ts'],
+      include: ['redis/**/*.ts', 'mongodb/**/*.ts'],
       exclude: ['**/test/**', '**/*.test.ts', '**/index.ts'],
       cleanOnRerun: false
     },

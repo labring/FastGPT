@@ -88,6 +88,7 @@ FastGPT 是一个 AI Agent 构建平台,通过 Flow 提供开箱即用的数据�
 ## 代码规范
 
 - 所有代码编写、修改、重构和测试调整都必须遵守 [FastGPT 代码规范](./.agents/code/syntax.md)。开始改动前先查看相关规范；如果规范与当前实现习惯冲突，优先按规范执行，并只在有明确业务或兼容性理由时说明例外。
+- 修改 `packages/dal/**` 前，必须额外阅读并遵守 [DAL 局部开发规范](./packages/dal/AGENTS.override.md)。该文件补充 DAL 的业务分层、数据库实现边界、目录结构、Mongo Schema/Entity/Repository 职责和测试要求；与 DAL 相关的具体目录规则以该文件为准。
 
 ### MongoDB Schema 与索引维护
 

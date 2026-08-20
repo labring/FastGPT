@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 import { randomUUID } from 'crypto';
 import type { Mongoose } from '@fastgpt/service/common/mongo';
+import { connectionMongo } from '@fastgpt/service/common/mongo';
 
 const fileDbPrefix = `fastgpt_test_${process.env.VITEST_WORKER_ID ?? '0'}_${randomUUID().replaceAll(
   '-',

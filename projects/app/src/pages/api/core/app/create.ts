@@ -23,7 +23,7 @@ import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { teamRepository } from '@fastgpt/service/common/dal';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -75,11 +75,9 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     appCheckType: type === AppTypeEnum.workflowTool ? 'tool' : 'app'
   });
 
-  const tmb = await MongoTeamMember.findById({ _id: tmbId }, 'userId')
-    .populate<{
-      user: { username: string };
-    }>('user', 'username')
-    .lean();
+  const relations = await teamRepository.findMemberRelationsById(tmbId);
+  const tmb = relations?.member;
+  const user = relations?.user;
 
   // 创建app
   const appId = await onCreateApp({
@@ -110,7 +108,7 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     teamId,
     tmbId,
     userAvatar: tmb?.avatar,
-    username: tmb?.user?.username,
+    username: user?.username,
     templateId,
     isRoot
   });

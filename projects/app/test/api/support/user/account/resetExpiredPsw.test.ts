@@ -1,12 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import resetExpiredPswHandler from '@/pages/api/support/user/account/resetExpiredPsw';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 import { initTeamFreePlan } from '@fastgpt/service/support/wallet/sub/utils';
 import type { ResetExpiredPswBodyType } from '@fastgpt/global/openapi/support/user/account/password/api';
 import { Call } from '@test/utils/request';
+
+const oldPassword = hashStr('oldpassword');
+const newPassword = hashStr('newpassword');
 
 const originalPasswordExpiredMonth = process.env.PASSWORD_EXPIRED_MONTH;
 const loadResetExpiredPswApi = async () => {
@@ -54,16 +57,19 @@ describe('resetExpiredPsw API', () => {
       passwordUpdateTime: twoMonthsAgo
     });
 
-    const res = await Call<ResetExpiredPswBodyType, object, any>(resetExpiredPswApi.default, {
-      body: { newPsw: 'newhashedpassword' },
-      auth: {
-        userId: String(testUser._id),
-        teamId: String(testTeam._id),
-        tmbId: String(testTmb._id),
-        isRoot: false,
-        sessionId: 'session123'
-      } as any
-    });
+    const res = await Call<ResetExpiredPswBodyType, Record<string, never>, any>(
+      resetExpiredPswApi.default,
+      {
+        body: { newPsw: newPassword },
+        auth: {
+          userId: String(testUser._id),
+          teamId: String(testTeam._id),
+          tmbId: String(testTmb._id),
+          isRoot: false,
+          sessionId: 'session123'
+        } as any
+      }
+    );
 
     expect(res.code).toBe(200);
 
@@ -75,6 +81,12 @@ describe('resetExpiredPsw API', () => {
     expect(updatedUser?.passwordUpdateTime).toBeDefined();
     const newUpdateTime = new Date(updatedUser!.passwordUpdateTime!).getTime();
     expect(newUpdateTime).toBeGreaterThan(twoMonthsAgo.getTime());
+    await expect(
+      MongoUser.collection.findOne({ _id: testUser._id, password: newPassword })
+    ).resolves.not.toBeNull();
+    await expect(
+      MongoUser.collection.findOne({ _id: testUser._id, password: oldPassword })
+    ).resolves.toBeNull();
   });
 
   it('should reject when password is not expired (PASSWORD_EXPIRED_MONTH not set)', async () => {
@@ -85,16 +97,19 @@ describe('resetExpiredPsw API', () => {
       passwordUpdateTime: new Date()
     });
 
-    const res = await Call<ResetExpiredPswBodyType, object, any>(resetExpiredPswApi.default, {
-      body: { newPsw: 'newhashedpassword' },
-      auth: {
-        userId: String(testUser._id),
-        teamId: String(testTeam._id),
-        tmbId: String(testTmb._id),
-        isRoot: false,
-        sessionId: 'session123'
-      } as any
-    });
+    const res = await Call<ResetExpiredPswBodyType, Record<string, never>, any>(
+      resetExpiredPswApi.default,
+      {
+        body: { newPsw: newPassword },
+        auth: {
+          userId: String(testUser._id),
+          teamId: String(testTeam._id),
+          tmbId: String(testTmb._id),
+          isRoot: false,
+          sessionId: 'session123'
+        } as any
+      }
+    );
 
     expect(res.code).toBe(500);
     expect(res.error).toBeDefined();
@@ -109,23 +124,28 @@ describe('resetExpiredPsw API', () => {
       passwordUpdateTime: new Date()
     });
 
-    const res = await Call<ResetExpiredPswBodyType, object, any>(resetExpiredPswApi.default, {
-      body: { newPsw: 'newhashedpassword' },
-      auth: {
-        userId: String(testUser._id),
-        teamId: String(testTeam._id),
-        tmbId: String(testTmb._id),
-        isRoot: false,
-        sessionId: 'session123'
-      } as any
-    });
+    const res = await Call<ResetExpiredPswBodyType, Record<string, never>, any>(
+      resetExpiredPswApi.default,
+      {
+        body: { newPsw: newPassword },
+        auth: {
+          userId: String(testUser._id),
+          teamId: String(testTeam._id),
+          tmbId: String(testTmb._id),
+          isRoot: false,
+          sessionId: 'session123'
+        } as any
+      }
+    );
 
     expect(res.code).toBe(500);
   });
 
   it('should reject when newPsw is missing', async () => {
     vi.stubEnv('PASSWORD_EXPIRED_MONTH', '1');
-    const res = await Call<any, object, any>(resetExpiredPswHandler, {
+    const resetExpiredPswApi = await loadResetExpiredPswApi();
+
+    const res = await Call<any, Record<string, never>, any>(resetExpiredPswApi.default, {
       body: {},
       auth: {
         userId: String(testUser._id),
@@ -146,16 +166,19 @@ describe('resetExpiredPsw API', () => {
 
     const nonExistentId = '000000000000000000000001';
 
-    const res = await Call<ResetExpiredPswBodyType, object, any>(resetExpiredPswApi.default, {
-      body: { newPsw: 'newhashedpassword' },
-      auth: {
-        userId: nonExistentId,
-        teamId: String(testTeam._id),
-        tmbId: String(testTmb._id),
-        isRoot: false,
-        sessionId: 'session123'
-      } as any
-    });
+    const res = await Call<ResetExpiredPswBodyType, Record<string, never>, any>(
+      resetExpiredPswApi.default,
+      {
+        body: { newPsw: newPassword },
+        auth: {
+          userId: nonExistentId,
+          teamId: String(testTeam._id),
+          tmbId: String(testTmb._id),
+          isRoot: false,
+          sessionId: 'session123'
+        } as any
+      }
+    );
 
     expect(res.code).toBe(500);
     expect(res.error).toBe('The password has not expired');
@@ -163,15 +186,19 @@ describe('resetExpiredPsw API', () => {
 
   it('should reject request without authentication', async () => {
     const resetExpiredPswApi = await loadResetExpiredPswApi();
-    const res = await Call<ResetExpiredPswBodyType, object, any>(resetExpiredPswApi.default, {
-      body: { newPsw: 'newhashedpassword' }
-    });
+    const res = await Call<ResetExpiredPswBodyType, Record<string, never>, any>(
+      resetExpiredPswApi.default,
+      {
+        body: { newPsw: newPassword }
+      }
+    );
 
     expect(res.code).toBe(500);
   });
 
   it('should reject newPsw as non-string (injection guard)', async () => {
     vi.stubEnv('PASSWORD_EXPIRED_MONTH', '1');
+    const resetExpiredPswApi = await loadResetExpiredPswApi();
 
     const twoMonthsAgo = new Date();
     twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
@@ -179,7 +206,7 @@ describe('resetExpiredPsw API', () => {
       passwordUpdateTime: twoMonthsAgo
     });
 
-    const res = await Call<any, object, any>(resetExpiredPswHandler, {
+    const res = await Call<any, Record<string, never>, any>(resetExpiredPswApi.default, {
       body: { newPsw: { $ne: '' } },
       auth: {
         userId: String(testUser._id),
@@ -196,8 +223,9 @@ describe('resetExpiredPsw API', () => {
 
   it('should reject string body as input parse error', async () => {
     vi.stubEnv('PASSWORD_EXPIRED_MONTH', '1');
+    const resetExpiredPswApi = await loadResetExpiredPswApi();
 
-    const res = await Call<any, object, any>(resetExpiredPswHandler, {
+    const res = await Call<any, object, any>(resetExpiredPswApi.default, {
       body: 'newhashedpassword',
       auth: {
         userId: String(testUser._id),

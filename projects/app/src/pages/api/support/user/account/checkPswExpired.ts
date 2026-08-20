@@ -2,7 +2,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { checkPswExpired } from '@/service/support/user/account/password';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { MongoUser } from '@fastgpt/service/support/user/schema';
+import { userRepository } from '@fastgpt/service/common/dal';
 import type { CheckPswExpiredResponseType } from '@fastgpt/global/openapi/support/user/account/password/api';
 
 async function handler(
@@ -11,13 +11,13 @@ async function handler(
 ): Promise<CheckPswExpiredResponseType> {
   const { userId } = await authCert({ req, authToken: true });
 
-  const user = await MongoUser.findById(userId, 'passwordUpdateTime');
+  const updateTime = await userRepository.findPasswordUpdateTimeById(userId);
 
-  if (!user) {
+  if (!updateTime) {
     return false;
   }
 
-  return checkPswExpired({ updateTime: user.passwordUpdateTime });
+  return checkPswExpired({ updateTime: updateTime.passwordUpdateTime });
 }
 
 export default NextAPI(handler);

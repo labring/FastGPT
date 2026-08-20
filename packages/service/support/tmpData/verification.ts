@@ -11,6 +11,8 @@ import {
   type VerificationTtlPreset
 } from '@fastgpt/global/support/user/account/verification/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import { transactionRunner, tmpDataRepository } from '../../common/dal';
+import type { TransactionContext } from '../../common/dal';
 
 export type Scene = AccountVerificationPurpose;
 export type Type = VerificationType;
@@ -56,6 +58,11 @@ export type VerificationConsumeParams<T extends Type> = {
 export type VerificationConsumeContext<T extends Type> = {
   material: VerificationMaterial<T>;
   session: ClientSession;
+};
+
+export type VerificationConsumeDalContext<T extends Type> = {
+  material: VerificationMaterial<T>;
+  dalContext: TransactionContext;
 };
 
 export class VerificationMaterialError extends Error {
@@ -115,37 +122,40 @@ export const verification = {
    */
   createIfInactive: async <T extends Type>(params: VerificationCreateParams<T>) => {
     const dataId = getDataId(params);
-    const sessionOptions = params.session ? { session: params.session } : {};
+    if (params.session) {
+      const sessionOptions = { session: params.session };
 
-    await MongoTmpData.deleteOne(
-      {
-        dataId,
-        expireAt: { $lte: new Date() }
-      },
-      sessionOptions
-    );
+      await MongoTmpData.deleteOne({ dataId, expireAt: { $lte: new Date() } }, sessionOptions);
 
-    try {
-      await MongoTmpData.create(
-        [
-          {
-            dataId,
-            data: params.data,
-            expireAt: getExpireAt(params.ttlPreset)
-          }
-        ],
-        sessionOptions
-      );
-      return true;
-    } catch (error) {
-      if (isMongoDuplicateKeyError(error)) return false;
-      throw error;
+      try {
+        await MongoTmpData.create(
+          [{ dataId, data: params.data, expireAt: getExpireAt(params.ttlPreset) }],
+          sessionOptions
+        );
+        return true;
+      } catch (error) {
+        if (isMongoDuplicateKeyError(error)) return false;
+        throw error;
+      }
     }
+
+    return tmpDataRepository.createIfInactive({
+      dataId,
+      data: params.data,
+      expireAt: getExpireAt(params.ttlPreset)
+    });
   },
 
   /** 覆盖同一场景、类型和 key 的材料，并刷新过期时间。 */
   upsert: async <T extends Type>(params: VerificationUpsertParams<T>) => {
     const dataId = getDataId(params);
+    if (!params.session) {
+      return tmpDataRepository.upsert({
+        dataId,
+        data: params.data,
+        expireAt: getExpireAt(params.ttlPreset)
+      });
+    }
 
     return MongoTmpData.updateOne(
       { dataId },
@@ -160,6 +170,14 @@ export const verification = {
 
   /** 只更新仍在有效期内的已有材料，避免回调重新创建或刷新过期材料。 */
   updateIfActive: async <T extends Type>(params: VerificationUpdateParams<T>) => {
+    if (!params.session) {
+      return tmpDataRepository.updateIfActive({
+        dataId: getDataId(params),
+        data: params.data,
+        expireAt: getExpireAt(params.ttlPreset)
+      });
+    }
+
     return MongoTmpData.updateOne(
       {
         dataId: getDataId(params),
@@ -178,10 +196,14 @@ export const verification = {
   /** 只删除仍有效且匹配当前材料内容的记录，避免清理并发请求新写入的验证码。 */
   deleteIfMatch: async <T extends Type>(params: VerificationDeleteParams<T>) => {
     const { session, ...filterParams } = params;
+    if (!session) {
+      return tmpDataRepository.deleteActiveMaterial({
+        dataId: getDataId(filterParams),
+        match: filterParams.match as Record<string, unknown> | undefined
+      });
+    }
 
-    return MongoTmpData.deleteOne(getActiveFilter(filterParams), {
-      ...(session ? { session } : {})
-    });
+    return MongoTmpData.deleteOne(getActiveFilter(filterParams), { session });
   },
 
   /** 读取仍在有效期内的材料，不主动改变材料生命周期。 */
@@ -189,7 +211,12 @@ export const verification = {
     params: VerificationGetParams<T>
   ): Promise<VerificationMaterial<T> | null> => {
     const { session, ...filterParams } = params;
-    const result = await findActiveRecord(filterParams, session);
+    const result = session
+      ? await findActiveRecord(filterParams, session)
+      : await tmpDataRepository.findActiveMaterial({
+          dataId: getDataId(filterParams),
+          match: filterParams.match as Record<string, unknown> | undefined
+        });
 
     return result ? (result.data as VerificationMaterial<T>) : null;
   },
@@ -197,26 +224,25 @@ export const verification = {
   /** 判断材料是否仍在有效期内，用于区分未完成状态和已过期状态。 */
   hasActive: async <T extends Type>(params: VerificationGetParams<T>): Promise<boolean> => {
     const { session, ...filterParams } = params;
-    const result = await findActiveRecord(filterParams, session);
+    const result = session
+      ? await findActiveRecord(filterParams, session)
+      : await tmpDataRepository.findActiveMaterial({
+          dataId: getDataId(filterParams),
+          match: filterParams.match as Record<string, unknown> | undefined
+        });
 
     return Boolean(result);
   },
 
   /** 通过精确 dataId 候选查找唯一有效材料；多个候选命中视为数据冲突。 */
   findUniqueActiveDataId: async (dataIds: readonly string[]): Promise<string | null> => {
-    const results = await MongoTmpData.find({
-      dataId: { $in: [...new Set(dataIds)] },
-      expireAt: { $gt: new Date() }
-    })
-      .select({ dataId: 1 })
-      .limit(2)
-      .lean();
+    const results = await tmpDataRepository.findActiveDataIds(dataIds);
 
     if (results.length > 1) {
       throw new Error('Verification material data id conflict');
     }
 
-    return results[0]?.dataId ?? null;
+    return results[0] ?? null;
   },
 
   /** 在同一 Mongo 事务内读取材料、执行业务回调，并在回调成功后消费材料。 */
@@ -243,4 +269,40 @@ export const verification = {
       return result;
     });
   }
+};
+
+const getActiveFilterParams = <T extends Type>(params: VerificationConsumeParams<T>) => ({
+  dataId: getDataId(params),
+  match: params.match as Record<string, unknown> | undefined
+});
+
+/**
+ * 在同一 DAL 事务内读取材料、执行业务回调，并在回调成功后消费材料。
+ *
+ * 与 consumeInTransaction 的差异：事务上下文是 DAL TransactionContext，
+ * 回调内只能使用 DAL Repository 访问数据库（旧 Model 无法参与 DAL 事务）。
+ */
+export const consumeInTransactionWithDal = async <T extends Type, R>(
+  params: VerificationConsumeParams<T>,
+  handler: (context: VerificationConsumeDalContext<T>) => Promise<R>
+): Promise<R> => {
+  return transactionRunner.withTransaction(async (dalContext) => {
+    const filter = getActiveFilterParams(params);
+    const record = await tmpDataRepository.findActiveMaterial(filter, dalContext);
+    if (!record) {
+      throw new VerificationMaterialError();
+    }
+
+    const result = await handler({
+      material: record.data as VerificationMaterial<T>,
+      dalContext
+    });
+
+    const deleted = await tmpDataRepository.deleteActiveMaterial(filter, dalContext);
+    if (!deleted) {
+      throw new VerificationMaterialError();
+    }
+
+    return result;
+  });
 };

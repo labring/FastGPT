@@ -3,7 +3,7 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { teamRepository } from '@fastgpt/service/common/dal';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ApiRequestProps } from '@fastgpt/next/type';
@@ -76,16 +76,10 @@ async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
     .map((item) => item._id.tmbId);
 
   const teamMembers = tmbIds.length
-    ? await MongoTeamMember.find(
-        {
-          _id: { $in: tmbIds },
-          teamId: new Types.ObjectId(teamId)
-        },
-        '_id name avatar'
-      ).lean()
+    ? await teamRepository.findMembersByIds(tmbIds.map(String), { teamId })
     : [];
 
-  const tmbMap = new Map(teamMembers.map((m) => [String(m._id), m]));
+  const tmbMap = new Map(teamMembers.map((m) => [m.id, m]));
 
   const searchPattern = searchKey ? new RegExp(replaceRegChars(searchKey), 'i') : null;
 

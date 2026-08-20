@@ -4,7 +4,7 @@ import {
   type TmpDataMetadata,
   type TmpDataType
 } from '@fastgpt/global/support/tmpData/constants';
-import { MongoTmpData } from './schema';
+import { tmpDataRepository } from '../../common/dal';
 import { type TmpDataSchema } from '@fastgpt/global/support/tmpData/type';
 import { addMilliseconds } from 'date-fns';
 
@@ -19,9 +19,9 @@ export async function getTmpData<T extends TmpDataEnum>({
   type: T;
   metadata: TmpDataMetadata<T>;
 }) {
-  return (await MongoTmpData.findOne({
-    dataId: getDataId(type, metadata)
-  }).lean()) as TmpDataSchema<TmpDataType<T>> | null;
+  return (await tmpDataRepository.findByDataId(getDataId(type, metadata))) as TmpDataSchema<
+    TmpDataType<T>
+  > | null;
 }
 
 export function setTmpData<T extends TmpDataEnum>({
@@ -33,17 +33,9 @@ export function setTmpData<T extends TmpDataEnum>({
   metadata: TmpDataMetadata<T>;
   data: TmpDataType<T>;
 }) {
-  return MongoTmpData.updateOne(
-    {
-      dataId: getDataId(type, metadata)
-    },
-    {
-      dataId: getDataId(type, metadata),
-      data,
-      expireAt: addMilliseconds(Date.now(), TmpDataExpireTime[type])
-    },
-    {
-      upsert: true
-    }
-  );
+  return tmpDataRepository.upsert({
+    dataId: getDataId(type, metadata),
+    data,
+    expireAt: addMilliseconds(Date.now(), TmpDataExpireTime[type])
+  });
 }

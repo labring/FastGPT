@@ -1,15 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { BullMQBinding } from '@fastgpt/dal/redis/bullmq';
 import {
   AppDeleteMQService,
-  appDeleteMQService
-} from '@fastgpt/dal/redis/bullmq/services/appDelete';
-import {
+  appDeleteMQService,
+  CollectionUpdateMQService,
   DatasetSyncMQService,
-  datasetSyncMQService
-} from '@fastgpt/dal/redis/bullmq/services/datasetSync';
-import { CollectionUpdateMQService } from '@fastgpt/dal/redis/bullmq/services/collectionUpdate';
-import { S3FileDeleteMQService } from '@fastgpt/dal/redis/bullmq/services/s3FileDelete';
+  datasetSyncMQService,
+  S3FileDeleteMQService,
+  type BullMQBinding
+} from '@fastgpt/dal/redis/bullmq';
 
 describe('BullMQ business services', () => {
   beforeEach(() => {

@@ -1,8 +1,6 @@
-import { MongoUser } from '@fastgpt/service/support/user/schema';
-import { hashStr } from '@fastgpt/global/common/string/tools';
-import { createDefaultTeam } from '@fastgpt/service/support/user/team/controller';
 import { exit } from 'process';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { hashStr } from '@fastgpt/global/common/string/tools';
+import { transactionRunner, userRepository, teamRepository } from '@fastgpt/service/common/dal';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { appEnv } from '@/env';
 
@@ -10,33 +8,28 @@ const logger = getLogger(LogCategories.SYSTEM);
 
 export async function initRootUser(retry = 3): Promise<any> {
   try {
-    const rootUser = await MongoUser.findOne({
-      username: 'root'
-    });
-    const psw = appEnv.DEFAULT_ROOT_PSW;
+    // 环境变量保存明文，DAL 约定只接收并保存已经哈希的密码。
+    const password = hashStr(appEnv.DEFAULT_ROOT_PSW);
 
-    let rootId = rootUser?._id || '';
-
-    await mongoSessionRun(async (session) => {
+    // root 用户与默认团队在同一个 DAL 事务内初始化，避免混用两种事务上下文。
+    await transactionRunner.withTransaction(async (context) => {
+      const rootUser = await userRepository.findByUsername('root');
       // init root user
       if (rootUser) {
-        await rootUser.updateOne({
-          password: hashStr(psw)
-        });
+        await userRepository.updateById(rootUser.id, { password }, context);
       } else {
-        const [{ _id }] = await MongoUser.create(
-          [
-            {
-              username: 'root',
-              password: hashStr(psw)
-            }
-          ],
-          { session, ordered: true }
+        const created = await userRepository.create(
+          {
+            username: 'root',
+            password
+          },
+          context
         );
-        rootId = _id;
+        await teamRepository.createDefaultTeam({ userId: created.id, context });
+        return;
       }
       // init root team
-      await createDefaultTeam({ userId: rootId, session });
+      await teamRepository.createDefaultTeam({ userId: rootUser.id, context });
     });
 
     logger.info('Root user initialized', {

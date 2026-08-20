@@ -1,7 +1,6 @@
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { MongoUser } from '@fastgpt/service/support/user/schema';
+import { teamRepository, userRepository } from '@fastgpt/service/common/dal';
 
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
@@ -9,6 +8,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { delUserAllSession } from '@fastgpt/service/support/user/session';
 import {
   UpdatePasswordByOldBodySchema,
+  UpdatePasswordByOldResponseSchema,
   type UpdatePasswordByOldBodyType,
   type UpdatePasswordByOldResponseType
 } from '@fastgpt/global/openapi/support/user/account/password/api';
@@ -25,14 +25,14 @@ async function handler(
   }).body;
 
   const { tmbId, teamId, sessionId } = await authCert({ req, authToken: true });
-  const tmb = await MongoTeamMember.findById(tmbId);
+  const tmb = await teamRepository.findMemberById(tmbId);
   if (!tmb) {
     return Promise.reject('can not find it');
   }
   const userId = tmb.userId;
   // auth old password
-  const user = await MongoUser.findOne({
-    _id: userId,
+  const user = await userRepository.findByCredentials({
+    id: String(userId),
     password: oldPsw
   });
 
@@ -45,7 +45,7 @@ async function handler(
   }
 
   // 更新对应的记录
-  await MongoUser.findByIdAndUpdate(userId, {
+  await userRepository.updateById(String(userId), {
     password: newPsw,
     passwordUpdateTime: new Date()
   });
@@ -60,7 +60,7 @@ async function handler(
       params: {}
     });
   })();
-  return user;
+  return UpdatePasswordByOldResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

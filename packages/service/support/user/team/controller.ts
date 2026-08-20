@@ -1,168 +1,92 @@
-import { type TeamSchema, type TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
-import { type ClientSession, Types } from '../../../common/mongo';
+import { type TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
 import {
   TeamMemberRoleEnum,
-  TeamMemberStatusEnum,
-  notLeaveStatus
+  TeamMemberStatusEnum
 } from '@fastgpt/global/support/user/team/constant';
-import { MongoTeamMember } from './teamMemberSchema';
-import { MongoTeam } from './teamSchema';
 import { type UpdateTeamProps } from '@fastgpt/global/support/user/team/controller';
-import { getTmbPermission } from '../../permission/controller';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import { TeamDefaultRoleVal } from '@fastgpt/global/support/permission/user/constant';
-import { MongoMemberGroupModel } from '../../permission/memberGroup/memberGroupSchema';
-import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
+import { getTmbPermission } from '../../permission/controller';
 import { getAIApi } from '../../../core/ai/config';
-import { createRootOrg } from '../../permission/org/controllers';
 import { getS3AvatarSource } from '../../../common/s3/sources/avatar';
-import { getLogger, LogCategories } from '../../../common/logger';
+import { groupRepository, transactionRunner, teamRepository } from '../../../common/dal';
+import type { TransactionContext } from '../../../common/dal';
 
-const logger = getLogger(LogCategories.MODULE.USER.TEAM);
+type TeamMemberRelations = Awaited<ReturnType<typeof teamRepository.findMemberRelationsById>>;
 
-async function getTeamMember(
-  match: Record<string, any>,
-  session?: ClientSession
-): Promise<TeamTmbItemType> {
-  const query = MongoTeamMember.findOne(match).populate<{ team: TeamSchema }>('team');
-  if (session) query.session(session);
-  const tmb = await query.lean();
-  if (!tmb) {
+/** 将 DAL 的成员、团队实体转换为 service 层历史使用的权限上下文。 */
+const getTeamMember = async (relations: TeamMemberRelations): Promise<TeamTmbItemType> => {
+  if (!relations?.team) return Promise.reject('member not exist');
+
+  const { member, team } = relations;
+  if (
+    member.status === TeamMemberStatusEnum.leave ||
+    member.status === TeamMemberStatusEnum.forbidden
+  ) {
     return Promise.reject('member not exist');
   }
 
   const role =
     (await getTmbPermission({
       resourceType: PerResourceTypeEnum.team,
-      teamId: tmb.teamId,
-      tmbId: tmb._id
+      teamId: member.teamId,
+      tmbId: member.id
     })) ?? TeamDefaultRoleVal;
+  const openaiAccount =
+    team.openaiAccount?.key && team.openaiAccount.baseUrl ? team.openaiAccount : undefined;
 
   return {
-    userId: String(tmb.userId),
-    teamId: String(tmb.teamId),
-    teamAvatar: tmb.team.avatar,
-    teamName: tmb.team.name,
-    memberName: tmb.name,
-    avatar: tmb.avatar,
-    balance: tmb.team.balance,
-    tmbId: String(tmb._id),
-    role: tmb.role,
-    status: tmb.status,
+    userId: member.userId,
+    teamId: member.teamId,
+    teamAvatar: team.avatar,
+    teamName: team.name,
+    memberName: member.name,
+    avatar: member.avatar ?? '',
+    balance: team.balance,
+    tmbId: member.id,
+    role: member.role as TeamTmbItemType['role'],
+    status: member.status as TeamTmbItemType['status'],
     permission: new TeamPermission({
       role,
-      isOwner: tmb.role === TeamMemberRoleEnum.owner
+      isOwner: member.role === TeamMemberRoleEnum.owner
     }),
-    notificationAccount: tmb.team.notificationAccount,
-
-    openaiAccount: tmb.team.openaiAccount,
-    externalWorkflowVariables: tmb.team.externalWorkflowVariables,
-    isWecomTeam: !!tmb.team.meta?.wecom
+    notificationAccount: team.notificationAccount,
+    openaiAccount,
+    externalWorkflowVariables: team.externalWorkflowVariables,
+    isWecomTeam: !!team.meta?.wecom
   };
-}
-
-export const getTeamOwner = async (teamId: string) => {
-  const tmb = await MongoTeamMember.findOne({
-    teamId,
-    role: TeamMemberRoleEnum.owner
-  }).lean();
-  return tmb;
 };
 
-export async function getTmbInfoByTmbId({
-  tmbId,
-  session
-}: {
-  tmbId: string;
-  session?: ClientSession;
-}) {
+export const getTeamOwner = (teamId: string) => teamRepository.findOwnerByTeamId(teamId);
+
+export async function getTmbInfoByTmbId({ tmbId }: { tmbId: string }) {
   if (!tmbId) {
     return Promise.reject('tmbId or userId is required');
   }
-  return getTeamMember(
-    {
-      _id: new Types.ObjectId(String(tmbId)),
-      status: notLeaveStatus
-    },
-    session
-  );
+  return getTeamMember(await teamRepository.findMemberRelationsById(tmbId));
 }
 
-export async function getUserDefaultTeam({
-  userId,
-  session
-}: {
-  userId: string;
-  session?: ClientSession;
-}) {
+export async function getUserDefaultTeam({ userId }: { userId: string }) {
   if (!userId) {
     return Promise.reject('tmbId or userId is required');
   }
-  return getTeamMember({ userId: new Types.ObjectId(userId) }, session);
+  return getTeamMember(await teamRepository.findMemberRelationsByUserId(userId));
 }
 
 export async function createDefaultTeam({
   userId,
   teamName = 'My Team',
   avatar = '/icon/logo.svg',
-  session
+  context
 }: {
   userId: string;
   teamName?: string;
   avatar?: string;
-  session: ClientSession;
+  context?: TransactionContext;
 }) {
-  // auth default team
-  const tmb = await MongoTeamMember.findOne({
-    userId: new Types.ObjectId(userId)
-  });
-
-  if (!tmb) {
-    // create team
-    const [{ _id: insertedId }] = await MongoTeam.create(
-      [
-        {
-          ownerId: userId,
-          name: teamName,
-          avatar,
-          createTime: new Date()
-        }
-      ],
-      { session }
-    );
-    // create team member
-    const [tmb] = await MongoTeamMember.create(
-      [
-        {
-          teamId: insertedId,
-          userId,
-          name: 'Owner',
-          role: TeamMemberRoleEnum.owner,
-          status: TeamMemberStatusEnum.active,
-          createTime: new Date()
-        }
-      ],
-      { session }
-    );
-    // create default group
-    await MongoMemberGroupModel.create(
-      [
-        {
-          teamId: tmb.teamId,
-          name: DefaultGroupName,
-          avatar
-        }
-      ],
-      { session }
-    );
-    await createRootOrg({ teamId: tmb.teamId, session });
-    logger.info('Default team created', { userId, teamId: tmb.teamId, tmbId: tmb._id });
-    return tmb;
-  } else {
-    logger.info('Default team exists', { userId });
-  }
+  return teamRepository.createDefaultTeam({ userId, teamName, avatar, context });
 }
 
 export async function updateTeam({
@@ -172,13 +96,14 @@ export async function updateTeam({
   openaiAccount,
   externalWorkflowVariable
 }: UpdateTeamProps & { teamId: string }) {
-  // auth openai key
   if (openaiAccount?.key) {
-    const baseUrl = openaiAccount?.baseUrl || 'https://api.openai.com/v1';
-    openaiAccount.baseUrl = baseUrl;
+    const normalizedOpenaiAccount = {
+      ...openaiAccount,
+      baseUrl: openaiAccount.baseUrl || 'https://api.openai.com/v1'
+    };
 
     const { ai } = getAIApi({
-      userKey: openaiAccount
+      userKey: normalizedOpenaiAccount
     });
 
     const response = await ai.chat.completions.create({
@@ -188,72 +113,30 @@ export async function updateTeam({
     if (response?.choices?.[0]?.message?.content === undefined) {
       return Promise.reject('Key response is empty');
     }
+
+    openaiAccount = normalizedOpenaiAccount;
   }
 
-  return mongoSessionRun(async (session) => {
-    const unsetObj = (() => {
-      const obj: Record<string, 1> = {};
-      if (openaiAccount?.key === '') {
-        obj.openaiAccount = 1;
-      }
-      if (externalWorkflowVariable) {
-        if (externalWorkflowVariable.value === '') {
-          obj[`externalWorkflowVariables.${externalWorkflowVariable.key}`] = 1;
-        }
-      }
-
-      if (Object.keys(obj).length === 0) {
-        return undefined;
-      }
-      return {
-        $unset: obj
-      };
-    })();
-    const setObj = (() => {
-      const obj: Record<string, any> = {};
-      if (openaiAccount?.key && openaiAccount?.baseUrl) {
-        obj.openaiAccount = openaiAccount;
-      }
-      if (externalWorkflowVariable) {
-        if (externalWorkflowVariable.value !== '') {
-          obj[`externalWorkflowVariables.${externalWorkflowVariable.key}`] =
-            externalWorkflowVariable.value;
-        }
-      }
-      if (Object.keys(obj).length === 0) {
-        return undefined;
-      }
-      return obj;
-    })();
-
-    // This is where we get the old team
-    const team = await MongoTeam.findByIdAndUpdate(
+  const oldTeam = await teamRepository.findTeamById(teamId);
+  await transactionRunner.withTransaction(async (context) => {
+    await teamRepository.updateTeam(
       teamId,
       {
-        $set: {
-          ...(name ? { name } : {}),
-          ...(avatar ? { avatar } : {}),
-          ...setObj
-        },
-        ...unsetObj
+        name,
+        avatar,
+        openaiAccount: openaiAccount?.key ? openaiAccount : undefined,
+        clearOpenaiAccount: openaiAccount?.key === '',
+        externalWorkflowVariable
       },
-      { session }
+      context
     );
 
-    // Update member group avatar
     if (avatar) {
-      await MongoMemberGroupModel.updateOne(
-        {
-          teamId: teamId,
-          name: DefaultGroupName
-        },
-        {
-          avatar
-        },
-        { session }
-      );
-
-      await getS3AvatarSource().refreshAvatar(avatar, team?.avatar, session);
+      await groupRepository.updateMemberGroupAvatar(teamId, DefaultGroupName, avatar, context);
     }
   });
+
+  if (avatar) {
+    await getS3AvatarSource().refreshAvatar(avatar, oldTeam?.avatar);
+  }
 }

@@ -5,13 +5,11 @@ import type {
 } from '@fastgpt/global/openapi/core/chat/completion/api';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { notLeaveStatus } from '@fastgpt/global/support/user/team/constant';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { authApp, authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { MongoUser } from '@fastgpt/service/support/user/schema';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { teamRepository, userRepository } from '@fastgpt/service/common/dal';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { UserError } from '@fastgpt/global/common/error/utils';
 
@@ -55,26 +53,16 @@ export const resolveChatCompletionEffectiveTmbId = async ({
 
   const [memberByTmbId, memberByUsername] = await Promise.all([
     authProxy.tmbId
-      ? MongoTeamMember.findOne({
-          _id: authProxy.tmbId,
-          teamId,
-          status: notLeaveStatus
-        })
-          .select('_id userId teamId')
-          .lean()
+      ? teamRepository.findMemberByIdInTeam(authProxy.tmbId, teamId, { includeLeft: false })
       : null,
     username
       ? (async () => {
-          const user = await MongoUser.findOne({ username }).select('_id').lean();
-          if (!user) return null;
+          const userId = await userRepository.findIdByUsername(username);
+          if (!userId) return null;
 
-          return MongoTeamMember.findOne({
-            teamId,
-            userId: user._id,
-            status: notLeaveStatus
-          })
-            .select('_id userId teamId')
-            .lean();
+          return teamRepository.findMemberByTeamAndUser(teamId, userId, {
+            includeLeft: false
+          });
         })()
       : null
   ]);
@@ -83,11 +71,7 @@ export const resolveChatCompletionEffectiveTmbId = async ({
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
 
-  if (
-    memberByTmbId &&
-    memberByUsername &&
-    String(memberByTmbId._id) !== String(memberByUsername._id)
-  ) {
+  if (memberByTmbId && memberByUsername && memberByTmbId.id !== memberByUsername.id) {
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
 
@@ -97,7 +81,7 @@ export const resolveChatCompletionEffectiveTmbId = async ({
   }
 
   return {
-    tmbId: String(member._id),
+    tmbId: member.id,
     isProxy: true
   };
 };

@@ -1,85 +1,74 @@
-import { type MemberGroupSchemaType } from '@fastgpt/global/support/permission/memberGroup/type';
-import { MongoGroupMemberModel } from './groupMemberSchema';
-import { MongoMemberGroupModel } from './memberGroupSchema';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
-import { type ClientSession } from 'mongoose';
 import type { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/constant';
 import { type AuthModeType, type AuthResponseType } from '../type';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { parseHeaderCert } from '../auth/common';
+import { groupRepository, type TransactionContext } from '../../../common/dal';
+
+const toLegacyGroup = (
+  group: NonNullable<Awaited<ReturnType<typeof groupRepository.findMemberGroupByTeamAndName>>>
+) => ({
+  _id: group.id,
+  teamId: group.teamId,
+  name: group.name,
+  avatar: group.avatar,
+  updateTime: group.updateTime
+});
 
 /**
  * Get the default group of a team
  * @param{Object} obj
  * @param{string} obj.teamId
- * @param{ClientSession} obj.session
+ * @param{TransactionContext} obj.context
  */
 export const getTeamDefaultGroup = async ({
   teamId,
-  session
+  context
 }: {
   teamId: string;
-  session?: ClientSession;
+  context?: TransactionContext;
 }) => {
-  const group = await MongoMemberGroupModel.findOne({ teamId, name: DefaultGroupName }, undefined, {
-    session
-  }).lean();
+  const group = await groupRepository.findMemberGroupByTeamAndName(
+    teamId,
+    DefaultGroupName,
+    context
+  );
+  if (group) return toLegacyGroup(group);
 
-  // Create the default group if it does not exist
-  if (!group) {
-    const [group] = await MongoMemberGroupModel.create(
-      [
-        {
-          teamId,
-          name: DefaultGroupName
-        }
-      ],
-      { session }
-    );
-
-    return group;
-  }
-  return group;
+  return toLegacyGroup(
+    await groupRepository.createMemberGroup({ teamId, name: DefaultGroupName }, context)
+  );
 };
 
 export const getGroupsByTmbId = async ({
   tmbId,
   teamId,
   role,
-  session
+  context
 }: {
   tmbId: string;
   teamId: string;
   role?: `${GroupMemberRole}`[];
-  session?: ClientSession;
-}) =>
-  (
-    await Promise.all([
-      (
-        await MongoGroupMemberModel.find(
-          {
-            tmbId,
-            groupId: {
-              $exists: true
-            },
-            ...(role ? { role: { $in: role } } : {})
-          },
-          undefined,
-          { session }
-        )
-          .populate<{ group: MemberGroupSchemaType }>('group')
-          .lean()
-      ).map((item) => item.group),
-      role ? [] : getTeamDefaultGroup({ teamId, session })
-    ])
-  ).flat();
+  context?: TransactionContext;
+}) => [
+  ...(await groupRepository.findGroupsByTmbId(teamId, tmbId, role, context)).map((group) =>
+    toLegacyGroup(group)
+  ),
+  ...(role
+    ? []
+    : await getTeamDefaultGroup({ teamId, context }).then((group) => (group ? [group] : [])))
+];
 
 export const getGroupMembersByGroupId = async (groupId: string) => {
-  return await MongoGroupMemberModel.find({
-    groupId
-  }).lean();
+  const members = await groupRepository.findGroupMembersByGroupId(groupId);
+  return members.map((member) => ({
+    _id: member.id,
+    groupId: member.groupId,
+    tmbId: member.tmbId,
+    role: member.role
+  }));
 };
 
 // auth group member role
@@ -104,7 +93,7 @@ export const authGroupMemberRole = async ({
     };
   }
   const [groupMember, tmb] = await Promise.all([
-    MongoGroupMemberModel.findOne({ groupId, tmbId }),
+    groupRepository.findGroupMember(groupId, tmbId),
     getTmbInfoByTmbId({ tmbId })
   ]);
 
