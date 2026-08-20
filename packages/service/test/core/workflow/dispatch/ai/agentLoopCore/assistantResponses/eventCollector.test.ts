@@ -276,12 +276,11 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
     ]);
   });
 
-  it('keeps workflow tool calls visible while hiding child assistant output', () => {
+  it('keeps tool calls visible while hiding child assistant output', () => {
     const collector = createAgentLoopCoreAssistantEventCollector({
       getToolInfo: (name) => ({
         name,
-        avatar: '',
-        hideChildResponses: name === 'workflow_tool'
+        avatar: ''
       })
     });
     const call = createToolCall({

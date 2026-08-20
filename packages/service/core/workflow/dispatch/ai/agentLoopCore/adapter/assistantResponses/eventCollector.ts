@@ -383,21 +383,16 @@ export const createAgentLoopCoreAssistantEventCollector = ({
         }
 
         if (event.assistantMessages?.length) {
-          const shouldHideChildResponses = getToolInfo?.(functionName)?.hideChildResponses;
           const childAssistantResponses = buildAgentLoopCoreAssistantResponsesFromMessages({
             messages: event.assistantMessages,
             reserveTool: true,
             reserveReason: true,
             getToolInfo
-          }).map((value) =>
-            shouldHideChildResponses || (!showReasoning && value.reasoning)
-              ? {
-                  ...value,
-                  ...(shouldHideChildResponses ? { hideInUI: true } : {}),
-                  ...(!showReasoning && value.reasoning ? { hideReason: true } : {})
-                }
-              : value
-          );
+          }).map((value) => ({
+            ...value,
+            hideInUI: true,
+            ...(!showReasoning && value.reasoning ? { hideReason: true } : {})
+          }));
           assistantResponses.push(...childAssistantResponses);
           currentAssistantTextIndex = undefined;
         }

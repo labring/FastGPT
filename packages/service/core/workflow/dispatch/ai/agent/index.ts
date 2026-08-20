@@ -306,14 +306,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         showReasoning: aiChatReasoning !== false,
         getEventToolInfo: (name) => {
           const subApp = getSubAppInfo(name);
-          const toolType = getSubApp(name)?.type;
           return {
             name: subApp.name || name,
-            avatar: subApp.avatar,
-            hideChildResponses:
-              toolType === 'workflow' ||
-              toolType === 'toolWorkflow' ||
-              toolType === 'commercialTool'
+            avatar: subApp.avatar
           };
         },
         metaEventNames: {
