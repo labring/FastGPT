@@ -57,7 +57,7 @@ jobs:
                   repo: context.repo.repo,
                   username
                 });
-                return ['admin', 'maintain', 'write'].includes(data.permission);
+                return ['admin', 'maintain', 'write', 'read'].includes(data.permission);
               } catch (error) {
                 core.warning(`Unable to resolve repository permission for ${username}: ${error.message}`);
                 return false;
