@@ -46,6 +46,7 @@ export type CanonicalUnavailableAgentTool = z.infer<typeof CanonicalUnavailableA
 export const CanonicalAvailableAgentToolSchema = z.looseObject({
   id: z.string(),
   inputs: z.array(CanonicalAgentToolInputConfigSchema),
+  config: z.record(z.string(), z.unknown()),
   isUnavailable: z.literal(false).optional()
 });
 

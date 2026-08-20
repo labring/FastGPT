@@ -283,8 +283,12 @@ export async function rewriteAppWorkflowToDetail({
         // Tool load
         const toolInput = node.inputs.find((item) => item.key === NodeInputKeyEnum.selectedTools);
         if (toolInput && !nodeInputIsReference(toolInput)) {
-          const toolsParse = z.array(AgentToolSchema).safeParse(toolInput?.value || []);
-          const tools = toolsParse.success ? toolsParse.data : [];
+          const tools = Array.isArray(toolInput.value)
+            ? toolInput.value.flatMap((value) => {
+                const result = AgentToolSchema.safeParse(value);
+                return result.success ? [result.data] : [];
+              })
+            : [];
           const nodes = await Promise.all(
             tools.map(async (tool) => {
               const result = await loadToolNode({

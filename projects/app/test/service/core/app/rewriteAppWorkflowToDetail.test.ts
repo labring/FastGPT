@@ -924,6 +924,44 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
     );
   });
 
+  it('保留有效 Agent 工具，不因单个缺少 config 清空工具列表', async () => {
+    const validToolId = '507f1f77bcf86cd799439014';
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: validToolId,
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: 'Valid tool',
+      avatar: '',
+      intro: '',
+      inputs: [],
+      outputs: [],
+      version: 'v1'
+    });
+    authAppByTmbIdMock.mockResolvedValue({});
+
+    const nodes = [
+      {
+        nodeId: 'agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            value: [{ id: 'invalid-tool' }, { id: validToolId, config: {} }]
+          }
+        ],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(nodes[0].inputs[0].value).toMatchObject([expect.objectContaining({ id: validToolId })]);
+  });
+
   it('刷新 Agent 工具时保留已保存的 input selectedType 配置', async () => {
     const toolAppId = '507f1f77bcf86cd799439012';
     getClientToolPreviewNodeMock.mockResolvedValue({

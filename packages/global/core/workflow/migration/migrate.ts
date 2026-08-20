@@ -62,6 +62,11 @@ export const migrateWorkflowToCurrent = async (
             input.value.map(async (tool) => {
               if (!tool || typeof tool !== 'object' || typeof tool.id !== 'string') return tool;
 
+              const config =
+                tool.config && typeof tool.config === 'object' && !Array.isArray(tool.config)
+                  ? tool.config
+                  : {};
+
               const hasSavedInputs = Array.isArray(tool.inputs);
               const savedInputs: unknown[] = (() => {
                 if (tool.isUnavailable === true && Array.isArray(tool.unresolvedInputs)) {
@@ -86,10 +91,12 @@ export const migrateWorkflowToCurrent = async (
                 const {
                   isUnavailable: _isUnavailable,
                   unresolvedInputs: _unresolvedInputs,
+                  config: _config,
                   ...availableTool
                 } = tool;
                 return {
                   ...availableTool,
+                  config,
                   inputs: savedInputs.map((input) =>
                     CanonicalAgentToolInputConfigSchema.parse(input)
                   )
@@ -104,11 +111,13 @@ export const migrateWorkflowToCurrent = async (
                 const {
                   inputs: _inputs,
                   unresolvedInputs: _unresolvedInputs,
+                  config: _config,
                   ...unavailableTool
                 } = tool;
 
                 return {
                   ...unavailableTool,
+                  config,
                   isUnavailable: true,
                   ...(unresolvedInputs.length > 0 ? { unresolvedInputs } : {})
                 };
@@ -141,10 +150,11 @@ export const migrateWorkflowToCurrent = async (
               const {
                 isUnavailable: _isUnavailable,
                 unresolvedInputs: _unresolvedInputs,
+                config: _config,
                 ...availableTool
               } = tool;
 
-              return { ...availableTool, inputs: migratedInputs };
+              return { ...availableTool, config, inputs: migratedInputs };
             })
           );
 
