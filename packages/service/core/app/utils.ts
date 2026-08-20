@@ -291,7 +291,7 @@ export async function rewriteAppWorkflowToDetail({
                 return result.success ? [result.data] : [];
               })
             : [];
-          const toolNodes = await Promise.all(
+          const nodes = await Promise.all(
             tools.map(async (tool) => {
               const result = await loadToolNode({
                 id: tool.id,

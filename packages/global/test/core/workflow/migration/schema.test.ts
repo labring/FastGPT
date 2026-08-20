@@ -179,6 +179,28 @@ describe('workflow migration boundary', () => {
     expect(result.nodes[0].nodeId).toBe('node-1');
   });
 
+  it('adds an empty config to available Agent tools missing config', async () => {
+    const result = await migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'agent-1',
+          flowNodeType: 'agent',
+          name: 'Agent',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+              value: [{ id: 'tool-1', inputs: [{ key: 'query', mode: 'manual' }] }]
+            }
+          ],
+          outputs: []
+        }
+      ]
+    } as any);
+
+    expect((result.nodes[0].inputs[0].value as any)[0]).toMatchObject({ config: {} });
+  });
+
   it('normalizes registered tool, plugin, and variable storage defects', async () => {
     const result = await migrateWorkflowToCurrent({
       nodes: [
