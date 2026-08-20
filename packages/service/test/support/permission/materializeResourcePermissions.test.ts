@@ -109,6 +109,23 @@ describe('resolveMaterializedResourcePermissions', () => {
     expect(second.errors).toEqual([]);
   });
 
+  it('only reports target resources when ancestors are loaded for a batch', () => {
+    const resources = [
+      { _id: 'parent', teamId: 'team', tmbId: 'owner' },
+      { _id: 'child', teamId: 'team', parentId: 'parent', tmbId: 'owner' }
+    ];
+    const result = resolveMaterializedResourcePermissions({
+      resources,
+      currentPermissions: [],
+      resourceType: PerResourceTypeEnum.app,
+      targetResourceIds: ['child']
+    });
+
+    expect(result.errors).toEqual([]);
+    expect(result.skippedResourceCount).toBe(0);
+    expect(result.changes.map((change) => change.resourceId)).toEqual(['child']);
+  });
+
   it('reports orphan parents and cycles without writing changes', () => {
     const resources = [
       { _id: 'a', teamId: 'team', parentId: 'b', tmbId: 'owner' },
