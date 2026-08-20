@@ -35,7 +35,7 @@ import { SubAppIds, systemSubInfo } from '@fastgpt/global/core/workflow/node/age
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { AGENT_SANDBOX_TOOLSET_ID } from '@fastgpt/global/core/ai/sandbox/tools';
 import type { SkillClickResult } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillPickerPlugin';
-import { getSkillList } from '@/web/core/skill/api';
+import { getAllSkillList } from '@/web/core/skill/api';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
 import { inheritToolInputConfig } from '../../FormComponent/ToolSelector/utils';
@@ -252,7 +252,7 @@ export const useSkillManager = ({
     async () => {
       if (!onAddAgentSkill) return [];
 
-      const { list } = await getSkillList({
+      const list = await getAllSkillList({
         source: 'mine',
         parentId: '',
         withAppCount: false
@@ -266,7 +266,7 @@ export const useSkillManager = ({
 
   const onFolderLoadAgentSkills = useCallback(
     async (folderId: string) => {
-      const { list } = await getSkillList({
+      const list = await getAllSkillList({
         source: 'mine',
         parentId: folderId,
         withAppCount: false

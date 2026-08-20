@@ -5,7 +5,10 @@ import {
   ReadPermissionVal,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
-import { AppReadChatLogRoleVal } from '@fastgpt/global/support/permission/app/constant';
+import {
+  AppRolePerMap,
+  AppReadChatLogRoleVal
+} from '@fastgpt/global/support/permission/app/constant';
 import { Types } from '@fastgpt/service/common/mongo';
 import { resourcePermissionRepo } from '@fastgpt/service/support/permission/repository/resourcePermissionRepo';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
@@ -688,5 +691,32 @@ describe('resourcePermissionRepo mutation helpers', () => {
     const activeRow = rows.find((row) => String(row.tmbId) === activeCollaborators[0].tmbId);
     expect(activeRow).toMatchObject({ permission: WritePermissionVal });
     expect(String(activeRow?.resourceId)).toBe(String(firstResourceId));
+  });
+
+  it('supports resource-specific role maps when querying readable resources', async () => {
+    const resourceId = objectId();
+    const tmbId = objectId();
+
+    await MongoResourcePermission.create({
+      teamId,
+      tmbId,
+      resourceType: PerResourceTypeEnum.app,
+      resourceId,
+      permission: AppReadChatLogRoleVal
+    });
+
+    await expect(
+      resourcePermissionRepo.findResourceKeysByCollaboratorsPermission({
+        teamId: String(teamId),
+        resourceType: PerResourceTypeEnum.app,
+        tmbId: String(tmbId),
+        groupIds: [],
+        orgIds: [],
+        permission: ReadPermissionVal,
+        matchLogic: 'or',
+        personalPermissionPriority: true,
+        rolePerMap: AppRolePerMap
+      })
+    ).resolves.toEqual([String(resourceId)]);
   });
 });

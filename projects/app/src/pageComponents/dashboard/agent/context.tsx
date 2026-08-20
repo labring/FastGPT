@@ -2,7 +2,8 @@ import React, { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useRouter } from 'next/router';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getAppDetailById, getMyApps, putAppById } from '@/web/core/app/api';
+import { useScrollPagination, type ScrollListType } from '@fastgpt/web/hooks/useScrollPagination';
+import { getAllApps, getAppDetailById, getMyApps, putAppById } from '@/web/core/app/api';
 import { type AppDetailType, type AppListItemType } from '@fastgpt/global/core/app/type';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import {
@@ -22,8 +23,9 @@ type AppListContextType = {
   parentId?: string | null;
   appType: AppTypeEnum | 'all';
   myApps: AppListItemType[];
-  loadMyApps: () => Promise<AppListItemType[]>;
+  loadMyApps: () => Promise<void>;
   isFetchingApps: boolean;
+  ScrollData: ScrollListType;
   folderDetail: AppDetailType | undefined | null;
   paths: ParentTreePathItemType[];
   onUpdateApp: (id: string, data: UpdateAppBodyType) => Promise<any>;
@@ -36,10 +38,11 @@ type AppListContextType = {
 export const AppListContext = createContext<AppListContextType>({
   parentId: undefined,
   myApps: [],
-  loadMyApps: async function (): Promise<AppListItemType[]> {
+  loadMyApps: async function (): Promise<void> {
     throw new Error('Function not implemented.');
   },
   isFetchingApps: false,
+  ScrollData: () => <></>,
   folderDetail: undefined,
   paths: [],
   onUpdateApp: function (id: string, data: UpdateAppBodyType): Promise<any> {
@@ -68,25 +71,27 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
   const [searchKey, setSearchKey] = useState('');
 
   const {
-    data = [],
-    runAsync: loadMyApps,
-    loading: isFetchingApps
-  } = useRequest(
-    () => {
+    data: myApps = [],
+    isLoading: isFetchingApps,
+    ScrollData,
+    fetchData
+  } = useScrollPagination(
+    ({ offset = 0, pageSize = 50 }) => {
       const formatType = resolveDashboardAppListTypes({
         pathname: router.pathname,
         type
       });
 
-      return getMyApps({ parentId, type: formatType, searchKey });
+      return getMyApps({ parentId, type: formatType, searchKey, offset, pageSize });
     },
     {
-      manual: false,
+      pageSize: 50,
       refreshDeps: [searchKey, parentId, type],
       throttleWait: 500,
       refreshOnWindowFocus: true
     }
   );
+  const loadMyApps = useCallback(() => fetchData({ init: true }), [fetchData]);
 
   const { data: paths = [], runAsync: refetchPaths } = useRequest(
     () => getAppFolderPath({ sourceId: parentId, type: 'current' }),
@@ -128,7 +133,7 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
       const isAgent = router.pathname.includes('/agent');
       const folderType = isAgent ? AppTypeEnum.folder : AppTypeEnum.toolFolder;
 
-      return getMyApps({
+      return getAllApps({
         parentId,
         type: folderType
       }).then((res) =>
@@ -151,8 +156,9 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
   const contextValue: AppListContextType = {
     parentId,
     appType: type,
-    myApps: data,
+    myApps,
     loadMyApps,
+    ScrollData,
     refetchFolderDetail,
     isFetchingApps,
     folderDetail,

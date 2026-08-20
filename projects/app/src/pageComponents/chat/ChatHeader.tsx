@@ -18,7 +18,7 @@ import {
   type GetResourceFolderListProps,
   type GetResourceListItemResponse
 } from '@fastgpt/global/common/parentFolder/type';
-import { getMyApps } from '@/web/core/app/api';
+import { getAllApps } from '@/web/core/app/api';
 import SelectOneResource from '@/components/common/folder/SelectOneResource';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import VariablePopover from '@/components/core/chat/ChatContainer/components/VariablePopover';
@@ -127,7 +127,7 @@ const MobileDrawer = ({ onCloseDrawer, appId }: { onCloseDrawer: () => void; app
   const [currentTab, setCurrentTab] = useState<TabEnum>(TabEnum.recently);
 
   const getAppList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
-    return getMyApps({ parentId }).then((res) =>
+    return getAllApps({ parentId }).then((res) =>
       res.map<GetResourceListItemResponse>((item) => ({
         id: item._id,
         name: item.name,
@@ -221,9 +221,7 @@ const MobileDrawer = ({ onCloseDrawer, appId }: { onCloseDrawer: () => void; app
                         })}
                   >
                     <Avatar src={item.avatar} w={'24px'} borderRadius={'sm'} />
-                    <Box className={'textEllipsis'}>
-                      {item.name}
-                    </Box>
+                    <Box className={'textEllipsis'}>{item.name}</Box>
                   </Flex>
                 </Flex>
               ))}

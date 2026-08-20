@@ -3,7 +3,7 @@ import type {
   FlowNodeTemplateType,
   NodeTemplateListItemType
 } from '@fastgpt/global/core/workflow/type/node';
-import { getAppDetailById, getMyApps } from '../api';
+import { getAllApps, getAppDetailById } from '../api';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -56,7 +56,7 @@ export const getTeamAppTemplates = async (data?: {
       }));
     }
   }
-  return getMyApps(data).then((res) =>
+  return getAllApps(data).then((res) =>
     res.map((app) => ({
       tmbId: app.tmbId,
       id: app._id,

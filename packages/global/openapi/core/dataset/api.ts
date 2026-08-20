@@ -14,6 +14,7 @@ import {
   CollaboratorUpdateListSchema,
   ShowUsernameQuerySchema
 } from '../../../support/permission/collaborator.schema';
+import { PaginationResponseSchema, PaginationSchema } from '../../api';
 
 /* ============================================================================
  * API: 创建知识库
@@ -185,24 +186,26 @@ export type GetDatasetDetailResponse = z.infer<typeof GetDatasetDetailResponseSc
  * API: 获取知识库列表
  * Route: POST /api/core/dataset/list
  * ============================================================================ */
-export const GetDatasetListBodySchema = z.object({
-  parentId: ParentIdSchema.meta({
-    example: '68ad85a7463006c963799a05',
-    description: '父级文件夹 ID,null 或不传表示根目录'
-  }),
-  type: z.enum(DatasetTypeEnum).optional().meta({
-    example: DatasetTypeEnum.dataset,
-    description: '知识库类型筛选'
-  }),
-  searchKey: z.string().optional().meta({
-    example: '产品文档',
-    description: '搜索关键词,按名称和简介模糊匹配'
+export const GetDatasetListBodySchema = z
+  .object({
+    parentId: ParentIdSchema.meta({
+      example: '68ad85a7463006c963799a05',
+      description: '父级文件夹 ID,null 或不传表示根目录'
+    }),
+    type: z.enum(DatasetTypeEnum).optional().meta({
+      example: DatasetTypeEnum.dataset,
+      description: '知识库类型筛选'
+    }),
+    searchKey: z.string().optional().meta({
+      example: '产品文档',
+      description: '搜索关键词,按名称和简介模糊匹配'
+    })
   })
-});
+  .extend(PaginationSchema.shape);
 export type GetDatasetListBody = z.infer<typeof GetDatasetListBodySchema>;
 
 // 出参复用 DatasetListItemSchema
-export const GetDatasetListResponseSchema = z.array(DatasetListItemSchema);
+export const GetDatasetListResponseSchema = PaginationResponseSchema(DatasetListItemSchema);
 export type GetDatasetListResponse = z.infer<typeof GetDatasetListResponseSchema>;
 
 /* ============================================================================

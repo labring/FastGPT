@@ -50,6 +50,8 @@ function List() {
     onDelDataset,
     onUpdateDataset,
     myDatasets,
+    ScrollData,
+    isFetchingDatasets,
     folderDetail,
     searchKey,
     setSearchKey
@@ -398,84 +400,86 @@ function List() {
   };
 
   return (
-    <>
-      {formatDatasets.length > 0 && (
-        <Grid
-          ref={gridRef}
-          py={4}
-          gridTemplateColumns={
-            folderDetail
-              ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
-              : ['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
-          }
-          gridGap={5}
-          alignItems={'stretch'}
-        >
-          {renderVirtualGridItems(renderDatasetCard)}
-        </Grid>
-      )}
-      {myDatasets.length === 0 && (
-        <EmptyTip
-          pt={'35vh'}
-          text={
-            canCreateDataset
-              ? t('common:core.dataset.Empty Dataset Tips')
-              : t('common:core.dataset.Empty Dataset Tips No Permission')
-          }
-          flexGrow="1"
-        ></EmptyTip>
-      )}
+    <ScrollData h={'full'} minH={0} isLoading={isFetchingDatasets}>
+      <>
+        {formatDatasets.length > 0 && (
+          <Grid
+            ref={gridRef}
+            py={4}
+            gridTemplateColumns={
+              folderDetail
+                ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
+                : ['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
+            }
+            gridGap={5}
+            alignItems={'stretch'}
+          >
+            {renderVirtualGridItems(renderDatasetCard)}
+          </Grid>
+        )}
+        {myDatasets.length === 0 && (
+          <EmptyTip
+            pt={'35vh'}
+            text={
+              canCreateDataset
+                ? t('common:core.dataset.Empty Dataset Tips')
+                : t('common:core.dataset.Empty Dataset Tips No Permission')
+            }
+            flexGrow="1"
+          ></EmptyTip>
+        )}
 
-      {editedDataset && (
-        <EditResourceModal
-          {...editedDataset}
-          title={t('common:dataset.Edit Info')}
-          onClose={() => setEditedDataset(undefined)}
-          onEdit={async (data) => {
-            await onUpdateDataset({
-              id: editedDataset.id,
-              name: data.name,
-              intro: data.intro,
-              avatar: data.avatar
-            });
-          }}
-        />
-      )}
+        {editedDataset && (
+          <EditResourceModal
+            {...editedDataset}
+            title={t('common:dataset.Edit Info')}
+            onClose={() => setEditedDataset(undefined)}
+            onEdit={async (data) => {
+              await onUpdateDataset({
+                id: editedDataset.id,
+                name: data.name,
+                intro: data.intro,
+                avatar: data.avatar
+              });
+            }}
+          />
+        )}
 
-      {!!editPerDataset && (
-        <ConfigPerModal
-          onChangeOwner={(tmbId: string) =>
-            postChangeOwner({
-              datasetId: editPerDataset._id,
-              ownerId: tmbId
-            }).then(() => loadMyDatasets())
-          }
-          hasParent={!!parentId}
-          refetchResource={loadMyDatasets}
-          isInheritPermission={editPerDataset.inheritPermission}
-          resumeInheritPermission={() =>
-            resumeInheritPer(editPerDataset._id).then(() => Promise.all([loadMyDatasets()]))
-          }
-          avatar={editPerDataset.avatar}
-          name={editPerDataset.name}
-          managePer={{
-            defaultRole: ReadRoleVal,
-            permission: editPerDataset.permission,
-            onGetCollaboratorList: () => getCollaboratorList(editPerDataset._id),
-            roleList: DatasetRoleList,
-            onUpdateCollaborators: (props) =>
-              postUpdateDatasetCollaborators({
-                ...props,
-                datasetId: editPerDataset._id
-              }),
-            refreshDeps: [editPerDataset._id, editPerDataset.inheritPermission]
-          }}
-          onClose={() => setEditPerDatasetId(undefined)}
-        />
-      )}
-      <ConfirmModal />
-      <MoveConfirmModal />
-    </>
+        {!!editPerDataset && (
+          <ConfigPerModal
+            onChangeOwner={(tmbId: string) =>
+              postChangeOwner({
+                datasetId: editPerDataset._id,
+                ownerId: tmbId
+              }).then(() => loadMyDatasets())
+            }
+            hasParent={!!parentId}
+            refetchResource={loadMyDatasets}
+            isInheritPermission={editPerDataset.inheritPermission}
+            resumeInheritPermission={() =>
+              resumeInheritPer(editPerDataset._id).then(() => Promise.all([loadMyDatasets()]))
+            }
+            avatar={editPerDataset.avatar}
+            name={editPerDataset.name}
+            managePer={{
+              defaultRole: ReadRoleVal,
+              permission: editPerDataset.permission,
+              onGetCollaboratorList: () => getCollaboratorList(editPerDataset._id),
+              roleList: DatasetRoleList,
+              onUpdateCollaborators: (props) =>
+                postUpdateDatasetCollaborators({
+                  ...props,
+                  datasetId: editPerDataset._id
+                }),
+              refreshDeps: [editPerDataset._id, editPerDataset.inheritPermission]
+            }}
+            onClose={() => setEditPerDatasetId(undefined)}
+          />
+        )}
+        <ConfirmModal />
+        <MoveConfirmModal />
+      </>
+    </ScrollData>
   );
 }
 

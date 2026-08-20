@@ -26,6 +26,32 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 describe('POST /api/core/ai/skill/list', () => {
+  it('按 skillIds 查询时不会被默认分页截断', async () => {
+    const user = await getUser(`agent-skill-list-ids-${getNanoid(6)}`);
+    const skills = await MongoAgentSkills.create(
+      Array.from({ length: 51 }, (_, index) => ({
+        name: `Selected Skill ${index + 1}`,
+        type: AgentSkillTypeEnum.skill,
+        source: AgentSkillSourceEnum.personal,
+        teamId: user.teamId,
+        tmbId: user.tmbId
+      }))
+    );
+
+    const res = await Call<ListSkillsQuery, Record<string, never>, ListSkillsResponse>(handler, {
+      auth: user,
+      body: {
+        source: 'mine',
+        skillIds: skills.map((skill) => String(skill._id)),
+        withAppCount: false
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.total).toBe(51);
+    expect(res.data.list).toHaveLength(51);
+  });
+
   it('按 skillIds 查询时不受父目录过滤影响，并排除已删除 Skill', async () => {
     const user = await getUser(`agent-skill-list-${getNanoid(6)}`);
 

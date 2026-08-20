@@ -30,9 +30,7 @@ export const getConfigNames = (testPath) => {
   return configNames;
 };
 
-/**
- * 从测试路径向上查找最近的 Vitest 配置，确保测试在所属 workspace 中执行。
- */
+/** Find the nearest Vitest config so each test runs in its owning workspace. */
 export const findVitestConfig = (testPath) => {
   let currentDirectory = statSync(testPath).isDirectory() ? testPath : dirname(testPath);
   const candidateConfigNames = getConfigNames(testPath);
@@ -50,7 +48,7 @@ export const findVitestConfig = (testPath) => {
   throw new Error(`No Vitest config found for: ${relative(repositoryRoot, testPath)}`);
 };
 
-/** 按 Vitest 配置而不是目录分组，避免同一 workspace 的 unit/integration 配置相互覆盖。 */
+/** Group paths by config to avoid unit and integration runs overwriting each other. */
 export const groupTestsByConfig = (testPaths) => {
   const configTests = new Map();
 
@@ -82,9 +80,6 @@ export const groupTestsByConfig = (testPaths) => {
   return [...configTests.values()];
 };
 
-/**
- * 顺序执行各 workspace 的局部测试，避免多个 Vitest/Mongo 实例争抢 Agent 资源。
- */
 const runWorkspaceTests = ({ workspaceRoot, configPath, testPaths, vitestArgs }) =>
   new Promise((resolvePromise, rejectPromise) => {
     const child = spawn(

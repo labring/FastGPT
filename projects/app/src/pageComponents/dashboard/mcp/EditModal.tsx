@@ -30,7 +30,7 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import Path from '@/components/common/folder/Path';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getAppBasicInfoByIds, getMyApps } from '@/web/core/app/api';
+import { getAllApps, getAppBasicInfoByIds } from '@/web/core/app/api';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
@@ -95,7 +95,7 @@ const SelectAppModal = ({
 
   const { data: apps = [], loading: loadingApps } = useRequest(
     () =>
-      getMyApps({
+      getAllApps({
         searchKey,
         parentId
       }),

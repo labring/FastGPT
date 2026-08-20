@@ -1,4 +1,4 @@
-import { getMyApps, getAppBasicInfoByIds } from '@/web/core/app/api';
+import { getAllApps, getAppBasicInfoByIds } from '@/web/core/app/api';
 import { Box, Button, Grid, GridItem, HStack, VStack, Flex, Checkbox } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -47,7 +47,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
   } = useRequest(
     async () => {
       const [apps, paths] = await Promise.all([
-        getMyApps({
+        getAllApps({
           parentId,
           searchKey: searchAppName,
           type: [

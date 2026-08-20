@@ -20,7 +20,8 @@ import {
   OpenAPIStoreNodeItemTypeSchema
 } from '../../workflow/node';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
-import { BoolSchema, NumSchema } from '../../../../common/zod';
+import { BoolSchema, IntSchema, NumSchema } from '../../../../common/zod';
+import { PaginationResponseSchema, PaginationSchema } from '../../../api';
 import { migrateWorkflowToCurrent } from '../../../../core/workflow/migration';
 import z from 'zod';
 
@@ -288,6 +289,7 @@ export const ListAppBodySchema = z
       description: '应用名称或介绍搜索关键词'
     })
   })
+  .extend(PaginationSchema.shape)
   .meta({
     example: {
       parentId: '68ad85a7463006c963799a05',
@@ -318,8 +320,8 @@ export const AppListItemSchema = z
     description: '应用列表项'
   }) as z.ZodType<AppListItemType>;
 
-export const ListAppResponseSchema = z.array(AppListItemSchema).meta({
-  description: '应用列表'
+export const ListAppResponseSchema = PaginationResponseSchema(AppListItemSchema).meta({
+  description: '应用列表(分页)'
 });
 export type ListAppResponseType = z.infer<typeof ListAppResponseSchema>;
 

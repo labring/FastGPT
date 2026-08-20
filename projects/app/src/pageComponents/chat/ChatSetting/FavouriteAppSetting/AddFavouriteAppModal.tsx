@@ -5,7 +5,7 @@ import React, { useCallback, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { getMyApps } from '@/web/core/app/api';
+import { getAllApps } from '@/web/core/app/api';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getFavouriteApps, updateFavouriteApps } from '@/web/core/chat/api';
 import type { App } from '@/pageComponents/chat/ChatSetting/AppTree';
@@ -36,7 +36,7 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
   const { data: appData = { apps: [], paths: [] }, loading: isFetching } = useRequest(
     async () => {
       const [apps, paths] = await Promise.all([
-        getMyApps({
+        getAllApps({
           parentId,
           searchKey: searchAppNameValue,
           type: [

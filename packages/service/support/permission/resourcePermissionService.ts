@@ -28,6 +28,9 @@ type ResourceModel = Model<any>;
 /** 读取团队内某类资源的完整 ACL，供列表和运行时工具复用。 */
 export const getResourcePermissionsByTeam = resourcePermissionRepo.findByTeam;
 
+/** 查询指定资源的 ACL，用于只格式化分页结果中的当前页资源。 */
+export const getResourcePermissionsByResourceIds = resourcePermissionRepo.findByResourceIds;
+
 /** 查询成员拥有指定有效权限的资源标识，支持 resourceId 和 resourceName 两类资源。 */
 export const findResourceKeysByCollaboratorsPermission =
   resourcePermissionRepo.findResourceKeysByCollaboratorsPermission;
