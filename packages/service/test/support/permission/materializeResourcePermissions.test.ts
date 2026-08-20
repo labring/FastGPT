@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   OwnerRoleVal,
   PerResourceTypeEnum,
@@ -8,9 +9,14 @@ import {
 import { getCollaboratorId } from '@fastgpt/global/support/permission/utils';
 import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 import {
+  materializeResourcePermissions,
   resolveMaterializedResourcePermissions,
   type MigrationResource
 } from '@fastgpt/service/support/permission/migration/materializeResourcePermissions';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { resourcePermissionRepo } from '@fastgpt/service/support/permission/repository/resourcePermissionRepo';
+import { getFakeUsers } from '@test/datas/users';
 
 const user = (tmbId: string, permission: number): CollaboratorItemType => ({
   tmbId,
@@ -143,6 +149,73 @@ describe('resolveMaterializedResourcePermissions', () => {
         'app:b: missing parent a',
         'app:a: missing parent b',
         'app:orphan: missing parent missing'
+      ])
+    );
+  });
+});
+
+describe('materializeResourcePermissions', () => {
+  it('writes inherited ACLs when parent and child are processed in separate batches', async () => {
+    const findByResourceIdsSpy = vi.spyOn(resourcePermissionRepo, 'findByResourceIds');
+    const users = await getFakeUsers(2);
+    const parent = await MongoApp.create({
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      name: 'migration-parent',
+      type: AppTypeEnum.folder
+    });
+    const child = await MongoApp.create({
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      parentId: parent._id,
+      name: 'migration-child',
+      type: AppTypeEnum.simple
+    });
+
+    await mongoSessionRun(async (session) => {
+      await resourcePermissionRepo.replaceResource({
+        teamId: String(users.owner.teamId),
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: String(parent._id),
+        collaborators: [
+          { tmbId: String(users.owner.tmbId), permission: OwnerRoleVal },
+          { tmbId: String(users.members[0].tmbId), permission: ReadRoleVal }
+        ],
+        session
+      });
+      await resourcePermissionRepo.replaceResource({
+        teamId: String(users.owner.teamId),
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: String(child._id),
+        collaborators: [{ tmbId: String(users.owner.tmbId), permission: OwnerRoleVal }],
+        session
+      });
+    });
+
+    const result = await materializeResourcePermissions({
+      dryRun: false,
+      teamId: String(users.owner.teamId),
+      batchSize: 1
+    });
+
+    expect(result.errors).toEqual([]);
+    expect(result.resourceCount).toBe(2);
+    expect(result.updatedResourceCount).toBe(1);
+    const aclQueryCalls = findByResourceIdsSpy.mock.calls as Array<[{ session?: unknown }]>;
+    expect(aclQueryCalls).toHaveLength(2);
+    expect(aclQueryCalls.every(([query]) => Boolean(query.session))).toBe(true);
+
+    const childPermissions = await resourcePermissionRepo.findByResource({
+      teamId: String(users.owner.teamId),
+      resourceType: PerResourceTypeEnum.app,
+      resourceId: String(child._id)
+    });
+    expect(childPermissions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          tmbId: String(users.members[0].tmbId),
+          permission: ReadRoleVal
+        })
       ])
     );
   });
