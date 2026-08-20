@@ -1,8 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import {
-  beforeUpdateAppFormat,
-  validatePublishAppAgentSkillReadPermissions
-} from '@fastgpt/service/core/app/controller';
+import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
+import { extractAppResources } from '@fastgpt/service/core/app/resources';
+import { checkAppResourceReadPermissions } from '@fastgpt/service/support/permission/app/resource';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -457,15 +456,15 @@ describe('validatePublishAppAgentSkillReadPermissions', () => {
     ];
 
     await expect(
-      validatePublishAppAgentSkillReadPermissions({
-        nodes,
+      checkAppResourceReadPermissions({
+        resources: extractAppResources({ nodes }),
         tmbId: member.tmbId
       })
     ).rejects.toBe(SkillErrEnum.unAuthSkill);
 
     await expect(
-      validatePublishAppAgentSkillReadPermissions({
-        nodes,
+      checkAppResourceReadPermissions({
+        resources: extractAppResources({ nodes }),
         tmbId: owner.tmbId
       })
     ).resolves.toBeUndefined();

@@ -33,6 +33,7 @@ import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edg
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { useToolNodeList } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolNodeList';
 import { updateAgentLoopCoreWorkflowToolInputValue } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/workflowToolRunner';
+import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 
 const mockGetSystemToolRunTimeNodeFromSystemToolset = vi.fn();
 vi.mock('@fastgpt/service/core/workflow/utils', () => ({
@@ -947,6 +948,32 @@ describe('rewriteRuntimeWorkFlow', () => {
       ...opts
     }) as any;
 
+  const runWithToolSnapshot = ({
+    appId,
+    toolNames,
+    fn
+  }: {
+    appId: string;
+    toolNames: string[];
+    fn: () => Promise<unknown>;
+  }) => {
+    const resource = { type: 'tool' as const, id: appId, data: { toolNames } };
+    return runWithContext(
+      {
+        mcpClientMemory: {},
+        resourceContext: {
+          teamId: 'team1',
+          resources: [resource],
+          resourceMap: new Map([[`tool:${appId}`, resource]]),
+          appMap: new Map([[appId, { _id: appId }]]),
+          datasetMap: new Map(),
+          skillMap: new Map()
+        } as any
+      },
+      fn
+    );
+  };
+
   it('should return early when no toolSet nodes', async () => {
     const nodes = [makeNode('n1', FlowNodeTypeEnum.chatNode)];
     const edges = [makeEdge('n1', 'n2')];
@@ -1167,6 +1194,31 @@ describe('rewriteRuntimeWorkFlow', () => {
     expect(edges.find((e) => e.target === 'ts20')).toBeDefined();
   });
 
+  it('should only expand MCP tools declared by the resource snapshot', async () => {
+    const toolSetNode = makeNode('ts2', FlowNodeTypeEnum.toolSet, {
+      pluginId: 'mcp-app-1',
+      name: 'MCPTool',
+      toolConfig: {
+        mcpToolSet: { toolId: 'mcp-tool-1' }
+      }
+    } as any);
+    const nodes = [toolSetNode];
+    const edges: RuntimeEdgeItemType[] = [];
+
+    mockGetMCPChildren.mockResolvedValue([
+      { name: 'allowed', description: 'allowed', inputSchema: {} },
+      { name: 'blocked', description: 'blocked', inputSchema: {} }
+    ]);
+
+    await runWithToolSnapshot({
+      appId: 'mcp-app-1',
+      toolNames: ['allowed'],
+      fn: () => rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges })
+    });
+
+    expect(nodes.map((node) => node.nodeId)).toEqual(['ts20']);
+  });
+
   it('should keep resumed MCP toolSet memory edge after child node is rebuilt', async () => {
     const toolSetNode = makeNode('ts2', FlowNodeTypeEnum.toolSet, {
       pluginId: 'mcp-app-1',
@@ -1263,6 +1315,31 @@ describe('rewriteRuntimeWorkFlow', () => {
     expect(nodes.find((n) => n.nodeId === 'ts40')).toBeDefined();
     expect(nodes.find((n) => n.nodeId === 'ts41')).toBeDefined();
     expect(edges.filter((e) => e.target === 'ts40' || e.target === 'ts41').length).toBe(2);
+  });
+
+  it('should only expand HTTP tools declared by the resource snapshot', async () => {
+    const toolSetNode = makeNode('ts4', FlowNodeTypeEnum.toolSet, {
+      pluginId: 'http-plugin-1',
+      name: 'HTTPTool',
+      toolConfig: {
+        httpToolSet: {}
+      }
+    } as any);
+    const nodes = [toolSetNode];
+    const edges: RuntimeEdgeItemType[] = [];
+
+    mockGetHTTPToolList.mockResolvedValue([
+      { name: 'allowed', description: 'allowed', url: 'http://example.com/allowed' },
+      { name: 'blocked', description: 'blocked', url: 'http://example.com/blocked' }
+    ]);
+
+    await runWithToolSnapshot({
+      appId: 'http-plugin-1',
+      toolNames: ['allowed'],
+      fn: () => rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges })
+    });
+
+    expect(nodes.map((node) => node.nodeId)).toEqual(['ts40']);
   });
 
   // Helper: route MongoApp.find responses by the toolsetId it queries, since

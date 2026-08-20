@@ -116,9 +116,10 @@ export const mergeAppResources = (resources: AppResourcesType): AppResourcesType
 
 /** 判断节点是否通过工作流引用动态提供指定资源输入。 */
 export const nodeHasDynamicInput = (
-  node: Pick<StoreNodeItemType | RuntimeNodeItemType, 'inputs'>,
+  node: Pick<StoreNodeItemType | RuntimeNodeItemType, 'inputs'> | undefined,
   keys: string[]
-) => node.inputs?.some((input) => keys.includes(input.key) && nodeInputIsReference(input)) ?? false;
+) =>
+  node?.inputs?.some((input) => keys.includes(input.key) && nodeInputIsReference(input)) ?? false;
 
 /** 将工作流中的完整工具 ID 转为应用资源权限主体。 */
 export const normalizeAppToolResource = (toolId: unknown) => {

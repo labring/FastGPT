@@ -243,10 +243,13 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     app: appData
   });
   const { nodes, edges, chatConfig } = childVersion;
-  const resourceContext = await createWorkflowChildResourceContext(
-    childVersion.resources,
-    String(appData.teamId || runningAppInfo.teamId)
-  );
+  // 商业工具沿用系统工具语义，不把其关联工作流套入团队 App 资源快照。
+  const resourceContext = useResourceSnapshot
+    ? await createWorkflowChildResourceContext(
+        childVersion.resources,
+        String(appData.teamId || runningAppInfo.teamId)
+      )
+    : null;
   const pluginInputs = getWorkflowToolInputsFromStoreNodes(nodes);
   const workflowToolVariables = filterWorkflowToolInputVariables({
     inputs: pluginInputs,

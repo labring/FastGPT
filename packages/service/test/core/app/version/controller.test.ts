@@ -65,7 +65,8 @@ describe('getAppLatestVersion', () => {
           targetHandle: 'start-target-left'
         }
       ],
-      chatConfig: {}
+      chatConfig: {},
+      resources: []
     };
     const leanMock = vi.fn().mockResolvedValue(version);
     findOneMock.mockReturnValue({
@@ -153,7 +154,8 @@ describe('getAppLatestVersion', () => {
         }
       ],
       edges: [],
-      chatConfig: undefined
+      chatConfig: undefined,
+      resources: []
     };
     findOneMock.mockReturnValue({
       sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(version) })
@@ -200,7 +202,8 @@ describe('getAppVersionById', () => {
         }
       ],
       edges: [],
-      chatConfig: undefined
+      chatConfig: undefined,
+      resources: []
     };
     findOneMock.mockReturnValue({ lean: vi.fn().mockResolvedValue(version) });
 
@@ -216,5 +219,23 @@ describe('getAppVersionById', () => {
 
     expect(result.nodes).toEqual([]);
     expect(result.chatConfig.instruction).toBe('Legacy instruction');
+  });
+
+  it('rejects a published version that has not been migrated', async () => {
+    findOneMock.mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        _id: '507f1f77bcf86cd799439011',
+        nodes: [],
+        edges: [],
+        chatConfig: undefined
+      })
+    });
+
+    await expect(
+      getAppVersionById({
+        appId: 'app-id',
+        versionId: '507f1f77bcf86cd799439011'
+      })
+    ).rejects.toThrow('App resources are not migrated');
   });
 });

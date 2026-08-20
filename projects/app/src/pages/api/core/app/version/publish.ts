@@ -64,6 +64,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
         {
           tmbId,
           appId,
+          isAutoSave: true,
           nodes: normalizedWorkflow.nodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,

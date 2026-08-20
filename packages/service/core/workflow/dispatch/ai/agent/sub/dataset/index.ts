@@ -8,7 +8,6 @@ import { calculateCompressionThresholds } from '../../../../../../ai/llm/compres
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { MongoDataset } from '../../../../../../dataset/schema';
 import {
   defaultSearchDatasetData,
   type DefaultSearchDatasetDataProps
@@ -29,7 +28,7 @@ import {
 import { filterDatasetsByTmbId } from '../../../../../../dataset/utils';
 import {
   assertWorkflowDatasetResources,
-  getWorkflowDatasetResource
+  loadWorkflowDatasetResource
 } from '../../../../../utils/resource';
 import { nodeHasDynamicInput } from '../../../../../../app/resources';
 import { normalizeDatasetSearchInput } from '../../../../dataset/utils';
@@ -226,9 +225,10 @@ export const dispatchAgentDatasetSearch = async ({
     }
 
     // Get vector model
-    const dataset =
-      getWorkflowDatasetResource(datasetIds[0]) ??
-      (await MongoDataset.findById(datasetIds[0], 'vectorModel vlmModel').lean());
+    const dataset = await loadWorkflowDatasetResource({
+      datasetId: datasetIds[0],
+      dynamic: dynamicDataset
+    });
     const vectorModel = getEmbeddingModel(dataset?.vectorModel);
     // Get Rerank Model
     const rerankModelData = getRerankModel(datasetParams.rerankModel);

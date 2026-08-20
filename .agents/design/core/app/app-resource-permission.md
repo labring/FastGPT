@@ -132,7 +132,7 @@ Version 的 App，它只能作为迁移和反查缓存，不能作为运行时�
 
 当前 `resourceRefs.skillIds` 只是过渡结构。新代码只读写 `resources`，不做 `resources/resourceRefs` 双写或长期双读。
 
-迁移脚本负责：
+管理员迁移接口负责：
 
 1. 读取历史 `resourceRefs.skillIds` 和节点配置；
 2. 生成完整 `resources`；
@@ -211,10 +211,13 @@ extractAppResources({ nodes, chatConfig }): AppResource[];
 
 模型资源只记录 App/Version 配置中显式选择的模型。Dataset 的 `vectorModel`、`vlmModel` 随 Dataset 实体维护；需要统计一个应用的完整模型集合时，在读取 App.resources 的 dataset 后关联查询 Dataset 模型，不把 Dataset 自身配置复制到每条 App Version。默认 LLM、默认 Embedding、默认 VLM 和默认 STT 随系统配置变化，也不固化到 App Version。
 
+聊天页现有 `chatModels` 只展示工作流主对话节点的 `aiModel`；问题引导、查询扩展、深度搜索和 TTS 模型仅用于资源统计，不改变聊天页展示口径。
+
 动态资源 ID 无法在保存阶段确定时，不虚构资源记录。运行时必须保留输入是否来自引用的来源信息，不能只通过“资源是否命中快照”反推是否动态：
 
 - 静态输入：必须命中当前 App Version 的 `resources`，未命中视为版本数据不一致并拒绝；
 - 动态输入：按解析后的实际资源和 source 回退到现有运行身份鉴权；
+- source 来自现有节点输入的引用元数据（`nodeInputIsReference`），入口先计算并向下传递 `dynamic` 标记；
 - 回退使用当前运行入口已经确定的执行身份，不新增另一套身份选择规则；
 - 不能对所有未命中资源自动回退人的权限，否则提取遗漏或节点篡改会绕过应用资源快照。
 
@@ -292,6 +295,8 @@ MCP/HTTP 仍然是资源权限快照中的 `tool`。当其他 App 引用它时�
 }
 ```
 
+由于 MCP/HTTP 工具集没有产品版本，快照只固定父工具集和可选的 `toolNames`，不新增子工具版本语义。子工具的 schema 和执行配置继续沿用各自现有的加载路径；工具集后续删除或重命名子工具时，旧引用会在运行时不可用，同名子工具更新是否立即反映也遵循现有 MCP/HTTP 行为。
+
 ## 6. 保存权限校验与授权时点
 
 统一批量校验函数：
@@ -311,7 +316,8 @@ checkAppResourceReadPermissions({
 - `dataset`：使用现有知识库读取权限；
 - `skill`：使用现有 Skill 读取权限；
 - `model`：跳过资源权限校验；
-- root、团队边界、继承权限和资源删除状态复用现有 auth 服务。
+- root 只绕过 ACL，不绕过持久化资源的团队边界；继承权限和资源删除状态复用现有 auth 服务。
+- Test/Debug 的临时 root 请求保留跨团队调试语义，显式传入 allowRootCrossTeam，不影响保存和正式发布。
 
 该函数不会创建新的 `PerResourceTypeEnum`，因为 Agent/Tool 本质上复用 App 权限资源，Dataset 和 Skill 也已有各自权限模型。根据 `add-permission` 规范，本需求是在发布阶段组合已有权限资源，不是引入新的协作者资源类型。
 
@@ -346,13 +352,13 @@ checkAppResourceReadPermissions({
 
 正式 Chat、OutLink、v1/v2 API、定时任务、嵌套 App 和工具运行入口，把选中 Version 的 `resources` 显式传入请求级 Workflow Context。
 
-入口只做一次批量资源加载：按 `resources` 中的 ID 和当前工作流 `teamId` 分类型执行 `$in` 查询，得到同团队的 App、Dataset、Skill 实体，再把声明列表和实体 Map 一起放进只读 Workflow Context。静态节点执行优先复用 Context 中的实体；只有动态资源才按解析后的实际 ID 走运行人权限和必要的实体查询。
+入口只做一次批量资源加载：按 `resources` 中的 ID 和当前工作流 `teamId` 分类型执行 `$in` 查询，得到同团队的 App、Dataset、Skill 实体；所有静态资源都必须在查询结果中存在，否则入口立即失败。校验通过后，再把声明列表和实体 Map 一起放进只读 Workflow Context。静态节点执行优先复用 Context 中的实体；Dataset 的 `vectorModel`、`vlmModel` 等运行配置也从该实体读取。只有动态资源，或没有 App 资源上下文的非 App 调试场景，才按解析后的实际 ID 走运行人权限和必要的实体查询。
 
 ```text
 selected Version.resources
   -> group ids by resource type
   -> Mongo query with _id: { $in: ids }
-  -> validate team / entity existence
+  -> validate team / entity existence; missing resource fails before dispatch
   -> Workflow Context resourceMap + entityMap
   -> dispatch nodes
 ```
@@ -367,6 +373,7 @@ Dispatcher 和节点执行器不得根据 `appId` 再读取 `apps.resources`，�
 - 个人工具：要求 `tool:appId` 存在；
 - Agent `selectedTools` 中的工作流 App/插件：同样要求 `tool:appId` 存在；
 - MCP/HTTP：要求 `tool:parentAppId` 存在，并按 `toolNames` 检查子工具；
+- Agent 加载 MCP/HTTP 工具集时也必须先按 `toolNames` 过滤可见子工具，不能只在真正执行时拒绝；MCP/HTTP 的单子工具展开路径也必须复用同一过滤器；
 - Model：不做资源权限判断；
 - 系统工具和商业工具：继续走现有系统逻辑。
 
@@ -394,7 +401,9 @@ Dispatcher 和节点执行器不得根据 `appId` 再读取 `apps.resources`，�
 3. 子 App 执行时切换为子 Version 自己的 `resources`；
 4. 子 App 不继承父 App 的资源上下文。
 
-MCP/HTTP 工具集作为 `tool` 被父 Version 授权；工具集自身运行时使用自己的空资源上下文，不创建新的版本语义。
+父 App 动态选择子 App 时，只对“选择哪个子 App”回退运行人权限；子 App 加载成功后，仍使用该子 App 指定 Version 自己的资源快照。
+
+MCP/HTTP 工具集作为 `tool` 被父 Version 授权；工具集自身运行时使用自己的空资源上下文，不创建新的版本语义。商业工具沿用系统工具语义，不创建 App 资源上下文，也不对其关联工作流套用团队 App 快照。
 
 ### 7.5 Debug 和 Test
 
@@ -422,6 +431,8 @@ source 规则：
 - Model：不做资源权限检查，继续执行现有模型存在性和可用性逻辑；
 - 动态资源：解析实际值后按相同 source 规则检查当前操作人。
 
+root 的 Test/Debug 仍保留现有 root 语义：临时资源上下文不能先按 App teamId 过滤实体，并在权限校验中显式允许跨团队资源，避免跨团队资源在 root 权限校验前被误判为不存在。该例外只属于临时 Test/Debug，不适用于保存或发布。
+
 Test/Debug 不复用 App 已发布 Version 的授权，也不能接收客户端提交的 `resources`。即使调用人有当前 App 的读取权限，只要缺少请求节点引用资源的个人权限，本次 Test/Debug 就失败。
 
 非 App 来源的 Skill 编辑调试等场景继续使用原有权限逻辑，不强制套用 App 资源上下文。
@@ -436,7 +447,9 @@ Test/Debug 不复用 App 已发布 Version 的授权，也不能接收客户端�
 
 正式 Version 继续按当前 `{ appId, isPublish: true }` 和 `{ time: -1 }` 选择，不新增 `publishedVersionId`，不改变 `pluginData.nodeVersion` 的现有用途。
 
-历史 App 没有正式 Version 时，保留 `getAppLatestVersion` 回退到 `apps.modules / edges / chatConfig` 的行为，并在这条回退路径中用当前工作副本重新提取 `resources`。这样普通保存虽然不更新 `apps.resources`，也不会让新 modules 继续使用旧资源快照；迁移脚本回填的 `apps.resources` 只用于反查和历史缓存，不作为运行时授权事实。
+迁移完成后，正式 Version 缺少或无法解析 `resources` 视为迁移未完成并直接报错，不能按空资源继续运行；只有历史 App 完全没有正式 Version 时，才允许从当前工作副本重新提取资源。
+
+历史 App 没有正式 Version 时，保留 `getAppLatestVersion` 回退到 `apps.modules / edges / chatConfig` 的行为，并在这条回退路径中用当前工作副本重新提取 `resources`。这样普通保存虽然不更新 `apps.resources`，也不会让新 modules 继续使用旧资源快照；管理员迁移接口回填的 `apps.resources` 只用于反查和历史缓存，不作为运行时授权事实。
 
 该路径只是历史数据兜底。所有新建非文件夹 App 仍应生成首个正式 Version。
 
@@ -459,15 +472,17 @@ Skill 引用示例：
 
 Tool、Agent、Dataset 和 Model 后续存在真实反查需求时复用同一查询结构。
 
+本阶段的模型资源只提供应用可用模型的稳定快照输入，不新增模型权限。模型统计查询需要按 `modelType + id` 读取 App/Version 资源，并在需要完整口径时关联 Dataset 的 `vectorModel`、`vlmModel`；嵌套 App 的模型是否展开统计由后续统计接口明确，不改变当前运行授权。
+
 ## 10. 数据迁移
 
-迁移脚本是切换到 `resources` 的前置步骤，必须幂等、分页并支持 `dryRun`：
+管理员迁移接口 `POST /api/admin/4160/initAppResources` 是切换到 `resources` 的前置步骤，必须幂等、分页并支持 `dryRun`：
 
 1. 扫描所有 `app_versions`，根据各自 nodes 使用统一提取器生成 `resources`；
 2. 同时读取每条 Version 的 chatConfig，补齐问题引导和 TTS 等显式模型资源；
-3. 将旧 `resourceRefs.skillIds` 作为审计输入，与节点提取结果核对；
+3. 将旧 `resourceRefs.skillIds` 作为历史 Skill 引用补充合并到 `resources`，同时输出它与节点提取结果的差异；
 4. 对每个 App 读取最新正式 Version，将对应 `resources` 写入 `apps.resources`；
-5. 没有正式 Version 的历史 App，根据 `apps.modules + chatConfig` 回填 `apps.resources`，但不创建 Version；运行时仍以当前工作副本重新提取的资源为准；
+5. 没有正式 Version 的历史 App，根据 `apps.modules + chatConfig` 和 App 自身旧 `resourceRefs` 回填 `apps.resources`，但不创建 Version；运行时仍以当前工作副本重新提取的资源为准；已有正式 Version 的 App 只使用该最新 Version 的资源事实，不再把 App 级旧字段额外合并进去；
 6. 历史正式 Version 无法还原当时的发布者权限，迁移时信任已经持久化的正式配置，将其视为升级前已授权资源，保证升级后运行连续性；
 7. dry-run 输出扫描数量、旧 Skill 引用数量、旧引用与节点提取结果的差异数量和资源生成结果；无法静态提取的动态引用继续按运行时 source 规则处理；
 8. 校验 Version 资源、App 最新发布缓存、旧 Skill 引用数量和差异数量；
@@ -475,7 +490,7 @@ Tool、Agent、Dataset 和 Model 后续存在真实反查需求时复用同一�
 10. 将旧 `resourceRefs.skillIds` 索引声明为 deprecated，并由索引管理器精确清理；
 11. 新业务代码只保留 `resources`，不提供旧字段兼容分支。
 
-迁移脚本必须复用线上 `extractAppResources`，不能复制另一套解析规则。
+管理员迁移接口必须复用线上 `extractAppResources`，不能复制另一套解析规则。
 
 ## 11. 一致性约束
 
@@ -489,7 +504,7 @@ Tool、Agent、Dataset 和 Model 后续存在真实反查需求时复用同一�
 - 动态资源只能在明确保留动态来源信息时回退现有运行身份鉴权；
 - Tool 必须进入资源权限快照，MCP/HTTP 使用父 App ID 和可选 `toolNames`；
 - `resourceRefs` 只用于迁移输入，迁移后从数据、字段 Schema、查询和业务代码中删除；旧索引通过 deprecated 声明交给索引管理器清理；
-- `authTmbId`、App 入口权限、资源实体检查和团队边界保持原样；
+- `authTmbId`、App 入口权限、资源实体检查和团队边界保持原样；持久化快照不允许跨团队，只有 Test/Debug root 临时请求保留跨团队例外；
 - MCP/HTTP 更新继续原地修改单条物理记录，不新增产品版本能力。
 
 ## 12. 实施 TODO
@@ -506,6 +521,6 @@ Tool、Agent、Dataset 和 Model 后续存在真实反查需求时复用同一�
 - [x] 保留知识库 `authTmbId` 和非 App 调试场景的既有逻辑。
 - [x] 保持 `update.ts`、`transitionWorkflow` 和 MCP/HTTP 更新的现有职责。
 - [x] 将 Skill 统计迁移到 `apps.resources` 的 `$elemMatch` 查询。
-- [x] 编写迁移脚本、dry-run 审计和旧索引清理声明。
+- [x] 编写管理员迁移接口、dry-run 审计和旧索引清理声明。
 - [ ] 覆盖发布后人员撤权、全量保存校验、Test/Debug source 鉴权和动态资源回退测试。
 - [ ] 覆盖模型统计、嵌套 App、工具子项、历史回退和迁移测试。

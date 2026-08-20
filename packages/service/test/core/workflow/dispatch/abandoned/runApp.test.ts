@@ -8,6 +8,7 @@ import { summarizeRuntimeNodeResponses } from '../../../../../core/workflow/disp
 const runWorkflowMock = vi.fn();
 const authAppByTmbIdMock = vi.fn();
 const getUserChatInfoMock = vi.fn();
+const getAppVersionByIdMock = vi.fn();
 
 vi.mock('../../../../../core/workflow/dispatch/index', () => ({
   runWorkflow: (args: any) => runWorkflowMock(args)
@@ -19,6 +20,10 @@ vi.mock('../../../../../support/permission/app/auth', () => ({
 
 vi.mock('../../../../../support/user/team/utils', () => ({
   getUserChatInfo: (...args: any[]) => getUserChatInfoMock(...args)
+}));
+
+vi.mock('../../../../../core/app/version/controller', () => ({
+  getAppVersionById: (...args: any[]) => getAppVersionByIdMock(...args)
 }));
 
 import { dispatchAppRequest } from '../../../../../core/workflow/dispatch/abandoned/runApp';
@@ -76,6 +81,22 @@ describe('abandoned dispatchAppRequest', () => {
         externalWorkflowVariables: {}
       }
     });
+    getAppVersionByIdMock.mockResolvedValue({
+      versionId: '',
+      versionName: 'child',
+      nodes: [],
+      edges: [],
+      chatConfig: {
+        variables: [
+          {
+            key: 'shared',
+            type: VariableInputEnum.input,
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ]
+      },
+      resources: []
+    });
     runWorkflowMock.mockImplementation(async (args: any) => {
       childInitialValue = args.variableState.get('shared');
       await args.variableState.set('shared', 'child-value');
@@ -102,6 +123,10 @@ describe('abandoned dispatchAppRequest', () => {
         teamId: 'team',
         tmbId: 'parent-tmb',
         name: 'parent'
+      },
+      runningUserInfo: {
+        tmbId: 'parent-tmb',
+        teamId: 'team'
       },
       workflowStreamResponse: vi.fn(),
       histories: [],

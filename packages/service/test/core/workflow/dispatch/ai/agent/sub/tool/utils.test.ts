@@ -11,6 +11,7 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { getAgentRuntimeTools } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils';
+import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import type { NodeToolConfigType } from '@fastgpt/global/core/workflow/type/node';
 
 const {
@@ -56,18 +57,21 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/common/logger', () => ({
-  LogCategories: {
-    MODULE: {
-      AI: {
-        AGENT: 'agent'
-      }
+vi.mock('@fastgpt/service/common/logger', () => {
+  const logCategory = new Proxy(
+    {},
+    {
+      get: () => logCategory
     }
-  },
-  getLogger: vi.fn(() => ({
-    warn: vi.fn()
-  }))
-}));
+  );
+
+  return {
+    LogCategories: logCategory,
+    getLogger: vi.fn(() => ({
+      warn: vi.fn()
+    }))
+  };
+});
 
 const mcpInputSchema = {
   type: 'object',
@@ -482,6 +486,17 @@ describe('getAgentRuntimeTools schema loading', () => {
     }
   );
 
+  it('preserves dynamic access for a regular workflow tool', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      dynamic: true,
+      tools: [{ id: 'workflow_app', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].dynamic).toBe(true);
+  });
+
   it('skips saved Agent tools with unsupported special inputs', async () => {
     const tools = await getAgentRuntimeTools({
       tmbId: 'tmb_1',
@@ -599,6 +614,51 @@ describe('getAgentRuntimeTools schema loading', () => {
       id: 'mcp_app',
       name: 'mcp_app name'
     });
+  });
+
+  it('does not expose undeclared MCP child tools from the resource snapshot', async () => {
+    const toolsetApp = {
+      ...appMap.mcp_app,
+      modules: [
+        {
+          ...appMap.mcp_app.modules[0],
+          toolConfig: {
+            mcpToolSet: {
+              url: 'https://mcp.example.com',
+              headerSecret: {},
+              toolList: [mcpTool, { ...mcpTool, name: 'admin' }]
+            }
+          }
+        }
+      ]
+    };
+    const resource = {
+      type: 'tool' as const,
+      id: 'mcp_app',
+      data: { toolNames: ['search'] }
+    };
+
+    const tools = await runWithContext(
+      {
+        mcpClientMemory: {},
+        resourceContext: {
+          teamId: 'team_1',
+          resources: [resource],
+          resourceMap: new Map([['tool:mcp_app', resource]]),
+          appMap: new Map([['mcp_app', toolsetApp]]),
+          datasetMap: new Map(),
+          skillMap: new Map()
+        }
+      },
+      () =>
+        getAgentRuntimeTools({
+          tmbId: 'tmb_1',
+          tools: [{ id: 'mcp_app', config: {} }]
+        })
+    );
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
   });
 
   it('loads a selected MCP tool with its input schema', async () => {
@@ -815,6 +875,84 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.parameters).toEqual(httpRequestSchema);
     expect(tools[0].requestSchema.function.parameters).not.toEqual(httpInputSchema);
     expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_app/create');
+  });
+
+  it.each([
+    { id: 'mcp-mcp_app/search', name: 'search', appId: 'mcp_app' },
+    { id: 'http-http_app/create', name: 'create', appId: 'http_app' }
+  ])(
+    'loads dynamic $name without using the parent resource snapshot',
+    async ({ id, name, appId }) => {
+      const tools = await runWithContext(
+        {
+          mcpClientMemory: {},
+          resourceContext: {
+            teamId: 'team_1',
+            resources: [],
+            resourceMap: new Map(),
+            appMap: new Map(),
+            datasetMap: new Map(),
+            skillMap: new Map()
+          }
+        },
+        () =>
+          getAgentRuntimeTools({
+            tmbId: 'tmb_1',
+            dynamic: true,
+            tools: [{ id, config: {} }]
+          })
+      );
+
+      expect(tools).toHaveLength(1);
+      expect(tools[0].name).toBe(name);
+      expect(authAppByTmbIdMock).toHaveBeenCalledWith(
+        expect.objectContaining({ appId, tmbId: 'tmb_1' })
+      );
+    }
+  );
+
+  it('does not expose an undeclared HTTP child tool from the resource snapshot', async () => {
+    const toolsetApp = {
+      ...appMap.http_app,
+      modules: [
+        {
+          ...appMap.http_app.modules[0],
+          toolConfig: {
+            httpToolSet: {
+              baseUrl: 'https://api.example.com',
+              headerSecret: {},
+              toolList: [httpTool, { ...httpTool, name: 'admin' }]
+            }
+          }
+        }
+      ]
+    };
+    const resource = {
+      type: 'tool' as const,
+      id: 'http_app',
+      data: { toolNames: ['create'] }
+    };
+
+    const tools = await runWithContext(
+      {
+        mcpClientMemory: {},
+        resourceContext: {
+          teamId: 'team_1',
+          resources: [resource],
+          resourceMap: new Map([['tool:http_app', resource]]),
+          appMap: new Map([['http_app', toolsetApp]]),
+          datasetMap: new Map(),
+          skillMap: new Map()
+        }
+      },
+      () =>
+        getAgentRuntimeTools({
+          tmbId: 'tmb_1',
+          tools: [{ id: 'http-http_app/admin', config: {} }]
+        })
+    );
+
+    expect(tools).toEqual([]);
   });
 
   it('loads a legacy HTTP tool without isToolParam as an agent tool', async () => {

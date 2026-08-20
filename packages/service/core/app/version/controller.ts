@@ -1,9 +1,19 @@
-import { type AppSchemaType } from '@fastgpt/global/core/app/type';
+import {
+  AppResourcesSchema,
+  type AppResourcesType,
+  type AppSchemaType
+} from '@fastgpt/global/core/app/type';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { MongoAppVersion } from './schema';
 import { Types } from '../../../common/mongo';
 import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 import { decodeToolSetNodesFromStorage } from '../jsonSchemaStorage';
 import { extractAppResources } from '../resources';
+
+const getVersionResources = (resources: unknown): AppResourcesType => {
+  if (!Array.isArray(resources)) throw new UserError('App resources are not migrated');
+  return AppResourcesSchema.parse(resources);
+};
 
 export const getAppLatestVersion = async (appId: string, app?: AppSchemaType) => {
   const version = await MongoAppVersion.findOne({
@@ -26,7 +36,7 @@ export const getAppLatestVersion = async (appId: string, app?: AppSchemaType) =>
     return {
       versionId: String(version._id),
       versionName: version.versionName,
-      resources: version.resources ?? [],
+      resources: getVersionResources(version.resources),
       ...normalizedWorkflow
     };
   }
@@ -72,7 +82,7 @@ export const getAppVersionById = async ({
       return {
         versionId: String(version._id),
         versionName: version.versionName,
-        resources: version.resources ?? [],
+        resources: getVersionResources(version.resources),
         ...normalizedWorkflow
       };
     }

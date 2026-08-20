@@ -28,47 +28,44 @@ export type WorkflowResourceContext = {
   skillMap: Map<string, AgentSkillSchemaType>;
 };
 
+export type WorkflowResourceEntities = {
+  apps: AppSchemaType[];
+  datasets: DatasetSchemaType[];
+  skills: AgentSkillSchemaType[];
+};
+
+/** 静态资源快照不一致错误；不能被工具加载器降级为单个工具不可用。 */
+export class WorkflowResourceError extends UserError {}
+
+export const isWorkflowResourceError = (error: unknown): error is WorkflowResourceError =>
+  error instanceof WorkflowResourceError;
+
 const getResourceKey = (type: AppResourceType, id: string, modelType?: string) =>
   type === 'model' ? `${type}:${modelType}:${id}` : `${type}:${id}`;
 
-/** 创建请求级只读资源快照，供工作流节点校验静态资源引用。 */
-export const createWorkflowResourceContext = (
-  resources: AppResourcesType,
-  teamId?: string
-): WorkflowResourceContext => {
-  if (!Array.isArray(resources)) throw new UserError('App resources are not migrated');
-
-  const normalizedResources = mergeAppResources(resources);
-
-  return {
-    teamId,
-    resources: normalizedResources,
-    resourceMap: new Map(
-      normalizedResources.map((resource) => [
-        getResourceKey(
-          resource.type,
-          resource.id,
-          resource.type === 'model' ? resource.data.modelType : undefined
-        ),
-        resource
-      ])
-    ),
-    appMap: new Map(),
-    datasetMap: new Map(),
-    skillMap: new Map()
-  };
-};
-
-/** 按资源快照批量加载实体，入口和子 App 各自只创建一次资源上下文。 */
+/** 按资源快照批量加载实体；root 调试请求跳过团队过滤，但仍校验实体存在。 */
 export const loadWorkflowResourceContext = async ({
   resources,
-  teamId
+  teamId,
+  isRoot = false
 }: {
   resources: AppResourcesType;
   teamId?: string;
+  isRoot?: boolean;
 }) => {
-  const context = createWorkflowResourceContext(resources, teamId);
-  const normalizedResources = context.resources;
+  if (!Array.isArray(resources)) throw new UserError('App resources are not migrated');
+
+  const normalizedResources = mergeAppResources(resources);
+  const resourceMap = new Map(
+    normalizedResources.map((resource) => [
+      getResourceKey(
+        resource.type,
+        resource.id,
+        resource.type === 'model' ? resource.data.modelType : undefined
+      ),
+      resource
+    ])
+  );
   const appIds = normalizedResources
     .filter((resource) => resource.type === 'agent' || resource.type === 'tool')
     .map((resource) => resource.id);
@@ -84,21 +81,21 @@ export const loadWorkflowResourceContext = async ({
       ? MongoApp.find({
           _id: { $in: appIds },
           deleteTime: null,
-          ...(teamId ? { teamId } : {})
+          ...(teamId && !isRoot ? { teamId } : {})
         }).lean()
       : [],
     datasetIds.length
       ? MongoDataset.find({
           _id: { $in: datasetIds },
           deleteTime: null,
-          ...(teamId ? { teamId } : {})
+          ...(teamId && !isRoot ? { teamId } : {})
         }).lean()
       : [],
     skillIds.length
       ? MongoAgentSkills.find({
           _id: { $in: skillIds },
           deleteTime: null,
-          ...(teamId
+          ...(teamId && !isRoot
             ? {
                 $or: [{ teamId }, { source: AgentSkillSourceEnum.system }]
               }
@@ -123,12 +120,23 @@ export const loadWorkflowResourceContext = async ({
   });
 
   return {
-    ...context,
+    teamId,
     appMap,
     datasetMap,
-    skillMap
+    skillMap,
+    resources: normalizedResources,
+    resourceMap
   } satisfies WorkflowResourceContext;
 };
+
+/** 将资源上下文转换为权限校验可复用的实体集合，避免重复查询资源实体。 */
+export const getWorkflowResourceEntities = (
+  context: WorkflowResourceContext
+): WorkflowResourceEntities => ({
+  apps: Array.from(context.appMap.values()),
+  datasets: Array.from(context.datasetMap.values()),
+  skills: Array.from(context.skillMap.values())
+});
 
 /** 校验当前工作流版本声明了指定资源；没有上下文时保留非 App 调试场景的旧权限语义。 */
 export const assertWorkflowResource = ({
@@ -145,13 +153,37 @@ export const assertWorkflowResource = ({
   if (!context) return;
 
   const resource = context.resourceMap.get(getResourceKey(type, id));
-  if (!resource) throw new UserError(`App resource is not declared: ${type}:${id}`);
+  if (!resource) throw new WorkflowResourceError(`App resource is not declared: ${type}:${id}`);
 
   if (resource.type === 'tool' && toolName && resource.data?.toolNames?.length) {
     if (!resource.data.toolNames.includes(toolName)) {
-      throw new UserError(`App tool is not declared: ${id}/${toolName}`);
+      throw new WorkflowResourceError(`App tool is not declared: ${id}/${toolName}`);
     }
   }
+};
+
+/** 过滤工具集子工具；资源快照未限制子工具时返回完整工具集。 */
+export const filterWorkflowToolList = <Tool extends { name: string }>({
+  context,
+  appId,
+  tools
+}: {
+  context?: WorkflowResourceContext;
+  appId: string;
+  tools: Tool[];
+}) => {
+  if (!context) return tools;
+
+  const resource = context.resourceMap.get(getResourceKey('tool', appId));
+  if (!resource || resource.type !== 'tool') {
+    throw new WorkflowResourceError(`App resource is not declared: tool:${appId}`);
+  }
+
+  const toolNames = resource.data?.toolNames;
+  if (!toolNames?.length) return tools;
+
+  const allowedNames = new Set(toolNames);
+  return tools.filter((tool) => allowedNames.has(tool.name));
 };
 
 /** 校验工作流本次使用的知识库集合是否属于当前版本快照。 */
@@ -165,21 +197,44 @@ export const assertWorkflowDatasetResources = ({
   const context = getWorkflowResourceContext();
   if (!context || dynamic) return;
 
-  datasetIds.forEach((id) =>
-    (() => {
-      assertWorkflowResource({
-        context,
-        type: 'dataset',
-        id
-      });
-      if (!context.datasetMap.has(id)) throw DatasetErrEnum.unExist;
-    })()
-  );
+  datasetIds.forEach((id) => {
+    assertWorkflowResource({
+      context,
+      type: 'dataset',
+      id
+    });
+    if (!context.datasetMap.has(id)) throw DatasetErrEnum.unExist;
+  });
 };
 
 /** 读取当前资源上下文已批量加载的知识库实体。 */
 export const getWorkflowDatasetResource = (datasetId: string) =>
   getWorkflowResourceContext()?.datasetMap.get(datasetId);
+
+/** 读取工作流使用的知识库；静态引用复用快照，动态引用保留运行人权限查询。 */
+export const loadWorkflowDatasetResource = async ({
+  datasetId,
+  dynamic = false,
+  fields = 'vectorModel vlmModel'
+}: {
+  datasetId: string;
+  dynamic?: boolean;
+  fields?: string;
+}) => {
+  const context = getWorkflowResourceContext();
+  if (context && !dynamic) {
+    assertWorkflowResource({
+      context,
+      type: 'dataset',
+      id: datasetId
+    });
+    const dataset = context.datasetMap.get(datasetId);
+    if (!dataset) throw DatasetErrEnum.unExist;
+    return dataset;
+  }
+
+  return MongoDataset.findById(datasetId, fields).lean();
+};
 
 /** 加载 App 或工具集，并将资源权限切换为当前 App Version 的快照。 */
 export const loadWorkflowAppResource = async ({

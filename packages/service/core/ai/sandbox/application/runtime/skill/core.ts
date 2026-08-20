@@ -183,6 +183,15 @@ export const injectAgentSkillFilesToSandbox = async ({
   }
 
   const resourceContext = getWorkflowResourceContext();
+  if (resourceContext && !dynamic) {
+    skillIds.forEach((skillId) =>
+      assertWorkflowResource({
+        context: resourceContext,
+        type: 'skill',
+        id: skillId
+      })
+    );
+  }
   const teamSkills =
     resourceContext && !dynamic
       ? skillIds

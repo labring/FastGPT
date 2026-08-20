@@ -1,20 +1,32 @@
-import { pathToFileURL } from 'node:url';
-import mongoose from 'mongoose';
+import { NextAPI } from '@/service/middleware/entry';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { BoolSchema } from '@fastgpt/global/common/zod';
 import { AppResourcesSchema, type AppResourcesType } from '@fastgpt/global/core/app/type';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 import { extractAppResources, mergeAppResources } from '@fastgpt/service/core/app/resources';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { Types } from '@fastgpt/service/common/mongo';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import z from 'zod';
 
-const APP_COLLECTION = 'apps';
-const APP_VERSION_COLLECTION = 'app_versions';
+/*
+ * API: 初始化 App 资源快照
+ * Route: POST /api/admin/4160/initAppResources
+ * Method: POST
+ * Description: 回填 App 与 App Version 的 resources，并清理历史 resourceRefs。
+ * Tags: ['Admin', 'DataClean', 'App', 'Write']
+ */
 
 type LegacyResourceRefs = {
   skillIds?: unknown;
 };
 
 type RawWorkflowRecord = {
-  _id?: mongoose.Types.ObjectId;
+  _id?: Types.ObjectId;
   appId?: unknown;
   isPublish?: unknown;
   nodes?: unknown;
@@ -25,19 +37,26 @@ type RawWorkflowRecord = {
   resourceRefs?: LegacyResourceRefs;
 };
 
-type MigrationOptions = {
-  dryRun: boolean;
-  uri: string;
-};
+const InitAppResourcesBodySchema = z.object({
+  dryRun: BoolSchema.optional().default(true)
+});
+export type InitAppResourcesBodyType = z.infer<typeof InitAppResourcesBodySchema>;
 
-type MigrationStats = {
-  appsScanned: number;
-  versionsScanned: number;
-  appsUpdated: number;
-  versionsUpdated: number;
-  legacySkillRefs: number;
-  legacySkillMismatches: number;
-};
+const AppResourcesMigrationStatsSchema = z.object({
+  appsScanned: z.number().int().nonnegative(),
+  versionsScanned: z.number().int().nonnegative(),
+  appsUpdated: z.number().int().nonnegative(),
+  versionsUpdated: z.number().int().nonnegative(),
+  legacySkillRefs: z.number().int().nonnegative(),
+  legacySkillMismatches: z.number().int().nonnegative()
+});
+type MigrationStats = z.infer<typeof AppResourcesMigrationStatsSchema>;
+
+const InitAppResourcesResponseSchema = z.object({
+  dryRun: z.boolean(),
+  stats: AppResourcesMigrationStatsSchema
+});
+export type InitAppResourcesResponseType = z.infer<typeof InitAppResourcesResponseSchema>;
 
 type MigratedRecord = Pick<RawWorkflowRecord, '_id' | 'resources' | 'resourceRefs'>;
 
@@ -79,6 +98,15 @@ const countMissingLegacySkills = ({
   return legacySkillIds.filter((id) => !skillIds.has(id)).length;
 };
 
+const mergeLegacySkillResources = (
+  resources: AppResourcesType,
+  legacySkillIds: string[]
+): AppResourcesType =>
+  mergeAppResources([
+    ...resources,
+    ...legacySkillIds.map((id) => ({ type: 'skill' as const, id }))
+  ]);
+
 const buildResources = ({
   nodes,
   modules,
@@ -109,47 +137,10 @@ const buildResources = ({
     legacySkillIds,
     resources: extracted
   });
-  return AppResourcesSchema.parse(
-    mergeAppResources([
-      ...extracted,
-      ...legacySkillIds.map((id) => ({ type: 'skill' as const, id }))
-    ])
-  );
+  return AppResourcesSchema.parse(mergeLegacySkillResources(extracted, legacySkillIds));
 };
 
-const parseOptions = (args: string[]): MigrationOptions => {
-  let dryRun = true;
-
-  for (const arg of args[0] === '--' ? args.slice(1) : args) {
-    if (arg === '--execute') {
-      dryRun = false;
-      continue;
-    }
-    if (arg === '--dry-run') {
-      dryRun = true;
-      continue;
-    }
-    if (arg === '--help' || arg === '-h') {
-      console.log(
-        [
-          'Usage:',
-          '  MONGODB_URI=<uri> pnpm --filter @fastgpt/app run migrate:app-resources -- [--dry-run|--execute]',
-          '',
-          'The default mode is dry-run. Use --execute to write resources and remove resourceRefs.',
-          'Run the dry-run once and inspect the migration output before executing it.'
-        ].join('\n')
-      );
-      process.exit(0);
-    }
-    throw new Error(`Unknown argument: ${arg}`);
-  }
-
-  const uri = process.env.MONGODB_URI;
-  if (!uri) throw new Error('MONGODB_URI is required');
-  return { dryRun, uri };
-};
-
-type MongoCollection = ReturnType<NonNullable<typeof mongoose.connection.db>['collection']>;
+type MongoCollection = typeof MongoApp.collection;
 
 const migrateCollection = async ({
   collection,
@@ -163,7 +154,8 @@ const migrateCollection = async ({
   isVersion: boolean;
 }) => {
   const latestPublishedResources = new Map<string, AppResourcesType>();
-  const cursor = collection.find({}).sort({ time: -1, _id: -1 });
+  // 必须与 getAppLatestVersion 的现有 { time: -1 } 选择规则一致，不引入新的版本排序语义。
+  const cursor = collection.find({}).sort({ time: -1 });
 
   for await (const rawRecord of cursor) {
     const record = rawRecord as RawWorkflowRecord;
@@ -221,7 +213,7 @@ const verifyPublishedCaches = async ({
 }) => {
   for (const [appId, expectedResources] of latestPublishedResources) {
     const app = await appCollection.findOne(
-      { _id: new mongoose.Types.ObjectId(appId) },
+      { _id: new Types.ObjectId(appId) },
       { projection: { resources: 1 } }
     );
     if (!app || JSON.stringify(app.resources) !== JSON.stringify(expectedResources)) {
@@ -230,104 +222,93 @@ const verifyPublishedCaches = async ({
   }
 };
 
-const run = async ({ dryRun, uri }: MigrationOptions) => {
-  await mongoose.connect(uri);
+/** 管理员 App 资源迁移；默认只扫描校验，dryRun=false 时才写入数据库。 */
+export async function runInitAppResourcesMigration(
+  params: InitAppResourcesBodyType
+): Promise<InitAppResourcesResponseType> {
+  const stats = createStats();
+  const versionCollection = MongoAppVersion.collection;
+  const appCollection = MongoApp.collection;
 
-  try {
-    const database = mongoose.connection.db;
-    if (!database) throw new Error('MongoDB database connection is unavailable');
+  // Version 是正式资源事实，先计算最新发布版本，再用它回填 App 缓存。
+  const latestPublishedResources = await migrateCollection({
+    collection: versionCollection,
+    stats,
+    dryRun: params.dryRun,
+    isVersion: true
+  });
 
-    const stats = createStats();
-    const versionCollection = database.collection(APP_VERSION_COLLECTION);
-    const appCollection = database.collection(APP_COLLECTION);
-
-    // Version 是正式资源事实，先计算最新发布版本，再用它回填 App 缓存。
-    const latestPublishedResources = await migrateCollection({
-      collection: versionCollection,
-      stats,
-      dryRun,
-      isVersion: true
-    });
-
-    const appCursor = appCollection.find({}).sort({ _id: 1 });
-    for await (const rawRecord of appCursor) {
-      const record = rawRecord as RawWorkflowRecord;
-      stats.appsScanned += 1;
-      const appId = record._id === undefined ? undefined : String(record._id);
-      if (appId && latestPublishedResources.has(appId)) {
-        const legacySkillIds = getLegacySkillIds(record.resourceRefs);
-        stats.legacySkillRefs += legacySkillIds.length;
-        stats.legacySkillMismatches += countMissingLegacySkills({
-          legacySkillIds,
-          resources: latestPublishedResources.get(appId)!
-        });
-      }
-      const resources =
-        (appId && latestPublishedResources.get(appId)) || buildResources({ ...record, stats });
-
-      if (dryRun) continue;
-      const result = await appCollection.updateOne(
-        { _id: record._id },
-        {
-          $set: { resources },
-          $unset: { resourceRefs: 1 }
-        }
-      );
-      if (result.matchedCount !== 1) {
-        throw new Error(`Migration update missed app ${record._id}`);
-      }
-      stats.appsUpdated += 1;
+  const appCursor = appCollection.find({}).sort({ _id: 1 });
+  for await (const rawRecord of appCursor) {
+    const record = rawRecord as RawWorkflowRecord;
+    stats.appsScanned += 1;
+    const appId = record._id === undefined ? undefined : String(record._id);
+    if (appId && latestPublishedResources.has(appId)) {
+      const legacySkillIds = getLegacySkillIds(record.resourceRefs);
+      stats.legacySkillRefs += legacySkillIds.length;
+      stats.legacySkillMismatches += countMissingLegacySkills({
+        legacySkillIds,
+        resources: latestPublishedResources.get(appId)!
+      });
     }
+    const resources =
+      appId && latestPublishedResources.has(appId)
+        ? latestPublishedResources.get(appId)!
+        : buildResources({ ...record, stats });
 
-    if (!dryRun) {
-      await Promise.all([
-        verifyResources({
-          collection: versionCollection,
-          collectionName: APP_VERSION_COLLECTION
-        }),
-        verifyResources({
-          collection: appCollection,
-          collectionName: APP_COLLECTION
-        }),
-        verifyPublishedCaches({
-          appCollection,
-          latestPublishedResources
-        })
-      ]);
-      const [remainingApps, remainingVersions] = await Promise.all([
-        appCollection.countDocuments({ resourceRefs: { $exists: true } }),
-        versionCollection.countDocuments({ resourceRefs: { $exists: true } })
-      ]);
-      if (remainingApps > 0 || remainingVersions > 0) {
-        throw new Error(
-          `resourceRefs migration incomplete: apps=${remainingApps}, versions=${remainingVersions}`
-        );
+    if (params.dryRun) continue;
+    const result = await appCollection.updateOne(
+      { _id: record._id },
+      {
+        $set: { resources },
+        $unset: { resourceRefs: 1 }
       }
-    }
-
-    console.log(
-      JSON.stringify(
-        {
-          mode: dryRun ? 'dry-run' : 'execute',
-          appCollection: APP_COLLECTION,
-          versionCollection: APP_VERSION_COLLECTION,
-          stats
-        },
-        null,
-        2
-      )
     );
-  } finally {
-    await mongoose.disconnect();
+    if (result.matchedCount !== 1) {
+      throw new Error(`Migration update missed app ${record._id}`);
+    }
+    stats.appsUpdated += 1;
   }
-};
 
-const isMain =
-  process.argv[1] !== undefined && pathToFileURL(process.argv[1]).href === import.meta.url;
+  if (!params.dryRun) {
+    await Promise.all([
+      verifyResources({
+        collection: versionCollection,
+        collectionName: MongoAppVersion.collection.name
+      }),
+      verifyResources({
+        collection: appCollection,
+        collectionName: MongoApp.collection.name
+      }),
+      verifyPublishedCaches({
+        appCollection,
+        latestPublishedResources
+      })
+    ]);
+    const [remainingApps, remainingVersions] = await Promise.all([
+      appCollection.countDocuments({ resourceRefs: { $exists: true } }),
+      versionCollection.countDocuments({ resourceRefs: { $exists: true } })
+    ]);
+    if (remainingApps > 0 || remainingVersions > 0) {
+      throw new Error(
+        `resourceRefs migration incomplete: apps=${remainingApps}, versions=${remainingVersions}`
+      );
+    }
+  }
 
-if (isMain) {
-  void run(parseOptions(process.argv.slice(2))).catch((error: unknown) => {
-    console.error(error);
-    process.exitCode = 1;
+  return InitAppResourcesResponseSchema.parse({
+    dryRun: params.dryRun,
+    stats
   });
 }
+
+async function handler(req: ApiRequestProps): Promise<InitAppResourcesResponseType> {
+  await authCert({ req, authRoot: true });
+  const { body } = parseApiInput({
+    req,
+    bodySchema: InitAppResourcesBodySchema
+  });
+  return runInitAppResourcesMigration(body);
+}
+
+export default NextAPI(handler);

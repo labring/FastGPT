@@ -211,7 +211,8 @@ export const GetLatestAppVersionResponseSchema = z.object({
     description: '版本内保存的应用节点配置'
   }),
   edges: AppVersionEdgesSchema,
-  chatConfig: AppVersionChatConfigSchema
+  chatConfig: AppVersionChatConfigSchema,
+  resources: AppVersionResourcesSchema
 });
 export type GetLatestAppVersionResponseType = z.infer<typeof GetLatestAppVersionResponseSchema>;
 

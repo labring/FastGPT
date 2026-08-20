@@ -156,6 +156,10 @@ describe('extractAppResources', () => {
 });
 
 describe('nodeHasDynamicInput', () => {
+  it('treats a missing node as a non-dynamic input', () => {
+    expect(nodeHasDynamicInput(undefined, [NodeInputKeyEnum.datasetSelectList])).toBe(false);
+  });
+
   it('keeps the dynamic source marker separate from the resolved value', () => {
     const node = createNode({
       inputs: [

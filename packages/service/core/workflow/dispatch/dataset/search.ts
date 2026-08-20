@@ -9,7 +9,6 @@ import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants'
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import { MongoDataset } from '../../../dataset/schema';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
 import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
@@ -21,7 +20,7 @@ import {
   createQueryExtensionChildNodeResponse
 } from './nodeResponse';
 import { normalizeDatasetSearchInput } from './utils';
-import { assertWorkflowDatasetResources, getWorkflowDatasetResource } from '../../utils/resource';
+import { assertWorkflowDatasetResources, loadWorkflowDatasetResource } from '../../utils/resource';
 import { nodeHasDynamicInput } from '../../../app/resources';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DATASET);
@@ -139,9 +138,10 @@ export async function dispatchDatasetSearch(
     }
 
     // Get vector model
-    const dataset =
-      getWorkflowDatasetResource(datasetIds[0]) ??
-      (await MongoDataset.findById(datasetIds[0], 'vectorModel vlmModel').lean());
+    const dataset = await loadWorkflowDatasetResource({
+      datasetId: datasetIds[0],
+      dynamic: dynamicDataset
+    });
     const vectorModel = getEmbeddingModel(dataset?.vectorModel);
     // Get Rerank Model
     const rerankModelData = getRerankModel(rerankModel);

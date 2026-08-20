@@ -1,4 +1,5 @@
 import type { AppResource } from '@fastgpt/global/core/app/type';
+import type { WorkflowResourceEntities } from '../../../core/workflow/utils/resource';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
@@ -47,11 +48,16 @@ const getResourcePermission = ({
 export const checkAppResourceReadPermissions = async ({
   resources,
   tmbId,
-  isRoot = false
+  isRoot = false,
+  resourceEntities,
+  allowRootCrossTeam = false
 }: {
   resources: AppResource[];
   tmbId: string;
   isRoot?: boolean;
+  resourceEntities?: WorkflowResourceEntities;
+  /** 仅 Test/Debug 临时上下文允许 root 校验跨团队资源。 */
+  allowRootCrossTeam?: boolean;
 }) => {
   const appIds = Array.from(
     new Set(
@@ -73,18 +79,22 @@ export const checkAppResourceReadPermissions = async ({
 
   if (appIds.length === 0 && datasetIds.length === 0 && skillIds.length === 0) return;
 
-  const [{ teamId, permission: tmbPermission }, apps, datasets, skills] = await Promise.all([
+  const [{ teamId, permission: tmbPermission }, loadedEntities] = await Promise.all([
     getTmbInfoByTmbId({ tmbId }),
-    appIds.length
-      ? MongoApp.find({ _id: { $in: appIds }, deleteTime: null }).lean()
-      : Promise.resolve([]),
-    datasetIds.length
-      ? MongoDataset.find({ _id: { $in: datasetIds }, deleteTime: null }).lean()
-      : Promise.resolve([]),
-    skillIds.length
-      ? MongoAgentSkills.find({ _id: { $in: skillIds }, deleteTime: null }).lean()
-      : Promise.resolve([])
+    resourceEntities ??
+      Promise.all([
+        appIds.length
+          ? MongoApp.find({ _id: { $in: appIds }, deleteTime: null }).lean()
+          : Promise.resolve([]),
+        datasetIds.length
+          ? MongoDataset.find({ _id: { $in: datasetIds }, deleteTime: null }).lean()
+          : Promise.resolve([]),
+        skillIds.length
+          ? MongoAgentSkills.find({ _id: { $in: skillIds }, deleteTime: null }).lean()
+          : Promise.resolve([])
+      ]).then(([apps, datasets, skills]) => ({ apps, datasets, skills }))
   ]);
+  const { apps, datasets, skills } = loadedEntities;
 
   const [groupList, orgIdSet] = await Promise.all([
     getGroupsByTmbId({ tmbId, teamId }),
@@ -131,20 +141,25 @@ export const checkAppResourceReadPermissions = async ({
     'resourceType resourceId permission tmbId'
   ).lean();
 
-  const buildPermissionMap = (resourceType: PerResourceTypeEnum, resourceIds: string[]) => {
-    const result = new Map<string, number | undefined>();
-    resourceIds.forEach((resourceId) => {
-      const records = permissionList.filter(
-        (item) => item.resourceType === resourceType && String(item.resourceId) === resourceId
-      );
-      const direct = records.find((item) => String(item.tmbId) === tmbId)?.permission;
-      result.set(
-        resourceId,
-        direct ?? sumPer(...records.filter((item) => !item.tmbId).map((item) => item.permission))
-      );
-    });
-    return result;
-  };
+  const permissionMap = new Map<string, { direct?: number; inherited: number[] }>();
+  permissionList.forEach((item) => {
+    const key = `${item.resourceType}:${String(item.resourceId)}`;
+    const record = permissionMap.get(key) ?? { inherited: [] };
+    if (item.tmbId) {
+      if (record.direct === undefined) record.direct = item.permission;
+    } else {
+      record.inherited.push(item.permission);
+    }
+    permissionMap.set(key, record);
+  });
+
+  const buildPermissionMap = (resourceType: PerResourceTypeEnum, resourceIds: string[]) =>
+    new Map(
+      resourceIds.map((resourceId) => {
+        const record = permissionMap.get(`${resourceType}:${resourceId}`);
+        return [resourceId, record?.direct ?? sumPer(...(record?.inherited ?? []))];
+      })
+    );
 
   const appPermissions = buildPermissionMap(PerResourceTypeEnum.app, appResourceIds);
   const datasetPermissions = buildPermissionMap(PerResourceTypeEnum.dataset, datasetResourceIds);
@@ -158,8 +173,8 @@ export const checkAppResourceReadPermissions = async ({
     if (resource.type === 'agent' || resource.type === 'tool') {
       const app = appMap.get(resource.id);
       if (!app) throw AppErrEnum.unExist;
+      if (!allowRootCrossTeam && String(app.teamId) !== teamId) throw AppErrEnum.unAuthApp;
       if (isRoot) return;
-      if (String(app.teamId) !== teamId) throw AppErrEnum.unAuthApp;
       if (app.type === AppTypeEnum.hidden) return;
 
       const permission = new AppPermission({
@@ -180,8 +195,10 @@ export const checkAppResourceReadPermissions = async ({
     if (resource.type === 'dataset') {
       const dataset = datasetMap.get(resource.id);
       if (!dataset) throw DatasetErrEnum.unExist;
+      if (!allowRootCrossTeam && String(dataset.teamId) !== teamId) {
+        throw DatasetErrEnum.unAuthDataset;
+      }
       if (isRoot) return;
-      if (String(dataset.teamId) !== teamId) throw DatasetErrEnum.unAuthDataset;
 
       const permission = new DatasetPermission({
         role: getResourcePermission({
@@ -200,9 +217,9 @@ export const checkAppResourceReadPermissions = async ({
     if (resource.type === 'skill') {
       const skill = skillMap.get(resource.id);
       if (!skill) throw SkillErrEnum.unExist;
-      if (isRoot) return;
       if (skill.source === AgentSkillSourceEnum.system) return;
-      if (String(skill.teamId) !== teamId) throw SkillErrEnum.unAuthSkill;
+      if (!allowRootCrossTeam && String(skill.teamId) !== teamId) throw SkillErrEnum.unAuthSkill;
+      if (isRoot) return;
 
       const permission = new SkillPermission({
         role: getResourcePermission({

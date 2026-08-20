@@ -28,7 +28,10 @@ import {
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { extractAppResources } from '@fastgpt/service/core/app/resources';
 import { checkAppResourceReadPermissions } from '@fastgpt/service/support/permission/app/resource';
-import { loadWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
+import {
+  getWorkflowResourceEntities,
+  loadWorkflowResourceContext
+} from '@fastgpt/service/core/workflow/utils/resource';
 import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 
 async function handler(req: NextApiRequest, res: NextApiResponse): Promise<WorkflowDebugResponse> {
@@ -75,12 +78,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
   const workflowChatConfig = normalizedWorkflow.chatConfig;
   const resourceContext = await loadWorkflowResourceContext({
     resources: extractAppResources({ nodes: workflowNodes, chatConfig: workflowChatConfig }),
-    teamId: String(app.teamId)
+    teamId: String(app.teamId),
+    isRoot
   });
   await checkAppResourceReadPermissions({
     resources: resourceContext.resources,
     tmbId,
-    isRoot
+    isRoot,
+    allowRootCrossTeam: isRoot,
+    resourceEntities: getWorkflowResourceEntities(resourceContext)
   });
   const {
     query: workflowQuery,
