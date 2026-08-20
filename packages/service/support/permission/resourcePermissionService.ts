@@ -19,6 +19,10 @@ type ResourceModel = Model<any>;
 /** 读取团队内某类资源的完整 ACL，供列表和运行时工具复用。 */
 export const getResourcePermissionsByTeam = resourcePermissionRepo.findByTeam;
 
+/** 查询成员拥有指定有效权限的资源标识，支持 resourceId 和 resourceName 两类资源。 */
+export const findResourceKeysByCollaboratorsPermission =
+  resourcePermissionRepo.findResourceKeysByCollaboratorsPermission;
+
 /** 创建资源的完整 ACL：父级快照作为继承部分，创建者作为子级 owner。 */
 export const createResourcePermissions = async ({
   resource,
