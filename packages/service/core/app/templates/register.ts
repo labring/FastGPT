@@ -1,4 +1,5 @@
 import { isProduction } from '@fastgpt/global/common/system/constants';
+import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { type AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 import { MongoAppTemplate } from './templateSchema';
@@ -28,7 +29,24 @@ const formatTemplateAvatar = (avatar?: string | null) => {
     return '';
   }
 
-  if (avatar.startsWith('/') || avatar.startsWith('http://') || avatar.startsWith('https://')) {
+  if (avatar.startsWith('http://') || avatar.startsWith('https://')) {
+    try {
+      const pathname = new URL(avatar).pathname;
+      const pluginTemplatePath = '/system/plugin/workflow/templates/';
+      const pathStart = pathname.indexOf(pluginTemplatePath);
+
+      // 插件返回的对象存储地址可能是 localhost 或内网地址，浏览器无法直接访问。
+      if (pathStart >= 0) {
+        return `${imageBaseUrl}${pathname.slice(pathStart + 1)}`;
+      }
+    } catch {
+      // URL 解析失败时保留原值，由图片组件的 fallback 处理。
+    }
+
+    return avatar;
+  }
+
+  if (avatar.startsWith('/')) {
     return avatar;
   }
 
