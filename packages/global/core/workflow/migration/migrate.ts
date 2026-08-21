@@ -25,7 +25,7 @@ export const migrateWorkflowToCurrent = async (
   input: LegacyWorkflowDataInput,
   options: WorkflowMigrationOptions = {}
 ): Promise<CanonicalWorkflowData> => {
-  // V1 重写必须由 admin dataClean 批处理完成，普通入口只接受 V2/current 数据。
+  // V1 工作流已不再支持，普通入口只接受 V2/current 数据。
   const hasLegacyV1Node = input.nodes.some(
     (node) =>
       !!node &&
@@ -35,7 +35,7 @@ export const migrateWorkflowToCurrent = async (
         typeof (node as Record<string, unknown>).nodeId !== 'string')
   );
   if (hasLegacyV1Node) {
-    throw new Error('V1 workflows must be migrated through admin dataClean first');
+    throw new Error('V1 workflows are no longer supported');
   }
 
   const workflow = migrateLegacyWorkflowStructureToCurrent(
