@@ -70,6 +70,10 @@ describe('parseI18nString', () => {
     expect(parseI18nString(i18n, 'fr')).toBe('Hello');
   });
 
+  it('should accept legacy translation objects without zh-CN', () => {
+    expect(parseI18nString({ en: 'Hello' }, 'ko-KR')).toBe('Hello');
+  });
+
   it('should return empty string when locale exists but empty', () => {
     const i18n: I18nStringType = {
       en: 'Hello',

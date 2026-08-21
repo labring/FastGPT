@@ -254,7 +254,7 @@ export const getPersistedLang = (key = LANG_KEY) => {
  * 将浏览器语言或历史存储值归一化成系统支持的 locale。
  */
 export const getLangMapping = (lng: string): localeType => {
-  return parseLocale(lng) ?? LangEnum.zh_CN;
+  return parseLocale(lng) ?? LangEnum.en;
 };
 
 /** 返回资源加载必须满足的语言链；非英文语言同时依赖英文 fallback。 */

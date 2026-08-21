@@ -1,4 +1,15 @@
-import { LangEnum, LocaleList, type I18nStringType, type localeType } from './type';
+import { LangEnum, LocaleList, type localeType } from './type';
+
+/**
+ * 文案解析器接受的宽松结构。插件 SDK 仍可能返回缺少 zh-CN 的旧版文案，解析时统一回退英文；
+ * 公共 I18nStringSchema 继续约束业务侧文案必须包含 en 和 zh-CN。
+ */
+type I18nStringLikeType = {
+  en: string;
+  'zh-CN'?: string;
+  'zh-Hant'?: string;
+  'ko-KR'?: string;
+};
 
 /**
  * i18n key 标记函数。
@@ -38,12 +49,12 @@ export const parseLocale = (value?: string): localeType | undefined => {
   return LocaleList.find((locale) => locale.toLowerCase() === normalized);
 };
 
-export const parseI18nString = (str: I18nStringType | string = '', lang = 'en') => {
+export const parseI18nString = (str: I18nStringLikeType | string = '', lang = 'en') => {
   if (!str || typeof str === 'string') return str;
 
   // 尝试使用当前语言
   if (lang in str) {
-    return str[lang as keyof I18nStringType] || '';
+    return str[lang as keyof I18nStringLikeType] || '';
   }
 
   // 如果当前语言是繁体中文但没有对应翻译，优先回退到简体中文

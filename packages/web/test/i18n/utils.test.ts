@@ -97,6 +97,10 @@ describe('getLangMapping', () => {
   it.each(['ko', 'ko-KR', 'ko-kr', 'KO_KR'])('maps Korean locale variant %s to ko-KR', (locale) => {
     expect(getLangMapping(locale)).toBe(LangEnum.ko_KR);
   });
+
+  it('falls back to English for unsupported locale', () => {
+    expect(getLangMapping('fr-FR')).toBe(LangEnum.en);
+  });
 });
 
 describe('language storage capability and persistence', () => {
