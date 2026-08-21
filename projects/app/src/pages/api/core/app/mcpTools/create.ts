@@ -21,6 +21,7 @@ import {
   type CreateAppResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
 import { assertMCPUrlNotInternal } from '@fastgpt/service/core/app/mcp';
+import { encodeMcpToolSetNodesForStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
 
 async function handler(
   req: ApiRequestProps<CreateMcpToolsBodyType>
@@ -48,6 +49,13 @@ async function handler(
   const formatedHeaderAuth = storeSecretValue(headerSecret);
 
   const mcpToolsId = await mongoSessionRun(async (session) => {
+    const toolSetRuntimeNode = getMCPToolSetRuntimeNode({
+      url,
+      toolList,
+      name,
+      avatar,
+      headerSecret: formatedHeaderAuth
+    });
     const mcpToolsId = await onCreateApp({
       name,
       avatar,
@@ -55,15 +63,8 @@ async function handler(
       teamId,
       tmbId,
       type: AppTypeEnum.mcpToolSet,
-      modules: [
-        getMCPToolSetRuntimeNode({
-          url,
-          toolList,
-          name,
-          avatar,
-          headerSecret: formatedHeaderAuth
-        })
-      ],
+      modules: [toolSetRuntimeNode],
+      storageModules: encodeMcpToolSetNodesForStorage([toolSetRuntimeNode]),
       session
     });
 

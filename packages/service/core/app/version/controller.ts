@@ -2,6 +2,7 @@ import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import { MongoAppVersion } from './schema';
 import { Types } from '../../../common/mongo';
 import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
+import { decodeToolSetNodesFromStorage } from '../jsonSchemaStorage';
 
 export const getAppLatestVersion = async (appId: string, app?: AppSchemaType) => {
   const version = await MongoAppVersion.findOne({
@@ -17,7 +18,7 @@ export const getAppLatestVersion = async (appId: string, app?: AppSchemaType) =>
     // 历史版本只迁移该版本自身的系统配置节点，不继承当前应用 chatConfig，
     // 避免当前配置占位导致该版本中的欢迎语、定时任务等旧值被丢弃。
     const normalizedWorkflow = normalizeWorkflowConfig({
-      nodes: version.nodes,
+      nodes: decodeToolSetNodesFromStorage(version.nodes),
       edges: version.edges,
       chatConfig: version.chatConfig
     });
@@ -28,7 +29,7 @@ export const getAppLatestVersion = async (appId: string, app?: AppSchemaType) =>
     };
   }
   const normalizedWorkflow = normalizeWorkflowConfig({
-    nodes: app?.modules ?? [],
+    nodes: decodeToolSetNodesFromStorage(app?.modules ?? []),
     edges: app?.edges ?? [],
     chatConfig: app?.chatConfig
   });
@@ -57,7 +58,7 @@ export const getAppVersionById = async ({
 
     if (version) {
       const normalizedWorkflow = normalizeWorkflowConfig({
-        nodes: version.nodes,
+        nodes: decodeToolSetNodesFromStorage(version.nodes),
         edges: version.edges,
         chatConfig: version.chatConfig
       });

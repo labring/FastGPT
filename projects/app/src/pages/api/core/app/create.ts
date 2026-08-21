@@ -143,6 +143,7 @@ export const onCreateApp = async ({
   avatar,
   type,
   modules,
+  storageModules,
   edges,
   chatConfig,
   teamId,
@@ -159,6 +160,7 @@ export const onCreateApp = async ({
   avatar?: string;
   type: AppTypeEnum;
   modules?: AppSchemaType['modules'];
+  storageModules?: AppSchemaType['modules'];
   edges?: AppSchemaType['edges'];
   chatConfig?: AppSchemaType['chatConfig'];
   intro?: string;
@@ -227,7 +229,7 @@ export const onCreateApp = async ({
           intro,
           teamId,
           tmbId,
-          modules: normalizedWorkflow.nodes,
+          modules: storageModules ?? normalizedWorkflow.nodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
           type,
@@ -248,7 +250,7 @@ export const onCreateApp = async ({
           {
             tmbId,
             appId,
-            nodes: normalizedWorkflow.nodes,
+            nodes: storageModules ?? normalizedWorkflow.nodes,
             edges: normalizedWorkflow.edges,
             chatConfig: normalizedWorkflow.chatConfig,
             versionName: name,
