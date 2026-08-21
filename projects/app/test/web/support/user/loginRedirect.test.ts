@@ -55,6 +55,16 @@ const user = {
   }
 } as UserType;
 
+const cancellingUser = {
+  ...user,
+  team: {
+    ...user.team,
+    accountCancellation: {
+      status: 'pending' as const
+    }
+  }
+} as UserType;
+
 const saveDraftToStorage = ({
   tmbId = 'tmb-a'
 }: {
@@ -108,6 +118,19 @@ describe('login redirect helpers', () => {
       }
     });
     vi.setSystemTime(new Date('2026-05-11T00:00:00.000Z'));
+  });
+
+  it('redirects a cancelling team to the account cancellation page before restoring drafts', async () => {
+    const restoreWorkflowLocalDraft = vi.fn();
+
+    const route = await resolveLoginRedirectAfterLogin({
+      user: cancellingUser,
+      fallbackRoute: '/account/team',
+      restoreWorkflowLocalDraft
+    });
+
+    expect(route).toBe('/account/cancel');
+    expect(restoreWorkflowLocalDraft).not.toHaveBeenCalled();
   });
 
   afterEach(() => {

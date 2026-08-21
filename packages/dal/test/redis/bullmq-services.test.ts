@@ -4,6 +4,7 @@ import {
   AppDeleteMQService,
   appDeleteMQService
 } from '@fastgpt/dal/redis/bullmq/services/appDelete';
+import { DatasetDeleteMQService } from '@fastgpt/dal/redis/bullmq/services/datasetDelete';
 import {
   DatasetSyncMQService,
   datasetSyncMQService
@@ -23,7 +24,8 @@ describe('BullMQ business services', () => {
 
   it('allows queue binding injection while keeping queue contracts in the service class', async () => {
     const queue = {
-      add: vi.fn().mockResolvedValue({ id: 'job-1' })
+      add: vi.fn().mockResolvedValue({ id: 'job-1' }),
+      getJob: vi.fn().mockResolvedValue(null)
     };
     const binding = {
       getQueue: vi.fn(() => queue),
@@ -47,6 +49,29 @@ describe('BullMQ business services', () => {
     });
     expect(queue.add).toHaveBeenCalledWith('delete_app', data, {
       jobId: 'team-1-app-1',
+      delay: 1000
+    });
+    expect(queue.getJob).toHaveBeenCalledWith('team-1-app-1');
+  });
+
+  it('uses failed-job recovery for Dataset deletion jobs', async () => {
+    const queue = {
+      add: vi.fn().mockResolvedValue({ id: 'job-2' }),
+      getJob: vi.fn().mockResolvedValue(null)
+    };
+    const binding = {
+      getQueue: vi.fn(() => queue),
+      getWorker: vi.fn(),
+      getLogger: vi.fn(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }))
+    } as unknown as BullMQBinding;
+    const service = new DatasetDeleteMQService(binding);
+    const data = { teamId: 'team-1', datasetId: 'dataset-1' };
+
+    await expect(service.addJob(data)).resolves.toEqual({ id: 'job-2' });
+
+    expect(queue.getJob).toHaveBeenCalledWith('team-1-dataset-1');
+    expect(queue.add).toHaveBeenCalledWith('delete_dataset', data, {
+      jobId: 'team-1-dataset-1',
       delay: 1000
     });
   });

@@ -1,4 +1,5 @@
 import { bullMQ, type BullMQBinding } from '../binding';
+import { addOrRequeueFailedJob } from '../job-recovery';
 import { QueueNames } from '../names';
 import type { Processor, Queue, Worker } from '../types';
 
@@ -42,9 +43,14 @@ export class AppDeleteMQService {
   /** 投递幂等的 App 删除任务，并延迟一秒让请求先完成。 */
   addJob(data: AppDeleteJobData) {
     const jobId = `${String(data.teamId)}-${String(data.appId)}`;
-    return this.getQueue().add('delete_app', data, {
-      jobId,
-      delay: 1000
+    return addOrRequeueFailedJob({
+      queue: this.getQueue(),
+      name: 'delete_app',
+      data,
+      opts: {
+        jobId,
+        delay: 1000
+      }
     });
   }
 }

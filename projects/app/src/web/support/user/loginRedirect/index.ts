@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import type { UserType } from '@fastgpt/global/support/user/type';
+import { accountCancellationActiveStatuses } from '@fastgpt/global/support/user/account/cancellation/constants';
 import {
   type WorkflowLocalDraftRestoreResult,
   useWorkflowLocalDraftRestore
@@ -51,6 +52,15 @@ export const resolveLoginRedirectAfterLogin = async ({
   lastTmbId?: string;
   restoreWorkflowLocalDraft: RestoreWorkflowLocalDraft;
 }) => {
+  const cancellationStatus = user.team?.accountCancellation?.status;
+  if (
+    accountCancellationActiveStatuses.includes(
+      cancellationStatus as (typeof accountCancellationActiveStatuses)[number]
+    )
+  ) {
+    return '/account/cancel';
+  }
+
   const draftResult = await restoreWorkflowLocalDraft({ user });
 
   if (draftResult.status === 'restored') {

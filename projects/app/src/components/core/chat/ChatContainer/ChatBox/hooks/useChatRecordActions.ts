@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { useMemoizedFn } from 'ahooks';
+import { useTranslation } from 'react-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -38,6 +39,7 @@ const uniqueDataIds = (dataIds: Array<string | undefined>) =>
  */
 export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) => {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [isRecordActionLoading, setIsRecordActionLoading] = useState(false);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
@@ -94,7 +96,7 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
       } catch (error) {
         toast({
           status: 'warning',
-          title: getErrText(error, 'Retry failed')
+          title: t(getErrText(error, 'Retry failed'))
         });
       }
       setIsRecordActionLoading(false);
@@ -130,7 +132,7 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
       } catch (error) {
         toast({
           status: 'warning',
-          title: getErrText(error, 'Edit failed')
+          title: t(getErrText(error, 'Edit failed'))
         });
       } finally {
         setIsRecordActionLoading(false);

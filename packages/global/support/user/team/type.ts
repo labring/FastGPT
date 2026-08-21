@@ -4,6 +4,7 @@ import { TeamMemberRoleEnum, TeamMemberStatusEnum } from './constant';
 import type { GroupMemberRole } from '../../permission/memberGroup/constant';
 import { TeamPermission } from '../../permission/user/controller';
 import { z } from 'zod';
+import { TeamAccountCancellationStatusSchema } from '../account/cancellation/type';
 
 export const OpenaiAccountSchema = z.object({
   key: z.string(),
@@ -63,7 +64,14 @@ export const TeamTmbItemSchema = ThidPartyAccountSchema.extend({
   status: z.enum(TeamMemberStatusEnum),
   notificationAccount: z.string().nullish(),
   permission: z.instanceof(TeamPermission),
-  isWecomTeam: z.boolean().optional()
+  isWecomTeam: z.boolean().optional(),
+  accountCancellation: z
+    .object({
+      status: TeamAccountCancellationStatusSchema,
+      scheduledCancelAt: z.union([z.date(), z.iso.datetime({ offset: true })]).optional()
+    })
+    .strict()
+    .optional()
 });
 export type TeamTmbItemType = z.infer<typeof TeamTmbItemSchema>;
 

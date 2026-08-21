@@ -1,6 +1,5 @@
 import type { SourceMemberType } from '../type';
 import type { AuditEventEnum } from './constants';
-
 export type TeamAuditSchemaType = {
   _id: string;
   tmbId: string;
@@ -9,7 +8,6 @@ export type TeamAuditSchemaType = {
   event: `${AuditEventEnum}`;
   metadata?: Record<string, string>;
 };
-
 export type TeamAuditListItemType = {
   _id: string;
   sourceMember: SourceMemberType;

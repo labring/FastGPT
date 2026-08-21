@@ -78,7 +78,7 @@ const SupportBot = () => {
       {showChat && open && (
         <Box
           position={'fixed'}
-          right={3}
+          right={'28px'}
           bottom={'calc(10% + 80px)'}
           top={'50px'}
           w={'400px'}
@@ -133,10 +133,10 @@ const SupportBot = () => {
 
       <Flex
         position={'fixed'}
-        right={3}
+        right={'28px'}
         bottom={'10%'}
         zIndex={100}
-        transform={open ? 'none' : 'translateX(32px)'}
+        transform={open ? 'none' : 'translateX(52px)'}
         transition={'transform 0.2s ease-in-out'}
       >
         {open && (
