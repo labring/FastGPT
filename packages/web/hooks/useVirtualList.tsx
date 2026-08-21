@@ -38,6 +38,81 @@ const defaultOverscan = 5;
 const loadMoreThreshold = 100;
 const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
+type VirtualScrollWindowOptions = {
+  containerRef: RefObject<HTMLElement>;
+  syncWindow: (options?: { usePreload?: boolean }) => void;
+  listenToWindow?: boolean;
+};
+
+/**
+ * 统一虚拟列表的滚动调度。
+ * 滚动和 resize 事件只安排一个 animation frame，避免高频事件重复计算窗口；
+ * usePreload 由网格的底部观察器使用，用于在进入预加载区域时提前刷新窗口。
+ */
+export const useVirtualScrollWindow = ({
+  containerRef,
+  syncWindow,
+  listenToWindow = false
+}: VirtualScrollWindowOptions) => {
+  const animationFrameRef = useRef<number>();
+  const shouldUsePreloadRef = useRef(false);
+  const syncWindowRef = useMemoizedFn(syncWindow);
+
+  const flushSyncWindow = useMemoizedFn(() => {
+    animationFrameRef.current = undefined;
+
+    const shouldUsePreload = shouldUsePreloadRef.current;
+    shouldUsePreloadRef.current = false;
+    syncWindowRef({ usePreload: shouldUsePreload });
+  });
+
+  const scheduleSyncWindow = useMemoizedFn(
+    ({ usePreload = false }: { usePreload?: boolean } = {}) => {
+      shouldUsePreloadRef.current = shouldUsePreloadRef.current || usePreload;
+
+      if (animationFrameRef.current !== undefined || typeof window === 'undefined') return;
+
+      animationFrameRef.current = window.requestAnimationFrame(flushSyncWindow);
+    }
+  );
+
+  const schedulePreloadSyncWindow = useMemoizedFn(() => {
+    scheduleSyncWindow({ usePreload: true });
+  });
+
+  const scheduleNormalSyncWindow = useMemoizedFn(() => {
+    scheduleSyncWindow();
+  });
+
+  useEventListener('scroll', scheduleNormalSyncWindow, {
+    target: listenToWindow ? undefined : containerRef,
+    capture: listenToWindow,
+    passive: true
+  });
+  useEventListener('resize', scheduleNormalSyncWindow, {
+    passive: true
+  });
+
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current !== undefined && typeof window !== 'undefined') {
+        window.cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, []);
+
+  return {
+    scheduleNormalSyncWindow,
+    schedulePreloadSyncWindow
+  };
+};
+
+/**
+ * 计算虚拟列表上下占位高度，支持带固定间距的网格行和无间距的普通列表。
+ */
+export const getVirtualPlaceholderHeight = (itemCount: number, itemHeight: number, itemGap = 0) =>
+  itemCount > 0 ? itemCount * itemHeight + (itemCount - 1) * itemGap : 0;
+
 /**
  * 根据容器滚动位置计算虚拟列表窗口。
  * 使用上下占位块模拟未渲染内容，避免通过 effect 修改 wrapper 的 margin 和 height 导致滚动跳动。
@@ -54,7 +129,6 @@ const useVirtualWindow = <T,>({
   overscan: number;
 }) => {
   const size = useSize(containerRef);
-  const animationFrameRef = useRef<number>();
   const [range, setRange] = useState({ start: 0, end: 0 });
   const rowHeight = Math.max(itemHeight, 1);
 
@@ -76,30 +150,14 @@ const useVirtualWindow = <T,>({
     setRange((state) => (state.start === start && state.end === end ? state : { start, end }));
   });
 
-  const scheduleSyncWindow = useMemoizedFn(() => {
-    if (animationFrameRef.current !== undefined || typeof window === 'undefined') return;
-
-    animationFrameRef.current = window.requestAnimationFrame(() => {
-      animationFrameRef.current = undefined;
-      syncWindow();
-    });
-  });
-
-  useEventListener('scroll', scheduleSyncWindow, {
-    target: containerRef
+  useVirtualScrollWindow({
+    containerRef,
+    syncWindow
   });
 
   useBrowserLayoutEffect(() => {
     syncWindow();
   }, [data.length, itemHeight, overscan, size?.height, size?.width, syncWindow]);
-
-  useEffect(() => {
-    return () => {
-      if (animationFrameRef.current !== undefined && typeof window !== 'undefined') {
-        window.cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, []);
 
   const list = useMemo<VirtualListItem<T>[]>(
     () =>
@@ -112,8 +170,8 @@ const useVirtualWindow = <T,>({
 
   return {
     list,
-    topPlaceholderHeight: range.start * rowHeight,
-    bottomPlaceholderHeight: Math.max(data.length - range.end, 0) * rowHeight
+    topPlaceholderHeight: getVirtualPlaceholderHeight(range.start, rowHeight),
+    bottomPlaceholderHeight: getVirtualPlaceholderHeight(data.length - range.end, rowHeight)
   };
 };
 
