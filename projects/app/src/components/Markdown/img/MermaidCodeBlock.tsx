@@ -13,26 +13,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 
-const punctuationMap: Record<string, string> = {
-  '，': ',',
-  '；': ';',
-  '。': '.',
-  '：': ':',
-  '！': '!',
-  '？': '?',
-  '“': '"',
-  '”': '"',
-  '‘': "'",
-  '’': "'",
-  '【': '[',
-  '】': ']',
-  '（': '(',
-  '）': ')',
-  '《': '<',
-  '》': '>',
-  '、': ','
-};
-
 type MermaidPreview = {
   key: string;
   markup: string;
@@ -605,7 +585,7 @@ const MermaidBlock = ({
   const [svg, setSvg] = useState('');
   const [mermaid, setMermaid] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error] = useState<string>('');
+  const [error, setError] = useState('');
   const [preview, setPreview] = useState<MermaidPreview>();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -639,30 +619,48 @@ const MermaidBlock = ({
       })
       .catch((error) => {
         console.error('Failed to load mermaid:', error);
+        if (!mounted) return;
+
+        setError(t('common:MermaidRenderFailed'));
         setIsLoading(false);
       });
 
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [t]);
 
   useEffect(() => {
+    let mounted = true;
+
     (async () => {
-      if (!code || !mermaid || isLoading) return;
+      if (!code) {
+        setSvg('');
+        setError('');
+        return;
+      }
+      if (!mermaid || isLoading) return;
+
+      setSvg('');
+      setError('');
 
       try {
-        const formatCode = code.replace(
-          new RegExp(`[${Object.keys(punctuationMap).join('')}]`, 'g'),
-          (match) => punctuationMap[match]
-        );
-        const { svg } = await mermaid.render(`mermaid-${Date.now()}`, formatCode);
+        const { svg } = await mermaid.render(`mermaid-${Date.now()}`, code);
+        if (!mounted) return;
+
         setSvg(svg);
       } catch (e: any) {
-        console.log('[Mermaid] ', e?.message);
+        console.error('[Mermaid]', e?.message);
+        if (!mounted) return;
+
+        setError(t('common:MermaidRenderFailed'));
       }
     })();
-  }, [code, isLoading, mermaid]);
+
+    return () => {
+      mounted = false;
+    };
+  }, [code, isLoading, mermaid, t]);
 
   const onclickExport = useCallback(() => {
     const svgElement = ref.current?.children[0];
@@ -757,7 +755,7 @@ const MermaidBlock = ({
 
   if (error) {
     return (
-      <Box minW={'100px'} minH={'50px'} py={4} bg={'red.50'} borderRadius={'md'} p={3}>
+      <Box minW={'100px'} px={3} py={2} bg={'red.50'} borderRadius={'md'}>
         <Box color={'red.600'} fontSize={'sm'}>
           {error}
         </Box>

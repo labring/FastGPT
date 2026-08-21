@@ -1100,6 +1100,9 @@ importers:
       dns-packet:
         specifier: ^5.6.1
         version: 5.6.1
+      dompurify:
+        specifier: ^3.4.2
+        version: 3.4.2
       fast-xml-parser:
         specifier: ^4.4.1
         version: 4.5.7
@@ -1115,6 +1118,9 @@ importers:
       js-yaml:
         specifier: 'catalog:'
         version: 4.1.1
+      jsdom:
+        specifier: ^26.1.0
+        version: 26.1.0(bufferutil@4.1.0)(canvas@3.2.3)(utf-8-validate@5.0.10)
       json5:
         specifier: 'catalog:'
         version: 2.2.3
@@ -1131,8 +1137,8 @@ importers:
         specifier: 'catalog:'
         version: 4.18.1
       mermaid:
-        specifier: ^10.9.6
-        version: 10.9.6
+        specifier: 'catalog:'
+        version: 11.16.1
       mongoose:
         specifier: 'catalog:'
         version: 8.23.1(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.9)
@@ -1218,6 +1224,9 @@ importers:
       '@types/js-yaml':
         specifier: 'catalog:'
         version: 4.0.9
+      '@types/jsdom':
+        specifier: ^21.1.7
+        version: 21.1.7
       '@types/jsonwebtoken':
         specifier: 'catalog:'
         version: 9.0.9
