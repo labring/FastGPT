@@ -13,13 +13,13 @@ import {
   PopoverAnchor,
   HStack
 } from '@chakra-ui/react';
-import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { useContextSelector } from 'use-context-selector';
+import VersionPublisherPopover from '@fastgpt/web/components/common/VersionPublisherPopover';
 import { SkillDetailContext } from '../context';
 import {
   getSkillVersionList,
@@ -166,33 +166,10 @@ const HistoryList = ({ onClose }: { onClose: () => void }) => {
             onMouseLeave={() => setHoveredId(undefined)}
             _hover={{ bg: 'myGray.05' }}
           >
-            <MyPopover
-              trigger="hover"
-              placement={'bottom-end'}
-              w={'208px'}
-              h={'72px'}
-              Trigger={
-                <Box cursor={'pointer'}>
-                  <Avatar src={''} borderRadius={'50%'} w={'24px'} h={'24px'} />
-                </Box>
-              }
-            >
-              {() => (
-                <Flex alignItems={'center'} h={'full'} pl={5} gap={2}>
-                  <Box>
-                    <Avatar src={''} borderRadius={'50%'} w={'36px'} h={'36px'} />
-                  </Box>
-                  <Box>
-                    <Box fontSize={'sm'} color={'myGray.900'}>
-                      {item.versionName || formatTime2YMDHMS(new Date(item.createdAt))}
-                    </Box>
-                    <Box fontSize={'xs'} mt={2} color={'myGray.500'}>
-                      {formatTime2YMDHMS(new Date(item.createdAt))}
-                    </Box>
-                  </Box>
-                </Flex>
-              )}
-            </MyPopover>
+            <VersionPublisherPopover
+              sourceMember={item.sourceMember}
+              time={new Date(item.createdAt)}
+            />
 
             {editId !== item._id ? (
               <>
@@ -247,17 +224,23 @@ const HistoryList = ({ onClose }: { onClose: () => void }) => {
                       }}
                     />
                     {!item.isCurrent && (
-                      <MyIcon
-                        name="common/rollback"
-                        w={'16px'}
-                        h={'16px'}
-                        color="myGray.500"
-                        cursor="pointer"
-                        _hover={{ color: 'primary.600' }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onChangeVersion(item);
-                        }}
+                      <PopoverConfirm
+                        content={t('skill:switch_version_confirm')}
+                        type="delete"
+                        placement="bottom-end"
+                        onConfirm={() => onChangeVersion(item)}
+                        Trigger={
+                          <Flex alignItems="center" justifyContent="center" w="16px" h="16px">
+                            <MyIcon
+                              name="common/rollback"
+                              w={'16px'}
+                              h={'16px'}
+                              color="myGray.500"
+                              cursor="pointer"
+                              _hover={{ color: 'primary.600' }}
+                            />
+                          </Flex>
+                        }
                       />
                     )}
                   </Flex>

@@ -85,6 +85,7 @@
   "skill_intro_placeholder": "Describe use cases and access paths",
   "skill_name_placeholder": "Enter skill name",
   "skill_select_limit_tip": "Reached the limit of 100 associated Skills per app",
+  "switch_version_confirm": "Note: Switching versions will lose files outside the current workspace. Any unpublished changes will also be lost.",
   "unnamed_skill": "Unnamed",
   "unsupported_file_format": "File format {{ext}} is not supported"
 }

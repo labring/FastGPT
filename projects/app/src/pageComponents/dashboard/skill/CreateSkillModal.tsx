@@ -5,6 +5,7 @@ import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -12,6 +13,7 @@ import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar'
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { postCreateSkill } from '@/web/core/skill/api';
 import { useRouter } from 'next/router';
+import { getDocPath } from '@/web/common/system/doc';
 
 const DEFAULT_SKILL_AVATAR = 'core/skill/default';
 
@@ -132,7 +134,20 @@ const CreateSkillModal = ({ parentId, onClose, onSuccess, openDetailInNewTab = f
         <Flex flexDirection={'column'} gap={6}>
           {/* 图标 & 名称 */}
           <Box>
-            <FormLabel mb={2}>{t('skill:skill_avatar_and_name')}</FormLabel>
+            <Flex justify={'space-between'} alignItems={'center'}>
+              <FormLabel mb={2}>{t('skill:skill_avatar_and_name')}</FormLabel>
+              <Flex
+                as={'span'}
+                alignItems={'center'}
+                color={'primary.600'}
+                fontSize={'sm'}
+                cursor={'pointer'}
+                onClick={() => window.open(getDocPath('/guide/build/skill/development'), '_blank')}
+              >
+                <MyIcon name={'book'} w={4} mr={0.5} />
+                {t('common:Instructions')}
+              </Flex>
+            </Flex>
             <Flex alignItems={'center'}>
               <MyTooltip label={t('common:set_avatar')}>
                 <Flex

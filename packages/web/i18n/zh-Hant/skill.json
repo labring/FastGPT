@@ -85,6 +85,7 @@
   "skill_intro_placeholder": "介紹使用場景及途徑",
   "skill_name_placeholder": "請輸入技能名稱",
   "skill_select_limit_tip": "已達到單個應用可關聯技能的上限（100 個）",
+  "switch_version_confirm": "注意：切換版本會遺失目前工作區以外的檔案，如果目前有未發布的變更也將會遺失。",
   "unnamed_skill": "未命名",
   "unsupported_file_format": "不支持 {{ext}} 文件格式"
 }
