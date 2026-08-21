@@ -1,6 +1,6 @@
 import { type FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import React from 'react';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Flex } from '@chakra-ui/react';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { MySourceHandle } from '../Handle';
@@ -14,7 +14,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 
 const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutputItemType }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { label = '', description, valueType, valueDesc } = output;
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);

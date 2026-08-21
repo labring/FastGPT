@@ -146,7 +146,7 @@ const ChatTest = ({
                               inputType={inputType}
                               fieldName={paramName}
                               form={form}
-                              description={paramName}
+                              description={paramInfo.description}
                             />
                           );
                         }
