@@ -85,6 +85,7 @@
   "skill_intro_placeholder": "介绍使用场景及途径",
   "skill_name_placeholder": "请输入技能名称",
   "skill_select_limit_tip": "已达到单个应用可关联技能的上限（100 个）",
+  "switch_version_confirm": "注意：切换版本会丢失当前工作区以外的文件，如果当前有未发布的变更也将会丢失。",
   "unnamed_skill": "未命名",
   "unsupported_file_format": "不支持 {{ext}} 文件格式"
 }
