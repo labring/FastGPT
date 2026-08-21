@@ -79,7 +79,7 @@ export const postAcceptInvitationLink = (linkId: string) =>
   POST<string>(`/proApi/support/user/team/invitationLink/accept`, { linkId });
 
 export const getInvitationInfo = (linkId: string) =>
-  GET<InvitationInfoType>(`/proApi/support/user/team/invitationLink/info`, { linkId });
+  GET<InvitationInfoType | undefined>(`/proApi/support/user/team/invitationLink/info`, { linkId });
 export const putForbidInvitationLink = (linkId: string) =>
   PUT<string>(`/proApi/support/user/team/invitationLink/forbid`, { linkId });
 
