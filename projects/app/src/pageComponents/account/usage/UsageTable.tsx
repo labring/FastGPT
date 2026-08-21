@@ -21,7 +21,6 @@ import React, { useMemo, useState } from 'react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getUserUsages } from '@/web/support/wallet/usage/api';
-import { addDays } from 'date-fns';
 import dynamic from 'next/dynamic';
 import { type UsageFilterParams } from './type';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
@@ -54,7 +53,7 @@ const UsageTableList = ({
   const requestParams = useMemo(() => {
     return {
       dateStart: dayjs(dateRange.from || new Date()).format(),
-      dateEnd: dayjs(addDays(dateRange.to || new Date(), 1)).format(),
+      dateEnd: dayjs(dateRange.to || new Date()).format(),
       sources: isSelectAllSource ? undefined : usageSources,
       teamMemberIds: isSelectAllTmb ? undefined : selectTmbIds,
       projectName

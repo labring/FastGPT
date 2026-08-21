@@ -32,7 +32,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> 
     permission,
     vectorModel: getEmbeddingModel(dataset.vectorModel),
     agentModel: getLLMModel(dataset.agentModel),
-    vlmModel: getVlmModel(dataset.vlmModel),
+    vlmModel: dataset.vlmModel ? getVlmModel(dataset.vlmModel) : undefined,
     apiDatasetServer: filterApiDatasetServerPublicData(dataset.apiDatasetServer)
   };
 }

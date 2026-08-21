@@ -241,7 +241,6 @@ const MySelect = <T = any,>(
   }, [filterList, onClickChange, value]);
 
   const isSelecting = loading || isLoading;
-
   return (
     <Box>
       <Menu

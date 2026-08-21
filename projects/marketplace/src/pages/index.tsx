@@ -419,7 +419,7 @@ const ToolkitMarketplace = () => {
                 window.open('https://doc.fastgpt.cn/plugin/system-tool-development', '_blank');
               }}
             >
-              {t('app:toolkit_contribute_resource')}
+              {t('app:plugin_development')}
             </Button>
             <Button
               variant={'whiteBase'}

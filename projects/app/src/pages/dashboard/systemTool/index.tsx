@@ -227,20 +227,18 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               >
                 {t('app:core.module.template.System Tools')}
               </Box>
-              <Button mr={4} w={'90px'} h={'34px'} variant={'whiteBase'} onClick={onOpenDebugModal}>
+              <Button mr={4} variant={'whiteBase'} onClick={onOpenDebugModal}>
                 {t('app:toolkit_debug_local')}
               </Button>
               {feConfigs?.docUrl && (
                 <Button
                   mr={4}
-                  w={'90px'}
-                  h={'34px'}
                   variant={'whiteBase'}
                   onClick={() =>
                     window.open(getDocPath('/plugin/system-tool-development'), '_blank')
                   }
                 >
-                  {t('app:toolkit_contribute_resource')}
+                  {t('app:tool_development')}
                 </Button>
               )}
               {canManageTeamPlugins && feConfigs?.enable_team_plugin_upload !== false && (
@@ -248,23 +246,19 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   <MyMenu
                     trigger="hover"
                     Button={
-                      <Button
-                        w={'114px'}
-                        h={'34px'}
-                        leftIcon={<MyIcon name="common/addLight" w={'18px'} />}
-                      >
-                        {t('app:toolkit_add_resource')}
+                      <Button leftIcon={<MyIcon name="common/addLight" w={'18px'} />}>
+                        {t('app:install_tool')}
                       </Button>
                     }
                     menuList={[
                       {
                         children: [
                           {
-                            label: t('app:toolkit_open_marketplace'),
+                            label: t('app:install_from_marketplace'),
                             onClick: () => router.push('/dashboard/systemTool/marketplace')
                           },
                           {
-                            label: t('app:toolkit_import_resource'),
+                            label: t('app:install_from_file'),
                             onClick: onOpenImportModal
                           }
                         ]
@@ -272,17 +266,6 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     ]}
                   />
                 </Box>
-              )}
-              {feConfigs?.submitPluginRequestUrl && (
-                <Button
-                  mr={4}
-                  variant={'whiteBase'}
-                  onClick={() => {
-                    window.open(feConfigs.submitPluginRequestUrl);
-                  }}
-                >
-                  {t('app:toolkit_marketplace_submit_request')}
-                </Button>
               )}
             </Flex>
           )}
