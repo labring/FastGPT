@@ -137,10 +137,6 @@ export const openAPITagGroups = [
       DevApiTagsMap.pluginMarketplace,
       DevApiTagsMap.pluginToolAdmin
     ]
-  },
-  {
-    name: '系统接口',
-    tags: [DevApiTagsMap.chatAgentHelper, DevApiTagsMap.workflowBuilder]
   }
 ];
 

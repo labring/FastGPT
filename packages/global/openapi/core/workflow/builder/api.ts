@@ -81,7 +81,7 @@ export const WorkflowBuilderChatBodySchema = z
       example: '67f4c91c79a4d61b1f116b2a'
     }),
     chatId: z.string().min(1).meta({
-      description: 'Workflow Builder 独立会话 ID',
+      description: '工作流辅助生成独立会话 ID',
       example: 'workflow-builder-chat-id'
     }),
     responseChatItemId: z.string().min(1).optional().meta({
@@ -92,7 +92,7 @@ export const WorkflowBuilderChatBodySchema = z
       description: '当前轮 ChatBox 消息'
     }),
     model: z.string().min(1).optional().meta({
-      description: 'Workflow Builder 使用的 LLM 模型',
+      description: '工作流辅助生成使用的 LLM 模型',
       example: 'gpt-5'
     }),
     agentPlanAskResponse: AgentPlanAskResponseSchema.optional().meta({
@@ -132,7 +132,7 @@ const WorkflowBuilderVersionIdentitySchema = z
       example: '67f4c91c79a4d61b1f116b2a'
     }),
     chatId: z.string().min(1).meta({
-      description: 'Workflow Builder 会话 ID',
+      description: '工作流辅助生成会话 ID',
       example: 'workflow-builder-chat-id'
     }),
     responseChatItemId: z.string().min(1).meta({
@@ -217,7 +217,7 @@ export const WorkflowBuilderRuntimePrewarmBodySchema = z
       example: '67f4c91c79a4d61b1f116b2a'
     }),
     chatId: z.string().min(1).meta({
-      description: 'Workflow Builder 独立会话 ID',
+      description: '工作流辅助生成独立会话 ID',
       example: 'workflow-builder-chat-id'
     })
   })

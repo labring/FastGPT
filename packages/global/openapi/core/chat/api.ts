@@ -99,11 +99,9 @@ const getNormalizedOutLinkAuthData = (data: ChatTargetInput): OutLinkChatAuthPro
 
 export const ChatTargetResponseSchema = z.union([
   z.object({
-    appId: ObjectIdSchema.describe('应用 ID，仅 Workflow Builder 会话返回'),
+    appId: ObjectIdSchema.describe('应用 ID，仅工作流辅助生成会话返回'),
     skillId: z.undefined().optional(),
-    sourceType: z
-      .literal(ChatSourceTypeEnum.workflowBuilder)
-      .describe('Workflow Builder 会话资源类型')
+    sourceType: z.literal(ChatSourceTypeEnum.workflowBuilder).describe('工作流辅助生成会话资源类型')
   }),
   z.object({
     appId: ObjectIdSchema.describe('应用 ID，仅 ChatAgentHelper 会话返回'),
