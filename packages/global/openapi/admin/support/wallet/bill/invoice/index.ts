@@ -4,12 +4,16 @@ import { InvoiceListBodySchema, InvoiceListResponseSchema, InvoiceFinishBodySche
 
 export const AdminInvoicePath: OpenAPIPath = {
   '/admin/support/wallet/bill/invoice/list': {
-    get: {
+    post: {
       summary: '获取发票列表',
       description: '分页获取发票申请列表，支持按团队名称搜索',
       tags: [DevApiTagsMap.adminWalletInvoice],
-      requestParams: {
-        query: InvoiceListBodySchema
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: InvoiceListBodySchema
+          }
+        }
       },
       responses: {
         200: {

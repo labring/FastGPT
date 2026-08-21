@@ -1,9 +1,10 @@
 import type { OpenAPIPath } from '../../../../type';
 import { DevApiTagsMap } from '../../../../tag';
 import { AccountRegisterBodySchema } from './api';
+import { LoginSuccessResponseSchema } from '../login/api';
 
 export const RegisterPath: OpenAPIPath = {
-  '/support/user/account/register/emailAndPhone': {
+  '/proApi/support/user/account/register/emailAndPhone': {
     post: {
       summary: '邮箱/手机号注册',
       description: '使用邮箱或手机号验证码注册新账号',
@@ -20,7 +21,7 @@ export const RegisterPath: OpenAPIPath = {
           description: '注册成功',
           content: {
             'application/json': {
-              schema: {}
+              schema: LoginSuccessResponseSchema
             }
           }
         }

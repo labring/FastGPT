@@ -1,4 +1,46 @@
 import z from 'zod';
+import { TrackEnum } from '../../../common/middle/tracks/constants';
+
+/* ============================================================================
+ * API: 获取远程工作流配置
+ * Route: POST /api/support/marketing/fetchWorkflow
+ * Method: POST
+ * Description: 从指定公网 URL 获取工作流 JSON 配置
+ * Tags: ['通用-基础功能', '其他', 'Read']
+ * ============================================================================ */
+
+export const FetchWorkflowBodySchema = z.object({
+  url: z.string().url().meta({
+    example: 'https://example.com/workflow.json',
+    description: '工作流 JSON 的公网 URL'
+  })
+});
+export type FetchWorkflowBodyType = z.infer<typeof FetchWorkflowBodySchema>;
+
+export const FetchWorkflowResponseSchema = z.record(z.string(), z.unknown()).meta({
+  description: '从远程地址获取的工作流 JSON 配置'
+});
+export type FetchWorkflowResponseType = z.infer<typeof FetchWorkflowResponseSchema>;
+
+/* ============================================================================
+ * API: 上报行为埋点
+ * Route: POST /api/common/tracks/push
+ * Method: POST
+ * Description: 上报当前用户的前端行为事件及关联数据
+ * Tags: ['通用-基础功能', '其他', 'Write']
+ * ============================================================================ */
+
+export const PushTrackBodySchema = z.object({
+  event: z.enum(TrackEnum).meta({
+    example: TrackEnum.useAppTemplate,
+    description: '埋点事件类型'
+  }),
+  data: z.unknown().meta({
+    example: { id: 'app-template-id', name: '示例模板' },
+    description: '事件关联数据，结构由事件类型决定'
+  })
+});
+export type PushTrackBodyType = z.infer<typeof PushTrackBodySchema>;
 
 /* ============================================================================
  * API: 查询第三方工作流用量

@@ -1,6 +1,7 @@
 import type { OpenAPIPath } from '../../../type';
-import { ChatSettingSchema, ChatSettingModelSchema } from '../../../../core/chat/setting/type';
+import { ChatSettingSchema } from '../../../../core/chat/setting/type';
 import { DevApiTagsMap } from '../../../tag';
+import { UpdateChatSettingBodySchema } from './api';
 
 export const ChatSettingPath: OpenAPIPath = {
   '/proApi/core/chat/setting/detail': {
@@ -30,18 +31,13 @@ export const ChatSettingPath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: ChatSettingModelSchema.partial()
+            schema: UpdateChatSettingBodySchema
           }
         }
       },
       responses: {
         200: {
-          description: '成功更新门户页设置',
-          content: {
-            'application/json': {
-              schema: ChatSettingSchema
-            }
-          }
+          description: '成功更新门户页设置'
         }
       }
     }

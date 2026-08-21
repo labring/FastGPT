@@ -1,7 +1,6 @@
-import z from 'zod';
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
-import { ChatAgentHelperCompletionsParamsSchema } from './api';
+import { ChatAgentHelperCompletionsParamsSchema, ChatAgentHelperSseResponseSchema } from './api';
 
 export const ChatAgentHelperPath: OpenAPIPath = {
   '/proApi/core/chat/chatAgentHelper/completions': {
@@ -20,8 +19,8 @@ export const ChatAgentHelperPath: OpenAPIPath = {
         200: {
           description: '成功返回流式处理结果',
           content: {
-            'application/stream+json': {
-              schema: z.any()
+            'text/event-stream': {
+              schema: ChatAgentHelperSseResponseSchema
             }
           }
         }

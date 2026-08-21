@@ -19,7 +19,7 @@ type State = {
 
   userInfo: UserType | null;
   isTeamAdmin: boolean;
-  initUserInfo: () => Promise<any>;
+  initUserInfo: () => Promise<UserType | null>;
   setUserInfo: (user: UserType | null) => void;
   updateUserInfo: (user: UserUpdateParams) => Promise<void>;
 
@@ -74,6 +74,7 @@ export const useUserStore = create<State>()(
             return res;
           } catch (error) {
             console.log('[Init user] error', error);
+            return null;
           }
         },
         setUserInfo(user: UserType | null) {

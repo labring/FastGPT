@@ -1,5 +1,6 @@
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
+import { ChatWorkflowSseResponseSchema } from '../../chat/completion/api';
 import {
   ListAppsBySkillIdResponseSchema,
   CreateSkillBodySchema,
@@ -473,7 +474,7 @@ export const SkillPath: OpenAPIPath = {
     post: {
       summary: '技能调试对话',
       description: '基于 edit-debug 沙盒发起技能调试对话，返回 SSE 流',
-      tags: [DevApiTagsMap.skillEdit],
+      tags: [DevApiTagsMap.skillDebug],
       requestBody: {
         content: {
           'application/json': {
@@ -486,9 +487,31 @@ export const SkillPath: OpenAPIPath = {
           description: '返回 text/event-stream 调试事件流',
           content: {
             'text/event-stream': {
-              schema: {
-                type: 'string'
-              }
+              schema: ChatWorkflowSseResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/core/ai/skill/debugChat': {
+    post: {
+      summary: '技能调试对话（Pro）',
+      description: '基于 Pro 版 edit-debug 沙盒发起技能调试对话，返回 SSE 流',
+      tags: [DevApiTagsMap.skillDebug],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SkillDebugChatBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '返回 text/event-stream 调试事件流',
+          content: {
+            'text/event-stream': {
+              schema: ChatWorkflowSseResponseSchema
             }
           }
         }

@@ -12,9 +12,13 @@ import {
   ResumeDatasetInheritPermissionBodySchema,
   type ResumeDatasetInheritPermissionBody
 } from '@fastgpt/global/openapi/core/dataset/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps<ResumeDatasetInheritPermissionBody>) {
-  const { datasetId } = ResumeDatasetInheritPermissionBodySchema.parse(req.body);
+  const { datasetId } = parseApiInput({
+    req,
+    bodySchema: ResumeDatasetInheritPermissionBodySchema
+  }).body;
   const { dataset } = await authDataset({
     datasetId,
     req,

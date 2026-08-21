@@ -97,7 +97,7 @@ export type DeleteChatRecordResponseType = z.infer<typeof DeleteChatRecordRespon
 
 /* ============================================================================
  * API: 获取对话引用数据
- * Route: POST /api/core/chat/quote/getQuote
+ * Route: POST /api/core/chat/record/getQuote
  * Method: POST
  * Description: 获取指定对话消息的数据集引用列表
  * ============================================================================ */
@@ -121,7 +121,7 @@ export type GetQuoteResponseType = z.infer<typeof GetQuoteResponseSchema>;
 
 /* ============================================================================
  * API: 获取集合分页引用数据
- * Route: POST /api/core/chat/quote/getCollectionQuote
+ * Route: POST /api/core/chat/record/getCollectionQuote
  * Method: POST
  * Description: 以链式分页方式获取指定集合的引用数据，支持前后翻页
  * ============================================================================ */
@@ -186,7 +186,7 @@ export type GetPaginationRecordsResponseType = z.infer<typeof GetPaginationRecor
 
 /* ============================================================================
  * API: 获取对话（v2）
- * Route: POST /api/core/chat/record/getRecordsV2
+ * Route: POST /api/core/chat/record/getRecords_v2
  * Method: POST
  * Description: 获取对话（v2）
  * ============================================================================ */

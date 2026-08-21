@@ -44,17 +44,34 @@ export const UploadPkgPluginResponseSchema = z.object({
 });
 export type UploadPkgPluginResponseType = z.infer<typeof UploadPkgPluginResponseSchema>;
 
-// 3. Confirm Uploaded Pkg Plugin Schema
+/* ============================================================================
+ * API: 确认上传系统插件包
+ * Route: POST /api/core/plugin/admin/pkg/confirm
+ * Method: POST
+ * Description: 确认已上传的系统插件包，并将插件同步到插件服务
+ * Tags: ['管理员插件管理', 'Write']
+ * ============================================================================ */
+
 export const ConfirmUploadPkgPluginBodySchema = z.object({
   toolIds: z
     .array(
       z.object({
-        pluginId: z.string(),
-        version: z.string(),
-        etag: z.string()
+        pluginId: z.string().meta({
+          example: 'systemTool-example',
+          description: '插件 ID'
+        }),
+        version: z.string().meta({
+          example: '1.0.0',
+          description: '插件版本'
+        }),
+        etag: z.string().meta({
+          example: 'plugin-package-etag',
+          description: '插件包内容标识'
+        })
       })
     )
     .min(1)
+    .meta({ description: '需要确认的插件包列表' })
 });
 export type ConfirmUploadPkgPluginBodyType = z.infer<typeof ConfirmUploadPkgPluginBodySchema>;
 

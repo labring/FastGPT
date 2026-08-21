@@ -1,4 +1,5 @@
 import type { TeamMetaType, UserModelSchema } from '../type';
+import { ObjectIdSchema } from '../../../common/type/mongo';
 import { TeamMemberRoleEnum, TeamMemberStatusEnum } from './constant';
 import type { GroupMemberRole } from '../../permission/memberGroup/constant';
 import { TeamPermission } from '../../permission/user/controller';
@@ -50,15 +51,15 @@ export type TeamMemberWithTeamAndUserSchema = TeamMemberSchema & {
 };
 
 export const TeamTmbItemSchema = ThidPartyAccountSchema.extend({
-  userId: z.string(),
-  teamId: z.string(),
-  teamAvatar: z.string().optional(),
+  userId: ObjectIdSchema,
+  teamId: ObjectIdSchema,
+  teamAvatar: z.string().nullish(),
   teamName: z.string(),
   memberName: z.string(),
-  avatar: z.string(),
+  avatar: z.string().nullish(),
   balance: z.number().optional(),
-  tmbId: z.string(),
-  role: z.enum(TeamMemberRoleEnum),
+  tmbId: ObjectIdSchema,
+  role: z.enum(TeamMemberRoleEnum).nullish(),
   status: z.enum(TeamMemberStatusEnum),
   notificationAccount: z.string().optional(),
   permission: z.instanceof(TeamPermission),

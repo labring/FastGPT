@@ -1,6 +1,6 @@
 import { ScalarOpenApiPage } from '@/pageComponents/apidoc/ScalarOpenApiPage';
 import { serviceSideProps } from '@/web/common/i18n/utils';
-import { DevApiTagsMap } from '@fastgpt/global/openapi/tag';
+import { DevApiTagNameAliases, DevApiTagsMap } from '@fastgpt/global/openapi/tag';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 
 function DevApiDocPage() {
@@ -9,8 +9,11 @@ function DevApiDocPage() {
   return (
     <ScalarOpenApiPage
       documentUrl="/api/apidoc/devapi.json"
-      flattenedTagNames={[DevApiTagsMap.aiAuxiliary]}
-      tagNameAliases={{ [DevApiTagsMap.commonOther]: t('common:Other') }}
+      flattenedTagNames={[DevApiTagsMap.aiAuxiliary, DevApiTagsMap.toolPreview]}
+      tagNameAliases={{
+        ...DevApiTagNameAliases,
+        [DevApiTagsMap.commonOther]: t('common:Other')
+      }}
     />
   );
 }

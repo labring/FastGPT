@@ -35,7 +35,7 @@ import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import BillDetailModal from './BillDetailModal';
-import type { BillSchemaType } from '@fastgpt/global/support/wallet/bill/type';
+import type { BillItemType } from '@fastgpt/global/openapi/support/wallet/bill/api';
 
 const BillTable = () => {
   const { t } = useClientTranslation('account_bill');
@@ -76,7 +76,7 @@ const BillTable = () => {
   });
 
   const { runAsync: handleRefreshPayOrder, loading: isRefreshing } = useRequest(
-    async (bill: BillSchemaType) => {
+    async (bill: BillItemType) => {
       const { status, description } = await checkBalancePayResult(bill._id);
       if (status === BillStatusEnum.SUCCESS) {
         toast({

@@ -1,9 +1,13 @@
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import type { ResetToolRuntimeConfigBodyType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
+import {
+  ResetToolRuntimeConfigBodySchema,
+  type ResetToolRuntimeConfigBodyType
+} from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 import { getToolRawId } from '@fastgpt/global/core/app/tool/utils';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 export type resetToolRuntimeConfigQuery = Record<string, never>;
 
@@ -17,7 +21,7 @@ async function handler(
 ): Promise<resetToolRuntimeConfigResponse> {
   await authSystemAdmin({ req });
 
-  const { pluginId } = req.body;
+  const { pluginId } = parseApiInput({ req, bodySchema: ResetToolRuntimeConfigBodySchema }).body;
 
   await pluginClient.resetPluginRuntimeConfig(getToolRawId(pluginId));
 
