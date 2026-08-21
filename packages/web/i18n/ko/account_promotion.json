@@ -1,0 +1,13 @@
+{
+  "total_invited": "누적 초대 인원",
+  "earnings": "수익 (￥)",
+  "cashback_ratio": "캐시백 비율",
+  "cashback_ratio_description": "친구가 충전하면 잔액의 일정 비율을 보상으로 받게 됩니다.",
+  "invite_url": "초대 링크",
+  "invite_url_tip": "이 링크를 통해 가입한 친구는 영구적으로 회원님과 연결되며, 친구가 충전할 때마다 일정 비율의 잔액 보상을 받게 됩니다.\n \n또한 친구가 휴대폰 번호로 가입하면 즉시 5위안의 보상을 받게 됩니다.\n \n보상은 회원님의 기본 팀으로 지급됩니다.",
+  "copy_invite_link": "초대 링크 복사",
+  "time": "시간",
+  "type": "유형",
+  "amount": "금액",
+  "no_invite_records": "아직 초대 기록이 없습니다"
+}
