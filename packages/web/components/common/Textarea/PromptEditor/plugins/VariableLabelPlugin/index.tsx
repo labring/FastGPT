@@ -6,7 +6,7 @@ import type { TextNode } from 'lexical';
 import { getHashtagRegexString } from './utils';
 import { mergeRegister } from '@lexical/utils';
 import { registerLexicalTextEntity } from '../../utils';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '../../../../../../hooks/useSafeTranslation';
 
 const REGEX = new RegExp(getHashtagRegexString(), 'i');
 
@@ -15,7 +15,7 @@ export default function VariableLabelPlugin({
 }: {
   variables: EditorVariableLabelPickerType[];
 }) {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const [editor] = useLexicalComposerContext();
   useEffect(() => {
     if (!editor.hasNodes([VariableLabelNode]))

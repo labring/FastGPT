@@ -23,6 +23,7 @@ import {
 import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
 import { type TFunction } from 'i18next';
 import { type Edge, type Node } from 'reactflow';
+import { createSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const normalizeStoreNodeInput = (input: StoreNodeItemType['inputs'][number], isTool: boolean) => {
   const inputWithSelectedType = normalizeFlowNodeInputType(input, { isTool });
@@ -223,6 +224,7 @@ export const getEditorVariables = ({
 }) => {
   const currentNode = getNodeById(nodeId);
   if (!currentNode) return [];
+  const safeT = createSafeTranslation(t);
 
   const nodeVariables = currentNode.inputs
     .filter((input) => input.canEdit)
@@ -242,7 +244,7 @@ export const getEditorVariables = ({
     getNodeById,
     edges,
     chatConfig: appDetail.chatConfig,
-    t
+    t: safeT
   });
 
   const sourceNodeVariables = !sourceNodes
@@ -262,7 +264,7 @@ export const getEditorVariables = ({
             })
             .map((output) => {
               return {
-                label: t((output.label as any) || ''),
+                label: safeT((output.label as any) || ''),
                 key: output.id,
                 parent: {
                   id: node.nodeId,
