@@ -757,17 +757,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                     }
                   }}
                 >
-                  {t('app:toolkit_contribute_resource')}
-                </Button>
-              )}
-              {feConfigs?.submitPluginRequestUrl && (
-                <Button
-                  variant={'whiteBase'}
-                  onClick={() => {
-                    window.open(feConfigs.submitPluginRequestUrl);
-                  }}
-                >
-                  {t('app:toolkit_marketplace_submit_request')}
+                  {t('app:tool_development')}
                 </Button>
               )}
             </Flex>

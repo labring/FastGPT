@@ -53,7 +53,11 @@ curl -X POST 'https://你的域名/api/admin/4161/initToolJsonSchemaStorage' \
 
 1. Fixed Workflow global variable configuration overflowing when field names are too long.
 2. Fixed AgentV2 calling a child Workflow without disabling streaming output within the Workflow.
+3. Fixed an issue where a team invitation link could be used to accept the same invitation repeatedly.
 
 ## 🛠️ Code Improvements
 
 1. Completed documentation for all `devapi` endpoints.
+2. Optimized concurrent initialization and logging for the Plugin system.
+3. Fixed an issue where errors during Plugin runs were surfaced as system errors.
+4. Fixed an issue where Plugins failed on Node.js versions later than v25 because the `--allow-net` permission was not configured.
