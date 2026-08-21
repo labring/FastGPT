@@ -11,9 +11,10 @@ import AccountContainer from '@/pageComponents/account/AccountContainer';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import Markdown from '@/components/Markdown';
 import NotificationDetailsModal from '@/pageComponents/account/NotificationDetailsModal';
+import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const InformTable = () => {
-  const { t } = useClientTranslation('account_inform');
+  const { t } = useClientTranslation(['account_inform', 'account']);
   const theme = useTheme();
   const { Loading } = useLoading();
   const [selectedInform, setSelectedInform] = useState<any>(null);
@@ -48,9 +49,22 @@ const InformTable = () => {
 
   return (
     <AccountContainer>
-      <Flex flexDirection="column" py={[0, 5]} h="100%" position="relative">
+      <Flex flexDirection="column" h="100%" minH={0} position="relative">
+        <Flex
+          h={'64px'}
+          flexShrink={0}
+          px={[3, 6]}
+          alignItems={'center'}
+          borderBottom={'1px solid'}
+          borderColor={'myGray.200'}
+        >
+          <Box as={'h1'} {...accountTitleTextStyles}>
+            {t('account:notifications')}
+          </Box>
+        </Flex>
         <Box
           px={[3, 8]}
+          pt={4}
           position="relative"
           flex="1 0 0"
           h={0}

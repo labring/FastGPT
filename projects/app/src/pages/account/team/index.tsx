@@ -1,7 +1,6 @@
 'use client';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { Box, Flex } from '@chakra-ui/react';
-import Icon from '@fastgpt/web/components/common/Icon';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import TeamSelector from '@/pageComponents/account/TeamSelector';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -15,6 +14,7 @@ import { TeamContext, TeamModalContextProvider } from '@/pageComponents/account/
 import dynamic from 'next/dynamic';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const MemberTable = dynamic(() => import('@/pageComponents/account/team/MemberTable'));
 const PermissionManage = dynamic(
@@ -105,25 +105,21 @@ const Team = () => {
         {/* header */}
         <Flex
           w={'100%'}
-          h={'3.5rem'}
-          px={'1.56rem'}
-          py={'0.56rem'}
+          h={'64px'}
+          flexShrink={0}
+          px={6}
           borderBottom={'1px solid'}
           borderColor={'myGray.200'}
-          bg={'myGray.25'}
+          bg={'white'}
           align={'center'}
-          gap={6}
           justify={'space-between'}
         >
           <Flex align={'center'}>
-            <Flex gap={2} color={'myGray.900'}>
-              <Icon name="support/user/usersLight" w={'1.25rem'} h={'1.25rem'} />
-              <Box fontWeight={'500'} fontSize={'1rem'}>
-                {t('account:team')}
-              </Box>
-            </Flex>
+            <Box as={'h1'} {...accountTitleTextStyles}>
+              {t('account:team')}
+            </Box>
             <Flex align={'center'} ml={6}>
-              <TeamSelector height={'28px'} />
+              <TeamSelector height={'34px'} />
             </Flex>
             {userInfo?.team?.role === TeamMemberRoleEnum.owner && (
               <Flex align={'center'} justify={'center'} ml={2} p={'0.44rem'}>
@@ -165,7 +161,7 @@ const Team = () => {
         {/* table */}
         <Box
           py={'1.5rem'}
-          px={'2rem'}
+          px={6}
           flex={'1 0 0'}
           display={'flex'}
           flexDirection={'column'}

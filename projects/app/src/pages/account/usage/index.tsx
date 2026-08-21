@@ -18,6 +18,7 @@ import MultipleSelect, {
 } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
+import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 import UsageTableList from '@/pageComponents/account/usage/UsageTable';
 import { type UnitType } from '@/pageComponents/account/usage/type';
@@ -29,12 +30,12 @@ export enum UsageTabEnum {
 }
 
 const UsageTable = () => {
-  const { t } = useClientTranslation('account_usage');
+  const { t } = useClientTranslation(['account_usage', 'account']);
   const { userInfo } = useUserStore();
   const router = useRouter();
   const { usageTab = UsageTabEnum.detail } = router.query as { usageTab: `${UsageTabEnum}` };
 
-  const [unit, setUnit] = useState<UnitType>('day');
+  const [unit, _setUnit] = useState<UnitType>('day');
   const [dateRange, setDateRange] = useState<DateRangeType>({
     from: addDays(new Date(), -7),
     to: new Date()
@@ -77,7 +78,7 @@ const UsageTable = () => {
   );
 
   const [projectName, setProjectName] = useState<string>('');
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, _setInputValue] = useState('');
 
   const Tabs = useMemo(
     () => (
@@ -228,22 +229,37 @@ const UsageTable = () => {
 
   return (
     <AccountContainer>
-      <Box
-        px={[3, 8]}
-        pt={[0, 4]}
-        pb={[0, 4]}
-        h={'full'}
-        overflow={'hidden'}
-        display={'flex'}
-        flexDirection={'column'}
-      >
-        {usageTab === UsageTabEnum.detail && (
-          <UsageTableList filterParams={filterParams} Tabs={Tabs} Selectors={Selectors} />
-        )}
-        {usageTab === UsageTabEnum.dashboard && (
-          <UsageDashboard filterParams={filterParams} Tabs={Tabs} Selectors={Selectors} />
-        )}
-      </Box>
+      <Flex h={'full'} minH={0} flexDirection={'column'}>
+        <Flex
+          h={'64px'}
+          flexShrink={0}
+          px={[3, 6]}
+          alignItems={'center'}
+          borderBottom={'1px solid'}
+          borderColor={'myGray.200'}
+        >
+          <Box as={'h1'} {...accountTitleTextStyles}>
+            {t('account:usage_records')}
+          </Box>
+        </Flex>
+        <Box
+          px={[3, 6]}
+          pt={[3, 6]}
+          pb={[0, 4]}
+          flex={'1 0 0'}
+          minH={0}
+          overflow={'hidden'}
+          display={'flex'}
+          flexDirection={'column'}
+        >
+          {usageTab === UsageTabEnum.detail && (
+            <UsageTableList filterParams={filterParams} Tabs={Tabs} Selectors={Selectors} />
+          )}
+          {usageTab === UsageTabEnum.dashboard && (
+            <UsageDashboard filterParams={filterParams} Tabs={Tabs} Selectors={Selectors} />
+          )}
+        </Box>
+      </Flex>
     </AccountContainer>
   );
 };

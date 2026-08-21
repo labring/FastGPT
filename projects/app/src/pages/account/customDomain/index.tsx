@@ -24,6 +24,7 @@ import { useState, useMemo } from 'react';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRouter } from 'next/router';
 import Tag from '@fastgpt/web/components/common/Tag';
+import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const CreateCustomDomainModal = dynamic(
   () => import('@/pageComponents/account/customDomain/createModal'),
@@ -83,29 +84,35 @@ const CustomDomain = () => {
   return (
     <>
       <AccountContainer>
-        <Flex flexDirection="column" h="100%" padding="24px">
-          <TableContainer flex="1" display="flex" flexDirection="column" position="relative">
-            {loadingCustomDomainList ? <MyLoading fixed={false} /> : null}
-            <Flex justifyContent="space-between" alignItems="center" w="100%">
-              <Box fontSize="20px" fontWeight="500">
-                {t('account_custom_domain:custom_domain')}
-                {customDomainList?.length ? (
-                  `: (${customDomainList.length}/${teamPlanStatus?.standard?.customDomain ?? 0})`
-                ) : (
-                  <></>
-                )}
-              </Box>
-
-              <Button
-                variant="whitePrimaryOutline"
-                onClick={onOpenCreateModal}
-                isDisabled={!isSupportCustomDomain}
-              >
+        <Flex flexDirection="column" h="100%" minH={0}>
+          <Flex
+            h={'64px'}
+            flexShrink={0}
+            px={[4, 6]}
+            alignItems={'center'}
+            justifyContent={'space-between'}
+            borderBottom={'1px solid'}
+            borderColor={'myGray.200'}
+          >
+            <Box as={'h1'} {...accountTitleTextStyles}>
+              {t('account_custom_domain:custom_domain')}
+            </Box>
+            {isSupportCustomDomain && (
+              <Button variant="whitePrimaryOutline" onClick={onOpenCreateModal}>
                 {t('common:Add')}
               </Button>
-            </Flex>
-
-            <Table marginTop="12px">
+            )}
+          </Flex>
+          <TableContainer
+            flex="1"
+            minH={0}
+            display="flex"
+            flexDirection="column"
+            position="relative"
+            p={[4, 6]}
+          >
+            {loadingCustomDomainList ? <MyLoading fixed={false} /> : null}
+            <Table>
               <Thead>
                 <Tr>
                   <Td>{t('account_custom_domain:domain')}</Td>

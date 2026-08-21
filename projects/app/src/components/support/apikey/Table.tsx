@@ -44,6 +44,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import TagDisplayList, { type ApiKeyDisplayTag } from './TagDisplayList';
+import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 import TagMultiSelect from './TagMultiSelect';
 import TagManageModal from './TagManageModal';
 import { useDebounce } from 'ahooks';
@@ -183,7 +184,7 @@ const ApiKeyTagEditor = ({
 };
 
 const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
-  const { t } = useClientTranslation('apikey');
+  const { t } = useClientTranslation(['apikey', 'account']);
   const { copyData } = useCopyData();
   const { feConfigs } = useSystemStore();
   const isPublishMode = mode === 'publish';
@@ -456,20 +457,34 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
       position={'relative'}
       p={isPublishMode ? 6 : 0}
     >
-      <Flex flexDirection={'column'} alignItems={'stretch'} gap={3} flexShrink={0}>
-        <Flex minW={0} alignItems={'center'}>
+      <Flex flexDirection={'column'} alignItems={'stretch'} flexShrink={0}>
+        <Flex
+          minW={0}
+          alignItems={'center'}
+          h={isPublishMode ? 'auto' : '64px'}
+          px={isPublishMode ? 0 : [4, 6]}
+          borderBottom={isPublishMode ? 'none' : '1px solid'}
+          borderColor={'myGray.200'}
+        >
           <Box
-            color={isPublishMode ? 'myGray.900' : undefined}
-            fontWeight={isPublishMode ? 'medium' : 'bold'}
-            fontSize={isPublishMode ? 'lg' : ['md', 'lg']}
+            as={isPublishMode ? undefined : 'h1'}
+            {...(isPublishMode
+              ? {
+                  color: 'myGray.900',
+                  fontWeight: 'medium',
+                  fontSize: 'lg'
+                }
+              : accountTitleTextStyles)}
           >
-            {`${t('common:support.openapi.Api manager')}(${apiKeys.length})`}
+            {isPublishMode
+              ? `${t('common:support.openapi.Api manager')}(${apiKeys.length})`
+              : `${t('account:api_key')} (${apiKeys.length})`}
           </Box>
           {feConfigs?.docUrl && (
             <Link
               href={feConfigs.openAPIDocUrl || getDocPath('/openapi/intro')}
               target={'_blank'}
-              ml={isPublishMode ? 2 : 1}
+              ml={isPublishMode ? 2 : 3}
               color={'primary.500'}
               fontSize={'sm'}
             >
@@ -481,6 +496,8 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
           )}
         </Flex>
         <Flex
+          mt={isPublishMode ? 3 : 6}
+          px={isPublishMode ? 0 : [4, 6]}
           alignItems={['stretch', 'flex-end']}
           justifyContent={'space-between'}
           gap={3}
@@ -596,7 +613,16 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
           </Flex>
         </Flex>
       </Flex>
-      <TableContainer mt={3} position={'relative'} flex={'1 0 0'} h={0} minH={0} overflowY={'auto'}>
+      <TableContainer
+        mt={3}
+        px={isPublishMode ? 0 : [4, 6]}
+        pb={isPublishMode ? 0 : 4}
+        position={'relative'}
+        flex={'1 0 0'}
+        h={0}
+        minH={0}
+        overflowY={'auto'}
+      >
         <Table sx={{ tableLayout: 'fixed' }}>
           <Thead>
             <Tr>

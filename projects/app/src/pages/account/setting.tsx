@@ -1,7 +1,6 @@
 'use client';
-import { Box, Card, Flex } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import React, { useCallback } from 'react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { type UserType } from '@fastgpt/global/support/user/type';
@@ -11,9 +10,10 @@ import { type UserUpdateParams } from '@/types/user';
 import TimezoneSelect from '@fastgpt/web/components/common/MySelect/TimezoneSelect';
 import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
+import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const Individuation = () => {
-  const { t } = useClientTranslation('account_setting');
+  const { t } = useClientTranslation(['account_setting', 'account']);
   const { userInfo, updateUserInfo } = useUserStore();
   const { toast } = useToast();
 
@@ -37,13 +37,20 @@ const Individuation = () => {
 
   return (
     <AccountContainer>
-      <Box py={[3, '28px']} px={['5vw', '64px']}>
-        <Flex alignItems={'center'} fontSize={'lg'} h={'30px'}>
-          <MyIcon mr={2} name={'common/settingLight'} w={'20px'} />
-          {t('common:Setting')}
+      <Flex h={'100%'} minH={0} flexDirection={'column'}>
+        <Flex
+          h={'64px'}
+          flexShrink={0}
+          px={[4, 6]}
+          alignItems={'center'}
+          borderBottom={'1px solid'}
+          borderColor={'myGray.200'}
+        >
+          <Box as={'h1'} {...accountTitleTextStyles}>
+            {t('account:language')}
+          </Box>
         </Flex>
-
-        <Card mt={6} px={[3, 10]} py={[3, 7]} fontSize={'sm'}>
+        <Box p={[4, 6]} fontSize={'sm'} overflowY={'auto'}>
           <Flex alignItems={'center'} w={['85%', '350px']}>
             <Box flex={'0 0 80px'}>{t('account_setting:language')}:&nbsp;</Box>
             <Box flex={'1 0 0'}>
@@ -60,8 +67,8 @@ const Individuation = () => {
               }}
             />
           </Flex>
-        </Card>
-      </Box>
+        </Box>
+      </Flex>
     </AccountContainer>
   );
 };

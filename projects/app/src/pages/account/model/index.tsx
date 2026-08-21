@@ -7,6 +7,7 @@ import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import dynamic from 'next/dynamic';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const ModelConfigTable = dynamic(() => import('@/pageComponents/account/model/ModelConfigTable'));
 const ChannelTable = dynamic(() => import('@/pageComponents/account/model/Channel'));
@@ -16,7 +17,7 @@ const ModelDashboard = dynamic(() => import('@/pageComponents/account/model/Mode
 type TabType = 'model' | 'config' | 'channel' | 'channel_log' | 'account_model';
 
 const ModelProvider = () => {
-  const { t } = useClientTranslation('account_model');
+  const { t } = useClientTranslation(['account_model', 'account']);
   const { feConfigs } = useSystemStore();
 
   const [tab, setTab] = useState<TabType>('model');
@@ -45,12 +46,26 @@ const ModelProvider = () => {
 
   return (
     <AccountContainer>
-      <Flex h={'100%'} flexDirection={'column'} gap={4} py={4} px={6}>
-        {tab === 'model' && <ValidModelTable Tab={Tab} />}
-        {tab === 'config' && <ModelConfigTable Tab={Tab} />}
-        {tab === 'channel' && <ChannelTable Tab={Tab} />}
-        {tab === 'channel_log' && <ChannelLog Tab={Tab} />}
-        {tab === 'account_model' && <ModelDashboard Tab={Tab} />}
+      <Flex h={'100%'} minH={0} flexDirection={'column'}>
+        <Flex
+          h={'64px'}
+          flexShrink={0}
+          px={[4, 6]}
+          alignItems={'center'}
+          borderBottom={'1px solid'}
+          borderColor={'myGray.200'}
+        >
+          <Box as={'h1'} {...accountTitleTextStyles}>
+            {t('account:model_provider')}
+          </Box>
+        </Flex>
+        <Flex flex={'1 0 0'} minH={0} flexDirection={'column'} gap={4} py={6} px={6}>
+          {tab === 'model' && <ValidModelTable Tab={Tab} />}
+          {tab === 'config' && <ModelConfigTable Tab={Tab} />}
+          {tab === 'channel' && <ChannelTable Tab={Tab} />}
+          {tab === 'channel_log' && <ChannelLog Tab={Tab} />}
+          {tab === 'account_model' && <ModelDashboard Tab={Tab} />}
+        </Flex>
       </Flex>
     </AccountContainer>
   );

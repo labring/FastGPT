@@ -46,6 +46,7 @@ import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getIsMemberSyncMode } from '@/web/common/system/utils';
+import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const RedeemCouponModal = dynamic(() => import('@/pageComponents/account/info/RedeemCouponModal'), {
   ssr: false
@@ -83,17 +84,17 @@ const Info = () => {
 
   return (
     <AccountContainer>
-      <Box py={[3, '28px']} px={[5, 10]} mx={'auto'}>
+      <Box h={'100%'} overflowY={'auto'} py={[3, 6]} px={[5, 6]}>
         {isPc ? (
-          <Flex justifyContent={'center'} maxW={'1080px'}>
+          <Flex w={'100%'} alignItems={'flex-start'}>
             <Box flex={'0 0 330px'}>
               <MyInfo onOpenContact={onOpenContact} />
-              <Box mt={6}>
+              <Box>
                 <Other onOpenContact={onOpenContact} />
               </Box>
             </Box>
             {!!standardPlan && (
-              <Box ml={'45px'} flex={'1'} maxW={'600px'}>
+              <Box ml={'45px'} flex={'1 0 0'} minW={0}>
                 <PlanUsage />
               </Box>
             )}
@@ -223,16 +224,6 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     letterSpacing: '0.25px'
   };
 
-  const titleStyles: BoxProps = {
-    color: 'var(--light-general-on-surface, var(--Gray-Modern-900, #111824))',
-    fontFamily: '"PingFang SC"',
-    fontSize: '16px',
-    fontStyle: 'normal',
-    fontWeight: 500,
-    lineHeight: '24px',
-    letterSpacing: '0.15px'
-  };
-
   const actionButtonStyles = {
     size: 'sm',
     minW: '52px'
@@ -243,8 +234,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     <Box>
       {/* user info */}
       {isPc && (
-        <Flex alignItems={'center'} h={'30px'} {...titleStyles}>
-          <MyIcon mr={2} name={'core/dataset/fileCollection'} w={'1.25rem'} />
+        <Flex as={'h2'} alignItems={'center'} h={'30px'} {...accountTitleTextStyles}>
           {t('account_info:general_info')}
         </Flex>
       )}
@@ -279,8 +269,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
         <MyDivider my={6} />
 
         {isPc && (
-          <Flex alignItems={'center'} h={'30px'} {...titleStyles} mt={6}>
-            <MyIcon mr={2} name={'support/team/group'} w={'1.25rem'} />
+          <Flex as={'h2'} alignItems={'center'} h={'30px'} {...accountTitleTextStyles}>
             {t('account_info:team_info')}
           </Flex>
         )}
@@ -289,7 +278,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
           <Flex mt={6} alignItems={'center'}>
             <Box {...labelStyles}>{t('account_info:user_team_team_name')}&nbsp;</Box>
             <Flex flex={'1 0 0'} w={0} align={'center'}>
-              <TeamSelector height={'28px'} w={'100%'} showManage />
+              <TeamSelector height={'34px'} w={'100%'} showManage />
             </Flex>
           </Flex>
         )}
@@ -356,6 +345,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
               defaultValue={userInfo?.team?.memberName || 'Member'}
               title={t('account_info:click_modify_nickname')}
               borderColor={'transparent'}
+              h={'36px'}
               transform={['none', 'translateX(-11px)']}
               maxLength={100}
               onBlur={async (e) => {
@@ -553,18 +543,8 @@ const PlanUsage = () => {
 
   return standardPlan ? (
     <Box mt={[6, 0]}>
-      <Flex fontSize={['md', 'lg']} h={'30px'}>
-        <Flex
-          alignItems={'center'}
-          color="var(--light-general-on-surface, var(--Gray-Modern-900, #111824))"
-          fontFamily='"PingFang SC"'
-          fontSize="16px"
-          fontStyle="normal"
-          fontWeight={500}
-          lineHeight="24px"
-          letterSpacing="0.15px"
-        >
-          <MyIcon mr={2} name={'support/account/plans'} w={'20px'} />
+      <Flex h={'30px'}>
+        <Flex as={'h2'} alignItems={'center'} {...accountTitleTextStyles}>
           {t('account_info:package_and_usage')}
         </Flex>
         <ModelPriceModal>
