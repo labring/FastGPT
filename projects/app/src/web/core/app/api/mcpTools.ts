@@ -23,7 +23,7 @@ export const getMCPTools = (data: GetMcpToolsBodyType) =>
   POST<GetMcpToolsResponseType>('/core/app/mcpTools/getTools', data);
 
 export const postRunMCPTool = (data: RunMcpToolBodyType) =>
-  POST<RunMcpToolResponseType>('/core/app/mcpTools/runTool', data, { timeout: 300000 });
+  POST<RunMcpToolResponseType>('/core/app/mcpTools/runTool', data, { timeout: 600000 });
 
 export const getMcpChildren = (data: GetMcpChildrenQueryType) =>
   GET<GetMcpChildrenResponseType>('/core/app/mcpTools/getChildren', data);

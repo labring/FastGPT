@@ -2,7 +2,7 @@
  * 沙盒业务层：从 Skill Edit sandbox 保存并发布新的技能版本。
  *
  * API 层负责鉴权和请求校验；本文件负责定位运行态 edit-debug sandbox、打包工作区、
- * 上传版本包、创建版本记录，并同步运行实例的版本元数据。
+ * 上传版本包、创建版本记录，并同步运行实例的 versionId 字段。
  */
 import { mongoSessionRun } from '../../../../../common/mongo/sessionRun';
 import { Types } from '../../../../../common/mongo';
@@ -26,7 +26,7 @@ import { MongoAgentSkills } from '../../../skill/model/schema';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import type { SaveDeploySkillResponse } from '@fastgpt/global/core/ai/skill/api';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 
@@ -63,7 +63,7 @@ export async function saveDeploySkillFromSandbox({
   if (
     !sandboxInfo ||
     sandboxInfo.status !== SandboxStatusEnum.running ||
-    sandboxInfo.metadata?.teamId !== teamId
+    sandboxInfo.teamId !== teamId
   ) {
     return Promise.reject(new UserError('Edit sandbox not found or not running'));
   }
@@ -75,10 +75,8 @@ export async function saveDeploySkillFromSandbox({
       sandboxId: sandboxInfo.sandboxId,
       workDirectory: runtimeProfile.workDirectory
     });
-  } catch (error: any) {
-    return Promise.reject(
-      new UserError(`Failed to package skill directory: ${error.message || 'Unknown error'}`)
-    );
+  } catch (error) {
+    return Promise.reject(new UserError(`Failed to package skill directory: ${getErrText(error)}`));
   }
 
   const versionId = new Types.ObjectId().toString();
@@ -94,11 +92,12 @@ export async function saveDeploySkillFromSandbox({
       packageObjectId: versionId,
       zipBuffer: packageBuffer
     });
-  } catch (error: any) {
-    if (error?.message === SkillErrEnum.archiveTooLarge) {
+  } catch (error) {
+    const errorText = getErrText(error);
+    if (errorText === SkillErrEnum.archiveTooLarge) {
       return Promise.reject(SkillErrEnum.archiveTooLarge);
     }
-    throw new UserError(`Failed to upload package: ${error.message || 'Unknown error'}`);
+    throw new UserError(`Failed to upload package: ${errorText}`);
   }
 
   const deployResult = await mongoSessionRun(async (session) => {
@@ -150,10 +149,8 @@ export async function saveDeploySkillFromSandbox({
     sandboxId: sandboxInfo.sandboxId,
     sourceType: ChatSourceTypeEnum.skillEdit,
     sourceId: skillId,
-    metadata: {
-      ...(sandboxInfo.metadata || {}),
-      versionId
-    },
+    userId: ChatSourceTypeEnum.skillEdit,
+    versionId,
     touchActive: true
   }).catch((err) => {
     logger.error('[Sandbox] Failed to update sandbox versionId after deploy', {

@@ -22,10 +22,3 @@ export const TeamPluginListItemSchema = z.object({
 });
 export const GetTeamPluginListResponseSchema = z.array(TeamPluginListItemSchema);
 export type GetTeamPluginListResponseType = z.infer<typeof GetTeamPluginListResponseSchema>;
-
-export const ToggleInstallPluginBodySchema = z.object({
-  pluginId: z.string(),
-  type: z.enum(['tool']),
-  installed: z.boolean()
-});
-export type ToggleInstallPluginBodyType = z.infer<typeof ToggleInstallPluginBodySchema>;

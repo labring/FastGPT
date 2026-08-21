@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NodeHttpRequest, NodeHttpResponse } from '../../../types/http';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { AIChatItemValueItemType, ChatItemDBSchemaType } from '@fastgpt/global/core/chat/type';
@@ -17,6 +17,7 @@ export type AuxiliaryGenerationUser = {
 
 export type AuxiliaryGenerationProcessorParams<T = unknown> = {
   query: string;
+  userAnswer?: string;
   files: AuxiliaryGenerationChatFileType[];
   data: T;
   histories: ChatItemDBSchemaType[];
@@ -31,6 +32,7 @@ export type AuxiliaryGenerationProcessorParams<T = unknown> = {
 
 export type AuxiliaryGenerationProcessorResponse = {
   aiResponse: AIChatItemValueItemType[];
+  memories?: Record<string, any>;
   usage: {
     model: string;
     inputTokens: number;
@@ -39,8 +41,8 @@ export type AuxiliaryGenerationProcessorResponse = {
 };
 
 export type AuxiliaryGenerationRunParams<T = unknown> = {
-  req: NextApiRequest;
-  res: NextApiResponse;
+  req: NodeHttpRequest;
+  res: NodeHttpResponse;
   teamId: string;
   tmbId: string;
   userId: string;
@@ -51,6 +53,7 @@ export type AuxiliaryGenerationRunParams<T = unknown> = {
   sourceId: string;
   chatId: string;
   query: string;
+  userAnswer?: string;
   files: AuxiliaryGenerationChatFileType[];
   data: T;
   histories: ChatItemDBSchemaType[];

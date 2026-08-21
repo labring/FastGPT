@@ -34,7 +34,7 @@ export type ChatRecordsListProps = {
     | undefined;
   questionGuides: string[];
   onToggleDeletedGroup: (dataIds: string[]) => void;
-  onRetry: (dataId?: string) => (() => Promise<void>) | undefined;
+  onRetry: (dataId?: string, hideInUI?: boolean) => (() => Promise<void>) | undefined;
   onEdit: (dataId?: string) => ((input: ChatBoxInputType) => Promise<void>) | undefined;
   onMark: (chat: ChatSiteItemType, q?: string) => (() => void) | undefined;
   onAddUserLike: (chat: ChatSiteItemType) => (() => void) | undefined;

@@ -16,7 +16,7 @@ import {
  * Route: GET /api/proApi/support/user/team/enterpriseAuth/status
  * Method: GET
  * Description: 获取当前团队企业认证入口开关、认证状态和可恢复任务信息
- * Tags: ['团队管理']
+ * Tags: ['企业认证']
  * ============================================================================ */
 
 export const EnterpriseAuthLightTaskSchema = z.object({
@@ -50,7 +50,7 @@ export type GetEnterpriseAuthStatusResponseType = z.infer<
  * Route: GET /api/proApi/support/user/team/enterpriseAuth/currentTaskDetail
  * Method: GET
  * Description: 获取待金额验证任务的完整展示信息，不返回验证金额
- * Tags: ['团队管理']
+ * Tags: ['企业认证']
  * ============================================================================ */
 
 export const GetEnterpriseAuthCurrentTaskDetailResponseSchema = z.object({
@@ -75,7 +75,7 @@ export type GetEnterpriseAuthCurrentTaskDetailResponseType = z.infer<
  * Route: GET /api/proApi/support/user/team/enterpriseAuth/banks
  * Method: GET
  * Description: 从小额汇款服务获取银行编码到总行名称映射
- * Tags: ['团队管理']
+ * Tags: ['企业认证']
  * ============================================================================ */
 
 export const GetEnterpriseAuthBanksResponseSchema = z.record(z.string(), z.string()).meta({
@@ -91,7 +91,7 @@ const BankAccountSchema = EnterpriseAuthRequiredStringSchema.transform((account)
 )
   .pipe(z.string().refine(isBankAccount))
   .meta({
-    description: '企业银行账号，15-19 位数字，可输入空格分隔',
+    description: '企业银行账号，仅支持数字，可输入空格分隔',
     example: '4111111111111111'
   });
 const UnifiedCreditCodeSchema = EnterpriseAuthRequiredStringSchema.transform((code) =>
@@ -144,7 +144,7 @@ export type StartEnterpriseAuthBodyType = z.infer<typeof StartEnterpriseAuthBody
  * Route: POST /api/proApi/support/user/team/enterpriseAuth/start
  * Method: POST
  * Description: 创建小额汇款认证任务，打款成功后返回待金额验证任务
- * Tags: ['团队管理']
+ * Tags: ['企业认证']
  * ============================================================================ */
 
 export const StartEnterpriseAuthResponseSchema = z.object({
@@ -171,7 +171,7 @@ export type VerifyEnterpriseAuthAmountBodyType = z.infer<
  * Route: POST /api/proApi/support/user/team/enterpriseAuth/verifyAmount
  * Method: POST
  * Description: 校验到账金额并在成功后发放企业认证赠送权益
- * Tags: ['团队管理']
+ * Tags: ['企业认证']
  * ============================================================================ */
 
 export const VerifyEnterpriseAuthAmountResponseSchema = z.object({
@@ -190,7 +190,7 @@ export type VerifyEnterpriseAuthAmountResponseType = z.infer<
  * Route: POST /api/proApi/support/user/team/enterpriseAuth/reset
  * Method: POST
  * Description: 用户确认信息有误后取消当前待金额验证任务
- * Tags: ['团队管理']
+ * Tags: ['企业认证']
  * ============================================================================ */
 
 export const ResetEnterpriseAuthResponseSchema = z.undefined().meta({ description: '操作成功' });

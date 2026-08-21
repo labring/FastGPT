@@ -3,7 +3,6 @@ import { Box, Flex } from '@chakra-ui/react';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import Script from 'next/script';
 import { useTranslation } from 'next-i18next';
 import ChineseRedirectModal from './components/ChineseRedirectModal';
 import CookieConsentModal from './components/CookieConsentModal';
@@ -46,13 +45,6 @@ export const LoginContainer = ({
 
   return (
     <>
-      {/* Google reCAPTCHA Script */}
-      {feConfigs.googleClientVerKey && (
-        <Script
-          src={`https://www.recaptcha.net/recaptcha/api.js?render=${feConfigs.googleClientVerKey}`}
-        />
-      )}
-
       <Flex
         my={['', pageType === LoginPageTypeEnum.wechat ? '-15px' : '']}
         position="relative"

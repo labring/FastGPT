@@ -15,6 +15,7 @@ jobs:
           - arch: arm64
             runs-on: ubuntu-24.04-arm
     runs-on: ${{ matrix.runs-on || 'ubuntu-24.04' }}
+    timeout-minutes: 120
     steps:
       # install env
       - name: Checkout
@@ -24,7 +25,8 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
-          driver-opts: network=host
+          driver-opts: |
+            network=host
       - name: Cache Docker layers
         uses: actions/cache@v4
         with:
@@ -41,8 +43,15 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Login to Ali Hub
+        uses: docker/login-action@v3
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
+          password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
+
       - name: Build for ${{ matrix.arch }}
-        id: build
+        id: build-ghcr
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -55,17 +64,43 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
+      - name: Build for Ali Hub ${{ matrix.arch }}
+        id: build-aliyun
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: projects/marketplace/Dockerfile
+          platforms: linux/${{ matrix.arch }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=fastgpt-marketplace image
+          provenance: false
+          sbom: false
+          outputs: type=image,"name=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-marketplace",push-by-digest=true,push=true
+          cache-from: type=local,src=/tmp/.buildx-cache
+
       - name: Export digest
         run: |
-          mkdir -p ${{ runner.temp }}/digests
-          digest="${{ steps.build.outputs.digest }}"
-          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+          mkdir -p ${{ runner.temp }}/digests/ghcr
+          mkdir -p ${{ runner.temp }}/digests/aliyun
+          ghcr_digest="${{ steps.build-ghcr.outputs.digest }}"
+          aliyun_digest="${{ steps.build-aliyun.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/ghcr/${ghcr_digest#sha256:}"
+          touch "${{ runner.temp }}/digests/aliyun/${aliyun_digest#sha256:}"
 
-      - name: Upload digest
+      - name: Upload GHCR digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-fastgpt-marketplace-${{ github.sha }}-${{ matrix.arch }}
-          path: ${{ runner.temp }}/digests/*
+          name: ghcr-digests-fastgpt-marketplace-${{ github.sha }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/ghcr/*
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Ali Hub digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: aliyun-digests-fastgpt-marketplace-${{ github.sha }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/aliyun/*
           if-no-files-found: error
           retention-days: 1
 
@@ -77,6 +112,7 @@ jobs:
       id-token: write
     needs: build-fastgpt-marketplace-images
     runs-on: ubuntu-24.04
+    timeout-minutes: 120
     steps:
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -94,8 +130,15 @@ jobs:
       - name: Download digests
         uses: actions/download-artifact@v4
         with:
-          path: ${{ runner.temp }}/digests
-          pattern: digests-fastgpt-marketplace-${{ github.sha }}-*
+          path: ${{ runner.temp }}/digests/ghcr
+          pattern: ghcr-digests-fastgpt-marketplace-${{ github.sha }}-*
+          merge-multiple: true
+
+      - name: Download Ali Hub digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests/aliyun
+          pattern: aliyun-digests-fastgpt-marketplace-${{ github.sha }}-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
@@ -117,25 +160,30 @@ jobs:
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
-          echo "Pushing image with tag: ${{ env.RANDOM_TAG }}"
-          echo "Available digests:"
-          ls -la
-          echo ""
-
-          # Create manifest for GitHub Container Registry
-          echo "Creating manifest for GitHub: ${Git_Tag}"
-          docker buildx imagetools create -t ${Git_Tag} \
-            $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-marketplace@sha256:%s ' *)
-          echo "✅ GitHub manifest created"
+          set -euo pipefail
+          GHCR_IMAGE="ghcr.io/${{ github.repository_owner }}/fastgpt-marketplace"
+          ALI_IMAGE="${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-marketplace"
+          GHCR_SOURCES=()
+          for digest_file in ghcr/*; do
+            [[ -f "$digest_file" ]] || continue
+            GHCR_SOURCES+=("${GHCR_IMAGE}@sha256:$(basename "$digest_file")")
+          done
+          ALI_SOURCES=()
+          for digest_file in aliyun/*; do
+            [[ -f "$digest_file" ]] || continue
+            ALI_SOURCES+=("${ALI_IMAGE}@sha256:$(basename "$digest_file")")
+          done
+          if [[ "${#GHCR_SOURCES[@]}" -ne 2 || "${#ALI_SOURCES[@]}" -ne 2 ]]; then
+            echo "Expected two GHCR and two Ali Hub digests"
+            exit 1
+          fi
+          docker buildx imagetools create -t "${Git_Tag}" "${GHCR_SOURCES[@]}"
           sleep 5
+          docker buildx imagetools create -t "${Ali_Tag}" "${ALI_SOURCES[@]}"
 
-          # Create manifest for Ali Cloud
-          echo "Creating manifest for Ali Cloud: ${Ali_Tag}"
-          docker buildx imagetools create -t ${Ali_Tag} \
-            $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-marketplace@sha256:%s ' *)
-          echo "✅ Ali Cloud manifest created"
-
-          echo ""
-          echo "✅ All images pushed successfully:"
-          echo "  - ${{ env.Git_Tag }}"
-          echo "  - ${{ env.Ali_Tag }}"
+          manifest="$(docker buildx imagetools inspect --raw "${Ali_Tag}")"
+          jq -e '
+            ([.manifests[]?.platform | select(.os == "linux" and .architecture == "amd64")] | length == 1) and
+            ([.manifests[]?.platform | select(.os == "linux" and .architecture == "arm64")] | length == 1) and
+            ([.manifests[]?.platform | select(.os == "linux" and (.architecture != "amd64" and .architecture != "arm64"))] | length == 0)
+          ' <<<"$manifest" >/dev/null

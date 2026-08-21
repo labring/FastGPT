@@ -1,6 +1,10 @@
 ---
 title: V4.9.4
 description: FastGPT V4.9.4 Release Notes
+releaseTime: '2025-04-10'
+upgradeTags:
+  - CONFIG
+  - MIGRATION
 ---
 
 ## Upgrade Guide
@@ -9,12 +13,12 @@ description: FastGPT V4.9.4 Release Notes
 
 ### 2. Install Redis
 
-* For Docker deployments, refer to the latest `docker-compose.yml` file to add Redis configuration. Add a Redis container and configure the `REDIS_URL` environment variable for both `fastgpt` and `fastgpt-pro`.
-* For Sealos deployments, create a new `redis` database in the Database section, copy the `internal connection` URL as the Redis connection string, then configure the `REDIS_URL` environment variable for both `fastgpt` and `fastgpt-pro`.
+- For Docker deployments, refer to the latest `docker-compose.yml` file to add Redis configuration. Add a Redis container and configure the `REDIS_URL` environment variable for both `fastgpt` and `fastgpt-pro`.
+- For Sealos deployments, create a new `redis` database in the Database section, copy the `internal connection` URL as the Redis connection string, then configure the `REDIS_URL` environment variable for both `fastgpt` and `fastgpt-pro`.
 
-| | | |
-| --- | --- |  --- |
-| ![](../../../../public/imgs/sealos-redis1.png) | ![](../../../../public/imgs/sealos-redis2.png) |  ![](../../../../public/imgs/sealos-redis3.png) |
+|                                                |                                                |                                                |
+| ---------------------------------------------- | ---------------------------------------------- | ---------------------------------------------- |
+| ![](../../../../public/imgs/sealos-redis1.png) | ![](../../../../public/imgs/sealos-redis2.png) | ![](../../../../public/imgs/sealos-redis3.png) |
 
 ### 3. Update Image Tags
 
@@ -41,11 +45,11 @@ curl --location --request POST 'https://{{host}}/api/admin/initv494' \
 
 ## New Features
 
-1. Collection data training status display.
+1. Collection data indexing status display.
 2. SMTP email sending plugin.
 3. BullMQ message queue.
 4. Partial data caching via Redis.
-5. Site sync now supports configuring training parameters and incremental sync.
+5. Site sync now supports configuring indexing parameters and incremental sync.
 6. AI chat/tool calls now return the model's `finish_reason` field for easier tracking of output interruption causes.
 7. Mobile voice input UI adjustments.
 
@@ -57,6 +61,6 @@ curl --location --request POST 'https://{{host}}/api/admin/initv494' \
 
 ## Bug Fixes
 
-1. Unable to click into subdirectories when searching apps/knowledge bases.
+1. Unable to click into subdirectories when searching apps/datasets.
 2. Retraining parameters not properly initialized.
 3. Inconsistent requests in package/service across multiple apps.

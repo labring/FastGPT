@@ -1,7 +1,7 @@
 import React from 'react';
 import MyEditor, { type Props as EditorProps } from './Editor';
-import { Button, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
-import MyModal from '../../MyModal';
+import { Button, useDisclosure } from '@chakra-ui/react';
+import MyModal from '../../../v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
 
 type Props = Omit<EditorProps, 'resize'> & { language?: string };
@@ -36,20 +36,14 @@ const CodeEditor = (props: Props) => {
       <MyModal
         isOpen={isOpen}
         onClose={onClose}
-        iconSrc="modal/edit"
         title={t('common:code_editor')}
-        w={'full'}
+        size={'md'}
         h={'85vh'}
         isCentered
+        bodyStyles={{ flex: '1 0 0', minH: 0, overflow: 'auto' }}
+        footer={<Button onClick={onClose}>{t('common:Confirm')}</Button>}
       >
-        <ModalBody flex={'1 0 0'} overflow={'auto'}>
-          <MyEditor {...props} bg={'myGray.50'} height={'100%'} language={fullName} />
-        </ModalBody>
-        <ModalFooter>
-          <Button mr={2} onClick={onClose} px={6}>
-            {t('common:Confirm')}
-          </Button>
-        </ModalFooter>
+        <MyEditor {...props} bg={'myGray.50'} height={'100%'} language={fullName} />
       </MyModal>
     </>
   );

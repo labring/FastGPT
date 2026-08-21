@@ -65,11 +65,13 @@ const RenderProcessingCollapse = React.memo(function RenderProcessingCollapse({
           </AccordionButton>
         </Box>
         {isProcessing && !isExpanded && preview && <Box mt={2}>{preview}</Box>}
-        <AccordionPanel py={0} pr={0} pl={0} mt={2}>
-          <Flex flexDirection={'column'} gap={2}>
-            {children}
-          </Flex>
-        </AccordionPanel>
+        {isExpanded && (
+          <AccordionPanel py={0} pr={0} pl={0} mt={2}>
+            <Flex flexDirection={'column'} gap={2}>
+              {children}
+            </Flex>
+          </AccordionPanel>
+        )}
       </AccordionItem>
     </Accordion>
   );

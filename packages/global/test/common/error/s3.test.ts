@@ -15,8 +15,8 @@ describe('parseS3UploadError', () => {
       maxSize: 10 * 1024 * 1024
     });
 
-    expect(result).toBe('common:error:s3_upload_file_too_large:{"max":"10 MB"}');
-    expect(t).toHaveBeenCalledWith('common:error:s3_upload_file_too_large', { max: '10 MB' });
+    expect(result).toBe('common:error.s3_upload_file_too_large:{"max":"10 MB"}');
+    expect(t).toHaveBeenCalledWith('common:error.s3_upload_file_too_large', { max: '10 MB' });
   });
 
   it('should handle axios response EntityTooLarge error', () => {
@@ -31,8 +31,8 @@ describe('parseS3UploadError', () => {
       maxSize: 1024
     });
 
-    expect(result).toBe('common:error:s3_upload_file_too_large:{"max":"1 KB"}');
-    expect(t).toHaveBeenCalledWith('common:error:s3_upload_file_too_large', { max: '1 KB' });
+    expect(result).toBe('common:error.s3_upload_file_too_large:{"max":"1 KB"}');
+    expect(t).toHaveBeenCalledWith('common:error.s3_upload_file_too_large', { max: '1 KB' });
   });
 
   it('should handle proxy json EntityTooLarge error', () => {
@@ -49,8 +49,8 @@ describe('parseS3UploadError', () => {
       maxSize: 2 * 1024 * 1024
     });
 
-    expect(result).toBe('common:error:s3_upload_file_too_large:{"max":"2 MB"}');
-    expect(t).toHaveBeenCalledWith('common:error:s3_upload_file_too_large', { max: '2 MB' });
+    expect(result).toBe('common:error.s3_upload_file_too_large:{"max":"2 MB"}');
+    expect(t).toHaveBeenCalledWith('common:error.s3_upload_file_too_large', { max: '2 MB' });
   });
 
   it('should handle invalid upload file type errors', () => {
@@ -66,8 +66,8 @@ describe('parseS3UploadError', () => {
       }
     });
 
-    expect(result).toBe('common:error:s3_upload_invalid_file_type');
-    expect(t).toHaveBeenCalledWith('common:error:s3_upload_invalid_file_type');
+    expect(result).toBe('common:error.s3_upload_invalid_file_type');
+    expect(t).toHaveBeenCalledWith('common:error.s3_upload_invalid_file_type');
   });
 
   it('should handle AccessDenied error', () => {
@@ -81,8 +81,8 @@ describe('parseS3UploadError', () => {
       }
     });
 
-    expect(result).toBe('common:error:s3_upload_auth_failed');
-    expect(t).toHaveBeenCalledWith('common:error:s3_upload_auth_failed');
+    expect(result).toBe('common:error.s3_upload_auth_failed');
+    expect(t).toHaveBeenCalledWith('common:error.s3_upload_auth_failed');
   });
 
   it('should handle proxy json unauthorized error', () => {
@@ -99,8 +99,8 @@ describe('parseS3UploadError', () => {
       }
     });
 
-    expect(result).toBe('common:error:s3_upload_auth_failed');
-    expect(t).toHaveBeenCalledWith('common:error:s3_upload_auth_failed');
+    expect(result).toBe('common:error.s3_upload_auth_failed');
+    expect(t).toHaveBeenCalledWith('common:error.s3_upload_auth_failed');
   });
 
   it('should handle invalid access key or signature errors', () => {
@@ -114,8 +114,8 @@ describe('parseS3UploadError', () => {
       }
     });
 
-    expect(result).toBe('common:error:s3_upload_auth_failed');
-    expect(t).toHaveBeenCalledWith('common:error:s3_upload_auth_failed');
+    expect(result).toBe('common:error.s3_upload_auth_failed');
+    expect(t).toHaveBeenCalledWith('common:error.s3_upload_auth_failed');
   });
 
   it('should handle NoSuchBucket error', () => {
@@ -129,8 +129,25 @@ describe('parseS3UploadError', () => {
       }
     });
 
-    expect(result).toBe('common:error:s3_upload_bucket_not_found');
-    expect(t).toHaveBeenCalledWith('common:error:s3_upload_bucket_not_found');
+    expect(result).toBe('common:error.s3_upload_bucket_not_found');
+    expect(t).toHaveBeenCalledWith('common:error.s3_upload_bucket_not_found');
+  });
+
+  it('should handle proxy json NoSuchBucket error', () => {
+    const t = createTranslator();
+    const result = parseS3UploadError({
+      t,
+      error: {
+        response: {
+          data: {
+            message: 'NoSuchBucket'
+          }
+        }
+      }
+    });
+
+    expect(result).toBe('common:error.s3_upload_bucket_not_found');
+    expect(t).toHaveBeenCalledWith('common:error.s3_upload_bucket_not_found');
   });
 
   it('should handle RequestTimeout error', () => {
@@ -144,8 +161,25 @@ describe('parseS3UploadError', () => {
       }
     });
 
-    expect(result).toBe('common:error:s3_upload_timeout');
-    expect(t).toHaveBeenCalledWith('common:error:s3_upload_timeout');
+    expect(result).toBe('common:error.s3_upload_timeout');
+    expect(t).toHaveBeenCalledWith('common:error.s3_upload_timeout');
+  });
+
+  it('should handle proxy json RequestTimeout error', () => {
+    const t = createTranslator();
+    const result = parseS3UploadError({
+      t,
+      error: {
+        response: {
+          data: {
+            statusText: 'RequestTimeout'
+          }
+        }
+      }
+    });
+
+    expect(result).toBe('common:error.s3_upload_timeout');
+    expect(t).toHaveBeenCalledWith('common:error.s3_upload_timeout');
   });
 
   it('should handle network errors', () => {
@@ -157,8 +191,8 @@ describe('parseS3UploadError', () => {
       }
     });
 
-    expect(result).toBe('common:error:s3_upload_network_error');
-    expect(t).toHaveBeenCalledWith('common:error:s3_upload_network_error');
+    expect(result).toBe('common:error.s3_upload_network_error');
+    expect(t).toHaveBeenCalledWith('common:error.s3_upload_network_error');
   });
 
   it('should handle axios timeout errors', () => {
@@ -170,8 +204,8 @@ describe('parseS3UploadError', () => {
       }
     });
 
-    expect(result).toBe('common:error:s3_upload_timeout');
-    expect(t).toHaveBeenCalledWith('common:error:s3_upload_timeout');
+    expect(result).toBe('common:error.s3_upload_timeout');
+    expect(t).toHaveBeenCalledWith('common:error.s3_upload_timeout');
   });
 
   it('should handle timeout message errors', () => {
@@ -183,8 +217,8 @@ describe('parseS3UploadError', () => {
       }
     });
 
-    expect(result).toBe('common:error:s3_upload_timeout');
-    expect(t).toHaveBeenCalledWith('common:error:s3_upload_timeout');
+    expect(result).toBe('common:error.s3_upload_timeout');
+    expect(t).toHaveBeenCalledWith('common:error.s3_upload_timeout');
   });
 
   it('should handle client side file size validation errors', () => {
@@ -196,11 +230,11 @@ describe('parseS3UploadError', () => {
       }
     });
 
-    expect(result).toBe('common:error:s3_upload_file_too_large:{"max":"-"}');
-    expect(t).toHaveBeenCalledWith('common:error:s3_upload_file_too_large', { max: '-' });
+    expect(result).toBe('common:error.s3_upload_file_too_large:{"max":"-"}');
+    expect(t).toHaveBeenCalledWith('common:error.s3_upload_file_too_large', { max: '-' });
   });
 
-  it('should return default network error for unknown error', () => {
+  it('should return generic upload error for unknown error', () => {
     const t = createTranslator();
     const result = parseS3UploadError({
       t,
@@ -209,7 +243,7 @@ describe('parseS3UploadError', () => {
       }
     });
 
-    expect(result).toBe('common:error:s3_upload_network_error');
-    expect(t).toHaveBeenCalledWith('common:error:s3_upload_network_error');
+    expect(result).toBe('common:upload_file_error');
+    expect(t).toHaveBeenCalledWith('common:upload_file_error');
   });
 });

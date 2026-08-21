@@ -25,7 +25,7 @@ catalog:
   '@dnd-kit/core': ^6.3.1
   '@emotion/react': ^11
   '@emotion/styled': ^11
-  '@llamaindex/liteparse': 2.0.5
+  '@llamaindex/liteparse-wasm': 2.0.8
   '@modelcontextprotocol/sdk': ^1
   '@node-rs/jieba': 2.0.1
   '@svgr/webpack': ^6.5.1
@@ -33,9 +33,9 @@ catalog:
   '@tanstack/react-query': ^4.24.10
   '@types/js-yaml': ^4.0.9
   '@types/jsonwebtoken': ^9.0.3
-  '@types/lodash': ^4
+  '@types/lodash-es': ^4
   '@types/mime-types': ^3.0.1
-  '@types/node': ^20
+  '@types/node': ^24.13.3
   '@types/proxy-addr': 2.0.3
   '@types/react': ^18
   '@types/react-dom': ^18
@@ -44,7 +44,8 @@ catalog:
   '@xterm/addon-fit': ^0.10.0
   '@xterm/xterm': ^5.5.0
   ahooks: ^3.9.5
-  axios: ^1.16.0
+  ajv: ^8.17.1
+  axios: ^1.18.0
   chalk: ^5.6.2
   date-fns: ^3.6.0
   dayjs: 1.11.19
@@ -52,20 +53,21 @@ catalog:
   express: ^4
   file-type: 21.3.0
   gpt-tokenizer: 3.4.0
-  hono: 4.12.25
+  hono: 4.12.27
+  '@hono/node-server': ^2.0.10
   i18next: 23.16.8
   ipaddr.js: ^2.4.0
   js-yaml: ^4.1.1
   json5: ^2.2.3
   jsonwebtoken: ^9.0.3
-  lodash: 4.17.23
+  lodash-es: ^4.17.21
   mime: ^4.1.0
   mime-types: 3.0.2
   minio: 8.0.7
   mongodb-memory-server: ^10.1.4
   mongoose: ^8.22.1
   nanoid: ^5.1.3
-  next: 16.2.6
+  next: 16.3.0
   next-i18next: 15.4.2
   proxy-addr: 2.0.7
   proxy-agent: ^6
@@ -76,21 +78,26 @@ catalog:
   react-markdown: ^9.0.1
   recharts: ^2.15.0
   remark-gfm: ^4.0.1
+  remend: ^1.3.0
   request-ip: ^3.3.0
   tsdown: 0.21.10
   tsx: ^4.20.6
+  turbo: 2.10.8
   typescript: ^6.0.3
-  undici: ^7.28.0
+  undici: ^7.29.0
   vaul: ^1.1.2
   vitest: ^4.1.5
   zod: ^4
+  postcss: ^8.5.12
+  marked: ^18.0.9
+  mermaid: ^11.16.1
 
 catalogMode: prefer
 
 catalogs:
   lint:
     eslint: ^9
-    eslint-config-next: 16.2.6
+    eslint-config-next: 16.3.0
     lint-staged: ^16.4.0
     prettier: 3.8.3
     textlint: 12.6.1
@@ -113,6 +120,9 @@ onlyBuiltDependencies:
   - vue-demi
 
 overrides:
+  '@tootallnate/once': 2.0.1
+  'proxy-agent>pac-proxy-agent': 7.2.0
+  '@swc/helpers': ^0.5.23
   '@types/react': ^18
   '@types/react-dom': ^18
   react: ^18

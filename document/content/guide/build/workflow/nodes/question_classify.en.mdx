@@ -9,7 +9,7 @@ description: FastGPT Question Classification node overview
 - Has external input
 - Requires manual configuration
 - Trigger-based execution
-- function_call module
+- function_call node
 
 ![](/imgs/cq1.png)
 
@@ -30,8 +30,8 @@ Placed at the beginning of the conversation to provide supplementary definitions
 Since "billing" can cover multiple cases, define it in the system prompt:
 
 ```
-Billing FAQs include plan prices, balance, credit usage, renewals, invoices, and refunds
-Questions about why credits were deducted, how to recharge, or where to view bills should be classified as Billing FAQs
+Billing FAQs include plan prices, balance, point usage, renewals, invoices, and refunds
+Questions about why points were deducted, how to recharge, or where to view bills should be classified as Billing FAQs
 General product feature questions or greetings should not be classified as Billing FAQs
 ```
 

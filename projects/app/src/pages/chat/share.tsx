@@ -51,6 +51,7 @@ import { useAppChatGenerateStatusSync } from '@/pageComponents/chat/ChatWindow/u
 import { postMarkChatRead } from '@/web/core/chat/history/api';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 import type { GetHistoriesBodyType } from '@fastgpt/global/openapi/core/chat/history/api';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
@@ -303,6 +304,8 @@ const OutLink = (props: Props) => {
       />
       <Flex
         h={'full'}
+        minH={0}
+        minW={0}
         gap={datasetCiteData ? 0 : 4}
         {...(isEmbed ? { p: '0 !important', borderRadius: '0', boxShadow: 'none' } : { p: [0, 5] })}
       >
@@ -310,6 +313,8 @@ const OutLink = (props: Props) => {
           <PageContainer
             flex={'1 0 0'}
             w={0}
+            minH={0}
+            minW={0}
             p={'0 !important'}
             insertProps={
               datasetCiteData
@@ -319,19 +324,22 @@ const OutLink = (props: Props) => {
                 : undefined
             }
           >
-            <Flex h={'100%'} flexDirection={['column', 'row']}>
+            <Flex h={'100%'} minH={0} minW={0} flexDirection={['column', 'row']}>
               {RenderHistoryList}
 
               {/* chat container */}
               <Flex
                 position={'relative'}
                 h={[0, '100%']}
+                minH={0}
+                minW={0}
                 w={['100%', 0]}
                 flex={'1 0 0'}
                 flexDirection={'column'}
               >
                 {/* header */}
                 {showHead === '1' &&
+                  !isPlugin &&
                   (isPc ? (
                     <ChatWindowHeader
                       title={chatWindowTitle}
@@ -384,17 +392,19 @@ const OutLink = (props: Props) => {
                             flexShrink={0}
                           />
                         )}
-                        <Box
-                          minW={0}
-                          fontSize="16px"
-                          fontWeight={500}
-                          color="myGray.900"
-                          overflow="hidden"
-                          whiteSpace="nowrap"
-                          textOverflow="clip"
-                        >
-                          {mobileHeaderAppName}
-                        </Box>
+                        <MyTooltip label={mobileHeaderAppName} showOnlyWhenOverflow>
+                          <Box
+                            minW={0}
+                            fontSize="16px"
+                            fontWeight={500}
+                            color="myGray.900"
+                            overflow="hidden"
+                            whiteSpace="nowrap"
+                            textOverflow="clip"
+                          >
+                            {mobileHeaderAppName}
+                          </Box>
+                        </MyTooltip>
                       </Flex>
 
                       {hideMenu === '1' ? (
@@ -411,7 +421,7 @@ const OutLink = (props: Props) => {
                     </Flex>
                   ))}
                 {/* chat box */}
-                <Box flex={1} bg={'white'}>
+                <Box flex={1} minH={0} minW={0} overflow={'hidden'} bg={'white'}>
                   {isPlugin ? (
                     <CustomPluginRunBox
                       appId={appId}
@@ -467,6 +477,7 @@ const OutLink = (props: Props) => {
             <ChatQuoteList
               rawSearch={datasetCiteData.rawSearch}
               metadata={datasetCiteData.metadata}
+              singleQuote={datasetCiteData.singleQuote}
               onClose={() => setCiteModalData(undefined)}
             />
           </PageContainer>
@@ -481,7 +492,15 @@ const Render = (props: Props) => {
   const { toast } = useToast();
   const { shareId, authToken, customUid, appId } = props;
   const { localUId, setLocalUId, loaded } = useShareChatStore();
-  const { source, chatId, setSource, setAppId, setOutLinkAuthData } = useChatStore();
+  const {
+    source,
+    chatId,
+    appId: chatStoreAppId,
+    setSource,
+    setAppId,
+    setOutLinkAuthData,
+    loaded: chatStoreLoaded
+  } = useChatStore();
 
   const outLinkUid = authToken || customUid || localUId || '';
   const chatHistoryProviderParams = useMemoEnhance<GetHistoriesBodyType>(() => {
@@ -506,9 +525,11 @@ const Render = (props: Props) => {
     };
   }, [outLinkAuthData, chatId]);
 
-  useMount(() => {
+  useEffect(() => {
+    if (!chatStoreLoaded) return;
+
     setSource('share');
-  });
+  }, [chatStoreLoaded, setSource]);
 
   // Set default localUId
   useEffect(() => {
@@ -521,18 +542,20 @@ const Render = (props: Props) => {
 
   // Init outLinkAuthData
   useEffect(() => {
-    if (outLinkAuthData.outLinkUid) {
-      setOutLinkAuthData(outLinkAuthData);
-    }
+    if (!chatStoreLoaded || !outLinkAuthData.outLinkUid) return;
+
+    setOutLinkAuthData(outLinkAuthData);
     return () => {
       setOutLinkAuthData({});
     };
-  }, [outLinkAuthData, setOutLinkAuthData]);
+  }, [chatStoreLoaded, outLinkAuthData, setOutLinkAuthData]);
 
   // Watch appId
   useEffect(() => {
+    if (!chatStoreLoaded) return;
+
     setAppId(appId);
-  }, [appId, setAppId]);
+  }, [appId, chatStoreLoaded, setAppId]);
   useMount(() => {
     if (!appId) {
       toast({
@@ -542,7 +565,16 @@ const Render = (props: Props) => {
     }
   });
 
-  return source === ChatSourceEnum.share && outLinkAuthData.outLinkUid ? (
+  const isCurrentChatLinkReady =
+    chatStoreLoaded &&
+    source === ChatSourceEnum.share &&
+    chatStoreAppId === appId &&
+    outLinkAuthData.shareId === shareId &&
+    outLinkAuthData.outLinkUid === outLinkUid &&
+    !!appId &&
+    !!outLinkUid;
+
+  return isCurrentChatLinkReady ? (
     <ChatContextProvider params={chatHistoryProviderParams}>
       <ChatItemContextProvider
         showRouteToDatasetDetail={false}

@@ -1,6 +1,9 @@
 ---
-title: 'V4.14.0 (Includes Upgrade Script)'
+title: 'V4.14.0'
 description: 'FastGPT V4.14.0 Release Notes'
+releaseTime: '2025-11-05'
+upgradeTags:
+  - MIGRATION
 ---
 
 ## Upgrade Guide
@@ -32,13 +35,13 @@ This will migrate existing system tools to the latest data table.
 Starting from V4.14.0, the fastgpt-plugin image only provides the runtime environment and no longer comes with pre-installed system plugins. All FastGPT systems must manually install system plugins.
 
 **Important Notes**
-* Previously manually installed JS plugin packages will become invalid and need to be repackaged and reinstalled.
-* Installing via the Plugin Marketplace will fetch data from the public FastGPT Marketplace by default.
-* If your FastGPT instance cannot access the Plugin Marketplace, you can manually visit the [FastGPT Plugin Marketplace](https://marketplace.fastgpt.cn/), download the .pkg file, and import it into your system.
-* In addition to installation, you can also sort tools, set default installations, manage tags, and more.
-* Currently, the plugin system only includes tools. Triggers, document parsers, data chunking strategies, and index enhancement strategies will be added in future releases.
-* After system plugins are installed, in multi-tenant systems, team administrators can activate the corresponding tools in the plugin library to use them in apps. For the open-source edition, the root team will have all system tools activated by default.
 
+- Previously manually installed JS plugin packages will become invalid and need to be repackaged and reinstalled.
+- Installing via the Plugin Marketplace will fetch data from the public FastGPT Marketplace by default.
+- If your FastGPT instance cannot access the Plugin Marketplace, you can manually visit the [FastGPT Plugin Marketplace](https://marketplace.fastgpt.cn/), download the .pkg file, and import it into your system.
+- In addition to installation, you can also sort tools, set default installations, manage tags, and more.
+- Currently, the plugin system only includes tools. Triggers, document parsers, data chunking strategies, and index enhancement strategies will be added in future releases.
+- After system plugins are installed, in multi-tenant systems, team administrators can activate the corresponding tools in the plugin library to use them in apps. For the open-source edition, the root team will have all system tools activated by default.
 
 In addition to installation, you can also sort tools, set default installations, manage tags, and more.
 

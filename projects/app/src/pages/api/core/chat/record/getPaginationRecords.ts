@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import {
   chatItemResponsePreviewProjection,
   transformPreviewHistories
@@ -23,6 +23,7 @@ import {
   GetPaginationRecordsResponseSchema,
   type GetPaginationRecordsResponseType
 } from '@fastgpt/global/openapi/core/chat/record/api';
+import { getChatItemValueType } from '@/service/core/chat/utils';
 
 export async function handler(req: ApiRequestProps): Promise<GetPaginationRecordsResponseType> {
   const {
@@ -52,15 +53,17 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
     chatId,
     outLinkAuthData
   });
+  // 后续查询统一使用鉴权解析后的来源，避免分享链接请求体缺少 sourceType 时降级为普通对话。
+  const resolvedSourceType = authRes.sourceType;
   const resolvedSourceId = authRes.sourceId;
 
   const [app] = await Promise.all([
-    sourceType === ChatSourceTypeEnum.app
+    resolvedSourceType === ChatSourceTypeEnum.app
       ? MongoApp.findById(resolvedSourceId, 'type').lean()
       : null
   ]);
 
-  if (sourceType === ChatSourceTypeEnum.app && !app) {
+  if (resolvedSourceType === ChatSourceTypeEnum.app && !app) {
     return Promise.reject(AppErrEnum.unExist);
   }
   const isPlugin = app?.type === AppTypeEnum.workflowTool;
@@ -74,8 +77,8 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
     [GetChatTypeEnum.home]: commonField
   };
 
-  const { total, histories } = await getChatItems({
-    sourceType,
+  const { total, histories: sourceHistories } = await getChatItems({
+    sourceType: resolvedSourceType,
     sourceId: resolvedSourceId,
     chatId,
     field: fieldMap[type],
@@ -86,7 +89,10 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
   });
 
   // Presign file urls
-  await addPreviewUrlToChatItems(histories, isPlugin ? 'workflowTool' : 'chatFlow');
+  const histories = await addPreviewUrlToChatItems(
+    sourceHistories,
+    isPlugin ? 'workflowTool' : 'chatFlow'
+  );
 
   histories.forEach((item) => {
     // Remove important information
@@ -112,27 +118,10 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
     }
 
     // Add value type(适配旧版)
-    item.value = item.value.map((v) => {
-      enum ChatItemValueTypeEnum {
-        text = 'text',
-        file = 'file',
-        tool = 'tool',
-        interactive = 'interactive',
-        reasoning = 'reasoning'
-      }
-      const type = (() => {
-        if (v.text) return ChatItemValueTypeEnum.text;
-        if ('file' in v) return ChatItemValueTypeEnum.file;
-        if ('tool' in v || 'tools' in v) return ChatItemValueTypeEnum.tool;
-        if ('interactive' in v) return ChatItemValueTypeEnum.interactive;
-        if ('reasoning' in v) return ChatItemValueTypeEnum.reasoning;
-        return ChatItemValueTypeEnum.text;
-      })();
-      return {
-        ...v,
-        type
-      };
-    });
+    item.value = item.value.map((value) => ({
+      ...value,
+      type: getChatItemValueType(value)
+    }));
   });
 
   return GetPaginationRecordsResponseSchema.parse({

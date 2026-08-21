@@ -6,7 +6,7 @@ import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useTranslation } from 'next-i18next';
 import { CollectionPageContext } from './Context';
-import { isEqual } from 'lodash';
+import { isEqual } from 'lodash-es';
 import TagManageModal from './TagManageModal';
 import { type DatasetTagType } from '@fastgpt/global/core/dataset/type';
 

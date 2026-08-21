@@ -1,9 +1,9 @@
-import { Box, Button, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, useDisclosure } from '@chakra-ui/react';
 import React, { useMemo, useCallback } from 'react';
 import { editorStateToText } from './utils';
 import type { EditorProps } from './Editor';
 import Editor from './Editor';
-import MyModal from '../../MyModal';
+import MyModal from '../../../v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import type { LexicalEditor } from 'lexical';
 import type { FormPropsType } from './type';
@@ -89,45 +89,39 @@ const PromptEditor = ({
       <MyModal
         isOpen={isOpen}
         onClose={onClose}
-        iconSrc="modal/edit"
         title={title || t('common:Edit')}
-        w={'full'}
+        size={'md'}
+        isCentered
+        footer={<Button onClick={onClose}>{t('common:Confirm')}</Button>}
       >
-        <ModalBody>
-          <Box position="relative">
-            <Editor
-              {...props}
-              minH={400}
-              maxH={400}
-              showOpenModal={false}
-              value={formattedValue}
-              onChange={onChangeInput}
-              onChangeText={onChange}
-              onBlur={onBlurInput}
-              onKeyDown={onKeyDown}
-              isDisabled={isDisabled}
+        <Box position="relative">
+          <Editor
+            {...props}
+            minH={400}
+            maxH={400}
+            showOpenModal={false}
+            value={formattedValue}
+            onChange={onChangeInput}
+            onChangeText={onChange}
+            onBlur={onBlurInput}
+            onKeyDown={onKeyDown}
+            isDisabled={isDisabled}
+          />
+          {isDisabled && (
+            <Box
+              position="absolute"
+              top={0}
+              left={0}
+              right={0}
+              bottom={0}
+              bg="rgba(255, 255, 255, 0.5)"
+              borderRadius="md"
+              zIndex={1}
+              cursor="not-allowed"
+              pointerEvents="none"
             />
-            {isDisabled && (
-              <Box
-                position="absolute"
-                top={0}
-                left={0}
-                right={0}
-                bottom={0}
-                bg="rgba(255, 255, 255, 0.5)"
-                borderRadius="md"
-                zIndex={1}
-                cursor="not-allowed"
-                pointerEvents="none"
-              />
-            )}
-          </Box>
-        </ModalBody>
-        <ModalFooter>
-          <Button mr={2} onClick={onClose} px={6}>
-            {t('common:Confirm')}
-          </Button>
-        </ModalFooter>
+          )}
+        </Box>
       </MyModal>
     </>
   );

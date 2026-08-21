@@ -1,4 +1,5 @@
 import { uploadImage2S3Bucket } from '../../s3/utils';
+import { createOpaqueS3Filename } from '../../s3/opaqueKey';
 import { normalizeMimeType, resolveMimeExtension, resolveMimeType } from '../../s3/utils/mime';
 
 export type ParsedPdfImageUploadParams =
@@ -33,7 +34,7 @@ export const uploadParsedPdfImage = async (
   const { prefix, expiredTime } = imageKeyOptions;
   const mimetype = normalizeMimeType(image.mime);
   const ext = resolveMimeExtension(mimetype);
-  const filename = `${crypto.randomUUID()}${ext}`;
+  const filename = createOpaqueS3Filename(ext);
   const commonParams = {
     uploadKey: `${prefix}/${filename}`,
     mimetype: resolveMimeType([filename], mimetype),

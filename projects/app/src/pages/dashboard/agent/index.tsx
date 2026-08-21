@@ -14,11 +14,7 @@ import { useRouter } from 'next/router';
 import FolderSlideCard from '@/components/common/folder/SlideCard';
 import { delAppById, resumeInheritPer } from '@/web/core/app/api';
 import { AppRoleList } from '@fastgpt/global/support/permission/app/constant';
-import {
-  deleteAppCollaborators,
-  getCollaboratorList,
-  postUpdateAppCollaborators
-} from '@/web/core/app/api/collaborator';
+import { getCollaboratorList, postUpdateAppCollaborators } from '@/web/core/app/api/collaborator';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -232,12 +228,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     ...props,
                     appId: folderDetail._id
                   }),
-                refreshDeps: [folderDetail._id, folderDetail.inheritPermission],
-                onDelOneCollaborator: async (params) =>
-                  deleteAppCollaborators({
-                    ...params,
-                    appId: folderDetail._id
-                  })
+                refreshDeps: [folderDetail._id, folderDetail.inheritPermission]
               }}
             />
           </Box>

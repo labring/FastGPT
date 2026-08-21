@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { Box, Button, Flex, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
-import { type NotSufficientModalType, useSystemStore } from '@/web/common/system/useSystemStore';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ExtraPlan from '@/pageComponents/price/ExtraPlan';
 import StandardPlan from '@/pageComponents/price/Standard';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
@@ -15,7 +15,7 @@ import { useRouter } from 'next/router';
 import { subRoute } from '@fastgpt/web/common/system/utils';
 
 const NotSufficientModal = () => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation();
   const router = useRouter();
   const { notSufficientModalType: type, setNotSufficientModalType } = useSystemStore();
   const { isTeamAdmin, userInfo } = useUserStore();
@@ -86,7 +86,7 @@ export const RechargeModal = ({
   onClose: () => void;
   onPaySuccess: () => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation();
   const router = useRouter();
   const { teamPlanStatus, initTeamPlanStatus } = useUserStore();
   const { subPlans } = useSystemStore();
@@ -95,13 +95,14 @@ export const RechargeModal = ({
     initTeamPlanStatus();
   });
 
+  const currentSubLevel = teamPlanStatus?.standard?.currentSubLevel;
   const planName = useMemo(() => {
-    if (!teamPlanStatus?.standard?.currentSubLevel) return '';
+    if (!currentSubLevel) return '';
     return (
-      subPlans?.standard?.[teamPlanStatus.standard.currentSubLevel]?.name ||
-      t(standardSubLevelMap[teamPlanStatus.standard.currentSubLevel]?.label as any)
+      subPlans?.standard?.[currentSubLevel]?.name ||
+      t(standardSubLevelMap[currentSubLevel]?.label as any)
     );
-  }, [teamPlanStatus?.standard?.currentSubLevel, subPlans?.standard, t]);
+  }, [currentSubLevel, subPlans?.standard, t]);
 
   const [tab, setTab] = useState<'standard' | 'extra'>('standard');
 
@@ -150,15 +151,15 @@ export const RechargeModal = ({
               <Box
                 fontSize={'14px'}
                 fontWeight={'medium'}
-              >{`${Math.round(teamPlanStatus?.usedPoints || 0)} / ${teamPlanStatus?.totalPoints ?? t('common:Unlimited')}`}</Box>
+              >{`${teamPlanStatus?.usedPoints === null ? t('common:Unlimited') : Math.round(teamPlanStatus?.usedPoints ?? 0)} / ${teamPlanStatus?.totalPoints ?? t('common:Unlimited')}`}</Box>
             </Flex>
             <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
               <Box
                 borderRadius={'sm'}
                 transition="width 0.3s"
-                w={`${teamPlanStatus?.totalPoints ? Math.max((teamPlanStatus.usedPoints / teamPlanStatus.totalPoints) * 100, 0) : 0}%`}
+                w={`${teamPlanStatus?.totalPoints && teamPlanStatus.usedPoints !== null ? Math.max((teamPlanStatus.usedPoints / teamPlanStatus.totalPoints) * 100, 0) : 0}%`}
                 bg={`${
-                  teamPlanStatus?.totalPoints
+                  teamPlanStatus?.totalPoints && teamPlanStatus.usedPoints !== null
                     ? (teamPlanStatus.usedPoints / teamPlanStatus.totalPoints) * 100 < 50
                       ? 'primary'
                       : (teamPlanStatus.usedPoints / teamPlanStatus.totalPoints) * 100 < 80

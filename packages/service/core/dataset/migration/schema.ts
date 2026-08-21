@@ -1,5 +1,4 @@
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
-import { getLogger, LogCategories } from '../../../common/logger';
+import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
 
 export const DatasetMigrationLogCollectionName = 'dataset_migration_logs';
@@ -91,8 +90,7 @@ const DatasetMigrationLogSchema = new Schema({
   // 批次信息
   batchId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   migrationVersion: {
     type: String,
@@ -107,17 +105,14 @@ const DatasetMigrationLogSchema = new Schema({
   },
   resourceId: {
     type: Schema.Types.ObjectId,
-    required: true,
-    index: true
+    required: true
   },
   teamId: {
     type: Schema.Types.ObjectId,
-    required: true,
-    index: true
+    required: true
   },
   datasetId: {
-    type: Schema.Types.ObjectId,
-    index: true
+    type: Schema.Types.ObjectId
   },
 
   // 存储信息
@@ -151,15 +146,13 @@ const DatasetMigrationLogSchema = new Schema({
     type: String,
     enum: ['pending', 'processing', 'completed', 'failed', 'rollback', 'verified'],
     default: 'pending',
-    required: true,
-    index: true
+    required: true
   },
 
   // 时间戳
   createdAt: {
     type: Date,
-    default: () => new Date(),
-    index: true
+    default: () => new Date()
   },
   startedAt: Date,
   completedAt: Date,
@@ -227,29 +220,38 @@ const DatasetMigrationLogSchema = new Schema({
 });
 
 // 索引优化
-try {
-  // 查询某个批次的迁移状态
-  DatasetMigrationLogSchema.index({ batchId: 1, status: 1 });
+defineIndex(DatasetMigrationLogSchema, { key: { batchId: 1 } });
+defineIndex(DatasetMigrationLogSchema, { key: { resourceId: 1 } });
+defineIndex(DatasetMigrationLogSchema, { key: { teamId: 1 } });
+defineIndex(DatasetMigrationLogSchema, { key: { datasetId: 1 } });
+defineIndex(DatasetMigrationLogSchema, { key: { status: 1 } });
+defineIndex(DatasetMigrationLogSchema, { key: { createdAt: 1 } });
 
-  // 查询某个资源的迁移历史
-  DatasetMigrationLogSchema.index({ resourceType: 1, resourceId: 1 });
+// 查询某个批次的迁移状态
+defineIndex(DatasetMigrationLogSchema, { key: { batchId: 1, status: 1 } });
 
-  // 查询失败的迁移（需要重试）
-  DatasetMigrationLogSchema.index({
+// 查询某个资源的迁移历史
+defineIndex(DatasetMigrationLogSchema, {
+  key: { resourceType: 1, resourceId: 1 }
+});
+
+// 查询失败的迁移（需要重试）
+defineIndex(DatasetMigrationLogSchema, {
+  key: {
     status: 1,
     attemptCount: 1,
     lastAttemptAt: 1
-  });
+  }
+});
 
-  // 查询某个团队的迁移情况
-  DatasetMigrationLogSchema.index({ teamId: 1, status: 1 });
+// 查询某个团队的迁移情况
+defineIndex(DatasetMigrationLogSchema, { key: { teamId: 1, status: 1 } });
 
-  // 唯一索引：同一个资源在同一个批次只能有一条记录
-  DatasetMigrationLogSchema.index({ batchId: 1, resourceType: 1, resourceId: 1 }, { unique: true });
-} catch (error) {
-  const logger = getLogger(LogCategories.INFRA.MONGO);
-  logger.error('Failed to build dataset migration indexes', { error });
-}
+// 唯一索引：同一个资源在同一个批次只能有一条记录
+defineIndex(DatasetMigrationLogSchema, {
+  key: { batchId: 1, resourceType: 1, resourceId: 1 },
+  options: { unique: true }
+});
 
 export const MongoDatasetMigrationLog = getMongoModel<DatasetMigrationLogSchemaType>(
   DatasetMigrationLogCollectionName,

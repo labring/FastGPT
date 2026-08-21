@@ -7,13 +7,19 @@ import {
 
 const mocks = vi.hoisted(() => ({
   getSystemToolDetail: vi.fn(),
-  getInstance: vi.fn()
+  getInstance: vi.fn(),
+  assertTeamPluginSourceAccess: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
   SystemToolRepo: {
     getInstance: mocks.getInstance
   }
+}));
+
+vi.mock('@fastgpt/service/core/plugin/teamPluginPolicy', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/plugin/teamPluginPolicy')>()),
+  assertTeamPluginSourceAccess: mocks.assertTeamPluginSourceAccess
 }));
 
 import { getClientSystemToolPreviewNode } from '@fastgpt/service/core/app/tool/utils/client';
@@ -24,6 +30,7 @@ describe('getClientSystemToolPreviewNode', () => {
     mocks.getInstance.mockReturnValue({
       getSystemToolDetail: mocks.getSystemToolDetail
     });
+    mocks.assertTeamPluginSourceAccess.mockResolvedValue('teamId:team-1');
   });
 
   it('adds system input config when system tool has secrets', async () => {
@@ -75,6 +82,7 @@ describe('getClientSystemToolPreviewNode', () => {
       key: NodeInputKeyEnum.systemInputConfig,
       label: '',
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      selectedType: FlowNodeInputTypeEnum.hidden,
       inputList: [
         {
           key: 'apiKey',
@@ -127,6 +135,115 @@ describe('getClientSystemToolPreviewNode', () => {
     expect(result.inputs[0]?.key).toBe('city');
     expect(result.version).toBe('');
     expect(result.versionLabel).toBeUndefined();
+  });
+
+  it('restores workflow tool input metadata before applying its default mode', async () => {
+    mocks.getSystemToolDetail.mockResolvedValueOnce({
+      id: 'systemTool-workflow',
+      version: '1.0.0',
+      status: 1,
+      source: 'system',
+      isToolSet: false,
+      associatedPluginId: 'workflow-app',
+      avatar: 'workflow.svg',
+      name: 'Workflow tool',
+      intro: 'Workflow tool',
+      author: 'FastGPT',
+      tags: [],
+      toolDescription: 'Workflow tool',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      hasSystemSecret: false,
+      inputSchema: {
+        type: 'object',
+        properties: {
+          count: {
+            type: 'number',
+            title: 'Count',
+            isToolParam: true,
+            'x-fastgpt-node-input': {
+              valueType: 'number',
+              renderTypeList: ['numberInput', 'reference'],
+              selectedType: 'numberInput',
+              selectedTypeIndex: 0
+            }
+          }
+        }
+      }
+    });
+
+    const result = await getClientSystemToolPreviewNode({
+      pluginId: 'systemTool-workflow',
+      versionId: '1.0.0',
+      lang: 'en'
+    });
+
+    expect(result.inputs.find((item) => item.key === 'count')).toMatchObject({
+      valueType: 'number',
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.numberInput,
+        'reference'
+      ],
+      isToolParam: true
+    });
+  });
+
+  it('projects workflow tool external variables to configurable parent inputs', async () => {
+    mocks.getSystemToolDetail.mockResolvedValueOnce({
+      id: 'systemTool-workflow',
+      version: '1.0.0',
+      status: 1,
+      source: 'system',
+      isToolSet: false,
+      associatedPluginId: 'workflow-app',
+      avatar: 'workflow.svg',
+      name: 'Workflow tool',
+      intro: 'Workflow tool',
+      author: 'FastGPT',
+      tags: [],
+      toolDescription: 'Workflow tool',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      hasSystemSecret: false,
+      inputSchema: {
+        type: 'object',
+        properties: {
+          externalVariable: {
+            type: 'string',
+            title: 'External variable',
+            default: 'fallback',
+            'x-fastgpt-node-input': {
+              valueType: 'string',
+              defaultValue: 'fallback',
+              renderTypeList: ['customVariable'],
+              selectedType: 'customVariable',
+              selectedTypeIndex: 0
+            }
+          }
+        }
+      }
+    });
+
+    const result = await getClientSystemToolPreviewNode({
+      pluginId: 'systemTool-workflow',
+      versionId: '1.0.0',
+      lang: 'en'
+    });
+
+    const input = result.inputs.find((item) => item.key === 'externalVariable');
+    expect(input).toMatchObject({
+      valueType: 'string',
+      defaultValue: 'fallback',
+      canAgentGenerated: true,
+      isToolParam: true,
+      renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, 'reference', 'input'],
+      selectedType: FlowNodeInputTypeEnum.agentGenerated
+    });
+    expect(input).not.toHaveProperty('selectedTypeIndex');
   });
 
   it('returns latest version id when requested explicitly', async () => {
@@ -230,6 +347,51 @@ describe('getClientSystemToolPreviewNode', () => {
     expect(result.toolConfig?.systemTool).toEqual({
       toolId: 'systemTool-weather',
       source: 'debug:tmbId:tmb-1'
+    });
+  });
+
+  it('persists and authorizes the explicit team source', async () => {
+    mocks.getSystemToolDetail.mockResolvedValueOnce({
+      id: 'systemTool-weather',
+      version: '1.0.0',
+      status: 1,
+      source: 'teamId:team-1',
+      isToolSet: false,
+      avatar: 'weather.svg',
+      name: 'Weather',
+      intro: 'Weather query',
+      author: 'FastGPT',
+      tags: [],
+      toolDescription: 'Weather query',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      hasSystemSecret: false
+    });
+
+    const result = await getClientSystemToolPreviewNode({
+      pluginId: 'systemTool-weather',
+      versionId: '',
+      lang: 'en',
+      source: 'teamId:team-1',
+      teamId: 'team-1'
+    });
+
+    expect(mocks.assertTeamPluginSourceAccess).toHaveBeenCalledWith({
+      teamId: 'team-1',
+      source: 'teamId:team-1',
+      pluginId: 'weather'
+    });
+    expect(mocks.getSystemToolDetail).toHaveBeenCalledWith({
+      pluginId: 'systemTool-weather',
+      version: undefined,
+      lang: 'en',
+      source: 'teamId:team-1'
+    });
+    expect(result.source).toBe('teamId:team-1');
+    expect(result.toolConfig?.systemTool).toEqual({
+      toolId: 'systemTool-weather',
+      source: 'teamId:team-1'
     });
   });
 

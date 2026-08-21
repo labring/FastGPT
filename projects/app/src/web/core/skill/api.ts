@@ -1,8 +1,9 @@
-import { GET, DELETE, POST } from '@/web/common/api/request';
+import { GET, DELETE, POST, POSTRawFile } from '@/web/common/api/request';
 import { streamFetch, type StreamResponseType } from '@/web/common/api/fetch';
 import { downloadFetch } from '@/web/common/system/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { EventStreamContentType, fetchEventSource } from '@fortaine/fetch-event-source';
+import { getLanguageRequestHeaders } from '@fastgpt/web/i18n/utils';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
@@ -25,13 +26,18 @@ import type {
   ListSkillVersionsBody,
   ListSkillVersionsResponse,
   SkillRuntimeBody,
-  SkillRuntimeStatusResponse,
   SwitchSkillVersionBody,
-  UpdateSkillVersionBody
+  UpdateSkillVersionBody,
+  ImportSkillQuery
 } from '@fastgpt/global/core/ai/skill/api';
+import type { SandboxRuntimeStatusResponse } from '@fastgpt/global/core/ai/sandbox/type';
 import type { GetResourceFolderListProps } from '@fastgpt/global/common/parentFolder/type';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
+import type {
+  ChangeSkillOwnerBody,
+  ChangeSkillOwnerResponse
+} from '@fastgpt/global/openapi/core/ai/skill/api';
 
 /** 获取 Skill 列表（支持分页、搜索、分类、文件夹过滤） */
 export const getSkillList = (data: ListSkillsQuery) =>
@@ -67,20 +73,31 @@ export const postCopySkill = (data: CopySkillBody) =>
 /** 删除 Skill */
 export const deleteSkill = (skillId: string) => DELETE('/core/ai/skill/delete', { skillId });
 
-/** 导入 Skill 压缩包 */
-export const importSkill = (formData: FormData) => POST<string>('/core/ai/skill/import', formData);
+/** 以原始请求体导入 Skill，文件流不落 FastGPT 本地临时目录。 */
+export const importSkill = ({
+  file,
+  ...query
+}: Omit<ImportSkillQuery, 'filename'> & { file: File }) =>
+  POSTRawFile<string>({
+    url: '/core/ai/skill/import',
+    file,
+    query: {
+      filename: file.name,
+      ...query
+    }
+  });
 
 /** 从 Sandbox 打包并发布新版本 */
 export const postSaveDeploySkill = (data: SaveDeploySkillBody) =>
   POST<SaveDeploySkillResponse>('/core/ai/skill/save-deploy', data);
 
 /** 获取 Skill Edit runtime 状态 */
-export const getSkillRuntimeStatus = (data: SkillRuntimeBody) =>
-  POST<SkillRuntimeStatusResponse>('/core/ai/skill/runtime/getStatus', data);
+export const getSkillRuntimeStatus = (data: SkillRuntimeBody, cancelToken?: AbortController) =>
+  POST<SandboxRuntimeStatusResponse>('/core/ai/skill/runtime/getStatus', data, { cancelToken });
 
 /** 触发 Skill Edit runtime 升级归档 */
-export const postUpgradeSkillRuntime = (data: SkillRuntimeBody) =>
-  POST<SkillRuntimeStatusResponse>('/core/ai/skill/runtime/upgrade', data);
+export const postUpgradeSkillRuntime = (data: SkillRuntimeBody, cancelToken?: AbortController) =>
+  POST<SandboxRuntimeStatusResponse>('/core/ai/skill/runtime/upgrade', data, { cancelToken });
 
 /** 初始化 Skill Edit runtime sandbox — SSE 流式版本，逐阶段回调 */
 export const streamInitSkillRuntime = ({
@@ -101,7 +118,10 @@ export const streamInitSkillRuntime = ({
 
     fetchEventSource(getWebReqUrl('/api/core/ai/skill/runtime/init'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...getLanguageRequestHeaders()
+      },
       body: JSON.stringify(data),
       signal: abortCtrl.signal,
       async onopen(res) {
@@ -203,5 +223,5 @@ export const resumeInheritPer = (skillId: string) =>
   GET('/core/ai/skill/resumeInheritPermission', { skillId });
 
 /** 转让 Skill 所有者 */
-export const postChangeSkillOwner = (data: { skillId: string; ownerId: string }) =>
-  POST('/proApi/core/ai/skill/changeOwner', data);
+export const postChangeSkillOwner = (data: ChangeSkillOwnerBody) =>
+  POST<ChangeSkillOwnerResponse>('/proApi/core/ai/skill/changeOwner', data);

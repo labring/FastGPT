@@ -15,7 +15,9 @@ describe('sandbox volume config', () => {
     vi.doMock('@fastgpt/service/env', () => ({
       serviceEnv: {
         AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: 'http://volume-manager.local',
-        AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: 'volume-token'
+        AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: 'volume-token',
+        AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX: 'custom-volume',
+        AGENT_SANDBOX_STORAGE_SIZE_GI: 5
       }
     }));
 
@@ -24,7 +26,9 @@ describe('sandbox volume config', () => {
     expect(getVolumeManagerEnvConfig()).toEqual({
       enable: true,
       url: 'http://volume-manager.local',
-      token: 'volume-token'
+      token: 'volume-token',
+      volumeNamePrefix: 'custom-volume',
+      storageSize: '5Gi'
     });
   });
 });

@@ -4,7 +4,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import Tag from '@fastgpt/web/components/common/Tag';
 
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { putUpdateGroup } from '@/web/support/user/team/group/api';
@@ -18,7 +18,6 @@ import { getTeamMembers } from '@/web/support/user/team/api';
 import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { type PaginationResponse } from '@fastgpt/global/openapi/api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import _ from 'lodash';
 import MemberItemCard from '@/components/support/permission/MemberManager/MemberItemCard';
 
 export type GroupFormType = {
@@ -40,7 +39,7 @@ function GroupEditModal({
   group: MemberGroupListItemType<true>;
   onSuccess: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('user');
   const { userInfo } = useUserStore();
   const { toast } = useToast();
 

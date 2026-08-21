@@ -28,6 +28,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
+import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { SmallAddIcon } from '@chakra-ui/icons';
@@ -35,6 +36,7 @@ import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
 import SandboxConfigButton from '../../components/SandboxConfigButton';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import DatasetCard from '@/components/core/app/DatasetCard';
+import { useWelcomeTextFoldState } from '@/components/core/app/useAppEditorUIState';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -43,6 +45,9 @@ const QGConfig = dynamic(() => import('@/components/core/app/QGConfig'));
 const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'));
 const InputGuideConfig = dynamic(() => import('@/components/core/app/InputGuideConfig'));
 const WelcomeTextConfig = dynamic(() => import('@/components/core/app/WelcomeTextConfig'));
+const WelcomeQuestionsConfig = dynamic(
+  () => import('@/components/core/app/WelcomeQuestionsConfig')
+);
 const FileSelectConfig = dynamic(() => import('@/components/core/app/FileSelect'));
 
 const BoxStyles: BoxProps = {
@@ -75,6 +80,7 @@ const EditForm = ({
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
   const isAgentSandboxEnabled = !!appForm.aiSettings.useAgentSandbox;
+  const { isWelcomeTextFolded, toggleWelcomeTextFold } = useWelcomeTextFoldState(appDetail._id);
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -112,25 +118,38 @@ const EditForm = ({
     return selectedModel.quoteMaxToken || 3000;
   }, [selectedModel.quoteMaxToken]);
 
-  // 简易应用不暴露多模态开关，文件选择能力直接跟随模型能力。
-  useEffect(() => {
-    setAppForm((state) => ({
-      ...state,
-      chatConfig: {
-        ...state.chatConfig,
-        ...(state.chatConfig.fileSelectConfig
-          ? {
-              fileSelectConfig: {
-                ...state.chatConfig.fileSelectConfig,
-                canSelectImg: !!selectedModel.vision,
-                canSelectAudio: !!selectedModel.audio,
-                canSelectVideo: !!selectedModel.video
-              }
-            }
-          : {})
-      }
-    }));
-  }, [selectedModel, setAppForm]);
+  const updateWelcomeText = useCallback(
+    (value: string) => {
+      setAppForm((state) => ({
+        ...state,
+        chatConfig: {
+          ...state.chatConfig,
+          welcomeText: value,
+          welcomeConfig: {
+            ...state.chatConfig.welcomeConfig,
+            welcomeText: value
+          }
+        }
+      }));
+    },
+    [setAppForm]
+  );
+
+  const updateWelcomeQuestions = useCallback(
+    (value: string[]) => {
+      setAppForm((state) => ({
+        ...state,
+        chatConfig: {
+          ...state.chatConfig,
+          welcomeConfig: {
+            ...state.chatConfig.welcomeConfig,
+            welcomeQuestions: value
+          }
+        }
+      }));
+    },
+    [setAppForm]
+  );
 
   useEffect(() => {
     if (
@@ -307,10 +326,15 @@ const EditForm = ({
                   state.selectedTools?.map((item) => (item.id === e.id ? e : item)) || []
               }));
             }}
-            onRemoveTool={(id) => {
+            onRemoveTool={(id, source) => {
               setAppForm((state) => ({
                 ...state,
-                selectedTools: state.selectedTools?.filter((item) => item.pluginId !== id) || []
+                selectedTools:
+                  state.selectedTools?.filter(
+                    (item) =>
+                      getToolIdentityKey(item.pluginId, item.source) !==
+                      getToolIdentityKey(id, source)
+                  ) || []
               }));
             }}
           />
@@ -402,7 +426,6 @@ const EditForm = ({
         {/* File select */}
         <Box {...BoxStyles}>
           <FileSelectConfig
-            forbidVision={!selectedModel?.vision}
             value={appForm.chatConfig.fileSelectConfig}
             onChange={(e) => {
               setAppForm((state) => ({
@@ -436,16 +459,20 @@ const EditForm = ({
         <Box {...BoxStyles}>
           <WelcomeTextConfig
             value={appForm.chatConfig.welcomeText}
+            isFolded={isWelcomeTextFolded}
+            onToggleFold={toggleWelcomeTextFold}
             onChange={(e) => {
-              setAppForm((state) => ({
-                ...state,
-                chatConfig: {
-                  ...state.chatConfig,
-                  welcomeText: e.target.value
-                }
-              }));
+              updateWelcomeText(e.target.value);
             }}
           />
+          {!isWelcomeTextFolded && (
+            <Box mt={3}>
+              <WelcomeQuestionsConfig
+                value={appForm.chatConfig.welcomeConfig?.welcomeQuestions}
+                onChange={updateWelcomeQuestions}
+              />
+            </Box>
+          )}
         </Box>
 
         {/* tts */}

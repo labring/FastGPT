@@ -20,10 +20,28 @@ description: FastGPT API 开发规范。重点强调使用 zod schema 定义入�
 
 1. **所有 API 必须使用 zod schema 定义入参和出参**
 2. **必须导出 schema 的 TypeScript 类型**
-3. **必须在 schema 文件头部声明 API 信息(路由、方法、描述、标签)**
+3. **必须在 schema 文件头部声明 API 信息(路由、方法、描述、标签)，一次性管理员升级/清洗能力除外**
 4. **入参必须使用 schema.parse() 验证**
 5. **函数返回值必须使用 schema.parse() 验证**
-6. **必须编写完整的 OpenAPI 文档**
+6. **必须编写完整的 OpenAPI 文档，一次性管理员升级/清洗能力除外**
+
+### 管理员升级与清洗能力的文档豁免
+
+仅供系统管理员执行、用于一次性升级、迁移、修复或数据清洗的内部接口和脚本，不属于产品 API，不要求：
+
+- 在 `packages/global/openapi/` 声明接口文档；
+- 注册 OpenAPI Path；
+- 编写 API 头部路由、方法、描述和标签信息。
+
+豁免只针对文档，不豁免安全和校验要求：
+
+- 管理员接口必须使用 `authSystemAdmin` 鉴权；
+- API 入参必须使用 Zod Schema 和 `parseApiInput`；
+- 返回值必须使用 Zod Schema 校验，空成功响应使用 `z.undefined()`；
+- 数据清洗默认使用 dry-run，显式确认后才能写入，并输出成功、跳过和失败统计；
+- 清洗逻辑应可重复执行，无法安全修复的数据必须跳过并报告，不得静默填入猜测值。
+
+常规管理员产品接口（例如模型配置 CRUD、用户管理和系统配置）不因仅管理员可用而获得豁免，仍需按标准 API 流程维护文档。
 
 ## 开发流程
 
@@ -196,6 +214,8 @@ export const GetUserListSchema = PaginationSchema.extend({
 });
 ```
 
+分页请求参数必须优先复用 `@fastgpt/global/openapi/api` 导出的 `PaginationSchema`，不要在业务域或单个接口中重复声明同构的分页 Schema（例如再次定义 `UserPaginationBodySchema`）。如果接口确实需要额外筛选条件，使用 `PaginationSchema.extend(...)`；只有存在明确的兼容性或协议差异时，才允许定义专用 wrapper，并在附近说明原因。分页响应优先复用 `PaginationResponseSchema`。
+
 #### ✅ 多个 API 的 Schema 文件
 
 ```typescript
@@ -238,7 +258,7 @@ export const UpdateLogKeysBodySchema = z.object({
 ```typescript
 import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/types/next';
 import {
   GetAppChatLogsBodySchema,
   GetAppChatLogsResponseSchema,
@@ -272,7 +292,7 @@ export default NextAPI(handler);
 
 ```typescript
 import type { NextApiResponse } from 'next';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/types/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import {
@@ -417,7 +437,7 @@ export type createUserResponseType = z.infer<typeof CreateUserResponseSchema>;
 ```typescript
 import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/types/next';
 import { MongoUser } from '@fastgpt/service/core/user/schema';
 import {
   CreateUserBodySchema,
@@ -464,6 +484,7 @@ export default NextAPI(handler);
 ### 🔴 必须检查项 (阻塞性)
 
 **Schema 文件** (`packages/global/openapi/.../api.ts`):
+- [ ] **文档豁免判断**: 仅一次性管理员升级/清洗能力可跳过 OpenAPI 文档
 - [ ] **API 声明**: 文件头部有 API 信息(路由、方法、描述、标签)
 - [ ] **Schema 定义**: 入参和出参都使用 zod 定义
 - [ ] **类型导出**: 导出 `z.infer<typeof Schema>` 类型
@@ -482,6 +503,7 @@ export default NextAPI(handler);
 - [ ] **可空字段**: 正确使用 `.optional()` 或 `.nullish()`
 - [ ] **复用 Schema**: 相同结构抽取为独立 Schema
 - [ ] **分页支持**: 列表 API 继承 `PaginationSchema`
+- [ ] **Schema 复用**: 分页及其他通用结构优先复用全局 Schema，未重复声明同构的业务专用 Schema
 
 ### 🟢 可选检查项 (优化性)
 

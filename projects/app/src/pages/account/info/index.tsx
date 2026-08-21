@@ -18,7 +18,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import type { UserType } from '@fastgpt/global/support/user/type';
 import dynamic from 'next/dynamic';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -36,17 +36,16 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useRouter } from 'next/router';
 import TeamSelector from '@/pageComponents/account/TeamSelector';
 import { getWorkorderURL } from '@/web/common/workorder/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useMount } from 'ahooks';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { getIsMemberSyncMode } from '@/web/common/system/utils';
 
 const RedeemCouponModal = dynamic(() => import('@/pageComponents/account/info/RedeemCouponModal'), {
   ssr: false
@@ -78,13 +77,9 @@ const ModelPriceModal = dynamic(() =>
 
 const Info = () => {
   const { isPc } = useSystem();
-  const { teamPlanStatus, initUserInfo } = useUserStore();
+  const { teamPlanStatus } = useUserStore();
   const standardPlan = teamPlanStatus?.standard;
   const { isOpen: isOpenContact, onClose: onCloseContact, onOpen: onOpenContact } = useDisclosure();
-
-  useMount(() => {
-    initUserInfo();
-  });
 
   return (
     <AccountContainer>
@@ -116,20 +111,12 @@ const Info = () => {
   );
 };
 
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['account', 'account_info', 'account_team', 'user']))
-    }
-  };
-}
-
 export default React.memo(Info);
 
 const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const theme = useTheme();
   const { feConfigs, initd } = useSystemStore();
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_info');
   const { userInfo, updateUserInfo, teamPlanStatus, initUserInfo } = useUserStore();
   const { reset } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
@@ -251,7 +238,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     minW: '52px'
   } as const;
 
-  const isSyncMember = feConfigs.register_method?.includes('sync');
+  const isSyncMember = getIsMemberSyncMode(feConfigs);
   return (
     <Box>
       {/* user info */}
@@ -430,7 +417,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
 
 const PlanUsage = () => {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_info');
   const { userInfo, teamPlanStatus, initTeamPlanStatus } = useUserStore();
   const { subPlans, feConfigs } = useSystemStore();
 
@@ -469,8 +456,12 @@ const PlanUsage = () => {
   const isFreeTeam = useMemo(() => {
     if (!teamPlanStatus || !teamPlanStatus?.standard) return false;
     const hasExtraDatasetSize =
+      teamPlanStatus.datasetMaxSize !== null &&
       teamPlanStatus.datasetMaxSize > teamPlanStatus.standard.maxDatasetSize;
-    const hasExtraPoints = teamPlanStatus.totalPoints > teamPlanStatus.standard.totalPoints;
+    const hasExtraPoints =
+      teamPlanStatus.totalPoints !== null &&
+      teamPlanStatus.standard.totalPoints !== null &&
+      teamPlanStatus.totalPoints > teamPlanStatus.standard.totalPoints;
     if (
       teamPlanStatus?.standard?.currentSubLevel === StandardSubLevelEnum.free &&
       !hasExtraDatasetSize &&
@@ -507,9 +498,10 @@ const PlanUsage = () => {
       };
     }
 
-    const rate = teamPlanStatus.totalPoints
-      ? (teamPlanStatus.usedPoints / teamPlanStatus.totalPoints) * 100
-      : 0;
+    const rate =
+      teamPlanStatus.totalPoints && teamPlanStatus.usedPoints !== null
+        ? (teamPlanStatus.usedPoints / teamPlanStatus.totalPoints) * 100
+        : 0;
 
     return {
       total: teamPlanStatus.totalPoints ?? t('account_info:unlimited'),
@@ -687,7 +679,10 @@ const PlanUsage = () => {
             </Box>
             <QuestionTip label={t('account_info:ai_points_usage_tip')} />
             <Box ml={4} fontSize={'14px'} fontWeight={'medium'} color={'myGray.600'}>
-              {Math.round(teamPlanStatus?.usedPoints || 0)} / {aiPointsUsageMap.total}
+              {teamPlanStatus?.usedPoints === null
+                ? t('account_info:unlimited')
+                : Math.round(teamPlanStatus?.usedPoints ?? 0)}{' '}
+              / {aiPointsUsageMap.total}
             </Box>
           </Flex>
           <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
@@ -796,7 +791,7 @@ const ButtonStyles = {
 const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const { feConfigs, setNotSufficientModalType, subPlans } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_info');
   const { isPc } = useSystem();
 
   const { runAsync: onFeedback } = useRequest(

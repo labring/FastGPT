@@ -1,0 +1,36 @@
+---
+title: 'V4.15.5'
+description: 'FastGPT V4.15.5 Release Notes'
+releaseTime: '2026-07-30'
+---
+
+## 📦 Upgrade Guide
+
+### Image Changes
+
+- Update the `fastgpt-app` (FastGPT core service) image tag to `v4.15.5`.
+- Update the `fastgpt-pro` (FastGPT commercial edition) image tag to `v4.15.5`.
+- Update the `fastgpt-plugin` image tag to `v1.0.3`.
+
+## 🚀 New Features
+
+1. Added Cloudflare R2 object storage support, including the R2 S3 API, presigned access, and custom domains for public buckets.
+2. Added the SoMark PDF enhanced parsing provider. Configure it with `SOMARK_API_KEY`; when multiple PDF providers are configured, FastGPT uses this priority order: custom PDF parsing service, SoMark, TextIn, then Doc2x. See the [environment variable configuration](../../config/env) for details.
+
+## ⚙️ Improvements
+
+1. Centralized more workspace dependency versions in the pnpm catalog and refreshed the lockfile.
+2. Added Chinese and English runtime fonts to the Agent Sandbox image to improve font availability for text and image-related tasks.
+3. Updated the OSS adapter to support string uploads required by the `IStorage` contract and to preserve the stored `Content-Type` when OSS does not support response-header overrides.
+4. Added a missing-object preflight to the COS adapter so downloads follow the shared error contract.
+
+## 🐛 Fixes
+
+1. Fixed Alibaba Cloud OSS metadata reads that looked for ETags in the wrong response field, causing missing ETags and downstream metadata validation failures.
+2. Fixed missing S3/MinIO source files being surfaced as `Unknown`; they now return a translated file-not-found error with HTTP 404.
+3. Fixed input fields disappearing from older plugin nodes after an upgrade.
+4. Fixed avatar URLs being encoded twice.
+
+## 🛠️ Code Improvements
+
+1. Added cross-provider S3 SDK integration tests for MinIO, AWS S3, Cloudflare R2, Alibaba Cloud OSS, and Tencent Cloud COS, covering private/public buckets, public URLs, and real presigned URL access.

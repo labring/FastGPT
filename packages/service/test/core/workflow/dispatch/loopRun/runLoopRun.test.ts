@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
@@ -7,7 +7,7 @@ import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workfl
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import type { WorkflowVariableStateLike } from '@fastgpt/global/core/workflow/runtime/type';
+import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/types/runtime';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { DispatchFlowResponse } from '@fastgpt/service/core/workflow/dispatch/type';
@@ -28,6 +28,15 @@ vi.mock('@fastgpt/service/env', () => ({
 import { dispatchLoopRun } from '@fastgpt/service/core/workflow/dispatch/loopRun/runLoopRun';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
+
+const createNodeResponseSinkMock = () => ({
+  publish: vi.fn(async (inputs: Array<{ response: ChatHistoryItemResType; parentId?: string }>) =>
+    inputs.map(({ response, parentId }) => ({
+      ...response,
+      ...(parentId && !response.parentId ? { parentId } : {})
+    }))
+  )
+});
 
 const makeInput = (
   override: Partial<FlowNodeInputItemType> & { key: string }
@@ -201,6 +210,10 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     runWorkflowMock.mockReset();
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('array mode 数组正常跑完 → loopHistory 全 success, data 含最后一轮快照', async () => {
     // Each iteration returns a clean response that writes a new value to chatNode
     runWorkflowMock.mockImplementation((args: any) => {
@@ -309,8 +322,6 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
   });
 
   it('循环体内变量更新外部节点输出后，每轮成功结束会同步到父运行态', async () => {
-    let unchangedExternalNode: RuntimeNodeItemType | undefined;
-    let props: any;
     let iteration = 0;
 
     runWorkflowMock.mockImplementation((args: any) => {
@@ -345,7 +356,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       );
     });
 
-    props = makeProps({
+    const props = makeProps({
       [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
       [NodeInputKeyEnum.loopRunInputArray]: ['first', 'second']
     });
@@ -394,7 +405,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
         }
       ]
     });
-    unchangedExternalNode = props.runtimeNodes.find(
+    const unchangedExternalNode = props.runtimeNodes.find(
       (node: RuntimeNodeItemType) => node.nodeId === 'unchangedExternal'
     );
     props.runtimeNodes.push({
@@ -759,9 +770,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
   });
 
   it('lastInteractive 恢复 → 完成时只写入恢复后的 wrapper 增量统计', async () => {
-    const nodeResponseWriter = {
-      recordWithParent: vi.fn().mockResolvedValue([])
-    };
+    const nodeResponseSink = createNodeResponseSinkMock();
     runWorkflowMock.mockImplementationOnce(() =>
       Promise.resolve(
         makeDispatchFlowResponse({
@@ -805,7 +814,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
           pendingIterationSummary: preInterruptSummary
         }
       },
-      nodeResponseWriter,
+      nodeResponseSink,
       nodeResponseParentId: 'loop-parent-response',
       checkIsStopping: () => false
     } as any;
@@ -816,8 +825,8 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(nodeResponse.totalPoints).toBe(5);
     expect(nodeResponse.childTotalPoints).toBeUndefined();
     expect(nodeResponse.childResponseCount).toBe(3);
-    expect(nodeResponseWriter.recordWithParent).toHaveBeenCalledTimes(1);
-    expect(nodeResponseWriter.recordWithParent.mock.calls[0][0][0]).toMatchObject({
+    expect(nodeResponseSink.publish).toHaveBeenCalledTimes(1);
+    expect(nodeResponseSink.publish.mock.calls[0][0][0].response).toMatchObject({
       id: 'loop-parent-response:iter:1',
       totalPoints: 5,
       childResponseCount: 2
@@ -978,10 +987,8 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(nodeResponse.loopRunHistory).toHaveLength(2);
   });
 
-  it('共用 nodeResponseWriter 时写入每轮包装节点，父响应只保留轻量统计', async () => {
-    const nodeResponseWriter = {
-      recordWithParent: vi.fn().mockResolvedValue([])
-    };
+  it('共用 nodeResponseSink 时发布每轮包装节点，父响应只保留轻量统计', async () => {
+    const nodeResponseSink = createNodeResponseSinkMock();
     runWorkflowMock.mockImplementation(() =>
       Promise.resolve(
         makeDispatchFlowResponse({
@@ -1000,7 +1007,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
         [NodeInputKeyEnum.loopRunInputArray]: ['a'],
         [NodeInputKeyEnum.childrenNodeIdList]: ['startNode', 'chatNode']
       }),
-      nodeResponseWriter,
+      nodeResponseSink,
       nodeResponseParentId: 'loop-parent-response'
     };
 
@@ -1010,21 +1017,42 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(runWorkflowMock.mock.calls[0][0].nodeResponseParentId).toBe(
       'loop-parent-response:iter:1'
     );
-    expect(nodeResponseWriter.recordWithParent).toHaveBeenCalledTimes(1);
-    expect(nodeResponseWriter.recordWithParent.mock.calls[0][1]).toBe('loop-parent-response');
-    expect(nodeResponseWriter.recordWithParent.mock.calls[0][0][0]).toMatchObject({
+    expect(nodeResponseSink.publish).toHaveBeenCalledTimes(1);
+    expect(nodeResponseSink.publish.mock.calls[0][0][0].parentId).toBe('loop-parent-response');
+    expect(nodeResponseSink.publish.mock.calls[0][0][0].response).toMatchObject({
       id: 'loop-parent-response:iter:1',
       childResponseCount: 2
     });
-    expect(
-      nodeResponseWriter.recordWithParent.mock.calls[0][0][0].childTotalPoints
-    ).toBeUndefined();
-    expect(
-      nodeResponseWriter.recordWithParent.mock.calls[0][0][0].childrenResponses
-    ).toBeUndefined();
+    expect(nodeResponseSink.publish.mock.calls[0][0][0].response.childTotalPoints).toBeUndefined();
+    expect(nodeResponseSink.publish.mock.calls[0][0][0].response.childrenResponses).toBeUndefined();
     expect(nodeResponse.loopRunDetail).toBeUndefined();
     expect(nodeResponse.totalPoints).toBe(3);
     expect(nodeResponse.childTotalPoints).toBeUndefined();
+  });
+
+  it('每轮包装节点独立计时，不累加子节点 runningTime', async () => {
+    vi.spyOn(Date, 'now').mockReturnValueOnce(1000).mockReturnValue(2400);
+    const nodeResponseSink = createNodeResponseSinkMock();
+    runWorkflowMock.mockResolvedValue(
+      makeDispatchFlowResponse({
+        nodeResponses: [
+          makeResponseItem('startNode', { runningTime: 5 }),
+          makeResponseItem('chatNode', { runningTime: 6 })
+        ]
+      })
+    );
+
+    await dispatchLoopRun({
+      ...makeProps({
+        [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+        [NodeInputKeyEnum.loopRunInputArray]: ['a'],
+        [NodeInputKeyEnum.childrenNodeIdList]: ['startNode', 'chatNode']
+      }),
+      nodeResponseSink,
+      nodeResponseParentId: 'loop-parent-response'
+    });
+
+    expect(nodeResponseSink.publish.mock.calls[0][0][0].response.runningTime).toBe(1.4);
   });
 
   it('失败轮不内嵌 loopRunDetail，父响应保留错误和 child 统计', async () => {
@@ -1082,9 +1110,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
         })
       )
     );
-    const nodeResponseWriter = {
-      recordWithParent: vi.fn().mockResolvedValue([])
-    };
+    const nodeResponseSink = createNodeResponseSinkMock();
 
     const props = {
       ...makeProps({
@@ -1092,7 +1118,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
         [NodeInputKeyEnum.loopRunInputArray]: ['a', 'b'],
         [NodeInputKeyEnum.childrenNodeIdList]: ['startNode', 'chatNode']
       }),
-      nodeResponseWriter,
+      nodeResponseSink,
       nodeResponseParentId: 'loop-parent-response'
     };
 
@@ -1100,9 +1126,9 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
     expect(nodeResponse.loopRunDetail).toBeUndefined();
     expect(nodeResponse.childResponseCount).toBe(2);
-    expect(nodeResponseWriter.recordWithParent).toHaveBeenCalledTimes(1);
-    expect(nodeResponseWriter.recordWithParent.mock.calls[0][1]).toBe('loop-parent-response');
-    expect(nodeResponseWriter.recordWithParent.mock.calls[0][0][0]).toMatchObject({
+    expect(nodeResponseSink.publish).toHaveBeenCalledTimes(1);
+    expect(nodeResponseSink.publish.mock.calls[0][0][0].parentId).toBe('loop-parent-response');
+    expect(nodeResponseSink.publish.mock.calls[0][0][0].response).toMatchObject({
       id: 'loop-parent-response:iter:1',
       childResponseCount: 1
     });

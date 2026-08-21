@@ -3,14 +3,13 @@
   "version": "0.0.40-beta.6",
   "description": "Unified abstraction layer for cloud sandbox providers with adapter pattern and feature polyfilling",
   "type": "module",
-  "main": "./dist/index.cjs",
+  "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": "./dist/index.js"
     }
   },
   "files": [
@@ -21,7 +20,7 @@
   },
   "sideEffects": false,
   "engines": {
-    "node": ">=20"
+    "node": ">=22.23.2"
   },
   "scripts": {
     "build": "tsdown",
@@ -30,8 +29,7 @@
     "test": "vitest run --config ./vitest.config.ts"
   },
   "dependencies": {
-    "@alibaba-group/opensandbox": "^0.1.5",
-    "@e2b/code-interpreter": "^2.3.3"
+    "@alibaba-group/opensandbox": "^0.1.10"
   },
   "devDependencies": {
     "@types/node": "catalog:",

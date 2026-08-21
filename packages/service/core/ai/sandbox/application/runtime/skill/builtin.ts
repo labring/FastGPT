@@ -4,7 +4,6 @@
  * 只管理 sandbox HOME 下的内置 Skill 目录，不进入用户 workspace 或发布包。
  */
 import type { FileWriteEntry, ISandbox } from '@fastgpt-sdk/sandbox-adapter';
-import { shellQuote } from '@fastgpt/global/common/string/utils';
 import type {
   BuiltinSkillSource,
   BuiltinSkillSourceFile
@@ -17,6 +16,7 @@ import {
   setRuntimeStateValue,
   writeSandboxRuntimeState
 } from '../state';
+import { prepareSandboxFileParentDirectories } from '../../file';
 
 const BUILTIN_SKILL_STATE_HASH_PREFIX = 'builtinSkill:';
 
@@ -49,26 +49,42 @@ export async function syncBuiltinSkillsToSandbox({
 
   const builtinSkillsRootPath = getBuiltinSkillsRootPath(homeDirectory);
   const runtimeStateContext = await readSandboxRuntimeState({ sandbox, homeDirectory });
+  const pendingSources = syncSources.filter(
+    (source) =>
+      getRuntimeStateValue(runtimeStateContext.state, getBuiltinSkillStateHashKey(source.name)) !==
+      source.etag
+  );
+  if (pendingSources.length === 0) return;
 
-  for (const source of syncSources) {
+  await sandbox.createDirectories([builtinSkillsRootPath]);
+  const existingEntries = await sandbox.listDirectory(builtinSkillsRootPath);
+  const existingEntryByPath = new Map(existingEntries.map((entry) => [entry.path, entry]));
+
+  for (const source of pendingSources) {
     const targetDirectory = joinSandboxPath(builtinSkillsRootPath, source.name);
     const stateKey = getBuiltinSkillStateHashKey(source.name);
-    if (getRuntimeStateValue(runtimeStateContext.state, stateKey) === source.etag) {
-      continue;
+    const existingEntry = existingEntryByPath.get(targetDirectory);
+    if (existingEntry?.isDirectory) {
+      await sandbox.deleteDirectories([targetDirectory]);
+    } else if (existingEntry) {
+      const [deleteResult] = await sandbox.deleteFiles([targetDirectory]);
+      if (!deleteResult?.success || deleteResult.error) {
+        throw new Error(
+          `Failed to remove builtin skill path: ${deleteResult?.error?.message ?? targetDirectory}`
+        );
+      }
     }
-
-    const prepareResult = await sandbox.execute(
-      `rm -rf ${shellQuote(targetDirectory)} && mkdir -p ${shellQuote(targetDirectory)}`
-    );
-    if (prepareResult.exitCode !== 0) {
-      throw new Error(`Failed to prepare builtin skill directory: ${prepareResult.stderr}`);
-    }
+    await sandbox.createDirectories([targetDirectory]);
 
     const writeEntries: FileWriteEntry[] = source.files.map((sourceFile) => ({
       path: joinSandboxPath(targetDirectory, sourceFile.relativePath),
       data: sourceFile.content
     }));
 
+    await prepareSandboxFileParentDirectories(
+      sandbox,
+      writeEntries.map(({ path }) => path)
+    );
     const writeResults = await sandbox.writeFiles(writeEntries);
     const failedWrite = writeResults.find((result) => result.error);
     if (failedWrite) {
@@ -76,8 +92,9 @@ export async function syncBuiltinSkillsToSandbox({
     }
 
     setRuntimeStateValue(runtimeStateContext.state, stateKey, source.etag);
-    await writeSandboxRuntimeState(sandbox, runtimeStateContext);
   }
+
+  await writeSandboxRuntimeState(sandbox, runtimeStateContext);
 }
 
 function buildBuiltinSkillSyncSource(source: BuiltinSkillSource): BuiltinSkillSyncSource {

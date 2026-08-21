@@ -85,6 +85,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/projects/app/.next/server/chunks 
 # copy worker
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/worker /app/projects/app/worker
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/worker /app/worker
+# LiteParse is externalized from the worker bundle and loads this file at runtime.
+RUN test -f /app/worker/node_modules/@llamaindex/liteparse-wasm/pkg/liteparse_wasm_bg.wasm
 
 COPY --from=maindeps /app/node_modules/@zilliz/milvus2-sdk-node ./node_modules/@zilliz/milvus2-sdk-node
 

@@ -30,7 +30,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { isValidObjectId } from 'mongoose';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { checkMoveFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
 

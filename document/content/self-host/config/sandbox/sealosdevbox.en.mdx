@@ -14,6 +14,7 @@ import { Alert } from '@/components/docs/Alert';
 
 1. FastGPT commercial edition is deployed, and the team has Agent Sandbox access.
 2. Request Sealos Devbox connection details from support: Devbox service URL, access token, and runtime image.
+3. Follow [OpenSandbox Configuration](./opensandbox) to deploy `fastgpt-agent-sandbox-proxy`.
 
 ## Configure FastGPT Environment Variables
 
@@ -30,13 +31,31 @@ AGENT_SANDBOX_SEALOS_TOKEN=replace_with_sealos_devbox_token
 
 # Sandbox image version
 AGENT_SANDBOX_SEALOS_IMAGE=hub.hzh.sealos.run/labring/devbox-sandbox:v0.2.0
+
+# Per-instance Devbox resource limits. Storage size is in Gi.
+AGENT_SANDBOX_CPU_COUNT=1
+AGENT_SANDBOX_MEMORY_MIB=2048
+AGENT_SANDBOX_STORAGE_SIZE_GI=1
 ```
+
+## Custom Package Registries
+
+OpenSandbox and Sealos Devbox use the same package registry settings; the apt mirror is effective only for root Agent sandboxes:
+
+```dotenv
+AGENT_SANDBOX_NPM_REGISTRY=https://registry.npmmirror.com
+AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian
+```
+
+For root Agent sandboxes, FastGPT generates and overwrites the standard Ubuntu or Debian `.sources` file for the detected distribution, creating a `.copy` backup before overwriting an existing file. When the variable is removed, files with a `.copy` backup are restored and files without a backup are skipped. Initialization does not run `apt-get update`.
+For arm64 runtime images, configure a mirror URL that provides the corresponding architecture packages.
 
 ## FAQ
 
-### AGENT_SANDBOX_PROXY_URL is required
+### AGENT_SANDBOX_PROXY_URL or AGENT_SANDBOX_PREVIEW_PROXY_URL is required
 
-After `AGENT_SANDBOX_PROVIDER=sealosdevbox` is enabled, `AGENT_SANDBOX_PROXY_URL` is required. This is the browser-accessible WebSocket URL for the proxy service, such as `wss://sandbox-proxy.example.com` . It is not the FastGPT main site URL.
+After `AGENT_SANDBOX_PROVIDER=sealosdevbox` is enabled, `fastgpt-app` requires `AGENT_SANDBOX_PROXY_SECRET`, `AGENT_SANDBOX_PROXY_URL`, and `AGENT_SANDBOX_PREVIEW_PROXY_URL`, while `fastgpt-pro` requires `AGENT_SANDBOX_PREVIEW_PROXY_URL`. The proxy secret must match the value configured for `fastgpt-agent-sandbox-proxy` and contain at least 32 characters.
 
 ### AGENT_SANDBOX_SEALOS_IMAGE is required
 

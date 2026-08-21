@@ -25,6 +25,7 @@ Pull the fastgpt-mineru image --> Create and start the parsing service container
 docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/fastgpt_ck/mineru:v1
 docker run --gpus all -itd -p 7231:8001 --name mode_pdf_minerU crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/fastgpt_ck/mineru:v1
 ```
+
 This MinerU integration uses pipeline mode with built-in parallelization inside the Docker container. It creates multiple processes based on the number of GPUs to handle uploaded PDFs concurrently.
 
 ### 2. Add FastGPT Configuration
@@ -52,7 +53,7 @@ For the commercial edition, configure as shown below:
 
 ### 3. Test
 
-Upload a PDF file through the Knowledge Base and enable the `Enhanced PDF Parsing` option.
+Upload a PDF file through the Dataset and enable the `Enhanced PDF Parsing` option.
 
 ![alt text](../../../public/imgs/mineru1.png)
 
@@ -63,7 +64,6 @@ After uploading, you should see the following logs (LOG_LEVEL must be set to inf
 [Info] 2024-12-05 15:07:08 Custom file parsing is complete, time: 1316ms
 ```
 
-
 Similarly, in apps you can enable `Enhanced PDF Parsing` in the file upload settings.
 
 ![alt text](../../../public/imgs/mineru2.png)
@@ -72,10 +72,10 @@ Similarly, in apps you can enable `Enhanced PDF Parsing` in the file upload sett
 
 Using Tsinghua's [ChatDev Communicative Agents for Software Develop.pdf](https://arxiv.org/abs/2307.07924) as an example:
 
-|                                 |                                 |                                 |
-| ------------------------------- | ------------------------------- | ------------------------------- |
+|                                                 |                                                 |                                                 |
+| ----------------------------------------------- | ----------------------------------------------- | ----------------------------------------------- |
 | ![alt text](../../../public/imgs/mineru3-1.png) | ![alt text](../../../public/imgs/mineru4-1.png) | ![alt text](../../../public/imgs/mineru5-1.png) |
-| ![alt text](../../../public/imgs/mineru3.png) | ![alt text](../../../public/imgs/mineru4.png) | ![alt text](../../../public/imgs/mineru5.png) |
+| ![alt text](../../../public/imgs/mineru3.png)   | ![alt text](../../../public/imgs/mineru4.png)   | ![alt text](../../../public/imgs/mineru5.png)   |
 
 The top row shows chunked results; the bottom row shows the original PDF. Images, formulas, and OCR handwriting are all extracted effectively.
 

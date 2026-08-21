@@ -1,6 +1,7 @@
 import z from 'zod';
 import { StandardSubLevelEnum, SubModeEnum, SubTypeEnum } from './constants';
 import { ObjectIdSchema } from '../../../common/type/mongo';
+import { IntSchema, NumSchema } from '../../../common/zod';
 
 /**
  * Static plan config, stored in global.subPlans
@@ -50,11 +51,22 @@ export const TeamStandardSubPlanItemSchema = z.object({
 });
 export type TeamStandardSubPlanItemType = z.infer<typeof TeamStandardSubPlanItemSchema>;
 
-export const StandSubPlanLevelMapSchema = z.record(
-  z.enum(StandardSubLevelEnum),
-  TeamStandardSubPlanItemSchema
-);
-export type StandSubPlanLevelMapType = z.infer<typeof StandSubPlanLevelMapSchema>;
+/** 定制套餐允许只保存覆盖字段，未配置的权益在使用时继承高级版。 */
+export const CustomStandardSubPlanItemSchema = TeamStandardSubPlanItemSchema.partial();
+export type CustomStandardSubPlanItemType = Partial<TeamStandardSubPlanItemType>;
+
+export type StandSubPlanLevelMapType = Partial<
+  Record<StandardSubLevelEnum, TeamStandardSubPlanItemType>
+>;
+export const StandSubPlanLevelMapSchema = z.object({
+  [StandardSubLevelEnum.free]: TeamStandardSubPlanItemSchema.optional(),
+  [StandardSubLevelEnum.basic]: TeamStandardSubPlanItemSchema.optional(),
+  [StandardSubLevelEnum.advanced]: TeamStandardSubPlanItemSchema.optional(),
+  [StandardSubLevelEnum.custom]: CustomStandardSubPlanItemSchema.optional(),
+  [StandardSubLevelEnum.experience]: TeamStandardSubPlanItemSchema.optional(),
+  [StandardSubLevelEnum.team]: TeamStandardSubPlanItemSchema.optional(),
+  [StandardSubLevelEnum.enterprise]: TeamStandardSubPlanItemSchema.optional()
+}) as unknown as z.ZodType<StandSubPlanLevelMapType>;
 
 export const PointsPackageItemSchema = z.object({
   points: z.int(),
@@ -63,6 +75,86 @@ export const PointsPackageItemSchema = z.object({
   activityBonusPoints: z.int().optional() // 活动赠送积分
 });
 export type PointsPackageItem = z.infer<typeof PointsPackageItemSchema>;
+
+const OptionalConfigDateInputSchema = z.preprocess(
+  (value) => (value === '' || value === null ? undefined : value),
+  z.coerce.date().optional()
+);
+
+const emptyValueToUndefined = (value: unknown) =>
+  value === '' || value === null ? undefined : value;
+const configOptionalIntegerInputSchema = z.preprocess(emptyValueToUndefined, IntSchema.optional());
+const configOptionalNumberInputSchema = z.preprocess(emptyValueToUndefined, NumSchema.optional());
+
+const TeamStandardSubPlanItemInputSchema = TeamStandardSubPlanItemSchema.extend({
+  price: NumSchema.nonnegative(),
+  totalPoints: IntSchema,
+  maxTeamMember: IntSchema,
+  maxAppAmount: IntSchema,
+  maxDatasetAmount: IntSchema,
+  maxDatasetSize: IntSchema,
+  requestsPerMinute: configOptionalIntegerInputSchema,
+  appRegistrationCount: configOptionalIntegerInputSchema,
+  chatHistoryStoreDuration: IntSchema,
+  websiteSyncPerDataset: configOptionalIntegerInputSchema,
+  auditLogStoreDuration: configOptionalIntegerInputSchema,
+  ticketResponseTime: configOptionalIntegerInputSchema,
+  customDomain: configOptionalIntegerInputSchema,
+  maxUploadFileSize: configOptionalIntegerInputSchema,
+  maxUploadFileCount: configOptionalIntegerInputSchema,
+  annualBonusPoints: configOptionalIntegerInputSchema,
+  pointPrice: configOptionalNumberInputSchema,
+  wecom: z
+    .object({
+      price: NumSchema.nonnegative(),
+      points: NumSchema.nonnegative()
+    })
+    .nullish()
+});
+
+const CustomStandardSubPlanItemInputSchema = z.preprocess((value) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      ([, fieldValue]) => fieldValue !== '' && fieldValue !== null && fieldValue !== undefined
+    )
+  );
+}, TeamStandardSubPlanItemInputSchema.partial());
+
+const StandSubPlanLevelMapInputSchema = z.object({
+  [StandardSubLevelEnum.free]: TeamStandardSubPlanItemInputSchema.optional(),
+  [StandardSubLevelEnum.basic]: TeamStandardSubPlanItemInputSchema.optional(),
+  [StandardSubLevelEnum.advanced]: TeamStandardSubPlanItemInputSchema.optional(),
+  [StandardSubLevelEnum.custom]: CustomStandardSubPlanItemInputSchema.optional(),
+  [StandardSubLevelEnum.experience]: TeamStandardSubPlanItemInputSchema.optional(),
+  [StandardSubLevelEnum.team]: TeamStandardSubPlanItemInputSchema.optional(),
+  [StandardSubLevelEnum.enterprise]: TeamStandardSubPlanItemInputSchema.optional()
+});
+
+/** 保存系统套餐配置时的兼容输入；输出始终满足稳定的持久化结构。 */
+export const SubPlanInputSchema = z
+  .object({
+    [SubTypeEnum.standard]: StandSubPlanLevelMapInputSchema.optional(),
+    [SubTypeEnum.extraDatasetSize]: z.object({ price: NumSchema.nonnegative() }).optional(),
+    [SubTypeEnum.extraPoints]: z
+      .object({
+        packages: z.array(
+          PointsPackageItemSchema.extend({
+            points: IntSchema,
+            month: IntSchema,
+            price: NumSchema.nonnegative(),
+            activityBonusPoints: configOptionalIntegerInputSchema
+          })
+        )
+      })
+      .optional(),
+    planDescriptionUrl: z.string().optional(),
+    appRegistrationUrl: z.string().optional(),
+    communitySupportTip: z.string().optional(),
+    activityExpirationTime: OptionalConfigDateInputSchema
+  })
+  .transform((subPlans) => SubPlanSchema.parse(subPlans));
 
 export const SubPlanSchema = z.object({
   [SubTypeEnum.standard]: StandSubPlanLevelMapSchema.optional(),
@@ -86,18 +178,18 @@ export const TeamSubSchema = z.object({
   startTime: z.date(),
   expiredTime: z.date(),
 
-  currentMode: z.enum(SubModeEnum),
-  nextMode: z.enum(SubModeEnum),
+  currentMode: z.enum(SubModeEnum).optional(),
+  nextMode: z.enum(SubModeEnum).optional(),
   currentSubLevel: z.enum(StandardSubLevelEnum),
-  nextSubLevel: z.enum(StandardSubLevelEnum),
+  nextSubLevel: z.enum(StandardSubLevelEnum).optional(),
 
   maxTeamMember: z.int().optional(),
   maxApp: z.int().optional(),
   maxDataset: z.int().optional(),
   totalPoints: z.int(),
   annualBonusPoints: z.int().optional(),
-  surplusPoints: z.int(),
-  currentExtraDatasetSize: z.int(),
+  surplusPoints: z.number(),
+  currentExtraDatasetSize: z.int().optional(),
 
   // 定制版特有属性
   requestsPerMinute: z.int().optional(),
@@ -122,7 +214,8 @@ export type TeamSubSchemaType = z.infer<typeof TeamSubSchema>;
  * - pointPrice from TeamStandardSubPlanItemSchema: 避免与 price 字段冲突
  *
  * Field priority: TeamStandardSubPlanItemSchema fields override TeamSubSchema fields when both exist
- */ export const TeamPlanStandardSchema = z.object({
+ */
+export const TeamPlanStandardSchema = z.object({
   ...TeamSubSchema.omit({
     maxApp: true,
     maxDataset: true
@@ -131,6 +224,12 @@ export type TeamSubSchemaType = z.infer<typeof TeamSubSchema>;
     pointPrice: true,
     price: true
   }).shape,
+  currentMode: z.enum(SubModeEnum),
+  nextMode: z.enum(SubModeEnum),
+  nextSubLevel: z.enum(StandardSubLevelEnum),
+  totalPoints: z.number().nullable(),
+  surplusPoints: z.number().nullable(),
+  currentExtraDatasetSize: z.int(),
   price: z.number().optional()
 });
 
@@ -138,9 +237,9 @@ export type TeamPlanStandardType = z.infer<typeof TeamPlanStandardSchema>;
 
 export const TeamPlanStatusSchema = z.object({
   [SubTypeEnum.standard]: TeamPlanStandardSchema.optional(),
-  totalPoints: z.int(),
-  usedPoints: z.int(),
-  datasetMaxSize: z.int()
+  totalPoints: z.number().nullable(),
+  usedPoints: z.number().nullable(),
+  datasetMaxSize: z.number().nullable()
 });
 export type TeamPlanStatusType = z.infer<typeof TeamPlanStatusSchema>;
 

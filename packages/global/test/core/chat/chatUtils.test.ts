@@ -582,13 +582,109 @@ describe('getFlatAppResponses', () => {
 });
 
 describe('checkInteractiveResponseStatus', () => {
-  it('should return query for agentPlanAskQuery type', () => {
+  it('should keep legacy agentPlanAskQuery as a query', () => {
     const result = checkInteractiveResponseStatus({
-      interactive: { type: 'agentPlanAskQuery' },
+      interactive: {
+        type: 'agentPlanAskQuery',
+        askId: 'call_ask',
+        params: {
+          content: 'What do you want?',
+          options: ['Use repo', 'Use docs', 'Use defaults']
+        }
+      },
       input: 'any input'
     });
 
     expect(result).toBe('query');
+  });
+
+  it('should return query for agentAsk by default and submit when configured', () => {
+    const interactive = {
+      type: 'agentAsk' as const,
+      askId: 'call_ask',
+      params: {
+        description: 'Need input',
+        questions: [
+          {
+            question: 'Need input?',
+            options: [
+              { summary: 'A', value: 'A' },
+              { summary: 'B', value: 'B' }
+            ],
+            answer: ''
+          }
+        ]
+      }
+    };
+    expect(
+      checkInteractiveResponseStatus({
+        interactive,
+        input: '{"answers":["A"]}'
+      })
+    ).toBe('query');
+
+    expect(
+      checkInteractiveResponseStatus({
+        interactive: {
+          ...interactive,
+          responseMode: 'submit'
+        },
+        input: '{"answers":["A"]}'
+      })
+    ).toBe('submit');
+  });
+
+  it('should keep a nested legacy agent ask as a query', () => {
+    const result = checkInteractiveResponseStatus({
+      interactive: {
+        type: 'toolChildrenInteractive',
+        params: {
+          toolParams: {
+            toolCallId: 'tool_1'
+          },
+          childrenResponse: {
+            type: 'childrenInteractive',
+            params: {
+              childrenId: 'child_1',
+              childrenResponse: {
+                type: 'agentPlanAskQuery',
+                askId: 'ask_1',
+                params: {
+                  content: 'Choose one',
+                  options: ['A', 'B', 'C']
+                }
+              }
+            }
+          }
+        }
+      } as any,
+      input: 'A'
+    });
+
+    expect(result).toBe('query');
+  });
+
+  it('should keep non-ask nested interactive responses as submit', () => {
+    const result = checkInteractiveResponseStatus({
+      interactive: {
+        type: 'toolChildrenInteractive',
+        params: {
+          toolParams: {
+            toolCallId: 'tool_1'
+          },
+          childrenResponse: {
+            type: 'userSelect',
+            params: {
+              description: 'Choose one',
+              userSelectOptions: []
+            }
+          }
+        }
+      } as any,
+      input: 'A'
+    });
+
+    expect(result).toBe('submit');
   });
 });
 

@@ -1,7 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import type {
   GetAdminSystemToolVersionsQueryType,
   GetAdminSystemToolVersionsResponseType
@@ -15,13 +15,13 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 export type getSystemToolVersionsQuery = GetAdminSystemToolVersionsQueryType;
 
-export type getSystemToolVersionsBody = {};
+export type getSystemToolVersionsBody = Record<string, never>;
 
 export type getSystemToolVersionsResponse = GetAdminSystemToolVersionsResponseType;
 
 async function handler(
   req: ApiRequestProps<getSystemToolVersionsBody, getSystemToolVersionsQuery>,
-  res: ApiResponseType<any>
+  _res: ApiResponseType<any>
 ): Promise<getSystemToolVersionsResponse> {
   const {
     query: { toolId }

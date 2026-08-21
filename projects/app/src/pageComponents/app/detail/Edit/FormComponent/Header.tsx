@@ -28,15 +28,13 @@ import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type
 import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import {
-  checkWorkflowNodeAndConnection,
-  storeEdge2RenderEdge,
-  storeNode2FlowNode
-} from '@/web/core/workflow/utils';
+import { storeEdge2RenderEdge, storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/workflowCheck';
 import type { AppForm2WorkflowFnType, Form2WorkflowFnType } from './type';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { checkAgentSkillSandboxUnavailable } from '../ChatAgent/utils';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 const Header = ({
   forbiddenSaveSnapshot: forbiddenSaveSnapshotRef,
@@ -202,7 +200,7 @@ const Header = ({
         </Flex>
       )}
       <Flex w={'full'} alignItems={'center'} position={'relative'} h={'full'}>
-        <Box flex={'1'}>
+        <Box flex={'1'} ml={'16px'}>
           <FolderPath
             rootName={t('common:All')}
             paths={paths}
@@ -218,107 +216,104 @@ const Header = ({
         )}
         {currentTab === TabEnum.appEdit && (
           <Flex alignItems={'center'}>
-            {!isShowHistories && (
-              <>
-                {isPc && (
-                  <MyTag
-                    mr={3}
-                    type={'borderFill'}
-                    showDot
-                    colorSchema={
-                      isSaved
-                        ? publishStatusStyle.published.colorSchema
-                        : publishStatusStyle.unPublish.colorSchema
-                    }
-                  >
-                    {t(
-                      isSaved
-                        ? publishStatusStyle.published.text
-                        : publishStatusStyle.unPublish.text
-                    )}
-                  </MyTag>
-                )}
-
-                <IconButton
-                  mr={[2, 4]}
-                  icon={<MyIcon name={'history'} w={'18px'} />}
-                  aria-label={''}
-                  size={'sm'}
-                  w={'34px'}
-                  h={'34px'}
-                  variant={'whitePrimary'}
-                  onClick={setIsShowHistories}
-                />
-                <SaveButton
-                  colorSchema="primary"
-                  isLoading={loading}
-                  onClickSave={onClickSave}
-                  checkData={() => {
-                    if (
-                      checkAgentSkillSandboxUnavailable({
-                        appForm,
-                        showSandbox,
-                        enableSandbox
-                      })
-                    ) {
-                      toast({
-                        title: t('skill:sandbox_skill_unavailable_toast'),
-                        status: 'warning'
-                      });
-                      return false;
-                    }
-
-                    if (appForm.aiSettings.useAgentSandbox) {
-                      if (!showSandbox) {
-                        toast({
-                          title: t('skill:sandbox_system_not_configured_toast'),
-                          status: 'warning'
-                        });
-                        return false;
-                      }
-                      if (!enableSandbox) {
-                        toast({
-                          title: t('app:sandbox_free_not_support'),
-                          status: 'warning'
-                        });
-                        return false;
-                      }
-                    }
-
-                    const { nodes: storeNodes, edges: storeEdges } = form2WorkflowFn(appForm, t);
-
-                    const nodes = storeNodes.map((item) => storeNode2FlowNode({ item, t }));
-                    const edges = storeEdges.map((item) => storeEdge2RenderEdge({ edge: item }));
-
-                    const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
-
-                    if (checkResults) {
-                      toast({
-                        title: t('app:app.error.publish_unExist_app'),
-                        status: 'warning'
-                      });
-                    }
-                    return !checkResults;
-                  }}
-                />
-              </>
+            {!isShowHistories && isPc && (
+              <MyTag
+                mr={3}
+                type={'borderFill'}
+                showDot
+                colorSchema={
+                  isSaved
+                    ? publishStatusStyle.published.colorSchema
+                    : publishStatusStyle.unPublish.colorSchema
+                }
+              >
+                {t(isSaved ? publishStatusStyle.published.text : publishStatusStyle.unPublish.text)}
+              </MyTag>
             )}
+
+            <IconButton
+              mr={[2, 4]}
+              icon={<MyIcon name={'history'} w={'18px'} />}
+              aria-label={''}
+              size={'sm'}
+              w={'34px'}
+              h={'34px'}
+              variant={'whitePrimary'}
+              onClick={isShowHistories ? closeHistories : setIsShowHistories}
+            />
+            <SaveButton
+              colorSchema="primary"
+              isLoading={loading}
+              isDisabled={isShowHistories}
+              onClickSave={onClickSave}
+              checkData={() => {
+                if (
+                  checkAgentSkillSandboxUnavailable({
+                    appForm,
+                    showSandbox,
+                    enableSandbox
+                  })
+                ) {
+                  toast({
+                    title: t('skill:sandbox_skill_unavailable_toast'),
+                    status: 'warning'
+                  });
+                  return false;
+                }
+
+                if (appForm.aiSettings.useAgentSandbox) {
+                  if (!showSandbox) {
+                    toast({
+                      title: t('skill:sandbox_system_not_configured_toast'),
+                      status: 'warning'
+                    });
+                    return false;
+                  }
+                  if (!enableSandbox) {
+                    toast({
+                      title: t('app:sandbox_free_not_support'),
+                      status: 'warning'
+                    });
+                    return false;
+                  }
+                }
+
+                const { nodes: storeNodes, edges: storeEdges } = form2WorkflowFn(appForm, t);
+
+                const toolNodeIds = new Set(
+                  storeEdges
+                    .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
+                    .map((edge) => edge.target)
+                );
+                const nodes = storeNodes.map((item) =>
+                  storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
+                );
+                const edges = storeEdges.map((item) => storeEdge2RenderEdge({ edge: item }));
+
+                const checkResults = checkWorkflowBeforeRunOrPublish({ nodes, edges, t });
+
+                if (checkResults.hasError) {
+                  toast({
+                    title: t('app:app.error.publish_unExist_app'),
+                    status: 'warning'
+                  });
+                }
+                return !checkResults.hasError;
+              }}
+            />
           </Flex>
         )}
       </Flex>
 
-      {isShowHistories && currentTab === TabEnum.appEdit && (
-        <PublishHistories<SimpleAppSnapshotType>
-          onClose={closeHistories}
-          past={past}
-          onSwitchTmpVersion={onSwitchTmpVersion}
-          onSwitchCloudVersion={onSwitchCloudVersion}
-          positionStyles={{
-            top: 14,
-            bottom: 3
-          }}
-        />
-      )}
+      <PublishHistories<SimpleAppSnapshotType>
+        isOpen={isShowHistories && currentTab === TabEnum.appEdit}
+        onClose={closeHistories}
+        past={past}
+        onSwitchTmpVersion={onSwitchTmpVersion}
+        onSwitchCloudVersion={onSwitchCloudVersion}
+        topOffset={14}
+        panelHeight={'calc(100vh - 68px)'}
+      />
     </Box>
   );
 };

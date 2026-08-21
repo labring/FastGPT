@@ -1,4 +1,4 @@
-import type { NextApiResponse } from 'next';
+import type { NodeApiResponse, NodeHttpResponse } from '../../types/http';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
@@ -15,6 +15,7 @@ export interface ResponseType<T = any> {
   code: number;
   message: string;
   data: T;
+  errorType?: string;
 }
 
 export interface ProcessedError {
@@ -40,6 +41,14 @@ function resolveHttpStatusForApiError(
 
   if (typeof bc === 'number' && bc >= 400 && bc <= 499) {
     return bc;
+  }
+
+  if (
+    typeof processedError.httpStatus === 'number' &&
+    processedError.httpStatus >= 400 &&
+    processedError.httpStatus <= 599
+  ) {
+    return processedError.httpStatus;
   }
 
   // packages/global/common/error/code/s3.ts：510000 段为上传校验类客户端错误
@@ -146,7 +155,7 @@ export function processError(params: {
 }
 
 export const jsonRes = <T = any>(
-  res: NextApiResponse,
+  res: NodeApiResponse,
   props?: {
     code?: number;
     message?: string;
@@ -173,7 +182,8 @@ export const jsonRes = <T = any>(
       statusText: processedError.statusText,
       message: message || processedError.message,
       data: processedError.data !== undefined ? processedError.data : null,
-      zodError: processedError.zodError
+      zodError: processedError.zodError,
+      errorType: error instanceof UserError ? 'UserError' : undefined
     });
 
     return;
@@ -188,7 +198,7 @@ export const jsonRes = <T = any>(
   });
 };
 
-export const sseErrRes = (res: NextApiResponse, error: any) => {
+export const sseErrRes = (res: NodeHttpResponse, error: any) => {
   const { event, data, shouldClearCookie } = getSseErrorResponse(error);
   if (shouldClearCookie) {
     clearCookie(res);
@@ -208,42 +218,20 @@ export const getSseErrorResponse = (
   shouldClearCookie: boolean;
 } => {
   const errResponseKey = typeof error === 'string' ? error : error?.message;
+  const processedError = processError({ error });
 
-  // Specified error
   if (ERROR_RESPONSE[errResponseKey]) {
-    // login is expired
-    if (errResponseKey === ERROR_ENUM.unAuthorization) {
-      return {
-        event: SseResponseEventEnum.error,
-        data: JSON.stringify(ERROR_RESPONSE[errResponseKey]),
-        shouldClearCookie: true
-      };
-    }
-
     return {
       event: SseResponseEventEnum.error,
       data: JSON.stringify(ERROR_RESPONSE[errResponseKey]),
-      shouldClearCookie: false
+      shouldClearCookie: processedError.shouldClearCookie
     };
   }
 
-  let msg = error?.response?.statusText || error?.message || '请求错误';
-  if (typeof error === 'string') {
-    msg = error;
-  } else if (proxyError[error?.code]) {
-    msg = '网络连接异常';
-  } else if (error?.response?.data?.error?.message) {
-    msg = error?.response?.data?.error?.message;
-  } else if (error?.error?.message) {
-    msg = `${error?.error?.code} ${error?.error?.message}`;
-  }
-
-  logger.error('SSE error', { message: msg, error });
-
   return {
     event: SseResponseEventEnum.error,
-    data: JSON.stringify({ message: replaceSensitiveText(msg) }),
-    shouldClearCookie: false
+    data: JSON.stringify({ message: processedError.message }),
+    shouldClearCookie: processedError.shouldClearCookie
   };
 };
 
@@ -251,7 +239,7 @@ export function responseWriteController({
   res,
   readStream
 }: {
-  res: NextApiResponse;
+  res: NodeHttpResponse;
   readStream: Stream.Readable;
 }) {
   res.on('drain', () => {
@@ -271,7 +259,7 @@ export function responseWrite({
   event,
   data
 }: {
-  res?: NextApiResponse;
+  res?: NodeHttpResponse;
   event?: string;
   data: string;
 }) {
@@ -279,7 +267,9 @@ export function responseWrite({
 
   if (!Write) return;
 
-  event && Write(`event: ${event}\n`);
+  if (event) {
+    Write(`event: ${event}\n`);
+  }
   Write(`data: ${data}\n\n`);
 }
 
@@ -288,7 +278,7 @@ export const responseWriteNodeStatus = ({
   status = 'running',
   name
 }: {
-  res?: NextApiResponse;
+  res?: NodeHttpResponse;
   status?: 'running';
   name: string;
 }) => {

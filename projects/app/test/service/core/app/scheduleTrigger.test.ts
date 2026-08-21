@@ -29,6 +29,10 @@ vi.mock('@fastgpt/service/common/logger', () => ({
   })
 }));
 
+vi.mock('@fastgpt/service/support/wallet/sub/utils', () => ({
+  getTeamPlanStatus: vi.fn(async () => ({ standard: { maxUploadFileCount: 20 } }))
+}));
+
 vi.mock('@fastgpt/service/core/app/schema', () => ({
   MongoApp: {
     find: vi.fn(() => ({

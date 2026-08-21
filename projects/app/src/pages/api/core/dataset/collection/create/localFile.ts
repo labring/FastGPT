@@ -6,13 +6,14 @@ import {
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { documentFileType } from '@fastgpt/global/common/file/constants';
 import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { decodeMultipartFilename } from '@fastgpt/service/common/s3/filename';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const filepaths: string[] = [];
@@ -40,7 +41,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     });
 
     const collectionData = CreateCollectionByLocalFileBodySchema.parse(result.data);
-    const collectionName = decodeURIComponent(result.fileMetadata.originalname);
+    const collectionName = decodeMultipartFilename(result.fileMetadata.originalname);
 
     const fileId = await getS3DatasetSource().upload({
       datasetId: dataset._id,

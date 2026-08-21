@@ -30,17 +30,13 @@ export const CreateCouponSubscriptionSchema = z.object({
 });
 export type CreateCouponSubscriptionType = z.infer<typeof CreateCouponSubscriptionSchema>;
 
-export const CreateCouponBodySchema = z.object({
+const CreateCouponBodyBaseSchema = z.object({
   subscriptions: z.array(CreateCouponSubscriptionSchema).min(1).meta({
     description: '兑换码包含的套餐列表'
   }),
   count: IntSchema.positive().optional().default(1).meta({
     description: '生成兑换码数量',
     example: 1
-  }),
-  type: z.enum(CouponTypeEnum).meta({
-    description: '兑换码类型',
-    example: CouponTypeEnum.activity
   }),
   price: NumSchema.nonnegative().optional().meta({
     description: '订单原价',
@@ -59,6 +55,31 @@ export const CreateCouponBodySchema = z.object({
     example: '线下付款兑换码'
   })
 });
+
+export const CreateCouponBodySchema = z.discriminatedUnion('type', [
+  CreateCouponBodyBaseSchema.extend({
+    type: z.literal(CouponTypeEnum.bank).meta({
+      description: '兑换码类型',
+      example: CouponTypeEnum.bank
+    }),
+    expiredDays: IntSchema.positive().optional().default(360).meta({
+      description: '兑换码有效天数；不传时默认 360 天',
+      example: 360
+    })
+  }),
+  CreateCouponBodyBaseSchema.extend({
+    type: z.literal(CouponTypeEnum.activity).meta({
+      description: '兑换码类型',
+      example: CouponTypeEnum.activity
+    }),
+    expiredDays: IntSchema.positive().optional().default(30).meta({
+      description: '兑换码有效天数；不传时默认 30 天',
+      example: 30
+    })
+  })
+]);
+
+export type CreateCouponBodyInputType = z.input<typeof CreateCouponBodySchema>;
 export type CreateCouponBodyType = z.infer<typeof CreateCouponBodySchema>;
 
 export const CreateCouponResponseSchema = z

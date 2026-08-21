@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  isLiteParseNativeLoadError,
+  isLiteParseWasmLoadError,
   readPdfFileWithFallback
 } from '@fastgpt/service/worker/readFile/extension/pdf';
 
@@ -35,10 +35,8 @@ describe('readPdfFile', () => {
     expect(mockWarn).not.toHaveBeenCalled();
   });
 
-  it('LiteParse native 加载失败时回退到 PDF.js', async () => {
-    const error = new Error(
-      'Failed to load native module for linux-arm64. Ensure the correct optional dependency is installed.'
-    );
+  it('LiteParse WASM 初始化失败时回退到 PDF.js', async () => {
+    const error = new Error('LiteParse WASM initialization failed');
     const expected = { rawText: 'pdfjs text' };
     mockReadPdfByLiteParse.mockRejectedValue(error);
     mockReadPdfByPdfJs.mockResolvedValue(expected);
@@ -58,7 +56,7 @@ describe('readPdfFile', () => {
     expect(mockReadPdfByLiteParse).toHaveBeenCalledWith(params);
     expect(mockReadPdfByPdfJs).toHaveBeenCalledWith(params);
     expect(mockWarn).toHaveBeenCalledWith(
-      'LiteParse native dependency failed, fallback to PDF.js',
+      'LiteParse WASM dependency failed, fallback to PDF.js',
       error
     );
   });
@@ -86,23 +84,19 @@ describe('readPdfFile', () => {
   });
 });
 
-describe('isLiteParseNativeLoadError', () => {
-  it('识别 LiteParse native/optional dependency 加载错误', () => {
+describe('isLiteParseWasmLoadError', () => {
+  it('识别 LiteParse WASM 包缺失和初始化错误', () => {
+    expect(isLiteParseWasmLoadError(new Error('LiteParse WASM initialization failed'))).toBe(true);
     expect(
-      isLiteParseNativeLoadError(
+      isLiteParseWasmLoadError(
         new Error(
-          'Failed to load native module for linux-arm64. Ensure the correct optional dependency is installed.'
+          "Cannot find package '@llamaindex/liteparse-wasm' imported from worker/readFile.js"
         )
-      )
-    ).toBe(true);
-    expect(
-      isLiteParseNativeLoadError(
-        new Error("Cannot find module '@llamaindex/liteparse-linux-arm64-musl'")
       )
     ).toBe(true);
   });
 
-  it('不把普通 PDF 解析错误识别为 native 加载错误', () => {
-    expect(isLiteParseNativeLoadError(new Error('Invalid PDF structure'))).toBe(false);
+  it('不把普通 PDF 解析错误识别为 WASM 加载错误', () => {
+    expect(isLiteParseWasmLoadError(new Error('Invalid PDF structure'))).toBe(false);
   });
 });

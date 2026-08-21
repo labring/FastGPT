@@ -1,98 +1,42 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import type { NextApiResponse } from 'next';
+import z from 'zod';
+import { NextAPI } from '@/service/middleware/entry';
 import { jwtVerifyS3DownloadToken } from '@fastgpt/service/common/s3/security/token';
-import { ensureTextContentTypeCharset } from '@fastgpt/service/common/s3/utils/mime';
-import { getContentDisposition } from '@fastgpt/global/common/file/tools';
-import path from 'path';
+import { jsonRes } from '@fastgpt/service/common/response';
+import { handleS3ProxyDownload, handleS3ProxyRouteError } from '@/service/common/s3/proxy';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
-const logger = getLogger(LogCategories.INFRA.FILE);
+const S3JwtDownloadRouteQuerySchema = z.object({
+  token: z.string().min(1),
+  filename: z.string().min(1).optional()
+});
 
-const parseRequestFilename = (filename?: string) => {
-  if (!filename) return '';
-  try {
-    return decodeURIComponent(filename);
-  } catch {
-    return filename;
+async function handler(req: ApiRequestProps, res: NextApiResponse) {
+  if (!['GET', 'HEAD'].includes(req.method || '')) {
+    return jsonRes(res, { code: 405, error: 'Method not allowed' });
   }
-};
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const { token, filename } = parseApiInput({
+    req,
+    querySchema: S3JwtDownloadRouteQuerySchema
+  }).query;
+
   try {
-    if (!['GET', 'HEAD'].includes(req.method || '')) {
-      return Promise.reject('Method not allowed');
-    }
-
-    const { token, filename: queryFilename } = req.query as { token: string; filename?: string };
     const { objectKey, bucketName } = await jwtVerifyS3DownloadToken(token);
 
-    const bucket = global.s3BucketMap[bucketName];
-    if (!bucket) {
-      return jsonRes(res, {
-        code: 404,
-        error: 'S3 bucket not found'
-      });
-    }
-
-    const [stream, metadata] = await Promise.all([
-      bucket.getFileStream(objectKey),
-      bucket.getFileMetadata(objectKey)
-    ]);
-
-    if (!stream) {
-      return jsonRes(res, {
-        code: 404,
-        error: 'File not found'
-      });
-    }
-
-    if (metadata?.contentType) {
-      res.setHeader(
-        'Content-Type',
-        ensureTextContentTypeCharset({
-          contentType: metadata.contentType,
-          filename: metadata.filename
-        })
-      );
-    }
-    if (metadata?.contentLength) {
-      res.setHeader('Content-Length', metadata.contentLength);
-    }
-    const filename =
-      parseRequestFilename(queryFilename) ||
-      metadata?.filename ||
-      path.basename(objectKey) ||
-      'file';
-    res.setHeader('Content-Disposition', getContentDisposition({ filename, type: 'inline' }));
-    res.setHeader('Cache-Control', 'public, max-age=31536000');
-
-    if (req.method === 'HEAD') {
-      res.status(200).end();
-      return;
-    }
-
-    stream.pipe(res);
-
-    stream.on('error', (error) => {
-      logger.error('Error reading proxy download stream', {
+    return await handleS3ProxyDownload({
+      req,
+      res,
+      payload: {
         objectKey,
         bucketName,
-        error
-      });
-      if (!res.headersSent) {
-        jsonRes(res, {
-          code: 500,
-          error
-        });
+        filename
       }
     });
-    stream.on('end', () => {
-      res.end();
-    });
   } catch (error) {
-    jsonRes(res, {
-      code: 500,
-      error
-    });
+    return handleS3ProxyRouteError({ res, error });
   }
 }
+
+export default NextAPI(handler);

@@ -40,6 +40,7 @@ export const withTimeout = async <T>(
   }
 };
 
+/** 按固定并发执行任务；任一任务失败时立即向调用方抛出该错误。 */
 export const batchRun = async <T, R>(
   arr: T[],
   fn: (item: T, index: number) => Promise<R>,
@@ -56,3 +57,25 @@ export const batchRun = async <T, R>(
   await Promise.all(Array.from({ length: Math.min(batchSize, arr.length) }, () => batchFn()));
   return result;
 };
+
+export type BatchRunSettledResult<T> =
+  | { success: true; data: T }
+  | { success: false; error: unknown };
+
+/** 按固定并发执行全部任务，并按输入顺序返回每项成功或失败结果。 */
+export const batchRunSettled = async <T, R>(
+  arr: T[],
+  fn: (item: T, index: number) => Promise<R>,
+  batchSize = 10
+): Promise<BatchRunSettledResult<R>[]> =>
+  batchRun(
+    arr,
+    async (item, index) => {
+      try {
+        return { success: true, data: await fn(item, index) } as const;
+      } catch (error) {
+        return { success: false, error } as const;
+      }
+    },
+    batchSize
+  );

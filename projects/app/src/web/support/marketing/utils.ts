@@ -1,20 +1,10 @@
 import {
+  FastGPT_SEM_Schema,
   type ShortUrlParams,
   type TrackRegisterParams
 } from '@fastgpt/global/support/marketing/type';
 
 const fastgptSemSourceDomainInitedKey = 'fastgpt_sem_sourceDomain_inited';
-
-export const getInviterId = () => {
-  return localStorage.getItem('inviterId') || undefined;
-};
-export const setInviterId = (inviterId?: string) => {
-  if (!inviterId) return;
-  localStorage.setItem('inviterId', inviterId);
-};
-export const removeInviterId = () => {
-  localStorage.removeItem('inviterId');
-};
 
 export const getBdVId = () => {
   return sessionStorage.getItem('bd_vid') || undefined;
@@ -59,15 +49,30 @@ export const removeUtmParams = () => {
   localStorage.removeItem('utm_params');
 };
 
-export const getFastGPTSem = () => {
+export const getFastGPTSem = (): TrackRegisterParams['fastgpt_sem'] => {
   try {
-    return localStorage.getItem('fastgpt_sem')
-      ? JSON.parse(localStorage.getItem('fastgpt_sem')!)
-      : undefined;
+    const value = localStorage.getItem('fastgpt_sem');
+    if (!value) return undefined;
+
+    const result = FastGPT_SEM_Schema.safeParse(JSON.parse(value));
+    if (result.success) return result.data;
+
+    localStorage.removeItem('fastgpt_sem');
+    return undefined;
   } catch {
+    localStorage.removeItem('fastgpt_sem');
     return undefined;
   }
 };
+
+export const onFastGPTLoginSuccess = async <T>(
+  loginSuccess: (result: T) => void | Promise<void>,
+  result: T
+) => {
+  await loginSuccess(result);
+  removeFastGPTSem();
+};
+
 export const setFastGPTSem = (fastgptSem?: TrackRegisterParams['fastgpt_sem']) => {
   if (!fastgptSem) return;
 
@@ -76,14 +81,13 @@ export const setFastGPTSem = (fastgptSem?: TrackRegisterParams['fastgpt_sem']) =
 
   const currentFastGPTSem = getFastGPTSem();
   const nextFastGPTSem = Object.fromEntries(validEntries);
+  const result = FastGPT_SEM_Schema.safeParse({
+    ...currentFastGPTSem,
+    ...nextFastGPTSem
+  });
 
-  localStorage.setItem(
-    'fastgpt_sem',
-    JSON.stringify({
-      ...currentFastGPTSem,
-      ...nextFastGPTSem
-    })
-  );
+  if (!result.success) return;
+  localStorage.setItem('fastgpt_sem', JSON.stringify(result.data));
 };
 export const removeFastGPTSem = () => {
   localStorage.removeItem('fastgpt_sem');
@@ -106,7 +110,9 @@ export const initFastGPTSemSourceDomain = (sourceDomain?: string) => {
 
 export const setCouponCode = (couponCode?: string) => {
   if (!couponCode) return;
-  localStorage.setItem('couponCode', couponCode);
+  const normalizedCouponCode = couponCode.trim();
+  if (!normalizedCouponCode) return;
+  localStorage.setItem('couponCode', normalizedCouponCode);
 };
 
 export const getCouponCode = () => {

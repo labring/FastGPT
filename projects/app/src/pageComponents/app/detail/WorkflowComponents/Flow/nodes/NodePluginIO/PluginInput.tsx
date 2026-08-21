@@ -37,7 +37,6 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs = [], outputs } = data;
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
 
   const onSubmit = useCallback(
@@ -121,7 +120,6 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 icon: FlowNodeInputMap[inputType]?.icon as string,
                 label: t(input.label as any),
                 type: input.valueType ? t(FlowValueTypeMap[input.valueType]?.label as any) : '-',
-                isTool: !!input.toolDescription,
                 key: input.key
               };
             })}
@@ -168,6 +166,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 input.renderTypeList.includes(FlowNodeInputTypeEnum.addInputParam)
             )
           }
+          showAgentGenerated={false}
           onClose={() => setEditField(undefined)}
           onSubmit={onSubmit}
         />

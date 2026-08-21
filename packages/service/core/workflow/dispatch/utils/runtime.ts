@@ -3,10 +3,8 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import type {
-  RuntimeNodeItemType,
-  WorkflowVariableStateLike
-} from '@fastgpt/global/core/workflow/runtime/type';
+import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { WorkflowVariableStateLike } from '../../types/runtime';
 import {
   getReferenceVariableValue,
   valueTypeFormat
@@ -32,7 +30,8 @@ export const getWorkflowNodeRunParams = ({
   if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
     // Format plugin input to object
     return node.inputs.reduce<Record<string, any>>((acc, item) => {
-      acc[item.key] = valueTypeFormat(item.value, item.valueType);
+      // 内部变量不从工具参数进入，缺少 runtime value 时使用节点声明的默认值。
+      acc[item.key] = valueTypeFormat(item.value ?? item.defaultValue, item.valueType);
       return acc;
     }, {});
   }

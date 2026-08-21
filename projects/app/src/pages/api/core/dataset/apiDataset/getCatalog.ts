@@ -1,6 +1,6 @@
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import {
   GetApiDatasetCatalogBodySchema,

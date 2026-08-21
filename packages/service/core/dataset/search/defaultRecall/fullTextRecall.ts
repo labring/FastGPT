@@ -159,41 +159,44 @@ export const fullTextRecall = async ({
     imageCaption: []
   };
 
-  recallResults.forEach((recallResult, taskIndex) => {
+  for (const [taskIndex, recallResult] of recallResults.entries()) {
     const task = queryTasks[taskIndex];
-    const list = recallResult
-      .map((item, index) => {
-        const collection = collectionMaps.get(String(item.collectionId));
-        if (!collection) {
-          logger.warn('Dataset collection not found during full-text recall', {
-            collectionId: item.collectionId,
-            dataId: item.dataId
-          });
-          return;
-        }
+    const list = (
+      await Promise.all(
+        recallResult.map((item, index) => {
+          const collection = collectionMaps.get(String(item.collectionId));
+          if (!collection) {
+            logger.warn('Dataset collection not found during full-text recall', {
+              collectionId: item.collectionId,
+              dataId: item.dataId
+            });
+            return;
+          }
 
-        const data = dataMaps.get(String(item.dataId));
-        if (!data) {
-          logger.warn('Dataset data not found during full-text recall', {
-            dataId: item.dataId,
-            collectionId: item.collectionId
-          });
-          return;
-        }
+          const data = dataMaps.get(String(item.dataId));
+          if (!data) {
+            logger.warn('Dataset data not found during full-text recall', {
+              dataId: item.dataId,
+              collectionId: item.collectionId
+            });
+            return;
+          }
 
-        return buildSearchResultItem({
-          data,
-          collection,
-          includeIndexes: true,
-          score: [
-            {
-              type: SearchScoreTypeEnum.fullText,
-              value: item.score || 0,
-              index
-            }
-          ]
-        });
-      })
+          return buildSearchResultItem({
+            data,
+            collection,
+            includeIndexes: true,
+            score: [
+              {
+                type: SearchScoreTypeEnum.fullText,
+                value: item.score || 0,
+                index
+              }
+            ]
+          });
+        })
+      )
+    )
       .filter((item) => {
         if (!item) return false;
         return true;
@@ -206,7 +209,7 @@ export const fullTextRecall = async ({
       }) as SearchDataResponseItemType[];
 
     groupedRecallLists[task.source].push(list);
-  });
+  }
 
   return {
     textFullTextRecallResults: concatRecallLists(groupedRecallLists.text, limit),

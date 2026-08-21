@@ -4,8 +4,7 @@ import { Reader } from '@maxmind/geoip2-node';
 import { cleanupIntervalMs, dbPath, privateOrOtherLocationName } from './constants';
 import type { LocationName } from './type';
 import { extractLocationData } from './utils';
-import type { NextApiRequest } from 'next';
-export type { NextApiRequest } from 'next';
+import type { NodeHttpRequest } from '../../types/http';
 import { getLogger } from '../logger';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { formatI18nLocationToZhEn } from '@fastgpt/global/common/i18n/utils';
@@ -75,7 +74,7 @@ export function getLocationFromIp(ip?: string, locale: localeType = 'zh-CN') {
     ]
       .filter(Boolean)
       .join(formatedLocale === 'zh' ? '，' : ', ');
-  } catch (error) {
+  } catch {
     locationIpMap.set(ip, privateOrOtherLocationName);
     return privateOrOtherLocationName.country?.[formatedLocale];
   }
@@ -108,7 +107,7 @@ export function initGeo() {
   }
 }
 
-export function getIpFromRequest(request: NextApiRequest): string {
+export function getIpFromRequest(request: NodeHttpRequest): string {
   const ip = getClientIpFromRequest(request);
   if (!ip || ip === '::1') {
     return '127.0.0.1';

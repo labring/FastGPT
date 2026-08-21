@@ -1,7 +1,7 @@
 import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';

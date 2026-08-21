@@ -3,7 +3,7 @@ import type { ClientSession } from 'mongoose';
 import { getFileS3Key } from '../../utils';
 import { MongoS3TTL } from '../../models/ttl';
 import { S3PublicBucket } from '../../buckets/public';
-import { avatarAllowedExtensions } from '../../utils/uploadConstraints';
+import { avatarAllowedExtensions, createUploadConstraints } from '../../utils/uploadConstraints';
 
 class S3AvatarSource extends S3PublicBucket {
   constructor() {
@@ -17,22 +17,28 @@ class S3AvatarSource extends S3PublicBucket {
   async createUploadAvatarURL({
     filename,
     teamId,
+    size,
     autoExpired = true
   }: {
     filename: string;
     teamId: string;
+    size?: number;
     autoExpired?: boolean;
   }) {
     const { fileKey } = getFileS3Key.avatar({ teamId, filename });
+    const uploadPolicy = createUploadConstraints({
+      filename,
+      uploadConstraints: {
+        allowedExtensions: avatarAllowedExtensions
+      }
+    });
 
-    return this.createPresignedPutUrl(
-      { filename, rawKey: fileKey },
+    return this.createUploadAccessUrl(
+      { filename, rawKey: fileKey, ...(size !== undefined ? { size } : {}) },
       {
         expiredHours: autoExpired ? 1 : undefined, // 1 Hours
         maxFileSize: 5, // 5MB
-        uploadConstraints: {
-          allowedExtensions: avatarAllowedExtensions
-        }
+        uploadPolicy
       }
     );
   }

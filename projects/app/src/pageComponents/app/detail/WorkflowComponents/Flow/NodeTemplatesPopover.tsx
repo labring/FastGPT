@@ -1,27 +1,38 @@
-import MyBox from '@fastgpt/web/components/common/MyBox';
-import React from 'react';
-import { useContextSelector } from 'use-context-selector';
+import { collectWorkflowStartInputAutoFillPatches } from '@/web/core/workflow/workflowStartAutoFill';
+import { Popover, PopoverBody, PopoverContent } from '@chakra-ui/react';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
   EDGE_TYPE,
   FlowNodeTypeEnum,
   isNestedChildSystemNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { type Node } from 'reactflow';
-import { WorkflowBufferDataContext } from '../context/workflowInitContext';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useMemoizedFn } from 'ahooks';
+import React from 'react';
+import { type Node } from 'reactflow';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowActionsContext } from '../context/workflowActionsContext';
+import { WorkflowBufferDataContext, WorkflowInitContext } from '../context/workflowInitContext';
+import { WorkflowModalContext } from '../context/workflowModalContext';
 import NodeTemplateListHeader from './components/NodeTemplates/header';
 import NodeTemplateList from './components/NodeTemplates/list';
-import { Popover, PopoverContent, PopoverBody } from '@chakra-ui/react';
 import { useNodeTemplates } from './components/NodeTemplates/useNodeTemplates';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { popoverHeight, popoverWidth } from './hooks/useWorkflow';
-import { WorkflowModalContext } from '../context/workflowModalContext';
 
 const NodeTemplatesPopover = () => {
   const { handleParams, setHandleParams } = useContextSelector(WorkflowModalContext, (v) => v);
 
-  const { setNodes, setEdges } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
+  const { edges, setNodes, setEdges, workflowStartNode } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const onRefreshSingleNodeWorkflowCheckIssues = useContextSelector(
+    WorkflowActionsContext,
+    (v) => v.onRefreshSingleNodeWorkflowCheckIssues
+  );
 
   const {
     templateType,
@@ -87,7 +98,25 @@ const NodeTemplatesPopover = () => {
       return newState;
     });
 
+    if (workflowStartNode) {
+      const patches = collectWorkflowStartInputAutoFillPatches({
+        nodes: nodes.concat(newNodes),
+        edges: edges.concat(newEdges),
+        workflowStartNode
+      });
+
+      if (patches.length > 0) {
+        onChangeNode(patches.map((patch) => ({ ...patch, type: 'updateInput' as const })));
+      }
+    }
+
     setHandleParams(null);
+
+    setTimeout(() => {
+      newNodes.forEach((node) => {
+        onRefreshSingleNodeWorkflowCheckIssues(node.data.nodeId);
+      });
+    }, 0);
   });
 
   if (!handleParams) return null;

@@ -7,7 +7,6 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  checkNeedsUserConfiguration,
   getToolConfigStatus,
   validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
@@ -39,9 +38,14 @@ import type { SkillClickResult } from '@fastgpt/web/components/common/Textarea/P
 import { getSkillList } from '@/web/core/skill/api';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
+import { inheritToolInputConfig } from '../../FormComponent/ToolSelector/utils';
+import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 
 const ConfigToolModal = dynamic(() => import('../../component/ConfigToolModal'));
 type AgentSkillListItemType = ListSkillsResponse['list'][number];
+
+const getSkillId = (id?: string, source?: string) =>
+  source ? getToolIdentityKey(id, source) : id || '';
 
 const isSubApp = (flowNodeType: FlowNodeTypeEnum) => {
   const subAppTypeMap: Record<string, boolean> = {
@@ -58,7 +62,7 @@ const toSkillLabelItem = (
   configStatus: SkillLabelItemType['configStatus']
 ): SkillLabelItemType => ({
   ...tool,
-  id: tool.pluginId!,
+  id: getSkillId(tool.pluginId, tool.source),
   name: tool.name,
   configStatus
 });
@@ -92,16 +96,18 @@ export const useSkillManager = ({
   onAddAgentSkill,
   canUploadFile,
   hasSelectedDataset,
-  useAgentSandbox
+  useAgentSandbox,
+  onClickDatasetSearch
 }: {
   selectedTools: SelectedToolItemType[];
   selectedAgentSkills?: SelectedAgentSkillItemType[];
-  onDeleteTool: (id: string) => void;
+  onDeleteTool: (id: string, source?: string) => void;
   onUpdateOrAddTool: (tool: SelectedToolItemType) => void;
   onAddAgentSkill?: (skill: SelectedAgentSkillItemType) => boolean;
   canUploadFile: boolean;
   hasSelectedDataset: boolean;
   useAgentSandbox: boolean;
+  onClickDatasetSearch?: () => void;
 }) => {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
@@ -116,6 +122,7 @@ export const useSkillManager = ({
         .map<SkillItemType>((item) => {
           return {
             id: item.id,
+            source: item.source,
             parentId: item.parentId,
             label: item.name,
             icon: item.avatar,
@@ -126,7 +133,8 @@ export const useSkillManager = ({
               .filter((tool) => tool.parentId === item.id)
               .map((tool) => ({
                 id: tool.id,
-                name: tool.name
+                name: tool.name,
+                source: tool.source
               }))
           };
         })
@@ -305,11 +313,17 @@ export const useSkillManager = ({
   );
 
   const onAddAppOrTool = useCallback(
-    async (toolId: string): Promise<SkillClickResult | undefined> => {
+    async (toolId: string, source?: string): Promise<SkillClickResult | undefined> => {
       // Check tool exists, if exists, not update/add tool
-      const existsTool = lastSelectedTools.current?.find((tool) => tool.pluginId === toolId);
+      const toolIdentityKey = getToolIdentityKey(toolId, source);
+      const existsTool = lastSelectedTools.current?.find(
+        (tool) => getToolIdentityKey(tool.pluginId, tool.source) === toolIdentityKey
+      );
       if (existsTool) {
-        const skill = toSkillLabelItem(existsTool, existsTool.configStatus || 'waitingForConfig');
+        const skill = toSkillLabelItem(
+          existsTool,
+          getToolConfigStatus({ tool: existsTool }).status
+        );
 
         return {
           id: skill.id,
@@ -325,7 +339,7 @@ export const useSkillManager = ({
 
         const configStatus: SkillLabelItemType['configStatus'] = (() => {
           if (toolId === SubAppIds.datasetSearch) {
-            return hasSelectedDataset ? 'configured' : 'invalid';
+            return hasSelectedDataset ? 'configured' : 'waitingForConfig';
           }
 
           if (toolId === SubAppIds.readFiles) {
@@ -358,11 +372,16 @@ export const useSkillManager = ({
         };
       }
 
-      const toolTemplate = await getClientToolPreviewNode({ appId: toolId, versionId: '' });
+      const toolTemplate = await getClientToolPreviewNode({
+        appId: toolId,
+        getLatestVersion: true,
+        source
+      });
 
       const toolValid = validateToolConfiguration({
         toolTemplate,
-        canUploadFile
+        canUploadFile,
+        isAppTool: true
       });
       if (!toolValid) {
         toast({
@@ -372,10 +391,12 @@ export const useSkillManager = ({
         return;
       }
 
-      const tool = {
-        ...toolTemplate,
-        id: toolTemplate.pluginId!
-      };
+      const tool = inheritToolInputConfig({
+        tool: {
+          ...toolTemplate,
+          id: toolTemplate.pluginId!
+        }
+      });
       const configStatus = getToolConfigStatus({ tool }).status;
       const skill = toSkillLabelItem(tool, configStatus);
 
@@ -488,14 +509,14 @@ export const useSkillManager = ({
           return 'invalid';
         }
         if (tool.pluginId === SubAppIds.datasetSearch) {
-          return hasSelectedDataset ? 'configured' : 'invalid';
+          return hasSelectedDataset ? 'configured' : 'waitingForConfig';
         }
-        return tool.configStatus || 'waitingForConfig';
+        return getToolConfigStatus({ tool }).status;
       })();
 
       return {
         ...tool,
-        id: tool.pluginId!,
+        id: getSkillId(tool.pluginId, tool.source),
         name: tool.name,
         configStatus
       };
@@ -513,7 +534,7 @@ export const useSkillManager = ({
         templateType: FlowNodeTemplateTypeEnum.tools,
         inputs: [],
         outputs: [],
-        configStatus: hasSelectedDataset ? 'configured' : 'invalid'
+        configStatus: hasSelectedDataset ? 'configured' : 'waitingForConfig'
       });
     }
 
@@ -567,19 +588,19 @@ export const useSkillManager = ({
         return;
       }
 
-      const tool = selectedTools.find((tool) => tool.pluginId === id);
+      if (id === SubAppIds.datasetSearch) {
+        onClickDatasetSearch?.();
+        return;
+      }
+
+      const tool = selectedTools.find((tool) => getSkillId(tool.pluginId, tool.source) === id);
       if (!tool) return;
 
       if (isSubApp(tool.flowNodeType)) {
-        const hasFormInput = checkNeedsUserConfiguration(tool);
-        if (!hasFormInput) {
-          return;
-        }
-
         setConfigTool(tool);
       }
     },
-    [selectedAgentSkills, selectedTools]
+    [onClickDatasetSearch, selectedAgentSkills, selectedTools]
   );
   const onRemoveSkill = useCallback(() => {}, []);
 

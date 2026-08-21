@@ -22,28 +22,20 @@ const Auth = ({ children }: { children: JSX.Element | React.ReactNode }) => {
   const router = useRouter();
   const { toast } = useToast();
   const { userInfo, initUserInfo } = useUserStore();
+  const isUnAuthPage = unAuthPage[router.pathname] === true;
 
-  useQuery(
-    [router.pathname],
-    () => {
-      if (unAuthPage[router.pathname] === true) {
-        return null;
-      } else {
-        return initUserInfo();
-      }
-    },
-    {
-      refetchInterval: 10 * 60 * 1000,
-      onError(error) {
-        toast({
-          status: 'warning',
-          title: t('common:support.user.Need to login')
-        });
-      }
+  useQuery(['initUserInfo'], initUserInfo, {
+    enabled: !isUnAuthPage,
+    refetchInterval: 10 * 60 * 1000,
+    onError() {
+      toast({
+        status: 'warning',
+        title: t('common:support.user.Need to login')
+      });
     }
-  );
+  });
 
-  return !!userInfo || unAuthPage[router.pathname] === true ? children : null;
+  return !!userInfo || isUnAuthPage ? children : null;
 };
 
 export default Auth;

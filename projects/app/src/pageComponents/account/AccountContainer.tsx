@@ -7,12 +7,11 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import PageContainer from '@/components/PageContainer';
 import SideTabs from '@/components/SideTabs';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 export enum TabEnum {
   'info' = 'info',
-  'promotion' = 'promotion',
   'usage' = 'usage',
   'bill' = 'bill',
   'inform' = 'inform',
@@ -33,7 +32,7 @@ const AccountContainer = ({
   children: React.ReactNode;
   isLoading?: boolean;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account');
   const theme = useTheme();
   const { userInfo, setUserInfo } = useUserStore();
   const { feConfigs, systemVersion } = useSystemStore();
@@ -92,15 +91,6 @@ const AccountContainer = ({
       label: t('account:model_provider'),
       value: TabEnum.model
     },
-    ...(feConfigs?.show_promotion && userInfo?.team?.permission.isOwner
-      ? [
-          {
-            icon: 'support/account/promotionLight',
-            label: t('account:promotion_records'),
-            value: TabEnum.promotion
-          }
-        ]
-      : []),
     ...(userInfo?.team?.permission.hasApikeyCreatePer
       ? [
           {

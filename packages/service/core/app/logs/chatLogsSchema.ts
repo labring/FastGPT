@@ -1,5 +1,5 @@
 import type { AppChatLogSchema } from '@fastgpt/global/core/app/logs/type';
-import { getMongoLogModel, Schema } from '../../../common/mongo';
+import { defineIndex, getMongoLogModel, Schema } from '../../../common/mongo';
 import { AppCollectionName } from '../schema';
 
 export const ChatLogCollectionName = 'app_chat_logs';
@@ -69,17 +69,21 @@ const ChatLogSchema = new Schema({
 });
 
 // Get chart data
-ChatLogSchema.index({ teamId: 1, appId: 1, source: 1, updateTime: -1 });
+defineIndex(ChatLogSchema, {
+  key: { teamId: 1, appId: 1, source: 1, updateTime: -1 }
+});
 // Get chart data isFirstChat
-ChatLogSchema.index({ isFirstChat: 1, teamId: 1, appId: 1, source: 1, createTime: -1 });
+defineIndex(ChatLogSchema, {
+  key: { isFirstChat: 1, teamId: 1, appId: 1, source: 1, createTime: -1 }
+});
 // Get userStats
-ChatLogSchema.index({ teamId: 1, appId: 1, userId: 1 });
+defineIndex(ChatLogSchema, { key: { teamId: 1, appId: 1, userId: 1 } });
 
 // Admin get chat form data - optimized for aggregation with appId/chatId grouping
-ChatLogSchema.index({ createTime: -1, appId: 1, chatId: 1 });
+defineIndex(ChatLogSchema, { key: { createTime: -1, appId: 1, chatId: 1 } });
 
 // Init shell
-ChatLogSchema.index({ teamId: 1, appId: 1, chatId: 1 });
+defineIndex(ChatLogSchema, { key: { teamId: 1, appId: 1, chatId: 1 } });
 
 export const MongoAppChatLog = getMongoLogModel<AppChatLogSchema>(
   ChatLogCollectionName,

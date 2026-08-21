@@ -14,7 +14,7 @@ import { type NameType, type ValueType } from 'recharts/types/component/DefaultT
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import FillRowTabs from '../Tabs/FillRowTabs';
 import { useTranslation } from 'next-i18next';
-import { cloneDeep } from 'lodash';
+import { cloneDeep } from 'lodash-es';
 
 type AreaConfig = {
   dataKey: string;

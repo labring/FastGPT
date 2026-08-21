@@ -12,19 +12,7 @@ import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConf
 import { useInputGuideLexicon } from './useInputGuideLexicon';
 import type { ChatInputGuideListResponseType } from '@fastgpt/global/openapi/core/chat/inputGuide/api';
 
-const csvTemplate = `"第一列内容"
-"只会将第一列内容导入，其余列会被忽略"
-"AIGC发展分为几个阶段？"`;
-
 type LexiconItem = ChatInputGuideListResponseType['list'][number];
-
-const downloadCsvTemplate = () => {
-  fileDownload({
-    text: csvTemplate,
-    type: 'text/csv;charset=utf-8',
-    filename: 'questionGuide_template.csv'
-  });
-};
 
 const CommitInput = ({
   defaultValue = '',
@@ -72,6 +60,22 @@ const LexiconToolbar = ({
   onSearch: (searchKey: string) => void;
 }) => {
   const { t } = useTranslation();
+
+  const downloadCsvTemplate = () => {
+    const csvTemplate = [
+      t('app:csv_input_lexicon_template_header'),
+      t('app:csv_input_lexicon_template_tip'),
+      t('app:csv_input_lexicon_template_example')
+    ]
+      .map((text) => `"${text.replaceAll('"', '""')}"`)
+      .join('\n');
+
+    fileDownload({
+      text: csvTemplate,
+      type: 'text/csv;charset=utf-8',
+      filename: 'questionGuide_template.csv'
+    });
+  };
 
   return (
     <Flex gap={4} px={8} py={4} mb={4} alignItems={'center'} borderBottom={'base'}>

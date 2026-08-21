@@ -1,6 +1,9 @@
 ---
-title: V4.8.6 (Includes Upgrade Script)
+title: V4.8.6
 description: FastGPT V4.8.6 Release Notes
+releaseTime: '2024-07-11'
+upgradeTags:
+  - MIGRATION
 ---
 
 ## Upgrade Guide
@@ -25,12 +28,12 @@ curl --location --request POST 'https://{{host}}/api/admin/initv486' \
 
 This will initialize inherited permissions for apps.
 
--------
+---
 
 ## V4.8.6 Release Notes
 
 1. New - App permission inheritance.
-2. New - Knowledge Base now supports disabling individual collections.
+2. New - Dataset now supports disabling individual collections.
 3. New - System plugin architecture change. Added link reader and math calculator plugins. The official release will include documentation on creating custom system plugins.
 4. New - Code sandbox runtime parameters.
 5. New - Option to hide the header during AI conversations, primarily for mobile optimization.
@@ -41,7 +44,7 @@ This will initialize inherited permissions for apps.
 10. Fixed - API documentation descriptions.
 11. Fixed - API system prompt merging.
 12. Fixed - Content inside team plugin folders failing to load.
-13. Fixed - Knowledge Base collection folder breadcrumbs failing to load.
+13. Fixed - Dataset collection folder breadcrumbs failing to load.
 14. Fixed - Markdown export conversation error.
 15. Fixed - Prompt template closing tag error.
 16. Fixed - Documentation descriptions.

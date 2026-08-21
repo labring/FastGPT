@@ -1,6 +1,10 @@
 ---
-title: V4.8.20 (Includes Migration Script)
+title: V4.8.20
 description: FastGPT V4.8.20 Release Notes
+releaseTime: '2025-02-04'
+upgradeTags:
+  - CONFIG
+  - MIGRATION
 ---
 
 ## Upgrade Guide
@@ -36,7 +40,7 @@ The script automatically loads models from the old configuration file into the n
 3. New - Usage record export and dashboard.
 4. New - Markdown syntax extension supporting audio and video (via `audio` and `video` code blocks).
 5. New - Adjusted `max_tokens` calculation logic. `max_tokens` is now prioritized at the configured value; if it exceeds the maximum context, history is reduced instead. For example, requesting 8000 `max_tokens` reduces the context length by 8000.
-6. Improved - Query optimization now includes context filtering to prevent exceeding context limits.
+6. Improved - Query rewriting now includes context filtering to prevent exceeding context limits.
 7. Improved - Page component extraction to reduce page component routing.
 8. Improved - Full-text search is now case-insensitive.
 9. Improved - QA generation and enhanced indexing switched to streaming output to prevent timeouts with some models.

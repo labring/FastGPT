@@ -1,4 +1,4 @@
-import { type MutableRefObject, useEffect, useRef } from 'react';
+import { type MutableRefObject, useEffect, useMemo, useRef } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
 import { useMemoizedFn } from 'ahooks';
@@ -38,11 +38,16 @@ import {
 } from '../utils/interactive';
 import { shouldAppendResumeInteractive } from '../utils/resume';
 import { formatChatRequestVariables } from '../utils/requestVariables';
+import {
+  createStreamRenderScheduler,
+  shouldScheduleStreamRender
+} from '../utils/streamRenderScheduler';
 import type { ChatSiteItemType, ChatBoxInputType, SendPromptFnType } from '../type';
 import type { StartChatFnProps, generatingMessageProps } from '../../type';
-import { cloneDeep } from 'lodash';
+import { cloneDeep } from 'lodash-es';
 import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
+import { getChatItemErrorText } from '@/global/core/chat/utils';
 
 type HumanChatSiteItemType = Extract<ChatSiteItemType, { obj: ChatRoleEnum.Human }>;
 
@@ -68,6 +73,14 @@ type FinishChatGenerateStatus = (params: {
     chatId?: string;
   }) => boolean;
 }) => void;
+
+const STREAM_RENDER_MIN_INTERVAL_MS = 50;
+const STREAM_RENDER_MAX_INTERVAL_MS = 96;
+const STREAM_RENDER_TARGET_TAIL_LENGTH = 256;
+
+type QueuedGeneratingMessage = generatingMessageProps & {
+  autoTTSResponse?: boolean;
+};
 
 type UseChatGenerateProps = {
   onStartChat?: (e: StartChatFnProps) => Promise<{ responseText: string; isNewChat?: boolean }>;
@@ -153,10 +166,7 @@ export const useChatGenerate = ({
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const chatAuthTarget = useChatAuthApiTarget({ sourceTarget, outLinkAuthData });
 
-  const generatingMessageQueueRef = useRef<
-    Array<generatingMessageProps & { autoTTSResponse?: boolean }>
-  >([]);
-  const generatingMessageFrameRef = useRef<number>();
+  const generatingMessageQueueRef = useRef<QueuedGeneratingMessage[]>([]);
 
   const applyGeneratingMessage = useMemoizedFn(
     (
@@ -178,7 +188,7 @@ export const useChatGenerate = ({
         nodeResponse,
         durationSeconds,
         autoTTSResponse
-      }: generatingMessageProps & { autoTTSResponse?: boolean }
+      }: QueuedGeneratingMessage
     ) => {
       const histories = nodeResponse?.formInputResult
         ? refreshSubmittedFormInteractiveValues({
@@ -245,7 +255,8 @@ export const useChatGenerate = ({
               downloadingPackage: t('chat:sandbox_status_downloadingPackage'),
               uploadingPackage: t('chat:sandbox_status_uploadingPackage'),
               extractingPackage: t('chat:sandbox_status_extractingPackage'),
-              lazyInit: t('chat:sandbox_status_lazyInit')
+              lazyInit: t('chat:sandbox_status_lazyInit'),
+              upgrading: t('chat:sandbox_status_upgrading')
             };
 
             if (phase === 'ready') {
@@ -314,7 +325,6 @@ export const useChatGenerate = ({
               !latestValue.planStatus &&
               !latestValue.agentPlanUpdate &&
               !latestValue.agentAsk &&
-              !latestValue.agentStopGate &&
               !latestValue.contextCheckpoint
             ) {
               return latestIndex;
@@ -393,9 +403,14 @@ export const useChatGenerate = ({
         }
         if (event === SseResponseEventEnum.toolParams && tool && updateValue.tools) {
           if (tool.params) {
-            updateValue.tools = updateValue.tools.map((item) =>
-              item.id === tool.id ? { ...item, params: `${item.params || ''}${tool.params}` } : item
-            );
+            updateValue.tools = updateValue.tools.map((item) => {
+              if (item.id !== tool.id) return item;
+
+              return {
+                ...item,
+                params: `${item.params || ''}${tool.params}`
+              };
+            });
             return {
               ...item,
               value: [
@@ -524,14 +539,9 @@ export const useChatGenerate = ({
     }
   );
 
-  const flushGeneratingMessageQueue = useMemoizedFn(() => {
-    if (generatingMessageFrameRef.current !== undefined) {
-      window.cancelAnimationFrame(generatingMessageFrameRef.current);
-      generatingMessageFrameRef.current = undefined;
-    }
-
+  const commitGeneratingMessageQueue = useMemoizedFn(() => {
     const queue = generatingMessageQueueRef.current;
-    if (queue.length === 0) return;
+    if (queue.length === 0) return false;
 
     generatingMessageQueueRef.current = [];
     setChatRecords((state) =>
@@ -539,6 +549,47 @@ export const useChatGenerate = ({
     );
 
     generatingScroll(queue.some((message) => message.event === SseResponseEventEnum.interactive));
+    return true;
+  });
+  const getStreamRenderInterval = useMemoizedFn(() => {
+    const queuedTextLength = generatingMessageQueueRef.current.reduce(
+      (length, message) =>
+        length + (message.text?.length || 0) + (message.reasoningText?.length || 0),
+      0
+    );
+    const lastChatRecord = chatRecords[chatRecords.length - 1];
+    const currentText =
+      lastChatRecord?.obj === ChatRoleEnum.AI
+        ? formatChatValue2InputType(lastChatRecord.value).text || ''
+        : '';
+    const lastBlockStart = currentText.lastIndexOf('\n\n');
+    const activeTailLength = currentText.length - (lastBlockStart >= 0 ? lastBlockStart + 2 : 0);
+    const renderLoad = Math.min(
+      Math.max(activeTailLength, queuedTextLength),
+      STREAM_RENDER_TARGET_TAIL_LENGTH
+    );
+
+    // 长 block 的 parse/layout 成本更高，逐步降低提交频率；短文本仍保持约 20Hz。
+    return Math.round(
+      STREAM_RENDER_MIN_INTERVAL_MS +
+        (renderLoad / STREAM_RENDER_TARGET_TAIL_LENGTH) *
+          (STREAM_RENDER_MAX_INTERVAL_MS - STREAM_RENDER_MIN_INTERVAL_MS)
+    );
+  });
+  const streamRenderScheduler = useMemo(
+    () =>
+      createStreamRenderScheduler({
+        onFlush: commitGeneratingMessageQueue,
+        intervalMs: getStreamRenderInterval
+      }),
+    [commitGeneratingMessageQueue, getStreamRenderInterval]
+  );
+  const flushGeneratingMessageQueue = useMemoizedFn(() => {
+    streamRenderScheduler.flush();
+  });
+  const cancelGeneratingMessageQueue = useMemoizedFn(() => {
+    streamRenderScheduler.cancel();
+    generatingMessageQueueRef.current = [];
   });
 
   const generatingMessage = useMemoizedFn(
@@ -560,25 +611,29 @@ export const useChatGenerate = ({
         return;
       }
 
+      if (!shouldScheduleStreamRender(message.event)) {
+        // 先提交之前的文本，保证工具和状态事件与 SSE 到达顺序一致。
+        streamRenderScheduler.flush();
+        setChatRecords((state) => applyGeneratingMessage(state, message));
+        generatingScroll(message.event === SseResponseEventEnum.interactive);
+        return;
+      }
+
       generatingMessageQueueRef.current.push(message);
-
-      if (generatingMessageFrameRef.current !== undefined) return;
-
-      generatingMessageFrameRef.current = window.requestAnimationFrame(flushGeneratingMessageQueue);
+      streamRenderScheduler.schedule();
     }
   );
 
   useEffect(() => {
     return () => {
-      if (generatingMessageFrameRef.current !== undefined) {
-        window.cancelAnimationFrame(generatingMessageFrameRef.current);
-      }
-      generatingMessageFrameRef.current = undefined;
-      generatingMessageQueueRef.current = [];
+      cancelGeneratingMessageQueue();
     };
-  }, []);
+  }, [cancelGeneratingMessageQueue]);
 
   const abortRequest = useMemoizedFn((reason: string = 'stop') => {
+    if (reason === 'leave') {
+      cancelGeneratingMessageQueue();
+    }
     chatControllerRef.current?.abort(new Error(reason));
     questionGuideControllerRef.current?.abort(new Error(reason));
     pluginControllerRef.current?.abort(new Error(reason));
@@ -733,7 +788,6 @@ export const useChatGenerate = ({
               reserveId: true,
               reserveTool: true
             });
-
             const { responseText } = await onStartChat({
               messages,
               responseChatItemId: responseChatId,
@@ -752,12 +806,8 @@ export const useChatGenerate = ({
 
                 const responseData = mergeNodeResponseDataByIdAndParent(item.responseData || []);
                 if (!abortSignal?.signal?.aborted) {
-                  const uncaughtErr = responseData.find((r) => r.error && !r.errorCaptured)?.error;
-                  const lastUncapturedErrorText = [...responseData]
-                    .reverse()
-                    .find((r) => r.errorText && !r.errorCaptured)?.errorText;
-                  const err = uncaughtErr ?? lastUncapturedErrorText;
-                  const errorMsg = err ? t(getErrText(err)) : undefined;
+                  const errorText = getChatItemErrorText(responseData)?.errorText;
+                  const errorMsg = errorText ? t(errorText) : undefined;
 
                   return {
                     ...item,
@@ -858,6 +908,7 @@ export const useChatGenerate = ({
 
   return {
     abortRequest,
+    flushGeneratingMessages: flushGeneratingMessageQueue,
     generatingMessage,
     sendPrompt
   };

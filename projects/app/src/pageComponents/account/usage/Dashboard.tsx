@@ -2,13 +2,12 @@ import { getDashboardData } from '@/web/support/wallet/usage/api';
 import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { addDays } from 'date-fns';
 import React, { useMemo } from 'react';
 import { type UsageFilterParams } from './type';
 import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
-import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
-import { useTranslation } from 'react-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import UsageRechargeModal from './UsageRechargeModal';
 
 const DashboardChart = dynamic(() => import('./DashboardChart'), {
   ssr: false
@@ -23,7 +22,7 @@ const UsageDashboard = ({
   Tabs: React.ReactNode;
   Selectors: React.ReactNode;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_usage');
   const { dateRange, selectTmbIds, usageSources, unit, isSelectAllSource, isSelectAllTmb } =
     filterParams;
 
@@ -33,9 +32,7 @@ const UsageDashboard = ({
         dateStart: dateRange.from
           ? dayjs(dateRange.from.setHours(0, 0, 0, 0)).format()
           : dayjs(new Date().setHours(0, 0, 0, 0)).format(),
-        dateEnd: dateRange.to
-          ? dayjs(addDays(dateRange.to, 1).setHours(0, 0, 0, 0)).format()
-          : dayjs(addDays(new Date(), 1).setHours(0, 0, 0, 0)).format(),
+        dateEnd: dateRange.to ? dayjs(dateRange.to).format() : dayjs(new Date()).format(),
         sources: isSelectAllSource ? undefined : usageSources,
         teamMemberIds: isSelectAllTmb ? undefined : selectTmbIds,
         unit
@@ -79,7 +76,9 @@ const UsageDashboard = ({
       <MyBox overflowY={'auto'} isLoading={totalPointsLoading}>
         <DashboardChart totalPoints={totalPoints} totalUsage={totalUsage} />
       </MyBox>
-      {isOpenRecharge && <RechargeModal onClose={onCloseRecharge} onPaySuccess={onCloseRecharge} />}
+      {isOpenRecharge && (
+        <UsageRechargeModal onClose={onCloseRecharge} onPaySuccess={onCloseRecharge} />
+      )}
     </>
   );
 };

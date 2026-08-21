@@ -8,7 +8,7 @@ import {
 } from '@chakra-ui/react';
 import type { SkillModuleResponseItemType } from '@fastgpt/global/core/chat/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { isEqual } from 'lodash';
+import { isEqual } from 'lodash-es';
 import React from 'react';
 import { accordionButtonStyle } from './constants';
 

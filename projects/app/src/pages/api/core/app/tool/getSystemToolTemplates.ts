@@ -1,6 +1,6 @@
 import { type NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 import { NextAPI } from '@/service/middleware/entry';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -16,7 +16,17 @@ import {
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
-import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import {
+  getTeamPluginSource,
+  isDebugToolSource,
+  isTeamPluginSource
+} from '@fastgpt/global/core/app/tool/utils';
+import {
+  assertTeamPluginSourceAccess,
+  getRawPluginIdFromSystemToolId,
+  getTeamPluginPolicyMap,
+  resolveTeamPluginList
+} from '@fastgpt/service/core/plugin/teamPluginPolicy';
 
 export type GetSystemPluginTemplatesBody = GetSystemToolTemplatesBodyType;
 
@@ -40,12 +50,14 @@ export async function handler(
   // const tools = await getSystemToolsWithInstalled({ teamId, isRoot, userTags });
   const systemToolRepo = SystemToolRepo.getInstance();
   if (parentId) {
-    const parentSource = isDebugToolSource(source)
-      ? await getActiveDebugSource({
-          tmbId,
-          source
-        })
-      : source;
+    if (isTeamPluginSource(source)) {
+      await assertTeamPluginSourceAccess({
+        teamId,
+        source,
+        pluginId: getRawPluginIdFromSystemToolId(parentId)
+      });
+    }
+    const parentSource = await getQuerySource({ source, teamId, tmbId });
     const parent = await systemToolRepo.getSystemToolDisplayInfoWithChildIcons({
       pluginId: parentId,
       lang,
@@ -69,7 +81,7 @@ export async function handler(
           intro: child.description,
           toolDescription: child.toolDescription,
           id: `${parentId}/${child.id}`,
-          source: parent.source,
+          source: isTeamPluginSource(source) ? source : parent.source,
           avatar: child.icon ?? parent.avatar,
           currentCost: child.currentCost,
           systemKeyCost: child.systemKeyCost,
@@ -83,15 +95,23 @@ export async function handler(
   }
   // no parentId, get all tools
   const debugSource = await getActiveDebugSource({ tmbId });
-  const tools = await systemToolRepo.getSystemToolList({
-    lang,
-    op: 'or',
-    // 调试状态下追加 debug source，Agent/Workflow 仍保留生产环境插件可选。
-    sources: ['system', teamId, ...(debugSource ? [debugSource] : [])],
-    tags
-  });
+  const [tools, policyMap] = await Promise.all([
+    systemToolRepo.getSystemToolList({
+      lang,
+      op: 'or',
+      // 调试状态下追加 debug source，Agent/Workflow 仍保留生产环境插件可选。
+      sources: ['system', getTeamPluginSource(teamId), ...(debugSource ? [debugSource] : [])],
+      tags
+    }),
+    getTeamPluginPolicyMap(teamId)
+  ]);
 
-  const templates = tools
+  const templates = resolveTeamPluginList({
+    teamId,
+    tools,
+    policyMap,
+    canManage: false
+  })
     .sort((a, b) => Number(isDebugToolSource(b.source)) - Number(isDebugToolSource(a.source)))
     .filter((item) => {
       if (!isSelectableToolStatus(item.status)) return false;
@@ -126,6 +146,22 @@ async function getActiveDebugSource({ tmbId, source }: { tmbId: string; source?:
   ) {
     return status.source;
   }
+}
+
+async function getQuerySource({
+  source,
+  teamId,
+  tmbId
+}: {
+  source?: string;
+  teamId: string;
+  tmbId: string;
+}) {
+  if (isTeamPluginSource(source)) return source;
+  if (isDebugToolSource(source)) {
+    return getActiveDebugSource({ tmbId, source });
+  }
+  return source;
 }
 
 export default NextAPI(handler);

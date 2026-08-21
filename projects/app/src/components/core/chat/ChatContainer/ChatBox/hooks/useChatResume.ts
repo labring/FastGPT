@@ -49,6 +49,7 @@ type UseChatResumeProps = {
   resumedChatTargetRef: MutableRefObject<string | undefined>;
   resumeControllerRef: MutableRefObject<AbortController | undefined>;
   generatingMessage: (message: generatingMessageProps) => void;
+  flushGeneratingMessages: () => void;
   scrollToBottom: (behavior?: 'smooth' | 'auto', delay?: number) => void;
   finishChatGenerateStatus: FinishChatGenerateStatus;
 };
@@ -70,6 +71,8 @@ const isAbortByLeave = (reason: unknown) => {
  * 输入约定：
  * - `generatingMessage` 仍由 ChatBox 提供，确保普通发送和恢复生成继续共享同一套
  *   answer/reasoning/tool/plan/interactive 合并逻辑。
+ * - `flushGeneratingMessages` 在恢复流收尾前提交最后一个 50ms buffer，避免 completedChat、
+ *   finish 或 error 状态先于最后一批 SSE 增量写入。
  * - `activeSourceKeyRef/activeChatIdRef` 保存当前页面真实目标，用于防止恢复流异步返回后
  *   写入已经切走的会话。
  * - `resumedChatTargetRef` 记录本轮已经尝试恢复的 app/chat，避免同一个 generating
@@ -93,6 +96,7 @@ export const useChatResume = ({
   resumedChatTargetRef,
   resumeControllerRef,
   generatingMessage,
+  flushGeneratingMessages,
   scrollToBottom,
   finishChatGenerateStatus
 }: UseChatResumeProps) => {
@@ -256,6 +260,8 @@ export const useChatResume = ({
         if (!isActiveResumeTarget({ sourceKey: resumeForSourceKey, chatId: resumeForChatId }))
           return;
 
+        flushGeneratingMessages();
+
         if (completedChat) {
           resumeFinalStatus = completedChat.chatGenerateStatus;
           setChatRecords((state) =>
@@ -351,9 +357,20 @@ export const useChatResume = ({
         });
         scrollToBottom('auto');
       } catch (error) {
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted) {
+          // 离开页面时不再提交旧会话数据；用户主动停止时仍需立刻落下最后一个 buffer。
+          if (
+            !isAbortByLeave(controller.signal.reason) &&
+            isActiveResumeTarget({ sourceKey: resumeForSourceKey, chatId: resumeForChatId })
+          ) {
+            flushGeneratingMessages();
+          }
+          return;
+        }
         if (!isActiveResumeTarget({ sourceKey: resumeForSourceKey, chatId: resumeForChatId }))
           return;
+
+        flushGeneratingMessages();
 
         const isStreamError = (error as ResumeStreamErrorType | undefined)?.isStreamError === true;
         resumeFinalStatus = isStreamError
@@ -433,6 +450,7 @@ export const useChatResume = ({
     chatBoxSourceKey,
     chatBoxChatId,
     chatGenerateStatus,
+    flushGeneratingMessages,
     generatingMessage,
     resumeTargetAiDataId,
     scrollToBottom,

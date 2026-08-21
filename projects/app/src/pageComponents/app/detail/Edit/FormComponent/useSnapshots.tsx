@@ -2,7 +2,7 @@ import { useMemoizedFn } from 'ahooks';
 import { useRef, useState } from 'react';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import { isEqual } from 'lodash';
+import { isEqual } from 'lodash-es';
 
 export type SimpleAppSnapshotType = {
   title: string;
@@ -29,6 +29,7 @@ export const compareSimpleAppSnapshot = (
     !isEqual(
       {
         welcomeText: appForm1.chatConfig?.welcomeText || '',
+        welcomeConfig: appForm1.chatConfig?.welcomeConfig || undefined,
         variables: appForm1.chatConfig?.variables || [],
         questionGuide: appForm1.chatConfig?.questionGuide || undefined,
         ttsConfig: appForm1.chatConfig?.ttsConfig || undefined,
@@ -38,6 +39,7 @@ export const compareSimpleAppSnapshot = (
       },
       {
         welcomeText: appForm2.chatConfig?.welcomeText || '',
+        welcomeConfig: appForm2.chatConfig?.welcomeConfig || undefined,
         variables: appForm2.chatConfig?.variables || [],
         questionGuide: appForm2.chatConfig?.questionGuide || undefined,
         ttsConfig: appForm2.chatConfig?.ttsConfig || undefined,

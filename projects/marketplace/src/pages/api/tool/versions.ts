@@ -1,5 +1,5 @@
 import { getToolVersionList } from '@/service/tool/data';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 
 export type ToolListQuery = {

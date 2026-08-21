@@ -6,9 +6,10 @@ import {
   type EmbeddingModelItemType,
   type TTSModelType,
   type STTModelType,
-  type RerankModelItemType
+  type RerankModelItemType,
+  PersistedSystemModelItemSchema
 } from '@fastgpt/global/core/ai/model.schema';
-import { debounce } from 'lodash';
+import { debounce } from 'lodash-es';
 import { getModelProvider } from '../../../core/app/provider/controller';
 import { findModelFromAlldata } from '../model';
 import {
@@ -23,6 +24,78 @@ import { refreshVersionKey } from '../../../common/cache';
 import { SystemCacheKeyEnum } from '../../../common/cache/type';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
+
+/**
+ * 生成可返回客户端的脱敏模型副本。系统模型对象还会被服务端请求链路复用，不能原地删除字段。
+ */
+export const desensitizeSystemModel = <T extends SystemModelItemType>(model: T): T =>
+  ({
+    ...model,
+    defaultSystemChatPrompt: undefined,
+    fieldMap: undefined,
+    defaultConfig: undefined,
+    dbConfig: undefined,
+    queryConfig: undefined,
+    requestUrl: undefined,
+    requestAuth: undefined
+  }) as T;
+
+/**
+ * 生成可返回客户端的系统默认模型配置。默认模型只表示系统配置，不代表当前用户具备使用权限。
+ */
+export const desensitizeSystemDefaultModels = (
+  defaultModels: SystemDefaultModelType
+): SystemDefaultModelType => ({
+  [ModelTypeEnum.llm]: defaultModels.llm && desensitizeSystemModel(defaultModels.llm),
+  datasetTextLLM:
+    defaultModels.datasetTextLLM && desensitizeSystemModel(defaultModels.datasetTextLLM),
+  datasetImageLLM:
+    defaultModels.datasetImageLLM && desensitizeSystemModel(defaultModels.datasetImageLLM),
+  chatTitleLLM: defaultModels.chatTitleLLM && desensitizeSystemModel(defaultModels.chatTitleLLM),
+  [ModelTypeEnum.embedding]:
+    defaultModels.embedding && desensitizeSystemModel(defaultModels.embedding),
+  [ModelTypeEnum.tts]: defaultModels.tts && desensitizeSystemModel(defaultModels.tts),
+  [ModelTypeEnum.stt]: defaultModels.stt && desensitizeSystemModel(defaultModels.stt),
+  [ModelTypeEnum.rerank]: defaultModels.rerank && desensitizeSystemModel(defaultModels.rerank)
+});
+
+/**
+ * 生成允许持久化的严格模型配置。运行时字段和废弃字段会被移除，明确默认值由统一 Schema 填充。
+ */
+export const parsePersistedSystemModelConfig = ({
+  model,
+  metadata
+}: {
+  model: string;
+  metadata: Record<string, unknown>;
+}): SystemModelItemType => {
+  const normalizedModel = model.trim();
+  const persistedMetadata = {
+    ...metadata,
+    model: normalizedModel,
+    name: typeof metadata.name === 'string' ? metadata.name.trim() : metadata.name
+  };
+
+  return PersistedSystemModelItemSchema.parse(persistedMetadata);
+};
+
+/**
+ * 规范化插件与数据库配置合并后的运行时模型。
+ * 插件协议可能使用 null 表示未配置，最终对外模型统一使用字段缺失表示可选值不存在。
+ */
+export const normalizeRuntimeSystemModelConfig = <
+  T extends { type?: unknown; maxTemperature?: unknown }
+>(
+  model: T
+): T => {
+  if (model.type !== ModelTypeEnum.llm || model.maxTemperature !== null) {
+    return model;
+  }
+
+  const normalizedModel = { ...model };
+  delete normalizedModel.maxTemperature;
+  return normalizedModel;
+};
 
 export const loadSystemModels = async (init = false, language = 'en') => {
   if (!init && global.systemModelList) return;
@@ -134,6 +207,7 @@ export const loadSystemModels = async (init = false, language = 'en') => {
 
         ...(model.type === ModelTypeEnum.llm && {
           maxResponse: model.maxTokens ?? 16000,
+          maxTemperature: dbLlmMetadata?.maxTemperature ?? model.maxTemperature ?? undefined,
           reasoning: dbLlmMetadata?.reasoning ?? model.reasoning ?? false,
           reasoningEffort: dbLlmMetadata?.reasoningEffort ?? model.reasoningEffort ?? false
         }),
@@ -154,7 +228,8 @@ export const loadSystemModels = async (init = false, language = 'en') => {
             }
           : {})
       };
-      pushModel(modelData);
+      // 仅兼容插件协议使用 null 表示不支持温度的历史数据。
+      pushModel(normalizeRuntimeSystemModelConfig(modelData));
     });
 
     // Custom model(Not in system config)
@@ -211,17 +286,7 @@ export const loadSystemModels = async (init = false, language = 'en') => {
       global.sttModelMap = _sttModelMap;
       global.reRankModelMap = _reRankModelMap;
       global.systemDefaultModel = _systemDefaultModel;
-      global.systemActiveDesensitizedModels = _systemActiveModelList.map((model) => ({
-        ...model,
-        defaultSystemChatPrompt: undefined,
-        fieldMap: undefined,
-        defaultConfig: undefined,
-        weight: undefined,
-        dbConfig: undefined,
-        queryConfig: undefined,
-        requestUrl: undefined,
-        requestAuth: undefined
-      })) as SystemModelItemType[];
+      global.systemActiveDesensitizedModels = _systemActiveModelList.map(desensitizeSystemModel);
     }
 
     const logger = getLogger(LogCategories.MODULE.AI.CONFIG);

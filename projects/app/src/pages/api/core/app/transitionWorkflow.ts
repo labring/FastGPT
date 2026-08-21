@@ -1,4 +1,4 @@
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -15,6 +15,8 @@ import {
   type TransitionWorkflowBodyType,
   type TransitionWorkflowResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
+import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
+import { decodeToolSetNodesFromStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
 
 async function handler(
   req: ApiRequestProps<TransitionWorkflowBodyType>
@@ -46,7 +48,7 @@ async function handler(
         name: app.name + ' Copy',
         avatar,
         type: AppTypeEnum.workflow,
-        modules: app.modules,
+        modules: decodeToolSetNodesFromStorage(app.modules),
         edges: app.edges,
         chatConfig: app.chatConfig,
         teamId: app.teamId,
@@ -62,7 +64,17 @@ async function handler(
     return TransitionWorkflowResponseSchema.parse({ id: appId });
   }
 
-  await MongoApp.findByIdAndUpdate(appId, { type: AppTypeEnum.workflow });
+  const normalizedWorkflow = normalizeWorkflowConfig({
+    nodes: decodeToolSetNodesFromStorage(app.modules),
+    edges: app.edges,
+    chatConfig: app.chatConfig
+  });
+  await MongoApp.findByIdAndUpdate(appId, {
+    type: AppTypeEnum.workflow,
+    modules: normalizedWorkflow.nodes,
+    edges: normalizedWorkflow.edges,
+    chatConfig: normalizedWorkflow.chatConfig
+  });
 
   return TransitionWorkflowResponseSchema.parse(undefined);
 }

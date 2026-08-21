@@ -8,17 +8,14 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import type {
-  ModuleDispatchProps,
-  RuntimeNodeItemType
-} from '@fastgpt/global/core/workflow/runtime/type';
+
+import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import {
   formatVariableValByType,
   getReferenceVariableValue,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { AxiosRequestConfig } from 'axios';
 import json5 from 'json5';
 import { JSONPath } from 'jsonpath-plus';
 import { getSecretValue } from '../../../../common/secret/utils';

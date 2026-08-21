@@ -1,20 +1,23 @@
 ---
-title: V4.8.15 (Includes Migration Script)
+title: V4.8.15
 description: FastGPT V4.8.15 Release Notes
+releaseTime: '2024-12-10'
+upgradeTags:
+  - MIGRATION
 ---
 
 ## New Feature Preview
 
-### API Knowledge Base
+### API Dataset
 
-|                                 |                                 |
-| ------------------------------- | ------------------------------- |
+|                                                   |                                                   |
+| ------------------------------------------------- | ------------------------------------------------- |
 | ![alt text](../../../../public/imgs/image-20.png) | ![alt text](../../../../public/imgs/image-21.png) |
 
 ### HTML Rendering
 
-| Source Mode                     | Preview Mode                    | Fullscreen Mode                 |
-| ------------------------------- | ------------------------------- | ------------------------------- |
+| Source Mode                                       | Preview Mode                                      | Fullscreen Mode                                   |
+| ------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------- |
 | ![alt text](../../../../public/imgs/image-22.png) | ![alt text](../../../../public/imgs/image-23.png) | ![alt text](../../../../public/imgs/image-24.png) |
 
 ## Upgrade Guide
@@ -49,7 +52,7 @@ This recalculates free-tier user durations. A previous version upgrade did not r
 
 ## Full Release Notes
 
-1. New - API Knowledge Base. See [API Knowledge Base Introduction](../../../guide/dataset/third-party/api_dataset.en.mdx). The external file library will be deprecated.
+1. New - API Dataset. See [API Dataset Introduction](../../../guide/dataset/third-party/api_dataset.en.mdx). The external file library will be deprecated.
 2. New - Toolbox page displaying all available system resources. The commercial edition admin panel now offers easier configuration of system plugins and custom categories.
 3. New - HTML code in Markdown is now rendered separately. You can choose preview mode, which blocks all scripts and only displays content.
 4. New - Custom system-level file parsing service. See [Integrating Marker PDF Document Parsing](../../custom-models/marker.en.mdx).
@@ -65,6 +68,6 @@ This recalculates free-tier user durations. A previous version upgrade did not r
 14. Fixed - Share link like/upvote authentication issue.
 15. Fixed - Switching to an auto-execute app on the chat page could incorrectly trigger non-auto-execute apps.
 16. Fixed - Audio playback authentication issue.
-17. Fixed - Plugin app Knowledge Base reference limit was always capped at 3000.
+17. Fixed - Plugin app Dataset citation limit was always capped at 3000.
 18. Fixed - Workflow edit history storage limit. Removed local storage and added forced auto-save on abnormal exit.
 19. Fixed - Workflow special variable substitution issue (strings starting with `$` could not be replaced).

@@ -1,4 +1,4 @@
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
 import { type AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { AppCollectionName, chatConfigType } from '../schema';
@@ -48,7 +48,7 @@ const AppVersionSchema = new Schema(
   }
 );
 
-AppVersionSchema.index({ appId: 1, time: -1 });
+defineIndex(AppVersionSchema, { key: { appId: 1, time: -1 } });
 
 export const MongoAppVersion = getMongoModel<AppVersionSchemaType>(
   AppVersionCollectionName,

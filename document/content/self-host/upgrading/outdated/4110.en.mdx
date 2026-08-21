@@ -1,6 +1,9 @@
 ---
 title: 'V4.11.0'
 description: 'FastGPT V4.11.0 Update Notes'
+releaseTime: '2025-07-22'
+upgradeTags:
+  - CONFIG
 ---
 
 ## Upgrade Guide
@@ -25,7 +28,7 @@ EVAL_LINE_LIMIT=1000 # Maximum lines per evaluation file
 
 ## Project Changes
 
-1. Removed all restrictions on **open-source features**, including limits on the number of apps and knowledge bases.
+1. Removed all restrictions on **open-source features**, including limits on the number of apps and datasets.
 2. Updated the roadmap to include `Context Management`, `AI-Generated Workflows`, `Advanced Orchestration Debug Mode`, and more.
 3. The international domain has been changed from `fastgpt.io` to `fastgpt.io`.
 
@@ -40,10 +43,10 @@ EVAL_LINE_LIMIT=1000 # Maximum lines per evaluation file
 
 ## Improvements
 
-1. Optimized code to prevent memory buildup from recursion, significantly reducing memory consumption during high-concurrency knowledge base preprocessing.
-2. Knowledge base training: support for retrying all failed data in a collection at once.
+1. Optimized code to prevent memory buildup from recursion, significantly reducing memory consumption during high-concurrency Dataset preprocessing.
+2. Dataset indexing: support for retrying all failed data in a Collection at once.
 3. Workflow valueTypeFormat to prevent data type inconsistencies.
-4. Knowledge base list search now properly escapes special characters in regex.
+4. Dataset list search now properly escapes special characters in regex.
 
 ## Bug Fixes
 

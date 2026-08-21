@@ -1,6 +1,6 @@
 // 已弃用
 import type { I18nStringStrictType } from '@fastgpt/global/sdk/fastgpt-plugin';
-import { connectionMongo, getMongoModel } from '../../../common/mongo/index';
+import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo/index';
 const { Schema } = connectionMongo;
 
 export const collectionName = 'app_plugin_groups';
@@ -40,7 +40,10 @@ const PluginGroupSchema = new Schema({
   }
 });
 
-PluginGroupSchema.index({ groupId: 1 }, { unique: true });
+defineIndex(PluginGroupSchema, {
+  key: { groupId: 1 },
+  options: { unique: true }
+});
 
 export const MongoToolGroups = getMongoModel<SystemToolGroupSchemaType>(
   collectionName,

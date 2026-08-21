@@ -5,6 +5,54 @@ import { composeNodeResponseDetail } from '@fastgpt/service/core/chat/nodeRespon
 import type { WorkflowDebugResponse } from '@fastgpt/service/core/workflow/dispatch/type';
 
 /**
+ * 拆分 workflow 内部引用保留策略和当前请求的公开返回策略。
+ *
+ * 聊天记录需要保留引用 ID，才能让日志和后续重新开启引用展示时恢复引用。SSE 文本不在
+ * 这里裁剪；stream=false 的最终 JSON 正文继续同时受请求参数和访问配置约束。
+ */
+export const getWorkflowDatasetCiteRetention = ({
+  requestedRetainDatasetCite,
+  showCite,
+  isShare
+}: {
+  requestedRetainDatasetCite: boolean;
+  showCite: boolean;
+  isShare: boolean;
+}) => {
+  const jsonRetainDatasetCite = requestedRetainDatasetCite && showCite;
+
+  return {
+    // Share 内部始终保留引用关联供日志恢复；普通 API 保持原参数语义。
+    workflowRetainDatasetCite: isShare ? true : jsonRetainDatasetCite,
+    jsonRetainDatasetCite
+  };
+};
+
+/**
+ * 判断当前 completions 请求是否必须在服务端保留完整 nodeResponse 数组。
+ *
+ * V1 需要在结束时一次性返回详情；V2 流式普通请求由客户端逐条拼接。Share 仍保留数组，
+ * 供既有的 pushResult2Remote 完成回调使用。
+ */
+export const shouldRetainWorkflowNodeResponses = ({
+  apiVersion,
+  stream,
+  detail,
+  isShare
+}: {
+  apiVersion: 'v1' | 'v2';
+  stream: boolean;
+  detail: boolean;
+  isShare: boolean;
+}) => {
+  if (apiVersion === 'v1') {
+    return detail || isShare;
+  }
+
+  return (!stream && detail) || isShare;
+};
+
+/**
  * 从 dispatch 返回的 flat nodeResponses 组合 workflow 最终详情。
  *
  * writer 只在请求内保留规范化后的扁平节点数据，业务入口需要最终 responseData 时再在这里

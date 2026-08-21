@@ -15,8 +15,7 @@ import type {
   DatasetDataSchemaType,
   DatasetTrainingSchemaType
 } from '@fastgpt/global/core/dataset/type';
-import { retryFn } from '@fastgpt/global/common/system/utils';
-import { delay } from '@fastgpt/service/common/bullmq';
+import { delay, retryFn } from '@fastgpt/global/common/system/utils';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
 import {
@@ -325,7 +324,8 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
     indexSize: trainingData.indexSize || getMaxIndexSize(embModel),
     indexPrefix: trainingData.collection.indexPrefixTitle
       ? `# ${trainingData.collection.name}`
-      : undefined
+      : undefined,
+    forceRebuild: true
   });
 
   await mongoSessionRun(async (session) => {
@@ -356,6 +356,7 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
       a: trainingData.a,
       imageId: trainingData.imageId,
       imageDescMap: trainingData.imageDescMap,
+      ...(trainingData.dataMetadata && { metadata: trainingData.dataMetadata }),
       chunkIndex: trainingData.chunkIndex,
       indexSize: trainingData.indexSize || getMaxIndexSize(embModel),
       indexes: trainingData.indexes || [],

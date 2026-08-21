@@ -4,7 +4,7 @@ import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/consta
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import Tag, { type TagProps } from '@fastgpt/web/components/common/Tag';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { CollaboratorContext } from './context';
@@ -12,7 +12,7 @@ import { CollaboratorContext } from './context';
 export type MemberListCardProps = BoxProps & { tagStyle?: Omit<TagProps, 'children'> };
 
 const MemberListCard = ({ tagStyle, ...props }: MemberListCardProps) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation(['user']);
   const { userInfo } = useUserStore();
 
   const { collaboratorList, isFetchingCollaborator } = useContextSelector(

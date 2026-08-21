@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { getRedisRuntime } from '@fastgpt/dal/redis/runtime';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import {
@@ -6,7 +7,7 @@ import {
   getStreamResumeRedisKeys,
   resetStreamResumeMirrorGuardForTest
 } from '@fastgpt/service/core/chat/resume';
-import { FASTGPT_REDIS_PREFIX, getGlobalRedisConnection } from '@fastgpt/service/common/redis';
+import { FASTGPT_REDIS_PREFIX } from '@fastgpt/dal/redis/runtime';
 import {
   createWorkflowStreamResponseContext,
   isWorkflowSseResponseInitialized,
@@ -82,7 +83,7 @@ describe('createWorkflowStreamResponseContext', () => {
     vi.clearAllMocks();
     resetStreamResumeMirrorGuardForTest();
 
-    const redis = getGlobalRedisConnection() as any;
+    const redis = getRedisRuntime().getCommandConnection() as any;
     await redis.flushdb();
     redis.call = vi.fn(async () => '1-0');
     redis.info = vi.fn().mockResolvedValue('used_memory:10\r\nmaxmemory:100\r\n');
@@ -121,7 +122,7 @@ describe('createWorkflowStreamResponseContext', () => {
   });
 
   it('should only create resume mirror when stream request opts in', async () => {
-    const redis = getGlobalRedisConnection() as any;
+    const redis = getRedisRuntime().getCommandConnection() as any;
     const sourceType = ChatSourceTypeEnum.app;
     const keys = getStreamResumeRedisKeys({ teamId, sourceType, sourceId, chatId });
     const rawStreamKey = `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`;
@@ -168,13 +169,13 @@ describe('createWorkflowStreamResponseContext', () => {
       `event: ${SseResponseEventEnum.answer}\ndata: [DONE]\n\n`
     );
     expect(redis.expire).toHaveBeenCalledWith(
-      keys.keyOfStream,
+      `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`,
       STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
     );
   });
 
   it('should not create resume mirror when resume is disabled even if request opts in', async () => {
-    const redis = getGlobalRedisConnection() as any;
+    const redis = getRedisRuntime().getCommandConnection() as any;
 
     const context = await createWorkflowStreamResponseContext({
       req: createReq({ [STREAM_RESUME_REQUEST_HEADER]: 'true' }),
@@ -191,7 +192,11 @@ describe('createWorkflowStreamResponseContext', () => {
 
     context.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
 
-    expect(context).not.toHaveProperty('flushResume');
+    // flushResume is now always present (no-op when resume disabled)
+    expect(context).toHaveProperty('flushResume');
+    expect(typeof context.flushResume).toBe('function');
+    await context.flushResume();
+    // no-op should not interact with Redis when resume is disabled
     expect(redis.info).not.toHaveBeenCalled();
     expect(redis.call).not.toHaveBeenCalled();
   });

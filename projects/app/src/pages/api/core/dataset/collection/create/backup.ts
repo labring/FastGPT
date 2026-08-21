@@ -1,7 +1,6 @@
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { readRawTextByLocalFile } from '@fastgpt/service/common/file/read/utils';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
@@ -10,11 +9,12 @@ import {
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { isCSVFile } from '@fastgpt/global/common/file/utils';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { CreateBackupCollectionFormSchema } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { parseDatasetImportFile } from '@fastgpt/service/core/dataset/importFile';
+import { decodeMultipartFilename } from '@fastgpt/service/common/s3/filename';
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 async function handler(req: ApiRequestProps) {
@@ -26,12 +26,8 @@ async function handler(req: ApiRequestProps) {
       maxFileSize: global.feConfigs.uploadFileMaxSize
     });
     filepaths.push(result.fileMetadata.path);
-    const filename = decodeURIComponent(result.fileMetadata.originalname);
+    const filename = decodeMultipartFilename(result.fileMetadata.originalname);
     const { datasetId, parentId } = CreateBackupCollectionFormSchema.parse(result.data);
-
-    if (!isCSVFile(filename)) {
-      return Promise.reject('File must be a CSV file');
-    }
 
     const { teamId, tmbId, dataset } = await authDataset({
       req,
@@ -47,17 +43,16 @@ async function handler(req: ApiRequestProps) {
       insertLen: 1
     });
 
-    const { rawText } = await readRawTextByLocalFile({
+    const rawText = await parseDatasetImportFile({
       teamId,
       tmbId,
-      path: result.fileMetadata.path,
-      encoding: result.fileMetadata.encoding,
-      getFormatText: false
-    });
-
-    if (!rawText.trim().startsWith('q,a,indexes')) {
+      filePath: result.fileMetadata.path,
+      filename,
+      encoding: result.fileMetadata.encoding
+    }).catch((error) => {
+      logger.warn('Backup dataset import file parse failed', { filename, error });
       return Promise.reject(i18nT('dataset:backup_template_invalid'));
-    }
+    });
 
     const fileId = await getS3DatasetSource().upload({
       datasetId: dataset._id,

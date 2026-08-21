@@ -5,6 +5,7 @@ node_modules
 document/
 *.md
 *.mdx
+*.yml
 
 pnpm-lock.yaml
 cl100l_base.ts

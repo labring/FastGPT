@@ -9,6 +9,10 @@ import {
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import {
+  getWorkflowFileLimits,
+  prepareWorkflowFileQuery
+} from '@fastgpt/service/core/workflow/utils/fileLimits';
+import {
   getWorkflowEntryNodeIds,
   getMaxHistoryLimitFromNodes,
   storeEdges2RuntimeEdges,
@@ -16,7 +20,7 @@ import {
   getLastInteractiveValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
+import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import {
   type Props as SaveChatProps,
@@ -66,7 +70,9 @@ import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   filterWorkflowFinalResponseData,
-  getWorkflowFinalResponseData
+  getWorkflowDatasetCiteRetention,
+  getWorkflowFinalResponseData,
+  shouldRetainWorkflowNodeResponses
 } from '@/service/core/workflow/nodeResponse';
 import { formatCompletionResponseContent } from '@/service/core/chat/utils';
 import {
@@ -75,6 +81,10 @@ import {
 } from '@fastgpt/service/core/workflow/utils/streamResponseContext';
 import { authChatCompletionHeaderRequest } from '@/service/support/permission/auth/chatCompletion';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
+import {
+  getCompletionStartHookText,
+  normalizeCompletionMessages
+} from '@fastgpt/service/core/chat/completionMessage';
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -92,7 +102,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     metadata,
     authProxy
   } = completionBody;
-  let { detail, retainDatasetCite, variables } = completionBody;
+  const { retainDatasetCite } = completionBody;
+  let { detail, variables } = completionBody;
   const shareId = outLinkAuthData?.shareId;
   const outLinkUid = outLinkAuthData?.outLinkUid;
 
@@ -112,23 +123,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (!Array.isArray(messages)) {
       throw new Error('messages is not array');
     }
-
-    /*
-      Web params: chatId + [Human]
-      API params: chatId + [Human]
-      API params: [histories, Human]
-    */
-    const chatMessages = GPTMessages2Chats({ messages });
-
-    // Computed start hook params
-    const startHookText = (() => {
-      // Chat
-      const userQuestion = chatMessages[chatMessages.length - 1] as UserChatItemType;
-      if (userQuestion) return chatValue2RuntimePrompt(userQuestion.value).text;
-
-      // plugin
-      return JSON.stringify(variables);
-    })();
 
     /*
       1. auth app permission
@@ -155,11 +149,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           return Promise.reject(ChatErrEnum.unAuthChat);
         }
 
+        const startHookText = getCompletionStartHookText({
+          messages,
+          fallback: JSON.stringify(variables)
+        });
+
         return authShareChat({
           shareId,
           outLinkUid,
           chatId,
-          ip: originIp,
           question: startHookText
         });
       }
@@ -183,9 +181,26 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return;
     }
 
+    const workflowFileLimits = await getWorkflowFileLimits({ teamId });
+
+    const chatMessages = GPTMessages2Chats({
+      messages: await normalizeCompletionMessages({
+        messages,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: String(app._id),
+        chatId,
+        uid: String(outLinkUserId || tmbId),
+        ...workflowFileLimits
+      })
+    });
+
     pushTrack.teamChatQPM({ teamId });
 
-    retainDatasetCite = retainDatasetCite && !!showCite;
+    const { workflowRetainDatasetCite, jsonRetainDatasetCite } = getWorkflowDatasetCiteRetention({
+      requestedRetainDatasetCite: retainDatasetCite,
+      showCite: !!showCite,
+      isShare: !!shareId
+    });
     const finalShowSkillReferences =
       (showSkillReferences ?? authShowSkillReferences ?? false) && !!showRunningStatus;
     const isPlugin = app.type === AppTypeEnum.workflowTool;
@@ -276,6 +291,21 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return ChatSourceEnum.online;
     })();
 
+    const {
+      query: workflowQuery,
+      maxFileAmount,
+      maxBytesPerFile
+    } = await prepareWorkflowFileQuery({
+      teamId,
+      chatConfig,
+      query: userQuestion.value,
+      limits: workflowFileLimits
+    });
+    const workflowUserQuestion: UserChatItemType = {
+      ...userQuestion,
+      value: workflowQuery
+    };
+
     const preparedRound = await preChatRound({
       ...chatSource,
       chatId,
@@ -285,7 +315,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       sourceName: sourceName || '',
       shareId,
       outLinkUid: outLinkUserId,
-      userContent: userQuestion,
+      userContent: workflowUserQuestion,
       responseChatItemId: roundState.responseChatItemId,
       interactive,
       fixedTitle: pluginFixedTitle
@@ -311,12 +341,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       responseId: saveChatId,
       showNodeStatus: showRunningStatus
     });
-    const shouldCollectFinalResponseData = (!stream && detail) || !!shareId;
+    const shouldCollectFinalResponseData = shouldRetainWorkflowNodeResponses({
+      apiVersion: 'v2',
+      stream,
+      detail,
+      isShare: !!shareId
+    });
     titleSender = createGeneratedChatTitleSender({
       titleGeneration: preparedRound.titleGeneration,
       stream,
       detail,
-      writeChatTitle: (payload) => streamResponseContext?.responseWrite(payload)
+      writeChatTitle: streamResponseContext.responseWrite
     });
     if (stream) {
       void titleSender.start();
@@ -355,12 +390,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       runtimeNodes,
       runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
       variables,
-      query: removeEmptyUserInput(userQuestion.value),
+      query: removeEmptyUserInput(workflowQuery),
+      maxFileAmount,
+      maxBytesPerFile,
       lastInteractive: interactive,
       chatConfig,
       histories: newHistories,
       stream,
-      retainDatasetCite,
+      retainDatasetCite: workflowRetainDatasetCite,
       showSkillReferences: finalShowSkillReferences,
       maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
       workflowStreamResponse: streamResponseContext.responseWrite,
@@ -393,7 +430,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       outLinkUid: outLinkUserId,
       source,
       sourceName: sourceName || '',
-      userContent: userQuestion,
+      userContent: workflowUserQuestion,
       aiContent: aiResponse,
       metadata: {
         originIp,
@@ -458,10 +495,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       await streamResponseContext.flushResume();
     } else {
       const generatedTitle = await titleSender.send();
-      const formatResponseContent = removeAIResponseCite(assistantResponses, retainDatasetCite);
+      const formatResponseContent = removeAIResponseCite(assistantResponses, jsonRetainDatasetCite);
       const formattdResponse = formatCompletionResponseContent({
         responseContent: formatResponseContent,
-        detail
+        detail,
+        includeLegacyType: false
       });
 
       res.json({
@@ -594,7 +632,8 @@ const authShareChat = async ({
     app,
     apikey: '',
     authType,
-    responseAllData: false,
+    // 工作流工具的分享运行需要把完整节点链路返回给运行面板；普通对话仍按公开字段过滤。
+    responseAllData: app.type === AppTypeEnum.workflowTool,
     showCite,
     outLinkUserId: uid,
     showRunningStatus,
@@ -604,8 +643,8 @@ const authShareChat = async ({
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '20mb'
+      sizeLimit: '10mb'
     },
-    responseLimit: '20mb'
+    responseLimit: '10mb'
   }
 };

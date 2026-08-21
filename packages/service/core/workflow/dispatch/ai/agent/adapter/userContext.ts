@@ -1,166 +1,27 @@
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
-import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
-import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
-import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
-import { parseUrlToFileType } from '../../../../utils/context';
-import { getLogger, LogCategories } from '../../../../../../common/logger';
-import { getHistories } from '../../../utils';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import { getAgentLoopHistories } from '../../../utils';
 import { MongoDataset } from '../../../../../dataset/schema';
 import { filterDatasetsByTmbId } from '../../../../../dataset/utils';
 import type { DeployedSkillInfo } from '../../../../../ai/sandbox/interface/runtime';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
-import { SANDBOX_READ_FILE_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
-import { getSafeSandboxInputFilename } from '../../../../../ai/sandbox/interface/runtime';
+import {
+  buildWorkflowAICurrentInputFiles,
+  rewriteWorkflowAIHistoryMessageWithFiles,
+  rewriteWorkflowAIUserMessageWithFiles
+} from '../../fileContext';
+import {
+  type AgentLoopCoreInputFile,
+  type AgentLoopCoreSelectedDatasetContext,
+  type AgentLoopCoreSelectedDatasetInput
+} from '../../agentLoopCore/interface';
 
-export type AgentInputFile = {
-  id: string;
-  name: string;
-  type: `${ChatFileTypeEnum}`;
-  url: string;
-};
+export type AgentInputFile = AgentLoopCoreInputFile;
 
-export type ParseAgentInputFilesParams = {
-  files: UserChatItemFileItemType[];
-  prefixId: string;
-  requestOrigin?: string;
-  maxFiles: number;
-};
+type AgentSelectedDatasetInput = AgentLoopCoreSelectedDatasetInput;
 
-export type BuildCurrentAgentInputFilesParams = {
-  currentFiles?: string[];
-  currentQuery?: ChatItemMiniType['value'];
-  currentDataId?: string;
-  requestOrigin?: string;
-  maxFiles: number;
-};
-
-const escapeXml = (value: string) =>
-  value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-
-type AgentSelectedDatasetInput = Pick<SelectedDatasetType, 'datasetId'> &
-  Partial<Omit<SelectedDatasetType, 'datasetId'>>;
-
-type AgentSelectedDatasetContext = AgentSelectedDatasetInput & {
-  name: string;
-  intro?: string;
-};
-
-export const isValidAgentFileUrl = (url: unknown): url is string => {
-  if (typeof url !== 'string') return false;
-  const validPrefixList = ['/', 'http', 'ws'];
-  return validPrefixList.some((prefix) => url.startsWith(prefix));
-};
-
-export const normalizeAgentFileUrl = ({
-  url,
-  requestOrigin
-}: {
-  url: string;
-  requestOrigin?: string;
-}) => {
-  if (!isValidAgentFileUrl(url)) return '';
-
-  try {
-    // 同源上传文件使用相对路径，避免模型后续通过工具读取时绕回公网域名。
-    if (requestOrigin && url.startsWith(requestOrigin)) {
-      return url.replace(requestOrigin, '');
-    }
-
-    return url;
-  } catch (error) {
-    getLogger(LogCategories.MODULE.AI.AGENT).warn('[Agent user context] Parse url error', {
-      error
-    });
-    return '';
-  }
-};
-
-/**
- * 将 chat value 中携带的文件转换成 Agent 内部稳定文件 id。
- *
- * 该函数只负责 URL 归一化、去重、限量和类型解析；调用方决定这些文件用于
- * read_files 映射、sandbox 注入，还是 user reminder。
- */
-export function parseAgentInputFiles({
-  files,
-  prefixId,
-  requestOrigin,
-  maxFiles
-}: ParseAgentInputFilesParams): AgentInputFile[] {
-  const normalizedFiles = files
-    .map((file) => ({
-      file,
-      url: normalizeAgentFileUrl({ url: file.url, requestOrigin })
-    }))
-    .filter((item): item is { file: UserChatItemFileItemType; url: string } => Boolean(item.url));
-
-  const uniqueFiles = Array.from(
-    normalizedFiles
-      .reduce((map, item) => {
-        if (!map.has(item.url)) {
-          map.set(item.url, item);
-        }
-        return map;
-      }, new Map<string, { file: UserChatItemFileItemType; url: string }>())
-      .values()
-  );
-
-  const usedNames = new Map<string, number>();
-
-  return uniqueFiles
-    .slice(0, maxFiles)
-    .map(({ file, url }, index) => {
-      const parsedFile = parseUrlToFileType(url);
-      if (!parsedFile) return;
-      const type = file.type && file.type !== ChatFileTypeEnum.file ? file.type : parsedFile.type;
-
-      return {
-        id: `${prefixId}-${index}`,
-        name: getSafeSandboxInputFilename(file.name || parsedFile.name || url, index, usedNames),
-        type,
-        url: parsedFile.url
-      };
-    })
-    .filter(Boolean) as AgentInputFile[];
-}
-
-/**
- * 解析本轮用户输入文件。
- *
- * sandbox 初始化和 user reminder 都依赖这组结果，因此单独抽出，避免两边各自
- * 重新拼 currentQuery/currentFiles 的文件合并规则。
- */
-export function buildCurrentAgentInputFiles({
-  currentFiles = [],
-  currentQuery,
-  currentDataId,
-  requestOrigin,
-  maxFiles
-}: BuildCurrentAgentInputFilesParams): AgentInputFile[] {
-  const { files: queryFiles = [] } = currentQuery
-    ? chatValue2RuntimePrompt(currentQuery)
-    : { files: [] };
-  const currentInputFiles = [...queryFiles.map((file) => file.url), ...currentFiles].filter(
-    (url, index, list) => url && list.indexOf(url) === index
-  );
-  const currentQueryFilesByUrl = new Map(queryFiles.map((file) => [file.url, file]));
-
-  return parseAgentInputFiles({
-    files: currentInputFiles.map(
-      (url) => currentQueryFilesByUrl.get(url) || { type: ChatFileTypeEnum.file, url }
-    ),
-    prefixId: currentDataId || getNanoid(),
-    requestOrigin,
-    maxFiles
-  });
-}
+type AgentSelectedDatasetContext = AgentLoopCoreSelectedDatasetContext;
 
 /**
  * 加载知识库
@@ -213,154 +74,10 @@ export const loadAgentDatasetContext = async (
     });
 };
 
-/* Prompt */
-export const buildAgentInputFilesPrompt = (files: AgentInputFile[] = []) => {
-  if (files.length === 0) return '';
-
-  return `## 对话文件
-用户本次对话上传的文件，用途：
-1. 可通过 ${SubAppIds.readFiles} 读取文档内容。
-2. 可把 url 作为模型参数。
-
-${files
-  .map(
-    (file) => `<file>
-<id>${escapeXml(file.id)}</id>
-<name>${escapeXml(file.name)}</name>
-<type>${escapeXml(file.type)}</type>
-<url>${escapeXml(file.url)}</url>
-</file>`
-  )
-  .join('\n')}`;
-};
-export function buildAgentSkillsPrompt(skillInfos: DeployedSkillInfo[] = []): string {
-  if (skillInfos.length === 0) return '';
-
-  return `## 技能
-你可以使用可复用的技能。每个技能都提供针对特定任务的操作说明。当用户任务与某个技能的描述匹配时，先读取该技能的 SKILL.md 路径，然后再继续执行。不要仅凭技能描述推断完整工作流。
-如果技能包含 app_name 或 app_description，它们表示平台 Skill 应用的名称和描述；name 和 description 表示该应用包内展开后的具体子 Skill。匹配任务时同时参考平台 Skill 应用信息和子 Skill 信息。如果用户、系统提示词或应用配置提到某个平台 Skill 应用名，应在该应用下选择最匹配的子 Skill。
-当技能引用相对路径文件时，应以该技能的 SKILL.md 所在目录作为基准目录进行解析。
-实际执行入口始终是子 Skill 的 path；平台 Skill 应用信息只用于帮助你把应用层语义对齐到具体子 Skill。
-你可以通过 ${SANDBOX_READ_FILE_TOOL_NAME} 工具来读取完整的技能。
-下面是可用的技能：
-
-${skillInfos
-  .map((info) =>
-    [
-      '<skill>',
-      ...(info.appId ? [`<app_id>${escapeXml(info.appId)}</app_id>`] : []),
-      ...(info.appName ? [`<app_name>${escapeXml(info.appName)}</app_name>`] : []),
-      ...(info.appDescription
-        ? [`<app_description>${escapeXml(info.appDescription)}</app_description>`]
-        : []),
-      `<name>${escapeXml(info.name)}</name>`,
-      `<description>${escapeXml(info.description)}</description>`,
-      `<directory>${escapeXml(info.directory)}</directory>`,
-      `<path>${escapeXml(info.skillMdPath)}</path>`,
-      '</skill>'
-    ].join('\n')
-  )
-  .join('\n')}`;
-}
-const buildAgentInputDatasetsPrompt = (selectedDataset: AgentSelectedDatasetContext[] = []) => {
-  if (selectedDataset.length === 0) return '';
-
-  return `## 知识库
-用户当前可用的知识库：
-
-${selectedDataset
-  .map((item) =>
-    [
-      '<dataset>',
-      `<id>${escapeXml(item.datasetId)}</id>`,
-      `<name>${escapeXml(item.name)}</name>`,
-      ...(item.intro ? [`<description>${escapeXml(item.intro)}</description>`] : []),
-      '</dataset>'
-    ].join('\n')
-  )
-  .join('\n')}`;
-};
-const buildAgentEnvPrompt = ({
-  currentTime,
-  currentWorkingDirectory
-}: {
-  currentTime?: string;
-  currentWorkingDirectory?: string;
-}) => {
-  if (!currentTime && !currentWorkingDirectory) return '';
-
-  return `## 背景信息
-${currentTime ? `当前时间: ${currentTime}` : ''}
-${currentWorkingDirectory ? `当前 sandbox 工作目录: ${currentWorkingDirectory}` : ''}`;
-};
-
-const getAgentMultimodalChatFiles = (files: AgentInputFile[]) =>
-  files
-    .filter((file) => file.type !== ChatFileTypeEnum.file)
-    .map(({ name, type, url }) => ({
-      name,
-      type: type as ChatFileTypeEnum,
-      url
-    }));
-
-const buildSandboxFileWriteBoundaryPrompt = ({
-  currentWorkingDirectory
-}: {
-  currentWorkingDirectory?: string;
-}) => {
-  if (!currentWorkingDirectory) return '';
-
-  return `## Sandbox 文件写入边界
-生成或修改文件时，必须严格区分系统目录和用户产物目录：
-- 用户 Skill 产物根目录：${currentWorkingDirectory}/skills
-- 如果任务需要创建或修改用户 Skill，只能写入：${currentWorkingDirectory}/skills/<skill-name>/
-- 用户 Skill 主文件必须是：${currentWorkingDirectory}/skills/<skill-name>/SKILL.md
-- 禁止写入：${currentWorkingDirectory}/<skill-name>/ 或 ${currentWorkingDirectory}/SKILL.md
-- 禁止写入：/home/sandbox/.fastgpt/skills/、~/.fastgpt/skills/ 或任何 .fastgpt/skills/ 路径；这些路径只用于系统内置 Skill。`;
-};
-// 当前轮动态上下文统一包在 user message 内。它不是系统角色 prompt，
-// 但对模型来说是回答本轮问题时可用的事实提醒。
-export const buildAgentUserReminderInput = ({
-  query = '',
-  skillInfos,
-  filesInfo,
-  selectedDataset,
-  currentTime,
-  currentWorkingDirectory
-}: {
-  query?: string;
-  skillInfos?: DeployedSkillInfo[];
-  filesInfo?: AgentInputFile[];
-  selectedDataset?: AgentSelectedDatasetContext[];
-  currentTime?: string;
-  currentWorkingDirectory?: string;
-}) => {
-  const reminder = [
-    buildAgentSkillsPrompt(skillInfos),
-    buildSandboxFileWriteBoundaryPrompt({ currentWorkingDirectory }),
-    buildAgentInputFilesPrompt(filesInfo),
-    buildAgentInputDatasetsPrompt(selectedDataset),
-    buildAgentEnvPrompt({ currentTime, currentWorkingDirectory })
-  ]
-    .filter(Boolean)
-    .join('\n\n');
-
-  if (!reminder) return query || '';
-
-  return `<system-reminder>
-依据以下内容完成任务
-
-${reminder}
-</system-reminder>
-${query}`.trim();
-};
-
 export type UseUserContextResult = {
   chatHistories: ChatItemMiniType[];
   currentFiles: AgentInputFile[];
   queryInput: string;
-  fileUrlMap: Record<string, string>;
-  filesMap: Record<string, string>;
   getCurrentMessages: (params?: {
     skillInfos?: DeployedSkillInfo[];
     currentWorkingDirectory?: string;
@@ -373,7 +90,7 @@ export type UseUserContextResult = {
 /**
  * 准备 Agent 本轮 user context。
  *
- * 第一阶段先解析历史文件、本轮输入文件、read_files 映射和知识库上下文；
+ * 第一阶段先解析历史文件、本轮输入文件和知识库上下文；
  * sandbox/skill 初始化依赖 currentFiles。等 sandbox 返回 cwd、skill 返回 SKILL.md
  * 元信息后，再通过 getCurrentMessages 生成最终模型 messages。
  */
@@ -384,8 +101,8 @@ export const useUserContext = async ({
   currentUserInput,
   currentQuery,
   currentDataId,
-  requestOrigin,
-  maxFiles,
+  maxFileAmount,
+  parseHistoryFiles = false,
   selectedDataset,
   authTmbId,
   tmbId,
@@ -397,64 +114,23 @@ export const useUserContext = async ({
   currentUserInput: string;
   currentQuery?: ChatItemMiniType['value'];
   currentDataId?: string;
-  requestOrigin?: string;
-  maxFiles: number;
+  maxFileAmount: number;
+  parseHistoryFiles?: boolean;
   selectedDataset?: AgentSelectedDatasetInput[];
   authTmbId?: boolean;
   tmbId: string;
   timezone: string;
 }): Promise<UseUserContextResult> => {
-  const chatHistories = getHistories(history, histories);
-  // fileUrlMap 记录所有上传文件，供普通工具参数把 file id 兜底转换成可访问 URL。
-  const fileUrlMap: Record<string, string> = {};
-  // filesMap 只给 read_files 使用，因此只登记 document 类型文件。
-  const filesMap: Record<string, string> = {};
+  const chatHistories = getAgentLoopHistories(history, histories);
 
-  const getMessagePrefixId = (message: ChatItemMiniType, index: number) =>
-    message.dataId || `${index}`;
-
-  const registerFiles = (files: AgentInputFile[]) => {
-    if (files.length === 0) return;
-
-    for (const file of files) {
-      fileUrlMap[file.id] = file.url;
-      if (file.type === ChatFileTypeEnum.file) {
-        filesMap[file.id] = file.url;
-      }
-    }
-  };
-
-  // 先处理历史，确保历史 assistant tool call 中已有的 file id 能在本轮重新映射到 URL。
-  const rewrittenHistories = chatHistories.map((message, index) => {
-    if (message.obj !== ChatRoleEnum.Human) return message;
-
-    const { files } = chatValue2RuntimePrompt(message.value);
-
-    const formatFiles = parseAgentInputFiles({
-      files,
-      prefixId: getMessagePrefixId(message, index),
-      requestOrigin,
-      maxFiles
-    });
-
-    registerFiles(formatFiles);
-    if (formatFiles.length === 0) return message;
-
-    // 历史消息每轮只补文件段，不补 datasets/time。
-    // datasets/time 是当前轮状态，写入历史会让下一轮恢复时混入过期资源或旧时间。
-    const { text } = chatValue2RuntimePrompt(message.value);
-
-    return {
-      ...message,
-      value: runtimePrompt2ChatsValue({
-        files: getAgentMultimodalChatFiles(formatFiles),
-        text: buildAgentUserReminderInput({
-          query: text,
-          filesInfo: formatFiles
-        })
-      })
-    };
-  });
+  const rewrittenHistories = chatHistories.map(
+    (message) =>
+      rewriteWorkflowAIHistoryMessageWithFiles({
+        message,
+        maxFileAmount,
+        parseHistoryFiles
+      }).message
+  );
 
   // 获取本轮的文件输入
   const { text: queryInput = '', files: queryFiles = [] } = currentQuery
@@ -468,14 +144,11 @@ export const useUserContext = async ({
       files: queryFiles
     })
   };
-  const currentInputFiles = buildCurrentAgentInputFiles({
+  const currentInputFiles = buildWorkflowAICurrentInputFiles({
     currentFiles,
     currentQuery,
-    currentDataId,
-    requestOrigin,
-    maxFiles
+    maxFileAmount
   });
-  registerFiles(currentInputFiles);
 
   // 获取知识库
   const selectedDatasetWithIntro = await loadAgentDatasetContext(selectedDataset, tmbId, authTmbId);
@@ -484,24 +157,20 @@ export const useUserContext = async ({
     chatHistories,
     currentFiles: currentInputFiles,
     queryInput,
-    fileUrlMap,
-    filesMap,
     getCurrentMessages: ({ skillInfos, currentWorkingDirectory } = {}) => {
-      const currentUserMessage: ChatItemMiniType = {
-        ...currentMessage,
-        value: runtimePrompt2ChatsValue({
-          files: getAgentMultimodalChatFiles(currentInputFiles),
-          // 当前 Human 才注入完整 reminder：sandbox、skill、文件、知识库、当前时间和原始问题。
-          text: buildAgentUserReminderInput({
-            query: currentUserInput,
-            skillInfos,
-            filesInfo: currentInputFiles,
-            selectedDataset: selectedDatasetWithIntro,
-            currentWorkingDirectory,
-            currentTime: getSystemTime(timezone)
-          })
-        })
-      };
+      // 当前 Human 才注入 sandbox、skill、知识库和当前时间，历史只保留稳定文件上下文。
+      const { message: currentUserMessage } = rewriteWorkflowAIUserMessageWithFiles({
+        message: currentMessage,
+        maxFileAmount,
+        files: currentInputFiles,
+        query: currentUserInput,
+        reminderContext: {
+          skillInfos,
+          selectedDataset: selectedDatasetWithIntro,
+          currentWorkingDirectory,
+          currentTime: getSystemTime(timezone)
+        }
+      });
 
       return {
         rewrittenHistories,

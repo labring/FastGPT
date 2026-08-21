@@ -17,6 +17,8 @@ declare global {
   var licenseData: LicenseDataType | undefined;
 
   var workerPoll: Record<WorkerNameEnum, WorkerPool>;
+
+  var systemConfig: Record<string, unknown> | undefined;
 }
 
 export {};

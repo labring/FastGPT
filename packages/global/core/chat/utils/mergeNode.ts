@@ -112,12 +112,8 @@ function attachNodeResponsesByParent(responses: ChatHistoryItemResType[]) {
         : undefined;
     if (!parent) return [...roots, response];
 
-    parent.childrenResponses = mergeChildResponseList(parent.childrenResponses || [], [
-      {
-        ...response,
-        parentId: response.parentId
-      }
-    ]);
+    // 中间父节点挂到祖先后仍可能继续收到恢复执行产生的 child，必须保留同一对象引用。
+    parent.childrenResponses = mergeChildResponseList(parent.childrenResponses || [], [response]);
     return roots;
   }, []);
 }

@@ -14,7 +14,8 @@ export const source = loader({
     attachFile(node, file) {
       return {
         ...node,
-        sidebarTag: file?.data.sidebarTag
+        sidebarTag: file?.data.sidebarTag,
+        upgradeTags: file?.data.upgradeTags
       };
     }
   },

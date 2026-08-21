@@ -1,4 +1,4 @@
-import { connectionMongo, getMongoModel } from '../../common/mongo';
+import { defineIndex, connectionMongo, getMongoModel } from '../../common/mongo';
 const { Schema } = connectionMongo;
 import { type ChatItemDBSchemaType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleMap, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -103,17 +103,25 @@ const ChatItemSchema = new Schema({
   delete by chat id;
   close custom feedback;
 */
-ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1 });
-ChatItemSchema.index({ sourceType: 1, appId: 1, chatId: 1, dataId: 1 });
+defineIndex(ChatItemSchema, { key: { appId: 1, chatId: 1, dataId: 1 } });
+defineIndex(ChatItemSchema, {
+  key: { sourceType: 1, appId: 1, chatId: 1, dataId: 1 }
+});
 // Get histories
-ChatItemSchema.index({ appId: 1, chatId: 1, deleteTime: 1 });
-ChatItemSchema.index({ sourceType: 1, appId: 1, chatId: 1, deleteTime: 1 });
+defineIndex(ChatItemSchema, { key: { appId: 1, chatId: 1, deleteTime: 1 } });
+defineIndex(ChatItemSchema, {
+  key: { sourceType: 1, appId: 1, chatId: 1, deleteTime: 1 }
+});
 // get chatitem list,Anchor filter
-ChatItemSchema.index({ appId: 1, chatId: 1, _id: -1 });
-ChatItemSchema.index({ sourceType: 1, appId: 1, chatId: 1, _id: -1 });
+defineIndex(ChatItemSchema, { key: { appId: 1, chatId: 1, _id: -1 } });
+defineIndex(ChatItemSchema, {
+  key: { sourceType: 1, appId: 1, chatId: 1, _id: -1 }
+});
 // Query by role (AI/Human), get latest chat item, permission check
-ChatItemSchema.index({ appId: 1, chatId: 1, obj: 1, _id: -1 });
-ChatItemSchema.index({ sourceType: 1, appId: 1, chatId: 1, obj: 1, _id: -1 });
+defineIndex(ChatItemSchema, { key: { appId: 1, chatId: 1, obj: 1, _id: -1 } });
+defineIndex(ChatItemSchema, {
+  key: { sourceType: 1, appId: 1, chatId: 1, obj: 1, _id: -1 }
+});
 
 export const MongoChatItem = getMongoModel<ChatItemDBSchemaType>(
   ChatItemCollectionName,

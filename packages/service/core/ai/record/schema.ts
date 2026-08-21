@@ -1,4 +1,4 @@
-import { getMongoLogModel, Schema } from '../../../common/mongo';
+import { defineIndex, getMongoLogModel, Schema } from '../../../common/mongo';
 import type { LLMRequestRecordSchemaType } from '@fastgpt/global/openapi/core/ai/api';
 import { serviceEnv } from '../../../env';
 
@@ -30,7 +30,10 @@ const LLMRequestRecordSchema = new Schema({
   }
 });
 
-LLMRequestRecordSchema.index({ teamId: 1, requestId: 1 }, { unique: true });
+defineIndex(LLMRequestRecordSchema, {
+  key: { teamId: 1, requestId: 1 },
+  options: { unique: true }
+});
 
 export const MongoLLMRequestRecord = getMongoLogModel<LLMRequestRecordSchemaType>(
   LLMRequestRecordCollectionName,

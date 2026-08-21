@@ -26,6 +26,7 @@ import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import { getAppVersionList } from '@/web/core/app/api/version';
 import { getTeamToolVersions } from '@/web/core/plugin/team/api';
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { getWorkflowCheckIssueUIStatus } from '@/web/core/workflow/workflowCheck';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useContextSelector } from 'use-context-selector';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
@@ -63,6 +64,7 @@ import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import type { SystemToolVersionType } from '@fastgpt/global/core/app/tool/systemTool/type/base';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
+import type { WorkflowCheckIssue } from '@fastgpt/global/core/workflow/type/node';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -121,6 +123,7 @@ const NodeCard = (props: Props) => {
     menuForbid,
     isTool = false,
     isError = false,
+    workflowCheckIssues,
     debugResult,
     isFolded,
     customStyle,
@@ -209,11 +212,16 @@ const NodeCard = (props: Props) => {
           whiteSpace={'nowrap'}
           maxW={'80%'}
         >
-          {t(name as any)}
+          {name}
         </Box>
       </Flex>
     );
-  }, [isFolded, avatar, avatarLinear, name, handleDoubleClick, t]);
+  }, [isFolded, avatar, avatarLinear, name, handleDoubleClick]);
+
+  const errorIssues = useMemo(
+    () => workflowCheckIssues?.filter((issue) => issue.level === 'error') ?? [],
+    [workflowCheckIssues]
+  );
 
   const { outlineColor, outlineWidth } = useMemo(() => {
     // error mode
@@ -314,7 +322,7 @@ const NodeCard = (props: Props) => {
 
   const toolStatus = nodeTemplate?.status ?? node?.pluginData?.status;
   const showVersion = useMemo(() => {
-    if (toolStatus === PluginStatusEnum.Offline) return false;
+    if (toolStatus === PluginStatusEnum.Offline || node?.pluginData?.error) return false;
 
     const source = node?.pluginId ? splitCombineToolId(node.pluginId).source : undefined;
     if (isDebugToolSource(node?.source)) return false;
@@ -352,6 +360,7 @@ const NodeCard = (props: Props) => {
 
   return (
     <Flex
+      position={'relative'}
       outline={selected && (presentationMode || isFolded) ? '16px solid' : undefined}
       outlineColor={'rgba(17, 24, 36, 0.05)'}
       borderRadius={isFolded ? 26 : 'lg'}
@@ -497,11 +506,95 @@ const NodeCard = (props: Props) => {
           />
         )}
       </Flex>
+      {!isFolded && errorIssues.length > 0 && (
+        <Box position={'absolute'} top={'100%'} left={0} w={'100%'}>
+          <NodeWorkflowCheckIssues issues={errorIssues} />
+        </Box>
+      )}
     </Flex>
   );
 };
 
 export default React.memo(NodeCard);
+
+/** 待处理/待完善状态图标：待完善用设计稿虚线圆环，待处理用圆形 info。 */
+const WorkflowCheckIssueStatusIcon = React.memo(function WorkflowCheckIssueStatusIcon({
+  status
+}: {
+  status: ReturnType<typeof getWorkflowCheckIssueUIStatus>;
+}) {
+  return (
+    <MyIcon
+      name={status === 'pending_handle' ? 'infoRounded' : 'core/app/workflow/checkPendingImprove'}
+      w={'24px'}
+      h={'24px'}
+      flexShrink={0}
+      color={'#485264'}
+    />
+  );
+});
+
+const workflowCheckIssueTextStyle = {
+  color: 'myGray.600',
+  fontFamily: 'PingFang SC, PingFang, sans-serif',
+  fontSize: '16px',
+  fontStyle: 'normal',
+  fontWeight: 500,
+  lineHeight: '24px',
+  letterSpacing: '0.15px'
+} as const;
+
+/** 节点下方校验问题提示条，使用灰色轻量样式而非红色错误条。 */
+const NodeWorkflowCheckIssues = React.memo(function NodeWorkflowCheckIssues({
+  issues
+}: {
+  issues: WorkflowCheckIssue[];
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <Flex flexDirection={'column'} alignItems={'flex-start'} gap={'8px'} mt={2}>
+      {issues.map((issue, index) => {
+        const status = getWorkflowCheckIssueUIStatus(issue.code);
+        // 显式保留静态 key，避免 i18n 清理脚本误删状态前缀文案。
+        const statusPrefixText =
+          status === 'pending_handle'
+            ? t('common:core.workflow.check.status.pending_handle')
+            : t('common:core.workflow.check.status.pending_improve');
+
+        return (
+          <Flex
+            key={`${issue.code}-${issue.inputKey ?? ''}-${index}`}
+            display={'inline-flex'}
+            alignItems={'center'}
+            gap={'8px'}
+            px={'16px'}
+            py={'8px'}
+            w={'fit-content'}
+            maxW={'min(720px, 100%)'}
+            bg={'#E8EBF0'}
+            opacity={0.8}
+            borderRadius={'8px'}
+          >
+            <WorkflowCheckIssueStatusIcon status={status} />
+            <Box as={'span'} flexShrink={0} {...workflowCheckIssueTextStyle}>
+              {statusPrefixText}:
+            </Box>
+            <Box
+              as={'span'}
+              minW={0}
+              whiteSpace={'normal'}
+              wordBreak={'break-word'}
+              {...workflowCheckIssueTextStyle}
+            >
+              {issue.message.trim()}
+            </Box>
+          </Flex>
+        );
+      })}
+    </Flex>
+  );
+});
 
 // 节点标题区域组件
 const NodeTitleSection = React.memo<{
@@ -563,14 +656,9 @@ const NodeTitleSection = React.memo<{
 
   const renderDisplay = useCallback(
     (val: string) => (
-      <HighlightText
-        rawText={t(val as any)}
-        matchText={searchedText ?? ''}
-        mode={'bg'}
-        color={'#ffe82d'}
-      />
+      <HighlightText rawText={val} matchText={searchedText ?? ''} mode={'bg'} color={'#ffe82d'} />
     ),
-    [searchedText, t]
+    [searchedText]
   );
 
   return (
@@ -646,7 +734,6 @@ const NodeIntro = React.memo(function NodeIntro({
         minH={'20px'}
         py={'3px'}
         px={'6px'}
-        noOfLines={1}
       />
     </Box>
   );
@@ -1073,8 +1160,10 @@ NodeActionButtons.displayName = 'NodeActionButtons';
 const NodeStatusBadge = React.memo<{ status?: PluginStatusType; error?: string | null }>(
   ({ status, error }) => {
     const { t } = useTranslation();
+    const errorText =
+      error || (status === PluginStatusEnum.Offline ? 'common:error.tool_not_exist' : undefined);
 
-    if (error) {
+    if (errorText) {
       return (
         <Flex
           bg={'red.50'}
@@ -1086,25 +1175,23 @@ const NodeStatusBadge = React.memo<{ status?: PluginStatusType; error?: string |
           fontWeight={'medium'}
         >
           <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
-          <Box color={'red.600'}>{t(error as any)}</Box>
+          <Box color={'red.600'}>{t(errorText as any)}</Box>
         </Flex>
       );
     }
     if (status !== undefined && status !== PluginStatusEnum.Normal) {
+      const statusLabelMap: Partial<Record<PluginStatusType, string>> = {
+        [PluginStatusEnum.Hidden]: t('app:toolkit_status_hidden'),
+        [PluginStatusEnum.SoonOffline]: t('app:toolkit_status_soon_offline')
+      };
+      const statusTooltipMap: Partial<Record<PluginStatusType, string>> = {
+        [PluginStatusEnum.Hidden]: t('app:tool_hidden_tips'),
+        [PluginStatusEnum.SoonOffline]: t('app:tool_soon_offset_tips')
+      };
       return (
-        <MyTooltip
-          label={
-            status === PluginStatusEnum.Offline
-              ? t('app:tool_offset_tips')
-              : t('app:tool_soon_offset_tips')
-          }
-        >
-          <MyTag
-            mr={2}
-            colorSchema={status === PluginStatusEnum.Offline ? 'red' : 'yellow'}
-            type="borderFill"
-          >
-            {t(PluginStatusMap[status].label)}
+        <MyTooltip label={statusTooltipMap[status]}>
+          <MyTag mr={2} colorSchema={PluginStatusMap[status].tagColor} type="borderFill">
+            {statusLabelMap[status]}
           </MyTag>
         </MyTooltip>
       );
@@ -1205,7 +1292,6 @@ const PresentationModeOverlay = React.memo(function PresentationModeOverlay({
   isLoopNode: boolean;
   onDoubleClick: () => void;
 }) {
-  const { t } = useTranslation();
   const [presentationHeight, setPresentationHeight] = useState<number>(0);
 
   const presentationOverlayRef = useCallback((node: HTMLDivElement | null) => {
@@ -1271,7 +1357,7 @@ const PresentationModeOverlay = React.memo(function PresentationModeOverlay({
             whiteSpace={'nowrap'}
             maxW={'80%'}
           >
-            {t(name as any)}
+            {name}
           </Box>
         )}
         {intro && presentationHeight > 320 && (
@@ -1284,7 +1370,7 @@ const PresentationModeOverlay = React.memo(function PresentationModeOverlay({
             whiteSpace={'nowrap'}
             maxW={'80%'}
           >
-            {t(intro as any)}
+            {intro}
           </Box>
         )}
       </Flex>

@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import { chats2GPTMessages, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   getAIChatFileContextConfig,
-  rewriteChatMessagesWithFiles
+  getInputFiles
 } from '../../../../../core/workflow/dispatch/ai/chat';
+import { rewriteChatMessagesWithFileContext } from '../../../../../core/chat/fileContext';
+import { runWithContext } from '../../../../../core/workflow/utils/context';
+import { loadRequestMessages } from '../../../../../core/ai/llm/utils';
+import { serviceEnv } from '../../../../../env';
 
 const createHumanMessage = ({
   text,
@@ -75,7 +80,67 @@ describe('getAIChatFileContextConfig', () => {
   });
 });
 
-describe('rewriteChatMessagesWithFiles', () => {
+describe('getInputFiles', () => {
+  it('keeps the original audio filename when the first-round url has no extension', async () => {
+    const url = 'https://files.example.com/opaque-short-token';
+    let userFiles = [] as ReturnType<typeof getInputFiles>;
+
+    runWithContext(
+      {
+        fileContext: {
+          resolveChatFile: (target: string) =>
+            target === url
+              ? {
+                  type: ChatFileTypeEnum.audio,
+                  name: 'meeting.mp3',
+                  url,
+                  key: 'chat/meeting.mp3'
+                }
+              : undefined
+        } as any,
+        mcpClientMemory: {}
+      },
+      () => {
+        userFiles = getInputFiles({ fileLinks: [url] });
+      }
+    );
+
+    expect(userFiles).toEqual([
+      {
+        type: ChatFileTypeEnum.audio,
+        name: 'meeting.mp3',
+        url,
+        key: 'chat/meeting.mp3'
+      }
+    ]);
+
+    const messages = chats2GPTMessages({
+      messages: [
+        {
+          obj: ChatRoleEnum.Human,
+          value: runtimePrompt2ChatsValue({ files: userFiles })
+        }
+      ]
+    });
+    const previousMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
+    serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+    const requestMessages = await loadRequestMessages({ messages, useAudio: true }).finally(() => {
+      serviceEnv.MULTIPLE_DATA_TO_BASE64 = previousMultipleDataToBase64;
+    });
+
+    expect(requestMessages[0]?.content).toEqual([
+      {
+        type: 'input_audio',
+        input_audio: {
+          data: url,
+          format: 'mp3'
+        }
+      }
+    ]);
+  });
+});
+
+describe('rewriteChatMessagesWithFileContext', () => {
   const parseFileFn = vi.fn(async (urls: string[]) =>
     urls.map((url) => ({
       name: url.split('/').pop() || 'file.pdf',
@@ -89,7 +154,7 @@ describe('rewriteChatMessagesWithFiles', () => {
   });
 
   it('禁用历史文件解析时只解析当前轮 Human 文件', async () => {
-    const result = await rewriteChatMessagesWithFiles({
+    const result = await rewriteChatMessagesWithFileContext({
       messages: [
         createHumanMessage({
           text: '历史问题',
@@ -111,6 +176,7 @@ describe('rewriteChatMessagesWithFiles', () => {
         })
       ],
       parseHistoryFiles: false,
+      maxFiles: 20,
       parseFileFn
     });
 
@@ -127,7 +193,7 @@ describe('rewriteChatMessagesWithFiles', () => {
   });
 
   it('启用历史文件解析时会解析历史和当前轮 Human 文件', async () => {
-    const result = await rewriteChatMessagesWithFiles({
+    const result = await rewriteChatMessagesWithFileContext({
       messages: [
         createHumanMessage({
           text: '历史问题',
@@ -149,17 +215,44 @@ describe('rewriteChatMessagesWithFiles', () => {
         })
       ],
       parseHistoryFiles: true,
+      maxFiles: 20,
       parseFileFn
     });
 
-    expect(parseFileFn).toHaveBeenCalledTimes(2);
-    expect(parseFileFn).toHaveBeenNthCalledWith(1, ['/history.pdf']);
-    expect(parseFileFn).toHaveBeenNthCalledWith(2, ['/current.pdf']);
+    expect(parseFileFn).toHaveBeenCalledTimes(1);
+    expect(parseFileFn).toHaveBeenCalledWith(['/history.pdf', '/current.pdf']);
 
     const historyText = result[0].value.find((item) => item.text)?.text?.content;
     const currentText = result[2].value.find((item) => item.text)?.text?.content;
 
     expect(historyText).toContain('/history.pdf content');
     expect(currentText).toContain('/current.pdf content');
+  });
+
+  it('历史和当前轮引用相同文件时只解析一次并回填到两条消息', async () => {
+    const result = await rewriteChatMessagesWithFileContext({
+      messages: [
+        createHumanMessage({
+          text: '历史问题',
+          fileUrl: '/shared.pdf'
+        }),
+        createHumanMessage({
+          text: '继续回答',
+          fileUrl: '/shared.pdf'
+        })
+      ],
+      parseHistoryFiles: true,
+      maxFiles: 20,
+      parseFileFn
+    });
+
+    expect(parseFileFn).toHaveBeenCalledTimes(1);
+    expect(parseFileFn).toHaveBeenCalledWith(['/shared.pdf']);
+    expect(result[0].value.find((item) => item.text)?.text?.content).toContain(
+      '/shared.pdf content'
+    );
+    expect(result[1].value.find((item) => item.text)?.text?.content).toContain(
+      '/shared.pdf content'
+    );
   });
 });

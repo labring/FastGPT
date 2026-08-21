@@ -14,17 +14,13 @@ import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type'
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useTranslation } from 'next-i18next';
-import React, { useEffect, useState } from 'react';
-import { TeamContext } from '../context';
-import { useContextSelector } from 'use-context-selector';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import React, { useState } from 'react';
 import { type MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
-import { GetSearchUserGroupOrg } from '@/web/support/user/api';
 import { type Omit } from '@fastgpt/web/components/common/DndDrag';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import { type PaginationResponse } from '@fastgpt/global/openapi/api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import _ from 'lodash';
 
 export function ChangeOwnerModal({
   group,
@@ -35,26 +31,22 @@ export function ChangeOwnerModal({
   onSuccess: () => void;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_team');
 
   const [searchKey, setSearchKey] = React.useState('');
 
-  const {
-    data: members = [],
-    ScrollData: MemberScrollData,
-    refreshList
-  } = useScrollPagination<any, PaginationResponse<TeamMemberItemType<{ withGroupRole: true }>>>(
-    getTeamMembers,
-    {
-      pageSize: 20,
-      params: {
-        searchKey
-      },
-      refreshDeps: [searchKey],
-      debounceWait: 200,
-      throttleWait: 500
-    }
-  );
+  const { data: members = [], ScrollData: MemberScrollData } = useScrollPagination<
+    any,
+    PaginationResponse<TeamMemberItemType<{ withGroupRole: true }>>
+  >(getTeamMembers, {
+    pageSize: 20,
+    params: {
+      searchKey
+    },
+    refreshDeps: [searchKey],
+    debounceWait: 200,
+    throttleWait: 500
+  });
 
   const {
     isOpen: isOpenMemberListMenu,

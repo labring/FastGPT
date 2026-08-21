@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
@@ -10,6 +10,7 @@ import {
 import { callMcpServerTool, getMcpServerTools } from '@/service/support/mcp/utils';
 import { type toolCallProps } from '@/service/support/mcp/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getMcpAuthProxyFromHeaders } from '@/service/support/mcp/auth';
 const logger = getLogger(LogCategories.MODULE.MCP.APP);
 
 export type mcpQuery = { key: string };
@@ -52,7 +53,8 @@ const handlePost = async (req: ApiRequestProps<mcpBody, mcpQuery>, res: ApiRespo
     ): Promise<CallToolResult> => {
       try {
         logger.debug(`Call tool: ${name} with args: ${JSON.stringify(args)}`);
-        const result = await callMcpServerTool({ key, toolName: name, inputs: args });
+        const authProxy = getMcpAuthProxyFromHeaders(req.headers);
+        const result = await callMcpServerTool({ key, toolName: name, inputs: args, authProxy });
 
         return {
           content: [

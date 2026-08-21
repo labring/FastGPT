@@ -220,16 +220,14 @@ describe('pushChatRecords', () => {
     it('should persist agent loop control values in AI chat item value', async () => {
       const plan = {
         planId: 'plan_1',
-        task: 'Compare products',
+        name: 'Compare products',
         description: 'Compare FastGPT and Dify',
         steps: [
           {
             id: 's1',
-            title: 'Compare positioning',
+            name: 'Compare positioning',
             description: 'Compare product positioning',
-            acceptanceCriteria: ['Positioning is clear'],
-            status: 'pending' as const,
-            evidence: []
+            status: 'pending' as const
           }
         ]
       };
@@ -237,24 +235,13 @@ describe('pushChatRecords', () => {
         id: 'call_update_plan',
         functionName: 'update_plan',
         params: '{"updates":[]}',
-        response: 'ok',
-        assistantText: 'draft while updating plan',
-        reasoningText: 'planning'
+        response: 'ok'
       };
       const agentAsk = {
         id: 'call_ask_agent',
         functionName: 'ask_agent',
         params: '{"question":"请补充目标"}',
-        planId: 'plan_1',
-        assistantText: 'need more input',
-        reasoningText: 'asking'
-      };
-      const agentStopGate = {
-        id: 'stop_gate_2_req_too_early',
-        reason: 'Active plan is not complete.',
-        feedback: '<stop_gate_feedback>Continue the active plan.</stop_gate_feedback>',
-        assistantText: 'too early',
-        reasoningText: 'checking'
+        askId: 'call_ask_agent'
       };
       const props = createMockProps(
         {
@@ -272,9 +259,6 @@ describe('pushChatRecords', () => {
               },
               {
                 agentAsk
-              },
-              {
-                agentStopGate
               }
             ]
           }
@@ -291,7 +275,7 @@ describe('pushChatRecords', () => {
       }).lean();
 
       expect(aiItem?.value).toEqual(
-        expect.arrayContaining([{ plan }, { agentPlanUpdate }, { agentAsk }, { agentStopGate }])
+        expect.arrayContaining([{ plan }, { agentPlanUpdate }, { agentAsk }])
       );
     });
 
@@ -1186,7 +1170,7 @@ describe('pushChatRecords', () => {
           {
             interactive: {
               type: 'agentPlanAskQuery',
-              planId: 'plan_1',
+              askId: 'call_ask_agent',
               params: {
                 content: '请补充目标',
                 reason: '需要用户明确任务目标',
@@ -1214,7 +1198,7 @@ describe('pushChatRecords', () => {
 
       const interactive = {
         type: 'agentPlanAskQuery' as const,
-        planId: 'plan_1',
+        askId: 'call_ask_agent',
         params: {
           content: '请补充目标',
           reason: '需要用户明确任务目标',
@@ -1231,7 +1215,7 @@ describe('pushChatRecords', () => {
       );
     });
 
-    it('should persist agentPlanAskQuery answer on previous interactive and finalize prepared records', async () => {
+    it('should persist multi-question agentAsk form values and finalize prepared records', async () => {
       await MongoChatItem.create({
         chatId: 'test-chat-id',
         teamId: testTeamId,
@@ -1243,13 +1227,28 @@ describe('pushChatRecords', () => {
         value: [
           {
             interactive: {
-              type: 'agentPlanAskQuery',
-              planId: 'plan_1',
+              type: 'agentAsk',
+              askId: 'call_ask_agent',
               params: {
-                content: '请补充目标',
-                reason: '需要用户明确任务目标',
-                blockerType: 'missing_required_input',
-                options: ['继续研究 Rust', '改为研究 Go', '先给出学习路线']
+                description: '需要用户明确任务目标',
+                questions: [
+                  {
+                    question: '请选择方向',
+                    options: [
+                      { summary: 'Rust', value: 'Rust' },
+                      { summary: 'Go', value: 'Go' }
+                    ],
+                    answer: ''
+                  },
+                  {
+                    question: '需要示例吗',
+                    options: [
+                      { summary: '需要', value: '需要' },
+                      { summary: '不需要', value: '不需要' }
+                    ],
+                    answer: ''
+                  }
+                ]
               }
             }
           }
@@ -1263,7 +1262,7 @@ describe('pushChatRecords', () => {
             dataId: 'prepared-round-data-id',
             value: [
               {
-                text: { content: '深入了解 Rust 系统编程方向' }
+                text: { content: JSON.stringify({ answers: ['Rust', ''] }) }
               }
             ]
           },
@@ -1299,7 +1298,7 @@ describe('pushChatRecords', () => {
           dataId: 'prepared-round-data-id',
           value: [
             {
-              text: { content: '深入了解 Rust 系统编程方向' }
+              text: { content: JSON.stringify({ answers: ['Rust', ''] }) }
             }
           ]
         },
@@ -1316,13 +1315,28 @@ describe('pushChatRecords', () => {
       ]);
 
       const interactive = {
-        type: 'agentPlanAskQuery' as const,
-        planId: 'plan_1',
+        type: 'agentAsk' as const,
+        askId: 'call_ask_agent',
         params: {
-          content: '请补充目标',
-          reason: '需要用户明确任务目标',
-          blockerType: 'missing_required_input',
-          options: ['继续研究 Rust', '改为研究 Go', '先给出学习路线']
+          description: '需要用户明确任务目标',
+          questions: [
+            {
+              question: '请选择方向',
+              options: [
+                { summary: 'Rust', value: 'Rust' },
+                { summary: 'Go', value: 'Go' }
+              ],
+              answer: ''
+            },
+            {
+              question: '需要示例吗',
+              options: [
+                { summary: '需要', value: '需要' },
+                { summary: '不需要', value: '不需要' }
+              ],
+              answer: ''
+            }
+          ]
         },
         entryNodeIds: [],
         memoryEdges: [],
@@ -1346,16 +1360,14 @@ describe('pushChatRecords', () => {
         throw new Error('previousChatItem does not have AI interactive value');
       }
       const lastValue = previousChatItem.value[previousChatItem.value.length - 1];
-      if (lastValue.interactive?.type !== 'agentPlanAskQuery') {
-        throw new Error('previousChatItem does not have agentPlanAskQuery interactive');
+      if (lastValue.interactive?.type !== 'agentAsk') {
+        throw new Error('previousChatItem does not have agentAsk interactive');
       }
 
-      expect(lastValue.interactive.params.answer).toBe('深入了解 Rust 系统编程方向');
-      expect(lastValue.interactive.params.reason).toBe('需要用户明确任务目标');
-      expect(lastValue.interactive.params.options).toEqual([
-        '继续研究 Rust',
-        '改为研究 Go',
-        '先给出学习路线'
+      expect(lastValue.interactive.params.submitted).toBe(true);
+      expect(lastValue.interactive.params.questions.map((question) => question.answer)).toEqual([
+        'Rust',
+        ''
       ]);
 
       const finalizedAiItem = await MongoChatItem.findOne({
@@ -1370,10 +1382,196 @@ describe('pushChatRecords', () => {
         obj: ChatRoleEnum.Human,
         dataId: 'prepared-round-data-id'
       });
-      expect(finalizedHumanItem?.value[0].planId).toBe('plan_1');
+      expect(finalizedHumanItem?.value[0].askId).toBe('call_ask_agent');
       expect(finalizedAiItem?.value[0].text?.content).toBe(
         'Rust 系统编程方向包括所有权、并发和 unsafe 边界。'
       );
+    });
+
+    it('should merge child interactive tool response and plan snapshot into existing values', async () => {
+      await MongoChatItem.create({
+        chatId: 'test-chat-id',
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
+        appId: testAppId,
+        obj: ChatRoleEnum.AI,
+        dataId: 'tool-child-data-id',
+        value: [
+          {
+            id: 'call_select_1',
+            tools: [
+              {
+                id: 'call_select_1',
+                toolName: '收集问题',
+                toolAvatar: 'core/workflow/template/userSelect',
+                functionName: 'select_tool',
+                params: '{"reason":"need selection"}',
+                response: 'none'
+              }
+            ]
+          },
+          {
+            plan: {
+              planId: 'plan_1',
+              name: 'Interactive plan',
+              description: null,
+              steps: [
+                {
+                  id: 'step_1',
+                  name: 'Wait for selection',
+                  status: 'in_progress'
+                }
+              ]
+            }
+          },
+          {
+            interactive: {
+              type: 'toolChildrenInteractive',
+              params: {
+                childrenResponse: {
+                  type: 'userSelect',
+                  params: {
+                    description: '请选择',
+                    userSelectOptions: [
+                      { key: 'A', value: 'Option A' },
+                      { key: 'B', value: 'Option B' }
+                    ]
+                  },
+                  entryNodeIds: [],
+                  memoryEdges: [],
+                  nodeOutputs: []
+                },
+                toolParams: {
+                  toolCallId: 'call_select_1'
+                }
+              }
+            }
+          }
+        ]
+      });
+
+      const props = createMockProps(
+        {
+          userContent: {
+            obj: ChatRoleEnum.Human,
+            value: [
+              {
+                text: { content: 'A' }
+              }
+            ]
+          },
+          aiContent: {
+            obj: ChatRoleEnum.AI,
+            value: [
+              {
+                id: 'call_select_1',
+                tools: [
+                  {
+                    id: 'call_select_1',
+                    toolName: '',
+                    toolAvatar: '',
+                    functionName: '',
+                    params: '',
+                    response: 'A'
+                  }
+                ]
+              },
+              {
+                plan: null
+              },
+              {
+                id: 'call_plan_done',
+                agentPlanUpdate: {
+                  id: 'call_plan_done',
+                  functionName: 'update_plan',
+                  params: '{"action":"update_steps"}',
+                  response: 'completed'
+                }
+              },
+              {
+                text: {
+                  content: '已继续执行'
+                }
+              }
+            ],
+            responseData: []
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      const interactive = {
+        type: 'toolChildrenInteractive' as const,
+        params: {
+          childrenResponse: {
+            type: 'userSelect' as const,
+            params: {
+              description: '请选择',
+              userSelectOptions: [
+                { key: 'A', value: 'Option A' },
+                { key: 'B', value: 'Option B' }
+              ]
+            },
+            entryNodeIds: [],
+            memoryEdges: [],
+            nodeOutputs: []
+          },
+          toolParams: {
+            toolCallId: 'call_select_1'
+          }
+        },
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: []
+      };
+
+      await updateInteractiveChat({ interactive, ...props });
+
+      const chatItem = await MongoChatItem.findOne({
+        appId: testAppId,
+        chatId: props.chatId,
+        obj: ChatRoleEnum.AI,
+        dataId: 'tool-child-data-id'
+      });
+
+      if (chatItem?.obj !== ChatRoleEnum.AI) {
+        throw new Error('chatItem does not have AI value');
+      }
+
+      expect(chatItem.value[0].tools?.[0]).toEqual(
+        expect.objectContaining({
+          id: 'call_select_1',
+          toolName: '收集问题',
+          functionName: 'select_tool',
+          response: 'A'
+        })
+      );
+      expect(chatItem.value).toHaveLength(5);
+      expect(chatItem.value.filter((item) => item.tools?.[0]?.id === 'call_select_1')).toHaveLength(
+        1
+      );
+      expect(
+        chatItem.value.some(
+          (item) =>
+            item.id === 'call_select_1' &&
+            !item.tools?.length &&
+            !item.text &&
+            !item.plan &&
+            !item.interactive
+        )
+      ).toBe(false);
+      expect(chatItem.value.find((item) => 'plan' in item)?.plan).toBeNull();
+      const completedPlanUpdate = chatItem.value.find(
+        (item) => item.agentPlanUpdate?.id === 'call_plan_done'
+      )?.agentPlanUpdate;
+      expect(completedPlanUpdate).toEqual(
+        expect.objectContaining({
+          id: 'call_plan_done',
+          response: 'completed'
+        })
+      );
+      expect(chatItem.value[4].text?.content).toBe('已继续执行');
     });
 
     it('should remove paymentPause interactive value', async () => {

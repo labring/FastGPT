@@ -53,6 +53,27 @@ const getNodeErrorText = (item: ChatHistoryItemResType) => {
 };
 
 /**
+ * 按历史记录加载口径提取聊天气泡错误。
+ *
+ * 只有根节点失败才代表本轮对话失败；带 parentId 的响应和内嵌 children 都属于
+ * ToolCall/Agent 的工具执行详情，错误会作为工具结果交回上层，不应提升为聊天错误。
+ */
+export const getChatItemErrorText = (
+  responseData: ChatHistoryItemResType[] = []
+): ErrorTextItemType | undefined =>
+  responseData.reduce<ErrorTextItemType | undefined>((errorText, item) => {
+    if (item.parentId) return errorText;
+
+    const nodeErrorText = getNodeErrorText(item);
+    if (!nodeErrorText) return errorText;
+
+    return {
+      moduleName: item.moduleName,
+      errorText: nodeErrorText
+    };
+  }, undefined);
+
+/**
  * 聊天列表预览只需要从 nodeResponse rows 中提取标签和错误摘要。
  *
  * 不包含 `historyPreview` 和 `error`：前者只用于详情弹窗，后者可能是大对象；列表错误展示优先
@@ -129,8 +150,7 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
     llmModuleAccount,
     historyPreviewLength,
     totalQuoteList,
-    toolCiteLinks,
-    errorText
+    toolCiteLinks
   } = flatResData.reduce(
     (acc, item) => {
       // LLM
@@ -164,14 +184,6 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
         }
       }
 
-      const nodeErrorText = getNodeErrorText(item);
-      if (nodeErrorText) {
-        acc.errorText = {
-          moduleName: item.moduleName,
-          errorText: nodeErrorText
-        };
-      }
-
       return acc;
     },
     {
@@ -179,11 +191,11 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
       totalQuoteList: [] as SearchDataResponseQuoteListItemType[],
       toolCiteLinks: [] as ToolCiteLinksType[],
       linkDedupe: new Set<string>(),
-      errorText: undefined as ErrorTextItemType | undefined,
       llmModuleAccount: 0,
       historyPreviewLength: undefined as number | undefined
     }
   );
+  const errorText = getChatItemErrorText(historyItem.responseData);
 
   // Filter quote list to only include citations actually referenced in the response text
   const responseText = historyItem.value.map((v) => v.text?.content || '').join('');

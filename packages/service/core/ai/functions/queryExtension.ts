@@ -184,7 +184,8 @@ export const queryExtension = async ({
     body: {
       stream: true,
       model: modelData.model,
-      messages
+      messages,
+      ...(modelData.reasoning ? { reasoning_effort: 'none' as const } : {})
     }
   });
 

@@ -9,7 +9,7 @@ import { createSkillFolder } from '@fastgpt/service/core/ai/skill/manage';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import {
   CreateSkillFolderBodySchema,
   type CreateSkillFolderBody

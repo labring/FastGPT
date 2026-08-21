@@ -26,6 +26,7 @@ const ToolTagFilterBox = ({
 }) => {
   const { t, i18n } = useTranslation();
   const isMarketplaceVariant = variant === 'marketplace';
+  const usePillStyles = size === 'base';
   const sourceOptions = [
     { label: t('common:All'), value: undefined },
     { label: t('app:toolkit_official'), value: 'official' },
@@ -44,21 +45,16 @@ const ToolTagFilterBox = ({
 
   const tagBaseStyles = useMemo(() => {
     const sizeStyles = {
-      base: isMarketplaceVariant
-        ? {
-            px: '13px',
-            h: '35px',
-            fontSize: '14px',
-            lineHeight: '21px'
-          }
-        : {
-            px: 3,
-            py: 1.5,
-            fontSize: 'sm'
-          },
+      base: {
+        px: '13px',
+        h: '32px',
+        fontSize: '14px',
+        lineHeight: '21px'
+      },
       sm: {
         px: 2,
         py: 1,
+        h: '32px',
         fontSize: 'xs'
       }
     };
@@ -66,27 +62,39 @@ const ToolTagFilterBox = ({
     return {
       ...sizeStyles[size],
       fontWeight: 'medium',
-      color: isMarketplaceVariant ? '#383F50' : 'myGray.700',
-      border: '1px solid',
-      borderColor: isMarketplaceVariant ? '#E8EBF0' : 'myGray.200',
+      color: usePillStyles ? '#383F50' : 'myGray.700',
+      ...(size === 'sm'
+        ? {}
+        : {
+            border: '1px solid',
+            borderColor: '#E8EBF0'
+          }),
       whiteSpace: 'nowrap',
       flexShrink: 0,
       cursor: 'pointer',
-      ...(isMarketplaceVariant
+      ...(usePillStyles
         ? {
             alignItems: 'center',
             justifyContent: 'center'
           }
         : {})
     };
-  }, [isMarketplaceVariant, size]);
+  }, [size, usePillStyles]);
+
+  const getTagStateStyles = (isSelected: boolean) => ({
+    display: usePillStyles ? 'inline-flex' : undefined,
+    bg: usePillStyles ? 'white' : isSelected ? 'myGray.150' : 'transparent',
+    borderColor: usePillStyles ? (isSelected ? '#94B5FF' : '#E8EBF0') : 'myGray.200',
+    color: usePillStyles ? (isSelected ? 'primary.600' : '#383F50') : 'myGray.700',
+    _hover: { bg: usePillStyles ? 'myGray.50' : 'myGray.100' }
+  });
 
   return (
     <Flex
       alignItems={'center'}
       userSelect={'none'}
       overflow={'auto'}
-      pb={1}
+      pb={usePillStyles ? 0 : 1}
       css={{
         '&:hover': {
           overflow: 'auto',
@@ -114,98 +122,91 @@ const ToolTagFilterBox = ({
       }}
     >
       {isMarketplaceVariant ? (
-        <Menu placement="bottom-start" autoSelect={false} isLazy>
-          <MenuButton
-            as={Box}
-            {...tagBaseStyles}
-            display={'inline-block'}
-            w={'65px'}
-            rounded={'6px'}
-            bg={'white'}
-            position={'relative'}
-            _hover={{ bg: 'myGray.50' }}
-            _expanded={{ bg: 'myGray.50' }}
+        <>
+          <Box
+            mr={2}
+            color={'#485264'}
+            fontSize={'14px'}
+            fontWeight={'medium'}
+            letterSpacing={'0.1px'}
+            flexShrink={0}
           >
-            <Box
-              position={'absolute'}
-              left={'13px'}
-              top={'7px'}
-              h={'21px'}
-              lineHeight={'21px'}
-              whiteSpace={'nowrap'}
+            {t('app:logs_source')}:
+          </Box>
+          <Menu placement="bottom-start" autoSelect={false} isLazy>
+            <MenuButton
+              as={Box}
+              {...tagBaseStyles}
+              display={'inline-flex'}
+              w={'70px'}
+              px={'12px'}
+              rounded={'6px'}
+              bg={'white'}
+              _hover={{ bg: 'myGray.50' }}
+              _expanded={{ bg: 'myGray.50' }}
+              _focus={{ outline: 'none', boxShadow: 'none' }}
             >
-              {selectedSourceLabel}
-            </Box>
-            <Box
-              position={'absolute'}
-              left={'45px'}
-              top={'10.5px'}
-              w={'7px'}
-              h={'14px'}
-              display={'flex'}
-              alignItems={'center'}
-              justifyContent={'center'}
-              overflow={'visible'}
-            >
-              <MyIcon
-                name={'core/chat/chevronSelector'}
-                w={'14px'}
-                h={'14px'}
-                color={'#667085'}
-                verticalAlign={'middle'}
-              />
-            </Box>
-          </MenuButton>
-          <Portal>
-            <MenuList
-              minW={'92px'}
-              p={'6px'}
-              border={'1px solid'}
-              borderColor={'#E8EBF0'}
-              boxShadow={'3'}
-              zIndex={2000}
-            >
-              {sourceOptions.map((option) => {
-                const isSelected = option.value === selectedSource;
+              <Flex alignItems={'center'} justifyContent={'space-between'}>
+                {selectedSourceLabel}
+                <MyIcon name={'core/chat/chevronDown'} w={'14px'} h={'14px'} color={'#667085'} />
+              </Flex>
+            </MenuButton>
+            <Portal>
+              <MenuList
+                minW={'92px'}
+                p={'6px'}
+                border={'1px solid'}
+                borderColor={'#E8EBF0'}
+                boxShadow={'3'}
+                zIndex={2000}
+              >
+                {sourceOptions.map((option) => {
+                  const isSelected = option.value === selectedSource;
 
-                return (
-                  <MenuItem
-                    key={option.value ?? 'all'}
-                    h={'32px'}
-                    borderRadius={'6px'}
-                    fontSize={'14px'}
-                    fontWeight={'medium'}
-                    color={isSelected ? 'primary.600' : '#383F50'}
-                    bg={isSelected ? 'myGray.50' : 'white'}
-                    _hover={{ bg: 'myGray.50' }}
-                    onClick={() => onSourceSelect?.(option.value)}
-                  >
-                    <Box flex={1}>{option.label}</Box>
-                    {isSelected && <MyIcon name={'common/check'} w={4} color={'primary.600'} />}
-                  </MenuItem>
-                );
-              })}
-            </MenuList>
-          </Portal>
-        </Menu>
-      ) : (
-        <Box
-          {...tagBaseStyles}
-          rounded={'sm'}
-          bg={selectedTagIds.length === 0 ? 'myGray.150' : 'transparent'}
-          onClick={() => onTagSelect([])}
-        >
-          {t('common:All')}
-        </Box>
-      )}
+                  return (
+                    <MenuItem
+                      key={option.value ?? 'all'}
+                      h={'32px'}
+                      borderRadius={'6px'}
+                      fontSize={'14px'}
+                      fontWeight={'medium'}
+                      color={isSelected ? 'primary.600' : '#383F50'}
+                      bg={isSelected ? 'myGray.50' : 'white'}
+                      _hover={{ bg: 'myGray.50' }}
+                      onClick={() => onSourceSelect?.(option.value)}
+                    >
+                      <Box flex={1}>{option.label}</Box>
+                      {isSelected && <MyIcon name={'common/check'} w={4} color={'primary.600'} />}
+                    </MenuItem>
+                  );
+                })}
+              </MenuList>
+            </Portal>
+          </Menu>
+          <Box mx={2} h={'20px'} w={'1px'} bg={'#E8EBF0'} flexShrink={0} />
+        </>
+      ) : null}
       <Box
-        mx={2}
-        h={'20px'}
-        w={'1px'}
-        bg={isMarketplaceVariant ? '#E8EBF0' : 'myGray.200'}
+        mr={2}
+        color={usePillStyles ? '#485264' : 'myGray.700'}
+        fontSize={usePillStyles ? '14px' : 'sm'}
+        fontWeight={'medium'}
+        letterSpacing={usePillStyles ? '0.1px' : undefined}
+        whiteSpace={'nowrap'}
         flexShrink={0}
-      />
-      <Box flex={1}>
+      >
+        {t('common:classification')}:
+      </Box>
+      <Box
+        {...tagBaseStyles}
+        {...getTagStateStyles(selectedTagIds.length === 0)}
+        rounded={usePillStyles ? 'full' : 'sm'}
+        onClick={() => onTagSelect([])}
+      >
+        {t('common:All')}
+      </Box>
+      {!usePillStyles && <Box mx={2} h={'20px'} w={'1px'} bg={'myGray.200'} flexShrink={0} />}
+      <Box flex={1} ml={usePillStyles ? 2 : undefined}>
         <Flex gap={2} flexWrap="nowrap">
           {tags.map((tag) => {
             const isSelected = selectedTagIds.includes(tag.tagId);
@@ -213,15 +214,8 @@ const ToolTagFilterBox = ({
               <Box
                 key={tag.tagId}
                 {...tagBaseStyles}
-                display={isMarketplaceVariant ? 'inline-flex' : undefined}
+                {...getTagStateStyles(isSelected)}
                 rounded={'full'}
-                bg={(() => {
-                  if (isMarketplaceVariant) {
-                    return isSelected ? 'myGray.50 !important' : 'white';
-                  }
-                  return isSelected ? 'myGray.150 !important' : 'transparent';
-                })()}
-                _hover={isMarketplaceVariant ? { bg: 'myGray.50' } : undefined}
                 onClick={() => toggleTag(tag.tagId)}
               >
                 {t(parseI18nString(tag.tagName, i18n.language))}

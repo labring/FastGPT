@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   beforeUpdateAppFormat,
   validatePublishAppAgentSkillReadPermissions
@@ -7,6 +7,7 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
+import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
@@ -15,8 +16,177 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getUser } from '@test/datas/users';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 
+const mocks = vi.hoisted(() => ({
+  getClientToolPreviewNode: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/app/tool/utils/client', () => mocks);
+
 describe('beforeUpdateAppFormat', () => {
-  it('保存前统一压缩知识库选择项，去掉编辑态删除标记和快照字段', () => {
+  it.each([SystemToolSecretInputTypeEnum.system, SystemToolSecretInputTypeEnum.team])(
+    '保存前清理 %s 类型中的临时密钥值',
+    async (type) => {
+      const nodes = [
+        {
+          inputs: [
+            {
+              key: NodeInputKeyEnum.systemInputConfig,
+              value: {
+                type,
+                value: {
+                  apiKey: {
+                    value: 'temporary-secret',
+                    secret: ''
+                  }
+                }
+              },
+              inputList: [{ key: 'apiKey', inputType: 'secret' }]
+            }
+          ]
+        } as StoreNodeItemType
+      ];
+
+      await beforeUpdateAppFormat({ nodes, teamId: 'team-1' });
+
+      expect(nodes[0].inputs[0].value).toEqual({ type });
+    }
+  );
+
+  it('即使系统输入被标记为引用，也不能保留临时密钥值', async () => {
+    const nodes = [
+      {
+        inputs: [
+          {
+            key: NodeInputKeyEnum.systemInputConfig,
+            selectedTypeIndex: 0,
+            renderTypeList: [FlowNodeInputTypeEnum.reference],
+            value: {
+              type: SystemToolSecretInputTypeEnum.system,
+              value: {
+                apiKey: {
+                  value: 'temporary-secret',
+                  secret: ''
+                }
+              }
+            },
+            inputList: [{ key: 'apiKey', inputType: 'secret' }]
+          }
+        ]
+      } as StoreNodeItemType
+    ];
+
+    await beforeUpdateAppFormat({ nodes });
+
+    expect(nodes[0].inputs[0].value).toEqual({
+      type: SystemToolSecretInputTypeEnum.system
+    });
+  });
+
+  it('保存前仅加密 manual 类型的临时密钥值', async () => {
+    const nodes = [
+      {
+        inputs: [
+          {
+            key: NodeInputKeyEnum.systemInputConfig,
+            value: {
+              type: SystemToolSecretInputTypeEnum.manual,
+              value: {
+                apiKey: {
+                  value: 'temporary-secret',
+                  secret: ''
+                },
+                region: 'cn'
+              }
+            },
+            inputList: [
+              { key: 'apiKey', inputType: 'secret' },
+              { key: 'region', inputType: 'input' }
+            ]
+          }
+        ]
+      } as StoreNodeItemType
+    ];
+
+    await beforeUpdateAppFormat({ nodes });
+
+    const value = nodes[0].inputs[0].value as any;
+    expect(value.type).toBe(SystemToolSecretInputTypeEnum.manual);
+    expect(value.value.apiKey.value).toBe('');
+    expect(value.value.apiKey.secret).toEqual(expect.any(String));
+    expect(value.value.region).toBe('cn');
+  });
+
+  it('保存 Agent 嵌套工具配置前加密手动密钥', async () => {
+    mocks.getClientToolPreviewNode.mockResolvedValueOnce({
+      inputs: [
+        {
+          key: NodeInputKeyEnum.systemInputConfig,
+          inputList: [{ key: 'apiKey', inputType: 'secret' }]
+        }
+      ]
+    });
+    const nodes = [
+      {
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            value: [
+              {
+                id: 'system-tool',
+                config: {
+                  system_input_config: {
+                    type: SystemToolSecretInputTypeEnum.manual,
+                    value: {
+                      apiKey: { value: 'nested-secret', secret: '' }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ] as StoreNodeItemType[];
+
+    await beforeUpdateAppFormat({ nodes, teamId: 'team-1' });
+
+    const config = (nodes[0].inputs[0].value as any)[0].config;
+    expect(config.system_input_config.value.apiKey.value).toBe('');
+    expect(config.system_input_config.value.apiKey.secret).toEqual(expect.any(String));
+  });
+
+  it('保存 Agent 嵌套团队工具配置时把 teamId 传给预览接口', async () => {
+    mocks.getClientToolPreviewNode.mockResolvedValueOnce({ inputs: [] });
+    const nodes = [
+      {
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            value: [
+              {
+                id: 'systemTool-weather',
+                source: 'teamId:team-1',
+                config: {}
+              }
+            ]
+          }
+        ]
+      }
+    ] as StoreNodeItemType[];
+
+    await beforeUpdateAppFormat({ nodes, teamId: 'team-1' });
+
+    expect(mocks.getClientToolPreviewNode).toHaveBeenCalledWith({
+      appId: 'systemTool-weather',
+      versionId: undefined,
+      source: 'teamId:team-1',
+      teamId: 'team-1'
+    });
+  });
+
+  it('保存前统一压缩知识库选择项，去掉编辑态删除标记和快照字段', async () => {
     const nodes = [
       {
         flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
@@ -41,7 +211,7 @@ describe('beforeUpdateAppFormat', () => {
       } as StoreNodeItemType
     ];
 
-    beforeUpdateAppFormat({ nodes });
+    await beforeUpdateAppFormat({ nodes });
 
     expect(nodes[0].inputs[0].value).toEqual([
       {
@@ -50,7 +220,7 @@ describe('beforeUpdateAppFormat', () => {
     ]);
   });
 
-  it('保存前兼容旧版单对象知识库选择项', () => {
+  it('保存前兼容旧版单对象知识库选择项', async () => {
     const nodes = [
       {
         flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
@@ -72,7 +242,7 @@ describe('beforeUpdateAppFormat', () => {
       } as StoreNodeItemType
     ];
 
-    beforeUpdateAppFormat({ nodes });
+    await beforeUpdateAppFormat({ nodes });
 
     expect(nodes[0].inputs[0].value).toEqual([
       {
@@ -81,7 +251,7 @@ describe('beforeUpdateAppFormat', () => {
     ]);
   });
 
-  it('保存前兼容已压缩的知识库选择项数组', () => {
+  it('保存前兼容已压缩的知识库选择项数组', async () => {
     const nodes = [
       {
         flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
@@ -103,7 +273,7 @@ describe('beforeUpdateAppFormat', () => {
       } as StoreNodeItemType
     ];
 
-    beforeUpdateAppFormat({ nodes });
+    await beforeUpdateAppFormat({ nodes });
 
     expect(nodes[0].inputs[0].value).toEqual([
       {
@@ -115,7 +285,7 @@ describe('beforeUpdateAppFormat', () => {
     ]);
   });
 
-  it('保存前统一压缩 Agent datasetParams 中的知识库选择项', () => {
+  it('保存前统一压缩 Agent datasetParams 中的知识库选择项', async () => {
     const nodes = [
       {
         flowNodeType: FlowNodeTypeEnum.agent,
@@ -142,7 +312,7 @@ describe('beforeUpdateAppFormat', () => {
       } as StoreNodeItemType
     ];
 
-    beforeUpdateAppFormat({ nodes });
+    await beforeUpdateAppFormat({ nodes });
 
     expect(nodes[0].inputs[0].value).toMatchObject({
       datasets: [
@@ -155,7 +325,7 @@ describe('beforeUpdateAppFormat', () => {
     });
   });
 
-  it('保存前保留知识库选择输入的引用模式值', () => {
+  it('保存前保留知识库选择输入的引用模式值', async () => {
     const referenceValue = ['sourceNode', 'datasets'];
     const nodes = [
       {
@@ -171,12 +341,32 @@ describe('beforeUpdateAppFormat', () => {
       } as StoreNodeItemType
     ];
 
-    beforeUpdateAppFormat({ nodes });
+    await beforeUpdateAppFormat({ nodes });
 
     expect(nodes[0].inputs[0].value).toBe(referenceValue);
   });
 
-  it('保存前遇到非法知识库选择项时抛错，避免清空后继续保存', () => {
+  it('允许保存尚未选择知识库的工作流草稿', async () => {
+    const nodes = [
+      {
+        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.datasetSelectList,
+            renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
+            selectedType: FlowNodeInputTypeEnum.selectDataset,
+            value: undefined
+          }
+        ]
+      } as StoreNodeItemType
+    ];
+
+    await beforeUpdateAppFormat({ nodes });
+
+    expect(nodes[0].inputs[0].value).toEqual([]);
+  });
+
+  it('保存前遇到非法知识库选择项时抛错，避免清空后继续保存', async () => {
     const nodes = [
       {
         flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
@@ -195,10 +385,10 @@ describe('beforeUpdateAppFormat', () => {
       } as StoreNodeItemType
     ];
 
-    expect(() => beforeUpdateAppFormat({ nodes })).toThrow();
+    await expect(beforeUpdateAppFormat({ nodes, teamId: 'team-1' })).rejects.toThrow();
   });
 
-  it('保存前移除 Agent Skill 的编辑态删除标记和展示快照字段', () => {
+  it('保存前移除 Agent Skill 的编辑态删除标记和展示快照字段', async () => {
     const nodes = [
       {
         flowNodeType: FlowNodeTypeEnum.agent,
@@ -227,7 +417,7 @@ describe('beforeUpdateAppFormat', () => {
       } as StoreNodeItemType
     ];
 
-    beforeUpdateAppFormat({ nodes });
+    await beforeUpdateAppFormat({ nodes });
 
     expect(nodes[0].inputs[0].value).toEqual([
       {

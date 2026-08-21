@@ -1,21 +1,27 @@
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import type {
   InvokeUserInfoBodyType,
   InvokeUserInfoQueryType,
   InvokeUserInfoResponseType
 } from '@fastgpt/global/openapi/plugin/invoke';
+import {
+  InvokeUserInfoQuerySchema,
+  InvokeUserInfoResponseSchema
+} from '@fastgpt/global/openapi/plugin/invoke';
 import { InvokeProcessor } from '@fastgpt/service/support/invoke/invoke';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(
   req: ApiRequestProps<InvokeUserInfoBodyType, InvokeUserInfoQueryType>,
-  res: ApiResponseType<InvokeUserInfoResponseType>
+  _res: ApiResponseType<InvokeUserInfoResponseType>
 ): Promise<InvokeUserInfoResponseType> {
-  // const body = InvokeUserInfoBodySchema.parse(req.body);
-  // const query = InvokeUserInfoQuerySchema.parse(req.query);
+  parseApiInput({ req, querySchema: InvokeUserInfoQuerySchema });
 
   const token = req.headers.authorization?.split(' ')[1] || '';
-  return InvokeProcessor.getInstanceFromToken(token).handleGetUserInfo();
+  const userInfo = await InvokeProcessor.getInstanceFromToken(token).handleGetUserInfo();
+
+  return InvokeUserInfoResponseSchema.parse(userInfo);
 }
 
 export default NextAPI(handler);

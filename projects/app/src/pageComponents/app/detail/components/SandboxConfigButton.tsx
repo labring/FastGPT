@@ -88,8 +88,7 @@ function SandboxConfigButton({
           title={t('app:sandbox_config')}
           isOpen={isOpen}
           onClose={onClose}
-          w={'640px'}
-          maxW={'90vw'}
+          size={'md'}
           isCentered
           borderRadius={'10px'}
           footer={

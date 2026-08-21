@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Box, Button, Card, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -46,9 +46,11 @@ const RenderUserFormInteractive = function RenderFormInput({
       <FormInputComponent
         defaultValues={defaultValues}
         interactiveParams={interactive.params}
-        SubmitButton={({ onSubmit }) => (
+        SubmitButton={({ onSubmit, isFileUploading, hasFileError }) => (
           <Button
             leftIcon={<MyIcon name="core/workflow/debugNext" />}
+            isDisabled={isFileUploading || hasFileError}
+            isLoading={isFileUploading}
             onClick={() =>
               onSubmit((data) => {
                 onNext(JSON.stringify(data));
@@ -72,7 +74,7 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
   );
   const { onChangeNode } = useContextSelector(WorkflowActionsContext, (v) => v);
 
-  const statusMap = useRef({
+  const statusData = {
     running: {
       bg: 'primary.50',
       text: t('common:core.workflow.Running'),
@@ -93,8 +95,7 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
       text: t('common:core.workflow.Skipped'),
       icon: 'core/workflow/runSkip'
     }
-  });
-  const statusData = statusMap.current[debugResult?.status || 'running'];
+  }[debugResult?.status || 'running'];
 
   const response = debugResult?.response;
 

@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from 'react';
 import { Box, Input, Textarea, type BoxProps } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
 
 export type InlineEditProps = BoxProps & {
   value: string;
@@ -22,11 +21,10 @@ export const InlineEdit = React.memo(function InlineEdit({
   maxLength,
   placeholder,
   innerH,
-  noOfLines = 1,
+  noOfLines,
   renderDisplay,
   ...rest
 }: InlineEditProps) {
-  const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [prevValue, setPrevValue] = useState(value);
   const [tempValue, setTempValue] = useState(value);
@@ -96,7 +94,7 @@ export const InlineEdit = React.memo(function InlineEdit({
               color={'inherit'}
               variant={'unstyled'}
               value={tempValue}
-              placeholder={placeholder ? t(placeholder as any) : ''}
+              placeholder={placeholder}
               maxLength={maxLength}
               onChange={(e) => setTempValue(e.target.value)}
               autoFocus
@@ -129,7 +127,7 @@ export const InlineEdit = React.memo(function InlineEdit({
             </Box>
             <Textarea
               value={tempValue}
-              placeholder={placeholder ? t(placeholder as any) : ''}
+              placeholder={placeholder}
               maxLength={maxLength}
               onChange={(e) => setTempValue(e.target.value)}
               autoFocus
@@ -162,11 +160,12 @@ export const InlineEdit = React.memo(function InlineEdit({
     <Box
       cursor={'pointer'}
       onClick={() => setIsEditing(true)}
-      title={t(value as any)}
+      title={value}
       w={'100%'}
       minW={0}
       maxW={'100%'}
-      noOfLines={noOfLines}
+      noOfLines={noOfLines ?? (type === 'input' ? 1 : undefined)}
+      whiteSpace={type === 'textarea' ? 'pre-wrap' : undefined}
       wordBreak={'break-all'}
       borderRadius={'sm'}
       border={'1px solid transparent'}
@@ -186,9 +185,7 @@ export const InlineEdit = React.memo(function InlineEdit({
       color={type === 'input' ? 'myGray.900' : 'myGray.500'}
       {...rest}
     >
-      {renderDisplay
-        ? renderDisplay(value)
-        : t(value as any) || (placeholder ? t(placeholder as any) : '')}
+      {renderDisplay ? renderDisplay(value) : value || placeholder || ''}
     </Box>
   );
 });

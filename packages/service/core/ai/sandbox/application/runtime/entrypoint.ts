@@ -5,9 +5,9 @@
  */
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
+import { LeaseCache, isRedisLeaseError } from '@fastgpt/dal/redis/caches';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { serviceEnv } from '../../../../../env';
-import { isRedisLeaseError, withRedisLease } from '../../../../../common/redis/lock';
 import { createAgentSandboxInitializingError } from '../../error';
 import type { SandboxPrepareContext, SandboxPrepareStep } from './prepare';
 import { buildRuntimeHash } from '../../utils';
@@ -25,6 +25,7 @@ const MAX_LOG_OUTPUT_LENGTH = 4000;
 export const MAX_ENTRYPOINT_OUTPUT_BYTES = 8 * 1024;
 const SANDBOX_INIT_LEASE_TTL_MS = 3 * 60 * 1000;
 const SANDBOX_INIT_LEASE_RENEW_INTERVAL_MS = SANDBOX_INIT_LEASE_TTL_MS / 6;
+const leaseCache = new LeaseCache({ logger });
 
 /**
  * 保护同一个 sandbox 的运行态初始化流程。
@@ -39,18 +40,20 @@ export const withAgentSandboxInitLease = async <T>({
   sandboxId: string;
   fn: () => Promise<T>;
 }): Promise<T> => {
-  return withRedisLease({
-    key: `agent-sandbox:init:${sandboxId}`,
-    label: 'agent-sandbox-init',
-    ttlMs: SANDBOX_INIT_LEASE_TTL_MS,
-    renewIntervalMs: SANDBOX_INIT_LEASE_RENEW_INTERVAL_MS,
-    fn
-  }).catch((error) => {
-    if (isRedisLeaseError(error)) {
-      throw createAgentSandboxInitializingError();
-    }
-    throw error;
-  });
+  return leaseCache
+    .withLease({
+      key: `agent-sandbox:init:${sandboxId}`,
+      label: 'agent-sandbox-init',
+      ttlMs: SANDBOX_INIT_LEASE_TTL_MS,
+      renewIntervalMs: SANDBOX_INIT_LEASE_RENEW_INTERVAL_MS,
+      fn
+    })
+    .catch((error) => {
+      if (isRedisLeaseError(error)) {
+        throw createAgentSandboxInitializingError();
+      }
+      throw error;
+    });
 };
 
 /**
@@ -77,11 +80,12 @@ export const runAgentSandboxEntrypoint = async ({
     return;
   }
 
-  const command = buildBashScriptCommand(script, workDirectory);
+  const command = buildBashScriptCommand(script);
   const result = await executeEntrypointCommand({
     sandbox,
     command,
-    label: 'sandbox'
+    label: 'sandbox',
+    workingDirectory: workDirectory
   });
 
   if (!result) return;
@@ -101,7 +105,7 @@ export const runSandboxEntrypoint =
     await runAgentSandboxEntrypoint({
       sandbox: context.sandbox,
       sandboxEntrypoint,
-      workDirectory: context.workDirectory
+      workDirectory: context.workspaceRoot ?? context.workDirectory
     });
     return context;
   };
@@ -109,17 +113,20 @@ export const runSandboxEntrypoint =
 export const executeEntrypointCommand = async ({
   sandbox,
   command,
-  label
+  label,
+  workingDirectory
 }: {
   sandbox: ISandbox;
   command: string;
   label: string;
+  workingDirectory?: string;
 }): Promise<boolean> => {
   const timeoutSeconds = getEntrypointTimeoutSeconds();
   const result = await sandbox
     .execute(command, {
       timeoutMs: timeoutSeconds * 1000,
-      maxOutputBytes: MAX_ENTRYPOINT_OUTPUT_BYTES
+      maxOutputBytes: MAX_ENTRYPOINT_OUTPUT_BYTES,
+      workingDirectory
     })
     .catch((error) => {
       logger.warn('[Agent Skills] Entrypoint execution threw', {
@@ -157,14 +164,9 @@ export const buildLimitedOutputShellCommand = (scriptCommand: string): string =>
     `${scriptCommand} > >(tail -c ${MAX_ENTRYPOINT_OUTPUT_BYTES}) 2> >(tail -c ${MAX_ENTRYPOINT_OUTPUT_BYTES} >&2)`
   )}`;
 
-const buildBashScriptCommand = (script: string, workDirectory?: string): string => {
+const buildBashScriptCommand = (script: string): string => {
   const encoded = Buffer.from(script, 'utf-8').toString('base64');
-  const runScriptCommand = buildLimitedOutputShellCommand(
-    `printf %s ${shellQuote(encoded)} | base64 -d | /bin/bash`
-  );
-  return workDirectory
-    ? `cd ${shellQuote(workDirectory)} && ${runScriptCommand}`
-    : runScriptCommand;
+  return buildLimitedOutputShellCommand(`printf %s ${shellQuote(encoded)} | base64 -d | /bin/bash`);
 };
 
 const getEntrypointTimeoutSeconds = (): number =>

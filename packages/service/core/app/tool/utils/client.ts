@@ -3,6 +3,7 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { initToolInputsTypeByDefaultMode } from '@fastgpt/global/core/app/formEdit/utils';
 import {
   jsonSchema2NodeInput,
   jsonSchema2NodeOutput,
@@ -11,9 +12,11 @@ import {
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import {
   getToolNameCandidates,
   isDebugToolSource,
+  isTeamPluginSource,
   splitCombineToolId,
   splitToolsetToolPluginId
 } from '@fastgpt/global/core/app/tool/utils';
@@ -39,7 +42,8 @@ import {
   pluginData2FlowNodeIO,
   toolSetData2FlowNodeIO,
   toolData2FlowNodeIO,
-  appData2FlowNodeIO
+  appData2FlowNodeIO,
+  projectExternalVariableInput
 } from '@fastgpt/global/core/workflow/utils';
 import { Types } from 'mongoose';
 import { getMCPChildren } from '../../mcp';
@@ -52,6 +56,11 @@ import type {
 } from '@fastgpt/global/core/workflow/type';
 import type { PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import type { UserTagsType } from '@fastgpt/global/support/user/type';
+import {
+  assertTeamPluginSourceAccess,
+  getRawPluginIdFromSystemToolId,
+  normalizeTeamPluginStatus
+} from '../../../plugin/teamPluginPolicy';
 
 type AppToolType = WorkflowTemplateType & {
   status?: PluginStatusType;
@@ -102,7 +111,8 @@ const omitRuntimeJsonSchemaField = <T>(value: T): T => {
 
   if (!value || typeof value !== 'object') return value;
 
-  const { jsonSchema, ...rest } = value as Record<string, any>;
+  const rest = { ...(value as Record<string, any>) };
+  delete rest.jsonSchema;
 
   return Object.fromEntries(
     Object.entries(rest).map(([key, item]) => [key, omitRuntimeJsonSchemaField(item)])
@@ -110,7 +120,11 @@ const omitRuntimeJsonSchemaField = <T>(value: T): T => {
 };
 
 const omitClientPreviewSchemaFields = <T extends Record<string, any>>(value: T): T => {
-  const { inputSchema, outputSchema, secretSchema, ...rest } = value;
+  const rest = { ...value };
+  delete rest.inputSchema;
+  delete rest.outputSchema;
+  delete rest.secretSchema;
+
   return omitRuntimeJsonSchemaField(rest) as T;
 };
 
@@ -125,20 +139,34 @@ export async function getClientSystemToolPreviewNode({
   versionId,
   getLatestVersion,
   lang = 'en',
-  source: toolSource = 'system'
+  source: toolSource = 'system',
+  teamId
 }: {
   pluginId: string;
   versionId?: string;
   getLatestVersion?: boolean;
   lang?: localeType;
   source?: string;
+  teamId?: string;
 }): Promise<FlowNodeTemplateType> {
   const systemToolRepo = SystemToolRepo.getInstance();
+  const runtimeSource = await (async () => {
+    if (!isTeamPluginSource(toolSource)) return toolSource;
+    if (!teamId) return Promise.reject('plugin.team_id_required');
+
+    await assertTeamPluginSourceAccess({
+      teamId,
+      source: toolSource,
+      pluginId: getRawPluginIdFromSystemToolId(pluginId)
+    });
+
+    return toolSource;
+  })();
   const toolDetail = await systemToolRepo.getSystemToolDetail({
     pluginId,
     version: versionId || undefined,
     lang,
-    source: toolSource
+    source: runtimeSource
   });
   const shouldReturnVersion = versionId ? true : versionId === undefined && getLatestVersion;
   const secrets = jsonSchema2SecretInput({ jsonSchema: toolDetail.secretSchema });
@@ -147,6 +175,7 @@ export async function getClientSystemToolPreviewNode({
     schemaType: 'systemTool'
   });
   const schemaOutputs = jsonSchema2NodeOutput({ jsonSchema: toolDetail.outputSchema });
+  const isWorkflowTool = !!toolDetail.associatedPluginId;
 
   const inputs = [
     ...(secrets?.length
@@ -159,10 +188,13 @@ export async function getClientSystemToolPreviewNode({
           }
         ]
       : []),
-    ...schemaInputs
+    ...(isWorkflowTool ? schemaInputs.map(projectExternalVariableInput) : schemaInputs)
   ];
-  const isWorkflowTool = !!toolDetail.associatedPluginId;
-  const toolConfigSource = isDebugToolSource(toolSource) ? toolSource : undefined;
+  const toolConfigSource =
+    isDebugToolSource(toolSource) || isTeamPluginSource(toolSource) ? toolSource : undefined;
+  const displayStatus = isTeamPluginSource(toolSource)
+    ? normalizeTeamPluginStatus(toolDetail.status)
+    : toolDetail.status;
 
   return {
     id: getNanoid(),
@@ -195,8 +227,9 @@ export async function getClientSystemToolPreviewNode({
     hasTokenFee: toolDetail.hasTokenFee,
     hasSystemSecret: toolDetail.hasSystemSecret,
     isFolder: !isWorkflowTool && toolDetail.isToolSet,
-    status: toolDetail.status,
-    inputs,
+    status: displayStatus,
+    // 工具预览是首次加入工作流/Agent，使用 schema 声明的默认输入方式。
+    inputs: initToolInputsTypeByDefaultMode(inputs, { forceDefaultMode: true }),
 
     outputs: schemaOutputs
       ? schemaOutputs.some((item) => item.type === FlowNodeOutputTypeEnum.error)
@@ -243,13 +276,15 @@ export async function getClientToolPreviewNode({
   versionId,
   getLatestVersion,
   lang = 'en',
-  source: toolSource = 'system'
+  source: toolSource = 'system',
+  teamId
 }: {
   appId: string;
   versionId?: string;
   getLatestVersion?: boolean;
   lang?: localeType;
   source?: string;
+  teamId?: string;
 }): Promise<FlowNodeTemplateType> {
   const { source: idSource, pluginId } = splitCombineToolId(appId);
 
@@ -260,7 +295,8 @@ export async function getClientToolPreviewNode({
         versionId,
         getLatestVersion,
         lang,
-        source: toolSource
+        source: toolSource,
+        teamId
       });
     }
 
@@ -442,9 +478,14 @@ export async function getClientToolPreviewNode({
       // Plugin workflow
       if (!!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)) {
         // plugin app
+        const nodeIOConfig = pluginData2FlowNodeIO({ nodes: app.workflow.nodes });
+
         return {
           flowNodeType: FlowNodeTypeEnum.pluginModule,
-          nodeIOConfig: pluginData2FlowNodeIO({ nodes: app.workflow.nodes })
+          nodeIOConfig: {
+            ...nodeIOConfig,
+            inputs: normalizeWorkflowToolInputsDefaultMode(nodeIOConfig.inputs)
+          }
         };
       }
 
@@ -477,10 +518,17 @@ export async function getClientToolPreviewNode({
       };
     })();
 
+    // 预览节点来自工具定义，输入上的 selectedType 是原始控件类型；首次加入工具时应优先应用 isToolParam 默认值。
+    const normalizedInputs = initToolInputsTypeByDefaultMode(nodeIOConfig.inputs, {
+      forceDefaultMode: true,
+      allowUserChatInputAgentGenerated: true
+    });
+
     return {
       id: getNanoid(),
       pluginId: app.id,
-      source: isDebugToolSource(toolSource) ? toolSource : undefined,
+      source:
+        isDebugToolSource(toolSource) || isTeamPluginSource(toolSource) ? toolSource : undefined,
       flowNodeType,
       avatar: app.avatar,
       name: parseI18nString(app.name, lang),
@@ -506,6 +554,7 @@ export async function getClientToolPreviewNode({
       status: app.status,
 
       ...nodeIOConfig,
+      inputs: normalizedInputs,
       outputs: nodeIOConfig.outputs.some((item) => item.type === FlowNodeOutputTypeEnum.error)
         ? nodeIOConfig.outputs
         : [...nodeIOConfig.outputs, Output_Template_Error_Message]

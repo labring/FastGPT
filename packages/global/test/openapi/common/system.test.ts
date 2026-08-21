@@ -1,0 +1,154 @@
+import { describe, expect, expectTypeOf, it } from 'vitest';
+import { ModelTypeEnum } from '../../../core/ai/constants';
+import {
+  EmbeddingModelItemSchema,
+  type EmbeddingModelItemType,
+  LLMModelItemSchema
+} from '../../../core/ai/model.schema';
+import { GetSystemInitDataResponseSchema } from '../../../openapi/common/system/api';
+import { StandardSubLevelEnum } from '../../../support/wallet/sub/constants';
+
+const desensitizedEmbeddingModel = {
+  type: ModelTypeEnum.embedding,
+  provider: 'OpenAI',
+  model: 'text-embedding-3-small',
+  name: 'Embedding-2',
+  defaultToken: 500,
+  maxToken: 3000
+};
+
+describe('system initialization OpenAPI contract', () => {
+  it('strips sensitive fields from active and default model responses', () => {
+    const modelWithSecrets = {
+      ...desensitizedEmbeddingModel,
+      requestUrl: 'https://provider.example/v1',
+      requestAuth: 'model-secret',
+      defaultConfig: { secret: 'default-config' },
+      dbConfig: { secret: 'db-config' },
+      queryConfig: { secret: 'query-config' }
+    };
+
+    const result = GetSystemInitDataResponseSchema.parse({
+      activeModelList: [modelWithSecrets],
+      defaultModels: { embedding: modelWithSecrets }
+    });
+
+    expect(result.activeModelList?.[0]).not.toHaveProperty('requestUrl');
+    expect(result.activeModelList?.[0]).not.toHaveProperty('requestAuth');
+    expect(result.activeModelList?.[0]).not.toHaveProperty('defaultConfig');
+    expect(result.activeModelList?.[0]).not.toHaveProperty('dbConfig');
+    expect(result.activeModelList?.[0]).not.toHaveProperty('queryConfig');
+    expect(result.defaultModels?.embedding).not.toHaveProperty('requestUrl');
+    expect(result.defaultModels?.embedding).not.toHaveProperty('requestAuth');
+    expect(result.defaultModels?.embedding).not.toHaveProperty('defaultConfig');
+    expect(result.defaultModels?.embedding).not.toHaveProperty('dbConfig');
+    expect(result.defaultModels?.embedding).not.toHaveProperty('queryConfig');
+    expect(JSON.stringify(result)).not.toContain('model-secret');
+  });
+
+  it('accepts legacy partial standard plans with a stored activity expiration date', () => {
+    const activityExpirationTime = new Date('2026-08-31T16:00:00.000Z');
+    const plan = {
+      price: 0,
+      totalPoints: 100,
+      maxTeamMember: 1,
+      maxAppAmount: 10,
+      maxDatasetAmount: 3,
+      maxDatasetSize: 600,
+      chatHistoryStoreDuration: 30
+    };
+
+    const result = GetSystemInitDataResponseSchema.parse({
+      subPlans: {
+        standard: {
+          [StandardSubLevelEnum.free]: plan,
+          [StandardSubLevelEnum.basic]: plan,
+          [StandardSubLevelEnum.advanced]: plan,
+          [StandardSubLevelEnum.custom]: {
+            name: 'Custom Plan',
+            customFormUrl: 'https://example.com/contact'
+          }
+        },
+        activityExpirationTime
+      }
+    });
+
+    expect(result.subPlans?.standard).toEqual({
+      [StandardSubLevelEnum.free]: plan,
+      [StandardSubLevelEnum.basic]: plan,
+      [StandardSubLevelEnum.advanced]: plan,
+      [StandardSubLevelEnum.custom]: {
+        name: 'Custom Plan',
+        customFormUrl: 'https://example.com/contact'
+      }
+    });
+    expect(result.subPlans?.activityExpirationTime).toEqual(new Date(activityExpirationTime));
+  });
+
+  it.each(['', null, '2026-08-31T16:00:00.000Z'])(
+    'rejects a non-Date activity expiration value at read time',
+    (value) => {
+      expect(() =>
+        GetSystemInitDataResponseSchema.parse({
+          subPlans: { activityExpirationTime: value }
+        })
+      ).toThrow();
+    }
+  );
+
+  it('rejects dirty subscription values at read time', () => {
+    expect(() =>
+      GetSystemInitDataResponseSchema.parse({
+        subPlans: {
+          standard: {
+            [StandardSubLevelEnum.custom]: {
+              priceDesc: '定制化计费',
+              customDescriptions: ['专属客户经理'],
+              customFormUrl: 'https://example.com/contact'
+            }
+          },
+          extraDatasetSize: { price: '4' }
+        }
+      })
+    ).toThrow();
+  });
+
+  it('fills the default weight for an embedding model without weight', () => {
+    expect(
+      GetSystemInitDataResponseSchema.parse({
+        activeModelList: [desensitizedEmbeddingModel]
+      })
+    ).toEqual({
+      activeModelList: [{ ...desensitizedEmbeddingModel, weight: 0 }]
+    });
+  });
+
+  it('defaults missing embedding model weight to zero', () => {
+    expect(EmbeddingModelItemSchema.parse(desensitizedEmbeddingModel)).toEqual({
+      ...desensitizedEmbeddingModel,
+      weight: 0
+    });
+    expectTypeOf<EmbeddingModelItemType['weight']>().toEqualTypeOf<number>();
+  });
+
+  it('preserves an explicitly configured embedding model weight', () => {
+    expect(EmbeddingModelItemSchema.parse({ ...desensitizedEmbeddingModel, weight: 2 })).toEqual({
+      ...desensitizedEmbeddingModel,
+      weight: 2
+    });
+  });
+
+  it('accepts an LLM model without functionCall', () => {
+    expect(
+      LLMModelItemSchema.parse({
+        type: ModelTypeEnum.llm,
+        provider: 'OpenAI',
+        model: 'gpt-5',
+        name: 'GPT-5',
+        maxContext: 128000,
+        maxResponse: 16000,
+        quoteMaxToken: 12000
+      })
+    ).not.toHaveProperty('functionCall');
+  });
+});

@@ -1,45 +1,35 @@
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { type SystemModelSchemaType } from '@fastgpt/service/core/ai/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
-import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/config/utils';
+import {
+  parsePersistedSystemModelConfig,
+  updatedReloadSystemModel
+} from '@fastgpt/service/core/ai/config/utils';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  UpdateSystemModelsWithJsonBodySchema,
+  UpdateSystemModelsWithJsonResponseSchema,
+  type UpdateSystemModelsWithJsonBody,
+  type UpdateSystemModelsWithJsonResponse
+} from '@fastgpt/global/openapi/admin/core/ai/model/api';
 
-export type updateWithJsonBody = {
-  config: string;
-};
+export type updateWithJsonBody = UpdateSystemModelsWithJsonBody;
 
-async function handler(req: ApiRequestProps<updateWithJsonBody>) {
+async function handler(
+  req: ApiRequestProps<updateWithJsonBody>
+): Promise<UpdateSystemModelsWithJsonResponse> {
   await authSystemAdmin({ req });
 
-  const { config } = req.body;
-  const data = JSON.parse(config) as SystemModelSchemaType[];
-
-  // Check
-  for (const item of data) {
-    if (!item.model || !item.metadata || typeof item.metadata !== 'object') {
-      return Promise.reject('Invalid model or metadata');
-    }
-    if (!item.metadata.type) {
-      return Promise.reject(`${item.model} metadata.type is required`);
-    }
-    if (!item.metadata.model) {
-      return Promise.reject(`${item.model} metadata.model is required`);
-    }
-    if (!item.metadata.provider) {
-      return Promise.reject(`${item.model} metadata.provider is required`);
-    }
-    item.metadata.model = item.model.trim();
-    if (!item.metadata.name) {
-      item.metadata.name = item.model;
-    }
-    if ('defaultConfig' in item.metadata && typeof item.metadata.defaultConfig !== 'object') {
-      {
-        item.metadata.defaultConfig = {};
-      }
-    }
-  }
+  const { config } = parseApiInput({
+    req,
+    bodySchema: UpdateSystemModelsWithJsonBodySchema
+  }).body;
+  const data = config.map(({ model, metadata }) => ({
+    model,
+    metadata: parsePersistedSystemModelConfig({ model, metadata })
+  }));
 
   await mongoSessionRun(async (session) => {
     await MongoSystemModel.deleteMany({}, { session });
@@ -54,7 +44,7 @@ async function handler(req: ApiRequestProps<updateWithJsonBody>) {
 
   await updatedReloadSystemModel();
 
-  return {};
+  return UpdateSystemModelsWithJsonResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

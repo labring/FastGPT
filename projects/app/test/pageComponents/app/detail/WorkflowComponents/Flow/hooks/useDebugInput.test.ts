@@ -1,16 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
+import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   FlowNodeInputTypeEnum,
-  FlowNodeOutputTypeEnum
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { WorkflowReferenceSourceNode } from '@/web/core/workflow/utils';
 import {
   checkInputShouldRenderInDebug,
+  debugNodeShouldShowAllInputs,
+  getDebugGlobalVariableFormProps,
   getDebugInputFormProps,
   getDebugInputFormValue,
-  getDebugRuntimeInputs
+  getDebugRuntimeInputs,
+  getWorkflowStartDebugFileInput,
+  getWorkflowStartDebugQuery
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/hooks/useDebugInput';
 
 const makeInput = (input: Partial<FlowNodeInputItemType>): FlowNodeInputItemType => ({
@@ -39,6 +50,166 @@ const validReferenceContext = {
 };
 
 describe('useDebugInput', () => {
+  it('should render all workflow start inputs', () => {
+    expect(debugNodeShouldShowAllInputs(FlowNodeTypeEnum.workflowStart)).toBe(true);
+  });
+
+  it('should render all plugin input fields', () => {
+    expect(debugNodeShouldShowAllInputs(FlowNodeTypeEnum.pluginInput)).toBe(true);
+  });
+
+  it('should keep filtering inputs for ordinary workflow nodes', () => {
+    expect(debugNodeShouldShowAllInputs(FlowNodeTypeEnum.chatNode)).toBe(false);
+  });
+
+  it('should add a file selector for workflow start when app file input is enabled', () => {
+    const input = getWorkflowStartDebugFileInput({
+      flowNodeType: FlowNodeTypeEnum.workflowStart,
+      fileSelectConfig: {
+        canSelectFile: true,
+        canSelectImg: true,
+        maxFiles: 3
+      }
+    });
+
+    expect(input).toMatchObject({
+      key: NodeOutputKeyEnum.userFiles,
+      renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
+      canLocalUpload: true,
+      canUrlUpload: true,
+      canSelectFile: true,
+      canSelectImg: true,
+      maxFiles: 3
+    });
+  });
+
+  it('should not add a workflow start file selector when file input is disabled', () => {
+    expect(
+      getWorkflowStartDebugFileInput({
+        flowNodeType: FlowNodeTypeEnum.workflowStart,
+        fileSelectConfig: { canSelectFile: false, canSelectImg: false }
+      })
+    ).toBeUndefined();
+  });
+
+  it('should not add a workflow start file selector to ordinary nodes', () => {
+    expect(
+      getWorkflowStartDebugFileInput({
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        fileSelectConfig: { canSelectFile: true }
+      })
+    ).toBeUndefined();
+  });
+
+  it('should build workflow start query from text and selected files', () => {
+    expect(
+      getWorkflowStartDebugQuery({
+        flowNodeType: FlowNodeTypeEnum.workflowStart,
+        nodeVariables: {
+          [NodeInputKeyEnum.userChatInput]: 'Summarize the files',
+          [NodeOutputKeyEnum.userFiles]: [
+            {
+              type: ChatFileTypeEnum.file,
+              name: 'draft.pdf',
+              key: 'chat/app/team/user/debug-session/draft.pdf'
+            },
+            {
+              type: ChatFileTypeEnum.image,
+              name: 'public.png',
+              url: 'https://example.com/public.png'
+            }
+          ]
+        }
+      })
+    ).toEqual([
+      {
+        file: {
+          type: ChatFileTypeEnum.file,
+          name: 'draft.pdf',
+          key: 'chat/app/team/user/debug-session/draft.pdf',
+          url: ''
+        }
+      },
+      {
+        file: {
+          type: ChatFileTypeEnum.image,
+          name: 'public.png',
+          url: 'https://example.com/public.png'
+        }
+      },
+      {
+        text: {
+          content: 'Summarize the files'
+        }
+      }
+    ]);
+  });
+
+  it('should return an empty query for workflow start without text or files', () => {
+    expect(
+      getWorkflowStartDebugQuery({
+        flowNodeType: FlowNodeTypeEnum.workflowStart
+      })
+    ).toEqual([]);
+  });
+
+  it('should not create query for ordinary node debug', () => {
+    expect(
+      getWorkflowStartDebugQuery({
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        nodeVariables: {
+          [NodeInputKeyEnum.userChatInput]: 'test'
+        }
+      })
+    ).toBeUndefined();
+  });
+
+  it('should enable ordinary files for a legacy debug file variable', () => {
+    expect(
+      getDebugGlobalVariableFormProps({
+        key: 'legacyFile',
+        label: 'Legacy file',
+        type: VariableInputEnum.file,
+        description: '',
+        required: false,
+        valueType: WorkflowIOValueTypeEnum.arrayString,
+        canLocalUpload: true
+      })
+    ).toMatchObject({
+      canSelectFile: true,
+      canLocalUpload: true
+    });
+  });
+
+  it('should respect an explicitly disabled ordinary file type', () => {
+    const variable = {
+      key: 'imageOnly',
+      label: 'Image only',
+      type: VariableInputEnum.file,
+      description: '',
+      required: false,
+      valueType: WorkflowIOValueTypeEnum.arrayString,
+      canSelectFile: false,
+      canLocalUpload: false,
+      canSelectImg: true
+    };
+
+    expect(getDebugGlobalVariableFormProps(variable)).toBe(variable);
+  });
+
+  it('should keep non-file global variables unchanged', () => {
+    const variable = {
+      key: 'text',
+      label: 'Text',
+      type: VariableInputEnum.input,
+      description: '',
+      required: false,
+      valueType: WorkflowIOValueTypeEnum.string
+    };
+
+    expect(getDebugGlobalVariableFormProps(variable)).toBe(variable);
+  });
+
   it('should render reference inputs in node debug form', () => {
     const input = makeInput({
       key: 'userChatInput',
@@ -120,6 +291,17 @@ describe('useDebugInput', () => {
     expect(checkInputShouldRenderInDebug(input, validReferenceContext)).toBe(false);
   });
 
+  it('should render agent generated inputs in node debug form', () => {
+    const input = makeInput({
+      key: 'query',
+      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+      selectedTypeIndex: 1,
+      value: undefined
+    });
+
+    expect(checkInputShouldRenderInDebug(input)).toBe(true);
+  });
+
   it('should not render non-reference inputs in node debug form', () => {
     const input = makeInput({
       key: 'datasetSearchUsingExtensionQuery',
@@ -128,10 +310,10 @@ describe('useDebugInput', () => {
       value: undefined
     });
 
-    expect(checkInputShouldRenderInDebug(input, validReferenceContext)).toBe(false);
+    expect(checkInputShouldRenderInDebug(input)).toBe(false);
   });
 
-  it('should render all plugin input fields', () => {
+  it('should render an ordinary input when the node shows all inputs', () => {
     const input = makeInput({
       key: 'query',
       renderTypeList: [FlowNodeInputTypeEnum.textarea],
@@ -161,7 +343,7 @@ describe('useDebugInput', () => {
       defaultValue: ['default query']
     });
 
-    expect(checkInputShouldRenderInDebug(input, validReferenceContext)).toBe(false);
+    expect(checkInputShouldRenderInDebug(input)).toBe(false);
   });
 
   it('should not use reference value as node debug form default value', () => {
@@ -187,6 +369,34 @@ describe('useDebugInput', () => {
     expect(props).not.toHaveProperty('defaultValue');
   });
 
+  it('should apply legacy file defaults to node debug form props', () => {
+    const input = makeInput({
+      renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
+      valueType: WorkflowIOValueTypeEnum.arrayString
+    });
+
+    expect(getDebugInputFormProps(input)).toMatchObject({
+      canSelectFile: true,
+      canLocalUpload: true
+    });
+  });
+
+  it('should preserve explicit file restrictions in node debug form props', () => {
+    const input = makeInput({
+      renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
+      valueType: WorkflowIOValueTypeEnum.arrayString,
+      canSelectFile: false,
+      canLocalUpload: false,
+      canSelectImg: true
+    });
+
+    expect(getDebugInputFormProps(input)).toMatchObject({
+      canSelectFile: false,
+      canLocalUpload: false,
+      canSelectImg: true
+    });
+  });
+
   it('should not use default value as node debug form default value', () => {
     const input = makeInput({
       key: 'query',
@@ -195,6 +405,24 @@ describe('useDebugInput', () => {
     });
 
     expect(getDebugInputFormValue(input)).toBeUndefined();
+  });
+
+  it('should keep file selector values as an array in debug form', () => {
+    const files = [
+      {
+        type: ChatFileTypeEnum.file,
+        name: 'draft.pdf',
+        key: 'draft-key'
+      }
+    ];
+    const input = makeInput({
+      key: NodeOutputKeyEnum.userFiles,
+      renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
+      valueType: WorkflowIOValueTypeEnum.arrayString,
+      value: files
+    });
+
+    expect(getDebugInputFormValue(input)).toBe(files);
   });
 
   it('should clear old reference value when a rendered debug field is submitted empty', () => {

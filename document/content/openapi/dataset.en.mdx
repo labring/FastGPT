@@ -7,43 +7,9 @@ description: FastGPT OpenAPI Dataset API
 | --------------------------------------- | ---------------------------------------- |
 | ![](../../public/imgs/getDatasetId.jpg) | ![](../../public/imgs/getfile_id.webp)   |
 
-## Create Training Order
-
-<Tabs items={['Request Example','Response Example']}>
-<Tab value="Request Example" >
-
-**New Example**
-
-```bash
-curl --location --request POST 'http://localhost:3000/api/support/wallet/usage/createTrainingUsage' \
---header 'Authorization: Bearer {{apikey}}' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "datasetId": "Dataset ID",
-    "name": "Optional, custom order name, e.g.: Document Training-fastgpt.docx"
-}'
-```
-
-</Tab>
-<Tab value="Response Example" >
-
-data is the billId, which can be used for bill aggregation when adding dataset data.
-
-```json
-{
-  "code": 200,
-  "statusText": "",
-  "message": "",
-  "data": "65112ab717c32018f4156361"
-}
-```
-
-</Tab>
-</Tabs>
-
 ## Dataset
 
-### Create Knowledge Base
+### Create Dataset
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
 <Tab value="Request Example" >
@@ -147,7 +113,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/list?pare
 </Tab>
 </Tabs>
 
-### Get Knowledge Base Details
+### Get Dataset Details
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
 <Tab value="Request Example" >
@@ -207,7 +173,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/detail?id=
 </Tab>
 </Tabs>
 
-### Delete Knowledge Base
+### Delete Dataset
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
 <Tab value="Request Example" >
@@ -256,7 +222,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?
 | chunkSettingMode | Chunk parameter mode. auto: system default; custom: manual specification                                                                        |          |
 | chunkSplitMode   | Chunk split mode. size: split by length; char: split by character. Ineffective when chunkSettingMode=auto.                                      |          |
 | chunkSize        | Chunk size, default 1500. Ineffective when chunkSettingMode=auto.                                                                               |          |
-| indexSize        | Index size, default 512, must be less than index model max token. Ineffective when chunkSettingMode=auto.                                       |          |
+| indexSize        | Index size, default 512, must be less than embedding model max token. Ineffective when chunkSettingMode=auto.                                   |          |
 | chunkSplitter    | Custom highest priority split symbol. Won't split further unless exceeding file processing max context. Ineffective when chunkSettingMode=auto. |          |
 | qaPrompt         | QA split prompt                                                                                                                                 |          |
 | tags             | Collection tags (string array)                                                                                                                  |          |
@@ -364,7 +330,7 @@ data is the collection ID.
   "data": {
     "collectionId": "65abcfab9d1448617cba5f0d",
     "results": {
-      "insertLen": 5, // Split into how many segments
+      "insertLen": 5, // Number of chunks to split into
       "overToken": [],
       "repeat": [],
       "error": []
@@ -522,7 +488,7 @@ Use POST form-data format for upload. Contains file and data fields.
 - apiFileId: File ID, required.
 - datasetId: Dataset ID (required)
 - parentId: Parent ID. Defaults to root directory if not provided
-- trainingType: Training mode (required)
+- trainingType: Indexing mode (required)
 - chunkSize: Length of each chunk (optional). chunk mode: 100~3000; qa mode: 4000~model max token (16k models usually recommended not to exceed 10000)
 - chunkSplitter: Custom highest priority split symbol (optional)
 - qaPrompt: QA split custom prompt (optional)
@@ -771,7 +737,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/collection
 </Tab>
 </Tabs>
 
-### Update Dataset Collection Info
+### Update Collection Info
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
 <Tab value="Request Example" >
@@ -842,7 +808,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 <Tab value="Request Example" >
 
 ```bash
-curl --location --request DELETE 'http://localhost:3000/api/core/dataset/collection/delete' \
+curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/delete' \
 --header 'Authorization: Bearer fastgpt-' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -903,9 +869,9 @@ Maximum 5 custom indexes per data group
 
 `type` If not provided, defaults to `custom` index. A default index will also be created based on q/a. If a default index is provided, no additional one will be created.
 
-### Push Data to Training Queue
+### Push Data to Processing Queue
 
-Note: Maximum 200 data groups per push.
+Each request can push up to 200 data groups. FastGPT automatically creates the processing usage record, so you do not need to provide `billId`.
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
 <Tab value="Request Example" >
@@ -915,11 +881,10 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/push
 --header 'Authorization: Bearer apikey' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "collectionId": "64663f451ba1676dbdef0499",
+    "collectionId": "64663f451ba1676dbdef0499",
     "trainingType": "chunk",
     "prompt": "Optional. QA split guide prompt, ignored in chunk mode",
-    "billId": "可选。如果有这个值，本次的Data会被聚合到一个订单中，这个值可以重复使用。可以参考 [Create Training Order] 获取该值。",
-    "data": [
+    "data": [
         {
             "q": "Who are you?",
             "a": "I'm FastGPT Assistant"
@@ -945,7 +910,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/push
 <Tab value="Parameters" >
 
 - collectionId: Collection ID (required)
-- trainingType: Training mode (required)
+- trainingType: Indexing mode (required)
 - prompt: Custom QA split prompt. Must follow template strictly. Recommended not to pass. (optional)
 - data：(Specific data)
 
@@ -1231,9 +1196,9 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/searchTes
 - similarity - Minimum similarity (0~1, optional)
 - searchMode - Search mode: embedding | fullTextRecall | mixedRecall
 - usingReRank - Use rerank
-- datasetSearchUsingExtensionQuery - Use query extension
-- datasetSearchExtensionModel - Query extension model
-- datasetSearchExtensionBg - Query extension background description
+- datasetSearchUsingExtensionQuery - Use query rewriting
+- datasetSearchExtensionModel - Query rewriting model
+- datasetSearchExtensionBg - Query rewriting background description
 
 </Tab>
 

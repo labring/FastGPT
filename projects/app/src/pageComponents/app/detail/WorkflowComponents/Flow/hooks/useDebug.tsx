@@ -5,7 +5,9 @@ import {
   type StoreEdgeItemType
 } from '@fastgpt/global/core/workflow/type/edge';
 import { useCallback, useState, useMemo } from 'react';
-import { checkWorkflowNodeAndConnection, getNodeAllSource } from '@/web/core/workflow/utils';
+import { useReactFlow } from 'reactflow';
+import { getNodeAllSource } from '@/web/core/workflow/utils';
+import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/workflowCheck';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { uiWorkflow2StoreWorkflow } from '../../utils';
 import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -15,7 +17,6 @@ import { Box, Button, Flex } from '@chakra-ui/react';
 import { type FieldErrors, useForm } from 'react-hook-form';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '../../../context';
 import { useTranslation } from 'next-i18next';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
@@ -28,11 +29,17 @@ import {
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 import {
   checkInputShouldRenderInDebug,
+  debugNodeShouldShowAllInputs,
+  getDebugGlobalVariableFormProps,
   getDebugInputFormProps,
   getDebugInputFormValue,
-  getDebugRuntimeInputs
+  getDebugRuntimeInputs,
+  getWorkflowStartDebugFileInput,
+  getWorkflowStartDebugQuery
 } from './useDebugInput';
 
 const MyRightDrawer = dynamic(
@@ -58,8 +65,13 @@ export const useDebug = () => {
     WorkflowBufferDataContext,
     (v) => v.childrenNodeIdListMap
   );
-  const { onUpdateNodeError, onRemoveError } = useContextSelector(WorkflowActionsContext, (v) => v);
+  const { fitView } = useReactFlow();
+  const { onUpdateNodeError, onRemoveError, onSyncWorkflowCheckIssues } = useContextSelector(
+    WorkflowActionsContext,
+    (v) => v
+  );
   const onStartNodeDebug = useContextSelector(WorkflowDebugContext, (v) => v.onStartNodeDebug);
+  const setDebugChatId = useContextSelector(WorkflowDebugContext, (v) => v.setDebugChatId);
 
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
@@ -94,25 +106,59 @@ export const useDebug = () => {
   const flowData2StoreDataAndCheck = useCallback(async () => {
     const nodes = getNodes();
 
-    const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
-    if (!checkResults) {
+    const { issueMap, hasError, firstErrorNodeId } = checkWorkflowBeforeRunOrPublish({
+      nodes,
+      edges,
+      t: workflowT
+    });
+
+    if (!hasError) {
       onRemoveError();
-      const storeNodes = uiWorkflow2StoreWorkflow({ nodes, edges });
+      const storeNodes = uiWorkflow2StoreWorkflow({
+        nodes,
+        edges,
+        chatConfig: appDetail.chatConfig
+      });
 
       return JSON.stringify(storeNodes);
-    } else {
-      checkResults.forEach((nodeId) => onUpdateNodeError(nodeId, true));
-
-      toast({
-        status: 'warning',
-        title: t('common:core.workflow.Check Failed')
-      });
-      return Promise.reject();
     }
-  }, [edges, getNodes, onRemoveError, onUpdateNodeError, t, toast]);
+
+    onSyncWorkflowCheckIssues(issueMap);
+
+    if (firstErrorNodeId) {
+      onUpdateNodeError(firstErrorNodeId, true);
+      const firstErrorNode = nodes.find((node) => node.data.nodeId === firstErrorNodeId);
+      if (firstErrorNode) {
+        fitView({
+          nodes: [firstErrorNode],
+          padding: 0.3
+        });
+      }
+    }
+
+    toast({
+      status: 'warning',
+      title: t('common:core.workflow.Check Failed')
+    });
+    return Promise.reject();
+  }, [
+    appDetail.chatConfig,
+    edges,
+    fitView,
+    getNodes,
+    onRemoveError,
+    onSyncWorkflowCheckIssues,
+    onUpdateNodeError,
+    t,
+    toast,
+    workflowT
+  ]);
 
   const openDebugNode = useCallback(
     async ({ entryNodeId }: { entryNodeId: string }) => {
+      // 每次打开调试弹窗生成独立的会话 chatId，文件上传与调试运行共用，保证文件归属校验通过
+      setDebugChatId(getNanoid());
+
       setNodes((state) =>
         state.map((node) => ({
           ...node,
@@ -147,13 +193,14 @@ export const useDebug = () => {
       setRuntimeNodes(runtimeNodes);
       setRuntimeEdges(runtimeEdges);
     },
-    [flowData2StoreDataAndCheck, setNodes]
+    [flowData2StoreDataAndCheck, setNodes, setDebugChatId]
   );
 
   const DebugInputModal = useCallback(() => {
     if (!runtimeNodes || !runtimeEdges) return <></>;
 
     const [currentTab, setCurrentTab] = useState<TabEnum>(TabEnum.node);
+    const fileUploading = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploading);
 
     const runtimeNode = runtimeNodes.find((node) => node.nodeId === runtimeNodeId);
 
@@ -167,12 +214,19 @@ export const useDebug = () => {
       t: workflowT,
       childrenNodeIdListMap
     });
-    const renderInputs = runtimeNode.inputs.filter((input) => {
-      return checkInputShouldRenderInDebug(input, {
-        showAllInputs: runtimeNode.flowNodeType === FlowNodeTypeEnum.pluginInput,
-        referenceSourceNodes
-      });
+    const workflowStartFileInput = getWorkflowStartDebugFileInput({
+      flowNodeType: runtimeNode.flowNodeType,
+      fileSelectConfig: appDetail.chatConfig?.fileSelectConfig
     });
+    const renderInputs = [
+      ...runtimeNode.inputs.filter((input) => {
+        return checkInputShouldRenderInDebug(input, {
+          showAllInputs: debugNodeShouldShowAllInputs(runtimeNode.flowNodeType),
+          referenceSourceNodes
+        });
+      }),
+      ...(workflowStartFileInput ? [workflowStartFileInput] : [])
+    ];
 
     const variablesForm = useForm<Record<string, any>>({
       defaultValues: {
@@ -206,7 +260,11 @@ export const useDebug = () => {
             : node
         ),
         runtimeEdges: runtimeEdges,
-        variables: data.variables
+        variables: data.variables,
+        query: getWorkflowStartDebugQuery({
+          flowNodeType: runtimeNode.flowNodeType,
+          nodeVariables: data.nodeVariables
+        })
       });
 
       // Filter global variables and set them as default global variable values
@@ -302,7 +360,7 @@ export const useDebug = () => {
             ))}
             {filteredVar.map((item) => (
               <LabelAndFormRender
-                {...item}
+                {...getDebugGlobalVariableFormProps(item)}
                 key={item.key}
                 label={item.label}
                 required={item.required}
@@ -316,7 +374,9 @@ export const useDebug = () => {
           </Box>
         </Box>
         <Flex py={2} justifyContent={'flex-end'} px={6}>
-          <Button onClick={handleSubmit(onClickRun, onCheckRunError)}>{t('common:Run')}</Button>
+          <Button isDisabled={fileUploading} onClick={handleSubmit(onClickRun, onCheckRunError)}>
+            {t('common:Run')}
+          </Button>
         </Flex>
       </MyRightDrawer>
     );

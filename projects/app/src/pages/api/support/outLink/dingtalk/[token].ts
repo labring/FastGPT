@@ -1,14 +1,12 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { NextAPI } from '@/service/middleware/entry';
 
 export type OutLinkDingtalkQuery = any;
 export type OutLinkDingtalkBody = any;
-export type OutLinkFeishuResponse = {};
-
 async function handler(
   req: ApiRequestProps<OutLinkDingtalkBody, OutLinkDingtalkQuery>,
-  res: ApiResponseType<any>
+  _res: ApiResponseType<any>
 ): Promise<any> {
   if (req.method === 'GET') {
     return {

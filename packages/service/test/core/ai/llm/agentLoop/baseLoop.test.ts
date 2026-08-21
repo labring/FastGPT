@@ -3,6 +3,7 @@ import {
   ModelTypeEnum
 } from '@fastgpt/global/core/ai/constants';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockCreateLLMResponseQueue, text, toolCall } from './_mocks/llmQueue';
@@ -59,7 +60,7 @@ vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
   }))
 }));
 
-import { runAgentLoop } from '@fastgpt/service/core/ai/llm/agentLoop';
+import { runAgentLoop } from '@fastgpt/service/core/ai/llm/agentLoop/provider/fastAgent/loop/base';
 
 const searchTool: ChatCompletionTool = {
   type: 'function',
@@ -92,7 +93,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
 
   it('returns after a direct text response', async () => {
     const streamed: string[] = [];
-    const usagePush = vi.fn();
+    const onLLMRequestEnd = vi.fn();
 
     mockCreateLLMResponseQueue(createLLMResponseMock, [
       text({ requestId: 'req_direct', content: 'direct answer', reasoning: 'thinking' })
@@ -111,10 +112,10 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         ],
         tools: []
       },
-      usagePush,
       isAborted: () => false,
       onRunTool: vi.fn(),
       onRunInteractiveTool: vi.fn(),
+      onLLMRequestEnd,
       onStreaming: ({ text }) => streamed.push(text)
     });
 
@@ -129,15 +130,64 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
       }
     ]);
     expect(streamed).toEqual(['direct answer']);
-    expect(usagePush).toHaveBeenCalledWith([
-      {
-        moduleName: 'account_usage:agent_call',
-        model: 'GPT-4',
-        totalPoints: 1,
-        inputTokens: 100,
-        outputTokens: 30
-      }
+    expect(onLLMRequestEnd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestId: 'req_direct',
+        finishReason: 'stop',
+        usage: {
+          inputTokens: 100,
+          outputTokens: 30,
+          totalPoints: 1
+        }
+      })
+    );
+    expect(result.inputTokens).toBe(100);
+    expect(result.outputTokens).toBe(30);
+    expect(result.llmTotalPoints).toBe(1);
+  });
+
+  it('reads the current active plan when checking context compression', async () => {
+    const activePlan = {
+      planId: 'plan_current',
+      name: 'Current plan',
+      steps: [
+        {
+          id: 'step_current',
+          name: 'Current step',
+          status: 'in_progress'
+        }
+      ]
+    } satisfies AgentPlanType;
+    const getActivePlan = vi.fn(() => activePlan);
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      text({ requestId: 'req_direct', content: 'direct answer' })
     ]);
+
+    await runAgentLoop({
+      maxRunAgentTimes: 5,
+      body: {
+        model: 'gpt-4',
+        stream: true,
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'hello'
+          }
+        ],
+        tools: []
+      },
+      getActivePlan,
+      isAborted: () => false,
+      onRunTool: vi.fn(),
+      onRunInteractiveTool: vi.fn()
+    });
+
+    expect(getActivePlan).toHaveBeenCalledTimes(1);
+    expect(compressRequestMessagesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        activePlan
+      })
+    );
   });
 
   it('returns context checkpoint generated during request message compression', async () => {
@@ -149,7 +199,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
       inputTokens: 40,
       outputTokens: 10
     };
-    const usagePush = vi.fn();
     const onAfterCompressContext = vi.fn();
 
     compressRequestMessagesMock.mockImplementation(async ({ messages }) => ({
@@ -182,7 +231,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         ],
         tools: []
       },
-      usagePush,
       isAborted: () => false,
       onRunTool: vi.fn(),
       onRunInteractiveTool: vi.fn(),
@@ -197,7 +245,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         contextCheckpoint
       })
     );
-    expect(usagePush).toHaveBeenCalledWith([compressedUsage]);
   });
 
   it('applies local context checkpoint compression even without usage', async () => {
@@ -319,66 +366,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     ]);
   });
 
-  it('uses request control tool choice while streaming immediately', async () => {
-    const streamed: string[] = [];
-    const order: string[] = [];
-    const requestEvents: Array<Record<string, unknown>> = [];
-    const content = 'safe final answer';
-
-    mockCreateLLMResponseQueue(createLLMResponseMock, [text({ requestId: 'req_final', content })]);
-
-    await runAgentLoop({
-      maxRunAgentTimes: 5,
-      body: {
-        model: 'gpt-4',
-        stream: true,
-        messages: [
-          {
-            role: ChatCompletionRequestMessageRoleEnum.User,
-            content: 'finish with live streaming'
-          }
-        ],
-        tools: [searchTool]
-      },
-      usagePush: vi.fn(),
-      isAborted: () => false,
-      onRunTool: vi.fn(),
-      onRunInteractiveTool: vi.fn(),
-      onStopCandidate: vi.fn(async () => {
-        order.push('stop_check');
-        expect(streamed.join('')).toBe(content);
-        return { allowStop: true };
-      }),
-      getRequestControl: () => ({
-        toolChoice: 'none'
-      }),
-      onLLMRequestStart: (event) => requestEvents.push({ type: 'start', ...event }),
-      onLLMRequestEnd: (event) => requestEvents.push({ type: 'end', ...event }),
-      onStreaming: ({ text }) => {
-        order.push('stream');
-        streamed.push(text);
-      }
-    });
-
-    expect(streamed).toEqual([content]);
-    expect(order).toEqual(['stream', 'stop_check']);
-    expect(createLLMResponseMock.mock.calls[0][0].body.tool_choice).toBe('none');
-    expect(requestEvents).toEqual([
-      expect.objectContaining({
-        type: 'start',
-        requestIndex: 1,
-        modelName: 'GPT-4'
-      }),
-      expect.objectContaining({
-        type: 'end',
-        requestIndex: 1,
-        modelName: 'GPT-4',
-        requestId: 'req_final',
-        finishReason: 'stop'
-      })
-    ]);
-  });
-
   it('executes a tool call and feeds the tool response into the next LLM request', async () => {
     const onRunTool = vi.fn(async () => ({
       response: 'search result',
@@ -410,7 +397,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         ],
         tools: [searchTool]
       },
-      usagePush: vi.fn(),
       isAborted: () => false,
       onRunTool,
       onRunInteractiveTool: vi.fn()
@@ -509,20 +495,19 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     });
 
     expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
-    expect(result.interactiveResponse).toEqual(
+    expect(result.toolChildPause).toEqual(
       expect.objectContaining({
-        type: 'toolChildrenInteractive',
-        params: expect.objectContaining({
-          childrenResponse: expect.objectContaining({
-            nodeResponseId: 'child_select_response'
-          }),
-          toolParams: expect.objectContaining({
-            toolCallId: 'call_search'
-          })
-        })
+        childrenResponse: expect.objectContaining({
+          nodeResponseId: 'child_select_response'
+        }),
+        toolCallId: 'call_search'
       })
     );
-    expect(result.interactiveResponse?.nodeResponseId).toBeUndefined();
+    expect(result.toolChildPause).not.toEqual(
+      expect.objectContaining({
+        nodeResponseId: expect.anything()
+      })
+    );
   });
 
   it('feeds the compressed tool response into the next LLM request', async () => {
@@ -559,7 +544,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         ],
         tools: [searchTool]
       },
-      usagePush: vi.fn(),
       isAborted: () => false,
       onRunTool,
       onRunInteractiveTool: vi.fn()
@@ -630,7 +614,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     compressToolResponseMock.mockImplementation(async () => ({
       compressed: ''
     }));
-    const onAfterToolCall = vi.fn();
     const onRunTool = vi.fn(async () => ({
       response: 'raw response',
       assistantMessages: [],
@@ -664,16 +647,9 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
       usagePush: vi.fn(),
       isAborted: () => false,
       onRunTool,
-      onRunInteractiveTool: vi.fn(),
-      onAfterToolCall
+      onRunInteractiveTool: vi.fn()
     });
 
-    expect(onAfterToolCall).toHaveBeenCalledWith(
-      expect.objectContaining({
-        call: expect.objectContaining({ id: 'call_search' }),
-        response: 'none'
-      })
-    );
     expect(createLLMResponseMock.mock.calls[1][0].body.messages).toContainEqual({
       role: 'tool',
       tool_call_id: 'call_search',
@@ -724,7 +700,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         ],
         tools: [searchTool]
       },
-      usagePush: vi.fn(),
       isAborted: () => false,
       onRunTool,
       onRunInteractiveTool: vi.fn()
@@ -735,7 +710,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
   });
 
   it('keeps requestId and usage when LLM returns empty tool_calls finish', async () => {
-    const usagePush = vi.fn();
     const onLLMRequestEnd = vi.fn();
 
     mockCreateLLMResponseQueue(createLLMResponseMock, [
@@ -761,7 +735,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         ],
         tools: [searchTool]
       },
-      usagePush,
       isAborted: () => false,
       onRunTool: vi.fn(),
       onRunInteractiveTool: vi.fn(),
@@ -780,15 +753,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         content: 'call a tool'
       }
     ]);
-    expect(usagePush).toHaveBeenCalledWith([
-      {
-        moduleName: 'account_usage:agent_call',
-        model: 'GPT-4',
-        totalPoints: 1,
-        inputTokens: 5396,
-        outputTokens: 38
-      }
-    ]);
     expect(onLLMRequestEnd).toHaveBeenCalledWith(
       expect.objectContaining({
         requestId: 'req_empty_tool_calls',
@@ -805,7 +769,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
 
   it('emits tool response compression request ids and running time', async () => {
     vi.useFakeTimers();
-    const onAfterToolCall = vi.fn();
+    const onToolRunEnd = vi.fn();
     compressToolResponseMock.mockImplementation(async ({ response }) => {
       await vi.advanceTimersByTimeAsync(1234);
       return {
@@ -851,18 +815,18 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
           ],
           tools: [searchTool]
         },
-        usagePush: vi.fn(),
         isAborted: () => false,
         onRunTool,
         onRunInteractiveTool: vi.fn(),
-        onAfterToolCall
+        onToolRunEnd
       });
     } finally {
       vi.useRealTimers();
     }
 
-    expect(onAfterToolCall).toHaveBeenCalledWith(
+    expect(onToolRunEnd).toHaveBeenCalledWith(
       expect.objectContaining({
+        rawResponse: 'large search result',
         response: 'compressed:large search result',
         seconds: 1.23,
         toolResponseCompress: expect.objectContaining({
@@ -916,7 +880,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         ],
         tools: [searchTool]
       },
-      usagePush: vi.fn(),
       isAborted: () => false,
       onRunTool: vi.fn(async ({ call }) => ({
         response: `${call.id} result`,
@@ -975,7 +938,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         ],
         tools: [searchTool]
       },
-      usagePush: vi.fn(),
       isAborted: () => false,
       onRunTool: vi.fn(async ({ call }) => {
         await new Promise((resolve) => setTimeout(resolve, call.id === 'call_slow' ? 20 : 0));
@@ -1035,7 +997,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         ],
         tools: [searchTool]
       },
-      usagePush: vi.fn(),
       isAborted: () => false,
       onRunTool,
       onRunInteractiveTool: vi.fn()
@@ -1051,7 +1012,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
   });
 
   it('treats tool handler exceptions as tool responses and continues', async () => {
-    const onAfterToolCall = vi.fn();
+    const onToolRunEnd = vi.fn();
 
     mockCreateLLMResponseQueue(createLLMResponseMock, [
       toolCall({
@@ -1077,19 +1038,19 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         ],
         tools: [searchTool]
       },
-      usagePush: vi.fn(),
       isAborted: () => false,
       onRunTool: vi.fn(async () => {
         throw new Error('network failed');
       }),
       onRunInteractiveTool: vi.fn(),
-      onAfterToolCall
+      onToolRunEnd
     });
 
     expect(createLLMResponseMock).toHaveBeenCalledTimes(2);
-    expect(onAfterToolCall).toHaveBeenCalledWith(
+    expect(onToolRunEnd).toHaveBeenCalledWith(
       expect.objectContaining({
         call: expect.objectContaining({ id: 'call_search' }),
+        rawResponse: 'Tool error: network failed',
         response: 'Tool error: network failed',
         errorMessage: 'Tool error: network failed'
       })
@@ -1104,62 +1065,5 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
       tool_call_id: 'call_search',
       content: 'Tool error: network failed'
     });
-  });
-
-  it('continues the same loop when stop candidate returns feedback', async () => {
-    const streamed: string[] = [];
-    const onStopCandidate = vi
-      .fn()
-      .mockResolvedValueOnce({
-        allowStop: false,
-        feedbackMessage: {
-          role: ChatCompletionRequestMessageRoleEnum.User,
-          content: 'Plan is not complete. Continue.'
-        }
-      })
-      .mockResolvedValueOnce({
-        allowStop: true
-      });
-
-    mockCreateLLMResponseQueue(createLLMResponseMock, [
-      text({ requestId: 'req_too_early', content: 'done too early' }),
-      text({ requestId: 'req_final', content: 'final answer' })
-    ]);
-
-    const result = await runAgentLoop({
-      maxRunAgentTimes: 5,
-      body: {
-        model: 'gpt-4',
-        stream: true,
-        messages: [
-          {
-            role: ChatCompletionRequestMessageRoleEnum.User,
-            content: 'finish plan'
-          }
-        ],
-        tools: []
-      },
-      usagePush: vi.fn(),
-      isAborted: () => false,
-      onRunTool: vi.fn(),
-      onRunInteractiveTool: vi.fn(),
-      onStopCandidate,
-      onStreaming: ({ text }) => streamed.push(text)
-    });
-
-    expect(createLLMResponseMock).toHaveBeenCalledTimes(2);
-    expect(onStopCandidate).toHaveBeenCalledTimes(2);
-    expect(createLLMResponseMock.mock.calls[1][0].body.messages).toContainEqual({
-      role: 'user',
-      content: 'Plan is not complete. Continue.'
-    });
-    expect(result.requestIds).toEqual(['req_too_early', 'req_final']);
-    expect(result.assistantMessages).toEqual([
-      {
-        role: 'assistant',
-        content: 'final answer'
-      }
-    ]);
-    expect(streamed).toEqual(['done too early', 'final answer']);
   });
 });

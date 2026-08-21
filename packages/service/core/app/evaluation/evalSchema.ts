@@ -2,7 +2,7 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 import { AppCollectionName } from '../schema';
 import type { EvaluationSchemaType } from '@fastgpt/global/core/app/evaluation/type';
 import { UsageCollectionName } from '../../../support/wallet/usage/constants';
@@ -49,7 +49,7 @@ const EvaluationSchema = new Schema({
   errorMessage: String
 });
 
-EvaluationSchema.index({ teamId: 1 });
+defineIndex(EvaluationSchema, { key: { teamId: 1 } });
 
 export const MongoEvaluation = getMongoModel<EvaluationSchemaType>(
   EvaluationCollectionName,

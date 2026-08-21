@@ -5,6 +5,18 @@ import {
 import { InputTypeEnum } from './constant';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { InputConfigType } from '@fastgpt/global/core/workflow/type/io';
+import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
+
+/** 文件字段的旧配置默认允许普通文件和本地上传，与编辑器保存语义保持一致。 */
+export const getFileSelectRenderProps = <
+  T extends AppFileSelectConfigType & { canLocalUpload?: boolean }
+>(
+  props: T
+) => ({
+  ...props,
+  canSelectFile: props.canSelectFile ?? true,
+  canLocalUpload: props.canLocalUpload ?? true
+});
 
 export const variableInputTypeToInputType = (
   inputType: VariableInputEnum,
@@ -31,7 +43,10 @@ export const variableInputTypeToInputType = (
 
 // 节点输入类型（通常是一个 reference+一个 form input）
 export const nodeInputTypeToInputType = (inputTypes: FlowNodeInputTypeEnum[] = []) => {
-  const inputType = inputTypes?.find((item) => item !== FlowNodeInputTypeEnum.reference);
+  const inputType = inputTypes?.find(
+    (item) =>
+      item !== FlowNodeInputTypeEnum.reference && item !== FlowNodeInputTypeEnum.agentGenerated
+  );
 
   if (inputType === FlowNodeInputTypeEnum.input) return InputTypeEnum.input;
   if (inputType === FlowNodeInputTypeEnum.textarea) return InputTypeEnum.textarea;

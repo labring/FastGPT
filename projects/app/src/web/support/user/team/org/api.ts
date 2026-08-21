@@ -1,4 +1,4 @@
-import { DELETE, GET, POST, PUT } from '@/web/common/api/request';
+import { DELETE, POST, PUT } from '@/web/common/api/request';
 import type {
   postCreateOrgData,
   putUpdateOrgData,
@@ -6,9 +6,6 @@ import type {
 } from '@fastgpt/global/support/user/team/org/api';
 import type { OrgListItemType } from '@fastgpt/global/support/user/team/org/type';
 import type { putMoveOrgType } from '@fastgpt/global/support/user/team/org/api';
-import { type PaginationProps, type PaginationResponse } from '@fastgpt/global/openapi/api';
-import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
-import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 export const getOrgList = (params: {
   orgId: string;
@@ -30,9 +27,6 @@ export const putUpdateOrg = (data: putUpdateOrgData) =>
 // org members
 export const putUpdateOrgMembers = (data: putUpdateOrgMembersData) =>
   PUT('/proApi/support/user/team/org/updateMembers', data);
-
-export const getOrgMembers = (data: PaginationProps<{ orgPath?: string }>) =>
-  GET<PaginationResponse<TeamMemberItemType>>(`/proApi/support/user/team/org/members`, data);
 
 export const deleteOrgMember = (orgId: string, tmbId: string) =>
   DELETE('/proApi/support/user/team/org/deleteMember', { orgId, tmbId });

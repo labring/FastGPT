@@ -1,11 +1,10 @@
-import { connectionMongo, getMongoModel } from '../../common/mongo';
+import { defineIndex, connectionMongo, getMongoModel } from '../../common/mongo';
 const { Schema } = connectionMongo;
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { UserTagsSchema, type UserModelSchema } from '@fastgpt/global/support/user/type';
 import { UserStatusEnum, userStatusMap } from '@fastgpt/global/support/user/constant';
 import { TeamMemberCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { LangEnum } from '@fastgpt/global/common/i18n/type';
-import { getLogger, LogCategories } from '../../common/logger';
 
 export const userCollectionName = 'users';
 
@@ -18,8 +17,7 @@ const UserSchema = new Schema({
   username: {
     // 可以是手机/邮箱，新的验证都只用手机
     type: String,
-    required: true,
-    unique: true // 唯一
+    required: true
   },
   password: {
     type: String,
@@ -32,10 +30,6 @@ const UserSchema = new Schema({
   createTime: {
     type: Date,
     default: () => new Date()
-  },
-  promotionRate: {
-    type: Number,
-    default: 0
   },
   openaiAccount: {
     type: {
@@ -56,11 +50,6 @@ const UserSchema = new Schema({
     ref: TeamMemberCollectionName
   },
 
-  inviterId: {
-    // 谁邀请注册的
-    type: Schema.Types.ObjectId,
-    ref: userCollectionName
-  },
   fastgpt_sem: Object,
 
   phonePrefix: Number,
@@ -75,12 +64,12 @@ const UserSchema = new Schema({
   avatar: String
 });
 
-try {
-  // Admin charts
-  UserSchema.index({ createTime: -1 });
-} catch (error) {
-  const logger = getLogger(LogCategories.INFRA.MONGO);
-  logger.error('Failed to build user indexes', { error });
-}
+// username 唯一。
+defineIndex(UserSchema, {
+  key: { username: 1 },
+  options: { unique: true }
+});
+// Admin charts
+defineIndex(UserSchema, { key: { createTime: -1 } });
 
 export const MongoUser = getMongoModel<UserModelSchema>(userCollectionName, UserSchema);

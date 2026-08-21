@@ -2,9 +2,9 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
+import { prepareWorkflowFileQuery } from '@fastgpt/service/core/workflow/utils/fileLimits';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
-import type { PostWorkflowDebugResponse } from '@/global/core/workflow/api';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
@@ -13,32 +13,18 @@ import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { createChatUsageRecord } from '@fastgpt/service/support/wallet/usage/controller';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
-import z from 'zod';
+import {
+  WorkflowDebugBodySchema,
+  WorkflowDebugResponseSchema,
+  type WorkflowDebugResponse
+} from '@fastgpt/global/openapi/core/workflow/api';
 import {
   composeDebugNodeResponseMap,
   getWorkflowFinalResponseData
 } from '@/service/core/workflow/nodeResponse';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
-const WorkflowDebugBodySchema = z.object({
-  // Runtime node 仍包含大量未完全 schema 化的动态配置，这里只在 API 边界约束数组结构。
-  nodes: z.array(z.any()).default([]),
-  edges: z.array(z.any()).default([]),
-  skipNodeQueue: z.any().optional(),
-  variables: z.record(z.string(), z.any()).default({}),
-  appId: ObjectIdSchema,
-  query: z.array(z.any()).default([]),
-  history: z.array(z.any()).default([]),
-  chatConfig: z.any().optional(),
-  usageId: z.string().optional()
-});
-type WorkflowDebugBody = z.infer<typeof WorkflowDebugBodySchema>;
-
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-): Promise<PostWorkflowDebugResponse> {
+async function handler(req: NextApiRequest, res: NextApiResponse): Promise<WorkflowDebugResponse> {
   const {
     nodes = [],
     edges = [],
@@ -48,8 +34,9 @@ async function handler(
     query = [],
     history = [],
     chatConfig,
-    usageId
-  }: WorkflowDebugBody = parseApiInput({ req, bodySchema: WorkflowDebugBodySchema }).body;
+    usageId,
+    chatId: debugChatId
+  } = parseApiInput({ req, bodySchema: WorkflowDebugBodySchema }).body;
 
   /* user auth */
   const [{ tmbId }, { app }] = await Promise.all([
@@ -71,6 +58,16 @@ async function handler(
         source: UsageSourceEnum.fastgpt
       });
   const responseChatItemId = getNanoid();
+  const workflowChatConfig = chatConfig ?? app.chatConfig;
+  const {
+    query: workflowQuery,
+    maxFileAmount,
+    maxBytesPerFile
+  } = await prepareWorkflowFileQuery({
+    teamId: String(app.teamId),
+    chatConfig: workflowChatConfig,
+    query
+  });
 
   /* start process */
   const { debugResponse, newVariables, flatNodeResponses } = await dispatchWorkFlow({
@@ -88,15 +85,17 @@ async function handler(
       tmbId: app.tmbId
     },
     runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
-    chatId: getNanoid(),
+    chatId: debugChatId ?? getNanoid(),
     responseChatItemId,
     runtimeNodes: nodes,
     runtimeEdges: edges,
     defaultSkipNodeQueue: skipNodeQueue,
     lastInteractive: interactive,
     variables,
-    query: query,
-    chatConfig: chatConfig || app.chatConfig,
+    query: workflowQuery,
+    maxFileAmount,
+    maxBytesPerFile,
+    chatConfig: workflowChatConfig,
     histories: history,
     stream: false,
     maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
@@ -110,15 +109,15 @@ async function handler(
       flatNodeResponses,
       shouldCollect: true
     }),
-    currentNodeResponses: debugResponse?.nodeResponses || {}
+    currentNodeResponses: debugResponse?.nodeResponses ?? {}
   });
 
-  return {
+  return WorkflowDebugResponseSchema.parse({
     ...debugResponse!,
     nodeResponses,
     newVariables,
     usageId: newUsageId
-  };
+  });
 }
 
 export default NextAPI(handler);

@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as api from '@/web/support/user/api';
-import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
-import { hashStr } from '@fastgpt/global/common/string/tools';
+import { GET, POST } from '@/web/common/api/request';
+import { VerificationCodeTypeEnum } from '@fastgpt/global/support/user/account/verification/constants';
 
 vi.mock('@/web/common/api/request', () => ({
   GET: vi.fn(),
@@ -9,15 +9,25 @@ vi.mock('@/web/common/api/request', () => ({
   PUT: vi.fn()
 }));
 
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
 describe('user api', () => {
-  it('should send auth code', async () => {
+  it.each([
+    [VerificationCodeTypeEnum.register, 'register'],
+    [VerificationCodeTypeEnum.findPassword, 'forgetPassword'],
+    [VerificationCodeTypeEnum.bindNotification, 'bindNotification']
+  ] as const)('should send %s auth code through the shared endpoint', async (type, purpose) => {
     const data = {
       username: 'test@test.com',
-      type: UserAuthTypeEnum.register,
-      googleToken: 'token123',
-      captcha: 'captcha123'
+      type,
+      purpose,
+      captcha: 'captcha123',
+      lang: 'zh-CN'
     };
     await api.sendAuthCode(data);
+    expect(POST).toHaveBeenCalledWith('/proApi/support/user/inform/sendAuthCode', data);
   });
 
   it('should get token login', async () => {
@@ -25,12 +35,11 @@ describe('user api', () => {
   });
 
   it('should oauth login', async () => {
-    const params = {
-      platform: 'github',
-      code: 'code123',
-      state: 'state123'
-    };
-    await api.oauthLogin(params);
+    await api.oauthLogin({
+      type: 'github',
+      callbackUrl: 'https://fastgpt.example.com/login/provider',
+      props: { code: 'code123' }
+    });
   });
 
   it('should fast login', async () => {
@@ -45,12 +54,11 @@ describe('user api', () => {
       username: 'test@test.com',
       password: 'password123',
       code: '123456',
-      inviterId: 'inviter123',
       bd_vid: 'vid123',
       msclkid: 'click123',
       fastgpt_sem: {
         keyword: 'sem123',
-        source: 'home_hero_trial',
+        visitor_id: 'visitor-1',
         sourceDomain: 'https://example.com'
       }
     };
@@ -127,10 +135,13 @@ describe('user api', () => {
       code: 'code123'
     };
     await api.getWXLoginResult(params);
+    expect(POST).toHaveBeenCalledWith('/proApi/support/user/account/login/wx/getResult', params, {
+      maxQuantity: 1
+    });
   });
 
   it('should get captcha pic', async () => {
-    await api.getCaptchaPic('test@test.com');
+    await api.getCaptchaPic('test@test.com', 'register');
   });
 
   it('should get pre login info', async () => {
@@ -139,14 +150,20 @@ describe('user api', () => {
 
   it('should sync members', async () => {
     await api.postSyncMembers();
+    expect(POST).toHaveBeenCalledWith('/proApi/support/user/team/sync');
   });
 
-  it('should search users', async () => {
-    await api.GetSearchUserGroupOrg('test', {
+  it('should aggregate search members, orgs and groups', async () => {
+    await api.getSearchMembersOrgsGroups('test', {
       members: true,
       orgs: true,
       groups: true
     });
+    expect(GET).toHaveBeenCalledWith(
+      '/proApi/support/user/team/searchMembersOrgsGroups',
+      { searchKey: 'test', members: true, orgs: true, groups: true },
+      { maxQuantity: 1 }
+    );
   });
 
   it('should export members', async () => {

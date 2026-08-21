@@ -1,9 +1,9 @@
-export type EnsureResult = {
-  claimName: string;
-  created: boolean;
-};
+import type {
+  SandboxVolumeEnsureRequest,
+  SandboxVolumeEnsureResponse
+} from '@fastgpt/global/core/ai/sandbox/volume';
 
-export interface IVolumeDriver {
-  ensure(sessionId: string): Promise<EnsureResult>;
-  remove(sessionId: string): Promise<void>;
-}
+export type IVolumeDriver = {
+  ensure(params: SandboxVolumeEnsureRequest): Promise<SandboxVolumeEnsureResponse>;
+  remove(claimName: string): Promise<void>;
+};

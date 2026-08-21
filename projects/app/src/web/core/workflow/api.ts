@@ -1,8 +1,11 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
-import type { PostWorkflowDebugProps, PostWorkflowDebugResponse } from '@/global/core/workflow/api';
+import type {
+  WorkflowDebugBody,
+  WorkflowDebugResponse
+} from '@fastgpt/global/openapi/core/workflow/api';
 
-export const postWorkflowDebug = (data: PostWorkflowDebugProps) =>
-  POST<PostWorkflowDebugResponse>(
+export const postWorkflowDebug = (data: WorkflowDebugBody) =>
+  POST<WorkflowDebugResponse>(
     '/core/workflow/debug',
     {
       ...data,

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { SkillDetailContext } from '../context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -191,10 +191,8 @@ const SkillPreview = () => {
         boxBodyProps={{ px: 0, pr: '8px', maxW: '100%', mx: 0 }}
         inputBodyProps={{ maxW: '100%', mx: 0, px: 0, pl: 0, pr: '8px' }}
         EmptyState={
-          <Flex
-            flex={1}
-            alignItems="center"
-            justifyContent="center"
+          <Box
+            w="100%"
             color="myGray.500"
             fontSize="sm"
             textAlign="center"
@@ -219,7 +217,7 @@ const SkillPreview = () => {
                 {t('empty_state_community_suffix')}
               </>
             )}
-          </Flex>
+          </Box>
         }
       />
       <ProModal isOpen={proModalOpen} onClose={() => setProModalOpen(false)} />

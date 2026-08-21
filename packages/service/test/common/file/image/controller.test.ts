@@ -1,11 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.hoisted(() => {
   vi.stubEnv('NEXT_PUBLIC_BASE_URL', '');
 });
 import { Types } from '@fastgpt/service/common/mongo';
 import {
-  uploadMongoImg,
-  maxImgSize,
   readMongoImg,
   removeImageByPath,
   delImgByRelatedId,
@@ -15,148 +13,6 @@ import { MongoImage } from '@fastgpt/service/common/file/image/schema';
 import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 
 const teamId = new Types.ObjectId().toString();
-
-const loadController = async () => {
-  vi.resetModules();
-  return import('@fastgpt/service/common/file/image/controller');
-};
-
-describe('uploadMongoImg', () => {
-  beforeEach(async () => {
-    await MongoImage.deleteMany({});
-    vi.stubEnv('NEXT_PUBLIC_BASE_URL', '');
-  });
-
-  afterEach(() => {
-    vi.stubEnv('NEXT_PUBLIC_BASE_URL', '');
-  });
-
-  it('should upload a valid JPEG base64 image', async () => {
-    // Minimal valid JPEG base64
-    const binary = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
-    const base64Data = binary.toString('base64');
-    const base64Img = `data:image/jpeg;base64,${base64Data}`;
-
-    const result = await uploadMongoImg({
-      base64Img,
-      teamId
-    });
-
-    expect(result).toContain(imageBaseUrl);
-    expect(result).toContain('.jpeg');
-
-    // Verify saved in DB
-    const images = await MongoImage.find({ teamId });
-    expect(images.length).toBe(1);
-    expect(images[0].metadata?.mime).toBe('image/jpeg');
-  });
-
-  it('should upload a valid PNG base64 image', async () => {
-    const binary = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
-    const base64Data = binary.toString('base64');
-    const base64Img = `data:image/png;base64,${base64Data}`;
-
-    const result = await uploadMongoImg({
-      base64Img,
-      teamId
-    });
-
-    expect(result).toContain('.png');
-  });
-
-  it('should reject image exceeding max size', async () => {
-    const largeBase64 = 'data:image/jpeg;base64,' + 'A'.repeat(maxImgSize + 1);
-
-    await expect(
-      uploadMongoImg({
-        base64Img: largeBase64,
-        teamId
-      })
-    ).rejects.toThrow('Image too large');
-  });
-
-  it('should reject invalid base64 mime', async () => {
-    const base64Img = 'invalid-mime,AAAA';
-
-    await expect(
-      uploadMongoImg({
-        base64Img,
-        teamId
-      })
-    ).rejects.toThrow('Invalid image base64');
-  });
-
-  it('should reject invalid image file type', async () => {
-    const base64Img = 'data:image/faketype;base64,AAAA';
-
-    await expect(
-      uploadMongoImg({
-        base64Img,
-        teamId
-      })
-    ).rejects.toThrow('Invalid image file type');
-  });
-
-  it('should handle x- prefix in extension', async () => {
-    const binary = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
-    const base64Data = binary.toString('base64');
-    // x-png should have x- stripped to become "png"
-    const base64Img = `data:image/x-png;base64,${base64Data}`;
-
-    const result = await uploadMongoImg({
-      base64Img,
-      teamId
-    });
-
-    expect(result).toContain('.png');
-  });
-
-  it('should set expiredTime when forever is false', async () => {
-    const binary = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
-    const base64Data = binary.toString('base64');
-    const base64Img = `data:image/jpeg;base64,${base64Data}`;
-
-    await uploadMongoImg({
-      base64Img,
-      teamId,
-      forever: false
-    });
-
-    const image = await MongoImage.findOne({ teamId });
-    expect(image?.expiredTime).toBeDefined();
-  });
-
-  it('should not set expiredTime when forever is true', async () => {
-    const binary = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
-    const base64Data = binary.toString('base64');
-    const base64Img = `data:image/jpeg;base64,${base64Data}`;
-
-    await uploadMongoImg({
-      base64Img,
-      teamId,
-      forever: true
-    });
-
-    const image = await MongoImage.findOne({ teamId });
-    expect(image?.expiredTime).toBeUndefined();
-  });
-
-  it('should include NEXT_PUBLIC_BASE_URL in result when set', async () => {
-    vi.stubEnv('NEXT_PUBLIC_BASE_URL', '/sub');
-    const { uploadMongoImg: uploadMongoImgWithBase } = await loadController();
-
-    const binary = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
-    const base64Data = binary.toString('base64');
-    const base64Img = `data:image/jpeg;base64,${base64Data}`;
-
-    const result = await uploadMongoImgWithBase({
-      base64Img,
-      teamId
-    });
-
-    expect(result).toMatch(new RegExp(`^/sub${imageBaseUrl}[a-f0-9]{24}\\.jpeg$`));
-  });
-});
 
 describe('readMongoImg', () => {
   beforeEach(async () => {

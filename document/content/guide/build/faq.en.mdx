@@ -21,7 +21,7 @@ After changing an app, click **Publish**. Chat and published channels only use t
 
 ## Disable Markdown Formatting
 
-Edit the Knowledge Base default prompt. The built-in standard template instructs the model to use Markdown. You can remove that requirement:
+Edit the Dataset default prompt. The built-in standard template instructs the model to use Markdown. You can remove that requirement:
 
 |                         |                         |
 | ----------------------- | ----------------------- |
@@ -31,19 +31,19 @@ Edit the Knowledge Base default prompt. The built-in standard template instructs
 
 Q: The app produces different results in debug mode vs. production, or when called via API.
 
-A: This is usually caused by differences in context. Check the conversation logs, find the relevant entry, and compare the run details side by side.
+A: This is usually caused by differences in context. Check the chat logs, find the relevant entry, and compare the run details side by side.
 
 |                         |                         |                         |
 | ----------------------- | ----------------------- | ----------------------- |
 | ![](/imgs/image-85.png) | ![](/imgs/image-86.png) | ![](/imgs/image-87.png) |
 
-The Knowledge Base response settings require a custom prompt. Without one, the default prompt (which includes Markdown formatting instructions) is used.
+The Dataset response settings require a custom prompt. Without one, the default prompt (which includes Markdown formatting instructions) is used.
 
 ## Skip Classification for Follow-Ups
 
-Scenario: A workflow starts with a Question Classification node that routes to different branches, each with its own Knowledge Base and AI Chat. After the first AI response, you want subsequent questions to skip classification and go straight to the Knowledge Base with chat history as context.
+Scenario: A workflow starts with a Question Classification node that routes to different branches, each with its own Dataset and AI Chat. After the first AI response, you want subsequent questions to skip classification and go straight to the Dataset with chat history as context.
 
-Solution: Add a condition check — if it's the first message (history count is 0), route through Question Classification. Otherwise, go directly to the Knowledge Base and AI Chat.
+Solution: Add a condition check — if it's the first message (history count is 0), route through Question Classification. Otherwise, go directly to the Dataset and AI Chat.
 
 ## Formula Rendering Issues
 

@@ -24,22 +24,29 @@ import {
   WorkflowStart,
   userFilesInput
 } from '@fastgpt/global/core/workflow/template/system/workflowStart';
-import { SystemConfigNode } from '@fastgpt/global/core/workflow/template/system/systemConfig';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent/index';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
+import { getAppChatConfig, normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 import { Input_Template_File_Link } from '@fastgpt/global/core/workflow/template/input';
 import {
+  canInputBeAgentGenerated,
+  filterToolConfiguredParams,
+  getAgentToolInputMode,
   getToolConfigStatus,
   validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
+import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+
+const getToolSelectionKey = (id?: string, source?: string) =>
+  source ? getToolIdentityKey(id, source) : id || '';
 
 /* format app nodes to edit form */
 export const appWorkflow2AgentForm = ({
@@ -50,11 +57,16 @@ export const appWorkflow2AgentForm = ({
   chatConfig: AppChatConfigType;
 }) => {
   const defaultAppForm = getDefaultAppForm();
+  const normalizedWorkflow = normalizeWorkflowConfig({ nodes, chatConfig });
+  defaultAppForm.chatConfig = getAppChatConfig({
+    chatConfig: normalizedWorkflow.chatConfig,
+    isPublicFetch: true
+  });
   const findInputValueByKey = (inputs: FlowNodeInputItemType[], key: string) => {
     return inputs.find((item) => item.key === key)?.value;
   };
 
-  nodes.forEach((node) => {
+  normalizedWorkflow.nodes.forEach((node) => {
     const inputMap = new Map(node.inputs.map((input) => [input.key, input.value]));
     if (node.flowNodeType === FlowNodeTypeEnum.agent) {
       defaultAppForm.aiSettings.model = findInputValueByKey(node.inputs, NodeInputKeyEnum.aiModel);
@@ -101,12 +113,6 @@ export const appWorkflow2AgentForm = ({
       if (skills && skills.length > 0) {
         defaultAppForm.selectedAgentSkills = skills;
       }
-    } else if (node.flowNodeType === FlowNodeTypeEnum.systemConfig) {
-      defaultAppForm.chatConfig = getAppChatConfig({
-        chatConfig,
-        systemConfigNode: node,
-        isPublicFetch: true
-      });
     }
   });
 
@@ -155,35 +161,7 @@ export function agentForm2AppWorkflow(
     video: !!modelData?.video,
     extractFiles: !!(modelData?.vision || modelData?.audio || modelData?.video)
   };
-  const chatConfig: AppChatConfigType = {
-    ...data.chatConfig,
-    ...(data.chatConfig.fileSelectConfig
-      ? {
-          fileSelectConfig: {
-            ...data.chatConfig.fileSelectConfig,
-            canSelectImg: modelMultimodal.vision,
-            canSelectAudio: modelMultimodal.audio,
-            canSelectVideo: modelMultimodal.video
-          }
-        }
-      : {})
-  };
 
-  function systemConfigTemplate(): StoreNodeItemType {
-    return {
-      nodeId: SystemConfigNode.id,
-      name: t(SystemConfigNode.name),
-      intro: '',
-      flowNodeType: SystemConfigNode.flowNodeType,
-      position: {
-        x: 531.2422736065552,
-        y: -486.7611729549753
-      },
-      version: SystemConfigNode.version,
-      inputs: [],
-      outputs: []
-    };
-  }
   function workflowStartTemplate(): StoreNodeItemType {
     return {
       nodeId: workflowStartNodeId,
@@ -301,28 +279,35 @@ export function agentForm2AppWorkflow(
               label: '',
               valueType: WorkflowIOValueTypeEnum.arrayObject,
               value: data.selectedTools.map((tool) => {
+                const config = tool.inputs.reduce(
+                  (acc, input) => {
+                    if (input.key === NodeInputKeyEnum.forbidStream) {
+                      return acc;
+                    }
+                    // Special tool
+                    if (
+                      tool.flowNodeType === FlowNodeTypeEnum.appModule &&
+                      input.key === NodeInputKeyEnum.history
+                    ) {
+                      acc[input.key] = data.aiSettings.maxHistories;
+                    }
+                    acc[input.key] = input.value;
+                    return acc;
+                  },
+                  {} as Record<string, any>
+                );
+
                 return {
                   id: tool.pluginId,
+                  version: tool.version,
                   source: tool.source,
                   toolConfig: tool.toolConfig,
+                  inputs: tool.inputs.filter(canInputBeAgentGenerated).map((input) => ({
+                    key: input.key,
+                    mode: getAgentToolInputMode(input)
+                  })),
 
-                  config: tool.inputs.reduce(
-                    (acc, input) => {
-                      if (input.key === NodeInputKeyEnum.forbidStream) {
-                        return acc;
-                      }
-                      // Special tool
-                      if (
-                        tool.flowNodeType === FlowNodeTypeEnum.appModule &&
-                        input.key === NodeInputKeyEnum.history
-                      ) {
-                        acc[input.key] = data.aiSettings.maxHistories;
-                      }
-                      acc[input.key] = input.value;
-                      return acc;
-                    },
-                    {} as Record<string, any>
-                  )
+                  config: filterToolConfiguredParams({ params: config, inputs: tool.inputs })
                 };
               })
             },
@@ -399,9 +384,9 @@ export function agentForm2AppWorkflow(
   const workflow = agentChatTemplate();
 
   return {
-    nodes: [systemConfigTemplate(), workflowStartTemplate(), ...workflow.nodes],
+    nodes: [workflowStartTemplate(), ...workflow.nodes],
     edges: workflow.edges,
-    chatConfig
+    chatConfig: data.chatConfig
   };
 }
 
@@ -434,25 +419,35 @@ export const loadGeneratedTools = async ({
   generatedSelectedTools = [],
   fileSelectConfig
 }: {
-  newToolIds: string[]; // 新的，完整的 toolId
+  newToolIds: Array<string | { id: string; source?: string }>; // 新的，完整的 toolId
   existsTools?: SelectedToolItemType[];
   generatedSelectedTools?: SelectedToolItemType[];
   fileSelectConfig?: AppFileSelectConfigType;
 }): Promise<SelectedToolItemType[]> => {
   const results = (
     await Promise.all(
-      newToolIds.map<Promise<SelectedToolItemType | undefined>>(async (toolId: string) => {
+      newToolIds.map<Promise<SelectedToolItemType | undefined>>(async (toolRef) => {
+        const toolId = typeof toolRef === 'string' ? toolRef : toolRef.id;
+        const source = typeof toolRef === 'string' ? undefined : toolRef.source;
+        const identityKey = getToolSelectionKey(toolId, source);
         // 已经存在的工具，直接返回
-        const existTool = existsTools.find((tool) => tool.pluginId === toolId);
+        const existTool = existsTools.find(
+          (tool) => getToolSelectionKey(tool.pluginId, tool.source) === identityKey
+        );
         if (existTool) {
           return existTool;
         }
 
         // 新工具，需要与已配置的 tool 进行 input 合并
-        const tool = await getClientToolPreviewNode({ appId: toolId, versionId: '' });
+        const tool = await getClientToolPreviewNode({
+          appId: toolId,
+          getLatestVersion: true,
+          source
+        });
         // 验证工具配置
         const toolValid = validateToolConfiguration({
           toolTemplate: tool,
+          isAppTool: true,
           canUploadFile: !!(
             fileSelectConfig?.canSelectFile ||
             fileSelectConfig?.canSelectImg ||
@@ -465,20 +460,16 @@ export const loadGeneratedTools = async ({
           return;
         }
 
-        const generatedTool = generatedSelectedTools.find((item) => item.pluginId === toolId);
-        if (generatedTool) {
-          tool.inputs.forEach((input) => {
-            const generatedInput = generatedTool.inputs.find((topIn) => topIn.key === input.key);
-            if (generatedInput) {
-              input.value = generatedInput.value;
-            }
-          });
-        }
+        const generatedTool = generatedSelectedTools.find(
+          (item) => getToolSelectionKey(item.pluginId, item.source) === identityKey
+        );
+        const inheritedTool = inheritToolInputConfig({ tool, sourceTool: generatedTool });
 
         return {
-          ...tool,
+          ...inheritedTool,
           id: toolId,
-          configStatus: getToolConfigStatus({ tool }).status
+          source,
+          configStatus: getToolConfigStatus({ tool: inheritedTool }).status
         };
       })
     )

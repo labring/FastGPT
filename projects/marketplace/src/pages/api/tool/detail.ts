@@ -1,7 +1,7 @@
 import { getToolList } from '@/service/tool/data';
 import { type ToolDetailType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { getPkgdownloadURL, getReadmeURL } from '@/service/s3';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 
 export type ToolDetailQuery = {

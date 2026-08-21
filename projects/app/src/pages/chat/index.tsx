@@ -115,6 +115,7 @@ const Chat = () => {
           <ChatQuoteList
             metadata={datasetCiteData.metadata}
             rawSearch={datasetCiteData.rawSearch}
+            singleQuote={datasetCiteData.singleQuote}
             onClose={() => setCiteModalData(undefined)}
           />
         </PageContainer>

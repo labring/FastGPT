@@ -3,7 +3,7 @@ import {
   DatasetSourceReadTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { urlsFetch } from '../../common/string/cheerio';
-import { type TextSplitProps } from '@fastgpt/global/common/string/textSplitter';
+import { type TextSplitProps } from '../../common/string/textSplitter';
 import { axios } from '../../common/api/axios';
 import { readFileContentByBuffer } from '../../common/file/read/utils';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
@@ -20,8 +20,39 @@ import { getFileS3Key, isS3ObjectKey } from '../../common/s3/utils';
 import { isAuthorizedDatasetFileS3Key } from '../../common/s3/sources/dataset/key';
 import { getLogger, LogCategories } from '../../common/logger';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { getBackendFileOperationTimeoutMs } from '../../common/file/parseTimeout';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
+
+const datasetCsvColumnTypes = new Set(['q', 'a', 'index', 'indexes', 'metadata']);
+
+/**
+ * 解析知识库 CSV 表头，支持新版 q/a/index/metadata 和旧版 q/a/indexes 结构。
+ * q、a 必须各出现一次，metadata 最多一列，index/indexes 可以重复。
+ */
+export const parseDatasetCsvHeaders = (headers: string[]) => {
+  const normalized = headers.map((header) => header.trim().toLowerCase());
+  const typedHeader =
+    normalized.length > 0 && normalized.every((header) => datasetCsvColumnTypes.has(header));
+
+  return {
+    normalized,
+    typedHeader,
+    validTypedHeader:
+      typedHeader &&
+      normalized.filter((header) => header === 'q').length === 1 &&
+      normalized.filter((header) => header === 'a').length === 1 &&
+      normalized.filter((header) => header === 'metadata').length <= 1
+  };
+};
+
+/**
+ * 从 CSV 原文读取第一行表头，统一复用 PapaParse，避免 API 层用字符串 split 误判带引号的表头。
+ */
+export const getDatasetCsvHeaders = (rawText: string) => {
+  const [headers = []] = Papa.parse(rawText).data as string[][];
+  return headers;
+};
 
 export const readFileRawTextByUrl = async ({
   teamId,
@@ -43,10 +74,20 @@ export const readFileRawTextByUrl = async ({
   maxFileSize?: number;
 }) => {
   const extension = parseFileExtensionFromUrl(url);
+  const downloadTimeoutMs = getBackendFileOperationTimeoutMs();
+  const downloadDeadline = Date.now() + downloadTimeoutMs;
+  const getRemainingDownloadMs = () => Math.max(0, downloadDeadline - Date.now());
+  const getDownloadRequestTimeout = (maxTimeoutMs: number) => {
+    const remainingMs = getRemainingDownloadMs();
+    if (remainingMs <= 0) {
+      throw new Error(`File download timeout after ${downloadTimeoutMs / 1000} seconds`);
+    }
+    return Math.min(maxTimeoutMs, remainingMs);
+  };
 
   // Check file size
   try {
-    const headResponse = await axios.head(url, { timeout: 10000 });
+    const headResponse = await axios.head(url, { timeout: getDownloadRequestTimeout(10000) });
     const contentLength = parseInt(
       getAxiosHeaderValue(headResponse.headers['content-length']) || '0'
     );
@@ -57,6 +98,7 @@ export const readFileRawTextByUrl = async ({
       );
     }
   } catch (error) {
+    if (getRemainingDownloadMs() <= 0) throw error;
     logger.warn('File HEAD request failed, skip size precheck', { url, error });
   }
 
@@ -66,7 +108,7 @@ export const readFileRawTextByUrl = async ({
     url: url,
     responseType: 'stream',
     maxContentLength: maxFileSize,
-    timeout: 30000
+    timeout: getDownloadRequestTimeout(30000)
   });
 
   // 优化：直接从 stream 转换为 buffer，避免 arraybuffer 中间步骤
@@ -85,10 +127,11 @@ export const readFileRawTextByUrl = async ({
     };
 
     // Stream timeout
+    const streamTimeoutMs = getRemainingDownloadMs();
     const timeoutId = setTimeout(() => {
       cleanup();
-      reject('File download timeout after 30 seconds');
-    }, 600000);
+      reject(new Error(`File download timeout after ${downloadTimeoutMs / 1000} seconds`));
+    }, streamTimeoutMs);
 
     response.data.on('data', (chunk: Buffer) => {
       if (isAborted) return;
@@ -110,17 +153,21 @@ export const readFileRawTextByUrl = async ({
       clearTimeout(timeoutId);
 
       try {
+        if (getRemainingDownloadMs() <= 0) {
+          throw new Error(`File download timeout after ${downloadTimeoutMs / 1000} seconds`);
+        }
+
         // 合并所有 chunks 为单个 buffer
         const buffer = Buffer.concat(chunks as unknown as Uint8Array[]);
 
         // 立即清理 chunks 数组释放内存
         chunks.length = 0;
 
+        const { fileParsedPrefix } = getFileS3Key.dataset({
+          datasetId,
+          filename: 'file'
+        });
         const { rawText } = await retryFn(() => {
-          const { fileParsedPrefix } = getFileS3Key.dataset({
-            datasetId,
-            filename: 'file'
-          });
           return readFileContentByBuffer({
             customPdfParse,
             getFormatText,
@@ -135,6 +182,10 @@ export const readFileRawTextByUrl = async ({
             }
           });
         });
+
+        if (getRemainingDownloadMs() <= 0) {
+          throw new Error(`File download timeout after ${downloadTimeoutMs / 1000} seconds`);
+        }
 
         resolve({ rawText });
       } catch (error) {
@@ -310,24 +361,94 @@ export const rawText2Chunks = async ({
     q: string;
     a: string;
     indexes?: string[];
+    metadata?: Record<string, any>;
     imageIdList?: string[];
   }[]
 > => {
   const parseDatasetBackup2Chunks = (rawText: string) => {
     const csvArr = Papa.parse(rawText).data as string[][];
+    if (csvArr.length < 2) return { chunks: [] };
+
+    const rawHeaders = csvArr[0];
+    const { normalized: headers, typedHeader } = parseDatasetCsvHeaders(rawHeaders);
+
+    // Build column index mapping
+    let qIdx = -1,
+      aIdx = -1;
+    const indexesIdxs: number[] = [];
+    const metadataKeys: { idx: number; key: string }[] = [];
+    const metadataIdxs: number[] = [];
+
+    headers.forEach((header, idx) => {
+      if (header === 'q') {
+        qIdx = idx;
+      } else if (header === 'a') {
+        aIdx = idx;
+      } else if (header === 'index' || header === 'indexes') {
+        indexesIdxs.push(idx);
+      } else if (typedHeader && header === 'metadata') {
+        metadataIdxs.push(idx);
+      } else {
+        metadataKeys.push({ idx, key: rawHeaders[idx].trim() });
+      }
+    });
+
+    // 旧导出格式只有一个 indexes 表头，但数据行会把多个索引展开到后续单元格。
+    const legacyIndexesStart =
+      metadataKeys.length === 0 && metadataIdxs.length === 0 && indexesIdxs.length === 1
+        ? indexesIdxs[0]
+        : undefined;
+
     const chunks = csvArr
       .slice(1)
-      .map((item) => ({
-        q: item[0] || '',
-        a: item[1] || '',
-        indexes: item.slice(2).filter((item) => item.trim()),
-        imageIdList
-      }))
+      .map((item) => {
+        const q = qIdx >= 0 ? item[qIdx] || '' : '';
+        const a = aIdx >= 0 ? item[aIdx] || '' : '';
+
+        const indexes = (
+          legacyIndexesStart !== undefined
+            ? item.slice(legacyIndexesStart)
+            : indexesIdxs.map((idx) => item[idx])
+        )
+          .map((value) => (value || '').trim())
+          .filter(Boolean);
+
+        // Build metadata: only include non-empty values
+        let metadata: Record<string, any> | undefined;
+        for (const { idx, key } of metadataKeys) {
+          const val = (item[idx] || '').trim();
+          if (val) {
+            metadata = metadata || {};
+            metadata[key] = val;
+          }
+        }
+
+        for (const idx of metadataIdxs) {
+          const val = (item[idx] || '').trim();
+          if (!val) continue;
+
+          let parsedValue: Record<string, any> | undefined;
+          try {
+            const parsed = JSON.parse(val);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+              parsedValue = parsed;
+            }
+          } catch {}
+
+          metadata = metadata || {};
+          if (parsedValue) {
+            Object.assign(metadata, parsedValue);
+          } else {
+            // 固定 metadata 表头没有字段名，非法 JSON 仍按列序保留，避免静默丢值。
+            metadata[`metadata_${idx}`] = val;
+          }
+        }
+
+        return { q, a, indexes, metadata, imageIdList };
+      })
       .filter((item) => item.q || item.a);
 
-    return {
-      chunks
-    };
+    return { chunks };
   };
 
   if (backupParse) {

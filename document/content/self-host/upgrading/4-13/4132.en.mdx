@@ -1,6 +1,10 @@
 ---
-title: 'V4.13.2 (Includes Upgrade Script)'
+title: 'V4.13.2'
 description: 'FastGPT V4.13.2 Release Notes'
+releaseTime: '2025-10-21'
+upgradeTags:
+  - CONFIG
+  - MIGRATION
 ---
 
 ## Upgrade Guide
@@ -38,10 +42,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4132' \
 
 This will remove the previous S3 circleLife policy. If you are using an external S3 service that does not support circleLife operations, this script may fail -- you can safely ignore the error (since setting the policy would have also failed).
 
-
 ## New Features
 
-1. HTTP Toolset now supports manual creation mode.
+1. HTTP Toolkit now supports manual creation mode.
 2. Introduced the project OpenAPI framework.
 3. API key validity check endpoint.
 4. Exported chat logs now include the current version's global variables at the end.

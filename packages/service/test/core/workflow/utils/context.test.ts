@@ -7,22 +7,18 @@ import {
 } from '../../../../core/workflow/utils/context';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 
-const createWorkflowContext = (queryUrlTypeMap: Record<string, ChatFileTypeEnum>) => ({
-  queryUrlTypeMap,
+const createWorkflowContext = () => ({
   mcpClientMemory: {}
 });
 
 describe('WorkflowContext', () => {
   describe('runWithContext / getWorkflowContext', () => {
     it('should provide context inside callback', () => {
-      const ctx = createWorkflowContext({
-        'http://a.com/f.pdf': ChatFileTypeEnum.file
-      });
+      const ctx = createWorkflowContext();
 
       runWithContext(ctx, () => {
         const store = getWorkflowContext();
-        expect(store).toBeDefined();
-        expect(store?.queryUrlTypeMap).toEqual(ctx.queryUrlTypeMap);
+        expect(store).toBe(ctx);
       });
     });
 
@@ -31,23 +27,23 @@ describe('WorkflowContext', () => {
     });
 
     it('should isolate nested contexts', () => {
-      const outer = createWorkflowContext({ a: ChatFileTypeEnum.file });
-      const inner = createWorkflowContext({ b: ChatFileTypeEnum.image });
+      const outer = createWorkflowContext();
+      const inner = createWorkflowContext();
 
       runWithContext(outer, () => {
-        expect(getWorkflowContext()?.queryUrlTypeMap).toEqual(outer.queryUrlTypeMap);
+        expect(getWorkflowContext()).toBe(outer);
 
         runWithContext(inner, () => {
-          expect(getWorkflowContext()?.queryUrlTypeMap).toEqual(inner.queryUrlTypeMap);
+          expect(getWorkflowContext()).toBe(inner);
         });
 
         // outer context restored
-        expect(getWorkflowContext()?.queryUrlTypeMap).toEqual(outer.queryUrlTypeMap);
+        expect(getWorkflowContext()).toBe(outer);
       });
     });
 
     it('should work with async functions', async () => {
-      const ctx = createWorkflowContext({ url1: ChatFileTypeEnum.image });
+      const ctx = createWorkflowContext();
 
       await new Promise<void>((resolve) => {
         runWithContext(ctx, async () => {
@@ -61,64 +57,31 @@ describe('WorkflowContext', () => {
 
   describe('updateWorkflowContextVal', () => {
     it('should update existing context values', () => {
-      const ctx = createWorkflowContext({ a: ChatFileTypeEnum.file });
+      const ctx = createWorkflowContext();
+      const mcpClientMemory = {};
 
       runWithContext(ctx, () => {
-        updateWorkflowContextVal({
-          queryUrlTypeMap: { b: ChatFileTypeEnum.image }
-        });
+        updateWorkflowContextVal({ mcpClientMemory });
 
         const store = getWorkflowContext();
-        expect(store?.queryUrlTypeMap).toEqual({ b: ChatFileTypeEnum.image });
+        expect(store?.mcpClientMemory).toBe(mcpClientMemory);
       });
     });
 
     it('should do nothing when called outside context', () => {
       // Should not throw
       expect(() => {
-        updateWorkflowContextVal({ queryUrlTypeMap: { x: ChatFileTypeEnum.file } });
+        updateWorkflowContextVal({});
       }).not.toThrow();
     });
 
     it('should support partial updates', () => {
-      const ctx = createWorkflowContext({ a: ChatFileTypeEnum.file });
+      const ctx = createWorkflowContext();
 
       runWithContext(ctx, () => {
         // Update with empty partial — no keys iterated
         updateWorkflowContextVal({});
-        expect(getWorkflowContext()?.queryUrlTypeMap).toEqual({ a: ChatFileTypeEnum.file });
-      });
-    });
-  });
-
-  describe('parseUrlToFileType with context', () => {
-    it('should use queryUrlTypeMap to determine file type', () => {
-      const url = 'https://example.com/unknown-resource';
-      const ctx = createWorkflowContext({ [url]: ChatFileTypeEnum.image });
-
-      runWithContext(ctx, () => {
-        const result = parseUrlToFileType(url);
-        expect(result?.type).toBe(ChatFileTypeEnum.image);
-      });
-    });
-
-    it('should prefer context type over extension-based detection', () => {
-      const url = 'https://example.com/photo.png';
-      const ctx = createWorkflowContext({ [url]: ChatFileTypeEnum.file });
-
-      runWithContext(ctx, () => {
-        const result = parseUrlToFileType(url);
-        // Context says file, even though extension is image
-        expect(result?.type).toBe(ChatFileTypeEnum.file);
-      });
-    });
-
-    it('should fall back to extension detection when URL not in context', () => {
-      const ctx = createWorkflowContext({ 'other-url': ChatFileTypeEnum.file });
-
-      runWithContext(ctx, () => {
-        const result = parseUrlToFileType('https://example.com/photo.png');
-        expect(result?.type).toBe(ChatFileTypeEnum.image);
+        expect(getWorkflowContext()).toBe(ctx);
       });
     });
   });

@@ -10,7 +10,6 @@ import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge'
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import dynamic from 'next/dynamic';
-import { Box } from '@chakra-ui/react';
 import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
@@ -21,6 +20,7 @@ import { useTranslation } from 'next-i18next';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getAppChatSourceKey } from '@/web/core/chat/utils';
+import { Box, type BoxProps } from '@chakra-ui/react';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 
@@ -28,12 +28,14 @@ export const useChatTest = ({
   nodes,
   edges,
   chatConfig = {},
-  isReady
+  isReady,
+  boxBodyProps
 }: {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
   chatConfig: AppChatConfigType;
   isReady: boolean;
+  boxBodyProps?: BoxProps;
 }) => {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
@@ -172,10 +174,19 @@ export const useChatTest = ({
 
   const CustomChatContainer = useMemoizedFn(() =>
     appDetail.type === AppTypeEnum.workflowTool ? (
-      <Box p={5} h={'100%'} minH={0} display={'flex'} flexDirection={'column'}>
+      <Box
+        p={5}
+        h={'100%'}
+        minH={0}
+        minW={0}
+        overflowY={'auto'}
+        display={'flex'}
+        flexDirection={'column'}
+      >
         <PluginRunBox
           appId={appId}
           chatId={chatId}
+          fileUploadMode="draft"
           onNewChat={restartChat}
           onStartChat={startChat}
         />
@@ -185,6 +196,7 @@ export const useChatTest = ({
         isReady={isReady}
         sourceTarget={{ sourceType: ChatSourceTypeEnum.app, sourceId: appId }}
         chatId={chatId}
+        boxBodyProps={boxBodyProps}
         features={{
           mark: true,
           autoResume: true,

@@ -1,6 +1,8 @@
 import type { OpenAPIPath } from '../../../type';
 import { GetAppsBodySchema, GetAppsResponseSchema } from './api';
 import { DevApiTagsMap } from '../../../tag';
+import { AdminTemplatePath } from './templates';
+import { AdminTemplateTypePath } from './templateType';
 
 export const AdminAppPath: OpenAPIPath = {
   '/admin/core/app/getApps': {
@@ -26,5 +28,7 @@ export const AdminAppPath: OpenAPIPath = {
         }
       }
     }
-  }
+  },
+  ...AdminTemplatePath,
+  ...AdminTemplateTypePath
 };

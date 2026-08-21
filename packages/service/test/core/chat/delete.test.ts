@@ -11,12 +11,7 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 
 const mocks = vi.hoisted(() => ({
-  deleteAppChatRuntimeSandboxes: vi.fn(),
   deleteChatFilesByPrefix: vi.fn()
-}));
-
-vi.mock('@fastgpt/service/core/ai/sandbox/application/resource', () => ({
-  deleteAppChatRuntimeSandboxes: mocks.deleteAppChatRuntimeSandboxes
 }));
 
 vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
@@ -84,18 +79,17 @@ const createChatTree = async ({
 describe('deleteChatResourcesBySource', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.deleteAppChatRuntimeSandboxes.mockResolvedValue(undefined);
     mocks.deleteChatFilesByPrefix.mockResolvedValue(undefined);
   });
 
   it('deletes app legacy and source-aware chat resources by source', async () => {
     const sourceId = '65f000000000000000000003';
-    const legacyChat = await createChatTree({
+    await createChatTree({
       sourceType: ChatSourceTypeEnum.app,
       sourceId,
       legacy: true
     });
-    const newChat = await createChatTree({
+    await createChatTree({
       sourceType: ChatSourceTypeEnum.app,
       sourceId
     });
@@ -108,10 +102,6 @@ describe('deleteChatResourcesBySource', () => {
     expect(await MongoChat.countDocuments({ appId: sourceId })).toBe(0);
     expect(await MongoChatItem.countDocuments({ appId: sourceId })).toBe(0);
     expect(await MongoChatItemResponse.countDocuments({ appId: sourceId })).toBe(0);
-    expect(mocks.deleteAppChatRuntimeSandboxes).toHaveBeenCalledWith({
-      appId: sourceId,
-      chatIds: expect.arrayContaining([legacyChat.chatId, newChat.chatId])
-    });
     expect(mocks.deleteChatFilesByPrefix).toHaveBeenCalledWith({
       sourceType: ChatSourceTypeEnum.app,
       sourceId
@@ -134,7 +124,6 @@ describe('deleteChatResourcesBySource', () => {
     expect(await MongoChat.countDocuments({ appId: sourceId })).toBe(1);
     expect(await MongoChatItem.countDocuments({ appId: sourceId })).toBe(1);
     expect(await MongoChatItemResponse.countDocuments({ appId: sourceId })).toBe(1);
-    expect(mocks.deleteAppChatRuntimeSandboxes).not.toHaveBeenCalled();
     expect(mocks.deleteChatFilesByPrefix).not.toHaveBeenCalled();
   });
 
@@ -154,7 +143,6 @@ describe('deleteChatResourcesBySource', () => {
     expect(await MongoChat.countDocuments({ appId: sourceId })).toBe(0);
     expect(await MongoChatItem.countDocuments({ appId: sourceId })).toBe(0);
     expect(await MongoChatItemResponse.countDocuments({ appId: sourceId })).toBe(0);
-    expect(mocks.deleteAppChatRuntimeSandboxes).not.toHaveBeenCalled();
     expect(mocks.deleteChatFilesByPrefix).toHaveBeenCalledWith({
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId,

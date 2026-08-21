@@ -1,5 +1,6 @@
 import { AppToolSourceEnum } from '../tool/constants';
 import { NodeInputKeyEnum } from '../../workflow/constants';
+import { FlowNodeTypeEnum } from '../../workflow/node/constant';
 import type { StoreNodeItemType } from '../../workflow/type/node';
 import type { SelectedToolItemType } from '../formEdit/type';
 
@@ -82,7 +83,62 @@ export function splitCombineToolId(id: string): {
   throw new Error('Invalid tool id');
 }
 
+/**
+ * 判断工具是否允许使用旧版 toolDescription 推断 AI 参数。
+ * 该兼容仅覆盖工作流工具和旧系统/商业工具，其他工具继续以 isToolParam 为准。
+ */
+export const shouldUseLegacyToolDescriptionFallback = ({
+  toolId,
+  flowNodeType
+}: {
+  toolId?: string;
+  flowNodeType?: FlowNodeTypeEnum;
+}) => {
+  if (flowNodeType === FlowNodeTypeEnum.pluginModule) return true;
+  if (!toolId) return false;
+
+  try {
+    const { source } = splitCombineToolId(toolId);
+    return source === AppToolSourceEnum.systemTool || source === AppToolSourceEnum.commercial;
+  } catch {
+    return false;
+  }
+};
+
+export const isSystemOrCommercialToolId = (toolId?: string) => {
+  if (!toolId) return false;
+
+  try {
+    const { source } = splitCombineToolId(toolId);
+    return source === AppToolSourceEnum.systemTool || source === AppToolSourceEnum.commercial;
+  } catch {
+    return false;
+  }
+};
+
 const DebugToolSourcePrefix = 'debug:tmbId:';
+const TeamPluginSourcePrefix = 'teamId:';
+
+/** 工具身份由 source 与 id 共同决定，避免系统/团队同名插件互相覆盖。 */
+export const getToolIdentityKey = (id?: string, source?: string) =>
+  `${source || 'system'}:${id || ''}`;
+
+/** 构造 plugin service 使用的团队隔离 source。 */
+export const getTeamPluginSource = (teamId: string) => `${TeamPluginSourcePrefix}${teamId}`;
+
+export function isTeamPluginSource(source?: string): source is string {
+  return typeof source === 'string' && source.startsWith(TeamPluginSourcePrefix);
+}
+
+export function parseTeamPluginSource(source?: string): { teamId: string } | undefined {
+  if (!isTeamPluginSource(source)) return;
+  const teamMatch = /^teamId:([^:]+)$/.exec(source);
+  if (teamMatch) {
+    return {
+      teamId: teamMatch[1]
+    };
+  }
+}
 
 export function isDebugToolSource(source?: string): source is string {
   return typeof source === 'string' && source.startsWith(DebugToolSourcePrefix);

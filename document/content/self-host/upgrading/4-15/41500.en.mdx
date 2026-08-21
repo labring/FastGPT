@@ -1,6 +1,10 @@
 ---
-title: 'V4.15.0 (Includes Upgrade Script)'
+title: 'V4.15.0'
 description: 'FastGPT V4.15.0 Release Notes'
+releaseTime: '2026-06-30'
+upgradeTags:
+  - CONFIG
+  - MIGRATION
 ---
 
 import { Alert } from '@/components/docs/Alert';
@@ -82,9 +86,9 @@ TEXTIN_SECRET_CODE=
 HNSW_EF_SEARCH=100
 # Maximum vector scan tuple count. Only applies to PG.
 HNSW_MAX_SCAN_TUPLES=100000
-# Maximum Knowledge Base file parsing queue concurrency
+# Maximum Dataset file parsing queue concurrency
 DATASET_PARSE_MAX_PROCESS=10
-# Maximum vector training queue concurrency
+# Maximum vector indexing queue concurrency
 VECTOR_MAX_PROCESS=10
 # Maximum Q&A split queue concurrency
 QA_MAX_PROCESS=10
@@ -208,13 +212,12 @@ DEPLOYMENT_ENVIRONMENT=
 
 ### 2. OpenSandbox Changes (as needed)
 
-OpenSandbox and other sandbox provider settings have moved to [Sandbox Configuration](../../config/sandbox/common) and are no longer built into the deployment yml.
+See the [4.15 deployment YAML](https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.pg.yml) for the complete OpenSandbox setup. The 4.15 Docker Compose deployment file already includes OpenSandbox Server, Volume Manager, Agent Sandbox Proxy, and the image pre-pull services.
 
 For this upgrade, focus on:
 
-1. Deploying the `agent-sandbox-proxy` service.
-2. Updating OpenSandbox-related image versions.
-3. Updating related environment variables in `fastgpt-app` and `fastgpt-pro`.
+1. Using the new Docker Compose deployment file, which includes the OpenSandbox services.
+2. Updating OpenSandbox environment variables in `fastgpt-app` and `fastgpt-pro`.
 
 You can overwrite your deployment directly with the new OpenSandbox template.
 
@@ -368,7 +371,7 @@ curl -X POST 'https://{{host}}/api/admin/dataClean/initSandboxArchive' \
 
 ## 🚀 New Features
 
-1. Added the Skill module. Agent V2 can bind and run static Skills.
+1. Added Skills. Agent V2 can bind and run static Skills.
 2. Reworked the Agent V2 loop logic to improve stability for multi-step tool calls and orchestration.
 3. Sandbox now supports custom npm and pip sources.
 4. Reworked the plugin system architecture, added plugin-level runtime config, and moved system tool execution to local-pool.
@@ -376,12 +379,12 @@ curl -X POST 'https://{{host}}/api/admin/dataClean/initSandboxArchive' \
 6. Reworked the chatbox UI with quick scroll-to-bottom, model-generated chat titles, and smoother streaming output.
 7. Added LLM-generated chat titles.
 8. Added the Loop node and deprecated the legacy batch execution node.
-9. Knowledge Base search now supports native multimodal embedding models, image-to-image search, and permission filtering in Agent mode.
+9. Dataset search now supports native multimodal embedding models, image-to-image search, and permission filtering in Agent mode.
 10. Multimodal models now support audio and video input.
 11. API Key logic is optimized. API Key management is unified, and requests now explicitly pass app context.
 12. Generated separate DevAPI and System OpenAPI documentation.
 13. Added quick-reply output syntax.
-14. Added DingTalk Knowledge Base integration for third-party Knowledge Bases.
+14. Added DingTalk Dataset integration for third-party Datasets.
 15. Added model reasoning configuration.
 16. Workflow template export now includes the template name and description.
 17. Global variable inputs now support object-type data.
@@ -408,43 +411,43 @@ curl -X POST 'https://{{host}}/api/admin/dataClean/initSandboxArchive' \
 10. HTML output now automatically switches to preview mode after generation, reducing the need to open the preview manually.
 11. Improved stream-resume pause and abnormal interruption recovery to reduce chats getting stuck in inaccurate generating or stopping states.
 12. The most recent chat is remembered per app when switching apps, and local chat cache is cleared when switching teams.
-13. Improved the Knowledge Base search test interaction and Knowledge Base data editing modal.
-14. When a Knowledge Base is deleted, app orchestration now shows a graceful prompt.
-15. Improved error prompts during Knowledge Base training and added one-click retry for all failed items.
-16. Invalid Knowledge Base reference markers are now filtered out.
+13. Improved the Dataset search test interaction and Dataset data editing modal.
+14. When a Dataset is deleted, app orchestration now shows a graceful prompt.
+15. Improved error prompts during Dataset indexing and added one-click retry for all failed items.
+16. Invalid Dataset citation markers are now filtered out.
 17. PDF parsing now uses `liteparse` instead of PDFJs, improving speed by 3x.
 18. xlsx parsing now automatically removes empty rows and columns and supports merged cells.
 19. Added validation for input guide configuration to prevent incorrect custom dictionary URL configuration.
-20. Strengthened security protection for third-party Knowledge Base requests, HTTP tool parsing, IP detection, and Code Sandbox AST checks.
+20. Strengthened security protection for third-party Dataset requests, HTTP tool parsing, IP detection, and Code Sandbox AST checks.
 21. File injection in messages moved from system messages to user messages to improve cache hit rates.
 22. Improved the reason hide toggle so reasoning can be hidden in the UI while still being preserved when requesting the LLM.
 23. Optimized `chat2messages` adaptation to avoid standalone reason output.
 24. Empty tool responses are now automatically filled with `none` to avoid errors in some models.
 25. Improved the insufficient-balance prompt for non-admin users and visitors.
 26. Template features are hidden when the user does not have creation permission.
-27. Improved long-name display for apps, Knowledge Bases, files, and folders: names are truncated when they exceed the available width, and the full name is shown on hover.
+27. Improved long-name display for apps, Datasets, files, and folders: names are truncated when they exceed the available width, and the full name is shown on hover.
 28. Improved Skill-related modals, editing interactions, and list API performance.
 29. Improved the login page UI.
 30. Deduplicated site sync rate-limit error prompts.
-31. Added virtual list rendering for apps and Knowledge Bases to improve large-list performance.
-32. LLM request traces now use team-isolated queries to prevent request IDs from exposing request bodies, retrieved Knowledge Base chunks, and model responses across teams.
+31. Added virtual list rendering for apps and Datasets to improve large-list performance.
+32. LLM request traces now use team-isolated queries to prevent request IDs from exposing request bodies, retrieved Dataset chunks, and model responses across teams.
 
 ## 🐛 Bug Fixes
 
 1. Fixed an issue where a model response error in Agent V2 mode caused steps to execute repeatedly.
-2. Fixed missing charset in text responses when previewing or downloading Knowledge Base source files.
+2. Fixed missing charset in text responses when previewing or downloading Dataset source files.
 3. Fixed abnormal default values in Workflow single-node debugging.
 4. Fixed abnormal `defaultConfig` override behavior in model configuration.
 5. Fixed TTS playback errors when adapting to the latest OpenAI SDK.
-6. Fixed oversized chunks that could occur when Knowledge Base data chunks contained code blocks.
+6. Fixed oversized chunks that could occur when Dataset data chunks contained code blocks.
 7. Fixed abnormal multimodal file link retrieval from models.
-8. Fixed potential security risks related to the training API, HTTP tool parsing, and private S3 object keys.
+8. Fixed potential security risks related to the indexing API, HTTP tool parsing, and private S3 object keys.
 9. Fixed abnormal MCP tool expansion for tool calls after interactive nodes.
 10. Fixed abnormal tool call parameter schemas for array and object types in Workflow tools.
 11. Fixed UI offset in publish channel portals.
 12. Fixed the v1/completions API where `quoteList` in `nodeResponse` did not return `q` and `a`.
-13. Fixed conversation stream resume issues, including form restoration, file list restoration, node response preservation, duplicate interaction appending, temporary history titles, and cross-app chat leakage.
-14. Stop conversation prompts are now synchronized with the backend generation state, and the warning toast shown during stop has been removed.
+13. Fixed session stream resume issues, including form restoration, file list restoration, node response preservation, duplicate interaction appending, temporary history titles, and cross-app chat leakage.
+14. Stop-session prompts are now synchronized with the backend generation state, and the warning toast shown during stop has been removed.
 15. The v1/chat/completions API previously filtered out `q`/`a`/`index` when returning `nodeResponse`; this version restores those fields.
 
 ## 🛠️ Code Improvements
@@ -452,7 +455,7 @@ curl -X POST 'https://{{host}}/api/admin/dataClean/initSandboxArchive' \
 1. Reorganized the overall code structure, upgraded Next.js, switched to Turbopack builds, and upgraded the default container Node.js version to 24.
 2. Unified Agent tool declaration and execution behavior.
 3. The plugin service moved from the legacy `runtime` structure to a pnpm workspace monorepo, split into HTTP service entry, domain model, use cases, API adapter, infrastructure, SDK, and CLI.
-4. Application-related API interfaces now use zod schemas consistently and generate documentation.
+4. App-related APIs now use Zod schemas consistently and generate documentation.
 5. Split AI request, Workflow run detail, and chatbox code to reduce module coupling.
 6. Optimized user-defined API key billing logic and token calculation dependencies.
 7. Server-side environment loading now uses `@t3-oss/env-core` with stronger type checks. Other services also use centralized environment exports.

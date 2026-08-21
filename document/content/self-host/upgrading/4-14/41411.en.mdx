@@ -1,9 +1,13 @@
 ---
-title: 'V4.14.11 (In Progress)'
+title: 'V4.14.11'
 description: 'FastGPT V4.14.11 Release Notes'
+releaseTime: '2026-04-19'
+upgradeTags:
+  - CONFIG
 ---
 
 ## Upgrade Guide
+
 ### 1. Update image tags
 
 - Update fastgpt-app (FastGPT main service) image tag to: v4.14.11
@@ -36,15 +40,15 @@ WORKFLOW_PARALLEL_MAX_CONCURRENCY=10 # Upper bound for max concurrency; cannot e
 ## ⚙️ Optimizations
 
 1. Added zod parameter validation to many APIs to reduce attack surface and parameter type errors.
-2. Refactored model channel management code.
-3. Added a default VLM model to the knowledge base creation API.
+2. Refactored model provider management code.
+3. Added a default VLM model to the Dataset creation API.
 
 ## 🐛 Bug Fixes
 
 1. Fixed an issue where the model in chat Agent mode was reset after refresh.
 2. Fixed missing permission checks on several APIs.
-3. Fixed a billing error in the API for pushing data to the knowledge base.
-4. Fixed garbled Chinese characters when uploading Markdown documents to the knowledge base, caused by the leading English content being misdetected as `ascii`.
+3. Fixed a billing error in the API for pushing data to the Dataset.
+4. Fixed garbled Chinese characters when uploading Markdown documents to the Dataset, caused by the leading English content being misdetected as `ascii`.
 5. Fixed Python code execution ignoring parameters when the input was empty.
 6. Fixed the workflow global variable multi-select field not clearing default values when an enum entry was removed.
 7. Fixed sub-workflow global variable default values not being displayed when adding a sub-workflow.

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   Box,
   Flex,
@@ -22,6 +22,7 @@ import { TTSTypeEnum } from '@/web/core/app/constants';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
+import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import { cardStyles } from '../../constants';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
@@ -36,12 +37,18 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useAgentSkillSelect } from './hooks/useAgentSkillSelect';
 import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
 import DatasetCard from '@/components/core/app/DatasetCard';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/pageComponents/app/detail/context';
+import { useWelcomeTextFoldState } from '@/components/core/app/useAppEditorUIState';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
 const SkillSelectModal = dynamic(() => import('../FormComponent/ToolSelector/SkillSelectModal'));
 const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'));
 const WelcomeTextConfig = dynamic(() => import('@/components/core/app/WelcomeTextConfig'));
+const WelcomeQuestionsConfig = dynamic(
+  () => import('@/components/core/app/WelcomeQuestionsConfig')
+);
 const FileSelectConfig = dynamic(() => import('@/components/core/app/FileSelect'));
 
 const BoxStyles: BoxProps = {
@@ -63,8 +70,10 @@ const EditForm = ({
   const { teamPlanStatus } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
   const showSandbox = feConfigs.show_agent_sandbox;
+  const appId = useContextSelector(AppContext, (v) => v.appId);
 
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
+  const { isWelcomeTextFolded, toggleWelcomeTextFold } = useWelcomeTextFoldState(appId);
 
   const {
     selectedAgentSkills,
@@ -88,15 +97,22 @@ const EditForm = ({
   const { skillOption, selectedSkills, onClickSkill, onRemoveSkill, SkillModal } = useSkillManager({
     selectedTools: appForm.selectedTools,
     selectedAgentSkills,
-    onDeleteTool: (id) => {
+    onDeleteTool: (id, source) => {
       setAppForm((state) => ({
         ...state,
-        selectedTools: state.selectedTools?.filter((item) => item.pluginId !== id) || []
+        selectedTools:
+          state.selectedTools?.filter(
+            (item) =>
+              getToolIdentityKey(item.pluginId, item.source) !== getToolIdentityKey(id, source)
+          ) || []
       }));
     },
     onUpdateOrAddTool: (tool) => {
       setAppForm((state) => {
-        const index = state.selectedTools.findIndex((item) => item.pluginId === tool.pluginId);
+        const toolKey = getToolIdentityKey(tool.pluginId, tool.source);
+        const index = state.selectedTools.findIndex(
+          (item) => getToolIdentityKey(item.pluginId, item.source) === toolKey
+        );
 
         if (index === -1) {
           return {
@@ -107,8 +123,9 @@ const EditForm = ({
           return {
             ...state,
             selectedTools:
-              state.selectedTools?.map((item) => (item.pluginId === tool.pluginId ? tool : item)) ||
-              []
+              state.selectedTools?.map((item) =>
+                getToolIdentityKey(item.pluginId, item.source) === toolKey ? tool : item
+              ) || []
           };
         }
       });
@@ -122,7 +139,15 @@ const EditForm = ({
       appForm.chatConfig.fileSelectConfig?.canSelectCustomFileExtension
     ),
     hasSelectedDataset: (appForm.dataset.datasets?.length || 0) > 0,
-    useAgentSandbox: !!appForm.aiSettings.useAgentSandbox
+    useAgentSandbox: !!appForm.aiSettings.useAgentSandbox,
+    onClickDatasetSearch: () => {
+      if (appForm.dataset.datasets?.length > 0) {
+        onOpenDatasetParams();
+        return;
+      }
+
+      onOpenKbSelect();
+    }
   });
 
   const {
@@ -165,25 +190,38 @@ const EditForm = ({
     return selectedModel.quoteMaxToken || 3000;
   }, [selectedModel.quoteMaxToken]);
 
-  // 简易 Agent 不暴露多模态开关，文件选择能力直接跟随模型能力。
-  useEffect(() => {
-    setAppForm((state) => ({
-      ...state,
-      chatConfig: {
-        ...state.chatConfig,
-        ...(state.chatConfig.fileSelectConfig
-          ? {
-              fileSelectConfig: {
-                ...state.chatConfig.fileSelectConfig,
-                canSelectImg: !!selectedModel.vision,
-                canSelectAudio: !!selectedModel.audio,
-                canSelectVideo: !!selectedModel.video
-              }
-            }
-          : {})
-      }
-    }));
-  }, [selectedModel, setAppForm]);
+  const updateWelcomeText = useCallback(
+    (value: string) => {
+      setAppForm((state) => ({
+        ...state,
+        chatConfig: {
+          ...state.chatConfig,
+          welcomeText: value,
+          welcomeConfig: {
+            ...state.chatConfig.welcomeConfig,
+            welcomeText: value
+          }
+        }
+      }));
+    },
+    [setAppForm]
+  );
+
+  const updateWelcomeQuestions = useCallback(
+    (value: string[]) => {
+      setAppForm((state) => ({
+        ...state,
+        chatConfig: {
+          ...state.chatConfig,
+          welcomeConfig: {
+            ...state.chatConfig.welcomeConfig,
+            welcomeQuestions: value
+          }
+        }
+      }));
+    },
+    [setAppForm]
+  );
 
   return (
     <>
@@ -419,17 +457,24 @@ const EditForm = ({
               }));
             }}
             onUpdateTool={(e) => {
+              const toolKey = getToolIdentityKey(e.pluginId, e.source);
               setAppForm((state) => ({
                 ...state,
                 selectedTools:
-                  state.selectedTools?.map((item) => (item.pluginId === e.pluginId ? e : item)) ||
-                  []
+                  state.selectedTools?.map((item) =>
+                    getToolIdentityKey(item.pluginId, item.source) === toolKey ? e : item
+                  ) || []
               }));
             }}
-            onRemoveTool={(id) => {
+            onRemoveTool={(id, source) => {
               setAppForm((state) => ({
                 ...state,
-                selectedTools: state.selectedTools?.filter((item) => item.pluginId !== id) || []
+                selectedTools:
+                  state.selectedTools?.filter(
+                    (item) =>
+                      getToolIdentityKey(item.pluginId, item.source) !==
+                      getToolIdentityKey(id, source)
+                  ) || []
               }));
             }}
           />
@@ -521,7 +566,6 @@ const EditForm = ({
         {/* File select */}
         <Box {...BoxStyles}>
           <FileSelectConfig
-            forbidVision={!selectedModel?.vision}
             value={appForm.chatConfig.fileSelectConfig}
             onChange={(e) => {
               setAppForm((state) => ({
@@ -556,16 +600,20 @@ const EditForm = ({
         <Box {...BoxStyles}>
           <WelcomeTextConfig
             value={appForm.chatConfig.welcomeText}
+            isFolded={isWelcomeTextFolded}
+            onToggleFold={toggleWelcomeTextFold}
             onChange={(e) => {
-              setAppForm((state) => ({
-                ...state,
-                chatConfig: {
-                  ...state.chatConfig,
-                  welcomeText: e.target.value
-                }
-              }));
+              updateWelcomeText(e.target.value);
             }}
           />
+          {!isWelcomeTextFolded && (
+            <Box mt={3}>
+              <WelcomeQuestionsConfig
+                value={appForm.chatConfig.welcomeConfig?.welcomeQuestions}
+                onChange={updateWelcomeQuestions}
+              />
+            </Box>
+          )}
         </Box>
 
         {/* tts */}

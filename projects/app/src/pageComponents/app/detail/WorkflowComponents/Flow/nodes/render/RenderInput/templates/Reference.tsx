@@ -93,7 +93,7 @@ export const useReference = ({
           label: (
             <Flex alignItems={'center'}>
               <Avatar src={node.avatar} w={isArray ? '1rem' : '1.05rem'} borderRadius={'xs'} />
-              <Box ml={1}>{t(node.name as any)}</Box>
+              <Box ml={1}>{node.name}</Box>
             </Flex>
           ),
           value: node.nodeId,

@@ -12,7 +12,7 @@ import {
   Tr,
   useDisclosure
 } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyMenu, { type MenuItemType } from '@fastgpt/web/components/common/MyMenu';
@@ -33,7 +33,7 @@ const GroupInfoModal = dynamic(() => import('./GroupInfoModal'));
 const GroupManageMember = dynamic(() => import('./GroupManageMember'));
 
 function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation(['account_team', 'user']);
   const { userInfo } = useUserStore();
 
   const {
@@ -126,7 +126,9 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                   <Td>
                     <MemberTag
                       name={
-                        group.name === DefaultGroupName ? userInfo?.team.teamName ?? '' : group.name
+                        group.name === DefaultGroupName
+                          ? (userInfo?.team.teamName ?? '')
+                          : group.name
                       }
                       avatar={group.avatar}
                     />

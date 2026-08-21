@@ -33,6 +33,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
           '/app/detail',
           '/dashboard/tool',
           '/dashboard/systemTool',
+          '/dashboard/systemTool/marketplace',
           '/dashboard/templateMarket',
           '/dashboard/mcpServer',
           '/dashboard/evaluation',
@@ -61,7 +62,6 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
           '/account/apikey',
           '/account/setting',
           '/account/inform',
-          '/account/promotion',
           '/account/model'
         ],
         unread
@@ -78,7 +78,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
           ]
         : [])
     ],
-    [lastChatAppId, lastPane, t, userInfo?.username]
+    [lastChatAppId, lastPane, t, unread, userInfo?.username]
   );
 
   return (

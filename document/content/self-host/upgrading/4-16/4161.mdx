@@ -1,0 +1,78 @@
+---
+title: 'V4.16.1'
+description: 'FastGPT V4.16.1 更新说明'
+upgradeTags:
+  - 进行中
+---
+
+## 📦 升级指南
+
+### 更新 Agent Sandbox 环境变量和运行态镜像
+
+启用 Agent Sandbox 时，请在 `fastgpt-app` 和 `fastgpt-pro` 中同步检查以下配置。4.16.1 使用完整的运行态镜像地址：
+
+```dotenv
+# 普通非 root 镜像，默认配置
+AGENT_SANDBOX_OPENSANDBOX_IMAGE=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.3.1
+```
+
+如果沙盒需要安装 apt 依赖，必须切换为 root 镜像；如需要，可配置 apt 镜像源：
+
+```dotenv
+AGENT_SANDBOX_OPENSANDBOX_IMAGE=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-root:v0.3.1
+AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu
+```
+
+中国大陆镜像源和全球镜像源的完整镜像列表、root/non-root 镜像选择，以及自定义依赖源配置，请参考 [OpenSandbox 配置](../../config/sandbox/opensandbox)。
+
+### 迁移工具 JSON Schema 存储格式
+
+请严格按以下版本顺序执行迁移：
+
+1. 在 4.16.0 版本先完成 `initHttpToolSchema`，将手动 HTTP 工具的历史数组参数转换为标准 JSON Schema。
+2. 升级到 4.16.1 后，再执行本节的 `initToolJsonSchemaStorage`。
+
+已经在 4.16.0 完成 `initHttpToolSchema` 的环境无需重复执行。4.16.1 会检查 4.16.0 负责的 HTTP 工具应用及其历史版本；如果这些数据仍包含旧数组类型，接口会拒绝执行，避免旧数据被直接转换为字符串。迁移只处理 MCP/HTTP 工具应用及其历史版本，不处理普通工作流应用。
+
+4.16.1 将 MCP/HTTP 工具的 JSON Schema 统一为字符串存储。请先执行 dry-run：
+
+```bash
+curl -X POST 'https://你的域名/api/admin/4161/initToolJsonSchemaStorage' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":true}'
+```
+
+确认 `total.changedDocumentCount` 后执行正式迁移：
+
+```bash
+curl -X POST 'https://你的域名/api/admin/4161/initToolJsonSchemaStorage' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":false}'
+```
+
+## 🚀 新增内容
+
+1. 第三方发布渠道，支持多模态文件、音频转录、引用（如有）
+2. 支持团队安装系统插件（进程模式，存在一定安全风险，未来版本支持 serverless 隔离运行）。
+3. 沙盒支持自定义 apt 源。
+
+## ⚙️ 优化
+
+1. S3 key 命名，取消原文件名作为 key，防止超长。
+2. MCP/HTTP json schema 采用 String 类型存储，防止自定义对象与 mongo 规则冲突。
+
+## 🐛 修复
+
+1. 工作流全局变量配置，字段名太长溢出。
+2. AgentV2 调用子工作流，工作流内流输出内容未禁用。
+3. 团队邀请链接，可重复接收同一个团队邀请。
+4. 使用记录，日期选择器会多一天。
+
+## 🛠️ 代码优化
+
+1. 补全所有 devapi 接口文档。
+2. 插件系统并发初始化以及日志优化。
+3. 修复插件运行中的错误会抛出为系统错误的问题。
+4. 修复插件在 Node.js 版本高于 v25 时由于 --allow-net 策略未设置导致的问题。

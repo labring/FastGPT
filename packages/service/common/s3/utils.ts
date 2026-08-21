@@ -5,11 +5,19 @@ import type { Readable } from 'node:stream';
 import { MongoS3TTL } from './models/ttl';
 import { S3Buckets } from './config/constants';
 import { S3PrivateBucket } from './buckets/private';
-import { S3Sources, type UploadImage2S3BucketParams } from './contracts/type';
+import {
+  S3Sources,
+  type UploadImage2S3BucketParams,
+  UploadImage2S3BucketParamsSchema
+} from './contracts/type';
 import { S3PublicBucket } from './buckets/public';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import path from 'node:path';
 import type { ParsedFileContentS3KeyParams } from './sources/dataset/type';
+import { encodeS3ObjectKey } from './keySanitizer';
+import { createOpaqueS3FileKey, getS3ParsedPrefix } from './opaqueKey';
+import { encodeS3Filename, getS3UploadContentDisposition } from './filename';
+import { assertStorageObjectKey } from '@fastgpt-sdk/storage';
 
 // S3文件名最大长度配置
 export const S3_FILENAME_MAX_LENGTH = 50;
@@ -123,7 +131,14 @@ export async function uploadImage2S3Bucket(
   bucketName: keyof typeof S3Buckets,
   params: UploadImage2S3BucketParams
 ) {
-  const { base64Img, buffer: inputBuffer, filename, mimetype, uploadKey, expiredTime } = params;
+  const {
+    base64Img,
+    buffer: inputBuffer,
+    filename,
+    mimetype,
+    uploadKey,
+    expiredTime
+  } = UploadImage2S3BucketParamsSchema.parse(params);
 
   const bucket = bucketName === 'private' ? new S3PrivateBucket() : new S3PublicBucket();
 
@@ -140,9 +155,10 @@ export async function uploadImage2S3Bucket(
     key: uploadKey,
     body: buffer,
     contentType: mimetype,
+    contentDisposition: getS3UploadContentDisposition({ filename, type: 'attachment' }),
     metadata: {
       uploadTime: new Date().toISOString(),
-      originFilename: encodeURIComponent(filename)
+      originFilename: encodeS3Filename(filename)
     }
   });
 
@@ -158,6 +174,10 @@ export async function uploadImage2S3Bucket(
   return uploadKey;
 }
 
+/**
+ * 保留历史的 filename-based 格式化能力，供旧业务数据和兼容测试使用。
+ * 新上传对象必须使用 createOpaqueS3FileKey，不能重新依赖该函数生成 object key。
+ */
 export const getFormatedFilename = (filename?: string) => {
   if (!filename) {
     return {
@@ -171,7 +191,7 @@ export const getFormatedFilename = (filename?: string) => {
   const truncatedFilename = truncateFilename(filename);
   // 移除扩展名
   const extension = path.extname(truncatedFilename);
-  let name = sanitizeS3ObjectKey(path.basename(truncatedFilename, extension));
+  let name = path.basename(truncatedFilename, extension);
 
   // 移除末尾的 (_随机数)
   const splitName = name.split('_');
@@ -187,29 +207,26 @@ export const getFormatedFilename = (filename?: string) => {
 };
 
 export const getFileS3Key = {
+  // temp/avatar/chat/dataset 生成调用都会创建新的 opaque key；已有 key 必须传给 s3Key，
+  // 不要尝试用相同 scope 和 filename 重新计算 object key。
   // 临时的文件路径（比如 evaluation)
   temp: ({ teamId, filename }: { teamId: string; filename?: string }) => {
-    const { formatedFilename, extension } = getFormatedFilename(filename);
-
+    const { objectKey, parsedPrefix } = createOpaqueS3FileKey({
+      prefix: [S3Sources.temp, teamId],
+      filename
+    });
     return {
-      fileKey: [
-        S3Sources.temp,
-        teamId,
-        `${formatedFilename}${extension ? `.${extension}` : ''}`
-      ].join('/'),
-      fileParsedPrefix: [S3Sources.temp, teamId, `${formatedFilename}-parsed`].join('/')
+      fileKey: objectKey,
+      fileParsedPrefix: parsedPrefix
     };
   },
 
   avatar: ({ teamId, filename }: { teamId: string; filename?: string }) => {
-    const { formatedFilename, extension } = getFormatedFilename(filename);
-    return {
-      fileKey: [
-        S3Sources.avatar,
-        teamId,
-        `${formatedFilename}${extension ? `.${extension}` : ''}`
-      ].join('/')
-    };
+    const { objectKey } = createOpaqueS3FileKey({
+      prefix: [S3Sources.avatar, teamId],
+      filename
+    });
+    return { fileKey: objectKey };
   },
 
   // 对话中上传的文件的解析结果的图片的 Key
@@ -224,48 +241,42 @@ export const getFileS3Key = {
     appId: string;
     filename?: string;
   }) => {
-    const { formatedFilename, extension } = getFormatedFilename(filename);
-    const basePrefix = [S3Sources.chat, appId, uId, chatId].filter(Boolean).join('/');
-
+    const prefix = [S3Sources.chat, appId, uId, chatId].filter(Boolean);
+    const { objectKey, parsedPrefix } = createOpaqueS3FileKey({
+      prefix,
+      filename
+    });
     return {
-      fileKey: [basePrefix, `${formatedFilename}${extension ? `.${extension}` : ''}`].join('/'),
-      fileParsedPrefix: [basePrefix, `${formatedFilename}-parsed`].join('/')
+      fileKey: objectKey,
+      fileParsedPrefix: parsedPrefix
     };
   },
 
   // 上传数据集的文件的解析结果的图片的 Key
   dataset: (params: ParsedFileContentS3KeyParams) => {
     const { datasetId, filename } = params;
-    const { formatedFilename, extension } = getFormatedFilename(filename);
-
+    const { objectKey, parsedPrefix } = createOpaqueS3FileKey({
+      prefix: [S3Sources.dataset, datasetId],
+      filename
+    });
     return {
-      fileKey: [
-        S3Sources.dataset,
-        datasetId,
-        `${formatedFilename}${extension ? `.${extension}` : ''}`
-      ].join('/'),
-      fileParsedPrefix: [S3Sources.dataset, datasetId, `${formatedFilename}-parsed`].join('/')
+      fileKey: objectKey,
+      fileParsedPrefix: parsedPrefix
     };
   },
 
   s3Key: (key: string) => {
-    // 特殊处理，不包含/的key，认为是根级别的key
-    if (!key.includes('/')) {
-      return {
-        fileKey: key,
-        fileParsedPrefix: `${path.basename(key, path.extname(key))}-parsed`
-      };
-    }
-
-    const prefix = `${path.dirname(key)}/${path.basename(key, path.extname(key))}-parsed`;
+    assertStorageObjectKey(key);
     return {
       fileKey: key,
-      fileParsedPrefix: prefix
+      fileParsedPrefix: getS3ParsedPrefix(key)
     };
   },
 
   rawText: ({ hash, customPdfParse }: { hash: string; customPdfParse?: boolean }) => {
-    return [S3Sources.rawText, `${hash}${customPdfParse ? '-true' : ''}`].join('/');
+    return encodeS3ObjectKey(
+      [S3Sources.rawText, `${hash}${customPdfParse ? '-true' : ''}`].join('/')
+    );
   }
 };
 
@@ -282,13 +293,4 @@ export function isS3ObjectKey<T extends keyof typeof S3Sources>(
   return typeof key === 'string' && key.startsWith(`${S3Sources[source]}/`);
 }
 
-export function sanitizeS3ObjectKey(key: string) {
-  // 替换掉圆括号
-  const replaceParentheses = (key: string) => {
-    return key.replace(/[()]/g, (match) => (match === '(' ? '[' : ']'));
-  };
-
-  key = replaceParentheses(key);
-
-  return key;
-}
+export { encodeS3ObjectKey } from './keySanitizer';

@@ -1,6 +1,9 @@
 ---
-title: V4.8.8 (Includes Migration Script)
+title: V4.8.8
 description: FastGPT V4.8.8 Release Notes
+releaseTime: '2024-07-29'
+upgradeTags:
+  - MIGRATION
 ---
 
 ## Upgrade Guide
@@ -22,9 +25,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv488' \
 --header 'Content-Type: application/json'
 ```
 
-This will initialize inherited permissions for Knowledge Bases.
+This will initialize inherited permissions for Datasets.
 
--------
+---
 
 ## V4.8.8 Release Notes
 
@@ -34,14 +37,14 @@ This will initialize inherited permissions for Knowledge Bases.
 2. New - DuckDuckGo system plugin.
 3. New - Lark webhook system plugin.
 4. New - Revamped variable input method. Prompt input fields and all Textarea inputs in workflows now support typing `/` to trigger variable selection, allowing you to directly pick any upstream output value without dynamic imports.
-5. Commercial - Knowledge Base permission inheritance.
+5. Commercial - Dataset permission inheritance.
 6. Improved - Mobile quick app switching interaction.
 7. Improved - Node icons.
-8. Improved - Added a dedicated copy button to chat references for easier copying. Added collapsible reference content.
+8. Improved - Added a dedicated copy button to chat citations and made citation content collapsible.
 9. Improved - Upgraded OpenAI SDK with a custom Whisper model interface (the SDK's built-in Whisper interface doesn't seem to work well with standard FastAPI endpoints).
 10. Fixed - Permission table declaration issue.
 11. Fixed - Parallel execution nodes not recording run time correctly.
 12. Fixed - Run details not displaying nested node information correctly.
-13. Fixed - Simple Mode failing to load Knowledge Base configuration on first entry.
+13. Fixed - Simple Mode failing to load Dataset configuration on first entry.
 14. Fixed - Log debug level configuration not taking effect.
 15. Fixed - When running plugins standalone, plugin input values were being variable-substituted, potentially causing downstream node variable issues.

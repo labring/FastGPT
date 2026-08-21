@@ -1,6 +1,9 @@
 ---
-title: V4.8.4(包含升级脚本)
+title: V4.8.4
 description: FastGPT V4.8.4 更新说明
+releaseTime: '2024-06-13'
+upgradeTags:
+  - 升级脚本
 ---
 
 ## 升级指南
@@ -9,11 +12,11 @@ description: FastGPT V4.8.4 更新说明
 
 - fastgpt 镜像 tag 修改成 v4.8.4
 - fastgpt-sandbox 镜像 tag 修改成 v4.8.4 (选择性，无变更)
-- 商业版镜像 tag 修改成 v4.8.4 
+- 商业版镜像 tag 修改成 v4.8.4
 
 ### 2. 商业版用户执行初始化
 
-从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 商业版的域名**。
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成 **FastGPT 商业版的域名**。
 
 ```bash
 curl --location --request POST 'https://{{host}}/api/admin/init/484' \
@@ -30,5 +33,5 @@ curl --location --request POST 'https://{{host}}/api/admin/init/484' \
 5. 修复 - Debug 模式下，相同 source 和 target 内容，导致连线显示异常。
 6. 修复 - 定时执行初始化错误。
 7. 修复 - 应用调用传参异常。
-8. 修复 - ctrl + cv 复杂节点时，nodeId错误。 
-9. 调整组件库全局theme。
+8. 修复 - ctrl + cv 复杂节点时，nodeId 错误。
+9. 调整组件库全局 theme。

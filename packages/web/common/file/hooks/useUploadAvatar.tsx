@@ -1,13 +1,17 @@
-import { base64ToFile, fileToBase64, putFileToS3 } from '../utils';
+import { base64ToFile, fileToBase64 } from '../utils';
+import { S3FileUploader } from '../uploader';
 import { compressBase64Img } from '../img';
 import { useToast } from '../../../hooks/useToast';
 import { useCallback, useRef, useTransition } from 'react';
 import { useTranslation } from 'next-i18next';
 import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
-import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
+import type {
+  CreatePostPresignedUrlResponseType,
+  PresignFileUploadParams
+} from '@fastgpt/global/common/file/s3/type';
 
 export const useUploadAvatar = (
-  api: (params: { filename: string }) => Promise<CreatePostPresignedUrlResponseType>,
+  api: (params: PresignFileUploadParams) => Promise<CreatePostPresignedUrlResponseType>,
   {
     onSuccess,
     maxW = 300,
@@ -48,17 +52,17 @@ export const useUploadAvatar = (
           }),
           file.name
         );
-        const { url, key, headers } = await api({ filename: file.name });
+        const uploadResult = await api({ filename: file.name, size: compressed.size });
 
-        await putFileToS3({
-          url,
+        const uploader = new S3FileUploader({
+          ...uploadResult,
           file: compressed,
-          headers,
           onSuccess() {
-            onSuccess?.(`${imageBaseUrl}${key}`);
+            onSuccess?.(`${imageBaseUrl}${uploadResult.key}`);
           },
           t
         });
+        await uploader.upload();
       });
     },
     [t, toast, api, onSuccess]

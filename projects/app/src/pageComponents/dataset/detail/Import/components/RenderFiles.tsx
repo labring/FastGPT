@@ -20,10 +20,12 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 
 export const RenderUploadFiles = ({
   files,
-  setFiles
+  setFiles,
+  onCancelUpload
 }: {
   files: ImportSourceItemType[];
   setFiles: React.Dispatch<React.SetStateAction<ImportSourceItemType[]>>;
+  onCancelUpload?: (fileId: string) => void;
 }) => {
   const { t } = useTranslation();
 
@@ -85,7 +87,15 @@ export const RenderUploadFiles = ({
                 </Td>
                 <Td>{item.sourceSize}</Td>
                 <Td>
-                  {!item.isUploading && (
+                  {item.isUploading ? (
+                    <IconButton
+                      variant={'grayDanger'}
+                      size={'sm'}
+                      icon={<MyIcon name={'close'} w={'14px'} />}
+                      aria-label={t('common:Cancel')}
+                      onClick={() => onCancelUpload?.(item.id)}
+                    />
+                  ) : (
                     <Flex alignItems={'center'} gap={4}>
                       <IconButton
                         variant={'grayDanger'}

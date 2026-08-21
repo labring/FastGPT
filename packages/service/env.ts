@@ -4,11 +4,14 @@ import { isPhaseProductionBuild } from '@fastgpt/global/common/system/constants'
 import { DEFAULT_MAX_FOLDER_DEPTH } from '@fastgpt/global/common/parentFolder/depth';
 import { BoolSchema, IntSchema, NumSchema, UrlSchema } from '@fastgpt/global/common/zod';
 import { agentSandboxProviderList } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SandboxVolumeNameSchema } from '@fastgpt/global/core/ai/sandbox/volume';
 import {
+  AgentSandboxPreviewProxyUrlSchema,
   AgentSandboxProxyUrlSchema,
   getAgentSandboxMissingRequiredEnvKeys,
   getRuntimeEnv,
-  isAgentSandboxProvider
+  isAgentSandboxProvider,
+  validateS3Env
 } from './env.util';
 import {
   LogLevelSchema,
@@ -28,7 +31,6 @@ export const serviceEnv = createEnv({
   server: {
     // ==================== 基础配置 ====================
     DB_MAX_LINK: IntSchema.min(1).default(5),
-    SYNC_INDEX: BoolSchema.default(true),
 
     // ==================== 密钥 ====================
     ROOT_KEY: z
@@ -59,34 +61,70 @@ export const serviceEnv = createEnv({
     PRO_URL: UrlSchema.optional(),
     PRO_TOKEN: z.string().min(32, 'PRO_TOKEN must be at least 32 characters').optional(),
 
+    // 官网访客归因 CRM；未配置地址时不进行身份上报
+    CRM_API_URL: UrlSchema.optional(),
+    CRM_API_KEY: z.string().optional(),
+
     // Agent sandbox proxy
     AGENT_SANDBOX_PROXY_SECRET: z
       .string()
       .min(32, 'AGENT_SANDBOX_PROXY_SECRET must be at least 32 characters')
-      .optional(),
-    AGENT_SANDBOX_PROXY_URL: AgentSandboxProxyUrlSchema.optional(),
+      .optional()
+      .meta({
+        description:
+          'agent-sandbox-proxy 与 FastGPT 主服务共用的 HMAC 密钥；启用 Agent Sandbox 时必填，至少 32 个字符'
+      }),
+    AGENT_SANDBOX_PROXY_URL: AgentSandboxProxyUrlSchema.optional().meta({
+      description: '浏览器访问 agent-sandbox-proxy 的 WebSocket 地址，必须以 ws:// 或 wss:// 开头'
+    }),
+    AGENT_SANDBOX_PREVIEW_PROXY_URL: AgentSandboxPreviewProxyUrlSchema.optional().meta({
+      description:
+        '浏览器访问 Agent Sandbox 文件预览代理的 HTTP(S) 地址，必须以 http:// 或 https:// 开头'
+    }),
     // Agent sandbox
-    AGENT_SANDBOX_PROVIDER: z.enum(agentSandboxProviderList).optional(),
-    IDE_AGENT_BIND_ADDR: z.string().default('0.0.0.0:1318'),
-    // E2B配置
-    AGENT_SANDBOX_E2B_API_KEY: z.string().optional(),
+    AGENT_SANDBOX_PROVIDER: z.enum(agentSandboxProviderList).optional().meta({
+      description: 'Agent 沙箱提供方，可选 sealosdevbox 或 opensandbox；为空时不启用沙箱'
+    }),
     // Sealos配置
-    AGENT_SANDBOX_SEALOS_BASEURL: UrlSchema.optional(),
-    AGENT_SANDBOX_SEALOS_TOKEN: z.string().optional(),
-    AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: z.string().default('/home/devbox/workspace'),
-    AGENT_SANDBOX_SEALOS_IMAGE: z.string().optional(),
+    AGENT_SANDBOX_SEALOS_BASEURL: UrlSchema.optional().meta({
+      description: 'Sealos Devbox 服务地址'
+    }),
+    AGENT_SANDBOX_SEALOS_TOKEN: z.string().optional().meta({
+      description: 'Sealos Devbox 访问 Token'
+    }),
+    AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: z.string().default('/home/devbox/workspace').meta({
+      description: 'Sealos Devbox 沙箱内工作目录'
+    }),
+    AGENT_SANDBOX_SEALOS_IMAGE: z.string().optional().meta({
+      description: 'Sealos Devbox 使用的运行态镜像；启用 sealosdevbox 时必填'
+    }),
+    AGENT_SANDBOX_CPU_COUNT: NumSchema.positive().default(1).meta({
+      description: 'Agent Sandbox 实例的 CPU 核数上限'
+    }),
+    AGENT_SANDBOX_MEMORY_MIB: IntSchema.min(1).default(2048).meta({
+      description: 'Agent Sandbox 实例的内存上限（MiB）'
+    }),
+    AGENT_SANDBOX_STORAGE_SIZE_GI: NumSchema.min(1).default(1).meta({
+      description: 'Agent Sandbox 存储容量，单位 Gi'
+    }),
     // OpenSandbox配置
     AGENT_SANDBOX_OPENSANDBOX_BASEURL: UrlSchema.optional(),
     AGENT_SANDBOX_OPENSANDBOX_API_KEY: z.string().optional(),
     AGENT_SANDBOX_OPENSANDBOX_RUNTIME: z.enum(['docker', 'kubernetes']).default('docker'),
-    AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: z.string().default('fastgpt-agent-sandbox'),
-    AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: z.string().default('latest'),
+    AGENT_SANDBOX_OPENSANDBOX_IMAGE: z.string().optional().meta({
+      description: 'OpenSandbox 使用的运行态镜像；启用 opensandbox 时必填'
+    }),
     AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: BoolSchema.default(true),
     AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: UrlSchema.optional(),
     AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: z.string().optional(),
-    AGENT_SANDBOX_DISK_MB: NumSchema.min(1).default(1024).meta({
-      description:
-        'Agent sandbox 磁盘大小基准（MB）。冷归档包上限等于该值，Skill 包和 IDE 单文件上限按该值的一半四舍五入计算。'
+    AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX: SandboxVolumeNameSchema.default(
+      'fastgpt-session'
+    ).meta({ description: 'OpenSandbox persistent volume claimName prefix' }),
+    AGENT_SANDBOX_SUSPEND_MINUTES: IntSchema.min(1).default(60).meta({
+      description: 'Agent sandbox 持续未活跃多少分钟后自动暂停'
+    }),
+    AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS: IntSchema.min(1).default(7).meta({
+      description: '已暂停的 Agent sandbox 持续未活跃多少天后自动归档'
     }),
     AGENT_SANDBOX_MAX_EDIT_DEBUG: NumSchema.default(100),
     AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS: IntSchema.min(1).max(600).default(30).meta({
@@ -106,6 +144,9 @@ export const serviceEnv = createEnv({
       }),
     AGENT_SANDBOX_NPM_REGISTRY: z.string().optional(),
     AGENT_SANDBOX_PYPI_INDEX_URL: z.string().optional(),
+    AGENT_SANDBOX_APT_MIRROR: z.string().optional().meta({
+      description: '仅 root 权限的 Ubuntu 或 Debian Agent Sandbox 使用的 apt 镜像仓库 URL'
+    }),
 
     // PDF 增强解析
     CUSTOM_PDF_PARSE_URL: UrlSchema.optional().meta({
@@ -113,6 +154,9 @@ export const serviceEnv = createEnv({
     }),
     CUSTOM_PDF_PARSE_KEY: z.string().optional().meta({
       description: '自定义 PDF 解析服务密钥'
+    }),
+    SOMARK_API_KEY: z.string().optional().meta({
+      description: 'SoMark PDF 解析服务密钥'
     }),
     DOC2X_KEY: z.string().optional().meta({
       description: 'Doc2x PDF 解析服务密钥'
@@ -147,6 +191,9 @@ export const serviceEnv = createEnv({
         'mongodb://myusername:mypassword@localhost:27017/fastgpt?authSource=admin&directConnection=true'
       ),
     MONGODB_LOG_URI: z.string().optional(),
+    SYNC_INDEX: BoolSchema.default(true).meta({
+      description: '是否在启动时创建当前 MongoDB 索引并清理显式声明的废弃索引'
+    }),
 
     // VectorDB
     VECTOR_VQ_LEVEL: IntSchema.default(32).meta({
@@ -171,7 +218,18 @@ export const serviceEnv = createEnv({
     STORAGE_PRIVATE_BUCKET: z.string().default('fastgpt-private'),
     STORAGE_REGION: z.string().default('us-east-1'),
     STORAGE_EXTERNAL_ENDPOINT: UrlSchema.optional(),
+    STORAGE_R2_PUBLIC_ENDPOINT: UrlSchema.optional(),
     STORAGE_S3_CDN_ENDPOINT: UrlSchema.optional(),
+    STORAGE_DOWNLOAD_URL_MODE: z
+      .enum(['short-proxy', 'short-redirect'])
+      .default('short-proxy')
+      .meta({
+        description:
+          '下载链接模式：short-proxy 返回 FastGPT 短链并由 app 代理；short-redirect 返回 FastGPT 短链并 302 到短 TTL S3 链接'
+      }),
+    STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS: IntSchema.min(1).default(300).meta({
+      description: 'short-redirect 模式下临时 S3 预签名下载链接 TTL（秒）'
+    }),
     STORAGE_S3_ENDPOINT: UrlSchema.default('http://localhost:9000'),
     STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH: z.string().optional(),
     STORAGE_ACCESS_KEY_ID: z.string().default('minioadmin'),
@@ -207,19 +265,26 @@ export const serviceEnv = createEnv({
     TRACING_OTEL_SAMPLE_RATIO: NumSchema.min(0).max(1).optional(),
 
     // ==================== 域名与前端 ====================
-    FE_DOMAIN: UrlSchema.optional().meta({
+    FE_DOMAIN: UrlSchema.meta({
       description:
-        '前端外部可访问的地址，用于自动补全文件资源路径。例如 https:fastgpt.cn，不能填 localhost。这个值可以不填，不填则发给模型的图片会是一个相对路径，而不是全路径，模型可能伪造Host。'
+        '客户端访问 FastGPT 时使用的地址（由协议、主机和可选端口组成），用于补全文件资源路径。例如 https://fastgpt.cn；本地开发可使用 http://localhost:3000。'
     }),
     FILE_DOMAIN: UrlSchema.optional().meta({
       description:
         '文件域名（也指向 FastGPT 服务）；如需更高安全性可独立分配域名，避免高危文件读取到主域名内容'
+    }),
+    FILE_DOWNLOAD_PUBLIC_URL_PREFIX: UrlSchema.optional().meta({
+      description:
+        '下载短链公开 URL 前缀。配置后下载链接生成为 {prefix}/{signedAlias}，通常由 nginx rewrite 到 FastGPT /api/system/file/d/{signedAlias}；仅影响下载，不影响上传'
     }),
     NEXT_PUBLIC_BASE_URL: z.string().default(''),
 
     //==================== 安全配置 ====================
     USE_IP_LIMIT: BoolSchema.default(false).meta({ description: '是否启用 IP 限流' }),
     CHECK_INTERNAL_IP: BoolSchema.default(false).meta({ description: '是否启用内网 IP 检查' }),
+    AUTH_COOKIE_SECURE: BoolSchema.default(false).meta({
+      description: '是否强制为登录 Cookie 添加 Secure 属性，仅允许通过 HTTPS 传输'
+    }),
     TRUSTED_PROXY_ENABLE: BoolSchema.default(false).meta({
       description:
         '是否启用可信反向代理客户端 IP 校验；关闭时兼容旧逻辑，直接信任 X-Forwarded-For/X-Real-IP'
@@ -228,21 +293,21 @@ export const serviceEnv = createEnv({
       description:
         '可信反向代理 IP/CIDR 列表，逗号或空白分隔。仅 TRUSTED_PROXY_ENABLE=true 时生效；仅显式可信代理传入的 X-Forwarded-For/X-Real-IP 会用于客户端 IP 解析'
     }),
-    PASSWORD_LOGIN_LOCK_SECONDS: defaultableIntSchema(120).meta({
-      description: '密码错误锁定时长（秒）'
+    PASSWORD_LOGIN_MINUTE_LIMIT_COUNT: defaultableIntSchema(10).meta({
+      description: '密码登录每分钟次数限制'
     }),
     MAX_LOGIN_SESSION: IntSchema.default(10).meta({ description: '最大登录客户端数量（默认 10）' }),
     ALLOWED_ORIGINS: z
       .string()
       .optional()
       .meta({ description: '自定义跨域；不配置时默认允许所有跨域（逗号分割）' }),
-    MULTIPLE_DATA_TO_BASE64: BoolSchema.default(true).meta({
+    MULTIPLE_DATA_TO_BASE64: BoolSchema.default(false).meta({
       description: '是否强制将图片、音频、视频转成 base64 传递给模型'
     }),
 
     //==================== Beta features ====================
-    AGENT_ENGINE: z.enum(['default', 'pi']).default('default').meta({
-      description: 'Agent 引擎选择：default（unified agent loop）| pi（pi-agent-core 引擎）'
+    AGENT_ENGINE: z.enum(['fastAgent', 'piAgent']).default('fastAgent').meta({
+      description: 'Agent 引擎选择：fastAgent（FastGPT agent loop）| piAgent（pi-agent-core 引擎）'
     }),
     SKIP_FILE_TYPE_CHECK: BoolSchema.default(false).meta({
       description: '是否跳过文件类型检查'
@@ -255,7 +320,7 @@ export const serviceEnv = createEnv({
     WECHAT_CHANNEL_CONCURRENCY: IntSchema.min(10).default(1000).meta({
       description: '微信渠道 poll worker 并发数'
     }),
-    PARSE_FILE_WORKERS: IntSchema.min(1).max(1000).default(10).meta({
+    PARSE_FILE_WORKERS: IntSchema.min(1).max(1000).default(5).meta({
       description: '文件解析 worker 常驻线程数'
     }),
     HTML_TO_MARKDOWN_WORKERS: IntSchema.min(1).max(1000).default(10).meta({
@@ -356,6 +421,8 @@ if (serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY > serviceEnv.WORKFLOW_MAX_LOOP_
 }
 
 if (!isPhaseProductionBuild) {
+  validateS3Env(serviceEnv);
+
   if (serviceEnv.PRO_URL && !serviceEnv.PRO_TOKEN) {
     throw new Error(
       'Invalid environment configuration: PRO_TOKEN is required when PRO_URL is configured.'

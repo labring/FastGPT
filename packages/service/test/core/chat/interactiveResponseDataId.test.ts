@@ -67,9 +67,10 @@ describe('resolveResponseChatItemId', () => {
         responseChatItemId: 'client-response-id',
         interactive: {
           type: 'agentPlanAskQuery',
-          planId: 'plan-id',
+          askId: 'call_ask',
           params: {
-            query: 'Need more input'
+            content: 'Need more input',
+            options: ['Use repo', 'Use docs', 'Use defaults']
           },
           entryNodeIds: [],
           memoryEdges: [],
@@ -78,6 +79,43 @@ describe('resolveResponseChatItemId', () => {
         userContent: {
           obj: ChatRoleEnum.Human,
           value: [{ text: { content: 'next question' } }]
+        }
+      })
+    ).resolves.toBe('client-response-id');
+  });
+
+  it('keeps the client responseChatItemId for a nested agent ask query', async () => {
+    await MongoChatItem.create({
+      ...base,
+      obj: ChatRoleEnum.AI,
+      dataId: 'existing-ai-data-id',
+      value: []
+    });
+
+    await expect(
+      resolveResponseChatItemId({
+        ...chatSource,
+        chatId: base.chatId,
+        responseChatItemId: 'client-response-id',
+        interactive: {
+          type: 'toolChildrenInteractive',
+          params: {
+            toolParams: {
+              toolCallId: 'tool_1'
+            },
+            childrenResponse: {
+              type: 'agentPlanAskQuery',
+              askId: 'call_ask',
+              params: {
+                content: 'Need more input',
+                options: ['Use repo', 'Use docs', 'Use defaults']
+              }
+            }
+          }
+        } as any,
+        userContent: {
+          obj: ChatRoleEnum.Human,
+          value: [{ text: { content: 'Use repo' } }]
         }
       })
     ).resolves.toBe('client-response-id');

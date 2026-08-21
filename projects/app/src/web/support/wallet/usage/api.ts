@@ -1,6 +1,5 @@
 import { POST } from '@/web/common/api/request';
 import type {
-  CreateTrainingUsageProps,
   GetUsageDashboardProps,
   GetUsageDashboardResponseItem,
   GetUsageProps
@@ -13,6 +12,3 @@ export const getUserUsages = (data: PaginationProps<GetUsageProps>) =>
 
 export const getDashboardData = (data: GetUsageDashboardProps) =>
   POST<GetUsageDashboardResponseItem[]>(`/proApi/support/wallet/usage/getDashboardData`, data);
-
-export const postCreateTrainingUsage = (data: CreateTrainingUsageProps) =>
-  POST<string>(`/support/wallet/usage/createTrainingUsage`, data);

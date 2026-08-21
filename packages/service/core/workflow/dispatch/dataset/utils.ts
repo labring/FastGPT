@@ -7,6 +7,7 @@ export type NormalizeDatasetSearchInputResult = {
 };
 
 const httpUrlReg = /^https?:\/\//i;
+const dataUrlReg = /^data:/i;
 
 const pushUnique = <T>(list: T[], seen: Set<T>, value: T) => {
   if (!seen.has(value)) {
@@ -16,11 +17,12 @@ const pushUnique = <T>(list: T[], seen: Set<T>, value: T) => {
 };
 
 const isHttpUrl = (input: string) => httpUrlReg.test(input);
+const isDataUrl = (input: string) => dataUrlReg.test(input);
 
 /**
  * 将数据集搜索输入拆成文本查询和图片查询。
- * datasetSearchInput 会同时接收用户问题和 userFiles；这里只把普通 http(s) URL
- * 作为文件候选继续判断，非 http(s) 输入都保留为文本检索 query。
+ * datasetSearchInput 会同时接收用户问题和 userFiles；http(s) URL 和 Data URL
+ * 作为文件候选继续判断，其他输入保留为文本检索 query。
  */
 export const normalizeDatasetSearchInput = (
   inputList: string[]
@@ -34,7 +36,7 @@ export const normalizeDatasetSearchInput = (
     const input = rawInput.trim();
     if (!input) continue;
 
-    if (!isHttpUrl(input)) {
+    if (!isHttpUrl(input) && !isDataUrl(input)) {
       pushUnique(textQueries, seenTextQueries, input);
       continue;
     }

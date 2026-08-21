@@ -193,7 +193,16 @@ const DetailLogsModal = ({
           <Flex flex={'1 0 0'} h={0}>
             <Box flex={'1 0 0'} h={'100%'} minH={0} overflow={isPlugin ? 'hidden' : 'auto'}>
               {isPlugin ? (
-                <Box px={5} py={2} h={'100%'} minH={0} display={'flex'} flexDirection={'column'}>
+                <Box
+                  px={5}
+                  py={2}
+                  h={'100%'}
+                  minH={0}
+                  minW={0}
+                  overflowY={'auto'}
+                  display={'flex'}
+                  flexDirection={'column'}
+                >
                   <PluginRunBox appId={appId} chatId={chatId} />
                 </Box>
               ) : (
@@ -234,6 +243,7 @@ const DetailLogsModal = ({
                 <ChatQuoteList
                   rawSearch={datasetCiteData.rawSearch}
                   metadata={datasetCiteData.metadata}
+                  singleQuote={datasetCiteData.singleQuote}
                   onClose={() => setCiteModalData(undefined)}
                 />
               </Box>

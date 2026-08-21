@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { axios } from '@fastgpt/service/common/api/axios';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
@@ -9,7 +9,7 @@ export type FetchWorkflowBody = {
   url: string;
 };
 
-export type FetchWorkflowQuery = {};
+export type FetchWorkflowQuery = Record<string, never>;
 
 export type FetchWorkflowResponseType = {
   data: Record<string, any>;
@@ -17,7 +17,7 @@ export type FetchWorkflowResponseType = {
 
 async function handler(
   req: ApiRequestProps<FetchWorkflowBody, FetchWorkflowQuery>,
-  res: NextApiResponse
+  _res: NextApiResponse
 ): Promise<FetchWorkflowResponseType> {
   await authCert({ req, authToken: true });
 

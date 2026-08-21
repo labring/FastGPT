@@ -39,13 +39,14 @@ import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilter
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useRouter } from 'next/router';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   getToolConfigStatus,
   validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
-import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
+import SystemToolTag from '@fastgpt/web/components/core/plugin/tool/SystemToolTag';
+import { inheritToolInputConfig } from './utils';
 
 type Props = {
   generatedSelectedTools?: SelectedToolItemType[];
@@ -306,45 +307,37 @@ const RenderList = React.memo(function RenderList({
     async (template: NodeTemplateListItemType) => {
       const res = await getClientToolPreviewNode({
         appId: template.id,
-        versionId: '',
+        getLatestVersion: true,
         source: template.source
       });
-      const isToolSetTemplate = template.flowNodeType === FlowNodeTypeEnum.toolSet;
-
-      if (!isToolSetTemplate) {
-        const toolValid = validateToolConfiguration({
-          toolTemplate: res,
-          canUploadFile: !!(
-            fileSelectConfig?.canSelectFile ||
-            fileSelectConfig?.canSelectImg ||
-            fileSelectConfig?.canSelectVideo ||
-            fileSelectConfig?.canSelectAudio ||
-            fileSelectConfig?.canSelectCustomFileExtension
-          )
-        });
-        if (!toolValid) {
-          return toast({
-            title: t('app:simple_tool_tips'),
-            status: 'warning'
-          });
-        }
-      }
-
-      // 添加与 top 相同工具的配置
-      const generatedTool = generatedSelectedTools.find((tool) => tool.pluginId === res.pluginId);
-      if (generatedTool) {
-        res.inputs.forEach((input) => {
-          const generatedInput = generatedTool.inputs.find(
-            (generatedInput) => generatedInput.key === input.key
-          );
-          if (generatedInput) {
-            input.value = generatedInput.value;
-          }
+      const toolValid = validateToolConfiguration({
+        toolTemplate: res,
+        isAppTool: true,
+        canUploadFile: !!(
+          fileSelectConfig?.canSelectFile ||
+          fileSelectConfig?.canSelectImg ||
+          fileSelectConfig?.canSelectVideo ||
+          fileSelectConfig?.canSelectAudio ||
+          fileSelectConfig?.canSelectCustomFileExtension
+        )
+      });
+      if (!toolValid) {
+        return toast({
+          title: t('app:simple_tool_tips'),
+          status: 'warning'
         });
       }
+
+      // 添加与已生成工具相同的配置
+      const generatedTool = generatedSelectedTools.find(
+        (tool) =>
+          getToolIdentityKey(tool.pluginId, tool.source) ===
+          getToolIdentityKey(res.pluginId, res.source)
+      );
+      const tool = inheritToolInputConfig({ tool: res, sourceTool: generatedTool });
       onAddTool({
-        ...res,
-        configStatus: getToolConfigStatus({ tool: res }).status
+        ...tool,
+        configStatus: getToolConfigStatus({ tool }).status
       });
     }
   );
@@ -363,16 +356,21 @@ const RenderList = React.memo(function RenderList({
             px={[3, 6]}
           >
             {templates.map((template) => {
-              const selected = selectedTools.some((tool) => tool.pluginId === template.id);
+              const selected = selectedTools.some(
+                (tool) =>
+                  getToolIdentityKey(tool.pluginId, tool.source) ===
+                  getToolIdentityKey(template.id, template.source)
+              );
               const name = t(parseI18nString(template.name, i18n.language));
               const intro =
                 t(parseI18nString(template.intro || '', i18n.language)) ||
                 t('common:core.workflow.Not intro');
               const isDebugTool = isDebugToolSource(template.source);
+              const isSystemSource = template.source === 'system';
 
               return (
                 <MyTooltip
-                  key={template.id}
+                  key={getToolIdentityKey(template.id, template.source)}
                   isDisabled={!isTooltipEnabled}
                   label={
                     <Box py={2} minW={['auto', '250px']}>
@@ -440,6 +438,7 @@ const RenderList = React.memo(function RenderList({
                         >
                           {name}
                         </Box>
+                        {isSystemSource && <SystemToolTag />}
                         {isDebugTool && <DebugToolTag />}
                       </Flex>
                     </Box>

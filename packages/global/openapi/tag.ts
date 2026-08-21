@@ -1,12 +1,14 @@
 export const DevApiTagsMap = {
   /* 核心-应用管理 */
-  appCommon: '基础管理',
+  appCommon: '应用基础管理',
   appFolder: '文件夹管理',
-  appPer: '权限管理',
-  appVersion: '版本管理',
+  appPer: '应用权限管理',
+  appVersion: '应用版本管理',
   appTemplate: '模板管理',
   appLog: '日志管理',
   publishChannel: '发布渠道',
+  appOther: '其他',
+  workflowDebug: '工作流调试',
 
   /* 核心-工具管理 */
   mcpTools: 'MCP 工具管理',
@@ -14,10 +16,19 @@ export const DevApiTagsMap = {
   mcpServer: 'MCP 发布管理',
   appSystemTool: '系统工具',
 
+  /* 核心-技能 */
+  skillBasic: '基础管理',
+  skillPermission: '权限管理',
+  skillEdit: '编辑管理',
+  skillVersion: '版本管理',
+
   /* 核心-AI 相关 */
-  aiSkill: 'AI技能管理',
   sandbox: 'AI 沙盒',
   aiCommon: 'AI 通用接口',
+
+  /* 核心-AI 辅助生成 */
+  aiAuxiliary: 'AI 辅助生成',
+  workflowHelper: '工作流辅助生成',
 
   /* 核心-对话模块配置 */
   chatSetting: '门户页配置',
@@ -33,12 +44,13 @@ export const DevApiTagsMap = {
 
   /* 核心-知识库 */
   datasetCommon: '知识库管理',
+  datasetPermission: '知识库权限管理',
   datasetCollection: '集合管理',
   datasetCollectionCrteate: '知识库集合创建',
   datasetData: '数据管理',
   datasetTraining: '训练管理',
   datasetApiDataset: 'API 数据集管理',
-  datasetFile: '文件管理',
+  datasetFile: '知识库文件管理',
 
   /* 核心-插件系统 */
   pluginToolTag: '工具标签',
@@ -48,6 +60,8 @@ export const DevApiTagsMap = {
   /* 辅助-用户体系 */
   userInform: '用户通知',
   userLogin: '用户账号',
+  userLimit: '限流检查',
+  enterpriseAuth: '企业认证',
   walletBill: '订单',
   walletDiscountCoupon: '优惠券',
 
@@ -58,7 +72,13 @@ export const DevApiTagsMap = {
   /* 通用-基础功能 */
   apiKey: 'API Key 管理',
   customDomain: '自定义域名',
-  chatAgentHelper: 'Chat Agent 辅助生成',
+  commonFile: '文件管理',
+  commonSystem: '系统接口',
+  commonOther: '基础功能其他',
+
+  /* 通用-反向调用 */
+  reverseInvokePlugin: '插件',
+  reverseInvokeSandbox: '沙盒',
 
   /* 辅助-团队管理 */
   teamManage: '团队管理',
@@ -72,7 +92,20 @@ export const DevApiTagsMap = {
   adminDashboard: '仪表盘',
   adminInform: '通知管理',
   adminApps: '应用管理',
-  adminWalletCoupon: '兑换码管理'
+  adminWalletCoupon: '兑换码管理',
+  adminUsers: '用户管理',
+  adminTeams: '团队管理',
+  adminDatasets: '知识库管理',
+  adminPays: '订单管理',
+  adminPlans: '套餐管理',
+  adminSettings: '系统配置',
+  adminLogs: '系统日志',
+  adminLicense: '许可证管理',
+  adminTemplate: '模板管理',
+  adminTemplateType: '模板类型管理',
+  adminWalletInvoice: '发票管理',
+  adminWalletRefund: '退款管理',
+  adminAuth: '管理员认证'
 };
 
 export const SystemOpenApiTagMap = {

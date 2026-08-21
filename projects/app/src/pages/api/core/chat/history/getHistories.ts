@@ -3,7 +3,7 @@ import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core
 import { buildChatTargetResponse } from '@fastgpt/global/openapi/core/chat/api';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { NextAPI } from '@/service/middleware/entry';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import {
   GetHistoriesBodySchema,
   GetHistoriesResponseSchema,

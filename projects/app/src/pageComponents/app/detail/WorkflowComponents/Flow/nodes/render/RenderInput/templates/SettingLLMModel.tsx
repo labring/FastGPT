@@ -10,7 +10,7 @@ import { useLocalStorageState } from 'ahooks';
 import { getWebDefaultLLMModel } from '@/web/common/system/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
-const SelectAiModelRender = ({ inputs = [], nodeId }: RenderInputProps) => {
+const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: RenderInputProps) => {
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const { llmModelList } = useSystemStore();
 
@@ -112,7 +112,13 @@ const SelectAiModelRender = ({ inputs = [], nodeId }: RenderInputProps) => {
     [inputs, model]
   );
 
-  return <SettingLLMModel defaultData={llmModelData} onChange={onChangeModel} />;
+  return (
+    <SettingLLMModel
+      defaultData={llmModelData}
+      onChange={onChangeModel}
+      {...settingLLMModelProps}
+    />
+  );
 };
 
 export default React.memo(SelectAiModelRender);

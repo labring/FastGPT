@@ -1,24 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
-import { SANDBOX_TOOLS } from '@fastgpt/global/core/ai/sandbox/tools';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { useToolCatalog } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolCatalog';
-import { ReadFileTooData } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/tools/file';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import {
+  createToolSchema,
+  useToolCatalog
+} from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolCatalog';
+import {
+  DATASET_SEARCH_TOOL_NAME,
+  READ_FILES_TOOL_NAME
+} from '@fastgpt/service/core/ai/llm/agentLoop/interface';
 
-const {
-  getSandboxToolInfoMock,
-  getSandboxRuntimeProfileMock,
-  prepareSandboxToolRuntimeMock,
-  runAgentSandboxEntrypointMock,
-  withAgentSandboxInitLeaseMock
-} = vi.hoisted(() => ({
-  getSandboxToolInfoMock: vi.fn(),
-  getSandboxRuntimeProfileMock: vi.fn(),
-  prepareSandboxToolRuntimeMock: vi.fn(),
-  runAgentSandboxEntrypointMock: vi.fn(),
-  withAgentSandboxInitLeaseMock: vi.fn(async ({ fn }: { fn: () => Promise<unknown> }) => fn())
+const { getSandboxToolInfoMock } = vi.hoisted(() => ({
+  getSandboxToolInfoMock: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/interface/toolCall', async (importOriginal) => {
@@ -27,19 +25,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/toolCall', async (importOrig
 
   return {
     ...original,
-    getSandboxToolInfo: getSandboxToolInfoMock,
-    prepareSandboxToolRuntime: prepareSandboxToolRuntimeMock
-  };
-});
-
-vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', async (importOriginal) => {
-  const original =
-    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/interface/runtime')>();
-  return {
-    ...original,
-    getSandboxRuntimeProfile: getSandboxRuntimeProfileMock,
-    runAgentSandboxEntrypoint: runAgentSandboxEntrypointMock,
-    withAgentSandboxInitLease: withAgentSandboxInitLeaseMock
+    getSandboxToolInfo: getSandboxToolInfoMock
   };
 });
 
@@ -50,7 +36,7 @@ const createToolNode = (overrides: Record<string, any> = {}) =>
     avatar: 'tool-avatar',
     intro: 'Search intro',
     toolDescription: 'Search data',
-    toolParams: [],
+    inputs: [],
     ...overrides
   }) as any;
 
@@ -58,12 +44,6 @@ describe('useToolCatalog', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getSandboxToolInfoMock.mockReturnValue(undefined);
-    getSandboxRuntimeProfileMock.mockReturnValue({ workDirectory: '/workspace' });
-    prepareSandboxToolRuntimeMock.mockResolvedValue({
-      provider: {
-        execute: vi.fn()
-      }
-    });
     (global as any).feConfigs = {};
   });
 
@@ -88,14 +68,20 @@ describe('useToolCatalog', () => {
       toolNodes: [
         createToolNode({
           nodeId: 'search',
-          jsonSchema: explicitSchema
+          jsonSchema: explicitSchema,
+          inputs: [
+            {
+              key: 'q',
+              renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+            }
+          ]
         }),
         createToolNode({
           nodeId: 'weather',
           name: 'Weather',
           toolDescription: '',
           intro: 'Weather intro',
-          toolParams: [
+          inputs: [
             {
               key: 'city',
               valueType: WorkflowIOValueTypeEnum.string,
@@ -104,24 +90,22 @@ describe('useToolCatalog', () => {
                 { label: 'Hangzhou', value: 'Hangzhou' },
                 { label: 'Shanghai', value: 'Shanghai' }
               ],
-              required: true
+              required: true,
+              renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.select],
+              selectedType: FlowNodeInputTypeEnum.agentGenerated
             },
             {
               key: 'days',
               valueType: 'unknown',
               toolDescription: 'Days',
-              required: false
+              required: false,
+              renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
             }
           ]
         })
       ],
-      currentInputFiles: [],
       useAgentSandbox: false,
-      lang: 'en' as any,
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: 'app_1',
-      userId: 'user_1',
-      chatId: 'chat_1'
+      lang: 'en' as any
     });
 
     expect(result.finalMessages).toEqual([
@@ -149,7 +133,6 @@ describe('useToolCatalog', () => {
             properties: {
               city: {
                 type: 'string',
-                title: 'city',
                 description: 'City name',
                 toolDescription: 'City name',
                 enum: ['Hangzhou', 'Shanghai']
@@ -157,19 +140,13 @@ describe('useToolCatalog', () => {
               days: {
                 type: 'string',
                 description: 'Days',
-                title: 'days',
                 toolDescription: 'Days'
               }
             },
             required: ['city']
           }
         }
-      },
-      expect.objectContaining({
-        function: expect.objectContaining({
-          name: ReadFileTooData.id
-        })
-      })
+      }
     ]);
     expect(result.getToolInfo('search')).toEqual({
       type: 'user',
@@ -179,15 +156,140 @@ describe('useToolCatalog', () => {
         nodeId: 'search'
       })
     });
-    expect(result.getToolInfo(ReadFileTooData.id)).toEqual({
-      type: 'file',
-      name: 'File parse',
-      avatar: ReadFileTooData.avatar
-    });
+    expect(result.getToolInfo(READ_FILES_TOOL_NAME)).toEqual(
+      expect.objectContaining({
+        type: 'file',
+        name: expect.any(String),
+        avatar: 'core/workflow/template/readFiles'
+      })
+    );
     expect(result.getToolInfo('missing')).toBeUndefined();
   });
 
-  it('injects sandbox files and appends sandbox prompt when sandbox is enabled', async () => {
+  it('exposes only agent-generated params to model schema', () => {
+    const schema = createToolSchema(
+      createToolNode({
+        jsonSchema: {
+          type: 'object',
+          properties: {
+            city: { type: 'string' },
+            apiKey: { type: 'string' },
+            files: { type: 'array' }
+          },
+          required: ['city', 'apiKey', 'files']
+        },
+        inputs: [
+          {
+            key: 'city',
+            valueType: WorkflowIOValueTypeEnum.string,
+            toolDescription: 'City name',
+            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
+            required: true
+          },
+          {
+            key: 'apiKey',
+            valueType: WorkflowIOValueTypeEnum.string,
+            toolDescription: 'Developer configured secret',
+            renderTypeList: [FlowNodeInputTypeEnum.password],
+            required: true
+          },
+          {
+            key: 'files',
+            valueType: WorkflowIOValueTypeEnum.arrayString,
+            toolDescription: 'Files',
+            renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
+            required: true
+          }
+        ]
+      })
+    );
+
+    expect(schema.function.parameters).toEqual({
+      type: 'object',
+      properties: {
+        city: { type: 'string' }
+      },
+      required: ['city']
+    });
+  });
+
+  it('falls back to agent-generated inputs when the raw schema has no properties', () => {
+    const schema = createToolSchema(
+      createToolNode({
+        jsonSchema: { type: 'object' },
+        inputs: [
+          {
+            key: 'count',
+            valueType: WorkflowIOValueTypeEnum.number,
+            required: true,
+            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+          }
+        ]
+      })
+    );
+
+    expect(schema.function.parameters).toMatchObject({
+      type: 'object',
+      properties: {
+        count: {
+          type: 'number'
+        }
+      },
+      required: ['count']
+    });
+  });
+
+  it('normalizes scalar raw schemas before merging agent-generated inputs', () => {
+    const schema = createToolSchema(
+      createToolNode({
+        jsonSchema: { type: 'string' },
+        inputs: [
+          {
+            key: 'query',
+            valueType: WorkflowIOValueTypeEnum.string,
+            required: true,
+            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+          }
+        ]
+      })
+    );
+
+    expect(schema.function.parameters).toMatchObject({
+      type: 'object',
+      properties: { query: { type: 'string' } },
+      required: ['query']
+    });
+  });
+
+  it('keeps dataset search nodes out of runtime tools but exposes system tool display info', async () => {
+    const result = await useToolCatalog({
+      messages: [],
+      toolNodes: [
+        createToolNode({
+          nodeId: 'dataset_node',
+          name: 'Dataset search node',
+          flowNodeType: FlowNodeTypeEnum.datasetSearchNode
+        }),
+        createToolNode({
+          nodeId: 'search',
+          name: 'Search'
+        })
+      ],
+      useAgentSandbox: false,
+      lang: 'en' as any
+    });
+
+    expect(result.tools.map((tool) => tool.function.name)).toEqual(['search']);
+    expect(result.getToolInfo(DATASET_SEARCH_TOOL_NAME)).toEqual(
+      expect.objectContaining({
+        type: 'datasetSearch',
+        name: expect.any(String),
+        avatar: expect.any(String)
+      })
+    );
+  });
+
+  it('appends sandbox prompt when sandbox is enabled', async () => {
     (global as any).feConfigs = {
       show_agent_sandbox: true
     };
@@ -208,44 +310,14 @@ describe('useToolCatalog', () => {
         }
       ],
       toolNodes: [],
-      currentInputFiles: [
-        {
-          id: 'file_1',
-          name: 'a.pdf',
-          url: 'https://files/a.pdf',
-          sandboxPath: '/workspace/a.pdf'
-        } as any
-      ],
       useAgentSandbox: true,
-      sandboxEntrypoint: 'pip install -r requirements.txt',
-      lang: 'en' as any,
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: 'app_1',
-      userId: 'user_1',
-      chatId: 'chat_1'
+      lang: 'en' as any
     });
 
-    expect(result.tools).toEqual(expect.arrayContaining(SANDBOX_TOOLS));
+    expect(result.tools).toEqual([]);
     expect(result.finalMessages[0]).toEqual({
       role: ChatCompletionRequestMessageRoleEnum.System,
       content: `system prompt\n\n${SANDBOX_SYSTEM_PROMPT}`
-    });
-    expect(prepareSandboxToolRuntimeMock).toHaveBeenCalledWith({
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: 'app_1',
-      userId: 'user_1',
-      chatId: 'chat_1',
-      files: [
-        {
-          path: '/workspace/a.pdf',
-          url: 'https://files/a.pdf'
-        }
-      ]
-    });
-    expect(runAgentSandboxEntrypointMock).toHaveBeenCalledWith({
-      sandbox: expect.any(Object),
-      sandboxEntrypoint: 'pip install -r requirements.txt',
-      workDirectory: expect.any(String)
     });
     expect(result.getToolInfo('sandbox_shell')).toEqual({
       type: 'sandbox',
@@ -267,12 +339,7 @@ describe('useToolCatalog', () => {
         }
       ],
       toolNodes: [],
-      currentInputFiles: [],
-      useAgentSandbox: true,
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: 'app_1',
-      userId: 'user_1',
-      chatId: 'chat_1'
+      useAgentSandbox: true
     });
 
     expect(result.finalMessages).toEqual([
@@ -285,8 +352,5 @@ describe('useToolCatalog', () => {
         content: 'hello'
       }
     ]);
-    expect(prepareSandboxToolRuntimeMock).not.toHaveBeenCalled();
-    expect(runAgentSandboxEntrypointMock).not.toHaveBeenCalled();
-    expect(result.sandboxClient).toBeUndefined();
   });
 });

@@ -6,7 +6,6 @@ const {
   withAgentSandboxInitLeaseMock,
   injectInputFilesToSandboxMock,
   prepareSandboxRuntimeMirrorsMock,
-  readSandboxPwdMock,
   runAgentSandboxEntrypointMock,
   resolveSandboxHomeMock,
   injectAgentSkillFilesToSandboxMock,
@@ -20,7 +19,6 @@ const {
   withAgentSandboxInitLeaseMock: vi.fn(async ({ fn }: { fn: () => Promise<unknown> }) => fn()),
   injectInputFilesToSandboxMock: vi.fn(),
   prepareSandboxRuntimeMirrorsMock: vi.fn(),
-  readSandboxPwdMock: vi.fn(),
   runAgentSandboxEntrypointMock: vi.fn(),
   resolveSandboxHomeMock: vi.fn(),
   injectAgentSkillFilesToSandboxMock: vi.fn(),
@@ -39,20 +37,17 @@ sandboxClientMock.provider = sandboxProviderMock;
 vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/interface/runtime')>()),
   prepareAgentSandboxRuntime: prepareAgentSandboxRuntimeMock,
-  injectCurrentInputFiles: (currentFiles: unknown[]) => async (context: { sandbox: unknown }) => {
-    await injectInputFilesToSandboxMock(context.sandbox, currentFiles);
-    return context;
-  },
+  injectCurrentInputFiles:
+    (currentFiles: unknown[], readInputFile: unknown) => async (context: { sandbox: unknown }) => {
+      await injectInputFilesToSandboxMock(context.sandbox, currentFiles, readInputFile);
+      return context;
+    },
   preparePackageMirrors: () => async (context: { sandbox: unknown }) => {
     await prepareSandboxRuntimeMirrorsMock({
       sandbox: context.sandbox
     });
     return context;
   },
-  readCurrentWorkingDirectory: () => async (context: { sandboxClient: unknown }) => ({
-    ...context,
-    currentWorkingDirectory: await readSandboxPwdMock(context.sandboxClient)
-  }),
   runSandboxEntrypoint:
     ({ sandboxEntrypoint }: { sandboxEntrypoint?: string }) =>
     async (context: { sandbox: unknown; workDirectory: string }) => {
@@ -88,7 +83,6 @@ describe('ensureAgentSandboxRuntime', () => {
       sandboxClient: sandboxClientMock,
       workDirectory: '/workspace'
     });
-    readSandboxPwdMock.mockResolvedValue('/workspace');
     resolveSandboxHomeMock.mockResolvedValue('/home/sandbox');
     injectAgentSkillFilesToSandboxMock.mockResolvedValue([
       {
@@ -149,8 +143,11 @@ describe('ensureAgentSandboxRuntime', () => {
     expect(prepareSandboxRuntimeMirrorsMock.mock.invocationCallOrder[0]).toBeLessThan(
       runAgentSandboxEntrypointMock.mock.invocationCallOrder[0]
     );
-    expect(injectInputFilesToSandboxMock).toHaveBeenCalledWith(sandboxProviderMock, currentFiles);
-    expect(readSandboxPwdMock).toHaveBeenCalledWith(sandboxClientMock);
+    expect(injectInputFilesToSandboxMock).toHaveBeenCalledWith(
+      sandboxProviderMock,
+      currentFiles,
+      expect.any(Function)
+    );
     expect(runAgentSandboxEntrypointMock).toHaveBeenCalledWith({
       sandbox: sandboxProviderMock,
       sandboxEntrypoint: 'pip install -r requirements.txt',
@@ -224,7 +221,11 @@ describe('ensureAgentSandboxRuntime', () => {
         sourceId: 'edit_skill_1'
       })
     );
-    expect(injectInputFilesToSandboxMock).toHaveBeenCalledWith(sandboxProviderMock, currentFiles);
+    expect(injectInputFilesToSandboxMock).toHaveBeenCalledWith(
+      sandboxProviderMock,
+      currentFiles,
+      expect.any(Function)
+    );
     expect(syncBuiltinSkillsToSandboxMock).not.toHaveBeenCalled();
     expect(getAgentSkillInfosMock).toHaveBeenCalledWith({
       sandbox: sandboxProviderMock,
@@ -262,7 +263,11 @@ describe('ensureAgentSandboxRuntime', () => {
     expect(prepareSandboxRuntimeMirrorsMock.mock.invocationCallOrder[0]).toBeLessThan(
       injectInputFilesToSandboxMock.mock.invocationCallOrder[0]
     );
-    expect(injectInputFilesToSandboxMock).toHaveBeenCalledWith(sandboxProviderMock, currentFiles);
+    expect(injectInputFilesToSandboxMock).toHaveBeenCalledWith(
+      sandboxProviderMock,
+      currentFiles,
+      expect.any(Function)
+    );
     expect(syncBuiltinSkillsToSandboxMock).not.toHaveBeenCalled();
     expect(prepareAction).toHaveBeenCalledWith(
       expect.objectContaining({

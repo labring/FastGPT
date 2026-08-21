@@ -1,11 +1,28 @@
 import { describe, expect, it } from 'vitest';
-import { formatCompletionResponseContent } from '@/service/core/chat/utils';
+import {
+  ChatItemValueTypeEnum,
+  formatCompletionResponseContent,
+  getChatItemValueType
+} from '@/service/core/chat/utils';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+
+describe('getChatItemValueType', () => {
+  it('infers every legacy chat value type and keeps text as the highest priority', () => {
+    expect(getChatItemValueType({ reasoning: {}, text: {} })).toBe(ChatItemValueTypeEnum.text);
+    expect(getChatItemValueType({ file: undefined })).toBe(ChatItemValueTypeEnum.file);
+    expect(getChatItemValueType({ tool: {} })).toBe(ChatItemValueTypeEnum.tool);
+    expect(getChatItemValueType({ tools: [] })).toBe(ChatItemValueTypeEnum.tool);
+    expect(getChatItemValueType({ interactive: {} })).toBe(ChatItemValueTypeEnum.interactive);
+    expect(getChatItemValueType({ reasoning: {} })).toBe(ChatItemValueTypeEnum.reasoning);
+    expect(getChatItemValueType({})).toBe(ChatItemValueTypeEnum.text);
+  });
+});
 
 describe('formatCompletionResponseContent', () => {
   it('keeps plain single text response OpenAI compatible', () => {
     const result = formatCompletionResponseContent({
       detail: true,
+      includeLegacyType: false,
       responseContent: [
         {
           text: {
@@ -21,7 +38,7 @@ describe('formatCompletionResponseContent', () => {
     });
   });
 
-  it('returns single interactive response as field-keyed content array when detail is enabled', () => {
+  it('adds type to v1 interactive detail values', () => {
     const interactive = {
       type: 'userSelect',
       params: {
@@ -32,6 +49,7 @@ describe('formatCompletionResponseContent', () => {
 
     const result = formatCompletionResponseContent({
       detail: true,
+      includeLegacyType: true,
       responseContent: [
         {
           interactive
@@ -41,7 +59,89 @@ describe('formatCompletionResponseContent', () => {
 
     expect(result).toEqual([
       {
+        type: 'interactive',
         interactive
+      }
+    ]);
+  });
+
+  it('adds type to v1 mixed text and tool detail values', () => {
+    const tool = {
+      id: 'call_1',
+      toolName: 'Test tool',
+      toolAvatar: '',
+      functionName: 'test_tool',
+      params: '{}',
+      response: 'ok'
+    };
+
+    const result = formatCompletionResponseContent({
+      detail: true,
+      includeLegacyType: true,
+      responseContent: [
+        {
+          reasoning: { content: 'Need to call a tool' },
+          text: { content: 'Calling tool' }
+        },
+        {
+          tools: [tool]
+        },
+        {
+          reasoning: { content: 'Tool call completed' },
+          text: { content: 'Done' }
+        }
+      ]
+    });
+
+    expect(result).toEqual([
+      {
+        type: 'text',
+        reasoning: { content: 'Need to call a tool' },
+        text: { content: 'Calling tool' }
+      },
+      {
+        type: 'tool',
+        tools: [tool]
+      },
+      {
+        type: 'text',
+        reasoning: { content: 'Tool call completed' },
+        text: { content: 'Done' }
+      }
+    ]);
+  });
+
+  it('keeps v2 mixed detail values without type', () => {
+    const tool = {
+      id: 'call_v2',
+      toolName: 'V2 tool',
+      toolAvatar: '',
+      functionName: 'v2_tool',
+      params: '{}',
+      response: 'ok'
+    };
+
+    const result = formatCompletionResponseContent({
+      detail: true,
+      includeLegacyType: false,
+      responseContent: [
+        {
+          reasoning: { content: 'Need to call a tool' },
+          text: { content: 'Calling tool' }
+        },
+        {
+          tools: [tool]
+        }
+      ]
+    });
+
+    expect(result).toEqual([
+      {
+        reasoning: { content: 'Need to call a tool' },
+        text: { content: 'Calling tool' }
+      },
+      {
+        tools: [tool]
       }
     ]);
   });
@@ -71,6 +171,7 @@ describe('formatCompletionResponseContent', () => {
 
     const result = formatCompletionResponseContent({
       detail: true,
+      includeLegacyType: false,
       responseContent: [
         {
           interactive
@@ -100,6 +201,7 @@ describe('formatCompletionResponseContent', () => {
 
     const result = formatCompletionResponseContent({
       detail: true,
+      includeLegacyType: false,
       responseContent: [
         {
           interactive: interactive as AIChatItemValueItemType['interactive']
@@ -120,6 +222,7 @@ describe('formatCompletionResponseContent', () => {
   it('joins multiple text and reasoning values when detail is disabled', () => {
     const result = formatCompletionResponseContent({
       detail: false,
+      includeLegacyType: false,
       responseContent: [
         {
           reasoning: {

@@ -1,13 +1,19 @@
 import { describe, expect, it, vi } from 'vitest';
 import { runAgentSandboxEntrypoint } from '@fastgpt/service/core/ai/sandbox/application/runtime/entrypoint';
 import { runAgentSkillVersionEntrypoints } from '@fastgpt/service/core/ai/sandbox/application/runtime/skill/entrypoint';
-import type { DeployedSkillVersion } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import type { DeployedSkillVersion } from '@fastgpt/service/core/ai/sandbox/application/runtime/skill';
 
 type ExecuteResult = {
   exitCode: number;
   stdout: string;
   stderr: string;
   truncated?: boolean;
+};
+
+type ExecuteOptions = {
+  timeoutMs?: number;
+  maxOutputBytes?: number;
+  workingDirectory?: string;
 };
 
 const createSandbox = ({
@@ -22,15 +28,9 @@ const createSandbox = ({
   let stateContent = initialState ? JSON.stringify(initialState) : undefined;
 
   const sandbox = {
-    execute: vi.fn(async (command: string): Promise<ExecuteResult> => {
+    execute: vi.fn(async (command: string, _options?: ExecuteOptions): Promise<ExecuteResult> => {
       if (command === 'printf "%s" "$HOME"') {
         return { exitCode: 0, stdout: '/home/test', stderr: '' };
-      }
-      if (command.startsWith("mkdir -p '/home/test/.fastgpt/runtime'")) {
-        return { exitCode: 0, stdout: '', stderr: '' };
-      }
-      if (command.startsWith("[ -f '/workspace/projects/version-1/entrypoint.sh' ]")) {
-        return { exitCode: 0, stdout: '', stderr: '' };
       }
       if (isSkillEntrypointCommand(command) || isSandboxEntrypointCommand(command)) {
         if (entrypointThrows) {
@@ -40,6 +40,20 @@ const createSandbox = ({
       }
       throw new Error(`Unexpected command: ${command}`);
     }),
+    createDirectories: vi.fn(async () => undefined),
+    getFileInfo: vi.fn(
+      async (paths: string[]) =>
+        new Map(
+          paths.map((path) => [
+            path,
+            {
+              path,
+              isFile: path.endsWith('/entrypoint.sh'),
+              isDirectory: false
+            }
+          ])
+        )
+    ),
     readFiles: vi.fn(async (paths: string[]) =>
       paths.map((path) => ({
         path,
@@ -70,7 +84,7 @@ const isSandboxEntrypointCommand = (command: string) =>
   command.includes('base64 -d | /bin/bash') && command.includes('tail -c 8192');
 
 const isSkillEntrypointCommand = (command: string) =>
-  command.startsWith("cd '/workspace/projects/version-1' && /bin/bash -c ") &&
+  command.startsWith('/bin/bash -c ') &&
   command.includes('entrypoint.sh') &&
   command.includes('tail -c 8192');
 
@@ -122,10 +136,11 @@ describe('runtime entrypoint', () => {
       workDirectory: '/workspace'
     });
 
-    const entrypointCommand = sandbox.execute.mock.calls
-      .map(([command]) => command)
-      .find(isSandboxEntrypointCommand);
-    expect(entrypointCommand).toMatch(/^cd '\/workspace' && \/bin\/bash -c /);
+    const entrypointCall = sandbox.execute.mock.calls.find(([command]) =>
+      isSandboxEntrypointCommand(command)
+    );
+    expect(entrypointCall?.[0]).toMatch(/^\/bin\/bash -c /);
+    expect(entrypointCall?.[1]).toMatchObject({ workingDirectory: '/workspace' });
   });
 
   it('does not write sandbox entrypoint state when execution fails or throws', async () => {
@@ -166,6 +181,9 @@ describe('runtime entrypoint', () => {
       .filter(isSkillEntrypointCommand);
 
     expect(runCommands).toHaveLength(1);
+    expect(
+      sandbox.execute.mock.calls.find(([command]) => isSkillEntrypointCommand(command))?.[1]
+    ).toMatchObject({ workingDirectory: version.targetDir });
     expect(sandbox.getState()?.values?.skillEntrypoints).toEqual(['version-1']);
   });
 

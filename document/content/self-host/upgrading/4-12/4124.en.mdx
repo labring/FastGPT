@@ -1,6 +1,9 @@
 ---
-title: 'V4.12.4 (Includes Migration Script)'
+title: 'V4.12.4'
 description: 'FastGPT V4.12.4 Update Notes, released on 2025-9-15'
+releaseTime: '2025-09-15'
+upgradeTags:
+  - MIGRATION
 ---
 
 ## Upgrade Guide
@@ -38,8 +41,8 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4124' \
 
 1. Permission inheritance optimization: when a child resource has higher permissions than its parent, inheritance mode is no longer forcibly interrupted.
 2. Prompt editor now supports list rendering.
-3. Navigating back to the knowledge base list from the data page now preserves pagination.
-4. After successfully uploading files to a knowledge base, the view returns to the corresponding upload directory.
+3. Navigating back to the Dataset list from the data page now preserves pagination.
+4. After successfully uploading files to a Dataset, the view returns to the corresponding upload directory.
 5. Reduced transaction operations when deleting apps.
 6. User selection UI improvements.
 
@@ -49,4 +52,3 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4124' \
 2. Python code execution: input parameters could not be boolean values.
 
 ## Plugin Updates
-

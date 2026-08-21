@@ -1,6 +1,12 @@
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
-import { ChatTestPropsSchema, CompletionsPropsSchema, CompletionsResponseSchema } from './api';
+import {
+  ChatHomeBodySchema,
+  ChatWorkflowSseResponseSchema,
+  ChatTestPropsSchema,
+  CompletionsPropsSchema,
+  CompletionsResponseSchema
+} from './api';
 
 /* =============== Request examples =============== */
 
@@ -153,8 +159,8 @@ const detailTrueStreamFalseExample = {
   ]
 };
 
-// 交互节点-用户选择 (非流式响应,从 choices 中获取 interactive 字段)
-const interactiveUserSelectResponseExample = {
+/** 构造交互节点用户选择的非流式响应示例，v1 额外包含兼容 type 字段。 */
+const createInteractiveUserSelectResponseExample = (includeLegacyType: boolean) => ({
   id: 'chatId',
   model: '',
   usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },
@@ -164,6 +170,7 @@ const interactiveUserSelectResponseExample = {
         role: 'assistant',
         content: [
           {
+            ...(includeLegacyType && { type: 'interactive' }),
             interactive: {
               type: 'userSelect',
               params: {
@@ -181,10 +188,10 @@ const interactiveUserSelectResponseExample = {
       index: 0
     }
   ]
-};
+});
 
-// 交互节点-表单输入 (非流式响应)
-const interactiveUserInputResponseExample = {
+/** 构造交互节点表单输入的非流式响应示例，v1 额外包含兼容 type 字段。 */
+const createInteractiveUserInputResponseExample = (includeLegacyType: boolean) => ({
   id: 'chatId',
   model: '',
   usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },
@@ -194,6 +201,7 @@ const interactiveUserInputResponseExample = {
         role: 'assistant',
         content: [
           {
+            ...(includeLegacyType && { type: 'interactive' }),
             interactive: {
               type: 'userInput',
               params: {
@@ -231,7 +239,12 @@ const interactiveUserInputResponseExample = {
       index: 0
     }
   ]
-};
+});
+
+const v1InteractiveUserSelectResponseExample = createInteractiveUserSelectResponseExample(true);
+const v1InteractiveUserInputResponseExample = createInteractiveUserInputResponseExample(true);
+const v2InteractiveUserSelectResponseExample = createInteractiveUserSelectResponseExample(false);
+const v2InteractiveUserInputResponseExample = createInteractiveUserInputResponseExample(false);
 
 // detail=false, stream=true
 // 注：示例为简化版，省略了 object/created 等占位字段；真实响应每行还会带这些字段
@@ -446,17 +459,18 @@ ${interactiveStreamExample}
                   summary: '交互节点-用户选择 响应',
                   description:
                     '工作流命中用户选择交互节点。从 choices[].message.content 中获取包含 interactive 字段的元素',
-                  value: interactiveUserSelectResponseExample
+                  value: v1InteractiveUserSelectResponseExample
                 },
                 interactiveUserInput: {
                   summary: '交互节点-表单输入 响应',
                   description:
                     '工作流命中表单输入交互节点。从 choices[].message.content 中获取包含 interactive 字段的元素',
-                  value: interactiveUserInputResponseExample
+                  value: v1InteractiveUserInputResponseExample
                 }
               }
             },
             'text/event-stream': {
+              schema: ChatWorkflowSseResponseSchema,
               examples: {}
             }
           }
@@ -502,13 +516,15 @@ ${interactiveStreamExample}
 - \`fastAnswer\`：指定回复返回给客户端的文本（最终会算作回答）。
 - \`toolCall\` / \`toolParams\` / \`toolResponse\`：工具相关。
 - \`flowNodeStatus\`：运行到的节点状态。
-- \`flowNodeResponse\`：v2 节点响应详情。与 v1 的 \`flowResponses\` 不同，v2 会按节点逐条推送，而不是最后一次性返回数组。
+- \`flowNodeResponse\`：v2 节点响应详情。与 v1 的 \`flowResponses\` 不同，v2 会按节点逐条推送（包括 Agent、工具、Loop、Parallel 等内部节点），客户端应按 \`id + parentId\` 追加或合并，而不是等待最后一次性数组。
 - \`workflowDuration\`：工作流本轮运行耗时，payload 为 \`{"durationSeconds": number}\`。
 - \`updateVariables\`：更新变量。
 - \`interactive\`：交互节点配置。
 - \`plan\` / \`planStatus\`：Agent 计划和计划状态（仅相关 Agent 节点可能返回）。
 - \`skillCall\` / \`sandboxStatus\`：技能调用和沙盒状态（仅相关能力启用时可能返回）。
 - \`error\`：报错。
+
+Share 调用沿用相同的逐条事件协议，但会先按分享配置过滤公共字段；引用、运行状态和技能引用分别受 \`showCite\`、\`showRunningStatus\`、\`showSkillReferences\` 控制，知识库源文件下载仍受分享下载权限控制。
 
 **交互节点**
 
@@ -607,17 +623,18 @@ ${interactiveStreamExample}
                   summary: '交互节点-用户选择 响应',
                   description:
                     '工作流命中用户选择交互节点。从 choices[].message.content 中获取包含 interactive 字段的元素',
-                  value: interactiveUserSelectResponseExample
+                  value: v2InteractiveUserSelectResponseExample
                 },
                 interactiveUserInput: {
                   summary: '交互节点-表单输入 响应',
                   description:
                     '工作流命中表单输入交互节点。从 choices[].message.content 中获取包含 interactive 字段的元素',
-                  value: interactiveUserInputResponseExample
+                  value: v2InteractiveUserInputResponseExample
                 }
               }
             },
             'text/event-stream': {
+              schema: ChatWorkflowSseResponseSchema,
               examples: {}
             }
           }
@@ -644,7 +661,32 @@ ${interactiveStreamExample}
           description: 'SSE 流式响应',
           content: {
             'text/event-stream': {
+              schema: ChatWorkflowSseResponseSchema,
               examples: {}
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/core/chat/chatHome': {
+    post: {
+      tags: [DevApiTagsMap.chatController],
+      summary: '应用聊天及工作流执行',
+      description: '使用主页聊天配置和临时工作流执行一次应用对话，返回 SSE 流',
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: ChatHomeBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: 'SSE 流式响应',
+          content: {
+            'text/event-stream': {
+              schema: ChatWorkflowSseResponseSchema
             }
           }
         }

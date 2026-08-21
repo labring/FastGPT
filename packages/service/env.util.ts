@@ -1,6 +1,8 @@
 import type { SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 import { agentSandboxProviderList } from '@fastgpt/global/core/ai/sandbox/constants';
 import z from 'zod';
+import type { StorageDownloadUrlMode } from './common/s3/contracts/type';
+import type { StorageVendorSchema } from './env.const';
 
 const TEST_INVOKE_TOKEN_SECRET = 'fastgpt_test_invoke_token_secret_32';
 const TEST_PRO_TOKEN = 'fastgpt_test_pro_token_32_chars_min';
@@ -21,10 +23,60 @@ export const getRuntimeEnv = (): NodeJS.ProcessEnv => ({
     (process.env.VITEST === 'true' || process.env.NODE_ENV === 'test' ? TEST_PRO_TOKEN : undefined)
 });
 
+/* ===== S3 ===== */
+type S3Env = {
+  STORAGE_VENDOR: z.infer<typeof StorageVendorSchema>;
+  STORAGE_DOWNLOAD_URL_MODE: StorageDownloadUrlMode;
+  STORAGE_EXTERNAL_ENDPOINT?: string;
+  STORAGE_R2_PUBLIC_ENDPOINT?: string;
+  STORAGE_S3_CDN_ENDPOINT?: string;
+};
+
+/**
+ * 校验对象存储下载模式依赖的公网访问地址。
+ * CDN 仅用于替换已生成的外部 URL，因此必须同时配置外部地址。
+ * 除此之外，仅 MinIO 的 short-redirect 模式需要显式提供客户端可访问的外部地址。
+ */
+export const validateS3Env = (env: S3Env): void => {
+  if (env.STORAGE_S3_CDN_ENDPOINT && !env.STORAGE_EXTERNAL_ENDPOINT) {
+    throw new Error(
+      'Invalid S3 environment variables: STORAGE_EXTERNAL_ENDPOINT is required when STORAGE_S3_CDN_ENDPOINT is configured.'
+    );
+  }
+
+  if (env.STORAGE_VENDOR === 'r2' && env.STORAGE_S3_CDN_ENDPOINT) {
+    throw new Error(
+      'Invalid S3 environment variables: STORAGE_S3_CDN_ENDPOINT is not supported when STORAGE_VENDOR is r2.'
+    );
+  }
+
+  if (env.STORAGE_VENDOR === 'r2' && !env.STORAGE_R2_PUBLIC_ENDPOINT) {
+    throw new Error(
+      'Invalid S3 environment variables: STORAGE_R2_PUBLIC_ENDPOINT is required when STORAGE_VENDOR is r2.'
+    );
+  }
+
+  const requiresExternalEndpoint =
+    env.STORAGE_VENDOR === 'minio' && env.STORAGE_DOWNLOAD_URL_MODE === 'short-redirect';
+
+  if (!requiresExternalEndpoint || env.STORAGE_EXTERNAL_ENDPOINT) {
+    return;
+  }
+
+  throw new Error(
+    `Invalid S3 environment variables: STORAGE_EXTERNAL_ENDPOINT is required when STORAGE_VENDOR is minio and STORAGE_DOWNLOAD_URL_MODE is ${env.STORAGE_DOWNLOAD_URL_MODE}.`
+  );
+};
+
 /* ===== sandbox ===== */
 export const AgentSandboxProxyUrlSchema = z.string().refine((url) => /^wss?:\/\//.test(url), {
   message: 'AGENT_SANDBOX_PROXY_URL must start with ws:// or wss://'
 });
+export const AgentSandboxPreviewProxyUrlSchema = z
+  .string()
+  .refine((url) => /^https?:\/\//.test(url), {
+    message: 'AGENT_SANDBOX_PREVIEW_PROXY_URL must start with http:// or https://'
+  });
 const agentSandboxProviderRequiredEnvKeys = {
   sealosdevbox: [
     'AGENT_SANDBOX_SEALOS_BASEURL',
@@ -34,10 +86,10 @@ const agentSandboxProviderRequiredEnvKeys = {
   opensandbox: [
     'AGENT_SANDBOX_OPENSANDBOX_BASEURL',
     'AGENT_SANDBOX_OPENSANDBOX_API_KEY',
+    'AGENT_SANDBOX_OPENSANDBOX_IMAGE',
     'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL',
     'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN'
-  ],
-  e2b: ['AGENT_SANDBOX_E2B_API_KEY']
+  ]
 } satisfies Record<SandboxProviderType, readonly string[]>;
 
 export const isAgentSandboxProvider = (
@@ -55,13 +107,17 @@ export const getAgentSandboxMissingRequiredEnvKeys = (env: NodeJS.ProcessEnv): s
     return [];
   }
 
-  return agentSandboxProviderRequiredEnvKeys[provider].filter((key) => !env[key]);
+  return agentSandboxProviderRequiredEnvKeys[provider].filter((key) => {
+    const value = env[key];
+    return key === 'AGENT_SANDBOX_OPENSANDBOX_IMAGE' ? !value?.trim() : !value;
+  });
 };
 
 /* ===== Sandbox proxy ===== */
 const agentSandboxProxyRequiredEnvKeys = [
   'AGENT_SANDBOX_PROXY_SECRET',
-  'AGENT_SANDBOX_PROXY_URL'
+  'AGENT_SANDBOX_PROXY_URL',
+  'AGENT_SANDBOX_PREVIEW_PROXY_URL'
 ] as const;
 /**
  * 校验 FastGPT app 浏览器直连 agent-sandbox-proxy 所需环境变量。
@@ -85,5 +141,24 @@ export const validateAgentSandboxProxyEnv = (): void => {
     `Invalid Agent Sandbox proxy environment variables: ${missingAgentSandboxProxyEnvKeys.join(
       ', '
     )} are required when AGENT_SANDBOX_PROVIDER is ${provider}.`
+  );
+};
+
+/**
+ * 校验复用 Sandbox 文件预览能力的服务所需环境变量。
+ * Pro Admin 不提供 sandbox editor/proxy 链路，因此只要求文件预览代理地址。
+ */
+export const validateAgentSandboxPreviewProxyEnv = (): void => {
+  const provider = process.env.AGENT_SANDBOX_PROVIDER;
+  if (!agentSandboxProviderList.includes(provider as (typeof agentSandboxProviderList)[number])) {
+    return;
+  }
+
+  if (process.env.AGENT_SANDBOX_PREVIEW_PROXY_URL) {
+    return;
+  }
+
+  throw new Error(
+    `Invalid Agent Sandbox preview proxy environment variable: AGENT_SANDBOX_PREVIEW_PROXY_URL is required when AGENT_SANDBOX_PROVIDER is ${provider}.`
   );
 };

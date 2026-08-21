@@ -20,7 +20,7 @@ import {
   formatEditorVariablePickerIcon,
   getAppChatConfig,
   getHandleId,
-  isValidReferenceValue,
+  getSelectedInputRenderType,
   isValidReferenceValueFormat,
   nodeInputIsReference
 } from '@fastgpt/global/core/workflow/utils';
@@ -36,23 +36,47 @@ import {
   initNewIfElseList,
   normalizeIfElseList
 } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
-import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
-import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
-import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
-import { cloneDeep, isEqual } from 'lodash';
+import { cloneDeep, isEqual } from 'lodash-es';
 import { workflowSystemVariables } from '../app/utils';
 import type { WorkflowDataContextType } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
+import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 
 /* ====== node ======= */
 /**
  * 适配从数据库读取出的节点输入。
- * 旧知识库搜索节点使用 userChatInput；当前节点改为 datasetSearchInput 数组。
- * 这里仅处理旧字段到新字段的 key 和 valueType 迁移。
+ * 处理节点输入结构升级，并保证旧工作流加载后符合当前模板约束。
  */
 export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInputItemType[] => {
+  if (
+    storeNode.flowNodeType === FlowNodeTypeEnum.chatNode ||
+    storeNode.flowNodeType === FlowNodeTypeEnum.toolCall
+  ) {
+    return storeNode.inputs.map((input) => {
+      if (
+        input.key !== NodeInputKeyEnum.fileUrlList ||
+        !input.renderTypeList.includes(FlowNodeInputTypeEnum.input)
+      ) {
+        return input;
+      }
+
+      // 文件链接实际值为字符串数组，旧版本的手动 input 类型需要迁移为 JSONEditor。
+      return {
+        ...input,
+        renderTypeList: input.renderTypeList.map((type) =>
+          type === FlowNodeInputTypeEnum.input ? FlowNodeInputTypeEnum.JSONEditor : type
+        ),
+        selectedType:
+          input.selectedType === FlowNodeInputTypeEnum.input
+            ? FlowNodeInputTypeEnum.JSONEditor
+            : input.selectedType
+      };
+    });
+  }
+
   if (storeNode.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
     return storeNode.inputs.map((input) => {
       if (input.key !== NodeInputKeyEnum.ifElseList) return input;
@@ -60,6 +84,24 @@ export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInpu
       return {
         ...input,
         value: normalizeIfElseList(input.value as IfElseListItemType[])
+      };
+    });
+  }
+
+  if (storeNode.flowNodeType === FlowNodeTypeEnum.agent) {
+    return storeNode.inputs.map((input) => {
+      const isManualSelectionInput = [
+        NodeInputKeyEnum.skills,
+        NodeInputKeyEnum.selectedTools,
+        NodeInputKeyEnum.datasetSelectList
+      ].includes(input.key as NodeInputKeyEnum);
+      if (!isManualSelectionInput) return input;
+
+      // Agent 资源已取消变量引用；旧引用值无法转为资源对象，加载时清空并切回手动选择。
+      return {
+        ...input,
+        selectedTypeIndex: 0,
+        value: nodeInputIsReference(input) ? [] : input.value
       };
     });
   }
@@ -79,18 +121,26 @@ export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInpu
       label: i18nT('workflow:search_query'),
       value: isReferenceValue ? [input.value] : input.value,
       valueType: WorkflowIOValueTypeEnum.arrayString,
+      selectedType: isReferenceValue
+        ? FlowNodeInputTypeEnum.reference
+        : FlowNodeInputTypeEnum.input,
       selectedTypeIndex: isReferenceValue ? 0 : 1
     };
   });
 };
 
+/**
+ * 将节点模板转换为画布节点，并按创建时语言初始化可编辑文本。
+ * `formatName` 在翻译完成后执行，用于基于实例名称追加重名序号。
+ */
 export const nodeTemplate2FlowNode = ({
   template,
   position,
   selected,
   parentNodeId,
   zIndex,
-  t
+  t,
+  formatName
 }: {
   template: FlowNodeTemplateType;
   position: XYPosition;
@@ -98,11 +148,15 @@ export const nodeTemplate2FlowNode = ({
   parentNodeId?: string;
   zIndex?: number;
   t: TFunction;
+  formatName?: (name: string) => string;
 }): Node<FlowNodeItemType> => {
+  const name = t(template.name as any);
+
   // replace item data
   const moduleItem: FlowNodeItemType = {
     ...template,
-    name: t(template.name as any),
+    name: formatName?.(name) ?? name,
+    intro: template.intro ? t(template.intro as any) : template.intro,
     nodeId: getNanoid(),
     parentNodeId
   };
@@ -126,17 +180,24 @@ export const nodeTemplate2FlowNode = ({
     zIndex
   };
 };
+
+/**
+ * 将持久化节点恢复为画布节点，并在加载时实体化历史 i18n 文本。
+ * 名称或描述命中翻译 key 时使用当前语言文本，后续保存会写回实体文本。
+ */
 export const storeNode2FlowNode = ({
   item: storeNode,
   selected = false,
   zIndex,
   parentNodeId,
+  isTool = false,
   t
 }: {
   item: StoreNodeItemType;
   selected?: boolean;
   zIndex?: number;
   parentNodeId?: string;
+  isTool?: boolean;
   t: TFunction;
 }): Node<FlowNodeItemType> => {
   // init some static data
@@ -160,6 +221,8 @@ export const storeNode2FlowNode = ({
     parentNodeId,
     ...template,
     ...storeNode,
+    name: t(storeNode.name as any),
+    intro: storeNode.intro ? t(storeNode.intro as any) : storeNode.intro,
     avatar: template.avatar ?? storeNode.avatar,
     version: template.version || storeNode.version,
     catchError: storeNode.catchError ?? template.catchError,
@@ -174,6 +237,7 @@ export const storeNode2FlowNode = ({
           ...templateInput,
           debugLabel: t(templateInput.debugLabel ?? (storeInput.debugLabel as any)),
           toolDescription: t(templateInput.toolDescription ?? (storeInput.toolDescription as any)),
+          selectedType: storeInput.selectedType ?? templateInput.selectedType,
           selectedTypeIndex: storeInput.selectedTypeIndex ?? templateInput.selectedTypeIndex,
           value: storeInput.value
         };
@@ -224,6 +288,36 @@ export const storeNode2FlowNode = ({
           })
       )
   };
+
+  const inputsWithLegacyDefaults =
+    nodeItem.flowNodeType === FlowNodeTypeEnum.pluginInput
+      ? normalizeWorkflowToolInputsDefaultMode(nodeItem.inputs)
+      : nodeItem.inputs;
+  const allowLegacyToolDescriptionFallback =
+    isTool &&
+    (nodeItem.flowNodeType === FlowNodeTypeEnum.pluginModule ||
+      !!nodeItem.toolConfig?.systemTool ||
+      !!nodeItem.pluginId?.startsWith('systemTool-') ||
+      !!nodeItem.pluginId?.startsWith('commercial-'));
+  nodeItem.inputs =
+    nodeItem.flowNodeType === FlowNodeTypeEnum.pluginInput
+      ? inputsWithLegacyDefaults.map((input) => {
+          // agentGenerated 属于工具实例配置，工作流工具本身不应持久化该类型。
+          const renderTypeList = input.renderTypeList.filter(
+            (type) => type !== FlowNodeInputTypeEnum.agentGenerated
+          );
+          return {
+            ...input,
+            renderTypeList,
+            selectedType:
+              input.selectedType === FlowNodeInputTypeEnum.agentGenerated
+                ? renderTypeList[0]
+                : input.selectedType
+          };
+        })
+      : inputsWithLegacyDefaults.map((input) =>
+          normalizeFlowNodeInputType(input, { isTool, allowLegacyToolDescriptionFallback })
+        );
 
   // Format output invalid
   const llmList = useSystemStore.getState().llmModelList;
@@ -606,349 +700,6 @@ export const getNodeAllSource = ({
   return Array.from(sourceNodes.values());
 };
 
-/* ====== Connection ======= */
-// Connectivity check result type
-type ConnectivityIssue = {
-  nodeId: string;
-  issue: 'isolated' | 'no_input' | 'unreachable_from_start';
-};
-export const checkWorkflowNodeAndConnection = ({
-  nodes,
-  edges
-}: {
-  nodes: Node<FlowNodeItemType, string | undefined>[];
-  edges: Edge<any>[];
-}): string[] | undefined => {
-  // Node check
-  for (const node of nodes) {
-    const data = node.data;
-    const inputs = data.inputs;
-    const isToolNode = edges.some(
-      (edge) =>
-        edge.targetHandle === NodeOutputKeyEnum.selectedTools && edge.target === node.data.nodeId
-    );
-
-    if (data.pluginData?.error) {
-      return [data.nodeId];
-    }
-
-    if (
-      data.flowNodeType === FlowNodeTypeEnum.systemConfig ||
-      data.flowNodeType === FlowNodeTypeEnum.pluginConfig ||
-      data.flowNodeType === FlowNodeTypeEnum.pluginInput ||
-      data.flowNodeType === FlowNodeTypeEnum.workflowStart ||
-      data.flowNodeType === FlowNodeTypeEnum.comment
-    ) {
-      continue;
-    }
-
-    if (data.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
-      const ifElseList: IfElseListItemType[] = inputs.find(
-        (input) => input.key === NodeInputKeyEnum.ifElseList
-      )?.value;
-      if (
-        ifElseList.some((item) => {
-          return item.list.some((listItem) => {
-            return (
-              listItem.variable === undefined ||
-              listItem.condition === undefined ||
-              (listItem.value === undefined &&
-                listItem.condition !== VariableConditionEnum.isEmpty &&
-                listItem.condition !== VariableConditionEnum.isNotEmpty)
-            );
-          });
-        })
-      ) {
-        return [data.nodeId];
-      } else {
-        continue;
-      }
-    }
-    if (data.flowNodeType === FlowNodeTypeEnum.userSelect) {
-      const configValue = data.inputs.find(
-        (input) => input.key === NodeInputKeyEnum.userSelectOptions
-      )?.value;
-      if (
-        !configValue ||
-        configValue.length === 0 ||
-        configValue.some((item: any) => !item.value)
-      ) {
-        return [data.nodeId];
-      }
-    }
-    if (data.flowNodeType === FlowNodeTypeEnum.formInput) {
-      const value = data.inputs.find(
-        (input) => input.key === NodeInputKeyEnum.userInputForms
-      )?.value;
-      if (!value || value.length === 0) {
-        return [data.nodeId];
-      }
-    }
-    if (data.flowNodeType === FlowNodeTypeEnum.loopRun) {
-      const mode = inputs.find((input) => input.key === NodeInputKeyEnum.loopRunMode)?.value as
-        | LoopRunModeEnum
-        | undefined;
-      if (mode === LoopRunModeEnum.conditional) {
-        const children =
-          (inputs.find((input) => input.key === NodeInputKeyEnum.childrenNodeIdList)
-            ?.value as string[]) ?? [];
-        const childSet = new Set(children);
-        const hasBreak = nodes.some(
-          (n) =>
-            childSet.has(n.data.nodeId) && n.data.flowNodeType === FlowNodeTypeEnum.loopRunBreak
-        );
-        if (!hasBreak) {
-          return [data.nodeId];
-        }
-      }
-    }
-    if (data.flowNodeType === FlowNodeTypeEnum.toolCall) {
-      const toolConnections = edges.filter(
-        (edge) =>
-          edge.source === data.nodeId && edge.sourceHandle === NodeOutputKeyEnum.selectedTools
-      );
-      const useAgentSandbox = inputs.find(
-        (input) => input.key === NodeInputKeyEnum.useAgentSandbox
-      )?.value;
-      if (toolConnections.length === 0 && !useAgentSandbox) {
-        return [data.nodeId];
-      }
-    }
-    if (data.flowNodeType === FlowNodeTypeEnum.variableUpdate) {
-      const updateList: TUpdateListItem[] = inputs.find(
-        (input) => input.key === NodeInputKeyEnum.updateList
-      )?.value;
-      const nodeIds = nodes.map((n) => n.data.nodeId);
-      const isLiveReference = (value: ReferenceItemValueType | undefined) => {
-        if (!isValidReferenceValueFormat(value)) return false;
-        const [refNodeId, refOutputId] = value;
-        if (!refNodeId || !refOutputId) return false;
-        if (refNodeId === VARIABLE_NODE_ID) return true;
-        return !!nodes
-          .find((node) => node.data.nodeId === refNodeId)
-          ?.data.outputs.find((output) => output.id === refOutputId);
-      };
-      if (
-        !updateList ||
-        updateList.length === 0 ||
-        updateList.some((item) => {
-          if (!isValidReferenceValue(item.variable, nodeIds) || !isLiveReference(item.variable))
-            return true;
-
-          if (item.renderType === FlowNodeInputTypeEnum.reference) {
-            // 接受单引用 [ref] 与引用数组 [[ref], ...]，与 dispatcher 对齐
-            if (isValidReferenceValueFormat(item.value)) {
-              return !isLiveReference(item.value as ReferenceItemValueType);
-            }
-            return (
-              !Array.isArray(item.value) ||
-              item.value.length === 0 ||
-              (item.value as ReferenceItemValueType[]).some((v) => !isLiveReference(v))
-            );
-          }
-
-          // input 模式：clear / boolean 由模式字段决定，不读 value
-          if (item.arrayMode === 'clear') return false;
-          if (item.booleanMode) return false;
-          const inputVal = item.value?.[1];
-          return inputVal === undefined || inputVal === null || inputVal === '';
-        })
-      ) {
-        return [data.nodeId];
-      } else {
-        continue;
-      }
-    }
-
-    if (
-      inputs.some((input) => {
-        // Conditional loopRun hides loopRunInputArray in the UI; its required flag is
-        // only meaningful in array mode, so skip it here to avoid spurious failures.
-        if (input.key === NodeInputKeyEnum.loopRunInputArray) {
-          const loopRunMode =
-            data.flowNodeType === FlowNodeTypeEnum.loopRun
-              ? (inputs.find((i) => i.key === NodeInputKeyEnum.loopRunMode)?.value as
-                  | LoopRunModeEnum
-                  | undefined)
-              : undefined;
-          if (loopRunMode === LoopRunModeEnum.conditional) {
-            return false;
-          }
-        }
-        if (
-          !input.valueType ||
-          [WorkflowIOValueTypeEnum.any, WorkflowIOValueTypeEnum.boolean].includes(input.valueType)
-        ) {
-          return false;
-        }
-        // check is tool input
-        if (isToolNode && input.toolDescription) {
-          return false;
-        }
-
-        if (input.required) {
-          if (input.value === undefined && input.valueType !== WorkflowIOValueTypeEnum.boolean) {
-            return true;
-          }
-          if (Array.isArray(input.value) && input.value.length === 0) return true;
-        }
-        // check reference invalid
-        if (nodeInputIsReference(input)) {
-          // 无效引用时，返回 true
-          const checkValueValid = (value: ReferenceItemValueType) => {
-            const nodeId = value?.[0];
-            const outputId = value?.[1];
-
-            if (!nodeId || !outputId) return false;
-
-            if (nodeId === VARIABLE_NODE_ID) {
-              return true;
-            }
-
-            return !!nodes
-              .find((node) => node.data.nodeId === nodeId)
-              ?.data.outputs.find((output) => output.id === outputId);
-          };
-
-          if (input.valueType?.startsWith('array')) {
-            input.value = input.value ?? [];
-            // 如果内容为空，则报错
-            if (input.required && input.value.length === 0) {
-              return true;
-            }
-          } else {
-            // Single reference
-            if (input.required) {
-              return !checkValueValid(input.value);
-            }
-          }
-        }
-        return false;
-      })
-    ) {
-      return [data.nodeId];
-    }
-
-    // Check node has invalid edge
-    const edgeFilted = edges.filter(
-      (edge) =>
-        !(
-          data.flowNodeType === FlowNodeTypeEnum.toolCall &&
-          edge.sourceHandle === NodeOutputKeyEnum.selectedTools
-        )
-    );
-    // Check node has edge
-    const hasEdge = edgeFilted.some(
-      (edge) => edge.source === data.nodeId || edge.target === data.nodeId
-    );
-    if (!hasEdge) {
-      return [data.nodeId];
-    }
-  }
-
-  // Edge check
-
-  /**
-   * Check graph connectivity and identify connectivity issues
-   */
-  const checkConnectivity = (
-    nodes: Node<FlowNodeItemType, string | undefined>[],
-    edges: Edge<any>[]
-  ): string[] => {
-    // Find start node
-    const startNode = nodes.find(
-      (node) =>
-        node.data.flowNodeType === FlowNodeTypeEnum.workflowStart ||
-        node.data.flowNodeType === FlowNodeTypeEnum.pluginInput
-    );
-
-    if (!startNode) {
-      // No start node found - this is a critical issue
-      return nodes.map((node) => node.data.nodeId);
-    }
-
-    const issues: ConnectivityIssue[] = [];
-
-    // Build adjacency lists for both directions
-    const outgoing = new Map<string, string[]>();
-    const incoming = new Map<string, string[]>();
-
-    nodes.forEach((node) => {
-      outgoing.set(node.data.nodeId, []);
-      incoming.set(node.data.nodeId, []);
-    });
-
-    edges.forEach((edge) => {
-      const outList = outgoing.get(edge.source) || [];
-      outList.push(edge.target);
-      outgoing.set(edge.source, outList);
-
-      const inList = incoming.get(edge.target) || [];
-      inList.push(edge.source);
-      incoming.set(edge.target, inList);
-    });
-
-    // Check reachability from start node（Start node/Loop start 可以到达的地方）
-    const reachableFromStart = new Set<string>();
-    const dfsFromStart = (nodeId: string) => {
-      if (reachableFromStart.has(nodeId)) return;
-      reachableFromStart.add(nodeId);
-
-      const neighbors = outgoing.get(nodeId) || [];
-      neighbors.forEach((neighbor) => dfsFromStart(neighbor));
-    };
-    dfsFromStart(startNode.data.nodeId);
-    nodes.forEach((node) => {
-      if (
-        node.data.flowNodeType === FlowNodeTypeEnum.nestedStart ||
-        node.data.flowNodeType === FlowNodeTypeEnum.loopRunStart
-      ) {
-        dfsFromStart(node.data.nodeId);
-      }
-    });
-
-    // Check each node for connectivity issues
-    for (const node of nodes) {
-      const nodeId = node.data.nodeId;
-      const nodeType = node.data.flowNodeType;
-
-      // Skip system nodes that don't need connectivity checks
-      if (
-        nodeType === FlowNodeTypeEnum.systemConfig ||
-        nodeType === FlowNodeTypeEnum.pluginConfig ||
-        nodeType === FlowNodeTypeEnum.comment ||
-        nodeType === FlowNodeTypeEnum.globalVariable ||
-        nodeType === FlowNodeTypeEnum.emptyNode
-      ) {
-        continue;
-      }
-
-      const isStartNode = [
-        FlowNodeTypeEnum.workflowStart,
-        FlowNodeTypeEnum.pluginInput,
-        FlowNodeTypeEnum.nestedStart,
-        FlowNodeTypeEnum.loopRunStart
-      ].includes(nodeType);
-
-      // Check if node is reachable from start
-      if (!isStartNode && !reachableFromStart.has(nodeId)) {
-        issues.push({
-          nodeId,
-          issue: 'unreachable_from_start'
-        });
-        break;
-      }
-    }
-
-    return issues.map((issue) => issue.nodeId);
-  };
-
-  const connectivityIssues = checkConnectivity(nodes, edges);
-  if (connectivityIssues.length > 0) {
-    return connectivityIssues;
-  }
-};
-
 /* ====== Variables ======= */
 /* get workflowStart output to global variables */
 export const getWorkflowGlobalVariables = ({
@@ -1010,6 +761,7 @@ export const compareSnapshot = (
     !isEqual(
       {
         welcomeText: clone1.chatConfig?.welcomeText || '',
+        welcomeConfig: clone1.chatConfig?.welcomeConfig || undefined,
         variables: clone1.chatConfig?.variables || [],
         questionGuide: clone1.chatConfig?.questionGuide || false,
         ttsConfig: clone1.chatConfig?.ttsConfig || undefined,
@@ -1022,6 +774,7 @@ export const compareSnapshot = (
       },
       {
         welcomeText: clone2.chatConfig?.welcomeText || '',
+        welcomeConfig: clone2.chatConfig?.welcomeConfig || undefined,
         variables: clone2.chatConfig?.variables || [],
         questionGuide: clone2.chatConfig?.questionGuide || false,
         ttsConfig: clone2.chatConfig?.ttsConfig || undefined,
@@ -1054,6 +807,7 @@ export const compareSnapshot = (
           flowNodeType: node.data.flowNodeType,
           inputs: node.data.inputs.map((input: FlowNodeInputItemType) => ({
             key: input.key,
+            selectedType: getSelectedInputRenderType(input),
             selectedTypeIndex: input.selectedTypeIndex ?? 0,
             renderTypeLis: input.renderTypeList,
             // set to arrayAny for nestedInputArray to skip valueType comparison

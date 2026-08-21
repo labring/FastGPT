@@ -73,7 +73,7 @@ export type CreateDatasetResponseType = z.infer<typeof CreateDatasetResponseSche
 
 ```typescript
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/types/next';
 import {
   CreateDatasetBodySchema,
   CreateDatasetResponseSchema,

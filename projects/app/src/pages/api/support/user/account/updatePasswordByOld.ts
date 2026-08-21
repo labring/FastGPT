@@ -12,13 +12,17 @@ import {
   type UpdatePasswordByOldBodyType,
   type UpdatePasswordByOldResponseType
 } from '@fastgpt/global/openapi/support/user/account/password/api';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(
   req: ApiRequestProps<UpdatePasswordByOldBodyType>,
-  res: ApiResponseType<any>
+  _res: ApiResponseType<any>
 ): Promise<UpdatePasswordByOldResponseType> {
-  const { oldPsw, newPsw } = UpdatePasswordByOldBodySchema.parse(req.body);
+  const { oldPsw, newPsw } = parseApiInput({
+    req,
+    bodySchema: UpdatePasswordByOldBodySchema
+  }).body;
 
   const { tmbId, teamId, sessionId } = await authCert({ req, authToken: true });
   const tmb = await MongoTeamMember.findById(tmbId);

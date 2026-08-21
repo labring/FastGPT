@@ -1,7 +1,7 @@
 import { delay } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../logger';
-import { Pool } from 'pg';
-import type { QueryResultRow } from 'pg';
+import * as pg from 'pg';
+import type { Pool, QueryResultRow } from 'pg';
 import { PG_ADDRESS } from '../constants';
 import { serviceEnv } from '../../../env';
 
@@ -12,7 +12,7 @@ export const connectPg = async (): Promise<Pool> => {
     return global.pgClient;
   }
 
-  const pool = new Pool({
+  const pool = new pg.Pool({
     connectionString: PG_ADDRESS,
     // 连接池配置
     max: serviceEnv.DB_MAX_LINK, // 支持通过统一 env 配置并发

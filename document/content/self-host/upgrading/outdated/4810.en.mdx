@@ -1,12 +1,15 @@
 ---
-title: V4.8.10 (Includes Migration Script)
+title: V4.8.10
 description: FastGPT V4.8.10 Release Notes
+releaseTime: '2024-09-06'
+upgradeTags:
+  - CONFIG
+  - MIGRATION
 ---
 
 ## Upgrade Guide
 
 ### 1. Back up your database
-
 
 ### 2. Commercial Edition — Update environment variables
 
@@ -37,7 +40,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4810' \
 1. Initializes publish record version markers
 2. Initializes invoice records
 
--------
+---
 
 ## V4.8.10 Release Notes
 
@@ -68,18 +71,18 @@ For full details, see: [4.8.10 release](https://github.com/labring/FastGPT/relea
 23. Improved - Updated React Markdown component with Base64 image support.
 24. Improved - Chat dialog performance.
 25. Improved - Radio buttons auto-scroll to the selected position when opened.
-26. Improved - Disabling a Knowledge Base collection directory now recursively disables all children.
+26. Improved - Disabling a Dataset collection directory now recursively disables all children.
 27. Improved - SSE response code.
 28. Improved - Improved copy functionality when SSL certificate is not available.
-29. Improved - Knowledge Base list UI.
-30. Improved - Knowledge Base detail page UI.
+29. Improved - Dataset list UI.
+30. Improved - Dataset detail page UI.
 31. Improved - Support running without network configuration.
 32. Improved - Updated .env.template MongoDB documentation for better clarity.
 33. Improved - New payment mode.
 34. Improved - Default user avatars.
 35. Fixed - Prompt mode tool calls including `0:` prefix markers in non-stream mode.
 36. Fixed - Chat log authentication: users who are only app administrators could not view chat log details.
-37. Fixed - Unable to export Knowledge Base when using Milvus deployment.
+37. Fixed - Unable to export Dataset when using Milvus deployment.
 38. Fixed - Creating an app copy failed to copy system configuration.
 39. Fixed - Image recognition mode regex for auto-parsing image URLs was not strict enough.
 40. Fixed - Content extraction data types not matching output data types.
@@ -92,7 +95,7 @@ For full details, see: [4.8.10 release](https://github.com/labring/FastGPT/relea
 47. Fixed - Global variables not persisting in Debug mode.
 48. Fixed - Global variables not persisting via API.
 49. Fixed - OpenAPI `detail=false` mode should not return tool call results, only text (resolves CoW compatibility issue).
-50. Fixed - Knowledge Base tags loading repeatedly.
+50. Fixed - Dataset tags loading repeatedly.
 51. Fixed - Custom separators not taking effect when re-fetching web links.
 52. Fixed - Plugin runtime passing extra global variables, potentially polluting plugin-internal variables.
 53. Docs - QA docs.

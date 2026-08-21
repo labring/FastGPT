@@ -1,14 +1,12 @@
 import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { MongoApp } from './schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { encryptSecretValue, storeSecretValue } from '../../common/secret/utils';
-import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
+import { getClientToolPreviewNode } from './tool/utils/client';
+import { formatToolInputSecrets } from './tool/secretConfig';
 import { MongoEvaluation } from './evaluation/evalSchema';
 import { removeEvaluationJob } from './evaluation/mq';
 import { MongoOutLink } from '../../support/outLink/schema';
@@ -51,7 +49,13 @@ const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
  * 2. Skill: 统一数据结构为 { skillId: string }[]。
  * 2. 敏感信息（如 Header Secret、密码类型输入、系统工具手动配置的密钥）进行加密存储。
  */
-export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }) => {
+export const beforeUpdateAppFormat = async ({
+  nodes,
+  teamId
+}: {
+  nodes?: StoreNodeItemType[];
+  teamId: string;
+}) => {
   if (!nodes) return;
 
   const StoredSelectedDatasetSchema = z.object({
@@ -61,9 +65,12 @@ export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }
   /**
    * 格式化数据集选择值，保存阶段只保留 datasetId，移除编辑态快照字段。
    * 引用模式由调用处判断并跳过，避免把 [nodeId, key] 误压缩成空数组。
+   * 未配置的草稿节点按空数组保存，仍由发布/运行前的工作流校验提示必填。
    * 兼容历史单选格式 { datasetId }，避免旧应用再次保存时丢失知识库配置。
    */
   const formatDatasetSelectValue = (value: unknown) => {
+    if (value === undefined || value === null) return [];
+
     const datasets = z
       .union([StoredSelectedDatasetSchema, z.array(StoredSelectedDatasetSchema)])
       .parse(value);
@@ -79,27 +86,8 @@ export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }
 
     // Format header secret
     node.inputs.forEach((input) => {
+      formatToolInputSecrets({ inputs: [input] });
       if (nodeInputIsReference(input)) return;
-
-      // 敏感信息
-      if (input.key === NodeInputKeyEnum.headerSecret && typeof input.value === 'object') {
-        input.value = storeSecretValue(input.value);
-      }
-      if (input.renderTypeList?.includes(FlowNodeInputTypeEnum.password)) {
-        input.value = encryptSecretValue(input.value);
-      }
-      if (input.key === NodeInputKeyEnum.systemInputConfig && typeof input.value === 'object') {
-        input.inputList?.forEach((inputItem) => {
-          if (
-            inputItem.inputType === 'secret' &&
-            input.value?.type === SystemToolSecretInputTypeEnum.manual &&
-            input.value?.value
-          ) {
-            input.value.value[inputItem.key] = encryptSecretValue(input.value.value[inputItem.key]);
-          }
-        });
-      }
-
       // 知识库
       if (isDatasetNode) {
         // Agent
@@ -124,6 +112,55 @@ export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }
       }
     });
   });
+
+  await Promise.all(
+    nodes.map(async (node) => {
+      if (node.flowNodeType !== FlowNodeTypeEnum.agent) return;
+
+      const selectedToolsInput = node.inputs.find(
+        (input) => input.key === NodeInputKeyEnum.selectedTools
+      );
+      if (!selectedToolsInput || nodeInputIsReference(selectedToolsInput)) return;
+      if (!Array.isArray(selectedToolsInput.value)) return;
+
+      await Promise.all(
+        selectedToolsInput.value.map(async (selectedTool: any) => {
+          if (!selectedTool?.id || !selectedTool.config) return;
+
+          try {
+            const preview = await getClientToolPreviewNode({
+              appId: selectedTool.id,
+              versionId: selectedTool.version,
+              source: selectedTool.source,
+              teamId
+            });
+            const inputMap = new Map(preview.inputs.map((input) => [input.key, input]));
+            const configInputs = Object.keys(selectedTool.config)
+              .map((key) => inputMap.get(key))
+              .filter((input): input is (typeof preview.inputs)[number] => !!input);
+
+            configInputs.forEach((input) => {
+              input.value = selectedTool.config[input.key];
+            });
+            formatToolInputSecrets({ inputs: configInputs });
+            configInputs.forEach((input) => {
+              selectedTool.config[input.key] = input.value;
+            });
+          } catch {
+            // 工具已删除或暂时不可用时，至少清理嵌套 system/team 临时值。
+            const systemInput = selectedTool.config.system_input_config;
+            if (
+              systemInput &&
+              typeof systemInput === 'object' &&
+              systemInput.type !== SystemToolSecretInputTypeEnum.manual
+            ) {
+              delete systemInput.value;
+            }
+          }
+        })
+      );
+    })
+  );
 };
 
 /**

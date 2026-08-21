@@ -10,6 +10,8 @@ import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import type { ClientSession } from '../../../../common/mongo';
 import { getAgentSandboxSkillMaxBytes } from '../../sandbox/interface/config';
 import { readStreamToBuffer } from '../../../../common/s3/utils';
+import type { Readable } from 'node:stream';
+import { createSizeLimitedStream } from '../../../../common/file/stream';
 
 export type SkillStorageInfo = {
   key: string;
@@ -24,6 +26,11 @@ export type UploadSkillPackageParams = {
 
 export type DownloadSkillPackageParams = {
   storageKey: string;
+};
+
+type UploadSkillPackageStreamParams = Omit<UploadSkillPackageParams, 'zipBuffer'> & {
+  packageStream: Readable;
+  contentLength?: number;
 };
 
 /**
@@ -48,6 +55,35 @@ export async function uploadSkillPackage(
     skillId,
     packageObjectId,
     body: zipBuffer
+  });
+
+  return { key };
+}
+
+/**
+ * 将 Skill ZIP 流直接上传到私有对象存储。
+ *
+ * contentLength 仅透传对象存储 SDK；实际传输仍逐块计数，防止伪造长度绕过限制。
+ */
+export async function uploadSkillPackageStream(
+  params: UploadSkillPackageStreamParams
+): Promise<SkillStorageInfo> {
+  const { teamId, skillId, packageObjectId, packageStream, contentLength } = params;
+  const maxBytes = getAgentSandboxSkillMaxBytes();
+
+  const boundedStream = createSizeLimitedStream({
+    stream: packageStream,
+    maxBytes,
+    createExceededError: () => new Error(SkillErrEnum.archiveTooLarge)
+  });
+
+  const bucket = getS3SkillSource();
+  const { key } = await bucket.uploadPackage({
+    teamId,
+    skillId,
+    packageObjectId,
+    body: boundedStream,
+    contentLength
   });
 
   return { key };
@@ -90,6 +126,32 @@ export async function downloadSkillPackage(params: DownloadSkillPackageParams): 
     stream: response.body,
     maxBytes,
     exceededMessage: `Skill package exceeds maximum allowed size (${maxBytes / 1024 / 1024}MB)`
+  });
+}
+
+/**
+ * 从私有对象存储返回带实际字节上限的 Skill ZIP 流。
+ *
+ * 上限在消费流时逐块执行，避免对象元数据缺失或被错误填写时把超大包继续传入 Sandbox。
+ */
+export async function downloadSkillPackageStream(
+  params: DownloadSkillPackageParams
+): Promise<Readable> {
+  const { storageKey } = params;
+  const maxBytes = getAgentSandboxSkillMaxBytes();
+  const response = await getS3SkillSource().client.downloadObject({
+    key: storageKey
+  });
+
+  if (!response.body) {
+    throw new Error(`Failed to download skill package: ${storageKey}`);
+  }
+
+  return createSizeLimitedStream({
+    stream: response.body,
+    maxBytes,
+    createExceededError: () =>
+      new Error(`Skill package exceeds maximum allowed size (${maxBytes / 1024 / 1024}MB)`)
   });
 }
 

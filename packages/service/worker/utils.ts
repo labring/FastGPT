@@ -1,4 +1,5 @@
 import type { TransferListItem, Worker as NodeWorker } from 'worker_threads';
+import { Worker } from 'worker_threads';
 import path from 'path';
 import { getLogger, LogCategories } from '../common/logger';
 import { serviceEnv } from '../env';
@@ -22,9 +23,6 @@ export const getSafeEnv = () => {
 };
 
 const createNodeWorker = (workerPath: string) => {
-  const nodeRequire = eval('require') as (id: string) => typeof import('worker_threads');
-  const { Worker } = nodeRequire('worker_threads');
-
   return new Worker(workerPath, {
     env: getSafeEnv()
   });

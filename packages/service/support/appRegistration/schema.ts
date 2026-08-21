@@ -1,4 +1,4 @@
-import { Schema, getMongoModel } from '../../common/mongo/index';
+import { defineIndex, Schema, getMongoModel } from '../../common/mongo/index';
 import { AppCollectionName } from '../../core/app/schema';
 import { TeamMemberCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
@@ -25,7 +25,7 @@ const AppRegistrationSchema = new Schema({
   }
 });
 
-AppRegistrationSchema.index({ teamId: 1 });
+defineIndex(AppRegistrationSchema, { key: { teamId: 1 } });
 
 export const MongoAppRegistration = getMongoModel(
   AppRegistrationCollectionName,

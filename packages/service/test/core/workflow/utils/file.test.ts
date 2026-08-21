@@ -8,6 +8,7 @@ const mockAddRawTextBuffer = vi.hoisted(() => vi.fn());
 const mockIsInternalAddress = vi.hoisted(() => vi.fn());
 const mockAxiosGet = vi.hoisted(() => vi.fn());
 const mockReadFileContentByBuffer = vi.hoisted(() => vi.fn());
+const mockVerifyS3DownloadAccess = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/common/s3/sources/rawText', () => ({
   getS3RawTextSource: () => ({
@@ -26,23 +27,16 @@ vi.mock('@fastgpt/service/common/system/utils', async (importOriginal) => {
 
 vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
   const mod = await importOriginal<typeof import('@fastgpt/service/common/api/axios')>();
-  // 把 axios 和 pickOutboundAxios 一起 mock:
-  //   - axios: 直接换成 mock(供绝对 URL 路径)
-  //   - pickOutboundAxios: 不论 URL 类型都返回同一个 mock client(供测试统一断言 .get 调用)
   const mockClient = {
     get: mockAxiosGet,
     defaults: { baseURL: 'http://localhost:3000' }
   };
   return {
     ...mod,
-    axios: mockClient,
-    pickOutboundAxios: () => mockClient
+    axios: mockClient
   };
 });
 
-// 文件下载链路对相对路径走 raw axios + serverRequestBaseUrl,这里也 mock 住,
-// 保证测试不会真发网络请求,且保留对 mockAxiosGet 调用次数的断言能力。
-// outbound.ts 用 axios.create() 创建内部 client,所以 mock 必须提供 create 方法。
 vi.mock('axios', () => {
   const internalClient = {
     get: mockAxiosGet,
@@ -64,6 +58,14 @@ vi.mock('@fastgpt/service/common/file/read/utils', async (importOriginal) => {
   };
 });
 
+vi.mock('@fastgpt/service/common/s3/accessLink', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('@fastgpt/service/common/s3/accessLink')>();
+  return {
+    ...mod,
+    verifyS3DownloadAccess: mockVerifyS3DownloadAccess
+  };
+});
+
 // 全局 s3 mock 把 S3ChatSource 替换成了 vi.fn()，丢失了静态方法。
 // 这里用真实模块覆盖回来，让 parseChatUrl 静态方法可用。
 vi.mock('@fastgpt/service/common/s3/sources/chat/index', async (importOriginal) => {
@@ -81,10 +83,24 @@ vi.mock('@fastgpt/service/common/s3/sources/chat/index', async (importOriginal) 
 
 import {
   parseFileContentFromUrls,
-  parseFileInfoFromUrls,
   normalizeReadableFileUrl,
-  formatUserQueryWithFiles
+  formatAIChatUserQueryWithFiles,
+  getFileContentByUrl
 } from '@fastgpt/service/core/chat/fileContext';
+import type {
+  WorkflowFileContext,
+  WorkflowFileRef
+} from '@fastgpt/service/core/workflow/utils/fileContext';
+
+const createEmptyWorkflowFileContext = (): WorkflowFileContext => ({
+  limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
+  resolve: () => undefined,
+  resolveInputFile: () => undefined,
+  resolveChatFile: () => undefined,
+  getIdentity: () => undefined,
+  read: vi.fn(),
+  derive: () => createEmptyWorkflowFileContext()
+});
 
 const createHumanMessage = (value: UserChatItemValueItemType[]): ChatItemMiniType => ({
   obj: ChatRoleEnum.Human,
@@ -121,14 +137,14 @@ const rewriteMessagesWithFileContent = async ({
   maxFiles?: number;
 }) =>
   Promise.all(
-    messages.map(async (message, index): Promise<ChatItemMiniType> => {
+    messages.map(async (message): Promise<ChatItemMiniType> => {
       if (message.obj !== ChatRoleEnum.Human) {
         return message;
       }
 
       return {
         ...message,
-        value: await formatUserQueryWithFiles({
+        value: await formatAIChatUserQueryWithFiles({
           userQuery: message.value,
           parseFileFn: createMockParseFileFn({ maxFiles })
         })
@@ -140,11 +156,10 @@ describe('normalizeReadableFileUrl', () => {
   it('标准化可读取的文档 URL，并过滤非文档 URL', () => {
     expect(
       normalizeReadableFileUrl({
-        url: ' http://localhost:3000/a.pdf ',
-        requestOrigin: 'http://localhost:3000'
+        url: ' http://localhost:3000/a.pdf '
       })
-    ).toBe('/a.pdf');
-    expect(normalizeReadableFileUrl({ url: '/a.pdf' })).toBe('/a.pdf');
+    ).toBe('http://localhost:3000/a.pdf');
+    expect(normalizeReadableFileUrl({ url: '/a.pdf' })).toBe('');
     expect(normalizeReadableFileUrl({ url: '/image.png' })).toBe('');
     expect(normalizeReadableFileUrl({ url: 'chat/a.pdf' })).toBe('');
     expect(normalizeReadableFileUrl({ url: '' })).toBe('');
@@ -156,16 +171,7 @@ describe('normalizeReadableFileUrl', () => {
     expect(normalizeReadableFileUrl({ url: 123 as unknown as string })).toBe('');
   });
 
-  it('requestOrigin 不匹配时保留原 URL', () => {
-    expect(
-      normalizeReadableFileUrl({
-        url: 'http://other.example.com/a.pdf',
-        requestOrigin: 'http://localhost:3000'
-      })
-    ).toBe('http://other.example.com/a.pdf');
-  });
-
-  it('requestOrigin 未提供时保留绝对 URL', () => {
+  it('保留绝对 URL', () => {
     expect(normalizeReadableFileUrl({ url: 'http://example.com/a.pdf' })).toBe(
       'http://example.com/a.pdf'
     );
@@ -182,8 +188,8 @@ describe('parseFileContentFromUrls (buffer hit)', () => {
     vi.clearAllMocks();
     mockGetRawTextBuffer.mockImplementation(({ sourceId }: { sourceId: string }) => {
       const textMap: Record<string, string> = {
-        '/a.pdf': 'Alpha',
-        '/b.pdf': 'Beta'
+        'http://localhost:3000/a.pdf': 'Alpha',
+        'https://files.example.com/b.pdf': 'Beta'
       };
 
       return textMap[sourceId]
@@ -197,24 +203,162 @@ describe('parseFileContentFromUrls (buffer hit)', () => {
 
   it('在读取前统一标准化 URL', async () => {
     const result = await parseFileContentFromUrls({
-      urls: ['http://localhost:3000/a.pdf', '/b.pdf'],
-      requestOrigin: 'http://localhost:3000',
+      urls: ['http://localhost:3000/a.pdf', 'https://files.example.com/b.pdf'],
       maxFiles: 20,
       teamId: 'team-1',
       tmbId: 'tmb-1'
     });
 
     expect(mockGetRawTextBuffer).toHaveBeenNthCalledWith(1, {
-      sourceId: '/a.pdf',
+      sourceId: 'http://localhost:3000/a.pdf',
       customPdfParse: undefined
     });
     expect(mockGetRawTextBuffer).toHaveBeenNthCalledWith(2, {
-      sourceId: '/b.pdf',
+      sourceId: 'https://files.example.com/b.pdf',
       customPdfParse: undefined
     });
-    expect(result.map((item) => item.url)).toEqual(['/a.pdf', '/b.pdf']);
+    expect(result.map((item) => item.url)).toEqual([
+      'http://localhost:3000/a.pdf',
+      'https://files.example.com/b.pdf'
+    ]);
     expect(result.map((item) => item.content)).toEqual(['Alpha', 'Beta']);
     expect(result.every((item) => item.success)).toBe(true);
+  });
+
+  it('最多并发读取 5 个文件并保持结果顺序', async () => {
+    const urls = Array.from({ length: 6 }, (_, index) => `https://files.example.com/${index}.pdf`);
+    let releaseFirstBatch = () => {};
+    const firstBatchGate = new Promise<void>((resolve) => {
+      releaseFirstBatch = resolve;
+    });
+    let started = 0;
+    let active = 0;
+    let maxActive = 0;
+
+    mockGetRawTextBuffer.mockImplementation(async ({ sourceId }: { sourceId: string }) => {
+      const currentIndex = started++;
+      active += 1;
+      maxActive = Math.max(maxActive, active);
+
+      if (currentIndex < 5) {
+        await firstBatchGate;
+      }
+
+      active -= 1;
+      return {
+        filename: sourceId.split('/').pop(),
+        text: sourceId
+      };
+    });
+
+    const resultPromise = parseFileContentFromUrls({
+      urls,
+      maxFiles: 20,
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    });
+
+    await vi.waitFor(() => expect(mockGetRawTextBuffer).toHaveBeenCalledTimes(5));
+    expect(maxActive).toBe(5);
+
+    releaseFirstBatch();
+    const result = await resultPromise;
+
+    expect(mockGetRawTextBuffer).toHaveBeenCalledTimes(6);
+    expect(maxActive).toBe(5);
+    expect(result.map((item) => item.url)).toEqual(urls);
+  });
+
+  it('内部地址即使命中 raw-text 缓存也先拒绝', async () => {
+    mockIsInternalAddress.mockResolvedValue(true);
+    mockGetRawTextBuffer.mockResolvedValue({
+      filename: 'cached.pdf',
+      text: 'cached private content'
+    });
+
+    const result = await parseFileContentFromUrls({
+      urls: ['http://internal.svc/cached.pdf'],
+      maxFiles: 20,
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    });
+
+    expect(mockGetRawTextBuffer).not.toHaveBeenCalled();
+    expect(result).toEqual([
+      {
+        success: false,
+        name: '',
+        url: 'http://internal.svc/cached.pdf',
+        content: PRIVATE_URL_TEXT
+      }
+    ]);
+  });
+
+  it('不在文件域名白名单的 URL 不查询 raw-text 缓存', async () => {
+    const originalSystemEnv = global.systemEnv;
+    global.systemEnv = { fileUrlWhitelist: ['allowed.example.com'] } as any;
+    mockIsInternalAddress.mockResolvedValue(false);
+    mockGetRawTextBuffer.mockResolvedValue({
+      filename: 'cached.pdf',
+      text: 'cached blocked content'
+    });
+
+    try {
+      const result = await parseFileContentFromUrls({
+        urls: ['https://blocked.example.com/cached.pdf'],
+        maxFiles: 20,
+        teamId: 'team-1',
+        tmbId: 'tmb-1',
+        fileContext: createEmptyWorkflowFileContext()
+      });
+
+      expect(mockGetRawTextBuffer).not.toHaveBeenCalled();
+      expect(result[0]).toMatchObject({
+        success: false,
+        url: 'https://blocked.example.com/cached.pdf',
+        content: 'Invalid file URL domain'
+      });
+    } finally {
+      global.systemEnv = originalSystemEnv;
+    }
+  });
+
+  it('动态工具 URL 可跳过文件域名白名单，但仍先执行内网地址检查', async () => {
+    const originalSystemEnv = global.systemEnv;
+    global.systemEnv = { fileUrlWhitelist: ['allowed.example.com'] } as any;
+    mockGetRawTextBuffer.mockResolvedValue({
+      filename: 'generated.pdf',
+      text: 'generated content'
+    });
+
+    try {
+      mockIsInternalAddress.mockResolvedValue(false);
+      await expect(
+        getFileContentByUrl({
+          url: 'https://generated.example.com/result.pdf',
+          teamId: 'team-1',
+          tmbId: 'tmb-1',
+          fileContext: createEmptyWorkflowFileContext(),
+          validateExternalUrlDomain: false
+        })
+      ).resolves.toMatchObject({
+        name: 'generated.pdf',
+        content: 'generated content'
+      });
+
+      mockIsInternalAddress.mockResolvedValue(true);
+      await expect(
+        getFileContentByUrl({
+          url: 'http://internal.svc/result.pdf',
+          teamId: 'team-1',
+          tmbId: 'tmb-1',
+          fileContext: createEmptyWorkflowFileContext(),
+          validateExternalUrlDomain: false
+        })
+      ).rejects.toThrow(PRIVATE_URL_TEXT);
+    } finally {
+      global.systemEnv = originalSystemEnv;
+    }
   });
 });
 
@@ -225,6 +369,61 @@ describe('parseFileContentFromUrls (external fetch)', () => {
     mockGetRawTextBuffer.mockResolvedValue(undefined);
     mockIsInternalAddress.mockResolvedValue(false);
     mockReadFileContentByBuffer.mockResolvedValue({ rawText: 'parsed text' });
+    mockVerifyS3DownloadAccess.mockReset();
+  });
+
+  it('reads registered private workflow files through the workflow context without axios', async () => {
+    const url = 'https://files.example.com/api/system/file/d/signed';
+    const ref: WorkflowFileRef = {
+      name: 'private.pdf',
+      type: ChatFileTypeEnum.file,
+      modelUrl: url,
+      source: {
+        type: 'chatObject',
+        objectKey: 'chat/app/app-1/user-1/chat-1/private.pdf'
+      }
+    };
+    const read = vi.fn().mockResolvedValue({
+      buffer: Buffer.from('%PDF-1.7'),
+      filename: 'private.pdf',
+      contentType: 'application/pdf',
+      sourceKind: 'internal',
+      imageParsePrefix: 'chat/app/app-1/user-1/chat-1/private-parsed'
+    });
+    const fileContext: WorkflowFileContext = {
+      limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
+      resolve: (value) => (value === url ? ref : undefined),
+      resolveInputFile: (file) => ('url' in file && file.url === url ? ref : undefined),
+      resolveChatFile: () => ({
+        type: ChatFileTypeEnum.file,
+        name: ref.name,
+        key: ref.source.type === 'chatObject' ? ref.source.objectKey : undefined,
+        url
+      }),
+      getIdentity: (value) => (value === url ? 'chat:private' : undefined),
+      read,
+      derive: () => fileContext
+    };
+
+    const result = await parseFileContentFromUrls({
+      urls: [url],
+      maxFiles: 20,
+      teamId: 'team-1',
+      tmbId: 'tmb-1',
+      fileContext
+    });
+
+    expect(read).toHaveBeenCalledWith(url);
+    expect(mockAxiosGet).not.toHaveBeenCalled();
+    expect(result[0]).toMatchObject({
+      success: true,
+      name: 'private.pdf',
+      url,
+      content: 'parsed text'
+    });
+    expect(mockAddRawTextBuffer).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceId: 'chat:private' })
+    );
   });
 
   it('内部地址命中时返回失败结果和 PRIVATE_URL_TEXT', async () => {
@@ -282,6 +481,15 @@ describe('parseFileContentFromUrls (external fetch)', () => {
         text: 'parsed text'
       })
     );
+    expect(mockIsInternalAddress.mock.invocationCallOrder[0]!).toBeLessThan(
+      mockGetRawTextBuffer.mock.invocationCallOrder[0]!
+    );
+    expect(mockGetRawTextBuffer.mock.invocationCallOrder[0]!).toBeLessThan(
+      mockAxiosGet.mock.invocationCallOrder[0]!
+    );
+    expect(mockAxiosGet.mock.invocationCallOrder[0]!).toBeLessThan(
+      mockReadFileContentByBuffer.mock.invocationCallOrder[0]!
+    );
     expect(result[0]).toMatchObject({
       success: true,
       name: 'report.pdf',
@@ -318,6 +526,76 @@ describe('parseFileContentFromUrls (external fetch)', () => {
     });
   });
 
+  it('外部地址无后缀但 content-type 是 text/plain 时按 txt 解析并保留原文件名', async () => {
+    mockAxiosGet.mockResolvedValue({
+      data: Buffer.from('MIT License\n\nPermission is hereby granted', 'utf8'),
+      headers: {
+        'content-type': 'text/plain; charset=utf-8'
+      }
+    });
+
+    const result = await parseFileContentFromUrls({
+      urls: ['https://raw.githubusercontent.com/nodejs/node/master/LICENSE'],
+      maxFiles: 20,
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    });
+
+    expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extension: 'txt',
+        encoding: 'utf-8'
+      })
+    );
+    expect(result[0]).toMatchObject({
+      success: true,
+      name: 'LICENSE',
+      url: 'https://raw.githubusercontent.com/nodejs/node/master/LICENSE'
+    });
+  });
+
+  it('外部地址无后缀且无 content-type 但内容像文本时按 txt fallback', async () => {
+    mockAxiosGet.mockResolvedValue({
+      data: Buffer.from('plain text without content type', 'utf8'),
+      headers: {}
+    });
+
+    await parseFileContentFromUrls({
+      urls: ['http://example.com/README'],
+      maxFiles: 20,
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    });
+
+    expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extension: 'txt'
+      })
+    );
+  });
+
+  it('外部地址显式不支持后缀时不使用文本 fallback 放行', async () => {
+    mockAxiosGet.mockResolvedValue({
+      data: Buffer.from('{"ok":true}', 'utf8'),
+      headers: {
+        'content-type': 'text/plain'
+      }
+    });
+
+    await parseFileContentFromUrls({
+      urls: ['http://example.com/config.json'],
+      maxFiles: 20,
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    });
+
+    expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extension: 'json'
+      })
+    );
+  });
+
   it('chat S3 key URL 走 S3ChatSource.parseChatUrl 解析路径', async () => {
     const chatUrl = 'http://example.com/fastgpt-private/chat/app1/u1/c1/abc123-doc.pdf';
     mockAxiosGet.mockResolvedValue({
@@ -339,6 +617,107 @@ describe('parseFileContentFromUrls (external fetch)', () => {
       success: true,
       name: 'abc123-doc.pdf',
       url: chatUrl
+    });
+  });
+
+  it('短链解析时使用 alias 记录里的文件名推断后缀，不把短链 token 当文件名', async () => {
+    const signedAlias = 'itmq831ey0kc0xmklk1rik.hp436.0rpC9RtnHmPy_CVri9pBq8';
+    const shortUrl = `https://files.example.com/api/system/file/d/${signedAlias}`;
+    mockVerifyS3DownloadAccess.mockResolvedValue({
+      bucketName: 'fastgpt-private',
+      objectKey: 'chat/app/app1/u1/c1/random-key',
+      filename: 'report.pdf',
+      expiresAt: new Date('2099-01-01T00:00:00.000Z')
+    });
+    mockAxiosGet.mockResolvedValue({
+      data: Buffer.from('%PDF-1.7'),
+      headers: {
+        'content-type': 'application/octet-stream'
+      }
+    });
+
+    const result = await parseFileContentFromUrls({
+      urls: [shortUrl],
+      maxFiles: 20,
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    });
+
+    expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(signedAlias);
+    expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
+      expect.objectContaining({ extension: 'pdf' })
+    );
+    expect(result[0]).toMatchObject({
+      success: true,
+      name: 'report.pdf',
+      url: shortUrl
+    });
+  });
+
+  it('nginx 根路径短链解析时也使用 alias 文件名，不把签名最后一段当后缀', async () => {
+    const signedAlias = 'vju2QnTFBVFMZouC.hp9bi.febMBKFxSy5_u780dAPDnI';
+    const shortUrl = `http://localhost:8088/${signedAlias}`;
+    mockVerifyS3DownloadAccess.mockResolvedValue({
+      bucketName: 'fastgpt-private',
+      objectKey: 'chat/app/app1/u1/c1/license-key',
+      filename: 'LICENSE',
+      responseContentType: 'text/plain',
+      expiresAt: new Date('2099-01-01T00:00:00.000Z')
+    });
+    mockAxiosGet.mockResolvedValue({
+      data: Buffer.from('MIT License\n\nPermission is hereby granted', 'utf8'),
+      headers: {
+        'content-type': 'application/octet-stream'
+      }
+    });
+
+    const result = await parseFileContentFromUrls({
+      urls: [shortUrl],
+      maxFiles: 20,
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    });
+
+    expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(signedAlias);
+    expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extension: 'txt'
+      })
+    );
+    expect(result[0]).toMatchObject({
+      success: true,
+      name: 'LICENSE',
+      url: shortUrl
+    });
+  });
+
+  it('短链没有 filename 时回退到 objectKey 文件名推断后缀', async () => {
+    const signedAlias = 'abc123def456ghi789.hp436.abcdefghijklmnop';
+    const shortUrl = `http://localhost:3000/api/system/file/d/${signedAlias}`;
+    mockVerifyS3DownloadAccess.mockResolvedValue({
+      bucketName: 'fastgpt-private',
+      objectKey: 'chat/app/app1/u1/c1/readme.md',
+      expiresAt: new Date('2099-01-01T00:00:00.000Z')
+    });
+    mockAxiosGet.mockResolvedValue({
+      data: Buffer.from('# Readme', 'utf8'),
+      headers: {}
+    });
+
+    const result = await parseFileContentFromUrls({
+      urls: [shortUrl],
+      maxFiles: 20,
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    });
+
+    expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
+      expect.objectContaining({ extension: 'md' })
+    );
+    expect(result[0]).toMatchObject({
+      success: true,
+      name: 'readme.md',
+      url: shortUrl
     });
   });
 
@@ -383,121 +762,7 @@ describe('parseFileContentFromUrls (external fetch)', () => {
   });
 });
 
-describe('parseFileInfoFromUrls', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockGetRawTextBuffer.mockResolvedValue(undefined);
-    mockIsInternalAddress.mockResolvedValue(false);
-  });
-
-  it('缓存命中时返回文件名，不下载文件内容', async () => {
-    mockGetRawTextBuffer.mockResolvedValue({
-      filename: 'cached.pdf',
-      text: 'cached text'
-    });
-
-    const result = await parseFileInfoFromUrls({
-      urls: ['/cached.pdf'],
-      maxFiles: 20,
-      teamId: 'team-1'
-    });
-
-    expect(mockGetRawTextBuffer).toHaveBeenCalledWith({
-      sourceId: '/cached.pdf',
-      customPdfParse: false
-    });
-    expect(mockAxiosGet).not.toHaveBeenCalled();
-    expect(result).toEqual([
-      {
-        success: true,
-        name: 'cached.pdf',
-        url: '/cached.pdf'
-      }
-    ]);
-  });
-
-  it('缓存未命中时只读取文件信息，并按 maxFiles 和 requestOrigin 处理 URL', async () => {
-    mockAxiosGet.mockResolvedValue({
-      data: Buffer.from('payload'),
-      headers: {
-        'content-disposition': 'attachment; filename="report.pdf"'
-      }
-    });
-
-    const result = await parseFileInfoFromUrls({
-      urls: ['http://localhost:3000/report.pdf', '/skip.pdf'],
-      requestOrigin: 'http://localhost:3000',
-      maxFiles: 1,
-      teamId: 'team-1'
-    });
-
-    expect(mockAxiosGet).toHaveBeenCalledTimes(1);
-    // 注:相对路径走 axios.create({ baseURL }) 创建的内部 client,
-    //    baseURL 在 client 上而不在 .get() 调用参数里。
-    expect(mockAxiosGet).toHaveBeenCalledWith('/report.pdf', {
-      responseType: 'arraybuffer'
-    });
-    expect(mockReadFileContentByBuffer).not.toHaveBeenCalled();
-    expect(result).toEqual([
-      {
-        success: true,
-        name: 'report.pdf',
-        url: '/report.pdf'
-      }
-    ]);
-  });
-
-  it('内部地址返回失败项，并跳过下载', async () => {
-    mockIsInternalAddress.mockResolvedValue(true);
-
-    const result = await parseFileInfoFromUrls({
-      urls: ['http://internal.svc/a.pdf'],
-      maxFiles: 20,
-      teamId: 'team-1'
-    });
-
-    expect(mockAxiosGet).not.toHaveBeenCalled();
-    expect(result).toEqual([
-      {
-        success: false,
-        name: '',
-        url: 'http://internal.svc/a.pdf'
-      }
-    ]);
-  });
-
-  it('读取文件信息失败时返回失败项', async () => {
-    mockAxiosGet.mockRejectedValue(new Error('network down'));
-
-    const result = await parseFileInfoFromUrls({
-      urls: ['http://example.com/a.pdf'],
-      maxFiles: 20,
-      teamId: 'team-1'
-    });
-
-    expect(result).toEqual([
-      {
-        success: false,
-        name: '',
-        url: 'http://example.com/a.pdf'
-      }
-    ]);
-  });
-
-  it('过滤不支持的 URL 后不触发读取', async () => {
-    const result = await parseFileInfoFromUrls({
-      urls: ['chat/a.pdf', '/image.png'],
-      maxFiles: 20,
-      teamId: 'team-1'
-    });
-
-    expect(mockGetRawTextBuffer).not.toHaveBeenCalled();
-    expect(mockAxiosGet).not.toHaveBeenCalled();
-    expect(result).toEqual([]);
-  });
-});
-
-describe('formatUserQueryWithFiles', () => {
+describe('formatAIChatUserQueryWithFiles', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetRawTextBuffer.mockImplementation(({ sourceId }: { sourceId: string }) => {
@@ -519,7 +784,7 @@ describe('formatUserQueryWithFiles', () => {
   it('userQuery 不含文件时直接返回原 query', async () => {
     const userQuery: UserChatItemValueItemType[] = [{ text: { content: '只有文本' } }];
     const parseFileFn = vi.fn();
-    const result = await formatUserQueryWithFiles({
+    const result = await formatAIChatUserQueryWithFiles({
       userQuery,
       parseFileFn
     });
@@ -541,7 +806,7 @@ describe('formatUserQueryWithFiles', () => {
       }
     ];
     const parseFileFn = vi.fn(async () => []);
-    const result = await formatUserQueryWithFiles({
+    const result = await formatAIChatUserQueryWithFiles({
       userQuery,
       parseFileFn
     });
@@ -562,7 +827,7 @@ describe('formatUserQueryWithFiles', () => {
       }
     ];
     const parseFileFn = vi.fn();
-    const result = await formatUserQueryWithFiles({
+    const result = await formatAIChatUserQueryWithFiles({
       userQuery,
       parseFileFn
     });
@@ -571,10 +836,165 @@ describe('formatUserQueryWithFiles', () => {
     expect(result).toBe(userQuery);
   });
 
-  it('把 parseFileFn 返回的 id、sandboxPath 和 content 注入到文本 prompt', async () => {
+  it('没有文档时也会按 URL 去重多模态文件', async () => {
+    const parseFileFn = vi.fn();
+    const result = await formatAIChatUserQueryWithFiles({
+      userQuery: [
+        { text: { content: '分析媒体内容' } },
+        {
+          file: {
+            type: ChatFileTypeEnum.image,
+            name: 'image.png',
+            url: '/image.png'
+          }
+        },
+        {
+          file: {
+            type: ChatFileTypeEnum.image,
+            name: 'image-copy.png',
+            url: '/image.png'
+          }
+        },
+        {
+          file: {
+            type: ChatFileTypeEnum.audio,
+            name: 'audio.mp3',
+            url: '/audio.mp3'
+          }
+        },
+        {
+          file: {
+            type: ChatFileTypeEnum.audio,
+            name: 'audio-copy.mp3',
+            url: '/audio.mp3'
+          }
+        },
+        {
+          file: {
+            type: ChatFileTypeEnum.video,
+            name: 'video.mp4',
+            url: '/video.mp4'
+          }
+        },
+        {
+          file: {
+            type: ChatFileTypeEnum.video,
+            name: 'video-copy.mp4',
+            url: '/video.mp4'
+          }
+        }
+      ],
+      parseFileFn
+    });
+
+    expect(parseFileFn).not.toHaveBeenCalled();
+    expect(result.map((item) => item.file?.name).filter(Boolean)).toEqual([
+      'image.png',
+      'audio.mp3',
+      'video.mp4'
+    ]);
+  });
+
+  it('AI Chat 解析文档时保留图片、音频和视频 URL', async () => {
+    const multimodalItems: UserChatItemValueItemType[] = [
+      {
+        file: {
+          type: ChatFileTypeEnum.image,
+          name: 'pic.png',
+          url: 'https://files.example.com/pic.png'
+        }
+      },
+      {
+        file: {
+          type: ChatFileTypeEnum.audio,
+          name: 'voice.mp3',
+          url: 'https://files.example.com/voice.mp3'
+        }
+      },
+      {
+        file: {
+          type: ChatFileTypeEnum.video,
+          name: 'clip.mp4',
+          url: 'https://files.example.com/clip.mp4'
+        }
+      }
+    ];
     const parseFileFn = vi.fn(async () => [
       {
-        id: 'file-1',
+        name: 'a.pdf',
+        url: 'https://files.example.com/a.pdf',
+        content: 'Alpha'
+      }
+    ]);
+
+    const result = await formatAIChatUserQueryWithFiles({
+      userQuery: [
+        { text: { content: '结合所有输入回答' } },
+        {
+          file: {
+            type: ChatFileTypeEnum.file,
+            name: 'a.pdf',
+            url: 'https://files.example.com/a.pdf'
+          }
+        },
+        ...multimodalItems
+      ],
+      parseFileFn
+    });
+
+    expect(parseFileFn).toHaveBeenCalledWith(['https://files.example.com/a.pdf']);
+    expect(result.slice(0, 3)).toEqual(multimodalItems);
+    expect(result[3].text?.content).toContain('结合所有输入回答');
+    expect(result[3].text?.content).toContain('<content>Alpha</content>');
+  });
+
+  it('短链图片会在文档解析前恢复为 image 类型，不再进入 read_file 文档解析', async () => {
+    const signedAlias = 'xWqlYoPSsRIoFtHP.hpagc.bpCySSj7HPRrPtWbcAlqxd';
+    const shortUrls = [`/api/system/file/d/${signedAlias}`, `http://localhost:8088/${signedAlias}`];
+    mockVerifyS3DownloadAccess.mockResolvedValue({
+      bucketName: 'fastgpt-private',
+      objectKey: 'chat/app/app1/u1/c1/photo.jpeg',
+      responseContentType: 'image/jpeg',
+      expiresAt: new Date('2099-01-01T00:00:00.000Z')
+    });
+
+    for (const shortUrl of shortUrls) {
+      mockVerifyS3DownloadAccess.mockClear();
+      const parseFileFn = vi.fn(async () => []);
+
+      const result = await formatAIChatUserQueryWithFiles({
+        userQuery: [
+          { text: { content: '图片内容' } },
+          {
+            file: {
+              type: ChatFileTypeEnum.file,
+              name: '',
+              url: shortUrl
+            }
+          }
+        ],
+        parseFileFn
+      });
+
+      expect(mockVerifyS3DownloadAccess).toHaveBeenCalledTimes(1);
+      expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(signedAlias);
+      expect(parseFileFn).not.toHaveBeenCalled();
+      expect(result).toEqual([
+        { text: { content: '图片内容' } },
+        {
+          file: {
+            type: ChatFileTypeEnum.image,
+            name: 'photo.jpeg',
+            url: shortUrl
+          }
+        }
+      ]);
+    }
+  });
+
+  it('把 parseFileFn 返回的 URL、sandboxPath 和 content 注入到文本 prompt', async () => {
+    const parseFileFn = vi.fn(async () => [
+      {
         name: 'a.pdf',
         url: '/a.pdf',
         sandboxPath: 'user_files/a.pdf',
@@ -582,7 +1002,7 @@ describe('formatUserQueryWithFiles', () => {
       }
     ]);
 
-    const result = await formatUserQueryWithFiles({
+    const result = await formatAIChatUserQueryWithFiles({
       userQuery: [
         { text: { content: '总结这个文件' } },
         {
@@ -598,7 +1018,7 @@ describe('formatUserQueryWithFiles', () => {
 
     const content = result[0].text?.content;
     expect(content).toContain('总结这个文件');
-    expect(content).toContain('<id>file-1</id>');
+    expect(content).not.toContain('<id>');
     expect(content).toContain('<name>a.pdf</name>');
     expect(content).toContain('<url>/a.pdf</url>');
     expect(content).toContain('<sandboxPath>user_files/a.pdf</sandboxPath>');
@@ -689,9 +1109,9 @@ describe('formatUserQueryWithFiles', () => {
     expect(content).not.toContain('Beta');
   });
 
-  it('同一条 user query 内重复 URL 不去重', async () => {
+  it('同一条 user query 内按 URL 去重文档和多模态文件', async () => {
     const parseFileFn = createMockParseFileFn();
-    const result = await formatUserQueryWithFiles({
+    const result = await formatAIChatUserQueryWithFiles({
       userQuery: [
         {
           text: {
@@ -711,26 +1131,66 @@ describe('formatUserQueryWithFiles', () => {
             name: 'a-copy.pdf',
             url: '/a.pdf'
           }
+        },
+        {
+          file: {
+            type: ChatFileTypeEnum.image,
+            name: 'image.png',
+            url: '/image.png'
+          }
+        },
+        {
+          file: {
+            type: ChatFileTypeEnum.image,
+            name: 'image-copy.png',
+            url: '/image.png'
+          }
+        },
+        {
+          file: {
+            type: ChatFileTypeEnum.audio,
+            name: 'audio.mp3',
+            url: '/audio.mp3'
+          }
+        },
+        {
+          file: {
+            type: ChatFileTypeEnum.audio,
+            name: 'audio-copy.mp3',
+            url: '/audio.mp3'
+          }
+        },
+        {
+          file: {
+            type: ChatFileTypeEnum.video,
+            name: 'video.mp4',
+            url: '/video.mp4'
+          }
+        },
+        {
+          file: {
+            type: ChatFileTypeEnum.video,
+            name: 'video-copy.mp4',
+            url: '/video.mp4'
+          }
         }
       ],
       parseFileFn
     });
 
-    expect(parseFileFn).toHaveBeenCalledWith(['/a.pdf', '/a.pdf']);
-    expect(mockGetRawTextBuffer).toHaveBeenCalledTimes(2);
-    expect(mockGetRawTextBuffer).toHaveBeenNthCalledWith(1, {
-      sourceId: '/a.pdf',
-      customPdfParse: undefined
-    });
-    expect(mockGetRawTextBuffer).toHaveBeenNthCalledWith(2, {
+    expect(parseFileFn).toHaveBeenCalledWith(['/a.pdf']);
+    expect(mockGetRawTextBuffer).toHaveBeenCalledTimes(1);
+    expect(mockGetRawTextBuffer).toHaveBeenCalledWith({
       sourceId: '/a.pdf',
       customPdfParse: undefined
     });
 
     const content = result.find((item) => item.text)?.text?.content;
     expect(content).toContain('总结这个文件');
-    // 两次重复 URL 都被注入到最终 prompt 里
-    expect(content?.match(/<content>Alpha<\/content>/g)?.length).toBe(2);
+    expect(content?.match(/<content>Alpha<\/content>/g)?.length).toBe(1);
+    expect(result.filter((item) => item.file?.type === ChatFileTypeEnum.image)).toHaveLength(1);
+    expect(result.filter((item) => item.file?.type === ChatFileTypeEnum.audio)).toHaveLength(1);
+    expect(result.filter((item) => item.file?.type === ChatFileTypeEnum.video)).toHaveLength(1);
   });
 
   it('相同 URL 出现在不同 message 时会分别读取并注入', async () => {

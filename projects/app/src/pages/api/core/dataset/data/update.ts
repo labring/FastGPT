@@ -6,7 +6,7 @@ import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
@@ -109,9 +109,14 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
 
   pushUpdateDataAuditLog();
 
+  const [responseQ, responseA] = await Promise.all([
+    replaceS3KeyToPreviewUrl(nextQ, addHours(new Date(), 1)),
+    nextA ? replaceS3KeyToPreviewUrl(nextA, addHours(new Date(), 1)) : undefined
+  ]);
+
   return UpdateDatasetDataResponseSchema.parse({
-    q: replaceS3KeyToPreviewUrl(nextQ, addHours(new Date(), 1)),
-    a: nextA ? replaceS3KeyToPreviewUrl(nextA, addHours(new Date(), 1)) : undefined
+    q: responseQ,
+    a: responseA
   });
 }
 

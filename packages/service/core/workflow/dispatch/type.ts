@@ -22,8 +22,8 @@ export type { WorkflowResponseItemType, WorkflowResponseType };
 /**
  * workflow 内部运行期使用的 nodeResponse 摘要。
  *
- * 启用 `WorkflowNodeResponseWriter` 后，完整 nodeResponse 会在节点完成时立即写入
- * `chat_item_responses`，并且不再通过 `runWorkflow` 返回。父 workflow 仍需要少量
+ * 启用请求级 `WorkflowNodeResponseSink` 后，完整 nodeResponse 会在节点完成时立即发布并
+ * 写入 `chat_item_responses`，且不再通过 `runWorkflow` 返回。父 workflow 仍需要少量
  * child 节点信号来继续调度、聚合虚拟节点和处理重试，因此这些字段会在每次节点写库后
  * 由 `summarizeRuntimeNodeResponses` 从本批 nodeResponse 中提取，并在 `WorkflowQueue`
  * 上持续合并。
@@ -51,8 +51,6 @@ export type RuntimeNodeResponseSummary = {
   nestedEndOutput?: any;
   /** pluginOutput 输出值。插件调用用它替代从完整 nodeResponse 列表里查 pluginOutput 节点。 */
   pluginOutput?: Record<string, any>;
-  /** 子 workflow 节点运行时间总和。parallel/loopRun 虚拟包装节点展示用。 */
-  runningTime: number;
   /** 子 workflow 顶层节点自身 totalPoints 总和。当前主要用于兜底统计。 */
   totalPoints?: number;
   /** 子 workflow 所有响应的积分总和，仅作为运行期费用聚合中间态，不写入 responseData。 */

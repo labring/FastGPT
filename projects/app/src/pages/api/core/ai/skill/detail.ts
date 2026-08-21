@@ -7,7 +7,7 @@ import type {
 } from '@fastgpt/global/core/ai/skill/api';
 import { GetSkillDetailQuerySchema } from '@fastgpt/global/core/ai/skill/api';
 import { isValidObjectId } from 'mongoose';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { Types } from '@fastgpt/service/common/mongo';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';

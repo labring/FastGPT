@@ -1,80 +1,81 @@
 import type { NextApiResponse } from 'next';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
-import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
-import type { SystemDefaultModelType, SystemModelItemType } from '@fastgpt/service/core/ai/type';
-import type { AIProxyChannelsType, I18nStringStrictType } from '@fastgpt/global/sdk/fastgpt-plugin';
-
-export type InitDateResponse = {
-  bufferId?: string;
-
-  feConfigs?: FastGPTFeConfigsType;
-  subPlans?: SubPlanType;
-  systemVersion?: string;
-
-  activeModelList?: SystemModelItemType[];
-  defaultModels?: SystemDefaultModelType;
-  modelProviders?: { provider: string; value: I18nStringStrictType; avatar: string }[];
-  aiproxyChannels?: AIProxyChannelsType;
-};
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  GetSystemInitDataQuerySchema,
+  GetSystemInitDataResponseSchema,
+  type GetSystemInitDataResponse
+} from '@fastgpt/global/openapi/common/system/api';
+import { getRuntimeSubPlansConfig } from '@fastgpt/global/support/wallet/sub/utils';
+import { desensitizeSystemDefaultModels } from '@fastgpt/service/core/ai/config/utils';
 
 async function handler(
-  req: ApiRequestProps<Record<string, never>, { bufferId?: string }>,
-  res: NextApiResponse
-): Promise<InitDateResponse> {
-  const { bufferId } = req.query;
+  req: ApiRequestProps,
+  _res: NextApiResponse
+): Promise<GetSystemInitDataResponse> {
+  const { bufferId } = parseApiInput({
+    req,
+    querySchema: GetSystemInitDataQuerySchema
+  }).query;
+  const subPlans = getRuntimeSubPlansConfig(global.subPlans);
 
-  try {
-    await authCert({ req, authToken: true });
-    // If bufferId is the same as the current bufferId, return directly
-    if (bufferId && global.systemInitBufferId && global.systemInitBufferId === bufferId) {
+  const response = await (async () => {
+    try {
+      await authCert({ req, authToken: true });
+
+      // If bufferId is the same as the current bufferId, return directly
+      if (bufferId && global.systemInitBufferId && global.systemInitBufferId === bufferId) {
+        return {
+          bufferId: global.systemInitBufferId,
+          feConfigs: global.feConfigs,
+          systemVersion: global.systemVersion,
+          defaultModels: desensitizeSystemDefaultModels(global.systemDefaultModel)
+        };
+      }
+
       return {
         bufferId: global.systemInitBufferId,
         feConfigs: global.feConfigs,
-        systemVersion: global.systemVersion
-      };
-    }
-
-    return {
-      bufferId: global.systemInitBufferId,
-      feConfigs: global.feConfigs,
-      subPlans: global.subPlans,
-      systemVersion: global.systemVersion,
-      activeModelList: global.systemActiveDesensitizedModels,
-      defaultModels: global.systemDefaultModel,
-      modelProviders: global.ModelProviderRawCache,
-      aiproxyChannels: global.aiproxyChannelsCache
-    };
-  } catch (error) {
-    const referer = req.headers.referer;
-    if (referer?.includes('/price')) {
-      return {
-        feConfigs: global.feConfigs,
-        subPlans: global.subPlans,
+        subPlans,
+        systemVersion: global.systemVersion,
+        activeModelList: global.systemActiveDesensitizedModels,
+        defaultModels: desensitizeSystemDefaultModels(global.systemDefaultModel),
         modelProviders: global.ModelProviderRawCache,
-        aiproxyChannels: global.aiproxyChannelsCache,
-        activeModelList: global.systemActiveDesensitizedModels
+        aiproxyChannels: global.aiproxyChannelsCache
       };
-    }
+    } catch {
+      const referer = req.headers.referer;
+      if (referer?.includes('/price')) {
+        return {
+          feConfigs: global.feConfigs,
+          subPlans,
+          modelProviders: global.ModelProviderRawCache,
+          aiproxyChannels: global.aiproxyChannelsCache,
+          activeModelList: global.systemActiveDesensitizedModels
+        };
+      }
 
-    const unAuthBufferId = global.systemInitBufferId ? `unAuth_${global.systemInitBufferId}` : '';
-    if (bufferId && unAuthBufferId === bufferId) {
+      const unAuthBufferId = global.systemInitBufferId ? `unAuth_${global.systemInitBufferId}` : '';
+      if (bufferId && unAuthBufferId === bufferId) {
+        return {
+          bufferId: unAuthBufferId,
+          modelProviders: global.ModelProviderRawCache,
+          aiproxyChannels: global.aiproxyChannelsCache
+        };
+      }
+
       return {
         bufferId: unAuthBufferId,
+        feConfigs: global.feConfigs,
         modelProviders: global.ModelProviderRawCache,
         aiproxyChannels: global.aiproxyChannelsCache
       };
     }
+  })();
 
-    return {
-      bufferId: unAuthBufferId,
-      feConfigs: global.feConfigs,
-      modelProviders: global.ModelProviderRawCache,
-      aiproxyChannels: global.aiproxyChannelsCache
-    };
-  }
+  return GetSystemInitDataResponseSchema.parse(response);
 }
 
 export default NextAPI(handler);

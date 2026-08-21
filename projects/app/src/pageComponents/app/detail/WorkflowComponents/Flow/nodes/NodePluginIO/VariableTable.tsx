@@ -3,6 +3,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Table, Thead, Tbody, Tr, Th, Td, TableContainer, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
 
 const VariableTable = ({
   variables = [],
@@ -33,7 +34,7 @@ const VariableTable = ({
           </Tr>
         </Thead>
         <Tbody>
-          {variables.map((item, index) => (
+          {variables.map((item) => (
             <Tr key={item.key}>
               <Td>
                 <Flex alignItems={'center'} fontSize={'xs'}>
@@ -49,9 +50,9 @@ const VariableTable = ({
               {showToolColumn && (
                 <Td>
                   {item.isTool ? (
-                    <Flex alignItems={'center'}>
-                      <MyIcon name={'check'} w={'16px'} color={'myGray.900'} mr={2} />
-                    </Flex>
+                    <MyTag colorSchema="green" type="fill">
+                      {t('common:core.workflow.inputType.agentGenerated')}
+                    </MyTag>
                   ) : (
                     ''
                   )}

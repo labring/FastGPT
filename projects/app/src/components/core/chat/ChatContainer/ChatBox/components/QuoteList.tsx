@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, useTheme } from '@chakra-ui/react';
+import { Box, Skeleton, useTheme } from '@chakra-ui/react';
 
 import type { SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
 import QuoteItem, { formatScore } from '@/components/core/dataset/QuoteItem';
@@ -40,7 +40,7 @@ const QuoteList = React.memo(function QuoteList({
     (v) => v.showRouteToDatasetDetail
   );
 
-  const { data: quoteList } = useRequest(
+  const { data: quoteList, loading } = useRequest(
     async () =>
       !!chatItemDataId
         ? await getQuoteDataList({
@@ -56,8 +56,11 @@ const QuoteList = React.memo(function QuoteList({
       manual: false
     }
   );
+  const isLoadingQuoteList = !!chatItemDataId && loading;
 
   const formatedDataList = useMemo(() => {
+    if (isLoadingQuoteList) return [];
+
     const processedData = rawSearch.map((item) => {
       if (chatItemDataId && quoteList) {
         const currentFilterItem = quoteList.find((res) => res._id === item.id);
@@ -77,7 +80,24 @@ const QuoteList = React.memo(function QuoteList({
       const bScore = formatScore(b.score);
       return (bScore.primaryScore?.value || 0) - (aScore.primaryScore?.value || 0);
     });
-  }, [rawSearch, quoteList, chatItemDataId]);
+  }, [rawSearch, quoteList, chatItemDataId, isLoadingQuoteList]);
+
+  if (isLoadingQuoteList) {
+    return (
+      <Box aria-busy={'true'}>
+        {Array.from({ length: 3 }).map((_, index) => (
+          <Skeleton
+            key={index}
+            h={'72px'}
+            borderRadius={'sm'}
+            _notLast={{ mb: 2 }}
+            startColor={'myGray.100'}
+            endColor={'myGray.200'}
+          />
+        ))}
+      </Box>
+    );
+  }
 
   return (
     <>

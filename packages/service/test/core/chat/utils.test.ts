@@ -14,15 +14,20 @@ const { mockCreateGetChatFileURL } = vi.hoisted(() => ({
   mockCreateGetChatFileURL: vi.fn()
 }));
 
+type MockCreatePreviewOptions = {
+  expiredHours?: number;
+};
+
 vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
   getS3ChatSource: () => ({
     createGetChatFileURL: mockCreateGetChatFileURL
   }),
   createChatFilePreviewUrlGetter:
-    (options?: { expiredHours?: number; mode?: 'proxy' | 'presigned' }) => async (key: string) => {
+    (options?: MockCreatePreviewOptions) => async (key: string, filename?: string) => {
       const { url } = await mockCreateGetChatFileURL({
         key,
         external: true,
+        ...(filename ? { filename } : {}),
         ...options
       });
       return url;
@@ -72,6 +77,7 @@ describe('presignVariablesFileUrls', () => {
     expect(variables.imageFiles[0]).not.toHaveProperty('url');
     expect(mockCreateGetChatFileURL).toHaveBeenCalledWith({
       key: 'chat/files/image.png',
+      filename: 'image.png',
       external: true
     });
   });
@@ -196,7 +202,9 @@ describe('addPreviewUrlToChatItems', () => {
       }
     ];
 
-    await expect(addPreviewUrlToChatItems(histories as any, 'chatFlow')).resolves.toBeUndefined();
+    await expect(addPreviewUrlToChatItems(histories as any, 'chatFlow')).resolves.toEqual(
+      histories
+    );
     expect(mockCreateGetChatFileURL).not.toHaveBeenCalled();
   });
 
@@ -233,9 +241,10 @@ describe('addPreviewUrlToChatItems', () => {
       }
     ];
 
-    await addPreviewUrlToChatItems(histories as any, 'chatFlow');
+    const originalHistories = structuredClone(histories);
+    const result = await addPreviewUrlToChatItems(histories as any, 'chatFlow');
 
-    expect(histories[0].value[0].interactive.params.inputForm[0].value).toEqual([
+    expect(result[0].value[0].interactive.params.inputForm[0].value).toEqual([
       {
         key: 'chat/files/image.png',
         name: 'image.png',
@@ -245,8 +254,51 @@ describe('addPreviewUrlToChatItems', () => {
     ]);
     expect(mockCreateGetChatFileURL).toHaveBeenCalledWith({
       key: 'chat/files/image.png',
+      filename: 'image.png',
       external: true
     });
+    expect(histories).toEqual(originalHistories);
+  });
+
+  it('清理无法重新签发的历史 interactive fileSelect 文件', async () => {
+    const histories = [
+      {
+        obj: 'AI',
+        value: [
+          {
+            interactive: {
+              type: 'userInput',
+              params: {
+                inputForm: [
+                  {
+                    key: 'upload',
+                    type: FlowNodeInputTypeEnum.fileSelect,
+                    value: [
+                      {
+                        key: 'chat/files/unavailable.png',
+                        name: 'unavailable.png',
+                        type: ChatFileTypeEnum.image,
+                        url: 'https://old.example.com/unavailable.png'
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ];
+
+    const originalHistories = structuredClone(histories);
+    const result = await addPreviewUrlToChatItems(
+      histories as any,
+      'chatFlow',
+      async () => undefined
+    );
+
+    expect(result[0].value[0].interactive.params.inputForm[0].value).toEqual([]);
+    expect(histories).toEqual(originalHistories);
   });
 
   it('为 workflowTool 历史输入中的 fileSelect 值补预览 url', async () => {
@@ -278,9 +330,10 @@ describe('addPreviewUrlToChatItems', () => {
       }
     ];
 
-    await addPreviewUrlToChatItems(histories as any, 'workflowTool');
+    const originalHistories = structuredClone(histories);
+    const result = await addPreviewUrlToChatItems(histories as any, 'workflowTool');
 
-    expect(JSON.parse(histories[0].value[0].text.content)).toEqual([
+    expect(JSON.parse(result[0].value[0].text.content)).toEqual([
       {
         renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
         value: [
@@ -295,7 +348,78 @@ describe('addPreviewUrlToChatItems', () => {
     ]);
     expect(mockCreateGetChatFileURL).toHaveBeenCalledWith({
       key: 'chat/files/doc.pdf',
+      filename: 'doc.pdf',
       external: true
     });
+    expect(histories).toEqual(originalHistories);
+  });
+
+  it('清理 workflowTool 历史中无法重新签发的 fileSelect 文件', async () => {
+    const histories = [
+      {
+        obj: 'Human',
+        value: [
+          {
+            text: {
+              content: JSON.stringify([
+                {
+                  renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
+                  value: [
+                    {
+                      key: 'chat/files/unavailable.pdf',
+                      name: 'unavailable.pdf',
+                      type: ChatFileTypeEnum.file,
+                      url: 'https://old.example.com/unavailable.pdf'
+                    }
+                  ]
+                }
+              ])
+            }
+          }
+        ]
+      }
+    ];
+
+    const originalHistories = structuredClone(histories);
+    const result = await addPreviewUrlToChatItems(
+      histories as any,
+      'workflowTool',
+      async () => undefined
+    );
+
+    expect(JSON.parse(result[0].value[0].text.content)).toEqual([
+      {
+        renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
+        value: []
+      }
+    ]);
+    expect(histories).toEqual(originalHistories);
+  });
+
+  it('不会吞掉历史文件 signer 的系统异常', async () => {
+    const histories = [
+      {
+        obj: 'Human',
+        value: [
+          {
+            text: {
+              content: JSON.stringify([
+                {
+                  renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
+                  value: [{ key: 'chat/files/report.pdf', name: 'report.pdf' }]
+                }
+              ])
+            }
+          }
+        ]
+      }
+    ];
+    const systemError = new Error('S3 signer unavailable');
+
+    await expect(
+      addPreviewUrlToChatItems(histories as any, 'workflowTool', async () => {
+        throw systemError;
+      })
+    ).rejects.toBe(systemError);
   });
 });

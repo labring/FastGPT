@@ -11,7 +11,6 @@ import {
   setBdVId,
   setFastGPTSem,
   initFastGPTSemSourceDomain,
-  setInviterId,
   setMsclkid,
   setUtmParams,
   setUtmWorkflow
@@ -21,12 +20,11 @@ import { setCouponCode } from '@/web/support/marketing/utils';
 import { appClientEnv } from '@/web/common/system/env';
 
 type MarketingQueryParams = {
-  hiId?: string;
   bd_vid?: string;
   msclkid?: string;
   k?: string;
   search?: string;
-  fastgpt_source?: string;
+  visitor_id?: string;
   sourceDomain?: string;
   utm_source?: string;
   utm_medium?: string;
@@ -36,11 +34,10 @@ type MarketingQueryParams = {
 };
 
 const MARKETING_PARAMS: (keyof MarketingQueryParams)[] = [
-  'hiId',
   'bd_vid',
   'msclkid',
   'k',
-  'fastgpt_source',
+  'visitor_id',
   'sourceDomain',
   'utm_source',
   'utm_medium',
@@ -52,12 +49,11 @@ const MARKETING_PARAMS: (keyof MarketingQueryParams)[] = [
 export const useInitApp = () => {
   const router = useRouter();
   const {
-    hiId,
     bd_vid,
     msclkid,
     k,
     search,
-    fastgpt_source,
+    visitor_id,
     sourceDomain,
     utm_source,
     utm_medium,
@@ -151,7 +147,6 @@ export const useInitApp = () => {
 
   // Marketing data track
   useMount(() => {
-    setInviterId(hiId);
     setBdVId(bd_vid);
     setMsclkid(msclkid);
     setUtmWorkflow(utm_workflow);
@@ -165,10 +160,11 @@ export const useInitApp = () => {
     if (utm_workflow) {
       setUtmParams(utmParams);
     }
+
     setFastGPTSem({
       keyword: k,
       search,
-      source: fastgpt_source,
+      visitor_id,
       ...utmParams
     });
 

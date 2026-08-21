@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { Box, Flex, Button, ModalBody } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import dayjs from 'dayjs';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -14,7 +14,7 @@ import BillDetailModal from '@/pageComponents/account/bill/BillDetailModal';
 import { DiscountCouponStatusEnum } from '@fastgpt/global/support/wallet/sub/discountCoupon/constants';
 
 const DiscountCouponsModal = ({ onClose }: { onClose: () => void }) => {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useClientTranslation('discount_coupon');
   const { userInfo } = useUserStore();
   const router = useRouter();
   const isZh = i18n.language === 'zh-CN';
@@ -35,9 +35,9 @@ const DiscountCouponsModal = ({ onClose }: { onClose: () => void }) => {
   const getStatusText = (status: DiscountCouponStatusEnum) => {
     const statusTextMap = {
       [DiscountCouponStatusEnum.active]: '',
-      [DiscountCouponStatusEnum.expired]: `(${t('account_info:expired')})`,
-      [DiscountCouponStatusEnum.notStart]: `(${t('account_info:not_started_tips')})`,
-      [DiscountCouponStatusEnum.used]: `(${t('account_info:used_tips')})`
+      [DiscountCouponStatusEnum.expired]: `(${t('discount_coupon:expired')})`,
+      [DiscountCouponStatusEnum.notStart]: `(${t('discount_coupon:not_started_tips')})`,
+      [DiscountCouponStatusEnum.used]: `(${t('discount_coupon:used_tips')})`
     };
 
     return statusTextMap[status];
@@ -47,7 +47,7 @@ const DiscountCouponsModal = ({ onClose }: { onClose: () => void }) => {
     <MyModal
       isOpen
       onClose={onClose}
-      title={t('account_info:discount_coupon')}
+      title={t('discount_coupon:discount_coupon')}
       isLoading={loading}
       maxW={'900px'}
     >
@@ -110,10 +110,10 @@ const DiscountCouponsModal = ({ onClose }: { onClose: () => void }) => {
                           mb={1}
                         >
                           {`${getStatusText(coupon.status as DiscountCouponStatusEnum)}
-                            ${t(coupon.name)}`}
+                            ${t(coupon.name as any)}`}
                         </Box>
                         <Box fontSize={'mini'} color={'myGray.500'}>
-                          {t(coupon.description)}
+                          {t(coupon.description as any)}
                         </Box>
                       </Box>
                     </Flex>
@@ -151,7 +151,7 @@ const DiscountCouponsModal = ({ onClose }: { onClose: () => void }) => {
                           mb={1}
                           mx={'auto'}
                         >
-                          {`${t('account_info:used_time')}: `}
+                          {`${t('discount_coupon:used_time')}: `}
                           {dayjs(coupon.usedAt).format('YYYY-MM-DD')}
                         </Box>
                       ) : (
@@ -162,7 +162,7 @@ const DiscountCouponsModal = ({ onClose }: { onClose: () => void }) => {
                           mb={1}
                           mx={'auto'}
                         >
-                          {`${t('account_info:expiration_time')}: `}
+                          {`${t('discount_coupon:expiration_time')}: `}
                           {dayjs(coupon.expiredTime).format('YYYY-MM-DD')}
                         </Box>
                       )}
@@ -173,7 +173,7 @@ const DiscountCouponsModal = ({ onClose }: { onClose: () => void }) => {
                           onClick={() => router.push('/price')}
                           leftIcon={<MyIcon name={'common/arrowRight'} w={4} />}
                         >
-                          {t('account_info:use')}
+                          {t('discount_coupon:use')}
                         </Button>
                       ) : coupon.status === DiscountCouponStatusEnum.expired ? (
                         <Box
@@ -182,7 +182,7 @@ const DiscountCouponsModal = ({ onClose }: { onClose: () => void }) => {
                           fontWeight={'medium'}
                           color={'myGray.500'}
                         >
-                          {t('account_info:expired_tips')}
+                          {t('discount_coupon:expired_tips')}
                         </Box>
                       ) : coupon.status === DiscountCouponStatusEnum.notStart ? (
                         <Box
@@ -191,7 +191,7 @@ const DiscountCouponsModal = ({ onClose }: { onClose: () => void }) => {
                           fontWeight={'medium'}
                           color={'myGray.500'}
                         >
-                          {t('account_info:not_started_tips')}
+                          {t('discount_coupon:not_started_tips')}
                         </Box>
                       ) : coupon.status === DiscountCouponStatusEnum.used ? (
                         <Box
@@ -204,7 +204,7 @@ const DiscountCouponsModal = ({ onClose }: { onClose: () => void }) => {
                             router.push('/account/bill');
                           }}
                         >
-                          {t('account_info:check_purchase_history')}
+                          {t('discount_coupon:check_purchase_history')}
                         </Box>
                       ) : null}
                     </Flex>

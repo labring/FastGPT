@@ -15,14 +15,11 @@ import { isValidObjectId } from 'mongoose';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill/constants';
 import {
-  getZodParseErrorInputSource,
+  ApiRequestInputParseError,
   parseApiInput
 } from '@fastgpt/service/common/zod/requestParseError';
-
-const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS);
 
 /**
  * 初始化 Skill Edit runtime sandbox。
@@ -52,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return;
     }
 
-    const { teamId, tmbId, skill } = await authSkill({
+    const { teamId, skill } = await authSkill({
       req,
       authToken: true,
       authApiKey: true,
@@ -76,8 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const context = await getSkillEditRuntimeContext({
       skillId,
-      teamId,
-      tmbId
+      teamId
     });
     const status = await getSkillEditRuntimeStatus({ context });
 
@@ -96,10 +92,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     res.end();
   } catch (error) {
-    logger.error('Failed to initialize skill edit runtime', { error });
     const responseError =
-      getZodParseErrorInputSource(error) ||
-      (error instanceof UserError ? error : new Error('Failed to initialize skill runtime'));
+      error instanceof UserError || error instanceof ApiRequestInputParseError
+        ? error
+        : new Error('Failed to initialize skill runtime', { cause: error });
     sseErrRes(res, responseError);
     res.end();
   }

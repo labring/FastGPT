@@ -1,4 +1,4 @@
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { connectionMongo, defineIndex, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
 import type { SystemModelSchemaType } from '../type';
 
@@ -6,8 +6,7 @@ const SystemModelSchema = new Schema(
   {
     model: {
       type: String,
-      required: true,
-      unique: true
+      required: true
     },
     metadata: {
       type: Object,
@@ -19,6 +18,11 @@ const SystemModelSchema = new Schema(
     minimize: false
   }
 );
+
+defineIndex(SystemModelSchema, {
+  key: { model: 1 },
+  options: { unique: true }
+});
 
 export const MongoSystemModel = getMongoModel<SystemModelSchemaType>(
   'system_models',

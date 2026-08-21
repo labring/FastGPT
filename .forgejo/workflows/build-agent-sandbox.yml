@@ -35,9 +35,26 @@ jobs:
         include:
           - arch: amd64
             runs-on: ubuntu-24.04
+            variant: nonroot
+            target: nonroot
+            image-name: fastgpt-agent-sandbox
           - arch: arm64
             runs-on: ubuntu-24.04-arm
+            variant: nonroot
+            target: nonroot
+            image-name: fastgpt-agent-sandbox
+          - arch: amd64
+            runs-on: ubuntu-24.04
+            variant: root
+            target: root
+            image-name: fastgpt-agent-sandbox-root
+          - arch: arm64
+            runs-on: ubuntu-24.04-arm
+            variant: root
+            target: root
+            image-name: fastgpt-agent-sandbox-root
     runs-on: ${{ matrix.runs-on }}
+    timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -72,7 +89,6 @@ jobs:
         uses: docker/setup-buildx-action@v3
         with:
           driver-opts: |
-            network=host
             env.GODEBUG=madvdontneed=0
             env.HTTP_PROXY=${{ env.HTTP_PROXY }}
             env.HTTPS_PROXY=${{ env.HTTPS_PROXY }}
@@ -83,9 +99,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-agent-sandbox-buildx-${{ github.sha }}
+          key: ${{ runner.os }}-agent-sandbox-${{ matrix.variant }}-buildx-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-agent-sandbox-buildx-
+            ${{ runner.os }}-agent-sandbox-${{ matrix.variant }}-buildx-
 
       - name: Set platform variables
         run: |
@@ -102,7 +118,7 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.REGISTRY_TOKEN }}
 
-      - name: Build for ${{ matrix.arch }}
+      - name: Build ${{ matrix.image-name }} for ${{ matrix.arch }}
         id: build
         uses: docker/build-push-action@v6
         env:
@@ -110,6 +126,7 @@ jobs:
         with:
           context: .
           file: projects/agent-sandbox/Dockerfile
+          target: ${{ matrix.target }}
           platforms: linux/${{ matrix.arch }}
           build-args: |
             HTTP_PROXY=${{ env.HTTP_PROXY }}
@@ -121,8 +138,8 @@ jobs:
             NPM_REGISTRY=${{ env.NPM_REGISTRY }}
           labels: |
             org.opencontainers.image.source=${{ env.SOURCE_URL }}
-            org.opencontainers.image.description=fastgpt-agent-sandbox image
-          outputs: type=image,"name=${{ env.REGISTRY }}/${{ github.repository_owner }}/fastgpt-agent-sandbox",push-by-digest=true,push=true
+            org.opencontainers.image.description=${{ matrix.image-name }} image
+          outputs: type=image,"name=${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image-name }}",push-by-digest=true,push=true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
@@ -135,7 +152,7 @@ jobs:
       - name: Upload digest
         uses: forgejo/upload-artifact@v4
         with:
-          name: digests-fastgpt-agent-sandbox-${{ github.sha }}-${{ matrix.arch }}
+          name: digests-fastgpt-agent-sandbox-${{ matrix.variant }}-${{ github.sha }}-${{ matrix.arch }}
           path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -146,6 +163,14 @@ jobs:
       contents: read
     needs: [validate-version, build-fastgpt-agent-sandbox-images]
     runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      matrix:
+        include:
+          - variant: nonroot
+            image-name: fastgpt-agent-sandbox
+          - variant: root
+            image-name: fastgpt-agent-sandbox-root
     steps:
       - name: Capture proxy envs from variables
         run: |
@@ -190,20 +215,19 @@ jobs:
       - name: Download digests
         uses: forgejo/download-artifact@v4
         with:
-          name: digests-fastgpt-agent-sandbox-${{ github.sha }}-amd64
+          name: digests-fastgpt-agent-sandbox-${{ matrix.variant }}-${{ github.sha }}-amd64
           path: ${{ runner.temp }}/digests
 
       - name: Download digests
         uses: forgejo/download-artifact@v4
         with:
-          name: digests-fastgpt-agent-sandbox-${{ github.sha }}-arm64
+          name: digests-fastgpt-agent-sandbox-${{ matrix.variant }}-${{ github.sha }}-arm64
           path: ${{ runner.temp }}/digests
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
           driver-opts: |
-            network=host
             env.GODEBUG=madvdontneed=0
             env.HTTP_PROXY=${{ env.HTTP_PROXY }}
             env.HTTPS_PROXY=${{ env.HTTPS_PROXY }}
@@ -213,8 +237,9 @@ jobs:
       - name: Set image name and tag
         run: |
           VERSION="${{ needs.validate-version.outputs.version }}"
-          echo "Git_Tag=${REGISTRY}/${{ github.repository_owner }}/fastgpt-agent-sandbox:${VERSION}" >> $GITHUB_ENV
-          echo "Git_Latest=${REGISTRY}/${{ github.repository_owner }}/fastgpt-agent-sandbox:latest" >> $GITHUB_ENV
+          IMAGE_NAME="${{ matrix.image-name }}"
+          echo "Git_Tag=${REGISTRY}/${{ github.repository_owner }}/${IMAGE_NAME}:${VERSION}" >> $GITHUB_ENV
+          echo "Git_Latest=${REGISTRY}/${{ github.repository_owner }}/${IMAGE_NAME}:latest" >> $GITHUB_ENV
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
@@ -222,7 +247,7 @@ jobs:
           retry_imagetools_create() {
             local tag="$1"
             local sources
-            sources="$(printf "${REGISTRY}/${{ github.repository_owner }}/fastgpt-agent-sandbox@sha256:%s " *)"
+            sources="$(printf "${REGISTRY}/${{ github.repository_owner }}/${{ matrix.image-name }}@sha256:%s " *)"
 
             for attempt in 1 2 3 4; do
               if docker buildx imagetools create -t "$tag" $sources; then
@@ -259,6 +284,7 @@ jobs:
           - arch: arm64
             runs-on: ubuntu-24.04-arm
     runs-on: ${{ matrix.runs-on }}
+    timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -293,7 +319,6 @@ jobs:
         uses: docker/setup-buildx-action@v3
         with:
           driver-opts: |
-            network=host
             env.GODEBUG=madvdontneed=0
             env.HTTP_PROXY=${{ env.HTTP_PROXY }}
             env.HTTPS_PROXY=${{ env.HTTPS_PROXY }}
@@ -368,6 +393,7 @@ jobs:
       contents: read
     needs: [validate-version, build-fastgpt-volume-manager-images]
     runs-on: ubuntu-24.04
+    timeout-minutes: 120
     steps:
       - name: Capture proxy envs from variables
         run: |
@@ -425,7 +451,6 @@ jobs:
         uses: docker/setup-buildx-action@v3
         with:
           driver-opts: |
-            network=host
             env.GODEBUG=madvdontneed=0
             env.HTTP_PROXY=${{ env.HTTP_PROXY }}
             env.HTTPS_PROXY=${{ env.HTTPS_PROXY }}

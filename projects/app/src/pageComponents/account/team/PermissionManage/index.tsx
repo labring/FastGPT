@@ -14,7 +14,7 @@ import {
   Flex,
   Button
 } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   deleteMemberPermission,
@@ -49,7 +49,7 @@ import CollaboratorContextProvider, {
 } from '@/components/support/permission/MemberManager/context';
 import { useContextSelector } from 'use-context-selector';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { GetSearchUserGroupOrg } from '@/web/support/user/api';
+import { getSearchMembersOrgsGroups } from '@/web/support/user/api';
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import type { Permission } from '@fastgpt/global/support/permission/controller';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
@@ -88,7 +88,7 @@ function PermissionManage({
   Tabs: React.ReactNode;
   onOpenAddMember: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation(['account_team', 'user']);
   const { userInfo } = useUserStore();
 
   const collaboratorList = useContextSelector(
@@ -110,7 +110,7 @@ function PermissionManage({
 
   const [searchKey, setSearchKey] = useState('');
 
-  const { data: searchResult } = useRequest(() => GetSearchUserGroupOrg(searchKey), {
+  const { data: searchResult } = useRequest(() => getSearchMembersOrgsGroups(searchKey), {
     manual: false,
     throttleWait: 500,
     debounceWait: 200,

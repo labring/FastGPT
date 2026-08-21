@@ -1,6 +1,9 @@
 ---
-title: V4.8.5(包含升级脚本)
+title: V4.8.5
 description: FastGPT V4.8.5 更新说明
+releaseTime: '2024-06-27'
+upgradeTags:
+  - 升级脚本
 ---
 
 ## 升级指南
@@ -14,7 +17,7 @@ description: FastGPT V4.8.5 更新说明
 
 ### 3. 执行初始化
 
-从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成 **FastGPT 域名**。
 
 ```bash
 curl --location --request POST 'https://{{host}}/api/admin/initv485' \
@@ -24,11 +27,11 @@ curl --location --request POST 'https://{{host}}/api/admin/initv485' \
 
 会把插件的数据表合并到应用中，插件表不会删除。
 
-------
+---
 
 **商业版用户执行额外的初始化**
 
-从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**：
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成 **FastGPT 域名**：
 
 ```bash
 curl --location --request POST 'https://{{host}}/api/admin/init/485' \
@@ -48,10 +51,10 @@ curl --location --request POST 'https://{{host}}/api/admin/init/485' \
 6. 优化 - 原文件编码存取
 7. 优化 - 知识库删除后，简易模式会过滤掉删除的知识库，避免错误判断。
 8. 优化 - 文件夹读取，支持单个文件夹超出 100 个文件
-9. 优化 - 问答拆分/手动录入，当有`a`字段时，自动将`q`作为补充索引。
+9. 优化 - 问答拆分/手动录入，当有 `a` 字段时，自动将 `q` 作为补充索引。
 10. 优化 - 对话框页面代码
 11. 优化 - 工作流新节点自动增加序号名
 12. 修复 - 定时任务无法实际关闭
 13. 修复 - 输入引导特殊字符导致正则报错
-14. 修复 - 文件包含特殊字符`%`，且为转义时会导致页面崩溃
+14. 修复 - 文件包含特殊字符 `%`，且为转义时会导致页面崩溃
 15. 修复 - 自定义输入选择知识库引用时页面崩溃

@@ -50,7 +50,7 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const {
     skills,
     isFetchingSkills,
-    loadSkills,
+    refreshSkills,
     searchKey,
     setSearchKey,
     parentId,
@@ -63,7 +63,7 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
 
   const { runAsync: onCreateFolder } = useRequest(postCreateSkillFolder, {
     onSuccess() {
-      loadSkills();
+      refreshSkills();
     },
     errorToast: 'Error'
   });
@@ -177,6 +177,15 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     }
                   : undefined
               }
+              onClickImport={
+                hasCreatePer
+                  ? () => {
+                      if (guardSkillSandboxOperation()) {
+                        setShowImportModal(true);
+                      }
+                    }
+                  : undefined
+              }
               guardSkillSandboxOperation={guardSkillSandboxOperation}
             />
           </MyBox>
@@ -193,14 +202,19 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
       )}
 
       {showCreateModal && (
-        <CreateSkillModal parentId={parentId} onClose={() => setShowCreateModal(false)} />
+        <CreateSkillModal
+          parentId={parentId}
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={refreshSkills}
+          openDetailInNewTab
+        />
       )}
 
       {showImportModal && (
         <ImportSkillModal
           parentId={parentId}
           onClose={() => setShowImportModal(false)}
-          onSuccess={() => loadSkills()}
+          onSuccess={refreshSkills}
         />
       )}
 

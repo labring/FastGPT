@@ -1,4 +1,4 @@
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';

@@ -6,7 +6,7 @@ import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   DatasetTrainingErrorPaginationLimits,
@@ -14,8 +14,7 @@ import {
   GetDatasetTrainingErrorResponseSchema,
   type GetDatasetTrainingErrorBody,
   type GetDatasetTrainingErrorResponse,
-  type TrainingErrorGroupType,
-  type TrainingErrorItemType
+  type TrainingErrorGroupType
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 import {
   finalErrorTrainingMatch,
@@ -218,7 +217,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetTrainingErrorRes
   const list = collectionIds.reduce<TrainingErrorGroupType[]>((groups, id: any, index: number) => {
     const collection = collectionMap.get(String(id));
     const errorCount = statsMap.get(String(id)) ?? 0;
-    const items = (itemsList[index] ?? []) as TrainingErrorItemType[];
+    const items = itemsList[index] ?? [];
     if (!collection || errorCount === 0 || items.length === 0) return groups;
 
     const { sourceName, sourceId } = getCollectionSourceData(collection);

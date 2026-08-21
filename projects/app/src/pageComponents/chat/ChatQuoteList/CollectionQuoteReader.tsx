@@ -1,6 +1,5 @@
 import { Box, Flex } from '@chakra-ui/react';
 import { type SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
-import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
@@ -24,11 +23,13 @@ import { getChatAuthTargetInput } from '@/web/core/chat/utils';
 const CollectionReader = ({
   rawSearch,
   metadata,
+  singleQuote = false,
   onClose,
   onBack
 }: {
   rawSearch: SearchDataResponseQuoteListItemType[];
   metadata: GetCollectionQuoteDataProps;
+  singleQuote?: boolean;
   onClose: () => void;
   onBack?: () => void;
 }) => {
@@ -110,7 +111,8 @@ const CollectionReader = ({
     loadInitData
   } = useLinkedScroll(getCollectionQuote, {
     params,
-    currentData: currentQuoteItem
+    currentData: currentQuoteItem,
+    enablePagination: !singleQuote
   });
 
   const isDeleted = useMemo(
@@ -118,20 +120,23 @@ const CollectionReader = ({
     [datasetDataList, currentQuoteItem?.id, isLoading]
   );
 
-  const formatedDataList = useMemo(
-    () =>
-      datasetDataList.map((item) => {
-        const isCurrentSelected = currentQuoteItem?.id === item._id;
-        const quoteIndex = filterResults.findIndex((res) => res.id === item._id);
+  const formatedDataList = useMemo(() => {
+    // 分块接口会同时返回锚点前后的数据，单条模式只保留当前引用对应的分块。
+    const visibleDataList = singleQuote
+      ? datasetDataList.filter((item) => item._id === currentQuoteItem?.id)
+      : datasetDataList;
 
-        return {
-          ...item,
-          isCurrentSelected,
-          quoteIndex
-        };
-      }),
-    [currentQuoteItem?.id, datasetDataList, filterResults]
-  );
+    return visibleDataList.map((item) => {
+      const isCurrentSelected = currentQuoteItem?.id === item._id;
+      const quoteIndex = filterResults.findIndex((res) => res.id === item._id);
+
+      return {
+        ...item,
+        isCurrentSelected,
+        quoteIndex
+      };
+    });
+  }, [currentQuoteItem?.id, datasetDataList, filterResults, singleQuote]);
 
   const canShowSourceActions = useMemo(
     () =>
@@ -241,7 +246,7 @@ const CollectionReader = ({
       </Box>
 
       {/* header control */}
-      {datasetDataList.length > 0 && (
+      {!singleQuote && datasetDataList.length > 0 && (
         <Flex
           w={'full'}
           h={'56px'}
@@ -299,7 +304,7 @@ const CollectionReader = ({
       )}
 
       {/* quote list */}
-      {isLoading || datasetDataList.length > 0 ? (
+      {isLoading || formatedDataList.length > 0 ? (
         <ScrollData flex={'1 0 0'} p={'12px'}>
           <Flex flexDir={'column'} gap={'12px'}>
             {formatedDataList.map((item) => (
@@ -316,6 +321,7 @@ const CollectionReader = ({
                 dataId={item._id}
                 collectionId={collectionId}
                 canEdit={!!userInfo && !!datasetData?.permission?.hasWritePer}
+                alwaysShowCopy={singleQuote}
               />
             ))}
           </Flex>
@@ -337,11 +343,13 @@ const CollectionReader = ({
         </Flex>
       )}
 
-      <Box px={5} py={3}>
-        <Flex fontSize={'mini'} justifyContent={'center'} color={'myGray.500'}>
-          {t('chat:quote_result_notice')}
-        </Flex>
-      </Box>
+      {!singleQuote && (
+        <Box px={5} py={3}>
+          <Flex fontSize={'mini'} justifyContent={'center'} color={'myGray.500'}>
+            {t('chat:quote_result_notice')}
+          </Flex>
+        </Box>
+      )}
     </MyBox>
   );
 };

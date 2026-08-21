@@ -1,6 +1,6 @@
 import { getInvoiceRecords } from '@/web/support/wallet/bill/invoice/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useState } from 'react';
 import {
   Box,
@@ -26,7 +26,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
 
 const InvoiceTable = () => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_bill');
   const [invoiceDetailData, setInvoiceDetailData] = useState<InvoiceSchemaType | ''>('');
   const {
     data: invoices,
@@ -137,7 +137,7 @@ function InvoiceDetailModal({
   invoice: InvoiceSchemaType;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_bill');
 
   const { runAsync: handleDownloadInvoice } = useRequest(async (id: string) => {
     await downloadFetch({

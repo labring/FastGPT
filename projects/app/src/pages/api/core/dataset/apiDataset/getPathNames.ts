@@ -2,7 +2,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import type { ApiDatasetDetailResponse } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';

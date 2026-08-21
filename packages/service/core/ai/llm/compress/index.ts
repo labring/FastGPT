@@ -1,6 +1,8 @@
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { countGptMessagesTokens, countPromptTokens } from '../../../../common/string/tiktoken';
 import {
+  ACTIVE_PLAN_END_TAG,
+  ACTIVE_PLAN_START_TAG,
   APPROX_CHARS_PER_TOKEN,
   CHECKPOINT_OUTPUT_TARGET_RATIO,
   CONTEXT_CHECKPOINT_END_TAG,
@@ -16,6 +18,7 @@ import {
   calculateCompressionThresholds,
   getCompressionTokenLimit
 } from './constants';
+import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { CreateLLMResponseProps } from '../request';
 import { createLLMResponse } from '../request';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
@@ -481,6 +484,30 @@ const createContextCheckpointMessage = (
   hideInUI: true
 });
 
+/**
+ * 将运行时 active plan 和模型生成的 checkpoint 合并成唯一的隐藏上下文消息。
+ * plan 放在 checkpoint 前部，并直接序列化结构化状态，避免摘要模型改写步骤 ID、状态和备注。
+ */
+const createCompressedContextContent = ({
+  activePlan,
+  checkpointContent
+}: {
+  activePlan?: AgentPlanType;
+  checkpointContent: ContextCheckpointValueType;
+}): ContextCheckpointValueType => {
+  if (!activePlan) return checkpointContent;
+
+  // 避免 plan 字段中的同名闭合标签提前结束结构；转义后的内容仍是合法 JSON。
+  const serializedActivePlan = JSON.stringify(activePlan, null, 2).replaceAll(
+    ACTIVE_PLAN_END_TAG,
+    '<\\/active_plan>'
+  );
+
+  return [ACTIVE_PLAN_START_TAG, serializedActivePlan, ACTIVE_PLAN_END_TAG, checkpointContent].join(
+    '\n'
+  );
+};
+
 const getRequestCheckpointOutputTargetTokens = (maxContext: number) =>
   getCompressionTokenLimit(maxContext, CHECKPOINT_OUTPUT_TARGET_RATIO);
 
@@ -508,6 +535,7 @@ const getToolResponseCompressionLimits = ({ maxContext }: { maxContext: number }
  * 历史，system/developer 原样保留在最终请求前部。
  */
 export const compressRequestMessages = async ({
+  activePlan,
   checkIsStopping,
   messageTokens: cachedMessageTokens,
   messages,
@@ -517,6 +545,7 @@ export const compressRequestMessages = async ({
   userKey,
   teamId
 }: {
+  activePlan?: AgentPlanType;
   checkIsStopping?: CreateLLMResponseProps['isAborted'];
   messageTokens?: number;
   messages: ChatCompletionMessageParam[];
@@ -670,7 +699,11 @@ export const compressRequestMessages = async ({
       return { messages, messageTokens, usage: compressedUsage, requestIds: [requestId] };
     }
 
-    const checkpointMessage = createContextCheckpointMessage(checkpointContent);
+    const compressedContextContent = createCompressedContextContent({
+      activePlan,
+      checkpointContent
+    });
+    const checkpointMessage = createContextCheckpointMessage(compressedContextContent);
     const finalMessages = [...systemMessages, checkpointMessage];
     const compressedTokens = await countRequestMessagesTokens({
       messages: finalMessages,
@@ -708,7 +741,7 @@ export const compressRequestMessages = async ({
       messageTokens: compressedTokens,
       usage: compressedUsage,
       requestIds: [requestId],
-      contextCheckpoint: checkpointContent
+      contextCheckpoint: compressedContextContent
     };
   } catch (error) {
     logger.error('Message compression failed', {

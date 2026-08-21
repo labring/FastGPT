@@ -1,6 +1,6 @@
 # volume-manager
 
-FastGPT Agent 沙箱存储卷管理服务。负责为每个 Agent 会话创建和销毁持久化存储卷，支持 Kubernetes PVC 和 Docker Volume 两种运行时。
+FastGPT Agent 沙箱存储卷管理服务。负责按 FastGPT 分配的精确 `claimName` 创建和销毁持久化存储卷，支持 Kubernetes PVC 和 Docker Volume 两种运行时。
 
 ## 技术栈
 
@@ -43,8 +43,11 @@ GET /health
 POST /v1/volumes/ensure
 Content-Type: application/json
 
-{ "sessionId": "<24位十六进制字符串>" }
+{ "claimName": "fastgpt-session-<sandboxId>-<generation>", "storageSize": "1Gi" }
 ```
+
+`claimName` 由 FastGPT 生成并先持久化；volume-manager 不再根据会话 ID 推导名称。
+`storageSize` 可选，仅 k8s 模式下创建新 PVC 时有效，未传入时使用 `1Gi`。
 
 - 卷已存在：返回 `200`，`{ "claimName": "...", "created": false }`
 - 卷新建：返回 `201`，`{ "claimName": "...", "created": true }`
@@ -52,10 +55,15 @@ Content-Type: application/json
 ### 删除存储卷
 
 ```
-DELETE /v1/volumes/:sessionId
+DELETE /v1/volumes/:claimName
 ```
 
 响应：`204 No Content`（幂等，卷不存在时同样返回 204）
+
+Kubernetes 模式下，`204` 表示目标 PVC generation 已完成删除（PVC 对象已不存在或已被新的
+UID generation 替换），不是仅表示 API Server 接受了 DELETE 请求。Terminating PVC 会被轮询到
+删除完成；等待超时或 Kubernetes 返回其他错误时接口返回失败。Docker 模式保持 Docker API
+原有的同步删除语义。
 
 ## 环境变量
 
@@ -65,17 +73,15 @@ DELETE /v1/volumes/:sessionId
 | `VM_RUNTIME` | | `kubernetes` | 运行时：`kubernetes` 或 `docker` |
 | `VM_PORT` | | `3001` | 监听端口 |
 | `VM_LOG_LEVEL` | | `info` | 日志级别：`debug` / `info` / `none` |
-| `VM_VOLUME_NAME_PREFIX` | | `fastgpt-session` | 卷名前缀 |
 | `VM_DOCKER_SOCKET` | | `/var/run/docker.sock` | Docker socket 路径（docker 模式） |
 | `VM_K8S_NAMESPACE` | | `opensandbox` | PVC 所在命名空间（k8s 模式） |
-| `VM_K8S_PVC_STORAGE_CLASS` | | `standard` | PVC StorageClass（k8s 模式） |
-| `VM_K8S_PVC_STORAGE_SIZE` | | `1Gi` | PVC 容量（k8s 模式） |
+| `VM_K8S_PVC_STORAGE_CLASS` | | `''` | PVC StorageClass（k8s 模式） |
 
 ## Kubernetes 部署要求
 
 ### StorageClass
 
-volume-manager 默认使用 StorageClass `fastgpt-local`（可通过 `VM_K8S_PVC_STORAGE_CLASS` 覆盖）。参考配置：
+volume-manager 默认将 `storageClassName` 置为空字符串；如需指定 StorageClass，可通过 `VM_K8S_PVC_STORAGE_CLASS` 覆盖。参考配置：
 
 ```yaml
 apiVersion: storage.k8s.io/v1
@@ -112,7 +118,7 @@ volume-manager 使用集群内 ServiceAccount 认证，无需挂载外部 kubeco
 ### 部署检查清单
 
 - [ ] 命名空间 `opensandbox`（或自定义值）已存在
-- [ ] StorageClass `fastgpt-local`（或自定义值）已创建并可用
+- [ ] 如配置 `VM_K8S_PVC_STORAGE_CLASS`，对应 StorageClass 已创建并可用
 - [ ] ServiceAccount + Role + RoleBinding 已创建
 - [ ] Secret 中包含有效的 `VM_AUTH_TOKEN`
 
@@ -131,7 +137,6 @@ src/
 │   ├── DockerVolumeDriver.ts
 │   └── K8sVolumeDriver.ts
 └── utils/
-    ├── naming.ts         # 卷名生成（sessionId → volume name）
     └── logger.ts         # 日志工具
 ```
 

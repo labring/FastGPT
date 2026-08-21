@@ -6,9 +6,9 @@ import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getAppLatestVersion } from '../../../core/app/version/controller';
 import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
-import { getRedisCache, setRedisCache } from '../../redis/cache';
 import { differenceInDays } from 'date-fns';
 import { getLogger, LogCategories } from '../../logger';
+import { DailyActiveDedupeCache } from '@fastgpt/dal/redis/caches';
 import type {
   TeamEnterpriseAuthStatusEnum,
   TeamEnterpriseAuthTaskStatusEnum
@@ -16,6 +16,7 @@ import type {
 import type { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 
 const logger = getLogger(LogCategories.EVENT.TRACK);
+const dailyActiveDedupeCache = new DailyActiveDedupeCache({ logger });
 
 const createTrack = ({ event, data }: { event: TrackEnum; data: Record<string, any> }) => {
   if (!global.feConfigs?.isPlus) return;
@@ -86,11 +87,11 @@ export const pushTrack = {
   dailyUserActive: async (data: PushTrackCommonType) => {
     try {
       const today = new Date().toISOString().split('T')[0];
-      const key = `dailyUserActive:${data.uid}_${today}`;
-      const cache = await getRedisCache(key);
-      if (cache) return;
-
-      await setRedisCache(key, '1', 24 * 60 * 60);
+      const shouldRecord = await dailyActiveDedupeCache.shouldRecord({
+        uid: data.uid,
+        date: today
+      });
+      if (!shouldRecord) return;
 
       return createTrack({
         event: TrackEnum.dailyUserActive,
@@ -132,7 +133,7 @@ export const pushTrack = {
           nodeTypeList
         }
       });
-    } catch (error) {}
+    } catch {}
   },
   runSystemTool: (
     data: PushTrackCommonType & { toolId: string; result: 1 | 0; usagePoint?: number; msg?: string }
@@ -243,6 +244,7 @@ export const pushTrack = {
       }
     });
   },
+  /** @deprecated Legacy Sandbox archive event. Use userSandboxMigration instead. */
   sandboxArchive: (data: {
     provider: string;
     sandboxId: string;
@@ -251,6 +253,45 @@ export const pushTrack = {
   }) => {
     return createTrack({
       event: TrackEnum.sandboxArchive,
+      data
+    });
+  },
+  userSandboxMigration: (
+    data: {
+      runId: string;
+      dryRun: boolean;
+    } & (
+      | { phase: 'started' }
+      | {
+          phase: 'failure';
+          sandboxId: string;
+          step:
+            | 'prepare_app_target'
+            | 'archive_legacy'
+            | 'archive_workspace'
+            | 'mark_archive_deleting'
+            | 'migrate_skill'
+            | 'migrate_app'
+            | 'delete_sandbox'
+            | 'delete_volume'
+            | 'verify_archive'
+            | 'complete_legacy_record'
+            | 'complete_legacy_archive'
+            | 'delete_archive'
+            | 'delete_legacy_record'
+            | 'stop_failed_legacy';
+          error: string;
+        }
+      | {
+          phase: 'completed';
+          successCount: number;
+          failureCount: number;
+          durationMs: number;
+        }
+    )
+  ) => {
+    return createTrack({
+      event: TrackEnum.userSandboxMigration,
       data
     });
   }

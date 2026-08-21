@@ -3,7 +3,7 @@ import { Box, Flex, Skeleton } from '@chakra-ui/react';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { type NameType, type ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import type { TooltipProps } from 'recharts';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 
 export type usageFormType = {
   date: string;
@@ -22,7 +22,7 @@ type RechartsComponents = {
 
 const CustomTooltip = ({ active, payload }: TooltipProps<ValueType, NameType>) => {
   const data = payload?.[0]?.payload as usageFormType;
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_usage');
   if (active && data) {
     return (
       <Box
@@ -54,10 +54,10 @@ const DashboardChart = ({
   totalPoints: usageFormType[];
   totalUsage: number;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_usage');
   const [recharts, setRecharts] = useState<RechartsComponents | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string>('');
+  const [chartLibraryLoadFailed, setChartLibraryLoadFailed] = useState(false);
 
   // 动态导入 recharts
   useEffect(() => {
@@ -80,7 +80,7 @@ const DashboardChart = ({
       })
       .catch((error) => {
         console.error('Failed to load recharts:', error);
-        setError('加载图表库失败');
+        setChartLibraryLoadFailed(true);
         setIsLoading(false);
       });
 
@@ -108,7 +108,7 @@ const DashboardChart = ({
   }
 
   // 错误状态
-  if (error || !recharts) {
+  if (chartLibraryLoadFailed || !recharts) {
     return (
       <Box>
         <Flex fontSize={'20px'} fontWeight={'medium'} my={6}>
@@ -119,7 +119,9 @@ const DashboardChart = ({
         </Flex>
         <Box minH={'424px'} py={4} bg={'red.50'} borderRadius={'md'} p={3}>
           <Box color={'red.600'} fontSize={'sm'}>
-            {error || '图表加载失败'}
+            {chartLibraryLoadFailed
+              ? t('account_usage:chart_library_load_failed')
+              : t('account_usage:chart_load_failed')}
           </Box>
         </Box>
       </Box>

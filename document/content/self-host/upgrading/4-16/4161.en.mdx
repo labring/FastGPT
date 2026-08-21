@@ -1,0 +1,77 @@
+---
+title: 'V4.16.1'
+description: 'FastGPT V4.16.1 release notes'
+upgradeTags:
+  - IN PROGRESS
+---
+
+## 📦 Upgrade guide
+
+### Update Agent Sandbox environment variables and runtime images
+
+When Agent Sandbox is enabled, check the following settings in both `fastgpt-app` and `fastgpt-pro`. Version 4.16.1 uses a single full runtime image reference:
+
+```dotenv
+# Standard non-root image, used by default
+AGENT_SANDBOX_OPENSANDBOX_IMAGE=ghcr.io/labring/fastgpt-agent-sandbox:v0.3.1
+```
+
+If sandboxes need to install apt packages, use the root image. You can configure an apt mirror if needed:
+
+```dotenv
+AGENT_SANDBOX_OPENSANDBOX_IMAGE=ghcr.io/labring/fastgpt-agent-sandbox-root:v0.3.1
+AGENT_SANDBOX_APT_MIRROR=https://archive.ubuntu.com/ubuntu
+```
+
+For the complete image list for China Mainland and global registries, root/non-root image selection, and custom package registry settings, see [OpenSandbox Configuration](../../config/sandbox/opensandbox).
+
+### Migrate tool JSON Schema storage format
+
+Run the migrations in this release order:
+
+1. On version 4.16.0, complete `initHttpToolSchema` first. This converts legacy manual HTTP array parameters to standard JSON Schema.
+2. Upgrade to version 4.16.1, then run `initToolJsonSchemaStorage` from this section.
+
+Environments that already completed `initHttpToolSchema` on 4.16.0 do not need to run it again. Version 4.16.1 checks the HTTP tool apps and their historical versions covered by the 4.16.0 migration. If those records still contain legacy array types, the API refuses to run so the old data is not converted directly to strings. The migration only processes MCP/HTTP tool apps and their historical versions; regular Workflow apps are excluded.
+
+V4.16.1 stores MCP/HTTP tool JSON Schemas as strings. Run a dry run first:
+
+```bash
+curl -X POST 'https://你的域名/api/admin/4161/initToolJsonSchemaStorage' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":true}'
+```
+
+After confirming `total.changedDocumentCount`, run the migration:
+
+```bash
+curl -X POST 'https://你的域名/api/admin/4161/initToolJsonSchemaStorage' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":false}'
+```
+
+## 🚀 New
+
+1. Third-party publishing channels now support multimodal files, audio transcription, and citations where supported.
+2. Teams can install system plugins in process mode. This carries some security risk; a future release will support isolated serverless execution.
+3. Sandbox supports custom APT repositories.
+
+## ⚙️ Improvements
+
+1. Updated S3 key naming to stop using the original filename as the key, preventing keys from becoming too long.
+2. MCP/HTTP JSON Schemas are now stored as strings to prevent conflicts between custom objects and MongoDB rules.
+
+## 🐛 Fixes
+
+1. Fixed Workflow global variable configuration overflowing when field names are too long.
+2. Fixed AgentV2 calling a child Workflow without disabling streaming output within the Workflow.
+3. Fixed an issue where a team invitation link could be used to accept the same invitation repeatedly.
+
+## 🛠️ Code Improvements
+
+1. Completed documentation for all `devapi` endpoints.
+2. Optimized concurrent initialization and logging for the Plugin system.
+3. Fixed an issue where errors during Plugin runs were surfaced as system errors.
+4. Fixed an issue where Plugins failed on Node.js versions later than v25 because the `--allow-net` permission was not configured.

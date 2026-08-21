@@ -148,8 +148,8 @@ export const AgentNode: FlowNodeTemplateType = {
     // Skill
     {
       key: NodeInputKeyEnum.skills,
-      renderTypeList: [FlowNodeInputTypeEnum.selectSkill, FlowNodeInputTypeEnum.reference],
-      label: 'Skill',
+      renderTypeList: [FlowNodeInputTypeEnum.selectSkill],
+      label: i18nT('common:navbar.Skill'),
       valueType: WorkflowIOValueTypeEnum.arrayObject,
       valueDesc: '{\n skillId:string;\n}[]',
       value: []
@@ -157,7 +157,7 @@ export const AgentNode: FlowNodeTemplateType = {
     // Tool
     {
       key: NodeInputKeyEnum.selectedTools,
-      renderTypeList: [FlowNodeInputTypeEnum.selectTool, FlowNodeInputTypeEnum.reference],
+      renderTypeList: [FlowNodeInputTypeEnum.selectTool],
       label: i18nT('workflow:agent.tools'),
       valueType: WorkflowIOValueTypeEnum.arrayObject,
       valueDesc: '{\n toolId:string;\n}[]',
@@ -166,7 +166,7 @@ export const AgentNode: FlowNodeTemplateType = {
     // Dataset
     {
       key: NodeInputKeyEnum.datasetSelectList,
-      renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
+      renderTypeList: [FlowNodeInputTypeEnum.selectDataset],
       label: i18nT('common:core.module.input.label.Select dataset'),
       value: [],
       valueType: WorkflowIOValueTypeEnum.selectDataset,

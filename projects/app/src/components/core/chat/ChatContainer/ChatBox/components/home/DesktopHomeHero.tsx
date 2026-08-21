@@ -1,12 +1,14 @@
 import { ChatBoxContext } from '@/components/core/chat/ChatContainer/ChatBox/Provider';
 import { DEFAULT_LOGO_BANNER_URL } from '@/pageComponents/chat/constants';
 import { Box, Flex, Image } from '@chakra-ui/react';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useContextSelector } from 'use-context-selector';
 
 const DesktopHomeHero = () => {
+  const { t } = useClientTranslation('chat');
   const wideLogo = useContextSelector(ChatBoxContext, (v) => v.wideLogo);
   const slogan = useContextSelector(ChatBoxContext, (v) => v.slogan);
-  const displaySlogan = slogan || '今天想做点什么？';
+  const displaySlogan = slogan || t('chat:setting.home.slogan.default');
 
   return (
     <Flex flexDir="column" justifyContent="flex-end" alignItems="center" gap={4}>

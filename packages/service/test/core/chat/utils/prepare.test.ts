@@ -290,6 +290,63 @@ describe('prepare chat round', () => {
     expect(await MongoChatItem.countDocuments({ appId: testAppId, chatId: params.chatId })).toBe(1);
   });
 
+  it('should reuse the original AI dataId for submit agentAsk', async () => {
+    const params = createPreChatRoundParams(
+      { responseChatItemId: 'client-new-data-id' },
+      { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+    );
+    await MongoChat.create({
+      appId: testAppId,
+      chatId: params.chatId,
+      teamId: testTeamId,
+      tmbId: testTmbId,
+      sourceType: params.sourceType,
+      source: params.source
+    });
+    await MongoChatItem.create({
+      teamId: testTeamId,
+      tmbId: testTmbId,
+      sourceType: params.sourceType,
+      appId: testAppId,
+      chatId: params.chatId,
+      dataId: 'previous-helper-ai-data-id',
+      obj: ChatRoleEnum.AI,
+      value: []
+    });
+
+    const result = await preChatRound({
+      ...params,
+      interactive: {
+        type: 'agentAsk',
+        askId: 'chat-agent-helper-ask',
+        responseMode: 'submit',
+        params: {
+          description: 'Collect requirements',
+          questions: [
+            {
+              question: 'Audience?',
+              options: [
+                { summary: 'A', value: 'A' },
+                { summary: 'B', value: 'B' }
+              ],
+              answer: ''
+            }
+          ]
+        }
+      } as any
+    });
+
+    expect(result.responseChatItemId).toBe('previous-helper-ai-data-id');
+    expect(result.shouldFinalizePreparedRound).toBe(false);
+    expect(
+      await MongoChatItem.countDocuments({
+        appId: testAppId,
+        chatId: params.chatId,
+        sourceType: params.sourceType
+      })
+    ).toBe(1);
+  });
+
   it('should mark chat as error when interactive continue has no previous AI item', async () => {
     const params = createPreChatRoundParams(
       {
@@ -326,14 +383,48 @@ describe('prepare chat round', () => {
       ...params,
       interactive: {
         type: 'agentPlanAskQuery',
-        planId: 'plan-id',
+        askId: 'call_ask',
         params: {
-          query: 'Need more input'
+          content: 'Need more input',
+          options: ['Use repo', 'Use docs', 'Use defaults']
         }
       } as any
     });
 
     expect(result.responseChatItemId).toBe('agent-plan-query-data-id');
+    expect(result.shouldFinalizePreparedRound).toBe(true);
+    expect(await MongoChatItem.countDocuments({ appId: testAppId, chatId: params.chatId })).toBe(2);
+  });
+
+  it('should treat an agentPlanAskQuery nested in a child tool as a new round', async () => {
+    const params = createPreChatRoundParams(
+      {
+        responseChatItemId: 'nested-agent-query-data-id'
+      },
+      { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+    );
+
+    const result = await preChatRound({
+      ...params,
+      interactive: {
+        type: 'toolChildrenInteractive',
+        params: {
+          toolParams: {
+            toolCallId: 'tool_1'
+          },
+          childrenResponse: {
+            type: 'agentPlanAskQuery',
+            askId: 'call_ask',
+            params: {
+              content: 'Need more input',
+              options: ['Use repo', 'Use docs', 'Use defaults']
+            }
+          }
+        }
+      } as any
+    });
+
+    expect(result.responseChatItemId).toBe('nested-agent-query-data-id');
     expect(result.shouldFinalizePreparedRound).toBe(true);
     expect(await MongoChatItem.countDocuments({ appId: testAppId, chatId: params.chatId })).toBe(2);
   });
@@ -459,7 +550,7 @@ describe('prepare chat round', () => {
       obj: ChatRoleEnum.Human
     });
     expect(humanItem?.value[0].file?.url).toBe('');
-    expect(params.userContent.value[0].file?.url).toBe('');
+    expect(params.userContent.value[0].file?.url).toBe('https://signed-url.example/report.pdf');
   });
 
   it('should only strip file URL when file key exists', () => {

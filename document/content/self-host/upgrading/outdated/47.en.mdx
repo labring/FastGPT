@@ -1,11 +1,14 @@
 ---
-title: V4.7 (Initialization Required)
+title: V4.7
 description: FastGPT V4.7 Release Notes
+releaseTime: '2024-03-27'
+upgradeTags:
+  - MIGRATION
 ---
 
 ## 1. Update Configuration File
 
-Added Boolean values to control which models are available for different feature modules, and added model logos. The legacy `config.json` guide is no longer maintained. For current versions, see [Model Configuration](../../config/model/intro.en.mdx).
+Added Boolean values to control which models are available for different features, and added model logos. The legacy `config.json` guide is no longer maintained. For current versions, see [Model Configuration](../../config/model/intro.en.mdx).
 
 ## 2. Initialization Script
 
@@ -25,7 +28,7 @@ Script functions:
 
 V4.7 changed the ReRank model format to be compatible with Cohere's format, allowing direct use of Cohere's API. If you're using a local ReRank model, update the image to: `registry.cn-hangzhou.aliyuncs.com/fastgpt/bge-rerank-base:v0.1`.
 
-Cohere's reranking model doesn't perform as well with Chinese text compared to BGE. To integrate Cohere:
+Cohere's Rerank model doesn't perform as well with Chinese text compared to BGE. To integrate Cohere:
 
 1. Apply for a Cohere API key: https://dashboard.cohere.com/api-keys
 2. Update the FastGPT configuration file:
@@ -45,15 +48,15 @@ Cohere's reranking model doesn't perform as well with Chinese text compared to B
 
 ## V4.7 Release Notes
 
-1. New - Tool calling module that allows LLM models to dynamically select other modules or plugins based on user intent.
+1. New - Tool calling node that allows LLM models to dynamically select other nodes or plugins based on user intent.
 2. New - Classification and content extraction now support functionCall mode. Models that support functionCall but not toolCall can now be used. Set `functionCall` to `true` and `toolChoice` to `false` in the LLM model configuration. If `toolChoice` is true, tool mode will be used instead.
 3. New - HTTP plugin for quickly generating plugins via OpenAPI.
 4. New - ReRank model now compatible with [Cohere's format](https://docs.cohere.com/reference/rerank-1), enabling direct use of Cohere's rerank models.
 5. New - Helm chart installation support.
 6. Improved - Advanced workflow editor performance.
-7. Improved - Extracted Flow controller to packages.
+7. Improved - Extracted the Workflow controller into packages.
 8. Improved - AI model selection.
-9. Improved - Manual Knowledge Base input dialog.
+9. Improved - Manual Dataset input dialog.
 10. Improved - Variable input dialog.
 11. Improved - Docker deployment now auto-initializes replica sets.
 12. Improved - Browser file reading now auto-detects encoding to reduce garbled text.

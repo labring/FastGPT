@@ -1,12 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { Types } from 'mongoose';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
-
-const { mockAuthOpenApiHandler } = vi.hoisted(() => ({
-  mockAuthOpenApiHandler: vi.fn()
-}));
 
 import { authOpenApiKey, resolveOpenApiCredential } from '@fastgpt/service/support/openapi/auth';
 
@@ -33,15 +29,20 @@ const legacyAppApiKey = {
   name: 'legacy app key'
 };
 
+const originalFeConfigs = global.feConfigs;
+
 describe('openapi auth', () => {
   let updateApiKeyUsedTimeSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
     updateApiKeyUsedTimeSpy = vi.spyOn(MongoOpenApi, 'findByIdAndUpdate');
-    global.authOpenApiHandler = mockAuthOpenApiHandler;
-    mockAuthOpenApiHandler.mockResolvedValue(undefined);
+    global.feConfigs = { ...global.feConfigs, isPlus: true } as any;
     await MongoOpenApi.deleteMany({});
+  });
+
+  afterAll(() => {
+    global.feConfigs = originalFeConfigs;
   });
 
   it('解析 APIKey 兼容凭证时只把 ObjectId 后缀识别为 appId', () => {
@@ -72,16 +73,12 @@ describe('openapi auth', () => {
       authProxy: false,
       sourceName: 'team key'
     });
-    expect(mockAuthOpenApiHandler).toHaveBeenCalledTimes(1);
-    const [{ openApi: authedOpenApi }] = mockAuthOpenApiHandler.mock.calls[0];
-    expect(String(authedOpenApi._id)).toBe(String(openApi._id));
-    expect(authedOpenApi.apiKey).toBe('fastgpt-team');
     expect(updateApiKeyUsedTimeSpy).toHaveBeenCalledTimes(1);
     expect(String(updateApiKeyUsedTimeSpy.mock.calls[0][0])).toBe(String(openApi._id));
   });
 
   it('旧应用 APIKey 按系统 key 鉴权并返回 legacyAppId', async () => {
-    const openApi = await MongoOpenApi.create(legacyAppApiKey);
+    await MongoOpenApi.create(legacyAppApiKey);
 
     const result = await authOpenApiKey({
       apikey: 'fastgpt-app'
@@ -96,10 +93,6 @@ describe('openapi auth', () => {
       authProxy: false,
       sourceName: 'legacy app key'
     });
-    expect(mockAuthOpenApiHandler).toHaveBeenCalledTimes(1);
-    const [{ openApi: authedOpenApi }] = mockAuthOpenApiHandler.mock.calls[0];
-    expect(String(authedOpenApi._id)).toBe(String(openApi._id));
-    expect(authedOpenApi.appId).toBe(appId);
   });
 
   it('Bearer apiKey-appId 用真实 key 查库并返回 parsedAppId', async () => {
@@ -123,7 +116,6 @@ describe('openapi auth', () => {
       apikey: 'fastgpt-team',
       authType: AuthUserTypeEnum.apikey
     });
-    expect(mockAuthOpenApiHandler).toHaveBeenCalledTimes(1);
   });
 
   it('Bearer apiKey-appId 仍把限额和 lastUsedTime 更新到真实 key', async () => {
@@ -133,9 +125,6 @@ describe('openapi auth', () => {
       apikey: `fastgpt-team-${parsedAppId}`
     });
 
-    const [{ openApi: authedOpenApi }] = mockAuthOpenApiHandler.mock.calls[0];
-    expect(String(authedOpenApi._id)).toBe(String(openApi._id));
-    expect(authedOpenApi.apiKey).toBe('fastgpt-team');
     expect(String(updateApiKeyUsedTimeSpy.mock.calls[0][0])).toBe(String(openApi._id));
   });
 
@@ -149,7 +138,6 @@ describe('openapi auth', () => {
       })
     ).rejects.toBe(ERROR_ENUM.unAuthApiKey);
 
-    expect(mockAuthOpenApiHandler).not.toHaveBeenCalled();
     expect(updateApiKeyUsedTimeSpy).not.toHaveBeenCalled();
   });
 
@@ -167,8 +155,58 @@ describe('openapi auth', () => {
       })
     ).rejects.toBe(ERROR_ENUM.unAuthApiKey);
 
-    expect(mockAuthOpenApiHandler).not.toHaveBeenCalled();
     expect(updateApiKeyUsedTimeSpy).not.toHaveBeenCalled();
+  });
+
+  it('商业版拒绝已过期的 API Key', async () => {
+    await MongoOpenApi.create({
+      ...teamApiKey,
+      apiKey: 'fastgpt-expired',
+      limit: {
+        expiredTime: new Date(Date.now() - 1000),
+        maxUsagePoints: -1
+      }
+    });
+
+    await expect(authOpenApiKey({ apikey: 'fastgpt-expired' })).rejects.toMatchObject({
+      name: 'UserError',
+      message: expect.stringContaining('is expired')
+    });
+    expect(updateApiKeyUsedTimeSpy).not.toHaveBeenCalled();
+  });
+
+  it('商业版拒绝超过用量额度的 API Key', async () => {
+    await MongoOpenApi.create({
+      ...teamApiKey,
+      apiKey: 'fastgpt-over-usage',
+      usagePoints: 2,
+      limit: {
+        maxUsagePoints: 1
+      }
+    });
+
+    await expect(authOpenApiKey({ apikey: 'fastgpt-over-usage' })).rejects.toMatchObject({
+      name: 'UserError',
+      message: expect.stringContaining('is over usage')
+    });
+    expect(updateApiKeyUsedTimeSpy).not.toHaveBeenCalled();
+  });
+
+  it('社区版保持历史行为，不执行商业版 API Key 限额校验', async () => {
+    global.feConfigs = { ...global.feConfigs, isPlus: false } as any;
+    await MongoOpenApi.create({
+      ...teamApiKey,
+      apiKey: 'fastgpt-community-expired',
+      limit: {
+        expiredTime: new Date(Date.now() - 1000),
+        maxUsagePoints: -1
+      }
+    });
+
+    await expect(authOpenApiKey({ apikey: 'fastgpt-community-expired' })).resolves.toMatchObject({
+      apikey: 'fastgpt-community-expired'
+    });
+    expect(updateApiKeyUsedTimeSpy).toHaveBeenCalledTimes(1);
   });
 
   it('返回 APIKey 是否开启 authProxy', async () => {

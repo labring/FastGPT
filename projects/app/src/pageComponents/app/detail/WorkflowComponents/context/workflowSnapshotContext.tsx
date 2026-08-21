@@ -1,5 +1,5 @@
 // 工作流快照管理层
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
 import type { Node, Edge } from 'reactflow';
@@ -9,12 +9,14 @@ import {
   storeNode2FlowNode,
   storeEdge2RenderEdge
 } from '@/web/core/workflow/utils';
+import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { WorkflowBufferDataContext } from './workflowInitContext';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import type { WorkflowStateType } from './type';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 export type WorkflowSnapshotsType = WorkflowStateType & {
   title: string;
@@ -61,7 +63,7 @@ type WorkflowSnapshotContextValue = {
 };
 export const WorkflowSnapshotContext = createContext<WorkflowSnapshotContextValue>({
   past: [],
-  setPast: function (value: React.SetStateAction<WorkflowSnapshotsType[]>): void {
+  setPast: function (_value: React.SetStateAction<WorkflowSnapshotsType[]>): void {
     throw new Error('Function not implemented.');
   },
   future: [],
@@ -73,7 +75,7 @@ export const WorkflowSnapshotContext = createContext<WorkflowSnapshotContextValu
   },
   canUndo: false,
   canRedo: false,
-  pushPastSnapshot: function (params: {
+  pushPastSnapshot: function (_params: {
     pastNodes: Node[];
     pastEdges: Edge[];
     chatConfig: AppChatConfigType;
@@ -82,10 +84,10 @@ export const WorkflowSnapshotContext = createContext<WorkflowSnapshotContextValu
   }): boolean {
     throw new Error('Function not implemented.');
   },
-  onSwitchTmpVersion: function (data: WorkflowSnapshotsType, customTitle: string): boolean {
+  onSwitchTmpVersion: function (_data: WorkflowSnapshotsType, _customTitle: string): boolean {
     throw new Error('Function not implemented.');
   },
-  onSwitchCloudVersion: function (appVersion: AppVersionSchemaType): boolean {
+  onSwitchCloudVersion: function (_appVersion: AppVersionSchemaType): boolean {
     throw new Error('Function not implemented.');
   }
 });
@@ -98,16 +100,21 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
   const { t } = useTranslation();
 
   // 获取 WorkflowBufferDataContext 的数据
-  const { setEdges, setNodes, forbiddenSaveSnapshot } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
-  );
+  const {
+    setEdges,
+    setNodes,
+    forbiddenSaveSnapshot: forbiddenSaveSnapshotRef
+  } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   // 获取 AppContext 的 setAppDetail
   const setAppDetail = useContextSelector(AppContext, (v) => v.setAppDetail);
 
   // 快照历史
   const [past, setPast] = useState<WorkflowSnapshotsType[]>([]);
   const [future, setFuture] = useState<WorkflowSnapshotsType[]>([]);
+
+  const pushPastSnapshotRef = useRef<WorkflowSnapshotContextValue['pushPastSnapshot'] | undefined>(
+    undefined
+  );
 
   // 待保存快照队列机制 - 解决竞态条件，确保数据不丢失
   const pendingSnapshotRef = useRef<{
@@ -154,8 +161,8 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
       }
 
       // 3. 处理被阻塞的快照
-      if (forbiddenSaveSnapshot.current) {
-        forbiddenSaveSnapshot.current = false;
+      if (forbiddenSaveSnapshotRef.current) {
+        forbiddenSaveSnapshotRef.current = false;
         console.warn('[Snapshot] Snapshot creation blocked, adding to pending queue');
 
         // 将快照加入待处理队列
@@ -169,7 +176,7 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
         pendingSnapshotRef.current.timeoutId = setTimeout(() => {
           if (pendingSnapshotRef.current?.data) {
             console.log('[Snapshot] Processing pending snapshot from queue');
-            pushPastSnapshot(pendingSnapshotRef.current.data);
+            pushPastSnapshotRef.current?.(pendingSnapshotRef.current.data);
             pendingSnapshotRef.current = { data: null };
           } else {
             console.log('[Snapshot] No pending snapshot to process');
@@ -236,12 +243,16 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
         return false;
       }
     },
-    [past, forbiddenSaveSnapshot]
+    [past, forbiddenSaveSnapshotRef]
   );
+
+  useEffect(() => {
+    pushPastSnapshotRef.current = pushPastSnapshot;
+  }, [pushPastSnapshot]);
 
   const undo = useCallback(() => {
     if (past.length > 1) {
-      forbiddenSaveSnapshot.current = true;
+      forbiddenSaveSnapshotRef.current = true;
       // Current version is the first one, so we need to reset the second one
       const firstPast = past[1];
       resetSnapshot(firstPast);
@@ -249,7 +260,7 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
       setFuture((future) => [past[0], ...future]);
       setPast((past) => past.slice(1));
     }
-  }, [past, resetSnapshot, forbiddenSaveSnapshot]);
+  }, [past, resetSnapshot, forbiddenSaveSnapshotRef]);
 
   const redo = useCallback(() => {
     if (!future[0]) return;
@@ -257,13 +268,13 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
     const futureState = future[0];
 
     if (futureState) {
-      forbiddenSaveSnapshot.current = true;
+      forbiddenSaveSnapshotRef.current = true;
       setPast((past) => [futureState, ...past]);
       setFuture((future) => future.slice(1));
 
       resetSnapshot(futureState);
     }
-  }, [future, resetSnapshot, forbiddenSaveSnapshot]);
+  }, [future, resetSnapshot, forbiddenSaveSnapshotRef]);
 
   const onSwitchTmpVersion = useCallback(
     (params: WorkflowSnapshotsType, customTitle: string) => {
@@ -286,20 +297,34 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
 
   const onSwitchCloudVersion = useCallback(
     (appVersion: AppVersionSchemaType) => {
-      const nodes = appVersion.nodes.map((item) => storeNode2FlowNode({ item, t }));
-      const edges = appVersion.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
-      const chatConfig = appVersion.chatConfig;
+      // 与 initData/导入一致：旧版残留的系统配置节点（欢迎语/变量/定时任务等）需先合并进
+      // chatConfig 再从节点列表过滤掉，否则云版本切换时这些配置不会进入 chatConfig，
+      // 还会作为孤立节点残留在画布上。
+      const normalizedWorkflow = normalizeWorkflowConfig({
+        nodes: appVersion.nodes,
+        edges: appVersion.edges,
+        chatConfig: appVersion.chatConfig
+      });
+      const edges = normalizedWorkflow.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
+      const toolNodeIds = new Set(
+        normalizedWorkflow.edges
+          .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
+          .map((edge) => edge.target)
+      );
+      const nodes = normalizedWorkflow.nodes.map((item) =>
+        storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
+      );
 
       resetSnapshot({
         nodes,
         edges,
-        chatConfig
+        chatConfig: normalizedWorkflow.chatConfig
       });
 
       return pushPastSnapshot({
         pastNodes: nodes,
         pastEdges: edges,
-        chatConfig,
+        chatConfig: normalizedWorkflow.chatConfig,
         customTitle: `${t('app:version_copy')}-${appVersion.versionName}`
       });
     },

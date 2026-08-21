@@ -1,6 +1,9 @@
 ---
-title: V4.8.18(包含升级脚本)
+title: V4.8.18
 description: FastGPT V4.8.18 更新说明
+releaseTime: '2025-01-13'
+upgradeTags:
+  - 升级脚本
 ---
 
 ## 更新指南
@@ -13,7 +16,7 @@ description: FastGPT V4.8.18 更新说明
 
 ### 2. 运行升级脚本
 
-从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**:
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成 **FastGPT 域名**:
 
 ```bash
 curl --location --request POST 'https://{{host}}/api/admin/initv4818' \
@@ -22,7 +25,6 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4818' \
 ```
 
 会迁移全文检索表，时间较长，迁移期间全文检索会失效，日志中会打印已经迁移的数据长度。
-
 
 ## 完整更新内容
 

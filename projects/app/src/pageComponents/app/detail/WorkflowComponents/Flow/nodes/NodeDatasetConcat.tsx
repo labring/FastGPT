@@ -87,13 +87,13 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             }}
           />
         ),
-      [NodeInputKeyEnum.datasetQuoteList]: (item: FlowNodeInputItemType) => {
+      [NodeInputKeyEnum.datasetQuoteList]: () => {
         return (
           <>
             <HStack className="nodrag" cursor={'default'} position={'relative'}>
-              <HStack spacing={1} position={'relative'} fontWeight={'medium'} color={'myGray.600'}>
-                <Box>{t('common:core.workflow.Dataset quote')}</Box>
-              </HStack>
+              <FormLabel required color={'myGray.600'} fontWeight={'medium'}>
+                {t('common:core.workflow.Dataset quote')}
+              </FormLabel>
               <Box flex={'1 0 0'} />
               <Button
                 variant={'whiteBase'}

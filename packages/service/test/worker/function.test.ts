@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { WorkerNameEnum } from '@fastgpt/service/worker/utils';
+import { countPromptTokensInWorker } from '@fastgpt/service/worker/countGptMessagesTokens/count';
 
 // hoisted: 这些 mock 必须在 vi.mock 工厂里可见
 const { mockRun, mockGetWorkerController, mockRunWorker, mockUploadImage2S3Bucket, mockEnv } =
@@ -11,7 +12,7 @@ const { mockRun, mockGetWorkerController, mockRunWorker, mockUploadImage2S3Bucke
       mockRunWorker: vi.fn(),
       mockUploadImage2S3Bucket: vi.fn(),
       mockEnv: {
-        PARSE_FILE_WORKERS: 10,
+        PARSE_FILE_WORKERS: 5,
         HTML_TO_MARKDOWN_WORKERS: 10,
         TEXT_TO_CHUNKS_WORKERS: 10,
         PARSE_FILE_TIMEOUT_SECONDS: 300
@@ -82,12 +83,85 @@ describe('worker/function', () => {
       const result = await text2Chunks({ text: '', chunkSize: 100, maxSize: 200 });
       expect(result.chunks).toEqual([]);
     });
+
+    it('test 环境下 token 模式按 token 上限切分文本', async () => {
+      const text = '𠮷'.repeat(8);
+
+      const result = await text2Chunks({
+        text,
+        chunkSize: 12,
+        maxSize: 12,
+        lengthUnit: 'token'
+      });
+
+      expect(result.chunks.length).toBeGreaterThan(1);
+      expect(result.chunks.every((chunk) => countPromptTokensInWorker(chunk) <= 12)).toBe(true);
+      expect(result.chunks.join('')).toBe(text);
+      expect(mockRunWorker).not.toHaveBeenCalled();
+      expect(mockGetWorkerController).not.toHaveBeenCalled();
+    });
+
+    it('test 环境下 token 模式长文本兜底分割仍不超过 maxSize', async () => {
+      const text = '𠮷'.repeat(400);
+      const chunkSize = 96;
+
+      const result = await text2Chunks({
+        text,
+        chunkSize,
+        maxSize: chunkSize,
+        overlapRatio: 0,
+        lengthUnit: 'token'
+      });
+
+      expect(countPromptTokensInWorker(text)).toBeGreaterThan(chunkSize * 10);
+      expect(result.chunks.length).toBeGreaterThan(10);
+      expect(result.chunks.every((chunk) => countPromptTokensInWorker(chunk) <= chunkSize)).toBe(
+        true
+      );
+      expect(result.chunks.join('')).toBe(text);
+      expect(mockRunWorker).not.toHaveBeenCalled();
+      expect(mockGetWorkerController).not.toHaveBeenCalled();
+    });
+
+    it('token 模式无法放入单个字符时直接报错', async () => {
+      await expect(
+        text2Chunks({
+          text: '𠮷',
+          chunkSize: 1,
+          maxSize: 1,
+          lengthUnit: 'token'
+        })
+      ).rejects.toThrow('Text contains a character that exceeds the token length limit');
+      expect(mockRunWorker).not.toHaveBeenCalled();
+      expect(mockGetWorkerController).not.toHaveBeenCalled();
+    });
+
+    it('token 模式拆分 markdown 表格时每个最终分块都包含表头且不超过上限', async () => {
+      const header = `| id | payload |
+| --- | --- |
+`;
+      const text = `${header}| 1 | ${'𠮷'.repeat(20)} |
+`;
+      const result = await text2Chunks({
+        text,
+        chunkSize: 28,
+        maxSize: 28,
+        lengthUnit: 'token'
+      });
+
+      expect(result.chunks.length).toBeGreaterThan(1);
+      expect(result.chunks.every((chunk) => chunk.startsWith(header))).toBe(true);
+      expect(result.chunks.every((chunk) => countPromptTokensInWorker(chunk) <= 28)).toBe(true);
+      expect(result.chunks.join('\n')).toContain('𠮷');
+      expect(mockRunWorker).not.toHaveBeenCalled();
+      expect(mockGetWorkerController).not.toHaveBeenCalled();
+    });
   });
 
   describe('readRawContentFromBuffer', () => {
     afterEach(() => {
       // 防止 env 跨用例污染
-      mockEnv.PARSE_FILE_WORKERS = 10;
+      mockEnv.PARSE_FILE_WORKERS = 5;
       mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 300;
     });
 
@@ -110,7 +184,7 @@ describe('worker/function', () => {
       expect(mockGetWorkerController).toHaveBeenCalledTimes(1);
       const poolCfg = mockGetWorkerController.mock.calls[0][0];
       expect(poolCfg.name).toBe(WorkerNameEnum.readFile);
-      expect(poolCfg.maxReservedThreads).toBe(10); // 默认值
+      expect(poolCfg.maxReservedThreads).toBe(5); // 默认值
       expect(poolCfg.taskTimeoutMs).toBe(5 * 60 * 1000);
       expect(poolCfg.maxTasksPerWorker).toBe(100);
 
@@ -221,7 +295,7 @@ describe('worker/function', () => {
       const expected = { rawText: 'parsed docx' };
       const expiredTime = new Date('2030-01-01T00:00:00.000Z');
       mockRun.mockResolvedValueOnce(expected);
-      mockUploadImage2S3Bucket.mockResolvedValueOnce('dataset/ds1/file-parsed/image.png');
+      mockUploadImage2S3Bucket.mockResolvedValueOnce('dataset/ds1/file-parsed/image-key.png');
 
       const result = await readRawContentFromBuffer({
         extension: 'docx',
@@ -251,11 +325,11 @@ describe('worker/function', () => {
       });
 
       expect(uploadResult).toEqual({
-        key: 'dataset/ds1/file-parsed/image.png'
+        key: 'dataset/ds1/file-parsed/image-key.png'
       });
       expect(mockUploadImage2S3Bucket).toHaveBeenCalledWith('private', {
         buffer: Buffer.from([1, 2, 3]),
-        uploadKey: 'dataset/ds1/file-parsed/image.png',
+        uploadKey: expect.stringMatching(/^dataset\/ds1\/file-parsed\/[0-9a-f]{32}\.png$/),
         mimetype: 'image/png',
         filename: 'image.png',
         expiredTime

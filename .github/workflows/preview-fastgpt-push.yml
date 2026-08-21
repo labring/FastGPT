@@ -4,123 +4,241 @@ on:
   workflow_run:
     workflows: ['Preview FastGPT Image — Build']
     types: [completed]
+  issue_comment:
+    types: [created]
 
-# Only one push at a time
+# A newer automatic preview cancels an older publication; untrusted comments cannot cancel a running publish.
 concurrency:
-  group: 'preview-fastgpt-push'
-  cancel-in-progress: false
+  group: 'preview-fastgpt-push-${{ github.event.issue.number || github.event.workflow_run.pull_requests[0].number || github.event.workflow_run.head_branch || github.run_id }}'
+  cancel-in-progress: ${{ github.event_name == 'workflow_run' }}
 
 permissions:
   contents: read
+  actions: read
+  pull-requests: write
+  issues: write
 
 jobs:
-  check_pr_author:
+  prepare:
     runs-on: ubuntu-24.04
-    # Only inspect the upstream PR when the build succeeded.
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: read
-      pull-requests: read
       actions: read
+      pull-requests: write
+      issues: write
     outputs:
-      trusted: ${{ steps.trust.outputs.trusted }}
-      should_publish: ${{ steps.trust.outputs.should_publish }}
-      number: ${{ steps.trust.outputs.number }}
-      sha: ${{ steps.trust.outputs.sha }}
-      matrix: ${{ steps.trust.outputs.matrix }}
+      should_publish: ${{ steps.prepare.outputs.should_publish }}
+      number: ${{ steps.prepare.outputs.number }}
+      sha: ${{ steps.prepare.outputs.sha }}
+      run_id: ${{ steps.prepare.outputs.run_id }}
+      manual: ${{ steps.prepare.outputs.manual }}
+      matrix: ${{ steps.prepare.outputs.matrix }}
 
     steps:
-      - name: Check trusted PR author
-        id: trust
+      - name: Resolve preview build and publish permission
+        id: prepare
         uses: actions/github-script@v7
         with:
           script: |
-            const allowedAssociations = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
             const emptyMatrix = JSON.stringify({
               include: [{ image: 'noop', artifact_name: 'noop', image_name: 'noop' }]
             });
-            const workflowRun = context.payload.workflow_run;
-            let prNumber = workflowRun.pull_requests?.[0]?.number;
-
-            core.setOutput('trusted', 'false');
-            core.setOutput('should_publish', 'false');
-            core.setOutput('matrix', emptyMatrix);
-
-            if (!prNumber) {
-              const headOwner = workflowRun.head_repository?.owner?.login;
-              const headBranch = workflowRun.head_branch;
-
-              if (headOwner && headBranch) {
-                core.info(`workflow_run payload did not include a PR number; looking up PR by ${headOwner}:${headBranch}.`);
-                const { data: pullRequests } = await github.rest.pulls.list({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  state: 'open',
-                  head: `${headOwner}:${headBranch}`
-                });
-                const matchedPullRequest = pullRequests.find((pullRequest) => pullRequest.head.sha === workflowRun.head_sha) ?? pullRequests[0];
-                prNumber = matchedPullRequest?.number;
-              }
-            }
-
-            if (!prNumber) {
-              core.warning('No pull request was found on the workflow_run payload. Skipping privileged FastGPT preview publish.');
-              return;
-            }
-
-            const { data: pullRequest } = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: prNumber
-            });
-
-            const trusted = allowedAssociations.has(pullRequest.author_association);
-            core.setOutput('trusted', trusted ? 'true' : 'false');
-            core.setOutput('number', String(pullRequest.number));
-            core.setOutput('sha', pullRequest.head.sha);
-
-            if (!trusted) {
-              core.warning(`PR #${pullRequest.number} author association is ${pullRequest.author_association}; skipping privileged FastGPT preview publish.`);
-              return;
-            }
-
             const artifactConfigs = [
               { image: 'fastgpt', artifact_name: 'preview-fastgpt-image', image_name: 'fastgpt' },
               { image: 'code-sandbox', artifact_name: 'preview-code-sandbox-image', image_name: 'fastgpt-code-sandbox' },
               { image: 'mcp_server', artifact_name: 'preview-mcp_server-image', image_name: 'fastgpt-mcp-server' }
             ];
-            const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: workflowRun.id,
-              per_page: 100
-            });
-            const artifactNames = new Set(artifacts.map((artifact) => artifact.name));
-            const images = artifactConfigs.filter((artifactConfig) =>
-              artifactNames.has(artifactConfig.artifact_name)
-            );
-            const matrix = images.length > 0 ? { include: images } : JSON.parse(emptyMatrix);
 
-            core.setOutput('should_publish', images.length > 0 ? 'true' : 'false');
-            core.setOutput('matrix', JSON.stringify(matrix));
-            core.info(`PR #${pullRequest.number} author association is ${pullRequest.author_association}; preview images to publish: ${images.map((image) => image.image).join(', ') || 'none'}.`);
+            const hasPublishPermission = async (username) => {
+              if (!username) return false;
+              try {
+                const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  username
+                });
+                return ['admin', 'maintain', 'write', 'read'].includes(data.permission);
+              } catch (error) {
+                core.warning(`Unable to resolve repository permission for ${username}: ${error.message}`);
+                return false;
+              }
+            };
+
+            const setDefaultOutputs = () => {
+              core.setOutput('should_publish', 'false');
+              core.setOutput('matrix', emptyMatrix);
+              core.setOutput('manual', 'false');
+            };
+
+            const upsertComment = async (issueNumber, marker, body) => {
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+              });
+              const existingComment = comments.find((comment) => comment.body.includes(marker));
+
+              if (existingComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existingComment.id,
+                  body
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  body
+                });
+              }
+            };
+
+            const findBuildRun = async (sha) => {
+              const workflowRuns = await github.paginate(github.rest.actions.listWorkflowRuns, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'preview-fastgpt-build.yml',
+                event: 'pull_request',
+                status: 'completed',
+                per_page: 100
+              });
+              return workflowRuns.find((run) =>
+                run.head_sha === sha && run.conclusion === 'success'
+              );
+            };
+
+            const getArtifacts = async (runId) => {
+              const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: runId,
+                per_page: 100
+              });
+              const artifactNames = new Set(artifacts.map((artifact) => artifact.name));
+              return artifactConfigs.filter((config) => artifactNames.has(config.artifact_name));
+            };
+
+            setDefaultOutputs();
+
+            let prNumber;
+            let sha;
+            let runId;
+            let manual = false;
+
+            if (context.eventName === 'workflow_run') {
+              const workflowRun = context.payload.workflow_run;
+              if (workflowRun.conclusion !== 'success') {
+                core.info(`Build workflow concluded with ${workflowRun.conclusion}; skipping preview publish.`);
+                return;
+              }
+
+              runId = workflowRun.id;
+              sha = workflowRun.head_sha;
+              prNumber = workflowRun.pull_requests?.[0]?.number;
+
+              if (!prNumber) {
+                const headOwner = workflowRun.head_repository?.owner?.login;
+                const headBranch = workflowRun.head_branch;
+                if (headOwner && headBranch) {
+                  const { data: pullRequests } = await github.rest.pulls.list({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    state: 'open',
+                    head: `${headOwner}:${headBranch}`
+                  });
+                  const matchedPullRequest = pullRequests.find((pullRequest) => pullRequest.head.sha === sha) ?? pullRequests[0];
+                  prNumber = matchedPullRequest?.number;
+                }
+              }
+
+              if (!prNumber) {
+                core.warning('No pull request was found for the completed preview build.');
+                return;
+              }
+
+              const { data: pullRequest } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber
+              });
+              if (pullRequest.state !== 'open' || pullRequest.head.sha !== sha) {
+                core.info(`Skipping stale preview build ${sha}; the current PR head is ${pullRequest.head.sha}.`);
+                return;
+              }
+              if (!await hasPublishPermission(pullRequest.user.login)) {
+                await upsertComment(prNumber, '<!-- fastgpt-preview-manual -->', `<!-- fastgpt-preview-manual -->
+            ✅ Preview images built successfully for \`${sha}\`.
+
+            Automatic publishing is disabled for this PR. A maintainer can comment:
+
+            \`/preview push\`
+
+            to publish the images from this exact build.`);
+                core.warning(`PR #${prNumber} author association is ${pullRequest.author_association}; waiting for a maintainer comment before publishing.`);
+                return;
+              }
+            } else if (context.eventName === 'issue_comment') {
+              const issue = context.payload.issue;
+              const comment = context.payload.comment;
+              if (!issue.pull_request || comment.body.trim() !== '/preview push') {
+                return;
+              }
+
+              if (!await hasPublishPermission(comment.user.login)) {
+                core.warning(`Comment author ${comment.user.login} does not have repository publish permission.`);
+                return;
+              }
+
+              prNumber = issue.number;
+              manual = true;
+              const { data: pullRequest } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber
+              });
+              sha = pullRequest.head.sha;
+              const buildRun = await findBuildRun(sha);
+
+              if (!buildRun) {
+                await upsertComment(prNumber, '<!-- fastgpt-preview-manual -->', `<!-- fastgpt-preview-manual -->
+            ⚠️ No successful preview build was found for the current PR commit \`${sha}\`. Please wait for the build workflow to finish, then comment \`/preview push\` again.`);
+                return;
+              }
+              runId = buildRun.id;
+            } else {
+              return;
+            }
+
+            const images = await getArtifacts(runId);
+            if (images.length === 0) {
+              core.warning(`No preview image artifacts were found for workflow run ${runId}.`);
+              return;
+            }
+
+            core.setOutput('should_publish', 'true');
+            core.setOutput('number', String(prNumber));
+            core.setOutput('sha', sha);
+            core.setOutput('run_id', String(runId));
+            core.setOutput('manual', manual ? 'true' : 'false');
+            core.setOutput('matrix', JSON.stringify({ include: images }));
+            core.info(`Preview images to publish: ${images.map((image) => image.image).join(', ')}`);
 
   push:
-    needs: check_pr_author
+    needs: prepare
+    if: ${{ needs.prepare.outputs.should_publish == 'true' }}
     runs-on: ubuntu-24.04
-    # Only trusted repository members/collaborators can promote PR-built artifacts.
-    if: ${{ needs.check_pr_author.outputs.trusted == 'true' && needs.check_pr_author.outputs.should_publish == 'true' }}
     permissions:
       contents: read
       packages: write
-      attestations: write
-      id-token: write
       pull-requests: write
       issues: write
       actions: read
     strategy:
-      matrix: ${{ fromJSON(needs.check_pr_author.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
       fail-fast: false
+      max-parallel: 3
 
     steps:
       - name: Download build artifact
@@ -128,14 +246,11 @@ jobs:
         with:
           name: ${{ matrix.artifact_name }}
           path: /tmp
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ needs.prepare.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Load Docker image
         run: docker load --input /tmp/${{ matrix.image_name }}-image.tar
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -146,7 +261,7 @@ jobs:
 
       - name: Tag and push Docker image
         run: |
-          SHA="${{ needs.check_pr_author.outputs.sha }}"
+          SHA="${{ needs.prepare.outputs.sha }}"
           docker tag ${{ matrix.image_name }}-pr:${SHA} \
             ghcr.io/${{ github.repository_owner }}/fastgpt-pr:${{ matrix.image }}_${SHA}
           docker push ghcr.io/${{ github.repository_owner }}/fastgpt-pr:${{ matrix.image }}_${SHA}
@@ -157,32 +272,28 @@ jobs:
           echo "value=$(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S (UTC+8)')" >> "$GITHUB_OUTPUT"
 
       - name: Add PR comment on success
-        if: success() && needs.check_pr_author.outputs.number != ''
+        if: success() && needs.prepare.outputs.number != ''
         uses: actions/github-script@v7
         with:
           script: |
-            const prNumber = parseInt('${{ needs.check_pr_author.outputs.number }}');
+            const prNumber = parseInt('${{ needs.prepare.outputs.number }}');
             const marker = '<!-- fastgpt-preview-${{ matrix.image }} -->';
+            const mode = '${{ needs.prepare.outputs.manual }}' === 'true' ? 'Manual publish successful' : 'Build and publish successful';
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: prNumber,
             });
-
-            const existingComment = comments.find(comment =>
-              comment.body.includes(marker)
-            );
-
+            const existingComment = comments.find((comment) => comment.body.includes(marker));
             const commentBody = `${marker}
-            ✅ **Build Successful** - Preview ${{ matrix.image }} Image for this PR:
+            ✅ **${mode}** - Preview ${{ matrix.image }} Image:
 
             \`\`\`
-            ghcr.io/${{ github.repository_owner }}/fastgpt-pr:${{ matrix.image }}_${{ needs.check_pr_author.outputs.sha }}
+            ghcr.io/${{ github.repository_owner }}/fastgpt-pr:${{ matrix.image }}_${{ needs.prepare.outputs.sha }}
             \`\`\`
 
-            🕒 Time: ${{ steps.preview_time.outputs.value }}
-            `;
+            🕒 Time: ${{ steps.preview_time.outputs.value }}`;
 
             if (existingComment) {
               await github.rest.issues.updateComment({

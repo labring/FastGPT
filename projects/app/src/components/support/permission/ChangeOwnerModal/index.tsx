@@ -1,14 +1,14 @@
-import { GetSearchUserGroupOrg } from '@/web/support/user/api';
+import { getSearchMembersOrgsGroups } from '@/web/support/user/api';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import { Box, Flex, HStack, Input, Button, useDisclosure } from '@chakra-ui/react';
-import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
+import type { SearchMembersOrgsGroupsResponseType } from '@fastgpt/global/openapi/support/user/team/api';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import Icon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MyTag from '@fastgpt/web/components/common/Tag';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React, { useState } from 'react';
 
 export type ChangeOwnerModalProps = {
@@ -23,7 +23,7 @@ export function ChangeOwnerModal({
   name,
   onChangeOwner
 }: ChangeOwnerModalProps & { onClose: () => void }) {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation();
   const [inputValue, setInputValue] = React.useState('');
 
   const { data: teamMembers, ScrollData } = useScrollPagination(getTeamMembers, {
@@ -33,7 +33,7 @@ export function ChangeOwnerModal({
   const { data: searchedData } = useRequest(
     async () => {
       if (!inputValue) return;
-      return GetSearchUserGroupOrg(inputValue);
+      return getSearchMembersOrgsGroups(inputValue);
     },
     {
       manual: false,
@@ -49,9 +49,9 @@ export function ChangeOwnerModal({
     onClose: onCloseMemberListMenu,
     onOpen: onOpenMemberListMenu
   } = useDisclosure();
-  const [selectedMember, setSelectedMember] = useState<Omit<
-    TeamMemberItemType,
-    'permission' | 'teamId'
+  const [selectedMember, setSelectedMember] = useState<Pick<
+    SearchMembersOrgsGroupsResponseType['members'][number],
+    'tmbId' | 'memberName' | 'avatar'
   > | null>(null);
 
   const { runAsync, loading } = useRequest(onChangeOwner, {
@@ -72,14 +72,13 @@ export function ChangeOwnerModal({
       isOpen
       onClose={onClose}
       title={t('common:permission.change_owner')}
-      isLoading={loading}
       isCentered
       footer={
         <HStack spacing={3}>
           <Button onClick={onClose} variant={'whiteBase'}>
             {t('common:Cancel')}
           </Button>
-          <Button onClick={onConfirm} isDisabled={!selectedMember}>
+          <Button onClick={onConfirm} isDisabled={!selectedMember} isLoading={loading}>
             {t('common:Confirm')}
           </Button>
         </HStack>

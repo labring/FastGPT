@@ -1,4 +1,4 @@
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
@@ -8,7 +8,7 @@ import { isAuthorizedChatFileS3Key } from '@fastgpt/service/common/s3/sources/ch
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 
 async function handler(req: ApiRequestProps): Promise<string> {
-  const { key, chatId, sourceType, sourceId, mode, outLinkAuthData } = parseApiInput({
+  const { key, chatId, sourceType, sourceId, outLinkAuthData } = parseApiInput({
     req,
     bodySchema: PresignChatFileGetUrlSchema
   }).body;
@@ -36,7 +36,7 @@ async function handler(req: ApiRequestProps): Promise<string> {
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
 
-  const { url } = await getS3ChatSource().createGetChatFileURL({ key, external: true, mode });
+  const { url } = await getS3ChatSource().createGetChatFileURL({ key, external: true });
 
   return url;
 }

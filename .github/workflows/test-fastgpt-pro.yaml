@@ -35,7 +35,6 @@ jobs:
 
     permissions:
       contents: read
-      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
@@ -45,6 +44,7 @@ jobs:
           repository: ${{ github.event_name == 'pull_request_target' &&
             github.event.pull_request.head.repo.full_name || github.repository
             }}
+          allow-unsafe-pr-checkout: true
       - name: Update submodules
         env:
           PRO_SUBMODULE_TOKEN: ${{ secrets.PRO_SUBMODULE_TOKEN }}
@@ -76,8 +76,32 @@ jobs:
         env:
           INVOKE_TOKEN_SECRET: fastgpt_test_invoke_token_secret_32
         run: pnpm test:admin
-      - name: Report Coverage
+      - name: Upload Coverage
         if: always() && hashFiles('pro/admin/coverage/coverage-summary.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-fastgpt-pro
+          path: |
+            pro/admin/coverage/coverage-final.json
+            pro/admin/coverage/coverage-summary.json
+          retention-days: 1
+
+  report-coverage:
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Download Coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-fastgpt-pro
+          path: pro/admin/coverage
+        continue-on-error: true
+      - name: Report Coverage
+        if: hashFiles('pro/admin/coverage/coverage-summary.json') != ''
         uses: davelosert/vitest-coverage-report-action@v2
         with:
           json-final-path: pro/admin/coverage/coverage-final.json

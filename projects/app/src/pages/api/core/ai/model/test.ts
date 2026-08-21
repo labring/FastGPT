@@ -1,4 +1,4 @@
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
@@ -134,6 +134,7 @@ const testSTTModel = async (model: STTModelType, headers: Record<string, string>
   const { text } = await aiTranscriptions({
     model,
     fileStream: fs.createReadStream(path),
+    filename: 'test.mp3',
     headers
   });
   logger.info(`STT result: ${text}`);

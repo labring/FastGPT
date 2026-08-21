@@ -16,6 +16,16 @@ import {
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
+// 后端返回的 file.filename/name 已是解码后的纯文件名，但仍可能包含字面 %（如 `¥%……`）。
+// 直接 decodeURIComponent 会抛 URIError；这里安全解码，兼容历史百分号编码数据且不崩溃。
+const safeDecodeURIComponent = (value: string) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
 const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
   const router = useRouter();
@@ -59,7 +69,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
       },
       {
         label: t('dataset:collection_name'),
-        value: decodeURIComponent(
+        value: safeDecodeURIComponent(
           collection.file?.filename || collection?.rawLink || collection?.name
         )
       },

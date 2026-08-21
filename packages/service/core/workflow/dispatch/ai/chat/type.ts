@@ -6,7 +6,7 @@ import type {
   AIChatNodeProps,
   DispatchNodeResultType,
   ModuleDispatchProps
-} from '@fastgpt/global/core/workflow/runtime/type';
+} from '../../../types/runtime';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
@@ -25,14 +25,4 @@ export type ChatResponse = DispatchNodeResultType<
   {
     [NodeOutputKeyEnum.errorText]: string;
   }
->;
-
-export type ChatMessageFileParser = (urls: string[]) => Promise<
-  {
-    id?: string;
-    name: string;
-    url: string;
-    sandboxPath?: string;
-    content?: string;
-  }[]
 >;

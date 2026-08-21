@@ -14,6 +14,7 @@ RUN npm install -g pnpm@10.33.2
 
 # 复制 workspace 配置和依赖包
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.json ./
+COPY packages/dal ./packages/dal
 COPY packages/global ./packages/global
 COPY packages/service ./packages/service
 COPY sdk ./sdk

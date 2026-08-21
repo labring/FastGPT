@@ -33,6 +33,7 @@ import {
   toChatAuthApiTarget
 } from '@/web/core/chat/utils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { resolveChatFileUploadMode } from './utils/file';
 
 export type ChatProviderProps = {
   /** 标准内部 chat target。ChatBox 不再接收 appId/skillId raw 形态。 */
@@ -56,6 +57,7 @@ export type ChatProviderProps = {
 
 type useChatStoreType = Omit<ChatProviderProps, 'sourceTarget' | 'chatId' | 'outLinkAuthData'> & {
   welcomeText: string;
+  welcomeQuestions: string[];
   variableList: VariableItemType[];
   questionGuide: AppQGConfigType;
   ttsConfig: AppTTSConfigType;
@@ -87,6 +89,7 @@ type useChatStoreType = Omit<ChatProviderProps, 'sourceTarget' | 'chatId' | 'out
 
 export const ChatBoxContext = createContext<useChatStoreType>({
   welcomeText: '',
+  welcomeQuestions: [],
   variableList: [],
   questionGuide: {
     open: false,
@@ -163,7 +166,14 @@ const Provider = ({
 
   const welcomeText = useContextSelector(
     ChatItemContext,
-    (v) => v.chatBoxData?.app?.chatConfig?.welcomeText ?? ''
+    (v) =>
+      v.chatBoxData?.app?.chatConfig?.welcomeConfig?.welcomeText ??
+      v.chatBoxData?.app?.chatConfig?.welcomeText ??
+      ''
+  );
+  const welcomeQuestions = useContextSelector(
+    ChatItemContext,
+    (v) => v.chatBoxData?.app?.chatConfig?.welcomeConfig?.welcomeQuestions ?? []
   );
   const variables = useContextSelector(
     ChatItemContext,
@@ -195,6 +205,10 @@ const Provider = ({
     ChatItemContext,
     (v) => v.chatBoxData?.app?.chatConfig?.fileSelectConfig ?? defaultAppSelectFileConfig
   );
+  const fileUploadMode = resolveChatFileUploadMode({
+    chatType,
+    sourceType: sourceTarget.sourceType
+  });
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
@@ -275,6 +289,7 @@ const Provider = ({
   const value: useChatStoreType = {
     ...props,
     welcomeText,
+    welcomeQuestions,
     variableList: variables,
     questionGuide,
     ttsConfig,
@@ -301,6 +316,7 @@ const Provider = ({
       sourceTarget={sourceTarget}
       chatId={chatId}
       outLinkAuthData={formatOutLinkAuth}
+      fileUploadMode={fileUploadMode}
     >
       <ChatBoxContext.Provider value={value}>{children}</ChatBoxContext.Provider>
     </WorkflowRuntimeContextProvider>

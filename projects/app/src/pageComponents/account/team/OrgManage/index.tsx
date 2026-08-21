@@ -21,7 +21,7 @@ import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useMemo, useState } from 'react';
 import MemberTag from '@/components/support/user/team/Info/MemberTag';
 import { deleteOrg, deleteOrgMember } from '@/web/support/user/team/org/api';
@@ -36,6 +36,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { delRemoveMember } from '@/web/support/user/team/api';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import useOrg from '@/web/support/user/team/org/hooks/useOrg';
+import { getIsMemberSyncMode } from '@/web/common/system/utils';
 
 const OrgInfoModal = dynamic(() => import('./OrgInfoModal'));
 const OrgMemberManageModal = dynamic(() => import('./OrgMemberManageModal'));
@@ -71,10 +72,10 @@ function ActionButton({
 }
 
 function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_team');
   const { userInfo, isTeamAdmin } = useUserStore();
   const { feConfigs } = useSystemStore();
-  const isSyncMember = feConfigs.register_method?.includes('sync');
+  const isSyncMember = getIsMemberSyncMode(feConfigs);
   const [editOrg, setEditOrg] = useState<OrgFormType>();
   const [manageMemberOrg, setManageMemberOrg] = useState<OrgListItemType>();
   const [movingOrg, setMovingOrg] = useState<OrgListItemType>();

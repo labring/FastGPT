@@ -24,6 +24,8 @@ export type StorageBucketName = string;
  * 说明：
  * - 在同一个 bucket 内唯一标识一个对象。
  * - 通常形如：`a/b/c.txt`（用 `/` 形成“目录”层级，但对象存储并不是真正的目录结构）。
+ * - SDK 统一限制为 1 - 800 UTF-8 bytes，并拒绝不可移植的控制字符、反斜线、空路径段和 `.`/`..` 路径段。
+ * - 空格、`+`、`#`、`&`、`%`、`?`、中文和 emoji 均为合法字符，由 adapter 在 URL 层编码。
  */
 export type StorageObjectKey = string;
 
@@ -121,11 +123,111 @@ export type UploadObjectResult = {
 };
 
 /**
+ * Multipart 上传完成时提交的分片回执。
+ *
+ * `etag` 由对象存储在上传分片时返回，业务层不应自行计算或修改。
+ */
+export type MultipartUploadPart = {
+  /** 分片编号，从 1 开始。 */
+  partNumber: number;
+  /** 对象存储返回的分片 ETag。 */
+  etag: string;
+};
+
+/** 初始化 Multipart 上传入参。 */
+export type CreateMultipartUploadParams = {
+  /** 对象 key。 */
+  key: StorageObjectKey;
+  /** MIME 类型（Content-Type），可选。 */
+  contentType?: string;
+  /** 内容展示方式（Content-Disposition），可选。 */
+  contentDisposition?: string;
+  /** 自定义元数据，可选。 */
+  metadata?: StorageObjectMetadata;
+};
+
+/** 初始化 Multipart 上传结果。 */
+export type CreateMultipartUploadResult = {
+  /** bucket 名称。 */
+  bucket: StorageBucketName;
+  /** 对象 key。 */
+  key: StorageObjectKey;
+  /** 厂商生成的 Multipart upload id，仅供服务端使用。 */
+  uploadId: string;
+};
+
+/** 上传单个 Multipart 分片入参。 */
+export type UploadMultipartPartParams = {
+  /** 对象 key。 */
+  key: StorageObjectKey;
+  /** 初始化 Multipart 时返回的 upload id。 */
+  uploadId: string;
+  /** 分片编号，从 1 开始。 */
+  partNumber: number;
+  /** 当前分片内容。 */
+  body: StorageUploadBody;
+  /** 当前分片字节数，避免依赖 chunked 传输。 */
+  contentLength: number;
+};
+
+/** 上传单个 Multipart 分片结果。 */
+export type UploadMultipartPartResult = {
+  /** bucket 名称。 */
+  bucket: StorageBucketName;
+  /** 对象 key。 */
+  key: StorageObjectKey;
+  /** Multipart upload id。 */
+  uploadId: string;
+  /** 分片编号。 */
+  partNumber: number;
+  /** 对象存储返回的分片 ETag。 */
+  etag: string;
+};
+
+/** 完成 Multipart 上传入参。 */
+export type CompleteMultipartUploadParams = {
+  /** 对象 key。 */
+  key: StorageObjectKey;
+  /** 初始化 Multipart 时返回的 upload id。 */
+  uploadId: string;
+  /** 已成功上传的分片回执，按分片编号提交。 */
+  parts: MultipartUploadPart[];
+};
+
+/** 完成 Multipart 上传结果。 */
+export type CompleteMultipartUploadResult = {
+  /** bucket 名称。 */
+  bucket: StorageBucketName;
+  /** 已生成的最终对象 key。 */
+  key: StorageObjectKey;
+};
+
+/** 取消 Multipart 上传入参。 */
+export type AbortMultipartUploadParams = {
+  /** 对象 key。 */
+  key: StorageObjectKey;
+  /** 初始化 Multipart 时返回的 upload id。 */
+  uploadId: string;
+};
+
+/** 取消 Multipart 上传结果。 */
+export type AbortMultipartUploadResult = {
+  /** bucket 名称。 */
+  bucket: StorageBucketName;
+  /** 对象 key。 */
+  key: StorageObjectKey;
+  /** 被取消的 Multipart upload id。 */
+  uploadId: string;
+};
+
+/**
  * 下载对象入参。
  */
 export type DownloadObjectParams = {
   /** 对象 key。 */
   key: StorageObjectKey;
+  /** 调用方停止消费时用于取消底层下载请求并释放连接。 */
+  abortSignal?: AbortSignal;
 };
 
 /**
@@ -240,7 +342,10 @@ export type PresignedGetUrlParams = {
   key: StorageObjectKey;
   /** 过期时间（秒），可选，默认 1800 秒。 */
   expiredSeconds?: number;
-  /** 覆盖下载响应的 Content-Type。 */
+  /**
+   * 请求覆盖下载响应的 Content-Type。
+   * 若底层 provider 不支持响应头覆盖，则沿用对象保存时的 Content-Type。
+   */
   responseContentType?: string;
 };
 

@@ -5,7 +5,6 @@ import {
   SANDBOX_WRITE_FILE_TOOL_NAME
 } from '@fastgpt/global/core/ai/sandbox/tools';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
 
 const runtimeMock = vi.hoisted(() => ({
   getSandboxClient: vi.fn()
@@ -17,11 +16,6 @@ const fileApplicationMock = vi.hoisted(() => ({
 
 const mirrorMock = vi.hoisted(() => ({
   prepareSandboxRuntimeMirrors: vi.fn()
-}));
-
-const s3Mock = vi.hoisted(() => ({
-  uploadChatFile: vi.fn(),
-  createGetChatFileURL: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/client', () => ({
@@ -40,13 +34,6 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile
   getSandboxRuntimeProfile: () => ({ workDirectory: '/workspace' })
 }));
 
-vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
-  getS3ChatSource: () => ({
-    uploadChatFile: s3Mock.uploadChatFile,
-    createGetChatFileURL: s3Mock.createGetChatFileURL
-  })
-}));
-
 import {
   getSandboxToolInfo,
   prepareSandboxToolRuntime,
@@ -57,8 +44,17 @@ const createSandboxInstance = () =>
   ({
     ensureAvailable: vi.fn(async () => undefined),
     exec: vi.fn(async () => ({ stdout: 'out', stderr: '', exitCode: 0 })),
+    getRuntimePaths: vi.fn(() => ({
+      workspaceRoot: '/workspace',
+      runtimeSkillsRoot: '/workspace/projects',
+      sessionWorkDirectory: '/workspace/sessions/chat'
+    })),
+    resolveRuntimePath: vi.fn((path: string) =>
+      path.startsWith('/') ? path : `/workspace/sessions/chat/${path}`
+    ),
     provider: {
-      readFiles: vi.fn(async () => [{ content: 'a\nb\nc' }])
+      readFiles: vi.fn(async () => [{ content: 'a\nb\nc' }]),
+      deleteFiles: vi.fn(async () => [])
     }
   }) as any;
 
@@ -71,35 +67,22 @@ describe('sandbox toolCall index', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     runtimeMock.getSandboxClient.mockResolvedValue(createSandboxInstance());
-    s3Mock.uploadChatFile.mockResolvedValue({ key: 'chat/file.txt' });
-    s3Mock.createGetChatFileURL.mockResolvedValue({ url: 'signed-url' });
   });
 
-  it('executes known tools through a fetched sandbox client', async () => {
+  it('executes known tools through a prepared sandbox client', async () => {
+    const sandboxClient = createSandboxInstance();
     await expect(
       runSandboxTools({
-        ...appSource,
-        userId: 'user',
-        chatId: 'chat',
         toolName: SANDBOX_SHELL_TOOL_NAME,
-        args: JSON.stringify({ command: 'pwd' })
+        args: JSON.stringify({ command: 'pwd' }),
+        sandboxClient
       })
     ).resolves.toMatchObject({
       success: true,
       input: { command: 'pwd' },
-      response: JSON.stringify({ stdout: 'out', stderr: '', exitCode: 0 })
+      response: 'out'
     });
-
-    expect(runtimeMock.getSandboxClient).toHaveBeenCalledWith(
-      {
-        sandboxId: generateSandboxId('app', 'user', 'chat'),
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: 'app',
-        userId: 'user',
-        chatId: 'chat'
-      },
-      { failedArchivePolicy: 'clearAndContinue' }
-    );
+    expect(runtimeMock.getSandboxClient).not.toHaveBeenCalled();
   });
 
   it('reports unknown tools and invalid arguments', async () => {
@@ -125,7 +108,7 @@ describe('sandbox toolCall index', () => {
         userId: 'user',
         chatId: 'chat',
         toolName: SANDBOX_READ_FILE_TOOL_NAME,
-        args: JSON.stringify({ path: '/workspace/a.txt', startLine: 3, endLine: 1 }),
+        args: JSON.stringify({ path: '/workspace/a.txt', offset: 0 }),
         sandboxClient: sandbox
       })
     ).resolves.toMatchObject({
@@ -150,7 +133,10 @@ describe('sandbox toolCall index', () => {
     });
 
     expect(runtimeMock.getSandboxClient).not.toHaveBeenCalled();
-    expect(sandbox.exec).toHaveBeenCalledWith('pwd', undefined);
+    expect(sandbox.exec).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/bin\/bash -c 'pwd' > '\/tmp\/fastgpt-bash-[^']+\.log' 2>&1/),
+      undefined
+    );
   });
 
   it('injects sandbox files into the session sandbox', async () => {
@@ -176,11 +162,17 @@ describe('sandbox toolCall index', () => {
     );
     expect(fileApplicationMock.writeUrlFilesToSandbox).toHaveBeenCalledWith(
       sandbox.provider,
-      files
+      files,
+      undefined
     );
   });
 
   it('returns localized tool info for known sandbox tools', () => {
+    expect(getSandboxToolInfo(SANDBOX_SHELL_TOOL_NAME, 'zh-CN')).toMatchObject({
+      name: '虚拟机/执行命令',
+      avatar: expect.any(String),
+      toolDescription: expect.any(String)
+    });
     expect(getSandboxToolInfo(SANDBOX_WRITE_FILE_TOOL_NAME)).toMatchObject({
       avatar: expect.any(String),
       toolDescription: expect.any(String)

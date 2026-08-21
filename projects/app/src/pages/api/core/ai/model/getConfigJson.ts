@@ -1,17 +1,17 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
 
-export type getConfigJsonQuery = {};
+export type getConfigJsonQuery = Record<string, never>;
 
-export type getConfigJsonBody = {};
+export type getConfigJsonBody = Record<string, never>;
 
-export type getConfigJsonResponse = {};
+export type getConfigJsonResponse = string;
 
 async function handler(
   req: ApiRequestProps<getConfigJsonBody, getConfigJsonQuery>,
-  res: ApiResponseType<any>
+  _res: ApiResponseType<any>
 ): Promise<getConfigJsonResponse> {
   await authSystemAdmin({ req });
   const data = await MongoSystemModel.find({}).lean();

@@ -27,6 +27,33 @@ describe('_storage filename callback', () => {
     expect(cb).toHaveBeenCalledWith(null, expect.stringMatching(/^.+\.docx$/));
   });
 
+  it('should preserve the extension from a raw Unicode filename', () => {
+    const cb = vi.fn();
+    const file = { originalname: '中文文件.docx' } as Express.Multer.File;
+
+    (multer._storage as any).getFilename(null, file, cb);
+
+    expect(cb).toHaveBeenCalledWith(null, expect.stringMatching(/^.+\.docx$/));
+  });
+
+  it('should fall back safely when a historical filename contains an invalid URI escape', () => {
+    const cb = vi.fn();
+    const file = { originalname: '100%.txt' } as Express.Multer.File;
+
+    (multer._storage as any).getFilename(null, file, cb);
+
+    expect(cb).toHaveBeenCalledWith(null, expect.stringMatching(/^.+\.txt$/));
+  });
+
+  it('should preserve an ASCII filename containing a literal encoded-looking percent value', () => {
+    const cb = vi.fn();
+    const file = { originalname: 'file%20name.txt' } as Express.Multer.File;
+
+    (multer._storage as any).getFilename(null, file, cb);
+
+    expect(cb).toHaveBeenCalledWith(null, expect.stringMatching(/^.+\.txt$/));
+  });
+
   it('should return error when file has no originalname', () => {
     const cb = vi.fn();
     const file = {} as Express.Multer.File;

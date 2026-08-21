@@ -1,13 +1,9 @@
-import { cloneDeep } from 'lodash';
+import { cloneDeep } from 'lodash-es';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import type {
-  DispatchNodeResultType,
-  ModuleDispatchProps
-} from '@fastgpt/global/core/workflow/runtime/type';
+import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import {
@@ -15,8 +11,6 @@ import {
   storeEdges2RuntimeEdges
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
-import type { WorkflowNodeResponseWriter } from '../../../chat/nodeResponseStorage';
-
 import { serviceEnv } from '../../../../env';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { runWorkflow } from '..';
@@ -40,10 +34,7 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum;
   [NodeInputKeyEnum.loopRunInputArray]?: Array<any>;
   [NodeInputKeyEnum.childrenNodeIdList]: string[];
-}> & {
-  nodeResponseWriter?: WorkflowNodeResponseWriter;
-  nodeResponseParentId?: string;
-};
+}>;
 
 type Response = DispatchNodeResultType<Record<string, any>>;
 
@@ -166,6 +157,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     const isResumeIteration = !!interactiveData && iteration === resumeIteration;
     const loopRunNodeResponseId = props.nodeResponseParentId || node.nodeId;
     const iterationResponseId = `${loopRunNodeResponseId}:iter:${iteration}`;
+    const iterationStartTime = Date.now();
 
     if (isResumeIteration) {
       isolatedNodes.forEach((n) => {
@@ -208,7 +200,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       response
     });
     const iterationChildResponseCount = wrapperSummary.childResponseCount;
-    const iterationRunningTime = wrapperSummary.runningTime;
+    const iterationRunningTime = +((Date.now() - iterationStartTime) / 1000).toFixed(2);
     assistantResponses.push(...response.assistantResponses);
     const iterationTotalPoints = pushSubWorkflowUsage({
       usagePush: props.usagePush,
@@ -232,7 +224,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     });
 
     // Wrap this iteration as a virtual task node so the whole-response tree
-    // shows a per-iteration layer through writer/event. Parent loopRun only keeps
+    // shows a per-iteration layer through sink. Parent loopRun only keeps
     // summary stats and business history.
     const pushIterationDetail = async (opts: { error?: string }) => {
       const wrapper = {
@@ -249,16 +241,13 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
         childResponseCount: iterationChildResponseCount
       };
       childResponseCount += 1 + (wrapper.childResponseCount || 0);
-      if (props.nodeResponseWriter) {
-        const recordedWrappers = await props.nodeResponseWriter.recordWithParent(
-          [wrapper],
-          props.nodeResponseParentId
-        );
-        if (props.apiVersion === 'v2') {
-          recordedWrappers.forEach((item) => {
-            props.workflowStreamResponse?.(workflowSseEvent.flowNodeResponse(item));
-          });
-        }
+      if (props.nodeResponseSink) {
+        await props.nodeResponseSink.publish([
+          {
+            response: wrapper,
+            parentId: props.nodeResponseParentId
+          }
+        ]);
       }
     };
 

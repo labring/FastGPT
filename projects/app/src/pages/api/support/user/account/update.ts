@@ -1,23 +1,30 @@
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { type UserUpdateParams } from '@/types/user';
 
 /* update user info */
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  UpdateUserAccountBodySchema,
+  UpdateUserAccountResponseSchema,
+  type UpdateUserAccountBody,
+  type UpdateUserAccountResponse
+} from '@fastgpt/global/openapi/support/user/account/update/api';
 
-export type UserAccountUpdateQuery = {};
-export type UserAccountUpdateBody = UserUpdateParams;
-export type UserAccountUpdateResponse = {};
+export type UserAccountUpdateQuery = Record<string, never>;
 
 async function handler(
-  req: ApiRequestProps<UserAccountUpdateBody, UserAccountUpdateQuery>,
+  req: ApiRequestProps<UpdateUserAccountBody, UserAccountUpdateQuery>,
   _res: ApiResponseType<any>
-): Promise<UserAccountUpdateResponse> {
-  const { avatar, timezone, language } = req.body;
+): Promise<UpdateUserAccountResponse> {
+  const { avatar, timezone, language } = parseApiInput({
+    req,
+    bodySchema: UpdateUserAccountBodySchema
+  }).body;
 
   const { tmbId } = await authCert({ req, authToken: true });
   // const user = await getUserDetail({ tmbId });
@@ -44,6 +51,6 @@ async function handler(
     }
   });
 
-  return {};
+  return UpdateUserAccountResponseSchema.parse({});
 }
 export default NextAPI(handler);

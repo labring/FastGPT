@@ -4,7 +4,15 @@
  * 统一把 sandbox 业务错误转换成 UserError，不承载 provider 或数据库逻辑。
  */
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+
+/** 表示 keepalive 等禁止创建的路径没有可继续使用的 running sandbox。 */
+export class SandboxRuntimeNotRunningError extends Error {
+  constructor(readonly sandboxId: string) {
+    super('Sandbox runtime instance is not running');
+    this.name = 'SandboxRuntimeNotRunningError';
+  }
+}
 
 /**
  * 生成 Agent 虚拟机权限错误。
@@ -23,3 +31,7 @@ export const createAgentSandboxPermissionDeniedError = () =>
  */
 export const createAgentSandboxInitializingError = () =>
   new UserError(SandboxErrEnum.agentSandboxInitializing);
+
+/** 将底层迁移异常转换为可展示且经过敏感信息替换的用户错误。 */
+export const createSandboxRuntimeUpgradeFailedError = (error: unknown) =>
+  new UserError(getErrText(error, SandboxErrEnum.runtimeUpgradeFailed));

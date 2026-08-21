@@ -6,7 +6,6 @@ declare global {
   var datasetParseQueueLen: number;
 
   interface Window {
-    grecaptcha: any;
     QRCode: any;
     umami?: {
       track: (event: TrackEventName, data: any) => void;

@@ -389,7 +389,7 @@ const AIChatSettingsModal = ({
             )}
             {showMultimodalSetting && (
               <SettingRow
-                label={t('app:llm_use_multimodal')}
+                label={multimodalSettingLabel}
                 switchControl={
                   !supportParams.multimodal ? (
                     <Box fontSize={'sm'} color={'myGray.500'}>

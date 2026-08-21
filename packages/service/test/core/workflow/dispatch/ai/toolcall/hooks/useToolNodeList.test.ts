@@ -53,7 +53,16 @@ describe('useToolNodeList', () => {
               valueType: 'string',
               toolDescription: 'Query',
               required: true,
-              renderTypeList: [FlowNodeInputTypeEnum.input]
+              selectedType: FlowNodeInputTypeEnum.agentGenerated,
+              renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+            },
+            {
+              key: 'apiKey',
+              valueType: 'string',
+              toolDescription: 'Developer config',
+              required: true,
+              value: 'secret',
+              renderTypeList: [FlowNodeInputTypeEnum.password]
             },
             {
               key: NodeInputKeyEnum.toolData,
@@ -76,12 +85,12 @@ describe('useToolNodeList', () => {
         intro: 'Search intro',
         toolDescription: 'Search data',
         jsonSchema: inputSchema,
-        toolParams: [
+        inputs: expect.arrayContaining([
           expect.objectContaining({
             key: 'q',
             toolDescription: 'Query'
           })
-        ]
+        ])
       })
     ]);
   });
@@ -141,6 +150,107 @@ describe('useToolNodeList', () => {
     ]);
   });
 
+  it('uses normalized selectedType from the runtime boundary', () => {
+    const result = useToolNodeList({
+      nodeId: 'toolcall',
+      runtimeEdges: [
+        {
+          source: 'toolcall',
+          target: 'tool_1',
+          targetHandle: NodeOutputKeyEnum.selectedTools
+        }
+      ] as any,
+      runtimeNodes: [
+        createToolNode({
+          inputs: [
+            {
+              key: 'query',
+              valueType: 'string',
+              required: true,
+              isToolParam: true,
+              renderTypeList: [
+                FlowNodeInputTypeEnum.agentGenerated,
+                FlowNodeInputTypeEnum.input,
+                FlowNodeInputTypeEnum.reference
+              ],
+              selectedType: FlowNodeInputTypeEnum.agentGenerated
+            }
+          ]
+        })
+      ]
+    });
+
+    expect(result[0].inputs).toEqual([
+      expect.objectContaining({
+        key: 'query',
+        selectedType: FlowNodeInputTypeEnum.agentGenerated,
+        renderTypeList: [
+          FlowNodeInputTypeEnum.agentGenerated,
+          FlowNodeInputTypeEnum.input,
+          FlowNodeInputTypeEnum.reference
+        ]
+      })
+    ]);
+  });
+
+  it('reads normalized system tool input modes', () => {
+    const runtimeNodes = [
+      createToolNode({
+        nodeId: 'mkJ7eY',
+        toolConfig: {
+          systemTool: {
+            toolId: 'bocha'
+          }
+        },
+        inputs: [
+          {
+            key: 'query',
+            valueType: 'string',
+            required: true,
+            toolDescription: 'Search query',
+            renderTypeList: [
+              FlowNodeInputTypeEnum.agentGenerated,
+              FlowNodeInputTypeEnum.input,
+              FlowNodeInputTypeEnum.reference
+            ],
+            selectedType: FlowNodeInputTypeEnum.agentGenerated
+          },
+          {
+            key: 'freshness',
+            valueType: 'string',
+            value: 'noLimit',
+            renderTypeList: [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.reference],
+            selectedType: FlowNodeInputTypeEnum.select
+          }
+        ]
+      })
+    ];
+    const result = useToolNodeList({
+      nodeId: 'toolcall',
+      runtimeEdges: [
+        {
+          source: 'toolcall',
+          target: 'mkJ7eY',
+          targetHandle: NodeOutputKeyEnum.selectedTools
+        }
+      ] as any,
+      runtimeNodes
+    });
+
+    expect(result[0].inputs).toEqual([
+      expect.objectContaining({
+        key: 'query',
+        selectedType: FlowNodeInputTypeEnum.agentGenerated
+      }),
+      expect.objectContaining({
+        key: 'freshness',
+        value: 'noLimit',
+        selectedType: FlowNodeInputTypeEnum.select
+      })
+    ]);
+    expect(runtimeNodes[0].inputs).toEqual(result[0].inputs);
+  });
+
   it('keeps existing jsonSchema when no toolData schema is provided', () => {
     const jsonSchema = {
       type: 'object',
@@ -172,6 +282,5 @@ describe('useToolNodeList', () => {
     });
 
     expect(result[0].jsonSchema).toBe(jsonSchema);
-    expect(result[0].toolParams).toEqual([]);
   });
 });

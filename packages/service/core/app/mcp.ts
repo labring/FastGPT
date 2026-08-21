@@ -14,6 +14,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import $RefParser from '@apidevtools/json-schema-ref-parser';
 import { getLogger, LogCategories } from '../../common/logger';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
+import { decodeMcpToolSetNodesFromStorage } from './jsonSchemaStorage';
 
 const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
 
@@ -269,20 +270,6 @@ export class MCPClient {
             fetch: safeFetch,
             requestInit: {
               headers: this.headers
-            },
-            eventSourceInit: {
-              fetch: (url, init) => {
-                const mergedHeaders = {
-                  ...this.headers
-                };
-
-                Object.assign(mergedHeaders, headersInitToRecord(init?.headers));
-
-                return safeFetch(url, {
-                  ...init,
-                  headers: mergedHeaders
-                });
-              }
             }
           })
         );
@@ -422,12 +409,13 @@ export class MCPClient {
 }
 
 export const getMCPChildren = async (app: AppSchemaType) => {
-  const isNewMcp = !!app.modules[0].toolConfig?.mcpToolSet;
+  const modules = decodeMcpToolSetNodesFromStorage(app.modules);
+  const isNewMcp = !!modules[0].toolConfig?.mcpToolSet;
   const id = String(app._id);
 
   if (isNewMcp) {
     return (
-      app.modules[0].toolConfig?.mcpToolSet?.toolList.map((item) => ({
+      modules[0].toolConfig?.mcpToolSet?.toolList.map((item) => ({
         ...item,
         id: `${AppToolSourceEnum.mcp}-${id}/${item.name}`,
         avatar: app.avatar

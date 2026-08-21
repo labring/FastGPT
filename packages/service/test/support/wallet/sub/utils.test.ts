@@ -18,10 +18,10 @@ import {
   getTeamStandPlan,
   getTeamPlanStatus,
   teamPoint,
-  teamQPM,
-  clearTeamPlanCache
+  teamQPM
 } from '@fastgpt/service/support/wallet/sub/utils';
 import { MongoTeamSub } from '@fastgpt/service/support/wallet/sub/schema';
+import { redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 
 // Valid ObjectId for testing
 const mockTeamId = '507f1f77bcf86cd799439011';
@@ -220,25 +220,44 @@ describe('getStandardPlanConfig', () => {
     expect(result).toBe(mockAdvancedPlan);
   });
 
-  it('返回 custom 级别配置', () => {
-    const mockCustomPlan: TeamStandardSubPlanItemType = {
-      price: 999,
-      totalPoints: 50000,
+  it('custom 级别缺失字段时继承 advanced，并保留自身覆盖字段', () => {
+    const mockAdvancedPlan: TeamStandardSubPlanItemType = {
+      ...baseConstants,
+      name: 'Advanced Plan',
+      totalPoints: 25000,
+      maxTeamMember: 50
+    };
+    const mockCustomPlan = {
+      name: 'Custom Plan',
+      customFormUrl: 'https://example.com/contact',
       maxTeamMember: 200,
-      maxAppAmount: 1000,
-      maxDatasetAmount: 500,
-      chatHistoryStoreDuration: 365,
-      maxDatasetSize: 2000
+      maxDatasetSize: undefined
     };
 
     (global as any).subPlans = {
       standard: {
+        [StandardSubLevelEnum.advanced]: mockAdvancedPlan,
         [StandardSubLevelEnum.custom]: mockCustomPlan
       }
     };
 
     const result = getStandardPlanConfig(StandardSubLevelEnum.custom);
-    expect(result).toBe(mockCustomPlan);
+    expect(result).toEqual({
+      ...mockAdvancedPlan,
+      name: mockCustomPlan.name,
+      customFormUrl: mockCustomPlan.customFormUrl,
+      maxTeamMember: mockCustomPlan.maxTeamMember
+    });
+  });
+
+  it('缺少 advanced 配置时不构造 custom 运行时套餐', () => {
+    (global as any).subPlans = {
+      standard: {
+        [StandardSubLevelEnum.custom]: { customFormUrl: 'https://example.com/contact' }
+      }
+    };
+
+    expect(getStandardPlanConfig(StandardSubLevelEnum.custom)).toBeUndefined();
   });
 
   it('global.subPlans 不存在时返回 undefined', () => {
@@ -463,6 +482,44 @@ describe('buildStandardPlan', () => {
       expect(result.totalPoints).toBe(1000);
       expect(result.surplusPoints).toBe(500);
       expect(result.currentExtraDatasetSize).toBe(0);
+    });
+
+    it('将旧套餐缺失的续订字段归一化为完整的新格式', () => {
+      const result = buildStandardPlan(
+        {
+          ...baseStandard,
+          currentMode: undefined,
+          nextMode: undefined,
+          nextSubLevel: undefined,
+          currentExtraDatasetSize: undefined
+        },
+        baseConstants
+      );
+
+      expect(result.currentMode).toBe(SubModeEnum.month);
+      expect(result.nextMode).toBe(SubModeEnum.month);
+      expect(result.nextSubLevel).toBe(StandardSubLevelEnum.basic);
+      expect(result.currentExtraDatasetSize).toBe(0);
+    });
+
+    it('保留实际计费产生的小数剩余积分', () => {
+      const result = buildStandardPlan({ ...baseStandard, surplusPoints: 499.5 }, baseConstants);
+
+      expect(result.surplusPoints).toBe(499.5);
+    });
+
+    it('将历史套餐中的无限积分归一化为 null', () => {
+      const result = buildStandardPlan(
+        {
+          ...baseStandard,
+          totalPoints: Infinity,
+          surplusPoints: Infinity
+        },
+        baseConstants
+      );
+
+      expect(result.totalPoints).toBeNull();
+      expect(result.surplusPoints).toBeNull();
     });
 
     it('annualBonusPoints 来自 standard', () => {
@@ -758,12 +815,101 @@ describe('getTeamStandPlan', () => {
 
     expect(result[SubTypeEnum.standard]).toBeUndefined();
   });
+
+  it.each([
+    [StandardSubLevelEnum.experience, 'Experience Plan', 5],
+    [StandardSubLevelEnum.team, 'Team Plan', 20],
+    [StandardSubLevelEnum.enterprise, 'Enterprise Plan', 100]
+  ])('未过期旧套餐 %s 使用自身配置，不映射套餐等级', async (level, name, maxTeamMember) => {
+    vi.spyOn(MongoTeamSub, 'find').mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          ...baseStandard,
+          currentSubLevel: level,
+          nextSubLevel: level,
+          expiredTime: new Date('2099-01-01')
+        }
+      ])
+    } as any);
+
+    (global as any).subPlans = {
+      standard: {
+        [StandardSubLevelEnum.basic]: {
+          ...baseConstants,
+          name: 'Basic Plan',
+          maxTeamMember: 1
+        },
+        [StandardSubLevelEnum.advanced]: {
+          ...baseConstants,
+          name: 'Advanced Plan',
+          maxTeamMember: 2
+        },
+        [level]: {
+          ...baseConstants,
+          name,
+          maxTeamMember
+        }
+      }
+    };
+
+    const result = await getTeamStandPlan({ teamId: mockTeamId });
+
+    expect(result.standard).toMatchObject({
+      currentSubLevel: level,
+      nextSubLevel: level,
+      name,
+      maxTeamMember
+    });
+  });
 });
 
 describe('getTeamPlanStatus', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     delete (global as any).subPlans;
+  });
+
+  it('未启用套餐限制时统一返回 null 而不是 Infinity', async () => {
+    vi.spyOn(MongoTeamSub, 'find').mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          ...baseStandard,
+          currentSubLevel: StandardSubLevelEnum.basic
+        }
+      ])
+    } as any);
+
+    const result = await getTeamPlanStatus({ teamId: mockTeamId });
+
+    expect(result.totalPoints).toBeNull();
+    expect(result.usedPoints).toBeNull();
+    expect(result.datasetMaxSize).toBeNull();
+  });
+
+  it('将历史套餐中的无限计算结果统一归一化为 null', async () => {
+    vi.spyOn(MongoTeamSub, 'find').mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          ...baseStandard,
+          totalPoints: Infinity,
+          surplusPoints: Infinity,
+          maxDatasetSize: Infinity
+        }
+      ])
+    } as any);
+    (global as any).subPlans = {
+      standard: {
+        [StandardSubLevelEnum.basic]: baseConstants
+      }
+    };
+
+    const result = await getTeamPlanStatus({ teamId: mockTeamId });
+
+    expect(result.totalPoints).toBeNull();
+    expect(result.usedPoints).toBeNull();
+    expect(result.datasetMaxSize).toBeNull();
+    expect(result.standard?.totalPoints).toBeNull();
+    expect(result.standard?.surplusPoints).toBeNull();
   });
 
   it('返回团队套餐状态（包含标准套餐）', async () => {
@@ -811,6 +957,89 @@ describe('getTeamPlanStatus', () => {
     expect(result.usedPoints).toBe(500); // 2000 - 1500
     expect(result.datasetMaxSize).toBe(100);
     expect(result[SubTypeEnum.standard]).toBeDefined();
+  });
+
+  it('does not wait for a finite point cache refresh', async () => {
+    vi.spyOn(MongoTeamSub, 'find').mockReturnValue({
+      lean: vi.fn().mockResolvedValue([baseStandard])
+    } as any);
+    (global as any).subPlans = {
+      standard: {
+        [StandardSubLevelEnum.basic]: baseConstants
+      }
+    };
+    const setPairSpy = vi
+      .spyOn(redisCacheAdapter, 'setPair')
+      .mockReturnValueOnce(new Promise<void>(() => {}));
+    const timeout = Symbol('timeout');
+
+    const result = await Promise.race([
+      getTeamPlanStatus({ teamId: mockTeamId }),
+      new Promise<typeof timeout>((resolve) => setTimeout(() => resolve(timeout), 100))
+    ]);
+
+    expect(result).not.toBe(timeout);
+    expect(setPairSpy).toHaveBeenCalledOnce();
+    setPairSpy.mockRestore();
+  });
+
+  it('does not wait for an unlimited point cache cleanup', async () => {
+    vi.spyOn(MongoTeamSub, 'find').mockReturnValue({
+      lean: vi.fn().mockResolvedValue([baseStandard])
+    } as any);
+    const deleteManySpy = vi
+      .spyOn(redisCacheAdapter, 'deleteMany')
+      .mockReturnValueOnce(new Promise<void>(() => {}));
+    const timeout = Symbol('timeout');
+
+    const result = await Promise.race([
+      getTeamPlanStatus({ teamId: mockTeamId }),
+      new Promise<typeof timeout>((resolve) => setTimeout(() => resolve(timeout), 100))
+    ]);
+
+    expect(result).not.toBe(timeout);
+    expect(deleteManySpy).toHaveBeenCalledOnce();
+    deleteManySpy.mockRestore();
+  });
+
+  it.each([
+    [StandardSubLevelEnum.experience, 60],
+    [StandardSubLevelEnum.team, 600],
+    [StandardSubLevelEnum.enterprise, 6000]
+  ])('未过期旧套餐 %s 的额度使用自身配置', async (level, maxDatasetSize) => {
+    vi.spyOn(MongoTeamSub, 'find').mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          ...baseStandard,
+          currentSubLevel: level,
+          nextSubLevel: level,
+          expiredTime: new Date('2099-01-01')
+        }
+      ])
+    } as any);
+
+    (global as any).subPlans = {
+      standard: {
+        [StandardSubLevelEnum.basic]: {
+          ...baseConstants,
+          maxDatasetSize: 1
+        },
+        [StandardSubLevelEnum.advanced]: {
+          ...baseConstants,
+          maxDatasetSize: 2
+        },
+        [level]: {
+          ...baseConstants,
+          maxDatasetSize
+        }
+      }
+    };
+
+    const result = await getTeamPlanStatus({ teamId: mockTeamId });
+
+    expect(result.standard?.currentSubLevel).toBe(level);
+    expect(result.standard?.maxDatasetSize).toBe(maxDatasetSize);
+    expect(result.datasetMaxSize).toBe(maxDatasetSize);
   });
 
   it('包含额外积分套餐', async () => {

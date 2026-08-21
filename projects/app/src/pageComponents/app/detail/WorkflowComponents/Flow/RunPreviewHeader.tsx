@@ -31,16 +31,7 @@ const RunPreviewHeader = ({
   onClose: () => void;
 }) => {
   return (
-    <Flex
-      minH="56px"
-      px="24px"
-      bg="white"
-      fontWeight={500}
-      color="myGray.900"
-      alignItems="center"
-      justifyContent="flex-start"
-      position="relative"
-    >
+    <>
       <MyTooltip label={chatId ? chatIdLabel : ''}>
         <Box cursor="pointer" onClick={onCopyChatId}>
           {title}
@@ -63,16 +54,18 @@ const RunPreviewHeader = ({
         </MyTooltip>
         <MyTooltip label={closeLabel}>
           <IconButton
-            icon={<MyIcon name="common/closeLight" w="16px" />}
-            variant="grayBase"
             size="smSquare"
+            icon={<MyIcon name="common/closeLight" w="20px" />}
+            variant="ghost"
+            bg="transparent"
+            borderRadius="md"
+            _hover={{ bg: 'myGray.05' }}
             aria-label={closeLabel}
             onClick={onClose}
-            bg="none"
           />
         </MyTooltip>
       </Flex>
-    </Flex>
+    </>
   );
 };
 

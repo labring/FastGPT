@@ -15,7 +15,7 @@ export const checkTeamAIPoints = async (teamId: string) => {
 
   const { totalPoints, usedPoints } = await teamPoint.getTeamPoints({ teamId });
 
-  if (usedPoints >= totalPoints) {
+  if (usedPoints !== null && totalPoints !== null && usedPoints >= totalPoints) {
     return Promise.reject(TeamErrEnum.aiPointsNotEnough);
   }
 
@@ -129,11 +129,11 @@ export const checkDatasetIndexLimit = async ({
 
   if (!standard) return;
 
-  if (usedDatasetIndexSize + insertLen >= datasetMaxSize) {
+  if (datasetMaxSize !== null && usedDatasetIndexSize + insertLen >= datasetMaxSize) {
     return Promise.reject(TeamErrEnum.datasetSizeNotEnough);
   }
 
-  if (usedPoints >= totalPoints) {
+  if (usedPoints !== null && totalPoints !== null && usedPoints >= totalPoints) {
     return Promise.reject(TeamErrEnum.aiPointsNotEnough);
   }
   return;

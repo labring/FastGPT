@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
-  sanitizeS3ObjectKey,
+  encodeS3ObjectKey,
   getFormatedFilename,
   truncateFilename,
   S3_FILENAME_MAX_LENGTH,
@@ -8,6 +8,14 @@ import {
   getFileS3Key
 } from '@fastgpt/service/common/s3/utils';
 import * as stringTools from '@fastgpt/global/common/string/tools';
+import { StorageObjectKeySchema } from '@fastgpt/service/common/s3/contracts/type';
+
+describe('uploadImage2S3Bucket', () => {
+  it('does not transform the upload key schema value', () => {
+    const key = 'dataset/team/image #1.png';
+    expect(StorageObjectKeySchema.parse(key)).toBe(key);
+  });
+});
 
 describe('truncateFilename', () => {
   it('should return filename as-is if within max length', () => {
@@ -149,25 +157,25 @@ describe('getFormatedFilename', () => {
     });
   });
 
-  describe('parentheses sanitization', () => {
-    it('should replace opening parenthesis with opening bracket', () => {
+  describe('parentheses encoding', () => {
+    it('should preserve opening parenthesis as encodeURIComponent does', () => {
       const result = getFormatedFilename('file(name).pdf');
 
-      expect(result.formatedFilename).toBe('file[name]_abc123');
+      expect(result.formatedFilename).toBe('file(name)_abc123');
       expect(result.extension).toBe('pdf');
     });
 
-    it('should replace closing parenthesis with closing bracket', () => {
+    it('should preserve closing parenthesis as encodeURIComponent does', () => {
       const result = getFormatedFilename('file(test).pdf');
 
-      expect(result.formatedFilename).toBe('file[test]_abc123');
+      expect(result.formatedFilename).toBe('file(test)_abc123');
       expect(result.extension).toBe('pdf');
     });
 
-    it('should replace multiple parentheses', () => {
+    it('should preserve multiple parentheses as encodeURIComponent does', () => {
       const result = getFormatedFilename('(file)(name)(test).pdf');
 
-      expect(result.formatedFilename).toBe('[file][name][test]_abc123');
+      expect(result.formatedFilename).toBe('(file)(name)(test)_abc123');
       expect(result.extension).toBe('pdf');
     });
   });
@@ -306,7 +314,7 @@ describe('getFormatedFilename', () => {
     it('should handle typical user upload filename', () => {
       const result = getFormatedFilename('My Document (Final Version).pdf');
 
-      expect(result.formatedFilename).toBe('My Document [Final Version]_abc123');
+      expect(result.formatedFilename).toBe('My Document (Final Version)_abc123');
       expect(result.extension).toBe('pdf');
     });
 
@@ -372,48 +380,35 @@ describe('getFormatedFilename', () => {
   });
 });
 
-describe('sanitizeS3ObjectKey', () => {
-  it('should replace parentheses with square brackets', () => {
-    expect(sanitizeS3ObjectKey('file(1).txt')).toBe('file[1].txt');
-    expect(sanitizeS3ObjectKey('photo (copy).jpg')).toBe('photo [copy].jpg');
-    expect(sanitizeS3ObjectKey('document(v2)(final).pdf')).toBe('document[v2][final].pdf');
-  });
-
-  it('should replace opening parenthesis with opening bracket', () => {
-    expect(sanitizeS3ObjectKey('test(')).toBe('test[');
-    expect(sanitizeS3ObjectKey('((test')).toBe('[[test');
-  });
-
-  it('should replace closing parenthesis with closing bracket', () => {
-    expect(sanitizeS3ObjectKey('test)')).toBe('test]');
-    expect(sanitizeS3ObjectKey('test))')).toBe('test]]');
-  });
-
-  it('should handle multiple parentheses', () => {
-    expect(sanitizeS3ObjectKey('a(b)c(d)e')).toBe('a[b]c[d]e');
-    expect(sanitizeS3ObjectKey('((()))')).toBe('[[[]]]');
-  });
-
-  it('should return unchanged string when no parentheses present', () => {
-    expect(sanitizeS3ObjectKey('normal-file.txt')).toBe('normal-file.txt');
-    expect(sanitizeS3ObjectKey('path/to/file.jpg')).toBe('path/to/file.jpg');
-    expect(sanitizeS3ObjectKey('file_name_123.pdf')).toBe('file_name_123.pdf');
-  });
-
-  it('should handle empty string', () => {
-    expect(sanitizeS3ObjectKey('')).toBe('');
-  });
-
-  it('should preserve existing square brackets', () => {
-    expect(sanitizeS3ObjectKey('file[1].txt')).toBe('file[1].txt');
-    expect(sanitizeS3ObjectKey('file[1](2).txt')).toBe('file[1][2].txt');
-  });
-
-  it('should handle S3 key paths with parentheses', () => {
-    expect(sanitizeS3ObjectKey('dataset/uploads/file (1).pdf')).toBe(
-      'dataset/uploads/file [1].pdf'
+describe('encodeS3ObjectKey', () => {
+  it('encodes each path segment while preserving separators', () => {
+    expect(encodeS3ObjectKey('team/user name/file (1).txt')).toBe(
+      'team/user%20name/file%20%281%29.txt'
     );
-    expect(sanitizeS3ObjectKey('chat/images/photo(copy).jpg')).toBe('chat/images/photo[copy].jpg');
+  });
+
+  it('preserves literal percent sequences without colliding with decoded input', () => {
+    expect(encodeS3ObjectKey('team/user%20name/file%2F%25.txt')).toBe(
+      'team/user%2520name/file%252F%2525.txt'
+    );
+    expect(encodeS3ObjectKey('team/user%20name/file.txt')).not.toBe(
+      encodeS3ObjectKey('team/user name/file.txt')
+    );
+  });
+
+  it('throws when the encoded key violates the storage key contract', () => {
+    expect(() => encodeS3ObjectKey('')).toThrow();
+    expect(() => encodeS3ObjectKey('/file.txt')).toThrow();
+    expect(() => encodeS3ObjectKey('folder//file.txt')).toThrow();
+    expect(() => encodeS3ObjectKey('folder/../file.txt')).toThrow();
+  });
+
+  it('encodes backslashes and control characters instead of replacing them', () => {
+    expect(encodeS3ObjectKey('team\\user/file\u0000.txt')).toBe('team%5Cuser/file%00.txt');
+  });
+
+  it('throws the shared storage validation error for malformed Unicode', () => {
+    expect(() => encodeS3ObjectKey('team/\uD800/file.txt')).toThrow('well-formed Unicode');
   });
 });
 
@@ -508,6 +503,28 @@ describe('isS3ObjectKey', () => {
 describe('getFileS3Key', () => {
   let mockNanoid: ReturnType<typeof vi.fn>;
 
+  const assertOpaqueFileKey = (
+    result: { fileKey: string; fileParsedPrefix?: string },
+    prefix: string,
+    extension?: string
+  ) => {
+    const markerIndex = result.fileKey.indexOf('/file/');
+    expect(markerIndex).toBe(prefix.length);
+    expect(result.fileKey.slice(0, markerIndex)).toBe(prefix);
+
+    const fileSegment = result.fileKey.slice(markerIndex + '/file/'.length);
+    const expectedSuffix = extension ? `.${extension}` : '';
+    expect(fileSegment).toMatch(
+      extension ? new RegExp(`^[0-9a-f]{32}\\${expectedSuffix}$`) : /^[0-9a-f]{32}$/
+    );
+
+    const fileId = expectedSuffix ? fileSegment.slice(0, -expectedSuffix.length) : fileSegment;
+    if (result.fileParsedPrefix) {
+      expect(result.fileParsedPrefix).toBe(`${prefix}/parsed/${fileId}`);
+    }
+    return fileId;
+  };
+
   beforeEach(() => {
     mockNanoid = vi.fn();
     vi.spyOn(stringTools, 'getNanoid').mockImplementation((length) => {
@@ -528,8 +545,7 @@ describe('getFileS3Key', () => {
         filename: 'document.pdf'
       });
 
-      expect(result.fileKey).toBe('temp/team123/document_abc123.pdf');
-      expect(result.fileParsedPrefix).toBe('temp/team123/document_abc123-parsed');
+      assertOpaqueFileKey(result, 'temp/team123', 'pdf');
     });
 
     it('should generate temp file key without filename', () => {
@@ -537,8 +553,7 @@ describe('getFileS3Key', () => {
         teamId: 'team123'
       });
 
-      expect(result.fileKey).toBe('temp/team123/random12char');
-      expect(result.fileParsedPrefix).toBe('temp/team123/random12char-parsed');
+      assertOpaqueFileKey(result, 'temp/team123');
     });
 
     it('should handle filename without extension', () => {
@@ -547,8 +562,7 @@ describe('getFileS3Key', () => {
         filename: 'document'
       });
 
-      expect(result.fileKey).toBe('temp/team123/document_abc123');
-      expect(result.fileParsedPrefix).toBe('temp/team123/document_abc123-parsed');
+      assertOpaqueFileKey(result, 'temp/team123');
     });
 
     it('should handle Chinese filename', () => {
@@ -557,8 +571,18 @@ describe('getFileS3Key', () => {
         filename: '文档.pdf'
       });
 
-      expect(result.fileKey).toBe('temp/team123/文档_abc123.pdf');
-      expect(result.fileParsedPrefix).toBe('temp/team123/文档_abc123-parsed');
+      assertOpaqueFileKey(result, 'temp/team123', 'pdf');
+      expect(result.fileKey).not.toContain('%E6%96%87');
+      expect(result.fileKey).not.toContain('文档');
+    });
+
+    it('should encode dynamic path segments', () => {
+      const result = getFileS3Key.temp({
+        teamId: 'team one',
+        filename: 'file name.txt'
+      });
+
+      assertOpaqueFileKey(result, 'temp/team%20one', 'txt');
     });
   });
 
@@ -569,7 +593,7 @@ describe('getFileS3Key', () => {
         filename: 'avatar.jpg'
       });
 
-      expect(result.fileKey).toBe('avatar/team123/avatar_abc123.jpg');
+      assertOpaqueFileKey(result, 'avatar/team123', 'jpg');
     });
 
     it('should generate avatar file key without filename', () => {
@@ -577,7 +601,7 @@ describe('getFileS3Key', () => {
         teamId: 'team123'
       });
 
-      expect(result.fileKey).toBe('avatar/team123/random12char');
+      assertOpaqueFileKey(result, 'avatar/team123');
     });
 
     it('should handle different image extensions', () => {
@@ -589,7 +613,7 @@ describe('getFileS3Key', () => {
           filename: `avatar.${ext}`
         });
 
-        expect(result.fileKey).toBe(`avatar/team123/avatar_abc123.${ext}`);
+        assertOpaqueFileKey(result, 'avatar/team123', ext);
       });
     });
   });
@@ -603,8 +627,18 @@ describe('getFileS3Key', () => {
         filename: 'image.jpg'
       });
 
-      expect(result.fileKey).toBe('chat/app123/user789/chat456/image_abc123.jpg');
-      expect(result.fileParsedPrefix).toBe('chat/app123/user789/chat456/image_abc123-parsed');
+      assertOpaqueFileKey(result, 'chat/app123/user789/chat456', 'jpg');
+    });
+
+    it('should encode user and chat identifiers', () => {
+      const result = getFileS3Key.chat({
+        appId: 'app one',
+        chatId: 'chat two',
+        uId: 'user three',
+        filename: 'image.jpg'
+      });
+
+      assertOpaqueFileKey(result, 'chat/app%20one/user%20three/chat%20two', 'jpg');
     });
 
     it('should generate chat file key without filename', () => {
@@ -614,8 +648,7 @@ describe('getFileS3Key', () => {
         uId: 'user789'
       });
 
-      expect(result.fileKey).toBe('chat/app123/user789/chat456/random12char');
-      expect(result.fileParsedPrefix).toBe('chat/app123/user789/chat456/random12char-parsed');
+      assertOpaqueFileKey(result, 'chat/app123/user789/chat456');
     });
 
     it('should handle empty uId', () => {
@@ -626,7 +659,7 @@ describe('getFileS3Key', () => {
         filename: 'file.pdf'
       });
 
-      expect(result.fileKey).toBe('chat/app123/chat456/file_abc123.pdf');
+      assertOpaqueFileKey(result, 'chat/app123/chat456', 'pdf');
     });
 
     it('should handle different file types', () => {
@@ -657,8 +690,7 @@ describe('getFileS3Key', () => {
         filename: 'data.csv'
       });
 
-      expect(result.fileKey).toBe('dataset/dataset123/data_abc123.csv');
-      expect(result.fileParsedPrefix).toBe('dataset/dataset123/data_abc123-parsed');
+      assertOpaqueFileKey(result, 'dataset/dataset123', 'csv');
     });
 
     it('should generate dataset file key without filename', () => {
@@ -667,8 +699,7 @@ describe('getFileS3Key', () => {
         filename: ''
       });
 
-      expect(result.fileKey).toBe('dataset/dataset123/random12char');
-      expect(result.fileParsedPrefix).toBe('dataset/dataset123/random12char-parsed');
+      assertOpaqueFileKey(result, 'dataset/dataset123');
     });
 
     it('should handle long dataset filenames', () => {
@@ -678,9 +709,10 @@ describe('getFileS3Key', () => {
         filename: longFilename
       });
 
-      // Should be truncated
+      // The key length is independent of the source filename length.
       expect(result.fileKey.length).toBeLessThan(`dataset/dataset123/${longFilename}`.length);
       expect(result.fileKey).toContain('.pdf');
+      assertOpaqueFileKey(result, 'dataset/dataset123', 'pdf');
     });
   });
 
@@ -690,6 +722,15 @@ describe('getFileS3Key', () => {
 
       expect(result.fileKey).toBe('temp/team123/file_abc123.pdf');
       expect(result.fileParsedPrefix).toBe('temp/team123/file_abc123-parsed');
+    });
+
+    it('should use the opaque parsed prefix for a new key', () => {
+      const key = 'dataset/dataset123/file/0123456789abcdef0123456789abcdef.pdf';
+      const result = getFileS3Key.s3Key(key);
+
+      expect(result.fileParsedPrefix).toBe(
+        'dataset/dataset123/parsed/0123456789abcdef0123456789abcdef'
+      );
     });
 
     it('should handle key without extension', () => {
@@ -769,25 +810,25 @@ describe('getFileS3Key', () => {
   });
 
   describe('integration - sanitization', () => {
-    it('should sanitize parentheses in temp files', () => {
+    it('should encode parentheses in temp files', () => {
       const result = getFileS3Key.temp({
         teamId: 'team123',
         filename: 'file(1).pdf'
       });
 
-      expect(result.fileKey).toBe('temp/team123/file[1]_abc123.pdf');
+      assertOpaqueFileKey(result, 'temp/team123', 'pdf');
     });
 
-    it('should sanitize parentheses in avatar files', () => {
+    it('should encode parentheses in avatar files', () => {
       const result = getFileS3Key.avatar({
         teamId: 'team123',
         filename: 'avatar(copy).jpg'
       });
 
-      expect(result.fileKey).toBe('avatar/team123/avatar[copy]_abc123.jpg');
+      assertOpaqueFileKey(result, 'avatar/team123', 'jpg');
     });
 
-    it('should sanitize parentheses in chat files', () => {
+    it('should encode parentheses in chat files', () => {
       const result = getFileS3Key.chat({
         appId: 'app123',
         chatId: 'chat456',
@@ -795,16 +836,16 @@ describe('getFileS3Key', () => {
         filename: 'image(final).png'
       });
 
-      expect(result.fileKey).toBe('chat/app123/user789/chat456/image[final]_abc123.png');
+      assertOpaqueFileKey(result, 'chat/app123/user789/chat456', 'png');
     });
 
-    it('should sanitize parentheses in dataset files', () => {
+    it('should encode parentheses in dataset files', () => {
       const result = getFileS3Key.dataset({
         datasetId: 'dataset123',
         filename: 'data(v2).csv'
       });
 
-      expect(result.fileKey).toBe('dataset/dataset123/data[v2]_abc123.csv');
+      assertOpaqueFileKey(result, 'dataset/dataset123', 'csv');
     });
   });
 
@@ -815,7 +856,8 @@ describe('getFileS3Key', () => {
         filename: 'file_xyz789.pdf'
       });
 
-      expect(result.fileKey).toBe('temp/team123/file_abc123.pdf');
+      assertOpaqueFileKey(result, 'temp/team123', 'pdf');
+      expect(result.fileKey).not.toContain('file_xyz789');
     });
 
     it('should remove existing 6-char suffix from chat files', () => {
@@ -826,7 +868,8 @@ describe('getFileS3Key', () => {
         filename: 'image_old123.jpg'
       });
 
-      expect(result.fileKey).toBe('chat/app123/user789/chat456/image_abc123.jpg');
+      assertOpaqueFileKey(result, 'chat/app123/user789/chat456', 'jpg');
+      expect(result.fileKey).not.toContain('image_old123');
     });
   });
 });

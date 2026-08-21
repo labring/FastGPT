@@ -5,9 +5,8 @@ import {
   updateAppVersion
 } from '@/web/core/app/api/version';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import CustomRightDrawer from '@fastgpt/web/components/common/MyDrawer/CustomRightDrawer';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { Box, type BoxProps, Button, Flex, Input } from '@chakra-ui/react';
+import { Box, Button, CloseButton, Flex, Input } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from './context';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
@@ -25,58 +24,70 @@ import type {
   VersionListItemType
 } from '@fastgpt/global/core/app/version/type';
 import type { SimpleAppSnapshotType } from './Edit/FormComponent/useSnapshots';
+import AppDetailPanelModal, {
+  APP_DETAIL_PANEL_WIDTH_PX,
+  type AppDetailPanelModalProps
+} from './components/AppDetailPanelModal';
 
 const PublishHistoriesSlider = <T extends SimpleAppSnapshotType | WorkflowSnapshotsType>({
+  isOpen,
   onClose,
   past,
   onSwitchTmpVersion,
   onSwitchCloudVersion,
-  positionStyles
+  topOffset,
+  panelHeight
 }: {
+  isOpen: boolean;
   onClose: () => void;
   past: T[];
   onSwitchTmpVersion: (params: T, customTitle: string) => void;
   onSwitchCloudVersion: (appVersion: AppVersionSchemaType) => void;
-  positionStyles?: BoxProps;
+  topOffset?: AppDetailPanelModalProps['top'];
+  panelHeight?: AppDetailPanelModalProps['height'];
 }) => {
   const { t } = useSafeTranslation();
   const [currentTab, setCurrentTab] = useState<'myEdit' | 'teamCloud'>('myEdit');
 
   return (
-    <>
-      <CustomRightDrawer
-        onClose={() => onClose()}
-        title={
-          (
-            <>
-              <LightRowTabs
-                list={[
-                  { label: t('workflow:workflow.My edit'), value: 'myEdit' },
-                  { label: t('workflow:workflow.Team cloud'), value: 'teamCloud' }
-                ]}
-                value={currentTab}
-                onChange={setCurrentTab}
-                inlineStyles={{ px: 0.5, pb: 2 }}
-                gap={5}
-                py={0}
-                fontSize={'sm'}
-              />
-            </>
-          ) as any
-        }
-        maxW={'340px'}
-        px={0}
-        showMask={false}
-        overflow={'unset'}
-        {...positionStyles}
-      >
-        {currentTab === 'myEdit' ? (
-          <MyEdit past={past} onSwitchTmpVersion={onSwitchTmpVersion} />
-        ) : (
-          <TeamCloud onSwitchCloudVersion={onSwitchCloudVersion} />
-        )}
-      </CustomRightDrawer>
-    </>
+    <AppDetailPanelModal
+      isOpen={isOpen}
+      onClose={onClose}
+      width={['100%', `${APP_DETAIL_PANEL_WIDTH_PX}px`]}
+      height={panelHeight ?? ['100vh', 'calc(100vh - 67px)']}
+      top={topOffset ?? [0, '67px']}
+      position={'fixed'}
+      showMask={false}
+      contentProps={{ border: 'base' }}
+      header={
+        <Flex w={'100%'} alignItems={'center'} justifyContent={'space-between'}>
+          <Box flex={1} minW={0}>
+            <LightRowTabs
+              list={[
+                { label: t('workflow:workflow.My edit'), value: 'myEdit' },
+                { label: t('workflow:workflow.Team cloud'), value: 'teamCloud' }
+              ]}
+              value={currentTab}
+              onChange={setCurrentTab}
+              inlineStyles={{ px: 0.5, pb: 2 }}
+              gap={5}
+              py={0}
+              fontSize={'sm'}
+            />
+          </Box>
+          <CloseButton flexShrink={0} size={'sm'} onClick={onClose} />
+        </Flex>
+      }
+    >
+      <Box display={'flex'} flex={'1 0 0'} minH={0} flexDirection={'column'}>
+        {isOpen &&
+          (currentTab === 'myEdit' ? (
+            <MyEdit past={past} onSwitchTmpVersion={onSwitchTmpVersion} />
+          ) : (
+            <TeamCloud onSwitchCloudVersion={onSwitchCloudVersion} />
+          ))}
+      </Box>
+    </AppDetailPanelModal>
   );
 };
 
@@ -93,7 +104,7 @@ const MyEdit = <T extends SimpleAppSnapshotType | WorkflowSnapshotsType>({
   const { toast } = useToast();
 
   return (
-    <Flex px={5} flex={'1 0 0'} flexDirection={'column'}>
+    <Flex px={6} flex={'1 0 0'} flexDirection={'column'}>
       {past.length > 0 && (
         <Box py={2} px={3}>
           <Button
@@ -236,7 +247,7 @@ const TeamCloud = ({
   );
 
   return (
-    <ScrollData flex={'1 0 0'} px={5} isLoading={isLoadingVersion}>
+    <ScrollData flex={'1 0 0'} px={6} isLoading={isLoadingVersion}>
       {scrollDataList.map((item, index) => {
         const firstPublishedIndex = scrollDataList.findIndex((data) => data.isPublish);
 

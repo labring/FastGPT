@@ -324,6 +324,9 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
       const rounds = getPositiveIntegerEnv('RUN_READ_FILE_WORKER_PDF_STRESS_ROUNDS', 5);
       const fileBuffer = readFileSync(pdfFixturePath!);
       const durations: number[] = [];
+      const rssByRoundMiB: number[] = [];
+      const toMiB = (bytes: number) => Number((bytes / 1024 / 1024).toFixed(1));
+      const memoryBefore = process.memoryUsage();
       const startedAt = Date.now();
 
       for (let round = 0; round < rounds; round++) {
@@ -339,6 +342,7 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
         );
 
         durations.push(Date.now() - roundStartedAt);
+        rssByRoundMiB.push(toMiB(process.memoryUsage().rss));
         results.forEach((result) => {
           expect(result.rawText.length).toBeGreaterThan(1000);
           expect(result.rawText).toContain('人工智能');
@@ -347,6 +351,7 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
 
       const pool = getReadFilePool();
       expect(pool.workerQueue.length).toBeLessThanOrEqual(pool.maxReservedThreads);
+      const memoryUsage = process.memoryUsage();
 
       console.info('pdf worker stress summary', {
         concurrency,
@@ -354,7 +359,23 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
         totalTasks: concurrency * rounds,
         wallMs: Date.now() - startedAt,
         roundMs: durations,
-        workerCount: pool.workerQueue.length
+        workerCount: pool.workerQueue.length,
+        baselineRssMiB: toMiB(memoryBefore.rss),
+        rssByRoundMiB,
+        memoryMiB: {
+          rss: toMiB(memoryUsage.rss),
+          heapUsed: toMiB(memoryUsage.heapUsed),
+          external: toMiB(memoryUsage.external),
+          arrayBuffers: toMiB(memoryUsage.arrayBuffers)
+        }
+      });
+
+      await destroyReadFilePool();
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const memoryAfterPoolDestroy = process.memoryUsage();
+      console.info('pdf worker memory after pool destroy', {
+        rssMiB: toMiB(memoryAfterPoolDestroy.rss),
+        releasedRssMiB: toMiB(memoryUsage.rss - memoryAfterPoolDestroy.rss)
       });
     },
     120000

@@ -8,7 +8,10 @@ import {
   agentForm2AppWorkflow,
   appWorkflow2AgentForm
 } from '@/pageComponents/app/detail/Edit/ChatAgent/utils';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
@@ -50,8 +53,50 @@ describe('form2AppWorkflow', () => {
 
     const result = form2AppWorkflow(form, mockT);
 
-    expect(result.nodes).toHaveLength(3);
+    expect(result.nodes.map((node) => node.flowNodeType)).toEqual([
+      FlowNodeTypeEnum.workflowStart,
+      FlowNodeTypeEnum.chatNode
+    ]);
     expect(result.edges).toHaveLength(1);
+  });
+
+  it('should preserve file upload settings independently from model capabilities', () => {
+    const fileSelectConfigs = [
+      {
+        canSelectFile: true,
+        canSelectImg: true,
+        canSelectAudio: true,
+        canSelectVideo: true
+      },
+      {
+        canSelectFile: false,
+        canSelectImg: false,
+        canSelectAudio: false,
+        canSelectVideo: false
+      }
+    ];
+    const workflows = fileSelectConfigs.map((fileSelectConfig) => {
+      const form = getDefaultAppForm();
+      form.chatConfig.fileSelectConfig = fileSelectConfig;
+
+      return form2AppWorkflow(form, mockT);
+    });
+
+    expect(workflows.map((workflow) => workflow.chatConfig.fileSelectConfig)).toEqual(
+      fileSelectConfigs
+    );
+
+    const getMultimodalInputs = (workflow: (typeof workflows)[number]) => {
+      const aiNode = workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.chatNode);
+
+      return [
+        NodeInputKeyEnum.aiChatVision,
+        NodeInputKeyEnum.aiChatAudio,
+        NodeInputKeyEnum.aiChatVideo
+      ].map((key) => aiNode?.inputs.find((input) => input.key === key)?.value);
+    };
+
+    expect(getMultimodalInputs(workflows[0])).toEqual(getMultimodalInputs(workflows[1]));
   });
 
   it('roundtrips simple app sandbox entrypoint through the tool call node', () => {
@@ -140,7 +185,7 @@ describe('form2AppWorkflow', () => {
 
     const result = form2AppWorkflow(form, mockT);
 
-    expect(result.nodes).toHaveLength(4);
+    expect(result.nodes).toHaveLength(3);
     expect(result.edges).toHaveLength(2);
 
     const datasetNode = result.nodes.find(
@@ -191,6 +236,43 @@ describe('form2AppWorkflow', () => {
     });
 
     expect(restored.dataset.authTmbId).toBe(true);
+  });
+
+  it('should mark dataset search input as agent-generated when used with tools', () => {
+    const form = getDefaultAppForm();
+    form.dataset.datasets = [
+      {
+        datasetId: 'dataset1',
+        avatar: '',
+        name: 'Test Dataset',
+        vectorModel: { model: 'text-embedding-ada-002' } as any
+      }
+    ];
+    form.selectedTools = [
+      {
+        id: 'tool-node-1',
+        pluginId: 'systemTool-weather',
+        source: 'system',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        templateType: 'other',
+        name: 'Weather Tool',
+        avatar: '',
+        intro: '',
+        inputs: [],
+        outputs: [],
+        showStatus: true
+      } as any
+    ];
+
+    const workflow = form2AppWorkflow(form, mockT);
+    const datasetSearchInput = workflow.nodes
+      .find((node) => node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode)
+      ?.inputs.find((input) => input.key === NodeInputKeyEnum.datasetSearchInput);
+
+    expect(datasetSearchInput).toMatchObject({
+      value: '',
+      isToolParam: true
+    });
   });
 
   it('should preserve debug tool source when roundtripping simple app tools', () => {
@@ -318,19 +400,13 @@ describe('filterSensitiveFormData', () => {
 describe('getAppQGuideCustomURL', () => {
   it('should get custom URL from app detail', () => {
     const appDetail = {
-      modules: [
-        {
-          flowNodeType: FlowNodeTypeEnum.systemConfig,
-          inputs: [
-            {
-              key: NodeInputKeyEnum.chatInputGuide,
-              value: {
-                customUrl: 'https://example.com'
-              }
-            }
-          ]
+      modules: [],
+      chatConfig: {
+        chatInputGuide: {
+          open: true,
+          customUrl: 'https://example.com'
         }
-      ]
+      }
     } as any;
 
     const result = getAppQGuideCustomURL(appDetail);
@@ -350,10 +426,70 @@ describe('getAppQGuideCustomURL', () => {
     const result = getAppQGuideCustomURL(appDetail);
     expect(result).toBe('');
   });
+
+  it('should fall back to the legacy system config node', () => {
+    const appDetail = {
+      modules: [
+        {
+          flowNodeType: FlowNodeTypeEnum.systemConfig,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.chatInputGuide,
+              value: {
+                customUrl: 'https://legacy.example.com'
+              }
+            }
+          ]
+        }
+      ],
+      chatConfig: {}
+    } as any;
+
+    expect(getAppQGuideCustomURL(appDetail)).toBe('https://legacy.example.com');
+  });
 });
 
 describe('appWorkflow2AgentForm', () => {
   const mockT = (str: string) => str;
+
+  it('should preserve agent file upload settings independently from model capabilities', () => {
+    const fileSelectConfigs = [
+      {
+        canSelectFile: true,
+        canSelectImg: true,
+        canSelectAudio: true,
+        canSelectVideo: true
+      },
+      {
+        canSelectFile: false,
+        canSelectImg: false,
+        canSelectAudio: false,
+        canSelectVideo: false
+      }
+    ];
+    const workflows = fileSelectConfigs.map((fileSelectConfig) => {
+      const form = getDefaultAppForm();
+      form.chatConfig.fileSelectConfig = fileSelectConfig;
+
+      return agentForm2AppWorkflow(form, mockT);
+    });
+
+    expect(workflows.map((workflow) => workflow.chatConfig.fileSelectConfig)).toEqual(
+      fileSelectConfigs
+    );
+
+    const getMultimodalInputs = (workflow: (typeof workflows)[number]) => {
+      const agentNode = workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.agent);
+
+      return [
+        NodeInputKeyEnum.aiChatVision,
+        NodeInputKeyEnum.aiChatAudio,
+        NodeInputKeyEnum.aiChatVideo
+      ].map((key) => agentNode?.inputs.find((input) => input.key === key)?.value);
+    };
+
+    expect(getMultimodalInputs(workflows[0])).toEqual(getMultimodalInputs(workflows[1]));
+  });
 
   it('should normalize dataset rerank fields from partial datasetParams', () => {
     const result = appWorkflow2AgentForm({
@@ -407,6 +543,9 @@ describe('appWorkflow2AgentForm', () => {
     };
 
     const workflow = agentForm2AppWorkflow(form, mockT);
+    expect(workflow.nodes.some((node) => node.flowNodeType === FlowNodeTypeEnum.systemConfig)).toBe(
+      false
+    );
     const agentNode = workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.agent);
 
     expect(
@@ -451,7 +590,7 @@ describe('appWorkflow2AgentForm', () => {
     expect(restored.dataset.authTmbId).toBe(true);
   });
 
-  it('should omit forbid stream from agent selected tool config', () => {
+  it('should omit forbid stream and agent generated values from agent selected tool config', () => {
     const form = getDefaultAppForm();
     form.aiSettings = {
       [NodeInputKeyEnum.aiModel]: 'qwen-3.6-flash',
@@ -471,7 +610,12 @@ describe('appWorkflow2AgentForm', () => {
           },
           {
             key: 'query',
-            value: 'hello'
+            value: 'hello',
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+            selectedType: FlowNodeInputTypeEnum.agentGenerated,
+            selectedTypeIndex: 1,
+            isToolParam: true,
+            toolDescription: 'Query'
           }
         ],
         outputs: []
@@ -482,10 +626,14 @@ describe('appWorkflow2AgentForm', () => {
     const agentNode = workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.agent);
     const selectedTools = agentNode?.inputs.find(
       (input) => input.key === NodeInputKeyEnum.selectedTools
-    )?.value as Array<{ config: Record<string, any> }>;
+    )?.value as Array<{ config: Record<string, any>; inputs: any[] }>;
 
-    expect(selectedTools[0].config).toEqual({
-      query: 'hello'
-    });
+    expect(selectedTools[0].config).toEqual({});
+    expect(selectedTools[0].inputs).toEqual([
+      {
+        key: 'query',
+        mode: 'agentGenerated'
+      }
+    ]);
   });
 });

@@ -1,11 +1,26 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
-import { MongoFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/schema';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { serviceEnv } from '@fastgpt/service/env';
+import {
+  createRedisLogicalKey,
+  getRedisRuntime,
+  toPhysicalRedisKey
+} from '@fastgpt/dal/redis/runtime';
+import { RATE_LIMIT_KEY_PREFIX } from '@fastgpt/service/common/rateLimit/core';
 
 const originalUseIpLimit = serviceEnv.USE_IP_LIMIT;
 const originalTrustedProxyEnable = serviceEnv.TRUSTED_PROXY_ENABLE;
+
+const getIPFrequencyLimitKey = (id: string, ip: string) =>
+  toPhysicalRedisKey(
+    createRedisLogicalKey({
+      namespace: RATE_LIMIT_KEY_PREFIX,
+      segments: ['ip', id, 'ip', ip]
+    })
+  );
+
+const getRedisConnection = () => getRedisRuntime().getCommandConnection();
 
 const setUseIpLimit = (value: boolean) => {
   serviceEnv.USE_IP_LIMIT = value;
@@ -40,9 +55,7 @@ const createReq = ({
 describe('useIPFrequencyLimit', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
-    await MongoFrequencyLimit.deleteMany({
-      eventId: /^ip-qps-limit-ip-spoof-test-/
-    });
+    await getRedisConnection().flushdb();
   });
 
   afterEach(() => {
@@ -65,11 +78,11 @@ describe('useIPFrequencyLimit', () => {
       createRes()
     );
 
-    const record = await MongoFrequencyLimit.findOne({
-      eventId: 'ip-qps-limit-ip-spoof-test-toggle-enabled-198.51.100.40'
-    }).lean();
+    const count = await getRedisConnection().get(
+      getIPFrequencyLimitKey('ip-spoof-test-toggle-enabled', '198.51.100.40')
+    );
 
-    expect(record?.amount).toBe(1);
+    expect(Number(count)).toBe(1);
   });
 
   it('should skip IP limit when USE_IP_LIMIT is disabled without force', async () => {
@@ -87,11 +100,11 @@ describe('useIPFrequencyLimit', () => {
       createRes()
     );
 
-    const record = await MongoFrequencyLimit.findOne({
-      eventId: 'ip-qps-limit-ip-spoof-test-toggle-disabled-198.51.100.41'
-    }).lean();
+    const count = await getRedisConnection().get(
+      getIPFrequencyLimitKey('ip-spoof-test-toggle-disabled', '198.51.100.41')
+    );
 
-    expect(record).toBeNull();
+    expect(count).toBeNull();
   });
 
   it('should enforce IP limit when force is true even if USE_IP_LIMIT is disabled', async () => {
@@ -110,11 +123,11 @@ describe('useIPFrequencyLimit', () => {
       createRes()
     );
 
-    const record = await MongoFrequencyLimit.findOne({
-      eventId: 'ip-qps-limit-ip-spoof-test-toggle-forced-198.51.100.42'
-    }).lean();
+    const count = await getRedisConnection().get(
+      getIPFrequencyLimitKey('ip-spoof-test-toggle-forced', '198.51.100.42')
+    );
 
-    expect(record?.amount).toBe(1);
+    expect(Number(count)).toBe(1);
   });
 
   it('should ignore spoofed forwarding headers from untrusted direct clients', async () => {
@@ -138,15 +151,15 @@ describe('useIPFrequencyLimit', () => {
       createRes()
     );
 
-    const realIpRecord = await MongoFrequencyLimit.findOne({
-      eventId: 'ip-qps-limit-ip-spoof-test-direct-198.51.100.20'
-    }).lean();
-    const spoofedIpRecord = await MongoFrequencyLimit.findOne({
-      eventId: 'ip-qps-limit-ip-spoof-test-direct-203.0.113.50'
-    }).lean();
+    const realIpCount = await getRedisConnection().get(
+      getIPFrequencyLimitKey('ip-spoof-test-direct', '198.51.100.20')
+    );
+    const spoofedIpCount = await getRedisConnection().get(
+      getIPFrequencyLimitKey('ip-spoof-test-direct', '203.0.113.50')
+    );
 
-    expect(realIpRecord?.amount).toBe(1);
-    expect(spoofedIpRecord).toBeNull();
+    expect(Number(realIpCount)).toBe(1);
+    expect(spoofedIpCount).toBeNull();
   });
 
   it('should use X-Forwarded-For as the limit key when trusted proxy parsing is disabled', async () => {
@@ -170,15 +183,15 @@ describe('useIPFrequencyLimit', () => {
       createRes()
     );
 
-    const forwardedIpRecord = await MongoFrequencyLimit.findOne({
-      eventId: 'ip-qps-limit-ip-spoof-test-compat-60.186.209.23'
-    }).lean();
-    const remoteIpRecord = await MongoFrequencyLimit.findOne({
-      eventId: 'ip-qps-limit-ip-spoof-test-compat-172.16.0.119'
-    }).lean();
+    const forwardedIpCount = await getRedisConnection().get(
+      getIPFrequencyLimitKey('ip-spoof-test-compat', '60.186.209.23')
+    );
+    const remoteIpCount = await getRedisConnection().get(
+      getIPFrequencyLimitKey('ip-spoof-test-compat', '172.16.0.119')
+    );
 
-    expect(forwardedIpRecord?.amount).toBe(1);
-    expect(remoteIpRecord).toBeNull();
+    expect(Number(forwardedIpCount)).toBe(1);
+    expect(remoteIpCount).toBeNull();
   });
 
   it('should use proxy-addr result for trusted proxy forwarding chains', async () => {
@@ -201,15 +214,15 @@ describe('useIPFrequencyLimit', () => {
       createRes()
     );
 
-    const clientIpRecord = await MongoFrequencyLimit.findOne({
-      eventId: 'ip-qps-limit-ip-spoof-test-proxy-203.0.113.50'
-    }).lean();
-    const spoofedIpRecord = await MongoFrequencyLimit.findOne({
-      eventId: 'ip-qps-limit-ip-spoof-test-proxy-6.6.6.6'
-    }).lean();
+    const clientIpCount = await getRedisConnection().get(
+      getIPFrequencyLimitKey('ip-spoof-test-proxy', '203.0.113.50')
+    );
+    const spoofedIpCount = await getRedisConnection().get(
+      getIPFrequencyLimitKey('ip-spoof-test-proxy', '6.6.6.6')
+    );
 
-    expect(clientIpRecord?.amount).toBe(1);
-    expect(spoofedIpRecord).toBeNull();
+    expect(Number(clientIpCount)).toBe(1);
+    expect(spoofedIpCount).toBeNull();
   });
 
   it('should use a shared fail-closed key when client IP cannot be resolved', async () => {
@@ -231,15 +244,15 @@ describe('useIPFrequencyLimit', () => {
       createRes()
     );
 
-    const unknownRecord = await MongoFrequencyLimit.findOne({
-      eventId: 'ip-qps-limit-ip-spoof-test-unknown-unknown'
-    }).lean();
-    const spoofedIpRecord = await MongoFrequencyLimit.findOne({
-      eventId: 'ip-qps-limit-ip-spoof-test-unknown-203.0.113.50'
-    }).lean();
+    const unknownCount = await getRedisConnection().get(
+      getIPFrequencyLimitKey('ip-spoof-test-unknown', 'unknown')
+    );
+    const spoofedIpCount = await getRedisConnection().get(
+      getIPFrequencyLimitKey('ip-spoof-test-unknown', '203.0.113.50')
+    );
 
-    expect(unknownRecord?.amount).toBe(1);
-    expect(spoofedIpRecord).toBeNull();
+    expect(Number(unknownCount)).toBe(1);
+    expect(spoofedIpCount).toBeNull();
   });
 
   it('should block requests after the IP limit is exceeded', async () => {
@@ -266,5 +279,23 @@ describe('useIPFrequencyLimit', () => {
         code: 429
       })
     );
+  });
+
+  it('should allow requests when Redis is unavailable', async () => {
+    const redis = getRedisConnection();
+    vi.mocked(redis.multi).mockImplementationOnce(() => {
+      throw new Error('Redis unavailable');
+    });
+
+    const middleware = useIPFrequencyLimit({
+      id: 'ip-spoof-test-redis-failure',
+      seconds: 60,
+      limit: 1,
+      force: true
+    });
+
+    await middleware(createReq({ remoteAddress: '198.51.100.31' }), createRes());
+
+    expect(jsonRes).not.toHaveBeenCalled();
   });
 });

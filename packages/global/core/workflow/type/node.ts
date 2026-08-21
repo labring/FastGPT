@@ -264,11 +264,27 @@ export const NodeTemplateListTypeSchema = z.array(
 );
 export type NodeTemplateListType = z.infer<typeof NodeTemplateListTypeSchema>;
 
+export const WorkflowCheckIssueLevelSchema = z.enum(['error', 'warning']);
+export type WorkflowCheckIssueLevel = z.infer<typeof WorkflowCheckIssueLevelSchema>;
+
+export const WorkflowCheckIssueSchema = z.object({
+  nodeId: z.string(),
+  nodeName: z.string().optional(),
+  nodeType: z.enum(FlowNodeTypeEnum),
+  level: WorkflowCheckIssueLevelSchema,
+  code: z.string(),
+  message: z.string(),
+  inputKey: z.string().optional()
+});
+export type WorkflowCheckIssue = z.infer<typeof WorkflowCheckIssueSchema>;
+export type WorkflowCheckNodeIssueMap = Record<string, WorkflowCheckIssue[]>;
+
 // react flow node type
 export const FlowNodeItemSchema = FlowNodeTemplateTypeSchema.extend({
   nodeId: z.string(),
   parentNodeId: z.string().optional(),
   isError: BoolSchema.optional(),
+  workflowCheckIssues: z.array(WorkflowCheckIssueSchema).optional(),
   searchedText: z.string().optional(),
   debugResult: z
     .object({

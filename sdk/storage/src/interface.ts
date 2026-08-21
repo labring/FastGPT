@@ -1,29 +1,4 @@
-import type {
-  DeleteObjectParams,
-  DeleteObjectResult,
-  DeleteObjectsParams,
-  DeleteObjectsResult,
-  DeleteObjectsByPrefixParams,
-  DownloadObjectParams,
-  DownloadObjectResult,
-  EnsureBucketResult,
-  GetObjectMetadataParams,
-  GetObjectMetadataResult,
-  ListObjectsParams,
-  ListObjectsResult,
-  PresignedPutUrlParams,
-  PresignedPutUrlResult,
-  UploadObjectParams,
-  UploadObjectResult,
-  ExistsObjectParams,
-  ExistsObjectResult,
-  PresignedGetUrlParams,
-  PresignedGetUrlResult,
-  CopyObjectParams,
-  CopyObjectResult,
-  GeneratePublicGetUrlParams,
-  GeneratePublicGetUrlResult
-} from './types';
+import type * as Storage from './types';
 
 /**
  * 通用存储配置（与具体云厂商无关）。
@@ -76,6 +51,11 @@ export interface ICommonStorageOptions {
    * - 用于在公共访问时添加额外的前缀，例如 `/sub-path`。
    */
   publicAccessExtraSubPath?: string;
+
+  /**
+   * 公共对象访问域名，可选。适用于 R2 自定义域名等不应暴露 bucket 名称的场景。
+   */
+  publicEndpoint?: string;
 }
 
 /**
@@ -88,15 +68,7 @@ export interface ICommonStorageOptions {
  * 设计：
  * - 通过 `vendor` 做判别联合（discriminated union），便于在运行时和类型层面区分不同厂商配置。
  */
-export interface IAwsS3CompatibleStorageOptions extends ICommonStorageOptions {
-  /**
-   * 存储厂商标识（S3 兼容系）。
-   *
-   * - `aws-s3`: AWS S3
-   * - `minio`: MinIO（S3 协议兼容）
-   */
-  vendor: 'aws-s3' | 'minio';
-
+interface IAwsS3StorageBaseOptions extends ICommonStorageOptions {
   /**
    * 自定义服务端点（Endpoint），可选。
    *
@@ -126,6 +98,23 @@ export interface IAwsS3CompatibleStorageOptions extends ICommonStorageOptions {
    */
   maxRetries?: number;
 }
+
+export interface IAwsS3StorageOptions extends IAwsS3StorageBaseOptions {
+  vendor: 'aws-s3';
+}
+
+export interface IMinioStorageOptions extends IAwsS3StorageBaseOptions {
+  vendor: 'minio';
+}
+
+export interface IR2StorageOptions extends IAwsS3StorageBaseOptions {
+  vendor: 'r2';
+}
+
+export type IAwsS3CompatibleStorageOptions =
+  | IAwsS3StorageOptions
+  | IMinioStorageOptions
+  | IR2StorageOptions;
 
 /**
  * 阿里云 OSS 存储配置。
@@ -242,7 +231,8 @@ export interface IBosStorageOptions extends ICommonStorageOptions {
 export type IStorageOptions =
   | IAwsS3CompatibleStorageOptions
   | IOssStorageOptions
-  | ICosStorageOptions;
+  | ICosStorageOptions
+  | IBosStorageOptions;
 
 /**
  * 统一的对象存储能力接口（vendor-agnostic）。
@@ -262,10 +252,10 @@ export interface IStorage {
    * - `created`: 本次调用是否创建了 bucket
    *
    * 建议：
-   * - 对于 OSS/COS 等厂商，很多团队更倾向于在控制台/基础设施层面创建 bucket（权限/策略/生命周期等更可控），
+   * - 对于 OSS/COS 等厂商，很多团队更倾向于在控制台/基础设施层面创建 bucket（权限/策略等更可控），
    *   应用侧仅做存在性校验即可（bucket 不存在时会抛出底层 SDK 错误）。
    */
-  ensureBucket(): Promise<EnsureBucketResult>;
+  ensureBucket(): Promise<Storage.EnsureBucketResult>;
 
   /**
    * 判断对象是否存在。
@@ -273,7 +263,7 @@ export interface IStorage {
    * 返回值说明：
    * - `exists`: 对象是否存在
    */
-  checkObjectExists(params: ExistsObjectParams): Promise<ExistsObjectResult>;
+  checkObjectExists(params: Storage.ExistsObjectParams): Promise<Storage.ExistsObjectResult>;
 
   /**
    * 上传对象到 bucket。
@@ -285,7 +275,41 @@ export interface IStorage {
    * 注意：
    * - `contentType`/`contentDisposition`/`metadata` 会映射为不同厂商的 HTTP 头或元数据字段，adapter 负责兼容。
    */
-  uploadObject(params: UploadObjectParams): Promise<UploadObjectResult>;
+  uploadObject(params: Storage.UploadObjectParams): Promise<Storage.UploadObjectResult>;
+
+  /**
+   * 初始化 Multipart 上传。
+   *
+   * 返回的 `uploadId` 只应由服务端保存，不直接暴露给客户端。
+   */
+  createMultipartUpload(
+    params: Storage.CreateMultipartUploadParams
+  ): Promise<Storage.CreateMultipartUploadResult>;
+
+  /**
+   * 上传一个 Multipart 分片，并返回对象存储生成的 ETag。
+   *
+   * `contentLength` 必须对应当前分片的实际字节数，adapter 不应把整个文件读入内存。
+   */
+  uploadMultipartPart(
+    params: Storage.UploadMultipartPartParams
+  ): Promise<Storage.UploadMultipartPartResult>;
+
+  /**
+   * 使用已上传分片的 ETag 合并生成最终对象。
+   */
+  completeMultipartUpload(
+    params: Storage.CompleteMultipartUploadParams
+  ): Promise<Storage.CompleteMultipartUploadResult>;
+
+  /**
+   * 取消 Multipart 上传并清理已上传的分片。
+   *
+   * 该操作应尽量保持幂等，便于客户端取消和后台清理重复执行。
+   */
+  abortMultipartUpload(
+    params: Storage.AbortMultipartUploadParams
+  ): Promise<Storage.AbortMultipartUploadResult>;
 
   /**
    * 下载对象（以 Node.js `Readable` 流形式返回）。
@@ -294,7 +318,7 @@ export interface IStorage {
    * - 适合大文件流式读取，避免一次性加载到内存。
    * - 调用方负责消费/关闭流（正常读取结束会自动关闭）。
    */
-  downloadObject(params: DownloadObjectParams): Promise<DownloadObjectResult>;
+  downloadObject(params: Storage.DownloadObjectParams): Promise<Storage.DownloadObjectResult>;
 
   /**
    * 删除单个对象（按 key）。
@@ -302,16 +326,32 @@ export interface IStorage {
    * 建议：
    * - 作为幂等操作处理：若对象不存在，最好仍返回成功（由 adapter 决定具体行为）。
    */
-  deleteObject(params: DeleteObjectParams): Promise<DeleteObjectResult>;
+  deleteObject(params: Storage.DeleteObjectParams): Promise<Storage.DeleteObjectResult>;
 
   /**
    * 根据多个 key 批量删除对象。
    *
    * 注意：
    * - 各厂商对单次批量删除的最大数量限制不同，adapter 可能需要分批处理。
-   * - 返回的 `deleted` 通常只包含实际删除/确认删除的 key。
+   * - 返回的 `keys` 只包含删除失败、需要上层重试的 key；空数组表示全部成功。
    */
-  deleteObjectsByMultiKeys(params: DeleteObjectsParams): Promise<DeleteObjectsResult>;
+  deleteObjectsByMultiKeys(
+    params: Storage.DeleteObjectsParams
+  ): Promise<Storage.DeleteObjectsResult>;
+
+  /**
+   * 根据多个 key 批量删除对象（legacy 原始 key 直删通道）。
+   *
+   * 与 `deleteObjectsByMultiKeys` 的远端行为一致（按厂商限制分批、回传失败 key），
+   * 但**不执行对象 key 格式断言**，只用于删除历史遗留的非规范 key
+   * （例如文件名包含 ASCII 控制字符或反斜线的旧聊天文件）。
+   *
+   * 安全约束：
+   * - 只允许删除业务侧已确认存在的精确对象 key，不要用于删除可受外部输入影响的 key。
+   * - keys 为空数组时直接返回成功，保持幂等。
+   * - 前缀删除（`deleteObjectsByPrefix`）不受影响，仍强制非空前缀校验。
+   */
+  deleteObjectsByRawKeys(params: Storage.DeleteObjectsParams): Promise<Storage.DeleteObjectsResult>;
 
   /**
    * 根据前缀批量删除对象（危险操作）。
@@ -324,7 +364,9 @@ export interface IStorage {
    * - 理论上可以使用 `this.listObjects` 然后 `this.deleteObjectsByMultiKeys`
    *   但是这样可能会产生不必要的内存占用问题，所以这里单独实现了一个方法
    */
-  deleteObjectsByPrefix(params: DeleteObjectsByPrefixParams): Promise<DeleteObjectsResult>;
+  deleteObjectsByPrefix(
+    params: Storage.DeleteObjectsByPrefixParams
+  ): Promise<Storage.DeleteObjectsResult>;
 
   /**
    * 生成对象的上传预签名 URL（Presigned URL）。
@@ -337,7 +379,9 @@ export interface IStorage {
    * - 返回值中的 `metadata` 字段语义更接近“直传时需要附带的 headers”（不同厂商前缀不同，如 `x-oss-meta-*` / `x-cos-meta-*`）。
    *   字段名因历史原因沿用 `metadata`。
    */
-  generatePresignedPutUrl(params: PresignedPutUrlParams): Promise<PresignedPutUrlResult>;
+  generatePresignedPutUrl(
+    params: Storage.PresignedPutUrlParams
+  ): Promise<Storage.PresignedPutUrlResult>;
 
   /**
    * 生成对象的下载预签名 URL（Presigned URL）。
@@ -345,12 +389,16 @@ export interface IStorage {
    * 用途：
    * - 临时授权下载（GET）
    */
-  generatePresignedGetUrl(params: PresignedGetUrlParams): Promise<PresignedGetUrlResult>;
+  generatePresignedGetUrl(
+    params: Storage.PresignedGetUrlParams
+  ): Promise<Storage.PresignedGetUrlResult>;
 
   /**
    * 生成公共对象的访问 URL。
    */
-  generatePublicGetUrl(params: GeneratePublicGetUrlParams): GeneratePublicGetUrlResult;
+  generatePublicGetUrl(
+    params: Storage.GeneratePublicGetUrlParams
+  ): Storage.GeneratePublicGetUrlResult;
 
   /**
    * 列出对象 key（可按前缀过滤）。
@@ -362,12 +410,12 @@ export interface IStorage {
    * - 不要用 listObjects + deleteObjectsByMultiKeys 来实现“按前缀删除”：批量删除单次最多 1000 个对象，且 list 结果量可能很大；
    *   请使用 `deleteObjectsByPrefix`（adapter 会在内部分页与分批删除）。
    */
-  listObjects(params: ListObjectsParams): Promise<ListObjectsResult>;
+  listObjects(params: Storage.ListObjectsParams): Promise<Storage.ListObjectsResult>;
 
   /**
    * 复制对象。
    */
-  copyObjectInSelfBucket(params: CopyObjectParams): Promise<CopyObjectResult>;
+  copyObjectInSelfBucket(params: Storage.CopyObjectParams): Promise<Storage.CopyObjectResult>;
 
   /**
    * 获取对象元数据（Metadata）。
@@ -376,7 +424,9 @@ export interface IStorage {
    * - 元数据通常包含用户自定义 metadata 以及部分系统字段（取决于 adapter 的实现）。
    * - 不同厂商会对 metadata 的 key 前缀、大小写、可用字符做限制，调用方应尽量使用简单的 ASCII key。
    */
-  getObjectMetadata(params: GetObjectMetadataParams): Promise<GetObjectMetadataResult>;
+  getObjectMetadata(
+    params: Storage.GetObjectMetadataParams
+  ): Promise<Storage.GetObjectMetadataResult>;
 
   /**
    * 资源清理/连接释放。

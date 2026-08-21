@@ -619,6 +619,52 @@ describe('mergeNodeResponseDataByIdAndParent', () => {
     ]);
   });
 
+  it('should keep resumed children added after their parent was attached to a grandparent', () => {
+    const responseDataList: ChatHistoryItemResType[] = [
+      createNodeResponse({
+        id: 'before-interactive',
+        parentId: 'iteration-1',
+        moduleName: 'Before interactive'
+      }),
+      createNodeResponse({
+        id: 'iteration-1',
+        parentId: 'loop-run',
+        moduleType: FlowNodeTypeEnum.loopRun,
+        childResponseCount: 1
+      }),
+      createNodeResponse({
+        id: 'loop-run',
+        moduleType: FlowNodeTypeEnum.loopRun,
+        childResponseCount: 2
+      }),
+      createNodeResponse({
+        id: 'after-interactive',
+        parentId: 'iteration-1',
+        moduleName: 'After interactive'
+      }),
+      createNodeResponse({
+        id: 'iteration-1',
+        parentId: 'loop-run',
+        moduleType: FlowNodeTypeEnum.loopRun,
+        childResponseCount: 1
+      })
+    ];
+
+    const result = mergeNodeResponseDataByIdAndParent(responseDataList);
+
+    expect(result.map((item) => item.id)).toEqual(['loop-run']);
+    expect(result[0].childrenResponses?.map((item) => item.id)).toEqual(['iteration-1']);
+    expect(result[0].childrenResponses?.[0]).toEqual(
+      expect.objectContaining({
+        childResponseCount: 2
+      })
+    );
+    expect(result[0].childrenResponses?.[0].childrenResponses?.map((item) => item.id)).toEqual([
+      'before-interactive',
+      'after-interactive'
+    ]);
+  });
+
   it('should merge legacy childrenResponses and childResponseCount', () => {
     const responseDataList: ChatHistoryItemResType[] = [
       {

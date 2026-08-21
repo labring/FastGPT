@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { dispatchRunTools } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall';
@@ -7,15 +7,23 @@ import { checkTeamSandboxPermission } from '@fastgpt/service/support/permission/
 import { createRuntimeNodeResponseSummary } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
 
-const { getLLMModelMock, runToolCallMock, useToolMessagesMock, useToolNodeListMock } = vi.hoisted(
-  () => ({
-    getLLMModelMock: vi.fn(),
-    runToolCallMock: vi.fn(),
-    useToolMessagesMock: vi.fn(),
-    useToolNodeListMock: vi.fn()
-  })
-);
+const {
+  getLLMModelMock,
+  getSandboxClientMock,
+  runToolCallMock,
+  useToolMessagesMock,
+  useToolNodeListMock,
+  ensureAppSandboxRuntimeReadyMock
+} = vi.hoisted(() => ({
+  getLLMModelMock: vi.fn(),
+  getSandboxClientMock: vi.fn(),
+  runToolCallMock: vi.fn(),
+  useToolMessagesMock: vi.fn(),
+  useToolNodeListMock: vi.fn(),
+  ensureAppSandboxRuntimeReadyMock: vi.fn()
+}));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
   getLLMModel: getLLMModelMock
@@ -36,6 +44,20 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolNodeLi
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
   checkTeamSandboxPermission: vi.fn()
 }));
+
+vi.mock('@fastgpt/service/core/ai/sandbox/interface/toolCall', () => ({
+  prepareSandboxToolRuntime: getSandboxClientMock
+}));
+
+vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/interface/runtime')>();
+
+  return {
+    ...original,
+    ensureAppSandboxRuntimeReady: ensureAppSandboxRuntimeReadyMock
+  };
+});
 
 const createProps = (overrides: Record<string, any> = {}) =>
   ({
@@ -67,6 +89,8 @@ const createProps = (overrides: Record<string, any> = {}) =>
     },
     runningAppInfo: {
       id: 'app_1',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app_1',
       teamId: 'team_1',
       tmbId: 'tmb_1',
       name: 'App'
@@ -84,6 +108,7 @@ const createProps = (overrides: Record<string, any> = {}) =>
     uid: 'user_1',
     chatId: 'chat_1',
     stream: false,
+    workflowStreamResponse: vi.fn(),
     params: {
       model: 'gpt-5',
       systemPrompt: 'system prompt',
@@ -101,7 +126,9 @@ const createProps = (overrides: Record<string, any> = {}) =>
 describe('dispatchRunTools file context', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    global.feConfigs = {};
+    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: true };
+    vi.mocked(checkTeamSandboxPermission).mockResolvedValue(undefined);
+    ensureAppSandboxRuntimeReadyMock.mockResolvedValue(false);
     getLLMModelMock.mockReturnValue({
       model: 'gpt-5',
       name: 'GPT-5',
@@ -113,11 +140,15 @@ describe('dispatchRunTools file context', () => {
     useToolNodeListMock.mockReturnValue([]);
     useToolMessagesMock.mockResolvedValue({
       messages: [],
-      allFiles: new Map(),
       currentInputFiles: []
+    });
+    getSandboxClientMock.mockResolvedValue({
+      provider: {},
+      exec: vi.fn()
     });
     runToolCallMock.mockResolvedValue({
       toolWorkflowInteractiveResponse: undefined,
+      toolDispatchFlowResponses: [],
       runtimeNodeResponseSummary: createRuntimeNodeResponseSummary(),
       runTimes: 0,
       toolTotalPoints: 0,
@@ -137,7 +168,8 @@ describe('dispatchRunTools file context', () => {
 
     expect(useToolMessagesMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        fileLinks: undefined
+        fileLinks: undefined,
+        parseHistoryFiles: false
       })
     );
     expect(runToolCallMock).toHaveBeenCalledWith(
@@ -172,7 +204,8 @@ describe('dispatchRunTools file context', () => {
 
     expect(useToolMessagesMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        fileLinks: ['/current.pdf']
+        fileLinks: ['/current.pdf'],
+        parseHistoryFiles: true
       })
     );
     expect(runToolCallMock).toHaveBeenCalledWith(
@@ -184,39 +217,89 @@ describe('dispatchRunTools file context', () => {
     );
   });
 
-  it('passes sandbox entrypoint through when sandbox is enabled', async () => {
-    global.feConfigs = { show_agent_sandbox: true };
+  it.each([
+    {
+      name: 'the app disables sandbox',
+      configure: () => undefined,
+      useAgentSandbox: false
+    },
+    {
+      name: 'the team plan has no sandbox permission',
+      configure: () => {
+        vi.mocked(checkTeamSandboxPermission).mockRejectedValueOnce(new Error('no permission'));
+      },
+      useAgentSandbox: true
+    }
+  ])('continues ordinary tool calls when $name', async ({ configure, useAgentSandbox }) => {
+    configure();
 
-    await dispatchRunTools(
-      createProps({
-        params: {
-          ...createProps().params,
-          useAgentSandbox: true,
-          sandboxEntrypoint: 'pip install -r requirements.txt'
-        }
-      })
-    );
+    const props = createProps({
+      params: {
+        ...createProps().params,
+        useAgentSandbox
+      }
+    });
+    const result = await dispatchRunTools(props);
 
+    expect(result.error).toBeUndefined();
+    expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(useToolMessagesMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        useSandbox: true
-      })
+      expect.objectContaining({ useSandbox: false })
     );
     expect(runToolCallMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        sandboxClient: undefined,
         params: expect.objectContaining({
-          useAgentSandbox: true,
-          sandboxEntrypoint: 'pip install -r requirements.txt'
+          useAgentSandbox: false,
+          sandboxEntrypoint: undefined
         })
       })
     );
   });
 
-  it('should throw error when team has no permission', async () => {
-    vi.mocked(checkTeamSandboxPermission).mockRejectedValue(new Error('no permission'));
-    global.feConfigs = { show_agent_sandbox: true };
+  it('keeps non-app sandbox permission failures blocking', async () => {
+    vi.mocked(checkTeamSandboxPermission).mockRejectedValueOnce(new Error('no permission'));
+    const props = createProps({
+      runningAppInfo: {
+        ...createProps().runningAppInfo,
+        sourceType: ChatSourceTypeEnum.skillEdit
+      },
+      params: {
+        ...createProps().params,
+        useAgentSandbox: true
+      }
+    });
 
-    const promise = dispatchRunTools(
+    const promise = dispatchRunTools(props);
+    await expect(promise).rejects.toMatchObject({
+      message: SandboxErrEnum.agentSandboxPermissionDenied
+    });
+    await expect(promise.catch((error) => getErrText(error))).resolves.toBe(
+      'common:code_error.sandbox_error.agent_sandbox_permission_denied'
+    );
+    expect(useToolMessagesMock).not.toHaveBeenCalled();
+    expect(runToolCallMock).not.toHaveBeenCalled();
+  });
+
+  it('initializes sandbox client and injects input files before running toolcall', async () => {
+    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: true };
+    const sandboxClient = {
+      provider: {},
+      exec: vi.fn()
+    };
+    getSandboxClientMock.mockResolvedValueOnce(sandboxClient);
+    useToolMessagesMock.mockResolvedValueOnce({
+      messages: [],
+      currentInputFiles: [
+        {
+          name: 'a.pdf',
+          url: 'https://files/a.pdf',
+          sandboxPath: '/workspace/a.pdf'
+        }
+      ]
+    });
+
+    await dispatchRunTools(
       createProps({
         params: {
           ...createProps().params,
@@ -225,13 +308,89 @@ describe('dispatchRunTools file context', () => {
       })
     );
 
-    await expect(promise).rejects.toMatchObject({
-      message: SandboxErrEnum.agentSandboxPermissionDenied
+    expect(checkTeamSandboxPermission).toHaveBeenCalledWith('team_1');
+    expect(getSandboxClientMock).toHaveBeenCalledWith({
+      sourceType: createProps().runningAppInfo.sourceType,
+      sourceId: createProps().runningAppInfo.sourceId,
+      userId: 'user_1',
+      chatId: 'chat_1',
+      readInputFile: expect.any(Function),
+      files: [
+        {
+          path: '/workspace/a.pdf',
+          url: 'https://files/a.pdf'
+        }
+      ]
     });
-    await expect(promise.catch((error) => getErrText(error))).resolves.toBe(
-      'common:code_error.sandbox_error.agent_sandbox_permission_denied'
+    expect(runToolCallMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sandboxClient
+      })
     );
-    expect(useToolMessagesMock).not.toHaveBeenCalled();
+  });
+
+  it('silently upgrades App sandbox and continues the same ToolCall workflow', async () => {
+    ensureAppSandboxRuntimeReadyMock.mockImplementationOnce(async ({ onUpgrade }) => {
+      onUpgrade?.();
+      return true;
+    });
+    const props = createProps({
+      params: {
+        ...createProps().params,
+        useAgentSandbox: true
+      }
+    });
+
+    const result = await dispatchRunTools(props);
+
+    const sandboxId = getRunningSandboxId({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app_1',
+      userId: 'user_1'
+    });
+    expect(ensureAppSandboxRuntimeReadyMock).toHaveBeenCalledWith({
+      query: {
+        sandboxId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app_1',
+        userId: 'user_1',
+        chatId: 'chat_1'
+      },
+      onUpgrade: expect.any(Function)
+    });
+    expect(props.workflowStreamResponse.mock.calls.map(([event]: [unknown]) => event)).toEqual([
+      {
+        event: 'sandboxStatus',
+        data: { sandboxId, phase: 'upgrading' }
+      },
+      {
+        event: 'sandboxStatus',
+        data: { sandboxId, phase: 'lazyInit' }
+      }
+    ]);
+    expect(result.error).toBeUndefined();
+    expect(getSandboxClientMock).toHaveBeenCalledOnce();
+    expect(runToolCallMock).toHaveBeenCalledOnce();
+  });
+
+  it('stops ToolCall runtime initialization when silent sandbox upgrade fails', async () => {
+    ensureAppSandboxRuntimeReadyMock.mockRejectedValueOnce(new Error('archive upload failed'));
+    const props = createProps({
+      params: {
+        ...createProps().params,
+        useAgentSandbox: true
+      }
+    });
+
+    const result = await dispatchRunTools(props);
+
+    expect(result.error).toEqual({
+      system_error_text: 'archive upload failed'
+    });
+    expect(result.toolResponse).toEqual({
+      error: 'archive upload failed'
+    });
+    expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(runToolCallMock).not.toHaveBeenCalled();
   });
 });

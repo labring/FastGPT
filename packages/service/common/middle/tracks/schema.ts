@@ -1,5 +1,5 @@
 import { type TrackSchemaType } from '@fastgpt/global/common/middle/tracks/type';
-import { getMongoModel, Schema } from '../../mongo';
+import { defineIndex, getMongoModel, Schema } from '../../mongo';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
 
 const TrackSchema = new Schema({
@@ -11,24 +11,24 @@ const TrackSchema = new Schema({
   data: Object
 });
 
-TrackSchema.index({ event: 1 });
+defineIndex(TrackSchema, { key: { event: 1 } });
 // Dataset search index
-TrackSchema.index(
-  { event: 1, teamId: 1, 'data.datasetId': 1, createTime: -1 },
-  {
+defineIndex(TrackSchema, {
+  key: { event: 1, teamId: 1, 'data.datasetId': 1, createTime: -1 },
+  options: {
     partialFilterExpression: {
       event: TrackEnum.datasetSearch
     }
   }
-);
+});
 // QPM index
-TrackSchema.index(
-  { event: 1, createTime: -1, 'data.requestCount': 1 },
-  {
+defineIndex(TrackSchema, {
+  key: { event: 1, createTime: -1, 'data.requestCount': 1 },
+  options: {
     partialFilterExpression: {
       event: TrackEnum.teamChatQPM
     }
   }
-);
+});
 
 export const TrackModel = getMongoModel<TrackSchemaType>('tracks', TrackSchema);

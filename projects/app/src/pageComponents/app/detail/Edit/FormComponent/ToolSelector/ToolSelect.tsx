@@ -14,11 +14,15 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import ConfigToolModal from '../../component/ConfigToolModal';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { formatToolError } from '@fastgpt/global/core/app/utils';
-import { PluginStatusEnum, PluginStatusMap } from '@fastgpt/global/core/plugin/type';
+import {
+  PluginStatusEnum,
+  PluginStatusMap,
+  type PluginStatusType
+} from '@fastgpt/global/core/plugin/type';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
-import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 
 const ToolSelect = ({
@@ -36,9 +40,18 @@ const ToolSelect = ({
   fileSelectConfig?: AppFileSelectConfigType;
   onAddTool: (tool: SelectedToolItemType) => void;
   onUpdateTool: (tool: SelectedToolItemType) => void;
-  onRemoveTool: (id: string) => void;
+  onRemoveTool: (id: string, source?: string) => void;
 }) => {
   const { t } = useTranslation();
+
+  const statusLabelMap: Partial<Record<PluginStatusType, string>> = {
+    [PluginStatusEnum.SoonOffline]: t('app:toolkit_status_soon_offline'),
+    [PluginStatusEnum.Offline]: t('common:error.tool_not_exist')
+  };
+  const statusTooltipMap: Partial<Record<PluginStatusType, string>> = {
+    [PluginStatusEnum.SoonOffline]: t('app:tool_soon_offset_tips'),
+    [PluginStatusEnum.Offline]: t('app:tool_offset_tips')
+  };
 
   const [configTool, setConfigTool] = useState<AppFormEditFormType['selectedTools'][number] | null>(
     null
@@ -76,17 +89,21 @@ const ToolSelect = ({
         gridGap={[2, 4]}
       >
         {selectedTools.map((item) => {
-          const toolError = formatToolError(item.pluginData?.error);
           // 即将下架/已下架
-          const status = item.status || item.pluginData?.status;
+          const status = item.pluginData?.status || item.status;
+          const isOffline = status === PluginStatusEnum.Offline;
+          const toolError =
+            formatToolError(item.pluginData?.error) ||
+            (isOffline ? 'common:error.tool_not_exist' : undefined);
 
-          const hasFormInput =
-            item.configStatus === 'configured' || item.configStatus === 'waitingForConfig';
           const isUnconfigured = item.configStatus === 'waitingForConfig';
           const isDebugTool = isDebugToolSource(item.source);
 
           return (
-            <MyTooltip key={item.id} label={item.intro}>
+            <MyTooltip
+              key={getToolIdentityKey(item.pluginId || item.id, item.source)}
+              label={item.intro}
+            >
               <Grid
                 overflow={'hidden'}
                 alignItems={'center'}
@@ -120,15 +137,15 @@ const ToolSelect = ({
                 </Box>
 
                 <Flex gap={1} minW={0} justifySelf={'end'} alignItems={'center'}>
-                  {status !== undefined && status !== PluginStatusEnum.Normal && (
-                    <MyTooltip label={t(PluginStatusMap[status].tooltip)}>
+                  {status === PluginStatusEnum.SoonOffline && (
+                    <MyTooltip label={statusTooltipMap[status]}>
                       <MyTag
                         display={'block'}
                         className="unHoverStyle"
                         colorSchema={PluginStatusMap[status].tagColor}
                         type="borderFill"
                       >
-                        {t(PluginStatusMap[status].label)}
+                        {statusLabelMap[status]}
                       </MyTag>
                     </MyTooltip>
                   )}
@@ -146,24 +163,23 @@ const ToolSelect = ({
                     </MyTag>
                   )}
                   {isDebugTool && <DebugToolTag className="unHoverStyle" />}
-                  {/* Edit icon */}
-                  {hasFormInput && !toolError && (
+                  {!toolError && (
                     <MyIconButton
                       className="hoverStyle"
-                      display={['flex', 'none']}
+                      display={'none'}
                       icon="common/setting"
+                      tip={t('app:tool_param_config')}
                       onClick={() => setConfigTool(item)}
                     />
                   )}
-                  {/* Delete icon */}
-                  <Box className="hoverStyle" display={['flex', 'none']} ml={0.5}>
+                  <Box className="delete" display={['flex', 'none']} ml={0.5}>
                     <MyIconButton
                       icon="delete"
                       hoverBg="red.50"
                       hoverColor="red.600"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onRemoveTool(item.pluginId!);
+                        onRemoveTool(item.pluginId!, item.source);
                       }}
                     />
                   </Box>
@@ -182,7 +198,7 @@ const ToolSelect = ({
           selectedModel={selectedModel}
           onAddTool={onAddTool}
           onRemoveTool={(e) => {
-            onRemoveTool(e.id);
+            onRemoveTool(e.id, e.source);
           }}
           onClose={onCloseToolsSelect}
         />

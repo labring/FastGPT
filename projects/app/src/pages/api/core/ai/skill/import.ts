@@ -4,57 +4,22 @@ import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamSkillCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { importSkill } from '@fastgpt/service/core/ai/skill/manage';
-import { validateZipStructure } from '@fastgpt/service/core/ai/skill/package';
 import {
-  ImportSkillBodySchema,
-  type ImportSkillBody,
+  ImportSkillQuerySchema,
+  ImportSkillResponseSchema,
+  type ImportSkillQuery,
   type ImportSkillResponse
 } from '@fastgpt/global/core/ai/skill/api';
-import type { SkillPackageType } from '@fastgpt/global/core/ai/skill/type';
 import {
   AgentSkillCategoryEnum,
   AgentSkillTypeEnum
 } from '@fastgpt/global/core/ai/skill/constants';
-import { multer } from '@fastgpt/service/common/file/multer';
-import fs from 'fs/promises';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getAgentSandboxSkillMaxBytes } from '@fastgpt/service/core/ai/sandbox/interface/config';
-
-const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.IMPORT);
-
-/**
- * 归一化上传文件名。
- *
- * 浏览器或网关可能把 multipart filename 中的 UTF-8 字节按 latin1 传给 multer，
- * 这里先兼容百分号编码，再在全量字符都属于 latin1 范围时尝试还原 UTF-8 中文名。
- */
-const normalizeUploadedFilename = (filename: string) => {
-  const decoded = (() => {
-    try {
-      return decodeURIComponent(filename);
-    } catch {
-      return filename;
-    }
-  })();
-
-  const chars = Array.from(decoded);
-  if (chars.some((char) => char.charCodeAt(0) > 0xff)) {
-    return decoded;
-  }
-
-  const repaired = Buffer.from(decoded, 'latin1').toString('utf8');
-  return repaired.includes('\uFFFD') ? decoded : repaired;
-};
-
-const getSkillNameFromArchiveFilename = (filename: string) => {
-  const basename = filename.split(/[\\/]/).pop() || filename;
-  return basename.replace(/\.(zip|tar\.gz|tgz|tar)$/i, '').trim();
-};
 
 export const config = {
   api: {
@@ -62,124 +27,67 @@ export const config = {
   }
 };
 
-async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSkillResponse> {
-  const filepaths: string[] = [];
+async function handler(
+  req: ApiRequestProps<unknown, ImportSkillQuery>
+): Promise<ImportSkillResponse> {
+  const query = parseApiInput({ req, querySchema: ImportSkillQuerySchema }).query;
+  const filename = query.filename.split(/[\\/]/).pop() ?? query.filename;
 
-  try {
-    // Read env limit before multer so both use the same value
-    const maxSkillPackageSize = getAgentSandboxSkillMaxBytes();
-    // Convert bytes to MB for multer (multer expects MB)
-    const maxSkillPackageSizeMB = Math.ceil(maxSkillPackageSize / 1024 / 1024);
+  if (!filename.toLowerCase().endsWith('.zip')) {
+    return Promise.reject(SkillErrEnum.invalidArchiveFormat);
+  }
 
-    const result = await multer.resolveFormData<ImportSkillBody>({
-      request: req,
-      maxFileSize: maxSkillPackageSizeMB
-    });
+  const maxSkillPackageSize = getAgentSandboxSkillMaxBytes();
+  const contentLengthHeader = req.headers['content-length'];
+  const contentLength = contentLengthHeader ? Number(contentLengthHeader) : undefined;
 
-    filepaths.push(result.fileMetadata.path);
+  if (contentLength !== undefined && contentLength > maxSkillPackageSize) {
+    return Promise.reject(SkillErrEnum.archiveTooLarge);
+  }
 
-    const file = result.fileMetadata;
-    const normalizedOriginalName = normalizeUploadedFilename(file.originalname || '');
-    const body = parseApiInput({
-      req: { body: result.data },
-      bodySchema: ImportSkillBodySchema
-    }).body;
-
-    if (!normalizedOriginalName.toLowerCase().endsWith('.zip')) {
-      return Promise.reject(SkillErrEnum.invalidArchiveFormat);
-    }
-
-    // Authenticate user and check permission
-    let teamId: string;
-    let tmbId: string;
-
-    if (body.parentId) {
-      // If importing into a folder, check write permission on the parent folder
-      const authResult = await authSkill({
+  // 在消费文件流前完成权限校验，避免未授权请求占用对象存储上传带宽。
+  const { teamId, tmbId } = query.parentId
+    ? await authSkill({
         req,
         authToken: true,
         authApiKey: true,
-        skillId: body.parentId,
+        skillId: query.parentId,
         per: WritePermissionVal
-      });
-      teamId = authResult.teamId;
-      tmbId = authResult.tmbId;
-    } else {
-      // If importing to root, check team-level skill create permission
-      const authResult = await authUserPer({
+      })
+    : await authUserPer({
         req,
         authToken: true,
         authApiKey: true,
         per: TeamSkillCreatePermissionVal
       });
-      teamId = authResult.teamId;
-      tmbId = authResult.tmbId;
+
+  const skillName = query.name?.trim() || filename.replace(/\.[^.]+$/, '').trim() || 'package';
+
+  const skillId = await importSkill({
+    skill: {
+      name: skillName,
+      description: query.description?.trim() ?? '',
+      category: [AgentSkillCategoryEnum.other],
+      avatar: query.avatar
+    },
+    teamId,
+    tmbId,
+    packageStream: req,
+    contentLength,
+    parentId: query.parentId ?? null
+  });
+
+  void addAuditLog({
+    tmbId,
+    teamId,
+    event: AuditEventEnum.IMPORT_SKILL,
+    params: {
+      skillName,
+      skillType: getI18nSkillType(AgentSkillTypeEnum.skill)
     }
+  });
 
-    // Check archive size (multer already enforces the limit, this is a secondary guard)
-    const stats = await fs.stat(file.path);
-    if (stats.size > maxSkillPackageSize) {
-      logger.warn('Archive file size exceeds maximum', {
-        sizeMB: (stats.size / 1024 / 1024).toFixed(2),
-        maxMB: (maxSkillPackageSize / 1024 / 1024).toFixed(2)
-      });
-      return Promise.reject(SkillErrEnum.archiveTooLarge);
-    }
-
-    // Directly read the ZIP archive buffer from disk without any in-memory decompression
-    const zipBuffer = await fs.readFile(file.path);
-
-    // Light-weight structure validation: the package must contain an exact SKILL.md entry.
-    const validation = await validateZipStructure(zipBuffer, {
-      maxUncompressedBytes: maxSkillPackageSize
-    });
-    if (!validation.valid) {
-      return Promise.reject(SkillErrEnum.invalidSkillPackage);
-    }
-
-    // 用户未手动命名时，展示名严格来自上传 ZIP 文件名，不读取 SKILL.md 作为兜底。
-    const pkgName =
-      body.name?.trim() ||
-      getSkillNameFromArchiveFilename(normalizedOriginalName || 'package') ||
-      'package';
-    const pkgDescription = body.description?.trim() ?? '';
-
-    // Build skill package using package-level metadata only
-    const skillPackage: SkillPackageType = {
-      skill: {
-        name: pkgName,
-        description: pkgDescription,
-        category: [AgentSkillCategoryEnum.other],
-        avatar: body.avatar
-      }
-    };
-
-    // Create ONE DB record and upload the raw ZIP buffer straight to S3
-    const skillId = await importSkill(
-      skillPackage,
-      teamId,
-      tmbId,
-      zipBuffer,
-      body.parentId || null
-    );
-
-    // Add audit log
-    (async () => {
-      addAuditLog({
-        tmbId,
-        teamId,
-        event: AuditEventEnum.IMPORT_SKILL,
-        params: {
-          skillName: pkgName,
-          skillType: getI18nSkillType(AgentSkillTypeEnum.skill)
-        }
-      });
-    })();
-
-    return skillId;
-  } finally {
-    multer.clearDiskTempFiles(filepaths);
-  }
+  return ImportSkillResponseSchema.parse(skillId);
 }
 
 export default NextAPI(handler);

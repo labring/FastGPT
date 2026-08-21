@@ -1,4 +1,4 @@
-import { authFrequencyLimit } from '../../../common/system/frequencyLimit/utils';
+import { assertOutLinkRateLimit } from '../../../common/rateLimit/interface/outLink';
 import type {
   AuthOutLinkInitProps,
   AuthOutLinkLimitProps,
@@ -7,7 +7,6 @@ import type {
 import { axios } from '../../../common/api/axios';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
 import type { OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
-import { addMinutes } from 'date-fns';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { S3_KEY_PATH_INVALID_CHARS } from '../../../common/s3/config/constants';
 
@@ -33,7 +32,7 @@ export const authOutLinkInit = async ({
     }
   });
   if (data?.success !== true) {
-    return Promise.reject(data?.message || data?.msg || OutLinkErrEnum.unAuthUser);
+    return Promise.reject(new UserError(data?.message || data?.msg || OutLinkErrEnum.unAuthUser));
   }
 
   const uid = data?.data?.uid;
@@ -49,25 +48,20 @@ export const authOutLinkInit = async ({
   return { uid };
 };
 
-const authIpLimit = async ({ ip, outLink }: { ip: string; outLink: OutLinkSchemaType }) => {
+const assertOutLinkQpmLimit = async (outLink: OutLinkSchemaType, uid: string) => {
   if (!outLink.limit || !outLink.limit.QPM) {
     return;
   }
 
-  try {
-    await authFrequencyLimit({
-      eventId: `${outLink._id}-${ip}`,
-      maxAmount: outLink.limit.QPM,
-      expiredTime: addMinutes(new Date(), 1)
-    });
-  } catch (error) {
-    return Promise.reject(new UserError(`每分钟仅能请求 ${outLink.limit.QPM} 次~`));
-  }
+  await assertOutLinkRateLimit({
+    outLinkId: String(outLink._id),
+    uid,
+    limit: outLink.limit.QPM
+  });
 };
 
 export async function authOutLinkLimit({
   outLink,
-  ip,
   outLinkUid,
   question
 }: AuthOutLinkLimitProps): Promise<AuthOutLinkResponse> {
@@ -88,10 +82,7 @@ export async function authOutLinkLimit({
     return Promise.reject(new UserError('链接超出使用限制'));
   }
 
-  // ip limit
-  if (ip) {
-    await authIpLimit({ ip, outLink });
-  }
+  await assertOutLinkQpmLimit(outLink, outLinkUid);
 
   // url auth. send request
   if (!outLink.limit.hookUrl) {
@@ -113,7 +104,7 @@ export async function authOutLinkLimit({
     }
 
     return { uid: data?.data?.uid || outLinkUid };
-  } catch (error) {
+  } catch {
     return Promise.reject(new UserError('身份校验失败'));
   }
 }

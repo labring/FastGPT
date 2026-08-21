@@ -1,6 +1,6 @@
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { authOpenApiKeyCrud } from '@fastgpt/service/support/permission/auth/openapi';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';

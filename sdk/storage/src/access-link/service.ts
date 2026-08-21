@@ -1,0 +1,76 @@
+import { createDefaultIdGenerator, createS3AccessLinkCrypto } from './crypto';
+import {
+  createDownloadUrlsHandler,
+  createDownloadUrlHandler,
+  deleteDownloadAliasByObjectHandler,
+  deleteDownloadAliasByObjectsHandler,
+  revokeDownloadAliasHandler,
+  verifyDownloadAliasHandler
+} from './download';
+import {
+  createUploadUrlHandler,
+  markMultipartAbortedHandler,
+  markMultipartCompleteFailedHandler,
+  markMultipartCompletingHandler,
+  markMultipartCompletedHandler,
+  revokeUploadTokenHandler,
+  verifyUploadTokenHandler
+} from './upload';
+import type {
+  CreateS3AccessLinkServiceOptions,
+  ResolvedS3AccessLinkServiceOptions,
+  S3AccessLinkService
+} from './types';
+
+const resolveOptions = (
+  options: CreateS3AccessLinkServiceOptions
+): ResolvedS3AccessLinkServiceOptions => {
+  const defaultIdGenerator = createDefaultIdGenerator();
+
+  if (!options.secret) {
+    throw new Error('S3 access link secret is required');
+  }
+
+  return {
+    ...options,
+    clock: options.clock ?? (() => new Date()),
+    idGenerator: {
+      aliasId: options.idGenerator?.aliasId ?? defaultIdGenerator.aliasId,
+      uploadToken: options.idGenerator?.uploadToken ?? defaultIdGenerator.uploadToken,
+      multipartCompletionAttemptId:
+        options.idGenerator?.multipartCompletionAttemptId ??
+        defaultIdGenerator.multipartCompletionAttemptId
+    },
+    uploadSessionUsePolicy: options.uploadSessionUsePolicy ?? 'mark-used'
+  };
+};
+
+/**
+ * Creates a runtime-independent access-link service.
+ *
+ * The returned service owns only protocol behavior. Database writes, URL shape,
+ * and route/proxy handling are provided by the caller through ports.
+ */
+export const createS3AccessLinkService = (
+  options: CreateS3AccessLinkServiceOptions
+): S3AccessLinkService => {
+  const resolvedOptions = resolveOptions(options);
+  const crypto = createS3AccessLinkCrypto({ secret: resolvedOptions.secret });
+  const deps = { ...resolvedOptions, crypto };
+
+  return {
+    createDownloadUrl: createDownloadUrlHandler(deps),
+    createDownloadUrls: createDownloadUrlsHandler(deps),
+    verifyDownloadAlias: verifyDownloadAliasHandler(deps),
+    revokeDownloadAlias: revokeDownloadAliasHandler(deps),
+    deleteDownloadAliasByObject: deleteDownloadAliasByObjectHandler(deps),
+    deleteDownloadAliasByObjects: deleteDownloadAliasByObjectsHandler(deps),
+    createUploadUrl: createUploadUrlHandler(deps),
+    verifyUploadToken: verifyUploadTokenHandler(deps),
+    markMultipartCompleting: markMultipartCompletingHandler(deps),
+    markMultipartCompleted: markMultipartCompletedHandler(deps),
+    markMultipartCompleteFailed: markMultipartCompleteFailedHandler(deps),
+    markMultipartAborted: markMultipartAbortedHandler(deps),
+    revokeUploadToken: revokeUploadTokenHandler(deps)
+  };
+};

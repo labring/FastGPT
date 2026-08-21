@@ -1,6 +1,6 @@
 import { Box, Flex } from '@chakra-ui/react';
 import React from 'react';
-import { isEqual } from 'lodash';
+import { isEqual } from 'lodash-es';
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { formatChatValue2InputType } from '../../utils/chatValue';
 import FilesBlock from '../FilesBox';
@@ -20,6 +20,7 @@ const HumanChatBubbleContent = ({ chatValue }: HumanChatBubbleContentProps) => {
       w={'fit-content'}
       maxW={'100%'}
     >
+      {files.length > 0 && <FilesBlock files={files} singleColumn imageVariant={'chatBubble'} />}
       {text && (
         <Box
           fontSize={'inherit'}
@@ -31,7 +32,6 @@ const HumanChatBubbleContent = ({ chatValue }: HumanChatBubbleContentProps) => {
           {text}
         </Box>
       )}
-      {files.length > 0 && <FilesBlock files={files} singleColumn imageVariant={'chatBubble'} />}
     </Flex>
   );
 };

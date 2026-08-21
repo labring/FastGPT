@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { createLLMResponseMock, filterGPTMessageByMaxContextMock, lazyGreedyQuerySelectionMock } =
-  vi.hoisted(() => ({
-    createLLMResponseMock: vi.fn(),
-    filterGPTMessageByMaxContextMock: vi.fn(),
-    lazyGreedyQuerySelectionMock: vi.fn()
-  }));
+const {
+  createLLMResponseMock,
+  filterGPTMessageByMaxContextMock,
+  getLLMModelMock,
+  lazyGreedyQuerySelectionMock
+} = vi.hoisted(() => ({
+  createLLMResponseMock: vi.fn(),
+  filterGPTMessageByMaxContextMock: vi.fn(),
+  getLLMModelMock: vi.fn(),
+  lazyGreedyQuerySelectionMock: vi.fn()
+}));
 
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
@@ -16,10 +21,7 @@ vi.mock('@fastgpt/service/core/ai/llm/utils', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getLLMModel: vi.fn(() => ({
-    model: 'gpt-query',
-    maxContext: 4000
-  }))
+  getLLMModel: getLLMModelMock
 }));
 
 vi.mock('@fastgpt/service/core/ai/hooks/useTextCosine', () => ({
@@ -34,11 +36,65 @@ import { queryExtension } from '../../../../core/ai/functions/queryExtension';
 describe('queryExtension', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getLLMModelMock.mockReturnValue({
+      model: 'gpt-query',
+      maxContext: 4000,
+      reasoning: true
+    });
     filterGPTMessageByMaxContextMock.mockResolvedValue([]);
     lazyGreedyQuerySelectionMock.mockResolvedValue({
       selectedData: ['expanded query'],
       embeddingTokens: 6
     });
+  });
+
+  it('disables reasoning when the query extension model supports it', async () => {
+    createLLMResponseMock.mockResolvedValue({
+      answerText: '[]',
+      requestId: 'req_query_extension_reasoning',
+      usage: {
+        inputTokens: 11,
+        outputTokens: 3,
+        usedUserOpenAIKey: false
+      }
+    });
+
+    await queryExtension({
+      query: 'original query',
+      histories: [],
+      llmModel: 'gpt-query',
+      embeddingModel: 'embedding-query',
+      teamId: 'team_1'
+    });
+
+    expect(createLLMResponseMock.mock.calls[0][0].body.reasoning_effort).toBe('none');
+  });
+
+  it('does not send reasoning effort when the query extension model does not support it', async () => {
+    getLLMModelMock.mockReturnValue({
+      model: 'gpt-query',
+      maxContext: 4000,
+      reasoning: false
+    });
+    createLLMResponseMock.mockResolvedValue({
+      answerText: '[]',
+      requestId: 'req_query_extension_without_reasoning',
+      usage: {
+        inputTokens: 11,
+        outputTokens: 3,
+        usedUserOpenAIKey: false
+      }
+    });
+
+    await queryExtension({
+      query: 'original query',
+      histories: [],
+      llmModel: 'gpt-query',
+      embeddingModel: 'embedding-query',
+      teamId: 'team_1'
+    });
+
+    expect(createLLMResponseMock.mock.calls[0][0].body).not.toHaveProperty('reasoning_effort');
   });
 
   it('returns LLM request id for node response tracing', async () => {

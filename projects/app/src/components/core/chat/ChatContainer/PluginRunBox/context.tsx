@@ -1,4 +1,4 @@
-import React, { type ReactNode, useCallback, useMemo, useRef } from 'react';
+import React, { type ReactNode, useCallback, useRef } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { type PluginRunBoxProps } from './type';
 import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
@@ -150,12 +150,8 @@ const PluginRunContextProvider = ({
     [setChatRecords, resetVariables]
   );
 
-  const isChatting = useMemo(
-    () =>
-      chatRecords[chatRecords.length - 1] &&
-      chatRecords[chatRecords.length - 1]?.status !== 'finish',
-    [chatRecords]
-  );
+  const isChatting =
+    chatRecords[chatRecords.length - 1] && chatRecords[chatRecords.length - 1]?.status !== 'finish';
 
   const onSubmit = useCallback(
     async ({ variables }: ChatBoxInputFormType) => {
@@ -243,7 +239,8 @@ const PluginRunContextProvider = ({
           })
         );
       } catch (err: any) {
-        toast({ title: err.message, status: 'error' });
+        const errorMsg = t(getErrText(err, t('common:core.chat.error.Chat error') as any));
+        toast({ title: errorMsg, status: 'error' });
         setChatRecords((state) =>
           state.map((item, index) => {
             if (index !== state.length - 1) return item;
@@ -279,6 +276,7 @@ const PluginRunContextProvider = ({
       sourceTarget={{ sourceType: ChatSourceTypeEnum.app, sourceId: props.appId }}
       chatId={props.chatId}
       outLinkAuthData={props.outLinkAuthData || {}}
+      fileUploadMode={props.fileUploadMode ?? 'runtime'}
     >
       <PluginRunContext.Provider value={contextValue}>{children}</PluginRunContext.Provider>
     </WorkflowRuntimeContextProvider>

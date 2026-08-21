@@ -2,7 +2,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { buildPluginDebugConnectionUrl } from '@/service/core/plugin/debug/connectionUrl';
 import { assertCommercialPluginDebugEnabled } from '@/service/core/plugin/debug/authCommercialDebug';
 import {

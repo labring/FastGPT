@@ -600,10 +600,7 @@ const Header = ({
           name={editFolderData.name}
         />
       )}
-      <EditCreateVirtualFileModal
-        iconSrc={'modal/manualDataset'}
-        closeBtnText={t('common:Cancel')}
-      />
+      <EditCreateVirtualFileModal closeBtnText={t('common:Cancel')} size="sm" />
       {isOpenFileSourceSelector && <FileSourceSelector onClose={onCloseFileSourceSelector} />}
       {isOpenBackupImportModal && (
         <BackupImportModal

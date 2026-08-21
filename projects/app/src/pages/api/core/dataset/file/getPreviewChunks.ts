@@ -1,14 +1,15 @@
 import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDatasetFileKey } from '@fastgpt/service/support/permission/auth/file';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
 import {
   computedCollectionChunkSettings,
-  getLLMMaxChunkSize
+  getLLMMaxChunkSize,
+  maxPreviewChunkCount
 } from '@fastgpt/global/core/dataset/training/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
@@ -97,13 +98,16 @@ async function handler(
     paragraphChunkMinSize: formatChunkSettings.paragraphChunkMinSize,
     maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModel)),
     overlapRatio,
-    customReg: formatChunkSettings.chunkSplitter ? [formatChunkSettings.chunkSplitter] : []
+    customReg: formatChunkSettings.chunkSplitter ? [formatChunkSettings.chunkSplitter] : [],
+    maxChunks: maxPreviewChunkCount
   });
 
-  const chunksWithJWT = chunks.slice(0, 10).map((chunk) => ({
-    q: replaceS3KeyToPreviewUrl(chunk.q, addDays(new Date(), 1)),
-    a: replaceS3KeyToPreviewUrl(chunk.a, addDays(new Date(), 1))
-  }));
+  const chunksWithJWT = await Promise.all(
+    chunks.slice(0, 10).map(async (chunk) => ({
+      q: await replaceS3KeyToPreviewUrl(chunk.q, addDays(new Date(), 1)),
+      a: await replaceS3KeyToPreviewUrl(chunk.a, addDays(new Date(), 1))
+    }))
+  );
 
   return GetPreviewChunksResponseSchema.parse({
     chunks: chunksWithJWT,

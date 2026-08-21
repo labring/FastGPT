@@ -7,9 +7,7 @@ import type {
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
 import { getPromptToolCallPrompt } from './prompt';
-import lodash from 'lodash';
-
-const { cloneDeep } = lodash;
+import { cloneDeep } from 'lodash-es';
 
 export const promptToolCallMessageRewrite = (
   messages: ChatCompletionMessageParam[],

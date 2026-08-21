@@ -55,10 +55,6 @@ const Edit = ({
             />
           </Box>
 
-          <Box mt={4} p={4} {...cardStyles} boxShadow={'2'} whiteSpace={'pre-wrap'} fontSize={'sm'}>
-            {t('app:chat_agent_beta_tip')}
-          </Box>
-
           <Box pb={4}>
             <EditForm appForm={appForm} setAppForm={setAppForm} />
           </Box>

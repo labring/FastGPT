@@ -10,6 +10,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { checkTeamExportDatasetLimit } from '@/web/support/user/team/api';
 import { downloadFetch } from '@/web/common/system/utils';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -19,7 +20,6 @@ import { DatasetsContext } from './context';
 import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
 import ConfigPerModal from '@/components/support/permission/ConfigPerModal';
 import {
-  deleteDatasetCollaborators,
   getCollaboratorList,
   postUpdateDatasetCollaborators
 } from '@/web/core/dataset/api/collaborator';
@@ -52,6 +52,10 @@ function List() {
     searchKey,
     setSearchKey
   } = useContextSelector(DatasetsContext, (v) => v);
+  const { userInfo } = useUserStore();
+  const canCreateDataset = folderDetail
+    ? folderDetail.permission.hasWritePer
+    : !!userInfo?.team?.permission.hasDatasetCreatePer;
   const router = useRouter();
   const { parentId = null } = router.query as { parentId?: string | null };
   const [editPerDatasetId, setEditPerDatasetId] = useState<string>();
@@ -405,7 +409,11 @@ function List() {
       {myDatasets.length === 0 && (
         <EmptyTip
           pt={'35vh'}
-          text={t('common:core.dataset.Empty Dataset Tips')}
+          text={
+            canCreateDataset
+              ? t('common:core.dataset.Empty Dataset Tips')
+              : t('common:core.dataset.Empty Dataset Tips No Permission')
+          }
           flexGrow="1"
         ></EmptyTip>
       )}
@@ -449,11 +457,6 @@ function List() {
             roleList: DatasetRoleList,
             onUpdateCollaborators: (props) =>
               postUpdateDatasetCollaborators({
-                ...props,
-                datasetId: editPerDataset._id
-              }),
-            onDelOneCollaborator: async (props) =>
-              deleteDatasetCollaborators({
                 ...props,
                 datasetId: editPerDataset._id
               }),

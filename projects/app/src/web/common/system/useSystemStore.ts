@@ -8,7 +8,7 @@ import type {
   EmbeddingModelItemType,
   STTModelType
 } from '@fastgpt/global/core/ai/model.schema';
-import type { InitDateResponse } from '@/pages/api/common/system/getInitData';
+import type { GetSystemInitDataResponse } from '@fastgpt/global/openapi/common/system/api';
 import { type FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import { type SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
@@ -61,7 +61,7 @@ type State = {
 
   modelProviders: Record<langType, ModelProviderItemType[]>;
   modelProviderMap: Record<langType, Record<string, ModelProviderItemType>>;
-  aiproxyChannels: NonNullable<InitDateResponse['aiproxyChannels']>;
+  aiproxyChannels: NonNullable<GetSystemInitDataResponse['aiproxyChannels']>;
   defaultModels: SystemDefaultModelType;
   llmModelList: LLMModelItemType[];
   embeddingModelList: EmbeddingModelItemType[];
@@ -79,7 +79,7 @@ type State = {
   getModelProviders: (language?: string) => ModelProviderItemType[];
   getModelProvider: (provider?: string, language?: string) => ModelProviderItemType;
 
-  initStaticData: (e: InitDateResponse) => void;
+  initStaticData: (e: GetSystemInitDataResponse) => void;
 
   appType?: string;
   setAppType: (e?: string) => void;

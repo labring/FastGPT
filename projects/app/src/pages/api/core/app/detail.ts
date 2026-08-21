@@ -11,6 +11,7 @@ import {
   GetAppDetailResponseSchema,
   type GetAppDetailResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
+import { decodeToolSetNodesFromStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
 
 /* 获取应用详情 */
 async function handler(req: NextApiRequest): Promise<GetAppDetailResponseType> {
@@ -31,7 +32,7 @@ async function handler(req: NextApiRequest): Promise<GetAppDetailResponseType> {
   });
 
   await rewriteAppWorkflowToDetail({
-    nodes: app.modules,
+    nodes: decodeToolSetNodesFromStorage(app.modules),
     teamId,
     ownerTmbId: app.tmbId,
     isRoot,
@@ -46,7 +47,10 @@ async function handler(req: NextApiRequest): Promise<GetAppDetailResponseType> {
     });
   }
 
-  return GetAppDetailResponseSchema.parse(app);
+  return GetAppDetailResponseSchema.parse({
+    ...app,
+    modules: decodeToolSetNodesFromStorage(app.modules)
+  });
 }
 
 export default NextAPI(handler);

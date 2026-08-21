@@ -1,23 +1,115 @@
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
-import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
-import { getAllowedExtensionsFromFileSelectConfig } from '@fastgpt/service/common/s3/utils/uploadConstraints';
 import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
-import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
-import { addSeconds } from 'date-fns';
 import { PresignChatFilePostUrlSchema } from '@fastgpt/global/openapi/core/chat/file/api';
-import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
-import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
-import { serviceEnv } from '@fastgpt/service/env';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { chatAgentHelperFileSelectConfig } from '@fastgpt/global/core/ai/auxiliaryGeneration/chatAgentHelper';
+import { createAuthorizedChatFileUploadUrl } from '@/service/core/chat/file/upload';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { homeChatFileSelectConfig } from '@fastgpt/global/core/chat/setting/constants';
+import { MongoChatSetting } from '@fastgpt/service/core/chat/setting/schema';
+import { NodeInputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
+
+/**
+ * 合并应用级文件上传配置和文件变量配置。
+ * 文件变量可以独立声明允许的文件类型；发布后的上传授权必须同时识别这两种配置，
+ * 否则工具运行页虽能渲染文件输入，预签名接口仍会误判为未开启文件上传。
+ */
+const getPublishedFileSelectConfig = ({
+  chatConfig,
+  nodes = []
+}: {
+  chatConfig?: {
+    fileSelectConfig?: AppFileSelectConfigType;
+    variables?: Array<
+      AppFileSelectConfigType & { type?: VariableInputEnum; canLocalUpload?: boolean }
+    >;
+  };
+  nodes?: Array<{
+    flowNodeType?: string;
+    inputs?: FlowNodeInputItemType[];
+  }>;
+}): AppFileSelectConfigType | undefined => {
+  type FileInputConfig = AppFileSelectConfigType & { canLocalUpload?: boolean };
+
+  const fileVariables: FileInputConfig[] =
+    chatConfig?.variables?.filter(
+      (item) => item.type === VariableInputEnum.file && item.canLocalUpload !== false
+    ) ?? [];
+  const pluginFileInputs: FileInputConfig[] = nodes
+    .filter((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)
+    .flatMap((node) => node.inputs ?? [])
+    .filter(
+      (input) =>
+        input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
+        input.canLocalUpload !== false
+    );
+  const formFileInputs: FileInputConfig[] = nodes
+    .filter((node) => node.flowNodeType === FlowNodeTypeEnum.formInput)
+    .flatMap((node) => node.inputs ?? [])
+    .filter((input) => input.key === NodeInputKeyEnum.userInputForms && Array.isArray(input.value))
+    .flatMap((input) => input.value as unknown[])
+    .filter(
+      (input): input is FileInputConfig & { type: FlowNodeInputTypeEnum } =>
+        !!input &&
+        typeof input === 'object' &&
+        (input as { type?: unknown }).type === FlowNodeInputTypeEnum.fileSelect &&
+        (input as FileInputConfig).canLocalUpload !== false
+    );
+  const localFileInputs = [...fileVariables, ...pluginFileInputs, ...formFileInputs];
+
+  if (!localFileInputs.length) return chatConfig?.fileSelectConfig;
+
+  return {
+    ...chatConfig?.fileSelectConfig,
+    canSelectFile:
+      !!chatConfig?.fileSelectConfig?.canSelectFile ||
+      localFileInputs.some((item) => item.canSelectFile ?? true),
+    canSelectImg:
+      !!chatConfig?.fileSelectConfig?.canSelectImg ||
+      localFileInputs.some((item) => item.canSelectImg),
+    canSelectVideo:
+      !!chatConfig?.fileSelectConfig?.canSelectVideo ||
+      localFileInputs.some((item) => item.canSelectVideo),
+    canSelectAudio:
+      !!chatConfig?.fileSelectConfig?.canSelectAudio ||
+      localFileInputs.some((item) => item.canSelectAudio),
+    canSelectCustomFileExtension:
+      !!chatConfig?.fileSelectConfig?.canSelectCustomFileExtension ||
+      localFileInputs.some((item) => item.canSelectCustomFileExtension),
+    customFileExtensionList: [
+      ...(chatConfig?.fileSelectConfig?.customFileExtensionList ?? []),
+      ...localFileInputs.flatMap((item) => item.customFileExtensionList ?? [])
+    ]
+  };
+};
 
 async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResponseType> {
-  const { filename, sourceType, sourceId, chatId, fileSelectConfig, outLinkAuthData } =
-    parseApiInput({
-      req,
-      bodySchema: PresignChatFilePostUrlSchema
-    }).body;
+  const {
+    filename,
+    contentType,
+    declaredExtension,
+    declaredFilename,
+    size,
+    sourceType,
+    sourceId,
+    chatId,
+    outLinkAuthData
+  } = parseApiInput({
+    req,
+    bodySchema: PresignChatFilePostUrlSchema
+  }).body;
 
   const authRes = await authChatTargetCrud({
     req,
@@ -28,29 +120,48 @@ async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResp
     chatId,
     outLinkAuthData
   });
-  const resolvedSourceId = authRes.sourceId;
 
-  const planStatus = await getTeamPlanStatus({ teamId: authRes.teamId });
-  const allowedExtensions = getAllowedExtensionsFromFileSelectConfig(fileSelectConfig);
+  const fileSelectConfig = await (async () => {
+    if (authRes.sourceType === ChatSourceTypeEnum.app) {
+      const app = await MongoApp.findById(authRes.sourceId).lean();
+      if (!app) return Promise.reject(AppErrEnum.unExist);
 
-  if (!serviceEnv.SKIP_FILE_TYPE_CHECK && allowedExtensions.length === 0) {
-    return Promise.reject(S3ErrEnum.fileUploadDisabled);
-  }
+      if (app.type === AppTypeEnum.hidden) {
+        const isHomeApp = await MongoChatSetting.exists({
+          teamId: authRes.teamId,
+          appId: authRes.sourceId
+        });
+        if (isHomeApp) return homeChatFileSelectConfig;
+      }
 
-  await authFrequencyLimit({
-    eventId: `${authRes.uid}-uploadfile`,
-    maxAmount: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
-    expiredTime: addSeconds(new Date(), 30) // 30s
-  });
+      const { chatConfig, nodes } = await getAppLatestVersion(authRes.sourceId, app);
+      return getPublishedFileSelectConfig({ chatConfig, nodes });
+    }
 
-  return await getS3ChatSource().createUploadChatFileURL({
-    sourceType,
-    sourceId: resolvedSourceId,
+    if (authRes.sourceType === ChatSourceTypeEnum.chatAgentHelper) {
+      return chatAgentHelperFileSelectConfig;
+    }
+
+    if (authRes.sourceType === ChatSourceTypeEnum.skillEdit) {
+      return undefined;
+    }
+
+    const exhaustiveCheck: never = authRes.sourceType;
+    throw new Error(`Unsupported chat source type: ${exhaustiveCheck}`);
+  })();
+
+  return createAuthorizedChatFileUploadUrl({
+    sourceType: authRes.sourceType,
+    sourceId: authRes.sourceId,
     chatId,
+    teamId: authRes.teamId,
+    uid: authRes.uid,
+    fileSelectConfig,
     filename,
-    uId: authRes.uid,
-    allowedExtensions,
-    maxFileSize: planStatus.standard?.maxUploadFileSize ?? global.feConfigs.uploadFileMaxSize
+    contentType,
+    declaredExtension,
+    declaredFilename,
+    size
   });
 }
 

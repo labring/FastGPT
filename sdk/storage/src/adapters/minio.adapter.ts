@@ -1,21 +1,77 @@
 import * as Minio from 'minio';
-import type { IAwsS3CompatibleStorageOptions, IStorage } from '../interface';
-import type {
-  DeleteObjectParams,
-  DeleteObjectsParams,
-  DeleteObjectsResult,
-  DeleteObjectResult,
-  EnsureBucketResult,
-  DeleteObjectsByPrefixParams
-} from '../types';
+import * as http from 'node:http';
+import * as https from 'node:https';
+import type { IMinioStorageOptions, IStorage } from '../interface';
+import type * as Storage from '../types';
 import { AwsS3StorageAdapter } from './aws-s3.adapter';
-import {
-  CreateBucketCommand,
-  DeleteBucketLifecycleCommand,
-  NotFound,
-  PutBucketPolicyCommand
-} from '@aws-sdk/client-s3';
+import AWS from '@aws-sdk/client-s3';
 import { chunk } from 'es-toolkit';
+import {
+  assertStorageObjectKey,
+  assertStorageObjectKeys,
+  assertRequiredStorageObjectPrefix
+} from '../assert';
+
+export const MinioS3NotFound = AWS.NotFound;
+
+const minioRequestTimeoutMs = 60_000;
+
+/**
+ * 为 MinIO 删除请求注入总请求超时。Promise 超时无法取消底层 HTTP 请求，
+ * transport 层主动 destroy 才能避免队列重试时积累悬挂连接。
+ */
+export const createMinioTimeoutTransport = ({
+  transport,
+  timeoutMs
+}: {
+  transport: NonNullable<Minio.ClientOptions['transport']>;
+  timeoutMs: number;
+}): NonNullable<Minio.ClientOptions['transport']> => ({
+  request: ((...args: unknown[]) => {
+    const request = Reflect.apply(transport.request, transport, args) as http.ClientRequest;
+    const timeout = setTimeout(() => {
+      request.destroy(new Error(`MinIO request timeout after ${timeoutMs}ms`));
+    }, timeoutMs);
+    timeout.unref();
+    request.once('close', () => clearTimeout(timeout));
+
+    return request;
+  }) as NonNullable<Minio.ClientOptions['transport']>['request']
+});
+
+/**
+ * 提取 MinIO 批量删除响应中的失败 key。
+ *
+ * MinIO 8.x 运行时直接返回错误对象数组，但类型声明仍保留了 Error 嵌套，
+ * 因此同时兼容两种结构。响应结构异常或无法定位失败对象时，将当前批次
+ * 全部标记为失败，避免上层把不完整响应误判为删除成功。
+ */
+const getFailedKeysFromMinioRemove = ({
+  result,
+  requestedKeys
+}: {
+  result: unknown;
+  requestedKeys: string[];
+}): string[] => {
+  if (!Array.isArray(result)) return requestedKeys;
+
+  const requestedKeySet = new Set(requestedKeys);
+  const failedKeys: string[] = [];
+
+  for (const item of result) {
+    const key = (() => {
+      if (!item || typeof item !== 'object') return;
+      if ('Key' in item && typeof item.Key === 'string') return item.Key;
+      if (!('Error' in item) || !item.Error || typeof item.Error !== 'object') return;
+      if ('Key' in item.Error && typeof item.Error.Key === 'string') return item.Error.Key;
+    })();
+    if (!key || !requestedKeySet.has(key)) return requestedKeys;
+
+    failedKeys.push(key);
+  }
+
+  return failedKeys;
+};
 
 /**
  * @description MinIO 存储适配器（基于 minio SDK 和 AWS S3 SDK）
@@ -39,7 +95,7 @@ import { chunk } from 'es-toolkit';
 export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage {
   protected readonly minioClient: Minio.Client;
 
-  constructor(protected readonly options: IAwsS3CompatibleStorageOptions) {
+  constructor(protected readonly options: IMinioStorageOptions) {
     if (options.vendor !== 'minio') {
       throw new Error('Invalid storage vendor: expected "minio"');
     }
@@ -53,6 +109,10 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
     const endpointUrl = new URL(options.endpoint);
     const useSSL = endpointUrl.protocol === 'https:';
     const port = endpointUrl.port ? parseInt(endpointUrl.port, 10) : useSSL ? 443 : 80;
+    const transport = createMinioTimeoutTransport({
+      transport: useSSL ? https : http,
+      timeoutMs: minioRequestTimeoutMs
+    });
 
     this.minioClient = new Minio.Client({
       endPoint: endpointUrl.hostname,
@@ -61,12 +121,14 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
       accessKey: options.credentials.accessKeyId,
       secretKey: options.credentials.secretAccessKey,
       region: options.region,
-      pathStyle: options.forcePathStyle
+      pathStyle: options.forcePathStyle,
+      transport
     });
   }
 
-  async deleteObject(params: DeleteObjectParams): Promise<DeleteObjectResult> {
+  async deleteObject(params: Storage.DeleteObjectParams): Promise<Storage.DeleteObjectResult> {
     const { key } = params;
+    assertStorageObjectKey(key);
 
     await this.minioClient.removeObject(this.options.bucket, key);
 
@@ -76,9 +138,18 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
     };
   }
 
-  async deleteObjectsByMultiKeys(params: DeleteObjectsParams): Promise<DeleteObjectsResult> {
-    const { keys } = params;
+  async deleteObjectsByMultiKeys(
+    params: Storage.DeleteObjectsParams
+  ): Promise<Storage.DeleteObjectsResult> {
+    assertStorageObjectKeys(params.keys);
+    return this.deleteObjectsByRawKeys(params);
+  }
 
+  /** legacy 原始 key 直删：跳过格式断言，仅保留分块与失败 key 上报。 */
+  async deleteObjectsByRawKeys(
+    params: Storage.DeleteObjectsParams
+  ): Promise<Storage.DeleteObjectsResult> {
+    const { keys } = params;
     if (keys.length === 0) {
       return {
         bucket: this.options.bucket,
@@ -89,120 +160,128 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
     // 每次 removeObjects 最多删除 1000 个对象
     // 因此需要将对象列表分块
     const chunks = chunk(keys, 1000);
+    const failedKeys: string[] = [];
 
     for (const chunk of chunks) {
-      await this.minioClient.removeObjects(this.options.bucket, chunk);
+      const result = await this.minioClient.removeObjects(this.options.bucket, chunk);
+      failedKeys.push(...getFailedKeysFromMinioRemove({ result, requestedKeys: chunk }));
     }
 
-    // Minio Client 的 removeObjects 不返回失败列表，假设全部成功
     return {
       bucket: this.options.bucket,
-      keys: []
+      keys: failedKeys
     };
   }
 
   /**
-   * @note 这里的实现可以使用 `@aws-sdk/client-s3` 来列出对象，然后使用 `minio` 来删除对象，但是这里直接使用 `minio` 的 `listObjectsV2` 方法来列出对象了。
+   * 按前缀分页列举并删除 MinIO 对象。
+   *
+   * MinIO SDK 的 listObjectsV2 固定每页返回 1000 条，且其 XML 解析器默认最多展开
+   * 1000 个实体。部分 S3 兼容服务会将每个 ETag 的引号编码为两个 XML 实体，
+   * 导致大批量列举时误触安全上限。因此使用 AWS SDK 控制分页大小和 URL 编码，
+   * 再使用 MinIO SDK 删除，以保留现有 MinIO 校验和兼容性逻辑。
+   *
+   * 列举和删除按页串行执行，避免对象数量较大时积累无上限的并发删除任务。
+   * 每个列举和删除请求最多等待 60 秒，避免异常连接长期占用删除队列 worker。
    */
-  async deleteObjectsByPrefix(params: DeleteObjectsByPrefixParams): Promise<DeleteObjectsResult> {
+  async deleteObjectsByPrefix(
+    params: Storage.DeleteObjectsByPrefixParams
+  ): Promise<Storage.DeleteObjectsResult> {
     const { prefix } = params;
-    const batchSize = 1000;
-    const timeoutMs = 60000;
+    const listBatchSize = 400;
 
-    if (!prefix?.trim()) {
-      throw new Error('Prefix is required');
-    }
+    assertRequiredStorageObjectPrefix(prefix);
 
     const bucket = this.options.bucket;
     const failedKeys: string[] = [];
-    let deleteTasks: Promise<void>[] = [];
+    let continuationToken: string | undefined;
 
-    const stream = this.minioClient.listObjectsV2(bucket, prefix, true);
+    do {
+      const abortController = new AbortController();
+      const listResponse = await this._withListRequestTimeout({
+        prefix,
+        promise: this.client.send(
+          new AWS.ListObjectsV2Command({
+            Bucket: bucket,
+            Prefix: prefix,
+            ContinuationToken: continuationToken,
+            EncodingType: 'url',
+            MaxKeys: listBatchSize
+          }),
+          { abortSignal: abortController.signal }
+        ),
+        onTimeout: () => abortController.abort()
+      });
+      const keys = (listResponse.Contents ?? []).flatMap(({ Key }) => {
+        if (!Key) return [];
 
-    return await new Promise<DeleteObjectsResult>((resolve, reject) => {
-      let settled = false;
-      let timer: NodeJS.Timeout;
-
-      const finish = (error?: any) => {
-        if (settled) return;
-        settled = true;
-
-        if (timer) clearTimeout(timer);
-
-        stream.removeAllListeners();
-        try {
-          stream.destroy();
-        } catch {}
-
-        if (error) {
-          reject(error);
-        } else {
-          resolve({ bucket, keys: failedKeys });
-        }
-      };
-
-      timer = setTimeout(() => {
-        finish(new Error(`Delete by prefix timeout: ${prefix}`));
-      }, timeoutMs);
-
-      const flushBatch = async (keys: string[]) => {
-        if (keys.length === 0) return;
-
-        try {
-          await this.minioClient.removeObjects(bucket, keys);
-        } catch {
-          failedKeys.push(...keys);
-        }
-      };
-
-      let batch: string[] = [];
-
-      stream.on('data', (obj) => {
-        if (!obj.name) return;
-
-        batch.push(obj.name);
-
-        if (batch.length >= batchSize) {
-          const toDelete = batch;
-          batch = [];
-          deleteTasks.push(flushBatch(toDelete));
-        }
+        // MinIO 的 encoding-type=url 响应会用 + 表示空格，需先转换再解码。
+        return [decodeURIComponent(Key.replace(/\+/g, ' '))];
       });
 
-      stream.on('error', (err) => {
-        finish(err);
-      });
+      if (keys.length > 0) {
+        await this.minioClient
+          .removeObjects(bucket, keys)
+          .then((result) => {
+            failedKeys.push(...getFailedKeysFromMinioRemove({ result, requestedKeys: keys }));
+          })
+          .catch(() => {
+            failedKeys.push(...keys);
+          });
+      }
 
-      stream.on('end', async () => {
-        if (timer) clearTimeout(timer);
+      if (!listResponse.IsTruncated) break;
+      if (!listResponse.NextContinuationToken) {
+        throw new Error('Invalid MinIO list response: missing continuation token');
+      }
+      continuationToken = listResponse.NextContinuationToken;
+    } while (true);
 
-        try {
-          if (batch.length > 0) {
-            deleteTasks.push(flushBatch(batch));
-          }
-
-          await Promise.all(deleteTasks);
-          finish();
-        } catch (e) {
-          finish(e);
-        }
-      });
-
-      stream.on('pause', () => {
-        stream.resume();
-      });
-    });
+    return {
+      bucket,
+      keys: failedKeys
+    };
   }
 
-  async ensureBucket(): Promise<EnsureBucketResult> {
+  private async _withListRequestTimeout<T>({
+    prefix,
+    promise,
+    onTimeout
+  }: {
+    prefix: string;
+    promise: Promise<T>;
+    onTimeout: () => void;
+  }): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    try {
+      return await Promise.race([
+        promise,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            const timeoutError = new Error(
+              `Delete by prefix list timeout after ${minioRequestTimeoutMs}ms: ${prefix}`
+            );
+            // 先固定 Promise.race 的结果，再 abort 底层请求，避免 AbortError 抢先返回。
+            reject(timeoutError);
+            onTimeout();
+          }, minioRequestTimeoutMs);
+        })
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  async ensureBucket(): Promise<Storage.EnsureBucketResult> {
     try {
       return await super.ensureBucket();
     } catch (error) {
-      if (!(error instanceof NotFound)) {
+      if (!(error instanceof AWS.NotFound)) {
         throw error;
       }
 
-      await this.client.send(new CreateBucketCommand({ Bucket: this.options.bucket }));
+      await this.client.send(new AWS.CreateBucketCommand({ Bucket: this.options.bucket }));
 
       return {
         exists: false,
@@ -226,14 +305,15 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
     };
 
     await this.client.send(
-      new PutBucketPolicyCommand({
+      new AWS.PutBucketPolicyCommand({
         Bucket: this.options.bucket,
         Policy: JSON.stringify(policy)
       })
     );
   }
 
+  /** 仅用于清理历史遗留规则；业务上传流程不会创建或读取 lifecycle rules。 */
   async removeBucketLifecycle(): Promise<void> {
-    await this.client.send(new DeleteBucketLifecycleCommand({ Bucket: this.options.bucket }));
+    await this.client.send(new AWS.DeleteBucketLifecycleCommand({ Bucket: this.options.bucket }));
   }
 }

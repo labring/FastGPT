@@ -1,5 +1,5 @@
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+
 import { runWorkflow } from '../index';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
@@ -13,16 +13,15 @@ import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getNodeErrResponse, getHistories } from '../utils';
-import { WorkflowVariableState } from '../utils/variables';
+import { getWorkflowFileVariableInputs, WorkflowVariableState } from '../utils/variables';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
-import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getAppVersionById } from '../../../app/version/controller';
-import { parseUrlToFileType } from '../../utils/context';
+import { parseUrlToFileType, runWithDerivedWorkflowFileContext } from '../../utils/context';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
-import type { WorkflowNodeResponseWriter } from '../../../chat/nodeResponseStorage';
 import { getRuntimeNodeResponseSummary } from '../utils';
 
 type Props = ModuleDispatchProps<{
@@ -31,9 +30,7 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]?: string[];
   [NodeInputKeyEnum.forbidStream]?: boolean;
   [NodeInputKeyEnum.fileUrlList]?: string[];
-}> & {
-  nodeResponseWriter?: WorkflowNodeResponseWriter;
-};
+}>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
   [NodeOutputKeyEnum.history]: ChatItemMiniType[];
@@ -98,29 +95,6 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
 
     const chatHistories = getHistories(history, histories);
 
-    // Rewrite children app variables
-    const { externalProvider } = await getUserChatInfo(appData.tmbId);
-    const childRunningAppInfo = {
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: String(appData._id),
-      teamId: appData.teamId,
-      tmbId: appData.tmbId,
-      name: appData.name,
-      isChildApp: true
-    };
-    const childrenVariableState = await WorkflowVariableState.create({
-      timezone: props.timezone,
-      runningAppInfo: childRunningAppInfo,
-      chatId: props.chatId,
-      responseChatItemId: props.responseChatItemId,
-      histories: chatHistories,
-      uid: props.uid,
-      variablesConfig: chatConfig.variables,
-      inputVariables: childrenAppVariables,
-      externalVariables: externalProvider?.externalWorkflowVariables,
-      sourceVariableState: variableState
-    });
-
     const childrenInteractive =
       lastInteractive?.type === 'childrenInteractive'
         ? lastInteractive.params.childrenResponse
@@ -138,6 +112,19 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       ? query
       : runtimePrompt2ChatsValue({ files: userInputFiles, text: userChatInput });
 
+    // Rewrite children app variables
+    const { externalProvider } = await getUserChatInfo(appData.tmbId);
+    const childRunningAppInfo = {
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: String(appData._id),
+      teamId: appData.teamId,
+      tmbId: appData.tmbId,
+      name: appData.name,
+      isChildApp: true
+    };
+    let filteredChildHistories = chatHistories;
+    let filteredChildQuery = theQuery;
+
     const {
       flowUsages,
       assistantResponses,
@@ -146,37 +133,63 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       system_memories,
       customFeedbacks,
       runtimeNodeResponseSummary
-    } = await runWorkflow({
-      ...props,
-      lastInteractive: childrenInteractive,
-      // Rewrite stream mode
-      ...(system_forbid_stream
-        ? {
-            stream: false,
-            workflowStreamResponse: undefined
-          }
-        : {}),
-      runningAppInfo: {
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: String(appData._id),
-        name: appData.name,
-        teamId: String(appData.teamId),
-        tmbId: String(appData.tmbId),
-        isChildApp: true
-      },
-      runningUserInfo: await getRunningUserInfoByTmbId(appData.tmbId),
-      runtimeNodes,
-      runtimeEdges,
-      histories: chatHistories,
-      variableState: childrenVariableState,
+    } = await runWithDerivedWorkflowFileContext({
       query: theQuery,
-      chatConfig
+      histories: chatHistories,
+      files: getWorkflowFileVariableInputs({
+        variablesConfig: chatConfig.variables,
+        inputVariables: childrenAppVariables
+      }),
+      fn: async ({ resolveInputFile, query: childQuery, histories: childHistories }) => {
+        filteredChildHistories = childHistories;
+        filteredChildQuery = childQuery;
+        const childrenVariableState = await WorkflowVariableState.create({
+          timezone: props.timezone,
+          runningAppInfo: childRunningAppInfo,
+          chatId: props.chatId,
+          responseChatItemId: props.responseChatItemId,
+          histories: childHistories,
+          uid: props.uid,
+          variablesConfig: chatConfig.variables,
+          inputVariables: childrenAppVariables,
+          externalVariables: externalProvider?.externalWorkflowVariables,
+          sourceVariableState: variableState,
+          resolveInputFile
+        });
+
+        return runWorkflow({
+          ...props,
+          lastInteractive: childrenInteractive,
+          // Rewrite stream mode
+          ...(system_forbid_stream
+            ? {
+                stream: false,
+                workflowStreamResponse: undefined
+              }
+            : {}),
+          runningAppInfo: {
+            sourceType: ChatSourceTypeEnum.app,
+            sourceId: String(appData._id),
+            name: appData.name,
+            teamId: String(appData.teamId),
+            tmbId: String(appData.tmbId),
+            isChildApp: true
+          },
+          runningUserInfo: await getRunningUserInfoByTmbId(appData.tmbId),
+          runtimeNodes,
+          runtimeEdges,
+          histories: childHistories,
+          variableState: childrenVariableState,
+          query: childQuery,
+          chatConfig
+        });
+      }
     });
 
-    const completeMessages = chatHistories.concat([
+    const completeMessages = filteredChildHistories.concat([
       {
         obj: ChatRoleEnum.Human,
-        value: query
+        value: filteredChildQuery
       },
       {
         obj: ChatRoleEnum.AI,

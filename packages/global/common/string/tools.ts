@@ -109,7 +109,7 @@ export const sliceStrStartEnd = (str: string | null = '', start: number, end: nu
 */
 export const parseFileExtensionFromUrl = (url = '') => {
   // Prefer explicit filename in query params for proxy links:
-  // e.g. /api/system/file/download/<token>?filename=image.jpg
+  // e.g. /api/system/file/d/<alias>, or a legacy proxy URL carrying filename in query.
   try {
     const parsedUrl = new URL(url, 'http://localhost');
     const queryFilename =

@@ -3,24 +3,25 @@
  *
  * 只负责 volume API 调用和 provider 卷配置转换，不管理 sandbox 生命周期。
  */
+import { randomUUID } from 'node:crypto';
 import {
   OPEN_SANDBOX_DEFAULT_ROOT_PATH,
   type OpenSandboxConfigType
 } from '@fastgpt-sdk/sandbox-adapter';
-import type { SandboxProviderType, SandboxStorageType } from '../../type';
+import {
+  SANDBOX_WORKSPACE_VOLUME_NAME,
+  SandboxVolumeEnsureResponseSchema,
+  SandboxVolumeNameSchema
+} from '@fastgpt/global/core/ai/sandbox/volume';
+import type { SandboxStorageType } from '../../type';
 import { getVolumeManagerEnvConfig } from './config';
+
+const SESSION_VOLUME_GENERATION_LENGTH = 8;
 
 export type VolumeManagerResult = {
   volumes: OpenSandboxConfigType['volumes'];
   storage: SandboxStorageType;
 };
-
-/**
- * 判断指定 provider 是否需要 FastGPT 自管 volume。
- *
- * Sealos Devbox 的工作区持久化由 provider 内部管理；只有 OpenSandbox 需要 FastGPT
- * volume-manager 参与挂载和清理。
- */
 
 /**
  * 将 volume-manager 返回的 PVC 名称转换成 OpenSandbox adapter 可识别的卷配置。
@@ -30,20 +31,70 @@ export type VolumeManagerResult = {
  */
 export const buildVolumeConfig = (claimName: string): VolumeManagerResult => {
   return {
-    volumes: [{ name: 'workspace', pvc: { claimName }, mountPath: OPEN_SANDBOX_DEFAULT_ROOT_PATH }],
+    volumes: [
+      {
+        name: SANDBOX_WORKSPACE_VOLUME_NAME,
+        pvc: {
+          claimName,
+          createIfNotExists: false,
+          deleteOnSandboxTermination: false
+        },
+        mountPath: OPEN_SANDBOX_DEFAULT_ROOT_PATH
+      }
+    ],
     storage: {
-      volumes: [{ name: 'workspace', claimName, mountPath: OPEN_SANDBOX_DEFAULT_ROOT_PATH }],
+      volumes: [
+        {
+          name: SANDBOX_WORKSPACE_VOLUME_NAME,
+          claimName,
+          mountPath: OPEN_SANDBOX_DEFAULT_ROOT_PATH
+        }
+      ],
       mountPath: OPEN_SANDBOX_DEFAULT_ROOT_PATH
     }
   };
 };
 
 /**
+ * 读取 Mongo storage 中当前已提交的 workspace claimName。
+ *
+ * stopped/running 只能复用这个名称；archived restore 会先生成并持久化下一代名称。
+ */
+export const getSessionVolumeClaimName = (storage?: SandboxStorageType | null) =>
+  storage?.volumes?.find((volume) => volume.name === SANDBOX_WORKSPACE_VOLUME_NAME)?.claimName;
+
+/**
+ * 为一次新的 workspace generation 生成唯一 claimName。
+ */
+export const createSessionVolumeClaimName = (params: {
+  sandboxId: string;
+  generationId?: string;
+}) => {
+  const { volumeNamePrefix } = getVolumeManagerEnvConfig();
+  const generationId =
+    params.generationId ??
+    randomUUID().replaceAll('-', '').slice(0, SESSION_VOLUME_GENERATION_LENGTH);
+  return SandboxVolumeNameSchema.parse(
+    `${volumeNamePrefix}-${params.sandboxId}-${generationId}`.toLowerCase()
+  );
+};
+
+/**
+ * 恢复 generation 命名上线前已经创建的确定性 volume 名称。
+ *
+ * 只供旧 lifecycle checkpoint 修复使用；新 volume 必须通过 createSessionVolumeClaimName 分配。
+ */
+export const createLegacySessionVolumeClaimName = (sandboxId: string) => {
+  const { volumeNamePrefix } = getVolumeManagerEnvConfig();
+  return SandboxVolumeNameSchema.parse(`${volumeNamePrefix}-${sandboxId}`.toLowerCase());
+};
+
+/**
  * 确保指定 sandbox 会话拥有可挂载的持久卷。
  *
- * 返回值是 volume-manager 分配的 PVC 名称，调用方再转换成 provider 的 volumes 配置。
+ * claimName 必须先由 FastGPT 生成并持久化，volume-manager 不理解 sandboxId。
  */
-export const ensureSessionVolume = async (sessionId: string): Promise<string> => {
+export const ensureSessionVolume = async (claimName: string): Promise<string> => {
   const vmConfig = getVolumeManagerEnvConfig();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (vmConfig.token) headers['Authorization'] = `Bearer ${vmConfig.token}`;
@@ -51,27 +102,37 @@ export const ensureSessionVolume = async (sessionId: string): Promise<string> =>
   const res = await fetch(`${vmConfig.url}/v1/volumes/ensure`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ sessionId })
+    body: JSON.stringify({
+      claimName,
+      storageSize: vmConfig.storageSize
+    })
   });
   if (!res.ok) {
     throw new Error(`volume-manager error: ${res.status} ${await res.text()}`);
   }
-  const { claimName } = (await res.json()) as { claimName: string };
-  return claimName;
+  const result = SandboxVolumeEnsureResponseSchema.parse(await res.json());
+  if (result.claimName !== claimName) {
+    throw new Error(
+      `volume-manager returned unexpected claimName: expected ${claimName}, received ${result.claimName}`
+    );
+  }
+  return result.claimName;
 };
 
 /**
  * 删除指定 sandbox 会话关联的持久卷。
  *
- * 未启用 volume-manager 时直接跳过；404 视为已清理，避免资源删除流程被重复清理中断。
+ * 未启用 volume-manager 时直接跳过；删除目标始终使用 Mongo 中持久化的完整 claimName。
+ * 404 视为已清理，volume-manager 的成功响应表示 driver 已完成对应 runtime 的删除语义
+ * （Kubernetes 会等待目标 PVC generation 结束）。
  */
-export const deleteSessionVolume = async (sessionId: string): Promise<void> => {
+export const deleteSessionVolume = async (claimName: string): Promise<void> => {
   const vmConfig = getVolumeManagerEnvConfig();
   if (!vmConfig.enable) return;
   const headers: Record<string, string> = {};
   if (vmConfig.token) headers['Authorization'] = `Bearer ${vmConfig.token}`;
 
-  const res = await fetch(`${vmConfig.url}/v1/volumes/${encodeURIComponent(sessionId)}`, {
+  const res = await fetch(`${vmConfig.url}/v1/volumes/${encodeURIComponent(claimName)}`, {
     method: 'DELETE',
     headers
   });
@@ -86,15 +147,15 @@ export const deleteSessionVolume = async (sessionId: string): Promise<void> => {
  * volume-manager 未开启时返回 undefined，调用方可直接透传给 provider 配置构造。
  */
 export const getSessionVolumeConfig = async (
-  sandboxId: string
+  claimName: string
 ): Promise<VolumeManagerResult | undefined> => {
   const vmConfig = getVolumeManagerEnvConfig();
   if (!vmConfig.enable) return undefined;
   if (!vmConfig.url) {
     throw new Error('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL is required');
   }
-  const claimName = await ensureSessionVolume(sandboxId);
-  const volumeResult = buildVolumeConfig(claimName);
+  const ensuredClaimName = await ensureSessionVolume(claimName);
+  const volumeResult = buildVolumeConfig(ensuredClaimName);
 
   return volumeResult;
 };

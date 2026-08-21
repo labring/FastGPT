@@ -1,7 +1,7 @@
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { type ApiRequestProps } from '../../type/next';
+import type { NodeApiRequest } from '../../types/http';
 
-export const parsePaginationRequest = (req: ApiRequestProps) => {
+export const parsePaginationRequest = (req: NodeApiRequest) => {
   const {
     pageSize = 10,
     pageNum = 1,

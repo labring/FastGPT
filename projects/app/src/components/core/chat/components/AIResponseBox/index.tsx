@@ -10,7 +10,7 @@ import {
   ChatItemContext,
   type OnOpenCiteModalProps
 } from '@/web/core/chat/context/chatItemContext';
-import RenderAgentPlanAskInteractive from './RenderAgentPlanAskInteractive';
+import RenderAgentAskInteractive from './RenderAgentAskInteractive';
 import RenderPaymentPauseInteractive from './RenderPaymentPauseInteractive';
 import RenderPlan from './RenderPlan';
 import RenderPlanStatus from './RenderPlanStatus';
@@ -21,6 +21,7 @@ import RenderText from './RenderText';
 import RenderTool from './RenderTool';
 import RenderUserFormInteractive from './RenderUserFormInteractive';
 import RenderUserSelectInteractive from './RenderUserSelectInteractive';
+import { adaptLegacyAgentPlanAskToReadonlyAgentAsk } from './utils';
 
 const AIResponseBox = ({
   chatItemDataId,
@@ -60,7 +61,7 @@ const AIResponseBox = ({
   const tools = value.tools || (value.tool ? [value.tool] : undefined);
   const disableStreamingInteraction = isChatting && isLastChild;
   const skills = value.skills;
-  const reasoningContent = value.reasoning?.content || value.agentPlanUpdate?.reasoningText || '';
+  const reasoningContent = value.reasoning?.content || '';
   const textContent = value.text?.content || '';
 
   if (value.hideInUI) return null;
@@ -171,15 +172,26 @@ const AIResponseBox = ({
         />
       );
     }
-    if (interactive.type === 'agentPlanAskQuery') {
+    if (interactive.type === 'agentAsk') {
       responseBlocks.push(
-        <RenderAgentPlanAskInteractive
+        <RenderAgentAskInteractive
           key="interactive"
           interactive={interactive}
-          isLastChild={isLastChild}
+          submitted={interactive.params.submitted || !isLastChild}
         />
       );
     }
+    if (interactive.type === 'agentPlanAskQuery') {
+      // 旧 ask_user 仅适配展示，不能恢复为当前轮可提交的交互。
+      responseBlocks.push(
+        <RenderAgentAskInteractive
+          key="interactive"
+          interactive={adaptLegacyAgentPlanAskToReadonlyAgentAsk(interactive)}
+          submitted={true}
+        />
+      );
+    }
+
     if (interactive.type === 'paymentPause') {
       responseBlocks.push(
         <RenderPaymentPauseInteractive key="interactive" interactive={interactive} />

@@ -218,6 +218,42 @@ describe('filterGPTMessageByMaxContext function tests', () => {
       ]);
     });
 
+    it('should preserve a leading active plan and context checkpoint message', async () => {
+      const compressedContextMessage: ChatCompletionMessageParam = {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content:
+          '<active_plan>\n{"planId":"plan_1"}\n</active_plan>\n<context_checkpoint>old context summary</context_checkpoint>',
+        hideInUI: true
+      };
+      const currentUserMessage: ChatCompletionMessageParam = {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: 'current user request'
+      };
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.System, content: 'System' },
+        compressedContextMessage,
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'old user request' },
+        { role: ChatCompletionRequestMessageRoleEnum.Assistant, content: 'old assistant answer' },
+        currentUserMessage
+      ];
+
+      mockCountGptMessagesTokens
+        .mockResolvedValueOnce(30)
+        .mockResolvedValueOnce(20)
+        .mockResolvedValueOnce(80);
+
+      const result = await filterGPTMessageByMaxContext({
+        messages,
+        maxContext: 100
+      });
+
+      expect(result).toEqual([
+        { role: ChatCompletionRequestMessageRoleEnum.System, content: 'System' },
+        compressedContextMessage,
+        currentUserMessage
+      ]);
+    });
+
     it('should not treat visible user text containing checkpoint tags as a context checkpoint', async () => {
       const visibleCheckpointLikeMessage: ChatCompletionMessageParam = {
         role: ChatCompletionRequestMessageRoleEnum.User,

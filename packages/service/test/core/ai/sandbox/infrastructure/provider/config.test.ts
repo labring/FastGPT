@@ -6,17 +6,17 @@ const originalEnv = {
   AGENT_SANDBOX_SEALOS_TOKEN: process.env.AGENT_SANDBOX_SEALOS_TOKEN,
   AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: process.env.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY,
   AGENT_SANDBOX_SEALOS_IMAGE: process.env.AGENT_SANDBOX_SEALOS_IMAGE,
-  AGENT_SANDBOX_E2B_API_KEY: process.env.AGENT_SANDBOX_E2B_API_KEY,
   AGENT_SANDBOX_OPENSANDBOX_BASEURL: process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
   AGENT_SANDBOX_OPENSANDBOX_API_KEY: process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
   AGENT_SANDBOX_OPENSANDBOX_RUNTIME: process.env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME,
-  AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
-  AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG,
+  AGENT_SANDBOX_OPENSANDBOX_IMAGE: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE,
+  AGENT_SANDBOX_CPU_COUNT: process.env.AGENT_SANDBOX_CPU_COUNT,
+  AGENT_SANDBOX_MEMORY_MIB: process.env.AGENT_SANDBOX_MEMORY_MIB,
+  AGENT_SANDBOX_STORAGE_SIZE_GI: process.env.AGENT_SANDBOX_STORAGE_SIZE_GI,
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL:
     process.env.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL,
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN:
     process.env.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN,
-  AGENT_SANDBOX_DISK_MB: process.env.AGENT_SANDBOX_DISK_MB,
   AGENT_SANDBOX_PROXY_SECRET: process.env.AGENT_SANDBOX_PROXY_SECRET,
   AGENT_SANDBOX_PROXY_URL: process.env.AGENT_SANDBOX_PROXY_URL,
   AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES: process.env.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES,
@@ -28,10 +28,21 @@ const loadSandboxConfigModule = async () => {
   return import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/config');
 };
 
-const defaultOpenSandboxDockerNetworkPolicy = {
+const defaultOpenSandboxNetworkPolicy = {
   defaultAction: 'allow',
   egress: [
     { action: 'deny', target: 'localhost' },
+    { action: 'deny', target: '127.0.0.0/8' },
+    { action: 'deny', target: '::1/128' },
+    { action: 'deny', target: '10.0.0.0/8' },
+    { action: 'deny', target: '100.64.0.0/10' },
+    { action: 'deny', target: '169.254.0.0/16' },
+    { action: 'deny', target: '172.16.0.0/12' },
+    { action: 'deny', target: '192.168.0.0/16' },
+    { action: 'deny', target: '224.0.0.0/4' },
+    { action: 'deny', target: 'fc00::/7' },
+    { action: 'deny', target: 'fe80::/10' },
+    { action: 'deny', target: '*.local' },
     { action: 'deny', target: 'host.docker.internal' },
     { action: 'deny', target: 'host.orb.internal' },
     { action: 'deny', target: 'docker.orb.internal' },
@@ -58,18 +69,13 @@ describe('sandbox provider config', () => {
       originalEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY
     );
     vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', originalEnv.AGENT_SANDBOX_SEALOS_IMAGE);
-    vi.stubEnv('AGENT_SANDBOX_E2B_API_KEY', originalEnv.AGENT_SANDBOX_E2B_API_KEY);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', originalEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', originalEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', originalEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME);
-    vi.stubEnv(
-      'AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO',
-      originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO
-    );
-    vi.stubEnv(
-      'AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG',
-      originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
-    );
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE);
+    vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', originalEnv.AGENT_SANDBOX_CPU_COUNT);
+    vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', originalEnv.AGENT_SANDBOX_MEMORY_MIB);
+    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GI', originalEnv.AGENT_SANDBOX_STORAGE_SIZE_GI);
     vi.stubEnv(
       'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL',
       originalEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL
@@ -78,7 +84,6 @@ describe('sandbox provider config', () => {
       'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN',
       originalEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN
     );
-    vi.stubEnv('AGENT_SANDBOX_DISK_MB', originalEnv.AGENT_SANDBOX_DISK_MB);
     vi.stubEnv(
       'AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES',
       originalEnv.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES
@@ -104,18 +109,6 @@ describe('sandbox provider config', () => {
     });
   });
 
-  it('parses e2b config from env', async () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'e2b');
-    vi.stubEnv('AGENT_SANDBOX_E2B_API_KEY', 'e2b-token');
-
-    const { getSandboxProviderConfig } = await loadSandboxConfigModule();
-
-    expect(getSandboxProviderConfig()).toEqual({
-      provider: 'e2b',
-      apiKey: 'e2b-token'
-    });
-  });
-
   it('does not default sandbox provider when env is empty', async () => {
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', undefined);
 
@@ -130,35 +123,14 @@ describe('sandbox provider config', () => {
     );
   });
 
-  it('keeps e2b runtime create config when runtime adapter config is requested', async () => {
-    vi.stubEnv('AGENT_SANDBOX_E2B_API_KEY', 'e2b-token');
-
-    const { getSandboxAdapterConfig } = await loadSandboxConfigModule();
-
-    expect(
-      getSandboxAdapterConfig({
-        provider: 'e2b',
-        runtime: true,
-        createConfig: {
-          env: { A: 'B' }
-        }
-      })
-    ).toEqual({
-      providerConfig: {
-        provider: 'e2b',
-        apiKey: 'e2b-token'
-      },
-      createConfig: {
-        env: { A: 'B' }
-      }
-    });
-  });
-
   it('builds sealosdevbox runtime create config from runtime profile', async () => {
     vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', 'https://devbox.example.com');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', 'sealos-token');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_WORK_DIRECTORY', '/home/devbox/workspace');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', 'default-sealos-image:latest');
+    vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', '2');
+    vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', '4096');
+    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GI', '5');
     vi.stubEnv('AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES', '67108864');
     vi.stubEnv('AGENT_SANDBOX_WS_MAX_FRAME_BYTES', '16777216');
 
@@ -181,14 +153,15 @@ describe('sandbox provider config', () => {
         repository: 'default-sealos-image',
         tag: 'latest'
       },
+      resourceLimits: { cpuCount: 2, memoryMiB: 4096, storageSize: '5Gi' },
       workingDir: '/home/devbox/workspace',
       upstreamID: 'session-1',
       env: {
         FASTGPT_SESSION_ID: 'session-1',
         FASTGPT_WORKDIR: '/home/devbox/workspace',
         IDE_AGENT_ENABLED: 'true',
-        IDE_AGENT_BIND_ADDR: '0.0.0.0:1318',
-        FASTGPT_IDE_MAX_FILE_BYTES: '536870912',
+        DEVBOX_SDK_MAX_FILE_SIZE: '2527068160',
+        FASTGPT_IDE_MAX_FILE_BYTES: '2527068160',
         FASTGPT_IDE_WS_MAX_MESSAGE_BYTES: '67108864',
         FASTGPT_IDE_WS_MAX_FRAME_BYTES: '16777216'
       }
@@ -215,8 +188,7 @@ describe('sandbox provider config', () => {
         AGENT_SANDBOX_PROVIDER: 'sealosdevbox',
         AGENT_SANDBOX_SEALOS_BASEURL: undefined,
         AGENT_SANDBOX_SEALOS_TOKEN: undefined,
-        AGENT_SANDBOX_E2B_API_KEY: undefined,
-        AGENT_SANDBOX_DISK_MB: 20
+        AGENT_SANDBOX_STORAGE_SIZE_GI: 1
       }
     }));
 
@@ -230,9 +202,6 @@ describe('sandbox provider config', () => {
       expect(() => getSandboxAdapterConfig({ provider: 'opensandbox' })).toThrow(
         'Sandbox provider base URL is required'
       );
-      expect(() => getSandboxAdapterConfig({ provider: 'e2b' })).toThrow(
-        'Sandbox provider apiKey is required for e2b'
-      );
     } finally {
       vi.doUnmock('@fastgpt/service/env');
       vi.resetModules();
@@ -244,8 +213,7 @@ describe('sandbox provider config', () => {
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://opensandbox.local');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', 'opensandbox-key');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', 'docker');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO', 'fastgpt-agent-sandbox');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG', 'test');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', 'fastgpt-agent-sandbox:test');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL', 'http://volume-manager.local');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN', 'volume-token');
 
@@ -290,12 +258,13 @@ describe('sandbox provider config', () => {
           cpuCount: 1,
           memoryMiB: 512
         },
+        readyTimeoutSeconds: 120,
         entrypoint: ['sh', '-c', 'echo ok'],
         env: { A: 'B' },
         metadata: { teamId: 'team-1' },
         networkPolicy: {
           defaultAction: 'allow',
-          egress: [{ action: 'deny', target: 'host.docker.internal' }]
+          egress: defaultOpenSandboxNetworkPolicy.egress
         },
         extensions: {
           traceId: 'trace-1'
@@ -307,18 +276,25 @@ describe('sandbox provider config', () => {
 
   it('builds opensandbox runtime create config from profile env image', async () => {
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', 'docker');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO', 'default-opensandbox-image');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG', 'stable');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', 'default-opensandbox-image:stable');
+    vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', '2');
+    vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', '4096');
     vi.resetModules();
     const { getSandboxRuntimeProfile } =
       await import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile');
     const profile = getSandboxRuntimeProfile('opensandbox');
-    expect(profile.buildConfig()).toEqual({
+    const defaultConfig = profile.buildConfig();
+    expect(defaultConfig).toEqual({
       image: {
         repository: 'default-opensandbox-image',
         tag: 'stable'
       },
-      networkPolicy: defaultOpenSandboxDockerNetworkPolicy
+      resourceLimits: {
+        cpuCount: 2,
+        memoryMiB: 4096
+      },
+      readyTimeoutSeconds: 120,
+      networkPolicy: defaultOpenSandboxNetworkPolicy
     });
 
     expect(
@@ -326,12 +302,67 @@ describe('sandbox provider config', () => {
         entrypoint: profile.entrypoint
       })
     ).toEqual({
-      image: {
-        repository: 'default-opensandbox-image',
-        tag: 'stable'
-      },
-      entrypoint: ['/home/sandbox/entrypoint.sh'],
-      networkPolicy: defaultOpenSandboxDockerNetworkPolicy
+      ...defaultConfig,
+      entrypoint: ['/home/sandbox/entrypoint.sh']
+    });
+
+    expect(
+      profile.buildConfig({
+        resourceLimits: { cpuCount: 3 }
+      }).resourceLimits
+    ).toEqual({
+      cpuCount: 3,
+      memoryMiB: 4096
+    });
+  });
+
+  it('does not pass OpenSandbox network isolation to kubernetes runtime', async () => {
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', 'kubernetes');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', 'default-opensandbox-image:stable');
+    vi.resetModules();
+    const { getSandboxRuntimeProfile } =
+      await import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile');
+    const profile = getSandboxRuntimeProfile('opensandbox');
+
+    expect(profile.buildConfig()?.networkPolicy).toBeUndefined();
+    expect(
+      profile.buildConfig({
+        createConfig: {
+          networkPolicy: {
+            defaultAction: 'allow',
+            egress: [{ action: 'deny', target: '10.0.0.1' }]
+          }
+        }
+      })?.networkPolicy
+    ).toBeUndefined();
+  });
+
+  it('keeps Docker OpenSandbox egress policy behavior', async () => {
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', 'docker');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', 'default-opensandbox-image:stable');
+    vi.resetModules();
+    const { getSandboxRuntimeProfile } =
+      await import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile');
+    const profile = getSandboxRuntimeProfile('opensandbox');
+
+    expect(
+      profile.buildConfig({
+        createConfig: {
+          networkPolicy: {
+            defaultAction: 'deny',
+            egress: [
+              { action: 'allow', target: '10.0.0.1' },
+              { action: 'deny', target: 'api.example.com' }
+            ]
+          }
+        }
+      })?.networkPolicy
+    ).toEqual({
+      defaultAction: 'allow',
+      egress: [
+        ...defaultOpenSandboxNetworkPolicy.egress,
+        { action: 'deny', target: 'api.example.com' }
+      ]
     });
   });
 
@@ -345,17 +376,6 @@ describe('sandbox provider config', () => {
         token: ''
       })
     ).toThrow('Sandbox provider token is required for sealosdevbox');
-  });
-
-  it('validates e2b api key requirement', async () => {
-    const { validateSandboxConfig } = await loadSandboxConfigModule();
-
-    expect(() =>
-      validateSandboxConfig({
-        provider: 'e2b',
-        apiKey: ''
-      })
-    ).toThrow('Sandbox provider apiKey is required for e2b');
   });
 
   it('validates base url, api key and opensandbox runtime requirements', async () => {
@@ -406,10 +426,11 @@ describe('sandbox provider config', () => {
         AGENT_SANDBOX_PROVIDER: 'opensandbox',
         AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'http://opensandbox.local',
         AGENT_SANDBOX_OPENSANDBOX_RUNTIME: 'docker',
-        AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: '',
-        AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: undefined,
+        AGENT_SANDBOX_OPENSANDBOX_IMAGE: '',
         AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: true,
-        AGENT_SANDBOX_DISK_MB: 20
+        AGENT_SANDBOX_CPU_COUNT: 1,
+        AGENT_SANDBOX_MEMORY_MIB: 2048,
+        AGENT_SANDBOX_STORAGE_SIZE_GI: 1
       }
     }));
 
@@ -419,7 +440,7 @@ describe('sandbox provider config', () => {
       const runtimeProfile = getSandboxRuntimeProfile('opensandbox');
 
       expect(() => runtimeProfile.buildConfig()).toThrow(
-        'AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO is required'
+        'AGENT_SANDBOX_OPENSANDBOX_IMAGE is required'
       );
       expect(
         runtimeProfile.buildConfig({

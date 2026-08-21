@@ -1,12 +1,15 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import {
   uploadSkillPackage,
+  uploadSkillPackageStream,
   downloadSkillPackage,
+  downloadSkillPackageStream,
   deleteSkillPackage
 } from '@fastgpt/service/core/ai/skill/package';
 import { getS3SkillSource } from '@fastgpt/service/common/s3/sources/skill';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { serviceEnv } from '@fastgpt/service/env';
+import { Readable } from 'node:stream';
 
 const s3SkillSourceMocks = vi.hoisted(() => {
   const getSkillPackageKey = ({
@@ -65,6 +68,14 @@ describe('storage', () => {
     vi.clearAllMocks();
   });
 
+  const consumeStream = async (stream: Readable) => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks);
+  };
+
   // ==================== uploadSkillPackage ====================
   describe('uploadSkillPackage', () => {
     it('should upload skill package successfully', async () => {
@@ -87,11 +98,11 @@ describe('storage', () => {
     });
 
     it('should reject zip buffers larger than the upload limit before uploading to S3', async () => {
-      const originalAgentSandboxDiskMB = serviceEnv.AGENT_SANDBOX_DISK_MB;
-      serviceEnv.AGENT_SANDBOX_DISK_MB = 2;
+      const originalAgentSandboxStorageSize = serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI;
+      serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = 0.296875;
 
       try {
-        const tooLargeBuffer = Buffer.alloc(1024 * 1024 + 1);
+        const tooLargeBuffer = Buffer.alloc(2 * 1024 * 1024 + 1);
 
         await expect(
           uploadSkillPackage({
@@ -105,7 +116,60 @@ describe('storage', () => {
         expect(getS3SkillSource).not.toHaveBeenCalled();
         expect(s3SkillSourceMocks.uploadPackageMock).not.toHaveBeenCalled();
       } finally {
-        serviceEnv.AGENT_SANDBOX_DISK_MB = originalAgentSandboxDiskMB;
+        serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = originalAgentSandboxStorageSize;
+      }
+    });
+  });
+
+  describe('uploadSkillPackageStream', () => {
+    it('streams chunks to S3 without joining them into a package buffer', async () => {
+      let uploadedBody: Buffer | undefined;
+      s3SkillSourceMocks.uploadPackageMock.mockImplementationOnce(async (params) => {
+        expect(params.body).toBeInstanceOf(Readable);
+        uploadedBody = await consumeStream(params.body);
+        return {
+          key: `agent-skills/${params.teamId}/${params.skillId}/${params.packageObjectId}.zip`
+        };
+      });
+      const packageStream = Readable.from([Buffer.from('chunk-1'), Buffer.from('chunk-2')]);
+
+      const result = await uploadSkillPackageStream({
+        teamId: mockTeamId,
+        skillId: mockSkillId,
+        packageObjectId: mockVersionId,
+        packageStream,
+        contentLength: 14
+      });
+
+      expect(result.key).toBe(`agent-skills/${mockTeamId}/${mockSkillId}/${mockVersionId}.zip`);
+      expect(uploadedBody?.toString()).toBe('chunk-1chunk-2');
+      expect(s3SkillSourceMocks.uploadPackageMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          contentLength: 14,
+          body: expect.any(Readable)
+        })
+      );
+    });
+
+    it('aborts a stream whose actual bytes exceed the package limit', async () => {
+      const originalAgentSandboxStorageSize = serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI;
+      serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = 0.296875;
+      s3SkillSourceMocks.uploadPackageMock.mockImplementationOnce(async (params) => {
+        await consumeStream(params.body);
+        return { key: 'should-not-complete' };
+      });
+
+      try {
+        await expect(
+          uploadSkillPackageStream({
+            teamId: mockTeamId,
+            skillId: mockSkillId,
+            packageObjectId: mockVersionId,
+            packageStream: Readable.from([Buffer.alloc(2 * 1024 * 1024), Buffer.from('x')])
+          })
+        ).rejects.toThrow(SkillErrEnum.archiveTooLarge);
+      } finally {
+        serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = originalAgentSandboxStorageSize;
       }
     });
   });
@@ -131,6 +195,34 @@ describe('storage', () => {
       await expect(downloadSkillPackage({ storageKey })).rejects.toThrow(
         'Failed to download skill package'
       );
+    });
+  });
+
+  describe('downloadSkillPackageStream', () => {
+    it('returns the S3 object as a bounded Readable', async () => {
+      const storageKey = `agent-skills/${mockTeamId}/${mockSkillId}/${mockVersionId}.zip`;
+
+      const stream = await downloadSkillPackageStream({ storageKey });
+
+      expect(stream).toBeInstanceOf(Readable);
+      await expect(consumeStream(stream)).resolves.toEqual(Buffer.from('mock zip content'));
+    });
+
+    it('fails while consuming an object larger than the package limit', async () => {
+      const originalAgentSandboxStorageSize = serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI;
+      serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = 0.296875;
+      s3SkillSourceMocks.downloadObjectMock.mockResolvedValueOnce({
+        body: Readable.from([Buffer.alloc(2 * 1024 * 1024), Buffer.from('x')])
+      });
+
+      try {
+        const stream = await downloadSkillPackageStream({ storageKey: 'too-large.zip' });
+        await expect(consumeStream(stream)).rejects.toThrow(
+          'Skill package exceeds maximum allowed size'
+        );
+      } finally {
+        serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = originalAgentSandboxStorageSize;
+      }
     });
   });
 

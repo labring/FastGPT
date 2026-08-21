@@ -2,14 +2,17 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authChatTargetCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
+import {
+  assertMemberRateLimit,
+  MemberRateLimitPolicy
+} from '@fastgpt/service/common/rateLimit/interface/member';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { responseWriteController } from '@fastgpt/service/common/response';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { type NextApiResponse } from 'next';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
@@ -25,6 +28,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const {
     collection,
     teamId: userTeamId,
+    tmbId,
     chatTime
   } = await (async () => {
     if (!('chatItemDataId' in parseBody)) {
@@ -79,6 +83,11 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     };
   })();
 
+  await assertMemberRateLimit({
+    policy: MemberRateLimitPolicy.ExportDataset,
+    memberId: String(tmbId)
+  });
+
   const where = {
     teamId: userTeamId,
     datasetId: collection.datasetId,
@@ -111,17 +120,23 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
 
   write(`\uFEFFq,a`);
 
-  cursor.on('data', (doc) => {
-    const sanitizedQ = replaceS3KeyToPreviewUrl(
-      sanitizeCsvField(doc.q || ''),
-      addDays(new Date(), 90)
-    );
-    const sanitizedA = replaceS3KeyToPreviewUrl(
-      sanitizeCsvField(doc.a || ''),
-      addDays(new Date(), 90)
-    );
+  cursor.on('data', async (doc) => {
+    cursor.pause();
 
-    write(`\n${sanitizedQ},${sanitizedA}`);
+    try {
+      const [sanitizedQ, sanitizedA] = await Promise.all([
+        replaceS3KeyToPreviewUrl(sanitizeCsvField(doc.q || ''), addDays(new Date(), 90)),
+        replaceS3KeyToPreviewUrl(sanitizeCsvField(doc.a || ''), addDays(new Date(), 90))
+      ]);
+
+      write(`\n${sanitizedQ},${sanitizedA}`);
+    } catch (error) {
+      logger.error(`export usage error`, { error });
+      cursor.destroy();
+      return;
+    }
+
+    cursor.resume();
   });
 
   cursor.on('end', () => {
@@ -136,7 +151,4 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   });
 }
 
-export default NextAPI(
-  useIPFrequencyLimit({ id: 'export-usage', seconds: 60, limit: 1, force: true }),
-  handler
-);
+export default NextAPI(handler);

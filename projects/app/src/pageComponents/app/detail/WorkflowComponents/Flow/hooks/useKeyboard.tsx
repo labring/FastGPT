@@ -19,7 +19,7 @@ export const useKeyboard = () => {
   const getNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodes);
   const setNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.setNodes);
   const mouseInCanvas = useContextSelector(WorkflowUIContext, (v) => v.mouseInCanvas);
-  const mousePosition = useContextSelector(WorkflowUIContext, (v) => v.mousePosition);
+  const getMousePosition = useContextSelector(WorkflowUIContext, (v) => v.getMousePosition);
 
   const { getMyModelList } = useSystemStore();
   const { data: myModels } = useRequest(getMyModelList, {
@@ -51,7 +51,9 @@ export const useKeyboard = () => {
     if (hasInputtingElement()) return;
 
     // Only paste if mouse is in canvas and we have mouse position
-    if (!mouseInCanvas || !mousePosition) return;
+    if (!mouseInCanvas) return;
+    const mousePosition = getMousePosition();
+    if (!mousePosition) return;
 
     const copyResult = await navigator.clipboard.readText();
     try {
@@ -118,9 +120,9 @@ export const useKeyboard = () => {
     } catch {}
   }, [
     computedNewNodeName,
+    getMousePosition,
     hasInputtingElement,
     mouseInCanvas,
-    mousePosition,
     myModels,
     screenToFlowPosition,
     setNodes

@@ -21,14 +21,12 @@ import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/cons
 import MemberManager from '../../MemberManager';
 import {
   getCollaboratorList,
-  postUpdateDatasetCollaborators,
-  deleteDatasetCollaborators
+  postUpdateDatasetCollaborators
 } from '@/web/core/dataset/api/collaborator';
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
 import dynamic from 'next/dynamic';
 import type { EditAPIDatasetInfoFormType } from './components/EditApiServiceModal';
 import { type EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
@@ -170,11 +168,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             <FormLabel fontWeight={'500'} flex={'1 0 0'} fontSize={'mini'}>
               {t('common:core.ai.model.Vector Model')}
             </FormLabel>
-            <MyTooltip label={t('dataset:vector_model_max_tokens_tip')}>
-              <Box fontSize={'mini'}>
-                {t('dataset:chunk_max_tokens')}: {vectorModel.maxToken}
-              </Box>
-            </MyTooltip>
           </Flex>
           <Box pt={2} minW={0} maxW={'100%'} overflow={'hidden'}>
             <AIModelSelector
@@ -421,25 +414,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                   postUpdateDatasetCollaborators({
                     ...body,
                     datasetId
-                  }),
-                onDelOneCollaborator: async ({ groupId, tmbId, orgId }) => {
-                  if (tmbId) {
-                    return deleteDatasetCollaborators({
-                      datasetId,
-                      tmbId
-                    });
-                  } else if (groupId) {
-                    return deleteDatasetCollaborators({
-                      datasetId,
-                      groupId
-                    });
-                  } else if (orgId) {
-                    return deleteDatasetCollaborators({
-                      datasetId,
-                      orgId
-                    });
-                  }
-                }
+                  })
               }}
             />
           </Box>

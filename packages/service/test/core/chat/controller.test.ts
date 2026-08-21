@@ -12,7 +12,11 @@ import { getUser } from '@test/datas/users';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import type { ChatItemSchema } from '@fastgpt/global/core/chat/type';
+import {
+  AIChatItemSchema,
+  UserChatItemSchema,
+  type ChatItemSchema
+} from '@fastgpt/global/core/chat/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 describe('getChatItems', () => {
@@ -109,6 +113,167 @@ describe('getChatItems', () => {
       expect(result.total).toBe(20);
       // Should be in chronological order (oldest first)
       expect(result.histories[0].value[0].text?.content).toContain('Message 1');
+    });
+
+    it('should normalize legacy persisted plans to the current response shape', async () => {
+      await MongoChatItem.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        userId: testUser.userId,
+        sourceType: ChatSourceTypeEnum.app,
+        appId,
+        chatId,
+        dataId: getNanoid(),
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            plan: {
+              planId: 'legacy-plan',
+              task: 'Legacy plan',
+              description: 'Legacy description',
+              background: 'Legacy background',
+              steps: [
+                {
+                  id: 'legacy-step',
+                  title: 'Legacy step',
+                  description: 'Legacy step description',
+                  status: 'in_progress',
+                  acceptanceCriteria: ['Legacy criterion']
+                }
+              ]
+            }
+          }
+        ]
+      });
+
+      const result = await getChatItems({
+        ...chatSource(),
+        chatId,
+        offset: 0,
+        limit: 10,
+        field: 'obj value'
+      });
+
+      expect(result.histories[0].value[0].plan).toEqual({
+        planId: 'legacy-plan',
+        name: 'Legacy plan',
+        description: 'Legacy description',
+        steps: [
+          {
+            id: 'legacy-step',
+            name: 'Legacy step',
+            description: 'Legacy step description',
+            status: 'in_progress'
+          }
+        ]
+      });
+    });
+
+    it('should omit a malformed persisted plan without blocking chat history', async () => {
+      await MongoChatItem.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        userId: testUser.userId,
+        sourceType: ChatSourceTypeEnum.app,
+        appId,
+        chatId,
+        dataId: getNanoid(),
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            plan: {
+              planId: 'malformed-plan',
+              name: 'Malformed plan',
+              steps: []
+            },
+            text: {
+              content: 'Visible answer'
+            }
+          }
+        ]
+      });
+
+      const result = await getChatItems({
+        ...chatSource(),
+        chatId,
+        offset: 0,
+        limit: 10,
+        field: 'obj value'
+      });
+
+      expect(result.histories[0].value[0].plan).toBeUndefined();
+      expect(result.histories[0].value[0].text?.content).toBe('Visible answer');
+    });
+
+    it('should migrate legacy planId ask records and answers to askId', async () => {
+      await MongoChatItem.create([
+        {
+          teamId: testUser.teamId,
+          tmbId: testUser.tmbId,
+          sourceType: ChatSourceTypeEnum.app,
+          appId,
+          chatId,
+          dataId: getNanoid(),
+          obj: ChatRoleEnum.AI,
+          value: [
+            {
+              agentAsk: {
+                id: 'call_ask',
+                functionName: 'ask_agent',
+                params: '{}',
+                planId: 'legacy-plan'
+              }
+            },
+            {
+              interactive: {
+                type: 'agentPlanAskQuery',
+                planId: 'legacy-plan',
+                entryNodeIds: ['agent_node'],
+                memoryEdges: [],
+                nodeOutputs: [],
+                params: {
+                  content: 'Which option?',
+                  options: ['A', 'B', 'C']
+                }
+              }
+            }
+          ]
+        },
+        {
+          teamId: testUser.teamId,
+          tmbId: testUser.tmbId,
+          sourceType: ChatSourceTypeEnum.app,
+          appId,
+          chatId,
+          dataId: getNanoid(),
+          obj: ChatRoleEnum.Human,
+          value: [
+            {
+              planId: 'legacy-plan',
+              text: { content: 'A' }
+            }
+          ]
+        }
+      ]);
+
+      const result = await getChatItems({
+        ...chatSource(),
+        chatId,
+        offset: 0,
+        limit: 10,
+        field: 'obj value'
+      });
+      const aiValue = result.histories[0].value;
+      const humanValue = result.histories[1].value[0];
+
+      expect(aiValue[0].agentAsk).toMatchObject({ askId: 'legacy-plan' });
+      expect(aiValue[0].agentAsk).not.toHaveProperty('planId');
+      expect(aiValue[1].interactive).toMatchObject({ askId: 'legacy-plan' });
+      expect(aiValue[1].interactive).not.toHaveProperty('planId');
+      expect(humanValue).toMatchObject({ askId: 'legacy-plan' });
+      expect(humanValue).not.toHaveProperty('planId');
+      expect(() => AIChatItemSchema.parse(result.histories[0])).not.toThrow();
+      expect(() => UserChatItemSchema.parse(result.histories[1])).not.toThrow();
     });
 
     it('should handle pagination offset correctly', async () => {

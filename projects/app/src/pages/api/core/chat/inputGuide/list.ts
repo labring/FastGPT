@@ -1,7 +1,7 @@
 import type { NextApiResponse } from 'next';
 import { MongoChatInputGuide } from '@fastgpt/service/core/chat/inputGuide/schema';
 import { NextAPI } from '@/service/middleware/entry';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
@@ -15,7 +15,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(
   req: ApiRequestProps,
-  res: NextApiResponse<any>
+  _res: NextApiResponse<any>
 ): Promise<ChatInputGuideListResponseType> {
   const { appId, searchKey } = parseApiInput({
     req,

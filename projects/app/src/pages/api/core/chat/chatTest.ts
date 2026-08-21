@@ -5,6 +5,7 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
+import { prepareWorkflowFileQuery } from '@fastgpt/service/core/workflow/utils/fileLimits';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { concatHistories, removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -56,6 +57,8 @@ import {
   type WorkflowStreamResponseContext
 } from '@fastgpt/service/core/workflow/utils/streamResponseContext';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
+import { APP_SANDBOX_ENABLED_CHAT_METADATA_KEY } from '@fastgpt/global/core/ai/sandbox/constants';
+import { isAppSandboxEnabledInNodes } from '@fastgpt/global/core/workflow/utils';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let streamResponseContext: WorkflowStreamResponseContext | undefined;
@@ -181,6 +184,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
     runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
 
+    const {
+      query: workflowQuery,
+      maxFileAmount,
+      maxBytesPerFile
+    } = await prepareWorkflowFileQuery({
+      teamId: String(teamId),
+      chatConfig,
+      query: userQuestion.value
+    });
+    const workflowUserQuestion: UserChatItemType = {
+      ...userQuestion,
+      value: workflowQuery
+    };
+
     const preparedRound = await preChatRound({
       ...chatSource,
       chatId,
@@ -188,7 +205,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       tmbId: String(tmbId),
       source,
       sourceName: appName || '',
-      userContent: userQuestion,
+      userContent: workflowUserQuestion,
       responseChatItemId: roundState.responseChatItemId,
       interactive,
       fixedTitle: pluginFixedTitle
@@ -247,7 +264,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       runtimeNodes,
       runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
       variables,
-      query: removeEmptyUserInput(userQuestion.value),
+      query: removeEmptyUserInput(workflowQuery),
+      maxFileAmount,
+      maxBytesPerFile,
       lastInteractive: interactive,
       chatConfig,
       histories: newHistories,
@@ -282,11 +301,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       variables: newVariables,
       source,
       sourceName: appName || '',
-      userContent: userQuestion,
+      userContent: workflowUserQuestion,
       aiContent: aiResponse,
       durationSeconds,
       metadata: {
-        originIp
+        originIp,
+        [APP_SANDBOX_ENABLED_CHAT_METADATA_KEY]: isAppSandboxEnabledInNodes(nodes)
       },
       nodeResponseSummary
     };

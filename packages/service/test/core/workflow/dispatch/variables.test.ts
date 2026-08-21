@@ -4,7 +4,10 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { WorkflowVariableState } from '../../../../core/workflow/dispatch/utils/variables';
+import {
+  getWorkflowFileVariableInputs,
+  WorkflowVariableState
+} from '../../../../core/workflow/dispatch/utils/variables';
 import { encryptSecret } from '../../../../common/secret/aes256gcm';
 import { anyValueDecrypt } from '../../../../common/secret/utils';
 
@@ -48,6 +51,59 @@ describe('WorkflowVariableState', () => {
     expect(state.get('userId')).toBe('uid');
     expect(state.get('externalOnly')).toBe('external');
     expect(state.toStoreRecord()).toEqual({ name: '123' });
+  });
+
+  it('should allow parent input to override internal variable defaults', async () => {
+    const state = await createState({
+      variablesConfig: [
+        {
+          key: 'internalToken',
+          type: VariableInputEnum.internal,
+          valueType: WorkflowIOValueTypeEnum.string,
+          defaultValue: 'internal-default'
+        } as any
+      ],
+      inputVariables: { internalToken: 'parent-value' },
+      externalVariables: { internalToken: 'external-value' }
+    });
+
+    expect(state.get('internalToken')).toBe('parent-value');
+    expect(state.toStoreRecord()).toEqual({ internalToken: 'parent-value' });
+  });
+
+  it('should initialize an external dynamic variable from input variables', async () => {
+    const state = await createState({
+      variablesConfig: [
+        {
+          key: 'externalToken',
+          type: VariableInputEnum.custom,
+          valueType: WorkflowIOValueTypeEnum.string,
+          defaultValue: 'external-default'
+        } as any
+      ],
+      inputVariables: { externalToken: 'input-value' }
+    });
+
+    expect(state.get('externalToken')).toBe('input-value');
+    expect(state.toStoreRecord()).toEqual({ externalToken: 'input-value' });
+  });
+
+  it('should let the external provider override an input external dynamic variable', async () => {
+    const state = await createState({
+      variablesConfig: [
+        {
+          key: 'externalToken',
+          type: VariableInputEnum.custom,
+          valueType: WorkflowIOValueTypeEnum.string,
+          defaultValue: 'external-default'
+        } as any
+      ],
+      inputVariables: { externalToken: 'parent-value' },
+      externalVariables: { externalToken: 'provider-value' }
+    });
+
+    expect(state.get('externalToken')).toBe('provider-value');
+    expect(state.toStoreRecord()).toEqual({});
   });
 
   it('should encrypt password store value while keeping runtime plain text', async () => {
@@ -146,6 +202,157 @@ describe('WorkflowVariableState', () => {
     ]);
   });
 
+  it('should resolve only initial file variables through the workflow registrar', async () => {
+    const resolveInputFile = vi.fn(async (file) =>
+      'key' in file
+        ? `https://workflow.example.com/${file.key}`
+        : `https://workflow.example.com/external.pdf`
+    );
+    const state = await createState({
+      variablesConfig: [
+        {
+          key: 'files',
+          type: VariableInputEnum.file
+        } as any
+      ],
+      inputVariables: {
+        files: [
+          {
+            key: 'chat/app/a.pdf',
+            name: 'a.pdf',
+            type: ChatFileTypeEnum.file
+          },
+          {
+            url: 'https://external.example.com/b.pdf',
+            name: 'b.pdf',
+            type: ChatFileTypeEnum.file
+          }
+        ]
+      },
+      resolveInputFile
+    });
+
+    expect(state.get('files')).toEqual([
+      'https://workflow.example.com/chat/app/a.pdf',
+      'https://workflow.example.com/external.pdf'
+    ]);
+    expect(resolveInputFile).toHaveBeenCalledTimes(2);
+
+    await state.set('files', ['https://node.example.com/generated.pdf']);
+    expect(resolveInputFile).toHaveBeenCalledTimes(2);
+    expect(state.get('files')).toEqual(['https://node.example.com/generated.pdf']);
+  });
+
+  it('should silently slice configured file inputs by maxFiles', async () => {
+    const resolveInputFile = vi.fn(async (file) =>
+      'url' in file ? file.url : `https://workflow.example.com/${file.key}`
+    );
+    const variablesConfig = [
+      {
+        key: 'files',
+        type: VariableInputEnum.file,
+        maxFiles: 2
+      } as any
+    ];
+    const inputVariables = {
+      files: [
+        'https://external.example.com/1.pdf',
+        'https://external.example.com/2.pdf',
+        'https://external.example.com/3.pdf'
+      ]
+    };
+
+    const state = await createState({
+      variablesConfig,
+      inputVariables,
+      resolveInputFile
+    });
+
+    expect(state.get('files')).toEqual(inputVariables.files.slice(0, 2));
+    expect(
+      getWorkflowFileVariableInputs({ variablesConfig, inputVariables, maxFileAmount: 1 })
+    ).toEqual(inputVariables.files.slice(0, 1));
+    expect(resolveInputFile).toHaveBeenCalledTimes(2);
+  });
+
+  it('should cap the variable file limit by the workflow user quota', async () => {
+    const state = await createState({
+      maxFileAmount: 1,
+      variablesConfig: [
+        {
+          key: 'files',
+          type: VariableInputEnum.file,
+          maxFiles: 2
+        } as any
+      ]
+    });
+    const files = [
+      'https://external.example.com/1.pdf',
+      'https://external.example.com/2.pdf',
+      'https://external.example.com/3.pdf'
+    ];
+
+    const result = await state.set('files', files);
+
+    expect(result).toEqual(files.slice(0, 1));
+    expect(state.get('files')).toEqual(files.slice(0, 1));
+  });
+
+  it('should fall back to the workflow file limit for runtime file updates', async () => {
+    const state = await createState({
+      maxFileAmount: 2,
+      variablesConfig: [
+        {
+          key: 'files',
+          type: VariableInputEnum.file
+        } as any
+      ]
+    });
+    const files = [
+      'https://external.example.com/1.pdf',
+      'https://external.example.com/2.pdf',
+      'https://external.example.com/3.pdf'
+    ];
+
+    const result = await state.set('files', files);
+
+    expect(result).toEqual(files.slice(0, 2));
+    expect(state.get('files')).toEqual(files.slice(0, 2));
+    expect(
+      getWorkflowFileVariableInputs({
+        variablesConfig: [{ key: 'files', type: VariableInputEnum.file } as any],
+        inputVariables: { files },
+        maxFileAmount: 2
+      })
+    ).toEqual(files.slice(0, 2));
+  });
+
+  it('should default runtime file updates to five files', async () => {
+    const state = await createState({
+      variablesConfig: [
+        {
+          key: 'files',
+          type: VariableInputEnum.file
+        } as any
+      ]
+    });
+    const files = Array.from(
+      { length: 6 },
+      (_, index) => `https://external.example.com/${index + 1}.pdf`
+    );
+
+    const result = await state.set('files', files);
+
+    expect(result).toEqual(files.slice(0, 5));
+    expect(state.get('files')).toEqual(files.slice(0, 5));
+    expect(
+      getWorkflowFileVariableInputs({
+        variablesConfig: [{ key: 'files', type: VariableInputEnum.file } as any],
+        inputVariables: { files }
+      })
+    ).toEqual(files.slice(0, 5));
+  });
+
   it('should keep external url files clean and infer string urls on initialization', async () => {
     const state = await createState({
       variablesConfig: [
@@ -226,7 +433,7 @@ describe('WorkflowVariableState', () => {
     ]);
   });
 
-  it('should restore parent file metadata from runtime url in child state', async () => {
+  it('should preserve parent file metadata when updating child state with its runtime url', async () => {
     const parent = await createState({
       variablesConfig: [
         {

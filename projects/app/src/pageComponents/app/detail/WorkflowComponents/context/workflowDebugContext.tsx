@@ -15,6 +15,8 @@ import type { WorkflowDebugResponse } from '@fastgpt/service/core/workflow/dispa
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { WorkflowActionsContext } from './workflowActionsContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 export type DebugDataType = {
   runtimeNodes: RuntimeNodeItemType[];
@@ -27,6 +29,8 @@ export type DebugDataType = {
   query?: UserChatItemValueItemType[];
   workflowInteractiveResponse?: WorkflowInteractiveResponseType;
   usageId?: string;
+  /** 调试会话内文件上传与调试运行共用的 chatId */
+  chatId?: string;
 };
 
 // 创建 Context
@@ -45,6 +49,7 @@ type WorkflowDebugContextValue = {
     variables: Record<string, any>;
     query?: UserChatItemValueItemType[];
     history?: ChatItemMiniType[];
+    chatId?: string;
   }) => Promise<void>;
 
   /** 停止节点调试 */
@@ -55,18 +60,88 @@ type WorkflowDebugContextValue = {
 
   /** 设置调试模式 */
   setDebugMode: (enabled: boolean) => void;
+
+  /** 当前调试会话的文件上传 chatId */
+  debugChatId?: string;
+
+  /** 设置调试会话的文件上传 chatId */
+  setDebugChatId: (chatId: string) => void;
 };
+
+/** 生成调试子树的文件上传上下文，确保草稿上传与调试运行共享同一 chatId。 */
+export const getWorkflowDebugRuntimeContext = ({
+  appId,
+  chatId
+}: {
+  appId: string;
+  chatId?: string;
+}) => ({
+  sourceTarget: { sourceType: ChatSourceTypeEnum.app, sourceId: appId },
+  chatId: chatId ?? '',
+  outLinkAuthData: {},
+  fileUploadMode: 'draft' as const
+});
+
+/** 初始化节点调试数据；显式 chatId 优先，否则沿用打开调试弹窗时生成的会话 ID。 */
+export const createWorkflowDebugData = ({
+  params,
+  defaultChatId
+}: {
+  params: Parameters<WorkflowDebugContextValue['onStartNodeDebug']>[0];
+  defaultChatId?: string;
+}): DebugDataType => {
+  const { entryNodeId, runtimeNodes, runtimeEdges, variables, query, history, chatId } = params;
+
+  return {
+    runtimeNodes,
+    runtimeEdges,
+    entryNodeIds: runtimeNodes
+      .filter((node) => node.nodeId === entryNodeId)
+      .map((node) => node.nodeId),
+    skipNodeQueue: [],
+    variables,
+    query,
+    history,
+    chatId: chatId ?? defaultChatId
+  };
+};
+
+/** 保存单步调试结果，并保留后续节点和交互续跑所需的 chatId。 */
+export const createNextWorkflowDebugData = ({
+  debugData,
+  response
+}: {
+  debugData: DebugDataType;
+  response: {
+    memoryNodes: DebugDataType['runtimeNodes'];
+    memoryEdges: DebugDataType['runtimeEdges'];
+    entryNodeIds: DebugDataType['entryNodeIds'];
+    skipNodeQueue?: DebugDataType['skipNodeQueue'];
+    newVariables: DebugDataType['variables'];
+    usageId?: DebugDataType['usageId'];
+  };
+}): DebugDataType => ({
+  runtimeNodes: response.memoryNodes,
+  runtimeEdges: response.memoryEdges,
+  entryNodeIds: response.entryNodeIds,
+  skipNodeQueue: response.skipNodeQueue,
+  variables: response.newVariables,
+  usageId: response.usageId,
+  chatId: debugData.chatId
+});
+
 export const WorkflowDebugContext = createContext<WorkflowDebugContextValue>({
-  onNextNodeDebug: function (debugData: DebugDataType): Promise<void> {
+  onNextNodeDebug: function (_debugData: DebugDataType): Promise<void> {
     throw new Error('Function not implemented.');
   },
-  onStartNodeDebug: function (params: {
+  onStartNodeDebug: function (_params: {
     entryNodeId: string;
     runtimeNodes: RuntimeNodeItemType[];
     runtimeEdges: RuntimeEdgeItemType[];
     variables: Record<string, any>;
     query?: UserChatItemValueItemType[];
     history?: ChatItemMiniType[];
+    chatId?: string;
   }): Promise<void> {
     throw new Error('Function not implemented.');
   },
@@ -74,7 +149,11 @@ export const WorkflowDebugContext = createContext<WorkflowDebugContextValue>({
     throw new Error('Function not implemented.');
   },
   debugMode: false,
-  setDebugMode: function (enabled: boolean): void {
+  setDebugMode: function (_enabled: boolean): void {
+    throw new Error('Function not implemented.');
+  },
+  debugChatId: '',
+  setDebugChatId: function (): void {
     throw new Error('Function not implemented.');
   }
 });
@@ -89,6 +168,8 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
   // 调试状态
   const [workflowDebugData, setWorkflowDebugData] = useState<DebugDataType>();
   const [debugMode, setDebugMode] = useState(false);
+  // 调试会话内文件上传的 chatId，打开调试弹窗时生成，调试运行沿用同一值
+  const [debugChatId, setDebugChatId] = useState<string>();
 
   // 单步调试 - 执行下一步节点
   const onNextNodeDebug = useCallback(
@@ -151,19 +232,25 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
           history: debugData.history,
           appId,
           chatConfig: appDetail.chatConfig,
-          usageId: debugData.usageId
+          usageId: debugData.usageId,
+          chatId: debugData.chatId
         });
 
         // 4. Store debug result
-        setWorkflowDebugData({
-          // memoryNodes和memoryEdges包含了完整的响应，不需要再进行初始化
-          runtimeNodes: memoryNodes,
-          runtimeEdges: memoryEdges,
-          entryNodeIds,
-          skipNodeQueue,
-          variables: newVariables,
-          usageId
-        });
+        // memoryNodes 和 memoryEdges 包含完整响应，同时保留续跑所需的 chatId。
+        setWorkflowDebugData(
+          createNextWorkflowDebugData({
+            debugData,
+            response: {
+              memoryNodes,
+              memoryEdges,
+              entryNodeIds,
+              skipNodeQueue,
+              newVariables,
+              usageId
+            }
+          })
+        );
 
         // 5. selected entry node and Update entry node debug result
         setNodes((state) =>
@@ -235,25 +322,19 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
       runtimeEdges,
       variables,
       query,
-      history
+      history,
+      chatId
     }: Parameters<WorkflowDebugContextValue['onStartNodeDebug']>[0]) => {
-      const data: DebugDataType = {
-        runtimeNodes,
-        runtimeEdges,
-        entryNodeIds: runtimeNodes
-          .filter((node) => node.nodeId === entryNodeId)
-          .map((node) => node.nodeId),
-        skipNodeQueue: [],
-        variables,
-        query,
-        history
-      };
+      const data = createWorkflowDebugData({
+        params: { entryNodeId, runtimeNodes, runtimeEdges, variables, query, history, chatId },
+        defaultChatId: debugChatId
+      });
       onStopNodeDebug();
       setWorkflowDebugData(data);
 
       onNextNodeDebug(data);
     },
-    [onNextNodeDebug, onStopNodeDebug]
+    [debugChatId, onNextNodeDebug, onStopNodeDebug]
   );
 
   const contextValue = useMemoEnhance(() => {
@@ -265,11 +346,25 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
       onStartNodeDebug,
       onStopNodeDebug,
       debugMode,
-      setDebugMode
+      setDebugMode,
+      debugChatId,
+      setDebugChatId
     };
-  }, [workflowDebugData, onNextNodeDebug, onStartNodeDebug, onStopNodeDebug, debugMode]);
+  }, [
+    workflowDebugData,
+    onNextNodeDebug,
+    onStartNodeDebug,
+    onStopNodeDebug,
+    debugMode,
+    debugChatId,
+    setDebugChatId
+  ]);
 
   return (
-    <WorkflowDebugContext.Provider value={contextValue}>{children}</WorkflowDebugContext.Provider>
+    <WorkflowRuntimeContextProvider
+      {...getWorkflowDebugRuntimeContext({ appId, chatId: debugChatId })}
+    >
+      <WorkflowDebugContext.Provider value={contextValue}>{children}</WorkflowDebugContext.Provider>
+    </WorkflowRuntimeContextProvider>
   );
 };

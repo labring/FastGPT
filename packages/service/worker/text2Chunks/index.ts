@@ -1,6 +1,6 @@
 import { parentPort } from 'worker_threads';
-import type { SplitProps } from '@fastgpt/global/common/string/textSplitter';
-import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
+import type { SplitProps } from '../../common/string/textSplitter';
+import { splitText2Chunks } from '../../common/string/textSplitter';
 
 type IncomingMessage = {
   id: string;

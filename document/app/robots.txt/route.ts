@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
+import { getFastGPTHomeOrigin, getFastGPTDocsOrigin } from '@/lib/fastgpt-home-url';
 
 export const dynamic = 'force-static';
 
 export function GET() {
-  const homeDomain = process.env.FASTGPT_HOME_DOMAIN ?? 'https://fastgpt.io';
-  const domain = homeDomain.replace('https://', 'https://doc.');
+  const homeDomain = getFastGPTHomeOrigin();
+  const domain = getFastGPTDocsOrigin();
   const isCN = homeDomain.includes('.cn');
 
   let content: string;

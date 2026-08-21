@@ -1,15 +1,13 @@
+import { GET, POST } from '@/web/common/api/request';
 import type {
+  GetSkillCollaboratorListQuery,
+  GetSkillCollaboratorListResponse,
   UpdateSkillCollaboratorBody,
-  SkillCollaboratorDeleteParams
-} from '@fastgpt/global/core/ai/skill/collaborator';
-import { DELETE, GET, POST } from '@/web/common/api/request';
-import type { CollaboratorListType } from '@fastgpt/global/support/permission/collaborator';
+  UpdateSkillCollaboratorResponse
+} from '@fastgpt/global/openapi/core/ai/skill/api';
 
-export const getSkillCollaboratorList = (skillId: string) =>
-  GET<CollaboratorListType>('/proApi/core/ai/skill/collaborator/list', { skillId });
+export const getSkillCollaboratorList = (skillId: GetSkillCollaboratorListQuery['skillId']) =>
+  GET<GetSkillCollaboratorListResponse>('/proApi/core/ai/skill/collaborator/list', { skillId });
 
 export const postUpdateSkillCollaborators = (body: UpdateSkillCollaboratorBody) =>
-  POST('/proApi/core/ai/skill/collaborator/update', body);
-
-export const deleteSkillCollaborator = (params: SkillCollaboratorDeleteParams) =>
-  DELETE('/proApi/core/ai/skill/collaborator/delete', params);
+  POST<UpdateSkillCollaboratorResponse>('/proApi/core/ai/skill/collaborator/update', body);

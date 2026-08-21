@@ -1,0 +1,14 @@
+export {
+  S3_ACCESS_LINK_PURGE_GRACE_HOURS,
+  S3_DOWNLOAD_ALIAS_ID_LENGTH,
+  S3_DOWNLOAD_ALIAS_SIGN_VERSION,
+  S3_DOWNLOAD_EXPIRE_BUCKET_MS,
+  S3_DOWNLOAD_EXPIRE_BUCKET_THRESHOLD_MS,
+  S3_DOWNLOAD_SIGNATURE_LENGTH,
+  S3_UPLOAD_TOKEN_LENGTH
+} from '@fastgpt-sdk/storage';
+
+export const S3_ACCESS_LINK_ROUTES = {
+  download: '/api/system/file/d',
+  upload: '/api/system/file/u'
+} as const;

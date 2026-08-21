@@ -20,6 +20,7 @@ import {
   type ReferenceItemValueType
 } from './type/io';
 import type { NodeToolConfigType, StoreNodeItemType } from './type/node';
+import type { StoreEdgeItemType } from './type/edge';
 import type {
   VariableItemType,
   AppTTSConfigType,
@@ -29,7 +30,8 @@ import type {
   AppChatConfigType,
   AppAutoExecuteConfigType,
   AppQGConfigType,
-  AppSchemaType
+  AppSchemaType,
+  AppWelcomeConfigType
 } from '../app/type';
 import { type EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
 import {
@@ -60,13 +62,32 @@ export const getHandleId = (
   return `${nodeId}-${type}-${key}`;
 };
 
+export const getSelectedInputRenderType = (input: {
+  renderTypeList?: FlowNodeInputItemType['renderTypeList'];
+  selectedType?: FlowNodeInputItemType['selectedType'];
+  selectedTypeIndex?: FlowNodeInputItemType['selectedTypeIndex'];
+}) => input.selectedType ?? input.renderTypeList?.[input.selectedTypeIndex ?? 0];
+
+export const getSelectedInputRenderTypeIndex = (input: {
+  renderTypeList?: FlowNodeInputItemType['renderTypeList'];
+  selectedType?: FlowNodeInputItemType['selectedType'];
+  selectedTypeIndex?: FlowNodeInputItemType['selectedTypeIndex'];
+}) => {
+  const selectedRenderType = getSelectedInputRenderType(input);
+  const selectedTypeIndex = selectedRenderType
+    ? input.renderTypeList?.findIndex((renderType) => renderType === selectedRenderType)
+    : -1;
+
+  return selectedTypeIndex !== undefined && selectedTypeIndex >= 0 ? selectedTypeIndex : 0;
+};
+
 /**
  * 判断输入值是否应按工作流引用解析。
  * settingDatasetQuotePrompt 内部渲染 Reference 选择器，虽然 renderType 不是 reference，
  * 但它的值仍是 [nodeId, outputId]，运行时必须解析成知识库检索结果。
  */
 export const nodeInputIsReference = (input: FlowNodeInputItemType) => {
-  const renderType = input.renderTypeList?.[input?.selectedTypeIndex || 0];
+  const renderType = getSelectedInputRenderType(input);
 
   if (
     renderType === FlowNodeInputTypeEnum.reference ||
@@ -81,47 +102,75 @@ export const nodeInputIsReference = (input: FlowNodeInputItemType) => {
 /* node  */
 export const getGuideModule = (nodes: StoreNodeItemType[]) =>
   nodes.find((item) => item.flowNodeType === FlowNodeTypeEnum.systemConfig);
+
+/** 判断 App 工作流是否有 Agent 或 ToolCall 节点开启 Sandbox。 */
+export const isAppSandboxEnabledInNodes = (nodes: StoreNodeItemType[]) =>
+  nodes.some(
+    (node) =>
+      (node.flowNodeType === FlowNodeTypeEnum.agent ||
+        node.flowNodeType === FlowNodeTypeEnum.toolCall) &&
+      node.inputs.some(
+        (input) => input.key === NodeInputKeyEnum.useAgentSandbox && input.value === true
+      )
+  );
+
+const isConfigMissing = (value: unknown) => value === undefined || value === null;
+
+const getSystemConfigInputValue = <T>(guideModules: StoreNodeItemType | undefined, key: string) =>
+  guideModules?.inputs?.find((item) => item.key === key)?.value as T | undefined;
+
 export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
   const welcomeText: string =
-    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.welcomeText)?.value ?? '';
+    getSystemConfigInputValue<string>(guideModules, NodeInputKeyEnum.welcomeText) ?? '';
+
+  const welcomeQuestions: string[] =
+    getSystemConfigInputValue<string[]>(guideModules, NodeInputKeyEnum.welcomeQuestions) ?? [];
 
   const variables: VariableItemType[] =
-    guideModules?.inputs.find((item) => item.key === NodeInputKeyEnum.variables)?.value ?? [];
+    getSystemConfigInputValue<VariableItemType[]>(guideModules, NodeInputKeyEnum.variables) ?? [];
 
   // Adapt old version
-  const questionGuideVal = guideModules?.inputs?.find(
-    (item) => item.key === NodeInputKeyEnum.questionGuide
-  )?.value;
+  const questionGuideVal = getSystemConfigInputValue<AppQGConfigType | boolean>(
+    guideModules,
+    NodeInputKeyEnum.questionGuide
+  );
   const questionGuide: AppQGConfigType =
     typeof questionGuideVal === 'boolean'
       ? { ...defaultQGConfig, open: questionGuideVal }
       : (questionGuideVal ?? defaultQGConfig);
 
   const ttsConfig: AppTTSConfigType =
-    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.tts)?.value ??
+    getSystemConfigInputValue<AppTTSConfigType>(guideModules, NodeInputKeyEnum.tts) ??
     defaultTTSConfig;
 
   const whisperConfig: AppWhisperConfigType =
-    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.whisper)?.value ??
+    getSystemConfigInputValue<AppWhisperConfigType>(guideModules, NodeInputKeyEnum.whisper) ??
     defaultWhisperConfig;
 
-  const scheduledTriggerConfig: AppScheduledTriggerConfigType =
-    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.scheduleTrigger)?.value ??
-    undefined;
+  const scheduledTriggerConfig: AppScheduledTriggerConfigType | undefined =
+    getSystemConfigInputValue<AppScheduledTriggerConfigType>(
+      guideModules,
+      NodeInputKeyEnum.scheduleTrigger
+    ) ?? undefined;
 
   const chatInputGuide: ChatInputGuideConfigType =
-    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.chatInputGuide)?.value ??
-    defaultChatInputGuideConfig;
+    getSystemConfigInputValue<ChatInputGuideConfigType>(
+      guideModules,
+      NodeInputKeyEnum.chatInputGuide
+    ) ?? defaultChatInputGuideConfig;
 
   const instruction: string =
-    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.instruction)?.value ?? '';
+    getSystemConfigInputValue<string>(guideModules, NodeInputKeyEnum.instruction) ?? '';
 
   const autoExecute: AppAutoExecuteConfigType =
-    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.autoExecute)?.value ??
-    defaultAutoExecuteConfig;
+    getSystemConfigInputValue<AppAutoExecuteConfigType>(
+      guideModules,
+      NodeInputKeyEnum.autoExecute
+    ) ?? defaultAutoExecuteConfig;
 
   return {
     welcomeText,
+    welcomeQuestions,
     variables,
     questionGuide,
     ttsConfig,
@@ -130,6 +179,154 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
     chatInputGuide,
     instruction,
     autoExecute
+  };
+};
+
+/**
+ * 将任意版本的工作流配置清洗为当前保存结构。
+ *
+ * 旧系统配置节点只补充 chatConfig 中缺失的字段，显式空值不会被覆盖。清洗结果不再包含
+ * 系统配置节点及其关联边，且函数无副作用、可重复执行。
+ */
+export const normalizeWorkflowConfig = ({
+  nodes,
+  edges = [],
+  chatConfig
+}: {
+  nodes: StoreNodeItemType[];
+  edges?: StoreEdgeItemType[];
+  chatConfig?: AppChatConfigType;
+}): {
+  nodes: StoreNodeItemType[];
+  edges: StoreEdgeItemType[];
+  chatConfig: AppChatConfigType;
+} => {
+  const systemConfigNode = getGuideModule(nodes);
+  const pluginConfigNode = nodes.find(
+    (node) => node.flowNodeType === FlowNodeTypeEnum.pluginConfig
+  );
+  const nextChatConfig: AppChatConfigType = { ...(chatConfig ?? {}) };
+
+  const welcomeConfig: AppWelcomeConfigType = { ...(nextChatConfig.welcomeConfig ?? {}) };
+  const nodeWelcomeText = getSystemConfigInputValue<string>(
+    systemConfigNode,
+    NodeInputKeyEnum.welcomeText
+  );
+  const nodeWelcomeQuestions = getSystemConfigInputValue<string[]>(
+    systemConfigNode,
+    NodeInputKeyEnum.welcomeQuestions
+  );
+
+  if (isConfigMissing(welcomeConfig.welcomeText) && !isConfigMissing(nextChatConfig.welcomeText)) {
+    welcomeConfig.welcomeText = nextChatConfig.welcomeText;
+  }
+  if (isConfigMissing(welcomeConfig.welcomeText) && !isConfigMissing(nodeWelcomeText)) {
+    welcomeConfig.welcomeText = nodeWelcomeText;
+  }
+  if (isConfigMissing(welcomeConfig.welcomeQuestions) && !isConfigMissing(nodeWelcomeQuestions)) {
+    welcomeConfig.welcomeQuestions = nodeWelcomeQuestions;
+  }
+  if (
+    !isConfigMissing(welcomeConfig.welcomeText) ||
+    !isConfigMissing(welcomeConfig.welcomeQuestions)
+  ) {
+    nextChatConfig.welcomeConfig = welcomeConfig;
+    nextChatConfig.welcomeText = welcomeConfig.welcomeText;
+  }
+
+  const variables = getSystemConfigInputValue<VariableItemType[]>(
+    systemConfigNode,
+    NodeInputKeyEnum.variables
+  );
+  if (isConfigMissing(nextChatConfig.variables) && !isConfigMissing(variables)) {
+    nextChatConfig.variables = variables;
+  }
+
+  const questionGuideVal = getSystemConfigInputValue<AppQGConfigType | boolean>(
+    systemConfigNode,
+    NodeInputKeyEnum.questionGuide
+  );
+  if (isConfigMissing(nextChatConfig.questionGuide) && !isConfigMissing(questionGuideVal)) {
+    nextChatConfig.questionGuide =
+      typeof questionGuideVal === 'boolean'
+        ? { ...defaultQGConfig, open: questionGuideVal }
+        : questionGuideVal;
+  }
+
+  const ttsConfig = getSystemConfigInputValue<AppTTSConfigType>(
+    systemConfigNode,
+    NodeInputKeyEnum.tts
+  );
+  if (isConfigMissing(nextChatConfig.ttsConfig) && !isConfigMissing(ttsConfig)) {
+    nextChatConfig.ttsConfig = ttsConfig;
+  }
+
+  const whisperConfig = getSystemConfigInputValue<AppWhisperConfigType>(
+    systemConfigNode,
+    NodeInputKeyEnum.whisper
+  );
+  if (isConfigMissing(nextChatConfig.whisperConfig) && !isConfigMissing(whisperConfig)) {
+    nextChatConfig.whisperConfig = whisperConfig;
+  }
+
+  const scheduledTriggerConfig = getSystemConfigInputValue<AppScheduledTriggerConfigType>(
+    systemConfigNode,
+    NodeInputKeyEnum.scheduleTrigger
+  );
+  if (
+    isConfigMissing(nextChatConfig.scheduledTriggerConfig) &&
+    !isConfigMissing(scheduledTriggerConfig)
+  ) {
+    nextChatConfig.scheduledTriggerConfig = scheduledTriggerConfig;
+  }
+
+  const chatInputGuide = getSystemConfigInputValue<ChatInputGuideConfigType>(
+    systemConfigNode,
+    NodeInputKeyEnum.chatInputGuide
+  );
+  if (isConfigMissing(nextChatConfig.chatInputGuide) && !isConfigMissing(chatInputGuide)) {
+    nextChatConfig.chatInputGuide = chatInputGuide;
+  }
+
+  const autoExecute = getSystemConfigInputValue<AppAutoExecuteConfigType>(
+    systemConfigNode,
+    NodeInputKeyEnum.autoExecute
+  );
+  if (isConfigMissing(nextChatConfig.autoExecute) && !isConfigMissing(autoExecute)) {
+    nextChatConfig.autoExecute = autoExecute;
+  }
+
+  const instruction = getSystemConfigInputValue<string>(
+    systemConfigNode,
+    NodeInputKeyEnum.instruction
+  );
+  const pluginInstruction = getSystemConfigInputValue<string>(
+    pluginConfigNode,
+    NodeInputKeyEnum.instruction
+  );
+  if (isConfigMissing(nextChatConfig.instruction)) {
+    if (!isConfigMissing(instruction)) {
+      nextChatConfig.instruction = instruction;
+    } else if (!isConfigMissing(pluginInstruction)) {
+      nextChatConfig.instruction = pluginInstruction;
+    }
+  }
+
+  const systemConfigNodeIds = new Set(
+    nodes
+      .filter(
+        (node) =>
+          node.flowNodeType === FlowNodeTypeEnum.systemConfig ||
+          node.flowNodeType === FlowNodeTypeEnum.pluginConfig
+      )
+      .map((node) => node.nodeId)
+  );
+  return {
+    nodes: nodes.filter((node) => !systemConfigNodeIds.has(node.nodeId)),
+    edges: edges.filter(
+      (edge) => !systemConfigNodeIds.has(edge.source) && !systemConfigNodeIds.has(edge.target)
+    ),
+    chatConfig: nextChatConfig
   };
 };
 
@@ -149,6 +346,7 @@ export const getAppChatConfig = ({
 }): AppChatConfigType => {
   const {
     welcomeText,
+    welcomeQuestions,
     variables,
     questionGuide,
     ttsConfig,
@@ -158,6 +356,15 @@ export const getAppChatConfig = ({
     instruction,
     autoExecute
   } = splitGuideModule(systemConfigNode);
+
+  const welcomeConfig: AppWelcomeConfigType = {
+    welcomeText:
+      storeWelcomeText ??
+      chatConfig?.welcomeConfig?.welcomeText ??
+      chatConfig?.welcomeText ??
+      welcomeText,
+    welcomeQuestions: chatConfig?.welcomeConfig?.welcomeQuestions ?? welcomeQuestions
+  };
 
   const config: AppChatConfigType = {
     questionGuide,
@@ -169,7 +376,8 @@ export const getAppChatConfig = ({
     autoExecute,
     ...chatConfig,
     variables: storeVariables ?? chatConfig?.variables ?? variables,
-    welcomeText: storeWelcomeText ?? chatConfig?.welcomeText ?? welcomeText
+    welcomeConfig,
+    welcomeText: welcomeConfig.welcomeText
   };
 
   if (!isPublicFetch) {
@@ -193,12 +401,94 @@ export const getOrInitModuleInputValue = (input: FlowNodeInputItemType) => {
 };
 
 export const getModuleInputUiField = (input: FlowNodeInputItemType) => {
+  void input;
   // if (input.renderTypeList === FlowNodeInputTypeEnum.input || input.type === FlowNodeInputTypeEnum.textarea) {
   //   return {
   //     placeholder: input.placeholder || input.description
   //   };
   // }
   return {};
+};
+
+const agentGeneratedExternalVariableValueTypes = new Set<WorkflowIOValueTypeEnum>([
+  WorkflowIOValueTypeEnum.string,
+  WorkflowIOValueTypeEnum.number,
+  WorkflowIOValueTypeEnum.boolean,
+  WorkflowIOValueTypeEnum.arrayString,
+  WorkflowIOValueTypeEnum.arrayNumber,
+  WorkflowIOValueTypeEnum.arrayBoolean
+]);
+
+/**
+ * 将子工作流外部变量投影为父工作流可配置的节点输入。
+ * customVariable 只描述子工作流的外部注入语义；进入父工作流后由引用或类型匹配的手动控件提供值。
+ * 已保存且投影后仍有效的输入方式必须保留，只有未选择或仍为 customVariable 时才应用 Agent 默认值。
+ */
+export const projectExternalVariableInput = <T extends FlowNodeInputItemType>(input: T): T => {
+  const isExternalVariable =
+    input.renderTypeList.includes(FlowNodeInputTypeEnum.customVariable) ||
+    input.selectedType === FlowNodeInputTypeEnum.customVariable;
+  if (!isExternalVariable) return input;
+
+  const manualRenderType = (() => {
+    if (input.valueType === WorkflowIOValueTypeEnum.number) {
+      return FlowNodeInputTypeEnum.numberInput;
+    }
+    if (input.valueType === WorkflowIOValueTypeEnum.boolean) {
+      return FlowNodeInputTypeEnum.switch;
+    }
+    if (input.valueType === WorkflowIOValueTypeEnum.string) {
+      return FlowNodeInputTypeEnum.input;
+    }
+    return FlowNodeInputTypeEnum.JSONEditor;
+  })();
+  const canAgentGenerated = agentGeneratedExternalVariableValueTypes.has(
+    input.valueType as WorkflowIOValueTypeEnum
+  );
+  const projectedRenderTypeList = Array.from(
+    new Set(
+      input.renderTypeList.flatMap((type) => {
+        if (type === FlowNodeInputTypeEnum.customVariable) {
+          return [FlowNodeInputTypeEnum.reference, manualRenderType];
+        }
+        if (type === FlowNodeInputTypeEnum.agentGenerated) {
+          return canAgentGenerated ? [type] : [];
+        }
+        return [type];
+      })
+    )
+  );
+  if (
+    canAgentGenerated &&
+    !projectedRenderTypeList.includes(FlowNodeInputTypeEnum.agentGenerated)
+  ) {
+    projectedRenderTypeList.unshift(FlowNodeInputTypeEnum.agentGenerated);
+  }
+  if (!projectedRenderTypeList.includes(FlowNodeInputTypeEnum.reference)) {
+    projectedRenderTypeList.push(FlowNodeInputTypeEnum.reference);
+  }
+  if (!projectedRenderTypeList.includes(manualRenderType)) {
+    projectedRenderTypeList.push(manualRenderType);
+  }
+  const hasExplicitProjectedSelection =
+    input.selectedType !== undefined &&
+    input.selectedType !== FlowNodeInputTypeEnum.customVariable &&
+    projectedRenderTypeList.includes(input.selectedType);
+  const selectedType = hasExplicitProjectedSelection
+    ? input.selectedType
+    : canAgentGenerated
+      ? FlowNodeInputTypeEnum.agentGenerated
+      : FlowNodeInputTypeEnum.reference;
+  const projectedInput = {
+    ...input,
+    canAgentGenerated,
+    ...(canAgentGenerated ? { isToolParam: true } : {}),
+    renderTypeList: projectedRenderTypeList,
+    selectedType
+  } as T;
+  delete projectedInput.selectedTypeIndex;
+
+  return projectedInput;
 };
 
 export const pluginData2FlowNodeIO = ({
@@ -216,16 +506,14 @@ export const pluginData2FlowNodeIO = ({
     inputs: pluginInput
       ? [
           Input_Template_Stream_MODE,
-          ...pluginInput?.inputs.map((item) => ({
-            ...item,
-            ...getModuleInputUiField(item),
-            value: getOrInitModuleInputValue(item),
-            canEdit: false,
-            renderTypeList:
-              item.renderTypeList[0] === FlowNodeInputTypeEnum.customVariable
-                ? [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input]
-                : item.renderTypeList
-          }))
+          ...pluginInput?.inputs.map((item) =>
+            projectExternalVariableInput({
+              ...item,
+              ...getModuleInputUiField(item),
+              value: getOrInitModuleInputValue(item),
+              canEdit: false
+            })
+          )
         ]
       : [],
     outputs: pluginOutput
@@ -249,6 +537,34 @@ const jsonRenderValueTypes = new Set<WorkflowIOValueTypeEnum>([
   WorkflowIOValueTypeEnum.arrayObject
 ]);
 
+/** 将应用变量类型映射为工作流节点输入控件，供应用节点和工具参数配置共用。 */
+export const getAppVariableRenderTypeList = ({
+  type,
+  valueType
+}: Pick<VariableItemType, 'type' | 'valueType'>): FlowNodeInputTypeEnum[] => {
+  const isJsonValueType = !!valueType && jsonRenderValueTypes.has(valueType);
+  const renderTypeMap: Record<VariableInputEnum, FlowNodeInputTypeEnum[]> = {
+    [VariableInputEnum.input]: isJsonValueType
+      ? [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference]
+      : [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+    [VariableInputEnum.textarea]: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
+    [VariableInputEnum.numberInput]: [FlowNodeInputTypeEnum.numberInput],
+    [VariableInputEnum.select]: [FlowNodeInputTypeEnum.select],
+    [VariableInputEnum.multipleSelect]: [FlowNodeInputTypeEnum.multipleSelect],
+    [VariableInputEnum.timePointSelect]: [FlowNodeInputTypeEnum.timePointSelect],
+    [VariableInputEnum.timeRangeSelect]: [FlowNodeInputTypeEnum.timeRangeSelect],
+    [VariableInputEnum.switch]: [FlowNodeInputTypeEnum.switch],
+    [VariableInputEnum.password]: [FlowNodeInputTypeEnum.password],
+    [VariableInputEnum.file]: [FlowNodeInputTypeEnum.fileSelect, FlowNodeInputTypeEnum.reference],
+    [VariableInputEnum.llmSelect]: [FlowNodeInputTypeEnum.selectLLMModel],
+    [VariableInputEnum.datasetSelect]: [FlowNodeInputTypeEnum.selectDataset],
+    [VariableInputEnum.internal]: [FlowNodeInputTypeEnum.hidden],
+    [VariableInputEnum.custom]: [FlowNodeInputTypeEnum.customVariable]
+  };
+
+  return renderTypeMap[type] || [FlowNodeInputTypeEnum.reference];
+};
+
 export const appData2FlowNodeIO = ({
   chatConfig
 }: {
@@ -267,48 +583,34 @@ export const appData2FlowNodeIO = ({
           !textInputVariableValueTypes.includes(item.valueType)
             ? WorkflowIOValueTypeEnum.string
             : item.valueType;
-        const isJsonValueType =
-          !!normalizedValueType && jsonRenderValueTypes.has(normalizedValueType);
-        const renderTypeMap: Record<VariableInputEnum, FlowNodeInputTypeEnum[]> = {
-          [VariableInputEnum.input]: isJsonValueType
-            ? [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference]
-            : [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-          [VariableInputEnum.textarea]: [
-            FlowNodeInputTypeEnum.textarea,
-            FlowNodeInputTypeEnum.reference
-          ],
-          [VariableInputEnum.numberInput]: [FlowNodeInputTypeEnum.numberInput],
-          [VariableInputEnum.select]: [FlowNodeInputTypeEnum.select],
-          [VariableInputEnum.multipleSelect]: [FlowNodeInputTypeEnum.multipleSelect],
-          [VariableInputEnum.timePointSelect]: [FlowNodeInputTypeEnum.timePointSelect],
-          [VariableInputEnum.timeRangeSelect]: [FlowNodeInputTypeEnum.timeRangeSelect],
-          [VariableInputEnum.switch]: [FlowNodeInputTypeEnum.switch],
-          [VariableInputEnum.password]: [FlowNodeInputTypeEnum.password],
-          [VariableInputEnum.file]: [
-            FlowNodeInputTypeEnum.fileSelect,
-            FlowNodeInputTypeEnum.reference
-          ],
-          [VariableInputEnum.llmSelect]: [FlowNodeInputTypeEnum.selectLLMModel],
-          [VariableInputEnum.datasetSelect]: [FlowNodeInputTypeEnum.selectDataset],
-          [VariableInputEnum.internal]: [FlowNodeInputTypeEnum.hidden],
-          [VariableInputEnum.custom]: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
-        };
-
-        return {
+        const supportsOptions = [
+          VariableInputEnum.select,
+          VariableInputEnum.multipleSelect
+        ].includes(item.type);
+        return projectExternalVariableInput({
           key: item.key,
-          renderTypeList: renderTypeMap[item.type] || [FlowNodeInputTypeEnum.reference],
+          renderTypeList: getAppVariableRenderTypeList({
+            type: item.type,
+            valueType: normalizedValueType
+          }),
           label: item.label,
           debugLabel: item.label,
-          description: '',
+          description: item.description,
           valueType: normalizedValueType || WorkflowIOValueTypeEnum.any,
           required: item.required,
           defaultValue: item.defaultValue,
           value: item.defaultValue,
-          list: (item.list || item.enums)?.map((enumItem) => ({
-            label: enumItem.value,
-            value: enumItem.value
-          }))
-        };
+          ...(supportsOptions
+            ? {
+                list: (item.list || item.enums)
+                  ?.map((enumItem) => ({
+                    label: enumItem.value,
+                    value: enumItem.value
+                  }))
+                  .filter((enumItem) => String(enumItem.value ?? '').trim().length > 0)
+              }
+            : {})
+        });
       });
 
   return {
@@ -320,9 +622,23 @@ export const appData2FlowNodeIO = ({
       chatConfig?.fileSelectConfig?.canSelectVideo ||
       chatConfig?.fileSelectConfig?.canSelectAudio ||
       chatConfig?.fileSelectConfig?.canSelectCustomFileExtension
-        ? [Input_Template_File_Link]
+        ? [
+            {
+              ...Input_Template_File_Link,
+              renderTypeList: [
+                ...Input_Template_File_Link.renderTypeList,
+                FlowNodeInputTypeEnum.agentGenerated
+              ],
+              selectedType: FlowNodeInputTypeEnum.agentGenerated,
+              isToolParam: true
+            }
+          ]
         : []),
-      Input_Template_UserChatInput,
+      {
+        ...Input_Template_UserChatInput,
+        // 普通工作流作为工具时，用户问题应默认由调用它的 Agent 生成。
+        isToolParam: true
+      },
       ...variableInput
     ],
     outputs: [
@@ -368,7 +684,10 @@ export const toolSetData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }
 
     if (toolSetNode.toolConfig.httpToolSet) {
       const toolList = toolSetNode.toolConfig.httpToolSet.toolList.map((tool) => {
-        const { requestSchema, inputSchema, outputSchema, ...restTool } = tool;
+        const restTool = { ...tool };
+        delete restTool.requestSchema;
+        delete restTool.inputSchema;
+        delete restTool.outputSchema;
         return restTool;
       });
       return {
@@ -380,7 +699,8 @@ export const toolSetData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }
     }
     if (toolSetNode.toolConfig.mcpToolSet) {
       const formatToolList = toolSetNode.toolConfig.mcpToolSet.toolList.map((tool) => {
-        const { inputSchema, ...restTool } = tool;
+        const restTool = { ...tool };
+        delete restTool.inputSchema;
         return restTool;
       });
       return {
@@ -481,15 +801,17 @@ export const clientGetWorkflowToolRunUserQuery = ({
     pluginInputs: FlowNodeInputItemType[];
     variables: Record<string, any>;
   }) => {
-    const pluginInputsWithValue = pluginInputs.map((input) => {
-      const { key } = input;
-      const value = variables?.hasOwnProperty(key) ? variables[key] : input.defaultValue;
+    const pluginInputsWithValue = pluginInputs
+      .filter((input) => !input.renderTypeList.includes(FlowNodeInputTypeEnum.hidden))
+      .map((input) => {
+        const { key } = input;
+        const value = variables?.hasOwnProperty(key) ? variables[key] : input.defaultValue;
 
-      return {
-        ...input,
-        value
-      };
-    });
+        return {
+          ...input,
+          value
+        };
+      });
     return JSON.stringify(pluginInputsWithValue);
   };
 
@@ -517,8 +839,11 @@ export const removeUnauthModels = async ({
     modules.forEach((module) => {
       module.inputs.forEach((input) => {
         if (input.key === 'model') {
-          // 如果是引用类型（selectedTypeIndex 不为 0 或 value 是数组），跳过检查
-          if (input.selectedTypeIndex !== 0 || Array.isArray(input.value)) {
+          // 如果是引用类型或历史引用值，跳过静态模型白名单检查。
+          if (
+            getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.reference ||
+            Array.isArray(input.value)
+          ) {
             return;
           }
           if (!allowedModels.has(input.value)) {

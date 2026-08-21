@@ -1,5 +1,5 @@
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import type { ChatDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+import type { ChatDispatchProps } from '../../types/runtime';
 
 type RunningAppInfo = ChatDispatchProps['runningAppInfo'];
 

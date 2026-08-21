@@ -3,388 +3,208 @@ import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { AgentPlanSchema } from '@fastgpt/global/core/ai/agent/type';
 import {
   applyPlanUpdate,
-  updatePlanState
-} from '@fastgpt/service/core/ai/llm/agentLoop/plan/state';
+  applySetPlan
+} from '@fastgpt/service/core/ai/llm/agentLoop/domain/systemTool/plan';
 
 const createPlan = (): AgentPlanType =>
   AgentPlanSchema.parse({
     planId: 'plan_1',
-    task: 'Test task',
-    description: 'Test description',
+    name: 'Test plan',
     steps: [
       {
         id: 's1',
-        title: 'Read code',
+        name: 'Read code',
         description: 'Read code files',
-        acceptanceCriteria: ['Find entry'],
-        status: 'pending',
-        evidence: []
+        status: 'pending'
       },
       {
         id: 's2',
-        title: 'Write summary',
-        description: 'Write final summary',
-        acceptanceCriteria: ['Summarize findings'],
-        status: 'pending',
-        evidence: []
+        name: 'Write summary',
+        status: 'pending'
       }
     ]
   });
 
-describe('updatePlanState', () => {
-  it('updates a step without mutating the original plan', () => {
-    const plan = createPlan();
-    const originalStep = plan.steps[0];
+describe('plan state tools', () => {
+  it('creates an active plan from a name and string steps', () => {
+    const result = applySetPlan({
+      input: {
+        name: 'New plan',
+        steps: ['Step 1', 'Step 2']
+      }
+    });
 
-    const result = updatePlanState({
+    expect(result.success).toBe(true);
+    expect(result.plan.name).toBe('New plan');
+    expect(result.plan.steps).toHaveLength(2);
+    expect(result.plan.steps[0]).toMatchObject({
+      name: 'Step 1',
+      status: 'pending'
+    });
+    expect(result.plan.steps[0].id).toBeTruthy();
+    expect(result.plan.steps[1]).toMatchObject({
+      name: 'Step 2',
+      status: 'pending'
+    });
+    expect(result.message).toContain('Set active plan');
+    expect(result.message).toContain(`${result.plan.steps[0].id}: Step 1`);
+  });
+
+  it('rejects invalid set_plan arguments', () => {
+    const result = applySetPlan({
+      input: {
+        name: 'Missing steps'
+      }
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.plan.name).toBe('Invalid plan');
+    expect(result.message).toContain('Invalid set_plan arguments');
+  });
+
+  it('appends string steps with generated ids', () => {
+    const plan = createPlan();
+    const result = applyPlanUpdate({
       plan,
       update: {
-        stepId: 's1',
-        status: 'done',
-        evidence: [
-          {
-            kind: 'tool_result',
-            ref: 'call_read',
-            summary: 'Found dispatchRunAgent'
-          }
-        ],
-        outputSummary: 'Located the agent entry'
+        add_steps: ['Inspect tests']
       }
     });
 
     expect(result.success).toBe(true);
     expect(result.plan).not.toBe(plan);
-    expect(result.plan.steps[0]).not.toBe(originalStep);
-    expect(plan.steps[0].status).toBe('pending');
-    expect(plan.steps[0].evidence).toEqual([]);
-    expect(result.plan.steps[0]).toMatchObject({
-      id: 's1',
-      status: 'done',
-      outputSummary: 'Located the agent entry',
-      evidence: [
-        {
-          kind: 'tool_result',
-          ref: 'call_read',
-          summary: 'Found dispatchRunAgent'
-        }
-      ]
-    });
-    expect(result.message).toContain('1 done');
-  });
-
-  it('returns an error and keeps the plan unchanged for unknown step ids', () => {
-    const plan = createPlan();
-
-    const result = updatePlanState({
-      plan,
-      update: {
-        stepId: 'missing',
-        status: 'done',
-        outputSummary: 'No-op'
-      }
-    });
-
-    expect(result.success).toBe(false);
-    expect(result.plan).toBe(plan);
-    expect(result.message).toContain('Unknown plan step');
-  });
-
-  it('requires blocker or reason for blocked steps', () => {
-    const plan = createPlan();
-
-    const result = updatePlanState({
-      plan,
-      update: {
-        stepId: 's1',
-        status: 'blocked'
-      }
-    });
-
-    expect(result.success).toBe(false);
-    expect(result.plan).toBe(plan);
-    expect(result.message).toContain('Blocked plan step');
-  });
-
-  it('maps blocked reason to blocker and clears stale blocker/replan state when resolved', () => {
-    const plan = createPlan();
-
-    const blocked = updatePlanState({
-      plan,
-      update: {
-        stepId: 's1',
-        status: 'blocked',
-        reason: 'Need a different path',
-        needsReplan: true
-      }
-    });
-    expect(blocked.success).toBe(true);
-    expect(blocked.plan.steps[0]).toMatchObject({
-      status: 'blocked',
-      blocker: 'Need a different path',
-      needsReplan: true
-    });
-
-    const resolved = updatePlanState({
-      plan: blocked.plan,
-      update: {
-        stepId: 's1',
-        status: 'done',
-        outputSummary: 'Resolved with fallback path'
-      }
-    });
-    expect(resolved.success).toBe(true);
-    expect(resolved.plan.steps[0]).toMatchObject({
-      status: 'done',
-      outputSummary: 'Resolved with fallback path'
-    });
-    expect(resolved.plan.steps[0]).not.toHaveProperty('blocker');
-    expect(resolved.plan.steps[0]).not.toHaveProperty('needsReplan');
-  });
-
-  it('appends evidence instead of replacing it', () => {
-    const plan = createPlan();
-    const first = updatePlanState({
-      plan,
-      update: {
-        stepId: 's1',
-        status: 'in_progress',
-        evidence: [
-          {
-            kind: 'manual',
-            summary: 'Started reading'
-          }
-        ]
-      }
-    });
-
-    const second = updatePlanState({
-      plan: first.plan,
-      update: {
-        stepId: 's1',
-        status: 'done',
-        evidence: [
-          {
-            kind: 'tool_result',
-            ref: 'call_read',
-            summary: 'Read target file'
-          }
-        ]
-      }
-    });
-
-    expect(second.success).toBe(true);
-    expect(second.plan.steps[0].evidence).toEqual([
-      {
-        kind: 'manual',
-        summary: 'Started reading'
-      },
-      {
-        kind: 'tool_result',
-        ref: 'call_read',
-        summary: 'Read target file'
-      }
+    expect(result.plan.steps.map((step) => step.name)).toEqual([
+      'Read code',
+      'Write summary',
+      'Inspect tests'
     ]);
+    expect(result.plan.steps[2].id).toBeTruthy();
+    expect(result.message).toContain('Added plan step: "Inspect tests"');
   });
 
-  it('applies multiple step updates from one update_plan batch', () => {
+  it('updates multiple step statuses and notes atomically', () => {
     const plan = createPlan();
-
     const result = applyPlanUpdate({
       plan,
       update: {
         updates: [
           {
-            action: 'update_step',
-            stepId: 's1',
+            id: 's1',
             status: 'done',
-            outputSummary: 'Located the entry'
+            note: 'Read code'
           },
           {
-            action: 'update_step',
-            stepId: 's2',
-            status: 'blocked',
-            blocker: 'Need user confirmation'
+            id: 's2',
+            status: 'skipped',
+            note: 'No summary needed'
           }
-        ],
-        reason: 'record parallel progress'
+        ]
       }
     });
 
     expect(result.success).toBe(true);
-    expect(result.plan).not.toBe(plan);
     expect(plan.steps.map((step) => step.status)).toEqual(['pending', 'pending']);
     expect(result.plan.steps[0]).toMatchObject({
       id: 's1',
+      name: 'Read code',
+      description: 'Read code files',
       status: 'done',
-      outputSummary: 'Located the entry'
+      note: 'Read code'
     });
     expect(result.plan.steps[1]).toMatchObject({
       id: 's2',
-      status: 'blocked',
-      blocker: 'Need user confirmation'
+      status: 'skipped',
+      note: 'No summary needed'
     });
-    expect(result.message).toContain('Applied 2 plan updates');
+    expect(result.message).toContain('Updated 2 plan steps');
   });
 
-  it('does not apply a batch when one operation fails', () => {
-    const plan = createPlan();
+  it('updates statuses and appends steps in one call', () => {
+    const result = applyPlanUpdate({
+      plan: createPlan(),
+      update: {
+        updates: [{ id: 's1', status: 'done' }],
+        add_steps: ['Run regression tests', 'Write release note']
+      }
+    });
 
+    expect(result.success).toBe(true);
+    expect(result.plan.steps[0].status).toBe('done');
+    expect(result.plan.steps.slice(-2).map((step) => step.name)).toEqual([
+      'Run regression tests',
+      'Write release note'
+    ]);
+    expect(result.message).toContain('Updated 1 plan step. Added plan steps');
+  });
+
+  it('rejects completed as an invalid step status', () => {
+    const plan = createPlan();
+    const result = applyPlanUpdate({
+      plan,
+      update: {
+        updates: [{ id: 's1', status: 'completed' }]
+      }
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.plan).toBe(plan);
+    expect(result.plan.steps[0].status).toBe('pending');
+    expect(result.message).toContain('Invalid update_plan arguments');
+  });
+
+  it('treats a null note as an explicit empty note', () => {
+    const result = applyPlanUpdate({
+      plan: createPlan(),
+      update: {
+        updates: [{ id: 's1', status: 'in_progress', note: null }]
+      }
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.plan.steps[0].note).toBeNull();
+  });
+
+  it('rejects update_plan when no active plan exists', () => {
+    const result = applyPlanUpdate({
+      update: {
+        add_steps: ['Step 1']
+      }
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.plan.name).toBe('Missing active plan');
+    expect(result.message).toContain('Use set_plan first');
+  });
+
+  it('rejects empty update_plan arguments', () => {
+    const plan = createPlan();
+    const result = applyPlanUpdate({
+      plan,
+      update: {}
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.plan).toBe(plan);
+    expect(result.message).toContain('Invalid update_plan arguments');
+  });
+
+  it('keeps the original plan when any update id is unknown', () => {
+    const plan = createPlan();
     const result = applyPlanUpdate({
       plan,
       update: {
         updates: [
-          {
-            action: 'update_step',
-            stepId: 's1',
-            status: 'done',
-            outputSummary: 'Would be done'
-          },
-          {
-            action: 'update_step',
-            stepId: 'missing',
-            status: 'done',
-            outputSummary: 'Invalid'
-          }
-        ]
+          { id: 's1', status: 'done' },
+          { id: 'missing', status: 'done' }
+        ],
+        add_steps: ['Must not be appended']
       }
     });
 
     expect(result.success).toBe(false);
     expect(result.plan).toBe(plan);
     expect(plan.steps.map((step) => step.status)).toEqual(['pending', 'pending']);
-    expect(result.message).toContain('Batch update failed at operation 2/2');
-  });
-
-  it('does not expose intermediate set_plan state when a batch fails without an existing plan', () => {
-    const result = applyPlanUpdate({
-      update: {
-        updates: [
-          {
-            action: 'set_plan',
-            plan: createPlan()
-          },
-          {
-            action: 'update_step',
-            stepId: 'missing',
-            status: 'done',
-            outputSummary: 'Invalid'
-          }
-        ]
-      }
-    });
-
-    expect(result.success).toBe(false);
-    expect(result.plan.task).toBe('Batch update failed');
-    expect(result.plan.steps).toHaveLength(1);
-    expect(result.plan.steps[0]).toMatchObject({
-      id: 'invalid_update',
-      status: 'blocked'
-    });
-  });
-
-  it('creates and replaces plans through update_plan actions', () => {
-    const created = applyPlanUpdate({
-      update: {
-        updates: [
-          {
-            action: 'set_plan',
-            plan: {
-              planId: 'plan_new',
-              task: 'New task',
-              description: 'New description',
-              steps: [
-                {
-                  id: 's1',
-                  title: 'Step 1',
-                  description: 'Do step 1',
-                  acceptanceCriteria: ['Done'],
-                  status: 'pending',
-                  evidence: []
-                }
-              ]
-            }
-          }
-        ]
-      }
-    });
-
-    expect(created.success).toBe(true);
-    expect(created.plan.planId).toBe('plan_new');
-    expect(created.message).toContain('Applied 1 plan update');
-
-    const done = updatePlanState({
-      plan: created.plan,
-      update: {
-        stepId: 's1',
-        status: 'done',
-        evidence: [
-          {
-            kind: 'manual',
-            summary: 'Done evidence'
-          }
-        ],
-        outputSummary: 'Finished'
-      }
-    });
-
-    const replaced = applyPlanUpdate({
-      plan: done.plan,
-      update: {
-        updates: [
-          {
-            action: 'replace_plan',
-            plan: {
-              planId: 'plan_from_model',
-              task: 'New task',
-              description: 'Revised description',
-              steps: [
-                {
-                  id: 's1',
-                  title: 'Step 1 revised',
-                  description: 'Still done',
-                  acceptanceCriteria: ['Done'],
-                  status: 'pending',
-                  evidence: []
-                },
-                {
-                  id: 's2',
-                  title: 'New step',
-                  description: 'New work',
-                  acceptanceCriteria: ['New done'],
-                  status: 'done',
-                  evidence: [
-                    {
-                      kind: 'model_output',
-                      summary: 'Should be cleared for new step'
-                    }
-                  ],
-                  outputSummary: 'Should be cleared'
-                }
-              ]
-            }
-          }
-        ]
-      }
-    });
-
-    expect(replaced.success).toBe(true);
-    expect(replaced.plan.planId).toBe('plan_new');
-    expect(replaced.plan.steps[0]).toMatchObject({
-      id: 's1',
-      status: 'done',
-      outputSummary: 'Finished',
-      evidence: [
-        {
-          kind: 'manual',
-          summary: 'Done evidence'
-        }
-      ]
-    });
-    expect(replaced.plan.steps[1]).toMatchObject({
-      id: 's2',
-      status: 'pending',
-      evidence: []
-    });
-    expect(replaced.plan.steps[1]).not.toHaveProperty('outputSummary');
+    expect(result.plan.steps.map((step) => step.name)).not.toContain('Must not be appended');
+    expect(result.message).toContain('Unknown plan step');
   });
 });

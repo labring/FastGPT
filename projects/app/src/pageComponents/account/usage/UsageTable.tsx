@@ -21,19 +21,16 @@ import React, { useMemo, useState } from 'react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getUserUsages } from '@/web/support/wallet/usage/api';
-import { addDays } from 'date-fns';
 import dynamic from 'next/dynamic';
 import { type UsageFilterParams } from './type';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
-import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import UsageRechargeModal from './UsageRechargeModal';
 
 const UsageDetail = dynamic(() => import('./UsageDetail'));
-const RechargeModal = dynamic(() =>
-  import('@/components/support/wallet/NotSufficientModal/index').then((mod) => mod.RechargeModal)
-);
 
 const UsageTableList = ({
   filterParams,
@@ -44,7 +41,7 @@ const UsageTableList = ({
   Selectors: React.ReactNode;
   filterParams: UsageFilterParams;
 }) => {
-  const { t } = useSafeTranslation();
+  const { t } = useClientTranslation('account_usage');
   const {
     isOpen: isOpenRecharge,
     onOpen: onOpenRecharge,
@@ -56,7 +53,7 @@ const UsageTableList = ({
   const requestParams = useMemo(() => {
     return {
       dateStart: dayjs(dateRange.from || new Date()).format(),
-      dateEnd: dayjs(addDays(dateRange.to || new Date(), 1)).format(),
+      dateEnd: dayjs(dateRange.to || new Date()).format(),
       sources: isSelectAllSource ? undefined : usageSources,
       teamMemberIds: isSelectAllTmb ? undefined : selectTmbIds,
       projectName
@@ -192,7 +189,9 @@ const UsageTableList = ({
         <UsageDetail usage={usageDetail} onClose={() => setUsageDetail(undefined)} />
       )}
 
-      {isOpenRecharge && <RechargeModal onClose={onCloseRecharge} onPaySuccess={onCloseRecharge} />}
+      {isOpenRecharge && (
+        <UsageRechargeModal onClose={onCloseRecharge} onPaySuccess={onCloseRecharge} />
+      )}
     </MyBox>
   );
 };

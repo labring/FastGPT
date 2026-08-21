@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import {
@@ -31,7 +31,7 @@ import FileSelector, {
   type SelectFileItemType
 } from '@/pageComponents/dataset/detail/Import/components/FileSelector';
 import { useRouter } from 'next/router';
-import { putFileToS3 } from '@fastgpt/web/common/file/utils';
+import { S3FileUploader } from '@fastgpt/web/common/file/uploader';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 const QuickCreateDatasetModal = ({
@@ -54,6 +54,20 @@ const QuickCreateDatasetModal = ({
   const defaultVLLM = defaultModels.datasetImageLLM?.model;
 
   const [selectFiles, setSelectFiles] = useState<ImportSourceItemType[]>([]);
+  const uploadControllers = useRef(new Map<string, AbortController>());
+
+  useEffect(() => {
+    return () => {
+      uploadControllers.current.forEach((controller) => controller.abort());
+      uploadControllers.current.clear();
+    };
+  }, []);
+
+  const handleClose = useCallback(() => {
+    uploadControllers.current.forEach((controller) => controller.abort());
+    uploadControllers.current.clear();
+    onClose();
+  }, [onClose]);
 
   const successFiles = useMemo(
     () => selectFiles.filter((item) => item.dbFileId && !item.errorMsg),
@@ -81,18 +95,27 @@ const QuickCreateDatasetModal = ({
     async (files: SelectFileItemType[]) => {
       await Promise.all(
         files.map(async ({ fileId, file }) => {
-          try {
-            const { url, key, headers, maxSize } = await getUploadTempFilePresignedUrl({
-              filename: file.name
-            });
+          const controller = new AbortController();
+          uploadControllers.current.set(fileId, controller);
 
-            await putFileToS3({
-              url,
+          try {
+            const uploadResult = await getUploadTempFilePresignedUrl(
+              {
+                filename: file.name,
+                size: file.size
+              },
+              {
+                cancelToken: controller
+              }
+            );
+            const { key } = uploadResult;
+
+            const uploader = new S3FileUploader({
+              ...uploadResult,
               file,
-              headers,
-              onUploadProgress: (e) => {
-                if (!e.total) return;
-                const percent = Math.round((e.loaded / e.total) * 100);
+              onProgress: (loaded, total) => {
+                if (!total) return;
+                const percent = Math.round((loaded / total) * 100);
                 setSelectFiles((state) =>
                   state.map((item) =>
                     item.id === fileId
@@ -107,23 +130,30 @@ const QuickCreateDatasetModal = ({
                 );
               },
               t,
-              maxSize,
-              onSuccess: () => {
-                setSelectFiles((state) =>
-                  state.map((item) =>
-                    item.id === fileId
-                      ? {
-                          ...item,
-                          dbFileId: key,
-                          isUploading: false,
-                          uploadedFileRate: 100
-                        }
-                      : item
-                  )
-                );
-              }
+              signal: controller.signal
             });
+            if (controller.signal.aborted) {
+              await uploader.abort();
+              return;
+            }
+            await uploader.upload();
+
+            if (controller.signal.aborted) return;
+            setSelectFiles((state) =>
+              state.map((item) =>
+                item.id === fileId
+                  ? {
+                      ...item,
+                      dbFileId: key,
+                      isUploading: false,
+                      uploadedFileRate: 100
+                    }
+                  : item
+              )
+            );
           } catch (error) {
+            if (controller.signal.aborted) return;
+
             setSelectFiles((state) =>
               state.map((item) =>
                 item.id === fileId
@@ -135,6 +165,8 @@ const QuickCreateDatasetModal = ({
                   : item
               )
             );
+          } finally {
+            uploadControllers.current.delete(fileId);
           }
         })
       );
@@ -197,7 +229,7 @@ const QuickCreateDatasetModal = ({
   return (
     <MyModal
       isOpen={true}
-      onClose={onClose}
+      onClose={handleClose}
       title={t('app:Create_dataset')}
       minW={'800px'}
       ml={'20px'}
@@ -333,7 +365,7 @@ const QuickCreateDatasetModal = ({
           </Box>
         </Flex>
         <Flex gap={3}>
-          <Button variant={'whiteBase'} onClick={onClose}>
+          <Button variant={'whiteBase'} onClick={handleClose}>
             {t('common:Cancel')}
           </Button>
           <Button

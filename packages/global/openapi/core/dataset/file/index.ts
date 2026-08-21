@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import {
@@ -5,10 +6,17 @@ import {
   GetSearchTestImagePreviewUrlsResponseSchema,
   GetPreviewChunksBodySchema,
   GetPreviewChunksResponseSchema,
+  GetRawTextPreviewChunksBodySchema,
+  AbortDatasetFileMultipartUploadResponseSchema,
+  CompleteDatasetFileMultipartUploadBodySchema,
+  CompleteDatasetFileMultipartUploadResponseSchema,
+  DatasetFileUploadTokenPathSchema,
   PresignDatasetFilePostUrlBodySchema,
   PresignDatasetFilePostUrlResponseSchema,
   PresignSearchTestImageBodySchema,
-  PresignSearchTestImageResponseSchema
+  PresignSearchTestImageResponseSchema,
+  UploadDatasetFileMultipartPartQuerySchema,
+  UploadDatasetFileMultipartPartResponseSchema
 } from './api';
 
 export const DatasetFilePath: OpenAPIPath = {
@@ -21,6 +29,30 @@ export const DatasetFilePath: OpenAPIPath = {
         content: {
           'application/json': {
             schema: GetPreviewChunksBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功返回预览分块列表及总数',
+          content: {
+            'application/json': {
+              schema: GetPreviewChunksResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/dataset/file/getRawTextPreviewChunks': {
+    post: {
+      summary: '预览原始文本分块',
+      description: '对前端已读取到的原始文本执行后端分块预览，用于自定义文件导入预览',
+      tags: [DevApiTagsMap.datasetFile],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: GetRawTextPreviewChunksBodySchema
           }
         }
       },
@@ -50,10 +82,81 @@ export const DatasetFilePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回预签名上传 URL、key、请求头和最大文件大小',
+          description: '成功返回单 PUT 或 Multipart 上传参数',
           content: {
             'application/json': {
               schema: PresignDatasetFilePostUrlResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/system/file/u/{token}': {
+    put: {
+      summary: '上传知识库文件 Multipart 分片',
+      description: '通过 presign 返回的 token 代理上传单个 Multipart 分片',
+      tags: [DevApiTagsMap.datasetFile],
+      requestParams: {
+        path: DatasetFileUploadTokenPathSchema,
+        query: UploadDatasetFileMultipartPartQuerySchema.partial()
+      },
+      responses: {
+        200: {
+          description: '成功返回当前分片 ETag 或单 PUT 上传结果',
+          content: {
+            'application/json': {
+              schema: z.union([
+                UploadDatasetFileMultipartPartResponseSchema,
+                z.object({ success: z.literal(true) })
+              ])
+            }
+          }
+        }
+      }
+    }
+  },
+  '/system/file/u/{token}/complete': {
+    post: {
+      summary: '完成知识库文件 Multipart 上传',
+      description: '校验分片清单并合并生成最终对象',
+      tags: [DevApiTagsMap.datasetFile],
+      requestParams: {
+        path: DatasetFileUploadTokenPathSchema
+      },
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: CompleteDatasetFileMultipartUploadBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功完成 Multipart 上传',
+          content: {
+            'application/json': {
+              schema: CompleteDatasetFileMultipartUploadResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/system/file/u/{token}/abort': {
+    post: {
+      summary: '取消知识库文件 Multipart 上传',
+      description: '取消未完成的 Multipart 上传并清理对象存储分片',
+      tags: [DevApiTagsMap.datasetFile],
+      requestParams: {
+        path: DatasetFileUploadTokenPathSchema
+      },
+      responses: {
+        200: {
+          description: '成功取消 Multipart 上传',
+          content: {
+            'application/json': {
+              schema: AbortDatasetFileMultipartUploadResponseSchema
             }
           }
         }

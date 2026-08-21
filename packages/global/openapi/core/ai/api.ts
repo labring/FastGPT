@@ -7,6 +7,36 @@ import {
 } from '../chat/api';
 import { OutLinkChatAuthSchema } from '../../../support/permission/chat';
 
+/* ============================================================================
+ * API: 优化 Prompt
+ * Route: POST /api/core/ai/optimizePrompt
+ * Method: POST
+ * Description: 根据用户的优化要求调用指定模型，以 SSE 流式返回优化后的 Prompt
+ * Tags: ['AI 辅助生成', 'Write']
+ * ============================================================================ */
+
+export const OptimizePromptBodySchema = z.object({
+  originalPrompt: z.string().default('').meta({
+    example: '你是一个客服助手，请回答用户问题。',
+    description: '需要优化的原始 Prompt；未传时按空字符串处理'
+  }),
+  optimizerInput: z.string().meta({
+    example: '增强角色约束，并补充清晰的输出格式。',
+    description: '用户对 Prompt 的优化要求'
+  }),
+  model: z.string().meta({
+    example: 'gpt-4.1-mini',
+    description: '执行 Prompt 优化的模型名称'
+  })
+});
+export type OptimizePromptBody = z.infer<typeof OptimizePromptBodySchema>;
+
+export const OptimizePromptResponseSchema = z.string().meta({
+  example: 'event: answer\ndata: {"choices":[{"delta":{"content":"# Role"}}]}\n\n',
+  description: 'SSE 事件流；answer 事件采用 OpenAI delta 格式，最后一个事件的数据为 [DONE]'
+});
+export type OptimizePromptResponse = z.infer<typeof OptimizePromptResponseSchema>;
+
 // Query Params
 export const GetLLMRequestRecordParamsSchema = z.object({
   requestId: z.string().meta({
@@ -65,6 +95,7 @@ export const ChatMessageSchema = z.object({
 
 /* ============================================================================
  * 断线续传：GET /api/core/chat/resume（与 v2/chat/completions 配套；支持站内和分享鉴权）
+ * Tags: ['会话操作', 'Read']
  * ============================================================================ */
 
 export const ResumeStreamParamsRawSchema = createOutLinkChatTargetInputSchema({

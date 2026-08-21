@@ -18,6 +18,12 @@ import { getImageBase64 } from '../../../common/file/image/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { serviceEnv } from '../../../env';
+import {
+  ACTIVE_PLAN_END_TAG,
+  ACTIVE_PLAN_START_TAG,
+  CONTEXT_CHECKPOINT_END_TAG,
+  CONTEXT_CHECKPOINT_START_TAG
+} from './compress/constants';
 
 const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
@@ -33,12 +39,29 @@ const isSystemLikeMessage = (message: ChatCompletionMessageParam) =>
  * 判断消息是否是上下文压缩检查点。
  * 检查点代表已压缩的历史前缀，需要跟系统提示一起保留。
  */
-const isContextCheckpointMessage = (message: ChatCompletionMessageParam) =>
-  message.role === ChatCompletionRequestMessageRoleEnum.User &&
-  message.hideInUI === true &&
-  typeof message.content === 'string' &&
-  message.content.trim().startsWith('<context_checkpoint>') &&
-  message.content.trim().endsWith('</context_checkpoint>');
+const isContextCheckpointMessage = (message: ChatCompletionMessageParam) => {
+  if (
+    message.role !== ChatCompletionRequestMessageRoleEnum.User ||
+    message.hideInUI !== true ||
+    typeof message.content !== 'string'
+  ) {
+    return false;
+  }
+
+  const content = message.content.trim();
+  const startsWithCheckpoint = content.startsWith(CONTEXT_CHECKPOINT_START_TAG);
+  const startsWithActivePlan = content.startsWith(ACTIVE_PLAN_START_TAG);
+  const activePlanEndIndex = content.indexOf(ACTIVE_PLAN_END_TAG);
+  const checkpointStartIndex = content.indexOf(CONTEXT_CHECKPOINT_START_TAG);
+
+  return (
+    content.endsWith(CONTEXT_CHECKPOINT_END_TAG) &&
+    (startsWithCheckpoint ||
+      (startsWithActivePlan &&
+        activePlanEndIndex > ACTIVE_PLAN_START_TAG.length &&
+        checkpointStartIndex > activePlanEndIndex))
+  );
+};
 
 /**
  * 按最大上下文长度裁剪消息。

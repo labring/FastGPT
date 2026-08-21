@@ -1,0 +1,11 @@
+{
+  "discount_coupon": "优惠券",
+  "expired": "已过期",
+  "expired_tips": "已经过期了哦～",
+  "not_started_tips": "未开始",
+  "used_time": "使用时间",
+  "expiration_time": "到期时间",
+  "use": "去使用",
+  "used_tips": "已使用",
+  "check_purchase_history": "查看订单"
+}

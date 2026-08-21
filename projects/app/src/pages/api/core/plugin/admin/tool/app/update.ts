@@ -1,28 +1,29 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import {
   UpdateWorkflowToolBodySchema,
   type UpdateWorkflowToolBodyType
 } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { validateSystemToolWorkflowAssociation } from '@fastgpt/service/core/app/tool/workflowTool/service';
 
-export type updateWorkflowToolQuery = {};
+export type updateWorkflowToolQuery = Record<string, never>;
 
 export type updateWorkflowToolBody = UpdateWorkflowToolBodyType;
 
-export type updateWorkflowToolResponse = {};
+export type updateWorkflowToolResponse = Record<string, never>;
 
 const omitUndefinedFields = <T extends Record<string, unknown>>(fields: T) =>
   Object.fromEntries(
     Object.entries(fields).filter(([, value]) => value !== undefined)
   ) as Partial<T>;
 
-async function handler(
+export async function handler(
   req: ApiRequestProps<updateWorkflowToolBody, updateWorkflowToolQuery>,
-  res: ApiResponseType<any>
+  _res: ApiResponseType<any>
 ): Promise<updateWorkflowToolResponse> {
   await authSystemAdmin({ req });
 
@@ -47,6 +48,9 @@ async function handler(
     userGuide: updateFields.userGuide ?? plugin.customConfig.userGuide,
     author: updateFields.author ?? plugin.customConfig.author
   };
+  if (nextCustomConfig.associatedPluginId !== plugin.customConfig.associatedPluginId) {
+    await validateSystemToolWorkflowAssociation(nextCustomConfig.associatedPluginId);
+  }
   const isUpdateVersion =
     plugin.customConfig.name !== nextCustomConfig.name ||
     plugin.customConfig.avatar !== nextCustomConfig.avatar ||

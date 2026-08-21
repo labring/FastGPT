@@ -1,6 +1,7 @@
 ---
 title: V4.9.10
 description: FastGPT V4.9.10 Release Notes
+releaseTime: '2025-05-26'
 ---
 
 ## Upgrade Guide
@@ -20,27 +21,27 @@ Important: This update rebuilds the full-text index. During the rebuild, full-te
 ## New Features
 
 1. Support for setting the `systemEnv.hnswMaxScanTuples` parameter in PG to increase the total data volume for iterative search.
-2. Knowledge base preprocessing now includes a "Chunk Conditions" parameter to control when chunking should be skipped.
-3. Knowledge base preprocessing now includes a "Paragraph Priority" mode with configurable maximum paragraph depth. The previous "Length Priority" mode no longer includes embedded paragraph priority logic.
+2. Dataset preprocessing now includes a "Chunk Conditions" parameter to control when chunking should be skipped.
+3. Dataset preprocessing now includes a "Paragraph Priority" mode with configurable maximum paragraph depth. The previous "Length Priority" mode no longer includes embedded paragraph priority logic.
 4. Workflow adjusted to single-direction input/output connections, with quick "add next node" support.
-5. Lark and Yuque knowledge bases are now available in the Community Edition.
+5. Lark and Yuque datasets are now available in the Community Edition.
 6. Latest Gemini and Claude model presets.
 
 ## Improvements
 
 1. Increased default timeout for LLM stream calls.
 2. Various confirmation dialog UI improvements.
-3. Renamed the knowledge base "Table Dataset" to "Backup Import". Also added support for exporting and importing knowledge base indexes.
-4. Knowledge base citation limit in workflows: if no related AI nodes exist in the workflow, the interaction mode switches to manual input only, with a limit of 10 million.
+3. Renamed the Dataset's "Table Collection" to "Backup Import". Also added support for exporting and importing Dataset indexes.
+4. Dataset citation limit in workflows: if no related AI nodes exist in the workflow, the interaction mode switches to manual input only, with a limit of 10 million.
 5. Mobile voice input now accurately detects whether the device is a phone rather than just a small screen.
 6. Optimized context truncation algorithm to always preserve at least one Human message.
 
 ## Bug Fixes
 
-1. Incorrect score sorting during full-text search across multiple knowledge bases.
+1. Incorrect score sorting during full-text search across multiple datasets.
 2. Stream response potentially capturing incorrect `finish_reason` values.
 3. Tool call mode not saving reasoning output.
-4. Knowledge base `indexSize` parameter not taking effect.
+4. Dataset `indexSize` parameter not taking effect.
 5. Incorrect preview citations and context after 2 levels of workflow nesting.
 6. Extra leading space when converting xlsx to Markdown.
 7. Base64 images in Markdown files not being extracted and saved during file reading.

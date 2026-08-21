@@ -1,6 +1,6 @@
 import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -42,7 +42,9 @@ vi.mock('@fastgpt/global/core/dataset/training/utils', () => ({
     paragraphChunkMinSize: 100,
     chunkSplitter: ''
   })),
-  getLLMMaxChunkSize: vi.fn(() => 1000)
+  getLLMMaxChunkSize: vi.fn(() => 1000),
+  minChunkSize: 64,
+  maxPreviewChunkCount: 50_000
 }));
 
 vi.mock('@fastgpt/service/core/dataset/utils', () => ({

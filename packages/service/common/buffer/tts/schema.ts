@@ -1,4 +1,4 @@
-import { Schema, getMongoModel } from '../../../common/mongo';
+import { defineIndex, Schema, getMongoModel } from '../../../common/mongo';
 import { type TTSBufferSchemaType } from './type';
 import { getLogger, LogCategories } from '../../logger';
 
@@ -25,12 +25,11 @@ const TTSBufferSchema = new Schema({
   }
 });
 
-try {
-  TTSBufferSchema.index({ bufferId: 1 });
-  //  24 hour
-  TTSBufferSchema.index({ createTime: 1 }, { expireAfterSeconds: 24 * 60 * 60 });
-} catch (error) {
-  logger.error('Failed to build TTS buffer indexes', { error });
-}
+defineIndex(TTSBufferSchema, { key: { bufferId: 1 } });
+//  24 hour
+defineIndex(TTSBufferSchema, {
+  key: { createTime: 1 },
+  options: { expireAfterSeconds: 24 * 60 * 60 }
+});
 
 export const MongoTTSBuffer = getMongoModel<TTSBufferSchemaType>(collectionName, TTSBufferSchema);

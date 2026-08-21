@@ -1,4 +1,4 @@
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import {
   chatItemResponsePreviewProjection,
@@ -55,14 +55,16 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
     sourceId,
     chatId
   });
+  // 后续查询统一使用鉴权解析后的来源，避免分享链接请求体缺少 sourceType 时降级为普通对话。
+  const resolvedSourceType = authRes.sourceType;
   const resolvedSourceId = authRes.sourceId;
 
   const app =
-    sourceType === ChatSourceTypeEnum.app
+    resolvedSourceType === ChatSourceTypeEnum.app
       ? await MongoApp.findById(resolvedSourceId, 'type').lean()
       : null;
 
-  if (sourceType === ChatSourceTypeEnum.app && !app) {
+  if (resolvedSourceType === ChatSourceTypeEnum.app && !app) {
     return Promise.reject(AppErrEnum.unExist);
   }
   const isPlugin = app?.type === AppTypeEnum.workflowTool;
@@ -78,7 +80,7 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
 
   const result = await getChatItems({
     includeDeleted,
-    sourceType,
+    sourceType: resolvedSourceType,
     sourceId: resolvedSourceId,
     chatId,
     field: fieldMap[type],
@@ -91,7 +93,10 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
   });
 
   // Presign file urls
-  await addPreviewUrlToChatItems(result.histories, isPlugin ? 'workflowTool' : 'chatFlow');
+  result.histories = await addPreviewUrlToChatItems(
+    result.histories,
+    isPlugin ? 'workflowTool' : 'chatFlow'
+  );
 
   // Remove important information
   if (isOutLink && app?.type !== AppTypeEnum.workflowTool) {

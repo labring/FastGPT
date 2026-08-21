@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { serviceSideProps } from '@/web/common/i18n/utils';
-import { Box, Button, Center, Flex, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, Center, Checkbox, Flex, useDisclosure } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
@@ -24,6 +24,19 @@ import type { AdminSystemToolListItemType } from '@fastgpt/global/core/app/tool/
 import { useDebounce } from 'ahooks';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 
+const allPluginStatuses: PluginStatusType[] = [
+  PluginStatusEnum.Normal,
+  PluginStatusEnum.Hidden,
+  PluginStatusEnum.SoonOffline,
+  PluginStatusEnum.Offline
+];
+
+const defaultStatusFilter: PluginStatusType[] = [
+  PluginStatusEnum.Normal,
+  PluginStatusEnum.Hidden,
+  PluginStatusEnum.SoonOffline
+];
+
 const SystemToolConfigModal = dynamic(
   () => import('@/pageComponents/config/tool/SystemToolConfigModal')
 );
@@ -39,7 +52,7 @@ const ToolProvider = () => {
   const [localTools, setLocalTools] = useState<GetAdminSystemToolsResponseType>([]);
   const [editingToolId, setEditingToolId] = useState<string>();
   const [searchKey, setSearchKey] = useState('');
-  const [statusFilter, setStatusFilter] = useState<PluginStatusType>();
+  const [statusFilter, setStatusFilter] = useState<PluginStatusType[]>(defaultStatusFilter);
   const [tagFilter, setTagFilter] = useState<string>();
   const debouncedSearchKey = useDebounce(searchKey, { wait: 300 });
   const requestSearchKey = debouncedSearchKey.trim();
@@ -70,19 +83,19 @@ const ToolProvider = () => {
   const statusFilterOptions = useMemo(
     () => [
       {
-        label: t('common:All'),
-        value: undefined
-      },
-      {
         label: t('app:toolkit_status_normal'),
         value: PluginStatusEnum.Normal
+      },
+      {
+        label: t('app:toolkit_status_hidden'),
+        value: PluginStatusEnum.Hidden
       },
       {
         label: t('app:toolkit_status_soon_offline'),
         value: PluginStatusEnum.SoonOffline
       },
       {
-        label: t('app:toolkit_status_offline'),
+        label: t('common:error.tool_not_exist'),
         value: PluginStatusEnum.Offline
       }
     ],
@@ -104,14 +117,14 @@ const ToolProvider = () => {
     ],
     [localTools, t]
   );
-  const isStatusFilterActive = statusFilter !== undefined;
+  const isAllStatusSelected = statusFilter.length === allPluginStatuses.length;
+  const isStatusFilterActive = !isAllStatusSelected;
   const isTagFilterActive = tagFilter !== undefined;
   const isTableFilterActive = isStatusFilterActive || isTagFilterActive;
-  const statusFilterLabel = statusFilterOptions.find((item) => item.value === statusFilter)?.label;
   const tagFilterLabel = tagFilterOptions.find((item) => item.value === tagFilter)?.label;
   const displayTools = useMemo(() => {
     return localTools.filter((tool) => {
-      if (statusFilter && tool.status !== statusFilter) return false;
+      if (!statusFilter.includes(tool.status)) return false;
       if (tagFilter && !tool.tags?.includes(tagFilter)) return false;
       return true;
     });
@@ -141,29 +154,19 @@ const ToolProvider = () => {
           trigger="hover"
           Button={
             <Button leftIcon={<MyIcon name="common/addLight" w={'18px'} />}>
-              {t('app:toolkit_add_resource')}
+              {t('app:install_tool')}
             </Button>
           }
           menuList={[
             {
               children: [
                 {
-                  label: t('app:toolkit_open_marketplace'),
-                  onClick: () => {
-                    router.push('/config/tool/marketplace');
-                  }
+                  label: t('app:install_from_marketplace'),
+                  onClick: () => router.push('/dashboard/systemTool/marketplace')
                 },
                 {
-                  label: t('app:toolkit_import_resource'),
-                  onClick: () => {
-                    onOpenImportModal();
-                  }
-                },
-                {
-                  label: t('app:toolkit_select_app'),
-                  onClick: () => {
-                    setEditingToolId('');
-                  }
+                  label: t('app:install_from_file'),
+                  onClick: onOpenImportModal
                 }
               ]
             }
@@ -225,17 +228,52 @@ const ToolProvider = () => {
                 w={'fit-content'}
                 color={isStatusFilterActive ? 'primary.600' : 'inherit'}
               >
-                <Box>{isStatusFilterActive ? statusFilterLabel : t('app:toolkit_status')}</Box>
-                <MyIcon name="core/chat/chevronDown" w={4} ml={1} />
+                <Box>{t('app:toolkit_status')}</Box>
+                <MyIcon
+                  name={isStatusFilterActive ? 'common/filter' : 'core/chat/chevronDown'}
+                  w={isStatusFilterActive ? 3.5 : 4}
+                  ml={1}
+                  fill={isStatusFilterActive ? 'none' : 'currentColor'}
+                />
               </Flex>
             }
             menuList={[
               {
-                children: statusFilterOptions.map((item) => ({
-                  label: item.label,
-                  onClick: () => setStatusFilter(item.value),
-                  isActive: item.value === statusFilter
-                }))
+                children: [
+                  {
+                    label: (
+                      <Checkbox
+                        size={'sm'}
+                        isChecked={isAllStatusSelected}
+                        isIndeterminate={statusFilter.length > 0 && !isAllStatusSelected}
+                        pointerEvents={'none'}
+                      >
+                        {t('common:All')}
+                      </Checkbox>
+                    ),
+                    closeOnClick: false,
+                    onClick: () =>
+                      setStatusFilter(isAllStatusSelected ? [] : [...allPluginStatuses])
+                  },
+                  ...statusFilterOptions.map((item) => ({
+                    label: (
+                      <Checkbox
+                        size={'sm'}
+                        isChecked={statusFilter.includes(item.value)}
+                        pointerEvents={'none'}
+                      >
+                        {item.label}
+                      </Checkbox>
+                    ),
+                    closeOnClick: false,
+                    onClick: () =>
+                      setStatusFilter((statuses) =>
+                        statuses.includes(item.value)
+                          ? statuses.filter((status) => status !== item.value)
+                          : [...statuses, item.value]
+                      )
+                  }))
+                ]
               }
             ]}
           />

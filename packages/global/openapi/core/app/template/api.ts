@@ -73,7 +73,49 @@ export const GetAppTemplateDetailQuerySchema = z.object({
 });
 export type GetAppTemplateDetailQueryType = z.infer<typeof GetAppTemplateDetailQuerySchema>;
 
-export const GetAppTemplateDetailResponseSchema = AppTemplateSchema.optional().meta({
-  description: '模板详情；未找到模板时为空'
-});
+export const GetAppTemplateDetailResponseSchema = AppTemplateSchema.omit({
+  workflow: true
+})
+  .extend({
+    workflow: z.any().meta({
+      description: '模板对应的应用编排配置；不同应用类型可能使用不同结构'
+    })
+  })
+  .optional()
+  .meta({
+    description: '模板详情；未找到模板时为空'
+  });
 export type GetAppTemplateDetailResponseType = z.infer<typeof GetAppTemplateDetailResponseSchema>;
+
+/* ============================================================================
+ * API: 获取应用模板类型
+ * Route: GET /api/proApi/core/app/template/getTemplateTypes
+ * Method: GET
+ * Description: 获取应用模板分类列表，用于模板市场筛选。
+ * Tags: ['模板管理']
+ * ============================================================================ */
+
+export const GetTemplateTypesQuerySchema = z.object({}).meta({
+  description: '获取应用模板类型不需要查询参数'
+});
+export type GetTemplateTypesQueryType = z.infer<typeof GetTemplateTypesQuerySchema>;
+
+export const GetTemplateTypesResponseSchema = z
+  .array(
+    z.object({
+      typeName: z.string().meta({
+        example: '写作',
+        description: '模板类型名称'
+      }),
+      typeId: z.string().meta({
+        example: 'writing',
+        description: '模板类型 ID'
+      }),
+      typeOrder: z.number().meta({
+        example: 0,
+        description: '模板类型排序值'
+      })
+    })
+  )
+  .meta({ description: '模板类型列表' });
+export type GetTemplateTypesResponseType = z.infer<typeof GetTemplateTypesResponseSchema>;

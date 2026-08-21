@@ -26,6 +26,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { appTypeTagMap } from '@/pageComponents/dashboard/constant';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { getAppDetailRoute, isWorkflowAppType } from '@/web/core/app/utils';
 const UseGuideModal = dynamic(() => import('@/components/common/Modal/UseGuideModal'), {
   ssr: false
 });
@@ -76,27 +77,33 @@ const TemplateMarket = ({
         templateDetail.workflow = completeWorkflow;
       }
 
-      return postCreateApp({
+      const appType = template.type as AppTypeEnum;
+      const appId = await postCreateApp({
         parentId,
         avatar: template.avatar,
         name: template.name,
-        type: template.type as AppTypeEnum,
+        type: appType,
         modules: templateDetail.workflow.nodes || [],
         edges: templateDetail.workflow.edges || [],
         chatConfig: templateDetail.workflow.chatConfig,
         templateId: templateDetail.templateId
-      }).then((res) => {
-        webPushTrack.useAppTemplate({
-          id: res,
-          name: template.name
-        });
-
-        return res;
       });
+
+      webPushTrack.useAppTemplate({
+        id: appId,
+        name: template.name
+      });
+
+      return { appId, appType };
     },
     {
-      onSuccess(id: string) {
-        router.push(`/app/detail?appId=${id}`);
+      onSuccess({ appId, appType }) {
+        router.push(
+          getAppDetailRoute({
+            appId,
+            openSystemConfig: isWorkflowAppType(appType)
+          })
+        );
       },
       successToast: t('common:create_success'),
       errorToast: t('common:create_failed')

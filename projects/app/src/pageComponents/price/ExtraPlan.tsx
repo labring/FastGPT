@@ -1,5 +1,5 @@
-import { Box, Flex, Grid, Button, VStack, HStack } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
+import { Box, Flex, Grid, Button, VStack, HStack, type BoxProps } from '@chakra-ui/react';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React, { useState } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -17,8 +17,12 @@ import { formatActivityExpirationTime } from './utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 
+const PLAN_CARD_MAX_WIDTH = '483px';
+const DUAL_CARD_GAP = '20px';
+const DUAL_CARD_CONTAINER_MAX_WIDTH = `calc(${PLAN_CARD_MAX_WIDTH} * 2 + ${DUAL_CARD_GAP})`;
+
 const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useClientTranslation('price');
   const { toast } = useToast();
   const { subPlans } = useSystemStore();
   const [qrPayData, setQRPayData] = useState<QRPayProps>();
@@ -55,7 +59,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
       if (datasetSizePayAmount === 0) {
         return toast({
           status: 'warning',
-          title: t('common:support.wallet.amount_0')
+          title: t('price:support.wallet.amount_0')
         });
       }
 
@@ -65,7 +69,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
         extraDatasetSize: datasetSize
       });
       setQRPayData({
-        tip: t('common:button.extra_dataset_size_tip'),
+        tip: t('price:button.extra_dataset_size_tip'),
         billId: res.billId!,
         ...res
       });
@@ -77,18 +81,18 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
   );
 
   const expireSelectorOptions: { label: string; value: number }[] = [
-    { label: t('common:date_1_month'), value: 1 },
-    { label: t('common:date_3_months'), value: 3 },
-    { label: t('common:date_6_months'), value: 6 },
-    { label: t('common:date_12_months'), value: 12 }
+    { label: t('price:date_1_month'), value: 1 },
+    { label: t('price:date_3_months'), value: 3 },
+    { label: t('price:date_6_months'), value: 6 },
+    { label: t('price:date_12_months'), value: 12 }
   ];
 
   const extraPointsPackages = subPlans?.extraPoints?.packages || [];
   const [selectedPackageIndex, setSelectedPackageIndex] = useState<number>(0);
 
   const getMonthText = (month: number) => {
-    if (month < 12) return `${month} ${t('common:month_text')}`;
-    return t('common:one_year');
+    if (month < 12) return `${month} ${t('price:month_text')}`;
+    return t('price:one_year');
   };
 
   const { runAsync: onclickBuyExtraPoints, loading: isLoadingBuyExtraPoints } = useRequest(
@@ -103,7 +107,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
       });
 
       setQRPayData({
-        tip: t('common:button.extra_points_tip'),
+        tip: t('price:button.extra_points_tip'),
         billId: res.billId!,
         ...res
       });
@@ -119,21 +123,34 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
     subPlans?.activityExpirationTime
   );
 
+  const planCardProps = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    w: ['100%', PLAN_CARD_MAX_WIDTH],
+    h: ['auto', '488px'],
+    p: ['16px', '24px 32px'],
+    flexShrink: 0,
+    bg: 'white',
+    borderRadius: 'xl',
+    borderWidth: '1px',
+    borderColor: 'myGray.200',
+    boxShadow: '1.5',
+    overflow: 'hidden'
+  } satisfies BoxProps;
+
   return (
-    <VStack>
-      <Grid gridTemplateColumns={['1fr', '1fr 1fr']} gap={5} w={['100%', 'auto']}>
-        <Box
-          position={'relative'}
-          bg={'white'}
-          w={'100%'}
-          px={[4, 8]}
-          py={[4, 6]}
-          borderRadius={'16px'}
-          borderWidth={'1px'}
-          borderColor={'myGray.200'}
-          boxShadow={'0 1px 2px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.15)'}
-          overflow={'hidden'}
-        >
+    <VStack w={'100%'} alignItems={'center'}>
+      <Flex
+        w={['100%', DUAL_CARD_CONTAINER_MAX_WIDTH]}
+        maxW={['100%', DUAL_CARD_CONTAINER_MAX_WIDTH]}
+        h={['auto', '488px']}
+        justifyContent={'center'}
+        alignItems={'flex-start'}
+        gap={['16px', DUAL_CARD_GAP]}
+        flexWrap={['wrap', 'nowrap']}
+      >
+        <Box position={'relative'} {...planCardProps}>
           {subPlans?.activityExpirationTime && (
             <>
               <Box
@@ -174,6 +191,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
           <Box
             position={'relative'}
             zIndex={1}
+            w={'100%'}
             fontSize={'18px'}
             fontWeight={'500'}
             color={'primary.700'}
@@ -181,7 +199,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
             borderBottomWidth={'1px'}
             borderBottomColor={'myGray.200'}
           >
-            {t('common:support.wallet.subscription.Extra ai points')}
+            {t('price:support.wallet.subscription.Extra ai points')}
             <Box fontSize={'12px'} fontWeight={'normal'} color={'myGray.600'} mt={0.5}>
               {activityExpirationTime}
             </Box>
@@ -189,10 +207,12 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
           <Grid
             position={'relative'}
             zIndex={1}
+            w={'100%'}
             gridTemplateColumns={['repeat(2, 1fr)', 'repeat(3, 1fr)']}
             gap={[2, 3]}
             py={[3, 4]}
             minHeight={['180px', '220px']}
+            flex={'1 0 auto'}
           >
             {extraPointsPackages.map((pkg, index) => (
               <Flex
@@ -246,7 +266,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                   color={'myGray.500'}
                   mt={[1, 2]}
                 >
-                  {t('common:invalid_time') + ' '}
+                  {t('price:invalid_time') + ' '}
                   {getMonthText(pkg.month)}
                 </Box>
               </Flex>
@@ -256,6 +276,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
           <Flex
             position={'relative'}
             zIndex={1}
+            w={'100%'}
             justifyContent={'space-between'}
             alignItems={'center'}
           >
@@ -265,7 +286,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
               fontWeight={'medium'}
               textAlign={['center', 'left']}
             >
-              {t('common:support.wallet.subscription.total_points')}
+              {t('price:support.wallet.subscription.total_points')}
             </Box>
             <Box color={'myGray.600'} fontSize={['18px', '20px']} fontWeight={'medium'}>
               {selectedPackageIndex !== undefined && extraPointsPackages[selectedPackageIndex]
@@ -280,6 +301,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
           <Flex
             position={'relative'}
             zIndex={1}
+            w={'100%'}
             justifyContent={'space-between'}
             alignItems={'center'}
           >
@@ -289,11 +311,11 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
               fontWeight={'medium'}
               textAlign={['center', 'left']}
             >
-              {t('common:support.wallet.subscription.Update extra price')}
+              {t('price:support.wallet.subscription.Update extra price')}
             </Box>
             <Box color={'myGray.600'} fontSize={['18px', '20px']} fontWeight={'medium'}>
               {selectedPackageIndex !== undefined && extraPointsPackages[selectedPackageIndex]
-                ? t('common:extraPointsPrice', {
+                ? t('price:extraPointsPrice', {
                     price: extraPointsPackages[selectedPackageIndex].price
                   })
                 : '--'}
@@ -314,7 +336,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
               if (isDisabledBuy) {
                 return toast({
                   status: 'warning',
-                  title: t('common:support.wallet.subscription.extra_plan_disabled_tip')
+                  title: t('price:support.wallet.subscription.extra_plan_disabled_tip')
                 });
               }
               if (selectedPackageIndex !== undefined && extraPointsPackages[selectedPackageIndex]) {
@@ -329,34 +351,35 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
             color={'primary.700'}
             mt={[3, 4]}
           >
-            {t('common:support.wallet.Buy')}
+            {t('price:support.wallet.Buy')}
           </Button>
 
-          <HStack position={'relative'} zIndex={1} color={'blue.700'} mt={[4, 6]} spacing={[2, 0]}>
+          <HStack
+            position={'relative'}
+            zIndex={1}
+            w={'100%'}
+            color={'blue.700'}
+            mt={[4, 6]}
+            spacing={[2, 0]}
+          >
             <MyIcon name={'infoRounded'} w={['16px', '18px']} />
             <Box fontSize={['12px', '14px']} fontWeight={'medium'} lineHeight={['1.4', 'normal']}>
-              {t('common:support.wallet.subscription.Update extra ai points tips')}
+              {t('price:support.wallet.subscription.Update extra ai points tips')}
             </Box>
           </HStack>
         </Box>
 
-        {/* dataset */}
-        <Flex
-          bg={'white'}
-          w={'100%'}
-          px={[4, 8]}
-          py={[4, 6]}
-          borderRadius={'16px'}
-          borderColor={'myGray.200'}
-          boxShadow={'0 1px 2px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.15)'}
-          flexDir="column"
-          borderWidth={'1px'}
-          gap={2}
-        >
-          <Flex borderBottomWidth={'1px'} borderBottomColor={'myGray.200'} pb={[2, 4]}>
-            <Flex flexDir="column" gap={[2, 3]} flex={'1 0 0'}>
+        <Flex position={'relative'} gap={'8px'} {...planCardProps}>
+          <Flex
+            borderBottomWidth={'1px'}
+            borderBottomColor={'myGray.200'}
+            pb={[2, 4]}
+            position={'relative'}
+            w={'100%'}
+          >
+            <Flex flexDir="column" gap={[2, 3]} flex={'1 0 0'} pr={[0, '120px']}>
               <Box fontSize={['16px', '18px', 'lg']} fontWeight={'500'} color={'primary.700'}>
-                {t('common:support.wallet.subscription.Extra dataset size')}
+                {t('price:support.wallet.subscription.Extra dataset size')}
               </Box>
               <Box
                 fontSize={['20px', '32px']}
@@ -364,7 +387,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                 color={'black'}
                 lineHeight={['1.2', 'normal']}
               >
-                {`￥${extraDatasetPrice}/1000${t('common:support.wallet.subscription.Extra dataset unit')}`}
+                {`￥${extraDatasetPrice}/1000${t('price:support.wallet.subscription.Extra dataset unit')}`}
               </Box>
               <Box
                 mt="auto"
@@ -373,16 +396,20 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                 fontWeight={'500'}
                 lineHeight={['1.3', 'normal']}
               >
-                {t('common:support.wallet.subscription.Extra dataset description')}
+                {t('price:support.wallet.subscription.Extra dataset description')}
               </Box>
             </Flex>
-            <MyIcon
+            <Box
+              as={'img'}
               display={['none', 'block']}
-              mt={['-20px', '-30px']}
-              transform={['translateX(10px)', 'translateX(20px)']}
-              name={'support/bill/extraDatasetsize'}
-              fill={'none'}
-              w={['60px', 'auto']}
+              position={'absolute'}
+              top={'-30px'}
+              right={0}
+              src={'/imgs/price/extraDatasetIcon.svg'}
+              alt=""
+              w={'152px'}
+              h={'152px'}
+              pointerEvents={'none'}
             />
           </Flex>
 
@@ -396,13 +423,13 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                 color={'primary.600'}
               />
               <Box fontSize={['14px', 'sm']} fontWeight={'500'}>
-                {t('common:support.wallet.buy_dataset_capacity')}
+                {t('price:support.wallet.buy_dataset_capacity')}
               </Box>
             </Flex>
 
             <Flex alignItems={'center'} fontSize={'sm'}>
               <Box flex={['0 0 100px', '1 0 0']} color={'myGray.600'} fontWeight={'500'}>
-                {t('common:support.wallet.subscription.Dataset size')}
+                {t('price:support.wallet.subscription.Dataset size')}
               </Box>
               <Flex
                 justifyContent={'end'}
@@ -420,14 +447,14 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                   size={'sm'}
                 />
                 <Box flexShrink={0} color={'myGray.600'}>
-                  &nbsp;{`X 1000${t('common:core.dataset.data.group')}`}
+                  &nbsp;{`X 1000${t('price:core.dataset.data.group')}`}
                 </Box>
               </Flex>
             </Flex>
 
             <Flex alignItems={'center'} fontSize={'sm'}>
               <Box flex={['0 0 100px', '1 0 0']} color={'myGray.600'} fontWeight={'500'}>
-                {t('common:invalid_time')}
+                {t('price:invalid_time')}
               </Box>
               <Flex
                 justifyContent={['flex-start', 'end']}
@@ -448,7 +475,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
 
             <Flex alignItems={'end'} fontSize={'sm'} h="36px" gap={[2, 0]}>
               <Box flex={['0 0 100px', '1 0 0']} color={'myGray.600'} fontWeight={'500'}>
-                {t('common:support.wallet.subscription.Update extra price')}
+                {t('price:support.wallet.subscription.Update extra price')}
               </Box>
               <Flex
                 justifyContent={['flex-start', 'end']}
@@ -471,7 +498,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
             </Flex>
           </Flex>
 
-          <Box mt={['auto', 4]}>
+          <Box mt={['auto', 4]} w={'100%'}>
             <Button
               w={'100%'}
               h={['40px', '44px']}
@@ -481,7 +508,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                 if (isDisabledBuy) {
                   return toast({
                     status: 'warning',
-                    title: t('common:support.wallet.subscription.extra_plan_disabled_tip')
+                    title: t('price:support.wallet.subscription.extra_plan_disabled_tip')
                   });
                 }
                 handleSubmitDatasetSize(onclickBuyDatasetSize)(e);
@@ -489,18 +516,18 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
               color={'primary.700'}
               fontSize={['14px', '16px']}
             >
-              {t('common:support.wallet.Buy')}
+              {t('price:support.wallet.Buy')}
             </Button>
 
             <Flex color={'blue.700'} mt={5} alignItems={['flex-start', 'center']} gap={[2, 0]}>
               <MyIcon name={'infoRounded'} w={['14px', '1rem']} mt={['2px', 0]} />
               <Box fontSize={['12px', 'sm']} fontWeight={'500'} lineHeight={['1.4', 'normal']}>
-                {t('common:support.wallet.subscription.Update extra dataset tips')}
+                {t('price:support.wallet.subscription.Update extra dataset tips')}
               </Box>
             </Flex>
           </Box>
         </Flex>
-      </Grid>
+      </Flex>
 
       {!!qrPayData && (
         <QRCodePayModal

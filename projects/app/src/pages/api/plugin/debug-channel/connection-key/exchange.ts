@@ -1,8 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { assertCommercialPluginDebugEnabled } from '@/service/core/plugin/debug/authCommercialDebug';
 import {
   ExchangePluginDebugConnectionKeyBodySchema,
@@ -38,12 +37,4 @@ async function handler(
   return ExchangePluginDebugConnectionKeyResponseSchema.parse(result);
 }
 
-export default NextAPI(
-  useIPFrequencyLimit({
-    id: 'plugin-debug-channel-connection-key-exchange',
-    seconds: 60,
-    limit: 60,
-    force: true
-  }),
-  handler
-);
+export default NextAPI(handler);

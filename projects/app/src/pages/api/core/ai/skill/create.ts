@@ -26,7 +26,7 @@ import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/aud
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';

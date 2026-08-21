@@ -1,16 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import {
-  Box,
-  Button,
-  Flex,
-  Table,
-  Thead,
-  Tr,
-  Th,
-  Td,
-  TableContainer,
-  Tbody
-} from '@chakra-ui/react';
+import { Box, Flex, Table, Thead, Tr, Th, Td, TableContainer, Tbody } from '@chakra-ui/react';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import {
   VariableInputEnum,
@@ -18,17 +7,19 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
 import ChatFunctionTip from './Tip';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import DndDrag, {
   Draggable,
+  getDraggableItemProps,
   type DraggableProvided,
   type DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag';
 import VariableEditModal from './VariableEditModal';
+import AppConfigItem, { AppConfigItemAction } from './AppConfigItem';
 
 export const defaultVariable: VariableItemType = {
   key: '',
@@ -59,8 +50,7 @@ export const defaultVariable: VariableItemType = {
 };
 
 export const addVariable = () => {
-  const newVariable = { ...defaultVariable, list: [{ value: '', label: '' }] };
-  return newVariable;
+  return { ...defaultVariable };
 };
 
 const VariableEdit = ({
@@ -73,7 +63,6 @@ const VariableEdit = ({
   zoom?: number;
 }) => {
   const { t } = useTranslation();
-
   const [editingVariable, setEditingVariable] = useState<VariableItemType | null>(null);
 
   const formatVariables = useMemo(() => {
@@ -90,40 +79,41 @@ const VariableEdit = ({
   return (
     <Box className="nodrag">
       {/* Row box */}
-      <Flex alignItems={'center'}>
-        <MyIcon name={'core/app/simpleMode/variable'} w={'20px'} />
-        <FormLabel ml={2}>{t('common:core.module.Variable')}</FormLabel>
-        <ChatFunctionTip type={'variable'} />
-        <Box flex={1} />
-        <Button
-          variant={'transparentBase'}
-          leftIcon={<SmallAddIcon />}
-          iconSpacing={1}
-          size={'sm'}
-          color={'myGray.600'}
-          mr={'-5px'}
-          onClick={() => {
-            setEditingVariable(addVariable());
-          }}
-        >
-          {t('common:add_new')}
-        </Button>
-      </Flex>
+      <AppConfigItem
+        icon={'core/app/simpleMode/variable'}
+        label={t('common:core.module.Variable')}
+        tip={<ChatFunctionTip type={'variable'} />}
+        action={
+          <AppConfigItemAction
+            tooltip={t('common:add_new')}
+            leftIcon={<SmallAddIcon />}
+            onClick={() => {
+              setEditingVariable(addVariable());
+            }}
+          >
+            {t('common:add_new')}
+          </AppConfigItemAction>
+        }
+      />
       {/* Form render */}
       {formatVariables.length > 0 && (
         <TableContainer mt={2} borderRadius={'md'} overflow={'hidden'} borderWidth={'1px'}>
-          <Table variant={'workflow'}>
+          <Table variant={'workflow'} w={'100%'} sx={{ tableLayout: 'fixed' }}>
             <Thead>
               <Tr>
-                <Th>{t('workflow:Variable_name')}</Th>
-                <Th>{t('common:Required_input')}</Th>
-                <Th>{t('common:Operation')}</Th>
+                <Th pl={'24px !important'} pr={'8px !important'}>
+                  {t('workflow:Variable_name')}
+                </Th>
+                <Th w={'2.5rem'} whiteSpace={'nowrap'} px={'8px !important'}>
+                  {t('common:Required_input')}
+                </Th>
+                <Th w={'4.9rem'} whiteSpace={'nowrap'} pl={'8px !important'} pr={'24px !important'}>
+                  {t('common:Operation')}
+                </Th>
               </Tr>
             </Thead>
             <DndDrag<VariableItemType>
-              onDragEndCb={(list) => {
-                onChange(list);
-              }}
+              onDragEndCb={onChange}
               dataList={formatVariables}
               renderClone={(provided, snapshot, rubric) => (
                 <TableItem
@@ -149,7 +139,6 @@ const VariableEdit = ({
                           onEdit={setEditingVariable}
                           onChange={onChange}
                           variables={variables}
-                          key={item.key}
                         />
                       )}
                     </Draggable>
@@ -191,42 +180,38 @@ const TableItem = ({
   onChange: (data: VariableItemType[]) => void;
   variables: VariableItemType[];
 }) => {
+  const handleEdit = () => {
+    const formattedItem = {
+      ...item,
+      list:
+        item.list ||
+        item.enums?.map((item: { value: string }) => ({ label: item.value, value: item.value })) ||
+        []
+    };
+    onEdit(formattedItem);
+  };
+  const { draggableItemProps, dragHandleProps } = getDraggableItemProps(provided, snapshot);
+
   return (
-    <Tr
-      ref={provided.innerRef}
-      {...provided.draggableProps}
-      {...provided.dragHandleProps}
-      style={{
-        ...provided.draggableProps.style,
-        opacity: snapshot.isDragging ? 0.8 : 1
-      }}
-    >
-      <Td fontWeight={'medium'}>
+    <Tr {...draggableItemProps} {...dragHandleProps}>
+      <Td fontWeight={'medium'} pl={'24px !important'} pr={'8px !important'}>
         <Flex alignItems={'center'}>
-          <MyIcon name={item.icon as any} w={'16px'} color={'myGray.400'} mr={1} />
-          {item.label}
+          <MyIcon name={item.icon as any} w={'16px'} color={'myGray.400'} mr={1} flexShrink={0} />
+          <Box flex={1} minW={0}>
+            <MyTooltip label={item.label} showOnlyWhenOverflow>
+              <Box className={'textEllipsis'}>{item.label}</Box>
+            </MyTooltip>
+          </Box>
         </Flex>
       </Td>
-      <Td>
+      <Td px={'8px !important'}>
         <Flex alignItems={'center'}>
           {item.required ? <MyIcon name={'check'} w={'16px'} color={'myGray.900'} mr={2} /> : ''}
         </Flex>
       </Td>
-      <Td>
+      <Td pl={'8px !important'} pr={'24px !important'}>
         <Flex>
-          <MyIconButton
-            icon={'common/settingLight'}
-            onClick={() => {
-              const formattedItem = {
-                ...item,
-                list:
-                  item.list ||
-                  item.enums?.map((item) => ({ label: item.value, value: item.value })) ||
-                  []
-              };
-              onEdit(formattedItem);
-            }}
-          />
+          <MyIconButton icon={'common/settingLight'} onClick={handleEdit} />
           <MyIconButton
             icon={'delete'}
             hoverColor={'red.500'}

@@ -9,6 +9,7 @@ import {
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { Types } from '@fastgpt/service/common/mongo';
 import { getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
@@ -53,7 +54,8 @@ describe('training error list test', () => {
         mode: TrainingModeEnum.parse,
         retryCount: 0,
         errorMsg: 'parse should sort before chunk',
-        chunkIndex: 9
+        chunkIndex: 9,
+        dataId: new Types.ObjectId()
       },
       ...[...Array(10).keys()].map((i) => ({
         teamId: root.teamId,
@@ -104,6 +106,7 @@ describe('training error list test', () => {
       res.data.list.map((item) => ('mode' in item ? item.mode : undefined)).slice(0, 2)
     ).toEqual([TrainingModeEnum.parse, TrainingModeEnum.chunk]);
     expect(res.data.list.every((item) => 'mode' in item)).toBe(true);
+    expect(typeof res.data.list[0].dataId).toBe('string');
   });
 
   it('should reject dataset scope request', async () => {

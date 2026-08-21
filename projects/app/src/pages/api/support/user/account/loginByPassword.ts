@@ -1,15 +1,10 @@
-import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { NextAPI } from '@/service/middleware/entry';
-import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
-import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { serviceEnv } from '@fastgpt/service/env';
-import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
-import { authCode } from '@fastgpt/service/support/user/auth/controller';
+import { passwordVerificationService } from '@fastgpt/service/support/user/account/verification/password/service';
 import { createUserSession } from '@fastgpt/service/support/user/session';
 import { setCookie } from '@fastgpt/service/support/permission/auth/common';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -18,53 +13,61 @@ import {
   type LoginByPasswordBodyType,
   type LoginSuccessResponseType
 } from '@fastgpt/global/openapi/support/user/account/login/api';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { getClientIpFromRequest } from '@fastgpt/service/common/security/clientIp';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  reportCRMVisitorIdentity,
+  resolveCRMVisitorId
+} from '@fastgpt/service/support/marketing/attribution';
 
 async function handler(
   req: ApiRequestProps<LoginByPasswordBodyType>,
   res: ApiResponseType
 ): Promise<LoginSuccessResponseType> {
-  const { username, password, code, language } = parseApiInput({
+  const { username, password, code, language, fastgpt_sem } = parseApiInput({
     req,
     bodySchema: LoginByPasswordBodySchema
   }).body;
 
-  // Auth prelogin code
-  await authCode({
-    key: username,
-    code,
-    type: UserAuthTypeEnum.login
-  });
+  const { user, userDetail, visitorIdentity } =
+    await passwordVerificationService.withVerifiedCredentials(
+      {
+        username,
+        password,
+        code,
+        purpose: 'login'
+      },
+      async ({ user, session }) => {
+        if (user.status === UserStatusEnum.forbidden) {
+          return Promise.reject('Invalid account!');
+        }
 
-  const user = await MongoUser.findOne({
-    username,
-    password
-  });
+        if (user.username.startsWith('wecom-')) {
+          return Promise.reject(new UserError('Wecom user can not login with password'));
+        }
 
-  if (!user) {
-    return Promise.reject(UserErrEnum.account_psw_error);
-  }
-  if (user.status === UserStatusEnum.forbidden) {
-    return Promise.reject('Invalid account!');
-  }
+        const userDetail = await getUserDetail({
+          tmbId: user?.lastLoginTmbId,
+          userId: user._id,
+          isRoot: username === 'root',
+          session
+        });
 
-  if (user) {
-    if (user.username.startsWith('wecom-')) {
-      return Promise.reject(new UserError('Wecom user can not login with password'));
-    }
-  }
+        user.lastLoginTmbId = userDetail.team.tmbId;
+        user.language = language;
+        const visitorIdentity = resolveCRMVisitorId({
+          storedFastgptSem: user.fastgpt_sem,
+          incomingVisitorId: fastgpt_sem?.visitor_id
+        });
+        if (visitorIdentity.shouldPersist) {
+          user.fastgpt_sem = visitorIdentity.fastgptSem;
+        }
+        await user.save({ session });
 
-  const userDetail = await getUserDetail({
-    tmbId: user?.lastLoginTmbId,
-    userId: user._id,
-    isRoot: username === 'root'
-  });
-
-  user.lastLoginTmbId = userDetail.team.tmbId;
-  user.language = language;
-  await user.save();
+        return { user, userDetail, visitorIdentity };
+      }
+    );
 
   const token = await createUserSession({
     userId: user._id,
@@ -75,6 +78,13 @@ async function handler(
   });
 
   setCookie(res, token);
+
+  void reportCRMVisitorIdentity({
+    visitorId: visitorIdentity.visitorId,
+    userId: String(user._id),
+    username: user.username,
+    contact: user.contact
+  });
 
   pushTrack.login({
     type: 'password',
@@ -94,8 +104,4 @@ async function handler(
   };
 }
 
-const lockTime = serviceEnv.PASSWORD_LOGIN_LOCK_SECONDS;
-export default NextAPI(
-  useIPFrequencyLimit({ id: 'login-by-password', seconds: lockTime, limit: 10, force: true }),
-  handler
-);
+export default NextAPI(handler);

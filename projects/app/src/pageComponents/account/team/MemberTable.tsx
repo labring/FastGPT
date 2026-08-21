@@ -14,7 +14,7 @@ import {
   useDisclosure,
   VStack
 } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {
   delRemoveMember,
@@ -39,13 +39,12 @@ import { format } from 'date-fns/format';
 import OrgTags from '@/components/support/user/team/OrgTags';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useCallback, useState, useMemo } from 'react';
-import { downloadFetch } from '@/web/common/system/utils';
+import { downloadFetch, getIsMemberSyncMode } from '@/web/common/system/utils';
 import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { type PaginationResponse } from '@fastgpt/global/openapi/api';
-import _ from 'lodash';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
@@ -55,11 +54,11 @@ const InviteModal = dynamic(() => import('./Invite/InviteModal'));
 const TransferOwnershipModal = dynamic(() => import('./TransferOwnershipModal'));
 
 function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation(['account_team', 'user']);
   const { toast } = useToast();
   const { userInfo, initUserInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
-  const isSyncMode = feConfigs?.register_method?.includes('sync');
+  const isSyncMode = getIsMemberSyncMode(feConfigs);
 
   const { myTeams, onSwitchTeam } = useContextSelector(TeamContext, (v) => v);
 
@@ -376,7 +375,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                 ))}
               </Tbody>
             </Table>
-            <EditMemberNameModal />
+            <EditMemberNameModal size="sm" />
           </TableContainer>
         </MemberScrollData>
       </MyBox>

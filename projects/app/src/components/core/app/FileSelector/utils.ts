@@ -1,7 +1,7 @@
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { imageFileType } from '@fastgpt/global/common/file/constants';
-import { isEqual } from 'lodash';
+import { isEqual } from 'lodash-es';
 import type {
   FileSelectorInputObjectItemType,
   FileSelectorInputItemType,
@@ -92,6 +92,32 @@ export const isFileSelectorUploading = (
   !file.url &&
   !file.error &&
   (!!file.rawFile || file.status === 0 || file.process !== undefined);
+
+export const hasFileSelectorError = (files: Pick<FileSelectorRenderItemType, 'error'>[]) =>
+  files.some((file) => !!file.error);
+
+/**
+ * 外部表单值刷新时保留仅存在于组件内部的上传态。
+ *
+ * 待上传/上传失败文件尚无 key/url，不能进入持久化值；父表单因上传计数等状态重渲染时，
+ * 仍需保留这些本地项，避免文件在上传完成前从列表中闪烁消失。
+ */
+export const mergeFileSelectorExternalValue = ({
+  currentFiles,
+  externalFiles
+}: {
+  currentFiles: FileSelectorRenderItemType[];
+  externalFiles: FileSelectorRenderItemType[];
+}) => {
+  const localOnlyFiles = currentFiles.filter(
+    (file) =>
+      !file.key &&
+      !file.url &&
+      (!!file.rawFile || !!file.error || file.status === 0 || file.process !== undefined)
+  );
+
+  return localOnlyFiles.length > 0 ? [...localOnlyFiles, ...externalFiles] : externalFiles;
+};
 
 export const isFileSelectorPreviewUrlMissing = <
   T extends Pick<FileSelectorRenderItemType, 'key' | 'url' | 'error'>

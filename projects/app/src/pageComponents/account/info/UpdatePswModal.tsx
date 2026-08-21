@@ -1,7 +1,7 @@
 import React from 'react';
 import { ModalBody, Box, Flex, Input, ModalFooter, Button } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { updatePasswordByOld } from '@/web/support/user/api';
@@ -15,7 +15,7 @@ type FormType = {
 };
 
 const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation(['account_info', 'login', 'user']);
   const { toast } = useToast();
 
   const { register, handleSubmit, getValues } = useForm<FormType>({

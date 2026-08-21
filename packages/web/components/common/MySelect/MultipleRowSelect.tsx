@@ -187,7 +187,6 @@ export const MultipleRowSelect = ({
   }, [isOpen]);
 
   const minWidth = `${MenuRef.current?.[0]?.offsetWidth || 0}px`;
-
   const onOpenSelect = useCallback(() => {
     setCloneValue(Array.isArray(value) ? value : []);
     onOpen();

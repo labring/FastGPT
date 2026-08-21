@@ -1,5 +1,5 @@
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import Markdown from '@/components/Markdown';
 import React from 'react';
 import { Box, Flex } from '@chakra-ui/react';
@@ -8,7 +8,7 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 
 const NotificationDetailsModal = ({ inform, onClose }: { inform: any; onClose: () => void }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_inform');
   const textStyles = {
     title: {
       color: 'grayModern.900',

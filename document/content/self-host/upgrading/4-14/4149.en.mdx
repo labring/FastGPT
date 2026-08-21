@@ -1,6 +1,9 @@
 ---
 title: 'V4.14.9'
 description: 'FastGPT V4.14.9 Release Notes'
+releaseTime: '2026-03-22'
+upgradeTags:
+  - CONFIG
 ---
 
 ## Upgrade Guide
@@ -39,23 +42,23 @@ The `/api/core/chat/getPaginationRecords` endpoint now returns a `useAgentSandbo
 2. Publish channels now support WeChat personal accounts.
 3. AgentV2 context now adapts to the paused state.
 4. Introduced a logger SDK with Metrics tracking.
-5. Updating a single Knowledge Base entry now also refreshes the collection's update timestamp.
+5. Updating a single Dataset entry now also refreshes the collection's update timestamp.
 6. Form file inputs now support opening files for preview.
 
 ## Improvements
 
-1. API-based Knowledge Base sync now has additional fallback methods for retrieving file names.
+1. API-based Dataset sync now has additional fallback methods for retrieving file names.
 2. Added SSRF protection to the HTTP tool.
 3. Improved compatibility with more MCP JsonSchema fields — older versions could not handle mixed-type fields.
 4. Optimized parts of the workflow runtime pool logic to reduce computational complexity.
 5. Replaced DFS with Tarjan's SCC algorithm for edge grouping in the workflow runtime, resolving issues where complex cyclic workflows failed to run.
-6. System toolsets no longer display a version number (since they have no selectable versions).
+6. System toolkits no longer display a version number (since they have no selectable versions).
 
 ## Bug Fixes
 
 1. When a workflow nested a plugin, plugin execution details were not properly preserved. Also cleaned up all tool-type prefixes.
-2. Updating and saving an MCP toolset could prevent it from being called correctly (due to an incorrect toolId lookup).
-3. The search box was missing from the API Knowledge Base file list.
+2. Updating and saving an MCP toolkit could prevent it from being called correctly (due to an incorrect toolId lookup).
+3. The search box was missing from the API Dataset file list.
 4. Workflow variable values containing special characters (`$.`) caused incorrect value substitution.
 5. Referencing an agent tool in a workflow caused a version retrieval error.
 6. When switching from a model that supports certain parameters to one that does not, the unsupported parameters were not removed, causing model invocation failures.
@@ -63,10 +66,10 @@ The `/api/core/chat/getPaginationRecords` endpoint now returns a `useAgentSandbo
 8. Re-opening the preview dialog in workflow preview mode lost form input content.
 9. Custom fields in subscription plans were not applied.
 10. The login endpoint had an async session issue that produced error logs.
-12. The condition evaluator was missing selectable conditions for the `arrayAny` type.
-13. Video/audio custom file type workflows were missing file link variables at the start node.
-14. User input messages were not escaped to Markdown format.
-15. Fixed partial context concatenation errors in AgentV2.
+11. The condition evaluator was missing selectable conditions for the `arrayAny` type.
+12. Video/audio custom file type workflows were missing file link variables at the start node.
+13. User input messages were not escaped to Markdown format.
+14. Fixed partial context concatenation errors in AgentV2.
 
 ## Code Improvements
 

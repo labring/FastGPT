@@ -5,6 +5,7 @@ import { AppFileSelectConfigTypeSchema } from '../../../../app/type/config.schem
 import { RuntimeEdgeItemTypeSchema } from '../../../type/edge';
 import z from 'zod';
 import { ChatCompletionMessageParamSchema } from '../../../../ai/llm/type';
+import { AgentAskQuestionSchema } from '../../../../ai/agent/type';
 
 export const InteractiveBasicTypeSchema = z.object({
   entryNodeIds: z.array(z.string()),
@@ -46,7 +47,8 @@ export const ToolCallChildrenInteractiveSchema = z.object({
   params: z.object({
     childrenResponse: z.any(),
     toolParams: z.object({
-      memoryRequestMessages: z.array(ChatCompletionMessageParamSchema), // 这轮工具中，产生的新的 messages
+      // 兼容旧历史：新交互不再持久化完整 messages 快照，恢复时由 chat history 重建。
+      memoryRequestMessages: z.array(ChatCompletionMessageParamSchema).optional(),
       toolCallId: z.string() // 记录对应 tool 的id，用于后续交互节点可以替换掉 tool 的 response
     })
   })
@@ -94,18 +96,32 @@ export type LoopRunInteractive = InteractiveNodeType & {
 export const AgentPlanAskOptionSchema = z.string().min(1);
 export type AgentPlanAskOption = z.infer<typeof AgentPlanAskOptionSchema>;
 
-export const AgentPlanAskQueryInteractiveSchema = z.object({
-  type: z.literal('agentPlanAskQuery'),
-  params: z.object({
-    content: z.string(),
-    reason: z.string().optional(),
-    blockerType: z
-      .enum(['missing_required_input', 'tool_unavailable', 'ambiguous_goal'])
-      .optional(),
-    options: z.array(AgentPlanAskOptionSchema).min(3).max(5),
-    answer: z.string().optional()
+/**
+ * Legacy `ask_user` schema.
+ *
+ * @deprecated Use `AgentAskInteractiveSchema` (multiple questions).
+ */
+export const AgentPlanAskQueryInteractiveSchema = z
+  .object({
+    type: z.literal('agentPlanAskQuery'),
+    askId: z.string().min(1),
+    params: z.object({
+      content: z.string(),
+      reason: z.string().optional(),
+      blockerType: z
+        .enum(['missing_required_input', 'tool_unavailable', 'ambiguous_goal', 'user_choice'])
+        .optional(),
+      options: z.array(AgentPlanAskOptionSchema).min(2).max(5),
+      answer: z.string().optional()
+    })
   })
-});
+  .meta({
+    deprecated: true
+  });
+
+/**
+ * @deprecated Use `AgentAskInteractiveSchema` (multiple questions).
+ */
 export type AgentPlanAskQueryInteractive = z.infer<typeof AgentPlanAskQueryInteractiveSchema>;
 
 // User selector
@@ -139,7 +155,10 @@ export const UserInputFormItemSchema = AppFileSelectConfigTypeSchema.extend({
   minLength: z.number().optional(), // password
   max: z.number().optional(), // numberInput
   min: z.number().optional(), // numberInput
-  list: z.array(z.object({ label: z.string(), value: z.string() })).optional() // select
+  list: z.array(z.object({ label: z.string(), value: z.string() })).optional(), // select
+
+  canLocalUpload: z.boolean().optional(),
+  canUrlUpload: z.boolean().optional()
 });
 export type UserInputFormItemType = z.infer<typeof UserInputFormItemSchema>;
 export const UserInputInteractiveSchema = z.object({
@@ -151,6 +170,23 @@ export const UserInputInteractiveSchema = z.object({
   })
 });
 export type UserInputInteractive = z.infer<typeof UserInputInteractiveSchema>;
+
+export const AgentAskQuestionInteractiveSchema = AgentAskQuestionSchema.safeExtend({
+  answer: z.string()
+});
+export type AgentAskQuestionInteractive = z.infer<typeof AgentAskQuestionInteractiveSchema>;
+
+export const AgentAskInteractiveSchema = z.object({
+  type: z.literal('agentAsk'),
+  askId: z.string().min(1),
+  responseMode: z.literal('submit').optional(),
+  params: z.object({
+    description: z.string(),
+    questions: z.array(AgentAskQuestionInteractiveSchema).min(1).max(3),
+    submitted: z.boolean().optional()
+  })
+});
+export type AgentAskInteractive = z.infer<typeof AgentAskInteractiveSchema>;
 
 // 欠费暂停交互
 export const PaymentPauseInteractiveSchema = z.object({
@@ -171,10 +207,11 @@ export const InteractiveNodeResponseTypeSchema = z.intersection(
     LoopInteractiveSchema,
     LoopRunInteractiveSchema,
     PaymentPauseInteractiveSchema,
-    AgentPlanAskQueryInteractiveSchema
+    AgentPlanAskQueryInteractiveSchema,
+    AgentAskInteractiveSchema
   ]),
   z.object({
-    planId: z.string().optional()
+    askId: z.string().nullish()
   })
 );
 export type InteractiveNodeResponseType = z.infer<typeof InteractiveNodeResponseTypeSchema>;

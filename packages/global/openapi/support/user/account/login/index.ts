@@ -9,7 +9,12 @@ import {
   WxLoginBodySchema,
   GetWXLoginQRResponseSchema,
   LoginSuccessResponseSchema,
-  OpenAPIUserSchema
+  WxLoginResultResponseSchema,
+  OpenAPIUserSchema,
+  SsoGetAuthorizationURLBodySchema,
+  SsoGetAuthorizationURLResponseSchema,
+  WecomGetRedirectURLBodySchema,
+  WecomGetRedirectURLResponseSchema
 } from './api';
 
 export const LoginPath: OpenAPIPath = {
@@ -98,6 +103,54 @@ export const LoginPath: OpenAPIPath = {
       }
     }
   },
+  '/proApi/support/user/account/login/getAuthURL': {
+    post: {
+      summary: '获取 SSO 授权地址',
+      description: '根据当前登录回调地址生成 SSO 授权跳转地址',
+      tags: [DevApiTagsMap.userLogin],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SsoGetAuthorizationURLBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功生成 SSO 授权地址',
+          content: {
+            'application/json': {
+              schema: SsoGetAuthorizationURLResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/support/user/account/login/wecom/getRedirectUrl': {
+    post: {
+      summary: '获取企业微信登录跳转地址',
+      description: '根据登录回调地址和当前终端环境生成企业微信 OAuth 跳转地址',
+      tags: [DevApiTagsMap.userLogin],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: WecomGetRedirectURLBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功生成企业微信登录跳转地址',
+          content: {
+            'application/json': {
+              schema: WecomGetRedirectURLResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
   '/proApi/support/user/account/login/fastLogin': {
     post: {
       summary: '快捷登录',
@@ -153,10 +206,10 @@ export const LoginPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '登录成功',
+          description: '登录成功或二维码已过期',
           content: {
             'application/json': {
-              schema: LoginSuccessResponseSchema
+              schema: WxLoginResultResponseSchema
             }
           }
         }
@@ -167,6 +220,16 @@ export const LoginPath: OpenAPIPath = {
     get: {
       summary: '退出登录',
       description: '退出当前用户的所有会话并清除登录凭证',
+      tags: [DevApiTagsMap.userLogin],
+      responses: {
+        200: {
+          description: '退出登录成功'
+        }
+      }
+    },
+    post: {
+      summary: '退出登录',
+      description: '退出当前用户的所有会话并清除登录凭证（管理端兼容调用）',
       tags: [DevApiTagsMap.userLogin],
       responses: {
         200: {

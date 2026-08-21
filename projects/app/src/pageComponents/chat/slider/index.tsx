@@ -9,6 +9,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import UserAvatarPopover from '@/pageComponents/chat/UserAvatarPopover';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import {
   ChatSidebarPaneEnum,
   DEFAULT_LOGO_BANNER_COLLAPSED_URL,
@@ -545,9 +546,9 @@ const ChatSlider = ({ activeAppId }: Props) => {
                   })}
             >
               <Avatar src={item.avatar} w={'20px'} h={'20px'} borderRadius={'6px'} />
-              <Box className={'textEllipsis'}>
-                {item.name}
-              </Box>
+              <MyTooltip label={item.name} showOnlyWhenOverflow>
+                <Box className={'textEllipsis'}>{item.name}</Box>
+              </MyTooltip>
             </Flex>
           ))}
         </MyBox>

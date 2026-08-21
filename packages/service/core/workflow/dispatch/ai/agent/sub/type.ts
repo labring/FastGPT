@@ -12,9 +12,12 @@ export type SubAppInitType = {
   avatar?: string;
   version?: string;
   toolConfig?: RuntimeNodeItemType['toolConfig'];
+  inputs: RuntimeNodeItemType['inputs'];
+  agentGeneratedInputKeys: string[];
   requestSchema: ChatCompletionTool;
   promptReference?: {
     id: string;
+    legacyId?: string;
     name: string;
   };
   params: {

@@ -1,19 +1,17 @@
-import {
-  splitText2Chunks,
-  type SplitProps,
-  type SplitResponse
-} from '@fastgpt/global/common/string/textSplitter';
+import type { SplitProps, SplitResponse } from '../common/string/textSplitter';
 import { getWorkerController, WorkerNameEnum } from './utils';
 import type { ReadFileResponse } from './readFile/type';
 import { isTestEnv } from '@fastgpt/global/common/system/constants';
 import { serviceEnv } from '../env';
 import { uploadImage2S3Bucket } from '../common/s3/utils';
-import { normalizeMimeType, resolveMimeType } from '../common/s3/utils/mime';
+import { createOpaqueS3Filename } from '../common/s3/opaqueKey';
+import { normalizeMimeType, resolveMimeExtension, resolveMimeType } from '../common/s3/utils/mime';
 import path from 'node:path';
 
-export const text2Chunks = (props: SplitProps) => {
+export const text2Chunks = async (props: SplitProps) => {
   // Test env, not run worker
   if (isTestEnv) {
+    const { splitText2Chunks } = await import('../common/string/textSplitter');
     return splitText2Chunks(props);
   }
   return getWorkerController<SplitProps, SplitResponse>({
@@ -40,7 +38,7 @@ const getReadFileWorker = () =>
   getWorkerController<ReadFileWorkerProps, ReadFileResponse>({
     name: WorkerNameEnum.readFile,
     maxReservedThreads: serviceEnv.PARSE_FILE_WORKERS,
-    // 单任务超时：默认 300s（5min），由 PARSE_FILE_TIMEOUT_SECONDS（秒）配置
+    // 单任务超时：默认 600s（10min），由 PARSE_FILE_TIMEOUT_SECONDS（秒）配置
     taskTimeoutMs: serviceEnv.PARSE_FILE_TIMEOUT_SECONDS * 1000,
     // mammoth/xlsx/pdf-parse 历史上有 module 级缓存与潜在内存泄漏，定期回收 worker
     maxTasksPerWorker: 100
@@ -70,10 +68,11 @@ export const readRawContentFromBuffer = (props: {
         }
         // uploadFile 是 worker 通用能力，主线程只接受文件名，避免 worker 传入路径片段越过 prefix。
         const filename = path.basename(name);
+        const uploadFilename = createOpaqueS3Filename(resolveMimeExtension(mimetype));
         const key = await uploadImage2S3Bucket('private', {
           buffer: Buffer.from(buffer),
-          uploadKey: `${props.imageKeyOptions!.prefix}/${filename}`,
-          mimetype: resolveMimeType([filename], mimetype),
+          uploadKey: `${props.imageKeyOptions!.prefix}/${uploadFilename}`,
+          mimetype: resolveMimeType([uploadFilename], mimetype),
           filename,
           expiredTime: props.imageKeyOptions?.expiredTime
         });

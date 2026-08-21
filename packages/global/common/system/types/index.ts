@@ -23,6 +23,10 @@ export type ExternalProviderWorkflowVarType = {
   url?: string;
 };
 
+export type FastGPTRegisterMethodType = 'email' | 'phone';
+export type FastGPTRegisterMethodCompatType = FastGPTRegisterMethodType | 'sync';
+export type FastGPTTeamModeType = 'multi' | 'single' | 'sync';
+
 /* fastgpt main */
 export type FastGPTConfigFileType = {
   feConfigs: FastGPTFeConfigsType;
@@ -42,11 +46,14 @@ export type FastGPTFeConfigsType = {
   show_emptyChat?: boolean;
   isPlus?: boolean;
   hideChatCopyrightSetting?: boolean;
-  register_method?: ['email' | 'phone' | 'sync'];
-  login_method?: ['email' | 'phone']; // Attention: login method is different with oauth
-  find_password_method?: ['email' | 'phone'];
-  bind_notification_method?: ['email' | 'phone'];
-  googleClientVerKey?: string;
+  /**
+   * 用户自助注册方式。兼容期允许读取旧配置中的 sync，但新配置不再写入 sync。
+   */
+  register_method?: FastGPTRegisterMethodCompatType[];
+  teamMode?: FastGPTTeamModeType;
+  login_method?: FastGPTRegisterMethodType[]; // Attention: login method is different with oauth
+  find_password_method?: FastGPTRegisterMethodType[];
+  bind_notification_method?: FastGPTRegisterMethodType[];
   /**
    * @deprecated MCP SSE 代理地址已迁移到环境变量 SSE_MCP_SERVER_PROXY_ENDPOINT。
    * 运行时配置以环境变量为准，admin 不再支持写入该字段。
@@ -60,7 +67,6 @@ export type FastGPTFeConfigsType = {
   show_git?: boolean;
   show_pay?: boolean;
   show_openai_account?: boolean;
-  show_promotion?: boolean;
   show_compliance_copywriting?: boolean;
   show_aiproxy?: boolean;
   show_coupon?: boolean;
@@ -79,6 +85,7 @@ export type FastGPTFeConfigsType = {
   show_publish_wechat?: boolean;
   show_agent_sandbox?: boolean;
   pluginRemoteDebug?: boolean;
+  enable_team_plugin_upload?: boolean;
 
   show_dataset_enhance?: boolean;
   show_batch_eval?: boolean;
@@ -87,7 +94,6 @@ export type FastGPTFeConfigsType = {
   docUrl?: string;
   loginGuideDocUrl?: string;
   openAPIDocUrl?: string;
-  submitPluginRequestUrl?: string;
   appTemplateCourse?: string;
   customApiDomain?: string;
   customSharePageDomain?: string;
@@ -208,6 +214,7 @@ export type customDomainType = {
 export type customPdfParseType = {
   url?: string;
   key?: string;
+  somarkApiKey?: string;
   doc2xKey?: string;
   textinAppId?: string;
   textinSecretCode?: string;

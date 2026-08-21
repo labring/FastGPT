@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import type { EditFieldModalProps } from './type';
 import { useTranslation } from 'next-i18next';
@@ -69,7 +69,7 @@ const EditFieldModal = ({
   });
 
   const onclickSubmitError = useCallback(
-    (e: Object) => {
+    (e: object) => {
       for (const item of Object.values(e)) {
         if (item.message) {
           toast({
@@ -143,6 +143,7 @@ export default React.memo(EditFieldModal);
 export const defaultEditFormData: FlowNodeInputItemType = {
   valueType: WorkflowIOValueTypeEnum.string,
   renderTypeList: [FlowNodeInputTypeEnum.reference],
+  isToolParam: true,
   key: '',
   label: '',
   toolDescription: '',

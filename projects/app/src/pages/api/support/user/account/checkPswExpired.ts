@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { checkPswExpired } from '@/service/support/user/account/password';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
@@ -7,7 +7,7 @@ import type { CheckPswExpiredResponseType } from '@fastgpt/global/openapi/suppor
 
 async function handler(
   req: ApiRequestProps,
-  res: ApiResponseType
+  _res: ApiResponseType
 ): Promise<CheckPswExpiredResponseType> {
   const { userId } = await authCert({ req, authToken: true });
 

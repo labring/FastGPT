@@ -23,10 +23,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { workflowStartNodeId } from '@/web/core/app/constants';
@@ -36,8 +33,12 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import ConfigToolModal from '@/pageComponents/app/detail/Edit/component/ConfigToolModal';
-import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import { getToolIdentityKey, isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
+import {
+  checkNeedsUserConfiguration,
+  validateToolConfiguration
+} from '@fastgpt/global/core/app/formEdit/utils';
 
 type Props = {
   selectedTools: ChatSettingType['selectedTools'];
@@ -221,67 +222,25 @@ const RenderList = React.memo(function RenderList({
         versionId: '',
         source: template.source
       });
-      const isToolSetTemplate = template.flowNodeType === FlowNodeTypeEnum.toolSet;
-
-      /* Invalid plugin check
-        1. Reference type. but not tool description;
-        2. Has dataset select
-        3. Has dynamic external data
-      */
-      const oneFileInput =
-        res.inputs.filter((input) =>
-          input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
-        ).length === 1;
-      const canUploadFile =
-        chatConfig?.fileSelectConfig?.canSelectFile || chatConfig?.fileSelectConfig?.canSelectImg;
-      const invalidFileInput = oneFileInput && !!canUploadFile;
-      if (
-        !isToolSetTemplate &&
-        res.inputs.some(
-          (input) =>
-            (input.renderTypeList.length === 1 &&
-              input.renderTypeList[0] === FlowNodeInputTypeEnum.reference &&
-              !input.toolDescription) ||
-            input.renderTypeList.includes(FlowNodeInputTypeEnum.selectDataset) ||
-            input.renderTypeList.includes(FlowNodeInputTypeEnum.addInputParam) ||
-            (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) && !invalidFileInput)
+      const toolValid = validateToolConfiguration({
+        toolTemplate: res,
+        isAppTool: true,
+        canUploadFile: !!(
+          chatConfig?.fileSelectConfig?.canSelectFile ||
+          chatConfig?.fileSelectConfig?.canSelectImg ||
+          chatConfig?.fileSelectConfig?.canSelectVideo ||
+          chatConfig?.fileSelectConfig?.canSelectAudio ||
+          chatConfig?.fileSelectConfig?.canSelectCustomFileExtension
         )
-      ) {
+      });
+      if (!toolValid) {
         return toast({
           title: t('app:simple_tool_tips'),
           status: 'warning'
         });
       }
 
-      // 判断是否可以直接添加工具,满足以下任一条件:
-      // 1. 有工具描述
-      // 2. 是模型选择类型
-      // 3. 是文件上传类型且:已开启文件上传、非必填、只有一个文件上传输入
-      const hasInputForm =
-        res.inputs.length > 0 &&
-        res.inputs.some((input) => {
-          if (input.toolDescription) {
-            return false;
-          }
-          if (input.key === NodeInputKeyEnum.forbidStream) {
-            return false;
-          }
-          if (input.key === NodeInputKeyEnum.systemInputConfig) {
-            return true;
-          }
-
-          // Check if input has any of the form render types
-          const formRenderTypes = [
-            FlowNodeInputTypeEnum.input,
-            FlowNodeInputTypeEnum.textarea,
-            FlowNodeInputTypeEnum.numberInput,
-            FlowNodeInputTypeEnum.switch,
-            FlowNodeInputTypeEnum.select,
-            FlowNodeInputTypeEnum.JSONEditor
-          ];
-
-          return formRenderTypes.some((type) => input.renderTypeList.includes(type));
-        });
+      const hasInputForm = checkNeedsUserConfiguration(res);
 
       // 构建默认表单数据
       const defaultForm = {
@@ -323,12 +282,16 @@ const RenderList = React.memo(function RenderList({
         pt={3}
       >
         {templates.map((template) => {
-          const selected = selectedTools.some((tool) => tool.pluginId === template.id);
+          const selected = selectedTools.some(
+            (tool) =>
+              getToolIdentityKey(tool.pluginId, tool.source) ===
+              getToolIdentityKey(template.id, template.source)
+          );
           const isDebugTool = isDebugToolSource(template.source);
 
           return (
             <MyTooltip
-              key={template.id}
+              key={getToolIdentityKey(template.id, template.source)}
               isDisabled={!isTooltipEnabled}
               placement={'right'}
               label={

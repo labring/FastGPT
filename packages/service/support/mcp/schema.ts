@@ -2,7 +2,7 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import { Schema, getMongoModel } from '../../common/mongo';
+import { defineIndex, Schema, getMongoModel } from '../../common/mongo';
 import { type McpKeyType } from '@fastgpt/global/support/mcp/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { AppCollectionName } from '../../core/app/schema';
@@ -17,7 +17,6 @@ const McpKeySchema = new Schema({
   key: {
     type: String,
     required: true,
-    unique: true,
     default: () => getNanoid(24)
   },
   teamId: {
@@ -29,6 +28,10 @@ const McpKeySchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: TeamMemberCollectionName,
     required: true
+  },
+  authProxy: {
+    type: Boolean,
+    default: false
   },
   apps: {
     type: [
@@ -51,6 +54,11 @@ const McpKeySchema = new Schema({
     ],
     default: []
   }
+});
+
+defineIndex(McpKeySchema, {
+  key: { key: 1 },
+  options: { unique: true }
 });
 
 export const MongoMcpKey = getMongoModel<McpKeyType>(mcpCollectionName, McpKeySchema);

@@ -37,7 +37,7 @@ const ensureLegacyDuplicateWritableCollection = async () => {
 };
 
 const restoreChatSchemaIndexes = async () => {
-  await MongoChat.syncIndexes();
+  await MongoChat.createIndexes();
 };
 
 const createChatHeader = ({

@@ -15,8 +15,11 @@ describe('agentLoop module boundary', () => {
   it('does not import workflow runtime or workflow dispatch types', () => {
     const files = collectTsFiles('core/ai/llm/agentLoop');
     const forbidden = [
+      '@fastgpt/global/core/chat',
+      '@fastgpt/global/core/workflow',
       '@fastgpt/global/core/workflow/runtime',
       '@fastgpt/global/core/workflow/template',
+      '@fastgpt/global/support/wallet/bill/type',
       '../../../../../web',
       '@fastgpt/web',
       'packages/service/core/workflow',
@@ -31,6 +34,39 @@ describe('agentLoop module boundary', () => {
       for (const pattern of forbidden) {
         expect(content, `${file} should not contain ${pattern}`).not.toContain(pattern);
       }
+    }
+  });
+
+  it('keeps dependency direction toward domain', () => {
+    const domainFiles = collectTsFiles('core/ai/llm/agentLoop/domain');
+    for (const file of domainFiles) {
+      const content = readFileSync(file, 'utf8');
+      expect(content, `${file} must not depend on application`).not.toContain('../application');
+      expect(content, `${file} must not depend on provider implementations`).not.toContain(
+        '../provider'
+      );
+      expect(content, `${file} must not depend on interface`).not.toContain('../interface');
+    }
+
+    const applicationFiles = collectTsFiles('core/ai/llm/agentLoop/application');
+    for (const file of applicationFiles) {
+      const content = readFileSync(file, 'utf8');
+      expect(content, `${file} must not select provider implementations`).not.toContain(
+        '../provider'
+      );
+    }
+  });
+
+  it('keeps provider indexes as composition roots instead of forwarding internal modules', () => {
+    const providerIndexes = collectTsFiles('core/ai/llm/agentLoop/provider').filter((file) =>
+      file.endsWith('/index.ts')
+    );
+
+    for (const file of providerIndexes) {
+      const content = readFileSync(file, 'utf8');
+      expect(content, `${file} must not re-export internal modules`).not.toMatch(
+        /export\s+(?:type\s+)?\{[^}]+\}\s+from/
+      );
     }
   });
 });

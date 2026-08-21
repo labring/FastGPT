@@ -1,5 +1,13 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+
+const mockCountPromptTokens = vi.hoisted(() => vi.fn(async (text: string) => text.length));
+
+vi.mock('@fastgpt/service/common/string/tiktoken/index', () => ({
+  countPromptTokens: mockCountPromptTokens
+}));
+
 import { useTextCosine } from '@fastgpt/service/core/ai/hooks/useTextCosine';
+import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import {
   generateMockEmbedding,
   createMockVectorsResponse,
@@ -11,6 +19,12 @@ import {
 describe('useTextCosine', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCountPromptTokens.mockImplementation(async (text: string) => text.length);
+    vi.mocked(getEmbeddingModel).mockReturnValue({
+      model: 'text-embedding-ada-002',
+      name: 'text-embedding-ada-002',
+      maxToken: 100
+    } as any);
   });
 
   describe('lazyGreedyQuerySelection', () => {
@@ -166,6 +180,46 @@ describe('useTextCosine', () => {
         type: 'query'
       });
       expect(result.selectedData).toEqual(['candidate']);
+    });
+
+    it('should pass overlong query and candidates to centralized embedding fallback', async () => {
+      vi.mocked(getEmbeddingModel).mockReturnValue({
+        model: 'mock-embedding-model',
+        name: 'Mock Embedding Model',
+        maxToken: 12
+      } as any);
+      mockGetVectors.mockResolvedValueOnce({
+        tokens: 10,
+        vectors: [
+          generateMockEmbedding('abcdefghijklmnopqrstuvwxy'),
+          generateMockEmbedding('klmnopqrstuvwxy')
+        ]
+      });
+
+      const { lazyGreedyQuerySelection } = useTextCosine({ embeddingModel: 'custom-model' });
+      const result = await lazyGreedyQuerySelection({
+        originalText: 'abcdefghijklmnopqrstuvwxy',
+        candidates: ['klmnopqrstuvwxy'],
+        k: 1
+      });
+
+      expect(mockGetVectors).toHaveBeenCalledWith({
+        model: expect.objectContaining({
+          model: 'mock-embedding-model'
+        }),
+        inputs: [
+          {
+            type: 'text',
+            input: 'abcdefghijklmnopqrstuvwxy'
+          },
+          {
+            type: 'text',
+            input: 'klmnopqrstuvwxy'
+          }
+        ],
+        type: 'query'
+      });
+      expect(result.selectedData).toEqual(['klmnopqrstuvwxy']);
     });
 
     it('should handle identical candidates correctly', async () => {

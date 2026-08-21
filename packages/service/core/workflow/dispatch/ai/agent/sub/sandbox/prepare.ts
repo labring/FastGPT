@@ -11,7 +11,6 @@ import {
   prepareAgentSandboxRuntime,
   preparePackageMirrors,
   prepareSandbox,
-  readCurrentWorkingDirectory,
   resolveSandboxHome,
   runAgentSkillVersionEntrypoints,
   runSandboxEntrypoint,
@@ -22,6 +21,7 @@ import {
   type SandboxPrepareStep
 } from '../../../../../../ai/sandbox/interface/runtime';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { readWorkflowFileBuffer } from '../../../../../utils/context';
 
 export type AgentSandboxPrepareContext = SandboxPrepareContext & {
   sandboxClient: SandboxClient;
@@ -30,9 +30,7 @@ export type AgentSandboxPrepareContext = SandboxPrepareContext & {
   skillScanDirectories: string[];
 };
 
-export type AgentSandboxPrepareAction = (
-  context: AgentSandboxPrepareContext
-) => Promise<AgentSandboxPrepareContext>;
+export type AgentSandboxPrepareAction = SandboxPrepareStep<AgentSandboxPrepareContext>;
 
 type EnsureAgentSandboxRuntimeParams = {
   sourceType: ChatSourceTypeEnum;
@@ -86,10 +84,9 @@ export async function ensureAgentSandboxRuntime({
     sourceType,
     sourceId,
     userId,
-    chatId,
-    teamId
+    chatId
   });
-
+  const readInputFile = (url: string) => readWorkflowFileBuffer({ url });
   const preparedContext = await withAgentSandboxInitLease({
     sandboxId: sandboxContext.sandboxClient.getSandboxId(),
     fn: () => {
@@ -105,18 +102,16 @@ export async function ensureAgentSandboxRuntime({
         ? prepareSandbox(
             context,
             preparePackageMirrors(),
-            injectCurrentInputFiles(currentFiles),
+            injectCurrentInputFiles(currentFiles, readInputFile),
             ...prepareActions,
-            readCurrentWorkingDirectory(),
             scanEditDebugSkillInfos()
           )
         : prepareSandbox(
             context,
             preparePackageMirrors(),
             injectSelectedSkillFiles({ teamId, tmbId, skillIds, selectedSkills }),
-            injectCurrentInputFiles(currentFiles),
+            injectCurrentInputFiles(currentFiles, readInputFile),
             ...prepareActions,
-            readCurrentWorkingDirectory(),
             runSandboxEntrypoint({ sandboxEntrypoint }),
             runSelectedSkillEntrypoints(),
             scanSelectedSkillInfos()
@@ -126,7 +121,7 @@ export async function ensureAgentSandboxRuntime({
 
   return {
     sandboxClient: sandboxContext.sandboxClient,
-    currentWorkingDirectory: preparedContext.currentWorkingDirectory,
+    currentWorkingDirectory: sandboxContext.workDirectory,
     skillInfos: preparedContext.skillInfos
   };
 }
@@ -197,7 +192,7 @@ const injectSelectedSkillFiles =
       teamId,
       tmbId,
       skillIds,
-      workDirectory: context.workDirectory
+      workDirectory: context.workspaceRoot ?? context.workDirectory
     });
     const selectedSkillMap = new Map(selectedSkills?.map((skill) => [skill.skillId, skill]) || []);
 

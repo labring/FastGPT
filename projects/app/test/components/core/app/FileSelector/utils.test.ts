@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { FileSelectorRenderItemType } from '@/components/core/app/FileSelector/type';
 import {
   getFileSelectorDisplayIcon,
+  hasFileSelectorError,
   inferFileSelectorType,
   isFileSelectorCleanValueEcho,
   isFileSelectorPreviewUrlMissing,
@@ -9,6 +10,7 @@ import {
   markFileSelectorUploadError,
   markFileSelectorUploading,
   markFileSelectorUploadSuccess,
+  mergeFileSelectorExternalValue,
   sanitizeFileSelectValue
 } from '@/components/core/app/FileSelector/utils';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -133,6 +135,58 @@ describe('inferFileSelectorType', () => {
 });
 
 describe('FileSelector upload state', () => {
+  it('仅在存在上传错误时阻止表单提交', () => {
+    expect(hasFileSelectorError([{ error: 'upload failed' }, {}])).toBe(true);
+    expect(hasFileSelectorError([{}, { error: '' }])).toBe(false);
+  });
+
+  it('外部空值刷新时保留本地上传中和失败文件', () => {
+    const uploadingFile: FileSelectorRenderItemType = {
+      id: 'uploading',
+      name: 'uploading.pdf',
+      type: ChatFileTypeEnum.file,
+      rawFile: new File(['file'], 'uploading.pdf'),
+      status: 1,
+      process: 30
+    };
+    const failedFile: FileSelectorRenderItemType = {
+      id: 'failed',
+      name: 'failed.pdf',
+      type: ChatFileTypeEnum.file,
+      rawFile: new File(['file'], 'failed.pdf'),
+      status: 1,
+      error: 'upload failed'
+    };
+
+    expect(
+      mergeFileSelectorExternalValue({
+        currentFiles: [uploadingFile, failedFile],
+        externalFiles: []
+      })
+    ).toEqual([uploadingFile, failedFile]);
+  });
+
+  it('外部持久化值刷新时不会重复保留已完成文件', () => {
+    const completedFile: FileSelectorRenderItemType = {
+      id: 'completed',
+      key: 'chat/files/completed.pdf',
+      name: 'completed.pdf',
+      type: ChatFileTypeEnum.file,
+      status: 1
+    };
+    const externalFile: FileSelectorRenderItemType = {
+      ...completedFile,
+      id: 'external'
+    };
+
+    expect(
+      mergeFileSelectorExternalValue({
+        currentFiles: [completedFile],
+        externalFiles: [externalFile]
+      })
+    ).toEqual([externalFile]);
+  });
+
   it('仅将本次待上传文件置为上传态，不影响已完成文件', () => {
     const doneFile: FileSelectorRenderItemType = {
       id: 'done',

@@ -1,5 +1,4 @@
 import { describe, expect, it, beforeAll, afterAll, beforeEach } from 'vitest';
-import JSZip from 'jszip';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import {
@@ -17,6 +16,7 @@ import {
   AgentSkillSourceEnum,
   AgentSkillCategoryEnum
 } from '@fastgpt/global/core/ai/skill/constants';
+import { Readable } from 'node:stream';
 
 describe('AgentSkill Controller', () => {
   let testTeamId: string;
@@ -341,56 +341,56 @@ describe('AgentSkill Controller', () => {
 
   // ==================== Import Skill ====================
   describe('importSkill', () => {
-    const createImportZipBuffer = async (skillName: string) => {
-      const zip = new JSZip();
-      zip.file('skills/imported/SKILL.md', `---\nname: ${skillName}\n---\n`);
-      return zip.generateAsync({ type: 'nodebuffer' });
-    };
+    const packageContent = Buffer.from('opaque package content');
 
     it('should import skill from package', async () => {
-      const packageData = {
-        skill: {
-          name: 'Imported Skill',
-          description: 'An imported skill',
-          category: [AgentSkillCategoryEnum.tool]
-        }
+      const skillData = {
+        name: 'Imported Skill',
+        description: 'An imported skill',
+        category: [AgentSkillCategoryEnum.tool]
       };
 
-      const mockZipBuffer = await createImportZipBuffer('imported-skill');
-
-      const skillId = await importSkill(packageData, testTeamId, testTmbId, mockZipBuffer);
+      const skillId = await importSkill({
+        skill: skillData,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        packageStream: Readable.from(packageContent),
+        contentLength: packageContent.length
+      });
 
       expect(skillId).toBeDefined();
 
       const skill = await MongoAgentSkills.findById(skillId);
-      expect(skill?.name).toBe(packageData.skill.name);
-      expect(skill?.description).toBe(packageData.skill.description);
+      expect(skill?.name).toBe(skillData.name);
+      expect(skill?.description).toBe(skillData.description);
       expect(skill?.source).toBe(AgentSkillSourceEnum.personal);
-      expect(skill?.currentRuntimeSkills.map((item) => item.toObject())).toEqual([
-        {
-          name: 'imported-skill',
-          description: '',
-          path: 'skills/imported/SKILL.md'
-        }
-      ]);
+      expect(skill?.currentRuntimeSkills).toHaveLength(0);
     });
 
     it('should allow importing duplicate name without error', async () => {
-      const packageData = {
-        skill: {
-          name: 'Duplicate Import',
-          description: 'A skill',
-          category: []
-        }
+      const skillData = {
+        name: 'Duplicate Import',
+        description: 'A skill',
+        category: []
       };
 
-      const mockZipBuffer = await createImportZipBuffer('duplicate-import');
-
       // First import
-      const firstSkillId = await importSkill(packageData, testTeamId, testTmbId, mockZipBuffer);
+      const firstSkillId = await importSkill({
+        skill: skillData,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        packageStream: Readable.from(packageContent),
+        contentLength: packageContent.length
+      });
 
       // Second import should succeed with a different ID
-      const secondSkillId = await importSkill(packageData, testTeamId, testTmbId, mockZipBuffer);
+      const secondSkillId = await importSkill({
+        skill: skillData,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        packageStream: Readable.from(packageContent),
+        contentLength: packageContent.length
+      });
 
       expect(firstSkillId).toBeDefined();
       expect(secondSkillId).toBeDefined();

@@ -1,11 +1,7 @@
 import { Hono } from 'hono';
-import { z } from 'zod';
+import { SandboxVolumeEnsureRequestSchema } from '@fastgpt/global/core/ai/sandbox/volume';
 import type { VolumeService } from '../services/VolumeService';
 import { logInfo } from '../utils/logger';
-
-const ensureBodySchema = z.object({
-  sessionId: z.string()
-});
 
 export function volumeRoutes(service: VolumeService): Hono {
   const app = new Hono();
@@ -13,25 +9,25 @@ export function volumeRoutes(service: VolumeService): Hono {
   // POST /v1/volumes/ensure
   app.post('/ensure', async (c) => {
     const body = await c.req.json().catch(() => null);
-    const parsed = ensureBodySchema.safeParse(body);
+    const parsed = SandboxVolumeEnsureRequestSchema.safeParse(body);
     if (!parsed.success) {
       return c.json({ error: 'Invalid request body', details: parsed.error.issues }, 400);
     }
 
-    const { sessionId } = parsed.data;
-    logInfo(`POST /v1/volumes/ensure sessionId=${sessionId}`);
-    const result = await service.ensure(sessionId);
+    const { claimName, storageSize } = parsed.data;
+    logInfo(`POST /v1/volumes/ensure claimName=${claimName}`);
+    const result = await service.ensure({ claimName, storageSize });
     const status = result.created ? 201 : 200;
     logInfo(`ensure done claimName=${result.claimName} created=${result.created} status=${status}`);
     return c.json(result, status);
   });
 
-  // DELETE /v1/volumes/:sessionId
-  app.delete('/:sessionId', async (c) => {
-    const sessionId = c.req.param('sessionId');
-    logInfo(`DELETE /v1/volumes/${sessionId}`);
-    await service.remove(sessionId);
-    logInfo(`remove done sessionId=${sessionId}`);
+  // DELETE /v1/volumes/:claimName
+  app.delete('/:claimName', async (c) => {
+    const claimName = c.req.param('claimName');
+    logInfo(`DELETE /v1/volumes/${claimName}`);
+    await service.remove(claimName);
+    logInfo(`remove done claimName=${claimName}`);
     return c.body(null, 204);
   });
 

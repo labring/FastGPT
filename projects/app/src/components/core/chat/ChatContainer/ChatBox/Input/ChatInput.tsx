@@ -19,9 +19,10 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { documentFileType } from '@fastgpt/global/common/file/constants';
 import FilePreview from '../../components/FilePreview';
 import { useFileUpload } from '../hooks/useFileUpload';
+import { getFileUploadId } from '../utils/uploadTask';
+import { isChatFileAllowedBySelectConfig } from '../utils/file';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import VoiceInput, { type VoiceInputComponentRef } from './VoiceInput';
@@ -31,13 +32,6 @@ import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
 const PLACEHOLDER_APP_NAME_TOKEN = '__APP_NAME__';
-
-const fileTypeFilter = (file: File) => {
-  return (
-    file.type.includes('image') ||
-    documentFileType.split(',').some((type) => file.name.endsWith(type.trim()))
-  );
-};
 
 type ChatInputProps = BoxProps & {
   lastInteractive?: WorkflowInteractiveResponseType;
@@ -86,6 +80,7 @@ const ChatInput = ({
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
+  const formFileUploading = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploading);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const inputBodyProps = useContextSelector(ChatBoxContext, (v) => v.inputBodyProps);
   const whisperConfig = useContextSelector(ChatBoxContext, (v) => v.whisperConfig);
@@ -134,8 +129,8 @@ const ChatInput = ({
     showSelectVideo,
     showSelectAudio,
     showSelectCustomFileExtension,
-    removeFiles,
-    replaceFiles,
+    cancelUploadFile,
+    clearFiles,
     hasFileUploading
   } = useFileUpload({
     fileSelectConfig,
@@ -145,19 +140,24 @@ const ChatInput = ({
     chatId
   });
   const havInput = !!inputValue || fileList.length > 0;
-  const canSendMessage = havInput && !hasFileUploading && !disableSend;
+  const canSendMessage = havInput && !hasFileUploading && !formFileUploading && !disableSend;
   const canUploadFile =
     showSelectFile ||
     showSelectImg ||
     showSelectVideo ||
     showSelectAudio ||
     showSelectCustomFileExtension;
+  const isFileTypeAllowed = useCallback(
+    (file: File) => isChatFileAllowedBySelectConfig({ file, fileSelectConfig }),
+    [fileSelectConfig]
+  );
   const canUseInputGuide =
     enableInputGuide &&
     sourceTarget.sourceType === ChatSourceTypeEnum.app &&
     !!sourceTarget.sourceId &&
     !!chatInputGuide.open;
-  const canUseVoiceInput = enableVoiceInput && !!sourceTarget.sourceId && !!whisperConfig?.open;
+  const canUseVoiceInput =
+    enableVoiceInput && !!sourceTarget.sourceId && !!whisperConfig?.open && !formFileUploading;
   const isDefaultInputHeight =
     !mobilePreSpeak && !inputValue && fileList.length === 0 && !canUseInputGuide;
 
@@ -179,9 +179,9 @@ const ChatInput = ({
         interactive: lastInteractive,
         clearInput: true
       });
-      replaceFiles([]);
+      clearFiles();
     },
-    [inputValue, lastInteractive, canSendMessage, fileList, onSendMessage, replaceFiles]
+    [inputValue, lastInteractive, canSendMessage, fileList, onSendMessage, clearFiles]
   );
   const { runAsync: handleStop, loading: isStopping } = useRequest(async () => {
     try {
@@ -292,7 +292,7 @@ const ChatInput = ({
                 const files = Array.from(items)
                   .map((item) => (item.kind === 'file' ? item.getAsFile() : undefined))
                   .filter((file) => {
-                    return file && fileTypeFilter(file);
+                    return file && isFileTypeAllowed(file);
                   }) as File[];
                 onSelectFile({ files });
 
@@ -347,13 +347,13 @@ const ChatInput = ({
       appNamePlaceholderParts.suffix,
       placeholderAppName,
       isPc,
-      t,
       inputValue,
       onFocus,
       offFocus,
       setValue,
       handleSend,
       canUploadFile,
+      isFileTypeAllowed,
       onSelectFile
     ]
   );
@@ -509,15 +509,20 @@ const ChatInput = ({
         if (!canUploadFile) return;
         const files = Array.from(e.dataTransfer.files);
 
-        const droppedFiles = files.filter((file) => fileTypeFilter(file));
+        const droppedFiles: File[] = [];
+        const invalidFiles: File[] = [];
+        files.forEach((file) => {
+          if (isFileTypeAllowed(file)) {
+            droppedFiles.push(file);
+          } else {
+            invalidFiles.push(file);
+          }
+        });
         if (droppedFiles.length > 0) {
           onSelectFile({ files: droppedFiles });
         }
 
-        const invalidFileName = files
-          .filter((file) => !fileTypeFilter(file))
-          .map((file) => file.name)
-          .join(', ');
+        const invalidFileName = invalidFiles.map((file) => file.name).join(', ');
         if (invalidFileName) {
           toast({
             status: 'warning',
@@ -568,7 +573,11 @@ const ChatInput = ({
           {/* file preview */}
           {(!mobilePreSpeak || isPc || inputValue) && (
             <Box>
-              <FilePreview fileList={fileList} removeFiles={removeFiles} pt={0} />
+              <FilePreview
+                fileList={fileList}
+                onRemoveFile={(file) => cancelUploadFile(getFileUploadId(file))}
+                pt={0}
+              />
             </Box>
           )}
 
@@ -583,7 +592,7 @@ const ChatInput = ({
                   autoTTSResponse,
                   clearInput: true
                 });
-                replaceFiles([]);
+                clearFiles();
               }}
               resetInputVal={(val) => {
                 setMobilePreSpeak(false);

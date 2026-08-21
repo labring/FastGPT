@@ -1,8 +1,11 @@
 {
   "name": "@fastgpt/web",
   "version": "1.0.0",
+  "scripts": {
+    "test": "node ../../scripts/check-i18n-resource-loaders.mjs && vitest run -c vitest.config.ts"
+  },
   "engines": {
-    "node": ">=20.19.0",
+    "node": ">=22.23.2",
     "pnpm": "10.x"
   },
   "dependencies": {
@@ -33,7 +36,7 @@
     "i18next": "catalog:",
     "js-cookie": "^3.0.7",
     "lexical": "0.12.6",
-    "lodash": "catalog:",
+    "lodash-es": "catalog:",
     "next": "catalog:",
     "next-i18next": "catalog:",
     "papaparse": "^5.4.1",
@@ -53,7 +56,7 @@
   },
   "devDependencies": {
     "@types/js-cookie": "^3.0.6",
-    "@types/lodash": "catalog:",
+    "@types/lodash-es": "catalog:",
     "@types/papaparse": "^5.3.7",
     "@types/react": "catalog:",
     "@types/react-beautiful-dnd": "^13.1.1",

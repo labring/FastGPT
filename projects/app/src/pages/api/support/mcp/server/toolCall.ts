@@ -1,19 +1,25 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { type toolCallProps } from '@/service/support/mcp/type';
 import { callMcpServerTool } from '@/service/support/mcp/utils';
-
-export type toolCallQuery = {};
-
-export type toolCallBody = toolCallProps;
-
-export type toolCallResponse = {};
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  McpServerToolCallBodySchema,
+  McpServerToolCallResponseSchema,
+  type McpServerToolCallResponse
+} from '@fastgpt/global/openapi/support/mcpServer/api';
+import { getMcpAuthProxyFromHeaders } from '@/service/support/mcp/auth';
 
 async function handler(
-  req: ApiRequestProps<toolCallBody, toolCallQuery>,
-  res: ApiResponseType<any>
-): Promise<toolCallResponse> {
-  return callMcpServerTool(req.body);
+  req: ApiRequestProps,
+  _res: ApiResponseType
+): Promise<McpServerToolCallResponse> {
+  const { body } = parseApiInput({ req, bodySchema: McpServerToolCallBodySchema });
+  const result = await callMcpServerTool({
+    ...body,
+    authProxy: getMcpAuthProxyFromHeaders(req.headers)
+  });
+
+  return McpServerToolCallResponseSchema.parse(result);
 }
 
 export default NextAPI(handler);

@@ -6,13 +6,11 @@ import { getChildrenResponses } from '@fastgpt/global/core/chat/utils/mergeNode'
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { DispatchFlowResponse, RuntimeNodeResponseSummary } from '../type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import {
-  type RuntimeNodeItemType,
-  type SystemVariablesType
-} from '@fastgpt/global/core/workflow/runtime/type';
+import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { SystemVariablesType } from '../../types/runtime';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { responseWrite } from '../../../../common/response';
-import { type NextApiResponse } from 'next';
+import type { NodeHttpResponse } from '../../../../types/http';
 import {
   DispatchNodeResponseKeyEnum,
   SseResponseEventEnum
@@ -20,6 +18,8 @@ import {
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import {
+  getHTTPToolInputSchema,
+  getHTTPToolRequestSchema,
   getHTTPToolRuntimeNode,
   parseHttpToolConfig
 } from '@fastgpt/global/core/app/tool/httpTool/utils';
@@ -35,6 +35,15 @@ import { parsetMcpToolConfig } from '@fastgpt/global/core/app/tool/mcpTool/utils
 import { getMcpToolsets } from '../../../app/tool/mcpTool/entity';
 import { getHttpToolsets } from '../../../app/tool/httpTool/entity';
 import { getHTTPToolList } from '../../../app/http';
+import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  getSavedToolInputSelectedType,
+  initToolInputsTypeByDefaultMode,
+  normalizeLegacyWorkflowHttpToolInputsDefaultMode,
+  normalizeFlowNodeInputType
+} from '@fastgpt/global/core/app/formEdit/utils';
+import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
+import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 
 /**
  * 创建 runtime nodeResponse 的轻量汇总对象。
@@ -48,15 +57,14 @@ export const createRuntimeNodeResponseSummary = (): RuntimeNodeResponseSummary =
   hasError: false,
   hasLoopRunBreak: false,
   hasToolStop: false,
-  hasNestedEnd: false,
-  runningTime: 0
+  hasNestedEnd: false
 });
 
 /**
  * 增量更新父 workflow 运行控制需要的临时字段。
  *
  * 完整 nodeResponse 会由 writer 及时落库并释放；父节点只需要这些信号来判断
- * nestedEnd 输出、错误、loop break、tool stop、完成节点、耗时和 child 统计。
+ * nestedEnd 输出、错误、loop break、tool stop、完成节点和 child 统计。
  * 调用方每处理完一批 nodeResponse，就把当前 summary 和本批响应传进来，返回新的
  * summary，避免重新保存或扫描完整 nodeResponse 列表。
  */
@@ -78,7 +86,7 @@ export const summarizeRuntimeNodeResponses = (
       .filter((parentId): parentId is string => !!parentId)
   );
   // 已进入 currentSummary 的 response id 不能再次计入统计，避免重复事件或分批更新导致
-  // runningTime/points/responseCount 被累加两次。
+  // points/responseCount 被累加两次。
   const countedIds = new Set(initialSummary.responseIds);
 
   const addResponseToSummary = (
@@ -115,8 +123,6 @@ export const summarizeRuntimeNodeResponses = (
     if (response.moduleType === FlowNodeTypeEnum.pluginOutput && response.pluginOutput) {
       summary.pluginOutput = response.pluginOutput;
     }
-
-    summary.runningTime += typeof response.runningTime === 'number' ? response.runningTime : 0;
 
     const children = getChildrenResponses(response);
     const hasConcreteChild =
@@ -167,7 +173,6 @@ export const mergeRuntimeNodeResponseSummary = (
     if (summary.pluginOutput !== undefined) {
       merged.pluginOutput = summary.pluginOutput;
     }
-    merged.runningTime += summary.runningTime;
     merged.totalPoints = (merged.totalPoints || 0) + (summary.totalPoints || 0);
     merged.childTotalPoints = (merged.childTotalPoints || 0) + (summary.childTotalPoints || 0);
     merged.childResponseCount =
@@ -220,7 +225,7 @@ export const getWorkflowResponseWrite = ({
   showNodeStatus = true,
   streamResumeMirror
 }: {
-  res?: NextApiResponse;
+  res?: NodeHttpResponse;
   detail: boolean;
   streamResponse: boolean;
   id?: string;
@@ -417,6 +422,32 @@ export const getHistories = (
 };
 
 /**
+ * Agent loop 的交互恢复上下文不能被 history=0 一并裁掉。
+ *
+ * 普通请求仍严格遵守 history 配置；仅当零历史窗口的最后一轮确实包含未完成交互时，
+ * 临时保留最近一轮，让 provider 能读取 providerState 或恢复原 tool call。
+ */
+export const getAgentLoopHistories = (
+  history?: ChatItemMiniType[] | number,
+  histories: ChatItemMiniType[] = []
+) => {
+  const filteredHistories = getHistories(history, histories);
+  if (history !== 0 || filteredHistories.length > 0) return filteredHistories;
+
+  const lastAIIndex = histories.findLastIndex((item) => item.obj === ChatRoleEnum.AI);
+  if (lastAIIndex < 0) return filteredHistories;
+
+  const lastAIMessage = histories[lastAIIndex];
+  if (!getLastInteractiveValue([lastAIMessage])) return filteredHistories;
+
+  const lastHumanIndex = histories
+    .slice(0, lastAIIndex)
+    .findLastIndex((item) => item.obj === ChatRoleEnum.Human);
+
+  return lastHumanIndex < 0 ? [lastAIMessage] : [histories[lastHumanIndex], lastAIMessage];
+};
+
+/**
  * 校验引用知识库结果是否可作为 quoteQA 继续传递。
  *
  * undefined 表示没有有效引用；空数组是合法值，表示本次明确没有召回结果。
@@ -469,6 +500,7 @@ export const formatHttpError = (error: any) => {
  * 重写 runtime workflow 中的工具相关节点配置。
  *
  * 该函数会原地修改 nodes 和 edges：
+ * - 在外层兼容旧 selectedTypeIndex，并将工具输入升级为 selectedType 协议。
  * - 将 ToolSet 节点展开为具体 Tool 节点，并把原来指向 ToolSet 的边改接到子工具节点。
  * - 为 MCP/HTTP Tool 节点补充原始 jsonSchema 和描述，供模型 tool call 生成参数时使用。
  */
@@ -483,6 +515,68 @@ export const rewriteRuntimeWorkFlow = async ({
   edges: RuntimeEdgeItemType[];
   lang?: localeType;
 }) => {
+  const mergeToolNodeInputs = ({
+    node,
+    jsonSchema,
+    schemaType
+  }: {
+    node: RuntimeNodeItemType;
+    jsonSchema?: Parameters<typeof jsonSchema2NodeInput>[0]['jsonSchema'];
+    schemaType: 'mcp' | 'http';
+  }) => {
+    const schemaInputs = jsonSchema2NodeInput({ jsonSchema, schemaType });
+    if (!schemaInputs.length) return;
+
+    const savedInputMap = new Map(node.inputs.map((input) => [input.key, input]));
+    node.inputs = initToolInputsTypeByDefaultMode(
+      schemaInputs.map((input) => {
+        const savedInput = savedInputMap.get(input.key);
+        if (!savedInput) return input;
+
+        const selectedType = getSavedToolInputSelectedType({
+          savedInput,
+          defaultInput: input,
+          allowUserChatInputAgentGenerated: true
+        });
+        const renderTypeList = selectedType
+          ? Array.from(
+              new Set([selectedType, ...savedInput.renderTypeList, ...input.renderTypeList])
+            )
+          : (savedInput.renderTypeList ?? input.renderTypeList);
+
+        return {
+          ...input,
+          ...(Object.prototype.hasOwnProperty.call(savedInput, 'value')
+            ? { value: savedInput.value }
+            : {}),
+          ...(Object.prototype.hasOwnProperty.call(savedInput, 'valueDesc')
+            ? { valueDesc: savedInput.valueDesc }
+            : {}),
+          renderTypeList,
+          selectedType,
+          isToolParam: input.isToolParam ?? savedInput.isToolParam,
+          toolDescription: savedInput.toolDescription ?? input.toolDescription
+        };
+      }),
+      { allowUserChatInputAgentGenerated: true }
+    );
+  };
+
+  /**
+   * ToolSet 展开后的子工具统一由 Agent 生成参数。这里仅修改 runtime 临时节点，
+   * 不回写工作流配置，避免把 isToolParam 变成用户配置字段。
+   */
+  const initToolSetChildNode = (node: RuntimeNodeItemType): RuntimeNodeItemType => ({
+    ...node,
+    inputs: initToolInputsTypeByDefaultMode(
+      node.inputs.map((input) => ({
+        ...input,
+        isToolParam: true
+      })),
+      { forceDefaultMode: true, allowUserChatInputAgentGenerated: true }
+    )
+  });
+
   /* ToolSet 展开 */
   // TODO: 待性能优化
   const parseToolset = async () => {
@@ -515,11 +609,13 @@ export const rewriteRuntimeWorkFlow = async ({
         if (systemToolId) {
           const children = await getSystemToolRunTimeNodeFromSystemToolset({
             toolSetNode,
+            teamId,
             lang
           });
           children.forEach((node) => {
-            nodes.push(node);
-            pushEdges(node.nodeId);
+            const runtimeNode = initToolSetChildNode(node);
+            nodes.push(runtimeNode);
+            pushEdges(runtimeNode.nodeId);
           });
         } else if (mcpToolsetVal) {
           const app = await MongoApp.findOne({ _id: toolSetNode.pluginId }).lean();
@@ -529,13 +625,15 @@ export const rewriteRuntimeWorkFlow = async ({
           // mcpToolsetVal.toolId: 旧版 MCP
           const toolSetId = mcpToolsetVal.toolId || toolSetNode.pluginId;
           toolList.forEach((tool, index) => {
-            const newToolNode = getMCPToolRuntimeNode({
-              nodeId: `${toolSetNode.nodeId}${index}`,
-              toolSetId,
-              toolsetName: toolSetNode.name,
-              avatar: toolSetNode.avatar,
-              tool
-            });
+            const newToolNode = initToolSetChildNode(
+              getMCPToolRuntimeNode({
+                nodeId: `${toolSetNode.nodeId}${index}`,
+                toolSetId,
+                toolsetName: toolSetNode.name,
+                avatar: toolSetNode.avatar,
+                tool
+              })
+            );
             nodes.push(newToolNode);
             pushEdges(newToolNode.nodeId);
           });
@@ -546,13 +644,15 @@ export const rewriteRuntimeWorkFlow = async ({
           const toolList = await getHTTPToolList(app);
 
           toolList.forEach((tool: HttpToolConfigType, index: number) => {
-            const newToolNode = getHTTPToolRuntimeNode({
-              tool,
-              nodeId: `${toolSetNode.nodeId}${index}`,
-              avatar: toolSetNode.avatar,
-              toolSetId: toolSetNode.pluginId!,
-              toolsetName: toolSetNode.name
-            });
+            const newToolNode = initToolSetChildNode(
+              getHTTPToolRuntimeNode({
+                tool,
+                nodeId: `${toolSetNode.nodeId}${index}`,
+                avatar: toolSetNode.avatar,
+                toolSetId: toolSetNode.pluginId!,
+                toolsetName: toolSetNode.name
+              })
+            );
             nodes.push(newToolNode);
             pushEdges(newToolNode.nodeId);
           });
@@ -610,6 +710,7 @@ export const rewriteRuntimeWorkFlow = async ({
       if (!toolRaw) return;
       node.jsonSchema = toolRaw.inputSchema;
       node.intro = toolRaw.description;
+      mergeToolNodeInputs({ node, jsonSchema: toolRaw.inputSchema, schemaType: 'mcp' });
     });
   };
 
@@ -647,12 +748,49 @@ export const rewriteRuntimeWorkFlow = async ({
       if (!toolList) return;
       const toolRaw = toolList.find((tool) => tool.name === parseResult.toolName);
       if (!toolRaw) return;
-      node.jsonSchema = toolRaw.requestSchema;
+      node.jsonSchema = getHTTPToolRequestSchema(toolRaw);
       node.intro = toolRaw.description;
+      mergeToolNodeInputs({
+        node,
+        jsonSchema: getHTTPToolInputSchema(toolRaw),
+        schemaType: 'http'
+      });
     });
   };
 
   await Promise.all([parseToolset(), parseMcpTool(), parseHttpTool()]);
+
+  const toolNodeIds = new Set(
+    edges
+      .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
+      .map((edge) => edge.target)
+  );
+
+  // runtime 内部只消费 selectedType；所有存量协议兼容都在执行入口一次完成。
+  nodes.forEach((node) => {
+    const isTool = toolNodeIds.has(node.nodeId) || node.flowNodeType === FlowNodeTypeEnum.tool;
+    const allowLegacySystemToolInputMode = Boolean(
+      node.toolConfig?.systemTool ||
+      node.pluginId?.startsWith('systemTool-') ||
+      node.pluginId?.startsWith('commercial-')
+    );
+    const inputsWithLegacyDefaults = (() => {
+      if (node.flowNodeType === FlowNodeTypeEnum.pluginModule && isTool) {
+        return normalizeWorkflowToolInputsDefaultMode(node.inputs);
+      }
+      if (node.flowNodeType === FlowNodeTypeEnum.httpRequest468 && isTool) {
+        return normalizeLegacyWorkflowHttpToolInputsDefaultMode(node.inputs);
+      }
+      return node.inputs;
+    })();
+
+    node.inputs = inputsWithLegacyDefaults.map((input) =>
+      normalizeFlowNodeInputType(input, {
+        isTool,
+        allowLegacyToolDescriptionFallback: isTool && allowLegacySystemToolInputMode
+      })
+    );
+  });
 };
 
 /**

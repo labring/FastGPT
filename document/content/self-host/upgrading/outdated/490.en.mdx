@@ -1,6 +1,10 @@
 ---
-title: V4.9.0 (Includes Upgrade Script)
+title: V4.9.0
 description: FastGPT V4.9.0 Release Notes
+releaseTime: '2025-03-06'
+upgradeTags:
+  - CONFIG
+  - MIGRATION
 ---
 
 ## Upgrade Guide
@@ -130,7 +134,7 @@ curl --location --request POST 'http://localhost:3003/api/channels/import/oneapi
 
 #### 5. Verify AI Proxy is Running in FastGPT
 
-Log in with the root account. On the `Account - Model Providers` page, you should see two new options: `Model Channels` and `Call Logs`. Open Model Channels to verify that your previous OneAPI channels are listed, confirming the migration was successful. You can then manually check that each channel is working properly.
+Log in with the root account. On the `Account - Model Providers` page, you should see two new options: `Model providers` and `Call Logs`. Open Model providers to verify that your previous OneAPI channels are listed, confirming the migration was successful. You can then manually check that each channel is working properly.
 
 #### 6. Remove the OneAPI Service
 
@@ -155,26 +159,26 @@ curl --location --request POST 'https://{{host}}/api/admin/initv490' \
 **Script Functions**
 
 1. Upgrades the PG Vector extension version.
-2. Updates all knowledge base collection fields.
-3. Updates the index `type` field across all knowledge base data. (This takes a while — you may see a timeout at the end, which can be ignored. The process will continue incrementally as long as the database is running.)
+2. Updates all Dataset collection fields.
+3. Updates the index `type` field across all Dataset data. (This takes a while — you may see a timeout at the end, which can be ignored. The process will continue incrementally as long as the database is running.)
 
 ## Compatibility & Deprecations
 
 1. Deprecated — The previous custom file parsing solution for private deployments. Please update to the latest environment-variable configuration. [See Environment Variables](../../config/env.en.mdx)
 2. Deprecated — The legacy local file upload API: `/api/core/dataset/collection/create/file` (previously available only in the Pro edition). This endpoint has been replaced by: `/api/core/dataset/collection/create/localFile`
 3. Maintenance ending, deprecation upcoming — External file library APIs. Use the API File Library as a replacement.
-4. API Update — For endpoints that include a `trainingType` field (file upload to knowledge base, link collection creation, API file library, push chunk data, etc.), `trainingType` will only support `chunk` and `QA` modes going forward. Enhanced indexing mode will use a separate field: `autoIndexes`. Legacy `trainingType=auto` code is still supported for now, but please migrate to the new API format as soon as possible. See: [Knowledge Base OpenAPI Documentation](../../../openapi/dataset.en.mdx)
+4. API Update — For endpoints that include a `trainingType` field (file upload to Dataset, link collection creation, API file library, push chunk data, etc.), `trainingType` will only support `chunk` and `QA` modes going forward. Enhanced indexing mode will use a separate field: `autoIndexes`. Legacy `trainingType=auto` code is still supported for now, but please migrate to the new API format as soon as possible. See: [Dataset OpenAPI Documentation](../../../openapi/dataset.en.mdx)
 
 ## New Features
 
 1. PDF enhanced parsing UI added to the page. Doc2x service is now built in, allowing direct PDF parsing via Doc2x.
-2. Automatic image annotation, along with updated data logic and UI for knowledge base file uploads.
+2. Automatic image annotation, along with updated data logic and UI for Dataset file uploads.
 3. PG Vector extension upgraded to 0.8.0, introducing iterative search to reduce cases where data cannot be retrieved.
 4. Added qwen-qwq series model configurations.
 
 ## Improvements
 
-1. Knowledge base data no longer has a limit on the number of indexes — unlimited custom indexes are now supported. Input text indexes are automatically updated without affecting custom indexes.
+1. Dataset data no longer has a limit on the number of indexes — unlimited custom indexes are now supported. Input text indexes are automatically updated without affecting custom indexes.
 2. Markdown parsing now detects Chinese punctuation after links and adds spacing.
 3. Prompt-mode tool calls now support reasoning models, with improved format detection to reduce empty outputs.
 4. Merged Mongo file read streams to reduce computation. Optimized storage chunks for significantly faster large file reads — 50MB PDF read time improved by 3x.

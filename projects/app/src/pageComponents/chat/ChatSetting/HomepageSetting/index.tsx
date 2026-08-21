@@ -31,6 +31,9 @@ import {
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import dynamic from 'next/dynamic';
 import type { ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
+import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { MAX_QUICK_APP_COUNT } from './constants';
 
 const AddQuickAppModal = dynamic(
   () => import('@/pageComponents/chat/ChatSetting/HomepageSetting/AddQuickAppModal')
@@ -44,6 +47,7 @@ type Props = {
 const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
+  const { toast } = useToast();
   const { feConfigs } = useSystemStore();
 
   const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
@@ -82,12 +86,14 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
 
   const handleAddTool = useCallback(
     async (tool: FlowNodeTemplateType) => {
-      if (!selectedTools.some((t) => t.pluginId === tool.pluginId)) {
+      const toolKey = getToolIdentityKey(tool.pluginId, tool.source);
+      if (!selectedTools.some((t) => getToolIdentityKey(t.pluginId, t.source) === toolKey)) {
         const next = [
           ...selectedTools,
           {
             name: tool.name,
             pluginId: tool.pluginId || '',
+            source: tool.source,
             avatar: tool.avatar || '',
             inputs: tool.inputs?.reduce(
               (acc, input) => {
@@ -104,15 +110,18 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
     [selectedTools, setValue]
   );
   const handleRemoveToolById = useCallback(
-    (toolId?: string) => {
+    (toolId?: string, source?: string) => {
       if (!toolId) return;
-      const next = selectedTools.filter((t) => t.pluginId !== toolId);
+      const toolKey = getToolIdentityKey(toolId, source);
+      const next = selectedTools.filter(
+        (t) => getToolIdentityKey(t.pluginId, t.source) !== toolKey
+      );
       setValue('selectedTools', next);
     },
     [selectedTools, setValue]
   );
 
-  const { runAsync: onSubmit, loading: isSaving } = useRequest(
+  const { runAsync: saveChatSetting, loading: isSaving } = useRequest(
     async (values: ChatSettingType) => {
       const { quickAppList, ...params } = values;
       return updateChatSetting({
@@ -120,6 +129,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
         quickAppIds: quickAppList.map((q) => q._id),
         selectedTools: values.selectedTools.map((tool) => ({
           pluginId: tool.pluginId,
+          source: tool.source,
           inputs: tool.inputs
         }))
       });
@@ -130,6 +140,20 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
       },
       successToast: t('chat:setting.save_success')
     }
+  );
+
+  const onSubmit = useCallback(
+    (values: ChatSettingType) => {
+      if (values.quickAppList.length > MAX_QUICK_APP_COUNT) {
+        toast({
+          status: 'warning',
+          title: t('chat:setting.home.quick_apps.over_limit', { max: MAX_QUICK_APP_COUNT })
+        });
+        return;
+      }
+      return saveChatSetting(values);
+    },
+    [saveChatSetting, t, toast]
   );
 
   const {
@@ -303,7 +327,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
                         color="myGray.500"
                         display="none"
                         _hover={{ color: 'red.500' }}
-                        onClick={() => handleRemoveToolById(tool.pluginId)}
+                        onClick={() => handleRemoveToolById(tool.pluginId, tool.source)}
                       />
                     </Flex>
                   ))}
@@ -314,7 +338,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
                 <ToolSelectModal
                   selectedTools={selectedTools}
                   onAddTool={handleAddTool}
-                  onRemoveTool={(tool) => handleRemoveToolById(tool.id)}
+                  onRemoveTool={(tool) => handleRemoveToolById(tool.id, tool.source)}
                   onClose={() => setToolSelectModalOpen(false)}
                 />
               )}

@@ -13,9 +13,8 @@ import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import {
   getBdVId,
   getFastGPTSem,
-  getInviterId,
   getMsclkid,
-  removeFastGPTSem
+  onFastGPTLoginSuccess
 } from '@/web/support/marketing/utils';
 import { postAcceptInvitationLink } from '@/web/support/user/team/api';
 import { retryFn } from '@fastgpt/global/common/system/utils';
@@ -86,7 +85,6 @@ const provider = () => {
           type: loginStore?.provider || OAuthEnum.sso,
           props,
           callbackUrl: `${location.origin}/login/provider`,
-          inviterId: getInviterId(),
           bd_vid: getBdVId(),
           msclkid: getMsclkid(),
           fastgpt_sem: getFastGPTSem(),
@@ -103,8 +101,7 @@ const provider = () => {
           }, 1000);
         }
 
-        removeFastGPTSem();
-        await loginSuccess(res);
+        await onFastGPTLoginSuccess(loginSuccess, res);
       } catch (error) {
         toast({
           status: 'warning',
@@ -147,7 +144,6 @@ const provider = () => {
     (async () => {
       await retryFn(async () => clearToken());
       router.prefetch('/dashboard/agent');
-
       if (loginStore && loginStore.provider !== 'sso' && state !== loginStore.state) {
         toast({
           status: 'warning',

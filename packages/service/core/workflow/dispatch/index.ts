@@ -5,11 +5,7 @@ import type {
   ChatHistoryItemResType,
   ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type';
-import type {
-  NodeEdgeGroups,
-  NodeEdgeGroupsMap,
-  NodeOutputItemType
-} from '@fastgpt/global/core/workflow/runtime/type';
+import type { NodeOutputItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -18,11 +14,13 @@ import { normalizeAIChatValue } from '@fastgpt/global/core/chat/adapt';
 import type {
   ChatDispatchProps,
   DispatchNodeResultType,
-  ModuleDispatchProps
-} from '@fastgpt/global/core/workflow/runtime/type';
+  ModuleDispatchProps,
+  NodeEdgeGroups,
+  NodeEdgeGroupsMap
+} from '../types/runtime';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
-import { filterNodeResponseTreeData } from '@fastgpt/global/core/chat/utils';
+import { childrenResponseFields } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { filterWorkflowEdges, valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import type {
   InteractiveNodeResponseType,
@@ -52,11 +50,9 @@ import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 import type { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { createChatUsageRecord, pushChatItemUsage } from '../../../support/wallet/usage/controller';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
-import { createChatFilePreviewUrlGetter } from '../../../common/s3/sources/chat';
 import { addPreviewUrlToChatItems } from '../../chat/utils';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator';
 import { classifyEdgesByDFS, findSCCs, isNodeInCycle, getEdgeType } from '../utils/tarjan';
 import { observeWorkflowRun, observeWorkflowStep } from '../metrics';
 import { withActiveSpan } from '../../../common/tracing';
@@ -64,10 +60,9 @@ import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
 import { runWithContext } from '../utils/context';
 import { createClientAbortTracker } from './utils/clientAbort';
 import type { IncomingMessage } from 'node:http';
-import type { WorkflowNodeResponseWriter } from '../../chat/nodeResponseStorage';
 import { getNodeResponseChildResponseCount } from '../../chat/nodeResponseStorage';
 import {
-  createWorkflowEntryNodeResponseWriter,
+  createWorkflowEntryNodeResponseSink,
   type WorkflowNodeResponseWriteConfig
 } from './utils/entry';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -81,6 +76,7 @@ import {
 import { getWorkflowNodeRunParams } from './utils/runtime';
 import type { AgentSandboxPrepareAction } from './ai/agent/sub/sandbox';
 import { getWorkflowSource } from './utils/source';
+import { prepareWorkflowFileContext } from '../utils/fileContext';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -101,6 +97,10 @@ type Props = Omit<
   defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
   nodeResponseWriteConfig: WorkflowNodeResponseWriteConfig;
   agentSandboxPrepareActions?: AgentSandboxPrepareAction[];
+  /** 已在持久化前计算完成的用户级 Workflow 文件数量上限。 */
+  maxFileAmount: number;
+  /** 已按团队配置优先、系统配置兜底计算完成的单文件读取上限。 */
+  maxBytesPerFile: number;
 };
 type NodeResponseType = DispatchNodeResultType<{
   [key: string]: any;
@@ -111,6 +111,67 @@ type NodeResponseType = DispatchNodeResultType<{
 type NodeResponseCompleteType = Omit<NodeResponseType, 'responseData'> & {
   [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType;
   runtimeNodeResponseSummary?: RuntimeNodeResponseSummary;
+};
+
+const hasToolCallError = (response: ChatHistoryItemResType) =>
+  response.error !== undefined || response.errorText !== undefined;
+
+/**
+ * 工具子流程的错误只用于运行控制，不能进入用户可见的节点详情。
+ * 这里同时处理 flat `parentId` 关系和旧数据可能携带的嵌套 childrenResponses。
+ */
+export const filterToolCallNodeResponses = (responses: ChatHistoryItemResType[]) => {
+  const hiddenIds = new Set(
+    responses.flatMap((response) =>
+      hasToolCallError(response) && response.id ? [response.id] : []
+    )
+  );
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+    responses.forEach((response) => {
+      if (response.id && response.parentId && hiddenIds.has(response.parentId)) {
+        if (!hiddenIds.has(response.id)) {
+          hiddenIds.add(response.id);
+          changed = true;
+        }
+      }
+    });
+  }
+
+  const filterNestedResponse = (
+    response: ChatHistoryItemResType
+  ): ChatHistoryItemResType | undefined => {
+    if (hasToolCallError(response)) return;
+
+    const filteredResponse = { ...response };
+    childrenResponseFields.forEach((field) => {
+      const children = response[field];
+      if (!children?.length) return;
+
+      const filteredChildren = children
+        .map(filterNestedResponse)
+        .filter((child): child is ChatHistoryItemResType => !!child);
+      if (filteredChildren.length > 0) {
+        filteredResponse[field] = filteredChildren;
+      } else {
+        delete filteredResponse[field];
+      }
+    });
+
+    return filteredResponse;
+  };
+
+  return responses
+    .filter(
+      (response) =>
+        !hasToolCallError(response) &&
+        !(response.id && hiddenIds.has(response.id)) &&
+        !(response.parentId && hiddenIds.has(response.parentId))
+    )
+    .map(filterNestedResponse)
+    .filter((response): response is ChatHistoryItemResType => !!response);
 };
 
 // Run workflow
@@ -138,7 +199,6 @@ export async function dispatchWorkFlow({
     apiVersion
   } = data;
   const responseChatItemId = data.responseChatItemId;
-
   if (stream && res && !isWorkflowSseResponseInitialized(res)) {
     // HTTP SSE 响应必须由调用入口提前初始化，dispatch 只执行 workflow，不隐式管理响应协议。
     return Promise.reject(
@@ -147,26 +207,38 @@ export async function dispatchWorkFlow({
   }
   const chatSource = getWorkflowSource(runningAppInfo);
 
-  // Check url valid
-  const invalidInput = query.some((item) => {
-    if ('file' in item && item.file?.url) {
-      if (!validateFileUrlDomain(item.file.url)) {
-        return true;
-      }
-    }
-  });
-  if (invalidInput) {
-    logger.info('Workflow run blocked due to invalid file url');
-    return Promise.reject(new UserError('Invalid file url'));
-  }
-
   /* Init function */
   // Check point
   await checkTeamAIPoints(runningUserInfo.teamId);
 
-  const getPreviewUrl = createChatFilePreviewUrlGetter();
+  const {
+    fileContext,
+    fileRegistrar,
+    getPreviewUrl,
+    query: runtimeQuery,
+    histories: preparedHistories
+  } = await prepareWorkflowFileContext({
+    query,
+    histories,
+    scope: {
+      sourceType: runningAppInfo.sourceType,
+      sourceId: runningAppInfo.sourceId,
+      uid: data.uid,
+      chatId
+    },
+    maxFileAmount: data.maxFileAmount,
+    maxBytesPerFile: data.maxBytesPerFile
+  });
+  const getHistoryPreviewUrl = async (key: string) => {
+    try {
+      return await getPreviewUrl(key);
+    } catch (error) {
+      if (!(error instanceof UserError)) throw error;
+      logger.warn('Skip unavailable workflow history file', { key, message: error.message });
+    }
+  };
 
-  const [{ timezone, externalProvider }, newUsageId] = await Promise.all([
+  const [{ timezone, externalProvider }, newUsageId, runtimeHistories] = await Promise.all([
     getUserChatInfo(runningUserInfo.tmbId),
     (() => {
       if (lastInteractive?.usageId) {
@@ -190,13 +262,8 @@ export async function dispatchWorkFlow({
       }
       return usageId;
     })(),
-    // Add preview url to chat items
-    addPreviewUrlToChatItems(histories, 'chatFlow'),
-    // Add preview url to query
-    ...query.map(async (item) => {
-      if (!item.file?.key) return;
-      item.file.url = await getPreviewUrl(item.file.key);
-    }),
+    // 复用 Context 的鉴权和请求级签名缓存，刷新 history 里其它服务端文件引用。
+    addPreviewUrlToChatItems(preparedHistories, 'chatFlow', getHistoryPreviewUrl),
     // Remove stopping sign
     delAgentRuntimeStopSign({
       ...chatSource,
@@ -213,10 +280,19 @@ export async function dispatchWorkFlow({
     uid: data.uid,
     chatId,
     responseChatItemId,
-    histories,
+    histories: runtimeHistories,
     variablesConfig: data.chatConfig?.variables,
     inputVariables: data.variables,
-    externalVariables: externalProvider.externalWorkflowVariables
+    externalVariables: externalProvider.externalWorkflowVariables,
+    maxFileAmount: data.maxFileAmount,
+    resolveInputFile: async (file) => {
+      const ref = await fileRegistrar.registerInputFile({
+        file,
+        source: 'variable'
+      });
+      if (!ref) throw new UserError('Invalid workflow variable file');
+      return ref.modelUrl;
+    }
   });
 
   // Stop sign(没有 apiVersion，说明不会有暂停)
@@ -245,30 +321,35 @@ export async function dispatchWorkFlow({
         }, 100)
       : undefined;
 
-  const { nodeResponseWriter } = await createWorkflowEntryNodeResponseWriter({
+  const nodeResponseSink = await createWorkflowEntryNodeResponseSink({
     teamId: data.runningAppInfo.teamId,
     sourceType: data.runningAppInfo.sourceType,
     sourceId: data.runningAppInfo.sourceId,
     chatId,
     chatItemDataId: responseChatItemId,
-    nodeResponseWriteConfig: data.nodeResponseWriteConfig
+    nodeResponseWriteConfig: data.nodeResponseWriteConfig,
+    apiVersion: data.apiVersion,
+    responseAllData: data.responseAllData,
+    responseDetail: data.responseDetail,
+    workflowStreamResponse: data.workflowStreamResponse
   });
 
   // Init some props
   return new Promise((resolve, reject) => {
     runWithContext(
       {
-        queryUrlTypeMap: {},
-        mcpClientMemory: {}
+        mcpClientMemory: {},
+        fileContext,
+        fileRegistrar
       },
       (ctx) => {
         runWorkflow({
           ...data,
           responseChatItemId,
-          nodeResponseWriter,
+          nodeResponseSink,
           checkIsStopping,
-          query,
-          histories,
+          query: runtimeQuery,
+          histories: runtimeHistories,
           timezone,
           externalProvider,
           variableState,
@@ -277,19 +358,19 @@ export async function dispatchWorkFlow({
           concatUsage
         })
           .then(async (result) => {
-            await nodeResponseWriter.close();
+            await nodeResponseSink.close();
             resolve({
               ...result,
-              nodeResponseSummary: nodeResponseWriter.getSummary(),
+              nodeResponseSummary: nodeResponseSink.getSummary(),
               ...(data.nodeResponseWriteConfig.retainInMemory
                 ? {
-                    flatNodeResponses: nodeResponseWriter.getFlatNodeResponses()
+                    flatNodeResponses: nodeResponseSink.getFlatNodeResponses()
                   }
                 : {})
             });
           })
           .catch(async (error) => {
-            await nodeResponseWriter.close();
+            await nodeResponseSink.close();
             reject(error);
           })
           .finally(async () => {
@@ -319,7 +400,6 @@ export type RunWorkflowProps = ChatDispatchProps & {
   runtimeEdges: RuntimeEdgeItemType[];
   defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
   concatUsage?: (points: number) => any;
-  nodeResponseWriter?: WorkflowNodeResponseWriter;
 };
 /*
   工作流队列控制
@@ -928,17 +1008,20 @@ export class WorkflowQueue {
       const childResponses = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponses] || [];
       const nodeResponse = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse];
       const childResponsesForWrite =
-        this.data.nodeResponseWriter && !!nodeResponse
+        this.data.nodeResponseSink && !!nodeResponse
           ? childResponses.map((response) => ({
               ...response,
               parentId: response.parentId || nodeResponseId
             }))
           : childResponses;
       const nodeResponsesForWrite = [...childResponsesForWrite];
+      const childResponsesForDisplay = this.data.isToolCall
+        ? filterToolCallNodeResponses(childResponsesForWrite)
+        : childResponsesForWrite;
       const currentNodeChildResponseCount =
-        getNodeResponseChildResponseCount(childResponsesForWrite);
+        getNodeResponseChildResponseCount(childResponsesForDisplay);
       // format response data. Add modulename and module type
-      const formatResponseData: ChatHistoryItemResType | undefined = (() => {
+      const formatCurrentNodeResponse: ChatHistoryItemResType | undefined = (() => {
         if (!nodeResponse) return undefined;
         const val = {
           moduleName: node.name,
@@ -957,37 +1040,47 @@ export class WorkflowQueue {
         nodeResponsesForWrite.push(val);
         return val;
       })();
+      const currentNodeError =
+        formatCurrentNodeResponse?.errorText ?? formatCurrentNodeResponse?.error;
+      // 内部明细通常已能完整表达运行过程，因此省略无错误的父响应以避免重复节点。
+      // 父节点错误属于自身终态，不能被子明细替代，必须继续进入 SSE 和队列结果。
+      const formatResponseData =
+        childResponsesForWrite.length === 0 || currentNodeError !== undefined
+          ? formatCurrentNodeResponse
+          : undefined;
 
-      // 写库和 SSE 需要完整节点响应；writer 落库后，队列只继续保留摘要信号。
-      const persistedNodeResponses = this.data.nodeResponseWriter
-        ? await this.data.nodeResponseWriter.record(nodeResponsesForWrite)
+      // 工具错误仍要参与运行控制 summary，但不写入用户可见的详情。
+      const runtimeNodeResponseSummary = summarizeRuntimeNodeResponses(
+        undefined,
+        nodeResponsesForWrite
+      );
+      const nodeResponsesForDisplay = this.data.isToolCall
+        ? filterToolCallNodeResponses(nodeResponsesForWrite)
         : nodeResponsesForWrite;
+
+      // 子节点只产出响应；请求级 sink 统一负责写库、V2 实时发布和 Share 字段裁剪。
+      // 工具调用中的错误响应已经从 nodeResponsesForDisplay 移除，仍由上面的 summary 保留。
+      const persistedNodeResponses = this.data.nodeResponseSink
+        ? await this.data.nodeResponseSink.publish(
+            nodeResponsesForDisplay.map((response) => ({
+              response,
+              // 有内部明细时，父节点只作为树结构和统计信息入库，避免重复展示。
+              emit: response.id === formatCurrentNodeResponse?.id ? !!formatResponseData : true
+            }))
+          )
+        : nodeResponsesForDisplay;
       const formatResponseDataForQueue =
-        formatResponseData && this.data.nodeResponseWriter
+        formatResponseData && this.data.nodeResponseSink
           ? persistedNodeResponses.find((item) => item.id === formatResponseData.id) ||
             formatResponseData
-          : formatResponseData;
-      const childResponsesForQueue = this.data.nodeResponseWriter
-        ? childResponsesForWrite.map(
+          : nodeResponsesForDisplay.find((item) => item.id === formatResponseData?.id);
+      const childResponsesForQueue = this.data.nodeResponseSink
+        ? childResponsesForDisplay.flatMap(
             (item) =>
-              persistedNodeResponses.find((persistedItem) => persistedItem.id === item.id) || item
+              persistedNodeResponses.filter((persistedItem) => persistedItem.id === item.id)
           )
-        : childResponses;
-      const shouldDropPersistedNodeResponses = !!this.data.nodeResponseWriter;
-
-      // Response node response
-      if (this.data.apiVersion === 'v2' && persistedNodeResponses.length > 0) {
-        const filteredResponses = this.data.responseAllData
-          ? persistedNodeResponses
-          : filterNodeResponseTreeData({
-              nodeResponses: persistedNodeResponses,
-              responseDetail: this.data.responseDetail
-            });
-
-        filteredResponses.forEach((item) => {
-          this.data.workflowStreamResponse?.(workflowSseEvent.flowNodeResponse(item));
-        });
-      }
+        : childResponsesForDisplay;
+      const shouldDropPersistedNodeResponses = !!this.data.nodeResponseSink;
 
       // Add output default value
       if (dispatchRes.data) {
@@ -999,23 +1092,23 @@ export class WorkflowQueue {
       }
 
       // Error
-      if (formatResponseData?.error) {
+      if (currentNodeError !== undefined) {
         if (stepSpan) {
           stepSpan.setAttribute('fastgpt.workflow.step.error', true);
           stepSpan.setStatus({
             code: SpanStatusCode.ERROR,
-            message: String(formatResponseData.error)
+            message: String(currentNodeError)
           });
         }
-        logger.warn('Workflow node returned error', { error: formatResponseData.error });
+        logger.warn('Workflow node returned error', { error: currentNodeError });
       } else if (stepSpan) {
         stepSpan.setStatus({ code: SpanStatusCode.OK });
       }
 
-      if (stepSpan && formatResponseData?.runningTime !== undefined) {
+      if (stepSpan && formatCurrentNodeResponse?.runningTime !== undefined) {
         stepSpan.setAttribute(
           'fastgpt.workflow.step.running_time_seconds',
-          formatResponseData.runningTime
+          formatCurrentNodeResponse.runningTime
         );
       }
 
@@ -1027,7 +1120,7 @@ export class WorkflowQueue {
           ...dispatchRes,
           runtimeNodeResponseSummary: mergeRuntimeNodeResponseSummary(
             dispatchRes.runtimeNodeResponseSummary,
-            summarizeRuntimeNodeResponses(undefined, persistedNodeResponses)
+            runtimeNodeResponseSummary
           ),
           ...(shouldDropPersistedNodeResponses
             ? {
@@ -1459,7 +1552,7 @@ export class WorkflowQueue {
     }
 
     return {
-      planId: interactiveResult.planId,
+      askId: interactiveResult.askId,
       interactive: interactiveResult
     };
   }
@@ -1529,7 +1622,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         },
         async (workflowSpan) => {
           const startTime = Date.now();
-          const nodeResponseWriter = data.nodeResponseWriter;
+          const nodeResponseSink = data.nodeResponseSink;
           try {
             await rewriteRuntimeWorkFlow({
               teamId: data.runningAppInfo.teamId,
@@ -1628,7 +1721,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
                 workflowQueue.customFeedbackList.length > 0
                   ? workflowQueue.customFeedbackList
                   : undefined,
-              nodeResponseSummary: nodeResponseWriter?.getSummary(),
+              nodeResponseSummary: nodeResponseSink?.getSummary?.(),
               runtimeNodeResponseSummary: workflowQueue.runtimeNodeResponseSummary,
               durationSeconds
             };

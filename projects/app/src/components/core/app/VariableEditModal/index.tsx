@@ -74,6 +74,11 @@ const VariableEditModal = ({
         !value.list?.length
       ) {
         setValue('list', [{ label: '', value: '' }]);
+      } else if (
+        typeEnum !== VariableInputEnum.select &&
+        typeEnum !== VariableInputEnum.multipleSelect
+      ) {
+        setValue('list', undefined);
       }
       if (typeEnum === VariableInputEnum.datasetSelect && !value.datasetOptions) {
         setValue('datasetOptions', []);
@@ -166,7 +171,7 @@ const VariableEditModal = ({
     <MyModal
       iconSrc="core/app/simpleMode/variable"
       title={t('common:core.module.Variable Setting')}
-      isOpen={true}
+      isOpen
       onClose={onClose}
       maxW={['90vw', '1078px']}
       w={'100%'}

@@ -59,16 +59,18 @@ describe('StartEnterpriseAuthBodySchema', () => {
     ).toBe(false);
   });
 
-  it('银行账号需为 15-19 位数字，并在入参解析时去除空格', () => {
+  it('银行账号不限制长度，并在入参解析时去除空格', () => {
     expect(StartEnterpriseAuthBodySchema.parse(validBody).bankAccount).toBe('4111111111111111');
-    expect(
-      StartEnterpriseAuthBodySchema.parse({
-        ...validBody,
-        bankAccount: '571919104910201'
-      }).bankAccount
-    ).toBe('571919104910201');
+    ['1', '1'.repeat(32)].forEach((bankAccount) => {
+      expect(
+        StartEnterpriseAuthBodySchema.parse({
+          ...validBody,
+          bankAccount
+        }).bankAccount
+      ).toBe(bankAccount);
+    });
 
-    ['4111-1111-1111-1111', '1'.repeat(14), '1'.repeat(20)].forEach((bankAccount) => {
+    ['', '   ', '4111-1111-1111-1111'].forEach((bankAccount) => {
       expect(
         StartEnterpriseAuthBodySchema.safeParse({
           ...validBody,

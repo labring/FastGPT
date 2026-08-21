@@ -15,24 +15,26 @@ import dayjs from 'dayjs';
 import { type ClientSession } from '../../../common/mongo';
 import { addMonths, addDays } from 'date-fns';
 import { readFromSecondary } from '../../../common/mongo/utils';
-import {
-  setRedisCache,
-  getRedisCache,
-  delRedisCache,
-  CacheKeyEnum,
-  CacheKeyEnumTime,
-  incrValueToCache
-} from '../../../common/redis/cache';
+import { TeamPointCache, teamQpmCache } from '@fastgpt/dal/redis/caches';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { serviceEnv } from '../../../env';
+import { getRuntimeStandardPlanConfig } from '@fastgpt/global/support/wallet/sub/utils';
 
 const logger = getLogger(LogCategories.MODULE.WALLET.SUB);
+const teamPointCache = new TeamPointCache({ logger });
+
+/** 将非有限套餐数值归一化为 null，统一表示无限或不限制。 */
+const normalizeUnlimitedValue = (value: number): number | null =>
+  Number.isFinite(value) ? value : null;
 
 export const getStandardPlansConfig = () => {
   return global?.subPlans?.standard;
 };
 export const getStandardPlanConfig = (level: `${StandardSubLevelEnum}`) => {
-  return global.subPlans?.standard?.[level];
+  return getRuntimeStandardPlanConfig({
+    plans: global.subPlans?.standard,
+    level
+  });
 };
 
 export const sortStandPlans = (plans: TeamSubSchemaType[]) => {
@@ -41,11 +43,22 @@ export const sortStandPlans = (plans: TeamSubSchemaType[]) => {
       standardSubLevelMap[b.currentSubLevel].weight - standardSubLevelMap[a.currentSubLevel].weight
   );
 };
+
+/**
+ * 将标准套餐的历史数据库记录与当前静态配置合并为完整的客户端格式。
+ * 缺失的续订字段仅在读取结果中按当前套餐补齐，不回写原始订阅记录。
+ */
 export const buildStandardPlan = (
   standard: TeamSubSchemaType,
   standardConstants: TeamStandardSubPlanItemType
 ): TeamPlanStandardType => ({
   ...standard,
+  currentMode: standard.currentMode ?? SubModeEnum.month,
+  nextMode: standard.nextMode ?? standard.currentMode ?? SubModeEnum.month,
+  nextSubLevel: standard.nextSubLevel ?? standard.currentSubLevel,
+  totalPoints: normalizeUnlimitedValue(standard.totalPoints),
+  surplusPoints: normalizeUnlimitedValue(standard.surplusPoints),
+  currentExtraDatasetSize: standard.currentExtraDatasetSize ?? 0,
   name: standardConstants.name,
   desc: standardConstants.desc,
   price: standardConstants.price,
@@ -80,7 +93,7 @@ export const initTeamFreePlan = async ({
   session?: ClientSession;
 }) => {
   const freePoints = isWecomTeam
-    ? Math.round((global.subPlans?.standard?.basic.totalPoints ?? 4000) / 2)
+    ? Math.round((global.subPlans?.standard?.basic?.totalPoints ?? 4000) / 2)
     : global?.subPlans?.standard?.[StandardSubLevelEnum.free]?.totalPoints || 100;
 
   const freePlan = await MongoTeamSub.findOne({
@@ -175,14 +188,9 @@ export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
 
   const standard = plans[0];
 
-  const standardConstants =
-    standard?.currentSubLevel && standardPlans
-      ? standardPlans[
-          standard.currentSubLevel === StandardSubLevelEnum.custom
-            ? StandardSubLevelEnum.advanced
-            : standard.currentSubLevel
-        ]
-      : undefined;
+  const standardConstants = standard?.currentSubLevel
+    ? getStandardPlanConfig(standard.currentSubLevel)
+    : undefined;
 
   return {
     [SubTypeEnum.standard]:
@@ -226,38 +234,45 @@ export const getTeamPlanStatus = async ({
   }
 
   const totalPoints = standardPlans
-    ? (standardPlan?.totalPoints || 0) +
-      extraPoints.reduce((acc, cur) => acc + (cur.totalPoints || 0), 0)
-    : Infinity;
-  const surplusPoints =
-    (standardPlan?.surplusPoints || 0) +
-    extraPoints.reduce((acc, cur) => acc + (cur.surplusPoints || 0), 0);
+    ? normalizeUnlimitedValue(
+        (standardPlan?.totalPoints || 0) +
+          extraPoints.reduce((acc, cur) => acc + (cur.totalPoints || 0), 0)
+      )
+    : null;
+  const surplusPoints = standardPlans
+    ? normalizeUnlimitedValue(
+        (standardPlan?.surplusPoints || 0) +
+          extraPoints.reduce((acc, cur) => acc + (cur.surplusPoints || 0), 0)
+      )
+    : null;
 
-  const standardMaxDatasetSize =
+  const configuredStandardMaxDatasetSize =
     standardPlan?.currentSubLevel && standardPlans
-      ? standardPlan?.maxDatasetSize ||
-        standardPlans[
-          standardPlan.currentSubLevel === StandardSubLevelEnum.custom
-            ? StandardSubLevelEnum.advanced
-            : standardPlan.currentSubLevel
-        ]?.maxDatasetSize ||
-        Infinity
-      : Infinity;
-  const totalDatasetSize =
-    standardMaxDatasetSize +
-    extraDatasetSize.reduce((acc, cur) => acc + (cur.currentExtraDatasetSize || 0), 0);
-
-  /** 静态的套餐配置，如果是 custom 则返回 advanced */
-  const standardConstants =
-    standardPlan?.currentSubLevel && standardPlans
-      ? standardPlans[
-          standardPlan.currentSubLevel === StandardSubLevelEnum.custom
-            ? StandardSubLevelEnum.advanced
-            : standardPlan.currentSubLevel
-        ]
+      ? (standardPlan?.maxDatasetSize ??
+        getStandardPlanConfig(standardPlan.currentSubLevel)?.maxDatasetSize)
       : undefined;
+  const standardMaxDatasetSize =
+    configuredStandardMaxDatasetSize === undefined
+      ? null
+      : normalizeUnlimitedValue(configuredStandardMaxDatasetSize);
+  const totalDatasetSize =
+    standardMaxDatasetSize === null
+      ? null
+      : normalizeUnlimitedValue(
+          standardMaxDatasetSize +
+            extraDatasetSize.reduce((acc, cur) => acc + (cur.currentExtraDatasetSize || 0), 0)
+        );
 
-  teamPoint.updateTeamPointsCache({ teamId, totalPoints, surplusPoints });
+  const standardConstants = standardPlan?.currentSubLevel
+    ? getStandardPlanConfig(standardPlan.currentSubLevel)
+    : undefined;
+
+  // Redis 只承担积分读取加速，刷新失败或变慢都不应阻塞套餐主流程。
+  if (totalPoints === null || surplusPoints === null) {
+    void teamPointCache.clear(teamId);
+  } else {
+    void teamPointCache.set({ teamId, totalPoints, surplusPoints });
+  }
 
   return {
     [SubTypeEnum.standard]: standardConstants
@@ -265,7 +280,7 @@ export const getTeamPlanStatus = async ({
       : undefined,
 
     totalPoints,
-    usedPoints: totalPoints - surplusPoints,
+    usedPoints: totalPoints === null || surplusPoints === null ? null : totalPoints - surplusPoints,
 
     datasetMaxSize: totalDatasetSize
   };
@@ -274,17 +289,10 @@ export const getTeamPlanStatus = async ({
 /* ===== Buffer controller ===== */
 export const teamPoint = {
   getTeamPoints: async ({ teamId }: { teamId: string }) => {
-    const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
-    const totalCacheKey = `${CacheKeyEnum.team_point_total}:${teamId}`;
+    const cached = await teamPointCache.get(teamId);
 
-    const [surplusCacheStr, totalCacheStr] = await Promise.all([
-      getRedisCache(surplusCacheKey),
-      getRedisCache(totalCacheKey)
-    ]);
-
-    if (surplusCacheStr && totalCacheStr) {
-      const totalPoints = Number(totalCacheStr);
-      const surplusPoints = Number(surplusCacheStr);
+    if (cached) {
+      const { totalPoints, surplusPoints } = cached;
       return {
         totalPoints,
         surplusPoints,
@@ -295,13 +303,15 @@ export const teamPoint = {
     const planStatus = await getTeamPlanStatus({ teamId });
     return {
       totalPoints: planStatus.totalPoints,
-      surplusPoints: planStatus.totalPoints - planStatus.usedPoints,
+      surplusPoints:
+        planStatus.totalPoints === null || planStatus.usedPoints === null
+          ? null
+          : planStatus.totalPoints - planStatus.usedPoints,
       usedPoints: planStatus.usedPoints
     };
   },
   incrTeamPointsCache: async ({ teamId, value }: { teamId: string; value: number }) => {
-    const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
-    await incrValueToCache(surplusCacheKey, value);
+    await teamPointCache.incrementSurplus({ teamId, value });
   },
   updateTeamPointsCache: async ({
     teamId,
@@ -312,29 +322,19 @@ export const teamPoint = {
     totalPoints: number;
     surplusPoints: number;
   }) => {
-    const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
-    const totalCacheKey = `${CacheKeyEnum.team_point_total}:${teamId}`;
-
-    await Promise.all([
-      setRedisCache(surplusCacheKey, surplusPoints, CacheKeyEnumTime.team_point_surplus),
-      setRedisCache(totalCacheKey, totalPoints, CacheKeyEnumTime.team_point_total)
-    ]);
+    await teamPointCache.set({ teamId, totalPoints, surplusPoints });
   },
   clearTeamPointsCache: async (teamId: string) => {
-    const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
-    const totalCacheKey = `${CacheKeyEnum.team_point_total}:${teamId}`;
-
-    await Promise.all([delRedisCache(surplusCacheKey), delRedisCache(totalCacheKey)]);
+    await teamPointCache.clear(teamId);
   }
 };
 export const teamQPM = {
   getTeamQPMLimit: async (teamId: string): Promise<number | undefined> => {
     // 1. 尝试从缓存中获取
-    const cacheKey = `${CacheKeyEnum.team_qpm_limit}:${teamId}`;
-    const cached = await getRedisCache(cacheKey);
+    const cached = await teamQpmCache.getCachedLimit(teamId);
 
-    if (cached) {
-      return Number(cached);
+    if (cached !== null) {
+      return cached;
     }
 
     // 2. Computed
@@ -351,12 +351,10 @@ export const teamQPM = {
     return limit;
   },
   setCachedTeamQPMLimit: async (teamId: string, limit: number): Promise<void> => {
-    const cacheKey = `${CacheKeyEnum.team_qpm_limit}:${teamId}`;
-    await setRedisCache(cacheKey, limit.toString(), CacheKeyEnumTime.team_qpm_limit);
+    await teamQpmCache.setCachedLimit({ teamId, limit });
   },
   clearTeamQPMLimitCache: async (teamId: string): Promise<void> => {
-    const cacheKey = `${CacheKeyEnum.team_qpm_limit}:${teamId}`;
-    await delRedisCache(cacheKey);
+    await teamQpmCache.clearCachedLimit(teamId);
   }
 };
 

@@ -2,15 +2,17 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import {
-  type DispatchNodeResultType,
-  type ModuleDispatchProps
-} from '@fastgpt/global/core/workflow/runtime/type';
+import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { assertMCPUrlNotInternal, MCPClient } from '../../../app/mcp';
 import { getSecretValue } from '../../../../common/secret/utils';
-import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
+import type {
+  McpToolConfigType,
+  McpToolDataType
+} from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
+import { getHTTPToolRequestSchema } from '@fastgpt/global/core/app/tool/httpTool/utils';
+import { assertToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
@@ -21,7 +23,8 @@ import { getWorkflowContext } from '../../utils/context';
 import {
   getToolNameCandidates,
   getToolRawId,
-  isDebugToolSource
+  isDebugToolSource,
+  isTeamPluginSource
 } from '@fastgpt/global/core/app/tool/utils';
 import { pluginClient } from '../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
@@ -30,6 +33,10 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getWorkflowAppId } from '../utils/source';
+import {
+  assertTeamPluginSourceAccess,
+  getRawPluginIdFromSystemToolId
+} from '../../../plugin/teamPluginPolicy';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -74,8 +81,27 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
   const getSystemToolSource = () => {
     const toolConfigSource = toolConfig?.systemTool?.source;
     if (isDebugToolSource(toolConfigSource)) return toolConfigSource;
+    if (isTeamPluginSource(toolConfigSource)) return toolConfigSource;
 
     return 'system';
+  };
+
+  const resolveSystemToolRuntimeSource = async ({
+    source,
+    toolId
+  }: {
+    source: string;
+    toolId: string;
+  }) => {
+    if (!isTeamPluginSource(source)) return source;
+
+    await assertTeamPluginSourceAccess({
+      teamId: String(runningUserInfo.teamId),
+      source,
+      pluginId: getRawPluginIdFromSystemToolId(toolId)
+    });
+
+    return source;
   };
 
   try {
@@ -94,10 +120,14 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     // run system tool
     if (toolConfig?.systemTool?.toolId) {
       const toolSource = getSystemToolSource();
+      const runtimeToolSource = await resolveSystemToolRuntimeSource({
+        source: toolSource,
+        toolId: toolConfig.systemTool.toolId
+      });
       const systemToolRepo = SystemToolRepo.getInstance();
       const tool = await systemToolRepo.getSystemToolRuntime({
         pluginId: toolConfig.systemTool.toolId,
-        source: toolSource,
+        source: runtimeToolSource,
         version
       });
 
@@ -112,13 +142,20 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
             });
           case SystemToolSecretInputTypeEnum.system:
           default:
-            if (isDebugToolSource(toolSource)) return {};
+            if (isDebugToolSource(runtimeToolSource)) return {};
             return tool.secretsVal ?? {};
         }
       })();
       toolInput = Object.fromEntries(
         Object.entries(params).filter(([key]) => key !== NodeInputKeyEnum.systemInputConfig)
       );
+      const toolDetail = await systemToolRepo.getSystemToolDetail({
+        pluginId: toolConfig.systemTool.toolId,
+        source: toolSource,
+        version: tool.version ?? version,
+        fallbackLatestVersion: true
+      });
+      assertToolRuntimeParams({ jsonSchema: toolDetail.inputSchema, params: toolInput });
 
       const invokeToken = appId
         ? new InvokeProcessor({
@@ -138,7 +175,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       const res = await pluginClient.runToolStream({
         pluginId: formatToolId,
         version: tool.version ?? version ?? '',
-        source: toolSource,
+        source: runtimeToolSource,
         input: toolInput,
         secrets: inputConfigParams,
         ...(childId ? { childId } : {}),
@@ -249,8 +286,11 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         versionId: version
       });
 
-      const { headerSecret, url } =
-        tool.nodes[0].toolConfig?.mcpToolSet ?? tool.nodes[0].inputs[0].value;
+      const mcpToolSet = tool.nodes[0].toolConfig?.mcpToolSet ?? tool.nodes[0].inputs[0].value;
+      const { headerSecret, url, toolList } = mcpToolSet;
+      const mcpTool = getToolNameCandidates(toolName)
+        .map((name) => toolList?.find((tool: McpToolConfigType) => tool.name === name))
+        .find(Boolean);
 
       await assertMCPUrlNotInternal(url);
 
@@ -267,6 +307,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       context.mcpClientMemory[url] = mcpClient;
 
       toolInput = params;
+      assertToolRuntimeParams({ jsonSchema: mcpTool?.inputSchema, params });
       const result = await mcpClient.toolCall({ toolName, params, closeConnection: false });
       return {
         data: { [NodeOutputKeyEnum.rawResponse]: result },
@@ -303,6 +344,10 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       }
 
       toolInput = params;
+      assertToolRuntimeParams({
+        jsonSchema: getHTTPToolRequestSchema(httpTool),
+        params
+      });
       const { data, errorMsg } = await runHTTPTool({
         baseUrl: baseUrl || '',
         toolPath: httpTool.path,
@@ -353,6 +398,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         })
       });
       toolInput = restParams;
+      assertToolRuntimeParams({ jsonSchema: toolData?.inputSchema, params: restParams });
       const result = await mcpClient.toolCall({ toolName, params: restParams });
 
       return {

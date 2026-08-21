@@ -1,15 +1,17 @@
 ---
-title: 'V4.14.3(包含升级脚本)'
+title: 'V4.14.3'
 description: 'FastGPT V4.14.3 更新说明'
+releaseTime: '2025-11-27'
+upgradeTags:
+  - 升级脚本
 ---
-
 
 ## 更新指南
 
 ### 1. 更新镜像：
 
-- 更新 FastGPT 镜像tag: v4.14.3
-- 更新 FastGPT 商业版镜像tag: v4.14.3
+- 更新 FastGPT 镜像 tag: v4.14.3
+- 更新 FastGPT 商业版镜像 tag: v4.14.3
 - 更新 fastgpt-plugin 镜像 tag: v0.3.3
 - mcp_server 无需更新
 - Sandbox 无需更新
@@ -17,7 +19,7 @@ description: 'FastGPT V4.14.3 更新说明'
 
 ### 2. 执行升级脚本
 
-从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成 **FastGPT 域名**。
 
 ```bash
 curl --location --request POST 'https://{{host}}/api/admin/initv4143' \

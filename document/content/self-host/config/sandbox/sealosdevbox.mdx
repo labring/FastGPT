@@ -13,6 +13,7 @@ import { Alert } from '@/components/docs/Alert';
 
 1. 已部署 FastGPT 商业版，并确认团队拥有 Agent Sandbox 使用权限。
 2. 向客服申请 Sealos Devbox 接入信息：Devbox 服务地址、访问 Token、运行态镜像。
+3. 参考 [OpenSandbox 配置](./opensandbox) 部署 `fastgpt-agent-sandbox-proxy` 服务。
 
 ## 配置 FastGPT 环境变量
 
@@ -29,13 +30,30 @@ AGENT_SANDBOX_SEALOS_TOKEN=replace_with_sealos_devbox_token
 
 # 沙盒镜像版本
 AGENT_SANDBOX_SEALOS_IMAGE=hub.hzh.sealos.run/labring/devbox-sandbox:v0.2.0
+
+# Devbox 单实例资源上限；存储容量单位为 GB
+AGENT_SANDBOX_CPU_COUNT=1
+AGENT_SANDBOX_MEMORY_MIB=2048
+AGENT_SANDBOX_STORAGE_SIZE_GI=1
 ```
+
+## 自定义依赖源
+
+OpenSandbox 和 Sealos Devbox 共用同一套依赖源配置；其中 apt 镜像仅对 root 权限的 Agent 沙箱有效：
+
+```dotenv
+AGENT_SANDBOX_NPM_REGISTRY=https://registry.npmmirror.com
+AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian
+```
+
+对于 root 权限的 Agent 沙箱，FastGPT 会根据发行版生成并覆盖标准的 Ubuntu 或 Debian `.sources` 文件，并在覆盖已有文件前创建 `.copy` 备份。删除该环境变量后，有 `.copy` 备份的文件会恢复，没有备份的文件会跳过。初始化阶段不会执行 `apt-get update`。arm64 运行镜像应配置提供对应架构软件包的镜像地址。
 
 ## 常见问题
 
-### 提示 AGENT_SANDBOX_PROXY_URL is required
+### 提示 AGENT_SANDBOX_PROXY_URL 或 AGENT_SANDBOX_PREVIEW_PROXY_URL is required
 
-启用 `AGENT_SANDBOX_PROVIDER=sealosdevbox` 后，必须配置 `AGENT_SANDBOX_PROXY_URL`。该地址是浏览器访问代理服务的 WebSocket 地址，例如 `wss://sandbox-proxy.example.com`，不是 FastGPT 主站地址。
+启用 `AGENT_SANDBOX_PROVIDER=sealosdevbox` 后，`fastgpt-app` 必须配置 `AGENT_SANDBOX_PROXY_SECRET`、`AGENT_SANDBOX_PROXY_URL` 和 `AGENT_SANDBOX_PREVIEW_PROXY_URL`，`fastgpt-pro` 必须配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。Proxy Secret 需与 `fastgpt-agent-sandbox-proxy` 服务中的值一致，且不少于 32 位。
 
 ### 提示 AGENT_SANDBOX_SEALOS_IMAGE is required
 

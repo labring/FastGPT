@@ -6,11 +6,11 @@ import type {
   SandboxGetTicketResponse,
   SandboxGetHtmlPreviewLinkBody,
   SandboxGetHtmlPreviewLinkResponse,
-  SandboxUploadBody,
+  SandboxUploadQuery,
   SandboxUploadResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { parseContentDispositionFilename } from '@fastgpt/global/common/file/tools';
-import { POST } from '@/web/common/api/request';
+import { POST, POSTRawFile } from '@/web/common/api/request';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
@@ -27,7 +27,7 @@ type SandboxDownloadClientBody = SandboxClientBody<SandboxDownloadBody>;
 type SandboxCheckExistClientBody = SandboxClientBody<SandboxCheckExistBody>;
 type SandboxGetTicketClientBody = SandboxClientBody<SandboxGetTicketBody>;
 type SandboxGetHtmlPreviewLinkClientBody = SandboxClientBody<SandboxGetHtmlPreviewLinkBody>;
-type SandboxUploadClientBody = SandboxClientBody<SandboxUploadBody>;
+type SandboxUploadClientQuery = SandboxClientBody<SandboxUploadQuery>;
 
 /**
  * share 模式下后端 schema 要求只传 outLinkAuthData，真实 appId 由鉴权解析。
@@ -112,7 +112,7 @@ export const checkSandboxExist = async (data: SandboxCheckExistClientBody) =>
   POST<SandboxCheckExistResponse>('/core/ai/sandbox/checkExist', normalizeSandboxRequest(data));
 
 /**
- * 获取 HTML 预览链接 (S3 托管)
+ * 获取 HTML 预览链接（agent-proxy 直连 sandbox workspace）
  */
 export const getHtmlPreviewLink = (data: SandboxGetHtmlPreviewLinkClientBody) =>
   POST<SandboxGetHtmlPreviewLinkResponse>(
@@ -124,17 +124,18 @@ export const getSandboxTicket = async (data: SandboxGetTicketClientBody) =>
   POST<SandboxGetTicketResponse>('/core/ai/sandbox/getTicket', normalizeSandboxRequest(data));
 
 /**
- * 通过主站 API 复用 sandbox provider 文件上传能力，避免走 ide-agent WebSocket base64。
+ * 将文件作为原始请求体流式写入 sandbox，避免 WebSocket base64 和主站临时文件。
  */
 export const uploadSandboxFile = async ({
   file,
   ...data
-}: SandboxUploadClientBody & { file: File }) => {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('data', JSON.stringify(normalizeSandboxRequest(data)));
-
-  return POST<SandboxUploadResponse>('/core/ai/sandbox/upload', formData, {
-    timeout: 10 * 60 * 1000
+}: SandboxUploadClientQuery & { file: File }) => {
+  return POSTRawFile<SandboxUploadResponse>({
+    url: '/core/ai/sandbox/upload',
+    file,
+    query: normalizeSandboxRequest(data),
+    config: {
+      timeout: 10 * 60 * 1000
+    }
   });
 };

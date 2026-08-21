@@ -9,7 +9,7 @@ import { type Node, useReactFlow } from 'reactflow';
 import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import dagre from '@dagrejs/dagre';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { cloneDeep } from 'lodash';
+import { cloneDeep } from 'lodash-es';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowUIContext } from '../../context/workflowUIContext';

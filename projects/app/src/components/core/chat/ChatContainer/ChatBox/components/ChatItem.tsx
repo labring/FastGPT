@@ -10,7 +10,10 @@ import { useTranslation } from 'next-i18next';
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
-import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import {
+  ChatItemContext,
+  type OnOpenCiteModalProps
+} from '@/web/core/chat/context/chatItemContext';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useMemoizedFn } from 'ahooks';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
@@ -22,6 +25,7 @@ import { hasAiAnswerContent } from './AIChatBubble/utils';
 import ChatErrorCard from './ChatErrorCard';
 import { shouldShowChatItemInlineError } from '../utils/error';
 import { toChatAuthApiTarget } from '@/web/core/chat/utils';
+import { ChatBoxContentMaxWidth } from '../constants';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -202,44 +206,47 @@ const ChatItem = (props: Props) => {
   }, [chat.obj, chat.value]);
 
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
-  const onOpenCiteModal = useMemoizedFn(
-    (item?: {
-      collectionId?: string;
-      sourceId?: string;
-      sourceName?: string;
-      datasetId?: string;
-      quoteId?: string;
-    }) => {
-      const collectionIdList = item?.collectionId
-        ? [item.collectionId]
-        : [...new Set(quoteList.map((item) => item.collectionId))];
+  const onOpenCiteModal = useMemoizedFn((item?: OnOpenCiteModalProps) => {
+    const selectedQuote = item?.quoteId
+      ? quoteList.find((quote) => quote.id === item.quoteId)
+      : undefined;
+    const isSingleQuote = item?.singleQuote === true && !!selectedQuote;
 
-      setCiteModalData({
-        rawSearch: quoteList,
-        metadata:
-          item?.collectionId && isShowFullText
-            ? {
-                ...chatAuthTarget,
-                chatId: chatId,
-                chatItemDataId: chat.dataId,
-                collectionId: item.collectionId,
-                collectionIdList,
-                sourceId: item.sourceId || '',
-                sourceName: item.sourceName || '',
-                datasetId: item.datasetId || '',
-                quoteId: item.quoteId
-              }
-            : {
-                ...chatAuthTarget,
-                chatId: chatId,
-                chatItemDataId: chat.dataId,
-                collectionIdList,
-                sourceId: item?.sourceId,
-                sourceName: item?.sourceName
-              }
-      });
-    }
-  );
+    // 引用已经不在当前消息的 quoteList 时，不能打开空的单条阅读器。
+    if (item?.singleQuote && !isSingleQuote) return;
+
+    const collectionId = item?.collectionId ?? selectedQuote?.collectionId;
+    const rawSearch = isSingleQuote && selectedQuote ? [selectedQuote] : quoteList;
+    const collectionIdList = collectionId
+      ? [collectionId]
+      : [...new Set(quoteList.map((quote) => quote.collectionId))];
+
+    setCiteModalData({
+      rawSearch,
+      singleQuote: isSingleQuote,
+      metadata:
+        collectionId && isShowFullText
+          ? {
+              ...chatAuthTarget,
+              chatId,
+              chatItemDataId: chat.dataId,
+              collectionId,
+              collectionIdList,
+              sourceId: item?.sourceId ?? selectedQuote?.sourceId ?? '',
+              sourceName: item?.sourceName ?? selectedQuote?.sourceName ?? '',
+              datasetId: item?.datasetId ?? selectedQuote?.datasetId ?? '',
+              quoteId: item?.quoteId
+            }
+          : {
+              ...chatAuthTarget,
+              chatId,
+              chatItemDataId: chat.dataId,
+              collectionIdList,
+              sourceId: item?.sourceId ?? selectedQuote?.sourceId,
+              sourceName: item?.sourceName ?? selectedQuote?.sourceName
+            }
+    });
+  });
 
   return (
     <Flex data-chat-id={chat.dataId} direction={'column'} gap={4}>
@@ -299,14 +306,14 @@ const ChatItem = (props: Props) => {
               key={i}
               className="chat-box-card"
               w={'100%'}
-              maxW={boxBodyProps?.maxW ?? (isPc ? '700px' : 'calc(100% - 25px)')}
+              maxW={boxBodyProps?.maxW ?? (isPc ? ChatBoxContentMaxWidth : 'calc(100% - 25px)')}
               mx={boxBodyProps?.mx ?? boxBodyProps?.margin ?? (isPc ? 'auto' : 0)}
               textAlign={styleMap.textAlign}
             >
               <HumanChatBubble
                 chatValue={value as UserChatItemValueItemType[]}
                 chatTime={i === splitAiResponseResults.length - 1 ? chat.time : undefined}
-                canEdit={!isChatting}
+                canEdit={!isChatting && !isChatLog}
                 onEditSubmit={onEditSubmit}
               >
                 {renderCommonFooter()}
@@ -320,7 +327,7 @@ const ChatItem = (props: Props) => {
             key={i}
             className="chat-box-card"
             w={'100%'}
-            maxW={boxBodyProps?.maxW ?? (isPc ? '700px' : 'calc(100% - 25px)')}
+            maxW={boxBodyProps?.maxW ?? (isPc ? ChatBoxContentMaxWidth : 'calc(100% - 25px)')}
             mx={boxBodyProps?.mx ?? boxBodyProps?.margin ?? (isPc ? 'auto' : 0)}
             textAlign={styleMap.textAlign}
           >

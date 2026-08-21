@@ -11,7 +11,7 @@ import {
   HStack
 } from '@chakra-ui/react';
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getOperationLogs } from '@/web/support/user/team/operantionLog/api';
@@ -28,7 +28,7 @@ import { specialProcessors } from './processors';
 import { defaultMetadataProcessor } from './processors/commonProcessor';
 
 function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation(['account_team', 'user']);
   const [searchParams, setSearchParams] = useState<{
     tmbIds?: string[];
     events?: AuditEventEnum[];

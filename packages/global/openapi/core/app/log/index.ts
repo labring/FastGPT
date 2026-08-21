@@ -66,7 +66,7 @@ export const AppLogPath: OpenAPIPath = {
     post: {
       summary: '获取应用日志列表',
       description: '分页获取应用的对话日志列表，支持按时间范围、来源、用户等条件筛选',
-      tags: [DevApiTagsMap.appLog],
+      tags: [DevApiTagsMap.appLog, SystemOpenApiTagMap.appLog],
       requestBody: {
         content: {
           'application/json': {
@@ -158,7 +158,7 @@ export const AppLogPath: OpenAPIPath = {
     post: {
       summary: '获取日志用户列表',
       description: '获取应用日志中的用户列表，包括外链用户和团队成员，按对话数量排序',
-      tags: [DevApiTagsMap.appLog],
+      tags: [DevApiTagsMap.appLog, SystemOpenApiTagMap.appLog],
       requestBody: {
         content: {
           'application/json': {

@@ -1,9 +1,11 @@
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import { Box, Flex } from '@chakra-ui/react';
 
-import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
+import NodeInputSelect, {
+  getSelectedRenderTypeState
+} from '@fastgpt/web/components/core/workflow/NodeInputSelect';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import ValueTypeLabel from '../ValueTypeLabel';
 import { useContextSelector } from 'use-context-selector';
@@ -12,39 +14,54 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
+import { getToolInputDisplayRenderTypeList } from '@fastgpt/global/core/app/formEdit/utils';
+import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
 
 type Props = {
   nodeId: string;
   input: FlowNodeInputItemType;
   RightComponent?: React.JSX.Element;
+  isTool?: boolean;
 };
 
-const InputLabel = ({ nodeId, input, RightComponent }: Props) => {
+const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
   const { t } = useTranslation();
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
-  const { description, required, label, selectedTypeIndex, renderTypeList, valueType, valueDesc } =
-    input;
+  const { description, required, label, renderTypeList, valueType, valueDesc } = input;
+  const renderType =
+    getSelectedInputRenderType(input) ?? renderTypeList?.[0] ?? FlowNodeInputTypeEnum.input;
+  const displayRenderTypeList = useMemo(
+    () =>
+      getToolInputDisplayRenderTypeList({
+        input,
+        showAgentGenerated: !!isTool
+      }),
+    [input, isTool]
+  );
+  const displayRenderTypeIndex = displayRenderTypeList.findIndex((item) => item === renderType);
 
   const onChangeRenderType = useCallback(
     (e: string) => {
-      const index = renderTypeList.findIndex((item) => item === e) || 0;
+      const nextInput = {
+        ...input,
+        ...getSelectedRenderTypeState({
+          renderTypeList: displayRenderTypeList,
+          selectedType: e as FlowNodeInputTypeEnum
+        }),
+        value: undefined
+      };
 
       onChangeNode({
         nodeId,
         type: 'updateInput',
         key: input.key,
-        value: {
-          ...input,
-          selectedTypeIndex: index,
-          value: undefined
-        }
+        value: nextInput
       });
     },
-    [input, nodeId, onChangeNode, renderTypeList]
+    [displayRenderTypeList, input, nodeId, onChangeNode]
   );
-  const renderType = renderTypeList?.[selectedTypeIndex || 0];
 
   return (
     <Box display={'flex'} alignItems={'center'} position={'relative'}>
@@ -60,12 +77,15 @@ const InputLabel = ({ nodeId, input, RightComponent }: Props) => {
       )}
 
       {/* input type select */}
-      {renderTypeList && renderTypeList.length > 1 && (
+      {displayRenderTypeList && displayRenderTypeList.length > 1 && (
         <Box ml={2} className="nodrag">
           <NodeInputSelect
-            renderTypeList={renderTypeList}
-            renderTypeIndex={selectedTypeIndex}
+            renderTypeList={displayRenderTypeList}
+            renderTypeIndex={displayRenderTypeIndex >= 0 ? displayRenderTypeIndex : 0}
             onChange={onChangeRenderType}
+            isAgentGeneratedMode={displayRenderTypeList.includes(
+              FlowNodeInputTypeEnum.agentGenerated
+            )}
           />
         </Box>
       )}

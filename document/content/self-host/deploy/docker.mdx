@@ -132,14 +132,16 @@ brew install orbstack
 需要在 Linux/MacOS/Windows WSL 环境下执行，引导用户选择部署环境、向量库版本，IP 地址等。
 
 ```bash
-bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
+FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.cn bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
 ```
 
 <CurrentOriginCodeBlockUpdater />
 
+非交互模式还必须通过 `FASTGPT_FE_DOMAIN` 指定用户访问 FastGPT 的完整地址，例如 `https://fastgpt.example.com`，并通过 `FASTGPT_SANDBOX_PROXY_URL` 指定沙盒 WebSocket 地址，例如 `wss://sandbox-proxy.example.com`。4.16 还需要通过 `FASTGPT_SANDBOX_PREVIEW_PROXY_URL` 指定 HTTP 预览地址。交互模式下脚本会按版本询问这些地址；4.15 只询问 WebSocket 地址。
+
 脚本会自动完成以下操作：
 
-- 下载或复制 `docker-compose.yml`。
+- 下载 `docker-compose.yml`。
 - 引导选择 S3 与 MCP 的外部访问地址，并写入配置文件。
 - 随机生成 `root` 登录密码、服务间 Token、应用密钥和组件密码，并写入 `docker-compose.yml`。
 - 自动检测宿主机 Docker socket 路径，必要时替换 `docker-compose.yml` 中的挂载路径。
@@ -156,24 +158,26 @@ bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
 curl -fsSL https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.pg.yml -o docker-compose.source.yml
 ```
 
+<CurrentOriginCodeBlockUpdater />
+
 <details>
 <summary>点击展开查看不同数据库的 docker-compose 配置文件下载地址</summary>
 
 - **Pgvector**
-  - 中国大陆地区镜像源(阿里云)：[docker-compose.pg.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.pg.yml)
-  - 全球镜像源(dockerhub, ghcr)：[docker-compose.pg.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/global/docker-compose.pg.yml)
+  - 中国大陆地区镜像源(阿里云)：[docker-compose.pg.yml](/deploy/docker/v4.15/cn/docker-compose.pg.yml)
+  - 全球镜像源(dockerhub, ghcr)：[docker-compose.pg.yml](/deploy/docker/v4.15/global/docker-compose.pg.yml)
 - **Oceanbase**
-  - 中国大陆地区镜像源(阿里云)：[docker-compose.oceanbase.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.oceanbase.yml)
-  - 全球镜像源(dockerhub, ghcr)：[docker-compose.oceanbase.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/global/docker-compose.oceanbase.yml)
+  - 中国大陆地区镜像源(阿里云)：[docker-compose.oceanbase.yml](/deploy/docker/v4.15/cn/docker-compose.oceanbase.yml)
+  - 全球镜像源(dockerhub, ghcr)：[docker-compose.oceanbase.yml](/deploy/docker/v4.15/global/docker-compose.oceanbase.yml)
 - **Milvus**
-  - 中国大陆地区镜像源(阿里云)：[docker-compose.milvus.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.milvus.yml)
-  - 全球镜像源(dockerhub, ghcr)：[docker-compose.milvus.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/global/docker-compose.milvus.yml)
+  - 中国大陆地区镜像源(阿里云)：[docker-compose.milvus.yml](/deploy/docker/v4.15/cn/docker-compose.milvus.yml)
+  - 全球镜像源(dockerhub, ghcr)：[docker-compose.milvus.yml](/deploy/docker/v4.15/global/docker-compose.milvus.yml)
 - **Zilliz**
-  - 中国大陆地区镜像源(阿里云)：[docker-compose.zilliz.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.zilliz.yml)
-  - 全球镜像源(dockerhub, ghcr)：[docker-compose.zilliz.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/global/docker-compose.zilliz.yml)
+  - 中国大陆地区镜像源(阿里云)：[docker-compose.zilliz.yml](/deploy/docker/v4.15/cn/docker-compose.zilliz.yml)
+  - 全球镜像源(dockerhub, ghcr)：[docker-compose.zilliz.yml](/deploy/docker/v4.15/global/docker-compose.zilliz.yml)
 - **SeekDB**
-  - 中国大陆地区镜像源(阿里云)：[docker-compose.seekdb.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.seekdb.yml)
-  - 全球镜像源(dockerhub, ghcr)：[docker-compose.seekdb.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/global/docker-compose.seekdb.yml)
+  - 中国大陆地区镜像源(阿里云)：[docker-compose.seekdb.yml](/deploy/docker/v4.15/cn/docker-compose.seekdb.yml)
+  - 全球镜像源(dockerhub, ghcr)：[docker-compose.seekdb.yml](/deploy/docker/v4.15/global/docker-compose.seekdb.yml)
 
 </details>
 
@@ -203,9 +207,18 @@ FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.source.yml bash install.sh
 FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.yml bash install.sh
 ```
 
-如果启用 Agent/Skill 沙盒，还需要单独部署 `fastgpt-agent-sandbox-proxy`，并同步替换 `AGENT_SANDBOX_SEALOS_IMAGE` 或 `AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO`，确保沙盒 provider 可以拉取 `fastgpt-agent-sandbox` 镜像。v4.15.0 默认部署文件不内置 `fastgpt-agent-sandbox-proxy`，也不会默认启动 OpenSandbox；沙盒 provider 的接入方式见 [V4.15.0 升级说明](../upgrading/4-15/41500.mdx#5-agent-sandbox-部署方案)。
+如果启用 Agent/Skill 沙盒，还需要同步替换 Compose 文件中的沙盒相关镜像，以及 `AGENT_SANDBOX_SEALOS_IMAGE` 或 `AGENT_SANDBOX_OPENSANDBOX_IMAGE`，确保沙盒 provider 可以拉取对应镜像。具体配置见 [OpenSandbox 配置](../config/sandbox/opensandbox)。
 
 ### 2. 修改环境变量
+
+必须填写 `fastgpt-app` 中的 `FE_DOMAIN`，设置为用户实际访问 FastGPT 的完整地址，例如 `https://fastgpt.example.com`。该地址由协议、主机和可选端口组成，不能留空，也不要填写容器内部地址。
+
+启用 Agent/Skill 沙盒时还必须配置：
+
+- `AGENT_SANDBOX_PROXY_URL`：浏览器访问 Sandbox Proxy 的 WebSocket 地址，使用 `ws://` 或 `wss://`，例如 `wss://sandbox-proxy.example.com`，需要指向 3006 端口。
+- 4.16 版本额外配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`：浏览器访问沙盒文件预览的 HTTP(S) 地址，例如 `https://sandbox-proxy.example.com`，同样需要指向 3006 端口。
+
+使用交互式安装脚本时，脚本会在确认部署前询问这些地址。
 
 对于 `Zilliz 版本` 还需要获取密钥，参考 [部署 Zilliz 版本获取账号和密钥](#部署-zilliz-版本获取账号和密钥), 其他版本可直接下一步。
 
@@ -216,12 +229,16 @@ FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.yml bash install.sh
 1. 3000 端口（FastGPT 主服务）
 2. 9000 端口（S3 服务）
 3. 3003 端口（FastGPT SSE MCP server 服务）
+4. 3006 端口（FastGPT Agent Sandbox Proxy 服务）
 
 ### 4. 启动容器
 
 在 docker-compose.yml 同级目录下执行。请确保 `docker-compose` 版本最好在 2.17 以上，否则可能无法执行自动化命令。
 
 ```bash
+# 预拉取所有服务及沙盒运行时镜像
+docker compose --profile prepull pull
+
 # 启动容器
 docker compose up -d
 ```

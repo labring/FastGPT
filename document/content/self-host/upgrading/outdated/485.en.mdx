@@ -1,6 +1,9 @@
 ---
-title: V4.8.5 (Includes Upgrade Script)
+title: V4.8.5
 description: FastGPT V4.8.5 Release Notes
+releaseTime: '2024-06-27'
+upgradeTags:
+  - MIGRATION
 ---
 
 ## Upgrade Guide
@@ -24,7 +27,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv485' \
 
 This will merge the plugin data table into the app table. The plugin table will not be deleted.
 
-------
+---
 
 **Commercial edition users: run the additional initialization below**
 
@@ -36,17 +39,17 @@ curl --location --request POST 'https://{{host}}/api/admin/init/485' \
 --header 'Content-Type: application/json'
 ```
 
-This will reset the Knowledge Base permission system.
+This will reset the Dataset permission system.
 
 ## V4.8.5 Release Notes
 
-1. New - Merged plugins and apps into a unified workspace.
+1. New - Merged plugins and apps into a unified Studio.
 2. New - App duplication feature.
 3. New - App template creation.
 4. New - Code execution results can now be used as tool output.
 5. New - Markdown image output supports pinch-to-zoom on mobile.
 6. Improved - Raw file encoding for storage and retrieval.
-7. Improved - Simple mode now filters out deleted Knowledge Bases to avoid false error states.
+7. Improved - Simple mode now filters out deleted Datasets to avoid false error states.
 8. Improved - Folder reading now supports more than 100 files per folder.
 9. Improved - QA splitting / manual entry: when an `a` field is present, the `q` field is automatically used as a supplementary index.
 10. Improved - Chat dialog page code.
@@ -54,4 +57,4 @@ This will reset the Knowledge Base permission system.
 12. Fixed - Scheduled tasks could not actually be disabled.
 13. Fixed - Input guide special characters causing regex errors.
 14. Fixed - Files containing unescaped `%` characters causing page crashes.
-15. Fixed - Page crash when selecting Knowledge Base references in custom input.
+15. Fixed - Page crash when selecting Dataset citations in custom input.

@@ -1,6 +1,9 @@
 ---
 title: V4.8.23
 description: FastGPT V4.8.23 Release Notes
+releaseTime: '2025-02-27'
+upgradeTags:
+  - MIGRATION
 ---
 
 ## Upgrade Guide
@@ -23,11 +26,11 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4823' \
 --header 'Content-Type: application/json'
 ```
 
-The script cleans up Knowledge Base dirty data, primarily redundant full-text indexes.
+The script cleans up Dataset dirty data, primarily redundant full-text indexes.
 
 ## New Features
 
-1. Added default "Knowledge Base text understanding model" configuration.
+1. Added default "Dataset text understanding model" configuration.
 2. AI Proxy V1, which can replace OneAPI and provides complete model call logs for easier troubleshooting.
 3. Added support ticket entry point.
 
@@ -46,5 +49,5 @@ The script cleans up Knowledge Base dirty data, primarily redundant full-text in
 2. Temporarily removed Markdown reading optimization to prevent link splitting errors.
 3. Member list not refreshing when leaving a team.
 4. PPTX encoding error causing parsing failures.
-5. Full-text index not deleted when removing a single Knowledge Base data entry.
+5. Full-text index not deleted when removing a single Dataset data entry.
 6. Fixed Mongo Dataset text index not taking effect during data queries.

@@ -1,29 +1,66 @@
 import { describe, expect, it } from 'vitest';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { formatToolResponse } from '@fastgpt/service/core/workflow/dispatch/ai/utils';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { filterAgentLoopCoreToolResponseToPreview } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/assistantResponses/preview';
 import {
-  filterToolResponseToPreview,
-  initToolCallEdges,
-  initToolNodes,
-  updateToolInputValue
-} from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/utils';
+  formatAgentLoopCoreToolResponse,
+  initAgentLoopCoreWorkflowToolEdges,
+  initAgentLoopCoreWorkflowToolNodes,
+  updateAgentLoopCoreWorkflowToolInputValue
+} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/workflowToolRunner';
 
-describe('toolcall utils', () => {
-  describe('updateToolInputValue', () => {
-    it('should overwrite only params provided by tool call and preserve falsy valid values', () => {
+describe('workflow tool runner utils', () => {
+  describe('updateAgentLoopCoreWorkflowToolInputValue', () => {
+    it('should overwrite only agent generated params and preserve falsy valid values', () => {
       const sourceInputs = [
-        { key: 'query', value: 'old query' },
-        { key: 'limit', value: 10 },
-        { key: 'enabled', value: true },
-        { key: 'emptyText', value: 'fallback text' },
-        { key: 'nullish', value: 'default value' }
+        {
+          key: 'query',
+          value: 'old query',
+          renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+        },
+        {
+          key: 'limit',
+          value: 10,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+          selectedTypeIndex: 1
+        },
+        {
+          key: 'enabled',
+          value: true,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+          selectedTypeIndex: 1
+        },
+        {
+          key: 'manualText',
+          value: 'fixed value',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+          selectedTypeIndex: 0
+        },
+        {
+          key: 'password',
+          value: 'secret',
+          renderTypeList: [FlowNodeInputTypeEnum.password, FlowNodeInputTypeEnum.agentGenerated],
+          selectedTypeIndex: 1
+        },
+        {
+          key: 'emptyText',
+          value: 'fallback text',
+          renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+        },
+        {
+          key: 'nullish',
+          value: 'default value',
+          renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+        }
       ] as any[];
 
-      const result = updateToolInputValue({
+      const result = updateAgentLoopCoreWorkflowToolInputValue({
         params: {
           query: 'new query',
           limit: 0,
           enabled: false,
+          manualText: 'model value',
+          password: 'model secret',
           emptyText: '',
           nullish: null
         },
@@ -31,18 +68,52 @@ describe('toolcall utils', () => {
       });
 
       expect(result).toEqual([
-        { key: 'query', value: 'new query' },
-        { key: 'limit', value: 0 },
-        { key: 'enabled', value: false },
-        { key: 'emptyText', value: '' },
-        { key: 'nullish', value: 'default value' }
+        {
+          key: 'query',
+          value: 'new query',
+          renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+        },
+        {
+          key: 'limit',
+          value: 0,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+          selectedTypeIndex: 1
+        },
+        {
+          key: 'enabled',
+          value: false,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+          selectedTypeIndex: 1
+        },
+        {
+          key: 'manualText',
+          value: 'fixed value',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+          selectedTypeIndex: 0
+        },
+        {
+          key: 'password',
+          value: 'secret',
+          renderTypeList: [FlowNodeInputTypeEnum.password, FlowNodeInputTypeEnum.agentGenerated],
+          selectedTypeIndex: 1
+        },
+        {
+          key: 'emptyText',
+          value: '',
+          renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+        },
+        {
+          key: 'nullish',
+          value: 'default value',
+          renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+        }
       ]);
       expect(result[0]).not.toBe(sourceInputs[0]);
       expect(sourceInputs[0].value).toBe('old query');
     });
   });
 
-  describe('filterToolResponseToPreview', () => {
+  describe('filterAgentLoopCoreToolResponseToPreview', () => {
     it('should keep non-tool items and trim long tool responses to head and tail preview', () => {
       const longResponse = `${'a'.repeat(510)}middle${'z'.repeat(510)}`;
       const response = [
@@ -73,7 +144,7 @@ describe('toolcall utils', () => {
         }
       ] as AIChatItemValueItemType[];
 
-      const result = filterToolResponseToPreview(response);
+      const result = filterAgentLoopCoreToolResponseToPreview(response);
 
       expect(result[0]).toBe(response[0]);
       expect(result[1].tools?.[0].response).toContain('...[hide 26 chars]...');
@@ -84,23 +155,23 @@ describe('toolcall utils', () => {
     });
   });
 
-  describe('formatToolResponse', () => {
+  describe('formatAgentLoopCoreToolResponse', () => {
     it('should stringify object responses with indentation', () => {
-      expect(formatToolResponse({ answer: 'ok', list: [1, 2] })).toBe(
+      expect(formatAgentLoopCoreToolResponse({ answer: 'ok', list: [1, 2] })).toBe(
         JSON.stringify({ answer: 'ok', list: [1, 2] }, null, 2)
       );
     });
 
     it('should convert primitive responses and normalize empty primitive responses', () => {
-      expect(formatToolResponse(123)).toBe('123');
-      expect(formatToolResponse(true)).toBe('true');
-      expect(formatToolResponse('')).toBe('none');
-      expect(formatToolResponse(undefined)).toBe('none');
-      expect(formatToolResponse(null)).toBe('null');
+      expect(formatAgentLoopCoreToolResponse(123)).toBe('123');
+      expect(formatAgentLoopCoreToolResponse(true)).toBe('true');
+      expect(formatAgentLoopCoreToolResponse('')).toBe('none');
+      expect(formatAgentLoopCoreToolResponse(undefined)).toBe('none');
+      expect(formatAgentLoopCoreToolResponse(null)).toBe('null');
     });
   });
 
-  describe('initToolCallEdges', () => {
+  describe('initAgentLoopCoreWorkflowToolEdges', () => {
     it('should activate only edges targeting entry nodes', () => {
       const edges = [
         { target: 'entry', status: 'waiting' },
@@ -108,7 +179,7 @@ describe('toolcall utils', () => {
         { target: 'secondEntry' }
       ] as any[];
 
-      initToolCallEdges(edges, ['entry', 'secondEntry']);
+      initAgentLoopCoreWorkflowToolEdges(edges, ['entry', 'secondEntry']);
 
       expect(edges).toEqual([
         { target: 'entry', status: 'active' },
@@ -118,15 +189,23 @@ describe('toolcall utils', () => {
     });
   });
 
-  describe('initToolNodes', () => {
+  describe('initAgentLoopCoreWorkflowToolNodes', () => {
     it('should mark entry nodes and inject start params only into entry inputs', () => {
       const nodes = [
         {
           nodeId: 'entry',
           isEntry: false,
           inputs: [
-            { key: 'query', value: 'old query' },
-            { key: 'limit', value: 5 }
+            {
+              key: 'query',
+              value: 'old query',
+              renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+            },
+            {
+              key: 'limit',
+              value: 5,
+              renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+            }
           ]
         },
         {
@@ -136,7 +215,7 @@ describe('toolcall utils', () => {
         }
       ] as any[];
 
-      initToolNodes(nodes, ['entry'], {
+      initAgentLoopCoreWorkflowToolNodes(nodes, ['entry'], {
         query: 'new query',
         limit: 0
       });
@@ -145,8 +224,16 @@ describe('toolcall utils', () => {
         nodeId: 'entry',
         isEntry: true,
         inputs: [
-          { key: 'query', value: 'new query' },
-          { key: 'limit', value: 0 }
+          {
+            key: 'query',
+            value: 'new query',
+            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+          },
+          {
+            key: 'limit',
+            value: 0,
+            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+          }
         ]
       });
       expect(nodes[1]).toMatchObject({
@@ -165,7 +252,7 @@ describe('toolcall utils', () => {
         }
       ] as any[];
 
-      initToolNodes(nodes, ['entry']);
+      initAgentLoopCoreWorkflowToolNodes(nodes, ['entry']);
 
       expect(nodes[0].isEntry).toBe(true);
       expect(nodes[0].inputs).toBe(inputs);

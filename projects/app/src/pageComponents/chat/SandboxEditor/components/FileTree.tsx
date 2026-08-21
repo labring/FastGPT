@@ -342,6 +342,7 @@ const FileTree = ({
   const [isUploading, setIsUploading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadLockRef = useRef(false);
   const treeRootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -516,16 +517,18 @@ const FileTree = ({
   };
 
   const handleUploadClick = () => {
+    if (uploadLockRef.current) return;
     fileInputRef.current?.click();
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0 || uploadLockRef.current) return;
 
     const targetDirPath = getTargetDirPathFromSelected();
 
     try {
+      uploadLockRef.current = true;
       setIsUploading(true);
       await onUploadFiles(files, targetDirPath);
     } catch (error) {
@@ -535,6 +538,7 @@ const FileTree = ({
         status: 'error'
       });
     } finally {
+      uploadLockRef.current = false;
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
@@ -833,6 +837,7 @@ const FileTree = ({
         multiple
         ref={fileInputRef}
         onChange={handleFileChange}
+        disabled={isUploading}
         style={{ display: 'none' }}
       />
 
@@ -901,9 +906,10 @@ const FileTree = ({
                   w="24px"
                   h="24px"
                   borderRadius="6px"
-                  _hover={{ bg: 'rgba(15, 23, 42, 0.05)' }}
-                  cursor="pointer"
-                  onClick={handleUploadClick}
+                  _hover={isUploading ? undefined : { bg: 'rgba(15, 23, 42, 0.05)' }}
+                  cursor={isUploading ? 'not-allowed' : 'pointer'}
+                  aria-disabled={isUploading}
+                  onClick={isUploading ? undefined : handleUploadClick}
                   transition="background 0.2s"
                 >
                   {isUploading ? (

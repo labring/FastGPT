@@ -24,13 +24,13 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getMyModels } from '@fastgpt/service/support/permission/model/controller';
-import { removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
+import { normalizeWorkflowConfig, removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
@@ -128,6 +128,13 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
 }
 
 export default NextAPI(handler);
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '5mb'
+    }
+  }
+};
 
 export const onCreateApp = async ({
   parentId,
@@ -136,6 +143,7 @@ export const onCreateApp = async ({
   avatar,
   type,
   modules,
+  storageModules,
   edges,
   chatConfig,
   teamId,
@@ -152,6 +160,7 @@ export const onCreateApp = async ({
   avatar?: string;
   type: AppTypeEnum;
   modules?: AppSchemaType['modules'];
+  storageModules?: AppSchemaType['modules'];
   edges?: AppSchemaType['edges'];
   chatConfig?: AppSchemaType['chatConfig'];
   intro?: string;
@@ -175,19 +184,23 @@ export const onCreateApp = async ({
     }
   }
 
-  beforeUpdateAppFormat({
-    nodes: modules
+  const normalizedWorkflow = normalizeWorkflowConfig({
+    nodes: modules ?? [],
+    edges: edges ?? [],
+    chatConfig
   });
+
+  await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });
   if (!AppFolderTypeList.includes(type!)) {
     await validatePublishAppAgentSkillReadPermissions({
-      nodes: modules,
+      nodes: normalizedWorkflow.nodes,
       tmbId,
       isRoot
     });
   }
 
   const create = async (session: ClientSession) => {
-    const resourceRefs = extractAppResourceRefsFromNodes(modules);
+    const resourceRefs = extractAppResourceRefsFromNodes(normalizedWorkflow.nodes);
     const _avatar = await (async () => {
       if (!templateId || isPluginSystemTemplate(templateId)) return avatar;
 
@@ -216,9 +229,9 @@ export const onCreateApp = async ({
           intro,
           teamId,
           tmbId,
-          modules,
-          edges,
-          chatConfig,
+          modules: storageModules ?? normalizedWorkflow.nodes,
+          edges: normalizedWorkflow.edges,
+          chatConfig: normalizedWorkflow.chatConfig,
           type,
           version: 'v2',
           pluginData,
@@ -237,9 +250,9 @@ export const onCreateApp = async ({
           {
             tmbId,
             appId,
-            nodes: modules,
-            edges,
-            chatConfig,
+            nodes: storageModules ?? normalizedWorkflow.nodes,
+            edges: normalizedWorkflow.edges,
+            chatConfig: normalizedWorkflow.chatConfig,
             versionName: name,
             username,
             avatar: userAvatar,

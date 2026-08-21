@@ -8,6 +8,7 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 type ChatFileValueWithPreview = Partial<UserChatItemFileItemType>;
+type ChatFilePreviewUrlGetter = (key: string, filename?: string) => Promise<string | undefined>;
 type RuntimeValue = string | number | boolean | object | null | undefined;
 type RuntimeVariableMap = Record<string, RuntimeValue>;
 type InteractiveWithChildrenResponse = WorkflowInteractiveResponseType & {
@@ -31,90 +32,126 @@ const hasChildrenResponse = (
   'childrenResponse' in interactive.params &&
   !!interactive.params.childrenResponse;
 
+/** 刷新历史消息中的服务端文件 URL，返回新 histories，不修改传入对象。 */
 export const addPreviewUrlToChatItems = async (
   histories: ChatItemMiniType[],
-  type: 'chatFlow' | 'workflowTool'
+  type: 'chatFlow' | 'workflowTool',
+  getPreviewUrl: ChatFilePreviewUrlGetter = createChatFilePreviewUrlGetter()
 ) => {
-  const getPreviewUrl = createChatFilePreviewUrlGetter();
+  async function addPreviewUrlToFileValue(file: ChatFileValueWithPreview) {
+    if (!file.key) return { ...file };
 
-  async function addPreviewUrlToFileValue(files: ChatFileValueWithPreview[]) {
-    await Promise.all(
-      files.map(async (file) => {
-        if (!file || typeof file !== 'object') return;
+    const previewUrl = await getPreviewUrl(file.key, file.name);
+    if (previewUrl) {
+      return { ...file, url: previewUrl };
+    }
 
-        if (!file.key) return;
-
-        file.url = await getPreviewUrl(file.key);
-      })
-    );
+    return;
   }
 
-  async function addToInteractive(interactive: WorkflowInteractiveResponseType) {
+  async function addPreviewUrlToValue(value: RuntimeValue) {
+    if (!Array.isArray(value)) return value;
+
+    const files = await Promise.all(
+      value.map((file) =>
+        file && typeof file === 'object'
+          ? addPreviewUrlToFileValue(file as ChatFileValueWithPreview)
+          : file
+      )
+    );
+    return files.filter((file) => file !== undefined);
+  }
+
+  async function addToInteractive(
+    interactive: WorkflowInteractiveResponseType
+  ): Promise<WorkflowInteractiveResponseType> {
+    let params = interactive.params ? { ...interactive.params } : interactive.params;
+
     if (interactive.type === 'userInput' && Array.isArray(interactive.params?.inputForm)) {
-      await Promise.all(
-        interactive.params.inputForm.map(async (input) => {
-          if (input.type === FlowNodeInputTypeEnum.fileSelect) {
-            const files = formatFileValueList(input.value);
-            await addPreviewUrlToFileValue(files);
-          }
-        })
-      );
+      params = {
+        ...params,
+        inputForm: await Promise.all(
+          interactive.params.inputForm.map(async (input) => ({
+            ...input,
+            value:
+              input.type === FlowNodeInputTypeEnum.fileSelect
+                ? await addPreviewUrlToValue(input.value)
+                : input.value
+          }))
+        )
+      };
     }
 
     if (hasChildrenResponse(interactive)) {
-      await addToInteractive(interactive.params.childrenResponse);
+      params = {
+        ...params,
+        childrenResponse: await addToInteractive(interactive.params.childrenResponse)
+      };
     }
+
+    return { ...interactive, params } as WorkflowInteractiveResponseType;
   }
 
-  async function addToChatflow(item: ChatItemMiniType) {
-    await Promise.all(
-      item.value.map(async (value) => {
-        if ('file' in value && value.file && value.file.key) {
-          await addPreviewUrlToFileValue([value.file]);
-        }
-
-        if ('interactive' in value && value.interactive) {
-          await addToInteractive(value.interactive);
-        }
-      })
-    );
+  async function addToChatflow(item: ChatItemMiniType): Promise<ChatItemMiniType> {
+    return {
+      ...item,
+      value: await Promise.all(
+        item.value.map(async (value) => ({
+          ...value,
+          ...('file' in value && value.file
+            ? { file: await addPreviewUrlToFileValue(value.file) }
+            : {}),
+          ...('interactive' in value && value.interactive
+            ? { interactive: await addToInteractive(value.interactive) }
+            : {})
+        }))
+      )
+    } as ChatItemMiniType;
   }
 
-  async function addToWorkflowTool(item: ChatItemMiniType) {
-    if (item.obj !== ChatRoleEnum.Human || !Array.isArray(item.value)) return;
+  async function addToWorkflowTool(item: ChatItemMiniType): Promise<ChatItemMiniType> {
+    if (item.obj !== ChatRoleEnum.Human || !Array.isArray(item.value)) {
+      return { ...item, value: [...item.value] } as ChatItemMiniType;
+    }
 
-    await Promise.all(
-      item.value.map(async (value, index) => {
-        if (!('text' in value)) return;
-        const inputValueString = value.text?.content || '';
-        const parsedInputValue = JSON.parse(inputValueString) as FlowNodeInputItemType[];
+    return {
+      ...item,
+      value: await Promise.all(
+        item.value.map(async (value) => {
+          if (!('text' in value)) return { ...value };
+          const inputValueString = value.text?.content || '';
+          const parsedInputValue = JSON.parse(inputValueString) as FlowNodeInputItemType[];
 
-        await Promise.all(
-          parsedInputValue.map(async (input) => {
-            if (!input.renderTypeList?.includes(FlowNodeInputTypeEnum.fileSelect)) {
-              return;
+          const nextInputValue = await Promise.all(
+            parsedInputValue.map(async (input) => {
+              if (!input.renderTypeList?.includes(FlowNodeInputTypeEnum.fileSelect)) {
+                return { ...input };
+              }
+              return {
+                ...input,
+                value: await addPreviewUrlToValue(input.value)
+              };
+            })
+          );
+
+          return {
+            ...value,
+            text: {
+              ...value.text,
+              content: JSON.stringify(nextInputValue)
             }
-            const files = formatFileValueList(input.value);
-            await addPreviewUrlToFileValue(files);
-          })
-        );
-
-        item.value[index].text = {
-          ...value.text,
-          content: JSON.stringify(parsedInputValue)
-        };
-      })
-    );
+          };
+        })
+      )
+    } as ChatItemMiniType;
   }
 
-  // Presign file urls
-  await Promise.all(
+  return Promise.all(
     histories.map(async (item) => {
       if (type === 'chatFlow') {
-        await addToChatflow(item);
-      } else if (type === 'workflowTool') {
-        await addToWorkflowTool(item);
+        return addToChatflow(item);
       }
+      return addToWorkflowTool(item);
     })
   );
 };
@@ -144,7 +181,7 @@ export const presignVariablesFileUrls = async ({
 
             return {
               ...file,
-              url: await getPreviewUrl(file.key)
+              url: await getPreviewUrl(file.key, file.name)
             };
           })
         ).then((urls) => urls.filter(Boolean));

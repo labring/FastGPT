@@ -12,7 +12,6 @@ import {
   type DeepRagSearchProps,
   type SearchDatasetDataResponse
 } from '@fastgpt/service/core/dataset/search';
-import { type AuthOpenApiLimitProps } from '@fastgpt/service/support/openapi/auth';
 import type {
   PushUsageItemsProps,
   ConcatUsageProps,
@@ -46,11 +45,6 @@ export function initGlobalVariables() {
 
     global.deepRagHandler = function deepRagHandler(data: DeepRagSearchProps) {
       return POST<SearchDatasetDataResponse>('/core/dataset/deepRag', data);
-    };
-
-    global.authOpenApiHandler = function authOpenApiHandler(data: AuthOpenApiLimitProps) {
-      if (!isProVersion()) return Promise.resolve();
-      return POST<AuthOpenApiLimitProps>('/support/openapi/authLimit', data);
     };
 
     global.createUsageHandler = function createUsageHandler(data: CreateUsageProps) {
@@ -101,7 +95,7 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   show_git: true,
   docUrl: 'https://doc.fastgpt.io',
   openAPIDocUrl: 'https://doc.fastgpt.io/openapi/intro',
-  submitPluginRequestUrl: 'https://github.com/labring/fastgpt-plugin/issues',
+  enable_team_plugin_upload: false,
   appTemplateCourse:
     'https://fael3z0zfze.feishu.cn/wiki/CX9wwMGyEi5TL6koiLYcg7U0nWb?fromScene=spaceOverview',
   systemTitle: 'FastGPT',
@@ -177,6 +171,7 @@ export async function initSystemConfig() {
         customPdfParse: {
           url: serviceEnv.CUSTOM_PDF_PARSE_URL,
           key: serviceEnv.CUSTOM_PDF_PARSE_KEY,
+          somarkApiKey: serviceEnv.SOMARK_API_KEY,
           doc2xKey: serviceEnv.DOC2X_KEY,
           textinAppId: serviceEnv.TEXTIN_APP_ID,
           textinSecretCode: serviceEnv.TEXTIN_SECRET_CODE

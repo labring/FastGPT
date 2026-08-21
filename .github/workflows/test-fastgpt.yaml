@@ -37,6 +37,7 @@ jobs:
     outputs:
       run_global: ${{ steps.scope.outputs.run_global }}
       run_service: ${{ steps.scope.outputs.run_service }}
+      run_web: ${{ steps.scope.outputs.run_web }}
       run_app: ${{ steps.scope.outputs.run_app }}
       should_report: ${{ steps.scope.outputs.should_report }}
 
@@ -46,17 +47,20 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const setOutputs = ({ global, service, app }) => {
-              const shouldReport = global || service || app;
+            const setOutputs = ({ global, service, web, app }) => {
+              const shouldReport = global || service || web || app;
               core.setOutput('run_global', global ? 'true' : 'false');
               core.setOutput('run_service', service ? 'true' : 'false');
+              core.setOutput('run_web', web ? 'true' : 'false');
               core.setOutput('run_app', app ? 'true' : 'false');
               core.setOutput('should_report', shouldReport ? 'true' : 'false');
-              core.info(`Test scopes selected: global=${global}, service=${service}, app=${app}`);
+              core.info(
+                `Test scopes selected: global=${global}, service=${service}, web=${web}, app=${app}`
+              );
             };
 
             if (context.eventName !== 'pull_request') {
-              setOutputs({ global: true, service: true, app: true });
+              setOutputs({ global: true, service: true, web: true, app: true });
               return;
             }
 
@@ -86,6 +90,7 @@ jobs:
 
             const runGlobal = affectsAll || hasPath(['packages/global']);
             const runService = affectsAll || hasPath(['packages/global', 'packages/service', 'sdk']);
+            const runWeb = affectsAll || hasPath(['packages/global', 'packages/web']);
             const runApp = affectsAll || hasPath([
               'packages/global',
               'packages/service',
@@ -94,7 +99,7 @@ jobs:
               'sdk'
             ]);
 
-            setOutputs({ global: runGlobal, service: runService, app: runApp });
+            setOutputs({ global: runGlobal, service: runService, web: runWeb, app: runApp });
 
   test-global:
     needs: detect-changes
@@ -197,9 +202,42 @@ jobs:
             projects/app/coverage/coverage-final.json
             projects/app/coverage/coverage-summary.json
 
+  test-web:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.run_web == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name ||
+            github.repository }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: 'Install Deps'
+        run: pnpm install --frozen-lockfile
+
+      - name: 'Test Web'
+        run: pnpm --filter=@fastgpt/web test
+
+      - name: 'Upload Coverage (Web)'
+        if: always() && hashFiles('packages/web/coverage/coverage-summary.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-web
+          path: |
+            packages/web/coverage/coverage-final.json
+            packages/web/coverage/coverage-summary.json
+
   report-coverage:
     runs-on: ubuntu-latest
-    needs: [detect-changes, test-global, test-service, test-app]
+    needs: [detect-changes, test-global, test-service, test-web, test-app]
     if: ${{ always() && needs.detect-changes.outputs.should_report == 'true' }}
     permissions:
       contents: read
@@ -225,6 +263,7 @@ jobs:
             const packages = [
               { name: 'Global', dir: 'coverage-global' },
               { name: 'Service', dir: 'coverage-service' },
+              { name: 'Web', dir: 'coverage-web' },
               { name: 'App', dir: 'coverage-app' }
             ];
 

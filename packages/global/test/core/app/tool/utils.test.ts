@@ -1,15 +1,36 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getTeamPluginSource,
+  getToolIdentityKey,
   getToolNameCandidates,
   getToolRawId,
   hasDebugToolInNodes,
   hasDebugToolInSelectedTools,
+  isTeamPluginSource,
   parseDebugToolSource,
+  parseTeamPluginSource,
   parseToolsetToolId,
+  shouldUseLegacyToolDescriptionFallback,
   splitCombineToolId,
   splitToolsetToolPluginId
 } from '@fastgpt/global/core/app/tool/utils';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+
+describe('shouldUseLegacyToolDescriptionFallback', () => {
+  it('only enables fallback for workflow, system and commercial tools', () => {
+    expect(
+      shouldUseLegacyToolDescriptionFallback({
+        toolId: 'personal-tool',
+        flowNodeType: FlowNodeTypeEnum.pluginModule
+      })
+    ).toBe(true);
+    expect(shouldUseLegacyToolDescriptionFallback({ toolId: 'systemTool-search' })).toBe(true);
+    expect(shouldUseLegacyToolDescriptionFallback({ toolId: 'commercial-search' })).toBe(true);
+    expect(shouldUseLegacyToolDescriptionFallback({ toolId: 'mcp-app/search' })).toBe(false);
+    expect(shouldUseLegacyToolDescriptionFallback({ toolId: 'http-app/search' })).toBe(false);
+  });
+});
 
 describe('splitCombineToolId', () => {
   describe('personal tools (pure ObjectId)', () => {
@@ -135,6 +156,38 @@ describe('parseDebugToolSource', () => {
 
   it('does not parse debug source from combined tool id', () => {
     expect(() => splitCombineToolId('debug:tmbId:tmb-1|weather')).toThrow('Invalid tool id');
+  });
+});
+
+describe('team plugin source', () => {
+  it('builds and parses a stable team source', () => {
+    const source = getTeamPluginSource('team-1');
+
+    expect(source).toBe('teamId:team-1');
+    expect(isTeamPluginSource(source)).toBe(true);
+    expect(parseTeamPluginSource(source)).toEqual({ teamId: 'team-1' });
+  });
+
+  it('rejects malformed team sources', () => {
+    expect(parseTeamPluginSource('team')).toBeUndefined();
+    expect(parseTeamPluginSource('teamId:team-1:extra')).toBeUndefined();
+    expect(parseTeamPluginSource('system')).toBeUndefined();
+  });
+});
+
+describe('getToolIdentityKey', () => {
+  it('keeps system and team tools with the same id distinct', () => {
+    const id = 'systemTool-weather';
+    const systemKey = getToolIdentityKey(id, 'system');
+    const teamKey = getToolIdentityKey(id, 'teamId:team-1');
+
+    expect(systemKey).not.toBe(teamKey);
+  });
+
+  it('treats missing source as system source', () => {
+    expect(getToolIdentityKey('systemTool-weather', undefined)).toBe(
+      getToolIdentityKey('systemTool-weather', 'system')
+    );
   });
 });
 

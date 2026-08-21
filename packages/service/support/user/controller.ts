@@ -3,6 +3,7 @@ import { MongoUser } from './schema';
 import { getTmbInfoByTmbId, getUserDefaultTeam } from './team/controller';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
+import type { ClientSession } from '../../common/mongo';
 
 export async function authUserExist({ userId, username }: { userId?: string; username?: string }) {
   if (userId) {
@@ -17,25 +18,29 @@ export async function authUserExist({ userId, username }: { userId?: string; use
 export async function getUserDetail({
   tmbId,
   userId,
-  isRoot = false
+  isRoot = false,
+  session
 }: {
   tmbId?: string;
   userId?: string;
   isRoot?: boolean;
+  session?: ClientSession;
 }): Promise<UserType> {
   const tmb = await (async () => {
     if (tmbId) {
       try {
-        const result = await getTmbInfoByTmbId({ tmbId });
+        const result = await getTmbInfoByTmbId({ tmbId, session });
         return result;
       } catch (error) {}
     }
     if (userId) {
-      return getUserDefaultTeam({ userId });
+      return getUserDefaultTeam({ userId, session });
     }
     return Promise.reject(ERROR_ENUM.unAuthorization);
   })();
-  const user = await MongoUser.findById(tmb.userId);
+  const query = MongoUser.findById(tmb.userId);
+  if (session) query.session(session);
+  const user = await query;
 
   if (!user) {
     return Promise.reject(ERROR_ENUM.unAuthorization);
@@ -52,7 +57,6 @@ export async function getUserDetail({
     username: user.username,
     avatar: tmb.avatar,
     timezone: user.timezone,
-    promotionRate: user.promotionRate,
     team,
     permission,
     contact: user.contact,

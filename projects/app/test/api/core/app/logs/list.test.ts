@@ -141,8 +141,8 @@ describe('logs list API - errorFilter', () => {
       listApi.default,
       {
         auth: authUser,
-        cookies: {
-          NEXT_LOCALE: 'zh-CN'
+        headers: {
+          cookie: 'NEXT_LOCALE=zh-CN'
         },
         body: {
           appId: testAppId,
@@ -246,8 +246,8 @@ describe('logs list API - errorFilter', () => {
       listApi.default,
       {
         auth: authUser,
-        cookies: {
-          NEXT_LOCALE: 'zh-CN'
+        headers: {
+          cookie: 'NEXT_LOCALE=zh-CN'
         },
         body: {
           appId: testAppId,
@@ -343,8 +343,8 @@ describe('logs list API - errorFilter', () => {
       listApi.default,
       {
         auth: authUser,
-        cookies: {
-          NEXT_LOCALE: 'zh-CN'
+        headers: {
+          cookie: 'NEXT_LOCALE=zh-CN'
         },
         body: {
           appId: testAppId,
@@ -480,8 +480,8 @@ describe('logs list API - errorFilter', () => {
       listApi.default,
       {
         auth: authUser,
-        cookies: {
-          NEXT_LOCALE: 'zh-CN'
+        headers: {
+          cookie: 'NEXT_LOCALE=zh-CN'
         },
         body: {
           appId: testAppId,

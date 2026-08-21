@@ -137,6 +137,7 @@ const loadVectorConfigs = async () => {
       extra: await readOptionalFile(config.extraFile),
       depends: config.dbFile ? '      fastgpt-vector:\n        condition: service_healthy' : ''
     };
+    vectors[name].extraEntries = vectors[name].extra ? `  ${vectors[name].extra}` : '';
     vectors[name].extraBlock = vectors[name].extra ? `configs:\n  ${vectors[name].extra}` : '';
   }
 
@@ -144,7 +145,8 @@ const loadVectorConfigs = async () => {
 };
 
 /**
- * @typedef {{ tag: String, image: {cn: String, global: String} }} ArgItemType
+ * @typedef {string} ServiceKey
+ * @typedef {{ tag: string, image: {cn: string, global: string} }} ArgItemType
  */
 /**
  * 读取指定部署版本的镜像参数。
@@ -153,11 +155,11 @@ const loadVectorConfigs = async () => {
  * 分支的迭代镜像意外覆盖。
  *
  * @param {string} version
- * @returns {Record<Services, ArgItemType>}
+ * @returns {Record<ServiceKey, ArgItemType>}
  */
 const loadArgs = (version) => {
   /**
-   * @type {{tags: Record<Services, string>, images: Record<Services, Record<string, string>>}}
+   * @type {{tags: Record<ServiceKey, string>, images: Record<string, Record<ServiceKey, string>>}}
    */
   const obj = JSON.parse(
     fs.readFileSync(path.join(process.cwd(), 'version', version, 'args.json'))
@@ -184,8 +186,8 @@ const loadArgs = (version) => {
  * @param {string} source
  * @param {RegionEnum} region
  * @param {string | undefined} vec
- * @param {Record<Services, ArgItemType>} args
- * @param {Record<string, { filename: string, db: string, config: string, extra: string, extraBlock: string, depends: string }>} vectors
+ * @param {Record<ServiceKey, ArgItemType>} args
+ * @param {Record<string, { filename: string, db: string, config: string, extra: string, extraEntries: string, extraBlock: string, depends: string }>} vectors
  * @param {string} context
  * @returns {string}
  */
@@ -229,7 +231,9 @@ const replace = (source, region, vec, args, vectors, context) => {
     } else if (b === 'image') {
       const image = arg.image?.[region];
       if (!image) {
-        throw new Error(`Missing deploy image "${a}.${region}" for ${formatExpr(expr)} in ${context}`);
+        throw new Error(
+          `Missing deploy image "${a}.${region}" for ${formatExpr(expr)} in ${context}`
+        );
       }
       return image;
     }
@@ -260,11 +264,15 @@ const generateDevFile = async (deployVersions, vectors) => {
   await Promise.all([
     fs.promises.writeFile(
       path.join(process.cwd(), 'dev', 'docker-compose.cn.yml'),
-      formatYamlOutput(replace(template, 'cn', undefined, args, vectors, 'dev/docker-compose.cn.yml'))
+      formatYamlOutput(
+        replace(template, 'cn', undefined, args, vectors, 'dev/docker-compose.cn.yml')
+      )
     ),
     fs.promises.writeFile(
       path.join(process.cwd(), 'dev', 'docker-compose.yml'),
-      formatYamlOutput(replace(template, 'global', undefined, args, vectors, 'dev/docker-compose.yml'))
+      formatYamlOutput(
+        replace(template, 'global', undefined, args, vectors, 'dev/docker-compose.yml')
+      )
     )
   ]);
 

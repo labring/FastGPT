@@ -1,4 +1,4 @@
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 import { type ChatFavouriteAppType } from '@fastgpt/global/core/chat/favouriteApp/type';
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { AppCollectionName } from '../../app/schema';
@@ -28,7 +28,7 @@ const ChatFavouriteAppSchema = new Schema({
   }
 });
 
-ChatFavouriteAppSchema.index({ teamId: 1, appId: 1 });
+defineIndex(ChatFavouriteAppSchema, { key: { teamId: 1, appId: 1 } });
 
 export const MongoChatFavouriteApp = getMongoModel<ChatFavouriteAppType>(
   ChatFavouriteAppCollectionName,

@@ -1,4 +1,4 @@
-import type { InitDateResponse } from '@/pages/api/common/system/getInitData';
+import type { GetSystemInitDataResponse } from '@fastgpt/global/openapi/common/system/api';
 import type { GetMyModelsQuery, GetMyModelsResponse } from '@/pages/api/core/ai/model/getMyModels';
 import { GET, POST } from '@/web/common/api/request';
 import type {
@@ -7,7 +7,7 @@ import type {
 } from '@fastgpt/global/support/permission/collaborator';
 
 export const getSystemInitData = (bufferId?: string) =>
-  GET<InitDateResponse>('/common/system/getInitData', {
+  GET<GetSystemInitDataResponse>('/common/system/getInitData', {
     bufferId
   });
 
@@ -22,7 +22,7 @@ export const updateModelCollaborators = (props: UpdateClbPermissionProps & { mod
   POST('/proApi/system/model/collaborator/update', props);
 
 export const getMyModels = (props: GetMyModelsQuery) =>
-  GET<GetMyModelsResponse>('/core/ai/model/getMyModels', props);
+  GET<GetMyModelsResponse>('/core/ai/model/getMyModels', props, { deduplicate: true });
 
 /* 活动 banner */
 export const getOperationalAd = () =>

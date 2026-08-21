@@ -6,10 +6,12 @@ import { parseMarkdownBase64Images } from '@fastgpt/global/common/string/markdow
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
 import { useDoc2xServer } from '../../../thirdProvider/doc2x';
 import { useTextinServer } from '../../../thirdProvider/textin';
+import { useSomarkServer } from '../../../thirdProvider/somark';
 import { readRawContentFromBuffer } from '../../../worker/function';
 import { getLogger, LogCategories } from '../../logger';
 import { getImageBuffer } from '../image/utils';
 import { uploadParsedPdfImage } from './image';
+import { getBackendFileOperationTimeoutMs } from '../parseTimeout';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
@@ -71,9 +73,7 @@ export const readFileContentByBuffer = async ({
     prefix: string;
     expiredTime?: Date;
   };
-}): Promise<{
-  rawText: string;
-}> => {
+}): Promise<Pick<ReadFileResponse, 'rawText' | 'tableInfo'>> => {
   // 归一化扩展名为小写，避免大写/混合大小写后缀（如 .PDF）无法匹配解析器（#6996）
   const extension = rawExtension.toLowerCase();
 
@@ -131,7 +131,7 @@ export const readFileContentByBuffer = async ({
       markdown: string;
       error?: object | string;
     }>(url, data, {
-      timeout: 600000,
+      timeout: getBackendFileOperationTimeoutMs(),
       headers: {
         ...data.getHeaders(),
         Authorization: token ? `Bearer ${token}` : undefined
@@ -153,6 +153,25 @@ export const readFileContentByBuffer = async ({
       teamId,
       tmbId,
       pages: response.pages,
+      usageId
+    });
+
+    return {
+      rawText: text,
+      formatText: text
+    };
+  };
+  const parsePdfFromSomark = async (): Promise<ReadFileResponse> => {
+    const apiKey = global.systemEnv.customPdfParse?.somarkApiKey;
+    if (!apiKey) return systemParse();
+
+    const { pages, text: rawText } = await useSomarkServer({ apiKey }).parsePDF(buffer);
+    const text = await parseMarkdownImages(rawText);
+
+    createPdfParseUsage({
+      teamId,
+      tmbId,
+      pages,
       usageId
     });
 
@@ -243,6 +262,7 @@ export const readFileContentByBuffer = async ({
   const pdfParseFn = async (): Promise<ReadFileResponse> => {
     if (!customPdfParse) return systemParse();
     if (global.systemEnv.customPdfParse?.url) return parsePdfFromCustomService();
+    if (global.systemEnv.customPdfParse?.somarkApiKey) return parsePdfFromSomark();
     if (global.systemEnv.customPdfParse?.textinAppId) return parsePdfFromTextin();
     if (global.systemEnv.customPdfParse?.doc2xKey) return parsePdfFromDoc2x();
 
@@ -252,7 +272,7 @@ export const readFileContentByBuffer = async ({
   const start = Date.now();
   logger.debug('Start parsing file', { extension });
 
-  const { rawText, formatText } = await (async () => {
+  const { rawText, formatText, tableInfo } = await (async () => {
     if (extension === 'pdf') {
       return await pdfParseFn();
     }
@@ -262,6 +282,7 @@ export const readFileContentByBuffer = async ({
   logger.debug('File parsing completed', { extension, durationMs: Date.now() - start });
 
   return {
-    rawText: getFormatText ? formatText || rawText : rawText
+    rawText: getFormatText ? formatText || rawText : rawText,
+    tableInfo
   };
 };

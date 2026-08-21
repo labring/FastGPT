@@ -12,7 +12,7 @@
     "test:watch": "vitest -c vitest.config.ts"
   },
   "engines": {
-    "node": ">=20.19.0",
+    "node": ">=22.23.2",
     "pnpm": "10.x"
   },
   "dependencies": {
@@ -23,6 +23,7 @@
     "@chakra-ui/styled-system": "catalog:",
     "@chakra-ui/system": "catalog:",
     "@fastgpt/global": "workspace:*",
+    "@fastgpt/next": "workspace:*",
     "@fastgpt-sdk/otel": "workspace:*",
     "@t3-oss/env-core": "catalog:",
     "@fastgpt-sdk/storage": "workspace:*",
@@ -45,7 +46,7 @@
     "@types/react-dom": "catalog:",
     "eslint": "catalog:lint",
     "eslint-config-next": "catalog:lint",
-    "postcss": "^8",
+    "postcss": "catalog:",
     "tailwindcss": "^3.4.1",
     "typescript": "catalog:"
   }

@@ -7,20 +7,19 @@ import * as workflowContext from '@fastgpt/service/core/workflow/utils/context';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { filterDatasetsByTmbId } from '@fastgpt/service/core/dataset/utils';
+import { useUserContext } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/userContext';
 import {
-  buildAgentSkillsPrompt,
-  buildAgentInputFilesPrompt,
-  buildAgentUserReminderInput,
-  parseAgentInputFiles,
-  useUserContext
-} from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/userContext';
-import type { DeployedSkillInfo } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+  buildAgentLoopCoreInputFilesPrompt,
+  buildAgentLoopCoreSkillsPrompt,
+  buildAgentLoopCoreUserReminderInput
+} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context/reminder';
+import type { DeployedSkillInfo } from '@fastgpt/service/core/ai/skill/runtime/types';
 
 vi.mock('@fastgpt/global/common/time/timezone', () => ({
   getSystemTime: vi.fn(() => '2026-05-14 10:00:00 Thursday')
 }));
-vi.mock('@fastgpt/service/core/dataset/schema', () => ({
-  DatasetCollectionName: 'datasets',
+vi.mock('@fastgpt/service/core/dataset/schema', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/dataset/schema')>()),
   MongoDataset: {
     find: vi.fn(() => ({
       lean: vi.fn(async () => [])
@@ -103,8 +102,6 @@ const getUserContextMessagesForTest = async ({
   return {
     chatHistories: context.chatHistories,
     queryInput: context.queryInput,
-    fileUrlMap: context.fileUrlMap,
-    filesMap: context.filesMap,
     ...context.getCurrentMessages({
       skillInfos,
       currentWorkingDirectory
@@ -113,132 +110,64 @@ const getUserContextMessagesForTest = async ({
   };
 };
 
-describe('buildAgentInputFilesPrompt', () => {
-  it('generates file XML block with ids types and urls', () => {
-    const result = buildAgentInputFilesPrompt([
+describe('buildAgentLoopCoreInputFilesPrompt', () => {
+  it('generates file XML block for document files only', () => {
+    const result = buildAgentLoopCoreInputFilesPrompt([
       {
-        id: 'current-0',
         name: 'guide.pdf',
         type: ChatFileTypeEnum.file,
         url: '/guide.pdf'
       },
       {
-        id: 'current-1',
         name: 'chart.png',
         type: ChatFileTypeEnum.image,
         url: '/chart.png'
       },
       {
-        id: 'current-2',
         name: 'voice.mp3',
         type: ChatFileTypeEnum.audio,
-        url: '/voice.mp3'
+        url: 'https://files.example.com/voice.mp3'
       },
       {
-        id: 'current-3',
         name: 'demo.mp4',
         type: ChatFileTypeEnum.video,
-        url: '/demo.mp4'
+        url: 'https://files.example.com/demo.mp4'
       }
     ]);
 
     expect(result).toContain('## 对话文件');
-    expect(result).toContain('<id>current-0</id>');
-    expect(result).toContain('<name>guide.pdf</name>');
-    expect(result).toContain('<type>file</type>');
     expect(result).toContain('<url>/guide.pdf</url>');
-    expect(result).toContain('<id>current-1</id>');
-    expect(result).toContain('<id>current-2</id>');
-    expect(result).toContain('<id>current-3</id>');
+    expect(result).toContain('<name>guide.pdf</name>');
+    expect(result).toContain('<url>/chart.png</url>');
+    expect(result).toContain('<url>https://files.example.com/voice.mp3</url>');
+    expect(result).toContain('<url>https://files.example.com/demo.mp4</url>');
+    expect(result).not.toContain('<id>');
     expect(result).toContain('<type>image</type>');
     expect(result).toContain('<type>audio</type>');
     expect(result).toContain('<type>video</type>');
-    expect(result).toContain('<url>/chart.png</url>');
   });
 
   it('escapes XML fields in file metadata', () => {
-    const result = buildAgentInputFilesPrompt([
+    const result = buildAgentLoopCoreInputFilesPrompt([
       {
-        id: `current-&-'"-0`,
         name: `a<b>&"c"'d.pdf`,
         type: ChatFileTypeEnum.file,
         url: '/guide.pdf'
       }
     ]);
 
-    expect(result).toContain('<id>current-&amp;-&apos;&quot;-0</id>');
-    expect(result).toContain('<name>a&lt;b&gt;&amp;&quot;c&quot;&apos;d.pdf</name>');
     expect(result).toContain('<url>/guide.pdf</url>');
+    expect(result).toContain('<name>a&lt;b&gt;&amp;&quot;c&quot;&apos;d.pdf</name>');
   });
 
   it('returns empty string when there are no files', () => {
-    expect(buildAgentInputFilesPrompt()).toBe('');
+    expect(buildAgentLoopCoreInputFilesPrompt()).toBe('');
   });
 });
 
-describe('parseAgentInputFiles', () => {
-  it('sanitizes file names into single sandbox path segments and deduplicates collisions', () => {
-    const files = parseAgentInputFiles({
-      files: [
-        {
-          name: '../report.pdf',
-          type: ChatFileTypeEnum.file,
-          url: '/api/system/file/download/a?filename=ignored.pdf'
-        },
-        {
-          type: ChatFileTypeEnum.file,
-          url: '/api/system/file/download/b?filename=%2E%2E%2Freport.pdf'
-        },
-        {
-          name: 'folder/image.png',
-          type: ChatFileTypeEnum.image,
-          url: '/api/system/file/download/c?filename=image.png'
-        },
-        {
-          name: '..',
-          type: ChatFileTypeEnum.file,
-          url: '/api/system/file/download/d?filename=..'
-        }
-      ],
-      prefixId: 'current',
-      maxFiles: 10
-    });
-
-    expect(files.map((file) => file.name)).toEqual([
-      'report.pdf',
-      'report-1.pdf',
-      'image.png',
-      'file-3'
-    ]);
-    expect(files.every((file) => !file.name.includes('/'))).toBe(true);
-  });
-
-  it('keeps explicit image type when preview url has no file extension', () => {
-    const files = parseAgentInputFiles({
-      files: [
-        {
-          name: '20260629-233136_wT851P.jpg',
-          type: ChatFileTypeEnum.image,
-          url: 'https://fastgpt.example.com/api/core/chat/file/preview?token=abc'
-        }
-      ],
-      prefixId: 'current',
-      maxFiles: 10
-    });
-
-    expect(files).toEqual([
-      expect.objectContaining({
-        name: '20260629-233136_wT851P.jpg',
-        type: ChatFileTypeEnum.image,
-        url: 'https://fastgpt.example.com/api/core/chat/file/preview?token=abc'
-      })
-    ]);
-  });
-});
-
-describe('buildAgentUserReminderInput', () => {
+describe('buildAgentLoopCoreUserReminderInput', () => {
   it('builds current turn reminder with files datasets time and original query', () => {
-    const result = buildAgentUserReminderInput({
+    const result = buildAgentLoopCoreUserReminderInput({
       query: '帮我总结',
       skillInfos: [
         {
@@ -251,7 +180,6 @@ describe('buildAgentUserReminderInput', () => {
       ],
       filesInfo: [
         {
-          id: 'current-0',
           name: 'guide.pdf',
           type: ChatFileTypeEnum.file,
           url: '/guide.pdf'
@@ -263,9 +191,9 @@ describe('buildAgentUserReminderInput', () => {
     });
 
     expect(result).toContain('<system-reminder>');
-    expect(result).toContain('## 技能');
-    expect(result).toContain('<path>/workspace/Skill/SKILL.md</path>');
-    expect(result.indexOf('## 技能')).toBeLessThan(result.indexOf('## 对话文件'));
+    expect(result).toContain('<available_skills>');
+    expect(result).toContain('<location>/workspace/Skill/SKILL.md</location>');
+    expect(result.indexOf('<available_skills>')).toBeLessThan(result.indexOf('## 对话文件'));
     expect(result.indexOf('## 对话文件')).toBeLessThan(result.indexOf('## 知识库'));
     expect(result.indexOf('## 知识库')).toBeLessThan(result.indexOf('## 背景信息'));
     expect(result).toContain('## 对话文件');
@@ -273,12 +201,12 @@ describe('buildAgentUserReminderInput', () => {
     expect(result).toContain('<id>dataset_1</id>');
     expect(result).toContain('## 背景信息');
     expect(result).toContain('当前时间: 2026-05-14 10:00:00 Thursday');
-    expect(result).toContain('当前 sandbox 工作目录: /workspace');
+    expect(result).toContain('当前沙盒的工作目录: /workspace');
     expect(result).toContain('帮我总结');
   });
 
   it('escapes XML fields in dataset metadata', () => {
-    const result = buildAgentUserReminderInput({
+    const result = buildAgentLoopCoreUserReminderInput({
       query: 'hello',
       selectedDataset: [
         {
@@ -294,7 +222,7 @@ describe('buildAgentUserReminderInput', () => {
   });
 
   it('includes dataset description when backend context provides it', () => {
-    const result = buildAgentUserReminderInput({
+    const result = buildAgentLoopCoreUserReminderInput({
       query: 'hello',
       selectedDataset: [
         {
@@ -309,25 +237,25 @@ describe('buildAgentUserReminderInput', () => {
 
   it('builds reminder from each optional context independently', () => {
     expect(
-      buildAgentUserReminderInput({
+      buildAgentLoopCoreUserReminderInput({
         query: '',
         currentWorkingDirectory: '/workspace'
       })
-    ).toContain(`当前 sandbox 工作目录: /workspace`);
+    ).toContain(`当前沙盒的工作目录: /workspace`);
     expect(
-      buildAgentUserReminderInput({
+      buildAgentLoopCoreUserReminderInput({
         query: '',
         currentTime: '2026-05-14 10:00:00 Thursday'
       })
     ).toContain(`当前时间: 2026-05-14 10:00:00 Thursday`);
     expect(
-      buildAgentUserReminderInput({
+      buildAgentLoopCoreUserReminderInput({
         query: '',
         currentTime: '2026-05-14 10:00:00 Thursday'
       })
     ).toContain(`## 背景信息`);
 
-    const datasetOnly = buildAgentUserReminderInput({
+    const datasetOnly = buildAgentLoopCoreUserReminderInput({
       query: 'hello',
       selectedDataset
     });
@@ -337,15 +265,15 @@ describe('buildAgentUserReminderInput', () => {
   });
 
   it('returns original query when there is no context', () => {
-    expect(buildAgentUserReminderInput({ query: 'hello' })).toBe('hello');
-    expect(buildAgentUserReminderInput({ query: '' })).toBe('');
-    expect(buildAgentUserReminderInput({ query: 'hello', currentWorkingDirectory: '' })).toBe(
-      'hello'
-    );
+    expect(buildAgentLoopCoreUserReminderInput({ query: 'hello' })).toBe('hello');
+    expect(buildAgentLoopCoreUserReminderInput({ query: '' })).toBe('');
+    expect(
+      buildAgentLoopCoreUserReminderInput({ query: 'hello', currentWorkingDirectory: '' })
+    ).toBe('hello');
   });
 
   it('keeps skill prompt inside user system-reminder without requiring files or datasets', () => {
-    const result = buildAgentUserReminderInput({
+    const result = buildAgentLoopCoreUserReminderInput({
       query: '执行这个技能',
       skillInfos: [
         {
@@ -353,34 +281,30 @@ describe('buildAgentUserReminderInput', () => {
           name: 'Report',
           description: 'Write reports',
           directory: '/workspace/Report',
-          skillMdPath: '/workspace/Report/SKILL.md'
+          skillMdPath: '/workspace/Report/SKILL.md',
+          appId: 'platform_skill_1',
+          appName: 'Platform report skill',
+          appDescription: 'Platform skill description'
         }
       ]
     });
 
-    expect(result).toContain('## 技能');
+    expect(result).toContain('当用户任务与某个技能的描述匹配时');
+    expect(result).toContain('先使用 sandbox_read_file 读取完整的技能文件');
+    expect(result).toContain('<available_skills>');
+    expect(result).toContain('</available_skills>');
     expect(result).toContain('<name>Report</name>');
     expect(result).toContain('<description>Write reports</description>');
-    expect(result).toContain('<directory>/workspace/Report</directory>');
-    expect(result).toContain('<path>/workspace/Report/SKILL.md</path>');
+    expect(result).toContain('<location>/workspace/Report/SKILL.md</location>');
+    expect(result).not.toContain('<app_id>');
+    expect(result).not.toContain('<app_name>');
+    expect(result).not.toContain('<app_description>');
+    expect(result).not.toContain('Platform report skill');
     expect(result).toContain('执行这个技能');
   });
 
-  it('adds sandbox file write boundary reminder when current working directory exists', () => {
-    const result = buildAgentUserReminderInput({
-      query: '帮我生成一个编写小说的 skill',
-      currentWorkingDirectory: '/workspace'
-    });
-
-    expect(result).toContain('## Sandbox 文件写入边界');
-    expect(result).toContain('用户 Skill 产物根目录：/workspace/skills');
-    expect(result).toContain('/workspace/skills/<skill-name>/SKILL.md');
-    expect(result).toContain('禁止写入：/workspace/<skill-name>/ 或 /workspace/SKILL.md');
-    expect(result).toContain('/home/sandbox/.fastgpt/skills/');
-  });
-
   it('escapes XML fields in skill metadata', () => {
-    const result = buildAgentSkillsPrompt([
+    const result = buildAgentLoopCoreSkillsPrompt([
       {
         id: 'skill_report',
         name: 'Report <R&D>',
@@ -392,36 +316,12 @@ describe('buildAgentUserReminderInput', () => {
 
     expect(result).toContain('<name>Report &lt;R&amp;D&gt;</name>');
     expect(result).toContain('<description>Write &amp; review</description>');
-    expect(result).toContain('<directory>/workspace/Report &amp; Review</directory>');
-    expect(result).toContain('<path>/workspace/Report &amp; Review/SKILL.md</path>');
-  });
-
-  it('includes parent skill app metadata for injected child skills', () => {
-    const result = buildAgentSkillsPrompt([
-      {
-        id: 'skill_report',
-        appId: 'app_skill_1',
-        appName: 'Research <App>',
-        appDescription: 'Includes fetch & summarize skills',
-        name: 'fetch-webpage',
-        description: 'Read webpages',
-        directory: '/workspace/.skills/version_1/fetch-webpage',
-        skillMdPath: '/workspace/.skills/version_1/fetch-webpage/SKILL.md'
-      }
-    ]);
-
-    expect(result).toContain('<app_id>app_skill_1</app_id>');
-    expect(result).toContain('<app_name>Research &lt;App&gt;</app_name>');
-    expect(result).toContain(
-      '<app_description>Includes fetch &amp; summarize skills</app_description>'
-    );
-    expect(result).toContain('<name>fetch-webpage</name>');
-    expect(result).toContain('<path>/workspace/.skills/version_1/fetch-webpage/SKILL.md</path>');
+    expect(result).toContain('<location>/workspace/Report &amp; Review/SKILL.md</location>');
   });
 });
 
 describe('useUserContext', () => {
-  it('rewrites histories and current input while keeping file ids consistent with maps', async () => {
+  it('rewrites histories and current input with direct model URLs', async () => {
     vi.mocked(MongoDataset.find).mockReturnValueOnce({
       lean: vi.fn(async () => [
         {
@@ -433,27 +333,22 @@ describe('useUserContext', () => {
 
     await runWithContextAsync(
       {
-        queryUrlTypeMap: {
-          '/old.pdf': ChatFileTypeEnum.file,
-          '/old.png': ChatFileTypeEnum.image,
-          '/current.pdf': ChatFileTypeEnum.file,
-          '/current.png': ChatFileTypeEnum.image
-        },
         mcpClientMemory: {}
       },
       async () => {
         const history = createHumanMessage({
           dataId: 'history_1',
           text: '历史问题',
-          files: [
-            { name: 'old.pdf', url: '/old.pdf' },
-            { name: 'old.png', url: '/old.png', type: ChatFileTypeEnum.image }
-          ]
+          files: [{ name: 'old.pdf', url: 'https://files.example.com/old.pdf' }]
         });
         const result = await getUserContextMessagesForTest({
           history: 6,
+          parseHistoryFiles: true,
           histories: [history, createSystemMessage(), createAiMessage('history_ai_1')],
-          currentFiles: ['/current.pdf', '/current.png'],
+          currentFiles: [
+            'https://files.example.com/current.pdf',
+            'https://files.example.com/current.png'
+          ],
           currentUserInput: '当前问题',
           currentDataId: 'current_chat_item',
           currentQuery: runtimePrompt2ChatsValue({
@@ -461,7 +356,7 @@ describe('useUserContext', () => {
             files: [
               {
                 name: 'current.pdf',
-                url: '/current.pdf',
+                url: 'https://files.example.com/current.pdf',
                 type: ChatFileTypeEnum.file
               }
             ]
@@ -470,67 +365,43 @@ describe('useUserContext', () => {
           currentWorkingDirectory: '/workspace',
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
-        expect(result.filesMap).toEqual({
-          'history_1-0': '/old.pdf',
-          'current_chat_item-0': '/current.pdf'
-        });
-        expect(result.fileUrlMap).toEqual({
-          'history_1-0': '/old.pdf',
-          'history_1-1': '/old.png',
-          'current_chat_item-0': '/current.pdf',
-          'current_chat_item-1': '/current.png'
-        });
-
-        const { text: historyText, files: historyFiles } = chatValue2RuntimePrompt(
-          result.rewrittenHistories[0].value
-        );
+        const { text: historyText } = chatValue2RuntimePrompt(result.rewrittenHistories[0].value);
         const { text: currentText, files: currentFiles } = chatValue2RuntimePrompt(
           result.currentUserMessage.value
         );
 
-        expect(historyFiles).toEqual([
-          {
-            name: 'old.png',
-            type: ChatFileTypeEnum.image,
-            url: '/old.png'
-          }
-        ]);
-        expect(historyText).toContain('<id>history_1-0</id>');
-        expect(historyText).toContain('<id>history_1-1</id>');
-        expect(historyText).not.toContain('当前 sandbox 工作目录');
+        expect(historyText).toContain('<url>https://files.example.com/old.pdf</url>');
+        expect(historyText).not.toContain('当前沙盒的工作目录');
         expect(historyText).not.toContain('当前时间');
         expect(currentFiles).toEqual([
           {
             name: 'current.png',
             type: ChatFileTypeEnum.image,
-            url: '/current.png'
+            url: 'https://files.example.com/current.png'
           }
         ]);
         expect(currentText).toContain('## 背景信息');
-        expect(currentText).toContain('当前 sandbox 工作目录: /workspace');
-        expect(currentText).toContain('<id>current_chat_item-0</id>');
-        expect(currentText).toContain('<id>current_chat_item-1</id>');
-        expect(currentText).toContain('<type>image</type>');
-        expect(currentText).toContain('<url>/current.png</url>');
+        expect(currentText).toContain('当前沙盒的工作目录: /workspace');
+        expect(currentText).toContain('<url>https://files.example.com/current.pdf</url>');
+        expect(currentText).toContain('<url>https://files.example.com/current.png</url>');
+        expect(currentText).not.toContain('<id>current_chat_item-');
         expect(currentText).toContain('## 知识库');
         expect(currentText).toContain('<description>后端读取到的知识库介绍</description>');
         expect(currentText).toContain('2026-05-14 10:00:00 Thursday');
         expect(currentText).toContain('当前问题');
         expect(result.currentFiles).toEqual([
           {
-            id: 'current_chat_item-0',
             name: 'current.pdf',
             type: ChatFileTypeEnum.file,
-            url: '/current.pdf'
+            url: 'https://files.example.com/current.pdf'
           },
           {
-            id: 'current_chat_item-1',
             name: 'current.png',
             type: ChatFileTypeEnum.image,
-            url: '/current.png'
+            url: 'https://files.example.com/current.png'
           }
         ]);
       }
@@ -540,19 +411,17 @@ describe('useUserContext', () => {
   it('injects skill reminder only into the current user message', async () => {
     await runWithContextAsync(
       {
-        queryUrlTypeMap: {
-          '/old.pdf': ChatFileTypeEnum.file
-        },
         mcpClientMemory: {}
       },
       async () => {
         const result = await getUserContextMessagesForTest({
           history: 6,
+          parseHistoryFiles: true,
           histories: [
             createHumanMessage({
               dataId: 'history_1',
               text: '历史问题',
-              files: [{ name: 'old.pdf', url: '/old.pdf' }]
+              files: [{ name: 'old.pdf', url: 'https://files.example.com/old.pdf' }]
             }),
             createAiMessage('history_ai_1')
           ],
@@ -569,23 +438,22 @@ describe('useUserContext', () => {
           ],
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
         const { text: historyText } = chatValue2RuntimePrompt(result.rewrittenHistories[0].value);
         const { text: currentText } = chatValue2RuntimePrompt(result.currentUserMessage.value);
 
         expect(historyText).toContain('## 对话文件');
-        expect(historyText).not.toContain('## 技能');
-        expect(currentText).toContain('## 技能');
-        expect(currentText).toContain('<path>/workspace/Report/SKILL.md</path>');
+        expect(historyText).not.toContain('<available_skills>');
+        expect(currentText).toContain('<available_skills>');
+        expect(currentText).toContain('<location>/workspace/Report/SKILL.md</location>');
         expect(currentText).toContain('当前问题');
       }
     );
   });
 
   it('loads dataset name and description from backend when selected state only keeps id', async () => {
-    vi.mocked(filterDatasetsByTmbId).mockClear();
     vi.mocked(MongoDataset.find).mockReturnValueOnce({
       lean: vi.fn(async () => [
         {
@@ -598,7 +466,6 @@ describe('useUserContext', () => {
 
     await runWithContextAsync(
       {
-        queryUrlTypeMap: {},
         mcpClientMemory: {}
       },
       async () => {
@@ -612,12 +479,16 @@ describe('useUserContext', () => {
               datasetId: 'dataset_1'
             }
           ],
+          authTmbId: true,
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
-        expect(filterDatasetsByTmbId).not.toHaveBeenCalled();
+        expect(filterDatasetsByTmbId).toHaveBeenCalledWith({
+          datasetIds: ['dataset_1'],
+          tmbId: 'tmb_1'
+        });
         expect(MongoDataset.find).toHaveBeenCalledWith(
           {
             _id: {
@@ -636,7 +507,6 @@ describe('useUserContext', () => {
   });
 
   it('filters unauthorized datasets before loading backend metadata', async () => {
-    vi.mocked(filterDatasetsByTmbId).mockClear();
     vi.mocked(filterDatasetsByTmbId).mockResolvedValueOnce(['dataset_1']);
     vi.mocked(MongoDataset.find).mockReturnValueOnce({
       lean: vi.fn(async () => [
@@ -650,7 +520,6 @@ describe('useUserContext', () => {
 
     await runWithContextAsync(
       {
-        queryUrlTypeMap: {},
         mcpClientMemory: {}
       },
       async () => {
@@ -670,13 +539,9 @@ describe('useUserContext', () => {
           authTmbId: true,
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
-        expect(filterDatasetsByTmbId).toHaveBeenCalledWith({
-          datasetIds: ['dataset_1', 'dataset_2'],
-          tmbId: 'tmb_1'
-        });
         expect(MongoDataset.find).toHaveBeenCalledWith(
           {
             _id: {
@@ -694,51 +559,46 @@ describe('useUserContext', () => {
     );
   });
 
-  it('uses human dataId for historical human messages', async () => {
+  it('rewrites historical files to direct model URLs', async () => {
     await runWithContextAsync(
       {
-        queryUrlTypeMap: {
-          '/old.pdf': ChatFileTypeEnum.file
-        },
         mcpClientMemory: {}
       },
       async () => {
         const result = await getUserContextMessagesForTest({
           history: 6,
+          parseHistoryFiles: true,
           histories: [
             createHumanMessage({
               dataId: 'history_human_1',
               text: '历史问题',
-              files: [{ name: 'old.pdf', url: '/old.pdf' }]
+              files: [{ name: 'old.pdf', url: 'https://files.example.com/old.pdf' }]
             })
           ],
           currentUserInput: '当前问题',
           currentDataId: 'current_chat_item',
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
-        expect(result.filesMap).toEqual({
-          'history_human_1-0': '/old.pdf'
-        });
+        const { text } = chatValue2RuntimePrompt(result.rewrittenHistories[0].value);
+        expect(text).toContain('<url>https://files.example.com/old.pdf</url>');
+        expect(text).not.toContain('<id>');
       }
     );
   });
 
-  it('deduplicates current files after request origin normalization', async () => {
+  it('deduplicates identical absolute file URLs', async () => {
     await runWithContextAsync(
       {
-        queryUrlTypeMap: {
-          '/current.pdf': ChatFileTypeEnum.file
-        },
         mcpClientMemory: {}
       },
       async () => {
         const result = await getUserContextMessagesForTest({
           history: 6,
           histories: [],
-          currentFiles: ['https://fastgpt.example.com/current.pdf'],
+          currentFiles: ['https://files.example.com/current.pdf'],
           currentUserInput: '当前问题',
           currentDataId: 'current_chat_item',
           currentQuery: runtimePrompt2ChatsValue({
@@ -746,20 +606,23 @@ describe('useUserContext', () => {
             files: [
               {
                 name: 'current.pdf',
-                url: '/current.pdf',
+                url: 'https://files.example.com/current.pdf',
                 type: ChatFileTypeEnum.file
               }
             ]
           }),
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          requestOrigin: 'https://fastgpt.example.com',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
-        expect(result.filesMap).toEqual({
-          'current_chat_item-0': '/current.pdf'
-        });
+        expect(result.currentFiles).toEqual([
+          {
+            name: 'current.pdf',
+            type: ChatFileTypeEnum.file,
+            url: 'https://files.example.com/current.pdf'
+          }
+        ]);
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
         expect(text.match(/<file>/g)).toHaveLength(1);
@@ -768,63 +631,20 @@ describe('useUserContext', () => {
     );
   });
 
-  it('keeps uploaded image as multimodal content when preview url has no extension', async () => {
+  it('rewrites historical files without requiring a message dataId', async () => {
     await runWithContextAsync(
       {
-        queryUrlTypeMap: {},
-        mcpClientMemory: {}
-      },
-      async () => {
-        const previewUrl = 'https://fastgpt.example.com/api/core/chat/file/preview?token=abc';
-        const result = await getUserContextMessagesForTest({
-          history: 0,
-          histories: [],
-          currentUserInput: '看一下这张图',
-          currentDataId: 'current_chat_item',
-          currentQuery: runtimePrompt2ChatsValue({
-            text: '前端原始问题',
-            files: [
-              {
-                name: '20260629-233136_wT851P.jpg',
-                url: previewUrl,
-                type: ChatFileTypeEnum.image
-              }
-            ]
-          }),
-          tmbId: 'tmb_1',
-          timezone: 'Asia/Shanghai',
-          maxFiles: 20
-        });
-
-        const { files, text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
-        expect(files).toEqual([
-          expect.objectContaining({
-            type: ChatFileTypeEnum.image,
-            name: '20260629-233136_wT851P.jpg',
-            url: previewUrl
-          })
-        ]);
-        expect(text).toContain('<type>image</type>');
-      }
-    );
-  });
-
-  it('uses message index when historical human has no human dataId', async () => {
-    await runWithContextAsync(
-      {
-        queryUrlTypeMap: {
-          '/old.pdf': ChatFileTypeEnum.file
-        },
         mcpClientMemory: {}
       },
       async () => {
         const result = await getUserContextMessagesForTest({
           history: 6,
+          parseHistoryFiles: true,
           histories: [
             createSystemMessage(),
             createHumanMessage({
               text: '历史问题',
-              files: [{ name: 'old.pdf', url: '/old.pdf' }]
+              files: [{ name: 'old.pdf', url: 'https://files.example.com/old.pdf' }]
             }),
             createHumanMessage({
               dataId: 'next_human',
@@ -834,26 +654,19 @@ describe('useUserContext', () => {
           currentUserInput: '当前问题',
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
-        expect(result.filesMap).toEqual({
-          '1-0': '/old.pdf'
-        });
         const { text } = chatValue2RuntimePrompt(result.rewrittenHistories[1].value);
-        expect(text).toContain('<id>1-0</id>');
+        expect(text).toContain('<url>https://files.example.com/old.pdf</url>');
+        expect(text).not.toContain('<id>');
       }
     );
   });
 
-  it('accepts explicit history arrays and respects maxFiles per message', async () => {
+  it('accepts explicit history arrays and respects maxFileAmount per message', async () => {
     await runWithContextAsync(
       {
-        queryUrlTypeMap: {
-          '/a.pdf': ChatFileTypeEnum.file,
-          '/b.pdf': ChatFileTypeEnum.file,
-          '/c.pdf': ChatFileTypeEnum.file
-        },
         mcpClientMemory: {}
       },
       async () => {
@@ -862,8 +675,8 @@ describe('useUserContext', () => {
             dataId: 'history_human',
             text: '历史问题',
             files: [
-              { name: 'a.pdf', url: '/a.pdf' },
-              { name: 'b.pdf', url: '/b.pdf' }
+              { name: 'a.pdf', url: 'https://files.example.com/a.pdf' },
+              { name: 'b.pdf', url: 'https://files.example.com/b.pdf' }
             ]
           }),
           createAiMessage('history_ai')
@@ -871,33 +684,71 @@ describe('useUserContext', () => {
 
         const result = await getUserContextMessagesForTest({
           history: explicitHistory,
+          parseHistoryFiles: true,
           histories: [],
-          currentFiles: ['/c.pdf', '/a.pdf'],
+          currentFiles: ['https://files.example.com/c.pdf', 'https://files.example.com/a.pdf'],
           currentUserInput: '当前问题',
           currentDataId: 'current_ai',
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 1
+          maxFileAmount: 1
         });
 
         expect(result.chatHistories).toBe(explicitHistory);
-        expect(result.filesMap).toEqual({
-          'history_human-0': '/a.pdf',
-          'current_ai-0': '/c.pdf'
-        });
+        const { text: historyText } = chatValue2RuntimePrompt(result.rewrittenHistories[0].value);
+        const { text: currentText } = chatValue2RuntimePrompt(result.currentUserMessage.value);
+        expect(historyText).toContain('<url>https://files.example.com/a.pdf</url>');
+        expect(historyText).not.toContain('https://files.example.com/b.pdf');
+        expect(currentText).toContain('<url>https://files.example.com/c.pdf</url>');
+        expect(currentText).not.toContain('https://files.example.com/a.pdf');
       }
     );
   });
 
-  it('filters invalid and data urls and keeps image audio video urls in agent context', async () => {
+  it('removes historical files when the node file input is not bound', async () => {
+    await runWithContextAsync(
+      {
+        mcpClientMemory: {}
+      },
+      async () => {
+        const result = await getUserContextMessagesForTest({
+          history: 6,
+          parseHistoryFiles: false,
+          histories: [
+            createHumanMessage({
+              dataId: 'history_human',
+              text: '历史问题',
+              files: [
+                { name: 'old.pdf', url: 'https://files.example.com/old.pdf' },
+                {
+                  name: 'old.png',
+                  url: 'https://files.example.com/old.png',
+                  type: ChatFileTypeEnum.image
+                }
+              ]
+            })
+          ],
+          currentFiles: ['https://files.example.com/current.pdf'],
+          currentUserInput: '当前问题',
+          tmbId: 'tmb_1',
+          timezone: 'Asia/Shanghai',
+          maxFileAmount: 20
+        });
+
+        const historyPrompt = chatValue2RuntimePrompt(result.rewrittenHistories[0].value);
+        const currentPrompt = chatValue2RuntimePrompt(result.currentUserMessage.value);
+
+        expect(historyPrompt.text).toBe('历史问题');
+        expect(historyPrompt.files).toEqual([]);
+        expect(currentPrompt.text).toContain('https://files.example.com/current.pdf');
+      }
+    );
+  });
+
+  it('keeps valid media and document URLs in sandbox and user context', async () => {
     const dataImage = 'data:image/png;base64,AAAA';
     await runWithContextAsync(
       {
-        queryUrlTypeMap: {
-          '/doc.pdf': ChatFileTypeEnum.file,
-          '/voice.mp3': ChatFileTypeEnum.audio,
-          '/demo.mp4': ChatFileTypeEnum.video
-        },
         mcpClientMemory: {}
       },
       async () => {
@@ -908,87 +759,81 @@ describe('useUserContext', () => {
             'not-a-url',
             'data:text/plain;base64,AAAA',
             dataImage,
-            '/doc.pdf',
-            '/voice.mp3',
-            '/demo.mp4'
+            'https://files.example.com/doc.pdf',
+            'https://files.example.com/voice.mp3',
+            'https://files.example.com/demo.mp4'
           ],
           currentUserInput: '分析这些文件',
           currentDataId: 'current_ai',
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
-        expect(result.filesMap).toEqual({
-          'current_ai-0': '/doc.pdf'
-        });
-        expect(result.fileUrlMap).toEqual({
-          'current_ai-0': '/doc.pdf',
-          'current_ai-1': '/voice.mp3',
-          'current_ai-2': '/demo.mp4'
-        });
         expect(result.currentFiles).toEqual([
           {
-            id: 'current_ai-0',
             name: 'doc.pdf',
             type: ChatFileTypeEnum.file,
-            url: '/doc.pdf'
+            url: 'https://files.example.com/doc.pdf'
           },
           {
-            id: 'current_ai-1',
             name: 'voice.mp3',
             type: ChatFileTypeEnum.audio,
-            url: '/voice.mp3'
+            url: 'https://files.example.com/voice.mp3'
           },
           {
-            id: 'current_ai-2',
             name: 'demo.mp4',
             type: ChatFileTypeEnum.video,
-            url: '/demo.mp4'
+            url: 'https://files.example.com/demo.mp4'
           }
         ]);
 
-        const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
-        expect(text).toContain('<id>current_ai-0</id>');
-        expect(text).toContain('<id>current_ai-1</id>');
-        expect(text).toContain('<id>current_ai-2</id>');
-        expect(text).not.toContain('<id>current_ai-3</id>');
-        expect(text).not.toContain('<id>current_ai-4</id>');
-        expect(text).not.toContain('<type>image</type>');
+        const { text, files } = chatValue2RuntimePrompt(result.currentUserMessage.value);
+        expect(files).toEqual([
+          {
+            name: 'voice.mp3',
+            type: ChatFileTypeEnum.audio,
+            url: 'https://files.example.com/voice.mp3'
+          },
+          {
+            name: 'demo.mp4',
+            type: ChatFileTypeEnum.video,
+            url: 'https://files.example.com/demo.mp4'
+          }
+        ]);
+        expect(text).toContain('<url>https://files.example.com/doc.pdf</url>');
+        expect(text).toContain('<url>https://files.example.com/voice.mp3</url>');
+        expect(text).toContain('<url>https://files.example.com/demo.mp4</url>');
+        expect(text).not.toContain('<id>');
         expect(text).toContain('<type>audio</type>');
         expect(text).toContain('<type>video</type>');
+        expect(text).not.toContain(dataImage);
         expect(text).not.toContain('not-a-url');
-        expect(text).not.toContain('data:image');
         expect(text).not.toContain('data:text/plain');
       }
     );
   });
 
-  it('drops files when url normalization throws', async () => {
+  it('does not use request origin when parsing absolute file URLs', async () => {
     await runWithContextAsync(
       {
-        queryUrlTypeMap: {
-          '/doc.pdf': ChatFileTypeEnum.file
-        },
         mcpClientMemory: {}
       },
       async () => {
         const result = await getUserContextMessagesForTest({
           history: 6,
           histories: [],
-          currentFiles: ['/doc.pdf'],
+          currentFiles: ['https://files.example.com/doc.pdf'],
           currentUserInput: '分析文件',
           currentDataId: 'current_ai',
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
           requestOrigin: Symbol('invalid-origin'),
-          maxFiles: 20
+          maxFileAmount: 20
         } as any);
 
-        expect(result.filesMap).toEqual({});
-
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
-        expect(text).not.toContain('## 对话文件');
+        expect(text).toContain('## 对话文件');
         expect(text).toContain('分析文件');
       }
     );
@@ -997,9 +842,6 @@ describe('useUserContext', () => {
   it('uses parsed filename when chat file metadata has no name', async () => {
     await runWithContextAsync(
       {
-        queryUrlTypeMap: {
-          '/uploads/report%20v1.pdf': ChatFileTypeEnum.file
-        },
         mcpClientMemory: {}
       },
       async () => {
@@ -1013,32 +855,33 @@ describe('useUserContext', () => {
             files: [
               {
                 name: '',
-                url: '/uploads/report%20v1.pdf',
+                url: 'https://files.example.com/uploads/report%20v1.pdf',
                 type: ChatFileTypeEnum.file
               }
             ]
           }),
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
         expect(result.queryInput).toBe('原始问题');
-        expect(result.filesMap).toEqual({
-          'current_ai-0': '/uploads/report%20v1.pdf'
-        });
+        expect(result.currentFiles).toEqual([
+          {
+            name: 'report v1.pdf',
+            type: ChatFileTypeEnum.file,
+            url: 'https://files.example.com/uploads/report%20v1.pdf'
+          }
+        ]);
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
         expect(text).toContain('<name>report v1.pdf</name>');
       }
     );
   });
 
-  it('falls back to a safe url basename when neither chat metadata nor parsed url has a filename', async () => {
+  it('falls back to url as file name when neither chat metadata nor parsed url has a filename', async () => {
     await runWithContextAsync(
       {
-        queryUrlTypeMap: {
-          '/api/file/raw': ChatFileTypeEnum.file
-        },
         mcpClientMemory: {}
       },
       async () => {
@@ -1052,14 +895,14 @@ describe('useUserContext', () => {
             files: [
               {
                 name: '',
-                url: '/api/file/raw',
+                url: 'https://files.example.com/api/file/raw',
                 type: ChatFileTypeEnum.file
               }
             ]
           }),
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
@@ -1068,30 +911,29 @@ describe('useUserContext', () => {
     );
   });
 
-  it('uses a safe url basename as the final defensive file name fallback', async () => {
+  it('uses url as the final defensive file name fallback when parser returns an empty name', async () => {
     const parseUrlToFileTypeSpy = vi
       .spyOn(workflowContext, 'parseUrlToFileType')
       .mockReturnValueOnce({
         name: '',
         type: ChatFileTypeEnum.file,
-        url: '/nameless'
+        url: 'https://files.example.com/nameless'
       });
 
     await runWithContextAsync(
       {
-        queryUrlTypeMap: {},
         mcpClientMemory: {}
       },
       async () => {
         const result = await getUserContextMessagesForTest({
           history: 6,
           histories: [],
-          currentFiles: ['/nameless'],
+          currentFiles: ['https://files.example.com/nameless'],
           currentUserInput: '读取文件',
           currentDataId: 'current_ai',
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
@@ -1105,12 +947,12 @@ describe('useUserContext', () => {
   it('ignores non-string file urls defensively', async () => {
     await runWithContextAsync(
       {
-        queryUrlTypeMap: {},
         mcpClientMemory: {}
       },
       async () => {
         const result = await getUserContextMessagesForTest({
           history: 6,
+          parseHistoryFiles: true,
           histories: [
             createHumanMessage({
               dataId: 'history_human',
@@ -1132,10 +974,10 @@ describe('useUserContext', () => {
           }),
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
-        expect(result.filesMap).toEqual({});
+        expect(result.currentFiles).toEqual([]);
         expect(result.rewrittenHistories[0]).toBe(result.chatHistories[0]);
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
@@ -1148,7 +990,6 @@ describe('useUserContext', () => {
   it('handles requests without currentQuery or files', async () => {
     await runWithContextAsync(
       {
-        queryUrlTypeMap: {},
         mcpClientMemory: {}
       },
       async () => {
@@ -1164,19 +1005,79 @@ describe('useUserContext', () => {
           currentUserInput: '只问一个问题',
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
         expect(result.chatHistories).toEqual([]);
         expect(result.rewrittenHistories).toEqual([]);
         expect(result.queryInput).toBe('');
-        expect(result.filesMap).toEqual({});
+        expect(result.currentFiles).toEqual([]);
 
         const { text, files } = chatValue2RuntimePrompt(result.currentUserMessage.value);
         expect(files).toEqual([]);
         expect(text).toContain('当前时间');
         expect(text).toContain('只问一个问题');
         expect(text).not.toContain('## 对话文件');
+      }
+    );
+  });
+
+  it('keeps the last pending interactive round when history is 0', async () => {
+    await runWithContextAsync(
+      {
+        mcpClientMemory: {}
+      },
+      async () => {
+        const histories: ChatItemMiniType[] = [
+          createHumanMessage({
+            dataId: 'question_1',
+            text: 'Need a choice'
+          }),
+          {
+            obj: ChatRoleEnum.AI,
+            memories: {
+              'agentLoopMemory-agent_1': {
+                providerState: {
+                  pendingMainContext: {
+                    messages: []
+                  }
+                }
+              }
+            },
+            value: [
+              {
+                interactive: {
+                  type: 'agentAsk',
+                  askId: 'ask_1',
+                  params: {
+                    description: 'Choose one',
+                    questions: [
+                      {
+                        question: 'Choose one?',
+                        options: [
+                          { summary: 'A', value: 'A' },
+                          { summary: 'B', value: 'B' }
+                        ]
+                      }
+                    ]
+                  }
+                } as any
+              }
+            ]
+          }
+        ];
+
+        const result = await getUserContextMessagesForTest({
+          history: 0,
+          histories,
+          currentUserInput: 'A',
+          tmbId: 'tmb_1',
+          timezone: 'Asia/Shanghai',
+          maxFileAmount: 20
+        });
+
+        expect(result.chatHistories).toEqual(histories);
+        expect(result.rewrittenHistories).toEqual(histories);
       }
     );
   });

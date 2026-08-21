@@ -1,7 +1,7 @@
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getHTTPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -15,6 +15,7 @@ import {
   type UpdateHttpToolsBodyType,
   type UpdateHttpToolsResponseType
 } from '@fastgpt/global/openapi/core/app/httpTools/api';
+import { encodeHttpToolSetNodesForStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
 
 async function handler(
   req: ApiRequestProps<UpdateHttpToolsBodyType>
@@ -42,12 +43,13 @@ async function handler(
     headerSecret: formatedHeaderAuth,
     customHeaders
   });
+  const storageNodes = encodeHttpToolSetNodesForStorage([toolSetRuntimeNode]);
 
   await mongoSessionRun(async (session) => {
     await MongoApp.findByIdAndUpdate(
       appId,
       {
-        modules: [toolSetRuntimeNode]
+        modules: storageNodes
       },
       { session }
     );
@@ -56,7 +58,7 @@ async function handler(
       { appId },
       {
         $set: {
-          nodes: [toolSetRuntimeNode]
+          nodes: storageNodes
         }
       },
       { session }

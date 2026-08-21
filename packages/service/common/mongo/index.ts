@@ -9,6 +9,7 @@ import type {
 } from 'mongoose';
 import mongoose, { Mongoose } from 'mongoose';
 import { serviceEnv } from '../../env';
+import { MongoIndexManager } from './indexManager';
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
 
@@ -136,7 +137,6 @@ export const getMongoModel = <T>(name: string, schema: mongoose.Schema): Model<T
 
   const model = connectionMongo.model(name, schema) as Model<T>;
 
-  // Sync index
   syncMongoIndex(model);
 
   return model;
@@ -148,13 +148,12 @@ export const getMongoLogModel = <T>(name: string, schema: mongoose.Schema): Mode
 
   const model = connectionLogMongo.model(name, schema) as Model<T>;
 
-  // Sync index
   syncMongoIndex(model);
 
   return model;
 };
 
-const syncMongoIndex = async (model: Model<any>) => {
+const syncMongoIndex = (model: Model<any>) => {
   if (
     process.env.NODE_ENV === 'test' ||
     process.env.NEXT_PHASE === 'phase-production-build' ||
@@ -164,11 +163,34 @@ const syncMongoIndex = async (model: Model<any>) => {
     return;
   }
 
-  try {
-    await model.syncIndexes({ background: true });
-  } catch (error) {
-    logger.error('Failed to sync MongoDB indexes', { modelName: model.modelName, error });
-  }
+  void MongoIndexManager.syncModelIndexes({
+    model,
+    logger
+  }).catch((error) => {
+    logger.error('Failed to ensure MongoDB indexes', {
+      modelName: model.modelName,
+      collectionName: model.collection.collectionName,
+      error
+    });
+  });
 };
 
 export const ReadPreference = connectionMongo.mongo.ReadPreference;
+
+export { MongoIndexManager } from './indexManager';
+export {
+  getDeprecatedIndexes as getSchemaDeprecatedMongoIndexes,
+  defineIndex
+} from './schemaIndexes';
+export type {
+  MongoIndexCleanupAction,
+  MongoIndexCleanupReport,
+  MongoIndexCleanupReportItem,
+  MongoIndexCleanupSummary,
+  MongoIndexSyncResult
+} from './indexManager';
+export type {
+  DefineMongoIndexOptions,
+  DeprecatedMongoIndexDefinition,
+  DeprecatedMongoIndexOptions
+} from './schemaIndexes';

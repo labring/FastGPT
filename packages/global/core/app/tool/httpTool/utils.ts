@@ -3,12 +3,63 @@ import type { PathDataType, HttpToolConfigType } from './type';
 import { type RuntimeNodeItemType } from '../../../workflow/runtime/type';
 import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../../workflow/node/constant';
 import { AppToolSourceEnum } from '../constants';
-import { jsonSchema2NodeInput, jsonSchema2NodeOutput } from '../../jsonschema';
+import {
+  getNodeInputTypeFromSchemaInputType,
+  jsonSchema2NodeInput,
+  jsonSchema2NodeOutput
+} from '../../jsonschema';
 import { type StoreSecretValueType } from '../../../../common/secret/type';
 import { type JsonSchemaPropertiesItemType } from '../../jsonschema';
-import { NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../../../workflow/constants';
+import {
+  NodeOutputKeyEnum,
+  WorkflowIOValueTypeEnum,
+  valueTypeJsonSchemaMap
+} from '../../../workflow/constants';
 import { i18nT } from '../../../../common/i18n/utils';
 import type { NodeToolConfigType } from '../../../workflow/type/node';
+
+const legacyManualHttpToolArrayTypes = new Set<string>([
+  WorkflowIOValueTypeEnum.arrayString,
+  WorkflowIOValueTypeEnum.arrayNumber,
+  WorkflowIOValueTypeEnum.arrayBoolean
+]);
+
+/** 判断 JSON Schema type 是否为手工 HTTP 工具历史上写入的数组值类型。 */
+export const isLegacyManualHttpToolArrayType = (
+  value: unknown
+): value is
+  | WorkflowIOValueTypeEnum.arrayString
+  | WorkflowIOValueTypeEnum.arrayNumber
+  | WorkflowIOValueTypeEnum.arrayBoolean =>
+  typeof value === 'string' && legacyManualHttpToolArrayTypes.has(value);
+
+/** 将手工 HTTP 工具编辑器的工作流值类型转换为标准 JSON Schema property。 */
+export const manualHttpToolValueType2JsonSchema = (
+  valueType: WorkflowIOValueTypeEnum
+): JsonSchemaPropertiesItemType => {
+  const schema =
+    valueTypeJsonSchemaMap[valueType] ?? valueTypeJsonSchemaMap[WorkflowIOValueTypeEnum.string];
+
+  return {
+    ...schema,
+    ...(schema.items && typeof schema.items === 'object' ? { items: { ...schema.items } } : {})
+  };
+};
+
+/** 将标准或历史 HTTP 工具 property Schema 还原为手工编辑器使用的工作流值类型。 */
+export const jsonSchemaProperty2ManualHttpToolValueType = (
+  schema: JsonSchemaPropertiesItemType
+): WorkflowIOValueTypeEnum => {
+  if (isLegacyManualHttpToolArrayType(schema.type)) {
+    return schema.type;
+  }
+
+  return getNodeInputTypeFromSchemaInputType({
+    type: typeof schema.type === 'string' ? schema.type : undefined,
+    arrayItems: schema.items,
+    schema
+  });
+};
 
 export const getHTTPToolSetRuntimeNode = ({
   name,
@@ -61,6 +112,16 @@ export const getHTTPToolRuntimeNode = ({
   toolSetId: string;
   toolsetName: string;
 }): RuntimeNodeItemType => {
+  const inputSchema = getHTTPToolInputSchema(tool);
+  const inputs = jsonSchema2NodeInput({
+    jsonSchema: inputSchema,
+    schemaType: 'http'
+  }).map((input) => ({
+    ...input,
+    // 兼容旧 HTTP 工具 schema；空 x-tool-description 表示开发者手动配置。
+    isToolParam: input.isToolParam ?? Boolean(input.toolDescription)
+  }));
+
   return {
     nodeId,
     flowNodeType: FlowNodeTypeEnum.tool,
@@ -71,8 +132,8 @@ export const getHTTPToolRuntimeNode = ({
         toolId: `${AppToolSourceEnum.http}-${toolSetId}/${tool.name}`
       }
     },
-    jsonSchema: tool.requestSchema,
-    inputs: jsonSchema2NodeInput({ jsonSchema: tool.inputSchema, schemaType: 'http' }),
+    jsonSchema: getHTTPToolRequestSchema(tool),
+    inputs,
     outputs: [
       ...jsonSchema2NodeOutput({ jsonSchema: tool.outputSchema }),
       {
@@ -88,6 +149,36 @@ export const getHTTPToolRuntimeNode = ({
     name: `${toolsetName}/${tool.name}`,
     version: ''
   };
+};
+
+/**
+ * 读取 HTTP 工具给模型使用的请求 schema。
+ * 旧版 GET 工具可能把单个参数 schema 写进 requestSchema，运行时回退到 inputSchema。
+ */
+export const getHTTPToolRequestSchema = ({
+  requestSchema,
+  inputSchema
+}: Pick<HttpToolConfigType, 'requestSchema' | 'inputSchema'>) => {
+  const hasRequestProperties =
+    !!requestSchema?.properties && Object.keys(requestSchema.properties).length > 0;
+
+  return hasRequestProperties ? requestSchema : (inputSchema ?? requestSchema);
+};
+
+/**
+ * 读取 HTTP 工具用于生成节点输入的 schema。
+ * inputSchema 携带 FastGPT 表单描述时优先使用；旧数据只有空 inputSchema 时回退到 requestSchema。
+ */
+export const getHTTPToolInputSchema = ({
+  requestSchema,
+  inputSchema
+}: Pick<HttpToolConfigType, 'requestSchema' | 'inputSchema'>) => {
+  const hasInputProperties =
+    !!inputSchema?.properties && Object.keys(inputSchema.properties).length > 0;
+
+  return hasInputProperties
+    ? inputSchema
+    : getHTTPToolRequestSchema({ requestSchema, inputSchema });
 };
 
 export const parseHttpToolConfig = (
@@ -115,6 +206,7 @@ export const pathData2ToolList = async (
   try {
     return pathData.map((pathItem) => {
       const inputProperties: Record<string, JsonSchemaPropertiesItemType> = {};
+      const requestProperties: Record<string, JsonSchemaPropertiesItemType> = {};
       const inputRequired: string[] = [];
       const outputProperties: Record<string, JsonSchemaPropertiesItemType> = {};
       const outputRequired: string[] = [];
@@ -123,11 +215,17 @@ export const pathData2ToolList = async (
       if (pathItem.params && Array.isArray(pathItem.params)) {
         pathItem.params.forEach((param) => {
           if (param.name && param.schema) {
-            requestSchema = param.schema;
+            const description = param.description || param.schema.description || '';
+            requestProperties[param.name] = {
+              ...param.schema,
+              ...(description ? { description } : {}),
+              isToolParam: true
+            };
             inputProperties[param.name] = {
               type: param.schema.type || 'any',
-              description: param.description || '',
-              'x-tool-description': param.description || param.name
+              description,
+              'x-tool-description': param.description || param.name,
+              isToolParam: true
             };
 
             if (param.required) {
@@ -135,6 +233,14 @@ export const pathData2ToolList = async (
             }
           }
         });
+
+        if (Object.keys(requestProperties).length > 0) {
+          requestSchema = {
+            type: 'object',
+            properties: requestProperties,
+            required: inputRequired
+          };
+        }
       }
       if (pathItem.request?.content?.['application/json']?.schema) {
         requestSchema = pathItem.request.content['application/json'].schema;
@@ -144,7 +250,8 @@ export const pathData2ToolList = async (
             inputProperties[key] = {
               type: value.type || 'any',
               description: value.description || '',
-              'x-tool-description': value.description || key
+              'x-tool-description': value.description || key,
+              isToolParam: true
             };
           });
         }

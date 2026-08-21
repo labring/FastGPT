@@ -1,16 +1,31 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { hashStr } from '@fastgpt/global/common/string/tools';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import {
+  NodeInputKeyEnum,
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { getAgentRuntimeTools } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils';
 import type { NodeToolConfigType } from '@fastgpt/global/core/workflow/type/node';
 
-const { authAppByTmbIdMock, getAppVersionByIdMock, getMCPChildrenMock, getSystemToolDetailMock } =
-  vi.hoisted(() => ({
-    authAppByTmbIdMock: vi.fn(),
-    getAppVersionByIdMock: vi.fn(),
-    getMCPChildrenMock: vi.fn(),
-    getSystemToolDetailMock: vi.fn()
-  }));
+const {
+  authAppByTmbIdMock,
+  getAppVersionByIdMock,
+  getMCPChildrenMock,
+  getSystemToolDetailMock,
+  assertTeamPluginSourceAccessMock
+} = vi.hoisted(() => ({
+  authAppByTmbIdMock: vi.fn(),
+  getAppVersionByIdMock: vi.fn(),
+  getMCPChildrenMock: vi.fn(),
+  getSystemToolDetailMock: vi.fn(),
+  assertTeamPluginSourceAccessMock: vi.fn()
+}));
 
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
   authAppByTmbId: authAppByTmbIdMock
@@ -22,6 +37,15 @@ vi.mock('@fastgpt/service/core/app/version/controller', () => ({
 
 vi.mock('@fastgpt/service/core/app/mcp', () => ({
   getMCPChildren: getMCPChildrenMock
+}));
+
+vi.mock('@fastgpt/service/support/user/team/controller', () => ({
+  getTmbInfoByTmbId: vi.fn().mockResolvedValue({ teamId: 'team_1' })
+}));
+
+vi.mock('@fastgpt/service/core/plugin/teamPluginPolicy', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/plugin/teamPluginPolicy')>()),
+  assertTeamPluginSourceAccess: assertTeamPluginSourceAccessMock
 }));
 
 vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
@@ -50,7 +74,8 @@ const mcpInputSchema = {
   properties: {
     query: {
       type: 'string',
-      description: 'Search query'
+      description: 'Search query',
+      isToolParam: true
     }
   },
   required: ['query']
@@ -66,7 +91,8 @@ const httpInputSchema = {
     keyword: {
       type: 'string',
       description: 'Keyword',
-      'x-tool-description': 'Keyword'
+      'x-tool-description': 'Keyword',
+      isToolParam: true
     }
   },
   required: ['keyword']
@@ -77,7 +103,8 @@ const httpRequestSchema = {
   properties: {
     body: {
       type: 'object',
-      description: 'Raw request body'
+      description: 'Raw request body',
+      isToolParam: true
     }
   },
   required: ['body']
@@ -90,6 +117,7 @@ const systemToolInputSchema = {
     payload: {
       type: 'object',
       description: 'Structured payload',
+      isToolParam: true,
       properties: {
         keyword: {
           type: 'string',
@@ -117,6 +145,21 @@ const mcpToolWithLeadingSlash = {
   name: '/test'
 };
 
+const legacyMcpTool = {
+  name: 'legacySearch',
+  description: 'Legacy search',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      keyword: {
+        type: 'string',
+        description: 'Keyword'
+      }
+    },
+    required: ['keyword']
+  }
+};
+
 const httpTool = {
   name: 'create',
   description: 'Create record',
@@ -133,6 +176,31 @@ const httpTool = {
 const httpToolWithLeadingSlash = {
   ...httpTool,
   name: '/test'
+};
+
+const legacyHttpTool = {
+  ...httpTool,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      keyword: {
+        type: 'string',
+        description: 'Keyword',
+        'x-tool-description': 'Keyword'
+      }
+    },
+    required: ['keyword']
+  },
+  requestSchema: {
+    type: 'object',
+    properties: {
+      keyword: {
+        type: 'string',
+        description: 'Keyword'
+      }
+    },
+    required: ['keyword']
+  }
 };
 
 const createToolsetApp = ({
@@ -164,6 +232,26 @@ const createToolsetApp = ({
       ...(toolConfig ? { toolConfig } : {})
     }
   ],
+  edges: [],
+  chatConfig: {}
+});
+
+const createPersonalApp = ({
+  id,
+  type
+}: {
+  id: string;
+  type: AppTypeEnum.simple | AppTypeEnum.chatAgent | AppTypeEnum.workflow;
+}) => ({
+  _id: id,
+  teamId: 'team_1',
+  tmbId: 'tmb_1',
+  type,
+  name: `${id} name`,
+  avatar: `${id}.png`,
+  intro: `${id} intro`,
+  updateTime: new Date(),
+  modules: [],
   edges: [],
   chatConfig: {}
 });
@@ -227,6 +315,17 @@ describe('getAgentRuntimeTools schema loading', () => {
       id: 'legacy_mcp_app',
       type: AppTypeEnum.mcpToolSet
     }),
+    legacy_mcp_schema_app: createToolsetApp({
+      id: 'legacy_mcp_schema_app',
+      type: AppTypeEnum.mcpToolSet,
+      toolConfig: {
+        mcpToolSet: {
+          url: 'https://mcp.example.com',
+          headerSecret: {},
+          toolList: [legacyMcpTool]
+        }
+      }
+    }),
     stripped_mcp_app: createToolsetApp({
       id: 'stripped_mcp_app',
       type: AppTypeEnum.mcpToolSet,
@@ -264,13 +363,230 @@ describe('getAgentRuntimeTools schema loading', () => {
           toolList: [httpToolWithLeadingSlash]
         }
       }
-    })
+    }),
+    legacy_http_app: createToolsetApp({
+      id: 'legacy_http_app',
+      type: AppTypeEnum.httpToolSet,
+      toolConfig: {
+        httpToolSet: {
+          baseUrl: 'https://api.example.com',
+          headerSecret: {},
+          toolList: [legacyHttpTool]
+        }
+      }
+    }),
+    simple_app: createPersonalApp({ id: 'simple_app', type: AppTypeEnum.simple }),
+    chat_agent_app: createPersonalApp({
+      id: 'chat_agent_app',
+      type: AppTypeEnum.chatAgent
+    }),
+    workflow_app: createPersonalApp({ id: 'workflow_app', type: AppTypeEnum.workflow })
   };
+
+  appMap.empty_schema_tool_app = {
+    ...createPersonalApp({ id: 'empty_schema_tool_app', type: AppTypeEnum.workflow }),
+    modules: [
+      {
+        nodeId: 'empty-schema-tool',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        name: 'Empty schema tool',
+        inputs: [
+          {
+            key: 'query',
+            valueType: 'string',
+            required: true,
+            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+          }
+        ],
+        outputs: [],
+        jsonSchema: { type: 'object' },
+        toolConfig: {}
+      }
+    ]
+  };
+
+  appMap.legacy_workflow_tool = {
+    ...createPersonalApp({ id: 'legacy_workflow_tool', type: AppTypeEnum.workflow }),
+    type: AppTypeEnum.workflowTool,
+    modules: [
+      {
+        nodeId: 'plugin-input',
+        flowNodeType: FlowNodeTypeEnum.pluginInput,
+        name: 'Input',
+        inputs: [
+          {
+            key: 'query',
+            label: 'Query',
+            value: '',
+            valueType: 'string',
+            required: true,
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+            selectedType: FlowNodeInputTypeEnum.input,
+            selectedTypeIndex: 0,
+            toolDescription: 'Search query'
+          }
+        ],
+        outputs: []
+      }
+    ]
+  };
+
+  appMap.workflow_with_model_input = {
+    ...createPersonalApp({ id: 'workflow_with_model_input', type: AppTypeEnum.workflow }),
+    chatConfig: {
+      variables: [
+        {
+          key: 'model',
+          label: 'Model',
+          type: VariableInputEnum.llmSelect,
+          valueType: WorkflowIOValueTypeEnum.string,
+          required: true,
+          description: ''
+        }
+      ]
+    }
+  };
+
+  appMap.workflow_with_external_variable = {
+    ...createPersonalApp({ id: 'workflow_with_external_variable', type: AppTypeEnum.workflow }),
+    chatConfig: {
+      variables: [
+        {
+          key: 'external',
+          label: 'External',
+          type: VariableInputEnum.custom,
+          valueType: WorkflowIOValueTypeEnum.string,
+          required: true,
+          description: ''
+        }
+      ]
+    }
+  };
+
+  it.each(['simple_app', 'chat_agent_app', 'workflow_app'] as const)(
+    'loads %s as a callable tool with agent-generated user input',
+    async (appId) => {
+      const tools = await getAgentRuntimeTools({
+        tmbId: 'tmb_1',
+        tools: [{ id: appId, config: {} }]
+      });
+
+      expect(tools).toHaveLength(1);
+      expect(tools[0].requestSchema.function.parameters).toMatchObject({
+        type: 'object',
+        properties: {
+          [NodeInputKeyEnum.userChatInput]: expect.any(Object)
+        }
+      });
+      expect(tools[0].agentGeneratedInputKeys).toContain(NodeInputKeyEnum.userChatInput);
+    }
+  );
+
+  it('skips saved Agent tools with unsupported special inputs', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'workflow_with_model_input', config: {} }]
+    });
+
+    expect(tools).toEqual([]);
+  });
+
+  it('keeps external variables that project to supported manual inputs', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [
+        {
+          id: 'workflow_with_external_variable',
+          inputs: [{ key: 'external', mode: 'manual' }],
+          config: { external: 'configured value' }
+        }
+      ]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: 'external',
+          selectedType: FlowNodeInputTypeEnum.input,
+          value: 'configured value'
+        })
+      ])
+    );
+  });
+
+  it('falls back to saved agent-generated inputs when the runtime schema has no properties', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'empty_schema_tool_app', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].requestSchema.function.parameters).toMatchObject({
+      type: 'object',
+      properties: {
+        query: expect.any(Object)
+      },
+      required: ['query']
+    });
+  });
+
+  it('restores legacy workflow tool AI inputs when Agent V2 did not persist inputs', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'legacy_workflow_tool', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: 'query',
+          selectedType: FlowNodeInputTypeEnum.agentGenerated
+        })
+      ])
+    );
+    expect(tools[0].requestSchema.function.parameters).toMatchObject({
+      properties: {
+        query: expect.any(Object)
+      },
+      required: ['query']
+    });
+  });
+
+  it('uses the configured App version and preserves keep-latest', async () => {
+    const fixedVersionTools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'workflow_app', version: 'fixed-version', config: {} }]
+    });
+
+    expect(getAppVersionByIdMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appId: 'workflow_app',
+        versionId: 'fixed-version'
+      })
+    );
+    expect(fixedVersionTools[0]?.version).toBe('fixed-version');
+
+    getAppVersionByIdMock.mockClear();
+    const latestVersionTools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'workflow_app', version: '', config: {} }]
+    });
+
+    expect(getAppVersionByIdMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appId: 'workflow_app',
+        versionId: ''
+      })
+    );
+    expect(latestVersionTools[0]?.version).toBe('');
+  });
 
   it('loads MCP toolset children with their input schema', async () => {
     const tools = await getAgentRuntimeTools({
       tmbId: 'tmb_1',
-      tools: [{ id: 'mcp_app', config: {} }]
+      tools: [{ id: 'mcp_app', version: 'fixed-version', config: {} }]
     });
 
     expect(tools).toHaveLength(1);
@@ -278,6 +594,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.description).toBe('mcp_app name/search: Search docs');
     expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+    expect(tools[0].version).toBe('fixed-version');
     expect(tools[0].promptReference).toEqual({
       id: 'mcp_app',
       name: 'mcp_app name'
@@ -297,6 +614,36 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.description).toBe('search: Search docs');
     expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+  });
+
+  it('uses the dedicated Agent input mode at runtime', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [
+        {
+          id: 'mcp-mcp_app/search',
+          config: {},
+          inputs: [
+            {
+              key: 'query',
+              mode: 'agentGenerated'
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].inputs[0]).toMatchObject({
+      key: 'query',
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
+      ]
+    });
+    expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
   });
 
   it('loads a selected MCP tool whose name starts with slash', async () => {
@@ -420,10 +767,25 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-legacy_mcp_app/search');
   });
 
+  it('loads an MCP tool without isToolParam as an agent tool', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'mcp-legacy_mcp_schema_app/legacySearch', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].requestSchema.function.parameters).toMatchObject({
+      type: 'object',
+      properties: {
+        keyword: expect.any(Object)
+      }
+    });
+  });
+
   it('loads HTTP toolset children with their request schema', async () => {
     const tools = await getAgentRuntimeTools({
       tmbId: 'tmb_1',
-      tools: [{ id: 'http_app', config: {} }]
+      tools: [{ id: 'http_app', version: 'fixed-version', config: {} }]
     });
 
     expect(tools).toHaveLength(1);
@@ -432,6 +794,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.parameters).toEqual(httpRequestSchema);
     expect(tools[0].requestSchema.function.parameters).not.toEqual(httpInputSchema);
     expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_app/create');
+    expect(tools[0].version).toBe('fixed-version');
     expect(tools[0].promptReference).toEqual({
       id: 'http_app',
       name: 'http_app name'
@@ -452,6 +815,21 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.parameters).toEqual(httpRequestSchema);
     expect(tools[0].requestSchema.function.parameters).not.toEqual(httpInputSchema);
     expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_app/create');
+  });
+
+  it('loads a legacy HTTP tool without isToolParam as an agent tool', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'http-legacy_http_app/create', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].requestSchema.function.parameters).toMatchObject({
+      type: 'object',
+      properties: {
+        keyword: expect.any(Object)
+      }
+    });
   });
 
   it('loads a selected HTTP tool whose name starts with slash', async () => {
@@ -538,7 +916,303 @@ describe('getAgentRuntimeTools schema loading', () => {
 
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.name).toBe('gpjj5s');
-    expect(tools[0].requestSchema.function.parameters).toBe(systemToolInputSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual(systemToolInputSchema);
+  });
+
+  it('restores legacy system tool AI inputs when Agent V2 did not persist inputs', async () => {
+    getSystemToolDetailMock.mockResolvedValue({
+      id: 'systemTool-search',
+      name: 'Search',
+      avatar: 'search.png',
+      intro: 'Search tool',
+      toolDescription: 'Search tool',
+      status: 'active',
+      source: 'system',
+      isToolSet: false,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      tags: [],
+      author: '',
+      version: '1.0.0',
+      isLatestVersion: true,
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'Search query',
+            isToolParam: false
+          }
+        },
+        required: ['query']
+      }
+    });
+
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'systemTool-search', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].inputs[0]).toMatchObject({
+      key: 'query',
+      selectedType: FlowNodeInputTypeEnum.agentGenerated
+    });
+    expect(tools[0].requestSchema.function.parameters).toMatchObject({
+      properties: {
+        query: expect.any(Object)
+      },
+      required: ['query']
+    });
+  });
+
+  it('uses saved modes before recommendations and recommends modes for new inputs', async () => {
+    getSystemToolDetailMock.mockResolvedValue({
+      id: 'systemTool-search',
+      name: 'Search',
+      avatar: 'search.png',
+      intro: 'Search tool',
+      toolDescription: 'Search tool',
+      status: 'active',
+      source: 'system',
+      isToolSet: false,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      tags: [],
+      author: '',
+      version: '1.0.0',
+      isLatestVersion: true,
+      inputSchema: {
+        type: 'object',
+        properties: {
+          manual: { type: 'string', isToolParam: true },
+          generated: { type: 'string', isToolParam: false },
+          newInput: { type: 'string', isToolParam: true }
+        },
+        required: ['manual', 'generated', 'newInput']
+      }
+    });
+
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [
+        {
+          id: 'systemTool-search',
+          inputs: [
+            { key: 'manual', mode: 'manual' },
+            { key: 'generated', mode: 'agentGenerated' }
+          ],
+          config: {
+            manual: 'fixed value',
+            generated: 'legacy fixed value'
+          }
+        }
+      ]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: 'manual',
+          selectedType: FlowNodeInputTypeEnum.input
+        }),
+        expect.objectContaining({
+          key: 'generated',
+          selectedType: FlowNodeInputTypeEnum.agentGenerated
+        }),
+        expect.objectContaining({
+          key: 'newInput',
+          selectedType: FlowNodeInputTypeEnum.agentGenerated
+        })
+      ])
+    );
+    expect(tools[0].requestSchema.function.parameters).toMatchObject({
+      properties: {
+        generated: expect.any(Object),
+        newInput: expect.any(Object)
+      },
+      required: ['generated', 'newInput']
+    });
+    expect(tools[0].requestSchema.function.parameters.properties).not.toHaveProperty('manual');
+    expect(tools[0].params).toEqual({ manual: 'fixed value' });
+  });
+
+  it('keeps commercial workflow tools as commercial runtime tools when list source is system', async () => {
+    getSystemToolDetailMock.mockResolvedValue({
+      id: 'commercial-workflow-tool',
+      name: 'Workflow Tool',
+      avatar: 'workflow.png',
+      intro: 'Workflow tool',
+      toolDescription: 'Workflow tool',
+      status: 'active',
+      source: 'system',
+      isToolSet: false,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      associatedPluginId: 'workflow_app',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            isToolParam: true
+          }
+        },
+        required: ['query']
+      }
+    });
+
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'commercial-workflow-tool', source: 'system', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].type).toBe('commercialTool');
+    expect(tools[0].id).toBe('workflow-tool');
+  });
+
+  it('keeps workflow internal defaults at runtime but hides them from the model schema', async () => {
+    getSystemToolDetailMock.mockResolvedValue({
+      id: 'commercial-workflow-tool',
+      name: 'Workflow Tool',
+      avatar: 'workflow.png',
+      intro: 'Workflow tool',
+      toolDescription: 'Workflow tool',
+      status: 'active',
+      source: 'system',
+      isToolSet: false,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      associatedPluginId: 'workflow_app',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            isToolParam: true
+          },
+          internal: {
+            type: 'number',
+            default: 7,
+            'x-fastgpt-node-input': {
+              valueType: 'number',
+              defaultValue: 7,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden]
+            }
+          }
+        },
+        required: ['query', 'internal']
+      }
+    });
+
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'commercial-workflow-tool', source: 'system', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: 'internal',
+          defaultValue: 7,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        })
+      ])
+    );
+    expect(tools[0].requestSchema.function.parameters).toMatchObject({
+      properties: {
+        query: expect.any(Object)
+      },
+      required: ['query']
+    });
+    expect((tools[0].requestSchema.function.parameters as any).properties.internal).toBeUndefined();
+    expect(tools[0].agentGeneratedInputKeys).not.toContain('internal');
+    expect(tools[0].params).toMatchObject({ internal: 7 });
+  });
+
+  it('projects system workflow external variables to Agent manual inputs', async () => {
+    getSystemToolDetailMock.mockResolvedValue({
+      id: 'commercial-workflow-tool',
+      name: 'Workflow Tool',
+      avatar: 'workflow.png',
+      intro: 'Workflow tool',
+      toolDescription: 'Workflow tool',
+      status: 'active',
+      source: 'system',
+      isToolSet: false,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      associatedPluginId: 'workflow_app',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          externalVariable: {
+            type: 'string',
+            default: 'fallback',
+            'x-fastgpt-node-input': {
+              valueType: 'string',
+              defaultValue: 'fallback',
+              renderTypeList: [FlowNodeInputTypeEnum.customVariable],
+              selectedType: FlowNodeInputTypeEnum.customVariable,
+              selectedTypeIndex: 0
+            }
+          }
+        },
+        required: ['externalVariable']
+      }
+    });
+
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [
+        {
+          id: 'commercial-workflow-tool',
+          source: 'system',
+          inputs: [{ key: 'externalVariable', mode: 'manual' }],
+          config: { externalVariable: 'configured value' }
+        }
+      ]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: 'externalVariable',
+          canAgentGenerated: true,
+          renderTypeList: [
+            FlowNodeInputTypeEnum.agentGenerated,
+            FlowNodeInputTypeEnum.reference,
+            FlowNodeInputTypeEnum.input
+          ],
+          selectedType: FlowNodeInputTypeEnum.input,
+          value: 'configured value'
+        })
+      ])
+    );
+    expect(tools[0].requestSchema.function.parameters.properties).not.toHaveProperty(
+      'externalVariable'
+    );
+    expect(tools[0].agentGeneratedInputKeys).not.toContain('externalVariable');
+    expect(tools[0].params).toMatchObject({ externalVariable: 'configured value' });
   });
 
   it('keeps debug source in selected system tool config', async () => {
@@ -589,6 +1263,94 @@ describe('getAgentRuntimeTools schema loading', () => {
       toolId: 'systemTool-gpjj5s',
       source: 'debug:tmbId:tmb-1'
     });
+    const expectedId = hashStr('debug:tmbId:tmb-1:gpjj5s').slice(0, 16);
+    expect(tools[0].id).toBe(expectedId);
+    expect(tools[0].requestSchema.function.name).toBe(`t${expectedId}`);
+  });
+
+  it('uses distinct runtime ids for system, team and debug copies of the same plugin', async () => {
+    getSystemToolDetailMock.mockImplementation(async ({ source }: { source: string }) => ({
+      id: 'systemTool-weather',
+      name: 'Weather',
+      avatar: 'weather.png',
+      intro: 'Weather',
+      toolDescription: 'Weather',
+      status: 'active',
+      source,
+      isToolSet: false,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      tags: [],
+      author: '',
+      version: '1.0.0',
+      isLatestVersion: true,
+      inputSchema: systemToolInputSchema
+    }));
+
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [
+        { id: 'systemTool-weather', source: 'system', config: {} },
+        { id: 'systemTool-weather', source: 'teamId:team_1', config: {} },
+        { id: 'systemTool-weather', source: 'debug:tmbId:tmb-1', config: {} }
+      ]
+    });
+
+    expect(tools.map((tool) => tool.id)).toEqual([
+      'weather',
+      hashStr('teamId:team_1:weather').slice(0, 16),
+      hashStr('debug:tmbId:tmb-1:weather').slice(0, 16)
+    ]);
+    expect(tools.map((tool) => tool.requestSchema.function.name)).toEqual([
+      'weather',
+      `t${hashStr('teamId:team_1:weather').slice(0, 16)}`,
+      `t${hashStr('debug:tmbId:tmb-1:weather').slice(0, 16)}`
+    ]);
+    expect(tools.map((tool) => tool.toolConfig?.systemTool?.source)).toEqual([
+      undefined,
+      'teamId:team_1',
+      'debug:tmbId:tmb-1'
+    ]);
+  });
+
+  it('keeps runtime ids distinct after normalizing plugin ids', async () => {
+    getSystemToolDetailMock.mockImplementation(async ({ source }: { source: string }) => ({
+      id: 'systemTool-weather',
+      name: 'Weather',
+      avatar: 'weather.png',
+      intro: 'Weather',
+      toolDescription: 'Weather',
+      status: 'active',
+      source,
+      isToolSet: false,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      tags: [],
+      author: '',
+      version: '1.0.0',
+      isLatestVersion: true,
+      inputSchema: systemToolInputSchema
+    }));
+
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [
+        { id: 'systemTool-foo.bar', source: 'teamId:team_1', config: {} },
+        { id: 'systemTool-foobar', source: 'teamId:team_1', config: {} }
+      ]
+    });
+
+    expect(tools.map((tool) => tool.id)).toEqual([
+      hashStr('teamId:team_1:foo.bar').slice(0, 16),
+      hashStr('teamId:team_1:foobar').slice(0, 16)
+    ]);
+    expect(new Set(tools.map((tool) => tool.id)).size).toBe(2);
   });
 
   it('does not rebuild system tool params from node inputs when input schema is missing', async () => {

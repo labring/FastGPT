@@ -1,9 +1,42 @@
 const scalarApiReferenceCss = `
-.sidebar-heading-link-method .sidebar-heading-type {
+.light-mode {
+  --fastgpt-api-sidebar-title-color: #111824;
+  --fastgpt-api-sidebar-active-color: #383F50;
+  --fastgpt-api-sidebar-item-color: #667085;
+}
+
+.dark-mode {
+  --fastgpt-api-sidebar-title-color: #FEFEFE;
+  --fastgpt-api-sidebar-active-color: #C3C5C6;
+  --fastgpt-api-sidebar-item-color: #929495;
+}
+
+.scalar-app
+  [data-sidebar-id*='/tag-group/']:not([data-sidebar-id*='/tag/'])
+  > [aria-selected] {
+  color: var(--fastgpt-api-sidebar-title-color);
+  margin-top: 4px;
+  font-weight: 700;
+}
+
+.scalar-app
+  [data-sidebar-id]
+  > button:not([aria-selected='true']):not(.text-sidebar-c-active) {
+  color: var(--fastgpt-api-sidebar-item-color);
+}
+
+.scalar-app
+  [data-sidebar-id]
+  > button:is([aria-selected='true'], .text-sidebar-c-active) {
+  color: var(--fastgpt-api-sidebar-active-color);
+  font-weight: 400;
+}
+
+.scalar-app .sidebar-heading-type {
   min-width: 42px;
   height: 20px;
   justify-content: center;
-  padding: 4px 8px;
+  padding-inline: 8px;
   border: 0;
   border-radius: 999px;
   font-size: 10px;
@@ -74,12 +107,25 @@ const scalarApiReferenceCss = `
   background-color: rgba(98, 111, 130, 0.24);
 }
 
+/*
+ * Scalar does not create section-container for operations directly under a tag group.
+ * Keep those sections aligned with the regular tag sections on desktop.
+ */
+@media (min-width: 1024px) {
+  .scalar-app
+    .narrow-references-container
+    section.section:not(.section-container section) {
+    margin-inline: 60px;
+  }
+}
+
 `;
 
 export const getScalarOpenApiReferenceConfig = (
   url: string,
   options?: {
     defaultOpenAllTags?: boolean;
+    onLoaded?: (slug: string) => void | Promise<void>;
   }
 ) =>
   ({
@@ -87,6 +133,10 @@ export const getScalarOpenApiReferenceConfig = (
     defaultOpenAllTags: options?.defaultOpenAllTags,
     hideDarkModeToggle: false,
     hideClientButton: true,
+    localization: {
+      locale: 'zh-CN'
+    },
+    onLoaded: options?.onLoaded,
     showToolbar: 'never',
     theme: 'default',
     url

@@ -45,13 +45,13 @@ After creating the publishing channel, click **Request URL** and copy the corres
 
 In the Lark console, click `Events & Callbacks` on the left sidebar, click the edit icon next to `Configure Subscription Method`, and paste the copied request URL into the input field.
 
-| | | |
-| --- | --- | --- |
+|                                   |                                   |                                  |
+| --------------------------------- | --------------------------------- | -------------------------------- |
 | ![Image](/imgs/feishu-bot-10.jpg) | ![Image](/imgs/feishu-bot-11.jpg) | ![Image](/imgs/feishu-bot-6.png) |
 
 ## 5. Configure Bot Callback Events and Permissions
 
-* Add the `Receive Message` event
+- Add the `Receive Message` event
 
 On the `Events & Callbacks` page, click `Add Event`.
 
@@ -59,11 +59,12 @@ Search for `Receive Message`, or directly search for `im.message.receive_v1`, fi
 
 After adding the event, add two permissions: click the corresponding permission, and a popup will prompt you to add permissions. Add the two permissions shown above.
 
-| | |
-| --- | --- |
+|                                  |                                  |
+| -------------------------------- | -------------------------------- |
 | ![Image](/imgs/feishu-bot-7.png) | ![Image](/imgs/feishu-bot-8.png) |
 
 It is not recommended to enable the two "legacy versions" shown above -- use the new version permissions instead.
+
 - If "Read messages users send to the bot in private chats" is enabled, private messages sent to the bot will be forwarded to FastGPT
 - If "Receive @bot message events in group chats" is enabled, messages @mentioning the bot in group chats will be forwarded to FastGPT
 - If (not recommended) "Get all messages in groups" is enabled, all group chat messages will be forwarded to FastGPT
@@ -80,7 +81,7 @@ Click `Version Management & Publishing` on the left side of the Lark console to 
 
 ![](/imgs/feishu-bot-12.jpg)
 
-You can then find your bot in the workspace. Next, add the bot to a group or chat with it privately.
+You can then find your bot in Lark Workplace. Next, add the bot to a group or chat with it privately.
 
 ![Image](/imgs/feishu-bot-9.png)
 
@@ -96,6 +97,7 @@ You can then find your bot in the workspace. Next, add the bot to a group or cha
 ### How to start a new chat history
 
 Lark bot chat history chatId comes from several sources:
+
 1. Private chat window
 2. Individual topics in Lark topic groups
 3. In group chats, composed of group ID + personal ID.

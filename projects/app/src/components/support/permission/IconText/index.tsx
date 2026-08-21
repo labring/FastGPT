@@ -2,7 +2,7 @@ import React from 'react';
 import { PermissionTypeMap } from '@fastgpt/global/support/permission/constant';
 import { Box, type StackProps, HStack } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 
 const PermissionIconText = ({
   w = '1rem',
@@ -14,7 +14,7 @@ const PermissionIconText = ({
   private?: boolean;
   iconColor?: string;
 } & StackProps) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation();
 
   const per = Private ? 'private' : 'public';
 

@@ -4,10 +4,15 @@ import {
   type FileExtensionKeyType
 } from '@fastgpt/global/core/app/constants';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
-import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
 import type { UploadConstraintsInput, UploadConstraints } from '../contracts/type';
-import { DEFAULT_CONTENT_TYPE, normalizeMimeType, resolveMimeType } from './mime';
-import path from 'node:path';
+import { createUploadExtensionRulesFromFileSelectConfig } from '../uploadPolicy/utils';
+import {
+  normalizeAllowedExtensions,
+  normalizeFileExtension,
+  parseAllowedExtensions
+} from './extension';
+import { createUploadPolicy } from '../uploadPolicy/service';
+import type { UploadPolicy } from '../uploadPolicy/type';
 
 const uploadConfigKeys: FileExtensionKeyType[] = [
   'canSelectFile',
@@ -17,24 +22,7 @@ const uploadConfigKeys: FileExtensionKeyType[] = [
   'canSelectCustomFileExtension'
 ];
 
-export const normalizeFileExtension = (extension?: string) => {
-  if (!extension) return '';
-
-  const trimmedExtension = extension.trim().toLowerCase();
-  if (!trimmedExtension) return '';
-
-  return trimmedExtension.startsWith('.') ? trimmedExtension : `.${trimmedExtension}`;
-};
-
-export const normalizeAllowedExtensions = (extensions?: string[]) => {
-  if (!extensions?.length) return [];
-
-  return [...new Set(extensions.map(normalizeFileExtension).filter(Boolean))];
-};
-
-export const parseAllowedExtensions = (value: string) => {
-  return normalizeAllowedExtensions(value.split(','));
-};
+export { normalizeAllowedExtensions, normalizeFileExtension, parseAllowedExtensions } from './extension';
 
 export const avatarAllowedExtensions = normalizeAllowedExtensions(['.jpg', '.jpeg', '.png']);
 export const datasetAllowedExtensions = parseAllowedExtensions(documentFileType);
@@ -55,30 +43,35 @@ export const getAllowedExtensionsFromFileSelectConfig = (config?: AppFileSelectC
   return normalizeAllowedExtensions(extensions);
 };
 
+export const getUploadExtensionRulesFromFileSelectConfig =
+  createUploadExtensionRulesFromFileSelectConfig;
+
 export const createUploadConstraints = ({
   filename,
-  uploadConstraints
+  uploadConstraints,
+  contentType,
+  declaredExtension,
+  declaredFilename,
+  source,
+  size
 }: {
   filename: string;
   uploadConstraints?: UploadConstraintsInput;
-}): UploadConstraints => {
-  const allowedExtensions = normalizeAllowedExtensions(uploadConstraints?.allowedExtensions);
-  const fileExtension = normalizeFileExtension(path.extname(filename));
-
-  if (
-    allowedExtensions.length > 0 &&
-    (!fileExtension || !allowedExtensions.includes(fileExtension))
-  ) {
-    throw new Error(S3ErrEnum.invalidUploadFileType);
-  }
-
-  const defaultContentType = normalizeMimeType(
-    uploadConstraints?.defaultContentType || resolveMimeType([filename], DEFAULT_CONTENT_TYPE),
-    DEFAULT_CONTENT_TYPE
-  );
-
-  return {
-    defaultContentType,
-    ...(allowedExtensions.length > 0 ? { allowedExtensions } : {})
-  };
+  contentType?: string;
+  declaredExtension?: string;
+  declaredFilename?: string;
+  source?: 'local-file' | 'remote-url' | 'server-generated';
+  size?: number;
+}): UploadPolicy => {
+  return createUploadPolicy({
+    hint: {
+      filename,
+      ...(contentType ? { contentType } : {}),
+      ...(declaredExtension ? { declaredExtension } : {}),
+      ...(declaredFilename ? { declaredFilename } : {}),
+      ...(source ? { source } : {}),
+      ...(size ? { size } : {})
+    },
+    uploadConstraints
+  });
 };

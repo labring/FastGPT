@@ -1,6 +1,9 @@
 ---
-title: V4.8.22 (Includes Migration Script)
+title: V4.8.22
 description: FastGPT V4.8.22 Release Notes
+releaseTime: '2025-02-19'
+upgradeTags:
+  - MIGRATION
 ---
 
 ## Upgrade Guide
@@ -30,7 +33,7 @@ This migrates contact information to the corresponding user table.
 ## New Features
 
 1. AI chat node parses `<think></think>` tag content as chain-of-thought, enabling thinking process output for various models. You need to manually enable model thinking output.
-2. Chat API optimization: conversation logs are now saved regardless of whether a `chatId` is provided. If no `chatId` is passed, a random one is generated for storage.
+2. Chat API optimization: chat logs are now saved regardless of whether a `chatId` is provided. If no `chatId` is passed, a random one is generated for storage.
 3. PPIO model provider.
 
 ## Improvements

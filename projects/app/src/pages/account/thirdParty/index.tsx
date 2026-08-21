@@ -1,7 +1,7 @@
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { Box, Flex, Grid, Progress, useDisclosure } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
@@ -9,7 +9,6 @@ import dynamic from 'next/dynamic';
 import { useState, useMemo } from 'react';
 import WorkflowVariableModal from '@/pageComponents/account/thirdParty/WorkflowVariableModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { GET } from '@/web/common/api/request';
 import type { checkUsageResponse } from '@/pages/api/support/user/team/thirtdParty/checkUsage';
@@ -35,7 +34,7 @@ export type ThirdPartyAccountType = {
 };
 
 const ThirdParty = () => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_thirdParty');
   const { feConfigs } = useSystemStore();
   const { toast } = useToast();
   const { isOpen: isOpenOpenai, onClose: onCloseOpenai, onOpen: onOpenOpenai } = useDisclosure();
@@ -232,13 +231,5 @@ const ThirdParty = () => {
     </AccountContainer>
   );
 };
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['account', 'account_thirdParty']))
-    }
-  };
-}
 
 export default ThirdParty;

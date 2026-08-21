@@ -13,6 +13,11 @@ import {
 } from '../../../../core/ai/skill/type';
 import { SkillPermissionSchema } from '../../../../support/permission/skill/controller.schema';
 import { ChatCompletionMessageParamSchema } from '../../../../core/ai/llm/type';
+import { ObjectIdSchema } from '../../../../common/type/mongo';
+import {
+  CollaboratorItemSchema,
+  CollaboratorListSchema
+} from '../../../../support/permission/collaborator.schema';
 
 const IdSchema = z.string().min(1).meta({ description: '资源 ID' });
 const SandboxInstanceKeySchema = z.string().min(1).describe('FastGPT sandbox instance key');
@@ -59,7 +64,7 @@ export type ListSkillsResponse = z.infer<typeof ListSkillsResponseSchema>;
 
 export const CreateSkillBodySchema = z.object({
   parentId: NullableParentIdSchema,
-  name: z.string().describe('技能名称'),
+  name: z.string().trim().min(1).describe('技能名称'),
   description: z.string().optional().describe('技能描述'),
   category: z.array(AgentSkillCategorySchema).optional().describe('技能分类'),
   avatar: z.string().optional().describe('技能头像')
@@ -86,13 +91,27 @@ export type UpdateSkillBody = z.infer<typeof UpdateSkillBodySchema>;
 export const UpdateSkillResponseSchema = z.void();
 export type UpdateSkillResponse = z.infer<typeof UpdateSkillResponseSchema>;
 
+/* ============================================================================
+ * API: 复制技能
+ * Route: POST /api/core/ai/skill/copy
+ * Method: POST
+ * Description: 复制指定技能及其当前版本，并返回新技能 ID
+ * Tags: ['基础管理', 'Write']
+ * ============================================================================ */
+
 export const CopySkillBodySchema = z.object({
-  skillId: IdSchema
+  skillId: IdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '需要复制的技能 ID'
+  })
 });
 export type CopySkillBody = z.infer<typeof CopySkillBodySchema>;
 
 export const CopySkillResponseSchema = z.object({
-  skillId: z.string()
+  skillId: z.string().meta({
+    example: '68ad85a7463006c963799a06',
+    description: '复制后生成的新技能 ID'
+  })
 });
 export type CopySkillResponse = z.infer<typeof CopySkillResponseSchema>;
 
@@ -109,12 +128,118 @@ export const GetSkillDetailQuerySchema = z.object({
 });
 export type GetSkillDetailQuery = z.infer<typeof GetSkillDetailQuerySchema>;
 
+/* ============================================================================
+ * API: 恢复技能继承权限
+ * Route: GET /api/core/ai/skill/resumeInheritPermission
+ * Method: GET
+ * Description: 恢复指定技能或技能文件夹的权限继承
+ * Tags: ['权限管理', 'Write']
+ * ============================================================================ */
+
 export const ResumeSkillInheritPermissionQuerySchema = z.object({
-  skillId: IdSchema
+  skillId: IdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '需要恢复权限继承的技能或技能文件夹 ID'
+  })
 });
 export type ResumeSkillInheritPermissionQuery = z.infer<
   typeof ResumeSkillInheritPermissionQuerySchema
 >;
+
+export const ResumeSkillInheritPermissionResponseSchema = z.undefined().meta({
+  description: '恢复权限继承成功'
+});
+export type ResumeSkillInheritPermissionResponse = z.infer<
+  typeof ResumeSkillInheritPermissionResponseSchema
+>;
+
+/* ============================================================================
+ * API: 转让技能所有权
+ * Route: POST /api/proApi/core/ai/skill/changeOwner
+ * Method: POST
+ * Description: 将技能所有权转让给指定团队成员。
+ * Tags: ['资源权限', '权限管理']
+ * ============================================================================ */
+
+export const ChangeSkillOwnerBodySchema = z
+  .object({
+    skillId: IdSchema.meta({
+      example: '68ad85a7463006c963799a05',
+      description: '技能 ID'
+    }),
+    ownerId: ObjectIdSchema.meta({
+      example: '68ad85a7463006c963799a06',
+      description: '新的所有者团队成员 ID'
+    })
+  })
+  .meta({
+    example: {
+      skillId: '68ad85a7463006c963799a05',
+      ownerId: '68ad85a7463006c963799a06'
+    }
+  });
+export type ChangeSkillOwnerBody = z.infer<typeof ChangeSkillOwnerBodySchema>;
+
+export const ChangeSkillOwnerResponseSchema = z.undefined().meta({ description: '转让成功' });
+export type ChangeSkillOwnerResponse = z.infer<typeof ChangeSkillOwnerResponseSchema>;
+
+/* ============================================================================
+ * API: 获取技能协作者列表
+ * Route: GET /api/proApi/core/ai/skill/collaborator/list
+ * Method: GET
+ * Description: 获取技能协作者列表，包含继承权限场景下的父级协作者信息。
+ * Tags: ['协作者管理', '权限管理']
+ * ============================================================================ */
+
+export const GetSkillCollaboratorListQuerySchema = z.object({
+  skillId: IdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '技能 ID'
+  })
+});
+export type GetSkillCollaboratorListQuery = z.infer<typeof GetSkillCollaboratorListQuerySchema>;
+
+export const GetSkillCollaboratorListResponseSchema = CollaboratorListSchema;
+export type GetSkillCollaboratorListResponse = z.infer<
+  typeof GetSkillCollaboratorListResponseSchema
+>;
+
+/* ============================================================================
+ * API: 更新技能协作者
+ * Route: POST /api/proApi/core/ai/skill/collaborator/update
+ * Method: POST
+ * Description: 覆盖更新技能的协作者权限。
+ * Tags: ['协作者管理', '权限管理']
+ * ============================================================================ */
+
+export const UpdateSkillCollaboratorBodySchema = z
+  .object({
+    skillId: IdSchema.meta({
+      example: '68ad85a7463006c963799a05',
+      description: '技能 ID'
+    }),
+    collaborators: z
+      .array(CollaboratorItemSchema)
+      .min(1)
+      .meta({ description: '更新后的协作者权限列表，至少包含一个协作者' })
+  })
+  .meta({
+    example: {
+      skillId: '68ad85a7463006c963799a05',
+      collaborators: [
+        {
+          tmbId: '68ad85a7463006c963799a06',
+          permission: 4
+        }
+      ]
+    }
+  });
+export type UpdateSkillCollaboratorBody = z.infer<typeof UpdateSkillCollaboratorBodySchema>;
+
+export const UpdateSkillCollaboratorResponseSchema = z.undefined().meta({
+  description: '操作成功'
+});
+export type UpdateSkillCollaboratorResponse = z.infer<typeof UpdateSkillCollaboratorResponseSchema>;
 
 export const GetSkillDetailResponseSchema = z.object({
   _id: z.string(),
@@ -138,41 +263,22 @@ export const GetSkillDetailResponseSchema = z.object({
 });
 export type GetSkillDetailResponse = z.infer<typeof GetSkillDetailResponseSchema>;
 
-export const ImportSkillBodySchema = z.object({
+export const ImportSkillQuerySchema = z.object({
+  filename: z.string().min(1).describe('上传的 .zip 文件原始文件名'),
   parentId: z.string().nullable().optional().describe('导入的目标目录 ID'),
   name: z.string().optional().describe('导入后的技能名称'),
   description: z.string().optional().describe('导入后的技能描述'),
   avatar: z.string().optional().describe('导入后的技能头像')
 });
-export type ImportSkillBody = z.infer<typeof ImportSkillBodySchema>;
+export type ImportSkillQuery = z.infer<typeof ImportSkillQuerySchema>;
 
 export const ImportSkillResponseSchema = IdSchema;
 export type ImportSkillResponse = z.infer<typeof ImportSkillResponseSchema>;
-
-export const SkillRuntimeStatusSchema = z.enum(['readyToInit', 'upgradeRequired', 'upgrading']);
-export const SkillRuntimeArchiveStateSchema = z.enum([
-  'archiving',
-  'deleting',
-  'archived',
-  'restoring',
-  'failed'
-]);
 
 export const SkillRuntimeBodySchema = z.object({
   skillId: IdSchema.describe('技能 ID')
 });
 export type SkillRuntimeBody = z.infer<typeof SkillRuntimeBodySchema>;
-
-export const SkillRuntimeStatusResponseSchema = z.object({
-  sandboxId: z.string().describe('FastGPT sandbox instance key'),
-  status: SkillRuntimeStatusSchema.describe('Skill Edit runtime 当前状态'),
-  archiveState: SkillRuntimeArchiveStateSchema.optional().describe('底层 sandbox 归档状态'),
-  canUpgrade: z.boolean().describe('当前是否允许触发 runtime 升级'),
-  shouldPoll: z.boolean().describe('客户端是否应继续轮询 getStatus'),
-  shouldInit: z.boolean().describe('客户端是否应执行 runtime init'),
-  lastError: z.string().optional().describe('上次 runtime 升级归档失败原因')
-});
-export type SkillRuntimeStatusResponse = z.infer<typeof SkillRuntimeStatusResponseSchema>;
 
 export const SkillRuntimeInitEventSchema = z
   .object({
@@ -341,28 +447,3 @@ export type SwitchSkillVersionBody = z.infer<typeof SwitchSkillVersionBodySchema
 
 export const SwitchSkillVersionResponseSchema = z.void();
 export type SwitchSkillVersionResponse = z.infer<typeof SwitchSkillVersionResponseSchema>;
-
-export const ImportSkillMultipartRequestSchema = {
-  type: 'object' as const,
-  properties: {
-    file: {
-      type: 'string' as const,
-      format: 'binary' as const,
-      description:
-        '技能压缩包文件，支持 workspace 包（根目录包含非空 skills/）或单 skill 包（根目录或一级目录包含 SKILL.md），支持 ZIP / TAR / TAR.GZ'
-    },
-    name: {
-      type: 'string' as const,
-      description: '导入后的技能名称，可选'
-    },
-    description: {
-      type: 'string' as const,
-      description: '导入后的技能描述，可选'
-    },
-    avatar: {
-      type: 'string' as const,
-      description: '导入后的技能头像，可选'
-    }
-  },
-  required: ['file'] as string[]
-};

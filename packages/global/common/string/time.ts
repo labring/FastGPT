@@ -1,7 +1,7 @@
 import dayjs from 'dayjs';
 import cronParser from 'cron-parser';
-import utc from 'dayjs/plugin/utc';
-import timezone from 'dayjs/plugin/timezone';
+import utc from 'dayjs/plugin/utc.js';
+import timezone from 'dayjs/plugin/timezone.js';
 import { i18nT } from '../i18n/utils';
 
 dayjs.extend(utc);
