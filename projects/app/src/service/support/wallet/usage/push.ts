@@ -4,8 +4,9 @@ import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/u
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
 
-export const pushGenerateVectorUsage = ({
+export const pushGenerateVectorUsage = async ({
   usageId,
+  operationId,
   teamId,
   tmbId,
   inputTokens,
@@ -19,6 +20,7 @@ export const pushGenerateVectorUsage = ({
   deepSearchOutputTokens
 }: {
   usageId?: string;
+  operationId?: string;
   teamId: string;
   tmbId: string;
   inputTokens: number;
@@ -75,15 +77,17 @@ export const pushGenerateVectorUsage = ({
 
   // 插入 Bill 记录
   if (usageId) {
-    concatUsage({
+    const success = await concatUsage({
       teamId,
       totalPoints,
       usageId,
+      operationId,
       inputTokens,
       itemType: UsageItemTypeEnum.training_vector
     });
+    return { totalPoints, success };
   } else {
-    createUsage({
+    await createUsage({
       teamId,
       tmbId,
       appName: i18nT('account_usage:embedding_index'),
@@ -121,7 +125,7 @@ export const pushGenerateVectorUsage = ({
       ]
     });
   }
-  return { totalPoints };
+  return { totalPoints, success: true };
 };
 
 export const pushQuestionGuideUsage = ({

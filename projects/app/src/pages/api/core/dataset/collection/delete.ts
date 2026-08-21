@@ -14,6 +14,7 @@ import {
   DeleteCollectionBodySchema,
   DeleteCollectionQuerySchema
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import { withDatasetMutationGates } from '@fastgpt/service/core/dataset/mutationLock/service';
 
 async function handler(req: ApiRequestProps) {
   const { id } = parseApiInput({ req, querySchema: DeleteCollectionQuerySchema }).query;
@@ -58,14 +59,20 @@ async function handler(req: ApiRequestProps) {
   });
 
   // delete
-  await mongoSessionRun((session) =>
-    delCollection({
-      collections,
-      delImg: true,
-      delFile: true,
-      session
-    })
-  );
+  await withDatasetMutationGates({
+    teamId,
+    datasetIds: collections.map((item) => String(item.datasetId)),
+    operation: 'deleteCollection',
+    run: () =>
+      mongoSessionRun((session) =>
+        delCollection({
+          collections,
+          delImg: true,
+          delFile: true,
+          session
+        })
+      )
+  });
 
   (async () => {
     addAuditLog({

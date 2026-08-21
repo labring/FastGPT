@@ -26,8 +26,10 @@ export async function createUsage(data: CreateUsageProps) {
 export async function concatUsage(data: ConcatUsageProps) {
   try {
     await global.concatUsageHandler(data);
+    return true;
   } catch (error) {
     logger.error('Failed to concat usage', { error });
+    return false;
   }
 }
 export async function pushUsageItems(data: PushUsageItemsProps) {

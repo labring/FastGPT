@@ -7,14 +7,19 @@ const {
   mockDelCollection,
   mockMongoSessionRun,
   mockCollectionTagsToTagLabel,
-  mockAddAuditLog
+  mockAddAuditLog,
+  mockWithDatasetMutationGate
 } = vi.hoisted(() => ({
   mockAuthDatasetCollection: vi.fn(),
   mockCreateCollectionAndInsertData: vi.fn(),
   mockDelCollection: vi.fn(),
   mockMongoSessionRun: vi.fn((fn: any) => fn('session')),
   mockCollectionTagsToTagLabel: vi.fn(),
-  mockAddAuditLog: vi.fn()
+  mockAddAuditLog: vi.fn(),
+  mockWithDatasetMutationGate: vi.fn(
+    async ({ run }: { run: (lock: { ownerId: string }) => Promise<unknown> }) =>
+      run({ ownerId: 'test-owner' })
+  )
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -41,6 +46,10 @@ vi.mock('@fastgpt/service/core/dataset/collection/utils', () => ({
 vi.mock('@fastgpt/service/support/user/audit/util', () => ({
   addAuditLog: mockAddAuditLog,
   getI18nDatasetType: vi.fn((type: string) => type)
+}));
+
+vi.mock('@fastgpt/service/core/dataset/mutationLock/service', () => ({
+  withDatasetMutationGate: mockWithDatasetMutationGate
 }));
 
 import handler from '@/pages/api/core/dataset/collection/create/reTrainingCollection';
@@ -93,6 +102,12 @@ describe('reTrainingCollection', () => {
       }
     } as any);
 
+    expect(mockWithDatasetMutationGate).toHaveBeenCalledWith({
+      teamId: 'team-b',
+      datasetId: sourceDatasetId,
+      operation: 'retrainCollection',
+      run: expect.any(Function)
+    });
     expect(mockCreateCollectionAndInsertData).toHaveBeenCalledWith(
       expect.objectContaining({
         dataset: sourceCollection.dataset,

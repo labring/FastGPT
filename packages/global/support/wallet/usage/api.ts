@@ -21,6 +21,8 @@ export type CreateUsageProps = Omit<UsageSchemaType, '_id' | 'time'>;
 export type ConcatUsageProps = {
   teamId: string;
   usageId: string;
+  /** 调用方提供的稳定幂等键；账单服务需保证同一 key 只累计一次。 */
+  operationId?: string;
   totalPoints: number;
   itemType: UsageItemTypeEnum;
 } & UsageItemCountType;

@@ -28,11 +28,13 @@ const DataCard = dynamic(() => import('@/pageComponents/dataset/detail/DataCard'
 const Test = dynamic(() => import('@/pageComponents/dataset/detail/Test'));
 const Info = dynamic(() => import('@/pageComponents/dataset/detail/Info/index'));
 const Import = dynamic(() => import('@/pageComponents/dataset/detail/Import'));
+const Synonym = dynamic(() => import('@/pageComponents/dataset/detail/Synonym'));
 
 export enum TabEnum {
   dataCard = 'dataCard',
   collectionCard = 'collectionCard',
   test = 'test',
+  synonym = 'synonym',
   info = 'info',
   import = 'import'
 }
@@ -79,6 +81,7 @@ const Detail = ({ datasetId, currentTab }: Props) => {
                 </CollectionPageContextProvider>
               )}
               {currentTab === TabEnum.test && <Test datasetId={datasetId} />}
+              {currentTab === TabEnum.synonym && <Synonym datasetId={datasetId} />}
               {currentTab === TabEnum.dataCard && <DataCard />}
               {currentTab === TabEnum.import && <Import />}
             </Box>
@@ -91,7 +94,7 @@ const Detail = ({ datasetId, currentTab }: Props) => {
                 <MetaDataCard datasetId={datasetId} />
               </Flex>
             )}
-            {[TabEnum.collectionCard, TabEnum.test].includes(currentTab) && (
+            {[TabEnum.collectionCard, TabEnum.test, TabEnum.synonym].includes(currentTab) && (
               <Flex {...sliderStyles} flex={'0 0 17rem'}>
                 <Info datasetId={datasetId} />
               </Flex>
@@ -112,6 +115,7 @@ const Detail = ({ datasetId, currentTab }: Props) => {
                 )}
                 {currentTab === TabEnum.dataCard && <DataCard />}
                 {currentTab === TabEnum.test && <Test datasetId={datasetId} />}
+                {currentTab === TabEnum.synonym && <Synonym datasetId={datasetId} />}
                 {currentTab === TabEnum.info && <Info datasetId={datasetId} />}
                 {currentTab === TabEnum.import && <Import />}
               </Box>

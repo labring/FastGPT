@@ -16,10 +16,60 @@ import {
   computeFilterIntersection,
   datasetSearchQueryExtension,
   isValidImageEmbeddingSource,
+  mergeDatasetSynonymQueryMatches,
   normalizeImageToBase64
 } from '../../../../core/dataset/search/utils';
 
 const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
+
+describe('mergeDatasetSynonymQueryMatches', () => {
+  const baseMatch = {
+    mappingId: '68ee0bd23d17260b7829b137',
+    datasetId: '68ee0bd23d17260b7829b138',
+    fileVersion: 1,
+    matchedTerm: '苹果手机',
+    standardizedTerm: 'iPhone',
+    preserveOriginal: false,
+    order: 0
+  };
+
+  it('replaces a unique standard term directly', () => {
+    expect(
+      mergeDatasetSynonymQueryMatches({
+        query: '苹果手机怎么退款',
+        matches: [baseMatch]
+      })
+    ).toBe('iPhone怎么退款');
+  });
+
+  it('preserves the source term and appends all cross-dataset standards', () => {
+    expect(
+      mergeDatasetSynonymQueryMatches({
+        query: '苹果手机怎么退款',
+        matches: [
+          { ...baseMatch, standardizedTerm: 'Apple Phone', order: 1 },
+          { ...baseMatch, standardizedTerm: 'iPhone', order: 0 }
+        ]
+      })
+    ).toBe('苹果手机 iPhone Apple Phone怎么退款');
+  });
+
+  it('preserves the source term while active and pending versions coexist', () => {
+    expect(
+      mergeDatasetSynonymQueryMatches({
+        query: 'Use AI',
+        matches: [
+          {
+            ...baseMatch,
+            matchedTerm: 'AI',
+            standardizedTerm: 'Artificial Intelligence',
+            preserveOriginal: true
+          }
+        ]
+      })
+    ).toBe('Use AI Artificial Intelligence');
+  });
+});
 
 afterEach(() => {
   serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;

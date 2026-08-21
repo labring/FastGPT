@@ -15,6 +15,7 @@ import {
   ReTrainingCollectionResponseSchema,
   type ReTrainingCollectionResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
+import { withDatasetMutationGate } from '@fastgpt/service/core/dataset/mutationLock/service';
 
 async function handler(req: ApiRequestProps): Promise<ReTrainingCollectionResponseType> {
   const { collectionId: inputCollectionId, ...data } = parseApiInput({
@@ -30,45 +31,51 @@ async function handler(req: ApiRequestProps): Promise<ReTrainingCollectionRespon
     per: WritePermissionVal
   });
 
-  return mongoSessionRun(async (session) => {
-    await delCollection({
-      collections: [collection],
-      session,
-      delImg: false,
-      delFile: false
-    });
+  return withDatasetMutationGate({
+    teamId,
+    datasetId: String(collection.datasetId),
+    operation: 'retrainCollection',
+    run: () =>
+      mongoSessionRun(async (session) => {
+        await delCollection({
+          collections: [collection],
+          session,
+          delImg: false,
+          delFile: false
+        });
 
-    const { collectionId } = await createCollectionAndInsertData({
-      dataset: collection.dataset,
-      createCollectionParams: {
-        ...collection,
-        ...data,
-        datasetId: collection.datasetId,
-        teamId: collection.teamId,
-        tmbId: collection.tmbId,
-        parentId: collection.parentId ?? undefined,
-        updateTime: new Date(),
-        tags: await collectionTagsToTagLabel({
-          datasetId: collection.datasetId,
-          tags: collection.tags
-        })
-      }
-    });
+        const { collectionId } = await createCollectionAndInsertData({
+          dataset: collection.dataset,
+          createCollectionParams: {
+            ...collection,
+            ...data,
+            datasetId: collection.datasetId,
+            teamId: collection.teamId,
+            tmbId: collection.tmbId,
+            parentId: collection.parentId ?? undefined,
+            updateTime: new Date(),
+            tags: await collectionTagsToTagLabel({
+              datasetId: collection.datasetId,
+              tags: collection.tags
+            })
+          }
+        });
 
-    (async () => {
-      addAuditLog({
-        tmbId,
-        teamId,
-        event: AuditEventEnum.RETRAIN_COLLECTION,
-        params: {
-          collectionName: collection.name,
-          datasetName: collection.dataset?.name || '',
-          datasetType: getI18nDatasetType(collection.dataset?.type || '')
-        }
-      });
-    })();
+        (async () => {
+          addAuditLog({
+            tmbId,
+            teamId,
+            event: AuditEventEnum.RETRAIN_COLLECTION,
+            params: {
+              collectionName: collection.name,
+              datasetName: collection.dataset?.name || '',
+              datasetType: getI18nDatasetType(collection.dataset?.type || '')
+            }
+          });
+        })();
 
-    return ReTrainingCollectionResponseSchema.parse({ collectionId });
+        return ReTrainingCollectionResponseSchema.parse({ collectionId });
+      })
   });
 }
 

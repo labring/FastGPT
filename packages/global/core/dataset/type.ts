@@ -25,6 +25,7 @@ import { ParentIdSchema } from '../../common/parentFolder/type';
 import z from 'zod';
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { PermissionSchema } from '../../support/permission/controller';
+import { DatasetSynonymMappingMetadataSchema } from './synonym';
 
 /* ===== Chunk ===== */
 export const ChunkSettingsSchema = z.object({
@@ -214,6 +215,12 @@ export const DatasetDataSchema = DatasetDataFieldSchema.extend({
   forbid: z.boolean().optional().meta({ description: '是否禁用' }),
   fullTextToken: z.string().meta({ description: '全文 token' }),
   indexes: z.array(DatasetDataIndexItemSchema).meta({ description: '向量索引' }),
+  synonymIndexVersion: z
+    .number()
+    .int()
+    .nonnegative()
+    .optional()
+    .meta({ description: '当前向量和全文索引使用的同义词版本，0 表示未使用同义词' }),
   rebuilding: z.boolean().optional().meta({ description: '重建中' }),
   imageDescMap: z.record(z.string(), z.string()).optional().meta({ description: '图片描述映射' }),
   metadata: z.record(z.string(), z.any()).optional().meta({ description: '自定义元数据' })
@@ -231,6 +238,19 @@ export const DatasetDataTextSchema = z.object({
 export type DatasetDataTextSchemaType = z.infer<typeof DatasetDataTextSchema>;
 
 /* ===== Training ===== */
+export const DatasetTrainingSynonymMetadataSchema = z.object({
+  synonymJobId: ObjectIdSchema.meta({ description: '同义词任务 ID' }),
+  fileVersion: z.number().int().positive().meta({ description: '目标同义词版本' }),
+  fencingToken: z.number().int().positive().meta({ description: '知识库写入屏障令牌' }),
+  synonymFileId: ObjectIdSchema.optional().meta({ description: '同义词配置 ID' }),
+  affectedLogicalMappingIds: z
+    .array(ObjectIdSchema)
+    .meta({ description: '触发本次重建的稳定 mapping ID 列表' })
+});
+export type DatasetTrainingSynonymMetadataType = z.infer<
+  typeof DatasetTrainingSynonymMetadataSchema
+>;
+
 export const DatasetTrainingSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '训练 ID' }),
   teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
@@ -247,7 +267,7 @@ export const DatasetTrainingSchema = z.object({
   imageId: z.string().optional().meta({ description: '图片 ID' }),
   imageDescMap: z.record(z.string(), z.string()).optional().meta({ description: '图片描述映射' }),
   dataMetadata: z
-    .record(z.string(), z.any())
+    .union([DatasetTrainingSynonymMetadataSchema, z.record(z.string(), z.any())])
     .optional()
     .meta({ description: '自定义元数据（训练时透传）' }),
   chunkIndex: z.number().meta({ description: '块索引' }),
@@ -456,7 +476,11 @@ export const SearchDataResponseItemSchema = DatasetDataItemSchema.omit({
         })
       )
       .meta({ description: '评分列表' }),
-    metadata: z.record(z.string(), z.any()).optional().meta({ description: '自定义元数据' })
+    metadata: z.record(z.string(), z.any()).optional().meta({ description: '自定义元数据' }),
+    synonymMappings: z
+      .array(DatasetSynonymMappingMetadataSchema)
+      .optional()
+      .meta({ description: '当前引用文本实际命中的同义词 mappings' })
   })
   .meta({ description: '搜索数据响应项' });
 export type SearchDataResponseItemType = z.infer<typeof SearchDataResponseItemSchema>;
@@ -468,7 +492,8 @@ export const SearchDataResponseQuoteItemSchema = SearchDataResponseItemSchema.pi
   collectionId: true,
   sourceId: true,
   sourceName: true,
-  score: true
+  score: true,
+  synonymMappings: true
 }).meta({ description: '搜索数据引用响应项（精简）' });
 export type SearchDataResponseQuoteItemType = z.infer<typeof SearchDataResponseQuoteItemSchema>;
 

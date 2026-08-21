@@ -1,5 +1,8 @@
 import { initSystemConfig } from '.';
-import { createDatasetTrainingMongoWatch } from '@/service/core/dataset/training/utils';
+import {
+  createDatasetSynonymMongoWatch,
+  createDatasetTrainingMongoWatch
+} from '@/service/core/dataset/training/utils';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 import { debounce } from 'lodash-es';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
@@ -16,6 +19,7 @@ export const startMongoWatch = async () => {
   logger.info('Mongo change stream watch started');
   changeStreams.push(reloadConfigWatch());
   changeStreams.push(createDatasetTrainingMongoWatch());
+  changeStreams.push(createDatasetSynonymMongoWatch());
   changeStreams.push(refetchAppTemplates());
   changeStreams.push(watchSystemModelUpdate());
 };

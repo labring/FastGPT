@@ -23,6 +23,8 @@ import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { uniqueDatasetDataMarkdownImageUrls } from '@fastgpt/service/core/dataset/data/utils';
 import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
 import { minChunkSize } from '@fastgpt/global/core/dataset/training/utils';
+import { getDatasetSynonymTransformContext } from '@fastgpt/service/core/dataset/synonym/entity';
+import { withDatasetMutationGate } from '@fastgpt/service/core/dataset/mutationLock/service';
 
 export type DatasetDataIndexDraft = Omit<DatasetDataIndexItemType, 'dataId'> & {
   dataId?: string;
@@ -522,12 +524,14 @@ export class DatasetDataIndexOperation {
     indexes,
     teamId,
     datasetId,
-    collectionId
+    collectionId,
+    transformText
   }: {
     indexes: DatasetDataIndexDraft[];
     teamId: string;
     datasetId: string;
     collectionId: string;
+    transformText?: (text: string) => string;
   }) {
     const embModel = this.getEmbeddingModel();
     const vectorInputItems = (
@@ -536,7 +540,7 @@ export class DatasetDataIndexOperation {
           if (!isImageEmbeddingIndex(index)) {
             return {
               item: index,
-              input: index.text
+              input: transformText?.(index.text) ?? index.text
             };
           }
 
@@ -595,12 +599,14 @@ export class DatasetDataIndexOperation {
     patchResult,
     teamId,
     datasetId,
-    collectionId
+    collectionId,
+    transformText
   }: {
     patchResult: DatasetDataIndexPatch[];
     teamId: string;
     datasetId: string;
     collectionId: string;
+    transformText?: (text: string) => string;
   }) {
     const insertItems = patchResult.filter(
       (item) => item.type === 'create' || item.type === 'update'
@@ -611,7 +617,8 @@ export class DatasetDataIndexOperation {
       indexes: insertItems.map((item) => item.index),
       teamId,
       datasetId,
-      collectionId
+      collectionId,
+      transformText
     });
 
     insertItems.forEach((item) => {
@@ -634,18 +641,21 @@ export class DatasetDataIndexOperation {
     indexes,
     teamId,
     datasetId,
-    collectionId
+    collectionId,
+    transformText
   }: {
     indexes: DatasetDataIndexDraft[];
     teamId: string;
     datasetId: string;
     collectionId: string;
+    transformText?: (text: string) => string;
   }) {
     const { tokens, insertedIndexIdMap } = await this.insertIndexVectorIds({
       indexes,
       teamId,
       datasetId,
-      collectionId
+      collectionId,
+      transformText
     });
 
     return {
@@ -723,6 +733,11 @@ export class DatasetDataIndexOperation {
       };
     }
 
+    const synonymContext = await getDatasetSynonymTransformContext({
+      teamId: String(data.teamId),
+      datasetId: String(data.datasetId)
+    });
+
     const { indexes, tokens } = await this.insertVectors({
       indexes: [
         {
@@ -732,7 +747,8 @@ export class DatasetDataIndexOperation {
       ],
       teamId: data.teamId,
       datasetId: data.datasetId,
-      collectionId: data.collectionId
+      collectionId: data.collectionId,
+      transformText: synonymContext.transformText
     });
     const newIndex = indexes[0];
 
@@ -744,7 +760,8 @@ export class DatasetDataIndexOperation {
           {
             $set: {
               'indexes.$': newIndex,
-              updateTime: new Date()
+              updateTime: new Date(),
+              synonymIndexVersion: synonymContext.fileVersion
             }
           },
           { session }
@@ -766,7 +783,8 @@ export class DatasetDataIndexOperation {
               }
             },
             $set: {
-              updateTime: new Date()
+              updateTime: new Date(),
+              synonymIndexVersion: synonymContext.fileVersion
             }
           },
           { session }
@@ -849,10 +867,16 @@ export const createDatasetDataIndex = async ({
   text: string;
   model: string;
 }) => {
-  return new DatasetDataIndexOperation(model).writeDatasetDataIndex({
-    data,
-    type,
-    text
+  return withDatasetMutationGate({
+    teamId: String(data.teamId),
+    datasetId: String(data.datasetId),
+    operation: 'createDataIndex',
+    run: () =>
+      new DatasetDataIndexOperation(model).writeDatasetDataIndex({
+        data,
+        type,
+        text
+      })
   });
 };
 
@@ -875,11 +899,17 @@ export const updateDatasetDataIndex = async ({
   text: string;
   model: string;
 }) => {
-  return new DatasetDataIndexOperation(model).writeDatasetDataIndex({
-    data,
-    indexDataId,
-    type,
-    text
+  return withDatasetMutationGate({
+    teamId: String(data.teamId),
+    datasetId: String(data.datasetId),
+    operation: 'updateDataIndex',
+    run: () =>
+      new DatasetDataIndexOperation(model).writeDatasetDataIndex({
+        data,
+        indexDataId,
+        type,
+        text
+      })
   });
 };
 
@@ -890,8 +920,14 @@ export const deleteDatasetDataIndex = async ({
   data: DatasetDataItemType;
   indexDataId: string;
 }) => {
-  return new DatasetDataIndexOperation().deleteDatasetDataIndex({
-    data,
-    indexDataId
+  return withDatasetMutationGate({
+    teamId: String(data.teamId),
+    datasetId: String(data.datasetId),
+    operation: 'deleteDataIndex',
+    run: () =>
+      new DatasetDataIndexOperation().deleteDatasetDataIndex({
+        data,
+        indexDataId
+      })
   });
 };

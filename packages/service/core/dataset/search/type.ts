@@ -14,6 +14,8 @@ export type SearchDatasetDataProps = {
   vlmModel?: string;
   datasetIds: string[];
   reRankQuery: string;
+  /** 用户原始问题；用于构造 rerank 的同义词感知上下文。 */
+  rerankOriginalQuery?: string;
   // 工作流入口归一化后的文本 query。
   textQueries: string[];
   // 工作流入口归一化后的图片 query。
