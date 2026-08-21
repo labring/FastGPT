@@ -1,5 +1,6 @@
 import {
   ManagePermissionVal,
+  OwnerPermissionVal,
   PerResourceTypeEnum,
   ReadPermissionVal,
   WritePermissionVal
@@ -53,6 +54,64 @@ describe('resourcePermissionRepo resource filters', () => {
         collaborator: { tmbId: String(missingResourceIdTmbId) }
       })
     ).resolves.toMatchObject({ permission: ManagePermissionVal });
+  });
+
+  it('finds both resourceId and legacy resourceName rows by team', async () => {
+    await MongoResourcePermission.collection.insertMany([
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.model,
+        resourceId: objectId(),
+        permission: ReadPermissionVal
+      },
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.model,
+        resourceName: 'legacy-model',
+        permission: ReadPermissionVal
+      },
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.model,
+        permission: ReadPermissionVal
+      }
+    ]);
+
+    const permissions = await resourcePermissionRepo.findByTeam({
+      teamId: String(teamId),
+      resourceType: PerResourceTypeEnum.model
+    });
+
+    expect(permissions).toHaveLength(2);
+    expect(permissions.map((permission) => permission.resourceName)).toContain('legacy-model');
+  });
+
+  it('finds only the requested resource IDs in a batch', async () => {
+    const resourceId = objectId();
+    const otherResourceId = objectId();
+    await MongoResourcePermission.collection.insertMany([
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId,
+        permission: ReadPermissionVal
+      },
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: otherResourceId,
+        permission: ReadPermissionVal
+      }
+    ]);
+
+    const permissions = await resourcePermissionRepo.findByResourceIds({
+      teamId: String(teamId),
+      resourceType: PerResourceTypeEnum.app,
+      resourceIds: [String(resourceId)]
+    });
+
+    expect(permissions).toHaveLength(1);
+    expect(String(permissions[0].resourceId)).toBe(String(resourceId));
   });
 });
 
@@ -233,5 +292,46 @@ describe('resourcePermissionRepo.findResourceKeysByCollaboratorsPermission', () 
     });
 
     expect(modelNames.toSorted()).toEqual(['model-with-manage', 'model-with-read']);
+  });
+
+  it('rejects owner and invalid permission queries before reading Mongo', async () => {
+    await expect(
+      resourcePermissionRepo.findResourceKeysByCollaboratorsPermission({
+        teamId: String(teamId),
+        resourceType: PerResourceTypeEnum.app,
+        tmbId: String(tmbId),
+        groupIds: [],
+        orgIds: [],
+        permission: OwnerPermissionVal,
+        matchLogic: 'or',
+        personalPermissionPriority: false
+      })
+    ).rejects.toThrow('Owner permission');
+
+    await expect(
+      resourcePermissionRepo.findResourceKeysByCollaboratorsPermission({
+        teamId: String(teamId),
+        resourceType: PerResourceTypeEnum.app,
+        tmbId: String(tmbId),
+        groupIds: [],
+        orgIds: [],
+        permission: 0,
+        matchLogic: 'or',
+        personalPermissionPriority: false
+      })
+    ).rejects.toThrow('Permission mask');
+
+    await expect(
+      resourcePermissionRepo.findResourceKeysByCollaboratorsPermission({
+        teamId: String(teamId),
+        resourceType: PerResourceTypeEnum.team,
+        tmbId: String(tmbId),
+        groupIds: [],
+        orgIds: [],
+        permission: ReadPermissionVal,
+        matchLogic: 'or',
+        personalPermissionPriority: false
+      })
+    ).rejects.toThrow('does not support resource list queries');
   });
 });

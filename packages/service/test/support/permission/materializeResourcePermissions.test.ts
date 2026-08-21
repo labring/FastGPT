@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   OwnerRoleVal,
   PerResourceTypeEnum,
@@ -14,9 +16,11 @@ import {
   type MigrationResource
 } from '@fastgpt/service/support/permission/migration/materializeResourcePermissions';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { resourcePermissionRepo } from '@fastgpt/service/support/permission/repository/resourcePermissionRepo';
-import { getFakeUsers } from '@test/datas/users';
+import { getFakeUsers, getUser } from '@test/datas/users';
 
 const user = (tmbId: string, permission: number): CollaboratorItemType => ({
   tmbId,
@@ -152,6 +156,29 @@ describe('resolveMaterializedResourcePermissions', () => {
       ])
     );
   });
+
+  it('resolves a deep legacy tree when inheritPermission is missing', () => {
+    const resources = [
+      { _id: 'grandparent', teamId: 'team', tmbId: 'owner' },
+      { _id: 'parent', teamId: 'team', parentId: 'grandparent', tmbId: 'owner' },
+      { _id: 'child', teamId: 'team', parentId: 'parent', tmbId: 'owner' }
+    ];
+    const currentPermissions = [
+      { resourceId: 'grandparent', ...user('owner', OwnerRoleVal) },
+      { resourceId: 'grandparent', ...user('reader', ReadRoleVal) }
+    ];
+
+    const result = resolve(resources, currentPermissions);
+
+    expect(result.errors).toEqual([]);
+    expect(result.changes.map(({ resourceId }) => resourceId)).toEqual(['parent', 'child']);
+    expect(toPermissionMap(result.changes[1].collaborators)).toEqual(
+      new Map([
+        ['owner', OwnerRoleVal],
+        ['reader', ReadRoleVal]
+      ])
+    );
+  });
 });
 
 describe('materializeResourcePermissions', () => {
@@ -221,5 +248,113 @@ describe('materializeResourcePermissions', () => {
         })
       ])
     );
+  });
+
+  it('keeps dry-run read-only and filters resources by team', async () => {
+    const users = await getFakeUsers(1);
+    const otherTeamUser = await getUser('materialize-other-team');
+    const [dataset, skill, otherDataset] = await Promise.all([
+      MongoDataset.create({
+        teamId: users.owner.teamId,
+        tmbId: users.owner.tmbId,
+        name: 'migration-dataset',
+        type: DatasetTypeEnum.dataset
+      }),
+      MongoAgentSkills.create({
+        teamId: users.owner.teamId,
+        tmbId: users.owner.tmbId,
+        name: 'migration-skill',
+        source: AgentSkillSourceEnum.personal
+      }),
+      MongoDataset.create({
+        teamId: otherTeamUser.teamId,
+        tmbId: otherTeamUser.tmbId,
+        name: 'other-team-dataset',
+        type: DatasetTypeEnum.dataset
+      })
+    ]);
+
+    const result = await materializeResourcePermissions({
+      dryRun: true,
+      teamId: String(users.owner.teamId),
+      batchSize: 1
+    });
+
+    expect(result).toMatchObject({
+      dryRun: true,
+      teamCount: 1,
+      resourceCount: 2,
+      updatedResourceCount: 2,
+      skippedResourceCount: 0,
+      errors: []
+    });
+    await expect(
+      resourcePermissionRepo.findByResource({
+        teamId: String(users.owner.teamId),
+        resourceType: PerResourceTypeEnum.dataset,
+        resourceId: String(dataset._id)
+      })
+    ).resolves.toEqual([]);
+    await expect(
+      resourcePermissionRepo.findByResource({
+        teamId: String(users.owner.teamId),
+        resourceType: PerResourceTypeEnum.agentSkill,
+        resourceId: String(skill._id)
+      })
+    ).resolves.toEqual([]);
+    await expect(
+      resourcePermissionRepo.findByResource({
+        teamId: String(otherTeamUser.teamId),
+        resourceType: PerResourceTypeEnum.dataset,
+        resourceId: String(otherDataset._id)
+      })
+    ).resolves.toEqual([]);
+  });
+
+  it('materializes Dataset and Agent Skill owner ACLs', async () => {
+    const users = await getFakeUsers(1);
+    const [dataset, skill] = await Promise.all([
+      MongoDataset.create({
+        teamId: users.owner.teamId,
+        tmbId: users.owner.tmbId,
+        name: 'migration-dataset-write',
+        type: DatasetTypeEnum.dataset
+      }),
+      MongoAgentSkills.create({
+        teamId: users.owner.teamId,
+        tmbId: users.owner.tmbId,
+        name: 'migration-skill-write',
+        source: AgentSkillSourceEnum.personal
+      })
+    ]);
+
+    const result = await materializeResourcePermissions({
+      dryRun: false,
+      teamId: String(users.owner.teamId),
+      batchSize: 100
+    });
+
+    expect(result).toMatchObject({
+      resourceCount: 2,
+      updatedResourceCount: 2,
+      skippedResourceCount: 0,
+      errors: []
+    });
+    await expect(
+      resourcePermissionRepo.findOne({
+        teamId: String(users.owner.teamId),
+        resourceType: PerResourceTypeEnum.dataset,
+        resourceId: String(dataset._id),
+        collaborator: { tmbId: String(users.owner.tmbId) }
+      })
+    ).resolves.toMatchObject({ permission: OwnerRoleVal });
+    await expect(
+      resourcePermissionRepo.findOne({
+        teamId: String(users.owner.teamId),
+        resourceType: PerResourceTypeEnum.agentSkill,
+        resourceId: String(skill._id),
+        collaborator: { tmbId: String(users.owner.tmbId) }
+      })
+    ).resolves.toMatchObject({ permission: OwnerRoleVal });
   });
 });
