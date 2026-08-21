@@ -37,6 +37,7 @@ const CancelAccountPage = () => {
     status.canRequestCancellation &&
     router.query.confirmed === '1' &&
     !memberCancellation;
+  const isPendingView = status?.status === 'pending';
 
   useEffect(() => {
     if (loading || !router.isReady || !status) return;
@@ -72,6 +73,17 @@ const CancelAccountPage = () => {
     }
   };
 
+  // 等待期账号已停用且页面无导航入口，返回即退出登录，让用户可切换其他账号；
+  // 验证页返回则回到账号信息页继续注销流程。
+  const onBack = useCallback(() => {
+    if (isPendingView) {
+      setUserInfo(null);
+      void router.replace('/login');
+      return;
+    }
+    void router.replace('/account/info');
+  }, [isPendingView, router, setUserInfo]);
+
   const content = (() => {
     if (loading || !status) {
       return <Spinner color="primary.600" />;
@@ -104,8 +116,8 @@ const CancelAccountPage = () => {
 
   return (
     <AccountCancellationPageLayout
-      showBack={isVerificationView}
-      onBack={() => void router.replace('/account/info')}
+      showBack={isVerificationView || isPendingView}
+      onBack={onBack}
       cardProps={
         loading || !status
           ? { minH: '220px', alignItems: 'center', justifyContent: 'center' }
