@@ -143,7 +143,8 @@ describe('runOutlinkRuntime', () => {
     vi.mocked(getAppLatestVersion).mockResolvedValue({
       nodes: [{ nodeId: 'start', inputs: [], outputs: [] }],
       edges: [],
-      chatConfig: { variables: [], fileSelectConfig: { maxFiles: 2 } }
+      chatConfig: { variables: [], fileSelectConfig: { maxFiles: 2 } },
+      resources: []
     } as any);
     vi.mocked(getChatItems).mockResolvedValue({ histories: [] } as any);
     vi.mocked(authOutLinkLimit).mockResolvedValue({ uid: message.chatUserId });

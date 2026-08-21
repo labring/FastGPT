@@ -429,7 +429,7 @@ describe('beforeUpdateAppFormat', () => {
   });
 });
 
-describe('validatePublishAppAgentSkillReadPermissions', () => {
+describe('checkAppResourceReadPermissions', () => {
   it('发布应用时校验静态绑定的 Agent Skill 读权限', async () => {
     const owner = await getUser(`publish-skill-owner-${getNanoid(6)}`);
     const member = await getUser(`publish-skill-member-${getNanoid(6)}`, owner.teamId);

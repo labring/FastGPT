@@ -476,7 +476,7 @@ Tool、Agent、Dataset 和 Model 后续存在真实反查需求时复用同一�
 
 ## 10. 数据迁移
 
-管理员迁移接口 `POST /api/admin/4160/initAppResources` 是切换到 `resources` 的前置步骤，必须幂等、分页并支持 `dryRun`：
+管理员迁移接口 `POST /api/admin/4161/initAppResources` 是切换到 `resources` 的前置步骤，必须幂等、分页并支持 `dryRun`：
 
 1. 扫描所有 `app_versions`，根据各自 nodes 使用统一提取器生成 `resources`；
 2. 同时读取每条 Version 的 chatConfig，补齐问题引导和 TTS 等显式模型资源；

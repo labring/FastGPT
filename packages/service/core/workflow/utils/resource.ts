@@ -17,6 +17,7 @@ import { MongoDataset } from '../../dataset/schema';
 import { MongoAgentSkills } from '../../ai/skill/model/schema';
 import { authAppByTmbId } from '../../../support/permission/app/auth';
 import { mergeAppResources } from '../../app/resources';
+import { decodeToolSetNodesFromStorage } from '../../app/jsonSchemaStorage';
 import { getWorkflowResourceContext } from './context';
 
 export type WorkflowResourceContext = {
@@ -104,7 +105,16 @@ export const loadWorkflowResourceContext = async ({
       : []
   ]);
 
-  const appMap = new Map(apps.map((app) => [String(app._id), app]));
+  const appMap = new Map(
+    apps.map((app) => [
+      String(app._id),
+      {
+        ...app,
+        // 资源上下文直接供运行时使用，需在边界处恢复 Mongo 中编码的工具 Schema。
+        modules: decodeToolSetNodesFromStorage(app.modules)
+      }
+    ])
+  );
   const datasetMap = new Map(datasets.map((dataset) => [String(dataset._id), dataset]));
   const skillMap = new Map(skills.map((skill) => [String(skill._id), skill]));
 

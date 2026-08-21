@@ -1,6 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/next/type';
-import { BoolSchema } from '@fastgpt/global/common/zod';
+import { BoolSchema, IntSchema } from '@fastgpt/global/common/zod';
 import { AppResourcesSchema, type AppResourcesType } from '@fastgpt/global/core/app/type';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -15,7 +15,7 @@ import z from 'zod';
 
 /*
  * API: 初始化 App 资源快照
- * Route: POST /api/admin/4160/initAppResources
+ * Route: POST /api/admin/4161/initAppResources
  * Method: POST
  * Description: 回填 App 与 App Version 的 resources，并清理历史 resourceRefs。
  * Tags: ['Admin', 'DataClean', 'App', 'Write']
@@ -24,6 +24,9 @@ import z from 'zod';
 type LegacyResourceRefs = {
   skillIds?: unknown;
 };
+
+const DEFAULT_BATCH_SIZE = 500;
+const DEFAULT_WRITE_BATCH_SIZE = 50;
 
 type RawWorkflowRecord = {
   _id?: Types.ObjectId;
@@ -38,7 +41,9 @@ type RawWorkflowRecord = {
 };
 
 const InitAppResourcesBodySchema = z.object({
-  dryRun: BoolSchema.optional().default(true)
+  dryRun: BoolSchema.optional().default(true),
+  batchSize: IntSchema.min(1).max(5000).optional().default(DEFAULT_BATCH_SIZE),
+  writeBatchSize: IntSchema.min(1).max(1000).optional().default(DEFAULT_WRITE_BATCH_SIZE)
 });
 export type InitAppResourcesBodyType = z.infer<typeof InitAppResourcesBodySchema>;
 
@@ -54,11 +59,18 @@ type MigrationStats = z.infer<typeof AppResourcesMigrationStatsSchema>;
 
 const InitAppResourcesResponseSchema = z.object({
   dryRun: z.boolean(),
+  batchSize: z.number().int().positive(),
+  writeBatchSize: z.number().int().positive(),
   stats: AppResourcesMigrationStatsSchema
 });
 export type InitAppResourcesResponseType = z.infer<typeof InitAppResourcesResponseSchema>;
 
 type MigratedRecord = Pick<RawWorkflowRecord, '_id' | 'resources' | 'resourceRefs'>;
+
+type ResourceMigrationRecordHandler = (params: {
+  record: RawWorkflowRecord;
+  resources: AppResourcesType;
+}) => void;
 
 const createStats = (): MigrationStats => ({
   appsScanned: 0,
@@ -141,59 +153,150 @@ const buildResources = ({
 };
 
 type MongoCollection = typeof MongoApp.collection;
+type MongoBulkWriteOperation = Parameters<MongoCollection['bulkWrite']>[0][number];
 
+/**
+ * 按固定读取和写入批次迁移单个集合，先计算完整批次资源再批量写入；
+ * 资源校验通过前保留旧 resourceRefs，避免迁移中断后丢失重试依据。
+ */
 const migrateCollection = async ({
   collection,
   stats,
   dryRun,
-  isVersion
+  isVersion,
+  batchSize,
+  writeBatchSize,
+  buildResources,
+  onResourcesBuilt
 }: {
   collection: MongoCollection;
   stats: MigrationStats;
   dryRun: boolean;
   isVersion: boolean;
+  batchSize: number;
+  writeBatchSize: number;
+  buildResources: (record: RawWorkflowRecord) => AppResourcesType;
+  onResourcesBuilt?: ResourceMigrationRecordHandler;
 }) => {
-  const latestPublishedResources = new Map<string, AppResourcesType>();
-  // 必须与 getAppLatestVersion 的现有 { time: -1 } 选择规则一致，不引入新的版本排序语义。
-  const cursor = collection.find({}).sort({ time: -1 });
+  const flushWrites = async (operations: MongoBulkWriteOperation[]) => {
+    for (let start = 0; start < operations.length; start += writeBatchSize) {
+      const batchOperations = operations.slice(start, start + writeBatchSize);
+      const result = await collection.bulkWrite(batchOperations, { ordered: false });
+      const matchedCount = result.matchedCount ?? 0;
+      if (matchedCount !== batchOperations.length) {
+        throw new Error(
+          `Migration update missed ${isVersion ? 'version' : 'app'} documents: ` +
+            `expected=${batchOperations.length}, matched=${matchedCount}`
+        );
+      }
+      if (isVersion) stats.versionsUpdated += matchedCount;
+      else stats.appsUpdated += matchedCount;
+    }
+  };
+
+  const migrateBatch = async (records: RawWorkflowRecord[]) => {
+    const operations: MongoBulkWriteOperation[] = [];
+
+    records.forEach((record) => {
+      if (isVersion) stats.versionsScanned += 1;
+      else stats.appsScanned += 1;
+
+      const resources = buildResources(record);
+      onResourcesBuilt?.({ record, resources });
+      if (dryRun) return;
+
+      operations.push({
+        updateOne: {
+          filter: { _id: record._id },
+          update: {
+            $set: { resources }
+          }
+        }
+      });
+    });
+
+    if (!dryRun) await flushWrites(operations);
+  };
+
+  // Version 必须保持与 getAppLatestVersion 一致的时间倒序；App 使用稳定的 _id 顺序。
+  const cursor = collection
+    .find({})
+    .sort(isVersion ? { time: -1 } : { _id: 1 })
+    .batchSize(batchSize);
+  let records: RawWorkflowRecord[] = [];
 
   for await (const rawRecord of cursor) {
-    const record = rawRecord as RawWorkflowRecord;
-    if (isVersion) stats.versionsScanned += 1;
-    else stats.appsScanned += 1;
+    records.push(rawRecord as RawWorkflowRecord);
+    if (records.length < batchSize) continue;
 
-    const resources = buildResources({ ...record, stats });
-    if (isVersion && record.isPublish === true && record.appId !== undefined) {
-      const appId = String(record.appId);
-      if (!latestPublishedResources.has(appId)) latestPublishedResources.set(appId, resources);
-    }
-
-    if (dryRun) continue;
-    const result = await collection.updateOne(
-      { _id: record._id },
-      {
-        $set: { resources },
-        $unset: { resourceRefs: 1 }
-      }
-    );
-    if (result.matchedCount !== 1) {
-      throw new Error(`Migration update missed ${isVersion ? 'version' : 'app'} ${record._id}`);
-    }
-    if (isVersion) stats.versionsUpdated += 1;
-    else stats.appsUpdated += 1;
+    await migrateBatch(records);
+    records = [];
   }
 
-  return latestPublishedResources;
+  if (records.length > 0) await migrateBatch(records);
+};
+
+/** 资源迁移和全量校验完成后，按批次清理历史 resourceRefs 字段。 */
+const cleanupLegacyResourceRefs = async ({
+  collection,
+  batchSize,
+  writeBatchSize,
+  isVersion
+}: {
+  collection: MongoCollection;
+  batchSize: number;
+  writeBatchSize: number;
+  isVersion: boolean;
+}) => {
+  const flushWrites = async (operations: MongoBulkWriteOperation[]) => {
+    for (let start = 0; start < operations.length; start += writeBatchSize) {
+      const batchOperations = operations.slice(start, start + writeBatchSize);
+      const result = await collection.bulkWrite(batchOperations, { ordered: false });
+      const matchedCount = result.matchedCount ?? 0;
+      if (matchedCount !== batchOperations.length) {
+        throw new Error(
+          `Legacy resourceRefs cleanup missed ${isVersion ? 'version' : 'app'} documents: ` +
+            `expected=${batchOperations.length}, matched=${matchedCount}`
+        );
+      }
+    }
+  };
+
+  const cursor = collection
+    .find({ resourceRefs: { $exists: true } }, { projection: { _id: 1 } })
+    .sort({ _id: 1 })
+    .batchSize(batchSize);
+  let operations: MongoBulkWriteOperation[] = [];
+
+  for await (const rawRecord of cursor) {
+    operations.push({
+      updateOne: {
+        filter: { _id: rawRecord._id },
+        update: {
+          $unset: { resourceRefs: 1 }
+        }
+      }
+    });
+    if (operations.length < writeBatchSize) continue;
+
+    await flushWrites(operations);
+    operations = [];
+  }
+
+  if (operations.length > 0) await flushWrites(operations);
 };
 
 const verifyResources = async ({
   collection,
-  collectionName
+  collectionName,
+  batchSize
 }: {
   collection: MongoCollection;
   collectionName: string;
+  batchSize: number;
 }) => {
-  for await (const rawRecord of collection.find({}, { projection: { _id: 1, resources: 1 } })) {
+  const cursor = collection.find({}, { projection: { _id: 1, resources: 1 } }).batchSize(batchSize);
+  for await (const rawRecord of cursor) {
     const record = rawRecord as MigratedRecord;
     if (
       !Array.isArray(record.resources) ||
@@ -226,65 +329,86 @@ const verifyPublishedCaches = async ({
 export async function runInitAppResourcesMigration(
   params: InitAppResourcesBodyType
 ): Promise<InitAppResourcesResponseType> {
+  const options = InitAppResourcesBodySchema.parse(params);
   const stats = createStats();
   const versionCollection = MongoAppVersion.collection;
   const appCollection = MongoApp.collection;
 
   // Version 是正式资源事实，先计算最新发布版本，再用它回填 App 缓存。
-  const latestPublishedResources = await migrateCollection({
+  const latestPublishedResources = new Map<string, AppResourcesType>();
+  await migrateCollection({
     collection: versionCollection,
     stats,
-    dryRun: params.dryRun,
-    isVersion: true
+    dryRun: options.dryRun,
+    isVersion: true,
+    batchSize: options.batchSize,
+    writeBatchSize: options.writeBatchSize,
+    buildResources: (record) => buildResources({ ...record, stats }),
+    onResourcesBuilt: ({ record, resources }) => {
+      if (record.isPublish !== true || record.appId === undefined) return;
+      const appId = String(record.appId);
+      if (!latestPublishedResources.has(appId)) {
+        latestPublishedResources.set(appId, resources);
+      }
+    }
   });
 
-  const appCursor = appCollection.find({}).sort({ _id: 1 });
-  for await (const rawRecord of appCursor) {
-    const record = rawRecord as RawWorkflowRecord;
-    stats.appsScanned += 1;
-    const appId = record._id === undefined ? undefined : String(record._id);
-    if (appId && latestPublishedResources.has(appId)) {
+  await migrateCollection({
+    collection: appCollection,
+    stats,
+    dryRun: options.dryRun,
+    isVersion: false,
+    batchSize: options.batchSize,
+    writeBatchSize: options.writeBatchSize,
+    buildResources: (record) => {
+      const appId = record._id === undefined ? undefined : String(record._id);
+      const publishedResources = appId ? latestPublishedResources.get(appId) : undefined;
+      if (!publishedResources) return buildResources({ ...record, stats });
+
       const legacySkillIds = getLegacySkillIds(record.resourceRefs);
       stats.legacySkillRefs += legacySkillIds.length;
       stats.legacySkillMismatches += countMissingLegacySkills({
         legacySkillIds,
-        resources: latestPublishedResources.get(appId)!
+        resources: publishedResources
       });
+      return publishedResources;
     }
-    const resources =
-      appId && latestPublishedResources.has(appId)
-        ? latestPublishedResources.get(appId)!
-        : buildResources({ ...record, stats });
+  });
 
-    if (params.dryRun) continue;
-    const result = await appCollection.updateOne(
-      { _id: record._id },
-      {
-        $set: { resources },
-        $unset: { resourceRefs: 1 }
-      }
-    );
-    if (result.matchedCount !== 1) {
-      throw new Error(`Migration update missed app ${record._id}`);
-    }
-    stats.appsUpdated += 1;
-  }
-
-  if (!params.dryRun) {
+  if (!options.dryRun) {
     await Promise.all([
       verifyResources({
         collection: versionCollection,
-        collectionName: MongoAppVersion.collection.name
+        collectionName: MongoAppVersion.collection.name,
+        batchSize: options.batchSize
       }),
       verifyResources({
         collection: appCollection,
-        collectionName: MongoApp.collection.name
+        collectionName: MongoApp.collection.name,
+        batchSize: options.batchSize
       }),
       verifyPublishedCaches({
         appCollection,
         latestPublishedResources
       })
     ]);
+
+    // 只有所有资源和正式发布缓存校验通过后，才删除可用于重试的旧字段。
+    await Promise.all([
+      cleanupLegacyResourceRefs({
+        collection: versionCollection,
+        batchSize: options.batchSize,
+        writeBatchSize: options.writeBatchSize,
+        isVersion: true
+      }),
+      cleanupLegacyResourceRefs({
+        collection: appCollection,
+        batchSize: options.batchSize,
+        writeBatchSize: options.writeBatchSize,
+        isVersion: false
+      })
+    ]);
+
     const [remainingApps, remainingVersions] = await Promise.all([
       appCollection.countDocuments({ resourceRefs: { $exists: true } }),
       versionCollection.countDocuments({ resourceRefs: { $exists: true } })
@@ -297,7 +421,9 @@ export async function runInitAppResourcesMigration(
   }
 
   return InitAppResourcesResponseSchema.parse({
-    dryRun: params.dryRun,
+    dryRun: options.dryRun,
+    batchSize: options.batchSize,
+    writeBatchSize: options.writeBatchSize,
     stats
   });
 }

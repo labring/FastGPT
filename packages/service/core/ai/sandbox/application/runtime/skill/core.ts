@@ -14,6 +14,7 @@ import type { DeployedSkillInfo, DeployedSkillVersion } from './types';
 import { getAgentSandboxSkillMaxBytes } from '../../../config';
 import { joinSandboxPath } from '../../../utils';
 import { authSkillByTmbId } from '../../../../../../support/permission/skill/auth';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getWorkflowResourceContext } from '../../../../../workflow/utils/context';
 import { assertWorkflowResource } from '../../../../../workflow/utils/resource';
@@ -199,8 +200,8 @@ export const injectAgentSkillFilesToSandbox = async ({
           .filter((skill): skill is NonNullable<typeof skill> => !!skill)
       : await MongoAgentSkills.find({
           _id: { $in: skillIds },
-          teamId,
-          deleteTime: null
+          deleteTime: null,
+          $or: [{ teamId }, { source: AgentSkillSourceEnum.system }]
         });
   if (teamSkills.length === 0) {
     logger.warn('[Agent Skills] No valid skills found from input skillIds', { skillIds });
