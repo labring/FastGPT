@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { defaultProvider, formatModelProviders } from '@fastgpt/global/core/ai/provider';
+import {
+  defaultProvider,
+  formatModelProviders,
+  getModelProviderFromCache,
+  getModelProviderListFromCache
+} from '@fastgpt/global/core/ai/provider';
 
 // Mock I18nStringStrictType for testing
 type MockI18nStringStrictType = {
@@ -23,6 +28,61 @@ describe('defaultProvider', () => {
     expect(defaultProvider).toHaveProperty('name');
     expect(defaultProvider).toHaveProperty('avatar');
     expect(defaultProvider).toHaveProperty('order');
+  });
+});
+
+describe('model provider language fallback', () => {
+  const { ModelProviderListCache, ModelProviderMapCache } = formatModelProviders([
+    {
+      provider: 'openai',
+      value: { en: 'OpenAI', 'zh-CN': 'OpenAI 中文' },
+      avatar: 'model/openai'
+    }
+  ] as any);
+
+  it('uses the requested language cache when it exists', () => {
+    expect(getModelProviderListFromCache(ModelProviderListCache, 'zh-CN')).toBe(
+      ModelProviderListCache['zh-CN']
+    );
+    expect(
+      getModelProviderFromCache({
+        cache: ModelProviderMapCache,
+        provider: 'openai',
+        language: 'zh-CN'
+      })
+    ).toBe(ModelProviderMapCache['zh-CN'].openai);
+  });
+
+  it('falls back to the English list when the requested language cache is missing', () => {
+    expect(getModelProviderListFromCache(ModelProviderListCache, 'ko-KR')).toBe(
+      ModelProviderListCache.en
+    );
+  });
+
+  it('falls back to the English provider when the requested language cache is missing', () => {
+    expect(
+      getModelProviderFromCache({
+        cache: ModelProviderMapCache,
+        provider: 'openai',
+        language: 'ko-KR'
+      })
+    ).toBe(ModelProviderMapCache.en.openai);
+  });
+
+  it('returns the default provider only when the provider is missing', () => {
+    expect(
+      getModelProviderFromCache({
+        cache: ModelProviderMapCache,
+        provider: 'missing',
+        language: 'ko-KR'
+      })
+    ).toBe(defaultProvider);
+    expect(
+      getModelProviderFromCache({
+        cache: ModelProviderMapCache,
+        language: 'ko-KR'
+      })
+    ).toBe(defaultProvider);
   });
 });
 

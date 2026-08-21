@@ -37,8 +37,7 @@ const languageMap: Record<string, localeType> = {
   en: LangEnum.en,
   'en-US': LangEnum.en,
   'en-us': LangEnum.en,
-  ko: LangEnum.ko,
-  'ko-KR': LangEnum.ko
+  'ko-KR': LangEnum.ko_KR
 };
 
 const isInIframe = () => {
@@ -286,9 +285,6 @@ export const getLangMapping = (lng: string): localeType => {
     }
     if (langPrefix === 'en') {
       lang = LangEnum.en;
-    }
-    if (langPrefix === 'ko') {
-      lang = LangEnum.ko;
     }
   }
 

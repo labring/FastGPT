@@ -27,7 +27,7 @@ describe('generatedLoaders', () => {
   });
 
   it('contains all S3 upload error translations in every language', async () => {
-    for (const language of ['en', 'zh-CN', 'zh-Hant'] as const) {
+    for (const language of LocaleList) {
       const resource = (await generatedLoaders[language].common()).default;
       expect(Object.keys(resource)).toEqual(expect.arrayContaining(s3UploadErrorKeys));
     }

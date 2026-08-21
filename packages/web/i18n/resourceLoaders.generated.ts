@@ -90,5 +90,33 @@ export const generatedLoaders: Record<localeType, Record<I18nNsType[number], Res
     admin_plugin: () => import('./zh-Hant/admin_plugin.json'),
     skill: () => import('./zh-Hant/skill.json'),
     price: () => import('./zh-Hant/price.json')
+  },
+  'ko-KR': {
+    common: () => import('./ko-KR/common.json'),
+    dataset: () => import('./ko-KR/dataset.json'),
+    app: () => import('./ko-KR/app.json'),
+    file: () => import('./ko-KR/file.json'),
+    publish: () => import('./ko-KR/publish.json'),
+    workflow: () => import('./ko-KR/workflow.json'),
+    user: () => import('./ko-KR/user.json'),
+    chat: () => import('./ko-KR/chat.json'),
+    login: () => import('./ko-KR/login.json'),
+    account_info: () => import('./ko-KR/account_info.json'),
+    account_usage: () => import('./ko-KR/account_usage.json'),
+    account_bill: () => import('./ko-KR/account_bill.json'),
+    discount_coupon: () => import('./ko-KR/discount_coupon.json'),
+    apikey: () => import('./ko-KR/apikey.json'),
+    account_setting: () => import('./ko-KR/account_setting.json'),
+    account_inform: () => import('./ko-KR/account_inform.json'),
+    account_thirdParty: () => import('./ko-KR/account_thirdParty.json'),
+    account: () => import('./ko-KR/account.json'),
+    account_team: () => import('./ko-KR/account_team.json'),
+    account_model: () => import('./ko-KR/account_model.json'),
+    account_custom_domain: () => import('./ko-KR/account_custom_domain.json'),
+    dashboard_mcp: () => import('./ko-KR/dashboard_mcp.json'),
+    dashboard_evaluation: () => import('./ko-KR/dashboard_evaluation.json'),
+    admin_plugin: () => import('./ko-KR/admin_plugin.json'),
+    skill: () => import('./ko-KR/skill.json'),
+    price: () => import('./ko-KR/price.json')
   }
 };

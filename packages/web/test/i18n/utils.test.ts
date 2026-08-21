@@ -79,9 +79,12 @@ describe('getRequiredI18nLanguages', () => {
     expect(getRequiredI18nLanguages(LangEnum.en)).toEqual([LangEnum.en]);
   });
 
-  it.each([LangEnum.zh_CN, LangEnum.zh_Hant])('appends English fallback for %s', (language) => {
-    expect(getRequiredI18nLanguages(language)).toEqual([language, LangEnum.en]);
-  });
+  it.each([LangEnum.zh_CN, LangEnum.zh_Hant, LangEnum.ko_KR])(
+    'appends English fallback for %s',
+    (language) => {
+      expect(getRequiredI18nLanguages(language)).toEqual([language, LangEnum.en]);
+    }
+  );
 });
 
 describe('getLangMapping', () => {
@@ -89,6 +92,10 @@ describe('getLangMapping', () => {
     expect(getLangMapping('zh-Hant-TW')).toBe(LangEnum.zh_Hant);
     expect(getLangMapping('zh-Hant-HK')).toBe(LangEnum.zh_Hant);
     expect(getLangMapping(' zh_hant_tw ')).toBe(LangEnum.zh_Hant);
+  });
+
+  it('maps the canonical Korean locale to ko-KR', () => {
+    expect(getLangMapping('ko-KR')).toBe(LangEnum.ko_KR);
   });
 });
 

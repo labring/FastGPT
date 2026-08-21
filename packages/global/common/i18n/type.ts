@@ -11,11 +11,11 @@ export enum LangEnum {
   'zh_CN' = 'zh-CN',
   'zh_Hant' = 'zh-Hant',
   'en' = 'en',
-  'ko' = 'ko'
+  'ko_KR' = 'ko-KR'
 }
 
 export type localeType = `${LangEnum}`;
-export const LocaleList = ['en', 'zh-CN', 'zh-Hant', 'ko'] as const;
+export const LocaleList = ['en', 'zh-CN', 'zh-Hant', 'ko-KR'] as const;
 
 export const LanguageSchema = z.enum(LocaleList).meta({ description: '用户语言偏好' });
 
@@ -32,9 +32,9 @@ export const langMap = {
     label: '繁体中文',
     avatar: 'common/language/China'
   },
-  [LangEnum.ko]: {
-    label: '한국어',
-    avatar: 'common/language/Korea'
+  [LangEnum.ko_KR]: {
+    label: '한국어 (대한민국)',
+    avatar: 'common/language/SouthKorea'
   }
 };
 

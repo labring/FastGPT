@@ -18,6 +18,6 @@
   "registration_hint": "본인의 도메인을 준비하시고 <bold>{{provider}}</bold>를 통해 ICP 등록을 완료한 후, 아래 입력란에 도메인을 입력해 주세요",
   "status.active": "활성",
   "status.inactive": "비활성",
-  "upgrade_to_use_custom_domain": "현재 플랜에서는 커스텀 도메인을 지원하지 않습니다. 먼저 업그레이드해 주세요",
-  "upgrade_plan": "플랜 업그레이드"
+  "upgrade_to_use_custom_domain": "현재 요금제에서는 사용자 지정 도메인을 지원하지 않습니다. 먼저 업그레이드하세요",
+  "upgrade_plan": "요금제 업그레이드"
 }

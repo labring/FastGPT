@@ -13,6 +13,9 @@ const parseLocale = (value?: string): localeType | undefined => {
   if (normalized === LangEnum.en.toLowerCase() || normalized.startsWith('en-')) {
     return LangEnum.en;
   }
+  if (normalized === LangEnum.ko_KR.toLowerCase()) {
+    return LangEnum.ko_KR;
+  }
   if (
     normalized === LangEnum.zh_Hant.toLowerCase() ||
     normalized.startsWith('zh-hant-') ||

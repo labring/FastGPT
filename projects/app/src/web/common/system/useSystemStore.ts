@@ -15,8 +15,9 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import type { SystemDefaultModelType } from '@fastgpt/service/core/ai/type';
 import {
-  defaultProvider,
   formatModelProviders,
+  getModelProviderFromCache,
+  getModelProviderListFromCache,
   type langType,
   type ModelProviderItemType
 } from '@fastgpt/global/core/ai/provider';
@@ -217,15 +218,14 @@ export const useSystemStore = create<State>()(
           return get().llmModelList.filter((item) => item.vision);
         },
         getModelProviders(language = 'en') {
-          return get().modelProviders[language as langType] ?? [];
+          return getModelProviderListFromCache(get().modelProviders, language);
         },
         getModelProvider(provider, language = 'en') {
-          if (!provider) {
-            return defaultProvider;
-          }
-          // Locales without a pre-built provider name/avatar map (e.g. those not covered by
-          // langType) fall back to the default provider info instead of throwing.
-          return get().modelProviderMap[language as langType]?.[provider] ?? defaultProvider;
+          return getModelProviderFromCache({
+            cache: get().modelProviderMap,
+            provider,
+            language
+          });
         },
         initStaticData(res) {
           set((state) => {

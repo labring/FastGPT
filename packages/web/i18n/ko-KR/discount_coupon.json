@@ -1,0 +1,11 @@
+{
+  "discount_coupon": "쿠폰",
+  "expired": "만료됨",
+  "expired_tips": "이미 만료되었습니다",
+  "not_started_tips": "시작 전",
+  "used_time": "사용 시간",
+  "expiration_time": "만료 시간",
+  "use": "사용하기",
+  "used_tips": "사용 완료",
+  "check_purchase_history": "주문 보기"
+}

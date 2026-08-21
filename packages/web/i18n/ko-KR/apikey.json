@@ -10,7 +10,7 @@
   "last_used_at": "마지막 사용",
   "last_used_time": "마지막 사용 시간",
   "no_tags": "태그 없음",
-  "remaining_points": "잔여 크레딧",
+  "remaining_points": "잔여 포인트",
   "search_key_name_or_value": "키 이름 또는 키 일부로 검색",
   "search_or_add_tag": "태그 검색 또는 추가",
   "search_tag": "태그 검색",
@@ -18,12 +18,17 @@
   "sort_label": "정렬",
   "sort_by_create_time": "생성 시간",
   "sort_by_last_used_time": "마지막 사용 시간",
-  "sort_by_remaining_points": "잔여 크레딧",
+  "sort_by_remaining_points": "잔여 포인트",
   "tag_filter": "태그별 필터",
   "tag_manage": "태그 관리",
   "tag_name": "태그 이름",
   "tag_total": "총 {{total}}개 태그",
   "tags": "태그",
   "time": "시간",
-  "tutorial": "튜토리얼"
+  "tutorial": "튜토리얼",
+  "create_api_key": "새 키 생성",
+  "edit_api_key": "키 세부 정보 편집",
+  "key_alias": "표시용 키 별칭",
+  "create_link_error": "링크 생성 오류",
+  "update_link_error": "링크 업데이트 오류"
 }

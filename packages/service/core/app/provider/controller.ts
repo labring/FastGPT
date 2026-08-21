@@ -1,8 +1,8 @@
 import { loadModelProviders } from '../../../thirdProvider/fastgptPlugin/model';
 import {
-  type langType,
-  defaultProvider,
-  formatModelProviders
+  formatModelProviders,
+  getModelProviderFromCache,
+  getModelProviderListFromCache
 } from '@fastgpt/global/core/ai/provider';
 
 // Preload model providers
@@ -18,14 +18,12 @@ export async function preloadModelProviders(): Promise<void> {
 }
 
 export const getModelProviders = (language = 'en') => {
-  return global.ModelProviderListCache[language as langType] || [];
+  return getModelProviderListFromCache(global.ModelProviderListCache, language);
 };
 export const getModelProvider = (provider?: string, language = 'en') => {
-  if (!provider) {
-    return defaultProvider;
-  }
-
-  // Locales without a pre-built provider name/avatar map (e.g. those not covered by langType)
-  // fall back to the default provider info instead of throwing.
-  return global.ModelProviderMapCache[language as langType]?.[provider] ?? defaultProvider;
+  return getModelProviderFromCache({
+    cache: global.ModelProviderMapCache,
+    provider,
+    language
+  });
 };
