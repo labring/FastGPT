@@ -5,7 +5,6 @@ import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -74,11 +73,6 @@ const WorkflowBuilderApplyToast = ({
 const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: boolean }) => {
   const { t } = useTranslation('workflow');
   const { toast } = useToast();
-  const { openConfirm, ConfirmModal } = useConfirm({
-    type: 'delete',
-    title: t('workflow_builder_clear_history'),
-    content: t('workflow_builder_clear_history_confirm')
-  });
   const { requestAutoLayout } = useWorkflowAutoLayout();
   const getMyModelList = useSystemStore((state) => state.getMyModelList);
   const appId = useContextSelector(AppContext, (value) => value.appId);
@@ -407,9 +401,7 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
                     color="#485264"
                     boxShadow="0 0 1px rgba(19, 51, 107, 0.08), 0 1px 2px rgba(19, 51, 107, 0.05)"
                     _hover={{ bg: '#F7F8FA' }}
-                    onClick={() =>
-                      openConfirm({ onConfirm: () => chatPanelRef.current?.clearHistory() })()
-                    }
+                    onClick={() => chatPanelRef.current?.clearHistory()}
                   />
                 </MyTooltip>
                 <MyTooltip label={t('workflow_builder_collapse')}>
@@ -462,7 +454,6 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
           )}
         </AppDetailPanelModal>
       </Portal>
-      <ConfirmModal />
     </>
   );
 };
