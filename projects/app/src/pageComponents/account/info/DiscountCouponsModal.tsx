@@ -17,7 +17,7 @@ const DiscountCouponsModal = ({ onClose }: { onClose: () => void }) => {
   const { t, i18n } = useClientTranslation('discount_coupon');
   const { userInfo } = useUserStore();
   const router = useRouter();
-  const isZh = i18n.language === 'zh-CN';
+  const isZh = i18n.language.startsWith('zh');
   const [billId, setBillId] = useState<string>();
   const teamId = userInfo?.team?.teamId;
 

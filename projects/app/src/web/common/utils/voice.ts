@@ -9,9 +9,35 @@ import { useTranslation } from 'next-i18next';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { useMount } from 'ahooks';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import { getLangMapping } from '@fastgpt/web/i18n/utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 
 const splitMarker = 'SPLIT_MARKER';
 const contentType = 'audio/mpeg';
+
+const speechVoiceLanguageMap: Record<localeType, readonly string[]> = {
+  en: ['en-us', 'en-gb', 'en'],
+  'zh-CN': ['zh-cn', 'zh-hans', 'zh'],
+  'zh-Hant': ['zh-tw', 'zh-hk', 'zh-hant', 'zh'],
+  'ko-KR': ['ko-kr', 'ko']
+};
+
+/** 按当前界面语言选择浏览器语音，优先地区精确匹配，再回退到同语言声音。 */
+export const findSpeechVoice = <T extends { lang: string }>(
+  voices: readonly T[],
+  language: string
+) => {
+  const candidates = speechVoiceLanguageMap[getLangMapping(language)];
+
+  return candidates
+    .map((candidate) =>
+      voices.find(({ lang }) => {
+        const normalizedLang = lang.toLowerCase();
+        return normalizedLang === candidate || normalizedLang.startsWith(`${candidate}-`);
+      })
+    )
+    .find((voice): voice is T => Boolean(voice));
+};
 
 const isAbortError = (error: unknown) =>
   error instanceof DOMException
@@ -28,7 +54,7 @@ export const useAudioPlay = (props?: {
   ttsConfig?: AppTTSConfigType;
   outLinkAuthData?: OutLinkChatAuthProps;
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { appId, ttsConfig, outLinkAuthData } = props || {};
   const { toast } = useToast();
   const audioRef = useRef<HTMLAudioElement>();
@@ -43,9 +69,7 @@ export const useAudioPlay = (props?: {
     if (ttsConfig?.type === TTSTypeEnum.none) return false;
     if (ttsConfig?.type === TTSTypeEnum.model) return true;
     const voices = window?.speechSynthesis?.getVoices?.() || []; // 获取语言包
-    const voice = voices.find((item) => {
-      return item.lang === 'zh-CN' || item.lang === 'zh';
-    });
+    const voice = findSpeechVoice(voices, i18n.language);
     return !!voice;
   })();
 
@@ -81,27 +105,28 @@ export const useAudioPlay = (props?: {
     },
     [appId, outLinkAuthData, ttsConfig]
   );
-  const playWebAudio = useCallback((text: string) => {
-    // window speech
-    window?.speechSynthesis?.cancel();
-    const msg = new SpeechSynthesisUtterance(text);
-    const voices = window?.speechSynthesis?.getVoices?.() || []; // 获取语言包
-    const voice = voices.find((item) => {
-      return item.lang === 'zh-CN';
-    });
-    if (voice) {
-      msg.onstart = () => {
-        setAudioPlaying(true);
-      };
-      msg.onend = () => {
-        setAudioPlaying(false);
-        msg.onstart = null;
-        msg.onend = null;
-      };
-      msg.voice = voice;
-      window.speechSynthesis?.speak(msg);
-    }
-  }, []);
+  const playWebAudio = useCallback(
+    (text: string) => {
+      // window speech
+      window?.speechSynthesis?.cancel();
+      const msg = new SpeechSynthesisUtterance(text);
+      const voices = window?.speechSynthesis?.getVoices?.() || []; // 获取语言包
+      const voice = findSpeechVoice(voices, i18n.language);
+      if (voice) {
+        msg.onstart = () => {
+          setAudioPlaying(true);
+        };
+        msg.onend = () => {
+          setAudioPlaying(false);
+          msg.onstart = null;
+          msg.onend = null;
+        };
+        msg.voice = voice;
+        window.speechSynthesis?.speak(msg);
+      }
+    },
+    [i18n.language]
+  );
   const cancelAudio = useCallback(() => {
     try {
       window.speechSynthesis?.cancel();
