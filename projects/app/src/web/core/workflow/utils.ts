@@ -245,6 +245,7 @@ export const storeNode2FlowNode = ({
 };
 
 export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
+  // 当前导出脱敏范围与历史基线保持一致，仅处理数据集选择和系统密钥输入；工具配置暂不做递归脱敏，避免误删普通 value/defaultValue。
   const cloneNodes = JSON.parse(JSON.stringify(nodes)) as StoreNodeItemType[];
 
   cloneNodes.forEach((node) => {

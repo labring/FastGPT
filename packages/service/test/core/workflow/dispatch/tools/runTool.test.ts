@@ -296,6 +296,34 @@ describe('dispatchRunTool runtime toolset auth', () => {
     expect(result.error?.[NodeOutputKeyEnum.errorText]).toContain('validation failed');
   });
 
+  it.each(['toolData', 'system_toolData'] as const)(
+    'should keep the baseline fallback for legacy single MCP tool params (%s)',
+    async (legacyKey) => {
+      const props = createRunToolProps({});
+      props.params = {
+        query: 'fastgpt',
+        [legacyKey]: {
+          name: 'search',
+          url: 'https://mcp.example.com',
+          inputSchema: {
+            type: 'object',
+            properties: { query: { type: 'string' } },
+            required: ['query']
+          }
+        }
+      };
+      mcpToolCallMock.mockResolvedValueOnce({ ok: true });
+
+      const result = await dispatchRunTool(props);
+
+      expect(result.error).toBeUndefined();
+      expect(mcpToolCallMock).toHaveBeenCalledWith({
+        toolName: 'search',
+        params: { query: 'fastgpt' }
+      });
+    }
+  );
+
   it('should reject invalid system tool params before invoking the plugin runtime', async () => {
     getSystemToolDetailMock.mockResolvedValueOnce({
       inputSchema: {

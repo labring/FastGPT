@@ -30,6 +30,7 @@ export const isWorkflowAppType = (appType: AppTypeEnum) =>
   appType === AppTypeEnum.workflow || appType === AppTypeEnum.workflowTool;
 
 export function filterSensitiveFormData(appForm: AppFormEditFormType) {
+  // 当前导出脱敏范围与历史基线保持一致，仅处理数据集选择和系统密钥输入；工具配置暂不做递归脱敏，避免误删普通 value/defaultValue。
   const defaultAppForm = getDefaultAppForm();
   return {
     ...appForm,
