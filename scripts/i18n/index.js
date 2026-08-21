@@ -1,65 +1,62 @@
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
-// 获取命令行参数
 const args = process.argv.slice(2);
-if (args.length !== 1) {
-  console.error('Please provide the file name as an argument. Usage: npm create i18n <filename>');
+if (args.length !== 1 || !/^[a-zA-Z][a-zA-Z0-9_]*$/.test(args[0])) {
+  console.error('Please provide a valid namespace. Usage: pnpm create:i18n <namespace>');
   process.exit(1);
 }
 
-const fileName = `${args[0]}.json`; // 生成的文件名
-const languages = ['zh-Hant', 'zh-CN', 'en'];
-// 使用 process.cwd() 获取当前工作目录
-const basePath = path.join(process.cwd(), 'packages', 'web', 'i18n');
-const typesPath = path.join(process.cwd(), 'packages', 'web', 'types', 'i18next.d.ts');
+const namespace = args[0];
+const fileName = `${namespace}.json`;
+const repositoryRoot = process.cwd();
+const i18nPath = path.join(repositoryRoot, 'packages', 'web', 'i18n');
+const localeTypePath = path.join(repositoryRoot, 'packages', 'global', 'common', 'i18n', 'type.ts');
+const i18nextPath = path.join(i18nPath, 'i18next.ts');
+const constantsPath = path.join(i18nPath, 'constants.ts');
+const generatorPath = path.join(repositoryRoot, 'scripts', 'generate-i18n-resource-loaders.mjs');
 
-// 创建国际化文件
-languages.forEach((language) => {
-  const filePath = path.join(basePath, language, fileName);
-  // 检查文件是否已存在，避免覆盖
-  if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, JSON.stringify({}, null, 2)); // 创建 JSON 文件
-    console.log(`Created: ${filePath}`);
-  } else {
+const localeTypeSource = fs.readFileSync(localeTypePath, 'utf8');
+const localeListSource = localeTypeSource.match(/LocaleList\s*=\s*\[([\s\S]*?)\]\s*as const/)?.[1];
+if (!localeListSource) throw new Error('Unable to read LocaleList from i18n type.ts');
+const languages = Array.from(localeListSource.matchAll(/'([^']+)'/g), (match) => match[1]);
+
+for (const language of languages) {
+  const filePath = path.join(i18nPath, language, fileName);
+  if (fs.existsSync(filePath)) {
     console.log(`File already exists: ${filePath}`);
-  }
-});
-
-// 更新 i18next.d.ts
-fs.readFile(typesPath, 'utf-8', (err, data) => {
-  if (err) {
-    console.error(`Error reading file: ${err}`);
-    return;
+    continue;
   }
 
-  // 添加新的命名空间
-  const newNamespace = `\nimport ${args[0]} from '../i18n/zh-CN/${fileName}';`;
-  const updatedData = data.replace(/(import\s*'.*?';)/g, `$1${newNamespace}`);
+  fs.writeFileSync(filePath, '{}\n');
+  console.log(`Created: ${filePath}`);
+}
 
-  // 更新 I18nNamespaces 接口
-  const namespacePattern = /export interface I18nNamespaces {([\s\S]*?)}/;
-  const newNamespaceEntry = `  ${args[0]}: typeof ${args[0]};\n`;
-  const updatedNamespaces = updatedData.replace(namespacePattern, (match, p1) => {
-    return `export interface I18nNamespaces {\n${p1}${newNamespaceEntry}};`;
-  });
+const importLine = `import type ${namespace} from './zh-CN/${fileName}';`;
+let i18nextSource = fs.readFileSync(i18nextPath, 'utf8');
+if (!i18nextSource.includes(importLine)) {
+  i18nextSource = i18nextSource.replace("import 'i18next';", `import 'i18next';\n${importLine}`);
+}
+if (!new RegExp(`\\s${namespace}: typeof ${namespace};`).test(i18nextSource)) {
+  i18nextSource = i18nextSource.replace(
+    /(export interface I18nNamespaces \{[\s\S]*?)(\n\})/,
+    `$1\n  ${namespace}: typeof ${namespace};$2`
+  );
+}
+fs.writeFileSync(i18nextPath, i18nextSource);
 
-  // 更新 defaultNS
-  const defaultNSPattern = /defaultNS:\s*\[\s*([\s\S]*?)\s*\];/;
-  const updatedDefaultNS = updatedNamespaces.replace(defaultNSPattern, (match, p1) => {
-    return `defaultNS: [${p1.trim()}, \n'${args[0]}'\n];`;
-  });
+let constantsSource = fs.readFileSync(constantsPath, 'utf8');
+const namespaceListSource = constantsSource.match(/I18N_NAMESPACES\s*=\s*\[([\s\S]*?)\]/)?.[1];
+if (!namespaceListSource) throw new Error('Unable to read I18N_NAMESPACES from constants.ts');
+if (
+  !Array.from(namespaceListSource.matchAll(/'([^']+)'/g), (match) => match[1]).includes(namespace)
+) {
+  constantsSource = constantsSource.replace(
+    /(export const I18N_NAMESPACES = \[[\s\S]*?)(\n\];)/,
+    (_match, listBody, listEnd) => `${listBody.trimEnd()},\n  '${namespace}'${listEnd}`
+  );
+  fs.writeFileSync(constantsPath, constantsSource);
+}
 
-  // 检查修改后的内容是否已变更
-  if (updatedDefaultNS !== updatedData) {
-    fs.writeFile(typesPath, updatedDefaultNS, 'utf-8', (err) => {
-      if (err) {
-        console.error(`Error writing file: ${err}`);
-        return;
-      }
-      console.log(`Updated: ${typesPath}`);
-    });
-  } else {
-    console.log('No changes made to i18next.d.ts.');
-  }
-});
+execFileSync(process.execPath, [generatorPath], { stdio: 'inherit' });

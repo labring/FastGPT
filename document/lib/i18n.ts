@@ -15,21 +15,34 @@ export async function getTranslations(locale: string) {
 
 export function t(key: string, locale?: string) {
   const keys = key.split(':');
-  const namespace = keys[0];
   const path = keys[1].split('.');
 
-  try {
-    const translations = require(`@/i18n/${locale || i18n.defaultLanguage}/common.json`);
-    let result = translations;
+  const readTranslation = (targetLocale: string) => {
+    try {
+      const translations = require(`@/i18n/${targetLocale}/common.json`);
+      let result = translations;
 
-    for (const p of path) {
-      result = result[p];
+      for (const p of path) {
+        result = result[p];
+      }
+
+      return result;
+    } catch (error) {
+      return undefined;
     }
+  };
 
-    return result || key;
-  } catch (error) {
-    return key;
+  const targetLocale = locale || i18n.defaultLanguage;
+  const result = readTranslation(targetLocale);
+  if (result) {
+    return result;
   }
+
+  if (targetLocale !== 'en') {
+    return readTranslation('en') || key;
+  }
+
+  return key;
 }
 
 /**

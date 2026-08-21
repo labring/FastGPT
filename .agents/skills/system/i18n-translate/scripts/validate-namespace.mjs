@@ -93,8 +93,8 @@ const getGlossaryCheckText = (value) =>
  * Select non-overlapping glossary matches, preferring the longest Chinese term.
  * This prevents component rules from overriding an approved compound term.
  */
-const getGlossaryMatches = (sourceValue) => {
-  const candidates = glossary.terms.flatMap((rule) =>
+const getGlossaryMatches = (sourceValue, rules = glossary.terms) => {
+  const candidates = rules.flatMap((rule) =>
     rule.zh.flatMap((sourceTerm) => {
       const matches = [];
       let start = sourceValue.indexOf(sourceTerm);
@@ -117,6 +117,9 @@ const getGlossaryMatches = (sourceValue) => {
   }
   return selected.sort((left, right) => left.start - right.start);
 };
+
+const containsLocaleTerm = (value, term) =>
+  value.toLocaleLowerCase().includes(term.toLocaleLowerCase());
 
 const discoverTargets = () => {
   if (args.length > 1) return args.slice(1).map((item) => path.resolve(item));
@@ -234,6 +237,40 @@ for (const targetPath of targets) {
           warnings.push(
             `[${targetLocale}] Canonical glossary term may be missing at ${entryPath} for ` +
               `${formatValue(sourceTerm)}; expected one of ${formatValue(effectiveRule.en)}`
+          );
+        }
+      }
+    }
+
+    const localeGlossary = glossary.localeGlossaries?.[targetLocale] ?? [];
+    if (localeGlossary.length > 0) {
+      const glossaryCheckText = getGlossaryCheckText(targetEntry.value);
+      for (const { rule, sourceTerm } of getGlossaryMatches(sourceEntry.value, localeGlossary)) {
+        const contextOverride = glossary.contextOverrides?.find(
+          (item) =>
+            item.namespace === sourceNamespace &&
+            item.path === entryPath &&
+            item.source === sourceTerm &&
+            item[targetLocale]
+        );
+        const canonicalTerms = contextOverride?.[targetLocale] ?? rule.target;
+        const forbiddenTerms = rule.forbidden.filter((term) =>
+          containsLocaleTerm(glossaryCheckText, term)
+        );
+        if (forbiddenTerms.length > 0) {
+          errors.push(
+            `[${targetLocale}] Forbidden glossary translation at ${entryPath} for ` +
+              `${formatValue(sourceTerm)}: ${forbiddenTerms.map(formatValue).join(', ')}`
+          );
+        }
+
+        const hasCanonicalTerm = canonicalTerms.some((term) =>
+          containsLocaleTerm(glossaryCheckText, term)
+        );
+        if (!hasCanonicalTerm) {
+          warnings.push(
+            `[${targetLocale}] Canonical glossary term may be missing at ${entryPath} for ` +
+              `${formatValue(sourceTerm)}; expected one of ${formatValue(canonicalTerms)}`
           );
         }
       }

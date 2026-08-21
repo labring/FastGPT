@@ -4,7 +4,7 @@ import { I18nUnionStringSchema } from '../../common/i18n/type';
 
 export const I18nStringSchema = z.object({
   en: z.string(),
-  'zh-CN': z.string().optional(),
+  'zh-CN': z.string(),
   'zh-Hant': z.string().optional()
 });
 // I18nStringType can be either an object with language keys or a plain string

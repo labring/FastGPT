@@ -12,8 +12,9 @@ vi.mock('@fastgpt/web/i18n/resourceLoaders', () => ({
 
 import dynamicImportBackend from '@fastgpt/web/i18n/dynamicImportBackend';
 import type { ClientI18nLoadError } from '@fastgpt/web/i18n/ClientI18nLoadError';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 
-const readResource = (language: 'en' | 'zh-CN' | 'zh-Hant', namespace: 'common') =>
+const readResource = (language: localeType, namespace: 'common') =>
   new Promise((resolve, reject) => {
     dynamicImportBackend.read(language, namespace, (error, data) => {
       if (error) reject(error);
@@ -27,10 +28,10 @@ describe('dynamicImportBackend.read', () => {
   });
 
   it('returns a loaded language resource', async () => {
-    const resource = { Confirm: 'Confirm' };
+    const resource = { Confirm: '확인' };
     loadLocaleResource.mockResolvedValue(resource);
 
-    await expect(readResource('en', 'common')).resolves.toBe(resource);
+    await expect(readResource('ko-KR', 'common')).resolves.toBe(resource);
     expect(loadLocaleResource).toHaveBeenCalledOnce();
     expect(clearLocaleResourceFailure).not.toHaveBeenCalled();
   });

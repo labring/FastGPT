@@ -15,6 +15,11 @@ const errorContent = {
     title: '語言載入錯誤，請重新整理網站後再試',
     refresh: '重新整理網站',
     unknownError: '未知錯誤'
+  },
+  'ko-KR': {
+    title: '언어 리소스를 불러오지 못했습니다. 페이지를 새로고침한 후 다시 시도해 주세요.',
+    refresh: '페이지 새로고침',
+    unknownError: '알 수 없는 오류'
   }
 } as const;
 

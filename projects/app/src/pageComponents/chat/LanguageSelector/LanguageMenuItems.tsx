@@ -24,7 +24,7 @@ const LanguageMenuItems = ({ currentLang, variant = 'menuItem', onSelect }: Prop
     const isSelected = currentLang === lng;
     const optionContent = (
       <Flex alignItems="center" justifyContent="space-between" w="100%">
-        <Box>{langMap[lng].label}</Box>
+        <Box>{langMap[lng]?.label ?? langMap.en.label}</Box>
         {isSelected && <MyIcon name="check" w="16px" />}
       </Flex>
     );

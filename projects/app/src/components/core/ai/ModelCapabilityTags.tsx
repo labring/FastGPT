@@ -44,7 +44,7 @@ const ModelCapabilityTags = ({
   if (showAudio) multimodalCapabilities.push(t('common:core.ai.model.capability_audio'));
   const showMultimodal = multimodalCapabilities.length > 0;
   const multimodalTooltip = t('common:core.ai.model.multimodal_support_tip', {
-    modalities: multimodalCapabilities.join(i18n.language === 'en' ? ', ' : '、')
+    modalities: multimodalCapabilities.join(i18n.language.startsWith('zh') ? '、' : ', ')
   });
 
   if (!contextToken && !showMultimodal && !showReasoning) return null;

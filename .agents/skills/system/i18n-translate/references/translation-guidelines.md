@@ -31,6 +31,8 @@ Keep brand and protocol names official: `FastGPT`, `OpenAI`, `MCP`, `API`, `HTTP
 
 For `zh-Hant`, prefer clear, region-neutral Traditional Chinese and follow terminology already used consistently in FastGPT. Do not normalize the entire product toward Taiwan-, Hong Kong-, or another region-specific vocabulary as part of one namespace translation. When existing terms conflict and the UI context cannot resolve them, ask the user instead of guessing.
 
+For `ko-KR`, use the canonical Korean product terminology in `localeGlossaries.ko-KR`. Prefer concise native SaaS wording, standard Korean spacing, and consistent transliterations. In particular, preserve FastGPT's distinction between a top-level Dataset (`데이터셋`) and a Collection inside it (`컬렉션`).
+
 ## Using n8n and Dify as references
 
 When a workflow, agent, node, execution, credential, plugin, or knowledge-product term remains ambiguous:
