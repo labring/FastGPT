@@ -42,10 +42,7 @@ export const ResourcePermissionSchema = new Schema({
     required: true
   },
 
-  /**
-   * Optional. Only be set when the resource is *inherited* from the parent resource.
-   * For recording the self permission. When cancel the inheritance, it will overwrite the permission property and set to `unset`.
-   */
+  /** The resource that owns this ACL row. Every resource stores its effective ACL here. */
   resourceId: {
     type: Schema.Types.ObjectId
   },
@@ -231,6 +228,121 @@ defineIndex(ResourcePermissionSchema, {
   },
   options: {
     partialFilterExpression: {
+      resourceName: {
+        $exists: true
+      }
+    }
+  }
+});
+
+// Collaborator-first indexes for resource list queries
+defineIndex(ResourcePermissionSchema, {
+  key: {
+    resourceType: 1,
+    teamId: 1,
+    tmbId: 1,
+    resourceId: 1
+  },
+  options: {
+    partialFilterExpression: {
+      tmbId: {
+        $exists: true
+      },
+      resourceId: {
+        $exists: true
+      }
+    }
+  }
+});
+
+defineIndex(ResourcePermissionSchema, {
+  key: {
+    resourceType: 1,
+    teamId: 1,
+    groupId: 1,
+    resourceId: 1
+  },
+  options: {
+    partialFilterExpression: {
+      groupId: {
+        $exists: true
+      },
+      resourceId: {
+        $exists: true
+      }
+    }
+  }
+});
+
+defineIndex(ResourcePermissionSchema, {
+  key: {
+    resourceType: 1,
+    teamId: 1,
+    orgId: 1,
+    resourceId: 1
+  },
+  options: {
+    partialFilterExpression: {
+      orgId: {
+        $exists: true
+      },
+      resourceId: {
+        $exists: true
+      }
+    }
+  }
+});
+
+defineIndex(ResourcePermissionSchema, {
+  key: {
+    resourceType: 1,
+    teamId: 1,
+    tmbId: 1,
+    resourceName: 1
+  },
+  options: {
+    partialFilterExpression: {
+      tmbId: {
+        $exists: true
+      },
+      resourceName: {
+        $exists: true
+      }
+    }
+  }
+});
+
+defineIndex(ResourcePermissionSchema, {
+  key: {
+    resourceType: 1,
+    teamId: 1,
+    groupId: 1,
+    resourceName: 1
+  },
+  options: {
+    partialFilterExpression: {
+      groupId: {
+        $exists: true
+      },
+      resourceName: {
+        $exists: true
+      }
+    }
+  }
+});
+
+defineIndex(ResourcePermissionSchema, {
+  key: {
+    resourceType: 1,
+    teamId: 1,
+    orgId: 1,
+    resourceName: 1
+  },
+  options: {
+    partialFilterExpression: {
+      orgId: {
+        $exists: true
+      },
       resourceName: {
         $exists: true
       }

@@ -1,30 +1,44 @@
-import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   ManageRoleVal,
   OwnerRoleVal,
   PerResourceTypeEnum,
-  ReadRoleVal
+  ReadRoleVal,
+  WriteRoleVal
 } from '@fastgpt/global/support/permission/constant';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
-import { syncChildrenPermission } from '@fastgpt/service/support/permission/inheritPermission';
+import {
+  createResourceDefaultCollaborators,
+  getResourceOwnedClbs
+} from '@fastgpt/service/support/permission/controller';
+import {
+  moveResourcePermissions,
+  resumeResourcePermissionInheritance,
+  updateResourceCollaborators
+} from '@fastgpt/service/support/permission/resourcePermissionService';
+import { resourcePermissionRepo } from '@fastgpt/service/support/permission/repository/resourcePermissionRepo';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getFakeUsers } from '@test/datas/users';
 import type { parseHeaderCertRet } from '@test/mocks/request';
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-describe.sequential('syncChildrenPermission', () => {
+const toPermissionMap = (collaborators: { tmbId?: string; permission: number }[]) =>
+  new Map(collaborators.map((collaborator) => [collaborator.tmbId, collaborator.permission]));
+
+describe.sequential('resource permission inheritance', () => {
   const createApp = async ({
     user,
     name,
     type,
-    parentId
+    parentId,
+    inheritPermission = true
   }: {
     user: parseHeaderCertRet;
     name: string;
     type: AppTypeEnum;
     parentId?: string;
+    inheritPermission?: boolean;
   }) =>
     mongoSessionRun(async (session) => {
       const app = await MongoApp.create({
@@ -33,214 +47,265 @@ describe.sequential('syncChildrenPermission', () => {
         ...(parentId ? { parentId } : {}),
         name,
         type,
-        inheritPermission: true
+        inheritPermission
       });
-      if (type === 'folder') {
-        await createResourceDefaultCollaborators({
-          resource: app,
-          resourceType: PerResourceTypeEnum.app,
-          session,
-          tmbId: String(user.tmbId)
-        });
-      }
+      await createResourceDefaultCollaborators({
+        resource: app,
+        resourceType: PerResourceTypeEnum.app,
+        session,
+        tmbId: String(user.tmbId)
+      });
       return app;
     });
 
-  it('sync: add/update/delete clbs', async () => {
-    const users = await getFakeUsers(5);
-    const f1 = await createApp({
+  it('materializes complete ACLs for folders and ordinary resources', async () => {
+    const users = await getFakeUsers(3);
+    const folder = await createApp({
       user: users.owner,
-      name: 'f1',
+      name: 'folder',
       type: AppTypeEnum.folder
     });
-    const f2 = await createApp({
+    const child = await createApp({
       user: users.owner,
-      name: 'f2',
-      type: AppTypeEnum.folder,
-      parentId: String(f1._id)
+      name: 'child',
+      type: AppTypeEnum.simple,
+      parentId: String(folder._id)
     });
-    expect(
-      await MongoResourcePermission.countDocuments({
-        resourceType: 'app'
-      })
-    ).eq(2);
-    const clbs = [
-      {
-        tmbId: String(users.owner.tmbId),
-        permission: OwnerRoleVal
-      },
-      {
-        tmbId: String(users.members[0].tmbId),
-        permission: ReadRoleVal
-      },
-      {
-        tmbId: users.members[1].tmbId,
-        permission: ReadRoleVal
-      }
+
+    const parentCollaborators = [
+      { tmbId: String(users.owner.tmbId), permission: OwnerRoleVal },
+      { tmbId: String(users.members[0].tmbId), permission: ReadRoleVal }
     ];
 
     await mongoSessionRun(async (session) => {
-      await syncChildrenPermission({
-        collaborators: clbs,
-        folderTypeList: AppFolderTypeList,
-        resource: f1,
+      await updateResourceCollaborators({
+        resource: folder,
         resourceModel: MongoApp,
         resourceType: PerResourceTypeEnum.app,
-        session
-      });
-      await MongoResourcePermission.insertOne({
-        resourceId: f1._id,
-        resourceType: PerResourceTypeEnum.app,
-        permission: ReadRoleVal,
-        tmbId: users.members[0].tmbId,
-        teamId: users.members[0].teamId,
-        session
-      });
-      await MongoResourcePermission.insertOne({
-        resourceId: f1._id,
-        resourceType: PerResourceTypeEnum.app,
-        permission: ReadRoleVal,
-        tmbId: users.members[1].tmbId,
-        teamId: users.members[1].teamId,
+        oldCollaborators: await getResourceOwnedClbs({
+          teamId: String(users.owner.teamId),
+          resourceId: String(folder._id),
+          resourceType: PerResourceTypeEnum.app,
+          session
+        }),
+        newCollaborators: parentCollaborators,
         session
       });
     });
 
-    expect(
-      await MongoResourcePermission.countDocuments({
-        resourceType: 'app'
-      })
-    ).eq(6);
+    const childCollaborators = await getResourceOwnedClbs({
+      teamId: String(users.owner.teamId),
+      resourceId: String(child._id),
+      resourceType: PerResourceTypeEnum.app
+    });
+    expect(toPermissionMap(childCollaborators)).toEqual(
+      new Map([
+        [String(users.owner.tmbId), OwnerRoleVal],
+        [String(users.members[0].tmbId), ReadRoleVal]
+      ])
+    );
+  });
 
-    const f3 = await createApp({
-      name: 'f3',
+  it('removes inherited access while preserving child-only access', async () => {
+    const users = await getFakeUsers(4);
+    const parent = await createApp({
       user: users.owner,
-      type: AppTypeEnum.folder,
-      parentId: String(f2._id)
+      name: 'parent',
+      type: AppTypeEnum.folder
     });
-
-    await mongoSessionRun(async (session) => {
-      await syncChildrenPermission({
-        collaborators: clbs,
-        folderTypeList: AppFolderTypeList,
-        resource: f3,
-        resourceModel: MongoApp,
-        resourceType: PerResourceTypeEnum.app,
-        session
-      });
-    });
-
-    expect(
-      await MongoResourcePermission.countDocuments({
-        resourceType: 'app'
-      })
-    ).eq(9);
-
-    const a1 = await createApp({
-      name: 'a1',
+    const child = await createApp({
       user: users.owner,
+      name: 'child',
       type: AppTypeEnum.simple,
-      parentId: String(f3._id)
+      parentId: String(parent._id)
     });
 
+    const owner = { tmbId: String(users.owner.tmbId), permission: OwnerRoleVal };
+    const reader = { tmbId: String(users.members[0].tmbId), permission: ReadRoleVal };
+    const extra = { tmbId: String(users.members[1].tmbId), permission: WriteRoleVal };
+    const parentBefore = [owner, reader, extra];
+
     await mongoSessionRun(async (session) => {
-      await syncChildrenPermission({
-        collaborators: clbs,
-        folderTypeList: AppFolderTypeList,
-        resource: a1,
+      await updateResourceCollaborators({
+        resource: parent,
         resourceModel: MongoApp,
         resourceType: PerResourceTypeEnum.app,
-        session
-      });
-    });
-
-    expect(
-      await MongoResourcePermission.countDocuments({
-        resourceType: 'app'
-      })
-    ).eq(9);
-
-    // update
-    await mongoSessionRun(async (session) => {
-      const clbs = [
-        {
-          tmbId: String(users.owner.tmbId),
-          permission: OwnerRoleVal
-        },
-        {
-          tmbId: String(users.members[0].tmbId),
-          permission: ReadRoleVal
-        },
-        {
-          tmbId: String(users.members[1].tmbId),
-          permission: ManageRoleVal
-        }
-      ];
-      await syncChildrenPermission({
-        collaborators: clbs,
-        folderTypeList: AppFolderTypeList,
-        resource: f1,
-        resourceModel: MongoApp,
-        resourceType: PerResourceTypeEnum.app,
-        session
-      });
-
-      await MongoResourcePermission.updateOne(
-        {
+        oldCollaborators: await getResourceOwnedClbs({
+          teamId: String(users.owner.teamId),
+          resourceId: String(parent._id),
           resourceType: PerResourceTypeEnum.app,
-          resourceId: String(f1._id),
-          tmbId: String(users.members[1].tmbId)
+          session
+        }),
+        newCollaborators: parentBefore,
+        session
+      });
+
+      const childBefore = await getResourceOwnedClbs({
+        teamId: String(users.owner.teamId),
+        resourceId: String(child._id),
+        resourceType: PerResourceTypeEnum.app,
+        session
+      });
+      await resourcePermissionRepo.replaceResource({
+        teamId: String(users.owner.teamId),
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: String(child._id),
+        collaborators: [
+          ...childBefore,
+          { tmbId: String(users.members[2].tmbId), permission: ManageRoleVal }
+        ],
+        session
+      });
+
+      await updateResourceCollaborators({
+        resource: parent,
+        resourceModel: MongoApp,
+        resourceType: PerResourceTypeEnum.app,
+        oldCollaborators: parentBefore,
+        newCollaborators: [owner, extra],
+        session
+      });
+    });
+
+    const collaborators = await getResourceOwnedClbs({
+      teamId: String(users.owner.teamId),
+      resourceId: String(child._id),
+      resourceType: PerResourceTypeEnum.app
+    });
+    expect(toPermissionMap(collaborators)).toEqual(
+      new Map([
+        [String(users.owner.tmbId), OwnerRoleVal],
+        [String(users.members[1].tmbId), WriteRoleVal],
+        [String(users.members[2].tmbId), ManageRoleVal]
+      ])
+    );
+  });
+
+  it('does not propagate through an independent subtree', async () => {
+    const users = await getFakeUsers(2);
+    const parent = await createApp({
+      user: users.owner,
+      name: 'parent',
+      type: AppTypeEnum.folder
+    });
+    const independent = await createApp({
+      user: users.owner,
+      name: 'independent',
+      type: AppTypeEnum.folder,
+      parentId: String(parent._id),
+      inheritPermission: false
+    });
+
+    await mongoSessionRun(async (session) => {
+      const oldCollaborators = await getResourceOwnedClbs({
+        teamId: String(users.owner.teamId),
+        resourceId: String(parent._id),
+        resourceType: PerResourceTypeEnum.app,
+        session
+      });
+      await updateResourceCollaborators({
+        resource: parent,
+        resourceModel: MongoApp,
+        resourceType: PerResourceTypeEnum.app,
+        oldCollaborators,
+        newCollaborators: [
+          ...oldCollaborators,
+          { tmbId: String(users.members[0].tmbId), permission: ReadRoleVal }
+        ],
+        session
+      });
+    });
+
+    const collaborators = await getResourceOwnedClbs({
+      teamId: String(users.owner.teamId),
+      resourceId: String(independent._id),
+      resourceType: PerResourceTypeEnum.app
+    });
+    expect(toPermissionMap(collaborators)).toEqual(
+      new Map([[String(users.owner.tmbId), OwnerRoleVal]])
+    );
+  });
+
+  it('recalculates a moved resource and resumes inheritance', async () => {
+    const users = await getFakeUsers(3);
+    const oldParent = await createApp({
+      user: users.owner,
+      name: 'old-parent',
+      type: AppTypeEnum.folder
+    });
+    const newParent = await createApp({
+      user: users.owner,
+      name: 'new-parent',
+      type: AppTypeEnum.folder
+    });
+    const child = await createApp({
+      user: users.owner,
+      name: 'child',
+      type: AppTypeEnum.simple,
+      parentId: String(oldParent._id)
+    });
+
+    await mongoSessionRun(async (session) => {
+      const newParentCollaborators = [
+        ...(await getResourceOwnedClbs({
+          teamId: String(users.owner.teamId),
+          resourceId: String(newParent._id),
+          resourceType: PerResourceTypeEnum.app,
+          session
+        })),
+        { tmbId: String(users.members[0].tmbId), permission: ReadRoleVal }
+      ];
+      await resourcePermissionRepo.replaceResource({
+        teamId: String(users.owner.teamId),
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: String(newParent._id),
+        collaborators: newParentCollaborators,
+        session
+      });
+
+      const moved = await moveResourcePermissions({
+        resource: {
+          _id: String(child._id),
+          type: child.type,
+          teamId: String(child.teamId),
+          parentId: child.parentId,
+          inheritPermission: child.inheritPermission
         },
-        {
-          permission: ManageRoleVal
-        }
+        newParentId: String(newParent._id),
+        resourceModel: MongoApp,
+        resourceType: PerResourceTypeEnum.app,
+        newParentCollaborators,
+        session
+      });
+      expect(toPermissionMap(moved.collaborators)).toEqual(
+        expect.objectContaining(toPermissionMap(newParentCollaborators))
       );
-    });
 
-    // console.log(await MongoResourcePermission.find({ resourceType: 'app' }));
-
-    expect(
-      await MongoResourcePermission.countDocuments({
-        resourceType: 'app'
-      })
-    ).eq(9);
-
-    // delete
-    await mongoSessionRun(async (session) => {
-      const clbs = [
-        {
-          tmbId: String(users.owner.tmbId),
-          permission: OwnerRoleVal
-        },
-        {
-          tmbId: String(users.members[0].tmbId),
-          permission: ReadRoleVal
-        }
-      ];
-      await syncChildrenPermission({
-        collaborators: clbs,
-        folderTypeList: AppFolderTypeList,
-        resource: f1,
-        resourceModel: MongoApp,
-        resourceType: PerResourceTypeEnum.app,
-        session
-      });
-
-      await MongoResourcePermission.deleteOne(
-        {
-          resourceType: PerResourceTypeEnum.app,
-          resourceId: String(f1._id),
-          tmbId: String(users.members[1].tmbId),
-          team: String(users.members[1].teamId)
-        },
+      await MongoApp.updateOne(
+        { _id: child._id },
+        { parentId: newParent._id, inheritPermission: false },
         { session }
       );
+      await resumeResourcePermissionInheritance({
+        resource: {
+          _id: String(child._id),
+          type: child.type,
+          teamId: String(child.teamId),
+          parentId: newParent._id,
+          inheritPermission: false
+        },
+        resourceModel: MongoApp,
+        resourceType: PerResourceTypeEnum.app,
+        session
+      });
     });
 
     expect(
       await MongoResourcePermission.countDocuments({
-        resourceType: 'app'
+        teamId: users.owner.teamId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: child._id
       })
-    ).eq(8);
+    ).toBeGreaterThan(0);
   });
 });

@@ -169,19 +169,35 @@ async function handler(req: ApiRequestProps<UpdateSkillBody>) {
     }
 
     await mongoSessionRun(async (session) => {
-      // Fetch collaborators of the target folder (null = root has no collaborators)
-      const parentClbs = await getResourceOwnedClbs({
-        teamId,
-        resourceId: parentId,
-        resourceType: PerResourceTypeEnum.agentSkill,
-        session
-      });
+      const [parentClbs, oldParentClbs, oldResourceClbs] = await Promise.all([
+        getResourceOwnedClbs({
+          teamId,
+          resourceId: parentId,
+          resourceType: PerResourceTypeEnum.agentSkill,
+          session
+        }),
+        skill.parentId
+          ? getResourceOwnedClbs({
+              teamId,
+              resourceId: skill.parentId,
+              resourceType: PerResourceTypeEnum.agentSkill,
+              session
+            })
+          : Promise.resolve([]),
+        getResourceOwnedClbs({
+          teamId,
+          resourceId: skillId,
+          resourceType: PerResourceTypeEnum.agentSkill,
+          session
+        })
+      ]);
 
       // Sync permission records for the skill itself
-      await syncCollaborators({
+      const newResourceClbs = await syncCollaborators({
         resourceId: skillId,
         resourceType: PerResourceTypeEnum.agentSkill,
         collaborators: parentClbs,
+        oldParentCollaborators: oldParentClbs,
         session,
         teamId
       });
@@ -192,7 +208,8 @@ async function handler(req: ApiRequestProps<UpdateSkillBody>) {
         resourceType: PerResourceTypeEnum.agentSkill,
         resourceModel: MongoAgentSkills,
         folderTypeList: [AgentSkillTypeEnum.folder],
-        collaborators: parentClbs,
+        oldParentCollaborators: oldResourceClbs,
+        newParentCollaborators: newResourceClbs,
         session
       });
 
