@@ -35,7 +35,7 @@ describe('SessionCache', () => {
     redis.setHashWithTtl.mockResolvedValue(undefined);
   });
 
-  it('decodes a complete session hash and normalizes isRoot/createdAt', async () => {
+  it('decodes a legacy session hash', async () => {
     const cache = new SessionCache({ redis: redis as any, logger });
 
     await expect(cache.get('user-1:token-1')).resolves.toEqual({
@@ -96,7 +96,7 @@ describe('SessionCache', () => {
     await expect(cache.get('user-1:token-1')).rejects.toBe(error);
   });
 
-  it('writes the historical hash fields with a seven-day TTL', async () => {
+  it('writes the session hash fields with a seven-day TTL', async () => {
     const cache = new SessionCache({ redis: redis as any, logger });
 
     await cache.set({
@@ -252,6 +252,7 @@ describe('SessionCache adapter integration', () => {
         isRoot: '0',
         createdAt: '1000'
       }),
+      hmset: vi.fn().mockResolvedValue('OK'),
       multi: vi.fn(),
       scan: vi.fn(),
       set: vi.fn()

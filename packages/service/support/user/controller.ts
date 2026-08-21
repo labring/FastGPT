@@ -1,9 +1,10 @@
 import { type UserType } from '@fastgpt/global/support/user/type';
 import { MongoUser } from './schema';
-import { getTmbInfoByTmbId, getUserDefaultTeam } from './team/controller';
+import { getTmbInfoByTmbId } from './team/controller';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import type { ClientSession } from '../../common/mongo';
+import { getUserFallbackTeam } from './team/fallback';
 
 export async function authUserExist({ userId, username }: { userId?: string; username?: string }) {
   if (userId) {
@@ -15,6 +16,9 @@ export async function authUserExist({ userId, username }: { userId?: string; use
   return null;
 }
 
+/**
+ * 加载用户及团队详情；tmb 失效时回退到用户可用团队。
+ */
 export async function getUserDetail({
   tmbId,
   userId,
@@ -31,10 +35,14 @@ export async function getUserDetail({
       try {
         const result = await getTmbInfoByTmbId({ tmbId, session });
         return result;
-      } catch (error) {}
+      } catch {}
     }
     if (userId) {
-      return getUserDefaultTeam({ userId, session });
+      const fallback = await getUserFallbackTeam({
+        userId,
+        session
+      });
+      if (fallback) return getTmbInfoByTmbId({ tmbId: fallback.tmbId, session });
     }
     return Promise.reject(ERROR_ENUM.unAuthorization);
   })();

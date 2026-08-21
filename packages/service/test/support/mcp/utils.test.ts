@@ -41,9 +41,10 @@ vi.mock('@fastgpt/service/core/app/version/controller', () => ({
   getAppLatestVersion: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/support/permission/auth/team', () => ({
+vi.mock('@fastgpt/service/support/user/team/utils', () => ({
   getUserChatInfo: vi.fn(),
-  getRunningUserInfoByTmbId: vi.fn()
+  getRunningUserInfoByTmbId: vi.fn(),
+  getUserIdByTmbId: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({

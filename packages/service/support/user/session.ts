@@ -19,6 +19,11 @@ export const delUserAllSession = async (userId: string, whiteList?: (string | un
   await sessionCache.deleteMany(sessionIds);
 };
 
+export const getUserSessionCount = async (userId: string) => {
+  const sessions = await sessionCache.listByUser(String(userId));
+  return sessions.length;
+};
+
 // 会根据创建时间，删除超出客户端登录限制的 session
 const delRedundantSession = async (userId: string) => {
   // 至少为 1，默认为 10

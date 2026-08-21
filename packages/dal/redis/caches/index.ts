@@ -1,6 +1,16 @@
 export { DailyActiveDedupeCache } from './dailyActiveDedupe';
 export type { DailyActiveDedupeCacheOptions } from './dailyActiveDedupe';
 
+export {
+  ACCOUNT_CANCELLATION_CACHE_TTL_MS,
+  AccountCancellationCache,
+  accountCancellationCache
+} from './accountCancellation';
+export type {
+  AccountCancellationCacheOptions,
+  AccountCancellationCacheScope
+} from './accountCancellation';
+
 export { SuccessMarkerCache, successMarkerCache } from './successMarker';
 export type { SuccessMarkerCacheOptions, SuccessMarkerParams } from './successMarker';
 

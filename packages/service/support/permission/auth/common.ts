@@ -6,6 +6,8 @@ import Cookie from 'cookie';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { authUserSession } from '../../../support/user/session';
 import { authOpenApiKey } from '../../../support/openapi/auth';
+import { assertCancellation } from '../../../support/user/account/cancellation/guard';
+import { getUserIdByTmbId } from '../../../support/user/team/utils';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { serviceEnv } from '../../../env';
 
@@ -30,7 +32,8 @@ export async function parseHeaderCert({
   req,
   authToken = false,
   authRoot = false,
-  authApiKey = false
+  authApiKey = false,
+  allowAccountCancellation = false
 }: AuthModeType) {
   // parse jwt
   async function authCookieToken(cookie?: string, token?: string) {
@@ -69,9 +72,10 @@ export async function parseHeaderCert({
       apikey,
       authApiKey
     });
+    const userId = await getUserIdByTmbId(tmbId);
 
     return {
-      uid: '',
+      uid: userId,
       teamId,
       tmbId,
       apikey: realApiKey,
@@ -154,6 +158,16 @@ export async function parseHeaderCert({
 
   if (!authRoot && (!teamId || !tmbId)) {
     return Promise.reject(ERROR_ENUM.unAuthorization);
+  }
+
+  const shouldAssertCancellation =
+    authType === AuthUserTypeEnum.apikey ||
+    (authType === AuthUserTypeEnum.token && !allowAccountCancellation);
+  if (shouldAssertCancellation) {
+    await assertCancellation({
+      teamId: String(teamId),
+      userId: String(uid)
+    });
   }
 
   return {
