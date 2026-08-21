@@ -36,7 +36,8 @@ type FindResourceKeysByCollaboratorsPermissionProps = {
 
 const withSession = (session?: ClientSession) => (session ? { session } : undefined);
 const resourceIdFilter = (resourceId?: string) =>
-  resourceId === undefined ? { resourceId: { $exists: false } } : { resourceId };
+  // 历史团队 ACL 既可能存储 null，也可能没有 resourceId 字段。
+  resourceId === undefined ? { resourceId: null } : { resourceId };
 
 /**
  * resource_permissions 的唯一数据访问入口。
