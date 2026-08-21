@@ -215,29 +215,21 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       return flattenObjectWithConditions(apiDatasetServer);
     })();
 
-    const updateData: Record<string, any> = {
-      ...parseParentIdInMongo(parentId),
-      ...(name && { name }),
-      ...(avatar && { avatar }),
-      ...(agentModel && { agentModel }),
-      ...(vlmModel !== undefined && vlmModel !== null && { vlmModel }),
-      ...(websiteConfig && { websiteConfig }),
-      ...(chunkSettings && { chunkSettings }),
-      ...(intro !== undefined && { intro }),
-      ...(externalReadUrl !== undefined && { externalReadUrl }),
-      ...(isMove && { inheritPermission: true }),
-      ...(typeof autoSync === 'boolean' && { autoSync }),
-      ...apiDatasetParams
-    };
-    const unsetData: Record<string, string> = {
-      ...(vlmModel === null && { vlmModel: '' })
-    };
-
     await MongoDataset.findByIdAndUpdate(
       id,
       {
-        ...(Object.keys(updateData).length > 0 ? { $set: updateData } : {}),
-        ...(Object.keys(unsetData).length > 0 ? { $unset: unsetData } : {})
+        ...parseParentIdInMongo(parentId),
+        ...(name && { name }),
+        ...(avatar && { avatar }),
+        ...(agentModel && { agentModel }),
+        ...(vlmModel && { vlmModel }),
+        ...(websiteConfig && { websiteConfig }),
+        ...(chunkSettings && { chunkSettings }),
+        ...(intro !== undefined && { intro }),
+        ...(externalReadUrl !== undefined && { externalReadUrl }),
+        ...(isMove && { inheritPermission: true }),
+        ...(typeof autoSync === 'boolean' && { autoSync }),
+        ...apiDatasetParams
       },
       { session }
     );

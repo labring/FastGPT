@@ -6,7 +6,6 @@ import type {
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, it, expect } from 'vitest';
@@ -46,16 +45,12 @@ describe('create dataset', () => {
           intro: 'intro',
           avatar: 'avatar',
           type: DatasetTypeEnum.dataset,
-          parentId: folderId,
-          vlmModel: null
+          parentId: folderId
         }
       }
     );
 
     expect(res2.error).toBeUndefined();
     expect(res2.code).toBe(200);
-
-    const dataset = await MongoDataset.findById(res2.data).lean();
-    expect(dataset?.vlmModel).toBeUndefined();
   });
 });

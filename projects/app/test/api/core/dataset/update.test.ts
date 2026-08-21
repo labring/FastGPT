@@ -74,29 +74,4 @@ describe('update dataset', () => {
     expect(res.error).toBeUndefined();
     expect(res.code).toBe(200);
   });
-
-  it('should clear the dataset VLM when vlmModel is null', async () => {
-    const users = await getFakeUsers(1);
-    const dataset = await MongoDataset.create({
-      teamId: users.members[0].teamId,
-      tmbId: users.members[0].tmbId,
-      name: 'dataset-with-vlm',
-      type: DatasetTypeEnum.dataset,
-      vlmModel: 'vision-model'
-    });
-
-    const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
-      auth: users.members[0],
-      body: {
-        id: String(dataset._id),
-        vlmModel: null
-      }
-    });
-
-    expect(res.error).toBeUndefined();
-    expect(res.code).toBe(200);
-
-    const updatedDataset = await MongoDataset.findById(dataset._id).lean();
-    expect(updatedDataset?.vlmModel).toBeUndefined();
-  });
 });

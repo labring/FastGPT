@@ -124,7 +124,6 @@ const OneRowSelector = ({
   cacheModel = true,
   canBeUnset = false,
   unsetLabel,
-  placeholder,
   ...props
 }: Props) => {
   const { t } = useTranslation(['common', 'account']);
@@ -261,14 +260,7 @@ const OneRowSelector = ({
               </Flex>
             ) : undefined
           }
-          placeholder={
-            loading
-              ? t('common:model_loading')
-              : (placeholder ??
-                (avatarList.length
-                  ? t('common:please_select_model')
-                  : t('common:not_model_config')))
-          }
+          placeholder={loading ? t('common:model_loading') : t('common:not_model_config')}
           h={'40px'}
           whiteSpace={'nowrap'}
           {...props}
@@ -290,7 +282,6 @@ const MultipleRowSelector = ({
   noOfLines,
   canBeUnset = false,
   unsetLabel,
-  clearable,
   ...props
 }: Props) => {
   const { t, i18n } = useTranslation(['common', 'account']);
@@ -409,17 +400,13 @@ const MultipleRowSelector = ({
     [onChange]
   );
 
-  const selectedModelPlaceholder =
-    placeholder ??
-    (selectorList.length ? t('common:please_select_model') : t('common:not_model_config'));
-
   const SelectedLabel = useMemo(() => {
     if (loading) return <>{t('common:model_loading')}</>;
     if (canBeUnset && props.value === UNSET_MODEL_VALUE) {
       return <UnsetOptionLabel label={unsetLabel ?? t('common:not_model_config')} />;
     }
-    if (!props.value) return <>{selectedModelPlaceholder}</>;
-    if (!selectedModelData) return <>{selectedModelPlaceholder}</>;
+    if (!props.value) return <>{t('common:not_model_config')}</>;
+    if (!selectedModelData) return <>{t('common:not_model_config')}</>;
 
     const avatar = getModelProvider(selectedModelData.provider)?.avatar;
 
@@ -449,8 +436,7 @@ const MultipleRowSelector = ({
     selectedModelData,
     getModelProvider,
     avatarSize,
-    noOfLines,
-    selectedModelPlaceholder
+    noOfLines
   ]);
 
   return (
@@ -468,7 +454,6 @@ const MultipleRowSelector = ({
           list={selectorList}
           onSelect={onSelect}
           value={value}
-          clearable={clearable}
           placeholder={placeholder}
           rowMinWidth="160px"
           ButtonProps={{

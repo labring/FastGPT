@@ -56,7 +56,7 @@ const CreateModal = ({
       vectorModel:
         defaultModels.embedding?.model || getWebDefaultEmbeddingModel(embeddingModelList)?.model,
       agentModel: defaultModels.datasetTextLLM?.model || getWebDefaultLLMModel(llmModelList)?.model,
-      vlmModel: undefined
+      vlmModel: defaultModels.datasetImageLLM?.model
     }
   });
   const { register, setValue, handleSubmit, watch } = form;
@@ -79,12 +79,7 @@ const CreateModal = ({
 
   /* create a new kb and router to it */
   const { runAsync: onclickCreate, loading: creating } = useRequest(
-    async (data: CreateDatasetBody) =>
-      await postCreateDataset({
-        ...data,
-        // 空值需要显式传 null，避免后端把未传字段当作系统默认模型。
-        vlmModel: data.vlmModel ?? null
-      }),
+    async (data: CreateDatasetBody) => await postCreateDataset(data),
     {
       successToast: t('common:create_success'),
       errorToast: t('common:create_failed'),
@@ -251,8 +246,7 @@ const CreateModal = ({
             <Box w={['100%', '300px']}>
               <AIModelSelector
                 w={['100%', '300px']}
-                clearable
-                value={vlmModel ?? undefined}
+                value={vlmModel}
                 list={vllmModelList.map((item) => ({
                   label: item.name,
                   value: item.model

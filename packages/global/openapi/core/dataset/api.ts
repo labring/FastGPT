@@ -49,9 +49,9 @@ export const CreateDatasetBodySchema = z.object({
     example: 'gpt-4o-mini',
     description: '知识库 Agent 模型名称,不传则使用默认模型'
   }),
-  vlmModel: z.string().nullable().optional().meta({
+  vlmModel: z.string().optional().meta({
     example: 'gpt-4o',
-    description: '视觉语言模型名称，传 null 表示不使用'
+    description: '视觉语言模型名称'
   }),
   apiDatasetServer: ApiDatasetServerSchema.optional().meta({
     description: '第三方知识库服务器配置(API/飞书/语雀/钉钉)'
@@ -97,9 +97,9 @@ export const CreateDatasetWithFilesBodySchema = z.object({
         example: 'gpt-4o-mini',
         description: 'Agent 模型名称,不传则使用默认模型'
       }),
-      vlmModel: z.string().nullable().optional().meta({
+      vlmModel: z.string().optional().meta({
         example: 'gpt-4o',
-        description: '视觉语言模型名称，传 null 表示不使用'
+        description: '视觉语言模型名称'
       })
     })
     .meta({ description: '知识库参数' }),
@@ -349,9 +349,9 @@ export const UpdateDatasetBodySchema = z.object({
     example: 'gpt-4o-mini',
     description: '知识库 Agent 模型名称'
   }),
-  vlmModel: z.string().nullable().optional().meta({
+  vlmModel: z.string().optional().meta({
     example: 'gpt-4o',
-    description: '视觉语言模型名称，传 null 清空'
+    description: '视觉语言模型名称'
   }),
   websiteConfig: z
     .object({

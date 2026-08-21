@@ -42,12 +42,9 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
     avatar,
     vectorModel = getDefaultEmbeddingModel()?.model,
     agentModel = getDatasetModel()?.model,
-    vlmModel: rawVlmModel,
+    vlmModel = getDefaultVLMModel()?.model,
     apiDatasetServer
   } = parseApiInput({ req, bodySchema: CreateDatasetBodySchema }).body;
-
-  // vlmModel: null 表示不使用，undefined 表示使用系统默认值，string 表示指定模型。
-  const vlmModel = rawVlmModel === null ? undefined : (rawVlmModel ?? getDefaultVLMModel()?.model);
 
   // auth
   const { teamId, tmbId, userId } = parentId
