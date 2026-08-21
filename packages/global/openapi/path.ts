@@ -155,10 +155,6 @@ export const openAPITagGroups = [
   {
     name: '管理员-插件管理',
     tags: [DevApiTagsMap.pluginAdmin, DevApiTagsMap.pluginToolAdmin]
-  },
-  {
-    name: '系统接口',
-    tags: [DevApiTagsMap.chatAgentHelper, DevApiTagsMap.workflowBuilder]
   }
 ];
 

@@ -317,7 +317,7 @@
   "workflow_builder_banner_ready": "{{name}} 已生成，可以应用到画布",
   "workflow_builder_banner_close": "关闭待应用提醒",
   "workflow_builder_apply_failed": "应用失败，请重新尝试",
-  "workflow_builder_canvas_changed": "工作流搭建期间画布发生了变化，请重新运行 Workflow Builder。",
+  "workflow_builder_canvas_changed": "工作流搭建期间画布发生了变化，请重新运行工作流辅助生成。",
   "workflow_builder_applied": "{{name}} 应用成功",
   "workflow_builder_version_apply": "应用到画布",
   "workflow_builder_version_applied": "已应用",

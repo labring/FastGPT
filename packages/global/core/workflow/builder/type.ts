@@ -13,7 +13,7 @@ export const WorkflowChecksumSchema = z
 export const WorkflowBuilderVersionSchema = z
   .object({
     versionNo: IntSchema.positive().meta({
-      description: '当前 Workflow Builder 会话中的 AI 生成版本序号',
+      description: '当前工作流辅助生成会话中的 AI 生成版本序号',
       example: 1
     }),
     name: z.string().min(1).meta({
