@@ -147,6 +147,28 @@ export const migrateWorkflowToCurrent = async (
                   );
                 }
               );
+              // V1 快照把手动参数存在完整 NodeIO 的 value 中；V2 只保存 key/mode，
+              // 所以必须在此把仍为手动模式的值迁入 config。
+              const legacyConfig = Object.fromEntries(
+                migratedInputs.flatMap(({ key, mode }) => {
+                  if (mode !== AgentToolInputModeEnum.manual) return [];
+
+                  const savedInput = savedInputs.find((input) => {
+                    if (!input || typeof input !== 'object' || Array.isArray(input)) return false;
+                    return (input as Record<string, unknown>).key === key;
+                  }) as Record<string, unknown> | undefined;
+                  if (!savedInput) return [];
+
+                  const hasValue = Object.prototype.hasOwnProperty.call(savedInput, 'value');
+                  const hasDefaultValue = Object.prototype.hasOwnProperty.call(
+                    savedInput,
+                    'defaultValue'
+                  );
+                  if (!hasValue && !hasDefaultValue) return [];
+
+                  return [[key, hasValue ? savedInput.value : savedInput.defaultValue]];
+                })
+              );
               const {
                 isUnavailable: _isUnavailable,
                 unresolvedInputs: _unresolvedInputs,
@@ -154,7 +176,11 @@ export const migrateWorkflowToCurrent = async (
                 ...availableTool
               } = tool;
 
-              return { ...availableTool, config, inputs: migratedInputs };
+              return {
+                ...availableTool,
+                config: { ...config, ...legacyConfig },
+                inputs: migratedInputs
+              };
             })
           );
 
