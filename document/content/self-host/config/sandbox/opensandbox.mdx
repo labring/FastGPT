@@ -60,7 +60,7 @@ AGENT_SANDBOX_PROVIDER=opensandbox
 AGENT_SANDBOX_OPENSANDBOX_BASEURL=http://fastgpt-opensandbox-server:8090
 AGENT_SANDBOX_OPENSANDBOX_API_KEY=replace_with_opensandbox_api_key
 AGENT_SANDBOX_OPENSANDBOX_RUNTIME=docker
-AGENT_SANDBOX_OPENSANDBOX_IMAGE=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.2.0
+AGENT_SANDBOX_OPENSANDBOX_IMAGE=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.3.1
 AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY=true
 
 # Volume Manager 地址、Token 和持久卷名称前缀
@@ -78,6 +78,19 @@ AGENT_SANDBOX_CPU_COUNT=1
 AGENT_SANDBOX_MEMORY_MIB=2048
 AGENT_SANDBOX_STORAGE_SIZE_GI=1
 ```
+
+### 运行态镜像与 CPU 架构
+
+`AGENT_SANDBOX_OPENSANDBOX_IMAGE` 是 OpenSandbox 创建 Agent Sandbox 时使用的完整运行态镜像地址。普通 `fastgpt-agent-sandbox` 镜像以非 root 用户运行，适合默认场景；需要修改 `/etc/apt` 或安装 apt 依赖时，必须使用 `fastgpt-agent-sandbox-root` 镜像，并同时配置 `AGENT_SANDBOX_APT_MIRROR`。
+
+官方镜像的同一 tag 同时包含 `amd64` 和 `arm64` 架构，两个架构使用相同的环境变量配置，Docker 会根据 OpenSandbox Server 所在宿主机的架构自动选择镜像：
+
+| 用途    | 镜像                                                                          |
+| ------- | ----------------------------------------------------------------------------- |
+| 非 root | `registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.3.1`      |
+| root    | `registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-root:v0.3.1` |
+
+全球镜像源将 `registry.cn-hangzhou.aliyuncs.com/fastgpt` 替换为 `ghcr.io/labring`。如果使用私有镜像仓库，请确保镜像 tag 保留 `amd64` 和 `arm64` manifest；如果仓库只提供单架构镜像，请将 `AGENT_SANDBOX_OPENSANDBOX_IMAGE` 配置为与 OpenSandbox Server 宿主机架构匹配的镜像地址。
 
 `AGENT_SANDBOX_OPENSANDBOX_API_KEY` 必须与 `[server].api_key` 一致，`AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` 必须与 `x-volume-manager-auth-token` 一致，`AGENT_SANDBOX_PROXY_SECRET` 必须与 Agent Sandbox Proxy 中的同名变量一致。
 
@@ -101,10 +114,25 @@ AGENT_SANDBOX_STORAGE_SIZE_GI=1
 ```dotenv
 AGENT_SANDBOX_NPM_REGISTRY=https://registry.npmmirror.com
 AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+# Ubuntu amd64 示例；Ubuntu arm64 请按下方说明配置 ubuntu-ports
 AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu
 ```
 
-`AGENT_SANDBOX_APT_MIRROR` 仅对 root 权限的 Agent 沙箱有效。配置后，FastGPT 会根据发行版生成并覆盖标准的 Ubuntu 或 Debian `.sources` 文件，并在覆盖已有文件前创建 `.copy` 备份。删除该环境变量后，有 `.copy` 备份的文件会恢复，没有备份的文件会跳过。初始化阶段不会执行 `apt-get update`。arm64 运行镜像应配置提供对应架构软件包的镜像地址。
+`AGENT_SANDBOX_NPM_REGISTRY` 和 `AGENT_SANDBOX_PYPI_INDEX_URL` 适用于所有运行态镜像。`AGENT_SANDBOX_APT_MIRROR` 仅对 root 权限的 Agent 沙箱有效，并且必须配置为 apt 仓库根地址，不要填写到 `dists` 或具体版本目录。
+
+apt 镜像地址不会根据运行态镜像架构自动切换。Ubuntu 需要按架构选择对应的仓库路径：
+
+```dotenv
+# Ubuntu amd64 / x86_64
+AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu
+
+# Ubuntu arm64 / aarch64
+AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports
+```
+
+清华镜像站的 [Ubuntu 镜像帮助](https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu/) 和 [Ubuntu Ports 镜像帮助](https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu-ports/) 可用于确认其他 Ubuntu 版本的路径。使用其他镜像站时，同样选择该镜像站提供的 Ubuntu 普通仓库或 Ports 仓库路径。
+
+配置后，FastGPT 会读取沙盒的 `/etc/os-release`，根据 Ubuntu 版本和 codename 生成并覆盖 `/etc/apt/sources.list.d/ubuntu.sources`，写入主仓库、updates、backports 和 security。修改配置前，已有 sources 文件会备份为 `.copy`；删除环境变量后，有备份的文件会恢复，没有备份的文件保持不变。初始化阶段不会执行 `apt-get update`。
 
 ### 资源与生命周期
 

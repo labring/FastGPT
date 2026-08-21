@@ -61,7 +61,7 @@ AGENT_SANDBOX_PROVIDER=opensandbox
 AGENT_SANDBOX_OPENSANDBOX_BASEURL=http://fastgpt-opensandbox-server:8090
 AGENT_SANDBOX_OPENSANDBOX_API_KEY=replace_with_opensandbox_api_key
 AGENT_SANDBOX_OPENSANDBOX_RUNTIME=docker
-AGENT_SANDBOX_OPENSANDBOX_IMAGE=ghcr.io/labring/fastgpt-agent-sandbox:v0.2.0
+AGENT_SANDBOX_OPENSANDBOX_IMAGE=ghcr.io/labring/fastgpt-agent-sandbox:v0.3.1
 AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY=true
 
 # Volume Manager URL, token, and persistent volume name prefix
@@ -79,6 +79,19 @@ AGENT_SANDBOX_CPU_COUNT=1
 AGENT_SANDBOX_MEMORY_MIB=2048
 AGENT_SANDBOX_STORAGE_SIZE_GI=1
 ```
+
+### Runtime Images and CPU Architectures
+
+`AGENT_SANDBOX_OPENSANDBOX_IMAGE` is the full runtime image reference used when OpenSandbox creates an Agent Sandbox. The standard `fastgpt-agent-sandbox` image runs as a non-root user and is suitable for the default case. When a sandbox must modify `/etc/apt` or install apt packages, use the `fastgpt-agent-sandbox-root` image and configure `AGENT_SANDBOX_APT_MIRROR` as well.
+
+Each official image tag includes both `amd64` and `arm64` variants. Both architectures use the same environment variable configuration, and Docker selects the matching variant based on the architecture of the host running OpenSandbox Server:
+
+| Use case | Image                                               |
+| -------- | --------------------------------------------------- |
+| Non-root | `ghcr.io/labring/fastgpt-agent-sandbox:v0.3.1`      |
+| Root     | `ghcr.io/labring/fastgpt-agent-sandbox-root:v0.3.1` |
+
+For China Mainland registries, replace `ghcr.io/labring` with `registry.cn-hangzhou.aliyuncs.com/fastgpt`. If you use a private registry, make sure each tag preserves both the `amd64` and `arm64` manifests. If the registry provides only a single-architecture image, set `AGENT_SANDBOX_OPENSANDBOX_IMAGE` to an image matching the architecture of the OpenSandbox Server host.
 
 `AGENT_SANDBOX_OPENSANDBOX_API_KEY` must match `[server].api_key`, `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` must match `x-volume-manager-auth-token`, and `AGENT_SANDBOX_PROXY_SECRET` must match the same variable in Agent Sandbox Proxy.
 
@@ -103,11 +116,25 @@ Configure package registries in both `fastgpt-app` and `fastgpt-pro` when sandbo
 ```dotenv
 AGENT_SANDBOX_NPM_REGISTRY=https://registry.npmmirror.com
 AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+# Ubuntu amd64 example; use ubuntu-ports for Ubuntu arm64 as described below
 AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu
 ```
 
-`AGENT_SANDBOX_APT_MIRROR` is effective only for root Agent sandboxes. FastGPT generates and overwrites the standard Ubuntu or Debian `.sources` file for the detected distribution, creating a `.copy` backup before overwriting an existing file. When the variable is removed, files with a `.copy` backup are restored and files without a backup are skipped. Initialization does not run `apt-get update`.
-For arm64 runtime images, configure a mirror URL that provides the corresponding architecture packages.
+`AGENT_SANDBOX_NPM_REGISTRY` and `AGENT_SANDBOX_PYPI_INDEX_URL` apply to all runtime images. `AGENT_SANDBOX_APT_MIRROR` is effective only for root Agent sandboxes and must point to the apt repository root, not a `dists` path or a specific release directory.
+
+The apt mirror URL is not selected automatically based on the runtime image architecture. Select the corresponding Ubuntu repository path:
+
+```dotenv
+# Ubuntu amd64 / x86_64
+AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu
+
+# Ubuntu arm64 / aarch64
+AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports
+```
+
+Use the [Ubuntu mirror guide](https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu/) and [Ubuntu Ports mirror guide](https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu-ports/) to confirm paths for other Ubuntu releases. With another mirror provider, use its standard Ubuntu or Ubuntu Ports repository path for the target architecture.
+
+FastGPT reads `/etc/os-release` and generates or overwrites `/etc/apt/sources.list.d/ubuntu.sources` based on the Ubuntu version and codename. The file includes the main repository, updates, backports, and security. Before overwriting an existing sources file, FastGPT creates a `.copy` backup. When the variable is removed, files with a backup are restored and files without a backup are left unchanged. Initialization does not run `apt-get update`.
 
 ### Resource and Lifecycle Settings
 
