@@ -2,9 +2,10 @@ import {
   DatasetSearchModeEnum,
   DatasetSearchModeMap
 } from '@fastgpt/global/core/dataset/constants';
-import { getDefaultRerankModel } from '../../../ai/model';
+import { getRerankModel, assertModelActive } from '../../../ai/model';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
 import type { SearchDatasetDataProps, SearchDatasetDataResponse } from '../type';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { formatDatasetDataValues } from '../../data/controller';
 import { getImageCaptionQueries } from './imageCaption';
 import { multiQueryRecall } from './multiQueryRecall';
@@ -40,14 +41,14 @@ export async function searchDatasetData(
     textQueries,
     imageQueries = [],
     userKey,
-    model,
-    vlmModel,
+    vectorModelId,
+    vlmModelId,
     similarity = 0,
     limit: maxTokens,
     searchMode: inputSearchMode = DatasetSearchModeEnum.embedding,
     embeddingWeight = 0.5,
     usingReRank: inputUsingReRank = false,
-    rerankModel,
+    [NodeInputKeyEnum.datasetSearchRerankModelId]: rerankModelId,
     rerankWeight = 0.5,
     datasetIds = [],
     collectionFilterMatch
@@ -56,12 +57,15 @@ export async function searchDatasetData(
   const searchMode = DatasetSearchModeMap[inputSearchMode]
     ? inputSearchMode
     : DatasetSearchModeEnum.embedding;
-  const usingReRank = inputUsingReRank && !!reRankQuery && !!getDefaultRerankModel();
+  // Rerank is enabled when the caller explicitly configured a rerank model
+  // (or a resolvable default), not merely when a default model exists.
+  const usingReRank =
+    inputUsingReRank && !!reRankQuery && !!rerankModelId && !!getRerankModel(rerankModelId);
 
   // Step 1: 图片先尝试转成文本描述。caption 会作为普通文本 query 参与后续召回，
   // 这样即使 embedding 模型不支持图片，也能通过 VLM 描述获得一条文本检索路径。
   const imageCaptionQueries = await getImageCaptionQueries({
-    vlmModel,
+    vlmModelId,
     imageQueries,
     userKey,
     teamId
@@ -71,9 +75,12 @@ export async function searchDatasetData(
   const hasImageCaptionUsage =
     imageCaptionQueries.inputTokens > 0 || imageCaptionQueries.outputTokens > 0;
   const imageCaptionResult: SearchDatasetDataResponse['imageCaptionResult'] =
-    imageCaptionQueries.model && (imageCaptionQueries.queries.length > 0 || hasImageCaptionUsage)
+    imageCaptionQueries.vlmModelName &&
+    imageCaptionQueries.vlmModelId &&
+    (imageCaptionQueries.queries.length > 0 || hasImageCaptionUsage)
       ? {
-          model: imageCaptionQueries.model,
+          vlmModelName: imageCaptionQueries.vlmModelName,
+          vlmModelId: imageCaptionQueries.vlmModelId,
           inputTokens: imageCaptionQueries.inputTokens,
           outputTokens: imageCaptionQueries.outputTokens,
           requestIds: imageCaptionQueries.requestIds,
@@ -96,7 +103,7 @@ export async function searchDatasetData(
   } = await multiQueryRecall({
     teamId,
     datasetIds,
-    model,
+    vectorModelId,
     imageQueries,
     collectionFilterMatch,
     embeddingLimit,
@@ -119,6 +126,10 @@ export async function searchDatasetData(
 
   // Step 4: rerank 只处理文本召回。
   // 图片向量结果和 caption 结果仍按 RRF 融合，避免用文本 rerank 把视觉相似结果误杀。
+  // Rerank model is optional, but a configured one must be active (F2-S3-TC06) —
+  // same error as the deepest guard in reRankRecall, raised at the boundary.
+  const rerankModelData = rerankModelId ? getRerankModel(rerankModelId) : undefined;
+  assertModelActive(rerankModelData);
   const {
     results: textRerankRecallResults,
     inputTokens: reRankInputTokens,
@@ -126,7 +137,7 @@ export async function searchDatasetData(
   } = await reRankSearchResults({
     usingReRank,
     textRecallResults,
-    rerankModel,
+    rerankModel: rerankModelData,
     query: reRankQuery,
     rerankWeight
   });

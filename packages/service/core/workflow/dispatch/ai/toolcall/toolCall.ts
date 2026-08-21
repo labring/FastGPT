@@ -112,7 +112,8 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
         teamId: workflowProps.runningUserInfo.teamId,
         environment: runtimeEnvironment,
         llmParams: {
-          model: toolModel.model,
+          modelId: toolModel.id,
+          promptMode: 'raw',
           maxTokens: maxToken,
           stream,
           temperature,

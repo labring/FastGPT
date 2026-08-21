@@ -1,10 +1,11 @@
-/* 
+/*
   根据文本的余弦相似度，获取最大边际收益的检索词。
   Reference: https://github.com/jina-ai/submodular-optimization
 */
 
 import { getVectors } from '../embedding';
-import { getEmbeddingModel } from '../model';
+import { getDefaultEmbeddingModel } from '../model/cache';
+import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model/type';
 
 class PriorityQueue<T> {
   private heap: Array<{ item: T; priority: number }> = [];
@@ -26,8 +27,13 @@ class PriorityQueue<T> {
     return this.heap.length;
   }
 }
-export const useTextCosine = ({ embeddingModel }: { embeddingModel: string }) => {
-  const vectorModel = getEmbeddingModel(embeddingModel);
+export const useTextCosine = ({ embeddingModel }: { embeddingModel?: EmbeddingModelItemType }) => {
+  // Use the caller-specified embedding model; fall back to the default when
+  // the configured model is unavailable (e.g. deleted mid-request).
+  const vectorModel = embeddingModel ?? getDefaultEmbeddingModel();
+  if (!vectorModel) {
+    throw new Error('Embedding model not found');
+  }
   // Calculate marginal gain
   const computeMarginalGain = (
     candidateEmbedding: number[],
@@ -93,7 +99,7 @@ export const useTextCosine = ({ embeddingModel }: { embeddingModel: string }) =>
     }
 
     const { tokens: embeddingTokens, vectors: embeddingVectors } = await getVectors({
-      model: vectorModel,
+      modelData: vectorModel,
       inputs: [query, ...normalizedCandidates].map((text) => ({
         type: 'text',
         input: text

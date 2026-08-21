@@ -60,6 +60,20 @@ export function getI18nInformLevel(level: string): string {
   return i18nT('common:UnKnow');
 }
 
+// Returns i18n keys (account_team:model.*) — the frontend audit renderer
+// translates any param value containing ':' (commonProcessor.ts). Same pattern
+// as getI18nDatasetType / getI18nSkillType.
+export const getI18nModelType = (type: string): string => {
+  const map: Record<string, string> = {
+    llm: i18nT('account_team:model.llm'),
+    embedding: i18nT('account_team:model.embedding'),
+    tts: i18nT('account_team:model.tts'),
+    stt: i18nT('account_team:model.stt'),
+    rerank: i18nT('account_team:model.rerank')
+  };
+  return map[type] || i18nT('common:UnKnow');
+};
+
 export function addAuditLog<T extends AuditEventEnum>({
   teamId,
   tmbId,

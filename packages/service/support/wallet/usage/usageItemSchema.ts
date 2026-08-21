@@ -37,7 +37,8 @@ const UsageItemSchema = new Schema({
   duration: Number,
   pages: Number,
   count: Number,
-  model: String
+  model: String,
+  modelId: String
 });
 
 defineIndex(UsageItemSchema, { key: { usageId: 'hashed' } });

@@ -6,18 +6,18 @@ import {
 import json5 from 'json5';
 import { createLLMResponse } from '../llm/request';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { getLLMModel } from '../model';
+import { getLLMModel, assertModelUsable } from '../model';
 
 const logger = getLogger(LogCategories.MODULE.AI.FUNCTIONS);
 
 export async function createQuestionGuide({
   messages,
-  model,
+  modelId,
   customPrompt,
   teamId
 }: {
   messages: ChatCompletionMessageParam[];
-  model: string;
+  modelId: string;
   customPrompt?: string;
   teamId: string;
 }): Promise<{
@@ -25,7 +25,8 @@ export async function createQuestionGuide({
   inputTokens: number;
   outputTokens: number;
 }> {
-  const questionGuideModel = getLLMModel(model);
+  // Existence + active in one guard (F2-S3-TC06).
+  const questionGuideModel = assertModelUsable(getLLMModel(modelId));
   const concatMessages: ChatCompletionMessageParam[] = [
     ...messages,
     {
@@ -39,9 +40,9 @@ export async function createQuestionGuide({
     usage: { inputTokens, outputTokens }
   } = await createLLMResponse({
     teamId,
+    modelData: questionGuideModel,
     saveLLMResponseRecord: false,
     body: {
-      model,
       messages: concatMessages,
       stream: true,
       ...(questionGuideModel?.reasoning ? { reasoning_effort: 'none' as const } : {})

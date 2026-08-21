@@ -1,17 +1,17 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Drawer } from 'vaul';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { ModelListItem } from '@fastgpt/global/openapi/core/ai/model/api';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 
 type Props = {
   isOpen: boolean;
-  modelList: LLMModelItemType[];
+  modelList: ModelListItem[];
   value?: string;
   onChange: (model: string) => void;
   onClose: () => void;
@@ -21,13 +21,10 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
   const { i18n } = useTranslation();
   const { getModelProviders, getModelProvider, getMyModelList } = useSystemStore();
   const { data: myModels } = useRequest(getMyModelList, { manual: false });
-  const availableModelList = useMemo(
-    () => {
-      if (!myModels) return modelList;
-      return modelList.filter((model) => myModels.has(model.model) || model.model === value);
-    },
-    [modelList, myModels, value]
-  );
+  const availableModelList = useMemo(() => {
+    if (!myModels) return modelList;
+    return modelList.filter((model) => myModels.has(model.id) || model.id === value);
+  }, [modelList, myModels, value]);
 
   const providerGroups = useMemo(() => {
     const providerList = getModelProviders(i18n.language).map((provider) => ({
@@ -53,11 +50,15 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
   const [activeProviderId, setActiveProviderId] = useState('');
   const activeProvider = providerGroups.find((provider) => provider.id === activeProviderId);
 
-  useEffect(() => {
+  // Reset the selected provider each time the drawer opens. Adjusted during
+  // render (React "adjusting state during rendering" pattern).
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
     if (isOpen) {
       setActiveProviderId('');
     }
-  }, [isOpen]);
+  }
 
   return (
     <Drawer.Root open={isOpen} onOpenChange={(open) => !open && onClose()} direction="bottom">
@@ -118,12 +119,7 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
                     <Box flex="1" fontSize="16px" color="myGray.900">
                       {provider.name}
                     </Box>
-                    <MyIcon
-                      name="core/chat/chevronRight"
-                      w="24px"
-                      h="24px"
-                      color="myGray.600"
-                    />
+                    <MyIcon name="core/chat/chevronRight" w="24px" h="24px" color="myGray.600" />
                   </Flex>
                 ))}
               </Box>
@@ -159,9 +155,7 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
                   </Flex>
                   <IconButton
                     aria-label="Close"
-                    icon={
-                      <MyIcon name="close" w="24px" h="24px" p="6px" color="myGray.700" />
-                    }
+                    icon={<MyIcon name="close" w="24px" h="24px" p="6px" color="myGray.700" />}
                     variant="unstyled"
                     minW="32px"
                     h="32px"
@@ -170,11 +164,11 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
                 </Flex>
                 <Box pb={4} flex="0 1 auto" minH={0} overflowY="auto">
                   {activeProvider.children.map((model) => {
-                    const isSelected = model.model === value;
+                    const isSelected = model.id === value;
 
                     return (
                       <Flex
-                        key={model.model}
+                        key={model.id}
                         h="44px"
                         alignItems="center"
                         px="8px"
@@ -182,16 +176,14 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
                         borderRadius="6px"
                         bg={isSelected ? 'myGray.50' : 'transparent'}
                         onClick={() => {
-                          onChange(model.model);
+                          onChange(model.id);
                           onClose();
                         }}
                       >
                         <Box flex="1" color={isSelected ? 'primary.600' : 'myGray.900'}>
                           {model.name}
                         </Box>
-                        {isSelected && (
-                          <MyIcon name="check" w="24px" h="24px" color="myGray.700" />
-                        )}
+                        {isSelected && <MyIcon name="check" w="24px" h="24px" color="myGray.700" />}
                       </Flex>
                     );
                   })}

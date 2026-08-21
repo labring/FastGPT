@@ -1,4 +1,4 @@
-import { getSystemModelList, getTestModel } from '@/web/core/ai/config';
+import { getModelList, getTestModel } from '@/web/core/ai/config';
 import {
   Table,
   Thead,
@@ -29,7 +29,8 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type ModelTestItem = {
   label: React.ReactNode;
-  model: string;
+  model: string; // platform ObjectId, used for the test API call
+  modelName: string; // upstream model name, shown in the model_id column
   status: 'waiting' | 'running' | 'success' | 'error';
   message?: string;
   duration?: number;
@@ -69,7 +70,7 @@ const ModelTest = ({
     }
   });
 
-  const { loading: loadingModels } = useRequest(getSystemModelList, {
+  const { loading: loadingModels } = useRequest(getModelList, {
     manual: false,
     refreshDeps: [models],
     onSuccess(res) {
@@ -86,7 +87,8 @@ const ModelTest = ({
                 <Box>{t(modelData.name as any)}</Box>
               </HStack>
             ),
-            model: modelData.model,
+            model: modelData.id,
+            modelName: modelData.model,
             status: 'waiting',
             loading: false
           };
@@ -109,7 +111,7 @@ const ModelTest = ({
         );
         const start = Date.now();
         try {
-          await getTestModel({ model, channelId });
+          await getTestModel({ id: model, channelId });
           const duration = Date.now() - start;
           setTestModelList((prev) =>
             prev.map((item) =>
@@ -159,7 +161,7 @@ const ModelTest = ({
       );
 
       try {
-        await getTestModel({ model, channelId });
+        await getTestModel({ id: model, channelId });
         const duration = Date.now() - start;
 
         setTestModelList((prev) =>
@@ -212,7 +214,7 @@ const ModelTest = ({
                 return (
                   <Tr key={item.model}>
                     <Td>{item.label}</Td>
-                    <Td>{item.model}</Td>
+                    <Td>{item.modelName}</Td>
                     <Td>
                       <Flex alignItems={'center'}>
                         <MyTag mr={1} type="borderSolid" colorSchema={data.colorSchema as any}>

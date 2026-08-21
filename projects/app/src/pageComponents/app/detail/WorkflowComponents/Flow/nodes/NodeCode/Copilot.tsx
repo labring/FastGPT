@@ -1,15 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Box, Button, CloseButton, Flex } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
-import Avatar from '@fastgpt/web/components/common/Avatar';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import Markdown from '@/components/Markdown';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { onOptimizeCode } from '@/web/common/api/fetch';
-import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { ArrayTypeMap, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { AppContext } from '../../../../context';
@@ -38,7 +35,7 @@ import type {
 
 export type OnOptimizeCodeProps = {
   optimizerInput: string;
-  model: string;
+  modelId: string;
   conversationHistory?: Array<ChatCompletionMessageParam>;
   onResult: (result: string) => void;
   abortController?: AbortController;
@@ -57,7 +54,6 @@ const NodeCopilot = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { llmModelList, defaultModels } = useSystemStore();
   const { edges, systemConfigNode, getNodeById } = useContextSelector(
     WorkflowBufferDataContext,
     (v) => v
@@ -67,7 +63,8 @@ const NodeCopilot = ({
 
   const [optimizerInput, setOptimizerInput] = useState('');
   const [codeResult, setCodeResult] = useState('');
-  const [selectedModel, setSelectedModel] = useState(defaultModels.llm?.model || '');
+  // The selector auto-selects the system default once the list loads (§3.2)
+  const [selectedModel, setSelectedModel] = useState('');
   const [conversationHistory, setConversationHistory] = useState<ChatCompletionMessageParam[]>([]);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
   const closePopoverRef = useRef<() => void>();
@@ -104,56 +101,37 @@ const NodeCopilot = ({
     };
   }, [realTimeInputs, realTimeOutputs]);
 
-  useEffect(() => {
-    if (conversationHistory.length === 0) {
-      const configMessage = {
-        role: 'user' as const,
-        content: t('app:copilot_config_message', {
-          codeType,
-          code,
-          inputs: dynamicInputs
-            .map((input) => {
-              const referenceInfo =
-                input.value && Array.isArray(input.value) && input.value.length === 2
-                  ? `[${input.value[0]}.${input.value[1]}]`
-                  : '';
-              return `- ${input.label} (${input.valueType}): ${referenceInfo}`;
-            })
-            .join('\n'),
-          outputs: dynamicOutputs
-            .map((output) => `- ${output.label} (${output.valueType})`)
-            .join('\n')
-        })
-      };
+  // Seed the conversation with the config/confirm messages on first render.
+  // Adjusted during render (React "adjusting state during rendering" pattern)
+  // instead of an effect; the state is no longer empty after the first render.
+  if (conversationHistory.length === 0) {
+    const configMessage = {
+      role: 'user' as const,
+      content: t('app:copilot_config_message', {
+        codeType,
+        code,
+        inputs: dynamicInputs
+          .map((input) => {
+            const referenceInfo =
+              input.value && Array.isArray(input.value) && input.value.length === 2
+                ? `[${input.value[0]}.${input.value[1]}]`
+                : '';
+            return `- ${input.label} (${input.valueType}): ${referenceInfo}`;
+          })
+          .join('\n'),
+        outputs: dynamicOutputs
+          .map((output) => `- ${output.label} (${output.valueType})`)
+          .join('\n')
+      })
+    };
 
-      const confirmMessage = {
-        role: 'assistant' as const,
-        content: t('app:copilot_confirm_message')
-      };
+    const confirmMessage = {
+      role: 'assistant' as const,
+      content: t('app:copilot_confirm_message')
+    };
 
-      const initialConversationHistory = [configMessage, confirmMessage];
-      setConversationHistory(initialConversationHistory);
-    }
-  }, [conversationHistory, codeType, code, dynamicInputs, dynamicOutputs, t]);
-
-  const modelOptions = useMemo(() => {
-    return llmModelList.map((model) => ({
-      label: (
-        <Flex alignItems="center">
-          <Avatar
-            src={model.avatar || HUGGING_FACE_ICON}
-            fallbackSrc={HUGGING_FACE_ICON}
-            mr={1.5}
-            w={5}
-          />
-          <Box fontWeight="normal" fontSize="14px" color="myGray.900">
-            {model.name}
-          </Box>
-        </Flex>
-      ),
-      value: model.model
-    }));
-  }, [llmModelList]);
+    setConversationHistory([configMessage, confirmMessage]);
+  }
 
   const replaceVariables = (text: string): string => {
     const variableRegex = /(\{\{([^}]+)\}\}|\$([^$]+)\$)/g;
@@ -180,7 +158,9 @@ const NodeCopilot = ({
     });
   };
   const { runAsync: handleSendOptimization, loading } = useRequest(async () => {
-    if (isInputEmpty) return;
+    // selectedModel is filled asynchronously by autoSelectDefault; skip until the
+    // model list has loaded so the request never sends an empty modelId.
+    if (isInputEmpty || !selectedModel) return;
 
     const processedInput = replaceVariables(optimizerInput);
 
@@ -201,7 +181,7 @@ const NodeCopilot = ({
 
     await onOptimizeCode({
       optimizerInput: processedInput,
-      model: selectedModel,
+      modelId: selectedModel,
       conversationHistory,
       onResult: (result: string) => {
         if (!controller.signal.aborted) {
@@ -362,16 +342,15 @@ const NodeCopilot = ({
         return (
           <Box p={4}>
             <Flex align="center" pb={2}>
-              {modelOptions.length > 0 && (
-                <AIModelSelector
-                  borderColor="transparent"
-                  _hover={{ border: '1px solid', borderColor: 'primary.400' }}
-                  size="sm"
-                  value={selectedModel}
-                  list={modelOptions}
-                  onChange={setSelectedModel}
-                />
-              )}
+              <AIModelSelector
+                type={'llm'}
+                borderColor="transparent"
+                _hover={{ border: '1px solid', borderColor: 'primary.400' }}
+                size="sm"
+                value={selectedModel}
+                autoSelectDefault
+                onChange={setSelectedModel}
+              />
               <Box flex={1} />
               <CloseButton
                 onClick={() => {

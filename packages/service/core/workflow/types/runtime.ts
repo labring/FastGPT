@@ -81,6 +81,8 @@ export type ChatDispatchProps = {
     contact: string;
     teamId: string;
     tmbId: string;
+    /** Platform root — used by runtime model permission checks. */
+    isRoot: boolean;
   };
   uid: string; // Who run this workflow
 
@@ -160,7 +162,7 @@ export type DispatchNodeResultType<
 
 /* Single node props */
 export type AIChatNodeProps = {
-  [NodeInputKeyEnum.aiModel]: string;
+  [NodeInputKeyEnum.aiModelId]: string;
   [NodeInputKeyEnum.aiSystemPrompt]?: string;
   [NodeInputKeyEnum.aiChatTemperature]?: number;
   [NodeInputKeyEnum.aiChatMaxToken]?: number;

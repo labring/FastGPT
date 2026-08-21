@@ -20,6 +20,14 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import { modelTypeList, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { usePagination } from '@fastgpt/web/hooks/usePagination';
+import {
+  getModelCollaborators,
+  getModelListPage,
+  getTestModel,
+  updateModelCollaborators
+} from '@/web/core/ai/config';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import dynamic from 'next/dynamic';
@@ -27,12 +35,14 @@ import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
-import { getModelCollaborators, updateModelCollaborators } from '@/web/common/system/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { LazyCollaboratorProvider } from '@/components/support/permission/MemberManager/context';
 import PriceTiersLabel from '../PriceTiersLabel';
 import TestModeBetaTag from '../TestModeBetaTag';
 import ModelCapabilityTags from '../ModelCapabilityTags';
+import ChannelCountPopover from '../ChannelCountPopover';
+import type { ListModelsBody, ModelListItem } from '@fastgpt/global/openapi/core/ai/model/api';
+import { ModelPermission } from '@fastgpt/global/support/permission/model/controller';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
@@ -72,77 +82,105 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
 
   const [search, setSearch] = useState('');
 
-  const { llmModelList, ttsModelList, embeddingModelList, sttModelList, reRankModelList } =
-    useSystemStore();
+  // 后端分页 + 过滤（设计 §13.1）：每页 20 条，搜索/类型/提供商走后端参数
+  const { data: modelList = [], Pagination } = usePagination<ListModelsBody, ModelListItem>(
+    (params) =>
+      getModelListPage({
+        ...params,
+        provider: provider || undefined,
+        type: modelType || undefined,
+        search: search || undefined,
+        isActive: 'active'
+      }),
+    {
+      defaultPageSize: 20,
+      refreshDeps: [provider, modelType, search]
+    }
+  );
 
-  const modelList = useMemo(() => {
-    const formatLLMModelList = llmModelList.map((item) => ({
-      ...item,
-      typeLabel: t('common:model.type.chat'),
-      priceLabel: (
-        <PriceTiersLabel
-          config={item}
-          unitLabel={`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
-        />
-      ),
-      tagColor: 'blue'
-    }));
-    const formatVectorModelList = embeddingModelList.map((item) => ({
-      ...item,
-      typeLabel: t('common:model.type.embedding'),
-      priceLabel: (
-        <Flex color={'myGray.700'}>
-          {`${t('common:Input')}: `}
-          <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-            {item.charsPointsPrice || 0}
-          </Box>
-          {` ${t('common:support.wallet.subscription.point')} / 1K Tokens`}
-        </Flex>
-      ),
-      tagColor: 'yellow'
-    }));
-    const formatAudioSpeechModelList = ttsModelList.map((item) => ({
-      ...item,
-      typeLabel: t('common:model.type.tts'),
-      priceLabel: (
-        <Flex color={'myGray.700'}>
-          <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-            {item.charsPointsPrice || 0}
-          </Box>
-          {` ${t('common:support.wallet.subscription.point')} / 1K ${t('common:unit.character')}`}
-        </Flex>
-      ),
-      tagColor: 'green'
-    }));
-    const formatWhisperModelList = sttModelList.map((item) => ({
-      ...item,
-      typeLabel: t('common:model.type.stt'),
-      priceLabel: (
-        <Flex color={'myGray.700'}>
-          <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-            {item.charsPointsPrice}
-          </Box>
-          {` ${t('common:support.wallet.subscription.point')} / 60${t('common:unit.seconds')}`}
-        </Flex>
-      ),
-      tagColor: 'purple'
-    }));
-    const formatRerankModelList = reRankModelList.map((item) => ({
-      ...item,
-      typeLabel: t('common:model.type.reRank'),
-      priceLabel: item.charsPointsPrice ? (
-        <Flex color={'myGray.700'}>
-          {`${t('common:Input')}: `}
-          <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-            {item.charsPointsPrice}
-          </Box>
-          {` ${t('common:support.wallet.subscription.point')} / 1K Tokens`}
-        </Flex>
-      ) : (
-        '-'
-      ),
-      tagColor: 'red'
-    }));
+  const { runAsync: onTestModel } = useRequest(getTestModel, {
+    manual: true,
+    successToast: t('common:Success')
+  });
+
+  const modelListFormat = useMemo(() => {
+    const formatLLMModelList = modelList
+      .filter((item) => item.type === ModelTypeEnum.llm)
+      .map((item) => ({
+        ...item,
+        typeLabel: t('common:model.type.chat'),
+        priceLabel: (
+          <PriceTiersLabel
+            config={item}
+            unitLabel={`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
+          />
+        ),
+        tagColor: 'blue'
+      }));
+    const formatVectorModelList = modelList
+      .filter((item) => item.type === ModelTypeEnum.embedding)
+      .map((item) => ({
+        ...item,
+        typeLabel: t('common:model.type.embedding'),
+        priceLabel: (
+          <Flex color={'myGray.700'}>
+            {`${t('common:Input')}: `}
+            <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
+              {item.charsPointsPrice || 0}
+            </Box>
+            {` ${t('common:support.wallet.subscription.point')} / 1K Tokens`}
+          </Flex>
+        ),
+        tagColor: 'yellow'
+      }));
+    const formatAudioSpeechModelList = modelList
+      .filter((item) => item.type === ModelTypeEnum.tts)
+      .map((item) => ({
+        ...item,
+        typeLabel: t('common:model.type.tts'),
+        priceLabel: (
+          <Flex color={'myGray.700'}>
+            <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
+              {item.charsPointsPrice || 0}
+            </Box>
+            {` ${t('common:support.wallet.subscription.point')} / 1K ${t('common:unit.character')}`}
+          </Flex>
+        ),
+        tagColor: 'green'
+      }));
+    const formatWhisperModelList = modelList
+      .filter((item) => item.type === ModelTypeEnum.stt)
+      .map((item) => ({
+        ...item,
+        typeLabel: t('common:model.type.stt'),
+        priceLabel: (
+          <Flex color={'myGray.700'}>
+            <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
+              {item.charsPointsPrice}
+            </Box>
+            {` ${t('common:support.wallet.subscription.point')} / 60${t('common:unit.seconds')}`}
+          </Flex>
+        ),
+        tagColor: 'purple'
+      }));
+    const formatRerankModelList = modelList
+      .filter((item) => item.type === ModelTypeEnum.rerank)
+      .map((item) => ({
+        ...item,
+        typeLabel: t('common:model.type.reRank'),
+        priceLabel: item.charsPointsPrice ? (
+          <Flex color={'myGray.700'}>
+            {`${t('common:Input')}: `}
+            <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
+              {item.charsPointsPrice}
+            </Box>
+            {` ${t('common:support.wallet.subscription.point')} / 1K Tokens`}
+          </Flex>
+        ) : (
+          '-'
+        ),
+        tagColor: 'red'
+      }));
 
     const list = (() => {
       if (modelType === ModelTypeEnum.llm) return formatLLMModelList;
@@ -159,65 +197,43 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
         ...formatRerankModelList
       ];
     })();
-    const formatList = list.map((item) => {
+
+    // Provider meta for display; order kept from the backend response (design §7.1)
+    return list.map((item) => {
       const provider = getModelProvider(item.provider, i18n.language);
       return {
+        id: item.id,
         model: item.model,
         name: item.name,
+        isSystem: item.isSystem,
         testMode: item.testMode,
-        contextToken:
-          'maxContext' in item ? item.maxContext : 'maxToken' in item ? item.maxToken : undefined,
-        vision: 'vision' in item ? item.vision : undefined,
-        audio: 'audio' in item ? item.audio : undefined,
-        video: 'video' in item ? item.video : undefined,
-        reasoning: 'reasoning' in item ? item.reasoning : undefined,
-        toolChoice: 'toolChoice' in item ? item.toolChoice : undefined,
+        contextToken: item.contextToken,
+        vision: item.vision,
+        audio: item.audio,
+        video: item.video,
+        reasoning: item.reasoning,
+        toolChoice: item.toolChoice,
+        channelCount: item.channelCount,
+        sourceMember: item.sourceMember,
+        permission: new ModelPermission({
+          role: item.permission.role,
+          isOwner: item.permission.isOwner
+        }),
         avatar: provider.avatar,
         providerId: provider.id,
-        providerName: provider.name,
+        providerName: t(provider.name as any),
         typeLabel: item.typeLabel,
         priceLabel: item.priceLabel,
-        order: provider.order,
         tagColor: item.tagColor
       };
     });
-    formatList.sort((a, b) => a.order - b.order);
+  }, [modelList, t, modelType, getModelProvider, i18n.language]);
 
-    const filterList = formatList.filter((item) => {
-      const providerFilter = provider ? item.providerId === provider : true;
-
-      const regx = new RegExp(search, 'i');
-      const nameFilter = search ? regx.test(item.name) : true;
-
-      return providerFilter && nameFilter;
-    });
-
-    return filterList;
-  }, [
-    llmModelList,
-    embeddingModelList,
-    ttsModelList,
-    sttModelList,
-    reRankModelList,
-    t,
-    modelType,
-    getModelProvider,
-    i18n.language,
-    provider,
-    search
-  ]);
-
-  const filterProviderList = useMemo(() => {
-    const allProviderIds: string[] = [
-      ...llmModelList,
-      ...embeddingModelList,
-      ...ttsModelList,
-      ...sttModelList,
-      ...reRankModelList
-    ].map((model) => model.provider);
-
-    return providerList.filter((item) => allProviderIds.includes(item.value) || item.value === '');
-  }, [ttsModelList, llmModelList, embeddingModelList, sttModelList, reRankModelList, providerList]);
+  const manageableModelList = useMemo(
+    () => modelListFormat.filter((item) => item.permission.hasManagePer),
+    [modelListFormat]
+  );
+  const showPermissionConfig = permissionConfig && manageableModelList.length > 0;
 
   const {
     selectedItems,
@@ -227,8 +243,10 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
     isSelecteAll,
     selectAllTrigger
   } = useTableMultipleSelect({
-    list: modelList,
-    getItemId: (e) => e.name
+    list: manageableModelList,
+    // design §13.1: modelId is the stable identity — model names can collide
+    // across teams, so the batch action must not select by name.
+    getItemId: (e) => e.id
   });
 
   return (
@@ -250,7 +268,7 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
               bg={'myGray.50'}
               value={provider}
               onChange={setProvider}
-              list={filterProviderList}
+              list={providerList}
             />
           </Box>
         </Flex>
@@ -298,7 +316,7 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
             <Tr color={'myGray.600'}>
               <Th fontSize={'xs'}>
                 <HStack>
-                  {permissionConfig && userInfo?.team.permission.hasManagePer && (
+                  {showPermissionConfig && (
                     <Checkbox
                       mr={1}
                       isChecked={isSelecteAll}
@@ -308,19 +326,24 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
                   <Box>{t('common:model.name')}</Box>
                 </HStack>
               </Th>
+              <Th fontSize={'xs'}>{t('account_model:model.model_id')}</Th>
               <Th fontSize={'xs'}>{t('common:model.model_type')}</Th>
               <Th fontSize={'xs'}>{t('common:model.billing')}</Th>
-              {permissionConfig && userInfo?.team.permission.hasManagePer && (
+              <Th fontSize={'xs'}>{t('common:model.provider')}</Th>
+              <Th fontSize={'xs'}>{t('account_model:channel_creator')}</Th>
+              <Th fontSize={'xs'}>{t('account_model:model.channel_count')}</Th>
+              {showPermissionConfig && (
                 <Th fontSize={'xs'}>{t('common:permission.Permission config')}</Th>
               )}
+              <Th fontSize={'xs'}>{t('account_model:model.action')}</Th>
             </Tr>
           </Thead>
           <Tbody>
-            {modelList.map((item, index) => (
-              <Tr key={index} _hover={{ bg: 'myGray.50' }}>
+            {modelListFormat.map((item) => (
+              <Tr key={item.id} _hover={{ bg: 'myGray.50' }}>
                 <Td fontSize={'sm'}>
                   <HStack>
-                    {permissionConfig && userInfo?.team.permission.hasManagePer && (
+                    {showPermissionConfig && item.permission.hasManagePer && (
                       <Checkbox
                         mr={1}
                         isChecked={isSelected(item)}
@@ -329,9 +352,14 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
                     )}
                     <Avatar src={item.avatar} w={'1.2rem'} />
                     <Flex alignItems={'center'} gap={1} minW={0}>
-                      <CopyBox value={item.name} color={'myGray.900'}>
-                        {item.name}
+                      <CopyBox value={item.name || item.model} color={'myGray.900'}>
+                        {item.name || item.model}
                       </CopyBox>
+                      {item.isSystem && (
+                        <MyTag colorSchema={'green'}>
+                          {t('account_model:model.system_models')}
+                        </MyTag>
+                      )}
                       {item.testMode && <TestModeBetaTag />}
                     </Flex>
                   </HStack>
@@ -344,41 +372,68 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
                     showReasoning={!!item.reasoning}
                   />
                 </Td>
+                <Td fontSize={'sm'}>
+                  <CopyBox value={item.model} color={'myGray.700'}>
+                    {item.model}
+                  </CopyBox>
+                </Td>
                 <Td>
                   <MyTag colorSchema={item.tagColor as any}>{item.typeLabel}</MyTag>
                 </Td>
                 <Td fontSize={'sm'}>{item.priceLabel}</Td>
-                {permissionConfig && userInfo?.team.permission.hasManagePer && (
+                <Td fontSize={'sm'} color={'myGray.700'}>
+                  {item.providerName}
+                </Td>
+                <Td fontSize={'sm'} color={'myGray.700'}>
+                  {item.sourceMember?.name || '-'}
+                </Td>
+                <Td fontSize={'sm'}>
+                  <ChannelCountPopover count={item.channelCount ?? 0} modelId={item.id} />
+                </Td>
+                {showPermissionConfig && (
                   <Td fontSize={'sm'}>
-                    <LazyCollaboratorProvider
-                      selectedHint={modelPermissionConfigHint}
-                      defaultRole={ReadRoleVal}
-                      onGetCollaboratorList={() => getModelCollaborators(item.model)}
-                      onUpdateCollaborators={({ collaborators }) =>
-                        updateModelCollaborators({
-                          collaborators,
-                          models: [item.model]
-                        })
-                      }
-                      permission={userInfo?.team.permission!}
-                    >
-                      {({ onOpenManageModal }) => (
-                        <MyIconButton
-                          icon={'edit'}
-                          size="1rem"
-                          hoverColor={'blue.500'}
-                          w="min-content"
-                          onClick={onOpenManageModal}
-                        />
-                      )}
-                    </LazyCollaboratorProvider>
+                    {item.permission.hasManagePer && (
+                      <LazyCollaboratorProvider
+                        selectedHint={modelPermissionConfigHint}
+                        defaultRole={ReadRoleVal}
+                        onGetCollaboratorList={() => getModelCollaborators(item.id)}
+                        onUpdateCollaborators={({ collaborators }) =>
+                          updateModelCollaborators({
+                            collaborators,
+                            modelIds: [item.id]
+                          })
+                        }
+                        permission={item.permission}
+                      >
+                        {({ onOpenManageModal }) => (
+                          <MyIconButton
+                            icon={'edit'}
+                            size="1rem"
+                            hoverColor={'blue.500'}
+                            w="min-content"
+                            onClick={onOpenManageModal}
+                          />
+                        )}
+                      </LazyCollaboratorProvider>
+                    )}
                   </Td>
                 )}
+                <Td>
+                  <MyIconButton
+                    icon={'core/chat/sendLight'}
+                    tip={t('account_model:model.test_model')}
+                    onClick={() => onTestModel({ id: item.id })}
+                  />
+                </Td>
               </Tr>
             ))}
           </Tbody>
         </Table>
       </TableContainer>
+
+      <Flex justifyContent={'center'} mt={3}>
+        {Pagination()}
+      </Flex>
 
       <FloatingActionBar
         activedStyles={{
@@ -397,10 +452,10 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
             onUpdateCollaborators={({ collaborators }) =>
               updateModelCollaborators({
                 collaborators,
-                models: selectedItems.map((i) => i.model)
+                modelIds: selectedItems.map((i) => i.id)
               })
             }
-            permission={userInfo?.team.permission!}
+            permission={selectedItems[0]?.permission ?? userInfo?.team.permission!}
           >
             {({ onOpenManageModal }) => (
               <Button variant={'whiteBase'} onClick={onOpenManageModal}>

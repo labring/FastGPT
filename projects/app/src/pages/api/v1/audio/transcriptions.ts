@@ -8,7 +8,7 @@ import {
   assertMemberRateLimit,
   MemberRateLimitPolicy
 } from '@fastgpt/service/common/rateLimit/interface/member';
-import { getDefaultSTTModel } from '@fastgpt/service/core/ai/model';
+import { getDefaultSTTModel } from '@fastgpt/service/core/ai/model/cache';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { AudioTranscriptionsDataSchema } from '@fastgpt/global/openapi/core/chat/record/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -57,8 +57,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       memberId: String(tmbId)
     });
 
+    const defaultSTTModel = getDefaultSTTModel();
+    if (!defaultSTTModel) {
+      throw new Error('No STT model configured');
+    }
+
     const transcriptionsResult = await aiTranscriptions({
-      model: getDefaultSTTModel(),
+      modelData: defaultSTTModel,
       fileStream: result.getReadStream(),
       filename: result.fileMetadata.originalname
     });

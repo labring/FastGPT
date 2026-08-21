@@ -14,10 +14,10 @@ import type {
   FlowNodeTemplateType,
   WorkflowCheckNodeIssueMap
 } from '@fastgpt/global/core/workflow/type/node';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { checkWorkflowNodeIssues } from '@/web/core/workflow/workflowCheck';
+import { useActiveSystemModelList } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { collectWorkflowStartAutoFillRevertPatches } from '@/web/core/workflow/workflowStartAutoFill';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 
 type FlowNodeChangeProps = { nodeId: string } & (
   | {
@@ -409,15 +409,15 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
     [forbiddenSaveSnapshotRef, setNodes]
   );
 
-  // 使用结构共享优化的节点更改
-  const { llmModelList } = useSystemStore();
+  // Lazy llm list; map is only used to evaluate output invalid conditions (design §1)
+  const { list: llmModelList } = useActiveSystemModelList(ModelTypeEnum.llm);
   const llmModelMap = useMemo(() => {
     return llmModelList.reduce(
       (acc, model) => {
-        acc[model.model] = model;
+        acc[model.id] = model;
         return acc;
       },
-      {} as Record<string, LLMModelItemType>
+      {} as Record<string, { reasoning?: boolean }>
     );
   }, [llmModelList]);
   const onChangeNode = useCallback(

@@ -6,7 +6,6 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import path from 'node:path';
@@ -47,8 +46,8 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
     const dataset = collection.dataset;
     const { availableVlmModel, supportVlm, supportImageEmbedding } = getDatasetImageIndexCapability(
       {
-        vectorModel: dataset.vectorModel,
-        vlmModel: dataset.vlmModel
+        vectorModelId: dataset.vectorModelId,
+        vlmModelId: dataset.vlmModelId
       }
     );
 
@@ -85,9 +84,9 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
           tmbId,
           appName: collection.name,
           billSource: UsageSourceEnum.training,
-          vectorModel: getEmbeddingModel(dataset.vectorModel)?.name,
-          agentModel: getLLMModel(dataset.agentModel)?.name,
-          vllmModel: availableVlmModel?.name,
+          vectorModelId: dataset.vectorModelId,
+          agentModelId: dataset.agentModelId,
+          vlmModelId: availableVlmModel?.id,
           session
         });
         return usageId;
@@ -98,9 +97,9 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
         tmbId,
         datasetId: dataset._id,
         collectionId,
-        agentModel: dataset.agentModel,
-        vectorModel: dataset.vectorModel,
-        vlmModel: dataset.vlmModel,
+        agentModelId: dataset.agentModelId,
+        vectorModelId: dataset.vectorModelId,
+        vlmModelId: dataset.vlmModelId,
         mode: supportVlm ? TrainingModeEnum.imageParse : TrainingModeEnum.chunk,
         billId: traingBillId,
         data: imageIds.map((item) => ({

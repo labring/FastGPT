@@ -16,7 +16,8 @@ import FileSelector from '../FileSelector/index';
 import { formatTime2YMDHMS, formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useActiveSystemModelList } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { getFileSelectRenderProps } from './utils';
 
 const InputRender = (props: InputRenderProps) => {
@@ -33,7 +34,8 @@ const InputRender = (props: InputRenderProps) => {
   } = props;
 
   const { t } = useSafeTranslation();
-  const { llmModelList } = useSystemStore();
+  // Lazy llm list used as the selectLLMModel fallback (design §1)
+  const { list: llmModelList } = useActiveSystemModelList(ModelTypeEnum.llm);
 
   // Password
   const [isPasswordEditing, setIsPasswordEditing] = useState(false);
@@ -212,9 +214,11 @@ const InputRender = (props: InputRenderProps) => {
     return (
       <AIModelSelector
         {...commonProps}
-        cacheModel={false}
+        type={'llm'}
+        // Fall back to the active llm list when the caller provides no
+        // candidate set (e.g. plugin run-time inputs, design §1 lazy load).
         list={(modelList || llmModelList).map((item) => ({
-          value: item.model,
+          value: item.id,
           label: item.name
         }))}
       />

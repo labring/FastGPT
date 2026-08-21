@@ -22,17 +22,17 @@ import {
 const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
 
 afterEach(() => {
-  serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+  (serviceEnv as any).MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
 });
 
 describe('normalizeImageToBase64', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+    (serviceEnv as any).MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
   });
 
   it('should keep image url unchanged when base64 conversion is disabled', async () => {
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+    (serviceEnv as any).MULTIPLE_DATA_TO_BASE64 = false;
 
     const result = await normalizeImageToBase64('https://example.com/image.png');
 
@@ -41,7 +41,7 @@ describe('normalizeImageToBase64', () => {
   });
 
   it('should keep internal object keys unchanged when base64 conversion is disabled', async () => {
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+    (serviceEnv as any).MULTIPLE_DATA_TO_BASE64 = false;
 
     const keys = ['dataset/team/file.png', 'temp/team/file.png', 'chat/app/user/chat/file.png'];
 
@@ -54,7 +54,7 @@ describe('normalizeImageToBase64', () => {
   });
 
   it('should convert image url to base64 when base64 conversion is enabled', async () => {
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
+    (serviceEnv as any).MULTIPLE_DATA_TO_BASE64 = true;
     mockGetImageBase64.mockResolvedValue({
       completeBase64: 'data:image/png;base64,converted'
     });
@@ -66,7 +66,7 @@ describe('normalizeImageToBase64', () => {
   });
 
   it('should treat internal object keys as plain inputs when base64 conversion is enabled', async () => {
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
+    (serviceEnv as any).MULTIPLE_DATA_TO_BASE64 = true;
     mockGetImageBase64.mockResolvedValue({
       completeBase64: 'data:image/png;base64,converted'
     });
@@ -78,7 +78,7 @@ describe('normalizeImageToBase64', () => {
   });
 
   it('should keep data image unchanged regardless of base64 conversion flag', async () => {
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+    (serviceEnv as any).MULTIPLE_DATA_TO_BASE64 = false;
 
     const result = await normalizeImageToBase64('data:image/png;base64,input');
 
@@ -140,8 +140,9 @@ describe('datasetSearchQueryExtension', () => {
 
     const result = await datasetSearchQueryExtension({
       query: 'first\nsecond',
-      llmModel: 'mock-llm',
-      embeddingModel: 'mock-embedding',
+      llmModelId: 'mock-llm',
+      embeddingModelId: 'mock-embedding',
+      teamId: 'team_1',
       histories: []
     });
 
@@ -170,8 +171,9 @@ describe('datasetSearchQueryExtension', () => {
 
     const result = await datasetSearchQueryExtension({
       query: '["first","second"]',
-      llmModel: 'mock-llm',
-      embeddingModel: 'mock-embedding',
+      llmModelId: 'mock-llm',
+      embeddingModelId: 'mock-embedding',
+      teamId: 'team_1',
       histories: []
     });
 
@@ -199,8 +201,9 @@ describe('datasetSearchQueryExtension', () => {
 
     const result = await datasetSearchQueryExtension({
       query: 'first',
-      llmModel: 'mock-llm',
-      embeddingModel: 'mock-embedding',
+      llmModelId: 'mock-llm',
+      embeddingModelId: 'mock-embedding',
+      teamId: 'team_1',
       histories: []
     });
 

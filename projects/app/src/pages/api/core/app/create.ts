@@ -12,6 +12,7 @@ import {
 import {
   OwnerRoleVal,
   PerResourceTypeEnum,
+  ReadPermissionVal,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
@@ -29,8 +30,9 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { getMyModels } from '@fastgpt/service/support/permission/model/controller';
-import { normalizeWorkflowConfig, removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
+import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
+import { authModels } from '@fastgpt/service/support/permission/model/auth';
+import { extractWorkflowModelIds } from '@fastgpt/global/core/workflow/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
@@ -90,18 +92,21 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     type,
     modules: await (async () => {
       if (modules) {
-        const myModels = new Set(
-          await getMyModels({
-            teamId,
-            tmbId,
-            isTeamOwner: isRoot || tmb?.role === 'owner'
-          })
-        );
-
-        return removeUnauthModels({
-          modules,
-          allowedModels: myModels
-        });
+        // Model permission: reject unauthorized modelIds in submitted nodes
+        // (mirror app/update AUTH-TC10). Lenient blanking is unnecessary on the
+        // backend — the model picker only lists accessible models, templates can
+        // only reference system models (resolveModelId without teamId), and the
+        // frontend import flow already strips unauthorized models before submit.
+        const modelIds = extractWorkflowModelIds({ modules, chatConfig });
+        if (modelIds.length > 0) {
+          await authModels({
+            req,
+            authToken: true,
+            modelIds,
+            per: ReadPermissionVal
+          });
+        }
+        return modules;
       }
       return [];
     })(),

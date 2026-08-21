@@ -4,7 +4,7 @@ import type { ModuleDispatchProps } from '../../../types/runtime';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model/type';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
 import type { AgentLoopChildrenInteractiveParams } from '../../../../ai/llm/agentLoop/interface';
@@ -16,7 +16,7 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
 
   [NodeInputKeyEnum.fileUrlList]?: string[];
-  [NodeInputKeyEnum.aiModel]: string;
+  [NodeInputKeyEnum.aiModelId]: string;
   [NodeInputKeyEnum.aiSystemPrompt]: string;
   [NodeInputKeyEnum.aiChatTemperature]: number;
   [NodeInputKeyEnum.aiChatMaxToken]: number;

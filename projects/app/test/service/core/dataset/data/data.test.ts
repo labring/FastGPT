@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModel } from '@fastgpt/service/core/ai/model/cache';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { MongoS3TTL } from '@fastgpt/service/common/s3/models/ttl';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
@@ -58,8 +58,8 @@ const createDatasetContext = async () => {
     teamId: root.teamId,
     tmbId: root.tmbId,
     type: DatasetTypeEnum.dataset,
-    vectorModel: 'text-embedding-3-small',
-    agentModel: 'gpt-4o-mini'
+    vectorModelId: 'text-embedding-3-small',
+    agentModelId: 'gpt-4o-mini'
   });
   const collection = await MongoDatasetCollection.create({
     name: 'test collection',
@@ -183,7 +183,7 @@ describe('Dataset data service', () => {
             text: 'manual index'
           }
         ],
-        embeddingModel: 'text-embedding-3-small',
+        vectorModelId: 'text-embedding-3-small',
         indexSize: 50,
         indexPrefix: 'prefix'
       });
@@ -234,9 +234,9 @@ describe('Dataset data service', () => {
           datasetId: String(dataset._id),
           collectionId: String(collection._id),
           q: '',
-          embeddingModel: 'text-embedding-3-small'
+          vectorModelId: 'text-embedding-3-small'
         } as any)
-      ).rejects.toBe('q, datasetId, collectionId, embeddingModel is required');
+      ).rejects.toBe('q, datasetId, collectionId, vectorModelId is required');
     });
 
     it('should allow empty question text for image data without creating default text index', async () => {
@@ -254,7 +254,7 @@ describe('Dataset data service', () => {
         collectionId: String(collection._id),
         q: '',
         imageId,
-        embeddingModel: 'text-embedding-3-small',
+        vectorModelId: 'text-embedding-3-small',
         indexSize: 50
       });
 
@@ -315,7 +315,7 @@ describe('Dataset data service', () => {
             text: 'new custom index'
           }
         ],
-        model: 'text-embedding-3-small',
+        vectorModelId: 'text-embedding-3-small',
         indexSize: 50
       });
 
@@ -394,7 +394,7 @@ describe('Dataset data service', () => {
             dataId: 'custom_old'
           }
         ],
-        model: 'text-embedding-3-small',
+        vectorModelId: 'text-embedding-3-small',
         indexSize: 50,
         forceRebuild: true
       });
@@ -436,7 +436,7 @@ describe('Dataset data service', () => {
           dataId: String(data._id),
           q: 'question',
           indexes: undefined as any,
-          model: 'text-embedding-3-small'
+          vectorModelId: 'text-embedding-3-small'
         })
       ).rejects.toBe('indexes is required');
 
@@ -445,7 +445,7 @@ describe('Dataset data service', () => {
           dataId: String(new Types.ObjectId()),
           q: 'question',
           indexes: [],
-          model: 'text-embedding-3-small'
+          vectorModelId: 'text-embedding-3-small'
         })
       ).rejects.toBe('Data not found');
     });
@@ -498,7 +498,7 @@ describe('Dataset data service', () => {
             text: 'new custom index'
           }
         ],
-        model: 'text-embedding-3-small',
+        vectorModelId: 'text-embedding-3-small',
         indexSize: 50
       });
 
@@ -570,7 +570,7 @@ describe('Dataset data service', () => {
         dataId: String(data._id),
         q: 'new question',
         a: '',
-        model: 'text-embedding-3-small',
+        vectorModelId: 'text-embedding-3-small',
         indexSize: 512
       });
 
@@ -653,7 +653,7 @@ describe('Dataset data service', () => {
         dataId: String(data._id),
         q: 'same question',
         a: 'same answer',
-        model: 'text-embedding-3-small',
+        vectorModelId: 'text-embedding-3-small',
         indexSize: 50
       });
 
@@ -669,7 +669,7 @@ describe('Dataset data service', () => {
         updateDatasetDataSystemIndexes({
           dataId: String(new Types.ObjectId()),
           q: 'question',
-          model: 'text-embedding-3-small'
+          vectorModelId: 'text-embedding-3-small'
         })
       ).rejects.toBe('Data not found');
     });
@@ -724,7 +724,7 @@ describe('Dataset data service', () => {
         q: `new question ![new](${nextImage})`,
         a: '',
         imageIndex: true,
-        model: 'text-embedding-3-small',
+        vectorModelId: 'text-embedding-3-small',
         indexSize: 50
       });
 

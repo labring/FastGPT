@@ -60,8 +60,8 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     });
 
     const { supportVlm, supportImageEmbedding } = getDatasetImageIndexCapability({
-      vectorModel: dataset.vectorModel,
-      vlmModel: dataset.vlmModel
+      vectorModelId: dataset.vectorModelId,
+      vlmModelId: dataset.vlmModelId
     });
 
     if (!supportVlm && !supportImageEmbedding) {

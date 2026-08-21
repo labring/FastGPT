@@ -1,13 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { getAIApi } from '@fastgpt/service/core/ai/config';
+import { getAIApi, getAiproxyScopeHeaders } from '@fastgpt/service/core/ai/config';
 import { createChatCompletion } from '@fastgpt/service/core/ai/llm/request/createChatCompletion';
 
 vi.mock('@fastgpt/service/core/ai/config', () => ({
-  getAIApi: vi.fn()
+  getAIApi: vi.fn(),
+  getAiproxyScopeHeaders: vi.fn(() => ({}))
 }));
 
 const mockGetAIApi = vi.mocked(getAIApi);
+const mockGetAiproxyScopeHeaders = vi.mocked(getAiproxyScopeHeaders);
 
 const createModel = (overrides: Record<string, any> = {}) =>
   ({
@@ -55,18 +57,18 @@ const mockApi = ({
 describe('createChatCompletion', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Scope headers are computed by the real helper (unit-tested in aiproxyScope.test.ts);
+    // here we only verify the wiring — the merge must not leak between cases.
+    mockGetAiproxyScopeHeaders.mockReturnValue({});
   });
 
-  it('should use model request path and auth when system key is used', async () => {
+  it('does not set request path or authorization from the model (routing is owned by Channels)', async () => {
     const create = vi.fn().mockResolvedValue({ choices: [] });
     const body = createBody();
     mockApi({ create });
 
     const result = await createChatCompletion({
-      modelData: createModel({
-        requestUrl: '/custom/chat/completions',
-        requestAuth: 'model-auth'
-      }),
+      modelData: createModel(),
       body,
       options: {
         headers: {
@@ -79,16 +81,16 @@ describe('createChatCompletion', () => {
       userKey: undefined,
       timeout: 600000
     });
+    // requestUrl/requestAuth were removed from models (managed by Channels):
+    // the model contributes no path and no Authorization header anymore.
     expect(create).toHaveBeenCalledWith(
       {
         ...body,
         model: 'gpt-4o'
       },
       {
-        path: '/custom/chat/completions',
         headers: {
-          Accept: 'application/json',
-          Authorization: 'Bearer model-auth'
+          Accept: 'application/json'
         }
       }
     );
@@ -105,16 +107,17 @@ describe('createChatCompletion', () => {
     });
 
     const result = await createChatCompletion({
-      modelData: createModel({
-        requestUrl: '/custom/chat/completions',
-        requestAuth: 'model-auth'
-      }),
-      body: createBody(),
+      modelData: createModel(),
+      body: {
+        ...createBody()
+      },
       userKey: {
         key: 'user-key'
       } as any
     });
 
+    // design §3.1: the internal modelId must not reach the user's own endpoint.
+    expect(create.mock.calls[0][0]).not.toHaveProperty('modelId');
     expect(create.mock.calls[0][1]).toEqual({
       headers: {}
     });
@@ -170,7 +173,66 @@ describe('createChatCompletion', () => {
         modelData: undefined as any,
         body: createBody()
       })
-    ).rejects.toBe('alias-model not found');
+    ).rejects.toBe('Chat completion model not found');
     expect(create).not.toHaveBeenCalled();
+  });
+
+  it('should inject aiproxy relay scope headers computed from model ownership', async () => {
+    const create = vi.fn().mockResolvedValue({ choices: [] });
+    mockApi({ create, baseUrl: 'http://aiproxy:3000/v1' });
+    mockGetAiproxyScopeHeaders.mockReturnValue({
+      'X-Aiproxy-Group': 'fastgpt:tmb:tmb_1',
+      'X-Aiproxy-Group-Channel-Mode': 'own'
+    });
+
+    const modelData = createModel({ isSystem: false, tmbId: 'tmb_1' });
+    await createChatCompletion({
+      modelData,
+      body: createBody(),
+      options: {
+        headers: {
+          Accept: 'application/json'
+        }
+      }
+    });
+
+    expect(mockGetAiproxyScopeHeaders).toHaveBeenCalledWith(modelData, 'http://aiproxy:3000/v1');
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ model: 'gpt-4o' }),
+      expect.objectContaining({
+        headers: {
+          Accept: 'application/json',
+          'X-Aiproxy-Group': 'fastgpt:tmb:tmb_1',
+          'X-Aiproxy-Group-Channel-Mode': 'own'
+        }
+      })
+    );
+  });
+
+  it('should let relay scope headers win over caller-provided headers', async () => {
+    const create = vi.fn().mockResolvedValue({ choices: [] });
+    mockApi({ create, baseUrl: 'http://aiproxy:3000/v1' });
+    mockGetAiproxyScopeHeaders.mockReturnValue({
+      'X-Aiproxy-Group-Channel-Mode': 'global'
+    });
+
+    await createChatCompletion({
+      modelData: createModel({ isSystem: true }),
+      body: createBody(),
+      options: {
+        headers: {
+          'X-Aiproxy-Group-Channel-Mode': 'own'
+        }
+      }
+    });
+
+    expect(create).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        headers: {
+          'X-Aiproxy-Group-Channel-Mode': 'global'
+        }
+      })
+    );
   });
 });

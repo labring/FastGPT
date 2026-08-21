@@ -5,8 +5,8 @@ import { Box, Button, Flex, Input, VStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import { useForm, useWatch } from 'react-hook-form';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useForm, useWatch } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import AppSelect from '@/components/Select/AppSelect';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -29,7 +29,7 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 type EvaluationFormType = {
   name: string;
-  evalModel: string;
+  evalModelId: string;
   appId: string;
   evaluationFiles: SelectFileItemType[];
 };
@@ -42,19 +42,17 @@ const EvaluationCreating = () => {
   const [percent, setPercent] = useState(0);
   const [error, setError] = useState<string>();
 
-  const { llmModelList } = useSystemStore();
-
   const { register, setValue, control, handleSubmit } = useForm<EvaluationFormType>({
     defaultValues: {
       name: '',
-      evalModel: llmModelList[0]?.model,
+      evalModelId: '',
       appId: '',
       evaluationFiles: [] as SelectFileItemType[]
     }
   });
 
   const name = useWatch({ control, name: 'name' });
-  const evalModel = useWatch({ control, name: 'evalModel' });
+  const evalModelId = useWatch({ control, name: 'evalModelId' });
   const appId = useWatch({ control, name: 'appId' });
   const evaluationFiles = useWatch({ control, name: 'evaluationFiles' });
 
@@ -80,7 +78,7 @@ const EvaluationCreating = () => {
       await postCreateEvaluation({
         file: data.evaluationFiles[0].file,
         name: data.name,
-        evalModel: data.evalModel,
+        evalModelId: data.evalModelId,
         appId: data.appId,
         percentListen: setPercent
       });
@@ -179,13 +177,11 @@ const EvaluationCreating = () => {
               <AIModelSelector
                 w={'406px'}
                 bg={'myGray.50'}
-                value={evalModel}
-                list={llmModelList.map((item) => ({
-                  label: item.name,
-                  value: item.model
-                }))}
+                value={evalModelId}
+                type={'llm'}
+                autoSelectDefault
                 onChange={(e) => {
-                  setValue('evalModel', e);
+                  setValue('evalModelId', e);
                 }}
               />
             </Flex>
@@ -343,7 +339,7 @@ const EvaluationCreating = () => {
                 onClick={handleSubmit(onSubmit)}
                 isLoading={isCreating}
                 isDisabled={
-                  !!error || !name || !evalModel || !appId || evaluationFiles.length === 0
+                  !!error || !name || !evalModelId || !appId || evaluationFiles.length === 0
                 }
               >
                 {isCreating

@@ -18,6 +18,8 @@ import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import type { Form2WorkflowFnType } from '../FormComponent/type';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
+import { useActiveSystemModelList } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import ChatVariableButton from '@/pageComponents/chat/ChatWindow/ChatVariableButton';
 
 type Props = {
@@ -28,6 +30,7 @@ type Props = {
 const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
   const { t } = useTranslation();
   const { chatId } = useChatStore();
+  const { list: llmList } = useActiveSystemModelList(ModelTypeEnum.llm);
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
@@ -49,7 +52,7 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
   });
 
   useEffect(() => {
-    const { nodes, edges } = form2WorkflowFn(appForm, t);
+    const { nodes, edges } = form2WorkflowFn(appForm, t, llmList);
     setWorkflowData({ nodes, edges });
   }, [appForm, setWorkflowData, t]);
 

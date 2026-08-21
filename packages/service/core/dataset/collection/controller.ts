@@ -25,7 +25,7 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { MongoDatasetDataText } from '../data/dataTextSchema';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getTrainingModeByCollection } from './utils';
-import { getDatasetImageIndexCapability } from '../utils';
+import { getDatasetImageIndexCapability, normalizeDatasetModelIds } from '../utils';
 import {
   computedCollectionChunkSettings,
   getLLMMaxChunkSize
@@ -57,6 +57,9 @@ export const createCollectionAndInsertData = async ({
   billId?: string;
   session?: ClientSession;
 }): Promise<CreateCollectionWithResultResponseType> => {
+  // ⚠️ 热升级兼容：legacy-only dataset 回填 canonical 字段（getter 按名解析）
+  dataset = normalizeDatasetModelIds(dataset);
+
   // Adapter 4.9.0
   if (createCollectionParams.trainingType === DatasetCollectionDataProcessModeEnum.auto) {
     createCollectionParams.trainingType = DatasetCollectionDataProcessModeEnum.chunk;
@@ -65,8 +68,8 @@ export const createCollectionAndInsertData = async ({
 
   const formatCreateCollectionParams = computedCollectionChunkSettings({
     ...createCollectionParams,
-    llmModel: getLLMModel(dataset.agentModel),
-    vectorModel: getEmbeddingModel(dataset.vectorModel)
+    llmModel: getLLMModel(dataset.agentModelId),
+    vectorModel: getEmbeddingModel(dataset.vectorModelId)
   });
 
   const teamId = formatCreateCollectionParams.teamId;
@@ -80,8 +83,8 @@ export const createCollectionAndInsertData = async ({
     autoIndexes: formatCreateCollectionParams.autoIndexes,
     imageIndex: formatCreateCollectionParams.imageIndex,
     supportImageIndex: getDatasetImageIndexCapability({
-      vectorModel: dataset.vectorModel,
-      vlmModel: dataset.vlmModel
+      vectorModelId: dataset.vectorModelId,
+      vlmModelId: dataset.vlmModelId
     }).supportImageIndex
   });
 
@@ -138,7 +141,7 @@ export const createCollectionAndInsertData = async ({
         chunkSize: formatCreateCollectionParams.chunkSize,
         paragraphChunkDeep: formatCreateCollectionParams.paragraphChunkDeep,
         paragraphChunkMinSize: formatCreateCollectionParams.paragraphChunkMinSize,
-        maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModel)),
+        maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModelId)),
         overlapRatio: trainingType === DatasetCollectionDataProcessModeEnum.chunk ? 0.2 : 0,
         customReg: formatCreateCollectionParams.chunkSplitter
           ? [formatCreateCollectionParams.chunkSplitter]
@@ -195,9 +198,9 @@ export const createCollectionAndInsertData = async ({
         tmbId,
         appName: formatCreateCollectionParams.name,
         billSource: UsageSourceEnum.training,
-        vectorModel: getEmbeddingModel(dataset.vectorModel)?.name,
-        agentModel: getLLMModel(dataset.agentModel)?.name,
-        vllmModel: getVlmModel(dataset.vlmModel)?.name,
+        vectorModelId: dataset.vectorModelId,
+        agentModelId: dataset.agentModelId,
+        vlmModelId: dataset.vlmModelId,
         session
       });
       return newUsageId;
@@ -211,9 +214,9 @@ export const createCollectionAndInsertData = async ({
           tmbId,
           datasetId: dataset._id,
           collectionId,
-          agentModel: dataset.agentModel,
-          vectorModel: dataset.vectorModel,
-          vlmModel: dataset.vlmModel,
+          agentModelId: dataset.agentModelId,
+          vectorModelId: dataset.vectorModelId,
+          vlmModelId: dataset.vlmModelId,
           indexSize,
           mode: trainingMode,
           billId: traingUsageId,

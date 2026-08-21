@@ -17,10 +17,22 @@ import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { getModelList } from '@/web/core/ai/config';
 
 const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: () => void }) => {
-  const { t } = useClientTranslation('account_usage');
+  const { t } = useSafeTranslation();
+  // Resolve modelId → platform display name (fallback: upstream model name),
+  // so usage rows show the configured model name instead of the raw provider id.
+  const { data: modelList = [] } = useRequest(getModelList, {
+    manual: false,
+    errorToast: ''
+  });
+  const modelNameMap = useMemo(
+    () => new Map(modelList.map((m) => [m.id, m.name || m.model])),
+    [modelList]
+  );
   const filterBillList = useMemo(
     () => usage.list.filter((item) => item && item.moduleName),
     [usage.list]
@@ -46,7 +58,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
     let hasCount = false;
 
     usage.list.forEach((item) => {
-      if (item.model !== undefined) {
+      if (item.model !== undefined || item.modelId !== undefined) {
         hasModel = true;
       }
 
@@ -138,7 +150,13 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
                 {filterBillList.map((item, i) => (
                   <Tr key={i}>
                     <Td>{t(item.moduleName as any)}</Td>
-                    {hasModel && <Td>{item.model ?? '-'}</Td>}
+                    {hasModel && (
+                      <Td>
+                        {item.modelId
+                          ? (modelNameMap.get(item.modelId) ?? item.model)
+                          : (item.model ?? '-')}
+                      </Td>
+                    )}
                     {hasToken && <Td>{item.tokens ?? '-'}</Td>}
                     {hasInputToken && <Td>{item.inputTokens ?? '-'}</Td>}
                     {hasOutputToken && <Td>{item.outputTokens ?? '-'}</Td>}

@@ -18,12 +18,15 @@ import { checkTeamAiPointsAndLock } from './utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
-import { getLLMModel } from '@fastgpt/service/core/ai/model';
+import { getLLMModel } from '@fastgpt/service/core/ai/model/cache';
 import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
-import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
+import {
+  getDatasetImageIndexCapability,
+  normalizeDatasetModelIds
+} from '@fastgpt/service/core/dataset/utils';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -40,13 +43,13 @@ const logger = getLogger(LogCategories.MODULE.DATASET.FILE_PARSE);
 
 const requestLLMPargraph = async ({
   rawText,
-  model,
+  modelId,
   teamId,
   billId,
   paragraphChunkAIMode
 }: {
   rawText: string;
-  model: string;
+  modelId: string;
   teamId: string;
   billId: string;
   paragraphChunkAIMode?: ParagraphChunkAIModeEnum;
@@ -87,7 +90,7 @@ const requestLLMPargraph = async ({
     '/core/dataset/training/llmPargraph',
     {
       rawText,
-      model,
+      modelId,
       teamId,
       billId
     },
@@ -179,7 +182,7 @@ export const datasetParseQueue = async (): Promise<any> => {
         continue;
       }
 
-      const dataset = data.dataset;
+      const dataset = normalizeDatasetModelIds(data.dataset);
       const collection = data.collection;
 
       if (!dataset || !collection) {
@@ -241,8 +244,8 @@ export const datasetParseQueue = async (): Promise<any> => {
           autoIndexes: collection.autoIndexes,
           imageIndex: collection.imageIndex,
           supportImageIndex: getDatasetImageIndexCapability({
-            vectorModel: dataset.vectorModel,
-            vlmModel: dataset.vlmModel
+            vectorModelId: dataset.vectorModelId,
+            vlmModelId: dataset.vlmModelId
           }).supportImageIndex
         });
 
@@ -312,7 +315,7 @@ export const datasetParseQueue = async (): Promise<any> => {
         // 3. LLM Pargraph
         const { resultText, totalInputTokens, totalOutputTokens } = await requestLLMPargraph({
           rawText,
-          model: dataset.agentModel,
+          modelId: dataset.agentModelId,
           teamId: String(data.teamId),
           billId: data.billId,
           paragraphChunkAIMode: collection.paragraphChunkAIMode
@@ -320,7 +323,7 @@ export const datasetParseQueue = async (): Promise<any> => {
         // Push usage
         pushLLMTrainingUsage({
           teamId: data.teamId,
-          model: dataset.agentModel,
+          modelId: dataset.agentModelId,
           inputTokens: totalInputTokens,
           outputTokens: totalOutputTokens,
           usageId: data.billId,
@@ -335,7 +338,7 @@ export const datasetParseQueue = async (): Promise<any> => {
           chunkSize: collection.chunkSize,
           paragraphChunkDeep: collection.paragraphChunkDeep,
           paragraphChunkMinSize: collection.paragraphChunkMinSize,
-          maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModel)),
+          maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModelId)),
           overlapRatio:
             collection.trainingType === DatasetCollectionDataProcessModeEnum.chunk ? 0.2 : 0,
           customReg: collection.chunkSplitter ? [collection.chunkSplitter] : [],
@@ -377,9 +380,9 @@ export const datasetParseQueue = async (): Promise<any> => {
             tmbId: data.tmbId,
             datasetId: dataset._id,
             collectionId: collection._id,
-            agentModel: dataset.agentModel,
-            vectorModel: dataset.vectorModel,
-            vlmModel: dataset.vlmModel,
+            agentModelId: dataset.agentModelId,
+            vectorModelId: dataset.vectorModelId,
+            vlmModelId: dataset.vlmModelId,
             indexSize: collection.indexSize,
             mode: trainingMode,
             billId: data.billId,

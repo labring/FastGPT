@@ -9,8 +9,29 @@ import {
   getReferenceVariableValue,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
+import {
+  LEGACY_DATASET_PARAMS_MODEL_KEY_MAP,
+  LEGACY_MODEL_INPUT_KEY_MAP,
+  nodeInputIsReference
+} from '@fastgpt/global/core/workflow/utils';
 import { replaceEditorVariable } from './replaceEditorVariable';
+
+/** 双 key 补 canonical：legacy-only 输入把 legacy 值回填到 canonical 字段（canonical 已存在时以 canonical 为准）。 */
+const fillCanonicalFromLegacy = (
+  params: Record<string, any>,
+  legacyKey: string,
+  canonicalKey: string
+) => {
+  const legacyValue = params[legacyKey];
+  if (legacyValue === undefined || legacyValue === null || legacyValue === '') return;
+  if (
+    params[canonicalKey] === undefined ||
+    params[canonicalKey] === null ||
+    params[canonicalKey] === ''
+  ) {
+    params[canonicalKey] = legacyValue;
+  }
+};
 
 /**
  * 解析单个工作流节点运行参数。
@@ -103,6 +124,21 @@ export const getWorkflowNodeRunParams = ({
     }
     params[input.key] = valueTypeFormat(value, input.valueType);
   });
+
+  // ⚠️ 热升级兼容：参数双字段输出（§6.4 item 2）。节点业务代码继续读 canonical
+  // 字段（getter 兼容 name/id）；legacy 字段保留供模型名展示路径读取。
+  // 双 key 并存时以有效 canonical 为准（迁移窗口写冻结，不会发生新旧实例漂移）。
+  for (const [legacyKey, canonicalKey] of Object.entries(LEGACY_MODEL_INPUT_KEY_MAP)) {
+    fillCanonicalFromLegacy(params, legacyKey, canonicalKey);
+  }
+
+  // datasetParams 内嵌模型字段双 key（§6.4 item 6）
+  const datasetParams = params[NodeInputKeyEnum.datasetParams];
+  if (datasetParams && typeof datasetParams === 'object' && !Array.isArray(datasetParams)) {
+    for (const [legacyKey, canonicalKey] of Object.entries(LEGACY_DATASET_PARAMS_MODEL_KEY_MAP)) {
+      fillCanonicalFromLegacy(datasetParams, legacyKey, canonicalKey);
+    }
+  }
 
   return params;
 };
