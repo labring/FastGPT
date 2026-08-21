@@ -7,14 +7,13 @@ import {
   StreamResumeUnavailableReasonEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
-  ChatSourceTypeEnum,
   STREAM_RESUME_REQUEST_HEADER,
   STREAM_RESUME_REQUEST_HEADER_ENABLED
 } from '@fastgpt/global/core/chat/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
-import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
+import { toChatAuthQueryTarget, type ChatAuthTargetInput } from '@/web/core/chat/utils';
 import {
   EventStreamContentType,
   fetchEventSource,
@@ -33,6 +32,7 @@ type StreamFetchProps = {
   data: Record<string, any>;
   onMessage: StartChatFnProps['generatingMessage'];
   abortCtrl: AbortController;
+  requestMode?: 'chat' | 'raw';
 };
 export type StreamResponseType = {
   responseText: string;
@@ -58,6 +58,7 @@ const shouldSendStreamResumeHeader = (url: string) =>
     '/api/proApi/core/chat/chatHome',
     '/api/core/chat/chatTest',
     '/api/proApi/core/chat/chatAgentHelper/completions',
+    '/api/proApi/core/workflow/builder/chat',
     '/api/core/ai/skill/debugChat',
     '/api/proApi/core/ai/skill/debugChat'
   ]).has(url);
@@ -122,6 +123,16 @@ export function handleEventSourceData(params: HandleEventSourceDataParams) {
       case SseResponseEventEnum.planStatus:
       case SseResponseEventEnum.skillCall: {
         onmessage({ responseValueId, event, ...obj });
+        break;
+      }
+
+      case SseResponseEventEnum.workflowBuilderApplied: {
+        onmessage({ responseValueId, event, workflowBuilderApplied: obj });
+        break;
+      }
+
+      case SseResponseEventEnum.workflowBuilderVersion: {
+        onmessage({ responseValueId, event, workflowBuilderVersion: obj.version });
         break;
       }
 
@@ -583,12 +594,15 @@ function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: Resum
   });
 }
 
-export const streamFetch = ({
-  url = '/api/v2/chat/completions',
+/**
+ * 构造 SSE 请求体。普通聊天保留运行参数注入；独立辅助模块使用 raw 模式原样发送契约数据。
+ */
+export const buildStreamFetchBody = ({
   data,
-  onMessage,
-  abortCtrl
-}: StreamFetchProps) => {
+  requestMode = 'chat'
+}: Pick<StreamFetchProps, 'data' | 'requestMode'>) => {
+  if (requestMode === 'raw') return data;
+
   const rawVars = data?.variables;
   const variables = {
     ...(rawVars && typeof rawVars === 'object' && !Array.isArray(rawVars)
@@ -596,6 +610,23 @@ export const streamFetch = ({
       : {}),
     cTime: formatTime2YMDHMW(new Date())
   };
+
+  return {
+    ...data,
+    variables,
+    detail: true,
+    stream: true,
+    retainDatasetCite: data.retainDatasetCite ?? true
+  };
+};
+
+export const streamFetch = ({
+  url = '/api/v2/chat/completions',
+  data,
+  onMessage,
+  abortCtrl,
+  requestMode = 'chat'
+}: StreamFetchProps) => {
   const shouldEnableStreamResume = shouldSendStreamResumeHeader(url);
 
   return $ssefetch({
@@ -609,18 +640,16 @@ export const streamFetch = ({
           [STREAM_RESUME_REQUEST_HEADER]: STREAM_RESUME_REQUEST_HEADER_ENABLED
         })
       },
-      body: JSON.stringify({
-        ...data,
-        variables,
-        detail: true,
-        stream: true,
-        retainDatasetCite: data.retainDatasetCite ?? true
-      })
+      body: JSON.stringify(buildStreamFetchBody({ data, requestMode }))
     },
     onmessage: onMessage,
     abortController: abortCtrl
   });
 };
+
+/** 使用共享 SSE 生命周期，但不注入普通聊天的 Workflow 运行参数。 */
+export const streamRawFetch = (props: Omit<StreamFetchProps, 'requestMode'>) =>
+  streamFetch({ ...props, requestMode: 'raw' });
 
 type StreamResumeFetchParams = ChatAuthTargetInput & {
   chatId: string;
@@ -631,21 +660,30 @@ type StreamResumeFetchParams = ChatAuthTargetInput & {
 
 let activeResumeController: AbortController | undefined;
 
-export async function streamResumeFetch(params: StreamResumeFetchParams) {
-  const { chatId, outLinkAuthData, onmessage, onResumeUnavailable, controller } = params;
+/**
+ * 构造聊天续流地址。
+ *
+ * App、Skill、分享链接和显式 sourceType 必须复用统一的 chat target 转换规则，
+ * 避免 Workflow Builder 等独立会话资源被错误地按普通 App 会话恢复。
+ */
+export const buildStreamResumeUrl = ({
+  chatId,
+  chatTarget
+}: {
+  chatId: string;
+  chatTarget: ChatAuthTargetInput;
+}) => {
   const query = new URLSearchParams({ chatId });
-  if (outLinkAuthData?.shareId && outLinkAuthData?.outLinkUid) {
-    query.set('outLinkAuthData', JSON.stringify(outLinkAuthData));
-  } else if ('skillId' in params && params.skillId) {
-    query.set('skillId', params.skillId);
-  } else {
-    query.set('appId', params.appId!);
-    if (params.sourceType === ChatSourceTypeEnum.chatAgentHelper) {
-      query.set('sourceType', ChatSourceTypeEnum.chatAgentHelper);
-    }
-  }
+  Object.entries(toChatAuthQueryTarget(chatTarget)).forEach(([key, value]) => {
+    if (value) query.set(key, value);
+  });
 
-  const url = `/api/core/chat/resume?${query}`;
+  return `/api/core/chat/resume?${query}`;
+};
+
+export async function streamResumeFetch(params: StreamResumeFetchParams) {
+  const { chatId, onmessage, onResumeUnavailable, controller } = params;
+  const url = buildStreamResumeUrl({ chatId, chatTarget: params });
 
   if (activeResumeController && activeResumeController !== controller) {
     activeResumeController.abort('replace');

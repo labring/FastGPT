@@ -1,0 +1,43 @@
+%% Workflow Builder 主链路
+flowchart TD
+    U["用户发送消息"] --> UI["Workflow Builder UI"]
+    UI --> R["runWorkflowBuilder"]
+    R --> PREP["准备历史、Provider State、共享 Sandbox、Skill 和事务区"]
+    PREP --> LOOP["AgentLoop Core<br/>统一模型循环与工具调用"]
+
+    LOOP --> ACTION{"主 Agent 本轮动作"}
+    ACTION -->|"业务需求未闭合"| ASK["ask_agent"]
+    ACTION -->|"展示完整方案"| PREVIEW["workflow_builder_present_preview"]
+    ACTION -->|"读取工作流事实"| QUERY["workflow_cli_query"]
+    ACTION -->|"编辑私有草稿"| STAGE["workflow_cli_stage"]
+    ACTION -->|"应用已校验草稿"| COMMIT["workflow_cli_commit"]
+    ACTION -->|"普通对话文本"| TEXT["自然语言回答"]
+
+    ASK --> PAUSE["保存 Provider State 并暂停"]
+    PREVIEW --> PAUSE
+    PAUSE --> UI
+    QUERY --> LOOP
+    STAGE --> DRAFT["Chunk Session / Draft"]
+    DRAFT --> LOOP
+    COMMIT --> CORE["Workflow Core 校验 revision 与 checksum"]
+    CORE -->|"失败"| LOOP
+    CORE -->|"成功"| CANVAS["原子应用到当前画布"]
+
+    TEXT --> POLICY["CompletionPolicy"]
+    POLICY -->|"任务还未完成"| LOOP
+    POLICY -->|"允许结束"| OUTCOME["Runner 归一化 outcome"]
+    CANVAS --> OUTCOME
+    OUTCOME -->|"普通对话"| UI
+    OUTCOME -->|"applied / cancelled / failed"| FINAL["独立无工具收尾 Agent"]
+    FINAL --> UI
+
+    classDef user fill:#eef4ff,stroke:#5b8def,color:#172b4d;
+    classDef agent fill:#f5f0ff,stroke:#8465d6,color:#2f1b54;
+    classDef gateway fill:#edf9f1,stroke:#46a36b,color:#173d25;
+    classDef core fill:#ecfbfa,stroke:#28a5a0,color:#123d3a;
+    classDef terminal fill:#fff4e8,stroke:#d78a1d,color:#4d2f08;
+    class U,UI user;
+    class R,PREP,LOOP,ACTION,ASK,PREVIEW,TEXT,POLICY,FINAL agent;
+    class QUERY,STAGE,COMMIT,DRAFT gateway;
+    class CORE,CANVAS core;
+    class PAUSE,OUTCOME terminal;

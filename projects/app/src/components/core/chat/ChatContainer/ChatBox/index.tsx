@@ -9,7 +9,6 @@ import React, {
 } from 'react';
 import Script from 'next/script';
 import { Box, type BoxProps } from '@chakra-ui/react';
-import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { useTranslation } from 'next-i18next';
 import type { MarkChatReadBodyType } from '@fastgpt/global/openapi/core/chat/history/api';
 import { postStopV2Chat } from '@/web/core/chat/api';
@@ -23,7 +22,11 @@ import {
   ChatRoleEnum,
   ChatStatusEnum
 } from '@fastgpt/global/core/chat/constants';
-import { getInteractiveByHistories, isPendingAgentAsk } from './utils/interactive';
+import {
+  getInteractiveByHistories,
+  isPendingAgentAsk,
+  isPendingWorkflowBuilderPreview
+} from './utils/interactive';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   ChatInputWrapperStyle,
@@ -55,6 +58,7 @@ import { useChatGenerate } from './hooks/useChatGenerate';
 import { useChatRecordActions } from './hooks/useChatRecordActions';
 import { useChatFeedbackActions } from './hooks/useChatFeedbackActions';
 import ChatBoxModals from './components/ChatBoxModals';
+import { WorkflowBuilderPreviewComposer } from '../../components/AIResponseBox/RenderWorkflowBuilderPreviewInteractive';
 import type { ChatRecordsListProps } from './components/ChatRecordsList';
 import AppChatMain from './components/AppChatMain';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -66,6 +70,12 @@ import {
 } from '../context/quickReplyContext';
 import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
+import { ChatInstanceActionsContext } from '../context/chatInstanceActionsContext';
+import {
+  registerChatInstanceActions,
+  retainExternalChatPromptListener,
+  type ChatInstanceActions
+} from '../context/chatInstanceRegistry';
 
 const ChatHomeVariablesForm = dynamic(() => import('./components/home/ChatHomeVariablesForm'));
 const DesktopHomeLayout = dynamic(() => import('./components/home/DesktopHomeLayout'));
@@ -85,6 +95,8 @@ type Props = OutLinkChatAuthProps &
         isNewChat?: boolean;
       }
     >;
+    /** 监听普通生成和恢复生成的原始 SSE 消息，不介入 ChatBox 内部渲染。 */
+    onStreamMessage?: (message: Parameters<StartChatFnProps['generatingMessage']>[0]) => void;
     onTriggerRefresh?: () => void;
     /** 已读标记由外部页面注入，ChatBox 不直接耦合普通 App history 接口。 */
     onMarkChatRead?: (data: MarkChatReadBodyType) => Promise<unknown>;
@@ -112,6 +124,12 @@ export type ChatBoxFeatures = {
   quickReplies?: boolean;
   disableFooterHoverTranslate?: boolean;
   footerRunDetailPosition?: 'default' | 'afterCopy';
+  /** 工作流 AI 面板使用 Figma 的 132px 渐变描边输入框。 */
+  workflowBuilderInput?: boolean;
+  /** 仅 Workflow Builder 将多轮 Agent 响应收进最外层处理过程。 */
+  workflowBuilderResponseCollapse?: boolean;
+  /** 隐藏 Agent Ask 选项标题后的协议值，仅展示选项摘要。 */
+  hideAgentAskOptionDescription?: boolean;
 };
 
 const resolveChatBoxFeatures = (
@@ -130,7 +148,10 @@ const resolveChatBoxFeatures = (
   markRead: features?.markRead ?? true,
   quickReplies: features?.quickReplies ?? false,
   disableFooterHoverTranslate: features?.disableFooterHoverTranslate ?? false,
-  footerRunDetailPosition: features?.footerRunDetailPosition ?? 'default'
+  footerRunDetailPosition: features?.footerRunDetailPosition ?? 'default',
+  workflowBuilderInput: features?.workflowBuilderInput ?? false,
+  workflowBuilderResponseCollapse: features?.workflowBuilderResponseCollapse ?? false,
+  hideAgentAskOptionDescription: features?.hideAgentAskOptionDescription ?? false
 });
 
 const ChatBox = ({
@@ -139,6 +160,7 @@ const ChatBox = ({
   active = true,
   disabledSendTip,
   onStartChat,
+  onStreamMessage,
   chatType,
   onTriggerRefresh,
   onMarkChatRead,
@@ -349,6 +371,7 @@ const ChatBox = ({
 
   const { abortRequest, flushGeneratingMessages, generatingMessage, sendPrompt } = useChatGenerate({
     onStartChat,
+    onStreamMessage,
     isRoundPending,
     chatControllerRef: chatController,
     questionGuideControllerRef: questionGuideController,
@@ -472,8 +495,10 @@ const ChatBox = ({
     ? extractDeepestInteractive(lastInteractive)
     : undefined;
   const isAgentAskPending = isPendingAgentAsk(lastInteractive);
+  const isWorkflowBuilderPreviewPending = isPendingWorkflowBuilderPreview(lastInteractive);
+  const isBlockingInteractivePending = isAgentAskPending || isWorkflowBuilderPreviewPending;
   const canRenderChatInput =
-    onStartChat && chatStarted && active && (canSendQuery || isAgentAskPending);
+    onStartChat && chatStarted && active && (canSendQuery || isBlockingInteractivePending);
   const canSendPrompt = canRenderChatInput && !isRoundPending;
   const canRenderScrollToBottomButton =
     (chatType === ChatTypeEnum.chat ||
@@ -482,38 +507,50 @@ const ChatBox = ({
       chatType === ChatTypeEnum.share) &&
     isScrollToBottomButtonVisible;
 
-  // Add listener
-  useEffect(() => {
-    const windowMessage = ({ data }: MessageEvent<{ type: 'sendPrompt'; text: string }>) => {
-      if (data?.type === 'sendPrompt' && data?.text) {
-        sendPrompt({
-          text: data.text,
-          interactive: lastInteractive
-        });
-      }
-    };
-    window.addEventListener('message', windowMessage);
-
-    const fn = ({ focus = false, ...e }: ChatBoxInputType & { focus?: boolean }) => {
-      if (canSendPrompt || focus) {
-        sendPrompt({
-          ...e,
-          interactive: lastInteractive
-        });
-      }
-    };
-    eventBus.on(EventNameEnum.sendQuestion, fn);
-    eventBus.on(EventNameEnum.editQuestion, ({ text }: { text: string }) => {
-      if (!text) return;
-      resetInputVal({ text });
+  const sendInstanceMessage = useMemoizedFn((input: ChatBoxInputType) => {
+    if (!canSendPrompt) return;
+    sendPrompt({
+      ...input,
+      interactive: input.interactive ?? lastInteractive
     });
+  });
+  const continueInstanceInteractive = useMemoizedFn((input: ChatBoxInputType) => {
+    // 交互卡出现时普通输入可能被锁定，因此不能复用 canSendPrompt；但必须绑定当前实例的
+    // lastInteractive，避免回答被错误 ChatBox 的运行时上下文消费。
+    sendPrompt({
+      ...input,
+      interactive: input.interactive ?? lastInteractive
+    });
+  });
+  const fillInstanceInput = useMemoizedFn((input: ChatBoxInputType) => {
+    if (!input.text) return;
+    resetInputVal(input);
+  });
+  const instanceActions = useMemo<ChatInstanceActions>(
+    () => ({
+      sendMessage: sendInstanceMessage,
+      continueInteractive: continueInstanceInteractive,
+      fillInput: fillInstanceInput
+    }),
+    [continueInstanceInteractive, fillInstanceInput, sendInstanceMessage]
+  );
+
+  useEffect(() => {
+    /*
+     * 注册表只服务 ChatBox 子树之外的兼容入口和 postMessage。内部组件通过下方 Context
+     * 直接调用 instanceActions，不参与全局监听竞争；cleanup 也只注销当前实例。
+     */
+    const unregisterActions = registerChatInstanceActions({
+      identity: { sourceKey, chatId },
+      actions: instanceActions
+    });
+    const releaseExternalPromptListener = retainExternalChatPromptListener();
 
     return () => {
-      window.removeEventListener('message', windowMessage);
-      eventBus.off(EventNameEnum.sendQuestion);
-      eventBus.off(EventNameEnum.editQuestion);
+      unregisterActions();
+      releaseExternalPromptListener();
     };
-  }, [isReady, resetInputVal, sendPrompt, canSendPrompt, lastInteractive]);
+  }, [chatId, instanceActions, sourceKey]);
 
   /** 快捷回复点击：直接发送选项文本，并保留输入框原有内容。 */
   const handleQuickReplyClick = useMemoizedFn((text: string) => {
@@ -570,6 +607,9 @@ const ChatBox = ({
     },
     scrollToBottom(behavior = 'auto') {
       scrollToBottom(behavior, 500);
+    },
+    focusInput() {
+      TextareaDom.current?.focus();
     }
   }));
 
@@ -622,6 +662,7 @@ const ChatBox = ({
       likeFeedbackEffect,
       disableFooterHoverTranslate: resolvedFeatures.disableFooterHoverTranslate,
       footerRunDetailPosition: resolvedFeatures.footerRunDetailPosition,
+      workflowBuilderStyle: resolvedFeatures.workflowBuilderInput,
       feedbackUserName,
       onCloseCustomFeedback,
       onToggleFeedbackReadStatus
@@ -630,7 +671,6 @@ const ChatBox = ({
       processedRecords,
       expandedDeletedGroups,
       itemRefs,
-      resolvedFeatures.voice,
       resolvedFeatures.tts,
       resolvedFeatures.mark,
       resolvedFeatures.sandbox,
@@ -645,6 +685,7 @@ const ChatBox = ({
       likeFeedbackEffect,
       resolvedFeatures.disableFooterHoverTranslate,
       resolvedFeatures.footerRunDetailPosition,
+      resolvedFeatures.workflowBuilderInput,
       feedbackUserName,
       onCloseCustomFeedback,
       onToggleFeedbackReadStatus
@@ -673,116 +714,136 @@ const ChatBox = ({
   );
 
   return (
-    <MyBox
-      isLoading={isRecordActionLoading}
-      display={'flex'}
-      flexDirection={'column'}
-      h={'100%'}
-      position={'relative'}
-      {...props}
-    >
-      <Script src={getWebReqUrl('/js/html2pdf.bundle.min.js')} strategy="lazyOnload"></Script>
-      {/* chat box container */}
-      {isHomeRender ? (
-        <MyBox
-          isLoading={isLoadingRecords}
-          display="flex"
-          flexDirection="column"
-          flex={'1 0 0'}
-          h={0}
-          {...HomeChatContentWrapperStyle}
-        >
-          {isPc ? (
-            <DesktopHomeLayout inputSlot={HomeChatInput} />
-          ) : (
-            <MobileHomeLayout inputSlot={HomeChatInput} />
-          )}
-        </MyBox>
-      ) : (
-        <>
-          <AppChatMain
-            ScrollData={ScrollData}
-            ScrollContainerRef={ScrollContainerRef}
-            welcomeText={welcomeText}
-            welcomeQuestions={resolvedFeatures.quickReplies ? welcomeQuestions : []}
-            chatStarted={chatStarted}
-            chatForm={chatForm}
-            chatType={chatType}
-            recordsListProps={recordsListProps}
-            maxW={props.maxW}
-            boxBodyProps={boxBodyProps}
-            EmptyState={
-              chatRecords.length === 0 && isChatRecordsLoaded && !isLoadingRecords
-                ? EmptyState
-                : undefined
-            }
-          />
-          {canRenderChatInput && (
-            <Box {...ChatInputWrapperStyle} {...inputBodyProps}>
-              {resolvedFeatures.workorder && <WorkorderEntrance />}
-              <Box position="relative">
-                <ScrollToBottomButton
-                  isVisible={canRenderScrollToBottomButton}
-                  onClick={() => scrollToBottom('smooth')}
-                />
-
-                <Box display={isAgentAskPending ? 'none' : undefined}>
-                  <ChatInput
-                    onSendMessage={sendPromptWithDisabledGuard}
-                    lastInteractive={lastInteractive}
-                    onStopChat={requestStopChat}
-                    onStopSettled={handleStopSettled}
-                    enableInputGuide={resolvedFeatures.inputGuide}
-                    enableVoiceInput={resolvedFeatures.voice}
-                    disableSend={isRoundPending}
-                    TextareaDom={TextareaDom}
-                    resetInputVal={resetInputVal}
-                    chatForm={chatForm}
+    <ChatInstanceActionsContext.Provider value={instanceActions}>
+      <MyBox
+        isLoading={isRecordActionLoading}
+        display={'flex'}
+        flexDirection={'column'}
+        h={'100%'}
+        position={'relative'}
+        {...props}
+      >
+        <Script src={getWebReqUrl('/js/html2pdf.bundle.min.js')} strategy="lazyOnload"></Script>
+        {/* chat box container */}
+        {isHomeRender ? (
+          <MyBox
+            isLoading={isLoadingRecords}
+            display="flex"
+            flexDirection="column"
+            flex={'1 0 0'}
+            h={0}
+            {...HomeChatContentWrapperStyle}
+          >
+            {isPc ? (
+              <DesktopHomeLayout inputSlot={HomeChatInput} />
+            ) : (
+              <MobileHomeLayout inputSlot={HomeChatInput} />
+            )}
+          </MyBox>
+        ) : (
+          <>
+            <AppChatMain
+              ScrollData={ScrollData}
+              ScrollContainerRef={ScrollContainerRef}
+              welcomeText={welcomeText}
+              welcomeQuestions={resolvedFeatures.quickReplies ? welcomeQuestions : []}
+              chatStarted={chatStarted}
+              chatForm={chatForm}
+              chatType={chatType}
+              recordsListProps={recordsListProps}
+              maxW={props.maxW}
+              boxBodyProps={boxBodyProps}
+              workflowBuilderStyle={resolvedFeatures.workflowBuilderInput}
+              EmptyState={
+                chatRecords.length === 0 && isChatRecordsLoaded && !isLoadingRecords
+                  ? EmptyState
+                  : undefined
+              }
+            />
+            {canRenderChatInput && (
+              <Box {...ChatInputWrapperStyle} {...inputBodyProps}>
+                {resolvedFeatures.workorder && <WorkorderEntrance />}
+                <Box position="relative">
+                  <ScrollToBottomButton
+                    isVisible={canRenderScrollToBottomButton}
+                    onClick={() => scrollToBottom('smooth')}
                   />
-                </Box>
-                {isAgentAskPending && activeInteractive?.type === 'agentAsk' && (
-                  <Box
-                    w={'100%'}
-                    maxW={inputBodyProps?.maxW ?? ['100%', '780px']}
-                    mx={inputBodyProps?.mx ?? inputBodyProps?.margin ?? 'auto'}
-                    pb={inputBodyProps?.pb ?? ['calc(16px + env(safe-area-inset-bottom))', 4]}
-                  >
-                    <AgentAskComposer
-                      questions={activeInteractive.params.questions}
-                      onSubmit={(answers) =>
-                        sendPromptWithDisabledGuard({
-                          text: JSON.stringify({ answers }),
-                          interactive: lastInteractive,
-                          hideInUI: true
-                        })
-                      }
+
+                  <Box display={isBlockingInteractivePending ? 'none' : undefined}>
+                    <ChatInput
+                      onSendMessage={sendPromptWithDisabledGuard}
+                      lastInteractive={lastInteractive}
+                      onStopChat={requestStopChat}
+                      onStopSettled={handleStopSettled}
+                      enableInputGuide={resolvedFeatures.inputGuide}
+                      enableVoiceInput={resolvedFeatures.voice}
+                      disableSend={isRoundPending}
+                      TextareaDom={TextareaDom}
+                      resetInputVal={resetInputVal}
+                      chatForm={chatForm}
+                      workflowBuilderStyle={resolvedFeatures.workflowBuilderInput}
                     />
                   </Box>
-                )}
+                  {isAgentAskPending && activeInteractive?.type === 'agentAsk' && (
+                    <Box
+                      w={'100%'}
+                      maxW={inputBodyProps?.maxW ?? ['100%', '780px']}
+                      mx={inputBodyProps?.mx ?? inputBodyProps?.margin ?? 'auto'}
+                      pb={inputBodyProps?.pb ?? ['calc(16px + env(safe-area-inset-bottom))', 4]}
+                    >
+                      <AgentAskComposer
+                        questions={activeInteractive.params.questions}
+                        showOptionValue={!resolvedFeatures.hideAgentAskOptionDescription}
+                        onSubmit={(answers) =>
+                          sendPromptWithDisabledGuard({
+                            text: JSON.stringify({ answers }),
+                            interactive: lastInteractive,
+                            hideInUI: true
+                          })
+                        }
+                      />
+                    </Box>
+                  )}
+                  {isWorkflowBuilderPreviewPending &&
+                    activeInteractive?.type === 'workflowBuilderPreview' && (
+                      <Box
+                        w={'100%'}
+                        maxW={inputBodyProps?.maxW ?? ['100%', '780px']}
+                        mx={inputBodyProps?.mx ?? inputBodyProps?.margin ?? 'auto'}
+                        pb={inputBodyProps?.pb ?? ['calc(16px + env(safe-area-inset-bottom))', 4]}
+                      >
+                        <WorkflowBuilderPreviewComposer interactive={activeInteractive} />
+                      </Box>
+                    )}
+                </Box>
               </Box>
-            </Box>
-          )}
-        </>
-      )}
+            )}
+          </>
+        )}
 
-      <ChatBoxModals
-        chatId={chatId}
-        feedbackId={feedbackId}
-        adminMarkData={adminMarkData}
-        onCloseFeedback={() => setFeedbackId(undefined)}
-        onFeedbackSuccess={onFeedbackSuccess}
-        onCloseAdminMark={() => setAdminMarkData(undefined)}
-        onAdminMarkChange={setAdminMarkData}
-        onAdminMarkSuccess={onAdminMarkSuccess}
-      />
-    </MyBox>
+        <ChatBoxModals
+          chatId={chatId}
+          feedbackId={feedbackId}
+          adminMarkData={adminMarkData}
+          onCloseFeedback={() => setFeedbackId(undefined)}
+          onFeedbackSuccess={onFeedbackSuccess}
+          onCloseAdminMark={() => setAdminMarkData(undefined)}
+          onAdminMarkChange={setAdminMarkData}
+          onAdminMarkSuccess={onAdminMarkSuccess}
+        />
+      </MyBox>
+    </ChatInstanceActionsContext.Provider>
   );
 };
 const ChatBoxContainer = (props: Props) => {
   const resolvedFeatures = resolveChatBoxFeatures(props.features);
 
   return (
-    <ChatProvider {...props} enableTTS={resolvedFeatures.tts}>
+    <ChatProvider
+      {...props}
+      enableTTS={resolvedFeatures.tts}
+      collapseIntermediateAgentResponses={resolvedFeatures.workflowBuilderResponseCollapse}
+    >
       <QuickReplyContextProvider enableQuickReplies={resolvedFeatures.quickReplies}>
         <ChatBox {...props} />
       </QuickReplyContextProvider>

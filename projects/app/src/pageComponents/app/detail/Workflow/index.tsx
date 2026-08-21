@@ -13,6 +13,10 @@ import { cloneDeep } from 'lodash-es';
 import Flow from '../WorkflowComponents/Flow';
 import { ReactFlowCustomProvider } from '../WorkflowComponents/context/index';
 import { WorkflowUtilsContext } from '../WorkflowComponents/context/workflowUtilsContext';
+import WorkflowBuilder from '../WorkflowComponents/WorkflowBuilder';
+import { WorkflowBuilderUIProvider } from '../WorkflowComponents/WorkflowBuilder/context';
+import { getWorkflowBuilderEntryAccess } from '../WorkflowComponents/WorkflowBuilder/uiState';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const Logs = dynamic(() => import('../Logs/index'));
 const PublishChannel = dynamic(() => import('../Publish'));
@@ -20,8 +24,24 @@ const PublishChannel = dynamic(() => import('../Publish'));
 const WorkflowEdit = () => {
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const currentTab = useContextSelector(AppContext, (v) => v.currentTab);
+  const feConfigs = useSystemStore((state) => state.feConfigs);
+  const systemInitialized = useSystemStore((state) => state.initd);
 
   const initData = useContextSelector(WorkflowUtilsContext, (v) => v.initData);
+  const canEdit = !!appDetail.permission?.hasWritePer;
+  const workflowBuilderEnabled =
+    !!feConfigs?.isPlus &&
+    !!feConfigs.show_agent_sandbox &&
+    feConfigs.show_workflow_builder !== false &&
+    canEdit;
+  const workflowBuilderEntryVisible =
+    getWorkflowBuilderEntryAccess({
+      systemInitialized,
+      isPlus: !!feConfigs?.isPlus,
+      showAgentSandbox: !!feConfigs.show_agent_sandbox,
+      showWorkflowBuilder: feConfigs.show_workflow_builder !== false,
+      canEdit
+    }) !== 'hidden';
 
   useMount(() => {
     initData(
@@ -38,7 +58,18 @@ const WorkflowEdit = () => {
       <Header />
 
       {currentTab === TabEnum.appEdit ? (
-        <Flow />
+        <>
+          <WorkflowBuilderUIProvider
+            appId={appDetail._id}
+            canEdit={canEdit}
+            workflowBuilderEntryVisible={workflowBuilderEntryVisible}
+            workflowBuilderEnabled={workflowBuilderEnabled}
+            systemInitialized={systemInitialized}
+          >
+            <Flow />
+            <WorkflowBuilder workflowBuilderEnabled={workflowBuilderEnabled} />
+          </WorkflowBuilderUIProvider>
+        </>
       ) : (
         <Flex
           flexDirection={'column'}

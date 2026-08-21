@@ -93,8 +93,27 @@ export type LoopRunInteractive = InteractiveNodeType & {
   };
 };
 
-export const AgentPlanAskOptionSchema = z.string().min(1);
+export const AgentPlanAskOptionSchema = z.union([
+  z.string().trim().min(1),
+  z
+    .object({
+      value: z.string().trim().min(1),
+      label: z.string().trim().min(1),
+      inputMode: z.enum(['none', 'text']).optional(),
+      inputPlaceholder: z.string().trim().min(1).optional()
+    })
+    .strict()
+]);
 export type AgentPlanAskOption = z.infer<typeof AgentPlanAskOptionSchema>;
+
+export const AgentPlanAskResponseSchema = z
+  .object({
+    askId: z.string().min(1),
+    optionValue: z.string().min(1),
+    text: z.string().trim().min(1).optional()
+  })
+  .strict();
+export type AgentPlanAskResponse = z.infer<typeof AgentPlanAskResponseSchema>;
 
 /**
  * Legacy `ask_user` schema.
@@ -123,6 +142,40 @@ export const AgentPlanAskQueryInteractiveSchema = z
  * @deprecated Use `AgentAskInteractiveSchema` (multiple questions).
  */
 export type AgentPlanAskQueryInteractive = z.infer<typeof AgentPlanAskQueryInteractiveSchema>;
+
+export const WorkflowBuilderPreviewActionSchema = z.object({
+  value: z.enum(['confirm', 'revise', 'cancel']),
+  label: z.string().trim().min(1),
+  inputMode: z.enum(['none', 'text']),
+  inputPlaceholder: z.string().trim().min(1).optional()
+});
+export type WorkflowBuilderPreviewAction = z.infer<typeof WorkflowBuilderPreviewActionSchema>;
+
+export const WorkflowBuilderPreviewSectionSchema = z.object({
+  title: z.string().trim().min(1),
+  content: z.string()
+});
+export type WorkflowBuilderPreviewSection = z.infer<typeof WorkflowBuilderPreviewSectionSchema>;
+
+/**
+ * Workflow Builder 的唯一预览载荷。
+ * Mermaid、说明和用户动作都挂在同一个交互节点上，避免 assistant 文本与预览字段各自维护一份方案。
+ */
+export const WorkflowBuilderPreviewInteractiveSchema = z.object({
+  type: z.literal('workflowBuilderPreview'),
+  previewId: z.string().min(1),
+  params: z.object({
+    title: z.string().trim().min(1),
+    mermaid: z.string().trim().min(1),
+    sections: z.array(WorkflowBuilderPreviewSectionSchema),
+    actions: z.array(WorkflowBuilderPreviewActionSchema).length(3),
+    answerValue: z.enum(['confirm', 'revise', 'cancel']).optional(),
+    answerText: z.string().optional()
+  })
+});
+export type WorkflowBuilderPreviewInteractive = z.infer<
+  typeof WorkflowBuilderPreviewInteractiveSchema
+>;
 
 // User selector
 export const UserSelectOptionItemSchema = z.object({
@@ -208,7 +261,8 @@ export const InteractiveNodeResponseTypeSchema = z.intersection(
     LoopRunInteractiveSchema,
     PaymentPauseInteractiveSchema,
     AgentPlanAskQueryInteractiveSchema,
-    AgentAskInteractiveSchema
+    AgentAskInteractiveSchema,
+    WorkflowBuilderPreviewInteractiveSchema
   ]),
   z.object({
     askId: z.string().nullish()

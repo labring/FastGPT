@@ -19,6 +19,7 @@ import NodeTemplateListHeader from './components/NodeTemplates/header';
 import NodeTemplateList from './components/NodeTemplates/list';
 import { useNodeTemplates } from './components/NodeTemplates/useNodeTemplates';
 import { popoverHeight, popoverWidth } from './hooks/useWorkflow';
+import { validateConnectionWithCore } from '../adapters/command';
 
 const NodeTemplatesPopover = () => {
   const { handleParams, setHandleParams } = useContextSelector(WorkflowModalContext, (v) => v);
@@ -91,7 +92,22 @@ const NodeTemplatesPopover = () => {
         target: node.id,
         targetHandle: isToolHandle ? 'selectedTools' : `${node.id}-target-left`,
         type: EDGE_TYPE
-      }));
+      }))
+      .filter((edge) => {
+        const result = validateConnectionWithCore({
+          nodes: [...nodes, ...newNodes],
+          edges,
+          connection: edge
+        });
+        if (result.status === 'adapter-error') {
+          console.error(
+            '[Workflow Core Adapter] Failed to validate auto connection, falling back to Web behavior',
+            result.error
+          );
+          return true;
+        }
+        return result.status === 'success';
+      });
 
     setEdges((state) => {
       const newState = state.concat(newEdges);

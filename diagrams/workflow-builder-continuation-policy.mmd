@@ -1,0 +1,38 @@
+%% Mermaid 确认后的连续执行与 CompletionPolicy
+flowchart TD
+    CONFIRM["用户确认 Mermaid"] --> STATE["previewConfirmed = true"]
+    STATE --> LOOP["主 AgentLoop 继续执行"]
+    LOOP --> ASK{"调用 ask_agent?"}
+    ASK -->|"是"| REJECT["AskValidator 拒绝<br/>确认后不得再次提问或暂停"]
+    REJECT --> LOOP
+    ASK -->|"否"| TURN{"本轮是否调用工具?"}
+
+    TURN -->|"是"| TOOL["query / stage / validate / commit"]
+    TOOL --> STOP{"工具返回 stop = true?"}
+    STOP -->|"否"| LOOP
+    STOP -->|"是"| FACT{"已产生哪种终止事实?"}
+    FACT -->|"applied"| FINAL["进入无工具收尾 Agent"]
+    FACT -->|"terminalError"| FINAL
+    FACT -->|"cancelled"| FINAL
+
+    TURN -->|"否，模型自然结束"| POLICY["CompletionPolicy 读取运行时事实"]
+    POLICY --> DONE{"appliedWorkflow、terminalError 或 cancelled 存在?"}
+    DONE -->|"是"| FINAL
+    DONE -->|"否"| CONTINUE["注入 taskComplete=false<br/>要求继续同一任务"]
+    CONTINUE --> LIMIT{"达到 WORKFLOW_MAX_RUN_TIMES?"}
+    LIMIT -->|"否"| LOOP
+    LIMIT -->|"是"| LOOPERROR["AgentLoop error"]
+    LOOPERROR --> FINAL
+
+    FINAL --> RESPONSE["根据结构化事实生成最终答复"]
+
+    NOTE["10 次不是 AgentLoop 总轮数<br/>10 次只用于同一 Stage/Commit 目标的修复预算"] -.-> LIMIT
+
+    classDef agent fill:#f5f0ff,stroke:#8465d6,color:#2f1b54;
+    classDef decision fill:#ffffff,stroke:#7c8798,color:#1f2937;
+    classDef tool fill:#edf9f1,stroke:#46a36b,color:#173d25;
+    classDef terminal fill:#fff4e8,stroke:#d78a1d,color:#4d2f08;
+    class CONFIRM,STATE,LOOP,REJECT,POLICY,CONTINUE,FINAL agent;
+    class ASK,TURN,STOP,FACT,DONE,LIMIT decision;
+    class TOOL tool;
+    class LOOPERROR,RESPONSE,NOTE terminal;

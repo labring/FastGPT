@@ -35,7 +35,8 @@ export function buildChatSourceQuery({ sourceType, sourceId }: ChatSourceParams)
 
   if (
     sourceType === ChatSourceTypeEnum.skillEdit ||
-    sourceType === ChatSourceTypeEnum.chatAgentHelper
+    sourceType === ChatSourceTypeEnum.chatAgentHelper ||
+    sourceType === ChatSourceTypeEnum.workflowBuilder
   ) {
     return {
       appId: sourceId,

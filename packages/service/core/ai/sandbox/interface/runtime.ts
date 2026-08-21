@@ -38,6 +38,7 @@ export {
   preparePackageMirrors,
   prepareSandbox
 } from '../application/runtime/prepare';
+export { getSandboxRuntimeMirrorsConfig } from '../application/runtime/mirrors';
 export type { SandboxPrepareContext, SandboxPrepareStep } from '../application/runtime/prepare';
 export { resolveSandboxHome } from '../application/runtime/home';
 export { getSafeSandboxInputFilename, joinSandboxPath } from '../utils';
@@ -75,7 +76,7 @@ export function buildSandboxClientQueryFromChatSource({
     userId: sandboxUserId
   });
 
-  if (sourceType === ChatSourceTypeEnum.app) {
+  if (sourceType === ChatSourceTypeEnum.app || sourceType === ChatSourceTypeEnum.workflowBuilder) {
     return {
       sandboxId,
       sourceType,

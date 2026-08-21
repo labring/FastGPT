@@ -3,7 +3,11 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { type AuthModeType } from '@fastgpt/service/support/permission/type';
 import { authOutLink } from './outLink';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import {
+  AuthUserTypeEnum,
+  ReadPermissionVal,
+  WritePermissionVal
+} from '@fastgpt/global/support/permission/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
@@ -216,7 +220,7 @@ type AuthChatTargetCrudResult = {
  * 标准 chat target 鉴权入口。
  *
  * API 边界已经把 `appId/skillId` 转换为 `sourceType/sourceId`；这里按 source 类型分发
- * 到现有 App Chat 或 Skill Edit 权限体系，并返回后续 chat 查询需要的 uid/team 信息。
+ * 到对应资源权限体系，并返回后续 chat 查询需要的 uid/team 信息。
  */
 export async function authChatTargetCrud({
   sourceType,
@@ -317,6 +321,50 @@ export async function authChatTargetCrud({
       showCite: false,
       showRunningStatus: false,
       showSkillReferences: false,
+      showFullText: false,
+      canDownloadSource: false,
+      sourceType,
+      sourceId,
+      authType: authRes.authType
+    };
+  }
+
+  if (sourceType === ChatSourceTypeEnum.workflowBuilder) {
+    if (!sourceId) return Promise.reject(ChatErrEnum.unAuthChat);
+
+    // Builder 能修改应用草稿并访问成员级 Sandbox，因此无论调用方请求何种操作，
+    // 都必须至少拥有应用写权限；Sandbox 身份只使用服务端解析出的 tmbId。
+    const authRes = await authApp({
+      ...props,
+      appId: sourceId,
+      per: WritePermissionVal
+    });
+    const chat =
+      (chatId
+        ? await MongoChat.findOne({
+            ...buildChatSourceQuery({ sourceType, sourceId }),
+            chatId
+          }).lean()
+        : undefined) ?? undefined;
+
+    if (chat) {
+      if (String(chat.teamId) !== String(authRes.teamId)) {
+        return Promise.reject(ChatErrEnum.unAuthChat);
+      }
+      if (String(chat.tmbId) !== String(authRes.tmbId)) {
+        return Promise.reject(ChatErrEnum.unAuthChat);
+      }
+    }
+
+    return {
+      userId: authRes.userId,
+      teamId: authRes.teamId,
+      tmbId: authRes.tmbId,
+      uid: authRes.tmbId,
+      chat,
+      showCite: false,
+      showRunningStatus: true,
+      showSkillReferences: true,
       showFullText: false,
       canDownloadSource: false,
       sourceType,

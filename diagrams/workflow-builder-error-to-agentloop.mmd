@@ -1,0 +1,47 @@
+flowchart TD
+  A["Agent 调用 workflow_cli_query / stage / commit"] --> B{"CLI 阶段"}
+
+  B -->|query| Q{"只读查询是否成功"}
+  Q -->|成功| Q1["ok: true<br/>changed: false<br/>stop: false"]
+  Q -->|失败| Q2["serializeGatewayError<br/>无 decision、无修复计数<br/>stop: false"]
+
+  B -->|stage / commit| C{"执行是否成功"}
+  C -->|stage 成功| S1["state: staged / removed / reset<br/>清除该目标计数<br/>taskComplete: false<br/>stop: false"]
+  C -->|commit 成功| S2["decision.category: applied<br/>写入 appliedWorkflow<br/>taskComplete: true<br/>stop: true"]
+  C -->|失败| D["按 phase + repairTarget 计数<br/>attempt = previous + 1"]
+  D --> E{"attempt >= 10"}
+  E -->|否| R1["decision.category: auto_repairable<br/>terminalError 不写入<br/>stop: false"]
+  E -->|是| R2["decision.category: terminal_internal<br/>写入 terminalError<br/>stop: true"]
+
+  Q1 --> M["模型收到 Tool response"]
+  Q2 --> M
+  S1 --> M
+  R1 --> M
+  M --> N{"模型是否继续调用工具"}
+  N -->|是| A
+  N -->|否| P["Workflow Builder completionPolicy"]
+  P --> F{"结构化终止事实"}
+  F -->|cancelled / appliedWorkflow / terminalError| DONE["action: complete"]
+  F -->|无终止事实，且处于预览或搭建任务| CONT["action: continue<br/>注入继续消息<br/>同一个 AgentLoop 再运行"]
+  F -->|普通对话且无需预览| DONE
+  CONT --> A
+
+  S2 --> STOP["Provider 收到 tool stop: true<br/>立即结束主 AgentLoop"]
+  R2 --> STOP
+  STOP --> FINAL["Runner 收尾 Agent<br/>依据 applied / failed 事实生成最终答复"]
+
+  RESERVED["needs_user_input<br/>仅在类型中预留<br/>当前无产生分支，也未接入 completionPolicy"]
+
+  classDef cli fill:#E8F1FF,stroke:#3978D4,color:#102A43;
+  classDef decision fill:#FFF4D6,stroke:#C88700,color:#4A3100;
+  classDef success fill:#E6F7EE,stroke:#2F855A,color:#173D2A;
+  classDef terminal fill:#FDECEC,stroke:#C53030,color:#5B1717;
+  classDef policy fill:#F1EAFE,stroke:#805AD5,color:#32205F;
+  classDef reserved fill:#F4F4F5,stroke:#8A8A8A,color:#555,stroke-dasharray: 5 5;
+
+  class A,B,Q,Q1,Q2,C,S1,D,M,N cli;
+  class E,R1 decision;
+  class S2,DONE,FINAL success;
+  class R2,STOP terminal;
+  class P,F,CONT policy;
+  class RESERVED reserved;

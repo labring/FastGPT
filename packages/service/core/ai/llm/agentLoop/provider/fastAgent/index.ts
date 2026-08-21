@@ -1,10 +1,11 @@
 import { runFastAgentMainLoop } from './loop';
-import type {
-  AgentLoopInput,
-  AgentLoopProvider,
-  AgentLoopResult,
-  AgentLoopRuntime,
-  AgentLoopUsage
+import {
+  hasAgentLoopExecutableTools,
+  type AgentLoopInput,
+  type AgentLoopProvider,
+  type AgentLoopResult,
+  type AgentLoopRuntime,
+  type AgentLoopUsage
 } from '../../domain';
 import type { AgentLoopRuntime as FastAgentInternalRuntime } from './loop/type';
 import { createAskUserAgentTool } from '../../domain/systemTool/ask';
@@ -66,6 +67,7 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
   const fastAgentRuntime: FastAgentInternalRuntime<TChildrenResponse> = {
     teamId: runtime.teamId,
     model: runtime.llmParams.model,
+    systemPromptBuilder: runtime.systemPromptBuilder,
     reasoningEffort: runtime.llmParams.reasoningEffort,
     userKey: runtime.llmParams.userKey,
     stream: runtime.llmParams.stream,
@@ -80,9 +82,12 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
     useVideo: runtime.llmParams.useVideo,
     extractFiles: runtime.llmParams.extractFiles,
     lang: runtime.lang,
+    hasExecutableTools: hasAgentLoopExecutableTools(runtime),
     maxRunAgentTimes: runtime.maxRunAgentTimes,
+    completionPolicy: runtime.completionPolicy,
     batchToolSize: runtime.toolCatalog.batchToolSize,
     checkIsStopping: runtime.checkIsStopping,
+    validateAsk: runtime.systemTools?.ask?.validate,
     toolCatalog: {
       runtimeTools: runtime.toolCatalog.runtimeTools,
       ...(runtime.systemTools?.ask?.enabled ? { askTool: createAskUserAgentTool() } : {}),
@@ -92,7 +97,8 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
             updatePlanTool: createUpdatePlanAgentTool()
           }
         : {}),
-      ...(runtime.systemTools?.sandbox?.enabled && runtime.systemTools.sandbox.client
+      ...(runtime.systemTools?.sandbox?.enabled &&
+      (runtime.systemTools.sandbox.client || runtime.systemTools.sandbox.executor)
         ? { sandboxTools: createAgentLoopSandboxTools() }
         : {}),
       ...(runtime.systemTools?.readFile?.enabled
@@ -109,9 +115,11 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
     executeTool: runtime.executeTool,
     executeInteractiveTool: runtime.executeInteractiveTool,
     sandboxToolContext:
-      runtime.systemTools?.sandbox?.enabled && runtime.systemTools.sandbox.client
+      runtime.systemTools?.sandbox?.enabled &&
+      (runtime.systemTools.sandbox.client || runtime.systemTools.sandbox.executor)
         ? {
-            client: runtime.systemTools.sandbox.client
+            client: runtime.systemTools.sandbox.client,
+            executor: runtime.systemTools.sandbox.executor
           }
         : undefined,
     executeReadFileTool: runtime.systemTools?.readFile?.execute,

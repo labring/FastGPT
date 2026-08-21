@@ -9,6 +9,33 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { addStatisticalDataToHistoryItem, getChatItemErrorText } from '@/global/core/chat/utils';
 
 describe('addStatisticalDataToHistoryItem', () => {
+  it.each([
+    ['workflow_cli_query', true],
+    ['workflow_cli_stage', true],
+    ['workflow_cli_commit', true],
+    ['workflow_builder_present_preview', false],
+    ['workflow_builder_cancel', false]
+  ])('marks Workflow Builder tool %s sandbox usage as %s', (functionName, expected) => {
+    const historyItem: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          tools: [
+            {
+              id: `call-${functionName}`,
+              toolName: functionName,
+              toolAvatar: '',
+              functionName,
+              params: '{}'
+            }
+          ]
+        }
+      ]
+    };
+
+    expect(addStatisticalDataToHistoryItem(historyItem).useAgentSandbox === true).toBe(expected);
+  });
+
   it('marks sandbox usage from streaming tool call cards before responseData is loaded', () => {
     const historyItem: ChatItemMiniType = {
       obj: ChatRoleEnum.AI,

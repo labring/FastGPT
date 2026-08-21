@@ -1,0 +1,111 @@
+{
+  "schemaVersion": "fastgpt-workflow/v1",
+  "app": {},
+  "nodes": [
+    {
+      "avatar": "core/workflow/template/reply",
+      "avatarLinear": "core/workflow/template/replyLinear",
+      "colorSchema": "blue",
+      "flowNodeType": "answerNode",
+      "inputs": [
+        {
+          "description": "You can use \\n to achieve continuous line breaks.\nYou can achieve replies through external module input, and the content filled in here will be overwritten by external module input.\nIf non-string type data is passed in, it will be automatically converted to a string",
+          "isRichText": false,
+          "key": "text",
+          "label": "Response Content",
+          "maxLength": 100000,
+          "placeholder": "You can use \\n to achieve continuous line breaks.\nYou can achieve replies through external module input, and the content filled in here will be overwritten by external module input.\nIf non-string type data is passed in, it will be automatically converted to a string",
+          "renderTypeList": ["textarea", "reference"],
+          "required": true,
+          "selectedTypeIndex": 1,
+          "value": ["text", "system_text"],
+          "valueType": "any"
+        }
+      ],
+      "intro": "This module can directly reply with a specified content. Commonly used for guidance or prompts. Non-string content will be converted to string for output.",
+      "name": "Assigned Reply",
+      "nodeId": "answer",
+      "outputs": []
+    },
+    {
+      "avatar": "core/workflow/template/workflowStart",
+      "avatarLinear": "core/workflow/template/workflowStartLinear",
+      "colorSchema": "blue",
+      "flowNodeType": "workflowStart",
+      "inputs": [
+        {
+          "key": "userChatInput",
+          "label": "User Question",
+          "renderTypeList": ["reference", "textarea"],
+          "required": true,
+          "toolDescription": "User Question",
+          "valueType": "string"
+        }
+      ],
+      "name": "Start",
+      "nodeId": "start",
+      "outputs": [
+        {
+          "id": "userChatInput",
+          "key": "userChatInput",
+          "label": "User Question",
+          "type": "static",
+          "valueType": "string"
+        }
+      ]
+    },
+    {
+      "avatar": "core/workflow/template/textConcat",
+      "avatarLinear": "core/workflow/template/textConcatLinear",
+      "colorSchema": "orange",
+      "flowNodeType": "textEditor",
+      "inputs": [
+        {
+          "key": "system_textareaInput",
+          "label": "Concatenation Text",
+          "placeholder": "Type / to invoke variable list",
+          "renderTypeList": ["textarea"],
+          "required": true,
+          "selectedTypeIndex": 0,
+          "value": "Static response",
+          "valueType": "string"
+        }
+      ],
+      "intro": "Can process and output fixed or incoming text. Non-string type data will be converted to string type.",
+      "name": "Text Editor",
+      "nodeId": "text",
+      "outputs": [
+        {
+          "id": "system_text",
+          "key": "system_text",
+          "label": "Concatenation Result",
+          "type": "static",
+          "valueType": "string"
+        }
+      ]
+    }
+  ],
+  "executionEdges": [
+    {
+      "source": {
+        "kind": "next",
+        "nodeId": "start"
+      },
+      "target": {
+        "kind": "target",
+        "nodeId": "text"
+      }
+    },
+    {
+      "source": {
+        "kind": "next",
+        "nodeId": "text"
+      },
+      "target": {
+        "kind": "target",
+        "nodeId": "answer"
+      }
+    }
+  ],
+  "chatConfig": {}
+}

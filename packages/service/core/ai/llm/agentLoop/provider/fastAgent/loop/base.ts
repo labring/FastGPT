@@ -15,6 +15,7 @@ import { formatModelChars2Points } from '../../../../../../../support/wallet/usa
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import type {
   AgentLoopChildrenInteractiveParams,
+  AgentLoopCompletionPolicy,
   AgentLoopInteractiveToolExecuteParams,
   AgentLoopToolExecutionResult,
   AgentLoopUsage
@@ -26,6 +27,7 @@ import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 
 type RunAgentCallProps<TChildrenResponse = unknown> = {
   maxRunAgentTimes: number;
+  completionPolicy?: AgentLoopCompletionPolicy;
   batchToolSize?: number;
   body: CreateLLMResponseProps['body'] & {
     tools: ChatCompletionTool[];
@@ -189,6 +191,7 @@ export const onCompressContext = async ({
  */
 export const runAgentLoop = async <TChildrenResponse = unknown>({
   maxRunAgentTimes,
+  completionPolicy,
   batchToolSize = 1,
   body: { model, messages, max_tokens, ...body },
 
@@ -431,7 +434,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         max_tokens,
         model: modelData,
         messages: requestMessages,
-        tool_choice: consecutiveRequestToolTimes > 5 ? 'none' : 'auto',
+        // tool_choice: consecutiveRequestToolTimes > 5 ? 'none' : 'auto',
+        tool_choice: 'auto',
         toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
         parallel_tool_calls: body.parallel_tool_calls ?? true
       },
@@ -679,6 +683,32 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         if (toolChildPause || stopAgentLoop || isAborted?.()) {
           break;
         }
+      }
+    }
+
+    if (
+      toolCalls.length === 0 &&
+      !toolChildPause &&
+      !stopAgentLoop &&
+      !isAborted?.() &&
+      completionPolicy
+    ) {
+      try {
+        const decision = await completionPolicy({ requestIndex: runTimes });
+        if (decision.action === 'continue') {
+          if (runTimes >= maxRunAgentTimes) {
+            requestError = new Error(`Agent loop reached max run times: ${maxRunAgentTimes}`);
+            break;
+          }
+          await appendRequestMessages({
+            role: ChatCompletionRequestMessageRoleEnum.System,
+            content: decision.message
+          });
+          continue;
+        }
+      } catch (error) {
+        requestError = error;
+        break;
       }
     }
 

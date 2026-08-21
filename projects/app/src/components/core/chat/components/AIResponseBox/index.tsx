@@ -22,6 +22,8 @@ import RenderTool from './RenderTool';
 import RenderUserFormInteractive from './RenderUserFormInteractive';
 import RenderUserSelectInteractive from './RenderUserSelectInteractive';
 import { adaptLegacyAgentPlanAskToReadonlyAgentAsk } from './utils';
+import RenderWorkflowBuilderPreviewInteractive from './RenderWorkflowBuilderPreviewInteractive';
+import RenderWorkflowBuilderVersion from './RenderWorkflowBuilderVersion';
 
 const AIResponseBox = ({
   chatItemDataId,
@@ -38,6 +40,7 @@ const AIResponseBox = ({
   showStandaloneProcessing: showStandaloneProcessingProp = true,
   showAnswer = true,
   showInteractive = true,
+  showWorkflowBuilderVersion = true,
   defaultExpandProcessing = true
 }: {
   chatItemDataId: string;
@@ -54,6 +57,7 @@ const AIResponseBox = ({
   showStandaloneProcessing?: boolean;
   showAnswer?: boolean;
   showInteractive?: boolean;
+  showWorkflowBuilderVersion?: boolean;
   defaultExpandProcessing?: boolean;
 }) => {
   const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
@@ -191,12 +195,30 @@ const AIResponseBox = ({
         />
       );
     }
-
+    if (interactive.type === 'workflowBuilderPreview') {
+      responseBlocks.push(
+        <RenderWorkflowBuilderPreviewInteractive
+          key="interactive"
+          interactive={interactive}
+          isLastChild={isLastChild}
+        />
+      );
+    }
     if (interactive.type === 'paymentPause') {
       responseBlocks.push(
         <RenderPaymentPauseInteractive key="interactive" interactive={interactive} />
       );
     }
+  }
+
+  if (showWorkflowBuilderVersion && value.workflowBuilderVersion) {
+    responseBlocks.push(
+      <RenderWorkflowBuilderVersion
+        key={`workflowBuilderVersion-${value.workflowBuilderVersion.checksum}-${value.workflowBuilderVersion.s3Key ?? 'ready'}-${value.workflowBuilderVersion.expiresAt ?? ''}`}
+        version={value.workflowBuilderVersion}
+        responseChatItemId={chatItemDataId}
+      />
+    );
   }
 
   if (responseBlocks.length === 1) {

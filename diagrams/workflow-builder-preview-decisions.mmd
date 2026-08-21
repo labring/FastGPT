@@ -1,0 +1,34 @@
+%% 普通对话、需求闭合与 Mermaid 确认
+flowchart TD
+    INPUT["用户输入"] --> AGENT["主 AgentLoop"]
+    AGENT --> TASK{"是否是工作流搭建或修改任务?"}
+
+    TASK -->|"否"| CHAT["简洁回答，不创建计划，不查询画布"]
+    TASK -->|"是"| CHECK["核对业务目标、当前画布和必要资源"]
+    CHECK --> READY{"需求和必要依赖已闭合?"}
+
+    READY -->|"否"| REQUIREMENT["ask_agent<br/>一次性收集所有业务缺口"]
+    REQUIREMENT --> WAIT1["暂停等待用户回答"]
+    WAIT1 --> CHECK
+
+    READY -->|"是"| PREVIEW["workflow_builder_present_preview<br/>title + mermaid + sections"]
+    PREVIEW --> VALIDATOR{"Preview payload 校验通过?"}
+    VALIDATOR -->|"否"| RETRY["返回结构化协议错误<br/>模型重新调用 Preview 工具"]
+    RETRY --> PREVIEW
+    VALIDATOR -->|"是"| CHOICE{"用户选择"}
+
+    CHOICE -->|"revise + 修改意见"| REVISE["requirePreview = true<br/>合并反馈并重新调用 Preview 工具"]
+    REVISE --> PREVIEW
+    CHOICE -->|"cancel"| CANCEL["workflow_builder_cancel<br/>结构化 cancelled"]
+    CHOICE -->|"confirm"| CONFIRM["previewConfirmed = true<br/>恢复同一 AgentLoop 连续搭建"]
+
+    NOTE["重要：不是判断是否需要 Mermaid<br/>所有工作流任务都必须确认 Mermaid"] -.-> TASK
+
+    classDef user fill:#eef4ff,stroke:#5b8def,color:#172b4d;
+    classDef agent fill:#f5f0ff,stroke:#8465d6,color:#2f1b54;
+    classDef decision fill:#ffffff,stroke:#7c8798,color:#1f2937;
+    classDef terminal fill:#fff4e8,stroke:#d78a1d,color:#4d2f08;
+    class INPUT,WAIT1,CHOICE user;
+    class AGENT,CHECK,REQUIREMENT,PREVIEW,RETRY,REVISE agent;
+    class TASK,READY,VALIDATOR decision;
+    class CHAT,CANCEL,CONFIRM,NOTE terminal;
