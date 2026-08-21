@@ -7,9 +7,23 @@ upgradeTags:
 
 ## 📦 Upgrade guide
 
-### Modify fastgpt environment variables (Sandbox only)
+### Update Agent Sandbox environment variables and runtime images
 
-`fastgpt-app` and `fastgpt-pro` support the `AGENT_SANDBOX_APT_MIRROR` environment variable, which lets the Sandbox use a custom APT repository. For example:
+When Agent Sandbox is enabled, check the following settings in both `fastgpt-app` and `fastgpt-pro`. Version 4.16.1 uses a single full runtime image reference:
+
+```dotenv
+# Standard non-root image, used by default
+AGENT_SANDBOX_OPENSANDBOX_IMAGE=ghcr.io/labring/fastgpt-agent-sandbox:v0.3.1
+```
+
+If sandboxes need to install apt packages, use the root image. You can configure an apt mirror if needed:
+
+```dotenv
+AGENT_SANDBOX_OPENSANDBOX_IMAGE=ghcr.io/labring/fastgpt-agent-sandbox-root:v0.3.1
+AGENT_SANDBOX_APT_MIRROR=https://archive.ubuntu.com/ubuntu
+```
+
+For the complete image list for China Mainland and global registries, root/non-root image selection, and custom package registry settings, see [OpenSandbox Configuration](../../config/sandbox/opensandbox).
 
 ### Migrate tool JSON Schema storage format
 
