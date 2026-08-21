@@ -13,6 +13,7 @@ import {
   GetAppDetailResponseSchema,
   type GetAppDetailResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
+import { decodeToolSetNodesFromStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
 
 /* 获取应用详情 */
 async function handler(req: NextApiRequest): Promise<GetAppDetailResponseType> {
@@ -34,7 +35,7 @@ async function handler(req: NextApiRequest): Promise<GetAppDetailResponseType> {
 
   const workflow = await migrateWorkflowToCurrent(
     {
-      nodes: app.modules,
+      nodes: decodeToolSetNodesFromStorage(app.modules),
       edges: app.edges,
       chatConfig: app.chatConfig
     },

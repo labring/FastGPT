@@ -11,6 +11,7 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { replaceEditorVariable } from '../workflow/dispatch/utils/replaceEditorVariable';
 import FormData from 'form-data';
 import { getLogger, LogCategories } from '../../common/logger';
+import { decodeHttpToolSetNodesFromStorage } from './jsonSchemaStorage';
 
 const logger = getLogger(LogCategories.MODULE.APP.HTTP_TOOLS);
 
@@ -188,8 +189,9 @@ export const runHTTPTool = async ({
 };
 
 export const getHTTPToolList = async (app: AppSchemaType) => {
+  const modules = decodeHttpToolSetNodesFromStorage(app.modules);
   return (
-    app.modules[0].toolConfig?.httpToolSet?.toolList.map((item) => ({
+    modules[0].toolConfig?.httpToolSet?.toolList.map((item) => ({
       ...item,
       id: `${AppToolSourceEnum.http}-${String(app._id)}/${item.name}`,
       avatar: app.avatar

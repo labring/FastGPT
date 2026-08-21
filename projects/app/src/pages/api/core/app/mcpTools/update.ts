@@ -18,6 +18,7 @@ import {
   type UpdateMcpToolsResponseType
 } from '@fastgpt/global/openapi/core/app/mcpTools/api';
 import { assertMCPUrlNotInternal } from '@fastgpt/service/core/app/mcp';
+import { encodeMcpToolSetNodesForStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
 
 async function handler(
   req: ApiRequestProps<UpdateMcpToolsBodyType>
@@ -42,6 +43,7 @@ async function handler(
     name: app.name,
     avatar: app.avatar
   });
+  const storageNodes = encodeMcpToolSetNodesForStorage([toolSetRuntimeNode]);
 
   await beforeUpdateAppFormat({ nodes: [toolSetRuntimeNode], teamId });
 
@@ -50,7 +52,7 @@ async function handler(
     await MongoApp.updateOne(
       { _id: appId },
       {
-        modules: [toolSetRuntimeNode],
+        modules: storageNodes,
         updateTime: new Date()
       },
       { session }
@@ -60,7 +62,7 @@ async function handler(
       { appId },
       {
         $set: {
-          nodes: [toolSetRuntimeNode]
+          nodes: storageNodes
         }
       },
       { session }

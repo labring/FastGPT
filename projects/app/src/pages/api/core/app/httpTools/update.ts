@@ -16,6 +16,7 @@ import {
   type UpdateHttpToolsBodyType,
   type UpdateHttpToolsResponseType
 } from '@fastgpt/global/openapi/core/app/httpTools/api';
+import { encodeHttpToolSetNodesForStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
 
 async function handler(
   req: ApiRequestProps<UpdateHttpToolsBodyType>
@@ -43,6 +44,7 @@ async function handler(
     headerSecret: formatedHeaderAuth,
     customHeaders
   });
+  const storageNodes = encodeHttpToolSetNodesForStorage([toolSetRuntimeNode]);
 
   await beforeUpdateAppFormat({ nodes: [toolSetRuntimeNode], teamId });
 
@@ -50,7 +52,7 @@ async function handler(
     await MongoApp.findByIdAndUpdate(
       appId,
       {
-        modules: [toolSetRuntimeNode]
+        modules: storageNodes
       },
       { session }
     );
@@ -59,7 +61,7 @@ async function handler(
       { appId },
       {
         $set: {
-          nodes: [toolSetRuntimeNode]
+          nodes: storageNodes
         }
       },
       { session }

@@ -14,6 +14,7 @@ import {
   GetAppVersionDetailResponseSchema,
   type GetAppVersionDetailResponseType
 } from '@fastgpt/global/openapi/core/app/version/api';
+import { decodeToolSetNodesFromStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
 
 async function handler(req: NextApiRequest): Promise<GetAppVersionDetailResponseType> {
   const { versionId, appId } = parseApiInput({
@@ -33,9 +34,12 @@ async function handler(req: NextApiRequest): Promise<GetAppVersionDetailResponse
     return Promise.reject('version not found');
   }
 
+  // 历史版本只迁移该版本自身的系统配置节点，不继承当前应用 chatConfig，
+  // 避免当前配置占位导致该版本中的欢迎语、定时任务等旧值被丢弃。
+  const decodedNodes = decodeToolSetNodesFromStorage(result.nodes);
   const normalizedWorkflow = await migrateWorkflowToCurrent(
     {
-      nodes: result.nodes,
+      nodes: decodedNodes,
       edges: result.edges,
       chatConfig: result.chatConfig
     },

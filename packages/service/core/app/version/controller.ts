@@ -4,6 +4,7 @@ import { MongoAppVersion } from './schema';
 import { Types } from '../../../common/mongo';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 import { getWorkflowMigrationOptions } from '../tool/utils/client';
+import { decodeToolSetNodesFromStorage } from '../jsonSchemaStorage';
 
 export const getAppLatestVersion = async (
   appId: string,
@@ -28,7 +29,7 @@ export const getAppLatestVersion = async (
     // 避免当前配置占位导致该版本中的欢迎语、定时任务等旧值被丢弃。
     const normalizedWorkflow = await migrateWorkflowToCurrent(
       {
-        nodes: version.nodes,
+        nodes: decodeToolSetNodesFromStorage(version.nodes),
         edges: version.edges,
         chatConfig: version.chatConfig
       },
@@ -44,7 +45,7 @@ export const getAppLatestVersion = async (
   }
   const normalizedWorkflow = await migrateWorkflowToCurrent(
     {
-      nodes: migrationApp?.modules ?? [],
+      nodes: decodeToolSetNodesFromStorage(migrationApp?.modules ?? []),
       edges: migrationApp?.edges ?? [],
       chatConfig: migrationApp?.chatConfig
     },
@@ -84,7 +85,7 @@ export const getAppVersionById = async ({
           : ((await MongoApp.findById(appId).lean()) as AppSchemaType | null | undefined);
       const normalizedWorkflow = await migrateWorkflowToCurrent(
         {
-          nodes: version.nodes,
+          nodes: decodeToolSetNodesFromStorage(version.nodes),
           edges: version.edges,
           chatConfig: version.chatConfig
         },

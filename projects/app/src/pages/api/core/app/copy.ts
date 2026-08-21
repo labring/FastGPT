@@ -18,6 +18,12 @@ import {
   type CopyAppBodyType,
   type CopyAppResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import {
+  encodeHttpToolSetNodesForStorage,
+  encodeMcpToolSetNodesForStorage,
+  decodeToolSetNodesFromStorage
+} from '@fastgpt/service/core/app/jsonSchemaStorage';
 
 async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppResponseType> {
   const { appId: sourceAppId } = parseApiInput({
@@ -45,13 +51,23 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
       session
     });
 
+    const modules = (() => {
+      if (app.type === AppTypeEnum.mcpToolSet) {
+        return encodeMcpToolSetNodesForStorage(app.modules);
+      }
+      if (app.type === AppTypeEnum.httpToolSet) {
+        return encodeHttpToolSetNodesForStorage(app.modules);
+      }
+      return app.modules;
+    })();
     const appId = await onCreateApp({
       parentId: app.parentId,
       name: app.name + ' Copy',
       intro: app.intro,
       avatar,
       type: app.type,
-      modules: app.modules,
+      modules: decodeToolSetNodesFromStorage(app.modules),
+      storageModules: modules,
       edges: app.edges,
       chatConfig: app.chatConfig,
       teamId: app.teamId,
