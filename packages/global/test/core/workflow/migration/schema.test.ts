@@ -921,6 +921,63 @@ describe('workflow migration boundary', () => {
     );
   });
 
+  it('keeps existing normal and catch edges unchanged for current catchError nodes', async () => {
+    const result = await migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'code-1',
+          flowNodeType: 'code',
+          name: 'Code',
+          catchError: true,
+          inputs: [],
+          outputs: []
+        },
+        {
+          nodeId: 'normal-1',
+          flowNodeType: 'workflowStart',
+          name: 'Normal',
+          inputs: [],
+          outputs: []
+        },
+        {
+          nodeId: 'error-1',
+          flowNodeType: 'workflowStart',
+          name: 'Error',
+          inputs: [],
+          outputs: []
+        }
+      ],
+      edges: [
+        {
+          source: 'code-1',
+          sourceHandle: 'code-1-source-right',
+          target: 'normal-1',
+          targetHandle: 'normal-1-target-left'
+        },
+        {
+          source: 'code-1',
+          sourceHandle: 'code-1-source_catch-right',
+          target: 'error-1',
+          targetHandle: 'error-1-target-left'
+        }
+      ]
+    } as any);
+
+    expect(result.edges).toHaveLength(2);
+    expect(result.edges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceHandle: 'code-1-source-right',
+          target: 'normal-1'
+        }),
+        expect.objectContaining({
+          sourceHandle: 'code-1-source_catch-right',
+          target: 'error-1'
+        })
+      ])
+    );
+  });
+
   it('calls resolver only for Agent tools with incomplete historical inputs', async () => {
     const input = {
       nodes: [

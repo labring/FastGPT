@@ -32,6 +32,7 @@ const legacyCatchErrorPluginIds = new Set([
 /** 将画布层曾承担的结构兼容集中到 migration。 */
 const migrateLegacyCanvasStructure = (workflow: CanonicalWorkflowData): CanonicalWorkflowData => {
   const branchHandleMap = new Map<string, string>();
+  const catchErrorNodeIds = new Set<string>();
   const nodes = workflow.nodes.map((node) => {
     // 旧 MCP ToolSet 把配置直接塞在第一个输入的 value 中；当前结构统一放到 toolConfig。
     const legacyToolSetValue = node.inputs[0]?.value;
@@ -138,6 +139,7 @@ const migrateLegacyCanvasStructure = (workflow: CanonicalWorkflowData): Canonica
       (node.flowNodeType === FlowNodeTypeEnum.code ||
         node.flowNodeType === FlowNodeTypeEnum.httpRequest468 ||
         (node.pluginId !== undefined && legacyCatchErrorPluginIds.has(node.pluginId)));
+    if (requiresCatchError) catchErrorNodeIds.add(node.nodeId);
     return {
       ...node,
       inputs: shouldMigrateLegacyMcpToolSet ? inputs.slice(1) : inputs,
@@ -178,7 +180,7 @@ const migrateLegacyCanvasStructure = (workflow: CanonicalWorkflowData): Canonica
     sourceHandle: branchHandleMap.get(edge.sourceHandle) ?? edge.sourceHandle
   }));
   nodes.forEach((node) => {
-    if (node.catchError !== true) return;
+    if (!catchErrorNodeIds.has(node.nodeId)) return;
     workflow.edges
       .filter((edge) => edge.source === node.nodeId)
       .forEach((edge) => {

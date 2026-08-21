@@ -1,6 +1,7 @@
 export {
   CanonicalWorkflowDataSchema,
   CanonicalAgentToolInputConfigSchema,
+  CanonicalSelectedToolsValueSchema,
   CanonicalUnavailableAgentToolSchema,
   LegacyAgentToolInputSnapshotSchema,
   CanonicalFlowNodeInputItemSchema,
