@@ -2,14 +2,7 @@ import { Box, Button, Flex, Textarea, useColorMode } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { AgentAskQuestionInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { useTranslation } from 'next-i18next';
-import {
-  type KeyboardEvent,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState
-} from 'react';
+import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 
 type Answers = Record<string, string>;
 type AgentAskOption = AgentAskQuestionInteractive['options'][number];
@@ -332,22 +325,9 @@ const AgentAskComposer = ({
   const [isQuestionVisible, setIsQuestionVisible] = useState(true);
   const [isQuestionTransitioning, setIsQuestionTransitioning] = useState(false);
   const [isInitialFocusActive, setIsInitialFocusActive] = useState(false);
-  const [contentHeight, setContentHeight] = useState<number>();
-  const contentRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const initialFocusStatus = useRef<'pending' | 'active' | 'cleared'>('pending');
   const questionTransitionTimer = useRef<ReturnType<typeof setTimeout>>();
-  const updateContentHeight = useCallback(() => {
-    const content = contentRef.current;
-    if (!content) return;
-
-    const previousHeight = content.style.height;
-    content.style.height = 'auto';
-    const nextHeight = content.offsetHeight;
-    content.style.height = previousHeight;
-
-    if (nextHeight) setContentHeight(nextHeight);
-  }, []);
 
   const clearTemporaryInitialFocus = () => {
     if (initialFocusStatus.current === 'cleared') return;
@@ -380,10 +360,6 @@ const AgentAskComposer = ({
       if (questionTransitionTimer.current) clearTimeout(questionTransitionTimer.current);
     };
   }, []);
-
-  useLayoutEffect(() => {
-    updateContentHeight();
-  }, [editingQuestionIndex, questionIndex, updateContentHeight]);
 
   const question = questions[questionIndex];
   if (!question) return null;
@@ -491,8 +467,6 @@ const AgentAskComposer = ({
     textarea.style.height = '40px';
     textarea.style.height = `${Math.min(textarea.scrollHeight, 116)}px`;
     textarea.style.overflowY = textarea.scrollHeight > 116 ? 'auto' : 'hidden';
-
-    updateContentHeight();
   };
   const actionLabel =
     isCustom && customValue.trim()
@@ -528,11 +502,8 @@ const AgentAskComposer = ({
       bg={'white'}
       boxShadow={'0px 5px 10px rgba(19, 51, 107, 0.13)'}
       p={4}
-      ref={contentRef}
       onPointerDown={clearTemporaryInitialFocus}
-      h={contentHeight ? `${contentHeight}px` : undefined}
       overflow={'hidden'}
-      // transition={'height 0s ease'}
     >
       <Flex alignItems={'center'} justifyContent={'space-between'} gap={4} px={1} mb={4}>
         <Box
@@ -541,8 +512,8 @@ const AgentAskComposer = ({
           fontSize={'md'}
           fontWeight={500}
           lineHeight={6}
-          // opacity={isQuestionVisible ? 1 : 0}
-          // transition={'opacity 0s ease'}
+          opacity={isQuestionVisible ? 1 : 0}
+          transition={'opacity 200ms ease'}
         >
           {question.question}
         </Box>
@@ -575,8 +546,8 @@ const AgentAskComposer = ({
       <Flex
         direction={'column'}
         gap={1}
-        // opacity={isQuestionVisible ? 1 : 0}
-        // transition={'opacity 0s ease'}
+        opacity={isQuestionVisible ? 1 : 0}
+        transition={'opacity 200ms ease'}
       >
         {question.options.map((option, index) => {
           const isSelected = selectedOptionIndex === index;

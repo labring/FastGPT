@@ -5,11 +5,12 @@ import {
   type VariableItemType
 } from '@fastgpt/global/core/app/type';
 import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { areWorkflowValueTypesCompatible } from '@fastgpt/global/core/workflow/utils';
 import type { WorkflowDocument } from '../domain/document';
 import { WorkflowCommandError } from '../domain/diagnostic';
+import { getWorkflowReferenceValues } from '../reference/service';
 import { CHAT_CONFIG_PATHS } from './type';
 
 export { CHAT_CONFIG_PATHS } from './type';
@@ -145,6 +146,23 @@ export const unsetChatConfigValue = ({
 
 const getVariables = (document: WorkflowDocument) => document.chatConfig.variables ?? [];
 
+/** 收集引用指定全局变量的节点输入及其原始引用元组。 */
+const getGlobalVariableReferences = ({
+  document,
+  key
+}: {
+  document: WorkflowDocument;
+  key: string;
+}) =>
+  document.nodes.flatMap((node) =>
+    node.inputs.flatMap((input) => {
+      const references = (getWorkflowReferenceValues(input.value) ?? []).filter(
+        ([sourceNodeId, outputKey]) => sourceNodeId === VARIABLE_NODE_ID && outputKey === key
+      );
+      return references.length > 0 ? [{ node, input, references }] : [];
+    })
+  );
+
 export const addGlobalVariable = ({
   document,
   variable
@@ -186,23 +204,13 @@ export const updateGlobalVariable = ({
     ]);
   }
   const nextValueType = patch.valueType ?? variables[index].valueType;
-  const references = document.nodes.flatMap((node) =>
-    node.inputs
-      .filter(
-        (input) =>
-          Array.isArray(input.value) &&
-          input.value[0] === VARIABLE_NODE_ID &&
-          input.value[1] === key
-      )
-      .map((input) => ({ node, input }))
-  );
+  const references = getGlobalVariableReferences({ document, key });
   const incompatibleReference = references.find(
     ({ input }) =>
-      input.valueType !== undefined &&
-      input.valueType !== WorkflowIOValueTypeEnum.any &&
-      nextValueType !== undefined &&
-      nextValueType !== WorkflowIOValueTypeEnum.any &&
-      input.valueType !== nextValueType
+      !areWorkflowValueTypesCompatible({
+        expected: input.valueType,
+        actual: nextValueType
+      })
   );
   if (incompatibleReference) {
     throw new WorkflowCommandError([
@@ -219,8 +227,10 @@ export const updateGlobalVariable = ({
   next[index] = VariableItemTypeSchema.parse({ ...variables[index], ...structuredClone(patch) });
   document.chatConfig.variables = next;
   if (nextKey !== key) {
-    for (const { input } of references) {
-      input.value = [VARIABLE_NODE_ID, nextKey];
+    for (const { references: matchedReferences } of references) {
+      for (const reference of matchedReferences) {
+        reference[1] = nextKey;
+      }
     }
   }
 };
@@ -238,22 +248,19 @@ export const removeGlobalVariable = ({
       { code: 'WORKFLOW_VARIABLE_NOT_FOUND', severity: 'error', params: { key } }
     ]);
   }
-  const references = document.nodes.flatMap((node) =>
-    node.inputs
-      .filter(
-        (input) =>
-          Array.isArray(input.value) &&
-          input.value[0] === VARIABLE_NODE_ID &&
-          input.value[1] === key
-      )
-      .map((input) => ({ nodeId: node.nodeId, inputKey: input.key }))
-  );
+  const references = getGlobalVariableReferences({ document, key });
   if (references.length > 0) {
     throw new WorkflowCommandError([
       {
         code: 'WORKFLOW_VARIABLE_STILL_REFERENCED',
         severity: 'error',
-        params: { key, references }
+        params: {
+          key,
+          references: references.map(({ node, input }) => ({
+            nodeId: node.nodeId,
+            inputKey: input.key
+          }))
+        }
       }
     ]);
   }

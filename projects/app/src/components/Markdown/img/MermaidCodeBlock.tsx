@@ -51,6 +51,7 @@ type MermaidCanvasProps = {
   visible: boolean;
   onClose: () => void;
   onExport: () => void;
+  closeOnOverlayClick?: boolean;
 };
 
 const MERMAID_MIN_SCALE = 0.2;
@@ -138,7 +139,13 @@ const getPointerDistance = (a: { x: number; y: number }, b: { x: number; y: numb
 /**
  * Mermaid 放大预览画布：统一处理适配、缩放、拖拽和触控板/双指手势，避免使用图片查看器时丢失 SVG 的可交互性。
  */
-const MermaidCanvas = ({ preview, visible, onClose, onExport }: MermaidCanvasProps) => {
+const MermaidCanvas = ({
+  preview,
+  visible,
+  onClose,
+  onExport,
+  closeOnOverlayClick = false
+}: MermaidCanvasProps) => {
   const { t } = useTranslation();
   const viewportRef = useRef<HTMLDivElement>(null);
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
@@ -414,7 +421,7 @@ const MermaidCanvas = ({ preview, visible, onClose, onExport }: MermaidCanvasPro
       autoFocus={false}
       returnFocusOnClose={false}
       blockScrollOnMount
-      closeOnOverlayClick={false}
+      closeOnOverlayClick={closeOnOverlayClick}
     >
       <ModalOverlay bg={'blackAlpha.700'} />
       <ModalContent
@@ -460,54 +467,102 @@ const MermaidCanvas = ({ preview, visible, onClose, onExport }: MermaidCanvasPro
           />
           <Flex
             position={'absolute'}
-            top={4}
-            left={'50%'}
-            transform={'translateX(-50%)'}
+            right={4}
+            bottom={4}
             alignItems={'center'}
-            gap={1}
-            p={1}
+            gap={2}
+            px={2}
+            py={1}
             bg={'white'}
-            border={'1px solid'}
-            borderColor={'myGray.200'}
-            borderRadius={'md'}
-            boxShadow={'md'}
+            borderRadius={'8px'}
+            overflow={'hidden'}
+            boxShadow={'0 0 1px rgba(19, 51, 107, 0.10), 0 4px 10px rgba(19, 51, 107, 0.10)'}
             onPointerDown={(event) => event.stopPropagation()}
           >
             <MyTooltip label={t('common:MermaidFitView')}>
               <IconButton
                 aria-label={t('common:MermaidFitView')}
-                icon={<MyIcon name={'core/modules/fitView'} w={'16px'} />}
-                size={'sm'}
+                icon={<MyIcon name={'core/modules/fitView'} boxSize={'18px'} />}
+                w={'30px'}
+                h={'30px'}
+                minW={'30px'}
+                minH={'30px'}
+                p={'6px'}
+                borderRadius={'6px'}
+                color={'#485264'}
                 variant={'ghost'}
                 onClick={resetView}
               />
             </MyTooltip>
-            <MyTooltip label={t('common:MermaidZoomOut')}>
-              <IconButton
-                aria-label={t('common:MermaidZoomOut')}
-                icon={<MyIcon name={'minus'} w={'16px'} />}
-                size={'sm'}
-                variant={'ghost'}
-                onClick={() => changeScale(1 / 1.2)}
-              />
-            </MyTooltip>
-            <Text minW={'52px'} textAlign={'center'} fontSize={'sm'} color={'myGray.700'}>
-              {zoomPercent}%
-            </Text>
-            <MyTooltip label={t('common:MermaidZoomIn')}>
-              <IconButton
-                aria-label={t('common:MermaidZoomIn')}
-                icon={<MyIcon name={'math/plus'} w={'16px'} />}
-                size={'sm'}
-                variant={'ghost'}
-                onClick={() => changeScale(1.2)}
-              />
-            </MyTooltip>
+
+            <Box w={'1px'} h={'20px'} flexShrink={0} borderRadius={'10px'} bg={'#E8EBF0'} />
+
+            <Flex alignItems={'center'} gap={1}>
+              <MyTooltip label={t('common:MermaidZoomOut')}>
+                <IconButton
+                  aria-label={t('common:MermaidZoomOut')}
+                  icon={<MyIcon name={'minus'} boxSize={'18px'} />}
+                  w={'30px'}
+                  h={'30px'}
+                  minW={'30px'}
+                  minH={'30px'}
+                  p={'6px'}
+                  borderRadius={'6px'}
+                  color={'#485264'}
+                  variant={'ghost'}
+                  _active={{ transform: 'none' }}
+                  onClick={() => changeScale(1 / 1.2)}
+                />
+              </MyTooltip>
+              <Text
+                w={'52px'}
+                flexShrink={0}
+                color={'#485264'}
+                fontSize={'16px'}
+                fontWeight={500}
+                lineHeight={'24px'}
+                letterSpacing={'0.15px'}
+                textAlign={'center'}
+                whiteSpace={'nowrap'}
+                sx={{ fontVariantNumeric: 'tabular-nums' }}
+              >
+                {zoomPercent} %
+              </Text>
+              <MyTooltip label={t('common:MermaidZoomIn')}>
+                <IconButton
+                  aria-label={t('common:MermaidZoomIn')}
+                  icon={
+                    <Flex w={'18px'} h={'18px'} alignItems={'center'} justifyContent={'center'}>
+                      <MyIcon name={'core/chat/mermaidPreviewAdd'} boxSize={'12px'} />
+                    </Flex>
+                  }
+                  w={'30px'}
+                  h={'30px'}
+                  minW={'30px'}
+                  minH={'30px'}
+                  p={'6px'}
+                  borderRadius={'6px'}
+                  color={'#485264'}
+                  variant={'ghost'}
+                  _active={{ transform: 'none' }}
+                  onClick={() => changeScale(1.2)}
+                />
+              </MyTooltip>
+            </Flex>
+
+            <Box w={'1px'} h={'20px'} flexShrink={0} borderRadius={'10px'} bg={'#E8EBF0'} />
+
             <MyTooltip label={t('common:Export')}>
               <IconButton
                 aria-label={t('common:Export')}
-                icon={<MyIcon name={'export'} w={'16px'} />}
-                size={'sm'}
+                icon={<MyIcon name={'export'} boxSize={'18px'} />}
+                w={'30px'}
+                h={'30px'}
+                minW={'30px'}
+                minH={'30px'}
+                p={'6px'}
+                borderRadius={'6px'}
+                color={'#485264'}
                 variant={'ghost'}
                 onClick={onExport}
               />
@@ -515,8 +570,18 @@ const MermaidCanvas = ({ preview, visible, onClose, onExport }: MermaidCanvasPro
             <MyTooltip label={t('common:Close')}>
               <IconButton
                 aria-label={t('common:Close')}
-                icon={<MyIcon name={'common/closeLight'} w={'16px'} />}
-                size={'sm'}
+                icon={
+                  <Flex w={'18px'} h={'18px'} alignItems={'center'} justifyContent={'center'}>
+                    <MyIcon name={'core/chat/mermaidPreviewClose'} boxSize={'9.90809px'} />
+                  </Flex>
+                }
+                w={'30px'}
+                h={'30px'}
+                minW={'30px'}
+                minH={'30px'}
+                p={'6px'}
+                borderRadius={'6px'}
+                color={'#485264'}
                 variant={'ghost'}
                 onClick={onClose}
               />
@@ -528,7 +593,13 @@ const MermaidCanvas = ({ preview, visible, onClose, onExport }: MermaidCanvasPro
   );
 };
 
-const MermaidBlock = ({ code }: { code: string }) => {
+const MermaidBlock = ({
+  code,
+  clickToPreview = false
+}: {
+  code: string;
+  clickToPreview?: boolean;
+}) => {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
   const [svg, setSvg] = useState('');
@@ -696,7 +767,19 @@ const MermaidBlock = ({ code }: { code: string }) => {
 
   return (
     <>
-      <Box position={'relative'}>
+      <Box
+        position={'relative'}
+        cursor={clickToPreview && svg ? 'pointer' : undefined}
+        role={clickToPreview ? 'button' : undefined}
+        tabIndex={clickToPreview ? 0 : undefined}
+        aria-label={clickToPreview ? t('common:FullScreenLight') : undefined}
+        onClick={clickToPreview && svg ? onOpenPreview : undefined}
+        onKeyDown={(event) => {
+          if (!clickToPreview || !svg || (event.key !== 'Enter' && event.key !== ' ')) return;
+          event.preventDefault();
+          onOpenPreview();
+        }}
+      >
         {!isOpen && (
           <Box
             overflowX={'auto'}
@@ -707,39 +790,41 @@ const MermaidBlock = ({ code }: { code: string }) => {
             dangerouslySetInnerHTML={{ __html: svg }}
           />
         )}
-        <Flex
-          position={'absolute'}
-          top={1}
-          right={1}
-          gap={1}
-          p={1}
-          bg={'white'}
-          border={'1px solid'}
-          borderColor={'myGray.200'}
-          borderRadius={'md'}
-          boxShadow={'1'}
-        >
-          <MyTooltip label={t('common:FullScreenLight')}>
-            <IconButton
-              aria-label={t('common:FullScreenLight')}
-              icon={<MyIcon name={'fullScreen'} w={'16px'} />}
-              size={'xs'}
-              variant={'ghost'}
-              isDisabled={!svg}
-              onClick={onOpenPreview}
-            />
-          </MyTooltip>
-          <MyTooltip label={t('common:Export')}>
-            <IconButton
-              aria-label={t('common:Export')}
-              icon={<MyIcon name={'export'} w={'16px'} />}
-              size={'xs'}
-              variant={'ghost'}
-              isDisabled={!svg}
-              onClick={onclickExport}
-            />
-          </MyTooltip>
-        </Flex>
+        {!clickToPreview && (
+          <Flex
+            position={'absolute'}
+            top={1}
+            right={1}
+            gap={1}
+            p={1}
+            bg={'white'}
+            border={'1px solid'}
+            borderColor={'myGray.200'}
+            borderRadius={'md'}
+            boxShadow={'1'}
+          >
+            <MyTooltip label={t('common:FullScreenLight')}>
+              <IconButton
+                aria-label={t('common:FullScreenLight')}
+                icon={<MyIcon name={'fullScreen'} w={'16px'} />}
+                size={'xs'}
+                variant={'ghost'}
+                isDisabled={!svg}
+                onClick={onOpenPreview}
+              />
+            </MyTooltip>
+            <MyTooltip label={t('common:Export')}>
+              <IconButton
+                aria-label={t('common:Export')}
+                icon={<MyIcon name={'export'} w={'16px'} />}
+                size={'xs'}
+                variant={'ghost'}
+                isDisabled={!svg}
+                onClick={onclickExport}
+              />
+            </MyTooltip>
+          </Flex>
+        )}
       </Box>
 
       <MermaidCanvas
@@ -747,6 +832,7 @@ const MermaidBlock = ({ code }: { code: string }) => {
         preview={preview}
         onClose={onClose}
         onExport={onclickExport}
+        closeOnOverlayClick={clickToPreview}
       />
     </>
   );

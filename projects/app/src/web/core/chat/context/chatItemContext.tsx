@@ -20,6 +20,7 @@ export type WorkflowBuilderVersionActions = {
     version: WorkflowBuilderVersion,
     responseChatItemId: string
   ) => Promise<WorkflowBuilderVersion>;
+  notifyVersionExpired: () => void;
 };
 
 type ContextProps = {

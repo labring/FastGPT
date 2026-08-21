@@ -6,6 +6,24 @@ export const ChatBoxContentMaxWidth = '780px';
 
 export const ChatInputDefaultHeight: BoxProps['h'] = '112px';
 
+export const WorkflowBuilderChatInputDefaultHeight: BoxProps['h'] = '132px';
+
+/**
+ * 输入框仅在空态使用设计稿固定高度；出现文本或文件后必须恢复内容自适应，
+ * 否则 textarea 增高时会穿过底部按钮栏和圆角边框。
+ */
+export const getChatInputContainerHeight = ({
+  isDefaultInputHeight,
+  workflowBuilderStyle
+}: {
+  isDefaultInputHeight: boolean;
+  workflowBuilderStyle: boolean;
+}): BoxProps['h'] => {
+  if (!isDefaultInputHeight) return;
+
+  return workflowBuilderStyle ? WorkflowBuilderChatInputDefaultHeight : ChatInputDefaultHeight;
+};
+
 export const HomeChatMobileBottomGap = 0;
 
 export const HomeChatContentWrapperStyle: BoxProps = {

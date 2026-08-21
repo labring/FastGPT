@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { getStreamTypingQueueConsumeCount, handleEventSourceData } from '@/web/common/api/fetch';
+import {
+  buildStreamResumeUrl,
+  getStreamTypingQueueConsumeCount,
+  handleEventSourceData
+} from '@/web/common/api/fetch';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 describe('handleEventSourceData', () => {
   it('should enqueue answer text for the typing effect', () => {
@@ -63,5 +68,30 @@ describe('getStreamTypingQueueConsumeCount', () => {
 
   it('should not consume an empty queue', () => {
     expect(getStreamTypingQueueConsumeCount({ queueLength: 0, finished: true })).toBe(0);
+  });
+});
+
+describe('buildStreamResumeUrl', () => {
+  it('should preserve the workflow builder source type', () => {
+    expect(
+      buildStreamResumeUrl({
+        chatId: 'chat-1',
+        chatTarget: {
+          appId: 'app-1',
+          sourceType: ChatSourceTypeEnum.workflowBuilder
+        }
+      })
+    ).toBe(
+      `/api/core/chat/resume?chatId=chat-1&appId=app-1&sourceType=${ChatSourceTypeEnum.workflowBuilder}`
+    );
+  });
+
+  it('should keep the default app target backward compatible', () => {
+    expect(
+      buildStreamResumeUrl({
+        chatId: 'chat-1',
+        chatTarget: { appId: 'app-1' }
+      })
+    ).toBe('/api/core/chat/resume?chatId=chat-1&appId=app-1');
   });
 });

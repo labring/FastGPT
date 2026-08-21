@@ -1002,7 +1002,7 @@
   "plugin.Invalid URL": "Invalid URL",
   "plugin.Search_app": "Search App",
   "price_over_wx_limit": "Exceed payment provider limit: WeChat Pay only supports less than 6,000 yuan",
-  "pro_modal_feature_1": "Intelligent assisted generation for Agents and Skills",
+  "pro_modal_feature_1": "AI-assisted generation for Agents, Skills, and Workflows",
   "pro_modal_feature_2": "Website sync and third-party datasets",
   "pro_modal_feature_3": "Multi-tenancy, organization structure, and audit logs",
   "pro_modal_later_button": "Maybe Later",

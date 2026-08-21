@@ -228,7 +228,8 @@ export const AudioTranscriptionsDataRawSchema = z.object({
     .enum([
       ChatSourceTypeEnum.app,
       ChatSourceTypeEnum.skillEdit,
-      ChatSourceTypeEnum.chatAgentHelper
+      ChatSourceTypeEnum.chatAgentHelper,
+      ChatSourceTypeEnum.workflowBuilder
     ])
     .describe('会话归属资源类型'),
   sourceId: ObjectIdSchema.describe('会话归属资源 ID'),

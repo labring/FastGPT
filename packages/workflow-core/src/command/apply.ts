@@ -94,11 +94,11 @@ export const applyWorkflowCommand = async ({
 
   if (command.type === 'input.set') {
     const inputNode = getDocumentNode(nextDocument, command.nodeId);
-    let previousFormFieldKeys: string[] = [];
-    if (
+    const shouldSyncFormInputOutputs =
       inputNode.flowNodeType === FlowNodeTypeEnum.formInput &&
-      command.inputKey === NodeInputKeyEnum.userInputForms
-    ) {
+      command.inputKey === NodeInputKeyEnum.userInputForms;
+    let previousFormFieldKeys: string[] = [];
+    if (shouldSyncFormInputOutputs) {
       const previousForms =
         (inputNode.inputs.find((item) => item.key === command.inputKey)?.value as
           | Array<{ key?: unknown }>
@@ -113,11 +113,13 @@ export const applyWorkflowCommand = async ({
       inputKey: command.inputKey,
       value: command.value
     });
-    syncFormInputOutputs({
-      document: nextDocument,
-      nodeId: command.nodeId,
-      previousFieldKeys: previousFormFieldKeys
-    });
+    if (shouldSyncFormInputOutputs) {
+      syncFormInputOutputs({
+        document: nextDocument,
+        nodeId: command.nodeId,
+        previousFieldKeys: previousFormFieldKeys
+      });
+    }
     const codeIOSync =
       inputNode.flowNodeType === FlowNodeTypeEnum.code &&
       command.inputKey === NodeInputKeyEnum.code &&

@@ -11,7 +11,7 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { NextAPI } from '@/service/middleware/entry';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { presignVariablesFileUrls } from '@fastgpt/service/core/chat/utils';
 import { MongoAppRecord } from '@fastgpt/service/core/app/record/schema';
@@ -24,6 +24,7 @@ import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { buildChatTargetResponse } from '@fastgpt/global/openapi/core/chat/api';
 import { createChatAgentHelperAppConfig } from '@fastgpt/global/core/ai/auxiliaryGeneration/chatAgentHelper';
+import { WORKFLOW_BUILDER_CHAT_CONFIG } from '@fastgpt/global/core/workflow/builder/constants';
 
 async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
   const { sourceType, sourceId, chatId } = parseApiInput({
@@ -134,10 +135,59 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
     });
   }
 
-  if (sourceType !== ChatSourceTypeEnum.app) {
-    if (sourceType === ChatSourceTypeEnum.workflowBuilder) {
-      throw new Error('Workflow Builder chat must use app source');
+  if (sourceType === ChatSourceTypeEnum.workflowBuilder) {
+    const [{ app, teamId, tmbId }, chat] = await Promise.all([
+      authApp({
+        req,
+        authToken: true,
+        authApiKey: true,
+        appId: sourceId,
+        per: WritePermissionVal
+      }),
+      chatId
+        ? MongoChat.findOne({ ...buildChatSourceQuery({ sourceType, sourceId }), chatId })
+        : undefined
+    ]);
+
+    if (chat) {
+      if (String(chat.teamId) !== String(teamId)) {
+        return Promise.reject(ChatErrEnum.unAuthChat);
+      }
+      if (String(chat.tmbId) !== String(tmbId)) {
+        return Promise.reject(ChatErrEnum.unAuthChat);
+      }
     }
+
+    const chatGenerateStatus = chat?.chatGenerateStatus ?? ChatGenerateStatusEnum.done;
+    if (chat?.hasBeenRead === false && chatGenerateStatus !== ChatGenerateStatusEnum.generating) {
+      await MongoChat.updateOne(
+        { ...buildChatSourceQuery({ sourceType, sourceId }), chatId },
+        { $set: { hasBeenRead: true } }
+      );
+      chat.hasBeenRead = true;
+    }
+
+    return InitChatResponseSchema.parse({
+      chatId,
+      ...buildChatTargetResponse({ sourceType, sourceId }),
+      title: chat?.title || '',
+      userAvatar: undefined,
+      variables: {},
+      chatGenerateStatus,
+      hasBeenRead: chat?.hasBeenRead ?? true,
+      app: {
+        chatConfig: WORKFLOW_BUILDER_CHAT_CONFIG,
+        chatModels: [],
+        name: app.name,
+        avatar: app.avatar,
+        intro: app.intro,
+        type: app.type,
+        pluginInputs: []
+      }
+    });
+  }
+
+  if (sourceType !== ChatSourceTypeEnum.app) {
     const exhaustiveCheck: never = sourceType;
     throw new Error(`Unsupported chat source type: ${exhaustiveCheck}`);
   }

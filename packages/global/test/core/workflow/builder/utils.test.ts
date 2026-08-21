@@ -11,11 +11,16 @@ const version: WorkflowBuilderVersion = {
 };
 
 describe('getWorkflowBuilderVersionDisplayState', () => {
-  it('returns ready only for the latest unarchived version', () => {
-    expect(getWorkflowBuilderVersionDisplayState({ version, isLatestReady: true })).toBe('ready');
-    expect(getWorkflowBuilderVersionDisplayState({ version, isLatestReady: false })).toBe(
-      'superseded'
-    );
+  it('returns ready for a version that has not been applied', () => {
+    expect(getWorkflowBuilderVersionDisplayState({ version })).toBe('ready');
+  });
+
+  it('keeps an older archived version independently applicable', () => {
+    expect(
+      getWorkflowBuilderVersionDisplayState({
+        version: { ...version, s3Key: 'chat/app/version.json' }
+      })
+    ).toBe('ready');
   });
 
   it('returns available for a valid archived version', () => {
@@ -28,8 +33,7 @@ describe('getWorkflowBuilderVersionDisplayState', () => {
 
     expect(
       getWorkflowBuilderVersionDisplayState({
-        version: archived,
-        isLatestReady: false,
+        version: { ...archived, appliedAt: '2026-08-12T11:00:00.000Z' },
         now
       })
     ).toBe('available');
@@ -43,7 +47,6 @@ describe('getWorkflowBuilderVersionDisplayState', () => {
           s3Key: 'chat/app/version.json',
           expiresAt: '2026-08-13T10:00:00.000Z'
         },
-        isLatestReady: false,
         now: new Date('2026-08-13T10:00:00.000Z').getTime()
       })
     ).toBe('expired');

@@ -90,7 +90,7 @@ export function useLinkedScroll<
   const { runAsync: callApi, loading: isLoading } = useRequest(api, { errorToast: '' });
 
   const scrollSign = useRef(false);
-  const { runAsync: loadInitData } = useRequest(
+  const { run: loadInitData } = useRequest(
     async ({ scrollWhenFinish, refresh } = { scrollWhenFinish: true, refresh: false }) => {
       // 已经被加载的数据，直接滚动到该位置
       const item = dataList.find((item) => item.id === currentData?.id);

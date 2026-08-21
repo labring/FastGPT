@@ -7,14 +7,13 @@ import {
   StreamResumeUnavailableReasonEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
-  ChatSourceTypeEnum,
   STREAM_RESUME_REQUEST_HEADER,
   STREAM_RESUME_REQUEST_HEADER_ENABLED
 } from '@fastgpt/global/core/chat/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
-import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
+import { toChatAuthQueryTarget, type ChatAuthTargetInput } from '@/web/core/chat/utils';
 import {
   EventStreamContentType,
   fetchEventSource,
@@ -661,21 +660,30 @@ type StreamResumeFetchParams = ChatAuthTargetInput & {
 
 let activeResumeController: AbortController | undefined;
 
-export async function streamResumeFetch(params: StreamResumeFetchParams) {
-  const { chatId, outLinkAuthData, onmessage, onResumeUnavailable, controller } = params;
+/**
+ * 构造聊天续流地址。
+ *
+ * App、Skill、分享链接和显式 sourceType 必须复用统一的 chat target 转换规则，
+ * 避免 Workflow Builder 等独立会话资源被错误地按普通 App 会话恢复。
+ */
+export const buildStreamResumeUrl = ({
+  chatId,
+  chatTarget
+}: {
+  chatId: string;
+  chatTarget: ChatAuthTargetInput;
+}) => {
   const query = new URLSearchParams({ chatId });
-  if (outLinkAuthData?.shareId && outLinkAuthData?.outLinkUid) {
-    query.set('outLinkAuthData', JSON.stringify(outLinkAuthData));
-  } else if ('skillId' in params && params.skillId) {
-    query.set('skillId', params.skillId);
-  } else {
-    query.set('appId', params.appId!);
-    if (params.sourceType === ChatSourceTypeEnum.chatAgentHelper) {
-      query.set('sourceType', ChatSourceTypeEnum.chatAgentHelper);
-    }
-  }
+  Object.entries(toChatAuthQueryTarget(chatTarget)).forEach(([key, value]) => {
+    if (value) query.set(key, value);
+  });
 
-  const url = `/api/core/chat/resume?${query}`;
+  return `/api/core/chat/resume?${query}`;
+};
+
+export async function streamResumeFetch(params: StreamResumeFetchParams) {
+  const { chatId, onmessage, onResumeUnavailable, controller } = params;
+  const url = buildStreamResumeUrl({ chatId, chatTarget: params });
 
   if (activeResumeController && activeResumeController !== controller) {
     activeResumeController.abort('replace');

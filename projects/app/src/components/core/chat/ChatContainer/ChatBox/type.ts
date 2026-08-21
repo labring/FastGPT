@@ -71,6 +71,7 @@ export type ChatGenerateStatusChangeHandler = (data: ChatGenerateStatusChangePay
 export type ComponentRef = {
   restartChat: () => void;
   scrollToBottom: (behavior?: 'smooth' | 'auto') => void;
+  focusInput: () => void;
 };
 
 // Frontend type

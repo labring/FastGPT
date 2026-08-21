@@ -4,13 +4,12 @@ import { UploadFileByBodySchema } from '../../contracts/type';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { UploadExtensionRuleSchema, UploadFileHintSchema } from '../../uploadPolicy/type';
 
-// Builder 的 source 只用于物理 Sandbox，不创建 Chat 记录或 Chat S3 文件。
 export const ChatS3SourceTypeSchema = z.enum([
   ChatSourceTypeEnum.app,
   ChatSourceTypeEnum.skillEdit,
-  ChatSourceTypeEnum.chatAgentHelper
+  ChatSourceTypeEnum.chatAgentHelper,
+  ChatSourceTypeEnum.workflowBuilder
 ]);
-// 对外 service 参数保留完整 source 枚举，边界 Schema parse 负责拒绝 workflowBuilder。
 export type ChatS3SourceType = ChatSourceTypeEnum;
 
 export const ChatFileUploadSchema = z.object({

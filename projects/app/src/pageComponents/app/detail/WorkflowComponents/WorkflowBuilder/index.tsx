@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { Box, Flex, IconButton, Text, useBreakpointValue } from '@chakra-ui/react';
+import { Box, Button, Flex, IconButton, Portal, Text } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -21,8 +21,57 @@ import { WorkflowBufferDataContext } from '../context/workflowInitContext';
 import type { WorkflowBuilderVersionActions } from '@/web/core/chat/context/chatItemContext';
 import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
 import { loadWorkflowBuilderVersion, commitWorkflowBuilderVersion } from './api';
+import AppDetailPanelModal from '../../components/AppDetailPanelModal';
+import { useWorkflowBuilderUI } from './context';
+import { getWorkflowBuilderAttentionKeys, useWorkflowBuilderVersionExpired } from './uiState';
+import WorkflowBuilderCommercialInput from './CommercialInput';
 
-const WorkflowBuilder = () => {
+const WorkflowBuilderApplyToast = ({
+  status,
+  message
+}: {
+  status: 'success' | 'error';
+  message: string;
+}) => {
+  const isSuccess = status === 'success';
+
+  return (
+    <Flex
+      h="48px"
+      maxW="calc(100vw - 32px)"
+      px="20px"
+      alignItems="center"
+      gap="12px"
+      bg={isSuccess ? '#EDFBF3' : '#FEF3F2'}
+      borderRadius="6px"
+      boxShadow="0 0 1px rgba(19, 51, 107, 0.1), 0 4px 10px rgba(19, 51, 107, 0.1)"
+    >
+      <Flex
+        boxSize="24px"
+        flexShrink={0}
+        alignItems="center"
+        justifyContent="center"
+        bg={isSuccess ? '#039855' : '#D92D20'}
+        borderRadius="50%"
+      >
+        <MyIcon name={isSuccess ? 'check' : 'common/closeLight'} boxSize="16px" color="white" />
+      </Flex>
+      <Text
+        minW={0}
+        color="#111824"
+        fontSize="14px"
+        fontWeight={400}
+        lineHeight="20px"
+        letterSpacing="0.25px"
+        noOfLines={1}
+      >
+        {message}
+      </Text>
+    </Flex>
+  );
+};
+
+const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: boolean }) => {
   const { t } = useTranslation('workflow');
   const { toast } = useToast();
   const { openConfirm, ConfirmModal } = useConfirm({
@@ -31,11 +80,21 @@ const WorkflowBuilder = () => {
     content: t('workflow_builder_clear_history_confirm')
   });
   const { requestAutoLayout } = useWorkflowAutoLayout();
-  const feConfigs = useSystemStore((state) => state.feConfigs);
   const getMyModelList = useSystemStore((state) => state.getMyModelList);
   const appId = useContextSelector(AppContext, (value) => value.appId);
   const appDetail = useContextSelector(AppContext, (value) => value.appDetail);
   const setAppDetail = useContextSelector(AppContext, (value) => value.setAppDetail);
+  const {
+    workflowCanvasRef,
+    activeLeftPanel,
+    focusRequestId,
+    activity,
+    dismissedBannerChecksum,
+    closeLeftPanel,
+    acknowledgeAttention,
+    setActivity,
+    dismissBanner
+  } = useWorkflowBuilderUI();
   const getNodes = useContextSelector(WorkflowBufferDataContext, (value) => value.getNodes);
   const getEdges = useContextSelector(WorkflowBufferDataContext, (value) => value.getEdges);
   const pushPastSnapshot = useContextSelector(
@@ -47,24 +106,39 @@ const WorkflowBuilder = () => {
     WorkflowUtilsContext,
     (value) => value.flowData2StoreData
   );
-  const [isOpen, setIsOpen] = useState(false);
   const chatPanelRef = useRef<WorkflowBuilderChatPanelRef>(null);
   const [builderChatId, setBuilderChatId] = useState('');
-  const panelWidth = useBreakpointValue({ base: '100%', md: '33vw' }) || '33.333vw';
+  const isOpen = activeLeftPanel === 'workflowBuilder';
+  const showApplyResultToast = useCallback(
+    ({ status, message }: { status: 'success' | 'error'; message: string }) =>
+      toast({
+        id: 'workflow-builder-apply-result',
+        title: message,
+        position: 'top',
+        containerStyle: {
+          minWidth: 0,
+          maxWidth: 'none',
+          marginTop: '80px'
+        },
+        render: () => <WorkflowBuilderApplyToast status={status} message={message} />
+      }),
+    [toast]
+  );
+  const notifyVersionExpired = useCallback(
+    () =>
+      showApplyResultToast({
+        status: 'error',
+        message: t('workflow_builder_version_expired_toast')
+      }),
+    [showApplyResultToast, t]
+  );
 
-  const enabled =
-    !!feConfigs?.isPlus &&
-    !!feConfigs.show_agent_sandbox &&
-    feConfigs.show_workflow_builder !== false &&
-    !!appDetail.permission?.hasWritePer;
-  if (!enabled) return null;
-
-  /** 加载版本、覆盖画布、记录“我的编辑”快照，最后将实际应用文档归档到 S3。 */
+  /** 加载归档版本、覆盖画布、记录“我的编辑”快照，最后幂等标记应用时间。 */
   const applyVersion = useCallback(
     async (version: WorkflowBuilderVersion, responseChatItemId: string) => {
       if (!builderChatId) throw new Error('Workflow Builder chat is not ready');
       let previousWorkflow: ReturnType<typeof flowData2StoreData>;
-      let hasAppliedWorkflow = false;
+      let hasCommittedVersion = false;
       const previousChatConfig = appDetail.chatConfig;
       try {
         const loaded = await loadWorkflowBuilderVersion({
@@ -88,7 +162,6 @@ const WorkflowBuilder = () => {
           allowedModels: await getMyModelList()
         });
         const workflowDataRevision = await initData(workflowConfig);
-        hasAppliedWorkflow = true;
         const appliedChatConfig = workflowConfig.chatConfig ?? previousChatConfig;
         setAppDetail((current) =>
           mergeWorkflowBuilderAppliedAppDetail({
@@ -111,26 +184,46 @@ const WorkflowBuilder = () => {
           document: targetDocument,
           checksum: loaded.checksum
         });
+        // 服务端提交才是“应用成功”的事务边界；此前的本地画布写入仍需在失败时回滚。
+        hasCommittedVersion = true;
         pushPastSnapshot({
           pastNodes: getNodes(),
           pastEdges: getEdges(),
           chatConfig: appliedChatConfig,
           customTitle: version.name
         });
-        toast({ status: 'success', title: t('workflow_builder_applied') });
+        setActivity((current) => {
+          if (current.latestVersion?.version.checksum !== archivedVersion.checksum) return current;
+          return {
+            ...current,
+            latestVersion: {
+              ...current.latestVersion,
+              version: archivedVersion
+            }
+          };
+        });
+        showApplyResultToast({
+          status: 'success',
+          message: t('workflow_builder_applied', { name: version.name })
+        });
         return archivedVersion;
       } catch (error) {
         const errorText =
           error instanceof Error
             ? error.message
             : JSON.stringify(error ?? 'Workflow Builder apply failed');
-        toast({
-          status: 'warning',
-          title: t('workflow_builder_apply_failed'),
-          description: errorText
-        });
+        const isExpired = /expired/i.test(errorText);
+        if (isExpired) {
+          notifyVersionExpired();
+        } else {
+          console.error('[Workflow Builder] Apply failed', error);
+          showApplyResultToast({
+            status: 'error',
+            message: t('workflow_builder_apply_failed')
+          });
+        }
         try {
-          if (previousWorkflow && !hasAppliedWorkflow) {
+          if (previousWorkflow && !hasCommittedVersion) {
             await initData({ ...previousWorkflow, chatConfig: previousChatConfig });
             setAppDetail((current) => ({ ...current, chatConfig: previousChatConfig }));
           }
@@ -152,100 +245,225 @@ const WorkflowBuilder = () => {
       pushPastSnapshot,
       requestAutoLayout,
       setAppDetail,
-      t,
-      toast
+      setActivity,
+      notifyVersionExpired,
+      showApplyResultToast,
+      t
     ]
   );
 
   const versionActions: WorkflowBuilderVersionActions = {
-    applyVersion
+    applyVersion,
+    notifyVersionExpired
   };
 
-  if (!isOpen) {
-    return (
-      <MyTooltip label={t('workflow_builder_title')}>
-        <IconButton
-          aria-label={t('workflow_builder_title')}
-          icon={<MyIcon name={'codeCopilot'} w={'20px'} />}
-          position={'absolute'}
-          top={'84px'}
-          right={'20px'}
-          zIndex={6}
-          w={'40px'}
-          h={'40px'}
-          bg={'white'}
-          color={'primary.600'}
-          borderWidth={'1px'}
-          borderColor={'myGray.200'}
-          borderRadius={'6px'}
-          boxShadow={'0 4px 12px rgba(16, 24, 40, 0.12)'}
-          _hover={{ bg: 'myGray.50' }}
-          onClick={() => setIsOpen(true)}
-        />
-      </MyTooltip>
-    );
-  }
+  const latestTarget = activity.latestVersion;
+  const isLatestVersionExpired = useWorkflowBuilderVersionExpired(latestTarget?.version.expiresAt);
+  const pendingVersionChecksum =
+    latestTarget && !latestTarget.version.appliedAt && !isLatestVersionExpired
+      ? latestTarget.version.checksum
+      : undefined;
+  const attentionKeys = getWorkflowBuilderAttentionKeys({
+    pendingInteractiveKey: activity.pendingInteractiveKey,
+    pendingVersionChecksum,
+    errorAttentionKey: activity.errorAttentionKey
+  });
+  const showLatestBanner = Boolean(
+    !isOpen &&
+    latestTarget &&
+    !latestTarget.version.appliedAt &&
+    latestTarget.version.checksum !== dismissedBannerChecksum &&
+    !isLatestVersionExpired
+  );
 
   return (
-    <Box
-      position={'absolute'}
-      top={'72px'}
-      right={0}
-      bottom={[0, 4]}
-      zIndex={7}
-      w={panelWidth}
-      minW={0}
-      bg={'white'}
-      borderLeftWidth={'1px'}
-      borderColor={'myGray.200'}
-      boxShadow={'-8px 0 24px rgba(16, 24, 40, 0.08)'}
-    >
-      <Flex
-        h={'52px'}
-        px={4}
-        alignItems={'center'}
-        borderBottomWidth={'1px'}
-        borderColor={'myGray.200'}
-      >
-        <MyIcon name={'codeCopilot'} w={'18px'} color={'primary.600'} />
-        <Text ml={2} flex={1} fontSize={'sm'} fontWeight={600} color={'myGray.900'}>
-          {t('workflow_builder_title')}
-        </Text>
-        <MyTooltip label={t('workflow_builder_clear_history')}>
-          <IconButton
-            aria-label={t('workflow_builder_clear_history')}
-            icon={<MyIcon name={'delete'} w={'17px'} />}
-            variant={'ghost'}
-            size={'sm'}
-            color={'myGray.600'}
-            onClick={() =>
-              openConfirm({
-                onConfirm: () => chatPanelRef.current?.clearHistory()
-              })()
-            }
-          />
-        </MyTooltip>
-        <MyTooltip label={t('workflow_builder_collapse')}>
-          <IconButton
-            aria-label={t('workflow_builder_collapse')}
-            icon={<MyIcon name={'core/chat/sidebar/fold'} w={'18px'} />}
-            variant={'ghost'}
-            size={'sm'}
-            onClick={() => setIsOpen(false)}
-          />
-        </MyTooltip>
-      </Flex>
-      <Box h={'calc(100% - 52px)'} minH={0}>
-        <ChatPanel
-          ref={chatPanelRef}
-          appId={appId}
-          appDetail={appDetail}
-          workflowBuilderVersionActions={versionActions}
-          onChatIdChange={setBuilderChatId}
-        />
-      </Box>
+    <>
+      {showLatestBanner && latestTarget && (
+        <Portal containerRef={workflowCanvasRef}>
+          <Flex
+            position="absolute"
+            top={20}
+            left="50%"
+            transform="translateX(-50%)"
+            zIndex={320}
+            maxW="calc(100% - 32px)"
+            alignItems="center"
+            h="52px"
+            gap={['8px', '32px']}
+            px={['12px', '32px']}
+            py="8px"
+            bg="rgba(255, 255, 255, 0.76)"
+            borderWidth="1px"
+            borderColor="#E8EBF0"
+            borderRadius="9999px"
+            onClick={() => acknowledgeAttention(attentionKeys)}
+          >
+            <Flex alignItems="center" gap="8px" minW={0}>
+              <Flex boxSize="24px" flexShrink={0} alignItems="center" justifyContent="center">
+                <MyIcon name="core/app/workflowVersion" boxSize="24px" />
+              </Flex>
+              <Text
+                color="#485264"
+                fontSize="16px"
+                fontWeight={500}
+                lineHeight="24px"
+                letterSpacing="0.15px"
+                noOfLines={1}
+                whiteSpace="nowrap"
+              >
+                <Text as="span" color="#2B5FD9">
+                  {latestTarget.version.name}
+                </Text>
+                {t('workflow_builder_version_ready_suffix')}
+              </Text>
+            </Flex>
+            <Flex alignItems="center" gap="8px" flexShrink={0}>
+              <Button
+                h="32px"
+                px="14px"
+                borderRadius="9999px"
+                bg="#3370FF"
+                color="white"
+                fontSize="12px"
+                fontWeight={500}
+                lineHeight="16px"
+                letterSpacing="0.5px"
+                boxShadow="0 0 1px rgba(19, 51, 107, 0.08), 0 1px 2px rgba(19, 51, 107, 0.05)"
+                _hover={{ bg: '#2B5FD9' }}
+                onClick={() => {
+                  dismissBanner(latestTarget.version.checksum);
+                  void applyVersion(latestTarget.version, latestTarget.responseChatItemId).catch(
+                    () => {
+                      // applyVersion 已统一展示错误并回滚画布，这里只消费已处理的异常。
+                    }
+                  );
+                }}
+              >
+                {t('workflow_builder_version_apply')}
+              </Button>
+              <IconButton
+                aria-label={t('workflow_builder_banner_close')}
+                icon={<MyIcon name="common/closeLight" boxSize="20px" />}
+                variant="unstyled"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                boxSize="34px"
+                minW="34px"
+                color="#485264"
+                borderRadius="9999px"
+                _hover={{ bg: 'rgba(72, 82, 100, 0.08)' }}
+                onClick={() => dismissBanner(latestTarget.version.checksum)}
+              />
+            </Flex>
+          </Flex>
+        </Portal>
+      )}
+      <Portal>
+        <AppDetailPanelModal
+          isOpen={isOpen}
+          onClose={() => closeLeftPanel('workflowBuilder')}
+          width={['100%', 'max(488px, 33.333333vw)']}
+          height={['100vh', 'calc(100vh - 67px)']}
+          top={[0, '67px']}
+          position="fixed"
+          placement="left"
+          animationMode="slideFromLeft"
+          showMask={false}
+          contentProps={{
+            borderRadius: ['0', '12px'],
+            borderWidth: '1px',
+            borderColor: '#E8EBF0',
+            bg: 'rgba(255, 255, 255, 0.76)',
+            backdropFilter: 'blur(12px)',
+            boxShadow: 'none'
+          }}
+          headerProps={{ px: 4, minH: '56px', bg: 'transparent' }}
+          header={
+            isOpen ? (
+              <Flex w="100%" alignItems="center">
+                <Text
+                  flex={1}
+                  fontSize="16px"
+                  fontWeight={500}
+                  lineHeight="24px"
+                  letterSpacing="0.15px"
+                  color="#111824"
+                >
+                  {t('workflow_builder_title')}
+                </Text>
+                <MyTooltip label={t('workflow_builder_clear_history')}>
+                  <IconButton
+                    aria-label={t('workflow_builder_clear_history')}
+                    icon={<MyIcon name="common/clearLight" boxSize="18px" />}
+                    w="34px"
+                    minW="34px"
+                    h="34px"
+                    p={2}
+                    mr={2}
+                    borderRadius="6px"
+                    bg="white"
+                    border="1px solid #DFE2EA"
+                    color="#485264"
+                    boxShadow="0 0 1px rgba(19, 51, 107, 0.08), 0 1px 2px rgba(19, 51, 107, 0.05)"
+                    _hover={{ bg: '#F7F8FA' }}
+                    onClick={() =>
+                      openConfirm({ onConfirm: () => chatPanelRef.current?.clearHistory() })()
+                    }
+                  />
+                </MyTooltip>
+                <MyTooltip label={t('workflow_builder_collapse')}>
+                  <IconButton
+                    aria-label={t('workflow_builder_collapse')}
+                    icon={<MyIcon name="common/closeLight" boxSize="20px" />}
+                    variant="unstyled"
+                    w="34px"
+                    minW="34px"
+                    h="34px"
+                    p="7px"
+                    color="#485264"
+                    _hover={{ bg: '#F7F8FA' }}
+                    onClick={() => closeLeftPanel('workflowBuilder')}
+                  />
+                </MyTooltip>
+              </Flex>
+            ) : null
+          }
+        >
+          {workflowBuilderEnabled ? (
+            <Box h="100%" minH={0}>
+              <ChatPanel
+                ref={chatPanelRef}
+                appId={appId}
+                appDetail={appDetail}
+                isOpen={isOpen}
+                workflowBuilderEnabled={workflowBuilderEnabled}
+                workflowBuilderVersionActions={versionActions}
+                onChatIdChange={setBuilderChatId}
+                focusRequestId={focusRequestId}
+                onActivityChange={setActivity}
+              />
+            </Box>
+          ) : (
+            <Flex h="100%" minH={0} flexDirection="column">
+              <Text
+                flexShrink={0}
+                px="16px"
+                py="12px"
+                color="myGray.900"
+                fontSize="16px"
+                lineHeight={1.75}
+              >
+                {t('workflow_builder_welcome', { appName: appDetail.name })}
+              </Text>
+              <Box flex={1} minH="16px" />
+              <WorkflowBuilderCommercialInput />
+            </Flex>
+          )}
+        </AppDetailPanelModal>
+      </Portal>
       <ConfirmModal />
-    </Box>
+    </>
   );
 };
 

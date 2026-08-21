@@ -253,6 +253,26 @@ describe('PR3 workflow commands', () => {
       expect.objectContaining({ key: 'email', valueType: 'string' })
     );
 
+    document = (
+      await applyWorkflowCommand({
+        document,
+        command: {
+          type: 'input.set',
+          nodeId: 'form',
+          inputKey: 'description',
+          value: 'Please enter your email'
+        },
+        dependencies
+      })
+    ).document;
+    const formOutputs = document.nodes.find((node) => node.nodeId === 'form')?.outputs ?? [];
+    expect(formOutputs.filter((output) => output.key === 'email')).toHaveLength(1);
+    expect(
+      validateWorkflow(document).filter(
+        (diagnostic) => diagnostic.code === 'WORKFLOW_OUTPUT_KEY_DUPLICATED'
+      )
+    ).toEqual([]);
+
     const nested = await createNestedLoopFixture();
     await expect(
       applyWorkflowCommand({

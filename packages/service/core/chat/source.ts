@@ -35,16 +35,13 @@ export function buildChatSourceQuery({ sourceType, sourceId }: ChatSourceParams)
 
   if (
     sourceType === ChatSourceTypeEnum.skillEdit ||
-    sourceType === ChatSourceTypeEnum.chatAgentHelper
+    sourceType === ChatSourceTypeEnum.chatAgentHelper ||
+    sourceType === ChatSourceTypeEnum.workflowBuilder
   ) {
     return {
       appId: sourceId,
       sourceType
     };
-  }
-
-  if (sourceType === ChatSourceTypeEnum.workflowBuilder) {
-    throw new Error('Workflow Builder chat records must use app source');
   }
 
   const exhaustiveCheck: never = sourceType;

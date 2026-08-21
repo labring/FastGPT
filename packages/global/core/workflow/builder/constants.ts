@@ -7,6 +7,11 @@ import type { AppChatConfigType } from '../../app/type';
  * 但其自身对话不得继承这些运行前置配置。
  */
 export const WORKFLOW_BUILDER_CHAT_CONFIG = {
+  whisperConfig: {
+    open: true,
+    autoSend: false,
+    autoTTSResponse: false
+  },
   fileSelectConfig: {
     maxFiles: 0,
     canSelectFile: false,

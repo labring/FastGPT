@@ -40,6 +40,7 @@ const AIResponseBox = ({
   showStandaloneProcessing: showStandaloneProcessingProp = true,
   showAnswer = true,
   showInteractive = true,
+  showWorkflowBuilderVersion = true,
   defaultExpandProcessing = true
 }: {
   chatItemDataId: string;
@@ -56,6 +57,7 @@ const AIResponseBox = ({
   showStandaloneProcessing?: boolean;
   showAnswer?: boolean;
   showInteractive?: boolean;
+  showWorkflowBuilderVersion?: boolean;
   defaultExpandProcessing?: boolean;
 }) => {
   const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
@@ -209,13 +211,12 @@ const AIResponseBox = ({
     }
   }
 
-  if (value.workflowBuilderVersion) {
+  if (showWorkflowBuilderVersion && value.workflowBuilderVersion) {
     responseBlocks.push(
       <RenderWorkflowBuilderVersion
         key={`workflowBuilderVersion-${value.workflowBuilderVersion.checksum}-${value.workflowBuilderVersion.s3Key ?? 'ready'}-${value.workflowBuilderVersion.expiresAt ?? ''}`}
         version={value.workflowBuilderVersion}
         responseChatItemId={chatItemDataId}
-        isLastChild={isLastChild}
       />
     );
   }

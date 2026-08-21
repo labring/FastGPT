@@ -12,6 +12,28 @@ import {
   shouldResetResumeAiPlaceholder
 } from '@/components/core/chat/ChatContainer/ChatBox/utils/resume';
 import { shouldShowChatItemInlineError } from '@/components/core/chat/ChatContainer/ChatBox/utils/error';
+import {
+  ChatInputDefaultHeight,
+  getChatInputContainerHeight,
+  WorkflowBuilderChatInputDefaultHeight
+} from '@/components/core/chat/ChatContainer/ChatBox/constants';
+
+describe('getChatInputContainerHeight', () => {
+  it('keeps the designed empty height and releases fixed height after content appears', () => {
+    expect(
+      getChatInputContainerHeight({ isDefaultInputHeight: true, workflowBuilderStyle: false })
+    ).toBe(ChatInputDefaultHeight);
+    expect(
+      getChatInputContainerHeight({ isDefaultInputHeight: true, workflowBuilderStyle: true })
+    ).toBe(WorkflowBuilderChatInputDefaultHeight);
+    expect(
+      getChatInputContainerHeight({ isDefaultInputHeight: false, workflowBuilderStyle: false })
+    ).toBeUndefined();
+    expect(
+      getChatInputContainerHeight({ isDefaultInputHeight: false, workflowBuilderStyle: true })
+    ).toBeUndefined();
+  });
+});
 
 describe('stripChatValueFileUrls', () => {
   it('removes signed urls from keyed files before sending messages', () => {

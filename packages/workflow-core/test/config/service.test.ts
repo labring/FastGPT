@@ -1,4 +1,10 @@
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  VARIABLE_NODE_ID,
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import {
   applyWorkflowCommand,
   builtinTemplateProvider,
@@ -23,6 +29,49 @@ const createDocument = async () =>
       template: parseNodeTemplateRef('builtin:workflow-start')
     })
   ).document;
+
+const createDocumentWithVariableReferenceArray = async () => {
+  let document = await createDocument();
+  document = (
+    await apply(document, {
+      type: 'config.set',
+      path: 'fileSelectConfig',
+      value: { canSelectFile: true }
+    })
+  ).document;
+  document = (
+    await apply(document, {
+      type: 'node.add',
+      nodeId: 'read',
+      template: parseNodeTemplateRef('builtin:read-files'),
+      connectFrom: { kind: 'next', nodeId: 'start' }
+    })
+  ).document;
+  document = (
+    await apply(document, {
+      type: 'variable.add',
+      variable: {
+        key: 'tenantId',
+        label: 'Tenant ID',
+        description: 'Current tenant',
+        type: VariableInputEnum.input,
+        valueType: WorkflowIOValueTypeEnum.string,
+        required: true
+      }
+    })
+  ).document;
+
+  const input = document.nodes
+    .find((node) => node.nodeId === 'read')
+    ?.inputs.find((input) => input.key === NodeInputKeyEnum.fileUrlList);
+  if (!input) throw new Error('Read files input is unavailable');
+  input.value = [
+    [VARIABLE_NODE_ID, 'tenantId'],
+    ['start', NodeOutputKeyEnum.userFiles]
+  ];
+
+  return document;
+};
 
 describe('ChatConfig descriptors', () => {
   it('exposes Agent guidance, value schema, capabilities and current value', () => {
@@ -194,5 +243,64 @@ describe('fileSelectConfig output synchronization', () => {
       ]
     });
     expect(document).toEqual(before);
+  });
+});
+
+describe('global variable references', () => {
+  it('renames variables inside reference arrays without changing other references', async () => {
+    const document = await createDocumentWithVariableReferenceArray();
+    const result = await apply(document, {
+      type: 'variable.update',
+      key: 'tenantId',
+      patch: { key: 'currentTenantId' }
+    });
+
+    expect(
+      result.document.nodes
+        .find((node) => node.nodeId === 'read')
+        ?.inputs.find((input) => input.key === NodeInputKeyEnum.fileUrlList)?.value
+    ).toEqual([
+      [VARIABLE_NODE_ID, 'currentTenantId'],
+      ['start', NodeOutputKeyEnum.userFiles]
+    ]);
+  });
+
+  it('blocks removing variables referenced inside reference arrays', async () => {
+    const document = await createDocumentWithVariableReferenceArray();
+    const before = structuredClone(document);
+
+    await expect(
+      apply(document, {
+        type: 'variable.remove',
+        key: 'tenantId'
+      })
+    ).rejects.toMatchObject({
+      diagnostics: [
+        expect.objectContaining({
+          code: 'WORKFLOW_VARIABLE_STILL_REFERENCED'
+        })
+      ]
+    });
+    expect(document).toEqual(before);
+  });
+
+  it('blocks incompatible type changes for variables referenced inside reference arrays', async () => {
+    const document = await createDocumentWithVariableReferenceArray();
+
+    await expect(
+      apply(document, {
+        type: 'variable.update',
+        key: 'tenantId',
+        patch: { valueType: WorkflowIOValueTypeEnum.object }
+      })
+    ).rejects.toMatchObject({
+      diagnostics: [
+        expect.objectContaining({
+          code: 'WORKFLOW_VARIABLE_TYPE_CHANGE_INCOMPATIBLE',
+          nodeId: 'read',
+          inputKey: NodeInputKeyEnum.fileUrlList
+        })
+      ]
+    });
   });
 });

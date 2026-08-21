@@ -12,6 +12,26 @@ import { getInputAutomationMeta } from '../template/automationMeta';
 import { getNodeInputCapability, type NodeParameterInputMode } from '../template/descriptor';
 import { assertValueSchema, inputValueNeedsSchema } from '../template/valueSchema';
 
+export type WorkflowReferenceValue = [string, string];
+
+const isWorkflowReferenceValue = (value: unknown): value is WorkflowReferenceValue =>
+  Array.isArray(value) &&
+  value.length === 2 &&
+  typeof value[0] === 'string' &&
+  typeof value[1] === 'string';
+
+/**
+ * 解析单引用或一层引用数组，返回原始引用元组以供校验和安全重写。
+ * 普通数组与非法结构返回 undefined，避免被误判为工作流引用。
+ */
+export const getWorkflowReferenceValues = (
+  value: unknown
+): WorkflowReferenceValue[] | undefined => {
+  if (isWorkflowReferenceValue(value)) return [value];
+  if (Array.isArray(value) && value.every(isWorkflowReferenceValue)) return value;
+  return undefined;
+};
+
 const getInput = ({
   document,
   nodeId,

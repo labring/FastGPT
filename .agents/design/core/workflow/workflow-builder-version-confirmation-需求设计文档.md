@@ -1,11 +1,17 @@
-# Workflow Builder 二次确认与版本回退需求设计文档
+# Workflow Builder 二次确认与版本回退需求设计文档（历史实现基线）
+
+> **2026-08-17 修订说明**：本文保留用于解释现有代码的历史实现，不再作为后续 UI 改造的版本生命周期依据。新版权威方案见
+> [`workflow-builder-ui-refresh-需求设计文档.md`](./workflow-builder-ui-refresh-需求设计文档.md)。凡本文出现“首次应用成功后才上传 S3”、
+> “从 Sandbox 加载待应用版本”、“新候选使旧候选不可应用”或“Commit 负责上传 S3”的描述，均已废止。新版统一语义为：
+> **生成与校验成功后立即上传 S3并生成版本卡片；每个未过期版本都从自己的 S3 对象加载并可独立应用；应用接口只覆盖画布并记录 `appliedAt`；
+> 没有 `s3Key` 的历史消息仅保留旧 Sandbox 兼容路径。**
 
 ## 0. 文档标识
 
 - 任务前缀：`workflow-builder-version-confirmation`
 - 文档文件名：`workflow-builder-version-confirmation-需求设计文档.md`
-- 状态：方案确认，可进入开发设计评审
-- 更新时间：2026-08-12
+- 状态：历史实现基线；版本生命周期已由 UI Refresh 方案替代
+- 更新时间：2026-08-17
 
 ## 1. 需求背景与目标
 
