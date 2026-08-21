@@ -1,5 +1,5 @@
 import { type UserInformSchema } from '@fastgpt/global/support/user/inform/type';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { CloseIcon } from '@chakra-ui/icons';
@@ -8,10 +8,14 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Markdown from '@/components/Markdown';
 const ImportantInform = ({
   informs,
-  refetch
+  refetch,
+  enabled = true,
+  onFinish
 }: {
   informs: UserInformSchema[];
-  refetch: () => void;
+  refetch: () => Promise<{ isError?: boolean }>;
+  enabled?: boolean;
+  onFinish?: () => void;
 }) => {
   const { runAsync: onClickClose } = useRequest(
     async (id: string) => {
@@ -19,11 +23,24 @@ const ImportantInform = ({
     },
     {
       onSuccess: () => {
-        refetch();
+        void refetch()
+          .then((result) => {
+            if (result.isError) onFinish?.();
+          })
+          .catch(() => onFinish?.());
       },
+      onError: () => onFinish?.(),
       errorToast: 'Failed to read the inform'
     }
   );
+
+  useEffect(() => {
+    if (enabled && informs.length === 0) {
+      onFinish?.();
+    }
+  }, [enabled, informs.length, onFinish]);
+
+  if (!enabled) return null;
 
   return (
     <Box position={'fixed'} top={'3%'} left={'50%'} transform={'translateX(-50%)'} zIndex={99999}>
