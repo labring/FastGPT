@@ -1,5 +1,3 @@
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { Box, Button, Flex, useDisclosure, Switch } from '@chakra-ui/react';
 import React from 'react';
 import { useTranslation } from 'next-i18next';
@@ -8,6 +6,7 @@ import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { defaultWhisperConfig } from '@fastgpt/global/core/app/constants';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import AppConfigItem, { AppConfigItemAction } from './AppConfigItem';
 
 const WhisperConfig = ({
   isOpenAudio,
@@ -29,23 +28,17 @@ const WhisperConfig = ({
     : t('common:core.app.whisper.Close');
 
   return (
-    <Flex alignItems={'center'}>
-      <MyIcon name={'core/app/simpleMode/whisper'} mr={2} w={'20px'} />
-      <FormLabel>{t('common:core.app.Whisper')}</FormLabel>
-      <QuestionTip label={t('common:core.app.Config whisper')} ml={1} />
-      <Box flex={1} />
-      <MyTooltip label={t('common:core.app.Config whisper')}>
-        <Button
-          variant={'transparentBase'}
-          iconSpacing={1}
-          size={'sm'}
-          mr={'-5px'}
-          color={'myGray.600'}
-          onClick={onOpen}
-        >
-          {formLabel}
-        </Button>
-      </MyTooltip>
+    <>
+      <AppConfigItem
+        icon={'core/app/simpleMode/whisper'}
+        label={t('common:core.app.Whisper')}
+        tip={<QuestionTip label={t('common:core.app.Config whisper')} ml={1} />}
+        action={
+          <AppConfigItemAction tooltip={t('common:core.app.Config whisper')} onClick={onOpen}>
+            {formLabel}
+          </AppConfigItemAction>
+        }
+      />
       <MyModal
         title={t('common:core.app.Whisper config')}
         isOpen={isOpen}
@@ -105,7 +98,7 @@ const WhisperConfig = ({
           </>
         )}
       </MyModal>
-    </Flex>
+    </>
   );
 };
 

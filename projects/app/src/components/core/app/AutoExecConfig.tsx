@@ -1,12 +1,11 @@
-import { Box, Button, Flex, ModalBody, Switch, Textarea, useDisclosure } from '@chakra-ui/react';
+import { Box, Flex, ModalBody, Switch, Textarea, useDisclosure } from '@chakra-ui/react';
 import { defaultAutoExecuteConfig } from '@fastgpt/global/core/app/constants';
 import { type AppAutoExecuteConfigType } from '@fastgpt/global/core/app/type';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useTranslation } from 'next-i18next';
 import ChatFunctionTip from './Tip';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyModal from '@fastgpt/web/components/common/MyModal';
+import AppConfigItem, { AppConfigItemAction } from './AppConfigItem';
 
 const AutoExecConfig = ({
   value = defaultAutoExecuteConfig,
@@ -25,23 +24,17 @@ const AutoExecConfig = ({
     : t('common:core.app.whisper.Close');
 
   return (
-    <Flex alignItems={'center'}>
-      <MyIcon name={'core/app/simpleMode/autoExec'} mr={2} w={'20px'} />
-      <FormLabel color={'myGray.600'}>{t('app:auto_execute')}</FormLabel>
-      <ChatFunctionTip type={'autoExec'} />
-      <Box flex={1} />
-      <MyTooltip label={t('common:core.app.Config_auto_execute')}>
-        <Button
-          variant={'transparentBase'}
-          iconSpacing={1}
-          size={'sm'}
-          mr={'-5px'}
-          onClick={onOpen}
-          color={'myGray.600'}
-        >
-          {formLabel}
-        </Button>
-      </MyTooltip>
+    <>
+      <AppConfigItem
+        icon={'core/app/simpleMode/autoExec'}
+        label={t('app:auto_execute')}
+        tip={<ChatFunctionTip type={'autoExec'} />}
+        action={
+          <AppConfigItemAction tooltip={t('common:core.app.Config_auto_execute')} onClick={onOpen}>
+            {formLabel}
+          </AppConfigItemAction>
+        }
+      />
       <MyModal
         title={t('common:core.app.Auto execute')}
         iconSrc="core/app/simpleMode/autoExec"
@@ -80,7 +73,7 @@ const AutoExecConfig = ({
           )}
         </ModalBody>
       </MyModal>
-    </Flex>
+    </>
   );
 };
 

@@ -1,5 +1,4 @@
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { Box, Button, Flex, useDisclosure, HStack } from '@chakra-ui/react';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -17,6 +16,7 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
+import AppConfigItem, { AppConfigItemAction } from './AppConfigItem';
 
 type TTSSelectorItemType = {
   alias: string;
@@ -145,25 +145,22 @@ const TTSSelect = ({
   }, [cancelAudio, onClose]);
 
   return (
-    <Flex alignItems={'center'} w={'100%'} minW={0}>
-      <MyIcon name={'core/app/simpleMode/tts'} mr={2} w={'20px'} />
-      <FormLabel>{t('common:core.app.TTS')}</FormLabel>
-      <ChatFunctionTip type={'tts'} />
-      <Box flex={'1 1 0'} minW={3} />
-      <MyTooltip label={t('common:core.app.Select TTS')}>
-        <Button
-          variant={'transparentBase'}
-          iconSpacing={1}
-          size={'sm'}
-          mr={'-5px'}
-          minW={0}
-          maxW={['180px', '260px']}
-          onClick={onOpen}
-          color={'myGray.600'}
-        >
-          {formLabel}
-        </Button>
-      </MyTooltip>
+    <>
+      <AppConfigItem
+        icon={'core/app/simpleMode/tts'}
+        label={t('common:core.app.TTS')}
+        tip={<ChatFunctionTip type={'tts'} />}
+        action={
+          <AppConfigItemAction
+            tooltip={t('common:core.app.Select TTS')}
+            minW={0}
+            maxW={['180px', '260px']}
+            onClick={onOpen}
+          >
+            {formLabel}
+          </AppConfigItemAction>
+        }
+      />
       <MyModal
         title={t('common:core.app.TTS')}
         isOpen={isOpen}
@@ -236,7 +233,7 @@ const TTSSelect = ({
           />
         </Flex>
       </MyModal>
-    </Flex>
+    </>
   );
 };
 
