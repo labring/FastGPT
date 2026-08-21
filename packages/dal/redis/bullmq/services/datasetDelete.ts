@@ -1,4 +1,5 @@
 import { bullMQ, type BullMQBinding } from '../binding';
+import { addOrRequeueFailedJob } from '../job-recovery';
 import { QueueNames } from '../names';
 import type { Processor, Queue, Worker } from '../types';
 
@@ -45,9 +46,14 @@ export class DatasetDeleteMQService {
   /** 投递幂等的 Dataset 删除任务，并延迟一秒让请求先完成。 */
   addJob(data: DatasetDeleteJobData) {
     const jobId = `${String(data.teamId)}-${String(data.datasetId)}`;
-    return this.getQueue().add('delete_dataset', data, {
-      jobId,
-      delay: 1000
+    return addOrRequeueFailedJob({
+      queue: this.getQueue(),
+      name: 'delete_dataset',
+      data,
+      opts: {
+        jobId,
+        delay: 1000
+      }
     });
   }
 }

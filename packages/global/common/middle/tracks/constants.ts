@@ -13,6 +13,9 @@ export enum TrackEnum {
   teamChatQPM = 'teamChatQPM',
   enterpriseAuthStart = 'enterpriseAuthStart',
   enterpriseAuthBenefitGrant = 'enterpriseAuthBenefitGrant',
+  accountCancellationSubmitSuccess = 'account_cancellation_submit_success',
+  accountCancellationCancelSuccess = 'account_cancellation_cancel_success',
+  accountCancellationFinalizeSuccess = 'account_cancellation_finalize_success',
 
   // Admin cron job tracks
   subscriptionDeleted = 'subscriptionDeleted',

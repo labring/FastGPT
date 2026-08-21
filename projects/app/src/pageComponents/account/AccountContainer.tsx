@@ -143,7 +143,7 @@ const AccountContainer = ({
   );
 
   return (
-    <PageContainer isLoading={isLoading}>
+    <PageContainer isLoading={isLoading} insertProps={{ bg: 'white' }}>
       <Flex flexDirection={['column', 'row']} h={'100%'} pt={[4, 0]}>
         {isPc ? (
           <Flex

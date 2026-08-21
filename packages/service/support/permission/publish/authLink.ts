@@ -11,6 +11,8 @@ import type { z } from 'zod';
 import { getLogger, LogCategories } from '../../../common/logger';
 
 const logger = getLogger(LogCategories.MODULE.OUTLINK);
+import { assertCancellation } from '../../user/account/cancellation/guard';
+import { getUserIdByTmbId } from '../../user/team/utils';
 
 /* crud outlink permission */
 export async function authOutLinkCrud({
@@ -72,6 +74,12 @@ export async function authOutLinkValid<T extends OutlinkAppType = any>({
   if (!outLinkConfig) {
     return Promise.reject(OutLinkErrEnum.linkUnInvalid);
   }
+
+  // 分享链接没有用户 Session，使用发布链接绑定的 tmb/team 校验账号可用性
+  await assertCancellation({
+    teamId: String(outLinkConfig.teamId),
+    userId: await getUserIdByTmbId(String(outLinkConfig.tmbId))
+  });
 
   return {
     appId: outLinkConfig.appId,

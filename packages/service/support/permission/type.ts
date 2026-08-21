@@ -19,6 +19,7 @@ type authModeType = {
   authRoot?: boolean;
   authApiKey?: boolean;
   per?: PermissionValueType;
+  allowAccountCancellation?: boolean;
 };
 
 export type AuthModeType = RequireAtLeastOne<authModeType, 'authApiKey' | 'authRoot' | 'authToken'>;
