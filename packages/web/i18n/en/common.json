@@ -49,6 +49,7 @@
   "FullScreen": "FullScreen",
   "FullScreenLight": "Full-screen preview",
   "MermaidFitView": "Fit diagram to view",
+  "MermaidRenderFailed": "The flowchart could not be rendered. Please regenerate it and try again.",
   "MermaidZoomIn": "Zoom in",
   "MermaidZoomOut": "Zoom out",
   "Import": "Import",

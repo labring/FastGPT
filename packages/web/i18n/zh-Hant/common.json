@@ -49,6 +49,7 @@
   "FullScreen": "全屏",
   "FullScreenLight": "全屏預覽",
   "MermaidFitView": "適應畫布",
+  "MermaidRenderFailed": "流程圖渲染失敗，請重新生成後再試",
   "MermaidZoomIn": "放大",
   "MermaidZoomOut": "縮小",
   "Import": "匯入",
