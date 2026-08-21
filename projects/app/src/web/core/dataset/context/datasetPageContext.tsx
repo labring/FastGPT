@@ -101,7 +101,12 @@ export const DatasetPageContextProvider = ({
         ...state,
         ...data,
         agentModel: data.agentModel ? getWebLLMModel(data.agentModel) : state.agentModel,
-        vlmModel: data.vlmModel ? getWebLLMModel(data.vlmModel) : state.vlmModel,
+        // null 表示清空，undefined 表示本次更新未涉及该字段。
+        vlmModel: data.vlmModel
+          ? getWebLLMModel(data.vlmModel)
+          : data.vlmModel === null
+            ? undefined
+            : state.vlmModel,
         apiDatasetServer: filterApiDatasetServerPublicData(data.apiDatasetServer)
       }));
     }

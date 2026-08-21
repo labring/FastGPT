@@ -16,6 +16,7 @@ export type MultipleSelectProps = {
   onSelect: (val: any[]) => void;
   popDirection?: 'top' | 'bottom';
   changeOnEverySelect?: boolean;
+  clearable?: boolean;
   ButtonProps?: ButtonProps;
 };
 export type MultipleArraySelectProps = Omit<MultipleSelectProps, 'value'> & {

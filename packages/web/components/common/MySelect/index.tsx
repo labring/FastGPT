@@ -58,6 +58,7 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange' | 'value'> & {
 
   isInvalid?: boolean;
   isDisabled?: boolean;
+  clearable?: boolean;
 };
 
 export const menuItemStyles: MenuItemProps = {
@@ -90,6 +91,7 @@ const MySelect = <T = any,>(
     menuPlacement,
     isInvalid,
     isDisabled,
+    clearable,
     ...props
   }: SelectProps<T>,
   ref: ForwardedRef<{
@@ -241,6 +243,7 @@ const MySelect = <T = any,>(
   }, [filterList, onClickChange, value]);
 
   const isSelecting = loading || isLoading;
+  const isShowClearable = clearable && value !== undefined && value !== '';
 
   return (
     <Box>
@@ -258,7 +261,11 @@ const MySelect = <T = any,>(
           ref={ButtonRef}
           width={width}
           px={3}
-          rightIcon={<MyIcon name={'core/chat/chevronDown'} w={4} color={'myGray.500'} />}
+          rightIcon={
+            isShowClearable ? undefined : (
+              <MyIcon name={'core/chat/chevronDown'} w={4} color={'myGray.500'} />
+            )
+          }
           variant={'whitePrimaryOutline'}
           size={'md'}
           fontSize={'sm'}
@@ -352,6 +359,27 @@ const MySelect = <T = any,>(
                 </>
               )}
             </Flex>
+            {isShowClearable && (
+              <Box
+                flexShrink={0}
+                ml={1}
+                cursor={'pointer'}
+                role={'button'}
+                aria-label={'clear selection'}
+                pointerEvents={'auto'}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  (onChange as ((value: undefined) => void) | undefined)?.(undefined);
+                }}
+              >
+                <MyIcon name={'close'} w={4} color={'myGray.400'} />
+              </Box>
+            )}
           </Flex>
         </MenuButton>
 

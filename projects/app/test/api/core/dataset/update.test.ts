@@ -6,7 +6,7 @@ import { MongoResourcePermission } from '@fastgpt/service/support/permission/sch
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 
 describe('update dataset', () => {
   beforeEach(async () => {
@@ -24,17 +24,7 @@ describe('update dataset', () => {
       permission: TeamDatasetCreatePermissionVal
     });
 
-    // Create a dataset first
-    const createRes = await Call<UpdateDatasetBody, {}, string>(updateHandler, {
-      // We need a create endpoint to create first, but since we're testing update
-      // let's create via raw mongo for simplicity
-      body: {}
-    });
-
     // Create a dataset via raw Mongo for testing update
-    const { MongoTeam } = await import('@fastgpt/service/support/user/team/teamSchema');
-    const { MongoTeamMember } = await import('@fastgpt/service/support/user/team/teamMemberSchema');
-
     const dataset = await MongoDataset.create({
       teamId: users.members[0].teamId,
       tmbId: users.members[0].tmbId,
@@ -42,7 +32,7 @@ describe('update dataset', () => {
       type: DatasetTypeEnum.dataset
     });
 
-    const res = await Call<UpdateDatasetBody, {}, string>(updateHandler, {
+    const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
       auth: users.members[0],
       body: {
         id: String(dataset._id),
@@ -73,7 +63,7 @@ describe('update dataset', () => {
       apikey: 'test-api-key'
     };
 
-    const res = await Call<UpdateDatasetBody, {}, string>(updateHandler, {
+    const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
       auth: apikeyAuth,
       body: {
         id: String(dataset._id),
@@ -83,5 +73,30 @@ describe('update dataset', () => {
 
     expect(res.error).toBeUndefined();
     expect(res.code).toBe(200);
+  });
+
+  it('should clear the dataset VLM when vlmModel is null', async () => {
+    const users = await getFakeUsers(1);
+    const dataset = await MongoDataset.create({
+      teamId: users.members[0].teamId,
+      tmbId: users.members[0].tmbId,
+      name: 'dataset-with-vlm',
+      type: DatasetTypeEnum.dataset,
+      vlmModel: 'vision-model'
+    });
+
+    const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+      auth: users.members[0],
+      body: {
+        id: String(dataset._id),
+        vlmModel: null
+      }
+    });
+
+    expect(res.error).toBeUndefined();
+    expect(res.code).toBe(200);
+
+    const updatedDataset = await MongoDataset.findById(dataset._id).lean();
+    expect(updatedDataset?.vlmModel).toBeUndefined();
   });
 });

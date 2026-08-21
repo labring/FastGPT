@@ -69,7 +69,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
       return updateDataset({
         id: datasetId,
         agentModel: data.agentModel?.model,
-        vlmModel: data.vlmModel?.model,
+        // 空值需要显式传 null，后端才会清除已保存的图片理解模型。
+        vlmModel: data.vlmModel?.model ?? null,
         externalReadUrl: data.externalReadUrl
       });
     },
@@ -229,6 +230,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           <Box pt={2} minW={0} maxW={'100%'} overflow={'hidden'}>
             <AIModelSelector
               w={'100%'}
+              clearable
               value={vlmModel?.model}
               list={vllmModelList.map((item) => ({
                 label: item.name,
@@ -237,7 +239,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               fontSize={'mini'}
               onChange={(e) => {
                 const vlmModel = vllmModelList.find((item) => item.model === e);
-                if (!vlmModel) return;
                 setValue('vlmModel', vlmModel);
                 return handleSubmit((data) => onSave({ ...data, vlmModel }))();
               }}

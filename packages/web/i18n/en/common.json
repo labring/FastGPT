@@ -933,6 +933,7 @@
   "no_select_data": "No Data Available",
   "not_active_team": "You have no available team",
   "not_model_config": "No related model configured",
+  "please_select_model": "Please select",
   "not_open": "Not Open",
   "not_permission": "The current subscription plan does not support team operation logs",
   "not_support": "Not Supported",

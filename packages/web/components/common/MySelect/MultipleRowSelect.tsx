@@ -161,6 +161,7 @@ export const MultipleRowSelect = ({
   maxH = 300,
   onSelect,
   ButtonProps,
+  clearable = false,
   changeOnEverySelect = false,
   rowMinWidth = 'auto'
 }: MultipleSelectProps & {
@@ -187,6 +188,7 @@ export const MultipleRowSelect = ({
   }, [isOpen]);
 
   const minWidth = `${MenuRef.current?.[0]?.offsetWidth || 0}px`;
+  const isShowClearable = clearable && value.some((item) => item !== undefined && item !== '');
 
   const onOpenSelect = useCallback(() => {
     setCloneValue(Array.isArray(value) ? value : []);
@@ -241,7 +243,29 @@ export const MultipleRowSelect = ({
             >
               {label ?? placeholder}
             </Box>
-            <MyIcon name={'core/chat/chevronDown'} w={4} flexShrink={0} color={'myGray.500'} />
+            {isShowClearable && (
+              <Box
+                flexShrink={0}
+                ml={1}
+                cursor={'pointer'}
+                role={'button'}
+                aria-label={'clear selection'}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  onSelect([]);
+                }}
+              >
+                <MyIcon name={'close'} w={4} color={'myGray.400'} />
+              </Box>
+            )}
+            {!isShowClearable && (
+              <MyIcon name={'core/chat/chevronDown'} w={4} flexShrink={0} color={'myGray.500'} />
+            )}
           </Flex>
         </MenuButton>
         <MenuList
