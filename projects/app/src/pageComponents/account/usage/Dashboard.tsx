@@ -2,7 +2,6 @@ import { getDashboardData } from '@/web/support/wallet/usage/api';
 import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { addDays } from 'date-fns';
 import React, { useMemo } from 'react';
 import { type UsageFilterParams } from './type';
 import dayjs from 'dayjs';
@@ -33,9 +32,7 @@ const UsageDashboard = ({
         dateStart: dateRange.from
           ? dayjs(dateRange.from.setHours(0, 0, 0, 0)).format()
           : dayjs(new Date().setHours(0, 0, 0, 0)).format(),
-        dateEnd: dateRange.to
-          ? dayjs(addDays(dateRange.to, 1).setHours(0, 0, 0, 0)).format()
-          : dayjs(addDays(new Date(), 1).setHours(0, 0, 0, 0)).format(),
+        dateEnd: dateRange.to ? dayjs(dateRange.to).format() : dayjs(new Date()).format(),
         sources: isSelectAllSource ? undefined : usageSources,
         teamMemberIds: isSelectAllTmb ? undefined : selectTmbIds,
         unit
