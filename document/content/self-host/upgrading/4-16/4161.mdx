@@ -57,3 +57,6 @@ curl -X POST 'https://你的域名/api/admin/4161/initToolJsonSchemaStorage' \
 ## 🛠️ 代码优化
 
 1. 补全所有 devapi 接口文档。
+2. 插件系统并发初始化以及日志优化。
+3. 修复插件运行中的错误会抛出为系统错误的问题。
+4. 修复插件在 Node.js 版本高于 v25 时由于 --allow-net 策略未设置导致的问题。
