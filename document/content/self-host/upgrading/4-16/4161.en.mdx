@@ -5,34 +5,20 @@ upgradeTags:
   - IN PROGRESS
 ---
 
-## 🚀 New
+## 📦 Upgrade guide
 
-1. Third-party publishing channels now support multimodal files, audio transcription, and citations where supported.
-2. Teams can install system plugins in process mode. This carries some security risk; a future release will support isolated serverless execution.
-3. Sandbox supports custom APT repositories.
+### Modify fastgpt environment variables (Sandbox only)
 
-## ⚙️ Improvements
+`fastgpt-app` and `fastgpt-pro` support the `AGENT_SANDBOX_APT_MIRROR` environment variable, which lets the Sandbox use a custom APT repository. For example:
 
-1. Updated S3 key naming to stop using the original filename as the key, preventing keys from becoming too long.
-
-## 🐛 Fixes
-
-1. Fixed Workflow global variable configuration overflowing when field names are too long.
-
-## 🛠️ Code Improvements
-
-1. Completed documentation for all `devapi` endpoints.
-
-## 🔧 Upgrade Migration
-
-### Migrate Tool JSON Schema Storage
+### Migrate tool JSON Schema storage format
 
 Run the migrations in this release order:
 
 1. On version 4.16.0, complete `initHttpToolSchema` first. This converts legacy manual HTTP array parameters to standard JSON Schema.
 2. Upgrade to version 4.16.1, then run `initToolJsonSchemaStorage` from this section.
 
-Environments that already completed `initHttpToolSchema` on 4.16.0 do not need to run it again. Version 4.16.1 checks the HTTP tool applications and historical versions covered by the 4.16.0 migration; it refuses to run when legacy array types remain there, so they are not converted directly to strings. The migration only processes MCP/HTTP tool applications and their historical versions; ordinary workflow applications are excluded.
+Environments that already completed `initHttpToolSchema` on 4.16.0 do not need to run it again. Version 4.16.1 checks the HTTP tool apps and their historical versions covered by the 4.16.0 migration. If those records still contain legacy array types, the API refuses to run so the old data is not converted directly to strings. The migration only processes MCP/HTTP tool apps and their historical versions; regular Workflow apps are excluded.
 
 V4.16.1 stores MCP/HTTP tool JSON Schemas as strings. Run a dry run first:
 
@@ -51,3 +37,23 @@ curl -X POST 'https://你的域名/api/admin/4161/initToolJsonSchemaStorage' \
   -H 'rootkey: 你的ROOT_KEY' \
   -d '{"dryRun":false}'
 ```
+
+## 🚀 New
+
+1. Third-party publishing channels now support multimodal files, audio transcription, and citations where supported.
+2. Teams can install system plugins in process mode. This carries some security risk; a future release will support isolated serverless execution.
+3. Sandbox supports custom APT repositories.
+
+## ⚙️ Improvements
+
+1. Updated S3 key naming to stop using the original filename as the key, preventing keys from becoming too long.
+2. MCP/HTTP JSON Schemas are now stored as strings to prevent conflicts between custom objects and MongoDB rules.
+
+## 🐛 Fixes
+
+1. Fixed Workflow global variable configuration overflowing when field names are too long.
+2. Fixed AgentV2 calling a child Workflow without disabling streaming output within the Workflow.
+
+## 🛠️ Code Improvements
+
+1. Completed documentation for all `devapi` endpoints.
