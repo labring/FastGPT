@@ -25,7 +25,9 @@ describe('getLocale', () => {
     expect(getLocale(request({ [FASTGPT_LANGUAGE_HEADER]: 'zh-Hant-TW' }))).toBe(LangEnum.zh_Hant);
     expect(getLocale(request({ [FASTGPT_LANGUAGE_HEADER]: 'zh_hant_tw' }))).toBe(LangEnum.zh_Hant);
     expect(getLocale(request({ [FASTGPT_LANGUAGE_HEADER]: 'en-US' }))).toBe(LangEnum.en);
-    expect(getLocale(request({ [FASTGPT_LANGUAGE_HEADER]: 'ko-KR' }))).toBe(LangEnum.ko_KR);
+    for (const locale of ['ko', 'ko-KR', 'ko-kr', 'KO_KR']) {
+      expect(getLocale(request({ [FASTGPT_LANGUAGE_HEADER]: locale }))).toBe(LangEnum.ko_KR);
+    }
   });
 
   it('falls back to English for unsupported or missing languages', () => {

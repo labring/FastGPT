@@ -94,8 +94,8 @@ describe('getLangMapping', () => {
     expect(getLangMapping(' zh_hant_tw ')).toBe(LangEnum.zh_Hant);
   });
 
-  it('maps the canonical Korean locale to ko-KR', () => {
-    expect(getLangMapping('ko-KR')).toBe(LangEnum.ko_KR);
+  it.each(['ko', 'ko-KR', 'ko-kr', 'KO_KR'])('maps Korean locale variant %s to ko-KR', (locale) => {
+    expect(getLangMapping(locale)).toBe(LangEnum.ko_KR);
   });
 });
 

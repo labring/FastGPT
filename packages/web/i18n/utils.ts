@@ -1,4 +1,5 @@
 import { LangEnum, type localeType } from '@fastgpt/global/common/i18n/type';
+import { parseLocale } from '@fastgpt/global/common/i18n/utils';
 import {
   FASTGPT_LANGUAGE_HEADER,
   FASTGPT_SHARE_LANGUAGE_HEADER
@@ -19,26 +20,6 @@ type LanguageStorageSnapshot = {
 };
 
 const memoryLanguage = new Map<string, localeType>();
-
-const languageMap: Record<string, localeType> = {
-  zh: LangEnum.zh_CN,
-  'zh-CN': LangEnum.zh_CN,
-  'zh-Hans': LangEnum.zh_CN,
-  'zh-HK': LangEnum.zh_Hant,
-  'zh-TW': LangEnum.zh_Hant,
-  'zh-Hant': LangEnum.zh_Hant,
-  'zh-Hant-TW': LangEnum.zh_Hant,
-  'zh-Hant-HK': LangEnum.zh_Hant,
-  'zh-hk': LangEnum.zh_Hant,
-  'zh-tw': LangEnum.zh_Hant,
-  'zh-hant': LangEnum.zh_Hant,
-  'zh-hant-tw': LangEnum.zh_Hant,
-  'zh-hant-hk': LangEnum.zh_Hant,
-  en: LangEnum.en,
-  'en-US': LangEnum.en,
-  'en-us': LangEnum.en,
-  'ko-KR': LangEnum.ko_KR
-};
 
 const isInIframe = () => {
   if (typeof window === 'undefined') return false;
@@ -273,22 +254,7 @@ export const getPersistedLang = (key = LANG_KEY) => {
  * 将浏览器语言或历史存储值归一化成系统支持的 locale。
  */
 export const getLangMapping = (lng: string): localeType => {
-  const normalizedLng = lng.trim().replaceAll('_', '-');
-  let lang = languageMap[normalizedLng] || languageMap[normalizedLng.toLowerCase()];
-
-  // 如果没有直接映射，尝试智能回退
-  if (!lang) {
-    const langPrefix = normalizedLng.split('-')[0].toLowerCase();
-    // 中文相关语言优先回退到简体中文
-    if (langPrefix === 'zh') {
-      lang = LangEnum.zh_CN;
-    }
-    if (langPrefix === 'en') {
-      lang = LangEnum.en;
-    }
-  }
-
-  return lang || LangEnum.zh_CN;
+  return parseLocale(lng) ?? LangEnum.zh_CN;
 };
 
 /** 返回资源加载必须满足的语言链；非英文语言同时依赖英文 fallback。 */

@@ -225,7 +225,7 @@
   "permission_appCreate": "앱 생성",
   "permission_appCreate_tip": "루트 디렉터리에서 앱을 생성할 수 있습니다(폴더 내 생성 권한은 폴더에 의해 제어됩니다)",
   "permission_datasetCreate": "데이터셋 생성",
-  "permission_datasetCreate_Tip": "루트 디렉터리에서 데이터셋를 생성할 수 있습니다(폴더 내 생성 권한은 폴더에 의해 제어됩니다)",
+  "permission_datasetCreate_Tip": "루트 디렉터리에서 데이터셋을 생성할 수 있습니다(폴더 내 생성 권한은 폴더에 의해 제어됩니다)",
   "permission_skillCreate": "스킬 생성",
   "permission_skillCreate_Tip": "루트 디렉터리에서 스킬을 생성할 수 있습니다(폴더 내 생성 권한은 폴더에 의해 제어됩니다)",
   "permission_manage": "관리자",
