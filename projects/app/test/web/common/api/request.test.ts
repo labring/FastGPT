@@ -32,7 +32,8 @@ vi.mock('@fastgpt/web/common/system/utils', () => ({
   subRoute: '/test-route' // Add subRoute mock
 }));
 
-vi.mock('@fastgpt/global/common/i18n/utils', () => ({
+vi.mock('@fastgpt/global/common/i18n/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/global/common/i18n/utils')>()),
   i18nT: vi.fn((key: string) => {
     const translations: Record<string, string> = {
       'common:server_error': '服务器异常',

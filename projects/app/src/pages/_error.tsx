@@ -56,7 +56,9 @@ function Error() {
     }, 2000);
   });
 
-  return <Box whiteSpace={'pre-wrap'}>{errorText[lang as keyof typeof errorText]}</Box>;
+  return (
+    <Box whiteSpace={'pre-wrap'}>{errorText[lang as keyof typeof errorText] ?? errorText.en}</Box>
+  );
 }
 
 export async function getServerSideProps(context: any) {

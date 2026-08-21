@@ -39,6 +39,10 @@ const AccountContainer = ({
   const router = useRouter();
   const { isPc } = useSystem();
 
+  const showThirdPartyTab =
+    feConfigs?.show_openai_account === true ||
+    feConfigs?.externalProviderWorkflowVariables?.some((item) => item.isOpen) === true;
+
   const currentTab = useMemo(() => {
     return router.pathname.split('/').pop() as TabEnum;
   }, [router.pathname]);
@@ -72,11 +76,15 @@ const AccountContainer = ({
           }
         ]
       : []),
-    {
-      icon: 'common/thirdParty',
-      label: t('account:third_party'),
-      value: TabEnum.thirdParty
-    },
+    ...(showThirdPartyTab
+      ? [
+          {
+            icon: 'common/thirdParty',
+            label: t('account:third_party'),
+            value: TabEnum.thirdParty
+          }
+        ]
+      : []),
     ...(feConfigs.isPlus && feConfigs.customDomain?.enable
       ? [
           {

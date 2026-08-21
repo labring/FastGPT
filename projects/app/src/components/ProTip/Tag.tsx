@@ -12,7 +12,7 @@ const ProTag = () => {
   const { i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
 
-  return feConfigs?.isPlus ? null : <MyImage src={LangMap[i18n.language]} />;
+  return feConfigs?.isPlus ? null : <MyImage src={LangMap[i18n.language] ?? LangMap.en} />;
 };
 
 export default ProTag;

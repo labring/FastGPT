@@ -2,8 +2,9 @@ import z from 'zod';
 
 export const I18nStringSchema = z.object({
   en: z.string(),
-  'zh-CN': z.string().optional(),
-  'zh-Hant': z.string().optional()
+  'zh-CN': z.string(),
+  'zh-Hant': z.string().optional(),
+  'ko-KR': z.string().optional()
 });
 export type I18nStringType = z.infer<typeof I18nStringSchema>;
 
