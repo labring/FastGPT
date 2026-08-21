@@ -525,6 +525,101 @@ describe('workflow migration boundary', () => {
     ]);
   });
 
+  it('preserves manual values from legacy Agent NodeIO snapshots', async () => {
+    const result = await migrateWorkflowToCurrent(
+      {
+        nodes: [
+          {
+            nodeId: 'agent-1',
+            flowNodeType: 'agent',
+            name: 'Agent',
+            inputs: [
+              {
+                key: NodeInputKeyEnum.selectedTools,
+                label: 'Selected tools',
+                renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+                value: [
+                  {
+                    id: 'tool-1',
+                    config: { retained: 'value' },
+                    inputs: [
+                      {
+                        key: 'text',
+                        renderTypeList: [
+                          FlowNodeInputTypeEnum.input,
+                          FlowNodeInputTypeEnum.agentGenerated
+                        ],
+                        selectedType: FlowNodeInputTypeEnum.input,
+                        value: 'saved text'
+                      },
+                      {
+                        key: 'enabled',
+                        renderTypeList: [
+                          FlowNodeInputTypeEnum.switch,
+                          FlowNodeInputTypeEnum.agentGenerated
+                        ],
+                        selectedType: FlowNodeInputTypeEnum.switch,
+                        value: false
+                      },
+                      {
+                        key: 'range',
+                        renderTypeList: [
+                          FlowNodeInputTypeEnum.JSONEditor,
+                          FlowNodeInputTypeEnum.agentGenerated
+                        ],
+                        selectedType: FlowNodeInputTypeEnum.JSONEditor,
+                        value: ['2026-08-20', '2026-08-22']
+                      },
+                      {
+                        key: 'generated',
+                        renderTypeList: [
+                          FlowNodeInputTypeEnum.input,
+                          FlowNodeInputTypeEnum.agentGenerated
+                        ],
+                        selectedType: FlowNodeInputTypeEnum.agentGenerated,
+                        value: 'must not persist'
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            outputs: []
+          }
+        ]
+      } as any,
+      {
+        resolveToolDefinition: async () => ({
+          inputs: [
+            { key: 'text', label: 'Text', renderTypeList: [FlowNodeInputTypeEnum.input] },
+            { key: 'enabled', label: 'Enabled', renderTypeList: [FlowNodeInputTypeEnum.switch] },
+            { key: 'range', label: 'Range', renderTypeList: [FlowNodeInputTypeEnum.JSONEditor] },
+            {
+              key: 'generated',
+              label: 'Generated',
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              defaultToAgentGenerated: true
+            }
+          ]
+        })
+      }
+    );
+
+    const tool = (result.nodes[0].inputs[0].value as any)[0];
+    expect(tool.config).toEqual({
+      retained: 'value',
+      text: 'saved text',
+      enabled: false,
+      range: ['2026-08-20', '2026-08-22']
+    });
+    expect(tool.inputs).toEqual([
+      { key: 'text', mode: 'manual' },
+      { key: 'enabled', mode: 'manual' },
+      { key: 'range', mode: 'manual' },
+      { key: 'generated', mode: 'agentGenerated' }
+    ]);
+  });
+
   it('keeps an unavailable Agent tool instead of fabricating empty inputs', async () => {
     const result = await migrateWorkflowToCurrent(
       {
