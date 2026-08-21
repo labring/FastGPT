@@ -8,6 +8,7 @@ import {
   useRef,
   useState
 } from 'react';
+import { getVirtualPlaceholderHeight, useVirtualScrollWindow } from './useVirtualList';
 
 type UseVirtualGridListParams<T> = {
   list: T[];
@@ -57,15 +58,6 @@ const defaultEstimatedRowHeight = 160;
 const defaultEstimatedRowGap = 20;
 const defaultPreloadRootMargin = '0px 0px 800px 0px';
 const defaultOverscanRows = 6;
-
-/**
- * 计算占位符高度
- * @param rowCount 行数
- * @param rowHeight 行高
- * @param rowGap 行间距
- */
-const getPlaceholderHeight = (rowCount: number, rowHeight: number, rowGap: number) =>
-  rowCount > 0 ? rowCount * rowHeight + (rowCount - 1) * rowGap : 0;
 
 /**
  * 解析 rootMargin 字符串，提取底部预加载距离
@@ -140,10 +132,6 @@ export function useVirtualGridList<T>({
 }: UseVirtualGridListParams<T>): UseVirtualGridListReturn<T> {
   const gridRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  /** requestAnimationFrame ID，用于防抖同步窗口 */
-  const syncWindowFrameRef = useRef<number>();
-  /** 标记下次同步是否需要使用预加载边距 */
-  const shouldUsePreloadRef = useRef(false);
   const [gridColumnCount, setGridColumnCount] = useState(defaultColumnCount);
   const [rowHeight, setRowHeight] = useState(estimatedRowHeight);
   const [rowGap, setRowGap] = useState(estimatedRowGap);
@@ -352,82 +340,17 @@ export function useVirtualGridList<T>({
     ]
   );
 
-  /**
-   * 立即执行窗口同步，清除 pending 的 frame
-   */
-  const flushSyncWindowRows = useCallback(() => {
-    syncWindowFrameRef.current = undefined;
-
-    const shouldUsePreload = shouldUsePreloadRef.current;
-    shouldUsePreloadRef.current = false;
-
-    syncWindowRows({
-      usePreload: shouldUsePreload
-    });
-  }, [syncWindowRows]);
-
-  /**
-   * 调度窗口同步，使用 requestAnimationFrame 防抖
-   * @param usePreload 是否启用预加载
-   */
-  const scheduleSyncWindowRows = useCallback(
-    ({ usePreload = false }: { usePreload?: boolean } = {}) => {
-      shouldUsePreloadRef.current = shouldUsePreloadRef.current || usePreload;
-
-      // 如果已有 pending 的 frame，不再重复调度
-      if (syncWindowFrameRef.current !== undefined) {
-        return;
-      }
-
-      syncWindowFrameRef.current = window.requestAnimationFrame(flushSyncWindowRows);
-    },
-    [flushSyncWindowRows]
-  );
-
-  /** 调度带预加载的窗口同步 */
-  const schedulePreloadSyncWindowRows = useCallback(() => {
-    scheduleSyncWindowRows({
-      usePreload: true
-    });
-  }, [scheduleSyncWindowRows]);
-
-  /** 调度普通窗口同步 */
-  const scheduleNormalSyncWindowRows = useCallback(() => {
-    scheduleSyncWindowRows();
-  }, [scheduleSyncWindowRows]);
+  const { schedulePreloadSyncWindow: schedulePreloadSyncWindowRows } = useVirtualScrollWindow({
+    containerRef: gridRef,
+    syncWindow: syncWindowRows,
+    listenToWindow: true
+  });
 
   // 当列表关键数据变化时，立即同步一次窗口
   useEffect(() => {
     updateGridMetrics();
     schedulePreloadSyncWindowRows();
   }, [leadingItemCount, list.length, listKey, schedulePreloadSyncWindowRows, updateGridMetrics]);
-
-  // 监听全局 scroll 和 resize 事件，调度窗口同步
-  useEffect(() => {
-    window.addEventListener('scroll', scheduleNormalSyncWindowRows, {
-      capture: true,
-      passive: true
-    });
-    window.addEventListener('resize', scheduleNormalSyncWindowRows, {
-      passive: true
-    });
-
-    return () => {
-      window.removeEventListener('scroll', scheduleNormalSyncWindowRows, {
-        capture: true
-      });
-      window.removeEventListener('resize', scheduleNormalSyncWindowRows);
-    };
-  }, [scheduleNormalSyncWindowRows]);
-
-  // 组件卸载时取消 pending 的 animation frame
-  useEffect(() => {
-    return () => {
-      if (syncWindowFrameRef.current !== undefined) {
-        window.cancelAnimationFrame(syncWindowFrameRef.current);
-      }
-    };
-  }, []);
 
   // 获取当前有效的窗口行状态，如果 key 不匹配则重置
   const activeWindowRows =
@@ -459,8 +382,8 @@ export function useVirtualGridList<T>({
   const hasMore = endRow < totalVirtualRows;
 
   // 计算顶部和底部占位符高度
-  const topPlaceholderHeight = getPlaceholderHeight(startRow, rowHeight, rowGap);
-  const bottomPlaceholderHeight = getPlaceholderHeight(
+  const topPlaceholderHeight = getVirtualPlaceholderHeight(startRow, rowHeight, rowGap);
+  const bottomPlaceholderHeight = getVirtualPlaceholderHeight(
     Math.max(totalVirtualRows - endRow, 0),
     rowHeight,
     rowGap
