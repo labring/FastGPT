@@ -65,7 +65,8 @@ describe('getAppLatestVersion', () => {
           targetHandle: 'start-target-left'
         }
       ],
-      chatConfig: {}
+      chatConfig: {},
+      resources: []
     };
     const leanMock = vi.fn().mockResolvedValue(version);
     findOneMock.mockReturnValue({
@@ -110,6 +111,28 @@ describe('getAppLatestVersion', () => {
     expect(result.chatConfig.welcomeConfig?.welcomeText).toBe('Legacy welcome');
   });
 
+  it('derives fallback resources from the current app workflow', async () => {
+    findOneMock.mockReturnValue({
+      sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(undefined) })
+    });
+
+    const result = await getAppLatestVersion('app-id', {
+      modules: [
+        {
+          nodeId: 'agent-node',
+          name: 'Agent',
+          flowNodeType: FlowNodeTypeEnum.appModule,
+          pluginId: 'current-agent-id',
+          inputs: [],
+          outputs: []
+        }
+      ],
+      resources: [{ type: 'skill', id: 'stale-skill-id' }]
+    } as any);
+
+    expect(result.resources).toEqual([{ type: 'agent', id: 'current-agent-id' }]);
+  });
+
   it('preserves a legacy version config when the current app config differs', async () => {
     const version = {
       _id: '507f1f77bcf86cd799439011',
@@ -131,7 +154,8 @@ describe('getAppLatestVersion', () => {
         }
       ],
       edges: [],
-      chatConfig: undefined
+      chatConfig: undefined,
+      resources: []
     };
     findOneMock.mockReturnValue({
       sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(version) })
@@ -178,7 +202,8 @@ describe('getAppVersionById', () => {
         }
       ],
       edges: [],
-      chatConfig: undefined
+      chatConfig: undefined,
+      resources: []
     };
     findOneMock.mockReturnValue({ lean: vi.fn().mockResolvedValue(version) });
 
@@ -194,5 +219,23 @@ describe('getAppVersionById', () => {
 
     expect(result.nodes).toEqual([]);
     expect(result.chatConfig.instruction).toBe('Legacy instruction');
+  });
+
+  it('rejects a published version that has not been migrated', async () => {
+    findOneMock.mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        _id: '507f1f77bcf86cd799439011',
+        nodes: [],
+        edges: [],
+        chatConfig: undefined
+      })
+    });
+
+    await expect(
+      getAppVersionById({
+        appId: 'app-id',
+        versionId: '507f1f77bcf86cd799439011'
+      })
+    ).rejects.toThrow('App resources are not migrated');
   });
 });

@@ -19,7 +19,7 @@ import type {
 } from '@fastgpt/global/core/ai/skill/api';
 import { ListAppsBySkillIdQuerySchema } from '@fastgpt/global/core/ai/skill/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { buildAppSkillRefMongoQuery } from '@fastgpt/service/core/app/resourceRefs';
+import { buildAppResourceMongoQuery } from '@fastgpt/service/core/app/resources';
 
 async function handler(
   req: ApiRequestProps<unknown, ListAppsBySkillIdQuery>
@@ -65,7 +65,7 @@ async function handler(
     {
       teamId,
       deleteTime: null,
-      ...buildAppSkillRefMongoQuery(skillId)
+      ...buildAppResourceMongoQuery({ type: 'skill', ids: skillId })
     },
     '_id parentId avatar type name intro tmbId updateTime inheritPermission'
   )

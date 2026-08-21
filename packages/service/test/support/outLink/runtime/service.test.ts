@@ -25,6 +25,7 @@ import { getWorkflowFileLimits } from '@fastgpt/service/core/workflow/utils/file
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 vi.mock('@fastgpt/service/core/app/schema', () => ({
+  AppCollectionName: 'apps',
   MongoApp: { findById: vi.fn() }
 }));
 vi.mock('@fastgpt/service/core/app/version/controller', () => ({
@@ -142,7 +143,8 @@ describe('runOutlinkRuntime', () => {
     vi.mocked(getAppLatestVersion).mockResolvedValue({
       nodes: [{ nodeId: 'start', inputs: [], outputs: [] }],
       edges: [],
-      chatConfig: { variables: [], fileSelectConfig: { maxFiles: 2 } }
+      chatConfig: { variables: [], fileSelectConfig: { maxFiles: 2 } },
+      resources: []
     } as any);
     vi.mocked(getChatItems).mockResolvedValue({ histories: [] } as any);
     vi.mocked(authOutLinkLimit).mockResolvedValue({ uid: message.chatUserId });

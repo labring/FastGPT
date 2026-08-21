@@ -50,6 +50,7 @@ async function handler(
       { _id: appId },
       {
         modules: storageNodes,
+        resources: [],
         updateTime: new Date()
       },
       { session }
@@ -59,7 +60,8 @@ async function handler(
       { appId },
       {
         $set: {
-          nodes: storageNodes
+          nodes: storageNodes,
+          resources: []
         }
       },
       { session }

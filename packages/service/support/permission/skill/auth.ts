@@ -57,11 +57,7 @@ export const authSkillByTmbId = async ({
       };
     }
 
-    if (String(skill.teamId) !== teamId) {
-      return Promise.reject(SkillErrEnum.unAuthSkill);
-    }
-
-    // System skills are read-only for all team members
+    // System skills are global read-only resources and do not belong to a team.
     if (skill.source === AgentSkillSourceEnum.system) {
       const sysPer = new SkillPermission({ role: ReadRoleVal, isOwner: false });
       if (!sysPer.checkPer(per)) {
@@ -71,6 +67,10 @@ export const authSkillByTmbId = async ({
         ...skill,
         permission: sysPer
       };
+    }
+
+    if (String(skill.teamId) !== teamId) {
+      return Promise.reject(SkillErrEnum.unAuthSkill);
     }
 
     // Check if should inherit permission from parent folder

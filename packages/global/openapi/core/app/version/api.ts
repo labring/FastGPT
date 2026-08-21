@@ -3,7 +3,7 @@ import { VersionListItemSchema } from '../../../../core/app/version/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { PaginationSchema } from '../../../api';
 import { OpenAPIStoreNodeItemTypeSchema } from '../../workflow/node';
-import { AppResourceRefsSchema, AppSchemaTypeSchema } from '../../../../core/app/type';
+import { AppResourcesSchema, AppSchemaTypeSchema } from '../../../../core/app/type';
 import { OpenAPIAppChatConfigSchema } from '../common/api';
 import { BoolSchema, NumSchema } from '../../../../common/zod';
 
@@ -27,8 +27,8 @@ const AppVersionChatConfigSchema = OpenAPIAppChatConfigSchema.default({}).meta({
   description: '版本内保存的应用对话配置'
 });
 
-const AppVersionResourceRefsSchema = AppResourceRefsSchema.optional().meta({
-  description: '该版本引用的外部资源集合'
+const AppVersionResourcesSchema = AppResourcesSchema.meta({
+  description: '该版本引用的资源集合'
 });
 
 const OpenAPIVersionListItemSchema = VersionListItemSchema.extend({
@@ -175,7 +175,7 @@ export const GetAppVersionDetailResponseSchema = z.object({
     example: '正式发布版',
     description: '版本名称'
   }),
-  resourceRefs: AppVersionResourceRefsSchema
+  resources: AppVersionResourcesSchema
 });
 export type GetAppVersionDetailResponseType = z.infer<typeof GetAppVersionDetailResponseSchema>;
 
@@ -211,7 +211,8 @@ export const GetLatestAppVersionResponseSchema = z.object({
     description: '版本内保存的应用节点配置'
   }),
   edges: AppVersionEdgesSchema,
-  chatConfig: AppVersionChatConfigSchema
+  chatConfig: AppVersionChatConfigSchema,
+  resources: AppVersionResourcesSchema
 });
 export type GetLatestAppVersionResponseType = z.infer<typeof GetLatestAppVersionResponseSchema>;
 

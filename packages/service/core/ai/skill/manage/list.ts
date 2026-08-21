@@ -1,6 +1,6 @@
 import { Types } from '../../../../common/mongo';
 import { MongoApp } from '../../../app/schema';
-import { AppResourceRefsSkillIdsPath, buildAppSkillRefMongoQuery } from '../../../app/resourceRefs';
+import { buildAppResourceMongoQuery } from '../../../app/resources';
 import { MongoAgentSkills } from '../model/schema';
 import { SkillPermission } from '@fastgpt/global/support/permission/skill/controller';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
@@ -279,14 +279,19 @@ export const listReadableAgentSkills = async ({
         $match: {
           teamId: new Types.ObjectId(String(teamId)),
           deleteTime: null,
-          ...buildAppSkillRefMongoQuery(skillIdStrings)
+          ...buildAppResourceMongoQuery({ type: 'skill', ids: skillIdStrings })
         }
       },
-      { $unwind: `$${AppResourceRefsSkillIdsPath}` },
-      { $match: buildAppSkillRefMongoQuery(skillIdStrings) },
+      { $unwind: '$resources' },
+      {
+        $match: {
+          'resources.type': 'skill',
+          'resources.id': { $in: skillIdStrings }
+        }
+      },
       {
         $group: {
-          _id: `$${AppResourceRefsSkillIdsPath}`,
+          _id: '$resources.id',
           count: { $sum: 1 }
         }
       }

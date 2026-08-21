@@ -8,7 +8,6 @@ import { calculateCompressionThresholds } from '../../../../../../ai/llm/compres
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { MongoDataset } from '../../../../../../dataset/schema';
 import {
   defaultSearchDatasetData,
   type DefaultSearchDatasetDataProps
@@ -27,6 +26,11 @@ import {
   createQueryExtensionChildNodeResponse
 } from '../../../../dataset/nodeResponse';
 import { filterDatasetsByTmbId } from '../../../../../../dataset/utils';
+import {
+  assertWorkflowDatasetResources,
+  loadWorkflowDatasetResource
+} from '../../../../../utils/resource';
+import { nodeHasDynamicInput } from '../../../../../../app/resources';
 import { normalizeDatasetSearchInput } from '../../../../dataset/utils';
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 
@@ -37,6 +41,7 @@ type DatasetSearchParams = {
   llmModel: string;
   userKey?: OpenaiAccountType;
   datasetParams?: AppFormEditFormType['dataset'];
+  dynamicDataset?: boolean;
 };
 
 /**
@@ -170,7 +175,8 @@ export const dispatchAgentDatasetSearch = async ({
   teamId,
   tmbId,
   llmModel,
-  userKey
+  userKey,
+  dynamicDataset = false
 }: DatasetSearchParams): Promise<DispatchSubAppResponse> => {
   if (!datasetParams || datasetParams.datasets.length === 0) {
     return {
@@ -200,12 +206,17 @@ export const dispatchAgentDatasetSearch = async ({
   });
 
   try {
-    const datasetIds = datasetParams.authTmbId
-      ? await filterDatasetsByTmbId({
-          datasetIds: datasetParams.datasets.map((item) => item.datasetId),
-          tmbId
-        })
-      : datasetParams.datasets.map((item) => item.datasetId);
+    assertWorkflowDatasetResources({
+      datasetIds: datasetParams.datasets.map((item) => item.datasetId),
+      dynamic: dynamicDataset
+    });
+    const datasetIds =
+      datasetParams.authTmbId || dynamicDataset
+        ? await filterDatasetsByTmbId({
+            datasetIds: datasetParams.datasets.map((item) => item.datasetId),
+            tmbId
+          })
+        : datasetParams.datasets.map((item) => item.datasetId);
 
     if (datasetIds.length === 0) {
       return {
@@ -214,7 +225,10 @@ export const dispatchAgentDatasetSearch = async ({
     }
 
     // Get vector model
-    const dataset = await MongoDataset.findById(datasetIds[0], 'vectorModel vlmModel').lean();
+    const dataset = await loadWorkflowDatasetResource({
+      datasetId: datasetIds[0],
+      dynamic: dynamicDataset
+    });
     const vectorModel = getEmbeddingModel(dataset?.vectorModel);
     // Get Rerank Model
     const rerankModelData = getRerankModel(datasetParams.rerankModel);

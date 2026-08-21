@@ -42,6 +42,7 @@ import { preChatRound } from '@fastgpt/service/core/chat/utils/prepare';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { getRuntimeNodeResponseSummary } from '@fastgpt/service/core/workflow/dispatch/utils';
+import { loadWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
 
 const stringifyMcpPluginOutput = (pluginOutput: unknown) => {
   if (pluginOutput === undefined || pluginOutput === null) {
@@ -146,7 +147,7 @@ export const getMcpServerTools = async (key: string): Promise<Tool[]> => {
         $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.workflowTool]
       }
     },
-    { name: 1, intro: 1 }
+    { name: 1, intro: 1, modules: 1, edges: 1, chatConfig: 1, resources: 1, pluginData: 1 }
   ).lean();
 
   // Get latest version
@@ -185,7 +186,10 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
     const pluginFixedTitle = isPlugin ? 'Mcp call' : undefined;
 
     // Get app latest version
-    const { versionId, nodes, edges, chatConfig } = await getAppLatestVersion(app._id, app);
+    const { versionId, nodes, edges, chatConfig, resources } = await getAppLatestVersion(
+      app._id,
+      app
+    );
 
     const userQuestion: UserChatItemType = (() => {
       if (isPlugin) {
@@ -278,6 +282,10 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
         uid: String(app.tmbId),
         runtimeNodes,
         runtimeEdges: storeEdges2RuntimeEdges(edges),
+        resourceContext: await loadWorkflowResourceContext({
+          resources,
+          teamId: app.teamId
+        }),
         variables,
         responseChatItemId: preparedRound.responseChatItemId,
         query: removeEmptyUserInput(workflowQuery),

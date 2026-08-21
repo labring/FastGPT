@@ -82,7 +82,8 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/workflow/utils/context', () => ({
-  getWorkflowContext: vi.fn(() => ({ mcpClientMemory: {} }))
+  getWorkflowContext: vi.fn(() => ({ mcpClientMemory: {} })),
+  getWorkflowResourceContext: vi.fn(() => undefined)
 }));
 
 const createRunToolProps = (toolConfig: Record<string, any>) =>

@@ -37,11 +37,11 @@ import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSc
 import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/register';
 import {
   beforeUpdateAppFormat,
-  validatePublishAppAgentSkillReadPermissions,
   updateParentFoldersUpdateTime
 } from '@fastgpt/service/core/app/controller';
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
-import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
+import { extractAppResources } from '@fastgpt/service/core/app/resources';
+import { checkAppResourceReadPermissions } from '@fastgpt/service/support/permission/app/resource';
 
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
@@ -191,16 +191,19 @@ export const onCreateApp = async ({
   });
 
   await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });
+  const resources = extractAppResources({
+    nodes: normalizedWorkflow.nodes,
+    chatConfig: normalizedWorkflow.chatConfig
+  });
   if (!AppFolderTypeList.includes(type!)) {
-    await validatePublishAppAgentSkillReadPermissions({
-      nodes: normalizedWorkflow.nodes,
+    await checkAppResourceReadPermissions({
+      resources,
       tmbId,
       isRoot
     });
   }
 
   const create = async (session: ClientSession) => {
-    const resourceRefs = extractAppResourceRefsFromNodes(normalizedWorkflow.nodes);
     const _avatar = await (async () => {
       if (!templateId || isPluginSystemTemplate(templateId)) return avatar;
 
@@ -236,7 +239,7 @@ export const onCreateApp = async ({
           version: 'v2',
           pluginData,
           templateId,
-          ...(!AppFolderTypeList.includes(type!) && { resourceRefs })
+          resources
         }
       ],
       { session, ordered: true }
@@ -257,7 +260,7 @@ export const onCreateApp = async ({
             username,
             avatar: userAvatar,
             isPublish: true,
-            resourceRefs
+            resources
           }
         ],
         { session, ordered: true }

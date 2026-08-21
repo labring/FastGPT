@@ -36,6 +36,8 @@ import { getMcpToolsets } from '../../../app/tool/mcpTool/entity';
 import { getHttpToolsets } from '../../../app/tool/httpTool/entity';
 import { getHTTPToolList } from '../../../app/http';
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getWorkflowResourceContext } from '../../utils/context';
+import { assertWorkflowResource, filterWorkflowToolList } from '../../utils/resource';
 import {
   getSavedToolInputSelectedType,
   initToolInputsTypeByDefaultMode,
@@ -515,6 +517,21 @@ export const rewriteRuntimeWorkFlow = async ({
   edges: RuntimeEdgeItemType[];
   lang?: localeType;
 }) => {
+  const resourceContext = getWorkflowResourceContext();
+
+  const getToolsetApp = async (appId: string) => {
+    if (resourceContext) {
+      assertWorkflowResource({
+        context: resourceContext,
+        type: 'tool',
+        id: appId
+      });
+      return resourceContext.appMap.get(appId);
+    }
+
+    return MongoApp.findOne({ _id: appId }).lean();
+  };
+
   const mergeToolNodeInputs = ({
     node,
     jsonSchema,
@@ -618,9 +635,13 @@ export const rewriteRuntimeWorkFlow = async ({
             pushEdges(runtimeNode.nodeId);
           });
         } else if (mcpToolsetVal) {
-          const app = await MongoApp.findOne({ _id: toolSetNode.pluginId }).lean();
+          const app = await getToolsetApp(toolSetNode.pluginId!);
           if (!app) continue;
-          const toolList = await getMCPChildren(app);
+          const toolList = filterWorkflowToolList({
+            context: resourceContext,
+            appId: String(app._id),
+            tools: await getMCPChildren(app)
+          });
 
           // mcpToolsetVal.toolId: 旧版 MCP
           const toolSetId = mcpToolsetVal.toolId || toolSetNode.pluginId;
@@ -638,10 +659,14 @@ export const rewriteRuntimeWorkFlow = async ({
             pushEdges(newToolNode.nodeId);
           });
         } else if (httpToolsetVal) {
-          const app = await MongoApp.findOne({ _id: toolSetNode.pluginId }).lean();
+          const app = await getToolsetApp(toolSetNode.pluginId!);
           if (!app) continue;
 
-          const toolList = await getHTTPToolList(app);
+          const toolList = filterWorkflowToolList({
+            context: resourceContext,
+            appId: String(app._id),
+            tools: await getHTTPToolList(app)
+          });
 
           toolList.forEach((tool: HttpToolConfigType, index: number) => {
             const newToolNode = initToolSetChildNode(
@@ -686,14 +711,26 @@ export const rewriteRuntimeWorkFlow = async ({
       })
       .filter(Boolean) as { toolsetId: string; toolName: string }[];
     // 批量获取 toolset，避免每个工具节点都单独查询一次数据库。
-    const toolsets = await getMcpToolsets({
-      teamId,
-      ids: parseMcpToolConfigs.map((config) => config.toolsetId),
-      field: {
-        _id: true,
-        modules: true
-      }
-    });
+    const toolsets = resourceContext
+      ? parseMcpToolConfigs
+          .map(({ toolsetId, toolName }) => {
+            assertWorkflowResource({
+              context: resourceContext,
+              type: 'tool',
+              id: toolsetId,
+              toolName
+            });
+            return resourceContext.appMap.get(toolsetId);
+          })
+          .filter((toolset): toolset is NonNullable<typeof toolset> => !!toolset)
+      : await getMcpToolsets({
+          teamId,
+          ids: parseMcpToolConfigs.map((config) => config.toolsetId),
+          field: {
+            _id: true,
+            modules: true
+          }
+        });
     const toolsetMap = new Map<string, (typeof toolsets)[number]>();
     toolsets.forEach((toolset) => {
       toolsetMap.set(String(toolset._id), toolset);
@@ -726,14 +763,26 @@ export const rewriteRuntimeWorkFlow = async ({
       })
       .filter(Boolean) as { toolsetId: string; toolName: string }[];
     // 批量获取 toolset，避免每个工具节点都单独查询一次数据库。
-    const toolsets = await getHttpToolsets({
-      teamId,
-      ids: parseHttpToolConfigs.map((config) => config.toolsetId),
-      field: {
-        _id: true,
-        modules: true
-      }
-    });
+    const toolsets = resourceContext
+      ? parseHttpToolConfigs
+          .map(({ toolsetId, toolName }) => {
+            assertWorkflowResource({
+              context: resourceContext,
+              type: 'tool',
+              id: toolsetId,
+              toolName
+            });
+            return resourceContext.appMap.get(toolsetId);
+          })
+          .filter((toolset): toolset is NonNullable<typeof toolset> => !!toolset)
+      : await getHttpToolsets({
+          teamId,
+          ids: parseHttpToolConfigs.map((config) => config.toolsetId),
+          field: {
+            _id: true,
+            modules: true
+          }
+        });
     const toolsetMap = new Map<string, (typeof toolsets)[number]>();
     toolsets.forEach((toolset) => {
       toolsetMap.set(String(toolset._id), toolset);

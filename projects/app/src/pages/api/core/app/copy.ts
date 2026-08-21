@@ -38,7 +38,7 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
     appId: sourceAppId
   });
 
-  const { tmbId } = app.parentId
+  const { tmbId, isRoot } = app.parentId
     ? await authApp({ req, appId: app.parentId, per: WritePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
@@ -73,6 +73,7 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
       teamId: app.teamId,
       tmbId,
       pluginData: app.pluginData,
+      isRoot,
       session
     });
 

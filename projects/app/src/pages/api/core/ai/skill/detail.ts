@@ -12,7 +12,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { Types } from '@fastgpt/service/common/mongo';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { buildAppSkillRefMongoQuery } from '@fastgpt/service/core/app/resourceRefs';
+import { buildAppResourceMongoQuery } from '@fastgpt/service/core/app/resources';
 
 async function handler(
   req: ApiRequestProps<Record<string, never>, GetSkillDetailQuery>
@@ -34,7 +34,7 @@ async function handler(
   const appCount = await MongoApp.countDocuments({
     teamId: new Types.ObjectId(String(teamId)),
     deleteTime: null,
-    ...buildAppSkillRefMongoQuery(skill._id.toString())
+    ...buildAppResourceMongoQuery({ type: 'skill', ids: skill._id.toString() })
   });
 
   return {

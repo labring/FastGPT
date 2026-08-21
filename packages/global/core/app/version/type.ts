@@ -1,5 +1,4 @@
 import { AppSchemaTypeSchema } from '../type';
-import { AppResourceRefsSchema } from '../type';
 import { SourceMemberSchema } from '../../../support/user/type';
 import z from 'zod';
 import { ObjectIdSchema } from '../../../common/type/mongo';
@@ -15,7 +14,7 @@ export const AppVersionSchema = z.object({
   isPublish: z.boolean().optional(),
   isAutoSave: z.boolean().optional(),
   versionName: z.string(),
-  resourceRefs: AppResourceRefsSchema.optional()
+  resources: AppSchemaTypeSchema.shape.resources
 });
 export type AppVersionSchemaType = z.infer<typeof AppVersionSchema>;
 

@@ -37,6 +37,8 @@ import {
   type UpdateAppQueryType
 } from '@fastgpt/global/openapi/core/app/common/api';
 import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
+import { extractAppResources } from '@fastgpt/service/core/app/resources';
+import { checkAppResourceReadPermissions } from '@fastgpt/service/support/permission/app/resource';
 
 // 更新应用接口
 // 包括如下功能：
@@ -66,7 +68,7 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
 
   // this step is to get the app and its permission, and we will check the permission manually for
   // different cases
-  const { app, permission, teamId, tmbId } = await authApp({
+  const { app, permission, teamId, tmbId, isRoot } = await authApp({
     req,
     authToken: true,
     appId,
@@ -140,14 +142,21 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
       })
     : undefined;
 
+  if (normalizedWorkflow) {
+    await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });
+    await checkAppResourceReadPermissions({
+      resources: extractAppResources({
+        nodes: normalizedWorkflow.nodes,
+        chatConfig: normalizedWorkflow.chatConfig
+      }),
+      tmbId,
+      isRoot
+    });
+  }
+
   const onUpdate = async (session?: ClientSession) => {
     // format nodes data
     // 1. dataset search limit, less than model quoteMaxToken
-    await beforeUpdateAppFormat({
-      nodes: nodes === undefined ? undefined : normalizedWorkflow?.nodes,
-      teamId
-    });
-
     if (app.type === AppTypeEnum.mcpToolSet && avatar) {
       await MongoApp.updateMany({ parentId: appId, teamId: app.teamId }, { avatar }, { session });
     }

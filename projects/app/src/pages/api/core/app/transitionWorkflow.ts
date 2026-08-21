@@ -26,7 +26,7 @@ async function handler(
     bodySchema: TransitionWorkflowBodySchema
   }).body;
 
-  const { app, teamId, tmbId } = await authApp({
+  const { app, teamId, tmbId, isRoot } = await authApp({
     req,
     appId,
     authToken: true,
@@ -52,7 +52,8 @@ async function handler(
         edges: app.edges,
         chatConfig: app.chatConfig,
         teamId: app.teamId,
-        tmbId
+        tmbId,
+        isRoot
       });
       await getS3AvatarSource().refreshAvatar(avatar, undefined, session);
 

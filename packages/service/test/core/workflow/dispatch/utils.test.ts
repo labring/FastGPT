@@ -33,6 +33,8 @@ import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edg
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { useToolNodeList } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolNodeList';
 import { updateAgentLoopCoreWorkflowToolInputValue } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/workflowToolRunner';
+import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import { loadWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
 
 const mockGetSystemToolRunTimeNodeFromSystemToolset = vi.fn();
 vi.mock('@fastgpt/service/core/workflow/utils', () => ({
@@ -947,6 +949,32 @@ describe('rewriteRuntimeWorkFlow', () => {
       ...opts
     }) as any;
 
+  const runWithToolSnapshot = ({
+    appId,
+    toolNames,
+    fn
+  }: {
+    appId: string;
+    toolNames: string[];
+    fn: () => Promise<unknown>;
+  }) => {
+    const resource = { type: 'tool' as const, id: appId, data: { toolNames } };
+    return runWithContext(
+      {
+        mcpClientMemory: {},
+        resourceContext: {
+          teamId: 'team1',
+          resources: [resource],
+          resourceMap: new Map([[`tool:${appId}`, resource]]),
+          appMap: new Map([[appId, { _id: appId }]]),
+          datasetMap: new Map(),
+          skillMap: new Map()
+        } as any
+      },
+      fn
+    );
+  };
+
   it('should return early when no toolSet nodes', async () => {
     const nodes = [makeNode('n1', FlowNodeTypeEnum.chatNode)];
     const edges = [makeEdge('n1', 'n2')];
@@ -1167,6 +1195,51 @@ describe('rewriteRuntimeWorkFlow', () => {
     expect(edges.find((e) => e.target === 'ts20')).toBeDefined();
   });
 
+  it.each([
+    {
+      name: 'MCP',
+      appId: 'mcp-app-1',
+      nodeId: 'ts2',
+      toolConfig: { mcpToolSet: { toolId: 'mcp-tool-1' } },
+      getChildren: mockGetMCPChildren,
+      children: [
+        { name: 'allowed', description: 'allowed', inputSchema: {} },
+        { name: 'blocked', description: 'blocked', inputSchema: {} }
+      ]
+    },
+    {
+      name: 'HTTP',
+      appId: 'http-plugin-1',
+      nodeId: 'ts4',
+      toolConfig: { httpToolSet: {} },
+      getChildren: mockGetHTTPToolList,
+      children: [
+        { name: 'allowed', description: 'allowed', url: 'http://example.com/allowed' },
+        { name: 'blocked', description: 'blocked', url: 'http://example.com/blocked' }
+      ]
+    }
+  ])(
+    'should only expand $name tools declared by the resource snapshot',
+    async ({ name, appId, nodeId, toolConfig, getChildren, children }) => {
+      const toolSetNode = makeNode(nodeId, FlowNodeTypeEnum.toolSet, {
+        pluginId: appId,
+        name: `${name}Tool`,
+        toolConfig
+      } as any);
+      const nodes = [toolSetNode];
+      const edges: RuntimeEdgeItemType[] = [];
+      getChildren.mockResolvedValue(children);
+
+      await runWithToolSnapshot({
+        appId,
+        toolNames: ['allowed'],
+        fn: () => rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges })
+      });
+
+      expect(nodes.map((node) => node.nodeId)).toEqual([`${nodeId}0`]);
+    }
+  );
+
   it('should keep resumed MCP toolSet memory edge after child node is rebuilt', async () => {
     const toolSetNode = makeNode('ts2', FlowNodeTypeEnum.toolSet, {
       pluginId: 'mcp-app-1',
@@ -1274,6 +1347,81 @@ describe('rewriteRuntimeWorkFlow', () => {
       return { lean: vi.fn().mockResolvedValue(docs) };
     });
   };
+
+  it.each([
+    {
+      name: 'MCP',
+      appId: 'mcp-resource-toolset',
+      toolId: 'mcp-mcp-resource-toolset/search',
+      toolSetKey: 'mcpToolSet',
+      toolName: 'search',
+      schemas: {
+        inputSchema: {
+          type: 'object',
+          properties: { query: { type: 'string', isToolParam: true } }
+        }
+      }
+    },
+    {
+      name: 'HTTP',
+      appId: 'http-resource-toolset',
+      toolId: 'http-http-resource-toolset/search',
+      toolSetKey: 'httpToolSet',
+      toolName: 'search',
+      schemas: {
+        inputSchema: {
+          type: 'object',
+          properties: { query: { type: 'string', isToolParam: true } }
+        },
+        requestSchema: {
+          type: 'object',
+          properties: { query: { type: 'string', isToolParam: true } }
+        }
+      }
+    }
+  ])(
+    'should decode $name tool schemas in the resource context',
+    async ({ name, appId, toolId, toolSetKey, toolName, schemas }) => {
+      const toolNode = makeNode(`${name}-tool`, FlowNodeTypeEnum.tool, {
+        toolConfig: {
+          [name === 'MCP' ? 'mcpTool' : 'httpTool']: { toolId }
+        },
+        inputs: []
+      } as any);
+      const nodes = [toolNode];
+      const toolList = [
+        {
+          name: toolName,
+          description: `${name} search`,
+          ...Object.fromEntries(
+            Object.entries(schemas).map(([key, value]) => [key, JSON.stringify(value)])
+          )
+        }
+      ];
+
+      setupFindByIdMap({
+        [appId]: {
+          _id: appId,
+          modules: [{ toolConfig: { [toolSetKey]: { toolList } } }]
+        }
+      });
+      const resourceContext = await loadWorkflowResourceContext({
+        resources: [{ type: 'tool', id: appId, data: { toolNames: [toolName] } }],
+        teamId: 'team1'
+      });
+
+      await runWithContext({ mcpClientMemory: {}, resourceContext }, () =>
+        rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges: [] })
+      );
+
+      expect(toolNode.jsonSchema).toEqual(
+        name === 'MCP' ? schemas.inputSchema : schemas.requestSchema
+      );
+      expect(toolNode.inputs).toEqual(
+        expect.arrayContaining([expect.objectContaining({ key: 'query' })])
+      );
+    }
+  );
 
   it('should inject jsonSchema and intro for standalone MCP tool nodes', async () => {
     const mcpToolNode = makeNode('mcp1', FlowNodeTypeEnum.tool, {

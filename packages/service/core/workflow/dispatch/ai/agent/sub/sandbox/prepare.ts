@@ -42,6 +42,7 @@ type EnsureAgentSandboxRuntimeParams = {
   needSandboxRuntime: boolean;
   sandboxEntrypoint?: string;
   skillIds: string[];
+  dynamicSkills?: boolean;
   selectedSkills?: SelectedAgentSkillItemType[];
   editSkillId?: string;
   prepareActions?: AgentSandboxPrepareAction[];
@@ -69,6 +70,7 @@ export async function ensureAgentSandboxRuntime({
   needSandboxRuntime,
   sandboxEntrypoint,
   skillIds,
+  dynamicSkills = false,
   selectedSkills,
   editSkillId,
   prepareActions = [],
@@ -109,7 +111,13 @@ export async function ensureAgentSandboxRuntime({
         : prepareSandbox(
             context,
             preparePackageMirrors(),
-            injectSelectedSkillFiles({ teamId, tmbId, skillIds, selectedSkills }),
+            injectSelectedSkillFiles({
+              teamId,
+              tmbId,
+              skillIds,
+              selectedSkills,
+              dynamicSkills
+            }),
             injectCurrentInputFiles(currentFiles, readInputFile),
             ...prepareActions,
             runSandboxEntrypoint({ sandboxEntrypoint }),
@@ -179,12 +187,14 @@ const injectSelectedSkillFiles =
     teamId,
     tmbId,
     skillIds,
-    selectedSkills
+    selectedSkills,
+    dynamicSkills
   }: {
     teamId: string;
     tmbId: string;
     skillIds: string[];
     selectedSkills?: SelectedAgentSkillItemType[];
+    dynamicSkills: boolean;
   }): AgentSandboxPrepareStep =>
   async (context) => {
     const deployedSkillVersions = await injectAgentSkillFilesToSandbox({
@@ -192,7 +202,8 @@ const injectSelectedSkillFiles =
       teamId,
       tmbId,
       skillIds,
-      workDirectory: context.workspaceRoot ?? context.workDirectory
+      workDirectory: context.workspaceRoot ?? context.workDirectory,
+      dynamic: dynamicSkills
     });
     const selectedSkillMap = new Map(selectedSkills?.map((skill) => [skill.skillId, skill]) || []);
 
