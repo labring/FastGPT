@@ -25,6 +25,14 @@ describe('CompletionsPropsSchema chatId', () => {
 });
 
 describe('ChatTestPropsSchema', () => {
+  const invalidSelectedToolInputs = [
+    { mode: 'manual' },
+    { key: 'query' },
+    { key: 'query', mode: 'invalid' },
+    { key: 123, mode: 'manual' },
+    { key: 'query', mode: 123 }
+  ];
+
   it('accepts extra workflow node and input fields', () => {
     const result = ChatTestPropsSchema.safeParse({
       messages: [],
@@ -91,35 +99,32 @@ describe('ChatTestPropsSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it.each([[{ mode: 'manual' }], [{ key: 'query' }], [{ key: 'query', mode: 'invalid' }]])(
-    'rejects invalid selected tool input config: %o',
-    (inputs) => {
-      const result = ChatTestPropsSchema.safeParse({
-        messages: [],
-        nodes: [
-          {
-            nodeId: 'agent-1',
-            flowNodeType: 'agent',
-            name: 'Agent',
-            inputs: [
-              {
-                key: NodeInputKeyEnum.selectedTools,
-                label: 'Selected tools',
-                renderTypeList: [FlowNodeInputTypeEnum.selectTool],
-                value: [{ id: 'tool-1', config: {}, inputs }]
-              }
-            ],
-            outputs: []
-          }
-        ],
-        edges: [],
-        chatConfig: {},
-        appId: '68ad85a7463006c963799a05',
-        appName: 'Test app',
-        chatId: 'chat-1'
-      });
+  it.each(invalidSelectedToolInputs)('rejects invalid selected tool input config: %o', (inputs) => {
+    const result = ChatTestPropsSchema.safeParse({
+      messages: [],
+      nodes: [
+        {
+          nodeId: 'agent-1',
+          flowNodeType: 'agent',
+          name: 'Agent',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              label: 'Selected tools',
+              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+              value: [{ id: 'tool-1', config: {}, inputs }]
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [],
+      chatConfig: {},
+      appId: '68ad85a7463006c963799a05',
+      appName: 'Test app',
+      chatId: 'chat-1'
+    });
 
-      expect(result.success).toBe(false);
-    }
-  );
+    expect(result.success).toBe(false);
+  });
 });

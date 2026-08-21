@@ -376,7 +376,33 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         [DispatchNodeResponseKeyEnum.toolResponse]: data
       };
     } else {
-      throw new Error('Tool configuration is missing');
+      // mcp tool (old version compatible)
+      const { toolData, system_toolData, ...restParams } = params;
+      const { name: toolName, url, headerSecret } = toolData || system_toolData;
+
+      await assertMCPUrlNotInternal(url);
+
+      const mcpClient = new MCPClient({
+        url,
+        headers: getSecretValue({
+          storeSecret: headerSecret
+        })
+      });
+      toolInput = restParams;
+      assertToolRuntimeParams({ jsonSchema: toolData?.inputSchema, params: restParams });
+      const result = await mcpClient.toolCall({ toolName, params: restParams });
+
+      return {
+        data: {
+          [NodeOutputKeyEnum.rawResponse]: result
+        },
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          toolInput,
+          toolRes: result,
+          moduleLogo: avatar
+        },
+        [DispatchNodeResponseKeyEnum.toolResponse]: result
+      };
     }
   } catch (error) {
     if (systemToolId) {
