@@ -1,6 +1,6 @@
 import React from 'react';
-import { ModalBody, Box, Flex, Input, ModalFooter, Button, HStack } from '@chakra-ui/react';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import { Box, Button, Flex, IconButton, Input } from '@chakra-ui/react';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -79,58 +79,132 @@ const UpdateContactModal = ({
     .join('/');
 
   return (
-    <>
-      <MyModal
-        isOpen
-        iconSrc="common/settingLight"
-        w={'32rem'}
-        title={
-          mode === 'notification_account'
-            ? t('common:support.user.info.notification_receiving_hint')
-            : t('common:contact_way')
-        }
-      >
-        <ModalBody px={10}>
-          <Flex flexDirection="column">
-            <HStack px="6" py="3" color="primary.600" bgColor="primary.50" borderRadius="md">
-              <Icon name="common/info" w="1rem" />
-              <Box fontSize={'sm'}>{t('common:support.user.info.bind_notification_hint')}</Box>
-            </HStack>
-            <Flex mt="4" alignItems="center">
-              <Box flex={'0 0 70px'}>{t('common:user.Account')}</Box>
-              <Input
-                flex={1}
-                bg={'myGray.50'}
-                {...register('contact', { required: true })}
-                placeholder={placeholder}
-              ></Input>
-            </Flex>
-            <Flex mt="6" alignItems="center" position={'relative'}>
-              <Box flex={'0 0 70px'}>{t('common:support.user.info.verification_code')}</Box>
-              <Input
-                flex={1}
-                bg={'myGray.50'}
-                {...register('verifyCode', { required: true })}
-                placeholder={t('common:support.user.info.code_required')}
-              ></Input>
-              <SendCodeBox username={account} />
-            </Flex>
-          </Flex>
-        </ModalBody>
-        <ModalFooter>
-          <Button mr={3} variant={'whiteBase'} onClick={onClose}>
+    <MyModal
+      isOpen
+      isCentered
+      onClose={onClose}
+      showCloseButton={false}
+      title={
+        mode === 'notification_account'
+          ? t('common:support.user.info.notification_receiving_hint')
+          : t('common:contact_way')
+      }
+      borderRadius="10px"
+      bodyStyles={{ pt: 0 }}
+      footer={
+        <>
+          <Button
+            variant="whiteBase"
+            h="32px"
+            minH="32px"
+            px="14px"
+            fontSize="12px"
+            lineHeight="16px"
+            letterSpacing="0.5px"
+            borderRadius="6px"
+            onClick={onClose}
+          >
             {t('common:Cancel')}
           </Button>
           <Button
+            variant="primary"
+            h="32px"
+            minH="32px"
+            px="14px"
+            fontSize="12px"
+            lineHeight="16px"
+            letterSpacing="0.5px"
+            borderRadius="6px"
             isLoading={isLoading}
             isDisabled={!account || !verifyCode}
+            _disabled={{
+              bg: 'primary.3 !important',
+              color: 'white !important',
+              opacity: 1
+            }}
             onClick={handleSubmit((data) => onSubmit(data))}
           >
             {t('common:Confirm')}
           </Button>
-        </ModalFooter>
-      </MyModal>
-    </>
+        </>
+      }
+    >
+      <IconButton
+        aria-label={t('common:Close')}
+        icon={<Icon name="close" w="20px" h="20px" />}
+        variant="ghost"
+        position="absolute"
+        top="8px"
+        right="8px"
+        w="36px"
+        h="36px"
+        minW="36px"
+        p="4px"
+        borderRadius="4px"
+        zIndex={1}
+        onClick={onClose}
+      />
+      <Box mt="8px" color="#667085" fontSize="12px" lineHeight="16px" letterSpacing="0.048px">
+        {t('common:support.user.info.bind_notification_hint')}
+      </Box>
+      <Flex direction="column" gap="16px" mt="24px">
+        <Flex direction="column" gap="8px">
+          <Box
+            color="#24282C"
+            fontSize="12px"
+            fontWeight={500}
+            lineHeight="16px"
+            letterSpacing="0.5px"
+          >
+            {mode === 'notification_account' ? t('common:user.Account') : t('common:contact_way')}
+          </Box>
+          <Input
+            size="sm"
+            px="12px"
+            fontSize="12px"
+            lineHeight="16px"
+            letterSpacing="0.048px"
+            borderColor="#E8EBF0"
+            borderRadius="6px"
+            bg="white"
+            _placeholder={{ color: '#667085', fontSize: '12px' }}
+            {...register('contact', { required: true })}
+            placeholder={placeholder}
+          />
+        </Flex>
+        <Flex direction="column" gap="8px" position="relative">
+          <Box
+            color="#24282C"
+            fontSize="12px"
+            fontWeight={500}
+            lineHeight="16px"
+            letterSpacing="0.5px"
+          >
+            {t('common:support.user.info.verification_code')}
+          </Box>
+          <Input
+            size="sm"
+            px="12px"
+            pr="84px"
+            fontSize="12px"
+            lineHeight="16px"
+            letterSpacing="0.048px"
+            borderColor="#E8EBF0"
+            borderRadius="6px"
+            bg="white"
+            _placeholder={{ color: '#667085', fontSize: '12px' }}
+            {...register('verifyCode', { required: true })}
+            placeholder={t('common:support.user.info.code_required')}
+          />
+          <SendCodeBox
+            username={account}
+            top="40px"
+            transform="translateY(-50%)"
+            lineHeight="18px"
+          />
+        </Flex>
+      </Flex>
+    </MyModal>
   );
 };
 

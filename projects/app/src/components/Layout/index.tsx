@@ -20,33 +20,14 @@ import SupportBot from './SupportBot';
 const Navbar = dynamic(() => import('./navbar'));
 const NavbarPhone = dynamic(() => import('./navbarPhone'));
 
-const ResetExpiredPswModal = dynamic(
-  () => import('@/components/support/user/safe/ResetExpiredPswModal'),
-  { ssr: false }
-);
 const NotSufficientModal = dynamic(() => import('@/components/support/wallet/NotSufficientModal'), {
-  ssr: false
-});
-const SystemMsgModal = dynamic(() => import('@/components/support/user/inform/SystemMsgModal'), {
-  ssr: false
-});
-const EnterpriseAuthNoticeModal = dynamic(
-  () => import('@/components/support/user/inform/EnterpriseAuthNoticeModal'),
-  {
-    ssr: false
-  }
-);
-const ImportantInform = dynamic(() => import('@/components/support/user/inform/ImportantInform'), {
-  ssr: false
-});
-const UpdateContact = dynamic(() => import('@/components/support/user/inform/UpdateContactModal'), {
   ssr: false
 });
 const ManualCopyModal = dynamic(
   () => import('@fastgpt/web/hooks/useCopyData').then((mod) => mod.ManualCopyModal),
   { ssr: false }
 );
-const ActivityAdModal = dynamic(() => import('@/components/support/activity/ActivityAdModal'), {
+const PostLoginActionOrchestrator = dynamic(() => import('./PostLoginActionOrchestrator'), {
   ssr: false
 });
 const ProModal = dynamic(() => import('@/components/ProTip/ProModal'), {
@@ -94,7 +75,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     setShowProModal
   } = useSystemStore();
   const { isPc } = useSystem();
-  const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
+  const { userInfo } = useUserStore();
   const { setUserDefaultLng, setShareDefaultLng } = useI18nLng();
 
   // Auto redeem coupon
@@ -106,20 +87,16 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   );
   const isHideNavbar = !!pcUnShowLayoutRoute[router.pathname];
 
-  // System hook
-  const { data, refetch: refetchUnRead } = useQuery(['getUnreadCount'], getUnreadCount, {
+  const {
+    data,
+    refetch: refetchUnRead,
+    isFetched: unreadQueryFetched
+  } = useQuery(['getUnreadCount', userInfo?._id], getUnreadCount, {
     enabled: !!userInfo && !!feConfigs.isPlus,
     refetchInterval: 30000
   });
   const unread = data?.unReadCount || 0;
   const importantInforms = data?.importantInforms || [];
-
-  const showUpdateNotification =
-    isUpdateNotification &&
-    feConfigs?.bind_notification_method &&
-    feConfigs?.bind_notification_method.length > 0 &&
-    !userInfo?.contact &&
-    !!userInfo?.team.permission.isOwner;
 
   const syncDefaultLanguage =
     router.pathname === '/chat/share' ? setShareDefaultLng : setUserDefaultLng;
@@ -203,21 +180,15 @@ const Layout = ({ children }: { children: JSX.Element }) => {
       {feConfigs?.isPlus && (
         <>
           <NotSufficientModal />
-          <SystemMsgModal />
-          {showUpdateNotification && (
-            <UpdateContact onClose={() => setIsUpdateNotification(false)} mode="contact" />
-          )}
-          {!!userInfo && importantInforms.length > 0 && (
-            <ImportantInform informs={importantInforms} refetch={refetchUnRead} />
-          )}
-          <ResetExpiredPswModal />
           <SupportBot />
         </>
       )}
-      <EnterpriseAuthNoticeModal key={`${router.pathname}-${userInfo?.team?.teamId ?? ''}`} />
-
       <ManualCopyModal />
-      <ActivityAdModal />
+      <PostLoginActionOrchestrator
+        importantInforms={importantInforms}
+        refetchImportantInforms={refetchUnRead}
+        unreadQueryFetched={unreadQueryFetched}
+      />
       {showProModal && <ProModal isOpen onClose={() => setShowProModal(false)} />}
       <Loading loading={loading} zIndex={999999} />
     </>
