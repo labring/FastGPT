@@ -5,7 +5,11 @@ import { getNanoid } from '../../../../common/string/tools';
 import { AppSchemaTypeSchema } from '../../../../core/app/type';
 import { AuthUserTypeEnum } from '../../../../support/permission/constant';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
-import { CanonicalWorkflowDataSchema } from '../../../../core/workflow/migration';
+import {
+  CanonicalSelectedToolsValueSchema,
+  CanonicalWorkflowDataSchema
+} from '../../../../core/workflow/migration';
+import { NodeInputKeyEnum } from '../../../../core/workflow/constants';
 import {
   OpenAPIFlowNodeInputItemTypeSchema,
   OpenAPIStoreNodeItemTypeSchema
@@ -14,9 +18,24 @@ import {
 const nullishToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
   z.preprocess((v) => v ?? undefined, schema);
 
+const ChatTestNodeInputSchema = OpenAPIFlowNodeInputItemTypeSchema.superRefine((input, ctx) => {
+  if (input.key !== NodeInputKeyEnum.selectedTools || input.value === undefined) return;
+
+  const result = CanonicalSelectedToolsValueSchema.safeParse(input.value);
+  if (result.success) return;
+
+  result.error.issues.forEach((issue) => {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['value', ...issue.path],
+      message: issue.message
+    });
+  });
+});
+
 const ChatTestNodeSchema = OpenAPIStoreNodeItemTypeSchema.extend({
-  inputs: z.array(OpenAPIFlowNodeInputItemTypeSchema.strict())
-}).strict();
+  inputs: z.array(ChatTestNodeInputSchema)
+});
 
 const WebCompletionsSchema = z.object({
   chatId: z
