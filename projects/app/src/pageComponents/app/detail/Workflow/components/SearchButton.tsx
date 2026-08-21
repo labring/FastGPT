@@ -1,15 +1,20 @@
 import React, { useState, useCallback } from 'react';
-import { Box, Flex, Button, IconButton, type ButtonProps, Input } from '@chakra-ui/react';
+import { Box, Flex, Button, IconButton, type ButtonProps, Input, Portal } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../WorkflowComponents/context/workflowInitContext';
 import { useReactFlow } from 'reactflow';
 import { useKeyPress, useThrottleEffect } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import WorkflowToolbarTooltip from '../../WorkflowComponents/WorkflowBuilder/WorkflowToolbarTooltip';
 
-const SearchButton = (props: ButtonProps) => {
+type SearchButtonProps = ButtonProps & {
+  inToolbar?: boolean;
+  portalContainerRef?: React.RefObject<HTMLElement | null>;
+};
+
+const SearchButton = ({ inToolbar = false, portalContainerRef, ...props }: SearchButtonProps) => {
   const { t } = useTranslation();
   const setNodes = useContextSelector(WorkflowBufferDataContext, (state) => state.setNodes);
   const { fitView } = useReactFlow();
@@ -18,6 +23,7 @@ const SearchButton = (props: ButtonProps) => {
   const [keyword, setKeyword] = useState<string>();
   const [searchIndex, setSearchIndex] = useState<number>(0);
   const [searchedNodeCount, setSearchedNodeCount] = useState(0);
+  const isSearchOpen = keyword !== undefined;
 
   useKeyPress(['ctrl.f', 'meta.f'], (e) => {
     e.preventDefault();
@@ -75,7 +81,7 @@ const SearchButton = (props: ButtonProps) => {
         }
       }));
     });
-  }, [keyword, searchIndex]);
+  }, [fitView, keyword, searchIndex, setNodes]);
 
   useThrottleEffect(
     () => {
@@ -109,34 +115,36 @@ const SearchButton = (props: ButtonProps) => {
     setSearchedNodeCount(0);
   }, []);
 
-  if (keyword === undefined) {
+  const trigger = (
+    <WorkflowToolbarTooltip label={isMac ? t('workflow:find_tip_mac') : t('workflow:find_tip')}>
+      <IconButton
+        icon={<MyIcon name="core/app/workflowToolbarSearch" boxSize={'18px'} color={'#485264'} />}
+        w={8}
+        minW={8}
+        h={8}
+        p={'7px'}
+        borderRadius={'6px'}
+        aria-label={t('workflow:please_enter_node_name')}
+        variant="unstyled"
+        bg={isSearchOpen ? 'myGray.50' : 'transparent'}
+        _hover={{ bg: 'myGray.50' }}
+        onClick={isSearchOpen ? clearSearch : () => setKeyword('')}
+        {...props}
+      />
+    </WorkflowToolbarTooltip>
+  );
+
+  if (!isSearchOpen) {
+    if (inToolbar) return trigger;
+
     return (
-      <Box position={'absolute'} top={'180px'} left={6} zIndex={1}>
-        <MyTooltip
-          shouldWrapChildren={false}
-          label={isMac ? t('workflow:find_tip_mac') : t('workflow:find_tip')}
-        >
-          <IconButton
-            icon={<MyIcon name="core/app/workflowToolbarSearch" boxSize={5} color={'myGray.400'} />}
-            w={9}
-            minW={9}
-            h={9}
-            p={1.5}
-            borderRadius={'50%'}
-            aria-label={''}
-            variant="whitePrimary"
-            _hover={{ bg: 'myGray.50' }}
-            border={'none'}
-            boxShadow={'0 4px 5px rgba(19, 51, 107, 0.20), 0 0 0.5px rgba(19, 51, 107, 0.50)'}
-            onClick={() => setKeyword('')}
-            {...props}
-          />
-        </MyTooltip>
+      <Box position={'absolute'} top={'176px'} left={6} zIndex={1}>
+        {trigger}
       </Box>
     );
   }
 
-  return (
+  const searchPanel = (
     <Flex
       position="absolute"
       top={20}
@@ -145,7 +153,7 @@ const SearchButton = (props: ButtonProps) => {
       pl={5}
       pr={4}
       py={4}
-      zIndex={1}
+      zIndex={330}
       borderRadius={'lg'}
       bg={'white'}
       alignItems={'center'}
@@ -219,6 +227,15 @@ const SearchButton = (props: ButtonProps) => {
         <MyIcon name="common/closeLight" w="1.2rem" />
       </Flex>
     </Flex>
+  );
+
+  return inToolbar && portalContainerRef ? (
+    <>
+      {trigger}
+      <Portal containerRef={portalContainerRef}>{searchPanel}</Portal>
+    </>
+  ) : (
+    searchPanel
   );
 };
 

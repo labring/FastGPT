@@ -16,15 +16,9 @@ import { assertExecutionEdge } from '../edge/service';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { assertParentAssignment } from '../nesting/service';
-import { valueMatchesType } from '../reference/service';
+import { getWorkflowReferenceValues, valueMatchesType } from '../reference/service';
 import { getInputAutomationMeta } from '../template/automationMeta';
 import { inputValueNeedsSchema, valueMatchesSchema } from '../template/valueSchema';
-
-const isReferenceValue = (value: unknown): value is [string, string] =>
-  Array.isArray(value) &&
-  value.length === 2 &&
-  typeof value[0] === 'string' &&
-  typeof value[1] === 'string';
 
 const hasRequiredValue = (value: unknown) =>
   value !== undefined &&
@@ -89,11 +83,7 @@ const validateReference = ({
   input: StoreNodeItemType['inputs'][number];
   diagnostics: WorkflowDiagnostic[];
 }) => {
-  const references = isReferenceValue(input.value)
-    ? [input.value]
-    : Array.isArray(input.value) && input.value.every(isReferenceValue)
-      ? input.value
-      : undefined;
+  const references = getWorkflowReferenceValues(input.value);
   if (!references) {
     diagnostics.push({
       code: 'WORKFLOW_REFERENCE_FORMAT_INVALID',

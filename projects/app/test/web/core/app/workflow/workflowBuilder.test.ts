@@ -19,6 +19,19 @@ import {
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/hooks/useWorkflowAutoLayout';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { Node } from 'reactflow';
+import {
+  getWorkflowBuilderAttentionKeys,
+  getWorkflowBuilderEntryAccess,
+  getWorkflowBuilderErrorAttentionKey,
+  getWorkflowBuilderEntryVisualState,
+  getWorkflowBuilderInitialState,
+  getWorkflowBuilderPendingInteractiveKey,
+  hasUnseenWorkflowBuilderAttention,
+  isWorkflowBuilderVersionGenerating,
+  shouldPrewarmWorkflowBuilderRuntime
+} from '@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/uiState';
+import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatItemObjItemType } from '@fastgpt/global/core/chat/type';
 
 const mocks = vi.hoisted(() => ({
   batchDeleteChatHistories: vi.fn(),
@@ -31,6 +44,442 @@ vi.mock('@/web/core/chat/history/api', () => ({
 vi.mock('@/web/common/api/request', () => ({ POST: mocks.POST }));
 
 describe('Workflow Builder Web Adapter', () => {
+  it.each([
+    {
+      name: 'the Builder is unavailable',
+      workflowBuilderEnabled: false,
+      isOpen: true,
+      chatId: 'chat-1',
+      runtimeKey: 'app-1:tmb-1',
+      prewarmStartedRuntimeKey: '',
+      expected: false
+    },
+    {
+      name: 'the Builder has not been opened',
+      workflowBuilderEnabled: true,
+      isOpen: false,
+      chatId: 'chat-1',
+      runtimeKey: 'app-1:tmb-1',
+      prewarmStartedRuntimeKey: '',
+      expected: false
+    },
+    {
+      name: 'the chat id is not ready',
+      workflowBuilderEnabled: true,
+      isOpen: true,
+      chatId: '',
+      runtimeKey: 'app-1:tmb-1',
+      prewarmStartedRuntimeKey: '',
+      expected: false
+    },
+    {
+      name: 'the current runtime has already started prewarming',
+      workflowBuilderEnabled: true,
+      isOpen: true,
+      chatId: 'chat-1',
+      runtimeKey: 'app-1:tmb-1',
+      prewarmStartedRuntimeKey: 'app-1:tmb-1',
+      expected: false
+    },
+    {
+      name: 'an available Builder is opened for the first time',
+      workflowBuilderEnabled: true,
+      isOpen: true,
+      chatId: 'chat-1',
+      runtimeKey: 'app-1:tmb-1',
+      prewarmStartedRuntimeKey: '',
+      expected: true
+    }
+  ])('prewarms the runtime only when $name', ({ expected, ...state }) => {
+    expect(shouldPrewarmWorkflowBuilderRuntime(state)).toBe(expected);
+  });
+
+  it('keeps an upgrade entry for editable community apps', () => {
+    expect(
+      getWorkflowBuilderEntryAccess({
+        systemInitialized: true,
+        isPlus: false,
+        showAgentSandbox: false,
+        showWorkflowBuilder: false,
+        canEdit: true
+      })
+    ).toBe('upgrade');
+  });
+
+  it('hides the entry without write permission', () => {
+    expect(
+      getWorkflowBuilderEntryAccess({
+        systemInitialized: true,
+        isPlus: false,
+        showAgentSandbox: true,
+        showWorkflowBuilder: true,
+        canEdit: false
+      })
+    ).toBe('hidden');
+  });
+
+  it('hides the entry until the system edition has been initialized', () => {
+    expect(
+      getWorkflowBuilderEntryAccess({
+        systemInitialized: false,
+        isPlus: false,
+        showAgentSandbox: false,
+        showWorkflowBuilder: false,
+        canEdit: true
+      })
+    ).toBe('hidden');
+  });
+
+  it.each([
+    { showAgentSandbox: false, showWorkflowBuilder: true },
+    { showAgentSandbox: true, showWorkflowBuilder: false }
+  ])(
+    'hides the commercial entry when an administrator disables a dependency',
+    ({ showAgentSandbox, showWorkflowBuilder }) => {
+      expect(
+        getWorkflowBuilderEntryAccess({
+          systemInitialized: true,
+          isPlus: true,
+          showAgentSandbox,
+          showWorkflowBuilder,
+          canEdit: true
+        })
+      ).toBe('hidden');
+    }
+  );
+
+  it('enables the entry when all Builder requirements are met', () => {
+    expect(
+      getWorkflowBuilderEntryAccess({
+        systemInitialized: true,
+        isPlus: true,
+        showAgentSandbox: true,
+        showWorkflowBuilder: true,
+        canEdit: true
+      })
+    ).toBe('enabled');
+  });
+
+  it('falls back to system config for editable apps when Builder is unavailable', () => {
+    expect(
+      getWorkflowBuilderInitialState({
+        canEdit: true,
+        workflowBuilderEntryVisible: false,
+        workflowBuilderEnabled: false,
+        shouldAutoOpen: true,
+        hasCompletedSystemConfigFirstEntryGuide: true,
+        hasCompletedWorkflowBuilderFirstEntryGuide: false
+      })
+    ).toEqual({
+      activeLeftPanel: 'systemConfig',
+      shouldCompleteSystemConfigFirstEntryGuide: false,
+      shouldFocusWorkflowBuilder: false
+    });
+  });
+
+  it('preserves the first-entry system config behavior when Builder is unavailable', () => {
+    expect(
+      getWorkflowBuilderInitialState({
+        canEdit: true,
+        workflowBuilderEntryVisible: false,
+        workflowBuilderEnabled: false,
+        shouldAutoOpen: false,
+        hasCompletedSystemConfigFirstEntryGuide: false,
+        hasCompletedWorkflowBuilderFirstEntryGuide: false
+      })
+    ).toEqual({
+      activeLeftPanel: 'systemConfig',
+      shouldCompleteSystemConfigFirstEntryGuide: true,
+      shouldFocusWorkflowBuilder: false
+    });
+  });
+
+  it('does not open an editing panel without write permission', () => {
+    expect(
+      getWorkflowBuilderInitialState({
+        canEdit: false,
+        workflowBuilderEntryVisible: false,
+        workflowBuilderEnabled: false,
+        shouldAutoOpen: true,
+        hasCompletedSystemConfigFirstEntryGuide: false,
+        hasCompletedWorkflowBuilderFirstEntryGuide: false
+      })
+    ).toEqual({
+      shouldCompleteSystemConfigFirstEntryGuide: false,
+      shouldFocusWorkflowBuilder: false
+    });
+  });
+
+  it('keeps the two-step guide for editable community apps', () => {
+    expect(
+      getWorkflowBuilderInitialState({
+        canEdit: true,
+        workflowBuilderEntryVisible: true,
+        workflowBuilderEnabled: false,
+        shouldAutoOpen: true,
+        hasCompletedSystemConfigFirstEntryGuide: true,
+        hasCompletedWorkflowBuilderFirstEntryGuide: false
+      })
+    ).toEqual({
+      guideStep: 'systemConfig',
+      shouldCompleteSystemConfigFirstEntryGuide: false,
+      shouldFocusWorkflowBuilder: false
+    });
+  });
+
+  it('waits for an explicit upgrade click after the community guide is completed', () => {
+    expect(
+      getWorkflowBuilderInitialState({
+        canEdit: true,
+        workflowBuilderEntryVisible: true,
+        workflowBuilderEnabled: false,
+        shouldAutoOpen: true,
+        hasCompletedSystemConfigFirstEntryGuide: true,
+        hasCompletedWorkflowBuilderFirstEntryGuide: true
+      })
+    ).toEqual({
+      activeLeftPanel: undefined,
+      shouldCompleteSystemConfigFirstEntryGuide: false,
+      shouldFocusWorkflowBuilder: false
+    });
+  });
+
+  it('keeps the two-step guide when Builder is available for the first time', () => {
+    expect(
+      getWorkflowBuilderInitialState({
+        canEdit: true,
+        workflowBuilderEntryVisible: true,
+        workflowBuilderEnabled: true,
+        shouldAutoOpen: true,
+        hasCompletedSystemConfigFirstEntryGuide: true,
+        hasCompletedWorkflowBuilderFirstEntryGuide: false
+      })
+    ).toEqual({
+      guideStep: 'systemConfig',
+      shouldCompleteSystemConfigFirstEntryGuide: false,
+      shouldFocusWorkflowBuilder: false
+    });
+  });
+
+  it('opens and focuses Builder when its guide has already been completed', () => {
+    expect(
+      getWorkflowBuilderInitialState({
+        canEdit: true,
+        workflowBuilderEntryVisible: true,
+        workflowBuilderEnabled: true,
+        shouldAutoOpen: true,
+        hasCompletedSystemConfigFirstEntryGuide: true,
+        hasCompletedWorkflowBuilderFirstEntryGuide: true
+      })
+    ).toEqual({
+      activeLeftPanel: 'workflowBuilder',
+      shouldCompleteSystemConfigFirstEntryGuide: false,
+      shouldFocusWorkflowBuilder: true
+    });
+  });
+
+  it('allows the attention dot to overlap the generating halo', () => {
+    expect(
+      getWorkflowBuilderEntryVisualState({
+        isChatGenerating: true,
+        hasPendingAttention: true
+      })
+    ).toEqual({
+      showGeneratingHalo: true,
+      showAttentionDot: true
+    });
+  });
+
+  it('hides the halo as soon as the Workflow Builder chat stops generating', () => {
+    expect(
+      getWorkflowBuilderEntryVisualState({
+        isChatGenerating: false,
+        hasPendingAttention: true
+      })
+    ).toEqual({
+      showGeneratingHalo: false,
+      showAttentionDot: true
+    });
+  });
+
+  it('shows attention only for unseen ask, pending-version, or runtime-error keys', () => {
+    const attentionKeys = getWorkflowBuilderAttentionKeys({
+      pendingInteractiveKey: 'interactive:response-1:0',
+      pendingVersionChecksum: 'checksum-1',
+      errorAttentionKey: 'error:response-2'
+    });
+
+    expect(attentionKeys).toEqual([
+      'interactive:response-1:0',
+      'version:checksum-1',
+      'error:response-2'
+    ]);
+    expect(
+      hasUnseenWorkflowBuilderAttention({ attentionKeys, acknowledgedAttentionKeys: [] })
+    ).toBe(true);
+    expect(
+      hasUnseenWorkflowBuilderAttention({
+        attentionKeys,
+        acknowledgedAttentionKeys: attentionKeys
+      })
+    ).toBe(false);
+  });
+
+  it('uses the failed run record as a stable runtime-error attention key', () => {
+    const failedResponse = {
+      dataId: 'response-error-1',
+      obj: ChatRoleEnum.AI,
+      value: [],
+      errorMsg: 'Sandbox crashed'
+    } as ChatItemObjItemType & { dataId: string };
+
+    expect(
+      getWorkflowBuilderErrorAttentionKey({
+        chatRecords: [failedResponse],
+        chatGenerateStatus: ChatGenerateStatusEnum.error
+      })
+    ).toBe('error:response-error-1');
+    expect(
+      getWorkflowBuilderErrorAttentionKey({
+        chatRecords: [failedResponse],
+        chatGenerateStatus: ChatGenerateStatusEnum.done
+      })
+    ).toBeUndefined();
+  });
+
+  it('uses the pending interactive position as a stable ask attention key', () => {
+    const pendingPreview = {
+      dataId: 'response-1',
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          interactive: {
+            type: 'workflowBuilderPreview',
+            previewId: 'preview-1',
+            params: {
+              title: '方案预览',
+              mermaid: 'flowchart LR\nA --> B',
+              sections: [],
+              actions: [
+                { value: 'confirm', label: '确认', inputMode: 'none' },
+                { value: 'revise', label: '修改', inputMode: 'text' },
+                { value: 'cancel', label: '取消', inputMode: 'none' }
+              ]
+            }
+          }
+        }
+      ]
+    } as ChatItemObjItemType & { dataId: string };
+
+    expect(getWorkflowBuilderPendingInteractiveKey([pendingPreview])).toBe(
+      'interactive:response-1:0:workflowBuilderPreview:preview-1'
+    );
+    expect(
+      getWorkflowBuilderPendingInteractiveKey([pendingPreview], { isBuildingWorkflow: true })
+    ).toBeUndefined();
+  });
+
+  it('identifies the version-building substage after Mermaid confirmation', () => {
+    const preview = {
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          interactive: {
+            type: 'workflowBuilderPreview',
+            previewId: 'preview-1',
+            params: {
+              title: '方案预览',
+              mermaid: 'flowchart LR\nA --> B',
+              sections: [],
+              actions: [
+                { value: 'confirm', label: '确认', inputMode: 'none' },
+                { value: 'revise', label: '修改', inputMode: 'text' },
+                { value: 'cancel', label: '取消', inputMode: 'none' }
+              ],
+              answerValue: 'confirm'
+            }
+          }
+        }
+      ]
+    } as ChatItemObjItemType;
+    const version = {
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          workflowBuilderVersion: {
+            checksum: 'checksum-1',
+            s3Key: 'workflow-builder/version-1.json'
+          }
+        }
+      ]
+    } as ChatItemObjItemType;
+    const nextPendingPreview = {
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          interactive: {
+            type: 'workflowBuilderPreview',
+            previewId: 'preview-2',
+            params: {
+              title: '新版方案预览',
+              mermaid: 'flowchart LR\nB --> C',
+              sections: [],
+              actions: [
+                { value: 'confirm', label: '确认', inputMode: 'none' },
+                { value: 'revise', label: '修改', inputMode: 'text' },
+                { value: 'cancel', label: '取消', inputMode: 'none' }
+              ]
+            }
+          }
+        }
+      ]
+    } as ChatItemObjItemType;
+
+    expect(isWorkflowBuilderVersionGenerating({ chatRecords: [], isChatGenerating: true })).toBe(
+      false
+    );
+    expect(
+      isWorkflowBuilderVersionGenerating({ chatRecords: [preview], isChatGenerating: true })
+    ).toBe(true);
+    expect(
+      isWorkflowBuilderVersionGenerating({
+        chatRecords: [preview, version],
+        isChatGenerating: true
+      })
+    ).toBe(false);
+    expect(
+      isWorkflowBuilderVersionGenerating({ chatRecords: [preview], isChatGenerating: false })
+    ).toBe(false);
+    expect(
+      isWorkflowBuilderVersionGenerating({
+        chatRecords: [],
+        isChatGenerating: true,
+        wasBuildingWorkflow: true
+      })
+    ).toBe(true);
+    expect(
+      isWorkflowBuilderVersionGenerating({
+        chatRecords: [version],
+        isChatGenerating: true,
+        wasBuildingWorkflow: true
+      })
+    ).toBe(false);
+    expect(
+      isWorkflowBuilderVersionGenerating({
+        chatRecords: [preview, version, nextPendingPreview],
+        isChatGenerating: true,
+        wasBuildingWorkflow: true
+      })
+    ).toBe(true);
+    expect(
+      isWorkflowBuilderVersionGenerating({
+        chatRecords: [],
+        isChatGenerating: false,
+        wasBuildingWorkflow: true
+      })
+    ).toBe(false);
+  });
+
   it('打开 Builder 后调用稳定运行环境预热接口', async () => {
     mocks.POST.mockResolvedValueOnce(undefined);
 
@@ -178,7 +627,7 @@ describe('Workflow Builder Web Adapter', () => {
 
     expect(mocks.batchDeleteChatHistories).toHaveBeenCalledWith({
       appId: 'app-1',
-      sourceType: 'app',
+      sourceType: 'workflowBuilder',
       chatIds: ['builder-chat-1']
     });
     expect(clearChatRecords).toHaveBeenCalledTimes(1);

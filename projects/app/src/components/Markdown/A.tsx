@@ -1,4 +1,3 @@
-import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 import {
   Button,
   Link,
@@ -24,6 +23,7 @@ import Markdown from '.';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import { isObjectId } from '@fastgpt/global/common/string/utils';
 import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
+import { useChatInstanceActions } from '../core/chat/ChatContainer/context/chatInstanceActionsContext';
 
 type MarkdownChatAuthData = ChatAuthTargetInput & {
   chatId: string;
@@ -45,6 +45,7 @@ export type AProps = {
 
 const EmptyHrefLink = function EmptyHrefLink({ content }: { content: string }) {
   const { t } = useTranslation();
+  const { sendMessage } = useChatInstanceActions();
   return (
     <MyTooltip label={t('common:core.chat.markdown.Quick Question')}>
       <Button
@@ -52,7 +53,7 @@ const EmptyHrefLink = function EmptyHrefLink({ content }: { content: string }) {
         size={'xs'}
         borderRadius={'md'}
         my={1}
-        onClick={() => eventBus.emit(EventNameEnum.sendQuestion, { text: content })}
+        onClick={() => sendMessage({ text: content })}
       >
         {content}
       </Button>

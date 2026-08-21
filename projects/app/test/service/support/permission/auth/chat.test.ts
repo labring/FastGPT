@@ -646,6 +646,82 @@ describe('authChatTargetCrud', () => {
       })
     ).rejects.toBe(ChatErrEnum.unAuthChat);
   });
+
+  it('should authorize workflow builder with app write permission and member-owned chat', async () => {
+    const mockChat = {
+      appId: '507f1f77bcf86cd799439021',
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      teamId: 'team1',
+      tmbId: 'tmb1'
+    };
+    vi.mocked(authApp).mockResolvedValue({
+      userId: 'user1',
+      teamId: 'team1',
+      tmbId: 'tmb1',
+      permission: new AppPermission({ isOwner: true }),
+      authType: AuthUserTypeEnum.token
+    } as any);
+    vi.mocked(MongoChat.findOne).mockReturnValue({
+      lean: () => Promise.resolve(mockChat)
+    } as any);
+
+    const result = await authChatTargetCrud({
+      req: {} as any,
+      authToken: true,
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      sourceId: '507f1f77bcf86cd799439021',
+      chatId: 'chat1'
+    });
+
+    expect(authApp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appId: '507f1f77bcf86cd799439021',
+        per: WritePermissionVal
+      })
+    );
+    expect(MongoChat.findOne).toHaveBeenCalledWith({
+      appId: '507f1f77bcf86cd799439021',
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      chatId: 'chat1'
+    });
+    expect(result).toMatchObject({
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      sourceId: '507f1f77bcf86cd799439021',
+      teamId: 'team1',
+      tmbId: 'tmb1',
+      uid: 'tmb1',
+      chat: mockChat
+    });
+  });
+
+  it('should reject workflow builder chat owned by another member', async () => {
+    vi.mocked(authApp).mockResolvedValue({
+      userId: 'user1',
+      teamId: 'team1',
+      tmbId: 'tmb1',
+      permission: new AppPermission({ isOwner: true }),
+      authType: AuthUserTypeEnum.token
+    } as any);
+    vi.mocked(MongoChat.findOne).mockReturnValue({
+      lean: () =>
+        Promise.resolve({
+          appId: '507f1f77bcf86cd799439021',
+          sourceType: ChatSourceTypeEnum.workflowBuilder,
+          teamId: 'team1',
+          tmbId: 'other-member'
+        })
+    } as any);
+
+    await expect(
+      authChatTargetCrud({
+        req: {} as any,
+        authToken: true,
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        sourceId: '507f1f77bcf86cd799439021',
+        chatId: 'chat1'
+      })
+    ).rejects.toBe(ChatErrEnum.unAuthChat);
+  });
 });
 
 describe('authCollectionInChat', () => {

@@ -1,11 +1,16 @@
-# Workflow Builder 二次确认与版本回退功能开发文档
+# Workflow Builder 二次确认与版本回退功能开发文档（历史实现基线）
+
+> **2026-08-17 修订说明**：本文记录当前代码的既有实现，便于增量迁移，不再约束新版版本生命周期。后续开发以
+> [`workflow-builder-ui-refresh-功能开发文档.md`](./workflow-builder-ui-refresh-功能开发文档.md) 为准。本文中“应用成功后上传 S3”、
+> “待应用版本读取 Sandbox”、“只允许最新 ready 候选应用”以及相应的 API、测试和 TODO，均应在新版任务中被替换为：
+> **校验成功即归档 S3并发出版本卡片；各版本按 `s3Key` 独立加载；未过期版本均可应用；Commit 只记录应用结果；旧消息走有限兼容路径。**
 
 ## 文档标识
 
 - 任务前缀：`workflow-builder-version-confirmation`
 - 文档文件名：`workflow-builder-version-confirmation-功能开发文档.md`
 - 前置文档：`workflow-builder-version-confirmation-需求设计文档.md`
-- 状态：已实现，待集成环境验证
+- 状态：历史实现基线；待按 UI Refresh 方案增量迁移
 
 ## 0. 开发目标与约束
 

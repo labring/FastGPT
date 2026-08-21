@@ -15,6 +15,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useMemo, useState } from 'react';
 import { accordionButtonStyle } from './constants';
+import { getWorkflowBuilderToolPresentation } from './utils';
 
 const formatJson = (value: string) => {
   try {
@@ -111,6 +112,12 @@ const RenderTool = React.memo(function RenderTool({
   const { t } = useSafeTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const isToolGenerating = showAnimation && tool.response === undefined;
+  const workflowBuilderPresentation = getWorkflowBuilderToolPresentation(tool.functionName);
+  const displayAvatar = tool.toolAvatar || workflowBuilderPresentation?.avatar || '';
+  const displayName =
+    workflowBuilderPresentation && (!tool.toolName || tool.toolName === tool.functionName)
+      ? workflowBuilderPresentation.nameKey
+      : tool.toolName;
 
   return (
     <Accordion
@@ -140,7 +147,7 @@ const RenderTool = React.memo(function RenderTool({
         >
           <HStack h={'24px'} lineHeight={'24px'} mr={1} spacing="0" minW={0} overflow={'hidden'}>
             <Flex w="24px" h="24px" flexShrink={0} alignItems="center" justifyContent="center">
-              <Avatar src={tool.toolAvatar} w="16px" h="16px" borderRadius="xs" />
+              <Avatar src={displayAvatar} w="16px" h="16px" borderRadius="xs" />
             </Flex>
             <Box
               fontSize="16px"
@@ -151,7 +158,7 @@ const RenderTool = React.memo(function RenderTool({
               textOverflow={'ellipsis'}
               whiteSpace={'nowrap'}
             >
-              {t(tool.toolName)}
+              {t(displayName)}
             </Box>
           </HStack>
           {isToolGenerating && <MyIcon name={'common/loading'} w={'14px'} color="myGray.500" />}

@@ -74,7 +74,7 @@ export const clearWorkflowBuilderChatHistory = async ({
 }) => {
   await batchDeleteChatHistories({
     appId,
-    sourceType: ChatSourceTypeEnum.app,
+    sourceType: ChatSourceTypeEnum.workflowBuilder,
     chatIds: [chatId]
   });
   clearChatRecords();

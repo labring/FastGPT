@@ -30,14 +30,14 @@ export const WorkflowBuilderVersionSchema = z
       example: '2026-08-12T10:00:00.000Z'
     }),
     s3Key: z.string().min(1).optional().meta({
-      description: '应用成功后归档到聊天文件 S3 的对象 key'
+      description: '生成校验成功后归档到聊天文件 S3 的对象 key'
     }),
     expiresAt: z.string().datetime().optional().meta({
       description: 'S3 版本过期时间',
       example: '2026-08-13T10:00:00.000Z'
     }),
     appliedAt: z.string().datetime().optional().meta({
-      description: '版本首次成功应用并归档的时间',
+      description: '版本首次成功应用到画布的时间',
       example: '2026-08-12T10:00:00.000Z'
     })
   })
@@ -45,4 +45,4 @@ export const WorkflowBuilderVersionSchema = z
 
 export type WorkflowBuilderVersion = z.infer<typeof WorkflowBuilderVersionSchema>;
 
-export type WorkflowBuilderVersionDisplayState = 'ready' | 'available' | 'expired' | 'superseded';
+export type WorkflowBuilderVersionDisplayState = 'ready' | 'available' | 'expired';

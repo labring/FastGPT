@@ -57,6 +57,10 @@ const AIChatBubble = ({
   const { t } = useTranslation();
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const boxBodyProps = useContextSelector(ChatBoxContext, (v) => v.boxBodyProps);
+  const collapseIntermediateAgentResponses = useContextSelector(
+    ChatBoxContext,
+    (v) => v.collapseIntermediateAgentResponses ?? false
+  );
   const showWholeResponse = useContextSelector(ChatItemContext, (v) => v.showWholeResponse ?? true);
   const chatGenerateStatus = useContextSelector(
     ChatItemContext,
@@ -116,6 +120,7 @@ const AIChatBubble = ({
           isChatting={isChatting}
           allowedCitationIds={allowedCitationIds}
           onOpenCiteModal={onOpenCiteModal}
+          collapseIntermediateAgentResponses={collapseIntermediateAgentResponses}
         />
         {placeholderText && (
           <Box

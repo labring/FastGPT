@@ -74,15 +74,15 @@ function MarkdownImgRenderer(props: any) {
 }
 
 function MarkdownCodeRenderer(props: any) {
-  const { showAnimation, autoPreviewHtmlCodeBlock, markdownClassName } = useContext(
-    MarkdownRendererRuntimeContext
-  );
+  const { showAnimation, autoPreviewHtmlCodeBlock, mermaidClickToPreview, markdownClassName } =
+    useContext(MarkdownRendererRuntimeContext);
 
   return (
     <Code
       {...props}
       showAnimation={showAnimation}
       autoPreviewHtmlCodeBlock={autoPreviewHtmlCodeBlock}
+      mermaidClickToPreview={mermaidClickToPreview}
       markdownClassName={markdownClassName}
     />
   );
@@ -186,6 +186,7 @@ type Props = {
   forbidZhFormat?: boolean;
   className?: string;
   autoPreviewHtmlCodeBlock?: boolean;
+  mermaidClickToPreview?: boolean;
 } & AProps;
 
 const Markdown = (props: Props) => {
@@ -204,6 +205,7 @@ const MarkdownRender = ({
   forbidZhFormat,
   className,
   autoPreviewHtmlCodeBlock,
+  mermaidClickToPreview,
 
   chatAuthData,
   allowedCitationIds,
@@ -218,6 +220,7 @@ const MarkdownRender = ({
     () => ({
       showAnimation,
       autoPreviewHtmlCodeBlock,
+      mermaidClickToPreview,
       markdownClassName: className,
       chatAuthData,
       allowedCitationIds,
@@ -228,6 +231,7 @@ const MarkdownRender = ({
       autoPreviewHtmlCodeBlock,
       chatAuthData,
       className,
+      mermaidClickToPreview,
       onOpenCiteModal,
       showAnimation
     ]
@@ -360,6 +364,7 @@ function Code(e: any) {
     children,
     showAnimation,
     autoPreviewHtmlCodeBlock,
+    mermaidClickToPreview,
     markdownClassName
   } = e;
   const match = /language-([\w-]+)/.exec(className || '');
@@ -368,7 +373,7 @@ function Code(e: any) {
   const strChildren = String(children);
 
   if (codeType === CodeClassNameEnum.mermaid) {
-    return <MermaidCodeBlock code={strChildren} />;
+    return <MermaidCodeBlock code={strChildren} clickToPreview={mermaidClickToPreview} />;
   }
   if (codeType === CodeClassNameEnum.guide) {
     return <ChatGuide text={strChildren} className={markdownClassName} />;

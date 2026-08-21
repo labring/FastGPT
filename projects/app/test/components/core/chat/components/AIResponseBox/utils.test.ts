@@ -1,10 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
+import { describe, expect, it } from 'vitest';
 import type { WorkflowBuilderPreviewAction } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import {
   adaptLegacyAgentPlanAskToReadonlyAgentAsk,
-  onSendPrompt,
-  resolveWorkflowBuilderPreviewAnswerAction
+  getWorkflowBuilderVersionButtonState,
+  getWorkflowBuilderToolPresentation,
+  resolveWorkflowBuilderPreviewAnswerAction,
+  workflowBuilderAppliedFeedbackDuration
 } from '@/components/core/chat/components/AIResponseBox/utils';
 
 const actions: WorkflowBuilderPreviewAction[] = [
@@ -19,22 +20,6 @@ const actions: WorkflowBuilderPreviewAction[] = [
 ];
 
 describe('AIResponseBox utils', () => {
-  beforeEach(() => {
-    eventBus.off(EventNameEnum.sendQuestion);
-  });
-
-  it('does not request clearing chat input for interactive send event', () => {
-    const handler = vi.fn();
-    eventBus.on(EventNameEnum.sendQuestion, handler);
-
-    onSendPrompt('A');
-
-    expect(handler).toHaveBeenCalledWith({
-      text: 'A',
-      focus: true
-    });
-  });
-
   it('adapts legacy agent plan ask as a submitted readonly agent ask', () => {
     expect(
       adaptLegacyAgentPlanAskToReadonlyAgentAsk({
@@ -95,5 +80,45 @@ describe('AIResponseBox utils', () => {
         answerDetail: { kind: 'skip' }
       })
     ).toEqual({ action: actions[2] });
+  });
+
+  it('restores localized presentation metadata for legacy Workflow Builder tools', () => {
+    expect(getWorkflowBuilderToolPresentation('workflow_cli_query')).toEqual({
+      nameKey: 'workflow:workflow_builder_tool_query',
+      avatar: 'core/chat/workflowBuilder/query'
+    });
+    expect(getWorkflowBuilderToolPresentation('other_tool')).toBeUndefined();
+  });
+
+  it('maps Workflow Builder version facts to the Figma button states', () => {
+    expect(
+      getWorkflowBuilderVersionButtonState({
+        displayState: 'available',
+        loading: false,
+        showApplied: false
+      })
+    ).toBe('apply');
+    expect(
+      getWorkflowBuilderVersionButtonState({
+        displayState: 'available',
+        loading: true,
+        showApplied: false
+      })
+    ).toBe('loading');
+    expect(
+      getWorkflowBuilderVersionButtonState({
+        displayState: 'available',
+        loading: false,
+        showApplied: true
+      })
+    ).toBe('applied');
+    expect(
+      getWorkflowBuilderVersionButtonState({
+        displayState: 'expired',
+        loading: true,
+        showApplied: true
+      })
+    ).toBe('expired');
+    expect(workflowBuilderAppliedFeedbackDuration).toBe(1200);
   });
 });

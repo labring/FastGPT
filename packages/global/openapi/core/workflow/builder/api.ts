@@ -146,7 +146,7 @@ const WorkflowBuilderVersionIdentitySchema = z
  * API: 加载 Workflow Builder 版本
  * Route: POST /api/proApi/core/workflow/builder/version/load
  * Method: POST
- * Description: 从 Sandbox 或 S3 加载聊天卡片绑定的 WorkflowDocument
+ * Description: 从 S3 加载聊天卡片绑定的 WorkflowDocument；旧消息保留 Sandbox 兼容
  * Tags: ['Workflow Builder']
  * ============================================================================ */
 
@@ -178,10 +178,10 @@ export type WorkflowBuilderVersionLoadResponse = z.infer<
 >;
 
 /* ============================================================================
- * API: 归档已应用的 Workflow Builder 版本
+ * API: 确认 Workflow Builder 版本已应用
  * Route: POST /api/proApi/core/workflow/builder/version/commit
  * Method: POST
- * Description: 画布应用成功后将实际应用的 WorkflowDocument 归档到 S3
+ * Description: 画布应用成功后幂等记录首次应用时间
  * Tags: ['Workflow Builder']
  * ============================================================================ */
 

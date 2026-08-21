@@ -3,13 +3,14 @@ import { Box, Flex, useTheme } from '@chakra-ui/react';
 import 'katex/dist/katex.min.css';
 import ChatBoxDivider from '@/components/core/chat/Divider';
 import { useTranslation } from 'next-i18next';
-import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useChatInstanceActions } from '../../core/chat/ChatContainer/context/chatInstanceActionsContext';
 
 const QuestionGuide = ({ text }: { text: string }) => {
   const theme = useTheme();
   const { t } = useTranslation();
+  const { fillInput, sendMessage } = useChatInstanceActions();
   const questionGuides = useMemo(() => {
     try {
       const json = JSON.parse(text);
@@ -17,7 +18,7 @@ const QuestionGuide = ({ text }: { text: string }) => {
         return json as string[];
       }
       return [];
-    } catch (error) {
+    } catch {
       return [];
     }
   }, [text]);
@@ -68,7 +69,7 @@ const QuestionGuide = ({ text }: { text: string }) => {
                   _hover={{
                     color: 'green.600'
                   }}
-                  onClick={() => eventBus.emit(EventNameEnum.editQuestion, { text })}
+                  onClick={() => fillInput({ text })}
                 />
               </MyTooltip>
               <MyTooltip label={t('common:core.chat.markdown.Send Question')}>
@@ -78,7 +79,7 @@ const QuestionGuide = ({ text }: { text: string }) => {
                   w={'14px'}
                   cursor={'pointer'}
                   _hover={{ color: 'primary.500' }}
-                  onClick={() => eventBus.emit(EventNameEnum.sendQuestion, { text })}
+                  onClick={() => sendMessage({ text })}
                 />
               </MyTooltip>
             </Box>

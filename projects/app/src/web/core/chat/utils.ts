@@ -8,7 +8,10 @@ import { useMemo } from 'react';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 type OptionalChatTargetInput = Partial<Record<'appId' | 'skillId', string>> & {
-  sourceType?: ChatSourceTypeEnum.app | ChatSourceTypeEnum.chatAgentHelper;
+  sourceType?:
+    | ChatSourceTypeEnum.app
+    | ChatSourceTypeEnum.chatAgentHelper
+    | ChatSourceTypeEnum.workflowBuilder;
 };
 type OptionalChatSourceInput = {
   sourceType?: ChatSourceTypeEnum;
@@ -29,9 +32,16 @@ export type ChatSourceTarget = {
   sourceType:
     | ChatSourceTypeEnum.app
     | ChatSourceTypeEnum.skillEdit
-    | ChatSourceTypeEnum.chatAgentHelper;
+    | ChatSourceTypeEnum.chatAgentHelper
+    | ChatSourceTypeEnum.workflowBuilder;
   sourceId: string;
 };
+
+const isExplicitAppSourceType = (
+  sourceType: ChatSourceTypeEnum | undefined
+): sourceType is ChatSourceTypeEnum.chatAgentHelper | ChatSourceTypeEnum.workflowBuilder =>
+  sourceType === ChatSourceTypeEnum.chatAgentHelper ||
+  sourceType === ChatSourceTypeEnum.workflowBuilder;
 
 /**
  * 将 OpenAPI raw target 转换为前端内部标准 source target。
@@ -48,10 +58,9 @@ export const toChatSourceTarget = (target: ChatTargetInputType): ChatSourceTarge
   }
 
   return {
-    sourceType:
-      target.sourceType === ChatSourceTypeEnum.chatAgentHelper
-        ? ChatSourceTypeEnum.chatAgentHelper
-        : ChatSourceTypeEnum.app,
+    sourceType: isExplicitAppSourceType(target.sourceType)
+      ? target.sourceType
+      : ChatSourceTypeEnum.app,
     sourceId: target.appId!
   };
 };
@@ -66,8 +75,8 @@ export const toChatApiTarget = (target: ChatSourceTarget): ChatTargetInputType =
   if (target.sourceType === ChatSourceTypeEnum.skillEdit) {
     return { skillId: target.sourceId };
   }
-  if (target.sourceType === ChatSourceTypeEnum.chatAgentHelper) {
-    return { appId: target.sourceId, sourceType: ChatSourceTypeEnum.chatAgentHelper };
+  if (isExplicitAppSourceType(target.sourceType)) {
+    return { appId: target.sourceId, sourceType: target.sourceType };
   }
 
   return { appId: target.sourceId };
@@ -92,10 +101,6 @@ export const toChatAuthApiTarget = ({
     return { outLinkAuthData };
   }
 
-  if (sourceTarget.sourceType === ChatSourceTypeEnum.chatAgentHelper) {
-    return toChatApiTarget(sourceTarget);
-  }
-
   return toChatApiTarget(sourceTarget);
 };
 
@@ -117,8 +122,8 @@ export const getChatAuthTargetInput = (target: ChatAuthTargetInput): ChatAuthTar
   }
 
   if (target.appId) {
-    return target.sourceType === ChatSourceTypeEnum.chatAgentHelper
-      ? { appId: target.appId, sourceType: ChatSourceTypeEnum.chatAgentHelper }
+    return isExplicitAppSourceType(target.sourceType)
+      ? { appId: target.appId, sourceType: target.sourceType }
       : { appId: target.appId };
   }
 
@@ -146,8 +151,8 @@ export const toChatAuthQueryTarget = (target: ChatAuthTargetInput): ChatAuthQuer
   }
 
   if (chatAuthTarget.appId) {
-    return chatAuthTarget.sourceType === ChatSourceTypeEnum.chatAgentHelper
-      ? { appId: chatAuthTarget.appId, sourceType: ChatSourceTypeEnum.chatAgentHelper }
+    return isExplicitAppSourceType(chatAuthTarget.sourceType)
+      ? { appId: chatAuthTarget.appId, sourceType: chatAuthTarget.sourceType }
       : { appId: chatAuthTarget.appId };
   }
 
@@ -166,10 +171,7 @@ export const toChatAuthQueryInput = <T extends ChatAuthQueryInputSource>(
     ...toChatAuthQueryTarget({
       appId,
       skillId,
-      sourceType:
-        sourceType === ChatSourceTypeEnum.chatAgentHelper
-          ? ChatSourceTypeEnum.chatAgentHelper
-          : undefined,
+      sourceType: isExplicitAppSourceType(sourceType) ? sourceType : undefined,
       outLinkAuthData
     })
   };
@@ -215,8 +217,8 @@ export const getChatTargetInput = (target: ChatTargetInputType): ChatTargetInput
     return { skillId: target.skillId };
   }
 
-  return target.sourceType === ChatSourceTypeEnum.chatAgentHelper
-    ? { appId: target.appId!, sourceType: ChatSourceTypeEnum.chatAgentHelper }
+  return isExplicitAppSourceType(target.sourceType)
+    ? { appId: target.appId!, sourceType: target.sourceType }
     : { appId: target.appId! };
 };
 

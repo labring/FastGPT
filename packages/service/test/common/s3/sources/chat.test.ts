@@ -53,7 +53,7 @@ describe('S3ChatSource.parseChatUrl', () => {
 });
 
 describe('ChatFileUploadSchema', () => {
-  it('rejects workflow builder source because it is sandbox-only', () => {
+  it('accepts workflow builder chat archives', () => {
     const result = ChatFileUploadSchema.safeParse({
       sourceType: ChatSourceTypeEnum.workflowBuilder,
       sourceId: '67f4c91c79a4d61b1f116b2a',
@@ -62,6 +62,6 @@ describe('ChatFileUploadSchema', () => {
       filename: 'input.txt'
     });
 
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 });

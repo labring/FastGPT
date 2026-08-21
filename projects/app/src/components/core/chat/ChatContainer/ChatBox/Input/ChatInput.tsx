@@ -11,7 +11,13 @@ import {
   type SendPromptFnType,
   type StopChatFnResult
 } from '../type';
-import { ChatInputDefaultHeight, ChatTypeEnum, textareaMinH } from '../constants';
+import {
+  ChatInputDefaultHeight,
+  ChatTypeEnum,
+  getChatInputContainerHeight,
+  textareaMinH,
+  WorkflowBuilderChatInputDefaultHeight
+} from '../constants';
 import { useFieldArray, useWatch, type UseFormReturn } from 'react-hook-form';
 import { ChatBoxContext } from '../Provider';
 import dynamic from 'next/dynamic';
@@ -44,6 +50,7 @@ type ChatInputProps = BoxProps & {
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
   resetInputVal: (val: ChatBoxInputType) => void;
   chatForm: UseFormReturn<ChatBoxInputFormType>;
+  workflowBuilderStyle?: boolean;
 };
 
 const ChatInput = ({
@@ -57,6 +64,7 @@ const ChatInput = ({
   TextareaDom,
   resetInputVal,
   chatForm,
+  workflowBuilderStyle = false,
   ...props
 }: ChatInputProps) => {
   const { t } = useTranslation();
@@ -489,11 +497,24 @@ const ChatInput = ({
     handleStop
   ]);
 
-  const activeStyles: FlexProps = {
-    boxShadow: '0px 5px 20px -4px rgba(19, 51, 107, 0.13)',
-    border: '1px solid',
-    borderColor: 'myGray.250'
-  };
+  const activeStyles: FlexProps = workflowBuilderStyle
+    ? {
+        boxShadow: '0px 5px 20px -4px rgba(19, 51, 107, 0.13)',
+        border: '1px solid transparent',
+        borderRadius: '16px',
+        background:
+          'linear-gradient(#FFFFFF, #FFFFFF) padding-box, linear-gradient(112deg, #FF4BCB 0%, #FF9F43 27%, #E8EBF0 52%, #3370FF 78%, #42D7FF 100%) border-box'
+      }
+    : {
+        boxShadow: '0px 5px 20px -4px rgba(19, 51, 107, 0.13)',
+        border: '1px solid',
+        borderColor: 'myGray.250'
+      };
+  const chatInputMinHeight = (() => {
+    if (mobilePreSpeak) return '48px';
+    if (workflowBuilderStyle) return WorkflowBuilderChatInputDefaultHeight;
+    return ChatInputDefaultHeight;
+  })();
 
   return (
     <Box
@@ -535,20 +556,20 @@ const ChatInput = ({
       {/* Real Chat Input */}
       <Flex
         direction={'column'}
-        h={isDefaultInputHeight ? ChatInputDefaultHeight : undefined}
-        minH={mobilePreSpeak ? '48px' : ChatInputDefaultHeight}
+        h={getChatInputContainerHeight({ isDefaultInputHeight, workflowBuilderStyle })}
+        minH={chatInputMinHeight}
         p={mobilePreSpeak ? [0, 4] : 4}
         mb={0}
         position={'relative'}
-        borderRadius={['xl', 'xxl']}
+        borderRadius={workflowBuilderStyle ? '16px' : ['xl', 'xxl']}
         bg={'white'}
-        overflow={mobilePreSpeak ? 'hidden' : 'display'}
+        overflow={mobilePreSpeak ? 'hidden' : 'visible'}
         {...(focusing
           ? activeStyles
           : {
-              _hover: activeStyles,
+              _hover: workflowBuilderStyle ? undefined : activeStyles,
               border: '1px solid',
-              borderColor: 'myGray.200',
+              borderColor: workflowBuilderStyle ? '#E8EBF0' : 'myGray.200',
               boxShadow: `0px 5px 16px -4px rgba(19, 51, 107, 0.08)`
             })}
         onClick={() => TextareaDom?.current?.focus()}
