@@ -9,6 +9,10 @@ import type {
 } from '@fastgpt/global/openapi/core/app/common/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
+import { updateResourceCollaborators } from '@fastgpt/service/support/permission/resourcePermissionService';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
@@ -68,12 +72,28 @@ describe('Copy', () => {
     expect(res3.error).toBe(AppErrEnum.unAuthApp);
     expect(res3.code).toBe(500);
 
-    await MongoResourcePermission.create({
-      resourceType: 'app',
-      teamId: users.members[1].teamId,
-      resourceId: String(folderId),
-      tmbId: users.members[1].tmbId,
-      permission: WritePermissionVal
+    await mongoSessionRun(async (session) => {
+      const folder = await MongoApp.findById(folderId).lean();
+      if (!folder) throw new Error('Test folder was not created');
+
+      const oldCollaborators = await getResourceOwnedClbs({
+        resourceType: 'app',
+        teamId: String(folder.teamId),
+        resourceId: folderId,
+        session
+      });
+
+      await updateResourceCollaborators({
+        resource: folder,
+        resourceModel: MongoApp,
+        resourceType: 'app',
+        oldCollaborators,
+        newCollaborators: [
+          ...oldCollaborators,
+          { tmbId: String(users.members[1].tmbId), permission: WritePermissionVal }
+        ],
+        session
+      });
     });
 
     const res4 = await Call<CopyAppBodyType, Record<string, never>, CreateAppResponseType>(

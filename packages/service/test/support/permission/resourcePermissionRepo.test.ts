@@ -11,6 +11,51 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 const objectId = () => new Types.ObjectId();
 
+describe('resourcePermissionRepo resource filters', () => {
+  const teamId = objectId();
+
+  beforeEach(async () => {
+    await MongoResourcePermission.deleteMany({});
+  });
+
+  it('matches team permissions stored with null or missing resourceId', async () => {
+    const nullResourceIdTmbId = objectId();
+    const missingResourceIdTmbId = objectId();
+
+    await MongoResourcePermission.collection.insertMany([
+      {
+        teamId,
+        tmbId: nullResourceIdTmbId,
+        resourceType: PerResourceTypeEnum.team,
+        resourceId: null,
+        permission: ManagePermissionVal
+      },
+      {
+        teamId,
+        tmbId: missingResourceIdTmbId,
+        resourceType: PerResourceTypeEnum.team,
+        permission: ManagePermissionVal
+      }
+    ]);
+
+    await expect(
+      resourcePermissionRepo.findOne({
+        teamId: String(teamId),
+        resourceType: PerResourceTypeEnum.team,
+        collaborator: { tmbId: String(nullResourceIdTmbId) }
+      })
+    ).resolves.toMatchObject({ permission: ManagePermissionVal });
+
+    await expect(
+      resourcePermissionRepo.findOne({
+        teamId: String(teamId),
+        resourceType: PerResourceTypeEnum.team,
+        collaborator: { tmbId: String(missingResourceIdTmbId) }
+      })
+    ).resolves.toMatchObject({ permission: ManagePermissionVal });
+  });
+});
+
 describe('resourcePermissionRepo.findResourceKeysByCollaboratorsPermission', () => {
   const teamId = objectId();
   const tmbId = objectId();
