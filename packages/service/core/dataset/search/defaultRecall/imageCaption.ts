@@ -1,4 +1,4 @@
-import { getLLMModel } from '../../../ai/model';
+import { getVlmModel } from '../../../ai/model';
 import { createLLMResponse } from '../../../ai/llm/request';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { normalizeImageToBase64 } from '../utils';
@@ -27,7 +27,8 @@ const emptyImageCaptionQueries = (): ImageCaptionQueries => ({
 
 /**
  * 将图片 query 转成可参与文本召回的图片描述 query。
- * VLM 未配置、模型不支持 vision 或单张图片生成失败时都只降级图片描述召回；
+ * VLM 未配置、没有可用 VLM 或单张图片生成失败时都只降级图片描述召回；
+ * 已配置的 VLM 下架后会沿用模型配置层的回退规则，切换到第一个可用 VLM。
  * 原始图片仍可能继续走图片向量召回，所以这里不会抛出错误中断搜索。
  */
 export const getImageCaptionQueries = async ({
@@ -45,8 +46,8 @@ export const getImageCaptionQueries = async ({
     return emptyImageCaptionQueries();
   }
 
-  const vlmModelData = getLLMModel(vlmModel);
-  if (!vlmModelData?.vision) {
+  const vlmModelData = getVlmModel(vlmModel);
+  if (!vlmModelData) {
     return emptyImageCaptionQueries();
   }
 
