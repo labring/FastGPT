@@ -62,7 +62,40 @@ export const uiWorkflow2StoreWorkflow = ({
       .map((edge) => edge.target)
   );
 
-  const formatNodes = nodes.map((item) => ({
+  const formatNodes = nodes.map((item) => {
+    const inputs =
+      item.data.flowNodeType === FlowNodeTypeEnum.pluginInput
+        ? item.data.inputs
+        : item.data.inputs.map((input) =>
+            normalizeStoreNodeInput(input, toolNodeIds.has(item.data.nodeId))
+          );
+    const selectedToolsInput = inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools);
+    if (
+      item.data.flowNodeType === FlowNodeTypeEnum.agent &&
+      selectedToolsInput &&
+      !nodeInputIsReference(selectedToolsInput) &&
+      Array.isArray(selectedToolsInput.value)
+    ) {
+      const serializedTools: any[] = [];
+      for (const tool of selectedToolsInput.value as any[]) {
+        if (tool && typeof tool === 'object' && 'isUnavailable' in tool) {
+          const unavailableTool = tool as Record<string, any>;
+          const { ...rest } = unavailableTool;
+          serializedTools.push({
+            ...rest,
+            ...(unavailableTool.inputs ? { inputs: unavailableTool.inputs } : {}),
+            config: unavailableTool.config ?? {},
+            isUnavailable: true as const
+          });
+          continue;
+        }
+        const parsed = SelectedToolItemTypeSchema.safeParse(tool);
+        if (parsed.success) serializedTools.push(serializeAgentTool({ tool: parsed.data }));
+      }
+      selectedToolsInput.value = serializedTools as any;
+    }
+
+    return {
       nodeId: item.data.nodeId,
       parentNodeId: item.data.parentNodeId,
       name: item.data.name,
@@ -86,7 +119,8 @@ export const uiWorkflow2StoreWorkflow = ({
       pluginId: item.data.pluginId,
       toolConfig: item.data.toolConfig,
       catchError: item.data.catchError
-    }));
+    };
+  });
 
   const nodeIdSet = new Set(formatNodes.map((node) => node.nodeId));
   const formatEdges: StoreEdgeItemType[] = edges

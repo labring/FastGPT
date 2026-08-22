@@ -1,9 +1,13 @@
 import { SelectedDatasetSchema } from '../../workflow/type/io';
 import z from 'zod';
 import { AppChatConfigTypeSchema, AppDatasetSearchParamsTypeSchema } from '../type';
-import { FlowNodeTemplateTypeSchema } from '../../workflow/type/node';
+import { FlowNodeTemplateTypeSchema, NodeToolConfigTypeSchema } from '../../workflow/type/node';
 import { NodeInputKeyEnum } from '../../workflow/constants';
 import { SANDBOX_ENTRYPOINT_MAX_LENGTH } from '../../ai/sandbox/constants';
+import {
+  AgentToolInputBoundarySchema,
+  type AgentToolInputBoundary
+} from '../../workflow/migration/schema';
 
 export type AgentSubAppItemType = object;
 
@@ -24,15 +28,33 @@ export type StoredSelectedAgentSkillItemType = z.infer<
 >;
 
 /* ===== Tool ===== */
-export const SelectedToolItemTypeSchema = FlowNodeTemplateTypeSchema.extend({
+const SelectedToolItemBaseSchema = FlowNodeTemplateTypeSchema.extend({
   configStatus: z.enum(['noConfig', 'waitingForConfig', 'configured', 'invalid']).optional(),
-  /** 缺失工具的编辑器占位标记，runtime 不消费恢复载荷。 */
-  isUnavailable: z.literal(true).optional(),
-  unresolvedInputs: z.array(z.record(z.string(), z.unknown())).optional(),
   config: z.record(z.string(), z.unknown()).optional()
 });
 
-export const SelectedToolItemTypeSchema = SelectedToolItemBaseSchema;
+export const UnresolvedAgentToolTypeSchema = z.object({
+  id: z.string(),
+  version: z.string().optional(),
+  source: z.string().optional(),
+  toolConfig: NodeToolConfigTypeSchema.optional(),
+  inputs: z.array(AgentToolInputBoundarySchema).optional(),
+  config: z.record(z.string(), z.unknown()).optional(),
+  error: z.string().optional()
+});
+export type UnresolvedAgentToolType = {
+  id: string;
+  version?: string;
+  source?: string;
+  toolConfig?: z.infer<typeof NodeToolConfigTypeSchema>;
+  inputs?: AgentToolInputBoundary[];
+  config?: Record<string, any>;
+  error?: string;
+};
+
+export const SelectedToolItemTypeSchema = SelectedToolItemBaseSchema.extend({
+  isUnavailable: z.never().optional()
+});
 export type SelectedToolItemType = z.infer<typeof SelectedToolItemTypeSchema>;
 export type AvailableSelectedToolItemType = SelectedToolItemType;
 
