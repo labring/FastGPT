@@ -99,6 +99,7 @@ const Logs = () => {
       </Flex>
       {viewMode === 'table' ? (
         <LogTable
+          pageSizeCacheKey={'app-detail-logs'}
           appId={appId}
           chatSources={chatSources}
           setChatSources={setChatSources}

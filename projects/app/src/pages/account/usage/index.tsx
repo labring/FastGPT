@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Flex, Box, HStack } from '@chakra-ui/react';
+import { Flex, Box, Button, HStack, useDisclosure } from '@chakra-ui/react';
 import { UsageSourceEnum, UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
 import DateRangePicker, {
   type DateRangeType
@@ -18,10 +18,15 @@ import MultipleSelect, {
 } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
-import { accountTitleTextStyles } from '@/pageComponents/account/styles';
+import {
+  accountContentScrollStyles,
+  accountPageRootStyles,
+  accountTitleTextStyles
+} from '@/pageComponents/account/styles';
 
 import UsageTableList from '@/pageComponents/account/usage/UsageTable';
 import { type UnitType } from '@/pageComponents/account/usage/type';
+import UsageRechargeModal from '@/pageComponents/account/usage/UsageRechargeModal';
 const UsageDashboard = dynamic(() => import('@/pageComponents/account/usage/Dashboard'));
 
 export enum UsageTabEnum {
@@ -34,6 +39,11 @@ const UsageTable = () => {
   const { userInfo } = useUserStore();
   const router = useRouter();
   const { usageTab = UsageTabEnum.detail } = router.query as { usageTab: `${UsageTabEnum}` };
+  const {
+    isOpen: isOpenUsageRecharge,
+    onOpen: onOpenUsageRecharge,
+    onClose: onCloseUsageRecharge
+  } = useDisclosure();
 
   const [unit, _setUnit] = useState<UnitType>('day');
   const [dateRange, setDateRange] = useState<DateRangeType>({
@@ -83,11 +93,13 @@ const UsageTable = () => {
   const Tabs = useMemo(
     () => (
       <FillRowTabs
+        w={['100%', 'auto']}
+        size={'sm'}
+        scrollPositionKey={'account-usage-tabs'}
         list={[
           { label: t('account_usage:usage_detail'), value: 'detail' },
           { label: t('account_usage:dashboard'), value: 'dashboard' }
         ]}
-        py={1}
         value={usageTab}
         onChange={(e) => {
           router.replace({
@@ -104,12 +116,25 @@ const UsageTable = () => {
 
   const Selectors = useMemo(
     () => (
-      <Flex flexDir={['column', 'row']} alignItems={'center'} gap={3}>
-        <Flex alignItems={'center'} gap={2}>
-          <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
+      <Flex
+        flexDir={['column', 'row']}
+        alignItems={['stretch', 'flex-start']}
+        justifyContent={['flex-start', 'flex-end']}
+        gap={3}
+      >
+        <Flex alignItems={'center'} gap={2} w={['100%', 'auto']}>
+          <Box flexShrink={0} fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
             {t('common:user.Time')}
           </Box>
-          <DateRangePicker defaultDate={dateRange} dateRange={dateRange} onSuccess={setDateRange} />
+          <Box flex={['1 1 0', '0 0 auto']} minW={0}>
+            <DateRangePicker
+              w={['100%', 'auto']}
+              bg={'myGray.25'}
+              defaultDate={dateRange}
+              dateRange={dateRange}
+              onSuccess={setDateRange}
+            />
+          </Box>
           {/* {usageTab === UsageTabEnum.dashboard && (
             <MySelect<UnitType>
               bg={'myGray.50'}
@@ -126,46 +151,53 @@ const UsageTable = () => {
             />
           )} */}
         </Flex>
-        {userInfo?.team?.permission.hasManagePer && (
-          <Flex alignItems={'center'} gap={2}>
+        <Flex
+          alignItems={'center'}
+          justifyContent={['flex-start', 'flex-end']}
+          gap={3}
+          w={['100%', 'auto']}
+        >
+          {userInfo?.team?.permission.hasManagePer && (
+            <Flex flex={['1 1 0', '0 0 auto']} minW={0} alignItems={'center'} gap={2}>
+              <Box flexShrink={0} fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
+                {t('account_usage:member')}
+              </Box>
+              <Box flex={['1 1 0', '0 0 auto']} minW={0}>
+                <MultipleSelect<string>
+                  list={tmbList}
+                  value={selectTmbIds}
+                  onSelect={(val) => {
+                    setSelectTmbIds(val as string[]);
+                  }}
+                  itemWrap={false}
+                  h={'32px'}
+                  bg={'myGray.25'}
+                  w={['100%', '160px']}
+                  ScrollData={ScrollData}
+                  isSelectAll={isSelectAllTmb}
+                  setIsSelectAll={setIsSelectAllTmb}
+                />
+              </Box>
+            </Flex>
+          )}
+          <Flex flex={['1 1 0', '0 0 auto']} minW={0} alignItems={'center'} gap={2}>
             <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
-              {t('account_usage:member')}
+              {t('account_usage:source')}
             </Box>
-            <Box>
-              <MultipleSelect<string>
-                list={tmbList}
-                value={selectTmbIds}
-                onSelect={(val) => {
-                  setSelectTmbIds(val as string[]);
-                }}
+            <Box flex={['1 1 0', '0 0 auto']} minW={0}>
+              <MultipleSelect<UsageSourceEnum>
+                list={sourceList}
+                value={usageSources}
+                onSelect={setUsageSources}
+                isSelectAll={isSelectAllSource}
+                setIsSelectAll={setIsSelectAllSource}
                 itemWrap={false}
-                h={'32px'}
-                bg={'myGray.50'}
-                w={'160px'}
-                ScrollData={ScrollData}
-                isSelectAll={isSelectAllTmb}
-                setIsSelectAll={setIsSelectAllTmb}
+                height={'32px'}
+                bg={'myGray.25'}
+                w={['100%', '160px']}
               />
             </Box>
           </Flex>
-        )}
-        <Flex alignItems={'center'} gap={2}>
-          <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
-            {t('account_usage:source')}
-          </Box>
-          <Box>
-            <MultipleSelect<UsageSourceEnum>
-              list={sourceList}
-              value={usageSources}
-              onSelect={setUsageSources}
-              isSelectAll={isSelectAllSource}
-              setIsSelectAll={setIsSelectAllSource}
-              itemWrap={false}
-              height={'32px'}
-              bg={'myGray.50'}
-              w={'160px'}
-            />
-          </Box>
         </Flex>
         {/* {usageTab === UsageTabEnum.detail && (
           <Flex alignItems={'center'}>
@@ -229,8 +261,9 @@ const UsageTable = () => {
 
   return (
     <AccountContainer>
-      <Flex h={'full'} minH={0} flexDirection={'column'}>
+      <Flex {...accountPageRootStyles} flexDirection={'column'}>
         <Flex
+          display={['none', 'flex']}
           h={'64px'}
           flexShrink={0}
           px={[3, 6]}
@@ -241,14 +274,16 @@ const UsageTable = () => {
           <Box as={'h1'} {...accountTitleTextStyles}>
             {t('account:usage_records')}
           </Box>
+          <Box flex={1} />
+          <Button variant={'whitePrimaryOutline'} onClick={onOpenUsageRecharge}>
+            {t('account_usage:plan_usage_status')}
+          </Button>
         </Flex>
         <Box
-          px={[3, 6]}
           pt={[3, 6]}
-          pb={[0, 4]}
-          flex={'1 0 0'}
-          minH={0}
-          overflow={'hidden'}
+          pb={[0, 6]}
+          {...accountContentScrollStyles}
+          overflowX={'hidden'}
           display={'flex'}
           flexDirection={'column'}
         >
@@ -259,6 +294,13 @@ const UsageTable = () => {
             <UsageDashboard filterParams={filterParams} Tabs={Tabs} Selectors={Selectors} />
           )}
         </Box>
+        {isOpenUsageRecharge && (
+          <UsageRechargeModal
+            onClose={onCloseUsageRecharge}
+            onPaySuccess={onCloseUsageRecharge}
+            title={t('account_usage:plan_usage_status')}
+          />
+        )}
       </Flex>
     </AccountContainer>
   );

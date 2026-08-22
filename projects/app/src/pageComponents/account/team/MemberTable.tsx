@@ -52,7 +52,6 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 
 const InviteModal = dynamic(() => import('./Invite/InviteModal'));
 const TransferOwnershipModal = dynamic(() => import('./TransferOwnershipModal'));
-
 function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useClientTranslation(['account_team', 'user']);
   const { toast } = useToast();
@@ -165,7 +164,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
           onRefreshMembers();
         });
       },
-      onError: (err) => {
+      onError: (_err) => {
         toast({
           title: '',
           status: 'error'
@@ -176,24 +175,44 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
 
   return (
     <>
-      <Flex justify={'space-between'} align={'center'} pb={'1rem'}>
-        {Tabs}
-        <HStack alignItems={'center'}>
-          <Box>
-            <MySelect list={statusOptions} value={status} onChange={(v) => setStatus(v)} />
-          </Box>
-          <Box width={'200px'}>
-            <SearchInput
-              placeholder={t('account_team:search_member')}
-              onChange={(e) => setSearchKey(e.target.value)}
-            />
-          </Box>
+      <Flex
+        px={6}
+        justify={'space-between'}
+        align={['stretch', 'center']}
+        flexDirection={['column', 'row']}
+        pb={'1rem'}
+      >
+        <Box w={['100%', 'auto']}>{Tabs}</Box>
+        <Flex
+          mt={[3, 0]}
+          w={['100%', 'auto']}
+          flexDirection={['column', 'row']}
+          alignItems={['stretch', 'center']}
+          gap={2}
+        >
+          <HStack w={['100%', 'auto']} gap={2}>
+            <Box flexShrink={0}>
+              <MySelect
+                bg={'white'}
+                list={statusOptions}
+                value={status}
+                onChange={(v) => setStatus(v)}
+              />
+            </Box>
+            <Box flex={['1 0 0', 'initial']} w={['auto', '200px']}>
+              <SearchInput
+                bg={'white'}
+                placeholder={t('account_team:search_member')}
+                onChange={(e) => setSearchKey(e.target.value)}
+              />
+            </Box>
+          </HStack>
           {userInfo?.team.permission.hasManagePer && isSyncMode && (
             <Button
+              w={['100%', 'auto']}
               variant={'primary'}
               size="md"
               borderRadius={'md'}
-              ml={3}
               leftIcon={<MyIcon name="common/retryLight" w={'16px'} color={'white'} />}
               onClick={() => {
                 onSyncMember();
@@ -204,10 +223,10 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
           )}
           {userInfo?.team.permission.hasManagePer && !isSyncMode && !isWecomTeam && (
             <Button
+              w={['100%', 'auto']}
               variant={'primary'}
               size="md"
               borderRadius={'md'}
-              ml={3}
               leftIcon={<MyIcon name="common/inviteLight" w={'16px'} color={'white'} />}
               onClick={onOpenInvite}
             >
@@ -216,10 +235,10 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
           )}
           {userInfo?.team.permission.isOwner && !isSyncMode && isWecomTeam && (
             <Button
+              w={['100%', 'auto']}
               variant={'whitePrimary'}
               size="md"
               borderRadius={'md'}
-              ml={3}
               onClick={onOpenTransferModal}
             >
               {t('account_team:transfer_team_ownership')}
@@ -227,10 +246,10 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
           )}
           {userInfo?.team.permission.isOwner && isSyncMode && (
             <Button
+              w={['100%', 'auto']}
               variant={'whitePrimary'}
               size="md"
               borderRadius={'md'}
-              ml={3}
               leftIcon={<MyIcon name="export" w={'16px'} />}
               onClick={() => {
                 downloadFetch({
@@ -243,28 +262,30 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
             </Button>
           )}
           {!userInfo?.team.permission.isOwner && !isSyncMode && !isWecomTeam && (
-            <PopoverConfirm
-              Trigger={
-                <Button
-                  variant={'whitePrimary'}
-                  size="md"
-                  borderRadius={'md'}
-                  ml={3}
-                  leftIcon={<MyIcon name={'support/account/loginoutLight'} w={'14px'} />}
-                >
-                  {t('account_team:user_team_leave_team')}
-                </Button>
-              }
-              type="delete"
-              content={t('account_team:confirm_leave_team')}
-              onConfirm={() => onLeaveTeam()}
-            />
+            <Box w={['100%', 'auto']}>
+              <PopoverConfirm
+                Trigger={
+                  <Button
+                    w={'100%'}
+                    variant={'whitePrimary'}
+                    size="md"
+                    borderRadius={'md'}
+                    leftIcon={<MyIcon name={'support/account/loginoutLight'} w={'14px'} />}
+                  >
+                    {t('account_team:user_team_leave_team')}
+                  </Button>
+                }
+                type="delete"
+                content={t('account_team:confirm_leave_team')}
+                onConfirm={() => onLeaveTeam()}
+              />
+            </Box>
           )}
-        </HStack>
+        </Flex>
       </Flex>
 
-      <MyBox isLoading={isLoading} flex={'1 0 0'} overflow={'auto'}>
-        <MemberScrollData>
+      <MyBox isLoading={isLoading} flex={['0 0 auto', '1 0 0']} h={['auto', 0]} minH={0}>
+        <MemberScrollData px={6} h={['auto', '100%']} overflowY={['visible', 'auto']}>
           <TableContainer overflow={'unset'} fontSize={'sm'}>
             <Table overflow={'unset'}>
               <Thead>

@@ -10,10 +10,11 @@ import {
   Tr,
   HStack
 } from '@chakra-ui/react';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useRef } from 'react';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getOperationLogs } from '@/web/support/user/team/operantionLog/api';
 import { auditLogMap } from '@fastgpt/web/support/user/audit/constants';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -26,13 +27,9 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import { specialProcessors } from './processors';
 import { defaultMetadataProcessor } from './processors/commonProcessor';
-
 function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useClientTranslation(['account_team', 'user']);
-  const [searchParams, setSearchParams] = useState<{
-    tmbIds?: string[];
-    events?: AuditEventEnum[];
-  }>({});
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const { data: members, ScrollData } = useScrollPagination(getTeamMembers, {});
   const tmbList = useMemo(
@@ -68,16 +65,6 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
   );
 
   const {
-    data: auditLog = [],
-    isLoading: loadingLogs,
-    ScrollData: LogScrollData
-  } = useScrollPagination(getOperationLogs, {
-    pageSize: 30,
-    refreshDeps: [searchParams],
-    params: searchParams
-  });
-
-  const {
     value: selectedTmbIds,
     setValue: setSelectedTmbIds,
     isSelectAll: isSelectAllTmb,
@@ -97,99 +84,163 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
     true
   );
 
-  useEffect(() => {
-    setSearchParams({
+  const searchParams = useMemo(
+    () => ({
       ...(isSelectAllTmb ? {} : { tmbIds: selectedTmbIds }),
       ...(isSelectAllEvent ? {} : { events: selectedEvents })
-    });
-  }, [selectedTmbIds, selectedEvents, isSelectAllTmb, isSelectAllEvent]);
+    }),
+    [isSelectAllEvent, isSelectAllTmb, selectedEvents, selectedTmbIds]
+  );
+
+  const {
+    data: auditLog = [],
+    isLoading: loadingLogs,
+    total,
+    pageSize,
+    Pagination
+  } = usePagination(getOperationLogs, {
+    defaultPageSize: 100,
+    pageSizeOptions: [50, 100, 200],
+    pageSizeCacheKey: 'account-team-audit',
+    refreshDeps: [searchParams],
+    params: searchParams,
+    scrollContainerRef
+  });
 
   const isLoading = loadingLogs;
 
   return (
     <>
-      <Flex justify={'flex-start'} align={'center'} pb={'1rem'} gap={2} wrap="wrap">
-        {Tabs}
-        <Flex alignItems={'center'} gap={2}>
-          <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
-            {t('account_team:log_user')}
-          </Box>
-          <Box>
-            <MultipleSelect<string>
-              list={tmbList}
-              value={selectedTmbIds}
-              onSelect={(val) => {
-                setSelectedTmbIds(val as string[]);
-              }}
-              itemWrap={false}
-              height={'32px'}
-              bg={'myGray.50'}
-              w={'160px'}
-              ScrollData={ScrollData}
-              isSelectAll={isSelectAllTmb}
-              setIsSelectAll={setIsSelectAllTmb}
-            />
-          </Box>
-        </Flex>
-        <Flex alignItems={'center'} gap={2}>
-          <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
-            {t('account_team:log_type')}
-          </Box>
-          <Box>
-            <MultipleSelect
-              list={eventOptions}
-              value={selectedEvents}
-              onSelect={setSelectedEvents}
-              isSelectAll={isSelectAllEvent}
-              setIsSelectAll={setIsSelectAllEvent}
-              itemWrap={false}
-              height={'32px'}
-              bg={'myGray.50'}
-              w={'160px'}
-            />
-          </Box>
+      <Flex
+        px={6}
+        justify={'flex-start'}
+        align={['stretch', 'center']}
+        flexDirection={['column', 'row']}
+        pb={'1rem'}
+      >
+        <Box w={['100%', 'auto']}>{Tabs}</Box>
+        <Flex
+          mt={[3, 0]}
+          ml={[0, 'auto']}
+          w={['100%', 'auto']}
+          flexDirection={['column', 'row']}
+          alignItems={'center'}
+          justifyContent={['flex-end', 'initial']}
+          gap={2}
+          wrap={'wrap'}
+        >
+          <Flex w={['100%', 'auto']} alignItems={'center'} gap={2}>
+            <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
+              {t('account_team:log_user')}
+            </Box>
+            <Box flex={['1 0 0', 'initial']}>
+              <MultipleSelect<string>
+                list={tmbList}
+                value={selectedTmbIds}
+                onSelect={(val) => {
+                  setSelectedTmbIds(val as string[]);
+                }}
+                itemWrap={false}
+                height={'32px'}
+                bg={'white'}
+                w={['100%', '160px']}
+                ScrollData={ScrollData}
+                isSelectAll={isSelectAllTmb}
+                setIsSelectAll={setIsSelectAllTmb}
+              />
+            </Box>
+          </Flex>
+          <Flex w={['100%', 'auto']} alignItems={'center'} gap={2}>
+            <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
+              {t('account_team:log_type')}
+            </Box>
+            <Box flex={['1 0 0', 'initial']}>
+              <MultipleSelect
+                list={eventOptions}
+                value={selectedEvents}
+                onSelect={setSelectedEvents}
+                isSelectAll={isSelectAllEvent}
+                setIsSelectAll={setIsSelectAllEvent}
+                itemWrap={false}
+                height={'32px'}
+                bg={'white'}
+                w={['100%', '160px']}
+              />
+            </Box>
+          </Flex>
         </Flex>
       </Flex>
 
-      <MyBox isLoading={isLoading} flex={'1 0 0'} overflow={'auto'}>
-        <LogScrollData>
-          <TableContainer overflow={'unset'} fontSize={'sm'}>
-            <Table overflow={'unset'}>
-              <Thead>
-                <Tr bgColor={'white !important'}>
-                  <Th borderLeftRadius="6px" bgColor="myGray.100">
-                    {t('account_team:log_user')}
-                  </Th>
-                  <Th bgColor="myGray.100">{t('account_team:log_time')}</Th>
-                  <Th bgColor="myGray.100">{t('account_team:log_type')}</Th>
-                  <Th bgColor="myGray.100">{t('account_team:log_details')}</Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {auditLog?.map((log) => {
-                  const i18nData = auditLogMap[log.event];
-                  const metadata = processMetadataByEvent(log.event, { ...log.metadata });
+      <MyBox
+        isLoading={isLoading}
+        flex={['0 0 auto', '1 0 0']}
+        h={['auto', 0]}
+        minH={0}
+        display={'flex'}
+        flexDirection={'column'}
+      >
+        <TableContainer
+          ref={scrollContainerRef}
+          px={6}
+          flex={['0 0 auto', '1 0 0']}
+          h={['auto', 0]}
+          minH={0}
+          overflowX={['auto', 'hidden']}
+          overflowY={['visible', 'auto']}
+          fontSize={'sm'}
+        >
+          <Table w={'100%'} minW={['900px', '100%']} sx={{ tableLayout: 'fixed' }}>
+            <Thead>
+              <Tr bgColor={'white !important'}>
+                <Th w={'18%'} borderLeftRadius="6px" bgColor="myGray.100">
+                  {t('account_team:log_user')}
+                </Th>
+                <Th w={'20%'} bgColor="myGray.100">
+                  {t('account_team:log_time')}
+                </Th>
+                <Th w={'18%'} bgColor="myGray.100">
+                  {t('account_team:log_type')}
+                </Th>
+                <Th w={'44%'} bgColor="myGray.100">
+                  {t('account_team:log_details')}
+                </Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {auditLog.map((log) => {
+                const i18nData = auditLogMap[log.event];
+                const metadata = processMetadataByEvent(log.event, { ...log.metadata });
 
-                  return i18nData ? (
-                    <Tr key={log._id} overflow={'unset'}>
-                      <Td>
-                        <UserBox
-                          sourceMember={log.sourceMember}
-                          fontSize="sm"
-                          avatarSize="1rem"
-                          spacing={0.5}
-                        />
-                      </Td>
-                      <Td>{formatTime2YMDHMS(log.timestamp)}</Td>
-                      <Td>{t(i18nData.typeLabel)}</Td>
-                      <Td>{t(i18nData.content as any, metadata)}</Td>
-                    </Tr>
-                  ) : null;
-                })}
-              </Tbody>
-            </Table>
-          </TableContainer>
-        </LogScrollData>
+                return i18nData ? (
+                  <Tr key={log._id} overflow={'unset'}>
+                    <Td>
+                      <UserBox
+                        sourceMember={log.sourceMember}
+                        fontSize="sm"
+                        avatarSize="1rem"
+                        spacing={0.5}
+                      />
+                    </Td>
+                    <Td>{formatTime2YMDHMS(log.timestamp)}</Td>
+                    <Td>{t(i18nData.typeLabel)}</Td>
+                    <Td
+                      whiteSpace={['nowrap', 'normal']}
+                      wordBreak={['normal', 'break-word']}
+                      overflowWrap={['normal', 'anywhere']}
+                    >
+                      {t(i18nData.content as any, metadata)}
+                    </Td>
+                  </Tr>
+                ) : null;
+              })}
+            </Tbody>
+          </Table>
+        </TableContainer>
+        {total > pageSize && (
+          <Flex flexShrink={0} mt={3} px={6} justifyContent={'center'}>
+            <Pagination />
+          </Flex>
+        )}
       </MyBox>
     </>
   );

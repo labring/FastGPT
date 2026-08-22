@@ -8,6 +8,7 @@ import {
   TableContainer,
   Tbody,
   Td,
+  Th,
   Thead,
   Tr,
   useDisclosure
@@ -24,7 +25,11 @@ import { useState, useMemo } from 'react';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRouter } from 'next/router';
 import Tag from '@fastgpt/web/components/common/Tag';
-import { accountTitleTextStyles } from '@/pageComponents/account/styles';
+import {
+  accountContentScrollStyles,
+  accountPageRootStyles,
+  accountTitleTextStyles
+} from '@/pageComponents/account/styles';
 
 const CreateCustomDomainModal = dynamic(
   () => import('@/pageComponents/account/customDomain/createModal'),
@@ -84,7 +89,7 @@ const CustomDomain = () => {
   return (
     <>
       <AccountContainer>
-        <Flex flexDirection="column" h="100%" minH={0}>
+        <Flex {...accountPageRootStyles} flexDirection="column">
           <Flex
             h={'64px'}
             flexShrink={0}
@@ -104,8 +109,7 @@ const CustomDomain = () => {
             )}
           </Flex>
           <TableContainer
-            flex="1"
-            minH={0}
+            {...accountContentScrollStyles}
             display="flex"
             flexDirection="column"
             position="relative"
@@ -115,103 +119,89 @@ const CustomDomain = () => {
             <Table>
               <Thead>
                 <Tr>
-                  <Td>{t('account_custom_domain:domain')}</Td>
-                  <Td>CNAME</Td>
-                  <Td>{t('account_custom_domain:provider')}</Td>
-                  <Td>{t('common:Status')}</Td>
-                  <Td>{t('common:Action')}</Td>
+                  <Th>{t('account_custom_domain:domain')}</Th>
+                  <Th>CNAME</Th>
+                  <Th>{t('account_custom_domain:provider')}</Th>
+                  <Th>{t('common:Status')}</Th>
+                  <Th>{t('common:Action')}</Th>
                 </Tr>
               </Thead>
               <Tbody>
-                {customDomainList?.length ? (
-                  customDomainList.map((customDomain) => (
-                    <Tr key={customDomain.domain}>
-                      <Td>{customDomain.domain}</Td>
-                      <Td>{customDomain.cnameDomain}</Td>
-                      <Td>{t(providerMap[customDomain.provider])}</Td>
-                      <Td>
-                        {customDomain.status === 'active' ? (
-                          <Tag colorSchema="green">
-                            {t(customDomainStatusMap[customDomain.status])}
-                          </Tag>
-                        ) : (
-                          <Tag colorSchema="red">
-                            {t(customDomainStatusMap[customDomain.status])}
-                          </Tag>
-                        )}
-                      </Td>
-                      <Td>
-                        <Flex gap="2">
+                {customDomainList?.map((customDomain) => (
+                  <Tr key={customDomain.domain}>
+                    <Td>{customDomain.domain}</Td>
+                    <Td>{customDomain.cnameDomain}</Td>
+                    <Td>{t(providerMap[customDomain.provider])}</Td>
+                    <Td>
+                      {customDomain.status === 'active' ? (
+                        <Tag colorSchema="green">
+                          {t(customDomainStatusMap[customDomain.status])}
+                        </Tag>
+                      ) : (
+                        <Tag colorSchema="red">{t(customDomainStatusMap[customDomain.status])}</Tag>
+                      )}
+                    </Td>
+                    <Td>
+                      <Flex gap="2">
+                        <Button
+                          variant="whiteDanger"
+                          onClick={() => {
+                            return openConfirm({
+                              onConfirm: () => onDelete(customDomain.domain)
+                            })();
+                          }}
+                        >
+                          {t('common:Delete')}
+                        </Button>
+                        {customDomain.status === 'inactive' ? (
                           <Button
-                            variant="whiteDanger"
+                            variant="whitePrimary"
                             onClick={() => {
-                              return openConfirm({
-                                onConfirm: () => onDelete(customDomain.domain)
-                              })();
+                              setEditDomain(customDomain);
+                              onOpenCreateModal();
                             }}
                           >
-                            {t('common:Delete')}
+                            {t('common:Edit')}
                           </Button>
-                          {customDomain.status === 'inactive' ? (
-                            <Button
-                              variant="whitePrimary"
-                              onClick={() => {
-                                setEditDomain(customDomain);
-                                onOpenCreateModal();
-                              }}
-                            >
-                              {t('common:Edit')}
-                            </Button>
-                          ) : (
-                            <></>
-                            // <Button
-                            //   variant="whitePrimary"
-                            //   onClick={() => {
-                            //     setEditDomain(customDomain);
-                            //     onOpenDomainVerify();
-                            //   }}
-                            // >
-                            //   {t('account_custom_domain:domain_verify')}
-                            // </Button>
-                          )}
-                        </Flex>
-                      </Td>
-                    </Tr>
-                  ))
-                ) : (
-                  <Tr h="100%">
-                    <Td colSpan={5} textAlign="center" h="100%">
-                      <Flex
-                        h="100%"
-                        alignItems="center"
-                        justifyContent="center"
-                        minH="400px"
-                        flexDirection="column"
-                        gap={4}
-                      >
-                        <EmptyTip
-                          text={
-                            !isSupportCustomDomain && (
-                              <Flex flexDir="column" alignItems="center">
-                                <Box>{t('account_custom_domain:upgrade_to_use_custom_domain')}</Box>
-                                <Button
-                                  mt="4"
-                                  variant="primary"
-                                  onClick={() => router.push('/price')}
-                                  size="md"
-                                >
-                                  {t('account_custom_domain:upgrade_plan')}
-                                </Button>
-                              </Flex>
-                            )
-                          }
-                        />
+                        ) : (
+                          <></>
+                          // <Button
+                          //   variant="whitePrimary"
+                          //   onClick={() => {
+                          //     setEditDomain(customDomain);
+                          //     onOpenDomainVerify();
+                          //   }}
+                          // >
+                          //   {t('account_custom_domain:domain_verify')}
+                          // </Button>
+                        )}
                       </Flex>
                     </Td>
                   </Tr>
-                )}
+                ))}
               </Tbody>
             </Table>
+            {!loadingCustomDomainList && customDomainList?.length === 0 && (
+              <Flex flex={'1 0 auto'} minH="400px" alignItems="center" justifyContent="center">
+                <EmptyTip
+                  text={
+                    !isSupportCustomDomain && (
+                      <Flex flexDir="column" alignItems="center">
+                        <Box>{t('account_custom_domain:upgrade_to_use_custom_domain')}</Box>
+                        <Button
+                          mt="4"
+                          variant="primary"
+                          onClick={() => router.push('/price')}
+                          size="md"
+                        >
+                          {t('account_custom_domain:upgrade_plan')}
+                        </Button>
+                      </Flex>
+                    )
+                  }
+                />
+              </Flex>
+            )}
           </TableContainer>
         </Flex>
       </AccountContainer>

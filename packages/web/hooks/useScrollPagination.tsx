@@ -210,6 +210,7 @@ export function useScrollPagination<
   const [data, setData] = useState<TData['list']>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, { setTrue, setFalse }] = useBoolean(false);
+  const requestedOffsetRef = useRef<number>();
   const isEmpty = total === 0 && !isLoading;
 
   const noMore = data.length >= total;
@@ -226,6 +227,13 @@ export function useScrollPagination<
     } = {}) => {
       if (noMore && !init) return;
 
+      const offset = init ? 0 : data.length;
+
+      // 请求完成到 React 提交列表更新之间，滚动监听可能再次读到旧 data.length。
+      // 用同步游标拦截相同 offset，避免同一页在这个时间窗口被重复请求。
+      if (!init && requestedOffsetRef.current === offset) return;
+      requestedOffsetRef.current = offset;
+
       // 静默刷新用于后台校准数据，保留旧列表并避免整块 loading 闪烁。
       if (!silent) {
         setTrue();
@@ -235,8 +243,6 @@ export function useScrollPagination<
         setData([]);
         setTotal(0);
       }
-
-      const offset = init ? 0 : data.length;
 
       try {
         const res = await api({
@@ -273,6 +279,7 @@ export function useScrollPagination<
           setData(newData);
         }
       } catch (error: any) {
+        requestedOffsetRef.current = undefined;
         if (showErrorToast) {
           toast({
             title: t(getErrText(error, t('common:core.chat.error.data_error'))),

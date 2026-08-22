@@ -1,6 +1,7 @@
 {
   "Invoice_document": "세금계산서 문서",
   "all": "전체",
+  "apply_invoice": "세금계산서 신청",
   "back": "돌아가기",
   "bank_account": "개설 계좌",
   "bank_name": "개설 은행",

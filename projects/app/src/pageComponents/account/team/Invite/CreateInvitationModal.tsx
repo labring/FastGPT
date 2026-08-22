@@ -1,22 +1,11 @@
 import { postCreateInvitationLink } from '@/web/support/user/team/api';
-import {
-  Box,
-  Button,
-  Grid,
-  Radio,
-  RadioGroup,
-  Input,
-  ModalBody,
-  ModalCloseButton,
-  ModalFooter,
-  HStack
-} from '@chakra-ui/react';
+import { Box, Button, Grid, Radio, RadioGroup, Input, HStack } from '@chakra-ui/react';
 import {
   type InvitationLinkCreateType,
   type InvitationLinkExpiresType
 } from '@fastgpt/service/support/user/team/invitationLink/type';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
@@ -59,53 +48,51 @@ function CreateInvitationModal({
   return (
     <MyModal
       isOpen
-      iconSrc="common/addLight"
-      iconColor="primary.500"
+      onClose={onClose}
       title={<Box>{t('account_team:create_invitation_link')}</Box>}
+      footer={
+        <>
+          <Button isLoading={loading} onClick={onClose} variant="outline">
+            {t('common:Cancel')}
+          </Button>
+          <Button isLoading={loading} onClick={handleSubmit(createInvitationLink)}>
+            {t('common:Confirm')}
+          </Button>
+        </>
+      }
     >
-      <ModalCloseButton onClick={() => onClose()} />
-      <ModalBody>
-        <Grid gap={6} templateColumns="max-content 1fr" alignItems="center">
-          <>
-            <FormLabel required={true}>{t('account_team:invitation_link_description')}</FormLabel>
-            <Input
-              placeholder={t('account_team:invitation_link_description')}
-              {...register('description', { required: true })}
-            />
-          </>
+      <Grid gap={6} templateColumns="max-content 1fr" alignItems="center">
+        <>
+          <FormLabel required={true}>{t('account_team:invitation_link_description')}</FormLabel>
+          <Input
+            placeholder={t('account_team:invitation_link_description')}
+            {...register('description', { required: true })}
+          />
+        </>
 
-          <>
-            <FormLabel required={true}>{t('account_team:expires')}</FormLabel>
-            <MySelect
-              list={expiresOptions}
-              value={expires}
-              onChange={(val) => setValue('expires', val)}
-              minW="120px"
-            />
-          </>
+        <>
+          <FormLabel required={true}>{t('account_team:expires')}</FormLabel>
+          <MySelect
+            list={expiresOptions}
+            value={expires}
+            onChange={(val) => setValue('expires', val)}
+            minW="120px"
+          />
+        </>
 
-          <>
-            <FormLabel required={true}>{t('account_team:used_times_limit')}</FormLabel>
-            <RadioGroup
-              onChange={(val: '1' | '-1') => setValue('usedTimesLimit', Number(val) as 1 | -1)}
-              value={String(usedTimesLimit)}
-            >
-              <HStack gap={6}>
-                <Radio value="1">{t('account_team:1person')}</Radio>
-                <Radio value="-1">{t('account_team:unlimited')}</Radio>
-              </HStack>
-            </RadioGroup>
-          </>
-        </Grid>
-      </ModalBody>
-      <ModalFooter>
-        <Button isLoading={loading} onClick={() => onClose()} variant="outline">
-          {t('common:Cancel')}
-        </Button>
-        <Button isLoading={loading} onClick={handleSubmit(createInvitationLink)} ml="4">
-          {t('common:Confirm')}
-        </Button>
-      </ModalFooter>
+        <>
+          <FormLabel required={true}>{t('account_team:used_times_limit')}</FormLabel>
+          <RadioGroup
+            onChange={(val: '1' | '-1') => setValue('usedTimesLimit', Number(val) as 1 | -1)}
+            value={String(usedTimesLimit)}
+          >
+            <HStack gap={6}>
+              <Radio value="1">{t('account_team:1person')}</Radio>
+              <Radio value="-1">{t('account_team:unlimited')}</Radio>
+            </HStack>
+          </RadioGroup>
+        </>
+      </Grid>
     </MyModal>
   );
 }

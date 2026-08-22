@@ -13,7 +13,11 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { GET } from '@/web/common/api/request';
 import type { checkUsageResponse } from '@/pages/api/support/user/team/thirtdParty/checkUsage';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { accountTitleTextStyles } from '@/pageComponents/account/styles';
+import {
+  accountContentScrollStyles,
+  accountPageRootStyles,
+  accountTitleTextStyles
+} from '@/pageComponents/account/styles';
 
 const OpenAIAccountModal = dynamic(
   () => import('@/pageComponents/account/thirdParty/OpenAIAccountModal')
@@ -112,12 +116,12 @@ const ThirdParty = () => {
       <MyBox
         isLoading={loading}
         bg={'white'}
-        h={'full'}
-        minH={0}
+        {...accountPageRootStyles}
         display={'flex'}
         flexDirection={'column'}
       >
         <Flex
+          display={['none', 'flex']}
           h={'64px'}
           flexShrink={0}
           px={[4, 6]}
@@ -127,9 +131,6 @@ const ThirdParty = () => {
         >
           <Box as={'h1'} {...accountTitleTextStyles}>
             {t('account_thirdParty:third_party_account')}
-          </Box>
-          <Box ml={4} fontSize={'mini'} color={'myGray.500'}>
-            {t('account_thirdParty:third_party_account_desc')}
           </Box>
         </Flex>
         <Grid
@@ -143,10 +144,8 @@ const ThirdParty = () => {
           gridGap={4}
           alignItems={'stretch'}
           alignContent={'flex-start'}
-          flex={'1 0 0'}
-          minH={0}
+          {...accountContentScrollStyles}
           p={[4, 6]}
-          overflowY={'auto'}
         >
           {accountList
             .filter((item) => item.isOpen)

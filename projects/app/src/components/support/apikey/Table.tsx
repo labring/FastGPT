@@ -44,7 +44,11 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import TagDisplayList, { type ApiKeyDisplayTag } from './TagDisplayList';
-import { accountTitleTextStyles } from '@/pageComponents/account/styles';
+import {
+  accountContentScrollStyles,
+  accountPageRootStyles,
+  accountTitleTextStyles
+} from '@/pageComponents/account/styles';
 import TagMultiSelect from './TagMultiSelect';
 import TagManageModal from './TagManageModal';
 import { useDebounce } from 'ahooks';
@@ -452,7 +456,7 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
       isLoading={isGetting}
       display={'flex'}
       flexDirection={'column'}
-      h={'100%'}
+      h={isPublishMode ? '100%' : accountPageRootStyles.h}
       minH={0}
       position={'relative'}
       p={isPublishMode ? 6 : 0}
@@ -496,7 +500,7 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
           )}
         </Flex>
         <Flex
-          mt={isPublishMode ? 3 : 6}
+          pt={isPublishMode ? 3 : 6}
           px={isPublishMode ? 0 : [4, 6]}
           alignItems={['stretch', 'flex-end']}
           justifyContent={'space-between'}
@@ -616,12 +620,12 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
       <TableContainer
         mt={3}
         px={isPublishMode ? 0 : [4, 6]}
-        pb={isPublishMode ? 0 : 4}
+        pb={isPublishMode ? 0 : 6}
         position={'relative'}
-        flex={'1 0 0'}
-        h={0}
+        flex={isPublishMode ? '1 0 0' : accountContentScrollStyles.flex}
+        h={isPublishMode ? 0 : accountContentScrollStyles.h}
         minH={0}
-        overflowY={'auto'}
+        overflowY={isPublishMode ? 'auto' : accountContentScrollStyles.overflowY}
       >
         <Table sx={{ tableLayout: 'fixed' }}>
           <Thead>

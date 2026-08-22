@@ -1,13 +1,12 @@
 import { getDashboardData } from '@/web/support/wallet/usage/api';
-import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import React, { useMemo } from 'react';
 import { type UsageFilterParams } from './type';
 import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import UsageRechargeModal from './UsageRechargeModal';
+import { accountContentScrollStyles } from '@/pageComponents/account/styles';
 
 const DashboardChart = dynamic(() => import('./DashboardChart'), {
   ssr: false
@@ -22,7 +21,6 @@ const UsageDashboard = ({
   Tabs: React.ReactNode;
   Selectors: React.ReactNode;
 }) => {
-  const { t } = useClientTranslation('account_usage');
   const { dateRange, selectTmbIds, usageSources, unit, isSelectAllSource, isSelectAllTmb } =
     filterParams;
 
@@ -52,33 +50,25 @@ const UsageDashboard = ({
     return totalPoints.reduce((acc, curr) => acc + curr.totalPoints, 0);
   }, [totalPoints]);
 
-  const {
-    isOpen: isOpenRecharge,
-    onOpen: onOpenRecharge,
-    onClose: onCloseRecharge
-  } = useDisclosure();
-
   return (
     <>
-      <Flex>
-        <Box>{Tabs}</Box>
-        <Box flex={1} />
-        <Button
-          size={'md'}
-          variant={'transparentBase'}
-          color={'primary.700'}
-          onClick={onOpenRecharge}
-        >
-          {t('account_usage:check_left_points')}
-        </Button>
+      <Flex
+        px={[3, 6]}
+        w={'100%'}
+        flexDirection={['column', 'row']}
+        flexWrap={['nowrap', 'wrap']}
+        alignItems={['stretch', 'center']}
+        justifyContent={'space-between'}
+        gap={[4, 6]}
+      >
+        <Box flexShrink={0}>{Tabs}</Box>
+        <Box flex={'0 0 auto'} minW={0}>
+          {Selectors}
+        </Box>
       </Flex>
-      <Box mt={4}>{Selectors}</Box>
-      <MyBox overflowY={'auto'} isLoading={totalPointsLoading}>
+      <MyBox {...accountContentScrollStyles} px={[3, 6]} isLoading={totalPointsLoading}>
         <DashboardChart totalPoints={totalPoints} totalUsage={totalUsage} />
       </MyBox>
-      {isOpenRecharge && (
-        <UsageRechargeModal onClose={onCloseRecharge} onPaySuccess={onCloseRecharge} />
-      )}
     </>
   );
 };

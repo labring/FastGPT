@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Box, Flex, useTheme } from '@chakra-ui/react';
 import { getInforms, readInform } from '@/web/support/user/inform/api';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
@@ -11,13 +11,18 @@ import AccountContainer from '@/pageComponents/account/AccountContainer';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import Markdown from '@/components/Markdown';
 import NotificationDetailsModal from '@/pageComponents/account/NotificationDetailsModal';
-import { accountTitleTextStyles } from '@/pageComponents/account/styles';
+import {
+  accountContentScrollStyles,
+  accountPageRootStyles,
+  accountTitleTextStyles
+} from '@/pageComponents/account/styles';
 
 const InformTable = () => {
   const { t } = useClientTranslation(['account_inform', 'account']);
   const theme = useTheme();
   const { Loading } = useLoading();
   const [selectedInform, setSelectedInform] = useState<any>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const textStyles = {
     title: {
@@ -44,13 +49,16 @@ const InformTable = () => {
     getData,
     pageNum
   } = usePagination(getInforms, {
-    defaultPageSize: 20
+    defaultPageSize: 20,
+    pageSizeCacheKey: 'account-inform-notifications',
+    scrollContainerRef
   });
 
   return (
     <AccountContainer>
-      <Flex flexDirection="column" h="100%" minH={0} position="relative">
+      <Flex {...accountPageRootStyles} flexDirection="column" position="relative" pb={[0, 6]}>
         <Flex
+          display={['none', 'flex']}
           h={'64px'}
           flexShrink={0}
           px={[3, 6]}
@@ -63,12 +71,11 @@ const InformTable = () => {
           </Box>
         </Flex>
         <Box
-          px={[3, 8]}
-          pt={4}
+          ref={scrollContainerRef}
+          px={[3, 6]}
+          pt={[4, 6]}
           position="relative"
-          flex="1 0 0"
-          h={0}
-          overflowY="auto"
+          {...accountContentScrollStyles}
           display="flex"
           flexDirection="column"
           alignItems="center"

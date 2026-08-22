@@ -10,7 +10,7 @@ import { type UserUpdateParams } from '@/types/user';
 import TimezoneSelect from '@fastgpt/web/components/common/MySelect/TimezoneSelect';
 import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
-import { accountTitleTextStyles } from '@/pageComponents/account/styles';
+import { accountPageRootStyles, accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const Individuation = () => {
   const { t } = useClientTranslation(['account_setting', 'account']);
@@ -37,8 +37,9 @@ const Individuation = () => {
 
   return (
     <AccountContainer>
-      <Flex h={'100%'} minH={0} flexDirection={'column'}>
+      <Flex {...accountPageRootStyles} flexDirection={'column'}>
         <Flex
+          display={['none', 'flex']}
           h={'64px'}
           flexShrink={0}
           px={[4, 6]}
@@ -50,22 +51,24 @@ const Individuation = () => {
             {t('account:language')}
           </Box>
         </Flex>
-        <Box p={[4, 6]} fontSize={'sm'} overflowY={'auto'}>
-          <Flex alignItems={'center'} w={['85%', '350px']}>
+        <Box p={[4, 6]} fontSize={'sm'} overflowY={['visible', 'auto']}>
+          <Flex alignItems={'center'} w={['100%', '350px']}>
             <Box flex={'0 0 80px'}>{t('account_setting:language')}:&nbsp;</Box>
             <Box flex={'1 0 0'}>
               <I18nLngSelector />
             </Box>
           </Flex>
-          <Flex mt={6} alignItems={'center'} w={['85%', '350px']}>
+          <Flex mt={6} alignItems={'center'} w={['100%', '350px']}>
             <Box flex={'0 0 80px'}>{t('account_setting:timezone')}:&nbsp;</Box>
-            <TimezoneSelect
-              value={userInfo?.timezone}
-              onChange={(e) => {
-                if (!userInfo) return;
-                onclickSave({ ...userInfo, timezone: e });
-              }}
-            />
+            <Box flex={'1 0 0'}>
+              <TimezoneSelect
+                value={userInfo?.timezone}
+                onChange={(e) => {
+                  if (!userInfo) return;
+                  onclickSave({ ...userInfo, timezone: e });
+                }}
+              />
+            </Box>
           </Flex>
         </Box>
       </Flex>

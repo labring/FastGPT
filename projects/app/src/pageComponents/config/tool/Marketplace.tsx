@@ -244,6 +244,7 @@ export const ToolkitMarketplace = ({
     {
       type: 'scroll',
       defaultPageSize: 20,
+      pageSizeCacheKey: 'dashboard-system-tool-marketplace-tools',
       refreshDeps: [searchText, tagIds, sourceFilter]
     }
   );

@@ -7,6 +7,7 @@ const RechargeModal = dynamic(() =>
 type UsageRechargeModalProps = {
   onClose: () => void;
   onPaySuccess: () => void;
+  title: string;
 };
 
 /** 在使用记录页打开充值弹窗时再加载弹窗代码。 */

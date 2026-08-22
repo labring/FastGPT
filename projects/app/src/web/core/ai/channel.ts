@@ -170,7 +170,8 @@ export const getChannelLog = (params: {
   code_type?: 'all' | 'success' | 'error';
   start_timestamp: number;
   end_timestamp: number;
-  offset: number;
+  offset?: number;
+  pageNum?: number;
   pageSize: number;
 }) =>
   GET<{
@@ -184,7 +185,7 @@ export const getChannelLog = (params: {
     code_type: params.code_type,
     start_timestamp: params.start_timestamp,
     end_timestamp: params.end_timestamp,
-    p: Math.floor(params.offset / params.pageSize) + 1,
+    p: params.pageNum ?? Math.floor((params.offset ?? 0) / params.pageSize) + 1,
     per_page: params.pageSize
   }).then((res) => {
     return {

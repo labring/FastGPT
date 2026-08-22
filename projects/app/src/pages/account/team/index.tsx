@@ -14,7 +14,7 @@ import { TeamContext, TeamModalContextProvider } from '@/pageComponents/account/
 import dynamic from 'next/dynamic';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { accountTitleTextStyles } from '@/pageComponents/account/styles';
+import { accountPageRootStyles, accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const MemberTable = dynamic(() => import('@/pageComponents/account/team/MemberTable'));
 const PermissionManage = dynamic(
@@ -68,6 +68,9 @@ const Team = () => {
   const Tabs = useMemo(
     () => (
       <FillRowTabs
+        w={['100%', 'auto']}
+        size={'sm'}
+        scrollPositionKey={'account-team-tabs'}
         list={[
           { label: t('account_team:member'), value: TeamTabEnum.member },
           { label: t('account_team:org'), value: TeamTabEnum.org },
@@ -77,7 +80,6 @@ const Team = () => {
             ? [{ label: t('account_team:audit_log'), value: TeamTabEnum.audit }]
             : [])
         ]}
-        px={'1rem'}
         value={teamTab}
         onChange={(e) => {
           if (e === TeamTabEnum.audit && planContent && !planContent?.auditLogStoreDuration) {
@@ -101,7 +103,7 @@ const Team = () => {
 
   return (
     <AccountContainer>
-      <Flex h={'100%'} flexDirection={'column'}>
+      <Flex {...accountPageRootStyles} flexDirection={'column'}>
         {/* header */}
         <Flex
           w={'100%'}
@@ -115,10 +117,10 @@ const Team = () => {
           justify={'space-between'}
         >
           <Flex align={'center'}>
-            <Box as={'h1'} {...accountTitleTextStyles}>
+            <Box as={'h1'} display={['none', 'block']} {...accountTitleTextStyles}>
               {t('account:team')}
             </Box>
-            <Flex align={'center'} ml={6}>
+            <Flex align={'center'} ml={[0, 6]}>
               <TeamSelector height={'34px'} />
             </Flex>
             {userInfo?.team?.role === TeamMemberRoleEnum.owner && (
@@ -160,12 +162,12 @@ const Team = () => {
 
         {/* table */}
         <Box
-          py={'1.5rem'}
-          px={6}
-          flex={'1 0 0'}
+          py={6}
+          px={teamTab === TeamTabEnum.org ? 6 : 0}
+          flex={['0 0 auto', '1 0 0']}
           display={'flex'}
           flexDirection={'column'}
-          overflow={'auto'}
+          overflow={teamTab === TeamTabEnum.org ? ['visible', 'auto'] : ['visible', 'hidden']}
         >
           {teamTab === TeamTabEnum.member && <MemberTable Tabs={Tabs} />}
           {teamTab === TeamTabEnum.org && <OrgManage Tabs={Tabs} />}

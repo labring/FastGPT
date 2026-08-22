@@ -22,7 +22,7 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import MemberTag from '@/components/support/user/team/Info/MemberTag';
 import { deleteOrg, deleteOrgMember } from '@/web/support/user/team/org/api';
 
@@ -126,23 +126,37 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
 
   return (
     <>
-      <Flex justify={'space-between'} align={'center'} pb={'1rem'}>
-        {Tabs}
-        <Box w="200px">
-          <SearchInput
-            placeholder={t('account_team:search_org')}
-            value={searchKey}
-            onChange={(e) => setSearchKey(e.target.value)}
-          />
-        </Box>
+      <Flex
+        justify={'space-between'}
+        align={['stretch', 'center']}
+        flexDirection={['column', 'row']}
+        pb={'1rem'}
+      >
+        <Box w={['100%', 'auto']}>{Tabs}</Box>
+        <Flex mt={[3, 0]} w={['100%', 'auto']} justifyContent={'flex-end'}>
+          <Box w={['100%', '200px']}>
+            <SearchInput
+              bg={'white'}
+              placeholder={t('account_team:search_org')}
+              value={searchKey}
+              onChange={(e) => setSearchKey(e.target.value)}
+            />
+          </Box>
+        </Flex>
       </Flex>
-      <MyBox flex={'1 0 0'} h={0} display={'flex'} flexDirection={'column'}>
+      <MyBox
+        flex={['0 0 auto', '1 0 0']}
+        h={['auto', 0]}
+        minH={0}
+        display={'flex'}
+        flexDirection={'column'}
+      >
         <Box mb={3}>
           {!searchKey && (
             <Path paths={paths} rootName={userInfo?.team?.teamName} onClick={onPathClick} />
           )}
         </Box>
-        <Flex flex={'1 0 0'} h={0} w={'100%'} gap={'4'}>
+        <Flex flex={['0 0 auto', '1 0 0']} h={['auto', 0]} w={'100%'} gap={'4'}>
           <MemberScrollData flex="1" isLoading={isLoading}>
             <TableContainer>
               <Table>

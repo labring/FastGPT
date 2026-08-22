@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { Box, Flex } from '@chakra-ui/react';
 import ModelTable from '@/components/core/ai/ModelTable';
@@ -7,7 +7,9 @@ import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import dynamic from 'next/dynamic';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { accountTitleTextStyles } from '@/pageComponents/account/styles';
+import { accountPageRootStyles, accountTitleTextStyles } from '@/pageComponents/account/styles';
+import ModelTabHeader from '@/pageComponents/account/model/ModelTabHeader';
+import { useRouter } from 'next/router';
 
 const ModelConfigTable = dynamic(() => import('@/pageComponents/account/model/ModelConfigTable'));
 const ChannelTable = dynamic(() => import('@/pageComponents/account/model/Channel'));
@@ -19,12 +21,15 @@ type TabType = 'model' | 'config' | 'channel' | 'channel_log' | 'account_model';
 const ModelProvider = () => {
   const { t } = useClientTranslation(['account_model', 'account']);
   const { feConfigs } = useSystemStore();
-
-  const [tab, setTab] = useState<TabType>('model');
+  const router = useRouter();
+  const { modelTab = 'model' } = router.query as { modelTab?: TabType };
 
   const Tab = useMemo(() => {
     return (
       <FillRowTabs<TabType>
+        w={['100%', 'auto']}
+        size={'sm'}
+        scrollPositionKey={'account-model-tabs'}
         list={[
           { label: t('account_model:active_model'), value: 'model' },
           { label: t('account_model:config_model'), value: 'config' },
@@ -37,17 +42,24 @@ const ModelProvider = () => {
               ]
             : [])
         ]}
-        value={tab}
-        py={1}
-        onChange={setTab}
+        value={modelTab}
+        onChange={(value) => {
+          router.replace({
+            query: {
+              ...router.query,
+              modelTab: value
+            }
+          });
+        }}
       />
     );
-  }, [feConfigs.show_aiproxy, t, tab]);
+  }, [feConfigs.show_aiproxy, modelTab, router, t]);
 
   return (
     <AccountContainer>
-      <Flex h={'100%'} minH={0} flexDirection={'column'}>
+      <Flex {...accountPageRootStyles} flexDirection={'column'}>
         <Flex
+          display={['none', 'flex']}
           h={'64px'}
           flexShrink={0}
           px={[4, 6]}
@@ -59,12 +71,18 @@ const ModelProvider = () => {
             {t('account:model_provider')}
           </Box>
         </Flex>
-        <Flex flex={'1 0 0'} minH={0} flexDirection={'column'} gap={4} py={6} px={6}>
-          {tab === 'model' && <ValidModelTable Tab={Tab} />}
-          {tab === 'config' && <ModelConfigTable Tab={Tab} />}
-          {tab === 'channel' && <ChannelTable Tab={Tab} />}
-          {tab === 'channel_log' && <ChannelLog Tab={Tab} />}
-          {tab === 'account_model' && <ModelDashboard Tab={Tab} />}
+        <Flex
+          flex={'1 0 0'}
+          minH={['calc(100dvh - 78px)', 0]}
+          flexDirection={'column'}
+          gap={4}
+          py={6}
+        >
+          {modelTab === 'model' && <ValidModelTable Tab={Tab} />}
+          {modelTab === 'config' && <ModelConfigTable Tab={Tab} />}
+          {modelTab === 'channel' && <ChannelTable Tab={Tab} />}
+          {modelTab === 'channel_log' && <ChannelLog Tab={Tab} />}
+          {modelTab === 'account_model' && <ModelDashboard Tab={Tab} />}
         </Flex>
       </Flex>
     </AccountContainer>
@@ -78,9 +96,9 @@ const ValidModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   const isRoot = userInfo?.username === 'root';
   return (
     <>
-      {isRoot && <Flex justifyContent={'space-between'}>{Tab}</Flex>}
-      <Box flex={'1 0 0'}>
-        <ModelTable permissionConfig={true} />
+      {isRoot && <ModelTabHeader Tab={Tab} />}
+      <Box flex={['0 0 auto', '1 0 0']} minH={0}>
+        <ModelTable permissionConfig={true} contentPx={6} />
       </Box>
     </>
   );

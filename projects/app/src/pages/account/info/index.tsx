@@ -46,7 +46,7 @@ import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getIsMemberSyncMode } from '@/web/common/system/utils';
-import { accountTitleTextStyles } from '@/pageComponents/account/styles';
+import { accountPageRootStyles, accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const RedeemCouponModal = dynamic(() => import('@/pageComponents/account/info/RedeemCouponModal'), {
   ssr: false
@@ -84,7 +84,7 @@ const Info = () => {
 
   return (
     <AccountContainer>
-      <Box h={'100%'} overflowY={'auto'} py={[3, 6]} px={[5, 6]}>
+      <Box {...accountPageRootStyles} overflowY={['visible', 'auto']} py={[3, 6]} px={[5, 6]}>
         {isPc ? (
           <Flex w={'100%'} alignItems={'flex-start'}>
             <Box flex={'0 0 330px'}>
@@ -95,7 +95,9 @@ const Info = () => {
             </Box>
             {!!standardPlan && (
               <Box ml={'45px'} flex={'1 0 0'} minW={0}>
-                <PlanUsage />
+                <Box maxW={'805px'}>
+                  <PlanUsage />
+                </Box>
               </Box>
             )}
           </Flex>
@@ -543,30 +545,42 @@ const PlanUsage = () => {
 
   return standardPlan ? (
     <Box mt={[6, 0]}>
-      <Flex h={'30px'}>
+      <Flex h={['auto', '30px']} flexDirection={['column', 'row']}>
         <Flex as={'h2'} alignItems={'center'} {...accountTitleTextStyles}>
           {t('account_info:package_and_usage')}
         </Flex>
-        <ModelPriceModal>
-          {({ onOpen }) => (
-            <Button ml={3} size={'sm'} onClick={onOpen}>
-              {t('account_info:billing_standard')}
+        <Flex mt={[3, 0]} flexWrap={'wrap'} gap={[2, 0]}>
+          <ModelPriceModal>
+            {({ onOpen }) => (
+              <Button ml={[0, 3]} size={'sm'} onClick={onOpen}>
+                {t('account_info:billing_standard')}
+              </Button>
+            )}
+          </ModelPriceModal>
+          <Button ml={[0, 3]} variant={'whitePrimary'} size={'sm'} onClick={onOpenStandardModal}>
+            {t('account_info:package_details')}
+          </Button>
+          {userInfo?.permission.isOwner && feConfigs?.show_coupon && (
+            <Button
+              ml={[0, 3]}
+              variant={'whitePrimary'}
+              size={'sm'}
+              onClick={onOpenRedeemCouponModal}
+            >
+              {t('account_info:redeem_coupon')}
             </Button>
           )}
-        </ModelPriceModal>
-        <Button ml={3} variant={'whitePrimary'} size={'sm'} onClick={onOpenStandardModal}>
-          {t('account_info:package_details')}
-        </Button>
-        {userInfo?.permission.isOwner && feConfigs?.show_coupon && (
-          <Button ml={3} variant={'whitePrimary'} size={'sm'} onClick={onOpenRedeemCouponModal}>
-            {t('account_info:redeem_coupon')}
-          </Button>
-        )}
-        {userInfo?.permission.isOwner && feConfigs?.show_discount_coupon && (
-          <Button ml={3} variant={'whitePrimary'} size={'sm'} onClick={onOpenDiscountCouponsModal}>
-            {t('account_info:discount_coupon')}
-          </Button>
-        )}
+          {userInfo?.permission.isOwner && feConfigs?.show_discount_coupon && (
+            <Button
+              ml={[0, 3]}
+              variant={'whitePrimary'}
+              size={'sm'}
+              onClick={onOpenDiscountCouponsModal}
+            >
+              {t('account_info:discount_coupon')}
+            </Button>
+          )}
+        </Flex>
       </Flex>
       <Box
         mt={[3, 6]}
@@ -799,7 +813,7 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
   );
 
   return (
-    <Box>
+    <Box mt={[6, 0]}>
       <Grid gridGap={4}>
         {feConfigs?.docUrl && (
           <Link

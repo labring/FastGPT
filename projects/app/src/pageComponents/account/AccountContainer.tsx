@@ -197,6 +197,8 @@ const AccountContainer = ({
               m={'auto'}
               w={'100%'}
               size={isPc ? 'md' : 'sm'}
+              ensureActiveVisible
+              scrollPositionKey={'account-mobile-navigation'}
               list={tabList.map((item) => ({
                 value: item.value,
                 label: item.label

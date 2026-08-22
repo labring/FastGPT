@@ -5,7 +5,7 @@ import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import type { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
 import { useMultipleSelect } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { addDays } from 'date-fns';
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 
 type Props = {
@@ -34,6 +34,7 @@ const LogDetails = ({ Header }: Props) => {
     <Flex gap={'13px'} flexDir="column" h={['calc(100vh - 69px)', 'full']}>
       <Header />
       <LogTable
+        pageSizeCacheKey={'chat-log-details'}
         px={[2, 0]}
         showSourceSelector={false}
         appId={appId}

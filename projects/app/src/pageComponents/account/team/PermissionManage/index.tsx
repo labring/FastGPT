@@ -222,29 +222,53 @@ function PermissionManage({
 
   return (
     <>
-      <Flex justify={'space-between'} align={'center'} pb={'1rem'}>
-        {Tabs}
-        <Box ml="auto">
-          <SearchInput
-            placeholder={t('user:search_group_org_user')}
-            w="200px"
-            value={searchKey}
-            onChange={(e) => setSearchKey(e.target.value)}
-          />
-        </Box>
-        {userInfo?.team.permission.hasManagePer && (
-          <Button
-            variant={'primary'}
-            size="md"
-            borderRadius={'md'}
-            ml={3}
-            onClick={onOpenAddMember}
-          >
-            {t('account_team:manage_per')}
-          </Button>
-        )}
+      <Flex
+        px={6}
+        justify={'space-between'}
+        align={['stretch', 'center']}
+        flexDirection={['column', 'row']}
+        pb={'1rem'}
+      >
+        <Box w={['100%', 'auto']}>{Tabs}</Box>
+        <Flex
+          mt={[3, 0]}
+          ml={['initial', 'auto']}
+          w={['100%', 'auto']}
+          flexDirection={['column', 'row']}
+          justifyContent={'flex-end'}
+          gap={3}
+          flexWrap={'wrap'}
+        >
+          <Box w={['100%', '200px']} flexShrink={0}>
+            <SearchInput
+              bg={'white'}
+              placeholder={t('user:search_group_org_user')}
+              w={'100%'}
+              value={searchKey}
+              onChange={(e) => setSearchKey(e.target.value)}
+            />
+          </Box>
+          {userInfo?.team.permission.hasManagePer && (
+            <Button
+              w={['100%', 'auto']}
+              variant={'primary'}
+              size="md"
+              borderRadius={'md'}
+              onClick={onOpenAddMember}
+            >
+              {t('account_team:manage_per')}
+            </Button>
+          )}
+        </Flex>
       </Flex>
-      <MyBox isLoading={addLoading || deleteLoading}>
+      <MyBox
+        px={6}
+        flex={['0 0 auto', '1 0 0']}
+        h={['auto', 0]}
+        minH={0}
+        overflowY={['visible', 'auto']}
+        isLoading={addLoading || deleteLoading}
+      >
         <TableContainer fontSize={'sm'}>
           <Table>
             <Thead>

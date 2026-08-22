@@ -2,10 +2,12 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import {
   type Dispatch,
   type ReactNode,
+  type RefObject,
   type SetStateAction,
   useState,
   useMemo,
-  useCallback
+  useCallback,
+  useRef
 } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
@@ -34,6 +36,7 @@ type CollectionPageContextType = {
   isGetting: boolean;
   pageNum: number;
   pageSize: number;
+  scrollContainerRef: RefObject<HTMLDivElement>;
   searchText: string;
   setSearchText: Dispatch<SetStateAction<string>>;
   filterTags: string[];
@@ -52,18 +55,19 @@ export const CollectionPageContext = createContext<CollectionPageContextType>({
     throw new Error('Function not implemented.');
   },
   total: 0,
-  getData: function (e: number): void {
+  getData: function (_e: number): void {
     throw new Error('Function not implemented.');
   },
   isGetting: false,
   pageNum: 0,
   pageSize: 0,
+  scrollContainerRef: { current: null },
   searchText: '',
-  setSearchText: function (value: SetStateAction<string>): void {
+  setSearchText: function (_value: SetStateAction<string>): void {
     throw new Error('Function not implemented.');
   },
   filterTags: [],
-  setFilterTags: function (value: SetStateAction<string[]>): void {
+  setFilterTags: function (_value: SetStateAction<string[]>): void {
     throw new Error('Function not implemented.');
   }
 });
@@ -81,6 +85,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   // collection list
   const [searchText, setSearchText] = useState('');
   const [filterTags, setFilterTags] = useState<string[]>([]);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const {
     data: collections,
     Pagination,
@@ -91,6 +96,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     pageSize
   } = usePagination(getDatasetCollections, {
     defaultPageSize: 20,
+    pageSizeCacheKey: 'dataset-detail-collections',
     storeToQuery: true,
     params: {
       datasetId,
@@ -98,7 +104,8 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       searchText,
       filterTags
     },
-    refreshDeps: [parentId, searchText, filterTags]
+    refreshDeps: [parentId, searchText, filterTags],
+    scrollContainerRef
   });
 
   const syncDataset = useCallback(async () => {
@@ -156,7 +163,8 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       getData,
       isGetting,
       pageNum,
-      pageSize
+      pageSize,
+      scrollContainerRef
     }),
     [
       Pagination,

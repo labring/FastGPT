@@ -31,7 +31,6 @@ import { type MemberGroupListItemType } from '@fastgpt/global/support/permission
 const ChangeOwnerModal = dynamic(() => import('./GroupTransferOwnerModal'));
 const GroupInfoModal = dynamic(() => import('./GroupInfoModal'));
 const GroupManageMember = dynamic(() => import('./GroupManageMember'));
-
 function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useClientTranslation(['account_team', 'user']);
   const { userInfo } = useUserStore();
@@ -89,23 +88,39 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
 
   return (
     <>
-      <Flex justify={'space-between'} align={'center'} pb={'1rem'}>
-        {Tabs}
-        {userInfo?.team.permission.hasManagePer && (
-          <Button
-            variant={'primary'}
-            size="md"
-            borderRadius={'md'}
-            ml={3}
-            leftIcon={<MyIcon name="support/permission/collaborator" w={'14px'} />}
-            onClick={onOpenGroupInfo}
-          >
-            {t('user:team.group.create')}
-          </Button>
-        )}
+      <Flex
+        px={6}
+        justify={'space-between'}
+        align={['stretch', 'center']}
+        flexDirection={['column', 'row']}
+        pb={'1rem'}
+      >
+        <Box w={['100%', 'auto']}>{Tabs}</Box>
+        <Flex mt={[3, 0]} w={['100%', 'auto']} justifyContent={'flex-end'}>
+          {userInfo?.team.permission.hasManagePer && (
+            <Button
+              w={['100%', 'auto']}
+              variant={'primary'}
+              size="md"
+              borderRadius={'md'}
+              ml={[0, 3]}
+              leftIcon={<MyIcon name="support/permission/collaborator" w={'14px'} />}
+              onClick={onOpenGroupInfo}
+            >
+              {t('user:team.group.create')}
+            </Button>
+          )}
+        </Flex>
       </Flex>
 
-      <MyBox flex={'1 0 0'} overflow={'auto'} isLoading={isLoadingGroups}>
+      <MyBox
+        px={6}
+        flex={['0 0 auto', '1 0 0']}
+        h={['auto', 0]}
+        minH={0}
+        overflowY={['visible', 'auto']}
+        isLoading={isLoadingGroups}
+      >
         <TableContainer overflow={'unset'} fontSize={'sm'}>
           <Table overflow={'unset'}>
             <Thead>
@@ -121,7 +136,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               </Tr>
             </Thead>
             <Tbody>
-              {groups?.map((group) => (
+              {groups.map((group) => (
                 <Tr key={group._id} overflow={'unset'}>
                   <Td>
                     <MemberTag
