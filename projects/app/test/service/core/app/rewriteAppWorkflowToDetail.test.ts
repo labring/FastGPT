@@ -42,7 +42,7 @@ vi.mock('@fastgpt/service/support/permission/app/auth', async (importOriginal) =
 const { rewriteAppWorkflowToDetail } = await import('@fastgpt/service/core/app/utils');
 
 describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
-  it('keeps missing Agent tool identity and recovery data in the detail placeholder', async () => {
+  it('keeps the baseline invalid placeholder and separates unresolved inputs', async () => {
     getClientToolPreviewNodeMock.mockRejectedValue(new Error('Tool deleted'));
     const nodes = [
       {
@@ -61,7 +61,7 @@ describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
                 source: 'debug:tmbId:tmb-1',
                 config: { apiKey: 'saved' },
                 isUnavailable: true,
-                unresolvedInputs: [{ key: 'query', selectedTypeIndex: 1 }]
+                inputs: [{ key: 'query', mode: 'agentGenerated' }]
               }
             ]
           }
@@ -83,8 +83,16 @@ describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
       source: 'debug:tmbId:tmb-1',
       version: 'v1',
       config: { apiKey: 'saved' },
-      isUnavailable: true,
-      unresolvedInputs: [{ key: 'query', selectedTypeIndex: 1 }]
+      isUnavailable: true
+    });
+    expect(tool.inputs).toEqual([{ key: 'query', mode: 'agentGenerated' }]);
+    expect(nodes[0]).toMatchObject({
+      unresolvedTools: [
+        {
+          id: 'systemTool-missing',
+          inputs: [{ key: 'query', mode: 'agentGenerated' }]
+        }
+      ]
     });
   });
 

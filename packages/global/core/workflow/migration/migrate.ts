@@ -1,9 +1,9 @@
 import type { CanonicalWorkflowData, CanonicalAgentToolInputConfig } from './schema';
 import {
+  AgentToolInputBoundarySchema,
   CanonicalAgentToolInputConfigSchema,
   CanonicalSelectedToolsValueSchema,
-  CanonicalWorkflowDataSchema,
-  LegacyAgentToolInputSnapshotSchema
+  CanonicalWorkflowDataSchema
 } from './schema';
 import type { LegacyWorkflowDataInput } from './legacy/schema';
 import type { WorkflowMigrationOptions } from './type';
@@ -13,12 +13,12 @@ import { migrateLegacyWorkflowStructureData } from './legacy/structure';
 import { FlowNodeTypeEnum } from '../node/constant';
 import { NodeInputKeyEnum } from '../constants';
 import { AgentToolInputModeEnum } from '../../app/tool/constants';
-import { isSystemOrCommercialToolId } from '../../app/tool/utils';
+import { canInputBeAgentGenerated } from '../../app/formEdit/utils';
 
 /**
  * 将外部 workflow 迁移为严格 canonical 数据。
  *
- * 当前工具定义可得时，按定义修复每个输入；定义不可得时保留 unavailable 占位和恢复快照。
+ * 当前工具定义可得时，按定义修复每个输入；定义不可得时保留 unavailable 占位和可转换输入配置。
  * 所有结构兼容规则都在本模块的内部 phase 完成；调用者只接收经过 strict schema 校验的结果。
  */
 export const migrateWorkflowToCurrent = async (
@@ -68,12 +68,8 @@ export const migrateWorkflowToCurrent = async (
                   : {};
 
               const hasSavedInputs = Array.isArray(tool.inputs);
-              const savedInputs: unknown[] = (() => {
-                if (tool.isUnavailable === true && Array.isArray(tool.unresolvedInputs)) {
-                  return tool.unresolvedInputs;
-                }
-                return hasSavedInputs ? tool.inputs : [];
-              })();
+              const savedInputs: unknown[] = hasSavedInputs ? tool.inputs : [];
+              const hasInputPayload = hasSavedInputs;
               const needsDefinition =
                 tool.isUnavailable === true ||
                 !hasSavedInputs ||
@@ -88,12 +84,7 @@ export const migrateWorkflowToCurrent = async (
                   })
                 : undefined;
               if (!needsDefinition) {
-                const {
-                  isUnavailable: _isUnavailable,
-                  unresolvedInputs: _unresolvedInputs,
-                  config: _config,
-                  ...availableTool
-                } = tool;
+                const { isUnavailable: _isUnavailable, config: _config, ...availableTool } = tool;
                 return {
                   ...availableTool,
                   config,
@@ -104,49 +95,66 @@ export const migrateWorkflowToCurrent = async (
               }
 
               if (!definition) {
-                const unresolvedInputs = savedInputs.flatMap((input) => {
-                  const result = LegacyAgentToolInputSnapshotSchema.safeParse(input);
+                const preservedInputs = savedInputs.flatMap((input) => {
+                  const result = AgentToolInputBoundarySchema.safeParse(input);
                   return result.success ? [result.data] : [];
                 });
-                const {
-                  inputs: _inputs,
-                  unresolvedInputs: _unresolvedInputs,
-                  config: _config,
-                  ...unavailableTool
-                } = tool;
+                const { inputs: _inputs, config: _config, ...unavailableTool } = tool;
 
                 return {
                   ...unavailableTool,
+                  // 无 definition 时不猜测 NodeIO 的 mode，也不复制其中的敏感 value 到 config。
+                  // 工具恢复后再按当前 definition 转换，避免引入第二份输入载荷。
                   config,
                   isUnavailable: true,
-                  ...(unresolvedInputs.length > 0 ? { unresolvedInputs } : {})
+                  ...(hasInputPayload ? { inputs: preservedInputs } : {})
                 };
               }
 
-              const savedInputMap = new Map(
-                savedInputs.flatMap((input) => {
-                  const result = LegacyAgentToolInputConfigSchema.safeParse(input);
-                  return result.success ? [[result.data.key, result.data] as const] : [];
-                })
+              // 没有保存过 inputs 表示“未设置覆盖”，不能物化成当前 definition 的完整 key 列表。
+              if (!hasInputPayload) {
+                const { isUnavailable: _isUnavailable, config: _config, ...availableTool } = tool;
+                return {
+                  ...availableTool,
+                  config
+                };
+              }
+
+              const savedInputMap = new Map<string, CanonicalAgentToolInputConfig | undefined>(
+                savedInputs.flatMap(
+                  (input): Array<readonly [string, CanonicalAgentToolInputConfig | undefined]> => {
+                    const result = LegacyAgentToolInputConfigSchema.safeParse(input);
+                    if (result.success) return [[result.data.key, result.data] as const];
+                    if (!input || typeof input !== 'object' || Array.isArray(input)) return [];
+
+                    const key = (input as Record<string, unknown>).key;
+                    return typeof key === 'string' ? [[key, undefined] as const] : [];
+                  }
+                )
               );
-              // Agent V2 前的系统/商业工具未保存 inputs，默认全部由 Agent 生成。
-              const useLegacyAllAgentGenerated =
-                tool.inputs === undefined && isSystemOrCommercialToolId(tool.id);
-              const migratedInputs: CanonicalAgentToolInputConfig[] = definition.inputs.map(
-                (definitionInput) => {
-                  const savedInput = savedInputMap.get(definitionInput.key);
-                  return (
-                    savedInput ?? {
-                      key: definitionInput.key,
-                      mode:
-                        useLegacyAllAgentGenerated ||
-                        definitionInput.defaultToAgentGenerated === true
-                          ? AgentToolInputModeEnum.agentGenerated
-                          : AgentToolInputModeEnum.manual
-                    }
-                  );
-                }
+              const definitionInputMap = new Map(
+                definition.inputs.map((definitionInput) => [definitionInput.key, definitionInput])
               );
+              const migratedInputs: CanonicalAgentToolInputConfig[] = Array.from(
+                savedInputMap.entries()
+              ).flatMap(([key, savedInput]) => {
+                const definitionInput = definitionInputMap.get(key);
+                if (!definitionInput) return [];
+
+                return [
+                  {
+                    key,
+                    mode:
+                      savedInput?.mode === AgentToolInputModeEnum.agentGenerated &&
+                      !canInputBeAgentGenerated(definitionInput)
+                        ? AgentToolInputModeEnum.manual
+                        : (savedInput?.mode ??
+                          (definitionInput.defaultToAgentGenerated === true
+                            ? AgentToolInputModeEnum.agentGenerated
+                            : AgentToolInputModeEnum.manual))
+                  }
+                ];
+              });
               // V1 快照把手动参数存在完整 NodeIO 的 value 中；V2 只保存 key/mode，
               // 所以必须在此把仍为手动模式的值迁入 config。
               const legacyConfig = Object.fromEntries(
@@ -169,16 +177,12 @@ export const migrateWorkflowToCurrent = async (
                   return [[key, hasValue ? savedInput.value : savedInput.defaultValue]];
                 })
               );
-              const {
-                isUnavailable: _isUnavailable,
-                unresolvedInputs: _unresolvedInputs,
-                config: _config,
-                ...availableTool
-              } = tool;
+              const { isUnavailable: _isUnavailable, config: _config, ...availableTool } = tool;
 
               return {
                 ...availableTool,
-                config: { ...config, ...legacyConfig },
+                // config 是当前 Agent 持久化字段，优先于旧 NodeIO 快照中的 value。
+                config: { ...legacyConfig, ...config },
                 inputs: migratedInputs
               };
             })

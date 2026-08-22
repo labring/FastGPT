@@ -1,5 +1,5 @@
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '../../workflow/constants';
-import { FlowNodeInputTypeEnum } from '../../workflow/node/constant';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../workflow/node/constant';
 import type { FlowNodeInputItemType } from '../../workflow/type/io';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
 import type { CanonicalFlowNodeInputItem } from '../../workflow/migration';
@@ -355,6 +355,41 @@ export const getAgentToolInputMode = (input: InputRenderTypeState) =>
   isAgentGeneratedToolInput(input)
     ? AgentToolInputModeEnum.agentGenerated
     : AgentToolInputModeEnum.manual;
+
+/** 将应用内完整 NodeIO 工具投影为 Agent 持久化所需的稀疏配置。 */
+export const serializeAgentTool = ({
+  tool,
+  maxHistories
+}: {
+  tool: SelectedToolItemType;
+  maxHistories?: number;
+}) => {
+  const config = tool.inputs.reduce<Record<string, unknown>>((acc, input) => {
+    if (input.key === NodeInputKeyEnum.forbidStream) return acc;
+    if (
+      maxHistories !== undefined &&
+      tool.flowNodeType === FlowNodeTypeEnum.appModule &&
+      input.key === NodeInputKeyEnum.history
+    ) {
+      acc[input.key] = maxHistories;
+      return acc;
+    }
+    acc[input.key] = input.value;
+    return acc;
+  }, {});
+
+  return {
+    id: tool.pluginId ?? tool.id,
+    version: tool.version,
+    source: tool.source,
+    toolConfig: tool.toolConfig,
+    inputs: tool.inputs.filter(canInputBeAgentGenerated).map((input) => ({
+      key: input.key,
+      mode: getAgentToolInputMode(input)
+    })),
+    config: filterToolConfiguredParams({ params: config, inputs: tool.inputs })
+  };
+};
 
 /**
  * 读取当前工具配置里的最终选择。

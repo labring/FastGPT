@@ -286,7 +286,7 @@ export function agentForm2AppWorkflow(
                     toolConfig: tool.toolConfig,
                     config: tool.config ?? {},
                     isUnavailable: true as const,
-                    ...(tool.unresolvedInputs ? { unresolvedInputs: tool.unresolvedInputs } : {})
+                    ...(tool.inputs?.length ? { inputs: tool.inputs } : {})
                   };
                 }
 

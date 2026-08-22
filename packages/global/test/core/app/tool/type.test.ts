@@ -69,31 +69,31 @@ describe('AgentToolSchema', () => {
       id: 'missing-tool',
       config: {},
       isUnavailable: true,
-      unresolvedInputs: [{ key: 'query', selectedTypeIndex: 1 }]
+      inputs: [{ key: 'query', mode: AgentToolInputModeEnum.agentGenerated }]
     });
 
     expect(result).toMatchObject({ id: 'missing-tool', isUnavailable: true });
-    expect(result).not.toHaveProperty('inputs');
+    expect(result.inputs).toEqual([{ key: 'query', mode: AgentToolInputModeEnum.agentGenerated }]);
   });
 
-  it('rejects recovery snapshots on a regular tool', () => {
+  it('rejects unavailable input snapshots on a regular tool', () => {
     expect(() =>
       AgentToolSchema.parse({
         id: 'tool-1',
         config: {},
-        unresolvedInputs: [{ key: 'query' }]
+        inputs: [{ key: 'query', selectedTypeIndex: 1 }]
       })
     ).toThrow();
   });
 
-  it('rejects canonical inputs on an unavailable tool', () => {
-    expect(() =>
-      AgentToolSchema.parse({
-        id: 'missing-tool',
-        config: {},
-        isUnavailable: true,
-        inputs: []
-      })
-    ).toThrow();
+  it('preserves canonical inputs on an unavailable tool', () => {
+    const result = AgentToolSchema.parse({
+      id: 'missing-tool',
+      config: {},
+      isUnavailable: true,
+      inputs: []
+    });
+
+    expect(result.inputs).toEqual([]);
   });
 });

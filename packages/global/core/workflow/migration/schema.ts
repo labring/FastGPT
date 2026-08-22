@@ -24,10 +24,28 @@ export const CanonicalAgentToolInputConfigSchema = z.object({
 export type CanonicalAgentToolInputConfig = z.infer<typeof CanonicalAgentToolInputConfigSchema>;
 
 /**
- * 不可用工具保留的历史输入快照。该载荷用于后续 resolver 恢复，不参与 runtime schema。
+ * 不可用工具在迁移边界允许保留 sparse 配置或历史 NodeIO 快照。
+ * 该类型只用于 unresolved 分支，正常可用工具仍必须使用 canonical 配置。
  */
-export const LegacyAgentToolInputSnapshotSchema = z.record(z.string(), z.unknown());
-export type LegacyAgentToolInputSnapshot = z.infer<typeof LegacyAgentToolInputSnapshotSchema>;
+export const AgentToolInputBoundarySchema = z.looseObject({
+  key: z.string().optional(),
+  mode: z.string().optional(),
+  selectedType: z.string().optional(),
+  selectedTypeIndex: z.number().optional(),
+  renderTypeList: z.array(z.string()).optional(),
+  value: z.any().optional(),
+  defaultValue: z.any().optional()
+});
+export type AgentToolInputBoundary = {
+  key?: string;
+  mode?: string;
+  selectedType?: string;
+  selectedTypeIndex?: number;
+  renderTypeList?: string[];
+  value?: any;
+  defaultValue?: any;
+  [key: string]: any;
+};
 
 /** 缺失工具定义时的可持久化占位分支。 */
 export const CanonicalUnavailableAgentToolSchema = z.looseObject({
@@ -37,15 +55,14 @@ export const CanonicalUnavailableAgentToolSchema = z.looseObject({
   toolConfig: NodeToolConfigTypeSchema.optional(),
   config: z.record(z.string(), z.unknown()),
   isUnavailable: z.literal(true),
-  inputs: z.never().optional(),
-  unresolvedInputs: z.array(LegacyAgentToolInputSnapshotSchema).optional()
+  inputs: z.array(AgentToolInputBoundarySchema).optional()
 });
 export type CanonicalUnavailableAgentTool = z.infer<typeof CanonicalUnavailableAgentToolSchema>;
 
 /** 当前版本的可用 Agent 工具；只约束工具身份和输入配置，保留展示元数据。 */
 export const CanonicalAvailableAgentToolSchema = z.looseObject({
   id: z.string(),
-  inputs: z.array(CanonicalAgentToolInputConfigSchema),
+  inputs: z.array(CanonicalAgentToolInputConfigSchema).optional(),
   config: z.record(z.string(), z.unknown()),
   isUnavailable: z.literal(false).optional()
 });

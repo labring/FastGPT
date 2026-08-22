@@ -309,7 +309,7 @@ describe('getAgentRuntimeTools schema loading', () => {
           id: 'missing-tool',
           config: {},
           isUnavailable: true,
-          unresolvedInputs: [{ key: 'query', selectedTypeIndex: 1 }]
+          inputs: [{ key: 'query', mode: 'agentGenerated' }]
         }
       ]
     });

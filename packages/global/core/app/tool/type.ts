@@ -48,8 +48,7 @@ const AgentToolBaseSchema = z.object({
 });
 
 const AvailableAgentToolSchema = AgentToolBaseSchema.extend({
-  isUnavailable: z.undefined().optional(),
-  unresolvedInputs: z.never().optional()
+  isUnavailable: z.undefined().optional()
 });
 
 export const AgentToolSchema = z.union([
