@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box, Button, Flex, Grid } from '@chakra-ui/react';
 import { Trans } from 'next-i18next';
@@ -32,6 +32,15 @@ const NEW_PLAN_LEVELS = [
   StandardSubLevelEnum.advanced,
   StandardSubLevelEnum.custom
 ];
+const PLAN_CARD_MIN_WIDTH = 260;
+const PLAN_CARD_MAX_WIDTH = 400;
+const PLAN_CARD_GAP = 24;
+
+type ResponsivePlanLayout = {
+  columnCount: 1 | 2 | 4;
+  cardWidth: number;
+  gap: number;
+};
 
 /** 按月/按年切换开关，可在页面 header 区域复用 */
 export const BillingModeSwitch = ({
@@ -45,60 +54,63 @@ export const BillingModeSwitch = ({
   const isYear = value === SubModeEnum.year;
 
   return (
-    <Flex alignItems={'center'} gap={3}>
-      <Box
-        fontFamily={'Inter'}
-        fontSize={'14px'}
-        fontStyle={'normal'}
-        fontWeight={400}
-        lineHeight={'21px'}
-        color={'#020617'}
-        userSelect={'none'}
-      >
-        {t('price:support.wallet.subscription.mode.Month pay')}
-      </Box>
-      <Flex
-        role={'switch'}
-        aria-checked={isYear}
-        tabIndex={0}
-        w={'40px'}
-        h={'24px'}
-        p={'0 4px'}
-        alignItems={'center'}
-        flexShrink={0}
-        borderRadius={'full'}
-        bg={'#E8EBF0'}
-        cursor={'pointer'}
-        justifyContent={isYear ? 'flex-end' : 'flex-start'}
-        onClick={() => onChange(isYear ? SubModeEnum.month : SubModeEnum.year)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onChange(isYear ? SubModeEnum.month : SubModeEnum.year);
-          }
-        }}
-      >
+    <Flex flexDirection={['column', 'row']} alignItems={'center'} gap={[2, 3]}>
+      <Flex alignItems={'center'} gap={3} whiteSpace={'nowrap'}>
         <Box
-          w={'16px'}
-          h={'16px'}
+          fontFamily={'Inter'}
+          fontSize={'14px'}
+          fontStyle={'normal'}
+          fontWeight={400}
+          lineHeight={'21px'}
+          color={'#020617'}
+          userSelect={'none'}
+        >
+          {t('price:support.wallet.subscription.mode.Month pay')}
+        </Box>
+        <Flex
+          role={'switch'}
+          aria-checked={isYear}
+          tabIndex={0}
+          w={'40px'}
+          h={'24px'}
+          p={'0 4px'}
+          alignItems={'center'}
+          flexShrink={0}
           borderRadius={'full'}
-          bg={'white'}
-          boxShadow={'0 1px 2px rgba(19, 51, 107, 0.15)'}
-        />
+          bg={'#E8EBF0'}
+          cursor={'pointer'}
+          justifyContent={isYear ? 'flex-end' : 'flex-start'}
+          onClick={() => onChange(isYear ? SubModeEnum.month : SubModeEnum.year)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onChange(isYear ? SubModeEnum.month : SubModeEnum.year);
+            }
+          }}
+        >
+          <Box
+            w={'16px'}
+            h={'16px'}
+            borderRadius={'full'}
+            bg={'white'}
+            boxShadow={'0 1px 2px rgba(19, 51, 107, 0.15)'}
+          />
+        </Flex>
+        <Box
+          fontFamily={'Inter'}
+          fontSize={'14px'}
+          fontStyle={'normal'}
+          fontWeight={400}
+          lineHeight={'20px'}
+          color={'#475569'}
+          userSelect={'none'}
+        >
+          {t('price:support.wallet.subscription.mode.Year pay')}
+        </Box>
       </Flex>
       <Box
-        fontFamily={'Inter'}
-        fontSize={'14px'}
-        fontStyle={'normal'}
-        fontWeight={400}
-        lineHeight={'20px'}
-        color={'#475569'}
-        userSelect={'none'}
-      >
-        {t('price:support.wallet.subscription.mode.Year pay')}
-      </Box>
-      <Box
         as={'span'}
+        textAlign={'center'}
         sx={{
           color: '#3B82F6',
           fontFamily: 'Inter, sans-serif',
@@ -125,13 +137,15 @@ const Standard = ({
   onPaySuccess,
   selectSubMode: controlledSubMode,
   onSelectSubModeChange,
-  hideBillingToggle = false
+  hideBillingToggle = false,
+  responsiveCardLayout = false
 }: {
   standardPlan?: TeamPlanStandardType;
   onPaySuccess?: () => void;
   selectSubMode?: `${SubModeEnum}`;
   onSelectSubModeChange?: (mode: `${SubModeEnum}`) => void;
   hideBillingToggle?: boolean;
+  responsiveCardLayout?: boolean;
 }) => {
   const { t, i18n } = useClientTranslation('price');
   const { userInfo } = useUserStore();
@@ -151,6 +165,12 @@ const Standard = ({
   const [internalSubMode, setInternalSubMode] = useState<`${SubModeEnum}`>(
     isWecomTeam ? SubModeEnum.year : SubModeEnum.month
   );
+  const planContainerRef = useRef<HTMLDivElement>(null);
+  const [responsivePlanLayout, setResponsivePlanLayout] = useState<ResponsivePlanLayout>({
+    columnCount: 4,
+    cardWidth: PLAN_CARD_MIN_WIDTH,
+    gap: PLAN_CARD_GAP
+  });
   const selectSubMode = controlledSubMode ?? internalSubMode;
   const setSelectSubMode = onSelectSubModeChange ?? setInternalSubMode;
   const hasActivityExpiration =
@@ -163,7 +183,61 @@ const Standard = ({
     } else {
       setSelectSubMode(subPlans?.activityExpirationTime ? SubModeEnum.year : SubModeEnum.month);
     }
-  }, [subPlans?.activityExpirationTime, isWecomTeam]);
+  }, [isWecomTeam, setSelectSubMode, subPlans?.activityExpirationTime]);
+
+  useEffect(() => {
+    if (!responsiveCardLayout || !planContainerRef.current) return;
+
+    const container = planContainerRef.current;
+    const updatePlanLayout = () => {
+      const availableWidth = container.clientWidth;
+      if (availableWidth <= 0) return;
+
+      const fourColumnMinWidth = PLAN_CARD_MIN_WIDTH * 4 + PLAN_CARD_GAP * 3;
+      const twoColumnMinWidth = PLAN_CARD_MIN_WIDTH * 2 + PLAN_CARD_GAP;
+      const nextLayout: ResponsivePlanLayout = (() => {
+        if (availableWidth >= fourColumnMinWidth) {
+          return {
+            columnCount: 4,
+            cardWidth: Math.min(
+              PLAN_CARD_MAX_WIDTH,
+              Math.floor((availableWidth - PLAN_CARD_GAP * 3) / 4)
+            ),
+            gap: PLAN_CARD_GAP
+          };
+        }
+        if (availableWidth >= twoColumnMinWidth) {
+          return {
+            columnCount: 2,
+            cardWidth: Math.min(
+              PLAN_CARD_MAX_WIDTH,
+              Math.floor((availableWidth - PLAN_CARD_GAP) / 2)
+            ),
+            gap: PLAN_CARD_GAP
+          };
+        }
+        return {
+          columnCount: 1,
+          cardWidth: Math.max(PLAN_CARD_MIN_WIDTH, Math.min(PLAN_CARD_MAX_WIDTH, availableWidth)),
+          gap: PLAN_CARD_GAP
+        };
+      })();
+
+      setResponsivePlanLayout((previous) =>
+        previous.columnCount === nextLayout.columnCount &&
+        previous.cardWidth === nextLayout.cardWidth &&
+        previous.gap === nextLayout.gap
+          ? previous
+          : nextLayout
+      );
+    };
+
+    updatePlanLayout();
+    const resizeObserver = new ResizeObserver(updatePlanLayout);
+    resizeObserver.observe(container);
+
+    return () => resizeObserver.disconnect();
+  }, [responsiveCardLayout]);
 
   // 获取优惠券
   const { data: coupons = [], runAsync: getCoupons } = useRequest(
@@ -263,16 +337,36 @@ const Standard = ({
 
   return (
     <>
-      <Flex flexDirection={'column'} alignItems={'center'} position={'relative'} w={'100%'}>
+      <Flex
+        ref={planContainerRef}
+        flexDirection={'column'}
+        alignItems={'center'}
+        position={'relative'}
+        w={'100%'}
+      >
         {!hideBillingToggle && !isWecomTeam && (
           <BillingModeSwitch value={selectSubMode} onChange={setSelectSubMode} />
         )}
 
         <Flex
           mt={hideBillingToggle ? 0 : '24px'}
-          gap={[4, 6, 8]}
-          w={'100%'}
-          flexWrap={['wrap', 'nowrap']}
+          display={responsiveCardLayout ? 'grid' : 'flex'}
+          gridTemplateColumns={
+            responsiveCardLayout
+              ? `repeat(${responsivePlanLayout.columnCount}, minmax(0, ${responsivePlanLayout.cardWidth}px))`
+              : undefined
+          }
+          gap={responsiveCardLayout ? `${responsivePlanLayout.gap}px` : [4, 6, 8]}
+          w={
+            responsiveCardLayout
+              ? `${
+                  responsivePlanLayout.cardWidth * responsivePlanLayout.columnCount +
+                  responsivePlanLayout.gap * (responsivePlanLayout.columnCount - 1)
+                }px`
+              : '100%'
+          }
+          maxW={'100%'}
+          flexWrap={responsiveCardLayout ? undefined : ['wrap', 'nowrap']}
           justifyContent={'center'}
         >
           {standardSubList.map((item) => {
@@ -301,7 +395,7 @@ const Standard = ({
                 flexDirection={'column'}
                 alignItems={'flex-start'}
                 flexShrink={0}
-                w={['100%', '300px']}
+                w={responsiveCardLayout ? '100%' : ['100%', '300px']}
                 h={['auto', '777px']}
                 p={'28px'}
                 borderRadius={'16px'}

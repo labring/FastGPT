@@ -1,5 +1,4 @@
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { Box, Button, Flex, useDisclosure, Switch, type BoxProps } from '@chakra-ui/react';
 
 import React from 'react';
@@ -10,6 +9,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { defaultQGConfig } from '@fastgpt/global/core/app/constants';
 import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import AppConfigItem, { AppConfigItemAction } from './AppConfigItem';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import CustomPromptEditor from '@fastgpt/web/components/common/Textarea/CustomPromptEditor';
@@ -36,25 +36,20 @@ const QGConfig = ({
     : t('common:core.app.whisper.Close');
 
   return (
-    <Flex alignItems={'center'}>
-      <MyIcon name={'core/chat/QGFill'} mr={2} w={'20px'} />
-      <FormLabel>{t('common:core.app.Question Guide')}</FormLabel>
-      <ChatFunctionTip type={'nextQuestion'} />
-      <Box flex={1} />
-      <MyTooltip label={t('app:config_question_guide')}>
-        <Button
-          variant={'transparentBase'}
-          size={'sm'}
-          mr={'-5px'}
-          color={'myGray.600'}
-          onClick={onOpen}
-        >
-          {formLabel}
-        </Button>
-      </MyTooltip>
+    <>
+      <AppConfigItem
+        icon={'core/chat/QGFill'}
+        label={t('common:core.app.Question Guide')}
+        tip={<ChatFunctionTip type={'nextQuestion'} />}
+        action={
+          <AppConfigItemAction tooltip={t('app:config_question_guide')} onClick={onOpen}>
+            {formLabel}
+          </AppConfigItemAction>
+        }
+      />
 
       {isOpen && <QGConfigModal value={value} onChange={onChange} onClose={onClose} />}
-    </Flex>
+    </>
   );
 };
 

@@ -82,8 +82,7 @@ describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
       pluginId: 'systemTool-missing',
       source: 'debug:tmbId:tmb-1',
       version: 'v1',
-      config: { apiKey: 'saved' },
-      isUnavailable: true
+      config: { apiKey: 'saved' }
     });
     expect(tool.inputs).toEqual([{ key: 'query', mode: 'agentGenerated' }]);
     expect(nodes[0]).toMatchObject({
@@ -241,8 +240,7 @@ describe('rewriteAppWorkflowToDetail - workflow tool inputs', () => {
             required: true,
             value: '',
             selectedType: FlowNodeInputTypeEnum.input,
-            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-            selectedType: FlowNodeInputTypeEnum.input
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
           },
           {
             key: 'text2',
@@ -500,8 +498,7 @@ describe('rewriteAppWorkflowToDetail - workflow tool inputs', () => {
             required: true,
             value: '',
             selectedType: FlowNodeInputTypeEnum.input,
-            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-            selectedType: FlowNodeInputTypeEnum.input
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
           }
         ],
         outputs: []

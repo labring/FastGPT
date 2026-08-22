@@ -8,8 +8,7 @@ import {
   Td,
   Th,
   Thead,
-  Tr,
-  useDisclosure
+  Tr
 } from '@chakra-ui/react';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
@@ -17,11 +16,10 @@ import { type UsageListItemType } from '@fastgpt/global/support/wallet/usage/typ
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import dayjs from 'dayjs';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getUserUsages } from '@/web/support/wallet/usage/api';
-import { addDays } from 'date-fns';
 import dynamic from 'next/dynamic';
 import { type UsageFilterParams } from './type';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
@@ -29,7 +27,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import UsageRechargeModal from './UsageRechargeModal';
+import { accountContentScrollStyles, accountPageRootStyles } from '@/pageComponents/account/styles';
 
 const UsageDetail = dynamic(() => import('./UsageDetail'));
 
@@ -43,18 +41,14 @@ const UsageTableList = ({
   filterParams: UsageFilterParams;
 }) => {
   const { t } = useClientTranslation('account_usage');
-  const {
-    isOpen: isOpenRecharge,
-    onOpen: onOpenRecharge,
-    onClose: onCloseRecharge
-  } = useDisclosure();
 
   const { dateRange, selectTmbIds, isSelectAllTmb, usageSources, isSelectAllSource, projectName } =
     filterParams;
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const requestParams = useMemo(() => {
     return {
       dateStart: dayjs(dateRange.from || new Date()).format(),
-      dateEnd: dayjs(addDays(dateRange.to || new Date(), 1)).format(),
+      dateEnd: dayjs(dateRange.to || new Date()).format(),
       sources: isSelectAllSource ? undefined : usageSources,
       teamMemberIds: isSelectAllTmb ? undefined : selectTmbIds,
       projectName
@@ -76,8 +70,11 @@ const UsageTableList = ({
     total
   } = usePagination(getUserUsages, {
     defaultPageSize: 20,
+    pageSizeOptions: [20, 50, 100, 200],
+    pageSizeCacheKey: 'account-usage-detail',
     params: requestParams,
-    refreshDeps: [requestParams]
+    refreshDeps: [requestParams],
+    scrollContainerRef
   });
 
   const [usageDetail, setUsageDetail] = useState<UsageListItemType>();
@@ -118,31 +115,56 @@ const UsageTableList = ({
   );
 
   return (
-    <MyBox display={'flex'} flexDirection={'column'} h={'100%'} isLoading={isLoading}>
-      <Flex>
-        <Box>{Tabs}</Box>
-        <Box flex={1} />
-        <Button
-          size={'md'}
-          variant={'transparentBase'}
-          color={'primary.700'}
-          onClick={onOpenRecharge}
+    <MyBox
+      {...accountPageRootStyles}
+      display={'flex'}
+      flexDirection={'column'}
+      isLoading={isLoading}
+    >
+      <Flex
+        px={[3, 6]}
+        w={'100%'}
+        flexDirection={['column', 'row']}
+        flexWrap={['nowrap', 'wrap']}
+        alignItems={['stretch', 'center']}
+        justifyContent={'space-between'}
+        gap={[4, 6]}
+      >
+        <Box flexShrink={0}>{Tabs}</Box>
+        <Flex
+          flex={['0 0 auto', '1 1 auto']}
+          minW={['0', 'min-content']}
+          flexWrap={'wrap'}
+          alignItems={'flex-start'}
+          justifyContent={'flex-end'}
+          gap={3}
         >
-          {t('account_usage:check_left_points')}
-        </Button>
+          <Box flex={'0 0 auto'} minW={0} w={['100%', 'auto']}>
+            {Selectors}
+          </Box>
+          <Box display={['none', 'block']} flexShrink={0}>
+            <PopoverConfirm
+              Trigger={<Button size={'md'}>{t('common:Export')}</Button>}
+              showCancel
+              content={t('account_usage:export_confirm_tip', { total })}
+              onConfirm={exportUsage}
+            />
+          </Box>
+        </Flex>
       </Flex>
-      <Flex mt={4} w={'100%'}>
-        <Box>{Selectors}</Box>
-        <Box flex={'1'} />
-
+      <Flex display={['flex', 'none']} mt={3} px={3} w={'100%'}>
         <PopoverConfirm
-          Trigger={<Button size={'md'}>{t('common:Export')}</Button>}
+          Trigger={
+            <Button w={'100%'} size={'md'}>
+              {t('common:Export')}
+            </Button>
+          }
           showCancel
           content={t('account_usage:export_confirm_tip', { total })}
           onConfirm={exportUsage}
         />
       </Flex>
-      <TableContainer mt={3} flex={'1 0 0'} h={0} overflowY={'auto'}>
+      <TableContainer ref={scrollContainerRef} {...accountContentScrollStyles} mt={3} px={[3, 6]}>
         <Table>
           <Thead>
             <Tr>
@@ -188,10 +210,6 @@ const UsageTableList = ({
 
       {!!usageDetail && (
         <UsageDetail usage={usageDetail} onClose={() => setUsageDetail(undefined)} />
-      )}
-
-      {isOpenRecharge && (
-        <UsageRechargeModal onClose={onCloseRecharge} onPaySuccess={onCloseRecharge} />
       )}
     </MyBox>
   );

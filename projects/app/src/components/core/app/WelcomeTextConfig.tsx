@@ -1,11 +1,11 @@
-import { Box, Button, Flex, type TextareaProps } from '@chakra-ui/react';
+import { Button, type TextareaProps } from '@chakra-ui/react';
 import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import ChatFunctionTip from './Tip';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import { useTranslation } from 'next-i18next';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import AppConfigItem from './AppConfigItem';
 
 type WelcomeTextConfigProps = TextareaProps & {
   drawerMode?: boolean;
@@ -53,21 +53,14 @@ const WelcomeTextConfig = ({
   if (drawerMode) {
     return (
       <>
-        <Flex
-          alignItems={'center'}
-          justifyContent={'space-between'}
-          w={'100%'}
+        <AppConfigItem
+          icon={'core/app/simpleMode/chat'}
+          label={t('common:core.app.Welcome Text')}
+          tip={<ChatFunctionTip type={'welcome'} />}
+          action={<FoldIconButton isFolded={isFolded} tip={foldButtonTip} onClick={onToggleFold} />}
           h={7}
           mb={isFolded ? 0 : 2}
-        >
-          <MyIcon name={'core/app/simpleMode/chat'} w={5} flexShrink={0} />
-          <FormLabel ml={2} flexShrink={0}>
-            {t('common:core.app.Welcome Text')}
-          </FormLabel>
-          <ChatFunctionTip type={'welcome'} />
-          <Box flex={1} />
-          <FoldIconButton isFolded={isFolded} tip={foldButtonTip} onClick={onToggleFold} />
-        </Flex>
+        />
         {!isFolded && (
           <MyTextarea
             iconSrc={'core/app/simpleMode/chat'}
@@ -99,17 +92,16 @@ const WelcomeTextConfig = ({
 
   return (
     <>
-      <Flex alignItems={'center'}>
-        <MyIcon name={'core/app/simpleMode/chat'} w={5} />
-        <FormLabel ml={2}>{t('common:core.app.Welcome Text')}</FormLabel>
-        <ChatFunctionTip type={'welcome'} />
-        {onToggleFold && (
-          <>
-            <Box flex={1} />
+      <AppConfigItem
+        icon={'core/app/simpleMode/chat'}
+        label={t('common:core.app.Welcome Text')}
+        tip={<ChatFunctionTip type={'welcome'} />}
+        action={
+          onToggleFold ? (
             <FoldIconButton isFolded={isFolded} tip={foldButtonTip} onClick={onToggleFold} />
-          </>
-        )}
-      </Flex>
+          ) : undefined
+        }
+      />
       {!isFolded && (
         <MyTextarea
           className="nowheel"

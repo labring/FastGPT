@@ -153,7 +153,7 @@ export default async function Layout({
             translations: {
               'zh-CN': zh_CN,
               en
-            }[lang]
+            }[lang] ?? en
           }}
           search={{
             enabled: true,

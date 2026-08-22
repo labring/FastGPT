@@ -45,12 +45,10 @@ const ToolSelect = ({
   const { t } = useTranslation();
 
   const statusLabelMap: Partial<Record<PluginStatusType, string>> = {
-    [PluginStatusEnum.Hidden]: t('app:toolkit_status_hidden'),
     [PluginStatusEnum.SoonOffline]: t('app:toolkit_status_soon_offline'),
     [PluginStatusEnum.Offline]: t('common:error.tool_not_exist')
   };
   const statusTooltipMap: Partial<Record<PluginStatusType, string>> = {
-    [PluginStatusEnum.Hidden]: t('app:tool_hidden_tips'),
     [PluginStatusEnum.SoonOffline]: t('app:tool_soon_offset_tips'),
     [PluginStatusEnum.Offline]: t('app:tool_offset_tips')
   };
@@ -139,7 +137,7 @@ const ToolSelect = ({
                 </Box>
 
                 <Flex gap={1} minW={0} justifySelf={'end'} alignItems={'center'}>
-                  {status !== undefined && status !== PluginStatusEnum.Normal && !isOffline && (
+                  {status === PluginStatusEnum.SoonOffline && (
                     <MyTooltip label={statusTooltipMap[status]}>
                       <MyTag
                         display={'block'}

@@ -1,6 +1,7 @@
 {
   "Invoice_document": "发票文件",
   "all": "全部",
+  "apply_invoice": "申请开票",
   "back": "返回",
   "bank_account": "开户账号",
   "bank_name": "开户银行",

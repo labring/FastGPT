@@ -78,8 +78,16 @@ const CollectionCard = () => {
   const [isTrainingErrorModalOpen, setIsTrainingErrorModalOpen] = useState(false);
   const [hasDatasetTrainingError, setHasDatasetTrainingError] = useState(false);
 
-  const { collections, Pagination, total, getData, isGetting, pageNum, pageSize } =
-    useContextSelector(CollectionPageContext, (v) => v);
+  const {
+    collections,
+    Pagination,
+    total,
+    getData,
+    isGetting,
+    pageNum,
+    pageSize,
+    scrollContainerRef
+  } = useContextSelector(CollectionPageContext, (v) => v);
 
   // Add file status icon
   const formatCollections = useMemo(
@@ -233,7 +241,14 @@ const CollectionCard = () => {
         />
 
         {/* collection table */}
-        <TableContainer mt={3} overflowY={'auto'} fontSize={'sm'} flex={'1 0 0'} h={0}>
+        <TableContainer
+          ref={scrollContainerRef}
+          mt={3}
+          overflowY={'auto'}
+          fontSize={'sm'}
+          flex={'1 0 0'}
+          h={0}
+        >
           <Table variant={'simple'} draggable={false}>
             <Thead draggable={false}>
               <Tr>
@@ -319,9 +334,9 @@ const CollectionCard = () => {
                   <Td py={2}>
                     {collection.trainingType
                       ? t(
-                        (DatasetCollectionDataProcessModeMap[collection.trainingType]?.label ||
-                          '-') as any
-                      )
+                          (DatasetCollectionDataProcessModeMap[collection.trainingType]?.label ||
+                            '-') as any
+                        )
                       : '-'}
                   </Td>
                   <Td py={2}>{collection.dataAmount || '-'}</Td>
@@ -398,25 +413,25 @@ const CollectionCard = () => {
                             children: [
                               ...(collectionCanSync(collection.type)
                                 ? [
-                                  {
-                                    label: (
-                                      <Flex alignItems={'center'}>
-                                        <MyIcon
-                                          name={'common/refreshLight'}
-                                          w={'0.9rem'}
-                                          mr={2}
-                                        />
-                                        {t('dataset:collection_sync')}
-                                      </Flex>
-                                    ),
-                                    onClick: () =>
-                                      openSyncConfirm({
-                                        onConfirm: () => {
-                                          onclickStartSync(collection._id);
-                                        }
-                                      })()
-                                  }
-                                ]
+                                    {
+                                      label: (
+                                        <Flex alignItems={'center'}>
+                                          <MyIcon
+                                            name={'common/refreshLight'}
+                                            w={'0.9rem'}
+                                            mr={2}
+                                          />
+                                          {t('dataset:collection_sync')}
+                                        </Flex>
+                                      ),
+                                      onClick: () =>
+                                        openSyncConfirm({
+                                          onConfirm: () => {
+                                            onclickStartSync(collection._id);
+                                          }
+                                        })()
+                                    }
+                                  ]
                                 : []),
                               {
                                 label: (
@@ -468,8 +483,8 @@ const CollectionCard = () => {
                                     customContent:
                                       collection.type === DatasetCollectionTypeEnum.folder
                                         ? t(
-                                          'common:dataset.collections.Confirm to delete the folder'
-                                        )
+                                            'common:dataset.collections.Confirm to delete the folder'
+                                          )
                                         : t('common:dataset.Confirm to delete the file')
                                   })()
                               }

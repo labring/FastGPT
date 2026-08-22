@@ -1,34 +1,11 @@
-import { LocaleList, LangEnum, type localeType } from '@fastgpt/global/common/i18n/type';
+import { LangEnum, type localeType } from '@fastgpt/global/common/i18n/type';
+import { parseLocale } from '@fastgpt/global/common/i18n/utils';
 import {
   FASTGPT_LANGUAGE_HEADER,
   FASTGPT_SHARE_LANGUAGE_HEADER
 } from '@fastgpt/global/common/system/constants';
 import Cookie from 'cookie';
 import type { NodeHttpRequest } from '../../types/http';
-
-const parseLocale = (value?: string): localeType | undefined => {
-  if (!value) return undefined;
-
-  const normalized = value.trim().toLowerCase().replaceAll('_', '-');
-  if (normalized === LangEnum.en.toLowerCase() || normalized.startsWith('en-')) {
-    return LangEnum.en;
-  }
-  if (
-    normalized === LangEnum.zh_Hant.toLowerCase() ||
-    normalized.startsWith('zh-hant-') ||
-    ['zh-tw', 'zh-hk'].includes(normalized)
-  ) {
-    return LangEnum.zh_Hant;
-  }
-  if (
-    normalized === LangEnum.zh_CN.toLowerCase() ||
-    normalized === 'zh' ||
-    normalized.startsWith('zh-')
-  ) {
-    return LangEnum.zh_CN;
-  }
-  return LocaleList.includes(value.trim() as localeType) ? (value.trim() as localeType) : undefined;
-};
 
 const getHeaderValue = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;

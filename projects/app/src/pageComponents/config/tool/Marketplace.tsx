@@ -244,6 +244,7 @@ export const ToolkitMarketplace = ({
     {
       type: 'scroll',
       defaultPageSize: 20,
+      pageSizeCacheKey: 'dashboard-system-tool-marketplace-tools',
       refreshDeps: [searchText, tagIds, sourceFilter]
     }
   );
@@ -744,26 +745,18 @@ export const ToolkitMarketplace = ({
                 </Button>
               )}
               {feConfigs?.docUrl && (
-                <Button
-                  onClick={() => {
-                    const url = getDocPath('/plugin/system-tool-development');
-                    if (url) {
-                      window.open(url, '_blank');
-                    }
-                  }}
-                >
-                  {t('app:toolkit_contribute_resource')}
-                </Button>
-              )}
-              {feConfigs?.submitPluginRequestUrl && (
-                <Button
-                  variant={'whiteBase'}
-                  onClick={() => {
-                    window.open(feConfigs.submitPluginRequestUrl);
-                  }}
-                >
-                  {t('app:toolkit_marketplace_submit_request')}
-                </Button>
+                <>
+                  <Button
+                    onClick={() => {
+                      const url = getDocPath('/plugin/system-tool-development');
+                      if (url) {
+                        window.open(url, '_blank');
+                      }
+                    }}
+                  >
+                    {t('app:plugin_development')}
+                  </Button>
+                </>
               )}
             </Flex>
           )}

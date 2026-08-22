@@ -1,5 +1,4 @@
 'use client';
-import MyBox from '@fastgpt/web/components/common/MyBox';
 import DashboardContainer from '../../../pageComponents/dashboard/Container';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
@@ -24,7 +23,7 @@ import { deleteEvaluation, getEvaluationList } from '@/web/core/app/api/evaluati
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import EvaluationDetailModal from '../../../pageComponents/app/evaluation/DetailModal';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -42,6 +41,7 @@ const Evaluation = () => {
   const [evalDetailId, setEvalDetailId] = useState<string>();
 
   const [pollingInterval, setPollingInterval] = useState(10000);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const {
     data: evaluationList,
@@ -51,13 +51,15 @@ const Evaluation = () => {
     pageSize
   } = usePagination(getEvaluationList, {
     defaultPageSize: 20,
+    pageSizeCacheKey: 'dashboard-evaluation-list',
     pollingInterval,
     pollingWhenHidden: true,
     params: {
       searchKey
     },
     EmptyTip: <EmptyTip />,
-    refreshDeps: [searchKey]
+    refreshDeps: [searchKey],
+    scrollContainerRef
   });
 
   const evalDetail = useMemo(() => {
@@ -72,7 +74,11 @@ const Evaluation = () => {
       return !isCompleted || errorCount > 0;
     });
 
-    setPollingInterval(hasRunningOrErrorTasks ? 10000 : 0);
+    const frameId = window.requestAnimationFrame(() => {
+      setPollingInterval(hasRunningOrErrorTasks ? 10000 : 0);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
   }, [evaluationList]);
 
   const { runAsync: onDeleteEval } = useRequest(deleteEvaluation, {
@@ -187,7 +193,13 @@ const Evaluation = () => {
           <Flex h={'full'} bg={'white'} p={6} flexDirection="column">
             {renderHeader(MenuIcon)}
 
-            <TableContainer mt={3} fontSize={'sm'} flex={'1 0 0'} overflowY="auto">
+            <TableContainer
+              ref={scrollContainerRef}
+              mt={3}
+              fontSize={'sm'}
+              flex={'1 0 0'}
+              overflowY="auto"
+            >
               <Table variant={'simple'}>
                 <Thead>
                   <Tr color={'myGray.600'}>

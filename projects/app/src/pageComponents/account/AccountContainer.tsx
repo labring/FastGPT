@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { Box, Flex, useTheme } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -33,11 +33,14 @@ const AccountContainer = ({
   isLoading?: boolean;
 }) => {
   const { t } = useClientTranslation('account');
-  const theme = useTheme();
   const { userInfo, setUserInfo } = useUserStore();
   const { feConfigs, systemVersion } = useSystemStore();
   const router = useRouter();
   const { isPc } = useSystem();
+
+  const showThirdPartyTab =
+    feConfigs?.show_openai_account === true ||
+    feConfigs?.externalProviderWorkflowVariables?.some((item) => item.isOpen) === true;
 
   const currentTab = useMemo(() => {
     return router.pathname.split('/').pop() as TabEnum;
@@ -72,11 +75,15 @@ const AccountContainer = ({
           }
         ]
       : []),
-    {
-      icon: 'common/thirdParty',
-      label: t('account:third_party'),
-      value: TabEnum.thirdParty
-    },
+    ...(showThirdPartyTab
+      ? [
+          {
+            icon: 'common/thirdParty',
+            label: t('account:third_party'),
+            value: TabEnum.thirdParty
+          }
+        ]
+      : []),
     ...(feConfigs.isPlus && feConfigs.customDomain?.enable
       ? [
           {
@@ -143,26 +150,41 @@ const AccountContainer = ({
   );
 
   return (
-    <PageContainer isLoading={isLoading}>
+    <PageContainer
+      isLoading={isLoading}
+      py={0}
+      pr={0}
+      insertProps={{
+        borderWidth: 0,
+        borderRadius: 0,
+        boxShadow: 'none',
+        bg: 'white',
+        overflow: 'hidden'
+      }}
+    >
       <Flex flexDirection={['column', 'row']} h={'100%'} pt={[4, 0]}>
         {isPc ? (
           <Flex
             flexDirection={'column'}
-            p={4}
             h={'100%'}
-            flex={'0 0 200px'}
-            borderRight={theme.borders.base}
+            flex={'0 0 220px'}
+            borderRight={'1px solid'}
+            borderColor={'myGray.200'}
+            bg={'white'}
+            minH={0}
           >
             <SideTabs<TabEnum>
               flex={1}
               mx={'auto'}
-              mt={2}
-              w={'100%'}
+              mt={4}
+              w={'198px'}
+              minH={0}
+              overflowY={'auto'}
               list={tabList}
               value={currentTab}
               onChange={setCurrentTab}
             />
-            <Flex alignItems={'center'}>
+            <Flex alignItems={'center'} px={'11px'} pb={5} pt={3}>
               <Box w={'8px'} h={'8px'} borderRadius={'50%'} bg={'#67c13b'} />
               <Box fontSize={'md'} ml={2}>
                 V{systemVersion}
@@ -175,6 +197,8 @@ const AccountContainer = ({
               m={'auto'}
               w={'100%'}
               size={isPc ? 'md' : 'sm'}
+              ensureActiveVisible
+              scrollPositionKey={'account-mobile-navigation'}
               list={tabList.map((item) => ({
                 value: item.value,
                 label: item.label
@@ -185,7 +209,14 @@ const AccountContainer = ({
           </Box>
         )}
 
-        <Box flex={'1 0 0'} h={'100%'} pb={[4, 0]} overflow={'auto'}>
+        <Box
+          flex={'1 0 0'}
+          minW={0}
+          h={'100%'}
+          pb={[4, 0]}
+          overflow={['auto', 'hidden']}
+          bg={'white'}
+        >
           {children}
         </Box>
       </Flex>

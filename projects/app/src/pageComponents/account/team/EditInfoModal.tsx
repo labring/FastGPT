@@ -2,17 +2,8 @@ import React, { useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import MyModal from '@fastgpt/web/components/common/MyModal';
-import {
-  Box,
-  Button,
-  Flex,
-  HStack,
-  Input,
-  ModalBody,
-  ModalFooter,
-  useDisclosure
-} from '@chakra-ui/react';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
+import { Box, Button, Flex, HStack, Input, useDisclosure } from '@chakra-ui/react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { postCreateTeam, putUpdateTeam } from '@/web/support/user/team/api';
@@ -99,14 +90,32 @@ function EditModal({
   );
 
   return (
-    <MyModal
-      isOpen
-      onClose={onClose}
-      iconSrc="support/team/group"
-      iconColor="primary.600"
-      title={defaultData.id ? t('user:team.Update Team') : t('user:team.Create Team')}
-    >
-      <ModalBody>
+    <>
+      <MyModal
+        isOpen
+        onClose={onClose}
+        title={defaultData.id ? t('user:team.Update Team') : t('user:team.Create Team')}
+        footer={
+          !!defaultData.id ? (
+            <>
+              <Button variant={'whiteBase'} onClick={onClose}>
+                {t('common:Close')}
+              </Button>
+              <Button isLoading={updating} onClick={handleSubmit((data) => onclickUpdate(data))}>
+                {t('common:Confirm')}
+              </Button>
+            </>
+          ) : (
+            <Button
+              w={'100%'}
+              isLoading={creating}
+              onClick={handleSubmit((data) => onclickCreate(data))}
+            >
+              {t('common:comfirn_create')}
+            </Button>
+          )
+        }
+      >
         <Box color={'myGray.800'} fontWeight={'bold'}>
           {t('account_team:set_name_avatar')}
         </Box>
@@ -167,29 +176,7 @@ function EditModal({
             {t('common:Setting')}
           </Button>
         </HStack>
-      </ModalBody>
-
-      <ModalFooter>
-        {!!defaultData.id ? (
-          <>
-            <Box flex={1} />
-            <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-              {t('common:Close')}
-            </Button>
-            <Button isLoading={updating} onClick={handleSubmit((data) => onclickUpdate(data))}>
-              {t('common:confirm_update')}
-            </Button>
-          </>
-        ) : (
-          <Button
-            w={'100%'}
-            isLoading={creating}
-            onClick={handleSubmit((data) => onclickCreate(data))}
-          >
-            {t('common:comfirn_create')}
-          </Button>
-        )}
-      </ModalFooter>
+      </MyModal>
       {isOpenContact && (
         <UpdateContact
           onClose={onCloseContact}
@@ -199,7 +186,7 @@ function EditModal({
           mode="notification_account"
         />
       )}
-    </MyModal>
+    </>
   );
 }
 

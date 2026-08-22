@@ -9,8 +9,6 @@ import {
   Flex,
   Grid,
   HStack,
-  ModalBody,
-  ModalFooter,
   Table,
   TableContainer,
   Tbody,
@@ -23,7 +21,7 @@ import {
 import AvatarGroup from '@fastgpt/web/components/common/Avatar/AvatarGroup';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import Icon from '@fastgpt/web/components/common/Icon';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import Tag from '@fastgpt/web/components/common/Tag';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
@@ -68,7 +66,7 @@ const InviteModal = ({ onClose }: { onClose: () => void }) => {
         })
       );
     },
-    [copyData, feConfigs?.systemTitle, t, userInfo?.team.memberName, userInfo?.team.teamName]
+    [copyData, feConfigs.systemTitle, t, userInfo?.team.memberName, userInfo?.team.teamName]
   );
 
   const { runAsync: onForbid, loading: forbiding } = useRequest(putForbidInvitationLink, {
@@ -78,18 +76,22 @@ const InviteModal = ({ onClose }: { onClose: () => void }) => {
   });
 
   return (
-    <MyModal
-      isLoading={isLoading}
-      isOpen
-      iconSrc="common/inviteLight"
-      iconColor="primary.600"
-      title={t('account_team:invite_member')}
-      overflow={'unset'}
-      onClose={onClose}
-      w={'100%'}
-      maxW={['90vw', '820px']}
-    >
-      <ModalBody maxH="500px">
+    <>
+      <MyModal
+        isLoading={isLoading}
+        isOpen
+        title={t('account_team:invite_member')}
+        overflow={'unset'}
+        onClose={onClose}
+        size={'lg'}
+        bodyStyles={{ maxH: '500px' }}
+        footerStyles={{ justifyContent: 'flex-start' }}
+        footer={
+          <Tag colorSchema="blue">
+            <Box>{t('account_team:invitation_link_auto_clean_hint')}</Box>
+          </Tag>
+        }
+      >
         <Flex alignItems={'center'} justifyContent={'space-between'} mb={4}>
           <HStack>
             <Icon name="common/list" w="16px" />
@@ -241,12 +243,7 @@ const InviteModal = ({ onClose }: { onClose: () => void }) => {
           </Table>
           {!invitationLinkList?.length && <EmptyTip />}
         </TableContainer>
-      </ModalBody>
-      <ModalFooter justifyContent={'flex-start'}>
-        <Tag colorSchema="blue" marginBlock="2">
-          <Box>{t('account_team:invitation_link_auto_clean_hint')}</Box>
-        </Tag>
-      </ModalFooter>
+      </MyModal>
       {isOpenCreate && (
         <CreateInvitationModal
           onSuccess={(linkId) => {
@@ -256,7 +253,7 @@ const InviteModal = ({ onClose }: { onClose: () => void }) => {
           onClose={onCloseCreate}
         />
       )}
-    </MyModal>
+    </>
   );
 };
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   Button,
   Table,
@@ -36,6 +36,7 @@ import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRC
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import BillDetailModal from './BillDetailModal';
 import type { BillSchemaType } from '@fastgpt/global/support/wallet/bill/type';
+import { accountContentScrollStyles, accountPageRootStyles } from '@/pageComponents/account/styles';
 
 const BillTable = () => {
   const { t } = useClientTranslation('account_bill');
@@ -43,6 +44,7 @@ const BillTable = () => {
   const [billType, setBillType] = useState<BillTypeEnum | undefined>(undefined);
   const [billDetailId, setBillDetailId] = useState<string>();
   const [qrPayData, setQRPayData] = useState<QRPayProps>();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const billTypeList = useMemo(
     () =>
@@ -68,11 +70,13 @@ const BillTable = () => {
     pageSize
   } = usePagination(getBills, {
     defaultPageSize: 20,
+    pageSizeCacheKey: 'account-bill-records',
     storeToQuery: true,
     params: {
       type: billType
     },
-    refreshDeps: [billType]
+    refreshDeps: [billType],
+    scrollContainerRef
   });
 
   const { runAsync: handleRefreshPayOrder, loading: isRefreshing } = useRequest(
@@ -132,8 +136,8 @@ const BillTable = () => {
   );
 
   return (
-    <MyBox isLoading={isLoading} display={'flex'} flexDir={'column'} h={'100%'}>
-      <TableContainer flex={'1 0 0'} h={0} overflowY={'auto'}>
+    <MyBox {...accountPageRootStyles} isLoading={isLoading} display={'flex'} flexDir={'column'}>
+      <TableContainer ref={scrollContainerRef} {...accountContentScrollStyles} px={[2, 6]}>
         <Table>
           <Thead>
             <Tr>

@@ -29,6 +29,10 @@ const McpKeySchema = new Schema({
     ref: TeamMemberCollectionName,
     required: true
   },
+  authProxy: {
+    type: Boolean,
+    default: false
+  },
   apps: {
     type: [
       {

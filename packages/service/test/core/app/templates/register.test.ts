@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -29,6 +30,33 @@ beforeEach(() => {
 });
 
 describe('getAppTemplatesAndLoadThem', () => {
+  it('uses the local image proxy for plugin object storage avatars', async () => {
+    mocks.listWorkflows.mockResolvedValue([
+      {
+        templateId: 'question-classify',
+        name: 'Question classify',
+        intro: 'intro',
+        avatar:
+          'http://localhost:9000/fastgpt-public/system/plugin/workflow/templates/question-classify/logo',
+        tags: [],
+        type: AppTypeEnum.workflow,
+        workflow: {
+          nodes: [],
+          edges: []
+        }
+      }
+    ]);
+    mocks.findTemplates.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([])
+    });
+
+    const [template] = await getAppTemplatesAndLoadThem(true);
+
+    expect(template?.avatar).toBe(
+      `${imageBaseUrl}system/plugin/workflow/templates/question-classify/logo`
+    );
+  });
+
   it('keeps plugin workflow fields authoritative while applying editable database config', async () => {
     const pluginWorkflow = {
       nodes: [

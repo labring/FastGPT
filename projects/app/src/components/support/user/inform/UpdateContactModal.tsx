@@ -1,6 +1,6 @@
 import React from 'react';
-import { ModalBody, Box, Flex, Input, ModalFooter, Button, HStack } from '@chakra-ui/react';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import { Box, Flex, Input, Button, HStack } from '@chakra-ui/react';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -79,46 +79,18 @@ const UpdateContactModal = ({
     .join('/');
 
   return (
-    <>
-      <MyModal
-        isOpen
-        iconSrc="common/settingLight"
-        w={'32rem'}
-        title={
-          mode === 'notification_account'
-            ? t('common:support.user.info.notification_receiving_hint')
-            : t('common:contact_way')
-        }
-      >
-        <ModalBody px={10}>
-          <Flex flexDirection="column">
-            <HStack px="6" py="3" color="primary.600" bgColor="primary.50" borderRadius="md">
-              <Icon name="common/info" w="1rem" />
-              <Box fontSize={'sm'}>{t('common:support.user.info.bind_notification_hint')}</Box>
-            </HStack>
-            <Flex mt="4" alignItems="center">
-              <Box flex={'0 0 70px'}>{t('common:user.Account')}</Box>
-              <Input
-                flex={1}
-                bg={'myGray.50'}
-                {...register('contact', { required: true })}
-                placeholder={placeholder}
-              ></Input>
-            </Flex>
-            <Flex mt="6" alignItems="center" position={'relative'}>
-              <Box flex={'0 0 70px'}>{t('common:support.user.info.verification_code')}</Box>
-              <Input
-                flex={1}
-                bg={'myGray.50'}
-                {...register('verifyCode', { required: true })}
-                placeholder={t('common:support.user.info.code_required')}
-              ></Input>
-              <SendCodeBox username={account} />
-            </Flex>
-          </Flex>
-        </ModalBody>
-        <ModalFooter>
-          <Button mr={3} variant={'whiteBase'} onClick={onClose}>
+    <MyModal
+      isOpen
+      onClose={onClose}
+      size={'md'}
+      title={
+        mode === 'notification_account'
+          ? t('common:support.user.info.notification_receiving_hint')
+          : t('common:contact_way')
+      }
+      footer={
+        <>
+          <Button variant={'whiteBase'} onClick={onClose}>
             {t('common:Cancel')}
           </Button>
           <Button
@@ -128,9 +100,35 @@ const UpdateContactModal = ({
           >
             {t('common:Confirm')}
           </Button>
-        </ModalFooter>
-      </MyModal>
-    </>
+        </>
+      }
+    >
+      <Flex flexDirection="column">
+        <HStack px="6" py="3" color="primary.600" bgColor="primary.50" borderRadius="md">
+          <Icon name="common/info" w="1rem" />
+          <Box fontSize={'sm'}>{t('common:support.user.info.bind_notification_hint')}</Box>
+        </HStack>
+        <Flex mt="4" alignItems="center">
+          <Box flex={'0 0 70px'}>{t('common:user.Account')}</Box>
+          <Input
+            flex={1}
+            bg={'myGray.50'}
+            {...register('contact', { required: true })}
+            placeholder={placeholder}
+          />
+        </Flex>
+        <Flex mt="6" alignItems="center" position={'relative'}>
+          <Box flex={'0 0 70px'}>{t('common:support.user.info.verification_code')}</Box>
+          <Input
+            flex={1}
+            bg={'myGray.50'}
+            {...register('verifyCode', { required: true })}
+            placeholder={t('common:support.user.info.code_required')}
+          />
+          <SendCodeBox username={account} />
+        </Flex>
+      </Flex>
+    </MyModal>
   );
 };
 

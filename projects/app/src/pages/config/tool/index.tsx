@@ -154,29 +154,19 @@ const ToolProvider = () => {
           trigger="hover"
           Button={
             <Button leftIcon={<MyIcon name="common/addLight" w={'18px'} />}>
-              {t('app:toolkit_add_resource')}
+              {t('app:install_tool')}
             </Button>
           }
           menuList={[
             {
               children: [
                 {
-                  label: t('app:toolkit_open_marketplace'),
-                  onClick: () => {
-                    router.push('/config/tool/marketplace');
-                  }
+                  label: t('app:install_from_marketplace'),
+                  onClick: () => router.push('/dashboard/systemTool/marketplace')
                 },
                 {
-                  label: t('app:toolkit_import_resource'),
-                  onClick: () => {
-                    onOpenImportModal();
-                  }
-                },
-                {
-                  label: t('app:toolkit_select_app'),
-                  onClick: () => {
-                    setEditingToolId('');
-                  }
+                  label: t('app:install_from_file'),
+                  onClick: onOpenImportModal
                 }
               ]
             }

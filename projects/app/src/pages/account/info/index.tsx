@@ -46,6 +46,7 @@ import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getIsMemberSyncMode } from '@/web/common/system/utils';
+import { accountPageRootStyles, accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const RedeemCouponModal = dynamic(() => import('@/pageComponents/account/info/RedeemCouponModal'), {
   ssr: false
@@ -83,18 +84,20 @@ const Info = () => {
 
   return (
     <AccountContainer>
-      <Box py={[3, '28px']} px={[5, 10]} mx={'auto'}>
+      <Box {...accountPageRootStyles} overflowY={['visible', 'auto']} py={[3, 6]} px={[5, 6]}>
         {isPc ? (
-          <Flex justifyContent={'center'} maxW={'1080px'}>
+          <Flex w={'100%'} alignItems={'flex-start'}>
             <Box flex={'0 0 330px'}>
               <MyInfo onOpenContact={onOpenContact} />
-              <Box mt={6}>
+              <Box>
                 <Other onOpenContact={onOpenContact} />
               </Box>
             </Box>
             {!!standardPlan && (
-              <Box ml={'45px'} flex={'1'} maxW={'600px'}>
-                <PlanUsage />
+              <Box ml={'45px'} flex={'1 0 0'} minW={0}>
+                <Box maxW={'805px'}>
+                  <PlanUsage />
+                </Box>
               </Box>
             )}
           </Flex>
@@ -223,16 +226,6 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     letterSpacing: '0.25px'
   };
 
-  const titleStyles: BoxProps = {
-    color: 'var(--light-general-on-surface, var(--Gray-Modern-900, #111824))',
-    fontFamily: '"PingFang SC"',
-    fontSize: '16px',
-    fontStyle: 'normal',
-    fontWeight: 500,
-    lineHeight: '24px',
-    letterSpacing: '0.15px'
-  };
-
   const actionButtonStyles = {
     size: 'sm',
     minW: '52px'
@@ -243,8 +236,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     <Box>
       {/* user info */}
       {isPc && (
-        <Flex alignItems={'center'} h={'30px'} {...titleStyles}>
-          <MyIcon mr={2} name={'core/dataset/fileCollection'} w={'1.25rem'} />
+        <Flex as={'h2'} alignItems={'center'} h={'30px'} {...accountTitleTextStyles}>
           {t('account_info:general_info')}
         </Flex>
       )}
@@ -279,8 +271,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
         <MyDivider my={6} />
 
         {isPc && (
-          <Flex alignItems={'center'} h={'30px'} {...titleStyles} mt={6}>
-            <MyIcon mr={2} name={'support/team/group'} w={'1.25rem'} />
+          <Flex as={'h2'} alignItems={'center'} h={'30px'} {...accountTitleTextStyles}>
             {t('account_info:team_info')}
           </Flex>
         )}
@@ -289,7 +280,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
           <Flex mt={6} alignItems={'center'}>
             <Box {...labelStyles}>{t('account_info:user_team_team_name')}&nbsp;</Box>
             <Flex flex={'1 0 0'} w={0} align={'center'}>
-              <TeamSelector height={'28px'} w={'100%'} showManage />
+              <TeamSelector height={'34px'} w={'100%'} showManage />
             </Flex>
           </Flex>
         )}
@@ -356,6 +347,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
               defaultValue={userInfo?.team?.memberName || 'Member'}
               title={t('account_info:click_modify_nickname')}
               borderColor={'transparent'}
+              h={'36px'}
               transform={['none', 'translateX(-11px)']}
               maxLength={100}
               onBlur={async (e) => {
@@ -553,40 +545,42 @@ const PlanUsage = () => {
 
   return standardPlan ? (
     <Box mt={[6, 0]}>
-      <Flex fontSize={['md', 'lg']} h={'30px'}>
-        <Flex
-          alignItems={'center'}
-          color="var(--light-general-on-surface, var(--Gray-Modern-900, #111824))"
-          fontFamily='"PingFang SC"'
-          fontSize="16px"
-          fontStyle="normal"
-          fontWeight={500}
-          lineHeight="24px"
-          letterSpacing="0.15px"
-        >
-          <MyIcon mr={2} name={'support/account/plans'} w={'20px'} />
+      <Flex h={['auto', '30px']} flexDirection={['column', 'row']}>
+        <Flex as={'h2'} alignItems={'center'} {...accountTitleTextStyles}>
           {t('account_info:package_and_usage')}
         </Flex>
-        <ModelPriceModal>
-          {({ onOpen }) => (
-            <Button ml={3} size={'sm'} onClick={onOpen}>
-              {t('account_info:billing_standard')}
+        <Flex mt={[3, 0]} flexWrap={'wrap'} gap={[2, 0]}>
+          <ModelPriceModal>
+            {({ onOpen }) => (
+              <Button ml={[0, 3]} size={'sm'} onClick={onOpen}>
+                {t('account_info:billing_standard')}
+              </Button>
+            )}
+          </ModelPriceModal>
+          <Button ml={[0, 3]} variant={'whitePrimary'} size={'sm'} onClick={onOpenStandardModal}>
+            {t('account_info:package_details')}
+          </Button>
+          {userInfo?.permission.isOwner && feConfigs?.show_coupon && (
+            <Button
+              ml={[0, 3]}
+              variant={'whitePrimary'}
+              size={'sm'}
+              onClick={onOpenRedeemCouponModal}
+            >
+              {t('account_info:redeem_coupon')}
             </Button>
           )}
-        </ModelPriceModal>
-        <Button ml={3} variant={'whitePrimary'} size={'sm'} onClick={onOpenStandardModal}>
-          {t('account_info:package_details')}
-        </Button>
-        {userInfo?.permission.isOwner && feConfigs?.show_coupon && (
-          <Button ml={3} variant={'whitePrimary'} size={'sm'} onClick={onOpenRedeemCouponModal}>
-            {t('account_info:redeem_coupon')}
-          </Button>
-        )}
-        {userInfo?.permission.isOwner && feConfigs?.show_discount_coupon && (
-          <Button ml={3} variant={'whitePrimary'} size={'sm'} onClick={onOpenDiscountCouponsModal}>
-            {t('account_info:discount_coupon')}
-          </Button>
-        )}
+          {userInfo?.permission.isOwner && feConfigs?.show_discount_coupon && (
+            <Button
+              ml={[0, 3]}
+              variant={'whitePrimary'}
+              size={'sm'}
+              onClick={onOpenDiscountCouponsModal}
+            >
+              {t('account_info:discount_coupon')}
+            </Button>
+          )}
+        </Flex>
       </Flex>
       <Box
         mt={[3, 6]}
@@ -819,7 +813,7 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
   );
 
   return (
-    <Box>
+    <Box mt={[6, 0]}>
       <Grid gridGap={4}>
         {feConfigs?.docUrl && (
           <Link

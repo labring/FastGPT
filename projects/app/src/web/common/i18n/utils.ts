@@ -21,8 +21,10 @@ export const serviceSideProps = async (
       content.locale ||
       ''
   );
-  // 预加载同级语言资源，首次自动初始化语言时可以直接完成客户端切换。
-  const extraLng = content.locales?.filter((locale: string) => locale !== lang);
+  // SSR 只额外预加载中文资源；英文、韩文等语言由客户端按需加载，避免首屏携带全部语言包。
+  const extraLng = content.locales?.filter(
+    (locale: string) => locale !== lang && locale.toLowerCase().startsWith('zh')
+  );
 
   const namespaces = Array.from(new Set<I18nNsType[number]>(['common', 'price', ...ns]));
 

@@ -1,15 +1,31 @@
 ---
 title: 'V4.16.1'
 description: 'FastGPT V4.16.1 更新说明'
+releaseTime: '2026-08-22'
 upgradeTags:
-  - 进行中
+  - 配置变更
+  - 升级脚本
 ---
 
 ## 📦 升级指南
 
-### 修改 fastgpt 环境变量（沙盒专属）
+### 更新 Agent Sandbox 环境变量和运行态镜像
 
-`fastgpt-app` , `fastgpt-pro` 支持 `AGENT_SANDBOX_APT_MIRROR` 环境变量，允许沙盒进行自定义 APT 源，例如：
+启用 Agent Sandbox 时，请在 `fastgpt-app` 和 `fastgpt-pro` 中同步检查以下配置。4.16.1 使用完整的运行态镜像地址：
+
+```dotenv
+# 普通非 root 镜像，默认配置
+AGENT_SANDBOX_OPENSANDBOX_IMAGE=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.3.1
+```
+
+如果沙盒需要安装 apt 依赖，必须切换为 root 镜像；如需要，可配置 apt 镜像源：
+
+```dotenv
+AGENT_SANDBOX_OPENSANDBOX_IMAGE=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-root:v0.3.1
+AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu
+```
+
+中国大陆镜像源和全球镜像源的完整镜像列表、root/non-root 镜像选择，以及自定义依赖源配置，请参考 [OpenSandbox 配置](../../config/sandbox/opensandbox)。
 
 ### 迁移工具 JSON Schema 存储格式
 
@@ -53,7 +69,12 @@ curl -X POST 'https://你的域名/api/admin/4161/initToolJsonSchemaStorage' \
 
 1. 工作流全局变量配置，字段名太长溢出。
 2. AgentV2 调用子工作流，工作流内流输出内容未禁用。
+3. 团队邀请链接，可重复接收同一个团队邀请。
+4. 使用记录，日期选择器会多一天。
 
 ## 🛠️ 代码优化
 
 1. 补全所有 devapi 接口文档。
+2. 插件系统并发初始化以及日志优化。
+3. 修复插件运行中的错误会抛出为系统错误的问题。
+4. 修复插件在 Node.js 版本高于 v25 时由于 --allow-net 策略未设置导致的问题。

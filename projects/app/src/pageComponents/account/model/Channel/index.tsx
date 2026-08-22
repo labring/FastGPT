@@ -16,7 +16,6 @@ import {
   Td,
   TableContainer,
   Box,
-  Flex,
   Button,
   HStack
 } from '@chakra-ui/react';
@@ -34,8 +33,8 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import type { localeType } from '@fastgpt/global/common/i18n/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import ModelTabHeader from '../ModelTabHeader';
 
 const EditChannelModal = dynamic(() => import('./EditChannelModal'), { ssr: false });
 const ModelTest = dynamic(() => import('./ModelTest'), { ssr: false });
@@ -55,7 +54,7 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     manual: false
   });
 
-  const { data: channelProviders = {} } = useRequest(getChannelProviders, {
+  const { data: _channelProviders = {} } = useRequest(getChannelProviders, {
     manual: false
   });
 
@@ -97,16 +96,24 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   return (
     <>
       {isRoot && (
-        <Flex alignItems={'center'}>
-          {Tab}
-          <Box flex={1} />
-          <Button variant={'whiteBase'} mr={2} onClick={() => setEditChannel(defaultChannel)}>
+        <ModelTabHeader Tab={Tab}>
+          <Button
+            w={['100%', 'auto']}
+            variant={'primary'}
+            onClick={() => setEditChannel(defaultChannel)}
+          >
             {t('account_model:create_channel')}
           </Button>
-        </Flex>
+        </ModelTabHeader>
       )}
-      <MyBox flex={'1 0 0'} h={0} isLoading={isLoading}>
-        <TableContainer h={'100%'} overflowY={'auto'} fontSize={'sm'}>
+      <MyBox flex={'1 0 0'} h={0} minH={0} isLoading={isLoading}>
+        <TableContainer
+          h={['auto', '100%']}
+          minH={0}
+          overflowY={['visible', 'auto']}
+          px={6}
+          fontSize={'sm'}
+        >
           <Table>
             <Thead>
               <Tr>

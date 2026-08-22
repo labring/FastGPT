@@ -1,22 +1,317 @@
 {
-  "version": 1,
+  "version": 3,
   "instructions": [
     "Treat this glossary as authoritative over existing locale text and competitor terminology.",
     "Match the longest Chinese term first so a compound term overrides its component words.",
     "Use canonical product spelling while adapting capitalization and singular or plural form to the sentence.",
-    "A forbidden English term is an error when its Chinese source term appears in the same value."
+    "A forbidden locale term is an error when its Chinese source term appears in the same value."
   ],
+  "localeGlossaries": {
+    "ko-KR": [
+      {
+        "zh": ["飞书"],
+        "target": ["Lark"],
+        "forbidden": ["Feishu", "페이슈"]
+      },
+      {
+        "zh": ["语雀"],
+        "target": ["Yuque"],
+        "forbidden": ["위취", "유췌"]
+      },
+      {
+        "zh": ["钉钉"],
+        "target": ["DingTalk"],
+        "forbidden": ["Ding Talk", "딩톡"]
+      },
+      {
+        "zh": ["应用代码", "代码应用"],
+        "target": ["코드 적용"],
+        "forbidden": []
+      },
+      {
+        "zh": ["额外积分/知识库索引量"],
+        "target": ["애드온"],
+        "forbidden": ["추가 포인트/지식베이스 인덱스"]
+      },
+      {
+        "zh": ["知识库引用"],
+        "target": ["데이터셋 인용"],
+        "forbidden": ["지식베이스 인용", "지식베이스 참조", "데이터셋 참조"]
+      },
+      {
+        "zh": ["知识库搜索"],
+        "target": ["데이터셋 검색"],
+        "forbidden": ["지식베이스 검색"]
+      },
+      {
+        "zh": ["知识库索引量"],
+        "target": ["데이터셋 인덱스 용량"],
+        "forbidden": ["지식베이스 인덱스", "지식베이스 용량"]
+      },
+      {
+        "zh": ["额外资源包", "额外套餐", "资源包"],
+        "target": ["애드온"],
+        "forbidden": ["추가 리소스 팩", "리소스 팩", "추가 패키지"]
+      },
+      {
+        "zh": ["系统提示词"],
+        "target": ["시스템 프롬프트"],
+        "forbidden": []
+      },
+      {
+        "zh": ["团队成员"],
+        "target": ["팀 멤버", "멤버"],
+        "forbidden": ["팀 사용자"]
+      },
+      {
+        "zh": ["插件市场"],
+        "target": ["마켓플레이스", "플러그인 마켓플레이스"],
+        "forbidden": ["플러그인 마켓"]
+      },
+      {
+        "zh": ["发布渠道"],
+        "target": ["게시 채널"],
+        "forbidden": ["릴리스 채널"]
+      },
+      {
+        "zh": ["全文检索"],
+        "target": ["전체 텍스트 검색"],
+        "forbidden": ["전문 검색"]
+      },
+      {
+        "zh": ["混合检索"],
+        "target": ["하이브리드 검색"],
+        "forbidden": ["혼합 검색"]
+      },
+      {
+        "zh": ["语义检索"],
+        "target": ["시맨틱 검색"],
+        "forbidden": []
+      },
+      {
+        "zh": ["结果重排"],
+        "target": ["리랭킹"],
+        "forbidden": ["결과 재정렬"]
+      },
+      {
+        "zh": ["重排模型"],
+        "target": ["리랭크 모델"],
+        "forbidden": ["재정렬 모델"]
+      },
+      {
+        "zh": ["问题优化"],
+        "target": ["쿼리 재작성"],
+        "forbidden": ["질문 최적화", "질의 확장"]
+      },
+      {
+        "zh": ["索引模型"],
+        "target": ["임베딩 모델"],
+        "forbidden": ["인덱스 모델"]
+      },
+      {
+        "zh": ["模型渠道"],
+        "target": ["모델 제공업체"],
+        "forbidden": ["모델 채널"]
+      },
+      {
+        "zh": ["对话记录"],
+        "target": ["채팅 기록", "대화 기록"],
+        "forbidden": ["대화 레코드"]
+      },
+      {
+        "zh": ["对话日志"],
+        "target": ["채팅 로그", "대화 로그"],
+        "forbidden": ["대화 레코드"]
+      },
+      {
+        "zh": ["工具调用"],
+        "target": ["도구 호출"],
+        "forbidden": []
+      },
+      {
+        "zh": ["工具集"],
+        "target": ["툴킷"],
+        "forbidden": ["도구 세트"]
+      },
+      {
+        "zh": ["AI积分", "AI 积分"],
+        "target": ["AI 포인트"],
+        "forbidden": ["AI 크레딧"]
+      },
+      {
+        "zh": ["试运行"],
+        "target": ["테스트 실행"],
+        "forbidden": ["디버그"]
+      },
+      {
+        "zh": ["工作台"],
+        "target": ["스튜디오"],
+        "forbidden": ["워크벤치"]
+      },
+      {
+        "zh": ["工作流"],
+        "target": ["워크플로"],
+        "forbidden": ["워크플로우"]
+      },
+      {
+        "zh": ["知识库"],
+        "target": ["데이터셋"],
+        "forbidden": ["지식베이스", "지식 베이스"]
+      },
+      {
+        "zh": ["数据集", "集合"],
+        "target": ["컬렉션"],
+        "forbidden": []
+      },
+      {
+        "zh": ["索引量"],
+        "target": ["인덱스 용량"],
+        "forbidden": ["인덱스 수량"]
+      },
+      {
+        "zh": ["智能体"],
+        "target": ["에이전트"],
+        "forbidden": ["봇", "어시스턴트"]
+      },
+      {
+        "zh": ["应用"],
+        "target": ["앱"],
+        "forbidden": ["애플리케이션"]
+      },
+      {
+        "zh": ["技能"],
+        "target": ["스킬"],
+        "forbidden": []
+      },
+      {
+        "zh": ["节点", "模块"],
+        "target": ["노드"],
+        "forbidden": ["모듈"]
+      },
+      {
+        "zh": ["工具"],
+        "target": ["도구"],
+        "forbidden": ["유틸리티"]
+      },
+      {
+        "zh": ["插件"],
+        "target": ["플러그인"],
+        "forbidden": []
+      },
+      {
+        "zh": ["团队"],
+        "target": ["팀"],
+        "forbidden": ["워크스페이스"]
+      },
+      {
+        "zh": ["协作者", "合作者"],
+        "target": ["협업자"],
+        "forbidden": ["파트너"]
+      },
+      {
+        "zh": ["沙盒"],
+        "target": ["샌드박스"],
+        "forbidden": []
+      },
+      {
+        "zh": ["触发器"],
+        "target": ["트리거"],
+        "forbidden": []
+      },
+      {
+        "zh": ["提示词"],
+        "target": ["프롬프트"],
+        "forbidden": []
+      },
+      {
+        "zh": ["数据源"],
+        "target": ["데이터 소스"],
+        "forbidden": ["데이터소스"]
+      },
+      {
+        "zh": ["分块"],
+        "target": ["청킹", "청크"],
+        "forbidden": ["세그먼트"]
+      },
+      {
+        "zh": ["调试"],
+        "target": ["디버그", "디버깅"],
+        "forbidden": ["테스트 실행"]
+      },
+      {
+        "zh": ["引用"],
+        "target": ["인용"],
+        "forbidden": ["참조"]
+      },
+      {
+        "zh": ["套餐"],
+        "target": ["요금제"],
+        "forbidden": ["패키지"]
+      },
+      {
+        "zh": ["积分"],
+        "target": ["포인트"],
+        "forbidden": ["크레딧"]
+      },
+      {
+        "zh": ["用量"],
+        "target": ["사용량"],
+        "forbidden": []
+      },
+      {
+        "zh": ["订阅"],
+        "target": ["구독"],
+        "forbidden": []
+      }
+    ],
+    "zh-Hant": [
+      {
+        "zh": ["飞书"],
+        "target": ["Lark"],
+        "forbidden": ["飛書", "Feishu"]
+      },
+      {
+        "zh": ["语雀"],
+        "target": ["Yuque"],
+        "forbidden": ["語雀"]
+      },
+      {
+        "zh": ["钉钉"],
+        "target": ["DingTalk"],
+        "forbidden": ["釘釘", "Ding Talk"]
+      }
+    ]
+  },
   "contextOverrides": [
     {
       "namespace": "app",
       "path": "apply_code",
       "source": "应用",
       "en": ["Apply"],
+      "ko-KR": ["적용"],
       "forbidden": [],
       "note": "Here 应用 is the Apply action for generated code, not the FastGPT App entity."
     }
   ],
   "terms": [
+    {
+      "zh": ["飞书"],
+      "en": ["Lark"],
+      "forbidden": ["Feishu"],
+      "note": "Feishu is the mainland China brand; use the official international brand Lark in localized UI."
+    },
+    {
+      "zh": ["语雀"],
+      "en": ["Yuque"],
+      "forbidden": [],
+      "note": "Yuque is the romanized brand used by the product's official English documentation."
+    },
+    {
+      "zh": ["钉钉"],
+      "en": ["DingTalk"],
+      "forbidden": ["Ding Talk"],
+      "note": "DingTalk is the official international product name."
+    },
     {
       "zh": ["额外积分/知识库索引量"],
       "en": ["Add-on", "Additional points / Dataset index capacity"],

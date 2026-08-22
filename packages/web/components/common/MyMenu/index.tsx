@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Menu,
   MenuList,
@@ -41,6 +41,7 @@ export type Props = {
   width?: number | string;
   offset?: [number, number];
   Button: React.ReactNode;
+  buttonBoxProps?: BoxProps;
   trigger?: 'hover' | 'click';
   size?: MenuSizeType;
 
@@ -200,6 +201,7 @@ const MyMenu = ({
   size = 'sm',
   offset,
   Button,
+  buttonBoxProps,
   menuList,
   placement = 'bottom-start'
 }: Props) => {
@@ -281,6 +283,7 @@ const MyMenu = ({
             w="fit-content"
             h="fit-content"
             borderRadius="sm"
+            {...buttonBoxProps}
           >
             {Button}
           </Box>

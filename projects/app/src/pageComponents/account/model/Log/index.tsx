@@ -25,10 +25,10 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { addDays } from 'date-fns';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -36,6 +36,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import type { ChannelLogListItemType } from '@/global/aiproxy/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import ModelTabHeader from '../ModelTabHeader';
 
 type LogDetailType = Omit<ChannelLogListItemType, 'model' | 'request_at'> & {
   channelName: string | number;
@@ -52,6 +53,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
   const { t, i18n } = useClientTranslation('account_model');
   const { userInfo } = useUserStore();
   const { getModelProvider } = useSystemStore();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const isRoot = userInfo?.username === 'root';
   const [filterProps, setFilterProps] = useState<{
@@ -123,8 +125,10 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
     ];
   }, [getModelProvider, i18n.language, systemModelList, t]);
 
-  const { data, isLoading, ScrollData } = useScrollPagination(getChannelLog, {
-    pageSize: 20,
+  const { data, isLoading, total, pageSize, Pagination } = usePagination(getChannelLog, {
+    defaultPageSize: 20,
+    pageSizeOptions: [20, 50, 100, 200],
+    pageSizeCacheKey: 'account-model-channel-log',
     refreshDeps: [filterProps],
     params: {
       request_id: filterProps.request_id,
@@ -133,7 +137,8 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
       code_type: filterProps.code_type,
       start_timestamp: filterProps.dateRange.from?.getTime() || 0,
       end_timestamp: filterProps.dateRange.to?.getTime() || 0
-    }
+    },
+    scrollContainerRef
   });
 
   const formatData = useMemo<LogDetailType[]>(() => {
@@ -166,11 +171,78 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
 
   return (
     <>
-      {isRoot && (
-        <Flex alignItems={'center'}>
-          {Tab}
-          <Box flex={1} />
-          <Box flex={'0 0 200px'}>
+      <MyBox display={'flex'} flex={'1 0 0'} h={0} minH={0} flexDirection={'column'} gap={4}>
+        {isRoot && <ModelTabHeader Tab={Tab} />}
+        <Flex
+          px={6}
+          flexDirection={['column', 'row']}
+          flexWrap={['nowrap', 'wrap']}
+          alignItems={['stretch', 'flex-start']}
+          gap={[3, 4]}
+        >
+          <Flex w={['100%', 'auto']} flexShrink={0} alignItems={'center'} gap={2}>
+            <FormLabel w={['84px', 'auto']} flexShrink={0}>
+              {t('common:user.Time')}
+            </FormLabel>
+            <Box flex={1} minW={0}>
+              <DateRangePicker
+                w={['100%', 'auto']}
+                bg={'myGray.25'}
+                defaultDate={filterProps.dateRange}
+                dateRange={filterProps.dateRange}
+                onSuccess={(e) => setFilterProps({ ...filterProps, dateRange: e })}
+              />
+            </Box>
+          </Flex>
+          <Flex w={['100%', 'auto']} flexShrink={0} alignItems={'center'} gap={2}>
+            <FormLabel w={['84px', 'auto']} flexShrink={0}>
+              {t('account_model:channel_name')}
+            </FormLabel>
+            <Box flex={['1 1 0', '0 0 160px']} minW={0} w={['auto', '160px']}>
+              <MySelect<string>
+                bg={'myGray.25'}
+                isSearch
+                list={channelList}
+                placeholder={t('account_model:select_channel')}
+                value={filterProps.channelId}
+                onChange={(val) => setFilterProps({ ...filterProps, channelId: val })}
+              />
+            </Box>
+          </Flex>
+          <Flex w={['100%', 'auto']} flexShrink={0} alignItems={'center'} gap={2}>
+            <FormLabel w={['84px', 'auto']} flexShrink={0}>
+              {t('account_model:model_name')}
+            </FormLabel>
+            <Box flex={['1 1 0', '0 0 160px']} minW={0} w={['auto', '160px']}>
+              <MySelect<string>
+                bg={'myGray.25'}
+                isSearch
+                list={modelList}
+                placeholder={t('account_model:select_model')}
+                value={filterProps.model}
+                onChange={(val) => setFilterProps({ ...filterProps, model: val })}
+              />
+            </Box>
+          </Flex>
+          <Flex w={['100%', 'auto']} flexShrink={0} alignItems={'center'} gap={2}>
+            <FormLabel w={['84px', 'auto']} flexShrink={0}>
+              {t('account_model:log_status')}
+            </FormLabel>
+            <Box flex={['1 1 0', '0 0 160px']} minW={0} w={['auto', '160px']}>
+              <MySelect<'all' | 'success' | 'error'>
+                w={'100%'}
+                bg={'myGray.25'}
+                list={[
+                  { label: t('common:All'), value: 'all' },
+                  { label: t('common:Success'), value: 'success' },
+                  { label: t('common:failed'), value: 'error' }
+                ]}
+                value={filterProps.code_type}
+                onChange={(val) => setFilterProps({ ...filterProps, code_type: val })}
+              />
+            </Box>
+          </Flex>
+          <Box flex={['0 0 auto', '1 0 200px']} w={'100%'} maxW={['100%', '200px']}>
             <SearchInput
               placeholder={t('account_model:log_request_id_search')}
               defaultValue={filterProps.request_id}
@@ -178,63 +250,23 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
             />
           </Box>
         </Flex>
-      )}
-      <HStack spacing={4}>
-        <HStack>
-          <FormLabel>{t('common:user.Time')}</FormLabel>
-          <Box>
-            <DateRangePicker
-              defaultDate={filterProps.dateRange}
-              dateRange={filterProps.dateRange}
-              onSuccess={(e) => setFilterProps({ ...filterProps, dateRange: e })}
-            />
-          </Box>
-        </HStack>
-        <HStack>
-          <FormLabel>{t('account_model:channel_name')}</FormLabel>
-          <Box flex={'1 0 0'}>
-            <MySelect<string>
-              bg={'myGray.50'}
-              isSearch
-              list={channelList}
-              placeholder={t('account_model:select_channel')}
-              value={filterProps.channelId}
-              onChange={(val) => setFilterProps({ ...filterProps, channelId: val })}
-            />
-          </Box>
-        </HStack>
-        <HStack>
-          <FormLabel>{t('account_model:model_name')}</FormLabel>
-          <Box flex={'1 0 0'}>
-            <MySelect<string>
-              bg={'myGray.50'}
-              isSearch
-              list={modelList}
-              placeholder={t('account_model:select_model')}
-              value={filterProps.model}
-              onChange={(val) => setFilterProps({ ...filterProps, model: val })}
-            />
-          </Box>
-        </HStack>
-        <HStack flex={'0 0 200px'}>
-          <FormLabel>{t('account_model:log_status')}</FormLabel>
-          <Box flex={'1 0 0'}>
-            <MySelect<'all' | 'success' | 'error'>
-              bg={'myGray.50'}
-              list={[
-                { label: t('common:All'), value: 'all' },
-                { label: t('common:Success'), value: 'success' },
-                { label: t('common:failed'), value: 'error' }
-              ]}
-              value={filterProps.code_type}
-              onChange={(val) => setFilterProps({ ...filterProps, code_type: val })}
-            />
-          </Box>
-        </HStack>
-      </HStack>
-      <MyBox flex={'1 0 0'} h={0} isLoading={isLoading}>
-        <ScrollData h={'100%'}>
-          <TableContainer fontSize={'sm'}>
+        <MyBox
+          flex={'1 0 0'}
+          h={0}
+          minH={0}
+          display={'flex'}
+          flexDirection={'column'}
+          isLoading={isLoading}
+        >
+          <TableContainer
+            ref={scrollContainerRef}
+            flex={['0 0 auto', '1 0 0']}
+            h={['auto', '100%']}
+            minH={0}
+            overflowY={['visible', 'auto']}
+            px={6}
+            fontSize={'sm'}
+          >
             <Table>
               <Thead>
                 <Tr>
@@ -276,7 +308,12 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
               </Tbody>
             </Table>
           </TableContainer>
-        </ScrollData>
+          {total > pageSize && (
+            <Flex flexShrink={0} mt={3} px={6} justifyContent={'center'}>
+              <Pagination />
+            </Flex>
+          )}
+        </MyBox>
       </MyBox>
 
       {!!logDetail && <LogDetail data={logDetail} onClose={() => setLogDetail(undefined)} />}
@@ -285,6 +322,29 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
 };
 
 export default ChannelLog;
+
+const LogDetailTitle = ({ children, ...props }: { children: React.ReactNode } & BoxProps) => {
+  return (
+    <Box
+      bg={'myGray.50'}
+      color="myGray.900 "
+      borderRight={'base'}
+      p={3}
+      flex={'0 0 100px'}
+      {...props}
+    >
+      {children}
+    </Box>
+  );
+};
+
+const LogDetailContainer = ({ children, ...props }: { children: React.ReactNode } & BoxProps) => {
+  return (
+    <Box p={3} flex={1} {...props}>
+      {children}
+    </Box>
+  );
+};
 
 const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void }) => {
   const { t } = useClientTranslation('account_model');
@@ -297,38 +357,13 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
           ...res,
           ...data
         };
-      } catch (error) {
+      } catch (_error) {
         return data;
       }
     },
     {
       manual: false
     }
-  );
-
-  const Title = useCallback(({ children, ...props }: { children: React.ReactNode } & BoxProps) => {
-    return (
-      <Box
-        bg={'myGray.50'}
-        color="myGray.900 "
-        borderRight={'base'}
-        p={3}
-        flex={'0 0 100px'}
-        {...props}
-      >
-        {children}
-      </Box>
-    );
-  }, []);
-  const Container = useCallback(
-    ({ children, ...props }: { children: React.ReactNode } & BoxProps) => {
-      return (
-        <Box p={3} flex={1} {...props}>
-          {children}
-        </Box>
-      );
-    },
-    []
   );
 
   return (
@@ -353,73 +388,77 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
           >
             {/* 第一行 */}
             <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <Title>RequestID</Title>
-              <Container>{detailData?.request_id}</Container>
+              <LogDetailTitle>RequestID</LogDetailTitle>
+              <LogDetailContainer>{detailData?.request_id}</LogDetailContainer>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px">
-              <Title>Request IP</Title>
-              <Container>{detailData?.ip}</Container>
+              <LogDetailTitle>Request IP</LogDetailTitle>
+              <LogDetailContainer>{detailData?.ip}</LogDetailContainer>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <Title>{t('account_model:channel_status')}</Title>
-              <Container color={detailData.code === 200 ? 'green.600' : 'red.600'}>
+              <LogDetailTitle>{t('account_model:channel_status')}</LogDetailTitle>
+              <LogDetailContainer color={detailData.code === 200 ? 'green.600' : 'red.600'}>
                 {detailData?.code}
-              </Container>
+              </LogDetailContainer>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px">
-              <Title>Endpoint</Title>
-              <Container>{detailData?.endpoint}</Container>
+              <LogDetailTitle>Endpoint</LogDetailTitle>
+              <LogDetailContainer>{detailData?.endpoint}</LogDetailContainer>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <Title>{t('account_model:channel_name')}</Title>
-              <Container>{detailData?.channelName}</Container>
+              <LogDetailTitle>{t('account_model:channel_name')}</LogDetailTitle>
+              <LogDetailContainer>{detailData?.channelName}</LogDetailContainer>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px">
-              <Title>{t('account_model:model')}</Title>
-              <Container>{detailData?.model}</Container>
+              <LogDetailTitle>{t('account_model:model')}</LogDetailTitle>
+              <LogDetailContainer>{detailData?.model}</LogDetailContainer>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <Title>{t('account_model:request_at')}</Title>
-              <Container>{detailData?.request_at}</Container>
+              <LogDetailTitle>{t('account_model:request_at')}</LogDetailTitle>
+              <LogDetailContainer>{detailData?.request_at}</LogDetailContainer>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px">
-              <Title>{t('account_model:duration')}</Title>
-              <Container>{detailData?.duration.toFixed(2)}s</Container>
+              <LogDetailTitle>{t('account_model:duration')}</LogDetailTitle>
+              <LogDetailContainer>{detailData?.duration.toFixed(2)}s</LogDetailContainer>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <Title flex={'0 0 150px'}>{t('account_model:model_ttfb_time')}</Title>
-              <Container>
+              <LogDetailTitle flex={'0 0 150px'}>
+                {t('account_model:model_ttfb_time')}
+              </LogDetailTitle>
+              <LogDetailContainer>
                 {detailData.ttfb_milliseconds ? `${detailData.ttfb_milliseconds}ms` : '-'}
-              </Container>
+              </LogDetailContainer>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px">
-              <Title flex={'0 0 150px'}>{t('account_model:model_tokens')}</Title>
-              <Container>
+              <LogDetailTitle flex={'0 0 150px'}>{t('account_model:model_tokens')}</LogDetailTitle>
+              <LogDetailContainer>
                 {detailData?.usage?.input_tokens} / {detailData?.usage?.output_tokens}
-              </Container>
+              </LogDetailContainer>
             </GridItem>
             {detailData?.retry_times !== undefined && (
               <GridItem display={'flex'} borderBottomWidth="1px" colSpan={2}>
-                <Title>{t('account_model:retry_times')}</Title>
-                <Container>{detailData?.retry_times}</Container>
+                <LogDetailTitle>{t('account_model:retry_times')}</LogDetailTitle>
+                <LogDetailContainer>{detailData?.retry_times}</LogDetailContainer>
               </GridItem>
             )}
             {detailData?.content && (
               <GridItem display={'flex'} borderBottomWidth="1px" colSpan={2}>
-                <Title>Content</Title>
-                <Container>{detailData?.content}</Container>
+                <LogDetailTitle>Content</LogDetailTitle>
+                <LogDetailContainer>{detailData?.content}</LogDetailContainer>
               </GridItem>
             )}
             {detailData?.request_body && (
               <GridItem display={'flex'} borderBottomWidth="1px" colSpan={2}>
-                <Title>Request Body</Title>
-                <Container userSelect={'all'}>{detailData?.request_body}</Container>
+                <LogDetailTitle>Request Body</LogDetailTitle>
+                <LogDetailContainer userSelect={'all'}>
+                  {detailData?.request_body}
+                </LogDetailContainer>
               </GridItem>
             )}
             {detailData?.response_body && (
               <GridItem display={'flex'} colSpan={2}>
-                <Title>Response Body</Title>
-                <Container>{detailData?.response_body}</Container>
+                <LogDetailTitle>Response Body</LogDetailTitle>
+                <LogDetailContainer>{detailData?.response_body}</LogDetailContainer>
               </GridItem>
             )}
           </Grid>

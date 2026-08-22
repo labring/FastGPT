@@ -12,13 +12,15 @@ const Avatar = ({
   fill,
   ...props
 }: Omit<ImageProps, 'src'> & { src?: string | null }) => {
+  // 模板服务可能会为内置图标补充根路径，兼容带前导 `/` 的图标 key。
+  const iconName = src?.startsWith('/') ? src.slice(1) : src;
   // @ts-ignore
-  const isIcon = !!iconPaths[src as any];
+  const isIcon = !!iconPaths[iconName as any];
 
   return isIcon ? (
     <Box display={'inline-flex'} {...props}>
       <MyIcon
-        name={src as any}
+        name={iconName as any}
         w={w}
         borderRadius={props.borderRadius}
         {...(fill ? { fill } : {})}

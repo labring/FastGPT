@@ -10,6 +10,7 @@ import {
 import { callMcpServerTool, getMcpServerTools } from '@/service/support/mcp/utils';
 import { type toolCallProps } from '@/service/support/mcp/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getMcpAuthProxyFromHeaders } from '@/service/support/mcp/auth';
 const logger = getLogger(LogCategories.MODULE.MCP.APP);
 
 export type mcpQuery = { key: string };
@@ -52,7 +53,8 @@ const handlePost = async (req: ApiRequestProps<mcpBody, mcpQuery>, res: ApiRespo
     ): Promise<CallToolResult> => {
       try {
         logger.debug(`Call tool: ${name} with args: ${JSON.stringify(args)}`);
-        const result = await callMcpServerTool({ key, toolName: name, inputs: args });
+        const authProxy = getMcpAuthProxyFromHeaders(req.headers);
+        const result = await callMcpServerTool({ key, toolName: name, inputs: args, authProxy });
 
         return {
           content: [

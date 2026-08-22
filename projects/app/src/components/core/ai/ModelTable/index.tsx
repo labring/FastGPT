@@ -12,7 +12,8 @@ import {
   Thead,
   Tr,
   useDisclosure,
-  Checkbox
+  Checkbox,
+  type FlexProps
 } from '@chakra-ui/react';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React, { useMemo, useState } from 'react';
@@ -36,7 +37,13 @@ import ModelCapabilityTags from '../ModelCapabilityTags';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
-const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }) => {
+const ModelTable = ({
+  permissionConfig = false,
+  contentPx
+}: {
+  permissionConfig?: boolean;
+  contentPx?: FlexProps['px'];
+}) => {
   const { t, i18n } = useClientTranslation('account_model');
   const { getModelProviders, getModelProvider } = useSystemStore();
   const { userInfo } = useUserStore();
@@ -232,8 +239,13 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
   });
 
   return (
-    <Flex flexDirection={'column'} h={'100%'} minW={0}>
-      <Flex flexDirection={['column', 'row']} gap={[3, 0]} alignItems={['stretch', 'center']}>
+    <Flex flexDirection={'column'} h={contentPx === undefined ? '100%' : ['auto', '100%']} minW={0}>
+      <Flex
+        px={contentPx}
+        flexDirection={['column', 'row']}
+        gap={[3, 6]}
+        alignItems={['stretch', 'flex-start']}
+      >
         <Flex flexShrink={0} w={['100%', 'auto']} alignItems={'center'} gap={2}>
           <Box
             w={['84px', 'auto']}
@@ -244,17 +256,17 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
           >
             {t('common:model.provider')}
           </Box>
-          <Box flex={1} minW={0} w={['100%', '200px']}>
+          <Box flex={1} minW={0} w={['100%', '160px']}>
             <MySelect
               w={'100%'}
-              bg={'myGray.50'}
+              bg={'myGray.25'}
               value={provider}
               onChange={setProvider}
               list={filterProviderList}
             />
           </Box>
         </Flex>
-        <Flex flexShrink={0} ml={[0, 6]} w={['100%', 'auto']} alignItems={'center'} gap={2}>
+        <Flex flexShrink={0} w={['100%', 'auto']} alignItems={'center'} gap={2}>
           <Box
             w={['84px', 'auto']}
             flexShrink={0}
@@ -264,20 +276,25 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
           >
             {t('common:model.model_type')}
           </Box>
-          <Box flex={1} minW={0} w={['100%', '150px']}>
+          <Box flex={1} minW={0} w={['100%', '160px']}>
             <MySelect
               w={'100%'}
-              bg={'myGray.50'}
+              bg={'myGray.25'}
               value={modelType}
               onChange={setModelType}
               list={selectModelTypeList}
             />
           </Box>
         </Flex>
-        <Box flex={1} display={['none', 'block']} />
-        <Box w={['100%', '250px']} flex={['none', '0 0 250px']}>
+        <Box
+          ml={[0, 'auto']}
+          w={'100%'}
+          maxW={['100%', '200px']}
+          flex={['none', '0 0 200px']}
+          flexShrink={0}
+        >
           <SearchInput
-            bg={'myGray.50'}
+            bg={'myGray.25'}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('common:model.search_name_placeholder')}
@@ -286,11 +303,12 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
       </Flex>
       <TableContainer
         mt={5}
-        flex={'1 0 0'}
-        h={0}
+        px={contentPx}
+        flex={contentPx === undefined ? '1 0 0' : ['0 0 auto', '1 0 0']}
+        h={contentPx === undefined ? 0 : ['auto', 0]}
         w={'100%'}
         maxW={'100%'}
-        overflowY={'auto'}
+        overflowY={contentPx === undefined ? 'auto' : ['visible', 'auto']}
         overflowX={'auto'}
       >
         <Table>

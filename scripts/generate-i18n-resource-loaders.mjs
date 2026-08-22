@@ -4,6 +4,13 @@ import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const i18nDir = path.join(repositoryRoot, 'packages/web/i18n');
+const localeTypeSource = fs.readFileSync(
+  path.join(repositoryRoot, 'packages/global/common/i18n/type.ts'),
+  'utf8'
+);
+const localeListSource = localeTypeSource.match(/LocaleList\s*=\s*\[([\s\S]*?)\]\s*as const/)?.[1];
+if (!localeListSource) throw new Error('Unable to read LocaleList from i18n type.ts');
+const languages = Array.from(localeListSource.matchAll(/'([^']+)'/g), (match) => match[1]);
 const constants = fs.readFileSync(path.join(i18nDir, 'constants.ts'), 'utf8');
 const namespaceListSource = constants.match(/I18N_NAMESPACES\s*=\s*\[([\s\S]*?)\]/)?.[1];
 if (!namespaceListSource) throw new Error('Unable to read I18N_NAMESPACES from constants.ts');
@@ -11,8 +18,6 @@ const namespaces = Array.from(
   namespaceListSource.matchAll(/'([a-zA-Z0-9_]+)'/g),
   (match) => match[1]
 );
-const languages = ['en', 'zh-CN', 'zh-Hant'];
-
 for (const language of languages) {
   for (const namespace of namespaces) {
     const resourcePath = path.join(i18nDir, language, namespace + '.json');
