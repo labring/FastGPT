@@ -6,7 +6,7 @@
   "app_name": "應用程式名",
   "auto_index": "索引增強",
   "billing_module": "扣費模組",
-  "check_left_points": "查看剩餘積分",
+  "plan_usage_status": "套餐使用情況",
   "chart_library_load_failed": "圖表程式庫載入失敗",
   "chart_load_failed": "圖表載入失敗",
   "llm_compress_text": "文件內容壓縮",

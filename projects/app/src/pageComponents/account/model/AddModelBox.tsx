@@ -12,6 +12,7 @@ import {
   Input,
   Button,
   type ButtonProps,
+  type BoxProps,
   Grid,
   GridItem
 } from '@chakra-ui/react';
@@ -44,14 +45,19 @@ import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 
 export const AddModelButton = ({
   onCreate,
+  buttonBoxProps,
   ...props
-}: { onCreate: (type: ModelTypeEnum) => void } & ButtonProps) => {
+}: {
+  onCreate: (type: ModelTypeEnum) => void;
+  buttonBoxProps?: BoxProps;
+} & ButtonProps) => {
   const { t } = useClientTranslation('account_model');
 
   return (
     <MyMenu
       trigger="hover"
       size="sm"
+      buttonBoxProps={buttonBoxProps}
       Button={<Button {...props}>{t('account_model:create_model')}</Button>}
       menuList={[
         {

@@ -6,7 +6,7 @@
   "app_name": "App name",
   "auto_index": "Auto index",
   "billing_module": "Deduction node",
-  "check_left_points": "Check remaining points",
+  "plan_usage_status": "Plan usage",
   "chart_library_load_failed": "Couldn't load the chart library",
   "chart_load_failed": "Couldn't load the chart",
   "llm_compress_text": "File content compression",

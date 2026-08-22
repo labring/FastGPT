@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import type { BoxProps } from '@chakra-ui/react';
-import { Box, Grid, HStack, useTheme } from '@chakra-ui/react';
+import { Box, Flex, Grid, useTheme } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
@@ -20,6 +20,8 @@ import { calculateModelPrice } from '@fastgpt/global/core/ai/pricing';
 import DataTableComponent from './DataTableComponent';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model.schema';
+import { accountContentScrollStyles } from '@/pageComponents/account/styles';
+import ModelTabHeader from '../ModelTabHeader';
 
 export type ModelDashboardData = {
   x: string;
@@ -392,26 +394,44 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   >('totalTokens');
 
   return (
-    <>
-      <Box>{Tab}</Box>
+    <MyBox display={'flex'} flex={'1 0 0'} h={0} minH={0} flexDirection={'column'} gap={4}>
+      <ModelTabHeader Tab={Tab} />
 
-      <HStack spacing={4} justifyContent="space-between">
-        <HStack spacing={4}>
-          <HStack>
-            <FormLabel>{t('common:user.Time')}</FormLabel>
-            <Box>
+      <Flex
+        px={6}
+        flexDirection={['column', 'row']}
+        flexWrap={['nowrap', 'wrap']}
+        alignItems={['stretch', 'flex-start']}
+        justifyContent={'space-between'}
+        gap={[3, 4]}
+      >
+        <Flex
+          flexDirection={['column', 'row']}
+          flexWrap={['nowrap', 'wrap']}
+          alignItems={['stretch', 'flex-start']}
+          gap={[3, 4]}
+        >
+          <Flex w={['100%', 'auto']} flexShrink={0} alignItems={'center'} gap={2}>
+            <FormLabel w={['84px', 'auto']} flexShrink={0}>
+              {t('common:user.Time')}
+            </FormLabel>
+            <Box flex={1} minW={0}>
               <DateRangePicker
+                w={['100%', 'auto']}
+                bg={'myGray.25'}
                 defaultDate={filterProps.dateRange}
                 dateRange={filterProps.dateRange}
                 onSuccess={handleDateRangeChange}
               />
             </Box>
-          </HStack>
-          <HStack>
-            <FormLabel>{t('account_model:channel_name')}</FormLabel>
-            <Box flex={'1 0 0'}>
+          </Flex>
+          <Flex w={['100%', 'auto']} flexShrink={0} alignItems={'center'} gap={2}>
+            <FormLabel w={['84px', 'auto']} flexShrink={0}>
+              {t('account_model:channel_name')}
+            </FormLabel>
+            <Box flex={['1 1 0', '0 0 160px']} minW={0} w={['auto', '160px']}>
               <MySelect<string>
-                bg={'myGray.50'}
+                bg={'myGray.25'}
                 isSearch
                 list={channelList}
                 placeholder={t('account_model:select_channel')}
@@ -419,12 +439,14 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
                 onChange={(val) => setFilterProps({ ...filterProps, channelId: val })}
               />
             </Box>
-          </HStack>
-          <HStack>
-            <FormLabel>{t('account_model:model_name')}</FormLabel>
-            <Box flex={'1 0 0'}>
+          </Flex>
+          <Flex w={['100%', 'auto']} flexShrink={0} alignItems={'center'} gap={2}>
+            <FormLabel w={['84px', 'auto']} flexShrink={0}>
+              {t('account_model:model_name')}
+            </FormLabel>
+            <Box flex={['1 1 0', '0 0 160px']} minW={0} w={['auto', '160px']}>
               <MySelect<string>
-                bg={'myGray.50'}
+                bg={'myGray.25'}
                 isSearch
                 list={modelList}
                 placeholder={t('account_model:select_model')}
@@ -432,13 +454,15 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
                 onChange={(val) => setFilterProps({ ...filterProps, model: val })}
               />
             </Box>
-          </HStack>
+          </Flex>
           {viewMode === 'chart' && (
-            <HStack>
-              <FormLabel>{t('account_model:timespan_label')}</FormLabel>
-              <Box flex={'1 0 0'}>
+            <Flex w={['100%', 'auto']} flexShrink={0} alignItems={'center'} gap={2}>
+              <FormLabel w={['84px', 'auto']} flexShrink={0}>
+                {t('account_model:timespan_label')}
+              </FormLabel>
+              <Box flex={['1 1 0', '0 0 160px']} minW={0} w={['auto', '160px']}>
                 <MySelect<'minute' | 'hour' | 'day'>
-                  bg={'myGray.50'}
+                  bg={'myGray.25'}
                   list={timespanOptions}
                   value={filterProps.timespan}
                   onChange={(val) => {
@@ -446,11 +470,14 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
                   }}
                 />
               </Box>
-            </HStack>
+            </Flex>
           )}
-        </HStack>
+        </Flex>
 
         <FillRowTabs<'chart' | 'table'>
+          w={['100%', 'auto']}
+          flexShrink={0}
+          size={'sm'}
           list={[
             {
               label: t('account_model:view_chart'),
@@ -461,14 +488,12 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
               value: 'table'
             }
           ]}
-          py={1.5}
-          px={4}
           value={viewMode}
           onChange={(val) => setViewMode(val)}
         />
-      </HStack>
+      </Flex>
 
-      <MyBox flex={'1 0 0'} h={0} overflowY={'auto'} isLoading={isLoading}>
+      <MyBox {...accountContentScrollStyles} flex={'1 0 0'} h={0} px={6} isLoading={isLoading}>
         {viewMode === 'chart' ? (
           dashboardData.length > 0 && (
             <>
@@ -743,7 +768,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
           />
         )}
       </MyBox>
-    </>
+    </MyBox>
   );
 };
 

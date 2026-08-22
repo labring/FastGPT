@@ -30,7 +30,31 @@ import { useRouter } from 'next/router';
 
 const thresholdVal = 200;
 
-export function usePagination<DataT, ResT = {}>(
+/**
+ * 从分页内容区向上定位实际的纵向滚动容器并回到顶部。
+ * 桌面端通常由表格接管滚动，移动端则可能由更外层页面统一滚动。
+ */
+const scrollPaginationContentToTop = (target?: HTMLElement | null) => {
+  if (!target || typeof window === 'undefined') return;
+
+  let currentElement: HTMLElement | null = target;
+  while (currentElement) {
+    const overflowY = window.getComputedStyle(currentElement).overflowY;
+    const hasVerticalOverflow = currentElement.scrollHeight > currentElement.clientHeight + 1;
+
+    if (['auto', 'scroll', 'overlay'].includes(overflowY) && hasVerticalOverflow) {
+      currentElement.scrollTop = 0;
+      return;
+    }
+    currentElement = currentElement.parentElement;
+  }
+
+  if (document.scrollingElement) {
+    document.scrollingElement.scrollTop = 0;
+  }
+};
+
+export function usePagination<DataT, ResT = unknown>(
   api: (data: PaginationProps<DataT>) => Promise<PaginationResponse<ResT>>,
   {
     defaultPageSize = 10,
@@ -43,7 +67,9 @@ export function usePagination<DataT, ResT = {}>(
     EmptyTip,
     pollingInterval,
     pollingWhenHidden = false,
-    storeToQuery = false
+    storeToQuery = false,
+    scrollContainerRef,
+    pageSizeCacheKey
   }: {
     defaultPageSize?: number;
     pageSizeOptions?: number[];
@@ -57,10 +83,12 @@ export function usePagination<DataT, ResT = {}>(
     pollingInterval?: number;
     pollingWhenHidden?: boolean;
     storeToQuery?: boolean;
+    scrollContainerRef?: RefObject<HTMLElement | null>;
+    pageSizeCacheKey?: string;
   }
 ) {
   const router = useRouter();
-  let { page = '1' } = router.query as { page: string };
+  const { page = '1' } = router.query as { page: string };
   const numPage = Number(page);
 
   const { toast } = useToast();
@@ -71,21 +99,49 @@ export function usePagination<DataT, ResT = {}>(
   const [error, setError] = useState<Error | null>(null);
 
   const [pageNum, setPageNum] = useState(numPage);
-  const [pageSize, setPageSize] = useState(defaultPageSize);
   const pageSizeOptions = useCreation(
     () => defaultPageSizeOptions || [10, 20, 50, 100],
     [defaultPageSizeOptions]
   );
+  const pageSizeStorageKey = pageSizeCacheKey
+    ? `fastgpt:pagination:page-size:${pageSizeCacheKey}`
+    : undefined;
+  const [pageSize, setPageSize] = useState(() => {
+    if (!pageSizeStorageKey || typeof window === 'undefined') return defaultPageSize;
+
+    try {
+      const cachedPageSize = Number(window.localStorage.getItem(pageSizeStorageKey));
+      return pageSizeOptions.includes(cachedPageSize) ? cachedPageSize : defaultPageSize;
+    } catch {
+      return defaultPageSize;
+    }
+  });
+  const previousPageSizeRef = useRef(pageSize);
+  const updatePageSize = useMemoizedFn((nextPageSize: number) => {
+    setPageSize(nextPageSize);
+
+    if (!pageSizeStorageKey) return;
+    try {
+      window.localStorage.setItem(pageSizeStorageKey, `${nextPageSize}`);
+    } catch {
+      // 浏览器禁用本地存储时仅跳过缓存，不影响分页功能。
+    }
+  });
 
   const [total, setTotal] = useState(0);
   const [data, setData] = useState<ResT[]>([]);
+  const paginationRef = useRef<HTMLDivElement>(null);
   const totalDataLength = useMemo(() => Math.max(total, data.length), [total, data.length]);
 
   const isEmpty = total === 0 && !isLoading;
   const noMore = data.length > 0 && data.length >= totalDataLength;
 
   const fetchData = useMemoizedFn(
-    async (num: number = pageNum, ScrollContainerRef?: RefObject<HTMLDivElement>) => {
+    async (
+      num: number = pageNum,
+      ScrollContainerRef?: RefObject<HTMLDivElement>,
+      scrollToTop = false
+    ) => {
       if (noMore && num !== 1) return;
 
       setTrue();
@@ -109,7 +165,9 @@ export function usePagination<DataT, ResT = {}>(
           });
         }
 
-        res.total !== undefined && setTotal(res.total);
+        if (res.total !== undefined) {
+          setTotal(res.total);
+        }
 
         if (type === 'scroll') {
           if (scrollLoadType === 'top') {
@@ -137,6 +195,12 @@ export function usePagination<DataT, ResT = {}>(
           }
         } else {
           setData(res.list);
+        }
+
+        if (type === 'button' && scrollToTop) {
+          window.requestAnimationFrame(() => {
+            scrollPaginationContentToTop(scrollContainerRef?.current ?? paginationRef.current);
+          });
         }
 
         onChange?.(num);
@@ -193,7 +257,13 @@ export function usePagination<DataT, ResT = {}>(
     };
 
     return (
-      <Flex alignItems={'center'} justifyContent={'center'} fontSize={'sm'} userSelect={'none'}>
+      <Flex
+        ref={paginationRef}
+        alignItems={'center'}
+        justifyContent={'center'}
+        fontSize={'sm'}
+        userSelect={'none'}
+      >
         {isPc && <Box color={'myGray.500'}>{t('common:total_num', { num: totalDataLength })}</Box>}
 
         <Flex alignItems={'center'} ml={6} mr={4}>
@@ -202,13 +272,13 @@ export function usePagination<DataT, ResT = {}>(
               mr={2}
               isDisabled={pageNum === 1}
               icon="common/first_page"
-              onClick={() => fetchData(1)}
+              onClick={() => fetchData(1, undefined, true)}
             />
           )}
           <IconButton
             isDisabled={pageNum === 1}
             icon="common/leftArrowLight"
-            onClick={() => fetchData(pageNum - 1)}
+            onClick={() => fetchData(pageNum - 1, undefined, true)}
           />
           <Box ml={4} color={'myGray.500'}>
             {pageNum}
@@ -223,14 +293,14 @@ export function usePagination<DataT, ResT = {}>(
           <IconButton
             isDisabled={pageNum === maxPage}
             icon="common/rightArrow"
-            onClick={() => fetchData(pageNum + 1)}
+            onClick={() => fetchData(pageNum + 1, undefined, true)}
           />
           {isPc && (
             <IconButton
               ml={2}
               isDisabled={pageNum === maxPage}
               icon="common/latest_page"
-              onClick={() => fetchData(maxPage)}
+              onClick={() => fetchData(maxPage, undefined, true)}
             />
           )}
         </Flex>
@@ -243,7 +313,9 @@ export function usePagination<DataT, ResT = {}>(
                 children: pageSizeOptions.map((item) => ({
                   label: `${item}`,
                   isActive: pageSize === item,
-                  onClick: () => setPageSize(item)
+                  menuItemStyles:
+                    pageSize === item ? { color: 'primary.700', fontWeight: 'bold' } : undefined,
+                  onClick: () => updatePageSize(item)
                 }))
               }
             ]}
@@ -261,7 +333,17 @@ export function usePagination<DataT, ResT = {}>(
         )}
       </Flex>
     );
-  }, [totalDataLength, isPc, pageSize, t, pageNum, pageSizeOptions, isLoading, fetchData]);
+  }, [
+    totalDataLength,
+    isPc,
+    pageSize,
+    t,
+    pageNum,
+    pageSizeOptions,
+    isLoading,
+    fetchData,
+    updatePageSize
+  ]);
 
   // Scroll pagination
   const DefaultRef = useRef<HTMLDivElement>(null);
@@ -341,7 +423,7 @@ export function usePagination<DataT, ResT = {}>(
         return;
       }
 
-      fetchData(1);
+      fetchData(1, undefined, true);
     },
     {
       manual: false,
@@ -351,8 +433,13 @@ export function usePagination<DataT, ResT = {}>(
   );
   // Page size refresh
   useEffect(() => {
-    data.length > 0 && fetchData();
-  }, [pageSize]);
+    if (previousPageSizeRef.current === pageSize) return;
+    previousPageSizeRef.current = pageSize;
+
+    if (data.length > 0) {
+      fetchData(pageNum, undefined, true);
+    }
+  }, [data.length, fetchData, pageNum, pageSize]);
 
   useRequest(
     async () => {

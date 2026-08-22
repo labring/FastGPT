@@ -6,7 +6,7 @@
   "app_name": "应用名",
   "auto_index": "索引增强",
   "billing_module": "扣费模块",
-  "check_left_points": "查看剩余积分",
+  "plan_usage_status": "套餐使用情况",
   "chart_library_load_failed": "图表库加载失败",
   "chart_load_failed": "图表加载失败",
   "llm_compress_text": "文件内容压缩",

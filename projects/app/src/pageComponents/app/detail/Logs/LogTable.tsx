@@ -16,7 +16,7 @@ import {
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import DateRangePicker from '@fastgpt/web/components/common/DateRangePicker';
 import { useLocalStorageState } from 'ahooks';
@@ -59,6 +59,10 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
+type LogTableProps = HeaderControlProps & {
+  pageSizeCacheKey: string;
+};
+
 const LogTable = ({
   appId,
   chatSources,
@@ -67,9 +71,10 @@ const LogTable = ({
   setIsSelectAllSource,
   dateRange,
   setDateRange,
+  pageSizeCacheKey,
   showSourceSelector = true,
   px = [4, 8]
-}: HeaderControlProps) => {
+}: LogTableProps) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
@@ -82,6 +87,7 @@ const LogTable = ({
   const [userIpType, setUserIpType] = useState<UserIpTypeValue>('all');
   const [feedbackType, setFeedbackType] = useState<'all' | 'has_feedback' | 'good' | 'bad'>('all');
   const [errorFilter, setErrorFilter] = useState<'all' | 'has_error'>('all');
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // source
   const sourceList = useMemo(
@@ -207,8 +213,10 @@ const LogTable = ({
     pageSize
   } = usePagination(getAppChatLogs, {
     defaultPageSize: 20,
+    pageSizeCacheKey,
     params,
-    refreshDeps: [params]
+    refreshDeps: [params],
+    scrollContainerRef
   });
 
   const {
@@ -551,7 +559,7 @@ const LogTable = ({
         />
       </Flex>
 
-      <TableContainer mt={[2, 4]} flex={'1 0 0'} overflowY={'auto'}>
+      <TableContainer ref={scrollContainerRef} mt={[2, 4]} flex={'1 0 0'} overflowY={'auto'}>
         <Table variant={'simple'} fontSize={'sm'}>
           <Thead>
             <Tr>

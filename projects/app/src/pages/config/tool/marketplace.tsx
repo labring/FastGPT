@@ -230,6 +230,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     {
       type: 'scroll',
       defaultPageSize: 20,
+      pageSizeCacheKey: 'config-tool-marketplace-tools',
       refreshDeps: [searchText, tagIds, sourceFilter]
     }
   );

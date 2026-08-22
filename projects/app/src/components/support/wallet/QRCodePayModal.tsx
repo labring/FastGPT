@@ -1,8 +1,8 @@
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Trans } from 'next-i18next';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import { Box, ModalBody, Flex, Button, Link } from '@chakra-ui/react';
+import { Box, Flex, Button, Link } from '@chakra-ui/react';
 import { checkBalancePayResult, putUpdatePayment } from '@/web/support/wallet/bill/api';
 import LightTip from '@fastgpt/web/components/common/LightTip';
 import QRCode from 'qrcode';
@@ -190,110 +190,108 @@ const QRCodePayModal = ({
       isLoading={isUpdating}
       isOpen
       title={t('common:user.Pay')}
-      iconSrc="/imgs/modal/wallet.svg"
       w={'600px'}
       onClose={onClose}
       closeOnOverlayClick={false}
+      bodyStyles={{ textAlign: 'center' }}
     >
-      <ModalBody textAlign={'center'} padding={['16px 24px', '32px 52px']}>
-        {tip && <LightTip text={tip} mb={6} textAlign={'left'} />}
-        <Box>{t('common:pay_money')}</Box>
-        <Box
-          color="primary.600"
-          fontSize="32px"
-          fontWeight="600"
-          lineHeight="40px"
-          mb={discountCouponName ? 1 : 6}
-        >
-          ¥{readPrice.toFixed(2)}
+      {tip && <LightTip text={tip} mb={6} textAlign={'left'} />}
+      <Box>{t('common:pay_money')}</Box>
+      <Box
+        color="primary.600"
+        fontSize="32px"
+        fontWeight="600"
+        lineHeight="40px"
+        mb={discountCouponName ? 1 : 6}
+      >
+        ¥{readPrice.toFixed(2)}
+      </Box>
+      {discountCouponName && (
+        <Box color={'myGray.900'} fontSize={'14px'} fontWeight={'500'} mb={6}>
+          {t('common:discount_coupon_used') + t(discountCouponName as any)}
         </Box>
-        {discountCouponName && (
-          <Box color={'myGray.900'} fontSize={'14px'} fontWeight={'500'} mb={6}>
-            {t('common:discount_coupon_used') + t(discountCouponName as any)}
-          </Box>
-        )}
+      )}
 
-        {renderPaymentContent()}
+      {renderPaymentContent()}
 
-        {selectedPayment !== BillPayWayEnum.bank && (
-          <Box
-            mt={5}
-            textAlign={'center'}
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            gap={1}
+      {selectedPayment !== BillPayWayEnum.bank && (
+        <Box
+          mt={5}
+          textAlign={'center'}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          gap={1}
+        >
+          <MyIcon name={'common/info'} w={4} h={4} />
+          {t('common:pay.noclose')}
+        </Box>
+      )}
+
+      {/* WeChat Work payment: only show WeChat Work option, no switching allowed */}
+      {payment === BillPayWayEnum.wecom ? (
+        <Flex justifyContent="center" mt={6}>
+          <Button
+            flex={1}
+            h={10}
+            color={'myGray.900'}
+            leftIcon={<MyIcon name={'common/wecom'} />}
+            variant={'solid'}
+            isDisabled
           >
-            <MyIcon name={'common/info'} w={4} h={4} />
-            {t('common:pay.noclose')}
-          </Box>
-        )}
-
-        {/* WeChat Work payment: only show WeChat Work option, no switching allowed */}
-        {payment === BillPayWayEnum.wecom ? (
-          <Flex justifyContent="center" mt={6}>
+            {t('common:support.wallet.bill.payWay.wecom')}
+          </Button>
+        </Flex>
+      ) : (
+        <Flex justifyContent="center" gap={3} mt={6}>
+          {isWxConfigured && (
+            <Button
+              flex={1}
+              h={10}
+              onClick={() => handlePaymentChange(BillPayWayEnum.wx)}
+              color={'myGray.900'}
+              leftIcon={<MyIcon name={'common/wechat'} />}
+              sx={getPaymentButtonStyles(selectedPayment === BillPayWayEnum.wx).baseStyle}
+            >
+              {t('common:pay.wx_payment')}
+            </Button>
+          )}
+          {isAlipayConfigured && (
             <Button
               flex={1}
               h={10}
               color={'myGray.900'}
-              leftIcon={<MyIcon name={'common/wecom'} />}
-              variant={'solid'}
-              isDisabled
+              onClick={() => handlePaymentChange(BillPayWayEnum.alipay)}
+              leftIcon={<MyIcon name={'common/alipay'} />}
+              sx={getPaymentButtonStyles(selectedPayment === BillPayWayEnum.alipay).baseStyle}
             >
-              {t('common:support.wallet.bill.payWay.wecom')}
+              {t('common:pay_alipay_payment')}
             </Button>
-          </Flex>
-        ) : (
-          <Flex justifyContent="center" gap={3} mt={6}>
-            {isWxConfigured && (
-              <Button
-                flex={1}
-                h={10}
-                onClick={() => handlePaymentChange(BillPayWayEnum.wx)}
-                color={'myGray.900'}
-                leftIcon={<MyIcon name={'common/wechat'} />}
-                sx={getPaymentButtonStyles(selectedPayment === BillPayWayEnum.wx).baseStyle}
-              >
-                {t('common:pay.wx_payment')}
-              </Button>
-            )}
-            {isAlipayConfigured && (
-              <Button
-                flex={1}
-                h={10}
-                color={'myGray.900'}
-                onClick={() => handlePaymentChange(BillPayWayEnum.alipay)}
-                leftIcon={<MyIcon name={'common/alipay'} />}
-                sx={getPaymentButtonStyles(selectedPayment === BillPayWayEnum.alipay).baseStyle}
-              >
-                {t('common:pay_alipay_payment')}
-              </Button>
-            )}
-            {isBankConfigured && (
-              <Button
-                flex={1}
-                h={10}
-                color={'myGray.900'}
-                onClick={() => handlePaymentChange(BillPayWayEnum.bank)}
-                sx={getPaymentButtonStyles(selectedPayment === BillPayWayEnum.bank).baseStyle}
-              >
-                {t('common:pay_corporate_payment')}
-              </Button>
-            )}
-          </Flex>
-        )}
+          )}
+          {isBankConfigured && (
+            <Button
+              flex={1}
+              h={10}
+              color={'myGray.900'}
+              onClick={() => handlePaymentChange(BillPayWayEnum.bank)}
+              sx={getPaymentButtonStyles(selectedPayment === BillPayWayEnum.bank).baseStyle}
+            >
+              {t('common:pay_corporate_payment')}
+            </Button>
+          )}
+        </Flex>
+      )}
 
-        {feConfigs.payFormUrl && (
-          <Box mt={4} textAlign="center" fontSize="sm">
-            <Trans
-              i18nKey={i18nT('common:pay.payment_form_tip')}
-              components={{
-                payLink: <Link href={feConfigs.payFormUrl} target="_blank" color="primary.600" />
-              }}
-            />
-          </Box>
-        )}
-      </ModalBody>
+      {feConfigs.payFormUrl && (
+        <Box mt={4} textAlign="center" fontSize="sm">
+          <Trans
+            i18nKey={i18nT('common:pay.payment_form_tip')}
+            components={{
+              payLink: <Link href={feConfigs.payFormUrl} target="_blank" color="primary.600" />
+            }}
+          />
+        </Box>
+      )}
     </MyModal>
   );
 };

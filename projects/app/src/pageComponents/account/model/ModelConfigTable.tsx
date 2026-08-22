@@ -1,6 +1,7 @@
 import {
   Box,
   Flex,
+  Grid,
   HStack,
   Table,
   TableContainer,
@@ -51,6 +52,8 @@ import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConf
 import PriceTiersLabel from '@/components/core/ai/PriceTiersLabel';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 import ModelCapabilityTags from '@/components/core/ai/ModelCapabilityTags';
+import { accountContentScrollStyles, accountPageRootStyles } from '@/pageComponents/account/styles';
+import ModelTabHeader from './ModelTabHeader';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 const ModelEditModal = dynamic(() => import('./AddModelBox').then((mod) => mod.ModelEditModal));
@@ -314,161 +317,199 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   return (
     <>
       {isRoot && (
-        <Flex alignItems={'center'}>
-          {Tab}
-          <Box flex={1} />
-          <Button variant={'whiteBase'} mr={2} onClick={onOpenDefaultModel}>
-            {t('account_model:model.default_model')}
-          </Button>
-          <Button variant={'whiteBase'} mr={2} onClick={onOpenJsonConfig}>
-            {t('account_model:model.json_config')}
-          </Button>
-          <AddModelButton onCreate={onCreateModel} />
-        </Flex>
+        <ModelTabHeader Tab={Tab}>
+          <Grid
+            w={['100%', 'auto']}
+            templateColumns={['repeat(3, minmax(0, 1fr))', 'repeat(3, auto)']}
+            gap={2}
+          >
+            <Button
+              w={['100%', 'auto']}
+              minW={0}
+              px={[2, 4]}
+              variant={'whiteBase'}
+              onClick={onOpenDefaultModel}
+            >
+              {t('account_model:model.default_model')}
+            </Button>
+            <Button
+              w={['100%', 'auto']}
+              minW={0}
+              px={[2, 4]}
+              variant={'whiteBase'}
+              onClick={onOpenJsonConfig}
+            >
+              {t('account_model:model.json_config')}
+            </Button>
+            <AddModelButton
+              w={['100%', 'auto']}
+              minW={0}
+              px={[2, 4]}
+              buttonBoxProps={{ w: ['100%', 'fit-content'] }}
+              onCreate={onCreateModel}
+            />
+          </Grid>
+        </ModelTabHeader>
       )}
-      <MyBox flex={'1 0 0'} isLoading={isLoading}>
-        <Flex flexDirection={'column'} h={'100%'}>
-          <Flex>
-            <HStack flexShrink={0}>
-              <Box fontSize={'sm'} color={'myGray.900'}>
+      <Box display={'flex'} flex={'1 0 0'} h={0} minH={0} flexDirection={'column'}>
+        <Flex {...accountPageRootStyles} h={'100%'} flexDirection={'column'}>
+          <Flex
+            px={6}
+            flexDirection={['column', 'row']}
+            gap={[3, 6]}
+            alignItems={['stretch', 'flex-start']}
+          >
+            <Flex flexShrink={0} w={['100%', 'auto']} alignItems={'center'} gap={2}>
+              <Box w={['84px', 'auto']} flexShrink={0} fontSize={'sm'} color={'myGray.900'}>
                 {t('common:model.provider')}
               </Box>
-              <MySelect
-                w={'200px'}
-                bg={'myGray.50'}
-                value={provider}
-                onChange={setProvider}
-                list={filterProviderList}
-              />
-            </HStack>
-            <HStack flexShrink={0} ml={6}>
-              <Box fontSize={'sm'} color={'myGray.900'}>
+              <Box flex={1} minW={0} w={['100%', '160px']}>
+                <MySelect
+                  w={'100%'}
+                  bg={'myGray.25'}
+                  value={provider}
+                  onChange={setProvider}
+                  list={filterProviderList}
+                />
+              </Box>
+            </Flex>
+            <Flex flexShrink={0} w={['100%', 'auto']} alignItems={'center'} gap={2}>
+              <Box w={['84px', 'auto']} flexShrink={0} fontSize={'sm'} color={'myGray.900'}>
                 {t('common:model.model_type')}
               </Box>
-              <MySelect
-                w={'150px'}
-                bg={'myGray.50'}
-                value={modelType}
-                onChange={setModelType}
-                list={selectModelTypeList}
-              />
-            </HStack>
-            <Box flex={1} />
-            <Box flex={'0 0 250px'}>
+              <Box flex={1} minW={0} w={['100%', '160px']}>
+                <MySelect
+                  w={'100%'}
+                  bg={'myGray.25'}
+                  value={modelType}
+                  onChange={setModelType}
+                  list={selectModelTypeList}
+                />
+              </Box>
+            </Flex>
+            <Box
+              ml={[0, 'auto']}
+              w={'100%'}
+              maxW={['100%', '200px']}
+              flex={['none', '0 0 200px']}
+              flexShrink={0}
+            >
               <SearchInput
-                bg={'myGray.50'}
+                bg={'myGray.25'}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t('common:model.search_name_placeholder')}
               />
             </Box>
           </Flex>
-          <TableContainer mt={5} flex={'1 0 0'} h={0} overflowY={'auto'}>
-            <Table>
-              <Thead>
-                <Tr color={'myGray.600'}>
-                  <Th fontSize={'xs'}>
-                    <HStack
-                      spacing={1}
-                      cursor={'pointer'}
-                      onClick={() => setShowModelId(!showModelId)}
-                    >
-                      <Box>
-                        {showModelId ? t('account_model:model.model_id') : t('common:model.name')}
+          <MyBox {...accountContentScrollStyles} flex={'1 0 0'} h={0} mt={5} isLoading={isLoading}>
+            <TableContainer h={'100%'} minH={0} overflowY={['visible', 'auto']} px={6}>
+              <Table>
+                <Thead>
+                  <Tr color={'myGray.600'}>
+                    <Th fontSize={'xs'}>
+                      <HStack
+                        spacing={1}
+                        cursor={'pointer'}
+                        onClick={() => setShowModelId(!showModelId)}
+                      >
+                        <Box>
+                          {showModelId ? t('account_model:model.model_id') : t('common:model.name')}
+                        </Box>
+                        <MyIcon name={'modal/changePer'} w={'1rem'} />
+                      </HStack>
+                    </Th>
+                    <Th fontSize={'xs'}>{t('common:model.model_type')}</Th>
+                    {feConfigs?.isPlus && <Th fontSize={'xs'}>{t('common:model.billing')}</Th>}
+                    <Th fontSize={'xs'}>
+                      <Box
+                        cursor={'pointer'}
+                        onClick={() => setShowActive(!showActive)}
+                        color={showActive ? 'primary.600' : 'myGray.600'}
+                      >
+                        {t('account_model:model.active')}({activeModelLength})
                       </Box>
-                      <MyIcon name={'modal/changePer'} w={'1rem'} />
-                    </HStack>
-                  </Th>
-                  <Th fontSize={'xs'}>{t('common:model.model_type')}</Th>
-                  {feConfigs?.isPlus && <Th fontSize={'xs'}>{t('common:model.billing')}</Th>}
-                  <Th fontSize={'xs'}>
-                    <Box
-                      cursor={'pointer'}
-                      onClick={() => setShowActive(!showActive)}
-                      color={showActive ? 'primary.600' : 'myGray.600'}
-                    >
-                      {t('account_model:model.active')}({activeModelLength})
-                    </Box>
-                  </Th>
-                  <Th fontSize={'xs'}></Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {modelList.map((item) => (
-                  <Tr key={item.model} _hover={{ bg: 'myGray.50' }}>
-                    <Td fontSize={'sm'}>
-                      <HStack>
-                        <Avatar src={item.avatar} w={'1.2rem'} borderRadius={'50%'} />
-                        <Flex alignItems={'center'} gap={1} minW={0}>
-                          <CopyBox
-                            value={showModelId ? item.model : item.name}
-                            color={'myGray.900'}
-                            fontWeight={'500'}
-                          >
-                            {showModelId ? item.model : item.name}
-                          </CopyBox>
-                          {item.testMode && <TestModeBetaTag />}
-                        </Flex>
-                      </HStack>
-                      <ModelCapabilityTags
-                        mt={2}
-                        contextToken={item.contextToken}
-                        showVision={!!item.vision}
-                        showVideo={!!item.video}
-                        showAudio={!!item.audio}
-                        showReasoning={!!item.reasoning}
-                      />
-                    </Td>
-                    <Td>
-                      <MyTag colorSchema={item.tagColor as any}>{item.typeLabel}</MyTag>
-                    </Td>
-                    {feConfigs?.isPlus && <Td fontSize={'sm'}>{item.priceLabel}</Td>}
-                    <Td fontSize={'sm'}>
-                      <Switch
-                        size={'sm'}
-                        isChecked={item.isActive}
-                        onChange={(e) =>
-                          updateModel({
-                            model: item.model,
-                            metadata: { isActive: e.target.checked }
-                          })
-                        }
-                        colorScheme={'myBlue'}
-                      />
-                    </Td>
-                    <Td>
-                      <HStack>
-                        <MyIconButton
-                          icon={'core/chat/sendLight'}
-                          tip={t('account_model:model.test_model')}
-                          onClick={() => onTestModel({ model: item.model })}
-                        />
-                        <MyIconButton
-                          icon={'common/settingLight'}
-                          tip={t('account_model:model.edit_model')}
-                          onClick={() => onEditModel(item.model)}
-                        />
-                        {item.isCustom && (
-                          <PopoverConfirm
-                            Trigger={
-                              <Box>
-                                <MyIconButton icon={'delete'} hoverColor={'red.500'} />
-                              </Box>
-                            }
-                            type="delete"
-                            content={t('account_model:model.delete_model_confirm')}
-                            onConfirm={() => deleteModel({ model: item.model })}
-                          />
-                        )}
-                      </HStack>
-                    </Td>
+                    </Th>
+                    <Th fontSize={'xs'}></Th>
                   </Tr>
-                ))}
-              </Tbody>
-            </Table>
-          </TableContainer>
+                </Thead>
+                <Tbody>
+                  {modelList.map((item) => (
+                    <Tr key={item.model} _hover={{ bg: 'myGray.50' }}>
+                      <Td fontSize={'sm'}>
+                        <HStack>
+                          <Avatar src={item.avatar} w={'1.2rem'} borderRadius={'50%'} />
+                          <Flex alignItems={'center'} gap={1} minW={0}>
+                            <CopyBox
+                              value={showModelId ? item.model : item.name}
+                              color={'myGray.900'}
+                              fontWeight={'500'}
+                            >
+                              {showModelId ? item.model : item.name}
+                            </CopyBox>
+                            {item.testMode && <TestModeBetaTag />}
+                          </Flex>
+                        </HStack>
+                        <ModelCapabilityTags
+                          mt={2}
+                          contextToken={item.contextToken}
+                          showVision={!!item.vision}
+                          showVideo={!!item.video}
+                          showAudio={!!item.audio}
+                          showReasoning={!!item.reasoning}
+                        />
+                      </Td>
+                      <Td>
+                        <MyTag colorSchema={item.tagColor as any}>{item.typeLabel}</MyTag>
+                      </Td>
+                      {feConfigs?.isPlus && <Td fontSize={'sm'}>{item.priceLabel}</Td>}
+                      <Td fontSize={'sm'}>
+                        <Switch
+                          size={'sm'}
+                          isChecked={item.isActive}
+                          onChange={(e) =>
+                            updateModel({
+                              model: item.model,
+                              metadata: { isActive: e.target.checked }
+                            })
+                          }
+                          colorScheme={'myBlue'}
+                        />
+                      </Td>
+                      <Td>
+                        <HStack>
+                          <MyIconButton
+                            icon={'core/chat/sendLight'}
+                            tip={t('account_model:model.test_model')}
+                            onClick={() => onTestModel({ model: item.model })}
+                          />
+                          <MyIconButton
+                            icon={'common/settingLight'}
+                            tip={t('account_model:model.edit_model')}
+                            onClick={() => onEditModel(item.model)}
+                          />
+                          {item.isCustom && (
+                            <PopoverConfirm
+                              Trigger={
+                                <Box>
+                                  <MyIconButton icon={'delete'} hoverColor={'red.500'} />
+                                </Box>
+                              }
+                              type="delete"
+                              content={t('account_model:model.delete_model_confirm')}
+                              onConfirm={() => deleteModel({ model: item.model })}
+                            />
+                          )}
+                        </HStack>
+                      </Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            </TableContainer>
+          </MyBox>
         </Flex>
-      </MyBox>
+      </Box>
 
       {!!editModelData && (
         <ModelEditModal

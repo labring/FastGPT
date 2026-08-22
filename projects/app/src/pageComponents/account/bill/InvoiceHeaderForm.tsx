@@ -16,6 +16,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { type UseFormReturn, useForm } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { accountPageRootStyles } from '@/pageComponents/account/styles';
 
 export const InvoiceHeaderSingleForm = ({
   inputForm,
@@ -31,13 +32,13 @@ export const InvoiceHeaderSingleForm = ({
 
   const styles: InputProps = {
     bg: 'myGray.50',
-    w: '21.25rem'
+    w: ['100%', '21.25rem']
   };
 
   return (
     <>
       <Flex
-        w={['auto', '36rem']}
+        w={['100%', '36rem']}
         flexDir={'column'}
         gap={'1rem'}
         fontWeight={'500'}
@@ -138,7 +139,7 @@ export const InvoiceHeaderSingleForm = ({
             onChange={(e) => {
               inputForm.setValue('needSpecialInvoice', e === 'true');
             }}
-            w={'21.25rem'}
+            w={['100%', '21.25rem']}
           >
             <HStack h={'2rem'}>
               <Radio value="true" pr={'1rem'}>
@@ -230,11 +231,18 @@ const InvoiceHeaderForm = () => {
 
   return (
     <>
-      <MyBox isLoading={isLoading} pt={'1rem'}>
-        <Flex w={'100%'} overflow={'auto'} justify={'center'} flexDir={'column'} align={'center'}>
+      <MyBox
+        {...accountPageRootStyles}
+        isLoading={isLoading}
+        px={[2, 6]}
+        pt={'1rem'}
+        overflowY={['visible', 'auto']}
+      >
+        <Flex w={'100%'} justify={'center'} flexDir={'column'} align={'center'}>
           <InvoiceHeaderSingleForm inputForm={inputForm} />
           <Flex w={'100%'} justify={'center'} mt={'3rem'}>
             <Button
+              w={['100%', 'auto']}
               variant={'primary'}
               px="0"
               onClick={inputForm.handleSubmit(onUpdateHeader)}

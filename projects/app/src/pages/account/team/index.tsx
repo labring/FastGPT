@@ -1,7 +1,6 @@
 'use client';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { Box, Flex } from '@chakra-ui/react';
-import Icon from '@fastgpt/web/components/common/Icon';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import TeamSelector from '@/pageComponents/account/TeamSelector';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -15,6 +14,7 @@ import { TeamContext, TeamModalContextProvider } from '@/pageComponents/account/
 import dynamic from 'next/dynamic';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { accountPageRootStyles, accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const MemberTable = dynamic(() => import('@/pageComponents/account/team/MemberTable'));
 const PermissionManage = dynamic(
@@ -68,6 +68,9 @@ const Team = () => {
   const Tabs = useMemo(
     () => (
       <FillRowTabs
+        w={['100%', 'auto']}
+        size={'sm'}
+        scrollPositionKey={'account-team-tabs'}
         list={[
           { label: t('account_team:member'), value: TeamTabEnum.member },
           { label: t('account_team:org'), value: TeamTabEnum.org },
@@ -77,7 +80,6 @@ const Team = () => {
             ? [{ label: t('account_team:audit_log'), value: TeamTabEnum.audit }]
             : [])
         ]}
-        px={'1rem'}
         value={teamTab}
         onChange={(e) => {
           if (e === TeamTabEnum.audit && planContent && !planContent?.auditLogStoreDuration) {
@@ -101,29 +103,25 @@ const Team = () => {
 
   return (
     <AccountContainer>
-      <Flex h={'100%'} flexDirection={'column'}>
+      <Flex {...accountPageRootStyles} flexDirection={'column'}>
         {/* header */}
         <Flex
           w={'100%'}
-          h={'3.5rem'}
-          px={'1.56rem'}
-          py={'0.56rem'}
+          h={'64px'}
+          flexShrink={0}
+          px={6}
           borderBottom={'1px solid'}
           borderColor={'myGray.200'}
-          bg={'myGray.25'}
+          bg={'white'}
           align={'center'}
-          gap={6}
           justify={'space-between'}
         >
           <Flex align={'center'}>
-            <Flex gap={2} color={'myGray.900'}>
-              <Icon name="support/user/usersLight" w={'1.25rem'} h={'1.25rem'} />
-              <Box fontWeight={'500'} fontSize={'1rem'}>
-                {t('account:team')}
-              </Box>
-            </Flex>
-            <Flex align={'center'} ml={6}>
-              <TeamSelector height={'28px'} />
+            <Box as={'h1'} display={['none', 'block']} {...accountTitleTextStyles}>
+              {t('account:team')}
+            </Box>
+            <Flex align={'center'} ml={[0, 6]}>
+              <TeamSelector height={'34px'} />
             </Flex>
             {userInfo?.team?.role === TeamMemberRoleEnum.owner && (
               <Flex align={'center'} justify={'center'} ml={2} p={'0.44rem'}>
@@ -164,12 +162,12 @@ const Team = () => {
 
         {/* table */}
         <Box
-          py={'1.5rem'}
-          px={'2rem'}
-          flex={'1 0 0'}
+          py={6}
+          px={teamTab === TeamTabEnum.org ? 6 : 0}
+          flex={['0 0 auto', '1 0 0']}
           display={'flex'}
           flexDirection={'column'}
-          overflow={'auto'}
+          overflow={teamTab === TeamTabEnum.org ? ['visible', 'auto'] : ['visible', 'hidden']}
         >
           {teamTab === TeamTabEnum.member && <MemberTable Tabs={Tabs} />}
           {teamTab === TeamTabEnum.org && <OrgManage Tabs={Tabs} />}

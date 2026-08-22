@@ -222,6 +222,7 @@ const ToolkitMarketplace = () => {
       }),
     {
       type: 'scroll',
+      pageSizeCacheKey: 'marketplace-tools',
       throttleWait: 500,
       refreshDeps: [searchText, selectedTagIds, selectedSource]
     }

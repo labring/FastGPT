@@ -6,7 +6,7 @@
   "app_name": "앱 이름",
   "auto_index": "자동 인덱스",
   "billing_module": "차감 노드",
-  "check_left_points": "잔여 포인트 확인",
+  "plan_usage_status": "요금제 사용 현황",
   "chart_library_load_failed": "차트 라이브러리를 불러오지 못했습니다",
   "chart_load_failed": "차트를 불러오지 못했습니다",
   "llm_compress_text": "파일 내용 압축",
