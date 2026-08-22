@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { Box, Flex } from '@chakra-ui/react';
 import ModelTable from '@/components/core/ai/ModelTable';
@@ -20,9 +20,45 @@ type TabType = 'model' | 'config' | 'channel' | 'channel_log' | 'account_model';
 
 const ModelProvider = () => {
   const { t } = useClientTranslation(['account_model', 'account']);
-  const { feConfigs } = useSystemStore();
+  const { feConfigs, initd } = useSystemStore();
+  const { userInfo } = useUserStore();
   const router = useRouter();
-  const { modelTab = 'model' } = router.query as { modelTab?: TabType };
+  const isRoot = userInfo?.username === 'root';
+
+  const modelTabList = useMemo<{ label: string; value: TabType }[]>(
+    () => [
+      { label: t('account_model:active_model'), value: 'model' },
+      ...(isRoot ? [{ label: t('account_model:config_model'), value: 'config' as const }] : []),
+      ...(isRoot && feConfigs.show_aiproxy
+        ? [
+            { label: t('account_model:channel'), value: 'channel' as const },
+            { label: t('account_model:log'), value: 'channel_log' as const },
+            { label: t('account_model:monitoring'), value: 'account_model' as const }
+          ]
+        : [])
+    ],
+    [feConfigs.show_aiproxy, isRoot, t]
+  );
+  const queryModelTab = router.query.modelTab;
+  const modelTab = modelTabList.find((item) => item.value === queryModelTab)?.value ?? 'model';
+
+  useEffect(() => {
+    if (!router.isReady || !initd || !userInfo || queryModelTab === undefined) return;
+    if (typeof queryModelTab === 'string' && queryModelTab === modelTab) return;
+
+    // URL 可能来自旧书签或手动输入，统一回退以避免挂载无权限或已关闭的管理页面。
+    void router.replace(
+      {
+        pathname: router.pathname,
+        query: {
+          ...router.query,
+          modelTab: 'model'
+        }
+      },
+      undefined,
+      { shallow: true }
+    );
+  }, [initd, modelTab, queryModelTab, router, userInfo]);
 
   const Tab = useMemo(() => {
     return (
@@ -30,30 +66,24 @@ const ModelProvider = () => {
         w={['100%', 'auto']}
         size={'sm'}
         scrollPositionKey={'account-model-tabs'}
-        list={[
-          { label: t('account_model:active_model'), value: 'model' },
-          { label: t('account_model:config_model'), value: 'config' },
-          // @ts-ignore
-          ...(feConfigs?.show_aiproxy
-            ? [
-                { label: t('account_model:channel'), value: 'channel' },
-                { label: t('account_model:log'), value: 'channel_log' },
-                { label: t('account_model:monitoring'), value: 'account_model' }
-              ]
-            : [])
-        ]}
+        list={modelTabList}
         value={modelTab}
         onChange={(value) => {
-          router.replace({
-            query: {
-              ...router.query,
-              modelTab: value
-            }
-          });
+          void router.replace(
+            {
+              pathname: router.pathname,
+              query: {
+                ...router.query,
+                modelTab: value
+              }
+            },
+            undefined,
+            { shallow: true }
+          );
         }}
       />
     );
-  }, [feConfigs.show_aiproxy, modelTab, router, t]);
+  }, [modelTab, modelTabList, router]);
 
   return (
     <AccountContainer>

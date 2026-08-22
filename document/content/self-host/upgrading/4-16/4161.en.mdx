@@ -1,8 +1,10 @@
 ---
 title: 'V4.16.1'
 description: 'FastGPT V4.16.1 release notes'
+releaseTime: '2026-08-22'
 upgradeTags:
-  - IN PROGRESS
+  - CONFIG
+  - MIGRATION
 ---
 
 ## 📦 Upgrade guide
@@ -68,6 +70,7 @@ curl -X POST 'https://你的域名/api/admin/4161/initToolJsonSchemaStorage' \
 1. Fixed Workflow global variable configuration overflowing when field names are too long.
 2. Fixed AgentV2 calling a child Workflow without disabling streaming output within the Workflow.
 3. Fixed an issue where a team invitation link could be used to accept the same invitation repeatedly.
+4. Fixed the date picker in Usage records showing one extra day.
 
 ## 🛠️ Code Improvements
 

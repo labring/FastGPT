@@ -40,7 +40,9 @@ const scrollPaginationContentToTop = (target?: HTMLElement | null) => {
   let currentElement: HTMLElement | null = target;
   while (currentElement) {
     const overflowY = window.getComputedStyle(currentElement).overflowY;
-    if (['auto', 'scroll', 'overlay'].includes(overflowY)) {
+    const hasVerticalOverflow = currentElement.scrollHeight > currentElement.clientHeight + 1;
+
+    if (['auto', 'scroll', 'overlay'].includes(overflowY) && hasVerticalOverflow) {
       currentElement.scrollTop = 0;
       return;
     }
