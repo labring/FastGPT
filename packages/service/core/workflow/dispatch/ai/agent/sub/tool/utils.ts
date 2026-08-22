@@ -638,6 +638,14 @@ export const getAgentRuntimeTools = async ({
           };
         }
 
+        const legacyDefaultMode =
+          tool.inputs === undefined
+            ? isSystemOrCommercialToolId(tool.id)
+              ? ('allAgentGenerated' as const)
+              : toolNode.flowNodeType === FlowNodeTypeEnum.pluginModule
+                ? ('toolDescription' as const)
+                : undefined
+            : undefined;
         const savedInputConfigMap = new Map(
           (tool.inputs ?? []).flatMap((input) => {
             const result = AgentToolInputConfigSchema.safeParse(input);
@@ -647,7 +655,8 @@ export const getAgentRuntimeTools = async ({
         toolNode.inputs = toolNode.inputs.map((input) =>
           initAgentToolInputType({
             input,
-            mode: savedInputConfigMap.get(input.key)?.mode
+            mode: savedInputConfigMap.get(input.key)?.mode,
+            legacyDefaultMode
           })
         );
         const configuredParams = filterToolConfiguredParams({

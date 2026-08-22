@@ -314,6 +314,8 @@ export const getToolInputDisplayRenderTypeList = ({
   );
 };
 
+export type AgentToolLegacyInputMode = 'allAgentGenerated' | 'toolDescription';
+
 /**
  * 将 Agent 专用的 key + mode 配置合并回最新工具定义。
  * 工具定义负责控件类型和推荐默认值，mode 只表达用户最终选择的输入来源；
@@ -321,16 +323,23 @@ export const getToolInputDisplayRenderTypeList = ({
  */
 export const initAgentToolInputType = <T extends FlowNodeInputItemType>({
   input,
-  mode
+  mode,
+  legacyDefaultMode
 }: {
   input: T;
   mode?: AgentToolInputModeEnum;
+  legacyDefaultMode?: AgentToolLegacyInputMode;
 }): T => {
   const inputWithoutSelection = {
     ...input,
     selectedType: undefined
   } as T;
-  const shouldUseAgentGenerated = mode === AgentToolInputModeEnum.agentGenerated;
+  const shouldUseLegacyAgentGenerated =
+    mode === undefined &&
+    (legacyDefaultMode === 'allAgentGenerated' ||
+      (legacyDefaultMode === 'toolDescription' && !!input.toolDescription));
+  const shouldUseAgentGenerated =
+    mode === AgentToolInputModeEnum.agentGenerated || shouldUseLegacyAgentGenerated;
 
   if (shouldUseAgentGenerated && canInputBeAgentGenerated(inputWithoutSelection)) {
     const renderTypeList = inputWithoutSelection.renderTypeList.includes(

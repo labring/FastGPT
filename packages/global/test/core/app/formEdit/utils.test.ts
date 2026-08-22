@@ -999,6 +999,26 @@ describe('getToolConfigStatus', () => {
 });
 
 describe('agent generated tool input helpers', () => {
+  it('restores legacy default modes when saved mode is absent', () => {
+    const input = createMockInput({
+      renderTypeList: [FlowNodeInputTypeEnum.input],
+      toolDescription: 'Legacy parameter'
+    });
+
+    expect(
+      initAgentToolInputType({ input, legacyDefaultMode: 'allAgentGenerated' }).selectedType
+    ).toBe(FlowNodeInputTypeEnum.agentGenerated);
+    expect(
+      initAgentToolInputType({ input, legacyDefaultMode: 'toolDescription' }).selectedType
+    ).toBe(FlowNodeInputTypeEnum.agentGenerated);
+    expect(
+      initAgentToolInputType({
+        input: { ...input, toolDescription: undefined },
+        legacyDefaultMode: 'toolDescription'
+      }).selectedType
+    ).toBe(FlowNodeInputTypeEnum.input);
+  });
+
   it.each([
     FlowNodeInputTypeEnum.hidden,
     FlowNodeInputTypeEnum.fileSelect,
