@@ -1,7 +1,8 @@
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '../../workflow/constants';
-import { FlowNodeInputTypeEnum } from '../../workflow/node/constant';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../workflow/node/constant';
 import type { FlowNodeInputItemType } from '../../workflow/type/io';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
+import type { CanonicalFlowNodeInputItem } from '../../workflow/migration';
 import { getSelectedInputRenderType } from '../../workflow/utils';
 import type { SelectedToolItemType } from './type';
 import { AgentToolInputModeEnum } from '../tool/constants';
@@ -53,17 +54,15 @@ const unsupportedToolInputRenderTypes = new Set<FlowNodeInputTypeEnum>([
 type InputRenderTypeState = {
   renderTypeList?: FlowNodeInputItemType['renderTypeList'];
   selectedType?: FlowNodeInputItemType['selectedType'];
-  selectedTypeIndex?: FlowNodeInputItemType['selectedTypeIndex'];
 };
 
-type SavedToolInputTypeState = InputRenderTypeState &
-  Pick<Partial<FlowNodeInputItemType>, 'isToolParam' | 'toolDescription'>;
+type SavedToolInputTypeState = InputRenderTypeState;
 
 type ToolInputTypeState = InputRenderTypeState &
   Pick<FlowNodeInputItemType, 'key' | 'renderTypeList'> &
   Pick<
     Partial<FlowNodeInputItemType>,
-    'isToolParam' | 'toolDescription' | 'list' | 'enums' | 'enum' | 'valueType'
+    'defaultToAgentGenerated' | 'toolDescription' | 'list' | 'enums' | 'enum' | 'valueType'
   >;
 
 type ToolInputDefaultModeOptions = {
@@ -74,7 +73,6 @@ type ToolInputDefaultModeOptions = {
 export type NormalizeFlowNodeInputTypeOptions = {
   isTool?: boolean;
   forceDefaultMode?: boolean;
-  allowLegacyToolDescriptionFallback?: boolean;
   deferDefaultSelection?: boolean;
 };
 
@@ -113,65 +111,25 @@ export const canInputBeAgentGenerated = (
 };
 
 /**
- * 恢复旧版工作流 HTTP 节点动态工具参数的默认来源。
+ * 归一当前节点输入的可选来源和默认选择。
  *
- * 旧编辑器只保存 canEdit 和 toolDescription；显式来源配置始终优先，避免覆盖用户手动选择。
- */
-export const normalizeLegacyWorkflowHttpToolInputsDefaultMode = <T extends FlowNodeInputItemType>(
-  inputs: T[]
-): T[] =>
-  inputs.map((input) => {
-    if (
-      input.canEdit !== true ||
-      !input.toolDescription ||
-      input.isToolParam !== undefined ||
-      input.selectedType !== undefined ||
-      !canInputBeAgentGenerated(input)
-    ) {
-      return input;
-    }
-
-    return {
-      ...input,
-      isToolParam: true
-    };
-  });
-
-/**
- * 将节点输入升级为 selectedType 协议。
- *
- * 显式 selectedType 优先；旧 selectedTypeIndex 仅在没有新字段时用于恢复选择。
  * 所有支持 AI 生成的输入都会补充 agentGenerated；工具上下文才允许选中该类型，
- * 并在没有明确选择时按 isToolParam 应用默认值。
- * 返回值始终移除 deprecated selectedTypeIndex，供画布兼容层和 runtime 边界共用。
+ * 并在没有明确选择时按 defaultToAgentGenerated 应用默认值。
  */
-export const normalizeFlowNodeInputType = <T extends FlowNodeInputItemType>(
+export const normalizeFlowNodeInputType = <T extends CanonicalFlowNodeInputItem>(
   input: T,
   {
     isTool = false,
     forceDefaultMode = false,
-    allowLegacyToolDescriptionFallback = false,
     deferDefaultSelection = false
   }: NormalizeFlowNodeInputTypeOptions = {}
 ): T => {
-  // 旧工作流导入数据可能没有 renderTypeList，兼容层不能在 detail/保存阶段中断。
   const inputRenderTypeList = input.renderTypeList ?? [];
-  const legacySelectedType =
-    input.selectedTypeIndex === undefined
-      ? undefined
-      : inputRenderTypeList[input.selectedTypeIndex];
-  const hasExplicitSelectedType = input.selectedType !== undefined;
   const recommendsAgentGenerated =
-    input.isToolParam === true ||
-    (input.isToolParam !== false && isTool && input.key === NodeInputKeyEnum.userChatInput) ||
-    (allowLegacyToolDescriptionFallback &&
-      input.isToolParam === undefined &&
-      !!input.toolDescription);
-  const isLegacyDefaultSelection =
-    !hasExplicitSelectedType &&
-    input.selectedTypeIndex === 0 &&
-    (isTool || deferDefaultSelection) &&
-    recommendsAgentGenerated;
+    input.defaultToAgentGenerated === true ||
+    (input.defaultToAgentGenerated !== false &&
+      isTool &&
+      input.key === NodeInputKeyEnum.userChatInput);
   const supportsAgentGenerated = canInputBeAgentGenerated(input);
   const canUseAgentGenerated = isTool && supportsAgentGenerated;
   const renderTypeList = Array.from(
@@ -183,13 +141,7 @@ export const normalizeFlowNodeInputType = <T extends FlowNodeInputItemType>(
     ])
   );
 
-  const savedSelectedType = forceDefaultMode
-    ? undefined
-    : hasExplicitSelectedType
-      ? input.selectedType
-      : isLegacyDefaultSelection
-        ? undefined
-        : legacySelectedType;
+  const savedSelectedType = forceDefaultMode ? undefined : input.selectedType;
   const shouldDefaultToAgentGenerated = canUseAgentGenerated && recommendsAgentGenerated;
   const defaultManualType = renderTypeList.find(
     (type) => type !== FlowNodeInputTypeEnum.agentGenerated
@@ -207,14 +159,11 @@ export const normalizeFlowNodeInputType = <T extends FlowNodeInputItemType>(
           ? FlowNodeInputTypeEnum.agentGenerated
           : defaultManualType;
 
-  const normalizedInput = {
+  return {
     ...input,
     renderTypeList,
     selectedType
-  };
-  delete normalizedInput.selectedTypeIndex;
-
-  return normalizedInput;
+  } as T;
 };
 
 /**
@@ -347,7 +296,8 @@ export type AgentToolLegacyInputMode = 'allAgentGenerated' | 'toolDescription';
 
 /**
  * 将 Agent 专用的 key + mode 配置合并回最新工具定义。
- * 工具定义负责控件类型和推荐默认值，mode 只表达用户最终选择的输入来源。
+ * 工具定义负责控件类型和推荐默认值，mode 只表达用户最终选择的输入来源；
+ * legacyDefaultMode 仅用于恢复未保存 inputs 的历史工具行为。
  */
 export const initAgentToolInputType = <T extends FlowNodeInputItemType>({
   input,
@@ -360,8 +310,7 @@ export const initAgentToolInputType = <T extends FlowNodeInputItemType>({
 }): T => {
   const inputWithoutSelection = {
     ...input,
-    selectedType: undefined,
-    selectedTypeIndex: undefined
+    selectedType: undefined
   } as T;
   const shouldUseLegacyAgentGenerated =
     mode === undefined &&
@@ -417,70 +366,61 @@ export const getAgentToolInputMode = (input: InputRenderTypeState) =>
     ? AgentToolInputModeEnum.agentGenerated
     : AgentToolInputModeEnum.manual;
 
+/** 将应用内完整 NodeIO 工具投影为 Agent 持久化所需的稀疏配置。 */
+export const serializeAgentTool = ({
+  tool,
+  maxHistories
+}: {
+  tool: SelectedToolItemType;
+  maxHistories?: number;
+}) => {
+  const config = tool.inputs.reduce<Record<string, unknown>>((acc, input) => {
+    if (input.key === NodeInputKeyEnum.forbidStream) return acc;
+    if (
+      maxHistories !== undefined &&
+      tool.flowNodeType === FlowNodeTypeEnum.appModule &&
+      input.key === NodeInputKeyEnum.history
+    ) {
+      acc[input.key] = maxHistories;
+      return acc;
+    }
+    acc[input.key] = input.value;
+    return acc;
+  }, {});
+
+  return {
+    id: tool.pluginId ?? tool.id,
+    version: tool.version,
+    source: tool.source,
+    toolConfig: tool.toolConfig,
+    inputs: tool.inputs.filter(canInputBeAgentGenerated).map((input) => ({
+      key: input.key,
+      mode: getAgentToolInputMode(input)
+    })),
+    config: filterToolConfiguredParams({ params: config, inputs: tool.inputs })
+  };
+};
+
 /**
- * 读取已保存工具配置里的最终选择。
- * 旧协议的 selectedTypeIndex: 0 只是旧默认项；当新 schema 声明该字段默认作为工具参数时，
- * 需要继续应用新的 Agent 生成默认值。显式 selectedType 和非零索引保留。
- * 更早的存量工作流没有 selectedType/isToolParam，旧 Agent V2 甚至没有保存 inputs；
- * 这些边界由调用方显式开启 toolDescription 兼容。
+ * 读取当前工具配置里的最终选择。
  */
 export const getSavedToolInputSelectedType = ({
   savedInput,
   defaultInput,
-  allowUserChatInputAgentGenerated = false,
-  allowLegacyToolDescriptionFallback = false
+  allowUserChatInputAgentGenerated = false
 }: {
   savedInput?: SavedToolInputTypeState;
   defaultInput: ToolInputTypeState;
   allowUserChatInputAgentGenerated?: boolean;
-  allowLegacyToolDescriptionFallback?: boolean;
 }) => {
-  if (!savedInput) {
-    if (
-      allowLegacyToolDescriptionFallback &&
-      defaultInput.isToolParam === undefined &&
-      defaultInput.toolDescription &&
-      canInputBeAgentGenerated(defaultInput)
-    ) {
-      return FlowNodeInputTypeEnum.agentGenerated;
-    }
-    return;
-  }
+  if (!savedInput) return;
   if (
     (allowUserChatInputAgentGenerated || defaultInput.key !== NodeInputKeyEnum.userChatInput) &&
     shouldUseAgentGeneratedOnly(defaultInput)
   ) {
     return FlowNodeInputTypeEnum.agentGenerated;
   }
-  const selectedType =
-    savedInput.selectedType ??
-    (savedInput.selectedTypeIndex === undefined
-      ? undefined
-      : getSelectedInputRenderType(savedInput));
-  if (savedInput.selectedType) return savedInput.selectedType;
-
-  // 上线 selectedType 前，已落库工具输入通过 toolDescription 表示最终由 AI 生成。
-  // renderTypeList 已含 agentGenerated 的过渡数据继续按索引读取，避免覆盖当时的手动选择。
-  const isLegacyToolDescriptionSelection =
-    allowLegacyToolDescriptionFallback &&
-    savedInput.isToolParam === undefined &&
-    !savedInput.renderTypeList?.includes(FlowNodeInputTypeEnum.agentGenerated);
-  if (isLegacyToolDescriptionSelection) {
-    if (savedInput.toolDescription && canInputBeAgentGenerated(defaultInput)) {
-      return FlowNodeInputTypeEnum.agentGenerated;
-    }
-    return getSelectedInputRenderType(savedInput);
-  }
-
-  if (savedInput.selectedTypeIndex === undefined) return;
-
-  const isLegacyDefaultManualType =
-    defaultInput.isToolParam === true &&
-    savedInput.selectedTypeIndex === 0 &&
-    !savedInput.renderTypeList?.includes(FlowNodeInputTypeEnum.agentGenerated) &&
-    selectedType !== FlowNodeInputTypeEnum.reference;
-
-  return isLegacyDefaultManualType ? undefined : selectedType;
+  return savedInput.selectedType;
 };
 
 /**
@@ -488,9 +428,9 @@ export const getSavedToolInputSelectedType = ({
  */
 export const stripToolInputDefaultMode = <T extends FlowNodeInputItemType>(
   input: T
-): Omit<T, 'isToolParam'> => {
+): Omit<T, 'defaultToAgentGenerated'> => {
   const inputWithoutDefaultMode = { ...input };
-  delete inputWithoutDefaultMode.isToolParam;
+  delete inputWithoutDefaultMode.defaultToAgentGenerated;
   return inputWithoutDefaultMode;
 };
 
@@ -540,7 +480,7 @@ export const filterToolConfiguredParams = ({
 
 /**
  * 工具首次加入工作流/Agent 时，将默认输入方式固化为 selectedType。
- * isToolParam 是插件/schema 声明的默认输入方式；toolDescription 只作为模型参数描述。
+ * defaultToAgentGenerated 只表达初始化默认输入方式；toolDescription 只作为模型参数描述。
  */
 export const initToolInputTypeByDefaultMode = <T extends FlowNodeInputItemType>(
   input: T,

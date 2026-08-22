@@ -19,28 +19,25 @@ export const getSelectedRenderTypeState = ({
   const nextRenderTypeList = renderTypeList.includes(selectedType)
     ? renderTypeList
     : [selectedType, ...renderTypeList];
-  const selectedTypeIndex = nextRenderTypeList.findIndex((item) => item === selectedType);
-
   return {
     renderTypeList: nextRenderTypeList,
-    selectedType,
-    selectedTypeIndex: selectedTypeIndex >= 0 ? selectedTypeIndex : 0
+    selectedType
   };
 };
 
 const NodeInputSelect = ({
   renderTypeList,
-  renderTypeIndex = 0,
+  selectedType,
   onChange,
   isAgentGeneratedMode = false
 }: {
   renderTypeList: string[];
-  renderTypeIndex?: number;
+  selectedType?: string;
   onChange: (e: string) => void;
   isAgentGeneratedMode?: boolean;
 }) => {
   const { t } = useTranslation();
-  const renderType = renderTypeList[renderTypeIndex];
+  const renderType = selectedType ?? renderTypeList[0];
   const theme = useTheme();
 
   const inputList = useMemo(

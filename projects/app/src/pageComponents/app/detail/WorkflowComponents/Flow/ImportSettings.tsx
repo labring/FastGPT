@@ -50,7 +50,7 @@ const ImportSettings = ({ onClose }: Props) => {
               return onClose();
             }
             try {
-              const workflowConfig = parseWorkflowImportConfig({
+              const workflowConfig = await parseWorkflowImportConfig({
                 config: JSON.parse(value),
                 appType:
                   appType === AppTypeEnum.workflowTool

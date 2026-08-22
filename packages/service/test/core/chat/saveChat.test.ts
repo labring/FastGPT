@@ -62,7 +62,7 @@ const createMockProps = (
     {
       nodeId: 'node-1',
       name: 'test-node',
-      flowNodeType: FlowNodeTypeEnum.systemConfig,
+      flowNodeType: FlowNodeTypeEnum.workflowStart,
       inputs: [],
       outputs: []
     }

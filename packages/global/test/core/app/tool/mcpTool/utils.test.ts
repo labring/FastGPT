@@ -90,7 +90,7 @@ describe('mcpTool utils', () => {
       expect(result.toolConfig?.mcpTool?.toolId).toBe(
         `${AppToolSourceEnum.mcp}-toolset-456/searchTool`
       );
-      expect(result.inputs[0]).toMatchObject({ isToolParam: true });
+      expect(result.inputs[0]).toMatchObject({ defaultToAgentGenerated: true });
     });
 
     it('should create tool runtime node with custom avatar', () => {

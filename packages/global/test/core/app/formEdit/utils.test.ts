@@ -7,13 +7,12 @@ import {
   checkNeedsUserConfiguration,
   filterAgentGeneratedToolParams,
   filterToolConfiguredParams,
-  getSavedToolInputSelectedType,
   getToolInputDisplayRenderTypeList,
   getToolInputManualRenderType,
   getToolConfigStatus,
+  initAgentToolInputType,
   initToolInputTypeByDefaultMode,
   isAgentGeneratedToolInput,
-  normalizeLegacyWorkflowHttpToolInputsDefaultMode,
   normalizeFlowNodeInputType,
   stripToolInputDefaultMode
 } from '@fastgpt/global/core/app/formEdit/utils';
@@ -949,55 +948,24 @@ describe('getToolConfigStatus', () => {
 });
 
 describe('agent generated tool input helpers', () => {
-  it('should restore only legacy editable HTTP tool params', () => {
-    const legacyInput = createMockInput({
-      canEdit: true,
-      toolDescription: 'Generated query',
-      renderTypeList: [FlowNodeInputTypeEnum.reference]
-    });
-    const explicitManualInput = createMockInput({
-      key: 'manual',
-      canEdit: true,
-      toolDescription: 'Manual query',
-      isToolParam: false
-    });
-    const selectedManualInput = createMockInput({
-      key: 'selected-manual',
-      canEdit: true,
-      toolDescription: 'Selected manual query',
-      selectedType: FlowNodeInputTypeEnum.reference
-    });
-    const staticInput = createMockInput({
-      key: 'static',
-      toolDescription: 'Static input'
-    });
-    const emptyDescriptionInput = createMockInput({
-      key: 'empty-description',
-      canEdit: true,
-      toolDescription: ''
-    });
-    const unsafeInput = createMockInput({
-      key: 'unsafe',
-      canEdit: true,
-      toolDescription: 'Secret input',
-      renderTypeList: [FlowNodeInputTypeEnum.password]
+  it('restores legacy default modes when saved mode is absent', () => {
+    const input = createMockInput({
+      renderTypeList: [FlowNodeInputTypeEnum.input],
+      toolDescription: 'Legacy parameter'
     });
 
-    const result = normalizeLegacyWorkflowHttpToolInputsDefaultMode([
-      legacyInput,
-      explicitManualInput,
-      selectedManualInput,
-      staticInput,
-      emptyDescriptionInput,
-      unsafeInput
-    ]);
-
-    expect(result[0]).toMatchObject({ isToolParam: true });
-    expect(result[1]).toBe(explicitManualInput);
-    expect(result[2]).toBe(selectedManualInput);
-    expect(result[3]).toBe(staticInput);
-    expect(result[4]).toBe(emptyDescriptionInput);
-    expect(result[5]).toBe(unsafeInput);
+    expect(
+      initAgentToolInputType({ input, legacyDefaultMode: 'allAgentGenerated' }).selectedType
+    ).toBe(FlowNodeInputTypeEnum.agentGenerated);
+    expect(
+      initAgentToolInputType({ input, legacyDefaultMode: 'toolDescription' }).selectedType
+    ).toBe(FlowNodeInputTypeEnum.agentGenerated);
+    expect(
+      initAgentToolInputType({
+        input: { ...input, toolDescription: undefined },
+        legacyDefaultMode: 'toolDescription'
+      }).selectedType
+    ).toBe(FlowNodeInputTypeEnum.input);
   });
 
   it.each([
@@ -1012,11 +980,11 @@ describe('agent generated tool input helpers', () => {
     );
   });
 
-  it('should migrate selectedTypeIndex and remove it from the normalized input', () => {
+  it('should retain the canonical selectedType when normalizing an input', () => {
     const input = normalizeFlowNodeInputType(
       createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.numberInput],
-        selectedTypeIndex: 1
+        selectedType: FlowNodeInputTypeEnum.numberInput
       })
     );
 
@@ -1026,15 +994,13 @@ describe('agent generated tool input helpers', () => {
       FlowNodeInputTypeEnum.numberInput
     ]);
     expect(input.selectedType).toBe(FlowNodeInputTypeEnum.numberInput);
-    expect(input).not.toHaveProperty('selectedTypeIndex');
   });
 
-  it('should add agentGenerated to supported tool inputs and apply isToolParam default', () => {
+  it('should add agentGenerated to supported tool inputs and apply defaultToAgentGenerated', () => {
     const input = normalizeFlowNodeInputType(
       createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
-        selectedTypeIndex: 0,
-        isToolParam: true
+        defaultToAgentGenerated: true
       }),
       { isTool: true }
     );
@@ -1045,7 +1011,6 @@ describe('agent generated tool input helpers', () => {
       FlowNodeInputTypeEnum.reference
     ]);
     expect(input.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
-    expect(input).not.toHaveProperty('selectedTypeIndex');
   });
 
   it('should preserve an explicit manual selectedType in tool context', () => {
@@ -1053,14 +1018,12 @@ describe('agent generated tool input helpers', () => {
       createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
         selectedType: FlowNodeInputTypeEnum.input,
-        selectedTypeIndex: 1,
-        isToolParam: true
+        defaultToAgentGenerated: true
       }),
       { isTool: true }
     );
 
     expect(input.selectedType).toBe(FlowNodeInputTypeEnum.input);
-    expect(input).not.toHaveProperty('selectedTypeIndex');
   });
 
   it('should remove agentGenerated from unsupported input types', () => {
@@ -1068,30 +1031,13 @@ describe('agent generated tool input helpers', () => {
       createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.fileSelect],
         selectedType: FlowNodeInputTypeEnum.agentGenerated,
-        isToolParam: true
+        defaultToAgentGenerated: true
       }),
       { isTool: true }
     );
 
     expect(input.renderTypeList).toEqual([FlowNodeInputTypeEnum.fileSelect]);
     expect(input.selectedType).toBe(FlowNodeInputTypeEnum.fileSelect);
-  });
-
-  it('should only use toolDescription when the caller enables legacy fallback', () => {
-    const legacyInput = createMockInput({
-      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-      toolDescription: 'Legacy model description'
-    });
-
-    expect(normalizeFlowNodeInputType(legacyInput, { isTool: true }).selectedType).toBe(
-      FlowNodeInputTypeEnum.input
-    );
-    expect(
-      normalizeFlowNodeInputType(legacyInput, {
-        isTool: true,
-        allowLegacyToolDescriptionFallback: true
-      }).selectedType
-    ).toBe(FlowNodeInputTypeEnum.agentGenerated);
   });
 
   it('should allow user chat input to be agent generated', () => {
@@ -1125,7 +1071,7 @@ describe('agent generated tool input helpers', () => {
           FlowNodeInputTypeEnum.input
         ],
         selectedType: FlowNodeInputTypeEnum.agentGenerated,
-        isToolParam: true
+        defaultToAgentGenerated: true
       }),
       { forceDefaultMode: true }
     );
@@ -1153,7 +1099,7 @@ describe('agent generated tool input helpers', () => {
     expect(getToolInputManualRenderType(input)).toBeUndefined();
   });
 
-  it('should preserve an explicit reference-only selection in workflow tool context', () => {
+  it('should preserve an explicit reference-only selection in tool context', () => {
     const input = normalizeFlowNodeInputType(
       createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.reference],
@@ -1173,9 +1119,9 @@ describe('agent generated tool input helpers', () => {
     const input = initToolInputTypeByDefaultMode(
       createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.reference],
-        selectedType: FlowNodeInputTypeEnum.reference,
-        selectedTypeIndex: 0
-      })
+        selectedType: FlowNodeInputTypeEnum.reference
+      }),
+      { isTool: true }
     );
 
     expect(input.renderTypeList).toEqual([
@@ -1186,27 +1132,11 @@ describe('agent generated tool input helpers', () => {
     expect(isAgentGeneratedToolInput(input)).toBe(true);
   });
 
-  it('should migrate saved reference-only selection to agent generated mode', () => {
-    const selectedType = getSavedToolInputSelectedType({
-      savedInput: createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.reference],
-        selectedType: FlowNodeInputTypeEnum.reference,
-        selectedTypeIndex: 0
-      }),
-      defaultInput: createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.reference]
-      })
-    });
-
-    expect(selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
-  });
-
-  it('should initialize isToolParam input as agent generated by default', () => {
+  it('should initialize defaultToAgentGenerated input as agent generated by default', () => {
     const input = initToolInputTypeByDefaultMode(
       createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-        toolDescription: 'Prompt to model',
-        isToolParam: true
+        defaultToAgentGenerated: true
       })
     );
 
@@ -1216,39 +1146,35 @@ describe('agent generated tool input helpers', () => {
       FlowNodeInputTypeEnum.reference
     ]);
     expect(input.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
-    expect(input).not.toHaveProperty('selectedTypeIndex');
     expect(isAgentGeneratedToolInput(input)).toBe(true);
   });
 
-  it('should force the default mode over a preview input selection', () => {
+  it('should force the default mode over an explicit current selection', () => {
     const input = initToolInputTypeByDefaultMode(
       createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
         selectedType: FlowNodeInputTypeEnum.input,
-        selectedTypeIndex: 0,
-        isToolParam: true
+        defaultToAgentGenerated: true
       }),
       { forceDefaultMode: true }
     );
 
     expect(input.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
-    expect(input).not.toHaveProperty('selectedTypeIndex');
     expect(isAgentGeneratedToolInput(input)).toBe(true);
   });
 
-  it('should remove isToolParam from a persisted tool input', () => {
-    const input = createMockInput({ isToolParam: true });
+  it('should remove defaultToAgentGenerated from a persisted tool input', () => {
+    const input = createMockInput({ defaultToAgentGenerated: true });
     const persistedInput = stripToolInputDefaultMode(input);
 
-    expect(persistedInput).not.toHaveProperty('isToolParam');
-    expect(input.isToolParam).toBe(true);
+    expect(persistedInput).not.toHaveProperty('defaultToAgentGenerated');
+    expect(input.defaultToAgentGenerated).toBe(true);
   });
 
-  it('should keep developer-configured input when isToolParam is not true', () => {
+  it('should keep developer-configured input when defaultToAgentGenerated is not true', () => {
     const input = initToolInputTypeByDefaultMode(
       createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-        toolDescription: 'Prompt to model'
+        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
       })
     );
 
@@ -1260,12 +1186,11 @@ describe('agent generated tool input helpers', () => {
     expect(isAgentGeneratedToolInput(input)).toBe(false);
   });
 
-  it('should keep developer-configured input when isToolParam is false', () => {
+  it('should keep developer-configured input when defaultToAgentGenerated is false', () => {
     const input = initToolInputTypeByDefaultMode(
       createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-        toolDescription: 'Prompt to model',
-        isToolParam: false
+        defaultToAgentGenerated: false
       })
     );
 
@@ -1282,8 +1207,7 @@ describe('agent generated tool input helpers', () => {
       createMockInput({
         key: NodeInputKeyEnum.userChatInput,
         renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-        toolDescription: 'User question',
-        isToolParam: true
+        defaultToAgentGenerated: true
       })
     );
 
@@ -1301,8 +1225,7 @@ describe('agent generated tool input helpers', () => {
       createMockInput({
         key: NodeInputKeyEnum.userChatInput,
         renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-        toolDescription: 'User question',
-        isToolParam: true
+        defaultToAgentGenerated: true
       }),
       { allowUserChatInputAgentGenerated: true }
     );
@@ -1313,16 +1236,15 @@ describe('agent generated tool input helpers', () => {
       FlowNodeInputTypeEnum.textarea
     ]);
     expect(input.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
-    expect(input).not.toHaveProperty('selectedTypeIndex');
     expect(isAgentGeneratedToolInput(input)).toBe(true);
   });
 
-  it('should keep explicit false isToolParam for user chat input', () => {
+  it('should keep explicit false defaultToAgentGenerated for user chat input', () => {
     const input = initToolInputTypeByDefaultMode(
       createMockInput({
         key: NodeInputKeyEnum.userChatInput,
         renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-        isToolParam: false
+        defaultToAgentGenerated: false
       }),
       { allowUserChatInputAgentGenerated: true }
     );
@@ -1335,24 +1257,7 @@ describe('agent generated tool input helpers', () => {
     expect(isAgentGeneratedToolInput(input)).toBe(false);
   });
 
-  it('should preserve legacy user chat input reference selection', () => {
-    const selectedType = getSavedToolInputSelectedType({
-      savedInput: createMockInput({
-        key: NodeInputKeyEnum.userChatInput,
-        renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-        selectedType: FlowNodeInputTypeEnum.reference,
-        selectedTypeIndex: 0
-      }),
-      defaultInput: createMockInput({
-        key: NodeInputKeyEnum.userChatInput,
-        renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea]
-      })
-    });
-
-    expect(selectedType).toBe(FlowNodeInputTypeEnum.reference);
-  });
-
-  it('should remove a legacy agent generated selection from user chat input when disabled', () => {
+  it('should reset agent generation for user chat input when the current context disables it', () => {
     const input = initToolInputTypeByDefaultMode(
       createMockInput({
         key: NodeInputKeyEnum.userChatInput,
@@ -1361,8 +1266,7 @@ describe('agent generated tool input helpers', () => {
           FlowNodeInputTypeEnum.reference,
           FlowNodeInputTypeEnum.textarea
         ],
-        selectedType: FlowNodeInputTypeEnum.agentGenerated,
-        selectedTypeIndex: 0
+        selectedType: FlowNodeInputTypeEnum.agentGenerated
       }),
       { allowUserChatInputAgentGenerated: false }
     );
@@ -1373,29 +1277,7 @@ describe('agent generated tool input helpers', () => {
       FlowNodeInputTypeEnum.textarea
     ]);
     expect(input.selectedType).toBe(FlowNodeInputTypeEnum.reference);
-    expect(input).not.toHaveProperty('selectedTypeIndex');
     expect(isAgentGeneratedToolInput(input)).toBe(false);
-  });
-
-  it('should preserve a saved agent generated selection for user chat input', () => {
-    const selectedType = getSavedToolInputSelectedType({
-      savedInput: createMockInput({
-        key: NodeInputKeyEnum.userChatInput,
-        renderTypeList: [
-          FlowNodeInputTypeEnum.agentGenerated,
-          FlowNodeInputTypeEnum.reference,
-          FlowNodeInputTypeEnum.textarea
-        ],
-        selectedType: FlowNodeInputTypeEnum.agentGenerated,
-        selectedTypeIndex: 0
-      }),
-      defaultInput: createMockInput({
-        key: NodeInputKeyEnum.userChatInput,
-        renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea]
-      })
-    });
-
-    expect(selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
   });
 
   it('should materialize selectedType for inputs without a final type selection', () => {
@@ -1413,115 +1295,6 @@ describe('agent generated tool input helpers', () => {
         selectedType: FlowNodeInputTypeEnum.hidden
       })
     );
-  });
-
-  it('should treat legacy selectedTypeIndex 0 as default for new isToolParam inputs', () => {
-    const selectedType = getSavedToolInputSelectedType({
-      savedInput: createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-        selectedTypeIndex: 0
-      }),
-      defaultInput: createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-        isToolParam: true
-      })
-    });
-
-    expect(selectedType).toBeUndefined();
-  });
-
-  it('should preserve legacy non-zero selectedTypeIndex as an explicit selection', () => {
-    const selectedType = getSavedToolInputSelectedType({
-      savedInput: createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-        selectedTypeIndex: 1
-      }),
-      defaultInput: createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-        isToolParam: true
-      })
-    });
-
-    expect(selectedType).toBe(FlowNodeInputTypeEnum.reference);
-  });
-
-  it('should migrate persisted toolDescription to agent generated selection', () => {
-    const selectedType = getSavedToolInputSelectedType({
-      savedInput: createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
-        toolDescription: 'Number generated by AI'
-      }),
-      defaultInput: createMockInput({
-        valueType: WorkflowIOValueTypeEnum.number,
-        renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference]
-      }),
-      allowLegacyToolDescriptionFallback: true
-    });
-
-    expect(selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
-  });
-
-  it('should use the current tool definition when legacy Agent V2 did not persist inputs', () => {
-    const selectedType = getSavedToolInputSelectedType({
-      defaultInput: createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-        toolDescription: 'Generated by AI'
-      }),
-      allowLegacyToolDescriptionFallback: true
-    });
-
-    expect(selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
-  });
-
-  it('should preserve an explicit current isToolParam false without saved inputs', () => {
-    const selectedType = getSavedToolInputSelectedType({
-      defaultInput: createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-        isToolParam: false,
-        toolDescription: 'Generated by AI'
-      }),
-      allowLegacyToolDescriptionFallback: true
-    });
-
-    expect(selectedType).toBeUndefined();
-  });
-
-  it('should preserve a persisted manual type without toolDescription', () => {
-    const selectedType = getSavedToolInputSelectedType({
-      savedInput: createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference]
-      }),
-      defaultInput: createMockInput({
-        valueType: WorkflowIOValueTypeEnum.number,
-        renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
-        isToolParam: true
-      }),
-      allowLegacyToolDescriptionFallback: true
-    });
-
-    expect(selectedType).toBe(FlowNodeInputTypeEnum.numberInput);
-  });
-
-  it('should preserve a transitional indexed selection with agentGenerated available', () => {
-    const selectedType = getSavedToolInputSelectedType({
-      savedInput: createMockInput({
-        renderTypeList: [
-          FlowNodeInputTypeEnum.agentGenerated,
-          FlowNodeInputTypeEnum.numberInput,
-          FlowNodeInputTypeEnum.reference
-        ],
-        selectedTypeIndex: 1,
-        toolDescription: 'Number generated by AI'
-      }),
-      defaultInput: createMockInput({
-        valueType: WorkflowIOValueTypeEnum.number,
-        renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
-        isToolParam: true
-      }),
-      allowLegacyToolDescriptionFallback: true
-    });
-
-    expect(selectedType).toBe(FlowNodeInputTypeEnum.numberInput);
   });
 
   it('should restore number input as manual type from valueType when render type was collapsed', () => {
@@ -1705,13 +1478,11 @@ describe('agent generated tool input helpers', () => {
     ]);
   });
 
-  it('should migrate legacy index zero to the isToolParam default mode', () => {
+  it('should use defaultToAgentGenerated when no current selection is saved', () => {
     const input = initToolInputTypeByDefaultMode(
       createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
-        selectedTypeIndex: 0,
-        toolDescription: 'Prompt to model',
-        isToolParam: true
+        defaultToAgentGenerated: true
       })
     );
 
@@ -1720,17 +1491,15 @@ describe('agent generated tool input helpers', () => {
       FlowNodeInputTypeEnum.input
     ]);
     expect(input.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
-    expect(input).not.toHaveProperty('selectedTypeIndex');
     expect(isAgentGeneratedToolInput(input)).toBe(true);
   });
 
-  it('should migrate a legacy user chat input index zero to agent generated in tool context', () => {
+  it('should default user chat input to agent generated in tool context', () => {
     const input = initToolInputTypeByDefaultMode(
       createMockInput({
         key: NodeInputKeyEnum.userChatInput,
         renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-        selectedTypeIndex: 0,
-        isToolParam: true,
+        defaultToAgentGenerated: true,
         required: true
       }),
       { allowUserChatInputAgentGenerated: true }
@@ -1746,7 +1515,6 @@ describe('agent generated tool input helpers', () => {
         key: NodeInputKeyEnum.userChatInput,
         renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
         selectedType: FlowNodeInputTypeEnum.reference,
-        selectedTypeIndex: 0,
         required: true
       }),
       { allowUserChatInputAgentGenerated: true }
@@ -1756,12 +1524,11 @@ describe('agent generated tool input helpers', () => {
     expect(isAgentGeneratedToolInput(input)).toBe(false);
   });
 
-  it('should initialize isToolParam as agent generated when option exists but no final type is saved', () => {
+  it('should initialize defaultToAgentGenerated when no final type is saved', () => {
     const input = initToolInputTypeByDefaultMode(
       createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
-        toolDescription: 'Prompt to model',
-        isToolParam: true
+        defaultToAgentGenerated: true
       })
     );
 
@@ -1770,18 +1537,17 @@ describe('agent generated tool input helpers', () => {
       FlowNodeInputTypeEnum.input
     ]);
     expect(input.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
-    expect(input).not.toHaveProperty('selectedTypeIndex');
     expect(isAgentGeneratedToolInput(input)).toBe(true);
   });
 
-  it('should preserve legacy selectedTypeIndex developer mode before applying isToolParam default', () => {
-    const input = initToolInputTypeByDefaultMode(
+  it('should preserve a canonical developer mode before applying defaults', () => {
+    const input = normalizeFlowNodeInputType(
       createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
-        selectedTypeIndex: 1,
-        toolDescription: 'Prompt to model',
-        isToolParam: true
-      })
+        selectedType: FlowNodeInputTypeEnum.input,
+        defaultToAgentGenerated: true
+      }),
+      { isTool: true }
     );
 
     expect(input.renderTypeList).toEqual([
@@ -1790,17 +1556,15 @@ describe('agent generated tool input helpers', () => {
       FlowNodeInputTypeEnum.input
     ]);
     expect(input.selectedType).toBe(FlowNodeInputTypeEnum.input);
-    expect(input).not.toHaveProperty('selectedTypeIndex');
     expect(isAgentGeneratedToolInput(input)).toBe(false);
   });
 
-  it('should detect agent generated mode from selectedTypeIndex', () => {
+  it('should retain a canonical agent generated mode', () => {
     const input = initToolInputTypeByDefaultMode(
       createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
-        selectedTypeIndex: 1,
-        toolDescription: 'Prompt to model',
-        isToolParam: true
+        selectedType: FlowNodeInputTypeEnum.agentGenerated,
+        defaultToAgentGenerated: true
       })
     );
 
@@ -1808,22 +1572,6 @@ describe('agent generated tool input helpers', () => {
       FlowNodeInputTypeEnum.agentGenerated,
       FlowNodeInputTypeEnum.input
     ]);
-    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
-    expect(input).not.toHaveProperty('selectedTypeIndex');
-    expect(isAgentGeneratedToolInput(input)).toBe(true);
-  });
-
-  it('should prefer selectedType over deprecated selectedTypeIndex', () => {
-    const input = initToolInputTypeByDefaultMode(
-      createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
-        selectedType: FlowNodeInputTypeEnum.agentGenerated,
-        selectedTypeIndex: 0,
-        toolDescription: 'Prompt to model',
-        isToolParam: true
-      })
-    );
-
     expect(input.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
     expect(isAgentGeneratedToolInput(input)).toBe(true);
   });
@@ -1842,23 +1590,22 @@ describe('agent generated tool input helpers', () => {
         createMockInput({
           key: 'query',
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
-          selectedType: FlowNodeInputTypeEnum.agentGenerated,
-          selectedTypeIndex: 0
+          selectedType: FlowNodeInputTypeEnum.agentGenerated
         }),
         createMockInput({
           key: 'indexOnly',
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
-          selectedTypeIndex: 1
+          selectedType: FlowNodeInputTypeEnum.agentGenerated
         }),
         createMockInput({
           key: 'manualText',
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
-          selectedTypeIndex: 0
+          selectedType: FlowNodeInputTypeEnum.input
         }),
         createMockInput({
           key: 'password',
           renderTypeList: [FlowNodeInputTypeEnum.password, FlowNodeInputTypeEnum.agentGenerated],
-          selectedTypeIndex: 1
+          selectedType: FlowNodeInputTypeEnum.password
         }),
         createMockInput({
           key: NodeInputKeyEnum.systemInputConfig,
@@ -1903,7 +1650,7 @@ describe('agent generated tool input helpers', () => {
       createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
         toolDescription: 'Files',
-        isToolParam: true
+        defaultToAgentGenerated: true
       })
     );
 
@@ -1916,7 +1663,7 @@ describe('agent generated tool input helpers', () => {
       createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.password],
         toolDescription: 'API key',
-        isToolParam: true
+        defaultToAgentGenerated: true
       })
     );
 
@@ -1929,7 +1676,7 @@ describe('agent generated tool input helpers', () => {
       createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.custom],
         toolDescription: 'Custom renderer',
-        isToolParam: true
+        defaultToAgentGenerated: true
       })
     );
 

@@ -3,13 +3,9 @@ import { AppChatConfigTypeSchema } from '@fastgpt/global/core/app/type';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 
 describe('AppChatConfigTypeSchema', () => {
-  it('should adapt old boolean questionGuide format', () => {
-    expect(AppChatConfigTypeSchema.parse({ questionGuide: true }).questionGuide).toEqual({
-      open: true
-    });
-    expect(AppChatConfigTypeSchema.parse({ questionGuide: false }).questionGuide).toEqual({
-      open: false
-    });
+  it('should reject old boolean questionGuide format', () => {
+    expect(AppChatConfigTypeSchema.safeParse({ questionGuide: true }).success).toBe(false);
+    expect(AppChatConfigTypeSchema.safeParse({ questionGuide: false }).success).toBe(false);
   });
 
   it('should keep questionGuide object format', () => {

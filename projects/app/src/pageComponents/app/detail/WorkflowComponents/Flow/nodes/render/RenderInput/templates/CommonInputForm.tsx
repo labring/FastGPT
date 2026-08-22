@@ -21,7 +21,7 @@ import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils'
 const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { getNodeById, edges, systemConfigNode } = useContextSelector(
+  const { getNodeById, edges } = useContextSelector(
     WorkflowBufferDataContext,
     (v) => v
   );
@@ -38,13 +38,12 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const editorVariables = useMemoEnhance(() => {
     return getEditorVariables({
       nodeId,
-      systemConfigNode,
       getNodeById,
       edges,
       appDetail,
       t
     });
-  }, [nodeId, systemConfigNode, getNodeById, edges, appDetail, t]);
+  }, [nodeId, getNodeById, edges, appDetail, t]);
 
   const externalVariables = useMemo(() => {
     return (

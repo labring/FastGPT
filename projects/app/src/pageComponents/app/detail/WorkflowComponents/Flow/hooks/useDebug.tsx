@@ -59,7 +59,6 @@ export const useDebug = () => {
   const setNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.setNodes);
   const getNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodes);
   const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
-  const systemConfigNode = useContextSelector(WorkflowBufferDataContext, (v) => v.systemConfigNode);
   const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
   const childrenNodeIdListMap = useContextSelector(
     WorkflowBufferDataContext,
@@ -207,7 +206,6 @@ export const useDebug = () => {
     if (!runtimeNode) return <></>;
     const referenceSourceNodes = getNodeAllSource({
       nodeId: runtimeNode.nodeId,
-      systemConfigNode,
       getNodeById,
       edges,
       chatConfig: appDetail.chatConfig,
@@ -392,7 +390,6 @@ export const useDebug = () => {
     filteredVar,
     runtimeNodeId,
     onStartNodeDebug,
-    systemConfigNode,
     getNodeById,
     edges,
     appDetail.chatConfig,

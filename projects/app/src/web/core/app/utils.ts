@@ -1,9 +1,6 @@
 import { type AppDetailType, type AppSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import {
-  chatHistoryValueDesc,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
+import { chatHistoryValueDesc } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
@@ -33,6 +30,7 @@ export const isWorkflowAppType = (appType: AppTypeEnum) =>
   appType === AppTypeEnum.workflow || appType === AppTypeEnum.workflowTool;
 
 export function filterSensitiveFormData(appForm: AppFormEditFormType) {
+  // 当前导出脱敏范围与历史基线保持一致，仅处理数据集选择和系统密钥输入；工具配置暂不做递归脱敏，避免误删普通 value/defaultValue。
   const defaultAppForm = getDefaultAppForm();
   return {
     ...appForm,
@@ -88,11 +86,5 @@ export const workflowSystemVariables: EditorVariablePickerType[] = [
 ];
 
 export const getAppQGuideCustomURL = (appDetail: AppDetailType | AppSchemaType): string => {
-  return (
-    appDetail.chatConfig?.chatInputGuide?.customUrl ??
-    appDetail?.modules
-      .find((m) => m.flowNodeType === FlowNodeTypeEnum.systemConfig)
-      ?.inputs.find((i) => i.key === NodeInputKeyEnum.chatInputGuide)?.value.customUrl ??
-    ''
-  );
+  return appDetail.chatConfig?.chatInputGuide?.customUrl ?? '';
 };

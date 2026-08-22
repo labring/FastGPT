@@ -36,16 +36,12 @@ export const useToolNodeList = ({
     .map<ToolNodeItemType>((tool) => {
       const inputs = tool.inputs;
       let jsonSchema = tool.jsonSchema;
-
-      inputs.forEach((input) => {
-        if (
-          (input.key === NodeInputKeyEnum.toolData || input.key === 'toolData') &&
-          input.value?.inputSchema
-        ) {
-          const value = input.value as McpToolDataType;
-          jsonSchema = value.inputSchema;
-        }
-      });
+      const toolDataInput = inputs.find(
+        (input) => input.key === NodeInputKeyEnum.toolData || input.key === 'toolData'
+      );
+      if (toolDataInput?.value?.inputSchema) {
+        jsonSchema = (toolDataInput.value as McpToolDataType).inputSchema;
+      }
 
       return {
         nodeId: tool.nodeId,

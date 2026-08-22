@@ -6,7 +6,8 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
-import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 
 export type JsonImportModalScene = 'agent' | 'tool';
 
@@ -194,10 +195,10 @@ const parseSimpleImportWorkflow = ({
 
   const workflow = form2AppWorkflow(parsedForm.data as AppFormEditFormType, t);
 
-  return normalizeWorkflowConfig(workflow);
+  return workflow;
 };
 
-const parseWorkflowLikeImportConfig = ({
+const parseWorkflowLikeImportConfig = async ({
   config,
   appType,
   t
@@ -205,7 +206,7 @@ const parseWorkflowLikeImportConfig = ({
   config: Record<string, unknown>;
   appType: Exclude<SupportedImportAppType, AppTypeEnum.simple>;
   t: any;
-}): ImportWorkflowConfig => {
+}): Promise<ImportWorkflowConfig> => {
   if (!Array.isArray(config.nodes)) {
     throw new Error(t('app:type_not_recognized'));
   }
@@ -222,11 +223,27 @@ const parseWorkflowLikeImportConfig = ({
     throw new Error(t('app:type_not_recognized'));
   }
 
-  return normalizeWorkflowConfig({
-    nodes: config.nodes as StoreNodeItemType[],
-    edges: Array.isArray(config.edges) ? (config.edges as StoreEdgeItemType[]) : [],
-    chatConfig: (config.chatConfig ?? {}) as AppChatConfigType
-  });
+  return await migrateWorkflowToCurrent(
+    {
+      nodes: config.nodes as StoreNodeItemType[],
+      edges: Array.isArray(config.edges) ? (config.edges as StoreEdgeItemType[]) : [],
+      chatConfig: (config.chatConfig ?? {}) as AppChatConfigType
+    },
+    {
+      resolveToolDefinition: async ({ id, version, source }) => {
+        try {
+          const preview = await getClientToolPreviewNode(
+            version === undefined
+              ? { appId: id, getLatestVersion: true, source }
+              : { appId: id, versionId: version, source }
+          );
+          return { inputs: preview.inputs };
+        } catch {
+          return undefined;
+        }
+      }
+    }
+  );
 };
 
 /**
@@ -236,13 +253,13 @@ const parseWorkflowLikeImportConfig = ({
  * workflow 数据。工作台导入和详情页导入只负责传入不同约束，避免把场景规则
  * 和结构解析散落在多个入口里。
  */
-export const parseAppImportConfig = ({
+export const parseAppImportConfig = async ({
   config,
   t,
   resolveScene,
   allowedAppTypes,
   expectedAppType
-}: ParseAppImportConfigOptions): ParsedImportConfig => {
+}: ParseAppImportConfigOptions): Promise<ParsedImportConfig> => {
   const importConfig = assertImportConfigObject(config, t);
   const appType = resolveImportAppType(importConfig, resolveScene);
 
@@ -252,11 +269,13 @@ export const parseAppImportConfig = ({
 
   assertImportAppTypeAllowed({ appType, allowedAppTypes, expectedAppType, t });
 
+  const workflow =
+    appType === AppTypeEnum.simple
+      ? parseSimpleImportWorkflow({ config: importConfig, t })
+      : await parseWorkflowLikeImportConfig({ config: importConfig, appType, t });
+
   return {
-    workflow:
-      appType === AppTypeEnum.simple
-        ? parseSimpleImportWorkflow({ config: importConfig, t })
-        : parseWorkflowLikeImportConfig({ config: importConfig, appType, t }),
+    workflow,
     appType
   };
 };
@@ -267,7 +286,7 @@ export const parseAppImportConfig = ({
  * 顶层 `type` 存在时按导出元信息校验业务结构；无 `type` 时回退
  * 现有 `getAppType` 结构识别逻辑，以兼容老版本导出 JSON。
  */
-export const parseDashboardImportConfig = ({
+export const parseDashboardImportConfig = async ({
   config,
   scene,
   t
@@ -275,8 +294,8 @@ export const parseDashboardImportConfig = ({
   config: unknown;
   scene: JsonImportModalScene;
   t: any;
-}): ParsedImportConfig => {
-  return parseAppImportConfig({
+}): Promise<ParsedImportConfig> => {
+  return await parseAppImportConfig({
     config,
     t,
     resolveScene: scene,
@@ -291,7 +310,7 @@ export const parseDashboardImportConfig = ({
  * 互相导入后缺少各自的入口节点。导出的 `name`、`intro` 等应用元信息只用于
  * 工作台新建应用，详情内导入时会忽略。
  */
-export const parseWorkflowImportConfig = ({
+export const parseWorkflowImportConfig = async ({
   config,
   appType: expectedAppType = AppTypeEnum.workflow,
   t
@@ -299,10 +318,10 @@ export const parseWorkflowImportConfig = ({
   config: unknown;
   appType?: AppTypeEnum.workflow | AppTypeEnum.workflowTool;
   t: any;
-}) => {
+}): Promise<ImportWorkflowConfig> => {
   const scene: JsonImportModalScene =
     expectedAppType === AppTypeEnum.workflowTool ? 'tool' : 'agent';
-  const { workflow } = parseAppImportConfig({
+  const { workflow } = await parseAppImportConfig({
     config,
     t,
     resolveScene: scene,

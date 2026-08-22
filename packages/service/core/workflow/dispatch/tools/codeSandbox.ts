@@ -65,19 +65,6 @@ export const dispatchCodeSandbox = async (props: RunCodeType): Promise<RunCodeRe
   } catch (error: any) {
     const text = getErrText(error, 'Request code sandbox failed');
 
-    // @adapt
-    if (catchError === undefined) {
-      return {
-        data: {
-          [NodeOutputKeyEnum.error]: { message: text }
-        },
-        [DispatchNodeResponseKeyEnum.nodeResponse]: {
-          customInputs: customVariables,
-          errorText: text
-        }
-      };
-    }
-
     return getNodeErrResponse({
       error: text,
       customErr: {

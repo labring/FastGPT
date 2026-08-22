@@ -18,17 +18,20 @@ import {
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import {
-  getHTTPToolInputSchema,
-  getHTTPToolRequestSchema,
+  getHTTPToolRuntimeSchemas,
   getHTTPToolRuntimeNode,
   parseHttpToolConfig
 } from '@fastgpt/global/core/app/tool/httpTool/utils';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { MongoApp } from '../../../app/schema';
 import { getMCPChildren } from '../../../app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
+import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { WorkflowResponseType } from '../type';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { parsetMcpToolConfig } from '@fastgpt/global/core/app/tool/mcpTool/utils';
@@ -39,11 +42,9 @@ import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/u
 import {
   getSavedToolInputSelectedType,
   initToolInputsTypeByDefaultMode,
-  normalizeLegacyWorkflowHttpToolInputsDefaultMode,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
-import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 
 /**
  * 创建 runtime nodeResponse 的轻量汇总对象。
@@ -500,7 +501,7 @@ export const formatHttpError = (error: any) => {
  * 重写 runtime workflow 中的工具相关节点配置。
  *
  * 该函数会原地修改 nodes 和 edges：
- * - 在外层兼容旧 selectedTypeIndex，并将工具输入升级为 selectedType 协议。
+ * - 将当前工具输入与最新 MCP/HTTP resource schema 合并，并保留最终 selectedType。
  * - 将 ToolSet 节点展开为具体 Tool 节点，并把原来指向 ToolSet 的边改接到子工具节点。
  * - 为 MCP/HTTP Tool 节点补充原始 jsonSchema 和描述，供模型 tool call 生成参数时使用。
  */
@@ -554,7 +555,8 @@ export const rewriteRuntimeWorkFlow = async ({
             : {}),
           renderTypeList,
           selectedType,
-          isToolParam: input.isToolParam ?? savedInput.isToolParam,
+          defaultToAgentGenerated:
+            input.defaultToAgentGenerated ?? savedInput.defaultToAgentGenerated,
           toolDescription: savedInput.toolDescription ?? input.toolDescription
         };
       }),
@@ -564,18 +566,51 @@ export const rewriteRuntimeWorkFlow = async ({
 
   /**
    * ToolSet 展开后的子工具统一由 Agent 生成参数。这里仅修改 runtime 临时节点，
-   * 不回写工作流配置，避免把 isToolParam 变成用户配置字段。
+   * 不回写工作流配置，避免把默认模式变成用户配置字段。
    */
   const initToolSetChildNode = (node: RuntimeNodeItemType): RuntimeNodeItemType => ({
     ...node,
     inputs: initToolInputsTypeByDefaultMode(
       node.inputs.map((input) => ({
         ...input,
-        isToolParam: true
+        defaultToAgentGenerated: true
       })),
       { forceDefaultMode: true, allowUserChatInputAgentGenerated: true }
     )
   });
+
+  type RuntimeMcpToolSet = NonNullable<
+    NonNullable<RuntimeNodeItemType['toolConfig']>['mcpToolSet']
+  >;
+  type RuntimeMcpTool = McpToolConfigType & {
+    url?: string;
+    headerSecret?: RuntimeMcpToolSet['headerSecret'];
+    id?: string;
+    avatar?: string;
+  };
+
+  /** 将当前或旧版 MCP 资源投影为子工具执行所需的 canonical ToolSet。 */
+  const buildMcpRuntimeToolSet = ({
+    currentToolSet,
+    toolList,
+    selectedTool
+  }: {
+    currentToolSet?: RuntimeMcpToolSet;
+    toolList: RuntimeMcpTool[];
+    selectedTool?: RuntimeMcpTool;
+  }): RuntimeMcpToolSet | undefined => {
+    const url = selectedTool?.url ?? currentToolSet?.url;
+    if (!url) return undefined;
+
+    const headerSecret = selectedTool?.headerSecret ?? currentToolSet?.headerSecret;
+    return {
+      url,
+      ...(headerSecret ? { headerSecret } : {}),
+      toolList: toolList.map(
+        ({ url: _url, headerSecret: _headerSecret, id: _id, avatar: _avatar, ...tool }) => tool
+      )
+    };
+  };
 
   /* ToolSet 展开 */
   // TODO: 待性能优化
@@ -588,7 +623,7 @@ export const rewriteRuntimeWorkFlow = async ({
         nodeIdsToRemove.add(toolSetNode.nodeId);
 
         const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId;
-        const mcpToolsetVal = toolSetNode.toolConfig?.mcpToolSet ?? toolSetNode.inputs?.[0]?.value;
+        const mcpToolsetVal = toolSetNode.toolConfig?.mcpToolSet;
         const httpToolsetVal = toolSetNode.toolConfig?.httpToolSet;
 
         const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
@@ -620,10 +655,11 @@ export const rewriteRuntimeWorkFlow = async ({
         } else if (mcpToolsetVal) {
           const app = await MongoApp.findOne({ _id: toolSetNode.pluginId }).lean();
           if (!app) continue;
-          const toolList = await getMCPChildren(app);
+          const toolList = (await getMCPChildren(app)) as RuntimeMcpTool[];
+          const currentToolSet = app.modules?.[0]?.toolConfig?.mcpToolSet;
 
-          // mcpToolsetVal.toolId: 旧版 MCP
-          const toolSetId = mcpToolsetVal.toolId || toolSetNode.pluginId;
+          const toolSetId = toolSetNode.pluginId;
+          if (!toolSetId) continue;
           toolList.forEach((tool, index) => {
             const newToolNode = initToolSetChildNode(
               getMCPToolRuntimeNode({
@@ -631,7 +667,12 @@ export const rewriteRuntimeWorkFlow = async ({
                 toolSetId,
                 toolsetName: toolSetNode.name,
                 avatar: toolSetNode.avatar,
-                tool
+                tool,
+                mcpToolSet: buildMcpRuntimeToolSet({
+                  currentToolSet,
+                  toolList,
+                  selectedTool: tool
+                })
               })
             );
             nodes.push(newToolNode);
@@ -691,25 +732,45 @@ export const rewriteRuntimeWorkFlow = async ({
       ids: parseMcpToolConfigs.map((config) => config.toolsetId),
       field: {
         _id: true,
+        teamId: true,
+        avatar: true,
         modules: true
       }
     });
-    const toolsetMap = new Map<string, (typeof toolsets)[number]>();
-    toolsets.forEach((toolset) => {
-      toolsetMap.set(String(toolset._id), toolset);
-    });
+    const toolListMap = new Map<
+      string,
+      { toolList: RuntimeMcpTool[]; currentToolSet?: RuntimeMcpToolSet }
+    >();
+    await Promise.all(
+      toolsets.map(async (toolset) => {
+        const currentToolSet = toolset.modules?.[0]?.toolConfig?.mcpToolSet;
+        const currentToolList = currentToolSet?.toolList;
+        const toolList = (currentToolList ?? (await getMCPChildren(toolset))) as RuntimeMcpTool[];
+        toolListMap.set(String(toolset._id), { toolList, currentToolSet });
+      })
+    );
     mcpToolNodes.forEach((node) => {
       const mcpTool = node.toolConfig?.mcpTool;
       if (!mcpTool) return;
       const parseResult = parsetMcpToolConfig(mcpTool);
       if (!parseResult) return;
-      const toolset = toolsetMap.get(parseResult.toolsetId);
-      const toolList = toolset?.modules?.[0].toolConfig?.mcpToolSet?.toolList;
-      if (!toolList) return;
-      const toolRaw = toolList.find((tool) => tool.name === parseResult.toolName);
+      const toolset = toolListMap.get(parseResult.toolsetId);
+      if (!toolset) return;
+      const toolRaw = toolset.toolList.find((tool) => tool.name === parseResult.toolName);
       if (!toolRaw) return;
       node.jsonSchema = toolRaw.inputSchema;
       node.intro = toolRaw.description;
+      const mcpToolSet = buildMcpRuntimeToolSet({
+        currentToolSet: toolset.currentToolSet,
+        toolList: toolset.toolList,
+        selectedTool: toolRaw
+      });
+      if (mcpToolSet) {
+        node.toolConfig = {
+          ...node.toolConfig,
+          mcpToolSet
+        };
+      }
       mergeToolNodeInputs({ node, jsonSchema: toolRaw.inputSchema, schemaType: 'mcp' });
     });
   };
@@ -748,11 +809,12 @@ export const rewriteRuntimeWorkFlow = async ({
       if (!toolList) return;
       const toolRaw = toolList.find((tool) => tool.name === parseResult.toolName);
       if (!toolRaw) return;
-      node.jsonSchema = getHTTPToolRequestSchema(toolRaw);
+      const { inputSchema, requestSchema } = getHTTPToolRuntimeSchemas(toolRaw);
+      node.jsonSchema = requestSchema;
       node.intro = toolRaw.description;
       mergeToolNodeInputs({
         node,
-        jsonSchema: getHTTPToolInputSchema(toolRaw),
+        jsonSchema: inputSchema,
         schemaType: 'http'
       });
     });
@@ -769,27 +831,7 @@ export const rewriteRuntimeWorkFlow = async ({
   // runtime 内部只消费 selectedType；所有存量协议兼容都在执行入口一次完成。
   nodes.forEach((node) => {
     const isTool = toolNodeIds.has(node.nodeId) || node.flowNodeType === FlowNodeTypeEnum.tool;
-    const allowLegacySystemToolInputMode = Boolean(
-      node.toolConfig?.systemTool ||
-      node.pluginId?.startsWith('systemTool-') ||
-      node.pluginId?.startsWith('commercial-')
-    );
-    const inputsWithLegacyDefaults = (() => {
-      if (node.flowNodeType === FlowNodeTypeEnum.pluginModule && isTool) {
-        return normalizeWorkflowToolInputsDefaultMode(node.inputs);
-      }
-      if (node.flowNodeType === FlowNodeTypeEnum.httpRequest468 && isTool) {
-        return normalizeLegacyWorkflowHttpToolInputsDefaultMode(node.inputs);
-      }
-      return node.inputs;
-    })();
-
-    node.inputs = inputsWithLegacyDefaults.map((input) =>
-      normalizeFlowNodeInputType(input, {
-        isTool,
-        allowLegacyToolDescriptionFallback: isTool && allowLegacySystemToolInputMode
-      })
-    );
+    node.inputs = node.inputs.map((input) => normalizeFlowNodeInputType(input, { isTool }));
   });
 };
 

@@ -18,7 +18,7 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
-import { getAppChatConfig, getGuideModule } from '@fastgpt/global/core/workflow/utils';
+import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import RunPreviewHeader from './RunPreviewHeader';
 import AppDetailPanelModal from '../../components/AppDetailPanelModal';
 
@@ -36,15 +36,13 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
   const isPlugin = appDetail.type === AppTypeEnum.workflowTool;
   const { copyData } = useCopyData();
 
-  // 与画布「用户引导」节点一致：合并当前 appDetail.chatConfig 与本次调试用的系统配置节点，避免未发布时与编辑态不一致
   const chatConfigForDebug = useMemo(
     () =>
       getAppChatConfig({
         chatConfig: appDetail.chatConfig,
-        systemConfigNode: getGuideModule(nodes),
         isPublicFetch: true
       }),
-    [appDetail.chatConfig, nodes]
+    [appDetail.chatConfig]
   );
 
   const { restartChat, ChatContainer } = useChatTest({

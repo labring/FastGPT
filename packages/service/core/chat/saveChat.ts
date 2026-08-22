@@ -14,7 +14,7 @@ import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { getAppChatConfig, getGuideModule } from '@fastgpt/global/core/workflow/utils';
+import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { type AppChatConfigType, type VariableItemType } from '@fastgpt/global/core/app/type';
 import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
 import { pushChatLog } from './pushChatLog';
@@ -263,7 +263,6 @@ export const finalizeChatRound = async (props: Props) => {
 
   const { welcomeText, variables: variableList } = getAppChatConfig({
     chatConfig: appChatConfig,
-    systemConfigNode: getGuideModule(nodes),
     isPublicFetch: false
   });
   const pluginInputs = nodes?.find(
@@ -549,7 +548,6 @@ export const pushChatRecords = async (props: Props) => {
 
     const { welcomeText, variables: variableList } = getAppChatConfig({
       chatConfig: appChatConfig,
-      systemConfigNode: getGuideModule(nodes),
       isPublicFetch: false
     });
     const pluginInputs = nodes?.find(
@@ -724,7 +722,6 @@ export const updateInteractiveChat = async ({
 
   const { variables: variableList } = getAppChatConfig({
     chatConfig: appChatConfig,
-    systemConfigNode: getGuideModule(nodes),
     isPublicFetch: false
   });
 

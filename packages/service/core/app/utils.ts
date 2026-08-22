@@ -10,7 +10,6 @@ import {
 } from '@fastgpt/global/core/workflow/utils';
 import {
   initAgentToolInputType,
-  normalizeLegacyWorkflowHttpToolInputsDefaultMode,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { getClientToolPreviewNode } from './tool/utils/client';
@@ -19,15 +18,16 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
   isSystemOrCommercialToolId,
-  shouldUseLegacyToolDescriptionFallback,
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
+import { AgentToolInputModeEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { AgentToolSchema } from '@fastgpt/global/core/app/tool/type';
 import {
   SelectedAgentSkillItemTypeSchema,
   StoredSelectedAgentSkillItemTypeSchema,
   type AppFormEditFormType,
+  type UnresolvedAgentToolType,
   type StoredSelectedAgentSkillItemType,
   type SelectedAgentSkillItemType
 } from '@fastgpt/global/core/app/formEdit/type';
@@ -36,9 +36,12 @@ import type {
   FlowNodeInputItemType,
   SelectedDatasetType
 } from '@fastgpt/global/core/workflow/type/io';
-import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { formatToolInputSecrets } from './tool/secretConfig';
 import z from 'zod';
+
+type DetailWorkflowNode = StoreNodeItemType & {
+  unresolvedTools?: UnresolvedAgentToolType[];
+};
 
 /**
  * 重写应用工作流节点，填充详细的元数据信息（如工具详情、技能详情、知识库详情）。
@@ -50,7 +53,7 @@ export async function rewriteAppWorkflowToDetail({
   ownerTmbId,
   lang
 }: {
-  nodes: StoreNodeItemType[];
+  nodes: DetailWorkflowNode[];
   teamId: string;
   isRoot: boolean;
   ownerTmbId: string;
@@ -141,18 +144,12 @@ export async function rewriteAppWorkflowToDetail({
 
   const mergeToolInputDetail = ({
     previewInput,
-    savedInput,
-    allowLegacyToolDescriptionFallback = false
+    savedInput
   }: {
     previewInput: FlowNodeInputItemType;
     savedInput?: ToolInputSnapshot;
-    allowLegacyToolDescriptionFallback?: boolean;
   }) => {
     const hasSavedValue = !!savedInput && Object.prototype.hasOwnProperty.call(savedInput, 'value');
-    const legacyDefaultMode =
-      allowLegacyToolDescriptionFallback &&
-      savedInput?.isToolParam === undefined &&
-      !!savedInput?.toolDescription;
     const renderTypeList = Array.from(
       new Set([...(savedInput?.renderTypeList ?? []), ...previewInput.renderTypeList])
     );
@@ -161,9 +158,8 @@ export async function rewriteAppWorkflowToDetail({
         ...previewInput,
         renderTypeList,
         selectedType: savedInput?.selectedType,
-        selectedTypeIndex: savedInput?.selectedTypeIndex,
-        isToolParam:
-          savedInput?.isToolParam ?? (legacyDefaultMode ? true : previewInput.isToolParam),
+        defaultToAgentGenerated:
+          savedInput?.defaultToAgentGenerated ?? previewInput.defaultToAgentGenerated,
         toolDescription: savedInput?.toolDescription ?? previewInput.toolDescription
       },
       { deferDefaultSelection: true }
@@ -213,22 +209,6 @@ export async function rewriteAppWorkflowToDetail({
 
   await Promise.all(
     nodes.map(async (node) => {
-      const allowLegacyFallback = node.pluginId
-        ? shouldUseLegacyToolDescriptionFallback({
-            toolId: node.pluginId,
-            flowNodeType: node.flowNodeType
-          })
-        : false;
-
-      if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
-        node.inputs = normalizeWorkflowToolInputsDefaultMode(node.inputs);
-      }
-      if (allowLegacyFallback) {
-        node.inputs = normalizeWorkflowToolInputsDefaultMode(node.inputs);
-      }
-      if (node.flowNodeType === FlowNodeTypeEnum.httpRequest468) {
-        node.inputs = normalizeLegacyWorkflowHttpToolInputsDefaultMode(node.inputs);
-      }
       if (node.flowNodeType !== FlowNodeTypeEnum.pluginInput) {
         node.inputs = node.inputs.map((input) =>
           normalizeFlowNodeInputType(input, { deferDefaultSelection: true })
@@ -279,8 +259,7 @@ export async function rewriteAppWorkflowToDetail({
             node.inputs = preview.inputs.map((item) =>
               mergeToolInputDetail({
                 previewInput: item,
-                savedInput: inputsMap.get(item.key),
-                allowLegacyToolDescriptionFallback: allowLegacyFallback
+                savedInput: inputsMap.get(item.key)
               })
             );
             node.outputs = preview.outputs.map((item) => {
@@ -309,30 +288,45 @@ export async function rewriteAppWorkflowToDetail({
         // Tool load
         const toolInput = node.inputs.find((item) => item.key === NodeInputKeyEnum.selectedTools);
         if (toolInput && !nodeInputIsReference(toolInput)) {
-          const toolsParse = z.array(AgentToolSchema).safeParse(toolInput?.value || []);
-          const tools = toolsParse.success ? toolsParse.data : [];
-          const nodes = await Promise.all(
+          const tools = Array.isArray(toolInput.value)
+            ? toolInput.value.flatMap((value) => {
+                const result = AgentToolSchema.safeParse(value);
+                return result.success ? [result.data] : [];
+              })
+            : [];
+          const unresolvedTools: UnresolvedAgentToolType[] = [];
+          const toolNodes = await Promise.all(
             tools.map(async (tool) => {
-              const result = await loadToolNode({ id: tool.id, source: tool.source });
+              const result = await loadToolNode({
+                id: tool.id,
+                versionId: tool.version,
+                source: tool.source
+              });
               if (result.success) {
                 const data = result.data!;
-                const legacyDefaultMode =
-                  tool.inputs === undefined
-                    ? isSystemOrCommercialToolId(tool.id)
-                      ? ('allAgentGenerated' as const)
-                      : data.flowNodeType === FlowNodeTypeEnum.pluginModule
-                        ? ('toolDescription' as const)
-                        : undefined
-                    : undefined;
                 // Merge saved config back into inputs
+                const savedToolInputs = tool.inputs ?? [];
+                const hasMissingToolInputs = tool.inputs === undefined;
                 const toolInputConfigMap = new Map(
-                  (tool.inputs ?? []).map((input) => [input.key, input])
+                  savedToolInputs.map((input) => [input.key, input])
                 );
                 const mergedInputs = data.inputs.map((input) => {
+                  const savedMode = toolInputConfigMap.get(input.key)?.mode;
+                  const mode =
+                    (Object.values(AgentToolInputModeEnum).includes(
+                      savedMode as AgentToolInputModeEnum
+                    )
+                      ? (savedMode as AgentToolInputModeEnum)
+                      : undefined) ??
+                    (hasMissingToolInputs &&
+                    (isSystemOrCommercialToolId(tool.id) ||
+                      (data.flowNodeType === FlowNodeTypeEnum.pluginModule &&
+                        !!input.toolDescription))
+                      ? AgentToolInputModeEnum.agentGenerated
+                      : undefined);
                   const inputWithTypeConfig = initAgentToolInputType({
                     input,
-                    mode: toolInputConfigMap.get(input.key)?.mode,
-                    legacyDefaultMode
+                    mode
                   });
 
                   return {
@@ -353,8 +347,23 @@ export async function rewriteAppWorkflowToDetail({
                   inputs: mergedInputs
                 };
               } else {
+                unresolvedTools.push({
+                  id: tool.id,
+                  version: tool.version,
+                  source: tool.source,
+                  toolConfig: tool.toolConfig,
+                  config: tool.config,
+                  ...(tool.inputs ? { inputs: tool.inputs } : {}),
+                  error: result.error
+                });
                 return {
                   id: tool.id,
+                  pluginId: tool.id,
+                  source: tool.source,
+                  version: tool.version ?? '',
+                  toolConfig: tool.toolConfig,
+                  config: tool.config ?? {},
+                  inputs: tool.inputs ?? [],
                   templateType: 'personalTool' as const,
                   flowNodeType: FlowNodeTypeEnum.tool,
                   name: 'Invalid',
@@ -363,8 +372,6 @@ export async function rewriteAppWorkflowToDetail({
                   showStatus: false,
                   weight: 0,
                   isTool: true,
-                  version: 'v1',
-                  inputs: [],
                   outputs: [],
                   configStatus: 'invalid' as const,
                   pluginData: {
@@ -374,7 +381,12 @@ export async function rewriteAppWorkflowToDetail({
               }
             })
           );
-          toolInput.value = nodes;
+          toolInput.value = toolNodes.filter((tool): tool is NonNullable<typeof tool> => !!tool);
+          if (unresolvedTools.length > 0) {
+            node.unresolvedTools = unresolvedTools;
+          } else {
+            delete node.unresolvedTools;
+          }
         }
 
         // Skill load

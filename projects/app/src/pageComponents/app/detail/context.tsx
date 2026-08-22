@@ -148,8 +148,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     await putAppById(appId, data);
     setAppDetail((state) => ({
       ...state,
-      ...data,
-      modules: data.nodes || state.modules
+      ...data
     }));
   });
 
