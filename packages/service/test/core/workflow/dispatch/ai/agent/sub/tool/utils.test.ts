@@ -1062,6 +1062,47 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].params).toEqual({ manual: 'fixed value' });
   });
 
+  it('restores Agent-generated defaults for legacy system tools without inputs', async () => {
+    getSystemToolDetailMock.mockResolvedValue({
+      id: 'systemTool-legacy',
+      name: 'Legacy tool',
+      avatar: 'legacy.png',
+      intro: 'Legacy tool',
+      toolDescription: 'Legacy tool',
+      status: 'active',
+      source: 'system',
+      isToolSet: false,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      isLatestVersion: true,
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', isToolParam: false }
+        },
+        required: ['query']
+      }
+    });
+
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'systemTool-legacy', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: 'query',
+          selectedType: FlowNodeInputTypeEnum.agentGenerated
+        })
+      ])
+    );
+  });
+
   it('keeps commercial workflow tools as commercial runtime tools when list source is system', async () => {
     getSystemToolDetailMock.mockResolvedValue({
       id: 'commercial-workflow-tool',
