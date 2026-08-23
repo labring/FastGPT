@@ -46,11 +46,11 @@ AGENT_ENGINE: z.enum(['default', 'pi']).default('default')
 ### 1.2 default 引擎（Plan + Master）
 - **核心循环**：`dispatchPlanAgent`（计划）→ `masterCall`（执行）→ `runAgentLoop`（FastGPT 自家 LLM 多轮工具循环）
 - **能力**：显式 plan 拆解 → 串行执行每个 step → 支持 plan 中途 ask 用户、续跑、最大 10 轮规划
-- **关键产物**：每次 LLM 调用、每次 tool 调用都通过 `usagePush([ChatNodeUsageType])` 推送账单（[agentLoop/index.ts:336-344](../../../packages/service/core/ai/llm/agentLoop/index.ts)）
+- **关键产物**：每次 LLM 调用、每次 tool 调用都通过 `usagePush([ChatNodeUsageType])` 推送账单（[agentLoop/index.ts:336-344](../../../packages/service/core/ai/llm/agentLoop/domain/usage.ts)）
 
 ### 1.3 pi 引擎（pi-agent-core 桥接）
 - **核心循环**：`agent.prompt(input)` 由 `@mariozechner/pi-agent-core` 自管多轮 reasoning
-- **桥接套路**（[piAgent/](../../../packages/service/core/workflow/dispatch/ai/agent/piAgent/)，**这是 OAI-Agents 集成的最佳参考**）：
+- **桥接套路**（[piAgent/](../../../packages/service/core/ai/llm/agentLoop/provider/piAgent/)，**这是 OAI-Agents 集成的最佳参考**）：
   - `modelBridge.ts` — 把 FastGPT `LLMModelItemType` 转成 pi-ai 的 `Model` 配置（baseUrl/apiKey/headers）
   - `toolAdapter.ts` — 把 `ChatCompletionTool[]` 包装成 pi-agent-core `AgentTool[]`，内部仍调 `getExecuteTool(ctx)` 复用 FastGPT 工具分发
   - `index.ts` — 主调度，订阅 `agent.subscribe(event)` 拿流式 token，`agent.state.messages` 存到 memories 跨轮恢复
@@ -65,7 +65,7 @@ AGENT_ENGINE: z.enum(['default', 'pi']).default('default')
 - 输入 `{ callId, toolId, args }`，输出 `{ response, usages, nodeResponse, planResult, capabilityAssistantResponses, stop }`
 
 ### 1.5 Skill 机制（**关键**）
-Skill 不是 SDK 概念，是 FastGPT 自创的 progressive disclosure 模式（[capability/sandboxSkills.ts](../../../packages/service/core/workflow/dispatch/ai/agent/capability/sandboxSkills.ts) + [sub/sandbox/prompt.ts:30](../../../packages/service/core/workflow/dispatch/ai/agent/sub/sandbox/prompt.ts)）：
+Skill 不是 SDK 概念，是 FastGPT 自创的 progressive disclosure 模式（[capability/sandboxSkills.ts](../../../packages/service/core/workflow/dispatch/ai/agent/sub/sandbox/prepare.ts) + [sub/sandbox/prompt.ts:30](../../../packages/service/core/workflow/dispatch/agentLoopCore/application/context/reminder.ts)）：
 
 ```
 skill = (
@@ -88,7 +88,7 @@ usagePush(usages: ChatNodeUsageType[])  // dispatchProps 透传下来的回调
 工作流上层结算
 ```
 
-每次 LLM 调用都要 push 一条，不是只 push 总和（**梯度计费**要求按调用计价后累加，见 [agentLoop/index.ts:328-344](../../../packages/service/core/ai/llm/agentLoop/index.ts)）。
+每次 LLM 调用都要 push 一条，不是只 push 总和（**梯度计费**要求按调用计价后累加，见 [agentLoop/index.ts:328-344](../../../packages/service/core/ai/llm/agentLoop/domain/usage.ts)）。
 
 ---
 
@@ -273,7 +273,7 @@ function buildOpenAITools(ctx: ToolDispatchContext) {
 
 ### 3.3 ✅ 使用 skill
 
-**直接复用** [createSandboxSkillsCapability](../../../packages/service/core/workflow/dispatch/ai/agent/capability/sandboxSkills.ts:192) 即可，跟 `dispatchPiAgent` 用法一模一样：
+**直接复用** [createSandboxSkillsCapability](../../../packages/service/core/workflow/dispatch/ai/agent/sub/sandbox/prepare.ts) 即可，跟 `dispatchPiAgent` 用法一模一样：
 
 ```ts
 // 在 dispatchOpenAIAgent 里，照抄 piAgent/index.ts 的 capabilities 初始化逻辑
