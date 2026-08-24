@@ -5,12 +5,37 @@ import { getNanoid } from '../../../../common/string/tools';
 import { AppSchemaTypeSchema } from '../../../../core/app/type';
 import { AuthUserTypeEnum } from '../../../../support/permission/constant';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
-import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
-import { OpenAPIStoreNodeItemTypeSchema } from '../../workflow/node';
-import { OpenAPIAppChatConfigSchema } from '../../app/common/api';
+import {
+  CanonicalSelectedToolsValueSchema,
+  CanonicalWorkflowDataSchema
+} from '../../../../core/workflow/migration';
+import { NodeInputKeyEnum } from '../../../../core/workflow/constants';
+import {
+  OpenAPIFlowNodeInputItemTypeSchema,
+  OpenAPIStoreNodeItemTypeSchema
+} from '../../workflow/node';
 
 const nullishToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
   z.preprocess((v) => v ?? undefined, schema);
+
+const ChatTestNodeInputSchema = OpenAPIFlowNodeInputItemTypeSchema.superRefine((input, ctx) => {
+  if (input.key !== NodeInputKeyEnum.selectedTools || input.value === undefined) return;
+
+  const result = CanonicalSelectedToolsValueSchema.safeParse(input.value);
+  if (result.success) return;
+
+  result.error.issues.forEach((issue) => {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['value', ...issue.path],
+      message: issue.message
+    });
+  });
+});
+
+const ChatTestNodeSchema = OpenAPIStoreNodeItemTypeSchema.extend({
+  inputs: z.array(ChatTestNodeInputSchema)
+});
 
 const WebCompletionsSchema = z.object({
   chatId: z
@@ -200,17 +225,17 @@ export const ChatTestPropsSchema = z.object({
     example: 'response-chat-item-id',
     description: '自定义响应消息 ID，不传时自动生成'
   }),
-  nodes: z.array(OpenAPIStoreNodeItemTypeSchema).meta({
+  nodes: z.array(ChatTestNodeSchema).meta({
     example: [],
     description: '临时执行的工作流节点列表'
   }),
-  edges: z.array(StoreEdgeItemTypeSchema).meta({
+  edges: CanonicalWorkflowDataSchema.shape.edges.meta({
     example: [],
     description: '临时执行的工作流连线列表'
   }),
-  chatConfig: OpenAPIAppChatConfigSchema.meta({
+  chatConfig: CanonicalWorkflowDataSchema.shape.chatConfig.meta({
     example: {},
-    description: '应用聊天配置'
+    description: '当前格式的聊天配置'
   }),
   variables: nullishToUndefined(z.record(z.string(), z.any()).default({})).meta({
     example: {},

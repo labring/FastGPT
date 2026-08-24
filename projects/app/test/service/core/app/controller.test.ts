@@ -58,7 +58,7 @@ describe('beforeUpdateAppFormat', () => {
         inputs: [
           {
             key: NodeInputKeyEnum.systemInputConfig,
-            selectedTypeIndex: 0,
+            selectedType: FlowNodeInputTypeEnum.reference,
             renderTypeList: [FlowNodeInputTypeEnum.reference],
             value: {
               type: SystemToolSecretInputTypeEnum.system,
@@ -189,12 +189,15 @@ describe('beforeUpdateAppFormat', () => {
   it('保存前统一压缩知识库选择项，去掉编辑态删除标记和快照字段', async () => {
     const nodes = [
       {
+        nodeId: 'dataset-node',
         flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+        name: 'Dataset',
         inputs: [
           {
             key: NodeInputKeyEnum.datasetSelectList,
+            label: 'Datasets',
             renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
-            selectedTypeIndex: 0,
+            selectedType: FlowNodeInputTypeEnum.selectDataset,
             value: [
               {
                 datasetId: 'dataset-1',
@@ -207,7 +210,8 @@ describe('beforeUpdateAppFormat', () => {
               }
             ]
           }
-        ]
+        ],
+        outputs: []
       } as StoreNodeItemType
     ];
 
@@ -228,7 +232,7 @@ describe('beforeUpdateAppFormat', () => {
           {
             key: NodeInputKeyEnum.datasetSelectList,
             renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
-            selectedTypeIndex: 0,
+            selectedType: FlowNodeInputTypeEnum.selectDataset,
             value: {
               datasetId: 'dataset-legacy',
               avatar: 'avatar.png',
@@ -259,7 +263,7 @@ describe('beforeUpdateAppFormat', () => {
           {
             key: NodeInputKeyEnum.datasetSelectList,
             renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
-            selectedTypeIndex: 0,
+            selectedType: FlowNodeInputTypeEnum.selectDataset,
             value: [
               {
                 datasetId: 'dataset-1'
@@ -329,15 +333,19 @@ describe('beforeUpdateAppFormat', () => {
     const referenceValue = ['sourceNode', 'datasets'];
     const nodes = [
       {
+        nodeId: 'dataset-node',
         flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+        name: 'Dataset',
         inputs: [
           {
             key: NodeInputKeyEnum.datasetSelectList,
+            label: 'Datasets',
             renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
-            selectedTypeIndex: 1,
+            selectedType: FlowNodeInputTypeEnum.reference,
             value: referenceValue
           }
-        ]
+        ],
+        outputs: []
       } as StoreNodeItemType
     ];
 
@@ -374,7 +382,7 @@ describe('beforeUpdateAppFormat', () => {
           {
             key: NodeInputKeyEnum.datasetSelectList,
             renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
-            selectedTypeIndex: 0,
+            selectedType: FlowNodeInputTypeEnum.selectDataset,
             value: [
               {
                 name: 'Invalid Dataset'
@@ -396,7 +404,7 @@ describe('beforeUpdateAppFormat', () => {
           {
             key: NodeInputKeyEnum.skills,
             renderTypeList: [FlowNodeInputTypeEnum.selectSkill, FlowNodeInputTypeEnum.reference],
-            selectedTypeIndex: 0,
+            selectedType: FlowNodeInputTypeEnum.selectSkill,
             value: [
               {
                 skillId: 'skill-1',

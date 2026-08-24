@@ -20,7 +20,7 @@ describe('storeNode2FlowNode with deprecated inputs/outputs', () => {
                 deprecated: true,
                 label: 'Deprecated Input',
                 renderTypeList: ['input'],
-                selectedTypeIndex: 0
+                selectedType: 'input'
               }
             ],
             outputs: [

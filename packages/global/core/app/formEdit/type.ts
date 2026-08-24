@@ -24,10 +24,14 @@ export type StoredSelectedAgentSkillItemType = z.infer<
 >;
 
 /* ===== Tool ===== */
-export const SelectedToolItemTypeSchema = FlowNodeTemplateTypeSchema.extend({
-  configStatus: z.enum(['noConfig', 'waitingForConfig', 'configured', 'invalid']).optional()
+const SelectedToolItemBaseSchema = FlowNodeTemplateTypeSchema.extend({
+  configStatus: z.enum(['noConfig', 'waitingForConfig', 'configured', 'invalid']).optional(),
+  config: z.record(z.string(), z.unknown()).optional()
 });
+
+export const SelectedToolItemTypeSchema = SelectedToolItemBaseSchema;
 export type SelectedToolItemType = z.infer<typeof SelectedToolItemTypeSchema>;
+export type AvailableSelectedToolItemType = SelectedToolItemType;
 
 export const AppFormEditFormV1TypeSchema = z.object({
   aiSettings: z.object({

@@ -54,7 +54,6 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
   const { inputs = [], nodeId } = props;
   const { t } = useSafeTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { systemConfigNode } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const node = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById(nodeId));
   const nodeVersion = node?.version;
 
@@ -75,7 +74,6 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
 
   const variables = useMemoEnhance(() => {
     const globalVariables = getWorkflowGlobalVariables({
-      systemConfigNode,
       chatConfig: appDetail.chatConfig
     });
 
@@ -83,7 +81,7 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
       ...item,
       label: t(item.label as any)
     }));
-  }, [appDetail.chatConfig, systemConfigNode, t]);
+  }, [appDetail.chatConfig, t]);
 
   const [selectTemplateData, setSelectTemplateData] = useState<{
     title: string;

@@ -120,34 +120,9 @@ const buildConfigInputTypeState = ({
         : canAgentGenerated
           ? FlowNodeInputTypeEnum.agentGenerated
           : finalRenderTypeList[0];
-  const selectedTypeIndex = finalRenderTypeList.findIndex((type) => type === selectedRenderType);
-
   return {
     renderTypeList: finalRenderTypeList,
-    selectedType: selectedRenderType,
-    selectedTypeIndex: selectedTypeIndex >= 0 ? selectedTypeIndex : 0
-  };
-};
-
-const normalizeInputSelectedTypeIndex = <T extends FlowNodeTemplateType['inputs'][number]>(
-  input: T
-): T => {
-  const selectedType = input.selectedType ?? getSelectedInputRenderType(input);
-  const normalizedInput = (
-    selectedType
-      ? {
-          ...input,
-          selectedType
-        }
-      : input
-  ) as T;
-
-  if (normalizedInput.selectedTypeIndex === undefined || normalizedInput.selectedTypeIndex >= 0)
-    return normalizedInput;
-
-  return {
-    ...normalizedInput,
-    selectedTypeIndex: undefined
+    selectedType: selectedRenderType
   };
 };
 
@@ -239,7 +214,7 @@ const mergeConfiguredTool = ({
     configStatus: prevTool.configStatus,
     inputs: inheritedNextTool.inputs.map((input) => {
       const prevInput = prevInputMap.get(input.key);
-      if (!prevInput) return normalizeInputSelectedTypeIndex(input);
+      if (!prevInput) return input;
 
       return {
         ...input,
@@ -567,10 +542,7 @@ const ConfigInputRow = ({
             render={({ field: { value, onChange } }) => (
               <NodeInputSelect
                 renderTypeList={selectableRenderTypeList}
-                renderTypeIndex={Math.max(
-                  0,
-                  selectableRenderTypeList.findIndex((item) => item === value)
-                )}
+                selectedType={value}
                 onChange={(type) => onChange(type)}
                 isAgentGeneratedMode
               />
@@ -911,7 +883,7 @@ const ConfigToolModal = ({
       ...editingTool,
       inputs: editingTool.inputs.map((input) => {
         if (!shouldShowConfigInput(input)) {
-          return stripToolInputDefaultMode(normalizeInputSelectedTypeIndex(input));
+          return stripToolInputDefaultMode(input);
         }
 
         const inputTypeState = buildConfigInputTypeState({

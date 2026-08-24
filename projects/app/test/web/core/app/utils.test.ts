@@ -271,7 +271,7 @@ describe('form2AppWorkflow', () => {
 
     expect(datasetSearchInput).toMatchObject({
       value: '',
-      isToolParam: true
+      defaultToAgentGenerated: true
     });
   });
 
@@ -302,6 +302,7 @@ describe('form2AppWorkflow', () => {
     const workflow = form2AppWorkflow(form, mockT);
     const toolNode = workflow.nodes.find((node) => node.pluginId === 'systemTool-weather');
 
+    expect(toolNode).not.toHaveProperty('id');
     expect(toolNode?.source).toBe('debug:tmbId:tmb-1');
 
     const restored = appWorkflow2Form({
@@ -415,37 +416,11 @@ describe('getAppQGuideCustomURL', () => {
 
   it('should return empty string if no custom URL found', () => {
     const appDetail = {
-      modules: [
-        {
-          flowNodeType: FlowNodeTypeEnum.systemConfig,
-          inputs: []
-        }
-      ]
+      modules: []
     } as any;
 
     const result = getAppQGuideCustomURL(appDetail);
     expect(result).toBe('');
-  });
-
-  it('should fall back to the legacy system config node', () => {
-    const appDetail = {
-      modules: [
-        {
-          flowNodeType: FlowNodeTypeEnum.systemConfig,
-          inputs: [
-            {
-              key: NodeInputKeyEnum.chatInputGuide,
-              value: {
-                customUrl: 'https://legacy.example.com'
-              }
-            }
-          ]
-        }
-      ],
-      chatConfig: {}
-    } as any;
-
-    expect(getAppQGuideCustomURL(appDetail)).toBe('https://legacy.example.com');
   });
 });
 
@@ -543,9 +518,6 @@ describe('appWorkflow2AgentForm', () => {
     };
 
     const workflow = agentForm2AppWorkflow(form, mockT);
-    expect(workflow.nodes.some((node) => node.flowNodeType === FlowNodeTypeEnum.systemConfig)).toBe(
-      false
-    );
     const agentNode = workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.agent);
 
     expect(
@@ -613,8 +585,7 @@ describe('appWorkflow2AgentForm', () => {
             value: 'hello',
             renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
             selectedType: FlowNodeInputTypeEnum.agentGenerated,
-            selectedTypeIndex: 1,
-            isToolParam: true,
+            defaultToAgentGenerated: true,
             toolDescription: 'Query'
           }
         ],

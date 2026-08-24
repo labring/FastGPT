@@ -1,5 +1,5 @@
 import type { NextApiRequest } from 'next';
-import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
+import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
@@ -61,10 +61,8 @@ async function handler(req: NextApiRequest): Promise<InitOutLinkChatResponseType
   }
 
   const { nodes, chatConfig } = await getAppLatestVersion(app._id, app);
-  const systemConfigNode = getGuideModule(nodes);
   const appChatConfig = getAppChatConfig({
     chatConfig,
-    systemConfigNode,
     storeVariables: chat?.variableList,
     storeWelcomeText: chat?.welcomeText,
     isPublicFetch: false

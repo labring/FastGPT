@@ -306,7 +306,7 @@ describe('WorkflowComponents utils', () => {
                   FlowNodeInputTypeEnum.selectDataset,
                   FlowNodeInputTypeEnum.reference
                 ],
-                selectedTypeIndex: 1,
+                selectedType: FlowNodeInputTypeEnum.reference,
                 valueType: WorkflowIOValueTypeEnum.arrayObject,
                 value: referenceValue
               }
@@ -403,7 +403,7 @@ describe('WorkflowComponents utils', () => {
               {
                 key: 'textareaValue',
                 renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-                selectedTypeIndex: 1,
+                selectedType: FlowNodeInputTypeEnum.textarea,
                 valueType: WorkflowIOValueTypeEnum.string,
                 value: '{{missingNode.text}}'
               }
@@ -495,7 +495,7 @@ describe('WorkflowComponents utils', () => {
       expect(result.nodes[0].inputs[0].value).toEqual(['childNode', 'result']);
     });
 
-    it('should remove negative selectedTypeIndex before saving workflow', () => {
+    it('should preserve a canonical input selection when saving workflow', () => {
       const nodes = [
         {
           data: {
@@ -509,7 +509,7 @@ describe('WorkflowComponents utils', () => {
               {
                 key: 'query',
                 renderTypeList: [FlowNodeInputTypeEnum.input],
-                selectedTypeIndex: -1,
+                selectedType: FlowNodeInputTypeEnum.input,
                 value: 'test'
               }
             ],
@@ -521,10 +521,10 @@ describe('WorkflowComponents utils', () => {
 
       const result = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
 
-      expect(result.nodes[0].inputs[0].selectedTypeIndex).toBeUndefined();
+      expect(result.nodes[0].inputs[0].selectedType).toBe(FlowNodeInputTypeEnum.input);
     });
 
-    it('should migrate legacy selectedTypeIndex to selectedType when saving workflow', () => {
+    it('should preserve the canonical selectedType when saving workflow', () => {
       const nodes = [
         {
           data: {
@@ -538,7 +538,7 @@ describe('WorkflowComponents utils', () => {
               {
                 key: NodeInputKeyEnum.userChatInput,
                 renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-                selectedTypeIndex: 0
+                selectedType: FlowNodeInputTypeEnum.reference
               }
             ],
             outputs: []
@@ -550,7 +550,6 @@ describe('WorkflowComponents utils', () => {
       const result = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
 
       expect(result.nodes[0].inputs[0].selectedType).toBe(FlowNodeInputTypeEnum.reference);
-      expect(result.nodes[0].inputs[0].selectedTypeIndex).toBeUndefined();
     });
 
     it('should keep selected dataset snapshot for later server-side save formatting', () => {
@@ -570,7 +569,7 @@ describe('WorkflowComponents utils', () => {
                   FlowNodeInputTypeEnum.selectDataset,
                   FlowNodeInputTypeEnum.reference
                 ],
-                selectedTypeIndex: 0,
+                selectedType: FlowNodeInputTypeEnum.selectDataset,
                 value: [
                   {
                     datasetId: 'dataset-1',

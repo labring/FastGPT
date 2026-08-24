@@ -223,7 +223,7 @@ describe('httpTool utils', () => {
 
       expect(result.inputs[0]).toMatchObject({
         key: 'query',
-        isToolParam: false
+        defaultToAgentGenerated: false
       });
       expect(result.jsonSchema).toEqual({
         type: 'object',
@@ -257,7 +257,7 @@ describe('httpTool utils', () => {
       expect(result.inputs).toEqual([
         expect.objectContaining({
           key: 'query',
-          isToolParam: true,
+          defaultToAgentGenerated: true,
           required: true
         })
       ]);

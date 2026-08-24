@@ -8,25 +8,13 @@ type ToolSetListItemType = {
   description?: string;
 };
 
-export const getNodeToolSetList = (tool: Pick<FlowNodeTemplateType, 'toolConfig' | 'inputs'>) => {
+export const getNodeToolSetList = (tool: Pick<FlowNodeTemplateType, 'toolConfig'>) => {
   const toolList =
     tool.toolConfig?.mcpToolSet?.toolList ??
     tool.toolConfig?.httpToolSet?.toolList ??
     tool.toolConfig?.systemToolSet?.toolList;
 
-  if (toolList) return toolList;
-
-  const legacyToolSetValue = tool.inputs?.[0]?.value;
-  if (
-    legacyToolSetValue &&
-    typeof legacyToolSetValue === 'object' &&
-    'toolList' in legacyToolSetValue &&
-    Array.isArray(legacyToolSetValue.toolList)
-  ) {
-    return legacyToolSetValue.toolList;
-  }
-
-  return [];
+  return toolList ?? [];
 };
 
 const ToolSetList = ({

@@ -24,7 +24,6 @@ import { getSelectedInputRenderType } from '@fastgpt/global/core/app/formEdit/ut
 export const defaultInput: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.reference], // Can only choose one here
   selectedType: FlowNodeInputTypeEnum.reference,
-  selectedTypeIndex: 0,
   valueType: WorkflowIOValueTypeEnum.string,
   canEdit: true,
   key: '',
@@ -80,12 +79,7 @@ const FieldEditModal = ({
 
   const renderTypeList = useWatch({ control, name: 'renderTypeList' });
   const selectedType = useWatch({ control, name: 'selectedType' });
-  const selectedTypeIndex = useWatch({ control, name: 'selectedTypeIndex' });
-  const inputType =
-    selectedType ||
-    renderTypeList?.[selectedTypeIndex ?? 0] ||
-    renderTypeList?.[0] ||
-    FlowNodeInputTypeEnum.reference;
+  const inputType = selectedType || renderTypeList?.[0] || FlowNodeInputTypeEnum.reference;
 
   const defaultValueType = useMemo(
     () =>
@@ -208,7 +202,6 @@ const FieldEditModal = ({
               if (targetItem) {
                 setValue('renderTypeList', targetItem.value);
                 setValue('selectedType', type as FlowNodeInputTypeEnum);
-                setValue('selectedTypeIndex', 0);
                 setValue('defaultValue', '');
                 if (
                   (type === FlowNodeInputTypeEnum.select ||

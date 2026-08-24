@@ -51,8 +51,6 @@ type WorkflowCheckContext = {
 };
 
 const workflowCheckSkipConnectionTypes = new Set<FlowNodeTypeEnum>([
-  FlowNodeTypeEnum.systemConfig,
-  FlowNodeTypeEnum.pluginConfig,
   FlowNodeTypeEnum.comment,
   FlowNodeTypeEnum.globalVariable,
   FlowNodeTypeEnum.emptyNode
@@ -108,8 +106,6 @@ const workflowCheckStartTypes = new Set<FlowNodeTypeEnum>([
 ]);
 
 const workflowCheckSkipNodeRuleTypes = new Set<FlowNodeTypeEnum>([
-  FlowNodeTypeEnum.systemConfig,
-  FlowNodeTypeEnum.pluginConfig,
   FlowNodeTypeEnum.pluginInput,
   FlowNodeTypeEnum.workflowStart,
   FlowNodeTypeEnum.comment

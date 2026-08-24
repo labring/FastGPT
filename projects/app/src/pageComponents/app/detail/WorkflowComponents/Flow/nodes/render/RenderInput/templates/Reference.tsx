@@ -66,7 +66,7 @@ export const useReference = ({
   const { t } = useSafeTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
-  const { getNodeById, systemConfigNode, childrenNodeIdListMap } = useContextSelector(
+  const { getNodeById, childrenNodeIdListMap } = useContextSelector(
     WorkflowBufferDataContext,
     (v) => v
   );
@@ -75,7 +75,6 @@ export const useReference = ({
   const referenceList = useMemoEnhance(() => {
     const sourceNodes = getNodeAllSource({
       nodeId,
-      systemConfigNode,
       getNodeById,
       edges: edges,
       chatConfig: appDetail.chatConfig,
@@ -115,7 +114,6 @@ export const useReference = ({
     return list;
   }, [
     nodeId,
-    systemConfigNode,
     getNodeById,
     edges,
     appDetail.chatConfig,
