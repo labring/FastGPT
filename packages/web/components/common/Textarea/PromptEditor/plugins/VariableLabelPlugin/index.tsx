@@ -36,7 +36,7 @@ export default function VariableLabelPlugin({
       const nodeAvatar = currentVariable?.parent?.avatar || '';
       return $createVariableLabelNode(textNode.getTextContent(), variableLabel, nodeAvatar);
     },
-    [t]
+    [t, variables]
   );
 
   const getVariableMatch = useCallback((text: string) => {
@@ -53,7 +53,7 @@ export default function VariableLabelPlugin({
   }, []);
 
   useEffect(() => {
-    mergeRegister(
+    return mergeRegister(
       ...registerLexicalTextEntity(
         editor,
         getVariableMatch,

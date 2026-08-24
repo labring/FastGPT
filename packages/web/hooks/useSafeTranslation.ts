@@ -1,4 +1,5 @@
 import { useTranslation as useNextTranslation } from 'next-i18next';
+import { useMemo } from 'react';
 import { I18N_NAMESPACES_MAP } from '../i18n/constants';
 
 /**
@@ -25,9 +26,10 @@ export const createSafeTranslation = <T extends (...args: any[]) => any>(origina
 
 export function useSafeTranslation() {
   const { t: originalT, ...rest } = useNextTranslation();
+  const t = useMemo<typeof originalT>(() => createSafeTranslation(originalT), [originalT]);
 
   return {
-    t: createSafeTranslation(originalT),
+    t,
     ...rest
   };
 }
