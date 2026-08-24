@@ -30,13 +30,12 @@ import {
   getMarketplaceTools,
   getMarketplaceToolVersions
 } from '@/web/core/plugin/marketplace/api';
-import { getBatchUpdateFailures } from '@/web/core/plugin/marketplace/utils';
-import type { PluginInstallFailureType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import {
-  getAdminSystemToolDetail,
-  getAdminSystemTools,
-  putAdminUpdateSystemTool
-} from '@/web/core/plugin/admin/tool/api';
+  getBatchUpdateFailures,
+  updateMarketplaceInstalledPluginStatus
+} from '@/web/core/plugin/marketplace/utils';
+import type { PluginInstallFailureType } from '@fastgpt/global/sdk/fastgpt-plugin';
+import { getAdminSystemTools, putAdminUpdateSystemTool } from '@/web/core/plugin/admin/tool/api';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
@@ -45,7 +44,7 @@ import { getDocPath } from '@/web/common/system/doc';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { isTeamPluginSource, splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
-import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
+import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
@@ -244,7 +243,11 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
     }
   );
 
-  const { data: systemInstalledPlugins, runAsync: refreshInstalledPlugins } = useRequest(
+  const {
+    data: systemInstalledPlugins,
+    mutate: mutateInstalledPlugins,
+    runAsync: refreshInstalledPlugins
+  } = useRequest(
     async () => {
       const tools =
         mode === 'team'
@@ -313,17 +316,18 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
 
       const offlineTool = systemInstalledPlugins?.allMap.get(tool.id);
       const shouldReinstallOfflineTool = offlineTool?.status === PluginStatusEnum.Offline;
-      const reinstallSystemTool = async (systemToolId: string) => {
-        const detail = await getAdminSystemToolDetail({ toolId: systemToolId });
-
+      const updateSystemToolStatus = async (systemToolId: string, status: PluginStatusType) => {
         await putAdminUpdateSystemTool({
           id: systemToolId,
-          status: PluginStatusEnum.Normal,
-          children: detail.children?.map((child) => ({
-            id: child.id,
-            systemKeyCost: child.systemKeyCost
-          }))
+          status
         });
+        mutateInstalledPlugins((current) =>
+          updateMarketplaceInstalledPluginStatus({
+            data: current,
+            pluginId: tool.id,
+            status
+          })
+        );
       };
 
       const operationPromise = (async () => {
@@ -346,7 +350,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
               ]
             });
           } else if (shouldReinstallOfflineTool && offlineTool) {
-            await reinstallSystemTool(offlineTool.systemToolId);
+            await updateSystemToolStatus(offlineTool.systemToolId, PluginStatusEnum.Normal);
           } else {
             const downloadUrl = await getMarketplaceDownloadURL(tool.id, version);
             if (!downloadUrl) return;
@@ -361,7 +365,9 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
           } else if (selectedTool?.id === tool.id) {
             setSelectedTool((prev) => (prev ? { ...prev, installed: true, update: false } : null));
           }
-          await refreshInstalledPlugins();
+          if (mode === 'team' || !shouldReinstallOfflineTool) {
+            await refreshInstalledPlugins();
+          }
           toast({
             title: t('common:Success'),
             status: 'success'
@@ -460,22 +466,25 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
               pluginId: systemToolId
             });
           } else {
-            const detail = await getAdminSystemToolDetail({ toolId: systemToolId });
-
             await putAdminUpdateSystemTool({
               id: systemToolId,
-              status: PluginStatusEnum.Offline,
-              children: detail.children?.map((child) => ({
-                id: child.id,
-                systemKeyCost: child.systemKeyCost
-              }))
+              status: PluginStatusEnum.Offline
             });
+            mutateInstalledPlugins((current) =>
+              updateMarketplaceInstalledPluginStatus({
+                data: current,
+                pluginId: tool.id,
+                status: PluginStatusEnum.Offline
+              })
+            );
           }
 
           if (selectedTool?.id === tool.id) {
             setSelectedTool((prev) => (prev ? { ...prev, installed: false, update: false } : null));
           }
-          await refreshInstalledPlugins();
+          if (mode === 'team') {
+            await refreshInstalledPlugins();
+          }
         } finally {
           installingOrDeletingToolIdsDispatch.remove(tool.id);
           operatingPromisesRef.current.delete(tool.id);

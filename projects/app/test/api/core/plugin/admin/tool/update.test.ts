@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SystemToolSecretMaskedValue } from '@fastgpt/global/core/app/tool/systemTool/constants';
+import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { decryptSecret } from '@fastgpt/service/common/secret/aes256gcm';
 
 const mocks = vi.hoisted(() => ({
@@ -76,6 +77,24 @@ describe('admin system tool update handler', () => {
       { session: 'session' }
     );
     expect(mocks.updateOne).toHaveBeenCalledTimes(1);
+  });
+
+  it('仅更新父工具状态时同步已有子工具状态', async () => {
+    await handler(
+      {
+        body: {
+          id: 'systemTool-weather',
+          status: PluginStatusEnum.Offline
+        }
+      } as any,
+      {} as any
+    );
+
+    expect(mocks.updateMany).toHaveBeenCalledWith(
+      { pluginId: { $regex: '^systemTool-weather/' } },
+      { status: PluginStatusEnum.Offline },
+      { session: 'session' }
+    );
   });
 
   it('为新建的子工具写入与父工具一致的密钥', async () => {

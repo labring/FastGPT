@@ -1,10 +1,28 @@
 import { describe, expect, it } from 'vitest';
+import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import {
   getBatchUpdateFailures,
   getMarketplaceToolStateAfterInstall,
-  shouldReinstallOfflineMarketplaceTool
+  shouldReinstallOfflineMarketplaceTool,
+  updateMarketplaceInstalledPluginStatus
 } from '@/web/core/plugin/marketplace/utils';
 import { isToolVersionInstalled } from '@fastgpt/web/components/core/plugin/tool/utils';
+
+const createInstalledPlugins = () => {
+  const plugin = {
+    id: 'weather',
+    systemToolId: 'systemTool-weather',
+    status: PluginStatusEnum.Normal,
+    version: '1.0.0'
+  };
+
+  return {
+    ids: new Set([plugin.id]),
+    map: new Map([[plugin.id, plugin]]),
+    allMap: new Map([[plugin.id, plugin]]),
+    list: [plugin]
+  };
+};
 
 describe('shouldReinstallOfflineMarketplaceTool', () => {
   it('re-enables an offline tool only when the selected version matches', () => {
@@ -128,5 +146,37 @@ describe('getBatchUpdateFailures', () => {
         language: 'en'
       })
     ).toEqual([]);
+  });
+});
+
+describe('marketplace installed plugin cache', () => {
+  it('removes a soft-uninstalled plugin from active collections while retaining it in allMap', () => {
+    const result = updateMarketplaceInstalledPluginStatus({
+      data: createInstalledPlugins(),
+      pluginId: 'weather',
+      status: PluginStatusEnum.Offline
+    });
+
+    expect(result?.ids).toEqual(new Set());
+    expect(result?.map).toEqual(new Map());
+    expect(result?.list).toEqual([]);
+    expect(result?.allMap.get('weather')?.status).toBe(PluginStatusEnum.Offline);
+  });
+
+  it('restores a soft-uninstalled plugin from the retained allMap entry', () => {
+    const offline = updateMarketplaceInstalledPluginStatus({
+      data: createInstalledPlugins(),
+      pluginId: 'weather',
+      status: PluginStatusEnum.Offline
+    });
+    const result = updateMarketplaceInstalledPluginStatus({
+      data: offline,
+      pluginId: 'weather',
+      status: PluginStatusEnum.Normal
+    });
+
+    expect(result?.ids).toEqual(new Set(['weather']));
+    expect(result?.map.get('weather')?.status).toBe(PluginStatusEnum.Normal);
+    expect(result?.list).toHaveLength(1);
   });
 });
