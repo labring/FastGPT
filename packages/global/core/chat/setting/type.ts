@@ -3,7 +3,10 @@ import z from 'zod';
 import { ChatFavouriteTagSchema } from '../favouriteApp/type';
 
 export const ChatSelectedToolSchema = z.object({
-  pluginId: ObjectIdSchema,
+  pluginId: z.string().meta({
+    example: 'systemTool-websearch',
+    description: '工具 ID，支持任意字符串格式'
+  }),
   source: z.string().optional().meta({ description: '工具来源，未填写时使用系统来源' }),
   inputs: z.record(z.string(), z.any()).meta({ example: null, description: '工具输入参数' }),
   name: z.string().meta({ example: '测试应用', description: '工具名称' }),
