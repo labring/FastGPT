@@ -263,8 +263,11 @@ const TagMultiSelect = ({
     <MyPopover
       placement={placement}
       hasArrow={false}
-      offset={[2, 2]}
       w={popoverW}
+      border={'1px solid #fff'}
+      borderRadius={'md'}
+      boxShadow={'0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25)'}
+      overflow={'hidden'}
       closeOnBlur
       trigger={'click'}
       onCloseFunc={() => {
