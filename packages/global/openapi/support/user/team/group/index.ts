@@ -2,16 +2,11 @@ import type { OpenAPIPath } from '../../../../type';
 import { DevApiTagsMap } from '../../../../tag';
 import {
   ChangeGroupOwnerBodySchema,
-  ChangeGroupOwnerResponseSchema,
   CreateGroupBodySchema,
-  CreateGroupResponseSchema,
   DeleteGroupQuerySchema,
-  DeleteGroupResponseSchema,
   ListGroupBodySchema,
-  ListGroupQuerySchema,
   ListGroupResponseSchema,
-  UpdateGroupBodySchema,
-  UpdateGroupResponseSchema
+  UpdateGroupBodySchema
 } from './api';
 
 const TeamGroupTags = [DevApiTagsMap.teamGroup];
@@ -31,12 +26,7 @@ export const TeamGroupPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '群组所有权转让成功',
-          content: {
-            'application/json': {
-              schema: ChangeGroupOwnerResponseSchema
-            }
-          }
+          description: '群组所有权转让成功'
         }
       }
     }
@@ -55,12 +45,7 @@ export const TeamGroupPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '群组创建成功',
-          content: {
-            'application/json': {
-              schema: CreateGroupResponseSchema
-            }
-          }
+          description: '群组创建成功'
         }
       }
     }
@@ -75,12 +60,7 @@ export const TeamGroupPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '群组删除成功',
-          content: {
-            'application/json': {
-              schema: DeleteGroupResponseSchema
-            }
-          }
+          description: '群组删除成功'
         }
       }
     }
@@ -90,9 +70,6 @@ export const TeamGroupPath: OpenAPIPath = {
       summary: '获取群组列表',
       description: '获取当前团队群组列表，可按名称搜索并选择是否返回成员预览和权限信息',
       tags: [...TeamGroupTags],
-      requestParams: {
-        query: ListGroupQuerySchema
-      },
       requestBody: {
         content: {
           'application/json': {
@@ -126,12 +103,7 @@ export const TeamGroupPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '群组更新成功',
-          content: {
-            'application/json': {
-              schema: UpdateGroupResponseSchema
-            }
-          }
+          description: '群组更新成功'
         }
       }
     }

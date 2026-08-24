@@ -2,19 +2,13 @@ import type { OpenAPIPath } from '../../../../type';
 import { DevApiTagsMap } from '../../../../tag';
 import {
   CreateOrgBodySchema,
-  CreateOrgResponseSchema,
   DeleteOrgMemberQuerySchema,
-  DeleteOrgMemberResponseSchema,
   DeleteOrgQuerySchema,
-  DeleteOrgResponseSchema,
   ListOrgBodySchema,
   ListOrgResponseSchema,
   MoveOrgBodySchema,
-  MoveOrgResponseSchema,
   UpdateOrgBodySchema,
-  UpdateOrgMembersBodySchema,
-  UpdateOrgMembersResponseSchema,
-  UpdateOrgResponseSchema
+  UpdateOrgMembersBodySchema
 } from './api';
 
 const DepartmentTags = [DevApiTagsMap.teamOrg];
@@ -34,12 +28,7 @@ export const TeamOrgPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '部门创建成功',
-          content: {
-            'application/json': {
-              schema: CreateOrgResponseSchema
-            }
-          }
+          description: '部门创建成功'
         }
       }
     }
@@ -54,12 +43,7 @@ export const TeamOrgPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '部门删除成功',
-          content: {
-            'application/json': {
-              schema: DeleteOrgResponseSchema
-            }
-          }
+          description: '部门删除成功'
         }
       }
     }
@@ -74,12 +58,7 @@ export const TeamOrgPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '部门成员删除成功',
-          content: {
-            'application/json': {
-              schema: DeleteOrgMemberResponseSchema
-            }
-          }
+          description: '部门成员删除成功'
         }
       }
     }
@@ -122,12 +101,7 @@ export const TeamOrgPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '部门移动成功',
-          content: {
-            'application/json': {
-              schema: MoveOrgResponseSchema
-            }
-          }
+          description: '部门移动成功'
         }
       }
     }
@@ -146,12 +120,7 @@ export const TeamOrgPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '部门更新成功',
-          content: {
-            'application/json': {
-              schema: UpdateOrgResponseSchema
-            }
-          }
+          description: '部门更新成功'
         }
       }
     }
@@ -170,12 +139,7 @@ export const TeamOrgPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '部门成员更新成功',
-          content: {
-            'application/json': {
-              schema: UpdateOrgMembersResponseSchema
-            }
-          }
+          description: '部门成员更新成功'
         }
       }
     }

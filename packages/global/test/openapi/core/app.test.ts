@@ -14,19 +14,14 @@ import {
 import {
   CreateEvaluationBodySchema,
   CreateEvaluationFormSchema,
-  CreateEvaluationResponseSchema,
-  DeleteEvaluationItemResponseSchema,
   DeleteEvaluationQuerySchema,
-  DeleteEvaluationResponseSchema,
   ExportEvaluationItemsBodySchema,
   ListEvaluationItemsBodySchema,
   ListEvaluationItemsResponseSchema,
   ListEvaluationsBodySchema,
   ListEvaluationsResponseSchema,
   RetryEvaluationItemBodySchema,
-  RetryEvaluationItemResponseSchema,
-  UpdateEvaluationItemBodySchema,
-  UpdateEvaluationItemResponseSchema
+  UpdateEvaluationItemBodySchema
 } from '../../../openapi/core/app/evaluation/api';
 import { EvaluationStatusEnum } from '../../../core/app/evaluation/constants';
 
@@ -74,6 +69,17 @@ describe('App OpenAPI contracts', () => {
     expect(openAPITagGroups.find(({ name }) => name === '核心-应用管理')?.tags).toContain(
       DevApiTagsMap.appEvaluation
     );
+
+    const emptyResponsePaths = [
+      ['/proApi/core/app/evaluation/create', 'post'],
+      ['/proApi/core/app/evaluation/delete', 'delete'],
+      ['/proApi/core/app/evaluation/deleteItem', 'delete'],
+      ['/proApi/core/app/evaluation/retryItem', 'post'],
+      ['/proApi/core/app/evaluation/updateItem', 'post']
+    ] as const;
+    emptyResponsePaths.forEach(([path, method]) => {
+      expect(openAPIDocument.paths?.[path]?.[method]?.responses?.[200]?.content).toBeUndefined();
+    });
   });
 
   it('groups app ownership transfer under permission and template types under template management', () => {
@@ -199,10 +205,5 @@ describe('App OpenAPI contracts', () => {
         ]
       }).list
     ).toHaveLength(1);
-    expect(CreateEvaluationResponseSchema.parse(undefined)).toBeUndefined();
-    expect(DeleteEvaluationResponseSchema.parse(undefined)).toBeUndefined();
-    expect(DeleteEvaluationItemResponseSchema.parse(undefined)).toBeUndefined();
-    expect(RetryEvaluationItemResponseSchema.parse(undefined)).toBeUndefined();
-    expect(UpdateEvaluationItemResponseSchema.parse(undefined)).toBeUndefined();
   });
 });

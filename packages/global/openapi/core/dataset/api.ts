@@ -341,11 +341,6 @@ export const PostDatasetSyncBodySchema = z
   });
 export type PostDatasetSyncParams = z.infer<typeof PostDatasetSyncBodySchema>;
 
-export const PostDatasetSyncResponseSchema = z.undefined().meta({
-  description: '同步任务创建成功，无业务数据返回'
-});
-export type PostDatasetSyncResponse = z.infer<typeof PostDatasetSyncResponseSchema>;
-
 /* ============================================================================
  * API: 更新知识库
  * Route: PUT /api/core/dataset/update

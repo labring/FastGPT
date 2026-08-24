@@ -355,13 +355,6 @@ export const UpdateNotificationAccountBodySchema = z
   });
 export type UpdateNotificationAccountBodyType = z.infer<typeof UpdateNotificationAccountBodySchema>;
 
-export const UpdateNotificationAccountResponseSchema = z.undefined().meta({
-  description: '团队通知账号更新成功'
-});
-export type UpdateNotificationAccountResponseType = z.infer<
-  typeof UpdateNotificationAccountResponseSchema
->;
-
 /* ============================================================================
  * API: 转让团队所有权
  * Route: PUT /api/proApi/support/user/team/changeOwner
@@ -453,11 +446,6 @@ export type GetTeamPlanStatusResponse = z.infer<typeof GetTeamPlanStatusResponse
  * Description: 获取当前团队的全部订阅套餐记录，按过期时间升序返回。
  * Tags: ['订阅管理', 'Read']
  * ============================================================================ */
-
-export const GetTeamPlansQuerySchema = z.object({}).meta({
-  description: '该接口不需要查询参数'
-});
-export type GetTeamPlansQueryType = z.infer<typeof GetTeamPlansQuerySchema>;
 
 export const TeamSubscriptionItemSchema = TeamSubSchema.extend({
   currentSubLevel: TeamSubSchema.shape.currentSubLevel.optional(),

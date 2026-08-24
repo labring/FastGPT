@@ -2,13 +2,9 @@ import type { OpenAPIPath } from '../../../../type';
 import { DevApiTagsMap } from '../../../../tag';
 import {
   DeleteTeamCollaboratorQuerySchema,
-  DeleteTeamCollaboratorResponseSchema,
-  GetTeamCollaboratorListQuerySchema,
   GetTeamCollaboratorListResponseSchema,
   UpdateTeamCollaboratorBodySchema,
-  UpdateTeamCollaboratorOneBodySchema,
-  UpdateTeamCollaboratorOneResponseSchema,
-  UpdateTeamCollaboratorResponseSchema
+  UpdateTeamCollaboratorOneBodySchema
 } from './api';
 
 const TeamPermissionTags = [DevApiTagsMap.teamPermission];
@@ -24,12 +20,7 @@ export const TeamCollaboratorPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '团队协作者权限删除成功',
-          content: {
-            'application/json': {
-              schema: DeleteTeamCollaboratorResponseSchema
-            }
-          }
+          description: '团队协作者权限删除成功'
         }
       }
     }
@@ -39,9 +30,6 @@ export const TeamCollaboratorPath: OpenAPIPath = {
       summary: '获取团队协作者列表',
       description: '获取当前团队成员、用户组和组织节点的协作者权限列表',
       tags: [...TeamPermissionTags],
-      requestParams: {
-        query: GetTeamCollaboratorListQuerySchema
-      },
       responses: {
         200: {
           description: '成功获取团队协作者列表',
@@ -68,12 +56,7 @@ export const TeamCollaboratorPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '团队协作者权限更新成功',
-          content: {
-            'application/json': {
-              schema: UpdateTeamCollaboratorResponseSchema
-            }
-          }
+          description: '团队协作者权限更新成功'
         }
       }
     }
@@ -92,12 +75,7 @@ export const TeamCollaboratorPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '团队协作者权限更新成功',
-          content: {
-            'application/json': {
-              schema: UpdateTeamCollaboratorOneResponseSchema
-            }
-          }
+          description: '团队协作者权限更新成功'
         }
       }
     }

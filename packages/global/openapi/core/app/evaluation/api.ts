@@ -62,11 +62,6 @@ export const CreateEvaluationFormSchema = z.object({
 });
 export type CreateEvaluationFormType = z.infer<typeof CreateEvaluationFormSchema>;
 
-export const CreateEvaluationResponseSchema = z.undefined().meta({
-  description: '评测任务创建成功，任务将在后台异步执行'
-});
-export type CreateEvaluationResponseType = z.infer<typeof CreateEvaluationResponseSchema>;
-
 /* ==========================================================================
  * API: 删除应用评测
  * Route: DELETE /api/proApi/core/app/evaluation/delete
@@ -79,11 +74,6 @@ export const DeleteEvaluationQuerySchema = z.object({
   evalId: EvaluationIdSchema
 });
 export type DeleteEvaluationQueryType = z.infer<typeof DeleteEvaluationQuerySchema>;
-
-export const DeleteEvaluationResponseSchema = z.undefined().meta({
-  description: '评测任务删除成功'
-});
-export type DeleteEvaluationResponseType = z.infer<typeof DeleteEvaluationResponseSchema>;
 
 /* ==========================================================================
  * API: 删除应用评测项
@@ -98,11 +88,6 @@ export const DeleteEvaluationItemQuerySchema = z.object({
   itemId: EvaluationItemIdSchema
 });
 export type DeleteEvaluationItemQueryType = z.infer<typeof DeleteEvaluationItemQuerySchema>;
-
-export const DeleteEvaluationItemResponseSchema = z.undefined().meta({
-  description: '评测项删除成功'
-});
-export type DeleteEvaluationItemResponseType = z.infer<typeof DeleteEvaluationItemResponseSchema>;
 
 /* ==========================================================================
  * API: 导出应用评测项
@@ -229,11 +214,6 @@ export const RetryEvaluationItemBodySchema = z.object({
 });
 export type RetryEvaluationItemBodyType = z.infer<typeof RetryEvaluationItemBodySchema>;
 
-export const RetryEvaluationItemResponseSchema = z.undefined().meta({
-  description: '评测项已重新加入执行队列'
-});
-export type RetryEvaluationItemResponseType = z.infer<typeof RetryEvaluationItemResponseSchema>;
-
 /* ==========================================================================
  * API: 更新应用评测项
  * Route: POST /api/proApi/core/app/evaluation/updateItem
@@ -252,8 +232,3 @@ export const UpdateEvaluationItemBodySchema = z.object({
   variables: z.record(z.string(), z.string()).meta({ description: '评测项变量' })
 });
 export type UpdateEvaluationItemBodyType = z.infer<typeof UpdateEvaluationItemBodySchema>;
-
-export const UpdateEvaluationItemResponseSchema = z.undefined().meta({
-  description: '评测项更新成功并已重新加入执行队列'
-});
-export type UpdateEvaluationItemResponseType = z.infer<typeof UpdateEvaluationItemResponseSchema>;

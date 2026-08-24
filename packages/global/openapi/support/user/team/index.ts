@@ -3,7 +3,6 @@ import { DevApiTagsMap } from '../../../tag';
 import {
   GetTeamPlanStatusQuerySchema,
   GetTeamPlanStatusResponseSchema,
-  GetTeamPlansQuerySchema,
   GetTeamPlansResponseSchema,
   GetTeamListQuerySchema,
   GetTeamListResponseSchema,
@@ -14,7 +13,6 @@ import {
   TeamChangeOwnerBodySchema,
   TeamChangeOwnerResponseSchema,
   UpdateNotificationAccountBodySchema,
-  UpdateNotificationAccountResponseSchema,
   UpdateTeamBodySchema,
   UserSyncBodySchema,
   UserSyncResponseSchema
@@ -139,12 +137,7 @@ export const TeamPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '团队通知账号更新成功',
-          content: {
-            'application/json': {
-              schema: UpdateNotificationAccountResponseSchema
-            }
-          }
+          description: '团队通知账号更新成功'
         }
       }
     }
@@ -217,9 +210,6 @@ export const TeamPath: OpenAPIPath = {
       summary: '获取团队套餐列表',
       description: '获取当前团队的全部订阅套餐记录，按过期时间升序返回',
       tags: [DevApiTagsMap.teamSubscription],
-      requestParams: {
-        query: GetTeamPlansQuerySchema
-      },
       responses: {
         200: {
           description: '成功返回团队套餐列表',

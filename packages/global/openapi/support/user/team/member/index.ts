@@ -2,25 +2,14 @@ import type { OpenAPIPath } from '../../../../type';
 import { DevApiTagsMap } from '../../../../tag';
 import {
   DeleteTeamMemberQuerySchema,
-  DeleteTeamMemberResponseSchema,
-  ExportTeamMembersQuerySchema,
   ExportTeamMembersResponseSchema,
-  GetTeamMemberCountQuerySchema,
   GetTeamMemberCountResponseSchema,
-  LeaveTeamBodySchema,
-  LeaveTeamQuerySchema,
-  LeaveTeamResponseSchema,
   ListTeamMembersBodySchema,
-  ListTeamMembersQuerySchema,
   ListTeamMembersResponseSchema,
   RestoreTeamMemberBodySchema,
-  RestoreTeamMemberResponseSchema,
   UpdateTeamMemberInviteBodySchema,
-  UpdateTeamMemberInviteResponseSchema,
   UpdateTeamMemberNameBodySchema,
-  UpdateTeamMemberNameByManagerBodySchema,
-  UpdateTeamMemberNameByManagerResponseSchema,
-  UpdateTeamMemberNameResponseSchema
+  UpdateTeamMemberNameByManagerBodySchema
 } from './api';
 
 const TeamMemberTags = [DevApiTagsMap.teamMember];
@@ -31,9 +20,6 @@ export const TeamMemberPath: OpenAPIPath = {
       summary: '获取团队成员数量',
       description: '获取当前团队未离开及未停用的成员数量',
       tags: [...TeamMemberTags],
-      requestParams: {
-        query: GetTeamMemberCountQuerySchema
-      },
       responses: {
         200: {
           description: '成功返回团队成员数量',
@@ -56,12 +42,7 @@ export const TeamMemberPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '团队成员删除成功',
-          content: {
-            'application/json': {
-              schema: DeleteTeamMemberResponseSchema
-            }
-          }
+          description: '团队成员删除成功'
         }
       }
     }
@@ -71,9 +52,6 @@ export const TeamMemberPath: OpenAPIPath = {
       summary: '导出团队成员',
       description: '将当前团队成员信息导出为 CSV 文件',
       tags: [...TeamMemberTags],
-      requestParams: {
-        query: ExportTeamMembersQuerySchema
-      },
       responses: {
         200: {
           description: '成功导出团队成员 CSV 文件',
@@ -91,24 +69,9 @@ export const TeamMemberPath: OpenAPIPath = {
       summary: '离开团队',
       description: '当前用户主动离开当前团队，团队所有者不能执行此操作',
       tags: [...TeamMemberTags],
-      requestParams: {
-        query: LeaveTeamQuerySchema
-      },
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: LeaveTeamBodySchema
-          }
-        }
-      },
       responses: {
         200: {
-          description: '离开团队成功',
-          content: {
-            'application/json': {
-              schema: LeaveTeamResponseSchema
-            }
-          }
+          description: '离开团队成功'
         }
       }
     }
@@ -118,9 +81,6 @@ export const TeamMemberPath: OpenAPIPath = {
       summary: '获取团队成员列表',
       description: '分页获取当前团队成员，支持状态、关键词、组织和成员组筛选',
       tags: [...TeamMemberTags],
-      requestParams: {
-        query: ListTeamMembersQuerySchema
-      },
       requestBody: {
         content: {
           'application/json': {
@@ -154,12 +114,7 @@ export const TeamMemberPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '团队成员恢复成功',
-          content: {
-            'application/json': {
-              schema: RestoreTeamMemberResponseSchema
-            }
-          }
+          description: '团队成员恢复成功'
         }
       }
     }
@@ -178,12 +133,7 @@ export const TeamMemberPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '团队成员邀请状态更新成功',
-          content: {
-            'application/json': {
-              schema: UpdateTeamMemberInviteResponseSchema
-            }
-          }
+          description: '团队成员邀请状态更新成功'
         }
       }
     }
@@ -202,12 +152,7 @@ export const TeamMemberPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成员名称更新成功',
-          content: {
-            'application/json': {
-              schema: UpdateTeamMemberNameResponseSchema
-            }
-          }
+          description: '成员名称更新成功'
         }
       }
     }
@@ -226,12 +171,7 @@ export const TeamMemberPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成员名称更新成功',
-          content: {
-            'application/json': {
-              schema: UpdateTeamMemberNameByManagerResponseSchema
-            }
-          }
+          description: '成员名称更新成功'
         }
       }
     }

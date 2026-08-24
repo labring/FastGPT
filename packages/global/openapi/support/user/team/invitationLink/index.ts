@@ -2,14 +2,11 @@ import type { OpenAPIPath } from '../../../../type';
 import { DevApiTagsMap } from '../../../../tag';
 import {
   AcceptInvitationLinkBodySchema,
-  AcceptInvitationLinkResponseSchema,
   CreateInvitationLinkBodySchema,
   CreateInvitationLinkResponseSchema,
   ForbidInvitationLinkBodySchema,
-  ForbidInvitationLinkResponseSchema,
   GetInvitationLinkInfoQuerySchema,
   GetInvitationLinkInfoResponseSchema,
-  GetInvitationLinkListQuerySchema,
   GetInvitationLinkListResponseSchema
 } from './api';
 
@@ -30,12 +27,7 @@ export const TeamInvitationLinkPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '接受邀请成功',
-          content: {
-            'application/json': {
-              schema: AcceptInvitationLinkResponseSchema
-            }
-          }
+          description: '接受邀请成功'
         }
       }
     }
@@ -78,12 +70,7 @@ export const TeamInvitationLinkPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '禁用邀请链接成功',
-          content: {
-            'application/json': {
-              schema: ForbidInvitationLinkResponseSchema
-            }
-          }
+          description: '禁用邀请链接成功'
         }
       }
     }
@@ -113,9 +100,6 @@ export const TeamInvitationLinkPath: OpenAPIPath = {
       summary: '获取团队邀请链接列表',
       description: '获取当前团队创建的全部邀请链接及其已加入成员信息',
       tags: [...TeamInvitationLinkTags],
-      requestParams: {
-        query: GetInvitationLinkListQuerySchema
-      },
       responses: {
         200: {
           description: '成功返回团队邀请链接列表',

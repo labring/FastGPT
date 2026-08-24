@@ -13,8 +13,6 @@ const TeamMemberIdSchema = ObjectIdSchema.meta({
   description: '团队成员 ID'
 });
 
-const EmptyQuerySchema = z.object({}).meta({ description: '该接口不需要查询参数' });
-
 const GroupMemberRoleSchema = z.enum(GroupMemberRole).meta({
   example: GroupMemberRole.member,
   description: '成员在群组中的角色'
@@ -49,11 +47,6 @@ export const ChangeGroupOwnerBodySchema = z
   });
 export type ChangeGroupOwnerBodyType = z.infer<typeof ChangeGroupOwnerBodySchema>;
 
-export const ChangeGroupOwnerResponseSchema = z.undefined().meta({
-  description: '群组所有权转让成功'
-});
-export type ChangeGroupOwnerResponseType = z.infer<typeof ChangeGroupOwnerResponseSchema>;
-
 /* ============================================================================
  * API: 创建群组
  * Route: POST /api/proApi/support/user/team/group/create
@@ -64,7 +57,7 @@ export type ChangeGroupOwnerResponseType = z.infer<typeof ChangeGroupOwnerRespon
 
 export const CreateGroupBodySchema = z
   .object({
-    name: z.string().optional().meta({
+    name: z.string().min(1).meta({
       example: '研发组',
       description: '群组名称，不能为空'
     }),
@@ -80,20 +73,14 @@ export const CreateGroupBodySchema = z
         description: '初始成员 ID 列表；当前创建逻辑仅自动添加创建者'
       })
   })
-  .default({})
   .meta({
-    description: '创建群组参数；名称为空时由业务层返回群组名称为空错误',
+    description: '创建群组参数',
     example: {
       name: '研发组',
       avatar: 'https://example.com/group-avatar.png'
     }
   });
 export type CreateGroupBodyType = z.infer<typeof CreateGroupBodySchema>;
-
-export const CreateGroupResponseSchema = z.undefined().meta({
-  description: '群组创建成功'
-});
-export type CreateGroupResponseType = z.infer<typeof CreateGroupResponseSchema>;
 
 /* ============================================================================
  * API: 删除群组
@@ -104,17 +91,12 @@ export type CreateGroupResponseType = z.infer<typeof CreateGroupResponseSchema>;
  * ============================================================================ */
 
 export const DeleteGroupQuerySchema = z.object({
-  groupId: z.string().optional().meta({
+  groupId: GroupIdSchema.meta({
     example: '68ad85a7463006c963799a07',
-    description: '群组 ID；缺少时由业务层返回参数缺失错误'
+    description: '群组 ID'
   })
 });
 export type DeleteGroupQueryType = z.infer<typeof DeleteGroupQuerySchema>;
-
-export const DeleteGroupResponseSchema = z.undefined().meta({
-  description: '群组删除成功'
-});
-export type DeleteGroupResponseType = z.infer<typeof DeleteGroupResponseSchema>;
 
 /* ============================================================================
  * API: 获取群组列表
@@ -137,9 +119,6 @@ export const ListGroupBodySchema = z
   })
   .default({});
 export type ListGroupBodyType = z.infer<typeof ListGroupBodySchema>;
-export const ListGroupQuerySchema = EmptyQuerySchema;
-export type ListGroupQueryType = z.infer<typeof ListGroupQuerySchema>;
-
 export const GroupListItemSchema = z
   .object({
     _id: GroupIdSchema,
@@ -182,8 +161,8 @@ const GroupMemberUpdateSchema = z
 
 export const UpdateGroupBodySchema = z
   .object({
-    groupId: GroupIdSchema.optional().meta({
-      description: '群组 ID；缺少时由业务层返回参数缺失错误'
+    groupId: GroupIdSchema.meta({
+      description: '群组 ID'
     }),
     name: z.string().optional().meta({
       example: '新研发组名称',
@@ -197,10 +176,5 @@ export const UpdateGroupBodySchema = z
       description: '完整群组成员及角色列表；传入后会覆盖原有成员关系'
     })
   })
-  .default({});
+  .meta({ description: '更新群组请求体' });
 export type UpdateGroupBodyType = z.infer<typeof UpdateGroupBodySchema>;
-
-export const UpdateGroupResponseSchema = z.undefined().meta({
-  description: '群组更新成功'
-});
-export type UpdateGroupResponseType = z.infer<typeof UpdateGroupResponseSchema>;

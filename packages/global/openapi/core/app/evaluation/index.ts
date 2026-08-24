@@ -2,11 +2,8 @@ import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import {
   CreateEvaluationFormSchema,
-  CreateEvaluationResponseSchema,
   DeleteEvaluationItemQuerySchema,
-  DeleteEvaluationItemResponseSchema,
   DeleteEvaluationQuerySchema,
-  DeleteEvaluationResponseSchema,
   ExportEvaluationItemsBodySchema,
   ExportEvaluationItemsQuerySchema,
   ExportEvaluationItemsResponseSchema,
@@ -15,9 +12,7 @@ import {
   ListEvaluationsBodySchema,
   ListEvaluationsResponseSchema,
   RetryEvaluationItemBodySchema,
-  RetryEvaluationItemResponseSchema,
-  UpdateEvaluationItemBodySchema,
-  UpdateEvaluationItemResponseSchema
+  UpdateEvaluationItemBodySchema
 } from './api';
 
 export const AppEvaluationPath: OpenAPIPath = {
@@ -38,12 +33,7 @@ export const AppEvaluationPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功创建应用评测',
-          content: {
-            'application/json': {
-              schema: CreateEvaluationResponseSchema
-            }
-          }
+          description: '成功创建应用评测'
         }
       }
     }
@@ -58,12 +48,7 @@ export const AppEvaluationPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功删除应用评测',
-          content: {
-            'application/json': {
-              schema: DeleteEvaluationResponseSchema
-            }
-          }
+          description: '成功删除应用评测'
         }
       }
     }
@@ -78,12 +63,7 @@ export const AppEvaluationPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功删除应用评测项',
-          content: {
-            'application/json': {
-              schema: DeleteEvaluationItemResponseSchema
-            }
-          }
+          description: '成功删除应用评测项'
         }
       }
     }
@@ -177,12 +157,7 @@ export const AppEvaluationPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功重试应用评测项',
-          content: {
-            'application/json': {
-              schema: RetryEvaluationItemResponseSchema
-            }
-          }
+          description: '成功重试应用评测项'
         }
       }
     }
@@ -201,12 +176,7 @@ export const AppEvaluationPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功更新应用评测项',
-          content: {
-            'application/json': {
-              schema: UpdateEvaluationItemResponseSchema
-            }
-          }
+          description: '成功更新应用评测项'
         }
       }
     }

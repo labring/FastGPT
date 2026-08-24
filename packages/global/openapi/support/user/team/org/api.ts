@@ -3,7 +3,6 @@ import { ObjectIdSchema } from '../../../../../common/type/mongo';
 import { BoolSchema } from '../../../../../common/zod';
 import { PermissionSchema } from '../../../../../support/permission/controller';
 
-const EmptyQuerySchema = z.object({}).meta({ description: '该接口不需要查询参数' });
 const OrgIdOrRootSchema = z.union([ObjectIdSchema, z.literal('')]).meta({
   example: '68ad85a7463006c963799a06',
   description: '部门 ID；空字符串表示团队根部门'
@@ -88,9 +87,6 @@ export const CreateOrgBodySchema = z.object({
 });
 export type CreateOrgBodyType = z.infer<typeof CreateOrgBodySchema>;
 
-export const CreateOrgResponseSchema = z.undefined().meta({ description: '部门创建成功' });
-export type CreateOrgResponseType = z.infer<typeof CreateOrgResponseSchema>;
-
 /* ============================================================================
  * API: 删除部门
  * Route: DELETE /api/proApi/support/user/team/org/delete
@@ -106,9 +102,6 @@ export const DeleteOrgQuerySchema = z.object({
   })
 });
 export type DeleteOrgQueryType = z.infer<typeof DeleteOrgQuerySchema>;
-
-export const DeleteOrgResponseSchema = z.undefined().meta({ description: '部门删除成功' });
-export type DeleteOrgResponseType = z.infer<typeof DeleteOrgResponseSchema>;
 
 /* ============================================================================
  * API: 删除部门成员
@@ -128,11 +121,6 @@ export const DeleteOrgMemberQuerySchema = z.object({
   })
 });
 export type DeleteOrgMemberQueryType = z.infer<typeof DeleteOrgMemberQuerySchema>;
-
-export const DeleteOrgMemberResponseSchema = z.undefined().meta({
-  description: '部门成员删除成功'
-});
-export type DeleteOrgMemberResponseType = z.infer<typeof DeleteOrgMemberResponseSchema>;
 
 /* ============================================================================
  * API: 获取部门列表
@@ -157,9 +145,6 @@ export const ListOrgBodySchema = z.object({
 });
 export type ListOrgBodyType = z.infer<typeof ListOrgBodySchema>;
 
-export const ListOrgQuerySchema = EmptyQuerySchema;
-export type ListOrgQueryType = z.infer<typeof ListOrgQuerySchema>;
-
 export const ListOrgResponseSchema = z.array(DepartmentSchema).meta({ description: '部门列表' });
 export type ListOrgResponseType = z.infer<typeof ListOrgResponseSchema>;
 
@@ -181,9 +166,6 @@ export const MoveOrgBodySchema = z.object({
   })
 });
 export type MoveOrgBodyType = z.infer<typeof MoveOrgBodySchema>;
-
-export const MoveOrgResponseSchema = z.undefined().meta({ description: '部门移动成功' });
-export type MoveOrgResponseType = z.infer<typeof MoveOrgResponseSchema>;
 
 /* ============================================================================
  * API: 更新部门
@@ -221,9 +203,6 @@ export type UpdateOrgBodyType = z.infer<typeof UpdateOrgBodySchema>;
  * Tags: ['部门管理', 'Write']
  * ============================================================================ */
 
-export const UpdateOrgResponseSchema = z.undefined().meta({ description: '部门更新成功' });
-export type UpdateOrgResponseType = z.infer<typeof UpdateOrgResponseSchema>;
-
 export const UpdateOrgMembersBodySchema = z.object({
   orgId: OrgIdOrRootSchema.optional().meta({
     description: '部门 ID；不传或传空字符串表示团队根部门'
@@ -233,8 +212,3 @@ export const UpdateOrgMembersBodySchema = z.object({
   })
 });
 export type UpdateOrgMembersBodyType = z.infer<typeof UpdateOrgMembersBodySchema>;
-
-export const UpdateOrgMembersResponseSchema = z.undefined().meta({
-  description: '部门成员更新成功'
-});
-export type UpdateOrgMembersResponseType = z.infer<typeof UpdateOrgMembersResponseSchema>;

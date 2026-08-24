@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { openAPIDocument } from '../../../../openapi/provider/devapi';
 import { openAPIPaths, openAPITagGroups } from '../../../../openapi/path';
 import { DevApiTagsMap } from '../../../../openapi/tag';
+import { BillItemSchema } from '../../../../openapi/support/wallet/bill/api';
+import {
+  BillPayWayEnum,
+  BillStatusEnum,
+  BillTypeEnum
+} from '../../../../support/wallet/bill/constants';
 
 describe('wallet OpenAPI contracts', () => {
   const routes = {
@@ -65,6 +71,40 @@ describe('wallet OpenAPI contracts', () => {
     const path = openAPIDocument.paths?.['/proApi/support/wallet/bill/pay/updatePayment'];
     expect(path?.put).toBeDefined();
     expect(path?.post).toBeUndefined();
+  });
+
+  it('supports fractional subscription months in historical coupon bills', () => {
+    const bill = BillItemSchema.parse({
+      _id: '68ee0bd23d17260b7829b137',
+      teamId: '68ee0bd23d17260b7829b138',
+      tmbId: '68ee0bd23d17260b7829b139',
+      createTime: '2026-01-01T00:00:00.000Z',
+      orderId: 'coupon-order',
+      status: BillStatusEnum.SUCCESS,
+      type: BillTypeEnum.extraPoints,
+      price: 0,
+      metadata: {
+        payWay: BillPayWayEnum.coupon,
+        month: '12.17'
+      }
+    });
+
+    expect(bill.metadata.month).toBe(12.17);
+  });
+
+  it('omits empty request and response placeholders', () => {
+    const balanceConversion =
+      openAPIDocument.paths?.['/proApi/support/wallet/bill/balanceConversion']?.get;
+    const cancel = openAPIDocument.paths?.['/proApi/support/wallet/bill/cancel']?.post;
+    const submit = openAPIDocument.paths?.['/proApi/support/wallet/bill/invoice/submit']?.post;
+    const updateHeader =
+      openAPIDocument.paths?.['/proApi/support/wallet/bill/invoice/account/updateHeader']?.post;
+
+    expect(balanceConversion?.parameters).toBeUndefined();
+    expect(balanceConversion?.responses?.[200]?.content).toBeUndefined();
+    expect(cancel?.responses?.[200]?.content).toBeUndefined();
+    expect(submit?.responses?.[200]?.content).toBeUndefined();
+    expect(updateHeader?.responses?.[200]?.content).toBeUndefined();
   });
 
   it('groups wallet tags under auxiliary wallet', () => {

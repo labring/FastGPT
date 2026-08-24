@@ -10,9 +10,6 @@ const TeamMemberIdSchema = ObjectIdSchema.meta({
   description: '团队成员 ID'
 });
 
-const EmptyQuerySchema = z.object({}).meta({ description: '该接口不需要查询参数' });
-const EmptyBodySchema = z.object({}).default({}).meta({ description: '该接口不需要请求体' });
-
 const TeamMemberStatusSchema = z.enum(TeamMemberStatusEnum).meta({
   example: TeamMemberStatusEnum.active,
   description: '团队成员状态'
@@ -38,9 +35,6 @@ const TeamMemberListStatusSchema = z
  * Tags: ['成员管理', '团队管理', 'Read']
  * ============================================================================ */
 
-export const GetTeamMemberCountQuerySchema = EmptyQuerySchema;
-export type GetTeamMemberCountQueryType = z.infer<typeof GetTeamMemberCountQuerySchema>;
-
 export const GetTeamMemberCountResponseSchema = z.object({
   count: z.number().int().nonnegative().meta({
     example: 10,
@@ -62,11 +56,6 @@ export const DeleteTeamMemberQuerySchema = z.object({
 });
 export type DeleteTeamMemberQueryType = z.infer<typeof DeleteTeamMemberQuerySchema>;
 
-export const DeleteTeamMemberResponseSchema = z.undefined().meta({
-  description: '团队成员删除成功'
-});
-export type DeleteTeamMemberResponseType = z.infer<typeof DeleteTeamMemberResponseSchema>;
-
 /* ============================================================================
  * API: 导出团队成员
  * Route: GET /api/proApi/support/user/team/member/export
@@ -74,9 +63,6 @@ export type DeleteTeamMemberResponseType = z.infer<typeof DeleteTeamMemberRespon
  * Description: 将当前团队成员信息导出为 CSV 文件。
  * Tags: ['成员管理', '团队管理', 'Read']
  * ============================================================================ */
-
-export const ExportTeamMembersQuerySchema = EmptyQuerySchema;
-export type ExportTeamMembersQueryType = z.infer<typeof ExportTeamMembersQuerySchema>;
 
 export const ExportTeamMembersResponseSchema = z.string().meta({
   description: '导出的团队成员 CSV 文件内容'
@@ -90,16 +76,6 @@ export type ExportTeamMembersResponseType = z.infer<typeof ExportTeamMembersResp
  * Description: 当前用户主动离开当前团队，团队所有者不能执行此操作。
  * Tags: ['成员管理', '团队管理', 'Delete']
  * ============================================================================ */
-
-export const LeaveTeamQuerySchema = EmptyQuerySchema;
-export type LeaveTeamQueryType = z.infer<typeof LeaveTeamQuerySchema>;
-export const LeaveTeamBodySchema = EmptyBodySchema;
-export type LeaveTeamBodyType = z.infer<typeof LeaveTeamBodySchema>;
-
-export const LeaveTeamResponseSchema = z.undefined().meta({
-  description: '离开团队成功'
-});
-export type LeaveTeamResponseType = z.infer<typeof LeaveTeamResponseSchema>;
 
 /* ============================================================================
  * API: 获取团队成员列表
@@ -134,9 +110,6 @@ export const ListTeamMembersBodySchema = PaginationSchema.extend({
   status: TeamMemberStatusSchema.optional()
 });
 export type ListTeamMembersBodyType = z.infer<typeof ListTeamMembersBodySchema>;
-export const ListTeamMembersQuerySchema = EmptyQuerySchema;
-export type ListTeamMembersQueryType = z.infer<typeof ListTeamMembersQuerySchema>;
-
 export const TeamMemberListItemSchema = z
   .object({
     userId: ObjectIdSchema.meta({ description: '用户 ID' }),
@@ -167,13 +140,9 @@ export type ListTeamMembersResponseType = z.infer<typeof ListTeamMembersResponse
  * ============================================================================ */
 
 export const RestoreTeamMemberBodySchema = z.object({
-  tmbId: TeamMemberIdSchema.optional().meta({ description: '需要恢复的团队成员 ID' })
+  tmbId: TeamMemberIdSchema.meta({ description: '需要恢复的团队成员 ID' })
 });
 export type RestoreTeamMemberBodyType = z.infer<typeof RestoreTeamMemberBodySchema>;
-export const RestoreTeamMemberResponseSchema = z.undefined().meta({
-  description: '团队成员恢复成功'
-});
-export type RestoreTeamMemberResponseType = z.infer<typeof RestoreTeamMemberResponseSchema>;
 
 /* ============================================================================
  * API: 更新团队成员邀请状态
@@ -188,13 +157,6 @@ export const UpdateTeamMemberInviteBodySchema = z.object({
   status: TeamMemberStatusSchema
 });
 export type UpdateTeamMemberInviteBodyType = z.infer<typeof UpdateTeamMemberInviteBodySchema>;
-export const UpdateTeamMemberInviteResponseSchema = z.undefined().meta({
-  description: '团队成员邀请状态更新成功'
-});
-export type UpdateTeamMemberInviteResponseType = z.infer<
-  typeof UpdateTeamMemberInviteResponseSchema
->;
-
 /* ============================================================================
  * API: 更新当前用户成员名称
  * Route: PUT /api/proApi/support/user/team/member/updateName
@@ -203,19 +165,13 @@ export type UpdateTeamMemberInviteResponseType = z.infer<
  * Tags: ['成员管理', '团队管理', 'Write']
  * ============================================================================ */
 
-export const UpdateTeamMemberNameBodySchema = z
-  .object({
-    name: z.string().max(50).optional().meta({
-      example: '张三',
-      description: '新的成员名称，不能为空，最多 50 个字符'
-    })
+export const UpdateTeamMemberNameBodySchema = z.object({
+  name: z.string().min(1).max(50).meta({
+    example: '张三',
+    description: '新的成员名称，不能为空，最多 50 个字符'
   })
-  .default({});
-export type UpdateTeamMemberNameBodyType = z.infer<typeof UpdateTeamMemberNameBodySchema>;
-export const UpdateTeamMemberNameResponseSchema = z.undefined().meta({
-  description: '成员名称更新成功'
 });
-export type UpdateTeamMemberNameResponseType = z.infer<typeof UpdateTeamMemberNameResponseSchema>;
+export type UpdateTeamMemberNameBodyType = z.infer<typeof UpdateTeamMemberNameBodySchema>;
 
 /* ============================================================================
  * API: 管理员更新团队成员名称
@@ -225,21 +181,13 @@ export type UpdateTeamMemberNameResponseType = z.infer<typeof UpdateTeamMemberNa
  * Tags: ['成员管理', '团队管理', 'Write']
  * ============================================================================ */
 
-export const UpdateTeamMemberNameByManagerBodySchema = z
-  .object({
-    tmbId: TeamMemberIdSchema.optional().meta({ description: '需要修改名称的团队成员 ID' }),
-    name: z.string().max(50).optional().meta({
-      example: '李四',
-      description: '新的成员名称，不能为空，最多 50 个字符'
-    })
+export const UpdateTeamMemberNameByManagerBodySchema = z.object({
+  tmbId: TeamMemberIdSchema.meta({ description: '需要修改名称的团队成员 ID' }),
+  name: z.string().min(1).max(50).meta({
+    example: '李四',
+    description: '新的成员名称，不能为空，最多 50 个字符'
   })
-  .default({});
+});
 export type UpdateTeamMemberNameByManagerBodyType = z.infer<
   typeof UpdateTeamMemberNameByManagerBodySchema
->;
-export const UpdateTeamMemberNameByManagerResponseSchema = z.undefined().meta({
-  description: '成员名称更新成功'
-});
-export type UpdateTeamMemberNameByManagerResponseType = z.infer<
-  typeof UpdateTeamMemberNameByManagerResponseSchema
 >;

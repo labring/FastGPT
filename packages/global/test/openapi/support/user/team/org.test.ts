@@ -3,19 +3,13 @@ import { openAPIDocument } from '../../../../../openapi/provider/devapi';
 import { DevApiTagsMap } from '../../../../../openapi/tag';
 import {
   CreateOrgBodySchema,
-  CreateOrgResponseSchema,
   DeleteOrgMemberQuerySchema,
-  DeleteOrgMemberResponseSchema,
   DeleteOrgQuerySchema,
-  DeleteOrgResponseSchema,
   ListOrgBodySchema,
   ListOrgResponseSchema,
   MoveOrgBodySchema,
-  MoveOrgResponseSchema,
   UpdateOrgBodySchema,
-  UpdateOrgMembersBodySchema,
-  UpdateOrgMembersResponseSchema,
-  UpdateOrgResponseSchema
+  UpdateOrgMembersBodySchema
 } from '../../../../../openapi/support/user/team/org/api';
 
 const objectId = '68ad85a7463006c963799a05';
@@ -44,9 +38,21 @@ describe('team department OpenAPI contracts', () => {
     expect(openAPIDocument.paths?.[`${departmentPath}/updateMembers`]?.put?.tags).toEqual([
       DevApiTagsMap.teamOrg
     ]);
+
+    const emptyResponseOperations = [
+      openAPIDocument.paths?.[`${departmentPath}/create`]?.post,
+      openAPIDocument.paths?.[`${departmentPath}/delete`]?.delete,
+      openAPIDocument.paths?.[`${departmentPath}/deleteMember`]?.delete,
+      openAPIDocument.paths?.[`${departmentPath}/move`]?.put,
+      openAPIDocument.paths?.[`${departmentPath}/update`]?.put,
+      openAPIDocument.paths?.[`${departmentPath}/updateMembers`]?.put
+    ];
+    emptyResponseOperations.forEach((operation) => {
+      expect(operation?.responses?.[200]?.content).toBeUndefined();
+    });
   });
 
-  it('parses root department compatibility values and empty responses', () => {
+  it('parses root department compatibility values', () => {
     expect(CreateOrgBodySchema.parse({ name: '研发部', orgId: '' })).toMatchObject({
       name: '研发部',
       orgId: ''
@@ -74,13 +80,6 @@ describe('team department OpenAPI contracts', () => {
         members: [{ tmbId: objectId }]
       })
     ).toMatchObject({ orgId: objectId, members: [{ tmbId: objectId }] });
-
-    expect(CreateOrgResponseSchema.parse(undefined)).toBeUndefined();
-    expect(DeleteOrgResponseSchema.parse(undefined)).toBeUndefined();
-    expect(DeleteOrgMemberResponseSchema.parse(undefined)).toBeUndefined();
-    expect(MoveOrgResponseSchema.parse(undefined)).toBeUndefined();
-    expect(UpdateOrgResponseSchema.parse(undefined)).toBeUndefined();
-    expect(UpdateOrgMembersResponseSchema.parse(undefined)).toBeUndefined();
   });
 
   it('parses the department list response', () => {

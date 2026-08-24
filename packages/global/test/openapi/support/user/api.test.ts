@@ -21,20 +21,29 @@ import {
   TeamChangeOwnerBodySchema,
   TeamChangeOwnerResponseSchema,
   UpdateNotificationAccountBodySchema,
-  UpdateNotificationAccountResponseSchema,
   UserSyncBodySchema,
   UserSyncResponseSchema
 } from '@fastgpt/global/openapi/support/user/team/api';
 import {
   ListTeamMembersBodySchema,
-  ListTeamMembersResponseSchema
+  ListTeamMembersResponseSchema,
+  RestoreTeamMemberBodySchema,
+  UpdateTeamMemberNameBodySchema,
+  UpdateTeamMemberNameByManagerBodySchema
 } from '@fastgpt/global/openapi/support/user/team/member/api';
+import {
+  DeleteTeamCollaboratorQuerySchema,
+  UpdateTeamCollaboratorBodySchema,
+  UpdateTeamCollaboratorOneBodySchema
+} from '@fastgpt/global/openapi/support/user/team/collaborator/api';
 import { GetInvitationLinkInfoResponseSchema } from '@fastgpt/global/openapi/support/user/team/invitationLink/api';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { InformLevelEnum } from '@fastgpt/global/support/user/inform/constants';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 
 const objectId = '68ad85a7463006c963799a05';
+const secondObjectId = '68ad85a7463006c963799a06';
+const thirdObjectId = '68ad85a7463006c963799a07';
 
 describe('support user OpenAPI contracts', () => {
   it('registers all requested Pro user routes', () => {
@@ -52,6 +61,10 @@ describe('support user OpenAPI contracts', () => {
     expect(
       openAPIDocument.paths?.['/proApi/support/user/team/updateNotificationAccount']?.put
     ).toBeDefined();
+    expect(
+      openAPIDocument.paths?.['/proApi/support/user/team/updateNotificationAccount']?.put
+        ?.responses?.[200]?.content
+    ).toBeUndefined();
     expect(openAPIDocument.paths?.['/proApi/support/user/team/changeOwner']?.put).toBeDefined();
     expect(
       openAPIDocument.paths?.['/proApi/support/user/team/collaborator/delete']?.delete?.tags
@@ -109,6 +122,16 @@ describe('support user OpenAPI contracts', () => {
     ).toEqual([DevApiTagsMap.teamMember]);
     expect(openAPIDocument.paths?.['/proApi/support/user/search']).toBeUndefined();
     expect(openAPIDocument.paths?.['/proApi/support/user/sync']).toBeUndefined();
+
+    expect(
+      openAPIDocument.paths?.['/proApi/support/user/team/collaborator/list']?.get?.parameters
+    ).toBeUndefined();
+    expect(
+      openAPIDocument.paths?.['/proApi/support/user/team/invitationLink/list']?.get?.parameters
+    ).toBeUndefined();
+    expect(
+      openAPIDocument.paths?.['/proApi/support/user/team/member/leave']?.delete?.requestBody
+    ).toBeUndefined();
   });
 
   it('parses audit filters and responses', () => {
@@ -270,7 +293,6 @@ describe('support user OpenAPI contracts', () => {
         verifyCode: '123456'
       })
     ).toMatchObject({ account: 'team@example.com', verifyCode: '123456' });
-    expect(UpdateNotificationAccountResponseSchema.parse(undefined)).toBeUndefined();
     expect(TeamChangeOwnerBodySchema.parse({ userId: objectId })).toEqual({ userId: objectId });
     expect(TeamChangeOwnerResponseSchema.parse(undefined)).toBeUndefined();
     expect(
@@ -298,6 +320,60 @@ describe('support user OpenAPI contracts', () => {
         }
       ])
     ).toHaveLength(1);
+  });
+
+  it('rejects missing team write parameters at the schema boundary', () => {
+    expect(UpdateTeamCollaboratorBodySchema.safeParse({}).success).toBe(false);
+    expect(UpdateTeamCollaboratorBodySchema.safeParse({ collaborators: [] }).success).toBe(false);
+    expect(RestoreTeamMemberBodySchema.safeParse({}).success).toBe(false);
+    expect(UpdateTeamMemberNameBodySchema.safeParse({}).success).toBe(false);
+    expect(UpdateTeamMemberNameBodySchema.safeParse({ name: '' }).success).toBe(false);
+    expect(UpdateTeamMemberNameByManagerBodySchema.safeParse({ name: '张三' }).success).toBe(false);
+    expect(UpdateTeamMemberNameByManagerBodySchema.safeParse({ tmbId: objectId }).success).toBe(
+      false
+    );
+  });
+
+  it('requires exactly one team collaborator target', () => {
+    expect(DeleteTeamCollaboratorQuerySchema.safeParse({}).success).toBe(false);
+    expect(DeleteTeamCollaboratorQuerySchema.safeParse({ tmbId: objectId }).success).toBe(true);
+    expect(DeleteTeamCollaboratorQuerySchema.safeParse({ groupId: objectId }).success).toBe(true);
+    expect(DeleteTeamCollaboratorQuerySchema.safeParse({ orgId: objectId }).success).toBe(true);
+    expect(
+      DeleteTeamCollaboratorQuerySchema.safeParse({
+        tmbId: objectId,
+        groupId: secondObjectId
+      }).success
+    ).toBe(false);
+    expect(
+      DeleteTeamCollaboratorQuerySchema.safeParse({
+        tmbId: objectId,
+        groupId: secondObjectId,
+        orgId: thirdObjectId
+      }).success
+    ).toBe(false);
+
+    expect(
+      UpdateTeamCollaboratorOneBodySchema.safeParse({ tmbId: objectId, permission: 4 }).success
+    ).toBe(true);
+    expect(
+      UpdateTeamCollaboratorOneBodySchema.safeParse({
+        tmbId: objectId,
+        groupId: secondObjectId,
+        permission: 4
+      }).success
+    ).toBe(false);
+    expect(
+      UpdateTeamCollaboratorBodySchema.safeParse({
+        collaborators: [
+          {
+            tmbId: objectId,
+            orgId: thirdObjectId,
+            permission: 4
+          }
+        ]
+      }).success
+    ).toBe(false);
   });
 
   it('accepts the root organization value for team member filtering', () => {

@@ -131,11 +131,6 @@ export const ExportUsageBodySchema = UsageFilterSchema.extend({
 }).meta({ description: '使用记录导出参数' });
 export type ExportUsageBodyType = z.infer<typeof ExportUsageBodySchema>;
 
-// CSV 通过原始响应流返回，handler 的业务返回值为空。
-export const ExportUsageResponseSchema = z
-  .undefined()
-  .meta({ description: 'CSV 文件已写入响应流' });
-export type ExportUsageResponseType = z.infer<typeof ExportUsageResponseSchema>;
 export const ExportUsageContentSchema = z.string().meta({
   description: '使用记录 CSV 文件内容'
 });

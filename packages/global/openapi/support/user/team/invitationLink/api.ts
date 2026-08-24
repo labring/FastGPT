@@ -62,11 +62,6 @@ export const AcceptInvitationLinkBodySchema = z
   .meta({ example: { linkId: 'V1StGXR8_Z5jdHi6B-myT' } });
 export type AcceptInvitationLinkBodyType = z.infer<typeof AcceptInvitationLinkBodySchema>;
 
-export const AcceptInvitationLinkResponseSchema = z.undefined().meta({
-  description: '接受邀请成功'
-});
-export type AcceptInvitationLinkResponseType = z.infer<typeof AcceptInvitationLinkResponseSchema>;
-
 /* ============================================================================
  * API: 创建团队邀请链接
  * Route: POST /api/proApi/support/user/team/invitationLink/create
@@ -116,11 +111,6 @@ export const ForbidInvitationLinkBodySchema = z
   .meta({ example: { linkId: 'V1StGXR8_Z5jdHi6B-myT' } });
 export type ForbidInvitationLinkBodyType = z.infer<typeof ForbidInvitationLinkBodySchema>;
 
-export const ForbidInvitationLinkResponseSchema = z.undefined().meta({
-  description: '禁用邀请链接成功'
-});
-export type ForbidInvitationLinkResponseType = z.infer<typeof ForbidInvitationLinkResponseSchema>;
-
 /* ============================================================================
  * API: 获取团队邀请链接信息
  * Route: GET /api/proApi/support/user/team/invitationLink/info
@@ -153,11 +143,6 @@ export type GetInvitationLinkInfoResponseType = z.infer<typeof GetInvitationLink
  * Description: 获取当前团队创建的全部邀请链接及其已加入成员信息。
  * Tags: ['邀请链接管理', '团队管理', 'Read']
  * ============================================================================ */
-
-export const GetInvitationLinkListQuerySchema = z.object({}).meta({
-  description: '获取团队邀请链接列表不需要查询参数'
-});
-export type GetInvitationLinkListQueryType = z.infer<typeof GetInvitationLinkListQuerySchema>;
 
 export const InvitationLinkListItemSchema = z
   .object({

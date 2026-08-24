@@ -1,14 +1,11 @@
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import {
-  BalanceConversionQuerySchema,
-  BalanceConversionResponseSchema,
   BillDetailQuerySchema,
   BillDetailResponseSchema,
   BillListQuerySchema,
   BillListResponseSchema,
   CancelBillPropsSchema,
-  CancelBillResponseSchema,
   CheckPayResultQuerySchema,
   CheckPayResultResponseSchema,
   CreateBillPropsSchema,
@@ -23,11 +20,9 @@ export const BillPath: OpenAPIPath = {
       summary: '转换账户余额',
       description: '将团队账户余额转换为额外积分，有效期为一年，仅团队所有者可以操作',
       tags: [DevApiTagsMap.walletBill],
-      requestParams: { query: BalanceConversionQuerySchema },
       responses: {
         200: {
-          description: '余额转换成功',
-          content: { 'application/json': { schema: BalanceConversionResponseSchema } }
+          description: '余额转换成功'
         }
       }
     }
@@ -118,8 +113,7 @@ export const BillPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功取消订单',
-          content: { 'application/json': { schema: CancelBillResponseSchema } }
+          description: '成功取消订单'
         }
       }
     }

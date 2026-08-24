@@ -6,12 +6,8 @@ import {
   InvoiceRecordsBodySchema,
   InvoiceRecordsResponseSchema,
   InvoiceSubmitBodySchema,
-  InvoiceSubmitResponseSchema,
-  GetTeamHeaderQuerySchema,
   GetTeamHeaderResponseSchema,
   UpdateTeamHeaderBodySchema,
-  UpdateTeamHeaderResponseSchema,
-  UnInvoiceListQuerySchema,
   UnInvoiceListResponseSchema
 } from './api';
 
@@ -21,7 +17,6 @@ export const WalletInvoicePath: OpenAPIPath = {
       summary: '获取团队发票抬头',
       description: '获取当前团队保存的发票抬头信息；尚未设置时返回空对象',
       tags: [DevApiTagsMap.walletInvoice],
-      requestParams: { query: GetTeamHeaderQuerySchema },
       responses: {
         200: {
           description: '成功获取团队发票抬头',
@@ -48,12 +43,7 @@ export const WalletInvoicePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '发票抬头更新成功',
-          content: {
-            'application/json': {
-              schema: UpdateTeamHeaderResponseSchema
-            }
-          }
+          description: '发票抬头更新成功'
         }
       }
     }
@@ -98,8 +88,7 @@ export const WalletInvoicePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '开票申请提交成功',
-          content: { 'application/json': { schema: InvoiceSubmitResponseSchema } }
+          description: '开票申请提交成功'
         }
       }
     }
@@ -109,7 +98,6 @@ export const WalletInvoicePath: OpenAPIPath = {
       summary: '获取待开票订单',
       description: '获取当前团队中已支付且尚未开票的订单',
       tags: [DevApiTagsMap.walletInvoice],
-      requestParams: { query: UnInvoiceListQuerySchema },
       responses: {
         200: {
           description: '成功返回待开票订单',

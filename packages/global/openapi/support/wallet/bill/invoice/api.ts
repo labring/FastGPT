@@ -56,9 +56,6 @@ export const InvoiceSubmitBodySchema = z
   .meta({ description: '开票申请参数' });
 export type InvoiceSubmitBodyType = z.infer<typeof InvoiceSubmitBodySchema>;
 
-export const InvoiceSubmitResponseSchema = z.undefined().meta({ description: '开票申请已提交' });
-export type InvoiceSubmitResponseType = z.infer<typeof InvoiceSubmitResponseSchema>;
-
 export const InvoiceRecordsBodySchema = PaginationSchema.meta({
   description: '发票记录分页参数'
 });
@@ -104,9 +101,6 @@ export const InvoiceRecordsResponseSchema = PaginationResponseSchema(InvoiceReco
 });
 export type InvoiceRecordsResponseType = z.infer<typeof InvoiceRecordsResponseSchema>;
 
-export const UnInvoiceListQuerySchema = z.object({}).meta({ description: '无需查询参数' });
-export type UnInvoiceListQueryType = z.infer<typeof UnInvoiceListQuerySchema>;
-
 export const UnInvoiceListItemSchema = z
   .object({
     price: NumSchema.meta({ example: 9900, description: '订单金额' }),
@@ -131,11 +125,6 @@ export const InvoiceDownloadFileQuerySchema = z.object({
 });
 export type InvoiceDownloadFileQueryType = z.infer<typeof InvoiceDownloadFileQuerySchema>;
 
-// 文件直接写入 Next.js 原始响应，schema 仅用于声明 handler 的空返回值；OpenAPI 内容类型在 index.ts 中声明为 PDF 二进制。
-export const InvoiceDownloadFileResponseSchema = z.undefined().meta({
-  description: 'PDF 文件已写入响应流'
-});
-export type InvoiceDownloadFileResponseType = z.infer<typeof InvoiceDownloadFileResponseSchema>;
 export const InvoiceDownloadFileContentSchema = z.string().meta({
   format: 'binary',
   description: '发票 PDF 文件内容'
@@ -166,9 +155,6 @@ export const TeamInvoiceHeaderSchema = InvoiceHeaderFieldsSchema.extend({
   teamId: ObjectIdSchema.optional().meta({ description: '团队 ID' })
 }).meta({ description: '团队发票抬头信息' });
 
-export const GetTeamHeaderQuerySchema = z.object({}).meta({ description: '无需查询参数' });
-export type GetTeamHeaderQueryType = z.infer<typeof GetTeamHeaderQuerySchema>;
-
 export const GetTeamHeaderResponseSchema = TeamInvoiceHeaderSchema.partial().meta({
   description: '当前团队的发票抬头信息；尚未设置时返回空对象'
 });
@@ -178,8 +164,3 @@ export const UpdateTeamHeaderBodySchema = InvoiceHeaderFieldsSchema.meta({
   description: '更新团队发票抬头参数'
 });
 export type UpdateTeamHeaderBodyType = z.infer<typeof UpdateTeamHeaderBodySchema>;
-
-export const UpdateTeamHeaderResponseSchema = z.undefined().meta({
-  description: '发票抬头更新成功'
-});
-export type UpdateTeamHeaderResponseType = z.infer<typeof UpdateTeamHeaderResponseSchema>;

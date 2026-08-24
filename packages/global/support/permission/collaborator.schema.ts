@@ -7,7 +7,7 @@ import type {
   CollaboratorListType
 } from './collaborator';
 
-const CollaboratorIdShape = {
+const CollaboratorTargetShape = {
   tmbId: ObjectIdSchema.optional().meta({
     example: '68ad85a7463006c963799a06',
     description: '授权给单个团队成员时使用的成员 ID'
@@ -22,37 +22,29 @@ const CollaboratorIdShape = {
   })
 };
 
-const refineCollaboratorId = <T extends { tmbId?: string; groupId?: string; orgId?: string }>(
-  schema: z.ZodType<T>
-) =>
-  schema.refine(
-    ({ tmbId, groupId, orgId }) => [tmbId, groupId, orgId].filter(Boolean).length === 1,
-    {
-      message: 'tmbId, groupId or orgId is required, and only one can be provided'
-    }
-  );
-
-export const CollaboratorItemSchema = refineCollaboratorId(
-  z.object({
-    ...CollaboratorIdShape,
-    permission: z.number().int().nonnegative().meta({
-      example: 4,
-      description: '权限角色值'
-    })
+export const CollaboratorTargetSchema = z
+  .object(CollaboratorTargetShape)
+  .refine(({ tmbId, groupId, orgId }) => [tmbId, groupId, orgId].filter(Boolean).length === 1, {
+    message: 'tmbId, groupId or orgId is required, and only one can be provided'
   })
-).meta({
+  .meta({ description: '协作者目标；团队成员、成员组和组织节点必须且只能指定一个' });
+export type CollaboratorTargetType = z.infer<typeof CollaboratorTargetSchema>;
+
+export const CollaboratorItemSchema = CollaboratorTargetSchema.safeExtend({
+  permission: z.number().int().nonnegative().meta({
+    example: 4,
+    description: '权限角色值'
+  })
+}).meta({
   description: '协作者权限配置'
 }) as z.ZodType<CollaboratorItemType>;
 
-export const CollaboratorItemDetailSchema = refineCollaboratorId(
-  z.object({
-    ...CollaboratorIdShape,
-    teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
-    permission: PermissionSchema,
-    name: z.string().meta({ description: '协作者名称' }),
-    avatar: z.string().meta({ description: '协作者头像' })
-  })
-).meta({
+export const CollaboratorItemDetailSchema = CollaboratorTargetSchema.safeExtend({
+  teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
+  permission: PermissionSchema,
+  name: z.string().meta({ description: '协作者名称' }),
+  avatar: z.string().meta({ description: '协作者头像' })
+}).meta({
   description: '协作者详情'
 }) as z.ZodType<CollaboratorItemDetailType>;
 

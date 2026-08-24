@@ -9,8 +9,7 @@ import {
   GetDatasetCollaboratorListResponseSchema,
   UpdateDatasetCollaboratorBodySchema,
   UpdateDatasetCollaboratorResponseSchema,
-  PostDatasetSyncBodySchema,
-  PostDatasetSyncResponseSchema
+  PostDatasetSyncBodySchema
 } from '../../../openapi/core/dataset/api';
 
 const objectId = '68ad85a7463006c963799a05';
@@ -80,7 +79,9 @@ describe('Dataset OpenAPI contracts', () => {
     expect(PostDatasetSyncBodySchema.parse({ datasetId: objectId })).toEqual({
       datasetId: objectId
     });
-    expect(PostDatasetSyncResponseSchema.parse(undefined)).toBeUndefined();
+    expect(
+      openAPIDocument.paths?.['/proApi/core/dataset/datasetSync']?.post?.responses?.[200]?.content
+    ).toBeUndefined();
   });
 
   it('documents that Dataset collaborator updates require at least one collaborator', () => {

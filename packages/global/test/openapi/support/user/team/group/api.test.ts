@@ -4,15 +4,11 @@ import { openAPITagGroups } from '@fastgpt/global/openapi/path';
 import { DevApiTagsMap } from '@fastgpt/global/openapi/tag';
 import {
   ChangeGroupOwnerBodySchema,
-  ChangeGroupOwnerResponseSchema,
   CreateGroupBodySchema,
-  CreateGroupResponseSchema,
   DeleteGroupQuerySchema,
-  DeleteGroupResponseSchema,
   ListGroupBodySchema,
   ListGroupResponseSchema,
-  UpdateGroupBodySchema,
-  UpdateGroupResponseSchema
+  UpdateGroupBodySchema
 } from '@fastgpt/global/openapi/support/user/team/group/api';
 
 const objectId = '68ad85a7463006c963799a05';
@@ -32,12 +28,20 @@ describe('team group OpenAPI contracts', () => {
       expect(openAPIDocument.paths?.[path]?.[method]?.tags).toEqual(groupTags);
     });
 
+    const writePaths = paths.filter(([path]) => !path.endsWith('/list'));
+    writePaths.forEach(([path, method]) => {
+      expect(openAPIDocument.paths?.[path]?.[method]?.responses?.[200]?.content).toBeUndefined();
+    });
+    expect(
+      openAPIDocument.paths?.['/proApi/support/user/team/group/list']?.post?.parameters
+    ).toBeUndefined();
+
     expect(openAPITagGroups.find(({ name }) => name === '辅助-团队体系')?.tags).toContain(
       DevApiTagsMap.teamGroup
     );
   });
 
-  it('parses group request and empty response contracts', () => {
+  it('parses group requests and rejects missing required fields', () => {
     expect(ChangeGroupOwnerBodySchema.parse({ groupId: objectId, tmbId: objectId })).toEqual({
       groupId: objectId,
       tmbId: objectId
@@ -55,10 +59,9 @@ describe('team group OpenAPI contracts', () => {
       memberList: [{ tmbId: objectId, role: 'member' }]
     });
 
-    expect(CreateGroupResponseSchema.parse(undefined)).toBeUndefined();
-    expect(DeleteGroupResponseSchema.parse(undefined)).toBeUndefined();
-    expect(UpdateGroupResponseSchema.parse(undefined)).toBeUndefined();
-    expect(ChangeGroupOwnerResponseSchema.parse(undefined)).toBeUndefined();
+    expect(CreateGroupBodySchema.safeParse({}).success).toBe(false);
+    expect(DeleteGroupQuerySchema.safeParse({}).success).toBe(false);
+    expect(UpdateGroupBodySchema.safeParse({ name: '研发组' }).success).toBe(false);
   });
 
   it('parses group list responses', () => {

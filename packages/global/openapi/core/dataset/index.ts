@@ -25,8 +25,7 @@ import {
   GetDatasetCollaboratorListResponseSchema,
   UpdateDatasetCollaboratorBodySchema,
   UpdateDatasetCollaboratorResponseSchema,
-  PostDatasetSyncBodySchema,
-  PostDatasetSyncResponseSchema
+  PostDatasetSyncBodySchema
 } from './api';
 
 export const DatasetPath: OpenAPIPath = {
@@ -218,12 +217,7 @@ export const DatasetPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '同步任务创建成功，无业务数据返回',
-          content: {
-            'application/json': {
-              schema: PostDatasetSyncResponseSchema
-            }
-          }
+          description: '同步任务创建成功，无业务数据返回'
         }
       }
     }

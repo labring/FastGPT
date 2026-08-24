@@ -22,8 +22,6 @@ import { CouponTypeEnum } from '../../../../support/wallet/sub/coupon/constants'
  * Tags: ['订单']
  * ============================================================================ */
 
-const EmptyRequestSchema = z.object({}).meta({ description: '无需额外请求参数' });
-
 const BillMetadataSchema = z
   .object({
     payWay: z.enum(BillPayWayEnum).meta({ example: BillPayWayEnum.wx, description: '支付方式' }),
@@ -35,7 +33,7 @@ const BillMetadataSchema = z
       example: StandardSubLevelEnum.basic,
       description: '标准套餐等级'
     }),
-    month: IntSchema.optional().meta({ example: 1, description: '订阅月数' }),
+    month: NumSchema.nonnegative().optional().meta({ example: 1, description: '订阅月数' }),
     datasetSize: IntSchema.optional().meta({ example: 10, description: '数据集容量' }),
     extraPoints: IntSchema.optional().meta({ example: 10000, description: '额外积分数' }),
     activitySource: z
@@ -150,14 +148,6 @@ export const BillDetailResponseSchema = BillItemSchema.extend({
 }).meta({ description: '订单详情' });
 export type BillDetailResponseType = z.infer<typeof BillDetailResponseSchema>;
 
-// Balance conversion
-export const BalanceConversionQuerySchema = EmptyRequestSchema;
-export type BalanceConversionQueryType = z.infer<typeof BalanceConversionQuerySchema>;
-export const BalanceConversionResponseSchema = z.undefined().meta({
-  description: '余额已转换为积分'
-});
-export type BalanceConversionResponseType = z.infer<typeof BalanceConversionResponseSchema>;
-
 // Create
 export const CreateStandPlanBillSchema = z
   .object({
@@ -256,8 +246,6 @@ export const CancelBillPropsSchema = z.object({
   billId: ObjectIdSchema.meta({ example: '68ee0bd23d17260b7829b137', description: '订单 ID' })
 });
 export type CancelBillPropsType = z.infer<typeof CancelBillPropsSchema>;
-export const CancelBillResponseSchema = z.undefined().meta({ description: '订单已取消' });
-export type CancelBillResponseType = z.infer<typeof CancelBillResponseSchema>;
 
 // Check pay result
 export const CheckPayResultQuerySchema = z.object({

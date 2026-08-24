@@ -8,8 +8,7 @@ import type {
   UpdatePaymentPropsType,
   BillDetailResponseType,
   CancelBillPropsType,
-  UpdateBillResponseType,
-  BalanceConversionResponseType
+  UpdateBillResponseType
 } from '@fastgpt/global/openapi/support/wallet/bill/api';
 import { BillStatusEnum } from '@fastgpt/global/support/wallet/bill/constants';
 
@@ -36,8 +35,7 @@ export const checkBalancePayResult = (payId: string): Promise<CheckPayResultResp
 export const putUpdatePayment = (data: UpdatePaymentPropsType) =>
   PUT<UpdateBillResponseType>(`/proApi/support/wallet/bill/pay/updatePayment`, data);
 
-export const balanceConversion = () =>
-  GET<BalanceConversionResponseType>(`/proApi/support/wallet/bill/balanceConversion`);
+export const balanceConversion = () => GET<void>(`/proApi/support/wallet/bill/balanceConversion`);
 
 export const cancelBill = (data: CancelBillPropsType) =>
   POST(`/proApi/support/wallet/bill/cancel`, data);
