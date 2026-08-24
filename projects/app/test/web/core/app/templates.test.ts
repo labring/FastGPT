@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getEmptyAppsTemplate } from '@/web/core/app/templates';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 describe('getEmptyAppsTemplate', () => {
   it('创建空应用时按当前语言初始化节点标题和描述', () => {
@@ -17,15 +16,9 @@ describe('getEmptyAppsTemplate', () => {
       nodeId: 'pluginInput',
       name: 'translated:workflow:template.plugin_start'
     });
-    expect(
-      templates[AppTypeEnum.workflowTool].nodes.some(
-        (node) => node.flowNodeType === FlowNodeTypeEnum.pluginConfig
-      )
-    ).toBe(false);
     expect(nodes.filter((node) => node.intro).map((node) => node.intro)).toEqual([
       'translated:common:core.module.template.ai_chat_intro'
     ]);
-    expect(nodes.some((node) => node.flowNodeType === FlowNodeTypeEnum.systemConfig)).toBe(false);
     expect(templates[AppTypeEnum.simple].chatConfig).toMatchObject({
       welcomeConfig: { welcomeText: '' },
       variables: [],

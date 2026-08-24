@@ -232,7 +232,12 @@ export const parseContentDispositionFilename = (contentDisposition?: string) => 
   const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/i;
   const matches = filenameRegex.exec(contentDisposition);
   if (matches?.[1]) {
-    return matches[1].replace(/['"]/g, '');
+    const filename = matches[1];
+    const quote = filename[0];
+    if ((quote === '"' || quote === "'") && filename.endsWith(quote)) {
+      return filename.slice(1, -1);
+    }
+    return filename;
   }
 
   return '';

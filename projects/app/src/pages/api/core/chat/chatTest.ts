@@ -65,8 +65,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const chatTestProps = parseApiInput({ req, bodySchema: ChatTestPropsSchema }).body;
 
   const {
-    nodes = [],
-    edges = [],
+    nodes,
+    edges,
     messages = [],
     responseChatItemId: responseChatItemIdFromBody,
     appName,

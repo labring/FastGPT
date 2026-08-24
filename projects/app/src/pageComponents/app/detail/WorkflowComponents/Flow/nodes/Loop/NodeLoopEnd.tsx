@@ -28,7 +28,7 @@ const typeMap = {
 
 const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs, parentNodeId } = data;
-  const { getNodeById, systemConfigNode } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { t } = useTranslation();
@@ -52,7 +52,6 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     const targetId = inputItem.value[0];
 
     const globalNode = getGlobalVariableNode({
-      systemConfigNode,
       t,
       chatConfig: appDetail.chatConfig
     });
@@ -63,7 +62,7 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
     return node?.outputs.find((output) => output.id === inputItem?.value[1])
       ?.valueType as keyof typeof typeMap;
-  }, [appDetail.chatConfig, getNodeById, inputItem, systemConfigNode, t]);
+  }, [appDetail.chatConfig, getNodeById, inputItem, t]);
 
   useEffect(() => {
     if (!valueType) return;

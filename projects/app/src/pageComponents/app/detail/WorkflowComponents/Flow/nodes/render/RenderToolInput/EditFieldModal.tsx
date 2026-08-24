@@ -143,7 +143,7 @@ export default React.memo(EditFieldModal);
 export const defaultEditFormData: FlowNodeInputItemType = {
   valueType: WorkflowIOValueTypeEnum.string,
   renderTypeList: [FlowNodeInputTypeEnum.reference],
-  isToolParam: true,
+  defaultToAgentGenerated: true,
   key: '',
   label: '',
   toolDescription: '',

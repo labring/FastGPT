@@ -29,10 +29,7 @@ import {
   type JSONSchemaInputType
 } from '@fastgpt/global/core/app/jsonschema';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type {
-  McpToolConfigType,
-  McpToolDataType
-} from '@fastgpt/global/core/app/tool/mcpTool/type';
+import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import type { SubAppInitType } from '../type';
 import {
@@ -318,6 +315,39 @@ export const getAgentRuntimeTools = async ({
     });
   };
 
+  type RuntimeMcpToolSet = NonNullable<
+    NonNullable<RuntimeNodeItemType['toolConfig']>['mcpToolSet']
+  >;
+  type RuntimeMcpTool = McpToolConfigType & {
+    url?: string;
+    headerSecret?: RuntimeMcpToolSet['headerSecret'];
+    id?: string;
+    avatar?: string;
+  };
+
+  /** 将 Agent MCP 工具资源投影为执行阶段使用的 canonical ToolSet。 */
+  const buildMcpRuntimeToolSet = ({
+    mcpToolSet,
+    toolList,
+    selectedTool
+  }: {
+    mcpToolSet?: RuntimeMcpToolSet;
+    toolList: RuntimeMcpTool[];
+    selectedTool?: RuntimeMcpTool;
+  }): RuntimeMcpToolSet | undefined => {
+    const url = selectedTool?.url ?? mcpToolSet?.url;
+    if (!url) return undefined;
+
+    const headerSecret = selectedTool?.headerSecret ?? mcpToolSet?.headerSecret;
+    return {
+      url,
+      ...(headerSecret ? { headerSecret } : {}),
+      toolList: toolList.map(
+        ({ url: _url, headerSecret: _headerSecret, id: _id, avatar: _avatar, ...tool }) => tool
+      )
+    };
+  };
+
   /**
    * 普通 App 需要根据当前版本节点形态判断运行时类型：
    * - pluginInput: 插件工作流
@@ -426,7 +456,12 @@ export const getAgentRuntimeTools = async ({
       toolSetId: String(app._id),
       toolsetName: app.name,
       avatar: app.avatar,
-      tool
+      tool,
+      mcpToolSet: buildMcpRuntimeToolSet({
+        mcpToolSet,
+        toolList: toolList as RuntimeMcpTool[],
+        selectedTool: tool as RuntimeMcpTool
+      })
     });
 
     // 单独选择子工具时，模型侧展示子工具名即可，不需要带 toolset 前缀。
@@ -511,7 +546,7 @@ export const getAgentRuntimeTools = async ({
     return formatPersonalAppNode({ app, versionId });
   };
 
-  /** schema 优先级：显式 jsonSchema > toolData.inputSchema > NodeIO。 */
+  /** runtime schema 只使用 rewrite 入口生成的 canonical jsonSchema。 */
   const compileRuntimeTool = ({
     toolId,
     inputs,
@@ -529,14 +564,6 @@ export const getAgentRuntimeTools = async ({
     jsonSchema?: JSONSchemaInputType;
     fixedInputBindings?: Record<string, unknown>;
   }) => {
-    let schema = jsonSchema;
-
-    for (const input of inputs) {
-      if (!schema && input.key === NodeInputKeyEnum.toolData) {
-        schema = (input.value as McpToolDataType)?.inputSchema;
-      }
-    }
-
     const description = [name, toolDescription || intro].filter(Boolean).join(': ');
     // 仅数字开头的工具名需要补前缀，避免破坏 runtime 使用原始 tool id 反查工具。
     const formatToolId = /^\d/.test(toolId) ? `t${toolId}` : toolId;
@@ -545,7 +572,7 @@ export const getAgentRuntimeTools = async ({
       toolId: formatToolId,
       name: description,
       inputs,
-      jsonSchema: schema,
+      jsonSchema,
       fixedInputBindings
     });
   };
@@ -594,7 +621,12 @@ export const getAgentRuntimeTools = async ({
           return [];
         }
         if (tool.toolConfig) {
-          toolNode.toolConfig = tool.toolConfig;
+          const runtimeMcpToolSet = toolNode.toolConfig?.mcpToolSet;
+          toolNode.toolConfig = {
+            ...tool.toolConfig,
+            // MCP URL 与密钥仅存在运行态，历史 preview 快照不能覆盖。
+            ...(runtimeMcpToolSet ? { mcpToolSet: runtimeMcpToolSet } : {})
+          };
         }
 
         const legacyDefaultMode =
@@ -676,7 +708,7 @@ export const getAgentRuntimeTools = async ({
           const inputs = initToolInputsTypeByDefaultMode(
             child.inputs.map((input) => ({
               ...input,
-              isToolParam: true
+              defaultToAgentGenerated: true
             })),
             { forceDefaultMode: true, allowUserChatInputAgentGenerated: true }
           );
@@ -708,7 +740,7 @@ export const getAgentRuntimeTools = async ({
 
         if (toolNode.flowNodeType === FlowNodeTypeEnum.toolSet) {
           const systemToolId = toolNode.toolConfig?.systemToolSet?.toolId;
-          const mcpToolsetVal = toolNode.toolConfig?.mcpToolSet ?? toolNode.inputs[0]?.value;
+          const mcpToolsetVal = toolNode.toolConfig?.mcpToolSet;
           const httpToolsetVal = toolNode.toolConfig?.httpToolSet;
           const isLegacyMcpToolSet =
             authApp?.type === AppTypeEnum.mcpToolSet && !toolNode.toolConfig?.mcpToolSet;
@@ -734,14 +766,19 @@ export const getAgentRuntimeTools = async ({
               toolList: mcpToolsetVal?.toolList
             });
 
-            const toolSetId = mcpToolsetVal?.toolId || toolNode.pluginId || pluginId;
+            const toolSetId = toolNode.pluginId || pluginId;
             const children = finalToolList.map((tool, index) => {
               const newToolNode = getMCPToolRuntimeNode({
                 toolSetId,
                 toolsetName: toolNode.name,
                 nodeId: `${toolSetId}${index}`,
                 avatar: toolNode.avatar,
-                tool
+                tool,
+                mcpToolSet: buildMcpRuntimeToolSet({
+                  mcpToolSet: mcpToolsetVal,
+                  toolList: finalToolList as RuntimeMcpTool[],
+                  selectedTool: tool as RuntimeMcpTool
+                })
               });
               return newToolNode;
             });

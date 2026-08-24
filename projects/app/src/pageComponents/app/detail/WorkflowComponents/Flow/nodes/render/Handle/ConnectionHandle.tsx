@@ -47,7 +47,7 @@ export const ConnectionSourceHandle = ({
             )?.value as IfElseListItemType[] | undefined;
             const firstIfElse = ifElseList?.[0];
             if (firstIfElse) {
-              return getHandleId(nodeId, 'source', getIfElseBranchHandleKey(firstIfElse, 0));
+              return getHandleId(nodeId, 'source', getIfElseBranchHandleKey(firstIfElse));
             }
           } else if (node.flowNodeType === FlowNodeTypeEnum.classifyQuestion) {
             const options = node?.inputs?.find(

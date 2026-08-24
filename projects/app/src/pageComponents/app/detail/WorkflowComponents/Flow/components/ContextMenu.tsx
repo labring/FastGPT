@@ -324,8 +324,6 @@ const ContextMenu = () => {
           startNode:
             newNodes.find((node) =>
               [
-                FlowNodeTypeEnum.systemConfig,
-                FlowNodeTypeEnum.pluginConfig,
                 FlowNodeTypeEnum.workflowStart,
                 FlowNodeTypeEnum.pluginInput
               ].includes(node.data.flowNodeType)

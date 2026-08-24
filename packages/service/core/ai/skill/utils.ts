@@ -50,9 +50,9 @@ export function parseSkillMarkdown(markdown: string): {
 /**
  * 轻量 frontmatter YAML 解析器。
  *
- * 这里只覆盖 SKILL.md 元数据当前需要的简单结构：`key: value`、布尔值、数字、
- * null、行内数组，以及 `metadata:` 这种对象字段。后续如果要支持完整 YAML，
- * 应该在这个文件里统一替换实现，避免解析规则分散在业务流程里。
+ * 这里只覆盖 SKILL.md 元数据当前需要的简单结构：`key: value` 和一层对象字段。
+ * 所有标量值都按文本保留，不做 YAML 的数字、布尔值、null 或行内数组类型推断。
+ * 后续如果要支持完整 YAML，应该在这个文件里统一替换实现，避免解析规则分散在业务流程里。
  */
 function parseYamlFrontmatter(yaml: string): Record<string, any> {
   const result: Record<string, any> = {};
@@ -89,27 +89,7 @@ function parseYamlFrontmatter(yaml: string): Record<string, any> {
     const key = line.slice(0, colonIndex).trim();
     const value = line.slice(colonIndex + 1).trim();
 
-    let parsedValue: any;
-    if (value.startsWith('"') || value.startsWith("'")) {
-      parsedValue = value.slice(1, -1);
-    } else if (value === 'true') {
-      parsedValue = true;
-    } else if (value === 'false') {
-      parsedValue = false;
-    } else if (!isNaN(Number(value)) && value !== '') {
-      parsedValue = Number(value);
-    } else if (value === 'null') {
-      parsedValue = null;
-    } else if (value.startsWith('[') && value.endsWith(']')) {
-      const arrayContent = value.slice(1, -1).trim();
-      parsedValue = arrayContent
-        ? arrayContent.split(',').map((item) => item.trim().replace(/["']/g, ''))
-        : [];
-    } else {
-      parsedValue = value;
-    }
-
-    currentObj[key] = parsedValue;
+    currentObj[key] = value;
   }
 
   return result;

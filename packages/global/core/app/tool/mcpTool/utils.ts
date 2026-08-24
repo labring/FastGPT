@@ -46,19 +46,21 @@ export const getMCPToolRuntimeNode = ({
   avatar = 'core/app/type/mcpToolsFill',
   nodeId,
   toolsetName,
-  toolSetId
+  toolSetId,
+  mcpToolSet
 }: {
   nodeId: string;
   tool: McpToolConfigType;
   toolSetId: string;
   toolsetName: string;
   avatar?: string;
+  mcpToolSet?: NonNullable<NodeToolConfigType['mcpToolSet']>;
 }): RuntimeNodeItemType => {
   const inputs = jsonSchema2NodeInput({ jsonSchema: tool.inputSchema, schemaType: 'mcp' }).map(
     (input) => ({
       ...input,
       // MCP schema 没有 FastGPT 的手动配置上下文，子工具参数默认交给 Agent 生成。
-      isToolParam: input.isToolParam ?? true
+      defaultToAgentGenerated: input.defaultToAgentGenerated ?? true
     })
   );
 
@@ -70,7 +72,8 @@ export const getMCPToolRuntimeNode = ({
     toolConfig: {
       mcpTool: {
         toolId: `${AppToolSourceEnum.mcp}-${toolSetId}/${tool.name}` // When runtool is used, parentId and toolname will be employed
-      }
+      },
+      ...(mcpToolSet ? { mcpToolSet } : {})
     },
     jsonSchema: tool.inputSchema,
     inputs,

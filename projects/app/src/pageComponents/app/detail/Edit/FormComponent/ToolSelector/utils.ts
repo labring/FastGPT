@@ -40,19 +40,12 @@ export const inheritToolInputConfig = <T extends Pick<FlowNodeTemplateType, 'inp
         selectedType && !normalizedInput.renderTypeList.includes(selectedType)
           ? [selectedType, ...normalizedInput.renderTypeList]
           : normalizedInput.renderTypeList;
-      const selectedTypeIndex =
-        selectedType !== undefined
-          ? renderTypeList.findIndex((item) => item === selectedType)
-          : normalizedInput.selectedTypeIndex;
-
       return stripToolInputDefaultMode({
         ...normalizedInput,
         value: sourceInput.value,
         valueDesc: sourceInput.valueDesc,
         renderTypeList,
         selectedType: selectedType ?? normalizedInput.selectedType,
-        selectedTypeIndex:
-          selectedTypeIndex !== undefined && selectedTypeIndex >= 0 ? selectedTypeIndex : undefined,
         toolDescription: input.toolDescription ?? sourceInput.toolDescription
       } satisfies FlowNodeInputItemType);
     })

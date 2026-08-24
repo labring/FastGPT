@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import type { RenderInputProps } from '../../type';
 import { Box, Flex, HStack, Input } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import {
   type FlowNodeInputItemType,
@@ -32,7 +32,7 @@ const defaultInput: FlowNodeInputItemType = {
 };
 
 const DynamicInputs = ({ item, inputs = [], nodeId }: RenderInputProps) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
@@ -126,7 +126,7 @@ const Reference = ({
   inputChildren: FlowNodeInputItemType;
   hasDynamicInputs: boolean;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { toast } = useToast();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 

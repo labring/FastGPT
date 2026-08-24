@@ -250,20 +250,24 @@ export const dispatchTool = async ({
       }
       await authRuntimeToolset(parentId);
 
-      const tool = await getAppVersionById({
-        appId: parentId,
-        versionId: version
-      });
-
-      const { headerSecret, url } =
-        tool.nodes[0].toolConfig?.mcpToolSet ?? tool.nodes[0].inputs[0].value;
+      const mcpToolSet = toolConfig.mcpToolSet;
+      if (!mcpToolSet) {
+        return Promise.reject(`MCP tool set is missing from runtime node`);
+      }
+      const mcpTool = getToolNameCandidates(toolName)
+        .map((name) => mcpToolSet.toolList.find((tool) => tool.name === name))
+        .find(Boolean);
+      if (!mcpTool) {
+        return Promise.reject(`MCP tool not found: ${toolConfig.mcpTool.toolId}`);
+      }
+      const { headerSecret, url } = mcpToolSet;
 
       await assertMCPUrlNotInternal(url);
 
       const mcpClient = new MCPClient({
         url,
         headers: getSecretValue({
-          storeSecret: headerSecret
+          storeSecret: headerSecret ?? undefined
         })
       });
 

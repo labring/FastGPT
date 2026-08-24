@@ -272,37 +272,57 @@ describe('dispatchRunTool runtime toolset auth', () => {
   });
 
   it('should reject invalid MCP params before invoking the external tool', async () => {
-    getAppVersionByIdMock.mockResolvedValueOnce({
-      nodes: [
-        {
-          toolConfig: {
-            mcpToolSet: {
-              url: 'https://mcp.example.com',
-              toolList: [
-                {
-                  name: 'search',
-                  description: 'Search',
-                  inputSchema: {
-                    type: 'object',
-                    properties: { query: { type: 'string' } },
-                    required: ['query']
-                  }
-                }
-              ]
-            }
-          },
-          inputs: []
-        }
-      ]
-    });
-
     const result = await dispatchRunTool(
-      createRunToolProps({ mcpTool: { toolId: 'mcp-victim-toolset/search' } })
+      createRunToolProps({
+        mcpTool: { toolId: 'mcp-victim-toolset/search' },
+        mcpToolSet: {
+          url: 'https://mcp.example.com',
+          toolList: [
+            {
+              name: 'search',
+              description: 'Search',
+              inputSchema: {
+                type: 'object',
+                properties: { query: { type: 'string' } },
+                required: ['query']
+              }
+            }
+          ]
+        }
+      })
     );
 
     expect(mcpToolCallMock).not.toHaveBeenCalled();
     expect(result.error?.[NodeOutputKeyEnum.errorText]).toContain('validation failed');
   });
+
+  it.each(['toolData', 'system_toolData'] as const)(
+    'should keep the baseline fallback for legacy single MCP tool params (%s)',
+    async (legacyKey) => {
+      const props = createRunToolProps({});
+      props.params = {
+        query: 'fastgpt',
+        [legacyKey]: {
+          name: 'search',
+          url: 'https://mcp.example.com',
+          inputSchema: {
+            type: 'object',
+            properties: { query: { type: 'string' } },
+            required: ['query']
+          }
+        }
+      };
+      mcpToolCallMock.mockResolvedValueOnce({ ok: true });
+
+      const result = await dispatchRunTool(props);
+
+      expect(result.error).toBeUndefined();
+      expect(mcpToolCallMock).toHaveBeenCalledWith({
+        toolName: 'search',
+        params: { query: 'fastgpt' }
+      });
+    }
+  );
 
   it('should reject invalid system tool params before invoking the plugin runtime', async () => {
     getSystemToolDetailMock.mockResolvedValueOnce({

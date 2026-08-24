@@ -4,7 +4,7 @@ import { Box, type BoxProps, Button, Flex, ModalFooter, useDisclosure } from '@c
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useForm } from 'react-hook-form';
 import { type PromptTemplateItem } from '@fastgpt/global/core/ai/llm/type';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { ModalBody } from '@chakra-ui/react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import {
@@ -52,9 +52,8 @@ const selectTemplateBtn: BoxProps = {
 
 const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => void }) => {
   const { inputs = [], nodeId } = props;
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { systemConfigNode } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const node = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById(nodeId));
   const nodeVersion = node?.version;
 
@@ -75,12 +74,14 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
 
   const variables = useMemoEnhance(() => {
     const globalVariables = getWorkflowGlobalVariables({
-      systemConfigNode,
       chatConfig: appDetail.chatConfig
     });
 
-    return globalVariables;
-  }, [systemConfigNode]);
+    return globalVariables.map((item) => ({
+      ...item,
+      label: t(item.label as any)
+    }));
+  }, [appDetail.chatConfig, t]);
 
   const [selectTemplateData, setSelectTemplateData] = useState<{
     title: string;
@@ -316,7 +317,7 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
 };
 
 const SettingQuotePrompt = (props: RenderInputProps) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const Render = useMemo(() => {

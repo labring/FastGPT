@@ -248,7 +248,7 @@ services:
       <<: [*x-no-proxy-config]
       FASTGPT_ENDPOINT: http://fastgpt:3000
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v1.1.0
+    image: ghcr.io/labring/fastgpt-plugin:v1.1.1
     container_name: fastgpt-plugin
     restart: always
     network_mode: host

@@ -1,6 +1,6 @@
 import type { NextApiRequest } from 'next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
+import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/workflow';
 import {
   InitChatQuerySchema,
@@ -171,10 +171,8 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
 
     // get app and history
     const { nodes, chatConfig } = await getAppLatestVersion(app._id, app);
-    const systemConfigNode = getGuideModule(nodes);
     const appChatConfig = getAppChatConfig({
       chatConfig,
-      systemConfigNode,
       storeVariables: chat?.variableList,
       storeWelcomeText: chat?.welcomeText,
       isPublicFetch: false

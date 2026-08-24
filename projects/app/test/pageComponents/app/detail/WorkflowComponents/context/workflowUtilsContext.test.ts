@@ -9,7 +9,7 @@ describe('splitToolInputsByMode', () => {
       label: 'query',
       canEdit: true,
       toolDescription: 'Search query',
-      isToolParam: true,
+      defaultToAgentGenerated: true,
       renderTypeList: [FlowNodeInputTypeEnum.reference]
     };
     const commonInput = {
@@ -30,7 +30,7 @@ describe('splitToolInputsByMode', () => {
       label: 'query',
       canEdit: true,
       toolDescription: 'Search query',
-      isToolParam: true,
+      defaultToAgentGenerated: true,
       renderTypeList: [FlowNodeInputTypeEnum.reference]
     };
 

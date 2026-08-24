@@ -87,7 +87,7 @@ const FileSelector = ({
   const selectFileCallback = useCallback(
     (files: SelectFileItemType[]) => {
       if (selectFiles.length + files.length > maxCount) {
-        files = files.slice(0, maxCount - selectFiles.length);
+        files = files.slice(0, Math.max(maxCount - selectFiles.length, 0));
         toast({
           status: 'warning',
           title: t('file:some_file_count_exceeds_limit', { maxCount })
@@ -201,7 +201,7 @@ const FileSelector = ({
       });
     }
 
-    selectFileCallback(fileList.slice(0, maxCount));
+    selectFileCallback(fileList);
   };
 
   return (

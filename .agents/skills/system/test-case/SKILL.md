@@ -45,8 +45,8 @@ export type { NextApiRequest } from 'next';
 
 4. 尽量减少函数 mock，如果是系统上原生可运行的函数，则无需 mock，只需要 mock 那些无法本地直接运行的依赖（比如需要远程服务，API 密钥之类的）
 5. 对于 type.ts, constants.ts, schema.ts, *.schema.ts 文件，以及静态数据，直接跳过忽略。
-6. 根据 [vitest.config.mts](../../../vitest.config.mts) 文件配置，跳过不需要测试的文件。
-7. [Mock.ts](../../../test/mocks/index.ts) 文件里，包含了全局 mock 的内容，在编写测试时，请勿重复 mock。理论上，测试里可以 mock 运行各类 infra。
+6. 根据 [vitest.config.mts](../../../../vitest.config.mts) 文件配置，跳过不需要测试的文件。
+7. [Mock.ts](../../../../test/mocks/index.ts) 文件里，包含了全局 mock 的内容，在编写测试时，请勿重复 mock。理论上，测试里可以 mock 运行各类 infra。
 
 ### 基础函数文件测试
 

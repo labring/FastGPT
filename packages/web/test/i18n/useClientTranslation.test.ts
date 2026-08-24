@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { useTranslation } from 'next-i18next';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 
@@ -16,7 +18,12 @@ describe('useClientTranslation', () => {
   });
 
   it('loads business namespaces without Suspense', () => {
-    useClientTranslation('account');
+    function TestComponent() {
+      useClientTranslation('account');
+      return null;
+    }
+
+    renderToStaticMarkup(createElement(TestComponent));
 
     expect(useTranslation).toHaveBeenCalledWith(['common', 'account'], {
       useSuspense: false

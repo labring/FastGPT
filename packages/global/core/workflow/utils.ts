@@ -20,7 +20,6 @@ import {
   type ReferenceItemValueType
 } from './type/io';
 import type { NodeToolConfigType, StoreNodeItemType } from './type/node';
-import type { StoreEdgeItemType } from './type/edge';
 import type {
   VariableItemType,
   AppTTSConfigType,
@@ -65,20 +64,20 @@ export const getHandleId = (
 export const getSelectedInputRenderType = (input: {
   renderTypeList?: FlowNodeInputItemType['renderTypeList'];
   selectedType?: FlowNodeInputItemType['selectedType'];
-  selectedTypeIndex?: FlowNodeInputItemType['selectedTypeIndex'];
-}) => input.selectedType ?? input.renderTypeList?.[input.selectedTypeIndex ?? 0];
+}) => input.selectedType ?? input.renderTypeList?.[0];
 
 export const getSelectedInputRenderTypeIndex = (input: {
   renderTypeList?: FlowNodeInputItemType['renderTypeList'];
   selectedType?: FlowNodeInputItemType['selectedType'];
-  selectedTypeIndex?: FlowNodeInputItemType['selectedTypeIndex'];
 }) => {
   const selectedRenderType = getSelectedInputRenderType(input);
-  const selectedTypeIndex = selectedRenderType
+  const selectedRenderTypePosition = selectedRenderType
     ? input.renderTypeList?.findIndex((renderType) => renderType === selectedRenderType)
     : -1;
 
-  return selectedTypeIndex !== undefined && selectedTypeIndex >= 0 ? selectedTypeIndex : 0;
+  return selectedRenderTypePosition !== undefined && selectedRenderTypePosition >= 0
+    ? selectedRenderTypePosition
+    : 0;
 };
 
 /**
@@ -99,10 +98,6 @@ export const nodeInputIsReference = (input: FlowNodeInputItemType) => {
   return false;
 };
 
-/* node  */
-export const getGuideModule = (nodes: StoreNodeItemType[]) =>
-  nodes.find((item) => item.flowNodeType === FlowNodeTypeEnum.systemConfig);
-
 /** 判断 App 工作流是否有 Agent 或 ToolCall 节点开启 Sandbox。 */
 export const isAppSandboxEnabledInNodes = (nodes: StoreNodeItemType[]) =>
   nodes.some(
@@ -114,268 +109,32 @@ export const isAppSandboxEnabledInNodes = (nodes: StoreNodeItemType[]) =>
       )
   );
 
-const isConfigMissing = (value: unknown) => value === undefined || value === null;
-
-const getSystemConfigInputValue = <T>(guideModules: StoreNodeItemType | undefined, key: string) =>
-  guideModules?.inputs?.find((item) => item.key === key)?.value as T | undefined;
-
-export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
-  const welcomeText: string =
-    getSystemConfigInputValue<string>(guideModules, NodeInputKeyEnum.welcomeText) ?? '';
-
-  const welcomeQuestions: string[] =
-    getSystemConfigInputValue<string[]>(guideModules, NodeInputKeyEnum.welcomeQuestions) ?? [];
-
-  const variables: VariableItemType[] =
-    getSystemConfigInputValue<VariableItemType[]>(guideModules, NodeInputKeyEnum.variables) ?? [];
-
-  // Adapt old version
-  const questionGuideVal = getSystemConfigInputValue<AppQGConfigType | boolean>(
-    guideModules,
-    NodeInputKeyEnum.questionGuide
-  );
-  const questionGuide: AppQGConfigType =
-    typeof questionGuideVal === 'boolean'
-      ? { ...defaultQGConfig, open: questionGuideVal }
-      : (questionGuideVal ?? defaultQGConfig);
-
-  const ttsConfig: AppTTSConfigType =
-    getSystemConfigInputValue<AppTTSConfigType>(guideModules, NodeInputKeyEnum.tts) ??
-    defaultTTSConfig;
-
-  const whisperConfig: AppWhisperConfigType =
-    getSystemConfigInputValue<AppWhisperConfigType>(guideModules, NodeInputKeyEnum.whisper) ??
-    defaultWhisperConfig;
-
-  const scheduledTriggerConfig: AppScheduledTriggerConfigType | undefined =
-    getSystemConfigInputValue<AppScheduledTriggerConfigType>(
-      guideModules,
-      NodeInputKeyEnum.scheduleTrigger
-    ) ?? undefined;
-
-  const chatInputGuide: ChatInputGuideConfigType =
-    getSystemConfigInputValue<ChatInputGuideConfigType>(
-      guideModules,
-      NodeInputKeyEnum.chatInputGuide
-    ) ?? defaultChatInputGuideConfig;
-
-  const instruction: string =
-    getSystemConfigInputValue<string>(guideModules, NodeInputKeyEnum.instruction) ?? '';
-
-  const autoExecute: AppAutoExecuteConfigType =
-    getSystemConfigInputValue<AppAutoExecuteConfigType>(
-      guideModules,
-      NodeInputKeyEnum.autoExecute
-    ) ?? defaultAutoExecuteConfig;
-
-  return {
-    welcomeText,
-    welcomeQuestions,
-    variables,
-    questionGuide,
-    ttsConfig,
-    whisperConfig,
-    scheduledTriggerConfig,
-    chatInputGuide,
-    instruction,
-    autoExecute
-  };
-};
-
-/**
- * 将任意版本的工作流配置清洗为当前保存结构。
- *
- * 旧系统配置节点只补充 chatConfig 中缺失的字段，显式空值不会被覆盖。清洗结果不再包含
- * 系统配置节点及其关联边，且函数无副作用、可重复执行。
- */
-export const normalizeWorkflowConfig = ({
-  nodes,
-  edges = [],
-  chatConfig
-}: {
-  nodes: StoreNodeItemType[];
-  edges?: StoreEdgeItemType[];
-  chatConfig?: AppChatConfigType;
-}): {
-  nodes: StoreNodeItemType[];
-  edges: StoreEdgeItemType[];
-  chatConfig: AppChatConfigType;
-} => {
-  const systemConfigNode = getGuideModule(nodes);
-  const pluginConfigNode = nodes.find(
-    (node) => node.flowNodeType === FlowNodeTypeEnum.pluginConfig
-  );
-  const nextChatConfig: AppChatConfigType = { ...(chatConfig ?? {}) };
-
-  const welcomeConfig: AppWelcomeConfigType = { ...(nextChatConfig.welcomeConfig ?? {}) };
-  const nodeWelcomeText = getSystemConfigInputValue<string>(
-    systemConfigNode,
-    NodeInputKeyEnum.welcomeText
-  );
-  const nodeWelcomeQuestions = getSystemConfigInputValue<string[]>(
-    systemConfigNode,
-    NodeInputKeyEnum.welcomeQuestions
-  );
-
-  if (isConfigMissing(welcomeConfig.welcomeText) && !isConfigMissing(nextChatConfig.welcomeText)) {
-    welcomeConfig.welcomeText = nextChatConfig.welcomeText;
-  }
-  if (isConfigMissing(welcomeConfig.welcomeText) && !isConfigMissing(nodeWelcomeText)) {
-    welcomeConfig.welcomeText = nodeWelcomeText;
-  }
-  if (isConfigMissing(welcomeConfig.welcomeQuestions) && !isConfigMissing(nodeWelcomeQuestions)) {
-    welcomeConfig.welcomeQuestions = nodeWelcomeQuestions;
-  }
-  if (
-    !isConfigMissing(welcomeConfig.welcomeText) ||
-    !isConfigMissing(welcomeConfig.welcomeQuestions)
-  ) {
-    nextChatConfig.welcomeConfig = welcomeConfig;
-    nextChatConfig.welcomeText = welcomeConfig.welcomeText;
-  }
-
-  const variables = getSystemConfigInputValue<VariableItemType[]>(
-    systemConfigNode,
-    NodeInputKeyEnum.variables
-  );
-  if (isConfigMissing(nextChatConfig.variables) && !isConfigMissing(variables)) {
-    nextChatConfig.variables = variables;
-  }
-
-  const questionGuideVal = getSystemConfigInputValue<AppQGConfigType | boolean>(
-    systemConfigNode,
-    NodeInputKeyEnum.questionGuide
-  );
-  if (isConfigMissing(nextChatConfig.questionGuide) && !isConfigMissing(questionGuideVal)) {
-    nextChatConfig.questionGuide =
-      typeof questionGuideVal === 'boolean'
-        ? { ...defaultQGConfig, open: questionGuideVal }
-        : questionGuideVal;
-  }
-
-  const ttsConfig = getSystemConfigInputValue<AppTTSConfigType>(
-    systemConfigNode,
-    NodeInputKeyEnum.tts
-  );
-  if (isConfigMissing(nextChatConfig.ttsConfig) && !isConfigMissing(ttsConfig)) {
-    nextChatConfig.ttsConfig = ttsConfig;
-  }
-
-  const whisperConfig = getSystemConfigInputValue<AppWhisperConfigType>(
-    systemConfigNode,
-    NodeInputKeyEnum.whisper
-  );
-  if (isConfigMissing(nextChatConfig.whisperConfig) && !isConfigMissing(whisperConfig)) {
-    nextChatConfig.whisperConfig = whisperConfig;
-  }
-
-  const scheduledTriggerConfig = getSystemConfigInputValue<AppScheduledTriggerConfigType>(
-    systemConfigNode,
-    NodeInputKeyEnum.scheduleTrigger
-  );
-  if (
-    isConfigMissing(nextChatConfig.scheduledTriggerConfig) &&
-    !isConfigMissing(scheduledTriggerConfig)
-  ) {
-    nextChatConfig.scheduledTriggerConfig = scheduledTriggerConfig;
-  }
-
-  const chatInputGuide = getSystemConfigInputValue<ChatInputGuideConfigType>(
-    systemConfigNode,
-    NodeInputKeyEnum.chatInputGuide
-  );
-  if (isConfigMissing(nextChatConfig.chatInputGuide) && !isConfigMissing(chatInputGuide)) {
-    nextChatConfig.chatInputGuide = chatInputGuide;
-  }
-
-  const autoExecute = getSystemConfigInputValue<AppAutoExecuteConfigType>(
-    systemConfigNode,
-    NodeInputKeyEnum.autoExecute
-  );
-  if (isConfigMissing(nextChatConfig.autoExecute) && !isConfigMissing(autoExecute)) {
-    nextChatConfig.autoExecute = autoExecute;
-  }
-
-  const instruction = getSystemConfigInputValue<string>(
-    systemConfigNode,
-    NodeInputKeyEnum.instruction
-  );
-  const pluginInstruction = getSystemConfigInputValue<string>(
-    pluginConfigNode,
-    NodeInputKeyEnum.instruction
-  );
-  if (isConfigMissing(nextChatConfig.instruction)) {
-    if (!isConfigMissing(instruction)) {
-      nextChatConfig.instruction = instruction;
-    } else if (!isConfigMissing(pluginInstruction)) {
-      nextChatConfig.instruction = pluginInstruction;
-    }
-  }
-
-  const systemConfigNodeIds = new Set(
-    nodes
-      .filter(
-        (node) =>
-          node.flowNodeType === FlowNodeTypeEnum.systemConfig ||
-          node.flowNodeType === FlowNodeTypeEnum.pluginConfig
-      )
-      .map((node) => node.nodeId)
-  );
-  return {
-    nodes: nodes.filter((node) => !systemConfigNodeIds.has(node.nodeId)),
-    edges: edges.filter(
-      (edge) => !systemConfigNodeIds.has(edge.source) && !systemConfigNodeIds.has(edge.target)
-    ),
-    chatConfig: nextChatConfig
-  };
-};
-
-// Get app chat config: db > nodes
+// Get app chat config from canonical chatConfig and per-chat overrides.
 export const getAppChatConfig = ({
   chatConfig,
-  systemConfigNode,
   storeVariables,
   storeWelcomeText,
   isPublicFetch = false
 }: {
   chatConfig?: AppChatConfigType;
-  systemConfigNode?: StoreNodeItemType;
   storeVariables?: VariableItemType[];
   storeWelcomeText?: string;
   isPublicFetch: boolean;
 }): AppChatConfigType => {
-  const {
-    welcomeText,
-    welcomeQuestions,
-    variables,
-    questionGuide,
-    ttsConfig,
-    whisperConfig,
-    scheduledTriggerConfig,
-    chatInputGuide,
-    instruction,
-    autoExecute
-  } = splitGuideModule(systemConfigNode);
-
   const welcomeConfig: AppWelcomeConfigType = {
     welcomeText:
-      storeWelcomeText ??
-      chatConfig?.welcomeConfig?.welcomeText ??
-      chatConfig?.welcomeText ??
-      welcomeText,
-    welcomeQuestions: chatConfig?.welcomeConfig?.welcomeQuestions ?? welcomeQuestions
+      storeWelcomeText ?? chatConfig?.welcomeConfig?.welcomeText ?? chatConfig?.welcomeText,
+    welcomeQuestions: chatConfig?.welcomeConfig?.welcomeQuestions
   };
 
   const config: AppChatConfigType = {
-    questionGuide,
-    ttsConfig,
-    whisperConfig,
-    scheduledTriggerConfig,
-    chatInputGuide,
-    instruction,
-    autoExecute,
+    questionGuide: defaultQGConfig,
+    ttsConfig: defaultTTSConfig,
+    whisperConfig: defaultWhisperConfig,
+    chatInputGuide: defaultChatInputGuideConfig,
+    autoExecute: defaultAutoExecuteConfig,
     ...chatConfig,
-    variables: storeVariables ?? chatConfig?.variables ?? variables,
+    variables: storeVariables ?? chatConfig?.variables ?? [],
     welcomeConfig,
     welcomeText: welcomeConfig.welcomeText
   };
@@ -482,11 +241,10 @@ export const projectExternalVariableInput = <T extends FlowNodeInputItemType>(in
   const projectedInput = {
     ...input,
     canAgentGenerated,
-    ...(canAgentGenerated ? { isToolParam: true } : {}),
+    ...(canAgentGenerated ? { defaultToAgentGenerated: true } : {}),
     renderTypeList: projectedRenderTypeList,
     selectedType
   } as T;
-  delete projectedInput.selectedTypeIndex;
 
   return projectedInput;
 };
@@ -630,14 +388,14 @@ export const appData2FlowNodeIO = ({
                 FlowNodeInputTypeEnum.agentGenerated
               ],
               selectedType: FlowNodeInputTypeEnum.agentGenerated,
-              isToolParam: true
+              defaultToAgentGenerated: true
             }
           ]
         : []),
       {
         ...Input_Template_UserChatInput,
         // 普通工作流作为工具时，用户问题应默认由调用它的 Agent 生成。
-        isToolParam: true
+        defaultToAgentGenerated: true
       },
       ...variableInput
     ],

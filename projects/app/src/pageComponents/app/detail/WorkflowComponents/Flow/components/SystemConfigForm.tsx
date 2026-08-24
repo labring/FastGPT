@@ -1,15 +1,12 @@
-import React, { type Dispatch, useCallback, useMemo } from 'react';
-import { type NodeProps, useViewport } from 'reactflow';
+import React, { type Dispatch, useCallback } from 'react';
+import { useViewport } from 'reactflow';
 import { Box } from '@chakra-ui/react';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 import QGConfig from '@/components/core/app/QGConfig';
 import TTSSelect from '@/components/core/app/TTSSelect';
 import WhisperConfig from '@/components/core/app/WhisperConfig';
 import InputGuideConfig from '@/components/core/app/InputGuideConfig';
-import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { TTSTypeEnum } from '@/web/core/app/constants';
-import NodeCard from './render/NodeCard';
 import ScheduledTriggerConfig from '@/components/core/app/ScheduledTriggerConfig';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext, WorkflowInitContext } from '../../context/workflowInitContext';
@@ -23,7 +20,6 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import WelcomeTextConfig from '@/components/core/app/WelcomeTextConfig';
 import FileSelect from '@/components/core/app/FileSelect';
 import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
-import Container from '../components/Container';
 import AutoExecConfig from '@/components/core/app/AutoExecConfig';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import {
@@ -39,37 +35,6 @@ type ComponentProps = {
   isWelcomeTextFolded?: boolean;
   onToggleWelcomeTextFold?: () => void;
 };
-
-const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
-  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const setAppDetail = useContextSelector(AppContext, (v) => v.setAppDetail);
-
-  const chatConfig = useMemo<AppChatConfigType>(() => {
-    return getAppChatConfig({
-      chatConfig: appDetail.chatConfig,
-      systemConfigNode: data,
-      isPublicFetch: true
-    });
-  }, [data, appDetail.chatConfig]);
-
-  return (
-    <NodeCard
-      selected={selected}
-      menuForbid={{
-        debug: true,
-        copy: true,
-        delete: true
-      }}
-      {...data}
-    >
-      <Container>
-        <SystemConfigForm chatConfig={chatConfig} setAppDetail={setAppDetail} />
-      </Container>
-    </NodeCard>
-  );
-};
-
-export default React.memo(NodeUserGuide);
 
 export function SystemConfigForm(props: ComponentProps) {
   const isDrawerMode = props.mode === 'drawer';
