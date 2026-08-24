@@ -65,8 +65,6 @@ const SimpleEdit = () => {
       h={'100%'}
       minH={0}
       flexDirection={'column'}
-      px={[3, 0]}
-      pr={[3, 3]}
       borderLeft={currentTab === TabEnum.publish ? '1px solid' : undefined}
       borderColor={'myGray.200'}
     >
@@ -92,7 +90,6 @@ const SimpleEdit = () => {
           mt={[4, 0]}
           mb={[2, 4]}
           bg={'white'}
-          borderRadius={'lg'}
         >
           {currentTab === TabEnum.publish && <PublishChannel />}
           {currentTab === TabEnum.logs && <Logs />}
