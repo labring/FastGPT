@@ -251,7 +251,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                                 fontSize={'sm'}
                                 fontWeight={'medium'}
                               >
-                                {t(displayName)}
+                                {displayName}
                               </Box>
                               <Flex flex={1} />
 

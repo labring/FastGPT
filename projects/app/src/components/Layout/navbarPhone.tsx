@@ -32,6 +32,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
           '/dashboard/agent',
           '/app/detail',
           '/dashboard/tool',
+          '/dashboard/tool/marketplace',
           '/dashboard/systemTool',
           '/dashboard/templateMarket',
           '/dashboard/mcpServer',

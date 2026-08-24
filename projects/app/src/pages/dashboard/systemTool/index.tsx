@@ -255,7 +255,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                         children: [
                           {
                             label: t('app:install_from_marketplace'),
-                            onClick: () => router.push('/dashboard/marketplace')
+                            onClick: () => router.push('/dashboard/tool/marketplace')
                           },
                           {
                             label: t('app:install_from_file'),

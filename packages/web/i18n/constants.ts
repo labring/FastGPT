@@ -21,6 +21,7 @@ export const I18N_NAMESPACES = [
   'account_custom_domain',
   'config',
   'config_model',
+  'marketplace',
   'dashboard_mcp',
   'dashboard_evaluation',
   'admin_plugin',

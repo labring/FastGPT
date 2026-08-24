@@ -18,7 +18,7 @@ const clientOnlyRoutes = new Set([
   '/account/info',
   '/account/usage',
   '/account/model',
-  '/dashboard/marketplace',
+  '/dashboard/tool/marketplace',
   '/price'
 ]);
 
