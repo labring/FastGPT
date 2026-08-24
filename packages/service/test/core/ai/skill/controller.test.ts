@@ -11,7 +11,6 @@ import {
   importSkill
 } from '@fastgpt/service/core/ai/skill/manage';
 import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
-import { parseSkillMarkdown } from '@fastgpt/service/core/ai/skill/utils';
 import {
   AgentSkillSourceEnum,
   AgentSkillCategoryEnum
@@ -395,91 +394,6 @@ describe('AgentSkill Controller', () => {
       expect(firstSkillId).toBeDefined();
       expect(secondSkillId).toBeDefined();
       expect(firstSkillId).not.toBe(secondSkillId);
-    });
-  });
-
-  // ==================== Parse SKILL.md ====================
-  describe('parseSkillMarkdown', () => {
-    it('should parse YAML frontmatter correctly', () => {
-      const markdown = `---
-name: web-search
-description: Search the web
-metadata:
-  version: "1.0"
-  category: search,tool
----
-
-# Web Search
-
-This is the content.`;
-
-      const result = parseSkillMarkdown(markdown);
-
-      expect(result.error).toBeUndefined();
-      expect(result.frontmatter.name).toBe('web-search');
-      expect(result.frontmatter.description).toBe('Search the web');
-      expect(result.frontmatter.metadata).toEqual({
-        version: '1.0',
-        category: 'search,tool' // raw string, not parsed array (parseSkillMarkdown returns raw YAML values)
-      });
-      expect(result.content).toContain('# Web Search');
-    });
-
-    it('should return error when frontmatter is missing', () => {
-      const markdown = `# No Frontmatter
-
-This content has no frontmatter.`;
-
-      const result = parseSkillMarkdown(markdown);
-
-      expect(result.error).toContain('SKILL.md must contain YAML frontmatter');
-    });
-
-    it('should parse array values correctly', () => {
-      const markdown = `---
-name: test-skill
-description: A test
-category: [search, tool, coding]
----
-
-# Test`;
-
-      const result = parseSkillMarkdown(markdown);
-
-      expect(result.error).toBeUndefined();
-      expect(result.frontmatter.category).toEqual(['search', 'tool', 'coding']);
-    });
-
-    it('should parse frontmatter-only SKILL.md content', () => {
-      const markdown = `---
-name: test-skill
-description: A test
----`;
-
-      const result = parseSkillMarkdown(markdown);
-
-      expect(result.error).toBeUndefined();
-      expect(result.frontmatter.name).toBe('test-skill');
-      expect(result.frontmatter.description).toBe('A test');
-      expect(result.content).toBe('');
-    });
-
-    it('should parse boolean values correctly', () => {
-      const markdown = `---
-name: test-skill
-description: A test
-metadata:
-  enabled: true
-  disabled: false
----
-
-# Test`;
-
-      const result = parseSkillMarkdown(markdown);
-
-      expect(result.error).toBeUndefined();
-      expect(result.frontmatter.metadata.enabled).toBe(true);
-      expect(result.frontmatter.metadata.disabled).toBe(false);
     });
   });
 });

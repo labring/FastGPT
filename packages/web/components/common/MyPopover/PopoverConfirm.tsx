@@ -12,7 +12,8 @@ import {
   Box,
   Button,
   PopoverArrow,
-  Flex
+  Flex,
+  type PopoverProps
 } from '@chakra-ui/react';
 import { useMemoEnhance } from '../../../hooks/useMemoEnhance';
 
@@ -23,6 +24,7 @@ const PopoverConfirm = ({
   Trigger,
   placement = 'auto',
   offset,
+  modifiers,
   onConfirm,
   confirmText,
   cancelText
@@ -33,6 +35,7 @@ const PopoverConfirm = ({
   Trigger: React.ReactNode;
   placement?: PlacementWithLogical;
   offset?: [number, number];
+  modifiers?: PopoverProps['modifiers'];
   onConfirm: () => Promise<any> | any;
   confirmText?: string;
   cancelText?: string;
@@ -69,6 +72,7 @@ const PopoverConfirm = ({
       onClose={onClose}
       placement={placement}
       offset={offset}
+      modifiers={modifiers}
       closeOnBlur={true}
       trigger={'click'}
       openDelay={100}

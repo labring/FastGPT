@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { TeamMemberStatusEnum } from '../../../../support/user/team/constant';
+import { SourceMemberSchema } from '../../../../support/user/type';
 import {
   AgentSkillCategorySchema,
   AgentSkillCreationStatusSchema,
@@ -417,6 +418,7 @@ export const SkillVersionListItemSchema = z.object({
   _id: z.string(),
   skillId: z.string(),
   tmbId: z.string(),
+  sourceMember: SourceMemberSchema.meta({ description: '发布该版本的成员信息' }),
   versionName: z.string().optional(),
   isCurrent: z.boolean().describe('是否为 skill 主表标记的当前版本'),
   createdAt: z.string()
