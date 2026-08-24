@@ -107,6 +107,15 @@ export async function handler(
       );
     }
 
+    if (updateFields.status !== undefined && !updateFields.children?.length) {
+      // 软卸载和恢复只传父工具状态时，同步已有子工具，避免为读取子工具列表请求 plugin 服务。
+      await MongoSystemTool.updateMany(
+        { pluginId: { $regex: `^${escapeRegExp(pluginId)}/` } },
+        { status: updateFields.status },
+        { session }
+      );
+    }
+
     // 如果有子工具，更新子工具
     for await (const tool of updateFields.children || []) {
       const childPluginId = tool.id.includes('/') ? tool.id : `${pluginId}/${tool.id}`;

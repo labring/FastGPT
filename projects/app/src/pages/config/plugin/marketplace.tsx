@@ -27,10 +27,10 @@ import {
 import {
   getMarketplaceToolStateAfterInstall,
   getBatchUpdateFailures,
-  shouldReinstallOfflineMarketplaceTool
+  shouldReinstallOfflineMarketplaceTool,
+  updateMarketplaceInstalledPluginStatus
 } from '@/web/core/plugin/marketplace/utils';
 import {
-  getAdminSystemToolDetail,
   getAdminSystemToolVersions,
   getAdminSystemTools,
   putAdminUpdateSystemTool
@@ -44,7 +44,7 @@ import { getDocPath } from '@/web/common/system/doc';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
-import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
+import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
@@ -235,7 +235,11 @@ const ToolkitMarketplace = () => {
     }
   );
 
-  const { data: systemInstalledPlugins, runAsync: refreshInstalledPlugins } = useRequest(
+  const {
+    data: systemInstalledPlugins,
+    mutate: mutateInstalledPlugins,
+    runAsync: refreshInstalledPlugins
+  } = useRequest(
     async () => {
       const tools = await getAdminSystemTools({});
       const allSystemPluginTools = tools.flatMap((tool) => {
@@ -295,17 +299,18 @@ const ToolkitMarketplace = () => {
         installedVersion: offlineTool?.version,
         targetVersion
       });
-      const reinstallSystemTool = async (systemToolId: string) => {
-        const detail = await getAdminSystemToolDetail({ toolId: systemToolId });
-
+      const updateSystemToolStatus = async (systemToolId: string, status: PluginStatusType) => {
         await putAdminUpdateSystemTool({
           id: systemToolId,
-          status: PluginStatusEnum.Normal,
-          children: detail.children?.map((child) => ({
-            id: child.id,
-            systemKeyCost: child.systemKeyCost
-          }))
+          status
         });
+        mutateInstalledPlugins((current) =>
+          updateMarketplaceInstalledPluginStatus({
+            data: current,
+            pluginId: tool.id,
+            status
+          })
+        );
       };
 
       const operationPromise = (async () => {
@@ -313,7 +318,7 @@ const ToolkitMarketplace = () => {
 
         try {
           if (shouldReinstallOfflineTool && offlineTool) {
-            await reinstallSystemTool(offlineTool.systemToolId);
+            await updateSystemToolStatus(offlineTool.systemToolId, PluginStatusEnum.Normal);
           } else {
             const downloadUrl = await getMarketplaceDownloadURL(tool.id, version);
             if (!downloadUrl) throw new Error(t('common:request_error'));
@@ -332,11 +337,13 @@ const ToolkitMarketplace = () => {
             }
 
             if (offlineTool) {
-              await reinstallSystemTool(offlineTool.systemToolId);
+              await updateSystemToolStatus(offlineTool.systemToolId, PluginStatusEnum.Normal);
             }
           }
 
-          const refreshedInstalledPlugins = await refreshInstalledPlugins();
+          const refreshedInstalledPlugins = shouldReinstallOfflineTool
+            ? undefined
+            : await refreshInstalledPlugins();
           const refreshedInstalledTool = refreshedInstalledPlugins?.map.get(tool.id);
 
           if (selectedTool?.id === tool.id && shouldReinstallOfflineTool) {
@@ -476,16 +483,17 @@ const ToolkitMarketplace = () => {
         installingOrDeletingToolIdsDispatch.add(tool.id);
 
         try {
-          const detail = await getAdminSystemToolDetail({ toolId: systemToolId });
-
           await putAdminUpdateSystemTool({
             id: systemToolId,
-            status: PluginStatusEnum.Offline,
-            children: detail.children?.map((child) => ({
-              id: child.id,
-              systemKeyCost: child.systemKeyCost
-            }))
+            status: PluginStatusEnum.Offline
           });
+          mutateInstalledPlugins((current) =>
+            updateMarketplaceInstalledPluginStatus({
+              data: current,
+              pluginId: tool.id,
+              status: PluginStatusEnum.Offline
+            })
+          );
 
           if (selectedTool?.id === tool.id) {
             setSelectedTool((prev) =>
@@ -494,7 +502,6 @@ const ToolkitMarketplace = () => {
                 : null
             );
           }
-          await refreshInstalledPlugins();
         } finally {
           installingOrDeletingToolIdsDispatch.remove(tool.id);
           operatingPromisesRef.current.delete(tool.id);

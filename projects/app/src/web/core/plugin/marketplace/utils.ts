@@ -1,4 +1,5 @@
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import type {
   PluginInstallFailureType,
   PluginInstallResultType
@@ -32,6 +33,47 @@ export const shouldReinstallOfflineMarketplaceTool = ({
   installedVersion?: string;
   targetVersion?: string;
 }) => isOffline && installedVersion === targetVersion;
+
+type MarketplaceInstalledPluginItem = {
+  id: string;
+  status: PluginStatusType;
+};
+
+export type MarketplaceInstalledPlugins<T extends MarketplaceInstalledPluginItem> = {
+  ids: Set<string>;
+  map: Map<string, T>;
+  allMap: Map<string, T>;
+  list: T[];
+};
+
+/** 更新管理员市场页的本地安装缓存，避免软卸载/恢复后重新请求 plugin 列表。 */
+export const updateMarketplaceInstalledPluginStatus = <T extends MarketplaceInstalledPluginItem>({
+  data,
+  pluginId,
+  status
+}: {
+  data?: MarketplaceInstalledPlugins<T>;
+  pluginId: string;
+  status: PluginStatusType;
+}) => {
+  if (!data) return data;
+
+  const plugin = data.allMap.get(pluginId);
+  if (!plugin) return data;
+
+  const allMap = new Map(data.allMap);
+  allMap.set(pluginId, { ...plugin, status });
+  const list = Array.from(allMap.values()).filter(
+    (item) => item.status !== PluginStatusEnum.Offline
+  );
+
+  return {
+    ids: new Set(list.map((item) => item.id)),
+    map: new Map(list.map((item) => [item.id, item])),
+    allMap,
+    list
+  } satisfies MarketplaceInstalledPlugins<T>;
+};
 
 /**
  * 将 plugin-server 按下载地址返回的失败项映射回 marketplace toolId。
