@@ -64,6 +64,7 @@ const QRCodePayModal = ({
       setDynamicQRSize(newSize);
     };
 
+    calculateQRSize();
     window.addEventListener('resize', calculateQRSize);
 
     return () => {
@@ -164,19 +165,40 @@ const QRCodePayModal = ({
   });
   const renderPaymentContent = () => {
     if (payWayRenderData.qrCode) {
-      return <Box ref={canvasRef} display={'inline-block'} h={`${dynamicQRSize}px`} />;
+      return (
+        <Box
+          ref={canvasRef}
+          display={'inline-block'}
+          alignSelf={'center'}
+          h={`${dynamicQRSize}px`}
+        />
+      );
     }
     if (payWayRenderData.iframeCode) {
+      const iframeSize = QR_CODE_SIZE + 5;
+      const renderedSize = dynamicQRSize + 5;
+      const iframeScale = renderedSize / iframeSize;
+
       return (
-        <iframe
-          srcDoc={payWayRenderData.iframeCode}
-          style={{
-            width: dynamicQRSize + 5,
-            height: dynamicQRSize + 5,
-            border: 'none',
-            display: 'inline-block'
-          }}
-        />
+        <Box
+          alignSelf={'center'}
+          w={`${renderedSize}px`}
+          h={`${renderedSize}px`}
+          overflow={'hidden'}
+        >
+          <iframe
+            srcDoc={payWayRenderData.iframeCode}
+            scrolling="no"
+            style={{
+              width: iframeSize,
+              height: iframeSize,
+              border: 'none',
+              display: 'block',
+              transform: `scale(${iframeScale})`,
+              transformOrigin: 'top left'
+            }}
+          />
+        </Box>
       );
     }
     if (payWayRenderData.markdown) {

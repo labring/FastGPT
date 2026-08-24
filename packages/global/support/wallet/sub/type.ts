@@ -183,25 +183,25 @@ export const TeamSubSchema = z.object({
   currentSubLevel: z.enum(StandardSubLevelEnum),
   nextSubLevel: z.enum(StandardSubLevelEnum).optional(),
 
-  maxTeamMember: z.int().optional(),
-  maxApp: z.int().optional(),
-  maxDataset: z.int().optional(),
+  maxTeamMember: z.int().nullish(),
+  maxApp: z.int().nullish(),
+  maxDataset: z.int().nullish(),
   totalPoints: z.int(),
   annualBonusPoints: z.int().optional(),
   surplusPoints: z.number(),
   currentExtraDatasetSize: z.int().optional(),
 
   // 定制版特有属性
-  requestsPerMinute: z.int().optional(),
-  chatHistoryStoreDuration: z.int().optional(),
-  maxDatasetSize: z.int().optional(),
-  websiteSyncPerDataset: z.int().optional(),
-  appRegistrationCount: z.int().optional(),
-  auditLogStoreDuration: z.int().optional(),
-  ticketResponseTime: z.int().optional(),
-  customDomain: z.int().optional(),
-  maxUploadFileSize: z.int().optional(),
-  maxUploadFileCount: z.int().optional(),
+  requestsPerMinute: z.int().nullish(),
+  chatHistoryStoreDuration: z.int().nullish(),
+  maxDatasetSize: z.int().nullish(),
+  websiteSyncPerDataset: z.int().nullish(),
+  appRegistrationCount: z.int().nullish(),
+  auditLogStoreDuration: z.int().nullish(),
+  ticketResponseTime: z.int().nullish(),
+  customDomain: z.int().nullish(),
+  maxUploadFileSize: z.int().nullish(),
+  maxUploadFileCount: z.int().nullish(),
   enableSandbox: z.boolean().optional() // 虚拟机
 });
 export type TeamSubSchemaType = z.infer<typeof TeamSubSchema>;

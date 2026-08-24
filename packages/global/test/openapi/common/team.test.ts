@@ -12,7 +12,11 @@ import {
   DatasetSizeLimitQuerySchema,
   type DatasetSizeLimitQuery
 } from '../../../openapi/support/user/team/limit/api';
-import { GetTeamPlanStatusResponseSchema } from '../../../openapi/support/user/team/api';
+import { GetPlansResponseSchema as GetAdminPlansResponseSchema } from '../../../openapi/admin/routes/plans/api';
+import {
+  GetTeamPlansResponseSchema,
+  GetTeamPlanStatusResponseSchema
+} from '../../../openapi/support/user/team/api';
 import {
   StandardSubLevelEnum,
   SubModeEnum,
@@ -176,6 +180,62 @@ describe('common and team OpenAPI contracts', () => {
         totalPoints: null,
         surplusPoints: null
       }
+    });
+  });
+
+  it('accepts nullish limits in historical team subscription records', () => {
+    const nullableLimits = {
+      maxTeamMember: null,
+      maxApp: null,
+      maxDataset: null,
+      requestsPerMinute: null,
+      chatHistoryStoreDuration: null,
+      maxDatasetSize: null,
+      websiteSyncPerDataset: null,
+      appRegistrationCount: null,
+      auditLogStoreDuration: null,
+      ticketResponseTime: null,
+      customDomain: null,
+      maxUploadFileSize: null,
+      maxUploadFileCount: null
+    };
+    const plan = {
+      _id: normalizedStandardPlan._id,
+      teamId: normalizedStandardPlan.teamId,
+      type: SubTypeEnum.standard,
+      startTime: new Date('2026-01-01T00:00:00.000Z'),
+      expiredTime: new Date('2027-01-01T00:00:00.000Z'),
+      currentSubLevel: StandardSubLevelEnum.custom,
+      totalPoints: 1000,
+      surplusPoints: 500,
+      ...nullableLimits
+    };
+
+    expect(GetTeamPlansResponseSchema.parse([plan])[0]).toMatchObject(nullableLimits);
+    expect(
+      GetTeamPlansResponseSchema.safeParse([{ ...plan, maxTeamMember: 'unlimited' }]).success
+    ).toBe(false);
+  });
+
+  it('parses admin plan responses from the shared contract', () => {
+    expect(
+      GetAdminPlansResponseSchema.parse({
+        list: [
+          {
+            id: normalizedStandardPlan._id,
+            teamId: normalizedStandardPlan.teamId,
+            type: SubTypeEnum.extraDatasetSize,
+            extraDatasetSize: 1024,
+            startTime: new Date('2026-01-01T00:00:00.000Z'),
+            expiredTime: new Date('2027-01-01T00:00:00.000Z'),
+            maxTeamMember: null
+          }
+        ],
+        total: 1
+      })
+    ).toMatchObject({
+      list: [{ type: SubTypeEnum.extraDatasetSize, maxTeamMember: null }],
+      total: 1
     });
   });
 });
