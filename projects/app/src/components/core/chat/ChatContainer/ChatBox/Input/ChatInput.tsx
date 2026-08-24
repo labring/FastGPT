@@ -196,7 +196,7 @@ const ChatInput = ({
 
   const RenderTextarea = useMemo(
     () => (
-      <Flex direction={'column'} mt={fileList.length > 0 ? 1 : 0}>
+      <Flex direction={'column'} mt={fileList.length > 0 ? 1 : 0} minH={'42px'}>
         {/* Textarea */}
         <Flex w={'100%'} position={'relative'}>
           {/* Prompt Container */}
