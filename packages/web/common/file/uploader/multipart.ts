@@ -75,6 +75,42 @@ const uploadMultipartPartWithRetry = async ({
   }
 };
 
+const postMultipartCompleteWithRetry = async ({
+  completeUrl,
+  parts,
+  maxRetry,
+  signal
+}: {
+  completeUrl: string;
+  parts: MultipartUploadPart[];
+  maxRetry: number;
+  signal: AbortSignal;
+}) => {
+  for (let attempt = 0; ; attempt++) {
+    throwIfAborted(signal);
+
+    try {
+      return await axios.post(
+        completeUrl,
+        { parts },
+        {
+          signal,
+          timeout: MULTIPART_REQUEST_TIMEOUT
+        }
+      );
+    } catch (error) {
+      const isCompletionRetryable =
+        axios.isAxiosError(error) &&
+        (error.response?.status === 409 ||
+          (!error.response &&
+            ['ECONNABORTED', 'ETIMEDOUT', 'ERR_NETWORK'].includes(error.code ?? '')));
+      if (!isCompletionRetryable || attempt >= maxRetry) throw error;
+
+      await waitForMultipartRetry(MULTIPART_RETRY_BASE_DELAY * 2 ** attempt, signal);
+    }
+  }
+};
+
 const postMultipartAbort = (abortUrl: string) =>
   axios.post(abortUrl, undefined, {
     timeout: MULTIPART_REQUEST_TIMEOUT
@@ -161,14 +197,12 @@ export const uploadMultipartFile = async (params: S3FileUploaderMultipartParams)
       throw new Error('Multipart parts are incomplete');
     }
 
-    await axios.post(
-      params.completeUrl,
-      { parts: completedParts },
-      {
-        signal: requestSignal,
-        timeout: MULTIPART_REQUEST_TIMEOUT
-      }
-    );
+    await postMultipartCompleteWithRetry({
+      completeUrl: params.completeUrl,
+      parts: completedParts,
+      maxRetry: params.maxRetry,
+      signal: requestSignal
+    });
   } catch (error) {
     const uploadError = firstUploadError ?? error;
 

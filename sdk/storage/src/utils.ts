@@ -18,9 +18,13 @@ export const getAbortSignalError = (abortSignal: AbortSignal): Error => {
   return error;
 };
 
-/** 在发起远端下载前检查取消，确保预取消请求不会进入厂商 SDK。 */
-export const throwIfStorageDownloadAborted = (abortSignal?: AbortSignal): void => {
+export const throwIfStorageAborted = (abortSignal?: AbortSignal): void => {
   if (abortSignal?.aborted) throw getAbortSignalError(abortSignal);
+};
+
+/** 在发起远端下载前检查取消，保持旧导出名兼容已有调用方。 */
+export const throwIfStorageDownloadAborted = (abortSignal?: AbortSignal): void => {
+  throwIfStorageAborted(abortSignal);
 };
 
 /**

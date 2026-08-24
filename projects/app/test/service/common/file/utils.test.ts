@@ -229,12 +229,11 @@ describe('S3FileUploader', () => {
     const controller = new AbortController();
     const post = vi.spyOn(axios, 'post').mockResolvedValue({ status: 200, data: {} } as any);
     vi.spyOn(axios, 'put').mockImplementation((_url, _body, config) => {
+      const signal = config?.signal as AbortSignal | undefined;
       return new Promise((_resolve, reject) => {
-        config?.signal?.addEventListener(
-          'abort',
-          () => reject(config.signal?.reason ?? new Error('aborted')),
-          { once: true }
-        );
+        signal?.addEventListener('abort', () => reject(signal.reason ?? new Error('aborted')), {
+          once: true
+        });
       }) as any;
     });
 
@@ -252,6 +251,45 @@ describe('S3FileUploader', () => {
       expect.objectContaining({ timeout: expect.any(Number) })
     );
     expect(post.mock.calls[0]?.[2]).not.toHaveProperty('signal');
+  });
+
+  it('retries complete after a client timeout and a pending completion lease', async () => {
+    const put = vi.spyOn(axios, 'put').mockImplementation(async (url) => {
+      const partNumber = new URL(url, 'https://fastgpt.example.com').searchParams.get('partNumber');
+      return {
+        status: 200,
+        data: { data: { etag: `etag-${partNumber}` } }
+      } as any;
+    });
+    const timeoutError = Object.assign(new Error('timeout of 120000ms exceeded'), {
+      isAxiosError: true,
+      code: 'ECONNABORTED'
+    });
+    const pendingError = Object.assign(new Error('Multipart upload session is completing'), {
+      isAxiosError: true,
+      response: { status: 409 }
+    });
+    let completeAttempts = 0;
+    const post = vi.spyOn(axios, 'post').mockImplementation(async (url) => {
+      if (String(url).endsWith('/complete')) {
+        completeAttempts += 1;
+        if (completeAttempts === 1) throw timeoutError;
+        if (completeAttempts === 2) throw pendingError;
+      }
+      return { status: 200, data: {} } as any;
+    });
+
+    const uploader = new S3FileUploader({
+      ...createUploadParams(),
+      maxRetry: 2
+    });
+
+    await uploader.upload();
+
+    expect(put).toHaveBeenCalledTimes(3);
+    expect(completeAttempts).toBe(3);
+    expect(post).toHaveBeenCalledTimes(3);
+    expect(post.mock.calls.every(([url]) => String(url).endsWith('/complete'))).toBe(true);
   });
 
   it('aborts the multipart session when complete fails', async () => {

@@ -4,7 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   handleS3ProxyDownload,
   handleS3ProxyUpload,
-  handleS3ProxyUploadPart
+  handleS3ProxyUploadPart,
+  resolveS3ProxyErrorResponse
 } from '@/service/common/s3/proxy';
 
 const createRequest = (method = 'GET') =>
@@ -210,6 +211,7 @@ describe('handleS3ProxyDownload', () => {
 describe('handleS3ProxyUploadPart', () => {
   it('destroys the storage stream when an incomplete request closes', async () => {
     const req = new PassThrough() as any;
+    const res = createResponse();
     Object.assign(req, {
       headers: { 'content-length': '4' },
       aborted: false,
@@ -229,6 +231,7 @@ describe('handleS3ProxyUploadPart', () => {
 
     const uploadPromise = handleS3ProxyUploadPart({
       req,
+      res: res as any,
       token: 'multipart-token',
       partNumber: 2,
       payload: {
@@ -253,6 +256,68 @@ describe('handleS3ProxyUploadPart', () => {
 
     await expect(uploadPromise).rejects.toBeTruthy();
     expect(uploadStream?.destroyed).toBe(true);
+  });
+  it('aborts the provider upload when the response closes after the body is complete', async () => {
+    const req = new PassThrough() as any;
+    const res = createResponse();
+    Object.assign(req, {
+      headers: { 'content-length': '4' },
+      aborted: false,
+      complete: false
+    });
+
+    let uploadSignal: AbortSignal | undefined;
+    const uploadMultipartPart = vi.fn(async ({ abortSignal }: { abortSignal: AbortSignal }) => {
+      uploadSignal = abortSignal;
+      return new Promise<never>((_resolve, reject) => {
+        abortSignal.addEventListener('abort', () => reject(abortSignal.reason), {
+          once: true
+        });
+      });
+    });
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        uploadMultipartPart
+      }
+    } as any;
+
+    const uploadPromise = handleS3ProxyUploadPart({
+      req,
+      res: res as any,
+      token: 'multipart-token',
+      partNumber: 2,
+      payload: {
+        bucketName: 'fastgpt-private',
+        objectKey: 'dataset/team/file.bin',
+        maxSize: 1024,
+        uploadPolicy: {
+          defaultContentType: 'application/octet-stream'
+        },
+        multipart: {
+          uploadId: 'upload-1',
+          partSize: 4,
+          totalSize: 8,
+          status: 'active'
+        }
+      }
+    });
+
+    await vi.waitFor(() => expect(uploadMultipartPart).toHaveBeenCalled());
+    req.complete = true;
+    req.end(Buffer.from('data'));
+    res.emit('close');
+
+    await expect(uploadPromise).rejects.toBeTruthy();
+    expect(uploadSignal?.aborted).toBe(true);
+  });
+
+  it('maps a completing session to a retryable conflict', () => {
+    const error = new Error('Multipart upload session is completing');
+
+    expect(resolveS3ProxyErrorResponse(error)).toEqual({
+      httpStatus: 409,
+      publicError: error
+    });
   });
 });
 

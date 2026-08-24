@@ -1,12 +1,13 @@
 import OSS from 'ali-oss';
 import type { IOssStorageOptions, IStorage } from '../interface';
 import type * as Storage from '../types';
-import type { Readable } from 'node:stream';
+import { Readable } from 'node:stream';
 import { camelCase, chunk, difference, kebabCase } from 'es-toolkit';
 import { DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
 import {
   bindAbortSignalToReadable,
   encodeObjectKeyPath,
+  throwIfStorageAborted,
   throwIfStorageDownloadAborted
 } from '../utils';
 import {
@@ -124,7 +125,7 @@ export class OssStorageAdapter implements IStorage {
     // ali-oss 会把字符串 body 当成本地文件路径，因此先转成字节以满足 IStorage 契约。
     const uploadBody = typeof body === 'string' ? Buffer.from(body) : body;
 
-    const headers: Record<string, any> = {
+    const headers: Record<string, unknown> = {
       'x-oss-storage-class': 'Standard',
       'x-oss-forbid-overwrite': 'false'
     };
@@ -184,13 +185,17 @@ export class OssStorageAdapter implements IStorage {
   async uploadMultipartPart(
     params: Storage.UploadMultipartPartParams
   ): Promise<Storage.UploadMultipartPartResult> {
-    const { key, uploadId, partNumber, body, contentLength } = params;
+    const { key, uploadId, partNumber, body, contentLength, abortSignal } = params;
     assertStorageObjectKey(key);
     assertMultipartUploadId(uploadId);
     assertMultipartPartNumber(partNumber);
     assertMultipartContentLength(contentLength);
+    throwIfStorageAborted(abortSignal);
 
     const uploadBody = typeof body === 'string' ? Buffer.from(body) : body;
+    if (uploadBody instanceof Readable) {
+      bindAbortSignalToReadable({ readable: uploadBody, abortSignal });
+    }
     const result = await this.client.uploadPart(
       key,
       uploadId,
@@ -354,7 +359,7 @@ export class OssStorageAdapter implements IStorage {
     assertRequiredStorageObjectPrefix(prefix);
 
     const fails: Storage.StorageObjectKey[] = [];
-    let marker: string | undefined = undefined;
+    let marker: string | undefined;
     let isTruncated = false;
 
     do {
@@ -482,7 +487,7 @@ export class OssStorageAdapter implements IStorage {
     assertStorageObjectPrefix(prefix);
 
     let keys: Storage.StorageObjectKey[] = [];
-    let marker: string | undefined = undefined;
+    let marker: string | undefined;
     let isTruncated = false;
 
     do {

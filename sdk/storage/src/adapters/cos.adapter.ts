@@ -1,12 +1,13 @@
 import COS from 'cos-nodejs-sdk-v5';
 import type { ICosStorageOptions, IStorage } from '../interface';
 import type * as Storage from '../types';
-import { PassThrough } from 'node:stream';
+import { PassThrough, Readable } from 'node:stream';
 import { camelCase, chunk, isError, isNotNil, kebabCase } from 'es-toolkit';
 import { DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
 import {
   bindAbortSignalToReadable,
   encodeObjectKeyPath,
+  throwIfStorageAborted,
   throwIfStorageDownloadAborted
 } from '../utils';
 import {
@@ -237,11 +238,16 @@ export class CosStorageAdapter implements IStorage {
   async uploadMultipartPart(
     params: Storage.UploadMultipartPartParams
   ): Promise<Storage.UploadMultipartPartResult> {
-    const { key, uploadId, partNumber, body, contentLength } = params;
+    const { key, uploadId, partNumber, body, contentLength, abortSignal } = params;
     assertStorageObjectKey(key);
     assertMultipartUploadId(uploadId);
     assertMultipartPartNumber(partNumber);
     assertMultipartContentLength(contentLength);
+    throwIfStorageAborted(abortSignal);
+
+    if (body instanceof Readable) {
+      bindAbortSignalToReadable({ readable: body, abortSignal });
+    }
 
     const result = await new Promise<COS.MultipartUploadResult>((resolve, reject) => {
       this.client.multipartUpload(
@@ -493,7 +499,7 @@ export class CosStorageAdapter implements IStorage {
     assertRequiredStorageObjectPrefix(prefix);
 
     const fails: Storage.StorageObjectKey[] = [];
-    let marker: string | undefined = undefined;
+    let marker: string | undefined;
 
     await new Promise<void>((resolve, reject) => {
       const handler = () => {
@@ -665,7 +671,7 @@ export class CosStorageAdapter implements IStorage {
     assertStorageObjectPrefix(prefix);
 
     let keys: Storage.StorageObjectKey[] = [];
-    let marker: string | undefined = undefined;
+    let marker: string | undefined;
 
     await new Promise<void>((resolve, reject) => {
       const handler = () => {

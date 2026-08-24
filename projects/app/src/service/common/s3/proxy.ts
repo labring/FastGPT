@@ -49,7 +49,7 @@ type ValidatedUploadFile = Awaited<ReturnType<typeof validateUploadFile>>;
  * 把 HTTP 客户端断开转换为可透传给存储 SDK 和 stream pipeline 的取消信号。
  * 响应正常完成后的 close 不属于取消；调用方结束时必须执行 cleanup。
  */
-export const createS3DownloadAbortContext = ({
+export const createS3ProxyAbortContext = ({
   req,
   res
 }: {
@@ -282,7 +282,7 @@ export const handleS3ProxyDownload = async ({
     throw new Error('S3 bucket not found');
   }
 
-  const abortContext = createS3DownloadAbortContext({ req, res });
+  const abortContext = createS3ProxyAbortContext({ req, res });
   let stream: Awaited<ReturnType<typeof bucket.getFileStream>>;
 
   const setResponseHeaders = (metadata: Awaited<ReturnType<typeof bucket.getFileMetadata>>) => {
@@ -508,13 +508,15 @@ const createMultipartPartLengthGuard = (expectedLength: number) => {
  */
 export const handleS3ProxyUploadPart = async ({
   req,
+  res,
   token,
   payload,
   partNumber
 }: {
   req: NextApiRequest;
-  token: string;
+  res: NextApiResponse;
   payload: S3ProxyUploadPayload;
+  token: string;
   partNumber: number;
 }): Promise<{ etag: string }> => {
   const { objectKey, bucketName, maxSize, uploadPolicy, fileHint, metadata } = payload;
@@ -547,6 +549,7 @@ export const handleS3ProxyUploadPart = async ({
   const uploadStream = contentGuard?.stream ?? lengthGuard;
   const validatedUpload = contentGuard?.validatedUpload;
 
+  const abortContext = createS3ProxyAbortContext({ req, res });
   const destroyUploadStreams = (error: Error) => {
     if (!lengthGuard.destroyed) lengthGuard.destroy(error);
     if (!uploadStream.destroyed) uploadStream.destroy(error);
@@ -555,11 +558,18 @@ export const handleS3ProxyUploadPart = async ({
   const abortUpload = () => {
     // 正常请求结束也可能触发 close；只有未完整读取的请求需要销毁上传流。
     if (req.complete || req.readableEnded) return;
-    destroyUploadStreams(new Error('Multipart upload request aborted'));
+
+    const error = new Error('Multipart upload request aborted');
+    abortContext.abort(error);
+    destroyUploadStreams(error);
   };
+
+  abortContext.signal.addEventListener('abort', abortUpload, { once: true });
 
   if (req.aborted) {
     abortUpload();
+    abortContext.signal.removeEventListener('abort', abortUpload);
+    abortContext.cleanup();
     throw new Error('Multipart upload request aborted');
   }
 
@@ -572,7 +582,8 @@ export const handleS3ProxyUploadPart = async ({
       token,
       partNumber,
       body: uploadStream,
-      contentLength
+      contentLength,
+      abortSignal: abortContext.signal
     });
 
     const requestPipeline = contentGuard
@@ -593,6 +604,8 @@ export const handleS3ProxyUploadPart = async ({
     req.off('aborted', abortUpload);
     req.off('error', abortUpload);
     req.off('close', abortUpload);
+    abortContext.signal.removeEventListener('abort', abortUpload);
+    abortContext.cleanup();
   }
 };
 
@@ -675,6 +688,13 @@ export function resolveS3ProxyErrorResponse(error: unknown): {
   if (errorKey === 'EntityTooLarge') {
     return {
       httpStatus: 413,
+      publicError: error
+    };
+  }
+
+  if (errorKey === 'Multipart upload session is completing') {
+    return {
+      httpStatus: 409,
       publicError: error
     };
   }
