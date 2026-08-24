@@ -10,19 +10,19 @@ export enum ChannelStatusEnum {
 }
 export const ChannelStautsMap = {
   [ChannelStatusEnum.ChannelStatusUnknown]: {
-    label: i18nT('account_model:channel_status_unknown'),
+    label: i18nT('config_model:channel_status_unknown'),
     colorSchema: 'gray'
   },
   [ChannelStatusEnum.ChannelStatusEnabled]: {
-    label: i18nT('account_model:channel_status_enabled'),
+    label: i18nT('config_model:channel_status_enabled'),
     colorSchema: 'green'
   },
   [ChannelStatusEnum.ChannelStatusDisabled]: {
-    label: i18nT('account_model:channel_status_disabled'),
+    label: i18nT('config_model:channel_status_disabled'),
     colorSchema: 'red'
   },
   [ChannelStatusEnum.ChannelStatusAutoDisabled]: {
-    label: i18nT('account_model:channel_status_auto_disabled'),
+    label: i18nT('config_model:channel_status_auto_disabled'),
     colorSchema: 'gray'
   }
 };

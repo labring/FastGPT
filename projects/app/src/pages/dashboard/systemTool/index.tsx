@@ -255,7 +255,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                         children: [
                           {
                             label: t('app:install_from_marketplace'),
-                            onClick: () => router.push('/dashboard/systemTool/marketplace')
+                            onClick: () => router.push('/dashboard/marketplace')
                           },
                           {
                             label: t('app:install_from_file'),
@@ -397,7 +397,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   {userInfo?.username === 'root' && (
                     <Button
                       onClick={() => {
-                        router.push('/config/tool');
+                        router.push('/config/plugin/tool');
                       }}
                       w={'160px'}
                     >

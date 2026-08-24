@@ -45,18 +45,18 @@ const ModelTest = ({
   models: string[];
   onClose: () => void;
 }) => {
-  const { t, i18n } = useClientTranslation('account_model');
+  const { t, i18n } = useClientTranslation('config_model');
   const { getModelProvider } = useSystemStore();
   const { toast } = useToast();
   const [testModelList, setTestModelList] = useState<ModelTestItem[]>([]);
 
   const statusMap = useRef({
     waiting: {
-      label: t('account_model:waiting_test'),
+      label: t('config_model:waiting_test'),
       colorSchema: 'gray'
     },
     running: {
-      label: t('account_model:running_test'),
+      label: t('config_model:running_test'),
       colorSchema: 'blue'
     },
     success: {
@@ -139,7 +139,7 @@ const ModelTest = ({
       if (errorNum > 0) {
         toast({
           status: 'warning',
-          title: t('account_model:test_failed', { num: errorNum })
+          title: t('config_model:test_failed', { num: errorNum })
         });
       }
     },
@@ -190,7 +190,7 @@ const ModelTest = ({
     <MyModal
       iconSrc={'core/chat/sendLight'}
       isLoading={loadingModels}
-      title={t('account_model:model_test')}
+      title={t('config_model:model_test')}
       w={'100%'}
       maxW={['90vw', '1090px']}
       isOpen
@@ -200,9 +200,9 @@ const ModelTest = ({
           <Table>
             <Thead>
               <Tr>
-                <Th>{t('account_model:model_name')}</Th>
-                <Th>{t('account_model:model.model_id')}</Th>
-                <Th>{t('account_model:channel_status')}</Th>
+                <Th>{t('config_model:model_name')}</Th>
+                <Th>{t('config_model:model.model_id')}</Th>
+                <Th>{t('config_model:channel_status')}</Th>
                 <Th></Th>
               </Tr>
             </Thead>
@@ -221,7 +221,7 @@ const ModelTest = ({
                         {item.message && <QuestionTip label={item.message} />}
                         {item.status === 'success' && item.duration && (
                           <Box fontSize={'sm'} color={'myGray.500'}>
-                            {t('account_model:request_duration', {
+                            {t('config_model:request_duration', {
                               duration: item.duration.toFixed(2)
                             })}
                           </Box>
@@ -233,7 +233,7 @@ const ModelTest = ({
                         <MyIconButton
                           isLoading={item.loading}
                           icon={'core/chat/sendLight'}
-                          tip={t('account_model:model.test_model')}
+                          tip={t('config_model:model.test_model')}
                           onClick={() => onTestOneModel(item.model)}
                         />
                       )}
@@ -250,7 +250,7 @@ const ModelTest = ({
           {t('common:Cancel')}
         </Button>
         <Button isLoading={isTesting} variant={'primary'} onClick={onStartTest}>
-          {t('account_model:start_test', { num: testModelList.length })}
+          {t('config_model:start_test', { num: testModelList.length })}
         </Button>
       </ModalFooter>
     </MyModal>

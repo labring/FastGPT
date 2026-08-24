@@ -18,19 +18,24 @@ const clientOnlyRoutes = new Set([
   '/account/info',
   '/account/usage',
   '/account/model',
+  '/dashboard/marketplace',
   '/price'
 ]);
+
+const isClientOnlyRoute = (pathname: string) =>
+  clientOnlyRoutes.has(pathname) || pathname.startsWith('/config/');
+
 const ClientOnlyPage = dynamic(() => import('@/web/context/ClientOnlyPage'), {
   ssr: false
 });
 const AppRouter = (props: AppProps) => {
-  const isClientOnlyRoute = clientOnlyRoutes.has(props.router.pathname);
+  const clientOnly = isClientOnlyRoute(props.router.pathname);
 
   return (
     <AppShell
       {...props}
-      clientOnly={isClientOnlyRoute}
-      renderPage={isClientOnlyRoute ? () => <ClientOnlyPage {...props} /> : undefined}
+      clientOnly={clientOnly}
+      renderPage={clientOnly ? () => <ClientOnlyPage {...props} /> : undefined}
     />
   );
 };
@@ -42,8 +47,8 @@ const TranslatedAppRouter = appWithTranslation(AppRouter, clientI18nConfig);
  * 没有 Cookie 时允许先使用默认语言，挂载后再由客户端 effect 恢复本地或浏览器语言。
  */
 const App = (props: AppProps) => {
-  const isClientOnlyRoute = clientOnlyRoutes.has(props.router.pathname);
-  if (!isClientOnlyRoute || typeof window === 'undefined') {
+  const clientOnly = isClientOnlyRoute(props.router.pathname);
+  if (!clientOnly || typeof window === 'undefined') {
     return <TranslatedAppRouter {...props} />;
   }
 

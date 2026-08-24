@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag/index';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { nanoid } from 'nanoid';
 import {
@@ -19,7 +19,7 @@ import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const TagManageModal = ({ onClose }: { onClose: () => void }) => {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useClientTranslation('app');
   const { toast } = useToast();
   const newTagInputRef = useRef<HTMLInputElement>(null);
 
@@ -37,16 +37,10 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     });
   };
 
-  const {
-    data: tags = [],
-    run: loadTags,
-    loading
-  } = useRequest(getPluginToolTags, {
-    manual: false
+  const { run: loadTags, loading } = useRequest(getPluginToolTags, {
+    manual: false,
+    onSuccess: setLocalTags
   });
-  useEffect(() => {
-    setLocalTags(tags);
-  }, [tags]);
 
   useEffect(() => {
     if (editingTagId && newTagInputRef.current) {

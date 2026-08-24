@@ -156,6 +156,7 @@ export async function initSystemConfig() {
       show_batch_eval: licenseData?.functions?.batchEval,
       pluginRemoteDebug,
       payFormUrl: appEnv.PAY_FORM_URL || '',
+      marketplaceUrl: appEnv.MARKETPLACE_URL,
 
       agentSandboxFree: appEnv.AGENT_SANDBOX_FREE_TIP,
       agentSandboxProxyUrl: serviceEnv.AGENT_SANDBOX_PROXY_URL || ''

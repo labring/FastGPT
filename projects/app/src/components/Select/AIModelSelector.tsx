@@ -126,7 +126,7 @@ const OneRowSelector = ({
   unsetLabel,
   ...props
 }: Props) => {
-  const { t } = useTranslation(['common', 'account']);
+  const { t } = useTranslation();
 
   const {
     llmModelList,
@@ -284,7 +284,7 @@ const MultipleRowSelector = ({
   unsetLabel,
   ...props
 }: Props) => {
-  const { t, i18n } = useTranslation(['common', 'account']);
+  const { t, i18n } = useTranslation();
   const {
     llmModelList,
     embeddingModelList,

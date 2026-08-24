@@ -1,7 +1,5 @@
 'use client';
 
-import { serviceSideProps } from '@/web/common/i18n/utils';
-import { useTranslation } from 'next-i18next';
 import { Box, Button, Checkbox, Flex, Grid, Input, InputGroup, VStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -49,6 +47,8 @@ import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import ConfigContainer from '@/pageComponents/config/ConfigContainer';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 
 type QueryValue = string | string[] | undefined;
 type QueryRecord = Record<string, QueryValue>;
@@ -155,11 +155,12 @@ const getSystemToolRawPluginId = (toolId: string) => {
   }
 };
 
-const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
-  const { t, i18n } = useTranslation();
+const ToolkitMarketplace = () => {
+  const { t, i18n } = useClientTranslation('app');
   const router = useRouter();
   const { copyData } = useCopyData();
   const { feConfigs } = useSystemStore();
+  const marketplaceUrl = feConfigs.marketplaceUrl ?? '';
   const { toast } = useToast();
 
   // Use custom hook for URL params management
@@ -230,7 +231,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     {
       type: 'scroll',
       defaultPageSize: 20,
-      pageSizeCacheKey: 'config-tool-marketplace-tools',
+      pageSizeCacheKey: 'config-plugin-marketplace-tools',
       refreshDeps: [searchText, tagIds, sourceFilter]
     }
   );
@@ -683,7 +684,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
         <MyIconButton
           icon={'common/closeLight'}
           size={'6'}
-          onClick={() => router.push('/config/tool')}
+          onClick={() => router.back()}
           position={'absolute'}
           zIndex={'999'}
           top={8}
@@ -736,7 +737,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           <MyIconButton
             icon={'common/closeLight'}
             size={'6'}
-            onClick={() => router.push('/config/tool')}
+            onClick={() => router.back()}
             position={'absolute'}
             top={4}
             zIndex={1000}
@@ -1042,15 +1043,10 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
   );
 };
 
-export async function getServerSideProps(content: any) {
-  const { appEnv } = await import('@/env');
+const ToolkitMarketplacePage = () => (
+  <ConfigContainer>
+    <ToolkitMarketplace />
+  </ConfigContainer>
+);
 
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['app'])),
-      marketplaceUrl: appEnv.MARKETPLACE_URL
-    }
-  };
-}
-
-export default ToolkitMarketplace;
+export default ToolkitMarketplacePage;

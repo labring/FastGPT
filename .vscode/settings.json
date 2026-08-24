@@ -25,6 +25,7 @@
     "i18n-ally.localesPaths": [
         "packages/web/i18n",
     ],
+    "i18n-ally.ignoredLocales": ["ko"],
     "i18n-ally.enabledParsers": [
         "json",
         "yaml",

@@ -33,7 +33,6 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
           '/app/detail',
           '/dashboard/tool',
           '/dashboard/systemTool',
-          '/dashboard/systemTool/marketplace',
           '/dashboard/templateMarket',
           '/dashboard/mcpServer',
           '/dashboard/evaluation',
@@ -72,8 +71,8 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
               label: t('common:navbar.Config'),
               icon: 'support/config/configLight',
               activeIcon: 'support/config/configFill',
-              link: '/config/tool',
-              activeLink: ['/config/tool', '/config/tool/marketplace']
+              link: '/config/plugin/tool',
+              activeLink: ['/config/plugin/tool', '/config/plugin/marketplace', '/config/model']
             }
           ]
         : [])

@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { Box, Button, Checkbox, Flex, Grid, Input, InputGroup, VStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -163,17 +163,12 @@ const parseTeamInstallFailure = (error: unknown): PluginInstallFailureType[] | u
   }
 };
 
-export const ToolkitMarketplace = ({
-  marketplaceUrl,
-  mode = 'admin'
-}: {
-  marketplaceUrl: string;
-  mode?: 'admin' | 'team';
-}) => {
-  const { t, i18n } = useTranslation();
+export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team' }) => {
+  const { t, i18n } = useClientTranslation('app');
   const router = useRouter();
   const { copyData } = useCopyData();
   const { feConfigs } = useSystemStore();
+  const marketplaceUrl = feConfigs.marketplaceUrl ?? '';
   const { toast } = useToast();
 
   // Use custom hook for URL params management
@@ -678,7 +673,7 @@ export const ToolkitMarketplace = ({
         <MyIconButton
           icon={'common/closeLight'}
           size={'6'}
-          onClick={() => router.push(mode === 'team' ? '/dashboard/systemTool' : '/config/tool')}
+          onClick={() => router.back()}
           position={'absolute'}
           zIndex={'999'}
           top={8}
@@ -731,7 +726,7 @@ export const ToolkitMarketplace = ({
           <MyIconButton
             icon={'common/closeLight'}
             size={'6'}
-            onClick={() => router.push(mode === 'team' ? '/dashboard/systemTool' : '/config/tool')}
+            onClick={() => router.back()}
             position={'absolute'}
             top={4}
             zIndex={1000}

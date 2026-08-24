@@ -59,7 +59,7 @@ const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 const ModelEditModal = dynamic(() => import('./AddModelBox').then((mod) => mod.ModelEditModal));
 
 const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
-  const { t, i18n } = useClientTranslation('account_model');
+  const { t, i18n } = useClientTranslation('config_model');
   const { userInfo } = useUserStore();
   const { defaultModels, feConfigs, getModelProviders, getModelProvider } = useSystemStore();
 
@@ -330,7 +330,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
               variant={'whiteBase'}
               onClick={onOpenDefaultModel}
             >
-              {t('account_model:model.default_model')}
+              {t('config_model:model.default_model')}
             </Button>
             <Button
               w={['100%', 'auto']}
@@ -339,7 +339,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
               variant={'whiteBase'}
               onClick={onOpenJsonConfig}
             >
-              {t('account_model:model.json_config')}
+              {t('config_model:model.json_config')}
             </Button>
             <AddModelButton
               w={['100%', 'auto']}
@@ -414,7 +414,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                         onClick={() => setShowModelId(!showModelId)}
                       >
                         <Box>
-                          {showModelId ? t('account_model:model.model_id') : t('common:model.name')}
+                          {showModelId ? t('config_model:model.model_id') : t('common:model.name')}
                         </Box>
                         <MyIcon name={'modal/changePer'} w={'1rem'} />
                       </HStack>
@@ -427,7 +427,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                         onClick={() => setShowActive(!showActive)}
                         color={showActive ? 'primary.600' : 'myGray.600'}
                       >
-                        {t('account_model:model.active')}({activeModelLength})
+                        {t('config_model:model.active')}({activeModelLength})
                       </Box>
                     </Th>
                     <Th fontSize={'xs'}></Th>
@@ -480,12 +480,12 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                         <HStack>
                           <MyIconButton
                             icon={'core/chat/sendLight'}
-                            tip={t('account_model:model.test_model')}
+                            tip={t('config_model:model.test_model')}
                             onClick={() => onTestModel({ model: item.model })}
                           />
                           <MyIconButton
                             icon={'common/settingLight'}
-                            tip={t('account_model:model.edit_model')}
+                            tip={t('config_model:model.edit_model')}
                             onClick={() => onEditModel(item.model)}
                           />
                           {item.isCustom && (
@@ -496,7 +496,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                                 </Box>
                               }
                               type="delete"
-                              content={t('account_model:model.delete_model_confirm')}
+                              content={t('config_model:model.delete_model_confirm')}
                               onConfirm={() => deleteModel({ model: item.model })}
                             />
                           )}
@@ -535,7 +535,7 @@ const JsonConfigModal = ({
   onClose: () => void;
   onSuccess: () => void;
 }) => {
-  const { t } = useClientTranslation('account_model');
+  const { t } = useClientTranslation('config_model');
 
   const [data, setData] = useState<string>('');
   const { loading } = useRequest(getModelConfigJson, {
@@ -558,13 +558,13 @@ const JsonConfigModal = ({
       isLoading={loading}
       onClose={onClose}
       iconSrc="modal/edit"
-      title={t('account_model:model.json_config')}
+      title={t('config_model:model.json_config')}
       w={'100%'}
       h={'100%'}
     >
       <ModalBody display={'flex'} flexDirection={'column'}>
         <Box fontSize={'sm'} color={'myGray.500'}>
-          {t('account_model:model.json_config_tip')}
+          {t('config_model:model.json_config_tip')}
         </Box>
         <Box mt={2} flex={1} w={'100%'} overflow={'hidden'}>
           <JsonEditor value={data} onChange={setData} resize h={'100%'} />
@@ -578,7 +578,7 @@ const JsonConfigModal = ({
         <PopoverConfirm
           Trigger={<Button>{t('common:Confirm')}</Button>}
           type="info"
-          content={t('account_model:model.json_config_confirm')}
+          content={t('config_model:model.json_config_confirm')}
           onConfirm={() => runAsync({ config: data })}
         />
       </ModalFooter>
@@ -598,7 +598,7 @@ const DefaultModelModal = ({
   onSuccess: () => void;
   onClose: () => void;
 }) => {
-  const { t } = useClientTranslation('account_model');
+  const { t } = useClientTranslation('config_model');
   const {
     defaultModels,
     llmModelList,
@@ -625,7 +625,7 @@ const DefaultModelModal = ({
     <MyModal
       isOpen
       onClose={onClose}
-      title={t('account_model:default_model_config')}
+      title={t('config_model:default_model_config')}
       iconSrc="modal/edit"
     >
       <ModalBody>
@@ -749,8 +749,8 @@ const DefaultModelModal = ({
         </Box>
         <Box>
           <Flex mt={4} {...labelStyles} alignItems={'center'}>
-            <Box mr={0.5}>{t('account_model:vlm_model')}</Box>
-            <QuestionTip label={t('account_model:vlm_model_tip')} />
+            <Box mr={0.5}>{t('config_model:vlm_model')}</Box>
+            <QuestionTip label={t('config_model:vlm_model_tip')} />
           </Flex>
           <Box flex={1}>
             <AIModelSelector
@@ -771,15 +771,15 @@ const DefaultModelModal = ({
         </Box>
         <Box>
           <Flex mt={4} {...labelStyles} alignItems={'center'}>
-            <Box mr={0.5}>{t('account_model:chat_title_model')}</Box>
-            <QuestionTip label={t('account_model:chat_title_model_tip')} />
+            <Box mr={0.5}>{t('config_model:chat_title_model')}</Box>
+            <QuestionTip label={t('config_model:chat_title_model_tip')} />
           </Flex>
           <Box flex={1}>
             <AIModelSelector
               bg="myGray.50"
               value={defaultData.chatTitleLLM?.model || ''}
               canBeUnset
-              unsetLabel={t('account_model:not_set_chat_title_model')}
+              unsetLabel={t('config_model:not_set_chat_title_model')}
               list={llmModelList.map((item) => ({
                 value: item.model,
                 label: item.name
