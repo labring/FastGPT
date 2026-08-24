@@ -73,8 +73,8 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             <Box {...provided.droppableProps} ref={provided.innerRef}>
               {ifElseList.map((conditionItem, conditionIndex) => (
                 <Draggable
-                  key={getIfElseBranchHandleKey(conditionItem, conditionIndex)}
-                  draggableId={getIfElseBranchHandleKey(conditionItem, conditionIndex)}
+                  key={getIfElseBranchHandleKey(conditionItem)}
+                  draggableId={getIfElseBranchHandleKey(conditionItem)}
                   index={conditionIndex}
                 >
                   {(provided, snapshot) => (

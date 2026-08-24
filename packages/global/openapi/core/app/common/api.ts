@@ -13,8 +13,14 @@ import {
 import { ShortUrlSchema } from '../../../../support/marketing/type';
 import { AppPermissionSchema } from '../../../../support/permission/app/controller.schema';
 import { SourceMemberSchema } from '../../../../support/user/type';
-import { OpenAPIStoreNodeItemTypeSchema } from '../../workflow/node';
-import { BoolSchema, NumSchema } from '../../../../common/zod';
+import {
+  OpenAPIFlowNodeInputItemTypeSchema,
+  OpenAPIFlowNodeOutputItemTypeSchema,
+  OpenAPIStoreNodeItemTypeSchema
+} from '../../workflow/node';
+import { FlowNodeInputTypeEnum } from '../../../../core/workflow/node/constant';
+import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
+import { BoolSchema, IntSchema, NumSchema } from '../../../../common/zod';
 import z from 'zod';
 
 const AppIdSchema = ObjectIdSchema.meta({
@@ -134,6 +140,33 @@ export const OpenAPIAppChatConfigSchema = AppChatConfigTypeSchema.extend({
 });
 
 /* Create app */
+/**
+ * Create API 接受当前 workflow 以及 migration 所需的已知 legacy NodeIO 字段。
+ * onCreateApp 会在写入前统一迁移，避免客户端 schema 先剥离历史输入语义。
+ */
+const CreateAppInputSchema = OpenAPIFlowNodeInputItemTypeSchema.omit({
+  renderTypeList: true
+}).extend({
+  renderTypeList: z.array(z.enum(FlowNodeInputTypeEnum)).optional().meta({
+    description: '输入允许的渲染组件类型；历史导入数据可暂缺，由 migration 补齐'
+  }),
+  isToolParam: BoolSchema.optional().meta({
+    description: '历史工具输入默认由 Agent 生成标记',
+    deprecated: true
+  }),
+  selectedTypeIndex: IntSchema.optional().meta({
+    description: '历史工作流输入类型索引',
+    deprecated: true
+  })
+});
+
+const CreateAppNodeSchema = OpenAPIStoreNodeItemTypeSchema.strict().extend({
+  inputs: z.array(CreateAppInputSchema.strict()),
+  outputs: z.array(OpenAPIFlowNodeOutputItemTypeSchema.strict())
+});
+
+const CreateAppEdgesSchema = z.array(StoreEdgeItemTypeSchema.strict());
+
 export const CreateAppBodySchema = z
   .object({
     parentId: ParentIdSchema.optional().meta({
@@ -156,15 +189,15 @@ export const CreateAppBodySchema = z
       example: AppTypeEnum.workflow,
       description: '应用类型'
     }),
-    modules: z.array(OpenAPIStoreNodeItemTypeSchema).optional().meta({
+    modules: z.array(CreateAppNodeSchema).optional().meta({
       example: [],
       description: '应用节点配置'
     }),
-    edges: AppSchemaTypeSchema.shape.edges.optional().meta({
+    edges: CreateAppEdgesSchema.optional().meta({
       example: [],
       description: '应用连线'
     }),
-    chatConfig: OpenAPIAppChatConfigSchema.optional().meta({
+    chatConfig: OpenAPIAppChatConfigSchema.strict().optional().meta({
       description: '聊天配置'
     }),
     templateId: z.string().optional().meta({
@@ -175,6 +208,7 @@ export const CreateAppBodySchema = z
       description: 'UTM 参数'
     })
   })
+  .strict()
   .meta({
     example: {
       name: '新应用',
@@ -340,7 +374,7 @@ export type GetAppDetailResponseType = z.infer<typeof GetAppDetailResponseSchema
  * API: 更新应用
  * Route: PUT /api/core/app/update
  * Method: PUT
- * Description: 更新应用基础信息、编排信息或移动应用位置。
+ * Description: 更新应用基础信息或移动应用位置。
  * Tags: ['基础管理']
  * ============================================================================ */
 
@@ -361,11 +395,9 @@ export const UpdateAppBodySchema = z
       .optional()
       .meta({ example: AppTypeEnum.workflow, description: '应用类型' }),
     avatar: z.string().optional().meta({ description: '应用头像' }),
-    intro: z.string().optional().meta({ description: '应用介绍' }),
-    nodes: z.array(OpenAPIStoreNodeItemTypeSchema).optional().meta({ description: '应用节点配置' }),
-    edges: AppSchemaTypeSchema.shape.edges.optional().meta({ description: '应用连线' }),
-    chatConfig: OpenAPIAppChatConfigSchema.optional().meta({ description: '聊天配置' })
+    intro: z.string().optional().meta({ description: '应用介绍' })
   })
+  .strict()
   .meta({
     example: {
       name: '客服应用',

@@ -5,7 +5,7 @@ import { $createTextNode, $getSelection, $isRangeSelection } from 'lexical';
 import * as React from 'react';
 import { useCallback, useState } from 'react';
 import * as ReactDOM from 'react-dom';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '../../../../../../hooks/useSafeTranslation';
 import MyIcon from '../../../../Icon';
 import { Box, Flex } from '@chakra-ui/react';
 import { useBasicTypeaheadTriggerMatch } from '../../utils';
@@ -18,7 +18,7 @@ export default function VariablePickerPlugin({
 }) {
   const [editor] = useLexicalComposerContext();
   const [queryString, setQueryString] = useState<string | null>(null);
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
 
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('{', {
     minLength: 0

@@ -45,7 +45,7 @@ export default async function Page({
         .filter(
           (item) =>
             item.path.startsWith('self-host/upgrading/') &&
-            !item.path.includes('upgrade-intruction') &&
+            !item.path.includes('upgrade-instruction') &&
             /^V\d/.test(item.data.title)
         )
         .map((item) => ({

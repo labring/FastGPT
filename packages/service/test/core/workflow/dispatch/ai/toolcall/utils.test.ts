@@ -22,25 +22,25 @@ describe('workflow tool runner utils', () => {
           key: 'limit',
           value: 10,
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
-          selectedTypeIndex: 1
+          selectedType: FlowNodeInputTypeEnum.agentGenerated
         },
         {
           key: 'enabled',
           value: true,
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
-          selectedTypeIndex: 1
+          selectedType: FlowNodeInputTypeEnum.agentGenerated
         },
         {
           key: 'manualText',
           value: 'fixed value',
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
-          selectedTypeIndex: 0
+          selectedType: FlowNodeInputTypeEnum.input
         },
         {
           key: 'password',
           value: 'secret',
           renderTypeList: [FlowNodeInputTypeEnum.password, FlowNodeInputTypeEnum.agentGenerated],
-          selectedTypeIndex: 1
+          selectedType: FlowNodeInputTypeEnum.password
         },
         {
           key: 'emptyText',
@@ -77,25 +77,25 @@ describe('workflow tool runner utils', () => {
           key: 'limit',
           value: 0,
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
-          selectedTypeIndex: 1
+          selectedType: FlowNodeInputTypeEnum.agentGenerated
         },
         {
           key: 'enabled',
           value: false,
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
-          selectedTypeIndex: 1
+          selectedType: FlowNodeInputTypeEnum.agentGenerated
         },
         {
           key: 'manualText',
           value: 'fixed value',
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
-          selectedTypeIndex: 0
+          selectedType: FlowNodeInputTypeEnum.input
         },
         {
           key: 'password',
           value: 'secret',
           renderTypeList: [FlowNodeInputTypeEnum.password, FlowNodeInputTypeEnum.agentGenerated],
-          selectedTypeIndex: 1
+          selectedType: FlowNodeInputTypeEnum.password
         },
         {
           key: 'emptyText',

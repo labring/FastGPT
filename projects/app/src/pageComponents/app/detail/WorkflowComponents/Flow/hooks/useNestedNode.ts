@@ -40,15 +40,14 @@ export const useNestedNode = ({
   inputs,
   arrayInputKey = NodeInputKeyEnum.nestedInputArray
 }: UseNestedNodeParams): UseNestedNodeResult => {
-  const { getNodeById, nodeIds, childNodeIds, getNodeList, systemConfigNode } = useContextSelector(
+  const { getNodeById, nodeIds, childNodeIds } = useContextSelector(
     WorkflowBufferDataContext,
     (v) => {
       return {
         getNodeById: v.getNodeById,
         nodeIds: v.nodeIds,
         childNodeIds: v.childrenNodeIdListMap[nodeId],
-        getNodeList: v.getNodeList,
-        systemConfigNode: v.systemConfigNode
+        getNodeList: v.getNodeList
       };
     }
   );
@@ -107,7 +106,6 @@ export const useNestedNode = ({
     }
 
     const globalVariables = getWorkflowGlobalVariables({
-      systemConfigNode,
       chatConfig: appDetail.chatConfig
     });
 
@@ -122,7 +120,7 @@ export const useNestedNode = ({
     })(value[0]);
 
     return ArrayTypeMap[valueType as keyof typeof ArrayTypeMap] ?? WorkflowIOValueTypeEnum.arrayAny;
-  }, [appDetail.chatConfig, getNodeById, nestedInputArray, nodeIds, systemConfigNode]);
+  }, [appDetail.chatConfig, getNodeById, nestedInputArray, nodeIds]);
 
   useEffect(() => {
     if (!nestedInputArray || !arrayInputKey || nestedInputArray.valueType === newValueType) return;

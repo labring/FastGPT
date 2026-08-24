@@ -30,7 +30,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getMyModels } from '@fastgpt/service/support/permission/model/controller';
-import { normalizeWorkflowConfig, removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
+import { removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
@@ -40,6 +40,7 @@ import {
   validatePublishAppAgentSkillReadPermissions,
   updateParentFoldersUpdateTime
 } from '@fastgpt/service/core/app/controller';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
 
@@ -88,22 +89,18 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     avatar,
     intro,
     type,
-    modules: await (async () => {
+    modules,
+    allowedModels: await (async () => {
       if (modules) {
-        const myModels = new Set(
+        return new Set(
           await getMyModels({
             teamId,
             tmbId,
             isTeamOwner: isRoot || tmb?.role === 'owner'
           })
         );
-
-        return removeUnauthModels({
-          modules,
-          allowedModels: myModels
-        });
       }
-      return [];
+      return undefined;
     })(),
     edges,
     chatConfig,
@@ -144,6 +141,7 @@ export const onCreateApp = async ({
   type,
   modules,
   storageModules,
+  allowedModels,
   edges,
   chatConfig,
   teamId,
@@ -159,8 +157,9 @@ export const onCreateApp = async ({
   name?: string;
   avatar?: string;
   type: AppTypeEnum;
-  modules?: AppSchemaType['modules'];
+  modules?: unknown[];
   storageModules?: AppSchemaType['modules'];
+  allowedModels?: Set<string>;
   edges?: AppSchemaType['edges'];
   chatConfig?: AppSchemaType['chatConfig'];
   intro?: string;
@@ -184,12 +183,18 @@ export const onCreateApp = async ({
     }
   }
 
-  const normalizedWorkflow = normalizeWorkflowConfig({
+  // Copy 和 Transition 会传入历史数据库记录；写入前统一转换为 canonical 并格式化敏感字段。
+  const normalizedWorkflow = migrateWorkflowToCurrent({
     nodes: modules ?? [],
     edges: edges ?? [],
     chatConfig
   });
-
+  if (allowedModels) {
+    await removeUnauthModels({
+      modules: normalizedWorkflow.nodes,
+      allowedModels
+    });
+  }
   await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });
   if (!AppFolderTypeList.includes(type!)) {
     await validatePublishAppAgentSkillReadPermissions({
@@ -298,4 +303,45 @@ export const onCreateApp = async ({
   } else {
     return await mongoSessionRun(create);
   }
+};
+
+/**
+ * 将已有应用转换为 workflow 时写入其 workflow 数据。
+ *
+ * 该入口只服务 Transition 的 createNew=false 分支：源 workflow 可能是历史数据，写入前统一
+ * 产出 canonical 数据并格式化敏感字段。调用方必须传入同一事务的 session，普通更新接口不复用。
+ */
+export const onUpdateAppWorkflow = async ({
+  appId,
+  modules,
+  edges,
+  chatConfig,
+  teamId,
+  session
+}: {
+  appId: string;
+  modules?: AppSchemaType['modules'];
+  edges?: AppSchemaType['edges'];
+  chatConfig?: AppSchemaType['chatConfig'];
+  teamId: string;
+  session?: ClientSession;
+}) => {
+  const workflow = migrateWorkflowToCurrent({
+    nodes: modules ?? [],
+    edges: edges ?? [],
+    chatConfig
+  });
+  await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });
+
+  return await MongoApp.findByIdAndUpdate(
+    appId,
+    {
+      type: AppTypeEnum.workflow,
+      modules: workflow.nodes,
+      edges: workflow.edges,
+      chatConfig: workflow.chatConfig,
+      updateTime: new Date()
+    },
+    { session }
+  );
 };

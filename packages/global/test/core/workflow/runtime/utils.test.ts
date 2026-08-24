@@ -1041,12 +1041,12 @@ describe('getWorkflowEntryNodeIds', () => {
     expect(result).toEqual(['node2', 'node3']);
   });
 
-  it('should return systemConfig node ids', () => {
+  it('should return workflow start node ids', () => {
     const nodes: RuntimeNodeItemType[] = [
       {
-        nodeId: 'config1',
-        name: 'config',
-        flowNodeType: FlowNodeTypeEnum.systemConfig,
+        nodeId: 'start1',
+        name: 'start',
+        flowNodeType: FlowNodeTypeEnum.workflowStart,
         inputs: [],
         outputs: []
       },
@@ -1059,7 +1059,7 @@ describe('getWorkflowEntryNodeIds', () => {
       }
     ];
     const result = getWorkflowEntryNodeIds(nodes);
-    expect(result).toEqual(['config1']);
+    expect(result).toEqual(['start1']);
   });
 
   it('should return workflowStart node ids', () => {

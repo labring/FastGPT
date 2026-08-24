@@ -3,6 +3,6 @@ import { defaultEditFormData } from '@/pageComponents/app/detail/WorkflowCompone
 
 describe('RenderToolInput EditFieldModal', () => {
   it('creates new dynamic tool params with the Agent-generated default', () => {
-    expect(defaultEditFormData.isToolParam).toBe(true);
+    expect(defaultEditFormData.defaultToAgentGenerated).toBe(true);
   });
 });

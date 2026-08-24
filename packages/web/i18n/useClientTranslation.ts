@@ -1,4 +1,5 @@
 import { useTranslation } from 'next-i18next';
+import { useMemo } from 'react';
 import { createSafeTranslation } from '../hooks/useSafeTranslation';
 import type { I18nNamespaces } from './i18next';
 import { getLocaleResourceError, getLocaleResourceStatus } from './resourceLoaders';
@@ -20,6 +21,7 @@ export const useClientTranslation = (namespace?: ClientNamespaceInput) => {
     : 'common';
 
   const { t: originalT, ...rest } = useTranslation(namespaces, { useSuspense: false });
+  const t = useMemo<typeof originalT>(() => createSafeTranslation(originalT), [originalT]);
   const language = getLangMapping(rest.i18n.language);
   const requiredLanguages = getRequiredI18nLanguages(language);
   const requiredNamespaces = Array.isArray(namespaces) ? namespaces : [namespaces];
@@ -40,7 +42,7 @@ export const useClientTranslation = (namespace?: ClientNamespaceInput) => {
   }
 
   return {
-    t: createSafeTranslation(originalT),
+    t,
     ...rest
   };
 };

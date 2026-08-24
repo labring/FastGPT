@@ -10,7 +10,7 @@ import {
   Switch
 } from '@chakra-ui/react';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 import dynamic from 'next/dynamic';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -71,7 +71,7 @@ const EditForm = ({
   appForm: AppFormEditFormType;
   setAppForm: React.Dispatch<React.SetStateAction<AppFormEditFormType>>;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { defaultModels, feConfigs } = useSystemStore();
   const showSandbox = feConfigs.show_agent_sandbox;
   const { teamPlanStatus } = useUserStore();

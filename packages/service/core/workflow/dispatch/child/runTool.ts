@@ -6,12 +6,8 @@ import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/ru
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { assertMCPUrlNotInternal, MCPClient } from '../../../app/mcp';
 import { getSecretValue } from '../../../../common/secret/utils';
-import type {
-  McpToolConfigType,
-  McpToolDataType
-} from '@fastgpt/global/core/app/tool/mcpTool/type';
+import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
-import { getHTTPToolRequestSchema } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { assertToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
@@ -67,7 +63,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     runningAppInfo,
     variableState,
     workflowStreamResponse,
-    node: { name, avatar, toolConfig, version, catchError }
+    node: { name, avatar, toolConfig, version, catchError, jsonSchema }
   } = props;
   const cTime = String(variableState.get('cTime') ?? '');
   const logger = getLogger(LogCategories.MODULE.APP.TOOL);
@@ -281,16 +277,13 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       }
       await authRuntimeToolset(parentId);
 
-      const tool = await getAppVersionById({
-        appId: parentId,
-        versionId: version
-      });
-
-      const mcpToolSet = tool.nodes[0].toolConfig?.mcpToolSet ?? tool.nodes[0].inputs[0].value;
-      const { headerSecret, url, toolList } = mcpToolSet;
+      const mcpToolSet = toolConfig.mcpToolSet;
+      if (!mcpToolSet) throw new Error('MCP tool set is missing from runtime node');
       const mcpTool = getToolNameCandidates(toolName)
-        .map((name) => toolList?.find((tool: McpToolConfigType) => tool.name === name))
+        .map((name) => mcpToolSet.toolList.find((tool) => tool.name === name))
         .find(Boolean);
+      if (!mcpTool) throw new Error(`MCP tool ${toolName} not found`);
+      const { headerSecret, url } = mcpToolSet;
 
       await assertMCPUrlNotInternal(url);
 
@@ -301,7 +294,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         new MCPClient({
           url,
           headers: getSecretValue({
-            storeSecret: headerSecret
+            storeSecret: headerSecret ?? undefined
           })
         });
       context.mcpClientMemory[url] = mcpClient;
@@ -345,7 +338,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
       toolInput = params;
       assertToolRuntimeParams({
-        jsonSchema: getHTTPToolRequestSchema(httpTool),
+        jsonSchema: jsonSchema ?? httpTool.requestSchema,
         params
       });
       const { data, errorMsg } = await runHTTPTool({

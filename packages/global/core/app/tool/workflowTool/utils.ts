@@ -1,7 +1,6 @@
 import type { FlowNodeInputItemType } from '../../../workflow/type/io';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../../workflow/node/constant';
 import { type StoreNodeItemType } from '../../../workflow/type/node';
-import { canInputBeAgentGenerated } from '../../formEdit/utils';
 
 /**
  * 系统工具关联的工作流暂不支持这些需要 FastGPT 运行时上下文的输入类型：
@@ -18,32 +17,6 @@ export const workflowToolUnsupportedInputTypes = new Set<FlowNodeInputTypeEnum>(
   FlowNodeInputTypeEnum.customVariable,
   FlowNodeInputTypeEnum.addInputParam
 ]);
-
-/**
- * 兼容旧版工作流工具输入：旧协议通过 toolDescription 是否存在表示默认由 AI 生成。
- * 该归一化仅供工作流工具边界使用，显式 isToolParam 始终优先。
- */
-export const normalizeWorkflowToolInputDefaultMode = <T extends FlowNodeInputItemType>(
-  input: T
-): T => {
-  if (
-    input.isToolParam !== undefined ||
-    !input.toolDescription ||
-    !canInputBeAgentGenerated(input)
-  ) {
-    return input;
-  }
-
-  return {
-    ...input,
-    isToolParam: true
-  };
-};
-
-/** 批量归一化工作流工具输入的默认生成方式。 */
-export const normalizeWorkflowToolInputsDefaultMode = <T extends FlowNodeInputItemType>(
-  inputs: T[]
-): T[] => inputs.map(normalizeWorkflowToolInputDefaultMode);
 
 export const getWorkflowToolInputsFromStoreNodes = (nodes: StoreNodeItemType[]) => {
   return (

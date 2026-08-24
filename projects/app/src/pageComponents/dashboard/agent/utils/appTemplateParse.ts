@@ -1,12 +1,11 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getAppType, getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import { AppFormEditFormV1TypeSchema } from '@fastgpt/global/core/app/formEdit/type';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
-import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 
 export type JsonImportModalScene = 'agent' | 'tool';
 
@@ -72,13 +71,14 @@ export const isDashboardImportAppTypeAllowed = ({
  * 归一化 simple 应用表单配置。
  *
  * 老版本导出的 simple JSON 可能缺少数组或默认字段，这里只补齐表单编辑器
- * 已有默认值并做 schema 校验，避免在转换 workflow 前因为历史字段缺失报错。
+ * 已有默认值；legacy 输入字段交给创建接口的 workflow migration 处理。
  */
 export const normalizeSimpleImportForm = (config: Record<string, unknown>) => {
+  const { type: _type, name: _name, intro: _intro, ...formConfig } = config;
   const defaultForm = getDefaultAppForm();
   const form = {
     ...defaultForm,
-    ...config,
+    ...formConfig,
     aiSettings: {
       ...defaultForm.aiSettings,
       ...((config.aiSettings as Record<string, unknown> | undefined) || {})
@@ -97,7 +97,7 @@ export const normalizeSimpleImportForm = (config: Record<string, unknown>) => {
     }
   };
 
-  return AppFormEditFormV1TypeSchema.safeParse(form);
+  return form as AppFormEditFormType;
 };
 
 const assertImportConfigObject = (config: unknown, t: any): Record<string, unknown> => {
@@ -187,17 +187,13 @@ const parseSimpleImportWorkflow = ({
     throw new Error(t('app:type_not_recognized'));
   }
 
-  const parsedForm = normalizeSimpleImportForm(config);
-  if (!parsedForm.success) {
-    throw new Error(t('app:type_not_recognized'));
-  }
+  const form = normalizeSimpleImportForm(config);
+  const workflow = form2AppWorkflow(form, t);
 
-  const workflow = form2AppWorkflow(parsedForm.data as AppFormEditFormType, t);
-
-  return normalizeWorkflowConfig(workflow);
+  return workflow;
 };
 
-const parseWorkflowLikeImportConfig = ({
+const parseWorkflowLikeImportConfig = async ({
   config,
   appType,
   t
@@ -205,7 +201,7 @@ const parseWorkflowLikeImportConfig = ({
   config: Record<string, unknown>;
   appType: Exclude<SupportedImportAppType, AppTypeEnum.simple>;
   t: any;
-}): ImportWorkflowConfig => {
+}): Promise<ImportWorkflowConfig> => {
   if (!Array.isArray(config.nodes)) {
     throw new Error(t('app:type_not_recognized'));
   }
@@ -222,7 +218,7 @@ const parseWorkflowLikeImportConfig = ({
     throw new Error(t('app:type_not_recognized'));
   }
 
-  return normalizeWorkflowConfig({
+  return migrateWorkflowToCurrent({
     nodes: config.nodes as StoreNodeItemType[],
     edges: Array.isArray(config.edges) ? (config.edges as StoreEdgeItemType[]) : [],
     chatConfig: (config.chatConfig ?? {}) as AppChatConfigType
@@ -236,13 +232,13 @@ const parseWorkflowLikeImportConfig = ({
  * workflow 数据。工作台导入和详情页导入只负责传入不同约束，避免把场景规则
  * 和结构解析散落在多个入口里。
  */
-export const parseAppImportConfig = ({
+export const parseAppImportConfig = async ({
   config,
   t,
   resolveScene,
   allowedAppTypes,
   expectedAppType
-}: ParseAppImportConfigOptions): ParsedImportConfig => {
+}: ParseAppImportConfigOptions): Promise<ParsedImportConfig> => {
   const importConfig = assertImportConfigObject(config, t);
   const appType = resolveImportAppType(importConfig, resolveScene);
 
@@ -252,11 +248,13 @@ export const parseAppImportConfig = ({
 
   assertImportAppTypeAllowed({ appType, allowedAppTypes, expectedAppType, t });
 
+  const workflow =
+    appType === AppTypeEnum.simple
+      ? parseSimpleImportWorkflow({ config: importConfig, t })
+      : await parseWorkflowLikeImportConfig({ config: importConfig, appType, t });
+
   return {
-    workflow:
-      appType === AppTypeEnum.simple
-        ? parseSimpleImportWorkflow({ config: importConfig, t })
-        : parseWorkflowLikeImportConfig({ config: importConfig, appType, t }),
+    workflow,
     appType
   };
 };
@@ -267,7 +265,7 @@ export const parseAppImportConfig = ({
  * 顶层 `type` 存在时按导出元信息校验业务结构；无 `type` 时回退
  * 现有 `getAppType` 结构识别逻辑，以兼容老版本导出 JSON。
  */
-export const parseDashboardImportConfig = ({
+export const parseDashboardImportConfig = async ({
   config,
   scene,
   t
@@ -275,8 +273,8 @@ export const parseDashboardImportConfig = ({
   config: unknown;
   scene: JsonImportModalScene;
   t: any;
-}): ParsedImportConfig => {
-  return parseAppImportConfig({
+}): Promise<ParsedImportConfig> => {
+  return await parseAppImportConfig({
     config,
     t,
     resolveScene: scene,
@@ -291,7 +289,7 @@ export const parseDashboardImportConfig = ({
  * 互相导入后缺少各自的入口节点。导出的 `name`、`intro` 等应用元信息只用于
  * 工作台新建应用，详情内导入时会忽略。
  */
-export const parseWorkflowImportConfig = ({
+export const parseWorkflowImportConfig = async ({
   config,
   appType: expectedAppType = AppTypeEnum.workflow,
   t
@@ -299,10 +297,10 @@ export const parseWorkflowImportConfig = ({
   config: unknown;
   appType?: AppTypeEnum.workflow | AppTypeEnum.workflowTool;
   t: any;
-}) => {
+}): Promise<ImportWorkflowConfig> => {
   const scene: JsonImportModalScene =
     expectedAppType === AppTypeEnum.workflowTool ? 'tool' : 'agent';
-  const { workflow } = parseAppImportConfig({
+  const { workflow } = await parseAppImportConfig({
     config,
     t,
     resolveScene: scene,

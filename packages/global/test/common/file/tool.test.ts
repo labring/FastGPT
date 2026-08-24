@@ -434,6 +434,12 @@ describe('文件工具函数测试', () => {
   });
 
   describe('getContentDisposition', () => {
+    it('preserves apostrophes in quoted fallback filenames', () => {
+      const header = `attachment; filename="O'Reilly report.txt"`;
+
+      expect(parseContentDispositionFilename(header)).toBe("O'Reilly report.txt");
+    });
+
     it('sanitizes / and \\ in download filenames to keep cross-platform names consistent', () => {
       const result = getContentDisposition({ filename: 'a//b\\c.pdf', type: 'attachment' });
       expect(result).toBe('attachment; filename="a__b_c.pdf"; filename*=UTF-8\'\'a__b_c.pdf');

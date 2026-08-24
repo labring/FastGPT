@@ -6,7 +6,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import type { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { getWorkflowGlobalVariables } from './utils';
@@ -14,11 +14,9 @@ import type { TFunction } from 'next-i18next';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 
 export const getGlobalVariableNode = ({
-  systemConfigNode,
   chatConfig,
   t
 }: {
-  systemConfigNode?: StoreNodeItemType;
   chatConfig: AppChatConfigType;
   t: TFunction;
 }) => {
@@ -38,7 +36,7 @@ export const getGlobalVariableNode = ({
     outputs: []
   };
 
-  const globalVariables = getWorkflowGlobalVariables({ systemConfigNode, chatConfig });
+  const globalVariables = getWorkflowGlobalVariables({ chatConfig });
 
   const variableNode: FlowNodeItemType = {
     nodeId: VARIABLE_NODE_ID,

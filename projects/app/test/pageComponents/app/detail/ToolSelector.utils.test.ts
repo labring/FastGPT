@@ -22,9 +22,8 @@ describe('ToolSelector utils', () => {
           label: 'Query',
           value: 'template value',
           renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.input],
-          selectedTypeIndex: 0,
           toolDescription: 'new description',
-          isToolParam: true,
+          defaultToAgentGenerated: true,
           required: true
         },
         {
@@ -43,9 +42,8 @@ describe('ToolSelector utils', () => {
           valueDesc: 'manual desc',
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
           selectedType: FlowNodeInputTypeEnum.input,
-          selectedTypeIndex: 0,
           toolDescription: 'source description',
-          isToolParam: false
+          defaultToAgentGenerated: false
         }
       ]);
 
@@ -58,11 +56,10 @@ describe('ToolSelector utils', () => {
         valueDesc: 'manual desc',
         renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.input],
         selectedType: FlowNodeInputTypeEnum.input,
-        selectedTypeIndex: 1,
         toolDescription: 'new description',
         required: true
       });
-      expect(result.inputs[0]).not.toHaveProperty('isToolParam');
+      expect(result.inputs[0]).not.toHaveProperty('defaultToAgentGenerated');
       expect(result.inputs[1]).toMatchObject({
         key: 'limit',
         label: 'Limit',
@@ -70,19 +67,18 @@ describe('ToolSelector utils', () => {
         required: true,
         renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.numberInput]
       });
-      expect(result.inputs[1]).not.toHaveProperty('isToolParam');
+      expect(result.inputs[1]).not.toHaveProperty('defaultToAgentGenerated');
       expect(result).not.toBe(tool);
     });
 
-    it('should apply the default mode and omit isToolParam for a new tool', () => {
+    it('should apply the default mode and omit defaultToAgentGenerated for a new tool', () => {
       const tool = createTool([
         {
           key: 'query',
           label: 'Query',
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
           selectedType: FlowNodeInputTypeEnum.input,
-          selectedTypeIndex: 0,
-          isToolParam: true
+          defaultToAgentGenerated: true
         }
       ]);
 
@@ -91,10 +87,10 @@ describe('ToolSelector utils', () => {
       expect(result.inputs[0]).toMatchObject({
         selectedType: FlowNodeInputTypeEnum.agentGenerated
       });
-      expect(result.inputs[0]).not.toHaveProperty('isToolParam');
+      expect(result.inputs[0]).not.toHaveProperty('defaultToAgentGenerated');
     });
 
-    it('should use isToolParam instead of toolDescription for a new system tool', () => {
+    it('should use defaultToAgentGenerated instead of toolDescription for a new system tool', () => {
       const tool = {
         ...createTool([
           {
@@ -102,8 +98,7 @@ describe('ToolSelector utils', () => {
             label: 'Query',
             renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
             selectedType: FlowNodeInputTypeEnum.input,
-            selectedTypeIndex: 0,
-            isToolParam: false,
+            defaultToAgentGenerated: false,
             toolDescription: 'Search query'
           }
         ]),
@@ -136,7 +131,7 @@ describe('ToolSelector utils', () => {
             label: 'Count',
             valueType: 'number',
             renderTypeList: [FlowNodeInputTypeEnum.numberInput],
-            isToolParam: true,
+            defaultToAgentGenerated: true,
             toolDescription: 'Result count'
           }
         ]),
@@ -153,7 +148,6 @@ describe('ToolSelector utils', () => {
               FlowNodeInputTypeEnum.reference
             ],
             selectedType: FlowNodeInputTypeEnum.input,
-            selectedTypeIndex: 1,
             toolDescription: 'Search query'
           }
         ]),
@@ -163,8 +157,7 @@ describe('ToolSelector utils', () => {
       const result = inheritToolInputConfig({ tool, sourceTool });
 
       expect(result.inputs[0]).toMatchObject({
-        selectedType: FlowNodeInputTypeEnum.input,
-        selectedTypeIndex: 1
+        selectedType: FlowNodeInputTypeEnum.input
       });
       expect(result.inputs[1]).toMatchObject({
         selectedType: FlowNodeInputTypeEnum.agentGenerated,
@@ -179,7 +172,6 @@ describe('ToolSelector utils', () => {
             key: 'query',
             label: 'Query',
             renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-            selectedTypeIndex: 0,
             toolDescription: 'Search query'
           }
         ]),
@@ -190,7 +182,6 @@ describe('ToolSelector utils', () => {
 
       expect(result.inputs[0]).toMatchObject({
         selectedType: FlowNodeInputTypeEnum.input,
-        selectedTypeIndex: 1,
         renderTypeList: [
           FlowNodeInputTypeEnum.agentGenerated,
           FlowNodeInputTypeEnum.input,

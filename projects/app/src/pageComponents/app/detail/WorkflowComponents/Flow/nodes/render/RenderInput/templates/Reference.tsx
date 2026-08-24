@@ -3,7 +3,7 @@ import type { RenderInputProps } from '../type';
 import { Flex, Box, type ButtonProps, Grid } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getNodeAllSource, filterSelectableWorkflowNodeOutputs } from '@/web/core/workflow/utils';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type {
   ReferenceArrayValueType,
@@ -63,10 +63,10 @@ export const useReference = ({
   // Include the container's own children as reference sources.
   includeChildren?: boolean;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
-  const { getNodeById, systemConfigNode, childrenNodeIdListMap } = useContextSelector(
+  const { getNodeById, childrenNodeIdListMap } = useContextSelector(
     WorkflowBufferDataContext,
     (v) => v
   );
@@ -75,7 +75,6 @@ export const useReference = ({
   const referenceList = useMemoEnhance(() => {
     const sourceNodes = getNodeAllSource({
       nodeId,
-      systemConfigNode,
       getNodeById,
       edges: edges,
       chatConfig: appDetail.chatConfig,
@@ -115,7 +114,6 @@ export const useReference = ({
     return list;
   }, [
     nodeId,
-    systemConfigNode,
     getNodeById,
     edges,
     appDetail.chatConfig,
@@ -131,7 +129,7 @@ export const useReference = ({
 };
 
 const Reference = ({ item, nodeId }: RenderInputProps) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
 
   const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);

@@ -1,6 +1,6 @@
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import React, { useCallback, useMemo } from 'react';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Flex } from '@chakra-ui/react';
 
 import NodeInputSelect, {
@@ -25,7 +25,7 @@ type Props = {
 };
 
 const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
@@ -40,8 +40,6 @@ const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
       }),
     [input, isTool]
   );
-  const displayRenderTypeIndex = displayRenderTypeList.findIndex((item) => item === renderType);
-
   const onChangeRenderType = useCallback(
     (e: string) => {
       const nextInput = {
@@ -81,7 +79,7 @@ const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
         <Box ml={2} className="nodrag">
           <NodeInputSelect
             renderTypeList={displayRenderTypeList}
-            renderTypeIndex={displayRenderTypeIndex >= 0 ? displayRenderTypeIndex : 0}
+            selectedType={renderType}
             onChange={onChangeRenderType}
             isAgentGeneratedMode={displayRenderTypeList.includes(
               FlowNodeInputTypeEnum.agentGenerated

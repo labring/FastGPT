@@ -275,23 +275,3 @@ export function checkChatSupportSelectFileByModules(modules: StoreNodeItemType[]
   );
   return checkChatSupportSelectFileByChatModels(models);
 }
-
-export function getAppQuestionGuidesByModules(modules: StoreNodeItemType[] = []) {
-  const systemModule = modules.find((item) => item.flowNodeType === FlowNodeTypeEnum.systemConfig);
-  const chatInputGuide = systemModule?.inputs.find(
-    (item) => item.key === NodeInputKeyEnum.chatInputGuide
-  )?.value;
-
-  return chatInputGuide?.open ? chatInputGuide?.textList : [];
-}
-
-export function getAppQuestionGuidesByUserGuideModule(
-  module: StoreNodeItemType,
-  qGuideText: string[] = []
-) {
-  const chatInputGuide = module?.inputs.find(
-    (item) => item.key === NodeInputKeyEnum.chatInputGuide
-  )?.value;
-
-  return chatInputGuide?.open ? qGuideText : [];
-}
