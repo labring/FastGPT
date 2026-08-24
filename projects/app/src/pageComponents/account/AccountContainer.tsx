@@ -4,11 +4,8 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import PageContainer from '@/components/PageContainer';
-import SideTabs from '@/components/SideTabs';
-import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import SecondaryNavigationContainer from '@/pageComponents/common/SecondaryNavigationContainer';
 
 export enum TabEnum {
   'info' = 'info',
@@ -36,7 +33,6 @@ const AccountContainer = ({
   const { userInfo, setUserInfo } = useUserStore();
   const { feConfigs, systemVersion } = useSystemStore();
   const router = useRouter();
-  const { isPc } = useSystem();
 
   const showThirdPartyTab =
     feConfigs?.show_openai_account === true ||
@@ -93,11 +89,15 @@ const AccountContainer = ({
           }
         ]
       : []),
-    {
-      icon: 'common/model',
-      label: t('account:model_provider'),
-      value: TabEnum.model
-    },
+    ...(feConfigs.isPlus
+      ? [
+          {
+            icon: 'common/model',
+            label: t('common:model.provider_title'),
+            value: TabEnum.model
+          }
+        ]
+      : []),
     ...(userInfo?.team?.permission.hasApikeyCreatePer
       ? [
           {
@@ -150,78 +150,24 @@ const AccountContainer = ({
   );
 
   return (
-    <PageContainer
+    <SecondaryNavigationContainer
       isLoading={isLoading}
-      py={0}
-      pr={0}
-      insertProps={{
-        borderWidth: 0,
-        borderRadius: 0,
-        boxShadow: 'none',
-        bg: 'white',
-        overflow: 'hidden'
-      }}
-    >
-      <Flex flexDirection={['column', 'row']} h={'100%'} pt={[4, 0]}>
-        {isPc ? (
-          <Flex
-            flexDirection={'column'}
-            h={'100%'}
-            flex={'0 0 220px'}
-            borderRight={'1px solid'}
-            borderColor={'myGray.200'}
-            bg={'white'}
-            minH={0}
-          >
-            <SideTabs<TabEnum>
-              flex={1}
-              mx={'auto'}
-              mt={4}
-              w={'198px'}
-              minH={0}
-              overflowY={'auto'}
-              list={tabList}
-              value={currentTab}
-              onChange={setCurrentTab}
-            />
-            <Flex alignItems={'center'} px={'11px'} pb={5} pt={3}>
-              <Box w={'8px'} h={'8px'} borderRadius={'50%'} bg={'#67c13b'} />
-              <Box fontSize={'md'} ml={2}>
-                V{systemVersion}
-              </Box>
-            </Flex>
-          </Flex>
-        ) : (
-          <Box mb={3}>
-            <LightRowTabs<TabEnum>
-              m={'auto'}
-              w={'100%'}
-              size={isPc ? 'md' : 'sm'}
-              ensureActiveVisible
-              scrollPositionKey={'account-mobile-navigation'}
-              list={tabList.map((item) => ({
-                value: item.value,
-                label: item.label
-              }))}
-              value={currentTab}
-              onChange={setCurrentTab}
-            />
+      tabs={tabList}
+      value={currentTab}
+      onChange={setCurrentTab}
+      mobileScrollPositionKey={'account-mobile-navigation'}
+      footer={
+        <Flex alignItems={'center'} px={'11px'} pb={5} pt={3}>
+          <Box w={'8px'} h={'8px'} borderRadius={'50%'} bg={'#67c13b'} />
+          <Box fontSize={'md'} ml={2}>
+            V{systemVersion}
           </Box>
-        )}
-
-        <Box
-          flex={'1 0 0'}
-          minW={0}
-          h={'100%'}
-          pb={[4, 0]}
-          overflow={['auto', 'hidden']}
-          bg={'white'}
-        >
-          {children}
-        </Box>
-      </Flex>
+        </Flex>
+      }
+    >
+      {children}
       <ConfirmModal />
-    </PageContainer>
+    </SecondaryNavigationContainer>
   );
 };
 

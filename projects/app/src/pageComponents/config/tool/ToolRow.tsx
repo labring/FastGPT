@@ -6,7 +6,8 @@ import type {
 } from '@fastgpt/web/components/common/DndDrag';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useTranslation } from 'next-i18next';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React from 'react';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import type { AdminSystemToolListItemType } from '@fastgpt/global/core/app/tool/systemTool/type';
@@ -23,7 +24,7 @@ const ToolRow = ({
   provided: DraggableProvided;
   snapshot: DraggableStateSnapshot;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('app');
 
   return (
     <>
@@ -38,12 +39,12 @@ const ToolRow = ({
         }}
         cursor={'pointer'}
         bg={'white'}
-        borderRadius={'md'}
+        borderRadius={0}
         h={12}
         w={'full'}
-        border={'1px solid transparent'}
+        borderBottom={'1px solid'}
+        borderColor={'myGray.200'}
         _hover={{
-          borderColor: 'rgba(51, 112, 255, 0.10)',
           bg: 'primary.50'
         }}
         fontSize={'mini'}
@@ -52,7 +53,7 @@ const ToolRow = ({
           setEditingToolId(tool.id);
         }}
       >
-        <Box display={'flex'} w={2.2 / 10} pl={2}>
+        <Box display={'flex'} alignItems={'center'} minW={0} w={2.2 / 10} pl={2}>
           <Flex
             h={'full'}
             rounded={'xs'}
@@ -65,16 +66,12 @@ const ToolRow = ({
           >
             <MyIcon name="drag" w={'14px'} color={'myGray.500'} cursor={'grab'} />
           </Flex>
-          <Avatar src={tool?.avatar} borderRadius={'xs'} w={'20px'} />
-          <Box
-            pl={1.5}
-            fontWeight={'medium'}
-            whiteSpace={'nowrap'}
-            overflow={'hidden'}
-            textOverflow={'ellipsis'}
-          >
-            {tool?.name}
-          </Box>
+          <Avatar src={tool?.avatar} borderRadius={'xs'} w={'20px'} flexShrink={0} />
+          <MyTooltip label={tool?.name} showOnlyWhenOverflow shouldWrapChildren={false}>
+            <Box pl={1.5} flex={1} minW={0} fontWeight={'medium'} isTruncated>
+              {tool?.name}
+            </Box>
+          </MyTooltip>
           {/* {tool?.isOfficial && (
           <Box color={'myGray.500'} ml={3} whiteSpace={'nowrap'}>
             {t('app:toolkit_official')}
@@ -107,9 +104,11 @@ const ToolRow = ({
             </Box>
           )}
         </Box>
-        <Box w={4.1 / 10} overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
-          {tool?.intro || '-'}
-        </Box>
+        <MyTooltip label={tool?.intro || '-'} showOnlyWhenOverflow shouldWrapChildren={false}>
+          <Box w={4.1 / 10} minW={0} isTruncated>
+            {tool?.intro || '-'}
+          </Box>
+        </MyTooltip>
         <Box w={1.1 / 10} pl={6}>
           <Box
             as={'span'}

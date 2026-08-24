@@ -54,7 +54,6 @@
   "model_error_rate": "오류율",
   "model_error_request_times": "실패 횟수",
   "model_name": "모델 이름",
-  "model_permission_config_hint": "협업자가 추가되지 않은 경우 기본적으로 모든 멤버가 사용할 수 있습니다",
   "model_request_times": "요청 횟수",
   "model_test": "모델 테스트",
   "model_tokens": "입력/출력 토큰",

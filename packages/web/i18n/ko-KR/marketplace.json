@@ -1,0 +1,11 @@
+{
+  "fastgpt_marketplace": "FastGPT 마켓플레이스",
+  "plugin_development": "플러그인 개발 튜토리얼",
+  "plugin_offline_tips": "귀하의 시스템은 마켓플레이스 데이터에 직접 접근할 수 없습니다.\nURL을 직접 복사하여 더 많은 플러그인을 가져오세요",
+  "plugin_offline_url": "URL",
+  "toolkit_marketplace_search_placeholder": "플러그인 검색",
+  "toolkit_marketplace_submit_request": "요청 제출",
+  "toolkit_marketplace_title": "더 많은 플러그인 탐색",
+  "toolkit_uninstalled_only": "설치되지 않은 항목만 보기",
+  "toolkit_updatable": "업데이트 가능"
+}

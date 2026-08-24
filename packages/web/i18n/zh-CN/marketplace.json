@@ -1,0 +1,11 @@
+{
+  "fastgpt_marketplace": "FastGPT 插件市场",
+  "plugin_development": "插件开发教程",
+  "plugin_offline_tips": "您的系统无法直接访问插件市场数据，\n请手动复制网址并前往，以获得更多插件",
+  "plugin_offline_url": "网址",
+  "toolkit_marketplace_search_placeholder": "搜索插件",
+  "toolkit_marketplace_submit_request": "提交需求",
+  "toolkit_marketplace_title": "探索更多插件",
+  "toolkit_uninstalled_only": "仅看未安装",
+  "toolkit_updatable": "可更新"
+}

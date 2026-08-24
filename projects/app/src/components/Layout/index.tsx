@@ -63,7 +63,9 @@ const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/chat': true,
   '/tools/price': true,
   '/price': true,
-  '/skill/detail': true
+  '/skill/detail': true,
+  '/config/plugin/marketplace': true,
+  '/dashboard/tool/marketplace': true
 };
 const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
@@ -74,7 +76,9 @@ const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/chat/share': true,
   '/tools/price': true,
   '/price': true,
-  '/skill/detail': true
+  '/skill/detail': true,
+  '/config/plugin/marketplace': true,
+  '/dashboard/tool/marketplace': true
 };
 
 export const navbarWidth = '64px';
@@ -137,16 +141,16 @@ const Layout = ({ children }: { children: JSX.Element }) => {
             status: 'warning',
             title: t('common:llm_model_not_config')
           });
-          if (router.pathname !== '/account/model') {
-            router.push('/account/model');
+          if (router.pathname !== '/config/model') {
+            router.push('/config/model?modelTab=config');
           }
         } else if (embeddingModelList.length === 0) {
           toast({
             status: 'warning',
             title: t('common:embedding_model_not_config')
           });
-          if (router.pathname !== '/account/model') {
-            router.push('/account/model');
+          if (router.pathname !== '/config/model') {
+            router.push('/config/model?modelTab=config');
           }
         }
       }

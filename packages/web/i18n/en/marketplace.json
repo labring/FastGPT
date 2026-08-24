@@ -1,0 +1,11 @@
+{
+  "fastgpt_marketplace": "FastGPT Marketplace",
+  "plugin_development": "Plugin development tutorial",
+  "plugin_offline_tips": "Your system cannot access Marketplace data directly.\nCopy the URL and open it manually to find more plugins.",
+  "plugin_offline_url": "URL",
+  "toolkit_marketplace_search_placeholder": "Search Plugins",
+  "toolkit_marketplace_submit_request": "Submit Request",
+  "toolkit_marketplace_title": "Explore more plugins",
+  "toolkit_uninstalled_only": "Only show uninstalled",
+  "toolkit_updatable": "Updates Available"
+}

@@ -28,7 +28,11 @@ export type GetSystemInitDataQuery = z.infer<typeof GetSystemInitDataQuerySchema
 
 const FastGPTFeConfigsSchema = z.looseObject({
   uploadFileMaxAmount: z.number(),
-  uploadFileMaxSize: z.number()
+  uploadFileMaxSize: z.number(),
+  marketplaceUrl: z.string().url().optional().meta({
+    example: 'https://v2.marketplace.fastgpt.cn',
+    description: '插件市场服务地址'
+  })
 }) as z.ZodType<FastGPTFeConfigsType>;
 
 const PublicLLMModelSchema = LLMModelItemSchema.omit({

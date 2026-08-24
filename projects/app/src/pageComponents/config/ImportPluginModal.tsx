@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Box, Button, Flex, VStack } from '@chakra-ui/react';
 import MyRightDrawer from '@fastgpt/web/components/common/MyDrawer/MyRightDrawer';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useTranslation } from 'react-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import FileSelectorBox, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
 import { confirmPkgPluginUpload, uploadPkgPlugin } from '@/web/core/plugin/admin/api';
@@ -96,7 +96,7 @@ const ImportPluginModal = ({
   tools: GetAdminSystemToolsResponseType;
   mode?: 'admin' | 'team';
 }) => {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useClientTranslation('app');
   const { toast } = useToast();
 
   const [selectFiles, setSelectFiles] = useState<SelectFileItemType[]>([]);

@@ -27,7 +27,7 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import MultipleSelect, {
   useMultipleSelect
 } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import type {
   CreateAppToolBodyType,
   UpdateWorkflowToolBodyType
@@ -66,7 +66,7 @@ const WorkflowToolConfigModal = ({
   onSuccess: () => void;
   onClose: () => void;
 }) => {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useClientTranslation('app');
   const { toast } = useToast();
 
   const { value: selectedTags, setValue: setSelectedTags } = useMultipleSelect<string>([], false);
