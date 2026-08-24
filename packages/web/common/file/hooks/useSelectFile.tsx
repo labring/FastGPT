@@ -1,16 +1,13 @@
+/* eslint-disable react-hooks/preserve-manual-memoization -- File is exposed as a stable component. */
 import React, { useRef, useCallback } from 'react';
 import { Box } from '@chakra-ui/react';
-import { useToast } from '../../../hooks/useToast';
-import { useTranslation } from 'next-i18next';
 
 export const useSelectFile = (props?: {
   fileType?: string;
   multiple?: boolean;
   maxCount?: number;
 }) => {
-  const { t } = useTranslation();
-  const { fileType = '*', multiple = false, maxCount = 10 } = props || {};
-  const { toast } = useToast();
+  const { fileType = '*', multiple = false } = props || {};
   const SelectFileDom = useRef<HTMLInputElement>(null);
   const openSign = useRef<any>();
 
@@ -27,14 +24,7 @@ export const useSelectFile = (props?: {
 
             if (!files || files?.length === 0) return;
 
-            let fileList = Array.from(files);
-            if (fileList.length > maxCount) {
-              toast({
-                status: 'warning',
-                title: t('file:select_file_amount_limit', { max: maxCount })
-              });
-              fileList = fileList.slice(0, maxCount);
-            }
+            const fileList = Array.from(files);
             onSelect(fileList, openSign.current);
 
             e.target.value = '';
@@ -42,12 +32,12 @@ export const useSelectFile = (props?: {
         />
       </Box>
     ),
-    [fileType, maxCount, multiple, t, toast]
+    [fileType, multiple]
   );
 
   const onOpen = useCallback((sign?: any) => {
     openSign.current = sign;
-    SelectFileDom.current && SelectFileDom.current.click();
+    SelectFileDom.current?.click();
   }, []);
 
   return {

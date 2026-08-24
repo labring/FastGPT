@@ -248,7 +248,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
         files = files.slice(0, remainingFileAmount);
         toast({
           status: 'warning',
-          title: t('chat:file_amount_over', { max: maxSelectFiles })
+          title: t('file:some_file_count_exceeds_limit', { maxCount: maxSelectFiles })
         });
       }
 

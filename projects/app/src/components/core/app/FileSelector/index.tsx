@@ -488,7 +488,7 @@ const FileSelector = ({
       if (remainingFileAmount === 0) {
         toast({
           status: 'warning',
-          title: t('chat:file_amount_over', { max: maxSelectFiles })
+          title: t('file:some_file_count_exceeds_limit', { maxCount: maxSelectFiles })
         });
         return;
       }
@@ -496,7 +496,7 @@ const FileSelector = ({
         files = files.slice(0, remainingFileAmount);
         toast({
           status: 'warning',
-          title: t('chat:file_amount_over', { max: maxSelectFiles })
+          title: t('file:some_file_count_exceeds_limit', { maxCount: maxSelectFiles })
         });
       }
       const filterFilesByMaxSize = files.filter((file) => file.size <= maxSize);

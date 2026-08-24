@@ -75,10 +75,18 @@ const FileSelector = ({
         size: formatFileSize(file.size)
       }));
 
+      const remainingFileAmount = Math.max(formatMaxCount - selectFiles.length, 0);
+      if (fileList.length > remainingFileAmount) {
+        toast({
+          status: 'warning',
+          title: t('file:some_file_count_exceeds_limit', { maxCount: formatMaxCount })
+        });
+      }
+
       const newFiles = [...fileList, ...selectFiles].slice(0, formatMaxCount);
       setSelectFiles(newFiles);
     },
-    [formatMaxCount, selectFiles, setSelectFiles]
+    [formatMaxCount, selectFiles, setSelectFiles, t, toast]
   );
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
