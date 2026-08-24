@@ -758,7 +758,7 @@ const ToolkitMarketplace = () => {
                     }
                   }}
                 >
-                  {t('app:tool_development')}
+                  {t('marketplace:plugin_development')}
                 </Button>
               )}
             </Flex>
