@@ -7,7 +7,10 @@ import {
   DrawerContent,
   DrawerHeader,
   DrawerOverlay,
-  Flex
+  Flex,
+  Skeleton,
+  SkeletonText,
+  VStack
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import Avatar from '../../../common/Avatar';
@@ -25,6 +28,34 @@ import {
   type ToolDetailVersionType
 } from './ToolDetail';
 import { isToolVersionInstalled } from './utils';
+
+const ToolDetailHeaderSkeleton = () => (
+  <Flex alignItems={'center'} gap={1.5} flex={1}>
+    <Skeleton w={6} h={6} borderRadius={'md'} flexShrink={0} />
+    <Skeleton w={'160px'} h={5} borderRadius={'sm'} />
+    <Box flex={1} />
+    <Skeleton w={'64px'} h={7} borderRadius={'md'} />
+  </Flex>
+);
+
+const ToolDetailBodySkeleton = () => (
+  <VStack align={'stretch'} spacing={4} pt={1}>
+    <Flex gap={2}>
+      <Skeleton w={'52px'} h={6} borderRadius={'6px'} />
+      <Skeleton w={'68px'} h={6} borderRadius={'6px'} />
+      <Skeleton w={'44px'} h={6} borderRadius={'6px'} />
+    </Flex>
+    <SkeletonText noOfLines={2} spacing={2} skeletonHeight={3} />
+    <Skeleton w={'96px'} h={3} borderRadius={'sm'} />
+    <Skeleton w={'full'} h={10} borderRadius={'sm'} />
+    <Flex gap={3}>
+      <Skeleton w={'80px'} h={4} borderRadius={'sm'} />
+      <Skeleton w={'120px'} h={4} borderRadius={'sm'} />
+    </Flex>
+    <Skeleton w={'180px'} h={8} borderRadius={'sm'} />
+    <SkeletonText noOfLines={6} spacing={3} skeletonHeight={3} />
+  </VStack>
+);
 
 const ToolDetailDrawer = ({
   onClose,
@@ -111,17 +142,30 @@ const ToolDetailDrawer = ({
     }
   }, [fetchInstalledToolVersions, onFetchInstalledVersions, selectedTool.id]);
 
-  const activeVersion = selectedVersion || toolVersions[0]?.version;
+  // 未指定版本时由详情接口解析最新版本，避免版本列表返回后再次请求同一份详情。
+  const activeVersion = selectedVersion;
 
   // Use tool detail hook
-  const { parentTool, isToolSet, subTools, readmeContent, loadingDetail } = useToolDetail({
+  const {
+    parentTool,
+    isToolSet,
+    subTools,
+    readmeContent,
+    loadingDetail,
+    loadingReadme,
+    detailReady,
+    detailError,
+    refreshDetail
+  } = useToolDetail({
     toolId: selectedTool.id,
     version: activeVersion,
     tags: selectedTool.tags || undefined,
     onFetchDetail
   });
 
-  const currentVersion = activeVersion || parentTool?.version || selectedTool.version;
+  const currentVersion =
+    activeVersion || parentTool?.version || toolVersions[0]?.version || selectedTool.version;
+  const contentReady = detailReady && !loadingVersions;
   const isCurrentVersionInstalled = isToolVersionInstalled({
     isInstalled: !!isInstalled,
     currentVersion,
@@ -145,118 +189,136 @@ const ToolDetailDrawer = ({
       <DrawerContent maxW="480px" borderLeftRadius="md">
         <DrawerHeader pt={6} pb={1}>
           <Flex gap={1.5}>
-            <Avatar src={parentTool?.icon || ''} borderRadius={'md'} w={6} />
-            <Box fontSize={'16px'} fontWeight={500} color={'myGray.900'}>
-              {parseI18nString(parentTool?.name || '', i18n.language)}
-            </Box>
-            <Box flex={1} />
-            {toolVersions.length > 0 && (
-              <MyMenu
-                trigger="hover"
-                placement="bottom-end"
-                Button={
-                  <Flex
-                    alignItems={'center'}
-                    gap={1}
-                    px={2}
-                    h={7}
-                    border={'1px solid'}
-                    borderColor={'myGray.200'}
-                    borderRadius={'md'}
-                    cursor={'pointer'}
-                    color={'myGray.700'}
-                  >
-                    <Box fontSize={'12px'}>{currentVersion || t('common:Version')}</Box>
-                    <MyIcon name="core/chat/chevronDown" w={4} />
-                  </Flex>
-                }
-                menuList={[
-                  {
-                    children: toolVersions.map((item) => ({
-                      label: item.version,
-                      description: item.versionDescription,
-                      isActive: item.version === currentVersion,
-                      onClick: () => {
-                        setSelectedVersion(item.version);
-                        onVersionChange?.(item.version);
+            {!contentReady && !detailError ? (
+              <ToolDetailHeaderSkeleton />
+            ) : (
+              <>
+                <Avatar src={parentTool?.icon || ''} borderRadius={'md'} w={6} />
+                <Box fontSize={'16px'} fontWeight={500} color={'myGray.900'}>
+                  {parseI18nString(parentTool?.name || '', i18n.language)}
+                </Box>
+                <Box flex={1} />
+                {toolVersions.length > 0 && (
+                  <MyMenu
+                    trigger="hover"
+                    placement="bottom-end"
+                    Button={
+                      <Flex
+                        alignItems={'center'}
+                        gap={1}
+                        px={2}
+                        h={7}
+                        border={'1px solid'}
+                        borderColor={'myGray.200'}
+                        borderRadius={'md'}
+                        cursor={'pointer'}
+                        color={'myGray.700'}
+                      >
+                        <Box fontSize={'12px'}>{currentVersion || t('common:Version')}</Box>
+                        <MyIcon name="core/chat/chevronDown" w={4} />
+                      </Flex>
+                    }
+                    menuList={[
+                      {
+                        children: toolVersions.map((item) => ({
+                          label: item.version,
+                          description: item.versionDescription,
+                          isActive: item.version === currentVersion,
+                          onClick: () => {
+                            setSelectedVersion(item.version);
+                            onVersionChange?.(item.version);
+                          }
+                        }))
                       }
-                    }))
-                  }
-                ]}
-              />
-            )}
-            {loadingVersions && currentVersion && (
-              <Box fontSize={'12px'} color={'myGray.500'}>
-                {currentVersion}
-              </Box>
+                    ]}
+                  />
+                )}
+                {loadingVersions && currentVersion && (
+                  <Box fontSize={'12px'} color={'myGray.500'}>
+                    {currentVersion}
+                  </Box>
+                )}
+              </>
             )}
             <MyIconButton icon={'common/closeLight'} onClick={onClose} />
           </Flex>
         </DrawerHeader>
 
         <DrawerBody position="relative" sx={drawerScrollbarStyles}>
-          <ToolDetailBody
-            parentTool={parentTool}
-            isToolSet={isToolSet}
-            subTools={subTools}
-            readmeContent={readmeContent}
-            showPoint={showPoint}
-            systemTitle={systemTitle}
-            actions={
-              (showInstallButton || showUninstallButton || hasUpdateButton) && (
-                <Flex gap={2}>
-                  {showInstallButton && (
-                    <Button
-                      flex={'1 1 0'}
-                      minW={0}
-                      variant={isCurrentVersionInstalled ? 'primaryOutline' : 'primary'}
-                      isLoading={isLoading || loadingDetail || loadingInstalledVersions}
-                      isDisabled={isUpdating}
-                      onClick={async () => {
-                        await onToggleInstall?.(!isCurrentVersionInstalled, currentVersion);
-                        if (onFetchInstalledVersions) {
-                          await fetchInstalledToolVersions(selectedTool.id);
-                        }
-                      }}
-                    >
-                      {isDownload
-                        ? t('common:Download')
-                        : isCurrentVersionInstalled
-                          ? t('app:toolkit_uninstall')
-                          : t('app:toolkit_install')}
-                    </Button>
-                  )}
-                  {hasUpdateButton && (
-                    <Button
-                      variant="primary"
-                      flex={'1 1 0'}
-                      minW={0}
-                      isLoading={isUpdating || loadingDetail}
-                      onClick={async () => {
-                        await onUpdate?.(currentVersion);
-                        if (onFetchInstalledVersions) {
-                          await fetchInstalledToolVersions(selectedTool.id);
-                        }
-                      }}
-                    >
-                      {t('app:custom_plugin_update')}
-                    </Button>
-                  )}
-                  {showUninstallButton && (
-                    <Button
-                      flex={hasUpdateButton ? '0 0 62px' : '1 1 0'}
-                      minW={0}
-                      variant="dangerOutline"
-                      isLoading={isLoading || loadingDetail}
-                      onClick={() => onDelete?.()}
-                    >
-                      {t('app:toolkit_uninstall')}
-                    </Button>
-                  )}
-                </Flex>
-              )
-            }
-          />
+          {detailError ? (
+            <VStack h={'full'} justify={'center'} spacing={4} pb={20}>
+              <Box color={'myGray.500'}>{t('common:load_failed')}</Box>
+              <Button variant={'whitePrimary'} onClick={refreshDetail}>
+                {t('common:refresh')}
+              </Button>
+            </VStack>
+          ) : !contentReady ? (
+            <ToolDetailBodySkeleton />
+          ) : (
+            <ToolDetailBody
+              parentTool={parentTool}
+              isToolSet={isToolSet}
+              subTools={subTools}
+              readmeContent={readmeContent}
+              loadingReadme={loadingReadme}
+              showPoint={showPoint}
+              systemTitle={systemTitle}
+              actions={
+                (showInstallButton || showUninstallButton || hasUpdateButton) && (
+                  <Flex gap={2}>
+                    {showInstallButton && (
+                      <Button
+                        flex={'1 1 0'}
+                        minW={0}
+                        variant={isCurrentVersionInstalled ? 'primaryOutline' : 'primary'}
+                        isLoading={isLoading || loadingDetail || loadingInstalledVersions}
+                        isDisabled={isUpdating}
+                        onClick={async () => {
+                          await onToggleInstall?.(!isCurrentVersionInstalled, currentVersion);
+                          if (onFetchInstalledVersions) {
+                            await fetchInstalledToolVersions(selectedTool.id);
+                          }
+                        }}
+                      >
+                        {isDownload
+                          ? t('common:Download')
+                          : isCurrentVersionInstalled
+                            ? t('app:toolkit_uninstall')
+                            : t('app:toolkit_install')}
+                      </Button>
+                    )}
+                    {hasUpdateButton && (
+                      <Button
+                        variant="primary"
+                        flex={'1 1 0'}
+                        minW={0}
+                        isLoading={isUpdating || loadingDetail}
+                        onClick={async () => {
+                          await onUpdate?.(currentVersion);
+                          if (onFetchInstalledVersions) {
+                            await fetchInstalledToolVersions(selectedTool.id);
+                          }
+                        }}
+                      >
+                        {t('app:custom_plugin_update')}
+                      </Button>
+                    )}
+                    {showUninstallButton && (
+                      <Button
+                        flex={hasUpdateButton ? '0 0 62px' : '1 1 0'}
+                        minW={0}
+                        variant="dangerOutline"
+                        isLoading={isLoading || loadingDetail}
+                        onClick={() => onDelete?.()}
+                      >
+                        {t('app:toolkit_uninstall')}
+                      </Button>
+                    )}
+                  </Flex>
+                )
+              }
+            />
+          )}
         </DrawerBody>
       </DrawerContent>
     </Drawer>

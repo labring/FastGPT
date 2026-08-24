@@ -8,11 +8,21 @@ upgradeTags:
 ## 🚀 New
 
 1. Added Korean language support.
-
-## 🐛 Fixes
-
-1. Fixed avatar display issues in the admin Template Marketplace.
+2. Added an overwrite warning when switching Skill versions.
 
 ## ⚙️ Improvements
 
 1. Improved the overall Account page UI and mobile responsiveness.
+2. Improved routing for Admin pages and model providers.
+3. Improved the reliability of S3 chunked uploads on unstable networks.
+4. Standardized file upload error messages.
+5. Improved Skill saving by extracting `name` and `description` as structured fields and allowing `description` to be empty.
+
+## 🐛 Fixes
+
+1. Fixed avatar display issues in the admin Template Marketplace.
+2. Fixed an issue that prevented a system tool from being reinstalled after it was uninstalled.
+
+## 🛠️ Code Improvements
+
+1. Standardized compatibility handling for legacy tool parameters in Workflows.

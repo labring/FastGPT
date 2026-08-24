@@ -11,6 +11,7 @@ import {
   jsonSchema2SecretInput
 } from '@fastgpt/global/core/app/jsonschema';
 import { fetchRemoteMarkdown } from '../../../../common/Markdown/utils';
+import { useMemoizedFn } from 'ahooks';
 
 export type UseToolDetailProps = {
   toolId?: string;
@@ -19,6 +20,14 @@ export type UseToolDetailProps = {
   onFetchDetail?: (toolId: string, version?: string) => Promise<ToolDetailFetchResponse>;
   autoFetch?: boolean;
 };
+
+type ToolDetailRequestResult = {
+  requestKey: string;
+  detail?: ToolDetailResponseType;
+};
+
+const getToolDetailRequestKey = (toolId?: string, version?: string) =>
+  `${toolId ?? ''}\u0000${version ?? ''}`;
 
 const getVersionList = (tool: Record<string, any>) => {
   if (tool.versionList) return tool.versionList;
@@ -84,6 +93,10 @@ const normalizeToolDetail = (
   };
 };
 
+/**
+ * 加载并标准化指定工具版本的详情，确保调用方只消费与当前 toolId/version 匹配的数据。
+ * README 独立加载，避免较慢的远程文档阻塞基础详情展示。
+ */
 export const useToolDetail = ({
   toolId,
   version,
@@ -91,18 +104,30 @@ export const useToolDetail = ({
   onFetchDetail,
   autoFetch = true
 }: UseToolDetailProps) => {
-  const [readmeContent, setReadmeContent] = useState<string>('');
+  const currentRequestKey = getToolDetailRequestKey(toolId, version);
+  const [failedRequestKey, setFailedRequestKey] = useState<string>();
+  const [readmeResult, setReadmeResult] = useState<{
+    requestKey: string;
+    content: string;
+  }>();
 
   // 使用 useRequest2 替代手动的 useEffect，避免无限请求问题
-  const {
-    data: toolDetail,
-    loading: loadingDetail,
-    run: fetchToolDetail
-  } = useRequest(
+  const { data: toolDetailResult, run: fetchToolDetail } = useRequest(
     async (id: string, version?: string) => {
       if (!onFetchDetail) return undefined;
-      const detail = await onFetchDetail(id, version);
-      return normalizeToolDetail(detail);
+      const requestKey = getToolDetailRequestKey(id, version);
+      setFailedRequestKey((previousKey) => (previousKey === requestKey ? undefined : previousKey));
+
+      try {
+        const detail = await onFetchDetail(id, version);
+        return {
+          requestKey,
+          detail: normalizeToolDetail(detail)
+        } satisfies ToolDetailRequestResult;
+      } catch (error) {
+        setFailedRequestKey(requestKey);
+        throw error;
+      }
     },
     {
       manual: true,
@@ -110,12 +135,23 @@ export const useToolDetail = ({
     }
   );
 
-  // 自动获取工具详情
-  useEffect(() => {
+  const refreshDetail = useMemoizedFn(() => {
     if (toolId && autoFetch && onFetchDetail) {
       fetchToolDetail(toolId, version);
     }
-  }, [toolId, version, autoFetch]);
+  });
+
+  // 自动获取工具详情
+  useEffect(() => {
+    refreshDetail();
+  }, [autoFetch, refreshDetail, toolId, version]);
+
+  const toolDetail =
+    toolDetailResult?.requestKey === currentRequestKey ? toolDetailResult.detail : undefined;
+  const detailReady =
+    !toolId || !autoFetch || !onFetchDetail || toolDetailResult?.requestKey === currentRequestKey;
+  const detailError = failedRequestKey === currentRequestKey;
+  const loadingDetail = !detailReady && !detailError;
 
   // Calculate tool structure
   const isToolSet = useMemo(() => {
@@ -141,28 +177,47 @@ export const useToolDetail = ({
 
   // Fetch README
   useEffect(() => {
+    let cancelled = false;
+
     const fetchReadme = async () => {
       if (!toolDetail) return;
       const readmeUrl = parentTool?.readme;
       if (!readmeUrl) {
-        setReadmeContent('');
+        setReadmeResult({ requestKey: currentRequestKey, content: '' });
         return;
       }
 
       try {
-        setReadmeContent(await fetchRemoteMarkdown(readmeUrl));
+        const content = await fetchRemoteMarkdown(readmeUrl);
+        if (!cancelled) {
+          setReadmeResult({ requestKey: currentRequestKey, content });
+        }
       } catch (error) {
         console.error('Failed to fetch README:', error);
-        setReadmeContent('');
+        if (!cancelled) {
+          setReadmeResult({ requestKey: currentRequestKey, content: '' });
+        }
       }
     };
 
-    fetchReadme();
-  }, [toolDetail, parentTool?.readme]);
+    void fetchReadme();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentRequestKey, toolDetail, parentTool?.readme]);
+
+  const readmeContent = readmeResult?.requestKey === currentRequestKey ? readmeResult.content : '';
+  const loadingReadme =
+    detailReady && !!parentTool?.readme && readmeResult?.requestKey !== currentRequestKey;
 
   return {
     toolDetail,
     loadingDetail,
+    loadingReadme,
+    detailReady,
+    detailError,
+    refreshDetail,
     readmeContent,
     isToolSet,
     parentTool,

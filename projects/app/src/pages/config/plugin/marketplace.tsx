@@ -53,7 +53,7 @@ type QueryValue = string | string[] | undefined;
 type QueryRecord = Record<string, QueryValue>;
 type MarketplaceToolCardItemType = ToolCardItemType & { installedVersion?: string };
 const TOOL_GRID_TEMPLATE_COLUMNS =
-  'repeat(auto-fill, minmax(min(max(260px, calc((100% - 6.25rem) / 6)), 100%), 1fr))';
+  'repeat(auto-fill, minmax(min(max(300px, calc((100% - 6.25rem) / 6)), 100%), 1fr))';
 
 const getComparableQueryValue = (value: QueryValue) =>
   Array.isArray(value) ? value.join('\0') : (value ?? '');
@@ -686,20 +686,19 @@ const ToolkitMarketplace = () => {
 
   if (toolsError && !loadingTools) {
     return (
-      <Box h={'full'} p={6} position={'relative'}>
+      <Box h={'full'} position={'relative'}>
         <MyIconButton
           icon={'common/closeLight'}
           size={'6'}
           onClick={() => router.back()}
           position={'absolute'}
           zIndex={'999'}
-          top={8}
+          top={4}
           left={4}
         />
         <MyBox
           bg={'white'}
           h={'full'}
-          rounded={'8px'}
           position={'relative'}
           display={'flex'}
           flexDirection={'column'}
@@ -729,11 +728,10 @@ const ToolkitMarketplace = () => {
   }
 
   return (
-    <Box h={'full'} p={6}>
+    <Box h={'full'}>
       <MyBox
         bg={'white'}
         h={'full'}
-        rounded={'8px'}
         position={'relative'}
         display={'flex'}
         flexDirection={'column'}
@@ -808,8 +806,8 @@ const ToolkitMarketplace = () => {
                       />
                       <Input
                         px={8}
-                        h={10}
-                        borderRadius={'md'}
+                        h={8}
+                        borderRadius={'sm'}
                         placeholder={t('marketplace:toolkit_marketplace_search_placeholder')}
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
@@ -838,10 +836,10 @@ const ToolkitMarketplace = () => {
                       alignItems={'center'}
                       justifyContent={'center'}
                       cursor={'pointer'}
-                      borderRadius={'10px'}
+                      borderRadius={'sm'}
                       _hover={{ borderColor: 'primary.600' }}
                       px={2}
-                      h={'35px'}
+                      h={8}
                       border={'1px solid'}
                       borderColor={'myGray.200'}
                       onClick={() => setIsSearchExpanded(true)}
