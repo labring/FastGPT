@@ -1,10 +1,11 @@
-import { useCallback, useState } from 'react';
+import { createElement, useCallback, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { readCsvRawText } from '@fastgpt/web/common/file/utils';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useVirtualScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { useVirtualList } from '@fastgpt/web/hooks/useVirtualList';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import {
   delAllChatInputGuide,
   delChatInputGuide,
@@ -31,23 +32,20 @@ export const useInputGuideLexicon = ({ appId }: { appId: string }) => {
   const [editDataId, setEditDataId] = useState<string>();
   const [searchKey, setSearchKey] = useState('');
 
-  const {
-    scrollDataList,
-    setData,
-    ScrollList,
-    isLoading: isRequesting,
-    fetchData,
-    scroll2Top
-  } = useVirtualScrollPagination(getChatInputGuideList, {
-    refreshDeps: [searchKey],
-    itemHeight: 48,
-    overscan: 20,
-    pageSize: 20,
-    defaultParams: {
-      appId,
-      searchKey
+  const { scrollDataList, setData, setTotal, ScrollList, fetchData, scroll2Top } = useVirtualList(
+    getChatInputGuideList,
+    {
+      refreshDeps: [searchKey],
+      itemHeight: 48,
+      overscan: 20,
+      pageSize: 20,
+      params: {
+        appId,
+        searchKey
+      },
+      EmptyTip: createElement(EmptyTip, { text: t('app:chat_input_guide_lexicon_is_empty') })
     }
-  });
+  );
 
   const { run: createNewData, loading: isCreating } = useRequest(
     async (textList: string[]) => {
@@ -122,20 +120,22 @@ export const useInputGuideLexicon = ({ appId }: { appId: string }) => {
       if (dataIdList.length === 0) return;
 
       setData((state) => state.filter((item) => !dataIdList.includes(item._id)));
+      setTotal((state) => Math.max(state - dataIdList.length, 0));
       void delChatInputGuide({
         appId,
         dataIdList
       });
     },
-    [appId, setData]
+    [appId, setData, setTotal]
   );
 
   const onDeleteAllData = useCallback(() => {
     setData([]);
+    setTotal(0);
     void delAllChatInputGuide({
       appId
     });
-  }, [appId, setData]);
+  }, [appId, setData, setTotal]);
 
   const onStartCreateData = useCallback(() => {
     setNewData('');
@@ -179,7 +179,8 @@ export const useInputGuideLexicon = ({ appId }: { appId: string }) => {
     createNewData,
     editDataId,
     isCreatingNewData: newData !== undefined,
-    isLoading: isRequesting || isCreating,
+    // 分页请求由虚拟列表静默处理，弹窗 loading 只反馈新增或导入操作。
+    isLoading: isCreating,
     onDeleteAllData,
     onDeleteData,
     onOpenSelectFile,

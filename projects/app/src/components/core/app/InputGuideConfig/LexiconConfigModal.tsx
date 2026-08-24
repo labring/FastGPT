@@ -6,7 +6,6 @@ import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MyInput from '@/components/MyInput';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { fileDownload } from '@/web/common/file/utils';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { useInputGuideLexicon } from './useInputGuideLexicon';
@@ -321,12 +320,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
         )}
       </Box>
 
-      <ScrollList
-        px={8}
-        flex={'1 0 0'}
-        fontSize={'sm'}
-        EmptyChildren={<EmptyTip text={t('app:chat_input_guide_lexicon_is_empty')} />}
-      >
+      <ScrollList px={8} pb={6} flex={'1 0 0'} fontSize={'sm'}>
         {scrollDataList.map(({ data: item }) => (
           <LexiconRow
             key={item._id}
