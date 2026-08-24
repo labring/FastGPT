@@ -48,7 +48,7 @@ const TeamSelector = ({
 
   const teamList = useMemo(() => {
     return myTeams.map((team) => ({
-      ...(showAvatar ? { icon: team.avatar } : {}),
+      ...(showAvatar ? { icon: team.avatar ?? undefined } : {}),
       iconSize: '1.25rem',
       label: team.teamName,
       value: team.teamId

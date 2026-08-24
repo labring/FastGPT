@@ -6,12 +6,10 @@ import {
 } from '../../../admin/support/user/inform/api';
 import { DevApiTagsMap } from '../../../tag';
 import {
-  GetUnreadInformQuerySchema,
   GetUnreadInformResponseSchema,
   GetUserInformListBodySchema,
   GetUserInformListResponseSchema,
   ReadInformQuerySchema,
-  ReadInformResponseSchema,
   SendAuthCodeBodySchema,
   SendAuthCodeResponseSchema
 } from './api';
@@ -46,9 +44,6 @@ export const UserInformPath: OpenAPIPath = {
       summary: '获取未读通知数量',
       description: '获取当前用户的未读通知数量和重要未读通知',
       tags: [DevApiTagsMap.userInform],
-      requestParams: {
-        query: GetUnreadInformQuerySchema
-      },
       responses: {
         200: {
           description: '成功返回未读通知摘要',
@@ -71,12 +66,7 @@ export const UserInformPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '通知已标记为已读',
-          content: {
-            'application/json': {
-              schema: ReadInformResponseSchema
-            }
-          }
+          description: '通知已标记为已读'
         }
       }
     }

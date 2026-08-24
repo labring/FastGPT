@@ -35,7 +35,7 @@ export const checkBalancePayResult = (payId: string): Promise<CheckPayResultResp
 export const putUpdatePayment = (data: UpdatePaymentPropsType) =>
   PUT<UpdateBillResponseType>(`/proApi/support/wallet/bill/pay/updatePayment`, data);
 
-export const balanceConversion = () => GET<string>(`/proApi/support/wallet/bill/balanceConversion`);
+export const balanceConversion = () => GET<void>(`/proApi/support/wallet/bill/balanceConversion`);
 
 export const cancelBill = (data: CancelBillPropsType) =>
   POST(`/proApi/support/wallet/bill/cancel`, data);

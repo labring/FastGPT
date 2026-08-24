@@ -97,7 +97,7 @@ export const useChatTest = ({
 
       return {
         ...prev,
-        userAvatar: userInfo?.avatar,
+        userAvatar: userInfo?.avatar ?? undefined,
         sourceKey: appSourceKey,
         appId,
         chatId,

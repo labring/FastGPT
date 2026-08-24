@@ -12,7 +12,11 @@ import {
   DatasetSizeLimitQuerySchema,
   type DatasetSizeLimitQuery
 } from '../../../openapi/support/user/team/limit/api';
-import { GetTeamPlanStatusResponseSchema } from '../../../openapi/support/user/team/api';
+import { GetPlansResponseSchema as GetAdminPlansResponseSchema } from '../../../openapi/admin/routes/plans/api';
+import {
+  GetTeamPlansResponseSchema,
+  GetTeamPlanStatusResponseSchema
+} from '../../../openapi/support/user/team/api';
 import {
   StandardSubLevelEnum,
   SubModeEnum,
@@ -45,13 +49,43 @@ describe('common and team OpenAPI contracts', () => {
       [DevApiTagsMap.commonOther]
     );
     expect(openAPIDocument.paths?.['/support/user/team/plan/getTeamPlanStatus']?.get?.tags).toEqual(
-      [DevApiTagsMap.teamManage]
+      [DevApiTagsMap.teamSubscription]
     );
+    expect(
+      openAPIDocument.paths?.['/proApi/support/user/team/plan/getTeamPlans']?.get?.tags
+    ).toEqual([DevApiTagsMap.teamSubscription]);
     expect(openAPITagGroups.find(({ name }) => name === '通用-基础功能')?.tags).toContain(
       DevApiTagsMap.commonOther
     );
-    expect(openAPITagGroups.find(({ name }) => name === '辅助-用户体系')?.tags).toContain(
+    expect(openAPITagGroups.find(({ name }) => name === '辅助-用户体系')?.tags).not.toContain(
       DevApiTagsMap.teamManage
+    );
+    expect(openAPITagGroups.find(({ name }) => name === '辅助-用户体系')?.tags).not.toContain(
+      DevApiTagsMap.userLimit
+    );
+    expect(openAPITagGroups.find(({ name }) => name === '辅助-用户体系')?.tags).not.toContain(
+      DevApiTagsMap.enterpriseAuth
+    );
+    expect(openAPITagGroups.find(({ name }) => name === '辅助-团队体系')?.tags).toContain(
+      DevApiTagsMap.teamManage
+    );
+    expect(openAPITagGroups.find(({ name }) => name === '辅助-团队体系')?.tags).toContain(
+      DevApiTagsMap.userLimit
+    );
+    expect(openAPITagGroups.find(({ name }) => name === '辅助-团队体系')?.tags).toContain(
+      DevApiTagsMap.enterpriseAuth
+    );
+    expect(openAPITagGroups.find(({ name }) => name === '辅助-团队体系')?.tags).toContain(
+      DevApiTagsMap.teamPermission
+    );
+    expect(openAPITagGroups.find(({ name }) => name === '辅助-团队体系')?.tags).toContain(
+      DevApiTagsMap.teamInvitationLink
+    );
+    expect(openAPITagGroups.find(({ name }) => name === '辅助-团队体系')?.tags).toContain(
+      DevApiTagsMap.teamMember
+    );
+    expect(openAPITagGroups.find(({ name }) => name === '辅助-团队体系')?.tags).toContain(
+      DevApiTagsMap.teamSubscription
     );
   });
 
@@ -71,6 +105,23 @@ describe('common and team OpenAPI contracts', () => {
     const groupedTags = openAPITagGroups.flatMap(({ tags }) => tags);
 
     expect(new Set(groupedTags).size).toBe(groupedTags.length);
+  });
+
+  it('keeps team operation tags unique', () => {
+    const duplicateTaggedOperations = Object.entries(openAPIDocument.paths ?? {}).flatMap(
+      ([path, pathItem]) =>
+        path.includes('/support/user/team/')
+          ? Object.entries(pathItem ?? {})
+              .map(([method, operation]) => ({
+                path,
+                method,
+                tags: (operation as { tags?: string[] } | undefined)?.tags
+              }))
+              .filter(({ tags }) => (tags?.length ?? 0) > 1)
+          : []
+    );
+
+    expect(duplicateTaggedOperations).toEqual([]);
   });
 
   it('keeps deprecated account fields and coerces numeric query values', () => {
@@ -129,6 +180,62 @@ describe('common and team OpenAPI contracts', () => {
         totalPoints: null,
         surplusPoints: null
       }
+    });
+  });
+
+  it('accepts nullish limits in historical team subscription records', () => {
+    const nullableLimits = {
+      maxTeamMember: null,
+      maxApp: null,
+      maxDataset: null,
+      requestsPerMinute: null,
+      chatHistoryStoreDuration: null,
+      maxDatasetSize: null,
+      websiteSyncPerDataset: null,
+      appRegistrationCount: null,
+      auditLogStoreDuration: null,
+      ticketResponseTime: null,
+      customDomain: null,
+      maxUploadFileSize: null,
+      maxUploadFileCount: null
+    };
+    const plan = {
+      _id: normalizedStandardPlan._id,
+      teamId: normalizedStandardPlan.teamId,
+      type: SubTypeEnum.standard,
+      startTime: new Date('2026-01-01T00:00:00.000Z'),
+      expiredTime: new Date('2027-01-01T00:00:00.000Z'),
+      currentSubLevel: StandardSubLevelEnum.custom,
+      totalPoints: 1000,
+      surplusPoints: 500,
+      ...nullableLimits
+    };
+
+    expect(GetTeamPlansResponseSchema.parse([plan])[0]).toMatchObject(nullableLimits);
+    expect(
+      GetTeamPlansResponseSchema.safeParse([{ ...plan, maxTeamMember: 'unlimited' }]).success
+    ).toBe(false);
+  });
+
+  it('parses admin plan responses from the shared contract', () => {
+    expect(
+      GetAdminPlansResponseSchema.parse({
+        list: [
+          {
+            id: normalizedStandardPlan._id,
+            teamId: normalizedStandardPlan.teamId,
+            type: SubTypeEnum.extraDatasetSize,
+            extraDatasetSize: 1024,
+            startTime: new Date('2026-01-01T00:00:00.000Z'),
+            expiredTime: new Date('2027-01-01T00:00:00.000Z'),
+            maxTeamMember: null
+          }
+        ],
+        total: 1
+      })
+    ).toMatchObject({
+      list: [{ type: SubTypeEnum.extraDatasetSize, maxTeamMember: null }],
+      total: 1
     });
   });
 });

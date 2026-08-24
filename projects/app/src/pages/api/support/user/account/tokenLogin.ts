@@ -3,9 +3,12 @@ import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
-import type { UserType } from '@fastgpt/global/support/user/type';
+import {
+  OpenAPIUserSchema,
+  type OpenAPIUserType
+} from '@fastgpt/global/openapi/support/user/account/login/api';
 
-async function handler(req: ApiRequestProps): Promise<UserType> {
+async function handler(req: ApiRequestProps): Promise<OpenAPIUserType> {
   const { tmbId, userId, teamId, isRoot } = await authCert({ req, authToken: true });
   const user = await getUserDetail({ tmbId, isRoot });
 
@@ -28,6 +31,6 @@ async function handler(req: ApiRequestProps): Promise<UserType> {
     );
   }
 
-  return user;
+  return OpenAPIUserSchema.parse(user);
 }
 export default NextAPI(handler);

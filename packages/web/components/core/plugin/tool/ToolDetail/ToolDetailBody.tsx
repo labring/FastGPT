@@ -1,5 +1,5 @@
 import React, { useState, type ReactNode } from 'react';
-import { Accordion, Box, Flex, VStack } from '@chakra-ui/react';
+import { Accordion, Box, Flex, SkeletonText, VStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import MyBox from '../../../../common/MyBox';
@@ -13,6 +13,7 @@ type ToolDetailBodyProps = {
   isToolSet: boolean;
   subTools: ToolDetailExtendedType[];
   readmeContent: string;
+  loadingReadme?: boolean;
   actions?: ReactNode;
   showPoint?: boolean;
   systemTitle?: string;
@@ -26,6 +27,7 @@ const ToolDetailBody = ({
   isToolSet,
   subTools,
   readmeContent,
+  loadingReadme = false,
   actions,
   showPoint = false,
   systemTitle
@@ -120,8 +122,12 @@ const ToolDetailBody = ({
       <Box mt={4}>
         {activeTab === 'guide' && (
           <VStack align="stretch" spacing={4} flex="1" minH="0">
-            {(parentTool?.readme || readmeContent || parentTool?.userGuide) && (
-              <ReadmeBox source={readmeSource} courseUrl={parentTool?.courseUrl} />
+            {loadingReadme ? (
+              <SkeletonText noOfLines={8} spacing={3} skeletonHeight={3} />
+            ) : (
+              (parentTool?.readme || readmeContent || parentTool?.userGuide) && (
+                <ReadmeBox source={readmeSource} courseUrl={parentTool?.courseUrl} />
+              )
             )}
           </VStack>
         )}

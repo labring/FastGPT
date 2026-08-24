@@ -3,8 +3,12 @@ import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSch
 import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/plugin/schema/teamInstalledPluginSchema';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import type { DeleteSystemToolQueryType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
+import {
+  DeleteSystemToolQuerySchema,
+  type DeleteSystemToolQueryType
+} from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 export type deletePluginQuery = DeleteSystemToolQueryType;
 
@@ -18,7 +22,7 @@ async function handler(
 ): Promise<deletePluginResponse> {
   await authSystemAdmin({ req });
 
-  const toolId = req.query.toolId;
+  const { toolId } = parseApiInput({ req, querySchema: DeleteSystemToolQuerySchema }).query;
 
   await mongoSessionRun(async (session) => {
     await MongoSystemTool.deleteOne({ pluginId: toolId }, { session });

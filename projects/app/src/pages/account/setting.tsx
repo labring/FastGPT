@@ -18,7 +18,10 @@ const Individuation = () => {
   const { toast } = useToast();
 
   const { reset } = useForm<UserUpdateParams>({
-    defaultValues: userInfo!
+    defaultValues: {
+      language: userInfo?.language,
+      timezone: userInfo?.timezone
+    }
   });
 
   const onclickSave = useCallback(
@@ -26,7 +29,10 @@ const Individuation = () => {
       await updateUserInfo({
         timezone: data.timezone
       });
-      reset(data);
+      reset({
+        language: data.language,
+        timezone: data.timezone
+      });
       toast({
         title: t('account_setting:update_data_success'),
         status: 'success'

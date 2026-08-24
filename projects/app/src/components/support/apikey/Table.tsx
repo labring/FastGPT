@@ -465,6 +465,7 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
         <Flex
           minW={0}
           alignItems={'center'}
+          justifyContent={'space-between'}
           h={isPublishMode ? 'auto' : '64px'}
           px={isPublishMode ? 0 : [4, 6]}
           borderBottom={isPublishMode ? 'none' : '1px solid'}
@@ -484,20 +485,32 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
               ? `${t('common:support.openapi.Api manager')}(${apiKeys.length})`
               : `${t('account:api_key')} (${apiKeys.length})`}
           </Box>
-          {feConfigs?.docUrl && (
-            <Link
-              href={feConfigs.openAPIDocUrl || getDocPath('/openapi/intro')}
+          <Flex alignItems={'center'} gap={2} ml={3}>
+            {feConfigs?.docUrl && (
+              <Button
+                as={Link}
+                href={feConfigs.openAPIDocUrl || getDocPath('/openapi/intro')}
+                target={'_blank'}
+                size={'sm'}
+                variant={'whitePrimary'}
+                textDecoration={'none'}
+                _hover={{ textDecoration: 'none' }}
+              >
+                {t('apikey:usage_tutorial')}
+              </Button>
+            )}
+            <Button
+              as={Link}
+              href={'/apidoc/systemopenapi'}
               target={'_blank'}
-              ml={isPublishMode ? 2 : 3}
-              color={'primary.500'}
-              fontSize={'sm'}
+              size={'sm'}
+              variant={'primary'}
+              textDecoration={'none'}
+              _hover={{ textDecoration: 'none' }}
             >
-              <Flex alignItems={'center'}>
-                <MyIcon name="book" w={'17px'} h={'17px'} mr="1" />
-                {t('apikey:tutorial')}
-              </Flex>
-            </Link>
-          )}
+              {t('apikey:openapi_document')}
+            </Button>
+          </Flex>
         </Flex>
         <Flex
           pt={isPublishMode ? 3 : 6}
@@ -535,6 +548,7 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
               onCreateTag={onCreateTagFromSelect}
               isLoading={isGettingTags}
               w={['100%', '220px']}
+              popoverW="220px"
             />
             <MySelect<ApiKeyListSortByType>
               width={['100%', '200px']}

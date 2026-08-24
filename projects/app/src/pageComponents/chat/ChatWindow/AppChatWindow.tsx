@@ -97,7 +97,7 @@ const AppChatWindow = () => {
       if (!appId || forbidLoadChatRef.current) return;
 
       const res = await getInitChatInfo({ appId, chatId });
-      res.userAvatar = userInfo?.avatar;
+      res.userAvatar = userInfo?.avatar ?? undefined;
 
       setChatBoxData({
         ...res,

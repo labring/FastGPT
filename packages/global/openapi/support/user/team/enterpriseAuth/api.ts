@@ -192,6 +192,3 @@ export type VerifyEnterpriseAuthAmountResponseType = z.infer<
  * Description: 用户确认信息有误后取消当前待金额验证任务
  * Tags: ['企业认证']
  * ============================================================================ */
-
-export const ResetEnterpriseAuthResponseSchema = z.undefined().meta({ description: '操作成功' });
-export type ResetEnterpriseAuthResponseType = z.infer<typeof ResetEnterpriseAuthResponseSchema>;

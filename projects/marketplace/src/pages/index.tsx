@@ -66,7 +66,7 @@ const isSameBrowserUrl = (nextUrl: string) => {
   );
 };
 const TOOL_GRID_TEMPLATE_COLUMNS =
-  'repeat(auto-fill, minmax(min(max(260px, calc((100% - 6.25rem) / 6)), 100%), 1fr))';
+  'repeat(auto-fill, minmax(min(max(300px, calc((100% - 6.25rem) / 6)), 100%), 1fr))';
 
 const ToolkitMarketplace = () => {
   const { t, i18n } = useTranslation();
@@ -469,8 +469,8 @@ const ToolkitMarketplace = () => {
                       />
                       <Input
                         px={8}
-                        h={10}
-                        borderRadius={'md'}
+                        h={8}
+                        borderRadius={'sm'}
                         placeholder={t('marketplace:toolkit_marketplace_search_placeholder')}
                         value={inputValue}
                         onChange={(e) => {
@@ -508,10 +508,11 @@ const ToolkitMarketplace = () => {
                       alignItems={'center'}
                       justifyContent={'center'}
                       cursor={'pointer'}
-                      borderRadius={'10px'}
+                      borderRadius={'sm'}
                       _hover={{ borderColor: 'primary.600' }}
                       onClick={() => setIsSearchExpanded(true)}
-                      p={2}
+                      px={2}
+                      h={8}
                       border={'1px solid'}
                       borderColor={'myGray.200'}
                     >

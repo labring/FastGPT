@@ -9,6 +9,8 @@ import type {
   GetAllSystemAppsBodyType,
   GetAllSystemAppTypeToolsResponse
 } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
+import { GetAllSystemAppsBodySchema } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 export type ListAppBody = GetAllSystemAppsBodyType;
 
@@ -18,7 +20,7 @@ export type ListAppBody = GetAllSystemAppsBodyType;
 async function handler(
   req: ApiRequestProps<ListAppBody>
 ): Promise<GetAllSystemAppTypeToolsResponse> {
-  const { searchKey } = req.body;
+  const { searchKey } = parseApiInput({ req, bodySchema: GetAllSystemAppsBodySchema }).body;
   await authSystemAdmin({ req });
 
   const findAppsQuery = (() => {

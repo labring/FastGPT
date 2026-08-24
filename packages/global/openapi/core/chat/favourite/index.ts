@@ -1,12 +1,12 @@
-import z from 'zod';
 import type { OpenAPIPath } from '../../../type';
-import { ChatFavouriteAppSchema } from '../../../../core/chat/favouriteApp/type';
 import {
+  DeleteFavouriteAppQuerySchema,
   GetChatFavouriteListParamsSchema,
-  UpdateFavouriteAppParamsSchema,
-  UpdateFavouriteAppTagsParamsSchema
+  GetChatFavouriteListResponseSchema,
+  ReorderFavouriteAppsBodySchema,
+  UpdateFavouriteAppsBodySchema,
+  UpdateFavouriteAppTagsBodySchema
 } from './api';
-import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { DevApiTagsMap } from '../../../tag';
 
 export const ChatFavouriteAppPath: OpenAPIPath = {
@@ -23,7 +23,7 @@ export const ChatFavouriteAppPath: OpenAPIPath = {
           description: '成功返回精选应用列表',
           content: {
             'application/json': {
-              schema: z.array(ChatFavouriteAppSchema)
+              schema: GetChatFavouriteListResponseSchema
             }
           }
         }
@@ -38,18 +38,13 @@ export const ChatFavouriteAppPath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: z.array(UpdateFavouriteAppParamsSchema)
+            schema: UpdateFavouriteAppsBodySchema
           }
         }
       },
       responses: {
         200: {
-          description: '成功更新精选应用',
-          content: {
-            'application/json': {
-              schema: z.array(ChatFavouriteAppSchema)
-            }
-          }
+          description: '成功更新精选应用'
         }
       }
     }
@@ -62,26 +57,13 @@ export const ChatFavouriteAppPath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: z.array(
-              z.object({
-                id: ObjectIdSchema.meta({
-                  example: '68ad85a7463006c963799a05',
-                  description: '精选应用 ID'
-                }),
-                order: z.number().meta({ example: 1, description: '排序' })
-              })
-            )
+            schema: ReorderFavouriteAppsBodySchema
           }
         }
       },
       responses: {
         200: {
-          description: '成功更新精选应用排序',
-          content: {
-            'application/json': {
-              schema: z.null()
-            }
-          }
+          description: '成功更新精选应用排序'
         }
       }
     }
@@ -94,18 +76,13 @@ export const ChatFavouriteAppPath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: z.array(UpdateFavouriteAppTagsParamsSchema)
+            schema: UpdateFavouriteAppTagsBodySchema
           }
         }
       },
       responses: {
         200: {
-          description: '成功更新精选应用标签',
-          content: {
-            'application/json': {
-              schema: z.null()
-            }
-          }
+          description: '成功更新精选应用标签'
         }
       }
     }
@@ -116,18 +93,11 @@ export const ChatFavouriteAppPath: OpenAPIPath = {
       description: '根据 ID 删除指定的精选应用配置',
       tags: [DevApiTagsMap.chatSetting],
       requestParams: {
-        query: z.object({
-          id: ObjectIdSchema
-        })
+        query: DeleteFavouriteAppQuerySchema
       },
       responses: {
         200: {
-          description: '成功删除精选应用',
-          content: {
-            'application/json': {
-              schema: z.null()
-            }
-          }
+          description: '成功删除精选应用'
         }
       }
     }

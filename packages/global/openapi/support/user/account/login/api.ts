@@ -28,6 +28,7 @@ export const OpenAPIUserSchema = UserSchema.omit({
     description: '用户权限实例。返回值为服务端权限对象，文档中按任意结构展示。'
   })
 });
+export type OpenAPIUserType = z.infer<typeof OpenAPIUserSchema>;
 
 export const LoginSuccessResponseSchema = z.object({
   user: z.any().meta({

@@ -3,16 +3,36 @@ import { DevApiTagsMap } from '../../../tag';
 import {
   GetTeamPlanStatusQuerySchema,
   GetTeamPlanStatusResponseSchema,
+  GetTeamPlansResponseSchema,
+  GetTeamListQuerySchema,
+  GetTeamListResponseSchema,
   SearchMembersOrgsGroupsQuerySchema,
   SearchMembersOrgsGroupsResponseSchema,
+  SwitchTeamBodySchema,
+  SwitchTeamResponseSchema,
+  TeamChangeOwnerBodySchema,
+  TeamChangeOwnerResponseSchema,
+  UpdateNotificationAccountBodySchema,
   UpdateTeamBodySchema,
   UserSyncBodySchema,
   UserSyncResponseSchema
 } from './api';
 import { EnterpriseAuthPath } from './enterpriseAuth';
 import { TeamLimitPath } from './limit';
+import { TeamCollaboratorPath } from './collaborator';
+import { TeamAuditPath } from './audit';
+import { TeamInvitationLinkPath } from './invitationLink';
+import { TeamMemberPath } from './member';
+import { TeamOrgPath } from './org';
+import { TeamGroupPath } from './group';
 
 export const TeamPath: OpenAPIPath = {
+  ...TeamAuditPath,
+  ...TeamCollaboratorPath,
+  ...TeamInvitationLinkPath,
+  ...TeamMemberPath,
+  ...TeamOrgPath,
+  ...TeamGroupPath,
   ...EnterpriseAuthPath,
   ...TeamLimitPath,
   '/proApi/support/user/team/searchMembersOrgsGroups': {
@@ -59,6 +79,93 @@ export const TeamPath: OpenAPIPath = {
       }
     }
   },
+  '/proApi/support/user/team/list': {
+    get: {
+      summary: '获取团队列表',
+      description: '获取当前用户加入的团队列表及其成员身份和团队权限',
+      tags: [DevApiTagsMap.teamManage],
+      requestParams: {
+        query: GetTeamListQuerySchema
+      },
+      responses: {
+        200: {
+          description: '成功返回团队列表',
+          content: {
+            'application/json': {
+              schema: GetTeamListResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/support/user/team/switch': {
+    put: {
+      summary: '切换当前团队',
+      description: '切换当前用户的登录团队并返回新的会话令牌',
+      tags: [DevApiTagsMap.teamManage],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SwitchTeamBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '团队切换成功',
+          content: {
+            'application/json': {
+              schema: SwitchTeamResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/support/user/team/updateNotificationAccount': {
+    put: {
+      summary: '更新团队通知账号',
+      description: '使用验证码更新当前团队的通知账号',
+      tags: [DevApiTagsMap.teamManage],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: UpdateNotificationAccountBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '团队通知账号更新成功'
+        }
+      }
+    }
+  },
+  '/proApi/support/user/team/changeOwner': {
+    put: {
+      summary: '转让团队所有权',
+      description: '将企业微信团队的所有权转让给团队内的指定用户',
+      tags: [DevApiTagsMap.teamManage],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: TeamChangeOwnerBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '团队所有权转让成功',
+          content: {
+            'application/json': {
+              schema: TeamChangeOwnerResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
   '/support/user/team/update': {
     put: {
       summary: '更新团队信息',
@@ -82,7 +189,7 @@ export const TeamPath: OpenAPIPath = {
     get: {
       summary: '获取团队套餐状态',
       description: '获取当前团队的套餐额度及成员、应用、知识库等资源用量',
-      tags: [DevApiTagsMap.teamManage],
+      tags: [DevApiTagsMap.teamSubscription],
       requestParams: {
         query: GetTeamPlanStatusQuerySchema
       },
@@ -92,6 +199,23 @@ export const TeamPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: GetTeamPlanStatusResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/support/user/team/plan/getTeamPlans': {
+    get: {
+      summary: '获取团队套餐列表',
+      description: '获取当前团队的全部订阅套餐记录，按过期时间升序返回',
+      tags: [DevApiTagsMap.teamSubscription],
+      responses: {
+        200: {
+          description: '成功返回团队套餐列表',
+          content: {
+            'application/json': {
+              schema: GetTeamPlansResponseSchema
             }
           }
         }

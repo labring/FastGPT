@@ -5,6 +5,7 @@ export const DevApiTagsMap = {
   appPer: '应用权限管理',
   appVersion: '应用版本管理',
   appTemplate: '模板管理',
+  appEvaluation: '应用评测',
   appLog: '日志管理',
   publishChannel: '发布渠道',
   appOther: '其他',
@@ -15,11 +16,13 @@ export const DevApiTagsMap = {
   httpTools: 'HTTP 工具管理',
   mcpServer: 'MCP 发布管理',
   appSystemTool: '系统工具',
+  toolPreview: '工具节点预览',
 
   /* 核心-技能 */
   skillBasic: '基础管理',
   skillPermission: '权限管理',
   skillEdit: '编辑管理',
+  skillDebug: '技能调试',
   skillVersion: '版本管理',
 
   /* 核心-AI 相关 */
@@ -60,9 +63,11 @@ export const DevApiTagsMap = {
   /* 辅助-用户体系 */
   userInform: '用户通知',
   userLogin: '用户账号',
-  userLimit: '限流检查',
-  enterpriseAuth: '企业认证',
+
+  /* 辅助-钱包 */
   walletBill: '订单',
+  walletInvoice: '发票管理',
+  walletUsage: '使用记录',
   walletDiscountCoupon: '优惠券',
 
   /* 辅助-权限管理 */
@@ -80,11 +85,21 @@ export const DevApiTagsMap = {
   reverseInvokePlugin: '插件',
   reverseInvokeSandbox: '沙盒',
 
-  /* 辅助-团队管理 */
+  /* 辅助-团队体系 */
   teamManage: '团队管理',
+  userLimit: '限流检查',
+  enterpriseAuth: '企业认证',
+  teamPermission: '团队权限管理',
+  teamInvitationLink: '邀请链接管理',
+  teamMember: '成员管理',
+  teamOrg: '部门管理',
+  teamGroup: '群组管理',
+  teamSubscription: '订阅管理',
+
+  /* 插件市场 */
+  pluginMarketplace: '插件市场-系统工具',
 
   /* 管理员-插件管理 */
-  pluginMarketplace: '插件市场',
   pluginAdmin: '管理员插件管理',
   pluginToolAdmin: '管理员系统工具管理',
 
@@ -106,6 +121,11 @@ export const DevApiTagsMap = {
   adminWalletInvoice: '发票管理',
   adminWalletRefund: '退款管理',
   adminAuth: '管理员认证'
+};
+
+/** Scalar 文档导航中的标签展示名，key 保持 OpenAPI 内部标签唯一。 */
+export const DevApiTagNameAliases: Record<string, string> = {
+  [DevApiTagsMap.pluginMarketplace]: '系统工具'
 };
 
 export const SystemOpenApiTagMap = {

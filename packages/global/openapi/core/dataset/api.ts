@@ -321,6 +321,27 @@ export type UpdateDatasetCollaboratorResponse = z.infer<
 >;
 
 /* ============================================================================
+ * API: 同步知识库数据
+ * Route: POST /api/proApi/core/dataset/datasetSync
+ * Method: POST
+ * Description: 检查知识库同步状态、训练状态、权限和索引额度后，触发知识库同步任务。
+ * Tags: ['知识库管理', 'Write']
+ * ============================================================================ */
+export const PostDatasetSyncBodySchema = z
+  .object({
+    datasetId: ObjectIdSchema.meta({
+      example: '68ad85a7463006c963799a05',
+      description: '需要同步的知识库 ID'
+    })
+  })
+  .meta({
+    example: {
+      datasetId: '68ad85a7463006c963799a05'
+    }
+  });
+export type PostDatasetSyncParams = z.infer<typeof PostDatasetSyncBodySchema>;
+
+/* ============================================================================
  * API: 更新知识库
  * Route: PUT /api/core/dataset/update
  * ============================================================================ */
@@ -555,11 +576,3 @@ export const GetDatasetPermissionResponseSchema = z.object({
   })
 });
 export type GetDatasetPermissionResponse = z.infer<typeof GetDatasetPermissionResponseSchema>;
-
-/* ============================================================================
- * 数据集同步入参
- * ============================================================================ */
-export const PostDatasetSyncBodySchema = z.object({
-  datasetId: z.string().meta({ description: '数据集 ID' })
-});
-export type PostDatasetSyncParams = z.infer<typeof PostDatasetSyncBodySchema>;
