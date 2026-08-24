@@ -168,6 +168,8 @@ export type UploadMultipartPartParams = {
   body: StorageUploadBody;
   /** 当前分片字节数，避免依赖 chunked 传输。 */
   contentLength: number;
+  /** 调用方断开时取消当前 provider 分片请求。 */
+  abortSignal?: AbortSignal;
 };
 
 /** 上传单个 Multipart 分片结果。 */

@@ -7,7 +7,7 @@ import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { getContentDisposition } from '@fastgpt/global/common/file/tools';
 import { pipeline } from 'node:stream/promises';
-import { createS3DownloadAbortContext } from '@/service/common/s3/proxy';
+import { createS3ProxyAbortContext } from '@/service/common/s3/proxy';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { ReadCommonFileRequestQuerySchema } from '@fastgpt/global/openapi/common/file/api';
 import { NextAPI } from '@/service/middleware/entry';
@@ -31,7 +31,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     querySchema: ReadCommonFileRequestQuerySchema
   }).query;
 
-  const abortContext = createS3DownloadAbortContext({ req, res });
+  const abortContext = createS3ProxyAbortContext({ req, res });
   let fileStream: Awaited<ReturnType<ReturnType<typeof getS3DatasetSource>['getFileStream']>>;
 
   try {

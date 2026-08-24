@@ -10,6 +10,7 @@ import { AWS_S3_COMPATIBLE_VENDORS, DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from
 import {
   bindAbortSignalToReadable,
   encodeObjectKeyPath,
+  throwIfStorageAborted,
   throwIfStorageDownloadAborted
 } from '../utils';
 import {
@@ -190,22 +191,24 @@ export class AwsS3StorageAdapter implements IStorage {
   async uploadMultipartPart(
     params: Storage.UploadMultipartPartParams
   ): Promise<Storage.UploadMultipartPartResult> {
-    const { key, uploadId, partNumber, body, contentLength } = params;
+    const { key, uploadId, partNumber, body, contentLength, abortSignal } = params;
     assertStorageObjectKey(key);
     assertMultipartUploadId(uploadId);
     assertMultipartPartNumber(partNumber);
     assertMultipartContentLength(contentLength);
+    throwIfStorageAborted(abortSignal);
 
-    const result = await this.client.send(
-      new AWS.UploadPartCommand({
-        Bucket: this.options.bucket,
-        Key: key,
-        UploadId: uploadId,
-        PartNumber: partNumber,
-        Body: body,
-        ContentLength: contentLength
-      })
-    );
+    const command = new AWS.UploadPartCommand({
+      Bucket: this.options.bucket,
+      Key: key,
+      UploadId: uploadId,
+      PartNumber: partNumber,
+      Body: body,
+      ContentLength: contentLength
+    });
+    const result = abortSignal
+      ? await this.client.send(command, { abortSignal })
+      : await this.client.send(command);
 
     if (!result.ETag) {
       throw new Error('Multipart part upload did not return an ETag');
@@ -503,7 +506,13 @@ export class AwsS3StorageAdapter implements IStorage {
 
     let url: string;
     if (this.options.publicEndpoint) {
-      const endpoint = new URL(this.options.publicEndpoint);
+      const endpoint = (() => {
+        try {
+          return new URL(this.options.publicEndpoint);
+        } catch {
+          throw new Error('publicEndpoint must be a valid URL');
+        }
+      })();
       if (endpoint.search || endpoint.hash) {
         throw new Error('publicEndpoint must not contain query or hash');
       }
@@ -515,7 +524,13 @@ export class AwsS3StorageAdapter implements IStorage {
         url = `${this.options.endpoint}/${this.options.bucket}/${encodedKey}`;
       }
     } else {
-      const endpoint = new URL(this.options.endpoint);
+      const endpoint = (() => {
+        try {
+          return new URL(this.options.endpoint);
+        } catch {
+          throw new Error('endpoint must be a valid URL');
+        }
+      })();
       const protocol = endpoint.protocol;
       const host = endpoint.host;
 

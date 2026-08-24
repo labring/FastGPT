@@ -150,6 +150,7 @@ export type UploadMultipartPartAccessParams = {
   partNumber: number;
   body: StorageUploadBody;
   contentLength: number;
+  abortSignal?: AbortSignal;
 };
 
 export type CompleteMultipartUploadAccessParams = {

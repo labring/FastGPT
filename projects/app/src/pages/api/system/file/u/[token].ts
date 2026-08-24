@@ -40,7 +40,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       }
 
       return UploadDatasetFileMultipartPartResponseSchema.parse(
-        await handleS3ProxyUploadPart({ req, token, payload, partNumber })
+        await handleS3ProxyUploadPart({ req, res, token, payload, partNumber })
       );
     }
 

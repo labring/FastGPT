@@ -649,7 +649,8 @@ export class S3BaseBucket {
       uploadId: multipart.uploadId,
       partNumber: params.partNumber,
       body: params.body,
-      contentLength: params.contentLength
+      contentLength: params.contentLength,
+      ...(params.abortSignal ? { abortSignal: params.abortSignal } : {})
     });
   }
 
