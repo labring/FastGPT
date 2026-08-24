@@ -48,7 +48,7 @@ const DataTableComponent = ({
   modelPriceMap,
   isLLMModel
 }: DataTableComponentProps) => {
-  const { t } = useClientTranslation('account_model');
+  const { t } = useClientTranslation('config_model');
   const { feConfigs } = useSystemStore();
   const [sortField, setSortField] = useState<SortFieldType>('totalCalls');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -274,21 +274,21 @@ const DataTableComponent = ({
         <Table>
           <Thead>
             <Tr userSelect={'none'}>
-              <Th>{t('account_model:dashboard_model')}</Th>
-              {showChannelColumn && <Th>{t('account_model:dashboard_channel')}</Th>}
+              <Th>{t('config_model:dashboard_model')}</Th>
+              {showChannelColumn && <Th>{t('config_model:dashboard_channel')}</Th>}
               <Th
                 cursor="pointer"
                 onClick={() => handleSort('totalCalls')}
                 _hover={{ color: 'primary.600' }}
               >
-                {t('account_model:total_call_volume')} {getSortIcon('totalCalls')}
+                {t('config_model:total_call_volume')} {getSortIcon('totalCalls')}
               </Th>
               <Th
                 cursor="pointer"
                 onClick={() => handleSort('errorCalls')}
                 _hover={{ color: 'primary.600' }}
               >
-                {t('account_model:volunme_of_failed_calls')} {getSortIcon('errorCalls')}
+                {t('config_model:volunme_of_failed_calls')} {getSortIcon('errorCalls')}
               </Th>
               {feConfigs?.isPlus && (
                 <Th
@@ -296,17 +296,17 @@ const DataTableComponent = ({
                   onClick={() => handleSort('totalCost')}
                   _hover={{ color: 'primary.600' }}
                 >
-                  {t('account_model:aipoint_usage')} {getSortIcon('totalCost')}
+                  {t('config_model:aipoint_usage')} {getSortIcon('totalCost')}
                 </Th>
               )}
-              <Th>{t('account_model:avg_response_time')}</Th>
-              <Th>{t('account_model:avg_ttfb')}</Th>
+              <Th>{t('config_model:avg_response_time')}</Th>
+              <Th>{t('config_model:avg_ttfb')}</Th>
               <Th
                 cursor="pointer"
                 onClick={() => handleSort('cacheHitRate')}
                 _hover={{ color: 'primary.600' }}
               >
-                {t('account_model:cache_hit_rate')} {getSortIcon('cacheHitRate')}
+                {t('config_model:cache_hit_rate')} {getSortIcon('cacheHitRate')}
               </Th>
               <Th></Th>
             </Tr>
@@ -335,7 +335,7 @@ const DataTableComponent = ({
                     variant={'whiteBase'}
                     onClick={() => onViewDetail(item.model)}
                   >
-                    {t('account_model:detail')}
+                    {t('config_model:detail')}
                   </Button>
                 </Td>
               </Tr>
@@ -343,7 +343,7 @@ const DataTableComponent = ({
           </Tbody>
         </Table>
       </TableContainer>
-      {tableData.length === 0 && <EmptyTip text={t('account_model:dashboard_no_data')} />}
+      {tableData.length === 0 && <EmptyTip text={t('config_model:dashboard_no_data')} />}
     </MyBox>
   );
 };

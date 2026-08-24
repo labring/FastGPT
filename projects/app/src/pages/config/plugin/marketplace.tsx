@@ -1,7 +1,5 @@
 'use client';
 
-import { serviceSideProps } from '@/web/common/i18n/utils';
-import { useTranslation } from 'next-i18next';
 import { Box, Button, Checkbox, Flex, Grid, Input, InputGroup, VStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -49,6 +47,7 @@ import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 
 type QueryValue = string | string[] | undefined;
 type QueryRecord = Record<string, QueryValue>;
@@ -155,11 +154,12 @@ const getSystemToolRawPluginId = (toolId: string) => {
   }
 };
 
-const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
-  const { t, i18n } = useTranslation();
+const ToolkitMarketplace = () => {
+  const { t, i18n } = useClientTranslation(['app', 'marketplace']);
   const router = useRouter();
   const { copyData } = useCopyData();
   const { feConfigs } = useSystemStore();
+  const marketplaceUrl = feConfigs.marketplaceUrl ?? '';
   const { toast } = useToast();
 
   // Use custom hook for URL params management
@@ -230,7 +230,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     {
       type: 'scroll',
       defaultPageSize: 20,
-      pageSizeCacheKey: 'config-tool-marketplace-tools',
+      pageSizeCacheKey: 'config-plugin-marketplace-tools',
       refreshDeps: [searchText, tagIds, sourceFilter]
     }
   );
@@ -679,11 +679,11 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
 
   if (toolsError && !loadingTools) {
     return (
-      <Box h={'full'} py={6} pr={6} position={'relative'}>
+      <Box h={'full'} p={6} position={'relative'}>
         <MyIconButton
           icon={'common/closeLight'}
           size={'6'}
-          onClick={() => router.push('/config/tool')}
+          onClick={() => router.back()}
           position={'absolute'}
           zIndex={'999'}
           top={8}
@@ -702,10 +702,10 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           <VStack whiteSpace={'pre-wrap'} justifyContent={'center'} pb={16}>
             <MyIcon name="empty" w={16} color={'transparent'} />
             <Box mt={4} fontSize={'sm'} textAlign={'center'}>
-              {t('app:plugin_offline_tips')}
+              {t('marketplace:plugin_offline_tips')}
             </Box>
             <Flex fontSize={'sm'} alignItems={'center'} mt={4}>
-              {t('app:plugin_offline_url')}：{marketplaceUrl.replace('https://', '')}
+              {t('marketplace:plugin_offline_url')}：{marketplaceUrl.replace('https://', '')}
               <Button
                 variant={'whiteBase'}
                 size={'xs'}
@@ -722,7 +722,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
   }
 
   return (
-    <Box h={'full'} py={6} pr={6}>
+    <Box h={'full'} p={6}>
       <MyBox
         bg={'white'}
         h={'full'}
@@ -736,7 +736,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           <MyIconButton
             icon={'common/closeLight'}
             size={'6'}
-            onClick={() => router.push('/config/tool')}
+            onClick={() => router.back()}
             position={'absolute'}
             top={4}
             zIndex={1000}
@@ -746,7 +746,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
             <Flex gap={3} position={'absolute'} right={4} top={4}>
               {updatableTools.length > 0 && (
                 <Button variant="whitePrimary" onClick={() => setShowBatchUpdateDrawer(true)}>
-                  {t('app:toolkit_updatable')} ({updatableTools.length})
+                  {t('marketplace:toolkit_updatable')} ({updatableTools.length})
                 </Button>
               )}
               {feConfigs?.docUrl && (
@@ -758,7 +758,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                     }
                   }}
                 >
-                  {t('app:tool_development')}
+                  {t('marketplace:plugin_development')}
                 </Button>
               )}
             </Flex>
@@ -803,7 +803,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                         px={8}
                         h={10}
                         borderRadius={'md'}
-                        placeholder={t('app:toolkit_marketplace_search_placeholder')}
+                        placeholder={t('marketplace:toolkit_marketplace_search_placeholder')}
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         onFocus={handleSearchFocus}
@@ -893,7 +893,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
               Assets for FastGPT
             </Box>
             <Box fontSize={'45px'} fontWeight={'semibold'} color={'black'}>
-              {t('app:toolkit_marketplace_title')}
+              {t('marketplace:toolkit_marketplace_title')}
             </Box>
             <Box>
               <InputGroup position={'relative'}>
@@ -915,7 +915,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                   maxW={'560px'}
                   h={12}
                   borderRadius={'10px'}
-                  placeholder={t('app:toolkit_marketplace_search_placeholder')}
+                  placeholder={t('marketplace:toolkit_marketplace_search_placeholder')}
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onFocus={handleSearchFocus}
@@ -955,7 +955,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                 fontWeight={'medium'}
                 letterSpacing={'0.5px'}
               >
-                {t('app:toolkit_uninstalled_only')}
+                {t('marketplace:toolkit_uninstalled_only')}
               </Checkbox>
             </Flex>
             {displayTools.length > 0 ? (
@@ -1041,16 +1041,5 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     </Box>
   );
 };
-
-export async function getServerSideProps(content: any) {
-  const { appEnv } = await import('@/env');
-
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['app'])),
-      marketplaceUrl: appEnv.MARKETPLACE_URL
-    }
-  };
-}
 
 export default ToolkitMarketplace;

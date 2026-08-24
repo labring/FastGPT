@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { Box, Button, Checkbox, Flex, Grid, Input, InputGroup, VStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -163,17 +163,12 @@ const parseTeamInstallFailure = (error: unknown): PluginInstallFailureType[] | u
   }
 };
 
-export const ToolkitMarketplace = ({
-  marketplaceUrl,
-  mode = 'admin'
-}: {
-  marketplaceUrl: string;
-  mode?: 'admin' | 'team';
-}) => {
-  const { t, i18n } = useTranslation();
+export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team' }) => {
+  const { t, i18n } = useClientTranslation(['app', 'marketplace']);
   const router = useRouter();
   const { copyData } = useCopyData();
   const { feConfigs } = useSystemStore();
+  const marketplaceUrl = feConfigs.marketplaceUrl ?? '';
   const { toast } = useToast();
 
   // Use custom hook for URL params management
@@ -674,11 +669,11 @@ export const ToolkitMarketplace = ({
 
   if (toolsError && !loadingTools) {
     return (
-      <Box h={'full'} py={6} pr={6} position={'relative'}>
+      <Box h={'full'} p={6} position={'relative'}>
         <MyIconButton
           icon={'common/closeLight'}
           size={'6'}
-          onClick={() => router.push(mode === 'team' ? '/dashboard/systemTool' : '/config/tool')}
+          onClick={() => router.back()}
           position={'absolute'}
           zIndex={'999'}
           top={8}
@@ -697,10 +692,10 @@ export const ToolkitMarketplace = ({
           <VStack whiteSpace={'pre-wrap'} justifyContent={'center'} pb={16}>
             <MyIcon name="empty" w={16} color={'transparent'} />
             <Box mt={4} fontSize={'sm'} textAlign={'center'}>
-              {t('app:plugin_offline_tips')}
+              {t('marketplace:plugin_offline_tips')}
             </Box>
             <Flex fontSize={'sm'} alignItems={'center'} mt={4}>
-              {t('app:plugin_offline_url')}：{marketplaceUrl.replace('https://', '')}
+              {t('marketplace:plugin_offline_url')}：{marketplaceUrl.replace('https://', '')}
               <Button
                 variant={'whiteBase'}
                 size={'xs'}
@@ -717,7 +712,7 @@ export const ToolkitMarketplace = ({
   }
 
   return (
-    <Box h={'full'} py={6} pr={6}>
+    <Box h={'full'} p={6}>
       <MyBox
         bg={'white'}
         h={'full'}
@@ -731,7 +726,7 @@ export const ToolkitMarketplace = ({
           <MyIconButton
             icon={'common/closeLight'}
             size={'6'}
-            onClick={() => router.push(mode === 'team' ? '/dashboard/systemTool' : '/config/tool')}
+            onClick={() => router.back()}
             position={'absolute'}
             top={4}
             zIndex={1000}
@@ -741,7 +736,7 @@ export const ToolkitMarketplace = ({
             <Flex gap={3} position={'absolute'} right={4} top={4}>
               {updatableTools.length > 0 && (
                 <Button variant="whitePrimary" onClick={() => setShowBatchUpdateDrawer(true)}>
-                  {t('app:toolkit_updatable')} ({updatableTools.length})
+                  {t('marketplace:toolkit_updatable')} ({updatableTools.length})
                 </Button>
               )}
               {feConfigs?.docUrl && (
@@ -754,7 +749,7 @@ export const ToolkitMarketplace = ({
                       }
                     }}
                   >
-                    {t('app:plugin_development')}
+                    {t('marketplace:plugin_development')}
                   </Button>
                 </>
               )}
@@ -800,7 +795,7 @@ export const ToolkitMarketplace = ({
                         px={8}
                         h={10}
                         borderRadius={'md'}
-                        placeholder={t('app:toolkit_marketplace_search_placeholder')}
+                        placeholder={t('marketplace:toolkit_marketplace_search_placeholder')}
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         onFocus={handleSearchFocus}
@@ -890,7 +885,7 @@ export const ToolkitMarketplace = ({
               Assets for FastGPT
             </Box>
             <Box fontSize={'45px'} fontWeight={'semibold'} color={'black'}>
-              {t('app:toolkit_marketplace_title')}
+              {t('marketplace:toolkit_marketplace_title')}
             </Box>
             <Box>
               <InputGroup position={'relative'}>
@@ -912,7 +907,7 @@ export const ToolkitMarketplace = ({
                   maxW={'560px'}
                   h={12}
                   borderRadius={'10px'}
-                  placeholder={t('app:toolkit_marketplace_search_placeholder')}
+                  placeholder={t('marketplace:toolkit_marketplace_search_placeholder')}
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onFocus={handleSearchFocus}
@@ -952,7 +947,7 @@ export const ToolkitMarketplace = ({
                 fontWeight={'medium'}
                 letterSpacing={'0.5px'}
               >
-                {t('app:toolkit_uninstalled_only')}
+                {t('marketplace:toolkit_uninstalled_only')}
               </Checkbox>
             </Flex>
             {displayTools.length > 0 ? (

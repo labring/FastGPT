@@ -50,7 +50,7 @@ type LogDetailType = Omit<ChannelLogListItemType, 'model' | 'request_at'> & {
   response_body?: string;
 };
 const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
-  const { t, i18n } = useClientTranslation('account_model');
+  const { t, i18n } = useClientTranslation('config_model');
   const { userInfo } = useUserStore();
   const { getModelProvider } = useSystemStore();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -128,7 +128,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
   const { data, isLoading, total, pageSize, Pagination } = usePagination(getChannelLog, {
     defaultPageSize: 20,
     pageSizeOptions: [20, 50, 100, 200],
-    pageSizeCacheKey: 'account-model-channel-log',
+    pageSizeCacheKey: 'config-model-channel-log',
     refreshDeps: [filterProps],
     params: {
       request_id: filterProps.request_id,
@@ -196,14 +196,14 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
           </Flex>
           <Flex w={['100%', 'auto']} flexShrink={0} alignItems={'center'} gap={2}>
             <FormLabel w={['84px', 'auto']} flexShrink={0}>
-              {t('account_model:channel_name')}
+              {t('config_model:channel_name')}
             </FormLabel>
             <Box flex={['1 1 0', '0 0 160px']} minW={0} w={['auto', '160px']}>
               <MySelect<string>
                 bg={'myGray.25'}
                 isSearch
                 list={channelList}
-                placeholder={t('account_model:select_channel')}
+                placeholder={t('config_model:select_channel')}
                 value={filterProps.channelId}
                 onChange={(val) => setFilterProps({ ...filterProps, channelId: val })}
               />
@@ -211,14 +211,14 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
           </Flex>
           <Flex w={['100%', 'auto']} flexShrink={0} alignItems={'center'} gap={2}>
             <FormLabel w={['84px', 'auto']} flexShrink={0}>
-              {t('account_model:model_name')}
+              {t('config_model:model_name')}
             </FormLabel>
             <Box flex={['1 1 0', '0 0 160px']} minW={0} w={['auto', '160px']}>
               <MySelect<string>
                 bg={'myGray.25'}
                 isSearch
                 list={modelList}
-                placeholder={t('account_model:select_model')}
+                placeholder={t('config_model:select_model')}
                 value={filterProps.model}
                 onChange={(val) => setFilterProps({ ...filterProps, model: val })}
               />
@@ -226,7 +226,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
           </Flex>
           <Flex w={['100%', 'auto']} flexShrink={0} alignItems={'center'} gap={2}>
             <FormLabel w={['84px', 'auto']} flexShrink={0}>
-              {t('account_model:log_status')}
+              {t('config_model:log_status')}
             </FormLabel>
             <Box flex={['1 1 0', '0 0 160px']} minW={0} w={['auto', '160px']}>
               <MySelect<'all' | 'success' | 'error'>
@@ -244,7 +244,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
           </Flex>
           <Box flex={['0 0 auto', '1 0 200px']} w={'100%'} maxW={['100%', '200px']}>
             <SearchInput
-              placeholder={t('account_model:log_request_id_search')}
+              placeholder={t('config_model:log_request_id_search')}
               defaultValue={filterProps.request_id}
               onBlur={(e) => setFilterProps({ ...filterProps, request_id: e.target.value })}
             />
@@ -270,12 +270,12 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
             <Table>
               <Thead>
                 <Tr>
-                  <Th>{t('account_model:channel_name')}</Th>
-                  <Th>{t('account_model:model')}</Th>
-                  <Th>{t('account_model:model_tokens')}</Th>
-                  <Th>{t('account_model:duration')}</Th>
-                  <Th>{t('account_model:channel_status')}</Th>
-                  <Th>{t('account_model:request_at')}</Th>
+                  <Th>{t('config_model:channel_name')}</Th>
+                  <Th>{t('config_model:model')}</Th>
+                  <Th>{t('config_model:model_tokens')}</Th>
+                  <Th>{t('config_model:duration')}</Th>
+                  <Th>{t('config_model:channel_status')}</Th>
+                  <Th>{t('config_model:request_at')}</Th>
                   <Th></Th>
                 </Tr>
               </Thead>
@@ -300,7 +300,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
                         variant={'outline'}
                         onClick={() => setLogDetail(item)}
                       >
-                        {t('account_model:detail')}
+                        {t('config_model:detail')}
                       </Button>
                     </Td>
                   </Tr>
@@ -347,7 +347,7 @@ const LogDetailContainer = ({ children, ...props }: { children: React.ReactNode 
 };
 
 const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void }) => {
-  const { t } = useClientTranslation('account_model');
+  const { t } = useClientTranslation('config_model');
   const { data: detailData } = useRequest(
     async () => {
       if (data.code === 200) return data;
@@ -370,7 +370,7 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
     <MyModal
       isOpen
       iconSrc="support/bill/payRecordLight"
-      title={t('account_model:log_detail')}
+      title={t('config_model:log_detail')}
       onClose={onClose}
       maxW={['90vw', '800px']}
       w={'100%'}
@@ -396,7 +396,7 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
               <LogDetailContainer>{detailData?.ip}</LogDetailContainer>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <LogDetailTitle>{t('account_model:channel_status')}</LogDetailTitle>
+              <LogDetailTitle>{t('config_model:channel_status')}</LogDetailTitle>
               <LogDetailContainer color={detailData.code === 200 ? 'green.600' : 'red.600'}>
                 {detailData?.code}
               </LogDetailContainer>
@@ -406,38 +406,38 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
               <LogDetailContainer>{detailData?.endpoint}</LogDetailContainer>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <LogDetailTitle>{t('account_model:channel_name')}</LogDetailTitle>
+              <LogDetailTitle>{t('config_model:channel_name')}</LogDetailTitle>
               <LogDetailContainer>{detailData?.channelName}</LogDetailContainer>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px">
-              <LogDetailTitle>{t('account_model:model')}</LogDetailTitle>
+              <LogDetailTitle>{t('config_model:model')}</LogDetailTitle>
               <LogDetailContainer>{detailData?.model}</LogDetailContainer>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <LogDetailTitle>{t('account_model:request_at')}</LogDetailTitle>
+              <LogDetailTitle>{t('config_model:request_at')}</LogDetailTitle>
               <LogDetailContainer>{detailData?.request_at}</LogDetailContainer>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px">
-              <LogDetailTitle>{t('account_model:duration')}</LogDetailTitle>
+              <LogDetailTitle>{t('config_model:duration')}</LogDetailTitle>
               <LogDetailContainer>{detailData?.duration.toFixed(2)}s</LogDetailContainer>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
               <LogDetailTitle flex={'0 0 150px'}>
-                {t('account_model:model_ttfb_time')}
+                {t('config_model:model_ttfb_time')}
               </LogDetailTitle>
               <LogDetailContainer>
                 {detailData.ttfb_milliseconds ? `${detailData.ttfb_milliseconds}ms` : '-'}
               </LogDetailContainer>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px">
-              <LogDetailTitle flex={'0 0 150px'}>{t('account_model:model_tokens')}</LogDetailTitle>
+              <LogDetailTitle flex={'0 0 150px'}>{t('config_model:model_tokens')}</LogDetailTitle>
               <LogDetailContainer>
                 {detailData?.usage?.input_tokens} / {detailData?.usage?.output_tokens}
               </LogDetailContainer>
             </GridItem>
             {detailData?.retry_times !== undefined && (
               <GridItem display={'flex'} borderBottomWidth="1px" colSpan={2}>
-                <LogDetailTitle>{t('account_model:retry_times')}</LogDetailTitle>
+                <LogDetailTitle>{t('config_model:retry_times')}</LogDetailTitle>
                 <LogDetailContainer>{detailData?.retry_times}</LogDetailContainer>
               </GridItem>
             )}

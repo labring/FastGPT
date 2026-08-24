@@ -400,8 +400,8 @@ const ToolkitMarketplace = () => {
   return (
     <>
       <Head>
-        <title>{t('app:fastgpt_marketplace')}</title>
-        <meta name="description" content={t('app:toolkit_marketplace_title')} />
+        <title>{t('marketplace:fastgpt_marketplace')}</title>
+        <meta name="description" content={t('marketplace:toolkit_marketplace_title')} />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
       <MyBox
@@ -420,7 +420,7 @@ const ToolkitMarketplace = () => {
                 window.open('https://doc.fastgpt.cn/plugin/system-tool-development', '_blank');
               }}
             >
-              {t('app:plugin_development')}
+              {t('marketplace:plugin_development')}
             </Button>
             <Button
               variant={'whiteBase'}
@@ -428,7 +428,7 @@ const ToolkitMarketplace = () => {
                 window.open('https://github.com/labring/fastgpt-plugin/issues', '_blank');
               }}
             >
-              {t('app:toolkit_marketplace_submit_request')}
+              {t('marketplace:toolkit_marketplace_submit_request')}
             </Button>
           </Flex>
 
@@ -471,7 +471,7 @@ const ToolkitMarketplace = () => {
                         px={8}
                         h={10}
                         borderRadius={'md'}
-                        placeholder={t('app:toolkit_marketplace_search_placeholder')}
+                        placeholder={t('marketplace:toolkit_marketplace_search_placeholder')}
                         value={inputValue}
                         onChange={(e) => {
                           setInputValue(e.target.value);
@@ -574,7 +574,7 @@ const ToolkitMarketplace = () => {
               Assets for FastGPT
             </Box>
             <Box fontSize={'45px'} fontWeight={'semibold'} color={'black'}>
-              {t('app:toolkit_marketplace_title')}
+              {t('marketplace:toolkit_marketplace_title')}
             </Box>
             <Box>
               <InputGroup position={'relative'}>
@@ -596,7 +596,7 @@ const ToolkitMarketplace = () => {
                   maxW={'560px'}
                   h={12}
                   borderRadius={'10px'}
-                  placeholder={t('app:toolkit_marketplace_search_placeholder')}
+                  placeholder={t('marketplace:toolkit_marketplace_search_placeholder')}
                   value={inputValue}
                   onChange={(e) => {
                     setInputValue(e.target.value);
@@ -666,7 +666,7 @@ const ToolkitMarketplace = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['app']))
+      ...(await serviceSideProps(content, ['app', 'marketplace']))
     }
   };
 }

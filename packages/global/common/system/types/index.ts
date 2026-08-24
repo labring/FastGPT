@@ -95,6 +95,7 @@ export type FastGPTFeConfigsType = {
   loginGuideDocUrl?: string;
   openAPIDocUrl?: string;
   appTemplateCourse?: string;
+  marketplaceUrl?: string;
   customApiDomain?: string;
   customSharePageDomain?: string;
 

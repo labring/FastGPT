@@ -44,11 +44,11 @@ const ModelTable = ({
   permissionConfig?: boolean;
   contentPx?: FlexProps['px'];
 }) => {
-  const { t, i18n } = useClientTranslation('account_model');
+  const { t, i18n } = useClientTranslation();
   const { getModelProviders, getModelProvider } = useSystemStore();
   const { userInfo } = useUserStore();
   const modelPermissionConfigHint = permissionConfig
-    ? t('account_model:model_permission_config_hint')
+    ? t('common:model.permission_config_hint')
     : '';
 
   const [provider, setProvider] = useState<string | ''>('');

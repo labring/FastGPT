@@ -54,7 +54,6 @@
   "model_error_rate": "Error rate",
   "model_error_request_times": "Number of failures",
   "model_name": "Model name",
-  "model_permission_config_hint": "If no collaborators are added, all members are available by default",
   "model_request_times": "Request times",
   "model_test": "Model testing",
   "model_tokens": "Input/Output tokens",
