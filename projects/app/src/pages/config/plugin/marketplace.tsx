@@ -47,7 +47,6 @@ import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import ConfigContainer from '@/pageComponents/config/ConfigContainer';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 
 type QueryValue = string | string[] | undefined;
@@ -680,7 +679,7 @@ const ToolkitMarketplace = () => {
 
   if (toolsError && !loadingTools) {
     return (
-      <Box h={'full'} py={6} pr={6} position={'relative'}>
+      <Box h={'full'} p={6} position={'relative'}>
         <MyIconButton
           icon={'common/closeLight'}
           size={'6'}
@@ -723,7 +722,7 @@ const ToolkitMarketplace = () => {
   }
 
   return (
-    <Box h={'full'} py={6} pr={6}>
+    <Box h={'full'} p={6}>
       <MyBox
         bg={'white'}
         h={'full'}
@@ -1043,10 +1042,4 @@ const ToolkitMarketplace = () => {
   );
 };
 
-const ToolkitMarketplacePage = () => (
-  <ConfigContainer>
-    <ToolkitMarketplace />
-  </ConfigContainer>
-);
-
-export default ToolkitMarketplacePage;
+export default ToolkitMarketplace;

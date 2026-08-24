@@ -669,7 +669,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
 
   if (toolsError && !loadingTools) {
     return (
-      <Box h={'full'} py={6} pr={6} position={'relative'}>
+      <Box h={'full'} p={6} position={'relative'}>
         <MyIconButton
           icon={'common/closeLight'}
           size={'6'}
@@ -712,7 +712,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
   }
 
   return (
-    <Box h={'full'} py={6} pr={6}>
+    <Box h={'full'} p={6}>
       <MyBox
         bg={'white'}
         h={'full'}
