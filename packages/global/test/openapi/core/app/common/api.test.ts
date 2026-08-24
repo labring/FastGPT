@@ -39,7 +39,35 @@ describe('CreateAppBodySchema', () => {
     ).toBe(true);
   });
 
-  it('rejects legacy workflow fields instead of stripping them', () => {
+  it('accepts known legacy workflow fields for server migration', () => {
+    const result = CreateAppBodySchema.safeParse({
+      name: 'legacy app',
+      type: 'simple',
+      modules: [
+        {
+          ...currentNode,
+          inputs: [
+            {
+              ...currentNode.inputs[0],
+              selectedTypeIndex: 0,
+              isToolParam: true
+            }
+          ]
+        }
+      ],
+      edges: [],
+      chatConfig: {}
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data.modules?.[0].inputs[0]).toMatchObject({
+      selectedTypeIndex: 0,
+      isToolParam: true
+    });
+  });
+
+  it('rejects unsupported workflow fields at the API boundary', () => {
     expect(
       CreateAppBodySchema.safeParse({
         name: 'legacy app',

@@ -245,7 +245,9 @@ export const migrateLegacyWorkflowStructureData = ({
                 typeof type === 'string' && inputTypes.has(type as FlowNodeInputTypeEnum)
             )
         : [];
-      input.renderTypeList = renderTypeList;
+      // 与历史 dataClean 保持一致：旧输入缺少有效渲染方式时回退为 reference，避免 canonical 数据进入不可渲染状态。
+      input.renderTypeList =
+        renderTypeList.length > 0 ? renderTypeList : [FlowNodeInputTypeEnum.reference];
       // 缺失或非法 valueType 统一使用 any，避免严格 schema 阻断整条 workflow。
       input.valueType = normalizeValueType(input.valueType);
       const inputList = normalizeInputList(input.inputList);

@@ -18,8 +18,9 @@ import {
   OpenAPIFlowNodeOutputItemTypeSchema,
   OpenAPIStoreNodeItemTypeSchema
 } from '../../workflow/node';
+import { FlowNodeInputTypeEnum } from '../../../../core/workflow/node/constant';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
-import { BoolSchema, NumSchema } from '../../../../common/zod';
+import { BoolSchema, IntSchema, NumSchema } from '../../../../common/zod';
 import z from 'zod';
 
 const AppIdSchema = ObjectIdSchema.meta({
@@ -140,12 +141,27 @@ export const OpenAPIAppChatConfigSchema = AppChatConfigTypeSchema.extend({
 
 /* Create app */
 /**
- * Create API 只接收当前 workflow 协议。
- * 外部历史 JSON 必须在 Import 边界迁移；这里使用 strict 子 schema，避免 legacy 字段被 Zod
- * 静默剥离后再进入 onCreateApp，造成迁移器无法恢复原始语义。
+ * Create API 接受当前 workflow 以及 migration 所需的已知 legacy NodeIO 字段。
+ * onCreateApp 会在写入前统一迁移，避免客户端 schema 先剥离历史输入语义。
  */
+const CreateAppInputSchema = OpenAPIFlowNodeInputItemTypeSchema.omit({
+  renderTypeList: true
+}).extend({
+  renderTypeList: z.array(z.enum(FlowNodeInputTypeEnum)).optional().meta({
+    description: '输入允许的渲染组件类型；历史导入数据可暂缺，由 migration 补齐'
+  }),
+  isToolParam: BoolSchema.optional().meta({
+    description: '历史工具输入默认由 Agent 生成标记',
+    deprecated: true
+  }),
+  selectedTypeIndex: IntSchema.optional().meta({
+    description: '历史工作流输入类型索引',
+    deprecated: true
+  })
+});
+
 const CreateAppNodeSchema = OpenAPIStoreNodeItemTypeSchema.strict().extend({
-  inputs: z.array(OpenAPIFlowNodeInputItemTypeSchema.strict()),
+  inputs: z.array(CreateAppInputSchema.strict()),
   outputs: z.array(OpenAPIFlowNodeOutputItemTypeSchema.strict())
 });
 

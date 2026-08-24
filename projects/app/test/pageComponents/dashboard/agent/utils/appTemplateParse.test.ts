@@ -71,13 +71,35 @@ describe('normalizeSimpleImportForm', () => {
       chatConfig: {}
     });
 
-    expect(result.success).toBe(true);
-    if (!result.success) return;
+    expect(result.selectedTools).toEqual([]);
+    expect(result.selectedAgentSkills).toEqual([]);
+    expect(result.dataset.limit).toBe(3000);
+    expect(result.dataset.searchMode).toBe(DatasetSearchModeEnum.embedding);
+  });
 
-    expect(result.data.selectedTools).toEqual([]);
-    expect(result.data.selectedAgentSkills).toEqual([]);
-    expect(result.data.dataset.limit).toBe(3000);
-    expect(result.data.dataset.searchMode).toBe(DatasetSearchModeEnum.embedding);
+  it('preserves legacy tool input fields for server migration', () => {
+    const result = normalizeSimpleImportForm(
+      createSimpleConfig({
+        selectedTools: [
+          {
+            inputs: [
+              {
+                key: 'query',
+                label: 'Query',
+                renderTypeList: ['input', 'reference'],
+                selectedTypeIndex: 1,
+                isToolParam: true
+              }
+            ]
+          }
+        ]
+      })
+    );
+
+    expect((result.selectedTools[0] as any).inputs[0]).toMatchObject({
+      selectedTypeIndex: 1,
+      isToolParam: true
+    });
   });
 });
 
@@ -141,7 +163,20 @@ describe('parseDashboardImportConfig', () => {
       config: createSimpleConfig({
         type: AppTypeEnum.simple,
         name: 'Simple app',
-        intro: 'Simple intro'
+        intro: 'Simple intro',
+        selectedTools: [
+          {
+            inputs: [
+              {
+                key: 'query',
+                label: 'Query',
+                renderTypeList: ['input', 'reference'],
+                selectedTypeIndex: 1,
+                isToolParam: true
+              }
+            ]
+          }
+        ]
       }),
       scene: 'agent',
       t
@@ -152,6 +187,10 @@ describe('parseDashboardImportConfig', () => {
     expect((result.workflow.nodes[0] as any).formData).not.toHaveProperty('type');
     expect((result.workflow.nodes[0] as any).formData).not.toHaveProperty('name');
     expect((result.workflow.nodes[0] as any).formData).not.toHaveProperty('intro');
+    expect((result.workflow.nodes[0] as any).formData.selectedTools[0].inputs[0]).toMatchObject({
+      selectedTypeIndex: 1,
+      isToolParam: true
+    });
   });
 
   it('should parse workflow JSON in agent dashboard', async () => {
