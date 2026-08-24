@@ -21,7 +21,7 @@
     "pg": "0.8.0-pg15",
     "milvus-minio": "RELEASE.2023-03-20T20-16-18Z",
     "milvus-etcd": "v3.5.5",
-    "milvus-standalone": "v2.4.3",
+    "milvus-standalone": "v2.5.16",
     "oceanbase": "4.3.5-lts",
     "seekdb": "1.0.1.0-100000392025122619"
   },

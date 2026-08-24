@@ -35,7 +35,9 @@ const originalEnv = {
   AGENT_SANDBOX_OPENSANDBOX_IMAGE: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE,
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX:
     process.env.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX,
-  AGENT_SANDBOX_APT_MIRROR: process.env.AGENT_SANDBOX_APT_MIRROR
+  AGENT_SANDBOX_APT_MIRROR: process.env.AGENT_SANDBOX_APT_MIRROR,
+  MILVUS_LANGUAGE_IDENTIFIER: process.env.MILVUS_LANGUAGE_IDENTIFIER,
+  MILVUS_ADDRESS: process.env.MILVUS_ADDRESS
 };
 
 const importServiceEnv = async () => {
@@ -84,6 +86,8 @@ describe('serviceEnv', () => {
       originalEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX
     );
     vi.stubEnv('AGENT_SANDBOX_APT_MIRROR', originalEnv.AGENT_SANDBOX_APT_MIRROR);
+    vi.stubEnv('MILVUS_LANGUAGE_IDENTIFIER', originalEnv.MILVUS_LANGUAGE_IDENTIFIER);
+    vi.stubEnv('MILVUS_ADDRESS', originalEnv.MILVUS_ADDRESS);
   });
 
   it('enables MongoDB index synchronization by default and supports disabling it', async () => {
@@ -464,5 +468,24 @@ describe('serviceEnv', () => {
     await expect(importServiceEnv()).rejects.toThrow(
       'AGENT_SANDBOX_OPENSANDBOX_IMAGE are required when AGENT_SANDBOX_PROVIDER is opensandbox'
     );
+  });
+});
+
+describe('MILVUS_LANGUAGE_IDENTIFIER', () => {
+  afterEach(() => {
+    vi.stubEnv('MILVUS_LANGUAGE_IDENTIFIER', '');
+    vi.stubEnv('MILVUS_ADDRESS', '');
+  });
+
+  it('TC-2.3 defaults to lingua identifier', async () => {
+    vi.stubEnv('MILVUS_LANGUAGE_IDENTIFIER', '');
+    const { serviceEnv } = await importServiceEnv();
+    expect(serviceEnv.MILVUS_LANGUAGE_IDENTIFIER).toBe('lingua');
+  });
+
+  it('TC-2.5 no independent FULL_TEXT_ENGINE env field (fulltext follows vector provider)', async () => {
+    vi.stubEnv('MILVUS_LANGUAGE_IDENTIFIER', '');
+    const { serviceEnv } = await importServiceEnv();
+    expect((serviceEnv as Record<string, unknown>).FULL_TEXT_ENGINE).toBeUndefined();
   });
 });

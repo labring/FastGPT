@@ -576,8 +576,8 @@ importers:
         specifier: ^0.8.10
         version: 0.8.10
       '@zilliz/milvus2-sdk-node':
-        specifier: 2.4.10
-        version: 2.4.10
+        specifier: ^2.6.0
+        version: 2.6.9
       axios:
         specifier: 'catalog:'
         version: 1.18.1
@@ -3765,6 +3765,10 @@ packages:
   '@grpc/grpc-js@1.13.0':
     resolution: {integrity: sha512-pMuxInZjUnUkgMT2QLZclRqwk2ykJbIU05aZgPgJYXEpN9+2I7z7aNwcjWZSycRPl232FfhPszyBFJyOxTHNog==}
     engines: {node: '>=12.10.0'}
+
+  '@grpc/grpc-js@1.7.3':
+    resolution: {integrity: sha512-H9l79u4kJ2PVSxUNA08HMYAnUBLj9v6KjYQ7SQ71hOZcEXhShE/y5iQCesP8+6/Ik/7i2O0a10bPquIcYfufog==}
+    engines: {node: ^8.13.0 || >=10.10.0}
 
   '@grpc/proto-loader@0.7.13':
     resolution: {integrity: sha512-AiXO/bfe9bmxBjxxtYxFAXGZvMaN5s8kO+jBHAJCON8rJoB5YS/D6X7ZNc6XQkuHNmyl4CYaMI1fJ/Gn27RGGw==}
@@ -7201,8 +7205,8 @@ packages:
   '@zag-js/focus-visible@0.31.1':
     resolution: {integrity: sha512-dbLksz7FEwyFoANbpIlNnd3bVm0clQSUsnP8yUVQucStZPsuWjCrhL2jlAbGNrTrahX96ntUMXHb/sM68TibFg==}
 
-  '@zilliz/milvus2-sdk-node@2.4.10':
-    resolution: {integrity: sha512-KeXRFePLGoAMFQRM2w+oyH0X+R1uaj+Pt1o0rAdgQfGTV9aGdEx2zOJAt3XPWKovbphvF6ANmCGw2bbk7alNxQ==}
+  '@zilliz/milvus2-sdk-node@2.6.9':
+    resolution: {integrity: sha512-qOaVIpQ3E4w6Dp4lp9QIIuGedpE5dWRhK9SRX+y9WXcq4EXYvcdfR2aG/Vb5tWBPQwcMrGb5z8gRfFy7/gRbIw==}
 
   abort-controller@3.0.0:
     resolution: {integrity: sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg==}
@@ -17538,11 +17542,16 @@ snapshots:
       '@grpc/proto-loader': 0.7.13
       '@js-sdsl/ordered-map': 4.4.2
 
+  '@grpc/grpc-js@1.7.3':
+    dependencies:
+      '@grpc/proto-loader': 0.7.13
+      '@types/node': 20.19.43
+
   '@grpc/proto-loader@0.7.13':
     dependencies:
       lodash.camelcase: 4.3.0
       long: 5.3.1
-      protobufjs: 7.4.0
+      protobufjs: 7.5.5
       yargs: 17.7.2
 
   '@headlessui/tailwindcss@0.2.2(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.4))':
@@ -21663,15 +21672,16 @@ snapshots:
     dependencies:
       '@zag-js/dom-query': 0.31.1
 
-  '@zilliz/milvus2-sdk-node@2.4.10':
+  '@zilliz/milvus2-sdk-node@2.6.9':
     dependencies:
-      '@grpc/grpc-js': 1.13.0
+      '@grpc/grpc-js': 1.7.3
       '@grpc/proto-loader': 0.7.13
+      '@opentelemetry/api': 1.9.0
       '@petamoriken/float16': 3.9.2
-      dayjs: 1.11.19
+      dayjs: 1.11.21
       generic-pool: 3.9.0
       lru-cache: 9.1.2
-      protobufjs: 7.4.0
+      protobufjs: 7.5.5
       winston: 3.17.0
 
   abort-controller@3.0.0:

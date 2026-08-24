@@ -4,6 +4,7 @@
   "pages": [
     "version-timeline",
     "upgrade-instruction",
+    "milvus-bm25-upgrade",
     "4-16",
     "4-15",
     "4-14",

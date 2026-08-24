@@ -131,7 +131,7 @@ services:
       retries: 3
   fastgpt-vector:
     container_name: fastgpt-milvus-standalone
-    image: milvusdb/milvus:v2.4.3
+    image: milvusdb/milvus:v2.5.16
     command: ['milvus', 'run', 'standalone']
     security_opt:
       - seccomp:unconfined

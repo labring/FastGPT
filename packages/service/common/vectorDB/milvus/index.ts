@@ -1,16 +1,40 @@
-import { DataType, LoadState, MilvusClient } from '@zilliz/milvus2-sdk-node';
+import { LoadState, MilvusClient } from '@zilliz/milvus2-sdk-node';
+import type {
+  FieldType,
+  FunctionObject
+} from '@zilliz/milvus2-sdk-node/dist/milvus/types/Collection';
+import type { CreateIndexSimpleReq } from '@zilliz/milvus2-sdk-node/dist/milvus/types/MilvusIndex';
 import {
   DatasetVectorDbName,
-  DatasetVectorTableName,
+  DatasetVectorTableNameV2,
   MILVUS_ADDRESS,
-  MILVUS_TOKEN
+  MILVUS_TOKEN,
+  getDatasetVectorTableName
 } from '../constants';
+import { assertFullTextCapability, assertMilvusVersion, buildCollectionFilter } from './fullText';
+import {
+  buildAnalyzerParams,
+  createBM25Function,
+  createFullTextFieldDefs,
+  createFullTextIndexParams,
+  getMilvusLanguageIdentifier,
+  MILVUS_TEXT_MAX_LENGTH,
+  truncateFullTextByBytes
+} from './fullTextConfig';
 import type { VectorControllerType } from '../type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../logger';
 import { customNanoid } from '@fastgpt/global/common/string/tools';
 
 const logger = getLogger(LogCategories.INFRA.VECTOR);
+
+type EnsureCollectionOptions = {
+  description: string;
+  enableDynamicField?: boolean;
+  fields: FieldType[];
+  index_params: Omit<CreateIndexSimpleReq, 'collection_name'>[];
+  functions?: FunctionObject[];
+};
 
 export class MilvusCtrl implements VectorControllerType {
   constructor() {}
@@ -30,6 +54,43 @@ export class MilvusCtrl implements VectorControllerType {
 
     return global.milvusClient;
   };
+
+  /**
+   * 幂等创建并加载集合。
+   * modeldata 与 modeldata_v2 共用同一套样板:hasCollection → createCollection → getLoadState → loadCollectionSync。
+   */
+  private async ensureCollection(
+    client: MilvusClient,
+    name: string,
+    options: EnsureCollectionOptions
+  ) {
+    const { value: hasCollection } = await client.hasCollection({
+      collection_name: name
+    });
+    if (!hasCollection) {
+      const result = await client.createCollection({
+        collection_name: name,
+        ...options
+      });
+
+      logger.info('Milvus collection created', {
+        collection: name,
+        result
+      });
+    }
+
+    const { state } = await client.getLoadState({
+      collection_name: name
+    });
+
+    if (state === LoadState.LoadStateNotExist || state === LoadState.LoadStateNotLoad) {
+      await client.loadCollectionSync({
+        collection_name: name
+      });
+      logger.info('Milvus collection loaded', { collection: name });
+    }
+  }
+
   init: VectorControllerType['init'] = async () => {
     const client = await this.getClient();
 
@@ -50,86 +111,38 @@ export class MilvusCtrl implements VectorControllerType {
       logger.warn('Milvus database initialization skipped or failed', { error });
     }
 
-    // init collection and index
-    const { value: hasCollection } = await client.hasCollection({
-      collection_name: DatasetVectorTableName
-    });
-    if (!hasCollection) {
-      const result = await client.createCollection({
-        collection_name: DatasetVectorTableName,
-        description: 'Store dataset vector',
-        enableDynamicField: true,
-        fields: [
-          {
-            name: 'id',
-            data_type: DataType.Int64,
-            is_primary_key: true,
-            autoID: false // disable auto id, and we need to set id in insert
-          },
-          {
-            name: 'vector',
-            data_type: DataType.FloatVector,
-            dim: 1536
-          },
-          { name: 'teamId', data_type: DataType.VarChar, max_length: 64 },
-          { name: 'datasetId', data_type: DataType.VarChar, max_length: 64 },
-          { name: 'collectionId', data_type: DataType.VarChar, max_length: 64 },
-          {
-            name: 'createTime',
-            data_type: DataType.Int64
-          }
-        ],
-        index_params: [
-          {
-            field_name: 'vector',
-            index_name: 'vector_HNSW',
-            index_type: 'HNSW',
-            metric_type: 'IP',
-            params: { efConstruction: 32, M: 64 }
-          },
-          {
-            field_name: 'teamId',
-            index_type: 'Trie'
-          },
-          {
-            field_name: 'datasetId',
-            index_type: 'Trie'
-          },
-          {
-            field_name: 'collectionId',
-            index_type: 'Trie'
-          },
-          {
-            field_name: 'createTime',
-            index_type: 'STL_SORT'
-          }
-        ]
-      });
+    await assertMilvusVersion(client);
 
-      logger.info('Milvus collection created', {
-        collection: DatasetVectorTableName,
-        result
-      });
-    }
-
-    const { state: colLoadState } = await client.getLoadState({
-      collection_name: DatasetVectorTableName
+    await this.ensureCollection(client, DatasetVectorTableNameV2, {
+      description: 'Store dataset vector + BM25 full-text (single table)',
+      enableDynamicField: true,
+      fields: createFullTextFieldDefs(buildAnalyzerParams(getMilvusLanguageIdentifier())),
+      index_params: [
+        {
+          field_name: 'vector',
+          index_name: 'vector_HNSW',
+          index_type: 'HNSW',
+          metric_type: 'IP',
+          params: { efConstruction: 128, M: 32 }
+        },
+        ...createFullTextIndexParams()
+      ],
+      functions: [createBM25Function()]
     });
 
-    if (
-      colLoadState === LoadState.LoadStateNotExist ||
-      colLoadState === LoadState.LoadStateNotLoad
-    ) {
-      await client.loadCollectionSync({
-        collection_name: DatasetVectorTableName
-      });
-      logger.info('Milvus collection loaded', { collection: DatasetVectorTableName });
-    }
+    await assertFullTextCapability(client);
+    logger.info('Milvus full-text capability verified');
   };
 
   insert: VectorControllerType['insert'] = async (props) => {
     const client = await this.getClient();
-    const { teamId, datasetId, collectionId, vectors } = props;
+    const { teamId, datasetId, collectionId, vectors, texts } = props;
+
+    if (texts !== undefined && texts.length !== vectors.length) {
+      throw new Error(
+        `Milvus insert texts length (${texts.length}) does not match vectors length (${vectors.length})`
+      );
+    }
 
     const generateId = () => {
       // in js, the max safe integer is 2^53 - 1: 9007199254740991
@@ -140,15 +153,20 @@ export class MilvusCtrl implements VectorControllerType {
       return Number(`${firstDigit}${restDigits}`);
     };
 
+    const collectionName = getDatasetVectorTableName();
+
     const result = await client.insert({
-      collection_name: DatasetVectorTableName,
-      data: vectors.map((vector) => ({
+      collection_name: collectionName,
+      data: vectors.map((vector, index) => ({
         id: generateId(),
         vector,
         teamId: String(teamId),
         datasetId: String(datasetId),
         collectionId: String(collectionId),
-        createTime: Date.now()
+        createTime: Date.now(),
+        // 单表方案:provider=milvus 时全文 text 随向量一并写入 modeldata_v2。
+        // VarChar max_length 按 UTF-8 字节计,写入前按字节截断,避免中文等多字节文本超限导致插入失败
+        text: truncateFullTextByBytes(texts?.[index] ?? '', MILVUS_TEXT_MAX_LENGTH)
       }))
     });
 
@@ -169,7 +187,7 @@ export class MilvusCtrl implements VectorControllerType {
 
     const teamIdWhere = `(teamId=="${String(teamId)}")`;
     const where = await (() => {
-      if ('id' in props && props.id) return `(id==${props.id})`;
+      if ('id' in props && props.id) return `(id==${String(props.id)})`;
 
       if ('datasetIds' in props && props.datasetIds) {
         const datasetIdWhere = `(datasetId in [${props.datasetIds
@@ -197,7 +215,7 @@ export class MilvusCtrl implements VectorControllerType {
     const concatWhere = `${teamIdWhere} and ${where}`;
 
     await client.delete({
-      collection_name: DatasetVectorTableName,
+      collection_name: getDatasetVectorTableName(),
       filter: concatWhere
     });
   };
@@ -206,31 +224,13 @@ export class MilvusCtrl implements VectorControllerType {
     const { teamId, datasetIds, vector, limit, forbidCollectionIdList, filterCollectionIdList } =
       props;
 
-    // Forbid collection
-    const formatForbidCollectionIdList = (() => {
-      if (!filterCollectionIdList) return forbidCollectionIdList;
-      const list = forbidCollectionIdList
-        .map((id) => String(id))
-        .filter((id) => !filterCollectionIdList.includes(id));
-      return list;
-    })();
-    const forbidColQuery =
-      formatForbidCollectionIdList.length > 0
-        ? `and (collectionId not in [${formatForbidCollectionIdList.map((id) => `"${id}"`).join(',')}])`
-        : '';
-
-    // filter collection id
-    const formatFilterCollectionId = (() => {
-      if (!filterCollectionIdList) return;
-      return filterCollectionIdList
-        .map((id) => String(id))
-        .filter((id) => !forbidCollectionIdList.includes(id));
-    })();
-    const collectionIdQuery = formatFilterCollectionId
-      ? `and (collectionId in [${formatFilterCollectionId.map((id) => `"${id}"`).join(',')}])`
-      : ``;
+    // collection 过滤子句(与 MilvusFullTextStore.search 共用同一实现)
+    const { collectionIdQuery, forbidColQuery, empty } = buildCollectionFilter({
+      forbidCollectionIdList,
+      filterCollectionIdList
+    });
     // Empty data
-    if (formatFilterCollectionId && formatFilterCollectionId.length === 0) {
+    if (empty) {
       return { results: [] };
     }
 
@@ -239,12 +239,14 @@ export class MilvusCtrl implements VectorControllerType {
 
     const searchResult = await retryFn(() =>
       client.search({
-        collection_name: DatasetVectorTableName,
-        vector: vector,
+        collection_name: getDatasetVectorTableName(),
+        // SDK 2.6 起 search 使用 data 字段(向量/文本)替代 vector
+        data: [vector],
         limit,
         expr: filterStr,
-        output_fields: ['collectionId']
-      })
+        // SDK 不自动回填主键:search 结果只含 output_fields 指定的字段,id 需显式列出
+        output_fields: ['id', 'collectionId']
+      } as any)
     );
 
     const rows = (searchResult.results || []) as {
@@ -285,7 +287,7 @@ export class MilvusCtrl implements VectorControllerType {
     const filter = filterConditions.length > 0 ? filterConditions.join(' and ') : '';
 
     const result = await client.query({
-      collection_name: DatasetVectorTableName,
+      collection_name: getDatasetVectorTableName(),
       output_fields: ['count(*)'],
       filter: filter || undefined
     });
@@ -301,7 +303,7 @@ export class MilvusCtrl implements VectorControllerType {
     const endTimestamp = new Date(end).getTime();
 
     const result = await client.query({
-      collection_name: DatasetVectorTableName,
+      collection_name: getDatasetVectorTableName(),
       output_fields: ['id', 'teamId', 'datasetId'],
       filter: `(createTime >= ${startTimestamp}) and (createTime <= ${endTimestamp})`
     });
