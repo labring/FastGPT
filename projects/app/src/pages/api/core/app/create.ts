@@ -41,7 +41,6 @@ import {
   updateParentFoldersUpdateTime
 } from '@fastgpt/service/core/app/controller';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
-import { getWorkflowMigrationOptions } from '@fastgpt/service/core/app/tool/utils/client';
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
 
@@ -90,19 +89,18 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     avatar,
     intro,
     type,
-    modules: await (async () => {
+    modules,
+    allowedModels: await (async () => {
       if (modules) {
-        const myModels = new Set(
+        return new Set(
           await getMyModels({
             teamId,
             tmbId,
             isTeamOwner: isRoot || tmb?.role === 'owner'
           })
         );
-
-        return removeUnauthModels({ modules, allowedModels: myModels });
       }
-      return modules;
+      return undefined;
     })(),
     edges,
     chatConfig,
@@ -143,6 +141,7 @@ export const onCreateApp = async ({
   type,
   modules,
   storageModules,
+  allowedModels,
   edges,
   chatConfig,
   teamId,
@@ -158,8 +157,9 @@ export const onCreateApp = async ({
   name?: string;
   avatar?: string;
   type: AppTypeEnum;
-  modules?: AppSchemaType['modules'];
+  modules?: unknown[];
   storageModules?: AppSchemaType['modules'];
+  allowedModels?: Set<string>;
   edges?: AppSchemaType['edges'];
   chatConfig?: AppSchemaType['chatConfig'];
   intro?: string;
@@ -184,14 +184,17 @@ export const onCreateApp = async ({
   }
 
   // Copy 和 Transition 会传入历史数据库记录；写入前统一转换为 canonical 并格式化敏感字段。
-  const normalizedWorkflow = await migrateWorkflowToCurrent(
-    {
-      nodes: modules ?? [],
-      edges: edges ?? [],
-      chatConfig
-    },
-    getWorkflowMigrationOptions({ teamId })
-  );
+  const normalizedWorkflow = migrateWorkflowToCurrent({
+    nodes: modules ?? [],
+    edges: edges ?? [],
+    chatConfig
+  });
+  if (allowedModels) {
+    await removeUnauthModels({
+      modules: normalizedWorkflow.nodes,
+      allowedModels
+    });
+  }
   await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });
   if (!AppFolderTypeList.includes(type!)) {
     await validatePublishAppAgentSkillReadPermissions({
@@ -323,14 +326,11 @@ export const onUpdateAppWorkflow = async ({
   teamId: string;
   session?: ClientSession;
 }) => {
-  const workflow = await migrateWorkflowToCurrent(
-    {
-      nodes: modules ?? [],
-      edges: edges ?? [],
-      chatConfig
-    },
-    getWorkflowMigrationOptions({ teamId })
-  );
+  const workflow = migrateWorkflowToCurrent({
+    nodes: modules ?? [],
+    edges: edges ?? [],
+    chatConfig
+  });
   await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });
 
   return await MongoApp.findByIdAndUpdate(

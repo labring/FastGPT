@@ -1,13 +1,11 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getAppType, getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import { AppFormEditFormV1TypeSchema } from '@fastgpt/global/core/app/formEdit/type';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
-import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 
 export type JsonImportModalScene = 'agent' | 'tool';
 
@@ -73,13 +71,14 @@ export const isDashboardImportAppTypeAllowed = ({
  * 归一化 simple 应用表单配置。
  *
  * 老版本导出的 simple JSON 可能缺少数组或默认字段，这里只补齐表单编辑器
- * 已有默认值并做 schema 校验，避免在转换 workflow 前因为历史字段缺失报错。
+ * 已有默认值；legacy 输入字段交给创建接口的 workflow migration 处理。
  */
 export const normalizeSimpleImportForm = (config: Record<string, unknown>) => {
+  const { type: _type, name: _name, intro: _intro, ...formConfig } = config;
   const defaultForm = getDefaultAppForm();
   const form = {
     ...defaultForm,
-    ...config,
+    ...formConfig,
     aiSettings: {
       ...defaultForm.aiSettings,
       ...((config.aiSettings as Record<string, unknown> | undefined) || {})
@@ -98,7 +97,7 @@ export const normalizeSimpleImportForm = (config: Record<string, unknown>) => {
     }
   };
 
-  return AppFormEditFormV1TypeSchema.safeParse(form);
+  return form as AppFormEditFormType;
 };
 
 const assertImportConfigObject = (config: unknown, t: any): Record<string, unknown> => {
@@ -188,12 +187,8 @@ const parseSimpleImportWorkflow = ({
     throw new Error(t('app:type_not_recognized'));
   }
 
-  const parsedForm = normalizeSimpleImportForm(config);
-  if (!parsedForm.success) {
-    throw new Error(t('app:type_not_recognized'));
-  }
-
-  const workflow = form2AppWorkflow(parsedForm.data as AppFormEditFormType, t);
+  const form = normalizeSimpleImportForm(config);
+  const workflow = form2AppWorkflow(form, t);
 
   return workflow;
 };
@@ -223,27 +218,11 @@ const parseWorkflowLikeImportConfig = async ({
     throw new Error(t('app:type_not_recognized'));
   }
 
-  return await migrateWorkflowToCurrent(
-    {
-      nodes: config.nodes as StoreNodeItemType[],
-      edges: Array.isArray(config.edges) ? (config.edges as StoreEdgeItemType[]) : [],
-      chatConfig: (config.chatConfig ?? {}) as AppChatConfigType
-    },
-    {
-      resolveToolDefinition: async ({ id, version, source }) => {
-        try {
-          const preview = await getClientToolPreviewNode(
-            version === undefined
-              ? { appId: id, getLatestVersion: true, source }
-              : { appId: id, versionId: version, source }
-          );
-          return { inputs: preview.inputs };
-        } catch {
-          return undefined;
-        }
-      }
-    }
-  );
+  return migrateWorkflowToCurrent({
+    nodes: config.nodes as StoreNodeItemType[],
+    edges: Array.isArray(config.edges) ? (config.edges as StoreEdgeItemType[]) : [],
+    chatConfig: (config.chatConfig ?? {}) as AppChatConfigType
+  });
 };
 
 /**

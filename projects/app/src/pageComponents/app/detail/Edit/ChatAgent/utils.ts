@@ -278,18 +278,6 @@ export function agentForm2AppWorkflow(
               label: '',
               valueType: WorkflowIOValueTypeEnum.arrayObject,
               value: data.selectedTools.map((tool) => {
-                if (tool.isUnavailable === true) {
-                  return {
-                    id: tool.pluginId,
-                    version: tool.version,
-                    source: tool.source,
-                    toolConfig: tool.toolConfig,
-                    config: tool.config ?? {},
-                    isUnavailable: true as const,
-                    ...(tool.inputs?.length ? { inputs: tool.inputs } : {})
-                  };
-                }
-
                 const config = tool.inputs.reduce(
                   (acc, input) => {
                     if (input.key === NodeInputKeyEnum.forbidStream) {

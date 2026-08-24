@@ -64,19 +64,7 @@ describe('AgentToolSchema', () => {
     expect(result.version).toBe('');
   });
 
-  it('accepts unavailable tools only through the dedicated branch', () => {
-    const result = AgentToolSchema.parse({
-      id: 'missing-tool',
-      config: {},
-      isUnavailable: true,
-      inputs: [{ key: 'query', mode: AgentToolInputModeEnum.agentGenerated }]
-    });
-
-    expect(result).toMatchObject({ id: 'missing-tool', isUnavailable: true });
-    expect(result.inputs).toEqual([{ key: 'query', mode: AgentToolInputModeEnum.agentGenerated }]);
-  });
-
-  it('rejects unavailable input snapshots on a regular tool', () => {
+  it('rejects historical input snapshots on a regular tool', () => {
     expect(() =>
       AgentToolSchema.parse({
         id: 'tool-1',
@@ -84,16 +72,5 @@ describe('AgentToolSchema', () => {
         inputs: [{ key: 'query', selectedTypeIndex: 1 }]
       })
     ).toThrow();
-  });
-
-  it('preserves canonical inputs on an unavailable tool', () => {
-    const result = AgentToolSchema.parse({
-      id: 'missing-tool',
-      config: {},
-      isUnavailable: true,
-      inputs: []
-    });
-
-    expect(result.inputs).toEqual([]);
   });
 });

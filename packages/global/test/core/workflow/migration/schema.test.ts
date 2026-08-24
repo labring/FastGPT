@@ -79,7 +79,7 @@ describe('workflow migration boundary', () => {
   });
 
   it('rejects V1 nodes before strict V2 parsing', async () => {
-    await expect(
+    expect(() =>
       migrateWorkflowToCurrent({
         nodes: [
           {
@@ -104,7 +104,7 @@ describe('workflow migration boundary', () => {
         ],
         edges: []
       })
-    ).rejects.toThrow();
+    ).toThrow();
   });
 
   it('repairs deterministic V2 structural defects before strict parsing', async () => {
@@ -158,6 +158,35 @@ describe('workflow migration boundary', () => {
       ],
       edges: [],
       chatConfig: { questionGuide: { open: true } }
+    });
+  });
+
+  it.each([
+    ['missing', undefined],
+    ['empty', []],
+    ['invalid', ['removedType']]
+  ])('falls back to reference for %s render types', async (_case, renderTypeList) => {
+    const result = await migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'node-1',
+          flowNodeType: 'pluginInput',
+          name: 'Start',
+          inputs: [
+            {
+              key: 'query',
+              label: 'Query',
+              ...(renderTypeList === undefined ? {} : { renderTypeList })
+            }
+          ],
+          outputs: []
+        }
+      ]
+    } as any);
+
+    expect(result.nodes[0].inputs[0]).toMatchObject({
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      selectedType: FlowNodeInputTypeEnum.reference
     });
   });
 
@@ -393,7 +422,7 @@ describe('workflow migration boundary', () => {
     expect(input).not.toHaveProperty('selectedTypeIndex');
   });
 
-  it('accepts legacy inputs without renderTypeList and emits an empty list', async () => {
+  it('adds reference fallback to agent-capable legacy inputs', async () => {
     const result = await migrateWorkflowToCurrent({
       nodes: [
         {
@@ -406,7 +435,11 @@ describe('workflow migration boundary', () => {
       ]
     } as any);
     const [input] = result.nodes[0].inputs;
-    expect(input.renderTypeList).toEqual([FlowNodeInputTypeEnum.agentGenerated]);
+    expect(input.renderTypeList).toEqual([
+      FlowNodeInputTypeEnum.agentGenerated,
+      FlowNodeInputTypeEnum.reference
+    ]);
+    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.reference);
     expect(input).not.toHaveProperty('selectedTypeIndex');
   });
 
@@ -469,320 +502,8 @@ describe('workflow migration boundary', () => {
     expect(input.inputList?.[0]).not.toHaveProperty('value');
   });
 
-  it('normalizes legacy Agent snapshots to key and mode', async () => {
-    const result = await migrateWorkflowToCurrent(
-      {
-        nodes: [
-          {
-            nodeId: 'agent-1',
-            flowNodeType: 'agent',
-            name: 'Agent',
-            inputs: [
-              {
-                key: NodeInputKeyEnum.selectedTools,
-                label: 'Selected tools',
-                renderTypeList: [FlowNodeInputTypeEnum.selectTool],
-                value: [
-                  {
-                    id: 'tool-1',
-                    config: {},
-                    inputs: [
-                      {
-                        key: 'query',
-                        renderTypeList: [
-                          FlowNodeInputTypeEnum.input,
-                          FlowNodeInputTypeEnum.agentGenerated
-                        ],
-                        selectedTypeIndex: 1
-                      }
-                    ]
-                  }
-                ]
-              }
-            ],
-            outputs: []
-          }
-        ]
-      } as any,
-      {
-        resolveToolDefinition: async () => ({
-          inputs: [
-            {
-              key: 'query',
-              label: 'Query',
-              renderTypeList: [FlowNodeInputTypeEnum.input],
-              defaultToAgentGenerated: true
-            }
-          ]
-        })
-      }
-    );
-    const selectedTools = result.nodes[0].inputs.find(
-      (input) => input.key === NodeInputKeyEnum.selectedTools
-    )!;
-    expect((selectedTools.value as any)[0].inputs).toEqual([
-      { key: 'query', mode: 'agentGenerated' }
-    ]);
-  });
-
-  it('preserves manual values from legacy Agent NodeIO snapshots', async () => {
-    const result = await migrateWorkflowToCurrent(
-      {
-        nodes: [
-          {
-            nodeId: 'agent-1',
-            flowNodeType: 'agent',
-            name: 'Agent',
-            inputs: [
-              {
-                key: NodeInputKeyEnum.selectedTools,
-                label: 'Selected tools',
-                renderTypeList: [FlowNodeInputTypeEnum.selectTool],
-                value: [
-                  {
-                    id: 'tool-1',
-                    config: { retained: 'value', text: 'configured text' },
-                    inputs: [
-                      {
-                        key: 'text',
-                        renderTypeList: [
-                          FlowNodeInputTypeEnum.input,
-                          FlowNodeInputTypeEnum.agentGenerated
-                        ],
-                        selectedType: FlowNodeInputTypeEnum.input,
-                        value: 'saved text'
-                      },
-                      {
-                        key: 'enabled',
-                        renderTypeList: [
-                          FlowNodeInputTypeEnum.switch,
-                          FlowNodeInputTypeEnum.agentGenerated
-                        ],
-                        selectedType: FlowNodeInputTypeEnum.switch,
-                        value: false
-                      },
-                      {
-                        key: 'range',
-                        renderTypeList: [
-                          FlowNodeInputTypeEnum.JSONEditor,
-                          FlowNodeInputTypeEnum.agentGenerated
-                        ],
-                        selectedType: FlowNodeInputTypeEnum.JSONEditor,
-                        value: ['2026-08-20', '2026-08-22']
-                      },
-                      {
-                        key: 'generated',
-                        renderTypeList: [
-                          FlowNodeInputTypeEnum.input,
-                          FlowNodeInputTypeEnum.agentGenerated
-                        ],
-                        selectedType: FlowNodeInputTypeEnum.agentGenerated,
-                        value: 'must not persist'
-                      }
-                    ]
-                  }
-                ]
-              }
-            ],
-            outputs: []
-          }
-        ]
-      } as any,
-      {
-        resolveToolDefinition: async () => ({
-          inputs: [
-            { key: 'text', label: 'Text', renderTypeList: [FlowNodeInputTypeEnum.input] },
-            { key: 'enabled', label: 'Enabled', renderTypeList: [FlowNodeInputTypeEnum.switch] },
-            { key: 'range', label: 'Range', renderTypeList: [FlowNodeInputTypeEnum.JSONEditor] },
-            {
-              key: 'generated',
-              label: 'Generated',
-              renderTypeList: [FlowNodeInputTypeEnum.input],
-              defaultToAgentGenerated: true
-            }
-          ]
-        })
-      }
-    );
-
-    const tool = (result.nodes[0].inputs[0].value as any)[0];
-    expect(tool.config).toEqual({
-      retained: 'value',
-      text: 'configured text',
-      enabled: false,
-      range: ['2026-08-20', '2026-08-22']
-    });
-    expect(tool.inputs).toEqual([
-      { key: 'text', mode: 'manual' },
-      { key: 'enabled', mode: 'manual' },
-      { key: 'range', mode: 'manual' },
-      { key: 'generated', mode: 'agentGenerated' }
-    ]);
-  });
-
-  it('keeps an unavailable Agent tool instead of fabricating empty inputs', async () => {
-    const result = await migrateWorkflowToCurrent(
-      {
-        nodes: [
-          {
-            nodeId: 'agent-1',
-            flowNodeType: 'agent',
-            name: 'Agent',
-            inputs: [
-              {
-                key: NodeInputKeyEnum.selectedTools,
-                label: 'Selected tools',
-                renderTypeList: [FlowNodeInputTypeEnum.selectTool],
-                value: [{ id: 'missing-tool', config: {} }]
-              }
-            ],
-            outputs: []
-          }
-        ]
-      } as any,
-      { resolveToolDefinition: async () => undefined }
-    );
-    const tool = (result.nodes[0].inputs[0].value as any)[0];
-
-    expect(tool).toMatchObject({ id: 'missing-tool', isUnavailable: true });
-    expect(tool).not.toHaveProperty('inputs');
-  });
-
-  it('converts complete legacy snapshots before preserving an unavailable Agent tool', async () => {
-    const legacyInput = {
-      key: 'query',
-      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
-      selectedTypeIndex: 1
-    };
-    const legacyManualInput = {
-      key: 'fixed',
-      renderTypeList: [FlowNodeInputTypeEnum.input],
-      selectedTypeIndex: 0,
-      value: 'saved value'
-    };
-    const malformedInput = {
-      key: 'fallback',
-      mode: 'invalid-mode',
-      value: 'fallback value'
-    };
-    const result = await migrateWorkflowToCurrent(
-      {
-        nodes: [
-          {
-            nodeId: 'agent-1',
-            flowNodeType: 'agent',
-            name: 'Agent',
-            inputs: [
-              {
-                key: NodeInputKeyEnum.selectedTools,
-                label: 'Selected tools',
-                renderTypeList: [FlowNodeInputTypeEnum.selectTool],
-                value: [
-                  {
-                    id: 'missing-tool',
-                    config: {},
-                    isUnavailable: true,
-                    inputs: [legacyInput, legacyManualInput, malformedInput]
-                  }
-                ]
-              }
-            ],
-            outputs: []
-          }
-        ]
-      } as any,
-      { resolveToolDefinition: async () => undefined }
-    );
-    const tool = (result.nodes[0].inputs[0].value as any)[0];
-
-    expect(tool).toMatchObject({
-      isUnavailable: true,
-      inputs: [legacyInput, legacyManualInput, malformedInput],
-      config: {}
-    });
-  });
-
-  it('keeps current config when an unavailable legacy snapshot has stale values', async () => {
-    const result = await migrateWorkflowToCurrent(
-      {
-        nodes: [
-          {
-            nodeId: 'agent-1',
-            flowNodeType: 'agent',
-            name: 'Agent',
-            inputs: [
-              {
-                key: NodeInputKeyEnum.selectedTools,
-                label: 'Selected tools',
-                renderTypeList: [FlowNodeInputTypeEnum.selectTool],
-                value: [
-                  {
-                    id: 'missing-tool',
-                    config: { fixed: 'current value' },
-                    isUnavailable: true,
-                    inputs: [
-                      {
-                        key: 'fixed',
-                        renderTypeList: [FlowNodeInputTypeEnum.input],
-                        selectedType: FlowNodeInputTypeEnum.input,
-                        value: 'stale value'
-                      }
-                    ]
-                  }
-                ]
-              }
-            ],
-            outputs: []
-          }
-        ]
-      } as any,
-      { resolveToolDefinition: async () => undefined }
-    );
-    const tool = (result.nodes[0].inputs[0].value as any)[0];
-
-    expect(tool.config).toEqual({ fixed: 'current value' });
-  });
-
-  it('does not restore agent-generated mode for unsupported inputs', async () => {
-    const result = await migrateWorkflowToCurrent(
-      {
-        nodes: [
-          {
-            nodeId: 'agent-1',
-            flowNodeType: 'agent',
-            name: 'Agent',
-            inputs: [
-              {
-                key: NodeInputKeyEnum.selectedTools,
-                label: 'Selected tools',
-                renderTypeList: [FlowNodeInputTypeEnum.selectTool],
-                value: [{ id: 'tool-1', config: {} }]
-              }
-            ],
-            outputs: []
-          }
-        ]
-      } as any,
-      {
-        resolveToolDefinition: async () => ({
-          inputs: [
-            {
-              key: 'secret',
-              label: 'Secret',
-              renderTypeList: [FlowNodeInputTypeEnum.password],
-              defaultToAgentGenerated: true
-            }
-          ]
-        })
-      }
-    );
-    const tool = (result.nodes[0].inputs[0].value as any)[0];
-
-    expect(tool).not.toHaveProperty('inputs');
-  });
-
-  it('uses current definitions to repair bad Agent input snapshots', async () => {
-    const input = {
+  it('trusts canonical Agent tool key and mode values', async () => {
+    const result = await migrateWorkflowToCurrent({
       nodes: [
         {
           nodeId: 'agent-1',
@@ -796,9 +517,11 @@ describe('workflow migration boundary', () => {
               value: [
                 {
                   id: 'tool-1',
-                  isUnavailable: true,
-                  inputs: [{ key: 'query', mode: 'bad' }],
-                  config: {}
+                  inputs: [
+                    { key: 'query', mode: 'agentGenerated' },
+                    { key: 'fixed', mode: 'manual' }
+                  ],
+                  config: { fixed: 'saved value' }
                 }
               ]
             }
@@ -806,33 +529,21 @@ describe('workflow migration boundary', () => {
           outputs: []
         }
       ]
-    } as any;
-    const result = await migrateWorkflowToCurrent(input, {
-      resolveToolDefinition: async () => ({
-        inputs: [
-          {
-            key: 'query',
-            label: 'Query',
-            renderTypeList: [FlowNodeInputTypeEnum.input],
-            defaultToAgentGenerated: true
-          },
-          {
-            key: 'fixed',
-            label: 'Fixed',
-            renderTypeList: [FlowNodeInputTypeEnum.input]
-          }
-        ]
-      })
-    });
-    const tool = (result.nodes[0].inputs[0].value as any)[0];
+    } as any);
 
-    expect(tool.inputs).toEqual([{ key: 'query', mode: 'agentGenerated' }]);
-    expect(tool).not.toHaveProperty('isUnavailable');
+    expect((result.nodes[0].inputs[0].value as any)[0]).toEqual({
+      id: 'tool-1',
+      inputs: [
+        { key: 'query', mode: 'agentGenerated' },
+        { key: 'fixed', mode: 'manual' }
+      ],
+      config: { fixed: 'saved value' }
+    });
   });
 
-  it('keeps sparse Agent input overrides when the current definition adds keys', async () => {
-    const result = await migrateWorkflowToCurrent(
-      {
+  it('rejects legacy tool input snapshots and invalid modes', async () => {
+    expect(() =>
+      migrateWorkflowToCurrent({
         nodes: [
           {
             nodeId: 'agent-1',
@@ -846,9 +557,8 @@ describe('workflow migration boundary', () => {
                 value: [
                   {
                     id: 'tool-1',
-                    config: {},
-                    isUnavailable: true,
-                    inputs: [{ key: 'query', mode: 'agentGenerated' }]
+                    inputs: [{ key: 'query', selectedType: 'agentGenerated' }],
+                    config: {}
                   }
                 ]
               }
@@ -856,29 +566,35 @@ describe('workflow migration boundary', () => {
             outputs: []
           }
         ]
-      } as any,
-      {
-        resolveToolDefinition: async () => ({
-          inputs: [
-            {
-              key: 'query',
-              label: 'Query',
-              renderTypeList: [FlowNodeInputTypeEnum.input],
-              defaultToAgentGenerated: false
-            },
-            {
-              key: 'new-input',
-              label: 'New input',
-              renderTypeList: [FlowNodeInputTypeEnum.input]
-            }
-          ]
-        })
-      }
-    );
-    const tool = (result.nodes[0].inputs[0].value as any)[0];
+      } as any)
+    ).toThrow();
 
-    expect(tool.inputs).toEqual([{ key: 'query', mode: 'agentGenerated' }]);
-    expect(tool).not.toHaveProperty('isUnavailable');
+    expect(() =>
+      migrateWorkflowToCurrent({
+        nodes: [
+          {
+            nodeId: 'agent-1',
+            flowNodeType: 'agent',
+            name: 'Agent',
+            inputs: [
+              {
+                key: NodeInputKeyEnum.selectedTools,
+                label: 'Selected tools',
+                renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+                value: [
+                  {
+                    id: 'tool-1',
+                    inputs: [{ key: 'query', mode: 'invalid-mode' }],
+                    config: {}
+                  }
+                ]
+              }
+            ],
+            outputs: []
+          }
+        ]
+      } as any)
+    ).toThrow();
   });
 
   it('restores legacy toolDescription defaults for tool nodes', async () => {
@@ -1122,128 +838,7 @@ describe('workflow migration boundary', () => {
     );
   });
 
-  it('calls resolver only for Agent tools with incomplete historical inputs', async () => {
-    const input = {
-      nodes: [
-        {
-          nodeId: 'agent-1',
-          flowNodeType: 'agent',
-          name: 'Agent',
-          inputs: [
-            {
-              key: NodeInputKeyEnum.selectedTools,
-              label: 'Selected tools',
-              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
-              value: [{ id: 'tool-1', config: {} }]
-            }
-          ],
-          outputs: []
-        }
-      ]
-    } as any;
-    const resolver = async () => ({
-      inputs: [
-        {
-          key: 'query',
-          label: 'Query',
-          renderTypeList: [FlowNodeInputTypeEnum.input],
-          defaultToAgentGenerated: true
-        }
-      ]
-    });
-    const migrated = await migrateWorkflowToCurrent(input, { resolveToolDefinition: resolver });
-
-    expect(input.nodes[0].inputs[0].value[0]).not.toHaveProperty('inputs');
-    const selectedTools = migrated.nodes[0].inputs.find(
-      (input) => input.key === NodeInputKeyEnum.selectedTools
-    )!;
-    expect((selectedTools.value as any)[0]).not.toHaveProperty('inputs');
-  });
-
-  it('restores all-agent defaults only for legacy system and commercial Agent tools', async () => {
-    const result = await migrateWorkflowToCurrent(
-      {
-        nodes: [
-          {
-            nodeId: 'agent-1',
-            flowNodeType: 'agent',
-            name: 'Agent',
-            inputs: [
-              {
-                key: NodeInputKeyEnum.selectedTools,
-                label: 'Selected tools',
-                renderTypeList: [FlowNodeInputTypeEnum.selectTool],
-                value: [
-                  { id: 'systemTool-search', config: {} },
-                  { id: 'commercial-search', config: {} },
-                  { id: 'personal-search', config: {} },
-                  { id: 'systemTool-empty', config: {}, inputs: [] },
-                  {
-                    id: 'systemTool-configured',
-                    config: {},
-                    inputs: [{ key: 'query', mode: 'manual' }]
-                  }
-                ]
-              }
-            ],
-            outputs: []
-          }
-        ]
-      } as any,
-      {
-        resolveToolDefinition: async () => ({
-          inputs: [
-            {
-              key: 'query',
-              label: 'Query',
-              renderTypeList: [FlowNodeInputTypeEnum.input],
-              defaultToAgentGenerated: false
-            }
-          ]
-        })
-      }
-    );
-    const tools = (result.nodes[0].inputs[0].value as any[]).map((tool) => tool.inputs);
-
-    expect(tools).toEqual([
-      undefined,
-      undefined,
-      undefined,
-      [],
-      [{ key: 'query', mode: 'manual' }]
-    ]);
-  });
-
-  it('does not call resolver for current Agent tool inputs', async () => {
-    const input = {
-      nodes: [
-        {
-          nodeId: 'agent-1',
-          flowNodeType: 'agent',
-          name: 'Agent',
-          inputs: [
-            {
-              key: NodeInputKeyEnum.selectedTools,
-              label: 'Selected tools',
-              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
-              value: [{ id: 'tool-1', config: {}, inputs: [{ key: 'query', mode: 'manual' }] }]
-            }
-          ],
-          outputs: []
-        }
-      ]
-    } as any;
-    let resolverCalls = 0;
-    await migrateWorkflowToCurrent(input, {
-      resolveToolDefinition: async () => {
-        resolverCalls += 1;
-        return undefined;
-      }
-    });
-    expect(resolverCalls).toBe(0);
-  });
-
-  it('removes unavailable recovery fields from current Agent tools', async () => {
+  it('keeps canonical config and removes historical recovery fields', async () => {
     const result = await migrateWorkflowToCurrent({
       nodes: [
         {
@@ -1259,8 +854,9 @@ describe('workflow migration boundary', () => {
                 {
                   id: 'tool-1',
                   config: {},
-                  isUnavailable: false,
-                  inputs: [{ key: 'query', mode: 'manual', extra: true }]
+                  legacyRecoveryFlag: true,
+                  legacyRecoveryInputs: [{ key: 'query', mode: 'manual' }],
+                  inputs: [{ key: 'query', mode: 'manual' }]
                 }
               ]
             }
@@ -1272,41 +868,8 @@ describe('workflow migration boundary', () => {
     const tool = (result.nodes[0].inputs[0].value as any)[0];
 
     expect(tool).toMatchObject({ id: 'tool-1', inputs: [{ key: 'query', mode: 'manual' }] });
-    expect(tool).not.toHaveProperty('isUnavailable');
-    expect(tool.inputs[0]).not.toHaveProperty('extra');
-  });
-
-  it('skips nested Agent tool migration for tool-definition previews', async () => {
-    const input = {
-      nodes: [
-        {
-          nodeId: 'agent-1',
-          flowNodeType: 'agent',
-          name: 'Agent',
-          inputs: [
-            {
-              key: NodeInputKeyEnum.selectedTools,
-              label: 'Selected tools',
-              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
-              value: [{ id: 'nested-tool', config: {} }]
-            }
-          ],
-          outputs: []
-        }
-      ]
-    } as any;
-    let resolverCalls = 0;
-
-    const result = await migrateWorkflowToCurrent(input, {
-      migrateAgentTools: false,
-      resolveToolDefinition: async () => {
-        resolverCalls += 1;
-        return undefined;
-      }
-    });
-
-    expect(resolverCalls).toBe(0);
-    expect((result.nodes[0].inputs[0].value as any)[0]).not.toHaveProperty('isUnavailable');
+    expect(tool).not.toHaveProperty('legacyRecoveryFlag');
+    expect(tool).not.toHaveProperty('legacyRecoveryInputs');
   });
 
   it('is idempotent for workflow data', async () => {
