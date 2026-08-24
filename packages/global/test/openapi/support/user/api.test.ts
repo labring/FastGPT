@@ -29,6 +29,7 @@ import {
   ListTeamMembersBodySchema,
   ListTeamMembersResponseSchema
 } from '@fastgpt/global/openapi/support/user/team/member/api';
+import { GetInvitationLinkInfoResponseSchema } from '@fastgpt/global/openapi/support/user/team/invitationLink/api';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { InformLevelEnum } from '@fastgpt/global/support/user/inform/constants';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
@@ -252,6 +253,10 @@ describe('support user OpenAPI contracts', () => {
     });
     expect(UserSyncBodySchema.parse(undefined)).toEqual({});
     expect(UserSyncResponseSchema.parse(undefined)).toBeUndefined();
+  });
+
+  it('allows empty invitation details for existing team members', () => {
+    expect(GetInvitationLinkInfoResponseSchema.parse(undefined)).toBeUndefined();
   });
 
   it('parses team management list and write contracts', () => {

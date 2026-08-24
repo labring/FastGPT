@@ -141,7 +141,9 @@ export const GetInvitationLinkInfoResponseSchema = z
     teamAvatar: z.string().nullish().meta({ description: '团队头像' }),
     teamName: z.string().meta({ description: '团队名称' })
   })
-  .meta({ description: '邀请链接详情' });
+  // 当前用户已经是团队成员时，接口沿用历史行为返回空数据。
+  .optional()
+  .meta({ description: '邀请链接详情；当前用户已是团队成员时无返回数据' });
 export type GetInvitationLinkInfoResponseType = z.infer<typeof GetInvitationLinkInfoResponseSchema>;
 
 /* ============================================================================
