@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   OwnerRoleVal,
@@ -356,5 +356,114 @@ describe('materializeResourcePermissions', () => {
         collaborator: { tmbId: String(users.owner.tmbId) }
       })
     ).resolves.toMatchObject({ permission: OwnerRoleVal });
+  });
+
+  it('materializes inherited ACLs for Dataset and Agent Skill children', async () => {
+    const users = await getFakeUsers(2);
+    const [datasetParent, datasetChild] = await MongoDataset.create([
+      {
+        teamId: users.owner.teamId,
+        tmbId: users.owner.tmbId,
+        name: 'migration-dataset-parent',
+        type: DatasetTypeEnum.folder
+      },
+      {
+        teamId: users.owner.teamId,
+        tmbId: users.owner.tmbId,
+        name: 'migration-dataset-child',
+        type: DatasetTypeEnum.dataset,
+        parentId: undefined
+      }
+    ]);
+    const [skillParent, skillChild] = await MongoAgentSkills.create([
+      {
+        teamId: users.owner.teamId,
+        tmbId: users.owner.tmbId,
+        name: 'migration-skill-parent',
+        type: AgentSkillTypeEnum.folder,
+        source: AgentSkillSourceEnum.personal
+      },
+      {
+        teamId: users.owner.teamId,
+        tmbId: users.owner.tmbId,
+        name: 'migration-skill-child',
+        type: AgentSkillTypeEnum.skill,
+        source: AgentSkillSourceEnum.personal,
+        parentId: undefined
+      }
+    ]);
+
+    await MongoDataset.updateOne({ _id: datasetChild._id }, { parentId: datasetParent._id });
+    await MongoAgentSkills.updateOne({ _id: skillChild._id }, { parentId: skillParent._id });
+
+    const parentCollaborators = [
+      { tmbId: String(users.owner.tmbId), permission: OwnerRoleVal },
+      { tmbId: String(users.members[0].tmbId), permission: ReadRoleVal }
+    ];
+    await mongoSessionRun(async (session) => {
+      await resourcePermissionRepo.replaceResource({
+        teamId: String(users.owner.teamId),
+        resourceType: PerResourceTypeEnum.dataset,
+        resourceId: String(datasetParent._id),
+        collaborators: parentCollaborators,
+        session
+      });
+      await resourcePermissionRepo.replaceResource({
+        teamId: String(users.owner.teamId),
+        resourceType: PerResourceTypeEnum.agentSkill,
+        resourceId: String(skillParent._id),
+        collaborators: parentCollaborators,
+        session
+      });
+    });
+
+    const result = await materializeResourcePermissions({
+      dryRun: false,
+      teamId: String(users.owner.teamId),
+      batchSize: 100
+    });
+
+    expect(result).toMatchObject({
+      resourceCount: 4,
+      updatedResourceCount: 2,
+      skippedResourceCount: 0,
+      errors: []
+    });
+    await expect(
+      resourcePermissionRepo.findByResource({
+        teamId: String(users.owner.teamId),
+        resourceType: PerResourceTypeEnum.dataset,
+        resourceId: String(datasetChild._id)
+      })
+    ).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          tmbId: String(users.owner.tmbId),
+          permission: OwnerRoleVal
+        }),
+        expect.objectContaining({
+          tmbId: String(users.members[0].tmbId),
+          permission: ReadRoleVal
+        })
+      ])
+    );
+    await expect(
+      resourcePermissionRepo.findByResource({
+        teamId: String(users.owner.teamId),
+        resourceType: PerResourceTypeEnum.agentSkill,
+        resourceId: String(skillChild._id)
+      })
+    ).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          tmbId: String(users.owner.tmbId),
+          permission: OwnerRoleVal
+        }),
+        expect.objectContaining({
+          tmbId: String(users.members[0].tmbId),
+          permission: ReadRoleVal
+        })
+      ])
+    );
   });
 });

@@ -99,7 +99,7 @@ export async function getResourceOwnedClbs({
     }
 )) {
   return resourcePermissionRepo.findByResource({
-    resourceId: resourceId === undefined ? undefined : String(resourceId),
+    resourceId: resourceId == null ? undefined : String(resourceId),
     resourceType: resourceType as PerResourceTypeEnum,
     teamId,
     session

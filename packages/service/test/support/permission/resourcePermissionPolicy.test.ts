@@ -112,4 +112,23 @@ describe('calculateInheritedResourceCollaborators', () => {
 
     expect(result).toEqual([user('owner', OwnerRoleVal)]);
   });
+
+  it('preserves group and org collaborators while recalculating inheritance', () => {
+    const result = calculateInheritedResourceCollaborators({
+      oldParentCollaborators: [
+        { groupId: 'group-1', permission: ReadRoleVal },
+        { orgId: 'org-1', permission: WriteRoleVal }
+      ],
+      newParentCollaborators: [
+        { groupId: 'group-1', permission: WriteRoleVal },
+        { orgId: 'org-1', permission: ManageRoleVal }
+      ],
+      childCollaborators: []
+    });
+
+    expect(result).toEqual([
+      { groupId: 'group-1', permission: WriteRoleVal },
+      { orgId: 'org-1', permission: ManageRoleVal }
+    ]);
+  });
 });
