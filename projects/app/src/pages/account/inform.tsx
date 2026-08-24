@@ -56,7 +56,13 @@ const InformTable = () => {
 
   return (
     <AccountContainer>
-      <Flex {...accountPageRootStyles} flexDirection="column" position="relative" pb={[0, 6]}>
+      <Flex
+        {...accountPageRootStyles}
+        minH={['100%', 0]}
+        flexDirection="column"
+        position="relative"
+        pb={[0, 6]}
+      >
         <Flex
           display={['none', 'flex']}
           h={'64px'}
@@ -86,7 +92,7 @@ const InformTable = () => {
               border={theme.borders.md}
               py={5}
               px={6}
-              maxH="168px"
+              maxH={['none', '168px']}
               maxW="800px"
               minW="200px"
               width="100%"
@@ -104,28 +110,29 @@ const InformTable = () => {
                 setSelectedInform(item);
               }}
             >
-              <Flex alignItems="center">
+              <Flex alignItems={['stretch', 'center']} flexDirection={['column', 'row']}>
                 <Box {...textStyles.title}>
                   {item.teamId ? `【${item.teamName}】` : ''}
                   {item.title}
                 </Box>
-                <Flex ml={3} flex={1} alignItems="center">
+                <Flex mt={[1, 0]} ml={[0, 3]} flex={1} alignItems="center">
                   <Box {...textStyles.time}>
                     {t(formatTimeToChatTime(item.time) as any).replace('#', ':')}
                   </Box>
                   {!item.read && <Box w={2} h={2} borderRadius="full" bg="red.600" ml={3} />}
-                </Flex>
 
-                <MyTag
-                  colorSchema={item.teamId ? 'green' : 'blue'}
-                  mr={2}
-                  fontSize="xs"
-                  fontWeight="medium"
-                  showDot={false}
-                  type="fill"
-                >
-                  {item.teamId ? t('account_inform:team') : t('account_inform:system')}
-                </MyTag>
+                  <MyTag
+                    colorSchema={item.teamId ? 'green' : 'blue'}
+                    ml="auto"
+                    mr={2}
+                    fontSize="xs"
+                    fontWeight="medium"
+                    showDot={false}
+                    type="fill"
+                  >
+                    {item.teamId ? t('account_inform:team') : t('account_inform:system')}
+                  </MyTag>
+                </Flex>
               </Flex>
 
               <Box
