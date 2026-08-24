@@ -5,6 +5,8 @@ import { migrateLegacyWorkflowStructureToCurrent } from './legacy/workflow';
 import { migrateLegacyWorkflowStructureData } from './legacy/structure';
 import { FlowNodeTypeEnum } from '../node/constant';
 import { NodeInputKeyEnum } from '../constants';
+import { AgentToolInputModeEnum } from '../../app/tool/constants';
+import { isToolInputValueConfigured } from '../../app/formEdit/utils';
 
 /**
  * 将外部 workflow 迁移为严格 canonical 数据。
@@ -51,8 +53,18 @@ export const migrateWorkflowToCurrent = (input: LegacyWorkflowDataInput): Canoni
             rawConfig && typeof rawConfig === 'object' && !Array.isArray(rawConfig)
               ? rawConfig
               : {};
+          const inputs = Array.isArray(tool.inputs)
+            ? tool.inputs
+            : Object.entries(config).map(([key, value]) => ({
+                key,
+                mode: isToolInputValueConfigured({
+                  input: { renderTypeList: [], value, defaultValue: undefined }
+                })
+                  ? AgentToolInputModeEnum.manual
+                  : AgentToolInputModeEnum.agentGenerated
+              }));
 
-          return { ...availableTool, config };
+          return { ...availableTool, inputs, config };
         });
 
         return {

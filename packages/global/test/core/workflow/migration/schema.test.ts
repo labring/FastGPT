@@ -230,6 +230,99 @@ describe('workflow migration boundary', () => {
     expect((result.nodes[0].inputs[0].value as any)[0]).toMatchObject({ config: {} });
   });
 
+  it('migrates legacy Agent tool config values into input modes', async () => {
+    const config = {
+      text: 'value',
+      zero: 0,
+      falseValue: false,
+      trueValue: true,
+      array: ['value'],
+      object: { value: 'value' },
+      emptyText: '',
+      emptyArray: [],
+      emptyObject: {},
+      nullValue: null,
+      undefinedValue: undefined
+    };
+    const result = await migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'agent-1',
+          flowNodeType: 'agent',
+          name: 'Agent',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+              value: [{ id: 'tool-1', config }]
+            }
+          ],
+          outputs: []
+        }
+      ]
+    } as any);
+
+    const tool = (result.nodes[0].inputs[0].value as any)[0];
+
+    expect(tool.inputs).toEqual([
+      { key: 'text', mode: 'manual' },
+      { key: 'zero', mode: 'manual' },
+      { key: 'falseValue', mode: 'manual' },
+      { key: 'trueValue', mode: 'manual' },
+      { key: 'array', mode: 'manual' },
+      { key: 'object', mode: 'manual' },
+      { key: 'emptyText', mode: 'agentGenerated' },
+      { key: 'emptyArray', mode: 'agentGenerated' },
+      { key: 'emptyObject', mode: 'agentGenerated' },
+      { key: 'nullValue', mode: 'agentGenerated' },
+      { key: 'undefinedValue', mode: 'agentGenerated' }
+    ]);
+    expect(tool.config).toEqual(config);
+  });
+
+  it('keeps explicit Agent tool input modes unchanged', async () => {
+    const result = await migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'agent-1',
+          flowNodeType: 'agent',
+          name: 'Agent',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+              value: [
+                {
+                  id: 'tool-1',
+                  inputs: [
+                    { key: 'manualValue', mode: 'manual' },
+                    { key: 'generatedValue', mode: 'agentGenerated' }
+                  ],
+                  config: {
+                    manualValue: '',
+                    generatedValue: 'saved value'
+                  }
+                }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ]
+    } as any);
+
+    expect((result.nodes[0].inputs[0].value as any)[0]).toMatchObject({
+      inputs: [
+        { key: 'manualValue', mode: 'manual' },
+        { key: 'generatedValue', mode: 'agentGenerated' }
+      ],
+      config: {
+        manualValue: '',
+        generatedValue: 'saved value'
+      }
+    });
+  });
+
   it('normalizes registered tool, plugin, and variable storage defects', async () => {
     const result = await migrateWorkflowToCurrent({
       nodes: [
