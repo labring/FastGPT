@@ -19,6 +19,9 @@ const exactMap: Record<string, string> = {
   // Self-host.
   '/upgrading/intro': '/self-host/upgrading/upgrade-instruction',
   '/upgrading': '/self-host/upgrading/upgrade-instruction',
+  // Pre-rename misspellings of the upgrade page keep resolving.
+  '/self-host/upgrading/upgrade-intruction': '/self-host/upgrading/upgrade-instruction',
+  '/upgrading/upgrade-intruction': '/self-host/upgrading/upgrade-instruction',
   '/introduction/development/docker': '/self-host/deploy/docker',
   '/introduction/development/sealos': '/self-host/deploy/sealos',
   '/introduction/development/intro': '/self-host/dev',
