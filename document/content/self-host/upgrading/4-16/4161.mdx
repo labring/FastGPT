@@ -9,7 +9,7 @@ upgradeTags:
 
 ## 📦 升级指南
 
-### 更新 Agent Sandbox 环境变量和运行态镜像
+### 1. 更新 Agent Sandbox 环境变量和运行态镜像
 
 启用 Agent Sandbox 时，请在 `fastgpt-app` 和 `fastgpt-pro` 中同步检查以下配置。4.16.1 使用完整的运行态镜像地址：
 
@@ -27,7 +27,13 @@ AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu
 
 中国大陆镜像源和全球镜像源的完整镜像列表、root/non-root 镜像选择，以及自定义依赖源配置，请参考 [OpenSandbox 配置](../../config/sandbox/opensandbox)。
 
-### 迁移工具 JSON Schema 存储格式
+### 2. 镜像更新
+
+- 更新 fastgpt-app（FastGPT 主服务）镜像 tag: v4.16.1
+- 更新 fastgpt-pro（FastGPT 商业版）镜像 tag: v4.16.1
+- 更新 fastgpt-plugin 镜像 tag: v1.1.1
+
+### 3. 迁移工具 JSON Schema 存储格式
 
 请严格按以下版本顺序执行迁移：
 
@@ -71,6 +77,7 @@ curl -X POST 'https://你的域名/api/admin/4161/initToolJsonSchemaStorage' \
 2. AgentV2 调用子工作流，工作流内流输出内容未禁用。
 3. 团队邀请链接，可重复接收同一个团队邀请。
 4. 使用记录，日期选择器会多一天。
+5. 修复知识库未配置图片模型时，客户端错误回退展示的问题。
 
 ## 🛠️ 代码优化
 
