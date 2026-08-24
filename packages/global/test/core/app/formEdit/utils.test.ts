@@ -313,6 +313,19 @@ describe('checkNeedsUserConfiguration', () => {
       const result = checkNeedsUserConfiguration(tool);
       expect(result).toBe(false);
     });
+
+    it('should tolerate legacy inputs without renderTypeList', () => {
+      const tool = {
+        inputs: [
+          {
+            ...createMockInput(),
+            renderTypeList: undefined
+          }
+        ]
+      } as unknown as { inputs: FlowNodeInputItemType[] };
+
+      expect(checkNeedsUserConfiguration(tool)).toBe(false);
+    });
   });
 
   describe('when configuration is needed', () => {

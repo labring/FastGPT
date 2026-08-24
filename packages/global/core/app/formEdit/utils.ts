@@ -620,7 +620,7 @@ export const checkNeedsUserConfiguration = (toolTemplate: {
         if (!canInputBeConfiguredAsToolParam(normalizedInput)) return false;
 
         // 检查是否包含表单类型的输入
-        return input.renderTypeList.some((type) => formRenderTypesMap[type]);
+        return normalizedInput.renderTypeList.some((type) => formRenderTypesMap[type]);
       })) ||
     false
   );
@@ -663,7 +663,7 @@ export const getToolConfigStatus = ({
     if (isAgentGeneratedToolInput(normalizedInput) && canInputBeAgentGenerated(normalizedInput))
       return false;
     if (input.required !== true) return false;
-    return input.renderTypeList.some((type) => formRenderTypesMap[type]);
+    return normalizedInput.renderTypeList.some((type) => formRenderTypesMap[type]);
   });
 
   // Check if all required fields are filled
