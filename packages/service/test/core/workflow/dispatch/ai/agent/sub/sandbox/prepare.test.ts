@@ -285,41 +285,6 @@ describe('ensureAgentSandboxRuntime', () => {
     expect(runAgentSkillVersionEntrypointsMock).not.toHaveBeenCalled();
   });
 
-  it('creates builtin skill prepare action with lazy source loading', async () => {
-    const { createBuiltinSkillPrepareAction } =
-      await import('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/sandbox/prepare');
-    const builtinSkillSources = [
-      {
-        name: 'skill-creator',
-        files: [
-          {
-            relativePath: 'SKILL.md',
-            content: Buffer.from('# Skill Creator')
-          }
-        ]
-      }
-    ];
-    const getSources = vi.fn(async () => builtinSkillSources);
-
-    const result = await createBuiltinSkillPrepareAction({ getSources })({
-      sandbox: sandboxProviderMock,
-      sandboxClient: sandboxClientMock,
-      workDirectory: '/workspace',
-      deployedSkillVersions: [],
-      skillInfos: [],
-      skillScanDirectories: []
-    });
-
-    expect(getSources).toHaveBeenCalledTimes(1);
-    expect(resolveSandboxHomeMock).toHaveBeenCalledWith(sandboxProviderMock);
-    expect(syncBuiltinSkillsToSandboxMock).toHaveBeenCalledWith({
-      sandbox: sandboxProviderMock,
-      homeDirectory: '/home/sandbox',
-      sources: builtinSkillSources
-    });
-    expect(result.skillScanDirectories).toEqual(['/home/sandbox/.fastgpt/skills/skill-creator']);
-  });
-
   it('returns empty skill infos when sandbox runtime is not needed', async () => {
     const { ensureAgentSandboxRuntime } =
       await import('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/sandbox/prepare');

@@ -117,7 +117,10 @@ describe('buildAgentLoopCoreInput', () => {
             askToolCallId: 'call_ask'
           }
         },
-        userAnswer: 'confirmed',
+        continuation: {
+          type: 'ask',
+          answer: 'confirmed'
+        },
         childrenInteractiveParams
       })
     ).toEqual({
@@ -133,7 +136,10 @@ describe('buildAgentLoopCoreInput', () => {
           askToolCallId: 'call_ask'
         }
       },
-      userAnswer: 'confirmed',
+      continuation: {
+        type: 'ask',
+        answer: 'confirmed'
+      },
       childrenInteractiveParams
     });
   });

@@ -1,11 +1,82 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  createBuiltinSkillPrepareAction,
   getBuiltinSkillsRootPath,
   syncBuiltinSkillsToSandbox
 } from '@fastgpt/service/core/ai/sandbox/application/runtime/skill/builtin';
 import { buildRuntimeHash } from '@fastgpt/service/core/ai/sandbox/utils';
 
 describe('builtin skill runtime', () => {
+  it('creates a lazy prepare action and registers synced skill directories', async () => {
+    const sources = [
+      {
+        name: 'skill-creator',
+        files: createBuiltinSkillSourceFiles()
+      }
+    ];
+    const sandbox = {
+      execute: vi.fn(async () => ({ exitCode: 0, stdout: '/home/sandbox', stderr: '' }))
+    };
+    const injectToSandbox = vi.fn();
+    const context = {
+      sandbox: sandbox as any,
+      workDirectory: '/workspace',
+      skillScanDirectories: ['/existing-skill']
+    };
+
+    const result = await createBuiltinSkillPrepareAction({
+      getSources: vi.fn(async () => sources),
+      injectToSandbox
+    })(context);
+
+    expect(injectToSandbox).toHaveBeenCalledWith({
+      sandbox,
+      homeDirectory: '/home/sandbox',
+      sources
+    });
+    expect(result.skillScanDirectories).toEqual([
+      '/existing-skill',
+      '/home/sandbox/.fastgpt/skills/skill-creator'
+    ]);
+  });
+
+  it('does not inspect sandbox HOME when there are no builtin skills', async () => {
+    const sandbox = { execute: vi.fn() };
+    const context = {
+      sandbox: sandbox as any,
+      workDirectory: '/workspace',
+      skillScanDirectories: []
+    };
+
+    const result = await createBuiltinSkillPrepareAction({
+      getSources: vi.fn(async () => [])
+    })(context);
+
+    expect(result).toBe(context);
+    expect(sandbox.execute).not.toHaveBeenCalled();
+  });
+
+  it('fails explicitly when builtin skills exist but sandbox HOME is unavailable', async () => {
+    const context = {
+      sandbox: {
+        execute: vi.fn(async () => ({ exitCode: 1, stdout: '', stderr: 'HOME unavailable' }))
+      } as any,
+      workDirectory: '/workspace',
+      skillScanDirectories: []
+    };
+
+    await expect(
+      createBuiltinSkillPrepareAction({
+        getSources: vi.fn(async () => [
+          {
+            name: 'skill-creator',
+            files: createBuiltinSkillSourceFiles()
+          }
+        ])
+      })(context)
+    ).rejects.toThrow('Failed to resolve sandbox HOME for builtin skill sync');
+  });
+
   it('injects builtin skill files into runtime directory instead of user workspace', async () => {
     const skillCreatorSource = {
       name: 'skill-creator',
