@@ -9,7 +9,7 @@ import {
   type FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
 import Container from '../../components/Container';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import {
   FlowNodeInputMap,
   FlowNodeInputTypeEnum,
@@ -33,7 +33,7 @@ const FieldEditModal = dynamic(() => import('./InputEditModal'));
 */
 
 const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { nodeId, inputs = [], outputs } = data;
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);

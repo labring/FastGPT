@@ -12,11 +12,10 @@ import { AppContext } from './context';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import type { WorkflowSnapshotsType } from './WorkflowComponents/context/workflowSnapshotContext';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
-import Avatar from '@fastgpt/web/components/common/Avatar';
 import Tag from '@fastgpt/web/components/common/Tag';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import VersionPublisherPopover from '@fastgpt/web/components/common/VersionPublisherPopover';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type {
@@ -247,7 +246,7 @@ const TeamCloud = ({
   );
 
   return (
-    <ScrollData flex={'1 0 0'} px={6} isLoading={isLoadingVersion}>
+    <ScrollData flex={'1 0 0'} px={6} pb={6} isLoading={isLoadingVersion}>
       {scrollDataList.map((item, index) => {
         const firstPublishedIndex = scrollDataList.findIndex((data) => data.isPublish);
 
@@ -267,46 +266,7 @@ const TeamCloud = ({
             }}
             onClick={() => editIndex === undefined && onChangeVersion(item)}
           >
-            <MyPopover
-              trigger="hover"
-              placement={'bottom-end'}
-              w={'208px'}
-              h={'72px'}
-              Trigger={
-                <Box>
-                  <Avatar
-                    src={item.sourceMember.avatar}
-                    borderRadius={'50%'}
-                    w={'24px'}
-                    h={'24px'}
-                  />
-                </Box>
-              }
-            >
-              {() => (
-                <Flex alignItems={'center'} h={'full'} pl={5} gap={2}>
-                  <Box>
-                    <Avatar
-                      src={item.sourceMember.avatar}
-                      borderRadius={'50%'}
-                      w={'36px'}
-                      h={'36px'}
-                    />
-                  </Box>
-                  <Box>
-                    <Flex gap={1} fontSize={'sm'} color={'myGray.900'}>
-                      <Box>{item.sourceMember.name}</Box>
-                      {item.sourceMember.status === 'leave' && (
-                        <Tag color="gray">{t('common:user_leaved')}</Tag>
-                      )}
-                    </Flex>
-                    <Box fontSize={'xs'} mt={2} color={'myGray.500'}>
-                      {formatTime2YMDHMS(item.time)}
-                    </Box>
-                  </Box>
-                </Flex>
-              )}
-            </MyPopover>
+            <VersionPublisherPopover sourceMember={item.sourceMember} time={item.time} />
             {editIndex !== index ? (
               <>
                 <Box

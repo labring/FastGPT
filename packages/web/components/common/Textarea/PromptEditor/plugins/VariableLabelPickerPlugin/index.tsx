@@ -9,7 +9,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import { useBasicTypeaheadTriggerMatch } from '../../utils';
 import { type EditorVariableLabelPickerType } from '../../type';
 import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '../../../../../../hooks/useSafeTranslation';
 import Avatar from '../../../../Avatar';
 
 interface EditorVariableItemType {
@@ -34,7 +34,7 @@ export default function VariableLabelPickerPlugin({
   variables: EditorVariableLabelPickerType[];
   isFocus: boolean;
 }) {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const [editor] = useLexicalComposerContext();
   const [queryString, setQueryString] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState<number>(0);

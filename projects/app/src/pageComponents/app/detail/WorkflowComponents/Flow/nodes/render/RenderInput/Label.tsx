@@ -1,6 +1,6 @@
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import React, { useCallback, useMemo } from 'react';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Flex } from '@chakra-ui/react';
 
 import NodeInputSelect, {
@@ -25,7 +25,7 @@ type Props = {
 };
 
 const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 

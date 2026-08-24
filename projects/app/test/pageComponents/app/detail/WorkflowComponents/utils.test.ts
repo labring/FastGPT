@@ -701,5 +701,36 @@ describe('WorkflowComponents utils', () => {
 
       expect(result).toEqual([]);
     });
+
+    it('should preserve custom labels while translating system variable labels', () => {
+      const nodeList = [
+        {
+          nodeId: 'node1',
+          name: 'Node 1',
+          inputs: [],
+          outputs: []
+        }
+      ] as FlowNodeItemType[];
+
+      const result = getEditorVariables({
+        nodeId: 'node1',
+        nodeList,
+        getNodeById: (nodeId: string) => nodeList.find((node) => node.nodeId === nodeId),
+        edges: [],
+        appDetail: {
+          chatConfig: {
+            variables: [{ key: 'name', label: 'name', type: 'input' }]
+          }
+        } as AppDetailType,
+        t: (key: string) =>
+          ({
+            name: '名称',
+            'workflow:use_user_id': '用户 ID'
+          })[key] || key
+      });
+
+      expect(result.find((item) => item.key === 'name')?.label).toBe('name');
+      expect(result.find((item) => item.key === 'userId')?.label).toBe('用户 ID');
+    });
   });
 });
