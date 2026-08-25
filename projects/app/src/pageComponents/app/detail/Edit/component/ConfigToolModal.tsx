@@ -222,29 +222,42 @@ const mergeConfiguredTool = ({
   formValues: Record<string, any>;
 }): SelectedToolItemType => {
   // 切换版本时，新版本新增的系统工具参数也需要按工具定义恢复默认输入方式。
+  const sourceTool = {
+    ...prevTool,
+    inputs: prevTool.inputs.map((input) => ({
+      ...input,
+      selectedType: formValues[inputTypeFormKey(input.key)] ?? input.selectedType,
+      value: formValues[input.key] ?? input.value
+    }))
+  };
   const inheritedNextTool = inheritToolInputConfig({
     tool: nextTool,
-    sourceTool: prevTool
+    sourceTool
   });
-  const prevInputMap = new Map(prevTool.inputs.map((input) => [input.key, input]));
 
   const mergedTool = {
     ...inheritedNextTool,
     configStatus: prevTool.configStatus,
     inputs: inheritedNextTool.inputs.map((input) => {
-      const prevInput = prevInputMap.get(input.key);
-      if (!prevInput) return input;
+      const selectedInputType = input.renderTypeList.includes(
+        formValues[inputTypeFormKey(input.key)]
+      )
+        ? formValues[inputTypeFormKey(input.key)]
+        : input.selectedType;
+      const formDeveloperInputType = formValues[developerInputTypeFormKey(input.key)];
+      const developerInputType = input.renderTypeList.includes(formDeveloperInputType)
+        ? formDeveloperInputType
+        : getToolInputManualRenderType(input);
 
       return {
         ...input,
-        value: formValues[input.key] ?? prevInput.value ?? input.value,
         ...buildConfigInputTypeState({
-          selectedInputType: formValues[inputTypeFormKey(input.key)] ?? input.renderTypeList[0],
-          developerInputType:
-            formValues[developerInputTypeFormKey(input.key)] ?? getToolInputManualRenderType(input),
+          selectedInputType,
+          developerInputType,
           renderTypeList: input.renderTypeList,
           canAgentGenerated: canInputBeAgentGenerated(input)
-        })
+        }),
+        value: input.value
       };
     })
   };
