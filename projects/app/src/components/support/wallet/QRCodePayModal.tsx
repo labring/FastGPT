@@ -18,6 +18,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { CreateBillResponseType } from '@fastgpt/global/openapi/support/wallet/bill/api';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { getPaymentRenderType, type PaymentRenderData } from './utils';
 
 export type QRPayProps = CreateBillResponseType & {
   billId: string;
@@ -72,15 +73,12 @@ const QRCodePayModal = ({
     };
   }, [tip, discountCouponName]);
 
-  const [payWayRenderData, setPayWayRenderData] = useState<{
-    qrCode?: string;
-    iframeCode?: string;
-    markdown?: string;
-  }>({
+  const [payWayRenderData, setPayWayRenderData] = useState<PaymentRenderData>({
     qrCode,
     iframeCode,
     markdown
   });
+  const paymentRenderType = getPaymentRenderType(payWayRenderData);
 
   const [selectedPayment, setSelectedPayment] = useState(payment);
   const { runAsync: handlePaymentChange, loading: isUpdating } = useRequest(
@@ -164,9 +162,10 @@ const QRCodePayModal = ({
     }
   });
   const renderPaymentContent = () => {
-    if (payWayRenderData.qrCode) {
+    if (paymentRenderType === 'qrCode') {
       return (
         <Box
+          key={paymentRenderType}
           ref={canvasRef}
           display={'inline-block'}
           alignSelf={'center'}
@@ -174,13 +173,14 @@ const QRCodePayModal = ({
         />
       );
     }
-    if (payWayRenderData.iframeCode) {
+    if (paymentRenderType === 'iframeCode') {
       const iframeSize = QR_CODE_SIZE + 5;
       const renderedSize = dynamicQRSize + 5;
       const iframeScale = renderedSize / iframeSize;
 
       return (
         <Box
+          key={paymentRenderType}
           alignSelf={'center'}
           w={`${renderedSize}px`}
           h={`${renderedSize}px`}
@@ -201,7 +201,7 @@ const QRCodePayModal = ({
         </Box>
       );
     }
-    if (payWayRenderData.markdown) {
+    if (paymentRenderType === 'markdown') {
       return <Markdown source={payWayRenderData.markdown} />;
     }
     return null;
@@ -215,6 +215,7 @@ const QRCodePayModal = ({
       w={'600px'}
       onClose={onClose}
       closeOnOverlayClick={false}
+      blockScrollOnMount
       bodyStyles={{ textAlign: 'center' }}
     >
       {tip && <LightTip text={tip} mb={6} textAlign={'left'} />}
