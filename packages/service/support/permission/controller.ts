@@ -106,6 +106,28 @@ export async function getResourceOwnedClbs({
   });
 }
 
+/** 批量读取同一团队、同一资源类型下多个资源的直属 ACL。 */
+export async function getResourceOwnedClbsByResourceIds({
+  resourceType,
+  teamId,
+  resourceIds,
+  session
+}: {
+  teamId: string;
+  resourceIds: string[];
+  resourceType: Omit<PerResourceTypeEnum, 'team'>;
+  session?: ClientSession;
+}) {
+  if (resourceIds.length === 0) return [];
+
+  return resourcePermissionRepo.findByResourceIds({
+    resourceType: resourceType as PerResourceTypeEnum,
+    teamId,
+    resourceIds,
+    session
+  });
+}
+
 export const getClbsInfo = async ({
   clbs,
   teamId,
