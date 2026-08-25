@@ -14,7 +14,9 @@ export const DanglingReferenceReasonSchema = z.enum([
   'missingApp',
   'missingDataset',
   'missingAgentSkill',
-  'missingResourceId'
+  'missingResourceId',
+  'missingCollaboratorTarget',
+  'multipleCollaboratorTargets'
 ]);
 export type DanglingReferenceReason = z.infer<typeof DanglingReferenceReasonSchema>;
 
@@ -66,13 +68,13 @@ export const CleanupDanglingResourcePermissionsBodySchema = z
   );
 
 export const DanglingPermissionSampleSchema = z.object({
-  permissionId: z.string().meta({ description: '悬垂权限记录 ID' }),
+  permissionId: z.string().meta({ description: '待清理权限记录 ID' }),
   teamId: z.string().meta({ description: '权限记录中的团队 ID' }),
   resourceType: z.string().meta({ description: '权限资源类型' }),
   resourceId: z.string().optional().meta({ description: '权限资源 ID' }),
   danglingReferences: z
     .array(DanglingReferenceReasonSchema)
-    .meta({ description: '该权限记录命中的悬垂引用类型' })
+    .meta({ description: '该权限记录命中的清理原因' })
 });
 
 export const DanglingReferenceReasonCountsSchema = z.object({
@@ -83,7 +85,17 @@ export const DanglingReferenceReasonCountsSchema = z.object({
   missingApp: z.number().int().nonnegative().meta({ description: '应用引用缺失数量' }),
   missingDataset: z.number().int().nonnegative().meta({ description: '知识库引用缺失数量' }),
   missingAgentSkill: z.number().int().nonnegative().meta({ description: '技能引用缺失数量' }),
-  missingResourceId: z.number().int().nonnegative().meta({ description: '资源 ID 缺失数量' })
+  missingResourceId: z.number().int().nonnegative().meta({ description: '资源 ID 缺失数量' }),
+  missingCollaboratorTarget: z
+    .number()
+    .int()
+    .nonnegative()
+    .meta({ description: '未指定成员、成员组或组织节点的权限数量' }),
+  multipleCollaboratorTargets: z
+    .number()
+    .int()
+    .nonnegative()
+    .meta({ description: '同时指定多个协作者目标的权限数量' })
 });
 
 export const CleanupDanglingResourcePermissionsResponseSchema = z.object({
@@ -93,20 +105,30 @@ export const CleanupDanglingResourcePermissionsResponseSchema = z.object({
     .number()
     .int()
     .nonnegative()
-    .meta({ description: '存在至少一个悬垂引用的权限记录数' }),
+    .meta({ description: '存在至少一个悬垂引用或非法协作者目标的权限记录总数' }),
+  danglingReferencePermissionCount: z
+    .number()
+    .int()
+    .nonnegative()
+    .meta({ description: '存在至少一个悬垂外部引用的权限记录数' }),
+  invalidCollaboratorPermissionCount: z
+    .number()
+    .int()
+    .nonnegative()
+    .meta({ description: '协作者目标数量不等于一个的权限记录数' }),
   deletedPermissionCount: z
     .number()
     .int()
     .nonnegative()
     .meta({ description: '实际删除的权限记录数，dry-run 时为 0' }),
   reasonCounts: DanglingReferenceReasonCountsSchema.meta({
-    description: '按悬垂引用类型统计的命中数，同一权限可能命中多种类型'
+    description: '按清理原因统计的命中数，同一权限可能命中多种类型'
   }),
   batchSize: z.number().int().positive().meta({ description: '扫描批大小' }),
   maxScan: z.number().int().positive().meta({ description: '单次扫描数量上限' }),
   sampleLimit: z.number().int().nonnegative().meta({ description: '返回样本数量限制' }),
   nextCursor: z.string().optional().meta({ description: '继续扫描时使用的游标' }),
-  samples: z.array(DanglingPermissionSampleSchema).meta({ description: '悬垂权限样本' })
+  samples: z.array(DanglingPermissionSampleSchema).meta({ description: '待清理权限样本' })
 });
 export type CleanupDanglingResourcePermissionsResult = z.infer<
   typeof CleanupDanglingResourcePermissionsResponseSchema

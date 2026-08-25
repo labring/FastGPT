@@ -16,6 +16,7 @@ describe('cleanupDanglingResourcePermissions', () => {
   let expectedDanglingPermissionIds: string[];
   let validAppId: Types.ObjectId;
   let concurrentlyAssignedAppId: Types.ObjectId;
+  let invalidCollaboratorAppId: Types.ObjectId;
 
   beforeEach(async () => {
     const user = await getUser(`permission-cleanup-${objectId()}`);
@@ -23,6 +24,7 @@ describe('cleanupDanglingResourcePermissions', () => {
 
     validAppId = objectId();
     concurrentlyAssignedAppId = objectId();
+    invalidCollaboratorAppId = objectId();
     const validDatasetId = objectId();
     const validSkillId = objectId();
     const crossTeamAppId = objectId();
@@ -32,6 +34,7 @@ describe('cleanupDanglingResourcePermissions', () => {
     await Promise.all([
       MongoApp.collection.insertOne({ _id: validAppId, teamId: user.teamId }),
       MongoApp.collection.insertOne({ _id: concurrentlyAssignedAppId, teamId: user.teamId }),
+      MongoApp.collection.insertOne({ _id: invalidCollaboratorAppId, teamId: user.teamId }),
       MongoDataset.collection.insertOne({ _id: validDatasetId, teamId: user.teamId }),
       MongoAgentSkills.collection.insertOne({ _id: validSkillId, teamId: user.teamId }),
       MongoApp.collection.insertOne({ _id: crossTeamAppId, teamId: otherTeamUser.teamId }),
@@ -139,17 +142,31 @@ describe('cleanupDanglingResourcePermissions', () => {
       resourceId: '',
       permission: OwnerRoleVal
     };
+    const invalidCollaboratorPermissions = [
+      createPermission({
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: invalidCollaboratorAppId
+      }),
+      createPermission({
+        tmbId: user.tmbId,
+        groupId: validGroupId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: invalidCollaboratorAppId
+      })
+    ];
 
     expectedDanglingPermissionIds = [
       ...danglingPermissions,
       malformedPermission,
-      malformedFalsyPermission
+      malformedFalsyPermission,
+      ...invalidCollaboratorPermissions
     ].map((permission) => String(permission._id));
     await MongoResourcePermission.collection.insertMany([
       ...validPermissions,
       ...danglingPermissions,
       malformedPermission,
-      malformedFalsyPermission
+      malformedFalsyPermission,
+      ...invalidCollaboratorPermissions
     ]);
   });
 
@@ -163,8 +180,10 @@ describe('cleanupDanglingResourcePermissions', () => {
 
     expect(result).toMatchObject({
       dryRun: true,
-      scannedPermissionCount: 17,
-      danglingPermissionCount: 12,
+      scannedPermissionCount: 19,
+      danglingPermissionCount: 14,
+      danglingReferencePermissionCount: 12,
+      invalidCollaboratorPermissionCount: 5,
       deletedPermissionCount: 0,
       reasonCounts: {
         missingTeam: 2,
@@ -174,13 +193,15 @@ describe('cleanupDanglingResourcePermissions', () => {
         missingApp: 3,
         missingDataset: 1,
         missingAgentSkill: 1,
-        missingResourceId: 2
+        missingResourceId: 2,
+        missingCollaboratorTarget: 3,
+        multipleCollaboratorTargets: 2
       }
     });
     expect(result.samples.map((sample) => sample.permissionId).sort()).toEqual(
       expectedDanglingPermissionIds.sort()
     );
-    expect(await MongoResourcePermission.countDocuments()).toBe(17);
+    expect(await MongoResourcePermission.countDocuments()).toBe(19);
   });
 
   it('deletes only dangling permissions in apply mode', async () => {
@@ -193,9 +214,11 @@ describe('cleanupDanglingResourcePermissions', () => {
 
     expect(result).toMatchObject({
       dryRun: false,
-      scannedPermissionCount: 17,
-      danglingPermissionCount: 12,
-      deletedPermissionCount: 12,
+      scannedPermissionCount: 19,
+      danglingPermissionCount: 14,
+      danglingReferencePermissionCount: 12,
+      invalidCollaboratorPermissionCount: 5,
+      deletedPermissionCount: 14,
       sampleLimit: 2
     });
     expect(result.samples).toHaveLength(2);
@@ -229,7 +252,7 @@ describe('cleanupDanglingResourcePermissions', () => {
       sampleLimit: 0
     });
 
-    expect(result.deletedPermissionCount).toBe(11);
+    expect(result.deletedPermissionCount).toBe(13);
     expect(await MongoResourcePermission.countDocuments({ _id: permissionId })).toBe(1);
   });
 
@@ -249,7 +272,7 @@ describe('cleanupDanglingResourcePermissions', () => {
       cursor = result.nextCursor;
     } while (cursor);
 
-    expect(scannedPermissionCount).toBe(17);
-    expect(await MongoResourcePermission.countDocuments()).toBe(17);
+    expect(scannedPermissionCount).toBe(19);
+    expect(await MongoResourcePermission.countDocuments()).toBe(19);
   });
 });

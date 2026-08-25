@@ -17,6 +17,12 @@ describe('cleanupDanglingResourcePermissions data clean API', () => {
       resourceId: new Types.ObjectId(),
       permission: OwnerRoleVal
     });
+    await MongoResourcePermission.collection.insertOne({
+      _id: new Types.ObjectId(),
+      teamId: new Types.ObjectId(user.teamId),
+      resourceType: PerResourceTypeEnum.team,
+      permission: OwnerRoleVal
+    });
   });
 
   it('defaults to dry-run when the flag is omitted', async () => {
@@ -33,11 +39,13 @@ describe('cleanupDanglingResourcePermissions data clean API', () => {
     expect(response.error).toBeUndefined();
     expect(response.data).toMatchObject({
       dryRun: true,
-      scannedPermissionCount: 1,
-      danglingPermissionCount: 1,
+      scannedPermissionCount: 2,
+      danglingPermissionCount: 2,
+      danglingReferencePermissionCount: 1,
+      invalidCollaboratorPermissionCount: 1,
       deletedPermissionCount: 0,
       samples: []
     });
-    expect(await MongoResourcePermission.countDocuments()).toBe(1);
+    expect(await MongoResourcePermission.countDocuments()).toBe(2);
   });
 });
