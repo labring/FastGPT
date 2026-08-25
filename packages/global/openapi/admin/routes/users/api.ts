@@ -5,17 +5,32 @@ import { UserStatusEnum } from '../../../../support/user/constant';
 export const UserItemSchema = z.object({
   _id: z.string().meta({ description: '用户ID' }),
   username: z.string().meta({ description: '用户名' }),
+  contact: z.string().optional().meta({ description: '联系方式' }),
   avatar: z.string().optional().meta({ description: '用户头像' }),
   status: z.enum(UserStatusEnum).meta({ description: '用户状态' }),
   createTime: z.date().meta({ description: '创建时间' })
 });
+export type UserItemType = z.infer<typeof UserItemSchema>;
 
-// getUsers
+/* ============================================================================
+ * API: 获取用户列表
+ * Route: POST /admin/routes/users/getUsers
+ * Method: POST
+ * Description: 分页获取用户列表，支持按用户名搜索
+ * Tags: ['Admin', 'Users', 'Read']
+ * ============================================================================ */
+
 export const GetUsersBodySchema = PaginationSchema.extend({
-  username: z.string().meta({ description: '搜索用户名（支持模糊匹配）' })
+  username: z
+    .string()
+    .trim()
+    .max(100)
+    .optional()
+    .meta({ description: '搜索用户名（支持模糊匹配）' })
 });
 export type GetUsersBodyType = z.infer<typeof GetUsersBodySchema>;
 export const GetUsersResponseSchema = PaginationResponseSchema(UserItemSchema);
+export type GetUsersResponseType = z.infer<typeof GetUsersResponseSchema>;
 
 // addUser
 export const AddUserBodySchema = z.object({
