@@ -7,7 +7,10 @@ import { filterEmptyTableData, formatMarkdownTableRow } from './utils';
 export const readCsvRawText = async (params: ReadRawTextByBuffer): Promise<ReadFileResponse> => {
   const { rawText } = await readFileRawText(params);
 
-  const csvArr = Papa.parse(rawText).data as string[][];
+  const csvArr = Papa.parse<string[]>(rawText, {
+    // 后续不会保留全空行；解析时提前跳过，避免短 CSV 中的空行干扰分隔符推断。
+    skipEmptyLines: 'greedy'
+  }).data;
 
   const filteredData = filterEmptyTableData(csvArr);
   const header = filteredData[0];

@@ -366,7 +366,10 @@ export const rawText2Chunks = async ({
   }[]
 > => {
   const parseDatasetBackup2Chunks = (rawText: string) => {
-    const csvArr = Papa.parse(rawText).data as string[][];
+    const csvArr = Papa.parse<string[]>(rawText, {
+      // 空记录不会生成知识库 chunk；解析时提前跳过，避免短 CSV 的尾部空行干扰分隔符推断。
+      skipEmptyLines: 'greedy'
+    }).data;
     if (csvArr.length < 2) return { chunks: [] };
 
     const rawHeaders = csvArr[0];

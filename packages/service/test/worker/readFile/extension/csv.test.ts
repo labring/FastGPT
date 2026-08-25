@@ -22,4 +22,16 @@ describe('readCsvRawText', () => {
 | Alice\\|A | line1\\nline2 |
 | Bob | normal |`);
   });
+
+  it('detects a semicolon delimiter when a short CSV contains a blank line', async () => {
+    const result = await readCsvRawText({
+      extension: 'csv',
+      buffer: Buffer.from('q;a\n\nQ1;A1', 'utf-8'),
+      encoding: 'utf-8'
+    });
+
+    expect(result.formatText).toBe(`| q | a |
+| --- | --- |
+| Q1 | A1 |`);
+  });
 });
