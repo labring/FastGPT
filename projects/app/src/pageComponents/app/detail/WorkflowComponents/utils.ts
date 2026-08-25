@@ -249,7 +249,7 @@ export const getEditorVariables = ({
     .filter((input) => input.canEdit)
     .map((item) => ({
       key: item.key,
-      label: item.label,
+      label: item.label ?? item.key,
       parent: {
         id: currentNode.nodeId,
         label: currentNode.name,
@@ -282,7 +282,11 @@ export const getEditorVariables = ({
             })
             .map((output) => {
               return {
-                label: safeT((output.label as any) || ''),
+                label:
+                  node.nodeId === VARIABLE_NODE_ID &&
+                  !workflowSystemVariables.some((item) => item.key === output.id)
+                    ? (output.label ?? output.id)
+                    : t((output.label as any) || ''),
                 key: output.id,
                 parent: {
                   id: node.nodeId,
