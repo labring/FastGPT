@@ -61,7 +61,7 @@ export const TeamTmbItemSchema = ThidPartyAccountSchema.extend({
   tmbId: ObjectIdSchema,
   role: z.enum(TeamMemberRoleEnum).nullish(),
   status: z.enum(TeamMemberStatusEnum),
-  notificationAccount: z.string().optional(),
+  notificationAccount: z.string().nullish(),
   permission: z.instanceof(TeamPermission),
   isWecomTeam: z.boolean().optional()
 });

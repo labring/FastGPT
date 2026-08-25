@@ -307,6 +307,7 @@ describe('support user OpenAPI contracts', () => {
           tmbId: objectId,
           role: 'owner',
           status: 'active',
+          notificationAccount: null,
           permission: {
             role: 1,
             isOwner: true,
@@ -319,7 +320,7 @@ describe('support user OpenAPI contracts', () => {
           }
         }
       ])
-    ).toHaveLength(1);
+    ).toMatchObject([{ notificationAccount: null }]);
   });
 
   it('rejects missing team write parameters at the schema boundary', () => {
