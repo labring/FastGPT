@@ -83,6 +83,9 @@ const SubSchema = new Schema({
 // Get plan by expiredTime
 defineIndex(SubSchema, { key: { expiredTime: -1, currentSubLevel: 1 } });
 
+// Admin plan list pagination.
+defineIndex(SubSchema, { key: { startTime: -1, _id: -1 } });
+
 // Get team plan
 defineIndex(SubSchema, { key: { teamId: 1, type: 1, expiredTime: -1 } });
 // timer task. Get standard plan;Get free plan;Clear expired extract plan
