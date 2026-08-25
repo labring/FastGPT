@@ -835,7 +835,7 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
   const onConnectStart = useCallback(
     (event: any, params: OnConnectStartParams) => {
       const { nodeId, handleId } = params;
-      if (!nodeId) return;
+      if (!nodeId || params.handleType === 'target') return;
 
       // If node is folded, unfold it when connecting
       const sourceNode = getNodeById(nodeId);
