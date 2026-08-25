@@ -9,6 +9,7 @@ upgradeTags:
 
 1. Added Korean language support.
 2. Added an overwrite warning when switching Skill versions.
+3. Added account deletion.
 
 ## ⚙️ Improvements
 
@@ -17,6 +18,7 @@ upgradeTags:
 3. Improved the reliability of S3 chunked uploads on unstable networks.
 4. Standardized file upload error messages.
 5. Improved Skill saving by extracting `name` and `description` as structured fields and allowing `description` to be empty.
+6. Improved repeated tool call anomaly detection. FastGPT now treats more than five consecutive calls to the same tool with the same arguments as a model hallucination.
 
 ## 🐛 Fixes
 
