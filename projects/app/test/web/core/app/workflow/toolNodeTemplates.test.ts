@@ -20,6 +20,7 @@ import { CanonicalWorkflowDataSchema } from '@fastgpt/global/core/workflow/migra
 import { PublishAppBodySchema } from '@fastgpt/global/openapi/core/app/version/api';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
+import { hasDynamicToolInput } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderToolInput';
 
 describe('workflow tool node templates', () => {
   it('marks supported nodes as tool-connectable', () => {
@@ -118,6 +119,15 @@ describe('workflow tool node templates', () => {
     expect(
       CodeNode.inputs.find((input) => input.key === NodeInputKeyEnum.addInputParam)
     ).not.toHaveProperty('defaultToAgentGenerated');
+  });
+
+  it('only exposes custom tool params for HTTP and Code nodes', () => {
+    const createNode = (flowNodeType: FlowNodeTypeEnum, hasToolInput = true) =>
+      ({ flowNodeType, hasToolInput }) as Parameters<typeof hasDynamicToolInput>[0];
+
+    expect(hasDynamicToolInput(createNode(FlowNodeTypeEnum.pluginModule))).toBe(false);
+    expect(hasDynamicToolInput(createNode(FlowNodeTypeEnum.httpRequest468))).toBe(true);
+    expect(hasDynamicToolInput(createNode(FlowNodeTypeEnum.code))).toBe(true);
   });
 
   it('does not expose AI-generated mode for control and code nodes', () => {

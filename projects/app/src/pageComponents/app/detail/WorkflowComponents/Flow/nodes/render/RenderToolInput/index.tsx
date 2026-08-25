@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   Box,
   Button,
@@ -26,16 +26,13 @@ import { WorkflowUtilsContext } from '../../../../context/workflowUtilsContext';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 const EditFieldModal = dynamic(() => import('./EditFieldModal'));
 
+/** 仅 HTTP 和 Code 节点支持用户配置工具参数；旧版插件输入中的 addInputParam 不参与判定。 */
 export const hasDynamicToolInput = (
-  source: Pick<FlowNodeItemType, 'hasToolInput'> | FlowNodeInputItemType[]
+  source: Pick<FlowNodeItemType, 'flowNodeType' | 'hasToolInput'>
 ) =>
-  Array.isArray(source)
-    ? source.some(
-        (item) =>
-          item.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam ||
-          (item.canEdit === true && item.defaultToAgentGenerated === true)
-      )
-    : source.hasToolInput === true;
+  source.hasToolInput === true &&
+  (source.flowNodeType === FlowNodeTypeEnum.httpRequest468 ||
+    source.flowNodeType === FlowNodeTypeEnum.code);
 
 const RenderToolInput = ({
   nodeId,
