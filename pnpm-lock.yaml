@@ -1294,6 +1294,9 @@ importers:
       express:
         specifier: 'catalog:'
         version: 4.22.1
+      ldapts:
+        specifier: ^9.0.0
+        version: 9.0.0
       metadata-saml2:
         specifier: ^2.0.1
         version: 2.1.2
@@ -10743,6 +10746,10 @@ packages:
     resolution: {integrity: sha512-b94GiNHQNy6JNTrt5w6zNyffMrNkXZb3KTkCZJb2V1xaEGCk093vkZ2jk3tpaeP33/OiXC+WvK9AxUebnf5nbw==}
     engines: {node: '>= 0.6.3'}
 
+  ldapts@9.0.0:
+    resolution: {integrity: sha512-OaaoYBSuan7g0Nm2e1wsRl+9xol41zY+pDlRRSsBq36iKCd2tG/K8WifevNRDjyEfhz4bvkxKdDvJ6xHXwj7+Q==}
+    engines: {node: '>=22'}
+
   levn@0.4.1:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
     engines: {node: '>= 0.8.0'}
@@ -13634,6 +13641,9 @@ packages:
 
   streamx@2.28.0:
     resolution: {integrity: sha512-1Yowhzjf0ivGMrTIkY9hav5TxobO9qIVqUE41fiCGMGgc3CLlf4MY+9AHmZqBWgDTue0fY9zWjYFVyf6Diuobw==}
+
+  strict-event-emitter-types@2.0.0:
+    resolution: {integrity: sha512-Nk/brWYpD85WlOgzw5h173aci0Teyv8YdIAEtV+N88nDB0dLlazZyJMIsN6eo1/AR61l+p6CJTG1JIyFaoNEEA==}
 
   strict-uri-encode@2.0.0:
     resolution: {integrity: sha512-QwiXZgpRcKkhTj2Scnn++4PKtWsH0kpzZ62L2R6c/LUVYv7hVnZqcg2+sMuT6R7Jusu1vviK/MFsu6kNJfWlEQ==}
@@ -26141,6 +26151,10 @@ snapshots:
     dependencies:
       readable-stream: 2.3.8
 
+  ldapts@9.0.0:
+    dependencies:
+      strict-event-emitter-types: 2.0.0
+
   levn@0.4.1:
     dependencies:
       prelude-ls: 1.2.1
@@ -29902,6 +29916,8 @@ snapshots:
     transitivePeerDependencies:
       - bare-abort-controller
     optional: true
+
+  strict-event-emitter-types@2.0.0: {}
 
   strict-uri-encode@2.0.0: {}
 
