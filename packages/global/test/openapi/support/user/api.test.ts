@@ -278,6 +278,25 @@ describe('support user OpenAPI contracts', () => {
             tmbId: objectId,
             userId: objectId,
             teamId: objectId,
+            name: '空联系方式成员',
+            memberName: '空联系方式成员',
+            avatar: null,
+            status: TeamMemberStatusEnum.active,
+            contact: null,
+            createTime: '2026-01-01T00:00:00.000Z'
+          }
+        ],
+        orgs: [],
+        groups: []
+      }).members[0].contact
+    ).toBeNull();
+    expect(
+      SearchMembersOrgsGroupsResponseSchema.parse({
+        members: [
+          {
+            tmbId: objectId,
+            userId: objectId,
+            teamId: objectId,
             name: '空头像成员',
             memberName: '空头像成员',
             avatar: null,
