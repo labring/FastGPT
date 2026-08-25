@@ -3,8 +3,8 @@ import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { BoolSchema, IntSchema } from '@fastgpt/global/common/zod';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { materializeResourcePermissions } from '@fastgpt/service/support/permission/migration/materializeResourcePermissions';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 
 const InitV4160BodySchema = z.object({
   dryRun: BoolSchema.optional().default(true),
@@ -23,7 +23,7 @@ const InitV4160ResponseSchema = z.object({
 
 /** 将所有资源 ACL 物化为完整有效快照，默认仅 dry-run。 */
 async function handler(req: ApiRequestProps) {
-  await authSystemAdmin({ req });
+  await authCert({ req, authRoot: true });
   const { body } = parseApiInput({ req, bodySchema: InitV4160BodySchema });
   const result = await materializeResourcePermissions(body);
   return InitV4160ResponseSchema.parse(result);
