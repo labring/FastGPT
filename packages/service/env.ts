@@ -323,6 +323,9 @@ export const serviceEnv = createEnv({
     PARSE_FILE_WORKERS: IntSchema.min(1).max(1000).default(5).meta({
       description: '文件解析 worker 常驻线程数'
     }),
+    PARSE_FILE_WORKER_MEMORY_LIMIT_MB: IntSchema.min(128).default(512).meta({
+      description: '单个文件解析 worker 的 V8 老生代内存上限（MB）'
+    }),
     HTML_TO_MARKDOWN_WORKERS: IntSchema.min(1).max(1000).default(10).meta({
       description: 'HTML 转 Markdown worker 常驻线程数'
     }),

@@ -3,6 +3,17 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
+const { mockEnv } = vi.hoisted(() => ({
+  mockEnv: {
+    MAX_HTML_TRANSFORM_CHARS: 1_000_000,
+    PARSE_FILE_WORKER_MEMORY_LIMIT_MB: 640
+  }
+}));
+
+vi.mock('@fastgpt/service/env', () => ({
+  serviceEnv: mockEnv
+}));
+
 const { WorkerPool, WorkerNameEnum } = await import('@fastgpt/service/worker/utils');
 
 const workerScript = `
@@ -77,6 +88,7 @@ describe('worker/utils WorkerPool', () => {
       key: 'parsed/image.png'
     });
     expect(pool.workerQueue[0].status).toBe('idle');
+    expect(pool.workerQueue[0].worker.resourceLimits.maxOldGenerationSizeMb).toBe(640);
   });
 
   it('uploadFile handler 失败时把错误回传给 worker', async () => {

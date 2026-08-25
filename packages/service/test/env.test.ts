@@ -4,6 +4,7 @@ const validInvokeTokenSecret = 'fastgpt_test_invoke_token_secret_32';
 
 const originalEnv = {
   SYSTEM_MAX_STRING_LENGTH_M: process.env.SYSTEM_MAX_STRING_LENGTH_M,
+  PARSE_FILE_WORKER_MEMORY_LIMIT_MB: process.env.PARSE_FILE_WORKER_MEMORY_LIMIT_MB,
   AGENT_SANDBOX_CPU_COUNT: process.env.AGENT_SANDBOX_CPU_COUNT,
   AGENT_SANDBOX_MEMORY_MIB: process.env.AGENT_SANDBOX_MEMORY_MIB,
   AGENT_SANDBOX_STORAGE_SIZE_GI: process.env.AGENT_SANDBOX_STORAGE_SIZE_GI,
@@ -42,6 +43,7 @@ const importServiceEnv = async () => {
 describe('serviceEnv', () => {
   afterEach(() => {
     vi.stubEnv('SYSTEM_MAX_STRING_LENGTH_M', originalEnv.SYSTEM_MAX_STRING_LENGTH_M);
+    vi.stubEnv('PARSE_FILE_WORKER_MEMORY_LIMIT_MB', originalEnv.PARSE_FILE_WORKER_MEMORY_LIMIT_MB);
     vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', originalEnv.AGENT_SANDBOX_CPU_COUNT);
     vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', originalEnv.AGENT_SANDBOX_MEMORY_MIB);
     vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GI', originalEnv.AGENT_SANDBOX_STORAGE_SIZE_GI);
@@ -139,6 +141,29 @@ describe('serviceEnv', () => {
     await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
 
     vi.stubEnv('SYSTEM_MAX_STRING_LENGTH_M', 'not-a-number');
+    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
+  });
+
+  it('validates the file parsing worker memory limit during service env init', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('PARSE_FILE_WORKER_MEMORY_LIMIT_MB', undefined);
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: {
+        PARSE_FILE_WORKER_MEMORY_LIMIT_MB: 512
+      }
+    });
+
+    vi.stubEnv('PARSE_FILE_WORKER_MEMORY_LIMIT_MB', '768');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: {
+        PARSE_FILE_WORKER_MEMORY_LIMIT_MB: 768
+      }
+    });
+
+    vi.stubEnv('PARSE_FILE_WORKER_MEMORY_LIMIT_MB', '127');
     await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
   });
 

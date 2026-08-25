@@ -22,15 +22,22 @@ export const getSafeEnv = () => {
   };
 };
 
-const createNodeWorker = (workerPath: string) => {
+const createNodeWorker = (workerPath: string, name: `${WorkerNameEnum}`) => {
   return new Worker(workerPath, {
-    env: getSafeEnv()
+    env: getSafeEnv(),
+    // 文件解析依赖会构造大量 JS 对象；限制 V8 老生代，Buffer 等进程外内存仍由容器兜底。
+    resourceLimits:
+      name === WorkerNameEnum.readFile
+        ? {
+            maxOldGenerationSizeMb: serviceEnv.PARSE_FILE_WORKER_MEMORY_LIMIT_MB
+          }
+        : undefined
   });
 };
 
 export const getWorker = (name: `${WorkerNameEnum}`) => {
   const workerPath = path.join(process.cwd(), 'worker', `${name}.js`);
-  return createNodeWorker(workerPath);
+  return createNodeWorker(workerPath, name);
 };
 
 export const runWorker = <T = any>(name: WorkerNameEnum, params?: Record<string, any>) => {

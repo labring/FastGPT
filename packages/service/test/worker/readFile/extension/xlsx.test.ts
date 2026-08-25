@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import Papa from 'papaparse';
 import XLSX from 'xlsx';
-import { readXlsxRawText } from '@fastgpt/service/worker/readFile/extension/xlsx';
+import {
+  readXlsxRawText,
+  XLSX_PARSE_LIMITS
+} from '@fastgpt/service/worker/readFile/extension/xlsx';
 
 describe('readXlsxRawText', () => {
   it('should skip empty rows when formatting xlsx content', async () => {
@@ -138,5 +141,95 @@ describe('readXlsxRawText', () => {
       sheetCount: 2,
       mergedCellCount: 0
     });
+  });
+
+  const createWorkbookBuffer = ({
+    range,
+    merges = []
+  }: {
+    range: XLSX.Range;
+    merges?: XLSX.Range[];
+  }) => {
+    const worksheet = XLSX.utils.aoa_to_sheet([['value']]);
+    worksheet['!ref'] = XLSX.utils.encode_range(range);
+    worksheet['!merges'] = merges;
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+    return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+  };
+
+  it('should reject a worksheet that exceeds the row limit', async () => {
+    const buffer = createWorkbookBuffer({
+      range: {
+        s: { r: 0, c: 0 },
+        e: { r: XLSX_PARSE_LIMITS.maxRows, c: 0 }
+      }
+    });
+
+    await expect(readXlsxRawText({ extension: 'xlsx', buffer, encoding: 'utf-8' })).rejects.toThrow(
+      `maximum row limit of ${XLSX_PARSE_LIMITS.maxRows}`
+    );
+  });
+
+  it('should reject a worksheet that exceeds the column limit', async () => {
+    const buffer = createWorkbookBuffer({
+      range: {
+        s: { r: 0, c: 0 },
+        e: { r: 0, c: XLSX_PARSE_LIMITS.maxColumns }
+      }
+    });
+
+    await expect(readXlsxRawText({ extension: 'xlsx', buffer, encoding: 'utf-8' })).rejects.toThrow(
+      `maximum column limit of ${XLSX_PARSE_LIMITS.maxColumns}`
+    );
+  });
+
+  it('should reject a workbook that exceeds the total cell limit', async () => {
+    const columnCount = 100;
+    const rowCount = Math.floor(XLSX_PARSE_LIMITS.maxCells / columnCount) + 1;
+    const buffer = createWorkbookBuffer({
+      range: {
+        s: { r: 0, c: 0 },
+        e: { r: rowCount - 1, c: columnCount - 1 }
+      }
+    });
+
+    await expect(readXlsxRawText({ extension: 'xlsx', buffer, encoding: 'utf-8' })).rejects.toThrow(
+      `maximum cell limit of ${XLSX_PARSE_LIMITS.maxCells}`
+    );
+  });
+
+  it('should reject a merge range outside worksheet bounds before backfilling', async () => {
+    const buffer = createWorkbookBuffer({
+      range: {
+        s: { r: 0, c: 0 },
+        e: { r: 0, c: 0 }
+      },
+      merges: [
+        {
+          s: { r: 0, c: 0 },
+          e: { r: XLSX_PARSE_LIMITS.maxRows, c: XLSX_PARSE_LIMITS.maxColumns }
+        }
+      ]
+    });
+
+    await expect(readXlsxRawText({ extension: 'xlsx', buffer, encoding: 'utf-8' })).rejects.toThrow(
+      'merge range outside worksheet bounds'
+    );
+  });
+
+  it('should reject overlapping merges that exceed the global fill limit', async () => {
+    const merge = {
+      s: { r: 0, c: 0 },
+      e: { r: 99_999, c: 5 }
+    };
+    const buffer = createWorkbookBuffer({
+      range: merge,
+      merges: [merge, merge]
+    });
+
+    await expect(readXlsxRawText({ extension: 'xlsx', buffer, encoding: 'utf-8' })).rejects.toThrow(
+      `maximum merged-cell fill limit of ${XLSX_PARSE_LIMITS.maxMergedCells}`
+    );
   });
 });
