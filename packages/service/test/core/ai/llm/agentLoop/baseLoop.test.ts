@@ -79,6 +79,18 @@ const searchTool: ChatCompletionTool = {
   }
 };
 
+const calculatorTool: ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'calculator',
+    description: 'Calculate test data',
+    parameters: {
+      type: 'object',
+      properties: {}
+    }
+  }
+};
+
 describe('runAgentLoop with mocked createLLMResponse', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -444,6 +456,201 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
       role: 'assistant',
       content: 'final answer'
     });
+  });
+
+  it('disables tools after five consecutive requests with the same tool signature', async () => {
+    const onRunTool = vi.fn(async () => ({
+      response: 'search result',
+      assistantMessages: [],
+      usages: []
+    }));
+
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      ...Array.from({ length: 5 }, (_, index) =>
+        toolCall({
+          id: `call_search_${index}`,
+          name: 'search',
+          args: { q: `query ${index}` }
+        })
+      ),
+      text({ requestId: 'req_forced_answer', content: 'forced answer' })
+    ]);
+
+    await runAgentLoop({
+      maxRunAgentTimes: 6,
+      body: {
+        model: 'gpt-4',
+        stream: true,
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'search repeatedly'
+          }
+        ],
+        tools: [searchTool]
+      },
+      isAborted: () => false,
+      onRunTool,
+      onRunInteractiveTool: vi.fn()
+    });
+
+    expect(createLLMResponseMock.mock.calls.map(([{ body }]) => body.tool_choice)).toEqual([
+      'auto',
+      'auto',
+      'auto',
+      'auto',
+      'auto',
+      'none'
+    ]);
+  });
+
+  it('resets the consecutive counter when the requested tool changes', async () => {
+    const onRunTool = vi.fn(async () => ({
+      response: 'tool result',
+      assistantMessages: [],
+      usages: []
+    }));
+    const repeatedToolCalls = (name: string, amount: number) =>
+      Array.from({ length: amount }, (_, index) =>
+        toolCall({
+          id: `call_${name}_${index}`,
+          name,
+          args: { index }
+        })
+      );
+
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      ...repeatedToolCalls('search', 4),
+      toolCall({ id: 'call_calculator', name: 'calculator' }),
+      ...repeatedToolCalls('search', 4),
+      text({ requestId: 'req_final', content: 'final answer' })
+    ]);
+
+    await runAgentLoop({
+      maxRunAgentTimes: 10,
+      body: {
+        model: 'gpt-4',
+        stream: true,
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'use multiple tools'
+          }
+        ],
+        tools: [searchTool, calculatorTool]
+      },
+      isAborted: () => false,
+      onRunTool,
+      onRunInteractiveTool: vi.fn()
+    });
+
+    expect(createLLMResponseMock).toHaveBeenCalledTimes(10);
+    expect(createLLMResponseMock.mock.calls.map(([{ body }]) => body.tool_choice)).toEqual(
+      Array.from({ length: 10 }, () => 'auto')
+    );
+  });
+
+  it('resets the consecutive counter when parallel tool order changes', async () => {
+    const onRunTool = vi.fn(async () => ({
+      response: 'tool result',
+      assistantMessages: [],
+      usages: []
+    }));
+    const parallelToolCall = (names: string[], round: number) => ({
+      requestId: `req_parallel_${round}`,
+      finishReason: 'tool_calls' as const,
+      toolCalls: names.map((name, index) => ({
+        id: `call_${round}_${index}`,
+        type: 'function' as const,
+        function: {
+          name,
+          arguments: '{}'
+        }
+      })),
+      inputTokens: 100,
+      outputTokens: 20
+    });
+    const sameOrderCalls = (startRound: number) =>
+      Array.from({ length: 4 }, (_, index) =>
+        parallelToolCall(['search', 'calculator'], startRound + index)
+      );
+
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      ...sameOrderCalls(0),
+      parallelToolCall(['calculator', 'search'], 4),
+      ...sameOrderCalls(5),
+      text({ requestId: 'req_final', content: 'final answer' })
+    ]);
+
+    await runAgentLoop({
+      maxRunAgentTimes: 10,
+      batchToolSize: 2,
+      body: {
+        model: 'gpt-4',
+        stream: true,
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'use parallel tools in order'
+          }
+        ],
+        tools: [searchTool, calculatorTool]
+      },
+      isAborted: () => false,
+      onRunTool,
+      onRunInteractiveTool: vi.fn()
+    });
+
+    expect(createLLMResponseMock).toHaveBeenCalledTimes(10);
+    expect(createLLMResponseMock.mock.calls.map(([{ body }]) => body.tool_choice)).toEqual(
+      Array.from({ length: 10 }, () => 'auto')
+    );
+  });
+
+  it('resets the consecutive counter when tool argument length changes', async () => {
+    const onRunTool = vi.fn(async () => ({
+      response: 'search result',
+      assistantMessages: [],
+      usages: []
+    }));
+    const sameLengthCalls = (startRound: number) =>
+      Array.from({ length: 4 }, (_, index) =>
+        toolCall({
+          id: `call_search_${startRound + index}`,
+          name: 'search',
+          args: `{"q":"${startRound + index}"}`
+        })
+      );
+
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      ...sameLengthCalls(0),
+      toolCall({ id: 'call_search_long_args', name: 'search', args: '{"q":"longer"}' }),
+      ...sameLengthCalls(5),
+      text({ requestId: 'req_final', content: 'final answer' })
+    ]);
+
+    await runAgentLoop({
+      maxRunAgentTimes: 10,
+      body: {
+        model: 'gpt-4',
+        stream: true,
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'search with changing argument lengths'
+          }
+        ],
+        tools: [searchTool]
+      },
+      isAborted: () => false,
+      onRunTool,
+      onRunInteractiveTool: vi.fn()
+    });
+
+    expect(createLLMResponseMock).toHaveBeenCalledTimes(10);
+    expect(createLLMResponseMock.mock.calls.map(([{ body }]) => body.tool_choice)).toEqual(
+      Array.from({ length: 10 }, () => 'auto')
+    );
   });
 
   it('keeps child nodeResponseId only inside childrenResponse when a tool call pauses', async () => {

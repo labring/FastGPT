@@ -1,7 +1,7 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { NumSchema } from '../../../../common/zod';
-import { PaginationResponseSchema } from '../../../api';
+import { PaginationResponseSchema, PaginationSchema } from '../../../api';
 import { SubTypeEnum, StandardSubLevelEnum } from '../../../../support/wallet/sub/constants';
 
 export const PlanItemSchema = z.object({
@@ -33,12 +33,19 @@ export const PlanItemSchema = z.object({
 });
 export type PlanItemType = z.infer<typeof PlanItemSchema>;
 
-// getPlans
-export const GetPlansBodySchema = z.object({
-  pageNum: z.number().meta({ description: '页码' }),
-  pageSize: z.number().meta({ description: '每页条数' }),
-  search: z.string().meta({ description: '搜索关键词（用户名）' })
+/* ============================================================================
+ * API: 获取套餐列表
+ * Route: POST /admin/routes/plans/getPlans
+ * Method: POST
+ * Description: 分页获取套餐订阅列表，支持按团队所有者用户名搜索
+ * Tags: ['Admin', 'Plans', 'Read']
+ * ============================================================================ */
+
+export const GetPlansBodySchema = PaginationSchema.extend({
+  search: z.string().trim().max(100).optional().meta({ description: '搜索关键词（用户名）' })
 });
+export type GetPlansBodyType = z.infer<typeof GetPlansBodySchema>;
+
 export const GetPlansResponseSchema = PaginationResponseSchema(PlanItemSchema);
 export type GetPlansResponseType = z.infer<typeof GetPlansResponseSchema>;
 

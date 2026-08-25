@@ -20,6 +20,7 @@ export interface MyModalProps extends ModalContentProps {
   isOpen?: boolean;
   onClose?: () => void;
   closeOnOverlayClick?: boolean;
+  blockScrollOnMount?: boolean;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   showCloseButton?: boolean;
   footer?: React.ReactNode;
@@ -51,6 +52,7 @@ const MyModal = ({
   isCentered,
   isLoading,
   closeOnOverlayClick = true,
+  blockScrollOnMount = false,
   size = 'sm',
   showCloseButton = true,
   headerStyles,
@@ -70,7 +72,7 @@ const MyModal = ({
       size={size}
       autoFocus={false}
       isCentered={isPc ? isCentered : true}
-      blockScrollOnMount={false}
+      blockScrollOnMount={blockScrollOnMount}
       allowPinchZoom
       scrollBehavior={'inside'}
       closeOnOverlayClick={closeOnOverlayClick}

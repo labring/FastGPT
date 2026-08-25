@@ -54,6 +54,8 @@ const TeamSchema = new Schema({
 
 defineIndex(TeamSchema, { key: { name: 1 } });
 defineIndex(TeamSchema, { key: { ownerId: 1 } });
+// Admin team list pagination.
+defineIndex(TeamSchema, { key: { createTime: -1, _id: -1 } });
 defineIndex(TeamSchema, {
   key: { 'meta.wecom.corpId': 1 },
   options: { sparse: true, unique: true }

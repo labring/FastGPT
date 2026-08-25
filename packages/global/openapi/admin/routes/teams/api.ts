@@ -1,20 +1,34 @@
 import z from 'zod';
-import { PaginationResponseSchema } from '../../../api';
+import { PaginationResponseSchema, PaginationSchema } from '../../../api';
+
+/* ============================================================================
+ * API: 获取团队列表
+ * Route: POST /admin/routes/teams/getTeams
+ * Method: POST
+ * Description: 分页获取团队列表，支持按团队名称或所有者用户名搜索
+ * Tags: ['Admin', 'Teams', 'Read']
+ * ============================================================================ */
 
 export const TeamItemSchema = z.object({
   id: z.string().meta({ description: '团队ID' }),
   name: z.string().meta({ description: '团队名称' }),
   balance: z.number().meta({ description: '团队余额' }),
   createTime: z.date().meta({ description: '创建时间' }),
-  ownerName: z.string().meta({ description: '团队所有者用户名' })
+  ownerName: z.string().optional().meta({ description: '团队所有者用户名' })
 });
 
-export const GetTeamsBodySchema = z.object({
-  pageNum: z.number().meta({ description: '页码' }),
-  pageSize: z.number().meta({ description: '每页条数' }),
-  search: z.string().meta({ description: '搜索关键词（团队名称或所有者用户名）' })
+export const GetTeamsBodySchema = PaginationSchema.extend({
+  search: z
+    .string()
+    .trim()
+    .max(100)
+    .optional()
+    .meta({ description: '搜索关键词（团队名称或所有者用户名）' })
 });
+export type GetTeamsBodyType = z.infer<typeof GetTeamsBodySchema>;
+
 export const GetTeamsResponseSchema = PaginationResponseSchema(TeamItemSchema);
+export type GetTeamsResponseType = z.infer<typeof GetTeamsResponseSchema>;
 
 export const TeamMemberItemSchema = z.object({
   userName: z.string().meta({ description: '成员用户名' }),
