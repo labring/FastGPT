@@ -81,7 +81,7 @@ const SearchMemberSchema = z
       example: 'owner',
       description: '成员角色'
     }),
-    contact: z.string().optional().meta({
+    contact: z.string().nullish().meta({
       example: 'user@example.com',
       description: '成员联系方式'
     }),
@@ -276,7 +276,7 @@ export const TeamListItemSchema = z
     permission: PermissionSchema.meta({
       description: '当前用户在团队中的权限'
     }),
-    notificationAccount: z.string().optional().meta({
+    notificationAccount: z.string().nullish().meta({
       example: 'team@example.com',
       description: '团队通知账号'
     }),

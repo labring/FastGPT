@@ -27,7 +27,7 @@ export type UserModelSchema = {
   lastLoginTmbId?: string;
   passwordUpdateTime?: Date;
   fastgpt_sem?: FastGPTSemType;
-  contact?: string;
+  contact?: string | null;
   tags: UserTagsType[];
   meta?: UserMetaType;
 };

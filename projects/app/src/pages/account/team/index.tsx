@@ -138,7 +138,7 @@ const Team = () => {
                       id: userInfo.team.teamId,
                       name: userInfo.team.teamName,
                       avatar: userInfo.team.teamAvatar ?? undefined,
-                      notificationAccount: userInfo.team.notificationAccount
+                      notificationAccount: userInfo.team.notificationAccount ?? undefined
                     });
                   }}
                 />

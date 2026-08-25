@@ -119,7 +119,7 @@ export const TeamMemberListItemSchema = z
     avatar: z.string().nullish().meta({ description: '团队成员头像' }),
     role: z.string().optional().meta({ description: '团队成员角色，owner 表示所有者' }),
     status: TeamMemberListStatusSchema,
-    contact: z.string().optional().meta({ description: '成员联系方式' }),
+    contact: z.string().nullish().meta({ description: '成员联系方式' }),
     createTime: z.coerce.date().meta({ description: '加入团队时间' }),
     updateTime: z.coerce.date().optional().meta({ description: '成员信息更新时间' }),
     permission: PermissionSchema.optional().meta({ description: '成员权限信息' }),

@@ -83,7 +83,7 @@ async function handler(
     visitorId: visitorIdentity.visitorId,
     userId: String(user._id),
     username: user.username,
-    contact: user.contact
+    contact: user.contact ?? undefined
   });
 
   pushTrack.login({

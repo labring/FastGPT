@@ -194,7 +194,7 @@ describe('user account OpenAPI contracts', () => {
     ).toBe(longToken);
   });
 
-  it('accepts user details without contact information', () => {
+  it('accepts user details when user and team notification contacts are null', () => {
     expect(
       OpenAPIUserSchema.parse({
         _id: objectIdLike,
@@ -210,13 +210,17 @@ describe('user account OpenAPI contracts', () => {
           avatar: '/icon/avatar.svg',
           tmbId: objectIdLike,
           status: 'active',
+          notificationAccount: null,
           permission: {}
         },
         permission: {}
       })
     ).toMatchObject({
       _id: objectId,
-      contact: null
+      contact: null,
+      team: {
+        notificationAccount: null
+      }
     });
   });
 

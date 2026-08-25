@@ -248,6 +248,7 @@ describe('support user OpenAPI contracts', () => {
             name: '空头像成员',
             memberName: '空头像成员',
             avatar: null,
+            contact: null,
             createTime: '2026-01-01T00:00:00.000Z'
           }
         ],
@@ -262,7 +263,10 @@ describe('support user OpenAPI contracts', () => {
           }
         ]
       })
-    ).toMatchObject({ members: [{ avatar: null }], groups: [{ avatar: null }] });
+    ).toMatchObject({
+      members: [{ avatar: null, contact: null }],
+      groups: [{ avatar: null }]
+    });
     expect(
       SearchMembersOrgsGroupsResponseSchema.parse({
         members: [],
@@ -307,6 +311,7 @@ describe('support user OpenAPI contracts', () => {
           tmbId: objectId,
           role: 'owner',
           status: 'active',
+          notificationAccount: null,
           permission: {
             role: 1,
             isOwner: true,
@@ -319,7 +324,7 @@ describe('support user OpenAPI contracts', () => {
           }
         }
       ])
-    ).toHaveLength(1);
+    ).toMatchObject([{ notificationAccount: null }]);
   });
 
   it('rejects missing team write parameters at the schema boundary', () => {
@@ -400,10 +405,14 @@ describe('support user OpenAPI contracts', () => {
             memberName: '历史成员',
             avatar: null,
             status: 'waiting',
+            contact: null,
             createTime: '2025-01-13T05:34:31.329Z'
           }
         ]
-      }).list[0].status
-    ).toBe('waiting');
+      }).list[0]
+    ).toMatchObject({
+      status: 'waiting',
+      contact: null
+    });
   });
 });
