@@ -40,7 +40,7 @@ export const UserSchema = z.object({
   language: LanguageSchema.optional(),
   team: TeamTmbItemSchema,
   permission: z.instanceof(TeamPermission),
-  contact: z.string().optional(),
+  contact: z.string().nullish(),
   tags: z.array(UserTagsSchema).optional()
 });
 export type UserType = z.infer<typeof UserSchema>;

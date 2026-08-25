@@ -194,6 +194,32 @@ describe('user account OpenAPI contracts', () => {
     ).toBe(longToken);
   });
 
+  it('accepts user details without contact information', () => {
+    expect(
+      OpenAPIUserSchema.parse({
+        _id: objectIdLike,
+        username: 'user@example.com',
+        avatar: '/icon/avatar.svg',
+        timezone: 'Asia/Shanghai',
+        contact: null,
+        team: {
+          userId: objectIdLike,
+          teamId: objectIdLike,
+          teamName: 'FastGPT 团队',
+          memberName: '普通成员',
+          avatar: '/icon/avatar.svg',
+          tmbId: objectIdLike,
+          status: 'active',
+          permission: {}
+        },
+        permission: {}
+      })
+    ).toMatchObject({
+      _id: objectId,
+      contact: null
+    });
+  });
+
   it('accepts user details whose legacy team role is absent', () => {
     expect(
       OpenAPIUserSchema.parse({

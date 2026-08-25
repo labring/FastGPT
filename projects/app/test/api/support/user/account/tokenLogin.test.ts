@@ -54,6 +54,23 @@ describe('tokenLogin API', () => {
     expect(res.data.team.tmbId).toBe(String(testTmb._id));
   });
 
+  it('should return user detail when contact is null', async () => {
+    await MongoUser.findByIdAndUpdate(testUser._id, { contact: null });
+
+    const res = await Call(tokenLoginApi.default, {
+      auth: {
+        userId: String(testUser._id),
+        teamId: String(testTeam._id),
+        tmbId: String(testTmb._id),
+        isRoot: false,
+        sessionId: 'session123'
+      } as any
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.contact).toBeNull();
+  });
+
   it('should return owner permissions for root session', async () => {
     const res = await Call(tokenLoginApi.default, {
       auth: {
