@@ -1,9 +1,9 @@
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import {
-  OwnerRoleVal,
-  type PerResourceTypeEnum
-} from '@fastgpt/global/support/permission/constant';
-import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
+import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import type {
+  CollaboratorIdType,
+  CollaboratorItemType
+} from '@fastgpt/global/support/permission/collaborator';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import type { ClientSession, Model } from '../../common/mongo';
 import type { SyncChildrenPermissionResourceType } from './inheritPermission';
@@ -13,6 +13,7 @@ import {
   mergeResourceCollaborators,
   shouldInheritResourcePermission
 } from './resourcePermissionPolicy';
+import { checkRoleUpdateConflict } from '@fastgpt/global/support/permission/utils';
 
 type ResourceModel = Model<any>;
 
@@ -22,6 +23,105 @@ export const getResourcePermissionsByTeam = resourcePermissionRepo.findByTeam;
 /** 查询成员拥有指定有效权限的资源标识，支持 resourceId 和 resourceName 两类资源。 */
 export const findResourceKeysByCollaboratorsPermission =
   resourcePermissionRepo.findResourceKeysByCollaboratorsPermission;
+
+/** 替换团队 ACL，兼容历史团队行的 resourceId 缺失或为 null。 */
+export const replaceTeamCollaborators = async ({
+  teamId,
+  collaborators,
+  session
+}: {
+  teamId: string;
+  collaborators: CollaboratorItemType[];
+  session?: ClientSession;
+}) => {
+  const fn = (activeSession: ClientSession) =>
+    resourcePermissionRepo.replaceTeam({ teamId, collaborators, session: activeSession });
+  return session ? fn(session) : mongoSessionRun(fn);
+};
+
+/** 更新团队中的单个成员、组织或用户组权限。 */
+export const updateTeamCollaborator = async ({
+  teamId,
+  collaborator,
+  permission,
+  session
+}: {
+  teamId: string;
+  collaborator: CollaboratorIdType;
+  permission: number;
+  session?: ClientSession;
+}) => {
+  const fn = (activeSession: ClientSession) =>
+    resourcePermissionRepo.updateCollaborator({
+      teamId,
+      resourceType: PerResourceTypeEnum.team,
+      collaborator,
+      permission,
+      session: activeSession
+    });
+  return session ? fn(session) : mongoSessionRun(fn);
+};
+
+/** 为多个资源授予同一协作者权限，常用于 owner 转移后的资源补权。 */
+export const grantCollaboratorOnResources = async (props: {
+  teamId: string;
+  resourceTypes: PerResourceTypeEnum[];
+  resourceIds: string[];
+  collaborator: CollaboratorIdType;
+  permission: number;
+  session?: ClientSession;
+}) => {
+  const fn = (activeSession: ClientSession) =>
+    resourcePermissionRepo.grantCollaboratorOnResources({ ...props, session: activeSession });
+  return props.session ? fn(props.session) : mongoSessionRun(fn);
+};
+
+/** 删除成员、组织或用户组在团队及资源上的 ACL。 */
+export const deleteCollaboratorPermissions = async ({
+  teamId,
+  collaborator,
+  resourceType,
+  session
+}: {
+  teamId?: string;
+  collaborator: CollaboratorIdType;
+  resourceType?: PerResourceTypeEnum | PerResourceTypeEnum[];
+  session?: ClientSession;
+}) => {
+  const fn = (activeSession: ClientSession) =>
+    resourcePermissionRepo.deleteCollaborator({
+      teamId,
+      collaborator,
+      resourceType,
+      session: activeSession
+    });
+  return session ? fn(session) : mongoSessionRun(fn);
+};
+
+/** 转移成员 ACL，同一资源已有目标成员时按位合并权限位。 */
+export const transferTmbPermissions = async (props: {
+  teamId: string;
+  oldTmbId: string;
+  newTmbId: string;
+  resourceType?: PerResourceTypeEnum | PerResourceTypeEnum[];
+  resourceIds?: string[];
+  session?: ClientSession;
+}) => {
+  const fn = (activeSession: ClientSession) =>
+    resourcePermissionRepo.transferTmbPermissions({ ...props, session: activeSession });
+  return props.session ? fn(props.session) : mongoSessionRun(fn);
+};
+
+/** 根据组织同步结果迁移 ACL，目标组织冲突时按位合并权限位。 */
+export const migrateOrgPermissions = async (props: {
+  teamId: string;
+  orgIdMap: Map<string, string | undefined>;
+  session?: ClientSession;
+}) => {
+  const fn = (activeSession: ClientSession) =>
+    resourcePermissionRepo.migrateOrgPermissions({ ...props, session: activeSession });
+  return props.session ? fn(props.session) : mongoSessionRun(fn);
+};
 
 /** 创建资源的完整 ACL：父级快照作为继承部分，创建者作为子级 owner。 */
 export const createResourcePermissions = async ({
@@ -165,6 +265,7 @@ export const updateResourceCollaborators = async ({
   resourceType,
   oldCollaborators,
   newCollaborators,
+  parentCollaborators,
   session
 }: {
   resource: SyncChildrenPermissionResourceType;
@@ -172,8 +273,22 @@ export const updateResourceCollaborators = async ({
   resourceType: PerResourceTypeEnum;
   oldCollaborators: CollaboratorItemType[];
   newCollaborators: CollaboratorItemType[];
+  /** 兼容旧版协作者 API，用于判断继承冲突。 */
+  parentCollaborators?: CollaboratorItemType[];
   session: ClientSession;
 }) => {
+  if (
+    parentCollaborators &&
+    shouldInheritResourcePermission(resource.inheritPermission) &&
+    resource.parentId &&
+    checkRoleUpdateConflict({
+      parentClbs: parentCollaborators,
+      newChildClbs: newCollaborators
+    })
+  ) {
+    await resourceModel.updateOne({ _id: resource._id }, { inheritPermission: false }, { session });
+  }
+
   await resourcePermissionRepo.replaceResource({
     teamId: resource.teamId,
     resourceType,

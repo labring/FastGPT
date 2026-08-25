@@ -56,6 +56,33 @@ describe('resourcePermissionRepo resource filters', () => {
     ).resolves.toMatchObject({ permission: ManagePermissionVal });
   });
 
+  it('ignores invalid collaborator IDs without triggering ObjectId casting errors', async () => {
+    const groupId = objectId();
+    await MongoResourcePermission.collection.insertOne({
+      teamId,
+      resourceType: PerResourceTypeEnum.team,
+      resourceId: null,
+      groupId,
+      permission: ManagePermissionVal
+    });
+
+    await expect(
+      resourcePermissionRepo.findByCollaborators({
+        teamId: String(teamId),
+        resourceType: PerResourceTypeEnum.team,
+        collaborators: [{ groupId: 'undefined' }]
+      })
+    ).resolves.toEqual([]);
+
+    await expect(
+      resourcePermissionRepo.findByCollaborators({
+        teamId: String(teamId),
+        resourceType: PerResourceTypeEnum.team,
+        collaborators: [{ groupId: 'undefined' }, { groupId: String(groupId) }]
+      })
+    ).resolves.toHaveLength(1);
+  });
+
   it('finds both resourceId and legacy resourceName rows by team', async () => {
     await MongoResourcePermission.collection.insertMany([
       {
@@ -333,5 +360,161 @@ describe('resourcePermissionRepo.findResourceKeysByCollaboratorsPermission', () 
         personalPermissionPriority: false
       })
     ).rejects.toThrow('does not support resource list queries');
+  });
+});
+
+describe('resourcePermissionRepo mutation helpers', () => {
+  const teamId = objectId();
+
+  beforeEach(async () => {
+    await MongoResourcePermission.deleteMany({});
+  });
+
+  it('replaces team and model ACLs through the repository', async () => {
+    const oldTmbId = objectId();
+    const newTmbId = objectId();
+
+    await MongoResourcePermission.collection.insertMany([
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.team,
+        resourceId: null,
+        tmbId: oldTmbId,
+        permission: ManagePermissionVal
+      },
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.team,
+        tmbId: newTmbId,
+        permission: ReadPermissionVal
+      }
+    ]);
+
+    await resourcePermissionRepo.replaceTeam({
+      teamId: String(teamId),
+      collaborators: [{ tmbId: String(newTmbId), permission: WritePermissionVal }]
+    });
+
+    const teamRows = await resourcePermissionRepo.findByResource({
+      teamId: String(teamId),
+      resourceType: PerResourceTypeEnum.team
+    });
+    expect(teamRows).toHaveLength(1);
+    expect(String(teamRows[0].tmbId)).toBe(String(newTmbId));
+    expect(teamRows[0].permission).toBe(WritePermissionVal);
+
+    await resourcePermissionRepo.replaceResourceByName({
+      teamId: String(teamId),
+      resourceType: PerResourceTypeEnum.model,
+      resourceName: 'model-a',
+      collaborators: [{ tmbId: String(newTmbId), permission: ReadPermissionVal }]
+    });
+
+    const modelRows = await resourcePermissionRepo.findByResourceName({
+      teamId: String(teamId),
+      resourceType: PerResourceTypeEnum.model,
+      resourceName: 'model-a'
+    });
+    expect(modelRows).toHaveLength(1);
+    expect(String(modelRows[0].tmbId)).toBe(String(newTmbId));
+    expect(modelRows[0].permission).toBe(ReadPermissionVal);
+  });
+
+  it('transfers member permissions and merges duplicate resources', async () => {
+    const oldTmbId = objectId();
+    const newTmbId = objectId();
+    const resourceId = objectId();
+    const otherResourceId = objectId();
+
+    await MongoResourcePermission.collection.insertMany([
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId,
+        tmbId: oldTmbId,
+        permission: ReadPermissionVal
+      },
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId,
+        tmbId: newTmbId,
+        permission: WritePermissionVal
+      },
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: otherResourceId,
+        tmbId: oldTmbId,
+        permission: ManagePermissionVal
+      }
+    ]);
+
+    await resourcePermissionRepo.transferTmbPermissions({
+      teamId: String(teamId),
+      oldTmbId: String(oldTmbId),
+      newTmbId: String(newTmbId),
+      resourceType: PerResourceTypeEnum.app,
+      resourceIds: [String(resourceId), String(otherResourceId)]
+    });
+
+    const rows = await resourcePermissionRepo.findByResourceIds({
+      teamId: String(teamId),
+      resourceType: PerResourceTypeEnum.app,
+      resourceIds: [String(resourceId), String(otherResourceId)]
+    });
+
+    expect(rows).toHaveLength(2);
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ permission: ReadPermissionVal | WritePermissionVal }),
+        expect.objectContaining({ permission: ManagePermissionVal })
+      ])
+    );
+    expect(rows.every((row) => String(row.tmbId) === String(newTmbId))).toBe(true);
+  });
+
+  it('migrates organization permissions and merges target collisions', async () => {
+    const oldOrgId = objectId();
+    const newOrgId = objectId();
+    const removedOrgId = objectId();
+    const resourceId = objectId();
+
+    await MongoResourcePermission.collection.insertMany([
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId,
+        orgId: oldOrgId,
+        permission: ReadPermissionVal
+      },
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId,
+        orgId: newOrgId,
+        permission: ManagePermissionVal
+      },
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: objectId(),
+        orgId: removedOrgId,
+        permission: ReadPermissionVal
+      }
+    ]);
+
+    await resourcePermissionRepo.migrateOrgPermissions({
+      teamId: String(teamId),
+      orgIdMap: new Map([
+        [String(oldOrgId), String(newOrgId)],
+        [String(removedOrgId), undefined]
+      ])
+    });
+
+    const rows = await MongoResourcePermission.find({ teamId }).lean();
+    expect(rows).toHaveLength(1);
+    expect(String(rows[0].orgId)).toBe(String(newOrgId));
+    expect(rows[0].permission).toBe(ReadPermissionVal | ManagePermissionVal);
   });
 });

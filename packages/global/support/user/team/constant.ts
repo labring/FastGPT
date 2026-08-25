@@ -34,7 +34,5 @@ export const TeamMemberStatusMap = {
 };
 
 export const notLeaveStatus = {
-  $not: {
-    $in: [TeamMemberStatusEnum.leave, TeamMemberStatusEnum.forbidden]
-  }
+  $eq: TeamMemberStatusEnum.active
 };

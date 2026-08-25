@@ -1,4 +1,4 @@
-import type { AnyBulkWriteOperation, ClientSession } from '../../../common/mongo';
+import { Types, type AnyBulkWriteOperation, type ClientSession } from '../../../common/mongo';
 import {
   CommonRolePerMap,
   OwnerPermissionVal,
@@ -22,6 +22,19 @@ type ResourcePermissionQuery = {
 export type ResourcePermissionMatchLogic = 'or' | 'and';
 
 type ResourcePermissionResourceKey = 'resourceId' | 'resourceName';
+
+type ResourcePermissionCollaboratorQuery = {
+  teamId?: string;
+  resourceType?: PerResourceTypeEnum | PerResourceTypeEnum[];
+  resourceIds?: string[];
+  collaborator: CollaboratorIdType;
+  session?: ClientSession;
+};
+
+type ResourcePermissionResourceSelector = {
+  resourceId?: string;
+  resourceName?: string;
+};
 
 type FindResourceKeysByCollaboratorsPermissionProps = {
   teamId: string;
@@ -77,6 +90,18 @@ export const resourcePermissionRepo = {
         resourceType,
         resourceId: { $in: resourceIds }
       },
+      undefined,
+      withSession(session)
+    ).lean(),
+
+  findByResourceName: ({
+    teamId,
+    resourceType,
+    resourceName,
+    session
+  }: ResourcePermissionQuery & { resourceName: string; session?: ClientSession }) =>
+    MongoResourcePermission.find(
+      { teamId, resourceType, resourceName },
       undefined,
       withSession(session)
     ).lean(),
@@ -281,7 +306,29 @@ export const resourcePermissionRepo = {
       withSession(session)
     ).lean(),
 
-  findByCollaborators: ({
+  findOneByResourceName: ({
+    teamId,
+    resourceType,
+    resourceName,
+    collaborator,
+    session
+  }: ResourcePermissionQuery & {
+    resourceName: string;
+    collaborator: CollaboratorIdType;
+    session?: ClientSession;
+  }) =>
+    MongoResourcePermission.findOne(
+      {
+        teamId,
+        resourceType,
+        resourceName,
+        ...pickCollaboratorIdFields(collaborator)
+      },
+      'permission',
+      withSession(session)
+    ).lean(),
+
+  findByCollaborators: async ({
     teamId,
     resourceType,
     resourceId,
@@ -290,15 +337,65 @@ export const resourcePermissionRepo = {
   }: ResourcePermissionQuery & {
     collaborators: CollaboratorIdType[];
     session?: ClientSession;
-  }) =>
-    MongoResourcePermission.find(
+  }) => {
+    const collaboratorFilters = collaborators.map(pickCollaboratorIdFields).filter((filter) => {
+      const [id] = Object.values(filter);
+      return (
+        Object.keys(filter).length === 1 && typeof id === 'string' && Types.ObjectId.isValid(id)
+      );
+    });
+
+    if (collaboratorFilters.length === 0) return [];
+
+    return MongoResourcePermission.find(
       {
         teamId,
         resourceType,
         ...resourceIdFilter(resourceId),
-        $or: collaborators.map(pickCollaboratorIdFields)
+        $or: collaboratorFilters
       },
       'permission tmbId groupId orgId resourceId resourceType teamId',
+      withSession(session)
+    ).lean();
+  },
+
+  findByCollaborator: ({
+    teamId,
+    resourceType,
+    resourceIds,
+    collaborator,
+    session
+  }: ResourcePermissionCollaboratorQuery) =>
+    MongoResourcePermission.find(
+      {
+        ...(teamId ? { teamId } : {}),
+        ...(resourceType
+          ? { resourceType: Array.isArray(resourceType) ? { $in: resourceType } : resourceType }
+          : {}),
+        ...(resourceIds ? { resourceId: { $in: resourceIds } } : {}),
+        ...pickCollaboratorIdFields(collaborator)
+      },
+      undefined,
+      withSession(session)
+    ).lean(),
+
+  findTeamCollaborator: ({
+    teamId,
+    collaborator,
+    session
+  }: {
+    teamId: string;
+    collaborator: CollaboratorIdType;
+    session?: ClientSession;
+  }) =>
+    MongoResourcePermission.findOne(
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.team,
+        ...resourceIdFilter(undefined),
+        ...pickCollaboratorIdFields(collaborator)
+      },
+      undefined,
       withSession(session)
     ).lean(),
 
@@ -309,6 +406,78 @@ export const resourcePermissionRepo = {
     operations: AnyBulkWriteOperation<ResourcePermissionType>[],
     session?: ClientSession
   ) => MongoResourcePermission.bulkWrite(operations, withSession(session)),
+
+  /** 更新一个协作者的单条 ACL；资源 ID 未传时兼容历史团队 ACL。 */
+  updateCollaborator: async ({
+    teamId,
+    resourceType,
+    resourceId,
+    resourceName,
+    collaborator,
+    permission,
+    session
+  }: ResourcePermissionQuery &
+    ResourcePermissionResourceSelector & {
+      collaborator: CollaboratorIdType;
+      permission: PermissionValueType;
+      session?: ClientSession;
+    }) => {
+    const resourceSelector = resourceName
+      ? { resourceName }
+      : resourceId !== undefined
+        ? { resourceId }
+        : resourceIdFilter(undefined);
+
+    return MongoResourcePermission.updateOne(
+      {
+        teamId,
+        resourceType,
+        ...resourceSelector,
+        ...pickCollaboratorIdFields(collaborator)
+      },
+      {
+        $set: { permission }
+      },
+      { ...withSession(session), upsert: true }
+    );
+  },
+
+  /** 为多个资源授予同一协作者权限，缺少 ACL 行时逐资源 upsert。 */
+  grantCollaboratorOnResources: async ({
+    teamId,
+    resourceTypes,
+    resourceIds,
+    collaborator,
+    permission,
+    session
+  }: {
+    teamId: string;
+    resourceTypes: PerResourceTypeEnum[];
+    resourceIds: string[];
+    collaborator: CollaboratorIdType;
+    permission: PermissionValueType;
+    session?: ClientSession;
+  }) => {
+    if (resourceIds.length === 0) return;
+
+    await MongoResourcePermission.bulkWrite(
+      resourceIds.flatMap((resourceId) =>
+        resourceTypes.map((resourceType) => ({
+          updateOne: {
+            filter: {
+              teamId,
+              resourceType,
+              resourceId,
+              ...pickCollaboratorIdFields(collaborator)
+            },
+            update: { $set: { permission } },
+            upsert: true
+          }
+        }))
+      ) as AnyBulkWriteOperation<ResourcePermissionType>[],
+      withSession(session)
+    );
+  },
 
   deleteByResource: ({
     teamId,
@@ -339,6 +508,28 @@ export const resourcePermissionRepo = {
 
   deleteByTeam: (teamId: string, session?: ClientSession) =>
     MongoResourcePermission.deleteMany({ teamId }, withSession(session)),
+
+  deleteCollaborator: ({
+    teamId,
+    collaborator,
+    resourceType,
+    session
+  }: {
+    teamId?: string;
+    collaborator: CollaboratorIdType;
+    resourceType?: PerResourceTypeEnum | PerResourceTypeEnum[];
+    session?: ClientSession;
+  }) =>
+    MongoResourcePermission.deleteMany(
+      {
+        ...(teamId ? { teamId } : {}),
+        ...(resourceType
+          ? { resourceType: Array.isArray(resourceType) ? { $in: resourceType } : resourceType }
+          : {}),
+        ...pickCollaboratorIdFields(collaborator)
+      },
+      withSession(session)
+    ),
 
   /** 供数据清洗使用的有界游标读取，游标实现仍隐藏在仓储层。 */
   findCursor: ({
@@ -398,5 +589,195 @@ export const resourcePermissionRepo = {
       ),
       { ...(session ? { session } : {}), ordered: true }
     );
+  },
+
+  /** 用资源名替换完整 ACL，供模型权限使用。 */
+  replaceResourceByName: async ({
+    teamId,
+    resourceType,
+    resourceName,
+    collaborators,
+    session
+  }: ResourcePermissionQuery & {
+    resourceName: string;
+    collaborators: CollaboratorItemType[];
+    session?: ClientSession;
+  }) => {
+    await MongoResourcePermission.deleteMany(
+      { teamId, resourceType, resourceName },
+      withSession(session)
+    );
+
+    if (collaborators.length === 0) return;
+
+    await MongoResourcePermission.insertMany(
+      collaborators.map(
+        (collaborator) =>
+          ({
+            teamId,
+            resourceType,
+            resourceName,
+            permission: collaborator.permission,
+            ...pickCollaboratorIdFields(collaborator)
+          }) as ResourcePermissionType
+      ),
+      { ...(session ? { session } : {}), ordered: true }
+    );
+  },
+
+  /** 用完整快照替换团队 ACL，团队 ACL 的 resourceId 兼容 null 和缺失字段。 */
+  replaceTeam: async ({
+    teamId,
+    collaborators,
+    session
+  }: {
+    teamId: string;
+    collaborators: CollaboratorItemType[];
+    session?: ClientSession;
+  }) => {
+    await MongoResourcePermission.deleteMany(
+      { teamId, resourceType: PerResourceTypeEnum.team, ...resourceIdFilter(undefined) },
+      withSession(session)
+    );
+
+    if (collaborators.length === 0) return;
+
+    await MongoResourcePermission.insertMany(
+      collaborators.map(
+        (collaborator) =>
+          ({
+            teamId,
+            resourceType: PerResourceTypeEnum.team,
+            permission: collaborator.permission,
+            ...pickCollaboratorIdFields(collaborator)
+          }) as ResourcePermissionType
+      ),
+      { ...(session ? { session } : {}), ordered: true }
+    );
+  },
+
+  /** 将一个成员的 ACL 转移给另一个成员，同资源冲突时按位合并权限。 */
+  transferTmbPermissions: async ({
+    teamId,
+    oldTmbId,
+    newTmbId,
+    resourceType,
+    resourceIds,
+    session
+  }: {
+    teamId: string;
+    oldTmbId: string;
+    newTmbId: string;
+    resourceType?: PerResourceTypeEnum | PerResourceTypeEnum[];
+    resourceIds?: string[];
+    session?: ClientSession;
+  }) => {
+    const rows = await MongoResourcePermission.find(
+      {
+        teamId,
+        tmbId: { $in: [oldTmbId, newTmbId] },
+        ...(resourceType
+          ? { resourceType: Array.isArray(resourceType) ? { $in: resourceType } : resourceType }
+          : {}),
+        ...(resourceIds ? { resourceId: { $in: resourceIds } } : {})
+      },
+      undefined,
+      withSession(session)
+    ).lean();
+
+    const oldRows = rows.filter((row) => String(row.tmbId) === String(oldTmbId));
+    const newRows = rows.filter((row) => String(row.tmbId) === String(newTmbId));
+    const operations: AnyBulkWriteOperation<ResourcePermissionType>[] = [];
+    const resourceKey = (row: {
+      resourceType: string;
+      resourceId?: unknown;
+      resourceName?: unknown;
+    }) => `${row.resourceType}:${String(row.resourceId ?? '')}:${String(row.resourceName ?? '')}`;
+
+    for (const oldRow of oldRows) {
+      const newRow = newRows.find((row) => resourceKey(row) === resourceKey(oldRow));
+      if (newRow) {
+        operations.push({ deleteOne: { filter: { _id: newRow._id } } });
+        operations.push({
+          updateOne: {
+            filter: { _id: oldRow._id },
+            update: {
+              $set: {
+                tmbId: newTmbId,
+                permission: oldRow.permission | newRow.permission
+              }
+            }
+          }
+        });
+      } else {
+        operations.push({
+          updateOne: {
+            filter: { _id: oldRow._id },
+            update: { $set: { tmbId: newTmbId } }
+          }
+        });
+      }
+    }
+
+    if (operations.length > 0)
+      await MongoResourcePermission.bulkWrite(operations, withSession(session));
+  },
+
+  /** 按组织 pathId 替换组织 ACL，目标组织冲突时按位合并权限位。 */
+  migrateOrgPermissions: async ({
+    teamId,
+    orgIdMap,
+    session
+  }: {
+    teamId: string;
+    orgIdMap: Map<string, string | undefined>;
+    session?: ClientSession;
+  }) => {
+    const rows = await MongoResourcePermission.find(
+      { teamId, orgId: { $exists: true } },
+      undefined,
+      withSession(session)
+    ).lean();
+    const operations: AnyBulkWriteOperation<ResourcePermissionType>[] = [];
+    const rowKey = (row: { resourceType: string; resourceId?: unknown; resourceName?: unknown }) =>
+      `${row.resourceType}:${String(row.resourceId ?? '')}:${String(row.resourceName ?? '')}`;
+    const targetRows = new Map<string, any>(
+      rows
+        .filter((row) => !orgIdMap.has(String(row.orgId)))
+        .map((row) => [`${rowKey(row)}:${String(row.orgId)}`, row])
+    );
+
+    for (const row of rows) {
+      if (!orgIdMap.has(String(row.orgId))) continue;
+      const newOrgId = orgIdMap.get(String(row.orgId));
+      if (newOrgId === undefined) {
+        operations.push({ deleteOne: { filter: { _id: row._id } } });
+        continue;
+      }
+
+      const targetKey = `${rowKey(row)}:${newOrgId}`;
+      const target = targetRows.get(targetKey);
+      if (target && String(target._id) !== String(row._id)) {
+        operations.push({ deleteOne: { filter: { _id: row._id } } });
+        operations.push({
+          updateOne: {
+            filter: { _id: target._id },
+            update: { $set: { permission: target.permission | row.permission } }
+          }
+        });
+        target.permission |= row.permission;
+      } else {
+        operations.push({
+          updateOne: {
+            filter: { _id: row._id },
+            update: { $set: { orgId: newOrgId } }
+          }
+        });
+        targetRows.set(targetKey, { ...row, orgId: newOrgId });
+      }
+    }
+
+    if (operations.length > 0)
+      await MongoResourcePermission.bulkWrite(operations, withSession(session));
   }
 };
