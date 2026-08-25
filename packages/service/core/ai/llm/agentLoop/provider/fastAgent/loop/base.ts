@@ -370,7 +370,9 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
 
   // Agent loop
   const requestIds: string[] = [];
-  let consecutiveRequestToolTimes = 0; // 连续多次工具调用后会强制回答，避免模型自身死循环。
+  // 只限制工具顺序和参数长度都连续相同的轮次，避免将正常的多工具任务误判为模型幻觉。
+  let lastConsecutiveToolSignature: string | undefined;
+  let consecutiveSameToolRequestTimes = 0;
   while (runTimes < maxRunAgentTimes) {
     let stopAgentLoop = false;
 
@@ -431,7 +433,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         max_tokens,
         model: modelData,
         messages: requestMessages,
-        tool_choice: consecutiveRequestToolTimes > 5 ? 'none' : 'auto',
+        tool_choice: consecutiveSameToolRequestTimes >= 5 ? 'none' : 'auto',
         toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
         parallel_tool_calls: body.parallel_tool_calls ?? true
       },
@@ -475,11 +477,20 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       if (requestError) {
         break;
       }
-      if (toolCalls.length) {
-        consecutiveRequestToolTimes++;
-      }
       if (answer) {
-        consecutiveRequestToolTimes = 0;
+        lastConsecutiveToolSignature = undefined;
+        consecutiveSameToolRequestTimes = 0;
+      } else if (toolCalls.length) {
+        const currentToolSignature = toolCalls
+          .map((toolCall) => `${toolCall.function.name}:${toolCall.function.arguments.length}`)
+          .join(',');
+
+        if (currentToolSignature === lastConsecutiveToolSignature) {
+          consecutiveSameToolRequestTimes++;
+        } else {
+          lastConsecutiveToolSignature = currentToolSignature;
+          consecutiveSameToolRequestTimes = 1;
+        }
       }
 
       // Record usage
