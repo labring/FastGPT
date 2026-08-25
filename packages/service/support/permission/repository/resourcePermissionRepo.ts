@@ -36,6 +36,11 @@ type ResourcePermissionResourceSelector = {
   resourceName?: string;
 };
 
+type ResourcePermissionSnapshot = {
+  resourceId: string;
+  collaborators: CollaboratorItemType[];
+};
+
 type FindResourceKeysByCollaboratorsPermissionProps = {
   teamId: string;
   resourceType: PerResourceTypeEnum;
@@ -589,6 +594,50 @@ export const resourcePermissionRepo = {
       ),
       { ...(session ? { session } : {}), ordered: true }
     );
+  },
+
+  /** 批量替换多个资源 ACL，避免继承同步按资源串行执行删除和插入。 */
+  replaceResources: async ({
+    teamId,
+    resourceType,
+    resources,
+    session
+  }: ResourcePermissionQuery & {
+    resources: ResourcePermissionSnapshot[];
+    session?: ClientSession;
+  }) => {
+    if (resources.length === 0) return;
+
+    const snapshots = new Map(
+      resources.map((resource) => [String(resource.resourceId), resource.collaborators])
+    );
+    const resourceIds = Array.from(snapshots.keys());
+
+    await MongoResourcePermission.deleteMany(
+      { teamId, resourceType, resourceId: { $in: resourceIds } },
+      withSession(session)
+    );
+
+    const documents = Array.from(snapshots).flatMap(([resourceId, collaborators]) =>
+      collaborators.map(
+        (collaborator) =>
+          ({
+            teamId,
+            resourceType,
+            resourceId,
+            permission: collaborator.permission,
+            ...pickCollaboratorIdFields(collaborator)
+          }) as ResourcePermissionType
+      )
+    );
+
+    const insertBatchSize = 1000;
+    for (let index = 0; index < documents.length; index += insertBatchSize) {
+      await MongoResourcePermission.insertMany(documents.slice(index, index + insertBatchSize), {
+        ...(session ? { session } : {}),
+        ordered: true
+      });
+    }
   },
 
   /** 用资源名替换完整 ACL，供模型权限使用。 */

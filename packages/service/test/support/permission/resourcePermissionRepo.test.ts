@@ -517,4 +517,56 @@ describe('resourcePermissionRepo mutation helpers', () => {
     expect(String(rows[0].orgId)).toBe(String(newOrgId));
     expect(rows[0].permission).toBe(ReadPermissionVal | ManagePermissionVal);
   });
+
+  it('replaces multiple resource snapshots in batches', async () => {
+    const firstResourceId = objectId();
+    const secondResourceId = objectId();
+    const staleCollaboratorId = objectId();
+    const activeCollaborators = Array.from({ length: 1001 }, (_, index) => ({
+      tmbId: String(objectId()),
+      permission: index === 0 ? WritePermissionVal : ReadPermissionVal
+    }));
+
+    await MongoResourcePermission.collection.insertMany([
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: firstResourceId,
+        tmbId: staleCollaboratorId,
+        permission: ReadPermissionVal
+      },
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: secondResourceId,
+        tmbId: staleCollaboratorId,
+        permission: ManagePermissionVal
+      }
+    ]);
+
+    await resourcePermissionRepo.replaceResources({
+      teamId: String(teamId),
+      resourceType: PerResourceTypeEnum.app,
+      resources: [
+        {
+          resourceId: String(firstResourceId),
+          collaborators: activeCollaborators
+        },
+        {
+          resourceId: String(secondResourceId),
+          collaborators: []
+        }
+      ]
+    });
+
+    const rows = await resourcePermissionRepo.findByResourceIds({
+      teamId: String(teamId),
+      resourceType: PerResourceTypeEnum.app,
+      resourceIds: [String(firstResourceId), String(secondResourceId)]
+    });
+    expect(rows).toHaveLength(1001);
+    const activeRow = rows.find((row) => String(row.tmbId) === activeCollaborators[0].tmbId);
+    expect(activeRow).toMatchObject({ permission: WritePermissionVal });
+    expect(String(activeRow?.resourceId)).toBe(String(firstResourceId));
+  });
 });

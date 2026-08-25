@@ -16,12 +16,13 @@ import {
   createResourcePermissions,
   moveResourcePermissions,
   resumeResourcePermissionInheritance,
+  syncResourceTreePermissions,
   updateResourceCollaborators
 } from '@fastgpt/service/support/permission/resourcePermissionService';
 import { resourcePermissionRepo } from '@fastgpt/service/support/permission/repository/resourcePermissionRepo';
 import { getFakeUsers } from '@test/datas/users';
 import type { parseHeaderCertRet } from '@test/mocks/request';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 const toPermissionMap = (collaborators: { tmbId?: string; permission: number }[]) =>
   new Map(collaborators.map((collaborator) => [collaborator.tmbId, collaborator.permission]));
@@ -104,6 +105,54 @@ describe.sequential('resource permission inheritance', () => {
         [String(users.members[0].tmbId), ReadRoleVal]
       ])
     );
+  });
+
+  it('batches a single-level tree without per-child writes', async () => {
+    const resourceId = 'folder-id';
+    const children = Array.from({ length: 5000 }, (_, index) => ({
+      _id: `child-${index}`,
+      parentId: resourceId,
+      teamId: 'team-id',
+      type: AppTypeEnum.simple,
+      inheritPermission: true
+    }));
+    let findCalls = 0;
+    const find = vi.fn(() => {
+      findCalls += 1;
+      return {
+        lean: vi.fn(() => ({
+          session: vi.fn().mockResolvedValue(findCalls === 1 ? children : [])
+        }))
+      };
+    });
+    const findByResourceIds = vi
+      .spyOn(resourcePermissionRepo, 'findByResourceIds')
+      .mockResolvedValue([]);
+    const replaceResources = vi
+      .spyOn(resourcePermissionRepo, 'replaceResources')
+      .mockResolvedValue(undefined);
+
+    try {
+      await syncResourceTreePermissions({
+        resource: {
+          _id: resourceId,
+          teamId: 'team-id',
+          type: AppTypeEnum.folder
+        },
+        resourceModel: { find } as any,
+        resourceType: PerResourceTypeEnum.app,
+        oldParentCollaborators: [],
+        newParentCollaborators: [{ tmbId: 'owner-id', permission: OwnerRoleVal }],
+        session: {} as any
+      });
+    } finally {
+      vi.restoreAllMocks();
+    }
+
+    expect(find).toHaveBeenCalledTimes(2);
+    expect(findByResourceIds).toHaveBeenCalledTimes(1);
+    expect(replaceResources).toHaveBeenCalledTimes(1);
+    expect(replaceResources.mock.calls[0][0].resources).toHaveLength(5000);
   });
 
   it('inherits existing parent ACLs when creating a child and isolates false branches', async () => {

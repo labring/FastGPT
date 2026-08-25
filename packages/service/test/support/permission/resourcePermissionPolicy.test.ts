@@ -7,6 +7,7 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import {
   calculateInheritedResourceCollaborators,
+  createInheritedResourceCollaboratorCalculator,
   mergeResourceCollaborators,
   shouldInheritResourcePermission,
   toInheritedCollaborators
@@ -64,6 +65,23 @@ describe('mergeResourceCollaborators', () => {
 });
 
 describe('calculateInheritedResourceCollaborators', () => {
+  it('matches the reusable calculator result', () => {
+    const props = {
+      oldParentCollaborators: [user('reader', ReadRoleVal)],
+      newParentCollaborators: [user('reader', WriteRoleVal)],
+      childCollaborators: [user('reader', ReadRoleVal), user('extra', ManageRoleVal)]
+    };
+
+    const calculator = createInheritedResourceCollaboratorCalculator({
+      oldParentCollaborators: props.oldParentCollaborators,
+      newParentCollaborators: props.newParentCollaborators
+    });
+
+    expect(calculator(props.childCollaborators)).toEqual(
+      calculateInheritedResourceCollaborators(props)
+    );
+  });
+
   it('removes parent-only access while retaining child-only access', () => {
     const result = calculateInheritedResourceCollaborators({
       oldParentCollaborators: [user('removed', ReadRoleVal), user('kept', ReadRoleVal)],

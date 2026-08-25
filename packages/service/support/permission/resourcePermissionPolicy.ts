@@ -34,6 +34,53 @@ export const toInheritedCollaborators = (collaborators: CollaboratorItemType[]) 
     permission: collaborator.permission === OwnerRoleVal ? ManageRoleVal : collaborator.permission
   }));
 
+/**
+ * 创建继承权限计算器，复用同一个父级快照对应的 Map。
+ * 同一父级下存在大量子资源时，避免为每个子资源重复构造 old/new parent Map。
+ */
+export const createInheritedResourceCollaboratorCalculator = ({
+  oldParentCollaborators,
+  newParentCollaborators
+}: {
+  oldParentCollaborators: CollaboratorItemType[];
+  newParentCollaborators: CollaboratorItemType[];
+}) => {
+  const oldParentMap = toMap(toInheritedCollaborators(oldParentCollaborators));
+  const newParentMap = toMap(toInheritedCollaborators(newParentCollaborators));
+
+  return (childCollaborators: CollaboratorItemType[]) => {
+    const childMap = toMap(childCollaborators);
+    const collaboratorIds = new Set([
+      ...oldParentMap.keys(),
+      ...newParentMap.keys(),
+      ...childMap.keys()
+    ]);
+
+    return Array.from(collaboratorIds).flatMap((id) => {
+      const child = childMap.get(id);
+      const oldParent = oldParentMap.get(id)?.permission ?? 0;
+      const newParent = newParentMap.get(id)?.permission ?? 0;
+      // Owner 是资源自身角色，即使同一协作者曾从旧父级继承 manage，也要完整保留。
+      const childExtra =
+        child?.permission === OwnerRoleVal
+          ? OwnerRoleVal
+          : child
+            ? (child.permission & ~oldParent) >>> 0
+            : 0;
+      const permission = sumPer(newParent, childExtra) ?? 0;
+
+      return permission === 0
+        ? []
+        : [
+            {
+              ...(newParentMap.get(id) ?? child ?? oldParentMap.get(id)!),
+              permission
+            }
+          ];
+    });
+  };
+};
+
 /** 合并父级快照和当前资源额外授权，供创建和恢复继承使用。 */
 export const mergeResourceCollaborators = ({
   parentCollaborators,
@@ -71,36 +118,8 @@ export const calculateInheritedResourceCollaborators = ({
   oldParentCollaborators: CollaboratorItemType[];
   newParentCollaborators: CollaboratorItemType[];
   childCollaborators: CollaboratorItemType[];
-}) => {
-  const oldParentMap = toMap(toInheritedCollaborators(oldParentCollaborators));
-  const newParentMap = toMap(toInheritedCollaborators(newParentCollaborators));
-  const childMap = toMap(childCollaborators);
-  const collaboratorIds = new Set([
-    ...oldParentMap.keys(),
-    ...newParentMap.keys(),
-    ...childMap.keys()
-  ]);
-
-  return Array.from(collaboratorIds).flatMap((id) => {
-    const child = childMap.get(id);
-    const oldParent = oldParentMap.get(id)?.permission ?? 0;
-    const newParent = newParentMap.get(id)?.permission ?? 0;
-    // Owner 是资源自身角色，即使同一协作者曾从旧父级继承 manage，也要完整保留。
-    const childExtra =
-      child?.permission === OwnerRoleVal
-        ? OwnerRoleVal
-        : child
-          ? (child.permission & ~oldParent) >>> 0
-          : 0;
-    const permission = sumPer(newParent, childExtra) ?? 0;
-
-    return permission === 0
-      ? []
-      : [
-          {
-            ...(newParentMap.get(id) ?? child ?? oldParentMap.get(id)!),
-            permission
-          }
-        ];
-  });
-};
+}) =>
+  createInheritedResourceCollaboratorCalculator({
+    oldParentCollaborators,
+    newParentCollaborators
+  })(childCollaborators);

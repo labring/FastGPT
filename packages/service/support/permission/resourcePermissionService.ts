@@ -9,11 +9,15 @@ import type { ClientSession, Model } from '../../common/mongo';
 import type { SyncChildrenPermissionResourceType } from './inheritPermission';
 import { resourcePermissionRepo } from './repository/resourcePermissionRepo';
 import {
+  createInheritedResourceCollaboratorCalculator,
   calculateInheritedResourceCollaborators,
   mergeResourceCollaborators,
   shouldInheritResourcePermission
 } from './resourcePermissionPolicy';
-import { checkRoleUpdateConflict } from '@fastgpt/global/support/permission/utils';
+import {
+  checkRoleUpdateConflict,
+  getCollaboratorId
+} from '@fastgpt/global/support/permission/utils';
 
 type ResourceModel = Model<any>;
 
@@ -178,28 +182,26 @@ export const syncResourceTreePermissions = async ({
   newParentCollaborators: CollaboratorItemType[];
   session: ClientSession;
 }) => {
-  const nodes = await resourceModel
-    .find({ teamId: resource.teamId }, '_id parentId inheritPermission')
-    .lean<SyncChildrenPermissionResourceType[]>()
-    .session(session);
-  const childrenByParent = new Map<string, SyncChildrenPermissionResourceType[]>();
-
-  for (const node of nodes) {
-    if (!node.parentId) continue;
-    const children = childrenByParent.get(String(node.parentId)) ?? [];
-    children.push(node);
-    childrenByParent.set(String(node.parentId), children);
-  }
-
   const allDescendantIds: string[] = [];
-  const pendingIds = [String(resource._id)];
-  while (pendingIds.length > 0) {
-    const parentId = pendingIds.shift()!;
-    for (const child of childrenByParent.get(parentId) ?? []) {
-      if (!shouldInheritResourcePermission(child.inheritPermission)) continue;
-      allDescendantIds.push(String(child._id));
-      pendingIds.push(String(child._id));
-    }
+  const descendantNodes: SyncChildrenPermissionResourceType[] = [];
+  let pendingParentIds = [String(resource._id)];
+
+  // 按层查询资源树，每次只查询当前 frontier 的直接子资源，避免加载整个团队资源。
+  while (pendingParentIds.length > 0) {
+    const children = await resourceModel
+      .find(
+        { teamId: resource.teamId, parentId: { $in: pendingParentIds } },
+        '_id parentId inheritPermission'
+      )
+      .lean<SyncChildrenPermissionResourceType[]>()
+      .session(session);
+    const inheritingChildren = children.filter((child) =>
+      shouldInheritResourcePermission(child.inheritPermission)
+    );
+
+    descendantNodes.push(...inheritingChildren);
+    allDescendantIds.push(...inheritingChildren.map((child) => String(child._id)));
+    pendingParentIds = inheritingChildren.map((child) => String(child._id));
   }
 
   if (allDescendantIds.length === 0) return;
@@ -217,41 +219,74 @@ export const syncResourceTreePermissions = async ({
     permissionsByResource.set(String(row.resourceId), rows);
   }
 
-  const pending = [
-    {
-      parentId: String(resource._id),
-      oldCollaborators: oldParentCollaborators,
-      newCollaborators: newParentCollaborators
-    }
-  ];
+  const areCollaboratorsEqual = (
+    oldCollaborators: CollaboratorItemType[],
+    newCollaborators: CollaboratorItemType[]
+  ) => {
+    if (oldCollaborators.length !== newCollaborators.length) return false;
 
-  while (pending.length > 0) {
-    const parent = pending.shift()!;
-    for (const child of childrenByParent.get(parent.parentId) ?? []) {
-      if (!shouldInheritResourcePermission(child.inheritPermission)) continue;
+    const oldPermissionMap = new Map(
+      oldCollaborators.map((collaborator) => [
+        getCollaboratorId(collaborator),
+        collaborator.permission
+      ])
+    );
+    return newCollaborators.every(
+      (collaborator) =>
+        oldPermissionMap.get(getCollaboratorId(collaborator)) === collaborator.permission
+    );
+  };
 
-      const childId = String(child._id);
-      const oldChildCollaborators = permissionsByResource.get(childId) ?? [];
-      const newChildCollaborators = calculateInheritedResourceCollaborators({
-        oldParentCollaborators: parent.oldCollaborators,
-        newParentCollaborators: parent.newCollaborators,
-        childCollaborators: oldChildCollaborators
-      });
+  const calculatorsByResourceId = new Map([
+    [
+      String(resource._id),
+      createInheritedResourceCollaboratorCalculator({
+        oldParentCollaborators,
+        newParentCollaborators
+      })
+    ]
+  ]);
+  const resourceIdsWithChildren = new Set(descendantNodes.map((node) => String(node.parentId)));
+  const resourceSnapshots: {
+    resourceId: string;
+    collaborators: CollaboratorItemType[];
+  }[] = [];
 
-      await resourcePermissionRepo.replaceResource({
-        teamId: resource.teamId,
-        resourceType,
+  // descendantNodes 按层收集，父节点的计算器会在子节点前准备完成。
+  for (const child of descendantNodes) {
+    const childId = String(child._id);
+    const parentId = String(child.parentId);
+    const calculateChildCollaborators = calculatorsByResourceId.get(parentId);
+    if (!calculateChildCollaborators) continue;
+
+    const oldChildCollaborators = permissionsByResource.get(childId) ?? [];
+    const newChildCollaborators = calculateChildCollaborators(oldChildCollaborators);
+
+    if (!areCollaboratorsEqual(oldChildCollaborators, newChildCollaborators)) {
+      resourceSnapshots.push({
         resourceId: childId,
-        collaborators: newChildCollaborators,
-        session
-      });
-
-      pending.push({
-        parentId: childId,
-        oldCollaborators: oldChildCollaborators,
-        newCollaborators: newChildCollaborators
+        collaborators: newChildCollaborators
       });
     }
+
+    if (resourceIdsWithChildren.has(childId)) {
+      calculatorsByResourceId.set(
+        childId,
+        createInheritedResourceCollaboratorCalculator({
+          oldParentCollaborators: oldChildCollaborators,
+          newParentCollaborators: newChildCollaborators
+        })
+      );
+    }
+  }
+
+  if (resourceSnapshots.length > 0) {
+    await resourcePermissionRepo.replaceResources({
+      teamId: resource.teamId,
+      resourceType,
+      resources: resourceSnapshots,
+      session
+    });
   }
 };
 

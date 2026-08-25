@@ -127,9 +127,15 @@ export const getClbsInfo = async ({
 
   const infos = (
     await Promise.all([
-      MongoTeamMember.find({ _id: { $in: tmbIds }, teamId }, '_id name avatar').lean(),
-      MongoOrgModel.find({ _id: { $in: orgIds }, teamId }, '_id name avatar').lean(),
-      MongoMemberGroupModel.find({ _id: { $in: groupIds }, teamId }, '_id name avatar').lean()
+      tmbIds.length > 0
+        ? MongoTeamMember.find({ _id: { $in: tmbIds }, teamId }, '_id name avatar').lean()
+        : [],
+      orgIds.length > 0
+        ? MongoOrgModel.find({ _id: { $in: orgIds }, teamId }, '_id name avatar').lean()
+        : [],
+      groupIds.length > 0
+        ? MongoMemberGroupModel.find({ _id: { $in: groupIds }, teamId }, '_id name avatar').lean()
+        : []
     ])
   ).flat();
 
