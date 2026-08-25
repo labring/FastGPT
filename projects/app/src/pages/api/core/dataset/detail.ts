@@ -1,4 +1,5 @@
-import { getLLMModel, getEmbeddingModel, getVlmModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModel, getLLMModel, getVlmModel } from '@fastgpt/service/core/ai/model/cache';
+import { getDatasetModelIds } from '@fastgpt/service/core/dataset/utils';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NextAPI } from '@/service/middleware/entry';
@@ -24,15 +25,17 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> 
   });
 
   const { status, errorMsg } = await getDatasetSyncDatasetStatus(datasetId);
+  // Legacy-only datasets are resolved through the compatibility name index.
+  const modelIds = getDatasetModelIds(dataset);
 
   return {
     ...dataset,
     status,
     errorMsg,
     permission,
-    vectorModel: getEmbeddingModel(dataset.vectorModel),
-    agentModel: getLLMModel(dataset.agentModel),
-    vlmModel: dataset.vlmModel ? getVlmModel(dataset.vlmModel) : undefined,
+    vectorModel: getEmbeddingModel(modelIds.vectorModelId ?? ''),
+    agentModel: getLLMModel(modelIds.agentModelId ?? ''),
+    vlmModel: modelIds.vlmModelId ? getVlmModel(modelIds.vlmModelId) : undefined,
     apiDatasetServer: filterApiDatasetServerPublicData(dataset.apiDatasetServer)
   };
 }

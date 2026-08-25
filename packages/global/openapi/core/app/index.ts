@@ -22,5 +22,6 @@ export const AppPath: OpenAPIPath = {
   ...PublishChannelPath,
   ...McpToolsPath,
   ...HttpToolsPath,
-  ...ToolPath
+  ...ToolPath,
+  ...AppEvaluationPath
 };

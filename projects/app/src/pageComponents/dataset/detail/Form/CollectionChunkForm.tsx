@@ -211,13 +211,13 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
       };
     } else if (autoIndexes) {
       return {
-        maxChunkSize: getMaxChunkSize(agentModel),
+        maxChunkSize: agentModel ? getMaxChunkSize(agentModel) : 8000,
         minChunkSize: minChunkSize,
         maxIndexSize: getMaxIndexSize(vectorModel)
       };
     } else {
       return {
-        maxChunkSize: getMaxChunkSize(agentModel),
+        maxChunkSize: agentModel ? getMaxChunkSize(agentModel) : 8000,
         minChunkSize: minChunkSize,
         maxIndexSize: getMaxIndexSize(vectorModel)
       };

@@ -12,7 +12,10 @@ vi.mock('@fastgpt/service/core/dataset/search/utils', () => ({
   datasetSearchQueryExtension: mockDatasetSearchQueryExtension
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
+vi.mock('@fastgpt/service/core/ai/model/cache', () => ({
+  assertModelUsable: (model: unknown) => model,
+  assertModelActive: () => undefined,
+
   getLLMModel: mockGetLLMModel
 }));
 
@@ -38,7 +41,7 @@ describe('defaultSearchDatasetData', () => {
       histories: [],
       teamId: 'team-1',
       datasetIds: ['dataset-1'],
-      model: 'embedding-model',
+      vectorModelId: 'embedding-model',
       textQueries: ['   ', '\n'],
       imageQueries: ['https://files.example.com/query.png'],
       limit: 5000,
@@ -56,6 +59,7 @@ describe('defaultSearchDatasetData', () => {
 
   it('should trim text queries before query extension', async () => {
     mockGetLLMModel.mockReturnValue({
+      id: 'query-extension-model',
       model: 'query-extension-model'
     });
     mockDatasetSearchQueryExtension.mockResolvedValue({
@@ -68,18 +72,18 @@ describe('defaultSearchDatasetData', () => {
       histories: [],
       teamId: 'team-1',
       datasetIds: ['dataset-1'],
-      model: 'embedding-model',
+      vectorModelId: 'embedding-model',
       textQueries: [' first ', ' ', 'second'],
       imageQueries: [],
       limit: 5000,
       datasetSearchUsingExtensionQuery: true,
-      datasetSearchExtensionModel: 'query-extension-model'
+      datasetSearchExtensionModelId: 'query-extension-model'
     });
 
     expect(mockDatasetSearchQueryExtension).toHaveBeenCalledWith(
       expect.objectContaining({
         query: 'first\nsecond',
-        llmModel: 'query-extension-model'
+        llmModelId: 'query-extension-model'
       })
     );
     expect(mockSearchDatasetData).toHaveBeenCalledWith(

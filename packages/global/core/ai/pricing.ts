@@ -1,10 +1,30 @@
-import type { ModelPriceTierType, PriceType } from './model.schema';
+import type { ModelPriceTierType, PriceType } from './model/type';
 
 const isValidNumber = (value: unknown): value is number => {
   return typeof value === 'number' && Number.isFinite(value);
 };
 
 const getSafePrice = (value: unknown) => (isValidNumber(value) ? value : 0);
+
+const isPositivePrice = (value: unknown): value is number => isValidNumber(value) && value > 0;
+
+/**
+ * 判断模型是否显式配置了价格。
+ * 历史模型使用 `0` 表示未配置价格，因此只有至少一个正数价格才视为已配置。
+ */
+export const hasConfiguredModelPrice = (config?: {
+  charsPointsPrice?: unknown;
+  inputPrice?: unknown;
+  priceTiers?: Array<{ inputPrice?: unknown; outputPrice?: unknown }>;
+}) => {
+  if (Array.isArray(config?.priceTiers)) {
+    return config.priceTiers.some(
+      (tier) => isPositivePrice(tier.inputPrice) || isPositivePrice(tier.outputPrice)
+    );
+  }
+
+  return isPositivePrice(config?.charsPointsPrice) || isPositivePrice(config?.inputPrice);
+};
 
 /*
   格式化 tiers：跳过降序梯度、支持末尾开放梯度

@@ -16,17 +16,23 @@ import {
 import {
   OwnerRoleVal,
   PerResourceTypeEnum,
+  ReadPermissionVal,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { authModels } from '@fastgpt/service/support/permission/model/auth';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import {
   getDefaultEmbeddingModel,
   getDefaultLLMModel,
   getDefaultVLMModel,
-  getEmbeddingModel
-} from '@fastgpt/service/core/ai/model';
+  getEmbeddingModel,
+  getLLMModel,
+  getVlmModel,
+  assertModelUsable
+} from '@fastgpt/service/core/ai/model/cache';
+import { resolveModelId } from '@fastgpt/service/core/ai/compat/resolveModelId';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
@@ -51,9 +57,13 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
     parentId,
     name,
     avatar,
-    vectorModel = getDefaultEmbeddingModel()?.model,
-    agentModel = getDefaultLLMModel()?.model,
-    vlmModel = getDefaultVLMModel()?.model
+    // Resolve legacy names only after the caller's team is known.
+    vectorModelId,
+    agentModelId,
+    vlmModelId,
+    vectorModel,
+    agentModel,
+    vlmModel
   } = datasetParams;
 
   const { teamId, tmbId, userId } = parentId
@@ -71,6 +81,36 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
         per: TeamDatasetCreatePermissionVal
       });
 
+  const resolvedVectorModelId =
+    vectorModelId ??
+    (vectorModel ? resolveModelId(vectorModel, teamId) : undefined) ??
+    getDefaultEmbeddingModel()?.id ??
+    '';
+  const resolvedAgentModelId =
+    agentModelId ??
+    (agentModel ? resolveModelId(agentModel, teamId) : undefined) ??
+    getDefaultLLMModel()?.id ??
+    '';
+  const resolvedVlmModelId =
+    vlmModelId ??
+    (vlmModel ? resolveModelId(vlmModel, teamId) : undefined) ??
+    getDefaultVLMModel()?.id;
+
+  assertModelUsable(getEmbeddingModel(resolvedVectorModelId));
+  assertModelUsable(getLLMModel(resolvedAgentModelId));
+  if (resolvedVlmModelId) {
+    assertModelUsable(getVlmModel(resolvedVlmModelId));
+  }
+
+  // Model permission: reject unauthorized models in dataset params (design AUTH-TC11)
+  await authModels({
+    req,
+    authToken: true,
+    authApiKey: true,
+    modelIds: [resolvedVectorModelId, resolvedAgentModelId, resolvedVlmModelId],
+    per: ReadPermissionVal
+  });
+
   // check limit
   await checkTeamDatasetLimit(teamId);
 
@@ -84,9 +124,9 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
             name,
             teamId,
             tmbId,
-            vectorModel,
-            agentModel,
-            vlmModel,
+            vectorModelId: resolvedVectorModelId,
+            agentModelId: resolvedAgentModelId,
+            vlmModelId: resolvedVlmModelId,
             avatar,
             intro: '',
             type: DatasetTypeEnum.dataset
@@ -154,9 +194,13 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
         datasetId: dataset._id,
         name: dataset.name,
         avatar: dataset.avatar,
-        vectorModel: {
-          model: getEmbeddingModel(dataset.vectorModel)?.model || dataset.vectorModel
-        }
+        vectorModel: (() => {
+          const model = getEmbeddingModel(dataset.vectorModelId);
+          return {
+            id: dataset.vectorModelId,
+            model: model?.model || dataset.vectorModelId
+          };
+        })()
       };
     });
 

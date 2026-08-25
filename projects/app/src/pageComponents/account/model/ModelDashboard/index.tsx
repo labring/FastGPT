@@ -12,14 +12,14 @@ import DateRangePicker, {
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { getChannelList, getDashboardV2 } from '@/web/core/ai/channel';
-import { getSystemModelList } from '@/web/core/ai/config';
+import { getModelList } from '@/web/core/ai/config';
 import AreaChartComponent from '@fastgpt/web/components/common/charts/AreaChartComponent';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { calculateModelPrice } from '@fastgpt/global/core/ai/pricing';
 import DataTableComponent from './DataTableComponent';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model.schema';
+import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model/type';
 import { accountContentScrollStyles } from '@/pageComponents/account/styles';
 import ModelTabHeader from '../ModelTabHeader';
 
@@ -111,7 +111,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   );
 
   // Get model list filtered by selected channel
-  const { data: systemModelList = [] } = useRequest(getSystemModelList, {
+  const { data: systemModelList = [] } = useRequest(() => getModelList({ isSystem: true }), {
     manual: false
   });
   const llmModelSet = useMemo(

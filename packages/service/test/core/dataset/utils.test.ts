@@ -1,9 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   createS3KeysPreviewUrlMap,
   getDatasetImageIndexCapability,
   getDatasetImageTrainingMode,
+  getDatasetModelIds,
   getS3ObjectKeysFromMarkdownTexts,
+  normalizeDatasetModelIds,
   replaceS3KeysToPreviewUrls,
   replaceS3KeyToPreviewUrl
 } from '@fastgpt/service/core/dataset/utils';
@@ -17,6 +19,7 @@ import {
   DatasetCollectionDataProcessModeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 const mockCreateS3DownloadAccessUrls = vi.hoisted(() =>
   vi.fn(async (params: Array<{ objectKey: string }>) =>
@@ -627,24 +630,50 @@ describe('getTrainingModeByCollection', () => {
 });
 
 describe('getDatasetImageIndexCapability', () => {
+  let originalEmbeddingModelIdMap: typeof global.embeddingModelIdMap;
+  let originalLlmModelIdMap: typeof global.llmModelIdMap;
+
   beforeEach(() => {
-    global.embeddingModelMap.set('vision-embedding-model', {
+    originalEmbeddingModelIdMap = global.embeddingModelIdMap;
+    originalLlmModelIdMap = global.llmModelIdMap;
+    global.embeddingModelIdMap = new Map(originalEmbeddingModelIdMap);
+    global.llmModelIdMap = new Map(originalLlmModelIdMap);
+    global.embeddingModelIdMap.set('vision-embedding-model', {
       ...global.systemDefaultModel.embedding,
+      id: 'vision-embedding-model',
+      provider: 'openai',
+      type: ModelTypeEnum.embedding,
       model: 'vision-embedding-model',
       name: 'vision-embedding-model',
+      defaultToken: 500,
+      maxToken: 1000,
+      weight: 100,
       vision: true
     });
-    global.llmModelMap.set('dataset-vlm-model', {
+    global.llmModelIdMap.set('dataset-vlm-model', {
       ...global.systemDefaultModel.llm,
+      id: 'dataset-vlm-model',
+      provider: 'openai',
+      type: ModelTypeEnum.llm,
       model: 'dataset-vlm-model',
       name: 'dataset-vlm-model',
+      maxContext: 128000,
+      maxResponse: 4096,
+      quoteMaxToken: 60000,
+      functionCall: true,
+      toolChoice: true,
       vision: true
     });
   });
 
+  afterEach(() => {
+    global.embeddingModelIdMap = originalEmbeddingModelIdMap;
+    global.llmModelIdMap = originalLlmModelIdMap;
+  });
+
   it('未配置 VLM 时不应自动回退到默认 VLM', async () => {
     const result = getDatasetImageIndexCapability({
-      vectorModel: 'vision-embedding-model'
+      vectorModelId: 'vision-embedding-model'
     });
 
     expect(result.supportVlm).toBe(false);
@@ -655,13 +684,75 @@ describe('getDatasetImageIndexCapability', () => {
 
   it('配置 VLM 时应同时返回 VLM 和多模态索引能力', async () => {
     const result = getDatasetImageIndexCapability({
-      vectorModel: 'vision-embedding-model',
-      vlmModel: 'dataset-vlm-model'
+      vectorModelId: 'vision-embedding-model',
+      vlmModelId: 'dataset-vlm-model'
     });
 
     expect(result.supportVlm).toBe(true);
     expect(result.supportImageEmbedding).toBe(true);
     expect(result.supportImageIndex).toBe(true);
     expect(result.availableVlmModel?.model).toBe('dataset-vlm-model');
+  });
+});
+
+// ⚠️ 热升级兼容：legacy-only 数据集字段归一化（热升级技术分析 §6.5）
+describe('getDatasetModelIds / normalizeDatasetModelIds', () => {
+  it('canonical 字段存在时优先返回 canonical', () => {
+    expect(
+      getDatasetModelIds({
+        vectorModelId: 'vec-id',
+        vectorModel: 'text-embedding-3-small',
+        agentModelId: 'agent-id',
+        agentModel: 'gpt-4o-mini',
+        vlmModelId: 'vlm-id',
+        vlmModel: 'gpt-4o'
+      })
+    ).toEqual({
+      vectorModelId: 'vec-id',
+      agentModelId: 'agent-id',
+      vlmModelId: 'vlm-id'
+    });
+  });
+
+  it('legacy-only 文档回填 legacy provider 模型名（getter 按名解析）', () => {
+    expect(
+      getDatasetModelIds({
+        vectorModel: 'text-embedding-3-small',
+        agentModel: 'gpt-4o-mini',
+        vlmModel: 'gpt-4o'
+      })
+    ).toEqual({
+      vectorModelId: 'text-embedding-3-small',
+      agentModelId: 'gpt-4o-mini',
+      vlmModelId: 'gpt-4o'
+    });
+  });
+
+  it('全部缺失时返回 undefined 字段', () => {
+    expect(getDatasetModelIds({})).toEqual({
+      vectorModelId: undefined,
+      agentModelId: undefined,
+      vlmModelId: undefined
+    });
+  });
+
+  it('空字符串 canonical 视为缺失，回退 legacy', () => {
+    expect(
+      getDatasetModelIds({ vectorModelId: '', vectorModel: 'text-embedding-3-small' })
+    ).toEqual({
+      vectorModelId: 'text-embedding-3-small',
+      agentModelId: undefined,
+      vlmModelId: undefined
+    });
+  });
+
+  it('normalizeDatasetModelIds 返回回填后的数据集对象', () => {
+    const dataset = { _id: 'd1', name: 'KB', vectorModel: 'text-embedding-3-small' };
+    const normalized = normalizeDatasetModelIds(dataset);
+    expect(normalized).toMatchObject({
+      _id: 'd1',
+      name: 'KB',
+      vectorModelId: 'text-embedding-3-small'
+    });
   });
 });

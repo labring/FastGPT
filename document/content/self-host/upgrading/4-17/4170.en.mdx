@@ -1,0 +1,34 @@
+---
+title: 'V4.17.0'
+description: 'FastGPT V4.17.0 release notes'
+upgradeTags:
+  - MIGRATION
+---
+
+## 📦 Upgrade Guide
+
+### Migrate model management data
+
+This release restructures model configurations, default models, model channels, and stored model references. When upgrading from V4.16.x, update both the FastGPT and FastGPT Pro images, then run the migration:
+
+```bash
+curl -X POST 'https://your-domain/api/admin/initv4170' \
+  -H 'rootkey: YOUR_ROOT_KEY'
+```
+
+The migration performs the following operations:
+
+- Copies model fields from `system_models.metadata` into the new top-level structure while retaining compatibility fields for rollback during the upgrade.
+- Normalizes legacy numeric strings and serialized `priceTiers` values.
+- Removes the legacy global `model_1` unique index so multiple configurations can use the same provider model name.
+- Migrates model-name references in Datasets, App workflows, evaluations, usage records, and model permissions to model configuration IDs.
+- Initializes system default models and migrates legacy request settings into model channels.
+
+The migration is idempotent and can be rerun safely. Check the response after each run:
+
+- Administrators must review `nameMap.ambiguous`. When multiple configurations share a name, migration uses a deterministic first record.
+- Every `unresolved` result should be empty or manually resolved.
+- Every `conflicts` value should be `0`. A nonzero value means data changed concurrently and the migration must be rerun.
+- `channelMigration.failed` should be `0`. Channel migration is skipped when AI Proxy is not configured, without blocking the other steps.
+
+After resolving reported issues, rerun the migration and confirm that no unresolved references or conflicts remain. Do not call the legacy `cleanSystemModelConfigs` endpoint; its normalization behavior is included in this migration.

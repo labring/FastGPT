@@ -28,6 +28,7 @@ export const DevApiTagsMap = {
   /* 核心-AI 相关 */
   sandbox: 'AI 沙盒',
   aiCommon: 'AI 通用接口',
+  model: 'AI 模型管理',
 
   /* 核心-AI 辅助生成 */
   aiAuxiliary: 'AI 辅助生成',
@@ -120,7 +121,8 @@ export const DevApiTagsMap = {
   adminTemplateType: '模板类型管理',
   adminWalletInvoice: '发票管理',
   adminWalletRefund: '退款管理',
-  adminAuth: '管理员认证'
+  adminAuth: '管理员认证',
+  adminModels: '模型管理'
 };
 
 /** Scalar 文档导航中的标签展示名，key 保持 OpenAPI 内部标签唯一。 */

@@ -29,6 +29,7 @@ export type UsageItemSchemaType = {
 } & UsageItemCountType;
 
 export type UsageItemCountType = {
+  modelId?: string;
   model?: string;
   inputTokens?: number;
   outputTokens?: number;

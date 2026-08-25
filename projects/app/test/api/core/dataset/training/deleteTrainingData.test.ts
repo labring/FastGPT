@@ -20,8 +20,8 @@ describe('delete training data test', () => {
       name: 'test',
       teamId: root.teamId,
       tmbId: root.tmbId,
-      vectorModel: 'test',
-      agentModel: 'test'
+      vectorModelId: 'test',
+      agentModelId: 'test'
     });
     const collection = await MongoDatasetCollection.create({
       name: 'test',
@@ -68,15 +68,15 @@ describe('delete training data test', () => {
         name: 'test',
         teamId: root.teamId,
         tmbId: root.tmbId,
-        vectorModel: 'test',
-        agentModel: 'test'
+        vectorModelId: 'test',
+        agentModelId: 'test'
       }),
       MongoDataset.create({
         name: 'foreign',
         teamId: root.teamId,
         tmbId: root.tmbId,
-        vectorModel: 'test',
-        agentModel: 'test'
+        vectorModelId: 'test',
+        agentModelId: 'test'
       })
     ]);
     const [collection, foreignCollection] = await Promise.all([

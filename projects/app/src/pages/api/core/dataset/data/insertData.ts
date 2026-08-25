@@ -2,7 +2,7 @@
   insert one data to dataset (immediately insert)
   manual input or mark data
 */
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModel, assertModelUsable } from '@fastgpt/service/core/ai/model/cache';
 import { hasSameValue } from '@/service/core/dataset/data/utils';
 import { createDatasetData } from '@/service/core/dataset/data/data';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
@@ -45,7 +45,7 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
 
   const [
     {
-      dataset: { _id: datasetId, vectorModel },
+      dataset: { _id: datasetId, vectorModelId },
       indexPrefixTitle,
       imageIndex,
       indexSize,
@@ -60,7 +60,8 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
     text: simpleText(item.text)
   }));
 
-  const vectorModelData = getEmbeddingModel(vectorModel);
+  // Existence + active in one guard (F2-S3-TC06).
+  const vectorModelData = assertModelUsable(getEmbeddingModel(vectorModelId));
 
   await hasSameValue({
     teamId,
@@ -80,7 +81,7 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
     chunkIndex: 0,
     indexSize,
     indexPrefix: indexPrefixTitle ? `# ${name}` : undefined,
-    embeddingModel: vectorModelData.model,
+    vectorModelId: vectorModelData.id,
     imageIndex: !!imageIndex,
     indexes: formatIndexes,
     metadata
@@ -90,7 +91,7 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
     teamId,
     tmbId,
     inputTokens: tokens,
-    model: vectorModelData.model
+    modelId: vectorModelData.id
   });
 
   (() => {

@@ -66,9 +66,9 @@ export const RebuildEmbeddingBodySchema = z.object({
     example: '68ad85a7463006c963799a05',
     description: '知识库 ID'
   }),
-  vectorModel: z.string().meta({
-    example: 'text-embedding-3-small',
-    description: '新的向量模型名称，不能与当前模型相同'
+  vectorModelId: z.string().meta({
+    example: '68ad85a7463006c744799a05',
+    description: '新的向量模型ID，不能与当前模型相同'
   })
 });
 export type RebuildEmbeddingBody = z.infer<typeof RebuildEmbeddingBodySchema>;
@@ -278,6 +278,50 @@ export const HasDatasetTrainingErrorQuerySchema = z.object({
   })
 });
 export type HasDatasetTrainingErrorQuery = z.infer<typeof HasDatasetTrainingErrorQuerySchema>;
+
+/* ============================================================================
+ * API: Generate dataset paragraph text with an LLM
+ * Route: POST /api/core/dataset/training/llmPargraph
+ * Method: POST
+ * Description: Internal Pro endpoint used to generate paragraph training text
+ * Tags: ['Dataset Training']
+ * ============================================================================ */
+export const LlmParagraphBodySchema = z
+  .object({
+    rawText: z.string().min(1).meta({
+      example: 'FastGPT is an AI agent platform.',
+      description: 'Source text to process'
+    }),
+    modelId: ObjectIdSchema.optional().meta({
+      example: '68ad85a7463006c963799a05',
+      description: 'Canonical LLM model ID'
+    }),
+    model: z.string().optional().meta({
+      example: 'gpt-4o-mini',
+      description: 'Legacy provider model name',
+      deprecated: true
+    }),
+    teamId: ObjectIdSchema.meta({
+      example: '68ad85a7463006c963799a06',
+      description: 'Team ID used for model resolution and billing'
+    }),
+    billId: ObjectIdSchema.meta({
+      example: '68ad85a7463006c963799a07',
+      description: 'Billing record ID'
+    })
+  })
+  .refine((data) => data.modelId || data.model, {
+    message: 'modelId or model is required',
+    path: ['modelId']
+  });
+export type LlmParagraphBody = z.infer<typeof LlmParagraphBodySchema>;
+
+export const LlmParagraphResponseSchema = z.object({
+  resultText: z.string().meta({ description: 'Generated paragraph text' }),
+  totalInputTokens: z.number().nonnegative().meta({ description: 'Input token usage' }),
+  totalOutputTokens: z.number().nonnegative().meta({ description: 'Output token usage' })
+});
+export type LlmParagraphResponse = z.infer<typeof LlmParagraphResponseSchema>;
 
 export const HasDatasetTrainingErrorResponseSchema = z.object({
   hasError: z.boolean().meta({

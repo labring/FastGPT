@@ -31,7 +31,7 @@ async function handler(req: ApiRequestProps): Promise<DatasetDataIndexResponse> 
     data: datasetData,
     type,
     text,
-    model: collection.dataset.vectorModel
+    vectorModelId: collection.dataset.vectorModelId
   });
 
   if (tokens > 0) {
@@ -39,7 +39,7 @@ async function handler(req: ApiRequestProps): Promise<DatasetDataIndexResponse> 
       teamId,
       tmbId,
       inputTokens: tokens,
-      model: collection.dataset.vectorModel
+      modelId: collection.dataset.vectorModelId
     });
   }
 

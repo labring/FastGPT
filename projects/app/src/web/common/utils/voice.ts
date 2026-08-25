@@ -373,7 +373,8 @@ export const useAudioPlay = (props?: {
   /* split audio text and fetch tts */
   const splitText2Audio = useCallback(
     async (text: string, done?: boolean) => {
-      if (ttsConfig?.type === TTSTypeEnum.model && ttsConfig?.model) {
+      // ⚠️ 热升级兼容：legacy-only 配置只有 `model`（provider 模型名），极小前端 fallback（热升级分析 §6.6/§7.2）
+      if (ttsConfig?.type === TTSTypeEnum.model && (ttsConfig?.modelId || ttsConfig?.model)) {
         if (!isMediaSourceSupported()) {
           // 不支持 MediaSource 时，等待文本结束后一次性播放
           if (done) {
@@ -440,7 +441,14 @@ export const useAudioPlay = (props?: {
         playWebAudio(text);
       }
     },
-    [appendAudioStream, getAudioStream, playWebAudio, ttsConfig?.model, ttsConfig?.type]
+    [
+      appendAudioStream,
+      getAudioStream,
+      playWebAudio,
+      ttsConfig?.modelId,
+      ttsConfig?.model,
+      ttsConfig?.type
+    ]
   );
 
   // listen audio status

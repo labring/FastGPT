@@ -647,6 +647,179 @@ describe('getWorkflowNodeRunParams', () => {
     expect(params[NodeInputKeyEnum.addInputParam]).toEqual({ dynamicName: 'Ada' });
     expect(params.dynamicName).toBe('Ada');
   });
+
+  // ⚠️ 热升级兼容：参数双字段输出（热升级技术分析 §6.4 item 2）
+  it('legacy-only model input 映射进 canonical 字段并保留 legacy 字段', () => {
+    const node = createNode('node1', FlowNodeTypeEnum.textEditor);
+    node.inputs = [
+      {
+        key: 'model',
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+        value: 'gpt-4o',
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: createVariableState().state
+    });
+
+    // canonical 字段被 legacy 值回填（getter 兼容 name/id 解析）
+    expect(params.modelId).toBe('gpt-4o');
+    // legacy 字段保留供模型名展示路径读取
+    expect(params.model).toBe('gpt-4o');
+  });
+
+  it('dual key 并存时以 canonical 为准，legacy 不回填覆盖', () => {
+    const node = createNode('node1', FlowNodeTypeEnum.textEditor);
+    node.inputs = [
+      {
+        key: 'model',
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+        value: 'legacy-name',
+        valueType: WorkflowIOValueTypeEnum.string
+      },
+      {
+        key: NodeInputKeyEnum.aiModelId,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+        value: 'canonical-id',
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: createVariableState().state
+    });
+
+    expect(params.modelId).toBe('canonical-id');
+    expect(params.model).toBe('legacy-name');
+  });
+
+  it('legacy rerankModel / datasetSearchExtensionModel / datasetDeepSearchModel 映射进 canonical 字段', () => {
+    const node = createNode('node1', FlowNodeTypeEnum.textEditor);
+    node.inputs = [
+      {
+        key: 'rerankModel',
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.selectRerankModel],
+        value: 'rerank-name',
+        valueType: WorkflowIOValueTypeEnum.string
+      },
+      {
+        key: 'datasetSearchExtensionModel',
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+        value: 'ext-name',
+        valueType: WorkflowIOValueTypeEnum.string
+      },
+      {
+        key: 'datasetDeepSearchModel',
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+        value: 'deep-name',
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: createVariableState().state
+    });
+
+    expect(params.rerankModelId).toBe('rerank-name');
+    expect(params.datasetSearchExtensionModelId).toBe('ext-name');
+    expect(params.datasetDeepSearchModelId).toBe('deep-name');
+    expect(params.rerankModel).toBe('rerank-name');
+  });
+
+  it('datasetParams 内嵌 legacy 模型字段映射进 canonical 字段', () => {
+    const node = createNode('node1', FlowNodeTypeEnum.agent);
+    node.inputs = [
+      {
+        key: NodeInputKeyEnum.datasetParams,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.settingDatasetParams],
+        value: {
+          datasets: [{ datasetId: 'd1' }],
+          embeddingModel: 'emb-name',
+          rerankModel: 'rerank-name',
+          datasetSearchExtensionModel: 'ext-name',
+          datasetDeepSearchModel: 'deep-name'
+        },
+        valueType: WorkflowIOValueTypeEnum.object
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: createVariableState().state
+    });
+
+    const datasetParams = params[NodeInputKeyEnum.datasetParams];
+    expect(datasetParams.embeddingModelId).toBe('emb-name');
+    expect(datasetParams.rerankModelId).toBe('rerank-name');
+    expect(datasetParams.datasetSearchExtensionModelId).toBe('ext-name');
+    expect(datasetParams.datasetDeepSearchModelId).toBe('deep-name');
+    // legacy 内嵌字段保留
+    expect(datasetParams.embeddingModel).toBe('emb-name');
+  });
+
+  it('datasetParams dual key 并存时以 canonical 为准', () => {
+    const node = createNode('node1', FlowNodeTypeEnum.agent);
+    node.inputs = [
+      {
+        key: NodeInputKeyEnum.datasetParams,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.settingDatasetParams],
+        value: {
+          datasets: [{ datasetId: 'd1' }],
+          embeddingModel: 'legacy-name',
+          embeddingModelId: 'canonical-id'
+        },
+        valueType: WorkflowIOValueTypeEnum.object
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: createVariableState().state
+    });
+
+    expect(params[NodeInputKeyEnum.datasetParams].embeddingModelId).toBe('canonical-id');
+  });
+
+  it('无模型输入时不影响普通参数（不新增多余字段）', () => {
+    const node = createNode('node1', FlowNodeTypeEnum.textEditor);
+    node.inputs = [
+      {
+        key: NodeInputKeyEnum.textareaInput,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.textarea],
+        value: 'plain',
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: createVariableState().state
+    });
+
+    expect(params).toEqual({ [NodeInputKeyEnum.textareaInput]: 'plain' });
+    expect(params.modelId).toBeUndefined();
+    expect(params.model).toBeUndefined();
+  });
 });
 
 describe('runWorkflow catchError', () => {

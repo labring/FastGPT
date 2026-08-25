@@ -69,8 +69,14 @@ const OpenAPIAppQGConfigSchema = z.object({
   open: BoolSchema.meta({
     description: '是否开启问题引导'
   }),
+  modelId: z.string().optional().meta({
+    description: '生成问题引导时使用的模型ID'
+  }),
+  // ⚠️ 热升级兼容（contract release 移除）：legacy provider 模型名，运行时按
+  // `modelId ?? resolveModelId(model)` 解析；schema 保留声明防止 zod strip 丢弃（热升级分析 §6.8）
   model: z.string().optional().meta({
-    description: '生成问题引导时使用的模型'
+    description: '生成问题引导时使用的模型名称（已废弃，兼容旧调用方，运行时按名解析）',
+    deprecated: true
   }),
   customPrompt: z.string().optional().meta({
     description: '生成问题引导时追加的自定义提示词'

@@ -10,7 +10,7 @@ import { fullTextRecall } from './fullTextRecall';
 export const multiQueryRecall = async ({
   teamId,
   datasetIds,
-  model,
+  vectorModelId,
   imageQueries,
   collectionFilterMatch,
   embeddingLimit,
@@ -20,7 +20,7 @@ export const multiQueryRecall = async ({
 }: {
   teamId: string;
   datasetIds: string[];
-  model: string;
+  vectorModelId: string;
   imageQueries: string[];
   collectionFilterMatch?: string;
   embeddingLimit: number;
@@ -52,7 +52,7 @@ export const multiQueryRecall = async ({
     embeddingRecall({
       teamId,
       datasetIds,
-      model,
+      vectorModelId,
       imageQueries,
       textQueries,
       imageCaptionQueries,

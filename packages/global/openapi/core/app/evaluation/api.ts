@@ -37,16 +37,24 @@ export const CreateEvaluationBodySchema = z
       example: '68ad85a7463006c963799a05',
       description: '待评测应用 ID'
     }),
-    evalModel: z.string().min(1).meta({
-      example: 'gpt-4o-mini',
+    evalModelId: ObjectIdSchema.optional().meta({
+      example: '68ad85a7463006c963799a06',
       description: '用于评测答案的模型 ID'
+    }),
+    evalModel: z.string().min(1).optional().meta({
+      deprecated: true,
+      example: 'gpt-4o-mini',
+      description: '旧版评测模型名称'
     })
+  })
+  .refine(({ evalModelId, evalModel }) => evalModelId || evalModel, {
+    message: 'evalModelId or evalModel is required'
   })
   .meta({
     example: {
       name: '客服问答评测',
       appId: '68ad85a7463006c963799a05',
-      evalModel: 'gpt-4o-mini'
+      evalModelId: '68ad85a7463006c963799a06'
     }
   });
 export type CreateEvaluationBodyType = z.infer<typeof CreateEvaluationBodySchema>;
@@ -146,7 +154,10 @@ export const EvaluationListItemSchema = z.object({
   name: z.string().meta({ example: '客服问答评测', description: '评测任务名称' }),
   createTime: z.coerce.date().meta({ description: '创建时间' }),
   finishTime: z.coerce.date().nullish().meta({ description: '完成时间' }),
-  evalModel: z.string().meta({ example: 'gpt-4o-mini', description: '评测模型 ID' }),
+  evalModelId: z.union([ObjectIdSchema, z.literal('')]).meta({
+    example: '68ad85a7463006c963799a06',
+    description: '评测模型 ID；历史模型无法解析时为空字符串'
+  }),
   errorMessage: z.string().nullish().meta({ description: '评测任务错误信息' }),
   score: NumSchema.nullish().meta({ example: 0.85, description: '评测平均得分' }),
   executorAvatar: z.string().nullish().meta({ description: '执行成员头像' }),

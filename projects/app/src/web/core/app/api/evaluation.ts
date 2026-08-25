@@ -1,30 +1,33 @@
 import { DELETE, POST } from '@/web/common/api/request';
 import type {
   listEvalItemsBody,
-  listEvaluationsBody,
   retryEvalItemBody,
   updateEvalItemBody
 } from '@fastgpt/global/core/app/evaluation/api';
-import type { evaluationType, listEvalItemsItem } from '@fastgpt/global/core/app/evaluation/type';
+import type { listEvalItemsItem } from '@fastgpt/global/core/app/evaluation/type';
 import type { PaginationResponse } from '@fastgpt/global/openapi/api';
-import type { DeleteEvaluationItemQueryType } from '@fastgpt/global/openapi/core/app/evaluation/api';
+import type {
+  DeleteEvaluationItemQueryType,
+  ListEvaluationsBodyType,
+  ListEvaluationsResponseType
+} from '@fastgpt/global/openapi/core/app/evaluation/api';
 
 export const postCreateEvaluation = ({
   file,
   name,
-  evalModel,
+  evalModelId,
   appId,
   percentListen
 }: {
   file: File;
   name: string;
-  evalModel: string;
+  evalModelId: string;
   appId: string;
   percentListen: (percent: number) => void;
 }) => {
   const formData = new FormData();
   formData.append('file', file, file.name);
-  formData.append('data', JSON.stringify({ name, evalModel, appId }));
+  formData.append('data', JSON.stringify({ name, evalModelId, appId }));
 
   return POST(`/proApi/core/app/evaluation/create`, formData, {
     timeout: 600000,
@@ -37,8 +40,8 @@ export const postCreateEvaluation = ({
   });
 };
 
-export const getEvaluationList = (data: listEvaluationsBody) =>
-  POST<PaginationResponse<evaluationType>>('/proApi/core/app/evaluation/list', data);
+export const getEvaluationList = (data: ListEvaluationsBodyType) =>
+  POST<ListEvaluationsResponseType>('/proApi/core/app/evaluation/list', data);
 
 export const deleteEvaluation = (data: { evalId: string }) =>
   DELETE('/proApi/core/app/evaluation/delete', data);

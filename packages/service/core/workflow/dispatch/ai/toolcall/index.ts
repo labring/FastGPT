@@ -1,7 +1,7 @@
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType } from '../../../types/runtime';
-import { getLLMModel } from '../../../../ai/model';
+import { getLLMModel, assertModelUsable } from '../../../../ai/model/cache';
 import { getAgentLoopHistories, getNodeErrResponse } from '../../utils';
 import { runToolCall } from './toolCall';
 import { type DispatchToolModuleProps } from './type';
@@ -46,7 +46,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     externalProvider,
     responseChatItemId,
     params: {
-      model,
+      modelId,
       systemPrompt,
       userChatInput,
       history = 6,
@@ -75,7 +75,9 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   const useSandbox = isAppChat ? appSandboxAvailability?.available === true : !!useAgentSandbox;
 
   try {
-    const toolModel = getLLMModel(model);
+    // Existence + active in one guard (F2-S3-TC06), inside try so the error
+    // follows the existing catch path.
+    const toolModel = assertModelUsable(getLLMModel(modelId));
     const useVision = aiChatVision && toolModel.vision;
     const useAudio = aiChatAudio && toolModel.audio;
     const useVideo = aiChatVideo && toolModel.video;
@@ -210,6 +212,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       toolCallInputTokens,
       toolCallOutputTokens,
       toolTotalPoints,
+      modelId: toolModel.id,
       modelName,
       query: userChatInput,
       completeMessages,

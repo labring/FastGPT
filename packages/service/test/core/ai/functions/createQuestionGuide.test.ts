@@ -9,8 +9,10 @@ vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getLLMModel: getLLMModelMock
+vi.mock('@fastgpt/service/core/ai/model/cache', () => ({
+  getLLMModel: getLLMModelMock,
+  // Tests drive valid model data via getLLMModelMock; pass the guard through.
+  assertModelUsable: (model: unknown) => model
 }));
 
 import { createQuestionGuide } from '@fastgpt/service/core/ai/functions/createQuestionGuide';
@@ -29,31 +31,37 @@ describe('createQuestionGuide', () => {
 
   it('forces reasoning models to disable reasoning for question guide generation', async () => {
     getLLMModelMock.mockReturnValue({
+      id: 'deepseek-r1',
       model: 'deepseek-r1',
       reasoning: true
     });
 
     await createQuestionGuide({
       messages: [],
-      model: 'deepseek-r1',
+      modelId: 'deepseek-r1',
       teamId: 'team_1'
     });
 
+    // design §2.10 revision: wire body no longer carries `model` — it is
+    // resolved from modelData by createLLMResponse; modelData must be passed.
+    expect(createLLMResponseMock.mock.calls[0][0].modelData).toMatchObject({
+      model: 'deepseek-r1'
+    });
     expect(createLLMResponseMock.mock.calls[0][0].body).toMatchObject({
-      model: 'deepseek-r1',
       reasoning_effort: 'none'
     });
   });
 
   it('does not set reasoning effort for non-reasoning models', async () => {
     getLLMModelMock.mockReturnValue({
+      id: 'gpt-4o',
       model: 'gpt-4o',
       reasoning: false
     });
 
     await createQuestionGuide({
       messages: [],
-      model: 'gpt-4o',
+      modelId: 'gpt-4o',
       teamId: 'team_1'
     });
 

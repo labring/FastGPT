@@ -74,6 +74,7 @@ export const DispatchNodeResponseSchema = z
     tokens: z.number().optional().meta({ description: '总 token' }),
     inputTokens: z.number().optional().meta({ description: '输入 token' }),
     outputTokens: z.number().optional().meta({ description: '输出 token' }),
+    modelId: z.string().optional().meta({ description: '模型 ID' }),
     model: z.string().optional().meta({ description: '模型' }),
     contextTotalLen: z.number().optional().meta({ description: '上下文总长度' }),
     totalPoints: z.number().optional().meta({ description: '总积分' }),
@@ -100,7 +101,8 @@ export const DispatchNodeResponseSchema = z
     finishReason: CompletionFinishReasonSchema.optional(),
 
     // dataset search
-    embeddingModel: z.string().optional().meta({ description: '嵌入模型' }),
+    embeddingModelId: z.string().optional().meta({ description: '嵌入模型 ID' }),
+    embeddingModel: z.string().optional().meta({ description: '嵌入模型名称' }),
     embeddingTokens: z.number().optional().meta({ description: '嵌入 token' }),
     similarity: z.number().optional().meta({ description: '相似度' }),
     limit: z.number().optional().meta({ description: '限制' }),
@@ -108,15 +110,27 @@ export const DispatchNodeResponseSchema = z
     embeddingWeight: z.number().optional().meta({ description: '嵌入权重' }),
     datasetQueries: z.array(z.string()).optional().meta({ description: '检索词' }),
 
-    rerankModel: z.string().optional().meta({ description: '重排模型' }),
+    rerankModelId: z.string().optional().meta({ description: '重排模型 ID' }),
     rerankWeight: z.number().optional().meta({ description: '重排权重' }),
     reRankInputTokens: z.number().optional().meta({ description: '重排输入 token' }),
     searchUsingReRank: z.boolean().optional().meta({ description: '使用重排' }),
     deepSearchResult: z
       .object({
-        model: z.string().meta({ description: '模型' }),
+        llmModelId: z.string().meta({ description: '模型 ID' }),
+        llmModelName: z.string().meta({ description: '模型' }),
         inputTokens: z.number().meta({ description: '输入 token' }),
         outputTokens: z.number().meta({ description: '输出 token' })
+      })
+      .optional(),
+    queryExtensionResult: z
+      .object({
+        llmModelId: z.string().meta({ description: '查询改写 LLM 模型 ID' }),
+        llmModel: z.string().meta({ description: '查询改写 LLM 模型' }),
+        embeddingModelId: z.string().meta({ description: '查询改写向量模型 ID' }),
+        embeddingModel: z.string().meta({ description: '查询改写向量模型' }),
+        inputTokens: z.number().meta({ description: '查询改写输入 token' }),
+        outputTokens: z.number().meta({ description: '查询改写输出 token' }),
+        embeddingTokens: z.number().meta({ description: '查询改写向量 token' })
       })
       .optional(),
 

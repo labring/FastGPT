@@ -9,20 +9,25 @@ import {
 import {
   OwnerRoleVal,
   PerResourceTypeEnum,
+  ReadPermissionVal,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import {
-  getDatasetModel,
   getDefaultEmbeddingModel,
+  getDefaultDatasetTextLLMModel,
   getDefaultVLMModel,
   getEmbeddingModel,
-  getLLMModel
-} from '@fastgpt/service/core/ai/model';
+  getLLMModel,
+  getVlmModel,
+  assertModelUsable
+} from '@fastgpt/service/core/ai/model/cache';
+import { resolveModelId } from '@fastgpt/service/core/ai/compat/resolveModelId';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { authModels } from '@fastgpt/service/support/permission/model/auth';
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import type { ApiRequestProps } from '@fastgpt/next/type';
@@ -40,9 +45,13 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
     intro,
     type = DatasetTypeEnum.dataset,
     avatar,
-    vectorModel = getDefaultEmbeddingModel()?.model,
-    agentModel = getDatasetModel()?.model,
-    vlmModel = getDefaultVLMModel()?.model,
+    // Resolve legacy names only after the caller's team is known.
+    vectorModelId,
+    agentModelId,
+    vlmModelId,
+    vectorModel,
+    agentModel,
+    vlmModel,
     apiDatasetServer
   } = parseApiInput({ req, bodySchema: CreateDatasetBodySchema }).body;
 
@@ -62,15 +71,35 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
         per: TeamDatasetCreatePermissionVal
       });
 
-  // check model valid
-  const vectorModelStore = getEmbeddingModel(vectorModel);
-  const agentModelStore = getLLMModel(agentModel);
-  if (!vectorModelStore) {
-    return Promise.reject(`System not embedding model`);
+  const resolvedVectorModelId =
+    vectorModelId ??
+    (vectorModel ? resolveModelId(vectorModel, teamId) : undefined) ??
+    getDefaultEmbeddingModel()?.id ??
+    '';
+  const resolvedAgentModelId =
+    agentModelId ??
+    (agentModel ? resolveModelId(agentModel, teamId) : undefined) ??
+    getDefaultDatasetTextLLMModel()?.id ??
+    '';
+  const resolvedVlmModelId =
+    vlmModelId ??
+    (vlmModel ? resolveModelId(vlmModel, teamId) : undefined) ??
+    getDefaultVLMModel()?.id;
+
+  const vectorModelStore = assertModelUsable(getEmbeddingModel(resolvedVectorModelId));
+  const agentModelStore = assertModelUsable(getLLMModel(resolvedAgentModelId));
+  if (resolvedVlmModelId) {
+    assertModelUsable(getVlmModel(resolvedVlmModelId));
   }
-  if (!agentModelStore) {
-    return Promise.reject(`System not llm model`);
-  }
+
+  // Model permission: reject unauthorized models (design AUTH-TC11)
+  await authModels({
+    req,
+    authToken: true,
+    authApiKey: true,
+    modelIds: [resolvedVectorModelId, resolvedAgentModelId, resolvedVlmModelId],
+    per: ReadPermissionVal
+  });
 
   // check limit
   await checkTeamDatasetLimit(teamId);
@@ -84,9 +113,9 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
           intro,
           teamId,
           tmbId,
-          vectorModel,
-          agentModel,
-          vlmModel,
+          vectorModelId: resolvedVectorModelId,
+          agentModelId: resolvedAgentModelId,
+          vlmModelId: resolvedVlmModelId,
           avatar,
           type,
           apiDatasetServer

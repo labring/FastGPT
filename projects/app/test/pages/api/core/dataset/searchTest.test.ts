@@ -33,7 +33,10 @@ vi.mock('@fastgpt/service/support/openapi/tools', () => ({
   updateApiKeyUsage: mockUpdateApiKeyUsage
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
+vi.mock('@fastgpt/service/core/ai/model/cache', () => ({
+  assertModelUsable: (model: unknown) => model,
+  assertModelActive: () => undefined,
+
   getRerankModel: mockGetRerankModel
 }));
 
@@ -69,8 +72,8 @@ describe('searchTest query image auth', () => {
       dataset: {
         name: 'dataset',
         type: DatasetTypeEnum.dataset,
-        vectorModel: 'mock-vector-model',
-        vlmModel: 'mock-vlm-model'
+        vectorModelId: 'mock-vector-model',
+        vlmModelId: 'mock-vlm-model'
       },
       teamId: 'team-1',
       tmbId: 'tmb-1',

@@ -43,7 +43,7 @@ const createContext = (overrides = {}) =>
       flowNodeType: FlowNodeTypeEnum.agent
     },
     params: {
-      model: 'gpt-4',
+      modelId: 'gpt-4',
       aiChatVision: true
     },
     completionTools: [tool('search')],
@@ -98,7 +98,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
       executeToolFactory: vi.fn()
     });
 
-    expect(runtime.llmParams.model).toBe('gpt-4');
+    expect(runtime.llmParams.modelId).toBe('gpt-4');
     expect(runtime.toolCatalog.batchToolSize).toBe(5);
     expect(runtime.llmParams.reasoningEffort).toBeUndefined();
     expect(runtime.llmParams.userKey).toEqual({ key: 'user-key' });
@@ -310,7 +310,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
           }
         ],
         params: {
-          model: 'gpt-4',
+          modelId: 'gpt-4',
           agent_datasetParams: {
             datasets: [{ datasetId: 'dataset_1' }]
           }
@@ -342,7 +342,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
         },
         teamId: 'team_1',
         tmbId: 'tmb_1',
-        llmModel: 'gpt-4',
+        llmModelId: 'gpt-4',
         userKey
       })
     );
@@ -378,6 +378,9 @@ describe('createWorkflowAgentLoopRuntime', () => {
   it('wraps workflow tool execution and collects artifacts', async () => {
     const executeTool = vi.fn(async () => ({
       response: 'tool response',
+      assistantMessages: [],
+      interactive: undefined,
+      stop: false,
       usages: [
         {
           moduleName: 'tool',
@@ -390,6 +393,9 @@ describe('createWorkflowAgentLoopRuntime', () => {
         id: 'call_search',
         moduleType: FlowNodeTypeEnum.tool,
         moduleName: 'Search',
+        moduleLogo: '',
+        // runningTime 留空：tool_run_end 收集器会用事件 seconds 兜底（runningTime ?? seconds）。
+        totalPoints: 2,
         llmRequestIds: ['req_tool_node']
       }
     }));
@@ -436,6 +442,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
         args: '{"q":"FastGPT"}'
       }),
       response: 'tool response',
+      rawResponse: 'tool response',
       usages: [
         {
           moduleName: 'llm',
@@ -539,11 +546,13 @@ describe('createWorkflowAgentLoopRuntime', () => {
     runtime.emitEvent?.({
       type: 'llm_request_start',
       requestIndex: 1,
+      modelId: 'gpt-4',
       modelName: 'GPT-4'
     });
     runtime.emitEvent?.({
       type: 'llm_request_end',
       requestIndex: 1,
+      modelId: 'gpt-4',
       modelName: 'GPT-4',
       requestId: 'req_1',
       finishReason: 'stop',
@@ -551,6 +560,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
       reasoningText: 'reasoning',
       usages: [
         {
+          moduleName: 'account_usage:agent_call',
           inputTokens: 10,
           outputTokens: 5,
           totalPoints: 1
@@ -561,12 +571,14 @@ describe('createWorkflowAgentLoopRuntime', () => {
     runtime.emitEvent?.({
       type: 'llm_request_end',
       requestIndex: 2,
+      modelId: 'gpt-4',
       modelName: 'GPT-4',
       requestId: 'req_2',
       finishReason: 'tool_calls',
       answerText: '',
       usages: [
         {
+          moduleName: 'account_usage:agent_call',
           inputTokens: 6,
           outputTokens: 4,
           totalPoints: 0.5
@@ -625,12 +637,14 @@ describe('createWorkflowAgentLoopRuntime', () => {
     runtime.emitEvent?.({
       type: 'llm_request_end',
       requestIndex: 1,
+      modelId: 'gpt-4',
       modelName: 'GPT-4',
       requestId: 'req_interrupted',
       finishReason: 'abnormal_close',
       answerText: 'partial answer',
       usages: [
         {
+          moduleName: 'account_usage:agent_call',
           inputTokens: 8,
           outputTokens: 3,
           totalPoints: 0.4
@@ -661,6 +675,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
     runtime.emitEvent?.({
       type: 'llm_request_end',
       requestIndex: 1,
+      modelId: 'gpt-4',
       modelName: 'GPT-4',
       requestId: 'req_empty_start',
       finishReason: 'stop',
@@ -680,6 +695,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
     runtime.emitEvent?.({
       type: 'llm_request_end',
       requestIndex: 2,
+      modelId: 'gpt-4',
       modelName: 'GPT-4',
       requestId: 'req_tool_round',
       finishReason: 'tool_calls',
@@ -698,6 +714,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
     runtime.emitEvent?.({
       type: 'llm_request_end',
       requestIndex: 3,
+      modelId: 'gpt-4',
       modelName: 'GPT-4',
       requestId: 'req_empty_end',
       finishReason: 'close',
@@ -747,6 +764,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
     runtime.emitEvent?.({
       type: 'llm_request_end',
       requestIndex: 1,
+      modelId: 'gpt-4',
       modelName: 'GPT-4',
       requestId: 'req_master_tool_stop',
       finishReason: 'stop',
@@ -763,6 +781,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
       ],
       usages: [
         {
+          moduleName: 'account_usage:agent_call',
           inputTokens: 10,
           outputTokens: 2,
           totalPoints: 1
@@ -807,12 +826,17 @@ describe('createWorkflowAgentLoopRuntime', () => {
   it('flattens tool and child LLM node responses in call order', async () => {
     const executeTool = vi.fn(async () => ({
       response: 'search result',
+      assistantMessages: [],
+      interactive: undefined,
+      stop: false,
       usages: [],
       nodeResponse: {
         nodeId: 'call_search',
         id: 'call_search',
         moduleType: FlowNodeTypeEnum.tool,
         moduleName: 'Search',
+        moduleLogo: '',
+        // runningTime 留空：tool_run_end 收集器用事件 seconds 兜底
         totalPoints: 2
       }
     }));
@@ -825,11 +849,13 @@ describe('createWorkflowAgentLoopRuntime', () => {
     runtime.emitEvent?.({
       type: 'llm_request_end',
       requestIndex: 1,
+      modelId: 'gpt-4',
       modelName: 'GPT-4',
       requestId: 'req_master',
       finishReason: 'tool_calls',
       usages: [
         {
+          moduleName: 'account_usage:agent_call',
           inputTokens: 10,
           outputTokens: 2,
           totalPoints: 1
@@ -868,6 +894,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
         args: '{"q":"FastGPT"}'
       }),
       response: 'search result',
+      rawResponse: 'search result',
       seconds: 0.33
     });
 
@@ -896,12 +923,18 @@ describe('createWorkflowAgentLoopRuntime', () => {
   it('records one agent node, each tool node, then the next agent node for a tool round', async () => {
     const executeTool = vi.fn(async ({ callId }) => ({
       response: `${callId} response`,
+      assistantMessages: [],
+      interactive: undefined,
+      stop: false,
       usages: [],
       nodeResponse: {
         nodeId: callId,
         id: callId,
         moduleType: FlowNodeTypeEnum.tool,
-        moduleName: callId === 'call_search' ? 'Search' : 'Time'
+        moduleName: callId === 'call_search' ? 'Search' : 'Time',
+        moduleLogo: '',
+        // runningTime 留空：tool_run_end 收集器用事件 seconds 兜底
+        totalPoints: 0
       }
     }));
     const { runtime, artifacts } = createWorkflowAgentLoopRuntime({
@@ -913,6 +946,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
     runtime.emitEvent?.({
       type: 'llm_request_end',
       requestIndex: 1,
+      modelId: 'gpt-4',
       modelName: 'GPT-4',
       requestId: 'req_call_tools',
       finishReason: 'tool_calls',
@@ -936,6 +970,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
       ],
       usages: [
         {
+          moduleName: 'account_usage:agent_call',
           inputTokens: 10,
           outputTokens: 2,
           totalPoints: 1
@@ -960,6 +995,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
         args: '{"q":"FastGPT"}'
       }),
       response: 'call_search response',
+      rawResponse: 'call_search response',
       seconds: 0.41
     });
     await runtime.executeTool({
@@ -976,18 +1012,21 @@ describe('createWorkflowAgentLoopRuntime', () => {
         name: 'time'
       }),
       response: 'call_time response',
+      rawResponse: 'call_time response',
       seconds: 0.42
     });
 
     runtime.emitEvent?.({
       type: 'llm_request_end',
       requestIndex: 2,
+      modelId: 'gpt-4',
       modelName: 'GPT-4',
       requestId: 'req_after_tools',
       finishReason: 'stop',
       answerText: 'done',
       usages: [
         {
+          moduleName: 'account_usage:agent_call',
           inputTokens: 12,
           outputTokens: 3,
           totalPoints: 1.2
@@ -1033,11 +1072,13 @@ describe('createWorkflowAgentLoopRuntime', () => {
     runtime.emitEvent?.({
       type: 'llm_request_end',
       requestIndex: 1,
+      modelId: 'gpt-4',
       modelName: 'GPT-4',
       requestId: 'req_master',
       finishReason: 'tool_calls',
       usages: [
         {
+          moduleName: 'account_usage:agent_call',
           inputTokens: 10,
           outputTokens: 2,
           totalPoints: 1
@@ -1067,6 +1108,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
         name: 'search'
       }),
       response: 'compressed tool response',
+      rawResponse: 'compressed tool response',
       seconds: 0.77,
       toolResponseCompress: {
         response: 'compressed tool response',

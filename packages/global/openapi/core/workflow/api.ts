@@ -149,9 +149,9 @@ export const OptimizeCodeBodySchema = z.object({
     example: '编写一个 JavaScript 函数，将输入数组去重后按升序返回。',
     description: '代码节点的生成或优化要求'
   }),
-  model: z.string().meta({
-    example: 'gpt-4.1-mini',
-    description: '执行代码生成的模型名称'
+  modelId: z.string().meta({
+    example: '68ad84a7463006c963799a05',
+    description: '执行代码生成的模型ID'
   }),
   conversationHistory: z.array(ChatCompletionMessageParamSchema).optional().meta({
     description: '代码节点 Copilot 的历史对话消息，不传时按空数组处理'

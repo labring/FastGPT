@@ -1,11 +1,11 @@
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
+import { MongoSystemModel } from '@fastgpt/service/core/ai/model/schema';
 import { Call } from '@test/utils/request';
 import { getRootUser } from '@test/datas/users';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('@fastgpt/service/core/ai/config/utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@fastgpt/service/core/ai/config/utils')>();
+vi.mock('@fastgpt/service/core/ai/model/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/core/ai/model/utils')>();
 
   return {
     ...actual,
@@ -15,105 +15,136 @@ vi.mock('@fastgpt/service/core/ai/config/utils', async (importOriginal) => {
 
 import updateWithJsonApi from '@/pages/api/core/ai/model/updateWithJson';
 
-const buildLlmConfig = (model = 'test-llm') => ({
+type ConfigItem = Record<string, unknown>;
+
+const buildModelConfig = (
+  overrides: Record<string, unknown> = {},
+  model = 'test-model'
+): ConfigItem => ({
   model,
-  metadata: {
-    type: ModelTypeEnum.llm,
-    provider: 'OpenAI',
-    model: 'dirty-model',
-    name: 'Test LLM',
-    maxContext: 16000,
-    maxResponse: 8000,
-    quoteMaxToken: 12000,
-    toolChoice: true,
-    isActive: true
-  }
+  type: ModelTypeEnum.llm,
+  name: model,
+  provider: 'OpenAI',
+  isActive: true,
+  ...overrides
 });
 
-const buildEmbeddingConfig = (model = 'test-embedding') => ({
-  model,
-  metadata: {
-    type: ModelTypeEnum.embedding,
-    provider: 'OpenAI',
-    model,
-    name: 'Test Embedding',
-    defaultToken: 500,
-    maxToken: 3000,
-    isActive: true
-  }
-});
-
-const callUpdateWithJson = async (config: string) => {
+const callUpdateWithJson = async (data: ConfigItem[]) => {
   const root = await getRootUser();
 
   return Call(updateWithJsonApi, {
     auth: root,
-    body: { config }
+    body: { config: JSON.stringify(data) }
   });
 };
 
-describe('updateWithJson api', () => {
-  it('strictly imports valid models, fills defaults and clears old records', async () => {
-    await MongoSystemModel.create({
-      model: 'old-model',
-      metadata: buildLlmConfig('old-model').metadata
-    });
+const callRawUpdateWithJson = async (config: string) => {
+  const root = await getRootUser();
+  return Call(updateWithJsonApi, { auth: root, body: { config } });
+};
 
-    const res = await callUpdateWithJson(
-      JSON.stringify([buildLlmConfig(' test-llm '), buildEmbeddingConfig()])
-    );
+const findSavedModel = (model: string) => MongoSystemModel.findOne({ model }).lean();
+
+describe('updateWithJson api', () => {
+  it('imports configs as flat model documents (creates new models)', async () => {
+    const res = await callUpdateWithJson([buildModelConfig({}, 'imported-model')]);
 
     expect(res.code).toBe(200);
-    expect(res.data).toBeUndefined();
-    await expect(MongoSystemModel.findOne({ model: 'old-model' })).resolves.toBeNull();
-    await expect(MongoSystemModel.findOne({ model: 'test-llm' }).lean()).resolves.toMatchObject({
-      metadata: {
-        model: 'test-llm'
-      }
-    });
-    const savedLlm = await MongoSystemModel.findOne({ model: 'test-llm' }).lean();
-    expect(savedLlm?.metadata).not.toHaveProperty('functionCall');
-    await expect(
-      MongoSystemModel.findOne({ model: 'test-embedding' }).lean()
-    ).resolves.toMatchObject({
-      metadata: {
-        weight: 0
-      }
+
+    const saved = await findSavedModel('imported-model');
+    expect(saved).toMatchObject({
+      model: 'imported-model',
+      name: 'imported-model',
+      provider: 'OpenAI',
+      type: ModelTypeEnum.llm,
+      isSystem: true
     });
   });
 
-  it('rejects numeric strings and preserves existing records', async () => {
-    await MongoSystemModel.create({
+  it('updates existing model when id is provided', async () => {
+    const existing = await MongoSystemModel.create({
       model: 'existing-model',
-      metadata: buildLlmConfig('existing-model').metadata
+      type: ModelTypeEnum.llm,
+      name: 'Old Name',
+      provider: 'OpenAI',
+      isSystem: true
     });
-    const invalidConfig = buildLlmConfig();
-    invalidConfig.metadata.maxContext = '16000' as unknown as number;
 
-    const res = await callUpdateWithJson(JSON.stringify([invalidConfig]));
+    const res = await callUpdateWithJson([
+      buildModelConfig({ id: String(existing._id), name: 'New Name' }, 'existing-model')
+    ]);
 
-    expect(res.code).toBe(500);
-    expect(res.error?.name).toBe('ApiRequestInputParseError');
-    await expect(MongoSystemModel.findOne({ model: 'existing-model' })).resolves.not.toBeNull();
-    await expect(MongoSystemModel.findOne({ model: 'test-llm' })).resolves.toBeNull();
+    expect(res.code).toBe(200);
+
+    const saved = await MongoSystemModel.findById(existing._id).lean();
+    expect(saved?.name).toBe('New Name');
+    // No duplicate created
+    await expect(MongoSystemModel.countDocuments({ model: 'existing-model' })).resolves.toBe(1);
   });
 
-  it('rejects malformed JSON as an input parse error', async () => {
-    const res = await callUpdateWithJson('{invalid-json');
+  it('sanitizes unknown fields and stores normalized model', async () => {
+    const res = await callUpdateWithJson([
+      buildModelConfig(
+        { defaultConfig: { extra_body: { enable_thinking: false } }, unknownField: 'stripped' },
+        'sanitized-model'
+      )
+    ]);
 
-    expect(res.code).toBe(500);
-    expect(res.error?.name).toBe('ApiRequestInputParseError');
+    expect(res.code).toBe(200);
+
+    const saved = await findSavedModel('sanitized-model');
+    expect(saved?.defaultConfig).toEqual({ extra_body: { enable_thinking: false } });
+    expect(saved?.unknownField).toBeUndefined();
+  });
+
+  it('maps malformed JSON to invalidModelConfig without writing', async () => {
+    const existing = await MongoSystemModel.create(
+      buildModelConfig({ isSystem: true }, 'existing-before-malformed')
+    );
+
+    const res = await callRawUpdateWithJson('{invalid-json');
+
+    expect(res.error).toBe('invalidModelConfig');
+    await expect(MongoSystemModel.findById(existing._id)).resolves.not.toBeNull();
+    await expect(MongoSystemModel.countDocuments()).resolves.toBe(1);
+  });
+
+  it('maps invalid nested config to invalidModelConfig and validates all items before writing', async () => {
+    const res = await callUpdateWithJson([
+      buildModelConfig({}, 'must-not-be-created'),
+      buildModelConfig({ defaultConfig: '' }, 'invalid-nested-config')
+    ]);
+
+    expect(res.error).toBe('invalidModelConfig');
     await expect(MongoSystemModel.countDocuments()).resolves.toBe(0);
   });
 
-  it('rejects invalid nested model configuration', async () => {
-    const config = buildLlmConfig();
-    config.metadata.defaultConfig = '' as unknown as Record<string, unknown>;
-
-    const res = await callUpdateWithJson(JSON.stringify([config]));
+  it.each([
+    ['empty item', [{} as ConfigItem], 'invalidModelConfig'],
+    [
+      'missing type',
+      [{ model: 'missing-type', provider: 'OpenAI' } as ConfigItem],
+      'invalidModelConfig'
+    ],
+    [
+      'missing model',
+      [{ type: ModelTypeEnum.llm, provider: 'OpenAI' } as ConfigItem],
+      'invalidModelConfig'
+    ],
+    [
+      'missing provider',
+      [{ type: ModelTypeEnum.llm, model: 'missing-provider' } as ConfigItem],
+      'invalidModelConfig'
+    ],
+    [
+      'invalid id (non-ObjectId)',
+      [buildModelConfig({ id: 'not-an-object-id' }, 'bad-id-model')],
+      'invalidModelId'
+    ]
+  ])('rejects invalid model config: %s', async (_name, data, error) => {
+    const res = await callUpdateWithJson(data);
 
     expect(res.code).toBe(500);
-    expect(res.error?.name).toBe('ApiRequestInputParseError');
-    await expect(MongoSystemModel.countDocuments()).resolves.toBe(0);
+    expect(res.error).toBe(error);
   });
 });

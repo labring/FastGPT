@@ -43,7 +43,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
   });
 
   const dataset = collection.dataset;
-  const vectorModel = dataset.vectorModel;
+  const vectorModelId = dataset.vectorModelId;
   const nextQ = q ?? datasetData.q ?? '';
   const nextA = a ?? datasetData.a ?? '';
   const pushUpdateDataAuditLog = () => {
@@ -72,7 +72,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
       imageId: datasetData.imageId,
       imageIndex: !!collection.imageIndex,
       indexes: manualIndexes || [],
-      model: vectorModel,
+      vectorModelId: vectorModelId,
       indexSize: collection.indexSize,
       indexPrefix: indexPrefixTitle ? `# ${name}` : undefined
     });
@@ -82,7 +82,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
         teamId,
         tmbId,
         inputTokens: tokens,
-        model: vectorModel
+        modelId: vectorModelId
       });
     }
   } else if (!!nextQ || !!datasetData.imageId) {
@@ -92,7 +92,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
       a: nextA,
       imageId: datasetData.imageId,
       imageIndex: !!collection.imageIndex,
-      model: vectorModel,
+      vectorModelId: vectorModelId,
       indexSize: collection.indexSize,
       indexPrefix: indexPrefixTitle ? `# ${name}` : undefined
     });
@@ -102,7 +102,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
         teamId,
         tmbId,
         inputTokens: tokens,
-        model: vectorModel
+        modelId: vectorModelId
       });
     }
   }

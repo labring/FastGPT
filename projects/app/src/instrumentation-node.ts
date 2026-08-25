@@ -48,7 +48,7 @@ export async function registerNodeInstrumentation() {
       import('@/service/common/system/cron'),
       import('@/service/core/dataset/training/utils'),
       import('@fastgpt/service/worker/preload'),
-      import('@fastgpt/service/core/ai/config/utils'),
+      import('@fastgpt/service/core/ai/model/utils'),
       import('@fastgpt/service/common/middle/tracks/processor'),
       import('@/service/common/bullmq'),
       import('@fastgpt/service/common/s3'),

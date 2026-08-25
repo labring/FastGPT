@@ -4,7 +4,9 @@ export type EvaluationSchemaType = {
   _id: string;
   teamId: string;
   tmbId: string;
-  evalModel: string;
+  evalModelId?: string;
+  /** @deprecated Hot-upgrade compatibility. Use evalModelId. */
+  evalModel?: string;
   appId: string;
   usageId: string;
   name: string;
@@ -32,14 +34,15 @@ export type EvalItemSchemaType = {
   score?: number;
 };
 
-export type evaluationType = Pick<
-  EvaluationSchemaType,
-  'name' | 'appId' | 'createTime' | 'finishTime' | 'evalModel' | 'errorMessage' | 'score'
-> & {
+export type evaluationType = Pick<EvaluationSchemaType, 'name' | 'appId' | 'createTime'> & {
   _id: string;
-  executorAvatar: string;
-  executorName: string;
-  appAvatar: string;
+  evalModelId: string;
+  finishTime?: Date | null;
+  errorMessage?: string | null;
+  score?: number | null;
+  executorAvatar?: string | null;
+  executorName?: string | null;
+  appAvatar?: string | null;
   appName: string;
   completedCount: number;
   errorCount: number;

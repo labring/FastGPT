@@ -24,10 +24,10 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { AddModelButton } from '../AddModelBox';
 import dynamic from 'next/dynamic';
-import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import type { SystemModelItemType } from '@fastgpt/global/core/ai/model/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { getSystemModelList } from '@/web/core/ai/config';
+import { getModelList } from '@/web/core/ai/config';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
@@ -36,10 +36,10 @@ import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { getChannelProviders, postCreateChannel, putChannel } from '@/web/core/ai/channel';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import { defaultProvider } from '@fastgpt/global/core/ai/provider';
 
 const ModelEditModal = dynamic(() => import('../AddModelBox').then((mod) => mod.ModelEditModal));
 
@@ -48,50 +48,53 @@ const LabelStyles: BoxProps = {
   color: 'myGray.900',
   flex: '0 0 70px'
 };
+/** Provider option enriched with optional URL and key hints for root. */
+type ProviderSelectItem = {
+  defaultBaseUrl?: string;
+  keyHelp?: string;
+  icon: string;
+  label: string;
+  value: number;
+};
 const EditChannelModal = ({
   defaultConfig,
   onClose,
-  onSuccess
+  onSuccess,
+  groupType = 'system'
 }: {
   defaultConfig: ChannelInfoType;
   onClose: () => void;
   onSuccess: () => void;
+  groupType?: 'system' | 'team';
 }) => {
   const { t, i18n } = useClientTranslation('config_model');
-  const { defaultModels, aiproxyChannels, getModelProvider } = useSystemStore();
+  const { aiproxyChannels, getModelProvider } = useSystemStore();
+  const { userInfo } = useUserStore();
   const isEdit = defaultConfig.id !== 0;
+  const isRoot = userInfo?.username === 'root';
+  const hasModelCreatePer =
+    isRoot || userInfo?.permission?.hasModelCreatePer || userInfo?.permission?.isOwner;
 
   const { register, handleSubmit, watch, setValue } = useForm({
     defaultValues: defaultConfig
   });
 
   const providerType = watch('type');
-  const { data: providerList = [] } = useRequest(
+  const { data: providerMetas = {} } = useRequest(() => getChannelProviders(), {
+    manual: false,
+    errorToast: '' // Provider metadata is optional, so failures stay silent.
+  });
+  // The init payload supplies the base provider list; metadata only enriches its hints.
+  const providerList = useMemo<ProviderSelectItem[]>(
     () =>
-      getChannelProviders().then((res) => {
-        return aiproxyChannels
-          .map((channel) => {
-            const mapData = res[channel.channelId];
-
-            if (!mapData) {
-              return [];
-            }
-
-            return [
-              {
-                defaultBaseUrl: mapData.defaultBaseUrl,
-                keyHelp: mapData.keyHelp,
-                icon: channel.avatar,
-                label: parseI18nString(channel.name, i18n.language as localeType),
-                value: channel.channelId
-              }
-            ];
-          })
-          .flat();
-      }),
-    {
-      manual: false
-    }
+      aiproxyChannels.map((channel) => ({
+        defaultBaseUrl: providerMetas[channel.channelId]?.defaultBaseUrl,
+        keyHelp: providerMetas[channel.channelId]?.keyHelp,
+        icon: channel.avatar,
+        label: parseI18nString(channel.name, i18n.language as localeType),
+        value: channel.channelId
+      })),
+    [aiproxyChannels, providerMetas, i18n.language]
   );
 
   const selectedProvider = useMemo(() => {
@@ -100,18 +103,16 @@ const EditChannelModal = ({
   }, [providerList, providerType]);
 
   const [editModelData, setEditModelData] = useState<SystemModelItemType>();
+  // Omit an ID for creation because ModelEditModal uses it to select the update path.
   const onCreateModel = (type: ModelTypeEnum) => {
-    const defaultModel = defaultModels[type];
-
     setEditModelData({
-      ...defaultModel,
       model: '',
       name: '',
       charsPointsPrice: 0,
       inputPrice: undefined,
       outputPrice: undefined,
 
-      isCustom: true,
+      isSystem: false,
       isActive: true,
       ...(type === ModelTypeEnum.llm
         ? {
@@ -120,9 +121,8 @@ const EditChannelModal = ({
             video: false
           }
         : {}),
-      // @ts-ignore
       type
-    });
+    } as SystemModelItemType);
   };
 
   const models = watch('models');
@@ -130,9 +130,13 @@ const EditChannelModal = ({
     data: systemModelList = [],
     runAsync: refreshSystemModelList,
     loading: loadingModels
-  } = useRequest(getSystemModelList, {
-    manual: false
-  });
+  } = useRequest(
+    // Member channels can bind private models only; root owns routing for system models.
+    () => getModelList(isRoot ? undefined : { isSystem: false }),
+    {
+      manual: false
+    }
+  );
   const modelList = useMemo(() => {
     return systemModelList.map((item) => {
       const provider = getModelProvider(item.provider, i18n.language);
@@ -153,7 +157,23 @@ const EditChannelModal = ({
       if (data.models.length === 0) {
         return Promise.reject(t('config_model:selected_model_empty'));
       }
-      return isEdit ? putChannel(data) : postCreateChannel(data);
+      // create: the caller declares the target kind (groupType, design §2.9.4);
+      // edit keeps the channel ownership (server routes by channel, update has no groupType)
+      return isEdit
+        ? putChannel(data, groupType)
+        : postCreateChannel(
+            {
+              type: data.type,
+              name: data.name,
+              key: data.key ?? '',
+              base_url: data.base_url,
+              models: data.models,
+              model_mapping: data.model_mapping,
+              priority: data.priority ? Math.max(data.priority, 1) : undefined,
+              sets: data.sets
+            },
+            groupType
+          );
     },
     {
       onSuccess() {
@@ -209,7 +229,12 @@ const EditChannelModal = ({
                 {t('config_model:model')}({models.length})
               </FormLabel>
 
-              <AddModelButton onCreate={onCreateModel} size={'sm'} variant={'outline'} />
+              <AddModelButton
+                onCreate={onCreateModel}
+                size={'sm'}
+                variant={'outline'}
+                disabled={!hasModelCreatePer}
+              />
               <Button ml={2} size={'sm'} variant={'outline'} onClick={() => setValue('models', [])}>
                 {t('config_model:clear_model')}
               </Button>
@@ -239,7 +264,7 @@ const EditChannelModal = ({
                   } else {
                     try {
                       setValue('model_mapping', JSON.parse(val));
-                    } catch (error) {}
+                    } catch {}
                   }
                 }}
               />
@@ -249,7 +274,7 @@ const EditChannelModal = ({
           <Box mt={4}>
             <Flex alignItems={'center'}>
               <FormLabel>{t('config_model:base_url')}</FormLabel>
-              {selectedProvider && (
+              {selectedProvider?.defaultBaseUrl && (
                 <Flex alignItems={'center'} fontSize={'xs'}>
                   <Box>{'('}</Box>
                   <Box mr={1}>{t('config_model:default_url')}:</Box>
@@ -483,7 +508,7 @@ const MultipleSelect = ({ value = [], list = [], onSelect }: SelectProps) => {
               <MenuItem
                 key={i}
                 color={'myGray.900'}
-                onClick={(e) => {
+                onClick={() => {
                   onclickItem(item.value);
                 }}
                 whiteSpace={'pre-wrap'}

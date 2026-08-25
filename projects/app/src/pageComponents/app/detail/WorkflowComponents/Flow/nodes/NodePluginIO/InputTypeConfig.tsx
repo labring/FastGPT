@@ -39,6 +39,8 @@ import TimeInput from '@/components/core/app/formRender/TimeInput';
 
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { useActiveSystemModelList } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
 import { DatasetSelectModal } from '@/components/core/app/DatasetSelectModal';
@@ -79,12 +81,14 @@ const InputTypeConfig = ({
 }) => {
   const { t } = useTranslation();
   const defaultListValue = { label: t('common:None'), value: '' };
-  const { feConfigs, llmModelList } = useSystemStore();
+  const { feConfigs } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
+  // Lazy llm list (design §1)
+  const { list: llmModelList } = useActiveSystemModelList(ModelTypeEnum.llm);
 
   const availableModels = useMemoEnhance(() => {
     return llmModelList.map((model) => ({
-      value: model.model,
+      value: model.id,
       label: model.name
     }));
   }, [llmModelList]);
@@ -755,6 +759,7 @@ const InputTypeConfig = ({
                 inputType === FlowNodeInputTypeEnum.selectLLMModel) && (
                 <Box flex={'1'}>
                   <AIModelSelector
+                    type={'llm'}
                     value={defaultValue}
                     list={availableModels}
                     onChange={(model) => {

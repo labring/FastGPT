@@ -68,7 +68,7 @@ describe('optimizePrompt SSE error handling', () => {
       {
         body: {
           optimizerInput: 'Create a customer support prompt',
-          model: 'gpt-4o'
+          modelId: 'gpt-5'
         }
       } as any,
       res as any
@@ -107,7 +107,7 @@ describe('optimizePrompt SSE error handling', () => {
         body: {
           originalPrompt: 'Original prompt',
           optimizerInput: 'Improve it',
-          model: 'gpt-4o'
+          modelId: 'gpt-5'
         }
       } as any,
       res as any

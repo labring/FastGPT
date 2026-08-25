@@ -1,5 +1,8 @@
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { normalizeDatasetModelIds } from '@fastgpt/service/core/dataset/utils';
+import { resolveModelId } from '@fastgpt/service/core/ai/compat/resolveModelId';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { authModels } from '@fastgpt/service/support/permission/model/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import {
   ManagePermissionVal,
@@ -33,7 +36,12 @@ import { isEqual } from 'lodash-es';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
-import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
+import {
+  assertModelUsable,
+  getEmbeddingModel,
+  getLLMModel,
+  getVlmModel
+} from '@fastgpt/service/core/ai/model/cache';
 import { computedCollectionChunkSettings } from '@fastgpt/global/core/dataset/training/utils';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
@@ -60,6 +68,11 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       name,
       avatar,
       intro,
+      vectorModelId,
+      agentModelId,
+      vlmModelId,
+      // ⚠️ 热升级兼容：legacy provider 模型名，`*ModelId ?? legacy`（getter 按名解析）
+      vectorModel,
       agentModel,
       vlmModel,
       websiteConfig,
@@ -81,21 +94,55 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
 
   const isMove = parentId !== undefined;
 
-  const { dataset, permission, tmbId, teamId } = await authDataset({
+  const {
+    dataset: rawDataset,
+    permission,
+    tmbId,
+    teamId
+  } = await authDataset({
     req,
     authToken: true,
     authApiKey: true,
     datasetId: id,
     per: ReadPermissionVal
   });
+  // ⚠️ 热升级兼容：legacy-only dataset 回填 canonical 字段（getter 按名解析）
+  const dataset = normalizeDatasetModelIds(rawDataset);
+  const resolvedVectorModelId =
+    vectorModelId ?? (vectorModel ? resolveModelId(vectorModel, teamId) : undefined);
+  const resolvedAgentModelId =
+    agentModelId ?? (agentModel ? resolveModelId(agentModel, teamId) : undefined);
+  const resolvedVlmModelId =
+    vlmModelId ?? (vlmModel ? resolveModelId(vlmModel, teamId) : undefined);
+
+  // Model permission: reject unauthorized models in updated dataset fields (design AUTH-TC12)
+  const modelIdsToAuth = [resolvedVectorModelId, resolvedAgentModelId, resolvedVlmModelId].filter(
+    (m): m is string => typeof m === 'string' && !!m
+  );
+  if (modelIdsToAuth.length > 0) {
+    await authModels({
+      req,
+      authToken: true,
+      authApiKey: true,
+      modelIds: modelIdsToAuth,
+      per: ReadPermissionVal
+    });
+
+    assertModelUsable(getEmbeddingModel(resolvedVectorModelId ?? dataset.vectorModelId ?? ''));
+    assertModelUsable(getLLMModel(resolvedAgentModelId ?? dataset.agentModelId ?? ''));
+    const targetVlmModelId = resolvedVlmModelId ?? dataset.vlmModelId;
+    if (targetVlmModelId) {
+      assertModelUsable(getVlmModel(targetVlmModelId));
+    }
+  }
 
   let targetName = '';
 
   const chunkSettings = rawChunkSettings
     ? computedCollectionChunkSettings({
         ...rawChunkSettings,
-        llmModel: getLLMModel(dataset.agentModel),
-        vectorModel: getEmbeddingModel(dataset.vectorModel)
+        llmModel: getLLMModel(dataset.agentModelId),
+        vectorModel: getEmbeddingModel(dataset.vectorModelId)
       })
     : undefined;
 
@@ -146,11 +193,12 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     });
   }
 
-  updateTraining({
-    teamId: dataset.teamId,
-    datasetId: id,
-    agentModel
-  });
+  // Reset pending QA training records only when the agent model actually
+  // changed — unconditional resets would revive permanently-failed tasks on
+  // every save (rename, move, chunk settings…).
+  if (resolvedAgentModelId && dataset.agentModelId !== resolvedAgentModelId) {
+    updateTraining({ teamId: dataset.teamId, datasetId: id });
+  }
 
   const onUpdate = async (session: ClientSession) => {
     // Website dataset update chunkSettings, need to clean up dataset
@@ -221,8 +269,9 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         ...parseParentIdInMongo(parentId),
         ...(name && { name }),
         ...(avatar && { avatar }),
-        ...(agentModel && { agentModel }),
-        ...(vlmModel && { vlmModel }),
+        ...(resolvedAgentModelId && { agentModelId: resolvedAgentModelId }),
+        ...(resolvedVlmModelId && { vlmModelId: resolvedVlmModelId }),
+        ...(resolvedVectorModelId && { vectorModelId: resolvedVectorModelId }),
         ...(websiteConfig && { websiteConfig }),
         ...(chunkSettings && { chunkSettings }),
         ...(intro !== undefined && { intro }),
@@ -277,17 +326,13 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
 }
 export default NextAPI(handler);
 
-const updateTraining = async ({
-  teamId,
-  datasetId,
-  agentModel
-}: {
-  teamId: string;
-  datasetId: string;
-  agentModel?: string;
-}) => {
-  if (!agentModel) return;
-
+/**
+ * Reset retry state of pending QA training records after the dataset's agent
+ * model changed, so they get picked up again with the new model. The training
+ * record schema has no `model` field and nothing consumes one — only
+ * retryCount/lockTime are meaningful here.
+ */
+const updateTraining = async ({ teamId, datasetId }: { teamId: string; datasetId: string }) => {
   await MongoDatasetTraining.updateMany(
     {
       teamId,
@@ -296,7 +341,6 @@ const updateTraining = async ({
     },
     {
       $set: {
-        model: agentModel,
         retryCount: 5,
         lockTime: new Date('2000/1/1')
       }

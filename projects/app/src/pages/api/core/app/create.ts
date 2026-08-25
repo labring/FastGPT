@@ -12,6 +12,7 @@ import {
 import {
   OwnerRoleVal,
   PerResourceTypeEnum,
+  ReadPermissionVal,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
@@ -29,8 +30,9 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { getMyModels } from '@fastgpt/service/support/permission/model/controller';
 import { removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
+import { extractWorkflowModelIds } from '@fastgpt/global/core/workflow/utils';
+import { authModels } from '@fastgpt/service/support/permission/model/auth';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
@@ -82,6 +84,18 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     }>('user', 'username')
     .lean();
 
+  if (modules) {
+    const modelIds = extractWorkflowModelIds({ modules, chatConfig });
+    if (modelIds.length > 0) {
+      await authModels({
+        req,
+        authToken: true,
+        modelIds,
+        per: ReadPermissionVal
+      });
+    }
+  }
+
   // 创建app
   const appId = await onCreateApp({
     parentId,
@@ -90,18 +104,6 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     intro,
     type,
     modules,
-    allowedModels: await (async () => {
-      if (modules) {
-        return new Set(
-          await getMyModels({
-            teamId,
-            tmbId,
-            isTeamOwner: isRoot || tmb?.role === 'owner'
-          })
-        );
-      }
-      return undefined;
-    })(),
     edges,
     chatConfig,
     teamId,

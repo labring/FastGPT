@@ -16,7 +16,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
   deleteEvalItem,
@@ -25,7 +25,8 @@ import {
   updateEvalItem
 } from '@/web/core/app/api/evaluation';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import { downloadFetch, getWebLLMModel } from '@/web/common/system/utils';
+import { downloadFetch } from '@/web/common/system/utils';
+import { getModelDetail } from '@/web/core/ai/config';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { type TFunction } from 'i18next';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -87,7 +88,14 @@ const EvaluationDetailModal = ({
   const [pollingInterval, setPollingInterval] = useState(10000);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  const modelData = useMemo(() => getWebLLMModel(evalDetail.evalModel), [evalDetail.evalModel]);
+  const { data: modelData, error: modelError } = useRequest(
+    () => getModelDetail({ id: evalDetail.evalModelId }),
+    {
+      manual: false,
+      ready: !!evalDetail.evalModelId,
+      errorToast: ''
+    }
+  );
 
   const {
     data: evalItemsList,
@@ -97,7 +105,6 @@ const EvaluationDetailModal = ({
     getData: fetchData
   } = usePagination(getEvalItemsList, {
     defaultPageSize: 20,
-    pageSizeCacheKey: 'dashboard-evaluation-detail',
     params: {
       evalId: evalDetail._id
     },
@@ -105,7 +112,12 @@ const EvaluationDetailModal = ({
     scrollContainerRef
   });
 
-  useEffect(() => {
+  // Poll while tasks are running or have errors. Adjusted during render (React
+  // "adjusting state during rendering" pattern) instead of an effect, keyed by
+  // the list reference.
+  const [prevEvalItemsList, setPrevEvalItemsList] = useState(evalItemsList);
+  if (evalItemsList !== prevEvalItemsList) {
+    setPrevEvalItemsList(evalItemsList);
     const hasRunningOrErrorTasks = evalItemsList.some((item) => {
       return (
         item.status === EvaluationStatusEnum.evaluating ||
@@ -113,12 +125,8 @@ const EvaluationDetailModal = ({
         !!item.errorMessage
       );
     });
-    const frameId = window.requestAnimationFrame(() => {
-      setPollingInterval(hasRunningOrErrorTasks ? 10000 : 0);
-    });
-
-    return () => window.cancelAnimationFrame(frameId);
-  }, [evalItemsList]);
+    setPollingInterval(hasRunningOrErrorTasks ? 10000 : 0);
+  }
 
   const evalItem = evalItemsList[selectedIndex];
 
@@ -213,7 +221,9 @@ const EvaluationDetailModal = ({
               <Flex gap={1.5}>
                 <Avatar src={modelData?.avatar} w={5} />
                 <Box color={'myGray.900'} fontWeight={'medium'}>
-                  {modelData?.name}
+                  {modelError
+                    ? `${t('common:model_deleted')} (ID: ${evalDetail.evalModelId.slice(0, 8)}...)`
+                    : modelData?.name}
                 </Box>
               </Flex>
             </Box>

@@ -95,7 +95,7 @@ export const mockGetVectors = vi.fn(
   async ({
     inputs
   }: {
-    model: any;
+    modelData: any;
     inputs: { type: 'text' | 'image'; input: string }[];
     type?: string;
   }): Promise<{ tokens: number; vectors: number[][] }> => {
@@ -116,16 +116,15 @@ vi.mock('@fastgpt/service/core/ai/embedding', async (importOriginal) => {
 });
 
 /**
- * Setup global mock for AI model module
+ * Setup global mock for AI model module.
+ * getEmbeddingModel delegates to the real implementation (reads global.embeddingModelIdMap),
+ * so cache tests and any test that seeds the map see real behavior. Tests that need a fixed
+ * embedding model can still override this mock via `vi.mocked(getEmbeddingModel).mockReturnValue(...)`.
  */
-vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) => {
+vi.mock('@fastgpt/service/core/ai/model/cache', async (importOriginal) => {
   const actual = (await importOriginal()) as any;
   return {
     ...actual,
-    getEmbeddingModel: vi.fn().mockReturnValue({
-      model: 'text-embedding-ada-002',
-      name: 'text-embedding-ada-002',
-      maxToken: 100
-    })
+    getEmbeddingModel: vi.fn((modelId: string) => actual.getEmbeddingModel(modelId))
   };
 });

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModel } from '@fastgpt/service/core/ai/model/cache';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -82,8 +82,8 @@ const createDatasetContext = async () => {
     teamId: root.teamId,
     tmbId: root.tmbId,
     type: DatasetTypeEnum.dataset,
-    vectorModel: 'text-embedding-3-small',
-    agentModel: 'gpt-4o-mini'
+    vectorModelId: 'text-embedding-3-small',
+    agentModelId: 'gpt-4o-mini'
   });
   const collection = await MongoDatasetCollection.create({
     name: 'test collection',
@@ -150,7 +150,12 @@ describe('DatasetDataIndexOperation', () => {
     mockCountPromptTokens.mockImplementation(async (text: string) =>
       countPromptTokensInWorker(text)
     );
-    vi.mocked(getEmbeddingModel).mockReturnValue(embeddingModel);
+    vi.mocked(getEmbeddingModel).mockImplementation((id?: string) => {
+      if (id === 'vision-embedding') return { ...embeddingModel, id, vision: true };
+      if (id === 'large-token-model') return { ...embeddingModel, id, maxToken: 512 };
+      if (id === 'custom-token-model') return { ...embeddingModel, id, maxToken: 321 };
+      return { ...embeddingModel, id: id || embeddingModel.model };
+    });
     mockGetVectors.mockImplementation(async ({ inputs }) =>
       createMockVectorsResponse(inputs.map((input) => input.input))
     );
@@ -166,11 +171,8 @@ describe('DatasetDataIndexOperation', () => {
 
   describe('getSystemIndexes', () => {
     it('should collect image embedding sources by image index switch and model capability', () => {
-      const textModelOperation = new DatasetDataIndexOperation(embeddingModel);
-      const visionOperation = new DatasetDataIndexOperation({
-        ...embeddingModel,
-        vision: true
-      });
+      const textModelOperation = new DatasetDataIndexOperation(embeddingModel.model);
+      const visionOperation = new DatasetDataIndexOperation('vision-embedding');
 
       expect(
         textModelOperation.getImageEmbeddingSources({
@@ -199,7 +201,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should create prefixed default indexes from question and answer', async () => {
-      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const operation = new DatasetDataIndexOperation(embeddingModel.model);
 
       const result = await operation.getSystemIndexes({
         q: 'question text',
@@ -222,7 +224,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should clamp default index size to minimum chunk size when text is below embedding limit', async () => {
-      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const operation = new DatasetDataIndexOperation(embeddingModel.model);
 
       const result = await operation.getSystemIndexes({
         q: tokenHeavyText,
@@ -241,7 +243,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should clamp prefixed default index content to minimum chunk size when embedding limit is larger', async () => {
-      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const operation = new DatasetDataIndexOperation(embeddingModel.model);
       const indexPrefix = '# LongTitle';
 
       const result = await operation.getSystemIndexes({
@@ -263,7 +265,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should split default text indexes when text2Chunks result still exceeds embedding limit', async () => {
-      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const operation = new DatasetDataIndexOperation(embeddingModel.model);
 
       const result = await operation.getSystemIndexes({
         q: tokenHeavyText,
@@ -278,7 +280,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should split an overlong answer into token-safe default indexes', async () => {
-      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const operation = new DatasetDataIndexOperation(embeddingModel.model);
 
       const result = await operation.getSystemIndexes({
         q: '',
@@ -295,10 +297,7 @@ describe('DatasetDataIndexOperation', () => {
 
     it('should split large default text indexes by indexSize when model limit is larger', async () => {
       const indexSize = 96;
-      const operation = new DatasetDataIndexOperation({
-        ...embeddingModel,
-        maxToken: 512
-      });
+      const operation = new DatasetDataIndexOperation('large-token-model');
 
       const result = await operation.getSystemIndexes({
         q: largeTokenHeavyText,
@@ -319,7 +318,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should split prefixed default indexes by final embedding token size', async () => {
-      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const operation = new DatasetDataIndexOperation(embeddingModel.model);
       const indexPrefix = '# LongTitle';
 
       const result = await operation.getSystemIndexes({
@@ -338,7 +337,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should fail fast when prefix leaves no room for index content', async () => {
-      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const operation = new DatasetDataIndexOperation(embeddingModel.model);
 
       await expect(
         operation.getSystemIndexes({
@@ -351,7 +350,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should fail fast when prefix leaves less than minimum index content budget', async () => {
-      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const operation = new DatasetDataIndexOperation(embeddingModel.model);
 
       await expect(
         operation.getSystemIndexes({
@@ -364,10 +363,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should not check prefix token budget when text is empty and only image index is generated', async () => {
-      const operation = new DatasetDataIndexOperation({
-        ...embeddingModel,
-        vision: true
-      });
+      const operation = new DatasetDataIndexOperation('vision-embedding');
 
       const result = await operation.getSystemIndexes({
         q: '',
@@ -387,10 +383,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should create image embedding indexes from image id and markdown images', async () => {
-      const operation = new DatasetDataIndexOperation({
-        ...embeddingModel,
-        vision: true
-      });
+      const operation = new DatasetDataIndexOperation('vision-embedding');
 
       const result = await operation.getSystemIndexes({
         q: 'question ![one](dataset/team/one.png)',
@@ -428,7 +421,7 @@ describe('DatasetDataIndexOperation', () => {
 
   describe('formatIndexes', () => {
     it('should normalize indexes, remove duplicate custom text and keep default indexes', async () => {
-      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const operation = new DatasetDataIndexOperation(embeddingModel.model);
 
       const result = await operation.formatIndexes({
         q: 'question',
@@ -462,10 +455,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should regenerate system indexes and only reuse matching image embedding ids', async () => {
-      const operation = new DatasetDataIndexOperation({
-        ...embeddingModel,
-        vision: true
-      });
+      const operation = new DatasetDataIndexOperation('vision-embedding');
 
       const result = await operation.formatIndexes({
         q: 'question ![new](dataset/team/new.png)',
@@ -512,10 +502,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should keep text indexes whose text matches image embedding source', async () => {
-      const operation = new DatasetDataIndexOperation({
-        ...embeddingModel,
-        vision: true
-      });
+      const operation = new DatasetDataIndexOperation('vision-embedding');
       const imageSource = 'dataset/team/main.png';
 
       const result = await operation.formatIndexes({
@@ -547,7 +534,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should split a custom index when token count exceeds max token', async () => {
-      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const operation = new DatasetDataIndexOperation(embeddingModel.model);
 
       const result = await operation.formatIndexes({
         q: '',
@@ -569,7 +556,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should keep short custom indexes unchanged before token split', async () => {
-      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const operation = new DatasetDataIndexOperation(embeddingModel.model);
       const customText = '  first   second\n\n\nthird  ';
 
       const result = await operation.formatIndexes({
@@ -594,7 +581,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should force split custom indexes to embedding-safe token size after text2Chunks', async () => {
-      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const operation = new DatasetDataIndexOperation(embeddingModel.model);
 
       const result = await operation.formatIndexes({
         q: '',
@@ -616,7 +603,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should check default index token size after prefix is applied', async () => {
-      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const operation = new DatasetDataIndexOperation(embeddingModel.model);
 
       const result = await operation.formatIndexes({
         q: tokenHeavyText,
@@ -637,10 +624,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should keep image embedding indexes unsplit even when text looks too long', async () => {
-      const operation = new DatasetDataIndexOperation({
-        ...embeddingModel,
-        vision: true
-      });
+      const operation = new DatasetDataIndexOperation('vision-embedding');
       const imageSource = 'dataset/team/a-very-long-image-source-name-that-is-not-text.png';
 
       const result = await operation.formatIndexes({
@@ -664,7 +648,7 @@ describe('DatasetDataIndexOperation', () => {
 
   describe('mergeExistingSystemIndexIds', () => {
     it('should reuse dataId for unchanged default indexes only', () => {
-      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const operation = new DatasetDataIndexOperation(embeddingModel.model);
 
       const result = operation.mergeExistingSystemIndexIds({
         currentIndexes: [
@@ -684,7 +668,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should reuse system dataId by type and text without crossing text and image indexes', () => {
-      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const operation = new DatasetDataIndexOperation(embeddingModel.model);
 
       const result = operation.mergeExistingSystemIndexIds({
         currentIndexes: [
@@ -718,7 +702,7 @@ describe('DatasetDataIndexOperation', () => {
 
   describe('buildPatch', () => {
     it('should build create, update, delete and unchanged patch items', () => {
-      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const operation = new DatasetDataIndexOperation(embeddingModel.model);
 
       const result = operation.buildPatch({
         currentIndexes: [
@@ -743,7 +727,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should allow patching only filtered current indexes', () => {
-      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const operation = new DatasetDataIndexOperation(embeddingModel.model);
 
       const result = operation.buildPatch({
         currentIndexes: [
@@ -776,7 +760,7 @@ describe('DatasetDataIndexOperation', () => {
 
   describe('insertVectorForPatch', () => {
     it('should insert vectors for create and update patch items and mutate dataId', async () => {
-      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const operation = new DatasetDataIndexOperation(embeddingModel.model);
       const patchResult = operation.buildPatch({
         currentIndexes: [
           { type: DatasetDataIndexTypeEnum.custom, text: 'old text', dataId: 'old_id' }
@@ -803,7 +787,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should return zero when no patch item needs vector insertion', async () => {
-      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const operation = new DatasetDataIndexOperation(embeddingModel.model);
 
       const tokens = await operation.insertVectorForPatch({
         patchResult: [
@@ -822,10 +806,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should insert text and image embedding patch items in one vector call', async () => {
-      const operation = new DatasetDataIndexOperation({
-        ...embeddingModel,
-        vision: true
-      });
+      const operation = new DatasetDataIndexOperation('vision-embedding');
       mockVectorInsert.mockResolvedValueOnce({ insertIds: ['text_vector_id', 'image_vector_id'] });
       const patchResult = operation.buildPatch({
         currentIndexes: [],
@@ -868,7 +849,7 @@ describe('DatasetDataIndexOperation', () => {
 
   describe('insertVectors and deleteVectors', () => {
     it('should attach inserted vector ids to indexes', async () => {
-      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const operation = new DatasetDataIndexOperation(embeddingModel.model);
 
       const result = await operation.insertVectors({
         indexes: [
@@ -887,7 +868,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should skip image embedding indexes when the model does not support image input', async () => {
-      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const operation = new DatasetDataIndexOperation(embeddingModel.model);
 
       const result = await operation.insertVectors({
         indexes: [
@@ -906,10 +887,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should skip invalid image embedding sources without dropping valid text indexes', async () => {
-      const operation = new DatasetDataIndexOperation({
-        ...embeddingModel,
-        vision: true
-      });
+      const operation = new DatasetDataIndexOperation('vision-embedding');
 
       const result = await operation.insertVectors({
         indexes: [
@@ -932,7 +910,7 @@ describe('DatasetDataIndexOperation', () => {
     });
 
     it('should skip vector delete when id list is empty', async () => {
-      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const operation = new DatasetDataIndexOperation(embeddingModel.model);
 
       await operation.deleteVectors({ teamId: 'team_id', idList: [] });
 
@@ -948,7 +926,7 @@ describe('DatasetDataIndexOperation', () => {
         data: dataItem,
         type: DatasetDataIndexTypeEnum.custom,
         text: ' new custom ',
-        model: 'text-embedding-3-small'
+        vectorModelId: 'text-embedding-3-small'
       });
 
       const updatedData = await MongoDatasetData.findById(data._id).lean();
@@ -975,7 +953,7 @@ describe('DatasetDataIndexOperation', () => {
         indexDataId: 'custom_old',
         type: DatasetDataIndexTypeEnum.custom,
         text: 'updated',
-        model: 'text-embedding-3-small'
+        vectorModelId: 'text-embedding-3-small'
       });
 
       const updatedData = await MongoDatasetData.findById(data._id).lean();
@@ -1018,7 +996,7 @@ describe('DatasetDataIndexOperation', () => {
           indexDataId: `${type}_old`,
           type,
           text: 'new',
-          model: 'text-embedding-3-small'
+          vectorModelId: 'text-embedding-3-small'
         });
 
         const updatedData = await MongoDatasetData.findById(data._id).lean();
@@ -1044,7 +1022,7 @@ describe('DatasetDataIndexOperation', () => {
         indexDataId: 'custom_old',
         type: DatasetDataIndexTypeEnum.custom,
         text: 'old custom',
-        model: 'text-embedding-3-small'
+        vectorModelId: 'text-embedding-3-small'
       });
 
       expect(result).toEqual({
@@ -1066,7 +1044,7 @@ describe('DatasetDataIndexOperation', () => {
           data: dataItem,
           type: DatasetDataIndexTypeEnum.custom,
           text: '   ',
-          model: 'text-embedding-3-small'
+          vectorModelId: 'text-embedding-3-small'
         })
       ).rejects.toBe('Dataset data index text is required');
 
@@ -1075,7 +1053,7 @@ describe('DatasetDataIndexOperation', () => {
           data: dataItem,
           type: DatasetDataIndexTypeEnum.default,
           text: 'default',
-          model: 'text-embedding-3-small'
+          vectorModelId: 'text-embedding-3-small'
         })
       ).rejects.toBe('System indexes cannot be saved separately');
 
@@ -1084,7 +1062,7 @@ describe('DatasetDataIndexOperation', () => {
           data: dataItem,
           type: DatasetDataIndexTypeEnum.imageEmbedding,
           text: 'dataset/team/image.png',
-          model: 'text-embedding-3-small'
+          vectorModelId: 'text-embedding-3-small'
         })
       ).rejects.toBe('System indexes cannot be saved separately');
 
@@ -1094,7 +1072,7 @@ describe('DatasetDataIndexOperation', () => {
           indexDataId: 'missing_id',
           type: DatasetDataIndexTypeEnum.custom,
           text: 'valid',
-          model: 'text-embedding-3-small'
+          vectorModelId: 'text-embedding-3-small'
         })
       ).rejects.toBe('Dataset data index not found');
     });
@@ -1108,7 +1086,7 @@ describe('DatasetDataIndexOperation', () => {
           data: dataItem,
           type: DatasetDataIndexTypeEnum.custom,
           text: 'too long',
-          model: 'text-embedding-3-small'
+          vectorModelId: 'text-embedding-3-small'
         })
       ).rejects.toBe('Dataset data index text is too long');
     });
@@ -1204,10 +1182,7 @@ describe('DatasetDataIndexOperation', () => {
 
   describe('constructor', () => {
     it('should use provided embedding model object for maxToken', () => {
-      const operation = new DatasetDataIndexOperation({
-        ...embeddingModel,
-        maxToken: 321
-      });
+      const operation = new DatasetDataIndexOperation('custom-token-model');
 
       expect(operation.maxToken).toBe(321);
     });

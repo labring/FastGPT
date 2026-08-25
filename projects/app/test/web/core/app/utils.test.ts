@@ -22,7 +22,7 @@ describe('form2AppWorkflow', () => {
   it('should generate simple chat workflow when no datasets or tools selected', () => {
     const form: AppFormEditFormType = {
       aiSettings: {
-        [NodeInputKeyEnum.aiModel]: 'gpt-3.5',
+        [NodeInputKeyEnum.aiModelId]: 'gpt-3.5',
         [NodeInputKeyEnum.aiChatTemperature]: 0.7,
         [NodeInputKeyEnum.aiChatMaxToken]: 2000,
         [NodeInputKeyEnum.aiSystemPrompt]: 'You are a helpful assistant',
@@ -41,10 +41,10 @@ describe('form2AppWorkflow', () => {
         searchMode: 'embedding',
         embeddingWeight: 0.7,
         usingReRank: false,
-        rerankModel: '',
+        rerankModelId: '',
         rerankWeight: 0.5,
         datasetSearchUsingExtensionQuery: false,
-        datasetSearchExtensionModel: '',
+        datasetSearchExtensionModelId: '',
         datasetSearchExtensionBg: ''
       },
       selectedTools: [],
@@ -102,7 +102,7 @@ describe('form2AppWorkflow', () => {
   it('roundtrips simple app sandbox entrypoint through the tool call node', () => {
     const form: AppFormEditFormType = {
       aiSettings: {
-        [NodeInputKeyEnum.aiModel]: 'gpt-4',
+        [NodeInputKeyEnum.aiModelId]: 'gpt-4',
         [NodeInputKeyEnum.aiSystemPrompt]: 'You are a helpful assistant',
         maxHistories: 5,
         [NodeInputKeyEnum.aiChatIsResponseText]: true,
@@ -116,10 +116,10 @@ describe('form2AppWorkflow', () => {
         searchMode: 'embedding',
         embeddingWeight: 0.7,
         usingReRank: false,
-        rerankModel: '',
+        rerankModelId: '',
         rerankWeight: 0.5,
         datasetSearchUsingExtensionQuery: false,
-        datasetSearchExtensionModel: '',
+        datasetSearchExtensionModelId: '',
         datasetSearchExtensionBg: ''
       },
       selectedTools: [],
@@ -147,7 +147,7 @@ describe('form2AppWorkflow', () => {
   it('should generate dataset workflow when datasets are selected', () => {
     const form: AppFormEditFormType = {
       aiSettings: {
-        [NodeInputKeyEnum.aiModel]: 'gpt-3.5',
+        [NodeInputKeyEnum.aiModelId]: 'gpt-3.5',
         [NodeInputKeyEnum.aiChatTemperature]: 0.7,
         [NodeInputKeyEnum.aiChatMaxToken]: 2000,
         [NodeInputKeyEnum.aiSystemPrompt]: 'You are a helpful assistant',
@@ -173,10 +173,10 @@ describe('form2AppWorkflow', () => {
         searchMode: 'embedding',
         embeddingWeight: 0.7,
         usingReRank: false,
-        rerankModel: '',
+        rerankModelId: '',
         rerankWeight: 0.5,
         datasetSearchUsingExtensionQuery: false,
-        datasetSearchExtensionModel: '',
+        datasetSearchExtensionModelId: '',
         datasetSearchExtensionBg: ''
       },
       selectedTools: [],
@@ -206,7 +206,7 @@ describe('form2AppWorkflow', () => {
   it('should roundtrip dataset auth setting through dataset search node', () => {
     const form = getDefaultAppForm();
     form.aiSettings = {
-      [NodeInputKeyEnum.aiModel]: 'gpt-3.5',
+      [NodeInputKeyEnum.aiModelId]: 'gpt-3.5',
       [NodeInputKeyEnum.aiSystemPrompt]: 'You are a helpful assistant',
       maxHistories: 5,
       [NodeInputKeyEnum.aiChatIsResponseText]: true
@@ -278,7 +278,7 @@ describe('form2AppWorkflow', () => {
   it('should preserve debug tool source when roundtripping simple app tools', () => {
     const form = getDefaultAppForm();
     form.aiSettings = {
-      [NodeInputKeyEnum.aiModel]: 'gpt-4o-mini',
+      [NodeInputKeyEnum.aiModelId]: 'gpt-4o-mini',
       [NodeInputKeyEnum.aiSystemPrompt]: 'You are a helpful assistant',
       maxHistories: 5,
       [NodeInputKeyEnum.aiChatIsResponseText]: true
@@ -327,7 +327,7 @@ describe('filterSensitiveFormData', () => {
     };
     const appForm: AppFormEditFormType = {
       aiSettings: {
-        [NodeInputKeyEnum.aiModel]: 'gpt-4',
+        [NodeInputKeyEnum.aiModelId]: 'gpt-4',
         [NodeInputKeyEnum.aiChatTemperature]: 0.8,
         maxHistories: 5,
         [NodeInputKeyEnum.aiChatIsResponseText]: true
@@ -346,10 +346,10 @@ describe('filterSensitiveFormData', () => {
         limit: 1500,
         embeddingWeight: 0.7,
         usingReRank: false,
-        rerankModel: '',
+        rerankModelId: '',
         rerankWeight: 0.5,
         datasetSearchUsingExtensionQuery: false,
-        datasetSearchExtensionModel: '',
+        datasetSearchExtensionModelId: '',
         datasetSearchExtensionBg: ''
       },
       selectedTools: [
@@ -486,14 +486,14 @@ describe('appWorkflow2AgentForm', () => {
     });
 
     expect(result.dataset.usingReRank).toBe(false);
-    expect(result.dataset.rerankModel).toBe('');
+    expect(result.dataset.rerankModelId).toBe('');
     expect(result.dataset.rerankWeight).toBe(0.5);
   });
 
   it('should roundtrip agent reasoning settings through workflow inputs', () => {
     const form: AppFormEditFormType = {
       aiSettings: {
-        [NodeInputKeyEnum.aiModel]: 'qwen-3.6-flash',
+        [NodeInputKeyEnum.aiModelId]: 'qwen-3.6-flash',
         [NodeInputKeyEnum.aiSystemPrompt]: 'You are a helpful agent.',
         maxHistories: 6,
         [NodeInputKeyEnum.aiChatIsResponseText]: true,
@@ -507,10 +507,10 @@ describe('appWorkflow2AgentForm', () => {
         searchMode: 'embedding',
         embeddingWeight: 0.7,
         usingReRank: false,
-        rerankModel: '',
+        rerankModelId: '',
         rerankWeight: 0.5,
         datasetSearchUsingExtensionQuery: false,
-        datasetSearchExtensionModel: '',
+        datasetSearchExtensionModelId: '',
         datasetSearchExtensionBg: ''
       },
       selectedTools: [],
@@ -539,7 +539,7 @@ describe('appWorkflow2AgentForm', () => {
   it('should persist dataset auth setting in agent dataset params', () => {
     const form = getDefaultAppForm();
     form.aiSettings = {
-      [NodeInputKeyEnum.aiModel]: 'qwen-3.6-flash',
+      [NodeInputKeyEnum.aiModelId]: 'qwen-3.6-flash',
       [NodeInputKeyEnum.aiSystemPrompt]: 'You are a helpful agent.',
       maxHistories: 6,
       [NodeInputKeyEnum.aiChatIsResponseText]: true
@@ -565,7 +565,7 @@ describe('appWorkflow2AgentForm', () => {
   it('should omit forbid stream and agent generated values from agent selected tool config', () => {
     const form = getDefaultAppForm();
     form.aiSettings = {
-      [NodeInputKeyEnum.aiModel]: 'qwen-3.6-flash',
+      [NodeInputKeyEnum.aiModelId]: 'qwen-3.6-flash',
       [NodeInputKeyEnum.aiSystemPrompt]: 'You are a helpful agent.',
       maxHistories: 6,
       [NodeInputKeyEnum.aiChatIsResponseText]: true

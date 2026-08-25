@@ -3,10 +3,10 @@ import type {
   ChatCompletionMessageToolCall,
   StreamResponseType
 } from '@fastgpt/global/core/ai/llm/type';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { parseLLMStreamResponse } from '../../../utils';
 import { parsePromptToolCall } from '../../promptCall';
-import { getLLMModel } from '../../../model';
 import type { CompleteParams, CompleteResponse, CreateLLMResponseProps } from '../types';
 
 /**
@@ -19,6 +19,7 @@ import type { CompleteParams, CompleteResponse, CreateLLMResponseProps } from '.
  */
 export const createStreamResponse = async ({
   body,
+  modelData,
   response,
   isAborted,
   onStreaming,
@@ -27,10 +28,10 @@ export const createStreamResponse = async ({
   onToolParam
 }: CompleteParams & {
   response: StreamResponseType;
+  modelData: LLMModelItemType;
   isAborted?: CreateLLMResponseProps<ChatCompletionCreateParams>['isAborted'];
 }): Promise<CompleteResponse> => {
-  const { retainDatasetCite = true, tools, toolCallMode = 'toolChoice', model } = body;
-  const modelData = getLLMModel(model);
+  const { retainDatasetCite = true, tools, toolCallMode = 'toolChoice' } = body;
 
   const { parsePart, getResponseData, updateFinishReason, updateError } = parseLLMStreamResponse();
 

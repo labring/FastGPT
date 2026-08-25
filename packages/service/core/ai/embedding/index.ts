@@ -1,5 +1,7 @@
-import { type EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
-import { getAIApi } from '../config';
+import { type EmbeddingModelItemType } from '@fastgpt/global/core/ai/model/type';
+import { getAIApi, getAiproxyScopeHeaders } from '../config';
+import { normalizeRelayNoChannelError } from '../channel';
+import { assertModelActive } from '../model/cache';
 import { countPromptTokens, countPromptTokensBatch } from '../../../common/string/tiktoken/index';
 import { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
@@ -10,7 +12,7 @@ import { truncateTextByFormattedTokenLimit } from './tokenLimit';
 const logger = getLogger(LogCategories.MODULE.AI.EMBEDDING);
 
 type GetVectorsBaseProps = {
-  model: EmbeddingModelItemType;
+  modelData: EmbeddingModelItemType;
   type?: `${EmbeddingTypeEnm}`;
   headers?: Record<string, string>;
 };
@@ -43,7 +45,9 @@ const countInputTokens = async (input: GetVectorInputItem) => {
   return countPromptTokens(input.input);
 };
 
-export async function getVectors({ model, inputs: rawInputs, type, headers }: GetVectorsProps) {
+export async function getVectors({ modelData, inputs: rawInputs, type, headers }: GetVectorsProps) {
+  // Disabled models must never be callable at runtime (F2-S3-TC06).
+  assertModelActive(modelData);
   const validatedInputs = z
     .array(InputItemSchema)
     .parse(rawInputs)
@@ -74,7 +78,7 @@ export async function getVectors({ model, inputs: rawInputs, type, headers }: Ge
           item.type === 'text'
             ? await truncateTextByFormattedTokenLimit({
                 text: item.input,
-                maxToken: model.maxToken,
+                maxToken: modelData.maxToken,
                 currentTokens
               })
             : item.input
@@ -88,9 +92,9 @@ export async function getVectors({ model, inputs: rawInputs, type, headers }: Ge
     });
   }
 
-  const { ai } = getAIApi();
+  const { ai, requestMeta } = getAIApi();
 
-  let chunkSize = Number(model.batchSize || 1);
+  let chunkSize = Number(modelData.batchSize || 1);
   chunkSize = isNaN(chunkSize) ? 1 : chunkSize;
 
   const chunks = [];
@@ -111,27 +115,29 @@ export async function getVectors({ model, inputs: rawInputs, type, headers }: Ge
         ai.embeddings
           .create(
             {
-              model: model.model,
+              // modelId is a platform-internal identifier — never send it upstream
+              // (strict providers reject unknown top-level fields).
+              model: modelData.model,
               input: requestInput,
               encoding_format: 'float',
-              ...model.defaultConfig,
-              ...(type === EmbeddingTypeEnm.db && model.dbConfig),
-              ...(type === EmbeddingTypeEnm.query && model.queryConfig)
+              ...modelData.defaultConfig,
+              ...(type === EmbeddingTypeEnm.db && modelData.dbConfig),
+              ...(type === EmbeddingTypeEnm.query && modelData.queryConfig)
             } as any,
-            model.requestUrl
-              ? {
-                  path: model.requestUrl,
-                  headers: {
-                    ...(model.requestAuth ? { Authorization: `Bearer ${model.requestAuth}` } : {}),
-                    ...headers
-                  }
-                }
-              : { headers }
+            {
+              headers: {
+                ...headers,
+                // Relay scope is a security attribute (design §2.9) — it must win over
+                // any caller-provided header (e.g. Aiproxy-Channel channel lock).
+                ...getAiproxyScopeHeaders(modelData, requestMeta.baseUrl)
+              }
+            }
           )
           .then(async (res) => {
             if (!res.data) {
               logger.error('Embedding API returned empty data', {
-                model: model.model,
+                modelId: modelData.id,
+                model: modelData.model,
                 inputTypes,
                 inputCount: chunk.length,
                 response: res
@@ -142,7 +148,8 @@ export async function getVectors({ model, inputs: rawInputs, type, headers }: Ge
               // @ts-expect-error provider error payload is not part of the embedding response type
               const msg = res.data?.err?.message || '';
               logger.error('Embedding API returned invalid embedding', {
-                model: model.model,
+                modelId: modelData.id,
+                model: modelData.model,
                 inputTypes,
                 inputCount: chunk.length,
                 response: res,
@@ -160,7 +167,7 @@ export async function getVectors({ model, inputs: rawInputs, type, headers }: Ge
               })(),
               Promise.all(
                 res.data.map((item) =>
-                  formatVectors(decodeEmbedding(item.embedding), model.normalization)
+                  formatVectors(decodeEmbedding(item.embedding), modelData.normalization)
                 )
               )
             ]);
@@ -182,13 +189,16 @@ export async function getVectors({ model, inputs: rawInputs, type, headers }: Ge
     };
   } catch (error) {
     logger.error('Embedding request failed', {
-      model: model.model,
+      modelId: modelData.id,
+      model: modelData.model,
       inputTypes: Array.from(new Set(inputs.map((item) => item.type))),
       inputCount: inputs.length,
       error
     });
 
-    return Promise.reject(error);
+    // Relay "no available channel" (F2-S4-TC04) → ModelErrEnum.noAvailableChannel;
+    // other errors pass through unchanged.
+    return Promise.reject(normalizeRelayNoChannelError(error));
   }
 }
 

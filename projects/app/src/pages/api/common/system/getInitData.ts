@@ -2,80 +2,73 @@ import type { NextApiResponse } from 'next';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import {
-  GetSystemInitDataQuerySchema,
-  GetSystemInitDataResponseSchema,
-  type GetSystemInitDataResponse
-} from '@fastgpt/global/openapi/common/system/api';
-import { getRuntimeSubPlansConfig } from '@fastgpt/global/support/wallet/sub/utils';
-import { desensitizeSystemDefaultModels } from '@fastgpt/service/core/ai/config/utils';
+import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
+import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
+import type { AIProxyChannelsType, I18nStringStrictType } from '@fastgpt/global/sdk/fastgpt-plugin';
+
+export type InitDateResponse = {
+  bufferId?: string;
+
+  feConfigs?: FastGPTFeConfigsType;
+  subPlans?: SubPlanType;
+  systemVersion?: string;
+
+  modelProviders?: { provider: string; value: I18nStringStrictType; avatar: string }[];
+  aiproxyChannels?: AIProxyChannelsType;
+};
 
 async function handler(
-  req: ApiRequestProps,
+  req: ApiRequestProps<Record<string, never>, { bufferId?: string }>,
   _res: NextApiResponse
-): Promise<GetSystemInitDataResponse> {
-  const { bufferId } = parseApiInput({
-    req,
-    querySchema: GetSystemInitDataQuerySchema
-  }).query;
-  const subPlans = getRuntimeSubPlansConfig(global.subPlans);
+): Promise<InitDateResponse> {
+  const { bufferId } = req.query;
 
-  const response = await (async () => {
-    try {
-      await authCert({ req, authToken: true });
-
-      // If bufferId is the same as the current bufferId, return directly
-      if (bufferId && global.systemInitBufferId && global.systemInitBufferId === bufferId) {
-        return {
-          bufferId: global.systemInitBufferId,
-          feConfigs: global.feConfigs,
-          systemVersion: global.systemVersion,
-          defaultModels: desensitizeSystemDefaultModels(global.systemDefaultModel)
-        };
-      }
-
+  try {
+    await authCert({ req, authToken: true });
+    // If bufferId is the same as the current bufferId, return directly
+    if (bufferId && global.systemInitBufferId && global.systemInitBufferId === bufferId) {
       return {
         bufferId: global.systemInitBufferId,
         feConfigs: global.feConfigs,
-        subPlans,
-        systemVersion: global.systemVersion,
-        activeModelList: global.systemActiveDesensitizedModels,
-        defaultModels: desensitizeSystemDefaultModels(global.systemDefaultModel),
-        modelProviders: global.ModelProviderRawCache,
-        aiproxyChannels: global.aiproxyChannelsCache
-      };
-    } catch {
-      const referer = req.headers.referer;
-      if (referer?.includes('/price')) {
-        return {
-          feConfigs: global.feConfigs,
-          subPlans,
-          modelProviders: global.ModelProviderRawCache,
-          aiproxyChannels: global.aiproxyChannelsCache,
-          activeModelList: global.systemActiveDesensitizedModels
-        };
-      }
-
-      const unAuthBufferId = global.systemInitBufferId ? `unAuth_${global.systemInitBufferId}` : '';
-      if (bufferId && unAuthBufferId === bufferId) {
-        return {
-          bufferId: unAuthBufferId,
-          modelProviders: global.ModelProviderRawCache,
-          aiproxyChannels: global.aiproxyChannelsCache
-        };
-      }
-
-      return {
-        bufferId: unAuthBufferId,
-        feConfigs: global.feConfigs,
-        modelProviders: global.ModelProviderRawCache,
-        aiproxyChannels: global.aiproxyChannelsCache
+        systemVersion: global.systemVersion
       };
     }
-  })();
 
-  return GetSystemInitDataResponseSchema.parse(response);
+    return {
+      bufferId: global.systemInitBufferId,
+      feConfigs: global.feConfigs,
+      subPlans: global.subPlans,
+      systemVersion: global.systemVersion,
+      modelProviders: global.ModelProviderRawCache,
+      aiproxyChannels: global.aiproxyChannelTemplatesCache
+    };
+  } catch {
+    const referer = req.headers.referer;
+    if (referer?.includes('/price')) {
+      return {
+        feConfigs: global.feConfigs,
+        subPlans: global.subPlans,
+        modelProviders: global.ModelProviderRawCache,
+        aiproxyChannels: global.aiproxyChannelTemplatesCache
+      };
+    }
+
+    const unAuthBufferId = global.systemInitBufferId ? `unAuth_${global.systemInitBufferId}` : '';
+    if (bufferId && unAuthBufferId === bufferId) {
+      return {
+        bufferId: unAuthBufferId,
+        modelProviders: global.ModelProviderRawCache,
+        aiproxyChannels: global.aiproxyChannelTemplatesCache
+      };
+    }
+
+    return {
+      bufferId: unAuthBufferId,
+      feConfigs: global.feConfigs,
+      modelProviders: global.ModelProviderRawCache,
+      aiproxyChannels: global.aiproxyChannelTemplatesCache
+    };
+  }
 }
 
 export default NextAPI(handler);

@@ -7,7 +7,8 @@ import { NextAPI } from '@/service/middleware/entry';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
-import { getDefaultLLMModel } from '@fastgpt/service/core/ai/model';
+import { getDefaultLLMModel } from '@fastgpt/service/core/ai/model/cache';
+import { resolveModelId } from '@fastgpt/service/core/ai/compat/resolveModelId';
 import {
   CreateQuestionGuideResponseSchema,
   CreateQuestionGuideV2BodySchema,
@@ -71,17 +72,28 @@ async function handler(
   });
   const messages = chats2GPTMessages({ messages: histories, reserveId: false });
 
-  const qgModel = questionGuide?.model || getDefaultLLMModel().model;
+  // questionGuide.modelId stores the configured model selector value (modelId in new schema).
+  // ⚠️ 热升级兼容：`modelId ?? resolveModelId(legacy model, teamId) ?? 默认模型`（热升级技术分析 §6.6）。
+  // 配置存在但无法解析时保持显式失败（qgModelId 为无法解析的 name → assertModelUsable 报错），
+  // 禁止静默换默认模型。
+  const qgModelId =
+    questionGuide?.modelId ||
+    (questionGuide?.model ? resolveModelId(questionGuide.model, teamId) : undefined) ||
+    getDefaultLLMModel()?.id;
+
+  if (!qgModelId) {
+    return Promise.reject('Question guide model not found');
+  }
 
   const { result, inputTokens, outputTokens } = await createQuestionGuide({
     messages,
-    model: qgModel,
+    modelId: qgModelId,
     customPrompt: questionGuide?.customPrompt,
     teamId
   });
 
   pushQuestionGuideUsage({
-    model: qgModel,
+    modelId: qgModelId,
     inputTokens,
     outputTokens,
     teamId,

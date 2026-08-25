@@ -17,7 +17,7 @@ export * from './type';
  */
 export const defaultSearchDatasetData = async ({
   datasetSearchUsingExtensionQuery,
-  datasetSearchExtensionModel,
+  datasetSearchExtensionModelId,
   datasetSearchExtensionBg,
   userKey,
   ...props
@@ -28,10 +28,8 @@ export const defaultSearchDatasetData = async ({
   const { searchQueries, reRankQuery, aiExtensionResult } = query
     ? await datasetSearchQueryExtension({
         query,
-        llmModel: datasetSearchUsingExtensionQuery
-          ? getLLMModel(datasetSearchExtensionModel)?.model
-          : undefined,
-        embeddingModel: props.model,
+        llmModelId: datasetSearchUsingExtensionQuery ? datasetSearchExtensionModelId : undefined,
+        embeddingModelId: props.vectorModelId,
         extensionBg: datasetSearchExtensionBg,
         histories: props.histories,
         userKey,
@@ -55,12 +53,14 @@ export const defaultSearchDatasetData = async ({
     queryExtensionResult: aiExtensionResult
       ? {
           llmModel: aiExtensionResult.llmModel,
+          llmModelId: aiExtensionResult.llmModelId,
           requestId: aiExtensionResult.requestId,
           seconds: aiExtensionResult.seconds,
           inputTokens: aiExtensionResult.inputTokens,
           outputTokens: aiExtensionResult.outputTokens,
           usedUserOpenAIKey: aiExtensionResult.usedUserOpenAIKey,
           embeddingModel: aiExtensionResult.embeddingModel,
+          embeddingModelId: aiExtensionResult.embeddingModelId,
           embeddingTokens: aiExtensionResult.embeddingTokens,
           query: searchQueries.join('\n')
         }

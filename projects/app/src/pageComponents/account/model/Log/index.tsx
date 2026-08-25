@@ -1,5 +1,5 @@
 import { getChannelList, getChannelLog, getLogDetail } from '@/web/core/ai/channel';
-import { getSystemModelList } from '@/web/core/ai/config';
+import { getModelList } from '@/web/core/ai/config';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {
   Table,
@@ -100,7 +100,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
     }
   );
 
-  const { data: systemModelList = [] } = useRequest(getSystemModelList, {
+  const { data: systemModelList = [] } = useRequest(() => getModelList({ isSystem: true }), {
     manual: false
   });
   const modelList = useMemo(() => {

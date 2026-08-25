@@ -7,6 +7,12 @@ import { getLogger, LogCategories } from '../../../common/logger';
 
 const logger = getLogger(LogCategories.MODULE.APP.EVALUATION);
 
+/** Resolves the canonical evaluation model reference with legacy-name fallback. */
+export const getEvaluationModelId = (evaluation: {
+  evalModelId?: string | null;
+  evalModel?: string | null;
+}) => evaluation.evalModelId ?? evaluation.evalModel ?? undefined;
+
 export const parseEvaluationCSV = (rawText: string) => {
   const parseResult = Papa.parse(rawText.trim(), {
     skipEmptyLines: true,

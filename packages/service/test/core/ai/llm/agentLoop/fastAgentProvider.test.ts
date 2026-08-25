@@ -2,7 +2,7 @@ import {
   ChatCompletionRequestMessageRoleEnum,
   ModelTypeEnum
 } from '@fastgpt/global/core/ai/constants';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model/type';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -20,10 +20,11 @@ vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
+vi.mock('@fastgpt/service/core/ai/model/cache', () => ({
   getLLMModel: vi.fn(
     (): LLMModelItemType => ({
       type: ModelTypeEnum.llm,
+      id: 'gpt-4',
       provider: 'openai',
       model: 'gpt-5',
       name: 'GPT-5',
@@ -35,7 +36,17 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
       reasoning: true,
       reasoningEffort: true
     })
-  )
+  ),
+  // Faithful stand-ins for the runtime guards (test models carry isActive:
+  // undefined → both pass through; values match ModelErrEnum).
+  assertModelUsable: (modelData: any) => {
+    if (!modelData) throw 'modelUnExist';
+    if (modelData.isActive === false) throw 'modelDisabled';
+    return modelData;
+  },
+  assertModelActive: (modelData?: { isActive?: boolean }) => {
+    if (modelData?.isActive === false) throw 'modelDisabled';
+  }
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/compress', async (importOriginal) => {
@@ -78,8 +89,9 @@ const tool = (name: string): ChatCompletionTool => ({
 });
 
 const createRuntime = (overrides?: Partial<AgentLoopRuntime>): AgentLoopRuntime => ({
+  teamId: 'team_1',
   llmParams: {
-    model: 'gpt-5',
+    modelId: 'gpt-5',
     stream: true
   },
   toolCatalog: {
@@ -419,24 +431,26 @@ describe('runFastAgentLoop', () => {
     const events: any[] = [];
     const usagePush = vi.fn();
     const executeTool = vi.fn();
-    const executeDatasetSearch = vi.fn(async () => ({
-      response: 'dataset content',
-      usages: [
-        {
+    const executeDatasetSearch = vi.fn(
+      async (_e: { call: { function: { arguments: string } } }) => ({
+        response: 'dataset content',
+        usages: [
+          {
+            moduleName: 'Dataset search',
+            totalPoints: 2,
+            inputTokens: 20,
+            outputTokens: 0
+          }
+        ],
+        metadata: {
+          id: 'dataset_search_call',
+          nodeId: 'dataset_search_call',
+          moduleType: FlowNodeTypeEnum.datasetSearchNode,
           moduleName: 'Dataset search',
-          totalPoints: 2,
-          inputTokens: 20,
-          outputTokens: 0
+          toolRes: 'dataset content'
         }
-      ],
-      metadata: {
-        id: 'dataset_search_call',
-        nodeId: 'dataset_search_call',
-        moduleType: FlowNodeTypeEnum.datasetSearchNode,
-        moduleName: 'Dataset search',
-        toolRes: 'dataset content'
-      }
-    }));
+      })
+    );
 
     mockCreateLLMResponseQueue(createLLMResponseMock, [
       toolCall({

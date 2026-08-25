@@ -1,6 +1,6 @@
 import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import { getLLMModel } from '../model';
+import { getLLMModel, getEmbeddingModel, assertModelUsable, assertModelActive } from '../model';
 import { filterGPTMessageByMaxContext } from '../llm/utils';
 import json5 from 'json5';
 import { createLLMResponse } from '../llm/request';
@@ -109,8 +109,8 @@ export const queryExtension = async ({
   chatBg,
   query,
   histories = [],
-  llmModel,
-  embeddingModel,
+  llmModelId,
+  embeddingModelId,
   userKey,
   teamId,
   generateCount = 10 // 生成优化问题集的数量，默认为10个
@@ -118,8 +118,8 @@ export const queryExtension = async ({
   chatBg?: string;
   query: string;
   histories: ChatItemMiniType[];
-  llmModel: string;
-  embeddingModel: string;
+  llmModelId: string;
+  embeddingModelId: string;
   userKey?: OpenaiAccountType;
   teamId: string;
   generateCount?: number;
@@ -127,7 +127,9 @@ export const queryExtension = async ({
   rawQuery: string;
   extensionQueries: string[];
   llmModel: string;
+  llmModelId: string;
   embeddingModel: string;
+  embeddingModelId: string;
   requestId: string;
   seconds: number;
   inputTokens: number;
@@ -137,8 +139,12 @@ export const queryExtension = async ({
 }> => {
   const startTime = Date.now();
   const getSeconds = () => +((Date.now() - startTime) / 1000).toFixed(2);
-  // 1. Request model
-  const modelData = getLLMModel(llmModel);
+  // 1. Request model — existence + active in one guard (F2-S3-TC06).
+  const modelData = assertModelUsable(getLLMModel(llmModelId));
+  // Embedding is optional here (undefined = no embedding step) — active check only.
+  const embeddingModelData = getEmbeddingModel(embeddingModelId);
+  assertModelActive(embeddingModelData);
+  const embeddingModelName = embeddingModelData?.model || '';
   const filterHistories = await filterGPTMessageByMaxContext({
     messages: chats2GPTMessages({ messages: histories, reserveId: false }),
     maxContext: modelData.maxContext - 1000
@@ -181,9 +187,9 @@ export const queryExtension = async ({
   } = await createLLMResponse({
     userKey,
     teamId,
+    modelData: modelData,
     body: {
       stream: true,
-      model: modelData.model,
       messages,
       ...(modelData.reasoning ? { reasoning_effort: 'none' as const } : {})
     }
@@ -194,7 +200,9 @@ export const queryExtension = async ({
       rawQuery: query,
       extensionQueries: [],
       llmModel: modelData.model,
-      embeddingModel,
+      llmModelId: modelData.id,
+      embeddingModel: embeddingModelName,
+      embeddingModelId: embeddingModelData?.id ?? '',
       requestId,
       seconds: getSeconds(),
       inputTokens: inputTokens,
@@ -215,7 +223,9 @@ export const queryExtension = async ({
       rawQuery: query,
       extensionQueries: [],
       llmModel: modelData.model,
-      embeddingModel,
+      llmModelId: modelData.id,
+      embeddingModel: embeddingModelName,
+      embeddingModelId: embeddingModelData?.id ?? '',
       requestId,
       seconds: getSeconds(),
       inputTokens: inputTokens,
@@ -239,7 +249,9 @@ export const queryExtension = async ({
         rawQuery: query,
         extensionQueries: [],
         llmModel: modelData.model,
-        embeddingModel,
+        llmModelId: modelData.id,
+        embeddingModel: embeddingModelName,
+        embeddingModelId: embeddingModelData?.id ?? '',
         requestId,
         seconds: getSeconds(),
         inputTokens,
@@ -249,9 +261,9 @@ export const queryExtension = async ({
       };
     }
 
-    // 3. 通过计算获取到最优的检索词
+    // 3. 通过计算获取到最优的检索词（使用调用方指定的 embedding 模型，而非默认模型）
     const { lazyGreedyQuerySelection, embeddingModel: useEmbeddingModel } = useTextCosine({
-      embeddingModel
+      embeddingModel: embeddingModelData
     });
     queries = queries.map((item) => String(item).trim()).filter(Boolean);
     if (queries.length === 0) {
@@ -259,7 +271,9 @@ export const queryExtension = async ({
         rawQuery: query,
         extensionQueries: [],
         llmModel: modelData.model,
-        embeddingModel,
+        llmModelId: modelData.id,
+        embeddingModel: embeddingModelName,
+        embeddingModelId: embeddingModelData?.id ?? '',
         requestId,
         seconds: getSeconds(),
         inputTokens,
@@ -280,7 +294,9 @@ export const queryExtension = async ({
       rawQuery: query,
       extensionQueries: selectedQueries,
       llmModel: modelData.model,
+      llmModelId: modelData.id,
       embeddingModel: useEmbeddingModel,
+      embeddingModelId: embeddingModelData?.id ?? '',
       requestId,
       seconds: getSeconds(),
       inputTokens,
@@ -297,7 +313,9 @@ export const queryExtension = async ({
       rawQuery: query,
       extensionQueries: [],
       llmModel: modelData.model,
-      embeddingModel,
+      llmModelId: modelData.id,
+      embeddingModel: embeddingModelName,
+      embeddingModelId: embeddingModelData?.id ?? '',
       requestId,
       seconds: getSeconds(),
       inputTokens,

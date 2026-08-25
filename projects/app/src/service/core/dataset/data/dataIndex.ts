@@ -8,12 +8,12 @@ import type {
   DatasetDataIndexItemType,
   DatasetDataItemType
 } from '@fastgpt/global/core/dataset/type';
-import { getEmbeddingModel, isImageEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModel, isImageEmbeddingModel } from '@fastgpt/service/core/ai/model/cache';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
 import { text2Chunks } from '@fastgpt/service/worker/function';
-import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model/type';
 import {
   isValidImageEmbeddingSource,
   normalizeImageToBase64
@@ -175,10 +175,10 @@ const normalizeDatasetIndexImageToModelInput = async (imageUrl: string) => {
  * 这些步骤需要放在一起维护，因为 Mongo 索引里的 `dataId` 必须和向量库 id 保持一致。
  */
 export class DatasetDataIndexOperation {
-  private readonly model?: string | EmbeddingModelItemType;
+  private readonly vectorModelId?: string;
 
-  constructor(model?: string | EmbeddingModelItemType) {
-    this.model = model;
+  constructor(vectorModelId?: string) {
+    this.vectorModelId = vectorModelId;
   }
 
   get maxToken() {
@@ -186,7 +186,14 @@ export class DatasetDataIndexOperation {
   }
 
   private getEmbeddingModel(): EmbeddingModelItemType {
-    return (typeof this.model === 'string' ? getEmbeddingModel(this.model) : this.model)!;
+    if (!this.vectorModelId) {
+      throw new Error('vectorModelId is required');
+    }
+    const model = getEmbeddingModel(this.vectorModelId);
+    if (!model) {
+      throw new Error(`Embedding model not found: ${this.vectorModelId}`);
+    }
+    return model;
   }
 
   /**
@@ -207,7 +214,7 @@ export class DatasetDataIndexOperation {
     imageId?: string;
     imageIndex?: boolean;
   }) {
-    if (!isImageEmbeddingModel(this.getEmbeddingModel())) return [];
+    if (!this.getEmbeddingModel().vision) return [];
 
     const sources = [
       ...(imageId ? [imageId] : []),
@@ -540,7 +547,7 @@ export class DatasetDataIndexOperation {
             };
           }
 
-          if (!isImageEmbeddingModel(embModel) || !isValidImageEmbeddingSource(index.text)) {
+          if (!embModel.vision || !isValidImageEmbeddingSource(index.text)) {
             return;
           }
 
@@ -565,7 +572,7 @@ export class DatasetDataIndexOperation {
     const insertResult = vectorInputItems.length
       ? await insertDatasetDataVector({
           inputs: vectorInputItems.map((item) => item.input),
-          model: embModel,
+          modelData: embModel,
           teamId,
           datasetId,
           collectionId
@@ -842,14 +849,14 @@ export const createDatasetDataIndex = async ({
   data,
   type,
   text,
-  model
+  vectorModelId
 }: {
   data: DatasetDataItemType;
   type: DatasetDataIndexTypeEnum;
   text: string;
-  model: string;
+  vectorModelId: string;
 }) => {
-  return new DatasetDataIndexOperation(model).writeDatasetDataIndex({
+  return new DatasetDataIndexOperation(vectorModelId).writeDatasetDataIndex({
     data,
     type,
     text
@@ -867,15 +874,15 @@ export const updateDatasetDataIndex = async ({
   indexDataId,
   type,
   text,
-  model
+  vectorModelId
 }: {
   data: DatasetDataItemType;
   indexDataId: string;
   type: DatasetDataIndexTypeEnum;
   text: string;
-  model: string;
+  vectorModelId: string;
 }) => {
-  return new DatasetDataIndexOperation(model).writeDatasetDataIndex({
+  return new DatasetDataIndexOperation(vectorModelId).writeDatasetDataIndex({
     data,
     indexDataId,
     type,
