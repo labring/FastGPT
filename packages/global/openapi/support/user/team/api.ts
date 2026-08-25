@@ -81,7 +81,7 @@ const SearchMemberSchema = z
       example: 'owner',
       description: '成员角色'
     }),
-    contact: z.string().optional().meta({
+    contact: z.string().nullish().meta({
       example: 'user@example.com',
       description: '成员联系方式'
     }),

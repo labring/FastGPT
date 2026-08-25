@@ -5,7 +5,7 @@ import { UserStatusEnum } from '../../../../support/user/constant';
 export const UserItemSchema = z.object({
   _id: z.string().meta({ description: '用户ID' }),
   username: z.string().meta({ description: '用户名' }),
-  contact: z.string().optional().meta({ description: '联系方式' }),
+  contact: z.string().nullish().meta({ description: '联系方式' }),
   avatar: z.string().optional().meta({ description: '用户头像' }),
   status: z.enum(UserStatusEnum).meta({ description: '用户状态' }),
   createTime: z.date().meta({ description: '创建时间' })

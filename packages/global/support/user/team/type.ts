@@ -81,7 +81,7 @@ export type TeamMemberItemType<
   avatar: string;
   role: `${TeamMemberRoleEnum}`;
   status: `${TeamMemberStatusEnum}`;
-  contact?: string;
+  contact?: string | null;
   createTime: Date;
   updateTime?: Date;
 } & (Options extends { withPermission: true }
