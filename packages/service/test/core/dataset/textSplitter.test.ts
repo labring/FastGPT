@@ -495,6 +495,23 @@ describe('rawText2Chunks backupParse', () => {
     expect(result).toEqual([]);
   });
 
+  it('detects a semicolon delimiter when a short CSV has a trailing blank line', async () => {
+    const result = await rawText2Chunks({
+      rawText: 'q;a\r\nquestion;answer\r\n',
+      backupParse: true
+    });
+
+    expect(result).toEqual([
+      {
+        q: 'question',
+        a: 'answer',
+        indexes: [],
+        metadata: undefined,
+        imageIdList: undefined
+      }
+    ]);
+  });
+
   it('returns empty array for empty string', async () => {
     const result = await rawText2Chunks({ rawText: '', backupParse: true });
     expect(result).toEqual([]);

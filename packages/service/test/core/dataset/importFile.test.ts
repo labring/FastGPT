@@ -120,21 +120,98 @@ describe('parseDatasetImportFile', () => {
 
   it.each([
     {
-      name: 'header-only CSV (empty dataset backup)',
-      result: { rawText: '\uFEFFq,a\r\n' }
+      name: 'header-only export without trailing newline',
+      rawText: '\uFEFFq,a',
+      expectedRows: [['q', 'a']]
     },
     {
-      name: 'header-only CSV without trailing newline',
-      result: { rawText: '\uFEFFq,a' }
+      name: 'header-only export with trailing newline',
+      rawText: '\uFEFFq,a\r\n',
+      expectedRows: [['q', 'a']]
     },
     {
-      name: 'single data row (one chunk backup)',
-      result: { rawText: '\uFEFFq,a\r\nQ1,A1\r\n' }
+      name: 'single-chunk export without trailing newline',
+      rawText: '\uFEFFq,a\nQ1,A1',
+      expectedRows: [
+        ['q', 'a'],
+        ['Q1', 'A1']
+      ]
+    },
+    {
+      name: 'single-chunk export with trailing newline',
+      rawText: '\uFEFFq,a\r\nQ1,A1\r\n',
+      expectedRows: [
+        ['q', 'a'],
+        ['Q1', 'A1']
+      ]
+    },
+    {
+      name: 'single-chunk export with multiple trailing blank lines',
+      rawText: '\uFEFFq,a\r\nQ1,A1\r\n\r\n   \r\n',
+      expectedRows: [
+        ['q', 'a'],
+        ['Q1', 'A1']
+      ]
     }
-  ])('accepts $name instead of failing on the UndetectableDelimiter hint', async ({ result }) => {
-    mockReadRawTextByLocalFile.mockResolvedValue(result);
+  ])('normalizes $name', async ({ rawText, expectedRows }) => {
+    mockReadRawTextByLocalFile.mockResolvedValue({ rawText });
 
-    await expect(parseDatasetImportFile(defaultParams)).resolves.toBeTruthy();
+    const normalizedCsv = await parseDatasetImportFile(defaultParams);
+
+    expect(Papa.parse(normalizedCsv).data).toEqual(expectedRows);
+  });
+
+  it('drops fully blank records while preserving rows with either q or a', async () => {
+    mockReadRawTextByLocalFile.mockResolvedValue({
+      rawText: 'q,a\r\n,\r\nQ1,\r\n,A1\r\n" "," "\r\n'
+    });
+
+    const normalizedCsv = await parseDatasetImportFile(defaultParams);
+
+    expect(Papa.parse(normalizedCsv).data).toEqual([
+      ['q', 'a'],
+      ['Q1', ''],
+      ['', 'A1']
+    ]);
+  });
+
+  it('keeps delimiter auto-detection for typed semicolon-separated headers', async () => {
+    mockReadRawTextByLocalFile.mockResolvedValue({
+      rawText: 'q;a\r\nQ1;A1\r\n'
+    });
+
+    const normalizedCsv = await parseDatasetImportFile(defaultParams);
+
+    expect(Papa.parse(normalizedCsv).data).toEqual([
+      ['q', 'a'],
+      ['Q1', 'A1']
+    ]);
+  });
+
+  it('accepts a header-only Excel result with trailing blank rows', async () => {
+    mockReadRawTextByLocalFile.mockResolvedValue({
+      rawText: 'q,a\r\n\r\n',
+      tableInfo: {
+        sheetCount: 1,
+        mergedCellCount: 0
+      }
+    });
+
+    const normalizedCsv = await parseDatasetImportFile({
+      ...defaultParams,
+      filePath: '/tmp/empty-backup.xlsx',
+      filename: 'empty-backup.xlsx'
+    });
+
+    expect(Papa.parse(normalizedCsv).data).toEqual([['q', 'a']]);
+  });
+
+  it('still rejects malformed quoted content when trailing blank lines are present', async () => {
+    mockReadRawTextByLocalFile.mockResolvedValue({
+      rawText: 'q,a\r\n"question,answer\r\n\r\n'
+    });
+
+    await expect(parseDatasetImportFile(defaultParams)).rejects.toThrow('content');
   });
 
   it.each([
