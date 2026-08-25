@@ -24,6 +24,13 @@ const mcpCancellationErrors = new Set<string>([
 const isMcpCancellationError = (error: unknown): boolean =>
   error instanceof Error && mcpCancellationErrors.has(error.message);
 
+const getMcpRequestId = (body: unknown): string | number | undefined => {
+  if (typeof body !== 'object' || body === null || !('id' in body)) return undefined;
+
+  const id = body.id;
+  return typeof id === 'string' || typeof id === 'number' ? id : undefined;
+};
+
 export type mcpQuery = { key: string };
 
 export type mcpBody = toolCallProps;
@@ -95,13 +102,15 @@ const handlePost = async (req: ApiRequestProps<mcpBody, mcpQuery>, res: ApiRespo
     logger.error('[MCP server] Error handling MCP request:', { error });
     if (!res.writableFinished) {
       if (isMcpCancellationError(error)) {
+        // transport 尚未处理请求时，直接回传原请求 id，客户端才能将错误与请求匹配。
+        const requestId = getMcpRequestId(req.body);
         res.status(200).json({
           jsonrpc: '2.0',
+          ...(requestId === undefined ? {} : { id: requestId }),
           error: {
             code: -32000,
             message: getErrText(error)
-          },
-          id: null
+          }
         });
         return;
       }
