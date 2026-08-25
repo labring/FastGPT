@@ -120,6 +120,25 @@ describe('parseDatasetImportFile', () => {
 
   it.each([
     {
+      name: 'header-only CSV (empty dataset backup)',
+      result: { rawText: '\uFEFFq,a\r\n' }
+    },
+    {
+      name: 'header-only CSV without trailing newline',
+      result: { rawText: '\uFEFFq,a' }
+    },
+    {
+      name: 'single data row (one chunk backup)',
+      result: { rawText: '\uFEFFq,a\r\nQ1,A1\r\n' }
+    }
+  ])('accepts $name instead of failing on the UndetectableDelimiter hint', async ({ result }) => {
+    mockReadRawTextByLocalFile.mockResolvedValue(result);
+
+    await expect(parseDatasetImportFile(defaultParams)).resolves.toBeTruthy();
+  });
+
+  it.each([
+    {
       name: 'missing table information',
       tableInfo: undefined,
       error: 'exactly one worksheet'

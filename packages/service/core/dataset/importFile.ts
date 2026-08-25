@@ -44,7 +44,13 @@ export const parseDatasetImportFile = async ({
     }
   }
 
-  const result = Papa.parse<string[]>(rawText);
+  const result = Papa.parse<string[]>(rawText, {
+    // 导出方（exportAll.ts / collection/export.ts）在空数据集或单条数据时会生成
+    // 只有表头（或仅一行）的 CSV。此时 papaparse 无法从多行数据推断分隔符，会抛出
+    // Delimiter/UndetectableDelimiter 的提示性错误，但数据本身并未损坏。
+    // 这里用 skipEmptyLines 规避该提示，同时保留 Quotes 等真实结构错误的拒绝行为。
+    skipEmptyLines: 'greedy'
+  });
   if (result.errors.length > 0) {
     throw new Error('Invalid dataset import content');
   }
