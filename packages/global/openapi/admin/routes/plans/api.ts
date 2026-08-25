@@ -1,11 +1,12 @@
 import z from 'zod';
+import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { NumSchema } from '../../../../common/zod';
 import { PaginationResponseSchema } from '../../../api';
 import { SubTypeEnum, StandardSubLevelEnum } from '../../../../support/wallet/sub/constants';
 
 export const PlanItemSchema = z.object({
-  id: z.string().meta({ description: '订阅ID' }),
-  teamId: z.string().meta({ description: '团队ID' }),
+  id: ObjectIdSchema.meta({ description: '订阅ID' }),
+  teamId: ObjectIdSchema.meta({ description: '团队ID' }),
   type: z.enum(SubTypeEnum).meta({ description: '套餐类型' }),
   level: z.enum(StandardSubLevelEnum).optional().meta({ description: '套餐等级' }),
   totalPoints: z.number().optional().meta({ description: '总积分' }),

@@ -218,23 +218,30 @@ describe('common and team OpenAPI contracts', () => {
   });
 
   it('parses admin plan responses from the shared contract', () => {
-    expect(
-      GetAdminPlansResponseSchema.parse({
-        list: [
-          {
-            id: normalizedStandardPlan._id,
-            teamId: normalizedStandardPlan.teamId,
-            type: SubTypeEnum.extraDatasetSize,
-            extraDatasetSize: 1024,
-            startTime: new Date('2026-01-01T00:00:00.000Z'),
-            expiredTime: new Date('2027-01-01T00:00:00.000Z'),
-            maxTeamMember: null
-          }
-        ],
-        total: 1
-      })
-    ).toMatchObject({
-      list: [{ type: SubTypeEnum.extraDatasetSize, maxTeamMember: null }],
+    const response = GetAdminPlansResponseSchema.parse({
+      list: [
+        {
+          id: { toString: () => normalizedStandardPlan._id },
+          teamId: { toString: () => normalizedStandardPlan.teamId },
+          type: SubTypeEnum.extraDatasetSize,
+          extraDatasetSize: 1024,
+          startTime: new Date('2026-01-01T00:00:00.000Z'),
+          expiredTime: new Date('2027-01-01T00:00:00.000Z'),
+          maxTeamMember: null
+        }
+      ],
+      total: 1
+    });
+
+    expect(response).toMatchObject({
+      list: [
+        {
+          id: normalizedStandardPlan._id,
+          teamId: normalizedStandardPlan.teamId,
+          type: SubTypeEnum.extraDatasetSize,
+          maxTeamMember: null
+        }
+      ],
       total: 1
     });
   });
