@@ -11,7 +11,25 @@ import { callMcpServerTool, getMcpServerTools } from '@/service/support/mcp/util
 import { type toolCallProps } from '@/service/support/mcp/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getMcpAuthProxyFromHeaders } from '@/service/support/mcp/auth';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 const logger = getLogger(LogCategories.MODULE.MCP.APP);
+
+const mcpCancellationErrors = new Set<string>([
+  TeamErrEnum.accountCancellationPending,
+  UserErrEnum.accountCancellationPending
+]);
+
+/** 仅识别注销流程中的业务错误，已删除团队等其他错误继续走原有异常处理。 */
+const isMcpCancellationError = (error: unknown): boolean =>
+  error instanceof Error && mcpCancellationErrors.has(error.message);
+
+const getMcpRequestId = (body: unknown): string | number | undefined => {
+  if (typeof body !== 'object' || body === null || !('id' in body)) return undefined;
+
+  const id = body.id;
+  return typeof id === 'string' || typeof id === 'number' ? id : undefined;
+};
 
 export type mcpQuery = { key: string };
 
@@ -83,6 +101,20 @@ const handlePost = async (req: ApiRequestProps<mcpBody, mcpQuery>, res: ApiRespo
   } catch (error) {
     logger.error('[MCP server] Error handling MCP request:', { error });
     if (!res.writableFinished) {
+      if (isMcpCancellationError(error)) {
+        // transport 尚未处理请求时，直接回传原请求 id，客户端才能将错误与请求匹配。
+        const requestId = getMcpRequestId(req.body);
+        res.status(200).json({
+          jsonrpc: '2.0',
+          ...(requestId === undefined ? {} : { id: requestId }),
+          error: {
+            code: -32000,
+            message: getErrText(error)
+          }
+        });
+        return;
+      }
+
       res.status(500).json({
         jsonrpc: '2.0',
         error: {

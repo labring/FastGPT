@@ -3,6 +3,13 @@ import { type UserModelSchema } from '@fastgpt/global/support/user/type';
 import { type TeamSchema } from '@fastgpt/global/support/user/team/type';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 
+/** 根据团队成员 ID 解析所属用户 ID，供不携带 Session 的运行时鉴权使用。 */
+export async function getUserIdByTmbId(tmbId: string) {
+  const tmb = await MongoTeamMember.findById(tmbId, 'userId').lean();
+  if (!tmb) return Promise.reject(TeamErrEnum.notUser);
+  return String(tmb.userId);
+}
+
 // TODO: 数据库优化
 export async function getRunningUserInfoByTmbId(tmbId: string) {
   if (tmbId) {

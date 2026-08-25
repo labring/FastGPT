@@ -166,6 +166,39 @@ describe('support user OpenAPI contracts', () => {
         ]
       }).total
     ).toBe(1);
+
+    expect(
+      AuditListResponseSchema.parse({
+        total: 1,
+        list: [
+          {
+            _id: objectId,
+            sourceMember: {
+              name: '张三',
+              avatar: null,
+              status: TeamMemberStatusEnum.active
+            },
+            event: AuditEventEnum.ACCOUNT_CANCELLATION_FINALIZE,
+            timestamp: '2026-01-02T00:00:00.000Z',
+            metadata: {
+              requestedAt: new Date('2026-01-01T10:00:00.000Z'),
+              scheduledCancelAt: new Date('2026-01-16T16:00:00.000Z'),
+              finalizedAt: new Date('2026-01-17T00:00:00.000Z')
+            }
+          }
+        ]
+      })
+    ).toMatchObject({
+      list: [
+        {
+          metadata: {
+            requestedAt: '2026-01-01T10:00:00.000Z',
+            scheduledCancelAt: '2026-01-16T16:00:00.000Z',
+            finalizedAt: '2026-01-17T00:00:00.000Z'
+          }
+        }
+      ]
+    });
   });
 
   it('parses inform list, unread summary, and read query', () => {
@@ -238,6 +271,25 @@ describe('support user OpenAPI contracts', () => {
       groups: []
     });
     expect(searchResponse.members[0]).not.toHaveProperty('avatar');
+    expect(
+      SearchMembersOrgsGroupsResponseSchema.parse({
+        members: [
+          {
+            tmbId: objectId,
+            userId: objectId,
+            teamId: objectId,
+            name: '空联系方式成员',
+            memberName: '空联系方式成员',
+            avatar: null,
+            status: TeamMemberStatusEnum.active,
+            contact: null,
+            createTime: '2026-01-01T00:00:00.000Z'
+          }
+        ],
+        orgs: [],
+        groups: []
+      }).members[0].contact
+    ).toBeNull();
     expect(
       SearchMembersOrgsGroupsResponseSchema.parse({
         members: [
@@ -391,6 +443,26 @@ describe('support user OpenAPI contracts', () => {
       pageSize: 20,
       orgId: ''
     });
+  });
+
+  it('accepts nullable contact values for historical team members', () => {
+    expect(
+      ListTeamMembersResponseSchema.parse({
+        total: 1,
+        list: [
+          {
+            userId: objectId,
+            tmbId: objectId,
+            teamId: objectId,
+            memberName: '历史成员',
+            avatar: null,
+            status: 'active',
+            contact: null,
+            createTime: '2025-01-13T05:34:31.329Z'
+          }
+        ]
+      }).list[0].contact
+    ).toBeNull();
   });
 
   it('accepts the deprecated waiting status for historical team members', () => {

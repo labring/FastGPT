@@ -43,12 +43,13 @@ import {
 import { MongoChat } from '../../../core/chat/chatSchema';
 import { buildChatSourceQuery, type ChatSourceParams } from '../../../core/chat/source';
 import { MongoChatItem } from '../../../core/chat/chatItemSchema';
-import { getRunningUserInfoByTmbId } from '../../../support/user/team/utils';
+import { getRunningUserInfoByTmbId, getUserIdByTmbId } from '../../../support/user/team/utils';
 import { addOutLinkUsage } from '../../../support/outLink/tools';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { authOutLinkLimit } from './auth';
+import { assertCancellation } from '../../user/account/cancellation/guard';
 import type {
   OutlinkMessageHandleResult,
   OutlinkProviderMessageHandler,
@@ -254,6 +255,12 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
   message: { chatId, query, messageId, chatUserId, resolveQuery },
   respond
 }: RunOutlinkRuntimeProps<T>): Promise<OutlinkMessageHandleResult> {
+  // 分享链接没有用户 Session，使用发布链接绑定的 tmb/team 校验账号可用性
+  await assertCancellation({
+    teamId: String(outLinkConfig.teamId),
+    userId: await getUserIdByTmbId(String(outLinkConfig.tmbId))
+  });
+
   const roundState = {
     preparedRound: undefined as PreChatRoundResult | undefined,
     sourceId: '',

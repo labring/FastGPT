@@ -19,6 +19,10 @@ import { getAIApi } from '../../../core/ai/config';
 import { createRootOrg } from '../../permission/org/controllers';
 import { getS3AvatarSource } from '../../../common/s3/sources/avatar';
 import { getLogger, LogCategories } from '../../../common/logger';
+import {
+  formatTeamAccountCancellationSummary,
+  getActiveAccountCancellationsByTeamIds
+} from '../account/cancellation';
 
 const logger = getLogger(LogCategories.MODULE.USER.TEAM);
 
@@ -29,9 +33,11 @@ async function getTeamMember(
   const query = MongoTeamMember.findOne(match).populate<{ team: TeamSchema }>('team');
   if (session) query.session(session);
   const tmb = await query.lean();
-  if (!tmb) {
+  if (!tmb || !tmb.team || tmb.team.deleteTime) {
     return Promise.reject('member not exist');
   }
+
+  const [cancellation] = await getActiveAccountCancellationsByTeamIds([String(tmb.teamId)]);
 
   const role =
     (await getTmbPermission({
@@ -59,7 +65,12 @@ async function getTeamMember(
 
     openaiAccount: tmb.team.openaiAccount,
     externalWorkflowVariables: tmb.team.externalWorkflowVariables,
-    isWecomTeam: !!tmb.team.meta?.wecom
+    isWecomTeam: !!tmb.team.meta?.wecom,
+    ...(cancellation
+      ? {
+          accountCancellation: formatTeamAccountCancellationSummary(cancellation.record)
+        }
+      : {})
   };
 }
 
@@ -100,7 +111,13 @@ export async function getUserDefaultTeam({
   if (!userId) {
     return Promise.reject('tmbId or userId is required');
   }
-  return getTeamMember({ userId: new Types.ObjectId(userId) }, session);
+  return getTeamMember(
+    {
+      userId: new Types.ObjectId(userId),
+      status: TeamMemberStatusEnum.active
+    },
+    session
+  );
 }
 
 export async function createDefaultTeam({

@@ -9,7 +9,11 @@ import {
 } from '@fastgpt/global/openapi/support/user/account/login/api';
 
 async function handler(req: ApiRequestProps): Promise<OpenAPIUserType> {
-  const { tmbId, userId, teamId, isRoot } = await authCert({ req, authToken: true });
+  const { tmbId, userId, teamId, isRoot } = await authCert({
+    req,
+    authToken: true,
+    allowAccountCancellation: true
+  });
   const user = await getUserDetail({ tmbId, isRoot });
 
   pushTrack.dailyUserActive({

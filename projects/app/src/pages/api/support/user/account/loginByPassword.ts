@@ -20,6 +20,7 @@ import {
   reportCRMVisitorIdentity,
   resolveCRMVisitorId
 } from '@fastgpt/service/support/marketing/attribution';
+import { assertUserCanLogin } from '@fastgpt/service/support/user/account/cancellation/guard';
 
 async function handler(
   req: ApiRequestProps<LoginByPasswordBodyType>,
@@ -46,6 +47,8 @@ async function handler(
         if (user.username.startsWith('wecom-')) {
           return Promise.reject(new UserError('Wecom user can not login with password'));
         }
+
+        await assertUserCanLogin(String(user._id));
 
         const userDetail = await getUserDetail({
           tmbId: user?.lastLoginTmbId,

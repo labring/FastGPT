@@ -10,7 +10,10 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { type toolCallProps } from './type';
 import { type AppSchemaType } from '@fastgpt/global/core/app/type';
-import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
+import {
+  getRunningUserInfoByTmbId,
+  getUserIdByTmbId
+} from '@fastgpt/service/support/user/team/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
 import {
@@ -45,6 +48,15 @@ import { getRuntimeNodeResponseSummary } from '@fastgpt/service/core/workflow/di
 import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { resolveMcpEffectiveTmbId } from './auth';
+import { assertCancellation } from '@fastgpt/service/support/user/account/cancellation/guard';
+
+const assertMcpTeamUsable = async (mcp: { teamId?: string; tmbId?: string }) => {
+  if (!mcp.teamId || !mcp.tmbId) return;
+  await assertCancellation({
+    teamId: mcp.teamId,
+    userId: await getUserIdByTmbId(mcp.tmbId)
+  });
+};
 
 const stringifyMcpPluginOutput = (pluginOutput: unknown) => {
   if (pluginOutput === undefined || pluginOutput === null) {
@@ -136,10 +148,11 @@ export const workflow2InputSchema = (chatConfig?: {
  * 不再因为创建人的应用权限后续变化而隐藏工具，避免已发布集成被普通权限调整意外中断。
  */
 export const getMcpServerTools = async (key: string): Promise<Tool[]> => {
-  const mcp = await MongoMcpKey.findOne({ key }, { apps: 1 }).lean();
+  const mcp = await MongoMcpKey.findOne({ key }, { apps: 1, teamId: 1, tmbId: 1 }).lean();
   if (!mcp) {
     return Promise.reject(CommonErrEnum.invalidResource);
   }
+  await assertMcpTeamUsable(mcp);
 
   // Get app list
   const appList = await MongoApp.find(
@@ -365,6 +378,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
   if (!mcp) {
     return Promise.reject(CommonErrEnum.invalidResource);
   }
+  await assertMcpTeamUsable(mcp);
 
   // Get app list
   const appList = await MongoApp.find({

@@ -3,6 +3,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, IconButton, Button } from '@chakra-ui/react';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { OAuthEnum } from '@fastgpt/global/support/user/constant';
+import { createAuthorizationUrl } from '@fastgpt/global/support/user/account/verification/authorization';
 import { useRouter } from 'next/router';
 import { type Dispatch, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -91,7 +92,13 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
               label: t('common:support.user.login.Google'),
               provider: OAuthEnum.google,
               icon: 'common/googleFill',
-              redirectUrl: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${feConfigs?.oauth?.google}&redirect_uri=${redirectUri}&state=${oauthState}&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email%20openid&include_granted_scopes=true`
+              redirectUrl: createAuthorizationUrl({
+                provider: OAuthEnum.google,
+                redirectUri,
+                state: oauthState,
+                interaction: 'login',
+                config: feConfigs.oauth
+              })
             }
           ]
         : []),
@@ -101,7 +108,13 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
               label: t('common:support.user.login.Github'),
               provider: OAuthEnum.github,
               icon: 'common/gitFill',
-              redirectUrl: `https://github.com/login/oauth/authorize?client_id=${feConfigs?.oauth?.github}&redirect_uri=${redirectUri}&state=${oauthState}&scope=user:email%20read:user`
+              redirectUrl: createAuthorizationUrl({
+                provider: OAuthEnum.github,
+                redirectUri,
+                state: oauthState,
+                interaction: 'login',
+                config: feConfigs.oauth
+              })
             }
           ]
         : []),
@@ -113,7 +126,13 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
                 t('common:support.user.login.Microsoft'),
               provider: OAuthEnum.microsoft,
               icon: 'common/microsoft',
-              redirectUrl: `https://login.microsoftonline.com/${feConfigs?.oauth?.microsoft?.tenantId || 'common'}/oauth2/v2.0/authorize?client_id=${feConfigs?.oauth?.microsoft?.clientId}&response_type=code&redirect_uri=${redirectUri}&response_mode=query&scope=https%3A%2F%2Fgraph.microsoft.com%2Fuser.read&state=${oauthState}`
+              redirectUrl: createAuthorizationUrl({
+                provider: OAuthEnum.microsoft,
+                redirectUri,
+                state: oauthState,
+                interaction: 'login',
+                config: feConfigs.oauth
+              })
             }
           ]
         : [])

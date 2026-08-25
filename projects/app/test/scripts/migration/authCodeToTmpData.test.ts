@@ -81,7 +81,7 @@ describe('mapLegacyAuthCode', () => {
       )
     ).toEqual({
       kind: 'mapped',
-      records: ['register', 'forgetPassword', 'bindNotification'].map((scene) => ({
+      records: ['register', 'forgetPassword', 'unsubscribe', 'bindNotification'].map((scene) => ({
         dataId: `verification:v1:${scene}:captcha:account@example.com`,
         data: { code: 'abc123' },
         expireAt
