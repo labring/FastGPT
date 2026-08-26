@@ -149,10 +149,89 @@ describe('getAppTemplatesAndLoadThem', () => {
       recommendText: 'DB recommend',
       order: 1
     });
-    expect(template?.workflow).toEqual(pluginWorkflow);
+    expect(template?.workflow).toMatchObject({
+      nodes: pluginWorkflow.nodes,
+      edges: pluginWorkflow.edges,
+      chatConfig: {
+        welcomeText: 'plugin welcome'
+      }
+    });
+    expect(template?.workflow.nodes[0].nodeId).not.toBe('stale-db-node');
     expect(template?.userGuide).toEqual({
       type: 'link',
       content: 'https://plugin.example.com'
     });
+  });
+
+  it('migrates legacy workflow fields before returning templates', async () => {
+    mocks.listWorkflows.mockResolvedValue([]);
+    mocks.findTemplates.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          templateId: `${AppToolSourceEnum.commercial}-legacy-workflow`,
+          name: 'Legacy workflow',
+          intro: 'intro',
+          avatar: 'avatar',
+          tags: [],
+          type: AppTypeEnum.workflow,
+          workflow: {
+            nodes: [
+              {
+                nodeId: 'start',
+                flowNodeType: FlowNodeTypeEnum.workflowStart,
+                name: 'Start',
+                inputs: [
+                  {
+                    key: 'model',
+                    label: 'Model',
+                    renderTypeList: ['input'],
+                    llmModelType: 'chat'
+                  }
+                ],
+                outputs: []
+              },
+              {
+                nodeId: 'legacy-system-config',
+                flowNodeType: 'userGuide',
+                name: 'Legacy system config',
+                inputs: [],
+                outputs: []
+              }
+            ],
+            edges: [],
+            chatConfig: { _id: 'legacy-chat-config' }
+          }
+        }
+      ])
+    });
+
+    const [template] = await getAppTemplatesAndLoadThem(true);
+
+    expect(template?.workflow.nodes).toHaveLength(1);
+    expect(template?.workflow.nodes[0].inputs[0]).not.toHaveProperty('llmModelType');
+    expect(template?.workflow.chatConfig).not.toHaveProperty('_id');
+  });
+
+  it('cleans legacy chat config fields in simple templates', async () => {
+    mocks.listWorkflows.mockResolvedValue([]);
+    mocks.findTemplates.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          templateId: `${AppToolSourceEnum.commercial}-legacy-simple`,
+          name: 'Legacy simple app',
+          intro: 'intro',
+          avatar: 'avatar',
+          tags: [],
+          type: AppTypeEnum.simple,
+          workflow: {
+            chatConfig: { _id: 'legacy-chat-config' }
+          }
+        }
+      ])
+    });
+
+    const [template] = await getAppTemplatesAndLoadThem(true);
+
+    expect(template?.workflow.chatConfig).not.toHaveProperty('_id');
   });
 });

@@ -5,7 +5,7 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppFolderTypeList, ToolTypeList, AppTypeList } from '@fastgpt/global/core/app/constants';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import {
-  CreateAppBodySchema,
+  CreateAppRequestBodySchema,
   CreateAppResponseSchema,
   type CreateAppBodyType
 } from '@fastgpt/global/openapi/core/app/common/api';
@@ -49,7 +49,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 async function handler(req: ApiRequestProps<CreateAppBodyType>) {
   const { body } = parseApiInput({
     req,
-    bodySchema: CreateAppBodySchema
+    bodySchema: CreateAppRequestBodySchema
   });
   const { parentId, name, avatar, intro, type, modules, edges, chatConfig, templateId, utmParams } =
     body;

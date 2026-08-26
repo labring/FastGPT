@@ -70,7 +70,6 @@ export const TeamTmbItemSchema = ThidPartyAccountSchema.extend({
       status: TeamAccountCancellationStatusSchema,
       scheduledCancelAt: z.union([z.date(), z.iso.datetime({ offset: true })]).optional()
     })
-    .strict()
     .optional()
 });
 export type TeamTmbItemType = z.infer<typeof TeamTmbItemSchema>;
