@@ -24,6 +24,7 @@ export const BillItemSchema = z.object({
   createTime: z.coerce.date().meta({ description: '创建时间' }),
   couponId: BillSchema.shape.couponId,
   hasInvoice: BillSchema.shape.hasInvoice,
+  paidAmount: BillSchema.shape.paidAmount,
   metadata: BillSchema.shape.metadata.partial().passthrough(),
   refundData: BillSchema.shape.refundData
 });
