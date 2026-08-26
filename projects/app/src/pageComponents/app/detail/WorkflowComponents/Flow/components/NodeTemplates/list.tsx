@@ -297,18 +297,18 @@ const NodeTemplateList = ({
         // 工具选择器保留历史可选项；未声明 isTool 的节点按普通节点初始化输入类型。
         const isToolMode = isToolSelector && templateNode.isTool === true;
 
-        // Popover insertion inherits the source node's parent; a dragged
-        // loopRunBreak with no inherited parent falls back to hit-testing.
+        // 快捷添加继承源节点所在容器；侧边栏添加（点击/拖拽）没有源节点，按落点命中容器，
+        // 保证拖入容器内部与快捷添加走同一套嵌套限制校验，无法通过拖拽绕过。
         let effectiveParentNodeId: string | undefined = currentNode?.parentNodeId;
-        if (templateNode.flowNodeType === FlowNodeTypeEnum.loopRunBreak && !effectiveParentNodeId) {
-          const dropLoopRun = getIntersectingNodes({
+        if (!effectiveParentNodeId && !handleParams) {
+          const dropContainer = getIntersectingNodes({
             x: position.x,
             y: position.y,
             width: 1,
             height: 1
-          }).find((n) => n.type === FlowNodeTypeEnum.loopRun && !n.data?.isFolded);
-          if (dropLoopRun) {
-            effectiveParentNodeId = dropLoopRun.id;
+          }).find((n) => isNestedParentNodeType(n.type ?? '') && !n.data?.isFolded);
+          if (dropContainer) {
+            effectiveParentNodeId = dropContainer.id;
           }
         }
         const effectiveParentNode = effectiveParentNodeId
@@ -319,7 +319,11 @@ const NodeTemplateList = ({
         if (isNestedParentNode && !!effectiveParentNodeId) {
           toast({
             status: 'warning',
-            title: t('workflow:can_not_loop')
+            title: t(
+              effectiveParentNode?.flowNodeType === FlowNodeTypeEnum.parallelRun
+                ? 'workflow:can_not_parallel'
+                : 'workflow:can_not_loop'
+            )
           });
           return;
         }
