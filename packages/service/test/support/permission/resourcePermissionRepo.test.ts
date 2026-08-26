@@ -140,6 +140,113 @@ describe('resourcePermissionRepo resource filters', () => {
     expect(permissions).toHaveLength(1);
     expect(String(permissions[0].resourceId)).toBe(String(resourceId));
   });
+
+  it('finds only affected collaborators and projects the required ACL fields', async () => {
+    const resourceId = objectId();
+    const otherResourceId = objectId();
+    const affectedTmbId = objectId();
+    const unaffectedTmbId = objectId();
+
+    await MongoResourcePermission.collection.insertMany([
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId,
+        tmbId: affectedTmbId,
+        permission: ReadPermissionVal
+      },
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId,
+        tmbId: unaffectedTmbId,
+        permission: WritePermissionVal
+      },
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: otherResourceId,
+        tmbId: affectedTmbId,
+        permission: ManagePermissionVal
+      }
+    ]);
+
+    const permissions = await resourcePermissionRepo.findByResourceIdsAndCollaborators({
+      teamId: String(teamId),
+      resourceType: PerResourceTypeEnum.app,
+      resourceIds: [String(resourceId)],
+      collaborators: [{ tmbId: String(affectedTmbId) }]
+    });
+
+    expect(permissions).toHaveLength(1);
+    expect(String(permissions[0].resourceId)).toBe(String(resourceId));
+    expect(String(permissions[0].tmbId)).toBe(String(affectedTmbId));
+    expect(permissions[0]).toMatchObject({ permission: ReadPermissionVal });
+    expect(permissions[0]).not.toHaveProperty('teamId');
+  });
+
+  it('patches only the requested ACL rows with insert, update, and delete actions', async () => {
+    const resourceId = objectId();
+    const tmbId = objectId();
+    const groupId = objectId();
+    const orgId = objectId();
+
+    await MongoResourcePermission.collection.insertMany([
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId,
+        tmbId,
+        permission: ReadPermissionVal
+      },
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId,
+        groupId,
+        permission: ManagePermissionVal
+      }
+    ]);
+
+    await resourcePermissionRepo.patchResources({
+      teamId: String(teamId),
+      resourceType: PerResourceTypeEnum.app,
+      patches: [
+        {
+          resourceId: String(resourceId),
+          collaborator: { tmbId: String(tmbId) },
+          action: 'update',
+          permission: WritePermissionVal
+        },
+        {
+          resourceId: String(resourceId),
+          collaborator: { groupId: String(groupId) },
+          action: 'delete'
+        },
+        {
+          resourceId: String(resourceId),
+          collaborator: { orgId: String(orgId) },
+          action: 'insert',
+          permission: ReadPermissionVal
+        }
+      ]
+    });
+
+    const rows = await resourcePermissionRepo.findByResourceIds({
+      teamId: String(teamId),
+      resourceType: PerResourceTypeEnum.app,
+      resourceIds: [String(resourceId)]
+    });
+
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ permission: WritePermissionVal }),
+        expect.objectContaining({ permission: ReadPermissionVal })
+      ])
+    );
+    expect(rows).toHaveLength(2);
+    expect(rows.some((row) => String(row.groupId) === String(groupId))).toBe(false);
+  });
 });
 
 describe('resourcePermissionRepo.findResourceKeysByCollaboratorsPermission', () => {

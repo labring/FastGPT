@@ -1,4 +1,5 @@
 import { Types, type AnyBulkWriteOperation, type ClientSession } from '../../../common/mongo';
+import { MongoTransactionConflictError } from '../../../common/mongo/sessionRun';
 import {
   CommonRolePerMap,
   OwnerPermissionVal,
@@ -40,6 +41,25 @@ type ResourcePermissionSnapshot = {
   resourceId: string;
   collaborators: CollaboratorItemType[];
 };
+
+export type ResourcePermissionPatch =
+  | {
+      resourceId: string;
+      collaborator: CollaboratorIdType;
+      action: 'insert';
+      permission: PermissionValueType;
+    }
+  | {
+      resourceId: string;
+      collaborator: CollaboratorIdType;
+      action: 'update';
+      permission: PermissionValueType;
+    }
+  | {
+      resourceId: string;
+      collaborator: CollaboratorIdType;
+      action: 'delete';
+    };
 
 type FindResourceKeysByCollaboratorsPermissionProps = {
   teamId: string;
@@ -98,6 +118,38 @@ export const resourcePermissionRepo = {
       undefined,
       withSession(session)
     ).lean(),
+
+  findByResourceIdsAndCollaborators: ({
+    teamId,
+    resourceType,
+    resourceIds,
+    collaborators,
+    session
+  }: {
+    teamId: string;
+    resourceType: PerResourceTypeEnum;
+    resourceIds: string[];
+    collaborators: CollaboratorIdType[];
+    session?: ClientSession;
+  }) => {
+    if (resourceIds.length === 0 || collaborators.length === 0) return Promise.resolve([]);
+
+    const collaboratorFilters = collaborators
+      .map(pickCollaboratorIdFields)
+      .filter((filter) => Object.keys(filter).length === 1);
+    if (collaboratorFilters.length === 0) return Promise.resolve([]);
+
+    return MongoResourcePermission.find(
+      {
+        teamId,
+        resourceType,
+        resourceId: { $in: resourceIds },
+        $or: collaboratorFilters
+      },
+      'resourceId permission tmbId groupId orgId',
+      withSession(session)
+    ).lean();
+  },
 
   findByResourceName: ({
     teamId,
@@ -637,6 +689,101 @@ export const resourcePermissionRepo = {
         ...(session ? { session } : {}),
         ordered: true
       });
+    }
+  },
+
+  /** 批量增量更新资源 ACL，只触碰受影响的协作者行。 */
+  patchResources: async ({
+    teamId,
+    resourceType,
+    patches,
+    session
+  }: {
+    teamId: string;
+    resourceType: PerResourceTypeEnum;
+    patches: ResourcePermissionPatch[];
+    session?: ClientSession;
+  }) => {
+    if (patches.length === 0) return;
+
+    const patchesByKey = new Map<string, ResourcePermissionPatch>();
+    for (const patch of patches) {
+      const collaborator = pickCollaboratorIdFields(patch.collaborator);
+      patchesByKey.set(`${patch.resourceId}:${JSON.stringify(collaborator)}`, patch);
+    }
+
+    const insertDocuments: ResourcePermissionType[] = [];
+    const updateOperations: AnyBulkWriteOperation<ResourcePermissionType>[] = [];
+    const deleteOperations: AnyBulkWriteOperation<ResourcePermissionType>[] = [];
+
+    for (const patch of patchesByKey.values()) {
+      const collaborator = pickCollaboratorIdFields(patch.collaborator);
+      const filter = {
+        teamId,
+        resourceType,
+        resourceId: patch.resourceId,
+        ...collaborator
+      };
+
+      if (patch.action === 'delete') {
+        deleteOperations.push({ deleteOne: { filter } });
+        continue;
+      }
+
+      if (patch.action === 'insert') {
+        insertDocuments.push({
+          teamId,
+          resourceType,
+          resourceId: patch.resourceId,
+          permission: patch.permission,
+          ...collaborator
+        } as ResourcePermissionType);
+        continue;
+      }
+
+      updateOperations.push({
+        updateOne: {
+          filter,
+          update: { $set: { permission: patch.permission } }
+        }
+      });
+    }
+
+    const batchSize = 100000;
+    const runBulkWrite = async (operations: AnyBulkWriteOperation<ResourcePermissionType>[]) => {
+      for (let index = 0; index < operations.length; index += batchSize) {
+        await MongoResourcePermission.bulkWrite(
+          operations.slice(index, index + batchSize),
+          withSession(session)
+        );
+      }
+    };
+
+    await runBulkWrite(deleteOperations);
+
+    for (let index = 0; index < updateOperations.length; index += batchSize) {
+      const operations = updateOperations.slice(index, index + batchSize);
+      const result = await MongoResourcePermission.bulkWrite(operations, withSession(session));
+      if (result.matchedCount !== operations.length) {
+        throw new MongoTransactionConflictError(
+          new Error('Resource permission update matched fewer rows than expected')
+        );
+      }
+    }
+
+    try {
+      for (let index = 0; index < insertDocuments.length; index += batchSize) {
+        await MongoResourcePermission.insertMany(insertDocuments.slice(index, index + batchSize), {
+          ...(session ? { session } : {}),
+          ordered: true
+        });
+      }
+    } catch (error) {
+      const code = (error as { code?: number }).code;
+      if (code === 11000 || code === 11001 || code === 112) {
+        throw new MongoTransactionConflictError(error);
+      }
+      throw error;
     }
   },
 

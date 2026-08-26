@@ -7,12 +7,16 @@ import type {
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import type { ClientSession, Model } from '../../common/mongo';
 import type { SyncChildrenPermissionResourceType } from './inheritPermission';
-import { resourcePermissionRepo } from './repository/resourcePermissionRepo';
+import {
+  resourcePermissionRepo,
+  type ResourcePermissionPatch
+} from './repository/resourcePermissionRepo';
 import {
   createInheritedResourceCollaboratorCalculator,
   calculateInheritedResourceCollaborators,
   mergeResourceCollaborators,
-  shouldInheritResourcePermission
+  shouldInheritResourcePermission,
+  toInheritedCollaborators
 } from './resourcePermissionPolicy';
 import {
   checkRoleUpdateConflict,
@@ -182,6 +186,51 @@ export const syncResourceTreePermissions = async ({
   newParentCollaborators: CollaboratorItemType[];
   session: ClientSession;
 }) => {
+  console.time('syncResourceTreePermissions');
+
+  const oldInheritedCollaborators = toInheritedCollaborators(oldParentCollaborators);
+  const newInheritedCollaborators = toInheritedCollaborators(newParentCollaborators);
+  const parentCollaboratorsById = new Map(
+    [...oldInheritedCollaborators, ...newInheritedCollaborators].map((collaborator) => [
+      getCollaboratorId(collaborator),
+      collaborator
+    ])
+  );
+  const oldParentPermissions = new Map(
+    oldInheritedCollaborators.map((collaborator) => [
+      getCollaboratorId(collaborator),
+      collaborator.permission
+    ])
+  );
+  const newParentPermissions = new Map(
+    newInheritedCollaborators.map((collaborator) => [
+      getCollaboratorId(collaborator),
+      collaborator.permission
+    ])
+  );
+  const affectedCollaborators = Array.from(parentCollaboratorsById.values()).filter(
+    (collaborator) => {
+      const collaboratorId = getCollaboratorId(collaborator);
+      return oldParentPermissions.get(collaboratorId) !== newParentPermissions.get(collaboratorId);
+    }
+  );
+  const affectedCollaboratorIds = affectedCollaborators.map(
+    ({ permission: _, ...collaborator }) => collaborator
+  );
+  const affectedCollaboratorIdSet = new Set(affectedCollaborators.map(getCollaboratorId));
+  const oldAffectedParentCollaborators = oldParentCollaborators.filter((collaborator) =>
+    affectedCollaboratorIdSet.has(getCollaboratorId(collaborator))
+  );
+  const newAffectedParentCollaborators = newParentCollaborators.filter((collaborator) =>
+    affectedCollaboratorIdSet.has(getCollaboratorId(collaborator))
+  );
+
+  if (affectedCollaborators.length === 0) {
+    console.timeLog('syncResourceTreePermissions', 'no inherited permission changes');
+    console.timeEnd('syncResourceTreePermissions');
+    return;
+  }
+
   const allDescendantIds: string[] = [];
   const descendantNodes: SyncChildrenPermissionResourceType[] = [];
   let pendingParentIds = [String(resource._id)];
@@ -204,14 +253,26 @@ export const syncResourceTreePermissions = async ({
     pendingParentIds = inheritingChildren.map((child) => String(child._id));
   }
 
-  if (allDescendantIds.length === 0) return;
+  if (allDescendantIds.length === 0) {
+    console.timeLog('syncResourceTreePermissions', 'no inheriting descendants');
+    console.timeEnd('syncResourceTreePermissions');
+    return;
+  }
+  console.timeLog(
+    'syncResourceTreePermissions',
+    'descendantNodes fetched',
+    allDescendantIds.length
+  );
 
-  const permissionRows = await resourcePermissionRepo.findByResourceIds({
+  const permissionRows = await resourcePermissionRepo.findByResourceIdsAndCollaborators({
     teamId: resource.teamId,
     resourceType,
     resourceIds: allDescendantIds,
+    collaborators: affectedCollaboratorIds,
     session
   });
+
+  console.timeLog('syncResourceTreePermissions', 'permissionRows fetched', permissionRows.length);
   const permissionsByResource = new Map<string, CollaboratorItemType[]>();
   for (const row of permissionRows) {
     const rows = permissionsByResource.get(String(row.resourceId)) ?? [];
@@ -219,38 +280,59 @@ export const syncResourceTreePermissions = async ({
     permissionsByResource.set(String(row.resourceId), rows);
   }
 
-  const areCollaboratorsEqual = (
-    oldCollaborators: CollaboratorItemType[],
-    newCollaborators: CollaboratorItemType[]
-  ) => {
-    if (oldCollaborators.length !== newCollaborators.length) return false;
-
-    const oldPermissionMap = new Map(
-      oldCollaborators.map((collaborator) => [
-        getCollaboratorId(collaborator),
-        collaborator.permission
-      ])
-    );
-    return newCollaborators.every(
-      (collaborator) =>
-        oldPermissionMap.get(getCollaboratorId(collaborator)) === collaborator.permission
-    );
-  };
-
   const calculatorsByResourceId = new Map([
     [
       String(resource._id),
       createInheritedResourceCollaboratorCalculator({
-        oldParentCollaborators,
-        newParentCollaborators
+        oldParentCollaborators: oldAffectedParentCollaborators,
+        newParentCollaborators: newAffectedParentCollaborators
       })
     ]
   ]);
   const resourceIdsWithChildren = new Set(descendantNodes.map((node) => String(node.parentId)));
-  const resourceSnapshots: {
+  const permissionPatches: ResourcePermissionPatch[] = [];
+
+  const appendPermissionPatches = ({
+    resourceId,
+    oldCollaborators,
+    newCollaborators
+  }: {
     resourceId: string;
-    collaborators: CollaboratorItemType[];
-  }[] = [];
+    oldCollaborators: CollaboratorItemType[];
+    newCollaborators: CollaboratorItemType[];
+  }) => {
+    const oldCollaboratorsById = new Map(
+      oldCollaborators.map((collaborator) => [getCollaboratorId(collaborator), collaborator])
+    );
+    const newCollaboratorsById = new Map(
+      newCollaborators.map((collaborator) => [getCollaboratorId(collaborator), collaborator])
+    );
+
+    for (const collaborator of affectedCollaborators) {
+      const collaboratorId = getCollaboratorId(collaborator);
+      const oldCollaborator = oldCollaboratorsById.get(collaboratorId);
+      const newCollaborator = newCollaboratorsById.get(collaboratorId);
+
+      if (oldCollaborator?.permission === newCollaborator?.permission) continue;
+
+      if (newCollaborator) {
+        const { permission, ...collaborator } = newCollaborator;
+        permissionPatches.push({
+          resourceId,
+          collaborator,
+          action: oldCollaborator ? 'update' : 'insert',
+          permission
+        });
+      } else if (oldCollaborator) {
+        const { permission: _, ...collaborator } = oldCollaborator;
+        permissionPatches.push({
+          resourceId,
+          collaborator,
+          action: 'delete'
+        });
+      }
+    }
+  };
 
   // descendantNodes 按层收集，父节点的计算器会在子节点前准备完成。
   for (const child of descendantNodes) {
@@ -262,12 +344,11 @@ export const syncResourceTreePermissions = async ({
     const oldChildCollaborators = permissionsByResource.get(childId) ?? [];
     const newChildCollaborators = calculateChildCollaborators(oldChildCollaborators);
 
-    if (!areCollaboratorsEqual(oldChildCollaborators, newChildCollaborators)) {
-      resourceSnapshots.push({
-        resourceId: childId,
-        collaborators: newChildCollaborators
-      });
-    }
+    appendPermissionPatches({
+      resourceId: childId,
+      oldCollaborators: oldChildCollaborators,
+      newCollaborators: newChildCollaborators
+    });
 
     if (resourceIdsWithChildren.has(childId)) {
       calculatorsByResourceId.set(
@@ -280,14 +361,21 @@ export const syncResourceTreePermissions = async ({
     }
   }
 
-  if (resourceSnapshots.length > 0) {
-    await resourcePermissionRepo.replaceResources({
+  console.timeLog(
+    'syncResourceTreePermissions',
+    'permissionPatches collected',
+    permissionPatches.length
+  );
+  if (permissionPatches.length > 0) {
+    await resourcePermissionRepo.patchResources({
       teamId: resource.teamId,
       resourceType,
-      resources: resourceSnapshots,
+      patches: permissionPatches,
       session
     });
   }
+  console.timeLog('syncResourceTreePermissions', 'patchResources completed');
+  console.timeEnd('syncResourceTreePermissions');
 };
 
 /**

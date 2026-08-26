@@ -125,11 +125,11 @@ describe.sequential('resource permission inheritance', () => {
         }))
       };
     });
-    const findByResourceIds = vi
-      .spyOn(resourcePermissionRepo, 'findByResourceIds')
+    const findByResourceIdsAndCollaborators = vi
+      .spyOn(resourcePermissionRepo, 'findByResourceIdsAndCollaborators')
       .mockResolvedValue([]);
-    const replaceResources = vi
-      .spyOn(resourcePermissionRepo, 'replaceResources')
+    const patchResources = vi
+      .spyOn(resourcePermissionRepo, 'patchResources')
       .mockResolvedValue(undefined);
 
     try {
@@ -150,9 +150,91 @@ describe.sequential('resource permission inheritance', () => {
     }
 
     expect(find).toHaveBeenCalledTimes(2);
-    expect(findByResourceIds).toHaveBeenCalledTimes(1);
-    expect(replaceResources).toHaveBeenCalledTimes(1);
-    expect(replaceResources.mock.calls[0][0].resources).toHaveLength(5000);
+    expect(findByResourceIdsAndCollaborators).toHaveBeenCalledTimes(1);
+    expect(findByResourceIdsAndCollaborators.mock.calls[0][0].collaborators).toEqual([
+      { tmbId: 'owner-id' }
+    ]);
+    expect(patchResources).toHaveBeenCalledTimes(1);
+    expect(patchResources.mock.calls[0][0].patches).toHaveLength(5000);
+    expect(patchResources.mock.calls[0][0].patches[0]).toMatchObject({
+      action: 'insert',
+      permission: ManageRoleVal
+    });
+  });
+
+  it('classifies inherited ACL changes into insert, update, and delete patches', async () => {
+    const children = ['update-child', 'delete-child', 'insert-child'].map((resourceId) => ({
+      _id: resourceId,
+      parentId: 'folder-id',
+      teamId: 'team-id',
+      type: AppTypeEnum.simple,
+      inheritPermission: true
+    }));
+    let findCalls = 0;
+    const find = vi.fn(() => {
+      findCalls += 1;
+      return {
+        lean: vi.fn(() => ({
+          session: vi.fn().mockResolvedValue(findCalls === 1 ? children : [])
+        }))
+      };
+    });
+    const findByResourceIdsAndCollaborators = vi
+      .spyOn(resourcePermissionRepo, 'findByResourceIdsAndCollaborators')
+      .mockResolvedValue([
+        { resourceId: 'update-child', tmbId: 'owner-id', permission: ReadRoleVal },
+        { resourceId: 'delete-child', tmbId: 'removed-id', permission: ReadRoleVal }
+      ] as any);
+    const patchResources = vi
+      .spyOn(resourcePermissionRepo, 'patchResources')
+      .mockResolvedValue(undefined);
+
+    try {
+      await syncResourceTreePermissions({
+        resource: {
+          _id: 'folder-id',
+          teamId: 'team-id',
+          type: AppTypeEnum.folder
+        },
+        resourceModel: { find } as any,
+        resourceType: PerResourceTypeEnum.app,
+        oldParentCollaborators: [
+          { tmbId: 'owner-id', permission: ReadRoleVal },
+          { tmbId: 'removed-id', permission: ReadRoleVal }
+        ],
+        newParentCollaborators: [
+          { tmbId: 'owner-id', permission: WriteRoleVal },
+          { tmbId: 'added-id', permission: ReadRoleVal }
+        ],
+        session: {} as any
+      });
+    } finally {
+      vi.restoreAllMocks();
+    }
+
+    expect(findByResourceIdsAndCollaborators).toHaveBeenCalledTimes(1);
+    const patches = patchResources.mock.calls[0][0].patches;
+    expect(patches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          resourceId: 'update-child',
+          collaborator: expect.objectContaining({ tmbId: 'owner-id' }),
+          action: 'update',
+          permission: WriteRoleVal
+        }),
+        expect.objectContaining({
+          resourceId: 'delete-child',
+          collaborator: expect.objectContaining({ tmbId: 'removed-id' }),
+          action: 'delete'
+        }),
+        expect.objectContaining({
+          resourceId: 'insert-child',
+          collaborator: expect.objectContaining({ tmbId: 'added-id' }),
+          action: 'insert',
+          permission: ReadRoleVal
+        })
+      ])
+    );
   });
 
   it('inherits existing parent ACLs when creating a child and isolates false branches', async () => {
