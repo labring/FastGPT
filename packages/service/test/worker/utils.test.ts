@@ -10,8 +10,7 @@ const { mockEnv } = vi.hoisted(() => ({
     XLSX_PARSE_MAX_ROWS: 100_000,
     XLSX_PARSE_MAX_COLUMNS: 1_000,
     XLSX_PARSE_MAX_CELLS: 1_000_000,
-    XLSX_PARSE_MAX_MERGED_CELLS: 1_000_000,
-    UPLOAD_FILE_MAX_SIZE: 1_000
+    XLSX_PARSE_MAX_MERGED_CELLS: 1_000_000
   }
 }));
 
@@ -64,7 +63,7 @@ describe('worker/utils getSafeEnv', () => {
       XLSX_PARSE_MAX_COLUMNS: '1000',
       XLSX_PARSE_MAX_CELLS: '1000000',
       XLSX_PARSE_MAX_MERGED_CELLS: '1000000',
-      UPLOAD_FILE_MAX_SIZE: '1000'
+      PARSE_FILE_WORKER_MEMORY_LIMIT_MB: '640'
     });
   });
 });

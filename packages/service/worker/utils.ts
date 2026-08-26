@@ -19,7 +19,7 @@ export const getSafeEnv = () => {
     XLSX_PARSE_MAX_COLUMNS: String(serviceEnv.XLSX_PARSE_MAX_COLUMNS),
     XLSX_PARSE_MAX_CELLS: String(serviceEnv.XLSX_PARSE_MAX_CELLS),
     XLSX_PARSE_MAX_MERGED_CELLS: String(serviceEnv.XLSX_PARSE_MAX_MERGED_CELLS),
-    UPLOAD_FILE_MAX_SIZE: String(serviceEnv.UPLOAD_FILE_MAX_SIZE),
+    PARSE_FILE_WORKER_MEMORY_LIMIT_MB: String(serviceEnv.PARSE_FILE_WORKER_MEMORY_LIMIT_MB),
     NODE_ENV: process.env.NODE_ENV,
     HTTP_PROXY: process.env.HTTP_PROXY,
     HTTPS_PROXY: process.env.HTTPS_PROXY,
@@ -30,7 +30,7 @@ export const getSafeEnv = () => {
 const createNodeWorker = (workerPath: string, name: `${WorkerNameEnum}`) => {
   return new Worker(workerPath, {
     env: getSafeEnv(),
-    // 文件解析依赖会构造大量 JS 对象；限制 V8 老生代，Buffer 等进程外内存仍由容器兜底。
+    // 文件解析依赖会构造大量 JS 对象；限制 V8 老生代，XLSX 预检也复用该预算限制解压量。
     resourceLimits:
       name === WorkerNameEnum.readFile
         ? {

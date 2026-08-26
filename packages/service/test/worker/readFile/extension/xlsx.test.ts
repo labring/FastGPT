@@ -24,8 +24,8 @@ describe('readXlsxRawText', () => {
     return zip.generateAsync({ type: 'nodebuffer' });
   };
 
-  it('uses the upload size limit as the uncompressed XLSX budget', () => {
-    expect(XLSX_PARSE_LIMITS.maxUncompressedBytes).toBe(1_000 * 1024 * 1024);
+  it('uses the worker memory limit as the uncompressed XLSX budget', () => {
+    expect(XLSX_PARSE_LIMITS.maxUncompressedBytes).toBe(512 * 1024 * 1024);
   });
 
   it('should skip empty rows when formatting xlsx content', async () => {
