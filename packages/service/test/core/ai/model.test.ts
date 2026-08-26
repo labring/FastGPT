@@ -53,12 +53,16 @@ describe('getLLMModelData', () => {
   });
 
   it('does not resolve display names or missing model identifiers', () => {
+    expect(() => getLLMModelData({})).toThrow(ModelErrEnum.unExist);
     expect(() => getLLMModelData({ model: 'GPT test display name' })).toThrow(ModelErrEnum.unExist);
     expect(() => getLLMModelData({ model: 'missing-model' })).toThrow(ModelErrEnum.unExist);
   });
 
   it('rejects disabled models for execution', () => {
-    global.systemModelMap.set(`id:${modelId}`, { ...modelData, isActive: false });
+    const disabledModel = { ...modelData, isActive: false };
+    global.systemModelMap.set(`id:${modelId}`, disabledModel);
+    global.systemModelMap.set(`model:${modelData.model}`, disabledModel);
     expect(() => getLLMModelData({ modelId })).toThrow(ModelErrEnum.unExist);
+    expect(() => getLLMModelData({ model: modelData.model })).toThrow(ModelErrEnum.unExist);
   });
 });

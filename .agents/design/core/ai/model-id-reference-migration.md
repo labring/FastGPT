@@ -473,9 +473,9 @@ const displayModel = usage.model ?? modelMap.get(usage.modelId)?.model ?? i18nT(
 
 - 新建节点和新模板只产生新 ID key，不需要额外双写旧 key。
 - 存量节点的旧 key 不删除；当旧 value 是可解析的字面量 `model` 时，通过 `$set`/input append 增加对应 ID sibling。
-- Workflow 导入、应用创建以及自动保存/保存版本/发布统一调用 `formatModels`：为可解析的旧 `model` 补充 ID sibling。`formatModels` 只负责结构转换，不清空已有 `modelId` 或无法解析的旧 `model`，也不在服务端写入边界校验模型权限。
+- Workflow 导入、应用创建以及自动保存/保存版本/发布统一调用 `formatModels`：为可解析的旧 `model` 补充 ID sibling。`formatModels` 只负责结构转换，不清空已有 `modelId`，不在服务端写入边界校验模型权限。
 - 编辑或保存存量 Workflow 时保留原本存在的 deprecated input；若用户重新选择了模型，则更新/增加 ID input，但不以“清理”为由删除旧 input。
-- 旧字面量无法解析时，不添加 ID sibling，保留旧 input 并在界面显示“模型不存在”。
+- 旧字面量无法解析时，不添加 ID sibling，清空旧 input 但不抛错，避免中断模板导入。运行节点时，`modelId` 和 `model` 都为空、指定模型不存在，或模型未激活，均统一抛出“模型不存在”。
 
 引用类型 input 的 value 可能来自变量，迁移时无法证明变量运行结果是 ObjectId。此时不能把旧 key 机械复制成新 ID key，只保留 deprecated key，并在运行时把变量结果按旧系统 `model` 解析。只有新 ID key 下的引用值才按 `modelId` 解释；无效时直接报“模型不存在”。
 

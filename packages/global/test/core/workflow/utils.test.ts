@@ -1420,7 +1420,7 @@ describe('formatModels', () => {
     );
   });
 
-  it('keeps a static legacy model when it cannot be converted', () => {
+  it('clears a static legacy model without throwing when it cannot be converted', () => {
     const modules = [
       {
         nodeId: 'node1',
@@ -1439,9 +1439,9 @@ describe('formatModels', () => {
       }
     ];
 
-    const result = formatModels({ modules, models });
-    expect(result?.[0].inputs[0].value).toBe('unauthorized-model');
-    expect(result?.[0].inputs).toHaveLength(1);
+    expect(() => formatModels({ modules, models })).not.toThrow();
+    expect(modules[0].inputs[0].value).toBeUndefined();
+    expect(modules[0].inputs).toHaveLength(1);
   });
 
   it('keeps existing modelId inputs unchanged without checking permissions', () => {

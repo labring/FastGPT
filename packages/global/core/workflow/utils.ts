@@ -577,9 +577,9 @@ const workflowModelKeyMappings = [
 /**
  * 在 Workflow 写入边界统一格式化模型引用。
  *
- * 静态旧 model 可解析时保留原 input，并新增对应的 modelId sibling。已有
- * modelId、无法解析的 model 和引用类型都保持原样：该函数只负责结构转换，
- * 不承担模型权限判断。
+ * 静态旧 model 可解析时保留原 input，并新增对应的 modelId sibling；无法
+ * 解析时清空旧值但不抛错，避免中断模板导入。已有 modelId 和引用类型保持原样：
+ * 该函数只负责结构转换，不承担模型权限判断。
  */
 export const formatModels = ({
   modules,
@@ -605,7 +605,10 @@ export const formatModels = ({
 
       if (!legacyInput || isReferenceInput(legacyInput)) continue;
       const modelId = modelIdByModel.get(legacyInput.value);
-      if (!modelId) continue;
+      if (!modelId) {
+        legacyInput.value = undefined;
+        continue;
+      }
 
       module.inputs.push({
         ...legacyInput,
