@@ -5,6 +5,7 @@ import { type AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 import { MongoAppTemplate } from './templateSchema';
 import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
 import { addMinutes } from 'date-fns';
+import { migrateAppTemplateWorkflowToCurrent } from './utils';
 
 type PluginSystemTemplateDbConfig = Pick<AppTemplateSchemaType, 'templateId'> &
   Partial<
@@ -118,7 +119,9 @@ const getAppTemplates = async () => {
   const res = [
     ...communityTemplateConfig,
     ...dbTemplates.filter((t) => isCommercialTemaplte(t.templateId))
-  ].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  ]
+    .map(migrateAppTemplateWorkflowToCurrent)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   return res;
 };

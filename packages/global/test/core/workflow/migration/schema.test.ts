@@ -78,7 +78,7 @@ describe('workflow migration boundary', () => {
     expect(result.nodes[0].inputs[1]).not.toHaveProperty('isToolParam');
   });
 
-  it('rejects V1 nodes before strict V2 parsing', async () => {
+  it('rejects V1 nodes before V2 schema parsing', async () => {
     expect(() =>
       migrateWorkflowToCurrent({
         nodes: [
@@ -107,7 +107,7 @@ describe('workflow migration boundary', () => {
     ).toThrow();
   });
 
-  it('repairs deterministic V2 structural defects before strict parsing', async () => {
+  it('repairs deterministic V2 structural defects before schema parsing', async () => {
     const result = await migrateWorkflowToCurrent({
       nodes: [
         {
@@ -206,6 +206,34 @@ describe('workflow migration boundary', () => {
 
     expect(result.nodes[0]).not.toHaveProperty('id');
     expect(result.nodes[0].nodeId).toBe('node-1');
+  });
+
+  it('removes deprecated model input metadata and Mongo chat config ids', () => {
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'legacy-node',
+          flowNodeType: 'removedNodeType',
+          name: 'Legacy node',
+          inputs: [
+            {
+              key: 'model',
+              label: 'Model',
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              llmModelType: 'chat'
+            }
+          ],
+          outputs: []
+        }
+      ],
+      chatConfig: {
+        _id: 'legacy-mongo-subdocument-id'
+      }
+    });
+
+    expect(result.nodes[0].flowNodeType).toBe('emptyNode');
+    expect(result.nodes[0].inputs[0]).not.toHaveProperty('llmModelType');
+    expect(result.chatConfig).not.toHaveProperty('_id');
   });
 
   it('adds an empty config to available Agent tools missing config', async () => {
@@ -562,7 +590,7 @@ describe('workflow migration boundary', () => {
     expect(input.valueDesc).toBe('');
   });
 
-  it('drops historical null input fields before strict parsing', async () => {
+  it('drops historical null input fields before schema parsing', async () => {
     const result = await migrateWorkflowToCurrent({
       nodes: [
         {

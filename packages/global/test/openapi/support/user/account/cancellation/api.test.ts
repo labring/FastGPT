@@ -21,14 +21,14 @@ describe('account cancellation API contracts', () => {
     ).toThrow();
   });
 
-  it('does not accept username, scene, or extra submit fields', () => {
-    expect(() =>
+  it('strips unknown submit fields while rejecting unsupported methods', () => {
+    expect(
       SubmitAccountCancellationBodySchema.parse({
         method: 'code',
-        payload: { code: '123456' },
+        payload: { code: '123456', legacyScene: 'account-cancellation' },
         username: 'user@example.com'
       })
-    ).toThrow();
+    ).toEqual({ method: 'code', payload: { code: '123456' } });
     expect(() =>
       SubmitAccountCancellationBodySchema.parse({
         method: 'oldPassword',

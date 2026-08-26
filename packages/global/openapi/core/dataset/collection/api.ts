@@ -56,7 +56,29 @@ const BasicExportSchema = z
   .object({
     collectionId: ObjectIdSchema.describe('集合ID')
   })
-  .strict()
+  .passthrough()
+  .superRefine((data, ctx) => {
+    // 先检查原始键再清洗，避免无效聊天鉴权参数被 union 降级为普通登录态导出。
+    const chatExportKeys = [
+      'appId',
+      'skillId',
+      'sourceType',
+      'outLinkAuthData',
+      'chatId',
+      'chatItemDataId',
+      'chatTime'
+    ] as const;
+    const invalidKey = chatExportKeys.find((key) => data[key] !== undefined);
+
+    if (invalidKey) {
+      ctx.addIssue({
+        code: 'custom',
+        path: [invalidKey],
+        message: '聊天态导出字段不能用于普通导出'
+      });
+    }
+  })
+  .transform(({ collectionId }) => ({ collectionId }))
   .meta({
     description: '通过身份鉴权导出集合',
     example: {

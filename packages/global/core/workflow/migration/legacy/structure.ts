@@ -102,7 +102,7 @@ const normalizeOutputType = (value: unknown) =>
     prefix: 'FlowNodeOutputTypeEnum.'
   });
 
-/** Repair deterministic storage defects before the strict V2 boundary schema runs. */
+/** Repair deterministic storage defects before the V2 boundary schema runs. */
 export const migrateLegacyWorkflowStructureData = ({
   nodes,
   edges,
@@ -231,6 +231,8 @@ export const migrateLegacyWorkflowStructureData = ({
     node.inputs = (Array.isArray(node.inputs) ? node.inputs : []).map((value, inputIndex) => {
       const input = isRecord(value) ? { ...value } : {};
       // 非对象输入降级为空对象，后续规则补齐 key、label 和类型字段。
+      // llmModelType 是旧版模型选择器的展示字段，当前输入协议不再持久化该字段。
+      delete input.llmModelType;
       optionalInputFields.forEach((key) => {
         if (input[key] === null) delete input[key];
       });
@@ -283,6 +285,8 @@ export const migrateLegacyWorkflowStructureData = ({
   });
   const normalizedChatConfig = isRecord(chatConfig) ? { ...chatConfig } : {};
   // chatConfig 缺失、非对象或包含 null 字段时，先归一为可继续迁移的对象。
+  // Mongo 子文档遗留的 _id 不属于应用对话配置，不能进入 canonical workflow。
+  delete normalizedChatConfig._id;
   Object.keys(normalizedChatConfig).forEach((key) => {
     if (normalizedChatConfig[key] === null) delete normalizedChatConfig[key];
   });
