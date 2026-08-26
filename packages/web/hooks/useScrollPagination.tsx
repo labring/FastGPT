@@ -10,6 +10,17 @@ import type { PaginationType, PaginationResponseType } from '@fastgpt/global/ope
 
 const thresholdVal = 100;
 
+export type ScrollListType = ({
+  children,
+  ScrollContainerRef,
+  isLoading,
+  ...props
+}: {
+  children: ReactNode;
+  ScrollContainerRef?: RefObject<HTMLDivElement>;
+  isLoading?: boolean;
+} & BoxProps) => React.JSX.Element;
+
 export function useScrollPagination<
   TParams extends PaginationType,
   TData extends PaginationResponseType
