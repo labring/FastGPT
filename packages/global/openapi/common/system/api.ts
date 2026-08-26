@@ -15,7 +15,6 @@ import {
   MyTTSModelItemSchema
 } from '../../core/ai/model/api';
 import { ModelTypeEnum } from '../../../core/ai/constants';
-import { ObjectIdSchema } from '../../../common/type/mongo';
 
 /* ============================================================================
  * API: 获取系统初始化数据
@@ -120,22 +119,25 @@ export type GetSystemInitDataResponse = z.infer<typeof GetSystemInitDataResponse
  * ============================================================================ */
 
 const PublicPriceModelBaseSchema = z.object({
-  modelId: ObjectIdSchema.meta({ description: '模型稳定 ID' }),
-  model: z.string().meta({ description: 'Provider 请求使用的模型标识' }),
-  name: z.string().meta({ description: '模型展示名称' }),
-  provider: z.string().meta({ description: '模型提供商标识' }),
-  type: z.enum(ModelTypeEnum).meta({ description: '模型类型' }),
-  avatar: z.string().optional().meta({ description: '模型图标' }),
-  testMode: z.boolean().optional().meta({ description: '是否为测试模式' }),
-  charsPointsPrice: z.number().optional().meta({ description: '按字符计费的积分单价' }),
-  priceTiers: z.array(ModelPriceTierSchema).optional().meta({ description: '分段价格配置' }),
-  inputPrice: z.number().optional().meta({ description: '旧版输入价格展示字段' }),
-  outputPrice: z.number().optional().meta({ description: '旧版输出价格展示字段' })
+  name: z.string().meta({ example: 'GPT-5', description: '模型展示名称' }),
+  provider: z.string().meta({ example: 'openai', description: '模型提供商标识' }),
+  testMode: z.boolean().optional().meta({ example: false, description: '是否为测试模式' })
+});
+
+const PublicCharsPriceSchema = z.number().optional().meta({
+  example: 1,
+  description: '对应模型计费单位的积分单价'
 });
 
 export const PublicPriceSystemModelSchema = z.discriminatedUnion('type', [
   PublicPriceModelBaseSchema.extend({
-    type: z.literal(ModelTypeEnum.llm),
+    type: z
+      .literal(ModelTypeEnum.llm)
+      .meta({ example: ModelTypeEnum.llm, description: '模型类型' }),
+    priceTiers: z.array(ModelPriceTierSchema).meta({
+      example: [{ minInputTokens: 0, inputPrice: 1, outputPrice: 2 }],
+      description: '分段输入输出价格配置'
+    }),
     config: LLMModelConfigSchema.pick({
       maxContext: true,
       vision: true,
@@ -145,20 +147,30 @@ export const PublicPriceSystemModelSchema = z.discriminatedUnion('type', [
     })
   }),
   PublicPriceModelBaseSchema.extend({
-    type: z.literal(ModelTypeEnum.embedding),
+    type: z
+      .literal(ModelTypeEnum.embedding)
+      .meta({ example: ModelTypeEnum.embedding, description: '模型类型' }),
+    charsPointsPrice: PublicCharsPriceSchema,
     config: EmbeddingModelConfigSchema.pick({ maxToken: true })
   }),
   PublicPriceModelBaseSchema.extend({
-    type: z.literal(ModelTypeEnum.rerank),
+    type: z
+      .literal(ModelTypeEnum.rerank)
+      .meta({ example: ModelTypeEnum.rerank, description: '模型类型' }),
+    charsPointsPrice: PublicCharsPriceSchema,
     config: RerankModelConfigSchema.pick({ maxToken: true })
   }),
   PublicPriceModelBaseSchema.extend({
-    type: z.literal(ModelTypeEnum.tts),
-    config: z.object({})
+    type: z
+      .literal(ModelTypeEnum.tts)
+      .meta({ example: ModelTypeEnum.tts, description: '模型类型' }),
+    charsPointsPrice: PublicCharsPriceSchema
   }),
   PublicPriceModelBaseSchema.extend({
-    type: z.literal(ModelTypeEnum.stt),
-    config: z.object({})
+    type: z
+      .literal(ModelTypeEnum.stt)
+      .meta({ example: ModelTypeEnum.stt, description: '模型类型' }),
+    charsPointsPrice: PublicCharsPriceSchema
   })
 ]);
 export type PublicPriceSystemModel = z.infer<typeof PublicPriceSystemModelSchema>;

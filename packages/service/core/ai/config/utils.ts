@@ -27,6 +27,7 @@ import { getLogger, LogCategories } from '../../../common/logger';
 import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { flatModelToDocumentData, repairStoredSystemModels } from './repair';
+import { clearAllMyModelsCache } from '../../../support/permission/model/controller';
 
 /**
  * 生成可返回客户端的脱敏模型副本。系统模型对象还会被服务端请求链路复用，不能原地删除字段。
@@ -66,10 +67,7 @@ export const desensitizeSystemDefaultModels = (defaultModels: SystemDefaultModel
 
 /** 获取插件模型的 canonical 初始文档；加载器与迁移脚本共用同一套扁平字段分拣规则。 */
 export const getPluginSystemModelDocuments = async (): Promise<SystemModelDocumentDataType[]> =>
-  pluginClient
-    .listModels()
-    .then((models) => models.map((model) => flatModelToDocumentData(model)))
-    .catch(() => []);
+  pluginClient.listModels().then((models) => models.map((model) => flatModelToDocumentData(model)));
 
 export const loadSystemModels = async (init = false, language = 'en') => {
   if (!init && global.systemModelList) return;
@@ -140,20 +138,8 @@ export const loadSystemModels = async (init = false, language = 'en') => {
   try {
     const pluginDocuments = await getPluginSystemModelDocuments();
 
-    // 插件模型必须先物化进数据库，后续所有引用才能稳定使用 Mongo `_id`。
-    if (pluginDocuments.length > 0) {
-      await MongoSystemModel.bulkWrite(
-        pluginDocuments.map((document) => ({
-          updateOne: {
-            filter: { isSystem: true, model: document.model },
-            update: { $setOnInsert: document },
-            upsert: true
-          }
-        })),
-        { ordered: false }
-      );
-    }
-
+    // 先原地接管旧文档，再物化新增插件模型。旧文档没有 isSystem，若先按新结构 upsert，
+    // 会创建同名记录并导致 repair 触发唯一索引冲突，或者被旧 model 唯一索引直接拒绝。
     const repairStats = await repairStoredSystemModels({ pluginDocuments });
     if (repairStats.repaired > 0) {
       getLogger(LogCategories.MODULE.AI.CONFIG).warn('System model documents repaired', {
@@ -167,6 +153,21 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         deleted: repairStats.deleted,
         models: repairStats.deletedModels
       });
+    }
+
+    // repair 后，同名历史记录已具有 canonical 结构；按系统模型条件更新可稳定复用原 `_id`。
+    // 仅当插件引入了数据库中不存在的新模型时，upsert 才会插入新文档。
+    if (pluginDocuments.length > 0) {
+      await MongoSystemModel.bulkWrite(
+        pluginDocuments.map((document) => ({
+          updateOne: {
+            filter: { isSystem: true, model: document.model },
+            update: { $setOnInsert: document },
+            upsert: true
+          }
+        })),
+        { ordered: false }
+      );
     }
 
     const dbModels = await MongoSystemModel.find({}).lean();
@@ -303,9 +304,11 @@ export const watchSystemModelUpdate = () => {
 export const updatedReloadSystemModel = async () => {
   // 1. 更新模型（所有节点都会触发）
   await loadSystemModels(true);
-  // 2. 更新缓存（仅主节点触发）
+  // 2. 模型可用状态变化会影响所有团队，统一失效成员模型列表缓存
+  await clearAllMyModelsCache();
+  // 3. 更新缓存（仅主节点触发）
   await updateFastGPTConfigBuffer();
-  // 3. 延迟1秒，等待其他节点刷新
+  // 4. 延迟1秒，等待其他节点刷新
   await delay(1000);
 };
 export const cronRefreshModels = async () => {

@@ -20,6 +20,9 @@ describe('GET /api/common/system/getSystemModels', () => {
       isCustom: false,
       requestUrl: 'https://private.example.com/v1',
       requestAuth: 'private-secret',
+      inputPrice: 1,
+      outputPrice: 2,
+      priceTiers: [{ minInputTokens: 0, inputPrice: 1, outputPrice: 2 }],
       config: {
         maxContext: 128000,
         maxResponse: 16000,
@@ -40,11 +43,10 @@ describe('GET /api/common/system/getSystemModels', () => {
 
     expect(result).toEqual([
       {
-        modelId: '68ad85a7463006c963799a01',
-        model: 'gpt-public',
         name: 'GPT Public',
         provider: 'openai',
         type: ModelTypeEnum.llm,
+        priceTiers: [{ minInputTokens: 0, inputPrice: 1, outputPrice: 2 }],
         config: {
           maxContext: 128000
         }
@@ -52,5 +54,9 @@ describe('GET /api/common/system/getSystemModels', () => {
     ]);
     expect(result[0]).not.toHaveProperty('requestUrl');
     expect(result[0]).not.toHaveProperty('requestAuth');
+    expect(result[0]).not.toHaveProperty('modelId');
+    expect(result[0]).not.toHaveProperty('model');
+    expect(result[0]).not.toHaveProperty('inputPrice');
+    expect(result[0]).not.toHaveProperty('outputPrice');
   });
 });

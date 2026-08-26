@@ -9,6 +9,7 @@ vi.mock('@fastgpt/service/core/ai/config/utils', async (importOriginal) => {
 
   return {
     ...actual,
+    getPluginSystemModelDocuments: vi.fn().mockResolvedValue([]),
     updatedReloadSystemModel: vi.fn().mockResolvedValue(undefined)
   };
 });

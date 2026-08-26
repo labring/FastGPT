@@ -5,6 +5,7 @@ import ModelTable from '@/components/core/ai/ModelTable';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getSystemModels } from '@/web/common/system/api';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import PriceTiersLabel from '@/components/core/ai/PriceTiersLabel';
 
 const Points = () => {
   const { t } = useClientTranslation('price');
@@ -74,12 +75,13 @@ export const AiPointsTable = () => {
         </Box>
         <Box flex={4} textAlign={'center'}>
           {llmModelList?.map((item, i) => (
-            <Flex key={item.model} py={4} bg={i % 2 !== 0 ? 'myGray.100' : ''}>
+            <Flex key={`${item.provider}-${item.name}`} py={4} bg={i % 2 !== 0 ? 'myGray.100' : ''}>
               <Box flex={'1 0 0'}>{item.name}</Box>
               <Box flex={'1 0 0'}>
-                {item.charsPointsPrice +
-                  t('common:support.wallet.subscription.point') +
-                  ' / 1000 Tokens'}
+                <PriceTiersLabel
+                  config={item}
+                  unitLabel={`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
+                />
               </Box>
             </Flex>
           ))}
@@ -103,7 +105,7 @@ export const AiPointsTable = () => {
         </Box>
         <Box flex={4} textAlign={'center'}>
           {embeddingModelList?.map((item, i) => (
-            <Flex key={item.model} py={4} bg={i % 2 !== 0 ? 'myGray.100' : ''}>
+            <Flex key={`${item.provider}-${item.name}`} py={4} bg={i % 2 !== 0 ? 'myGray.100' : ''}>
               <Box flex={'1 0 0'}>{item.name}</Box>
               <Box flex={'1 0 0'}>
                 {item.charsPointsPrice +
@@ -129,7 +131,7 @@ export const AiPointsTable = () => {
         </Box>
         <Box flex={4} textAlign={'center'}>
           {ttsModelList?.map((item, i) => (
-            <Flex key={item.model} py={4} bg={i % 2 !== 0 ? 'myGray.50' : ''}>
+            <Flex key={`${item.provider}-${item.name}`} py={4} bg={i % 2 !== 0 ? 'myGray.50' : ''}>
               <Box flex={'1 0 0'}>{item.name}</Box>
               <Box flex={'1 0 0'}>
                 {item.charsPointsPrice +
@@ -156,7 +158,7 @@ export const AiPointsTable = () => {
         </Box>
         <Box flex={4} textAlign={'center'} h={'100%'}>
           {sttModelList.map((item) => (
-            <Flex key={item.model} py={4}>
+            <Flex key={`${item.provider}-${item.name}`} py={4}>
               <Box flex={'1 0 0'}>{item.name}</Box>
               <Box flex={'1 0 0'}>
                 {item.charsPointsPrice +

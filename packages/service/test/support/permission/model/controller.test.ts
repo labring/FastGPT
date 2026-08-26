@@ -4,6 +4,7 @@ import { TmpDataEnum } from '@fastgpt/global/support/tmpData/constants';
 import { getTmpData, setTmpData } from '@fastgpt/service/support/tmpData/controller';
 import { MongoTmpData } from '@fastgpt/service/support/tmpData/schema';
 import {
+  clearAllMyModelsCache,
   clearMyModelsCache,
   getMyModelIds
 } from '@fastgpt/service/support/permission/model/controller';
@@ -93,5 +94,37 @@ describe('model permission cache', () => {
 
     await expect(MongoTmpData.countDocuments({ 'data.teamId': firstTeamId })).resolves.toBe(0);
     await expect(MongoTmpData.countDocuments({ 'data.teamId': secondTeamId })).resolves.toBe(1);
+  });
+
+  it('deletes every model cache without deleting unrelated temporary data', async () => {
+    const firstTeamId = new Types.ObjectId().toString();
+    const secondTeamId = new Types.ObjectId().toString();
+    const firstTmbId = new Types.ObjectId().toString();
+    const secondTmbId = new Types.ObjectId().toString();
+
+    await Promise.all([
+      setTmpData({
+        type: TmpDataEnum.MyModels,
+        metadata: { teamId: firstTeamId, tmbId: firstTmbId },
+        data: { teamId: firstTeamId, tmbId: firstTmbId, modelIds: [] }
+      }),
+      setTmpData({
+        type: TmpDataEnum.MyModels,
+        metadata: { teamId: secondTeamId, tmbId: secondTmbId },
+        data: { teamId: secondTeamId, tmbId: secondTmbId, modelIds: [] }
+      }),
+      MongoTmpData.create({
+        dataId: `unrelated--${firstTeamId}--${firstTmbId}`,
+        data: { teamId: firstTeamId, tmbId: firstTmbId },
+        expireAt: new Date(Date.now() + 60_000)
+      })
+    ]);
+
+    await clearAllMyModelsCache();
+
+    await expect(MongoTmpData.countDocuments({ dataId: { $regex: /^my_models--/ } })).resolves.toBe(
+      0
+    );
+    await expect(MongoTmpData.countDocuments({ dataId: /^unrelated--/ })).resolves.toBe(1);
   });
 });

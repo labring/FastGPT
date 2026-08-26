@@ -234,7 +234,7 @@ Mongoose 顶层字段应显式声明，`config` 可以使用 `Schema.Types.Mixed
 3. 已存在的文档保留 `_id` 和管理员顶层配置；`config` 仅用插件模板补齐 DB 中缺失的字段，DB 已显式配置的字段优先。
 4. 新插件模型第一次同步时创建文档，此后始终复用该 `_id`。
 5. 多实例并发依靠唯一索引收敛；重复键后重新读取，不生成第二个 ID。
-6. 插件暂时不可用时，不删除或重新编号已有 DB 模型；服务继续从 DB 加载已物化数据。
+6. 插件列表是 repair、物化和 active 列表计算的输入，获取失败时必须 fail-fast：启动阶段直接阻止实例启动；运行时重载阶段返回失败并保留上一版全局 active 模型对象和列表。失败路径不得执行 repair、删除、物化或可用模型缓存清理，因此不会删除模型或改变已有 ID。
 
 物化完成后，插件模型只承担“默认模板”职责，数据库文档承担“稳定身份和实际配置”职责。插件新增或删除默认能力不会直接重写管理员配置；若运行时补齐了新字段，应在显式同步时持久化规范化结果，避免同一 DB 版本因插件服务短暂不可用而产生不同运行行为。
 
@@ -555,10 +555,11 @@ export const GetMyModelsResponseSchema =
 - 已有选中值通过 `getMyModel` 恢复，并与发现请求并行。若选中模型的 provider 不在可用 `providers` 中，保留异常 value 并显示“模型不存在”，候选列表使用第一个可用 Provider。
 - 不能先对全局模型列表切片再做权限过滤，否则会造成页大小不稳定、total 泄漏和空页。
 - 普通分页使用稳定排序，例如 provider order、`name`、`modelId`，保证翻页期间顺序确定；`pageSize` 设置合理上限，建议默认 20、最大 50。
-- 移除客户端 `versionKey/isRefreshed` 握手。服务端通过 `TmpDataEnum.MyModels` 按 `{ teamId, tmbId }` 缓存成员可用的 `modelId` 集合，`getMyModels` 和 `getMyModel` 共用该缓存；客户端不维护账号级完整模型缓存。
-- 新增模型，或模型由禁用切换为启用时，必须删除全部 `TmpDataEnum.MyModels` 缓存。新模型在未配置协作者权限时默认可用，如果只清理当前团队或当前成员，其他成员的旧缓存将遗漏该模型。
+- 移除客户端 `versionKey/isRefreshed` 握手。服务端通过 `TmpDataEnum.MyModels` 按 `{ teamId, tmbId }` 缓存成员可用的 `modelId` 集合，固定 TTL 为一小时；`getMyModels` 和 `getMyModel` 共用该缓存，客户端不维护账号级完整模型缓存。本版本不增加 `permissionVersion`。
+- 任意成功的模型新增、更新、启用、停用或删除，在 active 列表重载成功后删除全部 `TmpDataEnum.MyModels` 缓存。新模型在未配置协作者权限时默认可用，如果只清理当前团队或当前成员，其他成员的旧缓存将遗漏该模型；若插件失败导致重载失败，则保留旧 active 列表和旧缓存。
+- 模型协作者权限以及影响协作者身份的团队成员、组织、用户组发生变更时，删除对应团队的全部 `TmpDataEnum.MyModels` 缓存。权限写入与缓存删除使用同一 session；删除后由下一次读取惰性重建。
 - 缓存失效后不主动遍历成员重建；用户下次请求 `getMyModels` 或 `getMyModel` 时，再按最新 active 模型和权限数据惰性计算并写回 `tmpData`。
-- Workflow 导入、创建、保存和发布阶段的 `formatModels` 只负责将可解析的旧 `model` 转换为 `modelId`，不读取 `TmpDataEnum.MyModels` 也不做服务端模型权限判断；权限缓存只服务于前端选择器使用的可用模型接口。
+- Workflow 导入、创建、保存和发布阶段的 `formatModels` 只负责将可解析的旧 `model` 转换为 `modelId`，不读取 `TmpDataEnum.MyModels` 也不做服务端模型权限判断；权限缓存只服务于前端选择器使用的可用模型接口。本版本只在获取/恢复模型时返回无权限或不可用提示，后端运行和保存链不校验模型权限，因此接受缓存 TTL 内弱一致性的剩余风险。
 - `ClientModelItem` 至少包含 `modelId/type/provider/model/name/avatar/isActive`、默认标记和脱敏后的 `config`，不返回 request auth、URL、默认 system prompt 和请求/存储私有配置。
 - 不在本接口夹带 Channel 数量、创建者、resourceContext 或私有模型管理字段。
 - Query/Response Schema 必须导出对应类型并补齐 API 声明、字段 meta 和 OpenAPI path。handler 使用 `parseApiInput({ querySchema })` 校验 query，并用 `GetMyModelsResponseSchema.parse(...)` 校验返回值。
@@ -584,15 +585,15 @@ export const GetMyModelsResponseSchema =
 
 `defaultModels` 表示平台默认配置，不等于当前账号一定有权限。新建业务采用默认值时，模型选择器仍需通过鉴权的 `getMyModel` 确认该模型当前可用；无权限或已停用时显示“模型不存在/不可用”，不能绕过权限直接提交。
 
-新增无需鉴权的 GET `/common/system/getSystemModels`，供 `/price` 页面按需请求全部 active 系统模型的最小公开信息。该接口不分页：完整列表不再进入每个页面都会调用的 init，只在价格页访问时加载；模型数量仍由服务端内存列表提供，不增加数据库查询。
+新增无需鉴权的 GET `/common/system/getSystemModels`，供价格表及价格弹窗按需请求全部 active 系统模型的最小公开信息。该接口不分页：完整列表不再进入每个页面都会调用的 init，只在需要展示模型价格时加载；模型数量仍由服务端内存列表提供，不增加数据库查询。
 
-公开响应使用独立 `PublicSystemModelBasicSchema`，只包含：
+公开响应使用独立 `PublicPriceSystemModelSchema`，只包含：
 
-- `modelId`、`model`、`name`、`provider`、`type`、`avatar`、`testMode`。
-- `charsPointsPrice`、`priceTiers`，以及兼容期价格展示需要的 deprecated `inputPrice/outputPrice`。
-- `config` 中只保留当前价格表实际展示的能力子集：LLM 的 `maxContext/vision/audio/video/reasoning`，Embedding/Rerank 的 `maxToken`。
+- 所有类型共有 `name`、`provider`、`type`、`testMode`。
+- LLM 仅增加运行时归一化后的 `priceTiers`，以及 `config.maxContext/vision/audio/video/reasoning`。
+- Embedding/Rerank 仅增加 `charsPointsPrice` 和 `config.maxToken`；TTS/STT 仅增加 `charsPointsPrice`，不返回空 `config`。
 
-不得返回 `requestUrl/requestAuth`、默认 system prompt、`defaultConfig/fieldMap/dbConfig/queryConfig`、voices、默认模型标记、权限信息或其他管理字段。价格页改为给展示组件显式传入这份公开列表，不再从全局模型 store 读取。该常规公共接口需要完整 Zod contract、响应 parse 和 OpenAPI 文档；因为没有入参，不创建空 Query Schema，也不调用空的 `parseApiInput`。
+不得返回 `modelId/model/avatar/inputPrice/outputPrice`、`requestUrl/requestAuth`、默认 system prompt、`defaultConfig/fieldMap/dbConfig/queryConfig`、voices、默认模型标记、权限信息或其他管理字段。价格页改为给展示组件显式传入这份公开列表，不再从全局模型 store 读取。该常规公共接口需要完整 Zod contract、响应 parse 和 OpenAPI 文档；因为没有入参，不创建空 Query Schema，也不调用空的 `parseApiInput`。
 
 ## 10. OpenAPI 与跨仓库改动
 
@@ -609,7 +610,7 @@ export const GetMyModelsResponseSchema =
 
 ### 11.1 模型结构接管与资源迁移
 
-旧版 `cleanSystemModelConfigs` 只用于升级前修复历史 `metadata` 异常，新版不再提供该路由。`loadSystemModels` 在严格加载前逐条调用共享 repair：合法 canonical 文档保持不变；旧 `metadata` 或可修复的新结构字段写回 canonical 结构；仍无法恢复模型身份的记录使用快照条件删除，不因单条坏数据中断启动。单模型更新与 JSON 批量更新复用相同 repair，但无法修复时拒绝写入而不删除原模型。
+旧版 `cleanSystemModelConfigs` 只用于升级前修复历史 `metadata` 异常，新版不再提供该路由。`loadSystemModels` 先成功取得完整插件模型列表，再逐条调用共享 repair：合法 canonical 文档保持不变；旧 `metadata` 或可修复的新结构字段写回 canonical 结构；仍无法恢复模型身份的记录使用快照条件删除，不因单条坏数据中断启动。repair 先将同名旧文档原地接管为 `isSystem: true`，随后物化仅 upsert 真正缺失的插件模型，从而保留旧 `_id`。单模型更新与 JSON 批量更新复用相同 repair，但无法修复时拒绝写入而不删除原模型。
 
 `admin/4163/backfillModelReferences` 只建立 `system_models.model -> _id` 映射，给 Dataset、App/Workflow、Evaluation 和模型权限记录增量补充 ID sibling。Usage 历史记录不回填。接口仅允许系统管理员执行，`dryRun` 默认为 `true`，响应按 `datasets/apps/evaluations/permissions` 分组返回 `scanned/unchanged/wouldUpdate/updated/invalid/unresolved/conflicts`。
 
@@ -618,24 +619,28 @@ export const GetMyModelsResponseSchema =
 ### 11.2 执行顺序
 
 ```text
-预检 / dry-run
+部署启动
+  -> 成功读取完整插件模型列表（失败则实例不启动）
   -> 清洗 system_models metadata
   -> 历史 system_models 补 isSystem=true
   -> metadata/旧顶层字段拆分为 canonical 顶层字段 + config
   -> 物化全部插件系统模型并稳定 _id
   -> 建立系统 model -> modelId 唯一映射
   -> 创建部分唯一索引并清理 deprecated 全局索引
+  -> 生成服务端 active 模型缓存
+
+部署完成后执行资源回填
+  -> 预检 / dry-run
   -> 回填 datasets
   -> 回填 apps / app_versions / app_templates
   -> 回填 eval
   -> 回填模型 permission.resourceId
-  -> 重载服务端模型缓存
   -> 输出复核报告
 ```
 
 ### 11.3 迁移规则
 
-- 全流程分页/游标读取，批量写入，支持大集合。
+- 全流程游标读取并按固定上限分批写入，避免把大集合的全部操作积压在进程内。
 - 模型结构归一化优先级为 `canonical config > 旧顶层字段 > metadata`；同层冲突记入报告。
 - 根据模型 `type` 使用白名单把类型特有字段写入 `config`，未知字段不自动搬运。
 - 新代码只写 canonical 顶层字段和 `config`；不再写 `metadata` 或顶层类型特有字段。
@@ -643,7 +648,7 @@ export const GetMyModelsResponseSchema =
 - canonical 已是有效 ObjectId 时不覆盖，保证幂等。
 - canonical 与 legacy 同时存在且解析到不同模型时记 conflict，不自动覆盖。
 - 旧值无法解析时不写 `*ModelId`，输出 collection、documentId、field、value 供人工处理。
-- apps/app_versions 写入使用更新时间或版本快照做 CAS；并发保存导致的 conflict 可通过重跑收敛，不能覆盖用户刚保存的数据。
+- 所有集合的回填写入都对读取过的 legacy 源字段和待写目标字段做快照 CAS；Workflow 整体数组按读取快照匹配。并发保存导致的未命中记为 conflict，可通过重跑收敛，不能覆盖用户刚保存的数据。
 - 映射只使用系统模型 `model`；发现重复或歧义必须在写业务数据前终止。
 - `usage_items` 不参与历史引用回填；仅新写入链开始保存 `modelId`。
 - 每一步返回 scanned/migrated/unchanged/unresolved/conflicts；整个接口保持幂等，可以安全重跑，不能依赖上一次请求的进程内状态。
@@ -654,7 +659,7 @@ export const GetMyModelsResponseSchema =
 
 - 旧记录迁移时保留 legacy 字段，因此回滚旧镜像仍能读取这些旧记录。
 - 新版本创建的记录只写 modelId，旧镜像无法读取这部分新记录。
-- 因此不能在会同时处理写请求的新旧应用实例之间长期滚动混跑；升级需先完成模型物化和预检，再协调切流。
+- 资源引用回填在新版本部署完成后执行；运行时在回填前继续兼容读取 legacy 字段，因此回填进度不会阻断业务。新写入仍只写 modelId，故不能在会同时处理写请求的新旧应用实例之间长期滚动混跑。
 - 如果部署要求新旧实例长期混跑，就必须临时双写 legacy 字段；这与“新保存只有 modelId”的已确认要求冲突，需要另行决策，不能隐式实现。
 
 ## 12. 代码改动分区
@@ -681,12 +686,12 @@ export const GetMyModelsResponseSchema =
 - Schema：系统模型重复 `model` 被拒绝；未来 `isSystem:false` 不受系统 partial index 错误约束。
 - Config schema：各模型类型必填/可选字段正确，未知字段和跨类型字段被拒绝。
 - Index manager：旧 `model_1` 被精确识别为 deprecated，新 partial unique index 被保留。
-- 物化：首次生成 ID、重复同步 ID 不变、多实例重复键收敛、插件失败不删除数据。
+- 物化：首次生成 ID、旧同名文档原地接管且 ID 不变、重复同步 ID 不变、多实例重复键收敛；启动插件失败会阻止启动且不修改 DB，重载插件失败会保留上一版 active 模型与权限缓存。
 - Model reference schema：只传 modelId、只传 deprecated model、两者同时存在时只认 modelId、无效 modelId 加有效 model 仍报错、两者缺失分别覆盖。
 - Getter：ID 命中、旧系统 model 命中、私有/未知名称不命中、未知 ObjectId 不回退，所有未命中统一抛“模型不存在”。
 - Request types：LLM、Embedding、Rerank、TTS、STT 下游只接受对应 modelData，字符串输入在类型检查阶段失败。
 - Client model formatter：敏感字段被删除，默认模型 ID 和 capability 正确。
-- 可用模型分页：先权限过滤再分页、稳定排序、pageSize 上限、`modelType` 下 Provider 聚合、未传 provider 返回跨 Provider 总量、显式 provider 过滤、无效 provider 返回空结果和服务端权限缓存失效分别覆盖。
+- 可用模型分页：先权限过滤再分页、稳定排序、pageSize 上限、`modelType` 下 Provider 聚合、未传 provider 返回跨 Provider 总量、显式 provider 过滤、无效 provider 返回空结果；模型变更清理全部成员缓存、权限变更清理对应团队缓存分别覆盖。
 - 单模型读取：当前成员有权/无权、只传 modelId、只传 deprecated model、两者同时存在及无效 modelId 不回退分别覆盖。
 - 公开系统模型：无需鉴权、只返回 active 模型和白名单基本/价格/能力字段，所有敏感字段均被剔除。
 - Init schema：响应不再包含 `activeModelList`，`defaultModels` 中的模型包含 modelId 且敏感配置被删除。
@@ -696,7 +701,7 @@ export const GetMyModelsResponseSchema =
 - datasets、apps、app_versions、app_templates、eval、model permissions 分别覆盖正常、幂等、unresolved、conflict。
 - Workflow 字面量旧 input 覆盖“将 key 和 value 转换为 ID”；引用型旧 input 覆盖“只改 key、保留引用值”；`datasetParams`、chatConfig 分别覆盖。
 - 启动 repair 覆盖 canonical/旧 metadata/新旧混合、可选字段删除、必填字段默认值、插件模板恢复、无法修复删除与幂等。`backfillModelReferences` 覆盖 dry-run、正式执行、unresolved/conflict 和各引用集合。
-- 大批量游标执行不会把未解析字符串写入任何 `*ModelId`。
+- 大批量游标执行会分批 flush，不会把未解析字符串写入任何 `*ModelId`；并发保存使快照 CAS 未命中时保留在线数据并报告 conflict。
 
 ### 13.3 集成测试
 
@@ -718,7 +723,7 @@ export const GetMyModelsResponseSchema =
 
 - 每个 active 系统模型都有稳定、可重复读取的 modelId。
 - 新创建的业务配置不再保存旧 `model` 字符串引用。
-- 所有存量可解析引用均完成回填，unresolved/conflict 有明确清单且为 0 后才算迁移完成。
+- 新版本上线时对 legacy 引用的运行时读取兼容可用，资源回填不作为切流阻断项；上线后执行 dry-run 和正式回填，最终要求所有可解析引用完成回填，并将 unresolved/conflict 收敛为 0。
 - 旧系统 model 兼容调用可用，未知模型不会静默调用默认模型。
 - 公开 System OpenAPI 的兼容字段 `model` 已标记 deprecated，内部模型请求链不存在字符串 model reference。
 - 账号可用模型只通过分页 `getMyModels` 按需获取，客户端不存在账号级完整模型缓存。
@@ -727,7 +732,8 @@ export const GetMyModelsResponseSchema =
 
 ## 14. 风险与后续清理
 
-- 插件模型未物化会导致部分模型没有 ID，这是本方案的首要上线阻断项。
+- 插件模型未物化会导致部分模型没有 ID，因此插件列表获取失败必须阻止启动；运行时重载失败则保留上一版 active 模型，不进入半更新状态。
+- 本版本不增加 `permissionVersion`，模型选择权限只在获取模型时提示且后端执行链不校验；一小时 TTL 作为兜底，正确性主要依赖模型变更后的全量缓存删除和权限变更后的团队缓存删除。
 - new-write-only-ID 使旧镜像不能读取升级后新数据，发布流程必须接受这一限制。
 - Workflow 是动态结构，单靠 TypeScript 无法证明无遗漏，必须同时做迁移样本和静态 key 审计。
 - config 嵌套会影响当前所有 `modelData.maxContext/vision/...` 调用点，必须通过静态审计确保没有继续读取旧顶层类型字段。
@@ -755,4 +761,4 @@ export const GetMyModelsResponseSchema =
 - [x] 将模型结构接管改为启动逐模型 repair，新增 4.16.3 资源引用 dry-run/回填接口，并移除新版旧 cleaner 路由。
 - [x] 补齐局部单测、迁移测试、核心集成测试和 Pro 测试。
 - [x] 执行静态残留审计、局部测试、类型检查，最后运行全量测试。
-- [ ] 发布前 dry-run，解决全部 unresolved/conflict 后再执行正式迁移与切流。
+- [ ] 新版本部署完成后执行 dry-run 和正式回填，复核并重跑并发 conflict，最终解决全部 unresolved/conflict。

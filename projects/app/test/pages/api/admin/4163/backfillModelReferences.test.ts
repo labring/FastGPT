@@ -6,7 +6,7 @@ import {
 } from '@/pages/api/admin/4163/backfillModelReferences';
 import { getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoEvaluation } from '@fastgpt/service/core/app/evaluation/evalSchema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
@@ -60,6 +60,19 @@ describe('runBackfillModelReferences', () => {
       value: '{{model}}',
       valueType: 'string'
     };
+    const referenceValue = [['source-node', 'model-output']];
+    const referenceInput = {
+      key: NodeInputKeyEnum.datasetDeepSearchModel,
+      value: referenceValue,
+      valueType: 'string'
+    };
+    const datasetParamsInput = {
+      key: NodeInputKeyEnum.datasetParams,
+      value: {
+        rerankModel: 'gpt-model',
+        datasetSearchExtensionModel: 'gpt-model'
+      }
+    };
 
     await Promise.all([
       MongoDataset.collection.insertOne({
@@ -74,14 +87,17 @@ describe('runBackfillModelReferences', () => {
       }),
       MongoApp.collection.insertOne({
         chatConfig: { questionGuide: { model: 'gpt-model' } },
-        modules: [{ inputs: [legacyInput, dynamicInput] }]
+        modules: [{ inputs: [legacyInput, dynamicInput, referenceInput, datasetParamsInput] }]
       }),
       MongoAppVersion.collection.insertOne({
         chatConfig: { ttsConfig: { model: 'gpt-model' } },
         nodes: [{ inputs: [legacyInput] }]
       }),
       MongoAppTemplate.collection.insertOne({
-        workflow: { nodes: [{ inputs: [legacyInput] }] }
+        workflow: {
+          nodes: [{ inputs: [legacyInput] }],
+          chatConfig: { questionGuide: { model: 'gpt-model' } }
+        }
       }),
       MongoUsageItem.collection.insertOne({ model: 'gpt-model' })
     ]);
@@ -126,7 +142,21 @@ describe('runBackfillModelReferences', () => {
           key: NodeInputKeyEnum.aiModelId,
           value: String(modelInsert.insertedId)
         }),
-        dynamicInput
+        dynamicInput,
+        referenceInput,
+        expect.objectContaining({
+          key: NodeInputKeyEnum.datasetDeepSearchModelId,
+          value: referenceValue
+        }),
+        expect.objectContaining({
+          key: NodeInputKeyEnum.datasetParams,
+          value: expect.objectContaining({
+            rerankModel: 'gpt-model',
+            rerankModelId: String(modelInsert.insertedId),
+            datasetSearchExtensionModel: 'gpt-model',
+            datasetSearchExtensionModelId: String(modelInsert.insertedId)
+          })
+        })
       ])
     );
     expect(app?.modules[0].inputs).not.toEqual(
@@ -151,6 +181,10 @@ describe('runBackfillModelReferences', () => {
     );
 
     const appTemplate = await MongoAppTemplate.collection.findOne({});
+    expect(appTemplate?.workflow.chatConfig.questionGuide).toMatchObject({
+      model: 'gpt-model',
+      modelId: String(modelInsert.insertedId)
+    });
     expect(appTemplate?.workflow.nodes[0].inputs).toEqual(
       expect.arrayContaining([
         legacyInput,
@@ -215,6 +249,63 @@ describe('runBackfillModelReferences', () => {
     await expect(
       MongoDataset.collection.findOne({ name: 'Missing Model Dataset' })
     ).resolves.not.toHaveProperty('vectorModelId');
+  });
+
+  it('uses snapshot CAS to avoid overwriting a workflow saved during backfill', async () => {
+    const modelInsert = await MongoSystemModel.collection.insertOne({
+      model: 'gpt-model',
+      metadata: { ...baseLlmModel, model: 'gpt-model' }
+    });
+    const appInsert = await MongoApp.collection.insertOne({
+      modules: [
+        {
+          nodeId: 'legacy-node',
+          inputs: [{ key: NodeInputKeyEnum.aiModel, value: 'gpt-model' }]
+        }
+      ]
+    });
+    const concurrentlySavedModules = [
+      {
+        nodeId: 'concurrent-node',
+        inputs: [{ key: NodeInputKeyEnum.aiModelId, value: String(modelInsert.insertedId) }]
+      }
+    ];
+    const originalBulkWrite = MongoApp.bulkWrite.bind(MongoApp);
+    vi.spyOn(MongoApp, 'bulkWrite').mockImplementationOnce(async (operations, options) => {
+      await MongoApp.collection.updateOne(
+        { _id: appInsert.insertedId },
+        { $set: { modules: concurrentlySavedModules } }
+      );
+      return originalBulkWrite(operations, options);
+    });
+
+    const result = await runBackfillModelReferences({ dryRun: false });
+
+    expect(result.references.appsWorkflow).toMatchObject({ updated: 0, conflicts: 1 });
+    await expect(MongoApp.collection.findOne({ _id: appInsert.insertedId })).resolves.toMatchObject(
+      {
+        modules: concurrentlySavedModules
+      }
+    );
+  });
+
+  it('flushes large collection updates in bounded batches', async () => {
+    await MongoSystemModel.collection.insertOne({
+      model: 'gpt-model',
+      metadata: { ...baseLlmModel, model: 'gpt-model' }
+    });
+    await MongoDataset.collection.insertMany(
+      Array.from({ length: 205 }, (_, index) => ({
+        name: `Dataset ${index}`,
+        vectorModel: 'gpt-model'
+      }))
+    );
+    const bulkWriteSpy = vi.spyOn(MongoDataset, 'bulkWrite');
+
+    const result = await runBackfillModelReferences({ dryRun: false });
+
+    expect(result.references.datasets.updated).toBe(205);
+    expect(bulkWriteSpy.mock.calls.length).toBeGreaterThan(1);
   });
 
   it('uses dry-run defaults at the authenticated API boundary', async () => {

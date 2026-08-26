@@ -13,6 +13,10 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
+
+const BACKFILL_BATCH_SIZE = 100;
 
 const BackfillModelReferencesBodySchema = z.object({
   dryRun: BoolSchema.optional().default(true)
@@ -59,10 +63,42 @@ export const runBackfillModelReferences = async ({
 
   type ReferenceTransformResult = {
     set?: Record<string, unknown>;
+    snapshot?: Record<string, unknown>;
     missing?: number;
     conflicts?: number;
   };
   type ReferenceStats = z.infer<typeof ReferenceCleanupStatsSchema>;
+
+  const hasPath = (record: Record<string, any>, path: string) => {
+    const keys = path.split('.');
+    let current: any = record;
+    for (const key of keys) {
+      if (current === null || typeof current !== 'object' || !(key in current)) return false;
+      current = current[key];
+    }
+    return true;
+  };
+
+  const getValueByPath = (record: Record<string, any>, path: string) =>
+    path.split('.').reduce<any>((current, key) => current?.[key], record);
+
+  /**
+   * 用读取时快照约束回填写入，避免覆盖部署后由在线保存产生的新值。
+   * set 目标字段会自动加入快照；transform 通过 snapshot 补充其读取的旧字段。
+   */
+  const getSnapshotFilter = ({
+    record,
+    result
+  }: {
+    record: Record<string, any>;
+    result: ReferenceTransformResult;
+  }) => {
+    const filter: Record<string, unknown> = { _id: record._id, ...result.snapshot };
+    for (const path of Object.keys(result.set ?? {})) {
+      filter[path] = hasPath(record, path) ? getValueByPath(record, path) : { $exists: false };
+    }
+    return filter;
+  };
 
   /** 同一套 dry-run/批量写语义覆盖所有引用集合，避免各迁移分支出现不一致行为。 */
   const runCollectionBackfill = async ({
@@ -87,6 +123,16 @@ export const runBackfillModelReferences = async ({
     const bulkOperations: any[] = [];
     const referenceCursor = model.find({}).lean().cursor();
 
+    const flush = async () => {
+      if (bulkOperations.length === 0) return;
+
+      const pendingOperations = bulkOperations.splice(0);
+      const result = await model.bulkWrite(pendingOperations, { ordered: false });
+      referenceStats.updated += result.modifiedCount;
+      // 未命中意味着在线数据已偏离读取快照，保留在线写入并记录冲突。
+      referenceStats.conflicts += pendingOperations.length - result.matchedCount;
+    };
+
     for await (const record of referenceCursor) {
       referenceStats.scanned += 1;
       const result = transform(record);
@@ -103,17 +149,15 @@ export const runBackfillModelReferences = async ({
       } else {
         bulkOperations.push({
           updateOne: {
-            filter: { _id: record._id },
+            filter: getSnapshotFilter({ record, result }),
             update: { $set: result.set }
           }
         });
+        if (bulkOperations.length >= BACKFILL_BATCH_SIZE) await flush();
       }
     }
 
-    if (bulkOperations.length > 0) {
-      const result = await model.bulkWrite(bulkOperations, { ordered: false });
-      referenceStats.updated = result.modifiedCount;
-    }
+    await flush();
     stats.references[name] = referenceStats;
   };
 
@@ -122,6 +166,7 @@ export const runBackfillModelReferences = async ({
     mappings: Array<{ legacy: string; modelId: string }>
   ): ReferenceTransformResult => {
     const set: Record<string, unknown> = {};
+    const snapshot: Record<string, unknown> = {};
     let missing = 0;
     let conflicts = 0;
 
@@ -132,10 +177,12 @@ export const runBackfillModelReferences = async ({
         if (modelId && String(record[mapping.modelId]) !== String(modelId)) conflicts += 1;
         continue;
       }
-      if (modelId) set[mapping.modelId] = modelId;
-      else missing += 1;
+      if (modelId) {
+        set[mapping.modelId] = modelId;
+        snapshot[mapping.legacy] = record[mapping.legacy];
+      } else missing += 1;
     }
-    return { set, missing, conflicts };
+    return { set, snapshot, missing, conflicts };
   };
 
   await runCollectionBackfill({
@@ -166,20 +213,29 @@ export const runBackfillModelReferences = async ({
         return {};
       }
       const resourceId = modelIdByModel.get(record.resourceName);
-      return resourceId ? { set: { resourceId } } : { missing: 1 };
+      return resourceId
+        ? { set: { resourceId }, snapshot: { resourceName: record.resourceName } }
+        : { missing: 1 };
     }
   });
 
-  const backfillChatConfig = (record: Record<string, any>): ReferenceTransformResult => {
+  const backfillChatConfig = ({
+    chatConfig,
+    pathPrefix
+  }: {
+    chatConfig: Record<string, any> | undefined;
+    pathPrefix: string;
+  }): ReferenceTransformResult => {
     const set: Record<string, unknown> = {};
+    const snapshot: Record<string, unknown> = {};
     let missing = 0;
     let conflicts = 0;
     const mappings = [
       {
-        config: record.chatConfig?.questionGuide,
-        path: 'chatConfig.questionGuide.modelId'
+        config: chatConfig?.questionGuide,
+        configPath: `${pathPrefix}.questionGuide`
       },
-      { config: record.chatConfig?.ttsConfig, path: 'chatConfig.ttsConfig.modelId' }
+      { config: chatConfig?.ttsConfig, configPath: `${pathPrefix}.ttsConfig` }
     ];
     for (const mapping of mappings) {
       if (typeof mapping.config?.model !== 'string') continue;
@@ -188,21 +244,34 @@ export const runBackfillModelReferences = async ({
         if (modelId && String(mapping.config.modelId) !== String(modelId)) conflicts += 1;
         continue;
       }
-      if (modelId) set[mapping.path] = modelId;
-      else missing += 1;
+      if (modelId) {
+        set[`${mapping.configPath}.modelId`] = String(modelId);
+        snapshot[`${mapping.configPath}.model`] = mapping.config.model;
+      } else missing += 1;
     }
-    return { set, missing, conflicts };
+    return { set, snapshot, missing, conflicts };
   };
 
   await runCollectionBackfill({
     name: 'appsChatConfig',
     model: MongoApp,
-    transform: backfillChatConfig
+    transform: (record) =>
+      backfillChatConfig({ chatConfig: record.chatConfig, pathPrefix: 'chatConfig' })
   });
   await runCollectionBackfill({
     name: 'appVersionsChatConfig',
     model: MongoAppVersion,
-    transform: backfillChatConfig
+    transform: (record) =>
+      backfillChatConfig({ chatConfig: record.chatConfig, pathPrefix: 'chatConfig' })
+  });
+  await runCollectionBackfill({
+    name: 'appTemplatesChatConfig',
+    model: MongoAppTemplate,
+    transform: (record) =>
+      backfillChatConfig({
+        chatConfig: record.workflow?.chatConfig,
+        pathPrefix: 'workflow.chatConfig'
+      })
   });
 
   const workflowKeyMappings = [
@@ -221,25 +290,71 @@ export const runBackfillModelReferences = async ({
     const nextNodes = nodes.map((node) => {
       if (!node || typeof node !== 'object' || !Array.isArray((node as any).inputs)) return node;
       const inputs = [...(node as any).inputs];
+      let nodeChanged = false;
 
       for (const [legacyKey, modelIdKey] of workflowKeyMappings) {
         const legacyInput = inputs.find((input) => input?.key === legacyKey);
-        if (!legacyInput || typeof legacyInput.value !== 'string') continue;
-        const modelId = modelIdByModel.get(legacyInput.value);
+        if (!legacyInput) continue;
+        const isReference =
+          getSelectedInputRenderType(legacyInput) === FlowNodeInputTypeEnum.reference ||
+          Array.isArray(legacyInput.value);
+        const modelId =
+          typeof legacyInput.value === 'string' ? modelIdByModel.get(legacyInput.value) : undefined;
         const modelIdInput = inputs.find((input) => input?.key === modelIdKey);
         if (modelIdInput) {
           if (modelId && String(modelIdInput.value) !== String(modelId)) conflicts += 1;
           continue;
         }
+        if (isReference) {
+          inputs.push({ ...legacyInput, key: modelIdKey });
+          changed = true;
+          nodeChanged = true;
+          continue;
+        }
         if (!modelId) {
-          missing += 1;
+          if (typeof legacyInput.value === 'string') missing += 1;
           continue;
         }
         inputs.push({ ...legacyInput, key: modelIdKey, value: String(modelId) });
         changed = true;
+        nodeChanged = true;
       }
 
-      return inputs === (node as any).inputs ? node : { ...(node as any), inputs };
+      const datasetParamsIndex = inputs.findIndex(
+        (input) => input?.key === NodeInputKeyEnum.datasetParams
+      );
+      const datasetParams = inputs[datasetParamsIndex]?.value;
+      if (
+        datasetParamsIndex >= 0 &&
+        datasetParams &&
+        typeof datasetParams === 'object' &&
+        !Array.isArray(datasetParams)
+      ) {
+        const result = backfillFlatModelFields(datasetParams, [
+          { legacy: 'rerankModel', modelId: 'rerankModelId' },
+          {
+            legacy: 'datasetSearchExtensionModel',
+            modelId: 'datasetSearchExtensionModelId'
+          }
+        ]);
+        missing += result.missing ?? 0;
+        conflicts += result.conflicts ?? 0;
+        if (result.set && Object.keys(result.set).length > 0) {
+          inputs[datasetParamsIndex] = {
+            ...inputs[datasetParamsIndex],
+            value: {
+              ...datasetParams,
+              ...Object.fromEntries(
+                Object.entries(result.set).map(([key, value]) => [key, String(value)])
+              )
+            }
+          };
+          changed = true;
+          nodeChanged = true;
+        }
+      }
+
+      return nodeChanged ? { ...(node as any), inputs } : node;
     });
     return { nodes: nextNodes, changed, missing, conflicts };
   };
@@ -315,6 +430,7 @@ export const runBackfillModelReferences = async ({
     apps: aggregateReferenceStats([
       'appsChatConfig',
       'appVersionsChatConfig',
+      'appTemplatesChatConfig',
       'appsWorkflow',
       'appVersionsWorkflow',
       'appTemplatesWorkflow'

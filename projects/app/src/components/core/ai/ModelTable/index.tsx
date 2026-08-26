@@ -56,6 +56,10 @@ const ModelTable = ({
   const modelPermissionConfigHint = permissionConfig
     ? t('common:model.permission_config_hint')
     : '';
+  const getPermissionModelId = (modelId?: string) => {
+    if (!modelId) throw new Error('Permission model ID is missing');
+    return modelId;
+  };
 
   const [provider, setProvider] = useState<string | ''>('');
   const providerList = useMemo<{ label: React.ReactNode; value: string | '' }[]>(
@@ -200,8 +204,7 @@ const ModelTable = ({
     const formatList = list.map((item) => {
       const provider = getModelProvider(item.provider, i18n.language);
       return {
-        modelId: item.modelId,
-        model: item.model,
+        modelId: 'modelId' in item ? item.modelId : undefined,
         name: item.name,
         testMode: item.testMode,
         contextToken:
@@ -377,8 +380,11 @@ const ModelTable = ({
             </Tr>
           </Thead>
           <Tbody>
-            {modelList.map((item, index) => (
-              <Tr key={index} _hover={{ bg: 'myGray.50' }}>
+            {modelList.map((item) => (
+              <Tr
+                key={`${item.providerId}-${item.typeLabel}-${item.name}`}
+                _hover={{ bg: 'myGray.50' }}
+              >
                 <Td fontSize={'sm'}>
                   <HStack>
                     {permissionConfig && userInfo?.team.permission.hasManagePer && (
@@ -414,11 +420,13 @@ const ModelTable = ({
                     <LazyCollaboratorProvider
                       selectedHint={modelPermissionConfigHint}
                       defaultRole={ReadRoleVal}
-                      onGetCollaboratorList={() => getModelCollaborators(item.modelId)}
+                      onGetCollaboratorList={() =>
+                        getModelCollaborators(getPermissionModelId(item.modelId))
+                      }
                       onUpdateCollaborators={({ collaborators }) =>
                         updateModelCollaborators({
                           collaborators,
-                          modelIds: [item.modelId]
+                          modelIds: [getPermissionModelId(item.modelId)]
                         })
                       }
                       permission={userInfo?.team.permission!}
@@ -458,7 +466,7 @@ const ModelTable = ({
             onUpdateCollaborators={({ collaborators }) =>
               updateModelCollaborators({
                 collaborators,
-                modelIds: selectedItems.map((i) => i.modelId)
+                modelIds: selectedItems.map((item) => getPermissionModelId(item.modelId))
               })
             }
             permission={userInfo?.team.permission!}
