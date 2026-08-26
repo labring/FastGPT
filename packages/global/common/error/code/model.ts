@@ -7,6 +7,7 @@ export enum ModelErrEnum {
   canNotEditAdminPermission = 'canNotEditModelAdminPermission',
   invalidModelId = 'invalidModelId',
   invalidModelConfig = 'invalidModelConfig',
+  modelIdConflict = 'modelIdConflict',
   modelNameConflict = 'modelNameConflict',
   systemModelReadonly = 'systemModelReadonly',
   noFieldsToUpdate = 'noFieldsToUpdate',
@@ -36,6 +37,11 @@ const modelErrList = [
     statusText: ModelErrEnum.invalidModelConfig,
     message: i18nT('common:code_error.model_error.invalid_config'),
     httpStatus: 400
+  },
+  {
+    statusText: ModelErrEnum.modelIdConflict,
+    message: i18nT('common:code_error.model_error.id_conflict'),
+    httpStatus: 409
   },
   {
     statusText: ModelErrEnum.modelNameConflict,

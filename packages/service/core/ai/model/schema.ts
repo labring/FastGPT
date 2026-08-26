@@ -49,7 +49,42 @@ const SystemModelSchema = new Schema(
   }
 );
 
-// Register the legacy constraint only so index synchronization can remove it precisely.
+// Both names are configuration-level identifiers. `model` is the aiproxy routing key;
+// `name` is the platform display name shown to users. Keep each unique within scope.
+defineIndex(SystemModelSchema, {
+  key: { model: 1 },
+  options: {
+    name: 'model_1_system_unique',
+    unique: true,
+    partialFilterExpression: { isSystem: true }
+  }
+});
+defineIndex(SystemModelSchema, {
+  key: { name: 1 },
+  options: {
+    name: 'name_1_system_unique',
+    unique: true,
+    partialFilterExpression: { isSystem: true, name: { $exists: true } }
+  }
+});
+defineIndex(SystemModelSchema, {
+  key: { tmbId: 1, model: 1 },
+  options: {
+    name: 'tmbId_1_model_1_private_unique',
+    unique: true,
+    partialFilterExpression: { isSystem: false }
+  }
+});
+defineIndex(SystemModelSchema, {
+  key: { tmbId: 1, name: 1 },
+  options: {
+    name: 'tmbId_1_name_1_private_unique',
+    unique: true,
+    partialFilterExpression: { isSystem: false, name: { $exists: true } }
+  }
+});
+
+// Register the legacy global constraint only so index synchronization can remove it precisely.
 defineIndex(SystemModelSchema, {
   key: { model: 1 },
   options: { unique: true },

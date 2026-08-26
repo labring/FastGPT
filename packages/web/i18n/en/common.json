@@ -170,6 +170,7 @@
   "code_error.model_error.can_not_edit_admin_permission": "Cannot edit admin permissions",
   "code_error.model_error.invalid_id": "Invalid model ID",
   "code_error.model_error.invalid_config": "Invalid model config",
+  "code_error.model_error.id_conflict": "Model ID already exists, please use another model ID",
   "code_error.model_error.name_conflict": "Model alias already exists, please use another name",
   "code_error.model_error.system_model_readonly": "System models are read-only",
   "code_error.model_error.no_fields_to_update": "No fields to update",

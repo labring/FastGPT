@@ -17,6 +17,7 @@ import {
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import { Types } from '@fastgpt/service/common/mongo';
 import { isObjectId } from '@fastgpt/global/common/string/utils';
+import { getModelDuplicateError } from '@fastgpt/service/core/ai/model/conflict';
 
 async function handler(req: ApiRequestProps<UpdateWithJsonBody>): Promise<UpdateWithJsonResponse> {
   const { isRoot } = await authUserPer({
@@ -61,37 +62,47 @@ async function handler(req: ApiRequestProps<UpdateWithJsonBody>): Promise<Update
     validatedData.push(parsedItem);
   }
 
-  await mongoSessionRun(async (session) => {
-    for (const item of validatedData) {
-      // Partial clean: strip unknown fields without requiring every LLM field.
-      const cleaned = normalizeSystemModel(item, { partial: true });
+  try {
+    await mongoSessionRun(async (session) => {
+      for (const item of validatedData) {
+        // Partial clean: strip unknown fields without requiring every LLM field.
+        const cleaned = normalizeSystemModel(item, { partial: true });
 
-      if (item.id) {
-        // Update existing model (upsert guards against stale ids). System models
-        // do not maintain tmbId/teamId (design data-model §1.2) — strip them so
-        // imported JSON cannot re-attach team ownership.
-        const { tmbId, teamId, ...cleanWithoutOwner } = cleaned;
-        await MongoSystemModel.updateOne(
-          { _id: new Types.ObjectId(item.id as string) },
-          { $set: { ...cleanWithoutOwner, isSystem: true, updatedAt: new Date() } },
-          { upsert: true, session }
-        );
-      } else {
-        // Create new system model. System models do not maintain tmbId/teamId
-        // (design data-model §1.2); they belong to no team or individual.
-        await MongoSystemModel.insertOne(
-          {
-            ...cleaned,
-            isSystem: true,
-            isActive: item.isActive ?? true,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          },
-          { session }
-        );
+        if (item.id) {
+          // Update existing model (upsert guards against stale ids). System models
+          // do not maintain tmbId/teamId (design data-model §1.2) — strip them so
+          // imported JSON cannot re-attach team ownership.
+          const { tmbId, teamId, ...cleanWithoutOwner } = cleaned;
+          await MongoSystemModel.updateOne(
+            { _id: new Types.ObjectId(item.id as string) },
+            {
+              $set: { ...cleanWithoutOwner, isSystem: true, updatedAt: new Date() },
+              $unset: { tmbId: '', teamId: '' }
+            },
+            { upsert: true, session }
+          );
+        } else {
+          // Create new system model. System models do not maintain tmbId/teamId
+          // (design data-model §1.2); they belong to no team or individual.
+          const { tmbId, teamId, ...cleanWithoutOwner } = cleaned;
+          await MongoSystemModel.insertOne(
+            {
+              ...cleanWithoutOwner,
+              isSystem: true,
+              isActive: item.isActive ?? true,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            },
+            { session }
+          );
+        }
       }
-    }
-  });
+    });
+  } catch (error) {
+    const duplicateError = getModelDuplicateError(error);
+    if (duplicateError) return Promise.reject(duplicateError);
+    throw error;
+  }
 
   await updatedReloadSystemModel();
 
