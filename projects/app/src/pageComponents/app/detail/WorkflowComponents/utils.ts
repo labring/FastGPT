@@ -78,17 +78,6 @@ export const uiWorkflow2StoreWorkflow = ({
     ) {
       const serializedTools: any[] = [];
       for (const tool of selectedToolsInput.value as any[]) {
-        if (tool && typeof tool === 'object' && 'isUnavailable' in tool) {
-          const unavailableTool = tool as Record<string, any>;
-          const { ...rest } = unavailableTool;
-          serializedTools.push({
-            ...rest,
-            ...(unavailableTool.inputs ? { inputs: unavailableTool.inputs } : {}),
-            config: unavailableTool.config ?? {},
-            isUnavailable: true as const
-          });
-          continue;
-        }
         const parsed = SelectedToolItemTypeSchema.safeParse(tool);
         if (parsed.success) serializedTools.push(serializeAgentTool({ tool: parsed.data }));
       }
