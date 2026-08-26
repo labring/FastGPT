@@ -28,7 +28,7 @@
   "save_failed": "저장 중 오류가 발생했습니다",
   "save_success": "저장되었습니다",
   "submit_failed": "제출 실패",
-  "submit_success": "제출 성공",
+  "submit_success": "세금계산서 신청이 성공적으로 제출되었습니다",
   "submitted": "제출됨",
   "support_wallet_apply_invoice": "청구 가능한 내역",
   "support_wallet_bill_tag_invoice": "세금계산서",
