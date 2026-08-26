@@ -19,7 +19,7 @@ export const getSafeEnv = () => {
     XLSX_PARSE_MAX_COLUMNS: String(serviceEnv.XLSX_PARSE_MAX_COLUMNS),
     XLSX_PARSE_MAX_CELLS: String(serviceEnv.XLSX_PARSE_MAX_CELLS),
     XLSX_PARSE_MAX_MERGED_CELLS: String(serviceEnv.XLSX_PARSE_MAX_MERGED_CELLS),
-    XLSX_PARSE_MAX_UNCOMPRESSED_MB: String(serviceEnv.XLSX_PARSE_MAX_UNCOMPRESSED_MB),
+    UPLOAD_FILE_MAX_SIZE: String(serviceEnv.UPLOAD_FILE_MAX_SIZE),
     NODE_ENV: process.env.NODE_ENV,
     HTTP_PROXY: process.env.HTTP_PROXY,
     HTTPS_PROXY: process.env.HTTPS_PROXY,

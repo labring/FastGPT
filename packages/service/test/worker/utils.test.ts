@@ -11,7 +11,7 @@ const { mockEnv } = vi.hoisted(() => ({
     XLSX_PARSE_MAX_COLUMNS: 1_000,
     XLSX_PARSE_MAX_CELLS: 1_000_000,
     XLSX_PARSE_MAX_MERGED_CELLS: 1_000_000,
-    XLSX_PARSE_MAX_UNCOMPRESSED_MB: 128
+    UPLOAD_FILE_MAX_SIZE: 1_000
   }
 }));
 
@@ -64,7 +64,7 @@ describe('worker/utils getSafeEnv', () => {
       XLSX_PARSE_MAX_COLUMNS: '1000',
       XLSX_PARSE_MAX_CELLS: '1000000',
       XLSX_PARSE_MAX_MERGED_CELLS: '1000000',
-      XLSX_PARSE_MAX_UNCOMPRESSED_MB: '128'
+      UPLOAD_FILE_MAX_SIZE: '1000'
     });
   });
 });

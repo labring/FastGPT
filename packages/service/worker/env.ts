@@ -10,9 +10,7 @@ export const workerEnv = createEnv({
     XLSX_PARSE_MAX_COLUMNS: IntSchema.min(1).max(16_384).default(1_000),
     XLSX_PARSE_MAX_CELLS: IntSchema.min(1).max(Number.MAX_SAFE_INTEGER).default(1_000_000),
     XLSX_PARSE_MAX_MERGED_CELLS: IntSchema.min(1).max(Number.MAX_SAFE_INTEGER).default(1_000_000),
-    XLSX_PARSE_MAX_UNCOMPRESSED_MB: IntSchema.min(1)
-      .max(Math.floor(Number.MAX_SAFE_INTEGER / 1024 / 1024))
-      .default(128)
+    UPLOAD_FILE_MAX_SIZE: IntSchema.default(1_000)
   },
   emptyStringAsUndefined: true,
   runtimeEnv: process.env

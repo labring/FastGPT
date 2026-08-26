@@ -14,7 +14,7 @@ export const XLSX_PARSE_LIMITS = {
   maxColumns: workerEnv.XLSX_PARSE_MAX_COLUMNS,
   maxCells: workerEnv.XLSX_PARSE_MAX_CELLS,
   maxMergedCells: workerEnv.XLSX_PARSE_MAX_MERGED_CELLS,
-  maxUncompressedBytes: workerEnv.XLSX_PARSE_MAX_UNCOMPRESSED_MB * 1024 * 1024
+  maxUncompressedBytes: workerEnv.UPLOAD_FILE_MAX_SIZE * 1024 * 1024
 } as const;
 
 /**

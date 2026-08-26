@@ -341,12 +341,6 @@ export const serviceEnv = createEnv({
       .meta({
         description: 'XLSX 工作簿允许的累计合并单元格回填量'
       }),
-    XLSX_PARSE_MAX_UNCOMPRESSED_MB: IntSchema.min(1)
-      .max(Math.floor(Number.MAX_SAFE_INTEGER / 1024 / 1024))
-      .default(128)
-      .meta({
-        description: 'XLSX ZIP 普通文件 entry 允许的累计真实解压大小（MB）'
-      }),
     HTML_TO_MARKDOWN_WORKERS: IntSchema.min(1).max(1000).default(10).meta({
       description: 'HTML 转 Markdown worker 常驻线程数'
     }),
