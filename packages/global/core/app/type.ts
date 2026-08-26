@@ -225,9 +225,6 @@ export const AppStorageSchemaTypeSchema = z.object({
   publishedVersionId: ObjectIdSchema.optional().meta({
     description: '当前最新正式发布 Version ID'
   }),
-  draftVersionId: ObjectIdSchema.optional().meta({
-    description: '当前编辑器草稿 Version ID'
-  }),
   inheritPermission: BoolSchema.optional(),
 
   // if access the app by favourite or quick

@@ -39,16 +39,21 @@ const getStringValue = (value: unknown) => {
   return;
 };
 
-const getModelMap = (modelType: AppResourceModelType) => {
-  if (modelType === 'llm') return global.llmModelMap;
-  if (modelType === 'rerank') return global.reRankModelMap;
-  return global.ttsModelMap;
-};
-
+/**
+ * 把节点/对话配置里的模型引用收成稳定标识。
+ * 旧的分类型 model map 已并入 `systemModelMap`；解析失败时保留现场值，提取器只记录不鉴权。
+ */
 const getModelId = (value: unknown, modelType: AppResourceModelType) => {
-  const rawValue = getStringValue(value) ?? getStringValue(getObjectValue(value, 'model'));
+  const rawValue =
+    getStringValue(value) ??
+    getStringValue(getObjectValue(value, 'modelId')) ??
+    getStringValue(getObjectValue(value, 'model'));
   if (!rawValue) return;
-  return getModelMap(modelType)?.get(rawValue)?.model ?? rawValue;
+
+  const resolved =
+    global.systemModelMap?.get(`id:${rawValue}`) ?? global.systemModelMap?.get(`model:${rawValue}`);
+  if (resolved && resolved.type === modelType) return resolved.model;
+  return rawValue;
 };
 
 /** 资源去重键；模型额外包含 modelType，避免同名模型冲突。 */
@@ -68,7 +73,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 /**
  * 从历史 `resourceRefs.skillIds` 取出有效 skill id。
- * 该字段在本次重构前已存在于 App / Version，4161 `$unset` 前读路径仍要 merge。
+ * 该字段在本次重构前已存在于 App / Version，4163 `$unset` 前读路径仍要 merge。
  */
 export const getLegacySkillIds = (resourceRefs: unknown): string[] => {
   if (!isRecord(resourceRefs) || !Array.isArray(resourceRefs.skillIds)) return [];
@@ -85,10 +90,18 @@ const normalizeToolNames = (toolNames?: string[]) => {
 const normalizeAppResource = (resource: AppResource): AppResource => {
   if (resource.type !== 'tool') return resource;
 
-  const toolNames = normalizeToolNames(resource.data?.toolNames);
+  // MCP/HTTP 节点保存的是 child tool id，但权限主体是 toolset app。
+  // 快照落库和读取都统一到 parent id，避免同一资源在差量比较时被拆成两条。
+  const normalizedTool = resource.id.includes('/')
+    ? normalizeAppToolResource(resource.id)
+    : undefined;
+  const toolNames = normalizeToolNames([
+    ...(resource.data?.toolNames ?? []),
+    ...(normalizedTool?.toolName ? [normalizedTool.toolName] : [])
+  ]);
   return {
     type: 'tool',
-    id: resource.id,
+    id: normalizedTool?.id ?? resource.id,
     ...(toolNames ? { data: { toolNames } } : {})
   };
 };
@@ -306,7 +319,7 @@ export const resolveStoredAppResources = ({
 }): AppResourcesType => {
   if (Array.isArray(resources)) {
     const parsed = AppResourcesSchema.safeParse(resources);
-    if (parsed.success) return parsed.data;
+    if (parsed.success) return mergeAppResources(parsed.data);
     resourceLogger.warn('Invalid stored app resources, fallback to node extraction');
   }
 

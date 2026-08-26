@@ -155,7 +155,8 @@ const SkillSelectModal = ({
           name: detail.name,
           description: detail.description,
           avatar: detail.avatar,
-          isDeleted: false
+          isDeleted: false,
+          permissionDenied: false
         });
       };
 
@@ -263,6 +264,7 @@ const SkillSelectModal = ({
                             name: item.name,
                             description: item.description,
                             avatar: item.avatar,
+                            permissionDenied: false,
                             isDeleted: false
                           })
                         }

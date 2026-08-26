@@ -141,6 +141,8 @@ export const ToolDataSchema = z.object({
   error: z.string().optional().meta({
     description: '工具配置错误说明'
   }),
+  /** 工具实体存在但不在当前版本资源快照内（保存时被无权限丢弃），运行时 assertWorkflowResource 会拒绝。 */
+  permissionDenied: BoolSchema.optional(),
   status: PluginStatusSchema.optional().meta({
     description: '工具当前状态'
   })

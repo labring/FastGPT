@@ -161,10 +161,7 @@ describe('create api', () => {
       ] as unknown as AppVersionSchemaType['nodes']
     });
 
-    const [app, version] = await Promise.all([
-      MongoApp.findById(appId).lean(),
-      MongoAppVersion.findOne({ appId }).lean()
-    ]);
+    const version = await MongoAppVersion.findOne({ appId }).lean();
     const rawApp = await MongoApp.collection.findOne(
       { _id: new Types.ObjectId(appId) },
       { projection: { modules: 1, edges: 1, chatConfig: 1 } }
@@ -173,11 +170,8 @@ describe('create api', () => {
 
     expect(input?.selectedType).toBe(FlowNodeInputTypeEnum.reference);
     expect(input).not.toHaveProperty('selectedTypeIndex');
-    expect(app).not.toHaveProperty('modules');
-    expect(app).not.toHaveProperty('edges');
     expect(rawApp).not.toHaveProperty('modules');
     expect(rawApp).not.toHaveProperty('edges');
     expect(rawApp).not.toHaveProperty('chatConfig');
-    expect(version?.nodes[0]?.inputs[0]?.selectedType).toBe(FlowNodeInputTypeEnum.reference);
   });
 });

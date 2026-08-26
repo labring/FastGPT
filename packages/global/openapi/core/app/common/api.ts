@@ -223,6 +223,8 @@ export const CreateAppBodySchema = z
       example: [],
       description: '应用节点配置'
     }),
+    // 旧 modules 只能在 preprocess 成功后被删除；残留时必须拒绝，避免静默创建空应用。
+    modules: z.never().optional(),
     edges: CreateAppEdgesSchema.optional().meta({
       example: [],
       description: '应用连线'
@@ -374,9 +376,6 @@ export const GetAppDetailResponseSchema = AppSchemaTypeSchema.extend({
   }),
   publishedVersionId: ObjectIdSchema.optional().meta({
     description: '当前最新正式发布 Version ID'
-  }),
-  draftVersionId: ObjectIdSchema.optional().meta({
-    description: '当前编辑器草稿 Version ID'
   }),
   inheritPermission: BoolSchema.optional().meta({
     description: '是否继承父级文件夹权限'

@@ -52,7 +52,11 @@ describe('Transition workflow', () => {
       body: { name: 'simple app', type: AppTypeEnum.simple, nodes: [] }
     });
     const sourceAppId = createResult.data!;
-    await MongoAppVersion.updateOne({ appId: sourceAppId }, { nodes: historicalModules });
+    const copiedResources = [{ type: 'skill' as const, id: 'copied-skill' }];
+    await MongoAppVersion.updateOne(
+      { appId: sourceAppId },
+      { nodes: historicalModules, resources: copiedResources }
+    );
 
     const result = await Call<
       TransitionWorkflowBodyType,
@@ -75,5 +79,8 @@ describe('Transition workflow', () => {
     expect(app?.type).toBe(AppTypeEnum.workflow);
     expect(input?.selectedType).toBe(FlowNodeInputTypeEnum.reference);
     expect(input).not.toHaveProperty('selectedTypeIndex');
+    if (!createNew) {
+      expect(version?.resources).toEqual(copiedResources);
+    }
   });
 });

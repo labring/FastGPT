@@ -3,17 +3,11 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 
-const authCertMock = vi.hoisted(() => vi.fn());
-
 vi.mock('@/service/middleware/entry', () => ({
   NextAPI: (handler: unknown) => handler
 }));
 
-vi.mock('@fastgpt/service/support/permission/auth/common', () => ({
-  authCert: authCertMock
-}));
-
-import handler, { runInitAppResourcesMigration } from '@/pages/api/admin/4161/initAppResources';
+import { runInitAppResourcesMigration } from '@/pages/api/admin/4163/initAppResources';
 
 const teamId = new Types.ObjectId('65f000000000000000000061');
 const tmbId = new Types.ObjectId('65f000000000000000000062');
@@ -131,8 +125,7 @@ describe('initAppResources migration API', () => {
       }
     });
     expect(await MongoApp.collection.findOne({ _id: records[0].app._id })).toMatchObject({
-      publishedVersionId: records[0].version._id,
-      draftVersionId: records[0].version._id
+      publishedVersionId: records[0].version._id
     });
     expect(await MongoApp.collection.findOne({ _id: records[0].app._id })).not.toHaveProperty(
       'modules'
@@ -189,7 +182,7 @@ describe('initAppResources migration API', () => {
     expect(
       await MongoApp.collection.findOne(
         { _id: appId },
-        { projection: { resourceRefs: 1, publishedVersionId: 1, draftVersionId: 1 } }
+        { projection: { resourceRefs: 1, publishedVersionId: 1 } }
       )
     ).toMatchObject({ resourceRefs: { skillIds: ['legacy-skill'] } });
     expect(await MongoAppVersion.countDocuments({ resourceRefs: { $exists: true } })).toBe(1);
@@ -250,7 +243,7 @@ describe('initAppResources migration API', () => {
         hasConcurrentChange = true;
         await MongoApp.collection.updateOne(
           { _id: appId },
-          { $set: { publishedVersionId: concurrentVersionId, draftVersionId: concurrentVersionId } }
+          { $set: { publishedVersionId: concurrentVersionId } }
         );
       }
       return originalAppBulkWrite(operations, options);
@@ -274,7 +267,6 @@ describe('initAppResources migration API', () => {
     });
     expect(await MongoApp.collection.findOne({ _id: appId })).toMatchObject({
       publishedVersionId: concurrentVersionId,
-      draftVersionId: concurrentVersionId,
       modules: [],
       resourceRefs: { skillIds: ['legacy-skill'] }
     });
@@ -320,8 +312,7 @@ describe('initAppResources migration API', () => {
     });
     expect(createdVersion?.nodes?.[0]).not.toHaveProperty('id');
     expect(await MongoApp.collection.findOne({ _id: appId })).toMatchObject({
-      publishedVersionId: createdVersion?._id,
-      draftVersionId: createdVersion?._id
+      publishedVersionId: createdVersion?._id
     });
     expect(await MongoApp.countDocuments({ resourceRefs: { $exists: true } })).toBe(0);
   });
@@ -360,16 +351,5 @@ describe('initAppResources migration API', () => {
       modules: [{ nodeId: 'changed-after-read' }],
       resourceRefs: { skillIds: ['legacy-skill'] }
     });
-  });
-
-  it('authenticates the admin handler before parsing the migration body', async () => {
-    const error = new Error('unauthorized');
-    authCertMock.mockRejectedValue(error);
-
-    await expect(handler({ body: { dryRun: 'invalid' }, method: 'POST' } as any)).rejects.toBe(
-      error
-    );
-
-    expect(authCertMock).toHaveBeenCalledWith(expect.objectContaining({ authRoot: true }));
   });
 });

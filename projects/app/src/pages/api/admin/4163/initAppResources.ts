@@ -16,9 +16,9 @@ import z from 'zod';
 
 /*
  * API: 初始化 App 资源快照
- * Route: POST /api/admin/4161/initAppResources
+ * Route: POST /api/admin/4163/initAppResources
  * Method: POST
- * Description: 回填 Version.resources 与 App 版本指针，并清理历史 resourceRefs 与 App 图字段。
+ * Description: 回填 Version.resources 与 App 正式版本指针，并清理历史 resourceRefs 与 App 图字段。
  * Tags: ['Admin', 'DataClean', 'App', 'Write']
  */
 
@@ -113,10 +113,7 @@ const getSnapshotQueryValue = (value: unknown) =>
 const getMigrationUpdateFilter = (
   record: RawWorkflowRecord,
   isVersion: boolean,
-  pointers?: {
-    draftVersionId?: Types.ObjectId;
-    publishedVersionId?: Types.ObjectId;
-  }
+  pointers?: { publishedVersionId?: Types.ObjectId }
 ) => {
   const snapshot = getWorkflowSnapshot(record, isVersion);
   const filter = Object.entries(snapshot).reduce<Record<string, unknown>>(
@@ -126,17 +123,8 @@ const getMigrationUpdateFilter = (
     },
     { _id: record._id }
   );
-  // 只回填仍为空或仍是本次扫描结果的指针，避免把并发保存/发布写成的更新指针盖回去。
+  // 只回填仍为空或仍是本次扫描结果的正式指针，避免覆盖并发发布结果。
   const pointerFilters = [
-    pointers?.draftVersionId
-      ? {
-          $or: [
-            { draftVersionId: { $exists: false } },
-            { draftVersionId: null },
-            { draftVersionId: pointers.draftVersionId }
-          ]
-        }
-      : undefined,
     pointers?.publishedVersionId
       ? {
           $or: [
@@ -239,8 +227,8 @@ const buildResources = ({
 };
 
 /**
- * 按 time 倒序选出每个 App 当前草稿 / 正式 Version。
- * 最新草稿或最新正式 Version 被 OCC 跳过时，整 App 指针回填推迟到下次重试。
+ * 按 time 倒序选出每个 App 最新正式 Version，并记录是否存在任意 Version。
+ * 最新工作 Version 或最新正式 Version 被 OCC 跳过时，整 App 的指针回填推迟到下次重试。
  */
 const getLatestVersionPointers = async ({
   collection,
@@ -251,14 +239,14 @@ const getLatestVersionPointers = async ({
   batchSize: number;
   skippedRecordIds: Set<string>;
 }) => {
-  const latestDraftVersionIds = new Map<string, Types.ObjectId>();
+  const appIdsWithVersions = new Set<string>();
   const latestPublishedVersionIds = new Map<string, Types.ObjectId>();
   const skippedAppIds = new Set<string>();
-  const seenDraftAppIds = new Set<string>();
+  const seenVersionAppIds = new Set<string>();
   const seenPublishedAppIds = new Set<string>();
   const cursor = collection
     .find({}, { projection: { _id: 1, appId: 1, isPublish: 1 } })
-    .sort({ time: -1 })
+    .sort({ time: -1, _id: -1 })
     .batchSize(batchSize);
 
   for await (const rawRecord of cursor) {
@@ -266,11 +254,10 @@ const getLatestVersionPointers = async ({
     if (record.appId === undefined || record._id === undefined) continue;
     const appId = String(record.appId);
     const skipped = skippedRecordIds.has(String(record._id));
-
-    if (!seenDraftAppIds.has(appId)) {
-      seenDraftAppIds.add(appId);
+    appIdsWithVersions.add(appId);
+    if (!seenVersionAppIds.has(appId)) {
+      seenVersionAppIds.add(appId);
       if (skipped) skippedAppIds.add(appId);
-      else latestDraftVersionIds.set(appId, record._id);
     }
 
     if (record.isPublish === true && !seenPublishedAppIds.has(appId)) {
@@ -280,7 +267,7 @@ const getLatestVersionPointers = async ({
     }
   }
 
-  return { latestDraftVersionIds, latestPublishedVersionIds, skippedAppIds };
+  return { appIdsWithVersions, latestPublishedVersionIds, skippedAppIds };
 };
 
 /**
@@ -506,7 +493,7 @@ const verifyResources = async ({
 };
 
 /**
- * 回填 publishedVersionId / draftVersionId，并 $unset App 图字段。
+ * 回填 publishedVersionId，并 $unset App 图字段。
  * 仅当该 App 一条 Version 都没有时，才用当前 App 图补建一条正式 Version。
  */
 const backfillAppVersionPointers = async ({
@@ -516,7 +503,7 @@ const backfillAppVersionPointers = async ({
   dryRun,
   batchSize,
   writeBatchSize,
-  latestDraftVersionIds,
+  appIdsWithVersions,
   latestPublishedVersionIds,
   skippedAppIdsFromVersions
 }: {
@@ -526,7 +513,7 @@ const backfillAppVersionPointers = async ({
   dryRun: boolean;
   batchSize: number;
   writeBatchSize: number;
-  latestDraftVersionIds: Map<string, Types.ObjectId>;
+  appIdsWithVersions: Set<string>;
   latestPublishedVersionIds: Map<string, Types.ObjectId>;
   skippedAppIdsFromVersions: Set<string>;
 }) => {
@@ -554,7 +541,7 @@ const backfillAppVersionPointers = async ({
                 .filter((id): id is Types.ObjectId => id !== undefined)
             }
           },
-          { projection: { _id: 1, resourceRefs: 1, publishedVersionId: 1, draftVersionId: 1 } }
+          { projection: { _id: 1, resourceRefs: 1, publishedVersionId: 1 } }
         )
         .toArray();
       const currentRecordMap = new Map(
@@ -562,7 +549,6 @@ const backfillAppVersionPointers = async ({
           String(record._id),
           record as RawWorkflowRecord & {
             publishedVersionId?: Types.ObjectId;
-            draftVersionId?: Types.ObjectId;
           }
         ])
       );
@@ -575,7 +561,6 @@ const backfillAppVersionPointers = async ({
             ? (
                 operation.updateOne.update as {
                   $set?: {
-                    draftVersionId?: Types.ObjectId;
                     publishedVersionId?: Types.ObjectId;
                   };
                 }
@@ -583,8 +568,6 @@ const backfillAppVersionPointers = async ({
             : undefined;
         const pointerApplied =
           !!currentRecord &&
-          (!expectedSet?.draftVersionId ||
-            String(currentRecord.draftVersionId) === String(expectedSet.draftVersionId)) &&
           (!expectedSet?.publishedVersionId ||
             String(currentRecord.publishedVersionId) === String(expectedSet.publishedVersionId));
         // 指针回填会 $unset 图字段，不能再用 modules 快照做 OCC。
@@ -656,23 +639,20 @@ const backfillAppVersionPointers = async ({
       }
 
       const folder = isFolderApp(record.type);
-      let draftVersionId = appId ? latestDraftVersionIds.get(appId) : undefined;
       let publishedVersionId = appId ? latestPublishedVersionIds.get(appId) : undefined;
       let createdVersionId: Types.ObjectId | undefined;
 
       // 零 Version 才用 App 图补建正式版；文件夹没有工作流。
-      if (!folder && !draftVersionId) {
+      if (!folder && appId && !appIdsWithVersions.has(appId)) {
         createdVersionId = await createMissingPublishedVersion(record);
         if (!createdVersionId) {
           markSkipped(record);
           continue;
         }
-        draftVersionId = createdVersionId;
         publishedVersionId = createdVersionId;
       }
 
       const $set: Record<string, unknown> = {};
-      if (draftVersionId) $set.draftVersionId = draftVersionId;
       if (publishedVersionId) $set.publishedVersionId = publishedVersionId;
 
       operations.push({
@@ -681,7 +661,6 @@ const backfillAppVersionPointers = async ({
         operation: {
           updateOne: {
             filter: getMigrationUpdateFilter(record, false, {
-              draftVersionId,
               publishedVersionId
             }),
             update: {
@@ -728,7 +707,7 @@ export async function runInitAppResourcesMigration(
     writeBatchSize: options.writeBatchSize,
     buildResources: (record) => buildResources({ ...record, stats })
   });
-  const { latestDraftVersionIds, latestPublishedVersionIds, skippedAppIds } =
+  const { appIdsWithVersions, latestPublishedVersionIds, skippedAppIds } =
     await getLatestVersionPointers({
       collection: versionCollection,
       batchSize: options.batchSize,
@@ -742,7 +721,7 @@ export async function runInitAppResourcesMigration(
     dryRun: options.dryRun,
     batchSize: options.batchSize,
     writeBatchSize: options.writeBatchSize,
-    latestDraftVersionIds,
+    appIdsWithVersions,
     latestPublishedVersionIds,
     skippedAppIdsFromVersions: skippedAppIds
   });

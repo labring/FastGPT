@@ -1,4 +1,4 @@
-import type { AppResource, AppSchemaType } from '@fastgpt/global/core/app/type';
+import type { AppResource } from '@fastgpt/global/core/app/type';
 import type { WorkflowResourceEntities } from '../../../core/workflow/utils/resource';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -20,6 +20,7 @@ import { MongoApp } from '../../../core/app/schema';
 import { MongoDataset } from '../../../core/dataset/schema';
 import { MongoAgentSkills } from '../../../core/ai/skill/model/schema';
 import { MongoResourcePermission } from '../schema';
+import type { ClientSession } from '../../../common/mongo';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { getGroupsByTmbId } from '../memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '../org/controllers';
@@ -276,27 +277,28 @@ export const checkAppResourceReadPermissions = async (
 /**
  * 按当前应用草稿快照解析资源，并只校验相对快照新增的 ACL 资源。
  * 保存/自动保存不阻断无权限新增；发布和 Test/Debug 通过 blockOnUnauthorized 阻断。
+ * 保存/发布事务传入 session 时，baseline 会在事务内读取，事务重试会重新计算资源快照。
  */
 export const resolveAppResourcesByPermission = async ({
   appId,
-  app,
   extracted,
   tmbId,
   isRoot = false,
   blockOnUnauthorized,
   allowRootCrossTeam = false,
-  resourceEntities
+  resourceEntities,
+  session
 }: {
   appId: string;
-  app?: AppSchemaType;
   extracted: AppResource[];
   tmbId: string;
   isRoot?: boolean;
   blockOnUnauthorized: boolean;
   allowRootCrossTeam?: boolean;
   resourceEntities?: WorkflowResourceEntities;
+  session?: ClientSession;
 }) => {
-  const baseline = await getAppDraftResourceBaseline(appId, app);
+  const baseline = await getAppDraftResourceBaseline(appId, session);
   const { kept, added } = splitExtractedAppResources({ extracted, baseline });
   if (added.length === 0) return mergeAppResources(kept);
   if (blockOnUnauthorized) {

@@ -5,16 +5,16 @@ import { AppVersionCollectionName } from './version/schema';
 import { buildAppResourceMongoQuery } from './resources';
 
 type PublishedAppResource = { type: AppResourceType; id: string };
-type PublishedAppDoc = {
+type MatchedPublishedApp = {
   _id: unknown;
-  publishedVersionId?: unknown;
   publishedResources?: PublishedAppResource[];
-} & Record<string, unknown>;
+};
 
 /**
  * 按当前正式 Version 反查引用了指定资源的团队 App。
- * 只查已有 publishedVersionId 的 App；4161 会给非文件夹 App 补齐该指针。
- * 通过 $lookup 把资源匹配下推到 Mongo，只返回命中的 App，避免全团队 App 入内存。
+ * 只查已有 publishedVersionId 的 App；4163 会给非文件夹 App 补齐该指针。
+ * 先通过 $lookup 把资源匹配下推到 Mongo 拿到命中的 App id，再按 id 投影加载，
+ * 避免全团队 App 入内存，同时保留 find 的投影类型推断。
  */
 export const findTeamAppsByPublishedResource = async ({
   teamId,
@@ -28,13 +28,11 @@ export const findTeamAppsByPublishedResource = async ({
   projection?: string;
 }) => {
   const idList = Array.isArray(ids) ? ids : [ids];
-  // 调用方以空格分隔的投影字符串传字段名，如 'parentId avatar type'，这里拆成数组供 $project 使用。
-  const projectFields = projection ? projection.trim().split(/\s+/).filter(Boolean) : [];
   const resourceQuery = buildAppResourceMongoQuery({ type, ids: idList }).resources;
   // 聚合 $match 不做 mongoose 的 find 式自动转型，团队 id 需显式转 ObjectId。
   const teamObjectId = Types.ObjectId.isValid(teamId) ? new Types.ObjectId(teamId) : teamId;
 
-  const matched = await MongoApp.aggregate<PublishedAppDoc>([
+  const matched = await MongoApp.aggregate<MatchedPublishedApp>([
     {
       $match: {
         teamId: teamObjectId,
@@ -52,19 +50,13 @@ export const findTeamAppsByPublishedResource = async ({
     },
     { $unwind: { path: '$published' } },
     { $match: { 'published.resources': resourceQuery } },
-    {
-      $project: {
-        publishedVersionId: 1,
-        ...Object.fromEntries(projectFields.map((key) => [key, 1])),
-        publishedResources: '$published.resources'
-      }
-    }
+    { $project: { publishedResources: '$published.resources' } }
   ]);
 
-  const apps = matched.map(({ publishedResources, ...app }) => app);
-
+  const appIds: string[] = [];
   const counts = new Map<string, number>();
   matched.forEach((app) => {
+    appIds.push(String(app._id));
     const matchedResourceIds = new Set(
       (app.publishedResources ?? [])
         .filter((resource) => resource.type === type && idList.includes(resource.id))
@@ -74,6 +66,14 @@ export const findTeamAppsByPublishedResource = async ({
       counts.set(resourceId, (counts.get(resourceId) ?? 0) + 1);
     });
   });
+
+  const apps =
+    appIds.length > 0
+      ? await MongoApp.find(
+          { _id: { $in: appIds } },
+          `_id publishedVersionId ${projection ?? ''}`
+        ).lean()
+      : [];
 
   return { apps, counts };
 };

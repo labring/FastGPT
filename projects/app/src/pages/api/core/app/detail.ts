@@ -24,20 +24,22 @@ async function handler(req: NextApiRequest): Promise<GetAppDetailResponseType> {
     Promise.reject(CommonErrEnum.missingParams);
   }
   // 凭证校验
-  const { app, teamId, isRoot } = await authApp({
+  const { app, teamId, tmbId, isRoot } = await authApp({
     req,
     authToken: true,
     appId,
     per: ReadPermissionVal
   });
 
-  const workflow = await getAppDraftWorkflow(app._id, app);
+  const workflow = await getAppDraftWorkflow(app._id);
   await rewriteAppWorkflowToDetail({
     nodes: workflow.nodes,
     teamId,
+    viewerTmbId: tmbId,
     ownerTmbId: app.tmbId,
     isRoot,
-    lang: getLocale(req)
+    lang: getLocale(req),
+    resources: workflow.resources
   });
 
   if (!app.permission.hasWritePer) {

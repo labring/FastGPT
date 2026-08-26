@@ -611,7 +611,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       nodes,
       teamId: user.teamId,
       ownerTmbId: user.tmbId,
-      isRoot: false
+      isRoot: false,
+      resources: [{ type: 'skill', id: String(activeSkill._id) }]
     });
 
     const rewrittenSkills = nodes[0].inputs.find((input) => input.key === NodeInputKeyEnum.skills)
@@ -623,13 +624,16 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         name: 'Current Skill Name',
         description: 'Current skill description',
         avatar: 'current-avatar',
-        isDeleted: false
+        isDeleted: false,
+        permissionDenied: false
       },
       {
         skillId: String(deletedSkill._id),
         name: 'Deleted Snapshot',
         description: 'Deleted snapshot description',
-        isDeleted: true
+        avatar: undefined,
+        isDeleted: true,
+        permissionDenied: false
       }
     ]);
   });
@@ -1274,7 +1278,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       nodes,
       teamId: user.teamId,
       ownerTmbId: user.tmbId,
-      isRoot: false
+      isRoot: false,
+      resources: [{ type: 'dataset', id: String(dataset._id) }]
     });
 
     expect(datasetSelectInput.value).toEqual(referenceValue);
@@ -1325,7 +1330,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       nodes,
       teamId: user.teamId,
       ownerTmbId: user.tmbId,
-      isRoot: false
+      isRoot: false,
+      resources: [{ type: 'dataset', id: String(dataset._id) }]
     });
 
     const rewrittenDatasetParams = nodes[0].inputs.find(
@@ -1341,7 +1347,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
           modelId: resolvedEmbeddingModel.modelId,
           model: resolvedEmbeddingModel.model
         }),
-        isDeleted: false
+        isDeleted: false,
+        permissionDenied: false
       }
     ]);
   });
@@ -1376,7 +1383,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       nodes,
       teamId: user.teamId,
       ownerTmbId: user.tmbId,
-      isRoot: false
+      isRoot: false,
+      resources: [{ type: 'dataset', id: String(dataset._id) }]
     });
 
     expect(
@@ -1390,7 +1398,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
           modelId: resolvedEmbeddingModel.modelId,
           model: resolvedEmbeddingModel.model
         }),
-        isDeleted: false
+        isDeleted: false,
+        permissionDenied: false
       }
     ]);
   });

@@ -54,9 +54,24 @@ const AppSchema = new Schema(
       default: () => new Date()
     },
 
-    /** @deprecated 仅供 4.16.0 历史数据迁移读取，正常工作流使用 app_versions.nodes */
+    /** @deprecated 仅供 4.16.3 历史数据迁移读取，正常工作流使用 app_versions.nodes */
     modules: {
       type: Array,
+      default: undefined
+    },
+    /** @deprecated 仅供 4.16.3 历史数据迁移读取，正常工作流使用 app_versions.edges */
+    edges: {
+      type: Array,
+      default: undefined
+    },
+    /** @deprecated 仅供 4.16.3 历史数据迁移读取，正常工作流使用 app_versions.chatConfig */
+    chatConfig: {
+      type: Object,
+      default: undefined
+    },
+    /** @deprecated 仅供 4.16.3 资源快照迁移读取 skillIds */
+    resourceRefs: {
+      type: Object,
       default: undefined
     },
 
@@ -85,10 +100,6 @@ const AppSchema = new Schema(
       type: Date
     },
     publishedVersionId: {
-      type: Schema.Types.ObjectId,
-      ref: 'app_versions'
-    },
-    draftVersionId: {
       type: Schema.Types.ObjectId,
       ref: 'app_versions'
     },

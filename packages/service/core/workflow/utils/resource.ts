@@ -9,7 +9,6 @@ import type { AgentSkillSchemaType } from '@fastgpt/global/core/ai/skill/type';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '../../app/schema';
@@ -116,17 +115,6 @@ export const loadWorkflowResourceContext = async ({
     : new Map<string, AppPublishedWorkflow>();
   const datasetMap = new Map(datasets.map((dataset) => [String(dataset._id), dataset]));
   const skillMap = new Map(skills.map((skill) => [String(skill._id), skill]));
-
-  // 入口阶段一次性确认快照里的实体都还存在，避免先执行部分节点后才发现版本资源失效。
-  normalizedResources.forEach((resource) => {
-    if (resource.type === 'agent' || resource.type === 'tool') {
-      if (!appMap.has(resource.id)) throw AppErrEnum.unExist;
-    } else if (resource.type === 'dataset') {
-      if (!datasetMap.has(resource.id)) throw DatasetErrEnum.unExist;
-    } else if (resource.type === 'skill') {
-      if (!skillMap.has(resource.id)) throw SkillErrEnum.unExist;
-    }
-  });
 
   return {
     teamId,

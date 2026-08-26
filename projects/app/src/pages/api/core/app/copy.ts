@@ -38,7 +38,7 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
     appId: sourceAppId
   });
 
-  const { tmbId, isRoot } = app.parentId
+  const { tmbId } = app.parentId
     ? await authApp({ req, appId: app.parentId, per: WritePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
@@ -51,7 +51,7 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
       session
     });
 
-    const draftWorkflow = await getAppDraftWorkflow(app._id, app);
+    const draftWorkflow = await getAppDraftWorkflow(app._id);
     const storageNodes = (() => {
       if (app.type === AppTypeEnum.mcpToolSet) {
         return encodeMcpToolSetNodesForStorage(draftWorkflow.nodes);
@@ -75,7 +75,6 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
       teamId: app.teamId,
       tmbId,
       pluginData: app.pluginData,
-      isRoot,
       session
     });
 
