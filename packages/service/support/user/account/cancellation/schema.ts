@@ -16,6 +16,7 @@ export type AccountCancellationSchemaType = {
   userId: Types.ObjectId;
   status: AccountCancellationStatusType;
   requestedAt: Date;
+  notificationStatus: number;
 };
 
 const AccountCancellationSchema = new Schema<AccountCancellationSchemaType>(
@@ -33,6 +34,11 @@ const AccountCancellationSchema = new Schema<AccountCancellationSchemaType>(
     requestedAt: {
       type: Date,
       required: true
+    },
+    notificationStatus: {
+      type: Number,
+      required: true,
+      default: 0
     }
   },
   {
