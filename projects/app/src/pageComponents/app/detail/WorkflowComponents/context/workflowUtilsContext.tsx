@@ -225,7 +225,8 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       const { issueMap, hasError, firstErrorNodeId } = checkWorkflowBeforeRunOrPublish({
         nodes,
         edges,
-        t
+        t,
+        chatConfig: appDetail.chatConfig
       });
 
       if (!hasError) {
@@ -280,16 +281,22 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       const nodes = getNodes();
       if (nodes.length === 0) return;
 
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, t });
+      const issueMap = checkWorkflowNodeIssues({
+        nodes,
+        edges,
+        t,
+        chatConfig: appDetail.chatConfig
+      });
       onSyncWorkflowCheckIssues(issueMap);
     };
 
     const timer = window.setInterval(runScheduledCheck, 10_000);
+    runScheduledCheck();
 
     return () => {
       window.clearInterval(timer);
     };
-  }, [edges, getNodes, onSyncWorkflowCheckIssues, t]);
+  }, [appDetail.chatConfig, edges, getNodes, onSyncWorkflowCheckIssues, t]);
 
   // 4. initData - 初始化工作流数据
   const initData = useCallback(

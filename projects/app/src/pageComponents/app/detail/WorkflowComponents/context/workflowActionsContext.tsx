@@ -18,6 +18,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { checkWorkflowNodeIssues } from '@/web/core/workflow/workflowCheck';
 import { collectWorkflowStartAutoFillRevertPatches } from '@/web/core/workflow/workflowStartAutoFill';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import { AppContext } from '@/pageComponents/app/detail/context';
 
 type FlowNodeChangeProps = { nodeId: string } & (
   | {
@@ -145,6 +146,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
     edges,
     getNodes
   } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   const singleNodeCheckTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const edgeCheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -238,7 +240,13 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
   const onRefreshSingleNodeWorkflowCheckIssues = useCallback(
     (nodeId: string) => {
       const nodes = getNodes();
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, nodeId, t });
+      const issueMap = checkWorkflowNodeIssues({
+        nodes,
+        edges,
+        nodeId,
+        t,
+        chatConfig: appDetail.chatConfig
+      });
 
       setNodes((state) =>
         state.map((item) => {
@@ -261,7 +269,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         })
       );
     },
-    [edges, getNodes, setNodes, t]
+    [appDetail.chatConfig, edges, getNodes, setNodes, t]
   );
 
   /** 节点配置变更后防抖触发单节点重新校验，避免每次输入都同步扫描。 */
@@ -294,10 +302,15 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       const nodes = getNodes();
       if (nodes.length === 0) return;
 
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, t });
+      const issueMap = checkWorkflowNodeIssues({
+        nodes,
+        edges,
+        t,
+        chatConfig: appDetail.chatConfig
+      });
       onSyncWorkflowCheckIssues(issueMap);
     }, 400);
-  }, [edges, getNodes, onSyncWorkflowCheckIssues, t]);
+  }, [appDetail.chatConfig, edges, getNodes, onSyncWorkflowCheckIssues, t]);
 
   useEffect(() => {
     if (isFirstEdgesEffectRef.current) {
@@ -550,7 +563,19 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         });
       });
 
-      if (updateData.length > 1) {
+      // 变更影响「其他节点」上的引用有效性，单节点复查覆盖不到，需要升级为全量检查：
+      // - catchError 决定该节点的 error 输出是否可被引用；
+      // - 输出的增删改直接影响下游已选引用（addOutput 本身不会让旧引用失效，
+      //   但会触发 invalidCondition 重算，可能把兄弟输出置为 invalid）；
+      // - delOutput/replaceOutput 还会删边，与 edges effect 的全量检查重复，
+      //   但两者共用同一个防抖 timer，最终只会扫描一次。
+      const shouldRunFullWorkflowCheck = updateData.some(
+        (item) =>
+          (item.type === 'attr' && item.key === 'catchError') ||
+          ['updateOutput', 'replaceOutput', 'addOutput', 'delOutput'].includes(item.type)
+      );
+
+      if (updateData.length > 1 || shouldRunFullWorkflowCheck) {
         scheduleWorkflowCheckOnEdgeChange();
       } else {
         nodeIdsToRecheck.forEach((nodeId) => scheduleSingleNodeWorkflowCheck(nodeId));

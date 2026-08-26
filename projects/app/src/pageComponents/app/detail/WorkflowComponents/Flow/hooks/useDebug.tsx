@@ -108,7 +108,8 @@ export const useDebug = () => {
     const { issueMap, hasError, firstErrorNodeId } = checkWorkflowBeforeRunOrPublish({
       nodes,
       edges,
-      t: workflowT
+      t: workflowT,
+      chatConfig: appDetail.chatConfig
     });
 
     if (!hasError) {

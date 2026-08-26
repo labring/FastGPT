@@ -332,7 +332,7 @@ describe('WorkflowComponents utils', () => {
       expect(result.nodes[1].inputs[0].value).toEqual(referenceValue);
     });
 
-    it('should filter only unselectable values from reference inputs', () => {
+    it('should preserve unselectable values from reference inputs', () => {
       const nodes = [
         {
           data: {
@@ -431,11 +431,14 @@ describe('WorkflowComponents utils', () => {
         'sourceNode',
         'text'
       ]);
-      expect(
-        storedInputs.find((input) => input.key === 'invalidSingleReference')?.value
-      ).toBeUndefined();
+      expect(storedInputs.find((input) => input.key === 'invalidSingleReference')?.value).toEqual([
+        'missingNode',
+        'text'
+      ]);
       expect(storedInputs.find((input) => input.key === 'multipleReferences')?.value).toEqual([
-        ['sourceNode', 'files']
+        ['sourceNode', 'files'],
+        ['sourceNode', 'count'],
+        ['missingNode', 'files']
       ]);
       expect(storedInputs.find((input) => input.key === 'textareaValue')?.value).toBe(
         '{{missingNode.text}}'

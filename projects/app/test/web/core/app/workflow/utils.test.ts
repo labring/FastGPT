@@ -207,7 +207,7 @@ describe('checkWorkflowNodeIssues', () => {
     expect(result.orphan.map((issue) => issue.code)).toContain('no_upstream');
   });
 
-  it('does not report unselectable references', () => {
+  it('reports invalid references', () => {
     const node = makeNode('ref', FlowNodeTypeEnum.answerNode, {
       inputs: [
         {
@@ -225,10 +225,157 @@ describe('checkWorkflowNodeIssues', () => {
       edges: [{ id: 'e1', source: 'start', target: 'ref', type: EDGE_TYPE }]
     });
 
-    expect(result.ref?.map((issue) => issue.code) ?? []).not.toContain('invalid_reference');
+    expect(result.ref?.map((issue) => issue.code) ?? []).toContain('invalid_reference');
   });
 
-  it('filters unselectable single and multiple references when storing workflow data', () => {
+  it('reports deleted global variables and unavailable outputs as invalid references', () => {
+    const sourceNode = makeNode('source', FlowNodeTypeEnum.workflowStart, {
+      catchError: false,
+      outputs: [
+        {
+          id: 'invalid-output',
+          key: 'invalid-output',
+          label: 'invalid output',
+          type: FlowNodeOutputTypeEnum.static,
+          invalid: true
+        },
+        {
+          id: NodeOutputKeyEnum.addOutputParam,
+          key: NodeOutputKeyEnum.addOutputParam,
+          label: 'dynamic output placeholder',
+          type: FlowNodeOutputTypeEnum.dynamic
+        },
+        {
+          id: 'error-output',
+          key: 'error-output',
+          label: 'error output',
+          type: FlowNodeOutputTypeEnum.error
+        }
+      ]
+    });
+    const node = makeNode('ref', FlowNodeTypeEnum.answerNode, {
+      inputs: [
+        {
+          key: 'deleted-variable',
+          label: 'deleted variable',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          value: [VARIABLE_NODE_ID, 'deleted-variable']
+        },
+        {
+          key: 'invalid-output',
+          label: 'invalid output',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          value: ['source', 'invalid-output']
+        },
+        {
+          key: 'dynamic-output',
+          label: 'dynamic output',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          value: ['source', NodeOutputKeyEnum.addOutputParam]
+        },
+        {
+          key: 'malformed-reference',
+          label: 'malformed reference',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          value: ['source']
+        },
+        {
+          key: 'error-output',
+          label: 'error output',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          value: ['source', 'error-output']
+        },
+        {
+          key: 'valid-variable',
+          label: 'valid variable',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          value: [VARIABLE_NODE_ID, 'kept-variable']
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [sourceNode, node],
+      edges: [{ id: 'e1', source: 'source', target: 'ref', type: EDGE_TYPE }],
+      chatConfig: {
+        variables: [{ key: 'kept-variable' }]
+      } as any
+    });
+
+    const invalidIssues = result.ref?.filter((issue) => issue.code === 'invalid_reference') ?? [];
+    expect(invalidIssues.map((issue) => issue.inputKey)).toEqual(
+      expect.arrayContaining([
+        'deleted-variable',
+        'invalid-output',
+        'dynamic-output',
+        'malformed-reference',
+        'error-output'
+      ])
+    );
+    expect(invalidIssues.map((issue) => issue.inputKey)).not.toContain('valid-variable');
+  });
+
+  it('reports a global reference as invalid when the current chat config has no variables', () => {
+    const node = makeNode('missing-global', FlowNodeTypeEnum.answerNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.answerText,
+          label: 'answer',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          value: [VARIABLE_NODE_ID, 'missing-variable']
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, node],
+      edges: [
+        { id: 'e-start-missing-global', source: 'start', target: 'missing-global', type: EDGE_TYPE }
+      ],
+      chatConfig: {}
+    });
+
+    expect(result['missing-global']?.map((issue) => issue.code)).toContain('invalid_reference');
+  });
+
+  it('locates invalid VariableUpdate targets and values by row field', () => {
+    const node = makeNode('variable-update', FlowNodeTypeEnum.variableUpdate, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.updateList,
+          label: 'update list',
+          value: [
+            {
+              variable: ['deleted-node', 'output'],
+              value: [['deleted-node', 'output']],
+              renderType: FlowNodeInputTypeEnum.reference,
+              valueType: WorkflowIOValueTypeEnum.string
+            }
+          ]
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, node],
+      edges: [{ id: 'e1', source: 'start', target: 'variable-update', type: EDGE_TYPE }]
+    });
+
+    expect(result['variable-update']).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'invalid_reference',
+          inputKey: `${NodeInputKeyEnum.updateList}[0].variable`
+        }),
+        expect.objectContaining({
+          code: 'invalid_reference',
+          inputKey: `${NodeInputKeyEnum.updateList}[0].value`
+        })
+      ])
+    );
+  });
+
+  it('preserves invalid single and multiple references when storing workflow data', () => {
     const sourceNode = makeNode('source', FlowNodeTypeEnum.workflowStart, {
       outputs: [
         {
@@ -286,14 +433,14 @@ describe('checkWorkflowNodeIssues', () => {
 
     expect(
       storedNode?.inputs.find((input) => input.key === NodeInputKeyEnum.userChatInput)
-    ).toEqual(
-      expect.objectContaining({
-        value: undefined
-      })
-    );
+    ).toEqual(expect.objectContaining({ value: ['source', 'count'] }));
     expect(storedNode?.inputs.find((input) => input.key === NodeInputKeyEnum.fileUrlList)).toEqual(
       expect.objectContaining({
-        value: [['source', 'files']]
+        value: [
+          ['source', 'files'],
+          ['source', 'deleted'],
+          ['source', 'count']
+        ]
       })
     );
   });
@@ -841,7 +988,7 @@ describe('checkWorkflowNodeIssues', () => {
     });
   });
 
-  it('does not return invalid reference message for unselectable references', () => {
+  it('returns invalid reference message for unselectable references', () => {
     const node = makeNode('ref', FlowNodeTypeEnum.answerNode, {
       inputs: [
         {
@@ -859,7 +1006,7 @@ describe('checkWorkflowNodeIssues', () => {
       edges: [{ id: 'e1', source: 'start', target: 'ref', type: EDGE_TYPE }]
     });
 
-    expect(result.ref?.map((issue) => issue.code) ?? []).not.toContain('invalid_reference');
+    expect(result.ref?.map((issue) => issue.code) ?? []).toContain('invalid_reference');
   });
 
   it('treats unset reference as required_input_empty instead of invalid_reference', () => {
@@ -1454,7 +1601,7 @@ describe('checkWorkflowNodeIssues', () => {
         result[nodeId]?.filter((issue) => issue.inputKey === inputKey).map((issue) => issue.code) ??
         [];
 
-    it('does not report imported tool call file link auto-fill when current workflow start has no userFiles output', () => {
+    it('reports imported tool call file link auto-fill when current workflow start has no userFiles output', () => {
       const importedToolCall = makeImportedConnectedNode({
         nodeId: 'tool-call',
         template: ToolCallNode,
@@ -1483,7 +1630,7 @@ describe('checkWorkflowNodeIssues', () => {
       expect(getInput(importedToolCall, NodeInputKeyEnum.fileUrlList).value).toEqual([
         ['start', NodeOutputKeyEnum.userFiles]
       ]);
-      expect(getIssueCodes('tool-call', NodeInputKeyEnum.fileUrlList)(result)).not.toContain(
+      expect(getIssueCodes('tool-call', NodeInputKeyEnum.fileUrlList)(result)).toContain(
         'invalid_reference'
       );
     });
@@ -1523,7 +1670,7 @@ describe('checkWorkflowNodeIssues', () => {
           ]);
         }
 
-        expect(getIssueCodes(nodeId, inputKey)(result)).not.toContain('invalid_reference');
+        expect(getIssueCodes(nodeId, inputKey)(result)).toContain('invalid_reference');
       }
     );
 
@@ -1620,9 +1767,9 @@ describe('checkWorkflowNodeIssues', () => {
         ]
       });
 
-      expect(
-        getIssueCodes('invalid-tool-call', NodeInputKeyEnum.userChatInput)(result)
-      ).not.toContain('invalid_reference');
+      expect(getIssueCodes('invalid-tool-call', NodeInputKeyEnum.userChatInput)(result)).toContain(
+        'invalid_reference'
+      );
     });
 
     it('does not report invalid references mixed into an imported file input', () => {
@@ -1652,11 +1799,11 @@ describe('checkWorkflowNodeIssues', () => {
 
       expect(
         getIssueCodes('mixed-invalid-tool-call', NodeInputKeyEnum.fileUrlList)(result)
-      ).not.toContain('invalid_reference');
+      ).toContain('invalid_reference');
     });
   });
 
-  it('does not report invalid_reference when referenced upstream node or output was deleted', () => {
+  it('reports invalid_reference when referenced upstream node or output was deleted', () => {
     const nodeWithDeletedNodeRef = makeNode('deleted-node', FlowNodeTypeEnum.chatNode, {
       inputs: [
         {
@@ -1692,13 +1839,11 @@ describe('checkWorkflowNodeIssues', () => {
       ]
     });
 
-    expect(result['deleted-node']?.map((issue) => issue.code) ?? []).not.toContain(
-      'invalid_reference'
-    );
+    expect(result['deleted-node']?.map((issue) => issue.code) ?? []).toContain('invalid_reference');
     expect(result['deleted-node']?.map((issue) => issue.code) ?? []).not.toContain(
       'required_input_empty'
     );
-    expect(result['deleted-output']?.map((issue) => issue.code) ?? []).not.toContain(
+    expect(result['deleted-output']?.map((issue) => issue.code) ?? []).toContain(
       'invalid_reference'
     );
     expect(result['deleted-output']?.map((issue) => issue.code) ?? []).not.toContain(

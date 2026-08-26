@@ -3,6 +3,7 @@ import type { RenderInputProps } from '../type';
 import { Flex, Box, type ButtonProps, Grid } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getNodeAllSource, filterSelectableWorkflowNodeOutputs } from '@/web/core/workflow/utils';
+import { isConfiguredReferenceValue } from '@/web/core/workflow/workflowCheck';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type {
@@ -14,10 +15,7 @@ import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '@/pageComponents/app/detail/context';
-import {
-  WorkflowBufferDataContext,
-  WorkflowNodeDataContext
-} from '../../../../../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../../../../context/workflowInitContext';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
@@ -184,6 +182,8 @@ const SingleReferenceSelector = ({
   popDirection,
   ButtonProps
 }: SelectProps<false>) => {
+  const { t } = useSafeTranslation();
+
   const getSelectValue = useCallback(
     (value: ReferenceValueType) => {
       if (!value) return [];
@@ -219,6 +219,7 @@ const SingleReferenceSelector = ({
     const selectorVal = value as ReferenceItemValueType;
     const [nodeName, outputName] = getSelectValue(selectorVal);
     const isValidSelect = nodeName && outputName;
+    const isInvalidReference = isConfiguredReferenceValue(selectorVal) && !isValidSelect;
 
     return (
       <MultipleRowSelect
@@ -230,8 +231,12 @@ const SingleReferenceSelector = ({
               {outputName}
             </Flex>
           ) : (
-            <Box fontSize={'sm'} color={'myGray.400'}>
-              {placeholder}
+            <Box
+              fontSize={'sm'}
+              color={isInvalidReference ? 'red.500' : 'myGray.400'}
+              title={isInvalidReference ? selectorVal?.join('.') : undefined}
+            >
+              {isInvalidReference ? t('common:core.workflow.check.reference_deleted') : placeholder}
             </Box>
           )
         }
@@ -242,7 +247,7 @@ const SingleReferenceSelector = ({
         ButtonProps={ButtonProps}
       />
     );
-  }, [ButtonProps, getSelectValue, list, onSelect, placeholder, popDirection, value]);
+  }, [ButtonProps, getSelectValue, list, onSelect, placeholder, popDirection, t, value]);
 
   return ItemSelector;
 };
@@ -253,6 +258,8 @@ const MultipleReferenceSelector = ({
   onSelect,
   popDirection
 }: SelectProps<true>) => {
+  const { t } = useSafeTranslation();
+
   const getSelectValue = useCallback(
     (value: ReferenceValueType) => {
       if (!value) return [];
@@ -284,10 +291,6 @@ const MultipleReferenceSelector = ({
     });
   }, [getSelectValue, value]);
 
-  const invalidList = useMemo(() => {
-    return formatList.filter((item) => item.nodeName && item.outputName);
-  }, [formatList]);
-
   useEffect(() => {
     // Adapt array type from old version
     if (Array.isArray(value) && typeof value[0] === 'string') {
@@ -300,7 +303,7 @@ const MultipleReferenceSelector = ({
     return (
       <MultipleRowArraySelect
         label={
-          invalidList.length > 0 ? (
+          formatList.length > 0 ? (
             <Grid
               py={3}
               gridTemplateColumns={'1fr 1fr'}
@@ -312,27 +315,40 @@ const MultipleReferenceSelector = ({
                 }
               }}
             >
-              {invalidList.map(({ nodeName, outputName }, index) => {
+              {formatList.map(({ rawValue, nodeName, outputName }, index) => {
+                const isValidReference = Boolean(nodeName && outputName);
+                const isInvalidReference =
+                  isConfiguredReferenceValue(rawValue) && !isValidReference;
                 return (
                   <Flex
                     key={index}
                     w={'100%'}
                     alignItems={'center'}
-                    bg={'primary.50'}
-                    color={'myGray.900'}
+                    bg={isInvalidReference ? 'red.50' : 'primary.50'}
+                    color={isInvalidReference ? 'red.500' : 'myGray.900'}
                     py={1}
                     px={1.5}
                     rounded={'sm'}
                   >
                     <Flex alignItems={'center'} flex={'1 0 0'} className="textEllipsis">
-                      {nodeName}
-                      <MyIcon
-                        name={'common/rightArrowLight'}
-                        mx={1}
-                        w={'12px'}
-                        color={'myGray.500'}
-                      />
-                      {outputName}
+                      {isValidReference ? (
+                        <>
+                          {nodeName}
+                          <MyIcon
+                            name={'common/rightArrowLight'}
+                            mx={1}
+                            w={'12px'}
+                            color={'myGray.500'}
+                          />
+                          {outputName}
+                        </>
+                      ) : isInvalidReference ? (
+                        <Box title={rawValue?.join('.')}>
+                          {t('common:core.workflow.check.reference_deleted')}
+                        </Box>
+                      ) : (
+                        <Box color={'myGray.400'}>{placeholder}</Box>
+                      )}
                     </Flex>
                     <MyIcon
                       className="delete"
@@ -368,7 +384,7 @@ const MultipleReferenceSelector = ({
         popDirection={popDirection}
       />
     );
-  }, [invalidList, list, onSelect, placeholder, popDirection, value]);
+  }, [formatList, list, onSelect, placeholder, popDirection, t, value]);
 
   return ArraySelector;
 };

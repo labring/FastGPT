@@ -290,7 +290,12 @@ const Header = ({
                 );
                 const edges = storeEdges.map((item) => storeEdge2RenderEdge({ edge: item }));
 
-                const checkResults = checkWorkflowBeforeRunOrPublish({ nodes, edges, t });
+                const checkResults = checkWorkflowBeforeRunOrPublish({
+                  nodes,
+                  edges,
+                  t,
+                  chatConfig: appForm.chatConfig
+                });
 
                 if (checkResults.hasError) {
                   toast({

@@ -6,6 +6,7 @@ import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { Edge, Node } from 'reactflow';
 import {
   FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import {
@@ -23,8 +24,10 @@ import {
 import type { TFunction } from 'next-i18next';
 import type {
   FlowNodeInputItemType,
+  FlowNodeOutputItemType,
   ReferenceItemValueType
 } from '@fastgpt/global/core/workflow/type/io';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
@@ -44,10 +47,11 @@ import { isToolNotExistError } from '@fastgpt/global/core/app/utils';
 
 type WorkflowCheckContext = {
   nodeMap: Map<string, Node<FlowNodeItemType, string | undefined>>;
-  nodeOutputMap: Map<string, Set<string>>;
+  nodeOutputMap: Map<string, Map<string, FlowNodeOutputItemType>>;
   incomingEdgesMap: Map<string, Edge<any>[]>;
   outgoingEdgesMap: Map<string, Edge<any>[]>;
   reachableNodeSet: Set<string>;
+  chatConfig?: AppChatConfigType;
 };
 
 const workflowCheckSkipConnectionTypes = new Set<FlowNodeTypeEnum>([
@@ -211,7 +215,8 @@ const workflowCheckMessageFallback: Record<
 > = {
   required_input_empty: ({ inputName } = {}) => `需填写必填项 ${inputName ?? ''}`.trim(),
   no_upstream: () => '未与其他节点连线',
-  invalid_reference: ({ inputName } = {}) => `${inputName ?? ''} 引用了无效变量，需删除`.trim(),
+  invalid_reference: ({ inputName } = {}) =>
+    `${inputName ?? ''} 中存在已被删除的变量，需处理`.trim(),
   if_else_incomplete: () => '存在未完成的条件配置，请完善',
   user_select_empty: () => '需配置至少一个选项',
   user_select_value_empty: () => '选项不可为空',
@@ -326,19 +331,24 @@ export const getWorkflowCheckIssueMessage = (
 
 const createWorkflowCheckContext = ({
   nodes,
-  edges
+  edges,
+  chatConfig
 }: {
   nodes: Node<FlowNodeItemType, string | undefined>[];
   edges: Edge<any>[];
+  chatConfig?: AppChatConfigType;
 }): WorkflowCheckContext => {
   const nodeMap = new Map<string, Node<FlowNodeItemType, string | undefined>>();
-  const nodeOutputMap = new Map<string, Set<string>>();
+  const nodeOutputMap = new Map<string, Map<string, FlowNodeOutputItemType>>();
   const incomingEdgesMap = new Map<string, Edge<any>[]>();
   const outgoingEdgesMap = new Map<string, Edge<any>[]>();
 
   nodes.forEach((node) => {
     nodeMap.set(node.data.nodeId, node);
-    nodeOutputMap.set(node.data.nodeId, new Set(node.data.outputs.map((output) => output.id)));
+    nodeOutputMap.set(
+      node.data.nodeId,
+      new Map(node.data.outputs.map((output) => [output.id, output]))
+    );
     incomingEdgesMap.set(node.data.nodeId, []);
     outgoingEdgesMap.set(node.data.nodeId, []);
   });
@@ -377,7 +387,8 @@ const createWorkflowCheckContext = ({
     nodeOutputMap,
     incomingEdgesMap,
     outgoingEdgesMap,
-    reachableNodeSet
+    reachableNodeSet,
+    chatConfig
   };
 };
 
@@ -387,23 +398,38 @@ const referenceValueIsLive = (
 ) => {
   if (!isValidReferenceValueFormat(value)) return false;
   const [refNodeId, refOutputId] = value;
+  if (typeof refNodeId !== 'string' || typeof refOutputId !== 'string') return false;
   if (!refNodeId || !refOutputId) return false;
-  if (refNodeId === VARIABLE_NODE_ID) return true;
+  if (refNodeId === VARIABLE_NODE_ID) {
+    return context.chatConfig === undefined
+      ? true
+      : context.chatConfig.variables?.some((variable) => variable.key === refOutputId) === true;
+  }
 
-  return context.nodeOutputMap.get(refNodeId)?.has(refOutputId) === true;
+  const output = context.nodeOutputMap.get(refNodeId)?.get(refOutputId);
+  if (!output || output.invalid === true || output.id === NodeOutputKeyEnum.addOutputParam) {
+    return false;
+  }
+
+  return (
+    output.type !== FlowNodeOutputTypeEnum.error ||
+    context.nodeMap.get(refNodeId)?.data.catchError === true
+  );
 };
 
-/** 引用输入是否尚未选择（空占位 / 未选变量），区别于曾经选中但已失效的引用。 */
+/** 仅把空值和两个历史空占位视为未选择，其余非空 malformed value 都应报告 invalid_reference。 */
 const isUnsetReferenceValue = (value: unknown) => {
   if (value === undefined || value === null || value === '') return true;
-  if (!Array.isArray(value)) return true;
+  if (!Array.isArray(value)) return false;
   if (value.length === 0) return true;
 
-  // 单引用 [nodeId, outputId]；占位符 ['', ''] 或格式不完整均视为未选择
+  // 保留历史数据中的 ['', ''] 和 [undefined, undefined] 空占位兼容行为。
   if (value.length === 2 && !Array.isArray(value[0])) {
     const [refNodeId, refOutputId] = value;
-    if (typeof refNodeId !== 'string') return true;
-    return !refNodeId || !refOutputId;
+    return (
+      (refNodeId === '' && refOutputId === '') ||
+      (refNodeId === undefined && refOutputId === undefined)
+    );
   }
 
   return false;
@@ -415,6 +441,27 @@ const isEmptyReferenceInputValue = (value: unknown, isArrayType: boolean) => {
   }
   return isUnsetReferenceValue(value);
 };
+
+/**
+ * 判断引用值是否「已配置」：空值和 ['', ''] / [undefined, undefined] 两个历史空占位视为未选择，
+ * 其余非空值（含格式错误的值）一律视为已配置。
+ * 运行检查与引用选择器 UI 共用，避免空占位判定标准两处维护产生漂移。
+ */
+export const isConfiguredReferenceValue = (value: unknown) => !isUnsetReferenceValue(value);
+
+const getReferenceItems = (value: unknown): ReferenceItemValueType[] => {
+  if (Array.isArray(value) && typeof value[0] === 'string') {
+    return [value as ReferenceItemValueType];
+  }
+
+  return Array.isArray(value)
+    ? (value as ReferenceItemValueType[])
+    : [value as ReferenceItemValueType];
+};
+
+const referenceValueHasInvalidSource = (value: unknown, context: WorkflowCheckContext) =>
+  isConfiguredReferenceValue(value) &&
+  getReferenceItems(value).some((item) => !referenceValueIsLive(item, context));
 
 const isVariableUpdateTargetEmpty = (
   variable: unknown,
@@ -442,6 +489,10 @@ const isVariableUpdateValueEmpty = (item: TUpdateListItem, context: WorkflowChec
   return inputVal === undefined || inputVal === null || inputVal === '';
 };
 
+const isVariableUpdateValueInvalid = (item: TUpdateListItem, context: WorkflowCheckContext) =>
+  item.renderType === FlowNodeInputTypeEnum.reference &&
+  referenceValueHasInvalidSource(item.value, context);
+
 /**
  * 结构化校验工作流节点和连线。
  * 函数只读取入参并返回每个节点的错误列表，调用方负责写入 React state、toast 或定位画布。
@@ -450,14 +501,16 @@ export const checkWorkflowNodeIssues = ({
   nodes,
   edges,
   nodeId,
-  t
+  t,
+  chatConfig
 }: {
   nodes: Node<FlowNodeItemType, string | undefined>[];
   edges: Edge<any>[];
   nodeId?: string;
   t?: TFunction;
+  chatConfig?: AppChatConfigType;
 }): WorkflowCheckNodeIssueMap => {
-  const context = createWorkflowCheckContext({ nodes, edges });
+  const context = createWorkflowCheckContext({ nodes, edges, chatConfig });
   const issueMap: WorkflowCheckNodeIssueMap = {};
   const nodeIds = nodes.map((node) => node.data.nodeId);
   const targetNodes = nodeId ? nodes.filter((node) => node.data.nodeId === nodeId) : nodes;
@@ -713,7 +766,15 @@ export const checkWorkflowNodeIssues = ({
           | TUpdateListItem[]
           | undefined;
 
-        const addVariableUpdateRequiredIssue = (field: 'variable' | 'value') => {
+        const addVariableUpdateIssue = ({
+          field,
+          index,
+          code
+        }: {
+          field: 'variable' | 'value';
+          index?: number;
+          code: 'required_input_empty' | 'invalid_reference';
+        }) => {
           const inputName = (() => {
             if (field === 'variable') {
               return t ? t('common:core.workflow.variable' as any) : '变量';
@@ -724,24 +785,39 @@ export const checkWorkflowNodeIssues = ({
 
           addIssue({
             node,
-            code: 'required_input_empty',
-            message: getWorkflowCheckIssueMessage('required_input_empty', t, {
+            code,
+            message: getWorkflowCheckIssueMessage(code, t, {
               inputName
             }),
-            inputKey: NodeInputKeyEnum.updateList
+            inputKey:
+              code === 'invalid_reference' && index !== undefined
+                ? `${NodeInputKeyEnum.updateList}[${index}].${field}`
+                : NodeInputKeyEnum.updateList
           });
         };
 
         if (!updateList || updateList.length === 0) {
-          addVariableUpdateRequiredIssue('variable');
-          addVariableUpdateRequiredIssue('value');
+          addVariableUpdateIssue({ field: 'variable', code: 'required_input_empty' });
+          addVariableUpdateIssue({ field: 'value', code: 'required_input_empty' });
         } else {
-          updateList.forEach((item) => {
+          updateList.forEach((item, index) => {
             if (isVariableUpdateTargetEmpty(item.variable, nodeIds, context)) {
-              addVariableUpdateRequiredIssue('variable');
+              addVariableUpdateIssue({
+                field: 'variable',
+                index,
+                code: isConfiguredReferenceValue(item.variable)
+                  ? 'invalid_reference'
+                  : 'required_input_empty'
+              });
             }
             if (isVariableUpdateValueEmpty(item, context)) {
-              addVariableUpdateRequiredIssue('value');
+              addVariableUpdateIssue({
+                field: 'value',
+                index,
+                code: isVariableUpdateValueInvalid(item, context)
+                  ? 'invalid_reference'
+                  : 'required_input_empty'
+              });
             }
           });
         }
@@ -758,6 +834,23 @@ export const checkWorkflowNodeIssues = ({
           ) {
             return;
           }
+        }
+
+        const isReferenceInput = nodeInputIsReference(input);
+        const isArrayReference = isReferenceInput && !!input.valueType?.startsWith('array');
+        // 节点未显式配置时，runtime 会回退 defaultValue；运行检查应与实际执行一致。
+        const effectiveInputValue = input.value ?? input.defaultValue;
+
+        // 已配置的引用始终检查，即使目标输入没有 valueType 或 required=false。
+        if (isReferenceInput && referenceValueHasInvalidSource(effectiveInputValue, context)) {
+          addIssue({
+            node,
+            code: 'invalid_reference',
+            message: getWorkflowCheckIssueMessage('invalid_reference', t, {
+              inputName: getInputLabel(input, t)
+            }),
+            inputKey: input.key
+          });
         }
 
         if (shouldSkipGenericRequiredInputCheck(input)) {
@@ -779,10 +872,6 @@ export const checkWorkflowNodeIssues = ({
           return;
         }
 
-        const isReferenceInput = nodeInputIsReference(input);
-        const isArrayReference = isReferenceInput && !!input.valueType?.startsWith('array');
-        // 节点未显式配置时，runtime 会回退 defaultValue；运行检查应与实际执行一致。
-        const effectiveInputValue = input.value ?? input.defaultValue;
         const inputValueIsEmpty = isReferenceInput
           ? isEmptyReferenceInputValue(effectiveInputValue, isArrayReference)
           : isEmptyWorkflowInputValue(effectiveInputValue);
@@ -864,13 +953,15 @@ export const getWorkflowCheckErrorNodeIds = (
 export const checkWorkflowBeforeRunOrPublish = ({
   nodes,
   edges,
-  t
+  t,
+  chatConfig
 }: {
   nodes: Node<FlowNodeItemType, string | undefined>[];
   edges: Edge<any>[];
   t?: TFunction;
+  chatConfig?: AppChatConfigType;
 }) => {
-  const issueMap = checkWorkflowNodeIssues({ nodes, edges, t });
+  const issueMap = checkWorkflowNodeIssues({ nodes, edges, t, chatConfig });
   const nodeOrder = nodes.map((node) => node.data.nodeId);
   const errorNodeIds = getWorkflowCheckErrorNodeIds(issueMap, nodeOrder);
 
