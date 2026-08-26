@@ -4,6 +4,7 @@ import Papa from 'papaparse';
 import XLSX from 'xlsx';
 import { filterEmptyTableData, formatMarkdownTableRow } from './utils';
 import { workerEnv } from '../../env';
+import { preflightXlsx } from './xlsxPreflight';
 
 /**
  * XLSX 解析安全预算。部署时可按业务文件规模调整，放大限制时需同时评估 worker 内存上限。
@@ -12,13 +13,9 @@ export const XLSX_PARSE_LIMITS = {
   maxRows: workerEnv.XLSX_PARSE_MAX_ROWS,
   maxColumns: workerEnv.XLSX_PARSE_MAX_COLUMNS,
   maxCells: workerEnv.XLSX_PARSE_MAX_CELLS,
-  maxMergedCells: workerEnv.XLSX_PARSE_MAX_MERGED_CELLS
+  maxMergedCells: workerEnv.XLSX_PARSE_MAX_MERGED_CELLS,
+  maxUncompressedBytes: workerEnv.XLSX_PARSE_MAX_UNCOMPRESSED_BYTES
 } as const;
-
-type WorkbookWithSourceFiles = XLSX.WorkBook & {
-  files?: Record<string, { content?: unknown }>;
-  keys?: string[];
-};
 
 /**
  * 将 XLSX 转换为 CSV 原文和 Markdown 表格。
@@ -29,73 +26,22 @@ type WorkbookWithSourceFiles = XLSX.WorkBook & {
 export const readXlsxRawText = async ({
   buffer
 }: ReadRawTextByBuffer): Promise<ReadFileResponse> => {
+  await preflightXlsx({
+    buffer,
+    limits: XLSX_PARSE_LIMITS
+  });
+
   const workbook = XLSX.read(buffer, {
     type: 'buffer',
     cellDates: true,
-    // SheetJS 截断稀疏高行号工作表时可能不保留 !fullref，需要从源 XML 恢复原始 dimension。
-    bookFiles: true,
-    // 在 SheetJS 构造超大 worksheet 前先截断行解析；下方通过 !fullref 识别并拒绝超限文件。
+    // 预检已验证真实坐标；这里继续截断，避免后续依赖升级意外绕过纵深保护。
     sheetRows: XLSX_PARSE_LIMITS.maxRows
-  }) as WorkbookWithSourceFiles;
+  });
 
   /**
    * 拒绝无效坐标，避免减法、乘法或循环边界被非有限值绕过。
    */
   const isValidCoordinate = (value: number) => Number.isSafeInteger(value) && value >= 0;
-
-  /**
-   * 校验源 worksheet 的原始 dimension，弥补 SheetJS 对稀疏高行号工作表截断后
-   * 同时丢失 !ref 和 !fullref 的行为。只读取 XML 头部，避免为校验复制整份 worksheet。
-   */
-  const validateSourceWorksheetRowRanges = () => {
-    const maxDimensionHeaderBytes = 64 * 1024;
-    const worksheetPaths =
-      workbook.keys?.filter((path) => /^\/?xl\/worksheets\/[^/]+\.xml$/i.test(path)) ?? [];
-
-    for (const path of worksheetPaths) {
-      const content = workbook.files?.[path]?.content;
-      const xmlHeader = (() => {
-        if (typeof content === 'string') return content.slice(0, maxDimensionHeaderBytes);
-        if (content instanceof Uint8Array) {
-          return Buffer.from(content.buffer, content.byteOffset, content.byteLength)
-            .subarray(0, maxDimensionHeaderBytes)
-            .toString('utf8');
-        }
-      })();
-      if (!xmlHeader) continue;
-
-      const dimensionRef = xmlHeader.match(
-        /<(?:\w+:)?dimension\b[^>]*\bref=(["'])([^"']+)\1/i
-      )?.[2];
-      if (!dimensionRef) continue;
-
-      const range = XLSX.utils.decode_range(dimensionRef);
-      if (
-        !isValidCoordinate(range.s.r) ||
-        !isValidCoordinate(range.s.c) ||
-        !isValidCoordinate(range.e.r) ||
-        !isValidCoordinate(range.e.c) ||
-        range.s.r > range.e.r ||
-        range.s.c > range.e.c
-      ) {
-        throw new Error(`XLSX worksheet "${path}" has an invalid range`);
-      }
-
-      if (range.e.r + 1 > XLSX_PARSE_LIMITS.maxRows) {
-        throw new Error(
-          `XLSX worksheet "${path}" exceeds the maximum row limit of ${XLSX_PARSE_LIMITS.maxRows}`
-        );
-      }
-    }
-  };
-
-  try {
-    validateSourceWorksheetRowRanges();
-  } finally {
-    // 源 ZIP 文件仅用于截断前校验，及时释放引用，避免延长大文件内容的生命周期。
-    delete workbook.files;
-    delete workbook.keys;
-  }
 
   let workbookCellCount = 0;
   let workbookMergedCellCount = 0;

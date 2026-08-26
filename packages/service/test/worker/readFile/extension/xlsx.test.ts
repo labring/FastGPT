@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import JSZip from 'jszip';
 import Papa from 'papaparse';
 import XLSX from 'xlsx';
 import {
@@ -7,6 +8,22 @@ import {
 } from '@fastgpt/service/worker/readFile/extension/xlsx';
 
 describe('readXlsxRawText', () => {
+  const updateWorksheetXml = async ({
+    buffer,
+    update
+  }: {
+    buffer: Buffer;
+    update: (xml: string) => string;
+  }) => {
+    const zip = await JSZip.loadAsync(buffer);
+    const worksheetPath = 'xl/worksheets/sheet1.xml';
+    const worksheetFile = zip.file(worksheetPath);
+    if (!worksheetFile) throw new Error('Missing worksheet XML');
+
+    zip.file(worksheetPath, update(await worksheetFile.async('string')));
+    return zip.generateAsync({ type: 'nodebuffer' });
+  };
+
   it('should skip empty rows when formatting xlsx content', async () => {
     const worksheet = XLSX.utils.aoa_to_sheet([
       ['', 'name|alias', '', 'age', 'city', ''],
@@ -186,6 +203,24 @@ describe('readXlsxRawText', () => {
 
     await expect(readXlsxRawText({ extension: 'xlsx', buffer, encoding: 'utf-8' })).rejects.toThrow(
       `maximum row limit of ${XLSX_PARSE_LIMITS.maxRows}`
+    );
+  });
+
+  it('should reject cells outside a forged smaller worksheet dimension', async () => {
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      ['a', 'b'],
+      ['c', 'd']
+    ]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+    const originalBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    const buffer = await updateWorksheetXml({
+      buffer: originalBuffer,
+      update: (xml) => xml.replace('<dimension ref="A1:B2"/>', '<dimension ref="A1:A1"/>')
+    });
+
+    await expect(readXlsxRawText({ extension: 'xlsx', buffer, encoding: 'utf-8' })).rejects.toThrow(
+      'contains cells outside its declared range'
     );
   });
 
