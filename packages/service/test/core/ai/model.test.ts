@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
-import { getLLMModelData } from '../../../core/ai/model';
+import {
+  getLLMModelData,
+  getOptionalLLMModelData,
+  getOptionalVlmModelData
+} from '../../../core/ai/model';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 
 const modelId = '68ee0bd23d17260b7829b137';
@@ -56,6 +60,15 @@ describe('getLLMModelData', () => {
     expect(() => getLLMModelData({})).toThrow(ModelErrEnum.unExist);
     expect(() => getLLMModelData({ model: 'GPT test display name' })).toThrow(ModelErrEnum.unExist);
     expect(() => getLLMModelData({ model: 'missing-model' })).toThrow(ModelErrEnum.unExist);
+  });
+
+  it('returns undefined only when an optional model reference is empty', () => {
+    expect(getOptionalLLMModelData({})).toBeUndefined();
+    expect(getOptionalVlmModelData({ modelId: undefined, model: undefined })).toBeUndefined();
+    expect(() => getOptionalLLMModelData({ model: 'missing-model' })).toThrow(ModelErrEnum.unExist);
+    expect(() =>
+      getOptionalLLMModelData({ modelId: '68ee0bd23d17260b7829b138', model: 'gpt-test' })
+    ).toThrow(ModelErrEnum.unExist);
   });
 
   it('rejects disabled models for execution', () => {

@@ -4,8 +4,8 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   getEmbeddingModelData,
   getLLMModelData,
-  getRerankModelData,
-  getVlmModelData
+  getOptionalVlmModelData,
+  getRerankModelData
 } from '../../../../../../ai/model';
 import { createLLMResponse } from '../../../../../../ai/llm/request';
 import { countPromptTokens } from '../../../../../../../common/string/tiktoken/index';
@@ -227,10 +227,10 @@ export const dispatchAgentDatasetSearch = async ({
       modelId: dataset?.vectorModelId,
       model: dataset?.vectorModel
     });
-    const vlmModelData =
-      dataset?.vlmModelId || dataset?.vlmModel
-        ? getVlmModelData({ modelId: dataset?.vlmModelId, model: dataset?.vlmModel })
-        : undefined;
+    const vlmModelData = getOptionalVlmModelData({
+      modelId: dataset?.vlmModelId,
+      model: dataset?.vlmModel
+    });
     // Get Rerank Model
     const rerankModelData = datasetParams.usingReRank
       ? getRerankModelData({

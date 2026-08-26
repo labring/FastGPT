@@ -50,7 +50,17 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
     model,
     name: `${model} name`,
     config: { vision: true }
-  }))
+  })),
+  getOptionalVlmModelData: vi.fn(({ modelId, model }: { modelId?: string; model?: string }) =>
+    modelId || model
+      ? {
+          modelId,
+          model,
+          name: `${model ?? modelId} name`,
+          config: { vision: true }
+        }
+      : undefined
+  )
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({

@@ -10,7 +10,7 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import {
   getLLMModelData,
   getEmbeddingModelData,
-  getVlmModelData
+  getOptionalVlmModelData
 } from '@fastgpt/service/core/ai/model';
 import {
   getDatasetImageIndexCapability,
@@ -58,13 +58,10 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     return Promise.reject('数据集正在训练或者重建中，请稍后再试');
   }
 
-  const vlmModelData =
-    dataset.vlmModelId || dataset.vlmModel
-      ? getVlmModelData({
-          modelId: dataset.vlmModelId ? String(dataset.vlmModelId) : undefined,
-          model: dataset.vlmModel
-        })
-      : undefined;
+  const vlmModelData = getOptionalVlmModelData({
+    modelId: dataset.vlmModelId ? String(dataset.vlmModelId) : undefined,
+    model: dataset.vlmModel
+  });
   const { availableVlmModel, supportVlm, supportImageIndex } = getDatasetImageIndexCapability({
     vectorModel: vectorModelData,
     vlmModel: vlmModelData

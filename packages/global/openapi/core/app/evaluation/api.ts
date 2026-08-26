@@ -37,7 +37,7 @@ export const CreateEvaluationBodySchema = z
       example: '68ad85a7463006c963799a05',
       description: '待评测应用 ID'
     }),
-    evalModelId: ObjectIdSchema.meta({
+    evalModelId: z.string().meta({
       description: '用于评测答案的模型 ID'
     })
   })
@@ -145,7 +145,7 @@ export const EvaluationListItemSchema = z.object({
   name: z.string().meta({ example: '客服问答评测', description: '评测任务名称' }),
   createTime: z.coerce.date().meta({ description: '创建时间' }),
   finishTime: z.coerce.date().nullish().meta({ description: '完成时间' }),
-  evalModelId: ObjectIdSchema.optional().meta({ description: '评测模型 ID' }),
+  evalModelId: z.string().optional().meta({ description: '评测模型 ID' }),
   evalModel: z.string().optional().meta({
     example: 'gpt-4o-mini',
     description: '旧评测模型标识',

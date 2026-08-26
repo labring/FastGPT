@@ -55,7 +55,18 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
     name: 'gpt-vision name',
     type: 'llm',
     config: { vision: true }
-  }))
+  })),
+  getOptionalVlmModelData: vi.fn(({ modelId, model }) =>
+    modelId || model
+      ? {
+          modelId: '68ad85a7463006c963799a03',
+          model: 'vision-model',
+          name: 'gpt-vision name',
+          type: 'llm',
+          config: { vision: true }
+        }
+      : undefined
+  )
 }));
 
 vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({

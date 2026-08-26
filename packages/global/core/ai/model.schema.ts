@@ -1,6 +1,5 @@
 /* v8 ignore file */
 import { ModelTypeEnum } from './constants';
-import { ObjectIdSchema } from '../../common/type/mongo';
 import z from 'zod';
 
 export const ModelPriceTierSchema = z
@@ -140,7 +139,7 @@ export type SystemModelDocumentDataType = z.infer<typeof SystemModelDocumentData
 
 /** 运行时模型数据。avatar 与 isCustom 都由 provider/plugin 信息派生。 */
 const RuntimeSystemModelFields = {
-  modelId: ObjectIdSchema,
+  modelId: z.string(),
   avatar: z.string().optional(),
   isCustom: z.boolean()
 };

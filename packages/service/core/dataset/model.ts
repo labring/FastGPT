@@ -1,5 +1,5 @@
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
-import { getEmbeddingModelData, getLLMModelData, getVlmModelData } from '../ai/model';
+import { getEmbeddingModelData, getLLMModelData, getOptionalVlmModelData } from '../ai/model';
 
 type DatasetModelFields = Pick<
   DatasetSchemaType,
@@ -24,9 +24,7 @@ export const getDatasetAgentModel = (dataset: Partial<DatasetModelFields>) =>
 
 /** VLM 允许不配置；一旦配置但无法解析，统一抛出“模型不存在”。 */
 export const getDatasetVlmModel = (dataset: Partial<DatasetModelFields>) =>
-  dataset.vlmModelId || dataset.vlmModel
-    ? getVlmModelData({
-        modelId: normalizeModelId(dataset.vlmModelId),
-        model: dataset.vlmModel
-      })
-    : undefined;
+  getOptionalVlmModelData({
+    modelId: normalizeModelId(dataset.vlmModelId),
+    model: dataset.vlmModel
+  });

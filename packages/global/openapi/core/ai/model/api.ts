@@ -7,7 +7,6 @@ import {
   STTModelConfigSchema,
   TTSModelConfigSchema
 } from '../../../../core/ai/model.schema';
-import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { IntSchema } from '../../../../common/zod';
 import { PaginationResponseSchema, PaginationSchema } from '../../../api';
 import z from 'zod';
@@ -17,7 +16,7 @@ import {
 } from '../../../../support/permission/collaborator.schema';
 
 const MyModelBaseSchema = z.object({
-  modelId: ObjectIdSchema.meta({ description: '模型稳定 ID' }),
+  modelId: z.string().meta({ description: '模型稳定 ID' }),
   model: z.string().meta({ description: 'Provider 请求使用的模型标识' }),
   name: z.string().meta({ description: '模型展示名称' }),
   provider: z.string().meta({ description: '模型提供商标识' }),
@@ -112,7 +111,7 @@ export type GetMyModelsResponse = z.infer<typeof GetMyModelsResponseSchema>;
  * ============================================================================ */
 
 export const GetMyModelQuerySchema = z.object({
-  modelId: ObjectIdSchema.meta({ description: '模型稳定 ID' })
+  modelId: z.string().meta({ description: '模型稳定 ID' })
 });
 export type GetMyModelQuery = z.infer<typeof GetMyModelQuerySchema>;
 
@@ -128,7 +127,7 @@ export type GetMyModelResponse = z.infer<typeof GetMyModelResponseSchema>;
  * ============================================================================ */
 
 export const ModelCollaboratorListQuerySchema = z.object({
-  modelId: ObjectIdSchema.meta({ description: '模型稳定 ID' })
+  modelId: z.string().meta({ description: '模型稳定 ID' })
 });
 export type ModelCollaboratorListQuery = z.infer<typeof ModelCollaboratorListQuerySchema>;
 export const ModelCollaboratorListResponseSchema = CollaboratorListSchema;
@@ -143,6 +142,6 @@ export const ModelCollaboratorListResponseSchema = CollaboratorListSchema;
 
 export const ModelCollaboratorUpdateBodySchema = z.object({
   collaborators: z.array(CollaboratorItemSchema).meta({ description: '协作者权限列表' }),
-  modelIds: z.array(ObjectIdSchema).min(1).meta({ description: '模型稳定 ID 列表' })
+  modelIds: z.array(z.string()).min(1).meta({ description: '模型稳定 ID 列表' })
 });
 export type ModelCollaboratorUpdateBody = z.infer<typeof ModelCollaboratorUpdateBodySchema>;

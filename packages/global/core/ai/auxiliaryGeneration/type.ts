@@ -25,7 +25,7 @@ export const ChatAgentHelperMetadataSchema = z.object({
   enableSandbox: z.boolean().nullish(),
   modelConfig: z
     .object({
-      modelId: ObjectIdSchema.optional().meta({
+      modelId: z.string().optional().meta({
         description: '辅助生成模型 ID'
       })
     })

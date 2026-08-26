@@ -36,7 +36,8 @@ import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import {
   getEmbeddingModelData,
   getLLMModelData,
-  getVlmModelData
+  getOptionalLLMModelData,
+  getOptionalVlmModelData
 } from '@fastgpt/service/core/ai/model';
 import { computedCollectionChunkSettings } from '@fastgpt/global/core/dataset/training/utils';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
@@ -109,8 +110,8 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       })
     : undefined;
 
-  const agentModelData = agentModelId ? getLLMModelData({ modelId: agentModelId }) : undefined;
-  const vlmModelData = vlmModelId ? getVlmModelData({ modelId: vlmModelId }) : undefined;
+  const agentModelData = getOptionalLLMModelData({ modelId: agentModelId });
+  const vlmModelData = getOptionalVlmModelData({ modelId: vlmModelId });
 
   if (isMove) {
     if (parentId) {

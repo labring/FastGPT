@@ -47,7 +47,7 @@ const UsageItemSchema = z
   .object({
     moduleName: z.string().meta({ example: 'AI 对话', description: '消耗模块名称' }),
     amount: NumSchema.meta({ example: 10.5, description: '该模块消耗的积分' }),
-    modelId: ObjectIdSchema.optional().meta({ description: '模型 ID' }),
+    modelId: z.string().optional().meta({ description: '模型 ID' }),
     model: z.string().optional().meta({
       example: 'gpt-4o-mini',
       description: '模型展示名称；旧记录为历史模型标识',

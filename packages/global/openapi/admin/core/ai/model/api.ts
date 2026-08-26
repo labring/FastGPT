@@ -2,11 +2,10 @@ import {
   SystemModelDataSchema,
   SystemModelDocumentDataSchema
 } from '../../../../../core/ai/model.schema';
-import { ObjectIdSchema } from '../../../../../common/type/mongo';
 import z from 'zod';
 
 export const AdminSystemModelReferenceSchema = z.object({
-  modelId: ObjectIdSchema.meta({ description: '模型稳定 ID' })
+  modelId: z.string().meta({ description: '模型稳定 ID' })
 });
 export type AdminSystemModelReference = z.infer<typeof AdminSystemModelReferenceSchema>;
 
@@ -41,7 +40,7 @@ export const TestAdminSystemModelResponseSchema = z.unknown();
  * ============================================================================ */
 
 export const UpdateSystemModelBodySchema = z.object({
-  modelId: ObjectIdSchema.optional().meta({
+  modelId: z.string().optional().meta({
     description: '待更新的模型稳定 ID；创建模型时不传'
   }),
   modelData: z.record(z.string(), z.unknown()).meta({

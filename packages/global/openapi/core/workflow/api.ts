@@ -149,7 +149,7 @@ export const OptimizeCodeBodySchema = z.object({
     example: '编写一个 JavaScript 函数，将输入数组去重后按升序返回。',
     description: '代码节点的生成或优化要求'
   }),
-  modelId: ObjectIdSchema.meta({
+  modelId: z.string().meta({
     description: '执行代码生成的模型 ID'
   }),
   conversationHistory: z.array(ChatCompletionMessageParamSchema).optional().meta({

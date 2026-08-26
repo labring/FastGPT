@@ -1,7 +1,7 @@
 import {
   getLLMModelData,
   getEmbeddingModelData,
-  getVlmModelData
+  getOptionalVlmModelData
 } from '@fastgpt/service/core/ai/model';
 import { desensitizeSystemModel } from '@fastgpt/service/core/ai/config/utils';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -30,6 +30,10 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> 
   });
 
   const { status, errorMsg } = await getDatasetSyncDatasetStatus(datasetId);
+  const vlmModel = getOptionalVlmModelData({
+    modelId: dataset.vlmModelId,
+    model: dataset.vlmModel
+  });
 
   return GetDatasetDetailResponseSchema.parse({
     ...dataset,
@@ -42,12 +46,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> 
     agentModel: desensitizeSystemModel(
       getLLMModelData({ modelId: dataset.agentModelId, model: dataset.agentModel })
     ),
-    vlmModel:
-      dataset.vlmModelId || dataset.vlmModel
-        ? desensitizeSystemModel(
-            getVlmModelData({ modelId: dataset.vlmModelId, model: dataset.vlmModel })
-          )
-        : undefined,
+    vlmModel: vlmModel ? desensitizeSystemModel(vlmModel) : undefined,
     apiDatasetServer: filterApiDatasetServerPublicData(dataset.apiDatasetServer)
   });
 }

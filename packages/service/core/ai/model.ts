@@ -36,6 +36,18 @@ const getTypedModelData = <T extends SystemModelDataType>(
   return model as T;
 };
 
+/**
+ * 解析允许缺省的模型引用。只有 modelId 与旧 model 同时为空时返回 undefined；一旦提供
+ * 任一引用，仍交给严格 getter 校验模型是否存在、启用且类型正确。
+ */
+const getOptionalModelData = <T extends SystemModelDataType>(
+  reference: ModelReferenceType,
+  getter: (reference: ModelReferenceType) => T
+): T | undefined => {
+  if (!reference.modelId && !reference.model) return;
+  return getter(reference);
+};
+
 export const getLLMModelData = (reference: ModelReferenceType): LLMSystemModelDataType =>
   getTypedModelData(reference, ModelTypeEnum.llm);
 export const getEmbeddingModelData = (
@@ -47,6 +59,16 @@ export const getTTSModelData = (reference: ModelReferenceType): TTSSystemModelDa
   getTypedModelData(reference, ModelTypeEnum.tts);
 export const getSTTModelData = (reference: ModelReferenceType): STTSystemModelDataType =>
   getTypedModelData(reference, ModelTypeEnum.stt);
+
+/** 缺省引用返回 undefined；非空引用仍按 LLM 的严格规则解析。 */
+export const getOptionalLLMModelData = (
+  reference: ModelReferenceType
+): LLMSystemModelDataType | undefined => getOptionalModelData(reference, getLLMModelData);
+/** 缺省引用返回 undefined；非空引用仍按 Embedding 模型的严格规则解析。 */
+export const getOptionalEmbeddingModelData = (
+  reference: ModelReferenceType
+): EmbeddingSystemModelDataType | undefined =>
+  getOptionalModelData(reference, getEmbeddingModelData);
 
 const getDefaultModelData = <T extends SystemModelDataType>(
   model: SystemModelDataType | undefined,
@@ -75,6 +97,11 @@ export const getVlmModelData = (reference: ModelReferenceType): LLMSystemModelDa
   if (!result.config.vision) throw modelNotFound();
   return result;
 };
+
+/** 缺省引用返回 undefined；非空引用仍校验模型已启用且支持视觉。 */
+export const getOptionalVlmModelData = (
+  reference: ModelReferenceType
+): LLMSystemModelDataType | undefined => getOptionalModelData(reference, getVlmModelData);
 
 export const getDefaultChatTitleModelData = (): LLMSystemModelDataType | undefined => {
   const model = global?.systemDefaultModel.chatTitleLLM;

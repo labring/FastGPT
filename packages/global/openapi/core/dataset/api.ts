@@ -41,7 +41,7 @@ export const CreateDatasetBodySchema = z.object({
     example: '/imgs/dataset/avatar.png',
     description: '知识库头像'
   }),
-  vectorModelId: ObjectIdSchema.optional().meta({
+  vectorModelId: z.string().optional().meta({
     description: '向量模型 ID，不传则使用默认向量模型'
   }),
   vectorModel: z.string().optional().meta({
@@ -49,7 +49,7 @@ export const CreateDatasetBodySchema = z.object({
     description: '向量模型标识，不传则使用默认向量模型',
     deprecated: true
   }),
-  agentModelId: ObjectIdSchema.optional().meta({
+  agentModelId: z.string().optional().meta({
     description: '知识库 Agent 模型 ID，不传则使用默认模型'
   }),
   agentModel: z.string().optional().meta({
@@ -57,7 +57,7 @@ export const CreateDatasetBodySchema = z.object({
     description: '知识库 Agent 模型标识，不传则使用默认模型',
     deprecated: true
   }),
-  vlmModelId: ObjectIdSchema.optional().meta({
+  vlmModelId: z.string().optional().meta({
     description: '视觉语言模型 ID'
   }),
   vlmModel: z.string().optional().meta({
@@ -101,9 +101,9 @@ export const CreateDatasetWithFilesBodySchema = z.object({
         example: '68ad85a7463006c963799a05',
         description: '父级文件夹 ID'
       }),
-      vectorModelId: ObjectIdSchema.optional().meta({ description: '向量模型 ID' }),
-      agentModelId: ObjectIdSchema.optional().meta({ description: 'Agent 模型 ID' }),
-      vlmModelId: ObjectIdSchema.optional().meta({ description: '视觉语言模型 ID' })
+      vectorModelId: z.string().optional().meta({ description: '向量模型 ID' }),
+      agentModelId: z.string().optional().meta({ description: 'Agent 模型 ID' }),
+      vlmModelId: z.string().optional().meta({ description: '视觉语言模型 ID' })
     })
     .meta({ description: '知识库参数' }),
   files: z
@@ -368,10 +368,10 @@ export const UpdateDatasetBodySchema = z.object({
     example: '这是一个用于存储产品文档的知识库',
     description: '知识库简介'
   }),
-  agentModelId: ObjectIdSchema.optional().meta({
+  agentModelId: z.string().optional().meta({
     description: '知识库 Agent 模型 ID'
   }),
-  vlmModelId: ObjectIdSchema.optional().meta({
+  vlmModelId: z.string().optional().meta({
     description: '视觉语言模型 ID'
   }),
   websiteConfig: z
@@ -475,7 +475,7 @@ export const SearchDatasetTestBodySchema = z
     usingReRank: z.boolean().optional().meta({
       description: '是否使用重排序'
     }),
-    rerankModelId: ObjectIdSchema.optional().meta({
+    rerankModelId: z.string().optional().meta({
       description: '重排序模型 ID'
     }),
     rerankModel: z.string().optional().meta({
@@ -489,7 +489,7 @@ export const SearchDatasetTestBodySchema = z
     datasetSearchUsingExtensionQuery: z.boolean().optional().meta({
       description: '是否使用问题扩展'
     }),
-    datasetSearchExtensionModelId: ObjectIdSchema.optional().meta({
+    datasetSearchExtensionModelId: z.string().optional().meta({
       description: '问题扩展模型 ID'
     }),
     datasetSearchExtensionModel: z.string().optional().meta({
@@ -503,7 +503,7 @@ export const SearchDatasetTestBodySchema = z
     datasetDeepSearch: z.boolean().optional().meta({
       description: '是否启用深度搜索'
     }),
-    datasetDeepSearchModelId: ObjectIdSchema.optional().meta({
+    datasetDeepSearchModelId: z.string().optional().meta({
       description: '深度搜索模型 ID'
     }),
     datasetDeepSearchModel: z.string().optional().meta({

@@ -79,9 +79,9 @@ export const DatasetSchema = z
     intro: z.string().meta({ description: '简介' }),
     type: z.enum(DatasetTypeEnum).meta({ description: '数据集类型' }),
 
-    vectorModelId: ObjectIdSchema.optional().meta({ description: '向量模型 ID' }),
-    agentModelId: ObjectIdSchema.optional().meta({ description: 'AI 模型 ID' }),
-    vlmModelId: ObjectIdSchema.optional().meta({ description: '视觉语言模型 ID' }),
+    vectorModelId: z.string().optional().meta({ description: '向量模型 ID' }),
+    agentModelId: z.string().optional().meta({ description: 'AI 模型 ID' }),
+    vlmModelId: z.string().optional().meta({ description: '视觉语言模型 ID' }),
     vectorModel: z.string().optional().meta({ description: '向量模型', deprecated: true }),
     agentModel: z.string().optional().meta({ description: 'AI 模型', deprecated: true }),
     vlmModel: z.string().optional().meta({ description: '视觉语言模型', deprecated: true }),

@@ -7,20 +7,19 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { z } from 'zod';
-import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { Types } from '@fastgpt/service/common/mongo';
 
 export type updateDefaultQuery = Record<string, never>;
 
 const UpdateDefaultBodySchema = z.object({
-  [ModelTypeEnum.llm]: ObjectIdSchema.optional(),
-  [ModelTypeEnum.embedding]: ObjectIdSchema.optional(),
-  [ModelTypeEnum.tts]: ObjectIdSchema.optional(),
-  [ModelTypeEnum.stt]: ObjectIdSchema.optional(),
-  [ModelTypeEnum.rerank]: ObjectIdSchema.optional(),
-  datasetTextLLMModelId: ObjectIdSchema.optional(),
-  datasetImageLLMModelId: ObjectIdSchema.optional(),
-  chatTitleLLMModelId: ObjectIdSchema.optional()
+  [ModelTypeEnum.llm]: z.string().optional(),
+  [ModelTypeEnum.embedding]: z.string().optional(),
+  [ModelTypeEnum.tts]: z.string().optional(),
+  [ModelTypeEnum.stt]: z.string().optional(),
+  [ModelTypeEnum.rerank]: z.string().optional(),
+  datasetTextLLMModelId: z.string().optional(),
+  datasetImageLLMModelId: z.string().optional(),
+  chatTitleLLMModelId: z.string().optional()
 });
 
 export type updateDefaultBody = z.infer<typeof UpdateDefaultBodySchema>;

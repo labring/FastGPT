@@ -24,9 +24,9 @@ import {
   getDefaultEmbeddingModelData,
   getDefaultLLMModelData,
   getDefaultVLMModelData,
-  getEmbeddingModelData,
-  getLLMModelData,
-  getVlmModelData
+  getOptionalEmbeddingModelData,
+  getOptionalLLMModelData,
+  getOptionalVlmModelData
 } from '@fastgpt/service/core/ai/model';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -50,15 +50,11 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
   }).body;
   const { parentId, name, avatar, vectorModelId, agentModelId, vlmModelId } = datasetParams;
 
-  const vectorModelData = vectorModelId
-    ? getEmbeddingModelData({ modelId: vectorModelId })
-    : getDefaultEmbeddingModelData();
-  const agentModelData = agentModelId
-    ? getLLMModelData({ modelId: agentModelId })
-    : getDefaultLLMModelData();
-  const vlmModelData = vlmModelId
-    ? getVlmModelData({ modelId: vlmModelId })
-    : getDefaultVLMModelData();
+  const vectorModelData =
+    getOptionalEmbeddingModelData({ modelId: vectorModelId }) ?? getDefaultEmbeddingModelData();
+  const agentModelData =
+    getOptionalLLMModelData({ modelId: agentModelId }) ?? getDefaultLLMModelData();
+  const vlmModelData = getOptionalVlmModelData({ modelId: vlmModelId }) ?? getDefaultVLMModelData();
 
   const { teamId, tmbId, userId } = parentId
     ? await authDataset({

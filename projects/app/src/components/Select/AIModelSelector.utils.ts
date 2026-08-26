@@ -1,11 +1,10 @@
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 
-/** 只有明确使用 modelId 且值为合法 ObjectId 时，才可调用内部单模型接口。 */
+/** 只有明确使用 modelId 且值非空时，才可调用内部单模型接口。 */
 export const getModelSelectorModelId = (
   value: string,
   valueField: 'modelId' | 'model'
-): string | undefined =>
-  valueField === 'modelId' && /^[a-f\d]{24}$/i.test(value) ? value : undefined;
+): string | undefined => (valueField === 'modelId' && value.length > 0 ? value : undefined);
 
 /** 判断模型是否落在调用方传入的兼容白名单中；兼容白名单可同时使用 modelId 或旧 model。 */
 export const isModelAllowedByValues = (
@@ -13,6 +12,33 @@ export const isModelAllowedByValues = (
   allowedValues?: ReadonlySet<string>
 ) =>
   allowedValues === undefined || allowedValues.has(model.modelId) || allowedValues.has(model.model);
+
+/**
+ * 将服务端全量模型收敛成调用方白名单对应的发现结果。Provider 只从命中的模型派生，避免
+ * 分组选择器渲染没有任何候选项的永久 loading 分组。
+ */
+export const createRestrictedModelDiscovery = <
+  T extends Pick<MyModelItemType, 'modelId' | 'model' | 'provider'>
+>({
+  models,
+  allowedValues
+}: {
+  models: T[];
+  allowedValues: ReadonlySet<string>;
+}) => {
+  const modelIds = new Set<string>();
+  const list = models.filter((model) => {
+    if (!isModelAllowedByValues(model, allowedValues) || modelIds.has(model.modelId)) return false;
+    modelIds.add(model.modelId);
+    return true;
+  });
+
+  return {
+    list,
+    total: list.length,
+    providers: Array.from(new Set(list.map((model) => model.provider)))
+  };
+};
 
 /**
  * 根据发现请求和当前值确定分组模式的 Provider。

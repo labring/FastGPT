@@ -70,7 +70,7 @@ const OpenAPIAppQGConfigSchema = z.object({
   open: BoolSchema.meta({
     description: '是否开启问题引导'
   }),
-  modelId: ObjectIdSchema.optional().meta({
+  modelId: z.string().optional().meta({
     description: '生成问题引导时使用的模型 ID'
   }),
   model: z.string().optional().meta({
@@ -82,8 +82,9 @@ const OpenAPIAppQGConfigSchema = z.object({
   })
 });
 
-export const AppQuestionGuideInputSchema = OpenAPIAppQGConfigSchema.omit({ model: true });
-export const AppTTSConfigInputSchema = AppTTSConfigTypeSchema.omit({ model: true });
+// 上线回填完成前，客户端仍可能携带旧 model；接口接收后由业务层按 modelId 优先解析。
+export const AppQuestionGuideInputSchema = OpenAPIAppQGConfigSchema.strict();
+export const AppTTSConfigInputSchema = AppTTSConfigTypeSchema.strict();
 
 const OpenAPIVariableItemSchema = VariableItemTypeSchema.omit({
   list: true,
@@ -147,7 +148,7 @@ export const OpenAPIAppChatConfigSchema = AppChatConfigTypeSchema.extend({
   description: '应用对话运行配置，例如欢迎语、变量、语音和定时触发配置'
 });
 
-/** 普通客户端写入对话配置时只接收稳定模型 ID。 */
+/** 普通客户端新写入稳定 modelId，同时在迁移期接收存量 model 配置。 */
 export const AppChatConfigInputSchema = OpenAPIAppChatConfigSchema.extend({
   questionGuide: AppQuestionGuideInputSchema.optional().meta({
     description: '问题引导配置'

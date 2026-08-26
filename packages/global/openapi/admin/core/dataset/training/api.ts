@@ -10,7 +10,7 @@ export const AdminLlmParagraphBodySchema = z.object({
     example: 'FastGPT 是一个 AI Agent 构建平台。它支持可视化工作流编排。',
     description: '需要补充段落标题的原始长文本'
   }),
-  modelId: ObjectIdSchema.meta({
+  modelId: z.string().meta({
     example: '68ad85a7463006c963799a05',
     description: '段落分析模型 ID'
   }),

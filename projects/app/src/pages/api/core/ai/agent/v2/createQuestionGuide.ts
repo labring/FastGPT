@@ -69,8 +69,11 @@ async function handler(
   const messages = chats2GPTMessages({ messages: histories, reserveId: false });
 
   const qgModelData = (() => {
-    if (inputQuestionGuide?.modelId) {
-      return getLLMModelData({ modelId: inputQuestionGuide.modelId });
+    if (inputQuestionGuide?.modelId || inputQuestionGuide?.model) {
+      return getLLMModelData({
+        modelId: inputQuestionGuide.modelId,
+        model: inputQuestionGuide.model
+      });
     }
     if (persistedQuestionGuide?.modelId || persistedQuestionGuide?.model) {
       return getLLMModelData({

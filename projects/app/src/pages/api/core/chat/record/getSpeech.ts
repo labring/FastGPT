@@ -23,8 +23,8 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       bodySchema: GetChatSpeechBodySchema
     }).body;
 
-    if (!ttsConfig.modelId || !ttsConfig.voice) {
-      throw new Error('modelId or voice not found');
+    if ((!ttsConfig.modelId && !ttsConfig.model) || !ttsConfig.voice) {
+      throw new Error('model reference or voice not found');
     }
 
     const { teamId, tmbId, authType } = await authChatTargetCrud({
@@ -36,7 +36,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       outLinkAuthData
     });
 
-    const ttsModel = getTTSModelData({ modelId: ttsConfig.modelId });
+    const ttsModel = getTTSModelData({ modelId: ttsConfig.modelId, model: ttsConfig.model });
     const voiceData = ttsModel.config.voices.find((item) => item.value === ttsConfig.voice);
 
     if (!voiceData) {

@@ -3,7 +3,6 @@ const { Schema } = connectionMongo;
 import type { UsageItemSchemaType } from '@fastgpt/global/support/wallet/usage/type';
 import { UsageCollectionName, UsageItemCollectionName } from './constants';
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
-import { SystemModelCollectionName } from '../../../core/ai/config/constants';
 
 const UsageItemSchema = new Schema({
   teamId: {
@@ -39,8 +38,7 @@ const UsageItemSchema = new Schema({
   pages: Number,
   count: Number,
   modelId: {
-    type: Schema.Types.ObjectId,
-    ref: SystemModelCollectionName
+    type: String
   },
   /** @deprecated 历史 usage 保留 model，不进行批量回填。 */
   model: String

@@ -14,7 +14,6 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { userCollectionName } from '../../support/user/schema';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
-import { SystemModelCollectionName } from '../ai/config/constants';
 
 export const DatasetCollectionName = 'datasets';
 
@@ -100,20 +99,17 @@ const DatasetSchema = new Schema({
     type: String
   },
   vectorModelId: {
-    type: Schema.Types.ObjectId,
-    ref: SystemModelCollectionName
+    type: String
   },
   agentModel: {
     type: String
   },
   agentModelId: {
-    type: Schema.Types.ObjectId,
-    ref: SystemModelCollectionName
+    type: String
   },
   vlmModel: String,
   vlmModelId: {
-    type: Schema.Types.ObjectId,
-    ref: SystemModelCollectionName
+    type: String
   },
   intro: {
     type: String,

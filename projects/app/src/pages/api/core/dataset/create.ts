@@ -17,9 +17,9 @@ import {
   getDefaultEmbeddingModelData,
   getDefaultLLMModelData,
   getDefaultVLMModelData,
-  getEmbeddingModelData,
-  getLLMModelData,
-  getVlmModelData
+  getOptionalEmbeddingModelData,
+  getOptionalLLMModelData,
+  getOptionalVlmModelData
 } from '@fastgpt/service/core/ai/model';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -67,20 +67,13 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
 
   // check model valid
   const vectorModelStore =
-    vectorModelId || vectorModel
-      ? getEmbeddingModelData({ modelId: vectorModelId, model: vectorModel })
-      : getDefaultEmbeddingModelData();
+    getOptionalEmbeddingModelData({ modelId: vectorModelId, model: vectorModel }) ??
+    getDefaultEmbeddingModelData();
   const agentModelStore =
-    agentModelId || agentModel
-      ? getLLMModelData({ modelId: agentModelId, model: agentModel })
-      : getDefaultLLMModelData();
+    getOptionalLLMModelData({ modelId: agentModelId, model: agentModel }) ??
+    getDefaultLLMModelData();
   const vlmModelStore =
-    vlmModelId || vlmModel
-      ? getVlmModelData({
-          modelId: vlmModelId,
-          model: vlmModel
-        })
-      : getDefaultVLMModelData();
+    getOptionalVlmModelData({ modelId: vlmModelId, model: vlmModel }) ?? getDefaultVLMModelData();
 
   // check limit
   await checkTeamDatasetLimit(teamId);

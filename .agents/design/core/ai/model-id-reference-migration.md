@@ -64,7 +64,7 @@
 核心约束：
 
 1. `modelId` 一旦生成，不因模型改名、配置更新、插件重载而变化。
-2. `modelId` 字段只允许写入有效 ObjectId 字符串，不能写入未解析的 `model/name`。
+2. `modelId` 字段只允许写入非空稳定 ID 字符串，不能写入未解析的 `model/name`。
 3. 显式传入无效模型时必须报不存在或不可用，不能回退默认模型。
 4. 只有参数确实缺省、且业务定义允许默认值时，才显式调用默认模型 getter。
 5. provider 请求仍发送 `modelData.model`；不能把 Mongo ObjectId 直接发给 OpenAI 兼容接口。
@@ -310,7 +310,7 @@ model:<model>            -> modelData
 ```ts
 const ModelReferenceSchema = z
   .object({
-    modelId: ObjectIdSchema.optional(),
+    modelId: z.string().optional(),
     model: z.string().min(1).optional().meta({
       deprecated: true,
       description: '旧版系统模型 provider model 标识'
@@ -367,7 +367,7 @@ getSTTModelData({ modelId, model }: ModelReference): STTModelData
 
 额外约束：
 
-- 输入是 ObjectId 形态但不存在时，直接判不存在，不再把它当 `model` 名称查找。
+- 输入的 `modelId` 不存在时，直接判不存在，不再把它当 `model` 名称查找。
 - 兼容分支只能返回 `isSystem: true` 的模型。
 - 历史日志和管理页面若需要读取已停用模型，使用不承担执行校验的 `findModelData(ref)`，不放宽执行请求使用的类型化 getter。
 - `getDefault*ModelData()` 与 `get*ModelData(ref)` 分开，后者永远不静默回退默认值。
@@ -462,7 +462,7 @@ const displayModel = usage.model ?? modelMap.get(usage.modelId)?.model ?? i18nT(
 
 1. 历史记录存在 `model` 时原样展示，不查询模型、不转换为 `name`。
 2. 新记录存在 `modelId` 时展示当前模型文档的 provider `model`，不是展示名 `name`。
-3. `modelId` 无法解析时统一展示“模型已下架”，不暴露 ObjectId。
+3. `modelId` 无法解析时统一展示“模型已下架”，不暴露内部存储细节。
 4. “模型已下架”必须补齐中、英、日多语言。
 5. Usage 的积分、token 和 amount 在写入时已经确定，列表解析失败不能影响历史计费数据。
 
@@ -600,7 +600,7 @@ export const GetMyModelsResponseSchema =
 - 已标记 `SystemOpenApiTagMap` 的公开 Dataset API 直接在原 schema 新增 `*ModelId`；旧 `*Model` 字段继续保留并标记 deprecated。只标记 `DevApiTagsMap` 的 Evaluation、辅助 AI 和其他站内 API 只接收 `modelId`。
 - `getMyModels` 的分页 query、脱敏 item 和分页 response 在 `packages/global/openapi` 定义并注册现有路由；不继续把 contract 留在 Next.js route 文件中。
 - 鉴权的 `getMyModel` 与公开的 `getSystemModels` 分别使用独立最小 Schema，并注册 OpenAPI；不能为了复用直接返回管理员模型详情 DTO。
-- 新增或修改的 API 在边界使用 `parseApiInput`，ObjectId 字段复用 `ObjectIdSchema`。
+- 新增或修改的 API 在边界使用 `parseApiInput`；实体自身的 ObjectId 字段复用 `ObjectIdSchema`，模型引用字段统一使用 `z.string()`。
 - 模型列表响应的通用业务结构放在 `packages/global/core/ai`，OpenAPI 只组合路由请求和响应。
 - FastGPT Pro 至少需要同步 Evaluation 和模型协作者调用方；Pro 的页面布局、渠道页和统计页不随本 PR 进入。
 - 外部 OpenAI 兼容接口继续声明 `model`，不要为了内部 modelId 改坏标准协议。
@@ -645,7 +645,7 @@ export const GetMyModelsResponseSchema =
 - 根据模型 `type` 使用白名单把类型特有字段写入 `config`，未知字段不自动搬运。
 - 新代码只写 canonical 顶层字段和 `config`；不再写 `metadata` 或顶层类型特有字段。
 - 使用 `$set` 增量补 canonical 字段，不在本轮 `$unset` legacy 字段。
-- canonical 已是有效 ObjectId 时不覆盖，保证幂等。
+- canonical 已是有效字符串 `modelId` 时不覆盖，保证幂等。
 - canonical 与 legacy 同时存在且解析到不同模型时记 conflict，不自动覆盖。
 - 旧值无法解析时不写 `*ModelId`，输出 collection、documentId、field、value 供人工处理。
 - 所有集合的回填写入都对读取过的 legacy 源字段和待写目标字段做快照 CAS；Workflow 整体数组按读取快照匹配。并发保存导致的未命中记为 conflict，可通过重跑收敛，不能覆盖用户刚保存的数据。
@@ -688,7 +688,7 @@ export const GetMyModelsResponseSchema =
 - Index manager：旧 `model_1` 被精确识别为 deprecated，新 partial unique index 被保留。
 - 物化：首次生成 ID、旧同名文档原地接管且 ID 不变、重复同步 ID 不变、多实例重复键收敛；启动插件失败会阻止启动且不修改 DB，重载插件失败会保留上一版 active 模型与权限缓存。
 - Model reference schema：只传 modelId、只传 deprecated model、两者同时存在时只认 modelId、无效 modelId 加有效 model 仍报错、两者缺失分别覆盖。
-- Getter：ID 命中、旧系统 model 命中、私有/未知名称不命中、未知 ObjectId 不回退，所有未命中统一抛“模型不存在”。
+- Getter：ID 命中、旧系统 model 命中、私有/未知名称不命中、未知 `modelId` 不回退，所有未命中统一抛“模型不存在”。
 - Request types：LLM、Embedding、Rerank、TTS、STT 下游只接受对应 modelData，字符串输入在类型检查阶段失败。
 - Client model formatter：敏感字段被删除，默认模型 ID 和 capability 正确。
 - 可用模型分页：先权限过滤再分页、稳定排序、pageSize 上限、`modelType` 下 Provider 聚合、未传 provider 返回跨 Provider 总量、显式 provider 过滤、无效 provider 返回空结果；模型变更清理全部成员缓存、权限变更清理对应团队缓存分别覆盖。

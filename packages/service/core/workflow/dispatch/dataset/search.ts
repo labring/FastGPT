@@ -5,8 +5,8 @@ import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/ru
 import {
   getEmbeddingModelData,
   getLLMModelData,
-  getRerankModelData,
-  getVlmModelData
+  getOptionalVlmModelData,
+  getRerankModelData
 } from '../../../ai/model';
 import { deepRagSearch, defaultSearchDatasetData } from '../../../dataset/search';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -146,10 +146,10 @@ export async function dispatchDatasetSearch(
       modelId: dataset?.vectorModelId,
       model: dataset?.vectorModel
     });
-    const vlmModel =
-      dataset?.vlmModelId || dataset?.vlmModel
-        ? getVlmModelData({ modelId: dataset?.vlmModelId, model: dataset?.vlmModel })
-        : undefined;
+    const vlmModel = getOptionalVlmModelData({
+      modelId: dataset?.vlmModelId,
+      model: dataset?.vlmModel
+    });
     // Get Rerank Model
     const rerankModelData = usingReRank
       ? getRerankModelData({ modelId: rerankModelId, model: rerankModel })

@@ -1,4 +1,5 @@
 import {
+  createRestrictedModelDiscovery,
   getModelSelectorModelId,
   isModelAllowedByValues,
   resolveModelSelectorProvider
@@ -22,11 +23,12 @@ describe('AIModelSelector utils', () => {
     expect(isModelAllowedByValues(model, new Set(['other']))).toBe(false);
   });
 
-  it('only returns valid ids for modelId-valued selectors', () => {
+  it('only returns non-empty values for modelId-valued selectors', () => {
     expect(getModelSelectorModelId('68ad85a7463006c963799a07', 'modelId')).toBe(
       '68ad85a7463006c963799a07'
     );
-    expect(getModelSelectorModelId('gpt-4o', 'modelId')).toBeUndefined();
+    expect(getModelSelectorModelId('gpt-4o', 'modelId')).toBe('gpt-4o');
+    expect(getModelSelectorModelId('', 'modelId')).toBeUndefined();
     expect(getModelSelectorModelId('68ad85a7463006c963799a07', 'model')).toBeUndefined();
   });
 
@@ -70,5 +72,22 @@ describe('AIModelSelector utils', () => {
         currentProvider: 'removed-provider'
       })
     ).toBe('openai');
+  });
+
+  it('derives grouped providers only from whitelist-matched models', () => {
+    const discovery = createRestrictedModelDiscovery({
+      models: [
+        { modelId: 'openai-1', model: 'gpt-4o', provider: 'openai' },
+        { modelId: 'anthropic-1', model: 'claude-3', provider: 'anthropic' },
+        { modelId: 'anthropic-1', model: 'claude-3', provider: 'anthropic' }
+      ],
+      allowedValues: new Set(['anthropic-1'])
+    });
+
+    expect(discovery).toEqual({
+      list: [{ modelId: 'anthropic-1', model: 'claude-3', provider: 'anthropic' }],
+      total: 1,
+      providers: ['anthropic']
+    });
   });
 });

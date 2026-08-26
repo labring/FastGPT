@@ -116,12 +116,12 @@ describe('runBackfillModelReferences', () => {
     await expect(MongoDataset.collection.findOne({ name: 'Dataset' })).resolves.toMatchObject({
       vectorModel: 'gpt-model',
       agentModel: 'gpt-model',
-      vectorModelId: modelInsert.insertedId,
-      agentModelId: modelInsert.insertedId
+      vectorModelId: String(modelInsert.insertedId),
+      agentModelId: String(modelInsert.insertedId)
     });
     await expect(MongoEvaluation.collection.findOne({})).resolves.toMatchObject({
       evalModel: 'gpt-model',
-      evalModelId: modelInsert.insertedId
+      evalModelId: String(modelInsert.insertedId)
     });
     await expect(
       MongoResourcePermission.collection.findOne({ resourceType: PerResourceTypeEnum.model })

@@ -16,6 +16,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 import MultimodalTag from '@/components/core/ai/MultimodelTag';
 import {
+  createRestrictedModelDiscovery,
   getModelSelectorModelId,
   isModelAllowedByValues,
   resolveModelSelectorProvider
@@ -121,11 +122,25 @@ const AIModelSelectorInner = ({
   } = useRequest(
     async (requestModelType: ModelTypeEnum) => {
       try {
-        const data = await getMyModels({
+        const discoveryPageSize = allowedLegacyValues === undefined ? PAGE_SIZE : 100;
+        let data = await getMyModels({
           modelType: requestModelType,
           pageNum: 1,
-          pageSize: PAGE_SIZE
+          pageSize: discoveryPageSize
         });
+
+        if (allowedLegacyValues !== undefined) {
+          const models = [...data.list];
+          for (let pageNum = 2; (pageNum - 1) * discoveryPageSize < data.total; pageNum += 1) {
+            const page = await getMyModels({
+              modelType: requestModelType,
+              pageNum,
+              pageSize: discoveryPageSize
+            });
+            models.push(...page.list);
+          }
+          data = createRestrictedModelDiscovery({ models, allowedValues: allowedLegacyValues });
+        }
         let legacySelectedModel: MyModelItemType | undefined;
 
         // 历史 model 值只在展开选择器后从可用模型列表恢复，不扩大内部单模型 API 的兼容面。
@@ -134,7 +149,11 @@ const AIModelSelectorInner = ({
             (model) => model.model === currentValue || model.modelId === currentValue
           );
 
-          if (!legacySelectedModel && data.total > data.list.length) {
+          if (
+            allowedLegacyValues === undefined &&
+            !legacySelectedModel &&
+            data.total > data.list.length
+          ) {
             const recoveryPageSize = 100;
             for (
               let pageNum = 1;
@@ -215,7 +234,14 @@ const AIModelSelectorInner = ({
   }, [discovery, selectedModelForType?.provider]);
 
   useEffect(() => {
-    if (!discovery || discovery.total <= PAGE_SIZE || !provider) return;
+    if (
+      !discovery ||
+      allowedLegacyValues !== undefined ||
+      discovery.total <= PAGE_SIZE ||
+      !provider
+    ) {
+      return;
+    }
     let cancelled = false;
     // 此状态覆盖当前 effect 启动的异步请求生命周期。
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -243,7 +269,7 @@ const AIModelSelectorInner = ({
     return () => {
       cancelled = true;
     };
-  }, [discovery, filterLegacyList, modelType, provider, providerPage]);
+  }, [allowedLegacyValues, discovery, filterLegacyList, modelType, provider, providerPage]);
 
   const getValue = useCallback(
     (model: MyModelItemType) => (valueField === 'modelId' ? model.modelId : model.model),
@@ -271,7 +297,7 @@ const AIModelSelectorInner = ({
   ) : undefined;
 
   const oneRowModels = useMemo(() => {
-    const models = filterLegacyList(discovery?.list ?? []);
+    const models = [...filterLegacyList(discovery?.list ?? [])];
     if (
       selectedModelForType &&
       !models.some((model) => model.modelId === selectedModelForType.modelId)
@@ -285,20 +311,23 @@ const AIModelSelectorInner = ({
   const selectorList: ListItemType[] = isGrouped
     ? discovery.providers.map((providerId) => {
         const providerData = getModelProvider(providerId, i18n.language);
-        const children =
-          provider === providerId
-            ? providerModels.map((model) => ({
-                value: getValue(model),
-                label: <ModelLabel model={model} avatarSize={avatarSize} />
-              }))
-            : [];
-        if (provider === providerId && providerHasMore) {
+        const children = (
+          allowedLegacyValues !== undefined
+            ? discovery.list.filter((model) => model.provider === providerId)
+            : provider === providerId
+              ? providerModels
+              : []
+        ).map((model) => ({
+          value: getValue(model),
+          label: <ModelLabel model={model} avatarSize={avatarSize} />
+        }));
+        if (allowedLegacyValues === undefined && provider === providerId && providerHasMore) {
           children.push({
             value: LOAD_MORE_VALUE,
             label: <Box color={'primary.600'}>{t('common:Load more')}</Box>
           });
         }
-        if (children.length === 0) {
+        if (allowedLegacyValues === undefined && children.length === 0) {
           children.push({ value: LOADING_VALUE, label: <Box>{t('common:model_loading')}</Box> });
         }
         return {

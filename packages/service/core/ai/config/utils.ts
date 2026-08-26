@@ -72,6 +72,15 @@ export const getPluginSystemModelDocuments = async (): Promise<SystemModelDocume
 export const loadSystemModels = async (init = false, language = 'en') => {
   if (!init && global.systemModelList) return;
 
+  const getPermissionCacheSignature = (models: SystemModelDataType[]) =>
+    models
+      .map((model) => `${model.modelId}:${model.model}`)
+      .sort()
+      .join('\n');
+  const previousPermissionCacheSignature = global.systemActiveModelList
+    ? getPermissionCacheSignature(global.systemActiveModelList)
+    : undefined;
+
   try {
     await preloadModelProviders();
   } catch (error) {
@@ -243,6 +252,15 @@ export const loadSystemModels = async (init = false, language = 'en') => {
       }
     }
 
+    const nextPermissionCacheSignature = getPermissionCacheSignature(_systemActiveModelList);
+    if (
+      previousPermissionCacheSignature === undefined ||
+      previousPermissionCacheSignature !== nextPermissionCacheSignature
+    ) {
+      // 只有会改变成员可用模型 ID 的变更才失效缓存，避免五分钟定时刷新退化成固定清缓存。
+      await clearAllMyModelsCache();
+    }
+
     // Set global value
     {
       global.systemModelList = _systemModelList;
@@ -304,11 +322,9 @@ export const watchSystemModelUpdate = () => {
 export const updatedReloadSystemModel = async () => {
   // 1. 更新模型（所有节点都会触发）
   await loadSystemModels(true);
-  // 2. 模型可用状态变化会影响所有团队，统一失效成员模型列表缓存
-  await clearAllMyModelsCache();
-  // 3. 更新缓存（仅主节点触发）
+  // 2. 更新缓存（仅主节点触发）；成员模型缓存由 loadSystemModels 按 active 签名变化失效。
   await updateFastGPTConfigBuffer();
-  // 4. 延迟1秒，等待其他节点刷新
+  // 3. 延迟1秒，等待其他节点刷新
   await delay(1000);
 };
 export const cronRefreshModels = async () => {

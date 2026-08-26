@@ -577,20 +577,31 @@ const workflowModelKeyMappings = [
 /**
  * 在 Workflow 写入边界统一格式化模型引用。
  *
+ * 对话配置中的旧 model 只在成功解析为 modelId 后删除，避免临时缺失模型造成引用丢失。
  * 静态旧 model 会将 key 改为 modelId，并将值转换为对应 ID；无法解析时
  * 保留 modelId key 并清空值，但不抛错。引用类型只改 key，保留引用值。若已有
  * modelId input，则保留其值并删除对应旧 model input。该函数不承担模型权限判断。
  */
 export const formatModels = ({
   modules,
+  chatConfig,
   models = []
 }: {
   modules: AppSchemaType['modules'];
+  chatConfig?: AppSchemaType['chatConfig'];
   models?: Array<{ modelId: string; model: string }>;
 }) => {
+  const modelIdByModel = new Map(models.map((model) => [model.model, model.modelId]));
+  const formatChatModelReference = (config?: { modelId?: string; model?: string }) => {
+    if (!config) return;
+    if (!config.modelId && config.model) config.modelId = modelIdByModel.get(config.model);
+    if (config.modelId) delete config.model;
+  };
+  formatChatModelReference(chatConfig?.questionGuide);
+  formatChatModelReference(chatConfig?.ttsConfig);
+
   if (!modules) return modules;
 
-  const modelIdByModel = new Map(models.map((model) => [model.model, model.modelId]));
   const isReferenceInput = (input: FlowNodeInputItemType) =>
     getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.reference ||
     Array.isArray(input.value);

@@ -73,6 +73,43 @@ describe('loadSystemModels legacy takeover', () => {
     expect(reloadMocks.delay).toHaveBeenCalledWith(1000);
   });
 
+  it('invalidates member caches only when active model identities change', async () => {
+    const pluginModel = {
+      type: ModelTypeEnum.llm,
+      provider: 'OpenAI',
+      model: 'plugin-llm',
+      name: 'Plugin LLM',
+      isActive: true,
+      maxContext: 128000,
+      maxTokens: 32000,
+      quoteMaxToken: 100000
+    };
+    pluginMocks.listModels.mockResolvedValue([pluginModel]);
+
+    await loadSystemModels(true);
+    expect(reloadMocks.clearAllMyModelsCache).toHaveBeenCalledOnce();
+
+    reloadMocks.clearAllMyModelsCache.mockClear();
+    await loadSystemModels(true);
+    expect(reloadMocks.clearAllMyModelsCache).not.toHaveBeenCalled();
+
+    pluginMocks.listModels.mockResolvedValue([
+      pluginModel,
+      {
+        type: ModelTypeEnum.llm,
+        provider: 'OpenAI',
+        model: 'new-plugin-llm',
+        name: 'New Plugin LLM',
+        isActive: true,
+        maxContext: 128000,
+        maxTokens: 32000,
+        quoteMaxToken: 100000
+      }
+    ]);
+    await loadSystemModels(true);
+    expect(reloadMocks.clearAllMyModelsCache).toHaveBeenCalledOnce();
+  });
+
   it('repairs a legacy plugin model in place before materializing missing models', async () => {
     const legacyModel = await MongoSystemModel.collection.insertOne({
       model: 'plugin-llm',

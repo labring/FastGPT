@@ -1358,6 +1358,43 @@ describe('formatModels', () => {
     expect(result).toBeUndefined();
   });
 
+  it('converts legacy chat config models and removes deprecated fields', () => {
+    const chatConfig = {
+      questionGuide: { open: true, model: 'gpt-4' },
+      ttsConfig: {
+        type: 'model' as const,
+        modelId: 'existing-tts-id',
+        model: 'legacy-tts',
+        voice: 'alloy'
+      }
+    };
+
+    formatModels({ modules: [], chatConfig, models });
+
+    expect(chatConfig.questionGuide).toEqual({
+      open: true,
+      modelId: '68ad85a7463006c963799a05'
+    });
+    expect(chatConfig.ttsConfig).toEqual({
+      type: 'model',
+      modelId: 'existing-tts-id',
+      voice: 'alloy'
+    });
+  });
+
+  it('preserves an unresolved legacy chat config model reference', () => {
+    const chatConfig = {
+      questionGuide: { open: true, model: 'temporarily-unavailable-model' }
+    };
+
+    formatModels({ modules: [], chatConfig, models: [] });
+
+    expect(chatConfig.questionGuide).toEqual({
+      open: true,
+      model: 'temporarily-unavailable-model'
+    });
+  });
+
   it('replaces every static legacy workflow model key and value with modelId', () => {
     const modules = [
       {
