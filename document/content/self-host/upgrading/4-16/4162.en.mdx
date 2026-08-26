@@ -9,6 +9,7 @@ upgradeTags:
 
 1. Added Korean language support.
 2. Added an overwrite warning when switching Skill versions.
+3. Added account deletion.
 
 ## ⚙️ Improvements
 
@@ -17,11 +18,15 @@ upgradeTags:
 3. Improved the reliability of S3 chunked uploads on unstable networks.
 4. Standardized file upload error messages.
 5. Improved Skill saving by extracting `name` and `description` as structured fields and allowing `description` to be empty.
+6. Improved repeated tool call anomaly detection. FastGPT now treats more than five consecutive calls to the same tool with the same arguments as a model hallucination.
 
 ## 🐛 Fixes
 
 1. Fixed avatar display issues in the admin Template Marketplace.
 2. Fixed an issue that prevented a system tool from being reinstalled after it was uninstalled.
+3. Fixed an issue where backup CSV files exported from empty datasets or datasets with a single chunk could not be imported again.
+4. Added worksheet range, merged cell, and Worker memory limits to XLSX parsing to prevent excessive memory usage caused by malformed files.
+5. Fixed compatibility issues when historical chat settings are missing favorite tags or historical member names are empty.
 
 ## 🛠️ Code Improvements
 
