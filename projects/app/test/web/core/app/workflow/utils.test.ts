@@ -20,7 +20,8 @@ import {
   getNodeAllSource,
   filterWorkflowNodeOutputsByType,
   filterSelectableWorkflowNodeOutputs,
-  workflowReferenceValueIsSelectable
+  workflowReferenceValueIsSelectable,
+  getNodeSelfReferenceToolInputs
 } from '@/web/core/workflow/utils';
 import {
   checkWorkflowNodeIssues,
@@ -2545,6 +2546,96 @@ describe('workflowReferenceValueIsSelectable', () => {
         valueType: WorkflowIOValueTypeEnum.string
       })
     ).toBe(false);
+  });
+
+  it('returns true when single reference points to a source node tool input', () => {
+    expect(
+      workflowReferenceValueIsSelectable({
+        value: ['source', 'arg1'],
+        sourceNodes: [
+          {
+            nodeId: 'source',
+            outputs: [],
+            toolInputs: [
+              {
+                key: 'arg1',
+                renderTypeList: [FlowNodeInputTypeEnum.addInputParam],
+                valueType: WorkflowIOValueTypeEnum.string
+              }
+            ]
+          }
+        ],
+        valueType: WorkflowIOValueTypeEnum.any
+      })
+    ).toBe(true);
+  });
+
+  it('returns false when referenced tool input no longer exists', () => {
+    expect(
+      workflowReferenceValueIsSelectable({
+        value: ['source', 'deletedArg'],
+        sourceNodes: [
+          {
+            nodeId: 'source',
+            outputs: [],
+            toolInputs: [
+              {
+                key: 'arg1',
+                renderTypeList: [FlowNodeInputTypeEnum.addInputParam],
+                valueType: WorkflowIOValueTypeEnum.string
+              }
+            ]
+          }
+        ],
+        valueType: WorkflowIOValueTypeEnum.any
+      })
+    ).toBe(false);
+  });
+});
+
+describe('getNodeSelfReferenceToolInputs', () => {
+  const makeCodeNode = (inputs: FlowNodeItemType['inputs']): FlowNodeItemType =>
+    ({
+      nodeId: 'codeNode',
+      name: 'Code',
+      flowNodeType: FlowNodeTypeEnum.code,
+      inputs,
+      outputs: []
+    }) as FlowNodeItemType;
+
+  it('returns only agent generated editable inputs for code nodes', () => {
+    const node = makeCodeNode([
+      {
+        key: 'arg1',
+        canEdit: true,
+        defaultToAgentGenerated: true,
+        renderTypeList: [FlowNodeInputTypeEnum.addInputParam],
+        valueType: WorkflowIOValueTypeEnum.string
+      },
+      {
+        key: 'customInput',
+        canEdit: true,
+        renderTypeList: [FlowNodeInputTypeEnum.reference],
+        valueType: WorkflowIOValueTypeEnum.any
+      }
+    ]);
+
+    expect(getNodeSelfReferenceToolInputs(node).map((input) => input.key)).toEqual(['arg1']);
+  });
+
+  it('returns empty for non code nodes', () => {
+    const node = makeCodeNode([
+      {
+        key: 'arg1',
+        canEdit: true,
+        defaultToAgentGenerated: true,
+        renderTypeList: [FlowNodeInputTypeEnum.addInputParam],
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ]);
+    node.flowNodeType = FlowNodeTypeEnum.chatNode;
+
+    expect(getNodeSelfReferenceToolInputs(node)).toEqual([]);
   });
 });
 

@@ -2,7 +2,11 @@ import React, { useCallback, useEffect, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Flex, Box, type ButtonProps, Grid } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { getNodeAllSource, filterSelectableWorkflowNodeOutputs } from '@/web/core/workflow/utils';
+import {
+  getNodeAllSource,
+  filterSelectableWorkflowNodeOutputs,
+  getNodeSelfReferenceToolInputs
+} from '@/web/core/workflow/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type {
@@ -12,10 +16,7 @@ import type {
 } from '@fastgpt/global/core/workflow/type/io';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
-import {
-  FlowNodeTypeEnum,
-  isNestedParentNodeType
-} from '@fastgpt/global/core/workflow/node/constant';
+import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { WorkflowBufferDataContext } from '../../../../../context/workflowInitContext';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
@@ -115,13 +116,10 @@ export const useReference = ({
       .filter((item) => item.children.length > 0);
 
     const currentNode = getNodeById(nodeId);
-    if (currentNode?.flowNodeType !== FlowNodeTypeEnum.code) return list;
+    if (!currentNode) return list;
 
-    const toolInputs = currentNode.inputs.filter(
-      (input) =>
-        input.canEdit === true &&
-        input.defaultToAgentGenerated === true &&
-        input.key !== excludeInputKey
+    const toolInputs = getNodeSelfReferenceToolInputs(currentNode).filter(
+      (input) => input.key !== excludeInputKey
     );
     if (toolInputs.length === 0) return list;
 
