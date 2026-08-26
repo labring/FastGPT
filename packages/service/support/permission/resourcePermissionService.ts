@@ -186,8 +186,6 @@ export const syncResourceTreePermissions = async ({
   newParentCollaborators: CollaboratorItemType[];
   session: ClientSession;
 }) => {
-  console.time('syncResourceTreePermissions');
-
   const oldInheritedCollaborators = toInheritedCollaborators(oldParentCollaborators);
   const newInheritedCollaborators = toInheritedCollaborators(newParentCollaborators);
   const parentCollaboratorsById = new Map(
@@ -226,8 +224,6 @@ export const syncResourceTreePermissions = async ({
   );
 
   if (affectedCollaborators.length === 0) {
-    console.timeLog('syncResourceTreePermissions', 'no inherited permission changes');
-    console.timeEnd('syncResourceTreePermissions');
     return;
   }
 
@@ -254,15 +250,8 @@ export const syncResourceTreePermissions = async ({
   }
 
   if (allDescendantIds.length === 0) {
-    console.timeLog('syncResourceTreePermissions', 'no inheriting descendants');
-    console.timeEnd('syncResourceTreePermissions');
     return;
   }
-  console.timeLog(
-    'syncResourceTreePermissions',
-    'descendantNodes fetched',
-    allDescendantIds.length
-  );
 
   const permissionRows = await resourcePermissionRepo.findByResourceIdsAndCollaborators({
     teamId: resource.teamId,
@@ -272,7 +261,6 @@ export const syncResourceTreePermissions = async ({
     session
   });
 
-  console.timeLog('syncResourceTreePermissions', 'permissionRows fetched', permissionRows.length);
   const permissionsByResource = new Map<string, CollaboratorItemType[]>();
   for (const row of permissionRows) {
     const rows = permissionsByResource.get(String(row.resourceId)) ?? [];
@@ -361,11 +349,6 @@ export const syncResourceTreePermissions = async ({
     }
   }
 
-  console.timeLog(
-    'syncResourceTreePermissions',
-    'permissionPatches collected',
-    permissionPatches.length
-  );
   if (permissionPatches.length > 0) {
     await resourcePermissionRepo.patchResources({
       teamId: resource.teamId,
@@ -374,8 +357,6 @@ export const syncResourceTreePermissions = async ({
       session
     });
   }
-  console.timeLog('syncResourceTreePermissions', 'patchResources completed');
-  console.timeEnd('syncResourceTreePermissions');
 };
 
 /**

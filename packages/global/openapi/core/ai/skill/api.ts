@@ -220,7 +220,7 @@ export const UpdateSkillCollaboratorBodySchema = z
       description: '技能 ID'
     }),
     collaborators: CollaboratorUpdateListSchema.meta({
-      description: '更新后的协作者权限列表，至少包含一个协作者，最多 500 个且目标不可重复'
+      description: '更新后的协作者权限列表，至少包含一个协作者且目标不可重复'
     })
   })
   .meta({

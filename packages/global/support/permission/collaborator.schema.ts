@@ -39,11 +39,10 @@ export const CollaboratorItemSchema = CollaboratorTargetSchema.safeExtend({
   description: '协作者权限配置'
 }) as z.ZodType<CollaboratorItemType>;
 
-/** 更新 ACL 时限制列表规模，并拒绝同一目标重复出现。 */
+/** 更新 ACL 时拒绝同一目标重复出现。 */
 export const CollaboratorUpdateListSchema = z
   .array(CollaboratorItemSchema)
   .min(1)
-  .max(500)
   .superRefine((collaborators, ctx) => {
     const seenIds = new Set<string>();
 
