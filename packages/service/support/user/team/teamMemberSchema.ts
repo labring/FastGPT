@@ -26,6 +26,8 @@ const TeamMemberSchema = new Schema({
   },
   name: {
     type: String,
+    required: true,
+    trim: true,
     default: 'Member'
   },
   status: {
