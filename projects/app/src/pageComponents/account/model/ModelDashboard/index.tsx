@@ -13,6 +13,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { getChannelList, getDashboardV2 } from '@/web/core/ai/channel';
 import { getModelList } from '@/web/core/ai/config';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import AreaChartComponent from '@fastgpt/web/components/common/charts/AreaChartComponent';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -22,6 +23,7 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model/type';
 import { accountContentScrollStyles } from '@/pageComponents/account/styles';
 import ModelTabHeader from '../ModelTabHeader';
+import { getObservabilityChannelType, type ChannelScopeFilter } from '../observabilityScope';
 
 export type ModelDashboardData = {
   x: string;
@@ -64,6 +66,10 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   const { t, i18n } = useClientTranslation('config_model');
   const theme = useTheme();
   const { feConfigs, getModelProvider } = useSystemStore();
+  const { userInfo } = useUserStore();
+  const isRoot = userInfo?.username === 'root';
+  const [activeGroupType, setActiveGroupType] = useState<ChannelScopeFilter>('public');
+  const channelType = getObservabilityChannelType({ isRoot, activeGroupType });
 
   const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
 
@@ -91,7 +97,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   // Fetch channel list with "All" option
   const { data: channelList = [] } = useRequest(
     async () => {
-      const res = await getChannelList().then((res) =>
+      const res = await getChannelList({ groupType: channelType }).then((res) =>
         res.map((item) => ({
           label: item.name,
           value: `${item.id}`
@@ -106,14 +112,19 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
       ];
     },
     {
-      manual: false
+      manual: false,
+      refreshDeps: [channelType]
     }
   );
 
   // Get model list filtered by selected channel
-  const { data: systemModelList = [] } = useRequest(() => getModelList({ isSystem: true }), {
-    manual: false
-  });
+  const { data: systemModelList = [] } = useRequest(
+    () => getModelList({ isSystem: channelType === 'system' }),
+    {
+      manual: false,
+      refreshDeps: [channelType]
+    }
+  );
   const llmModelSet = useMemo(
     () =>
       new Set(
@@ -217,6 +228,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   const { data: dashboardData = [], loading: isLoading } = useRequest(
     async () => {
       const params = {
+        channelType,
         channel: filterProps.channelId ? parseInt(filterProps.channelId) : undefined,
         model: filterProps.model,
         start_timestamp: filterProps.dateRange.from
@@ -285,6 +297,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
       manual: false,
       refreshDeps: [
         filterProps.channelId,
+        channelType,
         filterProps.dateRange,
         filterProps.model,
         filterProps.timespan
@@ -411,6 +424,31 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
           alignItems={['stretch', 'flex-start']}
           gap={[3, 4]}
         >
+          {isRoot && (
+            <Flex w={['100%', 'auto']} flexShrink={0} alignItems={'center'} gap={2}>
+              <FormLabel w={['84px', 'auto']} flexShrink={0}>
+                {t('config_model:channel.scope')}
+              </FormLabel>
+              <Box flex={['1 1 0', '0 0 160px']} minW={0} w={['auto', '160px']}>
+                <MySelect<ChannelScopeFilter>
+                  bg={'myGray.25'}
+                  list={[
+                    { label: t('config_model:channel_public_tab'), value: 'public' },
+                    { label: t('config_model:channel_team_tab'), value: 'team' }
+                  ]}
+                  value={activeGroupType}
+                  onChange={(value) => {
+                    setActiveGroupType(value);
+                    setFilterProps((state) => ({
+                      ...state,
+                      channelId: undefined,
+                      model: undefined
+                    }));
+                  }}
+                />
+              </Box>
+            </Flex>
+          )}
           <Flex w={['100%', 'auto']} flexShrink={0} alignItems={'center'} gap={2}>
             <FormLabel w={['84px', 'auto']} flexShrink={0}>
               {t('common:user.Time')}

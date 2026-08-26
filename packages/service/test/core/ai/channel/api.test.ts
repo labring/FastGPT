@@ -19,10 +19,13 @@ import {
   createSystemChannel,
   deleteGroupChannel,
   deleteSystemChannel,
+  getChannelDashboard,
+  getChannelLogDetail,
   getSystemGroupId,
   listGlobalGroupChannels,
   listGroupChannels,
   listSystemChannels,
+  searchChannelLogs,
   testGroupChannel,
   testSystemChannel,
   updateGroupChannel,
@@ -154,5 +157,110 @@ describe('aiproxy channel admin client', () => {
     const res = await listSystemChannels();
     expect(res).toEqual({ channels: [], total: 0 });
     expect(axiosMock.mock.calls).toHaveLength(1);
+  });
+
+  it('queries system logs and preserves the system channel id', async () => {
+    axiosMock.mockResolvedValue(
+      okEnvelope({
+        logs: [
+          {
+            id: 1001,
+            model: 'gpt-4o',
+            channel: 12,
+            created_at: 1787670000000,
+            request_at: 1787669999000,
+            code: 200
+          }
+        ],
+        total: 1
+      })
+    );
+
+    const result = await searchChannelLogs({
+      channelId: 12,
+      codeType: 'all',
+      startTimestamp: 1787500800000,
+      endTimestamp: 1787673599999,
+      pageNum: 2,
+      pageSize: 20
+    });
+
+    expect(result.list[0].channel).toBe(12);
+    expect(result.total).toBe(1);
+    expect(axiosMock.mock.calls[0][0].url).toBe(
+      'http://aiproxy.test/api/logs/search?result_only=true&channel=12&code_type=all&start_timestamp=1787500800000&end_timestamp=1787673599999&p=2&per_page=20'
+    );
+  });
+
+  it('queries the private group-channel log store and normalizes group_channel_id', async () => {
+    axiosMock.mockResolvedValue(
+      okEnvelope({
+        logs: [
+          {
+            id: 1002,
+            model: 'qwen-plus',
+            group_channel_id: 21,
+            created_at: 1787670000000,
+            request_at: 1787669999000,
+            code: 500
+          }
+        ],
+        total: 1
+      })
+    );
+
+    const result = await searchChannelLogs({
+      groupId: 'fastgpt:tmb:tmb-a',
+      channelId: 21,
+      startTimestamp: 1787500800000,
+      endTimestamp: 1787673599999,
+      pageSize: 20
+    });
+
+    expect(result.list[0].channel).toBe(21);
+    expect(axiosMock.mock.calls[0][0].url).toBe(
+      'http://aiproxy.test/api/log/fastgpt%3Atmb%3Atmb-a/group_channel/search?result_only=true&channel=21&start_timestamp=1787500800000&end_timestamp=1787673599999&p=1&per_page=20'
+    );
+  });
+
+  it('uses scope-specific log detail endpoints', async () => {
+    axiosMock.mockResolvedValue(okEnvelope({ request_body: '{}', response_body: '{}' }));
+
+    await getChannelLogDetail({ id: 1001 });
+    await getChannelLogDetail({ id: 1002, groupId: 'fastgpt:tmb:tmb-a' });
+
+    expect(axiosMock.mock.calls.map((call) => call[0].url)).toEqual([
+      'http://aiproxy.test/api/logs/detail/1001',
+      'http://aiproxy.test/api/log/fastgpt%3Atmb%3Atmb-a/group_channel/detail/1002'
+    ]);
+  });
+
+  it('uses scope-specific dashboard filters and normalizes group_channel_id', async () => {
+    axiosMock
+      .mockResolvedValueOnce(
+        okEnvelope([{ timestamp: 1, summary: [{ channel_id: 12, model: 'gpt-4o' }] }])
+      )
+      .mockResolvedValueOnce(
+        okEnvelope([{ timestamp: 2, summary: [{ group_channel_id: 21, model: 'qwen-plus' }] }])
+      );
+
+    const systemResult = await getChannelDashboard({
+      channelId: 12,
+      timezone: 'Asia/Shanghai',
+      timespan: 'hour'
+    });
+    const groupResult = await getChannelDashboard({
+      groupId: 'fastgpt:tmb:tmb-a',
+      channelId: 21,
+      timezone: 'Asia/Shanghai',
+      timespan: 'day'
+    });
+
+    expect(systemResult[0].summary[0].channel_id).toBe(12);
+    expect(groupResult[0].summary[0].channel_id).toBe(21);
+    expect(axiosMock.mock.calls.map((call) => call[0].url)).toEqual([
+      'http://aiproxy.test/api/dashboardv2/?channel=12&timezone=Asia%2FShanghai&timespan=hour',
+      'http://aiproxy.test/api/group/fastgpt%3Atmb%3Atmb-a/channel-dashboardv2?group_channel=21&timezone=Asia%2FShanghai&timespan=day'
+    ]);
   });
 });
