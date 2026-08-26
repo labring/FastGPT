@@ -66,6 +66,31 @@ describe('authAppByTmbId', () => {
     ).rejects.toBe(AppErrEnum.unAuthApp);
   });
 
+  it('falls back to the parent ACL for an inherited app', async () => {
+    setup();
+    mockAppQuery({
+      _id: appId,
+      teamId: 'team-a',
+      tmbId: 'owner-tmb',
+      type: AppTypeEnum.simple,
+      parentId: 'parent-id',
+      inheritPermission: true,
+      favourite: false,
+      quick: false
+    });
+    mockGetTmbPermission.mockResolvedValueOnce(ReadPermissionVal).mockResolvedValueOnce(0);
+
+    await expect(
+      authAppByTmbId({ tmbId: 'member-tmb', appId, per: ReadPermissionVal })
+    ).resolves.toMatchObject({ app: { permission: { hasReadPer: true } } });
+    expect(mockGetTmbPermission).toHaveBeenNthCalledWith(1, {
+      teamId: 'team-a',
+      tmbId: 'member-tmb',
+      resourceId: 'parent-id',
+      resourceType: 'app'
+    });
+  });
+
   it('grants read access to favourite apps without an ACL row', async () => {
     setup();
     mockGetTmbPermission.mockResolvedValue(0);

@@ -23,6 +23,16 @@ describe('test getClbsWithInfo', () => {
     ).resolves.toEqual([]);
   });
 
+  it('should treat an empty parent resource id as an empty parent ACL', async () => {
+    await expect(
+      getResourceOwnedClbs({
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: '',
+        teamId: String(new Types.ObjectId())
+      })
+    ).resolves.toEqual([]);
+  });
+
   it('should get ClbsWithInfo', async () => {
     // tmb, group, avatar
     // get name, avatar, default avatar fallback

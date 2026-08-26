@@ -11,7 +11,7 @@ import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { getTmbPermission } from '../controller';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type AuthModeType, type AuthResponseType } from '../type';
 import {
@@ -20,6 +20,7 @@ import {
 } from '@fastgpt/global/support/permission/app/constant';
 import { parseHeaderCert } from '../auth/common';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
+import { shouldInheritResourcePermission } from '../resourcePermissionPolicy';
 
 export const authWorkflowToolByTmbId = async ({
   tmbId,
@@ -91,14 +92,28 @@ export const authAppByTmbId = async ({
 
     const isOwner = tmbPer.isOwner || String(app.tmbId) === String(tmbId);
 
-    const myPer = await getTmbPermission({
-      teamId,
-      tmbId,
-      resourceId: appId,
-      resourceType: PerResourceTypeEnum.app
-    });
+    const isGetParentClb =
+      shouldInheritResourcePermission(app.inheritPermission) &&
+      !AppFolderTypeList.includes(app.type) &&
+      !!app.parentId;
+    const [folderPer = 0, myPer = 0] = await Promise.all([
+      isGetParentClb
+        ? getTmbPermission({
+            teamId,
+            tmbId,
+            resourceId: app.parentId!,
+            resourceType: PerResourceTypeEnum.app
+          })
+        : 0,
+      getTmbPermission({
+        teamId,
+        tmbId,
+        resourceId: appId,
+        resourceType: PerResourceTypeEnum.app
+      })
+    ]);
 
-    const Per = new AppPermission({ role: myPer, isOwner });
+    const Per = new AppPermission({ role: sumPer(folderPer, myPer), isOwner });
 
     if (app.favourite || app.quick) {
       Per.addRole(ReadRoleVal);

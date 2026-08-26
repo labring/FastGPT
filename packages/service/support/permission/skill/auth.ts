@@ -1,5 +1,5 @@
 import { MongoAgentSkills } from '../../../core/ai/skill/model/schema';
-import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { AgentSkillSchemaType } from '@fastgpt/global/core/ai/skill/type';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { SkillPermission } from '@fastgpt/global/support/permission/skill/controller';
@@ -9,6 +9,8 @@ import type { AuthModeType, AuthResponseType } from '../type';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { parseHeaderCert } from '../auth/common';
 import { getTmbPermission } from '../controller';
+import { sumPer } from '@fastgpt/global/support/permission/utils';
+import { shouldInheritResourcePermission } from '../resourcePermissionPolicy';
 
 export type AuthSkillResponse = AuthResponseType<SkillPermission> & {
   skill: AgentSkillSchemaType & { permission: SkillPermission };
@@ -69,14 +71,28 @@ export const authSkillByTmbId = async ({
     }
 
     const isOwner = tmbPer.isOwner || String(skill.tmbId) === String(tmbId);
-    const myPer = await getTmbPermission({
-      teamId,
-      tmbId,
-      resourceId: skillId,
-      resourceType: PerResourceTypeEnum.agentSkill
-    });
+    const isGetParentClb =
+      shouldInheritResourcePermission(skill.inheritPermission) &&
+      skill.type !== AgentSkillTypeEnum.folder &&
+      !!skill.parentId;
+    const [folderPer = 0, myPer = 0] = await Promise.all([
+      isGetParentClb
+        ? getTmbPermission({
+            teamId,
+            tmbId,
+            resourceId: skill.parentId!,
+            resourceType: PerResourceTypeEnum.agentSkill
+          })
+        : 0,
+      getTmbPermission({
+        teamId,
+        tmbId,
+        resourceId: skillId,
+        resourceType: PerResourceTypeEnum.agentSkill
+      })
+    ]);
 
-    const Per = new SkillPermission({ role: myPer, isOwner });
+    const Per = new SkillPermission({ role: sumPer(folderPer, myPer), isOwner });
 
     if (!Per.checkPer(per)) {
       return Promise.reject(SkillErrEnum.unAuthSkill);

@@ -219,6 +219,8 @@ describe('materializeResourcePermissions', () => {
       });
     });
 
+    const replaceResourcesSpy = vi.spyOn(resourcePermissionRepo, 'replaceResources');
+
     const result = await materializeResourcePermissions({
       dryRun: false,
       teamId: String(users.owner.teamId),
@@ -228,6 +230,8 @@ describe('materializeResourcePermissions', () => {
     expect(result.errors).toEqual([]);
     expect(result.resourceCount).toBe(2);
     expect(result.updatedResourceCount).toBe(1);
+    expect(replaceResourcesSpy).toHaveBeenCalledTimes(1);
+    expect(replaceResourcesSpy.mock.calls[0][0].resources).toHaveLength(1);
     const aclQueryCalls = findByResourceIdsSpy.mock.calls as Array<[{ session?: unknown }]>;
     expect(aclQueryCalls).toHaveLength(2);
     expect(aclQueryCalls.map(([query]) => query.resourceIds)).toEqual([

@@ -65,7 +65,7 @@ curl -X POST 'https://你的域名/api/admin/4161/initToolJsonSchemaStorage' \
 本版本将 App、Dataset 和 Agent Skill 的资源权限补齐为完整有效 ACL。升级后请先执行 dry-run；dry-run 不会写入权限数据，默认只处理所有团队，也可以通过 `teamId` 指定单个团队。
 
 ```bash
-curl -X POST 'https://你的域名/api/admin/initv4160' \
+curl -X POST 'https://你的域名/api/admin/4162/initPermission' \
   -H 'Content-Type: application/json' \
   -H 'rootkey: 你的ROOT_KEY' \
   -d '{"dryRun":true,"batchSize":100}'
@@ -74,7 +74,7 @@ curl -X POST 'https://你的域名/api/admin/initv4160' \
 确认返回的 `errors` 为空或已完成异常资源处理后，执行正式迁移：
 
 ```bash
-curl -X POST 'https://你的域名/api/admin/initv4160' \
+curl -X POST 'https://你的域名/api/admin/4162/initPermission' \
   -H 'Content-Type: application/json' \
   -H 'rootkey: 你的ROOT_KEY' \
   -d '{"dryRun":false,"batchSize":100}'

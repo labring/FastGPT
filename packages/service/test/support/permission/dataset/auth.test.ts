@@ -121,6 +121,25 @@ describe('authDatasetCollection', () => {
     ).rejects.toBe(DatasetErrEnum.unAuthDataset);
   });
 
+  it('falls back to the parent ACL for an inherited dataset', async () => {
+    mockGetTmbInfoByTmbId.mockResolvedValue({
+      teamId: 'team-a',
+      permission: { isOwner: false }
+    });
+    mockDatasetQuery({
+      _id: datasetId,
+      teamId: 'team-a',
+      tmbId: 'tmb-owner',
+      parentId: 'parent-id',
+      inheritPermission: true
+    });
+    mockGetTmbPermission.mockResolvedValueOnce(ReadPermissionVal).mockResolvedValueOnce(0);
+
+    await expect(
+      authDatasetByTmbId({ tmbId: 'tmb-a', datasetId, per: ReadPermissionVal })
+    ).resolves.toMatchObject({ dataset: { permission: { hasReadPer: true } } });
+  });
+
   it('allows root access without requiring the dataset team to match', async () => {
     mockGetTmbInfoByTmbId.mockResolvedValue({
       teamId: 'team-a',

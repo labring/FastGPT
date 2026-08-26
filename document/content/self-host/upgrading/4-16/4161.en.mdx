@@ -65,7 +65,7 @@ curl -X POST 'https://你的域名/api/admin/4161/initToolJsonSchemaStorage' \
 This release materializes complete effective ACLs for Apps, Datasets, and Agent Skills. Run a dry run after upgrading. A dry run does not write permission data and processes all teams by default; pass `teamId` to target one team.
 
 ```bash
-curl -X POST 'https://你的域名/api/admin/initv4160' \
+curl -X POST 'https://你的域名/api/admin/4162/initPermission' \
   -H 'Content-Type: application/json' \
   -H 'rootkey: 你的ROOT_KEY' \
   -d '{"dryRun":true,"batchSize":100}'
@@ -74,7 +74,7 @@ curl -X POST 'https://你的域名/api/admin/initv4160' \
 After confirming that `errors` is empty or that the affected resources have been fixed, run the migration:
 
 ```bash
-curl -X POST 'https://你的域名/api/admin/initv4160' \
+curl -X POST 'https://你的域名/api/admin/4162/initPermission' \
   -H 'Content-Type: application/json' \
   -H 'rootkey: 你的ROOT_KEY' \
   -d '{"dryRun":false,"batchSize":100}'

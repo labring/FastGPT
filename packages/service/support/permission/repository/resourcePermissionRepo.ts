@@ -5,6 +5,7 @@ import {
   OwnerPermissionVal,
   PerResourceTypeEnum
 } from '@fastgpt/global/support/permission/constant';
+import { AppRolePerMap } from '@fastgpt/global/support/permission/app/constant';
 import type {
   CollaboratorIdType,
   CollaboratorItemType
@@ -75,7 +76,7 @@ type FindResourceKeysByCollaboratorsPermissionProps = {
 const withSession = (session?: ClientSession) => (session ? { session } : undefined);
 const resourceIdFilter = (resourceId?: string) =>
   // 历史团队 ACL 既可能存储 null，也可能没有 resourceId 字段。
-  resourceId === undefined ? { resourceId: null } : { resourceId };
+  resourceId == null || resourceId === '' ? { resourceId: null } : { resourceId };
 
 /**
  * resource_permissions 的唯一数据访问入口。
@@ -236,8 +237,10 @@ export const resourcePermissionRepo = {
 
     const getRoleMasks = () => {
       const permissionBits = getPermissionBits();
+      const rolePerMap =
+        resourceType === PerResourceTypeEnum.app ? AppRolePerMap : CommonRolePerMap;
       return permissionBits.map((permissionBit) => {
-        const roleMask = Array.from(CommonRolePerMap.entries()).reduce(
+        const roleMask = Array.from(rolePerMap.entries()).reduce(
           (mask, [role, rolePermission]) =>
             (rolePermission & permissionBit) === permissionBit ? mask | role : mask,
           0

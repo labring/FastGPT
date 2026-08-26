@@ -5,6 +5,7 @@ import {
   ReadPermissionVal,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
+import { AppReadChatLogRoleVal } from '@fastgpt/global/support/permission/app/constant';
 import { Types } from '@fastgpt/service/common/mongo';
 import { resourcePermissionRepo } from '@fastgpt/service/support/permission/repository/resourcePermissionRepo';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
@@ -262,6 +263,7 @@ describe('resourcePermissionRepo.findResourceKeysByCollaboratorsPermission', () 
   it('matches merged group and org permissions with or and and logic', async () => {
     const resourceWithReadAndWrite = objectId();
     const resourceWithReadOnly = objectId();
+    const resourceWithChatLogRole = objectId();
 
     await MongoResourcePermission.collection.insertMany([
       {
@@ -284,6 +286,13 @@ describe('resourcePermissionRepo.findResourceKeysByCollaboratorsPermission', () 
         resourceType: PerResourceTypeEnum.app,
         resourceId: resourceWithReadOnly,
         permission: ReadPermissionVal
+      },
+      {
+        teamId,
+        tmbId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: resourceWithChatLogRole,
+        permission: AppReadChatLogRoleVal
       }
     ]);
 
@@ -303,7 +312,11 @@ describe('resourcePermissionRepo.findResourceKeysByCollaboratorsPermission', () 
         matchLogic: 'or'
       })
     ).resolves.toEqual(
-      expect.arrayContaining([String(resourceWithReadAndWrite), String(resourceWithReadOnly)])
+      expect.arrayContaining([
+        String(resourceWithReadAndWrite),
+        String(resourceWithReadOnly),
+        String(resourceWithChatLogRole)
+      ])
     );
 
     await expect(

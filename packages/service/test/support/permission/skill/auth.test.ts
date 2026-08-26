@@ -61,6 +61,23 @@ describe('authSkillByTmbId', () => {
     ).rejects.toBe(SkillErrEnum.unAuthSkill);
   });
 
+  it('falls back to the parent ACL when inheritance is missing', async () => {
+    setup();
+    mockSkillQuery({
+      _id: skillId,
+      teamId: 'team-a',
+      tmbId: 'owner-tmb',
+      source: AgentSkillSourceEnum.personal,
+      parentId: 'parent-id',
+      deleteTime: null
+    });
+    mockGetTmbPermission.mockResolvedValueOnce(ReadPermissionVal).mockResolvedValueOnce(0);
+
+    await expect(
+      authSkillByTmbId({ tmbId: 'member-tmb', skillId, per: ReadPermissionVal })
+    ).resolves.toMatchObject({ skill: { permission: { hasReadPer: true } } });
+  });
+
   it('allows system skills to be read and rejects write access', async () => {
     setup();
     mockSkillQuery({

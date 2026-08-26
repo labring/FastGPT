@@ -250,15 +250,12 @@ const materializeResourceType = async ({
       if (!options.dryRun && changes.length === 0) return { changes, skippedResourceCount, errors };
       if (options.dryRun) return { changes, skippedResourceCount, errors };
 
-      for (const item of changes) {
-        await resourcePermissionRepo.replaceResource({
-          teamId,
-          resourceType: config.resourceType,
-          resourceId: item.resourceId,
-          collaborators: item.collaborators,
-          session
-        });
-      }
+      await resourcePermissionRepo.replaceResources({
+        teamId,
+        resourceType: config.resourceType,
+        resources: changes,
+        session
+      });
       return { changes, skippedResourceCount, errors };
     };
 

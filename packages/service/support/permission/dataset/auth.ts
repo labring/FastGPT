@@ -11,6 +11,7 @@ import {
   NullPermissionVal,
   PerResourceTypeEnum
 } from '@fastgpt/global/support/permission/constant';
+import { sumPer } from '@fastgpt/global/support/permission/utils';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import { getCollectionWithDataset } from '../../../core/dataset/controller';
@@ -21,6 +22,8 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { parseHeaderCert } from '../auth/common';
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { isS3ObjectKey } from '../../../common/s3/utils';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { shouldInheritResourcePermission } from '../resourcePermissionPolicy';
 
 export const authDatasetByTmbId = async ({
   tmbId,
@@ -61,14 +64,28 @@ export const authDatasetByTmbId = async ({
     }
 
     const isOwner = tmbPer.isOwner || String(dataset.tmbId) === String(tmbId);
-    const myPer = await getTmbPermission({
-      teamId,
-      tmbId,
-      resourceId: datasetId,
-      resourceType: PerResourceTypeEnum.dataset
-    });
+    const isGetParentClb =
+      shouldInheritResourcePermission(dataset.inheritPermission) &&
+      dataset.type !== DatasetTypeEnum.folder &&
+      !!dataset.parentId;
+    const [folderPer = 0, myPer = 0] = await Promise.all([
+      isGetParentClb
+        ? getTmbPermission({
+            teamId,
+            tmbId,
+            resourceId: dataset.parentId!,
+            resourceType: PerResourceTypeEnum.dataset
+          })
+        : 0,
+      getTmbPermission({
+        teamId,
+        tmbId,
+        resourceId: datasetId,
+        resourceType: PerResourceTypeEnum.dataset
+      })
+    ]);
 
-    const Per = new DatasetPermission({ role: myPer, isOwner });
+    const Per = new DatasetPermission({ role: sumPer(folderPer, myPer), isOwner });
 
     if (!Per.checkPer(per)) {
       return Promise.reject(DatasetErrEnum.unAuthDataset);
