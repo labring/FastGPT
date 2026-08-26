@@ -103,6 +103,10 @@ export type InvoiceRecordsResponseType = z.infer<typeof InvoiceRecordsResponseSc
 
 export const UnInvoiceListItemSchema = z
   .object({
+    _id: ObjectIdSchema.meta({
+      example: '68ee0bd23d17260b7829b137',
+      description: '待开票订单 ID'
+    }),
     price: NumSchema.meta({ example: 9900, description: '订单金额' }),
     type: z
       .enum(BillTypeEnum)

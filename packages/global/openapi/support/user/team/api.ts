@@ -7,7 +7,7 @@ import {
   ShortAuthStringSchema
 } from '../../../../support/user/account/verification/type';
 import { TeamMemberRoleEnum, TeamMemberStatusEnum } from '../../../../support/user/team/constant';
-import { OpenaiAccountSchema } from '../../../../support/user/team/type';
+import { OpenaiAccountSchema, TeamTmbItemSchema } from '../../../../support/user/team/type';
 import { ClientTeamPlanStatusSchema, TeamSubSchema } from '../../../../support/wallet/sub/type';
 
 /* ============================================================================
@@ -283,6 +283,9 @@ export const TeamListItemSchema = z
     isWecomTeam: z.boolean().optional().meta({
       example: false,
       description: '是否为企业微信团队'
+    }),
+    accountCancellation: TeamTmbItemSchema.shape.accountCancellation.meta({
+      description: '团队账号注销状态；仅在团队处于注销流程中时返回'
     }),
     openaiAccount: OpenaiAccountSchema.optional().meta({
       description: '团队 OpenAI 账号配置'
