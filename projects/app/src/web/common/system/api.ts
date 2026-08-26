@@ -1,11 +1,9 @@
-import type {
-  GetSystemInitDataResponse,
-  GetSystemModelsResponse
-} from '@fastgpt/global/openapi/common/system/api';
+import type { GetSystemInitDataResponse } from '@fastgpt/global/openapi/common/system/api';
 import type { GetMyModelsQuery, GetMyModelsResponse } from '@/pages/api/core/ai/model/getMyModels';
 import type {
   GetMyModelQuery,
-  GetMyModelResponse
+  GetMyModelResponse,
+  GetSystemModelsResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import { GET, POST } from '@/web/common/api/request';
 import type {
@@ -19,7 +17,9 @@ export const getSystemInitData = (bufferId?: string) =>
   });
 
 export const getSystemModels = () =>
-  GET<GetSystemModelsResponse>('/common/system/getSystemModels', undefined, { deduplicate: true });
+  GET<GetSystemModelsResponse>('/core/ai/model/getSystemModels', undefined, {
+    deduplicate: true
+  });
 
 // model permissions
 

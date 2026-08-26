@@ -14,7 +14,7 @@ const desensitizedEmbeddingModel = {
   provider: 'OpenAI',
   model: 'text-embedding-3-small',
   name: 'Embedding-2',
-  isSystem: true as const,
+  scope: 'system' as const,
   isCustom: false,
   config: {
     defaultToken: 500,
@@ -160,7 +160,7 @@ describe('system initialization OpenAPI contract', () => {
         provider: 'OpenAI',
         model: 'gpt-5',
         name: 'GPT-5',
-        isSystem: true,
+        scope: 'system',
         isCustom: false,
         config: {
           maxContext: 128000,

@@ -50,7 +50,7 @@ const buildModel = (
     model: 'rerank-test',
     name: 'Test Rerank',
     type: ModelTypeEnum.rerank,
-    isSystem: true,
+    scope: 'system' as const,
     isActive: true,
     isCustom: false,
     ...commonOverrides,

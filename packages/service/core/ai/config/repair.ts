@@ -2,6 +2,7 @@ import { isDeepStrictEqual } from 'node:util';
 import {
   defaultQAModels,
   defaultVectorModels,
+  ModelScopeEnum,
   ModelTypeEnum
 } from '@fastgpt/global/core/ai/constants';
 import {
@@ -173,7 +174,7 @@ export const flatModelToDocumentData = (
 
   return SystemModelDocumentDataSchema.parse(
     Object.fromEntries(
-      Object.entries({ ...normalized, isSystem: true, config }).filter(
+      Object.entries({ ...normalized, scope: ModelScopeEnum.system, config }).filter(
         ([, value]) => value !== undefined
       )
     )
@@ -288,7 +289,7 @@ export const repairSystemModelDocument = ({
     provider,
     model,
     name,
-    isSystem: true,
+    scope: ModelScopeEnum.system,
     config
   };
   baseBooleanKeys.forEach((key) => {
@@ -374,7 +375,10 @@ export const repairStoredSystemModels = async ({
     if (result.status === 'repaired') {
       stats.repaired += 1;
       operations.push({
-        updateOne: { filter: snapshotFilter, update: { $set: result.document } }
+        updateOne: {
+          filter: snapshotFilter,
+          update: { $set: result.document, $unset: { isSystem: '' } }
+        }
       });
       return;
     }

@@ -9,19 +9,20 @@ vi.mock('@fastgpt/service/core/ai/config/utils', async (importOriginal) => {
 
   return {
     ...actual,
-    getPluginSystemModelDocuments: vi.fn().mockResolvedValue([]),
+    refreshModelTemplates: vi.fn().mockResolvedValue([]),
     updatedReloadSystemModel: vi.fn().mockResolvedValue(undefined)
   };
 });
 
-import updateModelApi from '@/pages/api/core/ai/model/update';
+import createModelApi from '@/pages/api/admin/settings/model/create';
+import updateModelApi from '@/pages/api/admin/settings/model/update';
 
 const buildLlmDocument = () => ({
   type: ModelTypeEnum.llm,
   provider: 'OpenAI',
   model: 'test-llm',
   name: 'Test LLM',
-  isSystem: true as const,
+  scope: 'system' as const,
   config: {
     maxContext: 16000,
     maxResponse: 8000,
@@ -31,107 +32,72 @@ const buildLlmDocument = () => ({
   isActive: true
 });
 
-const callUpdate = async (body: unknown) => {
+const callApi = async ({ handler, body }: { handler: any; body: unknown }) => {
   const root = await getRootUser();
-
-  return Call(updateModelApi, {
-    auth: root,
-    body
-  });
+  return Call(handler, { auth: root, body });
 };
 
-describe('update model api', () => {
-  it('validates the complete model document and removes runtime fields', async () => {
-    const res = await callUpdate({
-      modelData: {
-        ...buildLlmDocument(),
-        model: ' test-llm ',
-        avatar: '/model.svg',
-        isCustom: true,
-        datasetProcess: true
-      }
+describe('admin settings model create/update api', () => {
+  it('creates a custom model through the dedicated create endpoint', async () => {
+    const res = await callApi({
+      handler: createModelApi,
+      body: { modelData: buildLlmDocument() }
     });
 
     expect(res.error).toBeUndefined();
-    expect(res.code).toBe(200);
-    expect(res.data).toBeUndefined();
-    const saved = await MongoSystemModel.findOne({ model: 'test-llm' }).lean();
-    expect(saved).toMatchObject({
+    expect(res.data?.modelId).toBeTruthy();
+    await expect(MongoSystemModel.findById(res.data?.modelId).lean()).resolves.toMatchObject({
       model: 'test-llm',
-      type: ModelTypeEnum.llm,
-      provider: 'OpenAI',
-      name: 'Test LLM',
-      config: {
-        maxContext: 16000,
-        maxResponse: 8000,
-        quoteMaxToken: 12000
-      }
-    });
-    expect(saved).not.toHaveProperty('metadata');
-    expect(saved).not.toHaveProperty('avatar');
-    expect(saved).not.toHaveProperty('isCustom');
-    expect(saved).not.toHaveProperty('datasetProcess');
-  });
-
-  it('updates an existing model by modelId with a complete model document', async () => {
-    const existing = await MongoSystemModel.create(buildLlmDocument());
-
-    const res = await callUpdate({
-      modelId: String(existing._id),
-      modelData: {
-        ...buildLlmDocument(),
-        config: {
-          ...buildLlmDocument().config,
-          maxTemperature: 1.2
-        }
-      }
-    });
-
-    expect(res.error).toBeUndefined();
-    expect(res.code).toBe(200);
-    await expect(MongoSystemModel.findOne({ model: 'test-llm' }).lean()).resolves.toMatchObject({
-      config: {
-        maxContext: 16000,
-        maxTemperature: 1.2
-      }
-    });
-  });
-
-  it('repairs numeric strings before writing the database', async () => {
-    const res = await callUpdate({
-      modelData: {
-        ...buildLlmDocument(),
-        config: {
-          ...buildLlmDocument().config,
-          maxTemperature: '1.2'
-        }
-      }
-    });
-
-    expect(res.code).toBe(200);
-    await expect(MongoSystemModel.findOne({ model: 'test-llm' }).lean()).resolves.toMatchObject({
-      config: { maxTemperature: 1.2 }
-    });
-  });
-
-  it('rejects an irreparable model without modifying an existing record', async () => {
-    const existing = await MongoSystemModel.create(buildLlmDocument());
-    const res = await callUpdate({
-      modelId: String(existing._id),
-      modelData: { model: '', provider: null, type: 'unknown' }
-    });
-
-    expect(res.error?.name).toBe('UserError');
-    await expect(MongoSystemModel.findById(existing._id).lean()).resolves.toMatchObject({
-      model: 'test-llm',
+      scope: 'system',
       config: { maxContext: 16000 }
     });
   });
 
-  it('rejects malformed request bodies through parseApiInput', async () => {
-    const res = await callUpdate({ model: 'test-llm', metadata: buildLlmDocument() });
+  it('updates an existing model only by modelId', async () => {
+    const existing = await MongoSystemModel.create(buildLlmDocument());
+    const res = await callApi({
+      handler: updateModelApi,
+      body: {
+        modelId: String(existing._id),
+        modelData: {
+          ...buildLlmDocument(),
+          config: { ...buildLlmDocument().config, maxTemperature: 1.2 }
+        }
+      }
+    });
 
-    expect(res.code).toBe(500);
+    expect(res.error).toBeUndefined();
+    await expect(MongoSystemModel.findById(existing._id).lean()).resolves.toMatchObject({
+      config: { maxContext: 16000, maxTemperature: 1.2 }
+    });
+  });
+
+  it('rejects non-canonical values instead of repairing them', async () => {
+    const existing = await MongoSystemModel.create(buildLlmDocument());
+    const res = await callApi({
+      handler: updateModelApi,
+      body: {
+        modelId: String(existing._id),
+        modelData: {
+          ...buildLlmDocument(),
+          config: { ...buildLlmDocument().config, maxTemperature: '1.2' }
+        }
+      }
+    });
+
     expect(res.error?.name).toBe('ApiRequestInputParseError');
+    const unchanged = await MongoSystemModel.findById(existing._id).lean();
+    expect(unchanged?.config).toMatchObject({ maxContext: 16000, maxResponse: 8000 });
+    expect(unchanged?.config).not.toHaveProperty('maxTemperature');
+  });
+
+  it('rejects update requests without modelId', async () => {
+    const res = await callApi({
+      handler: updateModelApi,
+      body: { modelData: buildLlmDocument() }
+    });
+
+    expect(res.error?.name).toBe('ApiRequestInputParseError');
+    await expect(MongoSystemModel.countDocuments()).resolves.toBe(0);
   });
 });

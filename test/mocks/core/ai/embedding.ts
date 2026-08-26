@@ -128,7 +128,7 @@ vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) => {
       name: 'text-embedding-ada-002',
       provider: 'openai',
       type: 'embedding',
-      isSystem: true,
+      scope: 'system' as const,
       isActive: true,
       isCustom: false,
       config: { defaultToken: 100, maxToken: 100, weight: 0 }

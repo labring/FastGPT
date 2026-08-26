@@ -34,7 +34,7 @@ const embeddingModel = {
   model: 'mock-embedding-model',
   name: 'Mock Embedding Model',
   type: ModelTypeEnum.embedding,
-  isSystem: true as const,
+  scope: 'system' as const,
   isActive: true,
   isCustom: false,
   config: {
@@ -50,7 +50,7 @@ const vlmModel = {
   model: 'mock-vlm-model',
   name: 'Mock VLM Model',
   type: ModelTypeEnum.llm,
-  isSystem: true as const,
+  scope: 'system' as const,
   isActive: true,
   isCustom: false,
   config: {

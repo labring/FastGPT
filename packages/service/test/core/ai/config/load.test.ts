@@ -49,7 +49,11 @@ vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => {
 });
 
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
-import { loadSystemModels, updatedReloadSystemModel } from '@fastgpt/service/core/ai/config/utils';
+import {
+  loadInstalledModels,
+  loadSystemModels,
+  updatedReloadSystemModel
+} from '@fastgpt/service/core/ai/config/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
 describe('loadSystemModels legacy takeover', () => {
@@ -159,7 +163,7 @@ describe('loadSystemModels legacy takeover', () => {
     await expect(
       MongoSystemModel.collection.findOne({ _id: legacyModel.insertedId })
     ).resolves.toBeTruthy();
-    expect(global.systemModelList).toEqual([]);
+    expect(global.systemModelList).toBeUndefined();
   });
 
   it('keeps the previous runtime model cache when a reload cannot fetch plugin models', async () => {
@@ -234,5 +238,47 @@ describe('loadSystemModels legacy takeover', () => {
         }
       ]
     });
+  });
+
+  it('does not run legacy migration during a template hot refresh', async () => {
+    await loadSystemModels();
+    const legacyModel = await MongoSystemModel.collection.insertOne({
+      model: 'late-legacy-model',
+      metadata: {
+        type: ModelTypeEnum.llm,
+        provider: 'OpenAI',
+        name: 'Late legacy model',
+        maxContext: 32000,
+        maxResponse: 16000,
+        quoteMaxToken: 24000
+      }
+    });
+
+    await loadSystemModels(true);
+
+    const unchangedLegacyModel = await MongoSystemModel.collection.findOne({
+      _id: legacyModel.insertedId
+    });
+    expect(unchangedLegacyModel).not.toHaveProperty('scope');
+    expect(global.systemModelList).toEqual([]);
+  });
+
+  it('loads installed database models without requesting plugin templates', async () => {
+    const model = await MongoSystemModel.create({
+      type: ModelTypeEnum.llm,
+      provider: 'OpenAI',
+      model: 'installed-llm',
+      name: 'Installed LLM',
+      scope: 'system',
+      isActive: true,
+      config: { maxContext: 32000, maxResponse: 16000, quoteMaxToken: 24000 }
+    });
+
+    await loadInstalledModels({ pluginDocuments: [] });
+
+    expect(pluginMocks.listModels).not.toHaveBeenCalled();
+    expect(global.systemModelList).toMatchObject([
+      { modelId: String(model._id), model: 'installed-llm', isCustom: true }
+    ]);
   });
 });

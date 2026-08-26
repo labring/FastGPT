@@ -23,7 +23,7 @@ import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSele
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getSystemModelDefaultConfig, putSystemModel } from '@/web/core/ai/config';
+import { getSystemModelDefaultConfig, postSystemModel, putSystemModel } from '@/web/core/ai/config';
 import { type SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import {
   useFieldArray,
@@ -854,10 +854,13 @@ export const ModelEditModal = ({
         }
       }
 
-      return putSystemModel({
-        ...(data.modelId ? { modelId: data.modelId } : {}),
-        modelData: data
-      }).then(onSuccess);
+      const { modelId, avatar: _avatar, isCustom: _isCustom, ...persistedModelData } = data;
+
+      return (
+        modelId
+          ? putSystemModel({ modelId, modelData: persistedModelData })
+          : postSystemModel({ modelData: persistedModelData })
+      ).then(onSuccess);
     },
     {
       onSuccess: () => {

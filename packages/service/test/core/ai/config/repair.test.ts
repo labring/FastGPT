@@ -11,7 +11,7 @@ const canonicalLlm = {
   provider: 'OpenAI',
   model: 'gpt-test',
   name: 'GPT test',
-  isSystem: true as const,
+  scope: 'system' as const,
   isActive: true,
   config: {
     maxContext: 32000,

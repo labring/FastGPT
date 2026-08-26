@@ -12,7 +12,7 @@ const createModel = (
   ...data,
   type: ModelTypeEnum.llm,
   provider: 'test',
-  isSystem: true,
+  scope: 'system' as const,
   isActive: true,
   isCustom: false,
   config: { maxContext: 1000, maxResponse: 100, quoteMaxToken: 500 }

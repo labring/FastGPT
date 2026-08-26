@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 const mocks = vi.hoisted(() => ({
   authSystemAdmin: vi.fn(),
   updateMany: vi.fn(),
+  bulkWrite: vi.fn(),
+  refreshModelTemplates: vi.fn(),
   updatedReloadSystemModel: vi.fn(),
   session: { id: 'session-1' }
 }));
@@ -19,11 +20,13 @@ vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
 
 vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
   MongoSystemModel: {
-    updateMany: mocks.updateMany
+    updateMany: mocks.updateMany,
+    bulkWrite: mocks.bulkWrite
   }
 }));
 
 vi.mock('@fastgpt/service/core/ai/config/utils', () => ({
+  refreshModelTemplates: mocks.refreshModelTemplates,
   updatedReloadSystemModel: mocks.updatedReloadSystemModel
 }));
 
@@ -33,23 +36,25 @@ vi.mock('@fastgpt/service/common/mongo/sessionRun', () => ({
   )
 }));
 
-import handler from '@/pages/api/core/ai/model/updateDefault';
+import handler from '@/pages/api/admin/settings/model/updateDefault';
 
-describe('PUT /api/core/ai/model/updateDefault', () => {
+describe('PUT /api/admin/settings/model/updateDefault', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.authSystemAdmin.mockResolvedValue(undefined);
     mocks.updateMany.mockResolvedValue({ acknowledged: true });
+    mocks.bulkWrite.mockResolvedValue({ acknowledged: true });
+    mocks.refreshModelTemplates.mockResolvedValue([]);
     mocks.updatedReloadSystemModel.mockResolvedValue(undefined);
   });
 
-  it('updates flattened default flags by model ObjectId', async () => {
+  it('uses string model IDs without ObjectId validation or explicit conversion', async () => {
     const ids = {
-      llm: '68ad85a7463006c963799a01',
-      embedding: '68ad85a7463006c963799a02',
-      datasetText: '68ad85a7463006c963799a03',
-      datasetImage: '68ad85a7463006c963799a04',
-      chatTitle: '68ad85a7463006c963799a05'
+      llm: 'system-llm-id',
+      embedding: 'system-embedding-id',
+      datasetText: 'dataset-text-id',
+      datasetImage: 'dataset-image-id',
+      chatTitle: 'chat-title-id'
     };
 
     await handler({
@@ -62,36 +67,27 @@ describe('PUT /api/core/ai/model/updateDefault', () => {
       }
     } as any);
 
-    expect(mocks.authSystemAdmin).toHaveBeenCalledTimes(1);
-    expect(mocks.updateMany).toHaveBeenCalledTimes(1);
-    const [, pipeline, options] = mocks.updateMany.mock.calls[0];
-    const set = pipeline[0].$set;
-
-    expect(options).toEqual({ session: mocks.session });
-    expect(Object.keys(set)).toEqual([
-      'isDefault',
-      'isDefaultDatasetTextModel',
-      'isDefaultDatasetImageModel',
-      'isDefaultChatTitleModel'
-    ]);
-    expect(set.isDefault.$cond[0].$in[1].map(String)).toEqual([ids.llm, ids.embedding]);
-    expect(String(set.isDefaultDatasetTextModel.$cond[0].$eq[1])).toBe(ids.datasetText);
-    expect(String(set.isDefaultDatasetImageModel.$cond[0].$eq[1])).toBe(ids.datasetImage);
-    expect(String(set.isDefaultChatTitleModel.$cond[0].$eq[1])).toBe(ids.chatTitle);
-    expect(JSON.stringify(pipeline)).not.toContain('metadata.');
-    expect(mocks.updatedReloadSystemModel).toHaveBeenCalledTimes(1);
-  });
-
-  it('rejects legacy model names at this non-OpenAPI boundary', async () => {
-    await expect(
-      handler({
-        body: {
-          [ModelTypeEnum.llm]: 'gpt-4o'
+    expect(mocks.updateMany).toHaveBeenCalledWith(
+      { scope: 'system' },
+      {
+        $unset: {
+          isDefault: '',
+          isDefaultDatasetTextModel: '',
+          isDefaultDatasetImageModel: '',
+          isDefaultChatTitleModel: ''
         }
-      } as any)
-    ).rejects.toBeInstanceOf(ApiRequestInputParseError);
-
-    expect(mocks.updateMany).not.toHaveBeenCalled();
-    expect(mocks.updatedReloadSystemModel).not.toHaveBeenCalled();
+      },
+      { session: mocks.session }
+    );
+    const [operations, options] = mocks.bulkWrite.mock.calls[0];
+    expect(options).toEqual({ session: mocks.session });
+    expect(operations.map((operation: any) => operation.updateOne.filter._id)).toEqual([
+      ids.llm,
+      ids.embedding,
+      ids.datasetText,
+      ids.datasetImage,
+      ids.chatTitle
+    ]);
+    expect(mocks.updatedReloadSystemModel).toHaveBeenCalledWith({ pluginDocuments: [] });
   });
 });

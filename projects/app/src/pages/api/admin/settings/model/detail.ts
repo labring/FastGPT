@@ -12,20 +12,15 @@ import {
 } from '@fastgpt/global/openapi/admin/core/ai/model/api';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 
-export type detailQuery = AdminSystemModelReference;
-
-export type detailBody = Record<string, never>;
-
-export type detailResponse = GetAdminSystemModelDetailResponse;
-
-async function handler(req: ApiRequestProps<detailBody, detailQuery>): Promise<detailResponse> {
+async function handler(
+  req: ApiRequestProps<Record<string, never>, AdminSystemModelReference>
+): Promise<GetAdminSystemModelDetailResponse> {
   await authSystemAdmin({ req });
 
   const reference = parseApiInput({ req, querySchema: AdminSystemModelReferenceSchema }).query;
   const modelItem = findModelData(reference);
-  if (!modelItem) {
-    return Promise.reject(ModelErrEnum.unExist);
-  }
+  if (!modelItem) return Promise.reject(ModelErrEnum.unExist);
+
   return GetAdminSystemModelDetailResponseSchema.parse(desensitizeSystemModel(modelItem));
 }
 

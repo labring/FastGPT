@@ -638,7 +638,7 @@ describe('getDatasetImageIndexCapability', () => {
     model: 'vision-embedding-model',
     name: 'vision-embedding-model',
     type: ModelTypeEnum.embedding,
-    isSystem: true,
+    scope: 'system' as const,
     isActive: true,
     isCustom: false,
     config: {
@@ -654,7 +654,7 @@ describe('getDatasetImageIndexCapability', () => {
     model: 'dataset-vlm-model',
     name: 'dataset-vlm-model',
     type: ModelTypeEnum.llm,
-    isSystem: true,
+    scope: 'system' as const,
     isActive: true,
     isCustom: false,
     config: {

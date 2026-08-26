@@ -2,6 +2,7 @@ import { connectionMongo, defineIndex, getMongoModel } from '../../../common/mon
 import { SystemModelCollectionName } from './constants';
 const { Schema } = connectionMongo;
 import type { SystemModelSchemaType } from '../type';
+import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 
 const SystemModelSchema = new Schema(
   {
@@ -21,10 +22,11 @@ const SystemModelSchema = new Schema(
       type: String,
       required: true
     },
-    isSystem: {
-      type: Boolean,
+    scope: {
+      type: String,
+      enum: Object.values(ModelScopeEnum),
       required: true,
-      default: true
+      default: ModelScopeEnum.system
     },
     isActive: Boolean,
     isDefault: Boolean,
@@ -58,10 +60,10 @@ const SystemModelSchema = new Schema(
 );
 
 defineIndex(SystemModelSchema, {
-  key: { isSystem: 1, model: 1 },
+  key: { scope: 1, model: 1 },
   options: {
     unique: true,
-    partialFilterExpression: { isSystem: true }
+    partialFilterExpression: { scope: ModelScopeEnum.system }
   }
 });
 

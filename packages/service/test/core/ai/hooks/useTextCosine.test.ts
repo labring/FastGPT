@@ -21,7 +21,7 @@ const embeddingModel = {
   name: 'text-embedding-ada-002',
   provider: 'openai',
   type: 'embedding' as const,
-  isSystem: true as const,
+  scope: 'system' as const,
   isActive: true,
   isCustom: false,
   config: { defaultToken: 100, maxToken: 100, weight: 0 }

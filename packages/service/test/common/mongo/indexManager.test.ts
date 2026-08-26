@@ -153,12 +153,12 @@ describe('MongoIndexManager.syncModelIndexes', () => {
   });
 
   it('replaces the legacy global model unique index with the system-model partial index', async () => {
-    const schema = new Schema({ model: String, isSystem: Boolean }, { autoIndex: false });
+    const schema = new Schema({ model: String, scope: String }, { autoIndex: false });
     defineIndex(schema, {
-      key: { isSystem: 1, model: 1 },
+      key: { scope: 1, model: 1 },
       options: {
         unique: true,
-        partialFilterExpression: { isSystem: true }
+        partialFilterExpression: { scope: 'system' }
       }
     });
     defineIndex(schema, {
@@ -178,10 +178,10 @@ describe('MongoIndexManager.syncModelIndexes', () => {
     expect(indexes).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          name: 'isSystem_1_model_1',
-          key: { isSystem: 1, model: 1 },
+          name: 'scope_1_model_1',
+          key: { scope: 1, model: 1 },
           unique: true,
-          partialFilterExpression: { isSystem: true }
+          partialFilterExpression: { scope: 'system' }
         })
       ])
     );

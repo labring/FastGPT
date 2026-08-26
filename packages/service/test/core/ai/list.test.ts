@@ -23,7 +23,7 @@ const model = ({
     provider,
     type,
     isActive,
-    isSystem: true,
+    scope: 'system' as const,
     isCustom: false,
     config: {}
   }) as SystemModelDataType;

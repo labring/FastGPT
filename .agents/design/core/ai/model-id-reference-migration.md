@@ -58,7 +58,7 @@
 | `modelId` | `_id.toString()`，平台模型唯一身份 | 是，唯一 canonical 引用 |
 | `model` | provider 侧路由名称，例如 `gpt-4o` | 否；仅兼容旧引用和 provider 请求 |
 | `name` | 用户可见展示名 | 否 |
-| `isSystem` | 是否为平台系统模型 | 本轮所有模型固定为 `true`，用于限定兼容解析和唯一索引 |
+| `scope` | 模型实例作用域 | 本轮固定为 `system`，后续可扩展 `team` |
 | `isCustom` | 是否不在插件模板中 | 运行时根据模板匹配结果派生，不能表示所有权，不能参与身份判断 |
 
 核心约束：
@@ -84,7 +84,7 @@ type SystemModelDocument = {
   type: ModelTypeEnum;
   provider: string;
   name: string;
-  isSystem: true;
+  scope: ModelScopeEnum.system;
   isActive: boolean;
   testMode?: boolean;
 
@@ -199,7 +199,7 @@ Mongoose 顶层字段应显式声明，`config` 可以使用 `Schema.Types.Mixed
 - Embedding 能力字段：`defaultToken`、`maxToken`、`weight`、`hidden`、`normalization`、`defaultConfig`、`dbConfig`、`queryConfig`。
 - Rerank 能力字段：`maxToken`；TTS 能力字段：`voices`；STT 没有额外能力字段。
 
-插件协议不提供 `isSystem`、`isActive`、`testMode`、默认模型标记、`requestUrl`、`requestAuth` 和 `priceTiers`。其中 `isSystem` 在本轮固定写为 `true`，其余均为 FastGPT 数据库业务字段。
+插件协议不提供 `scope`、`isActive`、`testMode`、默认模型标记、`requestUrl`、`requestAuth` 和 `priceTiers`。其中 `scope` 在本轮固定写为 `system`，其余均为 FastGPT 数据库业务字段。
 
 插件数据进入系统时，只允许由一个 normalize 函数完成以下转换，数据库、API 和缓存不得各自实现字段分拣：
 
@@ -208,20 +208,20 @@ Mongoose 顶层字段应显式声明，`config` 可以使用 `Schema.Types.Mixed
 3. 插件的旧价格字段保留为顶层初始化价格，不放入 `config`。
 4. 插件中的 deprecated 场景开关只用于旧数据兼容，不进入新的 canonical schema。
 
-模型加载阶段不得再使用 `{ ...pluginModel, ...dbModel }` 合并整个对象。数据库文档是实际模型的权威来源；插件模板只参与 `config` 默认值补齐，并提供首次物化时的身份、展示和价格初始值：
+模型加载阶段不得再使用 `{ ...pluginModel, ...dbModel }` 合并整个对象。数据库文档是可独立运行的完整实例和唯一权威来源；插件模板只在首次物化时提供身份、展示、价格和 `config` 初始值：
 
 | 字段 | 首次物化来源 | 后续加载/同步规则 |
 | --- | --- | --- |
 | `_id/modelId` | MongoDB | 永不被插件改变 |
 | `model/type` | 插件模板初始化 | DB 权威；与插件不一致时记录配置错误，不静默覆盖 |
 | `provider/name` | 插件模板初始化 | DB 权威，允许管理员调整；插件更新不覆盖 |
-| `isSystem` | FastGPT 固定写入 `true` | 本轮不可由管理员修改，插件不参与 |
+| `scope` | FastGPT 固定写入 `system` | 本轮不可由管理员修改，插件不参与 |
 | `isActive/testMode`、默认标记、连接信息 | FastGPT 默认值或管理员配置 | 只读 DB，插件不参与 |
 | 价格字段 | 插件模板初始化 | DB 权威，插件更新不覆盖管理员价格 |
-| `config` | 插件能力配置初始化 | `plugin config defaults + DB config override` |
+| `config` | 插件能力配置初始化 | 只读 DB 完整快照；模板变化不隐式合并 |
 | `avatar/isCustom` | 不持久化 | 分别由 provider 和是否命中插件模板派生 |
 
-`config` 合并必须按类型 Schema 的第一层字段处理，DB 中“字段存在”即覆盖插件值，不能用 truthy 判断而丢失 `false`、`0` 或空数组。`defaultConfig`、`fieldMap`、`dbConfig`、`queryConfig` 等对象字段由 DB 整体覆盖，不做递归深合并；数组同样整体覆盖。没有插件模板的模型要求 DB `config` 完整，校验失败应暴露配置错误，不能从其他模型借默认值。
+加载时不做 `config` 合并。`defaultConfig`、`fieldMap`、`dbConfig`、`queryConfig`、数组以及 `false`、`0` 等值全部按数据库快照解释；配置不完整或非法时保留上一版运行时缓存并暴露配置错误，不能从插件或其他模型借默认值。
 
 客户端也接收 `config`，但必须返回脱敏子集，例如最大 token、vision、audio、reasoning、toolChoice 和 voices；`defaultSystemChatPrompt`、`defaultConfig`、`fieldMap`、`dbConfig`、`queryConfig` 不返回普通客户端。
 
@@ -230,13 +230,13 @@ Mongoose 顶层字段应显式声明，`config` 可以使用 `Schema.Types.Mixed
 当前插件返回的模型可能没有对应的数据库文档。如果只给现有 DB 文档增加 `modelId`，未被管理员改过的插件模型仍然没有稳定 ID，因此必须先物化：
 
 1. 启动或显式同步时读取插件模型模板和 `system_models`。
-2. 对每个插件模型按 `{ isSystem: true, model }` 执行幂等 upsert；兼容迁移完成前，先按旧 `{ model }` 查找并接管已有文档，不能给缺少 `isSystem` 的同名文档重新生成 ID。
-3. 已存在的文档保留 `_id` 和管理员顶层配置；`config` 仅用插件模板补齐 DB 中缺失的字段，DB 已显式配置的字段优先。
+2. 对每个插件模型按 `{ scope: system, model }` 执行幂等 upsert；兼容迁移完成前，先按旧 `{ model }` 查找并接管已有文档，不能给缺少 `scope` 的同名文档重新生成 ID。
+3. 已存在的文档保留 `_id` 和全部数据库配置；自动预装只使用 `$setOnInsert`，不通过插件模板补齐或覆盖存量 `config`。
 4. 新插件模型第一次同步时创建文档，此后始终复用该 `_id`。
 5. 多实例并发依靠唯一索引收敛；重复键后重新读取，不生成第二个 ID。
 6. 插件列表是 repair、物化和 active 列表计算的输入，获取失败时必须 fail-fast：启动阶段直接阻止实例启动；运行时重载阶段返回失败并保留上一版全局 active 模型对象和列表。失败路径不得执行 repair、删除、物化或可用模型缓存清理，因此不会删除模型或改变已有 ID。
 
-物化完成后，插件模型只承担“默认模板”职责，数据库文档承担“稳定身份和实际配置”职责。插件新增或删除默认能力不会直接重写管理员配置；若运行时补齐了新字段，应在显式同步时持久化规范化结果，避免同一 DB 版本因插件服务短暂不可用而产生不同运行行为。
+物化完成后，插件模型只承担“默认模板”职责，数据库文档承担“稳定身份和实际配置”职责。插件新增或删除默认能力不会直接重写管理员配置；未来若需要把新模板字段升级到存量实例，必须通过显式升级动作持久化，不能在运行时加载中隐式补齐。
 
 ### 5.5 唯一索引
 
@@ -244,11 +244,11 @@ Mongoose 顶层字段应显式声明，`config` 可以使用 `Schema.Types.Mixed
 
 ```ts
 defineIndex(SystemModelSchema, {
-  key: { isSystem: 1, model: 1 },
+  key: { scope: 1, model: 1 },
   options: {
     name: 'uniq_system_model',
     unique: true,
-    partialFilterExpression: { isSystem: true }
+    partialFilterExpression: { scope: ModelScopeEnum.system }
   }
 });
 ```
@@ -263,14 +263,14 @@ defineIndex(SystemModelSchema, {
 });
 ```
 
-未来私有模型 PR 再增加部分唯一索引 `{ tmbId: 1, model: 1 }`，过滤 `isSystem: false` 且 `tmbId` 存在。本轮不提前引入 `tmbId` 和私有模型逻辑。
+未来团队安装 PR 再增加部分唯一索引 `{ scope: 1, teamId: 1, model: 1 }`，过滤 `scope=team` 且 `teamId` 存在。本轮不提前引入 `teamId` 和团队模型逻辑。
 
-不能只建立无 partial filter 的 `{ isSystem, model }` 唯一索引，否则所有 `isSystem: false` 的模型仍会在全平台共享一组唯一空间，与未来的“成员内唯一”冲突。
+不能只建立无 partial filter 的 `{ scope, model }` 唯一索引，否则所有团队模型仍会在全平台共享一组唯一空间，与未来的“团队内唯一”冲突。
 
-### 5.6 `isSystem` 与 `isCustom`
+### 5.6 `scope` 与 `isCustom`
 
-- 本轮 `system_models` 中的所有模型都属于平台系统模型，包括管理员自行添加、未命中插件模板的模型；创建和迁移统一写入 `isSystem: true`。
-- 本轮输入 Schema 应将 `isSystem` 收紧为 literal `true`，不允许管理员 API 写入 `false`。未来私有模型需求再扩展这一边界。
+- 本轮 `system_models` 中的所有模型都属于平台系统模型，包括管理员自行添加、未命中插件模板的模型；创建和迁移统一写入 `scope: system`。
+- 本轮输入 Schema 将 `scope` 收紧为 literal `system`，不允许管理员 API 写入团队作用域。未来团队安装需求再扩展这一边界。
 - `isCustom = true` 的唯一含义是“该系统模型不在当前插件模板列表中”；命中模板则为 `false`。它不表示私有模型、创建者或所有权。
 - `isCustom` 只在运行时根据 `model` 是否命中插件模板派生，不持久化，也不得用于访问控制或唯一索引；命中后若 `type` 不一致，应作为模板/数据库配置错误单独报告，不能把它伪装成自定义模型。
 
@@ -368,7 +368,7 @@ getSTTModelData({ modelId, model }: ModelReference): STTModelData
 额外约束：
 
 - 输入的 `modelId` 不存在时，直接判不存在，不再把它当 `model` 名称查找。
-- 兼容分支只能返回 `isSystem: true` 的模型。
+- 兼容分支只能返回 `scope=system` 的模型。
 - 历史日志和管理页面若需要读取已停用模型，使用不承担执行校验的 `findModelData(ref)`，不放宽执行请求使用的类型化 getter。
 - `getDefault*ModelData()` 与 `get*ModelData(ref)` 分开，后者永远不静默回退默认值。
 - 不保留“未命中返回第一个系统模型”的兼容行为，旧数据无法解析时也必须显式暴露问题。
@@ -502,7 +502,7 @@ const displayModel = usage.model ?? modelMap.get(usage.modelId)?.model ?? i18nT(
 - Dataset：向量生成、文本余弦、图片理解、查询扩展、深度搜索、rerank、训练和重建 embedding。
 - Audio：站内 TTS/STT 配置与调用。
 - Evaluation：创建、执行、重试、列表和用量。
-- 模型管理：detail、update、updateWithJson、test、updateDefault 等接口改用 modelId 定位，管理列表返回 modelId。
+- 模型管理：配置接口统一移动到 `/admin/settings/model/*`；create 与 update 分离，detail、update、delete、test、updateDefault 等接口按 modelId 定位，管理列表返回 modelId。
 - 辅助 API：Prompt 优化、代码优化、问题引导等由客户端选择模型的接口。
 - Usage：Workflow、Agent Loop、Dataset training、Evaluation、TTS/STT 的所有 usage sink。
 
@@ -529,7 +529,7 @@ const displayModel = usage.model ?? modelMap.get(usage.modelId)?.model ?? i18nT(
 
 ### 9.1 服务端接口
 
-保留管理员 `/core/ai/model/list` 的管理语义，不把账号选择器分页混入管理员管理接口。
+管理员模型配置统一放在 `/admin/settings/model/*`，不把账号选择器分页混入管理员管理接口。
 
 将现有 GET `/core/ai/model/getMyModels` 改为当前账号可用模型的分页接口，不额外复制列表路由。请求/响应 contract 移到 `packages/global/openapi/core/ai/model`，复用通用 `PaginationSchema` / `PaginationResponseSchema`：
 
@@ -610,7 +610,16 @@ export const GetMyModelsResponseSchema =
 
 ### 11.1 模型结构接管与资源迁移
 
-旧版 `cleanSystemModelConfigs` 只用于升级前修复历史 `metadata` 异常，新版不再提供该路由。`loadSystemModels` 先成功取得完整插件模型列表，再逐条调用共享 repair：合法 canonical 文档保持不变；旧 `metadata` 或可修复的新结构字段写回 canonical 结构；仍无法恢复模型身份的记录使用快照条件删除，不因单条坏数据中断启动。repair 先将同名旧文档原地接管为 `isSystem: true`，随后物化仅 upsert 真正缺失的插件模型，从而保留旧 `_id`。单模型更新与 JSON 批量更新复用相同 repair，但无法修复时拒绝写入而不删除原模型。
+旧版 `cleanSystemModelConfigs` 只用于升级前修复历史 `metadata` 异常，新版不再提供该路由。启动 repair 先将同名旧文档原地接管为 `scope=system`，随后物化仅 upsert 真正缺失的插件模型，从而保留旧 `_id`。单模型新增/更新和 JSON 批量更新只接受 canonical 数据，不再调用 legacy repair；JSON 中没有 `modelId` 的旧记录直接过滤。JSON 的未知 `modelId` 表示跨实例导入：目标端按 `model` 复用已有系统实例或创建新实例。
+
+启动迁移、插件模板刷新、自动预装策略和数据库实例加载必须保持四个独立职责：
+
+1. `migrateLegacySystemModels` 只在启动升级阶段运行，负责 canonical 写回并保持 `_id`；不生成缓存，也不由定时任务或管理接口调用。
+2. `refreshModelTemplates` 只获取、校验并原子发布插件模板快照；启动失败则阻止启动，热刷新失败则保留上一版模板和 active 缓存，不触发任何数据库变更。
+3. `syncPreinstalledSystemModels` 只负责本版本“插件模板缺失实例自动预装”的兼容策略，按 `{ scope, model }` 创建缺失实例，不更新或删除已有实例。PR2 改为模板显式安装时只替换这一层。
+4. `loadInstalledModels` 只读取并严格解析数据库实例，在局部构建 list/map/defaults 后原子发布；不 repair、不拉插件、不创建或删除模型。管理员事务提交和数据库 Change Stream 只触发这一层。
+
+启动编排为 `refresh templates -> migrate legacy -> sync preinstalled -> load installed -> ready`。运行期模板刷新为 `refresh templates -> sync preinstalled -> load installed`，其中任一步失败都不得发布半成品快照；管理员写入为 `validate/preflight -> transaction -> load installed`。
 
 `admin/4163/backfillModelReferences` 只建立 `system_models.model -> _id` 映射，给 Dataset、App/Workflow、Evaluation 和模型权限记录增量补充 ID sibling。Usage 历史记录不回填。接口仅允许系统管理员执行，`dryRun` 默认为 `true`，响应按 `datasets/apps/evaluations/permissions` 分组返回 `scanned/unchanged/wouldUpdate/updated/invalid/unresolved/conflicts`。
 
@@ -622,7 +631,7 @@ export const GetMyModelsResponseSchema =
 部署启动
   -> 成功读取完整插件模型列表（失败则实例不启动）
   -> 清洗 system_models metadata
-  -> 历史 system_models 补 isSystem=true
+  -> 历史 system_models 补 scope=system，并移除旧 isSystem
   -> metadata/旧顶层字段拆分为 canonical 顶层字段 + config
   -> 物化全部插件系统模型并稳定 _id
   -> 建立系统 model -> modelId 唯一映射
@@ -683,7 +692,7 @@ export const GetMyModelsResponseSchema =
 
 ### 13.1 单元测试
 
-- Schema：系统模型重复 `model` 被拒绝；未来 `isSystem:false` 不受系统 partial index 错误约束。
+- Schema：系统模型重复 `model` 被拒绝；未来 `scope=team` 不受系统 partial index 错误约束。
 - Config schema：各模型类型必填/可选字段正确，未知字段和跨类型字段被拒绝。
 - Index manager：旧 `model_1` 被精确识别为 deprecated，新 partial unique index 被保留。
 - 物化：首次生成 ID、旧同名文档原地接管且 ID 不变、重复同步 ID 不变、多实例重复键收敛；启动插件失败会阻止启动且不修改 DB，重载插件失败会保留上一版 active 模型与权限缓存。

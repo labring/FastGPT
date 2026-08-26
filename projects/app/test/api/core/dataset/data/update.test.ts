@@ -22,7 +22,7 @@ const {
     model: 'vision-embedding',
     name: 'Vision embedding',
     provider: 'openai',
-    isSystem: true,
+    scope: 'system' as const,
     isActive: true,
     type: 'embedding',
     config: { defaultToken: 512, maxToken: 8192, weight: 100, vision: true }

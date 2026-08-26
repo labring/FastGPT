@@ -9,19 +9,20 @@ vi.mock('@fastgpt/service/core/ai/config/utils', async (importOriginal) => {
 
   return {
     ...actual,
-    getPluginSystemModelDocuments: vi.fn().mockResolvedValue([]),
+    refreshModelTemplates: vi.fn().mockResolvedValue([]),
     updatedReloadSystemModel: vi.fn().mockResolvedValue(undefined)
   };
 });
 
-import updateWithJsonApi from '@/pages/api/core/ai/model/updateWithJson';
+import updateWithJsonApi from '@/pages/api/admin/settings/model/updateWithJson';
 
-const buildLlmConfig = (model = 'test-llm') => ({
+const buildLlmConfig = ({ modelId, model = 'test-llm' }: { modelId: string; model?: string }) => ({
+  modelId,
   model,
   type: ModelTypeEnum.llm,
   provider: 'OpenAI',
   name: 'Test LLM',
-  isSystem: true as const,
+  scope: 'system' as const,
   config: {
     maxContext: 16000,
     maxResponse: 8000,
@@ -31,15 +32,17 @@ const buildLlmConfig = (model = 'test-llm') => ({
   isActive: true
 });
 
-const buildEmbeddingConfig = (model = 'test-embedding') => ({
-  model,
+const buildEmbeddingConfig = ({ modelId }: { modelId: string }) => ({
+  modelId,
+  model: 'test-embedding',
   type: ModelTypeEnum.embedding,
   provider: 'OpenAI',
   name: 'Test Embedding',
-  isSystem: true as const,
+  scope: 'system' as const,
   config: {
     defaultToken: 500,
-    maxToken: 3000
+    maxToken: 3000,
+    weight: 0
   },
   isActive: true
 });
@@ -49,7 +52,7 @@ const buildStoredLlm = (model: string) => ({
   type: ModelTypeEnum.llm,
   provider: 'OpenAI',
   name: model,
-  isSystem: true,
+  scope: 'system' as const,
   isActive: true,
   config: {
     maxContext: 8000,
@@ -61,95 +64,74 @@ const buildStoredLlm = (model: string) => ({
 
 const callUpdateWithJson = async (config: string) => {
   const root = await getRootUser();
-
-  return Call(updateWithJsonApi, {
-    auth: root,
-    body: { config }
-  });
+  return Call(updateWithJsonApi, { auth: root, body: { config } });
 };
 
-describe('updateWithJson api', () => {
-  it('strictly imports valid models while preserving stable ids and disabling omitted records', async () => {
+describe('admin settings model updateWithJson api', () => {
+  it('updates matching IDs, creates external models by model and disables omitted records', async () => {
     const oldModel = await MongoSystemModel.create(buildStoredLlm('old-model'));
     const existingModel = await MongoSystemModel.create(buildStoredLlm('test-llm'));
 
     const res = await callUpdateWithJson(
-      JSON.stringify([buildLlmConfig(' test-llm '), buildEmbeddingConfig()])
+      JSON.stringify([
+        buildLlmConfig({ modelId: String(existingModel._id) }),
+        buildEmbeddingConfig({ modelId: 'external-system-model-id' })
+      ])
     );
 
     expect(res.code).toBe(200);
-    expect(res.data).toBeUndefined();
-    const disabledModel = await MongoSystemModel.findOne({ model: 'old-model' }).lean();
-    expect(String(disabledModel?._id)).toBe(String(oldModel._id));
+    const disabledModel = await MongoSystemModel.findById(oldModel._id).lean();
     expect(disabledModel?.isActive).toBe(false);
     const updatedModel = await MongoSystemModel.findOne({ model: 'test-llm' }).lean();
     expect(String(updatedModel?._id)).toBe(String(existingModel._id));
     expect(updatedModel).toMatchObject({
-      model: 'test-llm',
-      isSystem: true,
-      config: {
-        maxContext: 16000,
-        maxResponse: 8000,
-        quoteMaxToken: 12000
-      }
+      scope: 'system',
+      config: { maxContext: 16000, maxResponse: 8000, quoteMaxToken: 12000 }
     });
-    const savedLlm = await MongoSystemModel.findOne({ model: 'test-llm' }).lean();
-    expect(savedLlm?.config).not.toHaveProperty('functionCall');
-    await expect(
-      MongoSystemModel.findOne({ model: 'test-embedding' }).lean()
-    ).resolves.toMatchObject({
-      config: {
-        weight: 0
-      }
-    });
+    const externalModel = await MongoSystemModel.findOne({ model: 'test-embedding' }).lean();
+    expect(externalModel).toMatchObject({ scope: 'system', config: { weight: 0 } });
+    expect(String(externalModel?._id)).not.toBe('external-system-model-id');
   });
 
-  it('repairs numeric strings and preserves existing records', async () => {
-    await MongoSystemModel.create(buildStoredLlm('existing-model'));
-    const invalidConfig = buildLlmConfig();
-    invalidConfig.config.maxContext = '16000' as unknown as number;
-
-    const res = await callUpdateWithJson(JSON.stringify([invalidConfig]));
+  it('ignores old records without modelId and does not disable all models', async () => {
+    const existing = await MongoSystemModel.create(buildStoredLlm('existing-model'));
+    const res = await callUpdateWithJson(
+      JSON.stringify([{ ...buildStoredLlm('legacy-model'), scope: undefined }])
+    );
 
     expect(res.code).toBe(200);
-    await expect(
-      MongoSystemModel.findOne({ model: 'existing-model' }).lean()
-    ).resolves.toMatchObject({
-      isActive: false
+    await expect(MongoSystemModel.findById(existing._id).lean()).resolves.toMatchObject({
+      isActive: true
     });
-    await expect(MongoSystemModel.findOne({ model: 'test-llm' }).lean()).resolves.toMatchObject({
-      config: { maxContext: 16000 }
-    });
+    await expect(MongoSystemModel.findOne({ model: 'legacy-model' })).resolves.toBeNull();
+  });
+
+  it('reuses a target model ID when an external ID points to an existing provider model', async () => {
+    const existing = await MongoSystemModel.create(buildStoredLlm('test-llm'));
+    const res = await callUpdateWithJson(
+      JSON.stringify([buildLlmConfig({ modelId: 'another-system-id' })])
+    );
+
+    expect(res.code).toBe(200);
+    const updated = await MongoSystemModel.findOne({ model: 'test-llm' }).lean();
+    expect(String(updated?._id)).toBe(String(existing._id));
+    expect(updated?.config.maxContext).toBe(16000);
   });
 
   it('rejects malformed JSON as an input parse error', async () => {
     const res = await callUpdateWithJson('{invalid-json');
 
-    expect(res.code).toBe(500);
     expect(res.error?.name).toBe('ApiRequestInputParseError');
     await expect(MongoSystemModel.countDocuments()).resolves.toBe(0);
   });
 
-  it('removes invalid optional nested model configuration', async () => {
-    const config = buildLlmConfig();
-    config.config.defaultConfig = '' as unknown as Record<string, unknown>;
+  it('rejects non-canonical latest records instead of repairing them', async () => {
+    const config = buildLlmConfig({ modelId: 'external-id' });
+    config.config.maxContext = '16000' as unknown as number;
 
     const res = await callUpdateWithJson(JSON.stringify([config]));
 
-    expect(res.code).toBe(200);
-    const saved = await MongoSystemModel.findOne({ model: 'test-llm' }).lean();
-    expect(saved?.config).not.toHaveProperty('defaultConfig');
-  });
-
-  it('rejects the whole batch when one model is irreparable and preserves existing records', async () => {
-    await MongoSystemModel.create(buildStoredLlm('existing-model'));
-
-    const res = await callUpdateWithJson(
-      JSON.stringify([buildLlmConfig(), { model: '', provider: null, type: 'unknown' }])
-    );
-
     expect(res.error?.name).toBe('UserError');
-    await expect(MongoSystemModel.findOne({ model: 'existing-model' })).resolves.not.toBeNull();
-    await expect(MongoSystemModel.findOne({ model: 'test-llm' })).resolves.toBeNull();
+    await expect(MongoSystemModel.countDocuments()).resolves.toBe(0);
   });
 });

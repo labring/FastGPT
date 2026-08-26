@@ -417,7 +417,7 @@ describe('getVectors function test', () => {
       model: 'text-embedding-3-small',
       name: 'text-embedding-3-small',
       type: ModelTypeEnum.embedding,
-      isSystem: true,
+      scope: 'system' as const,
       isActive: true,
       isCustom: false,
       ...commonOverrides,

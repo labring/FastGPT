@@ -31,7 +31,7 @@ const buildEmbeddingModel = ({ modelId, model, provider }: Record<string, string
   name: model,
   provider,
   type: ModelTypeEnum.embedding,
-  isSystem: true as const,
+  scope: 'system' as const,
   isActive: true,
   isCustom: false,
   config: { defaultToken: 512, maxToken: 8192, weight: 100 }

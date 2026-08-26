@@ -1,5 +1,5 @@
 import type { SystemDefaultModelType } from '../type';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { MongoSystemModel } from './schema';
 import {
   type EmbeddingSystemModelDataType,
@@ -69,8 +69,77 @@ export const desensitizeSystemDefaultModels = (defaultModels: SystemDefaultModel
 export const getPluginSystemModelDocuments = async (): Promise<SystemModelDocumentDataType[]> =>
   pluginClient.listModels().then((models) => models.map((model) => flatModelToDocumentData(model)));
 
-export const loadSystemModels = async (init = false, language = 'en') => {
-  if (!init && global.systemModelList) return;
+let modelTemplateSnapshot: SystemModelDocumentDataType[] | undefined;
+
+/**
+ * 拉取并校验完整插件模型模板，返回候选快照但不立即发布。
+ * 候选模板会在数据库实例也成功加载后，与 active 模型缓存一起原子发布。
+ */
+export const refreshModelTemplates = async (): Promise<SystemModelDocumentDataType[]> => {
+  return getPluginSystemModelDocuments();
+};
+
+/**
+ * 仅在启动升级阶段接管历史 system_models。该步骤只迁移数据库，不构建运行时缓存。
+ */
+export const migrateLegacySystemModels = async ({
+  pluginDocuments
+}: {
+  pluginDocuments: SystemModelDocumentDataType[];
+}) => {
+  const repairStats = await repairStoredSystemModels({ pluginDocuments });
+  if (repairStats.repaired > 0) {
+    getLogger(LogCategories.MODULE.AI.CONFIG).warn('System model documents repaired', {
+      scanned: repairStats.scanned,
+      unchanged: repairStats.unchanged,
+      repaired: repairStats.repaired
+    });
+  }
+  if (repairStats.deleted > 0) {
+    getLogger(LogCategories.MODULE.AI.CONFIG).warn('Invalid system model documents deleted', {
+      deleted: repairStats.deleted,
+      models: repairStats.deletedModels
+    });
+  }
+  return repairStats;
+};
+
+/**
+ * 当前版本的自动预装兼容策略：只物化插件中存在但数据库缺失的系统模型。
+ * 模板消失不会在这里删除或停用实例；PR2 可将本函数替换为显式模板安装。
+ */
+export const syncPreinstalledSystemModels = async ({
+  pluginDocuments
+}: {
+  pluginDocuments: SystemModelDocumentDataType[];
+}) => {
+  if (pluginDocuments.length === 0) return;
+
+  await MongoSystemModel.bulkWrite(
+    pluginDocuments.map((document) => ({
+      updateOne: {
+        filter: { scope: ModelScopeEnum.system, model: document.model },
+        update: { $setOnInsert: document },
+        upsert: true
+      }
+    })),
+    { ordered: false }
+  );
+};
+
+/**
+ * 只读取数据库安装实例并原子发布运行时模型快照，不执行插件请求、历史迁移或自动预装。
+ */
+export const loadInstalledModels = async ({
+  pluginDocuments = modelTemplateSnapshot,
+  language = 'en'
+}: {
+  pluginDocuments?: SystemModelDocumentDataType[];
+  language?: string;
+} = {}) => {
+  if (!pluginDocuments) {
+    return Promise.reject(new Error('Model template snapshot is not initialized'));
+  }
 
   const getPermissionCacheSignature = (models: SystemModelDataType[]) =>
     models
@@ -81,25 +150,10 @@ export const loadSystemModels = async (init = false, language = 'en') => {
     ? getPermissionCacheSignature(global.systemActiveModelList)
     : undefined;
 
-  try {
-    await preloadModelProviders();
-  } catch (error) {
-    const logger = getLogger(LogCategories.MODULE.AI.CONFIG);
-    logger.error('System model provider preload failed', { error });
-    return Promise.reject(error);
-  }
-
   const _systemModelList: SystemModelDataType[] = [];
   const _systemActiveModelList: SystemModelDataType[] = [];
   const _systemModelMap = new Map<string, SystemModelDataType>();
   const _systemDefaultModel: SystemDefaultModelType = {};
-
-  if (!global.systemModelList) {
-    global.systemModelList = [];
-    global.systemActiveModelList = [];
-    global.systemModelMap = new Map<string, SystemModelDataType>();
-    global.systemDefaultModel = {};
-  }
 
   const pushModel = (modelData: SystemModelDataType) => {
     _systemModelList.push(modelData);
@@ -145,59 +199,16 @@ export const loadSystemModels = async (init = false, language = 'en') => {
   };
 
   try {
-    const pluginDocuments = await getPluginSystemModelDocuments();
-
-    // 先原地接管旧文档，再物化新增插件模型。旧文档没有 isSystem，若先按新结构 upsert，
-    // 会创建同名记录并导致 repair 触发唯一索引冲突，或者被旧 model 唯一索引直接拒绝。
-    const repairStats = await repairStoredSystemModels({ pluginDocuments });
-    if (repairStats.repaired > 0) {
-      getLogger(LogCategories.MODULE.AI.CONFIG).warn('System model documents repaired', {
-        scanned: repairStats.scanned,
-        unchanged: repairStats.unchanged,
-        repaired: repairStats.repaired
-      });
-    }
-    if (repairStats.deleted > 0) {
-      getLogger(LogCategories.MODULE.AI.CONFIG).warn('Invalid system model documents deleted', {
-        deleted: repairStats.deleted,
-        models: repairStats.deletedModels
-      });
-    }
-
-    // repair 后，同名历史记录已具有 canonical 结构；按系统模型条件更新可稳定复用原 `_id`。
-    // 仅当插件引入了数据库中不存在的新模型时，upsert 才会插入新文档。
-    if (pluginDocuments.length > 0) {
-      await MongoSystemModel.bulkWrite(
-        pluginDocuments.map((document) => ({
-          updateOne: {
-            filter: { isSystem: true, model: document.model },
-            update: { $setOnInsert: document },
-            upsert: true
-          }
-        })),
-        { ordered: false }
-      );
-    }
-
-    const dbModels = await MongoSystemModel.find({}).lean();
+    const dbModels = await MongoSystemModel.find({ scope: ModelScopeEnum.system }).lean();
     const pluginDocumentMap = new Map(pluginDocuments.map((model) => [model.model, model]));
 
     dbModels.forEach((dbModel) => {
       const dbDocument = SystemModelDocumentDataSchema.parse(dbModel);
       const pluginDocument = pluginDocumentMap.get(dbDocument.model);
 
-      // 只对 config 做插件默认值合并；数据库公共字段始终具有最终解释权。
-      const mergedDocument = SystemModelDocumentDataSchema.parse({
-        ...(pluginDocument ?? {}),
-        ...dbDocument,
-        config: {
-          ...(pluginDocument?.config ?? {}),
-          ...dbDocument.config
-        }
-      });
-      const provider = getModelProvider(mergedDocument.provider, language);
+      const provider = getModelProvider(dbDocument.provider, language);
       const runtimeModel = SystemModelDataSchema.parse({
-        ...mergedDocument,
+        ...dbDocument,
         modelId: String(dbModel._id),
         provider: provider.id,
         avatar: provider.avatar,
@@ -263,6 +274,7 @@ export const loadSystemModels = async (init = false, language = 'en') => {
 
     // Set global value
     {
+      modelTemplateSnapshot = pluginDocuments;
       global.systemModelList = _systemModelList;
       global.systemActiveModelList = _systemActiveModelList;
       global.systemModelMap = _systemModelMap;
@@ -278,6 +290,31 @@ export const loadSystemModels = async (init = false, language = 'en') => {
     const logger = getLogger(LogCategories.MODULE.AI.CONFIG);
     logger.error('System models load failed', { error });
 
+    return Promise.reject(error);
+  }
+};
+
+/**
+ * 编排系统模型启动或模板热刷新。启动才执行历史迁移；热刷新只更新模板、预装和实例快照。
+ */
+export const loadSystemModels = async (refresh = false, language = 'en') => {
+  if (!refresh && global.systemModelList) return;
+
+  try {
+    await preloadModelProviders();
+    const pluginDocuments = await refreshModelTemplates();
+    const isStartup = !global.systemModelList;
+
+    if (isStartup) {
+      // 必须先接管无 scope 的旧文档，再按新作用域自然键执行缺失模板预装。
+      await migrateLegacySystemModels({ pluginDocuments });
+    }
+    await syncPreinstalledSystemModels({ pluginDocuments });
+    await loadInstalledModels({ pluginDocuments, language });
+  } catch (error) {
+    getLogger(LogCategories.MODULE.AI.CONFIG).error('System models orchestration failed', {
+      error
+    });
     return Promise.reject(error);
   }
 };
@@ -309,8 +346,8 @@ export const watchSystemModelUpdate = () => {
     'change',
     debounce(async () => {
       try {
-        // Main node will reload twice
-        await loadSystemModels(true);
+        // 数据库事件只重建安装实例快照，不触发插件请求、repair 或自动预装。
+        await loadInstalledModels();
         // All node reaload buffer
         await reloadFastGPTConfigBuffer();
       } catch {}
@@ -319,17 +356,22 @@ export const watchSystemModelUpdate = () => {
 };
 
 // 更新完模型后，需要重载缓存
-export const updatedReloadSystemModel = async () => {
-  // 1. 更新模型（所有节点都会触发）
-  await loadSystemModels(true);
-  // 2. 更新缓存（仅主节点触发）；成员模型缓存由 loadSystemModels 按 active 签名变化失效。
+export const updatedReloadSystemModel = async ({
+  pluginDocuments
+}: {
+  pluginDocuments?: SystemModelDocumentDataType[];
+} = {}) => {
+  const templates = pluginDocuments ?? (await refreshModelTemplates());
+  // 管理员写入后只重建安装实例快照，不隐式执行全量预装。
+  await loadInstalledModels({ pluginDocuments: templates });
+  // 2. 更新缓存（仅主节点触发）；成员模型缓存由实例加载按 active 签名变化失效。
   await updateFastGPTConfigBuffer();
   // 3. 延迟1秒，等待其他节点刷新
   await delay(1000);
 };
 export const cronRefreshModels = async () => {
   setCron('*/5 * * * *', async () => {
-    // 1. 更新模型（所有节点都会触发）
+    // 模板刷新成功后才执行自动预装和运行时快照发布；失败时保留旧快照。
     await loadSystemModels(true);
     // 2. 更新缓存（仅主节点触发）
     await updateFastGPTConfigBuffer();

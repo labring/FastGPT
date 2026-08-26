@@ -1,4 +1,4 @@
-import { ModelTypeEnum } from '../../../../core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '../../../../core/ai/constants';
 import {
   EmbeddingModelConfigSchema,
   LLMModelConfigSchema,
@@ -20,7 +20,7 @@ const MyModelBaseSchema = z.object({
   model: z.string().meta({ description: 'Provider 请求使用的模型标识' }),
   name: z.string().meta({ description: '模型展示名称' }),
   provider: z.string().meta({ description: '模型提供商标识' }),
-  isSystem: z.literal(true).meta({ description: '是否为系统模型' }),
+  scope: z.literal(ModelScopeEnum.system).meta({ description: '模型实例作用域' }),
   avatar: z.string().optional().meta({ description: '模型图标' }),
   isActive: z.boolean().optional().meta({ description: '模型是否启用' }),
   isCustom: z.boolean().meta({ description: '模型是否不在内置模板中' }),
@@ -77,6 +77,74 @@ export type MyEmbeddingModelItemType = z.infer<typeof MyEmbeddingModelItemSchema
 export type MyRerankModelItemType = z.infer<typeof MyRerankModelItemSchema>;
 export type MyTTSModelItemType = z.infer<typeof MyTTSModelItemSchema>;
 export type MySTTModelItemType = z.infer<typeof MySTTModelItemSchema>;
+
+/* ============================================================================
+ * API: 获取公开系统模型
+ * Route: GET /api/core/ai/model/getSystemModels
+ * Method: GET
+ * Description: 无需鉴权返回价格页所需的最小化 active 系统模型与价格信息
+ * Tags: ['AI 通用', 'Read']
+ * ============================================================================ */
+
+const PublicPriceModelBaseSchema = z.object({
+  name: z.string().meta({ example: 'GPT-5', description: '模型展示名称' }),
+  provider: z.string().meta({ example: 'openai', description: '模型提供商标识' }),
+  testMode: z.boolean().optional().meta({ example: false, description: '是否为测试模式' })
+});
+
+const PublicCharsPriceSchema = z.number().optional().meta({
+  example: 1,
+  description: '对应模型计费单位的积分单价'
+});
+
+export const PublicPriceSystemModelSchema = z.discriminatedUnion('type', [
+  PublicPriceModelBaseSchema.extend({
+    type: z
+      .literal(ModelTypeEnum.llm)
+      .meta({ example: ModelTypeEnum.llm, description: '模型类型' }),
+    priceTiers: z.array(ModelPriceTierSchema).meta({
+      example: [{ minInputTokens: 0, inputPrice: 1, outputPrice: 2 }],
+      description: '分段输入输出价格配置'
+    }),
+    config: LLMModelConfigSchema.pick({
+      maxContext: true,
+      vision: true,
+      audio: true,
+      video: true,
+      reasoning: true
+    })
+  }),
+  PublicPriceModelBaseSchema.extend({
+    type: z
+      .literal(ModelTypeEnum.embedding)
+      .meta({ example: ModelTypeEnum.embedding, description: '模型类型' }),
+    charsPointsPrice: PublicCharsPriceSchema,
+    config: EmbeddingModelConfigSchema.pick({ maxToken: true })
+  }),
+  PublicPriceModelBaseSchema.extend({
+    type: z
+      .literal(ModelTypeEnum.rerank)
+      .meta({ example: ModelTypeEnum.rerank, description: '模型类型' }),
+    charsPointsPrice: PublicCharsPriceSchema,
+    config: RerankModelConfigSchema.pick({ maxToken: true })
+  }),
+  PublicPriceModelBaseSchema.extend({
+    type: z
+      .literal(ModelTypeEnum.tts)
+      .meta({ example: ModelTypeEnum.tts, description: '模型类型' }),
+    charsPointsPrice: PublicCharsPriceSchema
+  }),
+  PublicPriceModelBaseSchema.extend({
+    type: z
+      .literal(ModelTypeEnum.stt)
+      .meta({ example: ModelTypeEnum.stt, description: '模型类型' }),
+    charsPointsPrice: PublicCharsPriceSchema
+  })
+]);
+export type PublicPriceSystemModel = z.infer<typeof PublicPriceSystemModelSchema>;
+
+export const GetSystemModelsResponseSchema = z.array(PublicPriceSystemModelSchema);
+export type GetSystemModelsResponse = z.infer<typeof GetSystemModelsResponseSchema>;
 
 /* ============================================================================
  * API: 分页获取当前账号可用模型

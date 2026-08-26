@@ -20,7 +20,7 @@ const createModel = (overrides: Record<string, any> = {}) =>
     name: 'GPT-4o',
     modelId: '68ad85a7463006c963799a05',
     isActive: true,
-    isSystem: true,
+    scope: 'system' as const,
     isCustom: false,
     ...overrides,
     config: {

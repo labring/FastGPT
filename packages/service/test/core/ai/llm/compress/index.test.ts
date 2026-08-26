@@ -88,7 +88,7 @@ const model: LLMSystemModelDataType = {
   provider: 'openai',
   model: 'gpt-4',
   name: 'GPT-4',
-  isSystem: true,
+  scope: 'system' as const,
   isActive: true,
   isCustom: false,
   config: {

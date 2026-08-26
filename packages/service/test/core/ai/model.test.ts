@@ -15,7 +15,7 @@ const modelData: SystemModelDataType = {
   provider: 'OpenAI',
   model: 'gpt-test',
   name: 'GPT test display name',
-  isSystem: true,
+  scope: 'system' as const,
   isActive: true,
   isCustom: false,
   config: {

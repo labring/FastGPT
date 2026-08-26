@@ -1,5 +1,5 @@
 /* v8 ignore file */
-import { ModelTypeEnum } from './constants';
+import { ModelScopeEnum, ModelTypeEnum } from './constants';
 import z from 'zod';
 
 export const ModelPriceTierSchema = z
@@ -91,7 +91,7 @@ const SystemModelDocumentBaseSchema = PriceTypeSchema.extend({
   provider: z.string().trim().min(1),
   model: z.string().trim().min(1),
   name: z.string().trim().min(1),
-  isSystem: z.literal(true).default(true),
+  scope: z.literal(ModelScopeEnum.system).default(ModelScopeEnum.system),
   isActive: z.boolean().optional(),
   isDefault: z.boolean().optional(),
   requestUrl: z.string().optional(),

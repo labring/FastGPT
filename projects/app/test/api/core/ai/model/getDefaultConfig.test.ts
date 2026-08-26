@@ -18,9 +18,9 @@ vi.mock('@fastgpt/service/core/ai/config/utils', () => ({
   getSystemModelConfig: mocks.getSystemModelConfig
 }));
 
-import handler from '@/pages/api/core/ai/model/getDefaultConfig';
+import handler from '@/pages/api/admin/settings/model/getDefaultConfig';
 
-describe('GET /api/core/ai/model/getDefaultConfig', () => {
+describe('GET /api/admin/settings/model/getDefaultConfig', () => {
   const modelId = '68ad85a7463006c963799a05';
 
   beforeEach(() => {
@@ -31,7 +31,7 @@ describe('GET /api/core/ai/model/getDefaultConfig', () => {
       provider: 'openai',
       model: 'gpt-4o',
       name: 'GPT-4o',
-      isSystem: true,
+      scope: 'system' as const,
       isActive: true,
       config: {
         maxContext: 128000,

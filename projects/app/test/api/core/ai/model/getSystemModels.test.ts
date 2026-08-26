@@ -5,9 +5,9 @@ vi.mock('@/service/middleware/entry', () => ({
   NextAPI: (handler: unknown) => handler
 }));
 
-import handler from '@/pages/api/common/system/getSystemModels';
+import handler from '@/pages/api/core/ai/model/getSystemModels';
 
-describe('GET /api/common/system/getSystemModels', () => {
+describe('GET /api/core/ai/model/getSystemModels', () => {
   beforeEach(() => {
     const model = {
       modelId: '68ad85a7463006c963799a01',
@@ -15,7 +15,7 @@ describe('GET /api/common/system/getSystemModels', () => {
       name: 'GPT Public',
       provider: 'openai',
       type: ModelTypeEnum.llm,
-      isSystem: true as const,
+      scope: 'system' as const,
       isActive: true,
       isCustom: false,
       requestUrl: 'https://private.example.com/v1',
@@ -47,9 +47,7 @@ describe('GET /api/common/system/getSystemModels', () => {
         provider: 'openai',
         type: ModelTypeEnum.llm,
         priceTiers: [{ minInputTokens: 0, inputPrice: 1, outputPrice: 2 }],
-        config: {
-          maxContext: 128000
-        }
+        config: { maxContext: 128000 }
       }
     ]);
     expect(result[0]).not.toHaveProperty('requestUrl');

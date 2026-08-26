@@ -320,7 +320,7 @@ describe('debugChat handler — parameter validation', () => {
       model: 'gpt-4o',
       name: 'GPT-4o',
       type: ModelTypeEnum.llm,
-      isSystem: true,
+      scope: 'system' as const,
       isActive: true,
       isCustom: false,
       config: {

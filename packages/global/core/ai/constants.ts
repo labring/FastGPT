@@ -22,6 +22,12 @@ export enum ModelTypeEnum {
   rerank = 'rerank'
 }
 
+/** 已安装模型实例的归属作用域；插件模板不属于模型实例，不使用该枚举。 */
+export enum ModelScopeEnum {
+  system = 'system',
+  team = 'team'
+}
+
 export const defaultQAModels: LLMSystemModelDataType[] = [
   {
     type: ModelTypeEnum.llm,
@@ -29,7 +35,7 @@ export const defaultQAModels: LLMSystemModelDataType[] = [
     model: 'gpt-5',
     name: 'gpt-5',
     modelId: '',
-    isSystem: true,
+    scope: ModelScopeEnum.system,
     isCustom: false,
     charsPointsPrice: 0,
     config: {
@@ -54,7 +60,7 @@ export const defaultVectorModels: EmbeddingSystemModelDataType[] = [
     model: 'text-embedding-3-small',
     name: 'Embedding-2',
     modelId: '',
-    isSystem: true,
+    scope: ModelScopeEnum.system,
     isCustom: false,
     charsPointsPrice: 0,
     config: {
@@ -72,7 +78,7 @@ export const defaultSTTModels: STTSystemModelDataType[] = [
     model: 'whisper-1',
     name: 'whisper-1',
     modelId: '',
-    isSystem: true,
+    scope: ModelScopeEnum.system,
     isCustom: false,
     charsPointsPrice: 0,
     config: {}

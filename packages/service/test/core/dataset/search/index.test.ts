@@ -23,7 +23,7 @@ const embeddingModel: EmbeddingSystemModelDataType = {
   model: 'embedding-model',
   name: 'Embedding model',
   modelId: '68ad85a7463006c963799a01',
-  isSystem: true,
+  scope: 'system' as const,
   isCustom: false,
   type: ModelTypeEnum.embedding,
   config: {
@@ -37,7 +37,7 @@ const extensionModel: LLMSystemModelDataType = {
   model: 'query-extension-model',
   name: 'Query extension model',
   modelId: '68ad85a7463006c963799a02',
-  isSystem: true,
+  scope: 'system' as const,
   isCustom: false,
   type: ModelTypeEnum.llm,
   config: {

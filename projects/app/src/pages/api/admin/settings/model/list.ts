@@ -7,16 +7,9 @@ import {
 } from '@fastgpt/global/openapi/admin/core/ai/model/api';
 import { desensitizeSystemModel } from '@fastgpt/service/core/ai/config/utils';
 
-export type listQuery = object;
-
-export type listBody = object;
-
-export type listResponse = GetAdminSystemModelListResponse;
-
-async function handler(req: ApiRequestProps<listBody, listQuery>): Promise<listResponse> {
+async function handler(req: ApiRequestProps): Promise<GetAdminSystemModelListResponse> {
   await authSystemAdmin({ req });
 
-  // Read db
   return GetAdminSystemModelListResponseSchema.parse(
     global.systemModelList.map(desensitizeSystemModel)
   );

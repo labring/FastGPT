@@ -21,20 +21,17 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   TestAdminSystemModelQuerySchema,
   TestAdminSystemModelResponseSchema,
-  type TestAdminSystemModelQuery
+  type TestAdminSystemModelQuery,
+  type TestAdminSystemModelResponse
 } from '@fastgpt/global/openapi/admin/core/ai/model/api';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+
 const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
-export type testQuery = TestAdminSystemModelQuery;
-
-export type testBody = Record<string, never>;
-
-export type testResponse = any;
-
-async function handler(req: ApiRequestProps<testBody, testQuery>): Promise<testResponse> {
+async function handler(
+  req: ApiRequestProps<Record<string, never>, TestAdminSystemModelQuery>
+): Promise<TestAdminSystemModelResponse> {
   const { teamId } = await authSystemAdmin({ req });
-
   const { modelId, channelId } = parseApiInput({
     req,
     querySchema: TestAdminSystemModelQuerySchema
@@ -47,27 +44,33 @@ async function handler(req: ApiRequestProps<testBody, testQuery>): Promise<testR
     delete modelData.requestAuth;
   }
 
-  const headers: Record<string, string> = channelId
-    ? {
-        'Aiproxy-Channel': String(channelId)
-      }
-    : {};
-  logger.debug(`Test model`, modelData);
+  const headers: Record<string, string> = channelId ? { 'Aiproxy-Channel': String(channelId) } : {};
+  logger.debug('Test model', modelData);
 
   if (modelData.type === 'llm') {
-    return TestAdminSystemModelResponseSchema.parse(await testLLMModel(modelData, headers, teamId));
+    return TestAdminSystemModelResponseSchema.parse(
+      await testLLMModel({ model: modelData, headers, teamId })
+    );
   }
   if (modelData.type === 'embedding') {
-    return TestAdminSystemModelResponseSchema.parse(await testEmbeddingModel(modelData, headers));
+    return TestAdminSystemModelResponseSchema.parse(
+      await testEmbeddingModel({ model: modelData, headers })
+    );
   }
   if (modelData.type === 'tts') {
-    return TestAdminSystemModelResponseSchema.parse(await testTTSModel(modelData, headers));
+    return TestAdminSystemModelResponseSchema.parse(
+      await testTTSModel({ model: modelData, headers })
+    );
   }
   if (modelData.type === 'stt') {
-    return TestAdminSystemModelResponseSchema.parse(await testSTTModel(modelData, headers));
+    return TestAdminSystemModelResponseSchema.parse(
+      await testSTTModel({ model: modelData, headers })
+    );
   }
   if (modelData.type === 'rerank') {
-    return TestAdminSystemModelResponseSchema.parse(await testReRankModel(modelData, headers));
+    return TestAdminSystemModelResponseSchema.parse(
+      await testReRankModel({ model: modelData, headers })
+    );
   }
 
   return Promise.reject('Model type not supported');
@@ -75,49 +78,51 @@ async function handler(req: ApiRequestProps<testBody, testQuery>): Promise<testR
 
 export default NextAPI(handler);
 
-const testLLMModel = async (
-  model: LLMSystemModelDataType,
-  headers: Record<string, string>,
-  teamId: string
-) => {
+const testLLMModel = async ({
+  model,
+  headers,
+  teamId
+}: {
+  model: LLMSystemModelDataType;
+  headers: Record<string, string>;
+  teamId: string;
+}) => {
   const { answerText } = await createLLMResponse({
     teamId,
     saveLLMResponseRecord: false,
     body: {
-      model, // 传递实体 model 进去，保障底层不会去拿内存里的实体。
+      model,
       messages: [{ role: 'user', content: 'hi' }],
       stream: true
     },
     custonHeaders: headers
   });
 
-  if (answerText) {
-    return answerText;
-  }
-
+  if (answerText) return answerText;
   return Promise.reject('Model response empty');
 };
 
-const testEmbeddingModel = async (
-  model: EmbeddingSystemModelDataType,
-  headers: Record<string, string>
-) => {
-  return getVectors({
+const testEmbeddingModel = async ({
+  model,
+  headers
+}: {
+  model: EmbeddingSystemModelDataType;
+  headers: Record<string, string>;
+}) =>
+  getVectors({
     model,
-    inputs: [
-      {
-        type: 'text',
-        input: 'Hi'
-      }
-    ],
+    inputs: [{ type: 'text', input: 'Hi' }],
     headers
   });
-};
 
-const testTTSModel = async (model: TTSSystemModelDataType, headers: Record<string, string>) => {
-  const { ai } = getAIApi({
-    timeout: 10000
-  });
+const testTTSModel = async ({
+  model,
+  headers
+}: {
+  model: TTSSystemModelDataType;
+  headers: Record<string, string>;
+}) => {
+  const { ai } = getAIApi({ timeout: 10000 });
   await ai.audio.speech.create(
     {
       model: model.model,
@@ -138,7 +143,13 @@ const testTTSModel = async (model: TTSSystemModelDataType, headers: Record<strin
   );
 };
 
-const testSTTModel = async (model: STTSystemModelDataType, headers: Record<string, string>) => {
+const testSTTModel = async ({
+  model,
+  headers
+}: {
+  model: STTSystemModelDataType;
+  headers: Record<string, string>;
+}) => {
   const path = isProduction ? '/app/data/test.mp3' : 'data/test.mp3';
   const { text } = await aiTranscriptions({
     model,
@@ -149,10 +160,13 @@ const testSTTModel = async (model: STTSystemModelDataType, headers: Record<strin
   logger.info(`STT result: ${text}`);
 };
 
-const testReRankModel = async (
-  model: RerankSystemModelDataType,
-  headers: Record<string, string>
-) => {
+const testReRankModel = async ({
+  model,
+  headers
+}: {
+  model: RerankSystemModelDataType;
+  headers: Record<string, string>;
+}) => {
   await reRankRecall({
     model,
     query: 'Hi',

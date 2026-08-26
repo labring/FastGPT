@@ -52,7 +52,7 @@ const modelData = {
   model: 'gpt-4',
   name: 'GPT-4',
   isActive: true,
-  isSystem: true,
+  scope: 'system' as const,
   isCustom: false,
   config: {
     maxContext: 128000,

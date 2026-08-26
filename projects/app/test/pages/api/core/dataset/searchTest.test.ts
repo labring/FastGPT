@@ -10,7 +10,7 @@ const mockUpdateApiKeyUsage = vi.hoisted(() => vi.fn());
 const mockGetRerankModelData = vi.hoisted(() => vi.fn());
 const mockGetEmbeddingModelData = vi.hoisted(() => vi.fn());
 const mockGetLLMModelData = vi.hoisted(() => vi.fn());
-const mockGetVlmModelData = vi.hoisted(() => vi.fn());
+const mockGetOptionalVlmModelData = vi.hoisted(() => vi.fn());
 const mockAddAuditLog = vi.hoisted(() => vi.fn());
 const mockCreateExternalUrl = vi.hoisted(() => vi.fn());
 const mockTeamFrequencyLimit = vi.hoisted(() => vi.fn());
@@ -40,7 +40,7 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
   getRerankModelData: mockGetRerankModelData,
   getEmbeddingModelData: mockGetEmbeddingModelData,
   getLLMModelData: mockGetLLMModelData,
-  getVlmModelData: mockGetVlmModelData
+  getOptionalVlmModelData: mockGetOptionalVlmModelData
 }));
 
 vi.mock('@fastgpt/service/support/user/audit/util', () => ({
@@ -91,7 +91,7 @@ describe('searchTest query image auth', () => {
       type: 'embedding',
       config: {}
     });
-    mockGetVlmModelData.mockReturnValue({
+    mockGetOptionalVlmModelData.mockReturnValue({
       modelId: '68ad85a7463006c963799a02',
       model: 'mock-vlm-model',
       name: 'Mock VLM model',

@@ -27,7 +27,7 @@ const model = {
   name: 'Text embedding 3 small',
   provider: 'openai',
   type: ModelTypeEnum.embedding,
-  isSystem: true as const,
+  scope: 'system' as const,
   isActive: true,
   isCustom: false,
   config: {

@@ -12,7 +12,7 @@ const createLlmModel = (overrides = {}) => ({
   model: 'plain-model',
   name: 'Plain Model',
   isActive: true,
-  isSystem: true,
+  scope: 'system' as const,
   isCustom: false,
   requestUrl: 'https://api.example.com/v1/chat/completions',
   requestAuth: 'model-key',

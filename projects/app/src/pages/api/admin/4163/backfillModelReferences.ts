@@ -15,6 +15,7 @@ import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSc
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
+import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 
 const BACKFILL_BATCH_SIZE = 100;
 
@@ -58,7 +59,10 @@ export const runBackfillModelReferences = async ({
     groups: undefined as never
   };
   const modelIdByModel = new Map(
-    (await MongoSystemModel.find({}, 'model').lean()).map((item) => [item.model, item._id])
+    (await MongoSystemModel.find({ scope: ModelScopeEnum.system }, 'model').lean()).map((item) => [
+      item.model,
+      item._id
+    ])
   );
 
   type ReferenceTransformResult = {

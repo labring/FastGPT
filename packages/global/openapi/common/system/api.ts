@@ -2,12 +2,6 @@ import { z } from 'zod';
 import { SubPlanSchema } from '../../../support/wallet/sub/type';
 import type { FastGPTFeConfigsType } from '../../../common/system/types';
 import {
-  LLMModelConfigSchema,
-  ModelPriceTierSchema,
-  RerankModelConfigSchema,
-  EmbeddingModelConfigSchema
-} from '../../../core/ai/model.schema';
-import {
   MyEmbeddingModelItemSchema,
   MyLLMModelItemSchema,
   MyRerankModelItemSchema,
@@ -109,74 +103,6 @@ export const GetSystemInitDataResponseSchema = z.object({
     })
 });
 export type GetSystemInitDataResponse = z.infer<typeof GetSystemInitDataResponseSchema>;
-
-/* ============================================================================
- * API: 获取公开系统模型
- * Route: GET /api/common/system/getSystemModels
- * Method: GET
- * Description: 无需鉴权返回价格页所需的最小化模型与价格信息
- * Tags: ['系统接口', 'Read']
- * ============================================================================ */
-
-const PublicPriceModelBaseSchema = z.object({
-  name: z.string().meta({ example: 'GPT-5', description: '模型展示名称' }),
-  provider: z.string().meta({ example: 'openai', description: '模型提供商标识' }),
-  testMode: z.boolean().optional().meta({ example: false, description: '是否为测试模式' })
-});
-
-const PublicCharsPriceSchema = z.number().optional().meta({
-  example: 1,
-  description: '对应模型计费单位的积分单价'
-});
-
-export const PublicPriceSystemModelSchema = z.discriminatedUnion('type', [
-  PublicPriceModelBaseSchema.extend({
-    type: z
-      .literal(ModelTypeEnum.llm)
-      .meta({ example: ModelTypeEnum.llm, description: '模型类型' }),
-    priceTiers: z.array(ModelPriceTierSchema).meta({
-      example: [{ minInputTokens: 0, inputPrice: 1, outputPrice: 2 }],
-      description: '分段输入输出价格配置'
-    }),
-    config: LLMModelConfigSchema.pick({
-      maxContext: true,
-      vision: true,
-      audio: true,
-      video: true,
-      reasoning: true
-    })
-  }),
-  PublicPriceModelBaseSchema.extend({
-    type: z
-      .literal(ModelTypeEnum.embedding)
-      .meta({ example: ModelTypeEnum.embedding, description: '模型类型' }),
-    charsPointsPrice: PublicCharsPriceSchema,
-    config: EmbeddingModelConfigSchema.pick({ maxToken: true })
-  }),
-  PublicPriceModelBaseSchema.extend({
-    type: z
-      .literal(ModelTypeEnum.rerank)
-      .meta({ example: ModelTypeEnum.rerank, description: '模型类型' }),
-    charsPointsPrice: PublicCharsPriceSchema,
-    config: RerankModelConfigSchema.pick({ maxToken: true })
-  }),
-  PublicPriceModelBaseSchema.extend({
-    type: z
-      .literal(ModelTypeEnum.tts)
-      .meta({ example: ModelTypeEnum.tts, description: '模型类型' }),
-    charsPointsPrice: PublicCharsPriceSchema
-  }),
-  PublicPriceModelBaseSchema.extend({
-    type: z
-      .literal(ModelTypeEnum.stt)
-      .meta({ example: ModelTypeEnum.stt, description: '模型类型' }),
-    charsPointsPrice: PublicCharsPriceSchema
-  })
-]);
-export type PublicPriceSystemModel = z.infer<typeof PublicPriceSystemModelSchema>;
-
-export const GetSystemModelsResponseSchema = z.array(PublicPriceSystemModelSchema);
-export type GetSystemModelsResponse = z.infer<typeof GetSystemModelsResponseSchema>;
 
 /* ============================================================================
  * API: 唤醒训练队列

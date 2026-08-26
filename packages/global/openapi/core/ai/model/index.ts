@@ -1,6 +1,7 @@
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import {
+  GetSystemModelsResponseSchema,
   GetMyModelQuerySchema,
   GetMyModelResponseSchema,
   GetMyModelsQuerySchema,
@@ -11,6 +12,19 @@ import {
 } from './api';
 
 export const AIModelPath: OpenAPIPath = {
+  '/core/ai/model/getSystemModels': {
+    get: {
+      summary: '获取公开系统模型',
+      description: '返回价格页展示所需的最小化 active 系统模型与价格信息，无需鉴权',
+      tags: [DevApiTagsMap.aiCommon],
+      responses: {
+        200: {
+          description: '成功返回公开系统模型列表',
+          content: { 'application/json': { schema: GetSystemModelsResponseSchema } }
+        }
+      }
+    }
+  },
   '/core/ai/model/getMyModels': {
     get: {
       summary: '分页获取当前账号可用模型',

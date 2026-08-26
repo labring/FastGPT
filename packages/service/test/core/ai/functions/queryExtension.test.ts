@@ -35,7 +35,7 @@ const llmModel = {
   model: 'gpt-query',
   name: 'GPT Query',
   type: ModelTypeEnum.llm,
-  isSystem: true,
+  scope: 'system' as const,
   isActive: true,
   isCustom: false,
   config: {
@@ -51,7 +51,7 @@ const embeddingModel = {
   model: 'embedding-query',
   name: 'Embedding Query',
   type: ModelTypeEnum.embedding,
-  isSystem: true,
+  scope: 'system' as const,
   isActive: true,
   isCustom: false,
   config: {

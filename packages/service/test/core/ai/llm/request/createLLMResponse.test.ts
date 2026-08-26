@@ -132,7 +132,7 @@ const createMockModelData = (
   model: 'gpt-4',
   name: 'GPT-4',
   isActive: true,
-  isSystem: true,
+  scope: 'system' as const,
   isCustom: false,
   ...overrides,
   config: {

@@ -19,7 +19,7 @@ describe('createQuestionGuide', () => {
     model: reasoning ? 'deepseek-r1' : 'gpt-4o',
     name: reasoning ? 'DeepSeek R1' : 'GPT-4o',
     type: ModelTypeEnum.llm,
-    isSystem: true,
+    scope: 'system' as const,
     isActive: true,
     isCustom: false,
     config: {

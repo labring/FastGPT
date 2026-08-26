@@ -51,7 +51,7 @@ const embeddingModel = {
   model: 'text-embedding-3-small',
   name: 'text-embedding-3-small',
   provider: 'openai',
-  isSystem: true,
+  scope: 'system' as const,
   isActive: true,
   type: 'embedding',
   config: {
