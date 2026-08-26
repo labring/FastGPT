@@ -323,6 +323,24 @@ export const serviceEnv = createEnv({
     PARSE_FILE_WORKERS: IntSchema.min(1).max(1000).default(5).meta({
       description: '文件解析 worker 常驻线程数'
     }),
+    PARSE_FILE_WORKER_MEMORY_LIMIT_MB: IntSchema.min(128).default(512).meta({
+      description: '单个文件解析 worker 的 V8 老生代内存上限（MB）'
+    }),
+    XLSX_PARSE_MAX_ROWS: IntSchema.min(1).max(1_048_576).default(100_000).meta({
+      description: 'XLSX 单个工作表允许的最大行数'
+    }),
+    XLSX_PARSE_MAX_COLUMNS: IntSchema.min(1).max(16_384).default(1_000).meta({
+      description: 'XLSX 单个工作表允许的最大列数'
+    }),
+    XLSX_PARSE_MAX_CELLS: IntSchema.min(1).max(Number.MAX_SAFE_INTEGER).default(1_000_000).meta({
+      description: 'XLSX 工作簿允许的累计范围单元格数'
+    }),
+    XLSX_PARSE_MAX_MERGED_CELLS: IntSchema.min(1)
+      .max(Number.MAX_SAFE_INTEGER)
+      .default(1_000_000)
+      .meta({
+        description: 'XLSX 工作簿允许的累计合并单元格回填量'
+      }),
     HTML_TO_MARKDOWN_WORKERS: IntSchema.min(1).max(1000).default(10).meta({
       description: 'HTML 转 Markdown worker 常驻线程数'
     }),

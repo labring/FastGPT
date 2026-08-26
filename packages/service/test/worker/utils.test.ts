@@ -3,7 +3,22 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-const { WorkerPool, WorkerNameEnum } = await import('@fastgpt/service/worker/utils');
+const { mockEnv } = vi.hoisted(() => ({
+  mockEnv: {
+    MAX_HTML_TRANSFORM_CHARS: 1_000_000,
+    PARSE_FILE_WORKER_MEMORY_LIMIT_MB: 640,
+    XLSX_PARSE_MAX_ROWS: 100_000,
+    XLSX_PARSE_MAX_COLUMNS: 1_000,
+    XLSX_PARSE_MAX_CELLS: 1_000_000,
+    XLSX_PARSE_MAX_MERGED_CELLS: 1_000_000
+  }
+}));
+
+vi.mock('@fastgpt/service/env', () => ({
+  serviceEnv: mockEnv
+}));
+
+const { getSafeEnv, WorkerPool, WorkerNameEnum } = await import('@fastgpt/service/worker/utils');
 
 const workerScript = `
 const { parentPort } = require('worker_threads');
@@ -41,6 +56,18 @@ parentPort.on('message', (message) => {
 });
 `;
 
+describe('worker/utils getSafeEnv', () => {
+  it('将 XLSX 解析限制透传给 worker', () => {
+    expect(getSafeEnv()).toMatchObject({
+      XLSX_PARSE_MAX_ROWS: '100000',
+      XLSX_PARSE_MAX_COLUMNS: '1000',
+      XLSX_PARSE_MAX_CELLS: '1000000',
+      XLSX_PARSE_MAX_MERGED_CELLS: '1000000',
+      PARSE_FILE_WORKER_MEMORY_LIMIT_MB: '640'
+    });
+  });
+});
+
 describe('worker/utils WorkerPool', () => {
   let tmpDir: string;
   let cwdSpy: ReturnType<typeof vi.spyOn>;
@@ -77,6 +104,7 @@ describe('worker/utils WorkerPool', () => {
       key: 'parsed/image.png'
     });
     expect(pool.workerQueue[0].status).toBe('idle');
+    expect(pool.workerQueue[0].worker.resourceLimits.maxOldGenerationSizeMb).toBe(640);
   });
 
   it('uploadFile handler 失败时把错误回传给 worker', async () => {
