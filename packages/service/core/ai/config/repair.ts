@@ -192,12 +192,14 @@ export const repairSystemModelDocument = ({
   record: unknown;
   pluginDocument?: SystemModelDocumentDataType;
 }): RepairSystemModelResult => {
+  const raw = toRecord(record);
   const canonical = SystemModelDocumentDataSchema.safeParse(record);
-  if (canonical.success) {
+  // scope 在领域 Schema 中有默认值，便于新建系统模型；但迁移判定必须检查真实持久化字段。
+  // 否则仅有旧 isSystem 的 canonical 文档会被默认成 system，并错误地跳过 scope 写回。
+  if (canonical.success && raw?.scope === ModelScopeEnum.system) {
     return { status: 'unchanged', document: canonical.data, issues: [] };
   }
 
-  const raw = toRecord(record);
   if (!raw) return { status: 'invalid', issues: getIssues(record) };
   const source = getDocumentSource(raw);
   const pluginSource: Record<string, unknown> = pluginDocument

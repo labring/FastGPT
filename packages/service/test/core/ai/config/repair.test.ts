@@ -39,6 +39,18 @@ describe('repairSystemModelDocument', () => {
     });
   });
 
+  it('writes scope for canonical documents that only persisted the legacy isSystem field', () => {
+    const { scope: _scope, ...legacyCanonical } = canonicalLlm;
+    const result = repairSystemModelDocument({
+      record: { ...legacyCanonical, isSystem: true }
+    });
+
+    expect(result).toMatchObject({
+      status: 'repaired',
+      document: { scope: 'system', model: 'gpt-test' }
+    });
+  });
+
   it('migrates legacy metadata, coerces known values and removes invalid optional fields', () => {
     const result = repairSystemModelDocument({
       record: {
