@@ -527,7 +527,53 @@ describe('resolveAppResourcesByPermission', () => {
     await expect(
       resolveAppResourcesByPermission({
         appId: String(workflowApp._id),
+        extracted: [{ type: 'tool', id: String(workflowApp._id) }],
+        tmbId: member.tmbId,
+        blockOnUnauthorized: false
+      })
+    ).resolves.toEqual([]);
+
+    await expect(
+      resolveAppResourcesByPermission({
+        appId: String(workflowApp._id),
         extracted: [baselineResource, { type: 'tool', id: String(workflowApp._id) }],
+        tmbId: member.tmbId,
+        blockOnUnauthorized: true
+      })
+    ).rejects.toBe(AppErrEnum.unAuthApp);
+  });
+
+  it('treats an invalid stored snapshot as empty for permission checks', async () => {
+    const owner = await getUser(`invalid-draft-resource-owner-${getNanoid(6)}`);
+    const member = await getUser(`invalid-draft-resource-member-${getNanoid(6)}`, owner.teamId);
+    const workflowApp = await MongoApp.create({
+      name: 'Workflow app with invalid snapshot',
+      type: AppTypeEnum.workflow,
+      modules: [],
+      edges: [],
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const protectedToolset = await MongoApp.create({
+      name: 'Protected toolset',
+      type: AppTypeEnum.mcpToolSet,
+      modules: [],
+      edges: [],
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    await MongoAppVersion.create({
+      appId: workflowApp._id,
+      tmbId: owner.tmbId,
+      nodes: [],
+      edges: [],
+      resources: [{ invalid: true } as any]
+    });
+
+    await expect(
+      resolveAppResourcesByPermission({
+        appId: String(workflowApp._id),
+        extracted: [{ type: 'tool', id: String(protectedToolset._id) }],
         tmbId: member.tmbId,
         blockOnUnauthorized: true
       })

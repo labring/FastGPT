@@ -48,7 +48,7 @@ describe('getTeamAppTemplates', () => {
       type: AppTypeEnum.httpToolSet,
       _id: 'http-set',
       avatar: 'avatar',
-      modules: [
+      nodes: [
         {
           toolConfig: {
             httpToolSet: {

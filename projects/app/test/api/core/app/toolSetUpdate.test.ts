@@ -7,8 +7,7 @@ import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 const mocks = vi.hoisted(() => ({
   authApp: vi.fn(),
   mongoSessionRun: vi.fn(),
-  mongoAppUpdateOne: vi.fn(),
-  mongoAppVersionUpdateOne: vi.fn(),
+  updateAppPublishedVersion: vi.fn(),
   beforeUpdateAppFormat: vi.fn(),
   updateParentFoldersUpdateTime: vi.fn(),
   assertMCPUrlNotInternal: vi.fn()
@@ -26,16 +25,8 @@ vi.mock('@fastgpt/service/common/mongo/sessionRun', () => ({
   mongoSessionRun: mocks.mongoSessionRun
 }));
 
-vi.mock('@fastgpt/service/core/app/schema', () => ({
-  MongoApp: {
-    updateOne: mocks.mongoAppUpdateOne
-  }
-}));
-
-vi.mock('@fastgpt/service/core/app/version/schema', () => ({
-  MongoAppVersion: {
-    updateOne: mocks.mongoAppVersionUpdateOne
-  }
+vi.mock('@fastgpt/service/core/app/version/controller', () => ({
+  updateAppPublishedVersion: mocks.updateAppPublishedVersion
 }));
 
 vi.mock('@fastgpt/service/core/app/controller', () => ({
@@ -66,7 +57,7 @@ describe('tool set update handlers', () => {
         name: 'Tool set',
         avatar: '',
         parentId: 'parent-id',
-        draftVersionId: versionId
+        publishedVersionId: versionId
       },
       teamId: 'team-id'
     });
@@ -75,7 +66,7 @@ describe('tool set update handlers', () => {
     mocks.mongoSessionRun.mockImplementation(async (fn: (session: string) => Promise<unknown>) =>
       fn('session')
     );
-    mocks.mongoAppVersionUpdateOne.mockResolvedValue({ matchedCount: 0 });
+    mocks.updateAppPublishedVersion.mockRejectedValue(AppErrEnum.unExist);
   });
 
   it.each([
@@ -89,13 +80,16 @@ describe('tool set update handlers', () => {
       handler: updateMcpTools,
       body: { appId, url: 'https://example.com/mcp', toolList: [] } as UpdateMcpToolsBodyType
     }
-  ])(
-    'rejects a $name tool update when the selected Version no longer exists',
-    async ({ handler, body }) => {
-      await expect(handler({ body } as ApiRequestProps<any>)).rejects.toBe(AppErrEnum.unExist);
+  ])('propagates a $name published-version update failure', async ({ handler, body }) => {
+    await expect(handler({ body } as ApiRequestProps<any>)).rejects.toBe(AppErrEnum.unExist);
 
-      expect(mocks.mongoAppUpdateOne).not.toHaveBeenCalled();
-      expect(mocks.updateParentFoldersUpdateTime).not.toHaveBeenCalled();
-    }
-  );
+    expect(mocks.updateAppPublishedVersion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appId,
+        resources: [],
+        session: 'session'
+      })
+    );
+    expect(mocks.updateParentFoldersUpdateTime).not.toHaveBeenCalled();
+  });
 });

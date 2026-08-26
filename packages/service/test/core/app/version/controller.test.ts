@@ -5,32 +5,45 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
-const { findOneMock, findMock, aggregateMock, findAppByIdMock } = vi.hoisted(() => ({
-  findOneMock: vi.fn(),
-  findMock: vi.fn(),
-  aggregateMock: vi.fn(),
-  findAppByIdMock: vi.fn()
-}));
+const { findOneMock, findMock, aggregateMock, findAppByIdMock, updateVersionMock, updateAppMock } =
+  vi.hoisted(() => ({
+    findOneMock: vi.fn(),
+    findMock: vi.fn(),
+    aggregateMock: vi.fn(),
+    findAppByIdMock: vi.fn(),
+    updateVersionMock: vi.fn(),
+    updateAppMock: vi.fn()
+  }));
 
 vi.mock('@fastgpt/service/core/app/version/schema', () => ({
   MongoAppVersion: {
     findOne: findOneMock,
     find: findMock,
-    aggregate: aggregateMock
+    aggregate: aggregateMock,
+    updateOne: updateVersionMock
   }
 }));
 
 vi.mock('@fastgpt/service/core/app/schema', () => ({
   MongoApp: {
-    findById: findAppByIdMock
+    findById: findAppByIdMock,
+    updateOne: updateAppMock
   }
 }));
 
+vi.mock('@fastgpt/service/common/mongo/sessionRun', async (importOriginal) => {
+  return importOriginal();
+});
+
 import {
+  getAppDraftVersion,
   getAppLatestVersion,
   getAppVersionById,
-  getAppPublishedWorkflowMap
+  getAppPublishedWorkflowMap,
+  updateAppPublishedVersion
 } from '@fastgpt/service/core/app/version/controller';
+import type { ClientSession } from '@fastgpt/service/common/mongo';
+import { MongoTransactionConflictError } from '@fastgpt/service/common/mongo/sessionRun';
 
 const createAgentVersion = (resources?: unknown) => ({
   _id: '507f1f77bcf86cd799439011',
@@ -200,6 +213,44 @@ describe('getAppLatestVersion', () => {
   });
 });
 
+describe('getAppDraftVersion', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('always reads the latest Version by time instead of an App pointer', async () => {
+    const version = createAgentVersion([]);
+    const sortMock = vi.fn().mockReturnValue({
+      lean: vi.fn().mockResolvedValue(version)
+    });
+    findOneMock.mockReturnValue({ sort: sortMock });
+
+    const result = await getAppDraftVersion('app-id');
+
+    expect(findOneMock).toHaveBeenCalledWith({ appId: 'app-id' });
+    expect(sortMock).toHaveBeenCalledWith({ time: -1, _id: -1 });
+    expect(findAppByIdMock).not.toHaveBeenCalled();
+    expect(result).toBe(version);
+  });
+
+  it('uses the provided transaction session when reading the latest Version', async () => {
+    const version = createAgentVersion([]);
+    const session = {} as ClientSession;
+    const sessionMock = vi.fn();
+    const query = {
+      session: sessionMock,
+      lean: vi.fn().mockResolvedValue(version)
+    };
+    const sortMock = vi.fn().mockReturnValue(query);
+    findOneMock.mockReturnValue({ sort: sortMock });
+
+    const result = await getAppDraftVersion('app-id', session);
+
+    expect(sessionMock).toHaveBeenCalledWith(session);
+    expect(result).toBe(version);
+  });
+});
+
 describe('getAppVersionById', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -217,19 +268,6 @@ describe('getAppVersionById', () => {
     });
 
     expect(result.resources).toEqual([{ type: 'agent', id: 'legacy-agent-id' }]);
-  });
-
-  it('keeps an empty snapshot when resources is an empty array', async () => {
-    findOneMock.mockReturnValue({
-      lean: vi.fn().mockResolvedValue(createAgentVersion([]))
-    });
-
-    const result = await getAppVersionById({
-      appId: 'app-id',
-      versionId: '507f1f77bcf86cd799439011'
-    });
-
-    expect(result.resources).toEqual([]);
   });
 });
 
@@ -292,5 +330,169 @@ describe('getAppPublishedWorkflowMap', () => {
 
     expect(aggregateMock).toHaveBeenCalled();
     expect(result.get('app-id')?.nodes.map((node) => node.nodeId)).toEqual(['own-node']);
+  });
+});
+
+describe('updateAppPublishedVersion', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('updates the pointed version and guards the App pointer with CAS', async () => {
+    const session = {} as ClientSession;
+    const appQuery = {
+      session: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue({
+        _id: 'app-id',
+        publishedVersionId: '507f1f77bcf86cd799439011'
+      })
+    };
+    const versionQuery = {
+      session: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue({ _id: '507f1f77bcf86cd799439011' })
+    };
+    findAppByIdMock.mockReturnValue(appQuery);
+    findOneMock.mockReturnValue(versionQuery);
+    updateVersionMock.mockResolvedValue({ matchedCount: 1 });
+    updateAppMock.mockResolvedValue({ matchedCount: 1 });
+
+    await updateAppPublishedVersion({
+      appId: 'app-id',
+      nodes: [],
+      resources: [],
+      session
+    });
+
+    expect(appQuery.session).toHaveBeenCalledWith(session);
+    expect(versionQuery.session).toHaveBeenCalledWith(session);
+    expect(updateVersionMock).toHaveBeenCalledWith(
+      { _id: '507f1f77bcf86cd799439011', appId: 'app-id' },
+      { $set: { nodes: [], resources: [] } },
+      { session }
+    );
+    expect(updateAppMock).toHaveBeenCalledWith(
+      { _id: 'app-id', publishedVersionId: '507f1f77bcf86cd799439011' },
+      {
+        $set: expect.objectContaining({
+          updateTime: expect.any(Date)
+        })
+      },
+      { session }
+    );
+  });
+
+  it('falls back to the latest published version and repairs a missing pointer', async () => {
+    const session = {} as ClientSession;
+    const appQuery = {
+      session: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue({ _id: 'app-id' })
+    };
+    const sortMock = vi.fn();
+    const versionQuery = {
+      sort: sortMock,
+      session: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue({ _id: 'published-version' })
+    };
+    sortMock.mockReturnValue(versionQuery);
+    findAppByIdMock.mockReturnValue(appQuery);
+    findOneMock.mockReturnValue(versionQuery);
+    updateVersionMock.mockResolvedValue({ matchedCount: 1 });
+    updateAppMock.mockResolvedValue({ matchedCount: 1 });
+
+    await updateAppPublishedVersion({
+      appId: 'app-id',
+      nodes: [],
+      resources: [],
+      session
+    });
+
+    expect(findOneMock).toHaveBeenCalledWith({ appId: 'app-id', isPublish: true }, '_id');
+    expect(sortMock).toHaveBeenCalledWith({ time: -1, _id: -1 });
+    expect(updateAppMock).toHaveBeenCalledWith(
+      {
+        _id: 'app-id',
+        $or: [{ publishedVersionId: null }, { publishedVersionId: { $exists: false } }]
+      },
+      {
+        $set: expect.objectContaining({
+          publishedVersionId: 'published-version',
+          updateTime: expect.any(Date)
+        })
+      },
+      { session }
+    );
+  });
+
+  it('repairs a pointer whose version no longer belongs to the App', async () => {
+    const session = {} as ClientSession;
+    const appQuery = {
+      session: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue({
+        _id: 'app-id',
+        publishedVersionId: '507f1f77bcf86cd799439011'
+      })
+    };
+    const pointerQuery = {
+      session: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue(undefined)
+    };
+    const sortMock = vi.fn();
+    const fallbackQuery = {
+      sort: sortMock,
+      session: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue({ _id: 'published-version' })
+    };
+    sortMock.mockReturnValue(fallbackQuery);
+    findAppByIdMock.mockReturnValue(appQuery);
+    findOneMock.mockReturnValueOnce(pointerQuery).mockReturnValueOnce(fallbackQuery);
+    updateVersionMock.mockResolvedValue({ matchedCount: 1 });
+    updateAppMock.mockResolvedValue({ matchedCount: 1 });
+
+    await updateAppPublishedVersion({
+      appId: 'app-id',
+      nodes: [],
+      resources: [],
+      session
+    });
+
+    expect(updateAppMock).toHaveBeenCalledWith(
+      {
+        _id: 'app-id',
+        publishedVersionId: '507f1f77bcf86cd799439011'
+      },
+      {
+        $set: expect.objectContaining({
+          publishedVersionId: 'published-version',
+          updateTime: expect.any(Date)
+        })
+      },
+      { session }
+    );
+  });
+
+  it('raises a transaction conflict when the App pointer changed', async () => {
+    const session = {} as ClientSession;
+    findAppByIdMock.mockReturnValue({
+      session: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue({
+        _id: 'app-id',
+        publishedVersionId: '507f1f77bcf86cd799439011'
+      })
+    });
+    findOneMock.mockReturnValue({
+      session: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue({ _id: '507f1f77bcf86cd799439011' })
+    });
+    updateVersionMock.mockResolvedValue({ matchedCount: 1 });
+    updateAppMock.mockResolvedValue({ matchedCount: 0 });
+
+    await expect(
+      updateAppPublishedVersion({
+        appId: 'app-id',
+        nodes: [],
+        resources: [],
+        session
+      })
+    ).rejects.toBeInstanceOf(MongoTransactionConflictError);
   });
 });

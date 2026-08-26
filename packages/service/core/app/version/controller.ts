@@ -1,11 +1,17 @@
-import { type AppResourcesType, type AppSchemaType } from '@fastgpt/global/core/app/type';
+import {
+  AppResourcesSchema,
+  type AppResourcesType,
+  type AppSchemaType
+} from '@fastgpt/global/core/app/type';
 import { MongoApp } from '../schema';
 import { MongoAppVersion } from './schema';
-import { Types } from '../../../common/mongo';
+import { Types, type ClientSession } from '../../../common/mongo';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 import { decodeToolSetNodesFromStorage } from '../jsonSchemaStorage';
 import { resolveStoredAppResources } from '../resources';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { MongoTransactionConflictError } from '../../../common/mongo/sessionRun';
 
 type VersionResourceSource = Pick<AppVersionSchemaType, 'nodes' | 'chatConfig' | 'resources'> & {
   resourceRefs?: unknown;
@@ -90,7 +96,8 @@ export const getAppLatestVersion = async (appId: string, app?: AppVersionLookupA
       isPublish: true
     })
       .sort({
-        time: -1
+        time: -1,
+        _id: -1
       })
       .lean());
 
@@ -99,46 +106,143 @@ export const getAppLatestVersion = async (appId: string, app?: AppVersionLookupA
 };
 
 /**
- * 读取编辑器草稿工作流：优先 draftVersionId，否则该 App time 最新 Version。
+ * 读取编辑器工作副本：始终取该 App 最新写入的 Version，包含自动保存记录。
  * 找不到 Version 时返回空图，不再读 App.modules。
  */
-export const getAppDraftWorkflow = async (appId: string, app?: AppVersionLookupApp) => {
-  const currentApp = await loadApp(appId, app);
-  const draft = await getAppDraftVersion(appId, currentApp ?? undefined);
+export const getAppDraftWorkflow = async (appId: string) => {
+  const draft = await getAppDraftVersion(appId);
   if (draft) return normalizeAppVersionWorkflow(draft);
   return emptyVersionWorkflow();
 };
 
 /**
- * 读取当前编辑器草稿 Version，作为保存增量鉴权的 baseline。
- * 优先 draftVersionId；没有指针则取该 App time 最新的 Version。
+ * 读取当前最新 Version，作为保存增量鉴权的 baseline。
  */
-export const getAppDraftVersion = async (appId: string, app?: AppVersionLookupApp) => {
-  const currentApp = await loadApp(appId, app);
-  if (currentApp?.draftVersionId && Types.ObjectId.isValid(String(currentApp.draftVersionId))) {
-    const draft = await MongoAppVersion.findOne({
-      _id: currentApp.draftVersionId,
-      appId
-    }).lean();
-    if (draft) return draft;
-  }
-
-  return MongoAppVersion.findOne({ appId }).sort({ time: -1 }).lean();
+export const getAppDraftVersion = async (appId: string, session?: ClientSession) => {
+  const query = MongoAppVersion.findOne({ appId }).sort({ time: -1, _id: -1 });
+  if (session) query.session(session);
+  return query.lean();
 };
 
 /**
  * 读取当前草稿 Version 的资源快照，供保存增量鉴权做 baseline。
- * 没有草稿时返回空数组，本次提取全部视为新增。
+ * 没有草稿时返回空数组，本次提取全部视为新增。传入 session 时，读取会参与同一事务，
+ * 事务重试后也会重新读取最新的草稿 Version。
  */
-export const getAppDraftResourceBaseline = async (appId: string, app?: AppVersionLookupApp) => {
-  const draft = await getAppDraftVersion(appId, app);
+export const getAppDraftResourceBaseline = async (appId: string, session?: ClientSession) => {
+  const draft = await getAppDraftVersion(appId, session);
   if (!draft) return [];
+
+  // 非法快照不能回退为当前节点提取，否则曾被保存过滤掉的资源会重新变成 baseline，
+  // 从而绕过下一次保存/发布的新增资源鉴权。缺失字段仍按历史版本兼容逻辑提取。
+  if (Array.isArray(draft.resources) && !AppResourcesSchema.safeParse(draft.resources).success) {
+    return [];
+  }
+
   return resolveStoredAppResources({
     resources: draft.resources,
     nodes: decodeToolSetNodesFromStorage(draft.nodes),
     chatConfig: draft.chatConfig,
     resourceRefs: (draft as { resourceRefs?: unknown }).resourceRefs
   });
+};
+
+/**
+ * 在同一事务内更新当前正式 Version，并用 App 正式版本指针做 CAS。
+ * ToolSet 没有独立草稿生命周期；无有效指针时只回退到最新正式版本，并在成功后补齐指针。
+ * 并发发布改变指针时更新条件不再命中，交给事务入口重试，避免把工具配置写入旧版本。
+ */
+export const updateAppPublishedVersion = async ({
+  appId,
+  nodes,
+  resources,
+  session
+}: {
+  appId: string;
+  nodes: AppVersionSchemaType['nodes'];
+  resources: AppResourcesType;
+  session: ClientSession;
+}) => {
+  const app = await MongoApp.findById(appId, 'publishedVersionId').session(session).lean();
+  if (!app) throw AppErrEnum.unExist;
+
+  const pointerVersion =
+    app.publishedVersionId && Types.ObjectId.isValid(String(app.publishedVersionId))
+      ? await MongoAppVersion.findOne(
+          {
+            _id: app.publishedVersionId,
+            appId
+          },
+          '_id'
+        )
+          .session(session)
+          .lean()
+      : null;
+  const version =
+    pointerVersion ??
+    (await MongoAppVersion.findOne(
+      {
+        appId,
+        isPublish: true
+      },
+      '_id'
+    )
+      .sort({ time: -1, _id: -1 })
+      .session(session)
+      .lean());
+
+  if (!version) throw AppErrEnum.unExist;
+
+  const versionUpdateResult = await MongoAppVersion.updateOne(
+    {
+      _id: version._id,
+      appId
+    },
+    {
+      $set: {
+        nodes,
+        resources
+      }
+    },
+    { session }
+  );
+  if (versionUpdateResult.matchedCount !== 1) {
+    throw new MongoTransactionConflictError(
+      new Error('Published app version changed during tool set update')
+    );
+  }
+
+  const expectedPublishedVersionId =
+    app.publishedVersionId && Types.ObjectId.isValid(String(app.publishedVersionId))
+      ? app.publishedVersionId
+      : undefined;
+  const appFilter = expectedPublishedVersionId
+    ? {
+        _id: appId,
+        publishedVersionId: expectedPublishedVersionId
+      }
+    : {
+        _id: appId,
+        $or: [{ publishedVersionId: null }, { publishedVersionId: { $exists: false } }]
+      };
+  const shouldRepairPublishedVersion = !pointerVersion;
+  const appUpdateResult = await MongoApp.updateOne(
+    appFilter,
+    {
+      $set: {
+        updateTime: new Date(),
+        ...(shouldRepairPublishedVersion ? { publishedVersionId: version._id } : {})
+      }
+    },
+    { session }
+  );
+  if (appUpdateResult.matchedCount !== 1) {
+    throw new MongoTransactionConflictError(
+      new Error('Published app version pointer changed during tool set update')
+    );
+  }
+
+  return version._id;
 };
 
 /** 批量读取 App 当前正式 Version，供运行时入口复用同一份版本选择逻辑。 */
@@ -184,7 +288,7 @@ export const getAppPublishedWorkflowMap = async (
           isPublish: true
         }
       },
-      { $sort: { time: -1 } },
+      { $sort: { time: -1, _id: -1 } },
       {
         $group: {
           _id: '$appId',

@@ -32,6 +32,7 @@ import {
   getWorkflowResourceEntities,
   loadWorkflowResourceContext
 } from '@fastgpt/service/core/workflow/utils/resource';
+import { getAppDraftWorkflow } from '@fastgpt/service/core/app/version/controller';
 
 async function handler(req: NextApiRequest, res: NextApiResponse): Promise<WorkflowDebugResponse> {
   const {
@@ -55,6 +56,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
     }),
     authApp({ req, authToken: true, appId, per: ReadPermissionVal })
   ]);
+  // 兼容未传 chatConfig 的旧客户端；App 主表不再保存工作流配置，默认值从草稿 Version 读取。
+  const workflowChatConfig = chatConfig ?? (await getAppDraftWorkflow(appId)).chatConfig;
 
   const interactive = getLastInteractiveValue(history);
   const newUsageId = usageId
@@ -67,7 +70,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
         source: UsageSourceEnum.fastgpt
       });
   const responseChatItemId = getNanoid();
-  const extractedResources = extractAppResources({ nodes, chatConfig });
+  const extractedResources = extractAppResources({ nodes, chatConfig: workflowChatConfig });
   const resourceContext = await loadWorkflowResourceContext({
     resources: extractedResources,
     teamId: String(app.teamId),
@@ -75,7 +78,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
   });
   await resolveAppResourcesByPermission({
     appId,
-    app,
     extracted: extractedResources,
     tmbId,
     isRoot,
@@ -89,7 +91,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
     maxBytesPerFile
   } = await prepareWorkflowFileQuery({
     teamId: String(app.teamId),
-    chatConfig,
+    chatConfig: workflowChatConfig,
     query
   });
 
@@ -119,7 +121,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
     query: workflowQuery,
     maxFileAmount,
     maxBytesPerFile,
-    chatConfig,
+    chatConfig: workflowChatConfig,
     histories: history,
     stream: false,
     maxRunTimes: WORKFLOW_MAX_RUN_TIMES,

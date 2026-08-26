@@ -24,13 +24,13 @@ async function handler(
     bodySchema: TransitionWorkflowBodySchema
   }).body;
 
-  const { app, teamId, tmbId, isRoot } = await authApp({
+  const { app, teamId, tmbId } = await authApp({
     req,
     appId,
     authToken: true,
     per: OwnerPermissionVal
   });
-  const draftWorkflow = await getAppDraftWorkflow(app._id, app);
+  const draftWorkflow = await getAppDraftWorkflow(app._id);
   if (createNew) {
     const { appId } = await mongoSessionRun(async (session) => {
       // Copy avatar
@@ -51,7 +51,6 @@ async function handler(
         chatConfig: draftWorkflow.chatConfig,
         teamId: app.teamId,
         tmbId,
-        isRoot,
         session
       });
       await getS3AvatarSource().refreshAvatar(avatar, undefined, session);
@@ -70,9 +69,9 @@ async function handler(
       nodes: draftWorkflow.nodes,
       edges: draftWorkflow.edges,
       chatConfig: draftWorkflow.chatConfig,
+      resources: draftWorkflow.resources,
       teamId,
       tmbId,
-      isRoot,
       session
     });
   });

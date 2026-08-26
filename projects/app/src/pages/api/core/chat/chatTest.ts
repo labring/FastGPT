@@ -111,7 +111,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
     await resolveAppResourcesByPermission({
       appId,
-      app,
       extracted: extractedResources,
       tmbId,
       isRoot,

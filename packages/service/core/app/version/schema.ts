@@ -52,6 +52,11 @@ const AppVersionSchema = new Schema(
     versionName: String,
     resources: {
       type: Array
+    },
+    /** @deprecated 仅供 4.16.3 资源快照迁移读取 skillIds */
+    resourceRefs: {
+      type: Object,
+      default: undefined
     }
   },
   {

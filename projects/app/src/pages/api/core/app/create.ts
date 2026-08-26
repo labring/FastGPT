@@ -3,6 +3,7 @@ import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppFolderTypeList, ToolTypeList, AppTypeList } from '@fastgpt/global/core/app/constants';
+import type { AppResourcesType } from '@fastgpt/global/core/app/type';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import {
@@ -41,10 +42,7 @@ import {
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { extractAppResources } from '@fastgpt/service/core/app/resources';
-import {
-  checkAppResourceReadPermissions,
-  resolveAppResourcesByPermission
-} from '@fastgpt/service/support/permission/app/resource';
+import { checkAppResourceReadPermissions } from '@fastgpt/service/support/permission/app/resource';
 import { getSystemDefaultModelIds } from '@fastgpt/service/core/ai/model';
 
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -261,7 +259,6 @@ export const onCreateApp = async ({
         {
           $set: {
             publishedVersionId: version._id,
-            draftVersionId: version._id,
             'pluginData.nodeVersion': version._id
           }
         },
@@ -308,26 +305,26 @@ export const onCreateApp = async ({
  * 将已有应用转换为 workflow 时写入其 workflow 数据。
  *
  * 该入口只服务 Transition 的 createNew=false 分支：源 workflow 可能是历史数据，写入前统一
- * 产出 canonical 数据并格式化敏感字段。resources 按普通保存增量鉴权写入：已在草稿快照中的
- * 资源保留，无权限的新增引用不进入快照。调用方必须传入同一事务的 session，普通更新接口不复用。
+ * 产出 canonical 数据并格式化敏感字段。resources 直接复用当前最新 Version 的权限快照，不按
+ * 转化操作者重新校验或过滤。调用方必须传入同一事务的 session，普通更新接口不复用。
  */
 export const onUpdateAppWorkflow = async ({
   appId,
   nodes,
   edges,
   chatConfig,
+  resources,
   teamId,
   tmbId,
-  isRoot,
   session
 }: {
   appId: string;
   nodes?: AppVersionSchemaType['nodes'];
   edges?: AppVersionSchemaType['edges'];
   chatConfig?: AppVersionSchemaType['chatConfig'];
+  resources: AppResourcesType;
   teamId: string;
   tmbId: string;
-  isRoot?: boolean;
   session?: ClientSession;
 }) => {
   const workflow = migrateWorkflowToCurrent({
@@ -343,18 +340,8 @@ export const onUpdateAppWorkflow = async ({
     modelReferencePolicy: 'fallback'
   });
   await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });
-  const resources = await resolveAppResourcesByPermission({
-    appId,
-    extracted: extractAppResources({
-      nodes: workflow.nodes,
-      chatConfig: workflow.chatConfig
-    }),
-    tmbId,
-    isRoot,
-    blockOnUnauthorized: false
-  });
 
-  const autoSaveVersion = await MongoAppVersion.findOneAndUpdate(
+  await MongoAppVersion.findOneAndUpdate(
     { appId, isAutoSave: true },
     {
       tmbId,
@@ -373,8 +360,7 @@ export const onUpdateAppWorkflow = async ({
     appId,
     {
       type: AppTypeEnum.workflow,
-      updateTime: new Date(),
-      ...(autoSaveVersion?._id ? { draftVersionId: autoSaveVersion._id } : {})
+      updateTime: new Date()
     },
     { session }
   );

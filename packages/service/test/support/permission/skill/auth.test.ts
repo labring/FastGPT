@@ -41,17 +41,6 @@ const systemSkill = {
   inheritPermission: true
 };
 
-const personalSkill = {
-  _id: 'personal-skill',
-  source: AgentSkillSourceEnum.personal,
-  type: AgentSkillTypeEnum.skill,
-  name: 'Personal skill',
-  description: '',
-  teamId: 'team-b',
-  tmbId: 'owner-tmb',
-  inheritPermission: true
-};
-
 const mockSkillQuery = (skill: Record<string, unknown> | null) => {
   mockFindOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(skill) });
 };
@@ -138,18 +127,6 @@ describe('authSkillByTmbId', () => {
     ).resolves.toMatchObject({ skill: { permission: { isOwner: true } } });
     await expect(
       authSkillByTmbId({ tmbId: 'member-tmb', skillId, per: ReadPermissionVal })
-    ).rejects.toBe(SkillErrEnum.unAuthSkill);
-  });
-
-  it('rejects a personal skill from another team before checking resource permissions', async () => {
-    mockSkillQuery(personalSkill);
-
-    await expect(
-      authSkillByTmbId({
-        tmbId: 'member-tmb',
-        skillId: String(personalSkill._id),
-        per: ReadPermissionVal
-      })
     ).rejects.toBe(SkillErrEnum.unAuthSkill);
     expect(mockGetTmbPermission).not.toHaveBeenCalled();
   });

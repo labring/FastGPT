@@ -100,6 +100,17 @@ describe('CreateAppBodySchema', () => {
     expect(result).not.toHaveProperty('unsupported');
     expect(result.nodes).toHaveLength(1);
   });
+
+  it('rejects legacy workflow when migration fails instead of creating an empty app', () => {
+    const result = CreateAppRequestBodySchema.safeParse({
+      name: 'invalid legacy app',
+      type: 'simple',
+      modules: [{ flowType: 'legacy', moduleId: 'legacy-module' }],
+      edges: []
+    });
+
+    expect(result.success).toBe(false);
+  });
 });
 
 describe('PublishAppBodySchema', () => {

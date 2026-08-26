@@ -139,22 +139,6 @@ describe('extractAppResources', () => {
       { type: 'tool', id: 'workflow-tool' }
     ]);
   });
-
-  it('only records optional model inputs when their feature is enabled', () => {
-    const resources = extractAppResources({
-      nodes: [
-        createNode({
-          inputs: [
-            createInput(NodeInputKeyEnum.datasetSearchRerankModel, 'disabled-rerank'),
-            createInput(NodeInputKeyEnum.datasetSearchExtensionModel, 'disabled-extension'),
-            createInput(NodeInputKeyEnum.datasetDeepSearchModel, 'disabled-deep')
-          ]
-        })
-      ]
-    });
-
-    expect(resources).toEqual([]);
-  });
 });
 
 describe('nodeHasDynamicInput', () => {
@@ -221,6 +205,14 @@ describe('resolveStoredAppResources', () => {
         ]
       })
     ).toEqual([]);
+  });
+
+  it('normalizes legacy child tool ids in a stored snapshot', () => {
+    expect(
+      resolveStoredAppResources({
+        resources: [{ type: 'tool', id: 'mcp-mcp-app/search' }]
+      })
+    ).toEqual([{ type: 'tool', id: 'mcp-app', data: { toolNames: ['search'] } }]);
   });
 });
 

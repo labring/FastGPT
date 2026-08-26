@@ -4,13 +4,11 @@ import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
-import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
 import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { updateAppPublishedVersion } from '@fastgpt/service/core/app/version/controller';
 import {
   UpdateHttpToolsBodySchema,
   UpdateHttpToolsResponseSchema,
@@ -49,29 +47,13 @@ async function handler(
 
   await beforeUpdateAppFormat({ nodes: [toolSetRuntimeNode], teamId });
 
-  const versionId =
-    app.draftVersionId ??
-    app.publishedVersionId ??
-    (await MongoAppVersion.findOne({ appId }, '_id').sort({ time: -1 }).lean())?._id;
-  if (!versionId) {
-    return Promise.reject(AppErrEnum.unExist);
-  }
-
   await mongoSessionRun(async (session) => {
-    const updateResult = await MongoAppVersion.updateOne(
-      { _id: versionId, appId },
-      {
-        $set: {
-          nodes: storageNodes,
-          resources: []
-        }
-      },
-      { session }
-    );
-    if (updateResult.matchedCount !== 1) {
-      throw AppErrEnum.unExist;
-    }
-    await MongoApp.updateOne({ _id: appId }, { $set: { updateTime: new Date() } }, { session });
+    await updateAppPublishedVersion({
+      appId,
+      nodes: storageNodes,
+      resources: [],
+      session
+    });
   });
   updateParentFoldersUpdateTime({
     parentId: app.parentId

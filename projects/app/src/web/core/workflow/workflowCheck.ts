@@ -171,7 +171,9 @@ type WorkflowCheckMessageCode =
   | 'tool_missing'
   | 'tool_load_failed'
   | 'tool_no_permission'
-  | 'model_unavailable';
+  | 'model_unavailable'
+  | 'resource_missing'
+  | 'resource_no_permission';
 
 /** issue.code -> 设计稿固定文案 code。表外 code 映射到最接近的已有文案。 */
 const WORKFLOW_CHECK_ISSUE_MESSAGE_CODE_MAP: Record<string, WorkflowCheckMessageCode> = {
@@ -197,6 +199,8 @@ const WORKFLOW_CHECK_ISSUE_MESSAGE_CODE_MAP: Record<string, WorkflowCheckMessage
   tool_no_permission: 'tool_no_permission',
   model_unavailable: 'model_unavailable',
   tool_offline: 'tool_missing',
+  resource_missing: 'resource_missing',
+  resource_no_permission: 'resource_no_permission',
   loop_run_missing_break: 'if_else_incomplete',
   variable_update_incomplete: 'code_input_incomplete'
 };
@@ -208,7 +212,9 @@ export const WORKFLOW_CHECK_PENDING_HANDLE_CODES = new Set<string>([
   'tool_load_failed',
   'tool_no_permission',
   'tool_offline',
-  'model_unavailable'
+  'model_unavailable',
+  'resource_missing',
+  'resource_no_permission'
 ]);
 
 export type WorkflowCheckUIStatus = 'pending_improve' | 'pending_handle';
@@ -238,7 +244,9 @@ const workflowCheckMessageFallback: Record<
   tool_missing: () => '该工具不存在，请删除',
   tool_load_failed: () => '工具加载失败，请稍后重试',
   tool_no_permission: () => '当前账号无权限访问该资源',
-  model_unavailable: () => '模型已停用'
+  model_unavailable: () => '模型已停用',
+  resource_missing: () => '引用的知识库或技能已删除或不可用，请删除',
+  resource_no_permission: () => '无权限访问该资源，请检查权限'
 };
 
 const PLUGIN_DATA_PERMISSION_ERROR_CODES = new Set<string>([
@@ -321,6 +329,10 @@ const translateWorkflowCheckIssueMessage = (
       return t('common:core.workflow.check.tool_no_permission', params);
     case 'model_unavailable':
       return t('common:core.workflow.check.model_unavailable', params);
+    case 'resource_missing':
+      return t('common:core.workflow.check.resource_missing', params);
+    case 'resource_no_permission':
+      return t('common:core.workflow.check.resource_no_permission', params);
   }
 };
 
@@ -588,6 +600,40 @@ export const checkWorkflowNodeIssues = ({
         message: getWorkflowCheckIssueMessage(issueCode, t)
       });
     }
+
+    // 详情接口只会为当前操作者确认过的快照外资源设置 permissionDenied；
+    // 快照内历史资源不会重新鉴权，因此不会因协作者当前权限变化而误阻断。
+    if (data.pluginData?.permissionDenied) {
+      addIssue({
+        node,
+        code: 'resource_no_permission',
+        message: getWorkflowCheckIssueMessage('resource_no_permission', t)
+      });
+    }
+
+    // ACL 由保存/发布服务端按资源快照做差量校验；前端同步展示服务端返回的资源级标记，
+    // 并提示已删除或不可用的实体。
+    const resourceInputKeys = [NodeInputKeyEnum.datasetSelectList, NodeInputKeyEnum.skills];
+    resourceInputKeys.forEach((key) => {
+      const value = inputMap.get(key)?.value;
+      if (!Array.isArray(value)) return;
+      if (value.some((item) => item && (item as { permissionDenied?: boolean }).permissionDenied)) {
+        addIssue({
+          node,
+          code: 'resource_no_permission',
+          message: getWorkflowCheckIssueMessage('resource_no_permission', t),
+          inputKey: key
+        });
+      }
+      if (value.some((item) => item && (item as { isDeleted?: boolean }).isDeleted)) {
+        addIssue({
+          node,
+          code: 'resource_missing',
+          message: getWorkflowCheckIssueMessage('resource_missing', t),
+          inputKey: key
+        });
+      }
+    });
 
     // 工具调用下游工具只有 systemInputConfig 未配置时才算未激活。
     // 普通必填参数为空由下面的通用必填校验单独提示，不能复用整体工具配置状态。
