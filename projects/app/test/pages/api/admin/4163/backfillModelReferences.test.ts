@@ -344,6 +344,24 @@ describe('runBackfillModelReferences', () => {
     ).resolves.not.toHaveProperty('vectorModelId');
   });
 
+  it('reports a model permission that has neither resourceId nor a legacy resourceName', async () => {
+    await MongoResourcePermission.collection.insertOne({
+      resourceType: PerResourceTypeEnum.model
+    });
+
+    const result = await runBackfillModelReferences({ dryRun: false });
+
+    expect(result.references.modelPermissions).toMatchObject({
+      scanned: 1,
+      missing: 1,
+      unresolved: 1,
+      updated: 0
+    });
+    await expect(
+      MongoResourcePermission.collection.findOne({ resourceType: PerResourceTypeEnum.model })
+    ).resolves.not.toHaveProperty('resourceId');
+  });
+
   it('falls back by model type and leaves external tool parameters untouched', async () => {
     await Promise.all([
       MongoDataset.collection.insertOne({
@@ -405,6 +423,281 @@ describe('runBackfillModelReferences', () => {
     expect(version?.nodes[2].inputs).toEqual([
       { key: NodeInputKeyEnum.aiModel, value: 'whisper-1', label: 'model' },
       { key: NodeInputKeyEnum.aiModelId, value: 'whisper-id', label: 'model' }
+    ]);
+  });
+
+  it('backfills representative workflow model reference states', async () => {
+    const [llmModel, rerankModel] = await Promise.all([
+      createStoredModel({ model: 'workflow-llm' }),
+      createStoredModel({ model: 'workflow-rerank', type: ModelTypeEnum.rerank })
+    ]);
+    const createNode = ({
+      nodeId,
+      flowNodeType,
+      key,
+      value
+    }: {
+      nodeId: string;
+      flowNodeType: FlowNodeTypeEnum;
+      key: NodeInputKeyEnum;
+      value: string;
+    }) => ({
+      nodeId,
+      flowNodeType,
+      inputs: [{ key, value, valueType: 'string' }]
+    });
+
+    await MongoApp.collection.insertMany([
+      {
+        name: 'modelId only',
+        modules: [
+          createNode({
+            nodeId: 'model-id-only',
+            flowNodeType: FlowNodeTypeEnum.chatNode,
+            key: NodeInputKeyEnum.aiModelId,
+            value: String(llmModel._id)
+          })
+        ]
+      },
+      {
+        name: 'legacy llm models',
+        modules: [
+          createNode({
+            nodeId: 'legacy-chat',
+            flowNodeType: FlowNodeTypeEnum.chatNode,
+            key: NodeInputKeyEnum.aiModel,
+            value: llmModel.model
+          }),
+          createNode({
+            nodeId: 'legacy-classify',
+            flowNodeType: FlowNodeTypeEnum.classifyQuestion,
+            key: NodeInputKeyEnum.aiModel,
+            value: llmModel.model
+          }),
+          createNode({
+            nodeId: 'legacy-query-extension',
+            flowNodeType: FlowNodeTypeEnum.queryExtension,
+            key: NodeInputKeyEnum.aiModel,
+            value: llmModel.model
+          })
+        ]
+      },
+      {
+        name: 'legacy rerank models',
+        modules: [
+          createNode({
+            nodeId: 'rerank-found',
+            flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+            key: NodeInputKeyEnum.datasetSearchRerankModel,
+            value: rerankModel.model
+          }),
+          createNode({
+            nodeId: 'rerank-missing',
+            flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+            key: NodeInputKeyEnum.datasetSearchRerankModel,
+            value: 'removed-rerank-model'
+          })
+        ]
+      }
+    ]);
+
+    const result = await runBackfillModelReferences({ dryRun: false });
+
+    expect(result.references.appsWorkflow).toMatchObject({
+      scanned: 3,
+      unchanged: 1,
+      unresolved: 0,
+      updated: 2
+    });
+
+    const modelIdOnlyApp = await MongoApp.collection.findOne({ name: 'modelId only' });
+    expect(modelIdOnlyApp?.modules[0].inputs).toEqual([
+      expect.objectContaining({
+        key: NodeInputKeyEnum.aiModelId,
+        value: String(llmModel._id)
+      })
+    ]);
+
+    const legacyLlmApp = await MongoApp.collection.findOne({ name: 'legacy llm models' });
+    expect(legacyLlmApp?.modules).toHaveLength(3);
+    for (const workflowNode of legacyLlmApp?.modules ?? []) {
+      expect(workflowNode.inputs).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            key: NodeInputKeyEnum.aiModel,
+            value: llmModel.model
+          }),
+          expect.objectContaining({
+            key: NodeInputKeyEnum.aiModelId,
+            value: String(llmModel._id)
+          })
+        ])
+      );
+    }
+
+    const legacyRerankApp = await MongoApp.collection.findOne({ name: 'legacy rerank models' });
+    expect(legacyRerankApp?.modules).toHaveLength(2);
+    expect(legacyRerankApp?.modules[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: NodeInputKeyEnum.datasetSearchRerankModel,
+          value: rerankModel.model
+        }),
+        expect.objectContaining({
+          key: NodeInputKeyEnum.datasetSearchRerankModelId,
+          value: String(rerankModel._id)
+        })
+      ])
+    );
+    expect(legacyRerankApp?.modules[1].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: NodeInputKeyEnum.datasetSearchRerankModel,
+          value: 'removed-rerank-model'
+        }),
+        expect.objectContaining({
+          key: NodeInputKeyEnum.datasetSearchRerankModelId,
+          value: String(rerankModel._id)
+        })
+      ])
+    );
+  });
+
+  it('preserves a valid modelId when its legacy model no longer exists', async () => {
+    const currentModel = await createStoredModel({ model: 'current-workflow-llm' });
+    await MongoApp.collection.insertOne({
+      name: 'missing legacy model with valid modelId',
+      modules: [
+        {
+          nodeId: 'preserve-current-model-id',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModel,
+              value: 'removed-workflow-llm',
+              valueType: 'string'
+            },
+            {
+              key: NodeInputKeyEnum.aiModelId,
+              value: String(currentModel._id),
+              valueType: 'string'
+            }
+          ]
+        }
+      ]
+    });
+
+    const result = await runBackfillModelReferences({ dryRun: false });
+
+    expect(result.references.appsWorkflow).toMatchObject({
+      scanned: 1,
+      unchanged: 1,
+      unresolved: 0,
+      updated: 0
+    });
+    await expect(
+      MongoApp.collection.findOne({ name: 'missing legacy model with valid modelId' })
+    ).resolves.toMatchObject({
+      modules: [
+        {
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModel,
+              value: 'removed-workflow-llm'
+            },
+            {
+              key: NodeInputKeyEnum.aiModelId,
+              value: String(currentModel._id)
+            }
+          ]
+        }
+      ]
+    });
+  });
+
+  it('replaces a wrong-type modelId with a same-type fallback', async () => {
+    const [wrongTypeModel, fallbackModel] = await Promise.all([
+      createStoredModel({ model: 'wrong-type-llm' }),
+      createStoredModel({ model: 'fallback-rerank', type: ModelTypeEnum.rerank })
+    ]);
+    await MongoApp.collection.insertOne({
+      name: 'missing rerank with wrong-type modelId',
+      modules: [
+        {
+          nodeId: 'replace-wrong-type-model-id',
+          flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.datasetSearchRerankModel,
+              value: 'removed-rerank',
+              valueType: 'string'
+            },
+            {
+              key: NodeInputKeyEnum.datasetSearchRerankModelId,
+              value: String(wrongTypeModel._id),
+              valueType: 'string'
+            }
+          ]
+        }
+      ]
+    });
+
+    const result = await runBackfillModelReferences({ dryRun: false });
+
+    expect(result.references.appsWorkflow).toMatchObject({
+      scanned: 1,
+      unresolved: 0,
+      updated: 1
+    });
+    const app = await MongoApp.collection.findOne({
+      name: 'missing rerank with wrong-type modelId'
+    });
+    expect(app?.modules[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: NodeInputKeyEnum.datasetSearchRerankModel,
+          value: 'removed-rerank'
+        }),
+        expect.objectContaining({
+          key: NodeInputKeyEnum.datasetSearchRerankModelId,
+          value: String(fallbackModel._id)
+        })
+      ])
+    );
+  });
+
+  it('leaves an invalid modelId-only workflow input untouched', async () => {
+    await MongoApp.collection.insertOne({
+      name: 'invalid modelId only',
+      modules: [
+        {
+          nodeId: 'invalid-model-id-only',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModelId,
+              value: 'invalid-model-id',
+              valueType: 'string'
+            }
+          ]
+        }
+      ]
+    });
+
+    const result = await runBackfillModelReferences({ dryRun: false });
+
+    expect(result.references.appsWorkflow).toMatchObject({
+      scanned: 1,
+      unchanged: 1,
+      unresolved: 0,
+      updated: 0
+    });
+    const app = await MongoApp.collection.findOne({ name: 'invalid modelId only' });
+    expect(app?.modules[0].inputs).toEqual([
+      expect.objectContaining({
+        key: NodeInputKeyEnum.aiModelId,
+        value: 'invalid-model-id'
+      })
     ]);
   });
 

@@ -64,7 +64,7 @@ describe('DELETE /api/admin/settings/model/delete', () => {
     expect(mocks.deletePermissions).toHaveBeenCalledWith(
       {
         resourceType: 'model',
-        $or: [{ resourceId: 'model-id' }, { resourceName: 'custom-model' }]
+        resourceId: 'model-id'
       },
       { session: mocks.session }
     );

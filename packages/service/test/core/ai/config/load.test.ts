@@ -103,6 +103,7 @@ describe('loadSystemModels', () => {
   });
 
   it('does not partially migrate when any legacy model is invalid', async () => {
+    pluginMocks.listModels.mockResolvedValue([pluginLlm]);
     await legacyCollection.insertMany([
       {
         model: 'legacy-llm',
@@ -121,7 +122,10 @@ describe('loadSystemModels', () => {
     await loadSystemModels();
     await expect(waitForAIModelsBootstrap()).rejects.toThrow('Invalid legacy system model');
     await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
+    await expect(MongoAIModel.findOne({ model: pluginLlm.model })).resolves.toBeNull();
     await expect(legacyCollection.countDocuments()).resolves.toBe(2);
+    expect(global.systemModelList).toEqual([]);
+    expect(reloadMocks.updateFastGPTConfigBuffer).not.toHaveBeenCalled();
   });
 
   it('blocks startup before publishing a cache when the plugin request fails', async () => {
@@ -131,8 +135,10 @@ describe('loadSystemModels', () => {
     expect(global.systemModelList).toBeUndefined();
   });
 
-  it('preinstalls templates only after bootstrap succeeds', async () => {
+  it('preinstalls templates after an empty legacy migration succeeds', async () => {
     pluginMocks.listModels.mockResolvedValue([pluginLlm]);
+
+    await expect(legacyCollection.countDocuments()).resolves.toBe(0);
 
     await loadSystemModels();
     await waitForAIModelsBootstrap();

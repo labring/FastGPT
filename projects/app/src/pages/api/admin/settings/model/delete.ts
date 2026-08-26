@@ -36,7 +36,7 @@ async function handler(
     await MongoResourcePermission.deleteMany(
       {
         resourceType: PerResourceTypeEnum.model,
-        $or: [{ resourceId: modelId }, { resourceName: modelData.model }]
+        resourceId: modelId
       },
       { session }
     );

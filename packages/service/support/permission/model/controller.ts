@@ -39,7 +39,7 @@ export const clearMyModelsCache = ({
 export const clearAllMyModelsCache = ({ session }: { session?: ClientSession } = {}) =>
   MongoTmpData.deleteMany(myModelsCacheFilter, { session });
 
-/** 返回当前成员可使用的稳定模型 ID；旧 resourceName 权限会在读取时映射到 modelId。 */
+/** 返回当前成员可使用的稳定模型 ID；模型权限只按 resourceId 判断。 */
 export const getMyModelIds = async ({
   teamId,
   tmbId,
@@ -78,11 +78,8 @@ export const getMyModelIds = async ({
   });
 
   // 未配置权限的，默认是有权限
-  const modelIdByLegacyModel = new Map(activeModels.map((model) => [model.model, model.modelId]));
   const getPermissionModelId = (permission: (typeof rps)[number]) =>
-    permission.resourceId
-      ? String(permission.resourceId)
-      : modelIdByLegacyModel.get(permission.resourceName);
+    permission.resourceId ? String(permission.resourceId) : undefined;
   const permissionConfiguredModelSet = new Set(
     rps.map(getPermissionModelId).filter((modelId): modelId is string => !!modelId)
   );

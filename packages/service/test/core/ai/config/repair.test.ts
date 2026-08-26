@@ -92,6 +92,44 @@ describe('repairSystemModelDocument', () => {
     }
   });
 
+  it('prefers valid legacy top-level fields and falls back to metadata per field', () => {
+    const result = repairSystemModelDocument({
+      record: {
+        type: ModelTypeEnum.llm,
+        provider: 'Top-level provider',
+        model: ' mixed-legacy-model ',
+        name: 'Top-level name',
+        maxContext: '64000',
+        maxResponse: 'invalid',
+        quoteMaxToken: '24000',
+        metadata: {
+          type: ModelTypeEnum.embedding,
+          provider: 'Metadata provider',
+          model: 'metadata-model',
+          name: 'Metadata name',
+          maxContext: 1000,
+          maxResponse: 8000,
+          quoteMaxToken: 2000
+        }
+      }
+    });
+
+    expect(result).toMatchObject({
+      status: 'repaired',
+      document: {
+        type: ModelTypeEnum.llm,
+        provider: 'Top-level provider',
+        model: 'mixed-legacy-model',
+        name: 'Top-level name',
+        config: {
+          maxContext: 64000,
+          maxResponse: 8000,
+          quoteMaxToken: 24000
+        }
+      }
+    });
+  });
+
   it('repairs invalid canonical fields with plugin values before type defaults', () => {
     const result = repairSystemModelDocument({
       record: {
@@ -101,6 +139,12 @@ describe('repairSystemModelDocument', () => {
           maxContext: 'invalid',
           maxResponse: '8000',
           quoteMaxToken: 'invalid'
+        },
+        metadata: {
+          provider: 'Stale provider',
+          maxContext: 1,
+          maxResponse: 1,
+          quoteMaxToken: 1
         }
       },
       pluginDocument: {

@@ -96,15 +96,16 @@ const toRecord = (value: unknown) =>
     ? (value as Record<string, unknown>)
     : undefined;
 
-const getDocumentSource = (record: Record<string, unknown>) => {
+const getDocumentSources = (record: Record<string, unknown>) => {
   // config 字段一旦存在就表示该文档已进入新结构，即使 config 损坏也不能用
   // 残留 metadata 覆盖管理员已经保存的新字段。
   if (Object.prototype.hasOwnProperty.call(record, 'config')) {
-    return { ...record, ...(toRecord(record.config) ?? {}) };
+    return [{ ...record, ...(toRecord(record.config) ?? {}) }];
   }
 
   const metadata = toRecord(record.metadata);
-  return metadata ? { ...metadata, model: record.model ?? metadata.model } : record;
+  // 旧顶层字段优先；字段本身无效时再逐字段回退 metadata，而不是整层覆盖。
+  return metadata ? [record, metadata] : [record];
 };
 
 const parsePriceTiers = (value: unknown) => {
@@ -200,27 +201,40 @@ export const repairSystemModelDocument = ({
   }
 
   if (!raw) return { status: 'invalid', issues: getIssues(record) };
-  const source = getDocumentSource(raw);
+  const sources = getDocumentSources(raw);
   const pluginSource: Record<string, unknown> = pluginDocument
     ? { ...pluginDocument, ...pluginDocument.config }
     : {};
-  const model = toTrimmedString(source.model) ?? pluginDocument?.model;
-  const provider = toTrimmedString(source.provider) ?? pluginDocument?.provider;
-  const name = toTrimmedString(source.name) ?? pluginDocument?.name ?? model;
-  const type = modelTypes.has(source.type as ModelTypeEnum)
-    ? (source.type as ModelTypeEnum)
-    : pluginDocument?.type;
+  const readSource = <T>(reader: (source: Record<string, unknown>) => T | undefined) => {
+    for (const source of sources) {
+      const value = reader(source);
+      if (value !== undefined) return value;
+    }
+  };
+  const model = readSource((source) => toTrimmedString(source.model)) ?? pluginDocument?.model;
+  const provider =
+    readSource((source) => toTrimmedString(source.provider)) ?? pluginDocument?.provider;
+  const name =
+    readSource((source) => toTrimmedString(source.name)) ?? pluginDocument?.name ?? model;
+  const type =
+    readSource((source) =>
+      modelTypes.has(source.type as ModelTypeEnum) ? (source.type as ModelTypeEnum) : undefined
+    ) ?? pluginDocument?.type;
 
   if (!model || !provider || !name || !type) {
     return { status: 'invalid', issues: getIssues(record) };
   }
 
   const readNumber = (key: string, fallback?: number) =>
-    toFiniteNumber(source[key]) ?? toFiniteNumber(pluginSource[key]) ?? fallback;
-  const readBoolean = (key: string) => toBoolean(source[key]) ?? toBoolean(pluginSource[key]);
-  const readRecord = (key: string) => toRecord(source[key]) ?? toRecord(pluginSource[key]);
+    readSource((source) => toFiniteNumber(source[key])) ??
+    toFiniteNumber(pluginSource[key]) ??
+    fallback;
+  const readBoolean = (key: string) =>
+    readSource((source) => toBoolean(source[key])) ?? toBoolean(pluginSource[key]);
+  const readRecord = (key: string) =>
+    readSource((source) => toRecord(source[key])) ?? toRecord(pluginSource[key]);
   const readArray = (key: string) =>
-    (Array.isArray(source[key]) ? source[key] : undefined) ??
+    readSource((source) => (Array.isArray(source[key]) ? source[key] : undefined)) ??
     (Array.isArray(pluginSource[key]) ? pluginSource[key] : undefined);
   const config: Record<string, unknown> = {};
 
@@ -242,9 +256,11 @@ export const repairSystemModelDocument = ({
       config.responseFormatList = responseFormatList;
     }
     const defaultSystemChatPrompt =
-      typeof source.defaultSystemChatPrompt === 'string'
-        ? source.defaultSystemChatPrompt
-        : pluginSource.defaultSystemChatPrompt;
+      readSource((source) =>
+        typeof source.defaultSystemChatPrompt === 'string'
+          ? source.defaultSystemChatPrompt
+          : undefined
+      ) ?? pluginSource.defaultSystemChatPrompt;
     if (typeof defaultSystemChatPrompt === 'string') {
       config.defaultSystemChatPrompt = defaultSystemChatPrompt;
     }
@@ -304,14 +320,17 @@ export const repairSystemModelDocument = ({
     });
   }
   for (const key of ['requestUrl', 'requestAuth'] as const) {
-    const value = toTrimmedString(source[key]) ?? toTrimmedString(pluginSource[key]);
+    const value =
+      readSource((source) => toTrimmedString(source[key])) ?? toTrimmedString(pluginSource[key]);
     if (value !== undefined) document[key] = value;
   }
   for (const key of ['charsPointsPrice', 'inputPrice', 'outputPrice'] as const) {
     const value = readNumber(key);
     if (value !== undefined) document[key] = value;
   }
-  const priceTiers = parsePriceTiers(source.priceTiers) ?? parsePriceTiers(pluginSource.priceTiers);
+  const priceTiers =
+    readSource((source) => parsePriceTiers(source.priceTiers)) ??
+    parsePriceTiers(pluginSource.priceTiers);
   if (priceTiers) document.priceTiers = priceTiers;
 
   const repaired = SystemModelDocumentDataSchema.safeParse(document);

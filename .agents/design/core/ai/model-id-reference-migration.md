@@ -52,14 +52,14 @@
 
 ## 4. 术语与不可破坏的约束
 
-| 名称 | 含义 | 是否可作为业务外键 |
-| --- | --- | --- |
-| `_id` | MongoDB 中 `ai_models` 文档主键 | 仅数据库内部使用 |
-| `modelId` | `_id.toString()`，平台模型唯一身份 | 是，唯一 canonical 引用 |
-| `model` | provider 侧路由名称，例如 `gpt-4o` | 否；仅兼容旧引用和 provider 请求 |
-| `name` | 用户可见展示名 | 否 |
-| `scope` | 模型实例作用域 | 本轮固定为 `system`，后续可扩展 `team` |
-| `isCustom` | 是否不在插件模板中 | 运行时根据模板匹配结果派生，不能表示所有权，不能参与身份判断 |
+| 名称       | 含义                               | 是否可作为业务外键                                           |
+| ---------- | ---------------------------------- | ------------------------------------------------------------ |
+| `_id`      | MongoDB 中 `ai_models` 文档主键    | 仅数据库内部使用                                             |
+| `modelId`  | `_id.toString()`，平台模型唯一身份 | 是，唯一 canonical 引用                                      |
+| `model`    | provider 侧路由名称，例如 `gpt-4o` | 否；仅兼容旧引用和 provider 请求                             |
+| `name`     | 用户可见展示名                     | 否                                                           |
+| `scope`    | 模型实例作用域                     | 本轮固定为 `system`，后续可扩展 `team`                       |
+| `isCustom` | 是否不在插件模板中                 | 运行时根据模板匹配结果派生，不能表示所有权，不能参与身份判断 |
 
 核心约束：
 
@@ -210,16 +210,16 @@ Mongoose 顶层字段应显式声明，`config` 可以使用 `Schema.Types.Mixed
 
 模型加载阶段不得再使用 `{ ...pluginModel, ...dbModel }` 合并整个对象。数据库文档是可独立运行的完整实例和唯一权威来源；插件模板只在首次物化时提供身份、展示、价格和 `config` 初始值：
 
-| 字段 | 首次物化来源 | 后续加载/同步规则 |
-| --- | --- | --- |
-| `_id/modelId` | MongoDB | 永不被插件改变 |
-| `model/type` | 插件模板初始化 | DB 权威；与插件不一致时记录配置错误，不静默覆盖 |
-| `provider/name` | 插件模板初始化 | DB 权威，允许管理员调整；插件更新不覆盖 |
-| `scope` | FastGPT 固定写入 `system` | 本轮不可由管理员修改，插件不参与 |
-| `isActive/testMode`、默认标记、连接信息 | FastGPT 默认值或管理员配置 | 只读 DB，插件不参与 |
-| 价格字段 | 插件模板初始化 | DB 权威，插件更新不覆盖管理员价格 |
-| `config` | 插件能力配置初始化 | 只读 DB 完整快照；模板变化不隐式合并 |
-| `avatar/isCustom` | 不持久化 | 分别由 provider 和是否命中插件模板派生 |
+| 字段                                    | 首次物化来源               | 后续加载/同步规则                               |
+| --------------------------------------- | -------------------------- | ----------------------------------------------- |
+| `_id/modelId`                           | MongoDB                    | 永不被插件改变                                  |
+| `model/type`                            | 插件模板初始化             | DB 权威；与插件不一致时记录配置错误，不静默覆盖 |
+| `provider/name`                         | 插件模板初始化             | DB 权威，允许管理员调整；插件更新不覆盖         |
+| `scope`                                 | FastGPT 固定写入 `system`  | 本轮不可由管理员修改，插件不参与                |
+| `isActive/testMode`、默认标记、连接信息 | FastGPT 默认值或管理员配置 | 只读 DB，插件不参与                             |
+| 价格字段                                | 插件模板初始化             | DB 权威，插件更新不覆盖管理员价格               |
+| `config`                                | 插件能力配置初始化         | 只读 DB 完整快照；模板变化不隐式合并            |
+| `avatar/isCustom`                       | 不持久化                   | 分别由 provider 和是否命中插件模板派生          |
 
 加载时不做 `config` 合并。`defaultConfig`、`fieldMap`、`dbConfig`、`queryConfig`、数组以及 `false`、`0` 等值全部按数据库快照解释；配置不完整或非法时保留上一版运行时缓存并暴露配置错误，不能从插件或其他模型借默认值。
 
@@ -326,14 +326,14 @@ const ModelReferenceSchema = z
 
 当前 System OpenAPI 中会让调用方选择平台模型的请求字段如下：
 
-| 公开接口 | canonical 字段 | deprecated 字段 | 缺省语义 |
-| --- | --- | --- | --- |
-| `POST /core/dataset/create` | `vectorModelId` | `vectorModel` | 两者都缺少时使用默认 Embedding 模型 |
-| `POST /core/dataset/create` | `agentModelId` | `agentModel` | 两者都缺少时使用默认 LLM |
-| `POST /core/dataset/create` | `vlmModelId` | `vlmModel` | 两者都缺少时使用默认 VLM |
-| `POST /core/dataset/searchTest` | `rerankModelId` | `rerankModel` | 仅启用 Rerank 时解析 |
-| `POST /core/dataset/searchTest` | `datasetSearchExtensionModelId` | `datasetSearchExtensionModel` | 仅启用问题扩展时解析 |
-| `POST /core/dataset/searchTest` | `datasetDeepSearchModelId` | `datasetDeepSearchModel` | 仅启用深度搜索时解析 |
+| 公开接口                        | canonical 字段                  | deprecated 字段               | 缺省语义                            |
+| ------------------------------- | ------------------------------- | ----------------------------- | ----------------------------------- |
+| `POST /core/dataset/create`     | `vectorModelId`                 | `vectorModel`                 | 两者都缺少时使用默认 Embedding 模型 |
+| `POST /core/dataset/create`     | `agentModelId`                  | `agentModel`                  | 两者都缺少时使用默认 LLM            |
+| `POST /core/dataset/create`     | `vlmModelId`                    | `vlmModel`                    | 两者都缺少时使用默认 VLM            |
+| `POST /core/dataset/searchTest` | `rerankModelId`                 | `rerankModel`                 | 仅启用 Rerank 时解析                |
+| `POST /core/dataset/searchTest` | `datasetSearchExtensionModelId` | `datasetSearchExtensionModel` | 仅启用问题扩展时解析                |
+| `POST /core/dataset/searchTest` | `datasetDeepSearchModelId`      | `datasetDeepSearchModel`      | 仅启用深度搜索时解析                |
 
 表内每组字段都必须把 `modelId` 和 deprecated `model` 一起传给统一的 `getXXModelData`，不得在 API handler 中先用 `modelId ?? model` 压成单个字符串。这样才能区分“没有传 `modelId`”与“传入的 `modelId` 无效”，并保证后者立即报“模型不存在”而不回退。
 
@@ -399,7 +399,7 @@ await createLLMResponse({
 
 1. **公开 OpenAPI 请求兼容**：已发布且允许选择模型的 System OpenAPI schema 同时接收 `modelId/model`，`model` 标记 deprecated。
 2. **统一模型解析兼容**：`getXXModelData` 与 `findModelData` 接收同一个 `ModelReference`；`modelId` 严格优先，仅缺少 `modelId` 时才按系统 `model` 查询。
-3. **历史持久化读取**：Dataset、App、Workflow、Evaluation、Usage 和模型权限在迁移窗口内读取旧 `*Model`、workflow key、`resourceName` 或 usage `model`；新写入不得继续产生旧字段。
+3. **历史持久化读取**：Dataset、App、Workflow、Evaluation 和 Usage 在迁移窗口内读取旧 `*Model`、workflow key 或 usage `model`；新写入不得继续产生旧字段。模型权限不保留运行时名称回退，必须先通过 4163 补齐 `resourceId`。
 4. **外部协议归一化**：插件 SDK 的扁平模型只在插件适配入口转换成 canonical `config`；旧 `system_models.metadata` 和旧顶层能力字段只允许启动迁移读取和转换。
 
 除以上白名单外，不保留裸字符串 getter、`string | ModelData`、旧扁平模型与 canonical 模型的运行时 union、把 `config` 再展开到全局缓存或 API DTO 的字段别名，或“已经传入模型对象就直接返回”的旁路。管理员页面、普通客户端和服务端统一使用嵌套 `config`。
@@ -416,16 +416,16 @@ await createLLMResponse({
 
 ### 7.2 持久化与 API 字段矩阵
 
-| 数据位置 | 新增字段 | 保留的 deprecated 字段 | 读取优先级 | 新写策略 |
-| --- | --- | --- | --- | --- |
-| `datasets` | `vectorModelId`、`agentModelId`、`vlmModelId` | `vectorModel`、`agentModel`、`vlmModel` | `*ModelId` 优先 | 只写 `*ModelId` |
-| `eval` | `evalModelId` | `evalModel` | `evalModelId` 优先 | 只写 `evalModelId` |
-| `apps.chatConfig.questionGuide` | `modelId` | `model` | `modelId` 优先 | 只写 `modelId` |
-| `apps.chatConfig.ttsConfig` | `modelId` | `model` | `modelId` 优先 | 只写 `modelId` |
-| `apps.modules` / `app_versions.nodes` | 见 Workflow key 表 | 旧 input key | 新 key 优先 | 新节点只写新 key |
-| `app_templates.workflow` | 同 Workflow | 旧模板 key | 新 key 优先 | 新模板只写新 key |
-| `usage_items` | `modelId` | `model` | 两种记录分别展示 | 新记录只写 `modelId`，不迁移历史记录 |
-| 模型权限记录 | `resourceId` | `resourceName` | `resourceId` 优先 | 新记录按 `resourceId`，保留旧名称快照 |
+| 数据位置                              | 新增字段                                      | 保留的 deprecated 字段                  | 读取优先级          | 新写策略                                                  |
+| ------------------------------------- | --------------------------------------------- | --------------------------------------- | ------------------- | --------------------------------------------------------- |
+| `datasets`                            | `vectorModelId`、`agentModelId`、`vlmModelId` | `vectorModel`、`agentModel`、`vlmModel` | `*ModelId` 优先     | 只写 `*ModelId`                                           |
+| `eval`                                | `evalModelId`                                 | `evalModel`                             | `evalModelId` 优先  | 只写 `evalModelId`                                        |
+| `apps.chatConfig.questionGuide`       | `modelId`                                     | `model`                                 | `modelId` 优先      | 只写 `modelId`                                            |
+| `apps.chatConfig.ttsConfig`           | `modelId`                                     | `model`                                 | `modelId` 优先      | 只写 `modelId`                                            |
+| `apps.modules` / `app_versions.nodes` | 见 Workflow key 表                            | 旧 input key                            | 新 key 优先         | 新节点只写新 key                                          |
+| `app_templates.workflow`              | 同 Workflow                                   | 旧模板 key                              | 新 key 优先         | 新模板只写新 key                                          |
+| `usage_items`                         | `modelId`                                     | `model`                                 | 两种记录分别展示    | 新记录只写 `modelId`，不迁移历史记录                      |
+| 模型权限记录                          | `resourceId`                                  | `resourceName`                          | 只读取 `resourceId` | 新记录按 `resourceId`；4163 可保留旧名称快照但必须补齐 ID |
 
 这里的“保留”针对历史持久化数据和公开 System OpenAPI 合约，包括对应的 TypeScript 类型、Zod/Mongoose Schema、OpenAPI 字段声明和历史数据读取分支：旧字段改为 optional 并标记 `@deprecated`，本轮不得从这些字段定义中删除。非公开 OpenAPI 请求参数与内部临时配置不在对外兼容范围内，只保留 `modelId`。新增 ID 字段不是原字段 rename，也不应通过重建一套 API 实现。
 
@@ -437,10 +437,14 @@ await createLLMResponse({
 
 ```ts
 // 历史记录
-{ model: 'gpt-4o' }
+{
+  model: 'gpt-4o';
+}
 
 // 新记录
-{ modelId: '68ad85a7463006c963799a05' }
+{
+  modelId: '68ad85a7463006c963799a05';
+}
 ```
 
 新写入链只写 `modelId`，不再冗余写 `model`。历史 Usage 不做 modelId 回填，避免为纯展示数据增加大集合迁移成本，也避免把旧名称改成当前展示名。
@@ -448,7 +452,8 @@ await createLLMResponse({
 列表查询按当前分页收集全部 `modelId`，一次批量读取 `ai_models` 后生成展示字段，禁止逐条查询：
 
 ```ts
-const displayModel = usage.model ?? modelMap.get(usage.modelId)?.model ?? i18nT('account_usage:model_unavailable');
+const displayModel =
+  usage.model ?? modelMap.get(usage.modelId)?.model ?? i18nT('account_usage:model_unavailable');
 ```
 
 展示规则：
@@ -463,13 +468,13 @@ const displayModel = usage.model ?? modelMap.get(usage.modelId)?.model ?? i18nT(
 
 工作流协议在保留旧 key 的基础上新增以下 ID key：
 
-| 保留的 deprecated key | 新增 key |
-| --- | --- |
-| `model` | `modelId` |
-| `embeddingModel` | `embeddingModelId` |
-| `rerankModel` | `rerankModelId` |
+| 保留的 deprecated key         | 新增 key                        |
+| ----------------------------- | ------------------------------- |
+| `model`                       | `modelId`                       |
+| `embeddingModel`              | `embeddingModelId`              |
+| `rerankModel`                 | `rerankModelId`                 |
 | `datasetSearchExtensionModel` | `datasetSearchExtensionModelId` |
-| `datasetDeepSearchModel` | `datasetDeepSearchModelId` |
+| `datasetDeepSearchModel`      | `datasetDeepSearchModelId`      |
 
 旧 key 必须继续保留在 Workflow input 常量、类型、Zod Schema、模板反序列化和 Dispatcher 读取分支中，并标记 deprecated；本轮不能通过 rename 或删除旧 input 实现迁移。`datasetParams` 复合对象内的同名字段也遵循相同规则。
 
@@ -513,8 +518,8 @@ const displayModel = usage.model ?? modelMap.get(usage.modelId)?.model ?? i18nT(
 现有模型权限虽然仍只管理系统模型，但它也是模型引用，需做最小身份迁移：
 
 - `MongoResourcePermission` 的模型条目补 `resourceId = modelId`。
-- `resourceName` 在兼容期保留，不扩展私有模型所有权语义。
-- `getMyModels`、`getMyModel` 和协作者 list/update API 只接收 `modelId`；模型权限历史记录仍兼容读取 `resourceName`。
+- `resourceName` 只作为迁移时的旧名称快照保留，不参与运行时权限判断，也不扩展私有模型所有权语义。
+- `getMyModels`、`getMyModel` 和协作者 list/update API 只接收 `modelId`，权限查询只使用 `resourceId`；上线后必须先执行 4163，无法补齐 ID 的权限记录需要在报告中处理。
 - FastGPT Pro 中现有模型协作者 API 需要同步修改，否则 available model 过滤仍会按名称失配。
 - 不在本轮增加“创建者即所有者”、团队成员 groupId、跨成员私有模型授权等规则。
 
@@ -529,13 +534,12 @@ const displayModel = usage.model ?? modelMap.get(usage.modelId)?.model ?? i18nT(
 ```ts
 export const GetMyModelsQuerySchema = PaginationSchema.extend({
   modelType: ModelTypeSchema.optional(),
-  provider: z.string().optional(),
+  provider: z.string().optional()
 });
 
-export const GetMyModelsResponseSchema =
-  PaginationResponseSchema(ClientModelItemSchema).extend({
-    providers: z.array(z.string())
-  });
+export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelItemSchema).extend({
+  providers: z.array(z.string())
+});
 ```
 
 接口约束：
@@ -616,6 +620,8 @@ export const GetMyModelsResponseSchema =
 
 `admin/4163/backfillModelReferences` 只建立 `ai_models.model -> _id` 映射，目标表为空时拒绝执行，避免在启动迁移完成前产生错误回填。它给 Dataset、App/Workflow、Evaluation 和模型权限记录增量补充 ID sibling；Usage 历史记录不回填。接口仅允许系统管理员执行，`dryRun` 默认为 `true`，响应按 `datasets/apps/evaluations/permissions` 分组返回 `scanned/unchanged/wouldUpdate/updated/invalid/unresolved/conflicts`。
 
+模型权限运行时只读取 `resourceId`，因此 4163 的正式回填是权限切换前置步骤。只有 `modelPermissions.unresolved = 0` 后，才能执行通用悬垂权限 apply 清理；后者会把缺少 `resourceId` 或指向不存在 `ai_models._id` 的模型权限分别报告为 `missingResourceId`、`missingModel` 并删除，不能再用 `resourceName` 恢复。
+
 该接口属于一次性管理员清洗能力，可以不注册 OpenAPI path，但不豁免安全和校验：使用 `authSystemAdmin` 鉴权；请求使用 Zod Schema + `parseApiInput`；结构化响应使用 Zod Schema parse；`dryRun` 默认必须为 `true`，只有显式传 `false` 才允许写入。
 
 ### 11.2 执行顺序
@@ -646,7 +652,7 @@ export const GetMyModelsResponseSchema =
 - 根据模型 `type` 使用白名单把类型特有字段写入 `config`，未知字段不自动搬运。
 - 新代码只写 `ai_models` 的 canonical 顶层字段和 `config`；不再写 `metadata` 或顶层类型特有字段。
 - 迁移候选只保留 `_id` 与 canonical 字段，因此 `isSystem`、`metadata` 和旧顶层能力字段不会进入新表；旧表原文档完全不变。
-- 任一旧记录无法转换、出现重复 `_id` 或重复 `model` 时，在开启写事务前失败，目标表保持为空。
+- 任一旧记录无法转换或出现重复 `_id` 时，在开启写事务前失败，目标表保持为空；重复 `model` 按 `_id` 升序读取，后一个记录覆盖前一个记录并保留其 `_id` 与配置。
 - 多实例并发不使用分布式锁；事务内复查目标为空，竞争失败实例仅在确认另一实例已完整写入同一组 `_id` 后收敛为成功。
 - legacy 名称能精确解析时，以其当前映射覆盖已有 `modelId`，用于修复模型 ID 重新生成后的存量引用；重复执行保持幂等。
 - legacy 名称无法精确解析且已有 `modelId` 仍指向符合类型要求的模型时，保留该 ID；否则按所需类型选择 `ai_models` 中首个匹配模型作为兼容回退。
@@ -667,18 +673,18 @@ export const GetMyModelsResponseSchema =
 
 ## 12. 代码改动分区
 
-| 分区 | 主要改动 |
-| --- | --- |
-| `packages/global/core/ai` | 模型对象增加 `modelId`，定义各类型 config 和客户端脱敏类型 |
-| `packages/service/core/ai` | 扁平 schema、config normalize、索引、物化、ID cache、getter、active guard、迁移服务 |
-| `packages/global/core/dataset` + `packages/service/core/dataset` | Dataset schema/API/runtime 改 `*ModelId` |
-| `packages/global/core/workflow` + `packages/service/core/workflow` | input key、模板、dispatcher、Agent/搜索调用链 |
-| `packages/global/core/app` + `packages/service/core/app` | chatConfig、Evaluation、app/appVersion/template 兼容 |
-| `packages/service/support/wallet/usage` | usage item 增加 modelId，所有写入链透传 ID |
-| `packages/service/support/permission/model` | available model 与权限资源改按 modelId |
-| `projects/app/src/pages/api` | 分页可用模型 API、升级后的单一清洗入口和已有 OpenAPI contract 对齐 |
-| `projects/app/src/web` / UI | 选择器按需分页请求、selector value、表单默认值和旧数据显示兼容 |
-| `pro` | Evaluation、模型协作者接口的最小 modelId 同步 |
+| 分区                                                               | 主要改动                                                                            |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| `packages/global/core/ai`                                          | 模型对象增加 `modelId`，定义各类型 config 和客户端脱敏类型                          |
+| `packages/service/core/ai`                                         | 扁平 schema、config normalize、索引、物化、ID cache、getter、active guard、迁移服务 |
+| `packages/global/core/dataset` + `packages/service/core/dataset`   | Dataset schema/API/runtime 改 `*ModelId`                                            |
+| `packages/global/core/workflow` + `packages/service/core/workflow` | input key、模板、dispatcher、Agent/搜索调用链                                       |
+| `packages/global/core/app` + `packages/service/core/app`           | chatConfig、Evaluation、app/appVersion/template 兼容                                |
+| `packages/service/support/wallet/usage`                            | usage item 增加 modelId，所有写入链透传 ID                                          |
+| `packages/service/support/permission/model`                        | available model 与权限资源改按 modelId                                              |
+| `projects/app/src/pages/api`                                       | 分页可用模型 API、升级后的单一清洗入口和已有 OpenAPI contract 对齐                  |
+| `projects/app/src/web` / UI                                        | 选择器按需分页请求、selector value、表单默认值和旧数据显示兼容                      |
+| `pro`                                                              | Evaluation、模型协作者接口的最小 modelId 同步                                       |
 
 实施时应通过类型错误和 `rg` 审计所有调用点，不能直接复用原 PR 的 300+ 文件列表；原列表混入了 Channel、私有模型、管理员统计和页面重构。
 
@@ -742,6 +748,54 @@ export const GetMyModelsResponseSchema =
 - config 嵌套会影响当前所有 `modelData.maxContext/vision/...` 调用点，必须通过静态审计确保没有继续读取旧顶层类型字段。
 - Usage 列表必须批量解析 modelId，不能形成 N+1；模型缺失时只能影响展示，不能影响历史金额和 token。
 - 本轮不删除任何 legacy 模型引用字段。未来是否删除 deprecated 字段、兼容索引和 fallback 必须另行评估存量调用方并单独决策，不能把删除视为本 PR 的默认后续步骤。
+
+### 14.1 后续可移除或收紧的兼容清单
+
+兼容层不能只按发布时间删除，必须先证明对应旧输入已经不再产生、存量数据已经收敛，并且受支持的最低升级路径不再依赖该兼容。各层目标如下：
+
+| 兼容层                                           | 当前用途                                                                                                   | 后续目标                                                                                | 移除或收紧前置条件                                                                                                                                                                                         |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 启动时 `system_models -> ai_models` 迁移         | 首次升级时保留旧 `_id`，并把旧顶层字段、`metadata`、`isSystem` 修复为 canonical 模型结构                   | 删除启动迁移、legacy repair 和旧集合读取代码；是否物理删除 `system_models` 另行执行     | 所有受支持部署都至少成功启动过一次新版本；`ai_models` 非空且校验通过；最低支持升级版本不再允许从只含 `system_models` 的版本直接升级                                                                        |
+| 插件模型自动预装                                 | 本版本为所有插件模板补齐数据库实例，保证每个系统模型都有稳定 ID                                            | PR2 改成管理员从模板显式安装，不再因插件出现模板就自动创建实例                          | 模板安装流程、默认模型保障和空实例引导已上线；升级部署不会因为关闭自动预装而没有可用模型                                                                                                                   |
+| `admin/4163/backfillModelReferences`             | 给 Dataset、App/Workflow、Evaluation 和模型权限补 ID sibling，并用同类型首个模型处理无法按旧名称解析的引用 | 完成上线回填和复核后下线一次性接口；后续严格迁移不得再静默猜测模型                      | dry-run 与正式执行完成；`unresolved/conflicts` 收敛为 0；各目标集合不存在缺少合法 ID 的有效记录；保留执行审计结果                                                                                          |
+| Dataset、Evaluation、App chatConfig 的旧字段读取 | 兼容 `vectorModel/agentModel/vlmModel`、`evalModel`、问题引导和 TTS 的 `model`                             | 持久化 Schema 和内部 API 改为按业务条件要求 `*ModelId`；运行时只读取 ID；随后删除旧字段 | 所有写入口只写 ID；存量回填完成；导入、复制、恢复旧版本等入口会先规范化；条件可选字段单独定义，例如 VLM 未启用、问题引导关闭或 TTS 非模型模式时仍可没有 ID                                                 |
+| Workflow 旧 key 与保存清洗                       | 兼容 `model/rerankModel/...` input；`formatModels` 在导入、创建、保存、发布时将静态旧名称转换为 ID key     | 所有写入边界统一规范化；运行时 Dispatcher 只读取 ID key，不再读取 `model`               | 存量 App、AppVersion、AppTemplate 已回填；所有导入/复制/保存入口均调用同一清洗函数；静态旧名称可转换或明确报错；动态 `{{...}}` 和引用型输入的上游输出协议已明确为 modelId，不能把运行时得到的旧名称误当 ID |
+| 统一模型解析中的 `model:<name>` 索引             | `getXXModelData`/`findModelData` 在没有 modelId 时兼容查找旧系统模型名称                                   | 删除 `ModelReference.model`、名称索引和 getter 的名称分支，只保留 `id:<modelId>`        | 上述持久化、Workflow、公开 API、权限和前端兼容均已退出；代码审计不存在 `getXXModelData({ model })`；该项应最后删除                                                                                         |
+| 公开 System OpenAPI 的 deprecated `model` 参数   | 已发布外部调用方仍可按系统模型名称请求                                                                     | 在独立 API contract cleanup 版本删除旧参数，只接收 modelId                              | 已公告废弃窗口；调用日志证明旧参数使用量可接受或为 0；SDK、文档和外部集成完成迁移。OpenAI `/v1`、`/v2` 标准协议的 `model` 不属于此清理                                                                     |
+| 模型权限 `resourceName`                          | 仅供 4163 将旧权限映射到 `resourceId`，运行时不按名称回退                                                  | 权限记录最终只保留 `resourceId`，后续删除旧名称字段及其索引                             | 权限回填完成；不存在 model 权限缺少 `resourceId`；旧名称快照不再承担审计或回滚用途                                                                                                                         |
+| 前端旧值恢复和显示                               | Evaluation、默认模型、语音配置等页面同时把字符串当作 modelId 或旧 model 查找                               | selector、表单、详情页只持有和请求 modelId                                              | 后端响应和持久化均已收敛；异常 ID 仍按“模型不存在”展示，不能恢复为选择同类型第一个模型                                                                                                                     |
+| 历史 Usage 的 `model` 展示                       | 历史明细不回填 ID，直接显示写入时的 provider model 快照                                                    | 可长期保留为历史展示协议；只有在 Usage 生命周期结束或完成专门迁移后才删除               | TTL 范围内已不存在旧 Usage，或完成不会改变金额、token 和历史展示语义的专项迁移。它不应阻塞业务配置改成 modelId 必填                                                                                        |
+
+以下两项虽然仍使用 `model`，但不能与 legacy 引用兼容一起直接删除：
+
+1. **模型配置 JSON 的跨实例导入**：未知 `modelId` 代表源实例身份无法在目标实例复用，当前仍需用 canonical 记录中的 `model` 对齐或新建系统模型。后续只有引入跨实例稳定的模板身份后，才能取消该规则；团队模型导入不得仅凭 `model` 跨团队合并。
+2. **插件模板适配**：插件返回的 provider `model` 及其配置仍是模型模板协议的一部分。可以随插件协议升级删除旧扁平能力字段适配，但 provider 请求最终仍必须使用 `modelData.model`，不能改成发送 modelId。
+
+### 14.2 与团队安装的边界
+
+团队安装引入后，`model` 名称不再足以表示全局身份，因此当前兼容必须遵守以下边界：
+
+1. 旧 `model` 查找和 4163 中的 `resourceName -> resourceId` 映射始终只允许命中 `scope=system`；运行时权限不读取 `resourceName`，也不得按名称选择团队模型。
+2. 团队模型从第一版开始只持久化、传输和授权 `modelId`，不新增团队级名称 fallback。
+3. 如果统一模型缓存未来同时装载系统与团队模型，兼容名称索引必须与 ID 索引物理隔离，或继续放在只含系统模型的 Map 中；不能建立无 scope 的全局 `model:<name>` 索引。
+4. 模型配置 JSON 的名称对齐只用于管理员导入系统模型。团队安装应使用模板 ID、安装记录 ID 或其他明确身份，不能复用这条跨实例名称匹配规则。
+5. PR2 应先移除“插件模板自动预装全部系统模型”的策略，否则团队安装阶段会同时存在平台自动安装和团队显式安装两套所有权语义。
+
+### 14.3 建议清理顺序与验证门槛
+
+建议把清理拆成三个互不混淆的阶段：
+
+1. **先收敛写入**：上线后执行 4163；统计各集合缺失、非法和无法解析的 ID；确保 Dataset、Evaluation、App、Workflow、权限及 Pro 写入口只产生 ID。持久化字段的“必填”应是条件必填，而不是把所有可选模型功能强制开启。
+2. **再收敛读取**：Workflow 导入和保存先清洗旧静态名称为 modelId；无法转换的数据在写入边界明确拒绝或报告。确认运行时不再收到旧 key 后，删除 Dataset/Evaluation/App/Workflow/权限和前端的名称 fallback。
+3. **最后删除底层兼容**：删除统一 getter 的 `model` 入参和 `model:` 缓存索引；再根据最低支持升级版本删除启动迁移及 `system_models` 读取。公开 OpenAPI 和历史 Usage 按各自生命周期独立清理，不与内部运行时清理强绑定。
+
+每次进入下一阶段前至少验证：
+
+- 数据扫描中，所有启用中的业务配置均存在类型正确且可解析的 modelId；VLM、TTS、问题引导等可选能力按启用状态判断。
+- 代码静态审计中，除 provider 协议、模型配置导入和明确保留的历史展示外，不再把 `model` 当作平台模型身份。
+- Workflow 样本覆盖静态值、引用值、`{{...}}` 动态值、重复 key、缺失模型和错误类型；不能仅凭普通 AI Chat 节点通过就删除运行时兼容。
+- FastGPT 与 FastGPT Pro 的 Evaluation、模型协作者和权限缓存行为同步通过验证。
+- 回滚策略已明确：删除 legacy 字段或旧集合后，旧镜像不再具备读取新数据的能力，不能再把回滚视为无数据风险操作。
 
 ## 15. 实施 TODO
 

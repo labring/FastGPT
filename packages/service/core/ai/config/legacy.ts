@@ -26,12 +26,15 @@ export const bootstrapAIModelsFromLegacy = async ({
 
   // 故意通过原生 collection 读取，避免在旧表上注册 Schema、索引或写入中间状态。
   const legacyCollection = MongoAIModel.db.collection(LegacySystemModelCollectionName);
-  const records = await legacyCollection.find({}).toArray();
+  const records = await legacyCollection.find({}).sort({ _id: 1 }).toArray();
   const pluginMap = new Map(pluginDocuments.map((item) => [item.model, item]));
-  const modelNames = new Set<string>();
   const modelIds = new Set<string>();
+  type MigrationCandidate = SystemModelDocumentDataType & {
+    _id: (typeof records)[number]['_id'];
+  };
+  const candidatesByModel = new Map<string, MigrationCandidate>();
 
-  const candidates = records.map((record) => {
+  for (const record of records) {
     const result = repairSystemModelDocument({
       record,
       pluginDocument: pluginMap.get(String(record.model))
@@ -41,14 +44,15 @@ export const bootstrapAIModelsFromLegacy = async ({
     }
 
     const modelId = String(record._id);
-    if (modelIds.has(modelId) || modelNames.has(result.document.model)) {
-      throw new Error(`Duplicate legacy system model: ${result.document.model}`);
+    if (modelIds.has(modelId)) {
+      throw new Error(`Duplicate legacy system model id: ${modelId}`);
     }
     modelIds.add(modelId);
-    modelNames.add(result.document.model);
 
-    return { _id: record._id, ...result.document };
-  });
+    // 历史上若同名模型被重复保存，以较新的记录为准，避免唯一索引阻断整次迁移。
+    candidatesByModel.set(result.document.model, { _id: record._id, ...result.document });
+  }
+  const candidates = Array.from(candidatesByModel.values());
 
   try {
     return await mongoSessionRun(async (session) => {

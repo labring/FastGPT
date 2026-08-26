@@ -66,6 +66,39 @@ describe('model permission cache', () => {
     ]);
   });
 
+  it('uses only resourceId and ignores legacy resourceName permissions', async () => {
+    const teamId = new Types.ObjectId().toString();
+    const currentTmbId = new Types.ObjectId().toString();
+    const otherTmbId = new Types.ObjectId().toString();
+    const modelId = new Types.ObjectId().toString();
+    global.systemActiveModelList = [
+      { modelId, model: 'legacy-name' }
+    ] as typeof global.systemActiveModelList;
+
+    await MongoResourcePermission.create({
+      teamId,
+      tmbId: otherTmbId,
+      resourceType: 'model',
+      resourceName: 'legacy-name',
+      permission: 1
+    });
+    await expect(
+      getMyModelIds({ teamId, tmbId: currentTmbId, isTeamOwner: false })
+    ).resolves.toEqual([modelId]);
+
+    await MongoTmpData.deleteMany({});
+    await MongoResourcePermission.create({
+      teamId,
+      tmbId: otherTmbId,
+      resourceType: 'model',
+      resourceId: modelId,
+      permission: 1
+    });
+    await expect(
+      getMyModelIds({ teamId, tmbId: currentTmbId, isTeamOwner: false })
+    ).resolves.toEqual([]);
+  });
+
   it('deletes only caches belonging to the changed team', async () => {
     const firstTeamId = new Types.ObjectId().toString();
     const secondTeamId = new Types.ObjectId().toString();

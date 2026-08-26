@@ -262,12 +262,9 @@ export const runBackfillModelReferences = async ({
     name: 'modelPermissions',
     model: MongoResourcePermission,
     transform: (record) => {
-      if (
-        record.resourceType !== PerResourceTypeEnum.model ||
-        typeof record.resourceName !== 'string'
-      ) {
-        return {};
-      }
+      if (record.resourceType !== PerResourceTypeEnum.model) return {};
+      if (typeof record.resourceName !== 'string') return record.resourceId ? {} : { missing: 1 };
+
       const resourceId = modelByName.get(record.resourceName)?._id;
       if (!resourceId) return record.resourceId ? {} : { missing: 1 };
       if (String(record.resourceId ?? '') === String(resourceId)) return {};
