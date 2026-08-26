@@ -84,15 +84,14 @@ const NodeTemplateListItem = ({
   const { screenToFlowPosition } = useReactFlow();
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
   const isSystemTool = templateType === TemplateTypeEnum.systemTools;
-  const isSystemToolSet = isSystemTool && template.flowNodeType === FlowNodeTypeEnum.toolSet;
+  const isToolSet = template.flowNodeType === FlowNodeTypeEnum.toolSet;
   const isToolSelector = handleParams?.handleId === NodeOutputKeyEnum.selectedTools;
-  // 系统工具集只有在工具调用的工具选择器里才允许直接创建节点。
-  const allowDirectAddSystemToolSet = isSystemToolSet && isToolSelector;
+  // 工具集（系统工具、团队 HTTP/MCP 工具）只有在工具调用的工具选择器里才允许直接创建节点；
+  // 侧边栏等其他场景点击卡片一律进入工具集内部，选择单个工具。
+  const allowDirectAddToolSet = isToolSet && isToolSelector;
   const canDragCreateNode =
-    !isPopover &&
-    (!template.isFolder || template.flowNodeType === FlowNodeTypeEnum.toolSet) &&
-    (!isSystemToolSet || allowDirectAddSystemToolSet);
-  const showExpandArrow = template.isFolder || isSystemToolSet;
+    !isPopover && (!template.isFolder || isToolSet) && (!isToolSet || allowDirectAddToolSet);
+  const showExpandArrow = template.isFolder || isToolSet;
   const isDebugTool = isDebugToolSource(template.source);
   const isSystemSource = template.source === 'system';
 
@@ -159,7 +158,7 @@ const NodeTemplateListItem = ({
           });
         }}
         onClick={() => {
-          if (isSystemToolSet && !allowDirectAddSystemToolSet) {
+          if (isToolSet && !allowDirectAddToolSet) {
             onUpdateParentId(template.id, template.source);
             return;
           }
