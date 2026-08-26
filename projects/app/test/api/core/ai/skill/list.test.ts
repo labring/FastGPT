@@ -23,6 +23,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 describe('POST /api/core/ai/skill/list', () => {
   it('按 skillIds 查询时不受父目录过滤影响，并排除已删除 Skill', async () => {
@@ -231,11 +232,23 @@ describe('POST /api/core/ai/skill/list', () => {
       resourceRefs: { skillIds: [String(publishedSkill._id)] }
     });
 
+    const legacyModel = global.systemActiveModelList.find(
+      (model) => model.type === ModelTypeEnum.llm
+    )!;
+    const draftNode = createSkillNode(draftSkill);
+    draftNode.inputs.push({
+      key: NodeInputKeyEnum.aiModel,
+      label: 'Model',
+      value: legacyModel.model,
+      renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+      valueType: WorkflowIOValueTypeEnum.string
+    });
+
     const draftSaveRes = await Call(publishHandler, {
       auth: user,
       query: { appId },
       body: {
-        nodes: [createSkillNode(draftSkill)],
+        nodes: [draftNode],
         edges: [],
         chatConfig: {},
         isPublish: false,
@@ -243,9 +256,22 @@ describe('POST /api/core/ai/skill/list', () => {
       }
     });
     expect(draftSaveRes.code).toBe(200);
-    await expect(MongoApp.findById(appId).lean()).resolves.toMatchObject({
+    const draftApp = await MongoApp.findById(appId).lean();
+    expect(draftApp).toMatchObject({
       resourceRefs: { skillIds: [String(publishedSkill._id)] }
     });
+    expect(draftApp?.modules[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: NodeInputKeyEnum.aiModel,
+          value: legacyModel.model
+        }),
+        expect.objectContaining({
+          key: NodeInputKeyEnum.aiModelId,
+          value: legacyModel.modelId
+        })
+      ])
+    );
 
     const draftRes = await Call<ListSkillsQuery, Record<string, never>, ListSkillsResponse>(
       handler,

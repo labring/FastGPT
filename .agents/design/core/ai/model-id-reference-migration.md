@@ -473,6 +473,7 @@ const displayModel = usage.model ?? modelMap.get(usage.modelId)?.model ?? i18nT(
 
 - 新建节点和新模板只产生新 ID key，不需要额外双写旧 key。
 - 存量节点的旧 key 不删除；当旧 value 是可解析的字面量 `model` 时，通过 `$set`/input append 增加对应 ID sibling。
+- Workflow 导入、应用创建以及自动保存/保存版本/发布统一调用 `formatModels`：补充可解析的 ID sibling，并清空当前成员无权使用的静态模型值。
 - 编辑或保存存量 Workflow 时保留原本存在的 deprecated input；若用户重新选择了模型，则更新/增加 ID input，但不以“清理”为由删除旧 input。
 - 旧字面量无法解析时，不添加 ID sibling，保留旧 input 并在界面显示“模型不存在”。
 

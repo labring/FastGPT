@@ -19,6 +19,9 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
+import { formatModels } from '@fastgpt/global/core/workflow/utils';
+import { getMyModelIds } from '@fastgpt/service/support/permission/model/controller';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import {
   PublishAppBodySchema,
   PublishAppQuerySchema,
@@ -43,6 +46,18 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   });
 
   const normalizedWorkflow = migrateWorkflowToCurrent({ nodes, edges, chatConfig });
+  const tmb = await MongoTeamMember.findById(tmbId, 'role').lean();
+  const allowedModelIds = await getMyModelIds({
+    teamId,
+    tmbId,
+    isTeamOwner: isRoot || tmb?.role === 'owner'
+  });
+  formatModels({
+    modules: normalizedWorkflow.nodes,
+    models: allowedModelIds
+      .map((modelId) => global.systemModelMap.get(`id:${modelId}`))
+      .filter((model): model is NonNullable<typeof model> => !!model)
+  });
   await beforeUpdateAppFormat({
     nodes: normalizedWorkflow.nodes,
     teamId

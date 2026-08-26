@@ -17,7 +17,7 @@ import {
   isValidArrayReferenceValue,
   getElseIFLabel,
   clientGetWorkflowToolRunUserQuery,
-  removeUnauthModels
+  formatModels
 } from '@fastgpt/global/core/workflow/utils';
 import {
   FlowNodeInputTypeEnum,
@@ -1345,13 +1345,20 @@ describe('clientGetWorkflowToolRunUserQuery', () => {
   });
 });
 
-describe('removeUnauthModels', () => {
-  it('should return modules unchanged when modules is undefined', async () => {
-    const result = await removeUnauthModels({ modules: undefined as any });
+describe('formatModels', () => {
+  const models = [
+    { model: 'gpt-4', modelId: '68ad85a7463006c963799a05' },
+    { model: 'rerank-v1', modelId: '68ad85a7463006c963799a06' },
+    { model: 'extension-v1', modelId: '68ad85a7463006c963799a07' },
+    { model: 'deep-search-v1', modelId: '68ad85a7463006c963799a08' }
+  ];
+
+  it('returns undefined modules unchanged', () => {
+    const result = formatModels({ modules: undefined as any, models });
     expect(result).toBeUndefined();
   });
 
-  it('should not modify model value when it is in allowedLegacyModels', async () => {
+  it('keeps legacy inputs and adds modelId siblings for every static workflow model key', () => {
     const modules = [
       {
         nodeId: 'node1',
@@ -1359,23 +1366,61 @@ describe('removeUnauthModels', () => {
         name: 'Chat',
         inputs: [
           {
-            key: 'model',
+            key: NodeInputKeyEnum.aiModel,
             label: 'Model',
             value: 'gpt-4',
             selectedType: FlowNodeInputTypeEnum.selectLLMModel,
             renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.datasetSearchRerankModel,
+            label: 'Rerank model',
+            value: 'rerank-v1',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.datasetSearchExtensionModel,
+            label: 'Extension model',
+            value: 'extension-v1',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.datasetDeepSearchModel,
+            label: 'Deep search model',
+            value: 'deep-search-v1',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
           }
         ],
         outputs: []
       }
     ];
-    const allowedLegacyModels = new Set(['gpt-4', 'gpt-3.5-turbo']);
 
-    const result = await removeUnauthModels({ modules, allowedLegacyModels });
+    const result = formatModels({ modules, models });
+
     expect(result?.[0].inputs[0].value).toBe('gpt-4');
+    expect(result?.[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: NodeInputKeyEnum.aiModelId,
+          value: models[0].modelId
+        }),
+        expect.objectContaining({
+          key: NodeInputKeyEnum.datasetSearchRerankModelId,
+          value: models[1].modelId
+        }),
+        expect.objectContaining({
+          key: NodeInputKeyEnum.datasetSearchExtensionModelId,
+          value: models[2].modelId
+        }),
+        expect.objectContaining({
+          key: NodeInputKeyEnum.datasetDeepSearchModelId,
+          value: models[3].modelId
+        })
+      ])
+    );
   });
 
-  it('should set model value to undefined when not in allowedLegacyModels', async () => {
+  it('clears a static legacy model when it is unavailable', () => {
     const modules = [
       {
         nodeId: 'node1',
@@ -1383,7 +1428,7 @@ describe('removeUnauthModels', () => {
         name: 'Chat',
         inputs: [
           {
-            key: 'model',
+            key: NodeInputKeyEnum.aiModel,
             label: 'Model',
             value: 'unauthorized-model',
             selectedType: FlowNodeInputTypeEnum.selectLLMModel,
@@ -1393,14 +1438,12 @@ describe('removeUnauthModels', () => {
         outputs: []
       }
     ];
-    const allowedLegacyModels = new Set(['gpt-4']);
 
-    const result = await removeUnauthModels({ modules, allowedLegacyModels });
+    const result = formatModels({ modules, models });
     expect(result?.[0].inputs[0].value).toBeUndefined();
   });
 
-  it('should validate canonical modelId inputs against allowedModelIds', async () => {
-    const allowedModelId = '68ad85a7463006c963799a05';
+  it('keeps an allowed modelId and clears an unavailable modelId together with its legacy fallback', () => {
     const modules = [
       {
         nodeId: 'node1',
@@ -1410,15 +1453,20 @@ describe('removeUnauthModels', () => {
           {
             key: NodeInputKeyEnum.aiModelId,
             label: 'Model',
-            value: allowedModelId,
+            value: models[0].modelId,
             selectedType: FlowNodeInputTypeEnum.selectLLMModel,
             renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
           },
           {
-            key: NodeInputKeyEnum.aiModelId,
-            label: 'Model',
-            value: '68ad85a7463006c963799a06',
-            selectedType: FlowNodeInputTypeEnum.selectLLMModel,
+            key: NodeInputKeyEnum.datasetSearchExtensionModelId,
+            label: 'Extension model ID',
+            value: '68ad85a7463006c963799aff',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.datasetSearchExtensionModel,
+            label: 'Extension model',
+            value: 'extension-v1',
             renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
           }
         ],
@@ -1426,16 +1474,14 @@ describe('removeUnauthModels', () => {
       }
     ];
 
-    const result = await removeUnauthModels({
-      modules,
-      allowedModelIds: new Set([allowedModelId])
-    });
+    const result = formatModels({ modules, models });
 
-    expect(result?.[0].inputs[0].value).toBe(allowedModelId);
+    expect(result?.[0].inputs[0].value).toBe(models[0].modelId);
     expect(result?.[0].inputs[1].value).toBeUndefined();
+    expect(result?.[0].inputs[2].value).toBeUndefined();
   });
 
-  it('should skip canonical reference type inputs', async () => {
+  it('keeps reference and array model inputs unchanged', () => {
     const modules = [
       {
         nodeId: 'node1',
@@ -1443,32 +1489,15 @@ describe('removeUnauthModels', () => {
         name: 'Chat',
         inputs: [
           {
-            key: 'model',
+            key: NodeInputKeyEnum.aiModel,
             label: 'Model',
             value: 'unauthorized-model',
             selectedType: FlowNodeInputTypeEnum.reference,
             renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel, FlowNodeInputTypeEnum.reference]
-          }
-        ],
-        outputs: []
-      }
-    ];
-    const allowedLegacyModels = new Set(['gpt-4']);
-
-    const result = await removeUnauthModels({ modules, allowedLegacyModels });
-    expect(result?.[0].inputs[0].value).toBe('unauthorized-model');
-  });
-
-  it('should skip array value inputs (reference type)', async () => {
-    const modules = [
-      {
-        nodeId: 'node1',
-        flowNodeType: FlowNodeTypeEnum.chatNode,
-        name: 'Chat',
-        inputs: [
+          },
           {
-            key: 'model',
-            label: 'Model',
+            key: NodeInputKeyEnum.datasetSearchRerankModel,
+            label: 'Rerank model',
             value: ['nodeId', 'outputKey'],
             renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
           }
@@ -1476,13 +1505,13 @@ describe('removeUnauthModels', () => {
         outputs: []
       }
     ];
-    const allowedLegacyModels = new Set(['gpt-4']);
-
-    const result = await removeUnauthModels({ modules, allowedLegacyModels });
-    expect(result?.[0].inputs[0].value).toEqual(['nodeId', 'outputKey']);
+    const result = formatModels({ modules, models });
+    expect(result?.[0].inputs[0].value).toBe('unauthorized-model');
+    expect(result?.[0].inputs[1].value).toEqual(['nodeId', 'outputKey']);
+    expect(result?.[0].inputs).toHaveLength(2);
   });
 
-  it('should handle modules with no model inputs', async () => {
+  it('leaves modules without model inputs unchanged', () => {
     const modules = [
       {
         nodeId: 'node1',
@@ -1499,69 +1528,7 @@ describe('removeUnauthModels', () => {
         outputs: []
       }
     ];
-    const allowedLegacyModels = new Set(['gpt-4']);
-
-    const result = await removeUnauthModels({ modules, allowedLegacyModels });
+    const result = formatModels({ modules, models });
     expect(result?.[0].inputs[0].value).toBe('some value');
-  });
-
-  it('should use empty Set as default for allowedLegacyModels', async () => {
-    const modules = [
-      {
-        nodeId: 'node1',
-        flowNodeType: FlowNodeTypeEnum.chatNode,
-        name: 'Chat',
-        inputs: [
-          {
-            key: 'model',
-            label: 'Model',
-            value: 'any-model',
-            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
-          }
-        ],
-        outputs: []
-      }
-    ];
-
-    const result = await removeUnauthModels({ modules });
-    expect(result?.[0].inputs[0].value).toBeUndefined();
-  });
-
-  it('should handle multiple modules with multiple model inputs', async () => {
-    const modules = [
-      {
-        nodeId: 'node1',
-        flowNodeType: FlowNodeTypeEnum.chatNode,
-        name: 'Chat 1',
-        inputs: [
-          {
-            key: 'model',
-            label: 'Model',
-            value: 'gpt-4',
-            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
-          }
-        ],
-        outputs: []
-      },
-      {
-        nodeId: 'node2',
-        flowNodeType: FlowNodeTypeEnum.chatNode,
-        name: 'Chat 2',
-        inputs: [
-          {
-            key: 'model',
-            label: 'Model',
-            value: 'unauthorized',
-            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
-          }
-        ],
-        outputs: []
-      }
-    ];
-    const allowedLegacyModels = new Set(['gpt-4']);
-
-    const result = await removeUnauthModels({ modules, allowedLegacyModels });
-    expect(result?.[0].inputs[0].value).toBe('gpt-4');
-    expect(result?.[1].inputs[0].value).toBeUndefined();
   });
 });

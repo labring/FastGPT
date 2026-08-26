@@ -567,34 +567,63 @@ export const clientGetWorkflowToolRunUserQuery = ({
   };
 };
 
-export const removeUnauthModels = async ({
+const workflowModelKeyMappings = [
+  [NodeInputKeyEnum.aiModel, NodeInputKeyEnum.aiModelId],
+  [NodeInputKeyEnum.datasetSearchRerankModel, NodeInputKeyEnum.datasetSearchRerankModelId],
+  [NodeInputKeyEnum.datasetSearchExtensionModel, NodeInputKeyEnum.datasetSearchExtensionModelId],
+  [NodeInputKeyEnum.datasetDeepSearchModel, NodeInputKeyEnum.datasetDeepSearchModelId]
+] as const;
+
+/**
+ * 在 Workflow 写入边界统一格式化模型引用。
+ *
+ * 静态旧 model 会保留原 input，并新增对应的 modelId sibling；无权限或不存在的静态值会被
+ * 清空。引用类型无法在保存时确定运行结果，因此保持原样并交给运行时兼容读取。
+ */
+export const formatModels = ({
   modules,
-  allowedModelIds = new Set(),
-  allowedLegacyModels = new Set()
+  models = []
 }: {
   modules: AppSchemaType['modules'];
-  allowedModelIds?: Set<string>;
-  allowedLegacyModels?: Set<string>;
+  models?: Array<{ modelId: string; model: string }>;
 }) => {
-  if (modules) {
-    modules.forEach((module) => {
-      module.inputs.forEach((input) => {
-        if (input.key === NodeInputKeyEnum.aiModelId || input.key === NodeInputKeyEnum.aiModel) {
-          // 如果是引用类型或历史引用值，跳过静态模型白名单检查。
-          if (
-            getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.reference ||
-            Array.isArray(input.value)
-          ) {
-            return;
-          }
-          const allowedModels =
-            input.key === NodeInputKeyEnum.aiModelId ? allowedModelIds : allowedLegacyModels;
-          if (!allowedModels.has(input.value)) {
-            input.value = undefined;
-          }
+  if (!modules) return modules;
+
+  const allowedModelIds = new Set(models.map((model) => model.modelId));
+  const modelIdByModel = new Map(models.map((model) => [model.model, model.modelId]));
+  const isReferenceInput = (input: FlowNodeInputItemType) =>
+    getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.reference ||
+    Array.isArray(input.value);
+
+  modules.forEach((module) => {
+    for (const [legacyKey, modelIdKey] of workflowModelKeyMappings) {
+      const legacyInput = module.inputs.find((input) => input.key === legacyKey);
+      const modelIdInput = module.inputs.find((input) => input.key === modelIdKey);
+
+      // modelId 始终优先；存在 canonical input 时不再使用旧 model 兜底。
+      if (modelIdInput) {
+        if (isReferenceInput(modelIdInput)) continue;
+        if (!allowedModelIds.has(modelIdInput.value)) {
+          modelIdInput.value = undefined;
+          if (legacyInput && !isReferenceInput(legacyInput)) legacyInput.value = undefined;
         }
+        continue;
+      }
+
+      if (!legacyInput || isReferenceInput(legacyInput)) continue;
+      const modelId = modelIdByModel.get(legacyInput.value);
+      if (!modelId) {
+        legacyInput.value = undefined;
+        continue;
+      }
+
+      module.inputs.push({
+        ...legacyInput,
+        key: modelIdKey,
+        value: modelId
       });
-    });
-  }
+    }
+  });
+
   return modules;
 };

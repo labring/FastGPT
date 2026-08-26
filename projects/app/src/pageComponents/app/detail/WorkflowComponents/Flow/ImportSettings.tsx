@@ -5,7 +5,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
-import { removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
+import { formatModels } from '@fastgpt/global/core/workflow/utils';
 import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
 import { WorkflowUtilsContext } from '../context/workflowUtilsContext';
 import { parseWorkflowImportConfig } from '@/pageComponents/dashboard/agent/utils/appTemplateParse';
@@ -28,8 +28,6 @@ const ImportSettings = ({ onClose }: Props) => {
   const { t } = useTranslation();
   const [value, setValue] = useState('');
   const { modelList } = useSystemModelLists();
-  const allowedModelIds = new Set(modelList.map((model) => model.modelId));
-  const allowedLegacyModels = new Set(modelList.map((model) => model.model));
 
   return (
     <MyModal
@@ -55,10 +53,9 @@ const ImportSettings = ({ onClose }: Props) => {
                     : AppTypeEnum.workflow,
                 t
               });
-              await removeUnauthModels({
+              formatModels({
                 modules: workflowConfig.nodes,
-                allowedModelIds,
-                allowedLegacyModels
+                models: modelList
               });
               await initData(workflowConfig);
               toast({
