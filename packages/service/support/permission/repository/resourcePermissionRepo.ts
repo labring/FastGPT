@@ -683,7 +683,7 @@ export const resourcePermissionRepo = {
       )
     );
 
-    const insertBatchSize = 1000;
+    const insertBatchSize = 100000;
     for (let index = 0; index < documents.length; index += insertBatchSize) {
       await MongoResourcePermission.insertMany(documents.slice(index, index + insertBatchSize), {
         ...(session ? { session } : {}),
@@ -749,7 +749,7 @@ export const resourcePermissionRepo = {
       });
     }
 
-    const batchSize = 100000;
+    const batchSize = 1000000;
     const runBulkWrite = async (operations: AnyBulkWriteOperation<ResourcePermissionType>[]) => {
       for (let index = 0; index < operations.length; index += batchSize) {
         await MongoResourcePermission.bulkWrite(
