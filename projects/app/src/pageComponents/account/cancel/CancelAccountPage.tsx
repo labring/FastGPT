@@ -109,7 +109,7 @@ const CancelAccountPage = () => {
       );
     }
     if (isVerificationView) {
-      return <VerificationPanel onSubmitted={onSubmitted} />;
+      return <VerificationPanel method={status.verificationMethod!} onSubmitted={onSubmitted} />;
     }
     return <Spinner color="primary.600" />;
   })();
