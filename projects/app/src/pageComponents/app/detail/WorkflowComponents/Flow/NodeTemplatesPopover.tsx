@@ -6,6 +6,7 @@ import {
   FlowNodeTypeEnum,
   isNestedChildSystemNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { buildNodeTemplateContext } from '@fastgpt/global/core/workflow/template/context';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -62,8 +63,11 @@ const NodeTemplatesPopover = () => {
   } = useNodeTemplates(nodeTemplateContext);
 
   const onAddNode = useMemoizedFn(async ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => {
-    const isToolHandle = handleParams?.handleId === 'selectedTools';
+    const isToolHandle = handleParams?.handleId === NodeOutputKeyEnum.selectedTools;
+    // 容器（循环/并行）自带的开始/结束系统子节点随父节点一起添加，不参与工具可用性过滤。
+    const batchNodeIds = new Set(newNodes.map((node) => node.id));
     const validNewNodes = newNodes.filter((node) => {
+      if (node.data.parentNodeId && batchNodeIds.has(node.data.parentNodeId)) return true;
       if (!isToolHandle && node.data.flowNodeType === FlowNodeTypeEnum.toolSet) return false;
       if (isToolHandle && !node.data.isTool) return false;
       return true;
