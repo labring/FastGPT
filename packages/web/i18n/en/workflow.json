@@ -26,6 +26,7 @@
   "auto_align": "Automatic alignment",
   "can_not_loop": "This node can't loop.",
   "can_not_parallel": "This node cannot be used inside a Parallel Run node",
+  "can_not_add_inside_container": "This node cannot be added inside this container",
   "choose_another_application_to_call": "Select another app to call",
   "classification_result": "Classification Result",
   "click_to_change_reference": "Click to switch input mode",

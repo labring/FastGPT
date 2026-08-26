@@ -26,6 +26,7 @@
   "auto_align": "自動對齊",
   "can_not_loop": "這個節點不能迴圈。",
   "can_not_parallel": "該節點不支援在並行執行節點中使用",
+  "can_not_add_inside_container": "該節點不支援新增到當前容器內部",
   "choose_another_application_to_call": "選擇另一個應用程式來呼叫",
   "classification_result": "分類結果",
   "click_to_change_reference": "點擊切換輸入模式",

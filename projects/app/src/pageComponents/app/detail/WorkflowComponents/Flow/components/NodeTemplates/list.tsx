@@ -16,7 +16,8 @@ import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import type {
   FlowNodeItemType,
   NodeTemplateListItemType,
-  NodeTemplateListType
+  NodeTemplateListType,
+  NodeTemplateContext
 } from '@fastgpt/global/core/workflow/type/node';
 import { TemplateTypeEnum } from './header';
 import { useMemoizedFn } from 'ahooks';
@@ -37,6 +38,7 @@ import { sliderWidth } from '../../NodeTemplatesModal';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useWorkflowUtils } from '../../hooks/useUtils';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
+import { isTemplateVisible } from '@fastgpt/global/core/workflow/template/context';
 import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
 import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/loopEnd';
 import { LoopRunStartNode } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRunStart';
@@ -343,6 +345,29 @@ const NodeTemplateList = ({
             toast({
               status: 'warning',
               title: t('workflow:loop_run_break_must_inside_loop_run')
+            });
+            return;
+          }
+        }
+
+        // 侧边栏添加没有源节点，容器内部画布是隔离上下文：不受外部画布已有的
+        // 工具调用/循环执行节点状态影响，模板可见性需按容器上下文重新校验。
+        if (!handleParams && effectiveParentNode) {
+          const containerContext: NodeTemplateContext = {
+            isSidebar: false,
+            sourceNodeId: null,
+            sourceType: null,
+            sourceIsTool: false,
+            isConnectedTool: false,
+            handleId: null,
+            parentType: effectiveParentNode.flowNodeType,
+            hasToolNode: false,
+            hasLoopRunNode: false
+          };
+          if (!isTemplateVisible(templateNode, containerContext)) {
+            toast({
+              status: 'warning',
+              title: t('workflow:can_not_add_inside_container')
             });
             return;
           }
