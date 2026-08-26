@@ -96,7 +96,7 @@ describe('update model api', () => {
     });
   });
 
-  it('rejects numeric strings without modifying the database', async () => {
+  it('repairs numeric strings before writing the database', async () => {
     const res = await callUpdate({
       modelData: {
         ...buildLlmDocument(),
@@ -107,9 +107,24 @@ describe('update model api', () => {
       }
     });
 
-    expect(res.error?.name).toBe('ApiRequestInputParseError');
-    expect(res.error?.context).toEqual({ inputSource: 'body' });
-    await expect(MongoSystemModel.countDocuments()).resolves.toBe(0);
+    expect(res.code).toBe(200);
+    await expect(MongoSystemModel.findOne({ model: 'test-llm' }).lean()).resolves.toMatchObject({
+      config: { maxTemperature: 1.2 }
+    });
+  });
+
+  it('rejects an irreparable model without modifying an existing record', async () => {
+    const existing = await MongoSystemModel.create(buildLlmDocument());
+    const res = await callUpdate({
+      modelId: String(existing._id),
+      modelData: { model: '', provider: null, type: 'unknown' }
+    });
+
+    expect(res.error?.name).toBe('UserError');
+    await expect(MongoSystemModel.findById(existing._id).lean()).resolves.toMatchObject({
+      model: 'test-llm',
+      config: { maxContext: 16000 }
+    });
   });
 
   it('rejects malformed request bodies through parseApiInput', async () => {

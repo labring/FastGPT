@@ -11,13 +11,16 @@ import {
   type UpdateSystemModelResponse
 } from '@fastgpt/global/openapi/admin/core/ai/model/api';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { repairSystemModelDocument } from '@fastgpt/service/core/ai/config/repair';
+import { getPluginSystemModelDocuments } from '@fastgpt/service/core/ai/config/utils';
 
 export type updateBody = UpdateSystemModelBody;
 
 async function handler(req: ApiRequestProps<updateBody>): Promise<UpdateSystemModelResponse> {
   await authSystemAdmin({ req });
 
-  const { modelId, modelData: persistedDocument } = parseApiInput({
+  const { modelId, modelData } = parseApiInput({
     req,
     bodySchema: UpdateSystemModelBodySchema
   }).body;
@@ -26,6 +29,17 @@ async function handler(req: ApiRequestProps<updateBody>): Promise<UpdateSystemMo
   if (modelId && !(await MongoSystemModel.exists({ _id: modelId }))) {
     return Promise.reject(ModelErrEnum.unExist);
   }
+
+  const pluginDocuments = await getPluginSystemModelDocuments();
+  const modelName = typeof modelData.model === 'string' ? modelData.model.trim() : '';
+  const repaired = repairSystemModelDocument({
+    record: modelData,
+    pluginDocument: pluginDocuments.find((item) => item.model === modelName)
+  });
+  if (repaired.status === 'invalid') {
+    throw new UserError(`Invalid system model: ${JSON.stringify(repaired.issues)}`);
+  }
+  const persistedDocument = repaired.document;
 
   const modelFilter = modelId ? { _id: modelId } : { model: persistedDocument.model };
 

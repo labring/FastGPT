@@ -26,6 +26,7 @@ import { preloadModelProviders } from '../../../core/app/provider/controller';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { flatModelToDocumentData, repairStoredSystemModels } from './repair';
 
 /**
  * 生成可返回客户端的脱敏模型副本。系统模型对象还会被服务端请求链路复用，不能原地删除字段。
@@ -62,79 +63,6 @@ export const desensitizeSystemDefaultModels = (defaultModels: SystemDefaultModel
   [ModelTypeEnum.stt]: defaultModels.stt && desensitizeSystemModel(defaultModels.stt),
   [ModelTypeEnum.rerank]: defaultModels.rerank && desensitizeSystemModel(defaultModels.rerank)
 });
-
-const configKeysMap: Record<ModelTypeEnum, string[]> = {
-  [ModelTypeEnum.llm]: [
-    'maxContext',
-    'maxResponse',
-    'quoteMaxToken',
-    'maxTemperature',
-    'showTopP',
-    'responseFormatList',
-    'showStopSign',
-    'censor',
-    'vision',
-    'audio',
-    'video',
-    'reasoning',
-    'reasoningEffort',
-    'functionCall',
-    'toolChoice',
-    'defaultSystemChatPrompt',
-    'defaultConfig',
-    'fieldMap'
-  ],
-  [ModelTypeEnum.embedding]: [
-    'defaultToken',
-    'maxToken',
-    'weight',
-    'hidden',
-    'vision',
-    'normalization',
-    'batchSize',
-    'defaultConfig',
-    'dbConfig',
-    'queryConfig'
-  ],
-  [ModelTypeEnum.rerank]: ['maxToken', 'defaultConfig'],
-  [ModelTypeEnum.tts]: ['voices'],
-  [ModelTypeEnum.stt]: []
-};
-
-const pickDefined = (source: Record<string, unknown>, keys: string[]) =>
-  Object.fromEntries(
-    keys.filter((key) => source[key] !== undefined).map((key) => [key, source[key]])
-  );
-
-/**
- * 将插件协议的扁平模型转换成新的持久化结构。
- * 插件的 maxTokens 在这里一次性归一为 FastGPT 的 config.maxResponse。
- */
-export const flatModelToDocumentData = (
-  input: Record<string, any>
-): SystemModelDocumentDataType => {
-  const normalized = { ...input };
-  if (normalized.type === ModelTypeEnum.llm) {
-    normalized.maxResponse = normalized.maxResponse ?? normalized.maxTokens ?? 16000;
-    if (normalized.maxTemperature === null) delete normalized.maxTemperature;
-  }
-
-  const config = {
-    ...pickDefined(normalized, configKeysMap[normalized.type as ModelTypeEnum] ?? []),
-    ...(normalized.config && typeof normalized.config === 'object' ? normalized.config : {})
-  };
-
-  const documentInput = {
-    ...normalized,
-    isSystem: true,
-    config
-  };
-
-  // 迁移后的持久化文档不保留显式 undefined，避免旧空值字段继续出现在导出和差异判断中。
-  return SystemModelDocumentDataSchema.parse(
-    Object.fromEntries(Object.entries(documentInput).filter(([, value]) => value !== undefined))
-  );
-};
 
 /** 获取插件模型的 canonical 初始文档；加载器与迁移脚本共用同一套扁平字段分拣规则。 */
 export const getPluginSystemModelDocuments = async (): Promise<SystemModelDocumentDataType[]> =>
@@ -224,6 +152,21 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         })),
         { ordered: false }
       );
+    }
+
+    const repairStats = await repairStoredSystemModels({ pluginDocuments });
+    if (repairStats.repaired > 0) {
+      getLogger(LogCategories.MODULE.AI.CONFIG).warn('System model documents repaired', {
+        scanned: repairStats.scanned,
+        unchanged: repairStats.unchanged,
+        repaired: repairStats.repaired
+      });
+    }
+    if (repairStats.deleted > 0) {
+      getLogger(LogCategories.MODULE.AI.CONFIG).warn('Invalid system model documents deleted', {
+        deleted: repairStats.deleted,
+        models: repairStats.deletedModels
+      });
     }
 
     const dbModels = await MongoSystemModel.find({}).lean();

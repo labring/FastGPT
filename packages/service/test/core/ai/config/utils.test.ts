@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   desensitizeSystemModel,
-  desensitizeSystemDefaultModels,
-  flatModelToDocumentData
+  desensitizeSystemDefaultModels
 } from '../../../../core/ai/config/utils';
+import { flatModelToDocumentData } from '../../../../core/ai/config/repair';
 
 describe('flatModelToDocumentData', () => {
   it('moves type-specific fields into config and normalizes plugin maxTokens', () => {

@@ -44,8 +44,8 @@ export const UpdateSystemModelBodySchema = z.object({
   modelId: ObjectIdSchema.optional().meta({
     description: '待更新的模型稳定 ID；创建模型时不传'
   }),
-  modelData: SystemModelDocumentDataSchema.meta({
-    description: '完整的系统模型配置'
+  modelData: z.record(z.string(), z.unknown()).meta({
+    description: '完整的系统模型配置；服务端会在写入前修复可兼容的历史字段'
   })
 });
 export type UpdateSystemModelBody = z.infer<typeof UpdateSystemModelBodySchema>;
@@ -55,7 +55,7 @@ export const UpdateSystemModelResponseSchema = z.undefined().meta({
 });
 export type UpdateSystemModelResponse = z.infer<typeof UpdateSystemModelResponseSchema>;
 
-const ImportedSystemModelListSchema = z.array(SystemModelDocumentDataSchema);
+const ImportedSystemModelListSchema = z.array(z.record(z.string(), z.unknown()));
 
 const JsonSystemModelListSchema = z.string().transform((value, ctx) => {
   try {
@@ -81,7 +81,7 @@ export const UpdateSystemModelsWithJsonBodySchema = z.object({
   config: JsonSystemModelListSchema.pipe(ImportedSystemModelListSchema).meta({
     example:
       '[{"type":"llm","provider":"OpenAI","model":"gpt-5","name":"GPT-5","isSystem":true,"isActive":true,"config":{"maxContext":400000,"maxResponse":128000,"quoteMaxToken":300000,"toolChoice":true}}]',
-    description: '系统模型配置 JSON；每条记录必须符合 canonical 模型 Schema'
+    description: '系统模型配置 JSON；服务端会逐条修复后再按 canonical Schema 写入'
   })
 });
 export type UpdateSystemModelsWithJsonBody = z.input<typeof UpdateSystemModelsWithJsonBodySchema>;

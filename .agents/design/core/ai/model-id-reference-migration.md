@@ -26,7 +26,7 @@
 - 私有模型只能传 `modelId`；本轮不实现私有模型 CRUD、所有权和渠道。
 - 当前账号可用模型通过分页接口按需获取；各模型选择器直接请求后端，不维护客户端完整模型缓存。
 - `getInitData` 不再返回完整模型列表，只保留脱敏默认模型。
-- 保留 `cleanSystemModelConfigs` 路由，但实现直接升级为本轮新的结构清洗和引用回填逻辑。
+- 旧模型配置 cleaner 只在升级前的旧版本执行；新版本启动时逐模型修复/迁移文档，4.16.3 单独回填资源引用。
 
 ## 3. 目标与非目标
 
@@ -603,20 +603,15 @@ export const GetMyModelsResponseSchema =
 - 模型列表响应的通用业务结构放在 `packages/global/core/ai`，OpenAPI 只组合路由请求和响应。
 - FastGPT Pro 至少需要同步 Evaluation 和模型协作者调用方；Pro 的页面布局、渠道页和统计页不随本 PR 进入。
 - 外部 OpenAI 兼容接口继续声明 `model`，不要为了内部 modelId 改坏标准协议。
-- `cleanSystemModelConfigs` 属于一次性管理员清洗接口，可豁免 OpenAPI 文档，但仍必须使用 `authSystemAdmin`、Zod、`parseApiInput` 和响应 Schema 校验。
+- `admin/4163/backfillModelReferences` 属于一次性管理员迁移接口，可豁免 OpenAPI 文档，但仍必须使用 `authSystemAdmin`、Zod、`parseApiInput` 和响应 Schema 校验。
 
 ## 11. 数据清洗与迁移
 
-### 11.1 单一清洗入口
+### 11.1 模型结构接管与资源迁移
 
-保留 `admin/dataClean/cleanSystemModelConfigs` 路由，但直接把实现升级为本方案的新清洗逻辑，不保留一套旧 cleaner 再新增平行接口。该接口统一编排：
+旧版 `cleanSystemModelConfigs` 只用于升级前修复历史 `metadata` 异常，新版不再提供该路由。`loadSystemModels` 在严格加载前逐条调用共享 repair：合法 canonical 文档保持不变；旧 `metadata` 或可修复的新结构字段写回 canonical 结构；仍无法恢复模型身份的记录使用快照条件删除，不因单条坏数据中断启动。单模型更新与 JSON 批量更新复用相同 repair，但无法修复时拒绝写入而不删除原模型。
 
-1. 将 `system_models` 的旧 `metadata`、旧顶层类型字段或已有 `config` 规范化为“扁平业务字段 + 类型化 config”。
-2. 给所有现有模型补 `isSystem: true`，并物化缺失的插件模板模型，确保每个模型都有稳定 `_id/modelId`。
-3. 建立唯一的系统 `model -> modelId` 映射后，给 Dataset、App/Workflow、Evaluation 和模型权限记录增量补充 ID sibling。
-4. Usage 历史记录不回填，只切换新写入链。
-
-接口继续只允许系统管理员执行并支持 `dryRun`，但响应改为按 `models/datasets/apps/evaluations/permissions` 分组的结构化统计；每组至少返回 `scanned/unchanged/wouldUpdate/updated/invalid/unresolved/conflicts` 和有限数量样本。正式执行与 dry-run 必须复用同一套纯转换函数，不能维护两套判断逻辑。
+`admin/4163/backfillModelReferences` 只建立 `system_models.model -> _id` 映射，给 Dataset、App/Workflow、Evaluation 和模型权限记录增量补充 ID sibling。Usage 历史记录不回填。接口仅允许系统管理员执行，`dryRun` 默认为 `true`，响应按 `datasets/apps/evaluations/permissions` 分组返回 `scanned/unchanged/wouldUpdate/updated/invalid/unresolved/conflicts`。
 
 该接口属于一次性管理员清洗能力，可以不注册 OpenAPI path，但不豁免安全和校验：使用 `authSystemAdmin` 鉴权；请求使用 Zod Schema + `parseApiInput`；结构化响应使用 Zod Schema parse；`dryRun` 默认必须为 `true`，只有显式传 `false` 才允许写入。
 
@@ -700,7 +695,7 @@ export const GetMyModelsResponseSchema =
 
 - datasets、apps、app_versions、app_templates、eval、model permissions 分别覆盖正常、幂等、unresolved、conflict。
 - Workflow 字面量旧 input 覆盖“将 key 和 value 转换为 ID”；引用型旧 input 覆盖“只改 key、保留引用值”；`datasetParams`、chatConfig 分别覆盖。
-- 升级后的 `cleanSystemModelConfigs` 覆盖 dry-run、正式执行、分组统计、invalid/unresolved/conflict 样本和服务端模型缓存重载，并覆盖 metadata/旧顶层/config 三种模型输入及各引用集合。
+- 启动 repair 覆盖 canonical/旧 metadata/新旧混合、可选字段删除、必填字段默认值、插件模板恢复、无法修复删除与幂等。`backfillModelReferences` 覆盖 dry-run、正式执行、unresolved/conflict 和各引用集合。
 - 大批量游标执行不会把未解析字符串写入任何 `*ModelId`。
 
 ### 13.3 集成测试
@@ -757,7 +752,7 @@ export const GetMyModelsResponseSchema =
 - [x] 将 `getMyModels` 改为内存权限过滤后的分页脱敏模型接口，只支持通用分页、provider 和 modelType；增加鉴权的 `getMyModel`。
 - [x] 从 `getInitData` 删除 `activeModelList`，只保留带 modelId 的脱敏 `defaultModels`；新增公开最小化 `getSystemModels` 并迁移 `/price`。
 - [x] 给所有模型选择器增加 legacy value 归一化和红色“模型不存在”状态。
-- [x] 直接升级 `cleanSystemModelConfigs` 为结构归一化、模型物化和引用 ID sibling 回填的单一幂等入口，保留 dry-run 和分组统计。
+- [x] 将模型结构接管改为启动逐模型 repair，新增 4.16.3 资源引用 dry-run/回填接口，并移除新版旧 cleaner 路由。
 - [x] 补齐局部单测、迁移测试、核心集成测试和 Pro 测试。
 - [x] 执行静态残留审计、局部测试、类型检查，最后运行全量测试。
 - [ ] 发布前 dry-run，解决全部 unresolved/conflict 后再执行正式迁移与切流。

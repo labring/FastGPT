@@ -103,17 +103,22 @@ describe('updateWithJson api', () => {
     });
   });
 
-  it('rejects numeric strings and preserves existing records', async () => {
+  it('repairs numeric strings and preserves existing records', async () => {
     await MongoSystemModel.create(buildStoredLlm('existing-model'));
     const invalidConfig = buildLlmConfig();
     invalidConfig.config.maxContext = '16000' as unknown as number;
 
     const res = await callUpdateWithJson(JSON.stringify([invalidConfig]));
 
-    expect(res.code).toBe(500);
-    expect(res.error?.name).toBe('ApiRequestInputParseError');
-    await expect(MongoSystemModel.findOne({ model: 'existing-model' })).resolves.not.toBeNull();
-    await expect(MongoSystemModel.findOne({ model: 'test-llm' })).resolves.toBeNull();
+    expect(res.code).toBe(200);
+    await expect(
+      MongoSystemModel.findOne({ model: 'existing-model' }).lean()
+    ).resolves.toMatchObject({
+      isActive: false
+    });
+    await expect(MongoSystemModel.findOne({ model: 'test-llm' }).lean()).resolves.toMatchObject({
+      config: { maxContext: 16000 }
+    });
   });
 
   it('rejects malformed JSON as an input parse error', async () => {
@@ -124,14 +129,26 @@ describe('updateWithJson api', () => {
     await expect(MongoSystemModel.countDocuments()).resolves.toBe(0);
   });
 
-  it('rejects invalid nested model configuration', async () => {
+  it('removes invalid optional nested model configuration', async () => {
     const config = buildLlmConfig();
     config.config.defaultConfig = '' as unknown as Record<string, unknown>;
 
     const res = await callUpdateWithJson(JSON.stringify([config]));
 
-    expect(res.code).toBe(500);
-    expect(res.error?.name).toBe('ApiRequestInputParseError');
-    await expect(MongoSystemModel.countDocuments()).resolves.toBe(0);
+    expect(res.code).toBe(200);
+    const saved = await MongoSystemModel.findOne({ model: 'test-llm' }).lean();
+    expect(saved?.config).not.toHaveProperty('defaultConfig');
+  });
+
+  it('rejects the whole batch when one model is irreparable and preserves existing records', async () => {
+    await MongoSystemModel.create(buildStoredLlm('existing-model'));
+
+    const res = await callUpdateWithJson(
+      JSON.stringify([buildLlmConfig(), { model: '', provider: null, type: 'unknown' }])
+    );
+
+    expect(res.error?.name).toBe('UserError');
+    await expect(MongoSystemModel.findOne({ model: 'existing-model' })).resolves.not.toBeNull();
+    await expect(MongoSystemModel.findOne({ model: 'test-llm' })).resolves.toBeNull();
   });
 });
