@@ -22,6 +22,10 @@ export const AccountCancellationStatusResponseSchema = z
         description: '是否允许发起注销申请',
         example: true
       }),
+      verificationMethod: AccountCancellationAllowedMethodSchema.optional().meta({
+        description: '当前账号可用的注销验证方式',
+        example: 'code'
+      }),
       maskedAccount: z
         .string()
         .meta({ description: '当前账号脱敏值', example: 'us***@example.com' }),

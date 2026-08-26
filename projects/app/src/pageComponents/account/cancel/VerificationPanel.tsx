@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Box,
   Button,
@@ -19,8 +19,6 @@ import type {
   AccountCancellationAllowedMethod,
   AccountCancellationOAuthProvider
 } from '@fastgpt/global/support/user/account/cancellation/type';
-import { resolveAccountCancellationByUsername } from '@fastgpt/global/support/user/account/cancellation';
-import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import type {
   CreateAccountCancellationVerificationResponse,
   SubmitAccountCancellationResponse
@@ -35,22 +33,6 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { isAccountCancellationCodeError, isAccountCancellationRateLimitError } from './utils';
 
-const getCapabilities = (feConfigs: FastGPTFeConfigsType) => ({
-  ...(feConfigs.accountVerification?.accountCancellation ?? {
-    emailCode: feConfigs.login_method?.includes('email') ?? false,
-    phoneCode: feConfigs.login_method?.includes('phone') ?? false,
-    accountCancellation: feConfigs.accountCancellation?.enabled === true,
-    wechat: !!feConfigs.oauth?.wechat,
-    oauth: {
-      github: !!feConfigs.oauth?.github,
-      google: !!feConfigs.oauth?.google,
-      microsoft: !!feConfigs.oauth?.microsoft,
-      wecom: !!feConfigs.oauth?.wecom,
-      sso: !!feConfigs.sso?.url
-    }
-  })
-});
-
 const isOAuthMethod = (
   method: AccountCancellationAllowedMethod
 ): method is Extract<AccountCancellationAllowedMethod, `oauth/${string}`> =>
@@ -58,8 +40,10 @@ const isOAuthMethod = (
 
 /** 按统一 resolver 只渲染一种非密码验证方式，并承接各方式的加载与失败状态。 */
 export const VerificationPanel = ({
+  method,
   onSubmitted
 }: {
+  method: AccountCancellationAllowedMethod;
   onSubmitted: (result: Extract<SubmitAccountCancellationResponse, { status: 'pending' }>) => void;
 }) => {
   const { t } = useTranslation();
@@ -83,14 +67,6 @@ export const VerificationPanel = ({
   const wechatPolling = useRef(false);
 
   const username = userInfo?.username;
-  const method = useMemo(() => {
-    if (!username) return;
-    const result = resolveAccountCancellationByUsername({
-      username,
-      capabilities: getCapabilities(feConfigs)
-    });
-    return result.status === 'supported' ? result.method : undefined;
-  }, [feConfigs, username]);
 
   const wechatExpired =
     !!wechatQR?.expiredAt && new Date(wechatQR.expiredAt).getTime() <= wechatNow;
