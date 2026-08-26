@@ -170,6 +170,7 @@
   "code_error.model_error.can_not_edit_admin_permission": "不能编辑管理员权限",
   "code_error.model_error.invalid_id": "无效的模型 ID",
   "code_error.model_error.invalid_config": "无效的模型配置",
+  "code_error.model_error.id_conflict": "模型 ID 已存在，请更换其他模型 ID",
   "code_error.model_error.name_conflict": "模型别名已存在，请更换其他别名",
   "code_error.model_error.system_model_readonly": "系统模型不可修改",
   "code_error.model_error.no_fields_to_update": "没有需要更新的字段",

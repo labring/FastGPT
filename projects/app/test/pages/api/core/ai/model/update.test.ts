@@ -71,6 +71,52 @@ describe('update model api', () => {
     });
   });
 
+  it("rejects changing a system model to another model's identifier", async () => {
+    const root = await getRootUser();
+    const { saved } = await createModel();
+    const conflict = await MongoSystemModel.create({
+      model: 'conflicting-test-llm',
+      type: ModelTypeEnum.llm,
+      name: 'Conflicting model',
+      provider: 'OpenAI',
+      isSystem: true,
+      isActive: true
+    });
+
+    const res = await Call(updateModelApi, {
+      auth: root,
+      body: { id: String(saved._id), model: conflict.model }
+    });
+
+    expect(res.error).toBe(ModelErrEnum.modelIdConflict);
+    await expect(MongoSystemModel.findById(saved._id).lean()).resolves.toMatchObject({
+      model: 'test-llm'
+    });
+  });
+
+  it('rejects changing a system model to another display name', async () => {
+    const root = await getRootUser();
+    const { saved } = await createModel();
+    await MongoSystemModel.create({
+      model: 'another-display-name-model',
+      type: ModelTypeEnum.llm,
+      name: 'Conflicting display name',
+      provider: 'OpenAI',
+      isSystem: true,
+      isActive: true
+    });
+
+    const res = await Call(updateModelApi, {
+      auth: root,
+      body: { id: String(saved._id), name: 'Conflicting display name' }
+    });
+
+    expect(res.error).toBe(ModelErrEnum.modelNameConflict);
+    await expect(MongoSystemModel.findById(saved._id).lean()).resolves.toMatchObject({
+      name: 'Original name'
+    });
+  });
+
   it('removes price fields when root updates a team model', async () => {
     const root = await getRootUser();
     const saved = await MongoSystemModel.create({

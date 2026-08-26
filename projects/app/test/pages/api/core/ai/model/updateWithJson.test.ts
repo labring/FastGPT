@@ -1,5 +1,7 @@
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/model/schema';
+import { Types } from '@fastgpt/service/common/mongo';
 import { Call } from '@test/utils/request';
 import { getRootUser } from '@test/datas/users';
 import { describe, expect, it, vi } from 'vitest';
@@ -80,6 +82,66 @@ describe('updateWithJson api', () => {
     expect(saved?.name).toBe('New Name');
     // No duplicate created
     await expect(MongoSystemModel.countDocuments({ model: 'existing-model' })).resolves.toBe(1);
+  });
+
+  it('removes ownership when importing a private model as a system model', async () => {
+    const existing = await MongoSystemModel.create({
+      ...buildModelConfig({}, 'private-import-model'),
+      isSystem: false,
+      tmbId: new Types.ObjectId(),
+      teamId: new Types.ObjectId()
+    });
+
+    const res = await callUpdateWithJson([
+      buildModelConfig(
+        {
+          id: String(existing._id),
+          tmbId: String(new Types.ObjectId()),
+          teamId: String(new Types.ObjectId())
+        },
+        'private-import-model'
+      )
+    ]);
+
+    expect(res.code).toBe(200);
+    const saved = await MongoSystemModel.findById(existing._id).lean();
+    expect(saved).toMatchObject({ isSystem: true });
+    expect(saved?.tmbId).toBeUndefined();
+    expect(saved?.teamId).toBeUndefined();
+  });
+
+  it('maps duplicate provider model imports to modelIdConflict', async () => {
+    await MongoSystemModel.create({
+      model: 'existing-import-conflict',
+      type: ModelTypeEnum.llm,
+      name: 'Existing import name',
+      provider: 'OpenAI',
+      isSystem: true
+    });
+
+    const res = await callUpdateWithJson([
+      buildModelConfig({ name: 'New import name' }, 'existing-import-conflict')
+    ]);
+
+    expect(res.error).toBe(ModelErrEnum.modelIdConflict);
+    await expect(MongoSystemModel.countDocuments()).resolves.toBe(1);
+  });
+
+  it('maps duplicate display-name imports to modelNameConflict', async () => {
+    await MongoSystemModel.create({
+      model: 'existing-import-name-conflict',
+      type: ModelTypeEnum.llm,
+      name: 'Existing import name conflict',
+      provider: 'OpenAI',
+      isSystem: true
+    });
+
+    const res = await callUpdateWithJson([
+      buildModelConfig({ name: 'Existing import name conflict' }, 'new-import-name-conflict')
+    ]);
+
+    expect(res.error).toBe(ModelErrEnum.modelNameConflict);
+    await expect(MongoSystemModel.countDocuments()).resolves.toBe(1);
   });
 
   it('sanitizes unknown fields and stores normalized model', async () => {

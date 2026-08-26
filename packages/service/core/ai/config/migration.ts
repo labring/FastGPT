@@ -95,33 +95,148 @@ export async function createNewIndexes(): Promise<string[]> {
   if (!db) return [];
 
   const created: string[] = [];
-  const newIndexes: { key: Record<string, number>; name: string }[] = [
-    { key: { teamId: 1 }, name: 'teamId_1' },
-    { key: { tmbId: 1 }, name: 'tmbId_1' },
-    { key: { isActive: 1, provider: 1 }, name: 'isActive_1_provider_1' }
-  ];
-
-  for (const { key, name } of newIndexes) {
-    const exists = (await db.collection('system_models').listIndexes().toArray()).some(
-      (idx: { name?: string }) => idx.name === name
-    );
-    if (exists) continue;
-    await db.collection('system_models').createIndex(key, { name, background: true });
-    created.push(name);
-  }
-
-  const indexes = await db.collection('system_models').listIndexes().toArray();
-  const legacyModelIndex = indexes.find(
+  const collection = db.collection('system_models');
+  const indexesBefore = await collection.listIndexes().toArray();
+  const existingIndexNames = new Set(indexesBefore.map(({ name }) => name).filter(Boolean));
+  const legacyModelIndex = indexesBefore.find(
     (index: { name?: string; key?: Record<string, unknown>; unique?: boolean }) =>
       index.name === 'model_1' &&
       index.unique === true &&
       JSON.stringify(index.key) === JSON.stringify({ model: 1 })
   );
+  // MongoDB rejects two indexes with the same key pattern and incompatible
+  // options, even when their names differ. The controlled-upgrade write freeze
+  // makes this precise drop safe before creating the scoped replacement.
   if (legacyModelIndex?.name) {
-    await db.collection('system_models').dropIndex(legacyModelIndex.name);
+    await collection.dropIndex(legacyModelIndex.name);
+    existingIndexNames.delete(legacyModelIndex.name);
     logger.info('Dropped deprecated system_models.model unique index', {
       indexName: legacyModelIndex.name
     });
+  }
+  // The pre-refactor schema stored display names in metadata.name and only
+  // enforced global model uniqueness. Read both legacy and canonical shapes,
+  // but group by the exact scope of each replacement index. A duplicate
+  // private model/name across different tmbIds is valid and must not disable
+  // the private unique indexes.
+  const findScopedCollisions = async (field: 'model' | 'name') => {
+    const effectiveField = field === 'name' ? '$effectiveName' : '$effectiveModel';
+    return collection
+      .aggregate<{ _id: Record<string, unknown>; count: number }>([
+        {
+          $addFields: {
+            effectiveModel: { $ifNull: ['$model', '$metadata.model'] },
+            effectiveName: { $ifNull: ['$name', '$metadata.name'] },
+            effectiveTmbId: { $ifNull: ['$tmbId', '$metadata.tmbId'] },
+            effectiveIsCustom: { $ifNull: ['$isCustom', '$metadata.isCustom'] }
+          }
+        },
+        {
+          $addFields: {
+            effectiveIsSystem: {
+              $cond: [
+                { $ne: [{ $type: '$isSystem' }, 'missing'] },
+                '$isSystem',
+                {
+                  $cond: [
+                    { $ne: ['$effectiveIsCustom', null] },
+                    { $eq: ['$effectiveIsCustom', false] },
+                    { $eq: ['$effectiveTmbId', null] }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        { $match: { $expr: { $ne: [effectiveField, null] } } },
+        {
+          $group: {
+            _id: {
+              scope: { $cond: ['$effectiveIsSystem', 'system', 'private'] },
+              tmbId: { $cond: ['$effectiveIsSystem', null, '$effectiveTmbId'] },
+              value: effectiveField
+            },
+            count: { $sum: 1 }
+          }
+        },
+        { $match: { count: { $gt: 1 } } }
+      ])
+      .toArray();
+  };
+
+  const [modelCollisions, nameCollisions] = await Promise.all([
+    findScopedCollisions('model'),
+    findScopedCollisions('name')
+  ]);
+  const blockedIndexes = new Set<string>();
+  if (modelCollisions.some(({ _id }) => _id.scope === 'system')) {
+    blockedIndexes.add('model_1_system_unique');
+  }
+  if (modelCollisions.some(({ _id }) => _id.scope === 'private')) {
+    blockedIndexes.add('tmbId_1_model_1_private_unique');
+  }
+  if (modelCollisions.length > 0) {
+    logger.warn('Skipped model unique indexes due to legacy collisions', {
+      collisions: modelCollisions
+    });
+  }
+  if (nameCollisions.some(({ _id }) => _id.scope === 'system')) {
+    blockedIndexes.add('name_1_system_unique');
+  }
+  if (nameCollisions.some(({ _id }) => _id.scope === 'private')) {
+    blockedIndexes.add('tmbId_1_name_1_private_unique');
+  }
+  if (nameCollisions.length > 0) {
+    logger.warn('Skipped display-name unique indexes due to legacy collisions', {
+      collisions: nameCollisions
+    });
+  }
+  const newIndexes: {
+    key: Record<string, number>;
+    name: string;
+    options?: Record<string, unknown>;
+  }[] = [
+    {
+      key: { model: 1 },
+      name: 'model_1_system_unique',
+      options: { unique: true, partialFilterExpression: { isSystem: true } }
+    },
+    {
+      key: { name: 1 },
+      name: 'name_1_system_unique',
+      options: {
+        unique: true,
+        partialFilterExpression: { isSystem: true, name: { $exists: true } }
+      }
+    },
+    {
+      key: { tmbId: 1, model: 1 },
+      name: 'tmbId_1_model_1_private_unique',
+      options: { unique: true, partialFilterExpression: { isSystem: false } }
+    },
+    {
+      key: { tmbId: 1, name: 1 },
+      name: 'tmbId_1_name_1_private_unique',
+      options: {
+        unique: true,
+        partialFilterExpression: { isSystem: false, name: { $exists: true } }
+      }
+    },
+    { key: { teamId: 1 }, name: 'teamId_1' },
+    { key: { tmbId: 1 }, name: 'tmbId_1' },
+    { key: { isActive: 1, provider: 1 }, name: 'isActive_1_provider_1' }
+  ];
+
+  for (const { key, name, options } of newIndexes) {
+    if (blockedIndexes.has(name)) continue;
+    if (existingIndexNames.has(name)) continue;
+    await collection.createIndex(key, {
+      name,
+      background: true,
+      ...options
+    });
+    created.push(name);
+    existingIndexNames.add(name);
   }
 
   return created;
@@ -176,6 +291,7 @@ export async function migrateModelData(): Promise<ModelMigrationResult> {
       batch.push(await cursor.next());
     }
 
+    const bulkOps: any[] = [];
     for (const doc of batch as any[]) {
       result.total++;
       const $set: Record<string, any> = {};
@@ -311,8 +427,17 @@ export async function migrateModelData(): Promise<ModelMigrationResult> {
 
       // 写入（仅 $set，无 $unset）
       if (Object.keys($set).length > 0) {
-        await db.collection('system_models').updateOne({ _id: doc._id }, { $set });
+        bulkOps.push({
+          updateOne: {
+            filter: { _id: doc._id },
+            update: { $set }
+          }
+        });
       }
+    }
+
+    if (bulkOps.length > 0) {
+      await db.collection('system_models').bulkWrite(bulkOps, { ordered: false });
     }
   }
 
@@ -445,6 +570,14 @@ export async function migrateDatasets(modelMap: Map<string, string>): Promise<{
         { agentModel: { $exists: true } },
         { vlmModel: { $exists: true } }
       ]
+    })
+    .project({
+      vectorModel: 1,
+      vectorModelId: 1,
+      agentModel: 1,
+      agentModelId: 1,
+      vlmModel: 1,
+      vlmModelId: 1
     })
     .batchSize(BATCH_SIZE);
 
@@ -659,6 +792,7 @@ export async function migrateAppWorkflows(modelMap: Map<string, string>): Promis
       .find({
         $or: [{ modules: { $exists: true, $not: { $size: 0 } } }, { chatConfig: { $exists: true } }]
       })
+      .project({ modules: 1, chatConfig: 1, updateTime: 1 })
       .batchSize(BATCH_SIZE);
 
     while (await cursor.hasNext()) {
@@ -741,6 +875,7 @@ export async function migrateAppWorkflows(modelMap: Map<string, string>): Promis
       .find({
         $or: [{ nodes: { $exists: true, $not: { $size: 0 } } }, { chatConfig: { $exists: true } }]
       })
+      .project({ nodes: 1, chatConfig: 1, time: 1 })
       .batchSize(BATCH_SIZE);
 
     while (await cursor.hasNext()) {
@@ -833,7 +968,11 @@ export async function migrateEvaluationData(modelMap: Map<string, string>): Prom
 
   const cursor = db
     .collection('eval')
-    .find({ evalModel: { $exists: true } })
+    .find({
+      evalModel: { $exists: true },
+      $or: [{ evalModelId: { $exists: false } }, { evalModelId: null }, { evalModelId: '' }]
+    })
+    .project({ evalModel: 1, evalModelId: 1 })
     .batchSize(BATCH_SIZE);
 
   let checked = 0;
@@ -894,7 +1033,11 @@ export async function migrateUsageRecords(
 
   const cursor = db
     .collection('usage_items')
-    .find({ model: { $exists: true } })
+    .find({
+      model: { $exists: true },
+      $or: [{ modelId: { $exists: false } }, { modelId: null }, { modelId: '' }]
+    })
+    .project({ model: 1, modelId: 1 })
     .batchSize(BATCH_SIZE);
 
   let checked = 0;
@@ -990,7 +1133,11 @@ export async function migrateModelPermissions(modelMap: Map<string, string>): Pr
 
   const cursor = db
     .collection('resource_permissions')
-    .find({ resourceType: PerResourceTypeEnum.model })
+    .find({
+      resourceType: PerResourceTypeEnum.model,
+      $or: [{ resourceId: { $exists: false } }, { resourceId: null }]
+    })
+    .project({ resourceName: 1, resourceId: 1 })
     .batchSize(BATCH_SIZE);
 
   let total = 0;
@@ -1087,7 +1234,7 @@ export async function migrateChannelsFromLegacyConfigs(
     existingNames = new Set((await getRealtimeSystemChannels()).map((c) => c.name));
   } catch (error) {
     logger.warn(`Channel migration: failed to list existing channels: ${getErrText(error)}`);
-    existingNames = new Set();
+    return { created: 0, skipped: 0, failed: uniqueMap.size };
   }
 
   for (const [, cfg] of uniqueMap) {
@@ -1115,6 +1262,7 @@ export async function migrateChannelsFromLegacyConfigs(
         }
       );
       created++;
+      existingNames.add(channelName);
       logger.info(`Channel created: model=${cfg.model}, url=${cfg.requestUrl}`);
     } catch (error) {
       failed++;

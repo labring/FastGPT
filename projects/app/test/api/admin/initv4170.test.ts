@@ -9,10 +9,74 @@ import { describe, expect, it, vi } from 'vitest';
 const db = () => connectionMongo.connection.db;
 
 describe('admin/initv4170 (model management migration, additive)', () => {
+  it('creates private unique indexes when duplicate values belong to different members', async () => {
+    const user = await getRootUser();
+    const collection = db()!.collection('system_models');
+    await collection.dropIndex('tmbId_1_model_1_private_unique').catch(() => undefined);
+    await collection.dropIndex('tmbId_1_name_1_private_unique').catch(() => undefined);
+
+    await collection.insertMany([
+      {
+        _id: new Types.ObjectId(),
+        model: 'shared-private-model',
+        name: 'Shared private name',
+        type: 'llm',
+        isSystem: false,
+        tmbId: new Types.ObjectId(),
+        isActive: true
+      },
+      {
+        _id: new Types.ObjectId(),
+        model: 'shared-private-model',
+        name: 'Shared private name',
+        type: 'llm',
+        isSystem: false,
+        tmbId: new Types.ObjectId(),
+        isActive: true
+      }
+    ]);
+
+    const result = await Call(handler, { auth: user });
+    expect(result.code).toBe(200);
+    expect(result.data.indexMigration.newIndexesCreated).toEqual(
+      expect.arrayContaining(['tmbId_1_model_1_private_unique', 'tmbId_1_name_1_private_unique'])
+    );
+  });
+
+  it('reports legacy duplicate display names without aborting the migration', async () => {
+    const user = await getRootUser();
+    const collection = db()!.collection('system_models');
+    await collection.dropIndex('name_1_system_unique').catch(() => undefined);
+    await collection.insertMany([
+      {
+        _id: new Types.ObjectId(),
+        model: 'legacy-name-collision-a',
+        name: 'Legacy duplicate display name',
+        type: 'llm',
+        isSystem: true,
+        isActive: true
+      },
+      {
+        _id: new Types.ObjectId(),
+        model: 'legacy-name-collision-b',
+        name: 'Legacy duplicate display name',
+        type: 'llm',
+        isSystem: true,
+        isActive: true
+      }
+    ]);
+
+    const result = await Call(handler, { auth: user });
+    expect(result.code).toBe(200);
+    expect(result.data.indexMigration.newIndexesCreated).not.toContain('name_1_system_unique');
+    expect((await collection.indexes()).find((index) => index.name === 'model_1')).toBeUndefined();
+  });
+
   it('removes the legacy model unique index and allows duplicate provider model names', async () => {
     const user = await getRootUser();
     const collection = db()!.collection('system_models');
 
+    await collection.dropIndex('model_1_system_unique').catch(() => undefined);
     await collection.createIndex({ model: 1 }, { name: 'model_1', unique: true });
     await collection.insertOne({
       _id: new Types.ObjectId(),
@@ -24,7 +88,7 @@ describe('admin/initv4170 (model management migration, additive)', () => {
     });
 
     const first = await Call(handler, { auth: user });
-    expect(first.code).toBe(200);
+    expect(first.code, String(first.error ?? first.message ?? '')).toBe(200);
     expect((await collection.indexes()).find((index) => index.name === 'model_1')).toBeUndefined();
 
     await expect(
@@ -422,6 +486,14 @@ describe('admin/initv4170 (model management migration, additive)', () => {
     const user = await getRootUser();
     const idA = String(new Types.ObjectId());
     const idB = String(new Types.ObjectId());
+    await db()!
+      .collection('system_models')
+      .dropIndex('model_1_system_unique')
+      .catch(() => undefined);
+    await db()!
+      .collection('system_models')
+      .dropIndex('model_1')
+      .catch(() => undefined);
 
     await db()!
       .collection('system_models')
@@ -485,9 +557,21 @@ describe('admin/initv4170 (model management migration, additive)', () => {
     await db()!
       .collection('datasets')
       .insertOne({ _id: new Types.ObjectId(dsId), vectorModel: 'gpt-4o', name: 'test-ds' });
+    await db()!.collection('eval').insertOne({ evalModel: 'gpt-4o' });
+    await db()!.collection('usage_items').insertOne({ model: 'gpt-4o', totalPoints: 1 });
+    await MongoResourcePermission.create({
+      teamId: user.teamId,
+      tmbId: user.tmbId,
+      resourceType: PerResourceTypeEnum.model,
+      resourceName: 'gpt-4o',
+      permission: 1
+    });
 
     const first = await Call(handler, { auth: user });
     expect(first.code).toBe(200);
+    expect(first.data.evaluationMigration.evalMigrated).toBe(1);
+    expect(first.data.usageMigration.itemsMigrated).toBe(1);
+    expect(first.data.permissionMigration.migrated).toBe(1);
     const firstDoc = await db()!
       .collection('datasets')
       .findOne({ _id: new Types.ObjectId(dsId) });
@@ -497,7 +581,11 @@ describe('admin/initv4170 (model management migration, additive)', () => {
     const second = await Call(handler, { auth: user });
     expect(second.code).toBe(200);
     // 重跑 no-op：canonical 已有效 → 不覆盖、不再写
+    expect(second.data.indexMigration.newIndexesCreated).toEqual([]);
     expect(second.data.datasetMigration.migrated).toBe(0);
+    expect(second.data.evaluationMigration.evalChecked).toBe(0);
+    expect(second.data.usageMigration.itemsChecked).toBe(0);
+    expect(second.data.permissionMigration.total).toBe(0);
     const secondDoc = await db()!
       .collection('datasets')
       .findOne({ _id: new Types.ObjectId(dsId) });

@@ -5,6 +5,7 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { MongoSystemModel } from '@fastgpt/service/core/ai/model/schema';
 import { normalizeSystemModel } from '@fastgpt/service/core/ai/model/normalize';
 import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/model/utils';
+import { getModelDuplicateError } from '@fastgpt/service/core/ai/model/conflict';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { addAuditLog, getI18nModelType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -91,22 +92,47 @@ async function handler(
     return Promise.reject(ModelErrEnum.noFieldsToUpdate);
   }
 
-  await MongoSystemModel.updateOne(
-    { _id: modelId },
-    {
-      $set: normalized,
-      ...(!existingModel.isSystem
-        ? {
-            $unset: {
-              charsPointsPrice: '',
-              priceTiers: '',
-              inputPrice: '',
-              outputPrice: ''
-            }
-          }
-        : {})
+  const changedModel = normalized.model && normalized.model !== existingModel.model;
+  const changedName = normalized.name && normalized.name !== existingModel.name;
+  if (changedModel || changedName) {
+    const existing = await MongoSystemModel.findOne({
+      $or: [
+        ...(changedModel ? [{ model: normalized.model }] : []),
+        ...(changedName ? [{ name: normalized.name }] : [])
+      ],
+      isSystem: existingModel.isSystem,
+      ...(existingModel.isSystem ? {} : { tmbId: existingModel.tmbId }),
+      _id: { $ne: modelId }
+    }).lean();
+    if (existing) {
+      return Promise.reject(
+        changedModel ? ModelErrEnum.modelIdConflict : ModelErrEnum.modelNameConflict
+      );
     }
-  );
+  }
+
+  try {
+    await MongoSystemModel.updateOne(
+      { _id: modelId },
+      {
+        $set: normalized,
+        ...(!existingModel.isSystem
+          ? {
+              $unset: {
+                charsPointsPrice: '',
+                priceTiers: '',
+                inputPrice: '',
+                outputPrice: ''
+              }
+            }
+          : {})
+      }
+    );
+  } catch (error) {
+    const duplicateError = getModelDuplicateError(error);
+    if (duplicateError) return Promise.reject(duplicateError);
+    throw error;
+  }
 
   await updatedReloadSystemModel();
 
