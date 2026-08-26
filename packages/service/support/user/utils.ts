@@ -128,7 +128,7 @@ export async function addSourceMember<T extends { tmbId: string }>({
       return {
         ...formatItem,
         sourceMember: {
-          name: tmb.name,
+          name: tmb.name?.trim() ? tmb.name : 'unknow',
           avatar: tmb.avatar,
           status: tmb.status ?? TeamMemberStatusEnum.active
         }
