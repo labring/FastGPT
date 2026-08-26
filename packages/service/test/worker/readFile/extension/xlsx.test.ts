@@ -24,6 +24,10 @@ describe('readXlsxRawText', () => {
     return zip.generateAsync({ type: 'nodebuffer' });
   };
 
+  it('converts the configured uncompressed size from MB to bytes', () => {
+    expect(XLSX_PARSE_LIMITS.maxUncompressedBytes).toBe(128 * 1024 * 1024);
+  });
+
   it('should skip empty rows when formatting xlsx content', async () => {
     const worksheet = XLSX.utils.aoa_to_sheet([
       ['', 'name|alias', '', 'age', 'city', ''],

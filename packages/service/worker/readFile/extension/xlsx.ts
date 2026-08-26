@@ -14,14 +14,14 @@ export const XLSX_PARSE_LIMITS = {
   maxColumns: workerEnv.XLSX_PARSE_MAX_COLUMNS,
   maxCells: workerEnv.XLSX_PARSE_MAX_CELLS,
   maxMergedCells: workerEnv.XLSX_PARSE_MAX_MERGED_CELLS,
-  maxUncompressedBytes: workerEnv.XLSX_PARSE_MAX_UNCOMPRESSED_BYTES
+  maxUncompressedBytes: workerEnv.XLSX_PARSE_MAX_UNCOMPRESSED_MB * 1024 * 1024
 } as const;
 
 /**
  * 将 XLSX 转换为 CSV 原文和 Markdown 表格。
  *
  * 工作簿会在生成二维数组和回填合并单元格前完成范围校验；任何工作表范围、
- * 工作簿总单元格数或合并回填量超出固定预算时都会直接报错。
+ * 工作簿总单元格数或合并回填量超出配置预算时都会直接报错。
  */
 export const readXlsxRawText = async ({
   buffer

@@ -9,7 +9,7 @@ const originalEnv = {
   XLSX_PARSE_MAX_COLUMNS: process.env.XLSX_PARSE_MAX_COLUMNS,
   XLSX_PARSE_MAX_CELLS: process.env.XLSX_PARSE_MAX_CELLS,
   XLSX_PARSE_MAX_MERGED_CELLS: process.env.XLSX_PARSE_MAX_MERGED_CELLS,
-  XLSX_PARSE_MAX_UNCOMPRESSED_BYTES: process.env.XLSX_PARSE_MAX_UNCOMPRESSED_BYTES,
+  XLSX_PARSE_MAX_UNCOMPRESSED_MB: process.env.XLSX_PARSE_MAX_UNCOMPRESSED_MB,
   AGENT_SANDBOX_CPU_COUNT: process.env.AGENT_SANDBOX_CPU_COUNT,
   AGENT_SANDBOX_MEMORY_MIB: process.env.AGENT_SANDBOX_MEMORY_MIB,
   AGENT_SANDBOX_STORAGE_SIZE_GI: process.env.AGENT_SANDBOX_STORAGE_SIZE_GI,
@@ -53,7 +53,7 @@ describe('serviceEnv', () => {
     vi.stubEnv('XLSX_PARSE_MAX_COLUMNS', originalEnv.XLSX_PARSE_MAX_COLUMNS);
     vi.stubEnv('XLSX_PARSE_MAX_CELLS', originalEnv.XLSX_PARSE_MAX_CELLS);
     vi.stubEnv('XLSX_PARSE_MAX_MERGED_CELLS', originalEnv.XLSX_PARSE_MAX_MERGED_CELLS);
-    vi.stubEnv('XLSX_PARSE_MAX_UNCOMPRESSED_BYTES', originalEnv.XLSX_PARSE_MAX_UNCOMPRESSED_BYTES);
+    vi.stubEnv('XLSX_PARSE_MAX_UNCOMPRESSED_MB', originalEnv.XLSX_PARSE_MAX_UNCOMPRESSED_MB);
     vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', originalEnv.AGENT_SANDBOX_CPU_COUNT);
     vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', originalEnv.AGENT_SANDBOX_MEMORY_MIB);
     vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GI', originalEnv.AGENT_SANDBOX_STORAGE_SIZE_GI);
@@ -186,14 +186,14 @@ describe('serviceEnv', () => {
     vi.stubEnv('XLSX_PARSE_MAX_COLUMNS', undefined);
     vi.stubEnv('XLSX_PARSE_MAX_CELLS', undefined);
     vi.stubEnv('XLSX_PARSE_MAX_MERGED_CELLS', undefined);
-    vi.stubEnv('XLSX_PARSE_MAX_UNCOMPRESSED_BYTES', undefined);
+    vi.stubEnv('XLSX_PARSE_MAX_UNCOMPRESSED_MB', undefined);
     await expect(importServiceEnv()).resolves.toMatchObject({
       serviceEnv: {
         XLSX_PARSE_MAX_ROWS: 100_000,
         XLSX_PARSE_MAX_COLUMNS: 1_000,
         XLSX_PARSE_MAX_CELLS: 1_000_000,
         XLSX_PARSE_MAX_MERGED_CELLS: 1_000_000,
-        XLSX_PARSE_MAX_UNCOMPRESSED_BYTES: 128 * 1024 * 1024
+        XLSX_PARSE_MAX_UNCOMPRESSED_MB: 128
       }
     });
 
@@ -201,14 +201,14 @@ describe('serviceEnv', () => {
     vi.stubEnv('XLSX_PARSE_MAX_COLUMNS', '1200');
     vi.stubEnv('XLSX_PARSE_MAX_CELLS', '1200000');
     vi.stubEnv('XLSX_PARSE_MAX_MERGED_CELLS', '1300000');
-    vi.stubEnv('XLSX_PARSE_MAX_UNCOMPRESSED_BYTES', '140000000');
+    vi.stubEnv('XLSX_PARSE_MAX_UNCOMPRESSED_MB', '140');
     await expect(importServiceEnv()).resolves.toMatchObject({
       serviceEnv: {
         XLSX_PARSE_MAX_ROWS: 120_000,
         XLSX_PARSE_MAX_COLUMNS: 1_200,
         XLSX_PARSE_MAX_CELLS: 1_200_000,
         XLSX_PARSE_MAX_MERGED_CELLS: 1_300_000,
-        XLSX_PARSE_MAX_UNCOMPRESSED_BYTES: 140_000_000
+        XLSX_PARSE_MAX_UNCOMPRESSED_MB: 140
       }
     });
 
