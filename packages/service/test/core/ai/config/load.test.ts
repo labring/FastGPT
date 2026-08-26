@@ -1,9 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
-const pluginMocks = vi.hoisted(() => ({
-  listModels: vi.fn()
-}));
+const pluginMocks = vi.hoisted(() => ({ listModels: vi.fn() }));
 const reloadMocks = vi.hoisted(() => ({
   clearAllMyModelsCache: vi.fn(),
   updateFastGPTConfigBuffer: vi.fn(),
@@ -24,230 +22,162 @@ vi.mock('@fastgpt/service/core/app/provider/controller', async (importOriginal) 
     }))
   };
 });
-
 vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
-  pluginClient: {
-    listModels: pluginMocks.listModels
-  }
+  pluginClient: { listModels: pluginMocks.listModels }
 }));
-
 vi.mock('@fastgpt/service/common/system/config/controller', () => ({
   reloadFastGPTConfigBuffer: vi.fn(),
   updateFastGPTConfigBuffer: reloadMocks.updateFastGPTConfigBuffer
 }));
-
 vi.mock('@fastgpt/service/support/permission/model/controller', () => ({
   clearAllMyModelsCache: reloadMocks.clearAllMyModelsCache
 }));
+vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/global/common/system/utils')>()),
+  delay: reloadMocks.delay
+}));
 
-vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@fastgpt/global/common/system/utils')>();
-  return {
-    ...actual,
-    delay: reloadMocks.delay
-  };
-});
-
-import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
+import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
+import { LegacySystemModelCollectionName } from '@fastgpt/service/core/ai/config/constants';
 import {
   loadInstalledModels,
   loadSystemModels,
-  updatedReloadSystemModel
+  updatedReloadSystemModel,
+  waitForAIModelsBootstrap
 } from '@fastgpt/service/core/ai/config/utils';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
-describe('loadSystemModels legacy takeover', () => {
+const pluginLlm = {
+  type: ModelTypeEnum.llm,
+  provider: 'OpenAI',
+  model: 'plugin-llm',
+  name: 'Plugin LLM',
+  isActive: true,
+  maxContext: 128000,
+  maxTokens: 32000,
+  quoteMaxToken: 100000
+};
+
+describe('loadSystemModels', () => {
+  const legacyCollection = MongoAIModel.db.collection(LegacySystemModelCollectionName);
+
   beforeEach(async () => {
     pluginMocks.listModels.mockReset().mockResolvedValue([]);
     reloadMocks.clearAllMyModelsCache.mockReset().mockResolvedValue(undefined);
     reloadMocks.updateFastGPTConfigBuffer.mockReset().mockResolvedValue(undefined);
     reloadMocks.delay.mockReset().mockResolvedValue(undefined);
-    await MongoSystemModel.deleteMany({});
+    await Promise.all([MongoAIModel.deleteMany({}), legacyCollection.deleteMany({})]);
     global.systemModelList = undefined as never;
     global.systemActiveModelList = undefined as never;
     global.systemModelMap = undefined as never;
     global.systemDefaultModel = undefined as never;
   });
 
-  it('clears every member model cache after successfully reloading models', async () => {
-    await updatedReloadSystemModel();
-
-    expect(reloadMocks.clearAllMyModelsCache).toHaveBeenCalledOnce();
-    expect(reloadMocks.updateFastGPTConfigBuffer).toHaveBeenCalledOnce();
-    expect(reloadMocks.delay).toHaveBeenCalledWith(1000);
-  });
-
-  it('invalidates member caches only when active model identities change', async () => {
-    const pluginModel = {
-      type: ModelTypeEnum.llm,
-      provider: 'OpenAI',
-      model: 'plugin-llm',
-      name: 'Plugin LLM',
-      isActive: true,
-      maxContext: 128000,
-      maxTokens: 32000,
-      quoteMaxToken: 100000
-    };
-    pluginMocks.listModels.mockResolvedValue([pluginModel]);
-
-    await loadSystemModels(true);
-    expect(reloadMocks.clearAllMyModelsCache).toHaveBeenCalledOnce();
-
-    reloadMocks.clearAllMyModelsCache.mockClear();
-    await loadSystemModels(true);
-    expect(reloadMocks.clearAllMyModelsCache).not.toHaveBeenCalled();
-
-    pluginMocks.listModels.mockResolvedValue([
-      pluginModel,
-      {
-        type: ModelTypeEnum.llm,
-        provider: 'OpenAI',
-        model: 'new-plugin-llm',
-        name: 'New Plugin LLM',
-        isActive: true,
-        maxContext: 128000,
-        maxTokens: 32000,
-        quoteMaxToken: 100000
-      }
-    ]);
-    await loadSystemModels(true);
-    expect(reloadMocks.clearAllMyModelsCache).toHaveBeenCalledOnce();
-  });
-
-  it('repairs a legacy plugin model in place before materializing missing models', async () => {
-    const legacyModel = await MongoSystemModel.collection.insertOne({
-      model: 'plugin-llm',
+  it('publishes the empty target first, then migrates legacy data without changing it', async () => {
+    const legacy = await legacyCollection.insertOne({
+      model: 'legacy-llm',
       metadata: {
         type: ModelTypeEnum.llm,
         provider: 'OpenAI',
-        name: 'Configured plugin LLM',
-        maxContext: 32000,
-        maxResponse: 16000,
-        quoteMaxToken: 24000,
+        name: 'Legacy LLM',
+        maxContext: '32000',
+        maxResponse: '16000',
+        quoteMaxToken: '24000',
         isActive: true
       }
     });
-    pluginMocks.listModels.mockResolvedValue([
-      {
-        type: ModelTypeEnum.llm,
-        provider: 'OpenAI',
-        model: 'plugin-llm',
-        name: 'Plugin LLM',
-        maxContext: 128000,
-        maxTokens: 32000,
-        quoteMaxToken: 100000
-      }
+
+    await loadSystemModels();
+    expect(global.systemModelList).toEqual([]);
+    await waitForAIModelsBootstrap();
+
+    expect(global.systemModelList).toMatchObject([
+      { modelId: String(legacy.insertedId), model: 'legacy-llm' }
     ]);
-
-    await expect(loadSystemModels(true)).resolves.toBeUndefined();
-
-    const storedModels = await MongoSystemModel.find({ model: 'plugin-llm' }).lean();
-    expect(storedModels).toHaveLength(1);
-    expect(String(storedModels[0]._id)).toBe(String(legacyModel.insertedId));
-    expect(global.systemModelList[0]).toMatchObject({
-      modelId: String(legacyModel.insertedId),
-      model: 'plugin-llm',
-      name: 'Configured plugin LLM'
+    await expect(MongoAIModel.findById(legacy.insertedId).lean()).resolves.toMatchObject({
+      scope: 'system',
+      config: { maxContext: 32000 }
     });
+    await expect(legacyCollection.findOne({ _id: legacy.insertedId })).resolves.not.toHaveProperty(
+      'scope'
+    );
   });
 
-  it('rejects startup loading and preserves stored data when the plugin model list fails', async () => {
-    const legacyModel = await MongoSystemModel.collection.insertOne({
-      model: 'plugin-llm',
-      metadata: {}
-    });
-    pluginMocks.listModels.mockRejectedValue(new Error('plugin unavailable'));
-
-    await expect(loadSystemModels(true)).rejects.toThrow('plugin unavailable');
-
-    await expect(
-      MongoSystemModel.collection.findOne({ _id: legacyModel.insertedId })
-    ).resolves.toBeTruthy();
-    expect(global.systemModelList).toBeUndefined();
-  });
-
-  it('keeps the previous runtime model cache when a reload cannot fetch plugin models', async () => {
-    const previousModels = [
-      {
-        modelId: '68ad85a7463006c963799a05',
-        model: 'previous-model'
-      }
-    ] as typeof global.systemModelList;
-    const previousModelMap = new Map() as typeof global.systemModelMap;
-    const previousDefaultModels = {} as typeof global.systemDefaultModel;
-    global.systemModelList = previousModels;
-    global.systemActiveModelList = previousModels;
-    global.systemModelMap = previousModelMap;
-    global.systemDefaultModel = previousDefaultModels;
-    pluginMocks.listModels.mockRejectedValue(new Error('plugin unavailable'));
-
-    await expect(loadSystemModels(true)).rejects.toThrow('plugin unavailable');
-
-    expect(global.systemModelList).toBe(previousModels);
-    expect(global.systemActiveModelList).toBe(previousModels);
-    expect(global.systemModelMap).toBe(previousModelMap);
-    expect(global.systemDefaultModel).toBe(previousDefaultModels);
-  });
-
-  it('repairs legacy models, deletes irreparable models and completes strict loading', async () => {
-    const warnSpy = vi
-      .spyOn(getLogger(LogCategories.MODULE.AI.CONFIG), 'warn')
-      .mockImplementation(() => undefined);
-    const inserted = await MongoSystemModel.collection.insertMany([
+  it('does not partially migrate when any legacy model is invalid', async () => {
+    await legacyCollection.insertMany([
       {
         model: 'legacy-llm',
         metadata: {
           type: ModelTypeEnum.llm,
           provider: 'OpenAI',
           name: 'Legacy LLM',
-          maxContext: '32000',
-          maxResponse: '16000',
-          quoteMaxToken: '24000',
-          isActive: true
+          maxContext: 32000,
+          maxResponse: 16000,
+          quoteMaxToken: 24000
         }
       },
-      {
-        model: 'invalid-model',
-        metadata: { type: 'unknown' }
-      }
+      { model: 'invalid-model', metadata: { type: 'unknown' } }
     ]);
 
-    await expect(loadSystemModels(true)).resolves.toBeUndefined();
-
-    expect(global.systemModelList).toHaveLength(1);
-    expect(global.systemModelList[0]).toMatchObject({
-      model: 'legacy-llm',
-      modelId: expect.any(String),
-      config: { maxContext: 32000, maxResponse: 16000, quoteMaxToken: 24000 }
-    });
-    await expect(
-      MongoSystemModel.collection.findOne({ model: 'legacy-llm' })
-    ).resolves.toMatchObject({
-      metadata: expect.any(Object),
-      config: { maxContext: 32000 }
-    });
-    await expect(
-      MongoSystemModel.collection.findOne({ model: 'invalid-model' })
-    ).resolves.toBeNull();
-    expect(warnSpy).toHaveBeenCalledWith('Invalid system model documents deleted', {
-      deleted: 1,
-      models: [
-        {
-          modelId: String(inserted.insertedIds[1]),
-          model: 'invalid-model'
-        }
-      ]
-    });
+    await loadSystemModels();
+    await expect(waitForAIModelsBootstrap()).rejects.toThrow('Invalid legacy system model');
+    await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
+    await expect(legacyCollection.countDocuments()).resolves.toBe(2);
   });
 
-  it('does not run legacy migration during a template hot refresh', async () => {
+  it('blocks startup before publishing a cache when the plugin request fails', async () => {
+    pluginMocks.listModels.mockRejectedValue(new Error('plugin unavailable'));
+
+    await expect(loadSystemModels()).rejects.toThrow('plugin unavailable');
+    expect(global.systemModelList).toBeUndefined();
+  });
+
+  it('preinstalls templates only after bootstrap succeeds', async () => {
+    pluginMocks.listModels.mockResolvedValue([pluginLlm]);
+
     await loadSystemModels();
-    const legacyModel = await MongoSystemModel.collection.insertOne({
-      model: 'late-legacy-model',
+    await waitForAIModelsBootstrap();
+
+    await expect(MongoAIModel.findOne({ model: 'plugin-llm' }).lean()).resolves.toBeTruthy();
+    expect(global.systemModelList).toMatchObject([{ model: 'plugin-llm' }]);
+  });
+
+  it('skips legacy migration when ai_models already contains data', async () => {
+    await MongoAIModel.create({
+      type: ModelTypeEnum.llm,
+      provider: 'OpenAI',
+      model: 'installed-llm',
+      name: 'Installed LLM',
+      scope: 'system',
+      config: { maxContext: 32000, maxResponse: 16000, quoteMaxToken: 24000 }
+    });
+    await legacyCollection.insertOne({
+      model: 'legacy-llm',
       metadata: {
         type: ModelTypeEnum.llm,
         provider: 'OpenAI',
-        name: 'Late legacy model',
+        name: 'Legacy LLM',
+        maxContext: 32000,
+        maxResponse: 16000,
+        quoteMaxToken: 24000
+      }
+    });
+
+    await loadSystemModels();
+    await waitForAIModelsBootstrap();
+
+    await expect(MongoAIModel.findOne({ model: 'legacy-llm' })).resolves.toBeNull();
+    expect(global.systemModelList).toMatchObject([{ model: 'installed-llm' }]);
+  });
+
+  it('does not inspect legacy data during a template hot refresh', async () => {
+    await loadSystemModels();
+    await waitForAIModelsBootstrap();
+    await legacyCollection.insertOne({
+      model: 'late-model',
+      metadata: {
+        type: ModelTypeEnum.llm,
+        provider: 'OpenAI',
+        name: 'Late model',
         maxContext: 32000,
         maxResponse: 16000,
         quoteMaxToken: 24000
@@ -256,15 +186,22 @@ describe('loadSystemModels legacy takeover', () => {
 
     await loadSystemModels(true);
 
-    const unchangedLegacyModel = await MongoSystemModel.collection.findOne({
-      _id: legacyModel.insertedId
-    });
-    expect(unchangedLegacyModel).not.toHaveProperty('scope');
-    expect(global.systemModelList).toEqual([]);
+    await expect(MongoAIModel.findOne({ model: 'late-model' })).resolves.toBeNull();
   });
 
-  it('loads installed database models without requesting plugin templates', async () => {
-    const model = await MongoSystemModel.create({
+  it('invalidates member caches only when active model identities change', async () => {
+    pluginMocks.listModels.mockResolvedValue([pluginLlm]);
+    await loadSystemModels();
+    await waitForAIModelsBootstrap();
+    reloadMocks.clearAllMyModelsCache.mockClear();
+
+    await loadSystemModels(true);
+
+    expect(reloadMocks.clearAllMyModelsCache).not.toHaveBeenCalled();
+  });
+
+  it('loads installed models without requesting plugin templates', async () => {
+    const model = await MongoAIModel.create({
       type: ModelTypeEnum.llm,
       provider: 'OpenAI',
       model: 'installed-llm',
@@ -280,5 +217,12 @@ describe('loadSystemModels legacy takeover', () => {
     expect(global.systemModelList).toMatchObject([
       { modelId: String(model._id), model: 'installed-llm', isCustom: true }
     ]);
+  });
+
+  it('reloads caches after an admin update', async () => {
+    await updatedReloadSystemModel({ pluginDocuments: [] });
+
+    expect(reloadMocks.updateFastGPTConfigBuffer).toHaveBeenCalledOnce();
+    expect(reloadMocks.delay).toHaveBeenCalledWith(1000);
   });
 });

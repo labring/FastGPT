@@ -1,7 +1,7 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
+import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import {
   refreshModelTemplates,
   updatedReloadSystemModel
@@ -30,7 +30,7 @@ async function handler(req: ApiRequestProps<UpdateDefaultModelsBody>): Promise<v
   ].filter((item): item is { modelId: string; field: string } => !!item.modelId);
 
   await mongoSessionRun(async (session) => {
-    await MongoSystemModel.updateMany(
+    await MongoAIModel.updateMany(
       { scope: ModelScopeEnum.system },
       {
         $unset: {
@@ -44,7 +44,7 @@ async function handler(req: ApiRequestProps<UpdateDefaultModelsBody>): Promise<v
     );
     if (defaultFields.length === 0) return;
 
-    await MongoSystemModel.bulkWrite(
+    await MongoAIModel.bulkWrite(
       defaultFields.map(({ modelId, field }) => ({
         updateOne: {
           filter: { _id: modelId, scope: ModelScopeEnum.system },

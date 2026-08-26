@@ -1,7 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { BoolSchema } from '@fastgpt/global/common/zod';
-import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
+import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import z from 'zod';
@@ -13,9 +13,17 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
-import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import {
+  getSelectedInputRenderType,
+  isWorkflowSystemModelInput,
+  workflowModelKeyMappings
+} from '@fastgpt/global/core/workflow/utils';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.schema';
 
 const BACKFILL_BATCH_SIZE = 100;
 
@@ -49,7 +57,7 @@ const BackfillModelReferencesResponseSchema = z.object({
 });
 export type BackfillModelReferencesResponse = z.infer<typeof BackfillModelReferencesResponseSchema>;
 
-/** 为历史业务资源补齐稳定模型 ID，不修改 system_models 结构。 */
+/** 为历史业务资源补齐稳定模型 ID，不修改 ai_models 结构。 */
 export const runBackfillModelReferences = async ({
   dryRun
 }: BackfillModelReferencesBody): Promise<BackfillModelReferencesResponse> => {
@@ -58,18 +66,43 @@ export const runBackfillModelReferences = async ({
     references: {},
     groups: undefined as never
   };
-  const modelIdByModel = new Map(
-    (await MongoSystemModel.find({ scope: ModelScopeEnum.system }, 'model').lean()).map((item) => [
-      item.model,
-      item._id
-    ])
-  );
+  const storedModels = await MongoAIModel.find({ scope: ModelScopeEnum.system }).lean();
+  if (storedModels.length === 0) {
+    throw new Error('ai_models is empty; wait for model bootstrap before running 4163');
+  }
+  type ModelRequirement = { type: ModelTypeEnum; vision?: boolean };
+  const matchesRequirement = (
+    model: Pick<SystemModelDocumentDataType, 'type' | 'config'>,
+    requirement: ModelRequirement
+  ) =>
+    model.type === requirement.type &&
+    (!requirement.vision || ('vision' in model.config && model.config.vision));
+  const modelByName = new Map(storedModels.map((item) => [item.model, item]));
+  const modelById = new Map(storedModels.map((item) => [String(item._id), item]));
+  const getModelId = ({
+    model,
+    modelId,
+    requirement
+  }: {
+    model: string;
+    modelId?: unknown;
+    requirement: ModelRequirement;
+  }) => {
+    const legacyModel = modelByName.get(model);
+    if (legacyModel && matchesRequirement(legacyModel, requirement)) return String(legacyModel._id);
+
+    const currentModel = modelId ? modelById.get(String(modelId)) : undefined;
+    if (currentModel && matchesRequirement(currentModel, requirement))
+      return String(currentModel._id);
+
+    const fallbackModel = storedModels.find((item) => matchesRequirement(item, requirement));
+    return fallbackModel ? String(fallbackModel._id) : undefined;
+  };
 
   type ReferenceTransformResult = {
     set?: Record<string, unknown>;
     snapshot?: Record<string, unknown>;
     missing?: number;
-    conflicts?: number;
   };
   type ReferenceStats = z.infer<typeof ReferenceCleanupStatsSchema>;
 
@@ -142,9 +175,8 @@ export const runBackfillModelReferences = async ({
       const result = transform(record);
       referenceStats.missing += result.missing ?? 0;
       referenceStats.unresolved += result.missing ?? 0;
-      referenceStats.conflicts += result.conflicts ?? 0;
       if (!result.set || Object.keys(result.set).length === 0) {
-        if (!result.missing && !result.conflicts) referenceStats.unchanged += 1;
+        if (!result.missing) referenceStats.unchanged += 1;
         continue;
       }
 
@@ -167,26 +199,29 @@ export const runBackfillModelReferences = async ({
 
   const backfillFlatModelFields = (
     record: Record<string, unknown>,
-    mappings: Array<{ legacy: string; modelId: string }>
+    mappings: Array<{ legacy: string; modelId: string; requirement: ModelRequirement }>
   ): ReferenceTransformResult => {
     const set: Record<string, unknown> = {};
     const snapshot: Record<string, unknown> = {};
     let missing = 0;
-    let conflicts = 0;
 
     for (const mapping of mappings) {
-      if (typeof record[mapping.legacy] !== 'string') continue;
-      const modelId = modelIdByModel.get(record[mapping.legacy] as string);
-      if (record[mapping.modelId]) {
-        if (modelId && String(record[mapping.modelId]) !== String(modelId)) conflicts += 1;
+      if (typeof record[mapping.legacy] !== 'string' || !record[mapping.legacy]) continue;
+      const modelId = getModelId({
+        model: record[mapping.legacy] as string,
+        modelId: record[mapping.modelId],
+        requirement: mapping.requirement
+      });
+      if (!modelId) {
+        missing += 1;
         continue;
       }
-      if (modelId) {
-        set[mapping.modelId] = modelId;
-        snapshot[mapping.legacy] = record[mapping.legacy];
-      } else missing += 1;
+      if (String(record[mapping.modelId] ?? '') === String(modelId)) continue;
+
+      set[mapping.modelId] = modelId;
+      snapshot[mapping.legacy] = record[mapping.legacy];
     }
-    return { set, snapshot, missing, conflicts };
+    return { set, snapshot, missing };
   };
 
   await runCollectionBackfill({
@@ -194,16 +229,34 @@ export const runBackfillModelReferences = async ({
     model: MongoDataset,
     transform: (record) =>
       backfillFlatModelFields(record, [
-        { legacy: 'vectorModel', modelId: 'vectorModelId' },
-        { legacy: 'agentModel', modelId: 'agentModelId' },
-        { legacy: 'vlmModel', modelId: 'vlmModelId' }
+        {
+          legacy: 'vectorModel',
+          modelId: 'vectorModelId',
+          requirement: { type: ModelTypeEnum.embedding }
+        },
+        {
+          legacy: 'agentModel',
+          modelId: 'agentModelId',
+          requirement: { type: ModelTypeEnum.llm }
+        },
+        {
+          legacy: 'vlmModel',
+          modelId: 'vlmModelId',
+          requirement: { type: ModelTypeEnum.llm, vision: true }
+        }
       ])
   });
   await runCollectionBackfill({
     name: 'evaluations',
     model: MongoEvaluation,
     transform: (record) =>
-      backfillFlatModelFields(record, [{ legacy: 'evalModel', modelId: 'evalModelId' }])
+      backfillFlatModelFields(record, [
+        {
+          legacy: 'evalModel',
+          modelId: 'evalModelId',
+          requirement: { type: ModelTypeEnum.llm }
+        }
+      ])
   });
   await runCollectionBackfill({
     name: 'modelPermissions',
@@ -211,15 +264,15 @@ export const runBackfillModelReferences = async ({
     transform: (record) => {
       if (
         record.resourceType !== PerResourceTypeEnum.model ||
-        record.resourceId ||
         typeof record.resourceName !== 'string'
       ) {
         return {};
       }
-      const resourceId = modelIdByModel.get(record.resourceName);
-      return resourceId
-        ? { set: { resourceId }, snapshot: { resourceName: record.resourceName } }
-        : { missing: 1 };
+      const resourceId = modelByName.get(record.resourceName)?._id;
+      if (!resourceId) return record.resourceId ? {} : { missing: 1 };
+      if (String(record.resourceId ?? '') === String(resourceId)) return {};
+
+      return { set: { resourceId }, snapshot: { resourceName: record.resourceName } };
     }
   });
 
@@ -233,27 +286,35 @@ export const runBackfillModelReferences = async ({
     const set: Record<string, unknown> = {};
     const snapshot: Record<string, unknown> = {};
     let missing = 0;
-    let conflicts = 0;
     const mappings = [
       {
         config: chatConfig?.questionGuide,
-        configPath: `${pathPrefix}.questionGuide`
+        configPath: `${pathPrefix}.questionGuide`,
+        requirement: { type: ModelTypeEnum.llm }
       },
-      { config: chatConfig?.ttsConfig, configPath: `${pathPrefix}.ttsConfig` }
+      {
+        config: chatConfig?.ttsConfig,
+        configPath: `${pathPrefix}.ttsConfig`,
+        requirement: { type: ModelTypeEnum.tts }
+      }
     ];
     for (const mapping of mappings) {
-      if (typeof mapping.config?.model !== 'string') continue;
-      const modelId = modelIdByModel.get(mapping.config.model);
-      if (mapping.config?.modelId) {
-        if (modelId && String(mapping.config.modelId) !== String(modelId)) conflicts += 1;
+      if (typeof mapping.config?.model !== 'string' || !mapping.config.model) continue;
+      const modelId = getModelId({
+        model: mapping.config.model,
+        modelId: mapping.config.modelId,
+        requirement: mapping.requirement
+      });
+      if (!modelId) {
+        missing += 1;
         continue;
       }
-      if (modelId) {
-        set[`${mapping.configPath}.modelId`] = String(modelId);
-        snapshot[`${mapping.configPath}.model`] = mapping.config.model;
-      } else missing += 1;
+      if (String(mapping.config?.modelId ?? '') === String(modelId)) continue;
+
+      set[`${mapping.configPath}.modelId`] = String(modelId);
+      snapshot[`${mapping.configPath}.model`] = mapping.config.model;
     }
-    return { set, snapshot, missing, conflicts };
+    return { set, snapshot, missing };
   };
 
   await runCollectionBackfill({
@@ -278,45 +339,71 @@ export const runBackfillModelReferences = async ({
       })
   });
 
-  const workflowKeyMappings = [
-    [NodeInputKeyEnum.aiModel, NodeInputKeyEnum.aiModelId],
-    [NodeInputKeyEnum.datasetSearchRerankModel, NodeInputKeyEnum.datasetSearchRerankModelId],
-    [NodeInputKeyEnum.datasetSearchExtensionModel, NodeInputKeyEnum.datasetSearchExtensionModelId],
-    [NodeInputKeyEnum.datasetDeepSearchModel, NodeInputKeyEnum.datasetDeepSearchModelId]
-  ] as const;
   const migrateWorkflowNodes = (
     nodes: unknown
-  ): { nodes: unknown; changed: boolean; missing: number; conflicts: number } => {
-    if (!Array.isArray(nodes)) return { nodes, changed: false, missing: 0, conflicts: 0 };
+  ): { nodes: unknown; changed: boolean; missing: number } => {
+    if (!Array.isArray(nodes)) return { nodes, changed: false, missing: 0 };
     let changed = false;
     let missing = 0;
-    let conflicts = 0;
     const nextNodes = nodes.map((node) => {
       if (!node || typeof node !== 'object' || !Array.isArray((node as any).inputs)) return node;
       const inputs = [...(node as any).inputs];
       let nodeChanged = false;
 
-      for (const [legacyKey, modelIdKey] of workflowKeyMappings) {
+      for (const [legacyKey, modelIdKey] of workflowModelKeyMappings) {
         const legacyInput = inputs.find((input) => input?.key === legacyKey);
         if (!legacyInput) continue;
+        const modelIdInputIndex = inputs.findIndex((input) => input?.key === modelIdKey);
+        const modelIdInput = inputs[modelIdInputIndex];
+        const isSystemModelInput = isWorkflowSystemModelInput({
+          node: node as any,
+          input: legacyInput
+        });
+
+        // 插件工具参数允许任意命名，非系统输入即使叫 model/modelId 也必须原样保留。
+        if (!isSystemModelInput) continue;
+
         const isReference =
           getSelectedInputRenderType(legacyInput) === FlowNodeInputTypeEnum.reference ||
           Array.isArray(legacyInput.value);
-        const modelId =
-          typeof legacyInput.value === 'string' ? modelIdByModel.get(legacyInput.value) : undefined;
-        const modelIdInput = inputs.find((input) => input?.key === modelIdKey);
-        if (modelIdInput) {
-          if (modelId && String(modelIdInput.value) !== String(modelId)) conflicts += 1;
+        if (isReference) {
+          if (!modelIdInput) {
+            inputs.push({ ...legacyInput, key: modelIdKey });
+            changed = true;
+            nodeChanged = true;
+          }
           continue;
         }
-        if (isReference) {
-          inputs.push({ ...legacyInput, key: modelIdKey });
-          changed = true;
-          nodeChanged = true;
+        if (
+          typeof legacyInput.value !== 'string' ||
+          !legacyInput.value ||
+          /^\{\{.*\}\}$/.test(legacyInput.value)
+        ) {
+          continue;
+        }
+        const requirement: ModelRequirement = {
+          type:
+            legacyKey === NodeInputKeyEnum.datasetSearchRerankModel
+              ? ModelTypeEnum.rerank
+              : ModelTypeEnum.llm
+        };
+        const modelId = getModelId({
+          model: legacyInput.value,
+          modelId: modelIdInput?.value,
+          requirement
+        });
+        if (modelIdInput) {
+          if (!modelId) {
+            missing += 1;
+          } else if (String(modelIdInput.value) !== String(modelId)) {
+            inputs[modelIdInputIndex] = { ...modelIdInput, value: String(modelId) };
+            changed = true;
+            nodeChanged = true;
+          }
           continue;
         }
         if (!modelId) {
-          if (typeof legacyInput.value === 'string') missing += 1;
+          missing += 1;
           continue;
         }
         inputs.push({ ...legacyInput, key: modelIdKey, value: String(modelId) });
@@ -329,20 +416,25 @@ export const runBackfillModelReferences = async ({
       );
       const datasetParams = inputs[datasetParamsIndex]?.value;
       if (
+        (node as any).flowNodeType === FlowNodeTypeEnum.agent &&
         datasetParamsIndex >= 0 &&
         datasetParams &&
         typeof datasetParams === 'object' &&
         !Array.isArray(datasetParams)
       ) {
         const result = backfillFlatModelFields(datasetParams, [
-          { legacy: 'rerankModel', modelId: 'rerankModelId' },
+          {
+            legacy: 'rerankModel',
+            modelId: 'rerankModelId',
+            requirement: { type: ModelTypeEnum.rerank }
+          },
           {
             legacy: 'datasetSearchExtensionModel',
-            modelId: 'datasetSearchExtensionModelId'
+            modelId: 'datasetSearchExtensionModelId',
+            requirement: { type: ModelTypeEnum.llm }
           }
         ]);
         missing += result.missing ?? 0;
-        conflicts += result.conflicts ?? 0;
         if (result.set && Object.keys(result.set).length > 0) {
           inputs[datasetParamsIndex] = {
             ...inputs[datasetParamsIndex],
@@ -360,7 +452,7 @@ export const runBackfillModelReferences = async ({
 
       return nodeChanged ? { ...(node as any), inputs } : node;
     });
-    return { nodes: nextNodes, changed, missing, conflicts };
+    return { nodes: nextNodes, changed, missing };
   };
 
   await runCollectionBackfill({
@@ -370,8 +462,7 @@ export const runBackfillModelReferences = async ({
       const result = migrateWorkflowNodes(record.modules);
       return {
         set: result.changed ? { modules: result.nodes } : undefined,
-        missing: result.missing,
-        conflicts: result.conflicts
+        missing: result.missing
       };
     }
   });
@@ -382,8 +473,7 @@ export const runBackfillModelReferences = async ({
       const result = migrateWorkflowNodes(record.nodes);
       return {
         set: result.changed ? { nodes: result.nodes } : undefined,
-        missing: result.missing,
-        conflicts: result.conflicts
+        missing: result.missing
       };
     }
   });
@@ -399,8 +489,7 @@ export const runBackfillModelReferences = async ({
       if (modulesResult.changed) set['workflow.modules'] = modulesResult.nodes;
       return {
         set,
-        missing: nodesResult.missing + modulesResult.missing,
-        conflicts: nodesResult.conflicts + modulesResult.conflicts
+        missing: nodesResult.missing + modulesResult.missing
       };
     }
   });

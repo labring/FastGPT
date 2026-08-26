@@ -1,8 +1,8 @@
 # 模型引用统一为 modelId 设计
 
-状态：待实现
+状态：已实现
 
-最后核对：2026-08-25
+最后核对：2026-08-26
 
 ## 1. 背景
 
@@ -18,7 +18,7 @@
 
 ## 2. 已确认前提
 
-- 历史 `system_models` 数据全部视为系统模型。
+- 历史 `system_models` 数据全部视为系统模型；升级后该表只读保留，运行时统一使用 `ai_models`。
 - 历史业务引用保存的是系统模型 `model`，不是私有模型引用。
 - 新保存的业务配置只保存 `modelId`。
 - 新 Usage 只保存 `modelId`；历史 Usage 的 `model` 不迁移、不转换展示名，查询时原样展示。
@@ -26,13 +26,13 @@
 - 私有模型只能传 `modelId`；本轮不实现私有模型 CRUD、所有权和渠道。
 - 当前账号可用模型通过分页接口按需获取；各模型选择器直接请求后端，不维护客户端完整模型缓存。
 - `getInitData` 不再返回完整模型列表，只保留脱敏默认模型。
-- 旧模型配置 cleaner 只在升级前的旧版本执行；新版本启动时逐模型修复/迁移文档，4.16.3 单独回填资源引用。
+- 新版本仅在 `ai_models` 为空时后台读取旧表，全量校验后单事务一次性写入；4.16.3 单独回填资源引用。
 
 ## 3. 目标与非目标
 
 ### 3.1 目标
 
-- 以 `system_models._id` 作为平台内唯一、稳定的模型身份。
+- 以 `ai_models._id` 作为平台内唯一、稳定的模型身份；首次迁移保留旧 `_id`。
 - 所有“选择/引用某个模型”的新业务数据改存 `modelId`。
 - 所有内部模型调用链先用 `modelId` 解析配置，再在 provider 边界使用 `modelData.model`。
 - 只有公开 System OpenAPI 兼容接收 `modelId/model`，只在公开 API 边界解析一次；非公开接口（包括 Dev-only OpenAPI）和内部临时配置只接收 `modelId`，进入实际模型请求链后只传 `modelData`。
@@ -46,7 +46,7 @@
 - 不引入或改造 Channel，不让 AIProxy 在本轮按 `modelId` 路由。
 - 不实现 root/成员维度的模型日志、统计和渠道消耗分组。
 - 以 upstream main 已完成移动后的管理员模型页面为基线，只在新位置修改 modelId 相关的数据读取、表单和选择器；不恢复旧页面、不复制旧组件，也不重复提交页面迁移改动。
-- 不新增 `default_models` 表；本轮只重构 `system_models` 自身的存储结构。
+- 不新增 `default_models` 表；本轮新增 `ai_models` 作为权威模型实例表，旧 `system_models` 仅作回滚快照。
 - 不删除历史兼容字段；删除动作放到后续 contract cleanup 版本。
 - 不做与 modelId 无关的 OpenAPI、价格、权限框架或目录重构。
 
@@ -54,7 +54,7 @@
 
 | 名称 | 含义 | 是否可作为业务外键 |
 | --- | --- | --- |
-| `_id` | MongoDB 中 `system_models` 文档主键 | 仅数据库内部使用 |
+| `_id` | MongoDB 中 `ai_models` 文档主键 | 仅数据库内部使用 |
 | `modelId` | `_id.toString()`，平台模型唯一身份 | 是，唯一 canonical 引用 |
 | `model` | provider 侧路由名称，例如 `gpt-4o` | 否；仅兼容旧引用和 provider 请求 |
 | `name` | 用户可见展示名 | 否 |
@@ -70,7 +70,7 @@
 5. provider 请求仍发送 `modelData.model`；不能把 Mongo ObjectId 直接发给 OpenAI 兼容接口。
 6. 模型解析只发生一次；完成解析后的内部 request 函数只接收具体 `modelData`，不再接收 modelId、model 或二者的联合字符串。
 
-## 5. `system_models` 数据模型
+## 5. `ai_models` 数据模型
 
 ### 5.1 扁平管理字段 + 类型化 `config`
 
@@ -229,8 +229,8 @@ Mongoose 顶层字段应显式声明，`config` 可以使用 `Schema.Types.Mixed
 
 当前插件返回的模型可能没有对应的数据库文档。如果只给现有 DB 文档增加 `modelId`，未被管理员改过的插件模型仍然没有稳定 ID，因此必须先物化：
 
-1. 启动或显式同步时读取插件模型模板和 `system_models`。
-2. 对每个插件模型按 `{ scope: system, model }` 执行幂等 upsert；兼容迁移完成前，先按旧 `{ model }` 查找并接管已有文档，不能给缺少 `scope` 的同名文档重新生成 ID。
+1. 启动或显式同步时读取插件模型模板和 `ai_models`。
+2. 对每个插件模型按 `{ scope: system, model }` 执行幂等 upsert；旧表接管由独立启动迁移完成，自动预装不读取 `system_models`。
 3. 已存在的文档保留 `_id` 和全部数据库配置；自动预装只使用 `$setOnInsert`，不通过插件模板补齐或覆盖存量 `config`。
 4. 新插件模型第一次同步时创建文档，此后始终复用该 `_id`。
 5. 多实例并发依靠唯一索引收敛；重复键后重新读取，不生成第二个 ID。
@@ -253,15 +253,8 @@ defineIndex(SystemModelSchema, {
 });
 ```
 
-旧索引必须按仓库规范登记为 deprecated，而不是直接遗漏：
-
-```ts
-defineIndex(SystemModelSchema, {
-  key: { model: 1 },
-  options: { name: 'model_1', unique: true },
-  deprecated: true
-});
-```
+旧 `{ model: 1 }` 索引属于只读 `system_models`，不得由新 Schema 注册或清理；`ai_models`
+从第一版开始只声明当前索引。这样旧表的结构和索引都不会被新版本隐式修改。
 
 未来团队安装 PR 再增加部分唯一索引 `{ scope: 1, teamId: 1, model: 1 }`，过滤 `scope=team` 且 `teamId` 存在。本轮不提前引入 `teamId` 和团队模型逻辑。
 
@@ -269,7 +262,7 @@ defineIndex(SystemModelSchema, {
 
 ### 5.6 `scope` 与 `isCustom`
 
-- 本轮 `system_models` 中的所有模型都属于平台系统模型，包括管理员自行添加、未命中插件模板的模型；创建和迁移统一写入 `scope: system`。
+- 本轮 `ai_models` 中的所有模型都属于平台系统模型，包括管理员自行添加、未命中插件模板的模型；创建和迁移统一写入 `scope: system`。
 - 本轮输入 Schema 将 `scope` 收紧为 literal `system`，不允许管理员 API 写入团队作用域。未来团队安装需求再扩展这一边界。
 - `isCustom = true` 的唯一含义是“该系统模型不在当前插件模板列表中”；命中模板则为 `false`。它不表示私有模型、创建者或所有权。
 - `isCustom` 只在运行时根据 `model` 是否命中插件模板派生，不持久化，也不得用于访问控制或唯一索引；命中后若 `type` 不一致，应作为模板/数据库配置错误单独报告，不能把它伪装成自定义模型。
@@ -407,7 +400,7 @@ await createLLMResponse({
 1. **公开 OpenAPI 请求兼容**：已发布且允许选择模型的 System OpenAPI schema 同时接收 `modelId/model`，`model` 标记 deprecated。
 2. **统一模型解析兼容**：`getXXModelData` 与 `findModelData` 接收同一个 `ModelReference`；`modelId` 严格优先，仅缺少 `modelId` 时才按系统 `model` 查询。
 3. **历史持久化读取**：Dataset、App、Workflow、Evaluation、Usage 和模型权限在迁移窗口内读取旧 `*Model`、workflow key、`resourceName` 或 usage `model`；新写入不得继续产生旧字段。
-4. **外部协议归一化**：插件 SDK 的扁平模型只在插件适配入口转换成 canonical `config`；旧 `system_models.metadata` 和旧顶层能力字段只允许升级脚本读取和转换。
+4. **外部协议归一化**：插件 SDK 的扁平模型只在插件适配入口转换成 canonical `config`；旧 `system_models.metadata` 和旧顶层能力字段只允许启动迁移读取和转换。
 
 除以上白名单外，不保留裸字符串 getter、`string | ModelData`、旧扁平模型与 canonical 模型的运行时 union、把 `config` 再展开到全局缓存或 API DTO 的字段别名，或“已经传入模型对象就直接返回”的旁路。管理员页面、普通客户端和服务端统一使用嵌套 `config`。
 
@@ -452,7 +445,7 @@ await createLLMResponse({
 
 新写入链只写 `modelId`，不再冗余写 `model`。历史 Usage 不做 modelId 回填，避免为纯展示数据增加大集合迁移成本，也避免把旧名称改成当前展示名。
 
-列表查询按当前分页收集全部 `modelId`，一次批量读取 `system_models` 后生成展示字段，禁止逐条查询：
+列表查询按当前分页收集全部 `modelId`，一次批量读取 `ai_models` 后生成展示字段，禁止逐条查询：
 
 ```ts
 const displayModel = usage.model ?? modelMap.get(usage.modelId)?.model ?? i18nT('account_usage:model_unavailable');
@@ -490,9 +483,9 @@ const displayModel = usage.model ?? modelMap.get(usage.modelId)?.model ?? i18nT(
 
 - 新建节点和新模板只产生新 ID key，不需要额外双写旧 key。
 - 数据库批量迁移脚本只回填 ID sibling，不删除历史 key，便于回滚；业务写入边界的 `formatModels` 则产出只含 ID key 的规范节点。
-- Workflow 导入、应用创建以及自动保存/保存版本/发布统一调用 `formatModels`：静态旧 `model` 转换为 `modelId` key 和 ID 值，引用类型只转换 key 并保留引用值，已有 `modelId` 时删除对应旧 key。`formatModels` 不在服务端写入边界校验模型权限。
+- Workflow 导入、应用创建以及自动保存/保存版本/发布统一调用 `formatModels`：静态旧 `model` 转换为 `modelId` key 和 ID 值；同名模型已不存在时，按所需模型类型选择传入列表中的首个模型作为兼容回退。引用类型只转换 key 并保留引用值，已有 `modelId` 时删除对应旧 key。`formatModels` 不在服务端写入边界校验模型权限。
 - 编辑或保存存量 Workflow 时，会将命中的 deprecated input 原位转换为 ID input，不再双写旧 key。
-- 旧字面量无法解析时，仍将 key 改为 `modelId` 并清空值，但不抛错，避免中断模板导入。运行节点时，`modelId` 和 `model` 都为空、指定模型不存在，或模型未激活，均统一抛出“模型不存在”。
+- 旧字面量无法精确解析时，仍将 key 改为 `modelId`，并按所需模型类型选择首个候选；该类型没有候选时才清空值且不抛错，避免中断模板导入。运行节点时，`modelId` 和 `model` 都为空、指定模型不存在，或模型未激活，均统一抛出“模型不存在”。
 
 引用类型 input 的 value 保留原引用路径，仅将旧 key 改为 ID key。运行时引用结果统一按 `modelId` 解释；若上游仍输出旧 `model` 字符串，则直接报“模型不存在”。
 
@@ -610,18 +603,18 @@ export const GetMyModelsResponseSchema =
 
 ### 11.1 模型结构接管与资源迁移
 
-旧版 `cleanSystemModelConfigs` 只用于升级前修复历史 `metadata` 异常，新版不再提供该路由。启动 repair 先将同名旧文档原地接管为 `scope=system`，随后物化仅 upsert 真正缺失的插件模型，从而保留旧 `_id`。单模型新增/更新和 JSON 批量更新只接受 canonical 数据，不再调用 legacy repair；JSON 中没有 `modelId` 的旧记录直接过滤。JSON 的未知 `modelId` 表示跨实例导入：目标端按 `model` 复用已有系统实例或创建新实例。
+旧版 `cleanSystemModelConfigs` 不再提供。新版本不修改 `system_models`：仅当 `ai_models` 为空时读取旧表，在内存中把全部记录转换为 canonical 结构，保留原 `_id`，然后在单个事务中一次性写入。单模型新增/更新和 JSON 批量更新只接受 canonical 数据；JSON 中没有 `modelId` 的旧记录直接过滤。JSON 的未知 `modelId` 表示跨实例导入：目标端按 `model` 复用已有系统实例或创建新实例。
 
 启动迁移、插件模板刷新、自动预装策略和数据库实例加载必须保持四个独立职责：
 
-1. `migrateLegacySystemModels` 只在启动升级阶段运行，负责 canonical 写回并保持 `_id`；不生成缓存，也不由定时任务或管理接口调用。
-2. `refreshModelTemplates` 只获取、校验并原子发布插件模板快照；启动失败则阻止启动，热刷新失败则保留上一版模板和 active 缓存，不触发任何数据库变更。
+1. `bootstrapAIModelsFromLegacy` 只在启动阶段后台运行；目标非空立即跳过，目标为空时只读旧表、全量校验并单事务一次性写入，不生成缓存，也不由定时任务或管理接口调用。
+2. `refreshModelTemplates` 只获取并校验插件模板候选快照；启动失败则阻止启动，热刷新失败则保留上一版模板和 active 缓存，不触发任何数据库变更。
 3. `syncPreinstalledSystemModels` 只负责本版本“插件模板缺失实例自动预装”的兼容策略，按 `{ scope, model }` 创建缺失实例，不更新或删除已有实例。PR2 改为模板显式安装时只替换这一层。
 4. `loadInstalledModels` 只读取并严格解析数据库实例，在局部构建 list/map/defaults 后原子发布；不 repair、不拉插件、不创建或删除模型。管理员事务提交和数据库 Change Stream 只触发这一层。
 
-启动编排为 `refresh templates -> migrate legacy -> sync preinstalled -> load installed -> ready`。运行期模板刷新为 `refresh templates -> sync preinstalled -> load installed`，其中任一步失败都不得发布半成品快照；管理员写入为 `validate/preflight -> transaction -> load installed`。
+启动编排为：阻塞执行 `refresh templates -> load current ai_models -> ready`，随后后台执行 `bootstrap legacy -> sync preinstalled -> reload installed -> invalidate caches`。因此允许目标表为空时短暂找不到模型；迁移失败时事务不留下部分数据，也不执行自动预装，下次重启重试。运行期模板刷新为 `refresh templates -> sync preinstalled -> load installed`；管理员写入为 `validate/preflight -> transaction -> load installed`。
 
-`admin/4163/backfillModelReferences` 只建立 `system_models.model -> _id` 映射，给 Dataset、App/Workflow、Evaluation 和模型权限记录增量补充 ID sibling。Usage 历史记录不回填。接口仅允许系统管理员执行，`dryRun` 默认为 `true`，响应按 `datasets/apps/evaluations/permissions` 分组返回 `scanned/unchanged/wouldUpdate/updated/invalid/unresolved/conflicts`。
+`admin/4163/backfillModelReferences` 只建立 `ai_models.model -> _id` 映射，目标表为空时拒绝执行，避免在启动迁移完成前产生错误回填。它给 Dataset、App/Workflow、Evaluation 和模型权限记录增量补充 ID sibling；Usage 历史记录不回填。接口仅允许系统管理员执行，`dryRun` 默认为 `true`，响应按 `datasets/apps/evaluations/permissions` 分组返回 `scanned/unchanged/wouldUpdate/updated/invalid/unresolved/conflicts`。
 
 该接口属于一次性管理员清洗能力，可以不注册 OpenAPI path，但不豁免安全和校验：使用 `authSystemAdmin` 鉴权；请求使用 Zod Schema + `parseApiInput`；结构化响应使用 Zod Schema parse；`dryRun` 默认必须为 `true`，只有显式传 `false` 才允许写入。
 
@@ -630,13 +623,12 @@ export const GetMyModelsResponseSchema =
 ```text
 部署启动
   -> 成功读取完整插件模型列表（失败则实例不启动）
-  -> 清洗 system_models metadata
-  -> 历史 system_models 补 scope=system，并移除旧 isSystem
-  -> metadata/旧顶层字段拆分为 canonical 顶层字段 + config
-  -> 物化全部插件系统模型并稳定 _id
-  -> 建立系统 model -> modelId 唯一映射
-  -> 创建部分唯一索引并清理 deprecated 全局索引
-  -> 生成服务端 active 模型缓存
+  -> 读取 ai_models 并发布当前 active 模型缓存（允许为空）
+  -> 后台检查 ai_models 是否为空
+  -> 一次读取全部 system_models，在内存中转换并严格校验
+  -> 单事务复查 ai_models 为空，并用一次 insertMany 保留 _id 写入全部数据
+  -> 物化缺失的插件系统模型
+  -> 重载 active 模型并失效配置/成员模型缓存
 
 部署完成后执行资源回填
   -> 预检 / dry-run
@@ -649,16 +641,18 @@ export const GetMyModelsResponseSchema =
 
 ### 11.3 迁移规则
 
-- 全流程游标读取并按固定上限分批写入，避免把大集合的全部操作积压在进程内。
+- `system_models -> ai_models` 按已确认约束一次读取、一次事务、一次 `insertMany`，不分批、不加锁、不保存迁移状态。
 - 模型结构归一化优先级为 `canonical config > 旧顶层字段 > metadata`；同层冲突记入报告。
 - 根据模型 `type` 使用白名单把类型特有字段写入 `config`，未知字段不自动搬运。
-- 新代码只写 canonical 顶层字段和 `config`；不再写 `metadata` 或顶层类型特有字段。
-- 使用 `$set` 增量补 canonical 字段，不在本轮 `$unset` legacy 字段。
-- canonical 已是有效字符串 `modelId` 时不覆盖，保证幂等。
-- canonical 与 legacy 同时存在且解析到不同模型时记 conflict，不自动覆盖。
-- 旧值无法解析时不写 `*ModelId`，输出 collection、documentId、field、value 供人工处理。
+- 新代码只写 `ai_models` 的 canonical 顶层字段和 `config`；不再写 `metadata` 或顶层类型特有字段。
+- 迁移候选只保留 `_id` 与 canonical 字段，因此 `isSystem`、`metadata` 和旧顶层能力字段不会进入新表；旧表原文档完全不变。
+- 任一旧记录无法转换、出现重复 `_id` 或重复 `model` 时，在开启写事务前失败，目标表保持为空。
+- 多实例并发不使用分布式锁；事务内复查目标为空，竞争失败实例仅在确认另一实例已完整写入同一组 `_id` 后收敛为成功。
+- legacy 名称能精确解析时，以其当前映射覆盖已有 `modelId`，用于修复模型 ID 重新生成后的存量引用；重复执行保持幂等。
+- legacy 名称无法精确解析且已有 `modelId` 仍指向符合类型要求的模型时，保留该 ID；否则按所需类型选择 `ai_models` 中首个匹配模型作为兼容回退。
+- 所需类型没有任何候选时不写 `*ModelId`，并计入 unresolved；因此 unresolved 表示无法形成类型合法的引用，而不是旧名称未命中。
 - 所有集合的回填写入都对读取过的 legacy 源字段和待写目标字段做快照 CAS；Workflow 整体数组按读取快照匹配。并发保存导致的未命中记为 conflict，可通过重跑收敛，不能覆盖用户刚保存的数据。
-- 映射只使用系统模型 `model`；发现重复或歧义必须在写业务数据前终止。
+- 4163 映射只使用 `ai_models` 系统模型 `model`；发现空表、重复或歧义必须在写业务数据前终止。
 - `usage_items` 不参与历史引用回填；仅新写入链开始保存 `modelId`。
 - 每一步返回 scanned/migrated/unchanged/unresolved/conflicts；整个接口保持幂等，可以安全重跑，不能依赖上一次请求的进程内状态。
 
@@ -709,7 +703,7 @@ export const GetMyModelsResponseSchema =
 
 - datasets、apps、app_versions、app_templates、eval、model permissions 分别覆盖正常、幂等、unresolved、conflict。
 - Workflow 字面量旧 input 覆盖“将 key 和 value 转换为 ID”；引用型旧 input 覆盖“只改 key、保留引用值”；`datasetParams`、chatConfig 分别覆盖。
-- 启动 repair 覆盖 canonical/旧 metadata/新旧混合、可选字段删除、必填字段默认值、插件模板恢复、无法修复删除与幂等。`backfillModelReferences` 覆盖 dry-run、正式执行、unresolved/conflict 和各引用集合。
+- 启动迁移覆盖 canonical/旧 metadata/新旧混合、插件模板恢复、保留 `_id`、旧表不变、失败零写入和目标非空跳过。`backfillModelReferences` 覆盖空目标拒绝、dry-run、正式执行、unresolved/conflict 和各引用集合。
 - 大批量游标执行会分批 flush，不会把未解析字符串写入任何 `*ModelId`；并发保存使快照 CAS 未命中时保留在线数据并报告 conflict。
 
 ### 13.3 集成测试
@@ -751,7 +745,7 @@ export const GetMyModelsResponseSchema =
 
 ## 15. 实施 TODO
 
-- [x] 建立 modelId 基础类型、扁平 `system_models` schema、各类型 config schema 和索引声明。
+- [x] 建立 modelId 基础类型、扁平 `ai_models` schema、各类型 config schema和索引声明，并保留只读 `system_models` 回滚快照。
 - [x] 实现插件/旧 metadata/旧顶层字段到 canonical config 的统一 normalize。
 - [x] 实现插件系统模型物化，验证 ID 稳定性和并发收敛。
 - [x] 重构服务端 ID cache/getter，移除显式未命中时的默认回退。

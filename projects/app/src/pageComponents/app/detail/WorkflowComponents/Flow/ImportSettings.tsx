@@ -54,7 +54,7 @@ const ImportSettings = ({ onClose }: Props) => {
                 t
               });
               formatModels({
-                modules: workflowConfig.nodes,
+                nodes: workflowConfig.nodes,
                 chatConfig: workflowConfig.chatConfig,
                 models: modelList
               });

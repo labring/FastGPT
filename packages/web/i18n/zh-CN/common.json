@@ -898,6 +898,7 @@
   "model.type.stt": "语音识别",
   "model.type.tts": "语音合成",
   "model_loading": "模型加载中...",
+  "model_loading_label": "模型加载中",
   "model_not_exist": "模型不存在",
   "month_text": "个月",
   "move.confirm": "确认移动",

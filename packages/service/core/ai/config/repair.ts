@@ -10,7 +10,6 @@ import {
   SystemModelDocumentDataSchema,
   type SystemModelDocumentDataType
 } from '@fastgpt/global/core/ai/model.schema';
-import { MongoSystemModel } from './schema';
 
 const configKeysMap: Record<ModelTypeEnum, string[]> = {
   [ModelTypeEnum.llm]: [
@@ -323,94 +322,4 @@ export const repairSystemModelDocument = ({
     document: repaired.data,
     issues: getIssues(record)
   };
-};
-
-export type RepairStoredSystemModelsResult = {
-  scanned: number;
-  unchanged: number;
-  repaired: number;
-  deleted: number;
-  deletedModels: Array<{
-    modelId: string;
-    model?: string;
-  }>;
-};
-
-/**
- * 启动加载前逐条接管 system_models。可修复记录使用快照条件更新；无法修复记录使用快照
- * 条件删除，避免多实例启动覆盖另一个实例刚完成的管理员更新。
- */
-export const repairStoredSystemModels = async ({
-  pluginDocuments
-}: {
-  pluginDocuments: SystemModelDocumentDataType[];
-}): Promise<RepairStoredSystemModelsResult> => {
-  const records = await MongoSystemModel.collection.find({}).toArray();
-  const pluginMap = new Map(pluginDocuments.map((item) => [item.model, item]));
-  const stats: RepairStoredSystemModelsResult = {
-    scanned: records.length,
-    unchanged: 0,
-    repaired: 0,
-    deleted: 0,
-    deletedModels: []
-  };
-  const operations: Array<Parameters<typeof MongoSystemModel.collection.bulkWrite>[0][number]> = [];
-  const deleteCandidates: Array<{
-    _id: (typeof records)[number]['_id'];
-    modelId: string;
-    model?: string;
-  }> = [];
-
-  records.forEach((record) => {
-    const result = repairSystemModelDocument({
-      record,
-      pluginDocument: pluginMap.get(String(record.model))
-    });
-    if (result.status === 'unchanged') {
-      stats.unchanged += 1;
-      return;
-    }
-    const snapshotFilter =
-      record.config === undefined
-        ? { _id: record._id, config: { $exists: false } }
-        : { _id: record._id, config: record.config };
-    if (result.status === 'repaired') {
-      stats.repaired += 1;
-      operations.push({
-        updateOne: {
-          filter: snapshotFilter,
-          update: { $set: result.document, $unset: { isSystem: '' } }
-        }
-      });
-      return;
-    }
-    deleteCandidates.push({
-      _id: record._id,
-      modelId: String(record._id),
-      model: toTrimmedString(record.model)
-    });
-    operations.push({ deleteOne: { filter: snapshotFilter } });
-  });
-
-  if (operations.length > 0) {
-    await MongoSystemModel.collection.bulkWrite(operations, { ordered: false });
-  }
-  if (deleteCandidates.length > 0) {
-    // 快照条件可能因并发更新而失效，只记录数据库中已经不存在的模型，避免误报删除。
-    const remainingIds = new Set(
-      (
-        await MongoSystemModel.collection
-          .find(
-            { _id: { $in: deleteCandidates.map((item) => item._id) } },
-            { projection: { _id: 1 } }
-          )
-          .toArray()
-      ).map((item) => String(item._id))
-    );
-    stats.deletedModels = deleteCandidates
-      .filter((item) => !remainingIds.has(item.modelId))
-      .map(({ modelId, model }) => ({ modelId, model }));
-    stats.deleted = stats.deletedModels.length;
-  }
-  return stats;
 };

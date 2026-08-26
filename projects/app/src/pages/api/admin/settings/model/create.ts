@@ -1,7 +1,7 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
+import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import {
   refreshModelTemplates,
   updatedReloadSystemModel
@@ -22,7 +22,7 @@ async function handler(
 
   // 插件不可用时不提交数据库更新，保持数据库与当前运行时 active 集合一致。
   const pluginDocuments = await refreshModelTemplates();
-  const model = await MongoSystemModel.create(modelData);
+  const model = await MongoAIModel.create(modelData);
   await updatedReloadSystemModel({ pluginDocuments });
 
   return CreateSystemModelResponseSchema.parse({ modelId: String(model._id) });

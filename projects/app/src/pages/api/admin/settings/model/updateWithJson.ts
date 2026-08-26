@@ -2,7 +2,7 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
+import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import {
   refreshModelTemplates,
   updatedReloadSystemModel
@@ -52,7 +52,7 @@ async function handler(req: ApiRequestProps<UpdateSystemModelsWithJsonBody>): Pr
 
   // 只把当前实例真实存在的 ID 交给 Mongoose，外部系统的任意 string ID 按 model 安装。
   const existingModelIds = new Set(
-    (await MongoSystemModel.find({ scope: ModelScopeEnum.system }, '_id').lean()).map((model) =>
+    (await MongoAIModel.find({ scope: ModelScopeEnum.system }, '_id').lean()).map((model) =>
       String(model._id)
     )
   );
@@ -61,14 +61,14 @@ async function handler(req: ApiRequestProps<UpdateSystemModelsWithJsonBody>): Pr
   // 插件不可用时不提交数据库更新，保持数据库与当前运行时 active 集合一致。
   const pluginDocuments = await refreshModelTemplates();
   await mongoSessionRun(async (session) => {
-    await MongoSystemModel.updateMany(
+    await MongoAIModel.updateMany(
       { scope: ModelScopeEnum.system, model: { $nin: configuredModels } },
       { $set: { isActive: false } },
       { session }
     );
 
     if (importedModels.length === 0) return;
-    await MongoSystemModel.bulkWrite(
+    await MongoAIModel.bulkWrite(
       importedModels.map(({ modelId, ...modelData }) => ({
         updateOne: {
           filter: existingModelIds.has(modelId)

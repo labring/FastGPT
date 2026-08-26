@@ -1,5 +1,5 @@
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
+import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import { Call } from '@test/utils/request';
 import { getRootUser } from '@test/datas/users';
 import { describe, expect, it, vi } from 'vitest';
@@ -46,7 +46,7 @@ describe('admin settings model create/update api', () => {
 
     expect(res.error).toBeUndefined();
     expect(res.data?.modelId).toBeTruthy();
-    await expect(MongoSystemModel.findById(res.data?.modelId).lean()).resolves.toMatchObject({
+    await expect(MongoAIModel.findById(res.data?.modelId).lean()).resolves.toMatchObject({
       model: 'test-llm',
       scope: 'system',
       config: { maxContext: 16000 }
@@ -54,7 +54,7 @@ describe('admin settings model create/update api', () => {
   });
 
   it('updates an existing model only by modelId', async () => {
-    const existing = await MongoSystemModel.create(buildLlmDocument());
+    const existing = await MongoAIModel.create(buildLlmDocument());
     const res = await callApi({
       handler: updateModelApi,
       body: {
@@ -67,13 +67,13 @@ describe('admin settings model create/update api', () => {
     });
 
     expect(res.error).toBeUndefined();
-    await expect(MongoSystemModel.findById(existing._id).lean()).resolves.toMatchObject({
+    await expect(MongoAIModel.findById(existing._id).lean()).resolves.toMatchObject({
       config: { maxContext: 16000, maxTemperature: 1.2 }
     });
   });
 
   it('rejects non-canonical values instead of repairing them', async () => {
-    const existing = await MongoSystemModel.create(buildLlmDocument());
+    const existing = await MongoAIModel.create(buildLlmDocument());
     const res = await callApi({
       handler: updateModelApi,
       body: {
@@ -86,7 +86,7 @@ describe('admin settings model create/update api', () => {
     });
 
     expect(res.error?.name).toBe('ApiRequestInputParseError');
-    const unchanged = await MongoSystemModel.findById(existing._id).lean();
+    const unchanged = await MongoAIModel.findById(existing._id).lean();
     expect(unchanged?.config).toMatchObject({ maxContext: 16000, maxResponse: 8000 });
     expect(unchanged?.config).not.toHaveProperty('maxTemperature');
   });
@@ -98,6 +98,6 @@ describe('admin settings model create/update api', () => {
     });
 
     expect(res.error?.name).toBe('ApiRequestInputParseError');
-    await expect(MongoSystemModel.countDocuments()).resolves.toBe(0);
+    await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
   });
 });

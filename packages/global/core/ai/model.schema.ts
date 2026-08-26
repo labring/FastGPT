@@ -34,7 +34,7 @@ export const PriceTypeSchema = z.object({
 export type PriceType = z.infer<typeof PriceTypeSchema>;
 
 /**
- * 模型类型专属配置。公共业务字段保留在 system_models 顶层，只有不同类型之间存在差异的
+ * 模型类型专属配置。公共业务字段保留在 ai_models 顶层，只有不同类型之间存在差异的
  * 请求能力与默认参数进入 config，避免运行时将插件返回对象整体覆盖数据库配置。
  */
 export const LLMModelConfigSchema = z.object({
@@ -127,7 +127,7 @@ export const STTSystemModelDocumentSchema = SystemModelDocumentBaseSchema.extend
   config: STTModelConfigSchema
 });
 
-/** system_models 持久化后的标准形态；modelId 由 MongoDB `_id` 提供，不重复存储。 */
+/** ai_models 持久化后的标准形态；modelId 由 MongoDB `_id` 提供，不重复存储。 */
 export const SystemModelDocumentDataSchema = z.discriminatedUnion('type', [
   LLMSystemModelDocumentSchema,
   EmbeddingSystemModelDocumentSchema,

@@ -1,7 +1,7 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
+import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import { SystemModelDocumentDataSchema } from '@fastgpt/global/core/ai/model.schema';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import {
@@ -12,7 +12,7 @@ import {
 
 async function handler(req: ApiRequestProps): Promise<GetSystemModelConfigJsonResponse> {
   await authSystemAdmin({ req });
-  const models = await MongoSystemModel.find({ scope: ModelScopeEnum.system }).lean();
+  const models = await MongoAIModel.find({ scope: ModelScopeEnum.system }).lean();
 
   return GetSystemModelConfigJsonResponseSchema.parse(
     JSON.stringify(

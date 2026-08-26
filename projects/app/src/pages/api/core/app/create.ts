@@ -174,7 +174,7 @@ export const onCreateApp = async ({
     chatConfig
   });
   formatModels({
-    modules: normalizedWorkflow.nodes,
+    nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig,
     models: global.systemModelList
   });
@@ -314,7 +314,7 @@ export const onUpdateAppWorkflow = async ({
     chatConfig
   });
   formatModels({
-    modules: workflow.nodes,
+    nodes: workflow.nodes,
     chatConfig: workflow.chatConfig,
     models: global.systemModelList
   });

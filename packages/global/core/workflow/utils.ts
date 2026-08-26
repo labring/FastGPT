@@ -32,6 +32,7 @@ import {
   defaultWhisperConfig
 } from '../app/constants';
 import { IfElseResultEnum } from './template/system/ifElse/constant';
+import { ModelTypeEnum } from '../ai/constants';
 import {
   Input_Template_File_Link,
   Input_Template_History,
@@ -567,67 +568,129 @@ export const clientGetWorkflowToolRunUserQuery = ({
   };
 };
 
-const workflowModelKeyMappings = [
+export const workflowModelKeyMappings = [
   [NodeInputKeyEnum.aiModel, NodeInputKeyEnum.aiModelId],
   [NodeInputKeyEnum.datasetSearchRerankModel, NodeInputKeyEnum.datasetSearchRerankModelId],
   [NodeInputKeyEnum.datasetSearchExtensionModel, NodeInputKeyEnum.datasetSearchExtensionModelId],
   [NodeInputKeyEnum.datasetDeepSearchModel, NodeInputKeyEnum.datasetDeepSearchModelId]
 ] as const;
 
+const systemLLMNodeTypes = new Set<FlowNodeTypeEnum>([
+  FlowNodeTypeEnum.chatNode,
+  FlowNodeTypeEnum.classifyQuestion,
+  FlowNodeTypeEnum.contentExtract,
+  FlowNodeTypeEnum.queryExtension,
+  FlowNodeTypeEnum.agent,
+  FlowNodeTypeEnum.toolCall
+]);
+
+/**
+ * 判断模型字段是否属于 FastGPT 系统模型引用。
+ * 外部工具可以自由声明 model/rerankModel 等同名参数，因此不能只根据 key 判断。
+ */
+export const isWorkflowSystemModelInput = ({
+  node,
+  input
+}: {
+  node: Pick<StoreNodeItemType, 'flowNodeType'>;
+  input: FlowNodeInputItemType;
+}) => {
+  if (input.key === NodeInputKeyEnum.aiModel || input.key === NodeInputKeyEnum.aiModelId) {
+    const renderTypeList = input.renderTypeList ?? [];
+    return (
+      renderTypeList.includes(FlowNodeInputTypeEnum.selectLLMModel) ||
+      renderTypeList.includes(FlowNodeInputTypeEnum.settingLLMModel) ||
+      systemLLMNodeTypes.has(node.flowNodeType)
+    );
+  }
+
+  if (
+    input.key === NodeInputKeyEnum.datasetSearchRerankModel ||
+    input.key === NodeInputKeyEnum.datasetSearchRerankModelId ||
+    input.key === NodeInputKeyEnum.datasetSearchExtensionModel ||
+    input.key === NodeInputKeyEnum.datasetSearchExtensionModelId ||
+    input.key === NodeInputKeyEnum.datasetDeepSearchModel ||
+    input.key === NodeInputKeyEnum.datasetDeepSearchModelId
+  ) {
+    return (
+      node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode ||
+      node.flowNodeType === FlowNodeTypeEnum.agent
+    );
+  }
+
+  return false;
+};
+
 /**
  * 在 Workflow 写入边界统一格式化模型引用。
  *
  * 对话配置中的旧 model 只在成功解析为 modelId 后删除，避免临时缺失模型造成引用丢失。
- * 静态旧 model 会将 key 改为 modelId，并将值转换为对应 ID；无法解析时
- * 保留 modelId key 并清空值，但不抛错。引用类型只改 key，保留引用值。若已有
+ * 静态旧 model 会将 key 改为 modelId，并将值转换为对应 ID；找不到同名模型时，
+ * 按模型类型回退到列表中的首个模型。引用类型只改 key，保留引用值。若已有
  * modelId input，则保留其值并删除对应旧 model input。该函数不承担模型权限判断。
  */
 export const formatModels = ({
-  modules,
+  nodes,
   chatConfig,
   models = []
 }: {
-  modules: AppSchemaType['modules'];
+  nodes: StoreNodeItemType[] | undefined;
   chatConfig?: AppSchemaType['chatConfig'];
-  models?: Array<{ modelId: string; model: string }>;
+  models?: Array<{ modelId: string; model: string; type: ModelTypeEnum }>;
 }) => {
-  const modelIdByModel = new Map(models.map((model) => [model.model, model.modelId]));
-  const formatChatModelReference = (config?: { modelId?: string; model?: string }) => {
+  const getModelId = (modelName: string, type: ModelTypeEnum) =>
+    models.find((model) => model.model === modelName && model.type === type)?.modelId ??
+    models.find((model) => model.type === type)?.modelId;
+  const formatChatModelReference = ({
+    config,
+    type
+  }: {
+    config?: { modelId?: string; model?: string };
+    type: ModelTypeEnum;
+  }) => {
     if (!config) return;
-    if (!config.modelId && config.model) config.modelId = modelIdByModel.get(config.model);
+    if (!config.modelId && config.model) config.modelId = getModelId(config.model, type);
     if (config.modelId) delete config.model;
   };
-  formatChatModelReference(chatConfig?.questionGuide);
-  formatChatModelReference(chatConfig?.ttsConfig);
+  formatChatModelReference({ config: chatConfig?.questionGuide, type: ModelTypeEnum.llm });
+  formatChatModelReference({ config: chatConfig?.ttsConfig, type: ModelTypeEnum.tts });
 
-  if (!modules) return modules;
+  if (!nodes) return nodes;
 
   const isReferenceInput = (input: FlowNodeInputItemType) =>
     getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.reference ||
     Array.isArray(input.value);
 
-  modules.forEach((module) => {
+  nodes.forEach((node) => {
     for (const [legacyKey, modelIdKey] of workflowModelKeyMappings) {
-      const legacyInput = module.inputs.find((input) => input.key === legacyKey);
-      const modelIdInput = module.inputs.find((input) => input.key === modelIdKey);
+      const legacyInput = node.inputs.find((input) => input.key === legacyKey);
+      const modelIdInput = node.inputs.find((input) => input.key === modelIdKey);
 
-      if (!legacyInput) continue;
+      if (!legacyInput || !isWorkflowSystemModelInput({ node, input: legacyInput })) continue;
 
       // modelId 始终优先；存在 canonical input 时删除所有对应旧 input。
       if (modelIdInput) {
-        module.inputs = module.inputs.filter((input) => input.key !== legacyKey);
+        node.inputs = node.inputs.filter((input) => input.key !== legacyKey);
         continue;
       }
 
       const isReference = isReferenceInput(legacyInput);
-      legacyInput.key = modelIdKey;
       if (!isReference) {
-        legacyInput.value = modelIdByModel.get(legacyInput.value);
+        // 字符串模板在运行时解析为旧 model 名称，不能静态改成 modelId 或清空。
+        if (typeof legacyInput.value === 'string' && /^\{\{.*\}\}$/.test(legacyInput.value)) {
+          continue;
+        }
+        const type =
+          legacyKey === NodeInputKeyEnum.datasetSearchRerankModel
+            ? ModelTypeEnum.rerank
+            : ModelTypeEnum.llm;
+        legacyInput.value = getModelId(legacyInput.value, type);
       }
+      legacyInput.key = modelIdKey;
       // 历史异常数据可能存在重复旧 key，转换首个后一并移除。
-      module.inputs = module.inputs.filter((input) => input.key !== legacyKey);
+      node.inputs = node.inputs.filter((input) => input.key !== legacyKey);
     }
   });
 
-  return modules;
+  return nodes;
 };

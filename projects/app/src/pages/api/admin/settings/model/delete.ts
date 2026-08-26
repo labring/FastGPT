@@ -1,6 +1,6 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
+import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { findModelData } from '@fastgpt/service/core/ai/model';
 import {
@@ -32,7 +32,7 @@ async function handler(
   }
 
   await mongoSessionRun(async (session) => {
-    await MongoSystemModel.deleteOne({ _id: modelId, scope: ModelScopeEnum.system }, { session });
+    await MongoAIModel.deleteOne({ _id: modelId, scope: ModelScopeEnum.system }, { session });
     await MongoResourcePermission.deleteMany(
       {
         resourceType: PerResourceTypeEnum.model,

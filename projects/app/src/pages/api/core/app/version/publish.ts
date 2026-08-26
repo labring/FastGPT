@@ -45,7 +45,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
 
   const normalizedWorkflow = migrateWorkflowToCurrent({ nodes, edges, chatConfig });
   formatModels({
-    modules: normalizedWorkflow.nodes,
+    nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig,
     models: global.systemModelList
   });

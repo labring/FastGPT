@@ -1,10 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
-import {
-  repairStoredSystemModels,
-  repairSystemModelDocument
-} from '@fastgpt/service/core/ai/config/repair';
+import { repairSystemModelDocument } from '@fastgpt/service/core/ai/config/repair';
 
 const canonicalLlm = {
   type: ModelTypeEnum.llm,
@@ -186,79 +182,5 @@ describe('repairSystemModelDocument', () => {
         record: { model: '', provider: null, type: 'unknown', metadata: {} }
       })
     ).toMatchObject({ status: 'invalid' });
-  });
-});
-
-describe('repairStoredSystemModels', () => {
-  beforeEach(async () => {
-    await MongoSystemModel.deleteMany({});
-  });
-
-  it('handles mixed documents per model, repairs recoverable data and deletes only invalid data', async () => {
-    const canonical = await MongoSystemModel.collection.insertOne(canonicalLlm);
-    const legacy = await MongoSystemModel.collection.insertOne({
-      model: 'legacy-embedding',
-      metadata: {
-        type: ModelTypeEnum.embedding,
-        provider: 'OpenAI',
-        name: 'Legacy embedding',
-        defaultToken: '500',
-        maxToken: '3000'
-      }
-    });
-    const invalid = await MongoSystemModel.collection.insertOne({
-      model: 'invalid',
-      metadata: { type: 'unknown' }
-    });
-
-    await expect(repairStoredSystemModels({ pluginDocuments: [] })).resolves.toEqual({
-      scanned: 3,
-      unchanged: 1,
-      repaired: 1,
-      deleted: 1,
-      deletedModels: [
-        {
-          modelId: String(invalid.insertedId),
-          model: 'invalid'
-        }
-      ]
-    });
-    await expect(
-      MongoSystemModel.collection.findOne({ _id: canonical.insertedId })
-    ).resolves.toMatchObject({
-      config: { maxContext: 32000 }
-    });
-    await expect(
-      MongoSystemModel.collection.findOne({ _id: legacy.insertedId })
-    ).resolves.toMatchObject({
-      model: 'legacy-embedding',
-      metadata: expect.any(Object),
-      config: { defaultToken: 500, maxToken: 3000, weight: 0 }
-    });
-    await expect(
-      MongoSystemModel.collection.findOne({ _id: invalid.insertedId })
-    ).resolves.toBeNull();
-
-    await expect(repairStoredSystemModels({ pluginDocuments: [] })).resolves.toEqual({
-      scanned: 2,
-      unchanged: 2,
-      repaired: 0,
-      deleted: 0,
-      deletedModels: []
-    });
-  });
-
-  it('uses a plugin template to recover an otherwise incomplete stored model', async () => {
-    await MongoSystemModel.collection.insertOne({ model: 'gpt-test', metadata: {} });
-
-    await expect(
-      repairStoredSystemModels({ pluginDocuments: [canonicalLlm] })
-    ).resolves.toMatchObject({ repaired: 1, deleted: 0 });
-    await expect(MongoSystemModel.collection.findOne({ model: 'gpt-test' })).resolves.toMatchObject(
-      {
-        provider: 'OpenAI',
-        config: { maxContext: 32000 }
-      }
-    );
   });
 });

@@ -22,6 +22,7 @@ import {
   resolveModelSelectorProvider
 } from './AIModelSelector.utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 type Props = Omit<SelectProps, 'list'> & {
   modelType?: ModelTypeEnum;
@@ -60,19 +61,32 @@ const ModelLabel = ({
   noOfLines?: ResponsiveValue<number>;
   showTags?: boolean;
 }) => (
-  <Flex alignItems={'center'} py={1} w={'100%'} minW={0}>
-    <Avatar
-      borderRadius={'0'}
-      mr={2}
-      src={model.avatar || HUGGING_FACE_ICON}
-      fallbackSrc={HUGGING_FACE_ICON}
-      w={avatarSize}
-    />
-    <Box noOfLines={noOfLines ?? 1} flex={'1 1 0'} minW={0} overflow={'hidden'}>
-      {model.name}
-    </Box>
-    {showTags && model.testMode && <TestModeBetaTag />}
-    {showTags && hasMultimodalEmbedding(model) && <MultimodalTag />}
+  <Flex
+    data-preserve-width
+    alignItems={'center'}
+    justifyContent={'space-between'}
+    py={1}
+    w={'100%'}
+    minW={0}
+  >
+    <Flex alignItems={'center'} flex={'1 1 0'} minW={0}>
+      <Avatar
+        borderRadius={'0'}
+        mr={2}
+        src={model.avatar || HUGGING_FACE_ICON}
+        fallbackSrc={HUGGING_FACE_ICON}
+        w={avatarSize}
+      />
+      <Box noOfLines={noOfLines ?? 1} minW={0} overflow={'hidden'}>
+        {model.name}
+      </Box>
+    </Flex>
+    {showTags && (model.testMode || hasMultimodalEmbedding(model)) && (
+      <Flex alignItems={'center'} gap={1} ml={2} flexShrink={0}>
+        {model.testMode && <TestModeBetaTag />}
+        {hasMultimodalEmbedding(model) && <MultimodalTag />}
+      </Flex>
+    )}
   </Flex>
 );
 
@@ -193,22 +207,35 @@ const AIModelSelectorInner = ({
     discoveryRequestTypeRef.current = modelType;
     runDiscovery(modelType);
   }, [discovery, modelType, runDiscovery]);
-  const {
-    data: selectedModel,
-    loading: selectedLoading,
-    error: selectedError
-  } = useRequest(() => getMyModel({ modelId: String(props.value) }), {
-    manual: !selectedModelId || props.value === UNSET_MODEL_VALUE,
-    refreshDeps: [props.value, valueField],
-    errorToast: ''
-  });
 
   const [provider, setProvider] = useState('');
   const [providerPage, setProviderPage] = useState(1);
   const [providerModels, setProviderModels] = useState<MyModelItemType[]>([]);
   const [providerHasMore, setProviderHasMore] = useState(false);
   const [providerLoading, setProviderLoading] = useState(false);
-  const resolvedSelectedModel = selectedModel ?? discoveredLegacyModel;
+  const selectedModelFromLoadedList = currentValue
+    ? [...(discovery?.list ?? []), ...providerModels].find(
+        (model) => (valueField === 'modelId' ? model.modelId : model.model) === currentValue
+      )
+    : undefined;
+  const {
+    data: selectedModel,
+    loading: selectedLoading,
+    error: selectedError
+  } = useRequest(() => getMyModel({ modelId: String(props.value) }), {
+    manual:
+      !selectedModelId ||
+      props.value === UNSET_MODEL_VALUE ||
+      selectedModelFromLoadedList !== undefined,
+    refreshDeps: [props.value, valueField],
+    errorToast: ''
+  });
+
+  // 选择器列表已经包含用户刚选中的完整模型，优先复用它，避免 value 变化后重复请求。
+  const requestedSelectedModel =
+    selectedModel?.modelId === selectedModelId ? selectedModel : undefined;
+  const resolvedSelectedModel =
+    selectedModelFromLoadedList ?? requestedSelectedModel ?? discoveredLegacyModel;
   const selectedModelForType =
     resolvedSelectedModel?.type === modelType &&
     isModelAllowedByValues(resolvedSelectedModel, allowedLegacyValues)
@@ -276,13 +303,31 @@ const AIModelSelectorInner = ({
     [valueField]
   );
   const selectedUnset = canBeUnset && props.value === UNSET_MODEL_VALUE;
+  const requiresSelectedModelRequest = !!selectedModelId && !selectedModelFromLoadedList;
+  const selectedValueLoading =
+    requiresSelectedModelRequest &&
+    !!props.value &&
+    (selectedLoading || (!requestedSelectedModel && !selectedError));
   const invalidValue = selectedModelId
-    ? !!props.value && !selectedLoading && (!!selectedError || !selectedModelForType)
+    ? !!props.value &&
+      !selectedValueLoading &&
+      ((requiresSelectedModelRequest && !!selectedError) || !selectedModelForType)
     : !!props.value && !!discovery && !selectedModelForType;
+  const selectedErrorText = selectedError
+    ? t(getErrText(selectedError, t('common:model_not_exist')) as any)
+    : t('common:model_not_exist');
   const selectedLabel = selectedUnset ? (
     <>{unsetLabel ?? t('common:not_model_config')}</>
+  ) : selectedValueLoading ? (
+    <>{t('common:model_loading_label')}</>
   ) : invalidValue ? (
-    <Box color={'red.500'}>{t('common:model_not_exist')}</Box>
+    <Box
+      color={'red.500'}
+      noOfLines={noOfLines ?? 1}
+      title={`${currentValue}: ${selectedErrorText}`}
+    >
+      {currentValue} ({selectedErrorText})
+    </Box>
   ) : selectedModelForType ? (
     <ModelLabel
       model={selectedModelForType}
@@ -377,8 +422,8 @@ const AIModelSelectorInner = ({
                 : []
         }
         placeholder={
-          selectedLoading
-            ? t('common:model_loading')
+          selectedValueLoading
+            ? t('common:model_loading_label')
             : (placeholder ?? t('common:not_model_config'))
         }
         changeOnEverySelect

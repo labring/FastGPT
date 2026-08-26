@@ -46,6 +46,7 @@ import {
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 describe('getHandleId', () => {
   it('should return correct handle id for source type', () => {
@@ -1347,14 +1348,14 @@ describe('clientGetWorkflowToolRunUserQuery', () => {
 
 describe('formatModels', () => {
   const models = [
-    { model: 'gpt-4', modelId: '68ad85a7463006c963799a05' },
-    { model: 'rerank-v1', modelId: '68ad85a7463006c963799a06' },
-    { model: 'extension-v1', modelId: '68ad85a7463006c963799a07' },
-    { model: 'deep-search-v1', modelId: '68ad85a7463006c963799a08' }
+    { model: 'gpt-4', modelId: '68ad85a7463006c963799a05', type: ModelTypeEnum.llm },
+    { model: 'rerank-v1', modelId: '68ad85a7463006c963799a06', type: ModelTypeEnum.rerank },
+    { model: 'extension-v1', modelId: '68ad85a7463006c963799a07', type: ModelTypeEnum.llm },
+    { model: 'deep-search-v1', modelId: '68ad85a7463006c963799a08', type: ModelTypeEnum.llm }
   ];
 
-  it('returns undefined modules unchanged', () => {
-    const result = formatModels({ modules: undefined as any, models });
+  it('returns undefined nodes unchanged', () => {
+    const result = formatModels({ nodes: undefined, models });
     expect(result).toBeUndefined();
   });
 
@@ -1369,7 +1370,7 @@ describe('formatModels', () => {
       }
     };
 
-    formatModels({ modules: [], chatConfig, models });
+    formatModels({ nodes: [], chatConfig, models });
 
     expect(chatConfig.questionGuide).toEqual({
       open: true,
@@ -1387,7 +1388,7 @@ describe('formatModels', () => {
       questionGuide: { open: true, model: 'temporarily-unavailable-model' }
     };
 
-    formatModels({ modules: [], chatConfig, models: [] });
+    formatModels({ nodes: [], chatConfig, models: [] });
 
     expect(chatConfig.questionGuide).toEqual({
       open: true,
@@ -1396,10 +1397,10 @@ describe('formatModels', () => {
   });
 
   it('replaces every static legacy workflow model key and value with modelId', () => {
-    const modules = [
+    const nodes = [
       {
         nodeId: 'node1',
-        flowNodeType: FlowNodeTypeEnum.chatNode,
+        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
         name: 'Chat',
         inputs: [
           {
@@ -1432,7 +1433,7 @@ describe('formatModels', () => {
       }
     ];
 
-    const result = formatModels({ modules, models });
+    const result = formatModels({ nodes, models });
 
     expect(result?.[0].inputs).toHaveLength(4);
     expect(result?.[0].inputs.map((input) => input.key)).not.toEqual(
@@ -1465,8 +1466,8 @@ describe('formatModels', () => {
     );
   });
 
-  it('clears a static legacy model without throwing when it cannot be converted', () => {
-    const modules = [
+  it('falls back to the first same-type model for an unresolved static legacy model', () => {
+    const nodes = [
       {
         nodeId: 'node1',
         flowNodeType: FlowNodeTypeEnum.chatNode,
@@ -1484,17 +1485,17 @@ describe('formatModels', () => {
       }
     ];
 
-    expect(() => formatModels({ modules, models })).not.toThrow();
-    expect(modules[0].inputs[0].key).toBe(NodeInputKeyEnum.aiModelId);
-    expect(modules[0].inputs[0].value).toBeUndefined();
-    expect(modules[0].inputs).toHaveLength(1);
+    expect(() => formatModels({ nodes, models })).not.toThrow();
+    expect(nodes[0].inputs[0].key).toBe(NodeInputKeyEnum.aiModelId);
+    expect(nodes[0].inputs[0].value).toBe(models[0].modelId);
+    expect(nodes[0].inputs).toHaveLength(1);
   });
 
   it('keeps existing modelId inputs unchanged without checking permissions', () => {
-    const modules = [
+    const nodes = [
       {
         nodeId: 'node1',
-        flowNodeType: FlowNodeTypeEnum.chatNode,
+        flowNodeType: FlowNodeTypeEnum.agent,
         name: 'Chat',
         inputs: [
           {
@@ -1521,7 +1522,7 @@ describe('formatModels', () => {
       }
     ];
 
-    const result = formatModels({ modules, models });
+    const result = formatModels({ nodes, models });
 
     expect(result?.[0].inputs[0].value).toBe(models[0].modelId);
     expect(result?.[0].inputs[1].value).toBe('68ad85a7463006c963799aff');
@@ -1533,10 +1534,10 @@ describe('formatModels', () => {
   });
 
   it('renames reference model keys without changing their values', () => {
-    const modules = [
+    const nodes = [
       {
         nodeId: 'node1',
-        flowNodeType: FlowNodeTypeEnum.chatNode,
+        flowNodeType: FlowNodeTypeEnum.agent,
         name: 'Chat',
         inputs: [
           {
@@ -1556,7 +1557,7 @@ describe('formatModels', () => {
         outputs: []
       }
     ];
-    const result = formatModels({ modules, models });
+    const result = formatModels({ nodes, models });
     expect(result?.[0].inputs[0].key).toBe(NodeInputKeyEnum.aiModelId);
     expect(result?.[0].inputs[0].value).toBe('unauthorized-model');
     expect(result?.[0].inputs[1].key).toBe(NodeInputKeyEnum.datasetSearchRerankModelId);
@@ -1564,8 +1565,35 @@ describe('formatModels', () => {
     expect(result?.[0].inputs).toHaveLength(2);
   });
 
-  it('leaves modules without model inputs unchanged', () => {
-    const modules = [
+  it('preserves dynamic legacy model expressions for runtime compatibility', () => {
+    const nodes = [
+      {
+        nodeId: 'node1',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        name: 'Chat',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModel,
+            value: '{{selectedModel}}',
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    formatModels({ nodes, models });
+
+    expect(nodes[0].inputs).toEqual([
+      expect.objectContaining({
+        key: NodeInputKeyEnum.aiModel,
+        value: '{{selectedModel}}'
+      })
+    ]);
+  });
+
+  it('leaves nodes without model inputs unchanged', () => {
+    const nodes = [
       {
         nodeId: 'node1',
         flowNodeType: FlowNodeTypeEnum.chatNode,
@@ -1581,7 +1609,63 @@ describe('formatModels', () => {
         outputs: []
       }
     ];
-    const result = formatModels({ modules, models });
+    const result = formatModels({ nodes, models });
     expect(result?.[0].inputs[0].value).toBe('some value');
+  });
+
+  it('does not rewrite an external tool input that happens to be named model', () => {
+    const nodes = [
+      {
+        nodeId: 'external-tool',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        name: 'External tool',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModel,
+            label: 'Business model parameter',
+            value: 'gpt-4',
+            renderTypeList: [FlowNodeInputTypeEnum.select]
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    formatModels({ nodes, models });
+
+    expect(nodes[0].inputs).toEqual([
+      expect.objectContaining({ key: NodeInputKeyEnum.aiModel, value: 'gpt-4' })
+    ]);
+  });
+
+  it('clears an unresolved rerank model without falling back across model types', () => {
+    const nodes = [
+      {
+        nodeId: 'dataset-search',
+        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+        name: 'Dataset search',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.datasetSearchRerankModel,
+            label: 'Rerank model',
+            value: 'missing-rerank',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    formatModels({
+      nodes,
+      models: models.filter((model) => model.type === ModelTypeEnum.llm)
+    });
+
+    expect(nodes[0].inputs).toEqual([
+      expect.objectContaining({
+        key: NodeInputKeyEnum.datasetSearchRerankModelId,
+        value: undefined
+      })
+    ]);
   });
 });

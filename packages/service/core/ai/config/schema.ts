@@ -1,5 +1,5 @@
 import { connectionMongo, defineIndex, getMongoModel } from '../../../common/mongo';
-import { SystemModelCollectionName } from './constants';
+import { AIModelCollectionName } from './constants';
 const { Schema } = connectionMongo;
 import type { SystemModelSchemaType } from '../type';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
@@ -67,13 +67,7 @@ defineIndex(SystemModelSchema, {
   }
 });
 
-defineIndex(SystemModelSchema, {
-  key: { model: 1 },
-  options: { unique: true },
-  deprecated: true
-});
-
-export const MongoSystemModel = getMongoModel<SystemModelSchemaType>(
-  SystemModelCollectionName,
+export const MongoAIModel = getMongoModel<SystemModelSchemaType>(
+  AIModelCollectionName,
   SystemModelSchema
 );

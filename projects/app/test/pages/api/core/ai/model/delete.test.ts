@@ -28,7 +28,7 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
-  MongoSystemModel: { deleteOne: mocks.deleteModel }
+  MongoAIModel: { deleteOne: mocks.deleteModel }
 }));
 
 vi.mock('@fastgpt/service/support/permission/schema', () => ({

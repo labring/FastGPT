@@ -205,7 +205,7 @@ export const MultipleRowSelect = ({
   return (
     <Box
       css={css({
-        '& div': {
+        '& div:not([data-preserve-width])': {
           width: 'auto !important'
         }
       })}

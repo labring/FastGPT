@@ -1,6 +1,6 @@
 import type { SystemDefaultModelType } from '../type';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { MongoSystemModel } from './schema';
+import { MongoAIModel } from './schema';
 import {
   type EmbeddingSystemModelDataType,
   type LLMSystemModelDataType,
@@ -26,8 +26,9 @@ import { preloadModelProviders } from '../../../core/app/provider/controller';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
-import { flatModelToDocumentData, repairStoredSystemModels } from './repair';
+import { flatModelToDocumentData } from './repair';
 import { clearAllMyModelsCache } from '../../../support/permission/model/controller';
+import { bootstrapAIModelsFromLegacy } from './legacy';
 
 /**
  * 生成可返回客户端的脱敏模型副本。系统模型对象还会被服务端请求链路复用，不能原地删除字段。
@@ -80,31 +81,6 @@ export const refreshModelTemplates = async (): Promise<SystemModelDocumentDataTy
 };
 
 /**
- * 仅在启动升级阶段接管历史 system_models。该步骤只迁移数据库，不构建运行时缓存。
- */
-export const migrateLegacySystemModels = async ({
-  pluginDocuments
-}: {
-  pluginDocuments: SystemModelDocumentDataType[];
-}) => {
-  const repairStats = await repairStoredSystemModels({ pluginDocuments });
-  if (repairStats.repaired > 0) {
-    getLogger(LogCategories.MODULE.AI.CONFIG).warn('System model documents repaired', {
-      scanned: repairStats.scanned,
-      unchanged: repairStats.unchanged,
-      repaired: repairStats.repaired
-    });
-  }
-  if (repairStats.deleted > 0) {
-    getLogger(LogCategories.MODULE.AI.CONFIG).warn('Invalid system model documents deleted', {
-      deleted: repairStats.deleted,
-      models: repairStats.deletedModels
-    });
-  }
-  return repairStats;
-};
-
-/**
  * 当前版本的自动预装兼容策略：只物化插件中存在但数据库缺失的系统模型。
  * 模板消失不会在这里删除或停用实例；PR2 可将本函数替换为显式模板安装。
  */
@@ -115,7 +91,7 @@ export const syncPreinstalledSystemModels = async ({
 }) => {
   if (pluginDocuments.length === 0) return;
 
-  await MongoSystemModel.bulkWrite(
+  await MongoAIModel.bulkWrite(
     pluginDocuments.map((document) => ({
       updateOne: {
         filter: { scope: ModelScopeEnum.system, model: document.model },
@@ -199,7 +175,7 @@ export const loadInstalledModels = async ({
   };
 
   try {
-    const dbModels = await MongoSystemModel.find({ scope: ModelScopeEnum.system }).lean();
+    const dbModels = await MongoAIModel.find({ scope: ModelScopeEnum.system }).lean();
     const pluginDocumentMap = new Map(pluginDocuments.map((model) => [model.model, model]));
 
     dbModels.forEach((dbModel) => {
@@ -294,8 +270,14 @@ export const loadInstalledModels = async ({
   }
 };
 
+let startupBootstrapPromise: Promise<void> | undefined;
+
+/** 等待当前进程的后台模型迁移完成，主要供启动探针与测试观察最终状态。 */
+export const waitForAIModelsBootstrap = () => startupBootstrapPromise ?? Promise.resolve();
+
 /**
- * 编排系统模型启动或模板热刷新。启动才执行历史迁移；热刷新只更新模板、预装和实例快照。
+ * 编排模型启动或模板热刷新。插件刷新仍是启动前置条件；首次启动会先发布 ai_models 当前快照，
+ * 再在后台执行旧表迁移、自动预装和最终缓存刷新，因此空目标表只会造成短暂不可用。
  */
 export const loadSystemModels = async (refresh = false, language = 'en') => {
   if (!refresh && global.systemModelList) return;
@@ -303,12 +285,23 @@ export const loadSystemModels = async (refresh = false, language = 'en') => {
   try {
     await preloadModelProviders();
     const pluginDocuments = await refreshModelTemplates();
-    const isStartup = !global.systemModelList;
-
-    if (isStartup) {
-      // 必须先接管无 scope 的旧文档，再按新作用域自然键执行缺失模板预装。
-      await migrateLegacySystemModels({ pluginDocuments });
+    if (!global.systemModelList) {
+      await loadInstalledModels({ pluginDocuments, language });
+      startupBootstrapPromise = (async () => {
+        const result = await bootstrapAIModelsFromLegacy({ pluginDocuments });
+        await syncPreinstalledSystemModels({ pluginDocuments });
+        await loadInstalledModels({ pluginDocuments, language });
+        await updateFastGPTConfigBuffer();
+        getLogger(LogCategories.MODULE.AI.CONFIG).info('AI model bootstrap completed', result);
+      })().catch((error) => {
+        getLogger(LogCategories.MODULE.AI.CONFIG).error('AI model bootstrap failed', { error });
+        throw error;
+      });
+      // 后台失败由日志记录，进程保持已发布的 ai_models 快照，下次重启会重新尝试迁移。
+      void startupBootstrapPromise.catch(() => undefined);
+      return;
     }
+
     await syncPreinstalledSystemModels({ pluginDocuments });
     await loadInstalledModels({ pluginDocuments, language });
   } catch (error) {
@@ -340,7 +333,7 @@ export const getSystemModelConfig = async (
 };
 
 export const watchSystemModelUpdate = () => {
-  const changeStream = MongoSystemModel.watch();
+  const changeStream = MongoAIModel.watch();
 
   return changeStream.on(
     'change',

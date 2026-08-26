@@ -1,5 +1,5 @@
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
+import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import { Call } from '@test/utils/request';
 import { getRootUser } from '@test/datas/users';
 import { describe, expect, it, vi } from 'vitest';
@@ -69,8 +69,8 @@ const callUpdateWithJson = async (config: string) => {
 
 describe('admin settings model updateWithJson api', () => {
   it('updates matching IDs, creates external models by model and disables omitted records', async () => {
-    const oldModel = await MongoSystemModel.create(buildStoredLlm('old-model'));
-    const existingModel = await MongoSystemModel.create(buildStoredLlm('test-llm'));
+    const oldModel = await MongoAIModel.create(buildStoredLlm('old-model'));
+    const existingModel = await MongoAIModel.create(buildStoredLlm('test-llm'));
 
     const res = await callUpdateWithJson(
       JSON.stringify([
@@ -80,40 +80,40 @@ describe('admin settings model updateWithJson api', () => {
     );
 
     expect(res.code).toBe(200);
-    const disabledModel = await MongoSystemModel.findById(oldModel._id).lean();
+    const disabledModel = await MongoAIModel.findById(oldModel._id).lean();
     expect(disabledModel?.isActive).toBe(false);
-    const updatedModel = await MongoSystemModel.findOne({ model: 'test-llm' }).lean();
+    const updatedModel = await MongoAIModel.findOne({ model: 'test-llm' }).lean();
     expect(String(updatedModel?._id)).toBe(String(existingModel._id));
     expect(updatedModel).toMatchObject({
       scope: 'system',
       config: { maxContext: 16000, maxResponse: 8000, quoteMaxToken: 12000 }
     });
-    const externalModel = await MongoSystemModel.findOne({ model: 'test-embedding' }).lean();
+    const externalModel = await MongoAIModel.findOne({ model: 'test-embedding' }).lean();
     expect(externalModel).toMatchObject({ scope: 'system', config: { weight: 0 } });
     expect(String(externalModel?._id)).not.toBe('external-system-model-id');
   });
 
   it('ignores old records without modelId and does not disable all models', async () => {
-    const existing = await MongoSystemModel.create(buildStoredLlm('existing-model'));
+    const existing = await MongoAIModel.create(buildStoredLlm('existing-model'));
     const res = await callUpdateWithJson(
       JSON.stringify([{ ...buildStoredLlm('legacy-model'), scope: undefined }])
     );
 
     expect(res.code).toBe(200);
-    await expect(MongoSystemModel.findById(existing._id).lean()).resolves.toMatchObject({
+    await expect(MongoAIModel.findById(existing._id).lean()).resolves.toMatchObject({
       isActive: true
     });
-    await expect(MongoSystemModel.findOne({ model: 'legacy-model' })).resolves.toBeNull();
+    await expect(MongoAIModel.findOne({ model: 'legacy-model' })).resolves.toBeNull();
   });
 
   it('reuses a target model ID when an external ID points to an existing provider model', async () => {
-    const existing = await MongoSystemModel.create(buildStoredLlm('test-llm'));
+    const existing = await MongoAIModel.create(buildStoredLlm('test-llm'));
     const res = await callUpdateWithJson(
       JSON.stringify([buildLlmConfig({ modelId: 'another-system-id' })])
     );
 
     expect(res.code).toBe(200);
-    const updated = await MongoSystemModel.findOne({ model: 'test-llm' }).lean();
+    const updated = await MongoAIModel.findOne({ model: 'test-llm' }).lean();
     expect(String(updated?._id)).toBe(String(existing._id));
     expect(updated?.config.maxContext).toBe(16000);
   });
@@ -122,7 +122,7 @@ describe('admin settings model updateWithJson api', () => {
     const res = await callUpdateWithJson('{invalid-json');
 
     expect(res.error?.name).toBe('ApiRequestInputParseError');
-    await expect(MongoSystemModel.countDocuments()).resolves.toBe(0);
+    await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
   });
 
   it('rejects non-canonical latest records instead of repairing them', async () => {
@@ -132,6 +132,6 @@ describe('admin settings model updateWithJson api', () => {
     const res = await callUpdateWithJson(JSON.stringify([config]));
 
     expect(res.error?.name).toBe('UserError');
-    await expect(MongoSystemModel.countDocuments()).resolves.toBe(0);
+    await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
   });
 });

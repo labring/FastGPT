@@ -19,7 +19,7 @@ vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
-  MongoSystemModel: {
+  MongoAIModel: {
     updateMany: mocks.updateMany,
     bulkWrite: mocks.bulkWrite
   }
