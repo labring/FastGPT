@@ -4,6 +4,7 @@ import { BillPayWayEnum, BillStatusEnum, BillTypeEnum } from './constants';
 import type { TeamInvoiceHeaderType } from '../../user/team/type';
 import z from 'zod';
 import { ObjectIdSchema } from '../../../common/type/mongo';
+import { NumSchema } from '../../../common/zod';
 
 export const BillSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '订单 ID' }),
@@ -24,7 +25,7 @@ export const BillSchema = z.object({
       payWay: z.enum(BillPayWayEnum).meta({ description: '支付方式' }),
       subMode: z.enum(SubModeEnum).optional().meta({ description: '订阅周期' }),
       standSubLevel: z.enum(StandardSubLevelEnum).optional().meta({ description: '订阅等级' }),
-      month: z.number().optional().meta({ description: '月数' }),
+      month: NumSchema.nonnegative().optional().meta({ description: '月数' }),
       datasetSize: z.number().optional().meta({ description: '数据集大小' }),
       extraPoints: z.number().optional().meta({ description: '额外积分' }),
       activitySource: z.literal('enterpriseAuth').optional().meta({ description: '活动赠送来源' }),
