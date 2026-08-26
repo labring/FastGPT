@@ -183,6 +183,8 @@ export function useScrollPagination<
           ref={ref}
           h={'100%'}
           overflow={'auto'}
+          display={'flex'}
+          flexDirection={'column'}
           isLoading={isLoading || isLoadingProp}
           {...props}
         >
@@ -194,7 +196,8 @@ export function useScrollPagination<
           {children}
           {scrollLoadType === 'bottom' && !isEmpty && (showNoMoreTip || !noMore) && (
             <Box
-              mt={2}
+              mt={'auto'}
+              pt={2}
               fontSize={'xs'}
               color={'blackAlpha.500'}
               textAlign={'center'}
