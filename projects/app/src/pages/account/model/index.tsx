@@ -9,33 +9,29 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRouter } from 'next/router';
 import { accountPageRootStyles, accountTitleTextStyles } from '@/pageComponents/account/styles';
+import {
+  getAccountModelTabs,
+  type AccountModelTabType
+} from '@/pageComponents/account/model/tabUtils';
 
 const ModelConfigTable = dynamic(() => import('@/pageComponents/account/model/ModelConfigTable'));
 const ChannelTable = dynamic(() => import('@/pageComponents/account/model/Channel'));
 const ModelLogPage = dynamic(() => import('@/pageComponents/account/model/Log'));
 const ModelMonitor = dynamic(() => import('@/pageComponents/account/model/ModelDashboard'));
 
-type TabType = 'model' | 'config' | 'channel' | 'log' | 'monitor';
-
 const ModelProvider = () => {
   const { t } = useClientTranslation(['config_model', 'account']);
   const { feConfigs, initd } = useSystemStore();
   const { userInfo } = useUserStore();
   const router = useRouter();
-  const modelTabList = useMemo<{ label: string; value: TabType }[]>(() => {
-    const activeModelTab = { label: t('config_model:active_model'), value: 'model' as const };
-    if (userInfo?.username === 'root') return [activeModelTab];
-
-    return [
-      activeModelTab,
-      { label: t('config_model:config_model'), value: 'config' as const },
-      ...(feConfigs.show_aiproxy
-        ? [{ label: t('config_model:channel'), value: 'channel' as const }]
-        : []),
-      { label: t('config_model:log'), value: 'log' as const },
-      { label: t('config_model:monitoring'), value: 'monitor' as const }
-    ];
-  }, [feConfigs.show_aiproxy, t, userInfo?.username]);
+  const modelTabList = useMemo(
+    () =>
+      getAccountModelTabs(feConfigs.show_aiproxy).map((item) => ({
+        label: t(item.labelKey),
+        value: item.value
+      })),
+    [feConfigs.show_aiproxy, t]
+  );
   const queryModelTab = router.query.modelTab;
   const modelTab = modelTabList.find((item) => item.value === queryModelTab)?.value ?? 'model';
 
@@ -56,7 +52,7 @@ const ModelProvider = () => {
 
   const Tab = useMemo(
     () => (
-      <FillRowTabs<TabType>
+      <FillRowTabs<AccountModelTabType>
         w={['100%', 'auto']}
         size={'sm'}
         scrollPositionKey={'account-model-tabs'}
@@ -91,7 +87,7 @@ const ModelProvider = () => {
           borderColor={'myGray.200'}
         >
           <Box as={'h1'} {...accountTitleTextStyles}>
-            {t('account:model_provider')}
+            {t('common:model.provider_title')}
           </Box>
         </Flex>
         <Flex

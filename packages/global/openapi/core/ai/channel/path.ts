@@ -8,6 +8,12 @@ import {
   DeleteChannelQuerySchema,
   DeleteChannelResponseSchema,
   GetAffectedModelsQuerySchema,
+  GetChannelDashboardQuerySchema,
+  GetChannelDashboardResponseSchema,
+  GetChannelLogDetailQuerySchema,
+  GetChannelLogDetailResponseSchema,
+  GetChannelLogsQuerySchema,
+  GetChannelLogsResponseSchema,
   GetChannelModelsQuerySchema,
   GetModelChannelsQuerySchema,
   ListChannelsQuerySchema,
@@ -181,6 +187,51 @@ export const ChannelPath: OpenAPIPath = {
         200: {
           description: 'Provider metadata',
           content: { 'application/json': { schema: ProviderMetasResponseSchema } }
+        }
+      }
+    }
+  },
+  '/core/ai/channel/logs': {
+    get: {
+      summary: '查询渠道调用日志',
+      description:
+        'system 仅 root 查询全局系统渠道日志；team 查询当前登录成员私有 group-channel 日志。groupId 由服务端推导，channelId 会先校验归属。',
+      tags: [DevApiTagsMap.model],
+      requestParams: { query: GetChannelLogsQuerySchema },
+      responses: {
+        200: {
+          description: '渠道调用日志分页列表',
+          content: { 'application/json': { schema: GetChannelLogsResponseSchema } }
+        }
+      }
+    }
+  },
+  '/core/ai/channel/logDetail': {
+    get: {
+      summary: '获取渠道调用日志详情',
+      description:
+        '按当前登录成员可访问的 system/team 范围读取请求与响应详情，team 日志 ID 会由 aiproxy 再次按服务端推导的 group 校验。',
+      tags: [DevApiTagsMap.model],
+      requestParams: { query: GetChannelLogDetailQuerySchema },
+      responses: {
+        200: {
+          description: '渠道调用日志详情',
+          content: { 'application/json': { schema: GetChannelLogDetailResponseSchema } }
+        }
+      }
+    }
+  },
+  '/core/ai/channel/dashboard': {
+    get: {
+      summary: '查询渠道监控数据',
+      description:
+        'system 仅 root 查询全局系统渠道监控；team 查询当前登录成员私有 group-channel 监控。groupId 由服务端推导，channelId 会先校验归属。',
+      tags: [DevApiTagsMap.model],
+      requestParams: { query: GetChannelDashboardQuerySchema },
+      responses: {
+        200: {
+          description: '渠道监控时序数据',
+          content: { 'application/json': { schema: GetChannelDashboardResponseSchema } }
         }
       }
     }

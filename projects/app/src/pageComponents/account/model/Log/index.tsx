@@ -1,4 +1,5 @@
 import { getChannelList, getChannelLog, getLogDetail } from '@/web/core/ai/channel';
+import type { ChannelKind } from '@/web/core/ai/channel';
 import { getModelList } from '@/web/core/ai/config';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {
@@ -37,6 +38,7 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import type { ChannelLogListItemType } from '@/global/aiproxy/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ModelTabHeader from '../ModelTabHeader';
+import { getObservabilityChannelType, type ChannelScopeFilter } from '../observabilityScope';
 
 type LogDetailType = Omit<ChannelLogListItemType, 'model' | 'request_at'> & {
   channelName: string | number;
@@ -54,8 +56,9 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
   const { userInfo } = useUserStore();
   const { getModelProvider } = useSystemStore();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-
   const isRoot = userInfo?.username === 'root';
+  const [activeGroupType, setActiveGroupType] = useState<ChannelScopeFilter>('public');
+  const channelType = getObservabilityChannelType({ isRoot, activeGroupType });
   const [filterProps, setFilterProps] = useState<{
     request_id?: string;
     channelId?: string;
@@ -81,7 +84,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
 
   const { data: channelList = [] } = useRequest(
     async () => {
-      const res = await getChannelList().then((res) =>
+      const res = await getChannelList({ groupType: channelType }).then((res) =>
         res.map((item) => ({
           label: item.name,
           value: `${item.id}`
@@ -96,13 +99,18 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
       ];
     },
     {
-      manual: false
+      manual: false,
+      refreshDeps: [channelType]
     }
   );
 
-  const { data: systemModelList = [] } = useRequest(() => getModelList({ isSystem: true }), {
-    manual: false
-  });
+  const { data: systemModelList = [] } = useRequest(
+    () => getModelList({ isSystem: channelType === 'system' }),
+    {
+      manual: false,
+      refreshDeps: [channelType]
+    }
+  );
   const modelList = useMemo(() => {
     const res = systemModelList
       .map((item) => {
@@ -127,10 +135,11 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
 
   const { data, isLoading, total, pageSize, Pagination } = usePagination(getChannelLog, {
     defaultPageSize: 20,
-    pageSizeOptions: [20, 50, 100, 200],
+    pageSizeOptions: [20, 50, 100],
     pageSizeCacheKey: 'config-model-channel-log',
-    refreshDeps: [filterProps],
+    refreshDeps: [filterProps, channelType],
     params: {
+      channelType,
       request_id: filterProps.request_id,
       channel: filterProps.channelId,
       model_name: filterProps.model,
@@ -172,7 +181,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
   return (
     <>
       <MyBox display={'flex'} flex={'1 0 0'} h={0} minH={0} flexDirection={'column'} gap={4}>
-        {isRoot && <ModelTabHeader Tab={Tab} />}
+        <ModelTabHeader Tab={Tab} />
         <Flex
           px={6}
           flexDirection={['column', 'row']}
@@ -180,6 +189,31 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
           alignItems={['stretch', 'flex-start']}
           gap={[3, 4]}
         >
+          {isRoot && (
+            <Flex w={['100%', 'auto']} flexShrink={0} alignItems={'center'} gap={2}>
+              <FormLabel w={['84px', 'auto']} flexShrink={0}>
+                {t('config_model:channel.scope')}
+              </FormLabel>
+              <Box flex={['1 1 0', '0 0 160px']} minW={0} w={['auto', '160px']}>
+                <MySelect<ChannelScopeFilter>
+                  bg={'myGray.25'}
+                  list={[
+                    { label: t('config_model:channel_public_tab'), value: 'public' },
+                    { label: t('config_model:channel_team_tab'), value: 'team' }
+                  ]}
+                  value={activeGroupType}
+                  onChange={(value) => {
+                    setActiveGroupType(value);
+                    setFilterProps((state) => ({
+                      ...state,
+                      channelId: undefined,
+                      model: undefined
+                    }));
+                  }}
+                />
+              </Box>
+            </Flex>
+          )}
           <Flex w={['100%', 'auto']} flexShrink={0} alignItems={'center'} gap={2}>
             <FormLabel w={['84px', 'auto']} flexShrink={0}>
               {t('common:user.Time')}
@@ -205,7 +239,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
                 list={channelList}
                 placeholder={t('config_model:select_channel')}
                 value={filterProps.channelId}
-                onChange={(val) => setFilterProps({ ...filterProps, channelId: val })}
+                onChange={(val) => setFilterProps({ ...filterProps, channelId: val || undefined })}
               />
             </Box>
           </Flex>
@@ -316,7 +350,13 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
         </MyBox>
       </MyBox>
 
-      {!!logDetail && <LogDetail data={logDetail} onClose={() => setLogDetail(undefined)} />}
+      {!!logDetail && (
+        <LogDetail
+          data={logDetail}
+          channelType={channelType}
+          onClose={() => setLogDetail(undefined)}
+        />
+      )}
     </>
   );
 };
@@ -346,13 +386,21 @@ const LogDetailContainer = ({ children, ...props }: { children: React.ReactNode 
   );
 };
 
-const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void }) => {
+const LogDetail = ({
+  data,
+  channelType,
+  onClose
+}: {
+  data: LogDetailType;
+  channelType: ChannelKind;
+  onClose: () => void;
+}) => {
   const { t } = useClientTranslation('config_model');
   const { data: detailData } = useRequest(
     async () => {
       if (data.code === 200) return data;
       try {
-        const res = await getLogDetail(data.id);
+        const res = await getLogDetail(data.id, channelType);
         return {
           ...res,
           ...data

@@ -1,5 +1,3 @@
-import axios, { type Method } from 'axios';
-import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
 import type {
   ChannelBody,
@@ -12,17 +10,13 @@ import type {
   UpdateChannelStatusBody,
   UpdateChannelStatusResponse,
   AffectedModelsResponse,
-  ModelChannelsResponse
+  ModelChannelsResponse,
+  ChannelLogListItem,
+  GetChannelLogDetailResponse,
+  ChannelDashboardPoint
 } from '@fastgpt/global/openapi/core/ai/channel/api';
-import {
-  type ChannelInfoType,
-  type ChannelLogListItemType,
-  type ChannelRelatedModelItem,
-  type DashboardDataItemType,
-  DashboardDataItemSchema
-} from '@/global/aiproxy/type';
+import { type ChannelInfoType, type ChannelRelatedModelItem } from '@/global/aiproxy/type';
 import type { ChannelStatusEnum } from '@/global/aiproxy/constants';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 /** Channel kind for resource ops — mirrors the openapi ChannelType (design §2.9.4) */
 export type ChannelKind = 'system' | 'team';
@@ -92,94 +86,13 @@ export const getChannelModels = (id: number, channelType: ChannelKind) =>
 export const getModelChannels = (modelId: string) =>
   GET<ModelChannelsResponse>('/core/ai/channel/modelChannels', { modelId });
 
-// ═══ aiproxy admin passthrough (root-only; see pages/api/aiproxy/[...path].ts) ═══
-// Kept for the channel form's provider meta and the root-only log/monitoring pages.
-// NOTE: /api/aiproxy/[...path].ts requires authSystemAdmin, so these calls are root-only.
-
-interface AiproxyResponseDataType {
-  success: boolean;
-  message: string;
-  data: any;
-}
-
-function aiproxyCheckRes(data: AiproxyResponseDataType) {
-  if (data === undefined) {
-    console.log('error->', data, 'data is empty');
-    return Promise.reject(i18nT('common:server_error'));
-  } else if (!data.success) {
-    return Promise.reject(data);
-  }
-  return data.data;
-}
-
-function aiproxyResponseError(err: any) {
-  console.log('error->', '请求错误', err);
-  const data = err?.response?.data || err;
-
-  if (!err) {
-    return Promise.reject({ message: i18nT('common:error.unKnow') });
-  }
-  if (typeof err === 'string') {
-    return Promise.reject({ message: err });
-  }
-  if (typeof data === 'string') {
-    return Promise.reject(data);
-  }
-
-  return Promise.reject(data);
-}
-
-const aiproxyInstance = axios.create({
-  timeout: 60000, // 超时时间
-  headers: {
-    'content-type': 'application/json'
-  }
-});
-
-aiproxyInstance.interceptors.response.use(
-  (response) => response,
-  (err) => Promise.reject(err)
-);
-
-function aiproxyRequest(url: string, data: any, method: Method): any {
-  /* 去空 */
-  for (const key in data) {
-    if (data[key] === undefined) {
-      delete data[key];
-    }
-  }
-
-  return aiproxyInstance
-    .request({
-      baseURL: getWebReqUrl('/api/aiproxy/api'),
-      url,
-      method,
-      data: ['POST', 'PUT'].includes(method) ? data : undefined,
-      params: !['POST', 'PUT'].includes(method) ? data : undefined
-    })
-    .then((res) => aiproxyCheckRes(res.data))
-    .catch((err) => aiproxyResponseError(err));
-}
-
-function aiproxyGET<T = undefined>(url: string, params = {}): Promise<T> {
-  return aiproxyRequest(url, params, 'GET');
-}
-function aiproxyPOST<T = undefined>(url: string, data = {}): Promise<T> {
-  return aiproxyRequest(url, data, 'POST');
-}
-function aiproxyPUT<T = undefined>(url: string, data = {}): Promise<T> {
-  return aiproxyRequest(url, data, 'PUT');
-}
-function aiproxyDELETE<T = undefined>(url: string, data = {}): Promise<T> {
-  return aiproxyRequest(url, data, 'DELETE');
-}
-
 /** aiproxy provider metas (defaultBaseUrl/keyHelp) — any authenticated user
  *  (served by /core/ai/channel/providerMetas with a server-side admin token) */
 export const getChannelProviders = () =>
   GET<ProviderMetasResponse>('/core/ai/channel/providerMetas');
 
 export const getChannelLog = (params: {
+  channelType: ChannelKind;
   request_id?: string;
   channel?: string;
   model_name?: string;
@@ -190,33 +103,26 @@ export const getChannelLog = (params: {
   pageNum?: number;
   pageSize: number;
 }) =>
-  aiproxyGET<{
-    logs: ChannelLogListItemType[];
+  GET<{
+    list: ChannelLogListItem[];
     total: number;
-  }>('/logs/search', {
-    result_only: true,
-    request_id: params.request_id,
-    channel: params.channel,
-    model_name: params.model_name,
-    code_type: params.code_type,
-    start_timestamp: params.start_timestamp,
-    end_timestamp: params.end_timestamp,
-    p: params.pageNum ?? Math.floor((params.offset ?? 0) / params.pageSize) + 1,
-    per_page: params.pageSize
-  }).then((res) => {
-    return {
-      list: res.logs,
-      total: res.total
-    };
+  }>('/core/ai/channel/logs', {
+    channelType: params.channelType,
+    requestId: params.request_id,
+    channelId: params.channel,
+    modelName: params.model_name,
+    codeType: params.code_type,
+    startTimestamp: params.start_timestamp,
+    endTimestamp: params.end_timestamp,
+    pageNum: params.pageNum ?? Math.floor((params.offset ?? 0) / params.pageSize) + 1,
+    pageSize: params.pageSize
   });
 
-export const getLogDetail = (id: number) =>
-  aiproxyGET<{
-    request_body: string;
-    response_body: string;
-  }>(`/logs/detail/${id}`);
+export const getLogDetail = (id: number, channelType: ChannelKind) =>
+  GET<GetChannelLogDetailResponse>('/core/ai/channel/logDetail', { id, channelType });
 
 export const getDashboardV2 = (params: {
+  channelType: ChannelKind;
   channel?: number;
   model?: string;
   start_timestamp?: number;
@@ -224,14 +130,12 @@ export const getDashboardV2 = (params: {
   timezone: string;
   timespan: 'day' | 'hour' | 'minute';
 }) =>
-  aiproxyGET<
-    {
-      timestamp: number;
-      summary: DashboardDataItemType[];
-    }[]
-  >('/dashboardv2/', params).then((res) =>
-    res.map((item) => ({
-      ...item,
-      summary: item.summary.map((item) => DashboardDataItemSchema.parse(item))
-    }))
-  );
+  GET<ChannelDashboardPoint[]>('/core/ai/channel/dashboard', {
+    channelType: params.channelType,
+    channelId: params.channel,
+    model: params.model,
+    startTimestamp: params.start_timestamp,
+    endTimestamp: params.end_timestamp,
+    timezone: params.timezone,
+    timespan: params.timespan
+  });

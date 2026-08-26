@@ -1998,3 +1998,24 @@ export const ChannelListItemSchema = z.object({
 | `noAvailableChannel` | 404 | 模型无可调用渠道（relay 归一） |
 
 路径注册于 `packages/global/openapi/core/ai/channel/path.ts`（`ChannelPath`，tag: `DevApiTagsMap.model`）。
+
+### 13.4 渠道日志与监控 API
+
+#### 13.4.1 数据源与路由
+
+| FastGPT 范围 | 日志列表 | 日志详情 | 监控 |
+|---|---|---|---|
+| `system`（仅 root） | `/api/logs/search` | `/api/logs/detail/:id` | `/api/dashboardv2/` |
+| `team`（当前成员） | `/api/log/:group/group_channel/search` | `/api/log/:group/group_channel/detail/:id` | `/api/group/:group/channel-dashboardv2` |
+
+不得使用普通 group 日志或 dashboard 接口替代上述 group-channel 接口，aiproxy 将两类数据分开存储。
+
+#### 13.4.2 FastGPT 端点
+
+- `GET /api/core/ai/channel/logs`：分页查询渠道调用日志。
+- `GET /api/core/ai/channel/logDetail`：查询单条日志请求和响应体。
+- `GET /api/core/ai/channel/dashboard`：查询按 day/hour/minute 聚合的监控时序数据。
+
+请求 schema 只接受 `channelType: system | team`、channelId、时间范围、模型和分页/粒度参数，
+不接受客户端传入 groupId 或 aiproxy path。响应统一使用 `channel`、`channel_id` 字段，并标识
+截断的请求/响应体。

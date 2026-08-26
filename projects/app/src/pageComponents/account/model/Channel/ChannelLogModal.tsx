@@ -1,4 +1,5 @@
 import { getChannelList, getChannelLog, getLogDetail } from '@/web/core/ai/channel';
+import type { ChannelKind } from '@/web/core/ai/channel';
 import { getModelList } from '@/web/core/ai/config';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
@@ -10,7 +11,6 @@ import {
   Td,
   TableContainer,
   Box,
-  Flex,
   Button,
   HStack,
   ModalBody,
@@ -134,9 +134,13 @@ const ChannelLogModal = ({
     }
   );
 
-  const { data: systemModelList = [] } = useRequest(getModelList, {
-    manual: false
-  });
+  const { data: systemModelList = [] } = useRequest(
+    () => getModelList({ isSystem: channelType === 'system' }),
+    {
+      manual: false,
+      refreshDeps: [channelType]
+    }
+  );
   const modelList = useMemo(() => {
     const res = systemModelList
       .map((item) => {
@@ -161,8 +165,9 @@ const ChannelLogModal = ({
 
   const { data, isLoading, ScrollData } = useScrollPagination(getChannelLog, {
     pageSize: 20,
-    refreshDeps: [filterProps],
+    refreshDeps: [filterProps, channelType],
     params: {
+      channelType,
       request_id: filterProps.request_id,
       channel: filterProps.channelId,
       model_name: filterProps.model,
@@ -323,25 +328,39 @@ const ChannelLogModal = ({
         </MyBox>
       </ModalBody>
 
-      {!!logDetail && <LogDetail data={logDetail} onClose={() => setLogDetail(undefined)} />}
+      {!!logDetail && (
+        <LogDetail
+          data={logDetail}
+          channelType={channelType}
+          onClose={() => setLogDetail(undefined)}
+        />
+      )}
     </MyModal>
   );
 };
 
 export default React.memo(ChannelLogModal);
 
-const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void }) => {
+const LogDetail = ({
+  data,
+  channelType,
+  onClose
+}: {
+  data: LogDetailType;
+  channelType: ChannelKind;
+  onClose: () => void;
+}) => {
   const { t } = useTranslation();
   const { data: detailData } = useRequest(
     async () => {
       if (data.code === 200) return data;
       try {
-        const res = await getLogDetail(data.id);
+        const res = await getLogDetail(data.id, channelType);
         return {
           ...res,
           ...data
         };
-      } catch (error) {
+      } catch {
         return data;
       }
     },

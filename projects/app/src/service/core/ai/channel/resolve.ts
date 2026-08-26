@@ -81,3 +81,36 @@ export const resolveChannelForOperation = async ({
     return Promise.reject(normalizeAiproxyError(error));
   }
 };
+
+/**
+ * 推导日志/监控只读范围，并在存在 channelId 时校验其属于目标 bucket。
+ * 与跨成员运维解析不同，team 对 root 也固定使用当前会话 tmbId，禁止借 channelId
+ * 读取其他成员的私有渠道数据。
+ */
+export const resolveChannelObservabilityScope = async ({
+  channelType,
+  channelId,
+  tmbId,
+  isRoot
+}: {
+  channelType: ChannelType;
+  channelId?: number;
+  tmbId: string;
+  isRoot: boolean;
+}): Promise<{ groupId?: string }> => {
+  if (channelType === 'system') {
+    if (!isRoot) return Promise.reject(ModelErrEnum.rootOnlyPermit);
+    if (channelId !== undefined) {
+      const channel = await fetchOrMissing(() => getSystemChannelById(channelId));
+      if (!channel) return Promise.reject(ModelErrEnum.channelNotExist);
+    }
+    return {};
+  }
+
+  const groupId = getSystemGroupId(tmbId);
+  if (channelId !== undefined) {
+    const channel = await fetchOrMissing(() => getGroupChannelById(groupId, channelId));
+    if (!channel) return Promise.reject(ModelErrEnum.channelNotExist);
+  }
+  return { groupId };
+};

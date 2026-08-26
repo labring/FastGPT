@@ -1,5 +1,13 @@
 import { axiosWithoutSSRF } from '../../../common/api/axios';
 import { getAIProxyAdminConfig } from '../../../thirdProvider/aiproxy/config';
+import type {
+  ChannelDashboardPoint,
+  ChannelLogListItem,
+  GetChannelDashboardQuery,
+  GetChannelLogDetailResponse,
+  GetChannelLogsQuery,
+  GetChannelLogsResponse
+} from '@fastgpt/global/openapi/core/ai/channel/api';
 import {
   CACHE_KEY_GLOBAL_GROUPS,
   CACHE_KEY_SYSTEM,
@@ -391,3 +399,109 @@ export const getChannelTypeMetas = (): Promise<
       '/api/channels/type_metas'
     )
   );
+
+type AiproxyLogItem = Omit<ChannelLogListItem, 'channel'> & {
+  channel?: number;
+  group_channel_id?: number;
+};
+
+type AiproxyDashboardPoint = Omit<ChannelDashboardPoint, 'summary'> & {
+  summary: Array<
+    ChannelDashboardPoint['summary'][number] & {
+      group_channel_id?: number;
+    }
+  >;
+};
+
+const toQueryString = (params: Record<string, string | number | boolean | undefined>): string => {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== '') query.set(key, String(value));
+  });
+  const queryString = query.toString();
+  return queryString ? `?${queryString}` : '';
+};
+
+/**
+ * 查询 system 或当前成员 group-channel 的调用日志，并统一渠道 ID 字段。
+ * groupId 只接受 FastGPT 服务端根据会话推导的值，不从 API 入参透传。
+ */
+export const searchChannelLogs = async ({
+  groupId,
+  ...params
+}: Omit<GetChannelLogsQuery, 'channelType'> & {
+  groupId?: string;
+}): Promise<GetChannelLogsResponse> => {
+  const query = toQueryString({
+    result_only: true,
+    request_id: params.requestId,
+    channel: params.channelId,
+    model_name: params.modelName,
+    code_type: params.codeType,
+    start_timestamp: params.startTimestamp,
+    end_timestamp: params.endTimestamp,
+    p: params.pageNum ?? 1,
+    per_page: params.pageSize
+  });
+  const path = groupId
+    ? `/api/log/${encodeURIComponent(groupId)}/group_channel/search${query}`
+    : `/api/logs/search${query}`;
+  const result = await get<{ logs?: AiproxyLogItem[]; total?: number }>(path);
+
+  return {
+    list: (result.logs ?? []).map((item) => ({
+      ...item,
+      channel: item.channel ?? item.group_channel_id ?? 0
+    })),
+    total: result.total ?? 0
+  };
+};
+
+/** 获取 system 或当前成员 group-channel 范围内的单条日志详情。 */
+export const getChannelLogDetail = ({
+  id,
+  groupId
+}: {
+  id: number;
+  groupId?: string;
+}): Promise<GetChannelLogDetailResponse> =>
+  get<GetChannelLogDetailResponse>(
+    groupId
+      ? `/api/log/${encodeURIComponent(groupId)}/group_channel/detail/${id}`
+      : `/api/logs/detail/${id}`
+  );
+
+/**
+ * 查询 system 或当前成员 group-channel 的时序监控，并统一 summary 渠道 ID 字段。
+ */
+export const getChannelDashboard = async ({
+  groupId,
+  ...params
+}: Omit<GetChannelDashboardQuery, 'channelType'> & {
+  groupId?: string;
+}): Promise<ChannelDashboardPoint[]> => {
+  const query = toQueryString({
+    ...(groupId
+      ? { group_channel: params.channelId }
+      : {
+          channel: params.channelId
+        }),
+    model: params.model,
+    start_timestamp: params.startTimestamp,
+    end_timestamp: params.endTimestamp,
+    timezone: params.timezone,
+    timespan: params.timespan
+  });
+  const path = groupId
+    ? `/api/group/${encodeURIComponent(groupId)}/channel-dashboardv2${query}`
+    : `/api/dashboardv2/${query}`;
+  const result = await get<AiproxyDashboardPoint[]>(path);
+
+  return (result ?? []).map((point) => ({
+    ...point,
+    summary: (point.summary ?? []).map((item) => ({
+      ...item,
+      channel_id: item.channel_id ?? item.group_channel_id
+    }))
+  }));
+};
