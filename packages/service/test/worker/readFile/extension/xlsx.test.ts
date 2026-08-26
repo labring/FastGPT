@@ -171,6 +171,47 @@ describe('readXlsxRawText', () => {
     );
   });
 
+  it('should reject a sparse worksheet whose first cell is after the row limit', async () => {
+    const firstCellAfterLimit = XLSX.utils.encode_cell({
+      r: XLSX_PARSE_LIMITS.maxRows,
+      c: 0
+    });
+    const worksheet: XLSX.WorkSheet = {
+      [firstCellAfterLimit]: { t: 's', v: 'value' },
+      '!ref': firstCellAfterLimit
+    };
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    await expect(readXlsxRawText({ extension: 'xlsx', buffer, encoding: 'utf-8' })).rejects.toThrow(
+      `maximum row limit of ${XLSX_PARSE_LIMITS.maxRows}`
+    );
+  });
+
+  it('should parse a sparse worksheet whose first cell is at the row limit', async () => {
+    const lastAllowedCell = XLSX.utils.encode_cell({
+      r: XLSX_PARSE_LIMITS.maxRows - 1,
+      c: 0
+    });
+    const worksheet: XLSX.WorkSheet = {
+      [lastAllowedCell]: { t: 's', v: 'value' },
+      '!ref': lastAllowedCell
+    };
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    await expect(
+      readXlsxRawText({ extension: 'xlsx', buffer, encoding: 'utf-8' })
+    ).resolves.toMatchObject({
+      rawText: 'value',
+      tableInfo: {
+        sheetCount: 1
+      }
+    });
+  });
+
   it('should reject a worksheet that exceeds the column limit', async () => {
     const buffer = createWorkbookBuffer({
       range: {
