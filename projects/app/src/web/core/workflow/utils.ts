@@ -337,74 +337,83 @@ export const getRefData = ({
     required: !!output.required
   };
 };
+// 来源类型可赋值给目标类型的规则表，引用选择器过滤与工作流检查共用同一份。
+const workflowValueTypeCompatMap: Record<WorkflowIOValueTypeEnum, WorkflowIOValueTypeEnum[]> = {
+  [WorkflowIOValueTypeEnum.string]: [WorkflowIOValueTypeEnum.string],
+  [WorkflowIOValueTypeEnum.number]: [WorkflowIOValueTypeEnum.number],
+  [WorkflowIOValueTypeEnum.boolean]: [WorkflowIOValueTypeEnum.boolean],
+  [WorkflowIOValueTypeEnum.object]: [WorkflowIOValueTypeEnum.object],
+  [WorkflowIOValueTypeEnum.arrayString]: [
+    WorkflowIOValueTypeEnum.string,
+    WorkflowIOValueTypeEnum.arrayString,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.arrayNumber]: [
+    WorkflowIOValueTypeEnum.number,
+    WorkflowIOValueTypeEnum.arrayNumber,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.arrayBoolean]: [
+    WorkflowIOValueTypeEnum.boolean,
+    WorkflowIOValueTypeEnum.arrayBoolean,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.arrayObject]: [
+    WorkflowIOValueTypeEnum.object,
+    WorkflowIOValueTypeEnum.arrayObject,
+    WorkflowIOValueTypeEnum.arrayAny,
+    WorkflowIOValueTypeEnum.chatHistory,
+    WorkflowIOValueTypeEnum.datasetQuote,
+    WorkflowIOValueTypeEnum.dynamic,
+    WorkflowIOValueTypeEnum.selectDataset,
+    WorkflowIOValueTypeEnum.selectApp
+  ],
+  [WorkflowIOValueTypeEnum.chatHistory]: [
+    WorkflowIOValueTypeEnum.chatHistory,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.datasetQuote]: [
+    WorkflowIOValueTypeEnum.datasetQuote,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.dynamic]: [
+    WorkflowIOValueTypeEnum.dynamic,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.selectDataset]: [
+    WorkflowIOValueTypeEnum.selectDataset,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.selectApp]: [
+    WorkflowIOValueTypeEnum.selectApp,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.arrayAny]: [WorkflowIOValueTypeEnum.arrayAny],
+  [WorkflowIOValueTypeEnum.any]: [WorkflowIOValueTypeEnum.arrayAny]
+};
+
+/**
+ * 判断来源类型能否赋值给目标类型。
+ * 目标为 any/arrayAny 或未声明、来源无类型或为 any 时一律兼容，
+ * 与 ReferenceSelector 的可选过滤行为保持一致。
+ */
+export const workflowValueTypeIsCompatible = (
+  sourceType: WorkflowIOValueTypeEnum | undefined,
+  targetType: WorkflowIOValueTypeEnum | undefined
+): boolean =>
+  !targetType ||
+  targetType === WorkflowIOValueTypeEnum.any ||
+  targetType === WorkflowIOValueTypeEnum.arrayAny ||
+  !sourceType ||
+  sourceType === WorkflowIOValueTypeEnum.any ||
+  workflowValueTypeCompatMap[targetType]?.includes(sourceType) === true;
+
 // 根据数据类型，过滤无效的节点输出
 export const filterWorkflowNodeOutputsByType = (
   outputs: FlowNodeOutputItemType[],
   valueType: WorkflowIOValueTypeEnum
-): FlowNodeOutputItemType[] => {
-  const validTypeMap: Record<WorkflowIOValueTypeEnum, WorkflowIOValueTypeEnum[]> = {
-    [WorkflowIOValueTypeEnum.string]: [WorkflowIOValueTypeEnum.string],
-    [WorkflowIOValueTypeEnum.number]: [WorkflowIOValueTypeEnum.number],
-    [WorkflowIOValueTypeEnum.boolean]: [WorkflowIOValueTypeEnum.boolean],
-    [WorkflowIOValueTypeEnum.object]: [WorkflowIOValueTypeEnum.object],
-    [WorkflowIOValueTypeEnum.arrayString]: [
-      WorkflowIOValueTypeEnum.string,
-      WorkflowIOValueTypeEnum.arrayString,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.arrayNumber]: [
-      WorkflowIOValueTypeEnum.number,
-      WorkflowIOValueTypeEnum.arrayNumber,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.arrayBoolean]: [
-      WorkflowIOValueTypeEnum.boolean,
-      WorkflowIOValueTypeEnum.arrayBoolean,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.arrayObject]: [
-      WorkflowIOValueTypeEnum.object,
-      WorkflowIOValueTypeEnum.arrayObject,
-      WorkflowIOValueTypeEnum.arrayAny,
-      WorkflowIOValueTypeEnum.chatHistory,
-      WorkflowIOValueTypeEnum.datasetQuote,
-      WorkflowIOValueTypeEnum.dynamic,
-      WorkflowIOValueTypeEnum.selectDataset,
-      WorkflowIOValueTypeEnum.selectApp
-    ],
-    [WorkflowIOValueTypeEnum.chatHistory]: [
-      WorkflowIOValueTypeEnum.chatHistory,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.datasetQuote]: [
-      WorkflowIOValueTypeEnum.datasetQuote,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.dynamic]: [
-      WorkflowIOValueTypeEnum.dynamic,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.selectDataset]: [
-      WorkflowIOValueTypeEnum.selectDataset,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.selectApp]: [
-      WorkflowIOValueTypeEnum.selectApp,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.arrayAny]: [WorkflowIOValueTypeEnum.arrayAny],
-    [WorkflowIOValueTypeEnum.any]: [WorkflowIOValueTypeEnum.arrayAny]
-  };
-
-  return outputs.filter(
-    (output) =>
-      valueType === WorkflowIOValueTypeEnum.any ||
-      valueType === WorkflowIOValueTypeEnum.arrayAny ||
-      !output.valueType ||
-      output.valueType === WorkflowIOValueTypeEnum.any ||
-      validTypeMap[valueType]?.includes(output.valueType)
-  );
-};
+): FlowNodeOutputItemType[] =>
+  outputs.filter((output) => workflowValueTypeIsCompatible(output.valueType, valueType));
 
 export type WorkflowReferenceSourceNode = {
   nodeId: string;

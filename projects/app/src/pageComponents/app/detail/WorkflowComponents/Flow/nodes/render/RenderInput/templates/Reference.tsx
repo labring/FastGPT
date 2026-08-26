@@ -11,6 +11,7 @@ import type {
   ReferenceItemValueType,
   ReferenceValueType
 } from '@fastgpt/global/core/workflow/type/io';
+import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
@@ -31,17 +32,21 @@ const MultipleRowArraySelect = dynamic(() =>
 );
 const Avatar = dynamic(() => import('@fastgpt/web/components/common/Avatar'));
 
+type ReferenceSelectList = {
+  label: string | React.ReactNode;
+  value: string;
+  children: {
+    label: string;
+    value: string;
+    valueType?: WorkflowIOValueTypeEnum;
+  }[];
+}[];
+
 type CommonSelectProps = {
   placeholder?: string;
-  list: {
-    label: string | React.ReactNode;
-    value: string;
-    children: {
-      label: string;
-      value: string;
-      valueType?: WorkflowIOValueTypeEnum;
-    }[];
-  }[];
+  list: ReferenceSelectList;
+  // 不做类型过滤的可选输出列表，仅用于区分「来源已删除」和「类型不匹配」两种失效原因
+  liveList?: ReferenceSelectList;
   popDirection?: 'top' | 'bottom';
   ButtonProps?: ButtonProps;
 };
@@ -70,7 +75,7 @@ export const useReference = ({
   );
 
   // 获取可选的变量列表
-  const referenceList = useMemoEnhance(() => {
+  const { referenceList, liveReferenceList } = useMemoEnhance(() => {
     const sourceNodes = getNodeAllSource({
       nodeId,
       getNodeById,
@@ -83,33 +88,53 @@ export const useReference = ({
 
     const isArray = valueType?.includes('array');
 
-    // 转换为 select 的数据结构
-    const list: CommonSelectProps['list'] = sourceNodes
-      .map((node) => {
-        return {
-          label: (
-            <Flex alignItems={'center'}>
-              <Avatar src={node.avatar} w={isArray ? '1rem' : '1.05rem'} borderRadius={'xs'} />
-              <Box ml={1}>{node.name}</Box>
-            </Flex>
-          ),
-          value: node.nodeId,
-          children: filterSelectableWorkflowNodeOutputs({
-            outputs: node.outputs,
-            valueType,
-            catchError: node.catchError
-          }).map((output) => {
-            return {
-              label: t(output.label as any),
-              value: output.id,
-              valueType: output.valueType
-            };
-          })
-        };
-      })
-      .filter((item) => item.children.length > 0);
+    const referenceList: ReferenceSelectList = [];
+    // 失效原因分类专用：类型不受限时的可选输出；来源仍在这里但不在 referenceList 中即为类型不匹配
+    const liveReferenceList: ReferenceSelectList = [];
 
-    return list;
+    sourceNodes.forEach((node) => {
+      const label = (
+        <Flex alignItems={'center'}>
+          <Avatar src={node.avatar} w={isArray ? '1rem' : '1.05rem'} borderRadius={'xs'} />
+          <Box ml={1}>{node.name}</Box>
+        </Flex>
+      );
+      const toChildren = (outputs: FlowNodeOutputItemType[]) =>
+        outputs.map((output) => ({
+          label: t(output.label as any),
+          value: output.id,
+          valueType: output.valueType
+        }));
+
+      // 转换为 select 的数据结构
+      const selectableOutputs = filterSelectableWorkflowNodeOutputs({
+        outputs: node.outputs,
+        valueType,
+        catchError: node.catchError
+      });
+      if (selectableOutputs.length > 0) {
+        referenceList.push({
+          label,
+          value: node.nodeId,
+          children: toChildren(selectableOutputs)
+        });
+      }
+
+      const liveOutputs = filterSelectableWorkflowNodeOutputs({
+        outputs: node.outputs,
+        valueType: WorkflowIOValueTypeEnum.any,
+        catchError: node.catchError
+      });
+      if (liveOutputs.length > 0) {
+        liveReferenceList.push({
+          label,
+          value: node.nodeId,
+          children: toChildren(liveOutputs)
+        });
+      }
+    });
+
+    return { referenceList, liveReferenceList };
   }, [
     nodeId,
     getNodeById,
@@ -122,7 +147,8 @@ export const useReference = ({
   ]);
 
   return {
-    referenceList
+    referenceList,
+    liveReferenceList
   };
 };
 
@@ -149,7 +175,7 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
     [item, nodeId, onChangeNode]
   );
 
-  const { referenceList } = useReference({
+  const { referenceList, liveReferenceList } = useReference({
     nodeId,
     valueType: item.valueType
   });
@@ -164,6 +190,7 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
     <ReferSelector
       placeholder={t(item.referencePlaceholder as any) || t('common:select_reference_variable')}
       list={referenceList}
+      liveList={liveReferenceList}
       value={item.value}
       onSelect={onSelect}
       popDirection={popDirection}
@@ -178,6 +205,7 @@ const SingleReferenceSelector = ({
   placeholder,
   value,
   list = [],
+  liveList = [],
   onSelect,
   popDirection,
   ButtonProps
@@ -185,10 +213,10 @@ const SingleReferenceSelector = ({
   const { t } = useSafeTranslation();
 
   const getSelectValue = useCallback(
-    (value: ReferenceValueType) => {
+    (value: ReferenceValueType, searchList: ReferenceSelectList) => {
       if (!value) return [];
 
-      const firstColumn = list.find((item) => item.value === value[0]);
+      const firstColumn = searchList.find((item) => item.value === value[0]);
       if (!firstColumn) {
         return [];
       }
@@ -198,7 +226,7 @@ const SingleReferenceSelector = ({
       }
       return [firstColumn.label, secondColumn.label];
     },
-    [list]
+    []
   );
 
   // Adapt array type from old version
@@ -217,9 +245,14 @@ const SingleReferenceSelector = ({
 
   const ItemSelector = useMemo(() => {
     const selectorVal = value as ReferenceItemValueType;
-    const [nodeName, outputName] = getSelectValue(selectorVal);
-    const isValidSelect = nodeName && outputName;
+    const [nodeName, outputName] = getSelectValue(selectorVal, list);
+    const isValidSelect = Boolean(nodeName && outputName);
     const isInvalidReference = isConfiguredReferenceValue(selectorVal) && !isValidSelect;
+    // 来源仍在无类型过滤列表中即为类型不匹配，否则按来源已删除提示
+    const [liveNodeName, liveOutputName] = isInvalidReference
+      ? getSelectValue(selectorVal, liveList)
+      : [];
+    const isTypeMismatch = isInvalidReference && Boolean(liveNodeName && liveOutputName);
 
     return (
       <MultipleRowSelect
@@ -236,7 +269,11 @@ const SingleReferenceSelector = ({
               color={isInvalidReference ? 'red.500' : 'myGray.400'}
               title={isInvalidReference ? selectorVal?.join('.') : undefined}
             >
-              {isInvalidReference ? t('common:core.workflow.check.reference_deleted') : placeholder}
+              {isInvalidReference
+                ? isTypeMismatch
+                  ? t('common:core.workflow.check.reference_type_mismatch')
+                  : t('common:core.workflow.check.reference_deleted')
+                : placeholder}
             </Box>
           )
         }
@@ -247,7 +284,7 @@ const SingleReferenceSelector = ({
         ButtonProps={ButtonProps}
       />
     );
-  }, [ButtonProps, getSelectValue, list, onSelect, placeholder, popDirection, t, value]);
+  }, [ButtonProps, getSelectValue, list, liveList, onSelect, placeholder, popDirection, t, value]);
 
   return ItemSelector;
 };
@@ -255,16 +292,17 @@ const MultipleReferenceSelector = ({
   placeholder,
   value,
   list = [],
+  liveList = [],
   onSelect,
   popDirection
 }: SelectProps<true>) => {
   const { t } = useSafeTranslation();
 
   const getSelectValue = useCallback(
-    (value: ReferenceValueType) => {
+    (value: ReferenceValueType, searchList: ReferenceSelectList) => {
       if (!value) return [];
 
-      const firstColumn = list.find((item) => item.value === value[0]);
+      const firstColumn = searchList.find((item) => item.value === value[0]);
       if (!firstColumn) {
         return [];
       }
@@ -274,7 +312,7 @@ const MultipleReferenceSelector = ({
       }
       return [firstColumn.label, secondColumn.label];
     },
-    [list]
+    []
   );
 
   // Get valid item and remove invalid item
@@ -282,14 +320,14 @@ const MultipleReferenceSelector = ({
     if (!value || !Array.isArray(value)) return [];
 
     return value.map((item) => {
-      const [nodeName, outputName] = getSelectValue(item);
+      const [nodeName, outputName] = getSelectValue(item, list);
       return {
         rawValue: item,
         nodeName,
         outputName
       };
     });
-  }, [getSelectValue, value]);
+  }, [getSelectValue, list, value]);
 
   useEffect(() => {
     // Adapt array type from old version
@@ -319,6 +357,12 @@ const MultipleReferenceSelector = ({
                 const isValidReference = Boolean(nodeName && outputName);
                 const isInvalidReference =
                   isConfiguredReferenceValue(rawValue) && !isValidReference;
+                // 多选失效项区分原因：来源仍在（无类型过滤列表可命中）为类型不匹配，否则为已删除
+                const [liveNodeName, liveOutputName] = isInvalidReference
+                  ? getSelectValue(rawValue, liveList)
+                  : [];
+                const isTypeMismatch =
+                  isInvalidReference && Boolean(liveNodeName && liveOutputName);
                 return (
                   <Flex
                     key={index}
@@ -344,7 +388,9 @@ const MultipleReferenceSelector = ({
                         </>
                       ) : isInvalidReference ? (
                         <Box title={rawValue?.join('.')}>
-                          {t('common:core.workflow.check.reference_deleted')}
+                          {isTypeMismatch
+                            ? t('common:core.workflow.check.reference_type_mismatch')
+                            : t('common:core.workflow.check.reference_deleted')}
                         </Box>
                       ) : (
                         <Box color={'myGray.400'}>{placeholder}</Box>
@@ -384,7 +430,7 @@ const MultipleReferenceSelector = ({
         popDirection={popDirection}
       />
     );
-  }, [formatList, list, onSelect, placeholder, popDirection, t, value]);
+  }, [formatList, getSelectValue, list, liveList, onSelect, placeholder, popDirection, t, value]);
 
   return ArraySelector;
 };

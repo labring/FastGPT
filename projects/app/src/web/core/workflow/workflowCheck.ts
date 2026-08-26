@@ -44,6 +44,7 @@ import {
   isAgentGeneratedToolInput
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { isToolNotExistError } from '@fastgpt/global/core/app/utils';
+import { workflowValueTypeIsCompatible } from './utils';
 
 type WorkflowCheckContext = {
   nodeMap: Map<string, Node<FlowNodeItemType, string | undefined>>;
@@ -152,6 +153,7 @@ type WorkflowCheckMessageCode =
   | 'required_input_empty'
   | 'no_upstream'
   | 'invalid_reference'
+  | 'invalid_reference_type'
   | 'if_else_incomplete'
   | 'user_select_empty'
   | 'user_select_value_empty'
@@ -174,6 +176,7 @@ const WORKFLOW_CHECK_ISSUE_MESSAGE_CODE_MAP: Record<string, WorkflowCheckMessage
   isolated_node: 'no_upstream',
   unreachable_from_start: 'no_upstream',
   invalid_reference: 'invalid_reference',
+  invalid_reference_type: 'invalid_reference_type',
   if_else_incomplete: 'if_else_incomplete',
   user_select_empty: 'user_select_empty',
   user_select_value_empty: 'user_select_value_empty',
@@ -197,6 +200,7 @@ const WORKFLOW_CHECK_ISSUE_MESSAGE_CODE_MAP: Record<string, WorkflowCheckMessage
 /** 待处理：引用无效、工具不可访问或加载失败。其余均为待完善。 */
 export const WORKFLOW_CHECK_PENDING_HANDLE_CODES = new Set<string>([
   'invalid_reference',
+  'invalid_reference_type',
   'tool_missing',
   'tool_load_failed',
   'tool_no_permission',
@@ -217,6 +221,8 @@ const workflowCheckMessageFallback: Record<
   no_upstream: () => '未与其他节点连线',
   invalid_reference: ({ inputName } = {}) =>
     `${inputName ?? ''} 中存在已被删除的变量，需处理`.trim(),
+  invalid_reference_type: ({ inputName } = {}) =>
+    `${inputName ?? ''} 中引用的变量类型不匹配，需处理`.trim(),
   if_else_incomplete: () => '存在未完成的条件配置，请完善',
   user_select_empty: () => '需配置至少一个选项',
   user_select_value_empty: () => '选项不可为空',
@@ -283,6 +289,8 @@ const translateWorkflowCheckIssueMessage = (
       return t('common:core.workflow.check.no_upstream', params);
     case 'invalid_reference':
       return t('common:core.workflow.check.invalid_reference', params);
+    case 'invalid_reference_type':
+      return t('common:core.workflow.check.invalid_reference_type', params);
     case 'if_else_incomplete':
       return t('common:core.workflow.check.if_else_incomplete', params);
     case 'user_select_empty':
@@ -463,6 +471,37 @@ const referenceValueHasInvalidSource = (value: unknown, context: WorkflowCheckCo
   isConfiguredReferenceValue(value) &&
   getReferenceItems(value).some((item) => !referenceValueIsLive(item, context));
 
+/** 读取引用来源的当前 valueType：全局变量取 chatConfig 定义，普通节点取输出定义。 */
+const getReferenceSourceValueType = (
+  value: ReferenceItemValueType,
+  context: WorkflowCheckContext
+): WorkflowIOValueTypeEnum | undefined => {
+  const [refNodeId, refOutputId] = value;
+  if (typeof refNodeId !== 'string' || typeof refOutputId !== 'string') return undefined;
+  if (refNodeId === VARIABLE_NODE_ID) {
+    return context.chatConfig?.variables?.find((variable) => variable.key === refOutputId)
+      ?.valueType;
+  }
+  return context.nodeOutputMap.get(refNodeId)?.get(refOutputId)?.valueType;
+};
+
+/**
+ * 判断已配置引用是否存在来源类型与目标类型不兼容的项。
+ * 只检查来源仍 live 的引用，来源消失统一归 invalid_reference；
+ * 多选任一项不兼容即返回 true，与 invalid_reference 语义一致。
+ */
+const referenceValueHasTypeMismatch = (
+  value: unknown,
+  targetType: WorkflowIOValueTypeEnum | undefined,
+  context: WorkflowCheckContext
+) =>
+  isConfiguredReferenceValue(value) &&
+  getReferenceItems(value).some(
+    (item) =>
+      referenceValueIsLive(item, context) &&
+      !workflowValueTypeIsCompatible(getReferenceSourceValueType(item, context), targetType)
+  );
+
 const isVariableUpdateTargetEmpty = (
   variable: unknown,
   nodeIds: string[],
@@ -492,6 +531,42 @@ const isVariableUpdateValueEmpty = (item: TUpdateListItem, context: WorkflowChec
 const isVariableUpdateValueInvalid = (item: TUpdateListItem, context: WorkflowCheckContext) =>
   item.renderType === FlowNodeInputTypeEnum.reference &&
   referenceValueHasInvalidSource(item.value, context);
+
+/**
+ * 更新项目标变量的缓存 valueType 与变量当前类型不兼容时报类型问题。
+ * 运行时按缓存类型格式化写入值，缓存过期即向新类型变量写入偏离语义的值；
+ * chatConfig 缺失时全局变量当前类型不可知，谓词按兼容处理，不误报。
+ */
+const isVariableUpdateTargetTypeMismatch = (
+  item: TUpdateListItem,
+  context: WorkflowCheckContext
+) => {
+  if (!item.valueType) return false;
+  if (!isValidReferenceValueFormat(item.variable)) return false;
+  const currentType = getReferenceSourceValueType(item.variable as ReferenceItemValueType, context);
+  return !workflowValueTypeIsCompatible(item.valueType, currentType);
+};
+
+/**
+ * 更新项 reference 模式值与目标变量当前类型不兼容时报类型问题。
+ * 目标变量已消失时由 invalid_reference 处理，不重复报类型问题。
+ */
+const isVariableUpdateValueTypeMismatch = (
+  item: TUpdateListItem,
+  context: WorkflowCheckContext
+) => {
+  if (item.renderType !== FlowNodeInputTypeEnum.reference) return false;
+  if (!isConfiguredReferenceValue(item.value)) return false;
+  if (!isValidReferenceValueFormat(item.variable)) return false;
+  if (!referenceValueIsLive(item.variable as ReferenceItemValueType, context)) return false;
+
+  const targetType = getReferenceSourceValueType(item.variable as ReferenceItemValueType, context);
+  return getReferenceItems(item.value).some(
+    (refItem) =>
+      referenceValueIsLive(refItem, context) &&
+      !workflowValueTypeIsCompatible(getReferenceSourceValueType(refItem, context), targetType)
+  );
+};
 
 /**
  * 结构化校验工作流节点和连线。
@@ -773,7 +848,7 @@ export const checkWorkflowNodeIssues = ({
         }: {
           field: 'variable' | 'value';
           index?: number;
-          code: 'required_input_empty' | 'invalid_reference';
+          code: 'required_input_empty' | 'invalid_reference' | 'invalid_reference_type';
         }) => {
           const inputName = (() => {
             if (field === 'variable') {
@@ -790,7 +865,7 @@ export const checkWorkflowNodeIssues = ({
               inputName
             }),
             inputKey:
-              code === 'invalid_reference' && index !== undefined
+              code !== 'required_input_empty' && index !== undefined
                 ? `${NodeInputKeyEnum.updateList}[${index}].${field}`
                 : NodeInputKeyEnum.updateList
           });
@@ -809,6 +884,12 @@ export const checkWorkflowNodeIssues = ({
                   ? 'invalid_reference'
                   : 'required_input_empty'
               });
+            } else if (isVariableUpdateTargetTypeMismatch(item, context)) {
+              addVariableUpdateIssue({
+                field: 'variable',
+                index,
+                code: 'invalid_reference_type'
+              });
             }
             if (isVariableUpdateValueEmpty(item, context)) {
               addVariableUpdateIssue({
@@ -817,6 +898,12 @@ export const checkWorkflowNodeIssues = ({
                 code: isVariableUpdateValueInvalid(item, context)
                   ? 'invalid_reference'
                   : 'required_input_empty'
+              });
+            } else if (isVariableUpdateValueTypeMismatch(item, context)) {
+              addVariableUpdateIssue({
+                field: 'value',
+                index,
+                code: 'invalid_reference_type'
               });
             }
           });
@@ -847,6 +934,18 @@ export const checkWorkflowNodeIssues = ({
             node,
             code: 'invalid_reference',
             message: getWorkflowCheckIssueMessage('invalid_reference', t, {
+              inputName: getInputLabel(input, t)
+            }),
+            inputKey: input.key
+          });
+        } else if (
+          isReferenceInput &&
+          referenceValueHasTypeMismatch(effectiveInputValue, input.valueType, context)
+        ) {
+          addIssue({
+            node,
+            code: 'invalid_reference_type',
+            message: getWorkflowCheckIssueMessage('invalid_reference_type', t, {
               inputName: getInputLabel(input, t)
             }),
             inputKey: input.key
@@ -930,6 +1029,32 @@ export const checkWorkflowNodeIssues = ({
 
 export const checkWorkflowHasError = (nodeIssueMap: WorkflowCheckNodeIssueMap) =>
   Object.values(nodeIssueMap).some((issues) => issues.some((issue) => issue.level === 'error'));
+
+/**
+ * 对比节点上一次检查结果，统计指定 code 的新增问题数量。
+ * 用于类型等配置变化后聚合提示一次，不对已存在的问题重复提醒。
+ */
+export const countNewWorkflowCheckIssues = ({
+  issueMap,
+  prevNodes,
+  code
+}: {
+  issueMap: WorkflowCheckNodeIssueMap;
+  prevNodes: Array<{ data: FlowNodeItemType }>;
+  code: string;
+}) => {
+  let count = 0;
+  for (const [nodeId, issues] of Object.entries(issueMap)) {
+    const prevIssues = prevNodes.find((node) => node.data.nodeId === nodeId)?.data
+      .workflowCheckIssues;
+    count += issues.filter(
+      (issue) =>
+        issue.code === code &&
+        !prevIssues?.some((prev) => prev.code === issue.code && prev.inputKey === issue.inputKey)
+    ).length;
+  }
+  return count;
+};
 
 /** 返回存在 error 的 nodeId 列表；传入 nodeOrder 时按画布节点顺序排列，便于稳定定位第一个错误节点。 */
 export const getWorkflowCheckErrorNodeIds = (

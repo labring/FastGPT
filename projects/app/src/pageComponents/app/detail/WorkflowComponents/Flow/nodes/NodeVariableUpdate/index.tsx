@@ -60,10 +60,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
   const { t } = useTranslation();
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { edges, getNodeById } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
-  );
+  const { edges, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   const variables = useMemoEnhance(() => {
@@ -112,6 +109,14 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
 
   const ValueRow = useMemoizedFn(
     ({ updateItem, index }: { updateItem: TUpdateListItem; index: number }) => {
+      // 目标变量缓存类型过期时，变量仍在可选列表中，选择器自身无法感知，
+      // 由行级直接消费检查结论展示提示；值引用的类型问题选择器可按列表自行判断
+      const hasTargetTypeIssue = data.workflowCheckIssues?.some(
+        (issue) =>
+          issue.code === 'invalid_reference_type' &&
+          issue.inputKey === `${NodeInputKeyEnum.updateList}[${index}].variable`
+      );
+
       // 根据目标变量推断 string 分支的 inputType 与表单参数（select options 等）
       const { inputType, formParams = {} } = (() => {
         const value = updateItem.variable;
@@ -198,6 +203,11 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
             </Box>
             <ValueTypeLabel valueType={valueType} />
           </Flex>
+          {hasTargetTypeIssue && (
+            <Box mt={1} fontSize={'xs'} color={'red.500'}>
+              {t('common:core.workflow.check.reference_type_mismatch')}
+            </Box>
+          )}
 
           {/* 值 */}
           <Flex mt={4} className="nodrag" cursor={'default'} alignItems={'center'}>

@@ -15,7 +15,10 @@ import type {
   WorkflowCheckNodeIssueMap
 } from '@fastgpt/global/core/workflow/type/node';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { checkWorkflowNodeIssues } from '@/web/core/workflow/workflowCheck';
+import {
+  checkWorkflowNodeIssues,
+  countNewWorkflowCheckIssues
+} from '@/web/core/workflow/workflowCheck';
 import { collectWorkflowStartAutoFillRevertPatches } from '@/web/core/workflow/workflowStartAutoFill';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { AppContext } from '@/pageComponents/app/detail/context';
@@ -308,9 +311,23 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         t,
         chatConfig: appDetail.chatConfig
       });
+
+      // 输出/catchError 变化产生新增类型不兼容时聚合提示一次，已有问题不重复提醒
+      const newTypeIssueCount = countNewWorkflowCheckIssues({
+        issueMap,
+        prevNodes: nodes,
+        code: 'invalid_reference_type'
+      });
+      if (newTypeIssueCount > 0) {
+        toast({
+          status: 'warning',
+          title: t('common:core.workflow.check.invalid_reference_type_toast')
+        });
+      }
+
       onSyncWorkflowCheckIssues(issueMap);
     }, 400);
-  }, [appDetail.chatConfig, edges, getNodes, onSyncWorkflowCheckIssues, t]);
+  }, [appDetail.chatConfig, edges, getNodes, onSyncWorkflowCheckIssues, t, toast]);
 
   useEffect(() => {
     if (isFirstEdgesEffectRef.current) {

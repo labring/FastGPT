@@ -1,5 +1,5 @@
 // 工作流工具函数层
-import React, { type ReactNode, useCallback, useEffect, useMemo } from 'react';
+import React, { type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { useReactFlow } from 'reactflow';
 import { useTranslation } from 'next-i18next';
@@ -7,7 +7,8 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { storeNode2FlowNode, storeEdge2RenderEdge } from '@/web/core/workflow/utils';
 import {
   checkWorkflowBeforeRunOrPublish,
-  checkWorkflowNodeIssues
+  checkWorkflowNodeIssues,
+  countNewWorkflowCheckIssues
 } from '@/web/core/workflow/workflowCheck';
 import { uiWorkflow2StoreWorkflow } from '../utils';
 import {
@@ -123,6 +124,9 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
   const { t } = useTranslation();
   const { toast } = useToast();
   const { fitView } = useReactFlow();
+
+  // 首次进入编辑页的全量扫描不对存量类型问题提示；之后的检查才聚合提示新增类型问题
+  const hasRunScheduledCheckRef = useRef(false);
   const { feConfigs } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
   const showSandbox = feConfigs?.show_agent_sandbox;
@@ -287,6 +291,23 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         t,
         chatConfig: appDetail.chatConfig
       });
+
+      // 变量配置变化会立即重跑本检查；新增类型不兼容时聚合提示一次
+      if (hasRunScheduledCheckRef.current) {
+        const newTypeIssueCount = countNewWorkflowCheckIssues({
+          issueMap,
+          prevNodes: nodes,
+          code: 'invalid_reference_type'
+        });
+        if (newTypeIssueCount > 0) {
+          toast({
+            status: 'warning',
+            title: t('common:core.workflow.check.invalid_reference_type_toast')
+          });
+        }
+      }
+      hasRunScheduledCheckRef.current = true;
+
       onSyncWorkflowCheckIssues(issueMap);
     };
 
@@ -296,7 +317,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
     return () => {
       window.clearInterval(timer);
     };
-  }, [appDetail.chatConfig, edges, getNodes, onSyncWorkflowCheckIssues, t]);
+  }, [appDetail.chatConfig, edges, getNodes, onSyncWorkflowCheckIssues, t, toast]);
 
   // 4. initData - 初始化工作流数据
   const initData = useCallback(

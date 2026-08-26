@@ -14,7 +14,7 @@ type Props = {
 const VariableSelector = ({ nodeId, variable, valueType, onSelect }: Props) => {
   const { t } = useTranslation();
 
-  const { referenceList } = useReference({
+  const { referenceList, liveReferenceList } = useReference({
     nodeId,
     valueType
   });
@@ -23,6 +23,7 @@ const VariableSelector = ({ nodeId, variable, valueType, onSelect }: Props) => {
     <ReferSelector
       placeholder={t('common:select_reference_variable')}
       list={referenceList}
+      liveList={liveReferenceList}
       value={variable}
       onSelect={onSelect}
       isArray={valueType?.startsWith('array')}
