@@ -4,6 +4,10 @@ import { openAPIPaths, openAPITagGroups } from '../../../../openapi/path';
 import { DevApiTagsMap } from '../../../../openapi/tag';
 import { BillItemSchema } from '../../../../openapi/support/wallet/bill/api';
 import {
+  InvoiceSubmitBodySchema,
+  UnInvoiceListResponseSchema
+} from '../../../../openapi/support/wallet/bill/invoice/api';
+import {
   BillPayWayEnum,
   BillStatusEnum,
   BillTypeEnum
@@ -90,6 +94,24 @@ describe('wallet OpenAPI contracts', () => {
     });
 
     expect(bill.metadata.month).toBe(12.17);
+  });
+
+  it('keeps Mongo bill IDs when preparing an invoice submission', () => {
+    const billId = '68ee0bd23d17260b7829b137';
+    const bills = UnInvoiceListResponseSchema.parse([
+      {
+        _id: billId,
+        price: 9900,
+        type: BillTypeEnum.standSubPlan,
+        createTime: '2026-01-01T00:00:00.000Z',
+        orderId: 'invoice-order'
+      }
+    ]);
+
+    expect(bills[0]._id).toBe(billId);
+    expect(InvoiceSubmitBodySchema.shape.billIdList.parse(bills.map((bill) => bill._id))).toEqual([
+      billId
+    ]);
   });
 
   it('omits empty request and response placeholders', () => {
