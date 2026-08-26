@@ -6,7 +6,11 @@ import path from 'path';
 const { mockEnv } = vi.hoisted(() => ({
   mockEnv: {
     MAX_HTML_TRANSFORM_CHARS: 1_000_000,
-    PARSE_FILE_WORKER_MEMORY_LIMIT_MB: 640
+    PARSE_FILE_WORKER_MEMORY_LIMIT_MB: 640,
+    XLSX_PARSE_MAX_ROWS: 100_000,
+    XLSX_PARSE_MAX_COLUMNS: 1_000,
+    XLSX_PARSE_MAX_CELLS: 1_000_000,
+    XLSX_PARSE_MAX_MERGED_CELLS: 1_000_000
   }
 }));
 
@@ -14,7 +18,7 @@ vi.mock('@fastgpt/service/env', () => ({
   serviceEnv: mockEnv
 }));
 
-const { WorkerPool, WorkerNameEnum } = await import('@fastgpt/service/worker/utils');
+const { getSafeEnv, WorkerPool, WorkerNameEnum } = await import('@fastgpt/service/worker/utils');
 
 const workerScript = `
 const { parentPort } = require('worker_threads');
@@ -51,6 +55,17 @@ parentPort.on('message', (message) => {
   });
 });
 `;
+
+describe('worker/utils getSafeEnv', () => {
+  it('将 XLSX 解析限制透传给 worker', () => {
+    expect(getSafeEnv()).toMatchObject({
+      XLSX_PARSE_MAX_ROWS: '100000',
+      XLSX_PARSE_MAX_COLUMNS: '1000',
+      XLSX_PARSE_MAX_CELLS: '1000000',
+      XLSX_PARSE_MAX_MERGED_CELLS: '1000000'
+    });
+  });
+});
 
 describe('worker/utils WorkerPool', () => {
   let tmpDir: string;

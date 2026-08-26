@@ -15,6 +15,10 @@ export enum WorkerNameEnum {
 export const getSafeEnv = () => {
   return {
     MAX_HTML_TRANSFORM_CHARS: String(serviceEnv.MAX_HTML_TRANSFORM_CHARS),
+    XLSX_PARSE_MAX_ROWS: String(serviceEnv.XLSX_PARSE_MAX_ROWS),
+    XLSX_PARSE_MAX_COLUMNS: String(serviceEnv.XLSX_PARSE_MAX_COLUMNS),
+    XLSX_PARSE_MAX_CELLS: String(serviceEnv.XLSX_PARSE_MAX_CELLS),
+    XLSX_PARSE_MAX_MERGED_CELLS: String(serviceEnv.XLSX_PARSE_MAX_MERGED_CELLS),
     NODE_ENV: process.env.NODE_ENV,
     HTTP_PROXY: process.env.HTTP_PROXY,
     HTTPS_PROXY: process.env.HTTPS_PROXY,

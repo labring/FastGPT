@@ -3,15 +3,16 @@ import { type ReadRawTextByBuffer, type ReadFileResponse } from '../type';
 import Papa from 'papaparse';
 import XLSX from 'xlsx';
 import { filterEmptyTableData, formatMarkdownTableRow } from './utils';
+import { workerEnv } from '../../env';
 
 /**
- * XLSX 固定安全预算。硬上限不可通过部署配置放大，避免恶意工作簿绕过资源保护。
+ * XLSX 解析安全预算。部署时可按业务文件规模调整，放大限制时需同时评估 worker 内存上限。
  */
 export const XLSX_PARSE_LIMITS = {
-  maxRows: 100_000,
-  maxColumns: 1_000,
-  maxCells: 1_000_000,
-  maxMergedCells: 1_000_000
+  maxRows: workerEnv.XLSX_PARSE_MAX_ROWS,
+  maxColumns: workerEnv.XLSX_PARSE_MAX_COLUMNS,
+  maxCells: workerEnv.XLSX_PARSE_MAX_CELLS,
+  maxMergedCells: workerEnv.XLSX_PARSE_MAX_MERGED_CELLS
 } as const;
 
 type WorkbookWithSourceFiles = XLSX.WorkBook & {

@@ -5,6 +5,10 @@ const validInvokeTokenSecret = 'fastgpt_test_invoke_token_secret_32';
 const originalEnv = {
   SYSTEM_MAX_STRING_LENGTH_M: process.env.SYSTEM_MAX_STRING_LENGTH_M,
   PARSE_FILE_WORKER_MEMORY_LIMIT_MB: process.env.PARSE_FILE_WORKER_MEMORY_LIMIT_MB,
+  XLSX_PARSE_MAX_ROWS: process.env.XLSX_PARSE_MAX_ROWS,
+  XLSX_PARSE_MAX_COLUMNS: process.env.XLSX_PARSE_MAX_COLUMNS,
+  XLSX_PARSE_MAX_CELLS: process.env.XLSX_PARSE_MAX_CELLS,
+  XLSX_PARSE_MAX_MERGED_CELLS: process.env.XLSX_PARSE_MAX_MERGED_CELLS,
   AGENT_SANDBOX_CPU_COUNT: process.env.AGENT_SANDBOX_CPU_COUNT,
   AGENT_SANDBOX_MEMORY_MIB: process.env.AGENT_SANDBOX_MEMORY_MIB,
   AGENT_SANDBOX_STORAGE_SIZE_GI: process.env.AGENT_SANDBOX_STORAGE_SIZE_GI,
@@ -44,6 +48,10 @@ describe('serviceEnv', () => {
   afterEach(() => {
     vi.stubEnv('SYSTEM_MAX_STRING_LENGTH_M', originalEnv.SYSTEM_MAX_STRING_LENGTH_M);
     vi.stubEnv('PARSE_FILE_WORKER_MEMORY_LIMIT_MB', originalEnv.PARSE_FILE_WORKER_MEMORY_LIMIT_MB);
+    vi.stubEnv('XLSX_PARSE_MAX_ROWS', originalEnv.XLSX_PARSE_MAX_ROWS);
+    vi.stubEnv('XLSX_PARSE_MAX_COLUMNS', originalEnv.XLSX_PARSE_MAX_COLUMNS);
+    vi.stubEnv('XLSX_PARSE_MAX_CELLS', originalEnv.XLSX_PARSE_MAX_CELLS);
+    vi.stubEnv('XLSX_PARSE_MAX_MERGED_CELLS', originalEnv.XLSX_PARSE_MAX_MERGED_CELLS);
     vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', originalEnv.AGENT_SANDBOX_CPU_COUNT);
     vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', originalEnv.AGENT_SANDBOX_MEMORY_MIB);
     vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GI', originalEnv.AGENT_SANDBOX_STORAGE_SIZE_GI);
@@ -164,6 +172,41 @@ describe('serviceEnv', () => {
     });
 
     vi.stubEnv('PARSE_FILE_WORKER_MEMORY_LIMIT_MB', '127');
+    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
+  });
+
+  it('validates the XLSX parsing limits during service env init', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('XLSX_PARSE_MAX_ROWS', undefined);
+    vi.stubEnv('XLSX_PARSE_MAX_COLUMNS', undefined);
+    vi.stubEnv('XLSX_PARSE_MAX_CELLS', undefined);
+    vi.stubEnv('XLSX_PARSE_MAX_MERGED_CELLS', undefined);
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: {
+        XLSX_PARSE_MAX_ROWS: 100_000,
+        XLSX_PARSE_MAX_COLUMNS: 1_000,
+        XLSX_PARSE_MAX_CELLS: 1_000_000,
+        XLSX_PARSE_MAX_MERGED_CELLS: 1_000_000
+      }
+    });
+
+    vi.stubEnv('XLSX_PARSE_MAX_ROWS', '120000');
+    vi.stubEnv('XLSX_PARSE_MAX_COLUMNS', '1200');
+    vi.stubEnv('XLSX_PARSE_MAX_CELLS', '1200000');
+    vi.stubEnv('XLSX_PARSE_MAX_MERGED_CELLS', '1300000');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: {
+        XLSX_PARSE_MAX_ROWS: 120_000,
+        XLSX_PARSE_MAX_COLUMNS: 1_200,
+        XLSX_PARSE_MAX_CELLS: 1_200_000,
+        XLSX_PARSE_MAX_MERGED_CELLS: 1_300_000
+      }
+    });
+
+    vi.stubEnv('XLSX_PARSE_MAX_ROWS', '0');
     await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
   });
 
