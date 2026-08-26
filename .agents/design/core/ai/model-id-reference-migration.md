@@ -35,7 +35,7 @@
 - 以 `system_models._id` 作为平台内唯一、稳定的模型身份。
 - 所有“选择/引用某个模型”的新业务数据改存 `modelId`。
 - 所有内部模型调用链先用 `modelId` 解析配置，再在 provider 边界使用 `modelData.model`。
-- 只有公开 OpenAPI 兼容接收 `modelId/model`，只在 OpenAPI 边界解析一次；非 OpenAPI 接口和内部临时配置只接收 `modelId`，进入实际模型请求链后只传 `modelData`。
+- 只有公开 System OpenAPI 兼容接收 `modelId/model`，只在公开 API 边界解析一次；非公开接口（包括 Dev-only OpenAPI）和内部临时配置只接收 `modelId`，进入实际模型请求链后只传 `modelData`。
 - 旧数据、旧请求中的系统模型 `model` 在兼容窗口内仍可读取。
 - 提供可审计、可重复执行、不会把脏值写入 `*ModelId` 的迁移工具。
 - 客户端按当前成员分页获取可用模型，不缓存完整清单；全局初始化接口只返回默认模型。
@@ -303,6 +303,8 @@ model:<model>            -> modelData
 
 ### 6.2 Model reference 输入协议
 
+本节的“公开 OpenAPI”特指 `/apidoc/systemopenapi` 中支持 API Key 鉴权的对外接口。代码上以 operation 是否显式标记 `SystemOpenApiTagMap` 为唯一边界；`packages/global/openapi` 中只标记 `DevApiTagsMap` 的站内开发者接口不属于公开 API，可以只接收 `modelId`。不得仅根据“是否定义了 OpenAPI schema”判断是否需要保留外部兼容。
+
 所有已经对外发布、且允许调用方选择平台模型的公开 OpenAPI，在兼容期统一接收：
 
 ```ts
@@ -327,7 +329,22 @@ const ModelReferenceSchema = z
 4. 两者都没有时，如果该业务字段必填则返回参数错误；如果业务明确允许默认模型，由调用方显式取得默认 `modelData`。
 5. OpenAI 兼容 `/v1`、`/v2` 协议中的标准 `model` 不标记废弃，仍按外部协议处理。
 
-所有已有公开 OpenAPI schema 直接增加 `modelId`，旧 `model` 使用 `.meta({ deprecated: true })`；不复制一套平行 API。非 OpenAPI 接口、内部 RPC 参数和临时 metadata 不承担协议兼容，只声明并接收 `modelId`。
+所有已有公开 OpenAPI schema 直接增加 `modelId`，旧 `model` 使用 `.meta({ deprecated: true })`；不复制一套平行 API。非公开 OpenAPI（包括只出现在 Dev API 文档的站内接口）、内部 RPC 参数和临时 metadata 不承担对外协议兼容，只声明并接收 `modelId`。
+
+当前 System OpenAPI 中会让调用方选择平台模型的请求字段如下：
+
+| 公开接口 | canonical 字段 | deprecated 字段 | 缺省语义 |
+| --- | --- | --- | --- |
+| `POST /core/dataset/create` | `vectorModelId` | `vectorModel` | 两者都缺少时使用默认 Embedding 模型 |
+| `POST /core/dataset/create` | `agentModelId` | `agentModel` | 两者都缺少时使用默认 LLM |
+| `POST /core/dataset/create` | `vlmModelId` | `vlmModel` | 两者都缺少时使用默认 VLM |
+| `POST /core/dataset/searchTest` | `rerankModelId` | `rerankModel` | 仅启用 Rerank 时解析 |
+| `POST /core/dataset/searchTest` | `datasetSearchExtensionModelId` | `datasetSearchExtensionModel` | 仅启用问题扩展时解析 |
+| `POST /core/dataset/searchTest` | `datasetDeepSearchModelId` | `datasetDeepSearchModel` | 仅启用深度搜索时解析 |
+
+表内每组字段都必须把 `modelId` 和 deprecated `model` 一起传给统一的 `getXXModelData`，不得在 API handler 中先用 `modelId ?? model` 压成单个字符串。这样才能区分“没有传 `modelId`”与“传入的 `modelId` 无效”，并保证后者立即报“模型不存在”而不回退。
+
+OpenAI 兼容对话响应中的 `model` 是外部协议字段，不是 FastGPT 平台模型引用，不在上述字段矩阵内，也不标记 deprecated。
 
 ### 6.3 `getXXModelData` 规则
 
@@ -387,7 +404,7 @@ await createLLMResponse({
 
 本轮只允许以下兼容或迁移适配存在：
 
-1. **OpenAPI 请求兼容**：已发布且允许选择模型的 OpenAPI schema 同时接收 `modelId/model`，`model` 标记 deprecated。
+1. **公开 OpenAPI 请求兼容**：已发布且允许选择模型的 System OpenAPI schema 同时接收 `modelId/model`，`model` 标记 deprecated。
 2. **统一模型解析兼容**：`getXXModelData` 与 `findModelData` 接收同一个 `ModelReference`；`modelId` 严格优先，仅缺少 `modelId` 时才按系统 `model` 查询。
 3. **历史持久化读取**：Dataset、App、Workflow、Evaluation、Usage 和模型权限在迁移窗口内读取旧 `*Model`、workflow key、`resourceName` 或 usage `model`；新写入不得继续产生旧字段。
 4. **外部协议归一化**：插件 SDK 的扁平模型只在插件适配入口转换成 canonical `config`；旧 `system_models.metadata` 和旧顶层能力字段只允许升级脚本读取和转换。
@@ -417,7 +434,7 @@ await createLLMResponse({
 | `usage_items` | `modelId` | `model` | 两种记录分别展示 | 新记录只写 `modelId`，不迁移历史记录 |
 | 模型权限记录 | `resourceId` | `resourceName` | `resourceId` 优先 | 新记录按 `resourceId`，保留旧名称快照 |
 
-这里的“保留”针对历史持久化数据和公开 OpenAPI 合约，包括对应的 TypeScript 类型、Zod/Mongoose Schema、OpenAPI 字段声明和历史数据读取分支：旧字段改为 optional 并标记 `@deprecated`，本轮不得从这些字段定义中删除。非 OpenAPI 请求参数与内部临时配置不在兼容范围内，只保留 `modelId`。新增 ID 字段不是原字段 rename，也不应通过重建一套 API 实现。
+这里的“保留”针对历史持久化数据和公开 System OpenAPI 合约，包括对应的 TypeScript 类型、Zod/Mongoose Schema、OpenAPI 字段声明和历史数据读取分支：旧字段改为 optional 并标记 `@deprecated`，本轮不得从这些字段定义中删除。非公开 OpenAPI 请求参数与内部临时配置不在对外兼容范围内，只保留 `modelId`。新增 ID 字段不是原字段 rename，也不应通过重建一套 API 实现。
 
 “保留旧字段”不等于新写入继续双写：按已确认的新写规则，新创建的数据只写对应 ID 字段；迁移存量数据时只 `$set` 新 ID sibling，不 `$unset` 旧字段，因此历史值仍然可供兼容读取和回滚。若业务更新采用局部 `$set`，也不得为了清理而主动删除已有 legacy 字段。
 
@@ -472,12 +489,12 @@ const displayModel = usage.model ?? modelMap.get(usage.modelId)?.model ?? i18nT(
 写入和迁移规则：
 
 - 新建节点和新模板只产生新 ID key，不需要额外双写旧 key。
-- 存量节点的旧 key 不删除；当旧 value 是可解析的字面量 `model` 时，通过 `$set`/input append 增加对应 ID sibling。
-- Workflow 导入、应用创建以及自动保存/保存版本/发布统一调用 `formatModels`：为可解析的旧 `model` 补充 ID sibling。`formatModels` 只负责结构转换，不清空已有 `modelId`，不在服务端写入边界校验模型权限。
-- 编辑或保存存量 Workflow 时保留原本存在的 deprecated input；若用户重新选择了模型，则更新/增加 ID input，但不以“清理”为由删除旧 input。
-- 旧字面量无法解析时，不添加 ID sibling，清空旧 input 但不抛错，避免中断模板导入。运行节点时，`modelId` 和 `model` 都为空、指定模型不存在，或模型未激活，均统一抛出“模型不存在”。
+- 数据库批量迁移脚本只回填 ID sibling，不删除历史 key，便于回滚；业务写入边界的 `formatModels` 则产出只含 ID key 的规范节点。
+- Workflow 导入、应用创建以及自动保存/保存版本/发布统一调用 `formatModels`：静态旧 `model` 转换为 `modelId` key 和 ID 值，引用类型只转换 key 并保留引用值，已有 `modelId` 时删除对应旧 key。`formatModels` 不在服务端写入边界校验模型权限。
+- 编辑或保存存量 Workflow 时，会将命中的 deprecated input 原位转换为 ID input，不再双写旧 key。
+- 旧字面量无法解析时，仍将 key 改为 `modelId` 并清空值，但不抛错，避免中断模板导入。运行节点时，`modelId` 和 `model` 都为空、指定模型不存在，或模型未激活，均统一抛出“模型不存在”。
 
-引用类型 input 的 value 可能来自变量，迁移时无法证明变量运行结果是 ObjectId。此时不能把旧 key 机械复制成新 ID key，只保留 deprecated key，并在运行时把变量结果按旧系统 `model` 解析。只有新 ID key 下的引用值才按 `modelId` 解释；无效时直接报“模型不存在”。
+引用类型 input 的 value 保留原引用路径，仅将旧 key 改为 ID key。运行时引用结果统一按 `modelId` 解释；若上游仍输出旧 `model` 字符串，则直接报“模型不存在”。
 
 ### 7.5 需要覆盖的调用链
 
@@ -538,12 +555,15 @@ export const GetMyModelsResponseSchema =
 - 已有选中值通过 `getMyModel` 恢复，并与发现请求并行。若选中模型的 provider 不在可用 `providers` 中，保留异常 value 并显示“模型不存在”，候选列表使用第一个可用 Provider。
 - 不能先对全局模型列表切片再做权限过滤，否则会造成页大小不稳定、total 泄漏和空页。
 - 普通分页使用稳定排序，例如 provider order、`name`、`modelId`，保证翻页期间顺序确定；`pageSize` 设置合理上限，建议默认 20、最大 50。
-- 移除客户端 `versionKey/isRefreshed` 握手。服务端可以把“成员可用 modelId 集合”按 `{ teamId, tmbId, permissionVersion }` 做短期缓存，并沿用权限 version key 失效；这不会把模型列表缓存责任推给客户端。
+- 移除客户端 `versionKey/isRefreshed` 握手。服务端通过 `TmpDataEnum.MyModels` 按 `{ teamId, tmbId }` 缓存成员可用的 `modelId` 集合，`getMyModels` 和 `getMyModel` 共用该缓存；客户端不维护账号级完整模型缓存。
+- 新增模型，或模型由禁用切换为启用时，必须删除全部 `TmpDataEnum.MyModels` 缓存。新模型在未配置协作者权限时默认可用，如果只清理当前团队或当前成员，其他成员的旧缓存将遗漏该模型。
+- 缓存失效后不主动遍历成员重建；用户下次请求 `getMyModels` 或 `getMyModel` 时，再按最新 active 模型和权限数据惰性计算并写回 `tmpData`。
+- Workflow 导入、创建、保存和发布阶段的 `formatModels` 只负责将可解析的旧 `model` 转换为 `modelId`，不读取 `TmpDataEnum.MyModels` 也不做服务端模型权限判断；权限缓存只服务于前端选择器使用的可用模型接口。
 - `ClientModelItem` 至少包含 `modelId/type/provider/model/name/avatar/isActive`、默认标记和脱敏后的 `config`，不返回 request auth、URL、默认 system prompt 和请求/存储私有配置。
 - 不在本接口夹带 Channel 数量、创建者、resourceContext 或私有模型管理字段。
 - Query/Response Schema 必须导出对应类型并补齐 API 声明、字段 meta 和 OpenAPI path。handler 使用 `parseApiInput({ querySchema })` 校验 query，并用 `GetMyModelsResponseSchema.parse(...)` 校验返回值。
 
-分页接口只有 `provider/modelType` 时，无法保证当前已选的 `modelId` 恰好位于已加载页面。因此增加一个鉴权的单模型读取接口 `/core/ai/model/getMyModel`，接收通用 `modelId/model` 引用，先校验当前成员确实可用，再返回一个 `ClientModelItem`。解析仍遵循 modelId 优先、无效 modelId 不回退 model；选择器只用它恢复当前 value，不用它加载候选列表。
+分页接口只有 `provider/modelType` 时，无法保证当前已选的 `modelId` 恰好位于已加载页面。因此增加一个鉴权的单模型读取接口 `/core/ai/model/getMyModel`，只接收 `modelId`，先校验当前成员确实可用，再返回一个 `ClientModelItem`。该接口是选择器的站内接口，不承担旧 `model` 请求兼容；选择器只用它恢复当前 value，不用它加载候选列表。
 
 ### 9.2 客户端状态
 
@@ -576,7 +596,7 @@ export const GetMyModelsResponseSchema =
 
 ## 10. OpenAPI 与跨仓库改动
 
-- Dataset、Evaluation、辅助 AI API 已有 OpenAPI schema 时直接在原 schema 新增 `*ModelId`；旧 `*Model` 字段继续保留并标记 deprecated，不重复创建第二套评测 OpenAPI。
+- 已标记 `SystemOpenApiTagMap` 的公开 Dataset API 直接在原 schema 新增 `*ModelId`；旧 `*Model` 字段继续保留并标记 deprecated。只标记 `DevApiTagsMap` 的 Evaluation、辅助 AI 和其他站内 API 只接收 `modelId`。
 - `getMyModels` 的分页 query、脱敏 item 和分页 response 在 `packages/global/openapi` 定义并注册现有路由；不继续把 contract 留在 Next.js route 文件中。
 - 鉴权的 `getMyModel` 与公开的 `getSystemModels` 分别使用独立最小 Schema，并注册 OpenAPI；不能为了复用直接返回管理员模型详情 DTO。
 - 新增或修改的 API 在边界使用 `parseApiInput`，ObjectId 字段复用 `ObjectIdSchema`。
@@ -679,15 +699,15 @@ export const GetMyModelsResponseSchema =
 ### 13.2 迁移测试
 
 - datasets、apps、app_versions、app_templates、eval、model permissions 分别覆盖正常、幂等、unresolved、conflict。
-- Workflow 字面量旧 input 覆盖“补 ID sibling 且不删除旧 key”；引用型旧 input 覆盖“不机械复制为 ID key”；`datasetParams`、chatConfig 分别覆盖。
+- Workflow 字面量旧 input 覆盖“将 key 和 value 转换为 ID”；引用型旧 input 覆盖“只改 key、保留引用值”；`datasetParams`、chatConfig 分别覆盖。
 - 升级后的 `cleanSystemModelConfigs` 覆盖 dry-run、正式执行、分组统计、invalid/unresolved/conflict 样本和服务端模型缓存重载，并覆盖 metadata/旧顶层/config 三种模型输入及各引用集合。
 - 大批量游标执行不会把未解析字符串写入任何 `*ModelId`。
 
 ### 13.3 集成测试
 
 - 新建/编辑 Dataset 后数据库只出现 `*ModelId`，训练、搜索和重建 embedding 正常。
-- 新建 Workflow 只产生 ID key；编辑或迁移旧 Workflow 增加可解析的 ID sibling 并保留原 deprecated key，旧 Workflow 无需先手工保存即可运行。
-- Evaluation 新旧请求均能在兼容期执行，新请求只落 `evalModelId`。
+- 新建 Workflow 只产生 ID key；导入、编辑或保存旧 Workflow 后只保留对应 ID key，静态值转换为 ID，引用值保留引用路径。
+- Evaluation 历史持久化数据仍能按 `evalModel` 读取；站内新请求只接收并落库 `evalModelId`。
 - Prompt 优化、代码优化、问题引导、TTS/STT、Agent Loop 均从 modelId 解析，但 provider 收到正确 `model`。
 - 模型能力读取统一来自 `modelData.config`，客户端拿不到 config 中的敏感服务端字段。
 - 非法或已删除模型不会调用第一个系统模型；API 统一返回“模型不存在”。
@@ -705,7 +725,7 @@ export const GetMyModelsResponseSchema =
 - 新创建的业务配置不再保存旧 `model` 字符串引用。
 - 所有存量可解析引用均完成回填，unresolved/conflict 有明确清单且为 0 后才算迁移完成。
 - 旧系统 model 兼容调用可用，未知模型不会静默调用默认模型。
-- API 兼容字段 `model` 已标记 deprecated，内部模型请求链不存在字符串 model reference。
+- 公开 System OpenAPI 的兼容字段 `model` 已标记 deprecated，内部模型请求链不存在字符串 model reference。
 - 账号可用模型只通过分页 `getMyModels` 按需获取，客户端不存在账号级完整模型缓存。
 - provider/AIProxy 收到的仍是正确 provider model 名。
 - PR diff 中不包含 Channel、私有模型 CRUD、管理员统计，也不重复管理员页面迁移；必要的前端改动直接基于 upstream main 当前管理员目录完成。
@@ -725,7 +745,7 @@ export const GetMyModelsResponseSchema =
 - [x] 实现插件/旧 metadata/旧顶层字段到 canonical config 的统一 normalize。
 - [x] 实现插件系统模型物化，验证 ID 稳定性和并发收敛。
 - [x] 重构服务端 ID cache/getter，移除显式未命中时的默认回退。
-- [x] 给公开 OpenAPI 的模型选择接口增加 `modelId/model` 兼容 schema，并将 model 标记 deprecated；非 OpenAPI 接口只接收 `modelId`。
+- [x] 给公开 System OpenAPI 的模型选择接口增加 `modelId/model` 兼容 schema，并将 model 标记 deprecated；非公开接口（包括 Dev-only OpenAPI）只接收 `modelId`。
 - [x] 将 LLM/Embedding/Rerank/TTS/STT request 链改为只接收 modelData。
 - [x] 给 Dataset 字段、API、runtime、队列和前端表单新增 `*ModelId`，保留并弃用旧 `*Model` 字段。
 - [x] 给 Workflow 增加 canonical ID key，保留并弃用旧 key，改造模板、dispatcher、Agent/搜索/辅助调用链。

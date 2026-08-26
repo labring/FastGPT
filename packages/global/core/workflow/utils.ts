@@ -577,9 +577,9 @@ const workflowModelKeyMappings = [
 /**
  * 在 Workflow 写入边界统一格式化模型引用。
  *
- * 静态旧 model 可解析时保留原 input，并新增对应的 modelId sibling；无法
- * 解析时清空旧值但不抛错，避免中断模板导入。已有 modelId 和引用类型保持原样：
- * 该函数只负责结构转换，不承担模型权限判断。
+ * 静态旧 model 会将 key 改为 modelId，并将值转换为对应 ID；无法解析时
+ * 保留 modelId key 并清空值，但不抛错。引用类型只改 key，保留引用值。若已有
+ * modelId input，则保留其值并删除对应旧 model input。该函数不承担模型权限判断。
  */
 export const formatModels = ({
   modules,
@@ -600,21 +600,21 @@ export const formatModels = ({
       const legacyInput = module.inputs.find((input) => input.key === legacyKey);
       const modelIdInput = module.inputs.find((input) => input.key === modelIdKey);
 
-      // modelId 始终优先；存在 canonical input 时不再使用旧 model 补充。
-      if (modelIdInput) continue;
+      if (!legacyInput) continue;
 
-      if (!legacyInput || isReferenceInput(legacyInput)) continue;
-      const modelId = modelIdByModel.get(legacyInput.value);
-      if (!modelId) {
-        legacyInput.value = undefined;
+      // modelId 始终优先；存在 canonical input 时删除所有对应旧 input。
+      if (modelIdInput) {
+        module.inputs = module.inputs.filter((input) => input.key !== legacyKey);
         continue;
       }
 
-      module.inputs.push({
-        ...legacyInput,
-        key: modelIdKey,
-        value: modelId
-      });
+      const isReference = isReferenceInput(legacyInput);
+      legacyInput.key = modelIdKey;
+      if (!isReference) {
+        legacyInput.value = modelIdByModel.get(legacyInput.value);
+      }
+      // 历史异常数据可能存在重复旧 key，转换首个后一并移除。
+      module.inputs = module.inputs.filter((input) => input.key !== legacyKey);
     }
   });
 

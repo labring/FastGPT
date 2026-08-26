@@ -1358,7 +1358,7 @@ describe('formatModels', () => {
     expect(result).toBeUndefined();
   });
 
-  it('keeps legacy inputs and adds modelId siblings for every static workflow model key', () => {
+  it('replaces every static legacy workflow model key and value with modelId', () => {
     const modules = [
       {
         nodeId: 'node1',
@@ -1397,7 +1397,15 @@ describe('formatModels', () => {
 
     const result = formatModels({ modules, models });
 
-    expect(result?.[0].inputs[0].value).toBe('gpt-4');
+    expect(result?.[0].inputs).toHaveLength(4);
+    expect(result?.[0].inputs.map((input) => input.key)).not.toEqual(
+      expect.arrayContaining([
+        NodeInputKeyEnum.aiModel,
+        NodeInputKeyEnum.datasetSearchRerankModel,
+        NodeInputKeyEnum.datasetSearchExtensionModel,
+        NodeInputKeyEnum.datasetDeepSearchModel
+      ])
+    );
     expect(result?.[0].inputs).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -1440,6 +1448,7 @@ describe('formatModels', () => {
     ];
 
     expect(() => formatModels({ modules, models })).not.toThrow();
+    expect(modules[0].inputs[0].key).toBe(NodeInputKeyEnum.aiModelId);
     expect(modules[0].inputs[0].value).toBeUndefined();
     expect(modules[0].inputs).toHaveLength(1);
   });
@@ -1479,10 +1488,14 @@ describe('formatModels', () => {
 
     expect(result?.[0].inputs[0].value).toBe(models[0].modelId);
     expect(result?.[0].inputs[1].value).toBe('68ad85a7463006c963799aff');
-    expect(result?.[0].inputs[2].value).toBe('extension-v1');
+    expect(result?.[0].inputs).toHaveLength(2);
+    expect(result?.[0].inputs.some((input) => input.key === NodeInputKeyEnum.aiModel)).toBe(false);
+    expect(
+      result?.[0].inputs.some((input) => input.key === NodeInputKeyEnum.datasetSearchExtensionModel)
+    ).toBe(false);
   });
 
-  it('keeps reference and array model inputs unchanged', () => {
+  it('renames reference model keys without changing their values', () => {
     const modules = [
       {
         nodeId: 'node1',
@@ -1507,7 +1520,9 @@ describe('formatModels', () => {
       }
     ];
     const result = formatModels({ modules, models });
+    expect(result?.[0].inputs[0].key).toBe(NodeInputKeyEnum.aiModelId);
     expect(result?.[0].inputs[0].value).toBe('unauthorized-model');
+    expect(result?.[0].inputs[1].key).toBe(NodeInputKeyEnum.datasetSearchRerankModelId);
     expect(result?.[0].inputs[1].value).toEqual(['nodeId', 'outputKey']);
     expect(result?.[0].inputs).toHaveLength(2);
   });

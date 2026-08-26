@@ -263,15 +263,14 @@ describe('POST /api/core/ai/skill/list', () => {
     expect(draftApp?.modules[0].inputs).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          key: NodeInputKeyEnum.aiModel,
-          value: legacyModel.model
-        }),
-        expect.objectContaining({
           key: NodeInputKeyEnum.aiModelId,
           value: legacyModel.modelId
         })
       ])
     );
+    expect(
+      draftApp?.modules[0].inputs.some((input) => input.key === NodeInputKeyEnum.aiModel)
+    ).toBe(false);
 
     const draftRes = await Call<ListSkillsQuery, Record<string, never>, ListSkillsResponse>(
       handler,
