@@ -52,13 +52,16 @@ export const ChatSettingModelSchema = z.object({
       example: [{ pluginId: '68ad85a7463006c963799a05', source: 'system', inputs: {} }],
       description: '已选工具列表'
     }),
-  favouriteTags: z.array(ChatFavouriteTagSchema).meta({
-    example: [
-      { id: 'ptqn6v4I', name: '效率' },
-      { id: 'jHLWiqff', name: '学习' }
-    ],
-    description: '精选应用标签列表'
-  })
+  favouriteTags: z
+    .array(ChatFavouriteTagSchema)
+    .default([])
+    .meta({
+      example: [
+        { id: 'ptqn6v4I', name: '效率' },
+        { id: 'jHLWiqff', name: '学习' }
+      ],
+      description: '精选应用标签列表，历史配置缺失时返回空数组'
+    })
 });
 export type ChatSettingModelType = z.infer<typeof ChatSettingModelSchema>;
 

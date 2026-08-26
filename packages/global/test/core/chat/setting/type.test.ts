@@ -124,6 +124,18 @@ describe('ChatSettingModelSchema', () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it('should default missing favouriteTags to an empty array', () => {
+    const result = ChatSettingModelSchema.parse({
+      _id: '507f1f77bcf86cd799439011',
+      appId: '507f1f77bcf86cd799439012',
+      teamId: '507f1f77bcf86cd799439013',
+      quickAppIds: [],
+      selectedTools: []
+    });
+
+    expect(result.favouriteTags).toEqual([]);
+  });
 });
 
 describe('ChatSettingSchema', () => {
@@ -181,5 +193,17 @@ describe('ChatSettingSchema', () => {
       favouriteTags: []
     });
     expect(result.success).toBe(true);
+  });
+
+  it('should default missing favouriteTags in the response to an empty array', () => {
+    const result = ChatSettingSchema.parse({
+      _id: '507f1f77bcf86cd799439011',
+      appId: '507f1f77bcf86cd799439012',
+      teamId: '507f1f77bcf86cd799439013',
+      quickAppList: [],
+      selectedTools: []
+    });
+
+    expect(result.favouriteTags).toEqual([]);
   });
 });
