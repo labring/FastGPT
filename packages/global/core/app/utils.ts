@@ -22,7 +22,7 @@ export const isToolNotExistError = (error?: unknown) =>
 export const getDefaultAppForm = (): AppFormEditFormType => {
   return {
     aiSettings: {
-      model: '',
+      modelId: '',
       isResponseAnswerText: true,
       maxHistories: 6
     },
@@ -32,7 +32,7 @@ export const getDefaultAppForm = (): AppFormEditFormType => {
       limit: 3000,
       searchMode: DatasetSearchModeEnum.embedding,
       usingReRank: true,
-      rerankModel: '',
+      rerankModelId: '',
       rerankWeight: 0.5,
       datasetSearchUsingExtensionQuery: true,
       datasetSearchExtensionBg: '',

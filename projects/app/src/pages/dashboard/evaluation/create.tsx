@@ -26,10 +26,11 @@ import { evaluationFileErrors } from '@fastgpt/global/core/app/evaluation/consta
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 type EvaluationFormType = {
   name: string;
-  evalModel: string;
+  evalModelId: string;
   appId: string;
   evaluationFiles: SelectFileItemType[];
 };
@@ -42,19 +43,19 @@ const EvaluationCreating = () => {
   const [percent, setPercent] = useState(0);
   const [error, setError] = useState<string>();
 
-  const { llmModelList } = useSystemStore();
+  const { defaultModels } = useSystemStore();
 
   const { register, setValue, control, handleSubmit } = useForm<EvaluationFormType>({
     defaultValues: {
       name: '',
-      evalModel: llmModelList[0]?.model,
+      evalModelId: (defaultModels.llm as typeof defaultModels.llm & { modelId?: string })?.modelId,
       appId: '',
       evaluationFiles: [] as SelectFileItemType[]
     }
   });
 
   const name = useWatch({ control, name: 'name' });
-  const evalModel = useWatch({ control, name: 'evalModel' });
+  const evalModelId = useWatch({ control, name: 'evalModelId' });
   const appId = useWatch({ control, name: 'appId' });
   const evaluationFiles = useWatch({ control, name: 'evaluationFiles' });
 
@@ -80,7 +81,7 @@ const EvaluationCreating = () => {
       await postCreateEvaluation({
         file: data.evaluationFiles[0].file,
         name: data.name,
-        evalModel: data.evalModel,
+        evalModelId: data.evalModelId,
         appId: data.appId,
         percentListen: setPercent
       });
@@ -177,15 +178,13 @@ const EvaluationCreating = () => {
                 {t('dashboard_evaluation:Evaluation_model')}
               </FormLabel>
               <AIModelSelector
+                modelType={ModelTypeEnum.llm}
+                valueField="modelId"
                 w={'406px'}
                 bg={'myGray.50'}
-                value={evalModel}
-                list={llmModelList.map((item) => ({
-                  label: item.name,
-                  value: item.model
-                }))}
+                value={evalModelId}
                 onChange={(e) => {
-                  setValue('evalModel', e);
+                  setValue('evalModelId', e);
                 }}
               />
             </Flex>
@@ -343,7 +342,7 @@ const EvaluationCreating = () => {
                 onClick={handleSubmit(onSubmit)}
                 isLoading={isCreating}
                 isDisabled={
-                  !!error || !name || !evalModel || !appId || evaluationFiles.length === 0
+                  !!error || !name || !evalModelId || !appId || evaluationFiles.length === 0
                 }
               >
                 {isCreating

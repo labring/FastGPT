@@ -34,16 +34,23 @@ vi.mock('@fastgpt/service/core/dataset/utils', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getEmbeddingModel: vi.fn(() => ({
+  getEmbeddingModelData: vi.fn(() => ({
     model: 'embedding-model',
-    name: 'Embedding Model'
+    name: 'Embedding Model',
+    config: {}
   })),
-  getLLMModel: vi.fn((model: string) => ({
+  getLLMModelData: vi.fn(({ model }: { model: string }) => ({
+    modelId: '68ad85a7463006c963799a43',
     model,
     name: `${model} name`,
-    maxContext: 1000
+    config: { maxContext: 1000 }
   })),
-  getRerankModel: vi.fn(() => undefined)
+  getRerankModelData: vi.fn(() => undefined),
+  getVlmModelData: vi.fn(({ model }: { model: string }) => ({
+    model,
+    name: `${model} name`,
+    config: { vision: true }
+  }))
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
@@ -65,6 +72,14 @@ vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
 }));
 
 import { dispatchAgentDatasetSearch } from '../../../../../../../core/workflow/dispatch/ai/agent/sub/dataset';
+
+const llmModelData = (model: string) =>
+  ({
+    modelId: '68ad85a7463006c963799a43',
+    model,
+    name: `${model} name`,
+    config: { maxContext: 1000 }
+  }) as any;
 
 describe('dispatchAgentDatasetSearch', () => {
   beforeEach(() => {
@@ -125,7 +140,7 @@ describe('dispatchAgentDatasetSearch', () => {
       usingSimilarityFilter: true,
       usingReRank: false,
       queryExtensionResult: {
-        llmModel: 'gpt-query',
+        llmModel: llmModelData('gpt-query'),
         requestId: 'req_query_extension',
         seconds: 1.2,
         inputTokens: 10,
@@ -141,7 +156,7 @@ describe('dispatchAgentDatasetSearch', () => {
       args: JSON.stringify({ query: ['origin'] }),
       teamId: 'team_1',
       tmbId: 'tmb_1',
-      llmModel: 'gpt-main',
+      llmModel: llmModelData('gpt-main'),
       datasetParams: {
         datasets: [{ datasetId: 'dataset_1' }],
         similarity: 0.4,
@@ -171,7 +186,7 @@ describe('dispatchAgentDatasetSearch', () => {
         moduleName: 'common:core.module.template.Query extension',
         moduleLogo: 'core/workflow/template/datasetSearch',
         runningTime: 1.2,
-        model: 'gpt-query name',
+        modelId: '68ad85a7463006c963799a43',
         llmRequestIds: ['req_query_extension'],
         inputTokens: 10,
         outputTokens: 5,
@@ -184,7 +199,7 @@ describe('dispatchAgentDatasetSearch', () => {
         moduleType: FlowNodeTypeEnum.datasetSearchNode,
         moduleName: 'account_usage:dataset_chunk_selection',
         moduleLogo: 'core/workflow/template/datasetSearch',
-        model: 'gpt-main name',
+        modelId: '68ad85a7463006c963799a43',
         llmRequestIds: ['req_chunk_selection'],
         inputTokens: 7,
         outputTokens: 2,
@@ -232,7 +247,7 @@ describe('dispatchAgentDatasetSearch', () => {
       usingSimilarityFilter: true,
       usingReRank: false,
       queryExtensionResult: {
-        llmModel: 'gpt-query',
+        llmModel: llmModelData('gpt-query'),
         requestId: 'req_query_extension',
         seconds: 1.2,
         inputTokens: 10,
@@ -261,7 +276,7 @@ describe('dispatchAgentDatasetSearch', () => {
       args: JSON.stringify({ query: ['origin'] }),
       teamId: 'team_1',
       tmbId: 'tmb_1',
-      llmModel: 'gpt-main',
+      llmModel: llmModelData('gpt-main'),
       userKey,
       datasetParams: {
         datasets: [{ datasetId: 'dataset_1' }],
@@ -326,7 +341,7 @@ describe('dispatchAgentDatasetSearch', () => {
       args: JSON.stringify({ query: 'legacy query' }),
       teamId: 'team_1',
       tmbId: 'tmb_1',
-      llmModel: 'gpt-main',
+      llmModel: llmModelData('gpt-main'),
       datasetParams: {
         datasets: [{ datasetId: 'dataset_1' }],
         searchMode: DatasetSearchModeEnum.embedding
@@ -355,7 +370,7 @@ describe('dispatchAgentDatasetSearch', () => {
       args: JSON.stringify({ query: ['origin'] }),
       teamId: 'team_1',
       tmbId: 'tmb_1',
-      llmModel: 'gpt-main',
+      llmModel: llmModelData('gpt-main'),
       datasetParams: {
         datasets: [{ datasetId: 'dataset_1' }, { datasetId: 'dataset_2' }],
         searchMode: DatasetSearchModeEnum.embedding,
@@ -381,7 +396,7 @@ describe('dispatchAgentDatasetSearch', () => {
       args: JSON.stringify({ query: ['origin'] }),
       teamId: 'team_1',
       tmbId: 'tmb_1',
-      llmModel: 'gpt-main',
+      llmModel: llmModelData('gpt-main'),
       datasetParams: {
         datasets: [{ datasetId: 'dataset_1' }],
         searchMode: DatasetSearchModeEnum.embedding,
@@ -420,7 +435,7 @@ describe('dispatchAgentDatasetSearch', () => {
       }),
       teamId: 'team_1',
       tmbId: 'tmb_1',
-      llmModel: 'gpt-main',
+      llmModel: llmModelData('gpt-main'),
       datasetParams: {
         datasets: [{ datasetId: 'dataset_1' }],
         searchMode: DatasetSearchModeEnum.embedding
@@ -431,7 +446,7 @@ describe('dispatchAgentDatasetSearch', () => {
       expect.objectContaining({
         textQueries: ['red shoes'],
         imageQueries: ['https://files.example.com/product.png'],
-        vlmModel: 'vlm-model'
+        vlmModel: expect.objectContaining({ model: 'vlm-model' })
       })
     );
     expect(result.nodeResponse?.datasetQueries).toEqual([

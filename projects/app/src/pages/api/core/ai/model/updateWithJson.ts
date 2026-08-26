@@ -3,10 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
-import {
-  parsePersistedSystemModelConfig,
-  updatedReloadSystemModel
-} from '@fastgpt/service/core/ai/config/utils';
+import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/config/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   UpdateSystemModelsWithJsonBodySchema,
@@ -26,18 +23,26 @@ async function handler(
     req,
     bodySchema: UpdateSystemModelsWithJsonBodySchema
   }).body;
-  const data = config.map(({ model, metadata }) => ({
-    model,
-    metadata: parsePersistedSystemModelConfig({ model, metadata })
-  }));
+  const configuredModels = config.map((item) => item.model);
 
   await mongoSessionRun(async (session) => {
-    await MongoSystemModel.deleteMany({}, { session });
-    for await (const item of data) {
-      await MongoSystemModel.updateOne(
-        { model: item.model },
-        { $set: { model: item.model, metadata: item.metadata } },
-        { upsert: true, session }
+    // modelId 是业务引用，批量替换配置时不能删除并重建文档。未提交的模型仅停用，
+    // 后续再次加入配置时仍复用原 _id。
+    await MongoSystemModel.updateMany(
+      { model: { $nin: configuredModels } },
+      { $set: { isActive: false } },
+      { session }
+    );
+    if (config.length > 0) {
+      await MongoSystemModel.bulkWrite(
+        config.map((item) => ({
+          updateOne: {
+            filter: { model: item.model },
+            update: { $set: item },
+            upsert: true
+          }
+        })),
+        { session }
       );
     }
   });

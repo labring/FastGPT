@@ -1,5 +1,36 @@
-import { SystemModelItemSchema } from '../../../../../core/ai/model.schema';
+import {
+  SystemModelDataSchema,
+  SystemModelDocumentDataSchema
+} from '../../../../../core/ai/model.schema';
+import { ObjectIdSchema } from '../../../../../common/type/mongo';
 import z from 'zod';
+
+export const AdminSystemModelReferenceSchema = z.object({
+  modelId: ObjectIdSchema.meta({ description: '模型稳定 ID' })
+});
+export type AdminSystemModelReference = z.infer<typeof AdminSystemModelReferenceSchema>;
+
+export const GetAdminSystemModelListResponseSchema = z.array(SystemModelDataSchema);
+export type GetAdminSystemModelListResponse = z.infer<typeof GetAdminSystemModelListResponseSchema>;
+
+export const GetAdminSystemModelDetailResponseSchema = SystemModelDataSchema;
+export type GetAdminSystemModelDetailResponse = z.infer<
+  typeof GetAdminSystemModelDetailResponseSchema
+>;
+
+export const GetAdminSystemModelDefaultConfigResponseSchema = SystemModelDocumentDataSchema;
+export type GetAdminSystemModelDefaultConfigResponse = z.infer<
+  typeof GetAdminSystemModelDefaultConfigResponseSchema
+>;
+
+export const DeleteAdminSystemModelResponseSchema = z.object({});
+export type DeleteAdminSystemModelResponse = z.infer<typeof DeleteAdminSystemModelResponseSchema>;
+
+export const TestAdminSystemModelQuerySchema = AdminSystemModelReferenceSchema.extend({
+  channelId: z.coerce.number().int().positive().optional()
+});
+export type TestAdminSystemModelQuery = z.infer<typeof TestAdminSystemModelQuerySchema>;
+export const TestAdminSystemModelResponseSchema = z.unknown();
 
 /* ============================================================================
  * API: 更新系统模型配置
@@ -10,12 +41,11 @@ import z from 'zod';
  * ============================================================================ */
 
 export const UpdateSystemModelBodySchema = z.object({
-  model: z.string().trim().min(1).meta({
-    example: 'gpt-5',
-    description: '待更新的模型标识'
+  modelId: ObjectIdSchema.optional().meta({
+    description: '待更新的模型稳定 ID；创建模型时不传'
   }),
-  metadata: z.record(z.string(), z.unknown()).optional().meta({
-    description: '本次更新的模型配置字段；与已有配置合并后执行完整模型校验'
+  modelData: SystemModelDocumentDataSchema.meta({
+    description: '完整的系统模型配置'
   })
 });
 export type UpdateSystemModelBody = z.infer<typeof UpdateSystemModelBodySchema>;
@@ -25,27 +55,7 @@ export const UpdateSystemModelResponseSchema = z.undefined().meta({
 });
 export type UpdateSystemModelResponse = z.infer<typeof UpdateSystemModelResponseSchema>;
 
-const ImportedSystemModelRecordSchema = z
-  .object({
-    model: z.string().trim().min(1),
-    metadata: z.record(z.string(), z.unknown())
-  })
-  .transform(({ model, metadata }) => ({
-    model,
-    metadata: {
-      ...metadata,
-      model,
-      name: typeof metadata.name === 'string' && metadata.name.trim() ? metadata.name.trim() : model
-    }
-  }))
-  .pipe(
-    z.object({
-      model: z.string(),
-      metadata: SystemModelItemSchema
-    })
-  );
-
-const ImportedSystemModelListSchema = z.array(ImportedSystemModelRecordSchema);
+const ImportedSystemModelListSchema = z.array(SystemModelDocumentDataSchema);
 
 const JsonSystemModelListSchema = z.string().transform((value, ctx) => {
   try {
@@ -70,8 +80,8 @@ const JsonSystemModelListSchema = z.string().transform((value, ctx) => {
 export const UpdateSystemModelsWithJsonBodySchema = z.object({
   config: JsonSystemModelListSchema.pipe(ImportedSystemModelListSchema).meta({
     example:
-      '[{"model":"gpt-5","metadata":{"type":"llm","provider":"OpenAI","model":"gpt-5","name":"GPT-5","maxContext":400000,"maxResponse":128000,"quoteMaxToken":300000,"toolChoice":true,"isActive":true}}]',
-    description: '系统模型配置 JSON；解析后每条 metadata 必须符合完整模型 Schema'
+      '[{"type":"llm","provider":"OpenAI","model":"gpt-5","name":"GPT-5","isSystem":true,"isActive":true,"config":{"maxContext":400000,"maxResponse":128000,"quoteMaxToken":300000,"toolChoice":true}}]',
+    description: '系统模型配置 JSON；每条记录必须符合 canonical 模型 Schema'
   })
 });
 export type UpdateSystemModelsWithJsonBody = z.input<typeof UpdateSystemModelsWithJsonBodySchema>;

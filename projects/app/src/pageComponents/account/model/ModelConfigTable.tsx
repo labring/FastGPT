@@ -35,12 +35,13 @@ import {
   putUpdateDefaultModels
 } from '@/web/core/ai/config';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import { type SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { clientInitData } from '@/web/common/system/staticData';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { putUpdateWithJson } from '@/web/core/ai/config';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
@@ -208,7 +209,20 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         avatar: provider.avatar,
         providerId: provider.id,
         providerName: t(provider.name as any),
-        order: provider.order
+        order: provider.order,
+        contextToken:
+          item.type === ModelTypeEnum.llm
+            ? item.config.maxContext
+            : item.type === ModelTypeEnum.embedding || item.type === ModelTypeEnum.rerank
+              ? item.config.maxToken
+              : undefined,
+        vision:
+          item.type === ModelTypeEnum.llm || item.type === ModelTypeEnum.embedding
+            ? item.config.vision
+            : undefined,
+        audio: item.type === ModelTypeEnum.llm ? item.config.audio : undefined,
+        video: item.type === ModelTypeEnum.llm ? item.config.video : undefined,
+        reasoning: item.type === ModelTypeEnum.llm ? item.config.reasoning : undefined
       };
     });
     formatList.sort((a, b) => a.order - b.order);
@@ -257,11 +271,11 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     onSuccess: refreshModels
   });
 
-  const [editModelData, setEditModelData] = useState<SystemModelItemType>();
+  const [editModelData, setEditModelData] = useState<SystemModelDataType>();
   const { runAsync: onEditModel, loading: loadingData } = useRequest(
     (modelId: string) => getSystemModelDetail(modelId),
     {
-      onSuccess: (data: SystemModelItemType) => {
+      onSuccess: (data: SystemModelDataType) => {
         setEditModelData(data);
       }
     }
@@ -289,12 +303,15 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       type,
       ...(type === ModelTypeEnum.llm
         ? {
-            vision: false,
-            audio: false,
-            video: false
+            config: {
+              ...defaultModel?.config,
+              vision: false,
+              audio: false,
+              video: false
+            }
           }
         : {})
-    } as SystemModelItemType;
+    } as SystemModelDataType;
 
     setEditModelData(modelData);
   };
@@ -467,12 +484,21 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                         <Switch
                           size={'sm'}
                           isChecked={item.isActive}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const {
+                              modelId,
+                              avatar: _avatar,
+                              isCustom: _isCustom,
+                              ...modelData
+                            } = item;
                             updateModel({
-                              model: item.model,
-                              metadata: { isActive: e.target.checked }
-                            })
-                          }
+                              modelId,
+                              modelData: {
+                                ...modelData,
+                                isActive: e.target.checked
+                              }
+                            });
+                          }}
                           colorScheme={'myBlue'}
                         />
                       </Td>
@@ -481,12 +507,12 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                           <MyIconButton
                             icon={'core/chat/sendLight'}
                             tip={t('config_model:model.test_model')}
-                            onClick={() => onTestModel({ model: item.model })}
+                            onClick={() => onTestModel({ modelId: item.modelId })}
                           />
                           <MyIconButton
                             icon={'common/settingLight'}
                             tip={t('config_model:model.edit_model')}
-                            onClick={() => onEditModel(item.model)}
+                            onClick={() => onEditModel(item.modelId!)}
                           />
                           {item.isCustom && (
                             <PopoverConfirm
@@ -497,7 +523,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                               }
                               type="delete"
                               content={t('config_model:model.delete_model_confirm')}
-                              onConfirm={() => deleteModel({ model: item.model })}
+                              onConfirm={() => deleteModel({ modelId: item.modelId })}
                             />
                           )}
                         </HStack>
@@ -599,16 +625,15 @@ const DefaultModelModal = ({
   onClose: () => void;
 }) => {
   const { t } = useClientTranslation('config_model');
+  const { defaultModels } = useSystemStore();
   const {
-    defaultModels,
     llmModelList,
     embeddingModelList,
     ttsModelList,
     sttModelList,
     reRankModelList,
-    getVlmModelList
-  } = useSystemStore();
-  const vlmModelList = useMemo(() => getVlmModelList(), [getVlmModelList]);
+    vlmModelList
+  } = useSystemModelLists();
 
   // Create a copy of defaultModels for local state management
   const [defaultData, setDefaultData] = useState(defaultModels);
@@ -633,16 +658,18 @@ const DefaultModelModal = ({
           <Box {...labelStyles}>{t('common:model.type.chat')}</Box>
           <Box flex={1}>
             <AIModelSelector
+              modelType={ModelTypeEnum.llm}
+              valueField="modelId"
               bg="myGray.50"
-              value={defaultData.llm?.model}
+              value={defaultData.llm?.modelId}
               list={llmModelList.map((item) => ({
-                value: item.model,
+                value: item.modelId,
                 label: item.name
               }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
-                  llm: llmModelList.find((item) => item.model === e)
+                  llm: llmModelList.find((item) => item.modelId === e)
                 }));
               }}
             />
@@ -652,16 +679,18 @@ const DefaultModelModal = ({
           <Box {...labelStyles}>{t('common:model.type.embedding')}</Box>
           <Box flex={1}>
             <AIModelSelector
+              modelType={ModelTypeEnum.embedding}
+              valueField="modelId"
               bg="myGray.50"
-              value={defaultData.embedding?.model}
+              value={defaultData.embedding?.modelId}
               list={embeddingModelList.map((item) => ({
-                value: item.model,
+                value: item.modelId,
                 label: item.name
               }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
-                  embedding: embeddingModelList.find((item) => item.model === e)
+                  embedding: embeddingModelList.find((item) => item.modelId === e)
                 }));
               }}
             />
@@ -671,16 +700,18 @@ const DefaultModelModal = ({
           <Box {...labelStyles}>{t('common:model.type.tts')}</Box>
           <Box flex={1}>
             <AIModelSelector
+              modelType={ModelTypeEnum.tts}
+              valueField="modelId"
               bg="myGray.50"
-              value={defaultData.tts?.model}
+              value={defaultData.tts?.modelId}
               list={ttsModelList.map((item) => ({
-                value: item.model,
+                value: item.modelId,
                 label: item.name
               }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
-                  tts: ttsModelList.find((item) => item.model === e)
+                  tts: ttsModelList.find((item) => item.modelId === e)
                 }));
               }}
             />
@@ -690,16 +721,18 @@ const DefaultModelModal = ({
           <Box {...labelStyles}>{t('common:model.type.stt')}</Box>
           <Box flex={1}>
             <AIModelSelector
+              modelType={ModelTypeEnum.stt}
+              valueField="modelId"
               bg="myGray.50"
-              value={defaultData.stt?.model}
+              value={defaultData.stt?.modelId}
               list={sttModelList.map((item) => ({
-                value: item.model,
+                value: item.modelId,
                 label: item.name
               }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
-                  stt: sttModelList.find((item) => item.model === e)
+                  stt: sttModelList.find((item) => item.modelId === e)
                 }));
               }}
             />
@@ -709,16 +742,18 @@ const DefaultModelModal = ({
           <Box {...labelStyles}>{t('common:model.type.reRank')}</Box>
           <Box flex={1}>
             <AIModelSelector
+              modelType={ModelTypeEnum.rerank}
+              valueField="modelId"
               bg="myGray.50"
-              value={defaultData.rerank?.model}
+              value={defaultData.rerank?.modelId}
               list={reRankModelList.map((item) => ({
-                value: item.model,
+                value: item.modelId,
                 label: item.name
               }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
-                  rerank: reRankModelList.find((item) => item.model === e)
+                  rerank: reRankModelList.find((item) => item.modelId === e)
                 }));
               }}
             />
@@ -732,16 +767,18 @@ const DefaultModelModal = ({
           </Flex>
           <Box flex={1}>
             <AIModelSelector
+              modelType={ModelTypeEnum.llm}
+              valueField="modelId"
               bg="myGray.50"
-              value={defaultData.datasetTextLLM?.model}
+              value={defaultData.datasetTextLLM?.modelId}
               list={llmModelList.map((item) => ({
-                value: item.model,
+                value: item.modelId,
                 label: item.name
               }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
-                  datasetTextLLM: llmModelList.find((item) => item.model === e)
+                  datasetTextLLM: llmModelList.find((item) => item.modelId === e)
                 }));
               }}
             />
@@ -754,16 +791,18 @@ const DefaultModelModal = ({
           </Flex>
           <Box flex={1}>
             <AIModelSelector
+              modelType={ModelTypeEnum.llm}
+              valueField="modelId"
               bg="myGray.50"
-              value={defaultData.datasetImageLLM?.model}
+              value={defaultData.datasetImageLLM?.modelId}
               list={vlmModelList.map((item) => ({
-                value: item.model,
+                value: item.modelId,
                 label: item.name
               }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
-                  datasetImageLLM: vlmModelList.find((item) => item.model === e)
+                  datasetImageLLM: vlmModelList.find((item) => item.modelId === e)
                 }));
               }}
             />
@@ -776,18 +815,20 @@ const DefaultModelModal = ({
           </Flex>
           <Box flex={1}>
             <AIModelSelector
+              modelType={ModelTypeEnum.llm}
+              valueField="modelId"
               bg="myGray.50"
-              value={defaultData.chatTitleLLM?.model || ''}
+              value={defaultData.chatTitleLLM?.modelId || ''}
               canBeUnset
               unsetLabel={t('config_model:not_set_chat_title_model')}
               list={llmModelList.map((item) => ({
-                value: item.model,
+                value: item.modelId,
                 label: item.name
               }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
-                  chatTitleLLM: llmModelList.find((item) => item.model === e)
+                  chatTitleLLM: llmModelList.find((item) => item.modelId === e)
                 }));
               }}
             />
@@ -802,14 +843,14 @@ const DefaultModelModal = ({
           isLoading={loading}
           onClick={() =>
             runAsync({
-              [ModelTypeEnum.llm]: defaultData.llm?.model,
-              [ModelTypeEnum.embedding]: defaultData.embedding?.model,
-              [ModelTypeEnum.tts]: defaultData.tts?.model,
-              [ModelTypeEnum.stt]: defaultData.stt?.model,
-              [ModelTypeEnum.rerank]: defaultData.rerank?.model,
-              datasetTextLLM: defaultData.datasetTextLLM?.model,
-              datasetImageLLM: defaultData.datasetImageLLM?.model,
-              chatTitleLLM: defaultData.chatTitleLLM?.model
+              [ModelTypeEnum.llm]: defaultData.llm?.modelId,
+              [ModelTypeEnum.embedding]: defaultData.embedding?.modelId,
+              [ModelTypeEnum.tts]: defaultData.tts?.modelId,
+              [ModelTypeEnum.stt]: defaultData.stt?.modelId,
+              [ModelTypeEnum.rerank]: defaultData.rerank?.modelId,
+              datasetTextLLMModelId: defaultData.datasetTextLLM?.modelId,
+              datasetImageLLMModelId: defaultData.datasetImageLLM?.modelId,
+              chatTitleLLMModelId: defaultData.chatTitleLLM?.modelId
             })
           }
         >

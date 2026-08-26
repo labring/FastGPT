@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModelData } from '@fastgpt/service/core/ai/model';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -46,9 +46,18 @@ vi.mock('@fastgpt/service/common/string/tiktoken/index', () => ({
 }));
 
 const embeddingModel = {
+  modelId: '68ad85a7463006c963799a05',
   model: 'text-embedding-3-small',
   name: 'text-embedding-3-small',
-  maxToken: 128
+  provider: 'openai',
+  isSystem: true,
+  isActive: true,
+  type: 'embedding',
+  config: {
+    defaultToken: 512,
+    maxToken: 128,
+    weight: 100
+  }
 } as any;
 const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
 const tokenHeavyText = Array.from({ length: 30 }, (_, index) => `𠮷${index}`).join('');
@@ -150,7 +159,7 @@ describe('DatasetDataIndexOperation', () => {
     mockCountPromptTokens.mockImplementation(async (text: string) =>
       countPromptTokensInWorker(text)
     );
-    vi.mocked(getEmbeddingModel).mockReturnValue(embeddingModel);
+    vi.mocked(getEmbeddingModelData).mockReturnValue(embeddingModel);
     mockGetVectors.mockImplementation(async ({ inputs }) =>
       createMockVectorsResponse(inputs.map((input) => input.input))
     );
@@ -169,7 +178,7 @@ describe('DatasetDataIndexOperation', () => {
       const textModelOperation = new DatasetDataIndexOperation(embeddingModel);
       const visionOperation = new DatasetDataIndexOperation({
         ...embeddingModel,
-        vision: true
+        config: { ...embeddingModel.config, vision: true }
       });
 
       expect(
@@ -366,7 +375,7 @@ describe('DatasetDataIndexOperation', () => {
     it('should not check prefix token budget when text is empty and only image index is generated', async () => {
       const operation = new DatasetDataIndexOperation({
         ...embeddingModel,
-        vision: true
+        config: { ...embeddingModel.config, vision: true }
       });
 
       const result = await operation.getSystemIndexes({
@@ -389,7 +398,7 @@ describe('DatasetDataIndexOperation', () => {
     it('should create image embedding indexes from image id and markdown images', async () => {
       const operation = new DatasetDataIndexOperation({
         ...embeddingModel,
-        vision: true
+        config: { ...embeddingModel.config, vision: true }
       });
 
       const result = await operation.getSystemIndexes({
@@ -464,7 +473,7 @@ describe('DatasetDataIndexOperation', () => {
     it('should regenerate system indexes and only reuse matching image embedding ids', async () => {
       const operation = new DatasetDataIndexOperation({
         ...embeddingModel,
-        vision: true
+        config: { ...embeddingModel.config, vision: true }
       });
 
       const result = await operation.formatIndexes({
@@ -514,7 +523,7 @@ describe('DatasetDataIndexOperation', () => {
     it('should keep text indexes whose text matches image embedding source', async () => {
       const operation = new DatasetDataIndexOperation({
         ...embeddingModel,
-        vision: true
+        config: { ...embeddingModel.config, vision: true }
       });
       const imageSource = 'dataset/team/main.png';
 
@@ -639,7 +648,7 @@ describe('DatasetDataIndexOperation', () => {
     it('should keep image embedding indexes unsplit even when text looks too long', async () => {
       const operation = new DatasetDataIndexOperation({
         ...embeddingModel,
-        vision: true
+        config: { ...embeddingModel.config, vision: true }
       });
       const imageSource = 'dataset/team/a-very-long-image-source-name-that-is-not-text.png';
 
@@ -824,7 +833,7 @@ describe('DatasetDataIndexOperation', () => {
     it('should insert text and image embedding patch items in one vector call', async () => {
       const operation = new DatasetDataIndexOperation({
         ...embeddingModel,
-        vision: true
+        config: { ...embeddingModel.config, vision: true }
       });
       mockVectorInsert.mockResolvedValueOnce({ insertIds: ['text_vector_id', 'image_vector_id'] });
       const patchResult = operation.buildPatch({
@@ -908,7 +917,7 @@ describe('DatasetDataIndexOperation', () => {
     it('should skip invalid image embedding sources without dropping valid text indexes', async () => {
       const operation = new DatasetDataIndexOperation({
         ...embeddingModel,
-        vision: true
+        config: { ...embeddingModel.config, vision: true }
       });
 
       const result = await operation.insertVectors({
@@ -948,7 +957,7 @@ describe('DatasetDataIndexOperation', () => {
         data: dataItem,
         type: DatasetDataIndexTypeEnum.custom,
         text: ' new custom ',
-        model: 'text-embedding-3-small'
+        model: embeddingModel
       });
 
       const updatedData = await MongoDatasetData.findById(data._id).lean();
@@ -975,7 +984,7 @@ describe('DatasetDataIndexOperation', () => {
         indexDataId: 'custom_old',
         type: DatasetDataIndexTypeEnum.custom,
         text: 'updated',
-        model: 'text-embedding-3-small'
+        model: embeddingModel
       });
 
       const updatedData = await MongoDatasetData.findById(data._id).lean();
@@ -1018,7 +1027,7 @@ describe('DatasetDataIndexOperation', () => {
           indexDataId: `${type}_old`,
           type,
           text: 'new',
-          model: 'text-embedding-3-small'
+          model: embeddingModel
         });
 
         const updatedData = await MongoDatasetData.findById(data._id).lean();
@@ -1044,7 +1053,7 @@ describe('DatasetDataIndexOperation', () => {
         indexDataId: 'custom_old',
         type: DatasetDataIndexTypeEnum.custom,
         text: 'old custom',
-        model: 'text-embedding-3-small'
+        model: embeddingModel
       });
 
       expect(result).toEqual({
@@ -1066,7 +1075,7 @@ describe('DatasetDataIndexOperation', () => {
           data: dataItem,
           type: DatasetDataIndexTypeEnum.custom,
           text: '   ',
-          model: 'text-embedding-3-small'
+          model: embeddingModel
         })
       ).rejects.toBe('Dataset data index text is required');
 
@@ -1075,7 +1084,7 @@ describe('DatasetDataIndexOperation', () => {
           data: dataItem,
           type: DatasetDataIndexTypeEnum.default,
           text: 'default',
-          model: 'text-embedding-3-small'
+          model: embeddingModel
         })
       ).rejects.toBe('System indexes cannot be saved separately');
 
@@ -1084,7 +1093,7 @@ describe('DatasetDataIndexOperation', () => {
           data: dataItem,
           type: DatasetDataIndexTypeEnum.imageEmbedding,
           text: 'dataset/team/image.png',
-          model: 'text-embedding-3-small'
+          model: embeddingModel
         })
       ).rejects.toBe('System indexes cannot be saved separately');
 
@@ -1094,7 +1103,7 @@ describe('DatasetDataIndexOperation', () => {
           indexDataId: 'missing_id',
           type: DatasetDataIndexTypeEnum.custom,
           text: 'valid',
-          model: 'text-embedding-3-small'
+          model: embeddingModel
         })
       ).rejects.toBe('Dataset data index not found');
     });
@@ -1108,7 +1117,7 @@ describe('DatasetDataIndexOperation', () => {
           data: dataItem,
           type: DatasetDataIndexTypeEnum.custom,
           text: 'too long',
-          model: 'text-embedding-3-small'
+          model: embeddingModel
         })
       ).rejects.toBe('Dataset data index text is too long');
     });
@@ -1206,14 +1215,14 @@ describe('DatasetDataIndexOperation', () => {
     it('should use provided embedding model object for maxToken', () => {
       const operation = new DatasetDataIndexOperation({
         ...embeddingModel,
-        maxToken: 321
+        config: { ...embeddingModel.config, maxToken: 321 }
       });
 
       expect(operation.maxToken).toBe(321);
     });
 
-    it('should use the resolved embedding model when only a model name is provided', () => {
-      const operation = new DatasetDataIndexOperation('unknown-model');
+    it('should use the canonical model config directly', () => {
+      const operation = new DatasetDataIndexOperation(embeddingModel);
 
       expect(operation.maxToken).toBe(128);
     });

@@ -35,6 +35,7 @@ import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { checkAgentSkillSandboxUnavailable } from '../ChatAgent/utils';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
 
 const Header = ({
   forbiddenSaveSnapshot: forbiddenSaveSnapshotRef,
@@ -64,6 +65,7 @@ const Header = ({
   const currentTab = useContextSelector(AppContext, (v) => v.currentTab);
 
   const { lastAppListRouteType, feConfigs } = useSystemStore();
+  const { llmModelList } = useSystemModelLists();
   const { teamPlanStatus } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
   const showSandbox = feConfigs.show_agent_sandbox;
@@ -286,7 +288,12 @@ const Header = ({
                     .map((edge) => edge.target)
                 );
                 const nodes = storeNodes.map((item) =>
-                  storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
+                  storeNode2FlowNode({
+                    item,
+                    t,
+                    isTool: toolNodeIds.has(item.nodeId),
+                    llmModelList
+                  })
                 );
                 const edges = storeEdges.map((item) => storeEdge2RenderEdge({ edge: item }));
 

@@ -34,8 +34,7 @@ import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { cloneDeep, isEqual } from 'lodash-es';
 import { workflowSystemVariables } from '../app/utils';
 import type { WorkflowDataContextType } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
 
 /**
@@ -96,6 +95,7 @@ type StoreNode2FlowNodeProps = {
   zIndex?: number;
   parentNodeId?: string;
   isTool?: boolean;
+  llmModelList?: MyLLMModelItemType[];
   t: TFunction;
 };
 
@@ -112,6 +112,7 @@ export const storeNode2FlowNode = ({
   zIndex,
   parentNodeId,
   isTool = false,
+  llmModelList = [],
   t
 }: StoreNode2FlowNodeProps): Node<FlowNodeItemType> => {
   // init some static data
@@ -228,13 +229,13 @@ export const storeNode2FlowNode = ({
       : nodeItem.inputs.map((input) => normalizeFlowNodeInputType(input, { isTool }));
 
   // Format output invalid
-  const llmList = useSystemStore.getState().llmModelList;
-  const llmModelMap = llmList.reduce(
+  const llmModelMap = llmModelList.reduce(
     (acc, model) => {
       acc[model.model] = model;
+      if (model.modelId) acc[model.modelId] = model;
       return acc;
     },
-    {} as Record<string, LLMModelItemType>
+    {} as Record<string, MyLLMModelItemType>
   );
   nodeItem.outputs.forEach((output) => {
     if (output.invalidCondition) {

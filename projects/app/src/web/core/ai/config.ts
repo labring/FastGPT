@@ -2,17 +2,20 @@ import { GET, PUT, DELETE, POST } from '@/web/common/api/request';
 import type { listResponse } from '@/pages/api/core/ai/model/list';
 import type { updateBody } from '@/pages/api/core/ai/model/update';
 import type { deleteQuery } from '@/pages/api/core/ai/model/delete';
-import type { SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import type {
+  SystemModelDataType,
+  SystemModelDocumentDataType
+} from '@fastgpt/global/core/ai/model.schema';
 import type { updateWithJsonBody } from '@/pages/api/core/ai/model/updateWithJson';
 import type { updateDefaultBody } from '@/pages/api/core/ai/model/updateDefault';
 import type { testQuery } from '@/pages/api/core/ai/model/test';
 
 export const getSystemModelList = () => GET<listResponse>('/core/ai/model/list');
-export const getSystemModelDetail = (model: string) =>
-  GET<SystemModelItemType>('/core/ai/model/detail', { model });
+export const getSystemModelDetail = (modelId: string) =>
+  GET<SystemModelDataType>('/core/ai/model/detail', { modelId });
 
-export const getSystemModelDefaultConfig = (model: string) =>
-  GET<SystemModelItemType>('/core/ai/model/getDefaultConfig', { model });
+export const getSystemModelDefaultConfig = (modelId: string) =>
+  GET<SystemModelDocumentDataType>('/core/ai/model/getDefaultConfig', { modelId });
 
 export const putSystemModel = (data: updateBody) => PUT('/core/ai/model/update', data);
 

@@ -1,6 +1,7 @@
 import { useRouter } from 'next/router';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
 import { Box } from '@chakra-ui/react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { webPushTrack } from '@/web/common/middle/tracks/utils';
@@ -22,7 +23,8 @@ function Error() {
   const lang = i18n.language;
   const router = useRouter();
   const { toast } = useToast();
-  const { lastRoute, llmModelList, embeddingModelList } = useSystemStore();
+  const { lastRoute } = useSystemStore();
+  const { llmModelList, embeddingModelList } = useSystemModelLists();
 
   useMount(() => {
     // Send track

@@ -40,7 +40,6 @@ async function handler(
         feConfigs: global.feConfigs,
         subPlans,
         systemVersion: global.systemVersion,
-        activeModelList: global.systemActiveDesensitizedModels,
         defaultModels: desensitizeSystemDefaultModels(global.systemDefaultModel),
         modelProviders: global.ModelProviderRawCache,
         aiproxyChannels: global.aiproxyChannelsCache
@@ -52,8 +51,7 @@ async function handler(
           feConfigs: global.feConfigs,
           subPlans,
           modelProviders: global.ModelProviderRawCache,
-          aiproxyChannels: global.aiproxyChannelsCache,
-          activeModelList: global.systemActiveDesensitizedModels
+          aiproxyChannels: global.aiproxyChannelsCache
         };
       }
 

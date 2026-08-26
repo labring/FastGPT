@@ -1,4 +1,4 @@
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
 import { Flex, Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
 import {
   DatasetSearchModeEnum,
@@ -27,15 +27,15 @@ const SearchParamsTip = ({
   queryExtensionModel?: string;
 }) => {
   const { t } = useTranslation();
-  const { reRankModelList } = useSystemStore();
+  const { reRankModelList, llmModelList } = useSystemModelLists();
 
   const hasReRankModel = reRankModelList.length > 0;
   const hasEmptyResponseMode = responseEmptyText !== undefined;
   const hasSimilarityMode = usingReRank || searchMode === DatasetSearchModeEnum.embedding;
 
   const extensionModelName = useMemo(
-    () => (usingExtensionQuery ? getWebLLMModel(queryExtensionModel)?.name : ''),
-    [usingExtensionQuery, queryExtensionModel]
+    () => (usingExtensionQuery ? getWebLLMModel(queryExtensionModel, llmModelList)?.name : ''),
+    [llmModelList, queryExtensionModel, usingExtensionQuery]
   );
 
   return (

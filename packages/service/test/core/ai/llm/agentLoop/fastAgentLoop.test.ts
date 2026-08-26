@@ -2,7 +2,6 @@ import {
   ChatCompletionRequestMessageRoleEnum,
   ModelTypeEnum
 } from '@fastgpt/global/core/ai/constants';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockCreateLLMResponseQueue, text, toolCall } from './_mocks/llmQueue';
@@ -21,23 +20,6 @@ const {
 
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
-}));
-
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getLLMModel: vi.fn(
-    (): LLMModelItemType => ({
-      type: ModelTypeEnum.llm,
-      provider: 'openai',
-      model: 'gpt-4',
-      name: 'GPT-4',
-      maxContext: 128000,
-      maxResponse: 4096,
-      quoteMaxToken: 60000,
-      functionCall: true,
-      toolChoice: true,
-      reasoning: false
-    })
-  )
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/compress', () => ({
@@ -105,8 +87,24 @@ const tool = (name: string): ChatCompletionTool => ({
   }
 });
 
-const createRuntime = (overrides?: Partial<AgentLoopRuntime>): AgentLoopRuntime => ({
+const modelData = {
+  modelId: '68ad85a7463006c963799a61',
+  type: ModelTypeEnum.llm,
+  provider: 'openai',
   model: 'gpt-4',
+  name: 'GPT-4',
+  config: {
+    maxContext: 128000,
+    maxResponse: 4096,
+    quoteMaxToken: 60000,
+    functionCall: true,
+    toolChoice: true,
+    reasoning: false
+  }
+} as any;
+
+const createRuntime = (overrides?: Partial<AgentLoopRuntime>): AgentLoopRuntime => ({
+  model: modelData,
   stream: true,
   toolCatalog: {
     runtimeTools: [tool('search')],
@@ -219,7 +217,7 @@ describe('runFastAgentMainLoop', () => {
       messages,
       usage: {
         moduleName: 'account_usage:compress_llm_messages',
-        model: 'GPT-4',
+        modelId: '507f1f77bcf86cd799439011',
         totalPoints: 0,
         inputTokens: 20,
         outputTokens: 8

@@ -6,6 +6,7 @@ vi.unmock('@fastgpt/service/common/response');
 
 const mocks = vi.hoisted(() => ({
   authCert: vi.fn(),
+  getLLMModelData: vi.fn(),
   createLLMResponse: vi.fn(),
   formatModelChars2Points: vi.fn(),
   loggerInfo: vi.fn(),
@@ -23,6 +24,10 @@ vi.mock('@fastgpt/service/support/permission/auth/common', () => ({
 
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: mocks.createLLMResponse
+}));
+
+vi.mock('@fastgpt/service/core/ai/model', () => ({
+  getLLMModelData: mocks.getLLMModelData
 }));
 
 vi.mock('@fastgpt/service/common/logger', () => ({
@@ -51,7 +56,15 @@ describe('optimizePrompt SSE error handling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.authCert.mockResolvedValue({ teamId: 'team-1', tmbId: 'member-1' });
-    mocks.formatModelChars2Points.mockReturnValue({ totalPoints: 0, modelName: 'gpt-4o' });
+    mocks.getLLMModelData.mockReturnValue({
+      modelId: '68ad85a7463006c963799a05',
+      model: 'gpt-4o'
+    });
+    mocks.formatModelChars2Points.mockReturnValue({
+      totalPoints: 0,
+      modelName: 'gpt-4o',
+      modelId: '68ad85a7463006c963799a05'
+    });
   });
 
   it('treats a missing original prompt as an empty string', async () => {
@@ -68,7 +81,7 @@ describe('optimizePrompt SSE error handling', () => {
       {
         body: {
           optimizerInput: 'Create a customer support prompt',
-          model: 'gpt-4o'
+          modelId: '68ad85a7463006c963799a05'
         }
       } as any,
       res as any
@@ -86,6 +99,9 @@ describe('optimizePrompt SSE error handling', () => {
         })
       })
     );
+    expect(mocks.getLLMModelData).toHaveBeenCalledWith({
+      modelId: '68ad85a7463006c963799a05'
+    });
     expect(res.end).toHaveBeenCalledTimes(1);
   });
 
@@ -107,7 +123,7 @@ describe('optimizePrompt SSE error handling', () => {
         body: {
           originalPrompt: 'Original prompt',
           optimizerInput: 'Improve it',
-          model: 'gpt-4o'
+          modelId: '68ad85a7463006c963799a05'
         }
       } as any,
       res as any
@@ -141,7 +157,8 @@ describe('optimizePrompt SSE error handling', () => {
         {
           body: {
             originalPrompt: 'Original prompt',
-            optimizerInput: 'Improve it'
+            optimizerInput: 'Improve it',
+            model: 'gpt-4o'
           }
         } as any,
         res as any

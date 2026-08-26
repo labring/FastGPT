@@ -2,6 +2,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
+import { SystemModelDocumentDataSchema } from '@fastgpt/global/core/ai/model.schema';
 
 export type getConfigJsonQuery = Record<string, never>;
 
@@ -17,10 +18,7 @@ async function handler(
   const data = await MongoSystemModel.find({}).lean();
 
   return JSON.stringify(
-    data.map((item) => ({
-      model: item.model,
-      metadata: item.metadata
-    })),
+    data.map((item) => SystemModelDocumentDataSchema.parse(item)),
     null,
     2
   );

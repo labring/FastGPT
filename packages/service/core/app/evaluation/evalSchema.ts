@@ -6,6 +6,7 @@ import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mon
 import { AppCollectionName } from '../schema';
 import type { EvaluationSchemaType } from '@fastgpt/global/core/app/evaluation/type';
 import { UsageCollectionName } from '../../../support/wallet/usage/constants';
+import { SystemModelCollectionName } from '../../ai/config/constants';
 const { Schema } = connectionMongo;
 
 export const EvaluationCollectionName = 'evals';
@@ -32,8 +33,11 @@ const EvaluationSchema = new Schema({
     required: true
   },
   evalModel: {
-    type: String,
-    required: true
+    type: String
+  },
+  evalModelId: {
+    type: Schema.Types.ObjectId,
+    ref: SystemModelCollectionName
   },
   name: {
     type: String,

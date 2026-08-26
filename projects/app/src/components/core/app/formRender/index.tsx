@@ -16,8 +16,8 @@ import FileSelector from '../FileSelector/index';
 import { formatTime2YMDHMS, formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getFileSelectRenderProps } from './utils';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 const InputRender = (props: InputRenderProps) => {
   const {
@@ -33,8 +33,6 @@ const InputRender = (props: InputRenderProps) => {
   } = props;
 
   const { t } = useSafeTranslation();
-  const { llmModelList } = useSystemStore();
-
   // Password
   const [isPasswordEditing, setIsPasswordEditing] = useState(false);
 
@@ -213,10 +211,17 @@ const InputRender = (props: InputRenderProps) => {
       <AIModelSelector
         {...commonProps}
         cacheModel={false}
-        list={(modelList || llmModelList).map((item) => ({
-          value: item.model,
-          label: item.name
-        }))}
+        modelType={ModelTypeEnum.llm}
+        valueField={props.modelValueField}
+        {...(modelList
+          ? {
+              list: modelList.map((item) => ({
+                value:
+                  props.modelValueField === 'modelId' ? item.modelId || item.model : item.model,
+                label: item.name
+              }))
+            }
+          : {})}
       />
     );
   }

@@ -10,13 +10,13 @@ import { defaultQGConfig } from '@fastgpt/global/core/app/constants';
 import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import AppConfigItem, { AppConfigItemAction } from './AppConfigItem';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import CustomPromptEditor from '@fastgpt/web/components/common/Textarea/CustomPromptEditor';
 import {
   QuestionGuideFooterPrompt,
   QuestionGuidePrompt
 } from '@fastgpt/global/core/ai/prompt/agent';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 // question generator config
 const QGConfig = ({
@@ -72,11 +72,9 @@ const QGConfigModal = ({
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
-  const { llmModelList } = useSystemStore();
-
   const customPrompt = value.customPrompt;
   const isOpenQG = value.open;
-  const model = value?.model || llmModelList?.[0]?.model;
+  const model = value?.modelId || value?.model;
 
   const {
     isOpen: isOpenCustomPrompt,
@@ -114,16 +112,14 @@ const QGConfigModal = ({
               </Box>
               <Box flex={'1 0 0'}>
                 <AIModelSelector
+                  modelType={ModelTypeEnum.llm}
+                  valueField="modelId"
                   width={'100%'}
                   value={model}
-                  list={llmModelList.map((item) => ({
-                    value: item.model,
-                    label: item.name
-                  }))}
                   onChange={(e) => {
                     onChange({
                       ...value,
-                      model: e
+                      modelId: e
                     });
                   }}
                 />

@@ -8,12 +8,14 @@ const datasetSearchModuleLogo = 'core/workflow/template/datasetSearch';
 const createDatasetSearchChildNodeResponse = ({
   requestIds,
   usage,
+  modelName,
   moduleName,
   seconds,
   textOutput
 }: {
   requestIds: string[];
   usage: ChatNodeUsageType;
+  modelName: string;
   moduleName: string;
   seconds?: number;
   textOutput?: string;
@@ -30,7 +32,8 @@ const createDatasetSearchChildNodeResponse = ({
     moduleName,
     moduleLogo: datasetSearchModuleLogo,
     runningTime: seconds,
-    model: usage.model,
+    modelId: usage.modelId,
+    model: modelName,
     llmRequestIds: requestIds,
     inputTokens: usage.inputTokens,
     outputTokens: usage.outputTokens,
@@ -46,17 +49,20 @@ const createDatasetSearchChildNodeResponse = ({
 export const createQueryExtensionChildNodeResponse = ({
   requestIds,
   usage,
+  modelName,
   seconds,
   query
 }: {
   requestIds: string[];
   usage: ChatNodeUsageType;
+  modelName: string;
   seconds?: number;
   query: string;
 }) =>
   createDatasetSearchChildNodeResponse({
     requestIds,
     usage,
+    modelName,
     seconds,
     moduleName: i18nT('common:core.module.template.Query extension'),
     textOutput: query
@@ -69,17 +75,20 @@ export const createQueryExtensionChildNodeResponse = ({
 export const createImageCaptionChildNodeResponse = ({
   requestIds,
   usage,
+  modelName,
   seconds,
   queries
 }: {
   requestIds: string[];
   usage: ChatNodeUsageType;
+  modelName: string;
   seconds?: number;
   queries: string[];
 }) =>
   createDatasetSearchChildNodeResponse({
     requestIds,
     usage,
+    modelName,
     seconds,
     moduleName: i18nT('chat:image_parse'),
     textOutput: queries.join('\n')
@@ -92,17 +101,20 @@ export const createImageCaptionChildNodeResponse = ({
 export const createChunkSelectionChildNodeResponse = ({
   requestIds,
   usage,
+  modelName,
   seconds,
   selectedChunkIds
 }: {
   requestIds: string[];
   usage: ChatNodeUsageType;
+  modelName: string;
   seconds?: number;
   selectedChunkIds: string[];
 }) =>
   createDatasetSearchChildNodeResponse({
     requestIds,
     usage,
+    modelName,
     seconds,
     moduleName: i18nT('account_usage:dataset_chunk_selection'),
     textOutput: selectedChunkIds.join('\n')

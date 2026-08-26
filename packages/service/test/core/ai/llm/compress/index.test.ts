@@ -6,7 +6,7 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -82,27 +82,33 @@ const compressToolResponse: typeof rawCompressToolResponse = ((args: any) =>
     ...args
   })) as typeof rawCompressToolResponse;
 
-const model: LLMModelItemType = {
+const model: LLMSystemModelDataType = {
+  modelId: '507f1f77bcf86cd799439016',
   type: ModelTypeEnum.llm,
   provider: 'openai',
   model: 'gpt-4',
   name: 'GPT-4',
-  maxContext: 4000,
-  maxResponse: 1024,
-  quoteMaxToken: 2000,
-  functionCall: true,
-  toolChoice: true,
-  reasoning: false
+  isSystem: true,
+  isActive: true,
+  isCustom: false,
+  config: {
+    maxContext: 4000,
+    maxResponse: 1024,
+    quoteMaxToken: 2000,
+    functionCall: true,
+    toolChoice: true,
+    reasoning: false
+  }
 };
 
-const largeContextModel: LLMModelItemType = {
+const largeContextModel: LLMSystemModelDataType = {
   ...model,
-  maxContext: 32000
+  config: { ...model.config, maxContext: 32000 }
 };
 
-const toolCompressionModel: LLMModelItemType = {
+const toolCompressionModel: LLMSystemModelDataType = {
   ...model,
-  maxContext: 12000
+  config: { ...model.config, maxContext: 12000 }
 };
 
 const createMessages = (): ChatCompletionMessageParam[] => [
@@ -222,7 +228,7 @@ describe('compressRequestMessages', () => {
     );
     expect(result.usage).toEqual({
       moduleName: 'account_usage:compress_llm_messages',
-      model: 'GPT-4',
+      modelId: model.modelId,
       totalPoints: 3,
       inputTokens: 120,
       outputTokens: 30
@@ -1211,7 +1217,7 @@ describe('compressLargeContent', () => {
     expect(result).toMatchObject({
       usage: {
         moduleName: 'account_usage:llm_compress_text',
-        model: 'GPT-4',
+        modelId: model.modelId,
         totalPoints: 3,
         inputTokens: 20,
         outputTokens: 5

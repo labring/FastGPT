@@ -8,12 +8,12 @@ import type {
   DatasetDataIndexItemType,
   DatasetDataItemType
 } from '@fastgpt/global/core/dataset/type';
-import { getEmbeddingModel, isImageEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { isImageEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
 import { text2Chunks } from '@fastgpt/service/worker/function';
-import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import {
   isImageEmbeddingIndex,
   isValidImageEmbeddingSource,
@@ -159,18 +159,18 @@ const buildEmbeddingSafeIndexTexts = async ({
  * 这些步骤需要放在一起维护，因为 Mongo 索引里的 `dataId` 必须和向量库 id 保持一致。
  */
 export class DatasetDataIndexOperation {
-  private readonly model?: string | EmbeddingModelItemType;
+  private readonly model?: EmbeddingSystemModelDataType;
 
-  constructor(model?: string | EmbeddingModelItemType) {
+  constructor(model?: EmbeddingSystemModelDataType) {
     this.model = model;
   }
 
   get maxToken() {
-    return this.getEmbeddingModel().maxToken;
+    return this.getEmbeddingModel().config.maxToken;
   }
 
-  private getEmbeddingModel(): EmbeddingModelItemType {
-    return (typeof this.model === 'string' ? getEmbeddingModel(this.model) : this.model)!;
+  private getEmbeddingModel(): EmbeddingSystemModelDataType {
+    return this.model!;
   }
 
   /**
@@ -836,7 +836,7 @@ export const createDatasetDataIndex = async ({
   data: DatasetDataItemType;
   type: DatasetDataIndexTypeEnum;
   text: string;
-  model: string;
+  model: EmbeddingSystemModelDataType;
 }) => {
   return new DatasetDataIndexOperation(model).writeDatasetDataIndex({
     data,
@@ -862,7 +862,7 @@ export const updateDatasetDataIndex = async ({
   indexDataId: string;
   type: DatasetDataIndexTypeEnum;
   text: string;
-  model: string;
+  model: EmbeddingSystemModelDataType;
 }) => {
   return new DatasetDataIndexOperation(model).writeDatasetDataIndex({
     data,

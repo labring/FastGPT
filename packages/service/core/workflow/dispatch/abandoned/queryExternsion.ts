@@ -5,7 +5,7 @@ import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getLLMModel, getEmbeddingModel } from '../../../../core/ai/model';
+import { getDefaultEmbeddingModelData, getLLMModelData } from '../../../../core/ai/model';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { queryExtension } from '../../../../core/ai/functions/queryExtension';
 import { getHistories } from '../utils';
@@ -13,7 +13,9 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 
 type Props = ModuleDispatchProps<{
-  [NodeInputKeyEnum.aiModel]: string;
+  [NodeInputKeyEnum.aiModelId]?: string;
+  /** @deprecated */
+  [NodeInputKeyEnum.aiModel]?: string;
   [NodeInputKeyEnum.aiSystemPrompt]?: string;
   [NodeInputKeyEnum.history]?: ChatItemMiniType[] | number;
   [NodeInputKeyEnum.userChatInput]: string;
@@ -28,42 +30,35 @@ export const dispatchQueryExtension = async ({
   node,
   usagePush,
   runningUserInfo,
-  params: { model, systemPrompt, history, userChatInput }
+  params: { modelId, model, systemPrompt, history, userChatInput }
 }: Props): Promise<Response> => {
   if (!userChatInput) {
     return Promise.reject('Question is empty');
   }
 
-  const queryExtensionModel = getLLMModel(model);
-  const embeddingModel = getEmbeddingModel();
+  const queryExtensionModel = getLLMModelData({ modelId, model });
+  const embeddingModel = getDefaultEmbeddingModelData();
   const chatHistories = getHistories(history, histories);
 
-  const {
-    extensionQueries,
-    inputTokens,
-    outputTokens,
-    embeddingTokens,
-    llmModel,
-    embeddingModel: useEmbeddingModel
-  } = await queryExtension({
+  const { extensionQueries, inputTokens, outputTokens, embeddingTokens } = await queryExtension({
     chatBg: systemPrompt,
     query: userChatInput,
     histories: chatHistories,
-    llmModel: queryExtensionModel.model,
-    embeddingModel: embeddingModel.model,
+    llmModel: queryExtensionModel,
+    embeddingModel,
     teamId: runningUserInfo.teamId
   });
 
   extensionQueries.unshift(userChatInput);
 
-  const { totalPoints: llmPoints, modelName: llmModelName } = formatModelChars2Points({
-    model: llmModel,
+  const { totalPoints: llmPoints, modelId: llmModelId } = formatModelChars2Points({
+    model: queryExtensionModel,
     inputTokens,
     outputTokens
   });
 
-  const { totalPoints: embeddingPoints, modelName: embeddingModelName } = formatModelChars2Points({
-    model: useEmbeddingModel,
+  const { totalPoints: embeddingPoints, modelId: embeddingModelId } = formatModelChars2Points({
+    model: embeddingModel,
     inputTokens: embeddingTokens
   });
 
@@ -72,14 +67,14 @@ export const dispatchQueryExtension = async ({
     {
       moduleName: node.name,
       totalPoints: llmPoints,
-      model: llmModelName,
+      modelId: llmModelId,
       inputTokens,
       outputTokens
     },
     {
       moduleName: `${node.name} - Embedding`,
       totalPoints: embeddingPoints,
-      model: embeddingModelName,
+      modelId: embeddingModelId,
       inputTokens: embeddingTokens,
       outputTokens: 0
     }
@@ -100,7 +95,7 @@ export const dispatchQueryExtension = async ({
     },
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints,
-      model: llmModelName,
+      model: queryExtensionModel.name,
       inputTokens,
       outputTokens,
       embeddingTokens,

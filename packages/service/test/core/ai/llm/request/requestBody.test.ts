@@ -4,13 +4,6 @@ import {
   ModelTypeEnum
 } from '@fastgpt/global/core/ai/constants';
 import { llmCompletionsBodyFormat } from '@fastgpt/service/core/ai/llm/request/requestBody';
-import { getLLMModel } from '@fastgpt/service/core/ai/model';
-
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getLLMModel: vi.fn()
-}));
-
-const mockGetLLMModel = vi.mocked(getLLMModel);
 
 const messages = [
   {
@@ -25,17 +18,24 @@ const createModel = (overrides: Record<string, any> = {}) =>
     provider: 'openai',
     model: 'gpt-4o',
     name: 'GPT-4o',
-    maxContext: 128000,
-    maxResponse: 1000,
-    quoteMaxToken: 60000,
-    maxTemperature: 2,
-    showTopP: true,
-    showStopSign: true,
-    responseFormatList: [{ type: 'json_schema' }],
-    reasoningEffort: true,
-    toolChoice: true,
-    functionCall: true,
-    ...overrides
+    modelId: '68ad85a7463006c963799a05',
+    isActive: true,
+    isSystem: true,
+    isCustom: false,
+    ...overrides,
+    config: {
+      maxContext: 128000,
+      maxResponse: 1000,
+      quoteMaxToken: 60000,
+      maxTemperature: 2,
+      showTopP: true,
+      showStopSign: true,
+      responseFormatList: [{ type: 'json_schema' }],
+      reasoningEffort: true,
+      toolChoice: true,
+      functionCall: true,
+      ...overrides.config
+    }
   }) as any;
 
 describe('llmCompletionsBodyFormat', () => {
@@ -45,14 +45,14 @@ describe('llmCompletionsBodyFormat', () => {
 
   it('should normalize request body with model config and supported parameters', async () => {
     const model = createModel({
-      defaultConfig: {
-        frequency_penalty: 0.2
+      config: {
+        defaultConfig: {
+          frequency_penalty: 0.2
+        }
       }
     });
-    mockGetLLMModel.mockReturnValue(model);
-
     const { requestBody, modelData } = await llmCompletionsBodyFormat({
-      model: 'gpt-4o',
+      model,
       messages,
       stream: false,
       max_tokens: 5000,
@@ -109,18 +109,18 @@ describe('llmCompletionsBodyFormat', () => {
   });
 
   it('should strip unsupported parameters and omit tools in prompt tool mode', async () => {
-    mockGetLLMModel.mockReturnValue(
-      createModel({
+    const model = createModel({
+      config: {
         maxTemperature: undefined,
         showTopP: false,
         showStopSign: false,
         responseFormatList: [],
         reasoningEffort: false
-      })
-    );
+      }
+    });
 
     const { requestBody } = await llmCompletionsBodyFormat({
-      model: 'gpt-4o',
+      model,
       messages,
       stream: false,
       temperature: 5,
@@ -152,10 +152,10 @@ describe('llmCompletionsBodyFormat', () => {
   });
 
   it('should remove FastGPT private tool schema fields before sending tools to model', async () => {
-    mockGetLLMModel.mockReturnValue(createModel());
+    const model = createModel();
 
     const { requestBody } = await llmCompletionsBodyFormat({
-      model: 'gpt-4o',
+      model,
       messages,
       stream: false,
       tools: [
@@ -228,16 +228,16 @@ describe('llmCompletionsBodyFormat', () => {
   });
 
   it('should apply field map after base formatting', async () => {
-    mockGetLLMModel.mockReturnValue(
-      createModel({
+    const model = createModel({
+      config: {
         fieldMap: {
           max_tokens: 'max_completion_tokens'
         }
-      })
-    );
+      }
+    });
 
     const { requestBody } = await llmCompletionsBodyFormat({
-      model: 'gpt-4o',
+      model,
       messages,
       stream: false,
       max_tokens: 300
@@ -248,11 +248,11 @@ describe('llmCompletionsBodyFormat', () => {
   });
 
   it('should throw when json schema cannot be parsed', async () => {
-    mockGetLLMModel.mockReturnValue(createModel());
+    const model = createModel();
 
     await expect(
       llmCompletionsBodyFormat({
-        model: 'gpt-4o',
+        model,
         messages,
         stream: false,
         response_format: {
@@ -261,25 +261,5 @@ describe('llmCompletionsBodyFormat', () => {
         }
       })
     ).rejects.toThrow('Json schema error');
-  });
-
-  it('should return sanitized body when model is not found', async () => {
-    mockGetLLMModel.mockReturnValue(undefined as any);
-
-    const { requestBody, modelData } = await llmCompletionsBodyFormat({
-      model: 'unknown',
-      messages,
-      stream: false,
-      retainDatasetCite: false,
-      useVision: true,
-      requestOrigin: 'test'
-    });
-
-    expect(modelData).toBeUndefined();
-    expect(requestBody).toEqual({
-      model: 'unknown',
-      messages,
-      stream: false
-    });
   });
 });

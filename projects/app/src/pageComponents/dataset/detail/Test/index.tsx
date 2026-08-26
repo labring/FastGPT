@@ -17,7 +17,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
   const { defaultModels, feConfigs } = useSystemStore();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   // Image search is only meaningful when the dataset has a vision vector model or VLM configured.
-  const canUseImageSearch = !!datasetDetail.vectorModel?.vision || !!datasetDetail.vlmModel;
+  const canUseImageSearch = !!datasetDetail.vectorModel?.config.vision || !!datasetDetail.vlmModel;
 
   const {
     ImageFileSelector,
@@ -74,7 +74,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         <TestInputPanel
           canSubmit={canSubmit}
           canUseImageSearch={canUseImageSearch}
-          datasetMaxToken={datasetDetail.vectorModel?.maxToken}
+          datasetMaxToken={datasetDetail.vectorModel?.config.maxToken}
           isLoading={textTestIsLoading}
           onOpenImageSelector={onOpenImageSelector}
           onOpenSelectMode={onOpenSelectMode}

@@ -12,6 +12,7 @@ import SystemErrEnum from './code/system';
 import agentSkillErr from './code/skill';
 import sandboxErr from './code/sandbox';
 import couponErr from './code/coupon';
+import modelErr from './code/model';
 import { i18nT } from '../i18n/utils';
 
 export const ERROR_CODE: { [key: number]: string } = {
@@ -133,5 +134,6 @@ export const ERROR_RESPONSE: Record<
   ...SystemErrEnum,
   ...agentSkillErr,
   ...sandboxErr,
-  ...couponErr
+  ...couponErr,
+  ...modelErr
 };

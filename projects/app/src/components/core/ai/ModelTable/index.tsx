@@ -28,12 +28,18 @@ import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
-import { getModelCollaborators, updateModelCollaborators } from '@/web/common/system/api';
+import {
+  getModelCollaborators,
+  getMyModels,
+  getSystemModels,
+  updateModelCollaborators
+} from '@/web/common/system/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { LazyCollaboratorProvider } from '@/components/support/permission/MemberManager/context';
 import PriceTiersLabel from '../PriceTiersLabel';
 import TestModeBetaTag from '../TestModeBetaTag';
 import ModelCapabilityTags from '../ModelCapabilityTags';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
@@ -79,8 +85,33 @@ const ModelTable = ({
 
   const [search, setSearch] = useState('');
 
-  const { llmModelList, ttsModelList, embeddingModelList, sttModelList, reRankModelList } =
-    useSystemStore();
+  const { data: remoteModels = [] } = useRequest(
+    async () => {
+      const list = await (async () => {
+        if (!permissionConfig) return getSystemModels();
+
+        const models: Awaited<ReturnType<typeof getMyModels>>['list'] = [];
+        const pageSize = 100;
+        let pageNum = 1;
+        let total = 0;
+        do {
+          const response = await getMyModels({ pageNum, pageSize });
+          models.push(...response.list);
+          total = response.total;
+          pageNum += 1;
+        } while (models.length < total);
+        return models;
+      })();
+
+      return list;
+    },
+    { manual: false, refreshDeps: [permissionConfig] }
+  );
+  const llmModelList = remoteModels.filter((model) => model.type === ModelTypeEnum.llm);
+  const embeddingModelList = remoteModels.filter((model) => model.type === ModelTypeEnum.embedding);
+  const ttsModelList = remoteModels.filter((model) => model.type === ModelTypeEnum.tts);
+  const sttModelList = remoteModels.filter((model) => model.type === ModelTypeEnum.stt);
+  const reRankModelList = remoteModels.filter((model) => model.type === ModelTypeEnum.rerank);
 
   const modelList = useMemo(() => {
     const formatLLMModelList = llmModelList.map((item) => ({
@@ -169,16 +200,28 @@ const ModelTable = ({
     const formatList = list.map((item) => {
       const provider = getModelProvider(item.provider, i18n.language);
       return {
+        modelId: item.modelId,
         model: item.model,
         name: item.name,
         testMode: item.testMode,
         contextToken:
-          'maxContext' in item ? item.maxContext : 'maxToken' in item ? item.maxToken : undefined,
-        vision: 'vision' in item ? item.vision : undefined,
-        audio: 'audio' in item ? item.audio : undefined,
-        video: 'video' in item ? item.video : undefined,
-        reasoning: 'reasoning' in item ? item.reasoning : undefined,
-        toolChoice: 'toolChoice' in item ? item.toolChoice : undefined,
+          item.type === ModelTypeEnum.llm
+            ? item.config.maxContext
+            : item.type === ModelTypeEnum.embedding || item.type === ModelTypeEnum.rerank
+              ? item.config.maxToken
+              : undefined,
+        vision:
+          (item.type === ModelTypeEnum.llm || item.type === ModelTypeEnum.embedding) &&
+          'vision' in item.config
+            ? item.config.vision
+            : undefined,
+        audio: item.type === ModelTypeEnum.llm ? item.config.audio : undefined,
+        video: item.type === ModelTypeEnum.llm ? item.config.video : undefined,
+        reasoning: item.type === ModelTypeEnum.llm ? item.config.reasoning : undefined,
+        toolChoice:
+          item.type === ModelTypeEnum.llm && 'toolChoice' in item.config
+            ? item.config.toolChoice
+            : undefined,
         avatar: provider.avatar,
         providerId: provider.id,
         providerName: provider.name,
@@ -371,11 +414,11 @@ const ModelTable = ({
                     <LazyCollaboratorProvider
                       selectedHint={modelPermissionConfigHint}
                       defaultRole={ReadRoleVal}
-                      onGetCollaboratorList={() => getModelCollaborators(item.model)}
+                      onGetCollaboratorList={() => getModelCollaborators(item.modelId)}
                       onUpdateCollaborators={({ collaborators }) =>
                         updateModelCollaborators({
                           collaborators,
-                          models: [item.model]
+                          modelIds: [item.modelId]
                         })
                       }
                       permission={userInfo?.team.permission!}
@@ -415,7 +458,7 @@ const ModelTable = ({
             onUpdateCollaborators={({ collaborators }) =>
               updateModelCollaborators({
                 collaborators,
-                models: selectedItems.map((i) => i.model)
+                modelIds: selectedItems.map((i) => i.modelId)
               })
             }
             permission={userInfo?.team.permission!}

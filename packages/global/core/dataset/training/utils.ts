@@ -1,5 +1,7 @@
-import { getEmbeddingModel } from '../../../../service/core/ai/model';
-import { type EmbeddingModelItemType, type LLMModelItemType } from '../../ai/model.schema';
+import {
+  type EmbeddingSystemModelDataType,
+  type LLMSystemModelDataType
+} from '../../ai/model.schema';
 import {
   ChunkSettingModeEnum,
   DataChunkSplitModeEnum,
@@ -12,36 +14,37 @@ import { cloneDeep } from 'lodash-es';
 export const minChunkSize = 64; // min index and chunk size
 export const maxPreviewChunkCount = 50_000;
 
+type ChunkLLMModelType = Pick<LLMSystemModelDataType, 'config'>;
+type IndexEmbeddingModelType = Pick<EmbeddingSystemModelDataType, 'config'>;
+
 // Chunk size
 export const chunkAutoChunkSize = 1000;
-export const getMaxChunkSize = (model: LLMModelItemType) => {
-  return Math.max(model.maxContext - model.maxResponse, 2000);
+export const getMaxChunkSize = (model: ChunkLLMModelType) => {
+  const { maxContext, maxResponse } = model.config;
+  return Math.max(maxContext - maxResponse, 2000);
 };
 
 // QA
 export const defaultMaxChunkSize = 8000;
-export const getLLMDefaultChunkSize = (model?: LLMModelItemType) => {
+export const getLLMDefaultChunkSize = (model?: ChunkLLMModelType) => {
   if (!model) return defaultMaxChunkSize;
-  return Math.max(Math.min(model.maxContext - model.maxResponse, defaultMaxChunkSize), 2000);
+  const { maxContext, maxResponse } = model.config;
+  return Math.max(Math.min(maxContext - maxResponse, defaultMaxChunkSize), 2000);
 };
 
-export const getLLMMaxChunkSize = (model?: LLMModelItemType) => {
+export const getLLMMaxChunkSize = (model?: ChunkLLMModelType) => {
   if (!model) return 8000;
-  return Math.max(model.maxContext, 4000);
+  return Math.max(model.config.maxContext, 4000);
 };
 
 // Index size
-export const getMaxIndexSize = (model?: EmbeddingModelItemType | string) => {
+export const getMaxIndexSize = (model?: IndexEmbeddingModelType) => {
   if (!model) return 512;
-  const modelData = typeof model === 'string' ? getEmbeddingModel(model) : model;
-
-  return modelData?.maxToken || 512;
+  return model.config.maxToken || 512;
 };
-export const getAutoIndexSize = (model?: EmbeddingModelItemType | string) => {
+export const getAutoIndexSize = (model?: IndexEmbeddingModelType) => {
   if (!model) return 512;
-
-  const modelData = typeof model === 'string' ? getEmbeddingModel(model) : model;
-  return modelData?.defaultToken || 512;
+  return model.config.defaultToken || 512;
 };
 
 const indexSizeSelectList = [
@@ -112,8 +115,8 @@ export const computedCollectionChunkSettings = <T extends ChunkSettingsType>({
   vectorModel,
   ...data
 }: {
-  llmModel?: LLMModelItemType;
-  vectorModel?: EmbeddingModelItemType;
+  llmModel?: ChunkLLMModelType;
+  vectorModel?: IndexEmbeddingModelType;
 } & T): T => {
   const {
     trainingType = DatasetCollectionDataProcessModeEnum.chunk,

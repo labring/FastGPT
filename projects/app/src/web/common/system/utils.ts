@@ -1,13 +1,14 @@
-import {
-  type EmbeddingModelItemType,
-  type LLMModelItemType
-} from '@fastgpt/global/core/ai/model.schema';
+import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import type {
   FastGPTFeConfigsType,
   FastGPTRegisterMethodType
 } from '@fastgpt/global/common/system/types';
 import { useSystemStore } from './useSystemStore';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+
+type MyLLMModelType = Extract<MyModelItemType, { type: ModelTypeEnum.llm }>;
+type MyEmbeddingModelType = Extract<MyModelItemType, { type: ModelTypeEnum.embedding }>;
 
 /**
  * 获取真实支持的自助注册方式，兼容过滤旧配置中被混入的 sync 团队模式。
@@ -79,27 +80,34 @@ export const downloadFetch = async ({
   }
 };
 
-export const getWebLLMModel = (model?: string) => {
-  const list = useSystemStore.getState().llmModelList;
+export const getWebLLMModel = (model?: string, llmList: MyLLMModelType[] = []) => {
   const defaultModels = useSystemStore.getState().defaultModels;
 
-  return list.find((item) => item.model === model || item.name === model) ?? defaultModels.llm!;
+  if (!model) return defaultModels.llm;
+  return llmList.find((item) => item.model === model || item.modelId === model);
 };
-export const getWebDefaultLLMModel = (llmList: LLMModelItemType[] = []) => {
-  const list = llmList.length > 0 ? llmList : useSystemStore.getState().llmModelList;
+export const getWebDefaultLLMModel = (llmList: MyLLMModelType[] = []) => {
   const defaultModels = useSystemStore.getState().defaultModels;
 
-  return defaultModels.llm && list.find((item) => item.model === defaultModels.llm?.model)
+  if (llmList.length === 0) return defaultModels.llm;
+  return defaultModels.llm &&
+    llmList.find(
+      (item) =>
+        item.modelId === defaultModels.llm?.modelId || item.model === defaultModels.llm?.model
+    )
     ? defaultModels.llm
-    : list[0];
+    : llmList[0];
 };
-export const getWebDefaultEmbeddingModel = (embeddingList: EmbeddingModelItemType[] = []) => {
-  const list =
-    embeddingList.length > 0 ? embeddingList : useSystemStore.getState().embeddingModelList;
+export const getWebDefaultEmbeddingModel = (embeddingList: MyEmbeddingModelType[] = []) => {
   const defaultModels = useSystemStore.getState().defaultModels;
 
+  if (embeddingList.length === 0) return defaultModels.embedding;
   return defaultModels.embedding &&
-    list.find((item) => item.model === defaultModels.embedding?.model)
+    embeddingList.find(
+      (item) =>
+        item.modelId === defaultModels.embedding?.modelId ||
+        item.model === defaultModels.embedding?.model
+    )
     ? defaultModels.embedding
-    : list[0];
+    : embeddingList[0];
 };

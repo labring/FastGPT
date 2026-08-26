@@ -1,10 +1,12 @@
 import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
-  STTModelType,
-  RerankModelItemType,
-  TTSModelType,
-  EmbeddingModelItemType,
-  LLMModelItemType
+  EmbeddingSystemModelDataType,
+  LLMSystemModelDataType,
+  RerankSystemModelDataType,
+  STTSystemModelDataType,
+  SystemModelDataType,
+  SystemModelDocumentDataType,
+  TTSSystemModelDataType
 } from '@fastgpt/global/core/ai/model.schema';
 import type {
   I18nStringStrictType,
@@ -12,29 +14,20 @@ import type {
 } from '@fastgpt/global/sdk/fastgpt-plugin';
 import type { langType, ModelProviderItemType } from '@fastgpt/global/core/ai/provider';
 
-export type SystemModelSchemaType = {
+export type SystemModelSchemaType = SystemModelDocumentDataType & {
   _id: string;
-  model: string;
-  metadata: SystemModelItemType;
 };
 
-export type SystemModelItemType =
-  | LLMModelItemType
-  | EmbeddingModelItemType
-  | TTSModelType
-  | STTModelType
-  | RerankModelItemType;
-
 export type SystemDefaultModelType = {
-  [ModelTypeEnum.llm]?: LLMModelItemType;
-  datasetTextLLM?: LLMModelItemType;
-  datasetImageLLM?: LLMModelItemType;
-  chatTitleLLM?: LLMModelItemType;
+  [ModelTypeEnum.llm]?: LLMSystemModelDataType;
+  datasetTextLLM?: LLMSystemModelDataType;
+  datasetImageLLM?: LLMSystemModelDataType;
+  chatTitleLLM?: LLMSystemModelDataType;
 
-  [ModelTypeEnum.embedding]?: EmbeddingModelItemType;
-  [ModelTypeEnum.tts]?: TTSModelType;
-  [ModelTypeEnum.stt]?: STTModelType;
-  [ModelTypeEnum.rerank]?: RerankModelItemType;
+  [ModelTypeEnum.embedding]?: EmbeddingSystemModelDataType;
+  [ModelTypeEnum.tts]?: TTSSystemModelDataType;
+  [ModelTypeEnum.stt]?: STTSystemModelDataType;
+  [ModelTypeEnum.rerank]?: RerankSystemModelDataType;
 };
 
 declare global {
@@ -43,16 +36,10 @@ declare global {
   var ModelProviderMapCache: Record<langType, Record<string, ModelProviderItemType>>;
   var aiproxyChannelsCache: AiproxyMapProviderItemType[];
 
-  var systemModelList: SystemModelItemType[];
-  // var systemModelMap: Map<string, SystemModelItemType>;
-  var llmModelMap: Map<string, LLMModelItemType>;
-  var embeddingModelMap: Map<string, EmbeddingModelItemType>;
-  var ttsModelMap: Map<string, TTSModelType>;
-  var sttModelMap: Map<string, STTModelType>;
-  var reRankModelMap: Map<string, RerankModelItemType>;
-
-  var systemActiveModelList: SystemModelItemType[];
-  var systemActiveDesensitizedModels: SystemModelItemType[];
+  var systemModelList: SystemModelDataType[];
+  /** 标准模型索引，只允许 `id:<modelId>` 与 `model:<model>` 两种 key。 */
+  var systemModelMap: Map<string, SystemModelDataType>;
+  var systemActiveModelList: SystemModelDataType[];
   var systemDefaultModel: SystemDefaultModelType;
 }
 

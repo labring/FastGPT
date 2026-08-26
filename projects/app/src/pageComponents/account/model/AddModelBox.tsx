@@ -24,7 +24,7 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getSystemModelDefaultConfig, putSystemModel } from '@/web/core/ai/config';
-import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import { type SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import {
   useFieldArray,
   useForm,
@@ -250,7 +250,7 @@ const SwitchField = ({
   label: string;
   tip?: string;
   field: string;
-  register: UseFormRegister<SystemModelItemType>;
+  register: UseFormRegister<SystemModelDataType>;
 }) => (
   <GridItem>
     <Flex alignItems={'center'} gap={1} mb={3}>
@@ -269,8 +269,8 @@ const ProviderField = React.memo(function ProviderField({
   providerList,
   t
 }: {
-  control: Control<SystemModelItemType>;
-  setValue: UseFormSetValue<SystemModelItemType>;
+  control: Control<SystemModelDataType>;
+  setValue: UseFormSetValue<SystemModelDataType>;
   providerList: React.MutableRefObject<{ label: React.ReactNode; value: string }[]>;
   t: any;
 }) {
@@ -297,13 +297,13 @@ const ResponseFormatField = React.memo(function ResponseFormatField({
   setValue,
   t
 }: {
-  control: Control<SystemModelItemType>;
-  setValue: UseFormSetValue<SystemModelItemType>;
+  control: Control<SystemModelDataType>;
+  setValue: UseFormSetValue<SystemModelDataType>;
   t: any;
 }) {
   const responseFormatList = useWatch({
     control,
-    name: 'responseFormatList'
+    name: 'config.responseFormatList'
   });
   const responseFormatOptions = useMemo(() => {
     const valueSet = new Set([
@@ -322,7 +322,7 @@ const ResponseFormatField = React.memo(function ResponseFormatField({
       <MultipleSelect<string>
         list={responseFormatOptions}
         value={Array.isArray(responseFormatList) ? responseFormatList : []}
-        onSelect={(value) => setValue('responseFormatList', value)}
+        onSelect={(value) => setValue('config.responseFormatList', value)}
         placeholder={t('config_model:model.response_format')}
         {...InputStyles}
         borderRadius={'md'}
@@ -348,10 +348,10 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
   setValue,
   t
 }: {
-  control: Control<SystemModelItemType>;
-  register: UseFormRegister<SystemModelItemType>;
-  getValues: UseFormGetValues<SystemModelItemType>;
-  setValue: UseFormSetValue<SystemModelItemType>;
+  control: Control<SystemModelDataType>;
+  register: UseFormRegister<SystemModelDataType>;
+  getValues: UseFormGetValues<SystemModelDataType>;
+  setValue: UseFormSetValue<SystemModelDataType>;
   t: any;
 }) {
   const [invalidMaxInputMap, setInvalidMaxInputMap] = useState<Record<number, boolean>>({});
@@ -674,14 +674,14 @@ const DefaultConfigField = React.memo(function DefaultConfigField({
   label,
   tip
 }: {
-  control: Control<SystemModelItemType>;
-  setValue: UseFormSetValue<SystemModelItemType>;
+  control: Control<SystemModelDataType>;
+  setValue: UseFormSetValue<SystemModelDataType>;
   label: string;
   tip: string;
 }) {
   const defaultConfig = useWatch({
     control,
-    name: 'defaultConfig'
+    name: 'config.defaultConfig'
   });
 
   return (
@@ -691,11 +691,11 @@ const DefaultConfigField = React.memo(function DefaultConfigField({
         resize
         onChange={(e) => {
           if (!e) {
-            setValue('defaultConfig', {}, { shouldDirty: true });
+            setValue('config.defaultConfig', {}, { shouldDirty: true });
             return;
           }
           try {
-            setValue('defaultConfig', JSON.parse(e.trim()), { shouldDirty: true });
+            setValue('config.defaultConfig', JSON.parse(e.trim()), { shouldDirty: true });
           } catch (error) {
             console.error(error);
           }
@@ -712,13 +712,13 @@ const VoicesField = React.memo(function VoicesField({
   setValue,
   t
 }: {
-  control: Control<SystemModelItemType>;
-  setValue: UseFormSetValue<SystemModelItemType>;
+  control: Control<SystemModelDataType>;
+  setValue: UseFormSetValue<SystemModelDataType>;
   t: any;
 }) {
   const voices = useWatch({
     control,
-    name: 'voices'
+    name: 'config.voices'
   });
 
   return (
@@ -731,7 +731,7 @@ const VoicesField = React.memo(function VoicesField({
         value={JSON.stringify(voices, null, 2)}
         onChange={(e) => {
           try {
-            setValue('voices', JSON.parse(e));
+            setValue('config.voices', JSON.parse(e));
           } catch (error) {
             console.error(error);
           }
@@ -747,7 +747,7 @@ export const ModelEditModal = ({
   onSuccess,
   onClose
 }: {
-  modelData: SystemModelItemType;
+  modelData: SystemModelDataType;
   onSuccess: () => void;
   onClose: () => void;
 }) => {
@@ -755,7 +755,7 @@ export const ModelEditModal = ({
   const { feConfigs, getModelProviders } = useSystemStore();
 
   const { control, register, getValues, setValue, handleSubmit, reset } =
-    useForm<SystemModelItemType>({
+    useForm<SystemModelDataType>({
       defaultValues: {
         ...modelData,
         priceTiers: (() => {
@@ -777,11 +777,11 @@ export const ModelEditModal = ({
       }
     });
 
-  const reasoningEnabled = useWatch({ control, name: 'reasoning' });
+  const reasoningEnabled = useWatch({ control, name: 'config.reasoning' });
   useEffect(() => {
     // 仅在 reasoning 关闭且 reasoningEffort 实际为 true 时才清，避免挂载即把表单标 dirty
-    if (!reasoningEnabled && getValues('reasoningEffort')) {
-      setValue('reasoningEffort', false, { shouldDirty: false });
+    if (!reasoningEnabled && getValues('config.reasoningEffort')) {
+      setValue('config.reasoningEffort', false, { shouldDirty: false });
     }
   }, [reasoningEnabled, getValues, setValue]);
 
@@ -812,7 +812,7 @@ export const ModelEditModal = ({
   }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel, isRerankModel]);
 
   const { runAsync: updateModel, loading: updatingModel } = useRequest(
-    async (data: SystemModelItemType) => {
+    async (data: SystemModelDataType) => {
       if (data.type === ModelTypeEnum.llm) {
         const priceTiers = sanitizeModelPriceTiers(data.priceTiers);
 
@@ -855,8 +855,8 @@ export const ModelEditModal = ({
       }
 
       return putSystemModel({
-        model: data.model,
-        metadata: data
+        ...(data.modelId ? { modelId: data.modelId } : {}),
+        modelData: data
       }).then(onSuccess);
     },
     {
@@ -925,7 +925,7 @@ export const ModelEditModal = ({
               isLoading={loadingDefaultConfig}
               variant={'whiteBase'}
               size={'md'}
-              onClick={() => loadDefaultConfig(modelData.model)}
+              onClick={() => modelData.modelId && loadDefaultConfig(modelData.modelId)}
               mr={'auto'}
             >
               {t('config_model:reset_default')}
@@ -973,7 +973,7 @@ export const ModelEditModal = ({
               <MyNumberInput
                 register={register}
                 isRequired
-                name="maxContext"
+                name="config.maxContext"
                 {...NumberInputStyles}
               />
             </Field>
@@ -984,7 +984,7 @@ export const ModelEditModal = ({
             >
               <MyNumberInput
                 register={register}
-                name="maxResponse"
+                name="config.maxResponse"
                 min={2000}
                 {...NumberInputStyles}
               />
@@ -994,7 +994,7 @@ export const ModelEditModal = ({
               <MyNumberInput
                 register={register}
                 isRequired
-                name="quoteMaxToken"
+                name="config.quoteMaxToken"
                 {...NumberInputStyles}
               />
             </Field>
@@ -1005,7 +1005,7 @@ export const ModelEditModal = ({
             >
               <MyNumberInput
                 register={register}
-                name="maxTemperature"
+                name="config.maxTemperature"
                 min={0}
                 step={0.1}
                 {...NumberInputStyles}
@@ -1014,13 +1014,13 @@ export const ModelEditModal = ({
 
             <SwitchField
               label={t('config_model:model.show_top_p')}
-              field={'showTopP'}
+              field={'config.showTopP'}
               register={register}
             />
 
             <SwitchField
               label={t('config_model:model.show_stop_sign')}
-              field={'showStopSign'}
+              field={'config.showStopSign'}
               register={register}
             />
 
@@ -1035,14 +1035,14 @@ export const ModelEditModal = ({
             <SwitchField
               label={t('config_model:model.normalization')}
               tip={t('config_model:model.normalization_tip')}
-              field={'normalization'}
+              field={'config.normalization'}
               register={register}
             />
             <Field label={t('config_model:batch_size')}>
               <MyNumberInput
                 register={register}
                 isRequired
-                name="batchSize"
+                name="config.batchSize"
                 min={1}
                 step={1}
                 {...NumberInputStyles}
@@ -1055,7 +1055,7 @@ export const ModelEditModal = ({
               <MyNumberInput
                 register={register}
                 isRequired
-                name="defaultToken"
+                name="config.defaultToken"
                 {...NumberInputStyles}
               />
             </Field>
@@ -1063,7 +1063,7 @@ export const ModelEditModal = ({
               <MyNumberInput
                 register={register}
                 isRequired
-                name="maxToken"
+                name="config.maxToken"
                 {...NumberInputStyles}
               />
             </Field>
@@ -1080,7 +1080,7 @@ export const ModelEditModal = ({
             >
               <MyNumberInput
                 register={register}
-                name="maxToken"
+                name="config.maxToken"
                 min={1000}
                 {...NumberInputStyles}
               />
@@ -1095,37 +1095,37 @@ export const ModelEditModal = ({
             <SwitchField
               label={t('config_model:model.tool_choice')}
               tip={t('config_model:model.tool_choice_tip')}
-              field={'toolChoice'}
+              field={'config.toolChoice'}
               register={register}
             />
             <SwitchField
               label={t('config_model:model.vision')}
               tip={t('config_model:model.vision_tip')}
-              field={'vision'}
+              field={'config.vision'}
               register={register}
             />
             <SwitchField
               label={t('config_model:audio')}
               tip={t('config_model:audio_tip')}
-              field={'audio'}
+              field={'config.audio'}
               register={register}
             />
             <SwitchField
               label={t('config_model:video')}
               tip={t('config_model:video_tip')}
-              field={'video'}
+              field={'config.video'}
               register={register}
             />
             <SwitchField
               label={t('config_model:model.reasoning')}
               tip={t('config_model:model.reasoning_tip')}
-              field={'reasoning'}
+              field={'config.reasoning'}
               register={register}
             />
             {reasoningEnabled && (
               <SwitchField
                 label={t('config_model:model.reasoning_effort')}
-                field={'reasoningEffort'}
+                field={'config.reasoningEffort'}
                 register={register}
               />
             )}
@@ -1133,7 +1133,7 @@ export const ModelEditModal = ({
               <SwitchField
                 label={t('config_model:model.censor')}
                 tip={t('config_model:model.censor_tip')}
-                field={'censor'}
+                field={'config.censor'}
                 register={register}
               />
             )}
@@ -1147,7 +1147,7 @@ export const ModelEditModal = ({
             <SwitchField
               label={t('config_model:model.vision')}
               tip={t('config_model:model.embedding_vision_tip')}
-              field={'vision'}
+              field={'config.vision'}
               register={register}
             />
           </Grid>
@@ -1196,7 +1196,7 @@ export const ModelEditModal = ({
               colSpan={[1, 2]}
             >
               <MyTextarea
-                {...register('defaultSystemChatPrompt')}
+                {...register('config.defaultSystemChatPrompt')}
                 {...MultilineInputStyles}
                 minH={'110px'}
               />

@@ -8,14 +8,25 @@ const {
   mockUpdateDatasetDataSystemIndexes,
   mockPushGenerateVectorUsage,
   mockAddAuditLog,
-  mockReplaceS3KeyToPreviewUrl
+  mockReplaceS3KeyToPreviewUrl,
+  mockEmbeddingModel
 } = vi.hoisted(() => ({
   mockAuthDatasetData: vi.fn(),
   mockUpdateDatasetDataByIndexes: vi.fn(),
   mockUpdateDatasetDataSystemIndexes: vi.fn(),
   mockPushGenerateVectorUsage: vi.fn(),
   mockAddAuditLog: vi.fn(),
-  mockReplaceS3KeyToPreviewUrl: vi.fn()
+  mockReplaceS3KeyToPreviewUrl: vi.fn(),
+  mockEmbeddingModel: {
+    modelId: '68ad85a7463006c963799a06',
+    model: 'vision-embedding',
+    name: 'Vision embedding',
+    provider: 'openai',
+    isSystem: true,
+    isActive: true,
+    type: 'embedding',
+    config: { defaultToken: 512, maxToken: 8192, weight: 100, vision: true }
+  }
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -42,6 +53,10 @@ vi.mock('@fastgpt/service/support/user/audit/util', () => ({
 
 vi.mock('@fastgpt/service/core/dataset/utils', () => ({
   replaceS3KeyToPreviewUrl: mockReplaceS3KeyToPreviewUrl
+}));
+
+vi.mock('@fastgpt/service/core/dataset/model', () => ({
+  getDatasetEmbeddingModel: vi.fn(() => mockEmbeddingModel)
 }));
 
 import handler from '@/pages/api/core/dataset/data/update';
@@ -123,7 +138,7 @@ describe('PUT /api/core/dataset/data/update', () => {
           text: 'new custom'
         }
       ],
-      model: 'vision-embedding',
+      model: mockEmbeddingModel,
       indexSize: 256,
       indexPrefix: '# Collection'
     });
@@ -132,7 +147,7 @@ describe('PUT /api/core/dataset/data/update', () => {
       teamId: 'team-id',
       tmbId: 'tmb-id',
       inputTokens: 12,
-      model: 'vision-embedding'
+      model: mockEmbeddingModel
     });
     expect(result).toEqual({
       q: 'new question',
@@ -176,7 +191,7 @@ describe('PUT /api/core/dataset/data/update', () => {
       a: 'old answer',
       imageId: 'dataset/team/main.png',
       imageIndex: true,
-      model: 'vision-embedding',
+      model: mockEmbeddingModel,
       indexSize: 256,
       indexPrefix: '# Collection'
     });

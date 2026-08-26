@@ -1,6 +1,9 @@
 import { decodeEmbedding, formatVectors } from '@fastgpt/service/core/ai/embedding/index';
-import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
-import { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';
+import type {
+  EmbeddingModelConfigType,
+  EmbeddingSystemModelDataType
+} from '@fastgpt/global/core/ai/model.schema';
+import { EmbeddingTypeEnm, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the AI API client factory so tests don't hit the real network.
@@ -390,15 +393,48 @@ describe('getVectors function test', () => {
     );
   });
 
-  const buildModel = (overrides: Partial<EmbeddingModelItemType> = {}): EmbeddingModelItemType =>
-    ({
+  const buildModel = (
+    overrides: Partial<EmbeddingModelConfigType> &
+      Partial<Omit<EmbeddingSystemModelDataType, 'config'>> = {}
+  ): EmbeddingSystemModelDataType => {
+    const {
+      defaultToken = 512,
+      maxToken = 8192,
+      weight = 0,
+      hidden,
+      vision,
+      normalization = false,
+      batchSize = 10,
+      defaultConfig,
+      dbConfig,
+      queryConfig,
+      ...commonOverrides
+    } = overrides;
+
+    return {
+      modelId: '507f1f77bcf86cd799439011',
+      provider: 'openai',
       model: 'text-embedding-3-small',
       name: 'text-embedding-3-small',
-      batchSize: 10,
-      maxToken: 8192,
-      normalization: false,
-      ...overrides
-    }) as EmbeddingModelItemType;
+      type: ModelTypeEnum.embedding,
+      isSystem: true,
+      isActive: true,
+      isCustom: false,
+      ...commonOverrides,
+      config: {
+        defaultToken,
+        maxToken,
+        weight,
+        hidden,
+        vision,
+        normalization,
+        batchSize,
+        defaultConfig,
+        dbConfig,
+        queryConfig
+      }
+    };
+  };
 
   // A minimally valid OpenAI-style embedding response. Vector is 4 floats so we can verify
   // padding to 1536 happens via formatVectors, without pretending to cover the whole surface.
@@ -542,9 +578,11 @@ describe('getVectors function test', () => {
       mockCreate.mockResolvedValue(
         makeResponse([[0.1, 0.2, 0.3, 0.4]], { usage: { total_tokens: 1 } })
       );
-      // Pass undefined to exercise `Number(undefined) → NaN` branch
+      const model = buildModel();
+      model.config.batchSize = undefined;
+
       const result = await getVectors({
-        model: buildModel({ batchSize: undefined }),
+        model,
         inputs: ['x', 'y'].map(textInput)
       });
 

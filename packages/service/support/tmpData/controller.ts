@@ -20,7 +20,9 @@ export async function getTmpData<T extends TmpDataEnum>({
   metadata: TmpDataMetadata<T>;
 }) {
   return (await MongoTmpData.findOne({
-    dataId: getDataId(type, metadata)
+    dataId: getDataId(type, metadata),
+    // MongoDB TTL 清理是异步的，读取边界需要主动排除已过期记录。
+    expireAt: { $gt: new Date() }
   }).lean()) as TmpDataSchema<TmpDataType<T>> | null;
 }
 

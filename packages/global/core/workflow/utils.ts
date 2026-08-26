@@ -569,15 +569,17 @@ export const clientGetWorkflowToolRunUserQuery = ({
 
 export const removeUnauthModels = async ({
   modules,
-  allowedModels = new Set()
+  allowedModelIds = new Set(),
+  allowedLegacyModels = new Set()
 }: {
   modules: AppSchemaType['modules'];
-  allowedModels?: Set<string>;
+  allowedModelIds?: Set<string>;
+  allowedLegacyModels?: Set<string>;
 }) => {
   if (modules) {
     modules.forEach((module) => {
       module.inputs.forEach((input) => {
-        if (input.key === 'model') {
+        if (input.key === NodeInputKeyEnum.aiModelId || input.key === NodeInputKeyEnum.aiModel) {
           // 如果是引用类型或历史引用值，跳过静态模型白名单检查。
           if (
             getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.reference ||
@@ -585,6 +587,8 @@ export const removeUnauthModels = async ({
           ) {
             return;
           }
+          const allowedModels =
+            input.key === NodeInputKeyEnum.aiModelId ? allowedModelIds : allowedLegacyModels;
           if (!allowedModels.has(input.value)) {
             input.value = undefined;
           }

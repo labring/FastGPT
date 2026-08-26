@@ -8,16 +8,16 @@ import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComp
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useLocalStorageState } from 'ahooks';
 import { getWebDefaultLLMModel } from '@/web/common/system/utils';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
 
 const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: RenderInputProps) => {
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { llmModelList } = useSystemStore();
+  const { llmModelList } = useSystemModelLists();
 
   const [defaultModel, setDefaultModel] = useLocalStorageState<string>(
     'workflow_default_llm_model',
     {
-      defaultValue: getWebDefaultLLMModel()?.model || ''
+      defaultValue: ''
     }
   );
 
@@ -26,6 +26,25 @@ const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: Rend
       for (const key in e) {
         if (key === NodeInputKeyEnum.aiModel) {
           setDefaultModel(e[key]);
+          const modelIdInput = inputs.find((input) => input.key === NodeInputKeyEnum.aiModelId);
+          if (modelIdInput) {
+            onChangeNode({
+              nodeId,
+              type: 'updateInput',
+              key: NodeInputKeyEnum.aiModelId,
+              value: { ...modelIdInput, value: e[key] }
+            });
+          } else {
+            const legacyInput = inputs.find((input) => input.key === NodeInputKeyEnum.aiModel);
+            if (legacyInput) {
+              onChangeNode({
+                nodeId,
+                type: 'addInput',
+                value: { ...legacyInput, key: NodeInputKeyEnum.aiModelId, value: e[key] }
+              });
+            }
+          }
+          continue;
         }
 
         const input = inputs.find((input) => input.key === key);
@@ -47,10 +66,17 @@ const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: Rend
   );
 
   const { aiModelInput, model } = useMemoEnhance(() => {
-    const aiModelInput = inputs.find((input) => input.key === NodeInputKeyEnum.aiModel);
-    const inputModel = aiModelInput?.value as string | undefined;
-    const modelSet = new Set(llmModelList.map((item) => item.model));
-    const defaultLLMModel = getWebDefaultLLMModel(llmModelList)?.model || '';
+    const aiModelInput =
+      inputs.find((input) => input.key === NodeInputKeyEnum.aiModelId) ||
+      inputs.find((input) => input.key === NodeInputKeyEnum.aiModel);
+    const rawInputModel = aiModelInput?.value as string | undefined;
+    const inputModel =
+      aiModelInput?.key === NodeInputKeyEnum.aiModel || !aiModelInput
+        ? llmModelList.find((item) => item.model === rawInputModel)?.modelId || rawInputModel
+        : rawInputModel;
+    const modelSet = new Set(llmModelList.map((item) => item.modelId).filter(Boolean) as string[]);
+    const defaultModelData = getWebDefaultLLMModel(llmModelList);
+    const defaultLLMModel = defaultModelData?.modelId || '';
     const validDefaultModel = defaultModel && modelSet.has(defaultModel) ? defaultModel : '';
     const fallbackModel = validDefaultModel || defaultLLMModel;
 
@@ -69,15 +95,27 @@ const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: Rend
     if (!aiModelInput || aiModelInput.value || !model) return;
 
     setDefaultModel(model);
-    onChangeNode({
-      nodeId,
-      type: 'updateInput',
-      key: aiModelInput.key,
-      value: {
-        ...aiModelInput,
-        value: model
-      }
-    });
+    if (aiModelInput.key === NodeInputKeyEnum.aiModelId) {
+      onChangeNode({
+        nodeId,
+        type: 'updateInput',
+        key: aiModelInput.key,
+        value: {
+          ...aiModelInput,
+          value: model
+        }
+      });
+    } else {
+      onChangeNode({
+        nodeId,
+        type: 'addInput',
+        value: {
+          ...aiModelInput,
+          key: NodeInputKeyEnum.aiModelId,
+          value: model
+        }
+      });
+    }
   }, [aiModelInput, model, nodeId, onChangeNode, setDefaultModel]);
 
   const llmModelData: SettingAIDataType = useMemoEnhance(
@@ -116,6 +154,7 @@ const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: Rend
     <SettingLLMModel
       defaultData={llmModelData}
       onChange={onChangeModel}
+      valueField="modelId"
       {...settingLLMModelProps}
     />
   );

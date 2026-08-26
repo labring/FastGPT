@@ -898,6 +898,7 @@
   "model.type.stt": "STT",
   "model.type.tts": "TTS",
   "model_loading": "Model loading...",
+  "model_not_exist": "Model does not exist",
   "month_text": "month",
   "move.confirm": "Confirm move",
   "move_success": "Moved Successfully",

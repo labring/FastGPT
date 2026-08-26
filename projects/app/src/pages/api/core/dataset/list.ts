@@ -13,12 +13,14 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModelData } from '@fastgpt/service/core/ai/model';
+import { desensitizeSystemModel } from '@fastgpt/service/core/ai/config/utils';
 import { isPrivateResourceByCollaborators, sumPer } from '@fastgpt/global/support/permission/utils';
 import { getResourcePermissionsByTeam } from '@fastgpt/service/support/permission/resourcePermissionService';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetDatasetListBodySchema,
+  GetDatasetListResponseSchema,
   type GetDatasetListResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
 
@@ -160,7 +162,12 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
         name: dataset.name,
         intro: dataset.intro,
         type: dataset.type,
-        vectorModel: getEmbeddingModel(dataset.vectorModel),
+        vectorModel: desensitizeSystemModel(
+          getEmbeddingModelData({
+            modelId: dataset.vectorModelId ? String(dataset.vectorModelId) : undefined,
+            model: dataset.vectorModel
+          })
+        ),
         inheritPermission: dataset.inheritPermission,
         tmbId: dataset.tmbId,
         updateTime: dataset.updateTime,
@@ -170,9 +177,11 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
     })
     .filter((app) => app.permission.hasReadPer);
 
-  return addSourceMember({
-    list: formatDatasets
-  });
+  return GetDatasetListResponseSchema.parse(
+    await addSourceMember({
+      list: formatDatasets
+    })
+  );
 }
 
 export default NextAPI(handler);

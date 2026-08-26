@@ -1,8 +1,10 @@
 import React from 'react';
 import { Box, Flex, Grid, Link } from '@chakra-ui/react';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ModelTable from '@/components/core/ai/ModelTable';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { getSystemModels } from '@/web/common/system/api';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 const Points = () => {
   const { t } = useClientTranslation('price');
@@ -39,7 +41,14 @@ export default React.memo(Points);
 
 export const AiPointsTable = () => {
   const { t } = useClientTranslation('price');
-  const { llmModelList, ttsModelList, embeddingModelList, sttModelList } = useSystemStore();
+  const { data: modelList = [] } = useRequest(getSystemModels, {
+    manual: false,
+    errorToast: ''
+  });
+  const llmModelList = modelList.filter((model) => model.type === ModelTypeEnum.llm);
+  const embeddingModelList = modelList.filter((model) => model.type === ModelTypeEnum.embedding);
+  const ttsModelList = modelList.filter((model) => model.type === ModelTypeEnum.tts);
+  const sttModelList = modelList.filter((model) => model.type === ModelTypeEnum.stt);
 
   return (
     <Grid gap={6} w={'100%'} color={'myGray.900'}>

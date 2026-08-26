@@ -7,7 +7,11 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getLLMModel, getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import {
+  getLLMModelData,
+  getEmbeddingModelData,
+  getVlmModelData
+} from '@fastgpt/service/core/ai/model';
 import {
   getDatasetImageIndexCapability,
   getDatasetImageTrainingMode
@@ -24,7 +28,7 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 
 async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> {
-  const { datasetId, vectorModel } = parseApiInput({
+  const { datasetId, vectorModelId } = parseApiInput({
     req,
     bodySchema: RebuildEmbeddingBodySchema
   }).body;
@@ -37,8 +41,10 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     per: OwnerPermissionVal
   });
 
+  const vectorModelData = getEmbeddingModelData({ modelId: vectorModelId });
+
   // check vector model
-  if (!vectorModel || dataset.vectorModel === vectorModel) {
+  if (String(dataset.vectorModelId || '') === vectorModelData.modelId) {
     return Promise.reject('vectorModel 不合法');
   }
 
@@ -52,9 +58,16 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     return Promise.reject('数据集正在训练或者重建中，请稍后再试');
   }
 
+  const vlmModelData =
+    dataset.vlmModelId || dataset.vlmModel
+      ? getVlmModelData({
+          modelId: dataset.vlmModelId ? String(dataset.vlmModelId) : undefined,
+          model: dataset.vlmModel
+        })
+      : undefined;
   const { availableVlmModel, supportVlm, supportImageIndex } = getDatasetImageIndexCapability({
-    vectorModel,
-    vlmModel: dataset.vlmModel
+    vectorModel: vectorModelData,
+    vlmModel: vlmModelData
   });
 
   const { usageId } = await createTrainingUsage({
@@ -62,9 +75,12 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     tmbId,
     appName: '切换索引模型',
     billSource: UsageSourceEnum.training,
-    vectorModel: getEmbeddingModel(vectorModel)?.name || vectorModel,
-    agentModel: getLLMModel(dataset.agentModel)?.name,
-    vllmModel: availableVlmModel?.name
+    vectorModelId: vectorModelData.modelId!,
+    agentModelId: getLLMModelData({
+      modelId: dataset.agentModelId ? String(dataset.agentModelId) : undefined,
+      model: dataset.agentModel
+    }).modelId,
+    vllmModelId: availableVlmModel?.modelId
   });
 
   // update vector model and dataset.data rebuild field
@@ -73,7 +89,7 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
       datasetId,
       {
         $set: {
-          vectorModel,
+          vectorModelId: vectorModelData.modelId,
           ...(!supportImageIndex && { 'chunkSettings.imageIndex': false })
         }
       },
@@ -162,12 +178,6 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
                 collectionId: data.collectionId,
                 billId: usageId,
                 mode,
-                model:
-                  (mode === TrainingModeEnum.imageParse || mode === TrainingModeEnum.image) &&
-                  supportVlm &&
-                  availableVlmModel
-                    ? availableVlmModel.model
-                    : vectorModel,
                 dataId: data._id,
                 ...(data.imageId && { imageId: data.imageId }),
                 ...(mode === TrainingModeEnum.image && {

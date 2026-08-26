@@ -15,15 +15,18 @@ vi.mock('@fastgpt/service/core/ai/config/utils', async (importOriginal) => {
 
 import updateModelApi from '@/pages/api/core/ai/model/update';
 
-const buildLlmMetadata = () => ({
+const buildLlmDocument = () => ({
   type: ModelTypeEnum.llm,
   provider: 'OpenAI',
   model: 'test-llm',
   name: 'Test LLM',
-  maxContext: 16000,
-  maxResponse: 8000,
-  quoteMaxToken: 12000,
-  toolChoice: true,
+  isSystem: true as const,
+  config: {
+    maxContext: 16000,
+    maxResponse: 8000,
+    quoteMaxToken: 12000,
+    toolChoice: true
+  },
   isActive: true
 });
 
@@ -37,46 +40,56 @@ const callUpdate = async (body: unknown) => {
 };
 
 describe('update model api', () => {
-  it('validates the complete merged model, fills defaults and removes runtime fields', async () => {
+  it('validates the complete model document and removes runtime fields', async () => {
     const res = await callUpdate({
-      model: ' test-llm ',
-      metadata: {
-        ...buildLlmMetadata(),
+      modelData: {
+        ...buildLlmDocument(),
+        model: ' test-llm ',
         avatar: '/model.svg',
         isCustom: true,
         datasetProcess: true
       }
     });
 
+    expect(res.error).toBeUndefined();
     expect(res.code).toBe(200);
     expect(res.data).toBeUndefined();
     const saved = await MongoSystemModel.findOne({ model: 'test-llm' }).lean();
-    expect(saved?.metadata).toMatchObject({
-      model: 'test-llm'
+    expect(saved).toMatchObject({
+      model: 'test-llm',
+      type: ModelTypeEnum.llm,
+      provider: 'OpenAI',
+      name: 'Test LLM',
+      config: {
+        maxContext: 16000,
+        maxResponse: 8000,
+        quoteMaxToken: 12000
+      }
     });
-    expect(saved?.metadata).not.toHaveProperty('functionCall');
-    expect(saved?.metadata).not.toHaveProperty('avatar');
-    expect(saved?.metadata).not.toHaveProperty('isCustom');
-    expect(saved?.metadata).not.toHaveProperty('datasetProcess');
+    expect(saved).not.toHaveProperty('metadata');
+    expect(saved).not.toHaveProperty('avatar');
+    expect(saved).not.toHaveProperty('isCustom');
+    expect(saved).not.toHaveProperty('datasetProcess');
   });
 
-  it('supports strict partial updates by validating after merging persisted metadata', async () => {
-    await MongoSystemModel.create({
-      model: 'test-llm',
-      metadata: {
-        ...buildLlmMetadata(),
-        functionCall: false
+  it('updates an existing model by modelId with a complete model document', async () => {
+    const existing = await MongoSystemModel.create(buildLlmDocument());
+
+    const res = await callUpdate({
+      modelId: String(existing._id),
+      modelData: {
+        ...buildLlmDocument(),
+        config: {
+          ...buildLlmDocument().config,
+          maxTemperature: 1.2
+        }
       }
     });
 
-    const res = await callUpdate({
-      model: 'test-llm',
-      metadata: { maxTemperature: 1.2 }
-    });
-
+    expect(res.error).toBeUndefined();
     expect(res.code).toBe(200);
     await expect(MongoSystemModel.findOne({ model: 'test-llm' }).lean()).resolves.toMatchObject({
-      metadata: {
+      config: {
         maxContext: 16000,
         maxTemperature: 1.2
       }
@@ -85,10 +98,12 @@ describe('update model api', () => {
 
   it('rejects numeric strings without modifying the database', async () => {
     const res = await callUpdate({
-      model: 'test-llm',
-      metadata: {
-        ...buildLlmMetadata(),
-        maxTemperature: '1.2'
+      modelData: {
+        ...buildLlmDocument(),
+        config: {
+          ...buildLlmDocument().config,
+          maxTemperature: '1.2'
+        }
       }
     });
 
@@ -98,7 +113,7 @@ describe('update model api', () => {
   });
 
   it('rejects malformed request bodies through parseApiInput', async () => {
-    const res = await callUpdate({ metadata: buildLlmMetadata() });
+    const res = await callUpdate({ model: 'test-llm', metadata: buildLlmDocument() });
 
     expect(res.code).toBe(500);
     expect(res.error?.name).toBe('ApiRequestInputParseError');

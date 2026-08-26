@@ -47,10 +47,13 @@ export type SpecificProps = {
   // selectDataset
   datasetOptions?: SelectedDatasetType[];
 
+  // selectLLMModel
+  modelValueField?: 'modelId' | 'model';
+
   // JSONEditor - no extra props
 
   // selectLLMModel
-  modelList?: { model: string; name: string }[];
+  modelList?: { modelId?: string; model: string; name: string }[];
 
   // fileSelect
   form?: UseFormReturn<any>;

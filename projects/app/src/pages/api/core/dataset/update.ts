@@ -33,7 +33,11 @@ import { isEqual } from 'lodash-es';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
-import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
+import {
+  getEmbeddingModelData,
+  getLLMModelData,
+  getVlmModelData
+} from '@fastgpt/service/core/ai/model';
 import { computedCollectionChunkSettings } from '@fastgpt/global/core/dataset/training/utils';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
@@ -60,8 +64,8 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       name,
       avatar,
       intro,
-      agentModel,
-      vlmModel,
+      agentModelId,
+      vlmModelId,
       websiteConfig,
       externalReadUrl,
       apiDatasetServer,
@@ -94,10 +98,19 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   const chunkSettings = rawChunkSettings
     ? computedCollectionChunkSettings({
         ...rawChunkSettings,
-        llmModel: getLLMModel(dataset.agentModel),
-        vectorModel: getEmbeddingModel(dataset.vectorModel)
+        llmModel: getLLMModelData({
+          modelId: dataset.agentModelId,
+          model: dataset.agentModel
+        }),
+        vectorModel: getEmbeddingModelData({
+          modelId: dataset.vectorModelId,
+          model: dataset.vectorModel
+        })
       })
     : undefined;
+
+  const agentModelData = agentModelId ? getLLMModelData({ modelId: agentModelId }) : undefined;
+  const vlmModelData = vlmModelId ? getVlmModelData({ modelId: vlmModelId }) : undefined;
 
   if (isMove) {
     if (parentId) {
@@ -149,7 +162,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   updateTraining({
     teamId: dataset.teamId,
     datasetId: id,
-    agentModel
+    shouldReset: !!agentModelData
   });
 
   const onUpdate = async (session: ClientSession) => {
@@ -221,8 +234,8 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         ...parseParentIdInMongo(parentId),
         ...(name && { name }),
         ...(avatar && { avatar }),
-        ...(agentModel && { agentModel }),
-        ...(vlmModel && { vlmModel }),
+        ...(agentModelData && { agentModelId: agentModelData.modelId }),
+        ...(vlmModelData && { vlmModelId: vlmModelData.modelId }),
         ...(websiteConfig && { websiteConfig }),
         ...(chunkSettings && { chunkSettings }),
         ...(intro !== undefined && { intro }),
@@ -298,13 +311,13 @@ export default NextAPI(handler);
 const updateTraining = async ({
   teamId,
   datasetId,
-  agentModel
+  shouldReset
 }: {
   teamId: string;
   datasetId: string;
-  agentModel?: string;
+  shouldReset: boolean;
 }) => {
-  if (!agentModel) return;
+  if (!shouldReset) return;
 
   await MongoDatasetTraining.updateMany(
     {
@@ -314,7 +327,6 @@ const updateTraining = async ({
     },
     {
       $set: {
-        model: agentModel,
         retryCount: 5,
         lockTime: new Date('2000/1/1')
       }

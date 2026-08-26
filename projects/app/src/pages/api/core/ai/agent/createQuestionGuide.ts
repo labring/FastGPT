@@ -9,7 +9,7 @@ import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { authOutLinkValid } from '@fastgpt/service/support/permission/publish/authLink';
 import { authOutLinkInit } from '@fastgpt/service/support/outLink/runtime/auth';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { getDefaultLLMModel } from '@fastgpt/service/core/ai/model';
+import { getDefaultLLMModelData } from '@fastgpt/service/core/ai/model';
 import {
   CreateQuestionGuideBodySchema,
   CreateQuestionGuideResponseSchema,
@@ -31,16 +31,16 @@ async function handler(
     authApiKey: true
   });
 
-  const qgModel = getDefaultLLMModel();
+  const qgModel = getDefaultLLMModelData();
 
   const { result, inputTokens, outputTokens } = await createQuestionGuide({
     messages: messages as ChatCompletionMessageParam[],
-    model: qgModel.model,
+    model: qgModel,
     teamId
   });
 
   pushQuestionGuideUsage({
-    model: qgModel.model,
+    model: qgModel,
     inputTokens,
     outputTokens,
     teamId,

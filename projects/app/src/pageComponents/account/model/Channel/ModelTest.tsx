@@ -29,6 +29,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type ModelTestItem = {
   label: React.ReactNode;
+  modelId: string;
   model: string;
   status: 'waiting' | 'running' | 'success' | 'error';
   message?: string;
@@ -86,6 +87,7 @@ const ModelTest = ({
                 <Box>{t(modelData.name as any)}</Box>
               </HStack>
             ),
+            modelId: modelData.modelId,
             model: modelData.model,
             status: 'waiting',
             loading: false
@@ -101,19 +103,19 @@ const ModelTest = ({
       let errorNum = 0;
       setTestModelList((prev) => prev.map((item) => ({ ...item, loading: true })));
 
-      const testModel = async (model: string) => {
+      const testModel = async (modelId: string) => {
         setTestModelList((prev) =>
           prev.map((item) =>
-            item.model === model ? { ...item, status: 'running', message: '' } : item
+            item.modelId === modelId ? { ...item, status: 'running', message: '' } : item
           )
         );
         const start = Date.now();
         try {
-          await getTestModel({ model, channelId });
+          await getTestModel({ modelId, channelId });
           const duration = Date.now() - start;
           setTestModelList((prev) =>
             prev.map((item) =>
-              item.model === model
+              item.modelId === modelId
                 ? { ...item, status: 'success', duration: duration / 1000, loading: false }
                 : item
             )
@@ -121,7 +123,7 @@ const ModelTest = ({
         } catch (error) {
           setTestModelList((prev) =>
             prev.map((item) =>
-              item.model === model
+              item.modelId === modelId
                 ? { ...item, status: 'error', message: getErrText(error), loading: false }
                 : item
             )
@@ -131,7 +133,7 @@ const ModelTest = ({
       };
 
       await batchRun(
-        testModelList.map((item) => item.model),
+        testModelList.map((item) => item.modelId),
         testModel,
         5
       );
@@ -149,22 +151,24 @@ const ModelTest = ({
   );
 
   const { runAsync: onTestOneModel, loading: testingOneModel } = useRequest(
-    async (model: string) => {
+    async (modelId: string) => {
       const start = Date.now();
 
       setTestModelList((prev) =>
         prev.map((item) =>
-          item.model === model ? { ...item, status: 'running', message: '', loading: true } : item
+          item.modelId === modelId
+            ? { ...item, status: 'running', message: '', loading: true }
+            : item
         )
       );
 
       try {
-        await getTestModel({ model, channelId });
+        await getTestModel({ modelId, channelId });
         const duration = Date.now() - start;
 
         setTestModelList((prev) =>
           prev.map((item) =>
-            item.model === model
+            item.modelId === modelId
               ? { ...item, status: 'success', duration: duration / 1000, loading: false }
               : item
           )
@@ -172,7 +176,7 @@ const ModelTest = ({
       } catch (error) {
         setTestModelList((prev) =>
           prev.map((item) =>
-            item.model === model
+            item.modelId === modelId
               ? { ...item, status: 'error', message: getErrText(error), loading: false }
               : item
           )
@@ -234,7 +238,7 @@ const ModelTest = ({
                           isLoading={item.loading}
                           icon={'core/chat/sendLight'}
                           tip={t('config_model:model.test_model')}
-                          onClick={() => onTestOneModel(item.model)}
+                          onClick={() => onTestOneModel(item.modelId)}
                         />
                       )}
                     </Td>

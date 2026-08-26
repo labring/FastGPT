@@ -1,9 +1,15 @@
-import { getLLMModel, getEmbeddingModel, getVlmModel } from '@fastgpt/service/core/ai/model';
+import {
+  getLLMModelData,
+  getEmbeddingModelData,
+  getVlmModelData
+} from '@fastgpt/service/core/ai/model';
+import { desensitizeSystemModel } from '@fastgpt/service/core/ai/config/utils';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import {
+  GetDatasetDetailResponseSchema,
   GetDatasetDetailQuerySchema,
   type GetDatasetDetailResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
@@ -25,16 +31,25 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> 
 
   const { status, errorMsg } = await getDatasetSyncDatasetStatus(datasetId);
 
-  return {
+  return GetDatasetDetailResponseSchema.parse({
     ...dataset,
     status,
     errorMsg,
     permission,
-    vectorModel: getEmbeddingModel(dataset.vectorModel),
-    agentModel: getLLMModel(dataset.agentModel),
-    vlmModel: dataset.vlmModel ? getVlmModel(dataset.vlmModel) : undefined,
+    vectorModel: desensitizeSystemModel(
+      getEmbeddingModelData({ modelId: dataset.vectorModelId, model: dataset.vectorModel })
+    ),
+    agentModel: desensitizeSystemModel(
+      getLLMModelData({ modelId: dataset.agentModelId, model: dataset.agentModel })
+    ),
+    vlmModel:
+      dataset.vlmModelId || dataset.vlmModel
+        ? desensitizeSystemModel(
+            getVlmModelData({ modelId: dataset.vlmModelId, model: dataset.vlmModel })
+          )
+        : undefined,
     apiDatasetServer: filterApiDatasetServerPublicData(dataset.apiDatasetServer)
-  };
+  });
 }
 
 export default NextAPI(handler);

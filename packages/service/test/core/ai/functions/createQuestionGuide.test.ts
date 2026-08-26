@@ -1,21 +1,35 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 
-const { createLLMResponseMock, getLLMModelMock } = vi.hoisted(() => ({
-  createLLMResponseMock: vi.fn(),
-  getLLMModelMock: vi.fn()
+const { createLLMResponseMock } = vi.hoisted(() => ({
+  createLLMResponseMock: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getLLMModel: getLLMModelMock
-}));
-
 import { createQuestionGuide } from '@fastgpt/service/core/ai/functions/createQuestionGuide';
 
 describe('createQuestionGuide', () => {
+  const buildModel = (reasoning: boolean): LLMSystemModelDataType => ({
+    modelId: '507f1f77bcf86cd799439013',
+    provider: 'openai',
+    model: reasoning ? 'deepseek-r1' : 'gpt-4o',
+    name: reasoning ? 'DeepSeek R1' : 'GPT-4o',
+    type: ModelTypeEnum.llm,
+    isSystem: true,
+    isActive: true,
+    isCustom: false,
+    config: {
+      maxContext: 128000,
+      maxResponse: 4096,
+      quoteMaxToken: 30000,
+      reasoning
+    }
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     createLLMResponseMock.mockResolvedValue({
@@ -28,35 +42,30 @@ describe('createQuestionGuide', () => {
   });
 
   it('forces reasoning models to disable reasoning for question guide generation', async () => {
-    getLLMModelMock.mockReturnValue({
-      model: 'deepseek-r1',
-      reasoning: true
-    });
+    const model = buildModel(true);
 
     await createQuestionGuide({
       messages: [],
-      model: 'deepseek-r1',
+      model,
       teamId: 'team_1'
     });
 
     expect(createLLMResponseMock.mock.calls[0][0].body).toMatchObject({
-      model: 'deepseek-r1',
       reasoning_effort: 'none'
     });
+    expect(createLLMResponseMock.mock.calls[0][0].body.model).toBe(model);
   });
 
   it('does not set reasoning effort for non-reasoning models', async () => {
-    getLLMModelMock.mockReturnValue({
-      model: 'gpt-4o',
-      reasoning: false
-    });
+    const model = buildModel(false);
 
     await createQuestionGuide({
       messages: [],
-      model: 'gpt-4o',
+      model,
       teamId: 'team_1'
     });
 
     expect(createLLMResponseMock.mock.calls[0][0].body).not.toHaveProperty('reasoning_effort');
+    expect(createLLMResponseMock.mock.calls[0][0].body.model).toBe(model);
   });
 });

@@ -23,10 +23,9 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import { getDocPath } from '@/web/common/system/doc';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import { type MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { PriceLine } from '../PriceTiersLabel';
-import { getWebLLMModel } from '@/web/common/system/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
@@ -118,7 +117,7 @@ const AIChatSettingsModal = ({
   onClose: () => void;
   onSuccess: (e: SettingAIDataType) => void;
   defaultData: SettingAIDataType;
-  llmModels: LLMModelItemType[];
+  llmModels: MyLLMModelItemType[];
 }) => {
   const { t } = useTranslation();
   const [refresh, setRefresh] = useState(false);
@@ -143,14 +142,14 @@ const AIChatSettingsModal = ({
   const extractFiles = watch(NodeInputKeyEnum.aiChatExtractFiles);
 
   const data = useMemo(() => {
-    const modelData = getWebLLMModel(model);
+    const modelData = llmModels.find((item) => item.model === model || item.modelId === model);
     const support = getLLMSupportParams(modelData);
 
     return {
       selectedModel: modelData,
       supportParams: support
     };
-  }, [model]);
+  }, [llmModels, model]);
   const selectedModel = data.selectedModel;
   const supportParams = data.supportParams;
   const multimodalOptions = useMemo(
@@ -204,15 +203,15 @@ const AIChatSettingsModal = ({
   const jsonSchema = watch(NodeInputKeyEnum.aiChatJsonSchema);
 
   const tokenLimit = useMemo(() => {
-    return selectedModel?.maxResponse || 4096;
-  }, [selectedModel?.maxResponse]);
+    return selectedModel?.config.maxResponse ?? 4096;
+  }, [selectedModel?.config.maxResponse]);
 
   const onChangeModel = (e: string) => {
     setValue('model', e);
 
-    const modelData = getWebLLMModel(e);
+    const modelData = llmModels.find((item) => item.model === e || item.modelId === e);
     if (modelData) {
-      setValue('maxToken', modelData.maxResponse / 2);
+      setValue('maxToken', modelData.config.maxResponse / 2);
       if (showMultimodalSetting) {
         const support = getLLMSupportParams(modelData);
         onChangeMultimodalValues(
@@ -274,6 +273,7 @@ const AIChatSettingsModal = ({
             <AIModelSelector
               width={'100%'}
               h={'36px'}
+              valueField="model"
               value={model}
               list={llmModels.map((item) => ({
                 value: item.model,
@@ -318,9 +318,11 @@ const AIChatSettingsModal = ({
                       />
                     )}
                   </Td>
-                  <Td rowSpan={2}>{Math.round((selectedModel?.maxContext || 4096) / 1000)}K</Td>
                   <Td rowSpan={2}>
-                    {selectedModel?.toolChoice || selectedModel?.functionCall
+                    {Math.round((selectedModel?.config.maxContext ?? 4096) / 1000)}K
+                  </Td>
+                  <Td rowSpan={2}>
+                    {selectedModel?.config.toolChoice || selectedModel?.config.functionCall
                       ? t('common:support')
                       : t('common:not_support')}
                   </Td>
@@ -341,113 +343,113 @@ const AIChatSettingsModal = ({
             </Table>
           </TableContainer>
 
-            {showMaxHistoriesSlider && (
-              <SettingRow
-                label={t('app:max_histories_number')}
-                tip={t('app:max_histories_number_tip')}
-              >
-                <Box ml={'52px'}>
-                  <InputSlider
-                    min={0}
-                    max={30}
-                    step={1}
-                    value={getValues('maxHistories') ?? 6}
-                    inputVariant={'whiteOutline'}
-                    onChange={(e) => {
-                      setValue('maxHistories', e);
-                      setRefresh(!refresh);
-                    }}
-                  />
-                </Box>
-              </SettingRow>
-            )}
-            {showMaxToken && (
-              <SettingRow
-                label={t('app:max_tokens')}
-                switchControl={
-                  <Switch
-                    isChecked={maxToken !== undefined}
-                    onChange={(e) => {
-                      setValue('maxToken', e.target.checked ? tokenLimit / 2 : undefined);
-                    }}
-                  />
-                }
-              >
+          {showMaxHistoriesSlider && (
+            <SettingRow
+              label={t('app:max_histories_number')}
+              tip={t('app:max_histories_number_tip')}
+            >
+              <Box ml={'52px'}>
                 <InputSlider
                   min={0}
-                  max={tokenLimit}
-                  step={200}
+                  max={30}
+                  step={1}
+                  value={getValues('maxHistories') ?? 6}
                   inputVariant={'whiteOutline'}
-                  isDisabled={maxToken === undefined}
-                  value={maxToken}
-                  onChange={(val) => {
-                    setValue(NodeInputKeyEnum.aiChatMaxToken, val);
+                  onChange={(e) => {
+                    setValue('maxHistories', e);
                     setRefresh(!refresh);
                   }}
                 />
-              </SettingRow>
-            )}
-            {showMultimodalSetting && (
-              <SettingRow
-                label={multimodalSettingLabel}
-                switchControl={
-                  !supportParams.multimodal ? (
-                    <Box fontSize={'sm'} color={'myGray.500'}>
-                      {t('app:llm_not_support_multimodal')}
-                    </Box>
-                  ) : multimodalOptions.length === 1 && singleMultimodalOption ? (
-                    <Switch
-                      isChecked={selectedMultimodalValues.length > 0}
-                      onChange={(e) => {
-                        onChangeMultimodalValues(
-                          e.target.checked ? [singleMultimodalOption.value] : []
-                        );
-                      }}
-                    />
-                  ) : undefined
-                }
-              >
-                {supportParams.multimodal && multimodalOptions.length > 1 && (
-                  <MultipleSelect
-                    h={'36px'}
-                    value={selectedMultimodalValues}
-                    list={multimodalOptions}
-                    placeholder={t('app:llm_multimodal_select_placeholder')}
-                    onSelect={onChangeMultimodalValues}
-                  />
-                )}
-              </SettingRow>
-            )}
-            {showExtractFilesSetting && (
-              <SettingRow
-                label={t('app:extract_chat_files')}
-                tip={t('app:extract_chat_files_tip')}
-                switchControl={
+              </Box>
+            </SettingRow>
+          )}
+          {showMaxToken && (
+            <SettingRow
+              label={t('app:max_tokens')}
+              switchControl={
+                <Switch
+                  isChecked={maxToken !== undefined}
+                  onChange={(e) => {
+                    setValue('maxToken', e.target.checked ? tokenLimit / 2 : undefined);
+                  }}
+                />
+              }
+            >
+              <InputSlider
+                min={0}
+                max={tokenLimit}
+                step={200}
+                inputVariant={'whiteOutline'}
+                isDisabled={maxToken === undefined}
+                value={maxToken}
+                onChange={(val) => {
+                  setValue(NodeInputKeyEnum.aiChatMaxToken, val);
+                  setRefresh(!refresh);
+                }}
+              />
+            </SettingRow>
+          )}
+          {showMultimodalSetting && (
+            <SettingRow
+              label={multimodalSettingLabel}
+              switchControl={
+                !supportParams.multimodal ? (
+                  <Box fontSize={'sm'} color={'myGray.500'}>
+                    {t('app:llm_not_support_multimodal')}
+                  </Box>
+                ) : multimodalOptions.length === 1 && singleMultimodalOption ? (
                   <Switch
-                    isChecked={!!extractFiles}
+                    isChecked={selectedMultimodalValues.length > 0}
                     onChange={(e) => {
-                      setValue(NodeInputKeyEnum.aiChatExtractFiles, e.target.checked);
+                      onChangeMultimodalValues(
+                        e.target.checked ? [singleMultimodalOption.value] : []
+                      );
                     }}
                   />
-                }
-              />
-            )}
-            {showResponseAnswerText && (
-              <SettingRow
-                label={t('app:hide_response')}
-                tip={t('app:hide_response_tip')}
-                switchControl={
-                  <Switch
-                    isChecked={!getValues(NodeInputKeyEnum.aiChatIsResponseText)}
-                    onChange={(e) => {
-                      setValue(NodeInputKeyEnum.aiChatIsResponseText, !e.target.checked);
-                      setRefresh((state) => !state);
-                    }}
-                  />
-                }
-              />
-            )}
-          </SectionCard>
+                ) : undefined
+              }
+            >
+              {supportParams.multimodal && multimodalOptions.length > 1 && (
+                <MultipleSelect
+                  h={'36px'}
+                  value={selectedMultimodalValues}
+                  list={multimodalOptions}
+                  placeholder={t('app:llm_multimodal_select_placeholder')}
+                  onSelect={onChangeMultimodalValues}
+                />
+              )}
+            </SettingRow>
+          )}
+          {showExtractFilesSetting && (
+            <SettingRow
+              label={t('app:extract_chat_files')}
+              tip={t('app:extract_chat_files_tip')}
+              switchControl={
+                <Switch
+                  isChecked={!!extractFiles}
+                  onChange={(e) => {
+                    setValue(NodeInputKeyEnum.aiChatExtractFiles, e.target.checked);
+                  }}
+                />
+              }
+            />
+          )}
+          {showResponseAnswerText && (
+            <SettingRow
+              label={t('app:hide_response')}
+              tip={t('app:hide_response_tip')}
+              switchControl={
+                <Switch
+                  isChecked={!getValues(NodeInputKeyEnum.aiChatIsResponseText)}
+                  onChange={(e) => {
+                    setValue(NodeInputKeyEnum.aiChatIsResponseText, !e.target.checked);
+                    setRefresh((state) => !state);
+                  }}
+                />
+              }
+            />
+          )}
+        </SectionCard>
 
         {/* 思考配置 */}
         {showReasoningSection && (
@@ -576,7 +578,7 @@ const AIChatSettingsModal = ({
                     onChange={(e) => {
                       setValue(
                         NodeInputKeyEnum.aiChatResponseFormat,
-                        e.target.checked ? selectedModel?.responseFormatList?.[0] : undefined
+                        e.target.checked ? selectedModel?.config.responseFormatList?.[0] : undefined
                       );
                     }}
                   />
@@ -586,7 +588,7 @@ const AIChatSettingsModal = ({
                   isDisabled={responseFormat === undefined}
                   placeholder={t('app:response_format_placeholder')}
                   h={'36px'}
-                  list={selectedModel.responseFormatList!.map((item) => ({
+                  list={(selectedModel?.config.responseFormatList ?? []).map((item) => ({
                     value: item,
                     label: item
                   }))}

@@ -26,7 +26,7 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
-import { getWebLLMModel } from '@/web/common/system/utils';
+import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
@@ -113,10 +113,15 @@ const EditForm = ({
     [appForm.chatConfig.variables, t]
   );
 
-  const selectedModel = getWebLLMModel(appForm.aiSettings.model);
+  const { llmModelList, reRankModelList } = useSystemModelLists();
+  const selectedModel =
+    llmModelList.find(
+      (model) =>
+        model.modelId === appForm.aiSettings.modelId || model.model === appForm.aiSettings.model
+    ) || llmModelList[0];
   const tokenLimit = useMemo(() => {
-    return selectedModel.quoteMaxToken || 3000;
-  }, [selectedModel.quoteMaxToken]);
+    return selectedModel?.config.quoteMaxToken ?? 3000;
+  }, [selectedModel?.config.quoteMaxToken]);
 
   const updateWelcomeText = useCallback(
     (value: string) => {
@@ -152,22 +157,55 @@ const EditForm = ({
   );
 
   useEffect(() => {
-    if (
-      appForm.dataset.datasetSearchUsingExtensionQuery &&
-      !appForm.dataset.datasetSearchExtensionModel
-    ) {
-      setAppForm((state) => ({
+    setAppForm((state) => {
+      const modelId =
+        state.aiSettings.modelId ||
+        llmModelList.find((model) => model.model === state.aiSettings.model)?.modelId;
+      const legacyRerankModel = reRankModelList.find(
+        (model) => model.model === state.dataset.rerankModel
+      );
+      const legacyExtensionModel = llmModelList.find(
+        (model) => model.model === state.dataset.datasetSearchExtensionModel
+      );
+      const rerankModelId =
+        state.dataset.rerankModelId ||
+        legacyRerankModel?.modelId ||
+        (state.dataset.usingReRank && !state.dataset.rerankModel
+          ? defaultModels.rerank?.modelId
+          : undefined);
+      const datasetSearchExtensionModelId =
+        state.dataset.datasetSearchExtensionModelId ||
+        legacyExtensionModel?.modelId ||
+        (state.dataset.datasetSearchUsingExtensionQuery &&
+        !state.dataset.datasetSearchExtensionModel
+          ? defaultModels.llm?.modelId
+          : undefined);
+
+      if (
+        modelId === state.aiSettings.modelId &&
+        rerankModelId === state.dataset.rerankModelId &&
+        datasetSearchExtensionModelId === state.dataset.datasetSearchExtensionModelId
+      ) {
+        return state;
+      }
+      return {
         ...state,
+        aiSettings: {
+          ...state.aiSettings,
+          modelId
+        },
         dataset: {
           ...state.dataset,
-          datasetSearchExtensionModel: defaultModels.llm?.model
+          rerankModelId,
+          datasetSearchExtensionModelId
         }
-      }));
-    }
+      };
+    });
   }, [
-    appForm.dataset.datasetSearchUsingExtensionQuery,
-    appForm.dataset.datasetSearchExtensionModel,
-    defaultModels.llm?.model,
+    defaultModels.llm?.modelId,
+    defaultModels.rerank?.modelId,
+    llmModelList,
+    reRankModelList,
     setAppForm
   ]);
 
@@ -208,8 +246,9 @@ const EditForm = ({
             <Box flex={'1 0 0'}>
               <SettingLLMModel
                 bg="myGray.50"
+                valueField="modelId"
                 defaultData={{
-                  model: appForm.aiSettings.model,
+                  model: appForm.aiSettings.modelId || appForm.aiSettings.model || '',
                   temperature: appForm.aiSettings.temperature,
                   maxToken: appForm.aiSettings.maxToken,
                   maxHistories: appForm.aiSettings.maxHistories,
@@ -221,12 +260,13 @@ const EditForm = ({
                   aiChatJsonSchema: appForm.aiSettings.aiChatJsonSchema
                 }}
                 showMultimodalConfig={false}
-                onChange={({ maxHistories = 6, ...data }) => {
+                onChange={({ model, maxHistories = 6, ...data }) => {
                   setAppForm((state) => ({
                     ...state,
                     aiSettings: {
                       ...state.aiSettings,
                       ...data,
+                      modelId: model,
                       maxHistories
                     }
                   }));
@@ -308,37 +348,39 @@ const EditForm = ({
         </Box>
 
         {/* tool choice */}
-        <Box {...BoxStyles}>
-          <ToolSelect
-            selectedModel={selectedModel}
-            selectedTools={appForm.selectedTools}
-            fileSelectConfig={appForm.chatConfig.fileSelectConfig}
-            onAddTool={(e) => {
-              setAppForm((state) => ({
-                ...state,
-                selectedTools: [e, ...(state.selectedTools || [])]
-              }));
-            }}
-            onUpdateTool={(e) => {
-              setAppForm((state) => ({
-                ...state,
-                selectedTools:
-                  state.selectedTools?.map((item) => (item.id === e.id ? e : item)) || []
-              }));
-            }}
-            onRemoveTool={(id, source) => {
-              setAppForm((state) => ({
-                ...state,
-                selectedTools:
-                  state.selectedTools?.filter(
-                    (item) =>
-                      getToolIdentityKey(item.pluginId, item.source) !==
-                      getToolIdentityKey(id, source)
-                  ) || []
-              }));
-            }}
-          />
-        </Box>
+        {selectedModel && (
+          <Box {...BoxStyles}>
+            <ToolSelect
+              selectedModel={selectedModel}
+              selectedTools={appForm.selectedTools}
+              fileSelectConfig={appForm.chatConfig.fileSelectConfig}
+              onAddTool={(e) => {
+                setAppForm((state) => ({
+                  ...state,
+                  selectedTools: [e, ...(state.selectedTools || [])]
+                }));
+              }}
+              onUpdateTool={(e) => {
+                setAppForm((state) => ({
+                  ...state,
+                  selectedTools:
+                    state.selectedTools?.map((item) => (item.id === e.id ? e : item)) || []
+                }));
+              }}
+              onRemoveTool={(id, source) => {
+                setAppForm((state) => ({
+                  ...state,
+                  selectedTools:
+                    state.selectedTools?.filter(
+                      (item) =>
+                        getToolIdentityKey(item.pluginId, item.source) !==
+                        getToolIdentityKey(id, source)
+                    ) || []
+                }));
+              }}
+            />
+          </Box>
+        )}
 
         {/* dataset */}
         <Box {...BoxStyles}>
@@ -399,7 +441,10 @@ const EditForm = ({
                 limit={appForm.dataset.limit}
                 usingReRank={appForm.dataset.usingReRank}
                 usingExtensionQuery={appForm.dataset.datasetSearchUsingExtensionQuery}
-                queryExtensionModel={appForm.dataset.datasetSearchExtensionModel}
+                queryExtensionModel={
+                  appForm.dataset.datasetSearchExtensionModelId ||
+                  appForm.dataset.datasetSearchExtensionModel
+                }
               />
             </Box>
           )}

@@ -3,6 +3,7 @@ import { ParentIdSchema } from '../../../../common/parentFolder/type';
 import { AppTypeEnum } from '../../../../core/app/constants';
 import {
   AppChatConfigTypeSchema,
+  AppTTSConfigTypeSchema,
   AppResourceRefsSchema,
   AppScheduledTriggerConfigTypeSchema,
   AppSchemaTypeSchema,
@@ -69,13 +70,20 @@ const OpenAPIAppQGConfigSchema = z.object({
   open: BoolSchema.meta({
     description: '是否开启问题引导'
   }),
+  modelId: ObjectIdSchema.optional().meta({
+    description: '生成问题引导时使用的模型 ID'
+  }),
   model: z.string().optional().meta({
-    description: '生成问题引导时使用的模型'
+    description: '生成问题引导时使用的旧模型标识',
+    deprecated: true
   }),
   customPrompt: z.string().optional().meta({
     description: '生成问题引导时追加的自定义提示词'
   })
 });
+
+export const AppQuestionGuideInputSchema = OpenAPIAppQGConfigSchema.omit({ model: true });
+export const AppTTSConfigInputSchema = AppTTSConfigTypeSchema.omit({ model: true });
 
 const OpenAPIVariableItemSchema = VariableItemTypeSchema.omit({
   list: true,
@@ -139,6 +147,17 @@ export const OpenAPIAppChatConfigSchema = AppChatConfigTypeSchema.extend({
   description: '应用对话运行配置，例如欢迎语、变量、语音和定时触发配置'
 });
 
+/** 普通客户端写入对话配置时只接收稳定模型 ID。 */
+export const AppChatConfigInputSchema = OpenAPIAppChatConfigSchema.extend({
+  questionGuide: AppQuestionGuideInputSchema.optional().meta({
+    description: '问题引导配置'
+  }),
+  ttsConfig: AppTTSConfigInputSchema.optional().meta({
+    description: '语音播报配置'
+  })
+});
+
+/* Create app */
 /**
  * 在校验前迁移创建请求中的工作流。
  *
@@ -206,7 +225,7 @@ export const CreateAppBodySchema = z
       example: [],
       description: '应用连线'
     }),
-    chatConfig: OpenAPIAppChatConfigSchema.optional().meta({
+    chatConfig: AppChatConfigInputSchema.strict().optional().meta({
       description: '聊天配置'
     }),
     templateId: z.string().optional().meta({

@@ -67,9 +67,9 @@ describe('createAgentLoopCoreToolRunResponseCollector', () => {
       seconds: 0.8,
       toolResponseCompress: {
         response: 'compressed response',
+        modelName: 'GPT-4',
         usage: {
           moduleName: 'account_usage:tool_response_compress',
-          model: 'GPT-4',
           totalPoints: 0.3
         },
         requestIds: ['req_compress'],
@@ -112,7 +112,6 @@ describe('createAgentLoopCoreToolRunResponseCollector', () => {
         flowUsages: [
           {
             moduleName: 'account_usage:tool_response_compress',
-            model: 'GPT-4',
             totalPoints: 0.3
           }
         ]
@@ -141,9 +140,9 @@ describe('createAgentLoopCoreToolRunResponseCollector', () => {
       usages: [{ moduleName: 'Search', totalPoints: 1.5 }]
     });
     collector.appendContextCompressNodeResponse({
+      modelName: 'GPT-4',
       usage: {
         moduleName: 'account_usage:compress_llm_messages',
-        model: 'GPT-4',
         totalPoints: 0.2
       },
       requestIds: [],
@@ -252,9 +251,9 @@ describe('createAgentLoopCoreToolRunResponseCollector', () => {
       seconds: 0.9,
       toolResponseCompress: {
         response: 'compressed response',
+        modelName: 'GPT-4',
         usage: {
           moduleName: 'account_usage:tool_response_compress',
-          model: 'GPT-4',
           totalPoints: 0.1
         },
         requestIds: ['req_empty_compress'],
@@ -289,17 +288,18 @@ describe('createAgentLoopCoreToolRunResponseCollector', () => {
     });
     const usage = {
       moduleName: 'account_usage:compress_llm_messages',
-      model: 'GPT-4',
       totalPoints: 0.2
     };
 
     collector.appendContextCompressNodeResponse({
+      modelName: 'GPT-4',
       usage,
       requestIds: [],
       contextCheckpoint: '<context_checkpoint>same</context_checkpoint>',
       seconds: 0.1
     });
     collector.appendContextCompressNodeResponse({
+      modelName: 'GPT-4',
       usage,
       requestIds: [],
       contextCheckpoint: '<context_checkpoint>same</context_checkpoint>',

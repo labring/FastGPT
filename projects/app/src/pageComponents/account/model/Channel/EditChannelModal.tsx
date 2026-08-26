@@ -24,7 +24,7 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { AddModelButton } from '../AddModelBox';
 import dynamic from 'next/dynamic';
-import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import { type SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getSystemModelList } from '@/web/core/ai/config';
@@ -99,7 +99,7 @@ const EditChannelModal = ({
     return res;
   }, [providerList, providerType]);
 
-  const [editModelData, setEditModelData] = useState<SystemModelItemType>();
+  const [editModelData, setEditModelData] = useState<SystemModelDataType>();
   const onCreateModel = (type: ModelTypeEnum) => {
     const defaultModel = defaultModels[type];
 

@@ -12,9 +12,10 @@ describe('createAgentLoopCoreCompressNodeResponse', () => {
       createAgentLoopCoreCompressNodeResponse({
         moduleName: 'Compress',
         moduleType: FlowNodeTypeEnum.toolCall,
+        modelName: 'GPT-4',
         usage: {
           moduleName: 'usage',
-          model: 'GPT-4',
+          modelId: '507f1f77bcf86cd799439011',
           inputTokens: 10,
           outputTokens: 3,
           totalPoints: 0.2
@@ -31,6 +32,7 @@ describe('createAgentLoopCoreCompressNodeResponse', () => {
       moduleType: FlowNodeTypeEnum.toolCall,
       moduleLogo: 'core/app/agent/child/contextCompress',
       runningTime: 0.4,
+      modelId: '507f1f77bcf86cd799439011',
       model: 'GPT-4',
       llmRequestIds: ['req_1'],
       inputTokens: 10,
@@ -57,6 +59,7 @@ describe('createAgentLoopCoreCompressNodeResponse', () => {
       expect.objectContaining({
         id: 'req_empty',
         nodeId: 'req_empty',
+        modelId: undefined,
         model: undefined,
         inputTokens: undefined,
         outputTokens: undefined,

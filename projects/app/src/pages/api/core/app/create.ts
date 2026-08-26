@@ -28,7 +28,7 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
-import { getMyModels } from '@fastgpt/service/support/permission/model/controller';
+import { getMyModelIds } from '@fastgpt/service/support/permission/model/controller';
 import { removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
@@ -89,15 +89,22 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     intro: intro ?? undefined,
     type,
     modules,
-    allowedModels: await (async () => {
-      if (modules) {
-        return new Set(
-          await getMyModels({
-            teamId,
-            tmbId,
-            isTeamOwner: isRoot || tmb?.role === 'owner'
-          })
-        );
+    allowedModelReferences: await (async () => {
+      if (modules?.length) {
+        const modelIds = await getMyModelIds({
+          teamId,
+          tmbId,
+          isTeamOwner: isRoot || tmb?.role === 'owner'
+        });
+        const allowedModelIds = new Set(modelIds);
+        return {
+          allowedModelIds,
+          allowedLegacyModels: new Set(
+            modelIds
+              .map((modelId) => global.systemModelMap.get(`id:${modelId}`)?.model)
+              .filter((model): model is string => !!model)
+          )
+        };
       }
       return undefined;
     })(),
@@ -140,7 +147,7 @@ export const onCreateApp = async ({
   type,
   modules,
   storageModules,
-  allowedModels,
+  allowedModelReferences,
   edges,
   chatConfig,
   teamId,
@@ -158,7 +165,10 @@ export const onCreateApp = async ({
   type: AppTypeEnum;
   modules?: unknown[];
   storageModules?: AppSchemaType['modules'];
-  allowedModels?: Set<string>;
+  allowedModelReferences?: {
+    allowedModelIds: Set<string>;
+    allowedLegacyModels: Set<string>;
+  };
   edges?: AppSchemaType['edges'];
   chatConfig?: AppSchemaType['chatConfig'];
   intro?: string;
@@ -188,10 +198,10 @@ export const onCreateApp = async ({
     edges: edges ?? [],
     chatConfig
   });
-  if (allowedModels) {
+  if (allowedModelReferences) {
     await removeUnauthModels({
       modules: normalizedWorkflow.nodes,
-      allowedModels
+      ...allowedModelReferences
     });
   }
   await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });

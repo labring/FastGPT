@@ -7,6 +7,7 @@ import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils
 import { WorkflowBufferDataContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
 import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import { getWebDefaultLLMModel } from '@/web/common/system/utils';
@@ -21,17 +22,15 @@ import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils'
 const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { getNodeById, edges } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
-  );
+  const { getNodeById, edges } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
-  const { feConfigs, llmModelList } = useSystemStore();
+  const { feConfigs } = useSystemStore();
+  const { llmModelList } = useSystemModelLists();
 
   const [defaultModel, setDefaultModel] = useLocalStorageState<string>(
     'workflow_default_llm_model',
     {
-      defaultValue: getWebDefaultLLMModel()?.model || ''
+      defaultValue: ''
     }
   );
 
@@ -63,7 +62,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
           value = value.slice(0, 1000000);
         }
       }
-      if (item.key === NodeInputKeyEnum.aiModel) {
+      if (item.key === NodeInputKeyEnum.aiModel || item.key === NodeInputKeyEnum.aiModelId) {
         setDefaultModel(value);
       }
 
@@ -120,6 +119,14 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
       variables={[...(editorVariables || []), ...(externalVariables || [])]}
       variableLabels={editorVariables}
       modelList={llmModelList}
+      modelValueField={
+        item.key === NodeInputKeyEnum.aiModelId ||
+        item.key === NodeInputKeyEnum.datasetSearchExtensionModelId ||
+        item.key === NodeInputKeyEnum.datasetSearchRerankModelId ||
+        item.key === NodeInputKeyEnum.datasetDeepSearchModelId
+          ? 'modelId'
+          : 'model'
+      }
       ExtensionPopover={canOptimizePrompt ? [OptimizerPopverComponent] : undefined}
       menuPlacement={menuPlacement}
       {...item}

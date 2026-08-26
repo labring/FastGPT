@@ -1,7 +1,8 @@
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
 import { Box, Flex } from '@chakra-ui/react';
 import type { ResponsiveValue } from '@chakra-ui/system';
-import type { SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MySelect, { type SelectProps } from '@fastgpt/web/components/common/MySelect';
@@ -9,7 +10,6 @@ import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleR
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 import MultimodalTag from '@/components/core/ai/MultimodelTag';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo } from 'react';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
@@ -34,11 +34,11 @@ const getModelAvatarSize = (size?: Props['size']) => {
   return modelAvatarSizeMap.md;
 };
 
-const isTestModeModel = (model?: SystemModelItemType) => {
+const isTestModeModel = (model?: MyModelItemType) => {
   return !!model?.testMode;
 };
-const isMultimodalEmbeddingModel = (model?: SystemModelItemType) => {
-  return model?.type === ModelTypeEnum.embedding && !!model.vision;
+const isMultimodalEmbeddingModel = (model?: MyModelItemType) => {
+  return model?.type === ModelTypeEnum.embedding && !!model.config.vision;
 };
 
 const ModelOptionLabel = React.memo(function ModelOptionLabel({
@@ -77,7 +77,7 @@ const SelectedModelLabel = React.memo(function SelectedModelLabel({
   avatarSize,
   noOfLines
 }: {
-  model: SystemModelItemType;
+  model: MyModelItemType;
   avatar?: string;
   avatarSize: string;
   noOfLines?: ResponsiveValue<number>;
@@ -111,28 +111,9 @@ const OneRowSelector = ({
 }: Props) => {
   const { t } = useTranslation(['common', 'account']);
 
-  const {
-    llmModelList,
-    embeddingModelList,
-    ttsModelList,
-    sttModelList,
-    reRankModelList,
-    getModelProvider,
-    getMyModelList
-  } = useSystemStore();
-
-  const { data: myModels, loading } = useRequest(
-    async () => {
-      const set = await getMyModelList();
-      if (cacheModel) {
-        set.add(props.value);
-      }
-      return set;
-    },
-    {
-      manual: false
-    }
-  );
+  const { getModelProvider } = useSystemStore();
+  const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList, loading } =
+    useSystemModelLists();
 
   const avatarSize = useMemo(() => getModelAvatarSize(props.size), [props.size]);
   const allModels = useMemo(
@@ -149,6 +130,11 @@ const OneRowSelector = ({
     () => allModels.find((model) => model.model === props.value),
     [allModels, props.value]
   );
+  const myModels = useMemo(() => {
+    const result = new Set(allModels.map((model) => model.model));
+    if (cacheModel) result.add(props.value);
+    return result;
+  }, [allModels, cacheModel, props.value]);
 
   const avatarList = useMemo(() => {
     return list
@@ -208,6 +194,8 @@ const OneRowSelector = ({
                 avatarSize={avatarSize}
                 noOfLines={noOfLines}
               />
+            ) : props.value && !loading ? (
+              <Box color={'red.500'}>{t('common:model_not_exist')}</Box>
             ) : undefined
           }
           placeholder={loading ? t('common:model_loading') : t('common:not_model_config')}
@@ -233,20 +221,9 @@ const MultipleRowSelector = ({
   ...props
 }: Props) => {
   const { t, i18n } = useTranslation(['common', 'account']);
-  const {
-    llmModelList,
-    embeddingModelList,
-    ttsModelList,
-    sttModelList,
-    reRankModelList,
-    getModelProvider,
-    getModelProviders,
-    getMyModelList
-  } = useSystemStore();
-
-  const { data: myModels, loading } = useRequest(getMyModelList, {
-    manual: false
-  });
+  const { getModelProvider, getModelProviders } = useSystemStore();
+  const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList, loading } =
+    useSystemModelLists();
 
   const modelList = useMemo(() => {
     const allModels = [
@@ -259,16 +236,8 @@ const MultipleRowSelector = ({
 
     return list
       .map((item) => allModels.find((model) => model.model === item.value))
-      .filter((item) => !!item && !!myModels?.has(item.model));
-  }, [
-    llmModelList,
-    embeddingModelList,
-    ttsModelList,
-    sttModelList,
-    reRankModelList,
-    list,
-    myModels
-  ]);
+      .filter((item) => !!item);
+  }, [llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList, list]);
 
   const avatarSize = useMemo(() => getModelAvatarSize(props.size), [props.size]);
   const selectedModelData = useMemo(
@@ -335,7 +304,7 @@ const MultipleRowSelector = ({
   const SelectedLabel = useMemo(() => {
     if (loading) return <>{t('common:model_loading')}</>;
     if (!props.value) return <>{t('common:not_model_config')}</>;
-    if (!selectedModelData) return <>{t('common:not_model_config')}</>;
+    if (!selectedModelData) return <Box color={'red.500'}>{t('common:model_not_exist')}</Box>;
 
     return (
       <SelectedModelLabel

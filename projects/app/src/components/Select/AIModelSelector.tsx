@@ -1,20 +1,32 @@
+import { getMyModel, getMyModels } from '@/web/common/system/api';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import type { SelectProps } from '@fastgpt/web/components/common/MySelect';
+import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
+import type { ListItemType } from '@fastgpt/web/components/common/MySelect/type';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { Box, Flex } from '@chakra-ui/react';
 import type { ResponsiveValue } from '@chakra-ui/system';
-import type { SystemModelItemType } from '@fastgpt/service/core/ai/type';
-import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import MySelect, { type SelectProps } from '@fastgpt/web/components/common/MySelect';
-import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { useTranslation } from 'next-i18next';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 import MultimodalTag from '@/components/core/ai/MultimodelTag';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useTranslation } from 'next-i18next';
-import React, { useCallback, useMemo } from 'react';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import {
+  getModelSelectorModelId,
+  isModelAllowedByValues,
+  resolveModelSelectorProvider
+} from './AIModelSelector.utils';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
-type Props = SelectProps & {
+type Props = Omit<SelectProps, 'list'> & {
+  modelType?: ModelTypeEnum;
+  /** 迁移期可用于限制模型范围；为空时以服务端返回为准。 */
+  list?: SelectProps['list'];
+  valueField?: 'modelId' | 'model';
   disableTip?: string;
   noOfLines?: ResponsiveValue<number>;
   cacheModel?: boolean;
@@ -22,459 +34,365 @@ type Props = SelectProps & {
   unsetLabel?: string;
 };
 
-const modelAvatarSizeMap = {
-  sm: '1rem',
-  md: '1.2rem',
-  lg: '1.4rem'
-} as const;
-
-const getModelAvatarSize = (size?: Props['size']) => {
-  if (typeof size === 'string' && size in modelAvatarSizeMap) {
-    return modelAvatarSizeMap[size as keyof typeof modelAvatarSizeMap];
-  }
-
-  return modelAvatarSizeMap.md;
-};
-
-const isTestModeModel = (model?: SystemModelItemType) => {
-  return !!model?.testMode;
-};
-const isMultimodalEmbeddingModel = (model?: SystemModelItemType) => {
-  return model?.type === ModelTypeEnum.embedding && !!model.vision;
-};
-
 const UNSET_MODEL_VALUE = '';
+const LOAD_MORE_VALUE = '__load_more__';
+const LOADING_VALUE = '__loading__';
+const PAGE_SIZE = 10;
 
-const UnsetOptionLabel = React.memo(function UnsetOptionLabel({
-  label
+const modelAvatarSizeMap = { sm: '1rem', md: '1.2rem', lg: '1.4rem' } as const;
+const getModelAvatarSize = (size?: Props['size']) =>
+  typeof size === 'string' && size in modelAvatarSizeMap
+    ? modelAvatarSizeMap[size as keyof typeof modelAvatarSizeMap]
+    : modelAvatarSizeMap.md;
+
+const hasMultimodalEmbedding = (model?: MyModelItemType) =>
+  model?.type === ModelTypeEnum.embedding && !!model.config.vision;
+
+const ModelLabel = ({
+  model,
+  avatarSize,
+  noOfLines,
+  showTags = true
 }: {
-  label: string | React.ReactNode;
-}) {
-  return (
-    <Flex alignItems={'center'} py={1} w={'100%'} minW={0}>
-      <Box noOfLines={1} flex={'1 1 0'} minW={0} overflow={'hidden'}>
-        {label}
-      </Box>
-    </Flex>
-  );
-});
-
-const SelectorActiveModelTags = React.memo(function SelectorActiveModelTags({
-  model
-}: {
-  model?: SystemModelItemType;
-}) {
-  const showTestModeTip = isTestModeModel(model);
-  const showMultimodalTip = isMultimodalEmbeddingModel(model);
-
-  if (!showTestModeTip && !showMultimodalTip) return null;
-
-  return (
-    <Box
-      position={'absolute'}
-      top={'50%'}
-      right={'40px'}
-      transform={'translateY(-50%)'}
-      zIndex={3}
-      display={'flex'}
-      alignItems={'center'}
-      gap={1}
-    >
-      {showTestModeTip && <TestModeBetaTag />}
-      {showMultimodalTip && <MultimodalTag />}
-    </Box>
-  );
-});
-
-const ModelOptionLabel = React.memo(function ModelOptionLabel({
-  name,
-  showTestModeTip,
-  showMultimodalTip,
-  noOfLines
-}: {
-  name: string;
-  showTestModeTip: boolean;
-  showMultimodalTip?: boolean;
+  model: MyModelItemType;
+  avatarSize: string;
   noOfLines?: ResponsiveValue<number>;
-}) {
-  return (
-    <Flex alignItems={'center'} flex={'1 1 0'} w={'100%'} minW={0} overflow={'hidden'}>
-      <Box noOfLines={noOfLines ?? 1} flex={'1 1 0'} minW={0} overflow={'hidden'}>
-        {name}
-      </Box>
-      {showTestModeTip && (
-        <Box ml={1} flexShrink={0} pointerEvents={'auto'}>
-          <TestModeBetaTag />
-        </Box>
-      )}
-      {showMultimodalTip && (
-        <Box ml={1} flexShrink={0} pointerEvents={'auto'}>
-          <MultimodalTag />
-        </Box>
-      )}
-    </Flex>
-  );
-});
-
-const OneRowSelector = ({
-  list,
-  onChange,
-  disableTip,
-  noOfLines,
-  cacheModel = true,
-  canBeUnset = false,
-  unsetLabel,
-  ...props
-}: Props) => {
-  const { t } = useTranslation();
-
-  const {
-    llmModelList,
-    embeddingModelList,
-    ttsModelList,
-    sttModelList,
-    reRankModelList,
-    getModelProvider,
-    getMyModelList
-  } = useSystemStore();
-
-  const { data: myModels, loading } = useRequest(
-    async () => {
-      const set = await getMyModelList();
-      if (cacheModel) {
-        set.add(props.value);
-      }
-      return set;
-    },
-    {
-      manual: false
-    }
-  );
-
-  const avatarSize = useMemo(() => getModelAvatarSize(props.size), [props.size]);
-  const allModels = useMemo(
-    () => [
-      ...llmModelList,
-      ...embeddingModelList,
-      ...ttsModelList,
-      ...sttModelList,
-      ...reRankModelList
-    ],
-    [llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList]
-  );
-  const selectedModelData = useMemo(
-    () => allModels.find((model) => model.model === props.value),
-    [allModels, props.value]
-  );
-  const selectedUnsetLabel = canBeUnset && props.value === UNSET_MODEL_VALUE;
-
-  const avatarList = useMemo(() => {
-    const modelOptions = list
-      .map((item) => {
-        const modelData = allModels.find((model) => model.model === item.value);
-        if (!modelData) return;
-
-        const avatar = getModelProvider(modelData.provider)?.avatar;
-        if (!myModels?.has(modelData.model)) {
-          return;
-        }
-        return {
-          value: item.value,
-          label: (
-            <Flex alignItems={'center'} py={1} w={'100%'} minW={0}>
-              <Avatar
-                borderRadius={'0'}
-                mr={2}
-                src={avatar || HUGGING_FACE_ICON}
-                w={avatarSize}
-                fallbackSrc={HUGGING_FACE_ICON}
-              />
-              <ModelOptionLabel
-                name={modelData.name}
-                noOfLines={noOfLines}
-                showTestModeTip={isTestModeModel(modelData)}
-                showMultimodalTip={isMultimodalEmbeddingModel(modelData)}
-              />
-            </Flex>
-          )
-        };
-      })
-      .filter(Boolean) as {
-      value: any;
-      label: React.JSX.Element;
-    }[];
-
-    if (!canBeUnset) return modelOptions;
-
-    return [
-      {
-        value: UNSET_MODEL_VALUE,
-        label: <UnsetOptionLabel label={unsetLabel ?? t('common:not_model_config')} />
-      },
-      ...modelOptions
-    ];
-  }, [
-    allModels,
-    list,
-    getModelProvider,
-    avatarSize,
-    noOfLines,
-    myModels,
-    canBeUnset,
-    unsetLabel,
-    t
-  ]);
-
-  return (
-    <Box
-      position={'relative'}
-      css={{
-        span: {
-          display: 'block'
-        }
-      }}
-    >
-      <MyTooltip label={disableTip}>
-        <MySelect
-          className="nowheel"
-          isDisabled={!!disableTip}
-          list={avatarList}
-          valueLabel={
-            selectedUnsetLabel ? (
-              <UnsetOptionLabel label={unsetLabel ?? t('common:not_model_config')} />
-            ) : selectedModelData ? (
-              <Flex alignItems={'center'} py={1} minW={0} overflow={'hidden'}>
-                <Avatar
-                  borderRadius={'0'}
-                  mr={2}
-                  src={getModelProvider(selectedModelData.provider)?.avatar || HUGGING_FACE_ICON}
-                  w={avatarSize}
-                  fallbackSrc={HUGGING_FACE_ICON}
-                />
-                <ModelOptionLabel
-                  name={selectedModelData.name}
-                  noOfLines={noOfLines}
-                  showTestModeTip={false}
-                  showMultimodalTip={false}
-                />
-              </Flex>
-            ) : undefined
-          }
-          placeholder={loading ? t('common:model_loading') : t('common:not_model_config')}
-          h={'40px'}
-          whiteSpace={'nowrap'}
-          {...props}
-          onChange={(e) => {
-            return onChange?.(e);
-          }}
-        />
-      </MyTooltip>
-      <SelectorActiveModelTags model={selectedModelData} />
+  showTags?: boolean;
+}) => (
+  <Flex alignItems={'center'} py={1} w={'100%'} minW={0}>
+    <Avatar
+      borderRadius={'0'}
+      mr={2}
+      src={model.avatar || HUGGING_FACE_ICON}
+      fallbackSrc={HUGGING_FACE_ICON}
+      w={avatarSize}
+    />
+    <Box noOfLines={noOfLines ?? 1} flex={'1 1 0'} minW={0} overflow={'hidden'}>
+      {model.name}
     </Box>
-  );
-};
+    {showTags && model.testMode && <TestModeBetaTag />}
+    {showTags && hasMultimodalEmbedding(model) && <MultimodalTag />}
+  </Flex>
+);
 
-const MultipleRowSelector = ({
-  list,
+/**
+ * 模型选择器不再依赖 getInitData 的完整模型缓存。当前值通过 getMyModel 单独恢复；
+ * 候选列表只在用户首次打开选择器时请求，超过 10 条才进入 Provider 分组。
+ */
+const AIModelSelectorInner = ({
+  modelType = ModelTypeEnum.llm,
+  valueField = 'modelId',
+  list: legacyList,
   onChange,
   disableTip,
-  placeholder,
   noOfLines,
   canBeUnset = false,
   unsetLabel,
+  placeholder,
   ...props
 }: Props) => {
   const { t, i18n } = useTranslation();
-  const {
-    llmModelList,
-    embeddingModelList,
-    ttsModelList,
-    sttModelList,
-    reRankModelList,
-    getModelProvider,
-    getModelProviders,
-    getMyModelList
-  } = useSystemStore();
+  const { getModelProvider } = useSystemStore();
+  const avatarSize = useMemo(() => getModelAvatarSize(props.size), [props.size]);
+  const allowedLegacyValues = useMemo(
+    () =>
+      legacyList === undefined ? undefined : new Set(legacyList.map((item) => String(item.value))),
+    [legacyList]
+  );
+  const filterLegacyList = useCallback(
+    (models: MyModelItemType[]) =>
+      allowedLegacyValues === undefined
+        ? models
+        : models.filter((model) => isModelAllowedByValues(model, allowedLegacyValues)),
+    [allowedLegacyValues]
+  );
+  const currentValue = props.value ? String(props.value) : '';
+  const selectedModelId = getModelSelectorModelId(currentValue, valueField);
+  const legacySelectedItem =
+    selectedModelId || !currentValue
+      ? undefined
+      : legacyList?.find((item) => String(item.value) === currentValue);
 
-  const { data: myModels, loading } = useRequest(getMyModelList, {
-    manual: false
+  const discoveryRequestTypeRef = useRef<ModelTypeEnum>();
+  const {
+    data: discoveryResult,
+    loading: discoveryLoading,
+    run: runDiscovery
+  } = useRequest(
+    async (requestModelType: ModelTypeEnum) => {
+      try {
+        const data = await getMyModels({
+          modelType: requestModelType,
+          pageNum: 1,
+          pageSize: PAGE_SIZE
+        });
+        let legacySelectedModel: MyModelItemType | undefined;
+
+        // 历史 model 值只在展开选择器后从可用模型列表恢复，不扩大内部单模型 API 的兼容面。
+        if (currentValue && !selectedModelId) {
+          legacySelectedModel = data.list.find(
+            (model) => model.model === currentValue || model.modelId === currentValue
+          );
+
+          if (!legacySelectedModel && data.total > data.list.length) {
+            const recoveryPageSize = 100;
+            for (
+              let pageNum = 1;
+              (pageNum - 1) * recoveryPageSize < data.total && !legacySelectedModel;
+              pageNum += 1
+            ) {
+              const page = await getMyModels({
+                modelType: requestModelType,
+                pageNum,
+                pageSize: recoveryPageSize
+              });
+              legacySelectedModel = page.list.find(
+                (model) => model.model === currentValue || model.modelId === currentValue
+              );
+            }
+          }
+        }
+
+        return { modelType: requestModelType, data, legacySelectedModel };
+      } finally {
+        if (discoveryRequestTypeRef.current === requestModelType) {
+          discoveryRequestTypeRef.current = undefined;
+        }
+      }
+    },
+    {
+      manual: true,
+      errorToast: ''
+    }
+  );
+  const discovery = discoveryResult?.modelType === modelType ? discoveryResult.data : undefined;
+  const discoveredLegacyModel =
+    discoveryResult?.modelType === modelType ? discoveryResult.legacySelectedModel : undefined;
+  const loadDiscovery = useCallback(() => {
+    if (discovery || discoveryRequestTypeRef.current === modelType) return;
+
+    discoveryRequestTypeRef.current = modelType;
+    runDiscovery(modelType);
+  }, [discovery, modelType, runDiscovery]);
+  const {
+    data: selectedModel,
+    loading: selectedLoading,
+    error: selectedError
+  } = useRequest(() => getMyModel({ modelId: String(props.value) }), {
+    manual: !selectedModelId || props.value === UNSET_MODEL_VALUE,
+    refreshDeps: [props.value, valueField],
+    errorToast: ''
   });
 
-  const modelList = useMemo(() => {
-    const allModels = [
-      ...llmModelList,
-      ...embeddingModelList,
-      ...ttsModelList,
-      ...sttModelList,
-      ...reRankModelList
-    ];
+  const [provider, setProvider] = useState('');
+  const [providerPage, setProviderPage] = useState(1);
+  const [providerModels, setProviderModels] = useState<MyModelItemType[]>([]);
+  const [providerHasMore, setProviderHasMore] = useState(false);
+  const [providerLoading, setProviderLoading] = useState(false);
+  const resolvedSelectedModel = selectedModel ?? discoveredLegacyModel;
+  const selectedModelForType =
+    resolvedSelectedModel?.type === modelType &&
+    isModelAllowedByValues(resolvedSelectedModel, allowedLegacyValues)
+      ? resolvedSelectedModel
+      : undefined;
 
-    return list
-      .map((item) => allModels.find((model) => model.model === item.value))
-      .filter((item) => !!item && !!myModels?.has(item.model));
-  }, [
-    llmModelList,
-    embeddingModelList,
-    ttsModelList,
-    sttModelList,
-    reRankModelList,
-    list,
-    myModels
-  ]);
+  useEffect(() => {
+    if (!discovery) return;
+    // Provider 是 discovery 请求结果对应的交互状态，需要在结果切换时整体重置。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setProvider((current) =>
+      resolveModelSelectorProvider({
+        total: discovery.total,
+        pageSize: PAGE_SIZE,
+        providers: discovery.providers,
+        selectedProvider: selectedModelForType?.provider,
+        currentProvider: current
+      })
+    );
+    setProviderPage(1);
+    setProviderModels([]);
+    setProviderHasMore(false);
+  }, [discovery, selectedModelForType?.provider]);
 
-  const avatarSize = useMemo(() => getModelAvatarSize(props.size), [props.size]);
-  const selectedModelData = useMemo(
-    () => modelList.find((model) => model?.model === props.value),
-    [modelList, props.value]
+  useEffect(() => {
+    if (!discovery || discovery.total <= PAGE_SIZE || !provider) return;
+    let cancelled = false;
+    // 此状态覆盖当前 effect 启动的异步请求生命周期。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setProviderLoading(true);
+    getMyModels({ modelType, provider, pageNum: providerPage, pageSize: PAGE_SIZE })
+      .then((result) => {
+        if (cancelled) return;
+        const nextModels = filterLegacyList(result.list);
+        setProviderModels((current) =>
+          providerPage === 1
+            ? nextModels
+            : [
+                ...current,
+                ...nextModels.filter((item) => !current.some((m) => m.modelId === item.modelId))
+              ]
+        );
+        setProviderHasMore(providerPage * PAGE_SIZE < result.total);
+      })
+      .catch(() => {
+        if (!cancelled) setProviderHasMore(false);
+      })
+      .finally(() => {
+        if (!cancelled) setProviderLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [discovery, filterLegacyList, modelType, provider, providerPage]);
+
+  const getValue = useCallback(
+    (model: MyModelItemType) => (valueField === 'modelId' ? model.modelId : model.model),
+    [valueField]
   );
-  const value = useMemo(
-    () =>
-      selectedModelData
-        ? [selectedModelData.provider, selectedModelData.model]
-        : canBeUnset && props.value === UNSET_MODEL_VALUE
-          ? [UNSET_MODEL_VALUE]
-          : [],
-    [canBeUnset, props.value, selectedModelData]
-  );
+  const selectedUnset = canBeUnset && props.value === UNSET_MODEL_VALUE;
+  const invalidValue = selectedModelId
+    ? !!props.value && !selectedLoading && (!!selectedError || !selectedModelForType)
+    : !!props.value && !!discovery && !selectedModelForType;
+  const selectedLabel = selectedUnset ? (
+    <>{unsetLabel ?? t('common:not_model_config')}</>
+  ) : invalidValue ? (
+    <Box color={'red.500'}>{t('common:model_not_exist')}</Box>
+  ) : selectedModelForType ? (
+    <ModelLabel
+      model={selectedModelForType}
+      avatarSize={avatarSize}
+      noOfLines={noOfLines}
+      showTags={false}
+    />
+  ) : legacySelectedItem ? (
+    <>{legacySelectedItem.label}</>
+  ) : currentValue ? (
+    <>{currentValue}</>
+  ) : undefined;
 
-  const selectorList = useMemo(() => {
-    const renderList = getModelProviders(i18n.language).map<{
-      label: React.JSX.Element;
-      value: string;
-      children: { label: string | React.ReactNode; value: string }[];
-    }>((provider) => ({
-      label: (
-        <Flex alignItems={'center'} py={1}>
-          <Avatar
-            borderRadius={'0'}
-            mr={2}
-            src={provider?.avatar || HUGGING_FACE_ICON}
-            fallbackSrc={HUGGING_FACE_ICON}
-            w={avatarSize}
-          />
-          <Box>{provider.name}</Box>
-        </Flex>
-      ),
-      value: provider.id,
+  const oneRowModels = useMemo(() => {
+    const models = filterLegacyList(discovery?.list ?? []);
+    if (
+      selectedModelForType &&
+      !models.some((model) => model.modelId === selectedModelForType.modelId)
+    ) {
+      models.unshift(selectedModelForType);
+    }
+    return models;
+  }, [discovery?.list, filterLegacyList, selectedModelForType]);
+
+  const isGrouped = !!discovery && discovery.total > PAGE_SIZE;
+  const selectorList: ListItemType[] = isGrouped
+    ? discovery.providers.map((providerId) => {
+        const providerData = getModelProvider(providerId, i18n.language);
+        const children =
+          provider === providerId
+            ? providerModels.map((model) => ({
+                value: getValue(model),
+                label: <ModelLabel model={model} avatarSize={avatarSize} />
+              }))
+            : [];
+        if (provider === providerId && providerHasMore) {
+          children.push({
+            value: LOAD_MORE_VALUE,
+            label: <Box color={'primary.600'}>{t('common:Load more')}</Box>
+          });
+        }
+        if (children.length === 0) {
+          children.push({ value: LOADING_VALUE, label: <Box>{t('common:model_loading')}</Box> });
+        }
+        return {
+          value: providerId,
+          label: (
+            <Flex alignItems={'center'} py={1}>
+              <Avatar src={providerData.avatar || HUGGING_FACE_ICON} w={'1rem'} mr={2} />
+              <Box>{providerData.name}</Box>
+            </Flex>
+          ),
+          children
+        };
+      })
+    : oneRowModels.map((model) => ({
+        value: getValue(model),
+        label: <ModelLabel model={model} avatarSize={avatarSize} noOfLines={noOfLines} />
+      }));
+  if (!discovery && discoveryLoading) {
+    selectorList.push({
+      value: LOADING_VALUE,
+      label: <Box>{t('common:model_loading')}</Box>,
       children: []
-    }));
-
-    if (canBeUnset) {
-      renderList.unshift({
-        label: <UnsetOptionLabel label={unsetLabel ?? t('common:not_model_config')} />,
-        value: UNSET_MODEL_VALUE,
-        children: []
-      });
-    }
-
-    for (const item of list) {
-      const modelData = modelList.find((model) => model?.model === item.value);
-      if (!modelData) continue;
-      const provider =
-        renderList.find((item) => item.value === (modelData?.provider || 'Other')) ??
-        renderList[renderList.length - 1];
-
-      provider?.children.push({
-        label: (
-          <Flex w={'100%'} minW={0}>
-            <ModelOptionLabel
-              name={modelData.name}
-              showTestModeTip={isTestModeModel(modelData)}
-              showMultimodalTip={isMultimodalEmbeddingModel(modelData)}
-            />
-          </Flex>
-        ),
-        value: modelData.model
-      });
-    }
-
-    return renderList.filter(
-      (item) => item.value === UNSET_MODEL_VALUE || item.children.length > 0
-    );
-  }, [getModelProviders, i18n.language, avatarSize, canBeUnset, unsetLabel, t, list, modelList]);
-
-  const onSelect = useCallback(
-    (e: (string | undefined)[]) => {
-      return onChange?.(e[0] === UNSET_MODEL_VALUE ? UNSET_MODEL_VALUE : e[1]);
-    },
-    [onChange]
-  );
-
-  const SelectedLabel = useMemo(() => {
-    if (loading) return <>{t('common:model_loading')}</>;
-    if (canBeUnset && props.value === UNSET_MODEL_VALUE) {
-      return <UnsetOptionLabel label={unsetLabel ?? t('common:not_model_config')} />;
-    }
-    if (!props.value) return <>{t('common:not_model_config')}</>;
-    if (!selectedModelData) return <>{t('common:not_model_config')}</>;
-
-    const avatar = getModelProvider(selectedModelData.provider)?.avatar;
-
-    return (
-      <Flex alignItems={'center'} py={1} minW={0} overflow={'hidden'}>
-        <Avatar
-          borderRadius={'0'}
-          mr={2}
-          src={avatar}
-          fallbackSrc={HUGGING_FACE_ICON}
-          w={avatarSize}
-        />
-        <ModelOptionLabel
-          name={selectedModelData.name}
-          noOfLines={noOfLines}
-          showTestModeTip={false}
-          showMultimodalTip={false}
-        />
-      </Flex>
-    );
-  }, [
-    loading,
-    canBeUnset,
-    props.value,
-    unsetLabel,
-    t,
-    selectedModelData,
-    getModelProvider,
-    avatarSize,
-    noOfLines
-  ]);
+    });
+  }
+  if (canBeUnset) {
+    selectorList.unshift({
+      value: UNSET_MODEL_VALUE,
+      label: <Flex>{unsetLabel ?? t('common:not_model_config')}</Flex>,
+      children: []
+    });
+  }
 
   return (
-    <Box
-      position={'relative'}
-      css={{
-        span: {
-          display: 'block'
+    <MyTooltip label={disableTip}>
+      <MultipleRowSelect
+        label={selectedLabel}
+        list={selectorList}
+        value={
+          selectedUnset
+            ? [UNSET_MODEL_VALUE]
+            : selectedModelForType
+              ? isGrouped
+                ? [selectedModelForType.provider, getValue(selectedModelForType)]
+                : [getValue(selectedModelForType)]
+              : currentValue && !isGrouped
+                ? [currentValue]
+                : []
         }
-      }}
-    >
-      <MyTooltip label={disableTip}>
-        <MultipleRowSelect
-          label={SelectedLabel}
-          list={selectorList}
-          onSelect={onSelect}
-          value={value}
-          placeholder={placeholder}
-          rowMinWidth="160px"
-          ButtonProps={{
-            isDisabled: !!disableTip,
-            h: '40px',
-            whiteSpace: 'nowrap',
-            ...props
-          }}
-        />
-      </MyTooltip>
-      <SelectorActiveModelTags model={selectedModelData} />
-    </Box>
+        placeholder={
+          selectedLoading
+            ? t('common:model_loading')
+            : (placeholder ?? t('common:not_model_config'))
+        }
+        changeOnEverySelect
+        rowMinWidth="160px"
+        onOpenFunc={loadDiscovery}
+        onSelect={(values) => {
+          if (!isGrouped) {
+            const [modelValue] = values;
+            if (modelValue === UNSET_MODEL_VALUE) return onChange?.(UNSET_MODEL_VALUE);
+            if (modelValue && modelValue !== LOADING_VALUE) onChange?.(modelValue);
+            return;
+          }
+
+          const [nextProvider, modelValue] = values;
+          if (nextProvider === UNSET_MODEL_VALUE) return onChange?.(UNSET_MODEL_VALUE);
+          if (nextProvider && nextProvider !== provider) {
+            setProvider(nextProvider);
+            setProviderPage(1);
+            setProviderModels([]);
+            return;
+          }
+          if (modelValue === LOAD_MORE_VALUE) {
+            if (!providerLoading) setProviderPage((page) => page + 1);
+            return;
+          }
+          if (modelValue && modelValue !== LOADING_VALUE) onChange?.(modelValue);
+        }}
+        ButtonProps={{
+          ...props,
+          isDisabled: !!disableTip,
+          h: '40px',
+          whiteSpace: 'nowrap'
+        }}
+      />
+    </MyTooltip>
   );
 };
 
+/** 切换成员身份时强制重建选择器，避免请求完成前短暂展示上一成员的可用模型。 */
 const AIModelSelector = (props: Props) => {
-  return props.list.length > 10 ? (
-    <MultipleRowSelector {...props} />
-  ) : (
-    <OneRowSelector {...props} />
-  );
+  const tmbId = useUserStore((state) => state.userInfo?.team?.tmbId ?? 'unauthenticated');
+  const modelType = props.modelType ?? ModelTypeEnum.llm;
+  return <AIModelSelectorInner key={`${tmbId}:${modelType}`} {...props} />;
 };
 
 export default AIModelSelector;

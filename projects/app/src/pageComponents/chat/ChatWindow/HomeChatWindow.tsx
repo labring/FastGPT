@@ -29,13 +29,13 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import NextHead from '@/components/common/NextHead';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
 import ChatAIModelSelector from './ChatAIModelSelector';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
-import { getWebLLMModel } from '@/web/common/system/utils';
 import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import type { AppWhisperConfigType } from '@fastgpt/global/core/app/type';
 import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
@@ -81,7 +81,8 @@ const HomeChatWindow = () => {
   } = useDisclosure();
 
   const { userInfo } = useUserStore();
-  const { llmModelList, defaultModels, feConfigs } = useSystemStore();
+  const { defaultModels, feConfigs } = useSystemStore();
+  const { llmModelList } = useSystemModelLists();
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
   const forbidLoadChatRef = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
@@ -139,7 +140,7 @@ const HomeChatWindow = () => {
           ...state.app.chatConfig,
           fileSelectConfig: {
             ...defaultFileSelectConfig,
-            canSelectImg: !!getWebLLMModel(model).vision
+            canSelectImg: !!llmModelList.find((item) => item.model === model)?.config.vision
           }
         }
       }
@@ -187,7 +188,7 @@ const HomeChatWindow = () => {
     async () => {
       if (!appId || forbidLoadChatRef.current || !feConfigs?.isPlus) return;
 
-      const modelData = getWebLLMModel(selectedModel);
+      const modelData = llmModelList.find((item) => item.model === selectedModel);
       const res = await getInitChatInfo({ appId, chatId });
       res.userAvatar = userInfo?.avatar ?? undefined;
 
@@ -195,14 +196,14 @@ const HomeChatWindow = () => {
         res.app.chatConfig = {
           fileSelectConfig: {
             ...defaultFileSelectConfig,
-            canSelectImg: !!modelData.vision
+            canSelectImg: !!modelData?.config.vision
           },
           whisperConfig: defaultWhisperConfig
         };
       } else {
         res.app.chatConfig.fileSelectConfig = {
           ...defaultFileSelectConfig,
-          canSelectImg: !!modelData.vision
+          canSelectImg: !!modelData?.config.vision
         };
         res.app.chatConfig.whisperConfig = {
           ...defaultWhisperConfig,

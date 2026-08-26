@@ -6,7 +6,7 @@ import {
   UserChatItemValueItemSchema,
   type ChatHistoryItemResType
 } from '../../../core/chat/type';
-import { AppChatConfigTypeSchema } from '../../../core/app/type';
+import { AppChatConfigInputSchema } from '../app/common/api';
 import { RuntimeEdgeItemTypeSchema } from '../../../core/workflow/type/edge';
 import type { RuntimeNodeItemType } from '../../../core/workflow/runtime/type';
 import type { InteractiveNodeResponseType } from '../../../core/workflow/template/system/interactive/type';
@@ -77,7 +77,7 @@ export const WorkflowDebugBodySchema = z.object({
   history: z.array(ChatItemMiniSchema).default([]).meta({
     description: '调试所需的历史对话消息'
   }),
-  chatConfig: AppChatConfigTypeSchema.optional().meta({
+  chatConfig: AppChatConfigInputSchema.optional().meta({
     description: '覆盖应用默认值的临时对话配置'
   }),
   usageId: z.string().optional().meta({
@@ -149,9 +149,8 @@ export const OptimizeCodeBodySchema = z.object({
     example: '编写一个 JavaScript 函数，将输入数组去重后按升序返回。',
     description: '代码节点的生成或优化要求'
   }),
-  model: z.string().meta({
-    example: 'gpt-4.1-mini',
-    description: '执行代码生成的模型名称'
+  modelId: ObjectIdSchema.meta({
+    description: '执行代码生成的模型 ID'
   }),
   conversationHistory: z.array(ChatCompletionMessageParamSchema).optional().meta({
     description: '代码节点 Copilot 的历史对话消息，不传时按空数组处理'

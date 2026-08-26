@@ -7,6 +7,7 @@ import { AgentNodeResponseDisplay } from '../../domain/constants';
 export type CreateAgentLoopCoreCompressNodeResponseParams = {
   moduleName: string;
   moduleType: FlowNodeTypeEnum;
+  modelName?: string;
   usage?: ChatNodeUsageType;
   requestIds: string[];
   seconds: number;
@@ -24,6 +25,7 @@ export type CreateAgentLoopCoreCompressNodeResponseParams = {
 export const createAgentLoopCoreCompressNodeResponse = ({
   moduleName,
   moduleType,
+  modelName,
   usage,
   requestIds,
   seconds,
@@ -41,7 +43,8 @@ export const createAgentLoopCoreCompressNodeResponse = ({
     moduleType,
     moduleLogo,
     runningTime: seconds,
-    model: usage?.model,
+    modelId: usage?.modelId,
+    model: modelName,
     llmRequestIds: validRequestIds.length ? validRequestIds : undefined,
     inputTokens: usage?.inputTokens,
     outputTokens: usage?.outputTokens,

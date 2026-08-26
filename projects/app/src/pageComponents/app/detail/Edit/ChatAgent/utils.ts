@@ -26,7 +26,6 @@ import {
 } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { workflowStartNodeId } from '@/web/core/app/constants';
-import { getWebLLMModel } from '@/web/common/system/utils';
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent/index';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
@@ -68,6 +67,10 @@ export const appWorkflow2AgentForm = ({
   nodes.forEach((node) => {
     const inputMap = new Map(node.inputs.map((input) => [input.key, input.value]));
     if (node.flowNodeType === FlowNodeTypeEnum.agent) {
+      defaultAppForm.aiSettings.modelId = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.aiModelId
+      );
       defaultAppForm.aiSettings.model = findInputValueByKey(node.inputs, NodeInputKeyEnum.aiModel);
       defaultAppForm.aiSettings.systemPrompt = inputMap.get(NodeInputKeyEnum.aiSystemPrompt);
       defaultAppForm.aiSettings.temperature = inputMap.get(NodeInputKeyEnum.aiChatTemperature);
@@ -153,13 +156,36 @@ export function agentForm2AppWorkflow(
 } {
   const aiChatNodeId = '7BdojPlukIQw';
   const normalizedSandboxEntrypoint = data.aiSettings.sandboxEntrypoint?.trim() || undefined;
-  const modelData = getWebLLMModel(data.aiSettings.model);
   const modelMultimodal = {
-    vision: !!modelData?.vision,
-    audio: !!modelData?.audio,
-    video: !!modelData?.video,
-    extractFiles: !!(modelData?.vision || modelData?.audio || modelData?.video)
+    vision: !!data.aiSettings.aiChatVision,
+    audio: !!data.aiSettings.aiChatAudio,
+    video: !!data.aiSettings.aiChatVideo,
+    extractFiles: !!data.aiSettings.aiChatExtractFiles
   };
+  const modelReferenceInputs: FlowNodeInputItemType[] = [
+    ...(data.aiSettings.modelId || !data.aiSettings.model
+      ? [
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
+            label: t('common:core.module.input.label.aiModel'),
+            valueType: WorkflowIOValueTypeEnum.string,
+            value: data.aiSettings.modelId
+          }
+        ]
+      : []),
+    ...(data.aiSettings.model
+      ? [
+          {
+            key: NodeInputKeyEnum.aiModel,
+            renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
+            label: t('common:core.module.input.label.aiModel'),
+            valueType: WorkflowIOValueTypeEnum.string,
+            value: data.aiSettings.model
+          }
+        ]
+      : [])
+  ];
 
   function workflowStartTemplate(): StoreNodeItemType {
     return {
@@ -193,13 +219,7 @@ export function agentForm2AppWorkflow(
           },
           version: AgentNode.version,
           inputs: [
-            {
-              key: NodeInputKeyEnum.aiModel,
-              renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
-              label: t('common:core.module.input.label.aiModel'),
-              valueType: WorkflowIOValueTypeEnum.string,
-              value: data.aiSettings.model
-            },
+            ...modelReferenceInputs,
             {
               key: NodeInputKeyEnum.aiSystemPrompt,
               renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
@@ -323,9 +343,11 @@ export function agentForm2AppWorkflow(
                 searchMode: data.dataset.searchMode,
                 embeddingWeight: data.dataset.embeddingWeight,
                 usingReRank: data.dataset.usingReRank,
+                rerankModelId: data.dataset.rerankModelId,
                 rerankModel: data.dataset.rerankModel,
                 rerankWeight: data.dataset.rerankWeight,
                 datasetSearchUsingExtensionQuery: data.dataset.datasetSearchUsingExtensionQuery,
+                datasetSearchExtensionModelId: data.dataset.datasetSearchExtensionModelId,
                 datasetSearchExtensionModel: data.dataset.datasetSearchExtensionModel,
                 datasetSearchExtensionBg: data.dataset.datasetSearchExtensionBg,
                 [NodeInputKeyEnum.authTmbId]: data.dataset.authTmbId

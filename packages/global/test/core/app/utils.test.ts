@@ -17,7 +17,7 @@ describe('getDefaultAppForm', () => {
     const result = getDefaultAppForm();
 
     expect(result.aiSettings).toEqual({
-      model: '',
+      modelId: '',
       isResponseAnswerText: true,
       maxHistories: 6
     });
@@ -32,7 +32,7 @@ describe('getDefaultAppForm', () => {
       limit: 3000,
       searchMode: DatasetSearchModeEnum.embedding,
       usingReRank: true,
-      rerankModel: '',
+      rerankModelId: '',
       rerankWeight: 0.5,
       datasetSearchUsingExtensionQuery: true,
       datasetSearchExtensionBg: '',

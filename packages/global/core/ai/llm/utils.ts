@@ -1,4 +1,4 @@
-import type { LLMModelItemType } from '../model.schema';
+import type { LLMSystemModelDataType } from '../model.schema';
 import { ChatCompletionRequestMessageRoleEnum } from '../constants';
 
 export const removeDatasetCiteText = (text: string, retainDatasetCite: boolean) => {
@@ -54,18 +54,19 @@ export const createChatCompletionDeltaResponse = ({
   };
 };
 
-export const getLLMSupportParams = (llm?: LLMModelItemType) => {
+export const getLLMSupportParams = (llm?: Pick<LLMSystemModelDataType, 'config'>) => {
+  const config = llm?.config;
   return {
-    vision: !!llm?.vision,
-    audio: !!llm?.audio,
-    video: !!llm?.video,
-    multimodal: !!(llm?.vision || llm?.audio || llm?.video),
-    temperature: typeof llm?.maxTemperature === 'number',
-    reasoning: !!llm?.reasoning,
-    reasoningEffort: !!llm?.reasoningEffort,
-    topP: !!llm?.showTopP,
-    stop: !!llm?.showStopSign,
-    responseFormat: !!(llm?.responseFormatList && llm?.responseFormatList.length > 0),
-    supportToolCall: !!(llm?.toolChoice || llm?.functionCall)
+    vision: !!config?.vision,
+    audio: !!config?.audio,
+    video: !!config?.video,
+    multimodal: !!(config?.vision || config?.audio || config?.video),
+    temperature: typeof config?.maxTemperature === 'number',
+    reasoning: !!config?.reasoning,
+    reasoningEffort: !!config?.reasoningEffort,
+    topP: !!config?.showTopP,
+    stop: !!config?.showStopSign,
+    responseFormat: !!(config?.responseFormatList && config.responseFormatList.length > 0),
+    supportToolCall: !!(config?.toolChoice || config?.functionCall)
   };
 };

@@ -46,7 +46,7 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
       reasoningText: 'reason',
       usages: [
         {
-          model: 'GPT-4',
+          modelId: '507f1f77bcf86cd799439011',
           inputTokens: 10,
           outputTokens: 5,
           totalPoints: 1
@@ -63,6 +63,7 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
         nodeId: 'agent_node-main_agent-1',
         moduleName: 'chat:master_agent_call',
         moduleType: FlowNodeTypeEnum.agent,
+        modelId: '507f1f77bcf86cd799439011',
         model: 'GPT-4',
         llmRequestIds: ['req_1'],
         inputTokens: 10,
@@ -104,8 +105,9 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
       seconds: 0.5,
       toolResponseCompress: {
         response: 'compressed',
+        modelName: 'GPT-4',
         usage: {
-          model: 'GPT-4',
+          modelId: '507f1f77bcf86cd799439011',
           inputTokens: 8,
           outputTokens: 2,
           totalPoints: 0.3
@@ -171,10 +173,10 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
     const { collector, nodeResponses } = createCollector();
     const event = {
       type: 'after_message_compress',
+      modelName: 'GPT-4',
       usages: [
         {
           moduleName: 'account_usage:compress_llm_messages',
-          model: 'GPT-4',
           totalPoints: 0.2
         }
       ],

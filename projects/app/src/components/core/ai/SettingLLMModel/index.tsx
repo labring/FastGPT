@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
 import { Box, css, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import AISettingModal, { type AIChatSettingsModalProps } from '@/components/core/ai/AISettingModal';
@@ -9,44 +9,49 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { getWebDefaultLLMModel } from '@/web/common/system/utils';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 type Props = {
   defaultData: SettingAIDataType;
   onChange: (e: SettingAIDataType) => void;
   bg?: string;
+  valueField?: 'modelId' | 'model';
 };
 
-const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModalProps & Props) => {
+const SettingLLMModel = ({
+  defaultData,
+  onChange,
+  valueField = 'modelId',
+  ...props
+}: AIChatSettingsModalProps & Props) => {
   const { t } = useTranslation();
-  const { llmModelList } = useSystemStore();
+  const { llmModelList } = useSystemModelLists();
 
   const model = defaultData.model;
 
-  const { modelSet, modelList, defaultLLMModel } = useMemoEnhance(() => {
-    const modelSet = new Set<string>(llmModelList.map((item) => item.model));
+  const { modelList, defaultLLMModel } = useMemoEnhance(() => {
+    const getValue = (item: { model: string; modelId?: string }) =>
+      valueField === 'modelId' ? item.modelId : item.model;
+    const defaultModelData = getWebDefaultLLMModel(llmModelList);
     return {
       modelList: llmModelList,
-      modelSet,
-      defaultLLMModel: getWebDefaultLLMModel(llmModelList)?.model
+      defaultLLMModel: defaultModelData ? getValue(defaultModelData) : undefined
     };
-  }, [llmModelList]);
+  }, [llmModelList, valueField]);
 
-  // Reset undefined model
+  const selectedModelData = llmModelList.find((item) =>
+    valueField === 'modelId' ? item.modelId === model : item.model === model
+  );
+
+  // 只在新建场景没有 value 时设置默认模型；已有异常 value 必须保留给选择器展示错误。
   useEffect(() => {
-    if (model) {
-      if (modelSet.size > 0 && !modelSet.has(model) && defaultLLMModel) {
-        onChange({
-          ...defaultData,
-          model: defaultLLMModel
-        });
-      }
-    } else if (defaultLLMModel) {
+    if (!model && defaultLLMModel) {
       onChange({
         ...defaultData,
         model: defaultLLMModel
       });
     }
-  }, [model, defaultData, modelSet, defaultLLMModel]);
+  }, [model, defaultData, defaultLLMModel]);
 
   const {
     isOpen: isOpenAIChatSetting,
@@ -67,12 +72,10 @@ const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModa
         <Box flex={'1 0 0'}>
           <AIModelSelector
             {...props}
+            modelType={ModelTypeEnum.llm}
+            valueField={valueField}
             w={'100%'}
             value={model}
-            list={llmModelList.map((item) => ({
-              value: item.model,
-              label: item.name
-            }))}
             onChange={(e) => {
               onChange({
                 ...defaultData,
@@ -95,10 +98,14 @@ const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModa
         <AISettingModal
           onClose={onCloseAIChatSetting}
           onSuccess={(e) => {
-            onChange(e);
+            const selected = llmModelList.find((item) => item.model === e.model);
+            onChange({
+              ...e,
+              model: valueField === 'modelId' ? selected?.modelId || model : e.model
+            });
             onCloseAIChatSetting();
           }}
-          defaultData={defaultData}
+          defaultData={{ ...defaultData, model: selectedModelData?.model || defaultData.model }}
           llmModels={modelList}
           {...props}
         />

@@ -1,4 +1,4 @@
-import { EmbeddingModelItemSchema, LLMModelItemSchema } from '../ai/model.schema';
+import { EmbeddingSystemModelDataSchema, LLMSystemModelDataSchema } from '../ai/model.schema';
 import {
   DataChunkSplitModeEnum,
   DatasetCollectionDataProcessModeEnum,
@@ -79,9 +79,12 @@ export const DatasetSchema = z
     intro: z.string().meta({ description: '简介' }),
     type: z.enum(DatasetTypeEnum).meta({ description: '数据集类型' }),
 
-    vectorModel: z.string().meta({ description: '向量模型' }),
-    agentModel: z.string().meta({ description: 'AI 模型' }),
-    vlmModel: z.string().optional().meta({ description: '视觉语言模型' }),
+    vectorModelId: ObjectIdSchema.optional().meta({ description: '向量模型 ID' }),
+    agentModelId: ObjectIdSchema.optional().meta({ description: 'AI 模型 ID' }),
+    vlmModelId: ObjectIdSchema.optional().meta({ description: '视觉语言模型 ID' }),
+    vectorModel: z.string().optional().meta({ description: '向量模型', deprecated: true }),
+    agentModel: z.string().optional().meta({ description: 'AI 模型', deprecated: true }),
+    vlmModel: z.string().optional().meta({ description: '视觉语言模型', deprecated: true }),
 
     websiteConfig: z
       .object({
@@ -294,7 +297,7 @@ export const DatasetSimpleItemSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '数据集 ID' }),
   avatar: z.string().meta({ description: '头像' }),
   name: z.string().meta({ description: '名称' }),
-  vectorModel: EmbeddingModelItemSchema.meta({ description: '向量模型' })
+  vectorModel: EmbeddingSystemModelDataSchema.meta({ description: '向量模型' })
 });
 export type DatasetSimpleItemType = z.infer<typeof DatasetSimpleItemSchema>;
 export const DatasetListItemSchema = z.object({
@@ -306,7 +309,7 @@ export const DatasetListItemSchema = z.object({
   intro: z.string().meta({ description: '简介' }),
   type: z.enum(DatasetTypeEnum).meta({ description: '数据集类型' }),
   permission: PermissionSchema,
-  vectorModel: EmbeddingModelItemSchema.meta({ description: '向量模型' }),
+  vectorModel: EmbeddingSystemModelDataSchema.meta({ description: '向量模型' }),
   inheritPermission: z.boolean().meta({ description: '继承权限' }),
   private: z.boolean().optional().meta({ description: '是否私有' }),
   sourceMember: SourceMemberSchema.optional().meta({ description: '来源成员' })
@@ -320,9 +323,9 @@ export const DatasetItemSchema = DatasetSchema.omit({
 }).extend({
   status: z.enum(DatasetStatusEnum).meta({ description: '状态' }),
   errorMsg: z.string().optional().meta({ description: '错误信息' }),
-  vectorModel: EmbeddingModelItemSchema.meta({ description: '向量模型' }),
-  agentModel: LLMModelItemSchema.meta({ description: 'AI 模型' }),
-  vlmModel: LLMModelItemSchema.optional().meta({ description: '视觉语言模型' }),
+  vectorModel: EmbeddingSystemModelDataSchema.meta({ description: '向量模型' }),
+  agentModel: LLMSystemModelDataSchema.meta({ description: 'AI 模型' }),
+  vlmModel: LLMSystemModelDataSchema.optional().meta({ description: '视觉语言模型' }),
   permission: PermissionSchema
 });
 export type DatasetItemType = z.infer<typeof DatasetItemSchema>;

@@ -32,6 +32,7 @@ import {
   canInputBeAgentGenerated,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
+import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
 
 // 创建 Context
 type WorkflowUtilsContextValue = {
@@ -123,6 +124,7 @@ export const WorkflowUtilsContext = createContext<WorkflowUtilsContextValue>({
 
 export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
+  const { llmModelList } = useSystemModelLists();
   const { toast } = useToast();
   const { fitView } = useReactFlow();
   const { feConfigs } = useSystemStore();
@@ -317,7 +319,12 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       );
       const nodes =
         storeNodes?.map((item) =>
-          storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
+          storeNode2FlowNode({
+            item,
+            t,
+            isTool: toolNodeIds.has(item.nodeId),
+            llmModelList
+          })
         ) || [];
       const edges = workflow.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
 
@@ -347,7 +354,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       setEdges(edges);
       setAppDetail((state) => ({ ...state, chatConfig: workflow.chatConfig }));
     },
-    [appDetail.chatConfig, past, setAppDetail, setEdges, setNodes, setPast, t]
+    [appDetail.chatConfig, llmModelList, past, setAppDetail, setEdges, setNodes, setPast, t]
   );
 
   const contextValue = useMemo(() => {

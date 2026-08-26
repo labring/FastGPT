@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   Box,
   Flex,
@@ -20,7 +20,7 @@ import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
 import { TTSTypeEnum } from '@/web/core/app/constants';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { getWebLLMModel } from '@/web/common/system/utils';
+import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import { cardStyles } from '../../constants';
@@ -161,7 +161,46 @@ const EditForm = ({
     onClose: onCloseDatasetParams
   } = useDisclosure();
 
-  const selectedModel = getWebLLMModel(appForm.aiSettings.model);
+  const { llmModelList, reRankModelList } = useSystemModelLists();
+
+  useEffect(() => {
+    setAppForm((state) => {
+      const modelId =
+        state.aiSettings.modelId ||
+        llmModelList.find((model) => model.model === state.aiSettings.model)?.modelId;
+      const rerankModelId =
+        state.dataset.rerankModelId ||
+        reRankModelList.find((model) => model.model === state.dataset.rerankModel)?.modelId;
+      const datasetSearchExtensionModelId =
+        state.dataset.datasetSearchExtensionModelId ||
+        llmModelList.find((model) => model.model === state.dataset.datasetSearchExtensionModel)
+          ?.modelId;
+      if (
+        modelId === state.aiSettings.modelId &&
+        rerankModelId === state.dataset.rerankModelId &&
+        datasetSearchExtensionModelId === state.dataset.datasetSearchExtensionModelId
+      ) {
+        return state;
+      }
+      return {
+        ...state,
+        aiSettings: {
+          ...state.aiSettings,
+          modelId
+        },
+        dataset: {
+          ...state.dataset,
+          rerankModelId,
+          datasetSearchExtensionModelId
+        }
+      };
+    });
+  }, [llmModelList, reRankModelList, setAppForm]);
+  const selectedModel =
+    llmModelList.find(
+      (model) =>
+        model.modelId === appForm.aiSettings.modelId || model.model === appForm.aiSettings.model
+    ) || llmModelList[0];
   const promptSkillOption = useMemo(
     () => ({
       ...skillOption,
@@ -187,8 +226,8 @@ const EditForm = ({
     [appForm.aiSettings.useAgentSandbox, onChangeAgentSandbox, skillOption]
   );
   const tokenLimit = useMemo(() => {
-    return selectedModel.quoteMaxToken || 3000;
-  }, [selectedModel.quoteMaxToken]);
+    return selectedModel?.config.quoteMaxToken ?? 3000;
+  }, [selectedModel?.config.quoteMaxToken]);
 
   const updateWelcomeText = useCallback(
     (value: string) => {
@@ -227,79 +266,83 @@ const EditForm = ({
     <>
       <Box mt={4} {...cardStyles} boxShadow={'3.5'}>
         {/* ai */}
-        <Box {...BoxStyles}>
-          <Flex alignItems={'center'}>
-            <MyIcon name={'core/app/simpleMode/ai'} w={'20px'} />
-            <FormLabel ml={2} flex={1}>
-              {t('app:ai_settings')}
-            </FormLabel>
-          </Flex>
-          <Flex alignItems={'center'} mt={5}>
-            <FormLabel w={['60px', '100px']}>{t('common:core.ai.Model')}</FormLabel>
-            <Box flex={'1 0 0'}>
-              <SettingLLMModel
-                bg="myGray.50"
-                defaultData={{
-                  model: appForm.aiSettings.model,
-                  // temperature: appForm.aiSettings.temperature,
-                  // maxToken: appForm.aiSettings.maxToken,
-                  // maxHistories: appForm.aiSettings.maxHistories,
-                  aiChatReasoning: appForm.aiSettings.aiChatReasoning ?? true,
-                  aiChatReasoningEffort: appForm.aiSettings.aiChatReasoningEffort
-                  // aiChatTopP: appForm.aiSettings.aiChatTopP,
-                  // aiChatStopSign: appForm.aiSettings.aiChatStopSign,
-                  // aiChatResponseFormat: appForm.aiSettings.aiChatResponseFormat,
-                  // aiChatJsonSchema: appForm.aiSettings.aiChatJsonSchema
-                }}
-                showMaxToken={false}
-                showTemperature={false}
-                showTopP={false}
-                showStopSign={false}
-                showResponseFormat={false}
-                showMultimodalConfig={false}
-                onChange={({ maxHistories = 6, ...data }) => {
-                  setAppForm((state) => ({
-                    ...state,
-                    aiSettings: {
-                      ...state.aiSettings,
-                      ...data,
-                      maxHistories
-                    }
-                  }));
-                }}
-              />
-            </Box>
-          </Flex>
+        {selectedModel && (
+          <Box {...BoxStyles}>
+            <Flex alignItems={'center'}>
+              <MyIcon name={'core/app/simpleMode/ai'} w={'20px'} />
+              <FormLabel ml={2} flex={1}>
+                {t('app:ai_settings')}
+              </FormLabel>
+            </Flex>
+            <Flex alignItems={'center'} mt={5}>
+              <FormLabel w={['60px', '100px']}>{t('common:core.ai.Model')}</FormLabel>
+              <Box flex={'1 0 0'}>
+                <SettingLLMModel
+                  bg="myGray.50"
+                  valueField="modelId"
+                  defaultData={{
+                    model: appForm.aiSettings.modelId || appForm.aiSettings.model || '',
+                    // temperature: appForm.aiSettings.temperature,
+                    // maxToken: appForm.aiSettings.maxToken,
+                    // maxHistories: appForm.aiSettings.maxHistories,
+                    aiChatReasoning: appForm.aiSettings.aiChatReasoning ?? true,
+                    aiChatReasoningEffort: appForm.aiSettings.aiChatReasoningEffort
+                    // aiChatTopP: appForm.aiSettings.aiChatTopP,
+                    // aiChatStopSign: appForm.aiSettings.aiChatStopSign,
+                    // aiChatResponseFormat: appForm.aiSettings.aiChatResponseFormat,
+                    // aiChatJsonSchema: appForm.aiSettings.aiChatJsonSchema
+                  }}
+                  showMaxToken={false}
+                  showTemperature={false}
+                  showTopP={false}
+                  showStopSign={false}
+                  showResponseFormat={false}
+                  showMultimodalConfig={false}
+                  onChange={({ model, maxHistories = 6, ...data }) => {
+                    setAppForm((state) => ({
+                      ...state,
+                      aiSettings: {
+                        ...state.aiSettings,
+                        ...data,
+                        modelId: model,
+                        maxHistories
+                      }
+                    }));
+                  }}
+                />
+              </Box>
+            </Flex>
 
-          {/* Prompt */}
-          <Box mt={4}>
-            <HStack w={'100%'}>
-              <FormLabel>{t('common:core.ai.Prompt')}</FormLabel>
-            </HStack>
-            <Box mt={2}>
-              <PromptEditor
-                minH={160}
-                bg={'myGray.50'}
-                title={t('common:core.ai.Prompt')}
-                isRichText={true}
-                skillOption={promptSkillOption}
-                selectedSkills={selectedSkills}
-                onClickSkill={onClickSkill}
-                onRemoveSkill={onRemoveSkill}
-                value={appForm.aiSettings.systemPrompt}
-                onChange={(e) => {
-                  setAppForm((state) => ({
-                    ...state,
-                    aiSettings: {
-                      ...state.aiSettings,
-                      systemPrompt: e
-                    }
-                  }));
-                }}
-              />
+            {/* Prompt */}
+            <Box mt={4}>
+              <HStack w={'100%'}>
+                <FormLabel>{t('common:core.ai.Prompt')}</FormLabel>
+              </HStack>
+              <Box mt={2}>
+                <PromptEditor
+                  minH={160}
+                  bg={'myGray.50'}
+                  title={t('common:core.ai.Prompt')}
+                  isRichText={true}
+                  skillOption={promptSkillOption}
+                  selectedSkills={selectedSkills}
+                  onClickSkill={onClickSkill}
+                  onRemoveSkill={onRemoveSkill}
+                  value={appForm.aiSettings.systemPrompt}
+                  onChange={(e) => {
+                    setAppForm((state) => ({
+                      ...state,
+                      aiSettings: {
+                        ...state.aiSettings,
+                        systemPrompt: e
+                      }
+                    }));
+                  }}
+                />
+              </Box>
             </Box>
           </Box>
-        </Box>
+        )}
 
         {/* Sandbox (虚拟机) */}
         <Box {...BoxStyles}>
@@ -539,7 +582,10 @@ const EditForm = ({
                 limit={appForm.dataset.limit}
                 usingReRank={appForm.dataset.usingReRank}
                 usingExtensionQuery={appForm.dataset.datasetSearchUsingExtensionQuery}
-                queryExtensionModel={appForm.dataset.datasetSearchExtensionModel}
+                queryExtensionModel={
+                  appForm.dataset.datasetSearchExtensionModelId ||
+                  appForm.dataset.datasetSearchExtensionModel
+                }
               />
             </Box>
           )}

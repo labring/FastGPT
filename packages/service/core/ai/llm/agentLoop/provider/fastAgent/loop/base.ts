@@ -8,11 +8,10 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import type { CreateLLMResponseProps } from '../../../../request';
 import { createLLMResponse } from '../../../../request';
 import { compressRequestMessages, compressToolResponse } from '../../../../compress';
-import { getLLMModel } from '../../../../../model';
 import { filterEmptyAssistantMessages } from './message';
 import { countGptMessagesTokens } from '../../../../../../../common/string/tiktoken';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import type {
   AgentLoopChildrenInteractiveParams,
   AgentLoopInteractiveToolExecuteParams,
@@ -90,6 +89,7 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
     metadata?: unknown;
     toolResponseCompress?: {
       response: string;
+      modelName: string;
       usage: AgentLoopUsage;
       requestIds: string[];
       seconds: number;
@@ -140,7 +140,7 @@ export const onCompressContext = async ({
   isAborted: RunAgentCallProps['isAborted'];
   messageTokens?: number;
   requestMessages: ChatCompletionMessageParam[];
-  modelData: LLMModelItemType;
+  modelData: LLMSystemModelDataType;
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   tools?: ChatCompletionTool[];
   userKey: RunAgentCallProps['userKey'];
@@ -213,7 +213,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
   onReasoning,
   onStreaming
 }: RunAgentCallProps<TChildrenResponse>): Promise<RunAgentResponse<TChildrenResponse>> => {
-  const modelData = getLLMModel(model);
+  const modelData = model;
 
   let runTimes = 0;
   let toolChildPause:
@@ -434,7 +434,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         model: modelData,
         messages: requestMessages,
         tool_choice: consecutiveSameToolRequestTimes >= 5 ? 'none' : 'auto',
-        toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
+        toolCallMode: modelData.config.toolChoice ? 'toolChoice' : 'prompt',
         parallel_tool_calls: body.parallel_tool_calls ?? true
       },
       userKey,
@@ -578,6 +578,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
               toolFinalResponse: normalizedCompressedContext,
               toolResponseCompress: {
                 response: normalizedCompressedContext,
+                modelName: modelData.name,
                 usage: compressionUsage,
                 requestIds: compressionResult.requestIds ?? [],
                 seconds: +((Date.now() - compressStartTime) / 1000).toFixed(2)

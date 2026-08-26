@@ -7,39 +7,47 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { z } from 'zod';
+import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
+import { Types } from '@fastgpt/service/common/mongo';
 
 export type updateDefaultQuery = Record<string, never>;
 
 const UpdateDefaultBodySchema = z.object({
-  [ModelTypeEnum.llm]: z.string().optional(),
-  [ModelTypeEnum.embedding]: z.string().optional(),
-  [ModelTypeEnum.tts]: z.string().optional(),
-  [ModelTypeEnum.stt]: z.string().optional(),
-  [ModelTypeEnum.rerank]: z.string().optional(),
-  datasetTextLLM: z.string().optional(),
-  datasetImageLLM: z.string().optional(),
-  chatTitleLLM: z.string().optional()
+  [ModelTypeEnum.llm]: ObjectIdSchema.optional(),
+  [ModelTypeEnum.embedding]: ObjectIdSchema.optional(),
+  [ModelTypeEnum.tts]: ObjectIdSchema.optional(),
+  [ModelTypeEnum.stt]: ObjectIdSchema.optional(),
+  [ModelTypeEnum.rerank]: ObjectIdSchema.optional(),
+  datasetTextLLMModelId: ObjectIdSchema.optional(),
+  datasetImageLLMModelId: ObjectIdSchema.optional(),
+  chatTitleLLMModelId: ObjectIdSchema.optional()
 });
-
-const UpdateDefaultResponseSchema = z.object({});
 
 export type updateDefaultBody = z.infer<typeof UpdateDefaultBodySchema>;
 
-export type updateDefaultResponse = z.infer<typeof UpdateDefaultResponseSchema>;
-
-async function handler(
-  req: ApiRequestProps<updateDefaultBody, updateDefaultQuery>
-): Promise<updateDefaultResponse> {
+async function handler(req: ApiRequestProps<updateDefaultBody, updateDefaultQuery>): Promise<void> {
   await authSystemAdmin({ req });
 
-  const { llm, embedding, tts, stt, rerank, datasetTextLLM, datasetImageLLM, chatTitleLLM } =
-    parseApiInput({ req, bodySchema: UpdateDefaultBodySchema }).body;
-  const defaultModelNames = [llm, embedding, tts, stt, rerank].filter(
-    (model): model is string => !!model
-  );
-  const datasetTextModelName = datasetTextLLM || null;
-  const datasetImageModelName = datasetImageLLM || null;
-  const chatTitleModelName = chatTitleLLM || null;
+  const {
+    llm,
+    embedding,
+    tts,
+    stt,
+    rerank,
+    datasetTextLLMModelId,
+    datasetImageLLMModelId,
+    chatTitleLLMModelId
+  } = parseApiInput({ req, bodySchema: UpdateDefaultBodySchema }).body;
+  const defaultModelIds = [llm, embedding, tts, stt, rerank]
+    .filter((modelId): modelId is string => !!modelId)
+    .map((modelId) => new Types.ObjectId(modelId));
+  const datasetTextModelId = datasetTextLLMModelId
+    ? new Types.ObjectId(datasetTextLLMModelId)
+    : null;
+  const datasetImageModelId = datasetImageLLMModelId
+    ? new Types.ObjectId(datasetImageLLMModelId)
+    : null;
+  const chatTitleModelId = chatTitleLLMModelId ? new Types.ObjectId(chatTitleLLMModelId) : null;
 
   await mongoSessionRun(async (session) => {
     // 用 pipeline update 一次性重算所有默认标记，避免多次 updateOne 造成额外数据库往返。
@@ -48,17 +56,17 @@ async function handler(
       [
         {
           $set: {
-            'metadata.isDefault': {
-              $cond: [{ $in: ['$model', defaultModelNames] }, true, '$$REMOVE']
+            isDefault: {
+              $cond: [{ $in: ['$_id', defaultModelIds] }, true, '$$REMOVE']
             },
-            'metadata.isDefaultDatasetTextModel': {
-              $cond: [{ $eq: ['$model', datasetTextModelName] }, true, '$$REMOVE']
+            isDefaultDatasetTextModel: {
+              $cond: [{ $eq: ['$_id', datasetTextModelId] }, true, '$$REMOVE']
             },
-            'metadata.isDefaultDatasetImageModel': {
-              $cond: [{ $eq: ['$model', datasetImageModelName] }, true, '$$REMOVE']
+            isDefaultDatasetImageModel: {
+              $cond: [{ $eq: ['$_id', datasetImageModelId] }, true, '$$REMOVE']
             },
-            'metadata.isDefaultChatTitleModel': {
-              $cond: [{ $eq: ['$model', chatTitleModelName] }, true, '$$REMOVE']
+            isDefaultChatTitleModel: {
+              $cond: [{ $eq: ['$_id', chatTitleModelId] }, true, '$$REMOVE']
             }
           }
         }
@@ -68,8 +76,6 @@ async function handler(
   });
 
   await updatedReloadSystemModel();
-
-  return UpdateDefaultResponseSchema.parse({});
 }
 
 export default NextAPI(handler);

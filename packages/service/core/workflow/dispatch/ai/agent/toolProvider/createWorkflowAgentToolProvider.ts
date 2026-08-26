@@ -38,7 +38,7 @@ export const createWorkflowAgentToolProvider = ({
           datasetParams,
           teamId: context.runningUserInfo.teamId,
           tmbId: context.runningUserInfo.tmbId,
-          llmModel: context.params.model,
+          llmModel: context.modelData,
           userKey: context.externalProvider.openaiAccount
         });
         const usages = result.usages ?? [];

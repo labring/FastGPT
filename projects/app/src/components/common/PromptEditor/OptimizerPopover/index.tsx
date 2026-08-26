@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FlexProps } from '@chakra-ui/react';
 import { Box, Button, Flex, Textarea, useDisclosure } from '@chakra-ui/react';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
@@ -11,6 +11,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useLocalStorageState } from 'ahooks';
 import AIModelSelector from '../../../Select/AIModelSelector';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
 import { onOptimizePrompt } from '@/web/common/api/fetch';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
@@ -22,7 +23,7 @@ export type OptimizerPromptProps = {
 export type OnOptimizePromptProps = {
   originalPrompt?: string;
   input: string;
-  model: string;
+  modelId: string;
   onResult: (result: string) => void;
   abortController?: AbortController;
 };
@@ -35,7 +36,8 @@ const OptimizerPopover = ({
   iconButtonStyle?: FlexProps;
 }) => {
   const { t } = useTranslation();
-  const { llmModelList, defaultModels } = useSystemStore();
+  const { defaultModels } = useSystemStore();
+  const { llmModelList } = useSystemModelLists();
 
   const InputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -44,7 +46,7 @@ const OptimizerPopover = ({
   const [selectedModel = '', setSelectedModel] = useLocalStorageState<string>(
     'prompt-editor-selected-model',
     {
-      defaultValue: defaultModels.llm?.model || ''
+      defaultValue: defaultModels.llm?.modelId || ''
     }
   );
 
@@ -69,10 +71,15 @@ const OptimizerPopover = ({
             </Box>
           </Flex>
         ),
-        value: model.model
+        value: model.modelId
       };
     });
   }, [llmModelList]);
+
+  useEffect(() => {
+    const legacyModel = llmModelList.find((model) => model.model === selectedModel);
+    if (legacyModel) setSelectedModel(legacyModel.modelId);
+  }, [llmModelList, selectedModel, setSelectedModel]);
 
   const isEmptyOptimizerInput = useMemo(() => {
     return !optimizerInput.trim();
@@ -89,7 +96,7 @@ const OptimizerPopover = ({
     await onOptimizePrompt({
       originalPrompt: defaultPrompt,
       input: optimizerInput,
-      model: selectedModel,
+      modelId: selectedModel,
       onResult: (result: string) => {
         if (!controller.signal.aborted) {
           setOptimizedResult((prev) => prev + result);
@@ -210,6 +217,7 @@ const OptimizerPopover = ({
                     <Box flex={1} />
                     {modelOptions && modelOptions.length > 0 && (
                       <AIModelSelector
+                        valueField="modelId"
                         borderColor={'transparent'}
                         _hover={{
                           border: '1px solid',

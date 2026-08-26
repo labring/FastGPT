@@ -21,7 +21,7 @@ import {
 } from '@fastgpt/global/core/plugin/type';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 
@@ -35,7 +35,7 @@ const ToolSelect = ({
   onRemoveTool
 }: {
   generatedSelectedTools?: SelectedToolItemType[];
-  selectedModel: LLMModelItemType;
+  selectedModel: MyLLMModelItemType;
   selectedTools?: SelectedToolItemType[];
   fileSelectConfig?: AppFileSelectConfigType;
   onAddTool: (tool: SelectedToolItemType) => void;

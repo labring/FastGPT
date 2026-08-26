@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type {
+  RerankModelConfigType,
+  RerankSystemModelDataType
+} from '@fastgpt/global/core/ai/model.schema';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 
 // hoisted：让 mock 实例可在 beforeEach 中重设
 const { mockCountPromptTokens, mockAxiosPost } = vi.hoisted(() => ({
@@ -34,13 +38,27 @@ vi.mock('@fastgpt/service/worker/function', () => ({
 // import 放在 mock 之后
 const { reRankRecall } = await import('@fastgpt/service/core/ai/rerank/index');
 
-const mockModel: RerankModelItemType = {
-  provider: 'test',
-  model: 'rerank-test',
-  name: 'Test Rerank',
-  type: ModelTypeEnum.rerank,
-  maxToken: 8000
+const buildModel = (
+  overrides: Partial<RerankModelConfigType> &
+    Partial<Omit<RerankSystemModelDataType, 'config'>> = {}
+): RerankSystemModelDataType => {
+  const { maxToken = 8000, defaultConfig, ...commonOverrides } = overrides;
+
+  return {
+    modelId: '507f1f77bcf86cd799439012',
+    provider: 'test',
+    model: 'rerank-test',
+    name: 'Test Rerank',
+    type: ModelTypeEnum.rerank,
+    isSystem: true,
+    isActive: true,
+    isCustom: false,
+    ...commonOverrides,
+    config: { maxToken, defaultConfig }
+  };
 };
+
+const mockModel = buildModel();
 
 describe('reRankRecall', () => {
   beforeEach(() => {
@@ -142,7 +160,7 @@ describe('reRankRecall', () => {
     });
 
     const result = await reRankRecall({
-      model: { ...mockModel, maxToken: 600 },
+      model: buildModel({ maxToken: 600 }),
       query: 'q',
       documents: [
         { id: 'doc1', text: longText },
@@ -173,7 +191,7 @@ describe('reRankRecall', () => {
     });
 
     const result = await reRankRecall({
-      model: { ...mockModel, maxToken: 600 },
+      model: buildModel({ maxToken: 600 }),
       query: 'q',
       documents: [{ id: 'doc1', text: longText }]
     });
@@ -272,12 +290,11 @@ describe('reRankRecall', () => {
     });
 
     const result = await reRankRecall({
-      model: {
-        ...mockModel,
+      model: buildModel({
         defaultConfig: {
           top_k: 1
         }
-      },
+      }),
       query: 'q',
       documents: [
         { id: 'doc1', text: 'hello' },
@@ -310,12 +327,11 @@ describe('reRankRecall', () => {
     });
 
     const result = await reRankRecall({
-      model: {
-        ...mockModel,
+      model: buildModel({
         defaultConfig: {
           topn: 1
         }
-      },
+      }),
       query: 'q',
       documents: [
         { id: 'doc1', text: 'hello' },
@@ -350,14 +366,14 @@ describe('reRankRecall', () => {
         query: 'q',
         documents: [{ id: 'doc1', text: 'hello' }]
       })
-    ).rejects.toThrow('No rerank model');
+    ).rejects.toThrow(ModelErrEnum.unExist);
   });
 
   it('query 超过 maxToken 时 reject', async () => {
     // maxToken=5, query length=26 → docBudget = 5-26 = -21 ≤ 500 → reject
     await expect(
       reRankRecall({
-        model: { ...mockModel, maxToken: 5 },
+        model: buildModel({ maxToken: 5 }),
         query: 'this query is way too long',
         documents: [{ id: 'doc1', text: 'hello' }]
       })
@@ -369,7 +385,7 @@ describe('reRankRecall', () => {
     // maxToken=501, query='q'(length=1) → docBudget = 501-1 = 500 ≤ 500 → reject
     await expect(
       reRankRecall({
-        model: { ...mockModel, maxToken: 501 },
+        model: buildModel({ maxToken: 501 }),
         query: 'q',
         documents: [{ id: 'doc1', text: 'hello' }]
       })
@@ -385,7 +401,7 @@ describe('reRankRecall', () => {
     });
 
     const result = await reRankRecall({
-      model: { ...mockModel, maxToken: 502 },
+      model: buildModel({ maxToken: 502 }),
       query: 'q',
       documents: [{ id: 'doc1', text: 'hello' }]
     });

@@ -27,10 +27,10 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     limit: 3000,
     similarity: 0.5,
     usingReRank: true,
-    rerankModel: defaultModels.rerank?.model,
+    rerankModelId: defaultModels.rerank?.modelId,
     rerankWeight: 0.6,
     datasetSearchUsingExtensionQuery: true,
-    datasetSearchExtensionModel: defaultModels.llm?.model,
+    datasetSearchExtensionModelId: defaultModels.llm?.modelId,
     datasetSearchExtensionBg: ''
   });
 
@@ -71,7 +71,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
         limit={data.limit}
         usingReRank={data.usingReRank}
         usingExtensionQuery={data.datasetSearchUsingExtensionQuery}
-        queryExtensionModel={data.datasetSearchExtensionModel}
+        queryExtensionModel={data.datasetSearchExtensionModelId || data.datasetSearchExtensionModel}
       />
 
       {isOpen && (
@@ -81,7 +81,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
           onClose={onClose}
           onSuccess={(e) => {
             setData(e);
-            for (let key in e) {
+            for (const key in e) {
               const item = inputs.find((input) => input.key === key);
               if (!item) continue;
               onChangeNode({

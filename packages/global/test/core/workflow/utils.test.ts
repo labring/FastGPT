@@ -1351,7 +1351,7 @@ describe('removeUnauthModels', () => {
     expect(result).toBeUndefined();
   });
 
-  it('should not modify model value when it is in allowedModels', async () => {
+  it('should not modify model value when it is in allowedLegacyModels', async () => {
     const modules = [
       {
         nodeId: 'node1',
@@ -1369,13 +1369,13 @@ describe('removeUnauthModels', () => {
         outputs: []
       }
     ];
-    const allowedModels = new Set(['gpt-4', 'gpt-3.5-turbo']);
+    const allowedLegacyModels = new Set(['gpt-4', 'gpt-3.5-turbo']);
 
-    const result = await removeUnauthModels({ modules, allowedModels });
+    const result = await removeUnauthModels({ modules, allowedLegacyModels });
     expect(result?.[0].inputs[0].value).toBe('gpt-4');
   });
 
-  it('should set model value to undefined when not in allowedModels', async () => {
+  it('should set model value to undefined when not in allowedLegacyModels', async () => {
     const modules = [
       {
         nodeId: 'node1',
@@ -1393,10 +1393,46 @@ describe('removeUnauthModels', () => {
         outputs: []
       }
     ];
-    const allowedModels = new Set(['gpt-4']);
+    const allowedLegacyModels = new Set(['gpt-4']);
 
-    const result = await removeUnauthModels({ modules, allowedModels });
+    const result = await removeUnauthModels({ modules, allowedLegacyModels });
     expect(result?.[0].inputs[0].value).toBeUndefined();
+  });
+
+  it('should validate canonical modelId inputs against allowedModelIds', async () => {
+    const allowedModelId = '68ad85a7463006c963799a05';
+    const modules = [
+      {
+        nodeId: 'node1',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        name: 'Chat',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            label: 'Model',
+            value: allowedModelId,
+            selectedType: FlowNodeInputTypeEnum.selectLLMModel,
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            label: 'Model',
+            value: '68ad85a7463006c963799a06',
+            selectedType: FlowNodeInputTypeEnum.selectLLMModel,
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    const result = await removeUnauthModels({
+      modules,
+      allowedModelIds: new Set([allowedModelId])
+    });
+
+    expect(result?.[0].inputs[0].value).toBe(allowedModelId);
+    expect(result?.[0].inputs[1].value).toBeUndefined();
   });
 
   it('should skip canonical reference type inputs', async () => {
@@ -1417,9 +1453,9 @@ describe('removeUnauthModels', () => {
         outputs: []
       }
     ];
-    const allowedModels = new Set(['gpt-4']);
+    const allowedLegacyModels = new Set(['gpt-4']);
 
-    const result = await removeUnauthModels({ modules, allowedModels });
+    const result = await removeUnauthModels({ modules, allowedLegacyModels });
     expect(result?.[0].inputs[0].value).toBe('unauthorized-model');
   });
 
@@ -1440,9 +1476,9 @@ describe('removeUnauthModels', () => {
         outputs: []
       }
     ];
-    const allowedModels = new Set(['gpt-4']);
+    const allowedLegacyModels = new Set(['gpt-4']);
 
-    const result = await removeUnauthModels({ modules, allowedModels });
+    const result = await removeUnauthModels({ modules, allowedLegacyModels });
     expect(result?.[0].inputs[0].value).toEqual(['nodeId', 'outputKey']);
   });
 
@@ -1463,13 +1499,13 @@ describe('removeUnauthModels', () => {
         outputs: []
       }
     ];
-    const allowedModels = new Set(['gpt-4']);
+    const allowedLegacyModels = new Set(['gpt-4']);
 
-    const result = await removeUnauthModels({ modules, allowedModels });
+    const result = await removeUnauthModels({ modules, allowedLegacyModels });
     expect(result?.[0].inputs[0].value).toBe('some value');
   });
 
-  it('should use empty Set as default for allowedModels', async () => {
+  it('should use empty Set as default for allowedLegacyModels', async () => {
     const modules = [
       {
         nodeId: 'node1',
@@ -1522,9 +1558,9 @@ describe('removeUnauthModels', () => {
         outputs: []
       }
     ];
-    const allowedModels = new Set(['gpt-4']);
+    const allowedLegacyModels = new Set(['gpt-4']);
 
-    const result = await removeUnauthModels({ modules, allowedModels });
+    const result = await removeUnauthModels({ modules, allowedLegacyModels });
     expect(result?.[0].inputs[0].value).toBe('gpt-4');
     expect(result?.[1].inputs[0].value).toBeUndefined();
   });

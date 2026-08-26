@@ -8,7 +8,6 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { countGptMessagesTokens } from '../../../../common/string/tiktoken/index';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { mergeAssistantFieldMessages } from '@fastgpt/global/core/chat/adapt';
-import { getLLMModel } from '../../model';
 import { promptToolCallMessageRewrite } from '../promptCall';
 import { loadRequestMessages } from '../utils';
 import { createLLMRequestId } from '../../record/controller';
@@ -51,16 +50,16 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     teamId
   } = args;
   const { messages, useVision, useAudio, useVideo, extractFiles, tools, toolCallMode } = body;
-  const model = getLLMModel(body.model);
+  const model = body.model;
 
   // 先把 messages 中的文件/图片等 FastGPT 扩展结构加载成模型可直接消费的消息。
   const requestMessages = await loadRequestMessages({
     messages,
-    useVision: useVision && model.vision,
-    useAudio: useAudio && model.audio,
-    useVideo: useVideo && model.video,
+    useVision: useVision && model.config.vision,
+    useAudio: useAudio && model.config.audio,
+    useVideo: useVideo && model.config.video,
     extractFiles,
-    supportReason: model.reasoning
+    supportReason: model.config.reasoning
   });
   const rewriteMessages = (() => {
     if (tools?.length && toolCallMode === 'prompt') {

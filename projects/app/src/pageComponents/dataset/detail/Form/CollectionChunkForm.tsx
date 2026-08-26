@@ -144,7 +144,7 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
       };
     }
 
-    if (datasetDetail.vectorModel?.vision && datasetDetail.vlmModel) {
+    if (datasetDetail.vectorModel?.config.vision && datasetDetail.vlmModel) {
       return {
         disabled: false,
         tooltip: '',
@@ -152,7 +152,7 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
       };
     }
 
-    if (datasetDetail.vectorModel?.vision) {
+    if (datasetDetail.vectorModel?.config.vision) {
       return {
         disabled: false,
         tooltip: '',
@@ -173,7 +173,7 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
       tooltip: t('dataset:image_auto_parse_tip_no_vlm_or_multimodal'),
       tip: t('dataset:image_auto_parse_tip_no_vlm_or_multimodal')
     };
-  }, [datasetDetail.vectorModel?.vision, datasetDetail.vlmModel, feConfigs?.isPlus, t]);
+  }, [datasetDetail.vectorModel?.config.vision, datasetDetail.vlmModel, feConfigs?.isPlus, t]);
 
   const trainingModeList = useMemo(() => {
     const list = {

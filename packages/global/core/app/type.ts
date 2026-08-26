@@ -19,8 +19,12 @@ export const AppTTSConfigTypeSchema = z.object({
   type: z.enum(['none', 'web', 'model']).meta({
     description: '语音播报方式：关闭、浏览器播报或模型播报'
   }),
+  modelId: ObjectIdSchema.optional().meta({
+    description: '模型播报时使用的语音模型 ID'
+  }),
   model: z.string().optional().meta({
-    description: '模型播报时使用的语音模型'
+    description: '模型播报时使用的语音模型',
+    deprecated: true
   }),
   voice: z.string().optional().meta({
     description: '模型播报时使用的音色'
@@ -50,8 +54,12 @@ export const AppQGConfigTypeSchema = z.object({
   open: BoolSchema.meta({
     description: '是否开启问题引导'
   }),
+  modelId: ObjectIdSchema.optional().meta({
+    description: '生成问题引导时使用的模型 ID'
+  }),
   model: z.string().optional().meta({
-    description: '生成问题引导时使用的模型'
+    description: '生成问题引导时使用的模型',
+    deprecated: true
   }),
   customPrompt: z.string().optional().meta({
     description: '生成问题引导时追加的自定义提示词'
@@ -249,10 +257,14 @@ export const AppDatasetSearchParamsTypeSchema = z.object({
   embeddingWeight: NumSchema.optional(), // embedding weight, fullText weight = 1 - embeddingWeight
 
   usingReRank: BoolSchema.optional(),
+  rerankModelId: z.string().optional(),
+  /** @deprecated */
   rerankModel: z.string().optional(),
   rerankWeight: NumSchema.optional(),
 
   datasetSearchUsingExtensionQuery: BoolSchema.optional(),
+  datasetSearchExtensionModelId: z.string().optional(),
+  /** @deprecated */
   datasetSearchExtensionModel: z.string().optional(),
   datasetSearchExtensionBg: z.string().optional(),
   [NodeInputKeyEnum.authTmbId]: BoolSchema.optional(),

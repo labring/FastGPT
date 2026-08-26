@@ -2,13 +2,20 @@ import { z } from 'zod';
 import { SubPlanSchema } from '../../../support/wallet/sub/type';
 import type { FastGPTFeConfigsType } from '../../../common/system/types';
 import {
-  EmbeddingModelItemSchema,
-  LLMModelItemSchema,
-  RerankModelItemSchema,
-  STTModelItemSchema,
-  TTSModelItemSchema
+  LLMModelConfigSchema,
+  ModelPriceTierSchema,
+  RerankModelConfigSchema,
+  EmbeddingModelConfigSchema
 } from '../../../core/ai/model.schema';
+import {
+  MyEmbeddingModelItemSchema,
+  MyLLMModelItemSchema,
+  MyRerankModelItemSchema,
+  MySTTModelItemSchema,
+  MyTTSModelItemSchema
+} from '../../core/ai/model/api';
 import { ModelTypeEnum } from '../../../core/ai/constants';
+import { ObjectIdSchema } from '../../../common/type/mongo';
 
 /* ============================================================================
  * API: 获取系统初始化数据
@@ -35,40 +42,6 @@ const FastGPTFeConfigsSchema = z.looseObject({
   })
 }) as z.ZodType<FastGPTFeConfigsType>;
 
-const PublicLLMModelSchema = LLMModelItemSchema.omit({
-  defaultSystemChatPrompt: true,
-  fieldMap: true,
-  defaultConfig: true,
-  requestUrl: true,
-  requestAuth: true
-});
-const PublicEmbeddingModelSchema = EmbeddingModelItemSchema.omit({
-  defaultConfig: true,
-  dbConfig: true,
-  queryConfig: true,
-  requestUrl: true,
-  requestAuth: true
-});
-const PublicRerankModelSchema = RerankModelItemSchema.omit({
-  defaultConfig: true,
-  requestUrl: true,
-  requestAuth: true
-});
-const PublicTTSModelSchema = TTSModelItemSchema.omit({ requestUrl: true, requestAuth: true });
-const PublicSTTModelSchema = STTModelItemSchema.omit({ requestUrl: true, requestAuth: true });
-
-const PublicSystemModelSchema = z
-  .discriminatedUnion('type', [
-    PublicLLMModelSchema,
-    PublicEmbeddingModelSchema,
-    PublicTTSModelSchema,
-    PublicSTTModelSchema,
-    PublicRerankModelSchema
-  ])
-  .meta({
-    description: '脱敏后的系统模型配置'
-  });
-
 const I18nStringStrictSchema = z.object({
   en: z.string(),
   'zh-CN': z.string(),
@@ -76,14 +49,14 @@ const I18nStringStrictSchema = z.object({
 });
 
 const SystemDefaultModelSchema = z.object({
-  [ModelTypeEnum.llm]: PublicLLMModelSchema.optional(),
-  datasetTextLLM: PublicLLMModelSchema.optional(),
-  datasetImageLLM: PublicLLMModelSchema.optional(),
-  chatTitleLLM: PublicLLMModelSchema.optional(),
-  [ModelTypeEnum.embedding]: PublicEmbeddingModelSchema.optional(),
-  [ModelTypeEnum.tts]: PublicTTSModelSchema.optional(),
-  [ModelTypeEnum.stt]: PublicSTTModelSchema.optional(),
-  [ModelTypeEnum.rerank]: PublicRerankModelSchema.optional()
+  [ModelTypeEnum.llm]: MyLLMModelItemSchema.optional(),
+  datasetTextLLM: MyLLMModelItemSchema.optional(),
+  datasetImageLLM: MyLLMModelItemSchema.optional(),
+  chatTitleLLM: MyLLMModelItemSchema.optional(),
+  [ModelTypeEnum.embedding]: MyEmbeddingModelItemSchema.optional(),
+  [ModelTypeEnum.tts]: MyTTSModelItemSchema.optional(),
+  [ModelTypeEnum.stt]: MySTTModelItemSchema.optional(),
+  [ModelTypeEnum.rerank]: MyRerankModelItemSchema.optional()
 });
 
 export const GetSystemInitDataResponseSchema = z.object({
@@ -100,9 +73,6 @@ export const GetSystemInitDataResponseSchema = z.object({
   systemVersion: z.string().optional().meta({
     example: '4.16.0',
     description: 'FastGPT 系统版本'
-  }),
-  activeModelList: z.array(PublicSystemModelSchema).optional().meta({
-    description: '当前可用的脱敏模型列表'
   }),
   defaultModels: SystemDefaultModelSchema.optional().meta({
     description: '按模型用途划分的系统默认模型'
@@ -140,6 +110,61 @@ export const GetSystemInitDataResponseSchema = z.object({
     })
 });
 export type GetSystemInitDataResponse = z.infer<typeof GetSystemInitDataResponseSchema>;
+
+/* ============================================================================
+ * API: 获取公开系统模型
+ * Route: GET /api/common/system/getSystemModels
+ * Method: GET
+ * Description: 无需鉴权返回价格页所需的最小化模型与价格信息
+ * Tags: ['系统接口', 'Read']
+ * ============================================================================ */
+
+const PublicPriceModelBaseSchema = z.object({
+  modelId: ObjectIdSchema.meta({ description: '模型稳定 ID' }),
+  model: z.string().meta({ description: 'Provider 请求使用的模型标识' }),
+  name: z.string().meta({ description: '模型展示名称' }),
+  provider: z.string().meta({ description: '模型提供商标识' }),
+  type: z.enum(ModelTypeEnum).meta({ description: '模型类型' }),
+  avatar: z.string().optional().meta({ description: '模型图标' }),
+  testMode: z.boolean().optional().meta({ description: '是否为测试模式' }),
+  charsPointsPrice: z.number().optional().meta({ description: '按字符计费的积分单价' }),
+  priceTiers: z.array(ModelPriceTierSchema).optional().meta({ description: '分段价格配置' }),
+  inputPrice: z.number().optional().meta({ description: '旧版输入价格展示字段' }),
+  outputPrice: z.number().optional().meta({ description: '旧版输出价格展示字段' })
+});
+
+export const PublicPriceSystemModelSchema = z.discriminatedUnion('type', [
+  PublicPriceModelBaseSchema.extend({
+    type: z.literal(ModelTypeEnum.llm),
+    config: LLMModelConfigSchema.pick({
+      maxContext: true,
+      vision: true,
+      audio: true,
+      video: true,
+      reasoning: true
+    })
+  }),
+  PublicPriceModelBaseSchema.extend({
+    type: z.literal(ModelTypeEnum.embedding),
+    config: EmbeddingModelConfigSchema.pick({ maxToken: true })
+  }),
+  PublicPriceModelBaseSchema.extend({
+    type: z.literal(ModelTypeEnum.rerank),
+    config: RerankModelConfigSchema.pick({ maxToken: true })
+  }),
+  PublicPriceModelBaseSchema.extend({
+    type: z.literal(ModelTypeEnum.tts),
+    config: z.object({})
+  }),
+  PublicPriceModelBaseSchema.extend({
+    type: z.literal(ModelTypeEnum.stt),
+    config: z.object({})
+  })
+]);
+export type PublicPriceSystemModel = z.infer<typeof PublicPriceSystemModelSchema>;
+
+export const GetSystemModelsResponseSchema = z.array(PublicPriceSystemModelSchema);
+export type GetSystemModelsResponse = z.infer<typeof GetSystemModelsResponseSchema>;
 
 /* ============================================================================
  * API: 唤醒训练队列

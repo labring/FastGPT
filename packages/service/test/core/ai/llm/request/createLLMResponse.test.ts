@@ -5,17 +5,16 @@ import type {
   StreamResponseType
 } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type {
+  LLMModelConfigType,
+  LLMSystemModelDataType
+} from '@fastgpt/global/core/ai/model.schema';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 // Mock dependencies
 vi.mock('@fastgpt/service/core/ai/config', () => ({
   getAIApi: vi.fn(),
   defaultUserOpenAIBaseUrl: 'https://api.openai.com/v1'
-}));
-
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getLLMModel: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/utils', () => ({
@@ -74,7 +73,6 @@ vi.mock('@fastgpt/service/core/ai/utils', () => ({
 
 // Import mocked modules
 import { getAIApi } from '@fastgpt/service/core/ai/config';
-import { getLLMModel } from '@fastgpt/service/core/ai/model';
 import { loadRequestMessages } from '@fastgpt/service/core/ai/llm/utils';
 import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken/index';
 import { parseLLMStreamResponse, parseReasoningContent } from '@fastgpt/service/core/ai/utils';
@@ -85,7 +83,6 @@ import { saveLLMRequestRecord } from '@fastgpt/service/core/ai/record/controller
 import { createLLMResponse as rawCreateLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 
 const mockGetAIApi = vi.mocked(getAIApi);
-const mockGetLLMModel = vi.mocked(getLLMModel);
 const mockLoadRequestMessages = vi.mocked(loadRequestMessages);
 const mockCountGptMessagesTokens = vi.mocked(countGptMessagesTokens);
 const mockParseLLMStreamResponse = vi.mocked(parseLLMStreamResponse);
@@ -124,18 +121,29 @@ const defaultSupportParams = {
 };
 
 // Helper to create mock model data
-const createMockModelData = (overrides?: Partial<LLMModelItemType>): LLMModelItemType => ({
+const createMockModelData = (
+  overrides?: Partial<Omit<LLMSystemModelDataType, 'config'>> & {
+    config?: Partial<LLMModelConfigType>;
+  }
+): LLMSystemModelDataType => ({
+  modelId: '68ad85a7463006c963799a05',
   type: ModelTypeEnum.llm,
   provider: 'openai',
   model: 'gpt-4',
   name: 'GPT-4',
-  maxContext: 128000,
-  maxResponse: 4096,
-  quoteMaxToken: 60000,
-  functionCall: true,
-  toolChoice: true,
-  reasoning: false,
-  ...overrides
+  isActive: true,
+  isSystem: true,
+  isCustom: false,
+  ...overrides,
+  config: {
+    maxContext: 128000,
+    maxResponse: 4096,
+    quoteMaxToken: 60000,
+    functionCall: true,
+    toolChoice: true,
+    reasoning: false,
+    ...overrides?.config
+  }
 });
 
 // Helper to create async generator for stream response
@@ -158,7 +166,6 @@ describe('createLLMResponse', () => {
     vi.clearAllMocks();
 
     // Default mock setup
-    mockGetLLMModel.mockReturnValue(createMockModelData());
     mockLoadRequestMessages.mockImplementation(async ({ messages }: any) => messages as any);
     mockCountGptMessagesTokens.mockResolvedValue(100);
     mockParseReasoningContent.mockImplementation((content: string) => ['', content]);
@@ -191,7 +198,6 @@ describe('createLLMResponse', () => {
         requestUrl: 'https://model.example.com/v1/chat/completions',
         requestAuth: 'model-key'
       });
-      mockGetLLMModel.mockReturnValue(modelData);
       const createMock = vi.fn().mockResolvedValue(mockTextResponse);
       mockGetAIApi.mockReturnValue(
         createMockAIApiResult(
@@ -214,7 +220,7 @@ describe('createLLMResponse', () => {
           baseUrl: 'https://user.example.com/v1'
         } as any,
         body: {
-          model: 'gpt-4',
+          model: modelData,
           messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'hi' }],
           stream: false
         }
@@ -249,7 +255,6 @@ describe('createLLMResponse', () => {
         requestUrl: 'https://model.example.com/v1/chat/completions',
         requestAuth: 'model-key'
       });
-      mockGetLLMModel.mockReturnValue(modelData);
       const createMock = vi.fn().mockResolvedValue(mockTextResponse);
       mockGetAIApi.mockReturnValue(
         createMockAIApiResult(
@@ -272,7 +277,7 @@ describe('createLLMResponse', () => {
           key: 'user-key'
         } as any,
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'hi' }],
           stream: false
         }
@@ -313,7 +318,7 @@ describe('createLLMResponse', () => {
       await createLLMResponse({
         timeout: 15_000,
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'hi' }],
           stream: false
         }
@@ -349,7 +354,7 @@ describe('createLLMResponse', () => {
           key: 'user-key'
         } as any,
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'hi' }],
           stream: false
         }
@@ -386,7 +391,7 @@ describe('createLLMResponse', () => {
         throwError: false,
         saveLLMResponseRecord: false,
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'hi' }],
           stream: false
         }
@@ -399,7 +404,6 @@ describe('createLLMResponse', () => {
 
   describe('Non-stream text output', () => {
     it('should normalize split assistant fields before sending request', async () => {
-      mockGetLLMModel.mockReturnValue(createMockModelData({ reasoning: true }));
       const mockResponse = {
         choices: [
           {
@@ -438,7 +442,7 @@ describe('createLLMResponse', () => {
 
       await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages: [
             { role: ChatCompletionRequestMessageRoleEnum.User, content: 'make a plan' },
             {
@@ -521,7 +525,7 @@ describe('createLLMResponse', () => {
       let streamedText = '';
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages,
           stream: false
         },
@@ -568,7 +572,7 @@ describe('createLLMResponse', () => {
       const result = await createLLMResponse({
         saveLLMResponseRecord: false,
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages: [
             { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Generate title' }
           ],
@@ -618,7 +622,7 @@ describe('createLLMResponse', () => {
 
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages,
           stream: false
         }
@@ -671,7 +675,7 @@ describe('createLLMResponse', () => {
 
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages,
           stream: false
         }
@@ -738,7 +742,7 @@ describe('createLLMResponse', () => {
       let streamedText = '';
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages,
           stream: true
         },
@@ -803,7 +807,7 @@ describe('createLLMResponse', () => {
       const result = await createLLMResponse({
         throwError: false,
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages,
           stream: true
         },
@@ -881,7 +885,7 @@ describe('createLLMResponse', () => {
       let callCount = 0;
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages,
           stream: true
         },
@@ -897,8 +901,6 @@ describe('createLLMResponse', () => {
 
   describe('Reasoning (thinking) output', () => {
     it('should handle non-stream response with reasoning_content', async () => {
-      mockGetLLMModel.mockReturnValue(createMockModelData({ reasoning: true }));
-
       const mockResponse = {
         choices: [
           {
@@ -934,7 +936,7 @@ describe('createLLMResponse', () => {
       let answerText = '';
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages,
           stream: false
         },
@@ -953,7 +955,6 @@ describe('createLLMResponse', () => {
     });
 
     it('should handle non-stream response with think tag in content', async () => {
-      mockGetLLMModel.mockReturnValue(createMockModelData({ reasoning: true }));
       mockParseReasoningContent.mockReturnValue(['Thinking process here', 'Final answer']);
 
       const mockResponse = {
@@ -988,7 +989,7 @@ describe('createLLMResponse', () => {
 
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          model: createMockModelData({ config: { reasoning: true } }),
           messages,
           stream: false
         }
@@ -999,8 +1000,6 @@ describe('createLLMResponse', () => {
     });
 
     it('should handle stream response with reasoning_content', async () => {
-      mockGetLLMModel.mockReturnValue(createMockModelData({ reasoning: true }));
-
       const chunks = [
         {
           choices: [
@@ -1063,7 +1062,7 @@ describe('createLLMResponse', () => {
       let answerText = '';
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages,
           stream: true
         },
@@ -1148,7 +1147,7 @@ describe('createLLMResponse', () => {
       const toolCallResults: ChatCompletionMessageToolCall[] = [];
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages,
           tools,
           stream: false
@@ -1218,7 +1217,7 @@ describe('createLLMResponse', () => {
 
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages,
           tools,
           stream: false
@@ -1274,7 +1273,7 @@ describe('createLLMResponse', () => {
 
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages: [
             {
               role: ChatCompletionRequestMessageRoleEnum.User,
@@ -1409,7 +1408,7 @@ describe('createLLMResponse', () => {
       const toolParamResults: string[] = [];
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages,
           tools,
           stream: true
@@ -1491,7 +1490,7 @@ describe('createLLMResponse', () => {
 
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages,
           tools,
           stream: true
@@ -1591,7 +1590,7 @@ describe('createLLMResponse', () => {
 
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages,
           tools,
           stream: false
@@ -1661,7 +1660,7 @@ describe('createLLMResponse', () => {
 
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages,
           tools,
           stream: false
@@ -1693,7 +1692,7 @@ describe('createLLMResponse', () => {
         createLLMResponse({
           throwError: true,
           body: {
-            model: 'gpt-4',
+            model: createMockModelData(),
             messages,
             stream: false
           }
@@ -1736,7 +1735,7 @@ describe('createLLMResponse', () => {
       const result = await createLLMResponse({
         throwError: false,
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages,
           stream: false
         }
@@ -1784,7 +1783,7 @@ describe('createLLMResponse', () => {
         createLLMResponse({
           throwError: true,
           body: {
-            model: 'gpt-4',
+            model: createMockModelData(),
             messages,
             stream: false
           }
@@ -1864,7 +1863,7 @@ describe('createLLMResponse', () => {
       const result = await createLLMResponse({
         throwError: false,
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages,
           stream: true
         }
@@ -1921,7 +1920,7 @@ describe('createLLMResponse', () => {
 
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages,
           stream: false
         }
@@ -1964,7 +1963,7 @@ describe('createLLMResponse', () => {
 
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages,
           stream: false
         }
@@ -2023,7 +2022,7 @@ describe('createLLMResponse', () => {
 
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages,
           stream: false
         },
@@ -2068,7 +2067,7 @@ describe('createLLMResponse', () => {
 
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages,
           stream: false
         },
@@ -2092,7 +2091,6 @@ describe('createLLMResponse', () => {
     });
 
     it('should preserve reasoning_effort when model supports it', async () => {
-      mockGetLLMModel.mockReturnValue(createMockModelData({ reasoning: true }));
       mockGetLLMSupportParams.mockReturnValueOnce({
         ...defaultSupportParams,
         reasoning: true,
@@ -2108,7 +2106,7 @@ describe('createLLMResponse', () => {
 
       await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'hi' }],
           reasoning_effort: 'high',
           stream: false
@@ -2145,7 +2143,7 @@ describe('createLLMResponse', () => {
 
       await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'hi' }],
           reasoning_effort: 'high',
           stream: false
@@ -2193,7 +2191,7 @@ describe('createLLMResponse', () => {
       const result = await createLLMResponse({
         throwError: false,
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'q' }],
           tools: [
             {
@@ -2216,7 +2214,6 @@ describe('createLLMResponse', () => {
     });
 
     it('should return normalized requestMessages on API error', async () => {
-      mockGetLLMModel.mockReturnValue(createMockModelData({ reasoning: true }));
       const mockAI = {
         chat: {
           completions: {
@@ -2238,7 +2235,7 @@ describe('createLLMResponse', () => {
       const result = await createLLMResponse({
         throwError: false,
         body: {
-          model: 'gpt-4',
+          model: createMockModelData(),
           messages: [
             { role: ChatCompletionRequestMessageRoleEnum.User, content: 'q' },
             {

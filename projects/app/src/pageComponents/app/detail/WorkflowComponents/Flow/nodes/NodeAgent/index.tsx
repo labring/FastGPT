@@ -31,7 +31,7 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getEditorVariables } from '../../../utils';
-import { getWebLLMModel } from '@/web/common/system/utils';
+import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
 
 import { useAgentSkillManager } from './useAgentSkillManager';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
@@ -153,10 +153,10 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     limit: 3000,
     similarity: 0.5,
     usingReRank: true,
-    rerankModel: defaultModels.llm?.model,
+    rerankModelId: defaultModels.rerank?.modelId,
     rerankWeight: 0.6,
     datasetSearchUsingExtensionQuery: true,
-    datasetSearchExtensionModel: defaultModels.llm?.model,
+    datasetSearchExtensionModelId: defaultModels.llm?.modelId,
     datasetSearchExtensionBg: ''
   });
   const {
@@ -208,6 +208,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const manualKeys = useMemo(
     () =>
       new Set([
+        NodeInputKeyEnum.aiModelId,
         NodeInputKeyEnum.aiModel,
         NodeInputKeyEnum.aiSystemPrompt,
         NodeInputKeyEnum.skills,
@@ -218,7 +219,10 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     []
   );
   const modelInputs = useMemo(
-    () => commonInputs.filter((i) => i.key === NodeInputKeyEnum.aiModel),
+    () =>
+      commonInputs.filter(
+        (i) => i.key === NodeInputKeyEnum.aiModelId || i.key === NodeInputKeyEnum.aiModel
+      ),
     [commonInputs]
   );
   // Inputs rendered before skills/tools (fileLink, userChatInput)
@@ -439,10 +443,12 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   } = useDisclosure();
 
   // ---- Model ----
+  const { llmModelList } = useSystemModelLists();
   const currentModel = useMemo(() => {
-    const modelValue = inputs.find((i) => i.key === NodeInputKeyEnum.aiModel)?.value;
-    return getWebLLMModel(modelValue);
-  }, [inputs]);
+    const modelId = inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId)?.value;
+    const model = inputs.find((i) => i.key === NodeInputKeyEnum.aiModel)?.value;
+    return llmModelList.find((item) => (modelId ? item.modelId === modelId : item.model === model));
+  }, [inputs, llmModelList]);
 
   return (
     <NodeCard minW={'524px'} selected={selected} {...data}>
@@ -745,7 +751,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   </MyTooltip>
                 ))}
               </Grid>
-              {isOpenToolSelect && (
+              {isOpenToolSelect && currentModel && (
                 <ToolSelectModal
                   selectedTools={selectedTools}
                   selectedModel={currentModel}

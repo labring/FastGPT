@@ -17,6 +17,9 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
 import AppConfigItem, { AppConfigItemAction } from './AppConfigItem';
+import { getMyModels } from '@/web/common/system/api';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 type TTSSelectorItemType = {
   alias: string;
@@ -37,8 +40,13 @@ const TTSSelect = ({
   onChange: (e: AppTTSConfigType) => void;
 }) => {
   const { t, i18n } = useTranslation();
-  const { ttsModelList, getModelProvider } = useSystemStore();
+  const { getModelProvider } = useSystemStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { data: ttsModelResponse } = useRequest(
+    () => getMyModels({ modelType: ModelTypeEnum.tts, pageNum: 1, pageSize: 100 }),
+    { manual: false }
+  );
+  const ttsModels = useMemo(() => ttsModelResponse?.list ?? [], [ttsModelResponse?.list]);
 
   const appId = useContextSelector(AppContext, (v) => v.appId);
 
@@ -56,7 +64,7 @@ const TTSSelect = ({
         value: TTSTypeEnum.web,
         children: []
       },
-      ...ttsModelList.map((model) => {
+      ...ttsModels.map((model) => {
         const providerData = getModelProvider(model.provider, i18n.language);
         const modelName = t(model.name as any);
         return {
@@ -70,16 +78,16 @@ const TTSSelect = ({
               </Box>
             </HStack>
           ),
-          value: model.model,
+          value: model.modelId,
           children:
-            model.voices?.map((voice) => ({
+            (model.type === ModelTypeEnum.tts ? model.config.voices : []).map((voice) => ({
               label: voice.label,
               value: voice.value
             })) || []
         };
       })
     ],
-    [getModelProvider, i18n.language, t, ttsModelList]
+    [getModelProvider, i18n.language, t, ttsModels]
   );
 
   const formatValue = useMemo(() => {
@@ -90,7 +98,7 @@ const TTSSelect = ({
       return [value.type, undefined];
     }
 
-    return [value.model, value.voice];
+    return [value.modelId || value.model, value.voice];
   }, [value]);
   const formLabel = useMemo(() => {
     const provider = selectorList.find((item) => item.value === formatValue[0]) || selectorList[0];
@@ -131,7 +139,7 @@ const TTSSelect = ({
         onChange({
           ...value,
           type: TTSTypeEnum.model,
-          model: e[0],
+          modelId: e[0],
           voice: e[1]
         });
       }

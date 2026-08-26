@@ -5,9 +5,8 @@ import type {
 import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
 import json5 from 'json5';
 import { computedMaxToken, computedTemperature } from '../../utils';
-import { getLLMModel } from '../../model';
 import type { InferCompletionsBody, LLMRequestBodyType } from './types';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 
 const privateToolSchemaKeys = new Set([
   'toolDescription',
@@ -59,7 +58,7 @@ export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreatePar
   input: LLMRequestBodyType<T>
 ): Promise<{
   requestBody: InferCompletionsBody<T>;
-  modelData: LLMModelItemType;
+  modelData: LLMSystemModelDataType;
 }> => {
   const { tools, tool_choice, parallel_tool_calls, toolCallMode, ...body } = input;
   const sanitizedTools = sanitizeCompletionTools(tools);
@@ -71,14 +70,7 @@ export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreatePar
   delete body.extractFiles;
   delete body.requestOrigin;
 
-  const modelData = getLLMModel(body.model);
-  if (!modelData) {
-    // 保持旧行为：模型不存在时仍返回清理后的 body，由上层决定如何报错。
-    return {
-      requestBody: body as unknown as InferCompletionsBody<T>,
-      modelData
-    };
-  }
+  const modelData = body.model;
 
   const response_format = (() => {
     if (!body.response_format?.type) return undefined;
@@ -128,7 +120,7 @@ export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreatePar
         tool_choice,
         parallel_tool_calls
       })
-  } as T;
+  } as unknown as T;
 
   requestBody = Object.fromEntries(
     Object.entries(requestBody).filter(([, value]) => value !== null && value !== undefined)
@@ -152,8 +144,8 @@ export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreatePar
     delete requestBody.reasoning_effort;
   }
 
-  if (modelData.fieldMap) {
-    Object.entries(modelData.fieldMap).forEach(([sourceKey, targetKey]) => {
+  if (modelData.config.fieldMap) {
+    Object.entries(modelData.config.fieldMap).forEach(([sourceKey, targetKey]) => {
       // 部分兼容模型使用非 OpenAI 字段名，通过 fieldMap 在最后一层做字段替换。
       // @ts-ignore
       requestBody[targetKey] = body[sourceKey];
@@ -165,7 +157,7 @@ export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreatePar
   // defaultConfig 作为模型配置的最终兜底，允许覆盖上面计算出的默认值。
   requestBody = {
     ...requestBody,
-    ...modelData?.defaultConfig
+    ...modelData.config.defaultConfig
   };
 
   return {

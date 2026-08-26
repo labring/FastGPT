@@ -1,56 +1,50 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { getMyModels } from '@fastgpt/service/support/permission/model/controller';
-import { getVersionKey } from '@fastgpt/service/common/cache';
-import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
+import { getMyModelIds } from '@fastgpt/service/support/permission/model/controller';
+import {
+  GetMyModelsQuerySchema,
+  GetMyModelsResponseSchema,
+  type GetMyModelsQuery,
+  type GetMyModelsResponse
+} from '@fastgpt/global/openapi/core/ai/model/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { getModelProvider } from '@fastgpt/service/core/app/provider/controller';
+import { paginateAvailableModels } from '@fastgpt/service/core/ai/list';
 
-export type GetMyModelsQuery = {
-  versionKey: string;
-};
-export type GetMyModelsBody = Record<string, never>;
-export type GetMyModelsResponse =
-  | {
-      models: string[];
-      isRefreshed: true;
-      versionKey: string;
-    }
-  | {
-      isRefreshed: false;
-    };
+export type {
+  GetMyModelsQuery,
+  GetMyModelsResponse
+} from '@fastgpt/global/openapi/core/ai/model/api';
 
+/** 分页获取当前成员有权使用的模型。Provider 列表不受 provider 条件影响，用于选择器首屏发现。 */
 async function handler(
-  req: ApiRequestProps<GetMyModelsBody, GetMyModelsQuery>,
-  _res: ApiResponseType<any>
+  req: ApiRequestProps<Record<string, never>, GetMyModelsQuery>
 ): Promise<GetMyModelsResponse> {
+  const { query } = parseApiInput({ req, querySchema: GetMyModelsQuerySchema });
   const { teamId, tmbId, isRoot, tmb } = await authUserPer({
     req,
     authToken: true,
     per: ReadPermissionVal
   });
-
-  const { versionKey } = req.query;
-
-  const versionKeyInRedis = await getVersionKey(SystemCacheKeyEnum.modelPermission, teamId);
-  // No change
-  if (versionKeyInRedis === versionKey) {
-    return {
-      isRefreshed: false
-    };
-  }
-
-  // changed, get the new model list
-  const models = await getMyModels({
+  const allowedModelIds = await getMyModelIds({
     teamId,
     tmbId,
     isTeamOwner: tmb.role === 'owner' || isRoot
   });
 
-  return {
-    isRefreshed: true,
-    models,
-    versionKey: versionKeyInRedis
-  };
+  const allowedModels = allowedModelIds
+    .map((modelId) => global.systemModelMap.get(`id:${modelId}`))
+    .filter((model): model is NonNullable<typeof model> => !!model?.isActive);
+
+  return GetMyModelsResponseSchema.parse(
+    paginateAvailableModels({
+      models: allowedModels,
+      ...query,
+      getProviderOrder: (provider) => getModelProvider(provider).order
+    })
+  );
 }
+
 export default NextAPI(handler);

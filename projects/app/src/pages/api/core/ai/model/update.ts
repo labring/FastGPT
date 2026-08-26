@@ -2,63 +2,40 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
-import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
-import {
-  parsePersistedSystemModelConfig,
-  updatedReloadSystemModel
-} from '@fastgpt/service/core/ai/config/utils';
-import {
-  ApiRequestInputParseError,
-  parseApiInput
-} from '@fastgpt/service/common/zod/requestParseError';
+import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/config/utils';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   UpdateSystemModelBodySchema,
   UpdateSystemModelResponseSchema,
   type UpdateSystemModelBody,
   type UpdateSystemModelResponse
 } from '@fastgpt/global/openapi/admin/core/ai/model/api';
-import { ZodError } from 'zod';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 
 export type updateBody = UpdateSystemModelBody;
 
 async function handler(req: ApiRequestProps<updateBody>): Promise<UpdateSystemModelResponse> {
   await authSystemAdmin({ req });
 
-  const { model, metadata = {} } = parseApiInput({
+  const { modelId, modelData: persistedDocument } = parseApiInput({
     req,
     bodySchema: UpdateSystemModelBodySchema
   }).body;
 
-  const dbModel = await MongoSystemModel.findOne({ model }).lean();
-  const modelData = findModelFromAlldata(model);
+  // 管理员可更新尚未加载到运行时缓存的停用模型，因此以持久化记录判定 modelId 是否存在。
+  if (modelId && !(await MongoSystemModel.exists({ _id: modelId }))) {
+    return Promise.reject(ModelErrEnum.unExist);
+  }
 
-  const persistedMetadata = (() => {
-    try {
-      return parsePersistedSystemModelConfig({
-        model,
-        metadata: {
-          ...modelData, // system config
-          ...dbModel?.metadata, // db config
-          ...metadata // user config
-        }
-      });
-    } catch (error) {
-      if (error instanceof ZodError) {
-        // metadata 是宽松的增量配置，必须合并后才能校验；失败仍属于请求体错误。
-        throw new ApiRequestInputParseError(error, { inputSource: 'body' });
-      }
-      throw error;
-    }
-  })();
+  const modelFilter = modelId ? { _id: modelId } : { model: persistedDocument.model };
 
   await MongoSystemModel.updateOne(
-    { model },
+    modelFilter,
     {
-      model,
-      metadata: persistedMetadata
+      $set: persistedDocument
     },
     {
-      upsert: true
+      upsert: !modelId
     }
   );
 

@@ -17,29 +17,44 @@ import updateWithJsonApi from '@/pages/api/core/ai/model/updateWithJson';
 
 const buildLlmConfig = (model = 'test-llm') => ({
   model,
-  metadata: {
-    type: ModelTypeEnum.llm,
-    provider: 'OpenAI',
-    model: 'dirty-model',
-    name: 'Test LLM',
+  type: ModelTypeEnum.llm,
+  provider: 'OpenAI',
+  name: 'Test LLM',
+  isSystem: true as const,
+  config: {
     maxContext: 16000,
     maxResponse: 8000,
     quoteMaxToken: 12000,
-    toolChoice: true,
-    isActive: true
-  }
+    toolChoice: true
+  },
+  isActive: true
 });
 
 const buildEmbeddingConfig = (model = 'test-embedding') => ({
   model,
-  metadata: {
-    type: ModelTypeEnum.embedding,
-    provider: 'OpenAI',
-    model,
-    name: 'Test Embedding',
+  type: ModelTypeEnum.embedding,
+  provider: 'OpenAI',
+  name: 'Test Embedding',
+  isSystem: true as const,
+  config: {
     defaultToken: 500,
-    maxToken: 3000,
-    isActive: true
+    maxToken: 3000
+  },
+  isActive: true
+});
+
+const buildStoredLlm = (model: string) => ({
+  model,
+  type: ModelTypeEnum.llm,
+  provider: 'OpenAI',
+  name: model,
+  isSystem: true,
+  isActive: true,
+  config: {
+    maxContext: 8000,
+    maxResponse: 4000,
+    quoteMaxToken: 6000,
+    toolChoice: true
   }
 });
 
@@ -53,11 +68,9 @@ const callUpdateWithJson = async (config: string) => {
 };
 
 describe('updateWithJson api', () => {
-  it('strictly imports valid models, fills defaults and clears old records', async () => {
-    await MongoSystemModel.create({
-      model: 'old-model',
-      metadata: buildLlmConfig('old-model').metadata
-    });
+  it('strictly imports valid models while preserving stable ids and disabling omitted records', async () => {
+    const oldModel = await MongoSystemModel.create(buildStoredLlm('old-model'));
+    const existingModel = await MongoSystemModel.create(buildStoredLlm('test-llm'));
 
     const res = await callUpdateWithJson(
       JSON.stringify([buildLlmConfig(' test-llm '), buildEmbeddingConfig()])
@@ -65,30 +78,35 @@ describe('updateWithJson api', () => {
 
     expect(res.code).toBe(200);
     expect(res.data).toBeUndefined();
-    await expect(MongoSystemModel.findOne({ model: 'old-model' })).resolves.toBeNull();
-    await expect(MongoSystemModel.findOne({ model: 'test-llm' }).lean()).resolves.toMatchObject({
-      metadata: {
-        model: 'test-llm'
+    const disabledModel = await MongoSystemModel.findOne({ model: 'old-model' }).lean();
+    expect(String(disabledModel?._id)).toBe(String(oldModel._id));
+    expect(disabledModel?.isActive).toBe(false);
+    const updatedModel = await MongoSystemModel.findOne({ model: 'test-llm' }).lean();
+    expect(String(updatedModel?._id)).toBe(String(existingModel._id));
+    expect(updatedModel).toMatchObject({
+      model: 'test-llm',
+      isSystem: true,
+      config: {
+        maxContext: 16000,
+        maxResponse: 8000,
+        quoteMaxToken: 12000
       }
     });
     const savedLlm = await MongoSystemModel.findOne({ model: 'test-llm' }).lean();
-    expect(savedLlm?.metadata).not.toHaveProperty('functionCall');
+    expect(savedLlm?.config).not.toHaveProperty('functionCall');
     await expect(
       MongoSystemModel.findOne({ model: 'test-embedding' }).lean()
     ).resolves.toMatchObject({
-      metadata: {
+      config: {
         weight: 0
       }
     });
   });
 
   it('rejects numeric strings and preserves existing records', async () => {
-    await MongoSystemModel.create({
-      model: 'existing-model',
-      metadata: buildLlmConfig('existing-model').metadata
-    });
+    await MongoSystemModel.create(buildStoredLlm('existing-model'));
     const invalidConfig = buildLlmConfig();
-    invalidConfig.metadata.maxContext = '16000' as unknown as number;
+    invalidConfig.config.maxContext = '16000' as unknown as number;
 
     const res = await callUpdateWithJson(JSON.stringify([invalidConfig]));
 
@@ -108,7 +126,7 @@ describe('updateWithJson api', () => {
 
   it('rejects invalid nested model configuration', async () => {
     const config = buildLlmConfig();
-    config.metadata.defaultConfig = '' as unknown as Record<string, unknown>;
+    config.config.defaultConfig = '' as unknown as Record<string, unknown>;
 
     const res = await callUpdateWithJson(JSON.stringify([config]));
 

@@ -5,9 +5,8 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
 import { WorkflowUtilsContext } from '../context/workflowUtilsContext';
 import { parseWorkflowImportConfig } from '@/pageComponents/dashboard/agent/utils/appTemplateParse';
 import { AppContext } from '../../context';
@@ -28,11 +27,9 @@ const ImportSettings = ({ onClose }: Props) => {
   const appType = useContextSelector(AppContext, (v) => v.appDetail.type);
   const { t } = useTranslation();
   const [value, setValue] = useState('');
-  const { getMyModelList } = useSystemStore();
-
-  const { data: myModels } = useRequest(getMyModelList, {
-    manual: false
-  });
+  const { modelList } = useSystemModelLists();
+  const allowedModelIds = new Set(modelList.map((model) => model.modelId));
+  const allowedLegacyModels = new Set(modelList.map((model) => model.model));
 
   return (
     <MyModal
@@ -58,7 +55,11 @@ const ImportSettings = ({ onClose }: Props) => {
                     : AppTypeEnum.workflow,
                 t
               });
-              await removeUnauthModels({ modules: workflowConfig.nodes, allowedModels: myModels });
+              await removeUnauthModels({
+                modules: workflowConfig.nodes,
+                allowedModelIds,
+                allowedLegacyModels
+              });
               await initData(workflowConfig);
               toast({
                 title: t('app:import_configs_success'),

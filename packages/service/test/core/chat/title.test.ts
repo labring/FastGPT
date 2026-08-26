@@ -15,14 +15,14 @@ import {
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 const createLLMResponseMock = vi.hoisted(() => vi.fn());
-const getDefaultChatTitleModelMock = vi.hoisted(() => vi.fn());
+const getDefaultChatTitleModelDataMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getDefaultChatTitleModel: getDefaultChatTitleModelMock
+  getDefaultChatTitleModelData: getDefaultChatTitleModelDataMock
 }));
 
 const base = {
@@ -52,9 +52,9 @@ afterEach(() => {
 describe('syncGeneratedChatTitleFromUserContent', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
-    getDefaultChatTitleModelMock.mockReturnValue({
+    getDefaultChatTitleModelDataMock.mockReturnValue({
       model: 'gpt-title',
-      reasoning: true
+      config: { reasoning: true }
     });
     createLLMResponseMock.mockResolvedValue({
       answerText: '"FastGPT Docker Deployment"',
@@ -94,7 +94,7 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
         throwError: false,
         saveLLMResponseRecord: false,
         body: expect.objectContaining({
-          model: 'gpt-title',
+          model: expect.objectContaining({ model: 'gpt-title' }),
           stream: false,
           reasoning_effort: 'none'
         })
@@ -137,7 +137,7 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
   });
 
   it('uses local question text fallback when title model is unavailable', async () => {
-    getDefaultChatTitleModelMock.mockReturnValue(undefined);
+    getDefaultChatTitleModelDataMock.mockReturnValue(undefined);
     await createChat();
 
     const result = await syncGeneratedChatTitleFromUserContent({

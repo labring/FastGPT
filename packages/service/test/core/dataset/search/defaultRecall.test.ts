@@ -1,12 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetSearchModeEnum, SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { FullTextSearchProps } from '@fastgpt/service/common/vectorDB/type';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { serviceEnv } from '@fastgpt/service/env';
 
 const mockGetVectors = vi.hoisted(() => vi.fn());
-const mockGetEmbeddingModel = vi.hoisted(() => vi.fn());
-const mockGetDefaultRerankModel = vi.hoisted(() => vi.fn());
-const mockGetVlmModel = vi.hoisted(() => vi.fn());
 const mockIsImageEmbeddingModel = vi.hoisted(() => vi.fn());
 const mockRecallFromVectorStore = vi.hoisted(() => vi.fn());
 const mockCreateLLMResponse = vi.hoisted(() => vi.fn());
@@ -30,14 +28,44 @@ const mockCreateS3DownloadAccessUrls = vi.hoisted(() =>
 
 const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
 
+const embeddingModel = {
+  modelId: '507f1f77bcf86cd799439017',
+  provider: 'openai',
+  model: 'mock-embedding-model',
+  name: 'Mock Embedding Model',
+  type: ModelTypeEnum.embedding,
+  isSystem: true as const,
+  isActive: true,
+  isCustom: false,
+  config: {
+    defaultToken: 100,
+    maxToken: 100,
+    weight: 0
+  }
+};
+
+const vlmModel = {
+  modelId: '507f1f77bcf86cd799439018',
+  provider: 'openai',
+  model: 'mock-vlm-model',
+  name: 'Mock VLM Model',
+  type: ModelTypeEnum.llm,
+  isSystem: true as const,
+  isActive: true,
+  isCustom: false,
+  config: {
+    maxContext: 128000,
+    maxResponse: 4096,
+    quoteMaxToken: 30000,
+    vision: true
+  }
+};
+
 vi.mock('@fastgpt/service/core/ai/embedding', () => ({
   getVectors: mockGetVectors
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getEmbeddingModel: mockGetEmbeddingModel,
-  getDefaultRerankModel: mockGetDefaultRerankModel,
-  getVlmModel: mockGetVlmModel,
   isImageEmbeddingModel: mockIsImageEmbeddingModel
 }));
 
@@ -136,17 +164,6 @@ describe('default recall dataset search', () => {
     );
     mockCountPromptTokens.mockImplementation(async (prompt: string) => prompt.length);
 
-    mockGetEmbeddingModel.mockReturnValue({
-      model: 'mock-embedding-model',
-      name: 'Mock Embedding Model',
-      maxToken: 100
-    });
-    mockGetDefaultRerankModel.mockReturnValue(undefined);
-    mockGetVlmModel.mockReturnValue({
-      model: 'mock-vlm-model',
-      name: 'Mock VLM Model',
-      vision: true
-    });
     mockIsImageEmbeddingModel.mockReturnValue(false);
     mockGetVectors.mockResolvedValue({
       tokens: 10,
@@ -185,8 +202,8 @@ describe('default recall dataset search', () => {
     const result = await searchDatasetData({
       histories: [],
       teamId: 'team-1',
-      model: 'mock-embedding-model',
-      vlmModel: 'mock-vlm-model',
+      model: embeddingModel,
+      vlmModel,
       datasetIds: ['dataset-1'],
       reRankQuery: 'black high heels',
       textQueries: ['black high heels'],
@@ -207,7 +224,6 @@ describe('default recall dataset search', () => {
       usedUserOpenAIKey: true,
       queries: ['red handbag on a white table']
     });
-    expect(mockGetVlmModel).toHaveBeenCalledWith('mock-vlm-model');
     expect(mockGetVectors).toHaveBeenCalledWith(
       expect.objectContaining({
         inputs: [
@@ -230,7 +246,6 @@ describe('default recall dataset search', () => {
   });
 
   it('should request text and image embeddings in one getVectors call', async () => {
-    mockGetVlmModel.mockReturnValue(undefined);
     mockIsImageEmbeddingModel.mockReturnValue(true);
     mockGetVectors.mockResolvedValueOnce({
       tokens: 12,
@@ -243,7 +258,7 @@ describe('default recall dataset search', () => {
     await searchDatasetData({
       histories: [],
       teamId: 'team-1',
-      model: 'mock-embedding-model',
+      model: embeddingModel,
       datasetIds: ['dataset-1'],
       reRankQuery: 'black high heels',
       textQueries: ['black high heels'],
@@ -273,7 +288,6 @@ describe('default recall dataset search', () => {
   });
 
   it('should skip blank embedding recall inputs while preserving valid task order', async () => {
-    mockGetVlmModel.mockReturnValue(undefined);
     mockIsImageEmbeddingModel.mockReturnValue(true);
     mockGetVectors.mockResolvedValueOnce({
       tokens: 12,
@@ -286,7 +300,7 @@ describe('default recall dataset search', () => {
     await searchDatasetData({
       histories: [],
       teamId: 'team-1',
-      model: 'mock-embedding-model',
+      model: embeddingModel,
       datasetIds: ['dataset-1'],
       reRankQuery: 'black high heels',
       textQueries: ['   ', ' black high heels '],
@@ -314,13 +328,11 @@ describe('default recall dataset search', () => {
   });
 
   it('should pass overlong text queries to centralized embedding fallback without creating extra queries', async () => {
-    mockGetVlmModel.mockReturnValue(undefined);
     mockIsImageEmbeddingModel.mockReturnValue(false);
-    mockGetEmbeddingModel.mockReturnValueOnce({
-      model: 'mock-embedding-model',
-      name: 'Mock Embedding Model',
-      maxToken: 12
-    });
+    const smallEmbeddingModel = {
+      ...embeddingModel,
+      config: { ...embeddingModel.config, maxToken: 12 }
+    };
     mockGetVectors.mockImplementationOnce(async ({ inputs }) => ({
       tokens: 10,
       vectors: inputs.map((_: unknown, index: number) => [index + 1])
@@ -329,7 +341,7 @@ describe('default recall dataset search', () => {
     await searchDatasetData({
       histories: [],
       teamId: 'team-1',
-      model: 'mock-embedding-model',
+      model: smallEmbeddingModel,
       datasetIds: ['dataset-1'],
       reRankQuery: 'abcdefghijklmnopqrstuvwxy',
       textQueries: ['abcdefghijklmnopqrstuvwxy'],
@@ -353,7 +365,6 @@ describe('default recall dataset search', () => {
   });
 
   it('should ignore failed image embedding normalization and keep text recall', async () => {
-    mockGetVlmModel.mockReturnValue(undefined);
     mockIsImageEmbeddingModel.mockReturnValue(true);
     serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
     mockGetImageBase64.mockRejectedValueOnce(new Error('expired image'));
@@ -368,7 +379,7 @@ describe('default recall dataset search', () => {
     await searchDatasetData({
       histories: [],
       teamId: 'team-1',
-      model: 'mock-embedding-model',
+      model: embeddingModel,
       datasetIds: ['dataset-1'],
       reRankQuery: 'black high heels',
       textQueries: ['black high heels'],
@@ -399,13 +410,12 @@ describe('default recall dataset search', () => {
   });
 
   it('should skip blank full-text queries before Mongo text search', async () => {
-    mockGetVlmModel.mockReturnValue(undefined);
     mockIsImageEmbeddingModel.mockReturnValue(false);
 
     const result = await searchDatasetData({
       histories: [],
       teamId: 'team-1',
-      model: 'mock-embedding-model',
+      model: embeddingModel,
       datasetIds: ['dataset-1'],
       reRankQuery: '',
       textQueries: ['   ', '\n'],
@@ -422,7 +432,6 @@ describe('default recall dataset search', () => {
   });
 
   it('should only batch-sign S3 keys from results that survive score filtering', async () => {
-    mockGetVlmModel.mockReturnValue(undefined);
     mockIsImageEmbeddingModel.mockReturnValue(false);
     mockGetVectors.mockResolvedValueOnce({
       tokens: 5,
@@ -468,7 +477,7 @@ describe('default recall dataset search', () => {
     const result = await searchDatasetData({
       histories: [],
       teamId: 'team-1',
-      model: 'mock-embedding-model',
+      model: embeddingModel,
       datasetIds: ['dataset-1'],
       reRankQuery: 'query',
       textQueries: ['query'],

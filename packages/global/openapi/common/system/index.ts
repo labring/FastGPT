@@ -3,11 +3,29 @@ import { DevApiTagsMap } from '../../tag';
 import {
   GetSystemInitDataQuerySchema,
   GetSystemInitDataResponseSchema,
+  GetSystemModelsResponseSchema,
   UnlockSystemTaskQuerySchema,
   UnlockSystemTaskResponseSchema
 } from './api';
 
 export const CommonSystemPath: OpenAPIPath = {
+  '/common/system/getSystemModels': {
+    get: {
+      summary: '获取公开系统模型',
+      description: '返回价格页展示所需的最小化模型与价格信息，无需鉴权',
+      tags: [DevApiTagsMap.commonSystem],
+      responses: {
+        200: {
+          description: '成功返回公开模型列表',
+          content: {
+            'application/json': {
+              schema: GetSystemModelsResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
   '/common/system/getInitData': {
     get: {
       summary: '获取系统初始化数据',
