@@ -28,7 +28,6 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
-import { getMyModelIds } from '@fastgpt/service/support/permission/model/controller';
 import { formatModels } from '@fastgpt/global/core/workflow/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
@@ -89,19 +88,6 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     intro: intro ?? undefined,
     type,
     modules,
-    allowedModels: await (async () => {
-      if (modules?.length) {
-        const modelIds = await getMyModelIds({
-          teamId,
-          tmbId,
-          isTeamOwner: isRoot || tmb?.role === 'owner'
-        });
-        return modelIds
-          .map((modelId) => global.systemModelMap.get(`id:${modelId}`))
-          .filter((model): model is NonNullable<typeof model> => !!model);
-      }
-      return undefined;
-    })(),
     edges,
     chatConfig,
     teamId,
@@ -141,7 +127,6 @@ export const onCreateApp = async ({
   type,
   modules,
   storageModules,
-  allowedModels,
   edges,
   chatConfig,
   teamId,
@@ -159,7 +144,6 @@ export const onCreateApp = async ({
   type: AppTypeEnum;
   modules?: unknown[];
   storageModules?: AppSchemaType['modules'];
-  allowedModels?: Array<{ modelId: string; model: string }>;
   edges?: AppSchemaType['edges'];
   chatConfig?: AppSchemaType['chatConfig'];
   intro?: string;
@@ -189,12 +173,10 @@ export const onCreateApp = async ({
     edges: edges ?? [],
     chatConfig
   });
-  if (allowedModels) {
-    formatModels({
-      modules: normalizedWorkflow.nodes,
-      models: allowedModels
-    });
-  }
+  formatModels({
+    modules: normalizedWorkflow.nodes,
+    models: global.systemModelList
+  });
   await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });
   if (!AppFolderTypeList.includes(type!)) {
     await validatePublishAppAgentSkillReadPermissions({
@@ -329,6 +311,10 @@ export const onUpdateAppWorkflow = async ({
     nodes: modules ?? [],
     edges: edges ?? [],
     chatConfig
+  });
+  formatModels({
+    modules: workflow.nodes,
+    models: global.systemModelList
   });
   await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });
 

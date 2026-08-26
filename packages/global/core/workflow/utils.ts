@@ -577,8 +577,9 @@ const workflowModelKeyMappings = [
 /**
  * 在 Workflow 写入边界统一格式化模型引用。
  *
- * 静态旧 model 会保留原 input，并新增对应的 modelId sibling；无权限或不存在的静态值会被
- * 清空。引用类型无法在保存时确定运行结果，因此保持原样并交给运行时兼容读取。
+ * 静态旧 model 可解析时保留原 input，并新增对应的 modelId sibling。已有
+ * modelId、无法解析的 model 和引用类型都保持原样：该函数只负责结构转换，
+ * 不承担模型权限判断。
  */
 export const formatModels = ({
   modules,
@@ -589,7 +590,6 @@ export const formatModels = ({
 }) => {
   if (!modules) return modules;
 
-  const allowedModelIds = new Set(models.map((model) => model.modelId));
   const modelIdByModel = new Map(models.map((model) => [model.model, model.modelId]));
   const isReferenceInput = (input: FlowNodeInputItemType) =>
     getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.reference ||
@@ -600,22 +600,12 @@ export const formatModels = ({
       const legacyInput = module.inputs.find((input) => input.key === legacyKey);
       const modelIdInput = module.inputs.find((input) => input.key === modelIdKey);
 
-      // modelId 始终优先；存在 canonical input 时不再使用旧 model 兜底。
-      if (modelIdInput) {
-        if (isReferenceInput(modelIdInput)) continue;
-        if (!allowedModelIds.has(modelIdInput.value)) {
-          modelIdInput.value = undefined;
-          if (legacyInput && !isReferenceInput(legacyInput)) legacyInput.value = undefined;
-        }
-        continue;
-      }
+      // modelId 始终优先；存在 canonical input 时不再使用旧 model 补充。
+      if (modelIdInput) continue;
 
       if (!legacyInput || isReferenceInput(legacyInput)) continue;
       const modelId = modelIdByModel.get(legacyInput.value);
-      if (!modelId) {
-        legacyInput.value = undefined;
-        continue;
-      }
+      if (!modelId) continue;
 
       module.inputs.push({
         ...legacyInput,

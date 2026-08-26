@@ -1420,7 +1420,7 @@ describe('formatModels', () => {
     );
   });
 
-  it('clears a static legacy model when it is unavailable', () => {
+  it('keeps a static legacy model when it cannot be converted', () => {
     const modules = [
       {
         nodeId: 'node1',
@@ -1440,10 +1440,11 @@ describe('formatModels', () => {
     ];
 
     const result = formatModels({ modules, models });
-    expect(result?.[0].inputs[0].value).toBeUndefined();
+    expect(result?.[0].inputs[0].value).toBe('unauthorized-model');
+    expect(result?.[0].inputs).toHaveLength(1);
   });
 
-  it('keeps an allowed modelId and clears an unavailable modelId together with its legacy fallback', () => {
+  it('keeps existing modelId inputs unchanged without checking permissions', () => {
     const modules = [
       {
         nodeId: 'node1',
@@ -1477,8 +1478,8 @@ describe('formatModels', () => {
     const result = formatModels({ modules, models });
 
     expect(result?.[0].inputs[0].value).toBe(models[0].modelId);
-    expect(result?.[0].inputs[1].value).toBeUndefined();
-    expect(result?.[0].inputs[2].value).toBeUndefined();
+    expect(result?.[0].inputs[1].value).toBe('68ad85a7463006c963799aff');
+    expect(result?.[0].inputs[2].value).toBe('extension-v1');
   });
 
   it('keeps reference and array model inputs unchanged', () => {
