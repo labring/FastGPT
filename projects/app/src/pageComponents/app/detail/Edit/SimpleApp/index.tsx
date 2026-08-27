@@ -65,6 +65,7 @@ const SimpleEdit = () => {
       h={'100%'}
       minH={0}
       flexDirection={'column'}
+      pr={[3, 3]}
       borderLeft={currentTab === TabEnum.publish ? '1px solid' : undefined}
       borderColor={'myGray.200'}
     >

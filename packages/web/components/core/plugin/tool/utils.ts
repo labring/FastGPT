@@ -4,6 +4,9 @@
 export const normalizeToolCardTags = (tags?: string[] | null) =>
   tags?.map((tag) => tag.trim()).filter(Boolean) ?? [];
 
+/** 获取详情抽屉首次请求的版本；固定版本入口必须原样透传，未指定时交由接口解析最新版。 */
+export const getInitialToolDetailVersion = ({ version }: { version?: string }) => version;
+
 /** 根据工具启用状态和 plugin-server 安装记录判断当前版本是否已安装。 */
 export const isToolVersionInstalled = ({
   isInstalled,

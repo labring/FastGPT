@@ -7,6 +7,7 @@ import {
   checkNeedsUserConfiguration,
   filterAgentGeneratedToolParams,
   filterToolConfiguredParams,
+  formatJsonEditorValue,
   getToolInputDisplayRenderTypeList,
   getToolInputManualRenderType,
   getToolConfigStatus,
@@ -14,6 +15,7 @@ import {
   initToolInputTypeByDefaultMode,
   isAgentGeneratedToolInput,
   normalizeFlowNodeInputType,
+  parseJsonEditorValue,
   stripToolInputDefaultMode
 } from '@fastgpt/global/core/app/formEdit/utils';
 import {
@@ -44,6 +46,44 @@ const createMockToolTemplate = (inputs: FlowNodeInputItemType[] = []): FlowNodeT
     inputs,
     outputs: []
   }) as unknown as FlowNodeTemplateType;
+
+describe('parseJsonEditorValue', () => {
+  it.each([
+    ['[1,2,3]', [1, 2, 3]],
+    ['{"":""}', { '': '' }],
+    ['"text"', 'text'],
+    ['true', true],
+    ['null', null]
+  ])('parses %s into its native JSON value', (text, expected) => {
+    expect(parseJsonEditorValue(text)).toEqual({ success: true, value: expected });
+  });
+
+  it('keeps non-string values unchanged', () => {
+    const value = [1, 2, 3];
+
+    expect(parseJsonEditorValue(value)).toEqual({ success: true, value });
+  });
+
+  it('reports incomplete JSON without throwing', () => {
+    expect(parseJsonEditorValue('[1,2')).toEqual({
+      success: false,
+      value: '[1,2'
+    });
+  });
+});
+
+describe('formatJsonEditorValue', () => {
+  it.each([
+    [{ enabled: true }, '{\n  "enabled": true\n}'],
+    [[1, 2], '[\n  1,\n  2\n]'],
+    [null, 'null'],
+    [undefined, ''],
+    ['{"legacy":true}', '{"legacy":true}'],
+    ['"text"', '"text"']
+  ])('formats JSON editor value %#', (value, expected) => {
+    expect(formatJsonEditorValue(value)).toBe(expected);
+  });
+});
 
 describe('validateToolConfiguration', () => {
   describe('valid configurations', () => {

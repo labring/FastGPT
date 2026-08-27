@@ -12,6 +12,7 @@ const {
   mockTextinParsePDF,
   mockUploadImage2S3Bucket,
   mockGetImageBuffer,
+  mockCreatePdfParseUsage,
   mockEnv
 } = vi.hoisted(() => ({
   mockReadRawContentFromBuffer: vi.fn(async ({ extension, buffer, encoding }: any) => {
@@ -54,6 +55,7 @@ const {
     buffer: Buffer.from('image-bytes'),
     mime: 'image/png'
   }),
+  mockCreatePdfParseUsage: vi.fn(),
   mockEnv: {
     PARSE_FILE_TIMEOUT_SECONDS: 600
   }
@@ -89,7 +91,7 @@ vi.mock('@fastgpt/service/thirdProvider/textin', () => ({
 }));
 
 vi.mock('@fastgpt/service/support/wallet/usage/controller', () => ({
-  createPdfParseUsage: vi.fn()
+  createPdfParseUsage: mockCreatePdfParseUsage
 }));
 
 vi.mock('@fastgpt/service/common/s3/utils', async (importOriginal) => {
@@ -314,6 +316,39 @@ describe('readFileContentByBuffer', () => {
       expect.anything(),
       expect.objectContaining({ timeout: 1200000 })
     );
+  });
+
+  it('should report enhanced PDF usage to the caller without creating usage directly', async () => {
+    global.systemEnv = {
+      customPdfParse: {
+        url: 'http://custom-pdf-service.com/parse',
+        price: 4
+      }
+    } as any;
+    mockAxiosPost.mockResolvedValueOnce({
+      data: {
+        pages: 3,
+        markdown: 'custom-service-parsed-text'
+      }
+    });
+    const onPdfParseUsage = vi.fn();
+
+    await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'pdf',
+      buffer: Buffer.from('pdf content'),
+      encoding: 'utf-8',
+      customPdfParse: true,
+      onPdfParseUsage
+    });
+
+    expect(onPdfParseUsage).toHaveBeenCalledWith({
+      moduleName: 'account_usage:pdf_enhanced_parse',
+      totalPoints: 12,
+      pages: 3
+    });
+    expect(mockCreatePdfParseUsage).not.toHaveBeenCalled();
   });
 
   it('should upload custom URL service base64 and http markdown images with shared handler', async () => {

@@ -12,6 +12,8 @@ import { getLogger, LogCategories } from '../../logger';
 import { getImageBuffer } from '../image/utils';
 import { uploadParsedPdfImage } from './image';
 import { getBackendFileOperationTimeoutMs } from '../parseTimeout';
+import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
@@ -57,7 +59,8 @@ export const readFileContentByBuffer = async ({
   customPdfParse = false,
   usageId,
   getFormatText = true,
-  imageKeyOptions
+  imageKeyOptions,
+  onPdfParseUsage
 }: {
   teamId: string;
   tmbId: string;
@@ -73,6 +76,8 @@ export const readFileContentByBuffer = async ({
     prefix: string;
     expiredTime?: Date;
   };
+  /** 注入后由上层工作流归集增强解析费用；未注入时保持原有的独立落账行为。 */
+  onPdfParseUsage?: (usage: ChatNodeUsageType) => void;
 }): Promise<Pick<ReadFileResponse, 'rawText' | 'tableInfo'>> => {
   // 归一化扩展名为小写，避免大写/混合大小写后缀（如 .PDF）无法匹配解析器（#6996）
   const extension = rawExtension.toLowerCase();
@@ -114,6 +119,24 @@ export const readFileContentByBuffer = async ({
       buffer,
       imageKeyOptions
     });
+
+  const reportPdfParseUsage = (pages: number) => {
+    if (onPdfParseUsage) {
+      onPdfParseUsage({
+        moduleName: i18nT('account_usage:pdf_enhanced_parse'),
+        totalPoints: pages * (global.systemEnv?.customPdfParse?.price || 0),
+        pages
+      });
+      return;
+    }
+
+    createPdfParseUsage({
+      teamId,
+      tmbId,
+      pages,
+      usageId
+    });
+  };
   const parsePdfFromCustomService = async (): Promise<ReadFileResponse> => {
     const url = global.systemEnv.customPdfParse?.url;
     const token = global.systemEnv.customPdfParse?.key;
@@ -149,12 +172,7 @@ export const readFileContentByBuffer = async ({
 
     const text = await parseMarkdownImages(response.markdown);
 
-    createPdfParseUsage({
-      teamId,
-      tmbId,
-      pages: response.pages,
-      usageId
-    });
+    reportPdfParseUsage(response.pages);
 
     return {
       rawText: text,
@@ -168,12 +186,7 @@ export const readFileContentByBuffer = async ({
     const { pages, text: rawText } = await useSomarkServer({ apiKey }).parsePDF(buffer);
     const text = await parseMarkdownImages(rawText);
 
-    createPdfParseUsage({
-      teamId,
-      tmbId,
-      pages,
-      usageId
-    });
+    reportPdfParseUsage(pages);
 
     return {
       rawText: text,
@@ -209,12 +222,7 @@ export const readFileContentByBuffer = async ({
         : undefined
     });
 
-    createPdfParseUsage({
-      teamId,
-      tmbId,
-      pages,
-      usageId
-    });
+    reportPdfParseUsage(pages);
 
     return {
       rawText: text,
@@ -246,12 +254,7 @@ export const readFileContentByBuffer = async ({
         : undefined
     });
 
-    createPdfParseUsage({
-      teamId,
-      tmbId,
-      pages,
-      usageId
-    });
+    reportPdfParseUsage(pages);
 
     return {
       rawText: text,

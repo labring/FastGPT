@@ -10,6 +10,7 @@ import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import QuoteList from '../../ChatContainer/ChatBox/components/QuoteList';
 import FormInputResult from '../FormInputResult';
@@ -300,10 +301,12 @@ const ReadFilesRows = ({ activeModule }: { activeModule: ChatHistoryItemResType 
         <Row
           label={t('chat:response.read_files')}
           rawDom={
-            <Flex flexWrap={'wrap'} gap={3} px={4} py={2}>
+            <Grid templateColumns={'repeat(2, minmax(0, 1fr))'} gap={3}>
               {activeModule.readFiles.map((file, i) => (
                 <HStack
                   key={i}
+                  minW={0}
+                  w={'100%'}
                   bg={'white'}
                   boxShadow={'base'}
                   borderRadius={'sm'}
@@ -316,11 +319,25 @@ const ReadFilesRows = ({ activeModule }: { activeModule: ChatHistoryItemResType 
                       }
                     : {})}
                 >
-                  <MyIcon name={getFileIcon(file.name) as any} w={'1rem'} />
-                  <Box>{file.name}</Box>
+                  <MyIcon name={getFileIcon(file.name) as any} w={'1rem'} flexShrink={0} />
+                  <MyTooltip
+                    label={file.name || ''}
+                    showOnlyWhenOverflow
+                    shouldWrapChildren={false}
+                  >
+                    <Box
+                      minW={0}
+                      flex={'1 1 0'}
+                      overflow={'hidden'}
+                      textOverflow={'ellipsis'}
+                      whiteSpace={'nowrap'}
+                    >
+                      {file.name}
+                    </Box>
+                  </MyTooltip>
                 </HStack>
               ))}
-            </Flex>
+            </Grid>
           }
         />
       )}

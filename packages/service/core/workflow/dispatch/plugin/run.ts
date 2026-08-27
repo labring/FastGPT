@@ -20,13 +20,10 @@ import {
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { authWorkflowToolByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { computedAppToolUsage } from '../../../app/tool/runtime/utils';
+import { computedAppToolUsage, getAppToolOutputError } from '../../../app/tool/runtime/utils';
 import { getNodeErrResponse } from '../utils';
 import { serverGetWorkflowToolRunUserQuery } from '../../../app/tool/workflowTool/utils';
-import {
-  type NodeInputKeyEnum,
-  type NodeOutputKeyEnum
-} from '@fastgpt/global/core/workflow/constants';
+import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { runWorkflow } from '../index';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { dispatchRunTool } from '../child/runTool';
@@ -322,11 +319,15 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       runtimeNodeResponseSummary
     });
     const pluginOutput = runtimeSummary.pluginOutput;
+    const pluginOutputError = getAppToolOutputError({
+      plugin: workflowTool,
+      pluginOutput
+    });
 
     const usagePoints = await computedAppToolUsage({
       plugin: workflowTool,
       childrenUsage: flowUsages,
-      error: !!pluginOutput?.error
+      error: runtimeSummary.hasError || !pluginOutput || !!pluginOutputError
     });
     // Child run not push usage
     props.usagePush([
@@ -336,9 +337,24 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       }
     ]);
     const childResponseCount = runtimeSummary.childResponseCount;
+    const toolResponse = pluginOutput
+      ? Object.keys(pluginOutput)
+          .filter((key) => outputFilterMap[key])
+          .reduce<Record<string, any>>((acc, key) => {
+            acc[key] = pluginOutput[key];
+            return acc;
+          }, {})
+      : undefined;
 
     return {
       data: pluginOutput || {},
+      ...(pluginOutputError
+        ? {
+            error: {
+              [NodeOutputKeyEnum.errorText]: pluginOutputError
+            }
+          }
+        : {}),
       // 嵌套运行时，如果 childApp stream=false，实际上不会有任何内容输出给用户，所以不需要存储
       assistantResponses: system_forbid_stream ? [] : assistantResponses,
       system_memories,
@@ -349,16 +365,12 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         totalPoints: usagePoints,
         toolInput: workflowToolVariables,
         pluginOutput,
-        childResponseCount
+        childResponseCount,
+        ...(pluginOutputError ? { errorText: pluginOutputError } : {})
       },
-      [DispatchNodeResponseKeyEnum.toolResponse]: pluginOutput
-        ? Object.keys(pluginOutput)
-            .filter((key) => outputFilterMap[key])
-            .reduce<Record<string, any>>((acc, key) => {
-              acc[key] = pluginOutput[key];
-              return acc;
-            }, {})
-        : undefined,
+      [DispatchNodeResponseKeyEnum.toolResponse]: pluginOutputError
+        ? { ...toolResponse, error: pluginOutputError }
+        : toolResponse,
       [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks
     };
   } catch (error) {

@@ -2,6 +2,36 @@ import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import { type AppToolRuntimeType } from '@fastgpt/global/core/app/tool/type';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+
+/**
+ * 计算代码型系统工具的单次费用。
+ * 调用费与密钥来源无关；只有实际使用平台系统密钥时，才额外收取系统密钥费。
+ */
+export const computedSystemToolUsage = ({
+  tool,
+  useSystemKey
+}: {
+  tool: Pick<AppToolRuntimeType, 'currentCost' | 'systemKeyCost'>;
+  useSystemKey: boolean;
+}) => (tool.currentCost ?? 0) + (useSystemKey ? (tool.systemKeyCost ?? 0) : 0);
+
+/**
+ * 仅将 commercial Workflow Tool 输出中的 error 归一化为运行时错误文本。
+ * personal Workflow Tool 可以把 error 作为业务字段返回，不能被误判为执行失败。
+ */
+export const getAppToolOutputError = ({
+  plugin,
+  pluginOutput
+}: {
+  plugin: Pick<AppToolRuntimeType, 'id'>;
+  pluginOutput?: Record<string, any>;
+}) => {
+  const { source } = splitCombineToolId(plugin.id);
+  if (source !== AppToolSourceEnum.commercial || !pluginOutput?.error) return;
+
+  return getErrText(pluginOutput.error, 'Run workflow tool failed');
+};
 
 /*
   Tool points calculation:

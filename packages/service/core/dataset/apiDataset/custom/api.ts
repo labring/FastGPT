@@ -170,13 +170,15 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
     tmbId,
     apiFileId,
     customPdfParse,
-    datasetId
+    datasetId,
+    usageId
   }: {
     teamId: string;
     tmbId: string;
     apiFileId: string;
     customPdfParse?: boolean;
     datasetId: string;
+    usageId?: string;
   }): Promise<ApiFileReadContentResponseType> => {
     const data = await request<
       {
@@ -218,6 +220,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
         relatedId: apiFileId,
         datasetId,
         customPdfParse,
+        usageId,
         getFormatText: true
       });
 

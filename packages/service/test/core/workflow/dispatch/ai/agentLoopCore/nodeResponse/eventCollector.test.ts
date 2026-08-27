@@ -134,6 +134,39 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
     ]);
   });
 
+  it('records failed tools with their response, error and usage', () => {
+    const { collector, nodeResponses } = createCollector();
+    const call = toolCall({
+      id: 'call_failed',
+      name: 'search',
+      args: '{"q":"FastGPT"}'
+    });
+
+    collector.cacheToolResult({
+      callId: call.id,
+      usages: [{ moduleName: 'Search', totalPoints: 2 }]
+    });
+    collector.emitEvent({
+      type: 'tool_run_end',
+      call,
+      rawResponse: 'search unavailable',
+      response: 'search unavailable',
+      errorMessage: 'search unavailable',
+      seconds: 0.4
+    });
+
+    expect(nodeResponses).toEqual([
+      expect.objectContaining({
+        id: 'call_failed',
+        moduleName: 'Search',
+        toolInput: { q: 'FastGPT' },
+        toolRes: 'search unavailable',
+        errorText: 'search unavailable',
+        totalPoints: 2
+      })
+    ]);
+  });
+
   it('deduplicates context compression responses by checkpoint without request ids', () => {
     const { collector, nodeResponses } = createCollector();
     const event = {

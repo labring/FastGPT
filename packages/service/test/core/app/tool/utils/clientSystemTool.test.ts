@@ -480,6 +480,7 @@ describe('getClientSystemToolPreviewNode', () => {
 
     expect(result.flowNodeType).toBe(FlowNodeTypeEnum.pluginModule);
     expect(result.pluginId).toBe('commercial-workflow-tool');
+    expect(result.avatar).toBe('workflow.svg');
     expect(result.toolConfig).toBeUndefined();
     expect(result.isFolder).toBe(false);
     expect(result.inputs[0]?.key).toBe('query');

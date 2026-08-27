@@ -37,6 +37,7 @@ import { getFileMaxSize } from '../../common/file/utils';
 import { validateFileUrlDomain } from '../../common/security/fileUrlValidator';
 import { readExternalFileBuffer } from '../../common/file/read/external';
 import { batchRun } from '@fastgpt/global/common/system/utils';
+import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 
 /** Workflow 等上层业务可显式注入的已授权文件读取能力。 */
 export type FileReadContext = {
@@ -659,7 +660,8 @@ export const getFileContentByUrl = async ({
   customPdfParse,
   usageId,
   fileContext,
-  validateExternalUrlDomain
+  validateExternalUrlDomain,
+  onPdfParseUsage
 }: {
   url: string;
   teamId: string;
@@ -667,6 +669,8 @@ export const getFileContentByUrl = async ({
   customPdfParse?: boolean;
   usageId?: string;
   fileContext?: FileReadContext;
+  /** 工作流工具可接管 PDF 增强解析费用，使其归属具体 read_files 节点。 */
+  onPdfParseUsage?: (usage: ChatNodeUsageType) => void;
   /** 动态工具 URL 可跳过上传文件域名白名单，底层仍执行 HTTP(S)、SSRF 和大小校验。 */
   validateExternalUrlDomain?: boolean;
 }) => {
@@ -726,7 +730,8 @@ export const getFileContentByUrl = async ({
           expiredTime: isChatExternalUrl ? addDays(new Date(), 1) : undefined
         }
       : undefined,
-    usageId
+    usageId,
+    onPdfParseUsage
   });
 
   const replacedText = await replaceS3KeyToPreviewUrl(rawText, addDays(new Date(), 90));

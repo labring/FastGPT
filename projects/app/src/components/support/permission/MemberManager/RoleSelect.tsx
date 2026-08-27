@@ -41,6 +41,26 @@ const MenuStyle = {
   fontSize: 'sm'
 };
 
+/**
+ * Replace the base permission role while preserving additional permission roles.
+ * The base role occupies the common low bits; application-specific roles use the
+ * remaining bits and must survive a read/write/manage role change.
+ */
+export const replaceSingleRole = ({
+  role,
+  selectedSingleRole,
+  newSingleRole
+}: {
+  role?: RoleValueType;
+  selectedSingleRole: RoleValueType;
+  newSingleRole: RoleValueType;
+}) => {
+  const permission = new Permission({ role });
+  permission.removeRole(selectedSingleRole);
+  permission.addRole(newSingleRole);
+  return permission.role;
+};
+
 function RoleSelect({
   value: role,
   onChange,
@@ -170,7 +190,13 @@ function RoleSelect({
               if (disabled) {
                 return;
               }
-              onSelectRole(item.value);
+              onSelectRole(
+                replaceSingleRole({
+                  role,
+                  selectedSingleRole: selectedSingleValue,
+                  newSingleRole: item.value
+                })
+              );
             };
 
             return (

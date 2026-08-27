@@ -203,6 +203,7 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
     apiFileId
   }: {
     apiFileId: string;
+    usageId?: string;
   }): Promise<ApiFileReadContentResponseType> => {
     if (typeof apiFileId !== 'string') return Promise.reject('Invalid file id');
     const [parentId, fileId] = apiFileId.split(/-(.*?)-(.*)/);

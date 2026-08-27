@@ -1,15 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { dispatchTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 
-const { authAppByTmbIdMock, getAppVersionByIdMock, runHTTPToolMock, mcpToolCallMock } = vi.hoisted(
-  () => ({
-    authAppByTmbIdMock: vi.fn(),
-    getAppVersionByIdMock: vi.fn(),
-    runHTTPToolMock: vi.fn(),
-    mcpToolCallMock: vi.fn()
-  })
-);
+const {
+  authAppByTmbIdMock,
+  getAppVersionByIdMock,
+  runHTTPToolMock,
+  mcpToolCallMock,
+  runToolStreamMock,
+  getSystemToolRuntimeMock
+} = vi.hoisted(() => ({
+  authAppByTmbIdMock: vi.fn(),
+  getAppVersionByIdMock: vi.fn(),
+  runHTTPToolMock: vi.fn(),
+  mcpToolCallMock: vi.fn(),
+  runToolStreamMock: vi.fn(),
+  getSystemToolRuntimeMock: vi.fn()
+}));
 
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
   authAppByTmbId: authAppByTmbIdMock
@@ -55,28 +63,29 @@ vi.mock('@fastgpt/service/common/middle/tracks/utils', () => ({
 
 vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
   pluginClient: {
-    runToolStream: vi.fn()
+    runToolStream: runToolStreamMock
   }
 }));
 
 vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
   SystemToolRepo: {
     getInstance: vi.fn(() => ({
-      getSystemToolRuntime: vi.fn()
+      getSystemToolRuntime: getSystemToolRuntimeMock
     }))
   }
 }));
 
-const createDispatchToolProps = (toolConfig: Record<string, any>) =>
+const createDispatchToolProps = (
+  toolConfig: Record<string, any>,
+  params: Record<string, any> = { keyword: 'fastgpt' }
+) =>
   ({
     tool: {
       name: 'Agent tool',
       avatar: '',
       toolConfig
     },
-    params: {
-      keyword: 'fastgpt'
-    },
+    params,
     runningAppInfo: {
       id: 'attacker-app',
       teamId: 'attacker-team',
@@ -106,7 +115,63 @@ describe('dispatchTool runtime toolset auth', () => {
         _id: 'victim-toolset'
       }
     });
+    getSystemToolRuntimeMock.mockResolvedValue({
+      id: 'search',
+      version: '1.0.0',
+      currentCost: 0,
+      systemKeyCost: 0,
+      secretsVal: {}
+    });
+    runToolStreamMock.mockResolvedValue({ output: { ok: true } });
   });
+
+  it.each([
+    {
+      keyType: SystemToolSecretInputTypeEnum.system,
+      expectedPoints: 5,
+      title: 'system key'
+    },
+    {
+      keyType: SystemToolSecretInputTypeEnum.manual,
+      expectedPoints: 2,
+      title: 'manual key'
+    }
+  ])(
+    'charges call cost and key-dependent cost for $title in Agent execution',
+    async ({ keyType, expectedPoints }) => {
+      getSystemToolRuntimeMock.mockResolvedValueOnce({
+        id: 'search',
+        version: '1.0.0',
+        currentCost: 2,
+        systemKeyCost: 3,
+        secretsVal: {}
+      });
+
+      const result = await dispatchTool(
+        createDispatchToolProps(
+          {
+            systemTool: {
+              toolId: 'systemTool-search'
+            }
+          },
+          {
+            keyword: 'fastgpt',
+            system_input_config: {
+              type: keyType,
+              value: {}
+            }
+          }
+        )
+      );
+
+      expect(result.usages).toEqual([
+        {
+          moduleName: 'Agent tool',
+          totalPoints: expectedPoints
+        }
+      ]);
+    }
+  );
 
   it('should reject HTTP agent tool execution when running app tmb has no parent toolset permission', async () => {
     authAppByTmbIdMock.mockRejectedValueOnce(new Error('unAuthApp'));

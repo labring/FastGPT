@@ -52,6 +52,7 @@ export type ChatNodeUsageType = {
   totalPoints: number;
   moduleName: string;
   model?: string;
+  pages?: number;
 };
 
 export type InvoiceType = {

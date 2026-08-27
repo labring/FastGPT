@@ -1187,6 +1187,137 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].params).toMatchObject({ internal: 7 });
   });
 
+  it('parses validated JSON editor text into native runtime values', async () => {
+    getSystemToolDetailMock.mockResolvedValue({
+      id: 'commercial-workflow-tool',
+      name: 'Workflow Tool',
+      avatar: 'workflow.png',
+      intro: 'Workflow tool',
+      toolDescription: 'Workflow tool',
+      status: 'active',
+      source: 'system',
+      isToolSet: false,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      associatedPluginId: 'workflow_app',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          payload: {
+            type: 'object',
+            'x-fastgpt-node-input': {
+              valueType: 'object',
+              renderTypeList: [FlowNodeInputTypeEnum.JSONEditor],
+              selectedType: FlowNodeInputTypeEnum.JSONEditor
+            }
+          },
+          label: {
+            type: 'string',
+            'x-fastgpt-node-input': {
+              valueType: 'string',
+              renderTypeList: [FlowNodeInputTypeEnum.JSONEditor],
+              selectedType: FlowNodeInputTypeEnum.JSONEditor
+            }
+          },
+          nullable: {
+            type: ['string', 'null'],
+            'x-fastgpt-node-input': {
+              valueType: 'any',
+              renderTypeList: [FlowNodeInputTypeEnum.JSONEditor],
+              selectedType: FlowNodeInputTypeEnum.JSONEditor
+            }
+          },
+          optionalBlank: {
+            type: 'object',
+            'x-fastgpt-node-input': {
+              valueType: 'object',
+              renderTypeList: [FlowNodeInputTypeEnum.JSONEditor],
+              selectedType: FlowNodeInputTypeEnum.JSONEditor
+            }
+          }
+        }
+      }
+    });
+
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [
+        {
+          id: 'commercial-workflow-tool',
+          source: 'system',
+          inputs: [
+            { key: 'payload', mode: 'manual' },
+            { key: 'label', mode: 'manual' },
+            { key: 'nullable', mode: 'manual' },
+            { key: 'optionalBlank', mode: 'manual' }
+          ],
+          config: {
+            payload: '{"enabled":true}',
+            label: '"text"',
+            nullable: 'null',
+            optionalBlank: '   '
+          }
+        }
+      ]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].params).toEqual({
+      payload: { enabled: true },
+      label: 'text',
+      nullable: null
+    });
+  });
+
+  it('does not register a tool with invalid persisted JSON editor text', async () => {
+    getSystemToolDetailMock.mockResolvedValue({
+      id: 'commercial-workflow-tool',
+      name: 'Workflow Tool',
+      avatar: 'workflow.png',
+      intro: 'Workflow tool',
+      toolDescription: 'Workflow tool',
+      status: 'active',
+      source: 'system',
+      isToolSet: false,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      associatedPluginId: 'workflow_app',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          payload: {
+            type: 'object',
+            'x-fastgpt-node-input': {
+              valueType: 'object',
+              renderTypeList: [FlowNodeInputTypeEnum.JSONEditor],
+              selectedType: FlowNodeInputTypeEnum.JSONEditor
+            }
+          }
+        }
+      }
+    });
+
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [
+        {
+          id: 'commercial-workflow-tool',
+          source: 'system',
+          inputs: [{ key: 'payload', mode: 'manual' }],
+          config: { payload: '{"enabled":' }
+        }
+      ]
+    });
+
+    expect(tools).toEqual([]);
+  });
+
   it('projects system workflow external variables to Agent manual inputs', async () => {
     getSystemToolDetailMock.mockResolvedValue({
       id: 'commercial-workflow-tool',

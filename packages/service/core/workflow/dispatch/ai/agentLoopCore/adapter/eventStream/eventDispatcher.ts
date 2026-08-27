@@ -83,7 +83,8 @@ export const createAgentLoopCoreEventDispatcher = ({
         completedToolCallIds.add(event.call.id);
 
         const functionName = event.call.function.name;
-        if (!event.errorMessage && shouldStreamTool(functionName)) {
+        // 失败结果同样是模型已消费的 toolResponse，必须实时推送给客户端。
+        if (shouldStreamTool(functionName)) {
           eventStream.streamToolResponse({
             toolCallId: event.call.id,
             response: event.response

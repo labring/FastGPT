@@ -95,6 +95,28 @@ const manualInputRenderTypes = new Set<FlowNodeInputTypeEnum>([
 export const isAgentGeneratedToolInput = (input: InputRenderTypeState) =>
   getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.agentGenerated;
 
+export type JsonEditorValueParseResult =
+  | { success: true; value: unknown }
+  | { success: false; value: string };
+
+/** 将 JSON Editor 文本转换为原生 JSON 值；输入中的半成品保留文本供表单继续编辑。 */
+export const parseJsonEditorValue = (value: unknown): JsonEditorValueParseResult => {
+  if (typeof value !== 'string') return { success: true, value };
+
+  try {
+    return { success: true, value: JSON.parse(value) };
+  } catch {
+    return { success: false, value };
+  }
+};
+
+/** 将已持久化的 JSON Editor 值转换为编辑文本；历史字符串本身就是编辑文本。 */
+export const formatJsonEditorValue = (value: unknown): string => {
+  if (typeof value === 'string') return value;
+  if (value === undefined) return '';
+  return JSON.stringify(value, null, 2) ?? '';
+};
+
 /**
  * 服务端 runtime schema 的安全边界：即使持久化数据被篡改，也只允许普通可生成字段进入模型 schema。
  */
