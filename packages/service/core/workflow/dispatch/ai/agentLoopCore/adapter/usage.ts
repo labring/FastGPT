@@ -10,9 +10,9 @@ export const agentLoopUsagesToChatNodeUsages = (usages?: AgentLoopUsage[]): Chat
     ({ moduleName, totalPoints, modelId, inputTokens, outputTokens, pages }) => ({
       moduleName,
       totalPoints,
-      modelId,
-      inputTokens,
-      outputTokens,
-      pages
+      ...(modelId !== undefined && { modelId }),
+      ...(inputTokens !== undefined && { inputTokens }),
+      ...(outputTokens !== undefined && { outputTokens }),
+      ...(pages !== undefined && { pages })
     })
   );
