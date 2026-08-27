@@ -550,7 +550,7 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 - `providers` 在应用 provider 过滤前计算，并按 provider order 稳定排序；它只返回 provider ID，客户端使用 `getInitData.modelProviders` 补展示名和头像。这样左侧只展示当前成员、当前 `modelType` 下实际有模型的 Provider。
 - 请求未传 `provider` 时语义固定为“不按 Provider 过滤”，`total` 表示当前成员、当前 `modelType` 下的全部模型数量，`list` 是跨 Provider 稳定排序后的分页结果。请求显式传入 provider 时，`total/list` 才表示该 Provider 下的结果；不可用 provider 返回空结果，不能静默切换。
 - 选择器首次以 `pageNum=1&pageSize=10` 且不传 provider 发起发现请求。`total <= 10` 时，这一页就是单列选择器的完整候选；`total > 10` 时切换为双列选择器，从响应的 `providers` 中选择当前模型的 Provider，若没有当前值则选第一个 Provider，再发起带 provider 的第一页请求。
-- 已有选中值通过 `getMyModel` 恢复，并与发现请求并行。若选中模型的 provider 不在可用 `providers` 中，保留异常 value 并显示“模型不存在”，候选列表使用第一个可用 Provider。
+- 已有选中值通过 `getMyModel` 恢复，并与发现请求并行。若选中模型的 provider 不在可用 `providers` 中，保留异常 value 并显示“xxx 模型已停用”，候选列表使用第一个可用 Provider。
 - 不能先对全局模型列表切片再做权限过滤，否则会造成页大小不稳定、total 泄漏和空页。
 - 普通分页使用稳定排序，例如 provider order、`name`、`modelId`，保证翻页期间顺序确定；`pageSize` 设置合理上限，建议默认 20、最大 50。
 - 移除客户端 `versionKey/isRefreshed` 握手。服务端通过 `TmpDataEnum.MyModels` 按 `{ teamId, tmbId }` 缓存成员可用的 `modelId` 集合，固定 TTL 为一小时；`getMyModels` 和 `getMyModel` 共用该缓存，客户端不维护账号级完整模型缓存。本版本不增加 `permissionVersion`。
@@ -572,16 +572,16 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 - 选择器的 value、权限 Set、默认模型值全部使用 `modelId`，label 继续使用 `name`。
 - 当前 value 可能不在第一页：选择器初始化已有值时调用 `/core/ai/model/getMyModel` 恢复选中项，不能通过不断翻页寻找。
 - 读取旧业务数据时，单模型接口可用 legacy system `model` 匹配；匹配后增加对应 ID 字段，旧字段按第 7 节规则保留。
-- value 非空且单模型接口返回不存在或无权限时，选择框保留该异常值并用红字显示“模型不存在”，不能自动选中第一页模型。
+- value 非空且单模型接口返回不存在或无权限时，选择框保留该异常值并用红字显示“xxx 模型已停用”，不能自动选中第一页模型。
 - value 为空的新建场景可以由业务显式选择默认模型；“缺省选择默认值”和“已有值找不到”必须是两个分支。
-- 选择器局部维护 `idle/loading/success/error` 和分页结束状态；只能在请求成功后判断“没有可用模型”，不能把加载中或请求失败显示成“模型不存在”。
+- 选择器局部维护 `idle/loading/success/error` 和分页结束状态；只能在请求成功后判断“没有可用模型”，不能把加载中或普通请求失败显示成“xxx 模型已停用”。
 - 左侧 Provider 列表使用分页响应的 `providers`，并与 `getInitData.modelProviders` 合并展示信息；不能从当前模型页反推 Provider，否则未出现在第一页的 Provider 会永久缺失。
 
 ### 9.3 `getInitData`
 
 从 `GetSystemInitDataResponseSchema` 和 `getInitData` 所有响应分支中删除 `activeModelList`。模型相关数据只保留脱敏后的 `defaultModels`，且每个默认模型必须包含 `modelId`；`feConfigs`、套餐、版本、provider 和 AIProxy 渠道等非模型列表初始化数据保持原有职责。
 
-`defaultModels` 表示平台默认配置，不等于当前账号一定有权限。新建业务采用默认值时，模型选择器仍需通过鉴权的 `getMyModel` 确认该模型当前可用；无权限或已停用时显示“模型不存在/不可用”，不能绕过权限直接提交。
+`defaultModels` 表示平台默认配置，不等于当前账号一定有权限。新建业务采用默认值时，模型选择器仍需通过鉴权的 `getMyModel` 确认该模型当前可用；无权限或已停用时显示“xxx 模型已停用”，不能绕过权限直接提交。
 
 新增无需鉴权的 GET `/common/system/getSystemModels`，供价格表及价格弹窗按需请求全部 active 系统模型的最小公开信息。该接口不分页：完整列表不再进入每个页面都会调用的 init，只在需要展示模型价格时加载；模型数量仍由服务端内存列表提供，不增加数据库查询。
 
@@ -722,7 +722,7 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 - Prompt 优化、代码优化、问题引导、TTS/STT、Agent Loop 均从 modelId 解析，但 provider 收到正确 `model`。
 - 模型能力读取统一来自 `modelData.config`，客户端拿不到 config 中的敏感服务端字段。
 - 非法或已删除模型不会调用第一个系统模型；API 统一返回“模型不存在”。
-- 模型选择器对不在 available list 的非空 value 显示红色“模型不存在”，不自动改值或选择第一项。
+- 模型选择器对不在 available list 的非空 value 显示红色“xxx 模型已停用”，不自动改值或选择第一项。
 - `getMyModels` 在权限过滤后按 `provider/modelType` 稳定分页；不同选择器不会复用全局模型结果，非第一页的当前值通过 `getMyModel` 恢复。
 - 可用模型总数不超过 10 时选择器只发一次发现请求并展示单列；超过 10 时展示 Provider 双列，并按当前模型 Provider 或首个 Provider 加载右侧分页。
 - `getInitData` 所有登录/未登录分支都不返回完整模型列表，只返回允许暴露的默认模型；价格页通过公开 `getSystemModels` 获取最小列表。
@@ -816,7 +816,7 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 - [x] 删除客户端完整模型列表和 versionKey 缓存，改造模型选择器按打开、翻页、`provider/modelType` 筛选独立请求，并通过单模型接口恢复当前 value。
 - [x] 将 `getMyModels` 改为内存权限过滤后的分页脱敏模型接口，只支持通用分页、provider 和 modelType；增加鉴权的 `getMyModel`。
 - [x] 从 `getInitData` 删除 `activeModelList`，只保留带 modelId 的脱敏 `defaultModels`；新增公开最小化 `getSystemModels` 并迁移 `/price`。
-- [x] 给所有模型选择器增加 legacy value 归一化和红色“模型不存在”状态。
+- [x] 给所有模型选择器增加 legacy value 归一化和红色“xxx 模型已停用”状态。
 - [x] 将模型结构接管改为启动逐模型 repair，新增 4.16.3 资源引用 dry-run/回填接口，并移除新版旧 cleaner 路由。
 - [x] 补齐局部单测、迁移测试、核心集成测试和 Pro 测试。
 - [x] 执行静态残留审计、局部测试、类型检查，最后运行全量测试。
