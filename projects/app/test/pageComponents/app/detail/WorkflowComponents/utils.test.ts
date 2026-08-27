@@ -12,6 +12,9 @@ import {
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { AppDetailType } from '@fastgpt/global/core/app/type';
+import { CanonicalWorkflowDataSchema } from '@fastgpt/global/core/workflow/migration/schema';
+import { PublishAppBodySchema } from '@fastgpt/global/openapi/core/app/version/api';
+import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 
 describe('WorkflowComponents utils', () => {
   describe('uiWorkflow2StoreWorkflow', () => {
@@ -151,6 +154,140 @@ describe('WorkflowComponents utils', () => {
           targetHandle: 'targetNode-target-left'
         }
       ]);
+    });
+
+    it('should validate and restore folded Code tool nodes', () => {
+      const nodes = [
+        {
+          data: {
+            nodeId: 'agent-node',
+            name: 'Agent',
+            flowNodeType: FlowNodeTypeEnum.toolCall,
+            inputs: [],
+            outputs: []
+          },
+          position: { x: 0, y: 0 }
+        },
+        {
+          data: {
+            nodeId: 'code-node',
+            name: 'Code',
+            flowNodeType: FlowNodeTypeEnum.code,
+            inputs: [
+              {
+                key: 'data1',
+                label: 'data1',
+                valueType: WorkflowIOValueTypeEnum.string,
+                renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+                selectedType: FlowNodeInputTypeEnum.input,
+                canEdit: true
+              }
+            ],
+            outputs: [],
+            isFolded: true
+          },
+          position: { x: 300, y: 0 }
+        }
+      ];
+      const edges = [
+        {
+          source: 'agent-node',
+          target: 'code-node',
+          sourceHandle: 'tool-output',
+          targetHandle: 'selectedTools'
+        }
+      ];
+
+      const stored = uiWorkflow2StoreWorkflow({ nodes, edges });
+      const workflow = CanonicalWorkflowDataSchema.parse({
+        ...stored,
+        chatConfig: {}
+      });
+      const published = PublishAppBodySchema.parse({
+        ...stored,
+        chatConfig: {}
+      });
+
+      expect(workflow.nodes[1]?.isFolded).toBe(true);
+      expect(published.nodes?.[1]?.isFolded).toBe(true);
+
+      const restored = storeNode2FlowNode({
+        item: workflow.nodes[1],
+        t: ((key: string) => key) as any
+      });
+      expect(restored.data.isFolded).toBe(true);
+    });
+
+    it('should preserve reference snapshots through canonical validation and restore', () => {
+      const nodes = [
+        {
+          data: {
+            nodeId: 'source-node',
+            name: 'Source node',
+            flowNodeType: FlowNodeTypeEnum.chatNode,
+            inputs: [],
+            outputs: [
+              {
+                id: 'output-key',
+                key: 'output-key',
+                label: 'Output label',
+                type: FlowNodeOutputTypeEnum.static,
+                valueType: WorkflowIOValueTypeEnum.string
+              }
+            ]
+          },
+          position: { x: 0, y: 0 }
+        },
+        {
+          data: {
+            nodeId: 'target-node',
+            name: 'Target node',
+            flowNodeType: FlowNodeTypeEnum.answerNode,
+            inputs: [
+              {
+                key: 'text',
+                label: 'Text',
+                value: ['source-node', 'output-key'],
+                referenceSnapshots: [
+                  {
+                    reference: ['source-node', 'output-key'],
+                    sourceLabel: 'Source node',
+                    outputLabel: 'Output label'
+                  }
+                ],
+                renderTypeList: [FlowNodeInputTypeEnum.reference]
+              }
+            ],
+            outputs: []
+          },
+          position: { x: 300, y: 0 }
+        }
+      ];
+
+      const stored = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
+      const workflow = CanonicalWorkflowDataSchema.parse({
+        ...stored,
+        chatConfig: {}
+      });
+      const published = PublishAppBodySchema.parse({
+        ...stored,
+        chatConfig: {}
+      });
+
+      expect(workflow.nodes[1]?.inputs[0]?.referenceSnapshots).toEqual(
+        stored.nodes[1]?.inputs[0]?.referenceSnapshots
+      );
+      expect(published.nodes?.[1]?.inputs[0]?.referenceSnapshots).toEqual(
+        stored.nodes[1]?.inputs[0]?.referenceSnapshots
+      );
+
+      const restored = storeNode2FlowNode({
+        item: workflow.nodes[1],
+        t: ((key: string) => key) as any
+      });
+      expect(restored.data.inputs[0]?.referenceSnapshots).toEqual(
+        stored.nodes[1]?.inputs[0]?.referenceSnapshots
+      );
     });
 
     it('should filter malformed edges that cannot be restored', () => {
@@ -330,6 +467,44 @@ describe('WorkflowComponents utils', () => {
       });
 
       expect(result.nodes[1].inputs[0].value).toEqual(referenceValue);
+    });
+
+    it('should preserve reference snapshots when saving workflow', () => {
+      const referenceSnapshots = [
+        {
+          reference: ['sourceNode', 'text'],
+          sourceLabel: 'Source before deletion',
+          outputLabel: 'Text before deletion'
+        }
+      ];
+      const nodes = [
+        {
+          data: {
+            nodeId: 'targetNode',
+            name: 'Target',
+            intro: '',
+            avatar: '',
+            flowNodeType: FlowNodeTypeEnum.chatNode,
+            showStatus: true,
+            inputs: [
+              {
+                key: 'referenceInput',
+                renderTypeList: [FlowNodeInputTypeEnum.reference],
+                selectedType: FlowNodeInputTypeEnum.reference,
+                valueType: WorkflowIOValueTypeEnum.string,
+                value: ['sourceNode', 'text'],
+                referenceSnapshots
+              }
+            ],
+            outputs: []
+          },
+          position: { x: 0, y: 0 }
+        }
+      ];
+
+      const result = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
+
+      expect(result.nodes[0].inputs[0].referenceSnapshots).toEqual(referenceSnapshots);
     });
 
     it('should preserve unselectable values from reference inputs', () => {

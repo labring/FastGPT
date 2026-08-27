@@ -40,6 +40,30 @@ describe('workflow input schema boundaries', () => {
     expect(input.selectedType).toBe(FlowNodeInputTypeEnum.reference);
     expect(input).not.toHaveProperty('selectedTypeIndex');
   });
+
+  it('keeps reference snapshots in canonical data', () => {
+    const input = CanonicalFlowNodeInputItemSchema.parse({
+      key: 'query',
+      label: 'Query',
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      value: ['source-node', 'output-key'],
+      referenceSnapshots: [
+        {
+          reference: ['source-node', 'output-key'],
+          sourceLabel: 'Source node',
+          outputLabel: 'Output label'
+        }
+      ]
+    });
+
+    expect(input.referenceSnapshots).toEqual([
+      {
+        reference: ['source-node', 'output-key'],
+        sourceLabel: 'Source node',
+        outputLabel: 'Output label'
+      }
+    ]);
+  });
 });
 
 describe('workflow migration boundary', () => {

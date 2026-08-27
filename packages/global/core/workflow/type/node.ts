@@ -303,6 +303,8 @@ export type FlowNodeItemType = z.infer<typeof FlowNodeItemSchema>;
 // store node type
 export const StoreNodeItemTypeSchema = FlowNodeCommonTypeSchema.extend({
   nodeId: z.string(),
+  /** 画布节点折叠状态，需要随工作流版本持久化。 */
+  isFolded: BoolSchema.optional(),
   position: z
     .object({
       x: NumSchema,

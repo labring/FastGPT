@@ -6,7 +6,10 @@ import {
 import Container from '../../components/Container';
 import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { type ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
+import {
+  type ReferenceItemValueType,
+  type WorkflowReferenceSnapshot
+} from '@fastgpt/global/core/workflow/type/io';
 import { useTranslation } from 'next-i18next';
 import { ReferSelector, useReference } from '../render/RenderInput/templates/Reference';
 import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -133,7 +136,8 @@ const ListItem = ({
                     <VariableSelector
                       nodeId={nodeId}
                       variable={item.variable}
-                      onSelect={(e) => {
+                      variableSnapshot={item.variableSnapshot}
+                      onSelect={(e, snapshots) => {
                         onUpdateIfElseList(
                           ifElseList.map((ifElse, index) => {
                             if (index === conditionIndex) {
@@ -144,6 +148,7 @@ const ListItem = ({
                                     return {
                                       ...item,
                                       variable: e,
+                                      variableSnapshot: snapshots?.[0],
                                       condition: undefined
                                     };
                                   }
@@ -188,8 +193,9 @@ const ListItem = ({
                       valueType={item.valueType}
                       condition={item.condition}
                       variable={item.variable}
+                      valueSnapshot={item.valueSnapshot}
                       nodeId={nodeId}
-                      updateValue={(value, valueType) => {
+                      updateValue={(value, valueType, snapshot) => {
                         onUpdateIfElseList(
                           ifElseList.map((ifElse, index) => {
                             return {
@@ -201,6 +207,7 @@ const ListItem = ({
                                         return {
                                           ...item,
                                           value,
+                                          valueSnapshot: snapshot,
                                           valueType
                                         };
                                       }
@@ -313,15 +320,17 @@ export default React.memo(ListItem);
 const VariableSelector = ({
   nodeId,
   variable,
+  variableSnapshot,
   onSelect
 }: {
   nodeId: string;
   variable?: ReferenceItemValueType;
-  onSelect: (e?: ReferenceItemValueType) => void;
+  variableSnapshot?: WorkflowReferenceSnapshot;
+  onSelect: (e?: ReferenceItemValueType, snapshots?: WorkflowReferenceSnapshot[]) => void;
 }) => {
   const { t } = useTranslation();
 
-  const { referenceList } = useReference({
+  const { referenceList, liveReferenceList } = useReference({
     nodeId,
     valueType: WorkflowIOValueTypeEnum.any
   });
@@ -330,6 +339,8 @@ const VariableSelector = ({
     <ReferSelector
       placeholder={t('common:select_reference_variable')}
       list={referenceList}
+      liveList={liveReferenceList}
+      referenceSnapshots={variableSnapshot ? [variableSnapshot] : undefined}
       value={variable}
       onSelect={onSelect}
       isArray={false}
@@ -424,14 +435,20 @@ const ConditionValueInput = ({
   variable,
   condition,
   updateValue,
-  nodeId
+  nodeId,
+  valueSnapshot
 }: {
   value?: string | ReferenceItemValueType;
   valueType?: 'input' | 'reference';
   variable?: ReferenceItemValueType;
   condition?: VariableConditionEnum;
-  updateValue: (value: string | ReferenceItemValueType, valueType: 'input' | 'reference') => void;
+  updateValue: (
+    value: string | ReferenceItemValueType,
+    valueType: 'input' | 'reference',
+    snapshot?: WorkflowReferenceSnapshot
+  ) => void;
   nodeId: string;
+  valueSnapshot?: WorkflowReferenceSnapshot;
 }) => {
   const { t } = useTranslation();
   const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
@@ -506,7 +523,7 @@ const ConditionValueInput = ({
     return valueType;
   }, [condition, valueType, getArrayElementType]);
 
-  const { referenceList } = useReference({
+  const { referenceList, liveReferenceList } = useReference({
     nodeId,
     valueType: referenceValueType
   });
@@ -563,9 +580,11 @@ const ConditionValueInput = ({
       <ReferSelector
         placeholder={t('common:select_reference_variable')}
         list={referenceList}
+        liveList={liveReferenceList}
+        referenceSnapshots={valueSnapshot ? [valueSnapshot] : undefined}
         value={isReference ? (value as ReferenceItemValueType) : undefined}
-        onSelect={(e) => {
-          updateValue(e as ReferenceItemValueType, 'reference');
+        onSelect={(e, snapshots) => {
+          updateValue(e as ReferenceItemValueType, 'reference', snapshots?.[0]);
         }}
         isArray={false}
         ButtonProps={{
@@ -576,7 +595,7 @@ const ConditionValueInput = ({
         }}
       />
     );
-  }, [t, referenceList, isReference, value, updateValue]);
+  }, [t, referenceList, liveReferenceList, valueSnapshot, isReference, value, updateValue]);
 
   const isDisabled =
     condition === VariableConditionEnum.isEmpty || condition === VariableConditionEnum.isNotEmpty;

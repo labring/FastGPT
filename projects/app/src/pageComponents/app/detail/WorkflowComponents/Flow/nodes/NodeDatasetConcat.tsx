@@ -11,7 +11,8 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getOneQuoteInputTemplate } from '@fastgpt/global/core/workflow/template/system/datasetConcat';
 import {
   type FlowNodeInputItemType,
-  type ReferenceItemValueType
+  type ReferenceItemValueType,
+  type WorkflowReferenceSnapshot
 } from '@fastgpt/global/core/workflow/type/io';
 import RenderOutput from './render/RenderOutput';
 import IOTitle from '../components/IOTitle';
@@ -153,22 +154,21 @@ const VariableSelector = ({
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
-  const { referenceList } = useReference({
+  const { referenceList, liveReferenceList } = useReference({
     nodeId,
     valueType: inputChildren.valueType
   });
 
   const onSelect = useCallback(
-    (e?: ReferenceItemValueType) => {
-      if (!e) return;
-
+    (e?: ReferenceItemValueType, snapshots?: WorkflowReferenceSnapshot[]) => {
       onChangeNode({
         nodeId,
         type: 'replaceInput',
         key: inputChildren.key,
         value: {
           ...inputChildren,
-          value: e
+          value: e,
+          referenceSnapshots: e && snapshots?.length ? snapshots : undefined
         }
       });
     },
@@ -207,6 +207,8 @@ const VariableSelector = ({
             t('common:core.module.Dataset quote.select')
         )}
         list={referenceList}
+        liveList={liveReferenceList}
+        referenceSnapshots={inputChildren.referenceSnapshots}
         value={inputChildren.value}
         onSelect={onSelect}
         isArray={false}

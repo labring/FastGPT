@@ -117,21 +117,30 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
           issue.inputKey === `${NodeInputKeyEnum.updateList}[${index}].variable`
       );
 
+      const currentRefData = getRefData({
+        variable: updateItem.variable,
+        getNodeById,
+        chatConfig: appDetail.chatConfig
+      });
+      // 目标变量暂时失效或类型变化时，继续使用保存时的类型渲染旧值；重新选择后才刷新。
+      const valueType = updateItem.valueType ?? currentRefData.valueType;
+
       // 根据目标变量推断 string 分支的 inputType 与表单参数（select options 等）
       const { inputType, formParams = {} } = (() => {
         const value = updateItem.variable;
         if (!value) {
-          return { inputType: InputTypeEnum.input };
+          return { inputType: valueTypeToInputType(updateItem.valueType) };
         }
         if (value[0] === VARIABLE_NODE_ID) {
           const variableList = appDetail.chatConfig.variables || [];
           const variable = variableList.find((item) => item.key === value[1]);
           if (variable) {
             // 文件类型在变量更新节点中使用文本框（无运行时上下文）
+            const targetValueType = updateItem.valueType ?? variable.valueType;
             const it =
               variable.type === VariableInputEnum.file
                 ? InputTypeEnum.textarea
-                : variableInputTypeToInputType(variable.type, variable.valueType);
+                : variableInputTypeToInputType(variable.type, targetValueType);
             return {
               inputType: it,
               formParams: {
@@ -155,16 +164,14 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
           }
         } else if (value[0] && value[1]) {
           const output = getNodeById(value[0])?.outputs.find((o) => o.id === value[1]);
-          if (output) return { inputType: valueTypeToInputType(output.valueType) };
+          if (output) {
+            return {
+              inputType: valueTypeToInputType(updateItem.valueType ?? output.valueType)
+            };
+          }
         }
-        return { inputType: InputTypeEnum.input };
+        return { inputType: valueTypeToInputType(updateItem.valueType) };
       })();
-
-      const { valueType } = getRefData({
-        variable: updateItem.variable,
-        getNodeById,
-        chatConfig: appDetail.chatConfig
-      });
 
       const applyPatch = (patch: Partial<TUpdateListItem>) => {
         onUpdateList(
@@ -188,7 +195,10 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
               <VariableSelector
                 nodeId={nodeId}
                 variable={updateItem.variable}
-                onSelect={(value) => {
+                referenceSnapshots={
+                  updateItem.variableSnapshot ? [updateItem.variableSnapshot] : undefined
+                }
+                onSelect={(value, snapshots) => {
                   const newValueType = getRefData({
                     variable: value as ReferenceItemValueType,
                     getNodeById,
@@ -196,6 +206,8 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                   }).valueType;
                   applyPatch({
                     variable: value as ReferenceItemValueType,
+                    variableSnapshot: snapshots?.[0],
+                    valueReferenceSnapshots: undefined,
                     ...getDefaultsForValueType(newValueType)
                   });
                 }}
@@ -223,7 +235,11 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                     e === FlowNodeInputTypeEnum.reference
                       ? FlowNodeInputTypeEnum.reference
                       : FlowNodeInputTypeEnum.input;
-                  applyPatch({ renderType: nt, value: undefined });
+                  applyPatch({
+                    renderType: nt,
+                    value: undefined,
+                    valueReferenceSnapshots: undefined
+                  });
                 }}
               />
             </Box>
@@ -236,6 +252,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
               stringInputType={inputType}
               stringFormParams={formParams}
               value={updateItem.value}
+              valueReferenceSnapshots={updateItem.valueReferenceSnapshots}
               renderType={updateItem.renderType}
               numberOperator={updateItem.numberOperator}
               booleanMode={updateItem.booleanMode}

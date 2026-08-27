@@ -5,7 +5,8 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import {
   type FlowNodeInputItemType,
-  type ReferenceValueType
+  type ReferenceValueType,
+  type WorkflowReferenceSnapshot
 } from '@fastgpt/global/core/workflow/type/io';
 import { useContextSelector } from 'use-context-selector';
 import { getInputComponentProps } from '@/web/core/workflow/utils';
@@ -135,7 +136,7 @@ const Reference = ({
   const [tempLabel, setTempLabel] = useState('');
   const [isEditing, setIsEditing] = useState(false);
 
-  const { referenceList } = useReference({
+  const { referenceList, liveReferenceList } = useReference({
     nodeId,
     valueType: WorkflowIOValueTypeEnum.any,
     // Container nodes (loopRun) need to reference outputs from their sub-workflow.
@@ -187,12 +188,12 @@ const Reference = ({
     [existsKeys, toast, t, isEmptyItem, item, onChangeNode, nodeId, inputChildren]
   );
   const onSelectReference = useCallback(
-    (e?: ReferenceValueType) => {
-      if (!e) return;
-
-      const referenceItem = referenceList
-        .find((item) => item.value === e[0])
-        ?.children.find((item) => item.value === e[1]);
+    (e?: ReferenceValueType, snapshots?: WorkflowReferenceSnapshot[]) => {
+      const referenceItem = e
+        ? referenceList
+            .find((item) => item.value === e[0])
+            ?.children.find((item) => item.value === e[1])
+        : undefined;
 
       onChangeNode({
         nodeId,
@@ -201,6 +202,7 @@ const Reference = ({
         value: {
           ...inputChildren,
           value: e,
+          referenceSnapshots: e && snapshots?.length ? snapshots : undefined,
           valueType: referenceItem?.valueType || WorkflowIOValueTypeEnum.any
         }
       });
@@ -233,6 +235,8 @@ const Reference = ({
         <ReferSelector
           placeholder={t('common:select_reference_variable')}
           list={referenceList}
+          liveList={liveReferenceList}
+          referenceSnapshots={inputChildren.referenceSnapshots}
           value={inputChildren.value}
           onSelect={onSelectReference}
           ButtonProps={{
