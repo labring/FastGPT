@@ -4,33 +4,30 @@ import { countPromptTokensInWorker } from '@fastgpt/service/worker/countGptMessa
 import { availableParallelism } from 'node:os';
 
 // hoisted: 这些 mock 必须在 vi.mock 工厂里可见
-const { mockRun, mockGetWorkerController, mockRunWorker, mockUploadImage2S3Bucket, mockEnv } =
-  vi.hoisted(() => {
-    const mockRun = vi.fn();
-    return {
-      mockRun,
-      mockGetWorkerController: vi.fn(() => ({ run: mockRun })),
-      mockRunWorker: vi.fn(),
-      mockUploadImage2S3Bucket: vi.fn(),
-      mockEnv: {
-        HTML_TO_MARKDOWN_WORKERS: 10,
-        TEXT_TO_CHUNKS_WORKERS: 10,
-        PARSE_FILE_TIMEOUT_SECONDS: 300
-      } as {
-        HTML_TO_MARKDOWN_WORKERS: number;
-        TEXT_TO_CHUNKS_WORKERS: number;
-        PARSE_FILE_TIMEOUT_SECONDS: number;
-      }
-    };
-  });
+const { mockRun, mockGetWorkerController, mockUploadImage2S3Bucket, mockEnv } = vi.hoisted(() => {
+  const mockRun = vi.fn();
+  return {
+    mockRun,
+    mockGetWorkerController: vi.fn(() => ({ run: mockRun })),
+    mockUploadImage2S3Bucket: vi.fn(),
+    mockEnv: {
+      HTML_TO_MARKDOWN_WORKERS: 10,
+      TEXT_TO_CHUNKS_WORKERS: 10,
+      PARSE_FILE_TIMEOUT_SECONDS: 300
+    } as {
+      HTML_TO_MARKDOWN_WORKERS: number;
+      TEXT_TO_CHUNKS_WORKERS: number;
+      PARSE_FILE_TIMEOUT_SECONDS: number;
+    }
+  };
+});
 
-// 拦截 getWorkerController / runWorker，保留 WorkerNameEnum 等枚举
+// 拦截 getWorkerController，保留 WorkerNameEnum 等枚举
 vi.mock('@fastgpt/service/worker/utils', async (importOriginal) => {
   const mod = await importOriginal<typeof import('@fastgpt/service/worker/utils')>();
   return {
     ...mod,
-    getWorkerController: mockGetWorkerController,
-    runWorker: mockRunWorker
+    getWorkerController: mockGetWorkerController
   };
 });
 
@@ -56,7 +53,6 @@ describe('worker/function', () => {
     mockRun.mockReset();
     mockGetWorkerController.mockReset();
     mockGetWorkerController.mockImplementation(() => ({ run: mockRun }));
-    mockRunWorker.mockReset();
     mockUploadImage2S3Bucket.mockReset();
   });
 
@@ -74,7 +70,6 @@ describe('worker/function', () => {
       expect(result.chunks.join('')).toContain('hello world');
 
       // 关键：测试环境必须走短路，绝不能调起 worker
-      expect(mockRunWorker).not.toHaveBeenCalled();
       expect(mockGetWorkerController).not.toHaveBeenCalled();
     });
 
@@ -96,7 +91,6 @@ describe('worker/function', () => {
       expect(result.chunks.length).toBeGreaterThan(1);
       expect(result.chunks.every((chunk) => countPromptTokensInWorker(chunk) <= 12)).toBe(true);
       expect(result.chunks.join('')).toBe(text);
-      expect(mockRunWorker).not.toHaveBeenCalled();
       expect(mockGetWorkerController).not.toHaveBeenCalled();
     });
 
@@ -118,7 +112,6 @@ describe('worker/function', () => {
         true
       );
       expect(result.chunks.join('')).toBe(text);
-      expect(mockRunWorker).not.toHaveBeenCalled();
       expect(mockGetWorkerController).not.toHaveBeenCalled();
     });
 
@@ -131,7 +124,6 @@ describe('worker/function', () => {
           lengthUnit: 'token'
         })
       ).rejects.toThrow('Text contains a character that exceeds the token length limit');
-      expect(mockRunWorker).not.toHaveBeenCalled();
       expect(mockGetWorkerController).not.toHaveBeenCalled();
     });
 
@@ -152,7 +144,6 @@ describe('worker/function', () => {
       expect(result.chunks.every((chunk) => chunk.startsWith(header))).toBe(true);
       expect(result.chunks.every((chunk) => countPromptTokensInWorker(chunk) <= 28)).toBe(true);
       expect(result.chunks.join('\n')).toContain('𠮷');
-      expect(mockRunWorker).not.toHaveBeenCalled();
       expect(mockGetWorkerController).not.toHaveBeenCalled();
     });
   });
@@ -198,6 +189,13 @@ describe('worker/function', () => {
       expect(runArg.buffer).toBe(sourceArrayBuffer);
       expect(runArg.sharedBuffer).toBeUndefined();
       expect(poolCfg.resourcePolicy.getTaskResourceBytes(runArg)).toBe(32 * 1024 * 1024 + 17);
+      const resourceSnapshot = poolCfg.resourcePolicy.getResourceSnapshot();
+      expect(resourceSnapshot.maximumQueuedResourceBytes).toBe(
+        resourceSnapshot.maximumTaskResourceBytes
+      );
+      expect(resourceSnapshot.availableResourceBytes).toBe(
+        resourceSnapshot.memoryDetails.currentlySchedulableMemoryBytes
+      );
       expect(mockRun.mock.calls[0][1]).toEqual([sourceArrayBuffer]);
     });
 
@@ -437,7 +435,6 @@ describe('worker/function', () => {
       const result = await htmlToMarkdown('<h1>Title</h1>');
 
       expect(result).toBe('# Title');
-      expect(mockRunWorker).not.toHaveBeenCalled();
       expect(mockGetWorkerController).toHaveBeenCalledTimes(1);
 
       const poolCfg = mockGetWorkerController.mock.calls[0][0];

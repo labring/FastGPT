@@ -51,9 +51,16 @@ const getReadFileWorker = () =>
     resourcePolicy: {
       getTaskResourceBytes: ({ extension, bufferSize }) =>
         estimateFileParseMemoryBytes({ extension, fileSizeBytes: bufferSize }),
-      getAvailableResourceBytes: () => getFileParseMemoryState().currentlySchedulableMemoryBytes,
-      getMaximumTaskResourceBytes: () => getFileParseMemoryState().maximumSafeTaskMemoryBytes,
-      getResourceDetails: getFileParseMemoryState,
+      getResourceSnapshot: () => {
+        const memoryDetails = getFileParseMemoryState();
+        return {
+          availableResourceBytes: memoryDetails.currentlySchedulableMemoryBytes,
+          maximumTaskResourceBytes: memoryDetails.maximumSafeTaskMemoryBytes,
+          // 等待任务持有完整输入 Buffer；用同一安全预算限制排队任务的预估资源总量。
+          maximumQueuedResourceBytes: memoryDetails.maximumSafeTaskMemoryBytes,
+          memoryDetails
+        };
+      },
       queueTimeoutMs: fileParseResourceConstants.queueTimeoutMs
     },
     // 扩展名集合由上传白名单约束，可作为结构化日志中稳定、低基数的任务类型。

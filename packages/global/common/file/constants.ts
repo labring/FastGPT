@@ -5,7 +5,7 @@ export enum BucketNameEnum {
 }
 
 /** FastGPT 原有解析器覆盖的文档扩展名。 */
-export const builtInDocumentFileExtensions = [
+const builtInDocumentFileExtensions = [
   '.txt',
   '.docx',
   '.csv',

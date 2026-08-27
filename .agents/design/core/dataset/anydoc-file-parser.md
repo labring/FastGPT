@@ -63,21 +63,24 @@ CPU 槽位和“当前可用内存 - 安全保留 - 已预留内存”都足够�
 
 - 任务放行时先原子增加预留内存，结束、失败、超时或 worker 崩溃时统一释放。
 - 资源暂时不足时排队，最长等待 30 分钟；排队时间不计入原有 10 分钟执行超时。
+- 等待任务会持有完整输入 Buffer，因此排队任务的预估资源总量不得超过单任务安全预算；超过时立即 warn 并拒绝，避免队列自身导致主进程 OOM。
 - 队列选择最早且当前能够容纳的任务，避免大任务阻塞所有小任务。
 - Worker 按需创建并优先复用；最多保留 1 个空闲 warm worker，其余 worker 空闲 60 秒后回收。
+- Worker 提前退出、返回未知消息类型或错误 task id 时立即按线程协议错误回收，不等待执行超时兜底。
 - 原有单 worker 100 个任务回收、执行超时和 V8 老生代限制继续生效。
 - `PARSE_FILE_WORKERS` 从服务端配置和当前版本环境变量文档移除；部署 YAML 按仓库约束保持不变，历史升级文档保留。
 
 ### 错误约定与可观测性
 
 - 永远无法满足安全上限的任务立即返回明确的资源不足错误，并提示拆分文件或增加服务内存。
+- 排队任务预估资源总量超过队列安全预算时立即返回资源繁忙错误。
 - 排队超过 30 分钟返回解析资源繁忙错误。
 - 所有日志使用稳定的 `eventName`。每个任务以 `taskId` 串联 submitted/queued/started/finished debug；
-  worker 返回失败、线程异常、消息异常、派发失败、执行超时和排队超时使用 error；单任务超过安全上限和
-  队列首次达到压力阈值使用 warn；队列开始、恢复、排空和 pool 初始化使用 info。
+  worker 返回失败、线程异常、消息异常、协议异常、派发失败、执行超时和排队超时使用 error；单任务超过
+  安全上限、队列资源拒绝和队列首次达到压力阈值使用 warn；队列开始、恢复、排空和 pool 初始化使用 info。
 - 队列压力 warn 只在跨越阈值时产生一次，降到阈值以下后才允许再次告警，防止内存轮询刷屏。阈值默认等于
   pool 最大线程数，可按 pool 覆盖。
-- 任务和队列日志携带统一快照：队列长度/最老任务等待时间、运行/空闲/最大 worker 数、worker 利用率、
+- 任务和队列日志携带统一快照：队列长度/最老任务等待时间/排队预估资源总量、运行/空闲/最大 worker 数、worker 利用率、
   任务预估内存、pool 已预留内存、调度前可用内存、扣除预留后的可用量，以及容器内存限制、系统可用内存、
   已用比例、安全保留量和可调度量。
 
@@ -86,7 +89,8 @@ CPU 槽位和“当前可用内存 - 安全保留 - 已预留内存”都足够�
 - 本轮不新增 OTel Meter。日志采集器按稳定的 `eventName` 聚合，按 `workerName/taskType/outcome/reason`
   建立低基数索引；`taskId/workerId` 仅用于单任务定位，不作为聚合维度。
 - 建议立即告警：`worker.task.queue_timeout`、`worker.task.execution_timeout`、`worker.thread.error`、
-  `worker.thread.message_error`、`worker.task.dispatch_error` 在 5 分钟窗口内大于 0。
+  `worker.thread.message_error`、`worker.thread.protocol_error`、`worker.task.dispatch_error`、
+  `worker.task.queue_rejected` 在 5 分钟窗口内大于 0。
 - 建议趋势告警：从 `worker.task.finished` 计算失败率与执行耗时，从 `worker.task.started` 计算排队耗时；
   通过 `worker.queue.pressure/drained` 观察压力周期，并从日志快照聚合 worker 利用率、队列长度和内存使用率。
 
@@ -128,5 +132,6 @@ CPU 槽位和“当前可用内存 - 安全保留 - 已预留内存”都足够�
 - [x] 实现 readFile worker 空闲回收与 warm worker 保留。
 - [x] 移除 `PARSE_FILE_WORKERS` 当前配置并同步中英文环境变量文档；不修改部署 YAML。
 - [x] 覆盖内存估算、拒绝、排队、唤醒、并发预留、超时及回收测试。
+- [x] 限制排队任务预估资源总量，并覆盖 worker 提前退出与协议异常释放。
 - [x] 完成类型检查、相关测试、完整测试和真实大文件并发验证。
 - [x] 补充结构化 worker 生命周期日志、队列压力去重、内存快照和基于日志的监控字段。

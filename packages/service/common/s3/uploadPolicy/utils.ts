@@ -78,7 +78,7 @@ export const officeZipFormats = [
 ] as const;
 
 /** 使用 OOXML ZIP 容器、但扩展名不是基础 docx/xlsx/pptx 的 anydoc 变体。 */
-export const officeZipVariantExtensions: readonly string[] = [
+const officeZipVariantExtensions: readonly string[] = [
   '.docm',
   '.xlsm',
   '.xlsb',
@@ -88,14 +88,7 @@ export const officeZipVariantExtensions: readonly string[] = [
 ];
 
 /** 旧版二进制 Office 文件共享 OLE/CFB 容器，需要扩大上传前缀检查窗口。 */
-export const legacyOfficeExtensions: readonly string[] = [
-  '.doc',
-  '.wps',
-  '.xls',
-  '.ppt',
-  '.pps',
-  '.pot'
-];
+const legacyOfficeExtensions: readonly string[] = ['.doc', '.wps', '.xls', '.ppt', '.pps', '.pot'];
 
 /**
  * 统一扩展名格式。上传策略中所有 extension 都必须小写并带 `.`，避免同一白名单
@@ -137,6 +130,16 @@ export const replaceFilenameExtension = (filename: string, extension: string) =>
 
 export const getOfficeZipFormatByExtension = (extension: string) =>
   officeZipFormats.find((format) => format.extension === normalizeFileExtension(extension));
+
+/** 判断 Office 文件是否需要扩大上传内容检查窗口。 */
+export const requiresExtendedOfficeInspection = (extension: string) => {
+  const normalizedExtension = normalizeFileExtension(extension);
+  return (
+    Boolean(getOfficeZipFormatByExtension(normalizedExtension)) ||
+    officeZipVariantExtensions.includes(normalizedExtension) ||
+    legacyOfficeExtensions.includes(normalizedExtension)
+  );
+};
 
 export const detectOfficeDocumentMime = ({
   buffer,

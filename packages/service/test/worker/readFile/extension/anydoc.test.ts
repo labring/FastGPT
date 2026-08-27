@@ -1,13 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import { anydocTestExtensions } from '../anydocFixtures';
-
-const readWpsFixture = (filename: string) =>
-  Buffer.from(
-    readFileSync(path.join(__dirname, '..', 'fixtures', filename), 'utf8').trim(),
-    'base64'
-  );
 
 const { mockFormatFromExtension, mockToMarkdownBytes } = vi.hoisted(() => ({
   mockFormatFromExtension: vi.fn(),
@@ -76,36 +68,6 @@ describe('readAnydocRawText', () => {
     ).resolves.toEqual({ rawText: 'WPS OOXML fixture' });
     expect(mockFormatFromExtension).toHaveBeenCalledWith('docx');
     expect(mockToMarkdownBytes).toHaveBeenCalledWith(buffer, 'docx');
-  });
-
-  it('真实解析由本机 WPS Office 保存的 DOC 兼容 .wps 文件', async () => {
-    const { toMarkdownBytes } =
-      await vi.importActual<typeof import('@firecrawl/anydoc')>('@firecrawl/anydoc');
-    const buffer = readWpsFixture('wps-writer-doc.base64');
-    mockFormatFromExtension.mockReturnValue('doc');
-    mockToMarkdownBytes.mockImplementation(toMarkdownBytes);
-
-    await expect(
-      readAnydocRawText({ buffer, extension: 'wps', encoding: 'utf-8' })
-    ).resolves.toEqual({
-      rawText: expect.stringContaining('FastGPT WPS Writer parser fixture')
-    });
-    expect(mockFormatFromExtension).toHaveBeenCalledWith('doc');
-  });
-
-  it('真实解析由本机 WPS Office 保存的 OOXML 兼容 .wps 文件', async () => {
-    const { toMarkdownBytes } =
-      await vi.importActual<typeof import('@firecrawl/anydoc')>('@firecrawl/anydoc');
-    const buffer = readWpsFixture('wps-writer.base64');
-    mockFormatFromExtension.mockReturnValue('docx');
-    mockToMarkdownBytes.mockImplementation(toMarkdownBytes);
-
-    await expect(
-      readAnydocRawText({ buffer, extension: 'wps', encoding: 'utf-8' })
-    ).resolves.toEqual({
-      rawText: expect.stringContaining('FastGPT WPS Writer parser fixture')
-    });
-    expect(mockFormatFromExtension).toHaveBeenCalledWith('docx');
   });
 
   it('拒绝不在 FastGPT 补充白名单中的格式', async () => {

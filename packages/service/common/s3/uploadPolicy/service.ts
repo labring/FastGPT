@@ -10,16 +10,14 @@ import {
   defaultInspectBytes,
   detectOfficeDocumentMime,
   getFilenameExtension,
-  getOfficeZipFormatByExtension,
   isTextLikeMime,
-  legacyOfficeExtensions,
   mimesMatchForUpload,
   normalizeAllowedExtensions,
   normalizeFileExtension,
   normalizeUploadExtensionRules,
   officeZipInspectBytes,
-  officeZipVariantExtensions,
   replaceFilenameExtension,
+  requiresExtendedOfficeInspection,
   resolveAllowedExtensionForMime,
   resolveAllowedMimeTypes,
   resolveExtensionForMime,
@@ -221,15 +219,7 @@ export const getUploadInspectBytes = ({
   ].filter(Boolean);
   const contentType = normalizeMimeType(hint?.contentType, '');
 
-  if (
-    possibleExtensions.some(
-      (extension) =>
-        getOfficeZipFormatByExtension(extension) || officeZipVariantExtensions.includes(extension)
-    )
-  ) {
-    return officeZipInspectBytes;
-  }
-  if (possibleExtensions.some((extension) => legacyOfficeExtensions.includes(extension))) {
+  if (possibleExtensions.some(requiresExtendedOfficeInspection)) {
     return officeZipInspectBytes;
   }
   if (

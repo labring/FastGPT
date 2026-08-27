@@ -28,6 +28,13 @@ parentPort.on('message', (message) => {
   const { id } = message;
 
   if (message.simple) {
+    if (message.exit) {
+      process.exit(0);
+    }
+    if (message.protocolError) {
+      parentPort.postMessage({ id, type: 'unknown', data: null });
+      return;
+    }
     setTimeout(() => {
       parentPort.postMessage({
         id,
@@ -176,8 +183,10 @@ describe('worker/utils WorkerPool', () => {
       maxReservedThreads: 2,
       resourcePolicy: {
         getTaskResourceBytes: (data) => data.resourceBytes,
-        getAvailableResourceBytes: () => 100,
-        getMaximumTaskResourceBytes: () => 80,
+        getResourceSnapshot: () => ({
+          availableResourceBytes: 100,
+          maximumTaskResourceBytes: 80
+        }),
         queueTimeoutMs: 100
       }
     });
@@ -201,8 +210,10 @@ describe('worker/utils WorkerPool', () => {
       maxReservedThreads: 2,
       resourcePolicy: {
         getTaskResourceBytes: (data) => data.resourceBytes,
-        getAvailableResourceBytes: () => 100,
-        getMaximumTaskResourceBytes: () => 100,
+        getResourceSnapshot: () => ({
+          availableResourceBytes: 100,
+          maximumTaskResourceBytes: 100
+        }),
         queueTimeoutMs: 1000
       }
     });
@@ -235,8 +246,10 @@ describe('worker/utils WorkerPool', () => {
       maxReservedThreads: 2,
       resourcePolicy: {
         getTaskResourceBytes: (data) => data.resourceBytes,
-        getAvailableResourceBytes: () => 100,
-        getMaximumTaskResourceBytes: () => 100,
+        getResourceSnapshot: () => ({
+          availableResourceBytes: 100,
+          maximumTaskResourceBytes: 100
+        }),
         queueTimeoutMs: 1000
       }
     });
@@ -263,16 +276,18 @@ describe('worker/utils WorkerPool', () => {
       getTaskType: () => 'doc',
       resourcePolicy: {
         getTaskResourceBytes: (data) => data.resourceBytes,
-        getAvailableResourceBytes: () => 0,
-        getMaximumTaskResourceBytes: () => 100,
-        queueTimeoutMs: 20,
-        getResourceDetails: () => ({
-          constrainedMemoryBytes: 1000,
-          availableMemoryBytes: 200,
-          safetyReserveBytes: 200,
-          maximumSafeTaskMemoryBytes: 800,
-          currentlySchedulableMemoryBytes: 0
-        })
+        getResourceSnapshot: () => ({
+          availableResourceBytes: 0,
+          maximumTaskResourceBytes: 100,
+          memoryDetails: {
+            constrainedMemoryBytes: 1000,
+            availableMemoryBytes: 200,
+            safetyReserveBytes: 200,
+            maximumSafeTaskMemoryBytes: 800,
+            currentlySchedulableMemoryBytes: 0
+          }
+        }),
+        queueTimeoutMs: 20
       }
     });
 
@@ -293,6 +308,37 @@ describe('worker/utils WorkerPool', () => {
     );
   });
 
+  it('排队任务预估资源总量超过上限时拒绝新任务', async () => {
+    const logger = createLogger();
+    const pool = createPool<{ resourceBytes: number }, never>({
+      name: WorkerNameEnum.readFile,
+      maxReservedThreads: 1,
+      logger,
+      resourcePolicy: {
+        getTaskResourceBytes: (data) => data.resourceBytes,
+        getResourceSnapshot: () => ({
+          availableResourceBytes: 0,
+          maximumTaskResourceBytes: 100,
+          maximumQueuedResourceBytes: 100
+        }),
+        queueTimeoutMs: 1000
+      }
+    });
+
+    void pool.run({ resourceBytes: 60 }).catch(() => undefined);
+    await expect(pool.run({ resourceBytes: 50 })).rejects.toMatchObject({
+      name: 'WorkerTaskQueueLimitError'
+    });
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Worker task rejected by queue resource limit',
+      expect.objectContaining({
+        eventName: 'worker.task.queue_rejected',
+        queuedResourceBytes: 60,
+        maximumQueuedResourceBytes: 100
+      })
+    );
+  });
+
   it('为每个任务输出可关联的 debug 生命周期和资源快照', async () => {
     const logger = createLogger();
     const pool = createPool<
@@ -305,16 +351,18 @@ describe('worker/utils WorkerPool', () => {
       getTaskType: () => 'wps',
       resourcePolicy: {
         getTaskResourceBytes: (data) => data.resourceBytes,
-        getAvailableResourceBytes: () => 100,
-        getMaximumTaskResourceBytes: () => 100,
-        queueTimeoutMs: 1000,
-        getResourceDetails: () => ({
-          constrainedMemoryBytes: 1000,
-          availableMemoryBytes: 600,
-          safetyReserveBytes: 250,
-          maximumSafeTaskMemoryBytes: 750,
-          currentlySchedulableMemoryBytes: 350
-        })
+        getResourceSnapshot: () => ({
+          availableResourceBytes: 100,
+          maximumTaskResourceBytes: 100,
+          memoryDetails: {
+            constrainedMemoryBytes: 1000,
+            availableMemoryBytes: 600,
+            safetyReserveBytes: 250,
+            maximumSafeTaskMemoryBytes: 750,
+            currentlySchedulableMemoryBytes: 350
+          }
+        }),
+        queueTimeoutMs: 1000
       }
     });
 
@@ -353,8 +401,10 @@ describe('worker/utils WorkerPool', () => {
       logger,
       resourcePolicy: {
         getTaskResourceBytes: (data) => data.resourceBytes,
-        getAvailableResourceBytes: () => availableResourceBytes,
-        getMaximumTaskResourceBytes: () => 100,
+        getResourceSnapshot: () => ({
+          availableResourceBytes,
+          maximumTaskResourceBytes: 100
+        }),
         queueTimeoutMs: 1000,
         resourcePollIntervalMs: 5
       }
@@ -386,8 +436,10 @@ describe('worker/utils WorkerPool', () => {
       maxReservedThreads: 1,
       resourcePolicy: {
         getTaskResourceBytes: (data) => data.resourceBytes,
-        getAvailableResourceBytes: () => availableResourceBytes,
-        getMaximumTaskResourceBytes: () => 100,
+        getResourceSnapshot: () => ({
+          availableResourceBytes,
+          maximumTaskResourceBytes: 100
+        }),
         queueTimeoutMs: 1000,
         resourcePollIntervalMs: 10
       }
@@ -413,8 +465,10 @@ describe('worker/utils WorkerPool', () => {
       logger,
       resourcePolicy: {
         getTaskResourceBytes: (data) => data.resourceBytes,
-        getAvailableResourceBytes: () => 100,
-        getMaximumTaskResourceBytes: () => 100,
+        getResourceSnapshot: () => ({
+          availableResourceBytes: 100,
+          maximumTaskResourceBytes: 100
+        }),
         queueTimeoutMs: 1000
       }
     });
@@ -427,6 +481,55 @@ describe('worker/utils WorkerPool', () => {
     expect(logger.error).toHaveBeenCalledWith(
       'Worker task execution timeout',
       expect.objectContaining({ eventName: 'worker.task.execution_timeout' })
+    );
+  });
+
+  it('worker 提前退出时立即拒绝任务并释放槽位', async () => {
+    const logger = createLogger();
+    const pool = createPool<
+      { simple: true; exit: true; payload: string; resourceBytes: number },
+      never
+    >({
+      name: WorkerNameEnum.readFile,
+      maxReservedThreads: 1,
+      taskTimeoutMs: 1000,
+      logger,
+      resourcePolicy: {
+        getTaskResourceBytes: (data) => data.resourceBytes,
+        getResourceSnapshot: () => ({
+          availableResourceBytes: 100,
+          maximumTaskResourceBytes: 100
+        }),
+        queueTimeoutMs: 1000
+      }
+    });
+
+    await expect(
+      pool.run({ simple: true, exit: true, payload: 'exit', resourceBytes: 40 })
+    ).rejects.toThrow('Worker exited unexpectedly');
+    expect(pool.reservedResourceBytes).toBe(0);
+    expect(pool.workerQueue).toHaveLength(0);
+    expect(logger.error).toHaveBeenCalledWith(
+      'Worker exited unexpectedly',
+      expect.objectContaining({ eventName: 'worker.thread.exit', exitCode: 0 })
+    );
+  });
+
+  it('worker 返回未知协议消息时立即拒绝任务', async () => {
+    const logger = createLogger();
+    const pool = createPool<{ simple: true; protocolError: true }, never>({
+      name: WorkerNameEnum.readFile,
+      maxReservedThreads: 1,
+      logger
+    });
+
+    await expect(pool.run({ simple: true, protocolError: true })).rejects.toThrow(
+      'Unknown worker response type'
+    );
+    expect(pool.workerQueue).toHaveLength(0);
+    expect(logger.error).toHaveBeenCalledWith(
+      'Worker protocol error',
+      expect.objectContaining({ eventName: 'worker.thread.protocol_error' })
     );
   });
 
