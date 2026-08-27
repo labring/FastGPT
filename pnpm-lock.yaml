@@ -111,9 +111,6 @@ catalogs:
     axios:
       specifier: ^1.18.0
       version: 1.18.1
-    canvas:
-      specifier: ^3.2.3
-      version: 3.2.3
     chalk:
       specifier: ^5.6.2
       version: 5.6.2
@@ -1448,9 +1445,6 @@ importers:
       axios:
         specifier: 'catalog:'
         version: 1.18.1
-      canvas:
-        specifier: 'catalog:'
-        version: 3.2.3
       date-fns:
         specifier: 'catalog:'
         version: 3.6.0
