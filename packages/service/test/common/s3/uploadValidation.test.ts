@@ -41,6 +41,7 @@ describe('getUploadInspectBytes', () => {
 
   it('uses a larger inspection window for legacy Office uploads', () => {
     expect(getUploadInspectBytes('demo.doc')).toBe(64 * 1024);
+    expect(getUploadInspectBytes('demo.wps')).toBe(64 * 1024);
     expect(getUploadInspectBytes('demo.xls')).toBe(64 * 1024);
     expect(getUploadInspectBytes('demo.ppt')).toBe(64 * 1024);
   });
@@ -391,7 +392,7 @@ describe('validateUploadFile', () => {
     });
   });
 
-  it.each(['demo.doc', 'demo.xls', 'demo.ppt'])(
+  it.each(['demo.doc', 'demo.wps', 'demo.xls', 'demo.ppt'])(
     'accepts legacy Office CFB content for %s',
     async (filename) => {
       await expect(

@@ -38,6 +38,11 @@ const shouldRunPdfStress =
   process.env.RUN_READ_FILE_WORKER_PDF_STRESS === 'true' &&
   Boolean(pdfFixturePath && existsSync(pdfFixturePath));
 const itIfPdfStress = shouldRunPdfStress ? it : it.skip;
+const docStressFixturePath = process.env.RUN_READ_FILE_WORKER_DOC_STRESS_PATH;
+const shouldRunDocStress =
+  process.env.RUN_READ_FILE_WORKER_DOC_STRESS === 'true' &&
+  Boolean(docStressFixturePath && existsSync(docStressFixturePath));
+const itIfDocStress = shouldRunDocStress ? it : it.skip;
 
 const { WorkerNameEnum } = await import('@fastgpt/service/worker/utils');
 const { readRawContentFromBuffer } = await import('@fastgpt/service/worker/function');
@@ -154,6 +159,7 @@ const destroyReadFilePool = async () => {
 
 describeIfEnabled('readFile worker (real spawn integration)', () => {
   let cwdSpy: ReturnType<typeof vi.spyOn>;
+  let availableMemorySpy: ReturnType<typeof vi.spyOn>;
 
   if (process.env.RUN_READ_FILE_WORKER_INTEGRATION === 'true' && !existsSync(REAL_WORKER_PATH)) {
     console.warn(
@@ -163,6 +169,10 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
 
   beforeAll(() => {
     cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(APP_PROJECT_DIR);
+    // 该文件验证真实 worker 产物与解析链路；内存准入由 fileParseResource/utils 单测覆盖。
+    // CI/本地全量测试刚结束时系统可用内存可能短暂低于安全水位，避免解析集成用例排队 30 分钟。
+    const availableMemoryBytes = Math.max(process.availableMemory(), 2 * 1024 * 1024 * 1024);
+    availableMemorySpy = vi.spyOn(process, 'availableMemory').mockReturnValue(availableMemoryBytes);
   });
 
   afterEach(async () => {
@@ -170,6 +180,7 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
   });
 
   afterAll(() => {
+    availableMemorySpy.mockRestore();
     cwdSpy.mockRestore();
   });
 
@@ -244,6 +255,20 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
     expect(result.rawText).toContain(expected);
   });
 
+  it('通过 anydoc 解析 WPS Office 生成的 OOXML 兼容 .wps 文件', async () => {
+    const buffer = Buffer.from(
+      readFileSync(path.join(__dirname, 'fixtures/wps-writer.base64'), 'utf8').trim(),
+      'base64'
+    );
+    const result = await readRawContentFromBuffer({
+      extension: 'wps',
+      encoding: 'utf-8',
+      buffer
+    });
+
+    expect(result.rawText).toContain('FastGPT WPS Writer parser fixture');
+  });
+
   it('解析 xlsx 时应转义 Markdown 表格分隔符', async () => {
     const worksheet = XLSX.utils.aoa_to_sheet([
       ['name|alias', 'fullwidth｜pipe'],
@@ -305,7 +330,7 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
   );
 
   itIfPdfFixture(
-    '并发 pdf 直接交给真实 worker pool，按 PARSE_FILE_WORKERS 控制并发',
+    '并发 pdf 直接交给真实资源感知 worker pool',
     async () => {
       const concurrency = 4;
       const fileBuffer = readFileSync(pdfFixturePath!);
@@ -391,6 +416,47 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
       });
     },
     120000
+  );
+
+  itIfDocStress(
+    'doc worker 压测：并发解析大型复杂文档并释放全部资源预留',
+    async () => {
+      const concurrency = getPositiveIntegerEnv('RUN_READ_FILE_WORKER_DOC_STRESS_CONCURRENCY', 3);
+      const fileBuffer = readFileSync(docStressFixturePath!);
+      const toMiB = (bytes: number) => Number((bytes / 1024 / 1024).toFixed(1));
+      const memoryBefore = process.memoryUsage();
+      const startedAt = Date.now();
+
+      const results = await Promise.all(
+        Array.from({ length: concurrency }, () =>
+          readRawContentFromBuffer({
+            extension: 'doc',
+            encoding: 'utf-8',
+            buffer: Buffer.from(fileBuffer)
+          })
+        )
+      );
+
+      const pool = getReadFilePool();
+      const memoryAfter = process.memoryUsage();
+      results.forEach((result) => {
+        expect(result.rawText).toContain('FastGPT AnyDoc performance fixture');
+      });
+      expect(pool.reservedResourceBytes).toBe(0);
+      expect(pool.waitQueue).toHaveLength(0);
+      expect(pool.workerQueue.length).toBeLessThanOrEqual(pool.maxReservedThreads);
+
+      console.info('doc worker stress summary', {
+        concurrency,
+        fileSizeMiB: toMiB(fileBuffer.length),
+        wallMs: Date.now() - startedAt,
+        workerCount: pool.workerQueue.length,
+        baselineRssMiB: toMiB(memoryBefore.rss),
+        finalRssMiB: toMiB(memoryAfter.rss),
+        outputChars: results[0]?.rawText.length
+      });
+    },
+    180000
   );
 
   it('未知扩展名应被 reject', async () => {

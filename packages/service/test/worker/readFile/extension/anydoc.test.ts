@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { anydocTestExtensions } from '../anydocFixtures';
+
+const readWpsFixture = (filename: string) =>
+  Buffer.from(
+    readFileSync(path.join(__dirname, '..', 'fixtures', filename), 'utf8').trim(),
+    'base64'
+  );
 
 const { mockFormatFromExtension, mockToMarkdownBytes } = vi.hoisted(() => ({
   mockFormatFromExtension: vi.fn(),
@@ -41,6 +49,63 @@ describe('readAnydocRawText', () => {
     ).resolves.toEqual({ rawText: '# Sheet\n\n| name | value |' });
     expect(mockFormatFromExtension).toHaveBeenCalledWith('xls');
     expect(mockToMarkdownBytes).toHaveBeenCalledWith(buffer, 'xlsx');
+  });
+
+  it('将 .wps 映射到现有 DOC 解析器', async () => {
+    const buffer = Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+    mockFormatFromExtension.mockReturnValue('doc');
+    mockToMarkdownBytes.mockResolvedValue('WPS fixture');
+
+    await expect(
+      readAnydocRawText({ buffer, extension: '.WPS', encoding: 'utf-8' })
+    ).resolves.toEqual({ rawText: 'WPS fixture' });
+    expect(mockFormatFromExtension).toHaveBeenCalledWith('doc');
+    expect(mockToMarkdownBytes).toHaveBeenCalledWith(buffer, 'doc');
+  });
+
+  it('兼容 WPS 桌面端以 .wps 文件名保存的 OOXML 文档', async () => {
+    const buffer = Buffer.concat([
+      Buffer.from([0x50, 0x4b, 0x03, 0x04]),
+      Buffer.from('word/document.xml')
+    ]);
+    mockFormatFromExtension.mockReturnValue('docx');
+    mockToMarkdownBytes.mockResolvedValue('WPS OOXML fixture');
+
+    await expect(
+      readAnydocRawText({ buffer, extension: 'wps', encoding: 'utf-8' })
+    ).resolves.toEqual({ rawText: 'WPS OOXML fixture' });
+    expect(mockFormatFromExtension).toHaveBeenCalledWith('docx');
+    expect(mockToMarkdownBytes).toHaveBeenCalledWith(buffer, 'docx');
+  });
+
+  it('真实解析由本机 WPS Office 保存的 DOC 兼容 .wps 文件', async () => {
+    const { toMarkdownBytes } =
+      await vi.importActual<typeof import('@firecrawl/anydoc')>('@firecrawl/anydoc');
+    const buffer = readWpsFixture('wps-writer-doc.base64');
+    mockFormatFromExtension.mockReturnValue('doc');
+    mockToMarkdownBytes.mockImplementation(toMarkdownBytes);
+
+    await expect(
+      readAnydocRawText({ buffer, extension: 'wps', encoding: 'utf-8' })
+    ).resolves.toEqual({
+      rawText: expect.stringContaining('FastGPT WPS Writer parser fixture')
+    });
+    expect(mockFormatFromExtension).toHaveBeenCalledWith('doc');
+  });
+
+  it('真实解析由本机 WPS Office 保存的 OOXML 兼容 .wps 文件', async () => {
+    const { toMarkdownBytes } =
+      await vi.importActual<typeof import('@firecrawl/anydoc')>('@firecrawl/anydoc');
+    const buffer = readWpsFixture('wps-writer.base64');
+    mockFormatFromExtension.mockReturnValue('docx');
+    mockToMarkdownBytes.mockImplementation(toMarkdownBytes);
+
+    await expect(
+      readAnydocRawText({ buffer, extension: 'wps', encoding: 'utf-8' })
+    ).resolves.toEqual({
+      rawText: expect.stringContaining('FastGPT WPS Writer parser fixture')
+    });
+    expect(mockFormatFromExtension).toHaveBeenCalledWith('docx');
   });
 
   it('拒绝不在 FastGPT 补充白名单中的格式', async () => {

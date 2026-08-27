@@ -10,6 +10,7 @@ describe('getFileIcon', () => {
       ['data.csv', 'file/fill/csv'],
       ['doc.doc', 'file/fill/doc'],
       ['doc.docs', 'file/fill/doc'],
+      ['doc.wps', 'file/fill/doc'],
       ['notes.txt', 'file/fill/txt'],
       ['readme.md', 'file/fill/markdown'],
       ['index.html', 'file/fill/html']

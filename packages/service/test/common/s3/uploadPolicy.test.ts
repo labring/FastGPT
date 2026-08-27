@@ -71,7 +71,7 @@ describe('getUploadInspectBytes', () => {
     ).toBe(64 * 1024);
   });
 
-  it.each(['document.doc', 'sheet.xls', 'slides.ppt'])(
+  it.each(['document.doc', 'document.wps', 'sheet.xls', 'slides.ppt'])(
     'uses a larger inspection window for legacy Office upload %s',
     (filename) => {
       expect(

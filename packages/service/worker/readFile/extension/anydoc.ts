@@ -18,9 +18,23 @@ export const readAnydocRawText = async ({
   buffer,
   extension
 }: ReadRawTextByBuffer): Promise<ReadFileResponse> => {
-  const format = formatFromExtension(extension);
-  if (!format || !isAnydocDocumentExtension(extension)) {
+  const normalizedExtension = extension.trim().toLowerCase().replace(/^\./, '');
+  if (!isAnydocDocumentExtension(normalizedExtension)) {
     throw new Error(`Unsupported anydoc file extension: .${extension.replace(/^\./, '')}`);
+  }
+
+  const formatExtension = (() => {
+    if (normalizedExtension !== 'wps') return normalizedExtension;
+
+    // WPS 桌面端可能用 .wps 文件名保存 OOXML；其余 .wps 默认复用二进制 DOC 解析器。
+    const isOoxmlDocument =
+      buffer.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04])) &&
+      buffer.includes(Buffer.from('word/document.xml'));
+    return isOoxmlDocument ? 'docx' : 'doc';
+  })();
+  const format = formatFromExtension(formatExtension);
+  if (!format) {
+    throw new Error(`Unsupported anydoc file extension: .${normalizedExtension}`);
   }
 
   return {

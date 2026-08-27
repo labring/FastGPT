@@ -88,7 +88,14 @@ export const officeZipVariantExtensions: readonly string[] = [
 ];
 
 /** 旧版二进制 Office 文件共享 OLE/CFB 容器，需要扩大上传前缀检查窗口。 */
-export const legacyOfficeExtensions: readonly string[] = ['.doc', '.xls', '.ppt', '.pps', '.pot'];
+export const legacyOfficeExtensions: readonly string[] = [
+  '.doc',
+  '.wps',
+  '.xls',
+  '.ppt',
+  '.pps',
+  '.pot'
+];
 
 /**
  * 统一扩展名格式。上传策略中所有 extension 都必须小写并带 `.`，避免同一白名单
@@ -160,13 +167,16 @@ const MIME_EQUIVALENCE_GROUPS: ReadonlyArray<ReadonlySet<string>> = [
   new Set([
     'application/x-cfb',
     'application/msword',
+    'application/vnd.ms-works',
     'application/vnd.ms-excel',
     'application/vnd.ms-powerpoint'
   ]),
   // OOXML 的宏/幻灯片/二进制变体与基础格式共享容器及解析器。
   new Set([
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-word.document.macroenabled.12'
+    'application/vnd.ms-word.document.macroenabled.12',
+    // mime-types 按 .wps 后缀返回 ms-works；WPS 桌面端也可能实际写入 OOXML 文档。
+    'application/vnd.ms-works'
   ]),
   new Set([
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

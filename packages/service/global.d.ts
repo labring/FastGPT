@@ -16,7 +16,7 @@ declare global {
   var subPlans: SubPlanType | undefined;
   var licenseData: LicenseDataType | undefined;
 
-  var workerPoll: Record<WorkerNameEnum, WorkerPool>;
+  var workerPoll: Record<WorkerNameEnum, WorkerPool<any, any>>;
 
   var systemConfig: Record<string, unknown> | undefined;
 }

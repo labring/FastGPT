@@ -324,9 +324,6 @@ export const serviceEnv = createEnv({
     WECHAT_CHANNEL_CONCURRENCY: IntSchema.min(10).default(1000).meta({
       description: '微信渠道 poll worker 并发数'
     }),
-    PARSE_FILE_WORKERS: IntSchema.min(1).max(1000).default(5).meta({
-      description: '文件解析 worker 常驻线程数'
-    }),
     PARSE_FILE_WORKER_MEMORY_LIMIT_MB: IntSchema.min(128).default(512).meta({
       description: '单个文件解析 worker 的 V8 老生代内存上限（MB）'
     }),

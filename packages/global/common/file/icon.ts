@@ -4,7 +4,7 @@ export const getFileIcon = (name = '', defaultImg = 'file/fill/file') => {
     { suffix: 'ppt', src: 'file/fill/ppt' },
     { suffix: 'xlsx', src: 'file/fill/xlsx' },
     { suffix: 'csv', src: 'file/fill/csv' },
-    { suffix: '(doc|docs)', src: 'file/fill/doc' },
+    { suffix: '(doc|docs|wps)', src: 'file/fill/doc' },
     { suffix: 'txt', src: 'file/fill/txt' },
     { suffix: 'md', src: 'file/fill/markdown' },
     { suffix: 'html', src: 'file/fill/html' },

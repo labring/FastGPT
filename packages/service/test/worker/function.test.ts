@@ -12,12 +12,10 @@ const { mockRun, mockGetWorkerController, mockRunWorker, mockUploadImage2S3Bucke
       mockRunWorker: vi.fn(),
       mockUploadImage2S3Bucket: vi.fn(),
       mockEnv: {
-        PARSE_FILE_WORKERS: 5,
         HTML_TO_MARKDOWN_WORKERS: 10,
         TEXT_TO_CHUNKS_WORKERS: 10,
         PARSE_FILE_TIMEOUT_SECONDS: 300
       } as {
-        PARSE_FILE_WORKERS: number;
         HTML_TO_MARKDOWN_WORKERS: number;
         TEXT_TO_CHUNKS_WORKERS: number;
         PARSE_FILE_TIMEOUT_SECONDS: number;
@@ -161,7 +159,6 @@ describe('worker/function', () => {
   describe('readRawContentFromBuffer', () => {
     afterEach(() => {
       // 防止 env 跨用例污染
-      mockEnv.PARSE_FILE_WORKERS = 5;
       mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 300;
     });
 
@@ -184,9 +181,13 @@ describe('worker/function', () => {
       expect(mockGetWorkerController).toHaveBeenCalledTimes(1);
       const poolCfg = mockGetWorkerController.mock.calls[0][0];
       expect(poolCfg.name).toBe(WorkerNameEnum.readFile);
-      expect(poolCfg.maxReservedThreads).toBe(5); // 默认值
+      expect(poolCfg.maxReservedThreads).toBeGreaterThanOrEqual(1);
+      expect(poolCfg.maxReservedThreads).toBeLessThanOrEqual(50);
       expect(poolCfg.taskTimeoutMs).toBe(5 * 60 * 1000);
       expect(poolCfg.maxTasksPerWorker).toBe(100);
+      expect(poolCfg.resourcePolicy.queueTimeoutMs).toBe(30 * 60 * 1000);
+      expect(poolCfg.idleWorkerTimeoutMs).toBe(60 * 1000);
+      expect(poolCfg.minIdleWorkers).toBe(1);
 
       // run 入参
       expect(mockRun).toHaveBeenCalledTimes(1);
@@ -196,6 +197,7 @@ describe('worker/function', () => {
       expect(runArg.bufferSize).toBe(original.length);
       expect(runArg.buffer).toBe(sourceArrayBuffer);
       expect(runArg.sharedBuffer).toBeUndefined();
+      expect(poolCfg.resourcePolicy.getTaskResourceBytes(runArg)).toBe(32 * 1024 * 1024 + 17);
       expect(mockRun.mock.calls[0][1]).toEqual([sourceArrayBuffer]);
     });
 
@@ -249,20 +251,6 @@ describe('worker/function', () => {
       const runArg = mockRun.mock.calls[0][0];
       const view = new Uint8Array(runArg.buffer ?? runArg.sharedBuffer);
       expect(Array.from(view)).toEqual(Array.from(bytes));
-    });
-
-    it('PARSE_FILE_WORKERS 自定义值生效', async () => {
-      mockEnv.PARSE_FILE_WORKERS = 8;
-      mockRun.mockResolvedValueOnce({ rawText: '' });
-
-      await readRawContentFromBuffer({
-        extension: 'txt',
-        encoding: 'utf-8',
-        buffer: Buffer.from('x')
-      });
-
-      const poolCfg = mockGetWorkerController.mock.calls[0][0];
-      expect(poolCfg.maxReservedThreads).toBe(8);
     });
 
     it('PARSE_FILE_TIMEOUT_SECONDS 自定义值生效（秒 -> 毫秒）', async () => {
@@ -344,12 +332,10 @@ describe('worker/function', () => {
       ).rejects.toThrow('Unsupported worker uploadFile mime type: text/plain');
     });
 
-    it('并发文件解析直接交给 readFile worker pool，并发数由 PARSE_FILE_WORKERS 决定', async () => {
+    it('并发文件解析直接交给资源感知 readFile worker pool', async () => {
       let activeCount = 0;
       let maxActiveCount = 0;
       const callOrder: string[] = [];
-      mockEnv.PARSE_FILE_WORKERS = 3;
-
       mockRun.mockImplementation(
         async (props: {
           extension: string;

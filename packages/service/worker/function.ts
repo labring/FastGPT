@@ -7,6 +7,12 @@ import { uploadImage2S3Bucket } from '../common/s3/utils';
 import { createOpaqueS3Filename } from '../common/s3/opaqueKey';
 import { normalizeMimeType, resolveMimeExtension, resolveMimeType } from '../common/s3/utils/mime';
 import path from 'node:path';
+import {
+  estimateFileParseMemoryBytes,
+  fileParseResourceConstants,
+  getFileParseMaxWorkers,
+  getFileParseMemoryState
+} from './fileParseResource';
 
 export const text2Chunks = async (props: SplitProps) => {
   // Test env, not run worker
@@ -37,11 +43,23 @@ type ReadFileWorkerProps = {
 const getReadFileWorker = () =>
   getWorkerController<ReadFileWorkerProps, ReadFileResponse>({
     name: WorkerNameEnum.readFile,
-    maxReservedThreads: serviceEnv.PARSE_FILE_WORKERS,
+    maxReservedThreads: getFileParseMaxWorkers(),
     // 单任务超时：默认 600s（10min），由 PARSE_FILE_TIMEOUT_SECONDS（秒）配置
     taskTimeoutMs: serviceEnv.PARSE_FILE_TIMEOUT_SECONDS * 1000,
     // mammoth/xlsx/pdf-parse 历史上有 module 级缓存与潜在内存泄漏，定期回收 worker
-    maxTasksPerWorker: 100
+    maxTasksPerWorker: 100,
+    resourcePolicy: {
+      getTaskResourceBytes: ({ extension, bufferSize }) =>
+        estimateFileParseMemoryBytes({ extension, fileSizeBytes: bufferSize }),
+      getAvailableResourceBytes: () => getFileParseMemoryState().currentlySchedulableMemoryBytes,
+      getMaximumTaskResourceBytes: () => getFileParseMemoryState().maximumSafeTaskMemoryBytes,
+      getResourceDetails: getFileParseMemoryState,
+      queueTimeoutMs: fileParseResourceConstants.queueTimeoutMs
+    },
+    // 扩展名集合由上传白名单约束，可作为结构化日志中稳定、低基数的任务类型。
+    getTaskType: ({ extension }) => extension.replace(/^\./, '').toLowerCase() || 'unknown',
+    idleWorkerTimeoutMs: fileParseResourceConstants.idleWorkerTimeoutMs,
+    minIdleWorkers: fileParseResourceConstants.minIdleWorkers
   });
 
 export const readRawContentFromBuffer = (props: {

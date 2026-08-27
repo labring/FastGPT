@@ -144,6 +144,7 @@ describe('preset extension lists', () => {
       '.html',
       '.pptx',
       '.doc',
+      '.wps',
       '.docm',
       '.ppt',
       '.pps',

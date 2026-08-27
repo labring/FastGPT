@@ -20,7 +20,17 @@ describe('document file extensions', () => {
 
   it('包含旧版 Office、OpenDocument、RTF 和 EPUB', () => {
     expect(anydocDocumentFileExtensions).toEqual(
-      expect.arrayContaining(['.doc', '.xls', '.ppt', '.odt', '.ods', '.odp', '.rtf', '.epub'])
+      expect.arrayContaining([
+        '.doc',
+        '.wps',
+        '.xls',
+        '.ppt',
+        '.odt',
+        '.ods',
+        '.odp',
+        '.rtf',
+        '.epub'
+      ])
     );
   });
 });

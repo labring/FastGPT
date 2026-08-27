@@ -209,6 +209,11 @@ export const createAnydocFixture = async (extension: string): Promise<AnydocFixt
         buffer: readBase64Fixture('legacy-doc.base64'),
         expected: 'こんにちは世界'
       };
+    case 'wps':
+      return {
+        buffer: readBase64Fixture('wps-writer-doc.base64'),
+        expected: 'FastGPT WPS Writer parser fixture'
+      };
     case 'docm':
       return { buffer: await createDocmFixture(), expected: 'AnyDoc DOCM fixture' };
     case 'ppt':
