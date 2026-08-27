@@ -3,6 +3,18 @@ import { type AppToolRuntimeType } from '@fastgpt/global/core/app/tool/type';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 
+/**
+ * 计算代码型系统工具的单次费用。
+ * 调用费与密钥来源无关；只有实际使用平台系统密钥时，才额外收取系统密钥费。
+ */
+export const computedSystemToolUsage = ({
+  tool,
+  useSystemKey
+}: {
+  tool: Pick<AppToolRuntimeType, 'currentCost' | 'systemKeyCost'>;
+  useSystemKey: boolean;
+}) => (tool.currentCost ?? 0) + (useSystemKey ? (tool.systemKeyCost ?? 0) : 0);
+
 /*
   Tool points calculation:
   1. 系统插件/商业版插件：

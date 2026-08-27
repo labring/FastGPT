@@ -201,7 +201,18 @@ describe('agent sub app dispatchPlugin', () => {
     );
   });
 
-  it('runs system workflow tools without authenticating the associated app', async () => {
+  it.each([
+    {
+      hasTokenFee: true,
+      expectedPoints: 13,
+      title: 'call cost and child usage'
+    },
+    {
+      hasTokenFee: false,
+      expectedPoints: 10,
+      title: 'call cost only'
+    }
+  ])('charges system workflow $title', async ({ hasTokenFee, expectedPoints }) => {
     mocks.authAppByTmbId.mockRejectedValue(new Error('unAuthApp'));
     mocks.getSystemToolWorkflowRuntime.mockResolvedValue({
       id: 'commercial-system-workflow',
@@ -209,13 +220,14 @@ describe('agent sub app dispatchPlugin', () => {
       nodes: [],
       edges: [],
       currentCost: 10,
-      hasTokenFee: true,
+      systemKeyCost: 100,
+      hasTokenFee,
       chatConfig: {
         variables: []
       }
     });
     mocks.runWorkflow.mockResolvedValueOnce({
-      flowUsages: [{ moduleName: 'Child model', totalPoints: 3 }],
+      flowUsages: [{ moduleName: 'Child token/tool usage', totalPoints: 3 }],
       runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [
         {
           id: 'pluginOutputResponse',
@@ -268,7 +280,7 @@ describe('agent sub app dispatchPlugin', () => {
     expect(result.usages).toEqual([
       {
         moduleName: 'System Workflow',
-        totalPoints: 13
+        totalPoints: expectedPoints
       }
     ]);
   });
