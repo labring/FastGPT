@@ -152,6 +152,7 @@ const DatasetSchema = new Schema({
 });
 
 defineIndex(DatasetSchema, { key: { teamId: 1 } });
+defineIndex(DatasetSchema, { key: { teamId: 1, parentId: 1 } });
 defineIndex(DatasetSchema, { key: { type: 1 } }); // Admin count
 defineIndex(DatasetSchema, { key: { deleteTime: 1 } }); // 添加软删除字段索引
 

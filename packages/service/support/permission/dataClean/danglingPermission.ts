@@ -11,7 +11,7 @@ import { MongoApp } from '../../../core/app/schema';
 import { MongoDataset } from '../../../core/dataset/schema';
 import { MongoMemberGroupModel } from '../memberGroup/memberGroupSchema';
 import { MongoOrgModel } from '../org/orgSchema';
-import { MongoResourcePermission } from '../schema';
+import { resourcePermissionRepo } from '../repository/resourcePermissionRepo';
 import { MongoTeamMember } from '../../user/team/teamMemberSchema';
 import { MongoTeam } from '../../user/team/teamSchema';
 
@@ -302,7 +302,7 @@ export async function cleanupDanglingResourcePermissions(
         invalidPermissions.map(({ permission }) => permission)
       );
       if (revalidatedPermissions.length > 0) {
-        const result = await MongoResourcePermission.collection.deleteMany({
+        const result = await resourcePermissionRepo.deleteByFilter({
           $or: revalidatedPermissions.map(({ permission }) =>
             createPermissionSnapshotFilter(permission)
           )
@@ -313,21 +313,20 @@ export async function cleanupDanglingResourcePermissions(
   };
 
   const query = options.cursor ? { _id: { $gt: new Types.ObjectId(options.cursor) } } : {};
-  const permissionCursor = MongoResourcePermission.collection
-    .find<PermissionReferenceDoc>(query, {
-      projection: {
-        _id: 1,
-        teamId: 1,
-        tmbId: 1,
-        groupId: 1,
-        orgId: 1,
-        resourceType: 1,
-        resourceId: 1
-      }
-    })
-    .sort({ _id: 1 })
-    .limit(options.maxScan)
-    .batchSize(options.batchSize);
+  const permissionCursor = resourcePermissionRepo.findCursor({
+    query,
+    projection: {
+      _id: 1,
+      teamId: 1,
+      tmbId: 1,
+      groupId: 1,
+      orgId: 1,
+      resourceType: 1,
+      resourceId: 1
+    },
+    limit: options.maxScan,
+    batchSize: options.batchSize
+  }) as AsyncIterable<PermissionReferenceDoc>;
   let batch: PermissionReferenceDoc[] = [];
 
   for await (const permission of permissionCursor) {
@@ -342,10 +341,7 @@ export async function cleanupDanglingResourcePermissions(
 
   const hasMore = lastScannedId
     ? Boolean(
-        await MongoResourcePermission.collection.findOne(
-          { _id: { $gt: lastScannedId } },
-          { projection: { _id: 1 } }
-        )
+        await resourcePermissionRepo.findOneByFilter({ _id: { $gt: lastScannedId } }, { _id: 1 })
       )
     : false;
 

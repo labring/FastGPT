@@ -1,6 +1,9 @@
 import type { ClientSession } from '@fastgpt/service/common/mongo';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import {
+  MongoTransactionConflictError,
+  mongoSessionRun
+} from '@fastgpt/service/common/mongo/sessionRun';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
@@ -66,5 +69,26 @@ describe('mongoSessionRun', () => {
     await expect(mongoSessionRun(handler)).resolves.toBe('completed');
     expect(handler).toHaveBeenCalledTimes(1);
     expect(session.commitTransaction).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries a transaction conflict with a fresh session', async () => {
+    const firstSession = createSession();
+    const secondSession = createSession();
+    firstSession.withTransaction = vi.fn(async (callback) => callback());
+    secondSession.withTransaction = vi.fn(async (callback) => callback());
+    const handler = vi.fn(async () => {
+      if (handler.mock.calls.length === 1) {
+        throw new MongoTransactionConflictError(new Error('duplicate key'));
+      }
+      return 'completed';
+    });
+    vi.spyOn(connectionMongo, 'startSession')
+      .mockResolvedValueOnce(firstSession)
+      .mockResolvedValueOnce(secondSession);
+
+    await expect(mongoSessionRun(handler)).resolves.toBe('completed');
+    expect(handler).toHaveBeenCalledTimes(2);
+    expect(firstSession.endSession).toHaveBeenCalledTimes(1);
+    expect(secondSession.endSession).toHaveBeenCalledTimes(1);
   });
 });

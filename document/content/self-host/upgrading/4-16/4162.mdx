@@ -3,7 +3,34 @@ title: 'V4.16.2'
 description: 'FastGPT V4.16.2 更新说明'
 upgradeTags:
   - 进行中
+  - 升级脚本
 ---
+
+## 📦 升级指南
+
+### 1. 迁移资源权限数据
+
+本版本将 App、Dataset 和 Agent Skill 的资源权限补齐为完整有效 ACL。升级后请先执行 dry-run；dry-run 不会写入权限数据，默认只处理所有团队，也可以通过 `teamId` 指定单个团队。
+
+```bash
+curl -X POST 'https://你的域名/api/admin/4162/initPermission' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":true,"batchSize":100}'
+```
+
+确认返回的 `errors` 为空或已完成异常资源处理后，执行正式迁移：
+
+```bash
+curl -X POST 'https://你的域名/api/admin/4162/initPermission' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":false,"batchSize":100}'
+```
+
+`batchSize` 可设置为 `1` 到 `1000`，默认值为 `100`，用于限制每批读取、计算和写入的目标资源数量；父级资源链会按需读取。返回结果中的 `resourceCount` 是扫描资源数，`updatedResourceCount` 是需要写入的资源数，`skippedResourceCount` 是因父级缺失或树结构异常而跳过的目标资源数，`errors` 包含异常详情。迁移保留资源自身的 owner 和子级权限，继承开关缺失的历史资源按启用继承处理。
+
+正式迁移可安全重复执行；完成后再次执行 dry-run，确认 `updatedResourceCount` 和 `errors` 均为 `0`。存在 `errors` 时应先根据资源类型、资源 ID 和父级 ID 修复数据，再重试正式迁移。
 
 ## 🚀 新增内容
 

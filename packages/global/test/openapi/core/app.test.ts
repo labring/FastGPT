@@ -113,6 +113,22 @@ describe('App OpenAPI contracts', () => {
       appId: objectId,
       collaborators: [{ tmbId: objectId, permission: 4 }]
     });
+    expect(() =>
+      UpdateAppCollaboratorBodySchema.parse({
+        appId: objectId,
+        collaborators: [
+          { tmbId: objectId, permission: 4 },
+          { tmbId: objectId, permission: 2 }
+        ]
+      })
+    ).toThrow();
+    const collaborators = Array.from({ length: 501 }, (_, index) => ({
+      tmbId: `${index.toString(16).padStart(24, '0')}`,
+      permission: 4
+    }));
+    expect(
+      UpdateAppCollaboratorBodySchema.parse({ appId: objectId, collaborators }).collaborators
+    ).toHaveLength(501);
     expect(GetTemplateTypesQuerySchema.parse({})).toEqual({});
     expect(
       GetTemplateTypesResponseSchema.parse([
