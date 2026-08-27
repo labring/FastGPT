@@ -12,6 +12,21 @@ const isLegacyTag = (tag: unknown): tag is string => typeof tag === 'string';
 export default NextAPI(async function handler(req) {
   await authCert({ req, authRoot: true });
 
+  // 清理 v2 表重复行，避免 unique 索引构建失败；保留 _id 最早的一条（ObjectId 含创建时间，排序即时间序）
+  const dupGroups = await MongoDatasetCollectionTagsV2.aggregate([
+    {
+      $group: {
+        _id: { teamId: '$teamId', datasetId: '$datasetId', tag: '$tag' },
+        ids: { $push: '$_id' }
+      }
+    },
+    { $match: { $expr: { $gt: [{ $size: '$ids' }, 1] } } }
+  ]);
+  for (const group of dupGroups) {
+    const [, ...dups] = [...group.ids].sort();
+    await MongoDatasetCollectionTagsV2.deleteMany({ _id: { $in: dups } });
+  }
+
   const datasetIds = (await MongoDatasetCollectionTags.distinct('datasetId')) as string[];
   logger.info(`[TagMigration] Starting tag migration for ${datasetIds.length} datasets`);
   let migratedDatasets = 0;
@@ -30,18 +45,42 @@ export default NextAPI(async function handler(req) {
     const firstLegacyTag = legacyTags[0];
     if (!firstLegacyTag) continue;
 
+    // default_tag 承载记录按 fromMigration 定位；存量按名称创建的记录回填标记并确保 tagType=array
     let defaultTag = await MongoDatasetCollectionTagsV2.findOne({
       datasetId,
-      tag: DEFAULT_TAG
+      fromMigration: true
     }).lean();
     if (!defaultTag) {
-      const createdTag = await MongoDatasetCollectionTagsV2.create({
-        teamId: firstLegacyTag.teamId,
+      const legacyDefaultTag = await MongoDatasetCollectionTagsV2.findOne({
         datasetId,
-        tag: DEFAULT_TAG,
-        tagType: 'array'
-      });
-      defaultTag = createdTag.toObject();
+        tag: DEFAULT_TAG
+      }).lean();
+      if (legacyDefaultTag) {
+        await MongoDatasetCollectionTagsV2.updateOne(
+          { _id: legacyDefaultTag._id },
+          { $set: { fromMigration: true, tagType: 'array' } }
+        );
+        defaultTag = { ...legacyDefaultTag, fromMigration: true, tagType: 'array' };
+      } else {
+        try {
+          const createdTag = await MongoDatasetCollectionTagsV2.create({
+            teamId: firstLegacyTag.teamId,
+            datasetId,
+            tag: DEFAULT_TAG,
+            tagType: 'array',
+            fromMigration: true
+          });
+          defaultTag = createdTag.toObject();
+        } catch (error: any) {
+          // 并发创建撞 unique 索引 → 复用已存在记录
+          if (error?.code !== 11000) throw error;
+          defaultTag = await MongoDatasetCollectionTagsV2.findOne({
+            datasetId,
+            fromMigration: true
+          }).lean();
+          if (!defaultTag) throw error;
+        }
+      }
     }
     const defaultTagId = String(defaultTag._id);
 

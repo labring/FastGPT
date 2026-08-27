@@ -20,6 +20,7 @@ import {
   filterCollectionByKeyValueTags,
   filterCollectionByMetadata
 } from '../../../../core/dataset/search/defaultRecall/collectionFilter';
+import { DEFAULT_TAG } from '@fastgpt/global/core/dataset/type';
 
 /**
  * mock MongoDatasetCollection.find 的链式返回：同时支持 `.hint(...).lean()` 与 `.lean()`
@@ -240,6 +241,49 @@ describe('filterCollectionByKeyValueTags', () => {
     });
     expect(notEmptyResult).toEqual(['col-1']);
   });
+
+  it('resolves default_tag condition via fromMigration marker, even when renamed', async () => {
+    // 迁移承载记录已改名（tag 不再是 default_tag），fromMigration 标记仍在 → 旧条件仍命中
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          _id: 'migrated-id',
+          datasetId: 'ds-1',
+          tag: '历史标签',
+          tagType: 'array',
+          fromMigration: true
+        }
+      ])
+    });
+    mockMongoDatasetCollectionFind.mockReturnValue(
+      mockFind([{ _id: 'col-1', tags: [{ tagId: 'migrated-id', value: ['Tag1', 'Tag2'] }] }])
+    );
+
+    const result = await filterCollectionByKeyValueTags({
+      $and: [{ [DEFAULT_TAG]: { $contains: 'Tag1' } }],
+      $or: [],
+      teamId: 'team-1',
+      datasetIds: ['ds-1']
+    });
+
+    expect(result).toEqual(['col-1']);
+  });
+
+  it('returns empty when no fromMigration record exists for default_tag condition', async () => {
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([])
+    });
+    mockMongoDatasetCollectionFind.mockReturnValue(mockFind([]));
+
+    const result = await filterCollectionByKeyValueTags({
+      $and: [{ [DEFAULT_TAG]: { $contains: 'Tag1' } }],
+      $or: [],
+      teamId: 'team-1',
+      datasetIds: ['ds-1']
+    });
+
+    expect(result).toEqual([]);
+  });
 });
 
 describe('filterCollectionByMetadata', () => {
@@ -289,6 +333,32 @@ describe('filterCollectionByMetadata', () => {
     });
     mockMongoDatasetCollectionFind.mockReturnValue(
       mockFind([{ _id: 'col-1', tags: [{ tagId: 'default-tag-1', value: ['Tag1'] }] }])
+    );
+
+    const result = await filterCollectionByMetadata({
+      teamId: 'team-1',
+      datasetIds: ['ds-1'],
+      collectionFilterMatch: JSON.stringify({ tags: { $and: ['Tag1'] } })
+    });
+
+    expect(result).toEqual(['col-1']);
+  });
+
+  it('matches legacy string filter for renamed default_tag via fromMigration', async () => {
+    // 迁移承载记录被改名后，旧格式字符串过滤仍按 fromMigration 定位命中
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          _id: 'migrated-id',
+          datasetId: 'ds-1',
+          tag: '历史标签',
+          tagType: 'array',
+          fromMigration: true
+        }
+      ])
+    });
+    mockMongoDatasetCollectionFind.mockReturnValue(
+      mockFind([{ _id: 'col-1', tags: [{ tagId: 'migrated-id', value: ['Tag1'] }] }])
     );
 
     const result = await filterCollectionByMetadata({
@@ -353,6 +423,25 @@ describe('checkValue', () => {
       expect(checkValue('$regex', '[invalid', 'foobar', 'string')).toBe(false);
     });
 
+    it('$regex rejects catastrophic backtracking patterns', () => {
+      // 嵌套量词族由 safe-regex 检出，带分支量词组（(a|aa)+）由首字符重叠兜底
+      expect(checkValue('$regex', '(a+)+$', 'aaaaab', 'string')).toBe(false);
+      expect(checkValue('$regex', '(a*)*$', 'aaaaab', 'string')).toBe(false);
+      expect(checkValue('$regex', '(a|aa)+$', 'aaaaab', 'string')).toBe(false);
+    });
+
+    it('$regex accepts benign patterns', () => {
+      expect(checkValue('$regex', 'foo', 'foobar', 'string')).toBe(true);
+      expect(checkValue('$regex', '^foo', 'foobar', 'string')).toBe(true);
+      expect(checkValue('$regex', '\\d+', 'abc123', 'string')).toBe(true);
+      expect(checkValue('$regex', '(ab)+', 'ababab', 'string')).toBe(true);
+    });
+
+    it('$regex returns false for overlong pattern or stored value', () => {
+      expect(checkValue('$regex', 'a'.repeat(65), 'aaaaa', 'string')).toBe(false);
+      expect(checkValue('$regex', 'a', 'x'.repeat(257), 'string')).toBe(false);
+    });
+
     it('returns false when stored value is null/undefined/empty', () => {
       expect(checkValue('$eq', 'x', null, 'string')).toBe(false);
       expect(checkValue('$contains', 'x', undefined, 'string')).toBe(false);
@@ -391,6 +480,43 @@ describe('checkValue', () => {
     it('returns false for NaN stored or target', () => {
       expect(checkValue('$eq', 1704067200000, NaN, 'datetime')).toBe(false);
       expect(checkValue('$eq', NaN, 1704067200000, 'datetime')).toBe(false);
+    });
+  });
+
+  describe('array type', () => {
+    it('$is/$isNot compare arrays as sets (order-insensitive)', () => {
+      expect(checkValue('$is', ['a', 'b'], ['b', 'a'], 'array')).toBe(true);
+      expect(checkValue('$is', ['a', 'b'], ['a', 'c'], 'array')).toBe(false);
+      expect(checkValue('$isNot', ['a', 'b'], ['a', 'c'], 'array')).toBe(true);
+      expect(checkValue('$isNot', ['a', 'b'], ['b', 'a'], 'array')).toBe(false);
+    });
+
+    it('$contains/$notContains check single-string membership', () => {
+      expect(checkValue('$contains', 'a', ['a', 'b'], 'array')).toBe(true);
+      expect(checkValue('$contains', 'c', ['a', 'b'], 'array')).toBe(false);
+      expect(checkValue('$notContains', 'c', ['a', 'b'], 'array')).toBe(true);
+      expect(checkValue('$notContains', 'a', ['a', 'b'], 'array')).toBe(false);
+    });
+
+    it('$in/$notIn check subset', () => {
+      expect(checkValue('$in', ['a', 'b', 'c'], ['a', 'b'], 'array')).toBe(true);
+      expect(checkValue('$in', ['a', 'c'], ['a', 'b'], 'array')).toBe(false);
+      expect(checkValue('$notIn', ['a', 'c'], ['a', 'b'], 'array')).toBe(true);
+      expect(checkValue('$notIn', ['a', 'b', 'c'], ['a', 'b'], 'array')).toBe(false);
+    });
+
+    it('$empty/$notEmpty for arrays', () => {
+      expect(checkValue('$empty', true, [], 'array')).toBe(true);
+      expect(checkValue('$empty', true, undefined, 'array')).toBe(true);
+      expect(checkValue('$empty', true, ['a'], 'array')).toBe(false);
+      expect(checkValue('$notEmpty', true, ['a'], 'array')).toBe(true);
+      expect(checkValue('$notEmpty', true, [], 'array')).toBe(false);
+    });
+
+    it('returns false when stored value is not an array or target is not an array', () => {
+      expect(checkValue('$is', ['a'], 'not-array', 'array')).toBe(false);
+      expect(checkValue('$contains', 'a', 'not-array', 'array')).toBe(false);
+      expect(checkValue('$in', 'a', ['a'], 'array')).toBe(false);
     });
   });
 

@@ -118,12 +118,81 @@ export const validateDatasetTagValue = ({
   return normalizeDatasetTagValue({ tagType: type, value }).error;
 };
 
+const isSameTagValue = (a: string | number | string[], b: string | number | string[]): boolean => {
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false;
+    const bSet = new Set(b);
+    return a.every((item) => bSet.has(item));
+  }
+  return a === b;
+};
+
+/**
+ * 同一 tagId 去重：值相同去重，值冲突拒绝整个批量操作。
+ * 所有标签值写入路径（Collection 创建/更新、Pro setCollectionTags/batchSetCollectionTags）复用此逻辑
+ */
+export const deduplicateTagValues = async (
+  tags: CollectionTagValueType[]
+): Promise<CollectionTagValueType[]> => {
+  const seen = new Map<string, string | number | string[]>();
+  const deduped: CollectionTagValueType[] = [];
+  for (const t of tags) {
+    if (seen.has(t.tagId)) {
+      if (!isSameTagValue(seen.get(t.tagId)!, t.value)) {
+        return Promise.reject(DatasetErrEnum.tagValueInvalid);
+      }
+    } else {
+      seen.set(t.tagId, t.value);
+      deduped.push(t);
+    }
+  }
+  return deduped;
+};
+
+/**
+ * 查找或创建 default_tag 承载记录：按 fromMigration 定位（不依赖标签名，改名后仍可复用），
+ * 兼容存量按 DEFAULT_TAG 名称创建的记录；并发创建撞唯一索引时复用已存在记录
+ */
+async function findOrCreateDefaultTag({
+  datasetId,
+  teamId,
+  session
+}: {
+  datasetId: string;
+  teamId: string;
+  session?: ClientSession;
+}) {
+  const findDefaultTag = () =>
+    MongoDatasetCollectionTagsV2.findOne(
+      { teamId, datasetId, $or: [{ fromMigration: true }, { tag: DEFAULT_TAG }] },
+      undefined,
+      { session }
+    ).lean();
+
+  const existing = await findDefaultTag();
+  if (existing) return existing;
+
+  try {
+    const [created] = await MongoDatasetCollectionTagsV2.create(
+      [{ teamId, datasetId, tag: DEFAULT_TAG, tagType: 'array', fromMigration: true }],
+      { session }
+    );
+    return created.toObject ? created.toObject() : created;
+  } catch (error: any) {
+    if (error?.code !== 11000) throw error;
+    const raced = await findDefaultTag();
+    if (raced) return raced;
+    throw error;
+  }
+}
+
 /**
  * 统一解析 collection 创建时的 tags 入参：
  * - string 元素（旧格式标签名）→ 归并到 v2 表 default_tag array 标签
  * - {tag, value} 元素 → 查找 v2 表标签并校验值类型，返回 {tagId, value}
  *
- * 返回值可直接写入 collection.tags 字段存储
+ * 返回值可直接写入 collection.tags 字段存储。
+ * 同一 tagId 多条输入：值相同去重，值冲突拒绝整个操作。
  */
 export const createOrGetCollectionTags = async ({
   tags,
@@ -144,18 +213,26 @@ export const createOrGetCollectionTags = async ({
     (item): item is { tag: string; value: string | number | string[] } => typeof item !== 'string'
   );
 
-  const objectTagNames = objectInputs.map((item) => item.tag);
-  const objectTags = objectTagNames.length
+  const trimmedStringNames = stringNames.map((name) => name.trim());
+  if (trimmedStringNames.some((name) => !name)) return Promise.reject(DatasetErrEnum.tagNameEmpty);
+
+  const defaultObjectInputs = objectInputs.filter((item) => item.tag.trim() === DEFAULT_TAG);
+  const regularObjectInputs = objectInputs.filter((item) => item.tag.trim() !== DEFAULT_TAG);
+
+  const regularTagNames = regularObjectInputs.map((item) => item.tag.trim());
+  if (regularTagNames.some((name) => !name)) return Promise.reject(DatasetErrEnum.tagNameEmpty);
+
+  const regularTags = regularTagNames.length
     ? await MongoDatasetCollectionTagsV2.find(
-        { teamId, datasetId, tag: { $in: objectTagNames } },
+        { teamId, datasetId, tag: { $in: regularTagNames } },
         undefined,
         { session }
       ).lean()
     : [];
-  const objectTagMap = new Map(objectTags.map((tag) => [tag.tag, tag]));
+  const regularTagMap = new Map(regularTags.map((tag) => [tag.tag, tag]));
 
-  const normalizedObjectInputs = objectInputs.map((input) => {
-    const tagDoc = objectTagMap.get(input.tag);
+  const normalizedRegularInputs = regularObjectInputs.map((input) => {
+    const tagDoc = regularTagMap.get(input.tag.trim());
     if (!tagDoc) {
       return { input, value: input.value, error: DatasetErrEnum.tagNotExist };
     }
@@ -166,42 +243,34 @@ export const createOrGetCollectionTags = async ({
         ? normalized.error
         : validateDatasetTagValue({ tagType, value: input.value });
     return {
-      input,
+      tagId: String(tagDoc._id),
       value: normalized.value,
       error: validationError
     };
   });
 
-  for (const { error } of normalizedObjectInputs) {
+  for (const { error } of normalizedRegularInputs) {
     if (error) return Promise.reject(error);
+  }
+
+  // default_tag 承载记录：string 名与 tag=default_tag 的对象值合并为单条 array 记录
+  const defaultValues: string[] = [...new Set(trimmedStringNames)];
+  for (const { value } of defaultObjectInputs) {
+    const error = validateDatasetTagValue({ tagType: 'array', value });
+    if (error) return Promise.reject(error);
+    if (Array.isArray(value)) defaultValues.push(...value);
   }
 
   const result: CollectionTagValueType[] = [];
 
-  if (stringNames.length > 0) {
-    let defaultTag = await MongoDatasetCollectionTagsV2.findOne(
-      { teamId, datasetId, tag: DEFAULT_TAG },
-      undefined,
-      { session }
-    ).lean();
-    if (!defaultTag) {
-      const [created] = await MongoDatasetCollectionTagsV2.create(
-        [{ teamId, datasetId, tag: DEFAULT_TAG, tagType: 'array' }],
-        { session }
-      );
-      defaultTag = created.toObject ? created.toObject() : created;
-    }
-    result.push({ tagId: String(defaultTag._id), value: stringNames });
+  if (defaultValues.length > 0) {
+    const defaultTag = await findOrCreateDefaultTag({ datasetId, teamId, session });
+    result.push({ tagId: String(defaultTag._id), value: [...new Set(defaultValues)] });
   }
 
-  result.push(
-    ...normalizedObjectInputs.map(({ input, value }) => ({
-      tagId: String(objectTagMap.get(input.tag)!._id),
-      value
-    }))
-  );
+  result.push(...normalizedRegularInputs.map(({ tagId, value }) => ({ tagId: tagId!, value })));
 
-  return result;
+  return deduplicateTagValues(result);
 };
 
 /**

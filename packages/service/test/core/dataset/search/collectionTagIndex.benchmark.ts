@@ -3,6 +3,8 @@ import { getRootUser } from '@test/datas/users';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { MongoDatasetCollectionTagsV2 } from '@fastgpt/service/core/dataset/tag/schemaV2';
+import { filterCollectionByKeyValueTags } from '@fastgpt/service/core/dataset/search/defaultRecall/collectionFilter';
 import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 /**
@@ -428,5 +430,56 @@ describe('dataset_collections 标签索引性能对比（真实 MongoDB）', () 
     } finally {
       await ensureTagIndexes();
     }
+  }, 300_000);
+
+  it('端到端：filterCollectionByKeyValueTags 应用层比较成本（真实数据）', async () => {
+    const root = await getRootUser();
+    const { datasetId, tagIds } = await seedTagIndexData({ root, format: 'new' });
+
+    // 同步真实 v2 标签表，供 filter 按标签名解析 tagId（_id 与集合 tags.tagId 一致）
+    await MongoDatasetCollectionTagsV2.collection.createIndex(
+      { teamId: 1, datasetId: 1, tag: 1 },
+      { unique: true }
+    );
+    await MongoDatasetCollectionTagsV2.insertMany(
+      tagIds.map((id, i) => ({
+        teamId: root.teamId,
+        datasetId,
+        tag: `tag-${i}`,
+        tagType: 'string',
+        _id: new Types.ObjectId(id)
+      }))
+    );
+
+    // 生产状态：两个标签索引并存，filter 内部 hint 强制走 tags.tagId 索引
+    await ensureTagIndexes();
+
+    const filter = () =>
+      filterCollectionByKeyValueTags({
+        $and: [{ 'tag-0': { $eq: 'A' } }, { 'tag-1': { $eq: 'B' } }],
+        $or: [],
+        teamId: root.teamId,
+        datasetIds: [datasetId]
+      });
+
+    // 命中 5% 的 collection（index % 20 === 0）同时携带 tagIds[0]('A') 与 tagIds[1]('B')
+    const hit = await filter();
+    expect(hit?.length).toBe(Math.floor(COLLECTION_COUNT / HIT_EVERY));
+    console.log(`  [端到端] 命中集合数: ${hit?.length}`);
+
+    const full = await measure('端到端 filterCollectionByKeyValueTags', filter);
+
+    // 对照纯 tags.tagId 索引查询，量化应用层 checkValue 比较增量
+    const query = {
+      teamId: root.teamId,
+      datasetId,
+      'tags.tagId': { $all: [tagIds[0], tagIds[1]] }
+    };
+    const raw = await measure('纯 tags.tagId 索引查询', () =>
+      MongoDatasetCollection.find(query, '_id').hint(TAGS_TAGID_INDEX_KEY).lean()
+    );
+    console.log(
+      `  [端到端] 应用层比较增量: ${(full.median - raw.median).toFixed(2)}ms（filter 中位 ${full.median.toFixed(2)}ms - 索引查询中位 ${raw.median.toFixed(2)}ms）`
+    );
   }, 300_000);
 });

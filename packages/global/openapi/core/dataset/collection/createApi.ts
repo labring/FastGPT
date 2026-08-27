@@ -27,7 +27,10 @@ export const ApiCreateCollectionBaseSchema = DatasetCollectionStoreDataSchema.ex
       ])
     )
     .optional()
-    .meta({ description: '标签列表' })
+    .meta({
+      description:
+        '标签列表。字符串元素为旧格式标签名（按名称归并到 default_tag array 标签）；对象元素为 { tag: 标签名, value: 标签值 }，按标签名解析'
+    })
 });
 export type ApiCreateDatasetCollectionParams = z.infer<typeof ApiCreateCollectionBaseSchema>;
 
@@ -66,7 +69,10 @@ export const CreateCollectionBodySchema = z.object({
       ])
     )
     .optional()
-    .meta({ description: '标签列表' })
+    .meta({
+      description:
+        '标签列表。字符串元素为旧格式标签名（按名称归并到 default_tag array 标签）；对象元素为 { tag: 标签名, value: 标签值 }，按标签名解析'
+    })
 });
 export type CreateCollectionBodyType = z.infer<typeof CreateCollectionBodySchema>;
 
@@ -179,7 +185,10 @@ export const CreateImageCollectionDataSchema = z.object({
       ])
     )
     .optional()
-    .meta({ description: '标签列表' })
+    .meta({
+      description:
+        '标签列表。字符串元素为旧格式标签名（按名称归并到 default_tag array 标签）；对象元素为 { tag: 标签名, value: 标签值 }，按标签名解析'
+    })
 });
 export type CreateImageCollectionDataType = z.infer<typeof CreateImageCollectionDataSchema>;
 // handler 内 parse 用
@@ -213,7 +222,10 @@ export const CreateBackupCollectionFormSchema = z.object({
       ])
     )
     .optional()
-    .meta({ description: '标签列表' })
+    .meta({
+      description:
+        '标签列表。字符串元素为旧格式标签名（按名称归并到 default_tag array 标签）；对象元素为 { tag: 标签名, value: 标签值 }，按标签名解析'
+    })
 });
 export type CreateBackupCollectionFormType = z.infer<typeof CreateBackupCollectionFormSchema>;
 
@@ -244,7 +256,10 @@ export const CreateTemplateCollectionFormSchema = z.object({
       ])
     )
     .optional()
-    .meta({ description: '标签列表' })
+    .meta({
+      description:
+        '标签列表。字符串元素为旧格式标签名（按名称归并到 default_tag array 标签）；对象元素为 { tag: 标签名, value: 标签值 }，按标签名解析'
+    })
 });
 export type CreateTemplateCollectionFormType = z.infer<typeof CreateTemplateCollectionFormSchema>;
 

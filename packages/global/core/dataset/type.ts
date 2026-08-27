@@ -39,10 +39,13 @@ export type DatasetCollectionTagType = z.infer<typeof DatasetCollectionTagTypeEn
 /** 迁移常量：新建 array 标签记录的 tag 字段固定值，亦是旧格式过滤改写的条件 key */
 export const DEFAULT_TAG = 'default_tag';
 
+/** Collection 标签值字段：string/number 存对应值，datetime 存 UTC 毫秒时间戳，array 存 string 数组 */
+export const CollectionTagValueFieldSchema = z.union([z.string(), z.number(), z.array(z.string())]);
+
 /** Collection 标签值类型（新格式） */
 export const CollectionTagValueSchema = z.object({
   tagId: z.string().meta({ description: '引用 dataset_collection_tags_v2._id' }),
-  value: z.union([z.string(), z.number(), z.array(z.string())]).meta({
+  value: CollectionTagValueFieldSchema.meta({
     description:
       '标签值。string/number 类型存对应值，datetime 类型存 UTC 毫秒时间戳，array 类型存 string 数组'
   })
@@ -189,6 +192,9 @@ export const DatasetCollectionTagsSchema = z.object({
   tag: z.string().meta({ description: '标签' }),
   tagType: DatasetCollectionTagTypeEnum.default('string').meta({
     description: '标签类型：string(默认)/number/datetime/array'
+  }),
+  fromMigration: z.boolean().optional().meta({
+    description: '标识该记录是旧标签迁移/旧格式输入创建的 default_tag 承载记录'
   })
 });
 export type DatasetCollectionTagsSchemaType = z.infer<typeof DatasetCollectionTagsSchema>;
@@ -380,7 +386,7 @@ export const DatasetCollectionItemSchema = CollectionWithDatasetSchema.extend({
         z.string(),
         z.object({
           tag: z.string(),
-          value: z.union([z.string(), z.number()])
+          value: CollectionTagValueFieldSchema
         })
       ])
     )

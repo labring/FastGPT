@@ -14,6 +14,7 @@ import {
 } from '@fastgpt/service/core/dataset/data/utils';
 import {
   createOrGetCollectionTags,
+  deduplicateTagValues,
   getTrainingModeByCollection,
   validateDatasetTagValue
 } from '@fastgpt/service/core/dataset/collection/utils';
@@ -22,6 +23,7 @@ import {
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { DatasetCollectionItemSchema } from '@fastgpt/global/core/dataset/type';
 
 const mockCreateS3DownloadAccessUrls = vi.hoisted(() =>
   vi.fn(async (params: Array<{ objectKey: string }>) =>
@@ -961,5 +963,182 @@ describe('createOrGetCollectionTags', () => {
       undefined,
       { session }
     );
+  });
+
+  it('deduplicates repeated string names', async () => {
+    mockMongoDatasetCollectionTagsFindOne.mockResolvedValue({
+      _id: 'default-tag-id',
+      tag: 'default_tag',
+      tagType: 'array'
+    });
+
+    const result = await createOrGetCollectionTags({
+      tags: ['safety', 'safety'],
+      datasetId: 'ds-1',
+      teamId: 'team-1'
+    });
+
+    expect(result).toEqual([{ tagId: 'default-tag-id', value: ['safety'] }]);
+  });
+
+  it('trims string names and object tag lookup keys', async () => {
+    const session = { sessionId: 'sess-1' } as any;
+    mockMongoDatasetCollectionTagsFindOne.mockResolvedValue({
+      _id: 'default-tag-id',
+      tag: 'default_tag',
+      tagType: 'array'
+    });
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([{ _id: 'tag-id-1', tag: 'safety', tagType: 'string' }])
+    });
+
+    const result = await createOrGetCollectionTags({
+      tags: [' safety ', { tag: ' safety ', value: 'A' }],
+      datasetId: 'ds-1',
+      teamId: 'team-1',
+      session
+    });
+
+    // 对象 tag 名称 trim 后按 'safety' 查询；string 名 ' safety ' trim 后进 default_tag
+    expect(mockMongoDatasetCollectionTagsFind).toHaveBeenCalledWith(
+      expect.objectContaining({ tag: { $in: ['safety'] } }),
+      undefined,
+      { session }
+    );
+    expect(result).toEqual([
+      { tagId: 'default-tag-id', value: ['safety'] },
+      { tagId: 'tag-id-1', value: 'A' }
+    ]);
+  });
+
+  it('rejects blank string names', async () => {
+    await expect(
+      createOrGetCollectionTags({
+        tags: ['   '],
+        datasetId: 'ds-1',
+        teamId: 'team-1'
+      })
+    ).rejects.toBe(DatasetErrEnum.tagNameEmpty);
+  });
+
+  it('rejects blank object tag names', async () => {
+    await expect(
+      createOrGetCollectionTags({
+        tags: [{ tag: '   ', value: 'A' }],
+        datasetId: 'ds-1',
+        teamId: 'team-1'
+      })
+    ).rejects.toBe(DatasetErrEnum.tagNameEmpty);
+  });
+
+  it('deduplicates identical {tag,value} inputs', async () => {
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([{ _id: 'tag-id-1', tag: 'safety', tagType: 'string' }])
+    });
+
+    const result = await createOrGetCollectionTags({
+      tags: [
+        { tag: 'safety', value: 'A' },
+        { tag: 'safety', value: 'A' }
+      ],
+      datasetId: 'ds-1',
+      teamId: 'team-1'
+    });
+
+    expect(result).toEqual([{ tagId: 'tag-id-1', value: 'A' }]);
+  });
+
+  it('rejects conflicting values for the same tag', async () => {
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([{ _id: 'tag-id-1', tag: 'safety', tagType: 'string' }])
+    });
+
+    await expect(
+      createOrGetCollectionTags({
+        tags: [
+          { tag: 'safety', value: 'A' },
+          { tag: 'safety', value: 'B' }
+        ],
+        datasetId: 'ds-1',
+        teamId: 'team-1'
+      })
+    ).rejects.toBe(DatasetErrEnum.tagValueInvalid);
+  });
+
+  it('merges string names with default_tag array values', async () => {
+    mockMongoDatasetCollectionTagsFindOne.mockResolvedValue({
+      _id: 'default-tag-id',
+      tag: 'default_tag',
+      tagType: 'array'
+    });
+
+    const result = await createOrGetCollectionTags({
+      tags: ['a', { tag: 'default_tag', value: ['b', 'b'] }],
+      datasetId: 'ds-1',
+      teamId: 'team-1'
+    });
+
+    expect(result).toEqual([{ tagId: 'default-tag-id', value: ['a', 'b'] }]);
+  });
+
+  it('supports array value via default_tag object input', async () => {
+    mockMongoDatasetCollectionTagsFindOne.mockResolvedValue({
+      _id: 'default-tag-id',
+      tag: 'default_tag',
+      tagType: 'array'
+    });
+
+    const result = await createOrGetCollectionTags({
+      tags: [{ tag: 'default_tag', value: ['x', 'y'] }],
+      datasetId: 'ds-1',
+      teamId: 'team-1'
+    });
+
+    expect(result).toEqual([{ tagId: 'default-tag-id', value: ['x', 'y'] }]);
+  });
+
+  it('rejects non-array value for default_tag object input', async () => {
+    await expect(
+      createOrGetCollectionTags({
+        tags: [{ tag: 'default_tag', value: 'not-array' }],
+        datasetId: 'ds-1',
+        teamId: 'team-1'
+      })
+    ).rejects.toBe(DatasetErrEnum.arrayTagValueInvalid);
+  });
+});
+
+describe('deduplicateTagValues', () => {
+  it('deduplicates identical values and keeps first occurrence', async () => {
+    const result = await deduplicateTagValues([
+      { tagId: 't1', value: ['a', 'b'] },
+      { tagId: 't1', value: ['b', 'a'] }
+    ]);
+    expect(result).toEqual([{ tagId: 't1', value: ['a', 'b'] }]);
+  });
+
+  it('rejects conflicting values for the same tagId', async () => {
+    await expect(
+      deduplicateTagValues([
+        { tagId: 't1', value: 'A' },
+        { tagId: 't1', value: 'B' }
+      ])
+    ).rejects.toBe(DatasetErrEnum.tagValueInvalid);
+  });
+});
+
+describe('DatasetCollectionItemSchema.tags array values', () => {
+  it('accepts array values in the detail response tags schema', () => {
+    const tagsSchema = DatasetCollectionItemSchema.shape.tags;
+    const result = tagsSchema.parse([
+      { tag: 'safety', value: ['a', 'b'] },
+      { tag: 'version', value: 2 },
+      'legacy'
+    ]);
+    expect(result).toEqual([
+      { tag: 'safety', value: ['a', 'b'] },
+      { tag: 'version', value: 2 },
+      'legacy'
+    ]);
   });
 });

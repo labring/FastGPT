@@ -1,4 +1,5 @@
 import json5 from 'json5';
+import safeRegex from 'safe-regex';
 import { MongoDatasetCollection } from '../../collection/schema';
 import { MongoDatasetCollectionTagsV2 } from '../../tag/schemaV2';
 import { DEFAULT_TAG } from '@fastgpt/global/core/dataset/type';
@@ -11,6 +12,29 @@ import { computeFilterIntersection } from '../utils';
 type TagCondition = Record<string, Record<string, unknown>>;
 
 /* ========== checkValue: pure value comparsion ========== */
+
+// safe-regex 漏检带分支的量词组（如 (a|aa)+ 在 V8 下呈指数回溯），补充首字符重叠检测：
+// 逐层展平分组，量词作用域内含分支且分支首字符重叠 → 不安全
+const hasAmbiguousAlternation = (pattern: string): boolean => {
+  let s = pattern
+    .replace(/\\./g, ' ')
+    .replace(/\[[^\]]*\]/g, ' ')
+    .replace(/\(\?:|\(\?=/g, '(');
+  const innerRe = /\(([^()]*)\)([+*?]|\{\d+(?:,\d*)?\})?/;
+  let m: RegExpExecArray | null;
+  while ((m = innerRe.exec(s))) {
+    if (m[2] && m[1].includes('|')) {
+      const firstChars = new Set<string>();
+      for (const alt of m[1].split('|')) {
+        const c = alt.replace(/^[\\^]/, '').charAt(0);
+        if (firstChars.has(c)) return true;
+        firstChars.add(c);
+      }
+    }
+    s = s.slice(0, m.index) + 'x' + s.slice(m.index + m[0].length);
+  }
+  return false;
+};
 
 type CompareOp =
   | '$eq'
@@ -120,7 +144,10 @@ export function checkValue(
         case '$endsWith':
           return stored.toLowerCase().endsWith(t.toLowerCase());
         case '$regex':
+          // 用户可控 pattern：限制长度并拦截灾难性回溯，防止 ReDoS
           try {
+            if (t.length > 64 || stored.length > 256) return false;
+            if (!safeRegex(t) || hasAmbiguousAlternation(t)) return false;
             return new RegExp(t).test(stored);
           } catch {
             return false;
@@ -154,31 +181,54 @@ export async function filterCollectionByKeyValueTags({
 }): Promise<string[] | undefined> {
   const allConditions = [...$and, ...$or];
   const tagNames = new Set<string>();
+  let hasDefaultTag = false;
   for (const cond of allConditions) {
     const tagName = Object.keys(cond)[0];
-    if (tagName) tagNames.add(tagName);
+    if (!tagName) continue;
+    if (tagName === DEFAULT_TAG) hasDefaultTag = true;
+    else tagNames.add(tagName);
   }
-  if (tagNames.size === 0) return undefined;
+  if (tagNames.size === 0 && !hasDefaultTag) return undefined;
 
-  // 2. Query tag documents to get tagId and tagType, grouped by dataset
-  const tagDocs = await MongoDatasetCollectionTagsV2.find(
-    {
-      teamId,
-      datasetId: { $in: datasetIds },
-      tag: { $in: Array.from(tagNames) }
-    },
-    '_id datasetId tag tagType',
-    { ...readFromSecondary }
-  ).lean();
+  // 普通标签按名称查询；default_tag 承载记录按 fromMigration 定位，不依赖标签名（改名后旧格式过滤仍命中）
+  const [regularTagDocs, defaultTagDocs] = await Promise.all([
+    tagNames.size
+      ? MongoDatasetCollectionTagsV2.find(
+          {
+            teamId,
+            datasetId: { $in: datasetIds },
+            tag: { $in: Array.from(tagNames) }
+          },
+          '_id datasetId tag tagType',
+          { ...readFromSecondary }
+        ).lean()
+      : [],
+    hasDefaultTag
+      ? MongoDatasetCollectionTagsV2.find(
+          { teamId, datasetId: { $in: datasetIds }, fromMigration: true },
+          '_id datasetId tag tagType',
+          { ...readFromSecondary }
+        ).lean()
+      : []
+  ]);
 
   const datasetTagMap = new Map<string, Map<string, { id: string; type: string }>>();
-  for (const doc of tagDocs) {
-    const dsId = String(doc.datasetId);
+  const addToMap = (dsId: string, tagName: string, id: string, type: string) => {
     if (!datasetTagMap.has(dsId)) datasetTagMap.set(dsId, new Map());
-    datasetTagMap.get(dsId)!.set(doc.tag, {
-      id: String(doc._id),
-      type: doc.tagType || 'string'
-    });
+    datasetTagMap.get(dsId)!.set(tagName, { id, type });
+  };
+  for (const doc of regularTagDocs) {
+    addToMap(String(doc.datasetId), doc.tag, String(doc._id), doc.tagType || 'string');
+  }
+  // default_tag 记录同时挂 DEFAULT_TAG 键与实际标签名键；每 dataset 的 DEFAULT_TAG 键只取一条避免歧义
+  for (const doc of defaultTagDocs) {
+    const dsId = String(doc.datasetId);
+    const id = String(doc._id);
+    const type = doc.tagType || 'string';
+    addToMap(dsId, doc.tag, id, type);
+    if (!datasetTagMap.get(dsId)?.has(DEFAULT_TAG)) {
+      addToMap(dsId, DEFAULT_TAG, id, type);
+    }
   }
   if (datasetTagMap.size === 0) return [];
 

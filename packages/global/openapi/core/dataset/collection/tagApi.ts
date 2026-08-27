@@ -10,7 +10,7 @@ import {
  * ============================================================================ */
 export const CreateDatasetCollectionTagBodySchema = z.object({
   datasetId: z.string().meta({ description: '数据集 ID' }),
-  tag: z.string().min(1).meta({ description: '标签名称' }),
+  tag: z.string().trim().min(1).meta({ description: '标签名称' }),
   tagType: DatasetCollectionTagTypeEnum.optional().meta({
     description: '标签类型：string(默认)/number/datetime/array'
   })
@@ -27,7 +27,7 @@ export const AddTagsToCollectionsBodySchema = z.object({
     .meta({ description: '来源集合 ID 列表（用于复制标签）' }),
   collectionIds: z.array(z.string()).meta({ description: '目标集合 ID 列表' }),
   datasetId: z.string().meta({ description: '数据集 ID' }),
-  tag: z.string().meta({ description: '标签名称' }),
+  tag: z.string().trim().meta({ description: '标签名称' }),
   value: z.string().optional().meta({ description: '标签值（仅 string 类型标签支持）' })
 });
 export type AddTagsToCollectionsParams = z.infer<typeof AddTagsToCollectionsBodySchema>;
@@ -39,7 +39,7 @@ export type AddTagsToCollectionsParams = z.infer<typeof AddTagsToCollectionsBody
 export const UpdateDatasetCollectionTagBodySchema = z.object({
   datasetId: z.string().meta({ description: '数据集 ID' }),
   tagId: z.string().meta({ description: '标签 ID' }),
-  tag: z.string().min(1).meta({ description: '新标签名称' })
+  tag: z.string().trim().min(1).meta({ description: '新标签名称' })
 });
 export type UpdateDatasetCollectionTagParams = z.infer<typeof UpdateDatasetCollectionTagBodySchema>;
 
@@ -67,7 +67,7 @@ export type GetAllDatasetTagsQuery = z.infer<typeof GetAllDatasetTagsQuerySchema
  * Route: POST /proApi/core/dataset/tag/batchUpsert
  * ============================================================================ */
 export const BatchUpsertTagItemSchema = z.object({
-  tag: z.string().min(1).meta({ description: '标签名称' }),
+  tag: z.string().trim().min(1).meta({ description: '标签名称' }),
   tagType: DatasetCollectionTagTypeEnum.optional().meta({ description: '标签类型' })
 });
 export const BatchUpsertTagsBodySchema = z.object({
