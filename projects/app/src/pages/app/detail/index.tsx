@@ -11,6 +11,7 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { TabEnum } from '@/pageComponents/app/detail/context';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { shouldRouteReadOnlyAppToLogs } from '@/pageComponents/app/detail/permissionRouting';
 
 const SimpleEdit = dynamic(() => import('@/pageComponents/app/detail/Edit/SimpleApp'));
 const AgentEdit = dynamic(() => import('@/pageComponents/app/detail/Edit/ChatAgent'));
@@ -33,7 +34,12 @@ const AppDetail = () => {
     if (isCurrentAppLoaded) {
       setAppId(appDetail._id);
 
-      if (!appDetail.permission.hasWritePer && currentTab !== TabEnum.logs) {
+      if (
+        shouldRouteReadOnlyAppToLogs({
+          hasWritePermission: appDetail.permission.hasWritePer,
+          currentTab
+        })
+      ) {
         route2Tab(TabEnum.logs);
       }
     }

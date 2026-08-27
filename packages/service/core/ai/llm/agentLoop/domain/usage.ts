@@ -9,6 +9,7 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 export type AgentLoopUsage = {
   inputTokens?: number;
   outputTokens?: number;
+  pages?: number;
   totalPoints: number;
   moduleName: string;
   model?: string;

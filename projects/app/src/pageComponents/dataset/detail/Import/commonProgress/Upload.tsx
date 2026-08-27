@@ -13,7 +13,7 @@ import {
   IconButton
 } from '@chakra-ui/react';
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -34,7 +34,7 @@ import { type ApiCreateDatasetCollectionParams } from '@fastgpt/global/openapi/c
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const Upload = () => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { toast } = useToast();
   const router = useRouter();
   const { collectionId = '' } = router.query as {

@@ -1,17 +1,32 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { shouldRouteReadOnlyAppToLogs } from '@/pageComponents/app/detail/permissionRouting';
+import { TabEnum } from '@/pageComponents/app/detail/context';
 import { describe, expect, it } from 'vitest';
 
-const source = readFileSync(resolve(process.cwd(), 'src/pages/app/detail/index.tsx'), 'utf8');
+describe('shouldRouteReadOnlyAppToLogs', () => {
+  it('routes a read-only collaborator away from editable tabs', () => {
+    expect(
+      shouldRouteReadOnlyAppToLogs({
+        hasWritePermission: false,
+        currentTab: TabEnum.appEdit
+      })
+    ).toBe(true);
+  });
 
-describe('app detail permission routing', () => {
-  it('does not repeatedly route a read-only collaborator already on the logs tab', () => {
-    expect(source).toContain(
-      'const currentTab = useContextSelector(AppContext, (e) => e.currentTab);'
-    );
-    expect(source).toContain(
-      'if (!appDetail.permission.hasWritePer && currentTab !== TabEnum.logs) {'
-    );
-    expect(source).toContain('currentTab,');
+  it('does not repeatedly route a read-only collaborator already viewing logs', () => {
+    expect(
+      shouldRouteReadOnlyAppToLogs({
+        hasWritePermission: false,
+        currentTab: TabEnum.logs
+      })
+    ).toBe(false);
+  });
+
+  it('keeps writable apps on the requested tab', () => {
+    expect(
+      shouldRouteReadOnlyAppToLogs({
+        hasWritePermission: true,
+        currentTab: TabEnum.appEdit
+      })
+    ).toBe(false);
   });
 });
