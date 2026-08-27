@@ -77,6 +77,19 @@ export const officeZipFormats = [
   }
 ] as const;
 
+/** 使用 OOXML ZIP 容器、但扩展名不是基础 docx/xlsx/pptx 的 anydoc 变体。 */
+export const officeZipVariantExtensions: readonly string[] = [
+  '.docm',
+  '.xlsm',
+  '.xlsb',
+  '.pptm',
+  '.ppsx',
+  '.ppsm'
+];
+
+/** 旧版二进制 Office 文件共享 OLE/CFB 容器，需要扩大上传前缀检查窗口。 */
+export const legacyOfficeExtensions: readonly string[] = ['.doc', '.xls', '.ppt', '.pps', '.pot'];
+
 /**
  * 统一扩展名格式。上传策略中所有 extension 都必须小写并带 `.`，避免同一白名单
  * 在预签、上传校验和 metadata 修正阶段出现不同表示。
@@ -142,7 +155,30 @@ export const detectOfficeDocumentMime = ({
 const MIME_EQUIVALENCE_GROUPS: ReadonlyArray<ReadonlySet<string>> = [
   new Set(['video/x-msvideo', 'video/vnd.avi', 'video/avi', 'video/msvideo']),
   new Set(['video/mpeg', 'video/mp1s', 'video/mp2p']),
-  new Set(['audio/mp4', 'audio/x-m4a'])
+  new Set(['audio/mp4', 'audio/x-m4a']),
+  // file-type 对旧版 Word/Excel/PowerPoint 只能稳定识别到共享的 OLE/CFB 容器。
+  new Set([
+    'application/x-cfb',
+    'application/msword',
+    'application/vnd.ms-excel',
+    'application/vnd.ms-powerpoint'
+  ]),
+  // OOXML 的宏/幻灯片/二进制变体与基础格式共享容器及解析器。
+  new Set([
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-word.document.macroenabled.12'
+  ]),
+  new Set([
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-excel.sheet.macroenabled.12',
+    'application/vnd.ms-excel.sheet.binary.macroenabled.12'
+  ]),
+  new Set([
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/vnd.openxmlformats-officedocument.presentationml.slideshow',
+    'application/vnd.ms-powerpoint.presentation.macroenabled.12',
+    'application/vnd.ms-powerpoint.slideshow.macroenabled.12'
+  ])
 ];
 
 const normalizeMimeForCompare = (mime: string) => mime.split(';')[0]?.trim().toLowerCase() || '';

@@ -142,7 +142,23 @@ describe('preset extension lists', () => {
       '.pdf',
       '.md',
       '.html',
-      '.pptx'
+      '.pptx',
+      '.doc',
+      '.docm',
+      '.ppt',
+      '.pps',
+      '.pot',
+      '.pptm',
+      '.ppsx',
+      '.ppsm',
+      '.xls',
+      '.xlsm',
+      '.xlsb',
+      '.odt',
+      '.ods',
+      '.odp',
+      '.rtf',
+      '.epub'
     ]);
   });
 });

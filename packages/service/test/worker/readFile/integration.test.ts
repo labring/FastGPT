@@ -63,6 +63,9 @@ const parseText = (text: string) =>
     buffer: Buffer.from(text, 'utf-8')
   });
 
+const readBase64Fixture = (filename: string) =>
+  Buffer.from(readFileSync(path.join(__dirname, 'fixtures', filename), 'utf8').trim(), 'base64');
+
 const getPositiveIntegerEnv = (name: string, defaultValue: number) => {
   const value = Number(process.env[name]);
   return Number.isInteger(value) && value > 0 ? value : defaultValue;
@@ -230,6 +233,32 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
     expect(result.rawText).toContain('Alice');
     expect(result.rawText).toContain('30');
     expect(result.rawText).toContain('Shanghai');
+  });
+
+  it.each([
+    {
+      extension: 'doc',
+      fixture: 'legacy-doc.base64',
+      expected: 'こんにちは世界'
+    },
+    {
+      extension: 'xls',
+      fixture: 'legacy-xls.base64',
+      expected: 'fifteen and a half'
+    },
+    {
+      extension: 'odt',
+      fixture: 'open-document-text.base64',
+      expected: 'Bold via the family default style'
+    }
+  ])('通过 anydoc 解析 .$extension 真实文件', async ({ extension, fixture, expected }) => {
+    const result = await readRawContentFromBuffer({
+      extension,
+      encoding: 'utf-8',
+      buffer: readBase64Fixture(fixture)
+    });
+
+    expect(result.rawText).toContain(expected);
   });
 
   it('解析 xlsx 时应转义 Markdown 表格分隔符', async () => {

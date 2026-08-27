@@ -12,11 +12,13 @@ import {
   getFilenameExtension,
   getOfficeZipFormatByExtension,
   isTextLikeMime,
+  legacyOfficeExtensions,
   mimesMatchForUpload,
   normalizeAllowedExtensions,
   normalizeFileExtension,
   normalizeUploadExtensionRules,
   officeZipInspectBytes,
+  officeZipVariantExtensions,
   replaceFilenameExtension,
   resolveAllowedExtensionForMime,
   resolveAllowedMimeTypes,
@@ -219,7 +221,15 @@ export const getUploadInspectBytes = ({
   ].filter(Boolean);
   const contentType = normalizeMimeType(hint?.contentType, '');
 
-  if (possibleExtensions.some((extension) => getOfficeZipFormatByExtension(extension))) {
+  if (
+    possibleExtensions.some(
+      (extension) =>
+        getOfficeZipFormatByExtension(extension) || officeZipVariantExtensions.includes(extension)
+    )
+  ) {
+    return officeZipInspectBytes;
+  }
+  if (possibleExtensions.some((extension) => legacyOfficeExtensions.includes(extension))) {
     return officeZipInspectBytes;
   }
   if (

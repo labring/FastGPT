@@ -11,7 +11,7 @@ const WORKER_RUNTIME_NODE_MODULES_DIR = path.join(WORKER_OUTPUT_DIR, 'node_modul
 const OTEL_SDK_DIR = path.join(ROOT_DIR, 'sdk/otel/src');
 const require = createRequire(import.meta.url);
 
-const workerRuntimePackages = ['@llamaindex/liteparse-wasm'];
+const workerRuntimePackages = ['@llamaindex/liteparse-wasm', '@firecrawl/anydoc'];
 
 const resolvePackageDir = (packageName: string, resolvePaths: string[]) => {
   try {
@@ -35,6 +35,27 @@ const copyPackage = (packageName: string, sourceDir: string) => {
 };
 
 /**
+ * 复制当前平台实际安装的 optionalDependencies。
+ *
+ * N-API 包通常把各平台原生二进制声明为 optional dependency，pnpm 只会链接当前
+ * 构建平台对应的包。只复制可解析到的依赖，避免把其他平台二进制带入运行镜像。
+ */
+const copyInstalledOptionalDependencies = (packageDir: string) => {
+  const packageJson = JSON.parse(
+    fs.readFileSync(path.join(packageDir, 'package.json'), 'utf8')
+  ) as {
+    optionalDependencies?: Record<string, string>;
+  };
+
+  for (const packageName of Object.keys(packageJson.optionalDependencies ?? {})) {
+    const sourceDir = resolvePackageDir(packageName, [packageDir, __dirname, ROOT_DIR]);
+    if (!sourceDir) continue;
+
+    copyPackage(packageName, sourceDir);
+  }
+};
+
+/**
  * 复制 worker external 依赖到 worker 目录下。
  *
  * LiteParse WASM 需要以真实文件形式保留 wasm 资源。Docker runner 已经复制整个 worker
@@ -51,6 +72,7 @@ const copyWorkerRuntimePackages = () => {
     }
 
     copyPackage(packageName, sourceDir);
+    copyInstalledOptionalDependencies(sourceDir);
   }
 };
 
@@ -100,7 +122,7 @@ async function buildWorkers(watch: boolean = false) {
       '@fastgpt-sdk/otel/metrics': path.join(OTEL_SDK_DIR, 'metrics-entry.ts'),
       '@fastgpt-sdk/otel/tracing': path.join(OTEL_SDK_DIR, 'tracing-entry.ts')
     },
-    external: ['@llamaindex/liteparse-wasm'],
+    external: workerRuntimePackages,
     // 移除调试代码
     drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : []
   };

@@ -7,6 +7,7 @@ import { readDocsFile } from './extension/docx';
 import { readPptxRawText } from './extension/pptx';
 import { readXlsxRawText } from './extension/xlsx';
 import { readCsvRawText } from './extension/csv';
+import { isAnydocDocumentExtension, readAnydocRawText } from './extension/anydoc';
 import { type UploadFileHandler } from './type';
 import {
   createWorkerUploadFileHandlerWithListener,
@@ -53,8 +54,12 @@ const read = async (
     case 'csv':
       return readCsvRawText(params);
     default:
+      if (isAnydocDocumentExtension(params.extension)) {
+        return readAnydocRawText(params);
+      }
+
       return Promise.reject(
-        `Only support .txt, .md, .html, .pdf, .docx, pptx, .csv, .xlsx. "${params.extension}" is not supported.`
+        `The file extension ".${params.extension.replace(/^\./, '')}" is not supported.`
       );
   }
 };
