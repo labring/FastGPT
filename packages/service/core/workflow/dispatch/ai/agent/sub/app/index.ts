@@ -32,7 +32,10 @@ import {
 import { getRuntimeNodeResponseSummary } from '../../../../utils';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { runWithDerivedWorkflowFileContext } from '../../../../../utils/context';
-import { computedAppToolUsage } from '../../../../../../app/tool/runtime/utils';
+import {
+  computedAppToolUsage,
+  getAppToolOutputError
+} from '../../../../../../app/tool/runtime/utils';
 
 type Props = Pick<
   RunWorkflowProps,
@@ -408,19 +411,32 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     runtimeNodeResponseSummary
   });
   const pluginOutput = runtimeSummary.pluginOutput;
+  const pluginOutputError = billingTool
+    ? getAppToolOutputError({ plugin: billingTool, pluginOutput })
+    : undefined;
   const { text: assistantText } = chatValue2RuntimePrompt(assistantResponses);
-  const response = pluginOutput
+  const filteredPluginOutput = pluginOutput
+    ? Object.keys(pluginOutput)
+        .filter((key) => outputFilterMap[key])
+        .reduce<Record<string, any>>((acc, key) => {
+          acc[key] = pluginOutput[key];
+          return acc;
+        }, {})
+    : undefined;
+  const response = filteredPluginOutput
     ? JSON.stringify(
-        Object.keys(pluginOutput)
-          .filter((key) => outputFilterMap[key])
-          .reduce<Record<string, any>>((acc, key) => {
-            acc[key] = pluginOutput[key];
-            return acc;
-          }, {})
+        pluginOutputError
+          ? { ...filteredPluginOutput, error: pluginOutputError }
+          : filteredPluginOutput
       )
     : workflowInteractiveResponse
       ? assistantText
       : 'Run workflow tool failed';
+  const errorMessage = runtimeSummary.hasError
+    ? runtimeSummary.errorText || 'Run workflow tool failed'
+    : !pluginOutput
+      ? 'Run workflow tool failed'
+      : pluginOutputError;
   const usages = billingTool
     ? [
         {
@@ -428,7 +444,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
           totalPoints: await computedAppToolUsage({
             plugin: billingTool,
             childrenUsage: flowUsages,
-            error: !!pluginOutput?.error
+            error: !!errorMessage
           })
         }
       ]
@@ -436,9 +452,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
 
   return {
     response,
-    ...(runtimeSummary.hasError || !pluginOutput
-      ? { errorMessage: runtimeSummary.errorText || 'Run workflow tool failed' }
-      : {}),
+    ...(errorMessage ? { errorMessage } : {}),
     assistantMessages: chats2GPTMessages({
       messages: [
         {
@@ -457,7 +471,8 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
       moduleLogo: app.avatar,
       toolInput: workflowToolVariables,
       toolRes: pluginOutput || {},
-      childResponseCount: runtimeSummary.childResponseCount
+      childResponseCount: runtimeSummary.childResponseCount,
+      ...(errorMessage ? { errorText: errorMessage } : {})
     }
   };
 };

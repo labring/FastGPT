@@ -125,6 +125,7 @@ describe('createToolCallToolProvider', () => {
 
   it('executes workflow tools through the provider', async () => {
     const cacheToolFlowResponse = vi.fn();
+    const workflowStreamResponse = vi.fn();
     runWorkflowMock.mockResolvedValue({
       toolResponse: {
         answer: 'workflow ok'
@@ -143,7 +144,17 @@ describe('createToolCallToolProvider', () => {
     });
 
     const provider = await createProvider({
-      cacheToolFlowResponse
+      cacheToolFlowResponse,
+      workflowProps: {
+        runningAppInfo: { id: 'app_1' },
+        runningUserInfo: { teamId: 'team_1', tmbId: 'tmb_1' },
+        uid: 'user_1',
+        chatId: 'chat_1',
+        chatConfig: {},
+        usageId: 'usage_1',
+        stream: true,
+        workflowStreamResponse
+      } as any
     });
     const result = await provider.executeTool({
       call: {
@@ -179,6 +190,13 @@ describe('createToolCallToolProvider', () => {
         })
       })
     );
+    expect(runWorkflowMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stream: false,
+        workflowStreamResponse: undefined
+      })
+    );
+    expect(workflowStreamResponse).not.toHaveBeenCalled();
   });
 
   it('runs every connected dataset search node and merges their citations', async () => {

@@ -265,4 +265,26 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
       })
     ]);
   });
+
+  it('persists a failed tool result as the tool response', () => {
+    const collector = createAgentLoopCoreAssistantEventCollector();
+    const call = createToolCall({ id: 'call_failed', name: 'search' });
+
+    collector.emitEvent({ type: 'tool_call', call });
+    collector.emitEvent({
+      type: 'tool_run_end',
+      call,
+      rawResponse: 'search unavailable',
+      response: 'search unavailable',
+      errorMessage: 'search unavailable',
+      seconds: 0.1
+    });
+
+    expect(collector.assistantResponses).toEqual([
+      expect.objectContaining({
+        id: 'call_failed',
+        tools: [expect.objectContaining({ response: 'search unavailable' })]
+      })
+    ]);
+  });
 });

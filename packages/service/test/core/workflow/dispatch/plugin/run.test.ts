@@ -20,6 +20,7 @@ import {
 
 const runWorkflowMock = vi.fn();
 const getSystemToolWorkflowRuntimeMock = vi.fn();
+const computedAppToolUsageMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
   runWorkflow: (args: any) => runWorkflowMock(args)
@@ -37,8 +38,9 @@ vi.mock('@fastgpt/service/support/user/team/utils', () => ({
   getUserChatInfo: vi.fn().mockResolvedValue({ externalProvider: undefined })
 }));
 
-vi.mock('@fastgpt/service/core/app/tool/runtime/utils', () => ({
-  computedAppToolUsage: vi.fn().mockResolvedValue(1)
+vi.mock('@fastgpt/service/core/app/tool/runtime/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/app/tool/runtime/utils')>()),
+  computedAppToolUsage: computedAppToolUsageMock
 }));
 
 vi.mock('@fastgpt/service/core/app/tool/workflowTool/utils', () => ({
@@ -67,6 +69,134 @@ describe('dispatchRunPlugin', () => {
   beforeEach(() => {
     runWorkflowMock.mockReset();
     getSystemToolWorkflowRuntimeMock.mockReset();
+    computedAppToolUsageMock.mockReset().mockResolvedValue(1);
+  });
+
+  it('marks a failed child workflow as a billing error', async () => {
+    getSystemToolWorkflowRuntimeMock.mockResolvedValue({
+      id: 'commercial-system-workflow',
+      name: 'System Workflow',
+      avatar: '',
+      nodes: [],
+      edges: [],
+      chatConfig: { variables: [] },
+      currentCost: 10,
+      hasTokenFee: true
+    });
+    runWorkflowMock.mockResolvedValue({
+      flowUsages: [{ moduleName: 'Failed child usage', totalPoints: 3 }],
+      runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [
+        {
+          id: 'failedResponse',
+          nodeId: 'failedNode',
+          moduleName: 'Failed node',
+          moduleType: FlowNodeTypeEnum.systemConfig,
+          errorText: 'child failed'
+        }
+      ])
+    });
+
+    await dispatchRunPlugin({
+      node: {
+        nodeId: 'toolNode',
+        name: 'Tool',
+        avatar: '',
+        flowNodeType: FlowNodeTypeEnum.pluginModule,
+        pluginId: 'commercial-system-workflow',
+        inputs: [],
+        outputs: []
+      },
+      runningAppInfo: {
+        id: 'app',
+        name: 'app',
+        teamId: 'team',
+        tmbId: 'member'
+      },
+      query: [],
+      params: {},
+      histories: [],
+      timezone: 'Asia/Shanghai',
+      uid: 'user',
+      chatId: 'chat',
+      responseChatItemId: 'response',
+      variableState: await createVariableState(),
+      usagePush: vi.fn(),
+      runtimeNodes: [],
+      runtimeNodesMap: new Map(),
+      runtimeEdges: []
+    } as any);
+
+    expect(computedAppToolUsageMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: true
+      })
+    );
+  });
+
+  it('treats pluginOutput.error as a standard workflow tool failure', async () => {
+    getSystemToolWorkflowRuntimeMock.mockResolvedValue({
+      id: 'commercial-system-workflow',
+      name: 'System Workflow',
+      avatar: 'system-avatar',
+      nodes: [],
+      edges: [],
+      chatConfig: { variables: [] },
+      currentCost: 10,
+      hasTokenFee: true
+    });
+    runWorkflowMock.mockResolvedValue({
+      flowUsages: [{ moduleName: 'Child usage', totalPoints: 3 }],
+      runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [
+        {
+          id: 'pluginOutputResponse',
+          nodeId: 'pluginOutput',
+          moduleName: 'Output',
+          moduleType: FlowNodeTypeEnum.pluginOutput,
+          pluginOutput: { error: 'upstream unavailable' }
+        }
+      ])
+    });
+
+    const result = await dispatchRunPlugin({
+      node: {
+        nodeId: 'toolNode',
+        name: 'Tool',
+        avatar: '',
+        flowNodeType: FlowNodeTypeEnum.pluginModule,
+        pluginId: 'commercial-system-workflow',
+        inputs: [],
+        outputs: []
+      },
+      runningAppInfo: {
+        id: 'app',
+        name: 'app',
+        teamId: 'team',
+        tmbId: 'member'
+      },
+      query: [],
+      params: {},
+      histories: [],
+      timezone: 'Asia/Shanghai',
+      uid: 'user',
+      chatId: 'chat',
+      responseChatItemId: 'response',
+      variableState: await createVariableState(),
+      usagePush: vi.fn(),
+      runtimeNodes: [],
+      runtimeNodesMap: new Map(),
+      runtimeEdges: []
+    } as any);
+
+    expect(computedAppToolUsageMock).toHaveBeenCalledWith(expect.objectContaining({ error: true }));
+    expect(result.error).toEqual({
+      [NodeOutputKeyEnum.errorText]: 'upstream unavailable'
+    });
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
+      errorText: 'upstream unavailable'
+    });
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toMatchObject({
+      error: 'upstream unavailable'
+    });
   });
 
   it('系统级 workflow tool 不把外层 nodeResponseSink 传给 child workflow', async () => {

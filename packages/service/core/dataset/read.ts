@@ -62,6 +62,7 @@ export const readFileRawTextByUrl = async ({
   getFormatText,
   relatedId,
   datasetId,
+  usageId,
   maxFileSize = getFileMaxSize()
 }: {
   teamId: string;
@@ -71,6 +72,7 @@ export const readFileRawTextByUrl = async ({
   getFormatText?: boolean;
   relatedId: string; // externalFileId / apiFileId
   datasetId: string;
+  usageId?: string;
   maxFileSize?: number;
 }) => {
   const extension = parseFileExtensionFromUrl(url);
@@ -170,6 +172,7 @@ export const readFileRawTextByUrl = async ({
         const { rawText } = await retryFn(() => {
           return readFileContentByBuffer({
             customPdfParse,
+            usageId,
             getFormatText,
             extension,
             teamId,
@@ -287,7 +290,8 @@ export const readDatasetSourceRawText = async ({
       url: sourceId,
       relatedId: externalFileId,
       datasetId,
-      customPdfParse
+      customPdfParse,
+      usageId
     });
     return {
       rawText
@@ -299,7 +303,8 @@ export const readDatasetSourceRawText = async ({
       teamId,
       tmbId,
       customPdfParse,
-      datasetId
+      datasetId,
+      usageId
     });
     return {
       title,
@@ -318,7 +323,8 @@ export const readApiServerFileContent = async ({
   teamId,
   tmbId,
   customPdfParse,
-  datasetId
+  datasetId,
+  usageId
 }: {
   apiDatasetServer?: ApiDatasetServerType;
   apiFileId: string;
@@ -326,6 +332,7 @@ export const readApiServerFileContent = async ({
   tmbId: string;
   customPdfParse?: boolean;
   datasetId: string;
+  usageId?: string;
 }): Promise<{
   title?: string;
   rawText: string;
@@ -335,7 +342,8 @@ export const readApiServerFileContent = async ({
     tmbId,
     apiFileId,
     customPdfParse,
-    datasetId
+    datasetId,
+    usageId
   });
 };
 

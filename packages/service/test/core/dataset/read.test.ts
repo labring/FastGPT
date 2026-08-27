@@ -7,7 +7,8 @@ const mocks = vi.hoisted(() => ({
   getDatasetFileRawText: vi.fn(),
   axios: vi.fn(),
   axiosHead: vi.fn(),
-  readFileContentByBuffer: vi.fn()
+  readFileContentByBuffer: vi.fn(),
+  getApiFileContent: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/common/s3/sources/dataset', () => ({
@@ -30,6 +31,12 @@ vi.mock('@fastgpt/service/common/file/read/utils', () => ({
   readFileContentByBuffer: mocks.readFileContentByBuffer
 }));
 
+vi.mock('@fastgpt/service/core/dataset/apiDataset', () => ({
+  getApiDatasetRequest: async () => ({
+    getFileContent: mocks.getApiFileContent
+  })
+}));
+
 import { readDatasetSourceRawText, readFileRawTextByUrl } from '@fastgpt/service/core/dataset/read';
 
 describe('readDatasetSourceRawText', () => {
@@ -41,6 +48,7 @@ describe('readDatasetSourceRawText', () => {
     });
     mocks.axiosHead.mockResolvedValue({ headers: {} });
     mocks.readFileContentByBuffer.mockResolvedValue({ rawText: 'downloaded content' });
+    mocks.getApiFileContent.mockResolvedValue({ title: 'api.pdf', rawText: 'api content' });
   });
 
   it('rejects a local dataset file key that is not under the authorized dataset id', async () => {
@@ -75,6 +83,50 @@ describe('readDatasetSourceRawText', () => {
       expect.objectContaining({
         fileId: 'dataset/dataset-a/demo.pdf',
         datasetId: 'dataset-a'
+      })
+    );
+  });
+
+  it('passes training usageId through external file parsing', async () => {
+    mocks.axios.mockResolvedValue({
+      data: Readable.from([Buffer.from('pdf-content')])
+    });
+
+    await readDatasetSourceRawText({
+      teamId: 'team-a',
+      tmbId: 'tmb-a',
+      type: DatasetSourceReadTypeEnum.externalFile,
+      sourceId: 'https://example.com/file.pdf',
+      externalFileId: 'external-file-a',
+      datasetId: 'dataset-a',
+      usageId: 'usage-a',
+      customPdfParse: true
+    });
+
+    expect(mocks.readFileContentByBuffer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customPdfParse: true,
+        usageId: 'usage-a'
+      })
+    );
+  });
+
+  it('passes training usageId to API dataset file readers', async () => {
+    await readDatasetSourceRawText({
+      teamId: 'team-a',
+      tmbId: 'tmb-a',
+      type: DatasetSourceReadTypeEnum.apiFile,
+      sourceId: 'api-file-a',
+      apiDatasetServer: {} as any,
+      datasetId: 'dataset-a',
+      usageId: 'usage-a',
+      customPdfParse: true
+    });
+
+    expect(mocks.getApiFileContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        apiFileId: 'api-file-a',
+        usageId: 'usage-a'
       })
     );
   });

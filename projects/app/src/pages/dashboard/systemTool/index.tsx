@@ -383,6 +383,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     onClickCard={() => setSelectedTool(tool)}
                     showActionButton={false}
                     showDeleteButton={canManageTeamPlugins}
+                    showRegistrySourceBadge={feConfigs?.enable_team_plugin_upload === true}
                     onDelete={() => onDeleteTeamTool(tool)}
                     isInstallingOrDeleting={deletingTeamTool}
                   />

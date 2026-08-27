@@ -229,6 +229,39 @@ describe('createAgentLoopCoreEventDispatcher', () => {
     ]);
   });
 
+  it('streams failed tool responses so the client can render them immediately', () => {
+    const workflowStreamResponse = vi.fn();
+    const eventStream = createAgentLoopCoreEventStream({
+      workflowStreamResponse,
+      getToolInfo: () => ({ name: 'Search' })
+    });
+    const dispatcher = createAgentLoopCoreEventDispatcher({ eventStream });
+    const call = createCall({ id: 'call_failed' });
+
+    dispatcher.emitEvent({
+      type: 'tool_run_end',
+      call,
+      rawResponse: 'upstream unavailable',
+      response: 'upstream unavailable',
+      errorMessage: 'upstream unavailable',
+      seconds: 0.1
+    });
+
+    expect(workflowStreamResponse).toHaveBeenCalledWith({
+      id: call.id,
+      event: SseResponseEventEnum.toolResponse,
+      data: {
+        tool: {
+          id: call.id,
+          toolName: '',
+          toolAvatar: '',
+          params: '',
+          response: 'upstream unavailable'
+        }
+      }
+    });
+  });
+
   it('passes context checkpoints to compression records when request ids are absent', () => {
     const eventStream = createAgentLoopCoreEventStream({
       workflowStreamResponse: vi.fn(),

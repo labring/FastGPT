@@ -89,6 +89,37 @@ describe('agent sub app dispatchPlugin', () => {
     });
   });
 
+  const dispatchSystemWorkflow = async () =>
+    dispatchPlugin({
+      app: {
+        id: 'associated-app',
+        name: 'System Workflow',
+        systemToolId: 'commercial-system-workflow'
+      },
+      runningAppInfo: {
+        sourceType: 'app',
+        sourceId: 'parent-app',
+        teamId: 'team',
+        tmbId: 'member',
+        name: 'parent'
+      },
+      runningUserInfo: {
+        teamId: 'team',
+        tmbId: 'member'
+      },
+      customAppVariables: {},
+      userChatInput: '',
+      timezone: 'Asia/Shanghai',
+      uid: 'user',
+      chatId: 'chat',
+      responseChatItemId: 'response',
+      histories: [],
+      variableState: await createVariableState(),
+      checkIsStopping: vi.fn(() => false),
+      maxRunTimes: 20,
+      workflowDispatchDeep: 0
+    } as any);
+
   it('initializes workflow tool variables from child chatConfig', async () => {
     mocks.authAppByTmbId.mockResolvedValue({
       app: {
@@ -239,35 +270,7 @@ describe('agent sub app dispatchPlugin', () => {
       ])
     });
 
-    const result = await dispatchPlugin({
-      app: {
-        id: 'associated-app',
-        name: 'System Workflow',
-        systemToolId: 'commercial-system-workflow'
-      },
-      runningAppInfo: {
-        sourceType: 'app',
-        sourceId: 'parent-app',
-        teamId: 'team',
-        tmbId: 'member',
-        name: 'parent'
-      },
-      runningUserInfo: {
-        teamId: 'team',
-        tmbId: 'member'
-      },
-      customAppVariables: {},
-      userChatInput: '',
-      timezone: 'Asia/Shanghai',
-      uid: 'user',
-      chatId: 'chat',
-      responseChatItemId: 'response',
-      histories: [],
-      variableState: await createVariableState(),
-      checkIsStopping: vi.fn(() => false),
-      maxRunTimes: 20,
-      workflowDispatchDeep: 0
-    } as any);
+    const result = await dispatchSystemWorkflow();
 
     expect(mocks.getSystemToolWorkflowRuntime).toHaveBeenCalledWith({
       pluginId: 'commercial-system-workflow',
@@ -283,6 +286,78 @@ describe('agent sub app dispatchPlugin', () => {
         totalPoints: expectedPoints
       }
     ]);
+  });
+
+  it('does not charge a system workflow when its child run fails', async () => {
+    mocks.getSystemToolWorkflowRuntime.mockResolvedValue({
+      id: 'commercial-system-workflow',
+      name: 'System Workflow',
+      nodes: [],
+      edges: [],
+      currentCost: 10,
+      hasTokenFee: true,
+      chatConfig: { variables: [] }
+    });
+    mocks.runWorkflow.mockResolvedValueOnce({
+      flowUsages: [{ moduleName: 'Failed child usage', totalPoints: 3 }],
+      runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [
+        {
+          id: 'failedResponse',
+          nodeId: 'failedNode',
+          moduleName: 'Failed node',
+          moduleType: FlowNodeTypeEnum.systemConfig,
+          errorText: 'child failed'
+        }
+      ])
+    });
+
+    const result = await dispatchSystemWorkflow();
+
+    expect(result.errorMessage).toBe('child failed');
+    expect(result.usages).toEqual([
+      {
+        moduleName: 'System Workflow',
+        totalPoints: 0
+      }
+    ]);
+  });
+
+  it('treats pluginOutput.error as a failed tool response', async () => {
+    mocks.getSystemToolWorkflowRuntime.mockResolvedValue({
+      id: 'commercial-system-workflow',
+      name: 'System Workflow',
+      nodes: [],
+      edges: [],
+      currentCost: 10,
+      hasTokenFee: true,
+      chatConfig: { variables: [] }
+    });
+    mocks.runWorkflow.mockResolvedValueOnce({
+      flowUsages: [{ moduleName: 'Child usage', totalPoints: 3 }],
+      runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [
+        {
+          id: 'pluginOutputResponse',
+          nodeId: 'pluginOutput',
+          moduleName: 'Output',
+          moduleType: FlowNodeTypeEnum.pluginOutput,
+          pluginOutput: { error: 'upstream unavailable' }
+        }
+      ])
+    });
+
+    const result = await dispatchSystemWorkflow();
+
+    expect(result.errorMessage).toBe('upstream unavailable');
+    expect(result.usages).toEqual([
+      {
+        moduleName: 'System Workflow',
+        totalPoints: 0
+      }
+    ]);
+    expect(result.nodeResponse).toMatchObject({
+      toolRes: { error: 'upstream unavailable' },
+      errorText: 'upstream unavailable'
+    });
   });
 
   it('inherits child workflow tool default file variables from the parent context', async () => {

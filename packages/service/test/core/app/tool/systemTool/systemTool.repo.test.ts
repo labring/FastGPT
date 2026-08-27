@@ -258,6 +258,7 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
       originCost: 0,
       customConfig: {
         name: 'Workflow Tool',
+        avatar: 'configured-workflow-tool.svg',
         intro: 'Workflow intro',
         version: 'workflow-version',
         tags: [],
@@ -322,6 +323,7 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
     });
 
     expect(tool.author).toBe('Custom Author');
+    expect(tool.avatar).toBe('configured-workflow-tool.svg');
     expect(tool.hasTokenFee).toBe(true);
     expect(tool.version).toBe('latest-version');
     expect(tool.versionLabel).toBe('Latest Version');

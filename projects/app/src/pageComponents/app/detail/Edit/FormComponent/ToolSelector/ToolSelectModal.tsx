@@ -438,7 +438,9 @@ const RenderList = React.memo(function RenderList({
                         >
                           {name}
                         </Box>
-                        {isSystemSource && <SystemToolTag />}
+                        {feConfigs?.enable_team_plugin_upload === true && isSystemSource && (
+                          <SystemToolTag />
+                        )}
                         {isDebugTool && <DebugToolTag />}
                       </Flex>
                     </Box>

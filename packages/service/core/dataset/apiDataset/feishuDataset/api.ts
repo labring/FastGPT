@@ -151,6 +151,7 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
     apiFileId
   }: {
     apiFileId: string;
+    usageId?: string;
   }): Promise<ApiFileReadContentResponseType> => {
     const [{ content }, { document }] = await Promise.all([
       request<{ content: string }>(

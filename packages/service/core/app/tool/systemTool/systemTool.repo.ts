@@ -427,7 +427,7 @@ export class SystemToolRepo {
         intro: dbTool.customConfig.intro ?? '',
         tags: dbTool.customConfig.tags ?? [],
         author: dbTool.customConfig.author ?? global.feConfigs.systemTitle ?? '',
-        avatar: app.avatar,
+        avatar: dbTool.customConfig.avatar ?? app.avatar ?? '',
         hasSystemSecret: false,
         systemSecretStatus: SystemToolCodec.getSystemSecretStatus({ hasSecret: false }),
         inputSchema,

@@ -1,5 +1,4 @@
 import React, { useMemo, useRef } from 'react';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import {
   Box,
   TableContainer,
@@ -11,8 +10,7 @@ import {
   Tbody,
   Flex,
   Button,
-  IconButton,
-  Tooltip
+  IconButton
 } from '@chakra-ui/react';
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
@@ -33,6 +31,7 @@ import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { DatasetImportContext, type ImportFormType } from '../Context';
 import { type ApiCreateDatasetCollectionParams } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const Upload = () => {
   const { t } = useTranslation();
@@ -247,12 +246,10 @@ const Upload = () => {
                 <Td>
                   <Box display={'inline-block'}>
                     {item.errorMsg ? (
-                      <Tooltip label={item.errorMsg} fontSize="md">
-                        <Flex alignItems="center">
-                          <MyTag colorSchema={'red'}>{t('common:Error')}</MyTag>
-                          <QuestionOutlineIcon ml={2} color="red.500" w="14px" />
-                        </Flex>
-                      </Tooltip>
+                      <Flex alignItems="center">
+                        <MyTag colorSchema={'red'}>{t('common:Error')}</MyTag>
+                        <QuestionTip ml={2} color="red.500" label={t(item.errorMsg as any)} />
+                      </Flex>
                     ) : (
                       <>
                         {item.createStatus === 'waiting' && (

@@ -50,6 +50,10 @@ The cleanup and migration are safe to retry. After applying them, run another dr
 6. Improved repeated tool call anomaly detection. FastGPT now treats more than five consecutive calls to the same tool with the same arguments as a model hallucination.
 7. Updated the payment modal immediately when switching payment methods.
 8. Improved Admin team, plan, payment, and user list queries, including username search and pagination performance.
+9. Preserved failed tool responses from Agent calls and exposed the failure in `nodeResponse`, `toolResponse`, and streaming events.
+10. Unified sub-workflow output and billing across Workflow Tool, ToolCall, and Agent runs. Commercial Workflow Tool failures no longer charge call or token fees, while `pluginOutput.error` from personal Workflow Tools remains a business field.
+11. Attributed enhanced PDF parsing charges to the `read_files` tool node and preserved page counts. Propagated `usageId` through external-file and API-file Dataset parsing so charges are not orphaned.
+12. Improved tool configuration, version selection, and parsed-document views with responsive layouts, version descriptions, a two-column grid, and ellipsis tooltips for long filenames.
 
 ## 🐛 Fixes
 
@@ -58,6 +62,8 @@ The cleanup and migration are safe to retry. After applying them, run another dr
 3. Fixed an issue where backup CSV files exported from empty datasets or datasets with a single chunk could not be imported again.
 4. Added worksheet range, merged cell, and Worker memory limits to XLSX parsing to prevent excessive memory usage caused by malformed files.
 5. Fixed compatibility issues when historical chat settings are missing favorite tags or historical member names are empty.
+6. Fixed custom Workflow Tool avatar display and added a fallback avatar for system tools.
+7. Fixed Admin plan listing failures caused by plans whose teams have been deleted.
 
 ## 🛠️ Code Improvements
 

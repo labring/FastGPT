@@ -559,6 +559,7 @@ export const useDingtalkDatasetRequest = ({
     apiFileId
   }: {
     apiFileId: string;
+    usageId?: string;
   }): Promise<ApiFileReadContentResponseType> => {
     const { accessToken, operatorId } = await getTokenAndOperatorId();
     const [rawText, detail] = await Promise.all([

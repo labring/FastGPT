@@ -153,7 +153,6 @@ export const getExecuteTool = ({
   uid,
   variableState,
   externalProvider,
-  streamResponseFn,
   lang,
   requestOrigin,
   mode,
@@ -235,7 +234,8 @@ export const getExecuteTool = ({
             chatId,
             uid,
             variableState,
-            workflowStreamResponse: streamResponseFn
+            // Agent 统一负责外层流输出，子工具不得绕过 Agent 直接写入响应流。
+            workflowStreamResponse: undefined
           });
 
           return {
