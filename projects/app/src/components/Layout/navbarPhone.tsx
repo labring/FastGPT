@@ -72,13 +72,9 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
               label: t('common:navbar.Config'),
               icon: 'support/config/configLight',
               activeIcon: 'support/config/configFill',
-              link: '/config/plugin/tool',
-              activeLink: [
-                '/config/plugin/tool',
-                '/config/plugin/marketplace',
-                '/config/model',
-                '/config/system/migrations'
-              ]
+              link: '/admin/dashboard',
+              activePrefix: ['/admin'],
+              activeLink: ['/config/plugin/tool', '/config/model']
             }
           ]
         : [])
