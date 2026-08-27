@@ -42,8 +42,7 @@ import { LegacySystemModelCollectionName } from '@fastgpt/service/core/ai/config
 import {
   loadInstalledModels,
   loadSystemModels,
-  updatedReloadSystemModel,
-  waitForAIModelsBootstrap
+  updatedReloadSystemModel
 } from '@fastgpt/service/core/ai/config/utils';
 
 const pluginLlm = {
@@ -72,7 +71,7 @@ describe('loadSystemModels', () => {
     global.systemDefaultModel = undefined as never;
   });
 
-  it('publishes the empty target first, then migrates legacy data without changing it', async () => {
+  it('finishes legacy migration before startup model loading resolves', async () => {
     const legacy = await legacyCollection.insertOne({
       model: 'legacy-llm',
       metadata: {
@@ -87,8 +86,6 @@ describe('loadSystemModels', () => {
     });
 
     await loadSystemModels();
-    expect(global.systemModelList).toEqual([]);
-    await waitForAIModelsBootstrap();
 
     expect(global.systemModelList).toMatchObject([
       { modelId: String(legacy.insertedId), model: 'legacy-llm' }
@@ -119,8 +116,7 @@ describe('loadSystemModels', () => {
       { model: 'invalid-model', metadata: { type: 'unknown' } }
     ]);
 
-    await loadSystemModels();
-    await expect(waitForAIModelsBootstrap()).rejects.toThrow('Invalid legacy system model');
+    await expect(loadSystemModels()).rejects.toThrow('Invalid legacy system model');
     await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
     await expect(MongoAIModel.findOne({ model: pluginLlm.model })).resolves.toBeNull();
     await expect(legacyCollection.countDocuments()).resolves.toBe(2);
@@ -141,7 +137,6 @@ describe('loadSystemModels', () => {
     await expect(legacyCollection.countDocuments()).resolves.toBe(0);
 
     await loadSystemModels();
-    await waitForAIModelsBootstrap();
 
     await expect(MongoAIModel.findOne({ model: 'plugin-llm' }).lean()).resolves.toBeTruthy();
     expect(global.systemModelList).toMatchObject([{ model: 'plugin-llm' }]);
@@ -169,7 +164,6 @@ describe('loadSystemModels', () => {
     });
 
     await loadSystemModels();
-    await waitForAIModelsBootstrap();
 
     await expect(MongoAIModel.findOne({ model: 'legacy-llm' })).resolves.toBeNull();
     expect(global.systemModelList).toMatchObject([{ model: 'installed-llm' }]);
@@ -177,7 +171,6 @@ describe('loadSystemModels', () => {
 
   it('does not inspect legacy data during a template hot refresh', async () => {
     await loadSystemModels();
-    await waitForAIModelsBootstrap();
     await legacyCollection.insertOne({
       model: 'late-model',
       metadata: {
@@ -198,7 +191,6 @@ describe('loadSystemModels', () => {
   it('invalidates member caches only when active model identities change', async () => {
     pluginMocks.listModels.mockResolvedValue([pluginLlm]);
     await loadSystemModels();
-    await waitForAIModelsBootstrap();
     reloadMocks.clearAllMyModelsCache.mockClear();
 
     await loadSystemModels(true);

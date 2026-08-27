@@ -314,7 +314,7 @@ const AIModelSelectorInner = ({
       ((requiresSelectedModelRequest && !!selectedError) || !selectedModelForType)
     : !!props.value && !!discovery && !selectedModelForType;
   const selectedErrorText = selectedError
-    ? t(getErrText(selectedError, t('common:model_not_exist')) as any)
+    ? getErrText(selectedError, t('common:model_not_exist'))
     : t('common:model_not_exist');
   const selectedLabel = selectedUnset ? (
     <>{unsetLabel ?? t('common:not_model_config')}</>
@@ -369,7 +369,7 @@ const AIModelSelectorInner = ({
         if (allowedLegacyValues === undefined && provider === providerId && providerHasMore) {
           children.push({
             value: LOAD_MORE_VALUE,
-            label: <Box color={'primary.600'}>{t('common:Load more')}</Box>
+            label: <Box color={'primary.600'}>{t('common:request_more')}</Box>
           });
         }
         if (allowedLegacyValues === undefined && children.length === 0) {

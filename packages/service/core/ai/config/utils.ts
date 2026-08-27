@@ -270,14 +270,9 @@ export const loadInstalledModels = async ({
   }
 };
 
-let startupBootstrapPromise: Promise<void> | undefined;
-
-/** 等待当前进程的后台模型迁移完成，主要供启动探针与测试观察最终状态。 */
-export const waitForAIModelsBootstrap = () => startupBootstrapPromise ?? Promise.resolve();
-
 /**
  * 编排模型启动或模板热刷新。插件刷新仍是启动前置条件；首次启动会先发布 ai_models 当前快照，
- * 再在后台执行旧表迁移、自动预装和最终缓存刷新，因此空目标表只会造成短暂不可用。
+ * 再同步执行旧表迁移、自动预装和最终缓存刷新。任一步失败都会向启动链路抛错并终止进程。
  */
 export const loadSystemModels = async (refresh = false, language = 'en') => {
   if (!refresh && global.systemModelList) return;
@@ -287,18 +282,11 @@ export const loadSystemModels = async (refresh = false, language = 'en') => {
     const pluginDocuments = await refreshModelTemplates();
     if (!global.systemModelList) {
       await loadInstalledModels({ pluginDocuments, language });
-      startupBootstrapPromise = (async () => {
-        const result = await bootstrapAIModelsFromLegacy({ pluginDocuments });
-        await syncPreinstalledSystemModels({ pluginDocuments });
-        await loadInstalledModels({ pluginDocuments, language });
-        await updateFastGPTConfigBuffer();
-        getLogger(LogCategories.MODULE.AI.CONFIG).info('AI model bootstrap completed', result);
-      })().catch((error) => {
-        getLogger(LogCategories.MODULE.AI.CONFIG).error('AI model bootstrap failed', { error });
-        throw error;
-      });
-      // 后台失败由日志记录，进程保持已发布的 ai_models 快照，下次重启会重新尝试迁移。
-      void startupBootstrapPromise.catch(() => undefined);
+      const result = await bootstrapAIModelsFromLegacy({ pluginDocuments });
+      await syncPreinstalledSystemModels({ pluginDocuments });
+      await loadInstalledModels({ pluginDocuments, language });
+      await updateFastGPTConfigBuffer();
+      getLogger(LogCategories.MODULE.AI.CONFIG).info('AI model bootstrap completed', result);
       return;
     }
 
