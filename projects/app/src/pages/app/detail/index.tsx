@@ -23,6 +23,7 @@ const AppDetail = () => {
   const { appId: storeAppId, source, setAppId, setSource } = useChatStore();
   const appId = useContextSelector(AppContext, (e) => e.appId);
   const appDetail = useContextSelector(AppContext, (e) => e.appDetail);
+  const currentTab = useContextSelector(AppContext, (e) => e.currentTab);
   const route2Tab = useContextSelector(AppContext, (e) => e.route2Tab);
   const isCurrentAppLoaded = !!appDetail._id && appDetail._id === appId;
   const isChatStoreReady = source === ChatSourceEnum.test && storeAppId === appDetail._id;
@@ -32,13 +33,14 @@ const AppDetail = () => {
     if (isCurrentAppLoaded) {
       setAppId(appDetail._id);
 
-      if (!appDetail.permission.hasWritePer) {
+      if (!appDetail.permission.hasWritePer && currentTab !== TabEnum.logs) {
         route2Tab(TabEnum.logs);
       }
     }
   }, [
     appDetail._id,
     appDetail.permission.hasWritePer,
+    currentTab,
     isCurrentAppLoaded,
     route2Tab,
     setAppId,
