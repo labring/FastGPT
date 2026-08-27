@@ -201,12 +201,15 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
     }
   }
 
+  const data = {
+    [NodeOutputKeyEnum.parallelSuccessResults]: filteredArray,
+    [NodeOutputKeyEnum.parallelFullResults]: fullResultsArray,
+    [NodeOutputKeyEnum.parallelStatus]: status
+  };
+
   return {
-    data: {
-      [NodeOutputKeyEnum.parallelSuccessResults]: filteredArray,
-      [NodeOutputKeyEnum.parallelFullResults]: fullResultsArray,
-      [NodeOutputKeyEnum.parallelStatus]: status
-    },
+    data,
+    [DispatchNodeResponseKeyEnum.toolResponse]: data,
     [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints,
