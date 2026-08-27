@@ -37,7 +37,8 @@ DOCX 图片上传等行为不变。`@firecrawl/anydoc` 只补充以下格式：
 ### 目标与边界
 
 文件解析不再通过人工配置固定 worker 数量。单实例根据 Node.js 可见的 CPU 并行度计算线程硬上限：
-`min(50, max(1, availableParallelism() - 1))`。实际任务是否放行主要由容器剩余内存和文件解析内存估算共同决定。
+`max(1, availableParallelism())`。`availableParallelism()` 已考虑容器 CPU 配额，不再叠加固定 worker 上限；
+实际任务是否放行主要由容器剩余内存和文件解析内存估算共同决定。
 
 本轮只约束 `readFile` worker 的解析阶段，暂不处理压缩文档实际展开量与输入大小不一致的问题，也暂不把
 内存预留延伸到解析结果的后续文本切块阶段。

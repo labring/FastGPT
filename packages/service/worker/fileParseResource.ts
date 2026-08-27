@@ -3,7 +3,6 @@ import { availableParallelism, totalmem } from 'node:os';
 const MIB = 1024 * 1024;
 const GIB = 1024 * MIB;
 
-const FILE_PARSE_MAX_WORKERS = 50;
 const FILE_PARSE_MEMORY_RESERVE_RATIO = 0.25;
 const FILE_PARSE_MIN_MEMORY_RESERVE_BYTES = 256 * MIB;
 const FILE_PARSE_MAX_MEMORY_RESERVE_BYTES = GIB;
@@ -38,13 +37,15 @@ export type FileParseMemoryState = {
 };
 
 /**
- * 根据 Node.js 可见的 CPU 并行度计算 readFile worker 硬上限。
+ * 使用 Node.js 可见的 CPU 并行度作为 readFile worker 硬上限。
  *
- * 主进程需要保留一个并行槽处理 API、下载和其他任务；单核环境仍允许一个解析 worker，
- * 同时以 50 作为异常 CPU 拓扑下的防失控上限。
+ * `availableParallelism` 已考虑容器 CPU 配额，因此无需再叠加固定上限或人为扣减 CPU。
+ * 内存策略负责控制实际同时执行的任务数；此处只保证异常输入时至少保留一个 worker 槽位。
  */
-export const getFileParseMaxWorkers = (parallelism = availableParallelism()) =>
-  Math.min(FILE_PARSE_MAX_WORKERS, Math.max(1, parallelism - 1));
+export const getFileParseMaxWorkers = (parallelism = availableParallelism()) => {
+  if (!Number.isFinite(parallelism)) return 1;
+  return Math.max(1, Math.floor(parallelism));
+};
 
 /** 根据容器约束计算系统安全保留内存，结果始终位于 256 MiB 到 1 GiB。 */
 export const getFileParseSafetyReserveBytes = (constrainedMemoryBytes: number) =>

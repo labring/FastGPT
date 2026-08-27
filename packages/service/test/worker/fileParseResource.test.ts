@@ -13,9 +13,11 @@ const GIB = 1024 * MIB;
 describe('worker/fileParseResource getFileParseMaxWorkers', () => {
   it.each([
     [1, 1],
-    [2, 1],
-    [8, 7],
-    [64, 50]
+    [2, 2],
+    [8, 8],
+    [64, 64],
+    [0, 1],
+    [Number.NaN, 1]
   ])('可用并行度 %i 时返回 %i 个 worker', (parallelism, expected) => {
     expect(getFileParseMaxWorkers(parallelism)).toBe(expected);
   });
