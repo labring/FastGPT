@@ -22,6 +22,7 @@ import {
   InsertDataResponseSchema,
   type InsertDataResponse
 } from '@fastgpt/global/openapi/core/dataset/data/api';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
   const { collectionId, q, a, indexes, metadata } = parseApiInput({
@@ -70,21 +71,24 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
     a: formatA
   });
 
-  const { insertId, tokens } = await createDatasetData({
-    teamId,
-    tmbId,
-    datasetId,
-    collectionId,
-    q: formatQ,
-    a: formatA,
-    chunkIndex: 0,
-    indexSize,
-    indexPrefix: indexPrefixTitle ? `# ${name}` : undefined,
-    embeddingModel: vectorModelData.model,
-    imageIndex: !!imageIndex,
-    indexes: formatIndexes,
-    metadata
-  });
+  const { insertId, tokens } = await mongoSessionRun((session) =>
+    createDatasetData({
+      teamId,
+      tmbId,
+      datasetId,
+      collectionId,
+      q: formatQ,
+      a: formatA,
+      chunkIndex: 0,
+      indexSize,
+      indexPrefix: indexPrefixTitle ? `# ${name}` : undefined,
+      embeddingModel: vectorModelData.model,
+      imageIndex: !!imageIndex,
+      indexes: formatIndexes,
+      metadata,
+      session
+    })
+  );
 
   pushGenerateVectorUsage({
     teamId,

@@ -46,6 +46,8 @@ The migration is safe to retry. After the formal migration, run another dry run 
 4. Standardized file upload error messages.
 5. Improved Skill saving by extracting `name` and `description` as structured fields and allowing `description` to be empty.
 6. Improved repeated tool call anomaly detection. FastGPT now treats more than five consecutive calls to the same tool with the same arguments as a model hallucination.
+7. Updated the payment modal immediately when switching payment methods.
+8. Improved Admin team, plan, payment, and user list queries, including username search and pagination performance.
 
 ## 🐛 Fixes
 
@@ -58,3 +60,5 @@ The migration is safe to retry. After the formal migration, run another dry run 
 ## 🛠️ Code Improvements
 
 1. Standardized compatibility handling for legacy tool parameters in Workflows.
+2. Materialized effective ACLs for Apps, Datasets, and Agent Skills, and centralized Collaborator permission mutations and inheritance synchronization.
+3. Required a MongoDB session when creating Dataset data and added a transaction to manual data insertion, so primary data, full-text search records, and image TTL state are committed atomically.

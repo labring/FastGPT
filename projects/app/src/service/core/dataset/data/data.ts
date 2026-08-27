@@ -101,6 +101,9 @@ export class DatasetDataOperation {
    * 2. 先写入向量库，拿到每条索引对应的 dataId
    * 3. 写入主数据和全文检索 token
    * 4. 如果图片来自 dataset S3 临时区，移除 TTL，避免被清理
+   *
+   * 调用方必须传入事务 session，确保主数据、Mongo 全文索引和图片 TTL 状态原子提交。
+   * 向量库不参与 Mongo 事务，事务失败产生的孤儿向量由一致性任务清理。
    */
   async create({
     teamId,
@@ -124,7 +127,7 @@ export class DatasetDataOperation {
     indexSize?: number;
     imageIndex?: boolean;
     imageDescMap?: Record<string, string>;
-    session?: ClientSession;
+    session: ClientSession;
   }) {
     // 纯图片数据允许没有正文；indexQ 保持为空，避免生成普通 default 文本向量索引。
     const dataQ = q || '';
@@ -487,7 +490,7 @@ export class DatasetDataOperation {
 
 /**
  * 创建 dataset data 的服务函数。
- * API 层使用该函数完成数据、全文索引、向量和图片 TTL 的一次性写入。
+ * 调用方必须通过 mongoSessionRun 传入 session；需要联动 training 等记录时复用同一事务。
  */
 export const createDatasetData = async (
   props: CreateDatasetDataPropsType & {
@@ -495,7 +498,7 @@ export const createDatasetData = async (
     indexSize?: number;
     imageIndex?: boolean;
     imageDescMap?: Record<string, string>;
-    session?: ClientSession;
+    session: ClientSession;
   }
 ) => {
   return new DatasetDataOperation(props.embeddingModel).create(props);
