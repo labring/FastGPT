@@ -710,6 +710,8 @@ describe('SystemToolRepo.getSystemToolWorkflowRuntime', () => {
     mocks.findSystemTool.mockResolvedValue({
       pluginId: 'commercial-workflow-tool',
       currentCost: 2,
+      systemKeyCost: 3,
+      hasTokenFee: true,
       customConfig: {
         name: 'Workflow Tool',
         avatar: 'workflow.svg',
@@ -741,6 +743,8 @@ describe('SystemToolRepo.getSystemToolWorkflowRuntime', () => {
       name: 'Workflow Tool',
       avatar: 'workflow.svg',
       currentCost: 2,
+      systemKeyCost: 3,
+      hasTokenFee: true,
       associatedPluginId: 'app-id',
       chatConfig: {
         variables: [

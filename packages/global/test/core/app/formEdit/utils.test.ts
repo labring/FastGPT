@@ -7,6 +7,7 @@ import {
   checkNeedsUserConfiguration,
   filterAgentGeneratedToolParams,
   filterToolConfiguredParams,
+  formatJsonEditorValue,
   getToolInputDisplayRenderTypeList,
   getToolInputManualRenderType,
   getToolConfigStatus,
@@ -51,7 +52,8 @@ describe('parseJsonEditorValue', () => {
     ['[1,2,3]', [1, 2, 3]],
     ['{"":""}', { '': '' }],
     ['"text"', 'text'],
-    ['true', true]
+    ['true', true],
+    ['null', null]
   ])('parses %s into its native JSON value', (text, expected) => {
     expect(parseJsonEditorValue(text)).toEqual({ success: true, value: expected });
   });
@@ -67,6 +69,19 @@ describe('parseJsonEditorValue', () => {
       success: false,
       value: '[1,2'
     });
+  });
+});
+
+describe('formatJsonEditorValue', () => {
+  it.each([
+    [{ enabled: true }, '{\n  "enabled": true\n}'],
+    [[1, 2], '[\n  1,\n  2\n]'],
+    [null, 'null'],
+    [undefined, ''],
+    ['{"legacy":true}', '{"legacy":true}'],
+    ['"text"', '"text"']
+  ])('formats JSON editor value %#', (value, expected) => {
+    expect(formatJsonEditorValue(value)).toBe(expected);
   });
 });
 

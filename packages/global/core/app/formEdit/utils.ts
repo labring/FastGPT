@@ -110,6 +110,13 @@ export const parseJsonEditorValue = (value: unknown): JsonEditorValueParseResult
   }
 };
 
+/** 将已持久化的 JSON Editor 值转换为编辑文本；历史字符串本身就是编辑文本。 */
+export const formatJsonEditorValue = (value: unknown): string => {
+  if (typeof value === 'string') return value;
+  if (value === undefined) return '';
+  return JSON.stringify(value, null, 2) ?? '';
+};
+
 /**
  * 服务端 runtime schema 的安全边界：即使持久化数据被篡改，也只允许普通可生成字段进入模型 schema。
  */

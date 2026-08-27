@@ -35,6 +35,7 @@ import {
   canInputBeAgentGenerated,
   canInputBeConfiguredAsToolParam,
   canInputBeManuallyConfigured,
+  formatJsonEditorValue,
   getSelectedInputRenderType,
   getToolInputManualRenderType,
   getToolConfigStatus,
@@ -63,7 +64,7 @@ import { validateToolInputValue } from '@fastgpt/global/core/app/tool/runtime';
 const inputTypeFormKey = (key: string) => `__input_type__${key}`;
 const developerInputTypeFormKey = (key: string) => `__developer_input_type__${key}`;
 
-/** 工具配置中的 JSON Editor 保留编辑文本，校验和提交时统一转换为原生 JSON 值。 */
+/** 工具配置中的 JSON Editor 保留编辑文本，校验时解析，运行边界再转换为原生 JSON 值。 */
 const parseConfigInputValue = ({
   inputType,
   value
@@ -72,7 +73,9 @@ const parseConfigInputValue = ({
   value: unknown;
 }) =>
   inputType === FlowNodeInputTypeEnum.JSONEditor
-    ? parseJsonEditorValue(value)
+    ? typeof value === 'string' && value.trim() === ''
+      ? { success: true as const, value: undefined }
+      : parseJsonEditorValue(value)
     : { success: true as const, value };
 
 type ToolSetListItemType = {
@@ -181,13 +184,16 @@ const getConfigFormValues = (tool: FlowNodeTemplateType) =>
         ? getToolInputManualRenderType(normalizedInput)
         : undefined;
       const inputValue = input.value ?? input.defaultValue;
+      const jsonEditorInputValue = input.value !== undefined ? input.value : input.defaultValue;
       acc[input.key] =
         input.key === NodeInputKeyEnum.systemInputConfig
           ? getSecretInputFormValue({
               value: inputValue as ToolParamsFormType | undefined,
               hasSystemSecret: tool.hasSystemSecret === true
             })
-          : inputValue;
+          : developerInputType === FlowNodeInputTypeEnum.JSONEditor
+            ? formatJsonEditorValue(jsonEditorInputValue)
+            : inputValue;
       acc[inputTypeFormKey(input.key)] = isAgentGeneratedToolInput(normalizedInput)
         ? FlowNodeInputTypeEnum.agentGenerated
         : (developerInputType ?? getSelectedInputRenderType(normalizedInput));
@@ -441,6 +447,7 @@ const ConfigValueInput = ({
 
           const parsedValue = parseConfigInputValue({ inputType, value: configuredValue });
           if (!parsedValue.success) return t('common:json_parse_error');
+          if (parsedValue.value === undefined) return !input.required;
 
           const validationResult = validateToolInputValue({
             schema: input.customJsonSchema,
@@ -930,7 +937,10 @@ const ConfigToolModal = ({
                     inputType: inputTypeState.selectedType,
                     value: configuredValue
                   });
-                  return parsedValue.success ? parsedValue.value : configuredValue;
+                  // 编辑文本持久化以兼容历史配置；空白输入统一表示未配置。
+                  return parsedValue.success && parsedValue.value === undefined
+                    ? undefined
+                    : configuredValue;
                 })()
         });
       })

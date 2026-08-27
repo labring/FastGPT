@@ -208,9 +208,23 @@ describe('agent sub app dispatchPlugin', () => {
       name: 'System Workflow',
       nodes: [],
       edges: [],
+      currentCost: 10,
+      hasTokenFee: true,
       chatConfig: {
         variables: []
       }
+    });
+    mocks.runWorkflow.mockResolvedValueOnce({
+      flowUsages: [{ moduleName: 'Child model', totalPoints: 3 }],
+      runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [
+        {
+          id: 'pluginOutputResponse',
+          nodeId: 'pluginOutput',
+          moduleName: 'Output',
+          moduleType: FlowNodeTypeEnum.pluginOutput,
+          pluginOutput: { result: 'ok' }
+        }
+      ])
     });
 
     const result = await dispatchPlugin({
@@ -251,6 +265,12 @@ describe('agent sub app dispatchPlugin', () => {
     expect(mocks.getAppVersionById).not.toHaveBeenCalled();
     expect(mocks.runWorkflow).toHaveBeenCalledTimes(1);
     expect(result.errorMessage).toBeUndefined();
+    expect(result.usages).toEqual([
+      {
+        moduleName: 'System Workflow',
+        totalPoints: 13
+      }
+    ]);
   });
 
   it('inherits child workflow tool default file variables from the parent context', async () => {

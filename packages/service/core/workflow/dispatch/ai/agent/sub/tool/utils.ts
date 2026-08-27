@@ -35,8 +35,10 @@ import type { SubAppInitType } from '../type';
 import {
   filterToolConfiguredParams,
   getToolConfigStatus,
+  getToolInputManualRenderType,
   initAgentToolInputType,
   initToolInputsTypeByDefaultMode,
+  parseJsonEditorValue,
   validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { compileToolRuntime } from '@fastgpt/global/core/app/tool/runtime';
@@ -654,10 +656,36 @@ export const getAgentRuntimeTools = async ({
           params: tool.config,
           inputs: toolNode.inputs
         });
+        /**
+         * JSON Editor 的历史配置或编辑结果可能是 JSON 文本，也可能已经是原生值。
+         * 运行边界统一转换，避免对象、数组或字符串字面量以序列化文本进入工具。
+         */
+        const getRuntimeConfiguredValue = ({
+          input,
+          value
+        }: {
+          input: FlowNodeInputItemType;
+          value: unknown;
+        }) => {
+          if (getToolInputManualRenderType(input) !== FlowNodeInputTypeEnum.JSONEditor) {
+            return value;
+          }
+
+          const parsedValue = parseJsonEditorValue(value);
+          if (!parsedValue.success) {
+            throw new Error(`Invalid JSON editor value: ${input.key}`);
+          }
+          return parsedValue.value;
+        };
+
         // 合并用户在 Agent 工具面板里保存的配置；false/0/空字符串也是有效配置值。
         toolNode.inputs.forEach((input) => {
           if (Object.prototype.hasOwnProperty.call(configuredParams, input.key)) {
-            const value = configuredParams[input.key];
+            const value = getRuntimeConfiguredValue({
+              input,
+              value: configuredParams[input.key]
+            });
+            configuredParams[input.key] = value;
             input.value = value;
           }
         });

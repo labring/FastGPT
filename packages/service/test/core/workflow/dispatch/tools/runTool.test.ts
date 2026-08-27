@@ -6,6 +6,7 @@ import {
 } from '@fastgpt/service/core/workflow/dispatch/child/runTool';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 
 const {
   authAppByTmbIdMock,
@@ -85,11 +86,12 @@ vi.mock('@fastgpt/service/core/workflow/utils/context', () => ({
   getWorkflowContext: vi.fn(() => ({ mcpClientMemory: {} }))
 }));
 
-const createRunToolProps = (toolConfig: Record<string, any>) =>
+const createRunToolProps = (
+  toolConfig: Record<string, any>,
+  params: Record<string, any> = { keyword: 'fastgpt' }
+) =>
   ({
-    params: {
-      keyword: 'fastgpt'
-    },
+    params,
     runningAppInfo: {
       id: 'attacker-app',
       teamId: 'attacker-team',
@@ -137,6 +139,51 @@ describe('dispatchRunTool runtime toolset auth', () => {
       systemKeyCost: 0
     });
     getSystemToolDetailMock.mockResolvedValue({ inputSchema: undefined });
+    runToolStreamMock.mockResolvedValue({ output: { ok: true } });
+  });
+
+  it.each([
+    {
+      keyType: SystemToolSecretInputTypeEnum.system,
+      expectedPoints: 5,
+      title: 'system key'
+    },
+    {
+      keyType: SystemToolSecretInputTypeEnum.manual,
+      expectedPoints: 2,
+      title: 'manual key'
+    }
+  ])('charges call cost and key-dependent cost for $title', async ({ keyType, expectedPoints }) => {
+    getSystemToolRuntimeMock.mockResolvedValueOnce({
+      id: 'search',
+      version: '1.0.0',
+      currentCost: 2,
+      systemKeyCost: 3,
+      secretsVal: {}
+    });
+    const props = createRunToolProps(
+      {
+        systemTool: {
+          toolId: 'systemTool-search'
+        }
+      },
+      {
+        keyword: 'fastgpt',
+        system_input_config: {
+          type: keyType,
+          value: {}
+        }
+      }
+    );
+
+    await dispatchRunTool(props);
+
+    expect(props.usagePush).toHaveBeenCalledWith([
+      {
+        moduleName: 'Tool node',
+        totalPoints: expectedPoints
+      }
+    ]);
   });
 
   it('should reject HTTP tool execution when running app tmb has no parent toolset permission', async () => {

@@ -901,6 +901,8 @@ export class SystemToolRepo {
       name: tool.customConfig.name,
       nodes: appVersion.nodes,
       currentCost: tool.currentCost,
+      systemKeyCost: tool.systemKeyCost,
+      hasTokenFee: tool.hasTokenFee,
       associatedPluginId
     };
   }
