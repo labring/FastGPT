@@ -34,6 +34,7 @@ export const ListSkillsQuerySchema = z.object({
   type: AgentSkillTypeSchema.optional().describe('技能类型过滤'),
   skillIds: z.array(IdSchema).optional().describe('按技能 ID 列表过滤，用于校验已关联技能状态'),
   parentId: NullableParentIdSchema,
+  offset: z.coerce.number().int().nonnegative().optional().describe('偏移量'),
   page: z.coerce.number().int().positive().optional().describe('页码'),
   pageSize: z.coerce.number().int().positive().optional().describe('每页数量'),
   withAppCount: z.boolean().optional().describe('是否返回引用应用数量')

@@ -39,6 +39,8 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
 import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
+import { getGridPageSize } from '@fastgpt/web/hooks/useResponsiveGridPageSize';
+import ResourceCardSkeleton from '@/pageComponents/dashboard/ResourceCardSkeleton';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
@@ -67,7 +69,9 @@ const List = () => {
     setMoveAppId,
     folderDetail,
     searchKey,
-    setSearchKey
+    setSearchKey,
+    columnCount,
+    pageSize
   } = useContextSelector(AppListContext, (v) => v);
 
   const hasCreatePer = folderDetail
@@ -76,12 +80,19 @@ const List = () => {
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
   const [editPerAppId, setEditPerAppId] = useState<string>();
+  const isInitialLoading = myApps.length === 0 && isFetchingApps;
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: myApps,
-    listKey: `${router.pathname}-${appType}-${parentId || ''}-${searchKey}`,
-    reservedSlotCount: 1,
+    listKey: `${router.pathname}-${appType}-${parentId || ''}-${searchKey}-${columnCount}-${pageSize}-${isInitialLoading}`,
+    reservedSlotCount: isInitialLoading ? 0 : 1,
     estimatedRowHeight: 160,
-    estimatedRowGap: 20
+    estimatedRowGap: 20,
+    loadingItemCount: isFetchingApps
+      ? isInitialLoading
+        ? getGridPageSize(columnCount)
+        : pageSize
+      : 0,
+    renderLoadingItem: () => <ResourceCardSkeleton />
   });
 
   const editPerApp = useMemo(
@@ -411,12 +422,24 @@ const List = () => {
     );
   };
 
-  if (myApps.length === 0 && isFetchingApps) return null;
-
   return (
-    <ScrollData h={'full'} minH={0}>
+    <ScrollData h={'full'} minH={0} showLoadingOverlay={false}>
       <>
-        {myApps.length === 0 && !folderDetail ? (
+        {isInitialLoading ? (
+          <Grid
+            ref={gridRef}
+            py={4}
+            gridTemplateColumns={
+              parentId
+                ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
+                : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
+            }
+            gridGap={5}
+            alignItems={'stretch'}
+          >
+            {renderVirtualGridItems(renderAppCard)}
+          </Grid>
+        ) : myApps.length === 0 && !folderDetail ? (
           searchKey ? (
             <EmptyTip />
           ) : isPc && hasCreatePer ? (
@@ -425,7 +448,7 @@ const List = () => {
             <Grid
               py={4}
               gridTemplateColumns={
-                folderDetail
+                parentId
                   ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
                   : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
               }
@@ -441,7 +464,7 @@ const List = () => {
               ref={gridRef}
               py={4}
               gridTemplateColumns={
-                folderDetail
+                parentId
                   ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
                   : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
               }

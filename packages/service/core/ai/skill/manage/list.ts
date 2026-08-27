@@ -62,6 +62,7 @@ export const listReadableAgentSkills = async ({
   category,
   type,
   skillIds,
+  offset,
   page,
   pageSize,
   withAppCount,
@@ -151,8 +152,8 @@ export const listReadableAgentSkills = async ({
     );
   })();
 
-  const paged = page !== undefined && pageSize !== undefined;
-  const skip = paged ? (page! - 1) * pageSize! : 0;
+  const paged = offset !== undefined || (page !== undefined && pageSize !== undefined);
+  const skip = paged ? (offset ?? (page! - 1) * pageSize!) : 0;
   const skillQuery = MongoAgentSkills.find(findSkillQuery)
     .sort({ type: -1, updateTime: -1, _id: -1 })
     .skip(skip);

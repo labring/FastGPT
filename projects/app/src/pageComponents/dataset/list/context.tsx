@@ -24,6 +24,7 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type DatasetItemType, type DatasetListItemType } from '@fastgpt/global/core/dataset/type';
 import { type EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import { useTranslation } from 'next-i18next';
+import { useResponsiveGridPageSize } from '@fastgpt/web/hooks/useResponsiveGridPageSize';
 
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
@@ -43,6 +44,8 @@ export type DatasetContextType = {
   onUpdateDataset: (data: UpdateDatasetBody) => Promise<void>;
   searchKey: string;
   setSearchKey: React.Dispatch<React.SetStateAction<string>>;
+  columnCount: number;
+  pageSize: number;
 };
 
 export const DatasetsContext = createContext<DatasetContextType>({
@@ -68,7 +71,9 @@ export const DatasetsContext = createContext<DatasetContextType>({
   searchKey: '',
   setSearchKey: function (value: React.SetStateAction<string>): void {
     throw new Error('Function not implemented.');
-  }
+  },
+  columnCount: 1,
+  pageSize: 50
 });
 
 function DatasetContextProvider({ children }: { children: React.ReactNode }) {
@@ -77,6 +82,9 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
   const [moveDatasetId, setMoveDatasetId] = useState<string>();
   const [searchKey, setSearchKey] = useState('');
   const parentId = normalizeParentId(router.query.parentId);
+  const { columnCount, pageSize } = useResponsiveGridPageSize(
+    parentId ? { base: 1, sm: 2, md: 2, lg: 3 } : { base: 1, sm: 2, md: 3, lg: 3, xl: 4 }
+  );
 
   const {
     data: myDatasets = [],
@@ -92,8 +100,8 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
         pageSize
       }),
     {
-      pageSize: 50,
-      refreshDeps: [parentId, searchKey],
+      pageSize,
+      refreshDeps: [parentId, searchKey, pageSize],
       throttleWait: 300,
       refreshOnWindowFocus: false
     }
@@ -170,7 +178,9 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     myDatasets,
     loadMyDatasets,
     searchKey,
-    setSearchKey
+    setSearchKey,
+    columnCount,
+    pageSize
   };
 
   return (

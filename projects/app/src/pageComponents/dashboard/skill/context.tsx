@@ -8,6 +8,10 @@ import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder
 import { normalizeParentId } from '@fastgpt/global/common/parentFolder/depth';
 import { useRouter } from 'next/router';
 import type { SkillPermission } from '@fastgpt/global/support/permission/skill/controller';
+import {
+  getGridRequestPageSize,
+  useResponsiveGridPageSize
+} from '@fastgpt/web/hooks/useResponsiveGridPageSize';
 
 export type SkillListItemType = Omit<
   ListSkillsResponse['list'][number],
@@ -30,6 +34,8 @@ type SkillListContextType = {
   folderDetail?: {
     permission: SkillPermission;
   };
+  columnCount: number;
+  pageSize: number;
 };
 
 export const SkillListContext = createContext<SkillListContextType>({
@@ -45,7 +51,9 @@ export const SkillListContext = createContext<SkillListContextType>({
   },
   parentId: null,
   paths: [],
-  folderDetail: undefined
+  folderDetail: undefined,
+  columnCount: 1,
+  pageSize: 50
 });
 
 const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
@@ -53,6 +61,9 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
   const parentId = normalizeParentId(router.query.parentId);
 
   const [searchKey, setSearchKey] = useState('');
+  const { columnCount, pageSize } = useResponsiveGridPageSize(
+    parentId ? { base: 1, sm: 2, md: 2, lg: 3 } : { base: 1, sm: 2, md: 2, lg: 3, xl: 4 }
+  );
 
   const {
     data: skills = [],
@@ -65,8 +76,8 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
         source: 'mine',
         searchKey,
         parentId,
-        page: Number(offset) / Number(pageSize) + 1,
-        pageSize
+        offset,
+        pageSize: getGridRequestPageSize(pageSize, offset)
       }).then((res) => ({
         list: res.list.map((item) => ({
           ...item,
@@ -76,8 +87,8 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
         total: res.total
       })),
     {
-      pageSize: 50,
-      refreshDeps: [searchKey, parentId],
+      pageSize,
+      refreshDeps: [searchKey, parentId, pageSize],
       throttleWait: 500,
       refreshOnWindowFocus: false
     }
@@ -118,7 +129,9 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
     setSearchKey,
     parentId,
     paths,
-    folderDetail
+    folderDetail,
+    columnCount,
+    pageSize
   };
 
   return <SkillListContext.Provider value={contextValue}>{children}</SkillListContext.Provider>;

@@ -50,9 +50,7 @@ const Dataset = () => {
   const parentId = normalizeParentId(router.query.parentId);
 
   const {
-    myDatasets,
     paths,
-    isFetchingDatasets,
     refetchPaths,
     loadMyDatasets,
     refetchFolderDetail,
@@ -105,13 +103,7 @@ const Dataset = () => {
   );
 
   return (
-    <MyBox
-      isLoading={myDatasets.length === 0 && isFetchingDatasets}
-      flexDirection={'column'}
-      h={'100%'}
-      overflowY={'auto'}
-      overflowX={'hidden'}
-    >
+    <MyBox flexDirection={'column'} h={'100%'} overflowY={'auto'} overflowX={'hidden'}>
       <Flex pt={[4, 6]} pl={3} pr={folderDetail ? [3, 6] : [3, 8]}>
         <Flex flexGrow={1} flexDirection="column">
           <Flex alignItems={'center'} justifyContent={'space-between'}>

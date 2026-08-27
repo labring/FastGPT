@@ -17,6 +17,10 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import { resolveDashboardAppListTypes } from './utils/appListTypes';
+import {
+  getGridRequestPageSize,
+  useResponsiveGridPageSize
+} from '@fastgpt/web/hooks/useResponsiveGridPageSize';
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
 type AppListContextType = {
@@ -33,6 +37,8 @@ type AppListContextType = {
   refetchFolderDetail: () => Promise<AppDetailType | null>;
   searchKey: string;
   setSearchKey: React.Dispatch<React.SetStateAction<string>>;
+  columnCount: number;
+  pageSize: number;
 };
 
 export const AppListContext = createContext<AppListContextType>({
@@ -58,7 +64,9 @@ export const AppListContext = createContext<AppListContextType>({
   searchKey: '',
   setSearchKey: function (value: React.SetStateAction<string>): void {
     throw new Error('Function not implemented.');
-  }
+  },
+  columnCount: 1,
+  pageSize: 50
 });
 
 const AppListContextProvider = ({ children }: { children: ReactNode }) => {
@@ -69,6 +77,9 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     type: AppTypeEnum;
   };
   const [searchKey, setSearchKey] = useState('');
+  const { columnCount, pageSize } = useResponsiveGridPageSize(
+    parentId ? { base: 1, sm: 2, md: 2, lg: 3 } : { base: 1, sm: 2, md: 2, lg: 3, xl: 4 }
+  );
 
   const {
     data: myApps = [],
@@ -82,13 +93,18 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
         type
       });
 
-      return getMyApps({ parentId, type: formatType, searchKey, offset, pageSize });
+      return getMyApps({
+        parentId,
+        type: formatType,
+        searchKey,
+        offset,
+        pageSize: getGridRequestPageSize(pageSize, offset)
+      });
     },
     {
-      pageSize: 50,
-      refreshDeps: [searchKey, parentId, type],
-      throttleWait: 500,
-      refreshOnWindowFocus: true
+      pageSize,
+      refreshDeps: [searchKey, parentId, type, pageSize],
+      throttleWait: 500
     }
   );
   const loadMyApps = useCallback(() => fetchData({ init: true }), [fetchData]);
@@ -166,7 +182,9 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     onUpdateApp,
     setMoveAppId,
     searchKey,
-    setSearchKey
+    setSearchKey,
+    columnCount,
+    pageSize
   };
   return (
     <AppListContext.Provider value={contextValue}>

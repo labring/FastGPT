@@ -47,16 +47,8 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const { guardSkillSandboxOperation, SkillSandboxOperationGuardModal } =
     useSkillSandboxOperationGuard();
 
-  const {
-    skills,
-    isFetchingSkills,
-    refreshSkills,
-    searchKey,
-    setSearchKey,
-    parentId,
-    paths,
-    folderDetail
-  } = useContextSelector(SkillListContext, (v) => v);
+  const { refreshSkills, searchKey, setSearchKey, parentId, paths, folderDetail } =
+    useContextSelector(SkillListContext, (v) => v);
   const maxFolderDepth = feConfigs?.limit?.maxFolderDepth ?? DEFAULT_MAX_FOLDER_DEPTH;
   const canCreateFolder = canCreateSubFolder(parentId, paths, maxFolderDepth);
   const folderDepthLimitTip = t('common:folder_depth_limit_tip');
@@ -166,7 +158,7 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
             </Box>
           )}
 
-          <MyBox flex={'1 0 0'} isLoading={skills.length === 0 && isFetchingSkills}>
+          <MyBox flex={'1 0 0'}>
             <List
               onClickCreate={
                 hasCreatePer
