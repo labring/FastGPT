@@ -1229,6 +1229,14 @@ describe('getAgentRuntimeTools schema loading', () => {
               renderTypeList: [FlowNodeInputTypeEnum.JSONEditor],
               selectedType: FlowNodeInputTypeEnum.JSONEditor
             }
+          },
+          optionalBlank: {
+            type: 'object',
+            'x-fastgpt-node-input': {
+              valueType: 'object',
+              renderTypeList: [FlowNodeInputTypeEnum.JSONEditor],
+              selectedType: FlowNodeInputTypeEnum.JSONEditor
+            }
           }
         }
       }
@@ -1243,12 +1251,14 @@ describe('getAgentRuntimeTools schema loading', () => {
           inputs: [
             { key: 'payload', mode: 'manual' },
             { key: 'label', mode: 'manual' },
-            { key: 'nullable', mode: 'manual' }
+            { key: 'nullable', mode: 'manual' },
+            { key: 'optionalBlank', mode: 'manual' }
           ],
           config: {
             payload: '{"enabled":true}',
             label: '"text"',
-            nullable: 'null'
+            nullable: 'null',
+            optionalBlank: '   '
           }
         }
       ]

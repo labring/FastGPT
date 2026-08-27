@@ -671,6 +671,9 @@ export const getAgentRuntimeTools = async ({
             return value;
           }
 
+          // 可选 JSON Editor 的历史配置可能保存为空白文本；与表单语义保持一致，按未配置处理。
+          if (typeof value === 'string' && value.trim() === '') return undefined;
+
           const parsedValue = parseJsonEditorValue(value);
           if (!parsedValue.success) {
             throw new Error(`Invalid JSON editor value: ${input.key}`);
@@ -685,6 +688,10 @@ export const getAgentRuntimeTools = async ({
               input,
               value: configuredParams[input.key]
             });
+            if (value === undefined) {
+              delete configuredParams[input.key];
+              return;
+            }
             configuredParams[input.key] = value;
             input.value = value;
           }
