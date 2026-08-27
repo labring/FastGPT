@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as loginApi from '@/pages/api/support/user/account/loginByPassword';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
@@ -29,6 +29,7 @@ const saveLoginCode = (username: string, code = '123456') =>
   );
 
 describe('loginByPassword API', () => {
+  const originalSystemConfig = global.systemConfig;
   let testUser: any;
   let testTeam: any;
   let testTmb: any;
@@ -64,6 +65,10 @@ describe('loginByPassword API', () => {
     await saveLoginCode('testuser');
 
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    global.systemConfig = originalSystemConfig;
   });
 
   it('should login successfully with valid credentials', async () => {
@@ -197,6 +202,82 @@ describe('loginByPassword API', () => {
     expect(res.code).toBe(200);
     expect(res.data.user.team.tmbId).toBe(String(testTmb._id));
     expect(res.data.token).toEqual(expect.any(String));
+  });
+
+  it('should create and use a personal team when multi-team login has no usable team', async () => {
+    global.systemConfig = { teamMode: 'multi' };
+    const loginUser = await MongoUser.create({
+      username: 'multi-orphan-user',
+      password: 'testpassword',
+      status: UserStatusEnum.active
+    });
+    await saveLoginCode(loginUser.username);
+
+    const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
+      body: {
+        username: loginUser.username,
+        password: 'testpassword',
+        code: '123456',
+        language: 'zh-CN'
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.user.team.teamName).toBe('orphan-use Team');
+    expect(res.data.user.team.role).toBe('owner');
+    await expect(MongoTeam.countDocuments({ ownerId: loginUser._id })).resolves.toBe(1);
+    await expect(
+      MongoTeamMember.countDocuments({ userId: loginUser._id, status: 'active' })
+    ).resolves.toBe(1);
+  });
+
+  it('should not create a team for a pending cancellation user without a usable team', async () => {
+    global.systemConfig = { teamMode: 'multi' };
+    const loginUser = await MongoUser.create({
+      username: 'pending-orphan-user',
+      password: 'testpassword',
+      status: UserStatusEnum.active
+    });
+    await MongoAccountCancellation.create({
+      userId: loginUser._id,
+      status: AccountCancellationStatus.pending,
+      requestedAt: new Date()
+    });
+    await saveLoginCode(loginUser.username);
+
+    const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
+      body: {
+        username: loginUser.username,
+        password: 'testpassword',
+        code: '123456',
+        language: 'zh-CN'
+      }
+    });
+
+    expect(res.code).toBe(500);
+    await expect(MongoTeam.countDocuments({ ownerId: loginUser._id })).resolves.toBe(0);
+  });
+
+  it('should keep single-team login failure when the user has no usable team', async () => {
+    global.systemConfig = { teamMode: 'single' };
+    const loginUser = await MongoUser.create({
+      username: 'single-orphan-user',
+      password: 'testpassword',
+      status: UserStatusEnum.active
+    });
+    await saveLoginCode(loginUser.username);
+
+    const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
+      body: {
+        username: loginUser.username,
+        password: 'testpassword',
+        code: '123456',
+        language: 'zh-CN'
+      }
+    });
+
+    expect(res.code).toBe(500);
+    await expect(MongoTeam.countDocuments({ ownerId: loginUser._id })).resolves.toBe(0);
   });
 
   it('should reject a finalizing user before profile updates and session creation', async () => {

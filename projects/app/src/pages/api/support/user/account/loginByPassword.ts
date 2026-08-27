@@ -1,4 +1,5 @@
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
+import { createUserLoginTeam } from '@fastgpt/service/support/user/team/controller';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
@@ -54,7 +55,16 @@ async function handler(
           tmbId: user?.lastLoginTmbId,
           userId: user._id,
           isRoot: username === 'root',
-          session
+          session,
+          createTeamIfUnavailable:
+            username !== 'root' && global.systemConfig?.teamMode === 'multi'
+              ? ({ userId, session }) =>
+                  createUserLoginTeam({
+                    userId,
+                    username: user.username,
+                    session: session as NonNullable<typeof session>
+                  })
+              : undefined
         });
 
         user.lastLoginTmbId = userDetail.team.tmbId;

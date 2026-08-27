@@ -45,8 +45,8 @@ describe('account cancellation leases', () => {
     await expect(withAccountCancellationUserLock('user-1', fn)).resolves.toBe('done');
 
     expect(withLease).toHaveBeenCalledWith({
-      key: 'accountCancellation:user-1',
-      label: 'account-cancellation-user',
+      key: 'user:user-1',
+      label: 'user-operation',
       ttlMs: 600000,
       fn: expect.any(Function)
     });

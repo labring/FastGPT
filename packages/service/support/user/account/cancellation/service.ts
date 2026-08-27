@@ -7,12 +7,11 @@ import {
   RedisLeaseUnavailableError
 } from '@fastgpt/dal/redis/caches';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { getAccountCancellationAuthKey } from './formatter';
 import { getActiveAccountCancellationByUserId } from './read';
+import { withUserLock } from '../../lock';
 import { MongoAccountCancellation } from './schema';
 import { MongoTeam } from '../../team/teamSchema';
 
-const accountCancellationLockTtlMs = 10 * 60 * 1000;
 const accountCancellationTeamLockTtlMs = 10 * 60 * 1000;
 const leaseCache = new LeaseCache({ logger: getLogger(LogCategories.INFRA.REDIS) });
 const accountCancellationCache = new AccountCancellationCache({
@@ -118,12 +117,7 @@ export const clearAccountCancellationCache = async ({
  */
 export const withAccountCancellationUserLock = async <T>(userId: string, fn: () => Promise<T>) => {
   try {
-    return await leaseCache.withLease({
-      key: getAccountCancellationAuthKey(userId),
-      label: 'account-cancellation-user',
-      ttlMs: accountCancellationLockTtlMs,
-      fn: () => fn()
-    });
+    return await withUserLock(userId, fn);
   } catch (error) {
     if (error instanceof RedisLeaseUnavailableError) {
       throw new Error('Account cancellation operation is busy');
