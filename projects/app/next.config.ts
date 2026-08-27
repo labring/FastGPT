@@ -61,6 +61,21 @@ const nextConfig: NextConfig = {
       }
     ];
   },
+  // 旧 root 配置路由迁移到 /admin 后的重定向（避免历史链接/书签失效）
+  async redirects() {
+    return [
+      {
+        source: '/config/plugin/tool',
+        destination: '/admin/config/plugin',
+        permanent: false
+      },
+      {
+        source: '/config/model',
+        destination: '/admin/config/modelProvider',
+        permanent: false
+      }
+    ];
+  },
   turbopack: {
     root: path.join(__dirname, '../../'),
     rules: {

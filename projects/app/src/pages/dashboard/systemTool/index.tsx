@@ -397,7 +397,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   {userInfo?.username === 'root' && (
                     <Button
                       onClick={() => {
-                        router.push('/config/plugin/tool');
+                        router.push('/admin/config/plugin');
                       }}
                       w={'160px'}
                     >

@@ -104,8 +104,10 @@ const Navbar = ({ unread }: { unread: number }) => {
               label: t('common:navbar.Config'),
               icon: 'support/config/configLight',
               activeIcon: 'support/config/configFill',
-              link: '/config/plugin/tool',
-              activeLink: ['/config/plugin/tool', '/config/plugin/marketplace', '/config/model']
+              link: '/admin/dashboard',
+              // 管理员区域路由前缀匹配；旧 /config 路由已重定向，activeLink 保留以兼容重定向生效前的瞬时路径
+              activePrefix: ['/admin'],
+              activeLink: ['/config/plugin/tool', '/config/model']
             }
           ]
         : [])
@@ -138,7 +140,9 @@ const Navbar = ({ unread }: { unread: number }) => {
       {/* 导航列表 */}
       <Box flex={1}>
         {navbarList.map((item) => {
-          const isActive = item.activeLink.includes(router.pathname);
+          const isActive =
+            (item.activePrefix?.some((prefix) => router.pathname.startsWith(prefix)) ?? false) ||
+            item.activeLink.includes(router.pathname);
 
           return (
             <Box

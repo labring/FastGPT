@@ -9,8 +9,9 @@ import type {
   STTModelType
 } from '@fastgpt/global/core/ai/model.schema';
 import type { GetSystemInitDataResponse } from '@fastgpt/global/openapi/common/system/api';
-import { type FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
-import { type SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
+import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
+import type { LicenseDataType } from '@fastgpt/global/common/system/types';
+import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import type { SystemDefaultModelType } from '@fastgpt/service/core/ai/type';
@@ -60,6 +61,12 @@ type State = {
   setNotSufficientModalType: (val?: NotSufficientModalType) => void;
   showProModal: boolean;
   setShowProModal: (e: boolean) => void;
+
+  // License 激活状态（迁移自 pro/admin，开源版可提示购买商业版）
+  licenseData?: LicenseDataType;
+  licenseLoading: boolean;
+  initLicenseData: () => Promise<void>;
+  clearLicenseData: () => void;
 
   initDataBufferId?: string;
   feConfigs: FastGPTFeConfigsType;
@@ -143,7 +150,10 @@ export const useSystemStore = create<State>()(
             set((state) => {
               state.gitStar = git.stargazers_count;
             });
-          } catch (error) {}
+            // gitStar 加载失败静默处理（非核心功能，不打断用户）
+          } catch {
+            // 忽略 git star 加载失败
+          }
         },
 
         notSufficientModalType: undefined,
@@ -157,6 +167,35 @@ export const useSystemStore = create<State>()(
         setShowProModal(e) {
           set((state) => {
             state.showProModal = e;
+          });
+        },
+
+        // License 激活状态（迁移自 pro/admin）
+        // licenseLoading 初始为 true：未检测前视为加载中，避免已有 license 时刷新闪烁激活弹窗
+        licenseData: undefined,
+        licenseLoading: true,
+        async initLicenseData() {
+          set((state) => {
+            state.licenseLoading = true;
+          });
+          try {
+            const { getLicenseData } = await import('@/web/common/license/api');
+            const licenseData = await getLicenseData();
+            set((state) => {
+              state.licenseData = licenseData;
+              state.licenseLoading = false;
+            });
+          } catch (error) {
+            set((state) => {
+              state.licenseData = undefined;
+              state.licenseLoading = false;
+            });
+            console.error('Init license data failed', error);
+          }
+        },
+        clearLicenseData() {
+          set((state) => {
+            state.licenseData = undefined;
           });
         },
 

@@ -50,3 +50,5 @@ pro/admin/worker/
 /pro/llm_benchmark/content_benchmark/eval-runs/
 /pro/llm_benchmark/content_benchmark/.cache/
 .gstack/
+
+.pi
