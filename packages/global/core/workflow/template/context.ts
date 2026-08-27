@@ -1,4 +1,4 @@
-import type { FlowNodeTypeEnum } from '../node/constant';
+import { FlowNodeTypeEnum, isInteractiveNodeType, isNestedParentNodeType } from '../node/constant';
 import { NodeOutputKeyEnum } from '../constants';
 import type {
   FlowNodeTemplateType,
@@ -51,8 +51,63 @@ export const isTemplateVisible = (
   return !template.isShowInContext || template.isShowInContext(ctx);
 };
 
+export type NodeContainerCheckError =
+  | 'can_not_loop'
+  | 'can_not_parallel'
+  | 'loop_run_break_must_inside_loop_run'
+  | 'can_not_add_inside_container';
+
+const UNSUPPORTED_IN_NESTED_NODE_TYPES = new Set<FlowNodeTypeEnum>([
+  FlowNodeTypeEnum.workflowStart,
+  FlowNodeTypeEnum.loop,
+  FlowNodeTypeEnum.loopRun,
+  FlowNodeTypeEnum.parallelRun,
+  FlowNodeTypeEnum.pluginInput,
+  FlowNodeTypeEnum.pluginOutput
+]);
+
+/** 统一校验节点是否可以加入目标容器，并返回对应的提示码。 */
+export const getNodeContainerCheckError = ({
+  node,
+  context
+}: {
+  node: Pick<FlowNodeTemplateType, 'flowNodeType' | 'isShowInContext'>;
+  context: NodeTemplateContext;
+}): NodeContainerCheckError | undefined => {
+  const parentType = context.parentType;
+
+  if (
+    node.flowNodeType === FlowNodeTypeEnum.loopRunBreak &&
+    parentType !== FlowNodeTypeEnum.loopRun
+  ) {
+    return 'loop_run_break_must_inside_loop_run';
+  }
+
+  if (!parentType) return undefined;
+
+  if (node.flowNodeType === FlowNodeTypeEnum.toolSet && !context.hasToolNode) {
+    return 'can_not_add_inside_container';
+  }
+
+  if (isNestedParentNodeType(node.flowNodeType)) {
+    return parentType === FlowNodeTypeEnum.parallelRun ? 'can_not_parallel' : 'can_not_loop';
+  }
+
+  if (parentType === FlowNodeTypeEnum.parallelRun && isInteractiveNodeType(node.flowNodeType)) {
+    return 'can_not_parallel';
+  }
+
+  if (UNSUPPORTED_IN_NESTED_NODE_TYPES.has(node.flowNodeType)) {
+    return parentType === FlowNodeTypeEnum.parallelRun ? 'can_not_parallel' : 'can_not_loop';
+  }
+
+  if (!isTemplateVisible(node, context)) return 'can_not_add_inside_container';
+
+  return undefined;
+};
+
 /**
- * 由源节点信息构建快捷添加/连线共用的展示上下文；会沿入边追溯工具根边，sourceNode 不存在时返回 null。
+ * 构建快捷添加、侧边栏或容器落点共用的展示上下文；会沿入边追溯工具根边，无法建立上下文时返回 null。
  */
 export const buildNodeTemplateContext = ({
   sourceNode,
@@ -61,7 +116,8 @@ export const buildNodeTemplateContext = ({
   getNodeById,
   isSidebar = false,
   hasToolNode = false,
-  hasLoopRunNode = false
+  hasLoopRunNode = false,
+  targetParentType
 }: {
   sourceNode:
     | Pick<FlowNodeItemType, 'nodeId' | 'flowNodeType' | 'isTool' | 'parentNodeId'>
@@ -72,6 +128,8 @@ export const buildNodeTemplateContext = ({
   isSidebar?: boolean;
   hasToolNode?: boolean;
   hasLoopRunNode?: boolean;
+  /** 目标容器类型；用于侧边栏或画布拖拽落点校验。 */
+  targetParentType?: FlowNodeTypeEnum | null;
 }): NodeTemplateContext | null => {
   if (!sourceNode && !isSidebar) return null;
   const parentNode = sourceNode?.parentNodeId ? getNodeById(sourceNode.parentNodeId) : undefined;
@@ -111,7 +169,8 @@ export const buildNodeTemplateContext = ({
     sourceIsTool: !!sourceNode?.isTool,
     isConnectedTool,
     handleId: handleId ?? null,
-    parentType: parentNode?.flowNodeType ?? null,
+    parentType:
+      targetParentType === undefined ? (parentNode?.flowNodeType ?? null) : targetParentType,
     hasToolNode,
     hasLoopRunNode
   };

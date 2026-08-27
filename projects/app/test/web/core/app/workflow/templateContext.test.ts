@@ -5,6 +5,7 @@ import {
   buildNodeTemplateContext,
   createHideInContext,
   createShowInContext,
+  getNodeContainerCheckError,
   isTemplateVisible
 } from '@fastgpt/global/core/workflow/template/context';
 import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
@@ -14,6 +15,7 @@ import { LoopRunBreakNode } from '@fastgpt/global/core/workflow/template/system/
 import { ParallelRunNode } from '@fastgpt/global/core/workflow/template/system/parallelRun/parallelRun';
 import { StopToolNode } from '@fastgpt/global/core/workflow/template/system/stopTool';
 import { ToolParamsNode } from '@fastgpt/global/core/workflow/template/system/toolParams';
+import { RunToolSetNode } from '@fastgpt/global/core/workflow/template/system/runToolSet';
 import { UserSelectNode } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
 import type { NodeTemplateContext } from '@fastgpt/global/core/workflow/type/node';
 
@@ -219,6 +221,83 @@ describe('template context', () => {
         })
       )
     ).toBe(false);
+  });
+
+  it('画布与侧边栏共用容器加入校验', () => {
+    const context = ctx({
+      isSidebar: true,
+      sourceNodeId: null,
+      parentType: FlowNodeTypeEnum.parallelRun
+    });
+
+    expect(
+      getNodeContainerCheckError({
+        node: { flowNodeType: FlowNodeTypeEnum.workflowStart },
+        context
+      })
+    ).toBe('can_not_parallel');
+    expect(
+      getNodeContainerCheckError({
+        node: { flowNodeType: FlowNodeTypeEnum.userSelect },
+        context
+      })
+    ).toBe('can_not_parallel');
+    expect(
+      getNodeContainerCheckError({
+        node: LoopRunBreakNode,
+        context
+      })
+    ).toBe('loop_run_break_must_inside_loop_run');
+    expect(
+      getNodeContainerCheckError({
+        node: StopToolNode,
+        context
+      })
+    ).toBe('can_not_add_inside_container');
+    expect(
+      getNodeContainerCheckError({
+        node: StopToolNode,
+        context: { ...context, hasToolNode: true }
+      })
+    ).toBeUndefined();
+  });
+
+  it('工具集仅在容器已有工具调用节点时可加入', () => {
+    const context = ctx({
+      isSidebar: true,
+      sourceNodeId: null,
+      parentType: FlowNodeTypeEnum.loopRun
+    });
+
+    expect(getNodeContainerCheckError({ node: RunToolSetNode, context })).toBe(
+      'can_not_add_inside_container'
+    );
+    expect(
+      getNodeContainerCheckError({
+        node: RunToolSetNode,
+        context: { ...context, hasToolNode: true }
+      })
+    ).toBeUndefined();
+  });
+
+  it('buildNodeTemplateContext 支持使用目标容器覆盖源节点容器', () => {
+    const result = buildNodeTemplateContext({
+      sourceNode: {
+        nodeId: 'n1',
+        flowNodeType: FlowNodeTypeEnum.aiChat,
+        isTool: false,
+        parentNodeId: 'loop1'
+      },
+      edges: [],
+      targetParentType: FlowNodeTypeEnum.parallelRun,
+      getNodeById: () =>
+        ({
+          nodeId: 'loop1',
+          flowNodeType: FlowNodeTypeEnum.loopRun
+        }) as any
+    });
+
+    expect(result?.parentType).toBe(FlowNodeTypeEnum.parallelRun);
   });
 
   it('stopTool 仅在已挂载工具节点（工具子流程）可见', () => {

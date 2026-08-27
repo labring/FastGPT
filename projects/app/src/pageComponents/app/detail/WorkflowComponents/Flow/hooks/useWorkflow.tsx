@@ -43,6 +43,10 @@ import { WorkflowUIContext } from '../../context/workflowUIContext';
 import { WorkflowModalContext } from '../../context/workflowModalContext';
 import { WorkflowLayoutContext } from '../../context/workflowComputeContext';
 import { type HelperLinesController } from '../components/HelperLines';
+import {
+  buildNodeTemplateContext,
+  getNodeContainerCheckError
+} from '@fastgpt/global/core/workflow/template/context';
 
 /*
   限定容量的最大堆,根为当前最大距离。保留为通用最近邻筛选工具,
@@ -473,21 +477,6 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
 
   // Check if a node is placed on top of a nested parent node (loop / parallelRun / loopRun)
   const checkNodeOverLoopNode = useMemoizedFn((node: Node) => {
-    const unSupportedInLoop = [
-      FlowNodeTypeEnum.workflowStart,
-      FlowNodeTypeEnum.loop,
-      FlowNodeTypeEnum.loopRun,
-      FlowNodeTypeEnum.parallelRun,
-      FlowNodeTypeEnum.pluginInput,
-      FlowNodeTypeEnum.pluginOutput
-    ];
-    // Interactive nodes are silently ignored in parallel (not added to parent)
-    const unSupportedInParallel = [
-      ...unSupportedInLoop,
-      FlowNodeTypeEnum.userSelect,
-      FlowNodeTypeEnum.formInput
-    ];
-
     if (!node || node.data.parentNodeId) return;
 
     // 获取所有与当前节点相交的节点中，类型为嵌套父容器且未折叠的节点
@@ -497,23 +486,30 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
     );
 
     if (parentNode) {
-      if (
-        node.type === FlowNodeTypeEnum.loopRunBreak &&
-        parentNode.type !== FlowNodeTypeEnum.loopRun
-      ) {
-        return toast({
-          status: 'warning',
-          title: t('workflow:loop_run_break_must_inside_loop_run')
+      const containerChildNodes = nodes.filter(
+        (item) => item.data.parentNodeId === parentNode.data.nodeId
+      );
+      const containerContext = buildNodeTemplateContext({
+        sourceNode: undefined,
+        edges,
+        getNodeById,
+        isSidebar: true,
+        targetParentType: parentNode.data.flowNodeType,
+        hasToolNode: containerChildNodes.some(
+          (item) => item.data.flowNodeType === FlowNodeTypeEnum.toolCall
+        ),
+        hasLoopRunNode: containerChildNodes.some(
+          (item) => item.data.flowNodeType === FlowNodeTypeEnum.loopRun
+        )
+      });
+      if (containerContext) {
+        const checkError = getNodeContainerCheckError({
+          node: node.data,
+          context: containerContext
         });
-      }
-
-      const isParallel = parentNode.type === FlowNodeTypeEnum.parallelRun;
-      const unSupportedTypes = isParallel ? unSupportedInParallel : unSupportedInLoop;
-      if (unSupportedTypes.includes(node.type as FlowNodeTypeEnum)) {
-        return toast({
-          status: 'warning',
-          title: isParallel ? t('workflow:can_not_parallel') : t('workflow:can_not_loop')
-        });
+        if (checkError) {
+          return toast({ status: 'warning', title: t(`workflow:${checkError}` as any) });
+        }
       }
 
       onChangeNode({

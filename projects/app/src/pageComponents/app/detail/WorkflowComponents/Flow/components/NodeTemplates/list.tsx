@@ -16,8 +16,7 @@ import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import type {
   FlowNodeItemType,
   NodeTemplateListItemType,
-  NodeTemplateListType,
-  NodeTemplateContext
+  NodeTemplateListType
 } from '@fastgpt/global/core/workflow/type/node';
 import { TemplateTypeEnum } from './header';
 import { useMemoizedFn } from 'ahooks';
@@ -27,8 +26,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import CostTooltip from '@/components/core/app/tool/CostTooltip';
 import {
   FlowNodeTypeEnum,
-  isNestedParentNodeType,
-  isInteractiveNodeType
+  isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
 import { getColorSchemaByFlowNodeType } from '@fastgpt/web/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
@@ -38,7 +36,10 @@ import { sliderWidth } from '../../NodeTemplatesModal';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useWorkflowUtils } from '../../hooks/useUtils';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
-import { isTemplateVisible } from '@fastgpt/global/core/workflow/template/context';
+import {
+  buildNodeTemplateContext,
+  getNodeContainerCheckError
+} from '@fastgpt/global/core/workflow/template/context';
 import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
 import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/loopEnd';
 import { LoopRunStartNode } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRunStart';
@@ -241,7 +242,7 @@ const NodeTemplateList = ({
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const { computedNewNodeName } = useWorkflowUtils();
-  const { getNodeById, getNodes } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { edges, getNodeById, getNodes } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
   const isToolSelector = handleParams?.handleId === NodeOutputKeyEnum.selectedTools;
   const { getIntersectingNodes } = useReactFlow();
@@ -317,66 +318,30 @@ const NodeTemplateList = ({
           ? getNodeById(effectiveParentNodeId)
           : undefined;
 
-        const isNestedParentNode = isNestedParentNodeType(templateNode.flowNodeType);
-        if (isNestedParentNode && !!effectiveParentNodeId) {
-          toast({
-            status: 'warning',
-            title: t(
-              effectiveParentNode?.flowNodeType === FlowNodeTypeEnum.parallelRun
-                ? 'workflow:can_not_parallel'
-                : 'workflow:can_not_loop'
-            )
+        const containerChildNodes = effectiveParentNode
+          ? getNodes().filter((item) => item.data.parentNodeId === effectiveParentNode.nodeId)
+          : [];
+        const containerContext = buildNodeTemplateContext({
+          sourceNode: handleParams ? currentNode : undefined,
+          edges,
+          getNodeById,
+          handleId: handleParams?.handleId,
+          isSidebar: !handleParams,
+          targetParentType: effectiveParentNode?.flowNodeType,
+          hasToolNode: containerChildNodes.some(
+            (item) => item.data.flowNodeType === FlowNodeTypeEnum.toolCall
+          ),
+          hasLoopRunNode: containerChildNodes.some(
+            (item) => item.data.flowNodeType === FlowNodeTypeEnum.loopRun
+          )
+        });
+        if (containerContext) {
+          const checkError = getNodeContainerCheckError({
+            node: templateNode,
+            context: containerContext
           });
-          return;
-        }
-
-        if (effectiveParentNodeId && isInteractiveNodeType(templateNode.flowNodeType)) {
-          if (effectiveParentNode?.flowNodeType === FlowNodeTypeEnum.parallelRun) {
-            toast({
-              status: 'warning',
-              title: t('workflow:can_not_parallel')
-            });
-            return;
-          }
-        }
-
-        if (templateNode.flowNodeType === FlowNodeTypeEnum.loopRunBreak) {
-          if (effectiveParentNode?.flowNodeType !== FlowNodeTypeEnum.loopRun) {
-            toast({
-              status: 'warning',
-              title: t('workflow:loop_run_break_must_inside_loop_run')
-            });
-            return;
-          }
-        }
-
-        // 侧边栏添加没有源节点，容器内部是隔离画布，按目标容器自身属性判断：
-        // hasToolNode / hasLoopRunNode 只统计容器子节点，不受外部画布影响；
-        // 容器上下文符合节点存在逻辑时（如容器内已有工具调用）允许加入。
-        if (!handleParams && effectiveParentNode) {
-          const containerChildNodes = getNodes().filter(
-            (item) => item.data.parentNodeId === effectiveParentNode.nodeId
-          );
-          const containerContext: NodeTemplateContext = {
-            isSidebar: true,
-            sourceNodeId: null,
-            sourceType: null,
-            sourceIsTool: false,
-            isConnectedTool: false,
-            handleId: null,
-            parentType: effectiveParentNode.flowNodeType,
-            hasToolNode: containerChildNodes.some(
-              (item) => item.data.flowNodeType === FlowNodeTypeEnum.toolCall
-            ),
-            hasLoopRunNode: containerChildNodes.some(
-              (item) => item.data.flowNodeType === FlowNodeTypeEnum.loopRun
-            )
-          };
-          if (!isTemplateVisible(templateNode, containerContext)) {
-            toast({
-              status: 'warning',
-              title: t('workflow:can_not_add_inside_container')
-            });
+          if (checkError) {
+            toast({ status: 'warning', title: t(`workflow:${checkError}` as any) });
             return;
           }
         }
@@ -486,6 +451,8 @@ const NodeTemplateList = ({
     [
       computedNewNodeName,
       getNodeById,
+      getNodes,
+      edges,
       handleParams,
       isToolSelector,
       getIntersectingNodes,
