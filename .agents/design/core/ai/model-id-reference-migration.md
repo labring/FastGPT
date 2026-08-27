@@ -820,10 +820,10 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 - [x] 将模型结构接管改为启动逐模型 repair，新增 4.16.3 资源引用 dry-run/回填接口，并移除新版旧 cleaner 路由。
 - [x] 补齐局部单测、迁移测试、核心集成测试和 Pro 测试。
 - [x] 执行静态残留审计、局部测试、类型检查，最后运行全量测试。
-- [ ] 收紧运行时解析：`modelId !== undefined` 时禁止按 legacy model 回退，并覆盖空字符串、错误类型和停用模型。
-- [ ] 重构 `formatModels` 为 `clear/throw` 两种缺失策略；创建/复制/转化清空，保存/发布聚合报错，客户端导入不预清洗。
-- [ ] 修正 4163 优先级和 active 回退范围，保证有效 ID 幂等、无 legacy 的无效 ID 不回退。
-- [ ] 管理员 detail 返回完整配置、list 保持脱敏；移除导入 schema 的 `.strict()` 并补完整 round-trip 测试。
-- [ ] 所有模型选择器保留异常值且统一显示“xxx 模型已停用”，修正 Chat/TTS/QG/Skill Preview/Chat Agent Helper 的 ID 语义。
-- [ ] 在权限写入口清理同模型旧 resourceName ACL，并记录权限迁移和 Core/Pro 滚动展示风险为已接受非阻塞项。
+- [x] 收紧运行时解析：`modelId !== undefined` 时禁止按 legacy model 回退，并覆盖空字符串、错误类型和停用模型。
+- [x] 重构 `formatModels` 为 `clear/throw` 两种缺失策略；创建/复制/转化清空，保存/发布聚合报错，客户端导入不预清洗。
+- [x] 修正 4163 优先级和 active 回退范围，保证有效 ID 幂等、无 legacy 的无效 ID 不回退。
+- [x] 管理员 detail 返回完整配置、list 保持脱敏；移除导入 schema 的 `.strict()` 并补完整 round-trip 测试。
+- [x] 所有模型选择器保留异常值且统一显示“xxx 模型已停用”，修正 Chat/TTS/QG/Skill Preview/Chat Agent Helper 的 ID 语义。
+- [x] 在权限写入口清理同模型旧 resourceName ACL，并记录权限迁移和 Core/Pro 滚动展示风险为已接受非阻塞项。
 - [ ] 新版本部署完成后执行 dry-run 和正式回填，复核并重跑并发 conflict，最终解决全部 unresolved/conflict。
