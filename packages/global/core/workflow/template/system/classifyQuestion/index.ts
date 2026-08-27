@@ -40,13 +40,11 @@ export const ClassifyQuestionModule: FlowNodeTemplateType = {
       label: i18nT('common:core.module.input.label.Background'),
       description: i18nT('common:core.module.input.description.Background'),
       placeholder: i18nT('common:core.module.input.placeholder.Classify background'),
-      toolDescription: i18nT('common:core.module.input.label.Background'),
-      defaultToAgentGenerated: true
+      toolDescription: i18nT('common:core.module.input.label.Background')
     },
     {
       ...Input_Template_History,
-      toolDescription: i18nT('common:core.module.input.label.chat history'),
-      defaultToAgentGenerated: true
+      toolDescription: i18nT('common:core.module.input.label.chat history')
     },
     { ...Input_Template_UserChatInput, defaultToAgentGenerated: true },
     {

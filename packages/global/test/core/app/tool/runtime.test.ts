@@ -28,12 +28,17 @@ describe('compileToolRuntime', () => {
       inputs: toolInputs
     });
 
-    expect(compiled.agentGeneratedKeys).toEqual([
+    // 提示词/聊天记录/文件链接不再默认 AI 生成，只有用户输入默认进入模型 schema
+    expect(compiled.agentGeneratedKeys).toEqual([NodeInputKeyEnum.userChatInput]);
+    [
       NodeInputKeyEnum.aiSystemPrompt,
       NodeInputKeyEnum.history,
-      NodeInputKeyEnum.fileUrlList,
-      NodeInputKeyEnum.userChatInput
-    ]);
+      NodeInputKeyEnum.fileUrlList
+    ].forEach((key) => {
+      expect(toolInputs.find((input) => input.key === key)?.selectedType).not.toBe(
+        FlowNodeInputTypeEnum.agentGenerated
+      );
+    });
 
     const manualInputs = toolInputs.map((input) => ({
       ...input,

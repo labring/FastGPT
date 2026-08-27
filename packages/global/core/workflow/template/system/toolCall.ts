@@ -143,18 +143,15 @@ export const ToolCallNode: FlowNodeTemplateType = {
       label: i18nT('common:core.ai.Prompt'),
       description: systemPromptTip,
       placeholder: chatNodeSystemPromptTip,
-      toolDescription: i18nT('common:core.ai.Prompt'),
-      defaultToAgentGenerated: true
+      toolDescription: i18nT('common:core.ai.Prompt')
     },
     {
       ...Input_Template_History,
-      toolDescription: i18nT('common:core.module.input.label.chat history'),
-      defaultToAgentGenerated: true
+      toolDescription: i18nT('common:core.module.input.label.chat history')
     },
     {
       ...Input_Template_File_Link,
-      toolDescription: i18nT('app:workflow.user_file_input'),
-      defaultToAgentGenerated: true
+      toolDescription: i18nT('app:workflow.user_file_input')
     },
     { ...Input_Template_UserChatInput, defaultToAgentGenerated: true }
   ],

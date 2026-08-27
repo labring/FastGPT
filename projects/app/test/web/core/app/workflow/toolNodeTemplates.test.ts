@@ -40,21 +40,32 @@ describe('workflow tool node templates', () => {
   });
 
   it('keeps requested AI-generated defaults explicit', () => {
-    [
-      NodeInputKeyEnum.aiSystemPrompt,
-      NodeInputKeyEnum.history,
-      NodeInputKeyEnum.userChatInput
-    ].forEach((key) => {
-      expect(ClassifyQuestionModule.inputs.find((input) => input.key === key)).toMatchObject({
+    // 用户输入/文件读取仍默认 AI 生成；问题分类的背景知识、聊天记录和工具调用的
+    // 提示词、聊天记录、文件链接不再默认 AI 生成，保留用户手动配置。
+    (
+      [
+        [ClassifyQuestionModule, NodeInputKeyEnum.userChatInput],
+        [ToolCallNode, NodeInputKeyEnum.userChatInput],
+        [ReadFilesNode, NodeInputKeyEnum.fileUrlList]
+      ] as const
+    ).forEach(([template, key]) => {
+      expect(template.inputs.find((input) => input.key === key)).toMatchObject({
         defaultToAgentGenerated: true
       });
     });
-    expect(
-      ReadFilesNode.inputs.find((input) => input.key === NodeInputKeyEnum.fileUrlList)
-    ).toMatchObject({ defaultToAgentGenerated: true });
-    expect(
-      ToolCallNode.inputs.find((input) => input.key === NodeInputKeyEnum.userChatInput)
-    ).toMatchObject({ defaultToAgentGenerated: true });
+    (
+      [
+        [ClassifyQuestionModule, NodeInputKeyEnum.aiSystemPrompt],
+        [ClassifyQuestionModule, NodeInputKeyEnum.history],
+        [ToolCallNode, NodeInputKeyEnum.aiSystemPrompt],
+        [ToolCallNode, NodeInputKeyEnum.history],
+        [ToolCallNode, NodeInputKeyEnum.fileUrlList]
+      ] as const
+    ).forEach(([template, key]) => {
+      expect(template.inputs.find((input) => input.key === key)).not.toHaveProperty(
+        'defaultToAgentGenerated'
+      );
+    });
     expect(
       CustomFeedbackNode.inputs.find((input) => input.key === NodeInputKeyEnum.textareaInput)
     ).toMatchObject({ defaultToAgentGenerated: false });
@@ -95,6 +106,24 @@ describe('workflow tool node templates', () => {
         { isTool: true }
       ).selectedType
     ).toBe(FlowNodeInputTypeEnum.agentGenerated);
+    // 取消默认 AI 生成的字段仍可切换为 AI 生成，但初始选中回落到手动输入
+    (
+      [
+        [ClassifyQuestionModule, NodeInputKeyEnum.aiSystemPrompt],
+        [ClassifyQuestionModule, NodeInputKeyEnum.history],
+        [ToolCallNode, NodeInputKeyEnum.aiSystemPrompt],
+        [ToolCallNode, NodeInputKeyEnum.history],
+        [ToolCallNode, NodeInputKeyEnum.fileUrlList]
+      ] as const
+    ).forEach(([template, key]) => {
+      const input = template.inputs.find((item) => item.key === key)!;
+      expect(normalizeFlowNodeInputType(input, { isTool: true }).renderTypeList).toContain(
+        FlowNodeInputTypeEnum.agentGenerated
+      );
+      expect(normalizeFlowNodeInputType(input, { isTool: true }).selectedType).not.toBe(
+        FlowNodeInputTypeEnum.agentGenerated
+      );
+    });
     expect(
       normalizeFlowNodeInputType(
         ReadFilesNode.inputs.find((input) => input.key === NodeInputKeyEnum.fileUrlList)!,
