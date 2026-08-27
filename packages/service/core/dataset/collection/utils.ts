@@ -118,6 +118,25 @@ export const validateDatasetTagValue = ({
   return normalizeDatasetTagValue({ tagType: type, value }).error;
 };
 
+/**
+ * 校验并规范化单个标签值，返回可直接持久化的 value。
+ * - number/datetime：统一按 number 存储（字符串转 number、datetime 按 UTC 毫秒时间戳校验）
+ * - string/array：仅校验，值原样返回
+ * Collection 创建路径与 fastgpt-pro 标签值写路径共用，保证两条写链路存储格式一致
+ */
+export const validateAndNormalizeTagValue = ({
+  tagType,
+  value
+}: {
+  tagType?: DatasetCollectionTagType;
+  value: string | number | string[];
+}): { value: string | number | string[]; error?: DatasetErrEnum } => {
+  if (tagType === 'number' || tagType === 'datetime') {
+    return normalizeDatasetTagValue({ tagType, value });
+  }
+  return { value, error: validateDatasetTagValue({ tagType, value }) };
+};
+
 const isSameTagValue = (a: string | number | string[], b: string | number | string[]): boolean => {
   if (Array.isArray(a) && Array.isArray(b)) {
     if (a.length !== b.length) return false;
@@ -237,15 +256,11 @@ export const createOrGetCollectionTags = async ({
       return { input, value: input.value, error: DatasetErrEnum.tagNotExist };
     }
     const tagType = tagDoc.tagType || 'string';
-    const normalized = normalizeDatasetTagValue({ tagType, value: input.value });
-    const validationError =
-      tagType === 'number' || tagType === 'datetime'
-        ? normalized.error
-        : validateDatasetTagValue({ tagType, value: input.value });
+    const { value, error } = validateAndNormalizeTagValue({ tagType, value: input.value });
     return {
       tagId: String(tagDoc._id),
-      value: normalized.value,
-      error: validationError
+      value,
+      error
     };
   });
 

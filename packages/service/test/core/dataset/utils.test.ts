@@ -16,6 +16,7 @@ import {
   createOrGetCollectionTags,
   deduplicateTagValues,
   getTrainingModeByCollection,
+  validateAndNormalizeTagValue,
   validateDatasetTagValue
 } from '@fastgpt/service/core/dataset/collection/utils';
 import {
@@ -724,6 +725,53 @@ describe('validateDatasetTagValue', () => {
     expect(validateDatasetTagValue({ tagType: 'datetime', value: '2024-01-01' })).toBe(
       DatasetErrEnum.tagValueInvalid
     );
+  });
+});
+
+describe('validateAndNormalizeTagValue', () => {
+  it('normalizes number and datetime string values to numbers', () => {
+    expect(validateAndNormalizeTagValue({ tagType: 'number', value: '1.25' })).toEqual({
+      value: 1.25
+    });
+    expect(validateAndNormalizeTagValue({ tagType: 'datetime', value: '1704067200000' })).toEqual({
+      value: 1704067200000
+    });
+    expect(validateAndNormalizeTagValue({ tagType: 'number', value: 42 })).toEqual({ value: 42 });
+  });
+
+  it('keeps string and array values unchanged', () => {
+    expect(validateAndNormalizeTagValue({ tagType: 'string', value: '产品' })).toEqual({
+      value: '产品'
+    });
+    expect(validateAndNormalizeTagValue({ tagType: 'array', value: ['安全', '高优'] })).toEqual({
+      value: ['安全', '高优']
+    });
+  });
+
+  it('surfaces errors for invalid number/datetime strings', () => {
+    expect(validateAndNormalizeTagValue({ tagType: 'number', value: '   ' })).toEqual({
+      value: '   ',
+      error: DatasetErrEnum.tagValueInvalid
+    });
+    expect(validateAndNormalizeTagValue({ tagType: 'number', value: 'abc' })).toEqual({
+      value: 'abc',
+      error: DatasetErrEnum.tagValueInvalid
+    });
+    expect(validateAndNormalizeTagValue({ tagType: 'datetime', value: '2024-01-01' })).toEqual({
+      value: '2024-01-01',
+      error: DatasetErrEnum.tagValueInvalid
+    });
+  });
+
+  it('surfaces errors for invalid string/array values', () => {
+    expect(validateAndNormalizeTagValue({ tagType: 'string', value: 1 as any })).toEqual({
+      value: 1,
+      error: DatasetErrEnum.tagValueInvalid
+    });
+    expect(validateAndNormalizeTagValue({ tagType: 'array', value: ['a'.repeat(257)] })).toEqual({
+      value: ['a'.repeat(257)],
+      error: DatasetErrEnum.arrayTagValueInvalid
+    });
   });
 });
 
