@@ -342,7 +342,7 @@ curl -X POST 'https://{{host}}/api/admin/dataClean/initWorkflowData' \
 
 #### 6.4 归档旧沙盒（可选）
 
-如果使用过旧版 sandbox workspace，可通过该接口修正历史 sandbox 状态字段，并按需把不活跃 workspace 归档到 S3。该步骤不影响新生成的 sandbox；不执行也不影响 v4.15 正式版升级，只是不会自动归档旧 workspace。可以手动删除旧的沙盒。
+如果使用过旧版 agent sandbox workspace，可通过该接口修正历史 agent sandbox 状态字段，并按需把不活跃 workspace 归档到 S3。该步骤不影响新生成的 agent sandbox；不执行也不影响 v4.15 正式版升级，只是不会自动归档旧 workspace。可以手动删除旧的沙盒。
 
 只检查、不触发归档：
 
