@@ -41,6 +41,7 @@ import {
   initToolInputTypeByDefaultMode,
   isAgentGeneratedToolInput,
   isToolInputValueConfigured,
+  parseJsonEditorValue,
   stripToolInputDefaultMode
 } from '@fastgpt/global/core/app/formEdit/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -61,6 +62,18 @@ import { validateToolInputValue } from '@fastgpt/global/core/app/tool/runtime';
 
 const inputTypeFormKey = (key: string) => `__input_type__${key}`;
 const developerInputTypeFormKey = (key: string) => `__developer_input_type__${key}`;
+
+/** 工具配置中的 JSON Editor 保留编辑文本，校验和提交时统一转换为原生 JSON 值。 */
+const parseConfigInputValue = ({
+  inputType,
+  value
+}: {
+  inputType?: FlowNodeInputTypeEnum;
+  value: unknown;
+}) =>
+  inputType === FlowNodeInputTypeEnum.JSONEditor
+    ? parseJsonEditorValue(value)
+    : { success: true as const, value };
 
 type ToolSetListItemType = {
   name: string;
@@ -398,6 +411,7 @@ const ConfigValueInput = ({
   input: FlowNodeTemplateType['inputs'][number];
   control: Control<Record<string, any>>;
 }) => {
+  const { t } = useSafeTranslation();
   const selectedInputType = useWatch({
     control,
     name: inputTypeFormKey(input.key)
@@ -425,9 +439,12 @@ const ConfigValueInput = ({
           const configuredValue = value ?? input.defaultValue;
           if (configuredValue === undefined) return true;
 
+          const parsedValue = parseConfigInputValue({ inputType, value: configuredValue });
+          if (!parsedValue.success) return t('common:json_parse_error');
+
           const validationResult = validateToolInputValue({
             schema: input.customJsonSchema,
-            value: configuredValue
+            value: parsedValue.value
           });
           return validationResult.success || validationResult.errors.join('; ');
         }
@@ -899,7 +916,14 @@ const ConfigToolModal = ({
           value:
             inputTypeState.selectedType === FlowNodeInputTypeEnum.agentGenerated
               ? undefined
-              : (data[input.key] ?? input.value)
+              : (() => {
+                  const configuredValue = data[input.key] ?? input.value;
+                  const parsedValue = parseConfigInputValue({
+                    inputType: inputTypeState.selectedType,
+                    value: configuredValue
+                  });
+                  return parsedValue.success ? parsedValue.value : configuredValue;
+                })()
         });
       })
     });

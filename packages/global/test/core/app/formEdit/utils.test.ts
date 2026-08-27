@@ -14,6 +14,7 @@ import {
   initToolInputTypeByDefaultMode,
   isAgentGeneratedToolInput,
   normalizeFlowNodeInputType,
+  parseJsonEditorValue,
   stripToolInputDefaultMode
 } from '@fastgpt/global/core/app/formEdit/utils';
 import {
@@ -44,6 +45,30 @@ const createMockToolTemplate = (inputs: FlowNodeInputItemType[] = []): FlowNodeT
     inputs,
     outputs: []
   }) as unknown as FlowNodeTemplateType;
+
+describe('parseJsonEditorValue', () => {
+  it.each([
+    ['[1,2,3]', [1, 2, 3]],
+    ['{"":""}', { '': '' }],
+    ['"text"', 'text'],
+    ['true', true]
+  ])('parses %s into its native JSON value', (text, expected) => {
+    expect(parseJsonEditorValue(text)).toEqual({ success: true, value: expected });
+  });
+
+  it('keeps non-string values unchanged', () => {
+    const value = [1, 2, 3];
+
+    expect(parseJsonEditorValue(value)).toEqual({ success: true, value });
+  });
+
+  it('reports incomplete JSON without throwing', () => {
+    expect(parseJsonEditorValue('[1,2')).toEqual({
+      success: false,
+      value: '[1,2'
+    });
+  });
+});
 
 describe('validateToolConfiguration', () => {
   describe('valid configurations', () => {

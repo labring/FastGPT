@@ -17,7 +17,8 @@ const mocks = vi.hoisted(() => ({
   runWorkflow: vi.fn(),
   authAppByTmbId: vi.fn(),
   getAppVersionById: vi.fn(),
-  serverGetWorkflowToolRunUserQuery: vi.fn()
+  serverGetWorkflowToolRunUserQuery: vi.fn(),
+  getSystemToolWorkflowRuntime: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
@@ -38,6 +39,14 @@ vi.mock('@fastgpt/service/support/user/team/utils', () => ({
 
 vi.mock('@fastgpt/service/core/app/tool/workflowTool/utils', () => ({
   serverGetWorkflowToolRunUserQuery: (args: any) => mocks.serverGetWorkflowToolRunUserQuery(args)
+}));
+
+vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
+  SystemToolRepo: {
+    getInstance: () => ({
+      getSystemToolWorkflowRuntime: mocks.getSystemToolWorkflowRuntime
+    })
+  }
 }));
 
 import {
@@ -190,6 +199,58 @@ describe('agent sub app dispatchPlugin', () => {
         expect.objectContaining({ key: 'internal', value: 'internal default' })
       ])
     );
+  });
+
+  it('runs system workflow tools without authenticating the associated app', async () => {
+    mocks.authAppByTmbId.mockRejectedValue(new Error('unAuthApp'));
+    mocks.getSystemToolWorkflowRuntime.mockResolvedValue({
+      id: 'commercial-system-workflow',
+      name: 'System Workflow',
+      nodes: [],
+      edges: [],
+      chatConfig: {
+        variables: []
+      }
+    });
+
+    const result = await dispatchPlugin({
+      app: {
+        id: 'associated-app',
+        name: 'System Workflow',
+        systemToolId: 'commercial-system-workflow'
+      },
+      runningAppInfo: {
+        sourceType: 'app',
+        sourceId: 'parent-app',
+        teamId: 'team',
+        tmbId: 'member',
+        name: 'parent'
+      },
+      runningUserInfo: {
+        teamId: 'team',
+        tmbId: 'member'
+      },
+      customAppVariables: {},
+      userChatInput: '',
+      timezone: 'Asia/Shanghai',
+      uid: 'user',
+      chatId: 'chat',
+      responseChatItemId: 'response',
+      histories: [],
+      variableState: await createVariableState(),
+      checkIsStopping: vi.fn(() => false),
+      maxRunTimes: 20,
+      workflowDispatchDeep: 0
+    } as any);
+
+    expect(mocks.getSystemToolWorkflowRuntime).toHaveBeenCalledWith({
+      pluginId: 'commercial-system-workflow',
+      version: undefined
+    });
+    expect(mocks.authAppByTmbId).not.toHaveBeenCalled();
+    expect(mocks.getAppVersionById).not.toHaveBeenCalled();
+    expect(mocks.runWorkflow).toHaveBeenCalledTimes(1);
+    expect(result.errorMessage).toBeUndefined();
   });
 
   it('inherits child workflow tool default file variables from the parent context', async () => {
