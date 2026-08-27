@@ -3,6 +3,7 @@ import JSZip from 'jszip';
 import path from 'path';
 import { existsSync, readFileSync } from 'fs';
 import XLSX from 'xlsx';
+import { anydocTestExtensions, createAnydocFixture } from './anydocFixtures';
 
 const { mockUploadImage2S3Bucket } = vi.hoisted(() => ({
   mockUploadImage2S3Bucket: vi.fn()
@@ -62,9 +63,6 @@ const parseText = (text: string) =>
     encoding: 'utf-8',
     buffer: Buffer.from(text, 'utf-8')
   });
-
-const readBase64Fixture = (filename: string) =>
-  Buffer.from(readFileSync(path.join(__dirname, 'fixtures', filename), 'utf8').trim(), 'base64');
 
 const getPositiveIntegerEnv = (name: string, defaultValue: number) => {
   const value = Number(process.env[name]);
@@ -235,27 +233,12 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
     expect(result.rawText).toContain('Shanghai');
   });
 
-  it.each([
-    {
-      extension: 'doc',
-      fixture: 'legacy-doc.base64',
-      expected: 'こんにちは世界'
-    },
-    {
-      extension: 'xls',
-      fixture: 'legacy-xls.base64',
-      expected: 'fifteen and a half'
-    },
-    {
-      extension: 'odt',
-      fixture: 'open-document-text.base64',
-      expected: 'Bold via the family default style'
-    }
-  ])('通过 anydoc 解析 .$extension 真实文件', async ({ extension, fixture, expected }) => {
+  it.each(anydocTestExtensions)('通过 anydoc 解析 .%s 真实文件', async (extension) => {
+    const { buffer, expected } = await createAnydocFixture(extension);
     const result = await readRawContentFromBuffer({
       extension,
       encoding: 'utf-8',
-      buffer: readBase64Fixture(fixture)
+      buffer
     });
 
     expect(result.rawText).toContain(expected);

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { anydocTestExtensions } from '../anydocFixtures';
 
 const { mockFormatFromExtension, mockToMarkdownBytes } = vi.hoisted(() => ({
   mockFormatFromExtension: vi.fn(),
@@ -18,12 +19,10 @@ describe('readAnydocRawText', () => {
     vi.clearAllMocks();
   });
 
-  it.each(['doc', '.DOCM', 'xls', 'PPT', 'odt', 'ods', 'odp', 'rtf', 'epub'])(
-    '识别 anydoc 补充扩展名 %s',
-    (extension) => {
-      expect(isAnydocDocumentExtension(extension)).toBe(true);
-    }
-  );
+  it.each(anydocTestExtensions)('识别 anydoc 补充扩展名 %s', (extension) => {
+    expect(isAnydocDocumentExtension(extension)).toBe(true);
+    expect(isAnydocDocumentExtension(`.${extension.toUpperCase()}`)).toBe(true);
+  });
 
   it.each(['txt', 'md', 'html', 'pdf', 'docx', 'pptx', 'xlsx', 'csv', 'zip'])(
     '不接管原有或未知扩展名 %s',

@@ -3,6 +3,8 @@ import {
   getUploadInspectBytes,
   validateUploadFile
 } from '@fastgpt/service/common/s3/validation/upload';
+import { datasetAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
+import { anydocTestExtensions, createAnydocFixture } from '../../worker/readFile/anydocFixtures';
 
 const pngBuffer = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
@@ -45,6 +47,23 @@ describe('getUploadInspectBytes', () => {
 });
 
 describe('validateUploadFile', () => {
+  it.each(anydocTestExtensions)('接受真实 .%s 文件内容', async (extension) => {
+    const { buffer } = await createAnydocFixture(extension);
+
+    await expect(
+      validateUploadFile({
+        buffer,
+        filename: `fixture.${extension}`,
+        uploadConstraints: {
+          allowedExtensions: datasetAllowedExtensions
+        }
+      })
+    ).resolves.toMatchObject({
+      filename: `fixture.${extension}`,
+      extension: `.${extension}`
+    });
+  });
+
   it('accepts matching png content', async () => {
     await expect(
       validateUploadFile({
