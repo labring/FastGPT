@@ -16,6 +16,7 @@ import {
   Td,
   TableContainer,
   Button,
+  IconButton,
   useDisclosure,
   NumberInputField,
   NumberInputStepper,
@@ -88,10 +89,7 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  const { edges, getNodeById } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
-  );
+  const { edges, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
@@ -491,9 +489,16 @@ const RenderForm = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const draftValuesRef = React.useRef<Record<number, PropsArrType>>({});
 
   const list = useMemo(() => (input.value || []) as PropsArrType[], [input.value]);
-  const [updateTrigger, setUpdateTrigger] = useState(false);
+  const [rowKeys, setRowKeys] = useState<string[]>(() =>
+    Array.from({ length: list.length + 1 }, (_, index) => `http-param-${index}`)
+  );
+
+  useEffect(() => {
+    draftValuesRef.current = {};
+  }, [input.value]);
 
   const updateListAndNode = useCallback(
     (nextList: PropsArrType[]) => {
@@ -510,52 +515,65 @@ const RenderForm = ({
     [input, nodeId, onChangeNode]
   );
 
-  const handleKeyChange = useCallback(
-    (index: number, newKey: string) => {
-      if (!newKey) {
-        setUpdateTrigger((prev) => !prev);
-        return;
-      }
-      if (list.find((item, i) => i !== index && item.key == newKey)) {
-        setUpdateTrigger((prev) => !prev);
+  const handleRowBlur = useCallback(
+    (index: number, field: 'key' | 'value', value: string) => {
+      const currentItem = list[index] ?? { key: '', type: 'string', value: '' };
+      const nextItem = {
+        ...currentItem,
+        ...draftValuesRef.current[index],
+        [field]: value
+      } as PropsArrType;
+      draftValuesRef.current[index] = nextItem;
+
+      if (
+        nextItem.key &&
+        list.some((item, itemIndex) => itemIndex !== index && item.key === nextItem.key)
+      ) {
         toast({
           status: 'warning',
           title: t('common:core.module.http.Key already exists')
         });
         return;
       }
-      if (index >= list.length) return;
 
-      updateListAndNode(list.map((item, i) => (i === index ? { ...item, key: newKey } : item)));
+      if (index === list.length) {
+        if (!nextItem.key) return;
+        setRowKeys((currentKeys) => {
+          const nextKeys = [...currentKeys];
+          while (nextKeys.length < list.length + 1) {
+            nextKeys.push(`http-param-${nextKeys.length}`);
+          }
+          nextKeys.push(`http-param-${nextKeys.length}`);
+          return nextKeys;
+        });
+        updateListAndNode([...list, nextItem]);
+        return;
+      }
+
+      updateListAndNode(list.map((item, itemIndex) => (itemIndex === index ? nextItem : item)));
     },
     [list, t, toast, updateListAndNode]
   );
 
-  // Add new params/headers key
-  const handleAddNewProps = useCallback(
-    (value: string) => {
-      if (!value) {
-        return;
-      }
-
-      const checkExist = list.find((item) => item.key === value);
-      if (checkExist) {
-        setUpdateTrigger((prev) => !prev);
-        toast({
-          status: 'warning',
-          title: t('common:core.module.http.Key already exists')
-        });
-        return;
-      }
-
-      updateListAndNode([...list, { key: value, type: 'string', value: '' }]);
+  const handleDelete = useCallback(
+    (index: number) => {
+      draftValuesRef.current = {};
+      setRowKeys((currentKeys) => {
+        const nextKeys = [...currentKeys];
+        while (nextKeys.length < list.length + 1) {
+          nextKeys.push(`http-param-${nextKeys.length}`);
+        }
+        return nextKeys.filter((_, itemIndex) => itemIndex !== index);
+      });
+      updateListAndNode(list.filter((_, itemIndex) => itemIndex !== index));
     },
-    [list, t, toast, updateListAndNode]
+    [list, setRowKeys, updateListAndNode]
   );
 
   const Render = useMemo(() => {
     return (
       <Box
+        className={'nodrag nowheel'}
         borderRadius={'md'}
         overflow={'hidden'}
         borderWidth={'1px'}
@@ -566,60 +584,69 @@ const RenderForm = ({
           <Table>
             <Thead>
               <Tr>
-                <Th px={2} borderBottomLeftRadius={'none !important'}>
+                <Th px={2} w={'45%'} borderBottomLeftRadius={'none !important'}>
                   {t('common:core.module.http.Props name')}
                 </Th>
-                <Th px={2} borderBottomRadius={'none !important'}>
+                <Th px={2} w={'45%'} borderBottomRadius={'none !important'}>
                   {t('common:core.module.http.Props value')}
+                </Th>
+                <Th px={2} w={'100px'} minW={'100px'}>
+                  {t('common:Operation')}
                 </Th>
               </Tr>
             </Thead>
             <Tbody>
               {[...list, { key: '', value: '', label: '' }].map((item, index) => (
-                <Tr key={`${input.key}${index}`}>
-                  <Td p={0} w={'50%'} borderRight={'1px solid'} borderColor={'myGray.200'}>
+                <Tr key={`${input.key}-${rowKeys[index] ?? `http-param-${index}`}`}>
+                  <Td p={0} w={'45%'} borderRight={'1px solid'} borderColor={'myGray.200'}>
                     <HttpInput
                       placeholder={t('common:textarea_variable_picker_tip')}
                       value={item.key}
                       variableLabels={variables}
                       variables={externalProviderWorkflowVariables}
-                      onBlur={(val) => {
-                        handleKeyChange(index, val);
-
-                        // Last item blur, add the next item.
-                        if (index === list.length && val) {
-                          handleAddNewProps(val);
-                          setUpdateTrigger((prev) => !prev);
-                        }
-                      }}
-                      updateTrigger={updateTrigger}
+                      tabIndex={0}
+                      resetOnValueChange={false}
+                      onBlur={(val) => handleRowBlur(index, 'key', val)}
                     />
                   </Td>
-                  <Td p={0} w={'50%'}>
-                    <Box display={'flex'} alignItems={'center'}>
-                      <HttpInput
-                        placeholder={t('common:textarea_variable_picker_tip')}
-                        value={item.value}
-                        variables={externalProviderWorkflowVariables}
-                        variableLabels={variables}
-                        onBlur={(val) => {
-                          updateListAndNode(
-                            list.map((item, i) => (i === index ? { ...item, value: val } : item))
-                          );
-                        }}
-                      />
+                  <Td p={0} w={'45%'}>
+                    <HttpInput
+                      placeholder={t('common:textarea_variable_picker_tip')}
+                      value={item.value}
+                      variables={externalProviderWorkflowVariables}
+                      variableLabels={variables}
+                      tabIndex={0}
+                      resetOnValueChange={false}
+                      onBlur={(val) => handleRowBlur(index, 'value', val)}
+                    />
+                  </Td>
+                  <Td
+                    p={0}
+                    px={2}
+                    w={'100px'}
+                    minW={'100px'}
+                    whiteSpace={'nowrap'}
+                    verticalAlign={'middle'}
+                  >
+                    <Flex h={'24px'} alignItems={'center'}>
                       {index !== list.length && (
-                        <MyIcon
-                          name={'delete'}
-                          cursor={'pointer'}
+                        <IconButton
+                          icon={<MyIcon name={'delete'} w={'14px'} />}
+                          size={'xs'}
+                          variant={'unstyled'}
+                          color={'myGray.600'}
+                          w={'24px'}
+                          h={'24px'}
+                          minW={'24px'}
+                          p={0}
+                          aria-label={t('common:Delete')}
+                          tabIndex={0}
                           _hover={{ color: 'red.600' }}
-                          w={'14px'}
-                          onClick={() => {
-                            updateListAndNode(list.filter((val) => val.key !== item.key));
-                          }}
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => handleDelete(index)}
                         />
                       )}
-                    </Box>
+                    </Flex>
                   </Td>
                 </Tr>
               ))}
@@ -630,13 +657,12 @@ const RenderForm = ({
     );
   }, [
     externalProviderWorkflowVariables,
-    handleAddNewProps,
-    handleKeyChange,
+    handleDelete,
+    handleRowBlur,
     input.key,
     list,
+    rowKeys,
     t,
-    updateTrigger,
-    updateListAndNode,
     variables
   ]);
 

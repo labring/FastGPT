@@ -5,6 +5,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   Box,
   Button,
+  Flex,
   Table,
   Thead,
   Tbody,
@@ -74,7 +75,9 @@ const RenderToolInput = ({
                 <Th>{t('common:item_name')}</Th>
                 <Th>{t('common:item_description')}</Th>
                 <Th>{t('common:required')}</Th>
-                <Th></Th>
+                <Th w={'100px'} minW={'100px'}>
+                  {t('common:Operation')}
+                </Th>
               </Tr>
             </Thead>
             <Tbody>
@@ -88,26 +91,28 @@ const RenderToolInput = ({
                   <Td>{item.key}</Td>
                   <Td>{item.toolDescription}</Td>
                   <Td>{item.required ? '✔' : ''}</Td>
-                  <Td whiteSpace={'nowrap'}>
-                    <MyIcon
-                      mr={3}
-                      name={'common/settingLight'}
-                      w={'16px'}
-                      cursor={'pointer'}
-                      onClick={() => setEditField(item)}
-                    />
-                    <MyIcon
-                      name={'delete'}
-                      w={'16px'}
-                      cursor={'pointer'}
-                      onClick={() => {
-                        onChangeNode({
-                          nodeId,
-                          type: 'delInput',
-                          key: item.key
-                        });
-                      }}
-                    />
+                  <Td w={'100px'} minW={'100px'} whiteSpace={'nowrap'} verticalAlign={'middle'}>
+                    <Flex h={'24px'} alignItems={'center'}>
+                      <MyIcon
+                        mr={3}
+                        name={'common/settingLight'}
+                        w={'16px'}
+                        cursor={'pointer'}
+                        onClick={() => setEditField(item)}
+                      />
+                      <MyIcon
+                        name={'delete'}
+                        w={'16px'}
+                        cursor={'pointer'}
+                        onClick={() => {
+                          onChangeNode({
+                            nodeId,
+                            type: 'delInput',
+                            key: item.key
+                          });
+                        }}
+                      />
+                    </Flex>
                   </Td>
                 </Tr>
               ))}

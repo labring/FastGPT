@@ -6,7 +6,7 @@
  *
  */
 
-import { useState, useRef, useTransition, useEffect, useMemo } from 'react';
+import { useState, useTransition } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -39,9 +39,10 @@ export default function Editor({
   onChange,
   onBlur,
   value,
-  currentValue,
   placeholder = '',
-  updateTrigger
+  updateTrigger,
+  tabIndex,
+  resetOnValueChange = true
 }: {
   h?: number;
   variables: EditorVariablePickerType[];
@@ -49,9 +50,10 @@ export default function Editor({
   onChange?: (editor: LexicalEditor) => void;
   onBlur?: (editor: LexicalEditor) => void;
   value?: string;
-  currentValue?: string;
   placeholder?: string;
   updateTrigger?: boolean;
+  tabIndex?: number;
+  resetOnValueChange?: boolean;
 }) {
   const [key, setKey] = useState(getNanoid(6));
   const [_, startSts] = useTransition();
@@ -67,14 +69,9 @@ export default function Editor({
   };
 
   useDeepCompareEffect(() => {
-    if (focus) return;
+    if (!resetOnValueChange || focus) return;
     setKey(getNanoid(6));
-  }, [value, variables.length]);
-
-  useEffect(() => {
-    setKey(getNanoid(6));
-    setFocus(false);
-  }, [updateTrigger]);
+  }, [resetOnValueChange, value, variables.length]);
 
   return (
     <Flex
@@ -86,9 +83,11 @@ export default function Editor({
       cursor={'text'}
       overflowY={'visible'}
     >
-      <LexicalComposer initialConfig={initialConfig} key={key}>
+      <LexicalComposer initialConfig={initialConfig} key={`${key}-${updateTrigger ?? ''}`}>
         <PlainTextPlugin
-          contentEditable={<ContentEditable className={styles.contentEditable} />}
+          contentEditable={
+            <ContentEditable className={styles.contentEditable} tabIndex={tabIndex} />
+          }
           placeholder={
             <Box
               position={'absolute'}
@@ -119,8 +118,10 @@ export default function Editor({
         <FocusPlugin focus={focus} setFocus={setFocus} />
         <OnChangePlugin
           onChange={(editorState: EditorState, editor: LexicalEditor) => {
+            if (!onChange) return;
+
             startSts(() => {
-              onChange?.(editor);
+              onChange(editor);
             });
           }}
         />
