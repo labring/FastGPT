@@ -820,10 +820,18 @@ const ToolVersionSelect = ({
 
   const valueLabel = useMemo(
     () => (
-      <Flex alignItems={'center'} gap={0.5} minW={0} whiteSpace={'nowrap'}>
-        {!tool.version ? t('app:keep_the_latest') : tool.versionLabel}
+      <Flex alignItems={'center'} gap={0.5} minW={0} overflow={'hidden'} whiteSpace={'nowrap'}>
+        <Box minW={0} className={'textEllipsis'}>
+          {!tool.version ? t('app:keep_the_latest') : tool.versionLabel}
+        </Box>
         {tool.isLatestVersion === false && (
-          <MyTag type="fill" colorSchema={'adora'} fontSize={'mini'} borderRadius={'lg'}>
+          <MyTag
+            type="fill"
+            colorSchema={'adora'}
+            fontSize={'mini'}
+            borderRadius={'lg'}
+            flexShrink={0}
+          >
             {t('app:not_the_newest')}
           </MyTag>
         )}
@@ -856,7 +864,7 @@ const ToolVersionSelect = ({
       placeholder={tool.versionLabel}
       variant={'whitePrimaryOutline'}
       size={'sm'}
-      width={'136px'}
+      width={'180px'}
       h={'36px'}
       minH={'36px'}
       borderRadius={'6px'}
