@@ -1,17 +1,22 @@
 import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
-import { MongoApp } from '../../../core/app/schema';
-import { MongoDataset } from '../../../core/dataset/schema';
-import { MongoAgentSkills } from '../../../core/ai/skill/model/schema';
-import { MongoTeam } from '../../user/team/teamSchema';
-import type { ClientSession, Model } from '../../../common/mongo';
-import { mongoSessionRun } from '../../../common/mongo/sessionRun';
-import { resourcePermissionRepo } from '../repository/resourcePermissionRepo';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
+import type { ClientSession, Model } from '@fastgpt/service/common/mongo';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { resourcePermissionRepo } from '@fastgpt/service/support/permission/repository/resourcePermissionRepo';
 import {
   calculateInheritedResourceCollaborators,
   mergeResourceCollaborators,
   shouldInheritResourcePermission
-} from '../resourcePermissionPolicy';
+} from '@fastgpt/service/support/permission/resourcePermissionPolicy';
+import {
+  MaterializeResourcePermissionsResultSchema,
+  type MaterializeResourcePermissionsOptions,
+  type MaterializeResourcePermissionsResult
+} from './permissionSchema';
 
 export type MigrationResource = {
   _id: unknown;
@@ -33,21 +38,6 @@ export type MaterializedResourcePermissionChange = {
 type MigrationResourceConfig = {
   resourceType: PerResourceTypeEnum;
   model: Model<any>;
-};
-
-export type MaterializeResourcePermissionsOptions = {
-  dryRun: boolean;
-  teamId?: string;
-  batchSize: number;
-};
-
-export type MaterializeResourcePermissionsResult = {
-  dryRun: boolean;
-  teamCount: number;
-  resourceCount: number;
-  updatedResourceCount: number;
-  skippedResourceCount: number;
-  errors: string[];
 };
 
 const resourceConfigs: MigrationResourceConfig[] = [
@@ -310,5 +300,5 @@ export const materializeResourcePermissions = async (
     }
   }
 
-  return result;
+  return MaterializeResourcePermissionsResultSchema.parse(result);
 };

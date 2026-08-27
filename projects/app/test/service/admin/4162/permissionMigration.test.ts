@@ -14,7 +14,7 @@ import {
   materializeResourcePermissions,
   resolveMaterializedResourcePermissions,
   type MigrationResource
-} from '@fastgpt/service/support/permission/migration/materializeResourcePermissions';
+} from '@/service/admin/4162/permissionMigration';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
