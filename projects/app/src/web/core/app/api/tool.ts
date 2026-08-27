@@ -36,6 +36,7 @@ export const getTeamAppTemplates = async (data?: {
         flowNodeType: FlowNodeTypeEnum.tool,
         templateType: FlowNodeTemplateTypeEnum.teamApp,
         appType: app.type,
+        isTool: true,
         isFolder: false
       }));
       // handle http toolset
@@ -50,6 +51,7 @@ export const getTeamAppTemplates = async (data?: {
         flowNodeType: FlowNodeTypeEnum.tool,
         templateType: FlowNodeTemplateTypeEnum.teamApp,
         appType: app.type,
+        isTool: true,
         isFolder: false
       }));
     }

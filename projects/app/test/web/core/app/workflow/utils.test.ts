@@ -19,6 +19,7 @@ import {
   storeNode2FlowNode,
   getNodeAllSource,
   filterWorkflowNodeOutputsByType,
+  filterWorkflowNodeInputsByType,
   filterSelectableWorkflowNodeOutputs,
   workflowReferenceValueIsSelectable,
   getNodeSelfReferenceToolInputs
@@ -35,7 +36,10 @@ import {
   collectWorkflowStartAutoFillRevertPatches,
   collectWorkflowStartOutputAutoFillRevertPatches
 } from '@/web/core/workflow/workflowStartAutoFill';
-import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type {
+  FlowNodeInputItemType,
+  FlowNodeOutputItemType
+} from '@fastgpt/global/core/workflow/type/io';
 import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
@@ -2401,6 +2405,29 @@ describe('filterWorkflowNodeOutputsByType', () => {
   });
 });
 
+describe('filterWorkflowNodeInputsByType', () => {
+  it('filters inputs by type using the same compatibility rules as outputs', () => {
+    const inputs: FlowNodeInputItemType[] = [
+      {
+        key: 'text',
+        valueType: WorkflowIOValueTypeEnum.string,
+        renderTypeList: [FlowNodeInputTypeEnum.input]
+      },
+      {
+        key: 'count',
+        valueType: WorkflowIOValueTypeEnum.number,
+        renderTypeList: [FlowNodeInputTypeEnum.numberInput]
+      }
+    ];
+
+    expect(
+      filterWorkflowNodeInputsByType(inputs, WorkflowIOValueTypeEnum.number).map(
+        (input) => input.key
+      )
+    ).toEqual(['count']);
+  });
+});
+
 describe('filterSelectableWorkflowNodeOutputs', () => {
   const makeOutput = (
     id: string,
@@ -2568,6 +2595,52 @@ describe('workflowReferenceValueIsSelectable', () => {
         valueType: WorkflowIOValueTypeEnum.any
       })
     ).toBe(true);
+  });
+
+  it('returns true for a compatible source node tool input type', () => {
+    expect(
+      workflowReferenceValueIsSelectable({
+        value: ['source', 'countArg'],
+        sourceNodes: [
+          {
+            nodeId: 'source',
+            outputs: [],
+            toolInputs: [
+              {
+                key: 'countArg',
+                renderTypeList: [FlowNodeInputTypeEnum.addInputParam],
+                valueType: WorkflowIOValueTypeEnum.number
+              }
+            ]
+          }
+        ],
+        valueType: WorkflowIOValueTypeEnum.number
+      })
+    ).toBe(true);
+  });
+
+  it('returns false when referenced tool input type is not selectable', () => {
+    const sourceNodes = [
+      {
+        nodeId: 'source',
+        outputs: [],
+        toolInputs: [
+          {
+            key: 'textArg',
+            renderTypeList: [FlowNodeInputTypeEnum.addInputParam],
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ]
+      }
+    ];
+
+    expect(
+      workflowReferenceValueIsSelectable({
+        value: ['source', 'textArg'],
+        sourceNodes,
+        valueType: WorkflowIOValueTypeEnum.number
+      })
+    ).toBe(false);
   });
 
   it('returns false when referenced tool input no longer exists', () => {

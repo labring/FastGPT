@@ -5,6 +5,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
   getNodeAllSource,
   filterSelectableWorkflowNodeOutputs,
+  filterWorkflowNodeInputsByType,
   getNodeSelfReferenceToolInputs
 } from '@/web/core/workflow/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
@@ -118,9 +119,10 @@ export const useReference = ({
     const currentNode = getNodeById(nodeId);
     if (!currentNode) return list;
 
-    const toolInputs = getNodeSelfReferenceToolInputs(currentNode).filter(
-      (input) => input.key !== excludeInputKey
-    );
+    const toolInputs = filterWorkflowNodeInputsByType(
+      getNodeSelfReferenceToolInputs(currentNode),
+      valueType
+    ).filter((input) => input.key !== excludeInputKey);
     if (toolInputs.length === 0) return list;
 
     return [

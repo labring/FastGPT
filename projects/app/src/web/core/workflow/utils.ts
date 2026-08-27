@@ -340,74 +340,99 @@ export const getRefData = ({
     required: !!output.required
   };
 };
-// 根据数据类型，过滤无效的节点输出
+// 根据数据类型，过滤不可引用的工作流值。
+const workflowValueTypeCompatibilityMap: Record<
+  WorkflowIOValueTypeEnum,
+  WorkflowIOValueTypeEnum[]
+> = {
+  [WorkflowIOValueTypeEnum.string]: [WorkflowIOValueTypeEnum.string],
+  [WorkflowIOValueTypeEnum.number]: [WorkflowIOValueTypeEnum.number],
+  [WorkflowIOValueTypeEnum.boolean]: [WorkflowIOValueTypeEnum.boolean],
+  [WorkflowIOValueTypeEnum.object]: [WorkflowIOValueTypeEnum.object],
+  [WorkflowIOValueTypeEnum.arrayString]: [
+    WorkflowIOValueTypeEnum.string,
+    WorkflowIOValueTypeEnum.arrayString,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.arrayNumber]: [
+    WorkflowIOValueTypeEnum.number,
+    WorkflowIOValueTypeEnum.arrayNumber,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.arrayBoolean]: [
+    WorkflowIOValueTypeEnum.boolean,
+    WorkflowIOValueTypeEnum.arrayBoolean,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.arrayObject]: [
+    WorkflowIOValueTypeEnum.object,
+    WorkflowIOValueTypeEnum.arrayObject,
+    WorkflowIOValueTypeEnum.arrayAny,
+    WorkflowIOValueTypeEnum.chatHistory,
+    WorkflowIOValueTypeEnum.datasetQuote,
+    WorkflowIOValueTypeEnum.dynamic,
+    WorkflowIOValueTypeEnum.selectDataset,
+    WorkflowIOValueTypeEnum.selectApp
+  ],
+  [WorkflowIOValueTypeEnum.chatHistory]: [
+    WorkflowIOValueTypeEnum.chatHistory,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.datasetQuote]: [
+    WorkflowIOValueTypeEnum.datasetQuote,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.dynamic]: [
+    WorkflowIOValueTypeEnum.dynamic,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.selectDataset]: [
+    WorkflowIOValueTypeEnum.selectDataset,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.selectApp]: [
+    WorkflowIOValueTypeEnum.selectApp,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.arrayAny]: [WorkflowIOValueTypeEnum.arrayAny],
+  [WorkflowIOValueTypeEnum.any]: [WorkflowIOValueTypeEnum.arrayAny]
+};
+
+/** 判断工作流值是否满足目标引用类型，供输出和工具参数引用共用。 */
+const workflowValueTypeIsCompatible = ({
+  itemValueType,
+  valueType
+}: {
+  itemValueType?: WorkflowIOValueTypeEnum;
+  valueType?: WorkflowIOValueTypeEnum;
+}) => {
+  const targetValueType = valueType ?? WorkflowIOValueTypeEnum.any;
+  return (
+    targetValueType === WorkflowIOValueTypeEnum.any ||
+    targetValueType === WorkflowIOValueTypeEnum.arrayAny ||
+    !itemValueType ||
+    itemValueType === WorkflowIOValueTypeEnum.any ||
+    workflowValueTypeCompatibilityMap[targetValueType]?.includes(itemValueType) === true
+  );
+};
+
 export const filterWorkflowNodeOutputsByType = (
   outputs: FlowNodeOutputItemType[],
   valueType: WorkflowIOValueTypeEnum
 ): FlowNodeOutputItemType[] => {
-  const validTypeMap: Record<WorkflowIOValueTypeEnum, WorkflowIOValueTypeEnum[]> = {
-    [WorkflowIOValueTypeEnum.string]: [WorkflowIOValueTypeEnum.string],
-    [WorkflowIOValueTypeEnum.number]: [WorkflowIOValueTypeEnum.number],
-    [WorkflowIOValueTypeEnum.boolean]: [WorkflowIOValueTypeEnum.boolean],
-    [WorkflowIOValueTypeEnum.object]: [WorkflowIOValueTypeEnum.object],
-    [WorkflowIOValueTypeEnum.arrayString]: [
-      WorkflowIOValueTypeEnum.string,
-      WorkflowIOValueTypeEnum.arrayString,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.arrayNumber]: [
-      WorkflowIOValueTypeEnum.number,
-      WorkflowIOValueTypeEnum.arrayNumber,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.arrayBoolean]: [
-      WorkflowIOValueTypeEnum.boolean,
-      WorkflowIOValueTypeEnum.arrayBoolean,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.arrayObject]: [
-      WorkflowIOValueTypeEnum.object,
-      WorkflowIOValueTypeEnum.arrayObject,
-      WorkflowIOValueTypeEnum.arrayAny,
-      WorkflowIOValueTypeEnum.chatHistory,
-      WorkflowIOValueTypeEnum.datasetQuote,
-      WorkflowIOValueTypeEnum.dynamic,
-      WorkflowIOValueTypeEnum.selectDataset,
-      WorkflowIOValueTypeEnum.selectApp
-    ],
-    [WorkflowIOValueTypeEnum.chatHistory]: [
-      WorkflowIOValueTypeEnum.chatHistory,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.datasetQuote]: [
-      WorkflowIOValueTypeEnum.datasetQuote,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.dynamic]: [
-      WorkflowIOValueTypeEnum.dynamic,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.selectDataset]: [
-      WorkflowIOValueTypeEnum.selectDataset,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.selectApp]: [
-      WorkflowIOValueTypeEnum.selectApp,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.arrayAny]: [WorkflowIOValueTypeEnum.arrayAny],
-    [WorkflowIOValueTypeEnum.any]: [WorkflowIOValueTypeEnum.arrayAny]
-  };
-
-  return outputs.filter(
-    (output) =>
-      valueType === WorkflowIOValueTypeEnum.any ||
-      valueType === WorkflowIOValueTypeEnum.arrayAny ||
-      !output.valueType ||
-      output.valueType === WorkflowIOValueTypeEnum.any ||
-      validTypeMap[valueType]?.includes(output.valueType)
+  return outputs.filter((output) =>
+    workflowValueTypeIsCompatible({ itemValueType: output.valueType, valueType })
   );
 };
+
+/** 过滤代码节点自身工具参数，避免引用选择器提供不兼容的值类型。 */
+export const filterWorkflowNodeInputsByType = (
+  inputs: FlowNodeInputItemType[],
+  valueType?: WorkflowIOValueTypeEnum
+): FlowNodeInputItemType[] =>
+  inputs.filter((input) =>
+    workflowValueTypeIsCompatible({ itemValueType: input.valueType, valueType })
+  );
 
 export type WorkflowReferenceSourceNode = {
   nodeId: string;
@@ -476,7 +501,9 @@ const referenceItemIsSelectable = ({
   if (outputIsSelectable) return true;
 
   // 代码节点自身工具参数不是 outputs，运行时注入后按 inputs 回退解析。
-  return sourceNode.toolInputs?.some((input) => input.key === outputId) ?? false;
+  return filterWorkflowNodeInputsByType(sourceNode.toolInputs ?? [], valueType).some(
+    (input) => input.key === outputId
+  );
 };
 
 /**

@@ -543,7 +543,11 @@ const RenderForm = ({
           while (nextKeys.length < list.length + 1) {
             nextKeys.push(`http-param-${nextKeys.length}`);
           }
-          nextKeys.push(`http-param-${nextKeys.length}`);
+          let nextKeyIndex = nextKeys.length;
+          while (nextKeys.includes(`http-param-${nextKeyIndex}`)) {
+            nextKeyIndex += 1;
+          }
+          nextKeys.push(`http-param-${nextKeyIndex}`);
           return nextKeys;
         });
         updateListAndNode([...list, nextItem]);
