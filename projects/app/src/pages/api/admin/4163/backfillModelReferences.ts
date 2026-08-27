@@ -72,9 +72,10 @@ export const runBackfillModelReferences = async ({
   }
   type ModelRequirement = { type: ModelTypeEnum; vision?: boolean };
   const matchesRequirement = (
-    model: Pick<SystemModelDocumentDataType, 'type' | 'config'>,
+    model: Pick<SystemModelDocumentDataType, 'type' | 'config' | 'isActive'>,
     requirement: ModelRequirement
   ) =>
+    model.isActive === true &&
     model.type === requirement.type &&
     (!requirement.vision || ('vision' in model.config && model.config.vision));
   const modelByName = new Map(storedModels.map((item) => [item.model, item]));
@@ -88,13 +89,16 @@ export const runBackfillModelReferences = async ({
     modelId?: unknown;
     requirement: ModelRequirement;
   }) => {
-    const legacyModel = modelByName.get(model);
-    if (legacyModel && matchesRequirement(legacyModel, requirement)) return String(legacyModel._id);
-
-    const currentModel = modelId ? modelById.get(String(modelId)) : undefined;
+    // 重跑迁移时有效 ID 必须保持不变；只有 ID 缺失/无效才允许借 legacy 名称修复。
+    const currentModel = modelId !== undefined ? modelById.get(String(modelId)) : undefined;
     if (currentModel && matchesRequirement(currentModel, requirement))
       return String(currentModel._id);
 
+    if (!model) return;
+    const legacyModel = modelByName.get(model);
+    if (legacyModel && matchesRequirement(legacyModel, requirement)) return String(legacyModel._id);
+
+    // 任意同类型回退是 4163 的一次性迁移语义，普通运行和保存链不得复用。
     const fallbackModel = storedModels.find((item) => matchesRequirement(item, requirement));
     return fallbackModel ? String(fallbackModel._id) : undefined;
   };
@@ -206,9 +210,17 @@ export const runBackfillModelReferences = async ({
     let missing = 0;
 
     for (const mapping of mappings) {
-      if (typeof record[mapping.legacy] !== 'string' || !record[mapping.legacy]) continue;
+      const legacyModel = record[mapping.legacy];
+      if (typeof legacyModel !== 'string' || !legacyModel) {
+        const currentModelId = record[mapping.modelId];
+        if (currentModelId !== undefined) {
+          const currentModel = modelById.get(String(currentModelId));
+          if (!currentModel || !matchesRequirement(currentModel, mapping.requirement)) missing += 1;
+        }
+        continue;
+      }
       const modelId = getModelId({
-        model: record[mapping.legacy] as string,
+        model: legacyModel,
         modelId: record[mapping.modelId],
         requirement: mapping.requirement
       });
@@ -263,9 +275,13 @@ export const runBackfillModelReferences = async ({
     model: MongoResourcePermission,
     transform: (record) => {
       if (record.resourceType !== PerResourceTypeEnum.model) return {};
-      if (typeof record.resourceName !== 'string') return record.resourceId ? {} : { missing: 1 };
+      const currentModel =
+        record.resourceId !== undefined ? modelById.get(String(record.resourceId)) : undefined;
+      if (currentModel?.isActive === true) return {};
+      if (typeof record.resourceName !== 'string') return { missing: 1 };
 
-      const resourceId = modelByName.get(record.resourceName)?._id;
+      const permissionModel = modelByName.get(record.resourceName);
+      const resourceId = permissionModel?.isActive === true ? permissionModel._id : undefined;
       if (!resourceId) return record.resourceId ? {} : { missing: 1 };
       if (String(record.resourceId ?? '') === String(resourceId)) return {};
 
@@ -296,7 +312,13 @@ export const runBackfillModelReferences = async ({
       }
     ];
     for (const mapping of mappings) {
-      if (typeof mapping.config?.model !== 'string' || !mapping.config.model) continue;
+      if (typeof mapping.config?.model !== 'string' || !mapping.config.model) {
+        if (mapping.config?.modelId !== undefined) {
+          const currentModel = modelById.get(String(mapping.config.modelId));
+          if (!currentModel || !matchesRequirement(currentModel, mapping.requirement)) missing += 1;
+        }
+        continue;
+      }
       const modelId = getModelId({
         model: mapping.config.model,
         modelId: mapping.config.modelId,
@@ -349,16 +371,40 @@ export const runBackfillModelReferences = async ({
 
       for (const [legacyKey, modelIdKey] of workflowModelKeyMappings) {
         const legacyInput = inputs.find((input) => input?.key === legacyKey);
-        if (!legacyInput) continue;
         const modelIdInputIndex = inputs.findIndex((input) => input?.key === modelIdKey);
         const modelIdInput = inputs[modelIdInputIndex];
+        const systemModelInput = modelIdInput ?? legacyInput;
+        if (!systemModelInput) continue;
         const isSystemModelInput = isWorkflowSystemModelInput({
           node: node as any,
-          input: legacyInput
+          input: systemModelInput
         });
 
         // 插件工具参数允许任意命名，非系统输入即使叫 model/modelId 也必须原样保留。
         if (!isSystemModelInput) continue;
+
+        const requirement: ModelRequirement = {
+          type:
+            legacyKey === NodeInputKeyEnum.datasetSearchRerankModel
+              ? ModelTypeEnum.rerank
+              : ModelTypeEnum.llm
+        };
+        const isDynamicModelId =
+          modelIdInput !== undefined &&
+          (getSelectedInputRenderType(modelIdInput) === FlowNodeInputTypeEnum.reference ||
+            Array.isArray(modelIdInput.value) ||
+            (typeof modelIdInput.value === 'string' && /^\{\{.*\}\}$/.test(modelIdInput.value)));
+        if (isDynamicModelId) continue;
+
+        const hasValidCurrentModelId = () => {
+          if (!modelIdInput) return false;
+          const currentModel = modelById.get(String(modelIdInput.value));
+          return !!currentModel && matchesRequirement(currentModel, requirement);
+        };
+        if (!legacyInput) {
+          if (!hasValidCurrentModelId()) missing += 1;
+          continue;
+        }
 
         const isReference =
           getSelectedInputRenderType(legacyInput) === FlowNodeInputTypeEnum.reference ||
@@ -368,6 +414,8 @@ export const runBackfillModelReferences = async ({
             inputs.push({ ...legacyInput, key: modelIdKey });
             changed = true;
             nodeChanged = true;
+          } else if (!hasValidCurrentModelId()) {
+            missing += 1;
           }
           continue;
         }
@@ -376,14 +424,9 @@ export const runBackfillModelReferences = async ({
           !legacyInput.value ||
           /^\{\{.*\}\}$/.test(legacyInput.value)
         ) {
+          if (modelIdInput && !hasValidCurrentModelId()) missing += 1;
           continue;
         }
-        const requirement: ModelRequirement = {
-          type:
-            legacyKey === NodeInputKeyEnum.datasetSearchRerankModel
-              ? ModelTypeEnum.rerank
-              : ModelTypeEnum.llm
-        };
         const modelId = getModelId({
           model: legacyInput.value,
           modelId: modelIdInput?.value,

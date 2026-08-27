@@ -54,6 +54,7 @@ describe('getLLMModelData', () => {
     expect(() =>
       getLLMModelData({ modelId: '68ee0bd23d17260b7829b138', model: 'gpt-test' })
     ).toThrow(ModelErrEnum.unExist);
+    expect(() => getLLMModelData({ modelId: '', model: 'gpt-test' })).toThrow(ModelErrEnum.unExist);
   });
 
   it('does not resolve display names or missing model identifiers', () => {
@@ -65,6 +66,9 @@ describe('getLLMModelData', () => {
   it('returns undefined only when an optional model reference is empty', () => {
     expect(getOptionalLLMModelData({})).toBeUndefined();
     expect(getOptionalVlmModelData({ modelId: undefined, model: undefined })).toBeUndefined();
+    expect(() => getOptionalLLMModelData({ modelId: '', model: 'gpt-test' })).toThrow(
+      ModelErrEnum.unExist
+    );
     expect(() => getOptionalLLMModelData({ model: 'missing-model' })).toThrow(ModelErrEnum.unExist);
     expect(() =>
       getOptionalLLMModelData({ modelId: '68ee0bd23d17260b7829b138', model: 'gpt-test' })

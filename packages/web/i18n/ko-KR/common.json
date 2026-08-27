@@ -897,6 +897,7 @@
   "model_loading": "모델 로딩 중...",
   "model_loading_label": "모델 로딩 중",
   "model_not_exist": "모델이 존재하지 않습니다",
+  "model_disabled": "{{model}} 모델이 비활성화되었습니다",
   "month_text": "월",
   "move.confirm": "이동 확인",
   "move_success": "이동되었습니다",

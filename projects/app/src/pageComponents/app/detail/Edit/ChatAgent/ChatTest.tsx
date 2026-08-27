@@ -89,6 +89,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
     const defaultModelId = defaultModels.llm?.modelId || llmModelList[0]?.modelId || '';
 
     if (selectedModelId) return selectedModelId;
+    if (helperSelectedModel) return helperSelectedModel;
     return defaultModelId;
   }, [defaultModels.llm?.modelId, helperSelectedModel, llmModelList]);
   const onChangeHelperModel = useCallback(
@@ -109,6 +110,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
           bg={'myGray.50'}
           rounded={'10px'}
           value={helperModel}
+          valueField="modelId"
           list={modelSelectList}
           onChange={onChangeHelperModel}
         />

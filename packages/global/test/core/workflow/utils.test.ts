@@ -1351,11 +1351,12 @@ describe('formatModels', () => {
     { model: 'gpt-4', modelId: '68ad85a7463006c963799a05', type: ModelTypeEnum.llm },
     { model: 'rerank-v1', modelId: '68ad85a7463006c963799a06', type: ModelTypeEnum.rerank },
     { model: 'extension-v1', modelId: '68ad85a7463006c963799a07', type: ModelTypeEnum.llm },
-    { model: 'deep-search-v1', modelId: '68ad85a7463006c963799a08', type: ModelTypeEnum.llm }
+    { model: 'deep-search-v1', modelId: '68ad85a7463006c963799a08', type: ModelTypeEnum.llm },
+    { model: 'legacy-tts', modelId: 'existing-tts-id', type: ModelTypeEnum.tts }
   ];
 
   it('returns undefined nodes unchanged', () => {
-    const result = formatModels({ nodes: undefined, models });
+    const result = formatModels({ nodes: undefined, models, missingModelStrategy: 'clear' });
     expect(result).toBeUndefined();
   });
 
@@ -1370,7 +1371,7 @@ describe('formatModels', () => {
       }
     };
 
-    formatModels({ nodes: [], chatConfig, models });
+    formatModels({ nodes: [], chatConfig, models, missingModelStrategy: 'clear' });
 
     expect(chatConfig.questionGuide).toEqual({
       open: true,
@@ -1383,16 +1384,16 @@ describe('formatModels', () => {
     });
   });
 
-  it('preserves an unresolved legacy chat config model reference', () => {
+  it('clears an unresolved legacy chat config model reference for create flows', () => {
     const chatConfig = {
       questionGuide: { open: true, model: 'temporarily-unavailable-model' }
     };
 
-    formatModels({ nodes: [], chatConfig, models: [] });
+    formatModels({ nodes: [], chatConfig, models: [], missingModelStrategy: 'clear' });
 
     expect(chatConfig.questionGuide).toEqual({
       open: true,
-      model: 'temporarily-unavailable-model'
+      modelId: ''
     });
   });
 
@@ -1433,7 +1434,7 @@ describe('formatModels', () => {
       }
     ];
 
-    const result = formatModels({ nodes, models });
+    const result = formatModels({ nodes, models, missingModelStrategy: 'clear' });
 
     expect(result?.[0].inputs).toHaveLength(4);
     expect(result?.[0].inputs.map((input) => input.key)).not.toEqual(
@@ -1466,7 +1467,7 @@ describe('formatModels', () => {
     );
   });
 
-  it('falls back to the first same-type model for an unresolved static legacy model', () => {
+  it('clears an unresolved static legacy model without arbitrary fallback', () => {
     const nodes = [
       {
         nodeId: 'node1',
@@ -1485,13 +1486,13 @@ describe('formatModels', () => {
       }
     ];
 
-    expect(() => formatModels({ nodes, models })).not.toThrow();
+    expect(() => formatModels({ nodes, models, missingModelStrategy: 'clear' })).not.toThrow();
     expect(nodes[0].inputs[0].key).toBe(NodeInputKeyEnum.aiModelId);
-    expect(nodes[0].inputs[0].value).toBe(models[0].modelId);
+    expect(nodes[0].inputs[0].value).toBe('');
     expect(nodes[0].inputs).toHaveLength(1);
   });
 
-  it('keeps existing modelId inputs unchanged without checking permissions', () => {
+  it('keeps valid modelId inputs and clears invalid static modelId inputs', () => {
     const nodes = [
       {
         nodeId: 'node1',
@@ -1522,10 +1523,10 @@ describe('formatModels', () => {
       }
     ];
 
-    const result = formatModels({ nodes, models });
+    const result = formatModels({ nodes, models, missingModelStrategy: 'clear' });
 
     expect(result?.[0].inputs[0].value).toBe(models[0].modelId);
-    expect(result?.[0].inputs[1].value).toBe('68ad85a7463006c963799aff');
+    expect(result?.[0].inputs[1].value).toBe('');
     expect(result?.[0].inputs).toHaveLength(2);
     expect(result?.[0].inputs.some((input) => input.key === NodeInputKeyEnum.aiModel)).toBe(false);
     expect(
@@ -1557,7 +1558,7 @@ describe('formatModels', () => {
         outputs: []
       }
     ];
-    const result = formatModels({ nodes, models });
+    const result = formatModels({ nodes, models, missingModelStrategy: 'clear' });
     expect(result?.[0].inputs[0].key).toBe(NodeInputKeyEnum.aiModelId);
     expect(result?.[0].inputs[0].value).toBe('unauthorized-model');
     expect(result?.[0].inputs[1].key).toBe(NodeInputKeyEnum.datasetSearchRerankModelId);
@@ -1582,7 +1583,7 @@ describe('formatModels', () => {
       }
     ];
 
-    formatModels({ nodes, models });
+    formatModels({ nodes, models, missingModelStrategy: 'clear' });
 
     expect(nodes[0].inputs).toEqual([
       expect.objectContaining({
@@ -1609,7 +1610,7 @@ describe('formatModels', () => {
         outputs: []
       }
     ];
-    const result = formatModels({ nodes, models });
+    const result = formatModels({ nodes, models, missingModelStrategy: 'clear' });
     expect(result?.[0].inputs[0].value).toBe('some value');
   });
 
@@ -1631,7 +1632,7 @@ describe('formatModels', () => {
       }
     ];
 
-    formatModels({ nodes, models });
+    formatModels({ nodes, models, missingModelStrategy: 'clear' });
 
     expect(nodes[0].inputs).toEqual([
       expect.objectContaining({ key: NodeInputKeyEnum.aiModel, value: 'gpt-4' })
@@ -1658,14 +1659,71 @@ describe('formatModels', () => {
 
     formatModels({
       nodes,
-      models: models.filter((model) => model.type === ModelTypeEnum.llm)
+      models: models.filter((model) => model.type === ModelTypeEnum.llm),
+      missingModelStrategy: 'clear'
     });
 
     expect(nodes[0].inputs).toEqual([
       expect.objectContaining({
         key: NodeInputKeyEnum.datasetSearchRerankModelId,
-        value: undefined
+        value: ''
       })
+    ]);
+  });
+
+  it('throws one aggregated error for unresolved models on save and publish', () => {
+    const nodes = [
+      {
+        nodeId: 'node1',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        name: 'Agent',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            value: 'disabled-model-id',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.datasetSearchRerankModel,
+            value: 'disabled-rerank',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    expect(() => formatModels({ nodes, models, missingModelStrategy: 'throw' })).toThrow(
+      'disabled-model-id、disabled-rerank 模型已停用'
+    );
+  });
+
+  it('does not repair an invalid modelId from a valid legacy model', () => {
+    const nodes = [
+      {
+        nodeId: 'node1',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        name: 'Chat',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            value: 'invalid-id',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.aiModel,
+            value: 'gpt-4',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    formatModels({ nodes, models, missingModelStrategy: 'clear' });
+
+    expect(nodes[0].inputs).toEqual([
+      expect.objectContaining({ key: NodeInputKeyEnum.aiModelId, value: '' })
     ]);
   });
 });

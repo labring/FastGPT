@@ -63,6 +63,7 @@ const SkillPreview = () => {
       (item) => item.modelId === selectedModel || item.model === selectedModel
     )?.modelId;
     if (selectedModelId) return selectedModelId;
+    if (selectedModel) return selectedModel;
     if (defaultModelId) return defaultModelId;
     return llmModelList[0]?.modelId || '';
   }, [defaultModelId, llmModelList, selectedModel]);
@@ -147,6 +148,7 @@ const SkillPreview = () => {
         bg={'myGray.50'}
         rounded={'10px'}
         value={fallbackModel}
+        valueField="modelId"
         list={modelSelectList}
         onChange={setSelectedModel}
       />

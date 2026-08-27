@@ -47,7 +47,8 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   formatModels({
     nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig,
-    models: global.systemModelList
+    models: global.systemActiveModelList,
+    missingModelStrategy: 'throw'
   });
   await beforeUpdateAppFormat({
     nodes: normalizedWorkflow.nodes,

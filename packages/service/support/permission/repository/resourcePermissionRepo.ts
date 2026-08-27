@@ -206,12 +206,13 @@ export const resourcePermissionRepo = {
     }
 
     const getResourceKey = (): ResourcePermissionResourceKey => {
-      if (resourceType === PerResourceTypeEnum.model) return 'resourceName';
       if (
         [
           PerResourceTypeEnum.app,
           PerResourceTypeEnum.dataset,
-          PerResourceTypeEnum.agentSkill
+          PerResourceTypeEnum.agentSkill,
+          // 模型权限已切换到稳定 ID；4163 前旧 resourceName 暂时失效是已接受的迁移窗口语义。
+          PerResourceTypeEnum.model
         ].includes(resourceType)
       ) {
         return 'resourceId';

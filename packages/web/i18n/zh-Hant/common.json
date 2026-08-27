@@ -900,6 +900,7 @@
   "model_loading": "模型加載中...",
   "model_loading_label": "模型載入中",
   "model_not_exist": "模型不存在",
+  "model_disabled": "{{model}} 模型已停用",
   "month_text": "個月",
   "move.confirm": "確認移動",
   "move_success": "移動成功",

@@ -488,9 +488,10 @@ const displayModel =
 
 - 新建节点和新模板只产生新 ID key，不需要额外双写旧 key。
 - 数据库批量迁移脚本只回填 ID sibling，不删除历史 key，便于回滚；业务写入边界的 `formatModels` 则产出只含 ID key 的规范节点。
-- Workflow 导入、应用创建以及自动保存/保存版本/发布统一调用 `formatModels`：静态旧 `model` 转换为 `modelId` key 和 ID 值；同名模型已不存在时，按所需模型类型选择传入列表中的首个模型作为兼容回退。引用类型只转换 key 并保留引用值，已有 `modelId` 时删除对应旧 key。`formatModels` 不在服务端写入边界校验模型权限。
+- `formatModels` 只在服务端写入边界执行，客户端导入保留原始引用交给选择器展示。静态旧 `model` 仅在同名、同类型 active 模型存在时转换为 `modelId`；引用或模板表达式原样保留。已有 `modelId` 时严格按 ID 校验，不允许借旧 `model` 修复或回退。
+- 应用创建、复制和转化使用 `clear` 策略：静态引用无法解析时把 canonical `modelId` 值清空，允许用户进入编辑器重新选择。自动保存、保存版本和发布使用 `throw` 策略：聚合全部无法解析的静态引用并拒绝写入。两种策略都不做模型权限判断，也不选择同类型任意模型。
 - 编辑或保存存量 Workflow 时，会将命中的 deprecated input 原位转换为 ID input，不再双写旧 key。
-- 旧字面量无法精确解析时，仍将 key 改为 `modelId`，并按所需模型类型选择首个候选；该类型没有候选时才清空值且不抛错，避免中断模板导入。运行节点时，`modelId` 和 `model` 都为空、指定模型不存在，或模型未激活，均统一抛出“模型不存在”。
+- 运行时没有任何兼容性任意回退：只要 `modelId` 字段存在（包括空字符串）就仅按 ID 解析；只有字段为 `undefined` 才允许按 deprecated `model` 精确查找。ID/名称为空、无效、停用或类型错误均抛错，统一由客户端显示“xxx 模型已停用”。
 
 引用类型 input 的 value 保留原引用路径，仅将旧 key 改为 ID key。运行时引用结果统一按 `modelId` 解释；若上游仍输出旧 `model` 字符串，则直接报“模型不存在”。
 
@@ -654,9 +655,9 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 - 迁移候选只保留 `_id` 与 canonical 字段，因此 `isSystem`、`metadata` 和旧顶层能力字段不会进入新表；旧表原文档完全不变。
 - 任一旧记录无法转换或出现重复 `_id` 时，在开启写事务前失败，目标表保持为空；重复 `model` 按 `_id` 升序读取，后一个记录覆盖前一个记录并保留其 `_id` 与配置。
 - 多实例并发不使用分布式锁；事务内复查目标为空，竞争失败实例仅在确认另一实例已完整写入同一组 `_id` 后收敛为成功。
-- legacy 名称能精确解析时，以其当前映射覆盖已有 `modelId`，用于修复模型 ID 重新生成后的存量引用；重复执行保持幂等。
-- legacy 名称无法精确解析且已有 `modelId` 仍指向符合类型要求的模型时，保留该 ID；否则按所需类型选择 `ai_models` 中首个匹配模型作为兼容回退。
-- 所需类型没有任何候选时不写 `*ModelId`，并计入 unresolved；因此 unresolved 表示无法形成类型合法的引用，而不是旧名称未命中。
+- 4163 先检查已有 `modelId`：只要它指向符合类型要求的 active 模型就保持不变，不能被 legacy 名称覆盖，确保重复执行幂等。
+- 仅当已有 ID 缺失或无效且 legacy 名称存在时尝试同名、同类型精确匹配；精确匹配失败才允许在 4163 内选择同类型 active 模型作为一次性迁移回退。
+- 只有 `modelId` 而没有 legacy 名称的无效记录禁止回退，计入 invalid/unresolved；所需类型没有 active 候选时也不写入并计入 unresolved。运行时和普通写入链均不得复用 4163 的任意回退语义。
 - 所有集合的回填写入都对读取过的 legacy 源字段和待写目标字段做快照 CAS；Workflow 整体数组按读取快照匹配。并发保存导致的未命中记为 conflict，可通过重跑收敛，不能覆盖用户刚保存的数据。
 - 4163 映射只使用 `ai_models` 系统模型 `model`；发现空表、重复或歧义必须在写业务数据前终止。
 - `usage_items` 不参与历史引用回填；仅新写入链开始保存 `modelId`。
@@ -668,7 +669,8 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 
 - 旧记录迁移时保留 legacy 字段，因此回滚旧镜像仍能读取这些旧记录。
 - 新版本创建的记录只写 modelId，旧镜像无法读取这部分新记录。
-- 资源引用回填在新版本部署完成后执行；运行时在回填前继续兼容读取 legacy 字段，因此回填进度不会阻断业务。新写入仍只写 modelId，故不能在会同时处理写请求的新旧应用实例之间长期滚动混跑。
+- 资源引用回填在新版本部署完成后执行；普通业务引用在回填前兼容读取 legacy 字段。模型权限运行时只读 ID，但后端执行链暂不鉴权，因此迁移窗口内权限暂时失效已明确接受，不作为本 PR 阻塞项。新写入仍只写 modelId，故不能在会同时处理写请求的新旧应用实例之间长期滚动混跑。
+- FastGPT 与 Pro 滚动发布期间，新 Usage 的 modelId 可能暂时无法被旧侧展示解析；该短窗口仅影响模型归因展示，金额和 token 不受影响，已明确接受，不增加双写。
 - 如果部署要求新旧实例长期混跑，就必须临时双写 legacy 字段；这与“新保存只有 modelId”的已确认要求冲突，需要另行决策，不能隐式实现。
 
 ## 12. 代码改动分区
@@ -693,7 +695,7 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 ### 13.1 单元测试
 
 - Schema：系统模型重复 `model` 被拒绝；未来 `scope=team` 不受系统 partial index 错误约束。
-- Config schema：各模型类型必填/可选字段正确，未知字段和跨类型字段被拒绝。
+- Config schema：各模型类型必填/可选字段正确；schema 保持类型精确但不使用 `.strict()`，未知字段由 Zod 默认剔除，跨类型已知字段也不会进入解析结果。
 - Index manager：旧 `model_1` 被精确识别为 deprecated，新 partial unique index 被保留。
 - 物化：首次生成 ID、旧同名文档原地接管且 ID 不变、重复同步 ID 不变、多实例重复键收敛；启动插件失败会阻止启动且不修改 DB，重载插件失败会保留上一版 active 模型与权限缓存。
 - Model reference schema：只传 modelId、只传 deprecated model、两者同时存在时只认 modelId、无效 modelId 加有效 model 仍报错、两者缺失分别覆盖。
@@ -757,13 +759,13 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 启动时 `system_models -> ai_models` 迁移         | 首次升级时保留旧 `_id`，并把旧顶层字段、`metadata`、`isSystem` 修复为 canonical 模型结构                   | 删除启动迁移、legacy repair 和旧集合读取代码；是否物理删除 `system_models` 另行执行     | 所有受支持部署都至少成功启动过一次新版本；`ai_models` 非空且校验通过；最低支持升级版本不再允许从只含 `system_models` 的版本直接升级                                                                        |
 | 插件模型自动预装                                 | 本版本为所有插件模板补齐数据库实例，保证每个系统模型都有稳定 ID                                            | PR2 改成管理员从模板显式安装，不再因插件出现模板就自动创建实例                          | 模板安装流程、默认模型保障和空实例引导已上线；升级部署不会因为关闭自动预装而没有可用模型                                                                                                                   |
-| `admin/4163/backfillModelReferences`             | 给 Dataset、App/Workflow、Evaluation 和模型权限补 ID sibling，并用同类型首个模型处理无法按旧名称解析的引用 | 完成上线回填和复核后下线一次性接口；后续严格迁移不得再静默猜测模型                      | dry-run 与正式执行完成；`unresolved/conflicts` 收敛为 0；各目标集合不存在缺少合法 ID 的有效记录；保留执行审计结果                                                                                          |
+| `admin/4163/backfillModelReferences`             | 给 Dataset、App/Workflow、Evaluation 和模型权限补 ID sibling；仅在已有 ID 不合法、存在 legacy 名称且精确匹配失败时使用同类型 active 模型回退 | 完成上线回填和复核后下线一次性接口；后续严格迁移不得再静默猜测模型                      | dry-run 与正式执行完成；`unresolved/conflicts` 收敛为 0；各目标集合不存在缺少合法 ID 的有效记录；保留执行审计结果                                                                                          |
 | Dataset、Evaluation、App chatConfig 的旧字段读取 | 兼容 `vectorModel/agentModel/vlmModel`、`evalModel`、问题引导和 TTS 的 `model`                             | 持久化 Schema 和内部 API 改为按业务条件要求 `*ModelId`；运行时只读取 ID；随后删除旧字段 | 所有写入口只写 ID；存量回填完成；导入、复制、恢复旧版本等入口会先规范化；条件可选字段单独定义，例如 VLM 未启用、问题引导关闭或 TTS 非模型模式时仍可没有 ID                                                 |
 | Workflow 旧 key 与保存清洗                       | 兼容 `model/rerankModel/...` input；`formatModels` 在导入、创建、保存、发布时将静态旧名称转换为 ID key     | 所有写入边界统一规范化；运行时 Dispatcher 只读取 ID key，不再读取 `model`               | 存量 App、AppVersion、AppTemplate 已回填；所有导入/复制/保存入口均调用同一清洗函数；静态旧名称可转换或明确报错；动态 `{{...}}` 和引用型输入的上游输出协议已明确为 modelId，不能把运行时得到的旧名称误当 ID |
 | 统一模型解析中的 `model:<name>` 索引             | `getXXModelData`/`findModelData` 在没有 modelId 时兼容查找旧系统模型名称                                   | 删除 `ModelReference.model`、名称索引和 getter 的名称分支，只保留 `id:<modelId>`        | 上述持久化、Workflow、公开 API、权限和前端兼容均已退出；代码审计不存在 `getXXModelData({ model })`；该项应最后删除                                                                                         |
 | 公开 System OpenAPI 的 deprecated `model` 参数   | 已发布外部调用方仍可按系统模型名称请求                                                                     | 在独立 API contract cleanup 版本删除旧参数，只接收 modelId                              | 已公告废弃窗口；调用日志证明旧参数使用量可接受或为 0；SDK、文档和外部集成完成迁移。OpenAI `/v1`、`/v2` 标准协议的 `model` 不属于此清理                                                                     |
 | 模型权限 `resourceName`                          | 仅供 4163 将旧权限映射到 `resourceId`，运行时不按名称回退                                                  | 权限记录最终只保留 `resourceId`，后续删除旧名称字段及其索引                             | 权限回填完成；不存在 model 权限缺少 `resourceId`；旧名称快照不再承担审计或回滚用途                                                                                                                         |
-| 前端旧值恢复和显示                               | Evaluation、默认模型、语音配置等页面同时把字符串当作 modelId 或旧 model 查找                               | selector、表单、详情页只持有和请求 modelId                                              | 后端响应和持久化均已收敛；异常 ID 仍按“模型不存在”展示，不能恢复为选择同类型第一个模型                                                                                                                     |
+| 前端旧值恢复和显示                               | Evaluation、默认模型、语音配置等页面同时把字符串当作 modelId 或旧 model 精确查找                            | selector、表单、详情页只持有和请求 modelId                                              | 后端响应和持久化均已收敛；异常值保持原值并显示“xxx 模型已停用”，不能恢复为选择默认或同类型第一个模型                                                                                                      |
 | 历史 Usage 的 `model` 展示                       | 历史明细不回填 ID，直接显示写入时的 provider model 快照                                                    | 可长期保留为历史展示协议；只有在 Usage 生命周期结束或完成专门迁移后才删除               | TTL 范围内已不存在旧 Usage，或完成不会改变金额、token 和历史展示语义的专项迁移。它不应阻塞业务配置改成 modelId 必填                                                                                        |
 
 以下两项虽然仍使用 `model`，但不能与 legacy 引用兼容一起直接删除：
@@ -818,4 +820,10 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 - [x] 将模型结构接管改为启动逐模型 repair，新增 4.16.3 资源引用 dry-run/回填接口，并移除新版旧 cleaner 路由。
 - [x] 补齐局部单测、迁移测试、核心集成测试和 Pro 测试。
 - [x] 执行静态残留审计、局部测试、类型检查，最后运行全量测试。
+- [ ] 收紧运行时解析：`modelId !== undefined` 时禁止按 legacy model 回退，并覆盖空字符串、错误类型和停用模型。
+- [ ] 重构 `formatModels` 为 `clear/throw` 两种缺失策略；创建/复制/转化清空，保存/发布聚合报错，客户端导入不预清洗。
+- [ ] 修正 4163 优先级和 active 回退范围，保证有效 ID 幂等、无 legacy 的无效 ID 不回退。
+- [ ] 管理员 detail 返回完整配置、list 保持脱敏；移除导入 schema 的 `.strict()` 并补完整 round-trip 测试。
+- [ ] 所有模型选择器保留异常值且统一显示“xxx 模型已停用”，修正 Chat/TTS/QG/Skill Preview/Chat Agent Helper 的 ID 语义。
+- [ ] 在权限写入口清理同模型旧 resourceName ACL，并记录权限迁移和 Core/Pro 滚动展示风险为已接受非阻塞项。
 - [ ] 新版本部署完成后执行 dry-run 和正式回填，复核并重跑并发 conflict，最终解决全部 unresolved/conflict。

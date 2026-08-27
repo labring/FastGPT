@@ -176,7 +176,8 @@ export const onCreateApp = async ({
   formatModels({
     nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig,
-    models: global.systemModelList
+    models: global.systemActiveModelList,
+    missingModelStrategy: 'clear'
   });
   await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });
   if (!AppFolderTypeList.includes(type!)) {
@@ -316,7 +317,8 @@ export const onUpdateAppWorkflow = async ({
   formatModels({
     nodes: workflow.nodes,
     chatConfig: workflow.chatConfig,
-    models: global.systemModelList
+    models: global.systemActiveModelList,
+    missingModelStrategy: 'clear'
   });
   await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });
 

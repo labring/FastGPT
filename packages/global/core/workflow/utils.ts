@@ -624,23 +624,50 @@ export const isWorkflowSystemModelInput = ({
 /**
  * 在 Workflow 写入边界统一格式化模型引用。
  *
- * 对话配置中的旧 model 只在成功解析为 modelId 后删除，避免临时缺失模型造成引用丢失。
- * 静态旧 model 会将 key 改为 modelId，并将值转换为对应 ID；找不到同名模型时，
- * 按模型类型回退到列表中的首个模型。引用类型只改 key，保留引用值。若已有
- * modelId input，则保留其值并删除对应旧 model input。该函数不承担模型权限判断。
+ * 静态引用只允许按现有 modelId 或同名 legacy model 精确解析。创建类入口使用 clear，
+ * 让无效引用进入编辑器后由用户重新选择；保存/发布使用 throw，聚合所有无效引用后拒绝写入。
+ * 引用和模板表达式无法静态判断，保持原值。该函数不承担模型权限判断，也不选择任意候选。
  */
 export const formatModels = ({
   nodes,
   chatConfig,
-  models = []
+  models = [],
+  missingModelStrategy
 }: {
   nodes: StoreNodeItemType[] | undefined;
   chatConfig?: AppSchemaType['chatConfig'];
   models?: Array<{ modelId: string; model: string; type: ModelTypeEnum }>;
+  missingModelStrategy: 'clear' | 'throw';
 }) => {
-  const getModelId = (modelName: string, type: ModelTypeEnum) =>
-    models.find((model) => model.model === modelName && model.type === type)?.modelId ??
-    models.find((model) => model.type === type)?.modelId;
+  const missingModels = new Set<string>();
+  const resolveModelId = ({
+    modelId,
+    model,
+    type
+  }: {
+    modelId?: unknown;
+    model?: unknown;
+    type: ModelTypeEnum;
+  }) => {
+    const matchedModel =
+      modelId !== undefined
+        ? models.find((item) => item.modelId === String(modelId) && item.type === type)
+        : typeof model === 'string'
+          ? models.find((item) => item.model === model && item.type === type)
+          : undefined;
+    if (matchedModel) return matchedModel.modelId;
+
+    const label =
+      modelId !== undefined
+        ? String(modelId).length > 0
+          ? String(modelId)
+          : '未配置'
+        : typeof model === 'string' && model.length > 0
+          ? model
+          : '未配置';
+    missingModels.add(label);
+    return '';
+  };
   const formatChatModelReference = ({
     config,
     type
@@ -649,8 +676,10 @@ export const formatModels = ({
     type: ModelTypeEnum;
   }) => {
     if (!config) return;
-    if (!config.modelId && config.model) config.modelId = getModelId(config.model, type);
-    if (config.modelId) delete config.model;
+    if (config.modelId === undefined && config.model === undefined) return;
+
+    config.modelId = resolveModelId({ modelId: config.modelId, model: config.model, type });
+    delete config.model;
   };
   formatChatModelReference({ config: chatConfig?.questionGuide, type: ModelTypeEnum.llm });
   formatChatModelReference({ config: chatConfig?.ttsConfig, type: ModelTypeEnum.tts });
@@ -666,13 +695,33 @@ export const formatModels = ({
       const legacyInput = node.inputs.find((input) => input.key === legacyKey);
       const modelIdInput = node.inputs.find((input) => input.key === modelIdKey);
 
-      if (!legacyInput || !isWorkflowSystemModelInput({ node, input: legacyInput })) continue;
+      const systemModelInput = modelIdInput ?? legacyInput;
+      if (!systemModelInput || !isWorkflowSystemModelInput({ node, input: systemModelInput })) {
+        continue;
+      }
+
+      const type =
+        legacyKey === NodeInputKeyEnum.datasetSearchRerankModel
+          ? ModelTypeEnum.rerank
+          : ModelTypeEnum.llm;
 
       // modelId 始终优先；存在 canonical input 时删除所有对应旧 input。
       if (modelIdInput) {
+        if (
+          !isReferenceInput(modelIdInput) &&
+          !(typeof modelIdInput.value === 'string' && /^\{\{.*\}\}$/.test(modelIdInput.value))
+        ) {
+          modelIdInput.value = resolveModelId({
+            modelId: modelIdInput.value,
+            model: legacyInput?.value,
+            type
+          });
+        }
         node.inputs = node.inputs.filter((input) => input.key !== legacyKey);
         continue;
       }
+
+      if (!legacyInput) continue;
 
       const isReference = isReferenceInput(legacyInput);
       if (!isReference) {
@@ -680,17 +729,17 @@ export const formatModels = ({
         if (typeof legacyInput.value === 'string' && /^\{\{.*\}\}$/.test(legacyInput.value)) {
           continue;
         }
-        const type =
-          legacyKey === NodeInputKeyEnum.datasetSearchRerankModel
-            ? ModelTypeEnum.rerank
-            : ModelTypeEnum.llm;
-        legacyInput.value = getModelId(legacyInput.value, type);
+        legacyInput.value = resolveModelId({ model: legacyInput.value, type });
       }
       legacyInput.key = modelIdKey;
       // 历史异常数据可能存在重复旧 key，转换首个后一并移除。
       node.inputs = node.inputs.filter((input) => input.key !== legacyKey);
     }
   });
+
+  if (missingModelStrategy === 'throw' && missingModels.size > 0) {
+    throw new Error(`${Array.from(missingModels).join('、')} 模型已停用`);
+  }
 
   return nodes;
 };

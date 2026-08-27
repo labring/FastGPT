@@ -18,6 +18,7 @@ type Props = SelectProps & {
   disableTip?: string;
   noOfLines?: ResponsiveValue<number>;
   cacheModel?: boolean;
+  valueField?: 'modelId' | 'model';
 };
 
 const modelAvatarSizeMap = {
@@ -107,6 +108,7 @@ const OneRowSelector = ({
   disableTip,
   noOfLines,
   cacheModel = true,
+  valueField = 'model',
   ...props
 }: Props) => {
   const { t } = useTranslation(['common', 'account']);
@@ -127,23 +129,30 @@ const OneRowSelector = ({
     [llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList]
   );
   const selectedModelData = useMemo(
-    () => allModels.find((model) => model.model === props.value),
-    [allModels, props.value]
+    () =>
+      allModels.find(
+        (model) => (valueField === 'modelId' ? model.modelId : model.model) === props.value
+      ),
+    [allModels, props.value, valueField]
   );
   const myModels = useMemo(() => {
-    const result = new Set(allModels.map((model) => model.model));
+    const result = new Set(
+      allModels.map((model) => (valueField === 'modelId' ? model.modelId : model.model))
+    );
     if (cacheModel) result.add(props.value);
     return result;
-  }, [allModels, cacheModel, props.value]);
+  }, [allModels, cacheModel, props.value, valueField]);
 
   const avatarList = useMemo(() => {
     return list
       .map((item) => {
-        const modelData = allModels.find((model) => model.model === item.value);
+        const modelData = allModels.find(
+          (model) => (valueField === 'modelId' ? model.modelId : model.model) === item.value
+        );
         if (!modelData) return;
 
         const avatar = getModelProvider(modelData.provider)?.avatar;
-        if (!myModels?.has(modelData.model)) {
+        if (!myModels?.has(valueField === 'modelId' ? modelData.modelId : modelData.model)) {
           return;
         }
         return {
@@ -170,7 +179,7 @@ const OneRowSelector = ({
       value: any;
       label: React.JSX.Element;
     }[];
-  }, [allModels, list, getModelProvider, avatarSize, noOfLines, myModels]);
+  }, [allModels, list, getModelProvider, avatarSize, noOfLines, myModels, valueField]);
 
   return (
     <Box
@@ -195,7 +204,9 @@ const OneRowSelector = ({
                 noOfLines={noOfLines}
               />
             ) : props.value && !loading ? (
-              <Box color={'red.500'}>{t('common:model_not_exist')}</Box>
+              <Box color={'red.500'}>
+                {t('common:model_disabled', { model: String(props.value) })}
+              </Box>
             ) : undefined
           }
           placeholder={loading ? t('common:model_loading') : t('common:not_model_config')}
@@ -218,6 +229,7 @@ const MultipleRowSelector = ({
   disableTip,
   placeholder,
   noOfLines,
+  valueField = 'model',
   ...props
 }: Props) => {
   const { t, i18n } = useTranslation(['common', 'account']);
@@ -235,18 +247,39 @@ const MultipleRowSelector = ({
     ];
 
     return list
-      .map((item) => allModels.find((model) => model.model === item.value))
+      .map((item) =>
+        allModels.find(
+          (model) => (valueField === 'modelId' ? model.modelId : model.model) === item.value
+        )
+      )
       .filter((item) => !!item);
-  }, [llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList, list]);
+  }, [
+    llmModelList,
+    embeddingModelList,
+    ttsModelList,
+    sttModelList,
+    reRankModelList,
+    list,
+    valueField
+  ]);
 
   const avatarSize = useMemo(() => getModelAvatarSize(props.size), [props.size]);
   const selectedModelData = useMemo(
-    () => modelList.find((model) => model?.model === props.value),
-    [modelList, props.value]
+    () =>
+      modelList.find(
+        (model) => (valueField === 'modelId' ? model?.modelId : model?.model) === props.value
+      ),
+    [modelList, props.value, valueField]
   );
   const value = useMemo(
-    () => (selectedModelData ? [selectedModelData.provider, selectedModelData.model] : []),
-    [selectedModelData]
+    () =>
+      selectedModelData
+        ? [
+            selectedModelData.provider,
+            valueField === 'modelId' ? selectedModelData.modelId : selectedModelData.model
+          ]
+        : [],
+    [selectedModelData, valueField]
   );
 
   const selectorList = useMemo(() => {
@@ -271,7 +304,9 @@ const MultipleRowSelector = ({
     }));
 
     for (const item of list) {
-      const modelData = modelList.find((model) => model?.model === item.value);
+      const modelData = modelList.find(
+        (model) => (valueField === 'modelId' ? model?.modelId : model?.model) === item.value
+      );
       if (!modelData) continue;
       const provider =
         renderList.find((item) => item.value === (modelData?.provider || 'Other')) ??
@@ -287,12 +322,12 @@ const MultipleRowSelector = ({
             />
           </Flex>
         ),
-        value: modelData.model
+        value: valueField === 'modelId' ? modelData.modelId : modelData.model
       });
     }
 
     return renderList.filter((item) => item.children.length > 0);
-  }, [getModelProviders, i18n.language, avatarSize, list, modelList]);
+  }, [getModelProviders, i18n.language, avatarSize, list, modelList, valueField]);
 
   const onSelect = useCallback(
     (e: string[]) => {
@@ -304,7 +339,11 @@ const MultipleRowSelector = ({
   const SelectedLabel = useMemo(() => {
     if (loading) return <>{t('common:model_loading')}</>;
     if (!props.value) return <>{t('common:not_model_config')}</>;
-    if (!selectedModelData) return <Box color={'red.500'}>{t('common:model_not_exist')}</Box>;
+    if (!selectedModelData) {
+      return (
+        <Box color={'red.500'}>{t('common:model_disabled', { model: String(props.value) })}</Box>
+      );
+    }
 
     return (
       <SelectedModelLabel

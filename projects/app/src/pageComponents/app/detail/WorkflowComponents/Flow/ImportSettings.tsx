@@ -5,8 +5,6 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
-import { formatModels } from '@fastgpt/global/core/workflow/utils';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
 import { WorkflowUtilsContext } from '../context/workflowUtilsContext';
 import { parseWorkflowImportConfig } from '@/pageComponents/dashboard/agent/utils/appTemplateParse';
 import { AppContext } from '../../context';
@@ -27,7 +25,6 @@ const ImportSettings = ({ onClose }: Props) => {
   const appType = useContextSelector(AppContext, (v) => v.appDetail.type);
   const { t } = useTranslation();
   const [value, setValue] = useState('');
-  const { modelList } = useSystemModelLists();
 
   return (
     <MyModal
@@ -52,11 +49,6 @@ const ImportSettings = ({ onClose }: Props) => {
                     ? AppTypeEnum.workflowTool
                     : AppTypeEnum.workflow,
                 t
-              });
-              formatModels({
-                nodes: workflowConfig.nodes,
-                chatConfig: workflowConfig.chatConfig,
-                models: modelList
               });
               await initData(workflowConfig);
               toast({

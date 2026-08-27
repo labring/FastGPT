@@ -21,11 +21,13 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 const createStoredModel = async ({
   model,
   type = ModelTypeEnum.llm,
-  vision
+  vision,
+  isActive = true
 }: {
   model: string;
   type?: ModelTypeEnum;
   vision?: boolean;
+  isActive?: boolean;
 }) =>
   MongoAIModel.create({
     type,
@@ -33,6 +35,7 @@ const createStoredModel = async ({
     model,
     name: model,
     scope: 'system',
+    isActive,
     config:
       type === ModelTypeEnum.llm
         ? { maxContext: 16000, maxResponse: 8000, quoteMaxToken: 12000, vision }
@@ -222,7 +225,7 @@ describe('runBackfillModelReferences', () => {
     await expect(MongoUsageItem.collection.findOne({})).resolves.not.toHaveProperty('modelId');
   });
 
-  it('refreshes an existing model ID from the latest legacy model mapping', async () => {
+  it('preserves an existing valid modelId even when the legacy model points elsewhere', async () => {
     const [legacyModel, canonicalModel] = await Promise.all([
       createStoredModel({ model: 'legacy-model' }),
       createStoredModel({ model: 'canonical-model' })
@@ -277,36 +280,36 @@ describe('runBackfillModelReferences', () => {
     ]);
 
     const result = await runBackfillModelReferences({ dryRun: false });
-    expect(result.groups.datasets).toMatchObject({ conflicts: 0, updated: 1 });
-    expect(result.references.evaluations).toMatchObject({ conflicts: 0, updated: 1 });
-    expect(result.references.modelPermissions).toMatchObject({ conflicts: 0, updated: 1 });
-    expect(result.references.appsChatConfig).toMatchObject({ conflicts: 0, updated: 1 });
-    expect(result.references.appsWorkflow).toMatchObject({ conflicts: 0, updated: 1 });
+    expect(result.groups.datasets).toMatchObject({ conflicts: 0, updated: 0 });
+    expect(result.references.evaluations).toMatchObject({ conflicts: 0, updated: 0 });
+    expect(result.references.modelPermissions).toMatchObject({ conflicts: 0, updated: 0 });
+    expect(result.references.appsChatConfig).toMatchObject({ conflicts: 0, updated: 0 });
+    expect(result.references.appsWorkflow).toMatchObject({ conflicts: 0, updated: 0 });
     await expect(
       MongoDataset.collection.findOne({ name: 'Conflict Dataset' })
     ).resolves.toMatchObject({
       agentModel: 'legacy-model',
-      agentModelId: String(legacyModel._id)
+      agentModelId: String(canonicalModel._id)
     });
     await expect(MongoEvaluation.collection.findOne({})).resolves.toMatchObject({
-      evalModelId: String(legacyModel._id)
+      evalModelId: String(canonicalModel._id)
     });
     await expect(
       MongoResourcePermission.collection.findOne({ resourceType: PerResourceTypeEnum.model })
-    ).resolves.toMatchObject({ resourceId: legacyModel._id });
+    ).resolves.toMatchObject({ resourceId: canonicalModel._id });
 
     const app = await MongoApp.collection.findOne({});
-    expect(app?.chatConfig.questionGuide.modelId).toBe(String(legacyModel._id));
+    expect(app?.chatConfig.questionGuide.modelId).toBe(String(canonicalModel._id));
     expect(app?.modules[0].inputs).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           key: NodeInputKeyEnum.aiModelId,
-          value: String(legacyModel._id)
+          value: String(canonicalModel._id)
         }),
         expect.objectContaining({
           key: NodeInputKeyEnum.datasetParams,
           value: expect.objectContaining({
-            datasetSearchExtensionModelId: String(legacyModel._id)
+            datasetSearchExtensionModelId: String(canonicalModel._id)
           })
         })
       ])
@@ -424,6 +427,25 @@ describe('runBackfillModelReferences', () => {
       { key: NodeInputKeyEnum.aiModel, value: 'whisper-1', label: 'model' },
       { key: NodeInputKeyEnum.aiModelId, value: 'whisper-id', label: 'model' }
     ]);
+  });
+
+  it('never selects a disabled model as the migration fallback', async () => {
+    await createStoredModel({
+      model: 'disabled-embedding',
+      type: ModelTypeEnum.embedding,
+      isActive: false
+    });
+    await MongoDataset.collection.insertOne({
+      name: 'Dataset without active embedding fallback',
+      vectorModel: 'removed-embedding'
+    });
+
+    const result = await runBackfillModelReferences({ dryRun: false });
+
+    expect(result.references.datasets).toMatchObject({ unresolved: 1, updated: 0 });
+    await expect(
+      MongoDataset.collection.findOne({ name: 'Dataset without active embedding fallback' })
+    ).resolves.not.toHaveProperty('vectorModelId');
   });
 
   it('backfills representative workflow model reference states', async () => {
@@ -688,8 +710,8 @@ describe('runBackfillModelReferences', () => {
 
     expect(result.references.appsWorkflow).toMatchObject({
       scanned: 1,
-      unchanged: 1,
-      unresolved: 0,
+      unchanged: 0,
+      unresolved: 1,
       updated: 0
     });
     const app = await MongoApp.collection.findOne({ name: 'invalid modelId only' });

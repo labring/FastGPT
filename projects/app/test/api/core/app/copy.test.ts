@@ -2,8 +2,14 @@ import * as copyapi from '@/pages/api/core/app/copy';
 import * as createapi from '@/pages/api/core/app/create';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import type {
   CopyAppBodyType,
+  CopyAppResponseType,
   CreateAppBodyType,
   CreateAppResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
@@ -59,8 +65,26 @@ describe('Copy', () => {
     expect(res2.error).toBeUndefined();
     expect(res2.code).toBe(200);
     const appId = res2.data as string;
+    await MongoApp.findByIdAndUpdate(appId, {
+      modules: [
+        {
+          nodeId: 'chat-node',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          name: 'Chat',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModel,
+              value: 'disabled-copy-model',
+              selectedType: FlowNodeInputTypeEnum.selectLLMModel,
+              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+            }
+          ],
+          outputs: []
+        }
+      ]
+    });
 
-    const res3 = await Call<CopyAppBodyType, Record<string, never>, CreateAppResponseType>(
+    const res3 = await Call<CopyAppBodyType, Record<string, never>, CopyAppResponseType>(
       copyapi.default,
       {
         auth: users.members[1],
@@ -96,7 +120,7 @@ describe('Copy', () => {
       });
     });
 
-    const res4 = await Call<CopyAppBodyType, Record<string, never>, CreateAppResponseType>(
+    const res4 = await Call<CopyAppBodyType, Record<string, never>, CopyAppResponseType>(
       copyapi.default,
       {
         auth: users.members[1],
@@ -107,5 +131,9 @@ describe('Copy', () => {
     );
     expect(res4.error).toBeUndefined();
     expect(res4.code).toBe(200);
+    const copiedApp = await MongoApp.findById(res4.data?.appId).lean();
+    expect(copiedApp?.modules[0].inputs).toEqual([
+      expect.objectContaining({ key: NodeInputKeyEnum.aiModelId, value: '' })
+    ]);
   });
 });

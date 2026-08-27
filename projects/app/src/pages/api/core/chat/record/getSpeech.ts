@@ -23,7 +23,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       bodySchema: GetChatSpeechBodySchema
     }).body;
 
-    if ((!ttsConfig.modelId && !ttsConfig.model) || !ttsConfig.voice) {
+    if ((ttsConfig.modelId === undefined && ttsConfig.model === undefined) || !ttsConfig.voice) {
       throw new Error('model reference or voice not found');
     }
 

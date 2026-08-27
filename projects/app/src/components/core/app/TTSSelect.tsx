@@ -98,11 +98,23 @@ const TTSSelect = ({
       return [value.type, undefined];
     }
 
-    return [value.modelId || value.model, value.voice];
-  }, [value]);
+    const selectedModel =
+      value.modelId !== undefined
+        ? value.modelId
+        : (ttsModels.find((model) => model.model === value.model)?.modelId ?? value.model);
+    return [selectedModel, value.voice];
+  }, [ttsModels, value]);
   const formLabel = useMemo(() => {
-    const provider = selectorList.find((item) => item.value === formatValue[0]) || selectorList[0];
-    const voice = provider.children.find((item) => item.value === formatValue[1]);
+    const provider = selectorList.find((item) => item.value === formatValue[0]);
+    const voice = provider?.children.find((item) => item.value === formatValue[1]);
+
+    if (!provider) {
+      const modelLabel =
+        value.modelId !== undefined
+          ? value.modelId || t('common:not_model_config')
+          : value.model || t('common:not_model_config');
+      return <Box color={'red.500'}>{t('common:model_disabled', { model: modelLabel })}</Box>;
+    }
 
     return (
       <Box w={'100%'} minW={0}>
@@ -123,7 +135,7 @@ const TTSSelect = ({
         )}
       </Box>
     );
-  }, [formatValue, selectorList]);
+  }, [formatValue, selectorList, t, value.model, value.modelId]);
 
   const { playAudioByText, cancelAudio, audioLoading, audioPlaying } = useAudioPlay({
     appId,
@@ -132,7 +144,6 @@ const TTSSelect = ({
 
   const onclickChange = useCallback(
     (e: string[]) => {
-      console.log(e, '-=');
       if (e[0] === TTSTypeEnum.none || e[0] === TTSTypeEnum.web) {
         onChange({ type: e[0] });
       } else {

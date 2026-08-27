@@ -900,6 +900,7 @@
   "model_loading": "Model loading...",
   "model_loading_label": "Loading model",
   "model_not_exist": "Model does not exist",
+  "model_disabled": "{{model}} model has been disabled",
   "month_text": "month",
   "move.confirm": "Confirm move",
   "move_success": "Moved Successfully",

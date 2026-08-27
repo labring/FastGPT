@@ -2,7 +2,6 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { findModelData } from '@fastgpt/service/core/ai/model';
-import { desensitizeSystemModel } from '@fastgpt/service/core/ai/config/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   AdminSystemModelReferenceSchema,
@@ -21,7 +20,8 @@ async function handler(
   const modelItem = findModelData(reference);
   if (!modelItem) return Promise.reject(ModelErrEnum.unExist);
 
-  return GetAdminSystemModelDetailResponseSchema.parse(desensitizeSystemModel(modelItem));
+  // 管理员详情用于编辑完整配置；仅列表接口脱敏，避免详情 round-trip 丢失鉴权和类型配置。
+  return GetAdminSystemModelDetailResponseSchema.parse(modelItem);
 }
 
 export default NextAPI(handler);

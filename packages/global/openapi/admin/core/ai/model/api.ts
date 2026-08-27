@@ -120,24 +120,24 @@ const ImportedModelIdField = {
 export const ImportedSystemModelSchema = z.discriminatedUnion('type', [
   LLMSystemModelDocumentSchema.extend({
     ...ImportedModelIdField,
-    config: LLMModelConfigSchema.strict()
-  }).strict(),
+    config: LLMModelConfigSchema
+  }),
   EmbeddingSystemModelDocumentSchema.extend({
     ...ImportedModelIdField,
-    config: EmbeddingModelConfigSchema.strict()
-  }).strict(),
+    config: EmbeddingModelConfigSchema
+  }),
   TTSSystemModelDocumentSchema.extend({
     ...ImportedModelIdField,
-    config: TTSModelConfigSchema.strict()
-  }).strict(),
+    config: TTSModelConfigSchema
+  }),
   STTSystemModelDocumentSchema.extend({
     ...ImportedModelIdField,
-    config: STTModelConfigSchema.strict()
-  }).strict(),
+    config: STTModelConfigSchema
+  }),
   RerankSystemModelDocumentSchema.extend({
     ...ImportedModelIdField,
-    config: RerankModelConfigSchema.strict()
-  }).strict()
+    config: RerankModelConfigSchema
+  })
 ]);
 export type ImportedSystemModel = z.infer<typeof ImportedSystemModelSchema>;
 

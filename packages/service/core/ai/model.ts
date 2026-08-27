@@ -19,7 +19,7 @@ const modelNotFound = () => new UserError(ModelErrEnum.unExist);
  * 静默命中另一个模型；不兼容裸字符串或展示名称 name。
  */
 const resolveModelReference = (reference: ModelReferenceType): SystemModelDataType | undefined => {
-  if (reference.modelId) {
+  if (reference.modelId !== undefined) {
     return global.systemModelMap?.get(`id:${reference.modelId}`);
   }
   if (reference.model) {
@@ -44,7 +44,7 @@ const getOptionalModelData = <T extends SystemModelDataType>(
   reference: ModelReferenceType,
   getter: (reference: ModelReferenceType) => T
 ): T | undefined => {
-  if (!reference.modelId && !reference.model) return;
+  if (reference.modelId === undefined && reference.model === undefined) return;
   return getter(reference);
 };
 

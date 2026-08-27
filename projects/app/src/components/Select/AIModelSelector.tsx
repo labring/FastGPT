@@ -22,7 +22,6 @@ import {
   resolveModelSelectorProvider
 } from './AIModelSelector.utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 
 type Props = Omit<SelectProps, 'list'> & {
   modelType?: ModelTypeEnum;
@@ -313,20 +312,15 @@ const AIModelSelectorInner = ({
       !selectedValueLoading &&
       ((requiresSelectedModelRequest && !!selectedError) || !selectedModelForType)
     : !!props.value && !!discovery && !selectedModelForType;
-  const selectedErrorText = selectedError
-    ? getErrText(selectedError, t('common:model_not_exist'))
-    : t('common:model_not_exist');
+  const invalidModelLabel = resolvedSelectedModel?.name || currentValue;
+  const selectedErrorText = t('common:model_disabled', { model: invalidModelLabel });
   const selectedLabel = selectedUnset ? (
     <>{unsetLabel ?? t('common:not_model_config')}</>
   ) : selectedValueLoading ? (
     <>{t('common:model_loading_label')}</>
   ) : invalidValue ? (
-    <Box
-      color={'red.500'}
-      noOfLines={noOfLines ?? 1}
-      title={`${currentValue}: ${selectedErrorText}`}
-    >
-      {currentValue} ({selectedErrorText})
+    <Box color={'red.500'} noOfLines={noOfLines ?? 1} title={selectedErrorText}>
+      {selectedErrorText}
     </Box>
   ) : selectedModelForType ? (
     <ModelLabel

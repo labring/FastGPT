@@ -6,7 +6,8 @@ type DatasetModelFields = Pick<
   'vectorModelId' | 'vectorModel' | 'agentModelId' | 'agentModel' | 'vlmModelId' | 'vlmModel'
 >;
 
-const normalizeModelId = (modelId: unknown) => (modelId ? String(modelId) : undefined);
+const normalizeModelId = (modelId: unknown) =>
+  modelId === undefined || modelId === null ? undefined : String(modelId);
 
 /** 使用新 ID 字段优先解析知识库向量模型，并兼容历史 model 字段。 */
 export const getDatasetEmbeddingModel = (dataset: Partial<DatasetModelFields>) =>
