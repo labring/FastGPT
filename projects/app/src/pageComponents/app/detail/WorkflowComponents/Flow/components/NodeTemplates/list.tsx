@@ -241,7 +241,7 @@ const NodeTemplateList = ({
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const { computedNewNodeName } = useWorkflowUtils();
-  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { getNodeById, getNodes } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
   const isToolSelector = handleParams?.handleId === NodeOutputKeyEnum.selectedTools;
   const { getIntersectingNodes } = useReactFlow();
@@ -350,19 +350,27 @@ const NodeTemplateList = ({
           }
         }
 
-        // 侧边栏添加没有源节点，容器内部画布是隔离上下文：不受外部画布已有的
-        // 工具调用/循环执行节点状态影响，模板可见性需按容器上下文重新校验。
+        // 侧边栏添加没有源节点，容器内部是隔离画布，按目标容器自身属性判断：
+        // hasToolNode / hasLoopRunNode 只统计容器子节点，不受外部画布影响；
+        // 容器上下文符合节点存在逻辑时（如容器内已有工具调用）允许加入。
         if (!handleParams && effectiveParentNode) {
+          const containerChildNodes = getNodes().filter(
+            (item) => item.data.parentNodeId === effectiveParentNode.nodeId
+          );
           const containerContext: NodeTemplateContext = {
-            isSidebar: false,
+            isSidebar: true,
             sourceNodeId: null,
             sourceType: null,
             sourceIsTool: false,
             isConnectedTool: false,
             handleId: null,
             parentType: effectiveParentNode.flowNodeType,
-            hasToolNode: false,
-            hasLoopRunNode: false
+            hasToolNode: containerChildNodes.some(
+              (item) => item.data.flowNodeType === FlowNodeTypeEnum.toolCall
+            ),
+            hasLoopRunNode: containerChildNodes.some(
+              (item) => item.data.flowNodeType === FlowNodeTypeEnum.loopRun
+            )
           };
           if (!isTemplateVisible(templateNode, containerContext)) {
             toast({

@@ -171,6 +171,56 @@ describe('template context', () => {
     ).toBe(true);
   });
 
+  it('侧边栏拖入容器按目标容器属性判断', () => {
+    // 容器内已有工具调用时，允许拖入工具终止/自定义工具变量
+    expect(
+      isTemplateVisible(
+        StopToolNode,
+        ctx({
+          isSidebar: true,
+          sourceNodeId: null,
+          parentType: FlowNodeTypeEnum.loopRun,
+          hasToolNode: true
+        })
+      )
+    ).toBe(true);
+    expect(
+      isTemplateVisible(
+        StopToolNode,
+        ctx({ isSidebar: true, sourceNodeId: null, parentType: FlowNodeTypeEnum.loopRun })
+      )
+    ).toBe(false);
+    expect(
+      isTemplateVisible(
+        ToolParamsNode,
+        ctx({
+          isSidebar: true,
+          sourceNodeId: null,
+          parentType: FlowNodeTypeEnum.parallelRun,
+          hasToolNode: true
+        })
+      )
+    ).toBe(true);
+    // 循环终止按目标容器类型判断，不受画布是否有循环节点影响
+    expect(
+      isTemplateVisible(
+        LoopRunBreakNode,
+        ctx({ isSidebar: true, sourceNodeId: null, parentType: FlowNodeTypeEnum.loopRun })
+      )
+    ).toBe(true);
+    expect(
+      isTemplateVisible(
+        LoopRunBreakNode,
+        ctx({
+          isSidebar: true,
+          sourceNodeId: null,
+          parentType: FlowNodeTypeEnum.parallelRun,
+          hasLoopRunNode: true
+        })
+      )
+    ).toBe(false);
+  });
+
   it('stopTool 仅在已挂载工具节点（工具子流程）可见', () => {
     expect(isTemplateVisible(StopToolNode, null)).toBe(false);
     expect(isTemplateVisible(StopToolNode, ctx({ isConnectedTool: true }))).toBe(true);
