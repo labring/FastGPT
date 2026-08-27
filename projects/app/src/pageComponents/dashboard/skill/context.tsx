@@ -25,6 +25,10 @@ import {
   toListTmbIds,
   type ResourceListFilterType
 } from '@/pageComponents/dashboard/agent/filters/utils';
+import {
+  getGridRequestPageSize,
+  useResponsiveGridPageSize
+} from '@fastgpt/web/hooks/useResponsiveGridPageSize';
 
 export type SkillListItemType = Omit<
   ListSkillsResponse['list'][number],
@@ -49,6 +53,8 @@ type SkillListContextType = {
   };
   listFilters: ResourceListFilterType;
   setListFilters: (next: ResourceListFilterType) => void;
+  columnCount: number;
+  pageSize: number;
 };
 
 export const SkillListContext = createContext<SkillListContextType>({
@@ -68,7 +74,9 @@ export const SkillListContext = createContext<SkillListContextType>({
   listFilters: defaultAppListFiltersStore.skill,
   setListFilters: () => {
     throw new Error('Function not implemented.');
-  }
+  },
+  columnCount: 1,
+  pageSize: 50
 });
 
 const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
@@ -95,6 +103,9 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
   const applyToolbarFilters = isPc;
   const tmbIds =
     applyToolbarFilters && feConfigs.isPlus ? toListTmbIds(listFilters.creator) : undefined;
+  const { columnCount, pageSize } = useResponsiveGridPageSize(
+    parentId ? { base: 1, sm: 2, md: 2, lg: 3 } : { base: 1, sm: 2, md: 2, lg: 3, xl: 4 }
+  );
 
   const {
     data: skills = [],
@@ -107,8 +118,8 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
         source: 'mine',
         searchKey,
         parentId,
-        page: Number(offset) / Number(pageSize) + 1,
-        pageSize,
+        offset,
+        pageSize: getGridRequestPageSize(pageSize, offset),
         ...(applyToolbarFilters ? { sort: listFilters.sort } : {}),
         ...(tmbIds !== undefined ? { tmbIds } : {})
       }).then((res) => ({
@@ -128,7 +139,7 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
         feConfigs.isPlus,
         isPc
       ],
-      pageSize: 50,
+      pageSize,
       throttleWait: 500,
       refreshOnWindowFocus: false
     }
@@ -171,7 +182,9 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
     paths,
     folderDetail,
     listFilters,
-    setListFilters
+    setListFilters,
+    columnCount,
+    pageSize
   };
 
   return <SkillListContext.Provider value={contextValue}>{children}</SkillListContext.Provider>;

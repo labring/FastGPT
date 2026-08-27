@@ -49,8 +49,6 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     useSkillSandboxOperationGuard();
 
   const {
-    skills,
-    isFetchingSkills,
     refreshSkills,
     searchKey,
     setSearchKey,
@@ -173,7 +171,7 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
             </Box>
           )}
 
-          <MyBox flex={'1 0 0'} isLoading={skills.length === 0 && isFetchingSkills}>
+          <MyBox flex={'1 0 0'}>
             <List
               onClickCreate={
                 hasCreatePer

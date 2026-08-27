@@ -1,5 +1,6 @@
 import { Box } from '@chakra-ui/react';
 import {
+  Fragment,
   type ReactNode,
   type RefObject,
   useCallback,
@@ -30,6 +31,10 @@ type UseVirtualGridListParams<T> = {
   overscanRows?: number;
   /** 最大同时渲染行数，防止内存溢出 */
   maxRenderRows?: number;
+  /** 正在加载时追加到列表尾部的占位卡片数量 */
+  loadingItemCount?: number;
+  /** 渲染占位卡片，参数为占位卡片在完整列表中的索引 */
+  renderLoadingItem?: (index: number) => ReactNode;
 };
 
 type UseVirtualGridListReturn<T> = {
@@ -46,6 +51,9 @@ type VirtualGridItemsState<T> = {
   topPlaceholderHeight: number;
   bottomPlaceholderHeight: number;
   loadMoreRef: RefObject<HTMLDivElement>;
+  loadingStartIndex: number;
+  loadingEndIndex: number;
+  renderLoadingItem?: (index: number) => ReactNode;
 };
 
 type VirtualGridItemsProps<T> = VirtualGridItemsState<T> & {
@@ -84,7 +92,10 @@ const VirtualGridItems = <T,>({
   hasMore,
   topPlaceholderHeight,
   bottomPlaceholderHeight,
-  loadMoreRef
+  loadMoreRef,
+  loadingStartIndex,
+  loadingEndIndex,
+  renderLoadingItem
 }: VirtualGridItemsProps<T>) => {
   return (
     <>
@@ -96,6 +107,12 @@ const VirtualGridItems = <T,>({
       )}
       {/* 渲染当前视口内的可见项 */}
       {visibleList.map(renderItem)}
+      {renderLoadingItem &&
+        Array.from({ length: Math.max(loadingEndIndex - loadingStartIndex, 0) }).map((_, index) => (
+          <Fragment key={`loading-${loadingStartIndex + index}`}>
+            {renderLoadingItem(loadingStartIndex + index)}
+          </Fragment>
+        ))}
       {/* 底部占位符及加载更多触发器 */}
       {hasMore && (
         <Box
@@ -128,7 +145,9 @@ export function useVirtualGridList<T>({
   estimatedRowGap = defaultEstimatedRowGap,
   preloadRootMargin = defaultPreloadRootMargin,
   overscanRows = defaultOverscanRows,
-  maxRenderRows
+  maxRenderRows,
+  loadingItemCount = 0,
+  renderLoadingItem
 }: UseVirtualGridListParams<T>): UseVirtualGridListReturn<T> {
   const gridRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -142,6 +161,12 @@ export function useVirtualGridList<T>({
   });
   // 计算最大渲染行数，至少为 batchRows，默认不超过 batchRows * 2 或 30
   const resolvedMaxRenderRows = Math.max(maxRenderRows ?? Math.max(batchRows * 2, 30), batchRows);
+  const resolvedLoadingItemCount = Math.max(loadingItemCount, 0);
+
+  // 计算总槽位数（数据项 + 固定项）
+  const totalSlotCount = list.length + resolvedLoadingItemCount + reservedSlotCount;
+  // 计算总行数
+  const totalRows = Math.ceil(totalSlotCount / gridColumnCount);
 
   /**
    * 更新网格度量信息（列数、行高、行间距）
@@ -199,11 +224,6 @@ export function useVirtualGridList<T>({
       window.removeEventListener('resize', updateGridMetrics);
     };
   }, [list.length, updateGridMetrics]);
-
-  // 计算总槽位数（数据项 + 固定项）
-  const totalSlotCount = list.length + reservedSlotCount;
-  // 计算总行数
-  const totalRows = Math.ceil(totalSlotCount / gridColumnCount);
 
   /**
    * 计算首行需要常驻渲染的数据项数量
@@ -350,7 +370,14 @@ export function useVirtualGridList<T>({
   useEffect(() => {
     updateGridMetrics();
     schedulePreloadSyncWindowRows();
-  }, [leadingItemCount, list.length, listKey, schedulePreloadSyncWindowRows, updateGridMetrics]);
+  }, [
+    leadingItemCount,
+    list.length,
+    listKey,
+    resolvedLoadingItemCount,
+    schedulePreloadSyncWindowRows,
+    updateGridMetrics
+  ]);
 
   // 获取当前有效的窗口行状态，如果 key 不匹配则重置
   const activeWindowRows =
@@ -367,8 +394,13 @@ export function useVirtualGridList<T>({
   const endRow = Math.min(Math.max(activeWindowRows.endRow, startRow), totalVirtualRows);
 
   // 计算可见项在原始 list 中的索引范围
-  const visibleStartIndex = leadingItemCount + startRow * gridColumnCount;
-  const visibleEndIndex = Math.min(leadingItemCount + endRow * gridColumnCount, list.length);
+  const virtualStartIndex = startRow * gridColumnCount;
+  const virtualEndIndex = endRow * gridColumnCount;
+  const visibleStartIndex = leadingItemCount + virtualStartIndex;
+  const visibleEndIndex = Math.min(leadingItemCount + virtualEndIndex, list.length);
+  const virtualListLength = Math.max(list.length - leadingItemCount, 0);
+  const loadingStartIndex = Math.max(virtualStartIndex - virtualListLength, 0);
+  const loadingEndIndex = Math.min(virtualEndIndex - virtualListLength, resolvedLoadingItemCount);
 
   // 首行固定项列表
   const leadingList = useMemo(() => list.slice(0, leadingItemCount), [leadingItemCount, list]);
@@ -397,9 +429,21 @@ export function useVirtualGridList<T>({
       hasMore,
       topPlaceholderHeight,
       bottomPlaceholderHeight,
-      loadMoreRef
+      loadMoreRef,
+      loadingStartIndex,
+      loadingEndIndex,
+      renderLoadingItem
     }),
-    [bottomPlaceholderHeight, hasMore, leadingList, topPlaceholderHeight, visibleList]
+    [
+      bottomPlaceholderHeight,
+      hasMore,
+      leadingList,
+      loadingEndIndex,
+      loadingStartIndex,
+      renderLoadingItem,
+      topPlaceholderHeight,
+      visibleList
+    ]
   );
 
   // 渲染函数，接收 renderItem 回调

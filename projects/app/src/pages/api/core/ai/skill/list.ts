@@ -21,7 +21,8 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
     pageSize,
     withAppCount,
     sort,
-    tmbIds
+    tmbIds,
+    offset
   } = parseApiInput({ req, bodySchema: ListSkillsQuerySchema }).body;
   const selectedSkillIds = skillIds?.filter(Boolean) ?? [];
   const isSkillIdsQuery = selectedSkillIds.length > 0;
@@ -57,6 +58,7 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
     category,
     type,
     skillIds: selectedSkillIds,
+    offset: isSkillIdsQuery ? undefined : offset,
     page: isSkillIdsQuery ? undefined : (page ?? 1),
     pageSize: isSkillIdsQuery ? undefined : (pageSize ?? 50),
     withAppCount,

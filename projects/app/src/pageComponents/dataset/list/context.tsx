@@ -35,6 +35,7 @@ import {
   toListTmbIds,
   type DatasetListFilterType
 } from '@/pageComponents/dashboard/agent/filters/utils';
+import { useResponsiveGridPageSize } from '@fastgpt/web/hooks/useResponsiveGridPageSize';
 
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
@@ -56,6 +57,8 @@ export type DatasetContextType = {
   setSearchKey: React.Dispatch<React.SetStateAction<string>>;
   listFilters: DatasetListFilterType;
   setListFilters: (next: DatasetListFilterType) => void;
+  columnCount: number;
+  pageSize: number;
 };
 
 export const DatasetsContext = createContext<DatasetContextType>({
@@ -85,7 +88,9 @@ export const DatasetsContext = createContext<DatasetContextType>({
   listFilters: defaultAppListFiltersStore.dataset,
   setListFilters: () => {
     throw new Error('Function not implemented.');
-  }
+  },
+  columnCount: 1,
+  pageSize: 50
 });
 
 function DatasetContextProvider({ children }: { children: React.ReactNode }) {
@@ -117,6 +122,9 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     applyToolbarFilters && listFilters.type !== 'all'
       ? [DatasetTypeEnum.folder, listFilters.type]
       : undefined;
+  const { columnCount, pageSize } = useResponsiveGridPageSize(
+    parentId ? { base: 1, sm: 2, md: 2, lg: 3 } : { base: 1, sm: 2, md: 3, lg: 3, xl: 4 }
+  );
 
   const {
     data: myDatasets = [],
@@ -144,7 +152,7 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
         feConfigs.isPlus,
         isPc
       ],
-      pageSize: 50,
+      pageSize,
       throttleWait: 300,
       refreshOnWindowFocus: false
     }
@@ -223,7 +231,9 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     searchKey,
     setSearchKey,
     listFilters,
-    setListFilters
+    setListFilters,
+    columnCount,
+    pageSize
   };
 
   return (

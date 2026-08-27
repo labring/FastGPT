@@ -40,11 +40,9 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const {
     paths,
     parentId,
-    myApps,
     loadMyApps,
     onUpdateApp,
     setMoveAppId,
-    isFetchingApps,
     folderDetail,
     refetchFolderDetail,
     searchKey,
@@ -181,7 +179,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
             </Box>
           )}
 
-          <MyBox flex={'1 0 0'} isLoading={myApps.length === 0 && isFetchingApps}>
+          <MyBox flex={'1 0 0'}>
             <List />
           </MyBox>
         </Flex>

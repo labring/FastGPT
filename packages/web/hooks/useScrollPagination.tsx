@@ -14,11 +14,13 @@ export type ScrollListType = ({
   children,
   ScrollContainerRef,
   isLoading,
+  showLoadingOverlay,
   ...props
 }: {
   children: ReactNode;
   ScrollContainerRef?: RefObject<HTMLDivElement>;
   isLoading?: boolean;
+  showLoadingOverlay?: boolean;
 } & BoxProps) => React.JSX.Element;
 
 export function useScrollPagination<
@@ -145,9 +147,11 @@ export function useScrollPagination<
       children,
       ScrollContainerRef,
       isLoading: isLoadingProp,
+      showLoadingOverlay = true,
       ...props
     }: {
       isLoading?: boolean;
+      showLoadingOverlay?: boolean;
       children: ReactNode;
       ScrollContainerRef?: RefObject<HTMLDivElement>;
     } & BoxProps) => {
@@ -185,7 +189,7 @@ export function useScrollPagination<
           overflow={'auto'}
           display={'flex'}
           flexDirection={'column'}
-          isLoading={isLoading || isLoadingProp}
+          isLoading={showLoadingOverlay && (isLoading || isLoadingProp)}
           {...props}
         >
           {scrollLoadType === 'top' && total > 0 && isLoading && (
@@ -194,22 +198,25 @@ export function useScrollPagination<
             </Box>
           )}
           {children}
-          {scrollLoadType === 'bottom' && !isEmpty && (showNoMoreTip || !noMore) && (
-            <Box
-              mt={'auto'}
-              pt={2}
-              fontSize={'xs'}
-              color={'blackAlpha.500'}
-              textAlign={'center'}
-              cursor={loadText === t('common:request_more') ? 'pointer' : 'default'}
-              onClick={() => {
-                if (loadText !== t('common:request_more')) return;
-                loadData({ init: false });
-              }}
-            >
-              {loadText}
-            </Box>
-          )}
+          {scrollLoadType === 'bottom' &&
+            !isEmpty &&
+            !(isLoading && data.length === 0) &&
+            (showNoMoreTip || !noMore) && (
+              <Box
+                mt={'auto'}
+                pt={2}
+                fontSize={'xs'}
+                color={'blackAlpha.500'}
+                textAlign={'center'}
+                cursor={loadText === t('common:request_more') ? 'pointer' : 'default'}
+                onClick={() => {
+                  if (loadText !== t('common:request_more')) return;
+                  loadData({ init: false });
+                }}
+              >
+                {loadText}
+              </Box>
+            )}
           {isEmpty && EmptyTip}
         </MyBox>
       );

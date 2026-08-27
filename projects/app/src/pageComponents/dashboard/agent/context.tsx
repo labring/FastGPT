@@ -31,6 +31,10 @@ import {
   type AppListFilterType,
   type AppListFilterScene
 } from './filters/utils';
+import {
+  getGridRequestPageSize,
+  useResponsiveGridPageSize
+} from '@fastgpt/web/hooks/useResponsiveGridPageSize';
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
 type AppListContextType = {
@@ -51,6 +55,8 @@ type AppListContextType = {
   setListFilters: (
     next: AppListFilterType | ((prev: AppListFilterType) => AppListFilterType)
   ) => void;
+  columnCount: number;
+  pageSize: number;
 };
 
 export const AppListContext = createContext<AppListContextType>({
@@ -80,7 +86,9 @@ export const AppListContext = createContext<AppListContextType>({
   listFilters: defaultAppListFilters,
   setListFilters: function (): void {
     throw new Error('Function not implemented.');
-  }
+  },
+  columnCount: 1,
+  pageSize: 50
 });
 
 const AppListContextProvider = ({ children }: { children: ReactNode }) => {
@@ -130,6 +138,9 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
   const sort = applyToolbarFilters ? listFilters.sort : undefined;
   const persistedTmbIds =
     applyToolbarFilters && feConfigs.isPlus ? toListTmbIds(listFilters.creator) : undefined;
+  const { columnCount, pageSize } = useResponsiveGridPageSize(
+    parentId ? { base: 1, sm: 2, md: 2, lg: 3 } : { base: 1, sm: 2, md: 2, lg: 3, xl: 4 }
+  );
 
   const {
     data: myApps = [],
@@ -148,7 +159,7 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
           type: formatType,
           searchKey,
           offset,
-          pageSize,
+          pageSize: getGridRequestPageSize(pageSize, offset),
           ...(sort ? { sort } : {}),
           ...(tmbIds !== undefined ? { tmbIds } : {})
         });
@@ -175,9 +186,10 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
         persistedTmbIds === undefined ? 'none' : persistedTmbIds.join(','),
         router.pathname,
         feConfigs.isPlus,
-        isPc
+        isPc,
+        pageSize
       ],
-      pageSize: 50,
+      pageSize,
       throttleWait: 500,
       refreshOnWindowFocus: true
     }
@@ -257,7 +269,9 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     searchKey,
     setSearchKey,
     listFilters,
-    setListFilters
+    setListFilters,
+    columnCount,
+    pageSize
   };
   return (
     <AppListContext.Provider value={contextValue}>

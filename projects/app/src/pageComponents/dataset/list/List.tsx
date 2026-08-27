@@ -34,6 +34,7 @@ import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { getResourceListDisplayTime } from '@/pageComponents/dashboard/agent/filters/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import ResourceCardSkeleton from '@/pageComponents/dashboard/ResourceCardSkeleton';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 
@@ -55,7 +56,9 @@ function List() {
     folderDetail,
     searchKey,
     setSearchKey,
-    listFilters
+    listFilters,
+    columnCount,
+    pageSize
   } = useContextSelector(DatasetsContext, (v) => v);
   const { userInfo } = useUserStore();
   const canCreateDataset = folderDetail
@@ -76,12 +79,15 @@ function List() {
       }),
     [myDatasets]
   );
+  const isInitialLoading = formatDatasets.length === 0 && isFetchingDatasets;
 
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: formatDatasets,
-    listKey: `${router.pathname}-${parentId || ''}-${searchKey}`,
+    listKey: `${router.pathname}-${parentId || ''}-${searchKey}-${columnCount}-${pageSize}-${isInitialLoading}`,
     estimatedRowHeight: 160,
-    estimatedRowGap: 20
+    estimatedRowGap: 20,
+    loadingItemCount: isFetchingDatasets ? pageSize : 0,
+    renderLoadingItem: () => <ResourceCardSkeleton />
   });
 
   const parentDataset = useMemo(
@@ -397,14 +403,14 @@ function List() {
   };
 
   return (
-    <ScrollData h={'full'} minH={0} isLoading={isFetchingDatasets}>
+    <ScrollData h={'full'} minH={0} showLoadingOverlay={false}>
       <>
-        {formatDatasets.length > 0 && (
+        {isFetchingDatasets ? (
           <Grid
             ref={gridRef}
             py={4}
             gridTemplateColumns={
-              folderDetail
+              parentId
                 ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
                 : ['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
             }
@@ -413,6 +419,22 @@ function List() {
           >
             {renderVirtualGridItems(renderDatasetCard)}
           </Grid>
+        ) : (
+          formatDatasets.length > 0 && (
+            <Grid
+              ref={gridRef}
+              py={4}
+              gridTemplateColumns={
+                parentId
+                  ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
+                  : ['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
+              }
+              gridGap={5}
+              alignItems={'stretch'}
+            >
+              {renderVirtualGridItems(renderDatasetCard)}
+            </Grid>
+          )
         )}
         {myDatasets.length === 0 && (
           <EmptyTip

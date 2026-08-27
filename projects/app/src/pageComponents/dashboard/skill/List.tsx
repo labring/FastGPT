@@ -46,10 +46,12 @@ import type {
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
 import SkillDashboardEmptyHero from '@/pageComponents/dashboard/skill/SkillDashboardEmptyHero';
 import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
+import { getGridPageSize } from '@fastgpt/web/hooks/useResponsiveGridPageSize';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getResourceListDisplayTime } from '@/pageComponents/dashboard/agent/filters/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import ResourceCardSkeleton from '@/pageComponents/dashboard/ResourceCardSkeleton';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
@@ -195,26 +197,46 @@ const List = ({
   const router = useRouter();
   const { isPc } = useSystem();
 
-  const { skills, refreshSkills, isFetchingSkills, searchKey, folderDetail, listFilters, ScrollData } =
-    useContextSelector(SkillListContext, (v) => ({
-      skills: v.skills,
-      refreshSkills: v.refreshSkills,
-      isFetchingSkills: v.isFetchingSkills,
-      searchKey: v.searchKey,
-      folderDetail: v.folderDetail,
-      listFilters: v.listFilters,
-      ScrollData: v.ScrollData
-    }));
+  const {
+    skills,
+    refreshSkills,
+    isFetchingSkills,
+    searchKey,
+    folderDetail,
+    ScrollData,
+    listFilters,
+    columnCount,
+    pageSize,
+    parentId
+  } = useContextSelector(SkillListContext, (v) => ({
+    skills: v.skills,
+    refreshSkills: v.refreshSkills,
+    isFetchingSkills: v.isFetchingSkills,
+    searchKey: v.searchKey,
+    folderDetail: v.folderDetail,
+    ScrollData: v.ScrollData,
+    listFilters: v.listFilters,
+    columnCount: v.columnCount,
+    pageSize: v.pageSize,
+    parentId: v.parentId
+  }));
 
   const [editedSkill, setEditedSkill] = useState<EditResourceInfoFormType>();
   const [moveSkillId, setMoveSkillId] = useState<string>();
   const [editPerSkillId, setEditPerSkillId] = useState<string>();
+  const isInitialLoading = skills.length === 0 && isFetchingSkills;
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: skills,
-    listKey: `${router.pathname}-${router.query.parentId || ''}-${searchKey}`,
-    reservedSlotCount: 1,
+    listKey: `${router.pathname}-${parentId || ''}-${searchKey}-${columnCount}-${pageSize}-${isInitialLoading}`,
+    reservedSlotCount: isInitialLoading ? 0 : 1,
     estimatedRowHeight: 160,
-    estimatedRowGap: 20
+    estimatedRowGap: 20,
+    loadingItemCount: isFetchingSkills
+      ? isInitialLoading
+        ? getGridPageSize(columnCount)
+        : pageSize
+      : 0,
+    renderLoadingItem: () => <ResourceCardSkeleton />
   });
 
   const selectedSkill = useMemo(
@@ -522,12 +544,24 @@ const List = ({
     );
   };
 
-  if (skills.length === 0 && isFetchingSkills) return null;
-
   return (
-    <ScrollData h={'full'} minH={0}>
+    <ScrollData h={'full'} minH={0} showLoadingOverlay={false}>
       <>
-        {skills.length === 0 && !folderDetail ? (
+        {isInitialLoading ? (
+          <Grid
+            ref={gridRef}
+            py={4}
+            gridTemplateColumns={
+              parentId
+                ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
+                : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
+            }
+            gridGap={5}
+            alignItems={'stretch'}
+          >
+            {renderVirtualGridItems(renderSkillCard)}
+          </Grid>
+        ) : skills.length === 0 && !folderDetail ? (
           searchKey ? (
             <EmptyTip />
           ) : onClickCreate && onClickImport ? (
@@ -553,7 +587,7 @@ const List = ({
             ref={gridRef}
             py={4}
             gridTemplateColumns={
-              folderDetail
+              parentId
                 ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
                 : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
             }
