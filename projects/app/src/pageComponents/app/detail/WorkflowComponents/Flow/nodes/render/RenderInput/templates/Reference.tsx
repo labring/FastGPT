@@ -5,16 +5,24 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getNodeAllSource, filterSelectableWorkflowNodeOutputs } from '@/web/core/workflow/utils';
 import { isConfiguredReferenceValue } from '@/web/core/workflow/workflowCheck';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  WorkflowIOValueTypeEnum,
+  VARIABLE_NODE_ID,
+  NodeOutputKeyEnum
+} from '@fastgpt/global/core/workflow/constants';
 import type {
   ReferenceArrayValueType,
   ReferenceItemValueType,
   ReferenceValueType
 } from '@fastgpt/global/core/workflow/type/io';
 import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
-import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  isNestedParentNodeType,
+  FlowNodeOutputTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { WorkflowBufferDataContext } from '../../../../../context/workflowInitContext';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
@@ -31,6 +39,35 @@ const MultipleRowArraySelect = dynamic(() =>
   )
 );
 const Avatar = dynamic(() => import('@fastgpt/web/components/common/Avatar'));
+
+/**
+ * 判断引用指向的来源节点和输出是否仍存在（不依赖连线关系）。
+ * 选择器列表只包含当前连线范围内的来源，凭此区分「来源已删除」和「断边导致来源不可达」：
+ * 来源仍存在但不在可选列表中，说明是连线断开导致不可选。
+ */
+const referenceSourceStillExists = ({
+  value,
+  getNodeById
+}: {
+  value?: ReferenceItemValueType;
+  getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
+}) => {
+  if (!value) return false;
+  const [refNodeId, refOutputId] = value;
+  if (typeof refNodeId !== 'string' || typeof refOutputId !== 'string') return false;
+  if (!refNodeId || !refOutputId || refNodeId === VARIABLE_NODE_ID) return false;
+
+  const sourceNode = getNodeById(refNodeId);
+  if (!sourceNode) return false;
+
+  const output = sourceNode.outputs.find((item) => item.id === refOutputId);
+  if (!output || output.invalid === true || output.id === NodeOutputKeyEnum.addOutputParam) {
+    return false;
+  }
+  if (output.type === FlowNodeOutputTypeEnum.error) return sourceNode.catchError === true;
+
+  return true;
+};
 
 type ReferenceSelectList = {
   label: string | React.ReactNode;
@@ -211,6 +248,7 @@ const SingleReferenceSelector = ({
   ButtonProps
 }: SelectProps<false>) => {
   const { t } = useSafeTranslation();
+  const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
 
   const getSelectValue = useCallback(
     (value: ReferenceValueType, searchList: ReferenceSelectList) => {
@@ -253,6 +291,11 @@ const SingleReferenceSelector = ({
       ? getSelectValue(selectorVal, liveList)
       : [];
     const isTypeMismatch = isInvalidReference && Boolean(liveNodeName && liveOutputName);
+    // 来源节点仍存在但不在可选列表中，即断边导致不可达；否则按来源已删除提示
+    const isSourceUnreachable =
+      isInvalidReference &&
+      !isTypeMismatch &&
+      referenceSourceStillExists({ value: selectorVal, getNodeById });
 
     return (
       <MultipleRowSelect
@@ -272,7 +315,9 @@ const SingleReferenceSelector = ({
               {isInvalidReference
                 ? isTypeMismatch
                   ? t('common:core.workflow.check.reference_type_mismatch')
-                  : t('common:core.workflow.check.reference_deleted')
+                  : isSourceUnreachable
+                    ? t('common:core.workflow.check.reference_unreachable')
+                    : t('common:core.workflow.check.reference_deleted')
                 : placeholder}
             </Box>
           )
@@ -284,7 +329,18 @@ const SingleReferenceSelector = ({
         ButtonProps={ButtonProps}
       />
     );
-  }, [ButtonProps, getSelectValue, list, liveList, onSelect, placeholder, popDirection, t, value]);
+  }, [
+    ButtonProps,
+    getSelectValue,
+    getNodeById,
+    list,
+    liveList,
+    onSelect,
+    placeholder,
+    popDirection,
+    t,
+    value
+  ]);
 
   return ItemSelector;
 };
@@ -297,6 +353,7 @@ const MultipleReferenceSelector = ({
   popDirection
 }: SelectProps<true>) => {
   const { t } = useSafeTranslation();
+  const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
 
   const getSelectValue = useCallback(
     (value: ReferenceValueType, searchList: ReferenceSelectList) => {
@@ -363,6 +420,11 @@ const MultipleReferenceSelector = ({
                   : [];
                 const isTypeMismatch =
                   isInvalidReference && Boolean(liveNodeName && liveOutputName);
+                // 来源节点仍存在但不在可选列表中，即断边导致不可达；否则按来源已删除提示
+                const isSourceUnreachable =
+                  isInvalidReference &&
+                  !isTypeMismatch &&
+                  referenceSourceStillExists({ value: rawValue, getNodeById });
                 return (
                   <Flex
                     key={index}
@@ -390,7 +452,9 @@ const MultipleReferenceSelector = ({
                         <Box title={rawValue?.join('.')}>
                           {isTypeMismatch
                             ? t('common:core.workflow.check.reference_type_mismatch')
-                            : t('common:core.workflow.check.reference_deleted')}
+                            : isSourceUnreachable
+                              ? t('common:core.workflow.check.reference_unreachable')
+                              : t('common:core.workflow.check.reference_deleted')}
                         </Box>
                       ) : (
                         <Box color={'myGray.400'}>{placeholder}</Box>
@@ -430,7 +494,18 @@ const MultipleReferenceSelector = ({
         popDirection={popDirection}
       />
     );
-  }, [formatList, getSelectValue, list, liveList, onSelect, placeholder, popDirection, t, value]);
+  }, [
+    formatList,
+    getSelectValue,
+    getNodeById,
+    list,
+    liveList,
+    onSelect,
+    placeholder,
+    popDirection,
+    t,
+    value
+  ]);
 
   return ArraySelector;
 };

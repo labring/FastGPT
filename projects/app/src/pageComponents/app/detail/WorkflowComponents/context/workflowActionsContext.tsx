@@ -5,6 +5,7 @@ import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import type { OnConnectStartParams } from 'reactflow';
+import type { Edge } from 'reactflow';
 import { WorkflowBufferDataContext } from './workflowInitContext';
 import type {
   FlowNodeInputItemType,
@@ -153,6 +154,8 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
 
   const singleNodeCheckTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const edgeCheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 删边影响范围：从被删边 target 沿剩余出边向下扩展；防抖检查时消费后清空
+  const edgeImpactNodeIdsRef = useRef<Set<string>>(new Set());
   const isFirstEdgesEffectRef = useRef(true);
   const prevEdgesRef = useRef(edges);
 
@@ -305,11 +308,16 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       const nodes = getNodes();
       if (nodes.length === 0) return;
 
+      // 存在删边影响范围时追加断边引用检查；普通连线变化保持原有全量检查行为
+      const impactNodeIds = edgeImpactNodeIdsRef.current;
+      edgeImpactNodeIdsRef.current = new Set();
+
       const issueMap = checkWorkflowNodeIssues({
         nodes,
         edges,
         t,
-        chatConfig: appDetail.chatConfig
+        chatConfig: appDetail.chatConfig,
+        referenceNodeIds: impactNodeIds.size > 0 ? [...impactNodeIds] : undefined
       });
 
       // 输出/catchError 变化产生新增类型不兼容时聚合提示一次，已有问题不重复提醒
@@ -328,6 +336,30 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       onSyncWorkflowCheckIssues(issueMap);
     }, 400);
   }, [appDetail.chatConfig, edges, getNodes, onSyncWorkflowCheckIssues, t, toast]);
+
+  /**
+   * 从被删边的 target 出发，仅沿删除后的剩余出边向下遍历，得到断边影响节点集合。
+   * 影响集合用于限定 unreachable_reference 判定范围，不维护持久化引用索引。
+   */
+  const collectEdgeDeletionImpactNodeIds = useCallback(
+    (removedEdges: Edge<any>[], remainingEdges: Edge<any>[]) => {
+      const impactNodeIds = new Set<string>();
+      const queue = removedEdges.map((edge) => edge.target);
+
+      while (queue.length > 0) {
+        const nodeId = queue.shift();
+        if (!nodeId || impactNodeIds.has(nodeId)) continue;
+        impactNodeIds.add(nodeId);
+
+        remainingEdges.forEach((edge) => {
+          if (edge.source === nodeId) queue.push(edge.target);
+        });
+      }
+
+      return impactNodeIds;
+    },
+    []
+  );
 
   useEffect(() => {
     if (isFirstEdgesEffectRef.current) {
@@ -371,10 +403,21 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
           })
         );
       }
+
+      // 400ms 内可能连续删多条边，影响范围跨变化累积，由防抖检查统一消费
+      collectEdgeDeletionImpactNodeIds(removedEdges, edges).forEach((nodeId) =>
+        edgeImpactNodeIdsRef.current.add(nodeId)
+      );
     }
 
     scheduleWorkflowCheckOnEdgeChange();
-  }, [edges, scheduleWorkflowCheckOnEdgeChange, getNodes, setNodes]);
+  }, [
+    edges,
+    scheduleWorkflowCheckOnEdgeChange,
+    getNodes,
+    setNodes,
+    collectEdgeDeletionImpactNodeIds
+  ]);
 
   useEffect(() => {
     const timers = singleNodeCheckTimerRef.current;
@@ -384,6 +427,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       if (edgeCheckTimerRef.current) {
         clearTimeout(edgeCheckTimerRef.current);
       }
+      edgeImpactNodeIdsRef.current = new Set();
     };
   }, []);
 

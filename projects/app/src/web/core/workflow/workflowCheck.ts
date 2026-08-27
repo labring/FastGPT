@@ -53,6 +53,12 @@ type WorkflowCheckContext = {
   outgoingEdgesMap: Map<string, Edge<any>[]>;
   reachableNodeSet: Set<string>;
   chatConfig?: AppChatConfigType;
+  // 未按 sourceHandle 过滤的入边表，来源集合遍历需要与编辑器 getNodeAllSource 一致
+  rawIncomingEdgesMap: Map<string, Edge<any>[]>;
+  // 容器（Loop/ParallelRun）按 parentNodeId 归组的 children
+  childrenMap: Map<string, string[]>;
+  // 删边影响范围；缺省时不产出 unreachable_reference，保持全量检查行为不变
+  referenceNodeIdSet?: Set<string>;
 };
 
 const workflowCheckSkipConnectionTypes = new Set<FlowNodeTypeEnum>([
@@ -154,6 +160,7 @@ type WorkflowCheckMessageCode =
   | 'no_upstream'
   | 'invalid_reference'
   | 'invalid_reference_type'
+  | 'unreachable_reference'
   | 'if_else_incomplete'
   | 'user_select_empty'
   | 'user_select_value_empty'
@@ -177,6 +184,7 @@ const WORKFLOW_CHECK_ISSUE_MESSAGE_CODE_MAP: Record<string, WorkflowCheckMessage
   unreachable_from_start: 'no_upstream',
   invalid_reference: 'invalid_reference',
   invalid_reference_type: 'invalid_reference_type',
+  unreachable_reference: 'unreachable_reference',
   if_else_incomplete: 'if_else_incomplete',
   user_select_empty: 'user_select_empty',
   user_select_value_empty: 'user_select_value_empty',
@@ -201,6 +209,7 @@ const WORKFLOW_CHECK_ISSUE_MESSAGE_CODE_MAP: Record<string, WorkflowCheckMessage
 export const WORKFLOW_CHECK_PENDING_HANDLE_CODES = new Set<string>([
   'invalid_reference',
   'invalid_reference_type',
+  'unreachable_reference',
   'tool_missing',
   'tool_load_failed',
   'tool_no_permission',
@@ -223,6 +232,8 @@ const workflowCheckMessageFallback: Record<
     `${inputName ?? ''} 中存在已被删除的变量，需处理`.trim(),
   invalid_reference_type: ({ inputName } = {}) =>
     `${inputName ?? ''} 中引用的变量类型不匹配，需处理`.trim(),
+  unreachable_reference: ({ inputName } = {}) =>
+    `${inputName ?? ''} 中引用的来源已不在当前连线范围内，需处理`.trim(),
   if_else_incomplete: () => '存在未完成的条件配置，请完善',
   user_select_empty: () => '需配置至少一个选项',
   user_select_value_empty: () => '选项不可为空',
@@ -291,6 +302,8 @@ const translateWorkflowCheckIssueMessage = (
       return t('common:core.workflow.check.invalid_reference', params);
     case 'invalid_reference_type':
       return t('common:core.workflow.check.invalid_reference_type', params);
+    case 'unreachable_reference':
+      return t('common:core.workflow.check.unreachable_reference', params);
     case 'if_else_incomplete':
       return t('common:core.workflow.check.if_else_incomplete', params);
     case 'user_select_empty':
@@ -340,16 +353,20 @@ export const getWorkflowCheckIssueMessage = (
 const createWorkflowCheckContext = ({
   nodes,
   edges,
-  chatConfig
+  chatConfig,
+  referenceNodeIds
 }: {
   nodes: Node<FlowNodeItemType, string | undefined>[];
   edges: Edge<any>[];
   chatConfig?: AppChatConfigType;
+  referenceNodeIds?: string[];
 }): WorkflowCheckContext => {
   const nodeMap = new Map<string, Node<FlowNodeItemType, string | undefined>>();
   const nodeOutputMap = new Map<string, Map<string, FlowNodeOutputItemType>>();
   const incomingEdgesMap = new Map<string, Edge<any>[]>();
   const outgoingEdgesMap = new Map<string, Edge<any>[]>();
+  const rawIncomingEdgesMap = new Map<string, Edge<any>[]>();
+  const childrenMap = new Map<string, string[]>();
 
   nodes.forEach((node) => {
     nodeMap.set(node.data.nodeId, node);
@@ -359,9 +376,20 @@ const createWorkflowCheckContext = ({
     );
     incomingEdgesMap.set(node.data.nodeId, []);
     outgoingEdgesMap.set(node.data.nodeId, []);
+    rawIncomingEdgesMap.set(node.data.nodeId, []);
+
+    const parentId = node.data.parentNodeId;
+    if (parentId) {
+      childrenMap.set(parentId, [...(childrenMap.get(parentId) ?? []), node.data.nodeId]);
+    }
   });
 
   edges.forEach((edge) => {
+    // 来源集合遍历不做 sourceHandle 过滤，与编辑器选择器看到的连线保持一致
+    if (nodeMap.has(edge.source) && nodeMap.has(edge.target)) {
+      rawIncomingEdgesMap.get(edge.target)?.push(edge);
+    }
+
     const sourceNode = nodeMap.get(edge.source);
     if (!isWorkflowEdgeSourceHandleValid(sourceNode, edge.sourceHandle)) {
       return;
@@ -396,7 +424,10 @@ const createWorkflowCheckContext = ({
     incomingEdgesMap,
     outgoingEdgesMap,
     reachableNodeSet,
-    chatConfig
+    chatConfig,
+    rawIncomingEdgesMap,
+    childrenMap,
+    referenceNodeIdSet: referenceNodeIds ? new Set(referenceNodeIds) : undefined
   };
 };
 
@@ -470,6 +501,95 @@ const getReferenceItems = (value: unknown): ReferenceItemValueType[] => {
 const referenceValueHasInvalidSource = (value: unknown, context: WorkflowCheckContext) =>
   isConfiguredReferenceValue(value) &&
   getReferenceItems(value).some((item) => !referenceValueIsLive(item, context));
+
+/**
+ * 收集节点当前可引用的来源节点集合，遍历规则与编辑器 getNodeAllSource 保持一致：
+ * 沿入边反向遍历，嵌套节点追加父容器入边和父容器 reference 输入指向的外部节点，
+ * 容器自身 children 也属于可选来源。全局变量不依赖连线，按 VARIABLE_NODE_ID 单独判定。
+ */
+const getNodeReferenceSourceSet = (
+  node: Node<FlowNodeItemType, string | undefined>,
+  context: WorkflowCheckContext
+): Set<string> => {
+  const sourceSet = new Set<string>();
+  const visited = new Set<string>();
+
+  const walkIncoming = (nodeId: string) => {
+    if (visited.has(nodeId)) return;
+    visited.add(nodeId);
+
+    context.rawIncomingEdgesMap.get(nodeId)?.forEach((edge) => {
+      sourceSet.add(edge.source);
+      walkIncoming(edge.source);
+    });
+  };
+
+  walkIncoming(node.data.nodeId);
+
+  const parentId = node.data.parentNodeId;
+  if (parentId) {
+    walkIncoming(parentId);
+
+    // 容器 reference 输入不产生 ReactFlow edge，被引用的外部节点需显式补充，避免误报
+    context.nodeMap.get(parentId)?.data.inputs.forEach((input) => {
+      if (!nodeInputIsReference(input)) return;
+      const value = input.value;
+      if (!Array.isArray(value)) return;
+      const [refNodeId] = value as ReferenceItemValueType;
+      if (typeof refNodeId !== 'string' || !refNodeId || refNodeId === VARIABLE_NODE_ID) return;
+      if (!context.nodeMap.has(refNodeId) || sourceSet.has(refNodeId)) return;
+      sourceSet.add(refNodeId);
+      walkIncoming(refNodeId);
+    });
+  }
+
+  context.childrenMap.get(node.data.nodeId)?.forEach((childId) => sourceSet.add(childId));
+
+  return sourceSet;
+};
+
+/**
+ * 判断单个仍 live 的引用项是否因删除边而不可达：
+ * 来源节点不在当前节点允许来源集合内，或来源节点已无法从工作流入口到达。
+ * 来源消失由 invalid_reference 处理；全局变量恒不视为不可达。
+ */
+const referenceItemIsUnreachable = (
+  value: ReferenceItemValueType,
+  sourceSet: Set<string>,
+  context: WorkflowCheckContext
+) => {
+  if (!referenceValueIsLive(value, context)) return false;
+  const [refNodeId] = value;
+  if (refNodeId === VARIABLE_NODE_ID) return false;
+  if (!sourceSet.has(refNodeId)) return true;
+  return !context.reachableNodeSet.has(refNodeId);
+};
+
+/** 已配置引用中任一项不可达即报字段级问题，与 invalid_reference 语义一致。 */
+const referenceValueHasUnreachableSource = (
+  value: unknown,
+  sourceSet: Set<string> | undefined,
+  context: WorkflowCheckContext
+) =>
+  !!sourceSet &&
+  isConfiguredReferenceValue(value) &&
+  getReferenceItems(value).some((item) => referenceItemIsUnreachable(item, sourceSet, context));
+
+const isVariableUpdateValueUnreachable = (
+  item: TUpdateListItem,
+  sourceSet: Set<string> | undefined,
+  context: WorkflowCheckContext
+) =>
+  item.renderType === FlowNodeInputTypeEnum.reference &&
+  referenceValueHasUnreachableSource(item.value, sourceSet, context);
+
+const isVariableUpdateTargetUnreachable = (
+  item: TUpdateListItem,
+  sourceSet: Set<string> | undefined,
+  context: WorkflowCheckContext
+) =>
+  !!sourceSet &&
+  referenceItemIsUnreachable(item.variable as ReferenceItemValueType, sourceSet, context);
 
 /** 读取引用来源的当前 valueType：全局变量取 chatConfig 定义，普通节点取输出定义。 */
 const getReferenceSourceValueType = (
@@ -577,15 +697,17 @@ export const checkWorkflowNodeIssues = ({
   edges,
   nodeId,
   t,
-  chatConfig
+  chatConfig,
+  referenceNodeIds
 }: {
   nodes: Node<FlowNodeItemType, string | undefined>[];
   edges: Edge<any>[];
   nodeId?: string;
   t?: TFunction;
   chatConfig?: AppChatConfigType;
+  referenceNodeIds?: string[];
 }): WorkflowCheckNodeIssueMap => {
-  const context = createWorkflowCheckContext({ nodes, edges, chatConfig });
+  const context = createWorkflowCheckContext({ nodes, edges, chatConfig, referenceNodeIds });
   const issueMap: WorkflowCheckNodeIssueMap = {};
   const nodeIds = nodes.map((node) => node.data.nodeId);
   const targetNodes = nodeId ? nodes.filter((node) => node.data.nodeId === nodeId) : nodes;
@@ -617,6 +739,10 @@ export const checkWorkflowNodeIssues = ({
     const data = node.data;
     const inputs = data.inputs;
     const inputMap = new Map(inputs.map((input) => [input.key, input]));
+    // 仅删边影响范围内的节点追加断边不可达判定，全量检查不引入该规则
+    const referenceSourceSet = context.referenceNodeIdSet?.has(data.nodeId)
+      ? getNodeReferenceSourceSet(node, context)
+      : undefined;
     const isToolNode = context.incomingEdgesMap
       .get(data.nodeId)
       ?.some((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools);
@@ -848,7 +974,11 @@ export const checkWorkflowNodeIssues = ({
         }: {
           field: 'variable' | 'value';
           index?: number;
-          code: 'required_input_empty' | 'invalid_reference' | 'invalid_reference_type';
+          code:
+            | 'required_input_empty'
+            | 'invalid_reference'
+            | 'invalid_reference_type'
+            | 'unreachable_reference';
         }) => {
           const inputName = (() => {
             if (field === 'variable') {
@@ -884,6 +1014,12 @@ export const checkWorkflowNodeIssues = ({
                   ? 'invalid_reference'
                   : 'required_input_empty'
               });
+            } else if (isVariableUpdateTargetUnreachable(item, referenceSourceSet, context)) {
+              addVariableUpdateIssue({
+                field: 'variable',
+                index,
+                code: 'unreachable_reference'
+              });
             } else if (isVariableUpdateTargetTypeMismatch(item, context)) {
               addVariableUpdateIssue({
                 field: 'variable',
@@ -898,6 +1034,12 @@ export const checkWorkflowNodeIssues = ({
                 code: isVariableUpdateValueInvalid(item, context)
                   ? 'invalid_reference'
                   : 'required_input_empty'
+              });
+            } else if (isVariableUpdateValueUnreachable(item, referenceSourceSet, context)) {
+              addVariableUpdateIssue({
+                field: 'value',
+                index,
+                code: 'unreachable_reference'
               });
             } else if (isVariableUpdateValueTypeMismatch(item, context)) {
               addVariableUpdateIssue({
@@ -934,6 +1076,18 @@ export const checkWorkflowNodeIssues = ({
             node,
             code: 'invalid_reference',
             message: getWorkflowCheckIssueMessage('invalid_reference', t, {
+              inputName: getInputLabel(input, t)
+            }),
+            inputKey: input.key
+          });
+        } else if (
+          isReferenceInput &&
+          referenceValueHasUnreachableSource(effectiveInputValue, referenceSourceSet, context)
+        ) {
+          addIssue({
+            node,
+            code: 'unreachable_reference',
+            message: getWorkflowCheckIssueMessage('unreachable_reference', t, {
               inputName: getInputLabel(input, t)
             }),
             inputKey: input.key

@@ -670,6 +670,313 @@ describe('checkWorkflowNodeIssues', () => {
     });
   });
 
+  describe('unreachable_reference', () => {
+    const makeOutputNode = (nodeId: string): Node<FlowNodeItemType> =>
+      makeNode(nodeId, FlowNodeTypeEnum.answerNode, {
+        outputs: [
+          {
+            id: 'out',
+            key: 'out',
+            label: 'out',
+            type: FlowNodeOutputTypeEnum.static,
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ]
+      });
+
+    const makeReferenceInput = (key: string, value: unknown) => ({
+      key,
+      label: key,
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      valueType: WorkflowIOValueTypeEnum.string,
+      value
+    });
+
+    // 链式 A -> B -> C -> D 删除 A -> B 后：B、C、D 进入影响范围
+    const chainNodesAndEdges = () => {
+      const nodeA = makeOutputNode('A');
+      const nodeB = makeNode('B', FlowNodeTypeEnum.answerNode, {
+        inputs: [makeReferenceInput('ref-a', ['A', 'out'])],
+        outputs: [
+          {
+            id: 'out',
+            key: 'out',
+            label: 'out',
+            type: FlowNodeOutputTypeEnum.static,
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ]
+      });
+      const nodeC = makeNode('C', FlowNodeTypeEnum.answerNode, {
+        inputs: [makeReferenceInput('ref-a', ['A', 'out'])],
+        outputs: [
+          {
+            id: 'out',
+            key: 'out',
+            label: 'out',
+            type: FlowNodeOutputTypeEnum.static,
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ]
+      });
+      const nodeD = makeNode('D', FlowNodeTypeEnum.answerNode, {
+        inputs: [makeReferenceInput('ref-b', ['B', 'out'])]
+      });
+
+      return {
+        nodes: [startNode, nodeA, nodeB, nodeC, nodeD],
+        // A -> B 已删除，仅剩 start -> A、B -> C、C -> D
+        edges: [
+          { id: 'e-start-a', source: 'start', target: 'A', type: EDGE_TYPE },
+          { id: 'e-b-c', source: 'B', target: 'C', type: EDGE_TYPE },
+          { id: 'e-c-d', source: 'C', target: 'D', type: EDGE_TYPE }
+        ]
+      };
+    };
+
+    it('marks references unreachable in multi-level downstream after edge deletion', () => {
+      const { nodes, edges } = chainNodesAndEdges();
+
+      const result = checkWorkflowNodeIssues({
+        nodes,
+        edges,
+        referenceNodeIds: ['B', 'C', 'D']
+      });
+
+      // B、C 引用的 A 仍存在，但已不在允许来源范围内
+      expect(result.B).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: 'unreachable_reference', inputKey: 'ref-a' })
+        ])
+      );
+      expect(result.C).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: 'unreachable_reference', inputKey: 'ref-a' })
+        ])
+      );
+      // D 引用的 B 仍在来源集合中，但 B 已不可从入口到达
+      expect(result.D).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: 'unreachable_reference', inputKey: 'ref-b' })
+        ])
+      );
+    });
+
+    it('does not report unreachable references without referenceNodeIds scope', () => {
+      const { nodes, edges } = chainNodesAndEdges();
+
+      const result = checkWorkflowNodeIssues({ nodes, edges });
+
+      ['B', 'C', 'D'].forEach((nodeId) => {
+        expect(result[nodeId]?.some((issue) => issue.code === 'unreachable_reference')).toBeFalsy();
+      });
+    });
+
+    it('only reports unreachable references for nodes inside the impact scope', () => {
+      const { nodes, edges } = chainNodesAndEdges();
+
+      const result = checkWorkflowNodeIssues({
+        nodes,
+        edges,
+        referenceNodeIds: ['B']
+      });
+
+      expect(result.B?.some((issue) => issue.code === 'unreachable_reference')).toBe(true);
+      expect(result.C?.some((issue) => issue.code === 'unreachable_reference')).toBeFalsy();
+      expect(result.D?.some((issue) => issue.code === 'unreachable_reference')).toBeFalsy();
+    });
+
+    it('only rechecks the deleted branch, not sibling branches', () => {
+      const nodeA = makeOutputNode('A');
+      const nodeB = makeNode('B', FlowNodeTypeEnum.answerNode, {
+        inputs: [makeReferenceInput('ref-a', ['A', 'out'])]
+      });
+      const nodeC = makeNode('C', FlowNodeTypeEnum.answerNode, {
+        inputs: [makeReferenceInput('ref-a', ['A', 'out'])]
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, nodeA, nodeB, nodeC],
+        // A -> B 已删除，A -> C 保留
+        edges: [
+          { id: 'e-start-a', source: 'start', target: 'A', type: EDGE_TYPE },
+          { id: 'e-a-c', source: 'A', target: 'C', type: EDGE_TYPE }
+        ],
+        referenceNodeIds: ['B']
+      });
+
+      expect(result.B).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: 'unreachable_reference', inputKey: 'ref-a' })
+        ])
+      );
+      expect(result.C?.some((issue) => issue.code === 'unreachable_reference')).toBeFalsy();
+    });
+
+    it('keeps merge references valid when an alternative source remains reachable', () => {
+      const nodeA = makeOutputNode('A');
+      const nodeB = makeOutputNode('B');
+      const nodeC = makeOutputNode('C');
+      const nodeD = makeNode('D', FlowNodeTypeEnum.answerNode, {
+        inputs: [
+          makeReferenceInput('ref-b', ['B', 'out']),
+          makeReferenceInput('ref-c', ['C', 'out'])
+        ]
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, nodeA, nodeB, nodeC, nodeD],
+        // A -> B 已删除；C -> D 替代来源保留
+        edges: [
+          { id: 'e-start-a', source: 'start', target: 'A', type: EDGE_TYPE },
+          { id: 'e-start-c', source: 'start', target: 'C', type: EDGE_TYPE },
+          { id: 'e-b-d', source: 'B', target: 'D', type: EDGE_TYPE },
+          { id: 'e-c-d', source: 'C', target: 'D', type: EDGE_TYPE }
+        ],
+        referenceNodeIds: ['B', 'D']
+      });
+
+      // D 引用的 B 仍存在但不再可达；引用的 C 仍可通过替代路径获取
+      expect(result.D).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: 'unreachable_reference', inputKey: 'ref-b' })
+        ])
+      );
+      expect(
+        result.D?.some(
+          (issue) => issue.code !== 'required_input_empty' && issue.inputKey === 'ref-c'
+        )
+      ).toBeFalsy();
+    });
+
+    it('keeps invalid_reference priority when the source itself is gone', () => {
+      const nodeB = makeNode('B', FlowNodeTypeEnum.answerNode, {
+        inputs: [makeReferenceInput('ref-ghost', ['ghost', 'out'])]
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, nodeB],
+        edges: [{ id: 'e-start-b', source: 'start', target: 'B', type: EDGE_TYPE }],
+        referenceNodeIds: ['B']
+      });
+
+      expect(result.B).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: 'invalid_reference', inputKey: 'ref-ghost' })
+        ])
+      );
+      expect(result.B?.some((issue) => issue.code === 'unreachable_reference')).toBeFalsy();
+    });
+
+    it('never treats global variable references as unreachable', () => {
+      const nodeB = makeNode('B', FlowNodeTypeEnum.answerNode, {
+        inputs: [makeReferenceInput('ref-var', [VARIABLE_NODE_ID, 'var1'])]
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, nodeB],
+        edges: [{ id: 'e-start-b', source: 'start', target: 'B', type: EDGE_TYPE }],
+        chatConfig: { variables: [{ key: 'var1' }] } as any,
+        referenceNodeIds: ['B']
+      });
+
+      expect(result.B?.some((issue) => issue.code === 'unreachable_reference')).toBeFalsy();
+    });
+
+    it('reports a multi-select reference when any item becomes unreachable', () => {
+      const nodeB = makeOutputNode('B');
+      const nodeC = makeOutputNode('C');
+      const nodeD = makeNode('D', FlowNodeTypeEnum.answerNode, {
+        inputs: [
+          {
+            key: 'ref-list',
+            label: 'ref-list',
+            renderTypeList: [FlowNodeInputTypeEnum.reference],
+            valueType: WorkflowIOValueTypeEnum.arrayString,
+            value: [
+              ['B', 'out'],
+              ['C', 'out']
+            ]
+          }
+        ]
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, nodeB, nodeC, nodeD],
+        // B 不可达，C 仍可达
+        edges: [
+          { id: 'e-start-c', source: 'start', target: 'C', type: EDGE_TYPE },
+          { id: 'e-b-d', source: 'B', target: 'D', type: EDGE_TYPE },
+          { id: 'e-c-d', source: 'C', target: 'D', type: EDGE_TYPE }
+        ],
+        referenceNodeIds: ['B', 'D']
+      });
+
+      expect(result.D).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: 'unreachable_reference', inputKey: 'ref-list' })
+        ])
+      );
+    });
+
+    it('reports unreachable VariableUpdate value references by row field', () => {
+      const nodeB = makeOutputNode('B');
+      const nodeVU = makeNode('variable-update', FlowNodeTypeEnum.variableUpdate, {
+        inputs: [
+          {
+            key: NodeInputKeyEnum.updateList,
+            label: 'update list',
+            value: [
+              {
+                variable: [VARIABLE_NODE_ID, 'var1'],
+                valueType: WorkflowIOValueTypeEnum.string,
+                renderType: FlowNodeInputTypeEnum.reference,
+                value: [['B', 'out']]
+              }
+            ]
+          }
+        ]
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, nodeB, nodeVU],
+        // B 不可达
+        edges: [{ id: 'e-b-vu', source: 'B', target: 'variable-update', type: EDGE_TYPE }],
+        chatConfig: {
+          variables: [{ key: 'var1', valueType: WorkflowIOValueTypeEnum.string }]
+        } as any,
+        referenceNodeIds: ['B', 'variable-update']
+      });
+
+      expect(result['variable-update']).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: 'unreachable_reference',
+            inputKey: `${NodeInputKeyEnum.updateList}[0].value`
+          })
+        ])
+      );
+    });
+
+    it('adds no reference issues for impact nodes without broken references', () => {
+      const nodeB = makeNode('B', FlowNodeTypeEnum.answerNode);
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, nodeB],
+        edges: [],
+        referenceNodeIds: ['B']
+      });
+
+      expect(
+        result.B?.some((issue) =>
+          ['invalid_reference', 'invalid_reference_type', 'unreachable_reference'].includes(
+            issue.code
+          )
+        )
+      ).toBeFalsy();
+    });
+  });
+
   it('preserves invalid single and multiple references when storing workflow data', () => {
     const sourceNode = makeNode('source', FlowNodeTypeEnum.workflowStart, {
       outputs: [
