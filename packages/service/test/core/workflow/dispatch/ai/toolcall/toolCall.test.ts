@@ -818,7 +818,7 @@ describe('runToolCall compression node responses', () => {
     );
   });
 
-  it('hides a failed tool node response when tool execution throws before returning flowResponse', async () => {
+  it('preserves a failed tool node response when tool execution throws before returning flowResponse', async () => {
     runWorkflowMock.mockRejectedValueOnce(new Error('network failed'));
     runAgentLoopMock.mockImplementation(async (options) => {
       const call = {
@@ -861,6 +861,18 @@ describe('runToolCall compression node responses', () => {
       })
     );
 
-    expect(result.toolDispatchFlowResponses).toEqual([]);
+    expect(result.toolDispatchFlowResponses).toEqual([
+      expect.objectContaining({
+        flowResponses: [
+          expect.objectContaining({
+            id: 'call_search',
+            moduleName: 'Search',
+            moduleType: FlowNodeTypeEnum.tool,
+            errorText: 'Tool error: network failed',
+            toolRes: 'Tool error: network failed'
+          })
+        ]
+      })
+    ]);
   });
 });

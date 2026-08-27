@@ -494,7 +494,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
     expect(usagePush).toHaveBeenCalledTimes(1);
   });
 
-  it('forwards tool errors to the loop without creating a visible node response', async () => {
+  it('forwards tool errors to the loop and preserves a visible node response', async () => {
     const executeTool = vi.fn(async () => ({
       response: 'secret error text',
       errorMessage: 'Tool error: secret error text',
@@ -524,7 +524,16 @@ describe('createWorkflowAgentLoopRuntime', () => {
       errorMessage: result.errorMessage,
       seconds: 0.1
     });
-    expect(artifacts.nodeResponses).toEqual([]);
+    expect(artifacts.nodeResponses).toEqual([
+      expect.objectContaining({
+        moduleType: FlowNodeTypeEnum.tool,
+        moduleName: 'Failed tool',
+        errorText: 'Tool error: secret error text',
+        toolRes: 'secret error text',
+        totalPoints: 0,
+        runningTime: 0.1
+      })
+    ]);
   });
 
   it('collects LLM request ids from lifecycle events', () => {
