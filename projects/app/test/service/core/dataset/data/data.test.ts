@@ -23,6 +23,7 @@ import {
   updateDatasetDataByIndexes,
   updateDatasetDataSystemIndexes
 } from '@/service/core/dataset/data/data';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 const { mockDeleteDatasetFileByKey, mockGetDatasetBase64Image, mockCountPromptTokens } = vi.hoisted(
   () => ({
@@ -167,26 +168,29 @@ describe('Dataset data service', () => {
         expiredTime: new Date(Date.now() + 60_000)
       });
 
-      const result = await createDatasetData({
-        teamId: String(root.teamId),
-        tmbId: String(root.tmbId),
-        datasetId: String(dataset._id),
-        collectionId: String(collection._id),
-        q: 'question',
-        a: 'answer',
-        imageId,
-        imageDescMap: { [imageId]: 'image desc' },
-        chunkIndex: 2,
-        indexes: [
-          {
-            type: DatasetDataIndexTypeEnum.custom,
-            text: 'manual index'
-          }
-        ],
-        embeddingModel: 'text-embedding-3-small',
-        indexSize: 50,
-        indexPrefix: 'prefix'
-      });
+      const result = await mongoSessionRun((session) =>
+        createDatasetData({
+          teamId: String(root.teamId),
+          tmbId: String(root.tmbId),
+          datasetId: String(dataset._id),
+          collectionId: String(collection._id),
+          q: 'question',
+          a: 'answer',
+          imageId,
+          imageDescMap: { [imageId]: 'image desc' },
+          chunkIndex: 2,
+          indexes: [
+            {
+              type: DatasetDataIndexTypeEnum.custom,
+              text: 'manual index'
+            }
+          ],
+          embeddingModel: 'text-embedding-3-small',
+          indexSize: 50,
+          indexPrefix: 'prefix',
+          session
+        })
+      );
 
       const data = await MongoDatasetData.findById(result.insertId).lean();
       const dataText = await MongoDatasetDataText.findOne({ dataId: result.insertId }).lean();
@@ -228,14 +232,17 @@ describe('Dataset data service', () => {
       const { root, dataset, collection } = await createDatasetContext();
 
       await expect(
-        createDatasetData({
-          teamId: String(root.teamId),
-          tmbId: String(root.tmbId),
-          datasetId: String(dataset._id),
-          collectionId: String(collection._id),
-          q: '',
-          embeddingModel: 'text-embedding-3-small'
-        } as any)
+        mongoSessionRun((session) =>
+          createDatasetData({
+            teamId: String(root.teamId),
+            tmbId: String(root.tmbId),
+            datasetId: String(dataset._id),
+            collectionId: String(collection._id),
+            q: '',
+            embeddingModel: 'text-embedding-3-small',
+            session
+          } as any)
+        )
       ).rejects.toBe('q, datasetId, collectionId, embeddingModel is required');
     });
 
@@ -247,16 +254,19 @@ describe('Dataset data service', () => {
         vision: true
       });
 
-      const result = await createDatasetData({
-        teamId: String(root.teamId),
-        tmbId: String(root.tmbId),
-        datasetId: String(dataset._id),
-        collectionId: String(collection._id),
-        q: '',
-        imageId,
-        embeddingModel: 'text-embedding-3-small',
-        indexSize: 50
-      });
+      const result = await mongoSessionRun((session) =>
+        createDatasetData({
+          teamId: String(root.teamId),
+          tmbId: String(root.tmbId),
+          datasetId: String(dataset._id),
+          collectionId: String(collection._id),
+          q: '',
+          imageId,
+          embeddingModel: 'text-embedding-3-small',
+          indexSize: 50,
+          session
+        })
+      );
 
       const data = await MongoDatasetData.findById(result.insertId).lean();
 

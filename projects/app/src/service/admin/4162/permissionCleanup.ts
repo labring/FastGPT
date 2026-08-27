@@ -4,16 +4,16 @@ import {
   type CleanupDanglingResourcePermissionsOptions,
   type CleanupDanglingResourcePermissionsResult,
   type DanglingReferenceReason
-} from '@fastgpt/global/support/permission/dataClean/controller.schema';
-import { Types } from '../../../common/mongo';
-import { MongoAgentSkills } from '../../../core/ai/skill/model/schema';
-import { MongoApp } from '../../../core/app/schema';
-import { MongoDataset } from '../../../core/dataset/schema';
-import { MongoMemberGroupModel } from '../memberGroup/memberGroupSchema';
-import { MongoOrgModel } from '../org/orgSchema';
-import { resourcePermissionRepo } from '../repository/resourcePermissionRepo';
-import { MongoTeamMember } from '../../user/team/teamMemberSchema';
-import { MongoTeam } from '../../user/team/teamSchema';
+} from './permissionSchema';
+import { Types } from '@fastgpt/service/common/mongo';
+import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { MongoMemberGroupModel } from '@fastgpt/service/support/permission/memberGroup/memberGroupSchema';
+import { MongoOrgModel } from '@fastgpt/service/support/permission/org/orgSchema';
+import { resourcePermissionRepo } from '@fastgpt/service/support/permission/repository/resourcePermissionRepo';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 
 type PermissionReferenceDoc = {
   _id: Types.ObjectId;
@@ -258,9 +258,7 @@ const createPermissionSnapshotFilter = (permission: PermissionReferenceDoc) => (
 
 /**
  * 分批扫描并清理 `resource_permissions` 中的悬垂引用和非法协作者目标。
- *
- * `cursor` 和 `maxScan` 为单次运行提供边界；apply 模式会在删除前重新校验，并仅删除仍与
- * 扫描快照一致的记录。返回 `nextCursor` 时，下一次调用应原样传回以继续扫描。
+ * apply 模式会在删除前重新校验，并仅删除仍与扫描快照一致的记录。
  */
 export async function cleanupDanglingResourcePermissions(
   options: CleanupDanglingResourcePermissionsOptions
@@ -270,7 +268,6 @@ export async function cleanupDanglingResourcePermissions(
   let danglingReferencePermissionCount = 0;
   let invalidCollaboratorPermissionCount = 0;
   let deletedPermissionCount = 0;
-  let lastScannedId: Types.ObjectId | undefined;
   const reasonCounts = createReasonCounts();
   const samples: CleanupDanglingResourcePermissionsResult['samples'] = [];
 
@@ -312,38 +309,37 @@ export async function cleanupDanglingResourcePermissions(
     }
   };
 
-  const query = options.cursor ? { _id: { $gt: new Types.ObjectId(options.cursor) } } : {};
-  const permissionCursor = resourcePermissionRepo.findCursor({
-    query,
-    projection: {
-      _id: 1,
-      teamId: 1,
-      tmbId: 1,
-      groupId: 1,
-      orgId: 1,
-      resourceType: 1,
-      resourceId: 1
-    },
-    limit: options.maxScan,
-    batchSize: options.batchSize
-  }) as AsyncIterable<PermissionReferenceDoc>;
-  let batch: PermissionReferenceDoc[] = [];
+  let lastScannedId: Types.ObjectId | undefined;
 
-  for await (const permission of permissionCursor) {
-    batch.push(permission);
-    lastScannedId = permission._id;
-    if (batch.length < options.batchSize) continue;
+  // 仓储游标要求有界 limit，因此通过 _id 翻页，直到当前范围内没有剩余权限。
+  while (true) {
+    const query = {
+      ...(options.teamId ? { teamId: new Types.ObjectId(options.teamId) } : {}),
+      ...(lastScannedId ? { _id: { $gt: lastScannedId } } : {})
+    };
+    const permissionCursor = resourcePermissionRepo.findCursor({
+      query,
+      projection: {
+        _id: 1,
+        teamId: 1,
+        tmbId: 1,
+        groupId: 1,
+        orgId: 1,
+        resourceType: 1,
+        resourceId: 1
+      },
+      limit: options.batchSize,
+      batchSize: options.batchSize
+    }) as AsyncIterable<PermissionReferenceDoc>;
+    const batch: PermissionReferenceDoc[] = [];
 
+    for await (const permission of permissionCursor) batch.push(permission);
+    if (batch.length === 0) break;
+
+    lastScannedId = batch[batch.length - 1]._id;
     await processBatch(batch);
-    batch = [];
+    if (batch.length < options.batchSize) break;
   }
-  if (batch.length > 0) await processBatch(batch);
-
-  const hasMore = lastScannedId
-    ? Boolean(
-        await resourcePermissionRepo.findOneByFilter({ _id: { $gt: lastScannedId } }, { _id: 1 })
-      )
-    : false;
 
   return CleanupDanglingResourcePermissionsResponseSchema.parse({
     dryRun: options.dryRun,
@@ -354,9 +350,7 @@ export async function cleanupDanglingResourcePermissions(
     deletedPermissionCount,
     reasonCounts,
     batchSize: options.batchSize,
-    maxScan: options.maxScan,
     sampleLimit: options.sampleLimit,
-    ...(hasMore ? { nextCursor: stringifyId(lastScannedId) } : {}),
     samples
   });
 }

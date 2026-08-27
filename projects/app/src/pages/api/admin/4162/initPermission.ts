@@ -1,32 +1,30 @@
-import z from 'zod';
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/next/type';
-import { BoolSchema, IntSchema } from '@fastgpt/global/common/zod';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { materializeResourcePermissions } from '@fastgpt/service/support/permission/migration/materializeResourcePermissions';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { cleanupDanglingResourcePermissions } from '@/service/admin/4162/permissionCleanup';
+import { materializeResourcePermissions } from '@/service/admin/4162/permissionMigration';
+import {
+  InitPermissionBodySchema,
+  InitPermissionResponseSchema,
+  type InitPermissionResponse
+} from '@/service/admin/4162/permissionSchema';
 
-const InitV4160BodySchema = z.object({
-  dryRun: BoolSchema.optional().default(true),
-  teamId: z.string().optional(),
-  batchSize: IntSchema.min(1).max(1000).optional().default(100)
-});
-
-const InitV4160ResponseSchema = z.object({
-  dryRun: z.boolean(),
-  teamCount: z.number().int().nonnegative(),
-  resourceCount: z.number().int().nonnegative(),
-  updatedResourceCount: z.number().int().nonnegative(),
-  skippedResourceCount: z.number().int().nonnegative(),
-  errors: z.array(z.string())
-});
-
-/** 将所有资源 ACL 物化为完整有效快照，默认仅 dry-run。 */
-async function handler(req: ApiRequestProps) {
+/** 先清理无效权限，再将所有资源 ACL 物化为完整有效快照；两阶段默认仅 dry-run。 */
+async function handler(req: ApiRequestProps): Promise<InitPermissionResponse> {
   await authCert({ req, authRoot: true });
-  const { body } = parseApiInput({ req, bodySchema: InitV4160BodySchema });
-  const result = await materializeResourcePermissions(body);
-  return InitV4160ResponseSchema.parse(result);
+  const { body } = parseApiInput({ req, bodySchema: InitPermissionBodySchema });
+  const { dryRun, teamId, batchSize, sampleLimit } = body;
+
+  const cleanup = await cleanupDanglingResourcePermissions({
+    dryRun,
+    teamId,
+    batchSize,
+    sampleLimit
+  });
+  const migration = await materializeResourcePermissions({ dryRun, teamId, batchSize });
+
+  return InitPermissionResponseSchema.parse({ cleanup, migration });
 }
 
 export default NextAPI(handler);

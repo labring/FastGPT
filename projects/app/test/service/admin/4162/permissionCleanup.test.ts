@@ -4,7 +4,7 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { cleanupDanglingResourcePermissions } from '@fastgpt/service/support/permission/dataClean/danglingPermission';
+import { cleanupDanglingResourcePermissions } from '@/service/admin/4162/permissionCleanup';
 import { MongoMemberGroupModel } from '@fastgpt/service/support/permission/memberGroup/memberGroupSchema';
 import { MongoOrgModel } from '@fastgpt/service/support/permission/org/orgSchema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
@@ -17,10 +17,12 @@ describe('cleanupDanglingResourcePermissions', () => {
   let validAppId: Types.ObjectId;
   let concurrentlyAssignedAppId: Types.ObjectId;
   let invalidCollaboratorAppId: Types.ObjectId;
+  let targetTeamId: string;
 
   beforeEach(async () => {
     const user = await getUser(`permission-cleanup-${objectId()}`);
     const otherTeamUser = await getUser(`permission-cleanup-other-${objectId()}`);
+    targetTeamId = user.teamId;
 
     validAppId = objectId();
     concurrentlyAssignedAppId = objectId();
@@ -174,7 +176,6 @@ describe('cleanupDanglingResourcePermissions', () => {
     const result = await cleanupDanglingResourcePermissions({
       dryRun: true,
       batchSize: 2,
-      maxScan: 100,
       sampleLimit: 20
     });
 
@@ -208,7 +209,6 @@ describe('cleanupDanglingResourcePermissions', () => {
     const result = await cleanupDanglingResourcePermissions({
       dryRun: false,
       batchSize: 3,
-      maxScan: 100,
       sampleLimit: 2
     });
 
@@ -248,7 +248,6 @@ describe('cleanupDanglingResourcePermissions', () => {
     const result = await cleanupDanglingResourcePermissions({
       dryRun: false,
       batchSize: 100,
-      maxScan: 100,
       sampleLimit: 0
     });
 
@@ -256,23 +255,16 @@ describe('cleanupDanglingResourcePermissions', () => {
     expect(await MongoResourcePermission.countDocuments({ _id: permissionId })).toBe(1);
   });
 
-  it('supports bounded scans with a resumable cursor', async () => {
-    let cursor: string | undefined;
-    let scannedPermissionCount = 0;
+  it('limits cleanup to the requested team', async () => {
+    const result = await cleanupDanglingResourcePermissions({
+      dryRun: true,
+      teamId: targetTeamId,
+      batchSize: 2,
+      sampleLimit: 0
+    });
 
-    do {
-      const result = await cleanupDanglingResourcePermissions({
-        dryRun: true,
-        batchSize: 2,
-        maxScan: 5,
-        sampleLimit: 0,
-        cursor
-      });
-      scannedPermissionCount += result.scannedPermissionCount;
-      cursor = result.nextCursor;
-    } while (cursor);
-
-    expect(scannedPermissionCount).toBe(19);
+    expect(result.scannedPermissionCount).toBe(17);
+    expect(result.danglingPermissionCount).toBe(12);
     expect(await MongoResourcePermission.countDocuments()).toBe(19);
   });
 });

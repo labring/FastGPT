@@ -1,9 +1,8 @@
 import z from 'zod';
-import { ObjectIdSchema } from '../../../common/type/mongo';
-import { BoolSchema, IntSchema } from '../../../common/zod';
+import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
+import { BoolSchema, IntSchema } from '@fastgpt/global/common/zod';
 
-export const DEFAULT_DANGLING_PERMISSION_BATCH_SIZE = 500;
-export const DEFAULT_DANGLING_PERMISSION_MAX_SCAN = 10000;
+export const DEFAULT_PERMISSION_BATCH_SIZE = 100;
 export const DEFAULT_DANGLING_PERMISSION_SAMPLE_LIMIT = 20;
 
 export const DanglingReferenceReasonSchema = z.enum([
@@ -22,50 +21,37 @@ export type DanglingReferenceReason = z.infer<typeof DanglingReferenceReasonSche
 
 export const CleanupDanglingResourcePermissionsOptionsSchema = z.object({
   dryRun: z.boolean(),
-  batchSize: z.number().int().min(1).max(5000),
-  maxScan: z.number().int().min(1).max(100000),
-  sampleLimit: z.number().int().min(0).max(100),
-  cursor: ObjectIdSchema.optional()
+  teamId: ObjectIdSchema.optional(),
+  batchSize: z.number().int().min(1).max(1000),
+  sampleLimit: z.number().int().min(0).max(100)
 });
 export type CleanupDanglingResourcePermissionsOptions = z.infer<
   typeof CleanupDanglingResourcePermissionsOptionsSchema
 >;
 
-export const CleanupDanglingResourcePermissionsBodySchema = z
-  .object({
-    dryRun: BoolSchema.optional().meta({
-      example: true,
-      description: '是否只扫描统计不删除，默认为 true'
-    }),
-    dryrun: BoolSchema.optional().meta({
-      example: true,
-      description: '是否只扫描统计不删除，兼容小写参数'
-    }),
-    batchSize: IntSchema.min(1).max(5000).optional().meta({
-      example: DEFAULT_DANGLING_PERMISSION_BATCH_SIZE,
-      description: '每批扫描的权限记录数，范围 1~5000'
-    }),
-    maxScan: IntSchema.min(1).max(100000).optional().meta({
-      example: DEFAULT_DANGLING_PERMISSION_MAX_SCAN,
-      description: '单次请求最多扫描的权限记录数，范围 1~100000'
-    }),
-    sampleLimit: IntSchema.min(0).max(100).optional().meta({
+export const InitPermissionBodySchema = z.object({
+  dryRun: BoolSchema.optional().default(true).meta({
+    example: true,
+    description: '是否仅扫描无效权限并预览迁移结果，默认为 true'
+  }),
+  teamId: ObjectIdSchema.optional().meta({
+    example: '68ad85a7463006c963799a05',
+    description: '仅处理指定团队；不传时处理所有团队和权限'
+  }),
+  batchSize: IntSchema.min(1).max(1000).optional().default(DEFAULT_PERMISSION_BATCH_SIZE).meta({
+    example: DEFAULT_PERMISSION_BATCH_SIZE,
+    description: '权限清理和迁移的批大小，范围 1~1000'
+  }),
+  sampleLimit: IntSchema.min(0)
+    .max(100)
+    .optional()
+    .default(DEFAULT_DANGLING_PERMISSION_SAMPLE_LIMIT)
+    .meta({
       example: DEFAULT_DANGLING_PERMISSION_SAMPLE_LIMIT,
-      description: '返回的悬垂权限样本数，范围 0~100'
-    }),
-    cursor: ObjectIdSchema.optional().meta({
-      description: '上一次响应返回的 nextCursor，用于继续扫描'
+      description: '返回的无效权限样本数，范围 0~100'
     })
-  })
-  .transform((body) =>
-    CleanupDanglingResourcePermissionsOptionsSchema.parse({
-      dryRun: body.dryRun ?? body.dryrun ?? true,
-      batchSize: body.batchSize ?? DEFAULT_DANGLING_PERMISSION_BATCH_SIZE,
-      maxScan: body.maxScan ?? DEFAULT_DANGLING_PERMISSION_MAX_SCAN,
-      sampleLimit: body.sampleLimit ?? DEFAULT_DANGLING_PERMISSION_SAMPLE_LIMIT,
-      cursor: body.cursor
-    })
-  );
+});
+export type InitPermissionBody = z.infer<typeof InitPermissionBodySchema>;
 
 export const DanglingPermissionSampleSchema = z.object({
   permissionId: z.string().meta({ description: '待清理权限记录 ID' }),
@@ -125,11 +111,36 @@ export const CleanupDanglingResourcePermissionsResponseSchema = z.object({
     description: '按清理原因统计的命中数，同一权限可能命中多种类型'
   }),
   batchSize: z.number().int().positive().meta({ description: '扫描批大小' }),
-  maxScan: z.number().int().positive().meta({ description: '单次扫描数量上限' }),
   sampleLimit: z.number().int().nonnegative().meta({ description: '返回样本数量限制' }),
-  nextCursor: z.string().optional().meta({ description: '继续扫描时使用的游标' }),
   samples: z.array(DanglingPermissionSampleSchema).meta({ description: '待清理权限样本' })
 });
 export type CleanupDanglingResourcePermissionsResult = z.infer<
   typeof CleanupDanglingResourcePermissionsResponseSchema
 >;
+
+export const MaterializeResourcePermissionsOptionsSchema = z.object({
+  dryRun: z.boolean(),
+  teamId: ObjectIdSchema.optional(),
+  batchSize: z.number().int().min(1).max(1000)
+});
+export type MaterializeResourcePermissionsOptions = z.infer<
+  typeof MaterializeResourcePermissionsOptionsSchema
+>;
+
+export const MaterializeResourcePermissionsResultSchema = z.object({
+  dryRun: z.boolean(),
+  teamCount: z.number().int().nonnegative(),
+  resourceCount: z.number().int().nonnegative(),
+  updatedResourceCount: z.number().int().nonnegative(),
+  skippedResourceCount: z.number().int().nonnegative(),
+  errors: z.array(z.string())
+});
+export type MaterializeResourcePermissionsResult = z.infer<
+  typeof MaterializeResourcePermissionsResultSchema
+>;
+
+export const InitPermissionResponseSchema = z.object({
+  cleanup: CleanupDanglingResourcePermissionsResponseSchema,
+  migration: MaterializeResourcePermissionsResultSchema
+});
+export type InitPermissionResponse = z.infer<typeof InitPermissionResponseSchema>;

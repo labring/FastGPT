@@ -8,9 +8,9 @@ upgradeTags:
 
 ## 📦 升级指南
 
-### 1. 迁移资源权限数据
+### 1. 清理并迁移资源权限数据
 
-本版本将 App、Dataset 和 Agent Skill 的资源权限补齐为完整有效 ACL。升级后请先执行 dry-run；dry-run 不会写入权限数据，默认只处理所有团队，也可以通过 `teamId` 指定单个团队。
+本版本会先清理无效资源权限，再将 App、Dataset 和 Agent Skill 的资源权限补齐为完整有效 ACL。升级后请先执行 dry-run；dry-run 不会删除或写入权限数据。默认处理所有团队，也可以通过 `teamId` 指定单个团队。
 
 ```bash
 curl -X POST 'https://你的域名/api/admin/4162/initPermission' \
@@ -19,7 +19,7 @@ curl -X POST 'https://你的域名/api/admin/4162/initPermission' \
   -d '{"dryRun":true,"batchSize":100}'
 ```
 
-确认返回的 `errors` 为空或已完成异常资源处理后，执行正式迁移：
+确认 `migration.errors` 为空或已完成异常资源处理后，执行正式清理和迁移：
 
 ```bash
 curl -X POST 'https://你的域名/api/admin/4162/initPermission' \
@@ -28,9 +28,11 @@ curl -X POST 'https://你的域名/api/admin/4162/initPermission' \
   -d '{"dryRun":false,"batchSize":100}'
 ```
 
-`batchSize` 可设置为 `1` 到 `1000`，默认值为 `100`，用于限制每批读取、计算和写入的目标资源数量；父级资源链会按需读取。返回结果中的 `resourceCount` 是扫描资源数，`updatedResourceCount` 是需要写入的资源数，`skippedResourceCount` 是因父级缺失或树结构异常而跳过的目标资源数，`errors` 包含异常详情。迁移保留资源自身的 owner 和子级权限，继承开关缺失的历史资源按启用继承处理。
+`batchSize` 可设置为 `1` 到 `1000`，默认值为 `100`，同时控制权限清理和迁移的批大小；`sampleLimit` 控制 `cleanup.samples` 返回的无效权限样本数。返回结果分为 `cleanup` 和 `migration` 两部分：`cleanup` 包含扫描、命中和删除统计；`migration.resourceCount` 是扫描资源数，`migration.updatedResourceCount` 是需要写入的资源数，`migration.skippedResourceCount` 是因父级缺失或树结构异常而跳过的目标资源数，`migration.errors` 包含异常详情。迁移保留资源自身的 owner 和子级权限，父级资源链会按需读取，继承开关缺失的历史资源按启用继承处理。
 
-正式迁移可安全重复执行；完成后再次执行 dry-run，确认 `updatedResourceCount` 和 `errors` 均为 `0`。存在 `errors` 时应先根据资源类型、资源 ID 和父级 ID 修复数据，再重试正式迁移。
+dry-run 中的迁移预览基于清理前的当前权限数据；如果 `cleanup` 命中了无效权限，正式执行清理后的迁移统计可能与预览不同。
+
+正式清理和迁移可安全重复执行；完成后再次执行 dry-run，确认 `cleanup.danglingPermissionCount`、`migration.updatedResourceCount` 和 `migration.errors` 均为 `0`。存在 `migration.errors` 时应先根据资源类型、资源 ID 和父级 ID 修复数据，再重试。
 
 ## 🚀 新增内容
 
@@ -46,6 +48,8 @@ curl -X POST 'https://你的域名/api/admin/4162/initPermission' \
 4. 文件上传错误提示统一文案。
 5. 优化技能保存时，结构化提取 name 和 description，允许空 description。
 6. 连续工具调用异常检查，提高判断精确性，不再只判断调用次数和工具数量，改成判断相同工具且相同参数，连续调用超过 5 次，认为是模型幻觉异常。
+7. 切换支付方式时即时刷新支付弹窗内容。
+8. 优化管理员团队、套餐、支付和用户列表查询，提升用户名搜索和分页性能。
 
 ## 🐛 修复
 
@@ -58,3 +62,5 @@ curl -X POST 'https://你的域名/api/admin/4162/initPermission' \
 ## 🛠️ 代码优化
 
 1. 统一工作流旧版工具参数兼容方案。
+2. 将 App、Dataset 和 Agent Skill 的资源权限改为物化有效 ACL，统一协作者权限变更和继承同步逻辑。
+3. 知识库数据创建接口强制要求 MongoDB session，并为手动插入数据补齐事务，确保主数据、全文检索数据和图片 TTL 状态原子提交。
