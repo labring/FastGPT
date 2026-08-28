@@ -11,6 +11,7 @@ import {
   UpdateDatasetCollaboratorResponseSchema,
   PostDatasetSyncBodySchema
 } from '../../../openapi/core/dataset/api';
+import { CreateCollectionByFileIdBodySchema } from '../../../openapi/core/dataset/collection/createApi';
 
 const objectId = '68ad85a7463006c963799a05';
 
@@ -82,6 +83,26 @@ describe('Dataset OpenAPI contracts', () => {
     expect(
       openAPIDocument.paths?.['/proApi/core/dataset/datasetSync']?.post?.responses?.[200]?.content
     ).toBeUndefined();
+  });
+
+  it('coerces collection chunk settings sent as numeric strings', () => {
+    const params = CreateCollectionByFileIdBodySchema.parse({
+      datasetId: objectId,
+      fileId: 'dataset/example.pdf',
+      chunkTriggerMinSize: '100',
+      paragraphChunkDeep: '5',
+      paragraphChunkMinSize: '100',
+      chunkSize: '512',
+      indexSize: '768'
+    });
+
+    expect(params).toMatchObject({
+      chunkTriggerMinSize: 100,
+      paragraphChunkDeep: 5,
+      paragraphChunkMinSize: 100,
+      chunkSize: 512,
+      indexSize: 768
+    });
   });
 
   it('documents that Dataset collaborator updates require at least one collaborator', () => {

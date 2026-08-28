@@ -25,6 +25,7 @@ import { ParentIdSchema } from '../../common/parentFolder/type';
 import z from 'zod';
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { PermissionSchema } from '../../support/permission/controller';
+import { NumSchema } from '../../common/zod';
 
 /* ===== Chunk ===== */
 export const ChunkSettingsSchema = z.object({
@@ -37,7 +38,7 @@ export const ChunkSettingsSchema = z.object({
     .enum(ChunkTriggerConfigTypeEnum)
     .optional()
     .meta({ description: '分块触发时机' }),
-  chunkTriggerMinSize: z.number().optional().meta({ description: '分块触发最小大小' }),
+  chunkTriggerMinSize: NumSchema.optional().meta({ description: '分块触发最小大小' }),
 
   dataEnhanceCollectionName: z.boolean().optional().meta({ description: '增加集合名到分块里' }),
   imageIndex: z.boolean().optional().meta({ description: '图片索引' }),
@@ -53,11 +54,11 @@ export const ChunkSettingsSchema = z.object({
     .enum(ParagraphChunkAIModeEnum)
     .optional()
     .meta({ description: '段落分块 AI 模式' }),
-  paragraphChunkDeep: z.number().optional().meta({ description: '段落分块深度' }),
-  paragraphChunkMinSize: z.number().optional().meta({ description: '段落分块最小大小' }),
-  chunkSize: z.number().optional().meta({ description: '分块大小' }),
+  paragraphChunkDeep: NumSchema.optional().meta({ description: '段落分块深度' }),
+  paragraphChunkMinSize: NumSchema.optional().meta({ description: '段落分块最小大小' }),
+  chunkSize: NumSchema.optional().meta({ description: '分块大小' }),
   chunkSplitter: z.string().optional().meta({ description: '自定义最高优先分割符号' }),
-  indexSize: z.number().optional().meta({ description: '索引大小' }),
+  indexSize: NumSchema.optional().meta({ description: '索引大小' }),
   qaPrompt: z.string().optional().meta({ description: 'QA 拆分提示词' })
 });
 export type ChunkSettingsType = z.infer<typeof ChunkSettingsSchema>;

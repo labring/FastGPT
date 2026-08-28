@@ -5,6 +5,7 @@ import { DevApiTagsMap } from '../../../../openapi/tag';
 import { BillItemSchema } from '../../../../openapi/support/wallet/bill/api';
 import { GetPaysResponseSchema } from '../../../../openapi/admin/routes/pays/api';
 import {
+  InvoiceRecordsResponseSchema,
   InvoiceSubmitBodySchema,
   UnInvoiceListResponseSchema
 } from '../../../../openapi/support/wallet/bill/invoice/api';
@@ -14,6 +15,7 @@ import {
   BillTypeEnum
 } from '../../../../support/wallet/bill/constants';
 import { BillSchema } from '../../../../support/wallet/bill/type';
+import { InvoiceStatusEnum } from '../../../../support/wallet/bill/invoice/constants';
 
 describe('wallet OpenAPI contracts', () => {
   const routes = {
@@ -139,6 +141,28 @@ describe('wallet OpenAPI contracts', () => {
     expect(InvoiceSubmitBodySchema.shape.billIdList.parse(bills.map((bill) => bill._id))).toEqual([
       billId
     ]);
+  });
+
+  it('fills the legacy missing invoice contact phone with a placeholder', () => {
+    const response = InvoiceRecordsResponseSchema.parse({
+      list: [
+        {
+          _id: '68ad85a7463006c963799a01',
+          teamId: '68ad85a7463006c963799a02',
+          amount: 9900,
+          status: InvoiceStatusEnum.submitted,
+          createTime: '2026-01-01T00:00:00.000Z',
+          billIdList: ['68ad85a7463006c963799a03'],
+          teamName: 'Example Team',
+          unifiedCreditCode: '91110000MA1234567X',
+          needSpecialInvoice: false,
+          emailAddress: 'billing@example.com'
+        }
+      ],
+      total: 1
+    });
+
+    expect(response.list[0].contactPhone).toBe('-');
   });
 
   it('omits empty request and response placeholders', () => {
