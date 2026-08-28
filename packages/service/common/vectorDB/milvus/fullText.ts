@@ -109,8 +109,8 @@ export const assertFullTextCapability = async (client: MilvusClient): Promise<vo
   const bm25Function = (desc.functions ?? []).find(
     (f) =>
       // proto 以 enums:String 加载,describeCollection 返回的 function type 是字符串 'BM25'
-      // (SDK 把 FunctionObject.type 标注为数值枚举,运行时是字符串,用 String() 归一)
-      String(f.type) === 'BM25' &&
+      // SDK 不同版本可能返回数值枚举 1 或字符串 'BM25',两者都兼容。
+      (String(f.type) === 'BM25' || Number(f.type) === 1) &&
       f.input_field_names?.includes('text') &&
       f.output_field_names?.includes('sparse')
   );

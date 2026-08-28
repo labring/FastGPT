@@ -6,7 +6,10 @@ vi.unmock('@fastgpt/service/common/vectorDB/milvus');
 vi.unmock('@fastgpt/service/common/vectorDB/constants');
 
 import { MilvusCtrl } from '@fastgpt/service/common/vectorDB/milvus';
-import { getMilvusFullTextStore } from '@fastgpt/service/common/vectorDB/milvus/fullText';
+import {
+  assertFullTextCapability,
+  getMilvusFullTextStore
+} from '@fastgpt/service/common/vectorDB/milvus/fullText';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { TEST_VECTORS } from '../testData';
 
@@ -53,6 +56,13 @@ describe.skipIf(!isEnabled)('Milvus FullText Integration', () => {
 
   beforeAll(async () => {
     await ctrl.init();
+  });
+
+  test('TC-FT-0 detects BM25 capability from the real collection metadata', async () => {
+    // describeCollection 的 FunctionType 在不同 SDK/服务端组合中可能返回数字 1 或字符串 BM25。
+    // 该集成断言确保真实 Milvus 元数据可通过能力门禁，避免启动时误报缺少 BM25 function。
+    const client = await ctrl.getClient();
+    await expect(assertFullTextCapability(client)).resolves.toBeUndefined();
   });
 
   test('TC-FT-1 BM25 search returns matching data via reverse lookup', async () => {
