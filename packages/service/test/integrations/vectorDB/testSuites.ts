@@ -15,7 +15,9 @@ const insertTestVectors = async (
         teamId,
         datasetId,
         collectionId: TEST_COLLECTION_IDS[index],
-        vectors: [vector]
+        vectors: [vector],
+        // Milvus 单表方案要求每条向量携带 BM25 文本;其他 provider 忽略该字段。
+        texts: [`integration-test-${index}`]
       });
       insertIds.push(ids[0]);
     })

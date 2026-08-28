@@ -106,7 +106,8 @@ export const assertFullTextCapability = async (client: MilvusClient): Promise<vo
   const fields = desc.schema?.fields ?? [];
   const textField = fields.find((f) => f.name === 'text');
   const sparseField = fields.find((f) => f.name === 'sparse');
-  const bm25Function = (desc.functions ?? []).find(
+  // functions 是 schema 的子对象(与 fields 平级),不在 describeCollection 顶层。
+  const bm25Function = (desc.schema?.functions ?? []).find(
     (f) =>
       // proto 以 enums:String 加载,describeCollection 返回的 function type 是字符串 'BM25'
       // SDK 不同版本可能返回数值枚举 1 或字符串 'BM25',两者都兼容。
@@ -114,7 +115,11 @@ export const assertFullTextCapability = async (client: MilvusClient): Promise<vo
       f.input_field_names?.includes('text') &&
       f.output_field_names?.includes('sparse')
   );
-  if (!textField || !sparseField || !bm25Function || !textField.analyzer_params) {
+  // analyzer 配置在字段 type_params 键值对中(与 metric_type 同理,proto 无顶层 analyzer_params 字段)。
+  const analyzerParams = (textField?.type_params ?? []).find(
+    (p) => p.key === 'analyzer_params'
+  )?.value;
+  if (!textField || !sparseField || !bm25Function || !analyzerParams) {
     throw new Error(
       `Milvus full-text unsupported: ${collectionName} missing BM25 function / text analyzer / sparse field (need Milvus 2.5.16+)`
     );

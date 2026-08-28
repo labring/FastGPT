@@ -109,16 +109,20 @@ beforeEach(() => {
   mockClient.loadCollectionSync.mockReset();
   mockClient.describeCollection.mockReset().mockResolvedValue({
     schema: {
-      fields: [{ name: 'id' }, { name: 'text', analyzer_params: '{}' }, { name: 'sparse' }]
-    },
-    functions: [
-      {
-        name: 'text_bm25_emb',
-        type: 'BM25',
-        input_field_names: ['text'],
-        output_field_names: ['sparse']
-      }
-    ]
+      fields: [
+        { name: 'id' },
+        { name: 'text', type_params: [{ key: 'analyzer_params', value: '{}' }] },
+        { name: 'sparse' }
+      ],
+      functions: [
+        {
+          name: 'text_bm25_emb',
+          type: 'BM25',
+          input_field_names: ['text'],
+          output_field_names: ['sparse']
+        }
+      ]
+    }
   });
   mockClient.describeIndex.mockReset().mockResolvedValue({
     index_descriptions: [{ field_name: 'sparse', params: [{ key: 'metric_type', value: 'BM25' }] }]

@@ -263,18 +263,21 @@ describe('assertFullTextCapability', () => {
       schema: {
         fields: [
           { name: 'id' },
-          { name: 'text', analyzer_params: '{"tokenizer":"standard"}' },
+          {
+            name: 'text',
+            type_params: [{ key: 'analyzer_params', value: '{"tokenizer":"standard"}' }]
+          },
           { name: 'sparse' }
+        ],
+        functions: [
+          {
+            name: 'text_bm25_emb',
+            type: 'BM25',
+            input_field_names: ['text'],
+            output_field_names: ['sparse']
+          }
         ]
-      },
-      functions: [
-        {
-          name: 'text_bm25_emb',
-          type: 'BM25',
-          input_field_names: ['text'],
-          output_field_names: ['sparse']
-        }
-      ]
+      }
     }),
     describeIndex: vi.fn().mockResolvedValue({
       index_descriptions: [
@@ -297,9 +300,13 @@ describe('assertFullTextCapability', () => {
     const client = validClient();
     client.describeCollection.mockResolvedValue({
       schema: {
-        fields: [{ name: 'id' }, { name: 'text', analyzer_params: '{}' }, { name: 'sparse' }]
-      },
-      functions: []
+        fields: [
+          { name: 'id' },
+          { name: 'text', type_params: [{ key: 'analyzer_params', value: '{}' }] },
+          { name: 'sparse' }
+        ],
+        functions: []
+      }
     });
     await expect(assertFullTextCapability(client as never)).rejects.toThrow(
       /full-text unsupported/
@@ -311,15 +318,17 @@ describe('assertFullTextCapability', () => {
   it('TC-6.5f throws when text has no analyzer', async () => {
     const client = validClient();
     client.describeCollection.mockResolvedValue({
-      schema: { fields: [{ name: 'id' }, { name: 'text' }, { name: 'sparse' }] },
-      functions: [
-        {
-          name: 'text_bm25_emb',
-          type: 'BM25',
-          input_field_names: ['text'],
-          output_field_names: ['sparse']
-        }
-      ]
+      schema: {
+        fields: [{ name: 'id' }, { name: 'text' }, { name: 'sparse' }],
+        functions: [
+          {
+            name: 'text_bm25_emb',
+            type: 'BM25',
+            input_field_names: ['text'],
+            output_field_names: ['sparse']
+          }
+        ]
+      }
     });
     await expect(assertFullTextCapability(client as never)).rejects.toThrow(
       /full-text unsupported/
