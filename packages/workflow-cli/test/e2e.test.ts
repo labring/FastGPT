@@ -36,13 +36,9 @@ describe('PR1 through PR4 CLI end to end', () => {
     const dir = join(cwd, 'basic-ai');
     expect((await invoke(jsonArgs(dir, ['init', '--name', 'Demo workflow']))).exitCode).toBe(0);
     const initializedDocument = JSON.parse(await readFile(join(dir, 'workflow.json'), 'utf8'));
-    expect(initializedDocument.nodes).toHaveLength(2);
-    expect(initializedDocument.nodes).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ nodeId: 'userGuide', flowNodeType: 'userGuide' }),
-        expect.objectContaining({ nodeId: 'start', flowNodeType: 'workflowStart' })
-      ])
-    );
+    expect(initializedDocument.nodes).toEqual([
+      expect.objectContaining({ nodeId: 'start', flowNodeType: 'workflowStart' })
+    ]);
     expect(
       (
         await invoke(
@@ -511,7 +507,16 @@ describe('PR1 through PR4 CLI end to end', () => {
       { NODE_ENV: 'test', MAX_TOKEN: '512' }
     );
     expect(envResult.exitCode).toBe(0);
-    expect(envResult.stdout[0]).not.toContain('512');
+    expect(JSON.parse(envResult.stdout[0])).toEqual({
+      schemaVersion: 'fastgpt-workflow-cli-result/v1',
+      ok: true,
+      command: 'input set',
+      changed: true,
+      checksum: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+      result: { dryRun: false },
+      changes: [{ type: 'input.set', nodeId: 'ai', inputKey: 'maxToken' }],
+      warnings: []
+    });
     await invoke(
       jsonArgs(dir, ['input', 'set', '--node', 'ai', '--key', 'temperature', '--value-json', '0.5'])
     );
@@ -971,7 +976,7 @@ describe('PR1 through PR4 CLI end to end', () => {
     ).toBe(2);
   });
 
-  it('adds system config when importing a legacy workflow without overwriting chatConfig', async () => {
+  it('imports workflow config without injecting abandoned nodes', async () => {
     const { cwd, invoke } = await createHarness();
     const sourceDir = join(cwd, 'legacy-source');
     await invoke(jsonArgs(sourceDir, ['init']));
@@ -983,19 +988,14 @@ describe('PR1 through PR4 CLI end to end', () => {
     );
     const sourceStorePath = join(cwd, 'legacy-store.json');
     await invoke(jsonArgs(sourceDir, ['build', '--output', sourceStorePath]));
-    const legacyStore = JSON.parse(await readFile(sourceStorePath, 'utf8'));
-    legacyStore.nodes = legacyStore.nodes.filter(
-      (node: { flowNodeType: string }) => node.flowNodeType !== 'userGuide'
-    );
-    await writeFile(sourceStorePath, JSON.stringify(legacyStore), 'utf8');
 
     const importedDir = join(cwd, 'legacy-imported');
     expect(
       (await invoke(jsonArgs(importedDir, ['import', '--input', sourceStorePath]))).exitCode
     ).toBe(0);
     const importedDocument = JSON.parse(await readFile(join(importedDir, 'workflow.json'), 'utf8'));
-    expect(importedDocument.nodes).toContainEqual(
-      expect.objectContaining({ nodeId: 'userGuide', flowNodeType: 'userGuide' })
+    expect(importedDocument.nodes).not.toContainEqual(
+      expect.objectContaining({ flowNodeType: 'userGuide' })
     );
     expect(importedDocument.chatConfig).toMatchObject({
       welcomeText: 'Legacy welcome',

@@ -8,7 +8,7 @@ import type { OnOpenCiteModalProps } from '@/web/core/chat/context/chatItemConte
 import AIResponseBox from '../../../../components/AIResponseBox';
 import RenderProcessingCollapse from '../../../../components/AIResponseBox/RenderProcessingCollapse';
 import RenderProcessingPreview, {
-  getProcessingPreviewLabelKey
+  getProcessingPreviewLabel
 } from '../../../../components/AIResponseBox/RenderProcessingPreview';
 import {
   hasAiAnswerContent,
@@ -127,7 +127,7 @@ const AIChatBubbleContent = ({
         <Box key={`${dataId}-processing-${group[0].index}`}>
           <RenderProcessingCollapse
             isProcessing={isProcessing}
-            label={previewItem ? getProcessingPreviewLabelKey(previewItem.value) : undefined}
+            label={previewItem ? getProcessingPreviewLabel(previewItem.value) : undefined}
             preview={
               previewItem ? (
                 <RenderProcessingPreview value={previewItem.value} showAnimation={isProcessing} />
@@ -223,7 +223,7 @@ const AIChatBubbleContent = ({
             <RenderProcessingCollapse
               title={t('workflow_builder_process_details')}
               isProcessing={block.isProcessing}
-              label={previewItem ? getProcessingPreviewLabelKey(previewItem.value) : undefined}
+              label={previewItem ? getProcessingPreviewLabel(previewItem.value) : undefined}
               preview={
                 previewItem ? (
                   <RenderProcessingPreview

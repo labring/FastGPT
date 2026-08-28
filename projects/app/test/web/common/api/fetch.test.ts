@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  activateStreamResumeController,
   buildStreamResumeUrl,
   getStreamTypingQueueConsumeCount,
   handleEventSourceData
@@ -93,5 +94,43 @@ describe('buildStreamResumeUrl', () => {
         chatTarget: { appId: 'app-1' }
       })
     ).toBe('/api/core/chat/resume?chatId=chat-1&appId=app-1');
+  });
+});
+
+describe('activateStreamResumeController', () => {
+  it('should keep different chat resume requests independent', () => {
+    const appController = new AbortController();
+    const builderController = new AbortController();
+    const deactivateApp = activateStreamResumeController('app:chat-1', appController);
+    const deactivateBuilder = activateStreamResumeController(
+      'workflowBuilder:chat-2',
+      builderController
+    );
+
+    expect(appController.signal.aborted).toBe(false);
+    expect(builderController.signal.aborted).toBe(false);
+
+    deactivateApp();
+    deactivateBuilder();
+  });
+
+  it('should replace only the previous resume request for the same chat', () => {
+    const previousController = new AbortController();
+    const activeController = new AbortController();
+    const nextController = new AbortController();
+    const deactivatePrevious = activateStreamResumeController('app:chat-1', previousController);
+    const deactivateActive = activateStreamResumeController('app:chat-1', activeController);
+
+    expect(previousController.signal.aborted).toBe(true);
+    expect(previousController.signal.reason).toBe('replace');
+    expect(activeController.signal.aborted).toBe(false);
+
+    deactivatePrevious();
+    const deactivateNext = activateStreamResumeController('app:chat-1', nextController);
+    expect(activeController.signal.aborted).toBe(true);
+    expect(nextController.signal.aborted).toBe(false);
+
+    deactivateActive();
+    deactivateNext();
   });
 });

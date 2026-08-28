@@ -58,7 +58,7 @@ const RenderProcessingCollapse = React.memo(function RenderProcessingCollapse({
                     {isProcessing && label && (
                       <Box as="span">
                         {' · '}
-                        {t(label)}
+                        {label}
                         {'...'}
                       </Box>
                     )}

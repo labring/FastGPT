@@ -658,7 +658,27 @@ type StreamResumeFetchParams = ChatAuthTargetInput & {
   controller: AbortController;
 };
 
-let activeResumeController: AbortController | undefined;
+const activeResumeControllerMap = new Map<string, AbortController>();
+
+/**
+ * 激活指定会话的续流控制器。
+ *
+ * 同一会话的新请求会替换旧请求；不同来源或 chatId 的续流相互独立，避免同页多个
+ * ChatBox 互相中断。返回的清理函数只清理仍由当前 controller 占用的会话。
+ */
+export const activateStreamResumeController = (resumeKey: string, controller: AbortController) => {
+  const activeController = activeResumeControllerMap.get(resumeKey);
+  if (activeController && activeController !== controller) {
+    activeController.abort('replace');
+  }
+  activeResumeControllerMap.set(resumeKey, controller);
+
+  return () => {
+    if (activeResumeControllerMap.get(resumeKey) === controller) {
+      activeResumeControllerMap.delete(resumeKey);
+    }
+  };
+};
 
 /**
  * 构造聊天续流地址。
@@ -684,17 +704,11 @@ export const buildStreamResumeUrl = ({
 export async function streamResumeFetch(params: StreamResumeFetchParams) {
   const { chatId, onmessage, onResumeUnavailable, controller } = params;
   const url = buildStreamResumeUrl({ chatId, chatTarget: params });
+  const deactivateController = activateStreamResumeController(url, controller);
 
-  if (activeResumeController && activeResumeController !== controller) {
-    activeResumeController.abort('replace');
-  }
-  activeResumeController = controller;
-
-  return $resumefetch({ url, onmessage, onResumeUnavailable, controller }).finally(() => {
-    if (activeResumeController === controller) {
-      activeResumeController = undefined;
-    }
-  });
+  return $resumefetch({ url, onmessage, onResumeUnavailable, controller }).finally(
+    deactivateController
+  );
 }
 
 export const onOptimizePrompt = async ({

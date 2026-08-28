@@ -113,11 +113,11 @@ describe('request-scoped CLI template provider', () => {
           {
             key: 'userChatInput',
             value: ['start', 'userChatInput'],
-            selectedType: 'reference',
-            selectedTypeIndex: 1
+            selectedType: 'reference'
           }
         ]
       });
+      expect(weatherNode.inputs[0]).not.toHaveProperty('selectedTypeIndex');
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

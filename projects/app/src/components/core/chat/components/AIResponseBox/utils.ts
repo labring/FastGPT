@@ -5,6 +5,7 @@ import type {
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { AgentAskAnswerDetail } from '../../ChatContainer/ChatBox/Input/AgentAskComposer';
 import type { WorkflowBuilderVersionDisplayState } from '@fastgpt/global/core/workflow/builder/type';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 export const workflowBuilderAppliedFeedbackDuration = 1200;
 
@@ -26,32 +27,65 @@ export const getWorkflowBuilderVersionButtonState = ({
   return 'apply';
 };
 
-const workflowBuilderToolPresentationMap: Record<string, { nameKey: string; avatar: string }> = {
+const workflowBuilderToolPresentationMap: Record<
+  string,
+  { nameKey: string; getName: () => string; avatar: string }
+> = {
   workflow_cli_query: {
     nameKey: 'workflow:workflow_builder_tool_query',
+    getName: () => i18nT('workflow:workflow_builder_tool_query'),
     avatar: 'core/chat/workflowBuilder/query'
   },
   workflow_cli_stage: {
     nameKey: 'workflow:workflow_builder_tool_stage',
+    getName: () => i18nT('workflow:workflow_builder_tool_stage'),
     avatar: 'core/chat/workflowBuilder/stage'
   },
   workflow_cli_commit: {
     nameKey: 'workflow:workflow_builder_tool_commit',
+    getName: () => i18nT('workflow:workflow_builder_tool_commit'),
     avatar: 'core/chat/workflowBuilder/commit'
   },
   workflow_builder_present_preview: {
     nameKey: 'workflow:workflow_builder_tool_preview',
+    getName: () => i18nT('workflow:workflow_builder_tool_preview'),
     avatar: 'core/chat/workflowBuilder/preview'
   },
   workflow_builder_cancel: {
     nameKey: 'workflow:workflow_builder_tool_cancel',
+    getName: () => i18nT('workflow:workflow_builder_tool_cancel'),
     avatar: 'core/chat/workflowBuilder/cancel'
   }
 };
 
 /** 统一 Workflow Builder 工具在聊天过程与完整响应中的本地化名称和 Figma 图标。 */
-export const getWorkflowBuilderToolPresentation = (functionName?: string) =>
-  functionName ? workflowBuilderToolPresentationMap[functionName] : undefined;
+export const getWorkflowBuilderToolPresentation = (functionName?: string) => {
+  const presentation = functionName ? workflowBuilderToolPresentationMap[functionName] : undefined;
+  if (!presentation) return;
+
+  return {
+    nameKey: presentation.nameKey,
+    avatar: presentation.avatar
+  };
+};
+
+/** 使用静态 i18n key 获取 Workflow Builder 工具名称，避免语言包清理时误删翻译。 */
+export const getWorkflowBuilderToolDisplayName = (functionName?: string) =>
+  functionName ? workflowBuilderToolPresentationMap[functionName]?.getName() : undefined;
+
+/**
+ * 获取聊天工具的当前展示名称。
+ *
+ * Workflow Builder 工具使用稳定的 functionName 按当前语言实时翻译，避免历史消息中
+ * 已持久化的其他语言 toolName 阻止语言切换；未知工具继续回退到服务端名称。
+ */
+export const getToolDisplayName = ({
+  functionName,
+  toolName
+}: {
+  functionName?: string;
+  toolName?: string;
+}) => getWorkflowBuilderToolDisplayName(functionName) ?? toolName;
 
 /**
  * 将通用 Agent Ask Composer 的提交结果转换为 Workflow Builder 预览动作。

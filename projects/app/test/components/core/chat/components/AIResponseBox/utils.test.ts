@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { WorkflowBuilderPreviewAction } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import {
   adaptLegacyAgentPlanAskToReadonlyAgentAsk,
+  getToolDisplayName,
   getWorkflowBuilderVersionButtonState,
+  getWorkflowBuilderToolDisplayName,
   getWorkflowBuilderToolPresentation,
   resolveWorkflowBuilderPreviewAnswerAction,
   workflowBuilderAppliedFeedbackDuration
@@ -87,7 +90,26 @@ describe('AIResponseBox utils', () => {
       nameKey: 'workflow:workflow_builder_tool_query',
       avatar: 'core/chat/workflowBuilder/query'
     });
+    expect(getWorkflowBuilderToolDisplayName('workflow_cli_query')).toBe(
+      i18nT('workflow:workflow_builder_tool_query')
+    );
     expect(getWorkflowBuilderToolPresentation('other_tool')).toBeUndefined();
+    expect(getWorkflowBuilderToolDisplayName('other_tool')).toBeUndefined();
+  });
+
+  it('uses the current locale for Builder tools instead of the persisted historical name', () => {
+    expect(
+      getToolDisplayName({
+        functionName: 'workflow_cli_query',
+        toolName: '历史语言中的工具名称'
+      })
+    ).toBe(i18nT('workflow:workflow_builder_tool_query'));
+    expect(
+      getToolDisplayName({
+        functionName: 'other_tool',
+        toolName: 'Custom tool name'
+      })
+    ).toBe('Custom tool name');
   });
 
   it('maps Workflow Builder version facts to the Figma button states', () => {

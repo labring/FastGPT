@@ -4,18 +4,35 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { getDocPath } from '@/web/common/system/doc';
 
-const commercialFeatures = [
-  'workflow_builder_commercial_feature_generation',
-  'workflow_builder_commercial_feature_dataset_tenant',
-  'workflow_builder_commercial_feature_audit',
-  'workflow_builder_commercial_feature_third_party_dataset',
-  'workflow_builder_commercial_feature_dashboard',
-  'workflow_builder_commercial_feature_more'
-] as const;
-
 /** 按 Figma 展示社区版 Workflow Builder 的商业版锁定输入区。 */
 const WorkflowBuilderCommercialInput = () => {
   const { t } = useTranslation('workflow');
+  const commercialFeatures = [
+    {
+      id: 'generation',
+      label: t('workflow_builder_commercial_feature_generation')
+    },
+    {
+      id: 'dataset-tenant',
+      label: t('workflow_builder_commercial_feature_dataset_tenant')
+    },
+    {
+      id: 'audit',
+      label: t('workflow_builder_commercial_feature_audit')
+    },
+    {
+      id: 'third-party-dataset',
+      label: t('workflow_builder_commercial_feature_third_party_dataset')
+    },
+    {
+      id: 'dashboard',
+      label: t('workflow_builder_commercial_feature_dashboard')
+    },
+    {
+      id: 'more',
+      label: t('workflow_builder_commercial_feature_more')
+    }
+  ];
 
   return (
     <Box w="100%" px="17.5px" pb="16px" flexShrink={0}>
@@ -78,12 +95,12 @@ const WorkflowBuilderCommercialInput = () => {
               columnGap="16px"
               rowGap="8px"
             >
-              {commercialFeatures.map((feature, index) => {
+              {commercialFeatures.map(({ id, label }, index) => {
                 const isMore = index === commercialFeatures.length - 1;
 
                 return (
                   <Flex
-                    key={feature}
+                    key={id}
                     minW={0}
                     alignItems="center"
                     gap="4px"
@@ -125,7 +142,7 @@ const WorkflowBuilderCommercialInput = () => {
                       letterSpacing="0.048px"
                       whiteSpace="nowrap"
                     >
-                      {t(feature)}
+                      {label}
                     </Text>
                   </Flex>
                 );

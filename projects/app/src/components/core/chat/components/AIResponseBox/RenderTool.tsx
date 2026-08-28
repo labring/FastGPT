@@ -15,7 +15,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useMemo, useState } from 'react';
 import { accordionButtonStyle } from './constants';
-import { getWorkflowBuilderToolPresentation } from './utils';
+import { getToolDisplayName, getWorkflowBuilderToolPresentation } from './utils';
 
 const formatJson = (value: string) => {
   try {
@@ -109,15 +109,13 @@ const RenderTool = React.memo(function RenderTool({
   showAnimation: boolean;
   tool: ToolModuleResponseItemType;
 }) {
-  const { t } = useSafeTranslation();
+  // 工具名称由静态 i18n helper 生成；这里订阅语言变化，确保 React.memo 组件及时刷新。
+  useSafeTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const isToolGenerating = showAnimation && tool.response === undefined;
   const workflowBuilderPresentation = getWorkflowBuilderToolPresentation(tool.functionName);
   const displayAvatar = tool.toolAvatar || workflowBuilderPresentation?.avatar || '';
-  const displayName =
-    workflowBuilderPresentation && (!tool.toolName || tool.toolName === tool.functionName)
-      ? workflowBuilderPresentation.nameKey
-      : tool.toolName;
+  const displayName = getToolDisplayName(tool);
 
   return (
     <Accordion
@@ -158,7 +156,7 @@ const RenderTool = React.memo(function RenderTool({
               textOverflow={'ellipsis'}
               whiteSpace={'nowrap'}
             >
-              {t(displayName)}
+              {displayName}
             </Box>
           </HStack>
           {isToolGenerating && <MyIcon name={'common/loading'} w={'14px'} color="myGray.500" />}

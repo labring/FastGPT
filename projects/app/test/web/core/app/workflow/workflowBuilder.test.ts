@@ -778,7 +778,7 @@ describe('Workflow Builder Web Adapter', () => {
     expect(enqueue).not.toHaveBeenCalled();
   });
 
-  it('keeps Builder-applied chatConfig when updating local app detail', () => {
+  it('keeps user-owned app metadata while applying Builder chatConfig', () => {
     const document = WorkflowDocumentSchema.parse(structuredClone(fixture));
     document.app.name = 'Builder Result';
     document.app.intro = 'Updated by Builder';
@@ -796,8 +796,8 @@ describe('Workflow Builder Web Adapter', () => {
         targetDocument: document
       })
     ).toMatchObject({
-      name: 'Builder Result',
-      intro: 'Updated by Builder',
+      name: 'Old Name',
+      intro: 'Old intro',
       chatConfig: {
         fileSelectConfig: { maxFiles: 1, canSelectFile: true }
       }
