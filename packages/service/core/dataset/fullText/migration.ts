@@ -21,7 +21,7 @@ import {
   assertFullTextCapability,
   assertMilvusVersion
 } from '../../../common/vectorDB/milvus/fullText';
-import { resolveMutationErrIndex } from '../../../common/vectorDB/milvus/mutation';
+import { resolveMutationErrIndex } from '../../../common/vectorDB/milvus/utils';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import {
   MongoFullTextMigrationFailed,

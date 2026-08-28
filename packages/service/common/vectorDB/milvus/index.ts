@@ -12,7 +12,7 @@ import {
   getDatasetVectorTableName
 } from '../constants';
 import { assertFullTextCapability, assertMilvusVersion, buildCollectionFilter } from './fullText';
-import { resolveMutationErrIndex } from './mutation';
+import { resolveMutationErrIndex } from './utils';
 import {
   buildAnalyzerParams,
   createBM25Function,
