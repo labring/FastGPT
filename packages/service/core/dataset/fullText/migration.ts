@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { LoadState, type MilvusClient } from '@zilliz/milvus2-sdk-node';
+import { ErrorCode, LoadState, type MilvusClient } from '@zilliz/milvus2-sdk-node';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { retryFn } from '@fastgpt/global/common/system/utils';
@@ -225,6 +225,53 @@ const writeFailedRows = async (
 };
 
 /**
+ * 执行单批 upsert 并按 Milvus 返回状态拆分为成功/失败行。
+ * SDK 的 upsert 不校验 status.error_code:服务端失败(如 OOM/quota/集合异常)可能以
+ * error_code != Success 或 err_index 部分失败表达,而 promise 不 reject;不显式校验会把
+ * 失败批次计为成功。返回 { successIds, failedIds, error } 供调用方分别计数与落失败表。
+ */
+const upsertChunk = async (
+  client: MilvusClient,
+  chunk: MigrationTargetRow[]
+): Promise<{ successIds: string[]; failedIds: string[]; error?: string }> => {
+  const result = await retryFn(() =>
+    client.upsert({ collection_name: DatasetVectorTableNameV2, data: chunk })
+  );
+  const errorCode = result.status?.error_code;
+  const errIndex =
+    Array.isArray(result.err_index) && result.err_index.length > 0
+      ? result.err_index
+      : errorCode === ErrorCode.SUCCESS
+        ? []
+        : chunk.map((_, i) => i);
+
+  const failedIdSet = new Set(
+    errIndex.map((i) => String(chunk[Number(i)]?.id)).filter((id) => id && id !== 'undefined')
+  );
+  const failedIds = chunk
+    .filter((row) => failedIdSet.has(String(row.id)))
+    .map((row) => String(row.id));
+  const successIds = chunk
+    .filter((row) => !failedIdSet.has(String(row.id)))
+    .map((row) => String(row.id));
+  return { successIds, failedIds, error: result.status?.reason };
+};
+
+/**
+ * 唯一部分索引 {newEngine:1, status:'running'} 重复键 → 转成明确的并发拒绝错误。
+ * findOne 检查与 create 之间可能有 TOCTOU 窗口,索引兜底保证同引擎同时只有一个 running 日志。
+ */
+const toConcurrentRunningError = async (error: unknown, newEngine: 'milvus'): Promise<never> => {
+  if ((error as { code?: number })?.code === 11000) {
+    const running = await MongoFullTextMigrationLog.findOne({ newEngine, status: 'running' });
+    throw new Error(
+      `Migration already running (${running?.migrationId}). Resume it with resumeMigrationId=${running?.migrationId}; if the previous run was interrupted (server restart), resume takes over from the last batch.`
+    );
+  }
+  throw error;
+};
+
+/**
  * 单方向(mongo->milvus)全量迁移(旧表 modeldata 纯拷贝):
  * queryIterator 遍历源 milvus modeldata 行,按 `indexes[].dataId === 向量 id` join mongo
  * dataset_data 取 text 与归属,写 modeldata_v2(不重嵌入)。imageEmbedding 只保留向量,BM25 文本置空。
@@ -304,10 +351,16 @@ export const runFullTextMigration = async (
       );
     }
     // 续跑把 cancelled/failed/僵死 running 状态回 running
-    await MongoFullTextMigrationLog.updateOne(
-      { migrationId },
-      { $set: { status: 'running', updatedAt: new Date() } }
-    );
+    try {
+      await MongoFullTextMigrationLog.updateOne(
+        { migrationId },
+        { $set: { status: 'running', updatedAt: new Date() } }
+      );
+    } catch (error) {
+      // 唯一部分索引 {newEngine,status:'running'} 兜底:若此刻已有其他 running 日志,拒绝续跑,
+      // 避免两个循环并发处理同一批源行。
+      await toConcurrentRunningError(error, newEngine);
+    }
     cursor = log.cursor || '';
     // 续跑从日志续起计数:processed/skipped/failed 记录的是 cursor 之前已处理的行,
     // 否则最终计数与 sourceCount 对不上,续跑无法判定 done。
@@ -348,20 +401,26 @@ export const runFullTextMigration = async (
   }
 
   // 5. 新建迁移日志(断点续跑不新建)
+  // findOne 预检与 create 之间存在 TOCTOU 窗口,唯一部分索引 {newEngine,status:'running'}
+  // 兜底:两个并发新启动同时通过预检时,后到的 create 命中重复键,转成明确的"已在运行"错误。
   if (!migrationId) {
     migrationId = randomUUID();
-    await MongoFullTextMigrationLog.create({
-      migrationId,
-      newEngine,
-      status: 'running',
-      cursor: '',
-      totalCount: sourceCount,
-      processedCount: 0,
-      skippedCount: 0,
-      failedCount: 0,
-      updatedAt: new Date(),
-      createdAt: new Date()
-    });
+    try {
+      await MongoFullTextMigrationLog.create({
+        migrationId,
+        newEngine,
+        status: 'running',
+        cursor: '',
+        totalCount: sourceCount,
+        processedCount: 0,
+        skippedCount: 0,
+        failedCount: 0,
+        updatedAt: new Date(),
+        createdAt: new Date()
+      });
+    } catch (error) {
+      await toConcurrentRunningError(error, newEngine);
+    }
   }
 
   logger.info(
@@ -405,20 +464,30 @@ export const runFullTextMigration = async (
       skipped += rows.length - targetRows.length;
 
       // 目标写入片(FULL_TEXT_WRITE_BATCH_SIZE)与源读取批(batchSize)独立。
-      // upsert 经 retryFn 包装(默认 3 次尝试),最终仍失败才计 failed 并落失败日志。
+      // upsert 经 retryFn 包装(默认 3 次尝试)抗传输错误;服务端以 status/err_index 表达的
+      // 失败(不 reject)由 upsertChunk 拆分,成功行计 processed、失败行计 failed 并落失败日志。
       for (let i = 0; i < targetRows.length; i += FULL_TEXT_WRITE_BATCH_SIZE) {
         const chunk = targetRows.slice(i, i + FULL_TEXT_WRITE_BATCH_SIZE);
         try {
-          await retryFn(() =>
-            client.upsert({ collection_name: DatasetVectorTableNameV2, data: chunk })
-          );
-          processed += chunk.length;
+          const { successIds, failedIds, error } = await upsertChunk(client, chunk);
+          processed += successIds.length;
           // 成功后清掉失败表残留,避免续跑时重复计数/重复迁移
-          await MongoFullTextMigrationFailed.deleteMany({
-            migrationId,
-            dataId: { $in: chunk.map((c) => String(c.id)) }
-          });
+          if (successIds.length > 0) {
+            await MongoFullTextMigrationFailed.deleteMany({
+              migrationId,
+              dataId: { $in: successIds }
+            });
+          }
+          if (failedIds.length > 0) {
+            failed += failedIds.length;
+            await writeFailedRows(
+              migrationId,
+              failedIds,
+              new Error(error ?? 'Milvus upsert failed')
+            );
+          }
         } catch (retryErr) {
+          // 整批抛错(传输/客户端异常):全部失败
           failed += chunk.length;
           await writeFailedRows(
             migrationId,
@@ -516,14 +585,22 @@ export const runFullTextMigration = async (
       for (let i = 0; i < retryTargets.length; i += FULL_TEXT_WRITE_BATCH_SIZE) {
         const chunk = retryTargets.slice(i, i + FULL_TEXT_WRITE_BATCH_SIZE);
         try {
-          await retryFn(() =>
-            client.upsert({ collection_name: DatasetVectorTableNameV2, data: chunk })
-          );
-          recoveredSuccess += chunk.length;
-          await MongoFullTextMigrationFailed.deleteMany({
-            migrationId,
-            dataId: { $in: chunk.map((c) => String(c.id)) }
-          });
+          const { successIds, failedIds, error } = await upsertChunk(client, chunk);
+          recoveredSuccess += successIds.length;
+          if (successIds.length > 0) {
+            await MongoFullTextMigrationFailed.deleteMany({
+              migrationId,
+              dataId: { $in: successIds }
+            });
+          }
+          if (failedIds.length > 0) {
+            // 仍失败:保留失败表记录并刷新错误信息(计数不变)
+            await writeFailedRows(
+              migrationId,
+              failedIds,
+              new Error(error ?? 'Milvus upsert failed')
+            );
+          }
         } catch (retryErr) {
           // 仍失败:保留失败表记录并刷新错误信息(计数不变)
           await writeFailedRows(

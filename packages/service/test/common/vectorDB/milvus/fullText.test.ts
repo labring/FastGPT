@@ -27,6 +27,7 @@ vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
 // 注:计划原样使用 vi.fn(() => ({...})),vitest 4 中 new 一个带箭头函数实现的 mock 会抛
 // "not a constructor";改用可构造 class 提供相同的 search/describeCollection 桩。
 vi.mock('@zilliz/milvus2-sdk-node', () => ({
+  FunctionType: { BM25: 'BM25' },
   MilvusClient: class {
     connectPromise: Promise<void> = Promise.resolve();
     search = mockSearch;
@@ -253,5 +254,95 @@ describe('assertFullTextCapability', () => {
     await expect(
       assertFullTextCapability({ describeCollection: mockDescribeCollection } as never)
     ).rejects.toThrow(/full-text unsupported/);
+  });
+
+  // 被测函数: assertFullTextCapability  等级: 3-High
+  // 合法能力形状:text 带 analyzer + sparse 字段 + BM25 function + sparse 索引 metric=BM25
+  const validClient = () => ({
+    describeCollection: vi.fn().mockResolvedValue({
+      schema: {
+        fields: [
+          { name: 'id' },
+          { name: 'text', analyzer_params: '{"tokenizer":"standard"}' },
+          { name: 'sparse' }
+        ]
+      },
+      functions: [
+        {
+          name: 'text_bm25_emb',
+          type: 'BM25',
+          input_field_names: ['text'],
+          output_field_names: ['sparse']
+        }
+      ]
+    }),
+    describeIndex: vi.fn().mockResolvedValue({
+      index_descriptions: [
+        { field_name: 'sparse', params: [{ key: 'metric_type', value: 'BM25' }] }
+      ]
+    })
+  });
+
+  // (正常场景) 三类配置齐全, 期望: 通过,且 describeIndex 被核验
+  it('TC-6.5e passes when function, analyzer and BM25 index present', async () => {
+    const client = validClient();
+    await expect(assertFullTextCapability(client as never)).resolves.toBeUndefined();
+    expect(client.describeIndex).toHaveBeenCalledWith(
+      expect.objectContaining({ index_name: 'sparse_BM25' })
+    );
+  });
+
+  // (异常场景) text/sparse 字段都在但无 BM25 function(旧集合/手工建), 期望: 抛 /full-text unsupported/
+  it('TC-6.5b throws when BM25 function missing', async () => {
+    const client = validClient();
+    client.describeCollection.mockResolvedValue({
+      schema: {
+        fields: [{ name: 'id' }, { name: 'text', analyzer_params: '{}' }, { name: 'sparse' }]
+      },
+      functions: []
+    });
+    await expect(assertFullTextCapability(client as never)).rejects.toThrow(
+      /full-text unsupported/
+    );
+    expect(client.describeIndex).not.toHaveBeenCalled();
+  });
+
+  // (异常场景) text 字段未配置 analyzer, 期望: 抛 /full-text unsupported/
+  it('TC-6.5f throws when text has no analyzer', async () => {
+    const client = validClient();
+    client.describeCollection.mockResolvedValue({
+      schema: { fields: [{ name: 'id' }, { name: 'text' }, { name: 'sparse' }] },
+      functions: [
+        {
+          name: 'text_bm25_emb',
+          type: 'BM25',
+          input_field_names: ['text'],
+          output_field_names: ['sparse']
+        }
+      ]
+    });
+    await expect(assertFullTextCapability(client as never)).rejects.toThrow(
+      /full-text unsupported/
+    );
+  });
+
+  // (异常场景) sparse 索引 metric 非 BM25, 期望: 抛 /metric is not BM25/
+  it('TC-6.5c throws when sparse index metric is not BM25', async () => {
+    const client = validClient();
+    client.describeIndex.mockResolvedValue({
+      index_descriptions: [
+        { field_name: 'sparse', params: [{ key: 'metric_type', value: 'IVF_FLAT' }] }
+      ]
+    });
+    await expect(assertFullTextCapability(client as never)).rejects.toThrow(/metric is not BM25/);
+  });
+
+  // (异常场景) sparse 索引缺失, 期望: 抛 /sparse index missing or metric is not BM25/
+  it('TC-6.5d throws when sparse index missing', async () => {
+    const client = validClient();
+    client.describeIndex.mockResolvedValue({ index_descriptions: [] });
+    await expect(assertFullTextCapability(client as never)).rejects.toThrow(
+      /sparse index missing or metric is not BM25/
+    );
   });
 });

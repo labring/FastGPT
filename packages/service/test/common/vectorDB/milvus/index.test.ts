@@ -9,6 +9,7 @@ const mockHasCollection = vi.fn();
 const mockGetLoadState = vi.fn();
 const mockLoadCollectionSync = vi.fn();
 const mockDescribeCollection = vi.fn();
+const mockDescribeIndex = vi.fn();
 const mockGetVersion = vi.fn();
 const mockInsert = vi.fn();
 const mockDelete = vi.fn();
@@ -34,6 +35,7 @@ vi.mock('@zilliz/milvus2-sdk-node', () => ({
     getLoadState = mockGetLoadState;
     loadCollectionSync = mockLoadCollectionSync;
     describeCollection = mockDescribeCollection;
+    describeIndex = mockDescribeIndex;
     getVersion = mockGetVersion;
     insert = mockInsert;
     delete = mockDelete;
@@ -65,7 +67,20 @@ beforeEach(() => {
   mockGetLoadState.mockReset().mockResolvedValue({ state: 'LoadStateNotLoad' });
   mockLoadCollectionSync.mockReset();
   mockDescribeCollection.mockReset().mockResolvedValue({
-    schema: { fields: [{ name: 'id' }, { name: 'text' }, { name: 'sparse' }] }
+    schema: {
+      fields: [{ name: 'id' }, { name: 'text', analyzer_params: '{}' }, { name: 'sparse' }]
+    },
+    functions: [
+      {
+        name: 'text_bm25_emb',
+        type: 'BM25',
+        input_field_names: ['text'],
+        output_field_names: ['sparse']
+      }
+    ]
+  });
+  mockDescribeIndex.mockReset().mockResolvedValue({
+    index_descriptions: [{ field_name: 'sparse', params: [{ key: 'metric_type', value: 'BM25' }] }]
   });
   mockGetVersion.mockReset().mockResolvedValue({ version: 'v2.5.16' });
   mockInsert.mockReset().mockResolvedValue({ IDs: { str_id: { data: ['1'] } } });
@@ -172,6 +187,21 @@ describe('MilvusCtrl', () => {
         texts: ['hello']
       })
     ).rejects.toThrow(/texts length \(1\) does not match vectors length \(2\)/);
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
+
+  // 被测函数: MilvusCtrl.insert  等级: 3-High
+  // (异常场景) texts 为 undefined, 期望: 拒绝(Milvus 单表方案的 text 是 BM25 输入,不允许缺省)
+  it('TC-8.15 insert rejects missing texts', async () => {
+    const ctrl = new MilvusCtrl();
+    await expect(
+      ctrl.insert({
+        teamId: 't',
+        datasetId: 'd',
+        collectionId: 'c',
+        vectors: [[0.1]]
+      })
+    ).rejects.toThrow(/Milvus insert requires texts/);
     expect(mockInsert).not.toHaveBeenCalled();
   });
 

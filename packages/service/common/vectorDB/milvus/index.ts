@@ -138,7 +138,13 @@ export class MilvusCtrl implements VectorControllerType {
     const client = await this.getClient();
     const { teamId, datasetId, collectionId, vectors, texts } = props;
 
-    if (texts !== undefined && texts.length !== vectors.length) {
+    // 单表方案:BM25 文本随向量一并写入 modeldata_v2。texts 缺失会让全文行静默变空文本、
+    // 全文检索永远命中不了,故 Milvus 分支强制要求 texts 存在且与 vectors 一一对应;
+    // 数组元素允许空串(imageEmbedding 不索引文本,与迁移行为一致)。
+    if (texts === undefined) {
+      throw new Error('Milvus insert requires texts (per-vector BM25 text)');
+    }
+    if (texts.length !== vectors.length) {
       throw new Error(
         `Milvus insert texts length (${texts.length}) does not match vectors length (${vectors.length})`
       );
@@ -166,7 +172,7 @@ export class MilvusCtrl implements VectorControllerType {
         createTime: Date.now(),
         // 单表方案:provider=milvus 时全文 text 随向量一并写入 modeldata_v2。
         // VarChar max_length 按 UTF-8 字节计,写入前按字节截断,避免中文等多字节文本超限导致插入失败
-        text: truncateFullTextByBytes(texts?.[index] ?? '', MILVUS_TEXT_MAX_LENGTH)
+        text: truncateFullTextByBytes(texts[index] ?? '', MILVUS_TEXT_MAX_LENGTH)
       }))
     });
 

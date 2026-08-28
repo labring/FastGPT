@@ -1,28 +1,25 @@
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps, NextApiResponse } from '@fastgpt/next/type';
+import { BoolSchema, IntSchema } from '@fastgpt/global/common/zod';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import {
   runFullTextMigration,
   type InitMilvusFullTextResult
 } from '@fastgpt/service/core/dataset/fullText/migration';
+import z from 'zod';
 
-export type Query = {
+export const QuerySchema = z.object({
   /** 每批条数,默认 500 */
-  batchSize?: string;
+  batchSize: IntSchema.min(1).max(2000).optional().default(500),
   /** dryRun=true | 1:只统计不写入 */
-  dryRun?: string;
+  dryRun: BoolSchema.optional().default(false),
   /** removeOld=true | 1:迁移校验通过后直接 drop 原 modeldata collection */
-  removeOld?: string;
+  removeOld: BoolSchema.optional().default(false),
   /** 断点续跑:沿用已有 migrationId */
-  resumeMigrationId?: string;
-};
-
-export const parseQuery = (q: Query) => ({
-  batchSize: q.batchSize ? Number(q.batchSize) : undefined,
-  dryRun: q.dryRun === 'true' || q.dryRun === '1',
-  removeOld: q.removeOld === 'true' || q.removeOld === '1',
-  resumeMigrationId: q.resumeMigrationId
+  resumeMigrationId: z.string().uuid().optional()
 });
+export type Query = z.infer<typeof QuerySchema>;
 
 /**
  * 全文检索引擎全量迁移脚本(旧表 modeldata 纯拷贝)。
@@ -55,7 +52,7 @@ async function handler(
 ): Promise<InitMilvusFullTextResult> {
   await authCert({ req, authRoot: true });
 
-  const q = parseQuery(req.query);
+  const { query } = parseApiInput({ req, querySchema: QuerySchema });
 
   // 客户端中断(curl ctrl+C / 断连)即取消:置位 signal,主循环下批边界停并标记 cancelled,进度可续跑。
   // 仅当响应未正常写完就断连(writableEnded=false)才视为取消;正常完成后响应已写完,不受影响。
@@ -64,7 +61,7 @@ async function handler(
     if (!res.writableEnded) signal.cancelled = true;
   });
 
-  return runFullTextMigration({ ...q, signal });
+  return runFullTextMigration({ ...query, signal });
 }
 
 export default NextAPI(handler);

@@ -93,17 +93,44 @@ export const buildCollectionFilter = (props: {
 };
 
 /**
- * 能力探测:校验 modeldata_v2 的 text/sparse 字段存在。
- * 不支持的 Milvus 版本 / analyzer 会在这里暴露。
+ * 能力探测:校验 modeldata_v2 的 BM25 全文配置完整。
+ * 只查字段存在不够——已存在的集合可能缺少 BM25 function、sparse 索引或 analyzer 配置
+ * (旧版本/手工建集合),检索会静默失败,这里在启动/迁移前把三类配置一并核验:
+ * 1. text 字段存在且配置了 analyzer(text 带 analyzer_params 才有 BM25 分词输入)
+ * 2. sparse 字段存在,且存在 text -> sparse 的 BM25 function
+ * 3. sparse 索引存在且 metric 为 BM25(全文检索依赖该索引)
  */
 export const assertFullTextCapability = async (client: MilvusClient): Promise<void> => {
-  const desc = await client.describeCollection({
-    collection_name: getDatasetVectorTableName()
-  });
-  const fieldNames = (desc.schema?.fields ?? []).map((f) => f.name);
-  if (!fieldNames.includes('sparse') || !fieldNames.includes('text')) {
+  const collectionName = getDatasetVectorTableName();
+  const desc = await client.describeCollection({ collection_name: collectionName });
+  const fields = desc.schema?.fields ?? [];
+  const textField = fields.find((f) => f.name === 'text');
+  const sparseField = fields.find((f) => f.name === 'sparse');
+  const bm25Function = (desc.functions ?? []).find(
+    (f) =>
+      // proto 以 enums:String 加载,describeCollection 返回的 function type 是字符串 'BM25'
+      // (SDK 把 FunctionObject.type 标注为数值枚举,运行时是字符串,用 String() 归一)
+      String(f.type) === 'BM25' &&
+      f.input_field_names?.includes('text') &&
+      f.output_field_names?.includes('sparse')
+  );
+  if (!textField || !sparseField || !bm25Function || !textField.analyzer_params) {
     throw new Error(
-      `Milvus full-text unsupported: ${getDatasetVectorTableName()} missing text/sparse fields (need Milvus 2.5.16+)`
+      `Milvus full-text unsupported: ${collectionName} missing BM25 function / text analyzer / sparse field (need Milvus 2.5.16+)`
+    );
+  }
+
+  // sparse 索引必须为 BM25 指标,否则 BM25 检索无法命中。
+  // IndexDescription 无 metric_type 顶层字段,指标在 params 键值对中。
+  const indexRes = await client.describeIndex({
+    collection_name: collectionName,
+    index_name: 'sparse_BM25'
+  });
+  const sparseIndex = (indexRes.index_descriptions ?? []).find((i) => i.field_name === 'sparse');
+  const metricType = (sparseIndex?.params ?? []).find((p) => p.key === 'metric_type')?.value;
+  if (!sparseIndex || metricType !== 'BM25') {
+    throw new Error(
+      `Milvus full-text unsupported: ${collectionName} sparse index missing or metric is not BM25`
     );
   }
 };

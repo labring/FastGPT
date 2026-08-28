@@ -14,6 +14,7 @@ const mockClient = {
   releaseCollection: vi.fn(),
   loadCollectionSync: vi.fn(),
   describeCollection: vi.fn(),
+  describeIndex: vi.fn(),
   hasCollection: vi.fn(),
   getLoadState: vi.fn(),
   flush: vi.fn(),
@@ -48,13 +49,17 @@ vi.mock('@fastgpt/service/core/dataset/fullText/schema', () => ({
   }
 }));
 // 覆盖 test/mocks/common/vector.ts 的全局 constants mock,用真实模块 + MILVUS_ADDRESS stub;
-// getVectorType 由 MIGRATION_VECTOR_TYPE 控制(运行时切换 milvus/pg)
+// getVectorType 由 MIGRATION_VECTOR_TYPE 控制(运行时切换 milvus/pg)。
+// importOriginal 展开的 orig 里 getDatasetVectorTableName 仍引用原版 getVectorType(与 mock 覆盖解耦),
+// 需一并按 provider 覆盖,否则能力探测会指向旧表 modeldata。
 vi.mock('@fastgpt/service/common/vectorDB/constants', async (importOriginal) => {
   const orig = await importOriginal<typeof import('@fastgpt/service/common/vectorDB/constants')>();
   return {
     ...orig,
     MILVUS_ADDRESS: 'http://localhost:19530',
-    getVectorType: () => (process.env.MIGRATION_VECTOR_TYPE === 'milvus' ? 'milvus' : 'pg')
+    getVectorType: () => (process.env.MIGRATION_VECTOR_TYPE === 'milvus' ? 'milvus' : 'pg'),
+    getDatasetVectorTableName: () =>
+      process.env.MIGRATION_VECTOR_TYPE === 'milvus' ? 'modeldata_v2' : 'modeldata'
   };
 });
 // retryFn 重试 3 次(每次 delay 500ms)会使失败路径慢且脆弱;此处 mock 成直通,只保留调用(不重试)。
@@ -98,12 +103,25 @@ beforeEach(() => {
   setVectorType('milvus');
   mockClient.query.mockReset();
   mockClient.queryIterator.mockReset();
-  mockClient.upsert.mockReset().mockResolvedValue({});
+  mockClient.upsert.mockReset().mockResolvedValue({ status: { error_code: 'Success' } });
   mockClient.dropCollection.mockReset().mockResolvedValue({});
   mockClient.releaseCollection.mockReset().mockResolvedValue({});
   mockClient.loadCollectionSync.mockReset();
   mockClient.describeCollection.mockReset().mockResolvedValue({
-    schema: { fields: [{ name: 'id' }, { name: 'text' }, { name: 'sparse' }] }
+    schema: {
+      fields: [{ name: 'id' }, { name: 'text', analyzer_params: '{}' }, { name: 'sparse' }]
+    },
+    functions: [
+      {
+        name: 'text_bm25_emb',
+        type: 'BM25',
+        input_field_names: ['text'],
+        output_field_names: ['sparse']
+      }
+    ]
+  });
+  mockClient.describeIndex.mockReset().mockResolvedValue({
+    index_descriptions: [{ field_name: 'sparse', params: [{ key: 'metric_type', value: 'BM25' }] }]
   });
   mockClient.hasCollection.mockReset().mockResolvedValue({ value: true });
   mockClient.getLoadState.mockReset().mockResolvedValue({ state: 'LoadStateLoaded' });
@@ -366,7 +384,7 @@ describe('runFullTextMigration', () => {
     // 主循环 upsert 失败一次(落失败表),自愈重试成功
     mockClient.upsert
       .mockRejectedValueOnce(new Error('temporary milvus failure'))
-      .mockResolvedValue({});
+      .mockResolvedValue({ status: { error_code: 'Success' } });
     mockFailedFind.mockImplementation(() => ({
       lean: vi
         .fn()
@@ -461,5 +479,60 @@ describe('runFullTextMigration', () => {
     expect(mockClient.queryIterator).toHaveBeenCalledWith(
       expect.objectContaining({ filter: expect.stringContaining('(id > 5)') })
     );
+  });
+
+  // ==================== upsert 状态拆分(Fix 2) ====================
+  it('TC-15.18 treats non-SUCCESS upsert status as a failed batch', async () => {
+    mockSourceQuery([makeSourceRow('1')]);
+    mockSourceIterator([makeSourceRow('1')]);
+    mockFind.mockResolvedValue([makeDataDoc([{ dataId: '1', text: 'hello' }])]);
+    // 服务端错误不 reject:upsert resolve 但 status.error_code != Success → 整批失败落失败表
+    mockClient.upsert.mockResolvedValue({ status: { error_code: 'Fail', reason: 'OOM' } });
+    const res = await runFullTextMigration({ batchSize: 500, client: mockClient } as never);
+    expect(res.processedCount).toBe(0);
+    expect(res.failedCount).toBe(1);
+    expect(res.status).toBe('failed');
+    expect(mockFailedBulkWrite).toHaveBeenCalled();
+  });
+
+  it('TC-15.19 splits partial upsert failures by err_index', async () => {
+    mockSourceQuery([makeSourceRow('1'), makeSourceRow('2')]);
+    mockSourceIterator([makeSourceRow('1'), makeSourceRow('2')]);
+    mockFind.mockResolvedValue([
+      makeDataDoc([
+        { dataId: '1', text: 'hello' },
+        { dataId: '2', text: 'world' }
+      ])
+    ]);
+    // 主循环:行 2 部分失败(err_index=[1])→ 计 failed 并落失败表;自愈重试成功
+    mockClient.upsert
+      .mockResolvedValueOnce({ status: { error_code: 'Success' }, succ_index: [0], err_index: [1] })
+      .mockResolvedValue({ status: { error_code: 'Success' } });
+    mockFailedFind.mockImplementation(() => ({
+      lean: vi.fn().mockResolvedValue([{ migrationId: 'm1', dataId: '2', error: 'batch fail' }])
+    }));
+    const res = await runFullTextMigration({ batchSize: 500, client: mockClient } as never);
+    expect(res.processedCount).toBe(2);
+    expect(res.failedCount).toBe(0);
+    expect(res.status).toBe('done');
+    expect(mockFailedBulkWrite).toHaveBeenCalled();
+    expect(mockFailedDeleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({ dataId: { $in: ['2'] } })
+    );
+  });
+
+  // ==================== 并发防护索引兜底(Fix 3) ====================
+  it('TC-15.22 rejects duplicate running log on create (TOCTOU backstop)', async () => {
+    mockSourceQuery([], 10);
+    // 预检通过(无 running),create 命中唯一部分索引重复键 → 转成并发拒绝
+    mockLogFindOne
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({ migrationId: 'running-1', newEngine: 'milvus', status: 'running' });
+    mockLogCreate.mockRejectedValue({ code: 11000 });
+    await expect(
+      runFullTextMigration({ batchSize: 500, client: mockClient } as never)
+    ).rejects.toThrow(/Migration already running \(running-1\)/);
+    expect(mockClient.queryIterator).not.toHaveBeenCalled();
+    expect(mockClient.upsert).not.toHaveBeenCalled();
   });
 });
