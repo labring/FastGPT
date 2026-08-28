@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Workflow Builder 测评'
+  short_description: '运行工作流生成测评、定位失败阶段并手动归档版本结果'
+  default_prompt: '使用 $workflow-builder-evaluation 运行指定 Workflow Builder 案例并汇报五项指标和问题阶段。'

@@ -1,4 +1,4 @@
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import type {
@@ -12,6 +12,24 @@ import {
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { ChatSiteItemType } from '../type';
+
+/**
+ * 一轮恢复完成后释放会话锁，使同一 chatId 的下一轮后台生成仍可自动 Resume。
+ * generating 状态下不能释放，否则普通重渲染会建立重复长连接。
+ */
+export const shouldReleaseResumeTarget = ({
+  chatGenerateStatus,
+  resumedChatTarget,
+  sourceKey,
+  chatId
+}: {
+  chatGenerateStatus?: ChatGenerateStatusEnum;
+  resumedChatTarget?: string;
+  sourceKey?: string;
+  chatId?: string;
+}) =>
+  chatGenerateStatus !== ChatGenerateStatusEnum.generating &&
+  Boolean(sourceKey && chatId && resumedChatTarget === `${sourceKey}:${chatId}`);
 
 /**
  * 判断恢复流中是否需要先补一个 AI placeholder。

@@ -20,6 +20,42 @@ export type WorkflowBuilderInitialState = {
 
 export type WorkflowBuilderEntryAccess = 'hidden' | 'upgrade' | 'enabled';
 
+/** 从路由参数中读取需要旁观的 Builder 会话；空值不覆盖当前成员自己的会话。 */
+export const getWorkflowBuilderWatchChatId = (value?: string | string[]) => {
+  const chatId = Array.isArray(value) ? value[0] : value;
+  return chatId?.trim() || undefined;
+};
+
+/** 评测运行器创建的独立应用使用稳定前缀，页面据此启用只读实时跟随。 */
+export const isWorkflowBuilderEvalApp = (name: string) => name.startsWith('[WBE] ');
+
+/**
+ * 为评测应用当前画布生成自动布局去重键。
+ * 评测运行器通过 API 直接写入新应用，会绕过前端 applyVersion，因此首次加载画布时需要补一次布局。
+ */
+export const getWorkflowBuilderEvalAutoLayoutKey = ({
+  appName,
+  appId,
+  workflowDataRevision,
+  nodeIds
+}: {
+  appName: string;
+  appId: string;
+  workflowDataRevision: number;
+  nodeIds: string[];
+}) => {
+  if (
+    !isWorkflowBuilderEvalApp(appName) ||
+    !appId ||
+    workflowDataRevision <= 0 ||
+    !nodeIds.length
+  ) {
+    return;
+  }
+
+  return `${appId}:${workflowDataRevision}:${[...nodeIds].sort().join(',')}`;
+};
+
 /** 仅允许可用的 Builder 在当前应用和成员首次打开时主动预热运行环境。 */
 export const shouldPrewarmWorkflowBuilderRuntime = ({
   workflowBuilderEnabled,

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatFileTypeEnum,
+  ChatGenerateStatusEnum,
+  ChatRoleEnum
+} from '@fastgpt/global/core/chat/constants';
 import type { ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
@@ -8,6 +12,7 @@ import { refreshSubmittedFormInteractiveValues } from '@/components/core/chat/Ch
 import {
   mergeResumeCompletedChatRecords,
   shouldAppendResumeInteractive,
+  shouldReleaseResumeTarget,
   shouldReplaceResumeAiValue,
   shouldResetResumeAiPlaceholder
 } from '@/components/core/chat/ChatContainer/ChatBox/utils/resume';
@@ -148,6 +153,34 @@ describe('shouldResetResumeAiPlaceholder', () => {
       shouldResetResumeAiPlaceholder({
         hasPreparedResumeAiRecord: true,
         hasReceivedResumeOutput: false
+      })
+    ).toBe(false);
+  });
+});
+
+describe('shouldReleaseResumeTarget', () => {
+  it('仅在当前会话的一轮生成结束后释放 Resume 锁', () => {
+    const target = { sourceKey: 'workflowBuilder:app-1', chatId: 'chat-1' };
+
+    expect(
+      shouldReleaseResumeTarget({
+        ...target,
+        resumedChatTarget: 'workflowBuilder:app-1:chat-1',
+        chatGenerateStatus: ChatGenerateStatusEnum.done
+      })
+    ).toBe(true);
+    expect(
+      shouldReleaseResumeTarget({
+        ...target,
+        resumedChatTarget: 'workflowBuilder:app-1:chat-1',
+        chatGenerateStatus: ChatGenerateStatusEnum.generating
+      })
+    ).toBe(false);
+    expect(
+      shouldReleaseResumeTarget({
+        ...target,
+        resumedChatTarget: 'workflowBuilder:app-1:another-chat',
+        chatGenerateStatus: ChatGenerateStatusEnum.done
       })
     ).toBe(false);
   });

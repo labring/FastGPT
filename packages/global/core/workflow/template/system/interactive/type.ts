@@ -217,7 +217,8 @@ export type UserInputFormItemType = z.infer<typeof UserInputFormItemSchema>;
 export const UserInputInteractiveSchema = z.object({
   type: z.literal('userInput'),
   params: z.object({
-    description: z.string(),
+    // 表单节点未配置说明时，运行时 JSON 会省略 undefined；展示不依赖该字段。
+    description: z.string().optional(),
     inputForm: z.array(UserInputFormItemSchema),
     submitted: z.boolean().optional()
   })

@@ -9,6 +9,7 @@ import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 export const WORKFLOW_BUILDER_AUTO_OPEN_QUERY_KEY = 'openWorkflowBuilder';
+export const WORKFLOW_BUILDER_CHAT_ID_QUERY_KEY = 'workflowBuilderChatId';
 
 /** 生成应用详情页路由，并按需携带只在首次进入时消费的 Builder 自动开启标记。 */
 export const getAppDetailRoute = ({

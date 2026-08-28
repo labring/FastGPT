@@ -7,6 +7,7 @@ FastGPT 工作流系统是一个基于 Node.js/TypeScript 的可视化工作流�
 ## 专题设计文档
 
 - [Workflow Builder（工作流辅助生成）](./workflow-builder.md)：当前工作流辅助生成的功能范围、端到端流程、双仓库职责、Sandbox/CLI/Core 架构、版本应用和测试部署说明。
+- [Workflow Builder 评测系统](../../../../pro/admin/test/core/ai/workflowBuilder/README.md)：定义工作流自动生成的五项指标、案例数据结构、运行流程、报告和版本归档方式。
 
 ## 核心架构
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { Box } from '@chakra-ui/react';
+import { useRouter } from 'next/router';
 import { useContextSelector } from 'use-context-selector';
 import { useLocalStorageState, useMemoizedFn } from 'ahooks';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
@@ -28,6 +29,7 @@ import {
 import { getWorkflowChecksum } from '@fastgpt/workflow-core';
 import {
   clearWorkflowBuilderChatHistory,
+  getLatestWorkflowBuilderChatId,
   prewarmWorkflowBuilderRuntime,
   streamWorkflowBuilderChat
 } from './api';
@@ -39,9 +41,12 @@ import { useTranslation } from 'next-i18next';
 import {
   getWorkflowBuilderErrorAttentionKey,
   getWorkflowBuilderPendingInteractiveKey,
+  getWorkflowBuilderWatchChatId,
+  isWorkflowBuilderEvalApp,
   isWorkflowBuilderVersionGenerating,
   shouldPrewarmWorkflowBuilderRuntime
 } from './uiState';
+import { WORKFLOW_BUILDER_CHAT_ID_QUERY_KEY } from '@/web/core/app/utils';
 
 export type WorkflowBuilderChatPanelRef = {
   clearHistory: () => Promise<void>;
@@ -56,7 +61,8 @@ const WorkflowBuilderChatContent = ({
   onRestart,
   chatPanelRef,
   focusRequestId,
-  onActivityChange
+  onActivityChange,
+  watchExternalChat
 }: {
   appId: string;
   appDetail: AppDetailType;
@@ -67,6 +73,7 @@ const WorkflowBuilderChatContent = ({
   chatPanelRef: React.ForwardedRef<WorkflowBuilderChatPanelRef>;
   focusRequestId: number;
   onActivityChange: (activity: WorkflowBuilderActivity) => void;
+  watchExternalChat: boolean;
 }) => {
   const { t } = useTranslation('workflow');
   const { llmModelList, defaultModels } = useSystemStore();
@@ -178,6 +185,7 @@ const WorkflowBuilderChatContent = ({
     },
     {
       manual: false,
+      pollingInterval: watchExternalChat ? 1500 : undefined,
       refreshDeps: [appId, chatId, sourceKey],
       errorToast: ''
     }
@@ -308,6 +316,7 @@ const WorkflowBuilderChatContent = ({
       <Box flex={1} minH={0} overflow={'hidden'}>
         <ChatBox
           isReady={!!selectedModel}
+          active={!watchExternalChat}
           sourceTarget={sourceTarget}
           chatId={chatId}
           chatType={ChatTypeEnum.test}
@@ -364,6 +373,7 @@ const ChatPanel = React.forwardRef<
     },
     ref
   ) => {
+    const router = useRouter();
     const tmbId = useUserStore((state) => state.userInfo?.team?.tmbId ?? '');
     const sourceTarget = useMemo<ChatSourceTarget>(
       () => ({ sourceType: ChatSourceTypeEnum.workflowBuilder, sourceId: appId }),
@@ -377,13 +387,53 @@ const ChatPanel = React.forwardRef<
     const ensureSourceChatId = useChatStore((state) => state.ensureSourceChatId);
     const setSourceChatId = useChatStore((state) => state.setSourceChatId);
     const prewarmStartedRuntimeKeyRef = useRef('');
+    const appliedWatchTargetRef = useRef('');
+    const [hydratedLatestChatKey, setHydratedLatestChatKey] = useState('');
+    const watchChatId = getWorkflowBuilderWatchChatId(
+      router.query[WORKFLOW_BUILDER_CHAT_ID_QUERY_KEY]
+    );
+    const isEvalApp = isWorkflowBuilderEvalApp(appDetail.name);
 
     useEffect(() => {
-      if (chatIdCacheKey && !chatId) ensureSourceChatId(chatIdCacheKey);
-    }, [chatId, chatIdCacheKey, ensureSourceChatId]);
+      if (!chatIdCacheKey || !watchChatId) return;
+      const watchTarget = `${chatIdCacheKey}:${watchChatId}`;
+      if (appliedWatchTargetRef.current === watchTarget) return;
+
+      appliedWatchTargetRef.current = watchTarget;
+      setSourceChatId(chatIdCacheKey, watchChatId);
+    }, [chatIdCacheKey, setSourceChatId, watchChatId]);
 
     useRequest(
       async () => {
+        if (!chatIdCacheKey || watchChatId || !isEvalApp) return;
+        if (hydratedLatestChatKey === chatIdCacheKey) return;
+
+        const latestChatId = await getLatestWorkflowBuilderChatId(appId);
+        if (latestChatId) {
+          setHydratedLatestChatKey(chatIdCacheKey);
+          setSourceChatId(chatIdCacheKey, latestChatId);
+          return;
+        }
+        if (!chatId) ensureSourceChatId(chatIdCacheKey);
+      },
+      {
+        manual: false,
+        ready: router.isReady && Boolean(chatIdCacheKey) && !watchChatId && isEvalApp,
+        pollingInterval: isEvalApp && hydratedLatestChatKey !== chatIdCacheKey ? 1000 : undefined,
+        refreshDeps: [appId, chatIdCacheKey, isEvalApp, watchChatId],
+        errorToast: ''
+      }
+    );
+
+    useEffect(() => {
+      if (chatIdCacheKey && !watchChatId && !isEvalApp && !chatId) {
+        ensureSourceChatId(chatIdCacheKey);
+      }
+    }, [chatId, chatIdCacheKey, ensureSourceChatId, isEvalApp, watchChatId]);
+
+    useRequest(
+      async () => {
+        if (watchChatId || isEvalApp) return;
         if (
           !shouldPrewarmWorkflowBuilderRuntime({
             workflowBuilderEnabled,
@@ -408,7 +458,7 @@ const ChatPanel = React.forwardRef<
         manual: false,
         ready: workflowBuilderEnabled && isOpen && Boolean(chatId),
         // Sandbox 按应用和成员隔离：首次打开时预热，关闭重开或 chatId 变化不重复请求。
-        refreshDeps: [appId, tmbId, isOpen, workflowBuilderEnabled],
+        refreshDeps: [appId, tmbId, isEvalApp, isOpen, watchChatId, workflowBuilderEnabled],
         errorToast: ''
       }
     );
@@ -451,6 +501,7 @@ const ChatPanel = React.forwardRef<
               chatPanelRef={ref}
               focusRequestId={focusRequestId}
               onActivityChange={onActivityChange}
+              watchExternalChat={Boolean(watchChatId) || isEvalApp}
             />
           </ChatRecordContextProvider>
         )}

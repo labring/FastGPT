@@ -19,6 +19,7 @@ import {
   hasMeaningfulAiOutput,
   mergeResumeCompletedChatRecords,
   shouldCreateResumeAiPlaceholder,
+  shouldReleaseResumeTarget,
   shouldReplaceResumeAiValue,
   shouldResetResumeAiPlaceholder
 } from '../utils/resume';
@@ -116,6 +117,19 @@ export const useChatResume = ({
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
+
+  useEffect(() => {
+    if (
+      shouldReleaseResumeTarget({
+        chatGenerateStatus,
+        resumedChatTarget: resumedChatTargetRef.current,
+        sourceKey,
+        chatId
+      })
+    ) {
+      resumedChatTargetRef.current = undefined;
+    }
+  }, [chatGenerateStatus, chatId, resumedChatTargetRef, sourceKey]);
 
   useEffect(() => {
     if (

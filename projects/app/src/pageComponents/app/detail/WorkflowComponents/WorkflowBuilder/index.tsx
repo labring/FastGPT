@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, Button, Flex, IconButton, Portal, Text } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
@@ -22,7 +22,11 @@ import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/build
 import { loadWorkflowBuilderVersion, commitWorkflowBuilderVersion } from './api';
 import AppDetailPanelModal from '../../components/AppDetailPanelModal';
 import { useWorkflowBuilderUI } from './context';
-import { getWorkflowBuilderAttentionKeys, useWorkflowBuilderVersionExpired } from './uiState';
+import {
+  getWorkflowBuilderAttentionKeys,
+  getWorkflowBuilderEvalAutoLayoutKey,
+  useWorkflowBuilderVersionExpired
+} from './uiState';
 import WorkflowBuilderCommercialInput from './CommercialInput';
 
 const WorkflowBuilderApplyToast = ({
@@ -91,6 +95,10 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
   } = useWorkflowBuilderUI();
   const getNodes = useContextSelector(WorkflowBufferDataContext, (value) => value.getNodes);
   const getEdges = useContextSelector(WorkflowBufferDataContext, (value) => value.getEdges);
+  const workflowDataRevision = useContextSelector(
+    WorkflowBufferDataContext,
+    (value) => value.workflowDataRevision
+  );
   const pushPastSnapshot = useContextSelector(
     WorkflowSnapshotContext,
     (value) => value.pushPastSnapshot
@@ -101,6 +109,7 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
     (value) => value.flowData2StoreData
   );
   const chatPanelRef = useRef<WorkflowBuilderChatPanelRef>(null);
+  const evalAutoLayoutKeyRef = useRef('');
   const [builderChatId, setBuilderChatId] = useState('');
   const isOpen = activeLeftPanel === 'workflowBuilder';
   const showApplyResultToast = useCallback(
@@ -126,6 +135,25 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
       }),
     [showApplyResultToast, t]
   );
+
+  useEffect(() => {
+    const nodeIds = getNodes().map((node) => node.id);
+    const autoLayoutKey = getWorkflowBuilderEvalAutoLayoutKey({
+      appName: appDetail.name,
+      appId,
+      workflowDataRevision,
+      nodeIds
+    });
+    if (!autoLayoutKey || evalAutoLayoutKeyRef.current === autoLayoutKey) return;
+
+    // 评测应用由 API 直接写入，未经过 applyVersion；画布完成初始化后复用同一套节点布局能力。
+    evalAutoLayoutKeyRef.current = autoLayoutKey;
+    void requestAutoLayout({ nodeIds, workflowDataRevision }).then((result) => {
+      if (result === 'failed') {
+        console.warn('[Workflow Builder Eval] Auto layout failed, keeping imported positions');
+      }
+    });
+  }, [appDetail.name, appId, getNodes, requestAutoLayout, workflowDataRevision]);
 
   /** 加载归档版本、覆盖画布、记录“我的编辑”快照，最后幂等标记应用时间。 */
   const applyVersion = useCallback(
@@ -163,6 +191,13 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
             targetDocument
           })
         );
+        const evalAutoLayoutKey = getWorkflowBuilderEvalAutoLayoutKey({
+          appName: appDetail.name,
+          appId,
+          workflowDataRevision,
+          nodeIds: workflowConfig.nodes.map((node) => node.nodeId)
+        });
+        if (evalAutoLayoutKey) evalAutoLayoutKeyRef.current = evalAutoLayoutKey;
         const autoLayoutResult = await requestAutoLayout({
           nodeIds: workflowConfig.nodes.map((node) => node.nodeId),
           workflowDataRevision

@@ -9,6 +9,7 @@ import fixture from '@fastgpt/workflow-core/test/fixtures/basic-static/workflow.
 import { buildStreamFetchBody, handleEventSourceData } from '@/web/common/api/fetch';
 import {
   clearWorkflowBuilderChatHistory,
+  getLatestWorkflowBuilderChatId,
   prewarmWorkflowBuilderRuntime
 } from '@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/api';
 import { mergeWorkflowBuilderAppliedAppDetail } from '@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/utils';
@@ -24,26 +25,97 @@ import {
   getWorkflowBuilderEntryAccess,
   getWorkflowBuilderErrorAttentionKey,
   getWorkflowBuilderEntryVisualState,
+  getWorkflowBuilderEvalAutoLayoutKey,
   getWorkflowBuilderInitialState,
   getWorkflowBuilderPendingInteractiveKey,
+  getWorkflowBuilderWatchChatId,
   hasUnseenWorkflowBuilderAttention,
+  isWorkflowBuilderEvalApp,
   isWorkflowBuilderVersionGenerating,
   shouldPrewarmWorkflowBuilderRuntime
 } from '@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/uiState';
-import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatGenerateStatusEnum,
+  ChatRoleEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
 import type { ChatItemObjItemType } from '@fastgpt/global/core/chat/type';
 
 const mocks = vi.hoisted(() => ({
   batchDeleteChatHistories: vi.fn(),
+  getChatHistories: vi.fn(),
   POST: vi.fn()
 }));
 
 vi.mock('@/web/core/chat/history/api', () => ({
-  batchDeleteChatHistories: mocks.batchDeleteChatHistories
+  batchDeleteChatHistories: mocks.batchDeleteChatHistories,
+  getChatHistories: mocks.getChatHistories
 }));
 vi.mock('@/web/common/api/request', () => ({ POST: mocks.POST }));
 
 describe('Workflow Builder Web Adapter', () => {
+  it('读取应用当前成员最近一次 Builder 会话', async () => {
+    mocks.getChatHistories.mockResolvedValueOnce({
+      list: [{ chatId: 'eval-chat-1' }],
+      total: 1
+    });
+
+    await expect(getLatestWorkflowBuilderChatId('app-1')).resolves.toBe('eval-chat-1');
+    expect(mocks.getChatHistories).toHaveBeenCalledWith({
+      appId: 'app-1',
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      pageNum: 1,
+      pageSize: 1
+    });
+  });
+
+  it('应用没有 Builder 历史时返回空会话 ID', async () => {
+    mocks.getChatHistories.mockResolvedValueOnce({ list: [], total: 0 });
+
+    await expect(getLatestWorkflowBuilderChatId('app-2')).resolves.toBeUndefined();
+  });
+
+  it('从单值或数组路由参数中读取旁观会话 ID，并忽略空值', () => {
+    expect(getWorkflowBuilderWatchChatId('chat-1')).toBe('chat-1');
+    expect(getWorkflowBuilderWatchChatId(['chat-2', 'chat-3'])).toBe('chat-2');
+    expect(getWorkflowBuilderWatchChatId('   ')).toBeUndefined();
+    expect(getWorkflowBuilderWatchChatId()).toBeUndefined();
+  });
+
+  it('仅将评测运行器创建的 WBE 应用识别为自动旁观应用', () => {
+    expect(isWorkflowBuilderEvalApp('[WBE] WBE-006 attempt-1')).toBe(true);
+    expect(isWorkflowBuilderEvalApp('[WBE Judge] run-1')).toBe(false);
+    expect(isWorkflowBuilderEvalApp('普通工作流')).toBe(false);
+  });
+
+  it('仅为已加载节点的评测应用生成稳定的画布自动布局键', () => {
+    expect(
+      getWorkflowBuilderEvalAutoLayoutKey({
+        appName: '[WBE] WBE-006 attempt-1',
+        appId: 'app-1',
+        workflowDataRevision: 2,
+        nodeIds: ['node-b', 'node-a']
+      })
+    ).toBe('app-1:2:node-a,node-b');
+
+    expect(
+      getWorkflowBuilderEvalAutoLayoutKey({
+        appName: '普通工作流',
+        appId: 'app-1',
+        workflowDataRevision: 2,
+        nodeIds: ['node-a']
+      })
+    ).toBeUndefined();
+    expect(
+      getWorkflowBuilderEvalAutoLayoutKey({
+        appName: '[WBE] WBE-006 attempt-1',
+        appId: 'app-1',
+        workflowDataRevision: 2,
+        nodeIds: []
+      })
+    ).toBeUndefined();
+  });
+
   it.each([
     {
       name: 'the Builder is unavailable',

@@ -1,9 +1,8 @@
 import { streamRawFetch } from '@/web/common/api/fetch';
-import { batchDeleteChatHistories } from '@/web/core/chat/history/api';
+import { batchDeleteChatHistories, getChatHistories } from '@/web/core/chat/history/api';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import {
-  WorkflowBuilderChatBodySchema,
   WorkflowBuilderVersionCommitBodySchema,
   WorkflowBuilderVersionCommitResponseSchema,
   WorkflowBuilderVersionLoadBodySchema,
@@ -39,6 +38,20 @@ export const prewarmWorkflowBuilderRuntime = (data: { appId: string; chatId: str
     '/proApi/core/workflow/builder/runtime/prewarm',
     WorkflowBuilderRuntimePrewarmBodySchema.parse(data)
   );
+
+/**
+ * 查询当前成员在应用下最近一次 Builder 会话。
+ * 用于新浏览器或评测新应用首次打开时恢复服务端会话，不改变已有本地会话选择。
+ */
+export const getLatestWorkflowBuilderChatId = async (appId: string) => {
+  const { list } = await getChatHistories({
+    appId,
+    sourceType: ChatSourceTypeEnum.workflowBuilder,
+    pageNum: 1,
+    pageSize: 1
+  });
+  return list[0]?.chatId;
+};
 
 export const loadWorkflowBuilderVersion = async (
   data: WorkflowBuilderVersionLoadBody
