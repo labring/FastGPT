@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { ErrorCode, LoadState, type MilvusClient } from '@zilliz/milvus2-sdk-node';
+import { LoadState, type MilvusClient } from '@zilliz/milvus2-sdk-node';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { retryFn } from '@fastgpt/global/common/system/utils';
@@ -21,6 +21,7 @@ import {
   assertFullTextCapability,
   assertMilvusVersion
 } from '../../../common/vectorDB/milvus/fullText';
+import { resolveMutationErrIndex } from '../../../common/vectorDB/milvus/mutation';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import {
   MongoFullTextMigrationFailed,
@@ -237,16 +238,11 @@ const upsertChunk = async (
   const result = await retryFn(() =>
     client.upsert({ collection_name: DatasetVectorTableNameV2, data: chunk })
   );
-  const errorCode = result.status?.error_code;
-  const errIndex =
-    Array.isArray(result.err_index) && result.err_index.length > 0
-      ? result.err_index
-      : errorCode === ErrorCode.SUCCESS
-        ? []
-        : chunk.map((_, i) => i);
+  // 失败语义与实时 insert/delete 共用同一 helper(status.error_code / err_index 解析)
+  const errIndex = resolveMutationErrIndex(result, chunk.length);
 
   const failedIdSet = new Set(
-    errIndex.map((i) => String(chunk[Number(i)]?.id)).filter((id) => id && id !== 'undefined')
+    errIndex.map((i) => String(chunk[i]?.id)).filter((id) => id && id !== 'undefined')
   );
   const failedIds = chunk
     .filter((row) => failedIdSet.has(String(row.id)))

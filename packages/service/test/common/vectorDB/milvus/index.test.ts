@@ -25,6 +25,7 @@ vi.mock('@zilliz/milvus2-sdk-node', () => ({
   DataType: { Int64: 5, FloatVector: 101, VarChar: 21, SparseFloatVector: 104 },
   LoadState: { LoadStateNotExist: 'LoadStateNotExist', LoadStateNotLoad: 'LoadStateNotLoad' },
   FunctionType: { BM25: 'BM25' },
+  ErrorCode: { SUCCESS: 'Success' },
   MilvusClient: class {
     connectPromise = Promise.resolve();
     listDatabases = vi.fn(async () => ({ db_names: ['fastgpt'] }));
@@ -87,8 +88,11 @@ beforeEach(() => {
     index_descriptions: [{ field_name: 'sparse', params: [{ key: 'metric_type', value: 'BM25' }] }]
   });
   mockGetVersion.mockReset().mockResolvedValue({ version: 'v2.5.16' });
-  mockInsert.mockReset().mockResolvedValue({ IDs: { str_id: { data: ['1'] } } });
-  mockDelete.mockReset();
+  mockInsert.mockReset().mockResolvedValue({
+    status: { error_code: 'Success' },
+    IDs: { str_id: { data: ['1'] } }
+  });
+  mockDelete.mockReset().mockResolvedValue({ status: { error_code: 'Success' } });
   mockSearch.mockReset().mockResolvedValue({ results: [] });
   mockQuery.mockReset().mockResolvedValue({ data: [] });
 });
@@ -210,6 +214,45 @@ describe('MilvusCtrl', () => {
   });
 
   // 被测函数: MilvusCtrl.insert  等级: 3-High
+  // (异常场景) 服务端以 status.error_code 表达失败(SDK 不 reject), 期望: 抛错而非读 IDs
+  it('TC-8.16 insert rejects non-Success status', async () => {
+    mockInsert.mockResolvedValue({
+      status: { error_code: 'UnexpectedError', reason: 'OOM' },
+      IDs: { str_id: { data: ['1'] } }
+    });
+    const ctrl = new MilvusCtrl();
+    await expect(
+      ctrl.insert({
+        teamId: 't',
+        datasetId: 'd',
+        collectionId: 'c',
+        vectors: [[0.1]],
+        texts: ['hello']
+      })
+    ).rejects.toThrow(/Milvus insert rejected 1\/1 rows: OOM/);
+  });
+
+  // 被测函数: MilvusCtrl.insert  等级: 3-High
+  // (异常场景) err_index 部分失败, 期望: 抛错而非返回与原输入错位的 IDs 子集(实时写入经 retryFn 包装)
+  it('TC-8.17 insert rejects partial err_index', async () => {
+    mockInsert.mockResolvedValue({
+      status: { error_code: 'Success' },
+      err_index: [1],
+      IDs: { int_id: { data: [100] } }
+    });
+    const ctrl = new MilvusCtrl();
+    await expect(
+      ctrl.insert({
+        teamId: 't',
+        datasetId: 'd',
+        collectionId: 'c',
+        vectors: [[0.1], [0.2]],
+        texts: ['a', 'b']
+      })
+    ).rejects.toThrow(/Milvus insert rejected 1\/2 rows/);
+  });
+
+  // 被测函数: MilvusCtrl.insert  等级: 3-High
   // (异常场景) 中文长文本(字节数超 VarChar 上限), 期望: text 按 UTF-8 字节截断后写入,
   // 字节数 ≤ 65535(不能用 JS 字符长度,中文 3 字节/字符)
   it('TC-8.10 insert truncates over-long multi-byte text to VarChar byte limit', async () => {
@@ -245,6 +288,16 @@ describe('MilvusCtrl', () => {
     expect(arg.filter).toContain('(id==1)');
   });
 
+  // 被测函数: MilvusCtrl.delete  等级: 3-High
+  // (异常场景) delete 服务端失败(SDK 不 reject), 期望: 抛错而非静默返回
+  it('TC-8.18 delete rejects non-Success status', async () => {
+    mockDelete.mockResolvedValue({ status: { error_code: 'UnexpectedError', reason: 'down' } });
+    const ctrl = new MilvusCtrl();
+    await expect(ctrl.delete({ teamId: 't', id: '1' })).rejects.toThrow(
+      /Milvus delete failed: down/
+    );
+  });
+
   // 被测函数: MilvusCtrl.embRecall  等级: 3-High
   // (正常场景) 期望: SDK 2.6 的 client.search 使用 data: [vector](非 vector 字段)
   it('TC-8.6 embRecall uses SDK 2.6 data field', async () => {
@@ -258,6 +311,8 @@ describe('MilvusCtrl', () => {
     });
     const arg = mockSearch.mock.calls[0][0];
     expect(arg.data).toEqual([[0.1, 0.2]]);
+    // 单表有 dense vector + sparse 两个 ANN 字段:anns_field 必须显式指 dense,SDK 缺省取 schema 第一个
+    expect(arg.anns_field).toBe('vector');
     // 主键不自动回填:output_fields 必须含 id,否则结果行解析不出 id
     expect(arg.output_fields).toEqual(['id', 'collectionId']);
   });

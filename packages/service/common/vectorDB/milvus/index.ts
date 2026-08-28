@@ -12,6 +12,7 @@ import {
   getDatasetVectorTableName
 } from '../constants';
 import { assertFullTextCapability, assertMilvusVersion, buildCollectionFilter } from './fullText';
+import { resolveMutationErrIndex } from './mutation';
 import {
   buildAnalyzerParams,
   createBM25Function,
@@ -176,6 +177,17 @@ export class MilvusCtrl implements VectorControllerType {
       }))
     });
 
+    // SDK 的 insert 不校验 status.error_code:服务端失败可能 resolve 而非 reject。
+    // 部分失败时抛错而非返回子集——实时写入经 retryFn 包装,返回子集会与原输入错位映射 dataId。
+    const errIndex = resolveMutationErrIndex(result, vectors.length);
+    if (errIndex.length > 0) {
+      throw new Error(
+        `Milvus insert rejected ${errIndex.length}/${vectors.length} rows: ${
+          result.status?.reason || 'see err_index'
+        }`
+      );
+    }
+
     const insertIds = (() => {
       if ('int_id' in result.IDs) {
         return result.IDs.int_id.data.map((id) => String(id));
@@ -220,10 +232,16 @@ export class MilvusCtrl implements VectorControllerType {
 
     const concatWhere = `${teamIdWhere} and ${where}`;
 
-    await client.delete({
+    // 同上:delete 的 MutationResult 服务端失败可能 resolve 而非 reject,显式校验避免静默丢数据
+    const result = await client.delete({
       collection_name: getDatasetVectorTableName(),
       filter: concatWhere
     });
+    if (resolveMutationErrIndex(result, 1).length > 0) {
+      throw new Error(
+        `Milvus delete failed: ${result.status?.reason || result.status?.error_code}`
+      );
+    }
   };
   embRecall: VectorControllerType['embRecall'] = async (props) => {
     const client = await this.getClient();
@@ -248,6 +266,8 @@ export class MilvusCtrl implements VectorControllerType {
         collection_name: getDatasetVectorTableName(),
         // SDK 2.6 起 search 使用 data 字段(向量/文本)替代 vector
         data: [vector],
+        // 单表含 dense vector + BM25 sparse 两个 ANN 字段,SDK 缺省取 schema 第一个(依赖字段顺序),必须显式指定 dense
+        anns_field: 'vector',
         limit,
         expr: filterStr,
         // SDK 不自动回填主键:search 结果只含 output_fields 指定的字段,id 需显式列出
