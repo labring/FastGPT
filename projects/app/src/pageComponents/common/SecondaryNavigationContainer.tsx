@@ -1,7 +1,7 @@
 import { Box, Flex } from '@chakra-ui/react';
 import type React from 'react';
 import PageContainer from '@/components/PageContainer';
-import SideTabs from '@/components/SideTabs';
+import SideTabsGroup from '@/components/SideTabs/Group';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
@@ -9,6 +9,8 @@ export type SecondaryNavigationTab<ValueType extends string> = {
   icon: string;
   label: string;
   value: ValueType;
+  /** 分组子项：有 children 时渲染为可展开的分组父级，否则为单级项（兼容账号页） */
+  children?: SecondaryNavigationTab<ValueType>[];
 };
 
 type SecondaryNavigationContainerProps<ValueType extends string> = {
@@ -60,7 +62,7 @@ const SecondaryNavigationContainer = <ValueType extends string>({
             bg={'white'}
             minH={0}
           >
-            <SideTabs<ValueType>
+            <SideTabsGroup<ValueType>
               flex={1}
               mx={'auto'}
               mt={4}
@@ -81,10 +83,12 @@ const SecondaryNavigationContainer = <ValueType extends string>({
               size={'sm'}
               ensureActiveVisible
               scrollPositionKey={mobileScrollPositionKey}
-              list={tabs.map((item) => ({
-                value: item.value,
-                label: item.label
-              }))}
+              list={tabs
+                .flatMap((item) => (item.children?.length ? item.children : [item]))
+                .map((item) => ({
+                  value: item.value,
+                  label: item.label
+                }))}
               value={value}
               onChange={onChange}
             />

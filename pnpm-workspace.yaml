@@ -16,6 +16,9 @@ packages:
   - sdk/*
 
 catalog:
+  '@alicloud/dysmsapi20170525': ^2.0.24
+  '@alicloud/openapi-client': ^0.4.15
+  '@alicloud/tea-util': ^1.4.11
   '@chakra-ui/anatomy': ^2
   '@chakra-ui/icons': ^2
   '@chakra-ui/next-js': ^2
@@ -25,21 +28,25 @@ catalog:
   '@dnd-kit/core': ^6.3.1
   '@emotion/react': ^11
   '@emotion/styled': ^11
+  '@hono/node-server': ^2.0.10
   '@llamaindex/liteparse-wasm': 2.0.8
   '@modelcontextprotocol/sdk': ^1
   '@node-rs/jieba': 2.0.1
   '@svgr/webpack': ^6.5.1
   '@t3-oss/env-core': 0.13.10
   '@tanstack/react-query': ^4.24.10
+  '@tanstack/react-table': ^8.21.3
   '@types/js-yaml': ^4.0.9
   '@types/jsonwebtoken': ^9.0.3
   '@types/lodash-es': ^4
   '@types/mime-types': ^3.0.1
   '@types/node': ^24.13.3
+  '@types/nodemailer': ^6.4.24
   '@types/proxy-addr': 2.0.3
   '@types/react': ^18
   '@types/react-dom': ^18
   '@types/request-ip': ^0.0.38
+  '@types/xml2js': ^0.4.14
   '@vitest/coverage-v8': ^4.1.5
   '@xterm/addon-fit': ^0.10.0
   '@xterm/xterm': ^5.5.0
@@ -54,13 +61,14 @@ catalog:
   file-type: 21.3.0
   gpt-tokenizer: 3.4.0
   hono: 4.12.27
-  '@hono/node-server': ^2.0.10
   i18next: 23.16.8
   ipaddr.js: ^2.4.0
   js-yaml: ^4.1.1
   json5: ^2.2.3
   jsonwebtoken: ^9.0.3
   lodash-es: ^4.17.21
+  marked: ^18.0.9
+  mermaid: ^11.16.1
   mime: ^4.1.0
   mime-types: 3.0.2
   minio: 8.0.7
@@ -69,6 +77,8 @@ catalog:
   nanoid: ^5.1.3
   next: 16.3.0
   next-i18next: 15.4.2
+  nodemailer: ^7.0.13
+  postcss: ^8.5.12
   proxy-addr: 2.0.7
   proxy-agent: ^6
   react: ^18
@@ -87,10 +97,8 @@ catalog:
   undici: ^7.29.0
   vaul: ^1.1.2
   vitest: ^4.1.5
+  xml2js: ^0.6.2
   zod: ^4
-  postcss: ^8.5.12
-  marked: ^18.0.9
-  mermaid: ^11.16.1
 
 catalogMode: prefer
 
@@ -120,11 +128,11 @@ onlyBuiltDependencies:
   - vue-demi
 
 overrides:
-  '@tootallnate/once': 2.0.1
-  'proxy-agent>pac-proxy-agent': 7.2.0
   '@swc/helpers': ^0.5.23
+  '@tootallnate/once': 2.0.1
   '@types/react': ^18
   '@types/react-dom': ^18
+  'proxy-agent>pac-proxy-agent': 7.2.0
   react: ^18
   react-dom: ^18
 
