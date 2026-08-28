@@ -9,6 +9,7 @@ import {
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
@@ -121,5 +122,57 @@ describe('delete training data test', () => {
 
     expect(res.code).toBe(200);
     expect(existingTrainingData).toBeTruthy();
+  });
+
+  it('should allow deleting rebuild tasks through the existing training flow', async () => {
+    const root = await getRootUser();
+    const dataset = await MongoDataset.create({
+      name: 'test',
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      vectorModel: 'test',
+      agentModel: 'test'
+    });
+    const collection = await MongoDatasetCollection.create({
+      name: 'test',
+      type: DatasetCollectionTypeEnum.file,
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id
+    });
+    const data = await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'rebuild',
+      indexes: [],
+      synonymRebuildingVersion: 2
+    });
+    const training = await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'test',
+      mode: TrainingModeEnum.chunk,
+      dataId: data._id,
+      synonymVersion: 2
+    });
+
+    const res = await Call<
+      deleteTrainingDataBody,
+      Record<string, never>,
+      deleteTrainingDataResponse
+    >(handler, {
+      auth: root,
+      body: { collectionId: collection._id, dataId: training._id }
+    });
+
+    expect(res.code).toBe(200);
+    await expect(MongoDatasetTraining.findById(training._id)).resolves.toBeNull();
+    await expect(MongoDatasetData.findById(data._id).lean()).resolves.not.toHaveProperty(
+      'synonymRebuildingVersion'
+    );
   });
 });

@@ -1,12 +1,10 @@
 import { createDatasetData, updateDatasetDataByIndexes } from '@/service/core/dataset/data/data';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetRebuildScopeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { checkTeamAiPointsAndLock } from './utils';
 import { addMinutes } from 'date-fns';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { getDatasetEmbeddingModel, getDatasetVlmModel } from '@fastgpt/service/core/dataset/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -19,11 +17,8 @@ import type {
 import { delay, retryFn } from '@fastgpt/global/common/system/utils';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
-import {
-  getDatasetImageIndexCapability,
-  getDatasetImageTrainingMode
-} from '@fastgpt/service/core/dataset/utils';
-import { uniqueDatasetDataMarkdownImageUrls } from '@fastgpt/service/core/dataset/data/utils';
+import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
+import { enqueueNextDatasetRebuildTask } from './rebuild';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
@@ -53,10 +48,15 @@ type TrainingDataType = DatasetTrainingSchemaType & PopulateType;
  * 重新生成；这里仅保留 custom/question/summary/image 等外部索引。其中 image 是 VLM
  * 生成的文本描述索引，只有当前集合仍开启图片索引且 VLM 可用时才保留。
  */
-export const getRebuildBaseIndexes = (trainingData: TrainingDataType) => {
-  const sourceIndexes = trainingData.indexes?.length
-    ? trainingData.indexes.map((index) => ({ ...index }))
-    : trainingData.data?.indexes || [];
+export const getRebuildBaseIndexes = (
+  trainingData: TrainingDataType,
+  currentIndexes?: DatasetDataSchemaType['indexes']
+) => {
+  const sourceIndexes = (
+    currentIndexes ??
+    (trainingData.indexes?.length ? trainingData.indexes : trainingData.data?.indexes) ??
+    []
+  ).map((index) => ({ ...index }));
   const { supportVlm } = getDatasetImageIndexCapability({
     vectorModel: getDatasetEmbeddingModel(trainingData.dataset),
     vlmModel: getDatasetVlmModel(trainingData.dataset)
@@ -154,7 +154,9 @@ export async function generateVector(): Promise<any> {
           collectionId: data.collectionId,
           trainingId: data._id
         });
-        // Delete data
+        if (data.dataset && data.dataId) {
+          await enqueueFollowingDatasetRebuild({ trainingData: data });
+        }
         await MongoDatasetTraining.deleteOne({ _id: data._id });
         continue;
       }
@@ -227,100 +229,62 @@ export async function generateVector(): Promise<any> {
   logger.debug('Vector queue loop exit', { queueSize: global.vectorQueueLen });
 }
 
+/**
+ * 在处理当前 rebuild 前先补充下一条任务。
+ * 重试耗尽后必须向上抛错，让当前 training 保持可重试，避免链路在仍有 rebuilding data 时中断。
+ */
+const enqueueFollowingDatasetRebuild = async ({
+  trainingData
+}: {
+  trainingData: TrainingDataType;
+}) =>
+  retryFn(() =>
+    enqueueNextDatasetRebuildTask({
+      teamId: String(trainingData.teamId),
+      tmbId: String(trainingData.tmbId),
+      datasetId: String(trainingData.datasetId),
+      billId: trainingData.billId,
+      vectorModel: getDatasetEmbeddingModel(trainingData.dataset),
+      vlmModel: getDatasetVlmModel(trainingData.dataset),
+      rebuildScope: trainingData.rebuildScope,
+      synonymVersion: trainingData.synonymVersion
+    })
+  );
+
 const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
+  // 先挂下一条任务，当前 data 被删除或执行失败也不会截断整条重建链。
+  await enqueueFollowingDatasetRebuild({ trainingData });
+
   if (!trainingData.data) {
     await MongoDatasetTraining.deleteOne({ _id: trainingData._id });
-    return Promise.reject('Not data');
+    return { tokens: 0 };
   }
   const datasetData = trainingData.data;
 
-  // 批量重建时先挂下一条任务，避免当前任务耗时太长导致后续数据迟迟不入队。
-  try {
-    await retryFn(() =>
-      mongoSessionRun(async (session) => {
-        const newRebuildingData = await MongoDatasetData.findOneAndUpdate(
-          {
-            rebuilding: true,
-            teamId: trainingData.teamId,
-            datasetId: trainingData.datasetId
-          },
-          {
-            $unset: {
-              rebuilding: null
-            },
-            updateTime: new Date()
-          },
-          { session }
-        ).select({
-          _id: 1,
-          collectionId: 1,
-          q: 1,
-          imageId: 1,
-          indexes: 1
-        });
-
-        if (newRebuildingData) {
-          const collection = await MongoDatasetCollection.findById(newRebuildingData.collectionId)
-            .select('imageIndex')
-            .session(session);
-          const hasMarkdownImages =
-            !!collection?.imageIndex &&
-            uniqueDatasetDataMarkdownImageUrls([newRebuildingData.q]).length > 0;
-          const { availableVlmModel, supportVlm, supportImageIndex } =
-            getDatasetImageIndexCapability({
-              vectorModel: getDatasetEmbeddingModel(trainingData.dataset),
-              vlmModel: getDatasetVlmModel(trainingData.dataset)
-            });
-          const mode = getDatasetImageTrainingMode({
-            supportVlm,
-            supportImageIndex,
-            imageId: newRebuildingData.imageId,
-            hasMarkdownImages
-          });
-
-          await MongoDatasetTraining.create(
-            [
-              {
-                teamId: trainingData.teamId,
-                tmbId: trainingData.tmbId,
-                datasetId: trainingData.datasetId,
-                collectionId: newRebuildingData.collectionId,
-                billId: trainingData.billId,
-                mode,
-                model:
-                  (mode === TrainingModeEnum.imageParse || mode === TrainingModeEnum.image) &&
-                  supportVlm &&
-                  availableVlmModel
-                    ? availableVlmModel.model
-                    : getDatasetEmbeddingModel(trainingData.dataset).model,
-                dataId: newRebuildingData._id,
-                ...(newRebuildingData.imageId && { imageId: newRebuildingData.imageId }),
-                ...(mode === TrainingModeEnum.image && {
-                  q: newRebuildingData.q,
-                  indexes: newRebuildingData.indexes
-                }),
-                retryCount: 50
-              }
-            ],
-            { session, ordered: true }
-          );
-        }
-      })
-    );
-  } catch {}
-
   const embModel = getDatasetEmbeddingModel(trainingData.dataset);
-  const q = trainingData.q || datasetData.q;
-  const a = trainingData.a ?? datasetData.a;
-  const rebuildIndexes = getRebuildBaseIndexes(trainingData);
 
   const { tokens } = await updateDatasetDataByIndexes({
     dataId: String(datasetData._id),
-    q,
-    a,
-    imageId: datasetData.imageId,
+    ...(trainingData.imageDescMap
+      ? {
+          ...(trainingData.q ? { q: trainingData.q } : {}),
+          a: trainingData.a,
+          imageDescMap: trainingData.imageDescMap
+        }
+      : {}),
     imageIndex: !!trainingData.collection.imageIndex,
-    indexes: rebuildIndexes,
+    preserveImageEmbedding: trainingData.rebuildScope === DatasetRebuildScopeEnum.text,
+    getCurrentIndexes: (indexes) => {
+      const currentIndexes = getRebuildBaseIndexes(trainingData, indexes);
+      if (!trainingData.imageDescMap) return currentIndexes;
+      const generatedImageIndexes = trainingData.indexes.filter(
+        (index) => index.type === DatasetDataIndexTypeEnum.image
+      );
+      return [
+        ...currentIndexes.filter((index) => index.type !== DatasetDataIndexTypeEnum.image),
+        ...generatedImageIndexes
+      ];
+    },
     model: embModel,
     indexSize: trainingData.indexSize || getMaxIndexSize(embModel),
     indexPrefix: trainingData.collection.indexPrefixTitle
@@ -330,13 +294,6 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
   });
 
   await mongoSessionRun(async (session) => {
-    if (trainingData.imageDescMap) {
-      await MongoDatasetData.updateOne(
-        { _id: datasetData._id },
-        { $set: { imageDescMap: trainingData.imageDescMap } },
-        { session }
-      );
-    }
     await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
   });
 

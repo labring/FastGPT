@@ -11,6 +11,8 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getS3DatasetSource } from '../../common/s3/sources/dataset';
+import { MongoDatasetSynonym, MongoDatasetSynonymMapping } from './synonym/schema';
+import { invalidateDatasetSynonymMatcherCache } from './synonym/entity';
 
 /* ============= dataset ========== */
 /* find all datasetId by top datasetId */
@@ -94,7 +96,18 @@ export async function delDatasetRelevantData({
   await MongoDatasetTraining.deleteMany({
     teamId,
     datasetId: { $in: datasetIds }
-  });
+  }).session(session);
+
+  // 同义词配置和映射都以 dataset 为生命周期边界。
+  // MongoDB transaction 内不并行执行操作，兼容单 session 的命令约束。
+  await MongoDatasetSynonymMapping.deleteMany({
+    teamId,
+    datasetId: { $in: datasetIds }
+  }).session(session);
+  await MongoDatasetSynonym.deleteMany({
+    teamId,
+    datasetId: { $in: datasetIds }
+  }).session(session);
 
   // Delete dataset_data_texts(store 分发:mongo 真实删除,milvus 空操作——全文随向量删除)
   await getFullTextStore().deleteByDatasetIds({ teamId, datasetIds }, session);
@@ -119,5 +132,6 @@ export async function delDatasetRelevantData({
   // Delete all dataset files
   for (const datasetId of datasetIds) {
     await getS3DatasetSource().deleteDatasetFilesByPrefix({ datasetId });
+    invalidateDatasetSynonymMatcherCache({ teamId, datasetId });
   }
 }

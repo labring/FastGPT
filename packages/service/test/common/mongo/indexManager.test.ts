@@ -1,8 +1,18 @@
 import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { connectionMongo, defineIndex, Schema } from '@fastgpt/service/common/mongo';
+import {
+  connectionMongo,
+  defineIndex,
+  getSchemaDeprecatedMongoIndexes,
+  Schema
+} from '@fastgpt/service/common/mongo';
 import type { DeprecatedMongoIndexDefinition } from '@fastgpt/service/common/mongo/schemaIndexes';
 import { MongoIndexManager } from '@fastgpt/service/common/mongo/indexManager';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import {
+  MongoDatasetSynonym,
+  MongoDatasetSynonymMapping
+} from '@fastgpt/service/core/dataset/synonym/schema';
 
 const logger = {
   debug: vi.fn(),
@@ -42,6 +52,59 @@ const legacyDefinition = {
   indexName: 'legacy_field_1',
   key: { legacyField: 1 }
 } as const;
+
+describe('dataset synonym index declarations', () => {
+  it('declares legacy config indexes as deprecated', () => {
+    expect(getSchemaDeprecatedMongoIndexes(MongoDatasetSynonym.schema)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ indexName: 'teamId_1_fileId_1', key: { teamId: 1, fileId: 1 } }),
+        expect.objectContaining({
+          indexName: 'teamId_1_pendingFileId_1',
+          key: { teamId: 1, pendingFileId: 1 }
+        })
+      ])
+    );
+  });
+
+  it('limits version uniqueness to migrated mapping documents', () => {
+    const indexes = MongoDatasetSynonymMapping.schema.indexes();
+    const normalizedTermIndex = indexes.find(
+      ([key]) => 'normalizedStandardizedTerm' in key && 'fileVersion' in key
+    );
+    const logicalIdIndex = indexes.find(
+      ([key]) => 'logicalMappingId' in key && 'fileVersion' in key
+    );
+
+    expect(normalizedTermIndex?.[1]).toMatchObject({
+      name: 'synonym_version_standard_unique_v2',
+      unique: true,
+      partialFilterExpression: {
+        fileVersion: { $type: 'number' },
+        normalizedStandardizedTerm: { $type: 'string' },
+        source: { $type: 'string' }
+      }
+    });
+    expect(logicalIdIndex?.[1]).toMatchObject({
+      name: 'synonym_version_logical_unique_v2',
+      unique: true,
+      partialFilterExpression: {
+        fileVersion: { $type: 'number' },
+        logicalMappingId: { $type: 'objectId' },
+        source: { $type: 'string' }
+      }
+    });
+    expect(getSchemaDeprecatedMongoIndexes(MongoDatasetSynonymMapping.schema)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          indexName: 'teamId_1_datasetId_1_fileVersion_1_normalizedStandardizedTerm_1'
+        }),
+        expect.objectContaining({
+          indexName: 'teamId_1_datasetId_1_fileVersion_1_logicalMappingId_1'
+        })
+      ])
+    );
+  });
+});
 
 describe('MongoIndexManager.syncModelIndexes', () => {
   beforeEach(() => {
@@ -113,6 +176,35 @@ describe('MongoIndexManager.syncModelIndexes', () => {
     expect(result.cleanupReport.items).toEqual([]);
     expect(logger.info).not.toHaveBeenCalled();
     expect(logger.debug).not.toHaveBeenCalled();
+  });
+
+  it('replaces a full unique index with a named partial unique index on the same key', async () => {
+    const schema = new Schema(
+      { datasetId: String, fileVersion: Number, term: String },
+      { autoIndex: false }
+    );
+    const key = { datasetId: 1, fileVersion: 1, term: 1 } as const;
+    defineIndex(schema, {
+      key,
+      options: {
+        name: 'version_term_unique_v2',
+        unique: true,
+        partialFilterExpression: {
+          fileVersion: { $type: 'number' },
+          term: { $type: 'string' }
+        }
+      }
+    });
+    defineIndex(schema, { key, options: { unique: true }, deprecated: true });
+    const model = createModel({ schema });
+    const legacyName = 'datasetId_1_fileVersion_1_term_1';
+    await model.collection.createIndex(key, { name: legacyName, unique: true });
+
+    await MongoIndexManager.syncModelIndexes({ model, logger });
+
+    const indexNames = await getIndexNames(model);
+    expect(indexNames).toContain('version_term_unique_v2');
+    expect(indexNames).not.toContain(legacyName);
   });
 
   it('reuses an in-flight task for concurrent calls on the same Model', async () => {
@@ -485,5 +577,37 @@ describe('MongoIndexManager.cleanupModelDeprecatedIndexes', () => {
       errors: 1
     });
     expect(MongoIndexManager.formatCleanupReport(report)).toContain('error=test error');
+  });
+});
+
+describe('dataset training TTL index migration', () => {
+  it('restores the ordinary training TTL and removes branch-only partial indexes', () => {
+    const ttlIndex = MongoDatasetTraining.schema
+      .indexes()
+      .find(
+        ([key, options]) =>
+          'expireAt' in key && options.partialFilterExpression === undefined && !options.deprecated
+      );
+
+    expect(ttlIndex).toEqual([
+      { expireAt: 1 },
+      expect.objectContaining({
+        expireAfterSeconds: 7 * 24 * 60 * 60
+      })
+    ]);
+    expect(getSchemaDeprecatedMongoIndexes(MongoDatasetTraining.schema)).toContainEqual({
+      indexName: 'expireAt_1_non_synonym_rebuild',
+      key: { expireAt: 1 },
+      options: expect.objectContaining({
+        partialFilterExpression: { rebuildMutationId: { $exists: false } }
+      })
+    });
+    expect(getSchemaDeprecatedMongoIndexes(MongoDatasetTraining.schema)).toContainEqual({
+      indexName: 'expireAt_1_non_rebuild',
+      key: { expireAt: 1 },
+      options: expect.objectContaining({
+        partialFilterExpression: { rebuildMode: { $exists: false } }
+      })
+    });
   });
 });

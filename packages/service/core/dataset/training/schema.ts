@@ -2,7 +2,7 @@
 import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
 import { type DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetRebuildScopeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetColCollectionName } from '../collection/schema';
 import { DatasetCollectionName } from '../schema';
 import {
@@ -43,7 +43,11 @@ const TrainingDataSchema = new Schema({
     enum: Object.values(TrainingModeEnum),
     required: true
   },
-
+  rebuildScope: {
+    type: String,
+    enum: Object.values(DatasetRebuildScopeEnum)
+  },
+  synonymVersion: Number,
   expireAt: {
     // It will be deleted after 7 days
     type: Date,
@@ -139,7 +143,25 @@ defineIndex(TrainingDataSchema, {
   key: { expireAt: 1 },
   options: { expireAfterSeconds: 7 * 24 * 60 * 60 }
 }); // 7 days
-
+// 本分支早期为同义词重建增加了专用 TTL，收敛为普通 rebuild 后精确清理。
+defineIndex(TrainingDataSchema, {
+  key: { expireAt: 1 },
+  options: {
+    name: 'expireAt_1_non_synonym_rebuild',
+    expireAfterSeconds: 7 * 24 * 60 * 60,
+    partialFilterExpression: { rebuildMutationId: { $exists: false } }
+  },
+  deprecated: true
+});
+defineIndex(TrainingDataSchema, {
+  key: { expireAt: 1 },
+  options: {
+    name: 'expireAt_1_non_rebuild',
+    expireAfterSeconds: 7 * 24 * 60 * 60,
+    partialFilterExpression: { rebuildMode: { $exists: false } }
+  },
+  deprecated: true
+});
 export const MongoDatasetTraining = getMongoModel<DatasetTrainingSchemaType>(
   DatasetTrainingCollectionName,
   TrainingDataSchema

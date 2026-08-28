@@ -31,6 +31,7 @@ export const defaultSearchDatasetData = async ({
         embeddingModel: props.model,
         extensionBg: datasetSearchExtensionBg,
         histories: props.histories,
+        datasetIds: props.datasetIds,
         userKey,
         teamId: props.teamId
       })

@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { serviceEnv } from '@fastgpt/service/env';
+import { Types } from '@fastgpt/service/common/mongo';
+import {
+  MongoDatasetSynonym,
+  MongoDatasetSynonymMapping
+} from '@fastgpt/service/core/dataset/synonym/schema';
 
 const mockQueryExtension = vi.hoisted(() => vi.fn());
 const mockGetImageBase64 = vi.hoisted(() => vi.fn());
@@ -16,10 +21,95 @@ import {
   computeFilterIntersection,
   datasetSearchQueryExtension,
   isValidImageEmbeddingSource,
-  normalizeImageToBase64
+  mergeDatasetSynonymQueryMatches,
+  normalizeImageToBase64,
+  standardizeDatasetSearchQueries
 } from '../../../../core/dataset/search/utils';
 
 const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
+
+describe('mergeDatasetSynonymQueryMatches', () => {
+  const baseMatch = {
+    mappingId: '68ee0bd23d17260b7829b137',
+    datasetId: '68ee0bd23d17260b7829b138',
+    fileVersion: 1,
+    matchedTerm: '苹果手机',
+    standardizedTerm: 'iPhone',
+    preserveOriginal: false,
+    order: 0
+  };
+
+  it('replaces a unique standard term directly', () => {
+    expect(
+      mergeDatasetSynonymQueryMatches({
+        query: '苹果手机怎么退款',
+        matches: [baseMatch]
+      })
+    ).toBe('iPhone怎么退款');
+  });
+
+  it('preserves the source term and appends all cross-dataset standards', () => {
+    expect(
+      mergeDatasetSynonymQueryMatches({
+        query: '苹果手机怎么退款',
+        matches: [
+          { ...baseMatch, standardizedTerm: 'Apple Phone', order: 1 },
+          { ...baseMatch, standardizedTerm: 'iPhone', order: 0 }
+        ]
+      })
+    ).toBe('苹果手机 iPhone Apple Phone怎么退款');
+  });
+
+  it('preserves the source term when a match requests expansion', () => {
+    expect(
+      mergeDatasetSynonymQueryMatches({
+        query: 'Use AI',
+        matches: [
+          {
+            ...baseMatch,
+            matchedTerm: 'AI',
+            standardizedTerm: 'Artificial Intelligence',
+            preserveOriginal: true
+          }
+        ]
+      })
+    ).toBe('Use AI Artificial Intelligence');
+  });
+});
+
+describe('standardizeDatasetSearchQueries', () => {
+  it('always preserves the original query for eventual-consistency rebuilds', async () => {
+    const teamId = new Types.ObjectId();
+    const datasetId = new Types.ObjectId();
+    const synonym = await MongoDatasetSynonym.create({
+      teamId,
+      datasetId,
+      version: 1,
+      enabled: true
+    });
+    await MongoDatasetSynonymMapping.create({
+      logicalMappingId: new Types.ObjectId(),
+      teamId,
+      datasetId,
+      synonymFileId: synonym._id,
+      fileVersion: 1,
+      standardizedTerm: '退款',
+      normalizedStandardizedTerm: '退款',
+      synonymTerms: ['退钱'],
+      normalizedSynonymTerms: ['退钱'],
+      allTerms: '退款 退钱',
+      fingerprint: 'refund'
+    });
+
+    await expect(
+      standardizeDatasetSearchQueries({
+        teamId: String(teamId),
+        datasetIds: [String(datasetId)],
+        queries: ['怎么退钱']
+      })
+    ).resolves.toEqual(['怎么退钱 退款']);
+  });
+});
 
 afterEach(() => {
   serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
@@ -206,5 +296,38 @@ describe('datasetSearchQueryExtension', () => {
 
     expect(result.searchQueries).toEqual(['first', 'first extension']);
     expect(result.reRankQuery).toBe('first\nfirst extension');
+  });
+
+  it('should apply synonyms to recall queries without changing the rerank query', async () => {
+    const teamId = new Types.ObjectId();
+    const datasetId = new Types.ObjectId();
+    const synonym = await MongoDatasetSynonym.create({
+      teamId,
+      datasetId,
+      version: 1,
+      enabled: true
+    });
+    await MongoDatasetSynonymMapping.create({
+      logicalMappingId: new Types.ObjectId(),
+      teamId,
+      datasetId,
+      synonymFileId: synonym._id,
+      fileVersion: 1,
+      standardizedTerm: '退款',
+      normalizedStandardizedTerm: '退款',
+      synonymTerms: ['退钱'],
+      normalizedSynonymTerms: ['退钱'],
+      allTerms: '退款 退钱',
+      fingerprint: 'refund'
+    });
+
+    const result = await datasetSearchQueryExtension({
+      query: '怎么退钱',
+      teamId: String(teamId),
+      datasetIds: [String(datasetId)]
+    });
+
+    expect(result.searchQueries).toEqual(['怎么退钱 退款']);
+    expect(result.reRankQuery).toBe('怎么退钱');
   });
 });

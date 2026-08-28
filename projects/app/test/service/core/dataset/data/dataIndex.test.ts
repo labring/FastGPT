@@ -4,6 +4,8 @@ import { getEmbeddingModelData } from '@fastgpt/service/core/ai/model';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { MongoDatasetSynonym } from '@fastgpt/service/core/dataset/synonym/schema';
+import { DatasetSynonymSchemaVersion } from '@fastgpt/global/core/dataset/synonym';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type {
@@ -1003,6 +1005,106 @@ describe('DatasetDataIndexOperation', () => {
       expect(mockVectorDelete).toHaveBeenCalledWith({
         teamId: String(dataItem.teamId),
         idList: ['custom_old']
+      });
+    });
+
+    it('should use the latest Mongo indexes instead of a stale API snapshot', async () => {
+      const { data, dataItem } = await createData();
+      await MongoDatasetData.updateOne(
+        { _id: data._id },
+        {
+          $set: {
+            indexes: [
+              {
+                type: DatasetDataIndexTypeEnum.custom,
+                text: 'newer custom',
+                dataId: 'custom_newer'
+              }
+            ],
+            updateTime: new Date(Date.now() + 10_000)
+          }
+        }
+      );
+
+      await expect(
+        updateDatasetDataIndex({
+          data: dataItem,
+          indexDataId: 'custom_old',
+          type: DatasetDataIndexTypeEnum.custom,
+          text: 'requested update',
+          model: embeddingModel
+        })
+      ).rejects.toBe('Dataset data index not found');
+      expect(mockVectorInsert).not.toHaveBeenCalled();
+    });
+
+    it('should preserve concurrent edits and clean the new manual index vector', async () => {
+      const { root, dataset, data, dataItem } = await createData();
+      await MongoDatasetSynonym.create({
+        teamId: root.teamId,
+        datasetId: dataset._id,
+        version: 1,
+        enabled: true,
+        schemaVersion: DatasetSynonymSchemaVersion
+      });
+      mockGetVectors.mockImplementationOnce(async ({ inputs }) => {
+        await MongoDatasetData.updateOne(
+          { _id: data._id },
+          { $set: { q: 'concurrent question', updateTime: new Date(Date.now() + 10_000) } }
+        );
+        return createMockVectorsResponse(inputs.map((input) => input.input));
+      });
+
+      await expect(
+        updateDatasetDataIndex({
+          data: dataItem,
+          indexDataId: 'custom_old',
+          type: DatasetDataIndexTypeEnum.custom,
+          text: 'requested update',
+          model: embeddingModel
+        })
+      ).rejects.toThrow('数据已变化');
+
+      await expect(MongoDatasetData.findById(data._id).lean()).resolves.toMatchObject({
+        q: 'concurrent question',
+        indexes: [expect.objectContaining({ dataId: 'custom_old', text: 'old custom' })]
+      });
+      expect(mockVectorDelete).toHaveBeenCalledWith({
+        teamId: String(dataItem.teamId),
+        idList: ['id_1']
+      });
+    });
+
+    it('should clean the new manual index vector when the synonym matcher changes', async () => {
+      const { root, dataset, data, dataItem } = await createData();
+      const synonym = await MongoDatasetSynonym.create({
+        teamId: root.teamId,
+        datasetId: dataset._id,
+        version: 1,
+        enabled: true,
+        schemaVersion: DatasetSynonymSchemaVersion
+      });
+      mockGetVectors.mockImplementationOnce(async ({ inputs }) => {
+        await MongoDatasetSynonym.updateOne({ _id: synonym._id }, { $set: { version: 2 } });
+        return createMockVectorsResponse(inputs.map((input) => input.input));
+      });
+
+      await expect(
+        updateDatasetDataIndex({
+          data: dataItem,
+          indexDataId: 'custom_old',
+          type: DatasetDataIndexTypeEnum.custom,
+          text: '退钱说明',
+          model: embeddingModel
+        })
+      ).rejects.toThrow('同义词配置已变化');
+
+      await expect(MongoDatasetData.findById(data._id).lean()).resolves.toMatchObject({
+        indexes: [expect.objectContaining({ dataId: 'custom_old', text: 'old custom' })]
+      });
+      expect(mockVectorDelete).toHaveBeenCalledWith({
+        teamId: String(dataItem.teamId),
+        idList: ['id_1']
       });
     });
 
