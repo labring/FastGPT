@@ -137,7 +137,7 @@ Cons:
 
 Uses traditional full-text search. Best for finding key subjects, predicates, and other specific terms.
 
-- When the vector store is **Milvus (≥ 2.5, recommended 2.5.16+)**: full-text search uses Milvus **BM25** (vectors and full-text live in the single `modeldata_v2` collection); language identification defaults to `lingua` (switchable via `MILVUS_LANGUAGE_IDENTIFIER=whatlang`; `lingua` is more accurate, while `whatlang` is faster).
+- When the vector store is **Milvus (≥ 2.5.16)**: full-text search uses Milvus **BM25** (vectors and full-text live in the single `modeldata_v2` collection); language identification defaults to `lingua` (switchable via `MILVUS_LANGUAGE_IDENTIFIER=whatlang`; `lingua` is more accurate, while `whatlang` is faster).
 - Other vector stores (PG / OceanBase / SeekDB / openGauss): full-text search uses MongoDB `$text` + jieba tokenization.
 
 #### Hybrid Search

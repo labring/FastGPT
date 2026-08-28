@@ -5,7 +5,7 @@ description: 'Upgrade Milvus to 2.5.16+ and enable FastGPT BM25 full-text search
 
 ## Background
 
-FastGPT full-text search defaults to MongoDB `$text`. When **Milvus is used as the vector store**, full-text search automatically switches to Milvus BM25 (single `modeldata_v2` table, vector + full-text in one collection) and stops writing the MongoDB full-text table. This requires Milvus **≥ 2.5 (recommended 2.5.16+)**; below 2.5 FastGPT fails to start with an explicit error — it never silently downgrades.
+FastGPT full-text search defaults to MongoDB `$text`. When **Milvus is used as the vector store**, full-text search automatically switches to Milvus BM25 (single `modeldata_v2` table, vector + full-text in one collection) and stops writing the MongoDB full-text table. This requires Milvus **≥ 2.5.16**; below 2.5.16 FastGPT fails to start with an explicit error — it never silently downgrades.
 
 > The full-text backend follows the actual vector store: Milvus → BM25; other vector stores (PG / OceanBase / SeekDB / openGauss) keep MongoDB `$text`. There is no separate full-text engine switch to configure.
 
@@ -36,7 +36,7 @@ image: milvusdb/milvus:v2.5.16
 
 ### 4. Verify Version
 
-Start FastGPT — Milvus initialization calls `getVersion()` to gate the version; below 2.5, or when the version cannot be fetched/parsed, **startup terminates**. You can also verify manually:
+Start FastGPT — Milvus initialization calls `getVersion()` to gate the version; below 2.5.16, or when the version cannot be fetched/parsed, **startup terminates**. You can also verify manually:
 
 ```bash
 # Confirm the server version is >= v2.5.16 via milvus-cli / Attu / SDK getVersion
@@ -99,6 +99,6 @@ After migration, the old `modeldata` table is **never auto-deleted**. Once the a
 
 ## FAQ
 
-- **Startup fails with `Milvus version ... is not supported`**: Milvus is below 2.5; upgrade to 2.5.16+.
+- **Startup fails with `Milvus version ... is not supported`**: Milvus is below 2.5.16; upgrade to 2.5.16+.
 - **Migration stays `failed` with `targetCount < processedCount`**: the target table has fewer actual rows than written; check Milvus health (OOM / released collection) and resume with `resumeMigrationId`.
 - **Full-text search returns nothing after migration**: confirm the migration finished with `status: done`; an empty `modeldata_v2` means no full-text hits.

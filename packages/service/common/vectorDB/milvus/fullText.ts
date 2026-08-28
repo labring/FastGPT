@@ -14,16 +14,17 @@ import { getLogger, LogCategories } from '../../logger';
 
 const logger = getLogger(LogCategories.INFRA.VECTOR);
 
-const MIN_MILVUS_MAJOR = 2;
-const MIN_MILVUS_MINOR = 5;
+const MIN_MILVUS_VERSION = { major: 2, minor: 5, patch: 16 };
 
-export const parseMilvusVersion = (version: string): { major: number; minor: number } => {
+export const parseMilvusVersion = (
+  version: string
+): { major: number; minor: number; patch: number } => {
   const m = version
     .trim()
     .replace(/^v/i, '')
-    .match(/^(\d+)\.(\d+)/);
+    .match(/^(\d+)\.(\d+)\.(\d+)/);
   if (!m) throw new Error(`Unable to parse Milvus version from server: ${version}`);
-  return { major: Number(m[1]), minor: Number(m[2]) };
+  return { major: Number(m[1]), minor: Number(m[2]), patch: Number(m[3]) };
 };
 
 export const assertMilvusVersion = async (client: MilvusClient): Promise<void> => {
@@ -33,10 +34,16 @@ export const assertMilvusVersion = async (client: MilvusClient): Promise<void> =
   } catch (error) {
     throw new Error(`Failed to get Milvus version: ${getErrText(error)}`);
   }
-  const { major, minor } = parseMilvusVersion(version);
-  if (major < MIN_MILVUS_MAJOR || (major === MIN_MILVUS_MAJOR && minor < MIN_MILVUS_MINOR)) {
+  const { major, minor, patch } = parseMilvusVersion(version);
+  const belowMin =
+    major < MIN_MILVUS_VERSION.major ||
+    (major === MIN_MILVUS_VERSION.major && minor < MIN_MILVUS_VERSION.minor) ||
+    (major === MIN_MILVUS_VERSION.major &&
+      minor === MIN_MILVUS_VERSION.minor &&
+      patch < MIN_MILVUS_VERSION.patch);
+  if (belowMin) {
     throw new Error(
-      `Milvus version ${version} is not supported. FastGPT requires Milvus 2.5.16+ (minimum 2.5). Please upgrade your Milvus instance.`
+      `Milvus version ${version} is not supported. FastGPT requires Milvus 2.5.16+. Please upgrade your Milvus instance.`
     );
   }
   logger.info('Milvus version verified', { version });

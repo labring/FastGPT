@@ -98,11 +98,20 @@ describe('MilvusCtrl', () => {
   });
 
   // 被测函数: MilvusCtrl.init  等级: 3-High
-  // (异常场景) 版本低于 2.5, 期望: init 抛版本错误,且未创建任何集合(版本门禁在 ensureCollection 之前)
-  it('TC-8.11 init rejects Milvus version below 2.5', async () => {
+  // (异常场景) 版本低于 2.5.16, 期望: init 抛版本错误,且未创建任何集合(版本门禁在 ensureCollection 之前)
+  it('TC-8.11 init rejects Milvus version below 2.5.16', async () => {
     mockGetVersion.mockResolvedValue({ version: 'v2.4.3' });
     const ctrl = new MilvusCtrl();
     await expect(ctrl.init()).rejects.toThrow(/Milvus version v2\.4\.3 is not supported/);
+    expect(mockCreateCollection).not.toHaveBeenCalled();
+  });
+
+  // 被测函数: MilvusCtrl.init  等级: 3-High
+  // (异常场景) 版本 2.5.0 满足 major/minor 但低于 2.5.16, 期望: 补丁级门禁拒绝(不能只比 major/minor)
+  it('TC-8.11b init rejects Milvus v2.5.0 below the 2.5.16 patch gate', async () => {
+    mockGetVersion.mockResolvedValue({ version: 'v2.5.0' });
+    const ctrl = new MilvusCtrl();
+    await expect(ctrl.init()).rejects.toThrow(/Milvus version v2\.5\.0 is not supported/);
     expect(mockCreateCollection).not.toHaveBeenCalled();
   });
 

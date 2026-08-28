@@ -5,7 +5,7 @@ description: '将 Milvus 升级到 2.5.16+ 并启用 FastGPT BM25 全文检索'
 
 ## 背景
 
-FastGPT 的全文检索默认走 MongoDB `$text`。当使用 **Milvus 作为向量库**时，全文检索自动切换到 Milvus BM25（`modeldata_v2` 单表，向量 + 全文同表），不再写 MongoDB 全文表。这要求 Milvus 版本 **≥ 2.5（推荐 2.5.16+）**；低于 2.5 时 FastGPT 启动会直接报错退出，不会降级运行。
+FastGPT 的全文检索默认走 MongoDB `$text`。当使用 **Milvus 作为向量库**时，全文检索自动切换到 Milvus BM25（`modeldata_v2` 单表，向量 + 全文同表），不再写 MongoDB 全文表。这要求 Milvus 版本 **≥ 2.5.16**；低于 2.5.16 时 FastGPT 启动会直接报错退出，不会降级运行。
 
 > 全文后端跟随实际向量库：向量库是 Milvus 时用 BM25；其他向量库（PG/OceanBase/SeekDB/openGauss）全文仍走 MongoDB `$text`。无需配置独立的全文本引擎开关。
 
@@ -36,7 +36,7 @@ image: milvusdb/milvus:v2.5.16
 
 ### 4. 验证版本
 
-启动 FastGPT，Milvus 初始化时会调用 `getVersion()` 校验版本；低于 2.5、无法获取或无法解析版本会**终止启动**。也可以手动验证：
+启动 FastGPT，Milvus 初始化时会调用 `getVersion()` 校验版本；低于 2.5.16、无法获取或无法解析版本会**终止启动**。也可以手动验证：
 
 ```bash
 # 通过 milvus-cli / attu / SDK getVersion 确认服务端版本 >= v2.5.16
@@ -99,6 +99,6 @@ image: milvusdb/milvus:v2.5.16
 
 ## 常见问题
 
-- **启动报 `Milvus version ... is not supported`**：Milvus 版本低于 2.5，升级到 2.5.16+。
+- **启动报 `Milvus version ... is not supported`**：Milvus 版本低于 2.5.16，升级到 2.5.16+。
 - **迁移一直 `failed` 且 `targetCount < processedCount`**：目标表实际写入行数不足，检查 Milvus 状态（是否 OOM / 已释放集合），用 `resumeMigrationId` 续跑。
 - **迁移后全文检索为空**：确认已跑完迁移且 `status: done`；`modeldata_v2` 为空时全文无命中。

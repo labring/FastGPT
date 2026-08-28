@@ -137,7 +137,7 @@ FastGPT 会把不同召回路径的结果进行融合，而不是简单采用某
 
 采用传统的全文检索方式。适合查找关键的主谓语等。
 
-- 向量库为 **Milvus（≥ 2.5，推荐 2.5.16+）** 时：全文检索使用 Milvus **BM25**（向量与全文同存于 `modeldata_v2` 单表），语言识别默认 `lingua`（可用 `MILVUS_LANGUAGE_IDENTIFIER=whatlang` 切换；`lingua` 识别更准，`whatlang` 速度更快）。
+- 向量库为 **Milvus（≥ 2.5.16）** 时：全文检索使用 Milvus **BM25**（向量与全文同存于 `modeldata_v2` 单表），语言识别默认 `lingua`（可用 `MILVUS_LANGUAGE_IDENTIFIER=whatlang` 切换；`lingua` 识别更准，`whatlang` 速度更快）。
 - 其他向量库（PG/OceanBase/SeekDB/openGauss）：全文检索走 MongoDB `$text` + jieba 分词。
 
 #### 混合检索
