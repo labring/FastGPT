@@ -419,9 +419,6 @@ describe('instantiateNodeFromTemplate', () => {
 
     expect(userInput.value).toEqual(['start', 'userChatInput']);
     expect(userInput.selectedType).toBe(FlowNodeInputTypeEnum.reference);
-    expect(userInput.renderTypeList[userInput.selectedTypeIndex!]).toBe(
-      FlowNodeInputTypeEnum.reference
-    );
   });
 
   it('uses validated remote defaults and clears unverified resource template values', async () => {
@@ -498,9 +495,7 @@ describe('instantiateNodeFromTemplate', () => {
     });
     const userInput = ai.node.inputs.find((input) => input.key === 'userChatInput');
     expect(userInput?.value).toEqual(['start', 'userChatInput']);
-    expect(userInput?.selectedTypeIndex).toBe(
-      userInput?.renderTypeList.indexOf(FlowNodeInputTypeEnum.reference)
-    );
+    expect(userInput?.selectedType).toBe(FlowNodeInputTypeEnum.reference);
   });
 
   it('keeps the composite Start reference for the array search input', async () => {

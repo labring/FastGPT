@@ -268,8 +268,6 @@ const validateNodeIO = ({
 };
 
 const reachabilityIgnoredNodeTypes = new Set<FlowNodeTypeEnum>([
-  FlowNodeTypeEnum.systemConfig,
-  FlowNodeTypeEnum.pluginConfig,
   FlowNodeTypeEnum.comment,
   FlowNodeTypeEnum.globalVariable,
   FlowNodeTypeEnum.emptyNode
@@ -521,17 +519,6 @@ export const validateWorkflow = (document: WorkflowDocument): WorkflowDiagnostic
       });
     }
     nodeIds.add(node.nodeId);
-  }
-
-  const systemConfigNodes = document.nodes.filter(
-    (node) => node.flowNodeType === FlowNodeTypeEnum.systemConfig
-  );
-  if (systemConfigNodes.length > 1) {
-    diagnostics.push({
-      code: 'WORKFLOW_SYSTEM_CONFIG_NODE_DUPLICATED',
-      severity: 'error',
-      params: { count: systemConfigNodes.length }
-    });
   }
 
   for (const node of document.nodes) {

@@ -12,7 +12,10 @@
           "label": "workflow:user_question",
           "valueType": "string",
           "required": true,
-          "renderTypeList": ["reference", "textarea"],
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
           "toolDescription": "workflow:user_question"
         }
       ],
@@ -42,97 +45,128 @@
           "key": "model",
           "label": "common:core.module.input.label.aiModel",
           "valueType": "string",
-          "renderTypeList": ["settingLLMModel", "reference"]
+          "renderTypeList": [
+            "settingLLMModel",
+            "reference"
+          ]
         },
         {
           "key": "temperature",
           "label": "",
           "valueType": "number",
-          "renderTypeList": ["hidden"]
+          "renderTypeList": [
+            "hidden"
+          ]
         },
         {
           "key": "maxToken",
           "label": "",
           "valueType": "number",
-          "renderTypeList": ["hidden"]
+          "renderTypeList": [
+            "hidden"
+          ]
         },
         {
           "key": "isResponseAnswerText",
           "label": "",
           "valueType": "boolean",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": true
         },
         {
           "key": "aiChatVision",
           "label": "",
           "valueType": "boolean",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": true
         },
         {
           "key": "aiChatAudio",
           "label": "",
           "valueType": "boolean",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": false
         },
         {
           "key": "aiChatVideo",
           "label": "",
           "valueType": "boolean",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": false
         },
         {
           "key": "aiChatExtractFiles",
           "label": "",
           "valueType": "boolean",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": true
         },
         {
           "key": "aiChatReasoning",
           "label": "",
           "valueType": "boolean",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": true
         },
         {
           "key": "aiChatReasoningEffort",
           "label": "",
           "valueType": "string",
-          "renderTypeList": ["hidden"]
+          "renderTypeList": [
+            "hidden"
+          ]
         },
         {
           "key": "aiChatTopP",
           "label": "",
           "valueType": "number",
-          "renderTypeList": ["hidden"]
+          "renderTypeList": [
+            "hidden"
+          ]
         },
         {
           "key": "aiChatStopSign",
           "label": "",
           "valueType": "string",
-          "renderTypeList": ["hidden"]
+          "renderTypeList": [
+            "hidden"
+          ]
         },
         {
           "key": "aiChatResponseFormat",
           "label": "",
           "valueType": "string",
-          "renderTypeList": ["hidden"]
+          "renderTypeList": [
+            "hidden"
+          ]
         },
         {
           "key": "aiChatJsonSchema",
           "label": "",
           "valueType": "string",
-          "renderTypeList": ["hidden"]
+          "renderTypeList": [
+            "hidden"
+          ]
         },
         {
           "key": "useAgentSandbox",
           "label": "app:use_agent_sandbox",
           "valueType": "boolean",
-          "renderTypeList": ["switch"],
+          "renderTypeList": [
+            "switch"
+          ],
           "value": false,
           "description": "app:use_computer_desc"
         },
@@ -140,7 +174,9 @@
           "key": "sandboxEntrypoint",
           "label": "",
           "valueType": "string",
-          "renderTypeList": ["custom"]
+          "renderTypeList": [
+            "custom"
+          ]
         },
         {
           "key": "systemPrompt",
@@ -149,7 +185,10 @@
           "isRichText": true,
           "placeholder": "common:core.app.tip.chatNodeSystemPromptTip",
           "maxLength": 100000,
-          "renderTypeList": ["textarea", "reference"],
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
           "description": "common:core.app.tip.systemPromptTip"
         },
         {
@@ -159,7 +198,10 @@
           "required": true,
           "max": 50,
           "min": 0,
-          "renderTypeList": ["numberInput", "reference"],
+          "renderTypeList": [
+            "numberInput",
+            "reference"
+          ],
           "value": 6,
           "description": "workflow:max_dialog_rounds"
         },
@@ -167,7 +209,10 @@
           "key": "fileUrlList",
           "label": "app:workflow.user_file_input",
           "valueType": "arrayString",
-          "renderTypeList": ["reference", "input"],
+          "renderTypeList": [
+            "reference",
+            "input"
+          ],
           "debugLabel": "app:workflow.user_file_input",
           "description": "app:workflow.user_file_input_desc"
         },
@@ -176,10 +221,16 @@
           "label": "workflow:user_question",
           "valueType": "string",
           "required": true,
-          "selectedTypeIndex": 0,
-          "renderTypeList": ["reference", "textarea"],
-          "value": ["start", "userChatInput"],
-          "toolDescription": "user question"
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "value": [
+            "start",
+            "userChatInput"
+          ],
+          "toolDescription": "user question",
+          "selectedType": "reference"
         }
       ],
       "outputs": [
@@ -214,14 +265,18 @@
           "label": "app:workflow.select_description",
           "valueType": "string",
           "placeholder": "app:workflow.select_description_placeholder",
-          "renderTypeList": ["textarea"],
+          "renderTypeList": [
+            "textarea"
+          ],
           "description": "app:workflow.select_description_tip"
         },
         {
           "key": "userSelectOptions",
           "label": "",
           "valueType": "any",
-          "renderTypeList": ["custom"],
+          "renderTypeList": [
+            "custom"
+          ],
           "value": [
             {
               "value": "Confirm",

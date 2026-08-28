@@ -12,110 +12,145 @@
         {
           "key": "model",
           "label": "AI Model",
-          "renderTypeList": ["settingLLMModel", "reference"],
+          "renderTypeList": [
+            "settingLLMModel",
+            "reference"
+          ],
           "valueType": "string"
         },
         {
           "key": "temperature",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "valueType": "number"
         },
         {
           "key": "maxToken",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "valueType": "number"
         },
         {
           "key": "isResponseAnswerText",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": true,
           "valueType": "boolean"
         },
         {
           "key": "aiChatQuoteRole",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": "system",
           "valueType": "string"
         },
         {
           "key": "quoteTemplate",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "valueType": "string"
         },
         {
           "key": "quotePrompt",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "valueType": "string"
         },
         {
           "key": "aiChatVision",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": true,
           "valueType": "boolean"
         },
         {
           "key": "aiChatAudio",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": false,
           "valueType": "boolean"
         },
         {
           "key": "aiChatVideo",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": false,
           "valueType": "boolean"
         },
         {
           "key": "aiChatExtractFiles",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": true,
           "valueType": "boolean"
         },
         {
           "key": "aiChatReasoning",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": true,
           "valueType": "boolean"
         },
         {
           "key": "aiChatReasoningEffort",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "valueType": "string"
         },
         {
           "key": "aiChatTopP",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "valueType": "number"
         },
         {
           "key": "aiChatStopSign",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "valueType": "string"
         },
         {
           "key": "aiChatResponseFormat",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "valueType": "string"
         },
         {
           "key": "aiChatJsonSchema",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "valueType": "string"
         },
         {
@@ -125,10 +160,13 @@
           "label": "Prompt",
           "maxLength": 100000,
           "placeholder": "Enter a prompt here",
-          "renderTypeList": ["textarea", "reference"],
-          "selectedTypeIndex": 0,
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
           "value": "You are a helpful assistant",
-          "valueType": "string"
+          "valueType": "string",
+          "selectedType": "textarea"
         },
         {
           "description": "Maximum Number of Dialog Rounds",
@@ -136,7 +174,10 @@
           "label": "Chat History",
           "max": 50,
           "min": 0,
-          "renderTypeList": ["numberInput", "reference"],
+          "renderTypeList": [
+            "numberInput",
+            "reference"
+          ],
           "required": true,
           "value": 6,
           "valueType": "chatHistory"
@@ -145,7 +186,9 @@
           "debugLabel": "Dataset Reference",
           "key": "quoteQA",
           "label": "",
-          "renderTypeList": ["settingDatasetQuotePrompt"],
+          "renderTypeList": [
+            "settingDatasetQuotePrompt"
+          ],
           "valueType": "datasetQuote"
         },
         {
@@ -153,18 +196,27 @@
           "description": "Links to documents and images uploaded by users.",
           "key": "fileUrlList",
           "label": "File Link",
-          "renderTypeList": ["reference", "input"],
+          "renderTypeList": [
+            "reference",
+            "input"
+          ],
           "valueType": "arrayString"
         },
         {
           "key": "userChatInput",
           "label": "User Question",
-          "renderTypeList": ["reference", "textarea"],
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
           "required": true,
-          "selectedTypeIndex": 0,
           "toolDescription": "User Question",
-          "value": ["start", "userChatInput"],
-          "valueType": "string"
+          "value": [
+            "start",
+            "userChatInput"
+          ],
+          "valueType": "string",
+          "selectedType": "reference"
         }
       ],
       "intro": "AI Large Model Chat",
@@ -219,7 +271,10 @@
         {
           "key": "userChatInput",
           "label": "User Question",
-          "renderTypeList": ["reference", "textarea"],
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
           "required": true,
           "toolDescription": "User Question",
           "valueType": "string"

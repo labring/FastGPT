@@ -12,7 +12,10 @@
           "label": "workflow:user_question",
           "valueType": "string",
           "required": true,
-          "renderTypeList": ["reference", "textarea"],
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
           "toolDescription": "workflow:user_question"
         }
       ],
@@ -56,17 +59,21 @@
               "description": "workflow:loop_run_mode_conditional_desc"
             }
           ],
-          "selectedTypeIndex": 0,
-          "renderTypeList": ["select"],
+          "renderTypeList": [
+            "select"
+          ],
           "value": "conditional",
-          "description": "workflow:loop_run_mode_tip"
+          "description": "workflow:loop_run_mode_tip",
+          "selectedType": "select"
         },
         {
           "key": "loopRunInputArray",
           "label": "workflow:loop_run_input_array",
           "valueType": "arrayAny",
           "required": true,
-          "renderTypeList": ["reference"],
+          "renderTypeList": [
+            "reference"
+          ],
           "value": []
         },
         {
@@ -96,35 +103,48 @@
             "showDescription": false,
             "hideBottomDivider": true
           },
-          "renderTypeList": ["addInputParam"],
+          "renderTypeList": [
+            "addInputParam"
+          ],
           "description": "workflow:loop_custom_outputs_tip"
         },
         {
           "key": "childrenNodeIdList",
           "label": "",
           "valueType": "arrayString",
-          "renderTypeList": ["hidden"],
-          "value": ["loop__start", "break"]
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": [
+            "loop__start",
+            "break"
+          ]
         },
         {
           "key": "nodeWidth",
           "label": "",
           "valueType": "number",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": 900
         },
         {
           "key": "nodeHeight",
           "label": "",
           "valueType": "number",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": 500
         },
         {
           "key": "loopNodeInputHeight",
           "label": "",
           "valueType": "number",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": 320
         }
       ],
@@ -152,21 +172,27 @@
           "key": "loopRunMode",
           "label": "",
           "valueType": "string",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": "array"
         },
         {
           "key": "loopStartInput",
           "label": "",
           "valueType": "any",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": ""
         },
         {
           "key": "loopStartIndex",
           "label": "",
           "valueType": "number",
-          "renderTypeList": ["hidden"]
+          "renderTypeList": [
+            "hidden"
+          ]
         }
       ],
       "outputs": [

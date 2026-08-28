@@ -77,7 +77,7 @@ describe('workflow template provider', () => {
     expect(refs).toContainEqual(systemToolRef);
     await expect(
       provider.resolve({ kind: 'builtin', templateId: '__system-config' }, { locale: 'en' })
-    ).resolves.toMatchObject({ template: { flowNodeType: FlowNodeTypeEnum.systemConfig } });
+    ).rejects.toMatchObject({ diagnostics: [{ code: 'WORKFLOW_TEMPLATE_UNAVAILABLE' }] });
     await expect(
       instantiateNodeFromTemplate({
         document: createWorkflowDocument(),

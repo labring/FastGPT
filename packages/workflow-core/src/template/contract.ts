@@ -92,8 +92,6 @@ export const ROOT_ONLY_NODE_TYPES: ReadonlySet<FlowNodeTypeEnum> = new Set([
   FlowNodeTypeEnum.parallelRun,
   FlowNodeTypeEnum.pluginInput,
   FlowNodeTypeEnum.pluginOutput,
-  FlowNodeTypeEnum.pluginConfig,
-  FlowNodeTypeEnum.systemConfig,
   FlowNodeTypeEnum.globalVariable
 ]);
 

@@ -178,18 +178,12 @@ describe('input mutation services', () => {
       value: ['start', 'userChatInput'],
       selectedType: FlowNodeInputTypeEnum.reference
     });
-    expect(fileInput.renderTypeList[fileInput.selectedTypeIndex!]).toBe(
-      FlowNodeInputTypeEnum.reference
-    );
 
     setInputValue({ document, nodeId: 'ai', inputKey: 'fileUrlList', value: ['manual-value'] });
     expect(fileInput).toMatchObject({
       value: ['manual-value'],
       selectedType: FlowNodeInputTypeEnum.input
     });
-    expect(fileInput.renderTypeList[fileInput.selectedTypeIndex!]).toBe(
-      FlowNodeInputTypeEnum.input
-    );
     document.chatConfig.variables = [
       {
         key: 'fileUrl',

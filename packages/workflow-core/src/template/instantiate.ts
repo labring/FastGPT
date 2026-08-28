@@ -110,8 +110,12 @@ export const instantiateNodeFromTemplate = async ({
       (output) => output.key === NodeOutputKeyEnum.userFiles
     );
     for (const input of node.inputs) {
-      const referenceIndex = input.renderTypeList.indexOf(FlowNodeInputTypeEnum.reference);
-      if (referenceIndex < 0 || hasConfiguredValue(input.value)) continue;
+      if (
+        !input.renderTypeList.includes(FlowNodeInputTypeEnum.reference) ||
+        hasConfiguredValue(input.value)
+      ) {
+        continue;
+      }
 
       const referenceDefault = (() => {
         if (input.key === NodeInputKeyEnum.userChatInput && userInputOutput) {
@@ -149,7 +153,6 @@ export const instantiateNodeFromTemplate = async ({
       }
       input.value = referenceDefault.value;
       input.selectedType = FlowNodeInputTypeEnum.reference;
-      input.selectedTypeIndex = referenceIndex;
     }
   }
 

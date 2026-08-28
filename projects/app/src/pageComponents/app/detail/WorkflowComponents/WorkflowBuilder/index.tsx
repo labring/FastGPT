@@ -171,7 +171,7 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
         const targetDocument = parseCompatibleWorkflowDocument(loaded.document);
         previousWorkflow = flowData2StoreData();
         if (!previousWorkflow) throw new Error('Workflow Builder current canvas is unavailable');
-        const workflowConfig = parseWorkflowImportConfig({
+        const workflowConfig = await parseWorkflowImportConfig({
           config: compileStoreWorkflow(targetDocument),
           appType:
             appDetail.type === AppTypeEnum.workflowTool

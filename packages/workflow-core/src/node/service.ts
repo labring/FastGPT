@@ -74,7 +74,6 @@ export const cloneNode = ({
   }
   if (
     source.flowNodeType === FlowNodeTypeEnum.workflowStart ||
-    source.flowNodeType === FlowNodeTypeEnum.systemConfig ||
     isNestedParentNodeType(source.flowNodeType) ||
     isNestedChildSystemNodeType(source.flowNodeType)
   ) {
@@ -119,7 +118,6 @@ export const removeNode = ({
   const parentNodeId = node.parentNodeId;
   if (
     node.flowNodeType === FlowNodeTypeEnum.workflowStart ||
-    node.flowNodeType === FlowNodeTypeEnum.systemConfig ||
     isNestedChildSystemNodeType(node.flowNodeType)
   ) {
     throw new WorkflowCommandError([

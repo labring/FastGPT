@@ -16,12 +16,10 @@ export type AddNodeDependencies = {
   translate?: (value: string) => string;
 };
 
-export const SYSTEM_CONFIG_NODE_ID = 'userGuide';
 export const WORKFLOW_START_NODE_ID = 'start';
 
 /**
- * 为工作流补齐唯一的系统配置节点。
- * 配置数据仍以 chatConfig 为事实源；该节点只负责提供 Web 画布上的统一编辑入口。
+ * @deprecated 系统配置节点已迁移到 chatConfig；保留空操作仅兼容旧调用方。
  */
 export const ensureSystemConfigNode = async ({
   document,
@@ -30,17 +28,9 @@ export const ensureSystemConfigNode = async ({
   document: WorkflowDocument;
   dependencies: AddNodeDependencies;
 }) => {
-  if (document.nodes.some((node) => node.flowNodeType === FlowNodeTypeEnum.systemConfig)) {
-    return { nodeIds: [], warnings: [] };
-  }
-
-  return addNodeFromTemplate({
-    document,
-    template: { kind: 'builtin', templateId: '__system-config' },
-    nodeId: SYSTEM_CONFIG_NODE_ID,
-    position: { x: 260, y: -480 },
-    dependencies
-  });
+  void document;
+  void dependencies;
+  return { nodeIds: [], warnings: [] as WorkflowDiagnostic[] };
 };
 
 /** 创建与 FastGPT Web 默认结构一致的空工作流。 */

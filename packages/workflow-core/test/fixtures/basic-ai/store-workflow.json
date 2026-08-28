@@ -15,110 +15,145 @@
           "key": "model",
           "label": "AI Model",
           "valueType": "string",
-          "renderTypeList": ["settingLLMModel", "reference"]
+          "renderTypeList": [
+            "settingLLMModel",
+            "reference"
+          ]
         },
         {
           "key": "temperature",
           "label": "",
           "valueType": "number",
-          "renderTypeList": ["hidden"]
+          "renderTypeList": [
+            "hidden"
+          ]
         },
         {
           "key": "maxToken",
           "label": "",
           "valueType": "number",
-          "renderTypeList": ["hidden"]
+          "renderTypeList": [
+            "hidden"
+          ]
         },
         {
           "key": "isResponseAnswerText",
           "label": "",
           "valueType": "boolean",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": true
         },
         {
           "key": "aiChatQuoteRole",
           "label": "",
           "valueType": "string",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": "system"
         },
         {
           "key": "quoteTemplate",
           "label": "",
           "valueType": "string",
-          "renderTypeList": ["hidden"]
+          "renderTypeList": [
+            "hidden"
+          ]
         },
         {
           "key": "quotePrompt",
           "label": "",
           "valueType": "string",
-          "renderTypeList": ["hidden"]
+          "renderTypeList": [
+            "hidden"
+          ]
         },
         {
           "key": "aiChatVision",
           "label": "",
           "valueType": "boolean",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": true
         },
         {
           "key": "aiChatAudio",
           "label": "",
           "valueType": "boolean",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": false
         },
         {
           "key": "aiChatVideo",
           "label": "",
           "valueType": "boolean",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": false
         },
         {
           "key": "aiChatExtractFiles",
           "label": "",
           "valueType": "boolean",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": true
         },
         {
           "key": "aiChatReasoning",
           "label": "",
           "valueType": "boolean",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": true
         },
         {
           "key": "aiChatReasoningEffort",
           "label": "",
           "valueType": "string",
-          "renderTypeList": ["hidden"]
+          "renderTypeList": [
+            "hidden"
+          ]
         },
         {
           "key": "aiChatTopP",
           "label": "",
           "valueType": "number",
-          "renderTypeList": ["hidden"]
+          "renderTypeList": [
+            "hidden"
+          ]
         },
         {
           "key": "aiChatStopSign",
           "label": "",
           "valueType": "string",
-          "renderTypeList": ["hidden"]
+          "renderTypeList": [
+            "hidden"
+          ]
         },
         {
           "key": "aiChatResponseFormat",
           "label": "",
           "valueType": "string",
-          "renderTypeList": ["hidden"]
+          "renderTypeList": [
+            "hidden"
+          ]
         },
         {
           "key": "aiChatJsonSchema",
           "label": "",
           "valueType": "string",
-          "renderTypeList": ["hidden"]
+          "renderTypeList": [
+            "hidden"
+          ]
         },
         {
           "key": "systemPrompt",
@@ -127,10 +162,13 @@
           "isRichText": true,
           "placeholder": "Enter a prompt here",
           "maxLength": 100000,
-          "selectedTypeIndex": 0,
-          "renderTypeList": ["textarea", "reference"],
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
           "value": "You are a helpful assistant",
-          "description": "Fixed guide words for the model. By adjusting this content, you can guide the model's chat direction. This content will be fixed at the beginning of the context. You can use / to insert variables.\nIf a Dataset is associated, you can also guide the model when to call the Dataset search by appropriate description. For example:\nYou are an assistant for the movie 'Interstellar'. When users ask about content related to 'Interstellar', please search the Dataset and answer based on the search results."
+          "description": "Fixed guide words for the model. By adjusting this content, you can guide the model's chat direction. This content will be fixed at the beginning of the context. You can use / to insert variables.\nIf a Dataset is associated, you can also guide the model when to call the Dataset search by appropriate description. For example:\nYou are an assistant for the movie 'Interstellar'. When users ask about content related to 'Interstellar', please search the Dataset and answer based on the search results.",
+          "selectedType": "textarea"
         },
         {
           "key": "history",
@@ -139,7 +177,10 @@
           "required": true,
           "max": 50,
           "min": 0,
-          "renderTypeList": ["numberInput", "reference"],
+          "renderTypeList": [
+            "numberInput",
+            "reference"
+          ],
           "value": 6,
           "description": "Maximum Number of Dialog Rounds"
         },
@@ -147,14 +188,19 @@
           "key": "quoteQA",
           "label": "",
           "valueType": "datasetQuote",
-          "renderTypeList": ["settingDatasetQuotePrompt"],
+          "renderTypeList": [
+            "settingDatasetQuotePrompt"
+          ],
           "debugLabel": "Dataset Reference"
         },
         {
           "key": "fileUrlList",
           "label": "File Link",
           "valueType": "arrayString",
-          "renderTypeList": ["reference", "input"],
+          "renderTypeList": [
+            "reference",
+            "input"
+          ],
           "debugLabel": "File Link",
           "description": "Links to documents and images uploaded by users."
         },
@@ -163,10 +209,16 @@
           "label": "User Question",
           "valueType": "string",
           "required": true,
-          "selectedTypeIndex": 0,
-          "renderTypeList": ["reference", "textarea"],
-          "value": ["start", "userChatInput"],
-          "toolDescription": "User Question"
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "value": [
+            "start",
+            "userChatInput"
+          ],
+          "toolDescription": "User Question",
+          "selectedType": "reference"
         }
       ],
       "outputs": [
@@ -220,7 +272,10 @@
           "label": "User Question",
           "valueType": "string",
           "required": true,
-          "renderTypeList": ["reference", "textarea"],
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
           "toolDescription": "User Question"
         }
       ],

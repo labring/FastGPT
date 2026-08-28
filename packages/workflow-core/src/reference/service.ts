@@ -118,16 +118,15 @@ const assertInputMode = ({
   }
 };
 
-/** 同步新旧输入模式字段，避免 selectedType 覆盖 selectedTypeIndex 造成值与控件不一致。 */
+/** 切换输入模式；当前工作流只持久化 selectedType。 */
 const setSelectedInputRenderType = (
   input: FlowNodeInputItemType,
   selectedType: FlowNodeInputTypeEnum
 ) => {
   input.selectedType = selectedType;
-  input.selectedTypeIndex = input.renderTypeList.indexOf(selectedType);
 };
 
-/** 更新固定值，并同步 Web 使用的新旧输入模式字段。 */
+/** 更新固定值，并同步 Web 使用的输入模式字段。 */
 export const setInputValue = ({
   document,
   nodeId,

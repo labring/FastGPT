@@ -169,10 +169,6 @@ export const areWorkflowValueTypesCompatible = ({
   return getWorkflowReferenceSourceValueTypes(expected).includes(actual as WorkflowIOValueTypeEnum);
 };
 
-/* node  */
-export const getGuideModule = (nodes: StoreNodeItemType[]) =>
-  nodes.find((item) => item.flowNodeType === FlowNodeTypeEnum.systemConfig);
-
 /** 判断 App 工作流是否有 Agent 或 ToolCall 节点开启 Sandbox。 */
 export const isAppSandboxEnabledInNodes = (nodes: StoreNodeItemType[]) =>
   nodes.some(

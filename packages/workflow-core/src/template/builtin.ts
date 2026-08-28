@@ -2,7 +2,6 @@ import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiCh
 import { AssignedAnswerModule } from '@fastgpt/global/core/workflow/template/system/assignedAnswer';
 import { TextEditorNode } from '@fastgpt/global/core/workflow/template/system/textEditor';
 import { WorkflowStart } from '@fastgpt/global/core/workflow/template/system/workflowStart';
-import { SystemConfigNode } from '@fastgpt/global/core/workflow/template/system/abandoned/systemConfig';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 import { AiQueryExtension } from '@fastgpt/global/core/workflow/template/system/queryExtension';
 import { ContextExtractModule } from '@fastgpt/global/core/workflow/template/system/contextExtract';
@@ -30,8 +29,6 @@ import { getAutomationMeta } from './automationMeta';
 import { formatNodeTemplateRef, type NodeTemplateRef, type WorkflowTemplateProvider } from './type';
 
 const builtinTemplates: Record<string, FlowNodeTemplateType> = {
-  // 仅供工作流初始化自动实例化，不在 template list 中暴露。
-  'builtin:__system-config': SystemConfigNode,
   'builtin:workflow-start': WorkflowStart,
   'builtin:ai-chat': AiChatModule,
   'builtin:text-editor': TextEditorNode,

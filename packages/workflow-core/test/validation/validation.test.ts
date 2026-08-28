@@ -138,7 +138,7 @@ describe('validateWorkflow', () => {
     const textInput = broken.nodes.find((node) => node.nodeId === 'text')!.inputs[0];
     textInput.renderTypeList.push(FlowNodeInputTypeEnum.reference);
     textInput.value = [VARIABLE_NODE_ID, 'count'];
-    textInput.selectedTypeIndex = textInput.renderTypeList.indexOf(FlowNodeInputTypeEnum.reference);
+    textInput.selectedType = FlowNodeInputTypeEnum.reference;
     const codes = validateWorkflow(broken).map((item) => item.code);
     expect(codes).toContain('WORKFLOW_PARENT_NODE_NOT_FOUND');
     expect(codes).toContain('WORKFLOW_REFERENCE_TYPE_MISMATCH');

@@ -18,11 +18,17 @@
           "label": "Response Content",
           "maxLength": 100000,
           "placeholder": "You can use \\n to achieve continuous line breaks.\nYou can achieve replies through external module input, and the content filled in here will be overwritten by external module input.\nIf non-string type data is passed in, it will be automatically converted to a string",
-          "renderTypeList": ["textarea", "reference"],
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
           "required": true,
-          "selectedTypeIndex": 1,
-          "value": ["call", "answerText"],
-          "valueType": "any"
+          "value": [
+            "call",
+            "answerText"
+          ],
+          "valueType": "any",
+          "selectedType": "reference"
         }
       ],
       "intro": "This module can directly reply with a specified content. Commonly used for guidance or prompts. Non-string content will be converted to string for output.",
@@ -42,13 +48,16 @@
           "description": "Select another application to call",
           "key": "app",
           "label": "Select an Application",
-          "renderTypeList": ["selectApp", "reference"],
+          "renderTypeList": [
+            "selectApp",
+            "reference"
+          ],
           "required": true,
-          "selectedTypeIndex": 0,
           "value": {
             "appId": "app-demo"
           },
-          "valueType": "selectApp"
+          "valueType": "selectApp",
+          "selectedType": "selectApp"
         },
         {
           "description": "Maximum Number of Dialog Rounds",
@@ -56,7 +65,10 @@
           "label": "Chat History",
           "max": 50,
           "min": 0,
-          "renderTypeList": ["numberInput", "reference"],
+          "renderTypeList": [
+            "numberInput",
+            "reference"
+          ],
           "required": true,
           "value": 6,
           "valueType": "chatHistory"
@@ -64,12 +76,18 @@
         {
           "key": "userChatInput",
           "label": "User Question",
-          "renderTypeList": ["reference", "textarea"],
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
           "required": true,
-          "selectedTypeIndex": 0,
           "toolDescription": "User Question",
-          "value": ["query", "system_text"],
-          "valueType": "string"
+          "value": [
+            "query",
+            "system_text"
+          ],
+          "valueType": "string",
+          "selectedType": "reference"
         }
       ],
       "intro": "You can choose another application to call",
@@ -133,7 +151,9 @@
           "description": "These variables will be input parameters for code execution",
           "key": "system_addInputParam",
           "label": "",
-          "renderTypeList": ["addInputParam"],
+          "renderTypeList": [
+            "addInputParam"
+          ],
           "required": false,
           "valueType": "dynamic"
         },
@@ -162,11 +182,16 @@
           },
           "key": "data1",
           "label": "data1",
-          "renderTypeList": ["reference"],
+          "renderTypeList": [
+            "reference"
+          ],
           "required": true,
-          "selectedTypeIndex": 0,
-          "value": ["query", "system_text"],
-          "valueType": "string"
+          "value": [
+            "query",
+            "system_text"
+          ],
+          "valueType": "string",
+          "selectedType": "reference"
         },
         {
           "canEdit": true,
@@ -193,23 +218,32 @@
           },
           "key": "data2",
           "label": "data2",
-          "renderTypeList": ["reference"],
+          "renderTypeList": [
+            "reference"
+          ],
           "required": true,
-          "selectedTypeIndex": 0,
-          "value": ["extract", "fields"],
-          "valueType": "string"
+          "value": [
+            "extract",
+            "fields"
+          ],
+          "valueType": "string",
+          "selectedType": "reference"
         },
         {
           "key": "codeType",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": "js",
           "valueType": "string"
         },
         {
           "key": "code",
           "label": "",
-          "renderTypeList": ["custom"],
+          "renderTypeList": [
+            "custom"
+          ],
           "value": "function main({data1, data2}){\n  \n  return {\n      result: data1,\n      data2\n  }\n}",
           "valueType": "string"
         }
@@ -292,18 +326,24 @@
         {
           "key": "model",
           "label": "AI Model",
-          "renderTypeList": ["selectLLMModel", "reference"],
+          "renderTypeList": [
+            "selectLLMModel",
+            "reference"
+          ],
           "required": true,
-          "selectedTypeIndex": 0,
           "value": "gpt-4.1",
-          "valueType": "string"
+          "valueType": "string",
+          "selectedType": "selectLLMModel"
         },
         {
           "description": "Provide AI with some background knowledge or requirements to guide it in completing the task better.\\nThis input box can use global variables.",
           "key": "description",
           "label": "Extraction Requirements Description",
           "placeholder": "For example: 1. The current time is: {{cTime}}. \nYou are a laboratory reservation assistant. Your task is to help users make laboratory reservations and obtain the corresponding reservation information from the text.\n\n2. You are the Google Search Assistant and need to extract appropriate search terms from text.",
-          "renderTypeList": ["textarea", "reference"],
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
           "valueType": "string"
         },
         {
@@ -312,7 +352,10 @@
           "label": "Chat History",
           "max": 50,
           "min": 0,
-          "renderTypeList": ["numberInput", "reference"],
+          "renderTypeList": [
+            "numberInput",
+            "reference"
+          ],
           "required": true,
           "value": 6,
           "valueType": "chatHistory"
@@ -320,19 +363,26 @@
         {
           "key": "content",
           "label": "Text to Extract",
-          "renderTypeList": ["reference", "textarea"],
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
           "required": true,
-          "selectedTypeIndex": 0,
           "toolDescription": "Content to Retrieve",
-          "value": ["query", "system_text"],
-          "valueType": "string"
+          "value": [
+            "query",
+            "system_text"
+          ],
+          "valueType": "string",
+          "selectedType": "reference"
         },
         {
           "description": "A target field consists of 'description' and 'key'. Multiple target fields can be extracted.",
           "key": "extractKeys",
           "label": "",
-          "renderTypeList": ["custom"],
-          "selectedTypeIndex": 0,
+          "renderTypeList": [
+            "custom"
+          ],
           "value": [
             {
               "description": "Summary",
@@ -341,7 +391,8 @@
               "valueType": "string"
             }
           ],
-          "valueType": "any"
+          "valueType": "any",
+          "selectedType": "custom"
         }
       ],
       "intro": "Can extract specified data from text, such as SQL statements, search keywords, code, etc.",
@@ -414,14 +465,18 @@
           "description": "Receive the output value of the previous node as a variable, which can be used by the HTTP request parameters.",
           "key": "system_addInputParam",
           "label": "",
-          "renderTypeList": ["addInputParam"],
+          "renderTypeList": [
+            "addInputParam"
+          ],
           "required": false,
           "valueType": "dynamic"
         },
         {
           "key": "system_httpMethod",
           "label": "",
-          "renderTypeList": ["custom"],
+          "renderTypeList": [
+            "custom"
+          ],
           "required": true,
           "value": "POST",
           "valueType": "string"
@@ -431,7 +486,9 @@
           "label": "",
           "max": 600,
           "min": 5,
-          "renderTypeList": ["custom"],
+          "renderTypeList": [
+            "custom"
+          ],
           "required": true,
           "value": 30,
           "valueType": "number"
@@ -441,16 +498,20 @@
           "key": "system_httpReqUrl",
           "label": "",
           "placeholder": "https://api.ai.com/getInventory",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "required": false,
-          "selectedTypeIndex": 0,
           "value": "https://example.com/api",
-          "valueType": "string"
+          "valueType": "string",
+          "selectedType": "hidden"
         },
         {
           "key": "system_header_secret",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "required": false,
           "valueType": "object"
         },
@@ -459,7 +520,9 @@
           "key": "system_httpHeader",
           "label": "",
           "placeholder": "Custom request headers, please strictly fill in the JSON string.\n1. Ensure that the last attribute has no comma\n2. Ensure that the key contains double quotes\nFor example: {\"Authorization\":\"Bearer xxx\"}",
-          "renderTypeList": ["custom"],
+          "renderTypeList": [
+            "custom"
+          ],
           "required": false,
           "value": [],
           "valueType": "any"
@@ -467,7 +530,9 @@
         {
           "key": "system_httpParams",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "required": false,
           "value": [],
           "valueType": "any"
@@ -475,7 +540,9 @@
         {
           "key": "system_httpJsonBody",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "required": false,
           "value": "",
           "valueType": "any"
@@ -483,7 +550,9 @@
         {
           "key": "system_httpFormBody",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "required": false,
           "value": [],
           "valueType": "any"
@@ -491,7 +560,9 @@
         {
           "key": "system_httpContentType",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "required": false,
           "value": "json",
           "valueType": "string"
@@ -570,11 +641,14 @@
         {
           "key": "model",
           "label": "AI Model",
-          "renderTypeList": ["selectLLMModel", "reference"],
+          "renderTypeList": [
+            "selectLLMModel",
+            "reference"
+          ],
           "required": true,
-          "selectedTypeIndex": 0,
           "value": "gpt-4.1",
-          "valueType": "string"
+          "valueType": "string",
+          "selectedType": "selectLLMModel"
         },
         {
           "description": "Describe the scope of the current conversation to help the AI complete and extend the current question. The content you fill in is usually for this assistant.",
@@ -582,10 +656,16 @@
           "label": "Conversation Background Description",
           "max": 300,
           "placeholder": "For example:\nQuestions about the introduction and use of Python.\nThe current conversation is related to the game 'GTA5'.",
-          "renderTypeList": ["textarea", "reference"],
-          "selectedTypeIndex": 1,
-          "value": ["VARIABLE_NODE_ID", "tenantId"],
-          "valueType": "string"
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "value": [
+            "VARIABLE_NODE_ID",
+            "tenantId"
+          ],
+          "valueType": "string",
+          "selectedType": "reference"
         },
         {
           "description": "Maximum Number of Dialog Rounds",
@@ -593,7 +673,10 @@
           "label": "Chat History",
           "max": 50,
           "min": 0,
-          "renderTypeList": ["numberInput", "reference"],
+          "renderTypeList": [
+            "numberInput",
+            "reference"
+          ],
           "required": true,
           "value": 6,
           "valueType": "chatHistory"
@@ -601,12 +684,18 @@
         {
           "key": "userChatInput",
           "label": "User Question",
-          "renderTypeList": ["reference", "textarea"],
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
           "required": true,
-          "selectedTypeIndex": 0,
           "toolDescription": "user question",
-          "value": ["start", "userChatInput"],
-          "valueType": "string"
+          "value": [
+            "start",
+            "userChatInput"
+          ],
+          "valueType": "string",
+          "selectedType": "reference"
         }
       ],
       "intro": "Using question optimization can improve the accuracy of Dataset searches during continuous conversations. After using this function, AI will first construct one or more new search terms based on the context, which are more conducive to Dataset searches. This module is already built into the Dataset search module. If you only perform a single Dataset search, you can directly use the built-in completion function of the Dataset.",
@@ -639,9 +728,11 @@
         {
           "key": "datasets",
           "label": "Select Dataset",
-          "renderTypeList": ["selectDataset", "reference"],
+          "renderTypeList": [
+            "selectDataset",
+            "reference"
+          ],
           "required": true,
-          "selectedTypeIndex": 0,
           "value": [
             {
               "avatar": "",
@@ -653,99 +744,130 @@
             }
           ],
           "valueDesc": "[\n  {\n    \"datasetId\": \"6693a4a6b69b7a9b0e37d9b0\"\n  }\n]",
-          "valueType": "selectDataset"
+          "valueType": "selectDataset",
+          "selectedType": "selectDataset"
         },
         {
           "key": "similarity",
           "label": "",
-          "renderTypeList": ["selectDatasetParamsModal"],
+          "renderTypeList": [
+            "selectDatasetParamsModal"
+          ],
           "value": 0.4,
           "valueType": "number"
         },
         {
           "key": "limit",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": 5000,
           "valueType": "number"
         },
         {
           "key": "searchMode",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": "embedding",
           "valueType": "string"
         },
         {
           "key": "embeddingWeight",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": 0.5,
           "valueType": "number"
         },
         {
           "key": "usingReRank",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": false,
           "valueType": "boolean"
         },
         {
           "key": "rerankModel",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "valueType": "string"
         },
         {
           "key": "rerankWeight",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": 0.5,
           "valueType": "number"
         },
         {
           "key": "datasetSearchUsingExtensionQuery",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": true,
           "valueType": "boolean"
         },
         {
           "key": "datasetSearchExtensionModel",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "valueType": "string"
         },
         {
           "key": "datasetSearchExtensionBg",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": "",
           "valueType": "string"
         },
         {
           "key": "authTmbId",
           "label": "",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": false,
           "valueType": "boolean"
         },
         {
           "key": "datasetSearchInput",
           "label": "Search content",
-          "renderTypeList": ["reference", "textarea"],
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
           "required": true,
-          "selectedTypeIndex": 1,
           "toolDescription": "Search term or search statement",
-          "value": ["hello"],
-          "valueType": "arrayString"
+          "value": [
+            "hello"
+          ],
+          "valueType": "arrayString",
+          "selectedType": "textarea"
         },
         {
           "description": "Currently supports filtering by tags, creation time, and collection IDs. Fill in the format as follows:\n{\n  \"tags\": {\n    \"$and\": [\"Tag 1\",\"Tag 2\"],\n    \"$or\": [\"When there are $and tags, and is effective, or is not effective\"]\n  },\n  \"createTime\": {\n      \"$gte\": \"YYYY-MM-DD HH:mm format, collection creation time greater than this time\",\n      \"$lte\": \"YYYY-MM-DD HH:mm format, collection creation time less than this time, can be used with $gte\"\n  },\n  \"collectionIds\": [\"collectionId1\", \"collectionId2\", \"Folder IDs are supported and will automatically expand to get all sub-collections\"]\n}",
           "isPro": true,
           "key": "collectionFilterMatch",
           "label": "Collection Metadata Filter",
-          "renderTypeList": ["textarea", "reference"],
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
           "valueType": "string"
         }
       ],
@@ -786,7 +908,10 @@
         {
           "key": "userChatInput",
           "label": "User Question",
-          "renderTypeList": ["reference", "textarea"],
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
           "required": true,
           "toolDescription": "User Question",
           "valueType": "string"

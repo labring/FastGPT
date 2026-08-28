@@ -15,11 +15,17 @@
           "label": "Response Content",
           "maxLength": 100000,
           "placeholder": "You can use \\n to achieve continuous line breaks.\nYou can achieve replies through external module input, and the content filled in here will be overwritten by external module input.\nIf non-string type data is passed in, it will be automatically converted to a string",
-          "renderTypeList": ["textarea", "reference"],
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
           "required": true,
-          "selectedTypeIndex": 1,
-          "value": ["text", "system_text"],
-          "valueType": "any"
+          "value": [
+            "text",
+            "system_text"
+          ],
+          "valueType": "any",
+          "selectedType": "reference"
         }
       ],
       "intro": "This module can directly reply with a specified content. Commonly used for guidance or prompts. Non-string content will be converted to string for output.",
@@ -36,7 +42,10 @@
         {
           "key": "userChatInput",
           "label": "User Question",
-          "renderTypeList": ["reference", "textarea"],
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
           "required": true,
           "toolDescription": "User Question",
           "valueType": "string"
@@ -64,11 +73,13 @@
           "key": "system_textareaInput",
           "label": "Concatenation Text",
           "placeholder": "Type / to invoke variable list",
-          "renderTypeList": ["textarea"],
+          "renderTypeList": [
+            "textarea"
+          ],
           "required": true,
-          "selectedTypeIndex": 0,
           "value": "Static response",
-          "valueType": "string"
+          "valueType": "string",
+          "selectedType": "textarea"
         }
       ],
       "intro": "Can process and output fixed or incoming text. Non-string type data will be converted to string type.",

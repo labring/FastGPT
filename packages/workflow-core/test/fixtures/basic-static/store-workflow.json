@@ -16,10 +16,16 @@
           "isRichText": false,
           "placeholder": "You can use \\n to achieve continuous line breaks.\nYou can achieve replies through external module input, and the content filled in here will be overwritten by external module input.\nIf non-string type data is passed in, it will be automatically converted to a string",
           "maxLength": 100000,
-          "selectedTypeIndex": 1,
-          "renderTypeList": ["textarea", "reference"],
-          "value": ["text", "system_text"],
-          "description": "You can use \\n to achieve continuous line breaks.\nYou can achieve replies through external module input, and the content filled in here will be overwritten by external module input.\nIf non-string type data is passed in, it will be automatically converted to a string"
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "value": [
+            "text",
+            "system_text"
+          ],
+          "description": "You can use \\n to achieve continuous line breaks.\nYou can achieve replies through external module input, and the content filled in here will be overwritten by external module input.\nIf non-string type data is passed in, it will be automatically converted to a string",
+          "selectedType": "reference"
         }
       ],
       "outputs": [],
@@ -37,7 +43,10 @@
           "label": "User Question",
           "valueType": "string",
           "required": true,
-          "renderTypeList": ["reference", "textarea"],
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
           "toolDescription": "User Question"
         }
       ],
@@ -66,9 +75,11 @@
           "valueType": "string",
           "required": true,
           "placeholder": "Type / to invoke variable list",
-          "selectedTypeIndex": 0,
-          "renderTypeList": ["textarea"],
-          "value": "Static response"
+          "renderTypeList": [
+            "textarea"
+          ],
+          "value": "Static response",
+          "selectedType": "textarea"
         }
       ],
       "outputs": [

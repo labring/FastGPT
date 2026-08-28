@@ -14,7 +14,10 @@
           "label": "workflow:user_question",
           "valueType": "string",
           "required": true,
-          "renderTypeList": ["reference", "textarea"],
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
           "toolDescription": "workflow:user_question"
         }
       ],
@@ -42,21 +45,26 @@
           "key": "ifElseList",
           "label": "",
           "valueType": "any",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": [
             {
               "branchId": "positive",
               "condition": "AND",
               "list": [
                 {
-                  "variable": ["start", "userChatInput"],
+                  "variable": [
+                    "start",
+                    "userChatInput"
+                  ],
                   "condition": "isNotEmpty",
                   "valueType": "input"
                 }
               ]
             }
           ],
-          "selectedTypeIndex": 0
+          "selectedType": "hidden"
         }
       ],
       "outputs": [
@@ -86,10 +94,13 @@
           "isRichText": false,
           "placeholder": "common:core.module.input.description.Response content",
           "maxLength": 100000,
-          "renderTypeList": ["textarea", "reference"],
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
           "description": "common:core.module.input.description.Response content",
           "value": "yes",
-          "selectedTypeIndex": 0
+          "selectedType": "textarea"
         }
       ],
       "outputs": [],
@@ -111,10 +122,13 @@
           "isRichText": false,
           "placeholder": "common:core.module.input.description.Response content",
           "maxLength": 100000,
-          "renderTypeList": ["textarea", "reference"],
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
           "description": "common:core.module.input.description.Response content",
           "value": "fallback",
-          "selectedTypeIndex": 0
+          "selectedType": "textarea"
         }
       ],
       "outputs": [],

@@ -12,7 +12,10 @@
           "label": "workflow:user_question",
           "valueType": "string",
           "required": true,
-          "renderTypeList": ["reference", "textarea"],
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
           "toolDescription": "workflow:user_question"
         }
       ],
@@ -63,7 +66,9 @@
             "showDefaultValue": true,
             "showDescription": false
           },
-          "renderTypeList": ["addInputParam"],
+          "renderTypeList": [
+            "addInputParam"
+          ],
           "description": "workflow:these_variables_will_be_input_parameters_for_code_execution"
         },
         {
@@ -92,10 +97,15 @@
             "showDefaultValue": true,
             "showDescription": false
           },
-          "selectedTypeIndex": 0,
-          "renderTypeList": ["reference"],
-          "value": ["start", "userChatInput"],
-          "canEdit": true
+          "renderTypeList": [
+            "reference"
+          ],
+          "value": [
+            "start",
+            "userChatInput"
+          ],
+          "canEdit": true,
+          "selectedType": "reference"
         },
         {
           "key": "data2",
@@ -123,23 +133,32 @@
             "showDefaultValue": true,
             "showDescription": false
           },
-          "selectedTypeIndex": 0,
-          "renderTypeList": ["reference"],
-          "value": ["start", "userChatInput"],
-          "canEdit": true
+          "renderTypeList": [
+            "reference"
+          ],
+          "value": [
+            "start",
+            "userChatInput"
+          ],
+          "canEdit": true,
+          "selectedType": "reference"
         },
         {
           "key": "codeType",
           "label": "",
           "valueType": "string",
-          "renderTypeList": ["hidden"],
+          "renderTypeList": [
+            "hidden"
+          ],
           "value": "js"
         },
         {
           "key": "code",
           "label": "",
           "valueType": "string",
-          "renderTypeList": ["custom"],
+          "renderTypeList": [
+            "custom"
+          ],
           "value": "function main({data1, data2}){\n  \n  return {\n      result: data1,\n      data2\n  }\n}"
         }
       ],
@@ -227,10 +246,13 @@
           "isRichText": false,
           "placeholder": "common:core.module.input.description.Response content",
           "maxLength": 100000,
-          "selectedTypeIndex": 0,
-          "renderTypeList": ["textarea", "reference"],
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
           "value": "recover",
-          "description": "common:core.module.input.description.Response content"
+          "description": "common:core.module.input.description.Response content",
+          "selectedType": "textarea"
         }
       ],
       "outputs": [],
