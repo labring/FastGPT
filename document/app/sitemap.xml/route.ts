@@ -1,18 +1,19 @@
 import { source } from '@/lib/source';
 import { NextResponse } from 'next/server';
 import docLastModifiedData from '@/data/doc-last-modified.json';
-import { getFastGPTDocsOrigin } from '@/lib/fastgpt-home-url';
+import { getFastGPTDocsLocale, getFastGPTDocsOrigin } from '@/lib/fastgpt-home-url';
 
 export const dynamic = 'force-static';
 
 export function GET() {
   const domain = getFastGPTDocsOrigin();
+  const locale = getFastGPTDocsLocale();
 
-  const pages = source.getPages();
+  const pages = source.getPages(locale);
 
   const urlEntries = pages
     .map((page) => {
-      const filePath = `document/content/${page.file.path}`;
+      const filePath = `content/${page.file.path}`;
       // @ts-ignore
       const lastModified = docLastModifiedData[filePath] || page.data.lastModified;
 

@@ -13,6 +13,7 @@
     "initDocTime": "node ./script/initDocTime.js",
     "initDocToc": "node ./script/generateToc.js",
     "checkDocRefs": "node ./script/checkDocRefs.js",
+    "test:sitemap-locale": "node --test ./script/sitemap-locale.test.js",
     "removeInvalidImg": "node ./script/removeInvalidImg.js"
   },
   "dependencies": {
