@@ -1312,34 +1312,6 @@ describe('getReferenceVariableValue', () => {
     expect(result).toBe('outputValue');
   });
 
-  it('should return a current node tool input value when output is absent', () => {
-    const nodesMap: Record<string, RuntimeNodeItemType> = {
-      node1: {
-        nodeId: 'node1',
-        name: 'test',
-        flowNodeType: FlowNodeTypeEnum.code,
-        inputs: [
-          {
-            key: 'customParam',
-            label: 'customParam',
-            renderTypeList: [],
-            value: 'agent value',
-            valueType: WorkflowIOValueTypeEnum.string
-          }
-        ],
-        outputs: []
-      }
-    };
-
-    const result = getReferenceVariableValue({
-      value: ['node1', 'customParam'],
-      nodesMap,
-      variables: {}
-    });
-
-    expect(result).toBe('agent value');
-  });
-
   it('should return undefined when output id not found in node', () => {
     const nodesMap: Record<string, RuntimeNodeItemType> = {
       node1: {

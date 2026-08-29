@@ -9,7 +9,10 @@ import {
   getReferenceVariableValue,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
+import {
+  isValidReferenceValueFormat,
+  nodeInputIsReference
+} from '@fastgpt/global/core/workflow/utils';
 import { replaceEditorVariable } from './replaceEditorVariable';
 
 /**
@@ -95,6 +98,20 @@ export const getWorkflowNodeRunParams = ({
           isReferenceVal: true
         });
       }
+    }
+
+    // Code 节点作为工具时，Agent 生成的参数在执行前注入 inputs，不会出现在 outputs；
+    // 这里允许同节点其他输入引用自身工具参数，跨节点引用仍只解析 outputs。
+    if (
+      value === undefined &&
+      node.flowNodeType === FlowNodeTypeEnum.code &&
+      isValidReferenceValueFormat(rawValue) &&
+      rawValue[0] === node.nodeId
+    ) {
+      value = node.inputs.find(
+        (item) =>
+          item.key === rawValue[1] && item.canEdit === true && item.defaultToAgentGenerated === true
+      )?.value;
     }
 
     // Dynamic input is stored in the dynamic key

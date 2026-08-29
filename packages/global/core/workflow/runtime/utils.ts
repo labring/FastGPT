@@ -333,11 +333,7 @@ export const getReferenceVariableValue = ({
       return value;
     }
 
-    const outputValue = node.outputs.find((output) => output.id === outputId)?.value;
-    if (outputValue !== undefined) return outputValue;
-
-    // 工具调用参数在节点执行前注入 inputs，供同节点后续输入引用。
-    return node.inputs.find((input) => input.key === outputId)?.value;
+    return node.outputs.find((output) => output.id === outputId)?.value;
   };
 
   // handle single reference value
