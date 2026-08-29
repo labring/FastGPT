@@ -39,6 +39,8 @@ import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCo
 
 对于亿级以上向量性能更优秀。
 
+**Milvus 版本要求：≥ 2.5.16。** 使用 Milvus 作为向量库时，全文检索自动启用 Milvus BM25（`modeldata_v2` 单表）；低于 2.5.16 时 FastGPT 启动会直接报错退出。
+
 [点击查看 Milvus 官方推荐配置](https://milvus.io/docs/prerequisite-docker.md)
 
 | 环境        | 最低配置（单节点） | 推荐配置 |
@@ -170,8 +172,8 @@ curl -fsSL https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.pg.yml -
   - 中国大陆地区镜像源(阿里云)：[docker-compose.oceanbase.yml](/deploy/docker/v4.15/cn/docker-compose.oceanbase.yml)
   - 全球镜像源(dockerhub, ghcr)：[docker-compose.oceanbase.yml](/deploy/docker/v4.15/global/docker-compose.oceanbase.yml)
 - **Milvus**
-  - 中国大陆地区镜像源(阿里云)：[docker-compose.milvus.yml](/deploy/docker/v4.15/cn/docker-compose.milvus.yml)
-  - 全球镜像源(dockerhub, ghcr)：[docker-compose.milvus.yml](/deploy/docker/v4.15/global/docker-compose.milvus.yml)
+  - 中国大陆地区镜像源(阿里云)：[docker-compose.milvus.yml](/deploy/docker/main/cn/docker-compose.milvus.yml)
+  - 全球镜像源(dockerhub, ghcr)：[docker-compose.milvus.yml](/deploy/docker/main/global/docker-compose.milvus.yml)
 - **Zilliz**
   - 中国大陆地区镜像源(阿里云)：[docker-compose.zilliz.yml](/deploy/docker/v4.15/cn/docker-compose.zilliz.yml)
   - 全球镜像源(dockerhub, ghcr)：[docker-compose.zilliz.yml](/deploy/docker/v4.15/global/docker-compose.zilliz.yml)

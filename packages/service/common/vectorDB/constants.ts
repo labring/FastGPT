@@ -83,3 +83,28 @@ export const OceanBaseIndexConfig = (() => {
     scoreTransform: (score: number) => score
   };
 })();
+
+/** provider=milvus 时的向量+全文主表(单表) */
+export const DatasetVectorTableNameV2 = 'modeldata_v2';
+
+/** mongo 全文批量写入分片上限 */
+export const FULL_TEXT_WRITE_BATCH_SIZE = 50;
+
+export type VectorType = 'seekdb' | 'oceanbase' | 'pg' | 'milvus' | 'opengauss';
+
+export const getVectorType = (): VectorType => {
+  if (SEEKDB_ADDRESS) return 'seekdb';
+  if (OCEANBASE_ADDRESS) return 'oceanbase';
+  if (PG_ADDRESS) return 'pg';
+  if (MILVUS_ADDRESS) return 'milvus';
+  if (OPENGAUSS_ADDRESS) return 'opengauss';
+  return 'pg';
+};
+
+/**
+ * 逻辑表名解析(逻辑 alias):
+ * provider=milvus → modeldata_v2;其他向量库 → modeldata。
+ * 向量读写一律经此函数取实际集合名。
+ */
+export const getDatasetVectorTableName = (): string =>
+  getVectorType() === 'milvus' ? DatasetVectorTableNameV2 : DatasetVectorTableName;

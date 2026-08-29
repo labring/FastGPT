@@ -34,11 +34,24 @@ During a dry run, the migration preview uses the current permission data before 
 
 The cleanup and migration are safe to retry. After applying them, run another dry run and confirm that `cleanup.danglingPermissionCount` and `migration.updatedResourceCount` are `0`, and that `migration.errors` is empty. When `migration.errors` is non-empty, repair the data using the resource type, resource ID, and parent ID in the error details, then retry.
 
+### 2. Upgrade full-text search when using Milvus
+
+If Milvus is your vector store, upgrade Milvus to **2.5.16 or later** before upgrading FastGPT. V4.16.2 automatically moves full-text search to Milvus BM25 and stores vectors and full-text data in the new `modeldata_v2` collection. FastGPT terminates during startup if the Milvus version is too old, the version cannot be parsed, or the BM25 capability check fails. It does not fall back to MongoDB full-text search.
+
+For an existing Milvus deployment, verify that the old vector data is still available before upgrading:
+
+- If the old Milvus `modeldata` collection exists and contains data, call `GET /api/admin/4162/milvus` to merge the old vectors with index text from MongoDB into `modeldata_v2`. This does not regenerate embeddings.
+- No action is required when using PG, OceanBase, SeekDB, or openGauss. Full-text search continues to use MongoDB `$text`.
+
+Follow [Milvus BM25 full-text search configuration and migration](/en/self-host/milvus-bm25) for backups, the Milvus image upgrade, dry runs, resumable migration, validation, old-collection cleanup, and rollback.
+
 ## 🚀 New
 
 1. Added Korean language support.
 2. Added an overwrite warning when switching Skill versions.
 3. Added account deletion.
+4. Added an option to create Workflow Tools in the Team toolkit by selecting an existing App.
+5. Added BM25 full-text search backed by the single-table `modeldata_v2` design when Milvus is the vector store.
 
 ## ⚙️ Improvements
 
@@ -54,6 +67,11 @@ The cleanup and migration are safe to retry. After applying them, run another dr
 10. Unified sub-workflow output and billing across Workflow Tool, ToolCall, and Agent runs. Commercial Workflow Tool failures no longer charge call or token fees, while `pluginOutput.error` from personal Workflow Tools remains a business field.
 11. Attributed enhanced PDF parsing charges to the `read_files` tool node and preserved page counts. Propagated `usageId` through external-file and API-file Dataset parsing so charges are not orphaned.
 12. Improved tool configuration, version selection, and parsed-document views with responsive layouts, version descriptions, a two-column grid, and ellipsis tooltips for long filenames.
+13. Improved invoice submission by refreshing bill and invoice records in place instead of reloading the entire page.
+14. Stored Milvus vectors and full-text data in the same collection with full-text granularity aligned to `indexes[].text`. Image vectors do not index image URLs or object storage keys.
+15. Expanded the Workflow Nodes that can be used as ToolCall tools, including Question classification, Condition, Loop, Batch, Read files, Text concatenation, Custom feedback, and Agent. Added the missing `toolResponse` values so Agents receive the actual result or error from these Nodes.
+16. Unified Node visibility, drag-and-drop, quick-add, and connection validation across standard Workflows, tool chains, Loops, and Batches. Unsupported Nodes and nested containers can no longer be added in invalid contexts.
+17. Stabilized HTTP Node parameter editing when changing focus, validating duplicate keys, adding or deleting parameters, and inserting Variables. Unified tool parameter configuration for HTTP and Code run Nodes, and deprecated the legacy custom Variable input on HTTP Nodes.
 
 ## 🐛 Fixes
 
@@ -64,9 +82,14 @@ The cleanup and migration are safe to retry. After applying them, run another dr
 5. Fixed compatibility issues when historical chat settings are missing favorite tags or historical member names are empty.
 6. Fixed custom Workflow Tool avatar display and added a fallback avatar for system tools.
 7. Fixed Admin plan listing failures caused by plans whose teams have been deleted.
+8. Fixed missing order IDs in the pending-invoice list, inconsistent month formats in historical bills, and validation failures when historical invoices have no contact phone number.
+9. Fixed validation of historical Dataset chunk settings stored as numeric strings and prevented sync requests before Dataset details finish loading.
+10. Fixed account deletion verification mismatches caused by resolving the verification method again on the client, and added deletion reminder status tracking.
+11. Fixed legacy workflow fields in older App templates so they can be read using the current structure.
 
 ## 🛠️ Code Improvements
 
 1. Standardized compatibility handling for legacy tool parameters in Workflows.
 2. Materialized effective ACLs for Apps, Datasets, and Agent Skills, and centralized Collaborator permission mutations and inheritance synchronization.
 3. Required a MongoDB session when creating Dataset data and added a transaction to manual data insertion, so primary data, full-text search records, and image TTL state are committed atomically.
+4. Unified full-text search behind the `FullTextStore` abstraction: Milvus uses BM25, while other vector stores continue to use MongoDB `$text`.

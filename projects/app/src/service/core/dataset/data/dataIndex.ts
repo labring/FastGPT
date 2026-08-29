@@ -15,11 +15,10 @@ import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
 import { text2Chunks } from '@fastgpt/service/worker/function';
 import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import {
+  isImageEmbeddingIndex,
   isValidImageEmbeddingSource,
-  normalizeImageToBase64
+  normalizeDatasetIndexImageToModelInput
 } from '@fastgpt/service/core/dataset/search/utils';
-import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
-import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { uniqueDatasetDataMarkdownImageUrls } from '@fastgpt/service/core/dataset/data/utils';
 import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
 import { minChunkSize } from '@fastgpt/global/core/dataset/training/utils';
@@ -145,21 +144,6 @@ const buildEmbeddingSafeIndexTexts = async ({
     maxToken,
     indexPrefix
   });
-};
-
-const isImageEmbeddingIndex = (index: DatasetDataIndexDraft) =>
-  index.type === DatasetDataIndexTypeEnum.imageEmbedding;
-
-const normalizeDatasetIndexImageToModelInput = async (imageUrl: string) => {
-  if (
-    isS3ObjectKey(imageUrl, 'dataset') ||
-    isS3ObjectKey(imageUrl, 'temp') ||
-    isS3ObjectKey(imageUrl, 'chat')
-  ) {
-    return getS3DatasetSource().getDatasetBase64Image(imageUrl);
-  }
-
-  return normalizeImageToBase64(imageUrl);
 };
 
 /**
@@ -565,6 +549,11 @@ export class DatasetDataIndexOperation {
     const insertResult = vectorInputItems.length
       ? await insertDatasetDataVector({
           inputs: vectorInputItems.map((item) => item.input),
+          // 全文文本与向量一一对应(provider=milvus 时写 modeldata_v2 的 text)。
+          // imageEmbedding 只写稠密向量,BM25 文本必须为空串(不写图片 URL/S3 key),与迁移行为保持一致。
+          texts: vectorInputItems.map((item) =>
+            isImageEmbeddingIndex(item.item) ? '' : item.item.text
+          ),
           model: embModel,
           teamId,
           datasetId,

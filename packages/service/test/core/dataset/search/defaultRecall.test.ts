@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetSearchModeEnum, SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import type { FullTextSearchProps } from '@fastgpt/service/common/vectorDB/type';
 import { serviceEnv } from '@fastgpt/service/env';
 
 const mockGetVectors = vi.hoisted(() => vi.fn());
@@ -13,6 +14,10 @@ const mockMongoDatasetCollectionFind = vi.hoisted(() => vi.fn());
 const mockMongoDatasetDataFind = vi.hoisted(() => vi.fn());
 const mockMongoDatasetDataTextAggregate = vi.hoisted(() => vi.fn());
 const mockGetImageBase64 = vi.hoisted(() => vi.fn());
+// ISSUE-015:getFullTextStore 为可切换 mock。mockUseMilvusStore 为独立开关(默认 false),
+// milvus 用例置 true 后经 mockFullTextStoreSearch 覆盖,不查 mongo aggregate。
+const mockFullTextStoreSearch = vi.hoisted(() => vi.fn());
+const mockUseMilvusStore = vi.hoisted(() => ({ value: false }));
 const mockCountPromptTokens = vi.hoisted(() => vi.fn(async (prompt: string) => prompt.length));
 const mockCountPromptTokensBatch = vi.hoisted(() =>
   vi.fn(async (prompts: string[]) => prompts.map((prompt) => prompt.length))
@@ -80,7 +85,40 @@ vi.mock('@fastgpt/service/core/dataset/data/dataTextSchema', () => ({
   }
 }));
 
+// 覆盖 test/mocks/common/vector.ts 的全局 constants mock(其缺 getVectorType 导出)。
+// textStore 经 importOriginal 委托真实 MongoFullTextStore 时需要该导出;defaultRecall 链路本身
+// 不消费 vectorDB/constants,因此补上导出不影响既有用例。
+vi.mock('@fastgpt/service/common/vectorDB/constants', async (importOriginal) => {
+  const orig = await importOriginal<typeof import('@fastgpt/service/common/vectorDB/constants')>();
+  return {
+    ...orig,
+    MILVUS_ADDRESS: 'http://localhost:19530',
+    getVectorType: () => 'pg'
+  };
+});
+
+// getFullTextStore 可切换 mock(ISSUE-015):
+// 默认(mockUseMilvusStore.value=false)委托真实 MongoFullTextStore.search —— 内部走
+// MongoDatasetDataText.aggregate,由 mockMongoDatasetDataTextAggregate 支撑,保持既有 mongo 回归用例;
+// milvus 用例置 mockUseMilvusStore.value=true 后经 mockFullTextStoreSearch 覆盖,不查 mongo aggregate。
+vi.mock('@fastgpt/service/core/dataset/data/textStore', async (importOriginal) => {
+  const orig =
+    await importOriginal<typeof import('@fastgpt/service/core/dataset/data/textStore')>();
+  return {
+    ...orig,
+    getFullTextStore: () => ({
+      search: async (props: FullTextSearchProps) => {
+        if (mockUseMilvusStore.value) {
+          return mockFullTextStoreSearch(props);
+        }
+        return new orig.MongoFullTextStore().search(props);
+      }
+    })
+  };
+});
+
 import { searchDatasetData } from '../../../../core/dataset/search/defaultRecall';
+import { fullTextRecall } from '../../../../core/dataset/search/defaultRecall/fullTextRecall';
 
 afterEach(() => {
   serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
@@ -89,6 +127,9 @@ afterEach(() => {
 describe('default recall dataset search', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // 重置 getFullTextStore 可切换 mock(ISSUE-015):默认走 mongo 委托,避免 milvus 用例污染
+    mockUseMilvusStore.value = false;
+    mockFullTextStoreSearch.mockReset();
     serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
     mockCountPromptTokensBatch.mockImplementation(async (prompts: string[]) =>
       prompts.map((prompt) => prompt.length)
@@ -443,5 +484,151 @@ describe('default recall dataset search', () => {
     expect(mockCreateS3DownloadAccessUrls.mock.calls[0][0].map((item) => item.objectKey)).toEqual([
       'dataset/team/keep.png'
     ]);
+  });
+});
+
+describe('fullTextRecall engine dispatch', () => {
+  beforeEach(() => {
+    // 每个用例独立:清空所有 mock 调用、重置 store 开关为 mongo 委托、aggregate 默认返回空
+    vi.clearAllMocks();
+    mockUseMilvusStore.value = false;
+    mockFullTextStoreSearch.mockReset();
+    mockMongoDatasetDataTextAggregate.mockResolvedValue([]);
+  });
+
+  it('TC-13.1 mongo path groups results assembled via store search', async () => {
+    // 被测函数: fullTextRecall  等级: 3-High
+    // 正常场景(回归): getFullTextStore 默认委托真实 MongoFullTextStore.search(内部走 aggregate,
+    // 由 mockMongoDatasetDataTextAggregate 支撑),buildResultsFromRecallItems 反查 data/collection 组装;
+    // 结果 id 取自 dataset_data._id。
+    mockMongoDatasetDataTextAggregate.mockResolvedValue([
+      { dataId: '68ad85a7463006c963799a05', collectionId: 'col1', score: 2.5 }
+    ]);
+    mockMongoDatasetDataFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          _id: '68ad85a7463006c963799a05',
+          datasetId: '68ad85a7463006c963799a05',
+          collectionId: 'col1',
+          updateTime: new Date('2026-01-01'),
+          q: '苹果',
+          a: '一种水果',
+          imageId: 'img1',
+          chunkIndex: 0,
+          indexes: [{ dataId: 'idx1' }]
+        }
+      ])
+    });
+    mockMongoDatasetCollectionFind.mockImplementation((query: Record<string, any>) => {
+      if (query?.forbid) return [];
+      return {
+        lean: vi.fn().mockResolvedValue([{ _id: 'col1', name: 'Source' }])
+      };
+    });
+
+    const res = await fullTextRecall({
+      teamId: '68ad85a7463006c963799a05',
+      datasetIds: ['68ad85a7463006c963799a05'],
+      queryGroups: [{ source: 'text', queries: ['苹果'] }],
+      limit: 10,
+      forbidCollectionIdList: []
+    });
+
+    expect(mockMongoDatasetDataTextAggregate).toHaveBeenCalled();
+    expect(res.textFullTextRecallResults[0].id).toBe('68ad85a7463006c963799a05');
+    expect(res.textFullTextRecallResults[0].score).toEqual([
+      { type: SearchScoreTypeEnum.fullText, value: 2.5, index: 0 }
+    ]);
+  });
+
+  it('TC-13.2 milvus path assembles via store dispatch without querying mongo aggregate', async () => {
+    // 被测函数: fullTextRecall  等级: 3-High
+    // 正常场景: getFullTextStore 返回 milvus 实现,mockFullTextStoreSearch 返回 FullTextSearchItem[],
+    // buildResultsFromRecallItems 组装结果且不查 mongo aggregate。
+    mockUseMilvusStore.value = true;
+    mockFullTextStoreSearch.mockReturnValue([
+      { dataId: '68ad85a7463006c963799a05', collectionId: 'col1', score: 0.9 }
+    ]);
+    mockMongoDatasetDataFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          _id: '68ad85a7463006c963799a05',
+          datasetId: 'd',
+          collectionId: 'col1',
+          updateTime: new Date('2026-01-01'),
+          q: '苹果',
+          a: '一种水果',
+          imageId: 'img1',
+          chunkIndex: 0,
+          indexes: [{ dataId: 'idx1' }]
+        }
+      ])
+    });
+    mockMongoDatasetCollectionFind.mockImplementation((query: Record<string, any>) => {
+      if (query?.forbid) return [];
+      return {
+        lean: vi.fn().mockResolvedValue([{ _id: 'col1', name: 'Source' }])
+      };
+    });
+
+    const res = await fullTextRecall({
+      teamId: 't',
+      datasetIds: ['d'],
+      queryGroups: [{ source: 'text', queries: ['苹果'] }],
+      limit: 10,
+      forbidCollectionIdList: []
+    });
+
+    expect(mockMongoDatasetDataTextAggregate).not.toHaveBeenCalled();
+    expect(mockFullTextStoreSearch).toHaveBeenCalledWith({
+      teamId: 't',
+      datasetIds: ['d'],
+      query: '苹果',
+      limit: 10,
+      forbidCollectionIdList: [],
+      filterCollectionIdList: undefined
+    });
+    expect(res.textFullTextRecallResults[0].id).toBe('68ad85a7463006c963799a05');
+  });
+
+  it('TC-13.3 result id comes from FullTextSearchItem.dataId, not a vector id', async () => {
+    // 被测函数: fullTextRecall  等级: 3-High
+    // 归一化: store 返回的 dataId(dataset_data._id)决定结果 id;结果经 imageCaption 分组返回。
+    mockUseMilvusStore.value = true;
+    mockFullTextStoreSearch.mockReturnValue([
+      { dataId: '68ad85a7463006c963799a05', collectionId: 'col1', score: 0.9 }
+    ]);
+    mockMongoDatasetDataFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          _id: '68ad85a7463006c963799a05',
+          datasetId: 'd',
+          collectionId: 'col1',
+          updateTime: new Date('2026-01-01'),
+          q: '苹果',
+          a: '一种水果',
+          imageId: 'img1',
+          chunkIndex: 0,
+          indexes: [{ dataId: 'idx1' }]
+        }
+      ])
+    });
+    mockMongoDatasetCollectionFind.mockImplementation((query: Record<string, any>) => {
+      if (query?.forbid) return [];
+      return {
+        lean: vi.fn().mockResolvedValue([{ _id: 'col1', name: 'Source' }])
+      };
+    });
+
+    const res = await fullTextRecall({
+      teamId: 't',
+      datasetIds: ['d'],
+      queryGroups: [{ source: 'imageCaption', queries: ['图片描述'] }],
+      limit: 10,
+      forbidCollectionIdList: []
+    });
+
+    expect(mockFullTextStoreSearch).toHaveBeenCalledTimes(1);
+    expect(res.imageCaptionFullTextRecallResults[0].id).toBe('68ad85a7463006c963799a05');
   });
 });

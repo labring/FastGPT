@@ -22,7 +22,7 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { getLLMModel, getEmbeddingModel, getVlmModel } from '../../ai/model';
 import { pushDataListToTrainingQueue, pushDatasetToParseQueue } from '../training/controller';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { MongoDatasetDataText } from '../data/dataTextSchema';
+import { getFullTextStore } from '../data/textStore';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getTrainingModeByCollection } from './utils';
 import { getDatasetImageIndexCapability } from '../utils';
@@ -406,12 +406,8 @@ export async function delCollection({
         datasetId: { $in: datasetIds },
         collectionId: { $in: collectionIds }
       }),
-      // Delete dataset_data_texts
-      MongoDatasetDataText.deleteMany({
-        teamId,
-        datasetId: { $in: datasetIds },
-        collectionId: { $in: collectionIds }
-      }),
+      // Delete dataset_data_texts(store 分发:mongo 真实删除,milvus 空操作——全文随向量删除)
+      getFullTextStore().deleteByCollectionIds({ teamId, datasetIds, collectionIds }, session),
       // Delete dataset_datas
       MongoDatasetData.deleteMany({
         teamId,
