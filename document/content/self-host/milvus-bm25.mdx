@@ -1,5 +1,5 @@
 ---
-title: 'Milvus BM25 全文检索升级指南'
+title: 'Milvus BM25 全文检索配置与迁移'
 description: '将 Milvus 升级到 2.5.16+ 并启用 FastGPT BM25 全文检索'
 ---
 
@@ -9,7 +9,7 @@ FastGPT 的全文检索默认走 MongoDB `$text`。当使用 **Milvus 作为向�
 
 > 全文后端跟随实际向量库：向量库是 Milvus 时用 BM25；其他向量库（PG/OceanBase/SeekDB/openGauss）全文仍走 MongoDB `$text`。无需配置独立的全文本引擎开关。
 
-## 升级流程
+## 配置与迁移流程
 
 ### 1. 备份
 
@@ -25,14 +25,14 @@ FastGPT 的全文检索默认走 MongoDB `$text`。当使用 **Milvus 作为向�
 
 ### 3. 升级 Milvus 到 2.5.16+
 
-**原地升级（数据保留）**：直接替换镜像 tag 后重启即可，旧集合（`modeldata`）数据保留：
+升级必须保留原有 Milvus 数据卷和旧集合 `modeldata`。直接替换镜像 tag 后重启：
 
 ```yaml
 # docker-compose 中 Milvus 服务
 image: milvusdb/milvus:v2.5.16
 ```
 
-**全新实例（跨版本重装 / 换实例）**：若你重新部署了一个全新的 Milvus 实例（旧表 `modeldata` 不存在），向量数据需从 MongoDB `dataset_data` 重新嵌入（见第 5 步「重建嵌入」）。
+> 旧 `modeldata` 是后续迁移的向量数据源。升级后应先确认该集合存在且非空；如果集合缺失或为空，请停止迁移并从备份恢复 Milvus 数据。
 
 ### 4. 验证版本
 
@@ -42,35 +42,25 @@ image: milvusdb/milvus:v2.5.16
 # 通过 milvus-cli / attu / SDK getVersion 确认服务端版本 >= v2.5.16
 ```
 
-### 5. 迁移 / 重建
+### 5. 迁移
 
-根据 **Milvus 数据是否仍在** 选择不同路径：
+确认旧 Milvus `modeldata` 集合存在且有向量后，调用迁移接口（纯拷贝，不重嵌入）：
 
-- **Milvus 数据仍在（旧表 `modeldata` 存在且有向量，如原地升级 Milvus）** → 调用迁移接口（纯拷贝，不重嵌入）：
+```bash
+# 1. dry-run 先看统计
+curl 'http://host/api/admin/4162/milvus?dryRun=1' \
+  -H 'rootkey: 你的ROOT_KEY'
 
-  ```bash
-  # 1. dry-run 先看统计
-  curl 'http://host/api/admin/initMilvusFullText?dryRun=1'
+# 2. 正式迁移
+curl 'http://host/api/admin/4162/milvus?batchSize=500' \
+  -H 'rootkey: 你的ROOT_KEY'
 
-  # 2. 正式迁移
-  curl 'http://host/api/admin/initMilvusFullText?batchSize=500'
+# 3. 若请求被网关超时中断,用返回的 migrationId 续跑
+curl 'http://host/api/admin/4162/milvus?resumeMigrationId=<uuid>' \
+  -H 'rootkey: 你的ROOT_KEY'
+```
 
-  # 3. 若请求被网关超时中断,用返回的 migrationId 续跑
-  curl 'http://host/api/admin/initMilvusFullText?resumeMigrationId=<uuid>'
-  ```
-
-  迁移遍历 milvus `modeldata` 向量行 + 反查 MongoDB `dataset_datas.indexes` 原文，写入 `modeldata_v2`。`imageEmbedding` 索引只拷贝向量、BM25 文本置空。特性：断点续跑、失败行落库并自愈重试、完成时**实际校验 `modeldata_v2` 目标行数**、`upsert` 幂等（重复执行安全）。
-
-- **Milvus 数据已不存在（跨版本重装 / 全新实例，无 `modeldata`）** → 调用重建嵌入接口，从 MongoDB `dataset_data` 全量重新嵌入（含图片向量，走训练队列异步完成）：
-
-  ```bash
-  # 数据集维度重建(传入 datasetId + 新/旧 vectorModel)
-  curl -X POST 'http://host/api/admin/core/dataset/training/rebuildEmbedding' \
-    -H 'Content-Type: application/json' \
-    -d '{ "datasetId": "<datasetId>", "vectorModel": "<embeddingModel>" }'
-  ```
-
-  > `initMilvusFullText` 在旧表缺失/为空时会报错并提示改用此接口。
+迁移遍历 Milvus `modeldata` 向量行并反查 MongoDB `dataset_datas.indexes` 原文，写入 `modeldata_v2`。`imageEmbedding` 索引只拷贝向量、BM25 文本置空。迁移支持断点续跑、失败行落库并自愈重试、完成时**实际校验 `modeldata_v2` 目标行数**，并使用幂等 `upsert`，可安全重复执行。
 
 ### 6. 验证迁移结果
 
@@ -84,7 +74,8 @@ image: milvusdb/milvus:v2.5.16
 - 通过迁移接口显式删除（校验通过后 drop + 清空 MongoDB 旧全文表）：
 
   ```bash
-  curl 'http://host/api/admin/initMilvusFullText?removeOld=1'
+  curl 'http://host/api/admin/4162/milvus?removeOld=1' \
+    -H 'rootkey: 你的ROOT_KEY'
   ```
 
 - 或使用 milvus-cli / SDK 手动 drop `modeldata`。
@@ -94,11 +85,12 @@ image: milvusdb/milvus:v2.5.16
 ### 8. 回滚
 
 - 未执行 `removeOld`（旧表仍在）：降级 FastGPT 镜像并恢复备份即可，旧全文数据仍在 MongoDB。
-- 已执行 `removeOld`（旧表已删）：需从备份恢复 Milvus 数据卷，或重新嵌入向量后再降级。
+- 已执行 `removeOld`（旧表已删）：需从备份恢复 Milvus 数据卷后再降级。
 - 迁移可重复执行（幂等 upsert），迁移失败后用 `resumeMigrationId` 续跑。
 
 ## 常见问题
 
 - **启动报 `Milvus version ... is not supported`**：Milvus 版本低于 2.5.16，升级到 2.5.16+。
+- **迁移报旧 `modeldata` 缺失或为空**：停止迁移并检查是否连接了错误的 Milvus 实例、数据卷是否正确挂载；确认数据丢失时从备份恢复。
 - **迁移一直 `failed` 且 `targetCount < processedCount`**：目标表实际写入行数不足，检查 Milvus 状态（是否 OOM / 已释放集合），用 `resumeMigrationId` 续跑。
 - **迁移后全文检索为空**：确认已跑完迁移且 `status: done`；`modeldata_v2` 为空时全文无命中。

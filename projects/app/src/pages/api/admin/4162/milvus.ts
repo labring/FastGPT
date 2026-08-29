@@ -27,9 +27,8 @@ export type Query = z.infer<typeof QuerySchema>;
  * 遍历 milvus `modeldata` 向量行 + join mongo dataset_data 取 text,写入 `modeldata_v2`(不重嵌入)。
  * `imageEmbedding` 只保留向量,BM25 文本置空。
  *
- * 前提:Milvus 数据仍在(旧表 `modeldata` 存在且有向量)。若 Milvus 数据已不存在
- * (跨版本升级后的全新实例),请改用 `POST /api/core/dataset/training/rebuildEmbedding`
- * 从 dataset_data 全量重新嵌入。本接口在旧表缺失/为空时会报错并给出该提示。
+ * 前提:Milvus 数据仍在(旧表 `modeldata` 存在且有向量)。旧表缺失或为空时无法迁移,
+ * 应停止操作并检查 Milvus 实例和数据卷,必要时从备份恢复。
  *
  * 校验通过后 release 旧 `modeldata`;`removeOld=1` 时显式 drop 旧表并清空 `dataset_data_texts`
  * (管理员验证后主动删除)。
@@ -41,9 +40,9 @@ export type Query = z.infer<typeof QuerySchema>;
  * 迁移进行中再次调用(不带 resumeMigrationId)会被拒绝,防止两个循环并发处理同一批源行。
  *
  * 示例:
- *   curl 'http://host/api/admin/initMilvusFullText?batchSize=500&dryRun=1'
- *   curl 'http://host/api/admin/initMilvusFullText?removeOld=1'
- *   curl 'http://host/api/admin/initMilvusFullText?resumeMigrationId=<uuid>'
+ *   curl 'http://host/api/admin/4162/milvus?batchSize=500&dryRun=1'
+ *   curl 'http://host/api/admin/4162/milvus?removeOld=1'
+ *   curl 'http://host/api/admin/4162/milvus?resumeMigrationId=<uuid>'
  *   # 取消:中断进行中的 curl(Ctrl+C)即可,无需再调接口
  */
 async function handler(
