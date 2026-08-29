@@ -38,7 +38,8 @@ import { useWorkflowUtils } from '../../hooks/useUtils';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import {
   buildNodeTemplateContext,
-  getNodeContainerCheckError
+  getNodeContainerCheckError,
+  translateNodeContainerCheckError
 } from '@fastgpt/global/core/workflow/template/context';
 import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
 import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/loopEnd';
@@ -341,7 +342,10 @@ const NodeTemplateList = ({
             context: containerContext
           });
           if (checkError) {
-            toast({ status: 'warning', title: t(`workflow:${checkError}` as any) });
+            toast({
+              status: 'warning',
+              title: translateNodeContainerCheckError(checkError, t)
+            });
             return;
           }
         }

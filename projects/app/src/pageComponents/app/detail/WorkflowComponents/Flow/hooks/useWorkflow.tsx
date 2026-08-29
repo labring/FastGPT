@@ -45,7 +45,8 @@ import { WorkflowLayoutContext } from '../../context/workflowComputeContext';
 import { type HelperLinesController } from '../components/HelperLines';
 import {
   buildNodeTemplateContext,
-  getNodeContainerCheckError
+  getNodeContainerCheckError,
+  translateNodeContainerCheckError
 } from '@fastgpt/global/core/workflow/template/context';
 
 /*
@@ -508,7 +509,10 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
           context: containerContext
         });
         if (checkError) {
-          return toast({ status: 'warning', title: t(`workflow:${checkError}` as any) });
+          return toast({
+            status: 'warning',
+            title: translateNodeContainerCheckError(checkError, t)
+          });
         }
       }
 

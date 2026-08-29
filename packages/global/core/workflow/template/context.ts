@@ -57,6 +57,23 @@ export type NodeContainerCheckError =
   | 'loop_run_break_must_inside_loop_run'
   | 'can_not_add_inside_container';
 
+/** 使用显式分支保留翻译 key 的静态字面量引用，避免 i18n 清理脚本误删动态 key。 */
+export const translateNodeContainerCheckError = (
+  checkError: NodeContainerCheckError,
+  t: (key: string) => string
+) => {
+  switch (checkError) {
+    case 'can_not_loop':
+      return t('workflow:can_not_loop');
+    case 'can_not_parallel':
+      return t('workflow:can_not_parallel');
+    case 'loop_run_break_must_inside_loop_run':
+      return t('workflow:loop_run_break_must_inside_loop_run');
+    case 'can_not_add_inside_container':
+      return t('workflow:can_not_add_inside_container');
+  }
+};
+
 const UNSUPPORTED_IN_NESTED_NODE_TYPES = new Set<FlowNodeTypeEnum>([
   FlowNodeTypeEnum.workflowStart,
   FlowNodeTypeEnum.loop,
