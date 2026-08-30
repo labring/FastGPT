@@ -30,8 +30,9 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { getEditorVariables } from '../../../utils';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 import { useAgentSkillManager } from './useAgentSkillManager';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
@@ -104,7 +105,8 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     (v) => v
   );
   const { appDetail } = useContextSelector(AppContext, (v) => v);
-  const { feConfigs, defaultModels } = useSystemStore();
+  const { feConfigs } = useSystemStore();
+  const { defaultModels } = useUserModelStore();
   const externalProviderWorkflowVariables = feConfigs?.externalProviderWorkflowVariables;
   const { teamPlanStatus, isTeamAdmin } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
@@ -443,7 +445,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   } = useDisclosure();
 
   // ---- Model ----
-  const { llmModelList } = useSystemModelLists();
+  const { llmModelList } = useUserModelLists();
   const currentModel = useMemo(() => {
     const modelId = inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId)?.value;
     const model = inputs.find((i) => i.key === NodeInputKeyEnum.aiModel)?.value;

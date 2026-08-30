@@ -7,6 +7,7 @@ import { serviceSideProps } from '@/web/common/i18n/utils';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useForm, useWatch } from 'react-hook-form';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import AppSelect from '@/components/Select/AppSelect';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -43,7 +44,7 @@ const EvaluationCreating = () => {
   const [percent, setPercent] = useState(0);
   const [error, setError] = useState<string>();
 
-  const { defaultModels } = useSystemStore();
+  const { defaultModels } = useUserModelStore();
 
   const { register, setValue, control, handleSubmit } = useForm<EvaluationFormType>({
     defaultValues: {

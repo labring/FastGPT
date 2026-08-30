@@ -93,7 +93,6 @@ const SystemModelDocumentBaseSchema = PriceTypeSchema.extend({
   name: z.string().trim().min(1),
   scope: z.literal(ModelScopeEnum.system).default(ModelScopeEnum.system),
   isActive: z.boolean().optional(),
-  isDefault: z.boolean().optional(),
   requestUrl: z.string().optional(),
   requestAuth: z.string().optional(),
   testMode: z.boolean().optional()
@@ -101,10 +100,7 @@ const SystemModelDocumentBaseSchema = PriceTypeSchema.extend({
 
 export const LLMSystemModelDocumentSchema = SystemModelDocumentBaseSchema.extend({
   type: z.literal(ModelTypeEnum.llm),
-  config: LLMModelConfigSchema,
-  isDefaultDatasetTextModel: z.boolean().optional(),
-  isDefaultDatasetImageModel: z.boolean().optional(),
-  isDefaultChatTitleModel: z.boolean().optional()
+  config: LLMModelConfigSchema
 });
 
 export const EmbeddingSystemModelDocumentSchema = SystemModelDocumentBaseSchema.extend({

@@ -5,7 +5,6 @@ import { useTranslation } from 'next-i18next';
 import { TTSTypeEnum } from '@/web/core/app/constants';
 import type { AppTTSConfigType } from '@fastgpt/global/core/app/type';
 import { useAudioPlay } from '@/web/common/utils/voice';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MySlider from '@/components/Slider';
 import { defaultTTSConfig } from '@fastgpt/global/core/app/constants';
@@ -17,9 +16,9 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
 import AppConfigItem, { AppConfigItemAction } from './AppConfigItem';
-import { getMyModels } from '@/web/common/system/api';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 type TTSSelectorItemType = {
   alias: string;
@@ -40,13 +39,9 @@ const TTSSelect = ({
   onChange: (e: AppTTSConfigType) => void;
 }) => {
   const { t, i18n } = useTranslation();
-  const { getModelProvider } = useSystemStore();
+  const { getModelProvider } = useUserModelStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const { data: ttsModelResponse } = useRequest(
-    () => getMyModels({ modelType: ModelTypeEnum.tts, pageNum: 1, pageSize: 100 }),
-    { manual: false }
-  );
-  const ttsModels = useMemo(() => ttsModelResponse?.list ?? [], [ttsModelResponse?.list]);
+  const { ttsModelList: ttsModels } = useUserModelLists();
 
   const appId = useContextSelector(AppContext, (v) => v.appId);
 

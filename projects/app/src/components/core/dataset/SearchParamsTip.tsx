@@ -1,4 +1,4 @@
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { Flex, Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
 import {
   DatasetSearchModeEnum,
@@ -27,7 +27,7 @@ const SearchParamsTip = ({
   queryExtensionModel?: string;
 }) => {
   const { t } = useTranslation();
-  const { reRankModelList, llmModelList } = useSystemModelLists();
+  const { reRankModelList, llmModelList } = useUserModelLists();
 
   const hasReRankModel = reRankModelList.length > 0;
   const hasEmptyResponseMode = responseEmptyText !== undefined;

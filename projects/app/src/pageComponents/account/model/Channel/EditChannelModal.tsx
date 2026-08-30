@@ -26,8 +26,6 @@ import { AddModelButton } from '../AddModelBox';
 import dynamic from 'next/dynamic';
 import { type SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { getSystemModelList } from '@/web/core/ai/config';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
@@ -40,6 +38,7 @@ import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { defaultProvider } from '@fastgpt/global/core/ai/provider';
+import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
 
 const ModelEditModal = dynamic(() => import('../AddModelBox').then((mod) => mod.ModelEditModal));
 
@@ -58,7 +57,24 @@ const EditChannelModal = ({
   onSuccess: () => void;
 }) => {
   const { t, i18n } = useClientTranslation('config_model');
-  const { defaultModels, aiproxyChannels, getModelProvider } = useSystemStore();
+  const {
+    aiproxyChannels,
+    defaultModelIds,
+    getModelProvider,
+    systemModelList,
+    runAsync: refreshSystemModelList,
+    loading: loadingModels
+  } = useAdminModelConfig();
+  const defaultModels = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(defaultModelIds).map(([key, modelId]) => [
+          key,
+          systemModelList.find((model) => model.modelId === modelId)
+        ])
+      ),
+    [defaultModelIds, systemModelList]
+  );
   const isEdit = defaultConfig.id !== 0;
 
   const { register, handleSubmit, watch, setValue } = useForm({
@@ -126,13 +142,6 @@ const EditChannelModal = ({
   };
 
   const models = watch('models');
-  const {
-    data: systemModelList = [],
-    runAsync: refreshSystemModelList,
-    loading: loadingModels
-  } = useRequest(getSystemModelList, {
-    manual: false
-  });
   const modelList = useMemo(() => {
     return systemModelList.map((item) => {
       const provider = getModelProvider(item.provider, i18n.language);

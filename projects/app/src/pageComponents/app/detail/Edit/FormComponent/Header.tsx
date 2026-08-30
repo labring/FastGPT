@@ -35,7 +35,7 @@ import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { checkAgentSkillSandboxUnavailable } from '../ChatAgent/utils';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 const Header = ({
   forbiddenSaveSnapshot: forbiddenSaveSnapshotRef,
@@ -65,7 +65,7 @@ const Header = ({
   const currentTab = useContextSelector(AppContext, (v) => v.currentTab);
 
   const { lastAppListRouteType, feConfigs } = useSystemStore();
-  const { llmModelList } = useSystemModelLists();
+  const { llmModelList } = useUserModelLists();
   const { teamPlanStatus } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
   const showSandbox = feConfigs.show_agent_sandbox;

@@ -1,8 +1,13 @@
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { ModelDefaultIds } from '@fastgpt/global/core/ai/defaultModel';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { LegacySystemModelCollectionName } from './constants';
-import { repairSystemModelDocument } from './repair';
+import { getLegacyDefaultModelFlags, repairSystemModelDocument } from './repair';
 import { MongoAIModel } from './schema';
+import { upsertSystemDefaultModelIds } from '../defaultModel/entity';
+import { MongoAIDefaultModel } from '../defaultModel/schema';
+import { isDeepStrictEqual } from 'node:util';
 
 export type BootstrapAIModelsResult = {
   status: 'skipped' | 'migrated';
@@ -29,12 +34,16 @@ export const bootstrapAIModelsFromLegacy = async ({
   const records = await legacyCollection.find({}).sort({ _id: 1 }).toArray();
   const pluginMap = new Map(pluginDocuments.map((item) => [item.model, item]));
   const modelIds = new Set<string>();
-  type MigrationCandidate = SystemModelDocumentDataType & {
-    _id: (typeof records)[number]['_id'];
+  type MigrationCandidate = {
+    document: SystemModelDocumentDataType & {
+      _id: (typeof records)[number]['_id'];
+    };
+    defaultFlags: ReturnType<typeof getLegacyDefaultModelFlags>;
+    order: number;
   };
   const candidatesByModel = new Map<string, MigrationCandidate>();
 
-  for (const record of records) {
+  for (const [order, record] of records.entries()) {
     const result = repairSystemModelDocument({
       record,
       pluginDocument: pluginMap.get(String(record.model))
@@ -50,9 +59,33 @@ export const bootstrapAIModelsFromLegacy = async ({
     modelIds.add(modelId);
 
     // 历史上若同名模型被重复保存，以较新的记录为准，避免唯一索引阻断整次迁移。
-    candidatesByModel.set(result.document.model, { _id: record._id, ...result.document });
+    candidatesByModel.set(result.document.model, {
+      document: { _id: record._id, ...result.document },
+      defaultFlags: getLegacyDefaultModelFlags(record),
+      order
+    });
   }
-  const candidates = Array.from(candidatesByModel.values());
+  const candidates = Array.from(candidatesByModel.values()).sort((a, b) => a.order - b.order);
+  const defaultModelIds: ModelDefaultIds = {};
+
+  for (const { document, defaultFlags } of candidates) {
+    if (!document.isActive) continue;
+
+    if (defaultFlags.isDefault) {
+      defaultModelIds[document.type] = String(document._id);
+    }
+    if (document.type === ModelTypeEnum.llm) {
+      if (defaultFlags.isDefaultDatasetTextModel) {
+        defaultModelIds.datasetTextLLM = String(document._id);
+      }
+      if (defaultFlags.isDefaultDatasetImageModel) {
+        defaultModelIds.datasetImageLLM = String(document._id);
+      }
+      if (defaultFlags.isDefaultChatTitleModel) {
+        defaultModelIds.chatTitleLLM = String(document._id);
+      }
+    }
+  }
 
   try {
     return await mongoSessionRun(async (session) => {
@@ -60,8 +93,12 @@ export const bootstrapAIModelsFromLegacy = async ({
         return { status: 'skipped', sourceCount: records.length };
       }
       if (candidates.length > 0) {
-        await MongoAIModel.collection.insertMany(candidates, { ordered: true, session });
+        await MongoAIModel.collection.insertMany(
+          candidates.map((candidate) => candidate.document),
+          { ordered: true, session }
+        );
       }
+      await upsertSystemDefaultModelIds(defaultModelIds, session);
       return { status: 'migrated', sourceCount: records.length };
     });
   } catch (error) {
@@ -77,12 +114,19 @@ export const bootstrapAIModelsFromLegacy = async ({
       ).map((record) => [String(record._id), record.model])
     );
     if (
-      candidates.length > 0 &&
       candidates.every(
-        (candidate) => migratedModelsById.get(String(candidate._id)) === candidate.model
+        ({ document }) => migratedModelsById.get(String(document._id)) === document.model
       )
     ) {
-      return { status: 'skipped', sourceCount: records.length };
+      const migratedDefaults = await MongoAIDefaultModel.findOne({
+        scope: ModelScopeEnum.system
+      }).lean();
+      if (
+        migratedDefaults &&
+        isDeepStrictEqual(migratedDefaults.defaultModelIds, defaultModelIds)
+      ) {
+        return { status: 'skipped', sourceCount: records.length };
+      }
     }
     throw error;
   }

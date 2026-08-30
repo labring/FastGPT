@@ -52,7 +52,6 @@ const cleanupResult = {
     missingApp: 2,
     missingDataset: 0,
     missingAgentSkill: 0,
-    missingModel: 0,
     missingResourceId: 0,
     missingCollaboratorTarget: 0,
     multipleCollaboratorTargets: 0

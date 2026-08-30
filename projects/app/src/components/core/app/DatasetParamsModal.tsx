@@ -17,7 +17,8 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
@@ -60,8 +61,8 @@ const DatasetParamsModal = ({
   onSuccess: (e: AppDatasetSearchParamsType) => void;
 }) => {
   const { t } = useTranslation();
-  const { defaultModels } = useSystemStore();
-  const { reRankModelList, llmModelList } = useSystemModelLists();
+  const { defaultModels } = useUserModelStore();
+  const { reRankModelList, llmModelList } = useUserModelLists();
   const [refresh, setRefresh] = useState(false);
   const [currentTabType, setCurrentTabType] = useState(SearchSettingTabEnum.searchMode);
 

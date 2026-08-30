@@ -1,6 +1,5 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import {
   refreshModelTemplates,
@@ -15,9 +14,10 @@ import {
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { upsertSystemDefaultModelIds } from '@fastgpt/service/core/ai/defaultModel/entity';
 
 /**
- * 更新系统默认模型。所有非空引用会在清除旧默认值前一次性校验，避免错误 ID、禁用模型、
+ * 更新系统默认模型。所有非空引用会在写入系统作用域配置前一次性校验，避免错误 ID、禁用模型、
  * 类型不匹配或不支持视觉的模型让默认配置进入部分更新状态。
  */
 async function handler(req: ApiRequestProps<UpdateDefaultModelsBody>): Promise<void> {
@@ -26,43 +26,35 @@ async function handler(req: ApiRequestProps<UpdateDefaultModelsBody>): Promise<v
   const defaultFields = [
     {
       modelId: defaults[ModelTypeEnum.llm],
-      field: 'isDefault',
       expectedType: ModelTypeEnum.llm
     },
     {
       modelId: defaults[ModelTypeEnum.embedding],
-      field: 'isDefault',
       expectedType: ModelTypeEnum.embedding
     },
     {
       modelId: defaults[ModelTypeEnum.tts],
-      field: 'isDefault',
       expectedType: ModelTypeEnum.tts
     },
     {
       modelId: defaults[ModelTypeEnum.stt],
-      field: 'isDefault',
       expectedType: ModelTypeEnum.stt
     },
     {
       modelId: defaults[ModelTypeEnum.rerank],
-      field: 'isDefault',
       expectedType: ModelTypeEnum.rerank
     },
     {
       modelId: defaults.datasetTextLLMModelId,
-      field: 'isDefaultDatasetTextModel',
       expectedType: ModelTypeEnum.llm
     },
     {
       modelId: defaults.datasetImageLLMModelId,
-      field: 'isDefaultDatasetImageModel',
       expectedType: ModelTypeEnum.llm,
       requiresVision: true
     },
     {
       modelId: defaults.chatTitleLLMModelId,
-      field: 'isDefaultChatTitleModel',
       expectedType: ModelTypeEnum.llm
     }
   ].filter((item): item is typeof item & { modelId: string } => typeof item.modelId === 'string');
@@ -94,31 +86,18 @@ async function handler(req: ApiRequestProps<UpdateDefaultModelsBody>): Promise<v
   // 插件不可用时不提交数据库更新，保持数据库与当前运行时默认模型一致。
   const pluginDocuments = await refreshModelTemplates();
 
-  await mongoSessionRun(async (session) => {
-    await MongoAIModel.updateMany(
-      { scope: ModelScopeEnum.system },
-      {
-        $unset: {
-          isDefault: '',
-          isDefaultDatasetTextModel: '',
-          isDefaultDatasetImageModel: '',
-          isDefaultChatTitleModel: ''
-        }
-      },
-      { session }
-    );
-    if (defaultFields.length === 0) return;
+  const configuredDefaultModelIds = {
+    [ModelTypeEnum.llm]: defaults[ModelTypeEnum.llm],
+    [ModelTypeEnum.embedding]: defaults[ModelTypeEnum.embedding],
+    [ModelTypeEnum.tts]: defaults[ModelTypeEnum.tts],
+    [ModelTypeEnum.stt]: defaults[ModelTypeEnum.stt],
+    [ModelTypeEnum.rerank]: defaults[ModelTypeEnum.rerank],
+    datasetTextLLM: defaults.datasetTextLLMModelId,
+    datasetImageLLM: defaults.datasetImageLLMModelId,
+    chatTitleLLM: defaults.chatTitleLLMModelId
+  };
 
-    await MongoAIModel.bulkWrite(
-      defaultFields.map(({ modelId, field }) => ({
-        updateOne: {
-          filter: { _id: modelId, scope: ModelScopeEnum.system },
-          update: { $set: { [field]: true } }
-        }
-      })),
-      { session }
-    );
-  });
+  await upsertSystemDefaultModelIds(configuredDefaultModelIds);
 
   await updatedReloadSystemModel({ pluginDocuments });
 }

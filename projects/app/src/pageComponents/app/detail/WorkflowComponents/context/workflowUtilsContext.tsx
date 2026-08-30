@@ -32,7 +32,7 @@ import {
   canInputBeAgentGenerated,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 // 创建 Context
 type WorkflowUtilsContextValue = {
@@ -124,7 +124,7 @@ export const WorkflowUtilsContext = createContext<WorkflowUtilsContextValue>({
 
 export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
-  const { llmModelList } = useSystemModelLists();
+  const { llmModelList } = useUserModelLists();
   const { toast } = useToast();
   const { fitView } = useReactFlow();
   const { feConfigs } = useSystemStore();

@@ -26,11 +26,12 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
 import SandboxConfigButton from '../../components/SandboxConfigButton';
@@ -72,7 +73,8 @@ const EditForm = ({
   setAppForm: React.Dispatch<React.SetStateAction<AppFormEditFormType>>;
 }) => {
   const { t } = useSafeTranslation();
-  const { defaultModels, feConfigs } = useSystemStore();
+  const { feConfigs } = useSystemStore();
+  const { defaultModels } = useUserModelStore();
   const showSandbox = feConfigs.show_agent_sandbox;
   const { teamPlanStatus } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
@@ -113,7 +115,7 @@ const EditForm = ({
     [appForm.chatConfig.variables, t]
   );
 
-  const { llmModelList, reRankModelList } = useSystemModelLists();
+  const { llmModelList, reRankModelList } = useUserModelLists();
   const selectedModel =
     llmModelList.find(
       (model) =>

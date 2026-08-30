@@ -50,12 +50,7 @@ const configKeysMap: Record<ModelTypeEnum, string[]> = {
 };
 
 const modelTypes = new Set(Object.values(ModelTypeEnum));
-const baseBooleanKeys = ['isActive', 'isDefault', 'testMode'] as const;
-const llmBooleanKeys = [
-  'isDefaultDatasetTextModel',
-  'isDefaultDatasetImageModel',
-  'isDefaultChatTitleModel'
-] as const;
+const baseBooleanKeys = ['isActive', 'testMode'] as const;
 const llmConfigBooleanKeys = [
   'showTopP',
   'showStopSign',
@@ -106,6 +101,33 @@ const getDocumentSources = (record: Record<string, unknown>) => {
   const metadata = toRecord(record.metadata);
   // 旧顶层字段优先；字段本身无效时再逐字段回退 metadata，而不是整层覆盖。
   return metadata ? [record, metadata] : [record];
+};
+
+export type LegacyDefaultModelFlags = {
+  isDefault?: boolean;
+  isDefaultDatasetTextModel?: boolean;
+  isDefaultDatasetImageModel?: boolean;
+  isDefaultChatTitleModel?: boolean;
+};
+
+/** 迁移专用：按旧模型字段优先级读取默认标记，但不把这些字段写入 canonical ai_models。 */
+export const getLegacyDefaultModelFlags = (record: unknown): LegacyDefaultModelFlags => {
+  const raw = toRecord(record);
+  if (!raw) return {};
+  const sources = getDocumentSources(raw);
+  const readBoolean = (key: keyof LegacyDefaultModelFlags) => {
+    for (const source of sources) {
+      const value = toBoolean(source[key]);
+      if (value !== undefined) return value;
+    }
+  };
+
+  return {
+    isDefault: readBoolean('isDefault'),
+    isDefaultDatasetTextModel: readBoolean('isDefaultDatasetTextModel'),
+    isDefaultDatasetImageModel: readBoolean('isDefaultDatasetImageModel'),
+    isDefaultChatTitleModel: readBoolean('isDefaultChatTitleModel')
+  };
 };
 
 const parsePriceTiers = (value: unknown) => {
@@ -313,12 +335,6 @@ export const repairSystemModelDocument = ({
     const value = readBoolean(key);
     if (value !== undefined) document[key] = value;
   });
-  if (type === ModelTypeEnum.llm) {
-    llmBooleanKeys.forEach((key) => {
-      const value = readBoolean(key);
-      if (value !== undefined) document[key] = value;
-    });
-  }
   for (const key of ['requestUrl', 'requestAuth'] as const) {
     const value =
       readSource((source) => toTrimmedString(source[key])) ?? toTrimmedString(pluginSource[key]);

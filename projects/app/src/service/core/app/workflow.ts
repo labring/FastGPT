@@ -18,7 +18,13 @@ export const getChatModelNameListByModules = (nodes: StoreNodeItemType[]): strin
       );
       const modelId = modelIdInput?.value;
       const model = modelInput?.value;
-      return getOptionalLLMModelData({ modelId, model })?.name ?? '';
+
+      try {
+        return getOptionalLLMModelData({ modelId, model })?.name ?? '';
+      } catch {
+        // chatModels 仅用于标题栏展示。动态、缺失或已停用模型不应阻断聊天初始化。
+        return '';
+      }
     })
     .filter(Boolean);
 

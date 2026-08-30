@@ -16,7 +16,7 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import InputRender from '@/components/core/app/formRender';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useDeepCompareEffect } from 'ahooks';
@@ -37,7 +37,7 @@ const RenderInput = () => {
   const instruction = useContextSelector(PluginRunContext, (v) => v.instruction);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
 
-  const { llmModelList } = useSystemModelLists();
+  const { llmModelList } = useUserModelLists();
 
   const { control, handleSubmit, reset } = variablesForm;
 

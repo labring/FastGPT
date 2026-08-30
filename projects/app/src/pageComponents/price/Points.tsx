@@ -3,7 +3,7 @@ import { Box, Flex, Grid, Link } from '@chakra-ui/react';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import ModelTable from '@/components/core/ai/ModelTable';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getSystemModels } from '@/web/common/system/api';
+import { getPublicModelList } from '@/web/common/system/api';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import PriceTiersLabel from '@/components/core/ai/PriceTiersLabel';
 
@@ -42,7 +42,7 @@ export default React.memo(Points);
 
 export const AiPointsTable = () => {
   const { t } = useClientTranslation('price');
-  const { data: modelList = [] } = useRequest(getSystemModels, {
+  const { data: modelList = [] } = useRequest(getPublicModelList, {
     manual: false,
     errorToast: ''
   });

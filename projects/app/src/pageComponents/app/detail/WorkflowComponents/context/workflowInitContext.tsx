@@ -25,7 +25,7 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getWebLLMModel } from '@/web/common/system/utils';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -124,7 +124,7 @@ const WorkflowInitContextProvider = ({
   children: ReactNode;
   basicNodeTemplates: FlowNodeTemplateType[];
 }) => {
-  const { llmModelList } = useSystemModelLists();
+  const { llmModelList } = useUserModelLists();
   // Nodes
   const [nodes = [], setNodes, onNodesChange] = useNodesState<FlowNodeItemType>([]);
   const getNodes = useMemoizedFn(() => nodes);

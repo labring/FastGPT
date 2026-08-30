@@ -23,7 +23,7 @@ const desensitizedEmbeddingModel = {
 };
 
 describe('system initialization OpenAPI contract', () => {
-  it('drops the legacy active model list and strips sensitive fields from default models', () => {
+  it('drops all model catalog fields from system initialization', () => {
     const modelWithSecrets = {
       ...desensitizedEmbeddingModel,
       requestUrl: 'https://provider.example/v1',
@@ -42,11 +42,7 @@ describe('system initialization OpenAPI contract', () => {
     });
 
     expect(result).not.toHaveProperty('activeModelList');
-    expect(result.defaultModels?.embedding).not.toHaveProperty('requestUrl');
-    expect(result.defaultModels?.embedding).not.toHaveProperty('requestAuth');
-    expect(result.defaultModels?.embedding).not.toHaveProperty('defaultConfig');
-    expect(result.defaultModels?.embedding).not.toHaveProperty('dbConfig');
-    expect(result.defaultModels?.embedding).not.toHaveProperty('queryConfig');
+    expect(result).not.toHaveProperty('defaultModels');
     expect(JSON.stringify(result)).not.toContain('model-secret');
   });
 
@@ -115,21 +111,6 @@ describe('system initialization OpenAPI contract', () => {
         }
       })
     ).toThrow();
-  });
-
-  it('fills the default weight for an embedding model without weight', () => {
-    expect(
-      GetSystemInitDataResponseSchema.parse({
-        defaultModels: { embedding: desensitizedEmbeddingModel }
-      })
-    ).toEqual({
-      defaultModels: {
-        embedding: {
-          ...desensitizedEmbeddingModel,
-          config: { ...desensitizedEmbeddingModel.config, weight: 0 }
-        }
-      }
-    });
   });
 
   it('defaults missing embedding model weight to zero', () => {

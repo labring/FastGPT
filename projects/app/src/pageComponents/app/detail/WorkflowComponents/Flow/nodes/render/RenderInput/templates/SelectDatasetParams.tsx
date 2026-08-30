@@ -6,6 +6,7 @@ import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import DatasetParamsModal from '@/components/core/app/DatasetParamsModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../../../context/workflowInitContext';
@@ -19,7 +20,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     (v) => v.llmMaxQuoteContext
   );
   const { t } = useTranslation();
-  const { defaultModels } = useSystemStore();
+  const { defaultModels } = useUserModelStore();
 
   const [data, setData] = useState<AppDatasetSearchParamsType>({
     searchMode: DatasetSearchModeEnum.embedding,

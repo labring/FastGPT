@@ -1,4 +1,5 @@
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { Types } from '@fastgpt/service/common/mongo';
 import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import {
   default as backfillModelReferencesApi,
@@ -16,7 +17,43 @@ import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { MongoUsageItem } from '@fastgpt/service/support/wallet/usage/usageItemSchema';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
+
+let workflowNodeIndex = 0;
+
+const createWorkflowNode = ({
+  inputs,
+  nodeId = `test-node-${workflowNodeIndex++}`,
+  name = 'Test node',
+  outputs = [],
+  ...node
+}: {
+  flowNodeType: FlowNodeTypeEnum;
+  inputs: Array<
+    { key: string; label?: string; renderTypeList?: FlowNodeInputTypeEnum[] } & Record<
+      string,
+      unknown
+    >
+  >;
+  nodeId?: string;
+  name?: string;
+  outputs?: unknown[];
+  [key: string]: unknown;
+}) => ({
+  ...node,
+  nodeId,
+  name,
+  inputs: inputs.map((input) => ({
+    label: input.label ?? input.key,
+    renderTypeList: input.renderTypeList ?? [FlowNodeInputTypeEnum.input],
+    ...input
+  })),
+  outputs
+});
 
 const createStoredModel = async ({
   model,
@@ -49,6 +86,7 @@ const createStoredModel = async ({
 describe('runBackfillModelReferences', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    workflowNodeIndex = 0;
     await Promise.all([
       MongoAIModel.deleteMany({}),
       MongoDataset.deleteMany({}),
@@ -89,7 +127,7 @@ describe('runBackfillModelReferences', () => {
       key: NodeInputKeyEnum.datasetParams,
       value: {
         rerankModel: 'rerank-model',
-        datasetSearchExtensionModel: 'gpt-model'
+        datasetSearchExtensionModel: '{{nestedModelId}}'
       }
     };
 
@@ -107,19 +145,23 @@ describe('runBackfillModelReferences', () => {
       MongoApp.collection.insertOne({
         chatConfig: { questionGuide: { model: 'gpt-model' } },
         modules: [
-          {
+          createWorkflowNode({
             flowNodeType: FlowNodeTypeEnum.agent,
             inputs: [legacyInput, dynamicInput, referenceInput, datasetParamsInput]
-          }
+          })
         ]
       }),
       MongoAppVersion.collection.insertOne({
         chatConfig: { ttsConfig: { model: 'tts-model' } },
-        nodes: [{ flowNodeType: FlowNodeTypeEnum.chatNode, inputs: [legacyInput] }]
+        nodes: [
+          createWorkflowNode({ flowNodeType: FlowNodeTypeEnum.chatNode, inputs: [legacyInput] })
+        ]
       }),
       MongoAppTemplate.collection.insertOne({
         workflow: {
-          nodes: [{ flowNodeType: FlowNodeTypeEnum.chatNode, inputs: [legacyInput] }],
+          nodes: [
+            createWorkflowNode({ flowNodeType: FlowNodeTypeEnum.chatNode, inputs: [legacyInput] })
+          ],
           chatConfig: { questionGuide: { model: 'gpt-model' } }
         }
       }),
@@ -161,34 +203,32 @@ describe('runBackfillModelReferences', () => {
     });
     expect(app?.modules[0].inputs).toEqual(
       expect.arrayContaining([
-        legacyInput,
+        expect.objectContaining(legacyInput),
         expect.objectContaining({
           key: NodeInputKeyEnum.aiModelId,
           value: String(gptModel._id)
         }),
-        dynamicInput,
-        referenceInput,
+        expect.objectContaining(dynamicInput),
+        expect.objectContaining(referenceInput),
         expect.objectContaining({
           key: NodeInputKeyEnum.datasetDeepSearchModelId,
           value: referenceValue
+        }),
+        expect.objectContaining({
+          key: NodeInputKeyEnum.datasetSearchExtensionModelId,
+          value: '{{model}}'
         }),
         expect.objectContaining({
           key: NodeInputKeyEnum.datasetParams,
           value: expect.objectContaining({
             rerankModel: 'rerank-model',
             rerankModelId: String(rerankModel._id),
-            datasetSearchExtensionModel: 'gpt-model',
-            datasetSearchExtensionModelId: String(gptModel._id)
+            datasetSearchExtensionModel: '{{nestedModelId}}',
+            datasetSearchExtensionModelId: '{{nestedModelId}}'
           })
         })
       ])
     );
-    expect(app?.modules[0].inputs).not.toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ key: NodeInputKeyEnum.datasetSearchExtensionModelId })
-      ])
-    );
-
     const appVersion = await MongoAppVersion.collection.findOne({});
     expect(appVersion?.chatConfig.ttsConfig).toMatchObject({
       model: 'tts-model',
@@ -196,7 +236,7 @@ describe('runBackfillModelReferences', () => {
     });
     expect(appVersion?.nodes[0].inputs).toEqual(
       expect.arrayContaining([
-        legacyInput,
+        expect.objectContaining(legacyInput),
         expect.objectContaining({
           key: NodeInputKeyEnum.aiModelId,
           value: String(gptModel._id)
@@ -211,7 +251,7 @@ describe('runBackfillModelReferences', () => {
     });
     expect(appTemplate?.workflow.nodes[0].inputs).toEqual(
       expect.arrayContaining([
-        legacyInput,
+        expect.objectContaining(legacyInput),
         expect.objectContaining({
           key: NodeInputKeyEnum.aiModelId,
           value: String(gptModel._id)
@@ -223,6 +263,44 @@ describe('runBackfillModelReferences', () => {
       model: 'gpt-model'
     });
     await expect(MongoUsageItem.collection.findOne({})).resolves.not.toHaveProperty('modelId');
+  });
+
+  it('rejects an invalid workflow node before writing migrated inputs', async () => {
+    await MongoApp.collection.insertOne({
+      name: 'Invalid workflow metadata',
+      modules: [
+        createWorkflowNode({
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          avatar: 123,
+          intro: 'invalid avatar should block migration',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModel,
+              value: 'installed-model'
+            }
+          ]
+        })
+      ]
+    });
+
+    await expect(runBackfillModelReferences({ dryRun: false })).rejects.toThrow();
+
+    const app = await MongoApp.collection.findOne({ name: 'Invalid workflow metadata' });
+    expect(app?.modules[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: NodeInputKeyEnum.aiModel,
+          value: 'installed-model'
+        })
+      ])
+    );
+    expect(app?.modules[0].inputs).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: NodeInputKeyEnum.aiModelId
+        })
+      ])
+    );
   });
 
   it('preserves an existing valid modelId even when the legacy model points elsewhere', async () => {
@@ -347,22 +425,135 @@ describe('runBackfillModelReferences', () => {
     ).resolves.not.toHaveProperty('vectorModelId');
   });
 
-  it('reports a model permission that has neither resourceId nor a legacy resourceName', async () => {
+  it('repairs invalid modelId-only business references with same-type fallbacks', async () => {
+    const fallbackModel = await MongoAIModel.findOne({ model: 'installed-model' }).lean();
+    await Promise.all([
+      MongoDataset.collection.insertOne({
+        name: 'Invalid modelId-only dataset',
+        agentModelId: 'invalid-model-id'
+      }),
+      MongoApp.collection.insertOne({
+        name: 'Invalid modelId-only chat config',
+        chatConfig: { questionGuide: { modelId: 'invalid-model-id' } }
+      })
+    ]);
+
+    const result = await runBackfillModelReferences({ dryRun: false });
+
+    expect(result.references.datasets).toMatchObject({ unresolved: 0, updated: 1 });
+    expect(result.references.appsChatConfig).toMatchObject({ unresolved: 0, updated: 1 });
+    await expect(
+      MongoDataset.collection.findOne({ name: 'Invalid modelId-only dataset' })
+    ).resolves.toMatchObject({ agentModelId: String(fallbackModel?._id) });
+    await expect(
+      MongoApp.collection.findOne({ name: 'Invalid modelId-only chat config' })
+    ).resolves.toMatchObject({
+      chatConfig: { questionGuide: { modelId: String(fallbackModel?._id) } }
+    });
+  });
+
+  it('deletes a model permission that cannot be mapped by resourceId or resourceName', async () => {
     await MongoResourcePermission.collection.insertOne({
       resourceType: PerResourceTypeEnum.model
     });
+
+    const preview = await runBackfillModelReferences({ dryRun: true });
+    expect(preview.references.modelPermissions).toMatchObject({
+      scanned: 1,
+      invalid: 1,
+      wouldDelete: 1,
+      deleted: 0,
+      unresolved: 0
+    });
+    expect(
+      await MongoResourcePermission.countDocuments({ resourceType: PerResourceTypeEnum.model })
+    ).toBe(1);
 
     const result = await runBackfillModelReferences({ dryRun: false });
 
     expect(result.references.modelPermissions).toMatchObject({
       scanned: 1,
-      missing: 1,
-      unresolved: 1,
+      invalid: 1,
+      wouldDelete: 0,
+      deleted: 1,
+      unresolved: 0,
       updated: 0
     });
+    expect(
+      await MongoResourcePermission.countDocuments({ resourceType: PerResourceTypeEnum.model })
+    ).toBe(0);
+  });
+
+  it('maps model permissions to inactive system models and repairs stale resourceIds', async () => {
+    const inactiveModel = await createStoredModel({
+      model: 'inactive-permission-model',
+      isActive: false
+    });
+    const staleResourceId = new Types.ObjectId();
+    await MongoResourcePermission.collection.insertMany([
+      {
+        resourceType: PerResourceTypeEnum.model,
+        resourceName: inactiveModel.model
+      },
+      {
+        resourceType: PerResourceTypeEnum.model,
+        resourceName: inactiveModel.model,
+        resourceId: staleResourceId
+      },
+      {
+        resourceType: PerResourceTypeEnum.model,
+        resourceName: 'legacy-name-snapshot',
+        resourceId: inactiveModel._id
+      }
+    ]);
+
+    const result = await runBackfillModelReferences({ dryRun: false });
+
+    expect(result.references.modelPermissions).toMatchObject({
+      scanned: 3,
+      unchanged: 1,
+      updated: 2,
+      deleted: 0,
+      unresolved: 0
+    });
+    expect(await MongoResourcePermission.countDocuments({ resourceId: inactiveModel._id })).toBe(3);
+  });
+
+  it('does not delete a model permission repaired concurrently after scanning', async () => {
+    const installedModel = await MongoAIModel.findOne({ model: 'installed-model' }).lean();
+    const permission = await MongoResourcePermission.collection.insertOne({
+      resourceType: PerResourceTypeEnum.model,
+      resourceName: 'removed-model'
+    });
+    const originalBulkWrite = MongoResourcePermission.bulkWrite.bind(MongoResourcePermission);
+    vi.spyOn(MongoResourcePermission, 'bulkWrite').mockImplementationOnce(
+      async (operations, options) => {
+        await MongoResourcePermission.collection.updateOne(
+          { _id: permission.insertedId },
+          {
+            $set: {
+              resourceName: installedModel?.model,
+              resourceId: installedModel?._id
+            }
+          }
+        );
+        return originalBulkWrite(operations, options);
+      }
+    );
+
+    const result = await runBackfillModelReferences({ dryRun: false });
+
+    expect(result.references.modelPermissions).toMatchObject({
+      invalid: 1,
+      deleted: 0,
+      conflicts: 1
+    });
     await expect(
-      MongoResourcePermission.collection.findOne({ resourceType: PerResourceTypeEnum.model })
-    ).resolves.not.toHaveProperty('resourceId');
+      MongoResourcePermission.collection.findOne({ _id: permission.insertedId })
+    ).resolves.toMatchObject({
+      resourceName: installedModel?.model,
+      resourceId: installedModel?._id
+    });
   });
 
   it('falls back by model type and leaves external tool parameters untouched', async () => {
@@ -375,11 +566,11 @@ describe('runBackfillModelReferences', () => {
       MongoAppVersion.collection.insertOne({
         chatConfig: { ttsConfig: { model: 'removed-tts' } },
         nodes: [
-          {
+          createWorkflowNode({
             flowNodeType: FlowNodeTypeEnum.chatNode,
             inputs: [{ key: NodeInputKeyEnum.aiModel, value: 'removed-llm' }]
-          },
-          {
+          }),
+          createWorkflowNode({
             flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
             inputs: [
               {
@@ -387,14 +578,14 @@ describe('runBackfillModelReferences', () => {
                 value: 'removed-rerank'
               }
             ]
-          },
-          {
+          }),
+          createWorkflowNode({
             flowNodeType: FlowNodeTypeEnum.tool,
             inputs: [
               { key: NodeInputKeyEnum.aiModel, value: 'whisper-1', label: 'model' },
               { key: NodeInputKeyEnum.aiModelId, value: 'whisper-id', label: 'model' }
             ]
-          }
+          })
         ]
       })
     ]);
@@ -416,36 +607,54 @@ describe('runBackfillModelReferences', () => {
     expect(version?.chatConfig.ttsConfig).toEqual({ model: 'removed-tts' });
     expect(version?.nodes[0].inputs).toEqual(
       expect.arrayContaining([
-        { key: NodeInputKeyEnum.aiModel, value: 'removed-llm' },
-        { key: NodeInputKeyEnum.aiModelId, value: expect.any(String) }
+        expect.objectContaining({ key: NodeInputKeyEnum.aiModel, value: 'removed-llm' }),
+        expect.objectContaining({
+          key: NodeInputKeyEnum.aiModelId,
+          value: expect.any(String)
+        })
       ])
     );
-    expect(version?.nodes[1].inputs).toEqual([
-      { key: NodeInputKeyEnum.datasetSearchRerankModel, value: 'removed-rerank' }
-    ]);
-    expect(version?.nodes[2].inputs).toEqual([
-      { key: NodeInputKeyEnum.aiModel, value: 'whisper-1', label: 'model' },
-      { key: NodeInputKeyEnum.aiModelId, value: 'whisper-id', label: 'model' }
-    ]);
+    expect(version?.nodes[1].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: NodeInputKeyEnum.datasetSearchRerankModel,
+          value: 'removed-rerank'
+        })
+      ])
+    );
+    expect(version?.nodes[2].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: NodeInputKeyEnum.aiModel,
+          value: 'whisper-1',
+          label: 'model'
+        }),
+        expect.objectContaining({
+          key: NodeInputKeyEnum.aiModelId,
+          value: 'whisper-id',
+          label: 'model'
+        })
+      ])
+    );
   });
 
-  it('never selects a disabled model as the migration fallback', async () => {
-    await createStoredModel({
+  it('can select an inactive system model as the migration fallback', async () => {
+    const inactiveEmbedding = await createStoredModel({
       model: 'disabled-embedding',
       type: ModelTypeEnum.embedding,
       isActive: false
     });
     await MongoDataset.collection.insertOne({
-      name: 'Dataset without active embedding fallback',
+      name: 'Dataset with inactive embedding fallback',
       vectorModel: 'removed-embedding'
     });
 
     const result = await runBackfillModelReferences({ dryRun: false });
 
-    expect(result.references.datasets).toMatchObject({ unresolved: 1, updated: 0 });
+    expect(result.references.datasets).toMatchObject({ unresolved: 0, updated: 1 });
     await expect(
-      MongoDataset.collection.findOne({ name: 'Dataset without active embedding fallback' })
-    ).resolves.not.toHaveProperty('vectorModelId');
+      MongoDataset.collection.findOne({ name: 'Dataset with inactive embedding fallback' })
+    ).resolves.toMatchObject({ vectorModelId: String(inactiveEmbedding._id) });
   });
 
   it('backfills representative workflow model reference states', async () => {
@@ -463,11 +672,12 @@ describe('runBackfillModelReferences', () => {
       flowNodeType: FlowNodeTypeEnum;
       key: NodeInputKeyEnum;
       value: string;
-    }) => ({
-      nodeId,
-      flowNodeType,
-      inputs: [{ key, value, valueType: 'string' }]
-    });
+    }) =>
+      createWorkflowNode({
+        nodeId,
+        flowNodeType,
+        inputs: [{ key, value, valueType: 'string' }]
+      });
 
     await MongoApp.collection.insertMany([
       {
@@ -645,7 +855,7 @@ describe('runBackfillModelReferences', () => {
     await MongoApp.collection.insertOne({
       name: 'missing rerank with wrong-type modelId',
       modules: [
-        {
+        createWorkflowNode({
           nodeId: 'replace-wrong-type-model-id',
           flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
           inputs: [
@@ -660,7 +870,7 @@ describe('runBackfillModelReferences', () => {
               valueType: 'string'
             }
           ]
-        }
+        })
       ]
     });
 
@@ -688,11 +898,11 @@ describe('runBackfillModelReferences', () => {
     );
   });
 
-  it('leaves an invalid modelId-only workflow input untouched', async () => {
+  it('replaces an invalid modelId-only workflow input with a same-type fallback', async () => {
     await MongoApp.collection.insertOne({
       name: 'invalid modelId only',
       modules: [
-        {
+        createWorkflowNode({
           nodeId: 'invalid-model-id-only',
           flowNodeType: FlowNodeTypeEnum.chatNode,
           inputs: [
@@ -702,23 +912,24 @@ describe('runBackfillModelReferences', () => {
               valueType: 'string'
             }
           ]
-        }
+        })
       ]
     });
 
     const result = await runBackfillModelReferences({ dryRun: false });
+    const fallbackModel = await MongoAIModel.findOne({ model: 'installed-model' }).lean();
 
     expect(result.references.appsWorkflow).toMatchObject({
       scanned: 1,
       unchanged: 0,
-      unresolved: 1,
-      updated: 0
+      unresolved: 0,
+      updated: 1
     });
     const app = await MongoApp.collection.findOne({ name: 'invalid modelId only' });
     expect(app?.modules[0].inputs).toEqual([
       expect.objectContaining({
         key: NodeInputKeyEnum.aiModelId,
-        value: 'invalid-model-id'
+        value: String(fallbackModel?._id)
       })
     ]);
   });
@@ -727,11 +938,11 @@ describe('runBackfillModelReferences', () => {
     const model = await createStoredModel({ model: 'gpt-model' });
     const appInsert = await MongoApp.collection.insertOne({
       modules: [
-        {
+        createWorkflowNode({
           nodeId: 'legacy-node',
           flowNodeType: FlowNodeTypeEnum.chatNode,
           inputs: [{ key: NodeInputKeyEnum.aiModel, value: 'gpt-model' }]
-        }
+        })
       ]
     });
     const concurrentlySavedModules = [
@@ -775,13 +986,14 @@ describe('runBackfillModelReferences', () => {
     expect(bulkWriteSpy.mock.calls.length).toBeGreaterThan(1);
   });
 
-  it('uses dry-run defaults at the authenticated API boundary', async () => {
+  it('uses root-key authentication and dry-run defaults at the API boundary', async () => {
     const root = await getRootUser();
     const res = await Call(backfillModelReferencesApi, {
       auth: root,
       body: {}
     });
 
+    expect(vi.mocked(authCert)).toHaveBeenCalledWith(expect.objectContaining({ authRoot: true }));
     expect(res).toMatchObject({
       code: 200,
       data: {

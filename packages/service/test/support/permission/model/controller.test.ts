@@ -6,7 +6,8 @@ import { MongoTmpData } from '@fastgpt/service/support/tmpData/schema';
 import {
   clearAllMyModelsCache,
   clearMyModelsCache,
-  getMyModelIds
+  getMemberModelCatalogPermission,
+  getMemberModelIds
 } from '@fastgpt/service/support/permission/model/controller';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { MongoGroupMemberModel } from '@fastgpt/service/support/permission/memberGroup/groupMemberSchema';
@@ -36,7 +37,7 @@ describe('model permission cache', () => {
       { modelId: firstModelId, model: 'first-model' }
     ] as typeof global.systemActiveModelList;
 
-    await expect(getMyModelIds({ teamId, tmbId, isTeamOwner: false })).resolves.toEqual([
+    await expect(getMemberModelIds({ teamId, tmbId, isTeamOwner: false })).resolves.toEqual([
       firstModelId
     ]);
 
@@ -46,14 +47,14 @@ describe('model permission cache', () => {
     });
     expect(cached).toMatchObject({
       dataId: `${TmpDataEnum.MyModels}--${teamId}--${tmbId}`,
-      data: { teamId, tmbId, modelIds: [firstModelId] }
+      data: { teamId, tmbId, modelIds: [firstModelId], version: expect.any(String) }
     });
     expect(cached?.expireAt.getTime()).toBeGreaterThan(Date.now() + 59 * 60 * 1000);
 
     global.systemActiveModelList = [
       { modelId: secondModelId, model: 'second-model' }
     ] as typeof global.systemActiveModelList;
-    await expect(getMyModelIds({ teamId, tmbId, isTeamOwner: false })).resolves.toEqual([
+    await expect(getMemberModelIds({ teamId, tmbId, isTeamOwner: false })).resolves.toEqual([
       firstModelId
     ]);
 
@@ -61,9 +62,25 @@ describe('model permission cache', () => {
       { dataId: cached?.dataId },
       { $set: { expireAt: new Date(Date.now() - 1000) } }
     );
-    await expect(getMyModelIds({ teamId, tmbId, isTeamOwner: false })).resolves.toEqual([
+    await expect(getMemberModelIds({ teamId, tmbId, isTeamOwner: false })).resolves.toEqual([
       secondModelId
     ]);
+  });
+
+  it('uses the same permission version for the same model ID set regardless of order', async () => {
+    const teamId = new Types.ObjectId().toString();
+    const tmbId = new Types.ObjectId().toString();
+    const modelIds = [new Types.ObjectId().toString(), new Types.ObjectId().toString()];
+    global.systemActiveModelList = modelIds.map((modelId) => ({
+      modelId,
+      model: modelId
+    })) as typeof global.systemActiveModelList;
+
+    const first = await getMemberModelCatalogPermission({ teamId, tmbId, isTeamOwner: true });
+    global.systemActiveModelList.reverse();
+    const second = await getMemberModelCatalogPermission({ teamId, tmbId, isTeamOwner: true });
+
+    expect(first.version).toBe(second.version);
   });
 
   it('uses only resourceId and ignores legacy resourceName permissions', async () => {
@@ -83,7 +100,7 @@ describe('model permission cache', () => {
       permission: 1
     });
     await expect(
-      getMyModelIds({ teamId, tmbId: currentTmbId, isTeamOwner: false })
+      getMemberModelIds({ teamId, tmbId: currentTmbId, isTeamOwner: false })
     ).resolves.toEqual([modelId]);
 
     await MongoTmpData.deleteMany({});
@@ -95,7 +112,7 @@ describe('model permission cache', () => {
       permission: 1
     });
     await expect(
-      getMyModelIds({ teamId, tmbId: currentTmbId, isTeamOwner: false })
+      getMemberModelIds({ teamId, tmbId: currentTmbId, isTeamOwner: false })
     ).resolves.toEqual([]);
   });
 
@@ -109,17 +126,17 @@ describe('model permission cache', () => {
       setTmpData({
         type: TmpDataEnum.MyModels,
         metadata: { teamId: firstTeamId, tmbId: firstTmbId },
-        data: { teamId: firstTeamId, tmbId: firstTmbId, modelIds: [] }
+        data: { teamId: firstTeamId, tmbId: firstTmbId, modelIds: [], version: 'first' }
       }),
       setTmpData({
         type: TmpDataEnum.MyModels,
         metadata: { teamId: firstTeamId, tmbId: secondTmbId },
-        data: { teamId: firstTeamId, tmbId: secondTmbId, modelIds: [] }
+        data: { teamId: firstTeamId, tmbId: secondTmbId, modelIds: [], version: 'second' }
       }),
       setTmpData({
         type: TmpDataEnum.MyModels,
         metadata: { teamId: secondTeamId, tmbId: firstTmbId },
-        data: { teamId: secondTeamId, tmbId: firstTmbId, modelIds: [] }
+        data: { teamId: secondTeamId, tmbId: firstTmbId, modelIds: [], version: 'third' }
       })
     ]);
 
@@ -139,12 +156,12 @@ describe('model permission cache', () => {
       setTmpData({
         type: TmpDataEnum.MyModels,
         metadata: { teamId: firstTeamId, tmbId: firstTmbId },
-        data: { teamId: firstTeamId, tmbId: firstTmbId, modelIds: [] }
+        data: { teamId: firstTeamId, tmbId: firstTmbId, modelIds: [], version: 'first' }
       }),
       setTmpData({
         type: TmpDataEnum.MyModels,
         metadata: { teamId: secondTeamId, tmbId: secondTmbId },
-        data: { teamId: secondTeamId, tmbId: secondTmbId, modelIds: [] }
+        data: { teamId: secondTeamId, tmbId: secondTmbId, modelIds: [], version: 'second' }
       }),
       MongoTmpData.create({
         dataId: `unrelated--${firstTeamId}--${firstTmbId}`,

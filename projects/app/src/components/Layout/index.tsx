@@ -3,7 +3,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getUnreadCount } from '@/web/support/user/inform/api';
@@ -92,7 +92,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const { t } = useClientTranslation('price');
   const { Loading } = useLoading();
   const { setLastRoute, loading, feConfigs, showProModal, setShowProModal } = useSystemStore();
-  const { llmModelList, embeddingModelList, loading: modelsLoading } = useSystemModelLists();
+  const { llmModelList, embeddingModelList, loaded: modelsLoaded } = useUserModelLists();
   const { isPc } = useSystem();
   const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
   const { setUserDefaultLng, setShareDefaultLng } = useI18nLng();
@@ -131,7 +131,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   // Check model invalid
   useDebounceEffect(
     () => {
-      if (userInfo?.username === 'root' && !modelsLoading) {
+      if (userInfo?.username === 'root' && modelsLoaded) {
         if (llmModelList.length === 0) {
           toast({
             status: 'warning',
@@ -151,7 +151,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
         }
       }
     },
-    [embeddingModelList.length, llmModelList.length, modelsLoading, userInfo?.username],
+    [embeddingModelList.length, llmModelList.length, modelsLoaded, userInfo?.username],
     {
       wait: 2000
     }

@@ -38,7 +38,7 @@ import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import TimeInput from '@/components/core/app/formRender/TimeInput';
 
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
@@ -81,7 +81,7 @@ const InputTypeConfig = ({
   const { t } = useTranslation();
   const defaultListValue = { label: t('common:None'), value: '' };
   const { feConfigs } = useSystemStore();
-  const { llmModelList } = useSystemModelLists();
+  const { llmModelList } = useUserModelLists();
   const { teamPlanStatus } = useUserStore();
 
   const availableModels = useMemoEnhance(() => {

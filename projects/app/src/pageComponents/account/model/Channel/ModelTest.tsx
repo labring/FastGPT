@@ -25,7 +25,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
 
 type ModelTestItem = {
   label: React.ReactNode;
@@ -47,7 +47,7 @@ const ModelTest = ({
   onClose: () => void;
 }) => {
   const { t, i18n } = useClientTranslation('config_model');
-  const { getModelProvider } = useSystemStore();
+  const { getModelProvider } = useAdminModelConfig();
   const { toast } = useToast();
   const [testModelList, setTestModelList] = useState<ModelTestItem[]>([]);
 

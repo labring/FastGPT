@@ -6,6 +6,7 @@ import { Drawer } from 'vaul';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { useTranslation } from 'next-i18next';
 
 type Props = {
@@ -18,7 +19,7 @@ type Props = {
 
 const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose }: Props) => {
   const { i18n } = useTranslation();
-  const { getModelProviders, getModelProvider } = useSystemStore();
+  const { getModelProviders, getModelProvider } = useUserModelStore();
   const availableModelList = useMemo(() => modelList, [modelList]);
 
   const providerGroups = useMemo(() => {

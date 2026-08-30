@@ -6,7 +6,6 @@ import {
   type DanglingReferenceReason
 } from './permissionSchema';
 import { Types } from '@fastgpt/service/common/mongo';
-import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -79,7 +78,6 @@ const createReasonCounts = (): Record<DanglingReferenceReason, number> => ({
   missingApp: 0,
   missingDataset: 0,
   missingAgentSkill: 0,
-  missingModel: 0,
   missingResourceId: 0,
   missingCollaboratorTarget: 0,
   multipleCollaboratorTargets: 0
@@ -109,8 +107,8 @@ const resourceReferenceConfigs = [
 /**
  * 校验一批权限记录的外部引用。
  *
- * 协作者和团队资源引用同时校验 `_id` 与 `teamId`；模型权限按全局 ai_models 校验。
- * `team` 权限没有 `resourceId`。必须先执行 4163 补齐旧模型权限，再允许 apply 清理。
+ * 协作者和团队资源引用同时校验 `_id` 与 `teamId`；`team` 和模型权限不在 4162
+ * 校验 resourceId，模型身份迁移及悬空删除由后续 4163 统一处理。
  */
 async function findDanglingReferencePermissionsInBatch(
   permissions: PermissionReferenceDoc[]
@@ -119,20 +117,14 @@ async function findDanglingReferencePermissionsInBatch(
   const tmbIds = compactUniqueIds(permissions.map((permission) => permission.tmbId));
   const groupIds = compactUniqueIds(permissions.map((permission) => permission.groupId));
   const orgIds = compactUniqueIds(permissions.map((permission) => permission.orgId));
-  const modelIds = compactUniqueIds(
-    permissions
-      .filter((permission) => permission.resourceType === PerResourceTypeEnum.model)
-      .map((permission) => permission.resourceId)
-  );
 
-  const [teams, teamMembers, groups, orgs, models, resourceReferences] = await Promise.all([
+  const [teams, teamMembers, groups, orgs, resourceReferences] = await Promise.all([
     MongoTeam.find({ _id: { $in: teamIds } }, '_id').lean(),
     MongoTeamMember.find({ _id: { $in: tmbIds } }, '_id teamId').lean<TeamScopedReferenceDoc[]>(),
     MongoMemberGroupModel.find({ _id: { $in: groupIds } }, '_id teamId').lean<
       TeamScopedReferenceDoc[]
     >(),
     MongoOrgModel.find({ _id: { $in: orgIds } }, '_id teamId').lean<TeamScopedReferenceDoc[]>(),
-    MongoAIModel.find({ _id: { $in: modelIds } }, '_id').lean<Array<{ _id: unknown }>>(),
     Promise.all(
       resourceReferenceConfigs.map(async (config) => {
         const ids = compactUniqueIds(
@@ -157,7 +149,6 @@ async function findDanglingReferencePermissionsInBatch(
     groupId: 'missingGroup',
     orgId: 'missingOrg'
   } as const;
-  const existingModelIds = new Set(models.map((model) => stringifyId(model._id)));
   const existingResourceReferenceSets = new Map(resourceReferences);
 
   return permissions.flatMap((permission) => {
@@ -180,14 +171,7 @@ async function findDanglingReferencePermissionsInBatch(
     const resourceConfig = resourceReferenceConfigs.find(
       (config) => config.resourceType === permission.resourceType
     );
-    if (permission.resourceType === PerResourceTypeEnum.model) {
-      const resourceId = stringifyId(permission.resourceId);
-      if (!resourceId) {
-        reasons.push('missingResourceId');
-      } else if (!existingModelIds.has(resourceId)) {
-        reasons.push('missingModel');
-      }
-    } else if (resourceConfig) {
+    if (resourceConfig) {
       const resourceId = stringifyId(permission.resourceId);
       if (!resourceId) {
         reasons.push('missingResourceId');

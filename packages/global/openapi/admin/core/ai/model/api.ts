@@ -15,6 +15,8 @@ import {
 import { ModelScopeEnum, ModelTypeEnum } from '../../../../../core/ai/constants';
 import { IntSchema } from '../../../../../common/zod';
 import z from 'zod';
+import { ModelProviderSchema } from '../../../../core/ai/model/api';
+import { ModelDefaultIdsSchema } from '../../../../../core/ai/defaultModel';
 
 const ModelIdSchema = z.string().trim().min(1).meta({
   example: '68ad85a7463006c963799a05',
@@ -34,7 +36,18 @@ export type AdminSystemModelReference = z.infer<typeof AdminSystemModelReference
  * Tags: ['管理员系统配置', 'Read']
  * ============================================================================ */
 
-export const GetAdminSystemModelListResponseSchema = z.array(SystemModelDataSchema);
+export const GetAdminSystemModelListResponseSchema = z.object({
+  models: z.array(SystemModelDataSchema),
+  providers: z.array(ModelProviderSchema),
+  defaultModelIds: ModelDefaultIdsSchema,
+  aiproxyChannels: z.array(
+    z.object({
+      channelId: z.number(),
+      name: z.object({ en: z.string(), 'zh-CN': z.string(), 'zh-Hant': z.string() }),
+      avatar: z.string()
+    })
+  )
+});
 export type GetAdminSystemModelListResponse = z.infer<typeof GetAdminSystemModelListResponseSchema>;
 
 /* ============================================================================

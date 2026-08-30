@@ -3,7 +3,8 @@ import { Box } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { SkillDetailContext } from '../context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import { streamSkillDebugChat } from '@/web/core/skill/api';
@@ -43,8 +44,9 @@ const SkillPreview = () => {
     chatId: v.chatId
   }));
 
-  const { defaultModels, feConfigs } = useSystemStore();
-  const { llmModelList } = useSystemModelLists();
+  const { feConfigs } = useSystemStore();
+  const { defaultModels } = useUserModelStore();
+  const { llmModelList } = useUserModelLists();
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const defaultModelId = defaultModels.llm?.modelId || llmModelList[0]?.modelId || '';
   const [proModalOpen, setProModalOpen] = useState(false);

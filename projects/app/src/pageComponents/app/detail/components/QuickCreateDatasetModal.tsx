@@ -21,7 +21,8 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { postCreateDatasetWithFiles } from '@/web/core/dataset/api';
 import { getUploadAvatarPresignedUrl, getUploadTempFilePresignedUrl } from '@/web/common/file/api';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { getWebDefaultEmbeddingModel, getWebDefaultLLMModel } from '@/web/common/system/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
@@ -47,8 +48,8 @@ const QuickCreateDatasetModal = ({
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { defaultModels } = useSystemStore();
-  const { embeddingModelList, llmModelList } = useSystemModelLists();
+  const { defaultModels } = useUserModelStore();
+  const { embeddingModelList, llmModelList } = useUserModelLists();
 
   const defaultVectorModelId =
     defaultModels.embedding?.modelId || getWebDefaultEmbeddingModel(embeddingModelList)?.modelId;

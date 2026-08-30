@@ -5,13 +5,6 @@ import type { GetSystemInitDataResponse } from '@fastgpt/global/openapi/common/s
 import { type FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import { type SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import type { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import {
-  formatModelProviders,
-  getModelProviderFromCache,
-  getModelProviderListFromCache,
-  type langType,
-  type ModelProviderItemType
-} from '@fastgpt/global/core/ai/provider';
 import { getOperationalAd } from './api';
 
 type LoginStoreType = {
@@ -21,7 +14,6 @@ type LoginStoreType = {
   lastTmbId?: string;
   flow?: 'login' | 'accountCancellation';
 };
-type SystemDefaultModelType = NonNullable<GetSystemInitDataResponse['defaultModels']>;
 
 export type NotSufficientModalType =
   | TeamErrEnum.datasetSizeNotEnough
@@ -58,14 +50,9 @@ type State = {
   subPlans?: SubPlanType;
   systemVersion: string;
 
-  modelProviders: Record<langType, ModelProviderItemType[]>;
-  modelProviderMap: Record<langType, Record<string, ModelProviderItemType>>;
   aiproxyChannels: NonNullable<GetSystemInitDataResponse['aiproxyChannels']>;
-  defaultModels: SystemDefaultModelType;
   operationalAd?: { operationalAdImage: string; operationalAdLink: string; id: string };
   loadOperationalAd: () => Promise<void>;
-  getModelProviders: (language?: string) => ModelProviderItemType[];
-  getModelProvider: (provider?: string, language?: string) => ModelProviderItemType;
 
   initStaticData: (e: GetSystemInitDataResponse) => void;
 
@@ -149,18 +136,7 @@ export const useSystemStore = create<State>()(
         subPlans: undefined,
         systemVersion: '0.0.0',
 
-        modelProviders: {
-          en: [],
-          'zh-CN': [],
-          'zh-Hant': []
-        },
-        modelProviderMap: {
-          en: {},
-          'zh-CN': {},
-          'zh-Hant': {}
-        },
         aiproxyChannels: [],
-        defaultModels: {},
         operationalAd: undefined,
         loadOperationalAd: async () => {
           try {
@@ -172,16 +148,6 @@ export const useSystemStore = create<State>()(
             console.log('Get operational ad error', error);
           }
         },
-        getModelProviders(language = 'en') {
-          return getModelProviderListFromCache(get().modelProviders, language);
-        },
-        getModelProvider(provider, language = 'en') {
-          return getModelProviderFromCache({
-            cache: get().modelProviderMap,
-            provider,
-            language
-          });
-        },
         initStaticData(res) {
           set((state) => {
             state.initDataBufferId = res.bufferId;
@@ -190,21 +156,22 @@ export const useSystemStore = create<State>()(
             state.subPlans = res.subPlans ?? state.subPlans;
             state.systemVersion = res.systemVersion ?? state.systemVersion;
 
-            if (res.modelProviders) {
-              const { ModelProviderListCache, ModelProviderMapCache } = formatModelProviders(
-                res.modelProviders
-              );
-              state.modelProviders = ModelProviderListCache ?? state.modelProviders;
-              state.modelProviderMap = ModelProviderMapCache ?? state.modelProviderMap;
-            }
             state.aiproxyChannels = res.aiproxyChannels ?? state.aiproxyChannels;
-
-            state.defaultModels = res.defaultModels ?? state.defaultModels;
           });
         }
       })),
       {
         name: 'globalStore',
+        version: 1,
+        migrate: (persistedState) => {
+          const {
+            modelProviders: _modelProviders,
+            modelProviderMap: _modelProviderMap,
+            defaultModels: _defaultModels,
+            ...systemState
+          } = persistedState as Record<string, unknown>;
+          return systemState;
+        },
         partialize: (state) => ({
           gitStar: state.gitStar,
 
@@ -214,10 +181,7 @@ export const useSystemStore = create<State>()(
           subPlans: state.subPlans,
           systemVersion: state.systemVersion,
 
-          modelProviders: state.modelProviders,
-          modelProviderMap: state.modelProviderMap,
-          aiproxyChannels: state.aiproxyChannels,
-          defaultModels: state.defaultModels
+          aiproxyChannels: state.aiproxyChannels
         })
       }
     )

@@ -20,7 +20,7 @@ import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
 import { TTSTypeEnum } from '@/web/core/app/constants';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import { cardStyles } from '../../constants';
@@ -161,7 +161,7 @@ const EditForm = ({
     onClose: onCloseDatasetParams
   } = useDisclosure();
 
-  const { llmModelList, reRankModelList } = useSystemModelLists();
+  const { llmModelList, reRankModelList } = useUserModelLists();
 
   useEffect(() => {
     setAppForm((state) => {

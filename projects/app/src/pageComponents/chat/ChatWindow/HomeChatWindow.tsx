@@ -29,7 +29,8 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import NextHead from '@/components/common/NextHead';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import ChatAIModelSelector from './ChatAIModelSelector';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
@@ -81,8 +82,9 @@ const HomeChatWindow = () => {
   } = useDisclosure();
 
   const { userInfo } = useUserStore();
-  const { defaultModels, feConfigs } = useSystemStore();
-  const { llmModelList } = useSystemModelLists();
+  const { feConfigs } = useSystemStore();
+  const { defaultModels } = useUserModelStore();
+  const { llmModelList } = useUserModelLists();
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
   const forbidLoadChatRef = useContextSelector(ChatContext, (v) => v.forbidLoadChat);

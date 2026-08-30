@@ -10,9 +10,12 @@ import { desensitizeSystemModel } from '@fastgpt/service/core/ai/config/utils';
 async function handler(req: ApiRequestProps): Promise<GetAdminSystemModelListResponse> {
   await authSystemAdmin({ req });
 
-  return GetAdminSystemModelListResponseSchema.parse(
-    global.systemModelList.map(desensitizeSystemModel)
-  );
+  return GetAdminSystemModelListResponseSchema.parse({
+    models: global.systemModelList.map(desensitizeSystemModel),
+    providers: global.ModelProviderRawCache,
+    defaultModelIds: global.systemConfiguredDefaultModelIds,
+    aiproxyChannels: global.aiproxyChannelsCache
+  });
 }
 
 export default NextAPI(handler);

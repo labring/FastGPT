@@ -5,6 +5,7 @@ import type {
   FastGPTRegisterMethodType
 } from '@fastgpt/global/common/system/types';
 import { useSystemStore } from './useSystemStore';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 type MyLLMModelType = Extract<MyModelItemType, { type: ModelTypeEnum.llm }>;
@@ -81,13 +82,13 @@ export const downloadFetch = async ({
 };
 
 export const getWebLLMModel = (model?: string, llmList: MyLLMModelType[] = []) => {
-  const defaultModels = useSystemStore.getState().defaultModels;
+  const defaultModels = useUserModelStore.getState().defaultModels;
 
   if (!model) return defaultModels.llm;
   return llmList.find((item) => item.model === model || item.modelId === model);
 };
 export const getWebDefaultLLMModel = (llmList: MyLLMModelType[] = []) => {
-  const defaultModels = useSystemStore.getState().defaultModels;
+  const defaultModels = useUserModelStore.getState().defaultModels;
 
   if (llmList.length === 0) return defaultModels.llm;
   return defaultModels.llm &&
@@ -99,7 +100,7 @@ export const getWebDefaultLLMModel = (llmList: MyLLMModelType[] = []) => {
     : llmList[0];
 };
 export const getWebDefaultEmbeddingModel = (embeddingList: MyEmbeddingModelType[] = []) => {
-  const defaultModels = useSystemStore.getState().defaultModels;
+  const defaultModels = useUserModelStore.getState().defaultModels;
 
   if (embeddingList.length === 0) return defaultModels.embedding;
   return defaultModels.embedding &&

@@ -37,7 +37,7 @@ import {
 import type { evaluationType, listEvalItemsItem } from '@fastgpt/global/core/app/evaluation/type';
 import type { updateEvalItemBody } from '@fastgpt/global/core/app/evaluation/api';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 const formatEvaluationStatus = (item: { status: number; errorMessage?: string }, t: TFunction) => {
   if (item.errorMessage) {
@@ -87,7 +87,7 @@ const EvaluationDetailModal = ({
   const [editing, setEditing] = useState(false);
   const [pollingInterval, setPollingInterval] = useState(10000);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const { llmModelList } = useSystemModelLists();
+  const { llmModelList } = useUserModelLists();
 
   const modelData = useMemo(
     () => getWebLLMModel(evalDetail.evalModelId || evalDetail.evalModel, llmModelList),

@@ -7,7 +7,7 @@ import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils
 import { WorkflowBufferDataContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import { getWebDefaultLLMModel } from '@/web/common/system/utils';
@@ -25,7 +25,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const { getNodeById, edges } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { feConfigs } = useSystemStore();
-  const { llmModelList } = useSystemModelLists();
+  const { llmModelList } = useUserModelLists();
 
   const [defaultModel, setDefaultModel] = useLocalStorageState<string>(
     'workflow_default_llm_model',

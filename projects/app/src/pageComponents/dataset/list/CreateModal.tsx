@@ -3,7 +3,8 @@ import { Box, Flex, Button, Input, HStack } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -42,8 +43,8 @@ const CreateModal = ({
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { defaultModels } = useSystemStore();
-  const { embeddingModelList, llmModelList, vlmModelList: vllmModelList } = useSystemModelLists();
+  const { defaultModels } = useUserModelStore();
+  const { embeddingModelList, llmModelList, vlmModelList: vllmModelList } = useUserModelLists();
 
   const filterNotHiddenVectorModelList = embeddingModelList.filter((item) => !item.config.hidden);
 

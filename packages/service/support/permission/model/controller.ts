@@ -13,6 +13,7 @@ import { getTmpData, setTmpData } from '../../tmpData/controller';
 import { TmpDataEnum } from '@fastgpt/global/support/tmpData/constants';
 import { MongoTmpData } from '../../tmpData/schema';
 import type { ClientSession } from '../../../common/mongo';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 
 const myModelsCacheFilter = {
   dataId: { $regex: new RegExp(`^${TmpDataEnum.MyModels}--`) }
@@ -40,7 +41,7 @@ export const clearAllMyModelsCache = ({ session }: { session?: ClientSession } =
   MongoTmpData.deleteMany(myModelsCacheFilter, { session });
 
 /** 返回当前成员可使用的稳定模型 ID；模型权限只按 resourceId 判断。 */
-export const getMyModelIds = async ({
+export const getMemberModelCatalogPermission = async ({
   teamId,
   tmbId,
   isTeamOwner
@@ -51,7 +52,8 @@ export const getMyModelIds = async ({
 }) => {
   const activeModels = global.systemActiveModelList;
   if (isTeamOwner || !isProVersion()) {
-    return activeModels.map((model) => model.modelId);
+    const modelIds = activeModels.map((model) => model.modelId);
+    return { modelIds, version: hashStr([...modelIds].sort().join('\n')) };
   }
 
   const cacheMetadata = { teamId, tmbId };
@@ -59,7 +61,12 @@ export const getMyModelIds = async ({
     type: TmpDataEnum.MyModels,
     metadata: cacheMetadata
   });
-  if (cachedModels) return cachedModels.data.modelIds;
+  if (cachedModels) {
+    return {
+      modelIds: cachedModels.data.modelIds,
+      version: cachedModels.data.version
+    };
+  }
 
   const [groups, orgs] = await Promise.all([
     getGroupsByTmbId({
@@ -102,6 +109,7 @@ export const getMyModelIds = async ({
   const modelIds = Array.from(
     new Set([...unconfiguredModels.map((model) => model.modelId), ...myModels])
   );
+  const version = hashStr([...modelIds].sort().join('\n'));
 
   await setTmpData({
     type: TmpDataEnum.MyModels,
@@ -109,9 +117,15 @@ export const getMyModelIds = async ({
     data: {
       teamId,
       tmbId,
-      modelIds
+      modelIds,
+      version
     }
   }).catch(() => {});
 
-  return modelIds;
+  return { modelIds, version };
 };
+
+/** 返回当前成员可使用的稳定模型 ID。 */
+export const getMemberModelIds = async (
+  props: Parameters<typeof getMemberModelCatalogPermission>[0]
+) => getMemberModelCatalogPermission(props).then((result) => result.modelIds);

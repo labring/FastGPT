@@ -16,7 +16,7 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import type { WorkflowStateType } from './type';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 export type WorkflowSnapshotsType = WorkflowStateType & {
   title: string;
@@ -98,7 +98,7 @@ const snapshotDebounceTime = 1000;
 
 export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNode }) => {
   const { t } = useTranslation();
-  const { llmModelList } = useSystemModelLists();
+  const { llmModelList } = useUserModelLists();
 
   // 获取 WorkflowBufferDataContext 的数据
   const {

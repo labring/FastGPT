@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { repairSystemModelDocument } from '@fastgpt/service/core/ai/config/repair';
+import {
+  getLegacyDefaultModelFlags,
+  repairSystemModelDocument
+} from '@fastgpt/service/core/ai/config/repair';
 
 const canonicalLlm = {
   type: ModelTypeEnum.llm,
@@ -226,5 +229,30 @@ describe('repairSystemModelDocument', () => {
         record: { model: '', provider: null, type: 'unknown', metadata: {} }
       })
     ).toMatchObject({ status: 'invalid' });
+  });
+});
+
+describe('getLegacyDefaultModelFlags', () => {
+  it('returns no flags for non-object input', () => {
+    expect(getLegacyDefaultModelFlags(undefined)).toEqual({});
+  });
+
+  it('reads top-level flags before metadata and normalizes legacy string booleans', () => {
+    expect(
+      getLegacyDefaultModelFlags({
+        isDefault: false,
+        isDefaultDatasetTextModel: 'true',
+        metadata: {
+          isDefault: true,
+          isDefaultDatasetTextModel: false,
+          isDefaultDatasetImageModel: true
+        }
+      })
+    ).toEqual({
+      isDefault: false,
+      isDefaultDatasetTextModel: true,
+      isDefaultDatasetImageModel: true,
+      isDefaultChatTitleModel: undefined
+    });
   });
 });

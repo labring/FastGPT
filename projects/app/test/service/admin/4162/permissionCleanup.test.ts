@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { Types } from '@fastgpt/service/common/mongo';
-import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -18,6 +17,7 @@ describe('cleanupDanglingResourcePermissions', () => {
   let validAppId: Types.ObjectId;
   let concurrentlyAssignedAppId: Types.ObjectId;
   let invalidCollaboratorAppId: Types.ObjectId;
+  let modelPermissionIds: string[];
   let targetTeamId: string;
 
   beforeEach(async () => {
@@ -41,7 +41,6 @@ describe('cleanupDanglingResourcePermissions', () => {
       MongoApp.collection.insertOne({ _id: invalidCollaboratorAppId, teamId: user.teamId }),
       MongoDataset.collection.insertOne({ _id: validDatasetId, teamId: user.teamId }),
       MongoAgentSkills.collection.insertOne({ _id: validSkillId, teamId: user.teamId }),
-      MongoAIModel.collection.insertOne({ _id: validModelId }),
       MongoApp.collection.insertOne({ _id: crossTeamAppId, teamId: otherTeamUser.teamId }),
       MongoMemberGroupModel.collection.insertOne({ _id: validGroupId, teamId: user.teamId }),
       MongoOrgModel.collection.insertOne({ _id: validOrgId, teamId: user.teamId })
@@ -119,6 +118,15 @@ describe('cleanupDanglingResourcePermissions', () => {
         resourceType: PerResourceTypeEnum.agentSkill,
         resourceId: objectId()
       }),
+      createPermission({ tmbId: user.tmbId, resourceType: PerResourceTypeEnum.app }),
+      createPermission({ tmbId: otherTeamUser.tmbId, resourceType: PerResourceTypeEnum.team }),
+      createPermission({
+        tmbId: user.tmbId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: crossTeamAppId
+      })
+    ];
+    const modelPermissionsHandledBy4163 = [
       createPermission({
         tmbId: user.tmbId,
         resourceType: PerResourceTypeEnum.model,
@@ -128,15 +136,9 @@ describe('cleanupDanglingResourcePermissions', () => {
         tmbId: user.tmbId,
         resourceType: PerResourceTypeEnum.model,
         resourceName: 'legacy-model-without-id'
-      }),
-      createPermission({ tmbId: user.tmbId, resourceType: PerResourceTypeEnum.app }),
-      createPermission({ tmbId: otherTeamUser.tmbId, resourceType: PerResourceTypeEnum.team }),
-      createPermission({
-        tmbId: user.tmbId,
-        resourceType: PerResourceTypeEnum.app,
-        resourceId: crossTeamAppId
       })
     ];
+    modelPermissionIds = modelPermissionsHandledBy4163.map((permission) => String(permission._id));
     const malformedPermission = {
       _id: objectId(),
       teamId: 'invalid-team-id',
@@ -179,6 +181,7 @@ describe('cleanupDanglingResourcePermissions', () => {
     await MongoResourcePermission.collection.insertMany([
       ...validPermissions,
       ...danglingPermissions,
+      ...modelPermissionsHandledBy4163,
       malformedPermission,
       malformedFalsyPermission,
       ...invalidCollaboratorPermissions
@@ -195,8 +198,8 @@ describe('cleanupDanglingResourcePermissions', () => {
     expect(result).toMatchObject({
       dryRun: true,
       scannedPermissionCount: 21,
-      danglingPermissionCount: 16,
-      danglingReferencePermissionCount: 14,
+      danglingPermissionCount: 14,
+      danglingReferencePermissionCount: 12,
       invalidCollaboratorPermissionCount: 5,
       deletedPermissionCount: 0,
       reasonCounts: {
@@ -207,8 +210,7 @@ describe('cleanupDanglingResourcePermissions', () => {
         missingApp: 3,
         missingDataset: 1,
         missingAgentSkill: 1,
-        missingModel: 1,
-        missingResourceId: 3,
+        missingResourceId: 2,
         missingCollaboratorTarget: 3,
         multipleCollaboratorTargets: 2
       }
@@ -229,10 +231,10 @@ describe('cleanupDanglingResourcePermissions', () => {
     expect(result).toMatchObject({
       dryRun: false,
       scannedPermissionCount: 21,
-      danglingPermissionCount: 16,
-      danglingReferencePermissionCount: 14,
+      danglingPermissionCount: 14,
+      danglingReferencePermissionCount: 12,
       invalidCollaboratorPermissionCount: 5,
-      deletedPermissionCount: 16,
+      deletedPermissionCount: 14,
       sampleLimit: 2
     });
     expect(result.samples).toHaveLength(2);
@@ -241,7 +243,10 @@ describe('cleanupDanglingResourcePermissions', () => {
         _id: { $in: expectedDanglingPermissionIds }
       })
     ).toBe(0);
-    expect(await MongoResourcePermission.countDocuments()).toBe(5);
+    expect(await MongoResourcePermission.countDocuments({ _id: { $in: modelPermissionIds } })).toBe(
+      2
+    );
+    expect(await MongoResourcePermission.countDocuments()).toBe(7);
   });
 
   it('keeps a permission that becomes valid after validation', async () => {
@@ -265,7 +270,7 @@ describe('cleanupDanglingResourcePermissions', () => {
       sampleLimit: 0
     });
 
-    expect(result.deletedPermissionCount).toBe(15);
+    expect(result.deletedPermissionCount).toBe(13);
     expect(await MongoResourcePermission.countDocuments({ _id: permissionId })).toBe(1);
   });
 
@@ -278,7 +283,7 @@ describe('cleanupDanglingResourcePermissions', () => {
     });
 
     expect(result.scannedPermissionCount).toBe(19);
-    expect(result.danglingPermissionCount).toBe(14);
+    expect(result.danglingPermissionCount).toBe(12);
     expect(await MongoResourcePermission.countDocuments()).toBe(21);
   });
 });

@@ -15,7 +15,6 @@ export const DanglingReferenceReasonSchema = z.enum([
   'missingApp',
   'missingDataset',
   'missingAgentSkill',
-  'missingModel',
   'missingResourceId',
   'missingCollaboratorTarget',
   'multipleCollaboratorTargets'
@@ -78,7 +77,6 @@ export const DanglingReferenceReasonCountsSchema = z.object({
   missingApp: z.number().int().nonnegative().meta({ description: '应用引用缺失数量' }),
   missingDataset: z.number().int().nonnegative().meta({ description: '知识库引用缺失数量' }),
   missingAgentSkill: z.number().int().nonnegative().meta({ description: '技能引用缺失数量' }),
-  missingModel: z.number().int().nonnegative().meta({ description: '模型引用缺失数量' }),
   missingResourceId: z.number().int().nonnegative().meta({ description: '资源 ID 缺失数量' }),
   missingCollaboratorTarget: z
     .number()

@@ -10,6 +10,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { checkTeamExportDatasetLimit } from '@/web/support/user/team/api';
 import { downloadFetch } from '@/web/common/system/utils';
@@ -36,7 +37,8 @@ import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 
 function List() {
-  const { setLoading, getModelProvider } = useSystemStore();
+  const { setLoading } = useSystemStore();
+  const { getModelProvider } = useUserModelStore();
   const { isPc } = useSystem();
   const { t } = useTranslation();
   const {

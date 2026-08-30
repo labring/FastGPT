@@ -29,7 +29,7 @@ import {
   deleteSystemModel,
   getModelConfigJson,
   getSystemModelDetail,
-  getSystemModelList,
+  getAdminModelConfig,
   getTestModel,
   putSystemModel,
   putUpdateDefaultModels
@@ -38,10 +38,8 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { type SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
-import { clientInitData } from '@/web/common/system/staticData';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { putUpdateWithJson } from '@/web/core/ai/config';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
@@ -55,6 +53,13 @@ import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 import ModelCapabilityTags from '@/components/core/ai/ModelCapabilityTags';
 import { accountContentScrollStyles, accountPageRootStyles } from '@/pageComponents/account/styles';
 import ModelTabHeader from './ModelTabHeader';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import {
+  formatModelProviders,
+  getModelProviderFromCache,
+  getModelProviderListFromCache
+} from '@fastgpt/global/core/ai/provider';
+import type { ModelDefaultIds } from '@fastgpt/global/core/ai/defaultModel';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 const ModelEditModal = dynamic(() => import('./AddModelBox').then((mod) => mod.ModelEditModal));
@@ -62,7 +67,38 @@ const ModelEditModal = dynamic(() => import('./AddModelBox').then((mod) => mod.M
 const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   const { t, i18n } = useClientTranslation('config_model');
   const { userInfo } = useUserStore();
-  const { defaultModels, feConfigs, getModelProviders, getModelProvider } = useSystemStore();
+  const { feConfigs } = useSystemStore();
+
+  const {
+    data: adminConfig,
+    runAsync: refreshSystemModelList,
+    loading: loadingModels
+  } = useRequest(getAdminModelConfig, { manual: false });
+  const systemModelList = adminConfig?.models ?? [];
+  const providerCache = useMemo(
+    () => formatModelProviders(adminConfig?.providers ?? []),
+    [adminConfig?.providers]
+  );
+  const getModelProviders = useCallback(
+    (language?: string) =>
+      getModelProviderListFromCache(providerCache.ModelProviderListCache, language),
+    [providerCache.ModelProviderListCache]
+  );
+  const getModelProvider = useCallback(
+    (provider?: string, language?: string) =>
+      getModelProviderFromCache({ cache: providerCache.ModelProviderMapCache, provider, language }),
+    [providerCache.ModelProviderMapCache]
+  );
+  const defaultModels = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(adminConfig?.defaultModelIds ?? {}).map(([key, modelId]) => [
+          key,
+          systemModelList.find((model) => model.modelId === modelId)
+        ])
+      ),
+    [adminConfig?.defaultModelIds, systemModelList]
+  );
 
   const isRoot = userInfo?.username === 'root';
 
@@ -95,16 +131,9 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   const [search, setSearch] = useState('');
   const [showActive, setShowActive] = useState(false);
 
-  const {
-    data: systemModelList = [],
-    runAsync: refreshSystemModelList,
-    loading: loadingModels
-  } = useRequest(getSystemModelList, {
-    manual: false
-  });
   const refreshModels = useCallback(async () => {
-    clientInitData();
-    refreshSystemModelList();
+    useUserModelStore.getState().clearMemory();
+    await refreshSystemModelList();
   }, [refreshSystemModelList]);
 
   const modelList = useMemo(() => {
@@ -296,10 +325,6 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       isCustom: true,
       isActive: true,
 
-      isDefault: false,
-      isDefaultDatasetTextModel: false,
-      isDefaultDatasetImageModel: false,
-      isDefaultChatTitleModel: false,
       type,
       ...(type === ModelTypeEnum.llm
         ? {
@@ -548,7 +573,12 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         <JsonConfigModal onClose={onCloseJsonConfig} onSuccess={refreshModels} />
       )}
       {isOpenDefaultModel && (
-        <DefaultModelModal onClose={onCloseDefaultModel} onSuccess={refreshModels} />
+        <DefaultModelModal
+          models={systemModelList}
+          defaultModelIds={adminConfig?.defaultModelIds ?? {}}
+          onClose={onCloseDefaultModel}
+          onSuccess={refreshModels}
+        />
       )}
     </>
   );
@@ -618,22 +648,30 @@ const labelStyles = {
   mb: 0.5
 };
 const DefaultModelModal = ({
+  models,
+  defaultModelIds,
   onSuccess,
   onClose
 }: {
+  models: SystemModelDataType[];
+  defaultModelIds: ModelDefaultIds;
   onSuccess: () => void;
   onClose: () => void;
 }) => {
   const { t } = useClientTranslation('config_model');
-  const { defaultModels } = useSystemStore();
-  const {
-    llmModelList,
-    embeddingModelList,
-    ttsModelList,
-    sttModelList,
-    reRankModelList,
-    vlmModelList
-  } = useSystemModelLists();
+  const activeModels = models.filter((model) => model.isActive);
+  const llmModelList = activeModels.filter((model) => model.type === ModelTypeEnum.llm);
+  const embeddingModelList = activeModels.filter((model) => model.type === ModelTypeEnum.embedding);
+  const ttsModelList = activeModels.filter((model) => model.type === ModelTypeEnum.tts);
+  const sttModelList = activeModels.filter((model) => model.type === ModelTypeEnum.stt);
+  const reRankModelList = activeModels.filter((model) => model.type === ModelTypeEnum.rerank);
+  const vlmModelList = llmModelList.filter((model) => !!model.config.vision);
+  const defaultModels = Object.fromEntries(
+    Object.entries(defaultModelIds).map(([key, modelId]) => [
+      key,
+      models.find((model) => model.modelId === modelId)
+    ])
+  ) as Record<keyof ModelDefaultIds, SystemModelDataType | undefined>;
 
   // Create a copy of defaultModels for local state management
   const [defaultData, setDefaultData] = useState(defaultModels);

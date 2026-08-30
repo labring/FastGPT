@@ -13,6 +13,7 @@ import type {
   AiproxyMapProviderItemType
 } from '@fastgpt/global/sdk/fastgpt-plugin';
 import type { langType, ModelProviderItemType } from '@fastgpt/global/core/ai/provider';
+import type { ModelDefaultIds } from '@fastgpt/global/core/ai/defaultModel';
 
 export type SystemModelSchemaType = SystemModelDocumentDataType & {
   _id: string;
@@ -41,6 +42,10 @@ declare global {
   var systemModelMap: Map<string, SystemModelDataType>;
   var systemActiveModelList: SystemModelDataType[];
   var systemDefaultModel: SystemDefaultModelType;
+  /** 管理员配置的原始默认模型 ID，不包含成员权限回退。 */
+  var systemConfiguredDefaultModelIds: ModelDefaultIds;
+  /** 脱敏 active 模型、Provider 与系统默认配置共同决定的目录内容版本。 */
+  var systemModelCatalogVersion: string;
 }
 
 export {};

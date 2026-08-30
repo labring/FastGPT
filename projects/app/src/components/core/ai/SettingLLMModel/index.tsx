@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { Box, css, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import AISettingModal, { type AIChatSettingsModalProps } from '@/components/core/ai/AISettingModal';
@@ -25,7 +25,7 @@ const SettingLLMModel = ({
   ...props
 }: AIChatSettingsModalProps & Props) => {
   const { t } = useTranslation();
-  const { llmModelList } = useSystemModelLists();
+  const { llmModelList } = useUserModelLists();
 
   const model = defaultData.model;
 

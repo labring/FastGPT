@@ -39,6 +39,7 @@ import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { sanitizeModelPriceTiers } from '@fastgpt/global/core/ai/pricing';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
@@ -752,7 +753,8 @@ export const ModelEditModal = ({
   onClose: () => void;
 }) => {
   const { t, i18n } = useClientTranslation('config_model');
-  const { feConfigs, getModelProviders } = useSystemStore();
+  const { feConfigs } = useSystemStore();
+  const { getModelProviders } = useAdminModelConfig();
 
   const { control, register, getValues, setValue, handleSubmit, reset } =
     useForm<SystemModelDataType>({

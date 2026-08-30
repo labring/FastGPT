@@ -7,8 +7,8 @@ import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import Markdown from '@/components/Markdown';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { onOptimizeCode } from '@/web/common/api/fetch';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -58,8 +58,8 @@ const NodeCopilot = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { defaultModels } = useSystemStore();
-  const { llmModelList } = useSystemModelLists();
+  const { defaultModels } = useUserModelStore();
+  const { llmModelList } = useUserModelLists();
   const { edges, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);

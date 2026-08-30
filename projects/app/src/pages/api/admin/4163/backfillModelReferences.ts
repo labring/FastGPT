@@ -3,7 +3,7 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { BoolSchema } from '@fastgpt/global/common/zod';
 import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import z from 'zod';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoEvaluation } from '@fastgpt/service/core/app/evaluation/evalSchema';
@@ -22,6 +22,7 @@ import {
   isWorkflowSystemModelInput,
   workflowModelKeyMappings
 } from '@fastgpt/global/core/workflow/utils';
+import { StoreNodeItemTypeSchema } from '@fastgpt/global/core/workflow/type/node';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.schema';
 
@@ -32,6 +33,8 @@ const BackfillModelReferencesBodySchema = z.object({
 });
 export type BackfillModelReferencesBody = z.infer<typeof BackfillModelReferencesBodySchema>;
 
+const BackfillWorkflowNodesSchema = z.array(StoreNodeItemTypeSchema);
+
 const ReferenceCleanupStatsSchema = z.object({
   scanned: z.number().int().nonnegative(),
   unchanged: z.number().int().nonnegative(),
@@ -40,7 +43,9 @@ const ReferenceCleanupStatsSchema = z.object({
   unresolved: z.number().int().nonnegative(),
   conflicts: z.number().int().nonnegative(),
   wouldUpdate: z.number().int().nonnegative(),
-  updated: z.number().int().nonnegative()
+  updated: z.number().int().nonnegative(),
+  wouldDelete: z.number().int().nonnegative(),
+  deleted: z.number().int().nonnegative()
 });
 
 const CleanupGroupStatsSchema = ReferenceCleanupStatsSchema.omit({ missing: true });
@@ -72,14 +77,15 @@ export const runBackfillModelReferences = async ({
   }
   type ModelRequirement = { type: ModelTypeEnum; vision?: boolean };
   const matchesRequirement = (
-    model: Pick<SystemModelDocumentDataType, 'type' | 'config' | 'isActive'>,
+    model: Pick<SystemModelDocumentDataType, 'type' | 'config'>,
     requirement: ModelRequirement
   ) =>
-    model.isActive === true &&
     model.type === requirement.type &&
     (!requirement.vision || ('vision' in model.config && model.config.vision));
   const modelByName = new Map(storedModels.map((item) => [item.model, item]));
   const modelById = new Map(storedModels.map((item) => [String(item._id), item]));
+  const isDynamicModelReference = (value: unknown) =>
+    Array.isArray(value) || (typeof value === 'string' && /^\{\{.*\}\}$/.test(value));
   const getModelId = ({
     model,
     modelId,
@@ -94,11 +100,10 @@ export const runBackfillModelReferences = async ({
     if (currentModel && matchesRequirement(currentModel, requirement))
       return String(currentModel._id);
 
-    if (!model) return;
-    const legacyModel = modelByName.get(model);
+    const legacyModel = model ? modelByName.get(model) : undefined;
     if (legacyModel && matchesRequirement(legacyModel, requirement)) return String(legacyModel._id);
 
-    // 任意同类型回退是 4163 的一次性迁移语义，普通运行和保存链不得复用。
+    // 4163 只迁移系统模型身份，不按启停状态或成员权限过滤。
     const fallbackModel = storedModels.find((item) => matchesRequirement(item, requirement));
     return fallbackModel ? String(fallbackModel._id) : undefined;
   };
@@ -107,6 +112,7 @@ export const runBackfillModelReferences = async ({
     set?: Record<string, unknown>;
     snapshot?: Record<string, unknown>;
     missing?: number;
+    delete?: boolean;
   };
   type ReferenceStats = z.infer<typeof ReferenceCleanupStatsSchema>;
 
@@ -134,8 +140,12 @@ export const runBackfillModelReferences = async ({
     record: Record<string, any>;
     result: ReferenceTransformResult;
   }) => {
-    const filter: Record<string, unknown> = { _id: record._id, ...result.snapshot };
-    for (const path of Object.keys(result.set ?? {})) {
+    const filter: Record<string, unknown> = { _id: record._id };
+    const snapshotPaths = new Set([
+      ...Object.keys(result.snapshot ?? {}),
+      ...Object.keys(result.set ?? {})
+    ]);
+    for (const path of snapshotPaths) {
       filter[path] = hasPath(record, path) ? getValueByPath(record, path) : { $exists: false };
     }
     return filter;
@@ -159,7 +169,9 @@ export const runBackfillModelReferences = async ({
       unresolved: 0,
       conflicts: 0,
       wouldUpdate: 0,
-      updated: 0
+      updated: 0,
+      wouldDelete: 0,
+      deleted: 0
     };
     const bulkOperations: any[] = [];
     const referenceCursor = model.find({}).lean().cursor();
@@ -170,8 +182,10 @@ export const runBackfillModelReferences = async ({
       const pendingOperations = bulkOperations.splice(0);
       const result = await model.bulkWrite(pendingOperations, { ordered: false });
       referenceStats.updated += result.modifiedCount;
+      referenceStats.deleted += result.deletedCount;
       // 未命中意味着在线数据已偏离读取快照，保留在线写入并记录冲突。
-      referenceStats.conflicts += pendingOperations.length - result.matchedCount;
+      referenceStats.conflicts +=
+        pendingOperations.length - result.matchedCount - result.deletedCount;
     };
 
     for await (const record of referenceCursor) {
@@ -179,20 +193,34 @@ export const runBackfillModelReferences = async ({
       const result = transform(record);
       referenceStats.missing += result.missing ?? 0;
       referenceStats.unresolved += result.missing ?? 0;
-      if (!result.set || Object.keys(result.set).length === 0) {
+      const hasUpdate = Boolean(result.set && Object.keys(result.set).length > 0);
+      if (result.delete) referenceStats.invalid += 1;
+      if (!hasUpdate && !result.delete) {
         if (!result.missing) referenceStats.unchanged += 1;
         continue;
       }
 
       if (dryRun) {
-        referenceStats.wouldUpdate += 1;
+        if (result.delete) {
+          referenceStats.wouldDelete += 1;
+        } else {
+          referenceStats.wouldUpdate += 1;
+        }
       } else {
-        bulkOperations.push({
-          updateOne: {
-            filter: getSnapshotFilter({ record, result }),
-            update: { $set: result.set }
-          }
-        });
+        bulkOperations.push(
+          result.delete
+            ? {
+                deleteOne: {
+                  filter: getSnapshotFilter({ record, result })
+                }
+              }
+            : {
+                updateOne: {
+                  filter: getSnapshotFilter({ record, result }),
+                  update: { $set: result.set }
+                }
+              }
+        );
         if (bulkOperations.length >= BACKFILL_BATCH_SIZE) await flush();
       }
     }
@@ -203,7 +231,12 @@ export const runBackfillModelReferences = async ({
 
   const backfillFlatModelFields = (
     record: Record<string, unknown>,
-    mappings: Array<{ legacy: string; modelId: string; requirement: ModelRequirement }>
+    mappings: Array<{
+      legacy: string;
+      modelId: string;
+      requirement: ModelRequirement;
+      copyDynamicReference?: boolean;
+    }>
   ): ReferenceTransformResult => {
     const set: Record<string, unknown> = {};
     const snapshot: Record<string, unknown> = {};
@@ -211,11 +244,29 @@ export const runBackfillModelReferences = async ({
 
     for (const mapping of mappings) {
       const legacyModel = record[mapping.legacy];
+      const currentModelId = record[mapping.modelId];
+      if (mapping.copyDynamicReference && isDynamicModelReference(currentModelId)) continue;
+      if (mapping.copyDynamicReference && isDynamicModelReference(legacyModel)) {
+        const currentModel =
+          currentModelId !== undefined ? modelById.get(String(currentModelId)) : undefined;
+        if (currentModel && matchesRequirement(currentModel, mapping.requirement)) continue;
+
+        set[mapping.modelId] = legacyModel;
+        snapshot[mapping.legacy] = legacyModel;
+        continue;
+      }
       if (typeof legacyModel !== 'string' || !legacyModel) {
-        const currentModelId = record[mapping.modelId];
         if (currentModelId !== undefined) {
-          const currentModel = modelById.get(String(currentModelId));
-          if (!currentModel || !matchesRequirement(currentModel, mapping.requirement)) missing += 1;
+          const modelId = getModelId({
+            model: '',
+            modelId: currentModelId,
+            requirement: mapping.requirement
+          });
+          if (!modelId) {
+            missing += 1;
+          } else if (String(currentModelId) !== modelId) {
+            set[mapping.modelId] = modelId;
+          }
         }
         continue;
       }
@@ -277,12 +328,21 @@ export const runBackfillModelReferences = async ({
       if (record.resourceType !== PerResourceTypeEnum.model) return {};
       const currentModel =
         record.resourceId !== undefined ? modelById.get(String(record.resourceId)) : undefined;
-      if (currentModel?.isActive === true) return {};
-      if (typeof record.resourceName !== 'string') return { missing: 1 };
+      if (currentModel) return {};
 
-      const permissionModel = modelByName.get(record.resourceName);
-      const resourceId = permissionModel?.isActive === true ? permissionModel._id : undefined;
-      if (!resourceId) return record.resourceId ? {} : { missing: 1 };
+      const permissionModel =
+        typeof record.resourceName === 'string' ? modelByName.get(record.resourceName) : undefined;
+      const resourceId = permissionModel?._id;
+      if (!resourceId) {
+        return {
+          delete: true,
+          snapshot: {
+            resourceType: record.resourceType,
+            resourceId: record.resourceId,
+            resourceName: record.resourceName
+          }
+        };
+      }
       if (String(record.resourceId ?? '') === String(resourceId)) return {};
 
       return { set: { resourceId }, snapshot: { resourceName: record.resourceName } };
@@ -314,8 +374,16 @@ export const runBackfillModelReferences = async ({
     for (const mapping of mappings) {
       if (typeof mapping.config?.model !== 'string' || !mapping.config.model) {
         if (mapping.config?.modelId !== undefined) {
-          const currentModel = modelById.get(String(mapping.config.modelId));
-          if (!currentModel || !matchesRequirement(currentModel, mapping.requirement)) missing += 1;
+          const modelId = getModelId({
+            model: '',
+            modelId: mapping.config.modelId,
+            requirement: mapping.requirement
+          });
+          if (!modelId) {
+            missing += 1;
+          } else if (String(mapping.config.modelId) !== modelId) {
+            set[`${mapping.configPath}.modelId`] = modelId;
+          }
         }
         continue;
       }
@@ -392,8 +460,7 @@ export const runBackfillModelReferences = async ({
         const isDynamicModelId =
           modelIdInput !== undefined &&
           (getSelectedInputRenderType(modelIdInput) === FlowNodeInputTypeEnum.reference ||
-            Array.isArray(modelIdInput.value) ||
-            (typeof modelIdInput.value === 'string' && /^\{\{.*\}\}$/.test(modelIdInput.value)));
+            isDynamicModelReference(modelIdInput.value));
         if (isDynamicModelId) continue;
 
         const hasValidCurrentModelId = () => {
@@ -402,28 +469,48 @@ export const runBackfillModelReferences = async ({
           return !!currentModel && matchesRequirement(currentModel, requirement);
         };
         if (!legacyInput) {
-          if (!hasValidCurrentModelId()) missing += 1;
+          if (!hasValidCurrentModelId()) {
+            const modelId = getModelId({
+              model: '',
+              modelId: modelIdInput?.value,
+              requirement
+            });
+            if (!modelId) {
+              missing += 1;
+            } else if (modelIdInput && String(modelIdInput.value) !== modelId) {
+              inputs[modelIdInputIndex] = { ...modelIdInput, value: modelId };
+              changed = true;
+              nodeChanged = true;
+            }
+          }
           continue;
         }
 
         const isReference =
           getSelectedInputRenderType(legacyInput) === FlowNodeInputTypeEnum.reference ||
-          Array.isArray(legacyInput.value);
+          isDynamicModelReference(legacyInput.value);
         if (isReference) {
           if (!modelIdInput) {
             inputs.push({ ...legacyInput, key: modelIdKey });
             changed = true;
             nodeChanged = true;
           } else if (!hasValidCurrentModelId()) {
-            missing += 1;
+            const modelId = getModelId({
+              model: '',
+              modelId: modelIdInput.value,
+              requirement
+            });
+            if (!modelId) {
+              missing += 1;
+            } else {
+              inputs[modelIdInputIndex] = { ...modelIdInput, value: modelId };
+              changed = true;
+              nodeChanged = true;
+            }
           }
           continue;
         }
-        if (
-          typeof legacyInput.value !== 'string' ||
-          !legacyInput.value ||
-          /^\{\{.*\}\}$/.test(legacyInput.value)
-        ) {
+        if (typeof legacyInput.value !== 'string' || !legacyInput.value) {
           if (modelIdInput && !hasValidCurrentModelId()) missing += 1;
           continue;
         }
@@ -466,12 +553,14 @@ export const runBackfillModelReferences = async ({
           {
             legacy: 'rerankModel',
             modelId: 'rerankModelId',
-            requirement: { type: ModelTypeEnum.rerank }
+            requirement: { type: ModelTypeEnum.rerank },
+            copyDynamicReference: true
           },
           {
             legacy: 'datasetSearchExtensionModel',
             modelId: 'datasetSearchExtensionModelId',
-            requirement: { type: ModelTypeEnum.llm }
+            requirement: { type: ModelTypeEnum.llm },
+            copyDynamicReference: true
           }
         ]);
         missing += result.missing ?? 0;
@@ -492,7 +581,8 @@ export const runBackfillModelReferences = async ({
 
       return nodeChanged ? { ...(node as any), inputs } : node;
     });
-    return { nodes: nextNodes, changed, missing };
+    const parsedNodes = changed ? BackfillWorkflowNodesSchema.parse(nextNodes) : nextNodes;
+    return { nodes: parsedNodes, changed, missing };
   };
 
   await runCollectionBackfill({
@@ -542,7 +632,9 @@ export const runBackfillModelReferences = async ({
       unresolved: 0,
       conflicts: 0,
       wouldUpdate: 0,
-      updated: 0
+      updated: 0,
+      wouldDelete: 0,
+      deleted: 0
     };
     for (const name of names) {
       const item = stats.references[name];
@@ -554,6 +646,8 @@ export const runBackfillModelReferences = async ({
       group.conflicts += item.conflicts;
       group.wouldUpdate += item.wouldUpdate;
       group.updated += item.updated;
+      group.wouldDelete += item.wouldDelete;
+      group.deleted += item.deleted;
     }
     return group;
   };
@@ -576,7 +670,7 @@ export const runBackfillModelReferences = async ({
 };
 
 async function handler(req: ApiRequestProps): Promise<BackfillModelReferencesResponse> {
-  await authSystemAdmin({ req });
+  await authCert({ req, authRoot: true });
 
   const { body } = parseApiInput({
     req,

@@ -12,7 +12,8 @@ import {
 } from '@/web/core/dataset/api/data';
 import { defaultCollectionDetail } from '@/web/core/dataset/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
@@ -129,8 +130,8 @@ export const useInputDataModal = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { defaultModels } = useSystemStore();
-  const { embeddingModelList } = useSystemModelLists();
+  const { defaultModels } = useUserModelStore();
+  const { embeddingModelList } = useUserModelLists();
 
   const [currentTab, setCurrentTab] = useState<TabEnum>();
   const [deletingIndexClientId, setDeletingIndexClientId] = useState<string>();

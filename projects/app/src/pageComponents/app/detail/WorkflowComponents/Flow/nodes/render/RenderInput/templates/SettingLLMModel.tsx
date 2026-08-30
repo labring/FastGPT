@@ -8,11 +8,11 @@ import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComp
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useLocalStorageState } from 'ahooks';
 import { getWebDefaultLLMModel } from '@/web/common/system/utils';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: RenderInputProps) => {
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { llmModelList } = useSystemModelLists();
+  const { llmModelList } = useUserModelLists();
 
   const [defaultModel, setDefaultModel] = useLocalStorageState<string>(
     'workflow_default_llm_model',
@@ -28,18 +28,31 @@ const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: Rend
           setDefaultModel(e[key]);
           const modelIdInput = inputs.find((input) => input.key === NodeInputKeyEnum.aiModelId);
           if (modelIdInput) {
-            onChangeNode({
-              nodeId,
-              type: 'updateInput',
-              key: NodeInputKeyEnum.aiModelId,
-              value: { ...modelIdInput, value: e[key] }
-            });
+            const legacyInput = inputs.find((input) => input.key === NodeInputKeyEnum.aiModel);
+            onChangeNode([
+              {
+                nodeId,
+                type: 'updateInput',
+                key: NodeInputKeyEnum.aiModelId,
+                value: { ...modelIdInput, value: e[key] }
+              },
+              ...(legacyInput
+                ? [
+                    {
+                      nodeId,
+                      type: 'delInput' as const,
+                      key: NodeInputKeyEnum.aiModel
+                    }
+                  ]
+                : [])
+            ]);
           } else {
             const legacyInput = inputs.find((input) => input.key === NodeInputKeyEnum.aiModel);
             if (legacyInput) {
               onChangeNode({
                 nodeId,
-                type: 'addInput',
+                type: 'replaceInput',
+                key: NodeInputKeyEnum.aiModel,
                 value: { ...legacyInput, key: NodeInputKeyEnum.aiModelId, value: e[key] }
               });
             }
@@ -108,7 +121,8 @@ const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: Rend
     } else {
       onChangeNode({
         nodeId,
-        type: 'addInput',
+        type: 'replaceInput',
+        key: NodeInputKeyEnum.aiModel,
         value: {
           ...aiModelInput,
           key: NodeInputKeyEnum.aiModelId,

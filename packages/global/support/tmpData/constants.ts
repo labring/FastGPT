@@ -36,6 +36,7 @@ type _TmpDataType = {
     teamId: string;
     tmbId: string;
     modelIds: string[];
+    version: string;
   };
 };
 

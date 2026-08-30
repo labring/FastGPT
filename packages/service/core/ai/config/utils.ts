@@ -15,10 +15,6 @@ import {
 import { debounce } from 'lodash-es';
 import { getModelProvider } from '../../../core/app/provider/controller';
 import { findModelData } from '../model';
-import {
-  reloadFastGPTConfigBuffer,
-  updateFastGPTConfigBuffer
-} from '../../../common/system/config/controller';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
 import { setCron } from '../../../common/system/cron';
@@ -29,6 +25,9 @@ import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { flatModelToDocumentData } from './repair';
 import { clearAllMyModelsCache } from '../../../support/permission/model/controller';
 import { bootstrapAIModelsFromLegacy } from './legacy';
+import { hashStr } from '@fastgpt/global/common/string/tools';
+import { findSystemDefaultModelIds } from '../defaultModel/entity';
+import { MongoAIDefaultModel } from '../defaultModel/schema';
 
 /**
  * 生成可返回客户端的脱敏模型副本。系统模型对象还会被服务端请求链路复用，不能原地删除字段。
@@ -141,41 +140,15 @@ export const loadInstalledModels = async ({
 
       if (modelData.type === ModelTypeEnum.llm) {
         modelData.priceTiers = getRuntimeResolvedPriceTiers(modelData);
-
-        if (modelData.isDefault) {
-          _systemDefaultModel.llm = modelData;
-        }
-        if (modelData.isDefaultDatasetTextModel) {
-          _systemDefaultModel.datasetTextLLM = modelData;
-        }
-        if (modelData.isDefaultDatasetImageModel) {
-          _systemDefaultModel.datasetImageLLM = modelData;
-        }
-        if (modelData.isDefaultChatTitleModel) {
-          _systemDefaultModel.chatTitleLLM = modelData;
-        }
-      } else if (modelData.type === ModelTypeEnum.embedding) {
-        if (modelData.isDefault) {
-          _systemDefaultModel.embedding = modelData;
-        }
-      } else if (modelData.type === ModelTypeEnum.tts) {
-        if (modelData.isDefault) {
-          _systemDefaultModel.tts = modelData;
-        }
-      } else if (modelData.type === ModelTypeEnum.stt) {
-        if (modelData.isDefault) {
-          _systemDefaultModel.stt = modelData;
-        }
-      } else if (modelData.type === ModelTypeEnum.rerank) {
-        if (modelData.isDefault) {
-          _systemDefaultModel.rerank = modelData;
-        }
       }
     }
   };
 
   try {
-    const dbModels = await MongoAIModel.find({ scope: ModelScopeEnum.system }).lean();
+    const [dbModels, configuredDefaultModelIds] = await Promise.all([
+      MongoAIModel.find({ scope: ModelScopeEnum.system }).lean(),
+      findSystemDefaultModelIds()
+    ]);
     const pluginDocumentMap = new Map(pluginDocuments.map((model) => [model.model, model]));
 
     dbModels.forEach((dbModel) => {
@@ -193,6 +166,48 @@ export const loadInstalledModels = async ({
 
       pushModel(runtimeModel);
     });
+
+    // 默认配置只保存稳定 ID。无效配置留给成员目录按类型回退，不再读取模型布尔字段修复。
+    const configuredModel = <T extends SystemModelDataType>(
+      modelId: string | undefined,
+      predicate: (model: SystemModelDataType) => model is T
+    ) => {
+      const model = modelId ? _systemModelMap.get(`id:${modelId}`) : undefined;
+      return model?.isActive && predicate(model) ? model : undefined;
+    };
+    _systemDefaultModel.llm = configuredModel<LLMSystemModelDataType>(
+      configuredDefaultModelIds.llm,
+      (model): model is LLMSystemModelDataType => model.type === ModelTypeEnum.llm
+    );
+    _systemDefaultModel.datasetTextLLM = configuredModel<LLMSystemModelDataType>(
+      configuredDefaultModelIds.datasetTextLLM,
+      (model): model is LLMSystemModelDataType => model.type === ModelTypeEnum.llm
+    );
+    _systemDefaultModel.datasetImageLLM = configuredModel<LLMSystemModelDataType>(
+      configuredDefaultModelIds.datasetImageLLM,
+      (model): model is LLMSystemModelDataType =>
+        model.type === ModelTypeEnum.llm && !!model.config.vision
+    );
+    _systemDefaultModel.chatTitleLLM = configuredModel<LLMSystemModelDataType>(
+      configuredDefaultModelIds.chatTitleLLM,
+      (model): model is LLMSystemModelDataType => model.type === ModelTypeEnum.llm
+    );
+    _systemDefaultModel.embedding = configuredModel<EmbeddingSystemModelDataType>(
+      configuredDefaultModelIds.embedding,
+      (model): model is EmbeddingSystemModelDataType => model.type === ModelTypeEnum.embedding
+    );
+    _systemDefaultModel.tts = configuredModel<TTSSystemModelDataType>(
+      configuredDefaultModelIds.tts,
+      (model): model is TTSSystemModelDataType => model.type === ModelTypeEnum.tts
+    );
+    _systemDefaultModel.stt = configuredModel<STTSystemModelDataType>(
+      configuredDefaultModelIds.stt,
+      (model): model is STTSystemModelDataType => model.type === ModelTypeEnum.stt
+    );
+    _systemDefaultModel.rerank = configuredModel<RerankSystemModelDataType>(
+      configuredDefaultModelIds.rerank,
+      (model): model is RerankSystemModelDataType => model.type === ModelTypeEnum.rerank
+    );
 
     // Sort model list
     _systemActiveModelList.sort((a, b) => {
@@ -255,6 +270,17 @@ export const loadInstalledModels = async ({
       global.systemActiveModelList = _systemActiveModelList;
       global.systemModelMap = _systemModelMap;
       global.systemDefaultModel = _systemDefaultModel;
+      global.systemConfiguredDefaultModelIds = configuredDefaultModelIds;
+      global.systemModelCatalogVersion = hashStr(
+        JSON.stringify({
+          schemaVersion: 1,
+          models: _systemActiveModelList
+            .map(desensitizeSystemModel)
+            .sort((a, b) => a.modelId.localeCompare(b.modelId)),
+          providers: global.ModelProviderRawCache,
+          defaultModelIds: configuredDefaultModelIds
+        })
+      );
     }
 
     const logger = getLogger(LogCategories.MODULE.AI.CONFIG);
@@ -285,7 +311,6 @@ export const loadSystemModels = async (refresh = false, language = 'en') => {
       const result = await bootstrapAIModelsFromLegacy({ pluginDocuments });
       await syncPreinstalledSystemModels({ pluginDocuments });
       await loadInstalledModels({ pluginDocuments, language });
-      await updateFastGPTConfigBuffer();
       getLogger(LogCategories.MODULE.AI.CONFIG).info('AI model bootstrap completed', result);
       return;
     }
@@ -329,8 +354,20 @@ export const watchSystemModelUpdate = () => {
       try {
         // 数据库事件只重建安装实例快照，不触发插件请求、repair 或自动预装。
         await loadInstalledModels();
-        // All node reaload buffer
-        await reloadFastGPTConfigBuffer();
+      } catch {}
+    }, 500)
+  );
+};
+
+/** 默认模型配置变化时只重建模型目录，不推进 getInitData 版本。 */
+export const watchSystemDefaultModelUpdate = () => {
+  const changeStream = MongoAIDefaultModel.watch();
+
+  return changeStream.on(
+    'change',
+    debounce(async () => {
+      try {
+        await loadInstalledModels();
       } catch {}
     }, 500)
   );
@@ -345,16 +382,13 @@ export const updatedReloadSystemModel = async ({
   const templates = pluginDocuments ?? (await refreshModelTemplates());
   // 管理员写入后只重建安装实例快照，不隐式执行全量预装。
   await loadInstalledModels({ pluginDocuments: templates });
-  // 2. 更新缓存（仅主节点触发）；成员模型缓存由实例加载按 active 签名变化失效。
-  await updateFastGPTConfigBuffer();
-  // 3. 延迟1秒，等待其他节点刷新
+  // 模型目录拥有独立版本，不能污染 getInitData.bufferId。
+  // 延迟1秒，等待其他节点通过 change stream 刷新。
   await delay(1000);
 };
 export const cronRefreshModels = async () => {
   setCron('*/5 * * * *', async () => {
     // 模板刷新成功后才执行自动预装和运行时快照发布；失败时保留旧快照。
     await loadSystemModels(true);
-    // 2. 更新缓存（仅主节点触发）
-    await updateFastGPTConfigBuffer();
   });
 };

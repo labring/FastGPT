@@ -17,6 +17,8 @@ import type {
 const adminModelPath = '/admin/settings/model';
 
 export const getSystemModelList = () =>
+  GET<GetAdminSystemModelListResponse>(`${adminModelPath}/list`).then((res) => res.models);
+export const getAdminModelConfig = () =>
   GET<GetAdminSystemModelListResponse>(`${adminModelPath}/list`);
 export const getSystemModelDetail = (modelId: string) =>
   GET<SystemModelDataType>(`${adminModelPath}/detail`, { modelId });

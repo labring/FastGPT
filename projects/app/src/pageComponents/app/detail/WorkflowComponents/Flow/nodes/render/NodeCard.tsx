@@ -65,7 +65,7 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import type { SystemToolVersionType } from '@fastgpt/global/core/app/tool/systemTool/type/base';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 import type { WorkflowCheckIssue } from '@fastgpt/global/core/workflow/type/node';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -886,7 +886,7 @@ const MenuRender = React.memo(function MenuRender({
   menuForbid?: Props['menuForbid'];
 }) {
   const { t } = useTranslation();
-  const { llmModelList } = useSystemModelLists();
+  const { llmModelList } = useUserModelLists();
   const { openDebugNode, DebugInputModal } = useDebug();
   const { setNodes, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);

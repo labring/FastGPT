@@ -1,5 +1,6 @@
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { Box, Flex } from '@chakra-ui/react';
 import type { ResponsiveValue } from '@chakra-ui/system';
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
@@ -113,9 +114,9 @@ const OneRowSelector = ({
 }: Props) => {
   const { t } = useTranslation(['common', 'account']);
 
-  const { getModelProvider } = useSystemStore();
+  const { getModelProvider } = useUserModelStore();
   const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList, loading } =
-    useSystemModelLists();
+    useUserModelLists();
 
   const avatarSize = useMemo(() => getModelAvatarSize(props.size), [props.size]);
   const allModels = useMemo(
@@ -233,9 +234,9 @@ const MultipleRowSelector = ({
   ...props
 }: Props) => {
   const { t, i18n } = useTranslation(['common', 'account']);
-  const { getModelProvider, getModelProviders } = useSystemStore();
+  const { getModelProvider, getModelProviders } = useUserModelStore();
   const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList, loading } =
-    useSystemModelLists();
+    useUserModelLists();
 
   const modelList = useMemo(() => {
     const allModels = [

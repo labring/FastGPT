@@ -5,11 +5,9 @@ import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 const mocks = vi.hoisted(() => ({
   authSystemAdmin: vi.fn(),
   findLean: vi.fn(),
-  updateMany: vi.fn(),
-  bulkWrite: vi.fn(),
+  upsertSystemDefaultModelIds: vi.fn(),
   refreshModelTemplates: vi.fn(),
-  updatedReloadSystemModel: vi.fn(),
-  session: { id: 'session-1' }
+  updatedReloadSystemModel: vi.fn()
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -22,21 +20,17 @@ vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
 
 vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
   MongoAIModel: {
-    find: vi.fn(() => ({ lean: mocks.findLean })),
-    updateMany: mocks.updateMany,
-    bulkWrite: mocks.bulkWrite
+    find: vi.fn(() => ({ lean: mocks.findLean }))
   }
+}));
+
+vi.mock('@fastgpt/service/core/ai/defaultModel/entity', () => ({
+  upsertSystemDefaultModelIds: mocks.upsertSystemDefaultModelIds
 }));
 
 vi.mock('@fastgpt/service/core/ai/config/utils', () => ({
   refreshModelTemplates: mocks.refreshModelTemplates,
   updatedReloadSystemModel: mocks.updatedReloadSystemModel
-}));
-
-vi.mock('@fastgpt/service/common/mongo/sessionRun', () => ({
-  mongoSessionRun: vi.fn(async (callback: (session: unknown) => Promise<unknown>) =>
-    callback(mocks.session)
-  )
 }));
 
 import handler from '@/pages/api/admin/settings/model/updateDefault';
@@ -46,8 +40,7 @@ describe('PUT /api/admin/settings/model/updateDefault', () => {
     vi.clearAllMocks();
     mocks.authSystemAdmin.mockResolvedValue(undefined);
     mocks.findLean.mockResolvedValue([]);
-    mocks.updateMany.mockResolvedValue({ acknowledged: true });
-    mocks.bulkWrite.mockResolvedValue({ acknowledged: true });
+    mocks.upsertSystemDefaultModelIds.mockResolvedValue({ acknowledged: true });
     mocks.refreshModelTemplates.mockResolvedValue([]);
     mocks.updatedReloadSystemModel.mockResolvedValue(undefined);
   });
@@ -83,27 +76,16 @@ describe('PUT /api/admin/settings/model/updateDefault', () => {
       }
     } as any);
 
-    expect(mocks.updateMany).toHaveBeenCalledWith(
-      { scope: 'system' },
-      {
-        $unset: {
-          isDefault: '',
-          isDefaultDatasetTextModel: '',
-          isDefaultDatasetImageModel: '',
-          isDefaultChatTitleModel: ''
-        }
-      },
-      { session: mocks.session }
-    );
-    const [operations, options] = mocks.bulkWrite.mock.calls[0];
-    expect(options).toEqual({ session: mocks.session });
-    expect(operations.map((operation: any) => operation.updateOne.filter._id)).toEqual([
-      ids.llm,
-      ids.embedding,
-      ids.datasetText,
-      ids.datasetImage,
-      ids.chatTitle
-    ]);
+    expect(mocks.upsertSystemDefaultModelIds).toHaveBeenCalledWith({
+      llm: ids.llm,
+      embedding: ids.embedding,
+      tts: undefined,
+      stt: undefined,
+      rerank: undefined,
+      datasetTextLLM: ids.datasetText,
+      datasetImageLLM: ids.datasetImage,
+      chatTitleLLM: ids.chatTitle
+    });
     expect(mocks.updatedReloadSystemModel).toHaveBeenCalledWith({ pluginDocuments: [] });
   });
 
@@ -133,8 +115,7 @@ describe('PUT /api/admin/settings/model/updateDefault', () => {
 
     await expect(handler({ body } as any)).rejects.toThrow(ModelErrEnum.unExist);
 
-    expect(mocks.updateMany).not.toHaveBeenCalled();
-    expect(mocks.bulkWrite).not.toHaveBeenCalled();
+    expect(mocks.upsertSystemDefaultModelIds).not.toHaveBeenCalled();
     expect(mocks.refreshModelTemplates).not.toHaveBeenCalled();
     expect(mocks.updatedReloadSystemModel).not.toHaveBeenCalled();
   });

@@ -1397,6 +1397,48 @@ describe('formatModels', () => {
     });
   });
 
+  it('falls back to the first same-type model when an optional chat feature is disabled', () => {
+    const chatConfig = {
+      questionGuide: { open: false, modelId: 'disabled-llm' },
+      ttsConfig: {
+        type: 'web' as const,
+        model: 'disabled-tts'
+      }
+    };
+
+    expect(() =>
+      formatModels({ nodes: [], chatConfig, models, missingModelStrategy: 'throw' })
+    ).not.toThrow();
+
+    expect(chatConfig.questionGuide).toEqual({ open: false, modelId: models[0].modelId });
+    expect(chatConfig.ttsConfig).toEqual({
+      type: 'web',
+      modelId: models[4].modelId
+    });
+  });
+
+  it('does not synthesize optional chat model fields when no model was configured', () => {
+    const chatConfig = {
+      questionGuide: { open: false },
+      ttsConfig: { type: 'web' as const, voice: 'alloy' }
+    };
+
+    formatModels({ nodes: [], chatConfig, models, missingModelStrategy: 'throw' });
+
+    expect(chatConfig.questionGuide).not.toHaveProperty('modelId');
+    expect(chatConfig.ttsConfig).not.toHaveProperty('modelId');
+  });
+
+  it('throws for an unresolved chat model when its feature is enabled', () => {
+    const chatConfig = {
+      questionGuide: { open: true, modelId: 'disabled-llm' }
+    };
+
+    expect(() =>
+      formatModels({ nodes: [], chatConfig, models, missingModelStrategy: 'throw' })
+    ).toThrow('disabled-llm 模型已停用');
+  });
+
   it('replaces every static legacy workflow model key and value with modelId', () => {
     const nodes = [
       {
@@ -1492,7 +1534,7 @@ describe('formatModels', () => {
     expect(nodes[0].inputs).toHaveLength(1);
   });
 
-  it('keeps valid modelId inputs and clears invalid static modelId inputs', () => {
+  it('keeps valid modelId inputs and falls back for disabled optional model inputs', () => {
     const nodes = [
       {
         nodeId: 'node1',
@@ -1526,7 +1568,7 @@ describe('formatModels', () => {
     const result = formatModels({ nodes, models, missingModelStrategy: 'clear' });
 
     expect(result?.[0].inputs[0].value).toBe(models[0].modelId);
-    expect(result?.[0].inputs[1].value).toBe('');
+    expect(result?.[0].inputs[1].value).toBe(models[0].modelId);
     expect(result?.[0].inputs).toHaveLength(2);
     expect(result?.[0].inputs.some((input) => input.key === NodeInputKeyEnum.aiModel)).toBe(false);
     expect(
@@ -1566,7 +1608,7 @@ describe('formatModels', () => {
     expect(result?.[0].inputs).toHaveLength(2);
   });
 
-  it('preserves dynamic legacy model expressions for runtime compatibility', () => {
+  it('moves dynamic legacy model expressions to the canonical modelId key', () => {
     const nodes = [
       {
         nodeId: 'node1',
@@ -1587,7 +1629,7 @@ describe('formatModels', () => {
 
     expect(nodes[0].inputs).toEqual([
       expect.objectContaining({
-        key: NodeInputKeyEnum.aiModel,
+        key: NodeInputKeyEnum.aiModelId,
         value: '{{selectedModel}}'
       })
     ]);
@@ -1687,6 +1729,11 @@ describe('formatModels', () => {
             key: NodeInputKeyEnum.datasetSearchRerankModel,
             value: 'disabled-rerank',
             renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.datasetSearchUsingReRank,
+            value: true,
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
           }
         ],
         outputs: []
@@ -1725,5 +1772,101 @@ describe('formatModels', () => {
     expect(nodes[0].inputs).toEqual([
       expect.objectContaining({ key: NodeInputKeyEnum.aiModelId, value: '' })
     ]);
+  });
+
+  it('does not validate a canonical reference modelId and removes the legacy input', () => {
+    const nodes = [
+      {
+        nodeId: 'node1',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        name: 'Chat',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            value: ['source-node', 'model-id'],
+            selectedType: FlowNodeInputTypeEnum.reference,
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel, FlowNodeInputTypeEnum.reference]
+          },
+          {
+            key: NodeInputKeyEnum.aiModel,
+            value: 'disabled-model',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    expect(() => formatModels({ nodes, models, missingModelStrategy: 'throw' })).not.toThrow();
+    expect(nodes[0].inputs).toEqual([
+      expect.objectContaining({
+        key: NodeInputKeyEnum.aiModelId,
+        value: ['source-node', 'model-id']
+      })
+    ]);
+  });
+
+  it('normalizes nested agent dataset model fields and applies feature gates', () => {
+    const nodes = [
+      {
+        nodeId: 'agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        name: 'Agent',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.datasetParams,
+            value: {
+              usingReRank: false,
+              rerankModel: 'disabled-rerank',
+              datasetSearchUsingExtensionQuery: true,
+              datasetSearchExtensionModel: 'extension-v1'
+            },
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    formatModels({ nodes, models, missingModelStrategy: 'throw' });
+
+    expect(nodes[0].inputs[0].value).toEqual({
+      usingReRank: false,
+      rerankModelId: models[1].modelId,
+      datasetSearchUsingExtensionQuery: true,
+      datasetSearchExtensionModelId: models[2].modelId
+    });
+  });
+
+  it('moves nested agent dataset model references to modelId fields without validation', () => {
+    const nodes = [
+      {
+        nodeId: 'agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        name: 'Agent',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.datasetParams,
+            value: {
+              usingReRank: true,
+              rerankModel: ['source-node', 'rerank-model-id'],
+              datasetSearchUsingExtensionQuery: true,
+              datasetSearchExtensionModelId: '{{extensionModelId}}',
+              datasetSearchExtensionModel: 'legacy-extension-model'
+            },
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    expect(() => formatModels({ nodes, models, missingModelStrategy: 'throw' })).not.toThrow();
+    expect(nodes[0].inputs[0].value).toEqual({
+      usingReRank: true,
+      rerankModelId: ['source-node', 'rerank-model-id'],
+      datasetSearchUsingExtensionQuery: true,
+      datasetSearchExtensionModelId: '{{extensionModelId}}'
+    });
   });
 });

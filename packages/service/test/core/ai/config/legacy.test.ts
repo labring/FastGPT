@@ -4,6 +4,7 @@ import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.
 import { LegacySystemModelCollectionName } from '@fastgpt/service/core/ai/config/constants';
 import { bootstrapAIModelsFromLegacy } from '@fastgpt/service/core/ai/config/legacy';
 import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
+import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
 
 const pluginLlm: SystemModelDocumentDataType = {
   type: ModelTypeEnum.llm,
@@ -36,7 +37,11 @@ describe('bootstrapAIModelsFromLegacy', () => {
 
   beforeEach(async () => {
     vi.restoreAllMocks();
-    await Promise.all([MongoAIModel.deleteMany({}), legacyCollection.deleteMany({})]);
+    await Promise.all([
+      MongoAIModel.deleteMany({}),
+      MongoAIDefaultModel.deleteMany({}),
+      legacyCollection.deleteMany({})
+    ]);
   });
 
   it('migrates an empty legacy collection with a zero source count', async () => {
@@ -45,6 +50,53 @@ describe('bootstrapAIModelsFromLegacy', () => {
       sourceCount: 0
     });
     await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
+    await expect(MongoAIDefaultModel.findOne({ scope: 'system' }).lean()).resolves.toMatchObject({
+      scope: 'system',
+      defaultModelIds: {}
+    });
+  });
+
+  it('migrates legacy default flags into the single system default record', async () => {
+    const result = await legacyCollection.insertMany([
+      {
+        ...createLegacyLlm('legacy-default-llm'),
+        isActive: true,
+        isDefault: true,
+        isDefaultDatasetTextModel: true,
+        isDefaultChatTitleModel: true
+      },
+      {
+        model: 'legacy-default-embedding',
+        isActive: true,
+        metadata: {
+          type: ModelTypeEnum.embedding,
+          provider: 'OpenAI',
+          name: 'Legacy embedding',
+          defaultToken: 500,
+          maxToken: 3000,
+          weight: 100,
+          isDefault: true
+        }
+      }
+    ]);
+
+    await bootstrapAIModelsFromLegacy({ pluginDocuments: [] });
+
+    await expect(MongoAIDefaultModel.findOne({ scope: 'system' }).lean()).resolves.toMatchObject({
+      scope: 'system',
+      defaultModelIds: {
+        llm: String(result.insertedIds[0]),
+        embedding: String(result.insertedIds[1]),
+        datasetTextLLM: String(result.insertedIds[0]),
+        chatTitleLLM: String(result.insertedIds[0])
+      }
+    });
+    const migratedModels = await MongoAIModel.collection.find({}).toArray();
+    for (const model of migratedModels) {
+      expect(model).not.toHaveProperty('isDefault');
+      expect(model).not.toHaveProperty('isDefaultDatasetTextModel');
+      expect(model).not.toHaveProperty('isDefaultChatTitleModel');
+    }
   });
 
   it('skips before inspecting invalid legacy data when ai_models is non-empty', async () => {
@@ -192,6 +244,7 @@ describe('bootstrapAIModelsFromLegacy', () => {
     const raceError = new Error('simulated transaction race');
     vi.spyOn(MongoAIModel.collection, 'insertMany').mockImplementationOnce(async (documents) => {
       await insertMany(documents);
+      await MongoAIDefaultModel.create({ scope: 'system', defaultModelIds: {} });
       throw raceError;
     });
 

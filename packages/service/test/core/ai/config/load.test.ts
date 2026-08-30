@@ -38,6 +38,7 @@ vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => ({
 }));
 
 import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
+import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
 import { LegacySystemModelCollectionName } from '@fastgpt/service/core/ai/config/constants';
 import {
   loadInstalledModels,
@@ -64,7 +65,11 @@ describe('loadSystemModels', () => {
     reloadMocks.clearAllMyModelsCache.mockReset().mockResolvedValue(undefined);
     reloadMocks.updateFastGPTConfigBuffer.mockReset().mockResolvedValue(undefined);
     reloadMocks.delay.mockReset().mockResolvedValue(undefined);
-    await Promise.all([MongoAIModel.deleteMany({}), legacyCollection.deleteMany({})]);
+    await Promise.all([
+      MongoAIModel.deleteMany({}),
+      MongoAIDefaultModel.deleteMany({}),
+      legacyCollection.deleteMany({})
+    ]);
     global.systemModelList = undefined as never;
     global.systemActiveModelList = undefined as never;
     global.systemModelMap = undefined as never;
@@ -217,10 +222,31 @@ describe('loadSystemModels', () => {
     ]);
   });
 
-  it('reloads caches after an admin update', async () => {
+  it('loads configured system defaults from ai_default_models', async () => {
+    const model = await MongoAIModel.create({
+      type: ModelTypeEnum.llm,
+      provider: 'OpenAI',
+      model: 'configured-default-llm',
+      name: 'Configured default LLM',
+      scope: 'system',
+      isActive: true,
+      config: { maxContext: 32000, maxResponse: 16000, quoteMaxToken: 24000 }
+    });
+    await MongoAIDefaultModel.create({
+      scope: 'system',
+      defaultModelIds: { llm: String(model._id) }
+    });
+
+    await loadInstalledModels({ pluginDocuments: [] });
+
+    expect(global.systemConfiguredDefaultModelIds).toEqual({ llm: String(model._id) });
+    expect(global.systemDefaultModel.llm?.modelId).toBe(String(model._id));
+  });
+
+  it('reloads the model catalog without changing the system init buffer', async () => {
     await updatedReloadSystemModel({ pluginDocuments: [] });
 
-    expect(reloadMocks.updateFastGPTConfigBuffer).toHaveBeenCalledOnce();
+    expect(reloadMocks.updateFastGPTConfigBuffer).not.toHaveBeenCalled();
     expect(reloadMocks.delay).toHaveBeenCalledWith(1000);
   });
 });

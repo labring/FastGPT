@@ -29,10 +29,6 @@ const SystemModelSchema = new Schema(
       default: ModelScopeEnum.system
     },
     isActive: Boolean,
-    isDefault: Boolean,
-    isDefaultDatasetTextModel: Boolean,
-    isDefaultDatasetImageModel: Boolean,
-    isDefaultChatTitleModel: Boolean,
     requestUrl: String,
     requestAuth: String,
     testMode: Boolean,

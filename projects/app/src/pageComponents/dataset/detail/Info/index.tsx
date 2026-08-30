@@ -6,7 +6,7 @@ import type { DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
@@ -39,7 +39,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const { datasetDetail, loadDatasetDetail, updateDataset, rebuildingCount, trainingCount } =
     useContextSelector(DatasetPageContext, (v) => v);
   const { feConfigs } = useSystemStore();
-  const { llmModelList, embeddingModelList, vlmModelList: vllmModelList } = useSystemModelLists();
+  const { llmModelList, embeddingModelList, vlmModelList: vllmModelList } = useUserModelLists();
 
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
   const [editedAPIDataset, setEditedAPIDataset] = useState<EditAPIDatasetInfoFormType>();

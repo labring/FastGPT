@@ -15,7 +15,7 @@ import type {
   FlowNodeTemplateType,
   WorkflowCheckNodeIssueMap
 } from '@fastgpt/global/core/workflow/type/node';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { checkWorkflowNodeIssues } from '@/web/core/workflow/workflowCheck';
 import { collectWorkflowStartAutoFillRevertPatches } from '@/web/core/workflow/workflowStartAutoFill';
 import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
@@ -410,7 +410,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
   );
 
   // 使用结构共享优化的节点更改
-  const { llmModelList } = useSystemModelLists();
+  const { llmModelList } = useUserModelLists();
   const llmModelMap = useMemo(() => {
     return llmModelList.reduce(
       (acc, model) => {

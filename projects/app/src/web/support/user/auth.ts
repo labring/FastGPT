@@ -1,4 +1,5 @@
 import { loginOut } from '@/web/support/user/api';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 
 const clearAdStorage = () => {
   try {
@@ -30,6 +31,8 @@ const clearAdStorage = () => {
 export const clearToken = () => {
   try {
     clearAdStorage();
+    // 退出只清内存；持久目录保留到下一次真实登录成功后统一删除。
+    useUserModelStore.getState().clearMemory();
     return loginOut();
   } catch (error) {
     error;

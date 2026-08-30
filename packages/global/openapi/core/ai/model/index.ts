@@ -2,17 +2,15 @@ import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import {
   GetSystemModelsResponseSchema,
-  GetMyModelQuerySchema,
-  GetMyModelResponseSchema,
-  GetMyModelsQuerySchema,
-  GetMyModelsResponseSchema,
+  GetModelCatalogQuerySchema,
+  GetModelCatalogResponseSchema,
   ModelCollaboratorListQuerySchema,
   ModelCollaboratorListResponseSchema,
   ModelCollaboratorUpdateBodySchema
 } from './api';
 
 export const AIModelPath: OpenAPIPath = {
-  '/core/ai/model/getSystemModels': {
+  '/core/ai/model/list': {
     get: {
       summary: '获取公开系统模型',
       description: '返回价格页展示所需的最小化 active 系统模型与价格信息，无需鉴权',
@@ -25,30 +23,16 @@ export const AIModelPath: OpenAPIPath = {
       }
     }
   },
-  '/core/ai/model/getMyModels': {
+  '/core/ai/model/catalog': {
     get: {
-      summary: '分页获取当前账号可用模型',
-      description: '按模型类型和 Provider 分页获取当前团队成员有权使用的模型',
+      summary: '获取当前成员模型目录',
+      description: '一次返回当前成员完整可用模型、Provider 和有效默认模型 ID；支持内容版本协商',
       tags: [DevApiTagsMap.aiCommon],
-      requestParams: { query: GetMyModelsQuerySchema },
+      requestParams: { query: GetModelCatalogQuerySchema },
       responses: {
         200: {
-          description: '成功返回模型分页',
-          content: { 'application/json': { schema: GetMyModelsResponseSchema } }
-        }
-      }
-    }
-  },
-  '/core/ai/model/getMyModel': {
-    get: {
-      summary: '获取当前账号可用的单个模型',
-      description: '用于分页选择器根据 modelId 回显当前页之外的已选模型',
-      tags: [DevApiTagsMap.aiCommon],
-      requestParams: { query: GetMyModelQuerySchema },
-      responses: {
-        200: {
-          description: '成功返回模型',
-          content: { 'application/json': { schema: GetMyModelResponseSchema } }
+          description: '版本变化时返回完整目录，未变化时仅返回版本',
+          content: { 'application/json': { schema: GetModelCatalogResponseSchema } }
         }
       }
     }

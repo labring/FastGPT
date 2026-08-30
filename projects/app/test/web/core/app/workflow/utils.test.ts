@@ -2262,6 +2262,114 @@ describe('storeNode2FlowNode', () => {
     });
   });
 
+  it('keeps one canonical model input when raw data contains modelId and model', () => {
+    const result = storeNode2FlowNode({
+      item: {
+        nodeId: 'chat-node',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        position: { x: 0, y: 0 },
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModel,
+            renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
+            value: 'legacy-model'
+          },
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
+            value: ''
+          },
+          {
+            key: NodeInputKeyEnum.aiModel,
+            renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
+            value: 'duplicate-legacy-model'
+          }
+        ],
+        outputs: [],
+        name: 'Chat node',
+        version: '1.0'
+      },
+      t: ((key: string) => key) as any
+    });
+    const modelInputs = result.data.inputs.filter(
+      (input) => input.key === NodeInputKeyEnum.aiModelId || input.key === NodeInputKeyEnum.aiModel
+    );
+
+    expect(modelInputs).toEqual([
+      expect.objectContaining({ key: NodeInputKeyEnum.aiModelId, value: '' })
+    ]);
+  });
+
+  it('renders a legacy model in the canonical template slot without adding modelId', () => {
+    const result = storeNode2FlowNode({
+      item: {
+        nodeId: 'chat-node',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        position: { x: 0, y: 0 },
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModel,
+            renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
+            selectedType: FlowNodeInputTypeEnum.settingLLMModel,
+            value: 'legacy-model'
+          }
+        ],
+        outputs: [],
+        name: 'Chat node',
+        version: '1.0'
+      },
+      t: ((key: string) => key) as any
+    });
+    const modelInputs = result.data.inputs.filter(
+      (input) => input.key === NodeInputKeyEnum.aiModelId || input.key === NodeInputKeyEnum.aiModel
+    );
+
+    expect(modelInputs).toEqual([
+      expect.objectContaining({
+        key: NodeInputKeyEnum.aiModel,
+        value: 'legacy-model',
+        renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel, FlowNodeInputTypeEnum.reference]
+      })
+    ]);
+  });
+
+  it('renames a dynamic legacy model before merging the current template', () => {
+    const referenceValue = ['source-node', 'model-output'];
+    const result = storeNode2FlowNode({
+      item: {
+        nodeId: 'chat-node',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        position: { x: 0, y: 0 },
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModel,
+            renderTypeList: [
+              FlowNodeInputTypeEnum.settingLLMModel,
+              FlowNodeInputTypeEnum.reference
+            ],
+            selectedType: FlowNodeInputTypeEnum.reference,
+            value: referenceValue
+          }
+        ],
+        outputs: [],
+        name: 'Chat node',
+        version: '1.0'
+      },
+      t: ((key: string) => key) as any
+    });
+    const modelInputs = result.data.inputs.filter(
+      (input) => input.key === NodeInputKeyEnum.aiModelId || input.key === NodeInputKeyEnum.aiModel
+    );
+
+    expect(modelInputs).toEqual([
+      expect.objectContaining({
+        key: NodeInputKeyEnum.aiModelId,
+        selectedType: FlowNodeInputTypeEnum.reference,
+        value: referenceValue
+      })
+    ]);
+  });
+
   it('should preserve the canonical agent mode in tool context', () => {
     const storeNode: StoreNodeItemType = {
       nodeId: 'workflow-tool',

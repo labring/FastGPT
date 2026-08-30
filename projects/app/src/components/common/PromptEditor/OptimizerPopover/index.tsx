@@ -11,7 +11,8 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useLocalStorageState } from 'ahooks';
 import AIModelSelector from '../../../Select/AIModelSelector';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useSystemModelLists } from '@/web/common/system/hooks/useSystemModelLists';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { onOptimizePrompt } from '@/web/common/api/fetch';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
@@ -36,8 +37,8 @@ const OptimizerPopover = ({
   iconButtonStyle?: FlexProps;
 }) => {
   const { t } = useTranslation();
-  const { defaultModels } = useSystemStore();
-  const { llmModelList } = useSystemModelLists();
+  const { defaultModels } = useUserModelStore();
+  const { llmModelList } = useUserModelLists();
 
   const InputRef = useRef<HTMLTextAreaElement>(null);
 

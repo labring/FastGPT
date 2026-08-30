@@ -7,13 +7,12 @@ import {
   STTModelConfigSchema,
   TTSModelConfigSchema
 } from '../../../../core/ai/model.schema';
-import { IntSchema } from '../../../../common/zod';
-import { PaginationResponseSchema, PaginationSchema } from '../../../api';
 import z from 'zod';
 import {
   CollaboratorItemSchema,
   CollaboratorListSchema
 } from '../../../../support/permission/collaborator.schema';
+import { ModelDefaultIdsSchema } from '../../../../core/ai/defaultModel';
 
 const MyModelBaseSchema = z.object({
   modelId: z.string().meta({ description: '模型稳定 ID' }),
@@ -24,7 +23,6 @@ const MyModelBaseSchema = z.object({
   avatar: z.string().optional().meta({ description: '模型图标' }),
   isActive: z.boolean().optional().meta({ description: '模型是否启用' }),
   isCustom: z.boolean().meta({ description: '模型是否不在内置模板中' }),
-  isDefault: z.boolean().optional().meta({ description: '是否为该类型默认模型' }),
   testMode: z.boolean().optional().meta({ description: '是否为测试模式' }),
   charsPointsPrice: z.number().optional().meta({ description: '按字符计费的积分单价' }),
   priceTiers: z.array(ModelPriceTierSchema).optional().meta({ description: '分段价格配置' }),
@@ -38,10 +36,7 @@ export const MyLLMModelItemSchema = MyModelBaseSchema.extend({
     defaultSystemChatPrompt: true,
     defaultConfig: true,
     fieldMap: true
-  }),
-  isDefaultDatasetTextModel: z.boolean().optional(),
-  isDefaultDatasetImageModel: z.boolean().optional(),
-  isDefaultChatTitleModel: z.boolean().optional()
+  })
 });
 export const MyEmbeddingModelItemSchema = MyModelBaseSchema.extend({
   type: z.literal(ModelTypeEnum.embedding),
@@ -78,9 +73,45 @@ export type MyRerankModelItemType = z.infer<typeof MyRerankModelItemSchema>;
 export type MyTTSModelItemType = z.infer<typeof MyTTSModelItemSchema>;
 export type MySTTModelItemType = z.infer<typeof MySTTModelItemSchema>;
 
+export const ModelProviderSchema = z.object({
+  provider: z.string().meta({ description: '模型提供商标识' }),
+  value: z.object({
+    en: z.string(),
+    'zh-CN': z.string(),
+    'zh-Hant': z.string()
+  }),
+  avatar: z.string().meta({ description: '模型提供商图标' })
+});
+
+/* ============================================================================
+ * API: 获取当前成员模型目录
+ * Route: GET /api/core/ai/model/catalog
+ * Method: GET
+ * Description: 返回当前成员完整可用模型、Provider 与有效默认模型 ID；版本一致时省略数据
+ * Tags: ['AI 通用', 'Read']
+ * ============================================================================ */
+
+export const GetModelCatalogQuerySchema = z.object({
+  version: z.string().trim().min(1).optional().meta({ description: '客户端已有目录版本' })
+});
+export type GetModelCatalogQuery = z.infer<typeof GetModelCatalogQuerySchema>;
+
+export const GetModelCatalogResponseSchema = z.object({
+  version: z.string().meta({ description: '当前成员模型目录内容版本' }),
+  data: z
+    .object({
+      models: z.array(MyModelItemSchema),
+      providers: z.array(ModelProviderSchema),
+      defaultModelIds: ModelDefaultIdsSchema
+    })
+    .optional()
+    .meta({ description: '版本变化时返回的完整目录；版本一致时省略' })
+});
+export type GetModelCatalogResponse = z.infer<typeof GetModelCatalogResponseSchema>;
+
 /* ============================================================================
  * API: 获取公开系统模型
- * Route: GET /api/core/ai/model/getSystemModels
+ * Route: GET /api/core/ai/model/list
  * Method: GET
  * Description: 无需鉴权返回价格页所需的最小化 active 系统模型与价格信息
  * Tags: ['AI 通用', 'Read']
@@ -143,48 +174,11 @@ export const PublicPriceSystemModelSchema = z.discriminatedUnion('type', [
 ]);
 export type PublicPriceSystemModel = z.infer<typeof PublicPriceSystemModelSchema>;
 
-export const GetSystemModelsResponseSchema = z.array(PublicPriceSystemModelSchema);
+export const GetSystemModelsResponseSchema = z.object({
+  models: z.array(PublicPriceSystemModelSchema),
+  providers: z.array(ModelProviderSchema)
+});
 export type GetSystemModelsResponse = z.infer<typeof GetSystemModelsResponseSchema>;
-
-/* ============================================================================
- * API: 分页获取当前账号可用模型
- * Route: GET /api/core/ai/model/getMyModels
- * Method: GET
- * Description: 按类型和 Provider 分页获取当前团队成员有权使用的模型
- * Tags: ['AI 通用', 'Read']
- * ============================================================================ */
-
-export const GetMyModelsQuerySchema = PaginationSchema.extend({
-  pageSize: IntSchema.positive().max(100).optional().meta({ description: '每页模型数，最大 100' }),
-  offset: IntSchema.optional().meta({ description: '分页偏移量' }),
-  provider: z.preprocess(
-    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
-    z.string().trim().min(1).optional().meta({ description: 'Provider 筛选；空字符串视为未筛选' })
-  ),
-  modelType: z.enum(ModelTypeEnum).optional().meta({ description: '模型类型筛选' })
-});
-export type GetMyModelsQuery = z.infer<typeof GetMyModelsQuerySchema>;
-
-export const GetMyModelsResponseSchema = PaginationResponseSchema(MyModelItemSchema).extend({
-  providers: z.array(z.string()).meta({ description: '当前模型类型下的全部可用 Provider' })
-});
-export type GetMyModelsResponse = z.infer<typeof GetMyModelsResponseSchema>;
-
-/* ============================================================================
- * API: 获取当前账号可用的单个模型
- * Route: GET /api/core/ai/model/getMyModel
- * Method: GET
- * Description: 根据 modelId 恢复分页列表之外的当前选中模型
- * Tags: ['AI 通用', 'Read']
- * ============================================================================ */
-
-export const GetMyModelQuerySchema = z.object({
-  modelId: z.string().meta({ description: '模型稳定 ID' })
-});
-export type GetMyModelQuery = z.infer<typeof GetMyModelQuerySchema>;
-
-export const GetMyModelResponseSchema = MyModelItemSchema;
-export type GetMyModelResponse = z.infer<typeof GetMyModelResponseSchema>;
 
 /* ============================================================================
  * API: 获取模型协作者

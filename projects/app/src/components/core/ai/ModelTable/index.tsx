@@ -20,7 +20,6 @@ import React, { useMemo, useState } from 'react';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { modelTypeList, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import dynamic from 'next/dynamic';
@@ -30,8 +29,7 @@ import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelec
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import {
   getModelCollaborators,
-  getMyModels,
-  getSystemModels,
+  getPublicModelCatalog,
   updateModelCollaborators
 } from '@/web/common/system/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -40,6 +38,13 @@ import PriceTiersLabel from '../PriceTiersLabel';
 import TestModeBetaTag from '../TestModeBetaTag';
 import ModelCapabilityTags from '../ModelCapabilityTags';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
+import {
+  formatModelProviders,
+  getModelProviderFromCache,
+  getModelProviderListFromCache
+} from '@fastgpt/global/core/ai/provider';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
@@ -51,7 +56,28 @@ const ModelTable = ({
   contentPx?: FlexProps['px'];
 }) => {
   const { t, i18n } = useClientTranslation();
-  const { getModelProviders, getModelProvider } = useSystemStore();
+  const { getModelProviders: getMemberModelProviders, getModelProvider: getMemberModelProvider } =
+    useUserModelStore();
+  const { modelList: availableModels } = useUserModelLists();
+  const { data: publicCatalog } = useRequest(getPublicModelCatalog, {
+    manual: permissionConfig
+  });
+  const publicProviderCache = useMemo(
+    () => formatModelProviders(publicCatalog?.providers ?? []),
+    [publicCatalog?.providers]
+  );
+  const getModelProviders = permissionConfig
+    ? getMemberModelProviders
+    : (language?: string) =>
+        getModelProviderListFromCache(publicProviderCache.ModelProviderListCache, language);
+  const getModelProvider = permissionConfig
+    ? getMemberModelProvider
+    : (provider?: string, language?: string) =>
+        getModelProviderFromCache({
+          cache: publicProviderCache.ModelProviderMapCache,
+          provider,
+          language
+        });
   const { userInfo } = useUserStore();
   const modelPermissionConfigHint = permissionConfig
     ? t('common:model.permission_config_hint')
@@ -89,28 +115,7 @@ const ModelTable = ({
 
   const [search, setSearch] = useState('');
 
-  const { data: remoteModels = [] } = useRequest(
-    async () => {
-      const list = await (async () => {
-        if (!permissionConfig) return getSystemModels();
-
-        const models: Awaited<ReturnType<typeof getMyModels>>['list'] = [];
-        const pageSize = 100;
-        let pageNum = 1;
-        let total = 0;
-        do {
-          const response = await getMyModels({ pageNum, pageSize });
-          models.push(...response.list);
-          total = response.total;
-          pageNum += 1;
-        } while (models.length < total);
-        return models;
-      })();
-
-      return list;
-    },
-    { manual: false, refreshDeps: [permissionConfig] }
-  );
+  const remoteModels = permissionConfig ? availableModels : (publicCatalog?.models ?? []);
   const llmModelList = remoteModels.filter((model) => model.type === ModelTypeEnum.llm);
   const embeddingModelList = remoteModels.filter((model) => model.type === ModelTypeEnum.embedding);
   const ttsModelList = remoteModels.filter((model) => model.type === ModelTypeEnum.tts);
