@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { StandardSubLevelEnum, SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import {
   consumePricePurchaseIntent,
+  getStandardPackageChangeStatus,
   PackageChangeStatusEnum,
   savePricePurchaseIntent
 } from '@/pageComponents/price/purchaseIntent';
@@ -20,6 +21,37 @@ const createStorage = () => {
     setItem: (key: string, value: string) => values.set(key, value)
   } satisfies Storage;
 };
+
+describe('getStandardPackageChangeStatus', () => {
+  it('无当前套餐时按首次购买处理', () => {
+    expect(
+      getStandardPackageChangeStatus({
+        targetLevel: StandardSubLevelEnum.advanced
+      })
+    ).toBe(PackageChangeStatusEnum.buy);
+  });
+
+  it('根据当前套餐判定续费、升级和购买', () => {
+    expect(
+      getStandardPackageChangeStatus({
+        currentLevel: StandardSubLevelEnum.basic,
+        targetLevel: StandardSubLevelEnum.basic
+      })
+    ).toBe(PackageChangeStatusEnum.renewal);
+    expect(
+      getStandardPackageChangeStatus({
+        currentLevel: StandardSubLevelEnum.basic,
+        targetLevel: StandardSubLevelEnum.advanced
+      })
+    ).toBe(PackageChangeStatusEnum.upgrade);
+    expect(
+      getStandardPackageChangeStatus({
+        currentLevel: StandardSubLevelEnum.advanced,
+        targetLevel: StandardSubLevelEnum.basic
+      })
+    ).toBe(PackageChangeStatusEnum.buy);
+  });
+});
 
 describe('savePricePurchaseIntent and consumePricePurchaseIntent', () => {
   it('保存并且只消费一次有效购买意图', () => {

@@ -20,7 +20,11 @@ import {
 } from '@fastgpt/global/support/wallet/sub/discountCoupon/constants';
 import { formatActivityExpirationTime } from './utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { PackageChangeStatusEnum, type PricePurchaseIntent } from './purchaseIntent';
+import {
+  getStandardPackageChangeStatus,
+  PackageChangeStatusEnum,
+  type PricePurchaseIntent
+} from './purchaseIntent';
 
 const NEW_PLAN_LEVELS = [
   StandardSubLevelEnum.free,
@@ -359,9 +363,21 @@ const Standard = ({
 
     queueMicrotask(() => {
       onResumePurchaseIntentHandled?.();
-      submitStandardPurchase(resumePurchaseIntent);
+      submitStandardPurchase({
+        ...resumePurchaseIntent,
+        packageChange: getStandardPackageChangeStatus({
+          currentLevel: myStandardPlan?.currentSubLevel,
+          targetLevel: resumePurchaseIntent.level
+        })
+      });
     });
-  }, [couponsLoading, onResumePurchaseIntentHandled, resumePurchaseIntent, submitStandardPurchase]);
+  }, [
+    couponsLoading,
+    myStandardPlan?.currentSubLevel,
+    onResumePurchaseIntentHandled,
+    resumePurchaseIntent,
+    submitStandardPurchase
+  ]);
 
   // 计算活动时间
   const { text: activityExpirationTime } = formatActivityExpirationTime(
@@ -403,15 +419,16 @@ const Standard = ({
           justifyContent={'center'}
         >
           {standardSubList.map((item) => {
-            const isCurrentPlan = item.level === myStandardPlan?.currentSubLevel;
+            const packageChangeStatus = getStandardPackageChangeStatus({
+              currentLevel: myStandardPlan?.currentSubLevel,
+              targetLevel: item.level
+            });
+            const isCurrentPlan = packageChangeStatus === PackageChangeStatusEnum.renewal;
             const isActivityPlan =
               item.level === StandardSubLevelEnum.advanced ||
               item.level === StandardSubLevelEnum.basic;
 
-            const isHigherLevel =
-              standardSubLevelMap[item.level].weight >
-              standardSubLevelMap[myStandardPlan?.currentSubLevel || StandardSubLevelEnum.free]
-                .weight;
+            const isHigherLevel = packageChangeStatus === PackageChangeStatusEnum.upgrade;
 
             // For wecom teams with advanced plan, cannot buy basic plan
             const isWecomDowngrade =

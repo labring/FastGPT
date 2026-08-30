@@ -1,10 +1,30 @@
-import { StandardSubLevelEnum, SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
+import {
+  standardSubLevelMap,
+  StandardSubLevelEnum,
+  SubModeEnum
+} from '@fastgpt/global/support/wallet/sub/constants';
 
 export enum PackageChangeStatusEnum {
   buy = 'buy',
   renewal = 'renewal',
   upgrade = 'upgrade'
 }
+
+/** 根据真实当前套餐判断目标套餐操作；未登录或无套餐时统一视为首次购买。 */
+export const getStandardPackageChangeStatus = ({
+  currentLevel,
+  targetLevel
+}: {
+  currentLevel?: `${StandardSubLevelEnum}`;
+  targetLevel: `${StandardSubLevelEnum}`;
+}): PackageChangeStatusEnum => {
+  if (!currentLevel) return PackageChangeStatusEnum.buy;
+  if (currentLevel === targetLevel) return PackageChangeStatusEnum.renewal;
+
+  return standardSubLevelMap[targetLevel].weight > standardSubLevelMap[currentLevel].weight
+    ? PackageChangeStatusEnum.upgrade
+    : PackageChangeStatusEnum.buy;
+};
 
 const PRICE_PURCHASE_INTENT_KEY = 'fastgpt-price-purchase-intent';
 const PURCHASE_INTENT_TTL = 30 * 60 * 1000;
