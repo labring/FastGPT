@@ -19,8 +19,18 @@ const getBase64DecodedSize = (base64: string) => {
   return Math.max(0, Math.floor((normalizedBase64.length * 3) / 4) - padding);
 };
 
-const toTransferableArrayBuffer = (buffer: Buffer): ArrayBuffer => {
+/**
+ * 转成可通过 worker transfer list 发送的 ArrayBuffer。
+ *
+ * 普通独占 Buffer 可直接复用；N-API 返回的 external Buffer 虽满足相同形态，但 Node 不允许 transfer，
+ * 调用方需用 forceCopy 明确复制到 JS 管理的 ArrayBuffer。
+ */
+export const toTransferableArrayBuffer = (
+  buffer: Buffer,
+  { forceCopy = false }: { forceCopy?: boolean } = {}
+): ArrayBuffer => {
   if (
+    !forceCopy &&
     buffer.buffer instanceof ArrayBuffer &&
     buffer.byteOffset === 0 &&
     buffer.byteLength === buffer.buffer.byteLength

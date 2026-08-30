@@ -88,7 +88,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/projects/app/worker /app/worker
 # LiteParse is externalized from the worker bundle and loads this file at runtime.
 RUN test -f /app/worker/node_modules/@llamaindex/liteparse-wasm/pkg/liteparse_wasm_bg.wasm
 # anydoc is a N-API package; loading it here verifies that the matching musl binary was packaged.
-RUN node -e "require('/app/worker/node_modules/@firecrawl/anydoc')"
+RUN node -e "require('/app/worker/node_modules/@fastgpt-sdk/anydoc')"
 
 COPY --from=maindeps /app/node_modules/@zilliz/milvus2-sdk-node ./node_modules/@zilliz/milvus2-sdk-node
 

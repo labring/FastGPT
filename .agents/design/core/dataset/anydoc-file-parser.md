@@ -8,23 +8,33 @@ DOCX 图片上传等行为不变。`@firecrawl/anydoc` 只补充以下格式：
 `.doc/.wps/.docm/.ppt/.pps/.pot/.pptm/.ppsx/.ppsm/.xls/.xlsm/.xlsb/.odt/.ods/.odp/.rtf/.epub`
 
 上传白名单必须与后端可解析格式一致；未知扩展名继续拒绝。anydoc 输出的 GitHub-Flavored Markdown
-写入 `ReadFileResponse.rawText`。依赖本身暂不输出嵌入图片链接，因此新增格式的图片只保留 alt 文本。
+写入 `ReadFileResponse.rawText`。新增格式中的内嵌图片通过 SDK 的 asset 引用返回，由 FastGPT 上传到 S3
+并把 Markdown 中的临时引用替换为对象存储 key；图片如何展示不属于本轮范围。
 
 ## 实现设计
 
 - 全局常量分别维护原解析器格式、anydoc 格式及两者合集，由 `documentFileType` 和前端默认文件选择共同复用。
 - `readFile` worker 保留所有原有显式分支；仅在默认分支命中 anydoc 白名单时调用新增适配器。
 - 适配器用 `formatFromExtension` 归一化 `.xls/.docm` 等别名，再调用 `toMarkdownBytes`；`.wps` 在 anydoc 内置别名可用前默认映射到现有 `doc` 解析器。WPS 桌面端可能以 `.wps` 文件名写入 OOXML，因此检测到 ZIP 与 `word/document.xml` 时改用 `docx` 解析器。
+- 适配器启用 `embeddedImageMode: 'reference'`，接收 Markdown 中的 `asset:<id>` 与对应 `image/*`
+  二进制。图片复用现有 worker `uploadFile` 桥接上传，最多同时上传 5 张；全部上传成功后按 id 替换引用，
+  任一上传失败则本次文件解析失败，不返回包含临时引用的半成品。
+- 单张内嵌图片最多 10 MiB，单个文档内嵌图片累计最多 200 MiB。SDK 在完整保留 assets 前执行两项硬检查，
+  超过时返回 `resourceLimit`。
+  图片发送给主线程时优先 transfer 其独占 `ArrayBuffer`；只有 Buffer 是共享底层存储的切片时才复制一次。
 - anydoc 是 N-API 包。FastGPT App 和 Admin 都会构建共享 worker，两份构建脚本均需复制 JS 包和
   当前平台实际安装的 optional dependency 原生二进制；Docker 构建阶段执行 `require`，
   提前发现 musl 二进制遗漏。
+- `jschardet@3.1.1` 源码依赖 sloppy mode 的隐式全局变量，不能被 esbuild 合入严格模式 worker；App 与 Admin
+  均将其 externalize 并复制到 worker 运行时目录，避免 worker 在处理任意格式前启动失败。
 - S3 上传校验把旧 Office 的 OLE/CFB MIME 视为同族，并把 OOXML 宏、幻灯片与二进制变体映射到
   对应基础格式族。旧 Office 和 OOXML 变体使用 64 KiB 检查窗口，避免容器标记超出默认 8 KiB。
 
 ## 验证逻辑
 
 - 单元测试证明原有与补充格式无交集，前后端格式集合一致。
-- 适配器测试覆盖格式路由、别名映射、非白名单拒绝及依赖错误透传。
+- 适配器测试覆盖格式路由、别名映射、非白名单拒绝、资源参数、图片引用替换、并发上限、缺少上传能力
+  及依赖/上传错误透传。
 - 上传测试覆盖旧 Office CFB、OOXML 变体和扩展检查窗口。
 - 真实 worker spawn 集成测试逐一解析 17 种新格式，同时保留原格式回归用例。
 - 上传校验测试使用同一批真实文件内容，逐一验证 17 种扩展名能通过知识库上传策略。
@@ -258,6 +268,9 @@ TTL 的 3 小时表示对象在 3 小时后具备清理资格；当前清理 cro
 - [x] 实现 CPU 与内存双重准入、30 分钟等待超时和资源释放。
 - [x] 实现 readFile worker 空闲回收与 warm worker 保留。
 - [x] 移除 `PARSE_FILE_WORKERS` 当前配置并同步中英文环境变量文档；不修改部署 YAML。
+- [x] 升级到 `@fastgpt-sdk/anydoc@0.2.5` 并启用内嵌图片 assets。
+- [x] 实现图片资源限制、并发 5 上传、最小复制传输与 Markdown 引用替换。
+- [x] 补充适配器单测并验证 worker 构建产物包含新 SDK 的当前平台原生包。
 - [x] 覆盖内存估算、拒绝、排队、唤醒、并发预留、超时及回收测试。
 - [x] 等待队列不持有文件 Buffer、不设置任务数或估算资源总量上限，并覆盖 worker 提前退出与协议异常释放。
 - [x] 完成类型检查、相关测试、完整测试和真实大文件并发验证。

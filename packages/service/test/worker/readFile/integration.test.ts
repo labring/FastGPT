@@ -385,6 +385,32 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
     );
   });
 
+  it('通过 anydoc 解析带图片 docm 时并上传内嵌图片', async () => {
+    mockUploadImage2S3Bucket.mockResolvedValueOnce('dataset/test/docm-parsed/image.png');
+
+    const result = await readRawContentFromBuffer({
+      extension: 'docm',
+      encoding: 'utf-8',
+      buffer: await createDocxWithImage(),
+      imageKeyOptions: {
+        prefix: 'dataset/test/docm-parsed'
+      }
+    });
+
+    expect(result.rawText).toContain('hello docx image');
+    expect(result.rawText).toContain('dataset/test/docm-parsed/image.png');
+    expect(result.rawText).not.toContain('asset:');
+    expect(mockUploadImage2S3Bucket).toHaveBeenCalledWith(
+      'private',
+      expect.objectContaining({
+        buffer: expect.any(Buffer),
+        uploadKey: expect.stringMatching(/^dataset\/test\/docm-parsed\/.+\.png$/),
+        mimetype: 'image/png',
+        filename: 'image1.png'
+      })
+    );
+  });
+
   itIfPdfFixture(
     '解析 pdf（真实 worker + LiteParse）',
     async () => {

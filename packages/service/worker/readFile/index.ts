@@ -105,7 +105,9 @@ const read = async (
       return readCsvRawText(params);
     default:
       if (isAnydocDocumentExtension(params.extension)) {
-        return readAnydocRawText(params);
+        return readAnydocRawText(params, {
+          uploadFile: options.uploadFile
+        });
       }
 
       return Promise.reject(

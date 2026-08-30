@@ -11,7 +11,12 @@ const WORKER_RUNTIME_NODE_MODULES_DIR = path.join(WORKER_OUTPUT_DIR, 'node_modul
 const OTEL_SDK_DIR = path.join(ROOT_DIR, 'sdk/otel/src');
 const require = createRequire(import.meta.url);
 
-const workerRuntimePackages = ['@llamaindex/liteparse-wasm', '@firecrawl/anydoc'];
+const workerRuntimePackages = [
+  '@llamaindex/liteparse-wasm',
+  '@fastgpt-sdk/anydoc',
+  // jschardet 3.1.1 含有依赖 sloppy mode 的未声明局部变量；bundle 进入严格模式后会在 worker 启动时报错。
+  'jschardet'
+];
 
 const resolvePackageDir = (packageName: string, resolvePaths: string[]) => {
   try {
@@ -66,7 +71,11 @@ const copyWorkerRuntimePackages = () => {
   fs.rmSync(WORKER_RUNTIME_NODE_MODULES_DIR, { recursive: true, force: true });
 
   for (const packageName of workerRuntimePackages) {
-    const sourceDir = resolvePackageDir(packageName, [__dirname, ROOT_DIR]);
+    const sourceDir = resolvePackageDir(packageName, [
+      __dirname,
+      ROOT_DIR,
+      path.join(ROOT_DIR, 'packages/global')
+    ]);
     if (!sourceDir) {
       throw new Error(`Worker runtime dependency "${packageName}" is not installed.`);
     }
