@@ -3,9 +3,12 @@ import { LocaleList } from '@fastgpt/global/common/i18n/type';
 import { I18N_NAMESPACES } from '@fastgpt/web/i18n/constants';
 import { generatedLoaders } from '@fastgpt/web/i18n/resourceLoaders.generated';
 import {
+  clearLanguageBundleFailure,
   clearLocaleResourceFailure,
   getLocaleResourceError,
   getLocaleResourceStatus,
+  loadLanguageBundle,
+  loadLanguageBundleWithRetry,
   loadLocaleResource,
   loadLocaleResourceWithRetry
 } from '@fastgpt/web/i18n/resourceLoaders';
@@ -32,6 +35,46 @@ describe('generatedLoaders', () => {
       const resource = (await generatedLoaders[language].common()).default;
       expect(Object.keys(resource)).toEqual(expect.arrayContaining(s3UploadErrorKeys));
     }
+  });
+});
+
+describe('loadLanguageBundle', () => {
+  const originalEnglishLoaders = generatedLoaders.en;
+
+  beforeEach(() => {
+    generatedLoaders.en = originalEnglishLoaders;
+    clearLanguageBundleFailure('en');
+  });
+
+  it('复用同一语言正在进行的加载，并同步所有 namespace 状态', async () => {
+    let release: (() => void) | undefined;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const loaders = Object.fromEntries(
+      I18N_NAMESPACES.map((namespace) => [
+        namespace,
+        vi.fn(async () => {
+          await pending;
+          return { default: { namespace } };
+        })
+      ])
+    ) as typeof generatedLoaders.en;
+    generatedLoaders.en = loaders;
+
+    const first = loadLanguageBundle('en');
+    const second = loadLanguageBundle('en');
+    release?.();
+
+    const [firstBundle, secondBundle] = await Promise.all([first, second]);
+    expect(firstBundle).toBe(secondBundle);
+    expect(Object.keys(firstBundle)).toEqual(I18N_NAMESPACES);
+    expect(
+      Object.values(loaders).every((loader) => vi.mocked(loader).mock.calls.length === 1)
+    ).toBe(true);
+    expect(
+      I18N_NAMESPACES.every((namespace) => getLocaleResourceStatus('en', namespace) === 'loaded')
+    ).toBe(true);
   });
 });
 
@@ -117,5 +160,36 @@ describe('loadLocaleResourceWithRetry', () => {
     expect(loader).toHaveBeenCalledTimes(4);
     expect(getLocaleResourceStatus('en', 'common')).toBe('failed');
     expect(getLocaleResourceError('en', 'common')).toBe(error);
+  });
+});
+
+describe('loadLanguageBundleWithRetry', () => {
+  const originalEnglishLoaders = generatedLoaders.en;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    generatedLoaders.en = originalEnglishLoaders;
+    clearLanguageBundleFailure('en');
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('完整语言 chunk 加载失败后按退避策略重试', async () => {
+    const commonLoader = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('temporary failure'))
+      .mockResolvedValue({ default: { Confirm: 'Confirm' } });
+    generatedLoaders.en = {
+      ...originalEnglishLoaders,
+      common: commonLoader
+    };
+
+    const loading = loadLanguageBundleWithRetry('en');
+    await vi.advanceTimersByTimeAsync(300);
+
+    await expect(loading).resolves.toHaveProperty('common.Confirm', 'Confirm');
+    expect(commonLoader).toHaveBeenCalledTimes(2);
   });
 });

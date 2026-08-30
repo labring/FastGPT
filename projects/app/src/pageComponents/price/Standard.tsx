@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box, Button, Flex, Grid } from '@chakra-ui/react';
 import { Trans } from 'next-i18next';
@@ -20,12 +20,8 @@ import {
 } from '@fastgpt/global/support/wallet/sub/discountCoupon/constants';
 import { formatActivityExpirationTime } from './utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { PackageChangeStatusEnum, type PricePurchaseIntent } from './purchaseIntent';
 
-export enum PackageChangeStatusEnum {
-  buy = 'buy',
-  renewal = 'renewal',
-  upgrade = 'upgrade'
-}
 const NEW_PLAN_LEVELS = [
   StandardSubLevelEnum.free,
   StandardSubLevelEnum.basic,
@@ -137,6 +133,9 @@ const Standard = ({
   onPaySuccess,
   selectSubMode: controlledSubMode,
   onSelectSubModeChange,
+  onLoginRequired,
+  resumePurchaseIntent,
+  onResumePurchaseIntentHandled,
   hideBillingToggle = false,
   responsiveCardLayout = false
 }: {
@@ -144,6 +143,9 @@ const Standard = ({
   onPaySuccess?: () => void;
   selectSubMode?: `${SubModeEnum}`;
   onSelectSubModeChange?: (mode: `${SubModeEnum}`) => void;
+  onLoginRequired?: (intent: PricePurchaseIntent) => void;
+  resumePurchaseIntent?: PricePurchaseIntent;
+  onResumePurchaseIntentHandled?: () => void;
   hideBillingToggle?: boolean;
   responsiveCardLayout?: boolean;
 }) => {
@@ -240,7 +242,11 @@ const Standard = ({
   }, [responsiveCardLayout]);
 
   // 获取优惠券
-  const { data: coupons = [], runAsync: getCoupons } = useRequest(
+  const {
+    data: coupons = [],
+    runAsync: getCoupons,
+    loading: couponsLoading
+  } = useRequest(
     async () => {
       if (!myStandardPlan?.teamId) return [];
       return getDiscountCouponList(myStandardPlan.teamId);
@@ -329,6 +335,33 @@ const Standard = ({
       });
     }
   });
+
+  const submitStandardPurchase = useCallback(
+    ({ packageChange, level, subMode }: Extract<PricePurchaseIntent, { type: 'standard' }>) => {
+      if (!userInfo && onLoginRequired) {
+        onLoginRequired({ type: 'standard', packageChange, level, subMode });
+        return;
+      }
+
+      setPackageChange(packageChange);
+      void onPay({
+        type: BillTypeEnum.standSubPlan,
+        level: level as StandardSubLevelEnum,
+        subMode: subMode as SubModeEnum,
+        discountCouponId: matchedCoupon?._id
+      });
+    },
+    [matchedCoupon?._id, onLoginRequired, onPay, userInfo]
+  );
+
+  useEffect(() => {
+    if (resumePurchaseIntent?.type !== 'standard' || couponsLoading) return;
+
+    queueMicrotask(() => {
+      onResumePurchaseIntentHandled?.();
+      submitStandardPurchase(resumePurchaseIntent);
+    });
+  }, [couponsLoading, onResumePurchaseIntentHandled, resumePurchaseIntent, submitStandardPurchase]);
 
   // 计算活动时间
   const { text: activityExpirationTime } = formatActivityExpirationTime(
@@ -650,12 +683,11 @@ const Standard = ({
                           }
                         })}
                         onClick={() => {
-                          setPackageChange(PackageChangeStatusEnum.renewal);
-                          onPay({
-                            type: BillTypeEnum.standSubPlan,
+                          submitStandardPurchase({
+                            type: 'standard',
+                            packageChange: PackageChangeStatusEnum.renewal,
                             level: item.level as StandardSubLevelEnum,
-                            subMode: selectSubMode as SubModeEnum,
-                            discountCouponId: matchedCoupon?._id
+                            subMode: selectSubMode
                           });
                         }}
                       >
@@ -673,12 +705,11 @@ const Standard = ({
                         variant={'primaryGhost'}
                         isLoading={isLoading}
                         onClick={() => {
-                          setPackageChange(PackageChangeStatusEnum.upgrade);
-                          onPay({
-                            type: BillTypeEnum.standSubPlan,
+                          submitStandardPurchase({
+                            type: 'standard',
+                            packageChange: PackageChangeStatusEnum.upgrade,
                             level: item.level as StandardSubLevelEnum,
-                            subMode: selectSubMode as SubModeEnum,
-                            discountCouponId: matchedCoupon?._id
+                            subMode: selectSubMode
                           });
                         }}
                       >
@@ -722,12 +753,11 @@ const Standard = ({
                           })}
                       isLoading={isLoading}
                       onClick={() => {
-                        setPackageChange(PackageChangeStatusEnum.buy);
-                        onPay({
-                          type: BillTypeEnum.standSubPlan,
+                        submitStandardPurchase({
+                          type: 'standard',
+                          packageChange: PackageChangeStatusEnum.buy,
                           level: item.level as StandardSubLevelEnum,
-                          subMode: selectSubMode as SubModeEnum,
-                          discountCouponId: matchedCoupon?._id
+                          subMode: selectSubMode
                         });
                       }}
                     >

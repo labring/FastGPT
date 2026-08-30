@@ -1,13 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { loadLocaleResourceWithRetry } = vi.hoisted(() => ({
-  loadLocaleResourceWithRetry: vi.fn()
+const { loadLanguageBundleWithRetry } = vi.hoisted(() => ({
+  loadLanguageBundleWithRetry: vi.fn()
 }));
 
-vi.mock('@fastgpt/web/i18n/resourceLoaders', () => ({ loadLocaleResourceWithRetry }));
+vi.mock('@fastgpt/web/i18n/resourceLoaders', () => ({ loadLanguageBundleWithRetry }));
 
 import { changeLanguageAtomically } from '@fastgpt/web/i18n/atomicLanguageChange';
 import { LangEnum } from '@fastgpt/global/common/i18n/type';
+import { I18N_NAMESPACES } from '@fastgpt/web/i18n/constants';
+
+const createLanguageBundle = (language: string) =>
+  Object.fromEntries(I18N_NAMESPACES.map((namespace) => [namespace, { language, namespace }]));
 
 const createI18n = (language = LangEnum.en) => {
   let currentLanguage = language;
@@ -63,7 +67,9 @@ beforeEach(() => {
 
 describe('changeLanguageAtomically', () => {
   it('preloads the language chain before switching and persists only after validation', async () => {
-    loadLocaleResourceWithRetry.mockImplementation(async (language: string) => ({ language }));
+    loadLanguageBundleWithRetry.mockImplementation(async (language: string) =>
+      createLanguageBundle(language)
+    );
     const i18n = createI18n();
 
     await changeLanguageAtomically({
@@ -72,8 +78,8 @@ describe('changeLanguageAtomically', () => {
       storageKey: 'atomic-language'
     });
 
-    expect(loadLocaleResourceWithRetry).toHaveBeenCalledWith('zh-CN', 'common');
-    expect(loadLocaleResourceWithRetry).toHaveBeenCalledWith('en', 'common');
+    expect(loadLanguageBundleWithRetry).toHaveBeenCalledWith('zh-CN');
+    expect(loadLanguageBundleWithRetry).toHaveBeenCalledTimes(1);
     expect(i18n.language).toBe(LangEnum.zh_CN);
     expect(i18n.changeLanguage).toHaveBeenCalledOnce();
     expect(localStorage.getItem('atomic-language')).toBe(LangEnum.zh_CN);
@@ -81,7 +87,7 @@ describe('changeLanguageAtomically', () => {
 
   it('does not switch or persist when a required resource fails', async () => {
     const error = new Error('chunk unavailable');
-    loadLocaleResourceWithRetry.mockRejectedValue(error);
+    loadLanguageBundleWithRetry.mockRejectedValue(error);
     const i18n = createI18n();
 
     await expect(
@@ -97,8 +103,29 @@ describe('changeLanguageAtomically', () => {
     expect(localStorage.getItem('failed-language')).toBeNull();
   });
 
+  it('复用 i18next 中已经完整注册的语言包', async () => {
+    const i18n = createI18n();
+    for (const namespace of I18N_NAMESPACES) {
+      i18n.addResourceBundle(LangEnum.zh_CN, namespace, {
+        language: LangEnum.zh_CN,
+        namespace
+      });
+    }
+
+    await changeLanguageAtomically({
+      i18n,
+      language: LangEnum.zh_CN,
+      storageKey: 'cached-language'
+    });
+
+    expect(loadLanguageBundleWithRetry).not.toHaveBeenCalled();
+    expect(i18n.language).toBe(LangEnum.zh_CN);
+  });
+
   it('rolls back when changeLanguage resolves but reports failedLoading', async () => {
-    loadLocaleResourceWithRetry.mockImplementation(async (language: string) => ({ language }));
+    loadLanguageBundleWithRetry.mockImplementation(async (language: string) =>
+      createLanguageBundle(language)
+    );
     const i18n = createI18n();
     i18n.changeLanguage.mockImplementationOnce(async (lng: string) => {
       i18n.emit('failedLoading', lng, 'common', new Error('backend failure'));
@@ -117,7 +144,9 @@ describe('changeLanguageAtomically', () => {
   });
 
   it('rolls back when changeLanguage resolves without applying the target language', async () => {
-    loadLocaleResourceWithRetry.mockImplementation(async (language: string) => ({ language }));
+    loadLanguageBundleWithRetry.mockImplementation(async (language: string) =>
+      createLanguageBundle(language)
+    );
     const i18n = createI18n();
     i18n.changeLanguage.mockImplementationOnce(async () => undefined);
 
@@ -134,7 +163,9 @@ describe('changeLanguageAtomically', () => {
   });
 
   it('rolls back when the selected storage cannot verify a write', async () => {
-    loadLocaleResourceWithRetry.mockImplementation(async (language: string) => ({ language }));
+    loadLanguageBundleWithRetry.mockImplementation(async (language: string) =>
+      createLanguageBundle(language)
+    );
     const i18n = createI18n();
     const storage = globalThis.localStorage;
     const originalSetItem = storage.setItem.bind(storage);
@@ -155,7 +186,9 @@ describe('changeLanguageAtomically', () => {
   });
 
   it('serializes concurrent changes and commits the final request', async () => {
-    loadLocaleResourceWithRetry.mockImplementation(async (language: string) => ({ language }));
+    loadLanguageBundleWithRetry.mockImplementation(async (language: string) =>
+      createLanguageBundle(language)
+    );
     const i18n = createI18n();
 
     await Promise.all([

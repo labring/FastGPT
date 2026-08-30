@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { changeLanguageAtomically } from '@fastgpt/web/i18n/atomicLanguageChange';
 import { loadLocaleResource } from '@fastgpt/web/i18n/resourceLoaders';
+import { I18N_NAMESPACES } from '@fastgpt/web/i18n/constants';
 
 const createI18n = () => {
   let currentLanguage = LangEnum.en;
@@ -77,7 +78,10 @@ describe('atomic language change integration', () => {
 
     expect(i18n.language).toBe(LangEnum.zh_CN);
     expect(i18n.hasResourceBundle(LangEnum.zh_CN, 'common')).toBe(true);
-    expect(i18n.hasResourceBundle(LangEnum.en, 'common')).toBe(true);
+    expect(i18n.hasResourceBundle(LangEnum.en, 'common')).toBe(false);
+    expect(
+      I18N_NAMESPACES.every((namespace) => i18n.hasResourceBundle(LangEnum.zh_CN, namespace))
+    ).toBe(true);
     expect(localStorage.getItem('integration-language')).toBe(LangEnum.zh_CN);
     expect(i18n.changeLanguage).toHaveBeenCalledWith(LangEnum.zh_CN);
     expect(await loadLocaleResource(LangEnum.zh_CN, 'common')).toHaveProperty('Confirm');
@@ -96,6 +100,7 @@ describe('atomic language change integration', () => {
 
     expect(i18n.language).toBe(LangEnum.zh_Hant);
     expect(i18n.hasResourceBundle(LangEnum.zh_Hant, 'common')).toBe(true);
-    expect(i18n.hasResourceBundle(LangEnum.en, 'common')).toBe(true);
+    expect(i18n.hasResourceBundle(LangEnum.zh_CN, 'common')).toBe(true);
+    expect(i18n.hasResourceBundle(LangEnum.en, 'common')).toBe(false);
   });
 });
