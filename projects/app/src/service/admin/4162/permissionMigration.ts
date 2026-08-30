@@ -1,5 +1,7 @@
 import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { batchRun } from '@fastgpt/global/common/system/utils';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
@@ -7,6 +9,7 @@ import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import type { ClientSession, Model } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { resourcePermissionRepo } from '@fastgpt/service/support/permission/repository/resourcePermissionRepo';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import {
   calculateInheritedResourceCollaborators,
   mergeResourceCollaborators,
@@ -17,6 +20,8 @@ import {
   type MaterializeResourcePermissionsOptions,
   type MaterializeResourcePermissionsResult
 } from './permissionSchema';
+
+const logger = getLogger(LogCategories.MODULE.PERMISSION);
 
 export type MigrationResource = {
   _id: unknown;
@@ -293,12 +298,43 @@ export const materializeResourcePermissions = async (
     errors: []
   };
 
-  for (const team of teams) {
-    const teamId = String(team._id);
-    for (const config of resourceConfigs) {
-      await materializeResourceType({ teamId, config, options, result });
-    }
-  }
+  let processedTeamCount = 0;
+  await batchRun(
+    teams,
+    async (team) => {
+      const teamId = String(team._id);
+      let failedResourceTypeCount = 0;
+
+      for (const config of resourceConfigs) {
+        try {
+          await materializeResourceType({ teamId, config, options, result });
+        } catch (error) {
+          failedResourceTypeCount += 1;
+          const migrationError = `${config.resourceType}:${teamId}: migration failed: ${getErrText(
+            error,
+            'unknown error'
+          )}`;
+          if (!result.errors.includes(migrationError)) result.errors.push(migrationError);
+
+          logger.error('Resource permission materialization failed', {
+            teamId,
+            resourceType: config.resourceType,
+            error
+          });
+        }
+      }
+
+      processedTeamCount += 1;
+      console.log('Resource permission materialization progress', {
+        processedTeamCount,
+        totalTeamCount: teams.length,
+        progress: Number(((processedTeamCount / teams.length) * 100).toFixed(2)),
+        teamId,
+        failedResourceTypeCount
+      });
+    },
+    options.teamConcurrency
+  );
 
   return MaterializeResourcePermissionsResultSchema.parse(result);
 };

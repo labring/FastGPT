@@ -257,8 +257,8 @@ export const getLangMapping = (lng: string): localeType => {
   return parseLocale(lng) ?? LangEnum.en;
 };
 
-/** 返回资源加载必须满足的语言链；非英文语言同时依赖英文 fallback。 */
+/** 返回资源加载必须满足的语言链；非简体中文语言同时依赖简体中文 fallback。 */
 export const getRequiredI18nLanguages = (language: localeType): localeType[] =>
-  language === LangEnum.en ? [LangEnum.en] : [language, LangEnum.en];
+  language === LangEnum.zh_CN ? [LangEnum.zh_CN] : [language, LangEnum.zh_CN];
 
 export { i18nT } from '@fastgpt/global/common/i18n/utils';

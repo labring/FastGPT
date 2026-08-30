@@ -224,7 +224,8 @@ describe('materializeResourcePermissions', () => {
     const result = await materializeResourcePermissions({
       dryRun: false,
       teamId: String(users.owner.teamId),
-      batchSize: 1
+      batchSize: 1,
+      teamConcurrency: 10
     });
 
     expect(result.errors).toEqual([]);
@@ -281,7 +282,8 @@ describe('materializeResourcePermissions', () => {
     const result = await materializeResourcePermissions({
       dryRun: true,
       teamId: String(users.owner.teamId),
-      batchSize: 1
+      batchSize: 1,
+      teamConcurrency: 10
     });
 
     expect(result).toMatchObject({
@@ -335,7 +337,8 @@ describe('materializeResourcePermissions', () => {
     const result = await materializeResourcePermissions({
       dryRun: false,
       teamId: String(users.owner.teamId),
-      batchSize: 100
+      batchSize: 100,
+      teamConcurrency: 10
     });
 
     expect(result).toMatchObject({
@@ -424,7 +427,8 @@ describe('materializeResourcePermissions', () => {
     const result = await materializeResourcePermissions({
       dryRun: false,
       teamId: String(users.owner.teamId),
-      batchSize: 100
+      batchSize: 100,
+      teamConcurrency: 10
     });
 
     expect(result).toMatchObject({
@@ -469,5 +473,79 @@ describe('materializeResourcePermissions', () => {
         })
       ])
     );
+  });
+
+  it('records a resource type failure and continues materializing the remaining types', async () => {
+    const users = await getFakeUsers(1);
+    const [app, dataset, skill] = await Promise.all([
+      MongoApp.create({
+        teamId: users.owner.teamId,
+        tmbId: users.owner.tmbId,
+        name: 'migration-failed-app',
+        type: AppTypeEnum.simple
+      }),
+      MongoDataset.create({
+        teamId: users.owner.teamId,
+        tmbId: users.owner.tmbId,
+        name: 'migration-dataset-after-failure',
+        type: DatasetTypeEnum.dataset
+      }),
+      MongoAgentSkills.create({
+        teamId: users.owner.teamId,
+        tmbId: users.owner.tmbId,
+        name: 'migration-skill-after-failure',
+        source: AgentSkillSourceEnum.personal
+      })
+    ]);
+    vi.spyOn(resourcePermissionRepo, 'findByResourceIds').mockRejectedValueOnce(
+      new Error('mock app migration failure')
+    );
+
+    const result = await materializeResourcePermissions({
+      dryRun: false,
+      teamId: String(users.owner.teamId),
+      batchSize: 100,
+      teamConcurrency: 10
+    });
+
+    expect(result).toMatchObject({
+      resourceCount: 2,
+      updatedResourceCount: 2,
+      skippedResourceCount: 0
+    });
+    expect(result.errors).toEqual([
+      `${PerResourceTypeEnum.app}:${users.owner.teamId}: migration failed: mock app migration failure`
+    ]);
+    await expect(
+      resourcePermissionRepo.findByResource({
+        teamId: String(users.owner.teamId),
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: String(app._id)
+      })
+    ).resolves.toEqual([]);
+    await expect(
+      resourcePermissionRepo.findByResource({
+        teamId: String(users.owner.teamId),
+        resourceType: PerResourceTypeEnum.dataset,
+        resourceId: String(dataset._id)
+      })
+    ).resolves.toEqual([
+      expect.objectContaining({
+        tmbId: String(users.owner.tmbId),
+        permission: OwnerRoleVal
+      })
+    ]);
+    await expect(
+      resourcePermissionRepo.findByResource({
+        teamId: String(users.owner.teamId),
+        resourceType: PerResourceTypeEnum.agentSkill,
+        resourceId: String(skill._id)
+      })
+    ).resolves.toEqual([
+      expect.objectContaining({
+        tmbId: String(users.owner.tmbId),
+        permission: OwnerRoleVal
+      })
+    ]);
   });
 });

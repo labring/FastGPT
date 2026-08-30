@@ -11,7 +11,7 @@ export const clientI18nConfig: UserConfig = {
   supportedLngs: [...LocaleList],
   load: 'currentOnly',
   defaultNS: 'common',
-  fallbackLng: 'en',
+  fallbackLng: 'zh-CN',
   localePath: null,
   partialBundledLanguages: true,
   ns: [],

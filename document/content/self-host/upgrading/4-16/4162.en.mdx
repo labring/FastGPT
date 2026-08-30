@@ -16,7 +16,7 @@ This release removes invalid resource permissions before materializing complete 
 curl -X POST 'https://your-domain/api/admin/4162/initPermission' \
   -H 'Content-Type: application/json' \
   -H 'rootkey: YOUR_ROOT_KEY' \
-  -d '{"dryRun":true,"batchSize":100}'
+  -d '{"dryRun":true,"teamConcurrency":100}'
 ```
 
 After confirming that the invalid permissions in `cleanup` are expected and that `migration.errors` is empty or the affected resources have been fixed, run the cleanup and migration:
@@ -25,10 +25,10 @@ After confirming that the invalid permissions in `cleanup` are expected and that
 curl -X POST 'https://your-domain/api/admin/4162/initPermission' \
   -H 'Content-Type: application/json' \
   -H 'rootkey: YOUR_ROOT_KEY' \
-  -d '{"dryRun":false,"batchSize":100}'
+  -d '{"dryRun":false,"teamConcurrency":100}'
 ```
 
-`batchSize` accepts values from `1` to `1000` and defaults to `100`. It controls the batch size for both permission cleanup and migration. `sampleLimit` controls the number of invalid permission samples returned in `cleanup.samples`. The response contains `cleanup` and `migration`: `cleanup` reports scan, match, and deletion statistics; `migration.resourceCount` is the number of scanned resources, `migration.updatedResourceCount` is the number of resources requiring writes, `migration.skippedResourceCount` is the number of target resources skipped because of missing parents or invalid trees, and `migration.errors` contains error details. Existing owners and child-specific permissions are preserved. Ancestor chains are loaded on demand, and historical resources with a missing inheritance flag are treated as inheriting permissions.
+`teamConcurrency` controls how many teams ACL migration processes concurrently. It accepts values from `1` to `1000` and defaults to `100`. Apps, Datasets, and Agent Skills are processed sequentially within each team. If one resource type fails for a team, FastGPT records the error in `migration.errors` and continues with the remaining resource types and teams. `sampleLimit` controls the number of invalid permission samples returned in `cleanup.samples`. The response contains `cleanup` and `migration`: `cleanup` reports scan, match, and deletion statistics; `migration.resourceCount` is the number of scanned resources, `migration.updatedResourceCount` is the number of resources requiring writes, `migration.skippedResourceCount` is the number of target resources skipped because of missing parents or invalid trees, and `migration.errors` contains error details. Existing owners and child-specific permissions are preserved. Ancestor chains are loaded on demand, and historical resources with a missing inheritance flag are treated as inheriting permissions.
 
 During a dry run, the migration preview uses the current permission data before cleanup. If `cleanup` finds invalid permissions, the migration statistics from the apply run may differ after those permissions are removed.
 

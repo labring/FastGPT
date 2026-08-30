@@ -5,8 +5,10 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { cleanupDanglingResourcePermissions } from '@/service/admin/4162/permissionCleanup';
 import { materializeResourcePermissions } from '@/service/admin/4162/permissionMigration';
 import {
+  ACL_RESOURCE_BATCH_SIZE,
   InitPermissionBodySchema,
   InitPermissionResponseSchema,
+  PERMISSION_CLEANUP_BATCH_SIZE,
   type InitPermissionResponse
 } from '@/service/admin/4162/permissionSchema';
 
@@ -14,15 +16,20 @@ import {
 async function handler(req: ApiRequestProps): Promise<InitPermissionResponse> {
   await authCert({ req, authRoot: true });
   const { body } = parseApiInput({ req, bodySchema: InitPermissionBodySchema });
-  const { dryRun, teamId, batchSize, sampleLimit } = body;
+  const { dryRun, teamId, teamConcurrency, sampleLimit } = body;
 
   const cleanup = await cleanupDanglingResourcePermissions({
     dryRun,
     teamId,
-    batchSize,
+    batchSize: PERMISSION_CLEANUP_BATCH_SIZE,
     sampleLimit
   });
-  const migration = await materializeResourcePermissions({ dryRun, teamId, batchSize });
+  const migration = await materializeResourcePermissions({
+    dryRun,
+    teamId,
+    batchSize: ACL_RESOURCE_BATCH_SIZE,
+    teamConcurrency
+  });
 
   return InitPermissionResponseSchema.parse({ cleanup, migration });
 }

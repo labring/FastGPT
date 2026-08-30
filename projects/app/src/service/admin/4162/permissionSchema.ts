@@ -2,7 +2,9 @@ import z from 'zod';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { BoolSchema, IntSchema } from '@fastgpt/global/common/zod';
 
-export const DEFAULT_PERMISSION_BATCH_SIZE = 100;
+export const PERMISSION_CLEANUP_BATCH_SIZE = 1000;
+export const ACL_RESOURCE_BATCH_SIZE = 1000;
+export const DEFAULT_PERMISSION_TEAM_CONCURRENCY = 100;
 export const DEFAULT_DANGLING_PERMISSION_SAMPLE_LIMIT = 20;
 
 export const DanglingReferenceReasonSchema = z.enum([
@@ -38,10 +40,14 @@ export const InitPermissionBodySchema = z.object({
     example: '68ad85a7463006c963799a05',
     description: '仅处理指定团队；不传时处理所有团队和权限'
   }),
-  batchSize: IntSchema.min(1).max(1000).optional().default(DEFAULT_PERMISSION_BATCH_SIZE).meta({
-    example: DEFAULT_PERMISSION_BATCH_SIZE,
-    description: '权限清理和迁移的批大小，范围 1~1000'
-  }),
+  teamConcurrency: IntSchema.min(1)
+    .max(1000)
+    .optional()
+    .default(DEFAULT_PERMISSION_TEAM_CONCURRENCY)
+    .meta({
+      example: DEFAULT_PERMISSION_TEAM_CONCURRENCY,
+      description: 'ACL 迁移同时处理的团队数，范围 1~1000'
+    }),
   sampleLimit: IntSchema.min(0)
     .max(100)
     .optional()
@@ -121,7 +127,8 @@ export type CleanupDanglingResourcePermissionsResult = z.infer<
 export const MaterializeResourcePermissionsOptionsSchema = z.object({
   dryRun: z.boolean(),
   teamId: ObjectIdSchema.optional(),
-  batchSize: z.number().int().min(1).max(1000)
+  batchSize: z.number().int().min(1).max(1000),
+  teamConcurrency: z.number().int().min(1).max(1000)
 });
 export type MaterializeResourcePermissionsOptions = z.infer<
   typeof MaterializeResourcePermissionsOptionsSchema

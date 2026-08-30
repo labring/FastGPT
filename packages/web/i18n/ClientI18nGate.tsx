@@ -8,8 +8,7 @@ import {
   persistLanguagePreference
 } from './utils';
 import { changeLanguageAtomically } from './atomicLanguageChange';
-
-const BASE_NAMESPACE = 'common';
+import { I18N_NAMESPACES } from './constants';
 
 type ClientI18nGateProps = {
   defaultLanguage: string;
@@ -30,7 +29,7 @@ const ClientI18nGate = ({
   const ready =
     i18n.language === language &&
     requiredLanguages.every((requiredLanguage) =>
-      i18n.hasResourceBundle(requiredLanguage, BASE_NAMESPACE)
+      I18N_NAMESPACES.every((namespace) => i18n.hasResourceBundle(requiredLanguage, namespace))
     );
   const [, setLoadedLanguage] = useState<string>();
   const [loadError, setLoadError] = useState<{ language: string; error: unknown }>();
@@ -51,8 +50,7 @@ const ClientI18nGate = ({
     changeLanguageAtomically({
       i18n,
       language,
-      storageKey,
-      namespaces: [BASE_NAMESPACE]
+      storageKey
     })
       .then(() => {
         if (!active) return;

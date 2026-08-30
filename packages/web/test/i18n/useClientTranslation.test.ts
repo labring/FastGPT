@@ -29,4 +29,21 @@ describe('useClientTranslation', () => {
       useSuspense: false
     });
   });
+
+  it('完整语言包就绪后正常翻译', () => {
+    vi.mocked(useTranslation).mockReturnValue({
+      t: ((key: string) => `translated:${key}`) as never,
+      i18n: { language: 'en' } as never,
+      ready: true
+    });
+
+    function TestComponent() {
+      const { t } = useClientTranslation('account');
+      return createElement('span', null, t('account:personal_information'));
+    }
+
+    expect(renderToStaticMarkup(createElement(TestComponent))).toContain(
+      'translated:account:personal_information'
+    );
+  });
 });
