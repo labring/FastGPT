@@ -697,7 +697,6 @@ const DefaultModelModal = ({
           <Box flex={1}>
             <AIModelSelector
               modelType={ModelTypeEnum.llm}
-              valueField="modelId"
               bg="myGray.50"
               value={defaultData.llm?.modelId}
               list={llmModelList.map((item) => ({
@@ -718,7 +717,6 @@ const DefaultModelModal = ({
           <Box flex={1}>
             <AIModelSelector
               modelType={ModelTypeEnum.embedding}
-              valueField="modelId"
               bg="myGray.50"
               value={defaultData.embedding?.modelId}
               list={embeddingModelList.map((item) => ({
@@ -739,7 +737,6 @@ const DefaultModelModal = ({
           <Box flex={1}>
             <AIModelSelector
               modelType={ModelTypeEnum.tts}
-              valueField="modelId"
               bg="myGray.50"
               value={defaultData.tts?.modelId}
               list={ttsModelList.map((item) => ({
@@ -760,7 +757,6 @@ const DefaultModelModal = ({
           <Box flex={1}>
             <AIModelSelector
               modelType={ModelTypeEnum.stt}
-              valueField="modelId"
               bg="myGray.50"
               value={defaultData.stt?.modelId}
               list={sttModelList.map((item) => ({
@@ -781,7 +777,6 @@ const DefaultModelModal = ({
           <Box flex={1}>
             <AIModelSelector
               modelType={ModelTypeEnum.rerank}
-              valueField="modelId"
               bg="myGray.50"
               value={defaultData.rerank?.modelId}
               list={reRankModelList.map((item) => ({
@@ -806,7 +801,6 @@ const DefaultModelModal = ({
           <Box flex={1}>
             <AIModelSelector
               modelType={ModelTypeEnum.llm}
-              valueField="modelId"
               bg="myGray.50"
               value={defaultData.datasetTextLLM?.modelId}
               list={llmModelList.map((item) => ({
@@ -830,7 +824,6 @@ const DefaultModelModal = ({
           <Box flex={1}>
             <AIModelSelector
               modelType={ModelTypeEnum.llm}
-              valueField="modelId"
               bg="myGray.50"
               value={defaultData.datasetImageLLM?.modelId}
               list={vlmModelList.map((item) => ({
@@ -854,7 +847,6 @@ const DefaultModelModal = ({
           <Box flex={1}>
             <AIModelSelector
               modelType={ModelTypeEnum.llm}
-              valueField="modelId"
               bg="myGray.50"
               value={defaultData.chatTitleLLM?.modelId || ''}
               canBeUnset

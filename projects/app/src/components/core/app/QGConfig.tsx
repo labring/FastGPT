@@ -17,7 +17,6 @@ import {
   QuestionGuidePrompt
 } from '@fastgpt/global/core/ai/prompt/agent';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 // question generator config
 const QGConfig = ({
@@ -73,11 +72,9 @@ const QGConfigModal = ({
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
-  const { llmModelList } = useUserModelLists();
   const customPrompt = value.customPrompt;
   const isOpenQG = value.open;
-  const hasModelId = value.modelId !== undefined;
-  const model = hasModelId ? value.modelId : value.model;
+  const modelId = value.modelId ?? value.model;
 
   const {
     isOpen: isOpenCustomPrompt,
@@ -116,13 +113,9 @@ const QGConfigModal = ({
               <Box flex={'1 0 0'}>
                 <AIModelSelector
                   modelType={ModelTypeEnum.llm}
-                  valueField={hasModelId ? 'modelId' : 'model'}
                   width={'100%'}
-                  value={model}
-                  onChange={(e) => {
-                    const modelId = hasModelId
-                      ? e
-                      : (llmModelList.find((model) => model.model === e)?.modelId ?? e);
+                  value={modelId}
+                  onChange={(modelId) => {
                     onChange({
                       ...value,
                       modelId,

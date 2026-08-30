@@ -180,7 +180,6 @@ const EvaluationCreating = () => {
               </FormLabel>
               <AIModelSelector
                 modelType={ModelTypeEnum.llm}
-                valueField="modelId"
                 w={'406px'}
                 bg={'myGray.50'}
                 value={evalModelId}

@@ -67,7 +67,10 @@ describe('useUserModelStore catalog cache', () => {
     mocks.getUserModelCatalog.mockResolvedValueOnce({ version: 'version-1' });
     await useUserModelStore.getState().loadModelCatalog({ teamId: 'team-1', tmbId: 'member-1' });
 
-    expect(mocks.getUserModelCatalog).toHaveBeenLastCalledWith('version-1');
+    expect(mocks.getUserModelCatalog).toHaveBeenLastCalledWith({
+      version: 'version-1',
+      outLinkAuthData: undefined
+    });
     expect(useUserModelStore.getState().modelMap['model-id']?.model).toBe('provider-model');
   });
 
@@ -85,9 +88,44 @@ describe('useUserModelStore catalog cache', () => {
     await useUserModelStore.getState().loadModelCatalog({ teamId: 'team-1', tmbId: 'member-1' });
     await useUserModelStore.getState().loadModelCatalog({ teamId: 'team-1', tmbId: 'member-1' });
 
-    expect(mocks.getUserModelCatalog).toHaveBeenNthCalledWith(1, undefined);
-    expect(mocks.getUserModelCatalog).toHaveBeenNthCalledWith(2, 'version-1');
+    expect(mocks.getUserModelCatalog).toHaveBeenNthCalledWith(1, {
+      version: undefined,
+      outLinkAuthData: undefined
+    });
+    expect(mocks.getUserModelCatalog).toHaveBeenNthCalledWith(2, {
+      version: 'version-1',
+      outLinkAuthData: undefined
+    });
     expect(useUserModelStore.getState().modelMap['updated-model-id']).toBeDefined();
+  });
+
+  it('loads an outlink catalog without persisting permission data', async () => {
+    const outLinkAuthData = { shareId: 'share-id', outLinkUid: 'outlink-user' };
+    mocks.getUserModelCatalog.mockResolvedValueOnce({ version: 'version-1', data: catalogData });
+
+    await useUserModelStore.getState().loadModelCatalog({ outLinkAuthData });
+
+    expect(mocks.getUserModelCatalog).toHaveBeenCalledWith({
+      version: undefined,
+      outLinkAuthData
+    });
+    expect(useUserModelStore.getState().identity).toBe('outlink:share-id');
+    expect(localStorage.getItem('fastgpt:model-catalog:v1:outlink:share-id')).toBeNull();
+  });
+
+  it('clears an in-memory outlink catalog when its authorization becomes invalid', async () => {
+    const outLinkAuthData = { shareId: 'share-id', outLinkUid: 'outlink-user' };
+    mocks.getUserModelCatalog.mockResolvedValueOnce({ version: 'version-1', data: catalogData });
+    await useUserModelStore.getState().loadModelCatalog({ outLinkAuthData });
+    mocks.getUserModelCatalog.mockRejectedValueOnce(new Error('invalid outlink'));
+
+    await expect(
+      useUserModelStore.getState().loadModelCatalog({ outLinkAuthData })
+    ).rejects.toThrow('invalid outlink');
+
+    expect(useUserModelStore.getState().identity).toBe('outlink:share-id');
+    expect(useUserModelStore.getState().modelList).toEqual([]);
+    expect(useUserModelStore.getState().loaded).toBe(false);
   });
 
   it('deduplicates concurrent catalog validation for the same identity', async () => {
@@ -187,9 +225,11 @@ describe('useUserModelStore catalog cache', () => {
     useUserModelStore.getState().clearMemory();
     expect(localStorage.length).toBe(3);
 
+    const loginGeneration = useUserModelStore.getState().loginGeneration;
     resetUserModelCatalogAfterLogin();
     expect(localStorage.getItem('fastgpt:model-catalog:v1:team-1:member-1')).toBeNull();
     expect(localStorage.getItem('fastgpt:model-catalog:v1:team-2:member-2')).toBeNull();
     expect(localStorage.getItem('unrelated')).toBe('keep');
+    expect(useUserModelStore.getState().loginGeneration).toBe(loginGeneration + 1);
   });
 });

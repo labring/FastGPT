@@ -1,6 +1,5 @@
 import {
   createRestrictedModelDiscovery,
-  getModelSelectorModelId,
   isModelAllowedByValues,
   resolveModelSelectorSelection,
   resolveModelSelectorProvider
@@ -24,20 +23,10 @@ describe('AIModelSelector utils', () => {
     expect(isModelAllowedByValues(model, new Set(['other']))).toBe(false);
   });
 
-  it('only returns non-empty values for modelId-valued selectors', () => {
-    expect(getModelSelectorModelId('68ad85a7463006c963799a07', 'modelId')).toBe(
-      '68ad85a7463006c963799a07'
-    );
-    expect(getModelSelectorModelId('gpt-4o', 'modelId')).toBe('gpt-4o');
-    expect(getModelSelectorModelId('', 'modelId')).toBeUndefined();
-    expect(getModelSelectorModelId('68ad85a7463006c963799a07', 'model')).toBeUndefined();
-  });
-
-  it('normalizes a legacy model value to modelId for canonical selectors', () => {
+  it('normalizes a legacy model value to modelId', () => {
     const selected = resolveModelSelectorSelection({
       models: [model],
-      value: 'gpt-4o',
-      valueField: 'modelId'
+      value: 'gpt-4o'
     });
 
     expect(selected).toEqual({
@@ -50,8 +39,7 @@ describe('AIModelSelector utils', () => {
   it('keeps canonical modelId values unchanged', () => {
     const selected = resolveModelSelectorSelection({
       models: [model],
-      value: 'model-id',
-      valueField: 'modelId'
+      value: 'model-id'
     });
 
     expect(selected).toEqual({
@@ -61,29 +49,14 @@ describe('AIModelSelector utils', () => {
     });
   });
 
-  it('recognizes modelId values without changing legacy selector output contracts', () => {
-    const selected = resolveModelSelectorSelection({
-      models: [model],
-      value: 'model-id',
-      valueField: 'model'
-    });
-
-    expect(selected).toEqual({
-      model,
-      normalizedValue: 'gpt-4o',
-      shouldNormalize: true
-    });
-  });
-
-  it('prefers the configured value field when model and modelId values collide', () => {
+  it('prefers modelId when model and modelId values collide', () => {
     const canonicalModel = { modelId: 'shared-value', model: 'canonical-model' };
     const legacyCollision = { modelId: 'other-id', model: 'shared-value' };
 
     expect(
       resolveModelSelectorSelection({
         models: [legacyCollision, canonicalModel],
-        value: 'shared-value',
-        valueField: 'modelId'
+        value: 'shared-value'
       })
     ).toEqual({
       model: canonicalModel,
@@ -93,14 +66,11 @@ describe('AIModelSelector utils', () => {
   });
 
   it('returns no selection for empty or unavailable values', () => {
-    expect(
-      resolveModelSelectorSelection({ models: [model], value: '', valueField: 'modelId' })
-    ).toBeUndefined();
+    expect(resolveModelSelectorSelection({ models: [model], value: '' })).toBeUndefined();
     expect(
       resolveModelSelectorSelection({
         models: [model],
-        value: 'missing-model',
-        valueField: 'modelId'
+        value: 'missing-model'
       })
     ).toBeUndefined();
   });

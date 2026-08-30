@@ -174,7 +174,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           <Box pt={2} minW={0} maxW={'100%'} overflow={'hidden'}>
             <AIModelSelector
               modelType={ModelTypeEnum.embedding}
-              valueField="modelId"
               w={'100%'}
               value={vectorModel.modelId}
               fontSize={'mini'}
@@ -210,7 +209,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           <Box pt={2} minW={0} maxW={'100%'} overflow={'hidden'}>
             <AIModelSelector
               modelType={ModelTypeEnum.llm}
-              valueField="modelId"
               w={'100%'}
               value={agentModel.modelId}
               list={llmModelList.map((item) => ({
@@ -235,7 +233,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           <Box pt={2} minW={0} maxW={'100%'} overflow={'hidden'}>
             <AIModelSelector
               modelType={ModelTypeEnum.llm}
-              valueField="modelId"
               w={'100%'}
               value={vlmModel?.modelId}
               list={vllmModelList.map((item) => ({

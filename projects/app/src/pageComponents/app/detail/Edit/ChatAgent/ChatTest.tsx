@@ -112,7 +112,6 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
           bg={'myGray.50'}
           rounded={'10px'}
           value={helperModel}
-          valueField="modelId"
           list={modelSelectList}
           onChange={onChangeHelperModel}
         />

@@ -218,7 +218,6 @@ const OptimizerPopover = ({
                     <Box flex={1} />
                     {modelOptions && modelOptions.length > 0 && (
                       <AIModelSelector
-                        valueField="modelId"
                         borderColor={'transparent'}
                         _hover={{
                           border: '1px solid',

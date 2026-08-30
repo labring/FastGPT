@@ -210,14 +210,12 @@ const InputRender = (props: InputRenderProps) => {
     return (
       <AIModelSelector
         {...commonProps}
-        cacheModel={false}
         modelType={ModelTypeEnum.llm}
-        valueField={props.modelValueField}
+        outLinkAuthData={props.outLinkAuthData}
         {...(modelList
           ? {
               list: modelList.map((item) => ({
-                value:
-                  props.modelValueField === 'modelId' ? item.modelId || item.model : item.model,
+                value: item.modelId ?? item.model,
                 label: item.name
               }))
             }

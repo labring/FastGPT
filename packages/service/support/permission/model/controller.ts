@@ -51,7 +51,7 @@ export const getMemberModelCatalogPermission = async ({
   isTeamOwner: boolean;
 }) => {
   const activeModels = global.systemActiveModelList;
-  if (isTeamOwner || !isProVersion()) {
+  if (isTeamOwner) {
     const modelIds = activeModels.map((model) => model.modelId);
     return { modelIds, version: hashStr([...modelIds].sort().join('\n')) };
   }

@@ -364,7 +364,6 @@ const NodeCopilot = ({
             <Flex align="center" pb={2}>
               {modelOptions.length > 0 && (
                 <AIModelSelector
-                  valueField="modelId"
                   borderColor="transparent"
                   _hover={{ border: '1px solid', borderColor: 'primary.400' }}
                   size="sm"

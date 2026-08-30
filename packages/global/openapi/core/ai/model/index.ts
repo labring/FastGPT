@@ -26,7 +26,8 @@ export const AIModelPath: OpenAPIPath = {
   '/core/ai/model/catalog': {
     get: {
       summary: '获取当前成员模型目录',
-      description: '一次返回当前成员完整可用模型、Provider 和有效默认模型 ID；支持内容版本协商',
+      description:
+        '通过登录态或外链身份一次返回对应成员完整可用模型、Provider 和有效默认模型 ID；支持内容版本协商',
       tags: [DevApiTagsMap.aiCommon],
       requestParams: { query: GetModelCatalogQuerySchema },
       responses: {

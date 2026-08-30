@@ -124,7 +124,8 @@ export const WorkflowUtilsContext = createContext<WorkflowUtilsContextValue>({
 
 export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
-  const { llmModelList } = useUserModelLists();
+  const { modelList, llmModelList, loaded: modelsLoaded } = useUserModelLists();
+  const availableModels = modelsLoaded ? modelList : undefined;
   const { toast } = useToast();
   const { fitView } = useReactFlow();
   const { feConfigs } = useSystemStore();
@@ -229,6 +230,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       const { issueMap, hasError, firstErrorNodeId } = checkWorkflowBeforeRunOrPublish({
         nodes,
         edges,
+        models: availableModels,
         t
       });
 
@@ -274,6 +276,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       showSandbox,
       enableSandbox,
       appDetail.chatConfig,
+      availableModels,
       toast
     ]
   );
@@ -284,16 +287,17 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       const nodes = getNodes();
       if (nodes.length === 0) return;
 
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, t });
+      const issueMap = checkWorkflowNodeIssues({ nodes, edges, models: availableModels, t });
       onSyncWorkflowCheckIssues(issueMap);
     };
 
+    runScheduledCheck();
     const timer = window.setInterval(runScheduledCheck, 10_000);
 
     return () => {
       window.clearInterval(timer);
     };
-  }, [edges, getNodes, onSyncWorkflowCheckIssues, t]);
+  }, [availableModels, edges, getNodes, onSyncWorkflowCheckIssues, t]);
 
   // 4. initData - 初始化工作流数据
   const initData = useCallback(

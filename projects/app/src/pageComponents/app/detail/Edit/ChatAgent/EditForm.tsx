@@ -279,9 +279,8 @@ const EditForm = ({
               <Box flex={'1 0 0'}>
                 <SettingLLMModel
                   bg="myGray.50"
-                  valueField="modelId"
                   defaultData={{
-                    model: appForm.aiSettings.modelId || appForm.aiSettings.model || '',
+                    modelId: appForm.aiSettings.modelId || appForm.aiSettings.model || '',
                     // temperature: appForm.aiSettings.temperature,
                     // maxToken: appForm.aiSettings.maxToken,
                     // maxHistories: appForm.aiSettings.maxHistories,
@@ -298,13 +297,14 @@ const EditForm = ({
                   showStopSign={false}
                   showResponseFormat={false}
                   showMultimodalConfig={false}
-                  onChange={({ model, maxHistories = 6, ...data }) => {
+                  onChange={({ modelId, maxHistories = 6, ...data }) => {
                     setAppForm((state) => ({
                       ...state,
                       aiSettings: {
                         ...state.aiSettings,
                         ...data,
-                        modelId: model,
+                        modelId,
+                        model: undefined,
                         maxHistories
                       }
                     }));

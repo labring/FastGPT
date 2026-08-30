@@ -9,23 +9,23 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { Box, Flex } from '@chakra-ui/react';
 import type { ResponsiveValue } from '@chakra-ui/system';
 import { useTranslation } from 'next-i18next';
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 import MultimodalTag from '@/components/core/ai/MultimodelTag';
 import { isModelAllowedByValues, resolveModelSelectorSelection } from './AIModelSelector.utils';
 import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 type Props = Omit<SelectProps, 'list'> & {
   modelType?: ModelTypeEnum;
   /** 迁移期限制模型范围；候选模型仍来自当前成员完整目录。 */
   list?: SelectProps['list'];
-  valueField?: 'modelId' | 'model';
   disableTip?: string;
   noOfLines?: ResponsiveValue<number>;
-  cacheModel?: boolean;
   canBeUnset?: boolean;
   unsetLabel?: string;
+  outLinkAuthData?: OutLinkChatAuthProps;
 };
 
 const UNSET_MODEL_VALUE = '';
@@ -71,10 +71,9 @@ const ModelLabel = ({
   );
 };
 
-/** 模型选择器只读取 useUserModelStore 的完整目录，不再发起分页或单模型详情请求。 */
+/** 通过统一 loader 校验完整目录，再使用 useUserModelStore 本地筛选和选择模型。 */
 const AIModelSelector = ({
   modelType = ModelTypeEnum.llm,
-  valueField = 'modelId',
   list: restrictedList,
   onChange,
   disableTip,
@@ -82,10 +81,11 @@ const AIModelSelector = ({
   canBeUnset = false,
   unsetLabel,
   placeholder,
+  outLinkAuthData,
   ...props
 }: Props) => {
   const { t, i18n } = useTranslation();
-  const { modelList, loading } = useUserModelLists();
+  const { modelList, loading } = useUserModelLists({ outLinkAuthData });
   const getModelProvider = useUserModelStore((state) => state.getModelProvider);
   const avatarSize = useMemo(() => getModelAvatarSize(props.size), [props.size]);
   const allowedValues = useMemo(
@@ -109,20 +109,15 @@ const AIModelSelector = ({
     () =>
       resolveModelSelectorSelection({
         models,
-        value: currentValue,
-        valueField
+        value: currentValue
       }),
-    [currentValue, models, valueField]
+    [currentValue, models]
   );
   const selectedModel = selection?.model;
   const legacySelectedItem = restrictedList?.find((item) => String(item.value) === currentValue);
-  const getValue = useCallback(
-    (model: MyModelItemType) => (valueField === 'modelId' ? model.modelId : model.model),
-    [valueField]
-  );
   const normalizedSelectionRef = useRef<string>();
 
-  // 完整目录加载后自动把旧 model 值写回 modelId；其余调用方仍遵循各自的 valueField 输出契约。
+  // 完整目录加载后自动把旧 model 值写回 modelId，选择器对外只输出稳定 ID。
   useEffect(() => {
     if (loading || !selection?.shouldNormalize) {
       normalizedSelectionRef.current = undefined;
@@ -151,13 +146,13 @@ const AIModelSelector = ({
           children: models
             .filter((model) => model.provider === providerId)
             .map((model) => ({
-              value: getValue(model),
+              value: model.modelId,
               label: <ModelLabel model={model} avatarSize={avatarSize} />
             }))
         };
       })
     : models.map((model) => ({
-        value: getValue(model),
+        value: model.modelId,
         label: <ModelLabel model={model} avatarSize={avatarSize} noOfLines={noOfLines} />
       }));
   if (canBeUnset)
@@ -194,8 +189,8 @@ const AIModelSelector = ({
         value={
           selectedModel
             ? grouped
-              ? [selectedModel.provider, getValue(selectedModel)]
-              : [getValue(selectedModel)]
+              ? [selectedModel.provider, selectedModel.modelId]
+              : [selectedModel.modelId]
             : canBeUnset && currentValue === UNSET_MODEL_VALUE
               ? [UNSET_MODEL_VALUE]
               : []

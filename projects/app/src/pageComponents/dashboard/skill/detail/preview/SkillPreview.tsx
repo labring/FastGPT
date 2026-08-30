@@ -150,7 +150,6 @@ const SkillPreview = () => {
         bg={'myGray.50'}
         rounded={'10px'}
         value={fallbackModel}
-        valueField="modelId"
         list={modelSelectList}
         onChange={setSelectedModel}
       />

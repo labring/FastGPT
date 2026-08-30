@@ -13,6 +13,7 @@ import {
   CollaboratorListSchema
 } from '../../../../support/permission/collaborator.schema';
 import { ModelDefaultIdsSchema } from '../../../../core/ai/defaultModel';
+import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 
 const MyModelBaseSchema = z.object({
   modelId: z.string().meta({ description: '模型稳定 ID' }),
@@ -87,12 +88,16 @@ export const ModelProviderSchema = z.object({
  * API: 获取当前成员模型目录
  * Route: GET /api/core/ai/model/catalog
  * Method: GET
- * Description: 返回当前成员完整可用模型、Provider 与有效默认模型 ID；版本一致时省略数据
+ * Description: 通过登录态或外链身份返回对应成员完整可用模型、Provider 与有效默认模型 ID；版本一致时省略数据
  * Tags: ['AI 通用', 'Read']
  * ============================================================================ */
 
 export const GetModelCatalogQuerySchema = z.object({
-  version: z.string().trim().min(1).optional().meta({ description: '客户端已有目录版本' })
+  version: z.string().trim().min(1).optional().meta({ description: '客户端已有目录版本' }),
+  outLinkAuthData: OutLinkChatAuthSchema.optional().meta({
+    example: JSON.stringify({ shareId: 'share-id', outLinkUid: 'out-link-user-id' }),
+    description: '分享链接鉴权数据；存在时使用发布链接绑定的成员身份计算模型权限'
+  })
 });
 export type GetModelCatalogQuery = z.infer<typeof GetModelCatalogQuerySchema>;
 

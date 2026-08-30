@@ -16,7 +16,6 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import InputRender from '@/components/core/app/formRender';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useDeepCompareEffect } from 'ahooks';
@@ -36,8 +35,6 @@ const RenderInput = () => {
   const isChatting = useContextSelector(PluginRunContext, (v) => v.isChatting);
   const instruction = useContextSelector(PluginRunContext, (v) => v.instruction);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
-
-  const { llmModelList } = useUserModelLists();
 
   const { control, handleSubmit, reset } = variablesForm;
 
@@ -235,7 +232,7 @@ const RenderInput = () => {
                         inputType={nodeInputTypeToInputType(input.renderTypeList)}
                         form={variablesForm}
                         fieldName={inputKey}
-                        modelList={llmModelList}
+                        outLinkAuthData={outLinkAuthData}
                         isRichText={false}
                         canLocalUpload={input.canLocalUpload ?? true}
                       />

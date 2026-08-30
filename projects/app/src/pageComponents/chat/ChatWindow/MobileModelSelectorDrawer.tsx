@@ -5,7 +5,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Drawer } from 'vaul';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { useTranslation } from 'next-i18next';
 
@@ -158,11 +157,11 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
                 </Flex>
                 <Box pb={4} flex="0 1 auto" minH={0} overflowY="auto">
                   {activeProvider.children.map((model) => {
-                    const isSelected = model.model === value;
+                    const isSelected = model.modelId === value || model.model === value;
 
                     return (
                       <Flex
-                        key={model.model}
+                        key={model.modelId}
                         h="44px"
                         alignItems="center"
                         px="8px"
@@ -170,7 +169,7 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
                         borderRadius="6px"
                         bg={isSelected ? 'myGray.50' : 'transparent'}
                         onClick={() => {
-                          onChange(model.model);
+                          onChange(model.modelId);
                           onClose();
                         }}
                       >

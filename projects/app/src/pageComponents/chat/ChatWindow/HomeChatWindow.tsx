@@ -122,18 +122,21 @@ const HomeChatWindow = () => {
   });
 
   const availableModels = useMemo(
-    () => llmModelList.map((model) => ({ value: model.model, label: model.name })),
+    () => llmModelList.map((model) => ({ value: model.modelId, label: model.name })),
     [llmModelList]
   );
   const [selectedModel, setSelectedModel] = useLocalStorageState<string>('chat_home_model', {
-    defaultValue: defaultModels.llm?.model
+    defaultValue: defaultModels.llm?.modelId
   });
   const selectedModelData = useMemo(
-    () => llmModelList.find((model) => model.model === selectedModel),
+    () =>
+      llmModelList.find(
+        (model) => model.modelId === selectedModel || model.model === selectedModel
+      ),
     [llmModelList, selectedModel]
   );
 
-  const onChangeModel = useMemoizedFn((model: string) => {
+  const onChangeModel = useMemoizedFn((modelId: string) => {
     setChatBoxData((state) => ({
       ...state,
       app: {
@@ -142,12 +145,12 @@ const HomeChatWindow = () => {
           ...state.app.chatConfig,
           fileSelectConfig: {
             ...defaultFileSelectConfig,
-            canSelectImg: !!llmModelList.find((item) => item.model === model)?.config.vision
+            canSelectImg: !!llmModelList.find((item) => item.modelId === modelId)?.config.vision
           }
         }
       }
     }));
-    setSelectedModel(model);
+    setSelectedModel(modelId);
   });
 
   const availableTools = useMemo(
@@ -190,7 +193,9 @@ const HomeChatWindow = () => {
     async () => {
       if (!appId || forbidLoadChatRef.current || !feConfigs?.isPlus) return;
 
-      const modelData = llmModelList.find((item) => item.model === selectedModel);
+      const modelData = llmModelList.find(
+        (item) => item.modelId === selectedModel || item.model === selectedModel
+      );
       const res = await getInitChatInfo({ appId, chatId });
       res.userAvatar = userInfo?.avatar ?? undefined;
 
@@ -293,7 +298,8 @@ const HomeChatWindow = () => {
       ).filter((tool): tool is FlowNodeTemplateType => !!tool);
 
       const formData = getDefaultAppForm();
-      formData.aiSettings.model = selectedModel;
+      formData.aiSettings.modelId = selectedModel;
+      formData.aiSettings.model = undefined;
       formData.aiSettings.aiChatReasoning = true;
       formData.selectedTools = tools;
       formData.chatConfig = chatBoxData.app.chatConfig || {};
@@ -329,7 +335,6 @@ const HomeChatWindow = () => {
         {isPc && availableModels.length > 0 && (
           <Box w={'fit-content'} maxW={'300px'} flex={'0 1 auto'} minW={0}>
             <ChatAIModelSelector
-              cacheModel={false}
               h={'36px'}
               w={'fit-content'}
               maxW={'300px'}

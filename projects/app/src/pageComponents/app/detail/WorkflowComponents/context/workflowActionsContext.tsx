@@ -137,6 +137,8 @@ export const WorkflowActionsContext = createContext<WorkflowActionsContextValue>
 export const WorkflowActionsProvider = ({ children }: { children: React.ReactNode }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { modelList, llmModelList, loaded: modelsLoaded } = useUserModelLists();
+  const availableModels = modelsLoaded ? modelList : undefined;
 
   // 获取 WorkflowBufferDataContext 的数据
   const {
@@ -239,7 +241,13 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
   const onRefreshSingleNodeWorkflowCheckIssues = useCallback(
     (nodeId: string) => {
       const nodes = getNodes();
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, nodeId, t });
+      const issueMap = checkWorkflowNodeIssues({
+        nodes,
+        edges,
+        models: availableModels,
+        nodeId,
+        t
+      });
 
       setNodes((state) =>
         state.map((item) => {
@@ -262,7 +270,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         })
       );
     },
-    [edges, getNodes, setNodes, t]
+    [availableModels, edges, getNodes, setNodes, t]
   );
 
   /** 节点配置变更后防抖触发单节点重新校验，避免每次输入都同步扫描。 */
@@ -295,10 +303,10 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       const nodes = getNodes();
       if (nodes.length === 0) return;
 
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, t });
+      const issueMap = checkWorkflowNodeIssues({ nodes, edges, models: availableModels, t });
       onSyncWorkflowCheckIssues(issueMap);
     }, 400);
-  }, [edges, getNodes, onSyncWorkflowCheckIssues, t]);
+  }, [availableModels, edges, getNodes, onSyncWorkflowCheckIssues, t]);
 
   useEffect(() => {
     if (isFirstEdgesEffectRef.current) {
@@ -410,7 +418,6 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
   );
 
   // 使用结构共享优化的节点更改
-  const { llmModelList } = useUserModelLists();
   const llmModelMap = useMemo(() => {
     return llmModelList.reduce(
       (acc, model) => {

@@ -65,7 +65,7 @@ const Header = ({
   const currentTab = useContextSelector(AppContext, (v) => v.currentTab);
 
   const { lastAppListRouteType, feConfigs } = useSystemStore();
-  const { llmModelList } = useUserModelLists();
+  const { modelList, llmModelList, loaded: modelsLoaded } = useUserModelLists();
   const { teamPlanStatus } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
   const showSandbox = feConfigs.show_agent_sandbox;
@@ -297,7 +297,12 @@ const Header = ({
                 );
                 const edges = storeEdges.map((item) => storeEdge2RenderEdge({ edge: item }));
 
-                const checkResults = checkWorkflowBeforeRunOrPublish({ nodes, edges, t });
+                const checkResults = checkWorkflowBeforeRunOrPublish({
+                  nodes,
+                  edges,
+                  models: modelsLoaded ? modelList : undefined,
+                  t
+                });
 
                 if (checkResults.hasError) {
                   toast({

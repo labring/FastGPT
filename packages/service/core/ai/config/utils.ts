@@ -209,11 +209,15 @@ export const loadInstalledModels = async ({
       (model): model is RerankSystemModelDataType => model.type === ModelTypeEnum.rerank
     );
 
-    // Sort model list
+    // Plugin 数组是内置模型展示顺序的唯一来源；MongoDB 自然顺序不具备业务语义。
+    const pluginModelOrder = new Map(pluginDocuments.map((model, index) => [model.model, index]));
     _systemActiveModelList.sort((a, b) => {
-      const providerA = getModelProvider(a.provider, language);
-      const providerB = getModelProvider(b.provider, language);
-      return providerA.order - providerB.order;
+      const orderA = pluginModelOrder.get(a.model);
+      const orderB = pluginModelOrder.get(b.model);
+      if (orderA !== undefined && orderB !== undefined) return orderA - orderB;
+      if (orderA !== undefined) return -1;
+      if (orderB !== undefined) return 1;
+      return a.modelId.localeCompare(b.modelId);
     });
 
     // Default model check
@@ -274,9 +278,8 @@ export const loadInstalledModels = async ({
       global.systemModelCatalogVersion = hashStr(
         JSON.stringify({
           schemaVersion: 1,
-          models: _systemActiveModelList
-            .map(desensitizeSystemModel)
-            .sort((a, b) => a.modelId.localeCompare(b.modelId)),
+          // 模型顺序属于目录内容；plugin 调整顺序后必须触发客户端缓存更新。
+          models: _systemActiveModelList.map(desensitizeSystemModel),
           providers: global.ModelProviderRawCache,
           defaultModelIds: configuredDefaultModelIds
         })

@@ -753,7 +753,6 @@ const InputTypeConfig = ({
                 inputType === FlowNodeInputTypeEnum.selectLLMModel) && (
                 <Box flex={'1'}>
                   <AIModelSelector
-                    valueField="modelId"
                     value={defaultValue}
                     list={availableModels}
                     onChange={(model) => {

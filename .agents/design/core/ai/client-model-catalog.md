@@ -33,6 +33,8 @@ modelId 迁移完成后，客户端仍同时存在以下模型数据链路：
 10. 公开价格模型与普通用户模型接口都放在 `/core/ai/model/*`，但使用独立路由、鉴权和 Schema。
 11. 价格页模型列表和管理员 list/detail 不做本地模型目录缓存。
 12. 团队模型权限管理是第四种独立视图，不能使用当前成员权限过滤后的模型目录。
+13. 模型目录按需加载：root 登录后单独检查系统是否已配置模型，普通成员只在出现模型消费者时校验目录；同时发生的同身份请求复用一个 in-flight Promise，不做页面级请求拦截。
+14. 工作流外链中的模型选择器使用 `shareId/outLinkUid` 鉴权。服务端从发布链接解析 `{ teamId, tmbId }` 后计算成员权限，客户端不得直接指定成员身份。
 
 ## 3. 目标与非目标
 
@@ -144,8 +146,9 @@ GET /core/ai/model/catalog?version=<client-version>
 
 鉴权与数据范围：
 
-- 必须登录。
-- 按当前 `{ teamId, tmbId }` 计算成员有效模型权限。
+- 支持登录态和工作流外链两种互斥身份。
+- 登录态按当前 `{ teamId, tmbId }` 计算成员有效模型权限。
+- 外链只接收 `shareId/outLinkUid`，先校验发布链接并从服务端配置取得 `{ teamId, tmbId }`，再计算该成员的有效模型权限。
 - 只返回 active 且当前成员可用的模型。
 - root 和团队 owner 按既有权限规则获得全部 active 系统模型。
 
@@ -335,8 +338,7 @@ const version = [
 
 ```ts
 type UserModelStore = {
-  teamId?: string;
-  tmbId?: string;
+  identity?: string;
   version?: string;
   providers: ClientModelProvider[];
   providerMap: Record<string, ClientModelProvider>;
@@ -345,7 +347,11 @@ type UserModelStore = {
   defaultModelIds: EffectiveDefaultModelIds;
   loading: boolean;
   loaded: boolean;
-  syncCatalog: (identity: { teamId: string; tmbId: string }) => Promise<void>;
+  syncCatalog: (
+    identity:
+      | { teamId: string; tmbId: string }
+      | { outLinkAuthData: { shareId: string; outLinkUid: string } }
+  ) => Promise<void>;
   refreshCatalog: () => Promise<void>;
   clearCatalog: () => void;
   getModel: (modelId?: string) => ClientModel | undefined;
@@ -369,6 +375,7 @@ fastgpt:model-catalog:v1:<teamId>:<tmbId>
 - 浏览器存储天然按部署域名隔离。
 - 持久化 providers、modelList、defaultModelIds 和 version。
 - 不持久化 loading、error、Promise、Map 或选择器交互状态；Map 在 hydration 后重建。
+- 外链目录只在当前页面内存中复用，不写入持久缓存；鉴权失败时清空该外链的内存目录。
 
 ### 9.3 生命周期
 
@@ -395,11 +402,18 @@ fastgpt:model-catalog:v1:<teamId>:<tmbId>
 
 重新登录不包括页面刷新后的 session 恢复、用户信息 hydration 或 token 自动续期。切换团队不删除其他目录，按新的 `{ teamId, tmbId }` 恢复并校验。
 
+模型消费者加载：
+
+- 普通成员页面不在 Layout 预加载目录，模型选择器或其他模型消费者挂载时才校验。
+- 每个模型消费者挂载时都会发起 version 校验；同一身份的并发校验由 Store 复用第一个 in-flight Promise，请求结束后不再保留拦截记录。
+- root 的系统未配置检查使用管理员模型接口，只在登录代次内执行一次，不加载普通成员目录。
+- 外链模型消费者使用 `outlink:<shareId>` 作为页面内存身份；请求仍必须携带当前 `outLinkUid` 完成服务端校验。
+
 ## 10. 客户端调用收敛
 
 ### 10.1 模型选择器
 
-AIModelSelector 不再发请求，只读取 Store 并本地完成：
+AIModelSelector 通过统一 loader 校验目录并读取 Store；同时挂载的多个选择器共享正在进行的请求。目录就绪后在本地完成：
 
 - 按 type 和 capability 过滤。
 - 按 Provider 分组和排序。
@@ -428,9 +442,9 @@ AIModelSelector 不再发请求，只读取 Store 并本地完成：
 ### 10.3 系统模型健康判断
 
 - 普通成员只能判断“当前账号是否有可用模型”，不能断言“系统未配置模型”。空目录也可能由权限导致。
-- root 的普通目录包含全部 active 模型，可以用它检查是否存在 active LLM/Embedding，无需每次登录额外请求管理员 list。
-- root 缺少必要 active 类型时提示并跳转管理员模型页面；进入页面后再加载管理员 list，区分未创建、全部 inactive 或默认配置失效。
-- 所有空列表判断必须等待 Store `status === 'ready'`。
+- root 登录后通过管理员模型 list 检查是否存在 active LLM/Embedding，同一登录代次只执行一次。
+- root 缺少必要 active 类型时提示并跳转管理员模型页面。
+- 普通成员不执行系统模型健康判断；其模型消费者只处理当前成员目录为空的状态。
 
 ## 11. 路由迁移
 
@@ -449,6 +463,7 @@ AIModelSelector 不再发请求，只读取 Store 并本地完成：
 ### 12.1 后端
 
 - catalog 鉴权、active 过滤、root/owner 和普通成员权限分别覆盖。
+- catalog 外链鉴权只采用发布配置中的 teamId/tmbId，不接受客户端伪造成员身份。
 - version 相同时只返回 version；未传或不同时返回完整目录。
 - Provider、客户端模型字段、默认模型或成员 modelIds 变化都会改变最终 version。
 - tmpData 原地更新、过期未删除和 owner/开源路径均不依赖 `_id`。
@@ -460,12 +475,14 @@ AIModelSelector 不再发请求，只读取 Store 并本地完成：
 ### 12.2 客户端
 
 - 页面刷新命中本地缓存并完成 version 校验。
+- 同时挂载的多个模型消费者只发起一次 version 校验；首个请求完成后新挂载的消费者会再次校验。
+- 工作流外链仅在出现模型选择输入时加载目录，且外链目录不持久化、鉴权失败后不展示旧内存目录。
 - 退出登录只清内存；真正重新登录清理全部模型目录缓存并强制全量请求。
 - teamId 或 tmbId 变化不会短暂展示上一身份目录。
 - Provider 多语言切换不请求新目录。
 - 选择器按 type、Provider 和 capability 本地过滤，只写 modelId。
 - Workflow 和 Dataset 等调用方不再自行请求或保存完整模型列表。
-- root 健康检查只使用 ready 的普通目录；普通成员空目录显示“暂无可用模型”，不误报系统未配置。
+- root 健康检查只使用管理员模型接口；普通成员不执行系统模型健康检查。
 - 管理员页面与价格页不读写 `useUserModelStore`。
 
 ### 12.3 验收条件
@@ -492,6 +509,7 @@ AIModelSelector 不再发请求，只读取 Store 并本地完成：
 - [x] 迁移 Workflow、Dataset、Chat、Evaluation、Prompt、TTS/STT 等客户端模型读取到 useUserModelStore。
 - [x] 删除 useSystemModelLists、getMyModels、getMyModel、getSystemModels 路由及无引用的分页工具和测试。
 - [x] 补齐 catalog、公开列表、默认回退、权限版本、管理员默认更新和 Store 缓存核心测试。
+- [x] 增加 catalog 外链鉴权模式，并让 workflow tool 分享页的模型选择输入按需复用目录请求。
 - [x] 执行最终全量测试并记录结果。
 
 验证结果：`app`、`global`、`service`、`web` workspace 全量测试通过；`admin` 全量测试中一个既有账单用例因 MongoDB 集合锁超时失败，单独复跑该文件后 4 个用例全部通过。

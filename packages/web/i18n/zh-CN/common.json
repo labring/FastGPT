@@ -661,6 +661,7 @@
   "core.workflow.check.tool_load_failed": "工具加载失败，请稍后重试",
   "core.workflow.check.tool_missing": "该工具不存在，请删除",
   "core.workflow.check.tool_no_permission": "当前账号无权限访问该资源",
+  "core.workflow.check.model_unavailable": "模型已停用",
   "core.workflow.check.user_select_empty": "需配置至少一个选项",
   "core.workflow.check.user_select_value_empty": "选项不可为空",
   "core.workflow.debug.Done": "完成调试",

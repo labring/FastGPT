@@ -8,6 +8,7 @@ import type {
   CollaboratorListType,
   UpdateClbPermissionProps
 } from '@fastgpt/global/support/permission/collaborator';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 export const getSystemInitData = (bufferId?: string) =>
   GET<GetSystemInitDataResponse>('/common/system/getInitData', {
@@ -33,8 +34,18 @@ export const updateModelCollaborators = (
   props: UpdateClbPermissionProps & { modelIds: string[] }
 ) => POST('/proApi/system/model/collaborator/update', props);
 
-export const getUserModelCatalog = (version?: string) =>
-  GET<GetModelCatalogResponse>('/core/ai/model/catalog', { version }, { deduplicate: true });
+export const getUserModelCatalog = ({
+  version,
+  outLinkAuthData
+}: {
+  version?: string;
+  outLinkAuthData?: OutLinkChatAuthProps;
+} = {}) =>
+  GET<GetModelCatalogResponse>(
+    '/core/ai/model/catalog',
+    { version, outLinkAuthData },
+    { deduplicate: true }
+  );
 
 /* 活动 banner */
 export const getOperationalAd = () =>

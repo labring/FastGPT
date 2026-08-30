@@ -24,7 +24,7 @@ const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: Rend
   const onChangeModel = useCallback(
     (e: SettingAIDataType) => {
       for (const key in e) {
-        if (key === NodeInputKeyEnum.aiModel) {
+        if (key === NodeInputKeyEnum.aiModelId) {
           setDefaultModel(e[key]);
           const modelIdInput = inputs.find((input) => input.key === NodeInputKeyEnum.aiModelId);
           if (modelIdInput) {
@@ -134,7 +134,7 @@ const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: Rend
 
   const llmModelData: SettingAIDataType = useMemoEnhance(
     () => ({
-      model,
+      modelId: model,
       maxToken: inputs.find((input) => input.key === NodeInputKeyEnum.aiChatMaxToken)?.value,
       temperature: inputs.find((input) => input.key === NodeInputKeyEnum.aiChatTemperature)?.value,
       isResponseAnswerText: inputs.find(
@@ -168,7 +168,6 @@ const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: Rend
     <SettingLLMModel
       defaultData={llmModelData}
       onChange={onChangeModel}
-      valueField="modelId"
       {...settingLLMModelProps}
     />
   );

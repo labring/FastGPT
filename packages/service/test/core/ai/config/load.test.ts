@@ -222,6 +222,45 @@ describe('loadSystemModels', () => {
     ]);
   });
 
+  it('orders active built-in models by the plugin array instead of MongoDB order', async () => {
+    const pluginModels = [
+      {
+        type: ModelTypeEnum.llm,
+        provider: 'OpenAI',
+        model: 'plugin-first',
+        name: 'Plugin first',
+        isActive: true,
+        config: { maxContext: 128000, maxResponse: 32000, quoteMaxToken: 100000 }
+      },
+      {
+        type: ModelTypeEnum.llm,
+        provider: 'OpenAI',
+        model: 'plugin-second',
+        name: 'Plugin second',
+        isActive: true,
+        config: { maxContext: 128000, maxResponse: 32000, quoteMaxToken: 100000 }
+      }
+    ];
+    await MongoAIModel.create([
+      { ...pluginModels[1], scope: 'system' },
+      { ...pluginModels[0], scope: 'system' },
+      {
+        ...pluginModels[0],
+        model: 'custom-model',
+        name: 'Custom model',
+        scope: 'system'
+      }
+    ]);
+
+    await loadInstalledModels({ pluginDocuments: pluginModels });
+
+    expect(global.systemActiveModelList.map((model) => model.model)).toEqual([
+      'plugin-first',
+      'plugin-second',
+      'custom-model'
+    ]);
+  });
+
   it('loads configured system defaults from ai_default_models', async () => {
     const model = await MongoAIModel.create({
       type: ModelTypeEnum.llm,

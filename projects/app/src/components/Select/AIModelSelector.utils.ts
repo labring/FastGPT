@@ -1,41 +1,31 @@
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 
 /**
- * 同时识别稳定 modelId 与旧 model 值，并把结果归一化为选择器约定的输出字段。
- * 优先匹配 valueField，避免某个模型的 model 与另一个模型的 modelId 撞值时产生歧义。
+ * 同时识别稳定 modelId 与旧 model 值，并统一归一化为 modelId。
+ * modelId 优先，避免某个模型的 model 与另一个模型的 modelId 撞值时产生歧义。
  */
 export const resolveModelSelectorSelection = <
   T extends Pick<MyModelItemType, 'modelId' | 'model'>
 >({
   models,
-  value,
-  valueField
+  value
 }: {
   models: T[];
   value: string;
-  valueField: 'modelId' | 'model';
 }) => {
   if (!value) return;
 
-  const fallbackField = valueField === 'modelId' ? 'model' : 'modelId';
   const model =
-    models.find((item) => item[valueField] === value) ??
-    models.find((item) => item[fallbackField] === value);
+    models.find((item) => item.modelId === value) ?? models.find((item) => item.model === value);
   if (!model) return;
 
-  const normalizedValue = model[valueField];
+  const normalizedValue = model.modelId;
   return {
     model,
     normalizedValue,
     shouldNormalize: normalizedValue !== value
   };
 };
-
-/** 只有明确使用 modelId 且值非空时，才可调用内部单模型接口。 */
-export const getModelSelectorModelId = (
-  value: string,
-  valueField: 'modelId' | 'model'
-): string | undefined => (valueField === 'modelId' && value.length > 0 ? value : undefined);
 
 /** 判断模型是否落在调用方传入的兼容白名单中；兼容白名单可同时使用 modelId 或旧 model。 */
 export const isModelAllowedByValues = (

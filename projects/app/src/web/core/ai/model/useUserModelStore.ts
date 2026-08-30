@@ -20,6 +20,7 @@ import {
   type GetModelCatalogResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import { getUserModelCatalog } from '@/web/common/system/api';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 const MODEL_CATALOG_CACHE_PREFIX = 'fastgpt:model-catalog:v1:';
 const inflightCatalogRequests = new Map<string, { token: object; request: Promise<void> }>();
@@ -47,13 +48,12 @@ const emptyProviderMap = (): Record<langType, Record<string, ModelProviderItemTy
   'zh-CN': {},
   'zh-Hant': {}
 });
-const getCacheKey = (teamId: string, tmbId: string) =>
-  `${MODEL_CATALOG_CACHE_PREFIX}${teamId}:${tmbId}`;
+const getCacheKey = (identity: string) => `${MODEL_CATALOG_CACHE_PREFIX}${identity}`;
 
-const readCache = (teamId: string, tmbId: string): CatalogCache | undefined => {
+const readCache = (identity: string): CatalogCache | undefined => {
   if (typeof window === 'undefined') return;
   try {
-    const raw = JSON.parse(localStorage.getItem(getCacheKey(teamId, tmbId)) || '') as CatalogCache;
+    const raw = JSON.parse(localStorage.getItem(getCacheKey(identity)) || '') as CatalogCache;
     const parsed = GetModelCatalogResponseSchema.safeParse({
       version: raw.version,
       data: raw
@@ -66,15 +66,20 @@ const readCache = (teamId: string, tmbId: string): CatalogCache | undefined => {
   }
 };
 
-const writeCache = (teamId: string, tmbId: string, cache: CatalogCache) => {
+const writeCache = (identity: string, cache: CatalogCache) => {
   try {
-    localStorage.setItem(getCacheKey(teamId, tmbId), JSON.stringify(cache));
+    localStorage.setItem(getCacheKey(identity), JSON.stringify(cache));
   } catch (error) {
     console.error('Failed to persist model catalog', error);
   }
 };
 
+type LoadModelCatalogProps =
+  | { teamId: string; tmbId: string; outLinkAuthData?: never; force?: boolean }
+  | { teamId?: never; tmbId?: never; outLinkAuthData: OutLinkChatAuthProps; force?: boolean };
+
 type UserModelStoreState = {
+  loginGeneration: number;
   identity?: string;
   version?: string;
   loading: boolean;
@@ -85,14 +90,14 @@ type UserModelStoreState = {
   defaultModels: DefaultModels;
   modelProviders: Record<langType, ModelProviderItemType[]>;
   modelProviderMap: Record<langType, Record<string, ModelProviderItemType>>;
-  loadModelCatalog: (props: { teamId: string; tmbId: string; force?: boolean }) => Promise<void>;
+  loadModelCatalog: (props: LoadModelCatalogProps) => Promise<void>;
   clearMemory: () => void;
   clearAllPersistedCaches: () => void;
   getModelProvider: (provider?: string, language?: string) => ModelProviderItemType;
   getModelProviders: (language?: string) => ModelProviderItemType[];
 };
 
-/** 当前成员模型目录的唯一客户端数据源。持久缓存严格按 teamId+tmbId 隔离。 */
+/** 登录成员与外链运行身份模型目录的唯一客户端数据源；仅登录成员目录会持久化。 */
 export const useUserModelStore = create<UserModelStoreState>()(
   devtools(
     immer((set, get) => {
@@ -117,6 +122,7 @@ export const useUserModelStore = create<UserModelStoreState>()(
       };
 
       return {
+        loginGeneration: 0,
         identity: undefined,
         version: undefined,
         loading: false,
@@ -127,8 +133,12 @@ export const useUserModelStore = create<UserModelStoreState>()(
         defaultModels: {},
         modelProviders: emptyProviderList(),
         modelProviderMap: emptyProviderMap(),
-        loadModelCatalog({ teamId, tmbId, force = false }) {
-          const identity = `${teamId}:${tmbId}`;
+        loadModelCatalog(props) {
+          const force = props.force ?? false;
+          const outLinkAuthData = props.outLinkAuthData;
+          const identity = outLinkAuthData
+            ? `outlink:${outLinkAuthData.shareId}`
+            : `${props.teamId}:${props.tmbId}`;
           const inflightRequest = inflightCatalogRequests.get(identity);
           if (inflightRequest && get().identity === identity) return inflightRequest.request;
 
@@ -139,8 +149,11 @@ export const useUserModelStore = create<UserModelStoreState>()(
               !force && currentState.identity === identity && currentState.loaded
                 ? currentState.version
                 : undefined;
+            // 外链凭证可能被撤销或更换，禁止从 localStorage 恢复旧权限下的目录。
             const cached =
-              currentVersion === undefined && !force ? readCache(teamId, tmbId) : undefined;
+              !outLinkAuthData && currentVersion === undefined && !force
+                ? readCache(identity)
+                : undefined;
             if (cached && (currentState.identity !== identity || !currentState.loaded)) {
               applyCatalog({ identity, cache: cached });
             }
@@ -162,7 +175,10 @@ export const useUserModelStore = create<UserModelStoreState>()(
             });
 
             try {
-              const response = await getUserModelCatalog(currentVersion ?? cached?.version);
+              const response = await getUserModelCatalog({
+                version: currentVersion ?? cached?.version,
+                outLinkAuthData
+              });
               // 身份或同身份请求代次发生变化时丢弃旧响应，防止切换成员后串写或覆盖新请求。
               if (
                 get().identity !== identity ||
@@ -173,7 +189,7 @@ export const useUserModelStore = create<UserModelStoreState>()(
               if (response.data) {
                 const nextCache = { ...response.data, version: response.version };
                 applyCatalog({ identity, cache: nextCache });
-                writeCache(teamId, tmbId, nextCache);
+                if (!outLinkAuthData) writeCache(identity, nextCache);
               } else if (get().loaded) {
                 set((state) => {
                   state.version = response.version;
@@ -183,6 +199,25 @@ export const useUserModelStore = create<UserModelStoreState>()(
               } else {
                 throw new Error('Model catalog returned no data for an empty cache');
               }
+            } catch (error) {
+              if (
+                outLinkAuthData &&
+                get().identity === identity &&
+                inflightCatalogRequests.get(identity)?.token === requestToken
+              ) {
+                // 外链失效后不能继续展示本次页面内曾加载的权限目录。
+                set((state) => {
+                  state.version = undefined;
+                  state.loaded = false;
+                  state.modelList = [];
+                  state.modelMap = {};
+                  state.defaultModelIds = {};
+                  state.defaultModels = {};
+                  state.modelProviders = emptyProviderList();
+                  state.modelProviderMap = emptyProviderMap();
+                });
+              }
+              throw error;
             } finally {
               const isCurrentRequest =
                 inflightCatalogRequests.get(identity)?.token === requestToken;
@@ -224,6 +259,9 @@ export const useUserModelStore = create<UserModelStoreState>()(
               });
           }
           get().clearMemory();
+          set((state) => {
+            state.loginGeneration += 1;
+          });
         },
         getModelProvider(provider, language = 'en') {
           return getModelProviderFromCache({ cache: get().modelProviderMap, provider, language });

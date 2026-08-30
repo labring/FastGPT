@@ -185,7 +185,6 @@ const CreateModal = ({
             <Box w={['100%', '300px']}>
               <AIModelSelector
                 modelType={ModelTypeEnum.embedding}
-                valueField="modelId"
                 w={['100%', '300px']}
                 value={vectorModelId}
                 list={filterNotHiddenVectorModelList.map((item) => ({
@@ -219,7 +218,6 @@ const CreateModal = ({
             <Box w={['100%', '300px']}>
               <AIModelSelector
                 modelType={ModelTypeEnum.llm}
-                valueField="modelId"
                 w={['100%', '300px']}
                 value={agentModelId}
                 list={llmModelList.map((item) => ({
@@ -254,7 +252,6 @@ const CreateModal = ({
             <Box w={['100%', '300px']}>
               <AIModelSelector
                 modelType={ModelTypeEnum.llm}
-                valueField="modelId"
                 w={['100%', '300px']}
                 value={vlmModelId}
                 list={vllmModelList.map((item) => ({

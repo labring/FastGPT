@@ -126,7 +126,7 @@ const AIChatSettingsModal = ({
   const { handleSubmit, getValues, setValue, watch, register } = useForm<SettingAIDataType>({
     defaultValues: defaultData
   });
-  const model = watch('model');
+  const modelId = watch('modelId');
   const reasoning = watch(NodeInputKeyEnum.aiChatReasoning);
   const reasoningEffort = watch(NodeInputKeyEnum.aiChatReasoningEffort);
   const showResponseAnswerText = watch(NodeInputKeyEnum.aiChatIsResponseText) !== undefined;
@@ -142,14 +142,14 @@ const AIChatSettingsModal = ({
   const extractFiles = watch(NodeInputKeyEnum.aiChatExtractFiles);
 
   const data = useMemo(() => {
-    const modelData = llmModels.find((item) => item.model === model || item.modelId === model);
+    const modelData = llmModels.find((item) => item.modelId === modelId || item.model === modelId);
     const support = getLLMSupportParams(modelData);
 
     return {
       selectedModel: modelData,
       supportParams: support
     };
-  }, [llmModels, model]);
+  }, [llmModels, modelId]);
   const selectedModel = data.selectedModel;
   const supportParams = data.supportParams;
   const multimodalOptions = useMemo(
@@ -207,9 +207,9 @@ const AIChatSettingsModal = ({
   }, [selectedModel?.config.maxResponse]);
 
   const onChangeModel = (e: string) => {
-    setValue('model', e);
+    setValue('modelId', e);
 
-    const modelData = llmModels.find((item) => item.model === e || item.modelId === e);
+    const modelData = llmModels.find((item) => item.modelId === e);
     if (modelData) {
       setValue('maxToken', modelData.config.maxResponse / 2);
       if (showMultimodalSetting) {
@@ -273,10 +273,9 @@ const AIChatSettingsModal = ({
             <AIModelSelector
               width={'100%'}
               h={'36px'}
-              valueField="model"
-              value={model}
+              value={modelId}
               list={llmModels.map((item) => ({
-                value: item.model,
+                value: item.modelId,
                 label: item.name
               }))}
               onChange={onChangeModel}

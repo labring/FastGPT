@@ -16,13 +16,11 @@ import { useForm } from 'react-hook-form';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import SelectAiModel from '@/components/Select/AIModelSelector';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -153,8 +151,9 @@ const DatasetParamsModal = ({
 
   useEffect(() => {
     if (datasetSearchUsingCfrForm) {
-      !queryExtensionModelId &&
+      if (!queryExtensionModelId) {
         setValue('datasetSearchExtensionModelId', defaultModels.llm?.modelId);
+      }
     } else {
       setValue('datasetSearchExtensionModelId', '');
     }
@@ -319,13 +318,9 @@ const DatasetParamsModal = ({
                         h={'36px'}
                         value={reRankModelIdWatch || rerankModel}
                         list={reRankModelSelectList}
-                        valueField={reRankModelIdWatch ? 'modelId' : 'model'}
-                        onChange={(val) => {
-                          const modelId = reRankModelIdWatch
-                            ? val
-                            : reRankModelList.find((item) => item.model === val)?.modelId;
-                          setValue(NodeInputKeyEnum.datasetSearchRerankModelId, modelId || '');
-                        }}
+                        onChange={(modelId) =>
+                          setValue(NodeInputKeyEnum.datasetSearchRerankModelId, modelId)
+                        }
                       />
                     </Box>
                   </HStack>
@@ -413,13 +408,7 @@ const DatasetParamsModal = ({
                       width={'100%'}
                       value={queryExtensionModelId || datasetSearchExtensionModel}
                       list={queryExtensionModelList}
-                      valueField={queryExtensionModelId ? 'modelId' : 'model'}
-                      onChange={(val: any) => {
-                        const modelId = queryExtensionModelId
-                          ? val
-                          : llmModelList.find((item) => item.model === val)?.modelId;
-                        setValue('datasetSearchExtensionModelId', modelId || '');
-                      }}
+                      onChange={(modelId) => setValue('datasetSearchExtensionModelId', modelId)}
                     />
                   </Box>
                 </Flex>
