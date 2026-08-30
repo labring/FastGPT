@@ -37,7 +37,7 @@ export async function registerNodeInstrumentation() {
       { serviceEnv },
       { InitialErrorEnum },
       { validateAgentSandboxProxyEnv },
-      { getSystemResourceInfo }
+      { getReadableSystemResourceInfo }
     ] = await Promise.all([
       import('@fastgpt/service/common/mongo/init'),
       import('@fastgpt/service/common/mongo/index'),
@@ -66,7 +66,7 @@ export async function registerNodeInstrumentation() {
       import('@fastgpt/service/common/system/resource')
     ]);
 
-    console.log('System resources detected', getSystemResourceInfo());
+    console.log('System resources detected', getReadableSystemResourceInfo());
 
     await Promise.all([
       runInitializationStep({ step: 'configure-tracing', action: () => configureTracing() }),

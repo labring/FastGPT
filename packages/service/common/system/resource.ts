@@ -1,4 +1,5 @@
 import { availableParallelism, cpus, totalmem } from 'node:os';
+import { formatFileSize } from '@fastgpt/global/common/file/tools';
 
 export type SystemCpuInfo = {
   availableCpuCount: number;
@@ -14,6 +15,16 @@ export type SystemMemoryInfo = {
 export type SystemResourceInfo = {
   cpu: SystemCpuInfo;
   memory: SystemMemoryInfo;
+};
+
+export type ReadableSystemResourceInfo = {
+  cpu: {
+    available: number;
+  };
+  memory: {
+    limit: string;
+    available: string;
+  };
 };
 
 /**
@@ -70,3 +81,18 @@ export const getSystemResourceInfo = (): SystemResourceInfo => ({
   cpu: getSystemCpuInfo(),
   memory: getSystemMemoryInfo()
 });
+
+/** 获取适合启动日志展示的系统资源快照，不改变调度使用的原始字节值。 */
+export const getReadableSystemResourceInfo = (): ReadableSystemResourceInfo => {
+  const { cpu, memory } = getSystemResourceInfo();
+
+  return {
+    cpu: {
+      available: cpu.availableCpuCount
+    },
+    memory: {
+      limit: formatFileSize(memory.constrainedMemoryBytes),
+      available: formatFileSize(memory.availableMemoryBytes)
+    }
+  };
+};

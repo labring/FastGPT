@@ -10,7 +10,7 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import { ChatTypeEnum } from '../ChatBox/constants';
-import type { VariableItemType } from '@fastgpt/global/core/app/type';
+import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 
 const VariablePopover = ({ chatType }: { chatType: ChatTypeEnum }) => {
   const { t } = useTranslation();

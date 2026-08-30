@@ -8,7 +8,8 @@ import {
 } from './constants';
 import { FlowNodeTypeEnum } from '../workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
-import { AppSchemaTypeSchema, VariableItemTypeSchema } from '../app/type';
+import { AppSchemaTypeSchema } from '../app/type';
+import { VariableItemTypeSchema } from '../app/variable/type';
 import { DispatchNodeResponseSchema } from '../workflow/runtime/type';
 import { WorkflowInteractiveResponseTypeSchema } from '../workflow/template/system/interactive/type';
 import { FlowNodeInputItemTypeSchema } from '../workflow/type/io';

@@ -20,13 +20,8 @@ import {
   type ReferenceItemValueType
 } from './type/io';
 import type { NodeToolConfigType, StoreNodeItemType } from './type/node';
-import {
-  AppChatConfigTypeSchema,
-  type VariableItemType,
-  type AppChatConfigType,
-  type AppSchemaType,
-  type AppWelcomeConfigType
-} from '../app/type';
+import type { AppChatConfigType, AppSchemaType, AppWelcomeConfigType } from '../app/type';
+import type { VariableItemType } from '../app/variable/type';
 import { normalizeAndParseVariableList } from '../app/variable/utils';
 import { type EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
 import {
@@ -106,9 +101,9 @@ export const isAppSandboxEnabledInNodes = (nodes: StoreNodeItemType[]) =>
   );
 
 /**
- * 合并应用配置与会话快照，并返回通过 Zod 校验的运行时对话配置。
+ * 合并应用配置与会话快照，并返回运行时对话配置。
  *
- * 会话变量会在这里统一补齐 valueType；读取历史会话和保存新快照共用该边界。
+ * 会话变量会在这里统一补齐 valueType 并通过变量 schema 校验；读取历史会话和保存新快照共用该边界。
  */
 export const getAppChatConfig = ({
   chatConfig,
@@ -127,7 +122,7 @@ export const getAppChatConfig = ({
     welcomeQuestions: chatConfig?.welcomeConfig?.welcomeQuestions
   };
 
-  const config = {
+  const config: AppChatConfigType = {
     questionGuide: defaultQGConfig,
     ttsConfig: defaultTTSConfig,
     whisperConfig: defaultWhisperConfig,
@@ -143,7 +138,7 @@ export const getAppChatConfig = ({
     config.scheduledTriggerConfig = undefined;
   }
 
-  return AppChatConfigTypeSchema.parse(config);
+  return config;
 };
 
 export const getOrInitModuleInputValue = (input: FlowNodeInputItemType) => {

@@ -1,4 +1,4 @@
-import type { VariableItemType } from '@fastgpt/global/core/app/type';
+import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import type { ChatFileStoreValue } from '@fastgpt/global/core/chat/type';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import type { ChatDispatchProps, WorkflowVariableStateLike } from '../../types/runtime';

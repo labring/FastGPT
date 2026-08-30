@@ -153,6 +153,7 @@ describe('worker/utils WorkerPool', () => {
     pools.length = 0;
     cwdSpy.mockRestore();
     fs.rmSync(tmpDir, { recursive: true, force: true });
+    vi.useRealTimers();
   });
 
   it('处理 worker 通用 uploadFile 中间事件，不提前结束任务', async () => {
@@ -561,6 +562,7 @@ describe('worker/utils WorkerPool', () => {
   });
 
   it('执行超时销毁 worker 并释放预留资源', async () => {
+    vi.useFakeTimers();
     const logger = createLogger();
     const pool = createPool<
       { simple: true; payload: string; delayMs: number; resourceBytes: number },
@@ -568,7 +570,7 @@ describe('worker/utils WorkerPool', () => {
     >({
       name: WorkerNameEnum.readFile,
       maxReservedThreads: 1,
-      taskTimeoutMs: 20,
+      taskTimeoutMs: 1000,
       logger,
       resourcePolicy: {
         getTaskResourceBytes: (data) => data.resourceBytes,
@@ -580,22 +582,30 @@ describe('worker/utils WorkerPool', () => {
       }
     });
 
-    await expect(
-      pool.run({ simple: true, payload: 'slow', delayMs: 100, resourceBytes: 60 })
+    const taskResult = expect(
+      pool.run({ simple: true, payload: 'slow', delayMs: 10_000, resourceBytes: 60 })
     ).rejects.toMatchObject({ name: 'WorkerTaskExecutionTimeoutError' });
-    expect(pool.reservedResourceBytes).toBe(0);
-    expect(pool.workerQueue).toHaveLength(0);
-    expect(logger.error).toHaveBeenCalledWith(
-      'Worker task execution timeout',
-      expect.objectContaining({ eventName: 'worker.task.execution_timeout' })
-    );
+
+    try {
+      await vi.advanceTimersByTimeAsync(1000);
+      await taskResult;
+      expect(pool.reservedResourceBytes).toBe(0);
+      expect(pool.workerQueue).toHaveLength(0);
+      expect(logger.error).toHaveBeenCalledWith(
+        'Worker task execution timeout',
+        expect.objectContaining({ eventName: 'worker.task.execution_timeout' })
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('延迟物化期间执行超时会 abort source 并释放增长后的软预留', async () => {
+    vi.useFakeTimers();
     const pool = createPool<{ loadFile: true; resourceBytes: number }, never>({
       name: WorkerNameEnum.readFile,
       maxReservedThreads: 1,
-      taskTimeoutMs: 20,
+      taskTimeoutMs: 1000,
       resourcePolicy: {
         getTaskResourceBytes: (data) => data.resourceBytes,
         getResourceSnapshot: () => ({
@@ -606,21 +616,37 @@ describe('worker/utils WorkerPool', () => {
       }
     });
     let handlerSignal: AbortSignal | undefined;
+    let markHandlerStarted: (() => void) | undefined;
+    const handlerStarted = new Promise<void>((resolve) => {
+      markHandlerStarted = resolve;
+    });
 
-    await expect(
-      pool.run({ loadFile: true, resourceBytes: 10 }, undefined, {
-        loadFile: (controller, signal) => {
-          handlerSignal = signal;
-          controller.updateResourceBytes(60);
-          return new Promise((_, reject) => {
-            signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
-          });
-        }
-      })
-    ).rejects.toMatchObject({ name: 'WorkerTaskExecutionTimeoutError' });
-    expect(handlerSignal?.aborted).toBe(true);
-    expect(pool.reservedResourceBytes).toBe(0);
-    expect(pool.workerQueue).toHaveLength(0);
+    const task = pool.run({ loadFile: true, resourceBytes: 10 }, undefined, {
+      loadFile: (controller, signal) => {
+        handlerSignal = signal;
+        controller.updateResourceBytes(60);
+        markHandlerStarted?.();
+        return new Promise((_, reject) => {
+          signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+        });
+      }
+    });
+    const taskResult = expect(task).rejects.toMatchObject({
+      name: 'WorkerTaskExecutionTimeoutError'
+    });
+
+    try {
+      // 先确认 worker 已请求物化，再推进执行计时器，避免把冷启动耗时误当成被测行为。
+      await handlerStarted;
+      expect(pool.reservedResourceBytes).toBe(60);
+      await vi.advanceTimersByTimeAsync(1000);
+      await taskResult;
+      expect(handlerSignal?.aborted).toBe(true);
+      expect(pool.reservedResourceBytes).toBe(0);
+      expect(pool.workerQueue).toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('worker 提前退出时立即拒绝任务并释放槽位', async () => {
@@ -673,6 +699,7 @@ describe('worker/utils WorkerPool', () => {
   });
 
   it('回收超过保留数量的空闲 worker，只留下一个 warm worker', async () => {
+    vi.useFakeTimers();
     const pool = createPool<
       { simple: true; payload: string; delayMs: number },
       { payload: string }
@@ -683,13 +710,17 @@ describe('worker/utils WorkerPool', () => {
       minIdleWorkers: 1
     });
 
-    await Promise.all(
-      ['a', 'b', 'c'].map((payload) => pool.run({ simple: true, payload, delayMs: 20 }))
-    );
-    expect(pool.workerQueue).toHaveLength(3);
+    try {
+      await Promise.all(
+        ['a', 'b', 'c'].map((payload) => pool.run({ simple: true, payload, delayMs: 20 }))
+      );
+      expect(pool.workerQueue).toHaveLength(3);
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(pool.workerQueue).toHaveLength(1);
-    expect(pool.workerQueue[0].status).toBe('idle');
+      await vi.advanceTimersByTimeAsync(20);
+      expect(pool.workerQueue).toHaveLength(1);
+      expect(pool.workerQueue[0].status).toBe('idle');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

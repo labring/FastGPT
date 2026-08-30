@@ -8,8 +8,12 @@ const osMock = vi.hoisted(() => ({
 
 vi.mock('node:os', () => osMock);
 
-const { getSystemCpuInfo, getSystemMemoryInfo, getSystemResourceInfo } =
-  await import('@fastgpt/service/common/system/resource');
+const {
+  getReadableSystemResourceInfo,
+  getSystemCpuInfo,
+  getSystemMemoryInfo,
+  getSystemResourceInfo
+} = await import('@fastgpt/service/common/system/resource');
 
 describe('common/system/resource', () => {
   beforeEach(() => {
@@ -34,6 +38,18 @@ describe('common/system/resource', () => {
         totalMemoryBytes: 16 * 1024 ** 3,
         constrainedMemoryBytes: 4 * 1024 ** 3,
         availableMemoryBytes: 3 * 1024 ** 3
+      }
+    });
+  });
+
+  it('返回适合启动日志展示的可读资源快照', () => {
+    expect(getReadableSystemResourceInfo()).toEqual({
+      cpu: {
+        available: 4
+      },
+      memory: {
+        limit: '4 GB',
+        available: '3 GB'
       }
     });
   });

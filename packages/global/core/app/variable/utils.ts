@@ -1,4 +1,4 @@
-import { type VariableItemType, VariableItemTypeSchema } from '../type';
+import { type VariableItemType, VariableItemTypeSchema } from './type';
 import {
   type VariableInputEnum,
   variableMap,
