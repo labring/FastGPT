@@ -31,7 +31,6 @@ export const getSafeEnv = () => {
     XLSX_PARSE_MAX_COLUMNS: String(serviceEnv.XLSX_PARSE_MAX_COLUMNS),
     XLSX_PARSE_MAX_CELLS: String(serviceEnv.XLSX_PARSE_MAX_CELLS),
     XLSX_PARSE_MAX_MERGED_CELLS: String(serviceEnv.XLSX_PARSE_MAX_MERGED_CELLS),
-    PARSE_FILE_WORKER_MEMORY_LIMIT_MB: String(serviceEnv.PARSE_FILE_WORKER_MEMORY_LIMIT_MB),
     NODE_ENV: process.env.NODE_ENV,
     HTTP_PROXY: process.env.HTTP_PROXY,
     HTTPS_PROXY: process.env.HTTPS_PROXY,
@@ -39,22 +38,15 @@ export const getSafeEnv = () => {
   };
 };
 
-const createNodeWorker = (workerPath: string, name: `${WorkerNameEnum}`) => {
+const createNodeWorker = (workerPath: string) => {
   return new Worker(workerPath, {
-    env: getSafeEnv(),
-    // 文件解析依赖会构造大量 JS 对象；限制 V8 老生代，XLSX 预检也复用该预算限制解压量。
-    resourceLimits:
-      name === WorkerNameEnum.readFile
-        ? {
-            maxOldGenerationSizeMb: serviceEnv.PARSE_FILE_WORKER_MEMORY_LIMIT_MB
-          }
-        : undefined
+    env: getSafeEnv()
   });
 };
 
 export const getWorker = (name: `${WorkerNameEnum}`) => {
   const workerPath = path.join(process.cwd(), 'worker', `${name}.js`);
-  return createNodeWorker(workerPath, name);
+  return createNodeWorker(workerPath);
 };
 
 type WorkerTaskLogContext = {
@@ -146,6 +138,8 @@ export type WorkerPoolResourceSnapshot = {
 export type WorkerPoolResourcePolicy<Props> = {
   getTaskResourceBytes: (data: Props) => number;
   getResourceSnapshot: () => WorkerPoolResourceSnapshot;
+  /** 可选的额外准入判断，用于无法按任务大小估算、只检查当前系统余量的轻量任务。 */
+  canRunTask?: (props: { data: Props; resourceSnapshot: WorkerPoolResourceSnapshot }) => boolean;
   queueTimeoutMs: number;
   resourcePollIntervalMs?: number;
 };
@@ -416,18 +410,25 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
   }
 
   private hasResourceCapacity(
-    task: Pick<WorkerRunTaskType<Props>, 'resourceBytes'>,
+    task: Pick<WorkerRunTaskType<Props>, 'data' | 'resourceBytes'>,
     resourceSnapshot?: WorkerPoolResourceSnapshot
   ) {
     if (!this.resourcePolicy) return true;
 
+    const currentResourceSnapshot = resourceSnapshot ?? this.resourcePolicy.getResourceSnapshot();
+    if (
+      this.resourcePolicy.canRunTask &&
+      !this.resourcePolicy.canRunTask({
+        data: task.data,
+        resourceSnapshot: currentResourceSnapshot
+      })
+    ) {
+      return false;
+    }
+
     return (
       task.resourceBytes <=
-      Math.max(
-        0,
-        (resourceSnapshot ?? this.resourcePolicy.getResourceSnapshot()).availableResourceBytes -
-          this.reservedResourceBytes
-      )
+      Math.max(0, currentResourceSnapshot.availableResourceBytes - this.reservedResourceBytes)
     );
   }
 

@@ -45,11 +45,13 @@ For an existing Milvus deployment, verify that the old vector data is still avai
 
 Follow [Milvus BM25 full-text search configuration and migration](/en/self-host/milvus-bm25) for backups, the Milvus image upgrade, dry runs, resumable migration, validation, old-collection cleanup, and rollback.
 
-### 3. Remove the file parsing Worker count setting
+### 3. Remove the Worker concurrency settings
 
-V4.16.2 removes `PARSE_FILE_WORKERS`. When upgrading, delete this variable from your `.env` file or Docker Compose `environment` section. No replacement variable is required.
+V4.16.2 removes `PARSE_FILE_WORKERS`, `PARSE_FILE_WORKER_MEMORY_LIMIT_MB`, `HTML_TO_MARKDOWN_WORKERS`, and `TEXT_TO_CHUNKS_WORKERS`. When upgrading, delete these variables from your `.env` file or Docker Compose `environment` section. No replacement variables are required.
 
-FastGPT now sets the file parsing Worker hard limit from the CPU parallelism detected by Node.js. This accounts for container CPU quotas and process affinity and always allows at least one Worker. The memory-aware file parsing scheduler may further reduce the number of tasks that run concurrently. `PARSE_FILE_WORKER_MEMORY_LIMIT_MB` remains supported and controls both the V8 old-generation memory limit for each file parsing Worker and the maximum total uncompressed size of an XLSX file.
+FastGPT now sets the file parsing Worker hard limit from the CPU parallelism detected by Node.js. This accounts for container CPU quotas and process affinity and always allows at least one Worker. The memory-aware file parsing scheduler may further reduce the number of tasks that run concurrently. File parsing Workers no longer use a fixed V8 old-generation memory limit; the maximum total uncompressed size of an XLSX file is calculated dynamically from that file's parsing memory estimate.
+
+The hard limit for HTML-to-Markdown and text-chunking Workers is the smaller of the available CPU parallelism and 5. Before starting a task, FastGPT checks whether any schedulable memory remains outside the system safety reserve. If no memory remains, the task stays queued. FastGPT retries immediately when a task finishes, then checks every 30 seconds while memory remains insufficient, up to the 30-minute queue limit. Workers idle for more than 60 seconds are reclaimed, with at most one retained long-term.
 
 ## 🚀 New
 

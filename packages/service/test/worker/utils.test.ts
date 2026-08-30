@@ -7,7 +7,6 @@ import type { WorkerPoolLogger } from '@fastgpt/service/worker/utils';
 const { mockEnv } = vi.hoisted(() => ({
   mockEnv: {
     MAX_HTML_TRANSFORM_CHARS: 1_000_000,
-    PARSE_FILE_WORKER_MEMORY_LIMIT_MB: 640,
     XLSX_PARSE_MAX_ROWS: 100_000,
     XLSX_PARSE_MAX_COLUMNS: 1_000,
     XLSX_PARSE_MAX_CELLS: 1_000_000,
@@ -103,8 +102,7 @@ describe('worker/utils getSafeEnv', () => {
       XLSX_PARSE_MAX_ROWS: '100000',
       XLSX_PARSE_MAX_COLUMNS: '1000',
       XLSX_PARSE_MAX_CELLS: '1000000',
-      XLSX_PARSE_MAX_MERGED_CELLS: '1000000',
-      PARSE_FILE_WORKER_MEMORY_LIMIT_MB: '640'
+      XLSX_PARSE_MAX_MERGED_CELLS: '1000000'
     });
   });
 });
@@ -177,7 +175,6 @@ describe('worker/utils WorkerPool', () => {
       key: 'parsed/image.png'
     });
     expect(pool.workerQueue[0].status).toBe('idle');
-    expect(pool.workerQueue[0].worker.resourceLimits.maxOldGenerationSizeMb).toBe(640);
   });
 
   it('uploadFile handler 失败时把错误回传给 worker', async () => {
@@ -328,6 +325,32 @@ describe('worker/utils WorkerPool', () => {
         memoryUsedRatio: 0.8
       })
     );
+  });
+
+  it('额外内存准入不满足时继续排队，余量恢复后自动执行', async () => {
+    let availableResourceBytes = 0;
+    const pool = createPool<{ simple: true; payload: string }, { payload: string }>({
+      name: WorkerNameEnum.readFile,
+      maxReservedThreads: 1,
+      resourcePolicy: {
+        getTaskResourceBytes: () => 0,
+        getResourceSnapshot: () => ({
+          availableResourceBytes,
+          maximumTaskResourceBytes: 100
+        }),
+        canRunTask: ({ resourceSnapshot }) => resourceSnapshot.availableResourceBytes > 0,
+        queueTimeoutMs: 1000,
+        resourcePollIntervalMs: 5
+      }
+    });
+
+    const task = pool.run({ simple: true, payload: 'scheduled' });
+    expect(pool.waitQueue).toHaveLength(1);
+    expect(pool.workerQueue).toHaveLength(0);
+
+    availableResourceBytes = 1;
+    await expect(task).resolves.toEqual({ payload: 'scheduled' });
+    expect(pool.waitQueue).toHaveLength(0);
   });
 
   it('等待队列不设置任务数量或预估资源总量上限', async () => {

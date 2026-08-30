@@ -22,6 +22,7 @@ import {
   resolveFileSourceEncoding,
   resolveFileSourceExtension
 } from '../common/file/read/source';
+import { getLightweightWorkerPoolOptions } from './lightweightResource';
 
 export const text2Chunks = async (props: SplitProps) => {
   // Test env, not run worker
@@ -31,7 +32,7 @@ export const text2Chunks = async (props: SplitProps) => {
   }
   return getWorkerController<SplitProps, SplitResponse>({
     name: WorkerNameEnum.text2Chunks,
-    maxReservedThreads: serviceEnv.TEXT_TO_CHUNKS_WORKERS,
+    ...getLightweightWorkerPoolOptions<SplitProps>(),
     taskTimeoutMs: 300000,
     maxTasksPerWorker: 100
   }).run(props);

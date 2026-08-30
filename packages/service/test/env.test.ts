@@ -4,7 +4,6 @@ const validInvokeTokenSecret = 'fastgpt_test_invoke_token_secret_32';
 
 const originalEnv = {
   SYSTEM_MAX_STRING_LENGTH_M: process.env.SYSTEM_MAX_STRING_LENGTH_M,
-  PARSE_FILE_WORKER_MEMORY_LIMIT_MB: process.env.PARSE_FILE_WORKER_MEMORY_LIMIT_MB,
   XLSX_PARSE_MAX_ROWS: process.env.XLSX_PARSE_MAX_ROWS,
   XLSX_PARSE_MAX_COLUMNS: process.env.XLSX_PARSE_MAX_COLUMNS,
   XLSX_PARSE_MAX_CELLS: process.env.XLSX_PARSE_MAX_CELLS,
@@ -49,7 +48,6 @@ const importServiceEnv = async () => {
 describe('serviceEnv', () => {
   afterEach(() => {
     vi.stubEnv('SYSTEM_MAX_STRING_LENGTH_M', originalEnv.SYSTEM_MAX_STRING_LENGTH_M);
-    vi.stubEnv('PARSE_FILE_WORKER_MEMORY_LIMIT_MB', originalEnv.PARSE_FILE_WORKER_MEMORY_LIMIT_MB);
     vi.stubEnv('XLSX_PARSE_MAX_ROWS', originalEnv.XLSX_PARSE_MAX_ROWS);
     vi.stubEnv('XLSX_PARSE_MAX_COLUMNS', originalEnv.XLSX_PARSE_MAX_COLUMNS);
     vi.stubEnv('XLSX_PARSE_MAX_CELLS', originalEnv.XLSX_PARSE_MAX_CELLS);
@@ -153,29 +151,6 @@ describe('serviceEnv', () => {
     await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
 
     vi.stubEnv('SYSTEM_MAX_STRING_LENGTH_M', 'not-a-number');
-    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
-  });
-
-  it('validates the file parsing worker memory limit during service env init', async () => {
-    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
-    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
-    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
-
-    vi.stubEnv('PARSE_FILE_WORKER_MEMORY_LIMIT_MB', undefined);
-    await expect(importServiceEnv()).resolves.toMatchObject({
-      serviceEnv: {
-        PARSE_FILE_WORKER_MEMORY_LIMIT_MB: 512
-      }
-    });
-
-    vi.stubEnv('PARSE_FILE_WORKER_MEMORY_LIMIT_MB', '768');
-    await expect(importServiceEnv()).resolves.toMatchObject({
-      serviceEnv: {
-        PARSE_FILE_WORKER_MEMORY_LIMIT_MB: 768
-      }
-    });
-
-    vi.stubEnv('PARSE_FILE_WORKER_MEMORY_LIMIT_MB', '127');
     await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
   });
 

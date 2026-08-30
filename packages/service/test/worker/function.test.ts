@@ -11,12 +11,8 @@ const { mockRun, mockGetWorkerController, mockUploadImage2S3Bucket, mockEnv } = 
     mockGetWorkerController: vi.fn(() => ({ run: mockRun })),
     mockUploadImage2S3Bucket: vi.fn(),
     mockEnv: {
-      HTML_TO_MARKDOWN_WORKERS: 10,
-      TEXT_TO_CHUNKS_WORKERS: 10,
       PARSE_FILE_TIMEOUT_SECONDS: 300
     } as {
-      HTML_TO_MARKDOWN_WORKERS: number;
-      TEXT_TO_CHUNKS_WORKERS: number;
       PARSE_FILE_TIMEOUT_SECONDS: number;
     }
   };
@@ -521,7 +517,6 @@ describe('worker/function', () => {
 
   describe('htmlToMarkdown', () => {
     afterEach(() => {
-      mockEnv.HTML_TO_MARKDOWN_WORKERS = 10;
       mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 300;
     });
 
@@ -535,9 +530,14 @@ describe('worker/function', () => {
 
       const poolCfg = mockGetWorkerController.mock.calls[0][0];
       expect(poolCfg.name).toBe(WorkerNameEnum.htmlStr2Md);
-      expect(poolCfg.maxReservedThreads).toBe(10);
+      expect(poolCfg.maxReservedThreads).toBe(Math.min(availableParallelism(), 5));
       expect(poolCfg.taskTimeoutMs).toBe(5 * 60 * 1000);
       expect(poolCfg.maxTasksPerWorker).toBe(100);
+      expect(poolCfg.resourcePolicy.queueTimeoutMs).toBe(30 * 60 * 1000);
+      expect(poolCfg.resourcePolicy.resourcePollIntervalMs).toBe(30 * 1000);
+      expect(poolCfg.resourcePolicy.getTaskResourceBytes({ html: '<h1>Title</h1>' })).toBe(0);
+      expect(poolCfg.idleWorkerTimeoutMs).toBe(60 * 1000);
+      expect(poolCfg.minIdleWorkers).toBe(1);
 
       expect(mockRun).toHaveBeenCalledWith({ html: '<h1>Title</h1>' });
     });
@@ -549,16 +549,6 @@ describe('worker/function', () => {
 
       expect(result).toBe('');
       expect(mockRun).toHaveBeenCalledWith({ html: '' });
-    });
-
-    it('HTML_TO_MARKDOWN_WORKERS 自定义值生效', async () => {
-      mockEnv.HTML_TO_MARKDOWN_WORKERS = 6;
-      mockRun.mockResolvedValueOnce({ rawText: 'ok' });
-
-      await htmlToMarkdown('<p>ok</p>');
-
-      const poolCfg = mockGetWorkerController.mock.calls[0][0];
-      expect(poolCfg.maxReservedThreads).toBe(6);
     });
   });
 });

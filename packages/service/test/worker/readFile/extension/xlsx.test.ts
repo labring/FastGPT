@@ -3,6 +3,7 @@ import JSZip from 'jszip';
 import Papa from 'papaparse';
 import XLSX from 'xlsx';
 import {
+  getXlsxParseLimits,
   readXlsxRawText,
   XLSX_PARSE_LIMITS
 } from '@fastgpt/service/worker/readFile/extension/xlsx';
@@ -24,8 +25,8 @@ describe('readXlsxRawText', () => {
     return zip.generateAsync({ type: 'nodebuffer' });
   };
 
-  it('uses the worker memory limit as the uncompressed XLSX budget', () => {
-    expect(XLSX_PARSE_LIMITS.maxUncompressedBytes).toBe(512 * 1024 * 1024);
+  it('uses the task memory estimate as the uncompressed XLSX budget', () => {
+    expect(getXlsxParseLimits(1024 * 1024).maxUncompressedBytes).toBe(134 * 1024 * 1024);
   });
 
   it('should skip empty rows when formatting xlsx content', async () => {
