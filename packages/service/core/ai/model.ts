@@ -91,6 +91,18 @@ export const getDefaultSTTModelData = (): STTSystemModelDataType =>
 
 export const getDefaultVLMModelData = () => global.systemDefaultModel.datasetImageLLM;
 
+/**
+ * 返回按模型类型索引的有效系统默认模型 ID，供 Workflow 写入边界执行默认优先回退。
+ * 默认模型已在模型配置加载阶段校验并按同类型 active 模型兜底；调用方仍需结合自己的候选列表复核。
+ */
+export const getSystemDefaultModelIds = (): Partial<Record<ModelTypeEnum, string>> => ({
+  [ModelTypeEnum.llm]: global.systemDefaultModel.llm?.modelId,
+  [ModelTypeEnum.embedding]: global.systemDefaultModel.embedding?.modelId,
+  [ModelTypeEnum.tts]: global.systemDefaultModel.tts?.modelId,
+  [ModelTypeEnum.stt]: global.systemDefaultModel.stt?.modelId,
+  [ModelTypeEnum.rerank]: global.systemDefaultModel.rerank?.modelId
+});
+
 /** 解析可用于视觉请求的规范化 LLM 配置。 */
 export const getVlmModelData = (reference: ModelReferenceType): LLMSystemModelDataType => {
   const result = getLLMModelData(reference);

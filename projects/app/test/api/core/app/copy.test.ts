@@ -2,6 +2,7 @@ import * as copyapi from '@/pages/api/core/app/copy';
 import * as createapi from '@/pages/api/core/app/create';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -132,8 +133,14 @@ describe('Copy', () => {
     expect(res4.error).toBeUndefined();
     expect(res4.code).toBe(200);
     const copiedApp = await MongoApp.findById(res4.data?.appId).lean();
+    const expectedFallbackModelId =
+      global.systemDefaultModel.llm?.modelId ??
+      global.systemActiveModelList.find((model) => model.type === ModelTypeEnum.llm)?.modelId;
     expect(copiedApp?.modules[0].inputs).toEqual([
-      expect.objectContaining({ key: NodeInputKeyEnum.aiModelId, value: '' })
+      expect.objectContaining({
+        key: NodeInputKeyEnum.aiModelId,
+        value: expectedFallbackModelId
+      })
     ]);
   });
 });

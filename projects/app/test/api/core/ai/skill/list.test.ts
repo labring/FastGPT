@@ -272,6 +272,61 @@ describe('POST /api/core/ai/skill/list', () => {
       draftApp?.modules[0].inputs.some((input) => input.key === NodeInputKeyEnum.aiModel)
     ).toBe(false);
 
+    const invalidDraftNode = createSkillNode(draftSkill);
+    invalidDraftNode.inputs.push(
+      {
+        key: NodeInputKeyEnum.aiModelId,
+        label: 'Model ID',
+        value: 'invalid-model-id',
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+        valueType: WorkflowIOValueTypeEnum.string
+      },
+      {
+        key: NodeInputKeyEnum.aiModel,
+        label: 'Legacy model',
+        value: legacyModel.model,
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    );
+    const invalidDraftSaveRes = await Call(publishHandler, {
+      auth: user,
+      query: { appId },
+      body: {
+        nodes: [invalidDraftNode],
+        edges: [],
+        chatConfig: {},
+        isPublish: false,
+        versionName: 'invalid model draft'
+      }
+    });
+    expect(invalidDraftSaveRes.code).toBe(200);
+    const invalidDraftApp = await MongoApp.findById(appId).lean();
+    expect(invalidDraftApp?.modules[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: NodeInputKeyEnum.aiModelId,
+          value: 'invalid-model-id'
+        })
+      ])
+    );
+    expect(
+      invalidDraftApp?.modules[0].inputs.some((input) => input.key === NodeInputKeyEnum.aiModel)
+    ).toBe(false);
+
+    const invalidPublishRes = await Call(publishHandler, {
+      auth: user,
+      query: { appId },
+      body: {
+        nodes: [invalidDraftNode],
+        edges: [],
+        chatConfig: {},
+        isPublish: true,
+        versionName: 'invalid model publish'
+      }
+    });
+    expect(invalidPublishRes.code).toBe(500);
+
     const draftRes = await Call<ListSkillsQuery, Record<string, never>, ListSkillsResponse>(
       handler,
       {

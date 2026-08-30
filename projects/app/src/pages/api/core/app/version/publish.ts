@@ -20,6 +20,7 @@ import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/control
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
 import { formatModels } from '@fastgpt/global/core/workflow/utils';
+import { getSystemDefaultModelIds } from '@fastgpt/service/core/ai/model';
 import {
   PublishAppBodySchema,
   PublishAppQuerySchema,
@@ -48,7 +49,8 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig,
     models: global.systemActiveModelList,
-    missingModelStrategy: 'throw'
+    defaultModelIds: getSystemDefaultModelIds(),
+    modelReferencePolicy: isPublish ? 'validate' : 'preserve'
   });
   await beforeUpdateAppFormat({
     nodes: normalizedWorkflow.nodes,

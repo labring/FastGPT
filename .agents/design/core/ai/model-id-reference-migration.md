@@ -69,7 +69,7 @@
 核心约束：
 
 1. `modelId` 一旦生成，不因模型改名、配置更新、插件重载而变化。
-2. 静态 `modelId` 只允许写入非空稳定 ID 字符串，不能写入未解析的 `model/name`；Workflow 引用类型或模板表达式允许原样保存在 `modelId` input 中，由运行时解析为实际 modelId。
+2. 已发布 Workflow 的静态 `modelId` 只允许写入非空稳定 ID 字符串；草稿保存允许把暂时无法解析的静态值原样保存在 canonical `modelId` 中，等待用户修复后再发布。Workflow 引用类型或模板表达式允许原样保存在 `modelId` input 中，由运行时解析为实际 modelId。
 3. 显式传入无效模型时必须报不存在或不可用，不能回退默认模型。
 4. 只有参数确实缺省、且业务定义允许默认值时，才显式调用默认模型 getter。
 5. provider 请求仍发送 `modelData.model`；不能把 Mongo ObjectId 直接发给 OpenAI 兼容接口。
@@ -489,8 +489,8 @@ const displayModel =
 - 新建节点和新模板只产生新 ID key，不需要额外双写旧 key。
 - 数据库批量迁移脚本只回填 ID sibling，不删除历史 key，便于回滚；业务写入边界的 `formatModels` 则产出只含 ID key 的规范节点。
 - `formatModels` 只在服务端写入边界执行，客户端不依赖分页模型列表做身份迁移。画布恢复在模板补齐前按原始 key 去重：存在 canonical input 时删除所有 legacy input；只有静态 legacy input 时复用 canonical 模板槽位但保留旧 key，等待保存边界解析；动态 legacy input 可原样迁移到 canonical key。静态旧 `model` 仅在同名、同类型 active 模型存在时转换为 `modelId`；已有动态 `modelId` 时直接保留；已有静态 `modelId` 时严格按 ID 校验，不允许借旧 `model` 修复。
-- 对问题引导、模型 TTS、Rerank、查询扩展和深度搜索这类带功能开关的模型字段，功能开启时沿用写入策略校验；功能关闭时若静态模型无效，则改成同类型第一个 active 模型，没有同类型候选时清空且不报错。主模型等无功能开关字段始终视为开启。
-- 应用创建、复制和转化使用 `clear` 策略：开启功能的静态引用无法解析时把 canonical `modelId` 值清空，允许用户进入编辑器重新选择。自动保存、保存版本和发布使用 `throw` 策略：聚合全部开启功能中无法解析的静态引用并拒绝写入。两种策略都不做成员模型权限判断。
+- `formatModels` 按写入场景显式选择三种策略：`preserve` 只规范字段名并保留无法解析的原值；`fallback` 回退同类型模型；`validate` 严格校验开启功能的静态模型。三种策略都不做成员模型权限判断。
+- 自动保存和保存版本使用 `preserve`：有效旧模型名仍转换成 ID；无效静态值原样写入 canonical `modelId`，不报错且不回退。应用创建、复制和转化使用 `fallback`：无效静态值优先回退到有效的系统默认同类型模型，系统默认无效时再回退第一个 active 同类型模型。发布使用 `validate`：开启功能的无效静态模型聚合报错；功能关闭时不报错，并按相同默认优先级回退。动态引用和模板表达式在所有策略下都只迁移字段名、不做静态校验。
 - 编辑或保存存量 Workflow 时，会将命中的 deprecated input 原位转换为 ID input，不再双写旧 key。
 - 运行时没有任何兼容性任意回退：只要 `modelId` 字段存在（包括空字符串）就仅按 ID 解析；只有字段为 `undefined` 才允许按 deprecated `model` 精确查找。ID/名称为空、无效、停用或类型错误均抛错，统一由客户端显示“xxx 模型已停用”。
 
@@ -825,7 +825,7 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 - [x] 补齐局部单测、迁移测试、核心集成测试和 Pro 测试。
 - [x] 执行静态残留审计、局部测试、类型检查，最后运行全量测试。
 - [x] 收紧运行时解析：`modelId !== undefined` 时禁止按 legacy model 回退，并覆盖空字符串、错误类型和停用模型。
-- [x] 重构 `formatModels` 为 `clear/throw` 两种缺失策略；创建/复制/转化清空，保存/发布聚合报错，客户端导入不预清洗。
+- [x] 重构 `formatModels` 为 `preserve/fallback/validate` 三种策略；保存保留异常值，创建/复制/转化按系统默认优先回退，发布仅校验开启功能，客户端导入不预清洗。
 - [x] 修正 4163 优先级和回退范围，保证有效 ID 幂等；无效 ID 可按 legacy 精确映射或回退到第一个同类型系统模型，不按启停状态或成员权限过滤。
 - [x] 管理员 detail 返回完整配置、list 保持脱敏；移除导入 schema 的 `.strict()` 并补完整 round-trip 测试。
 - [x] 所有模型选择器保留异常值且统一显示“xxx 模型已停用”，修正 Chat/TTS/QG/Skill Preview/Chat Agent Helper 的 ID 语义。

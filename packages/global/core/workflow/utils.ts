@@ -625,23 +625,30 @@ export const isWorkflowSystemModelInput = ({
  * 在 Workflow 写入边界统一格式化模型引用。
  *
  * 动态引用只迁移到 canonical key，不做静态校验。静态引用优先按 modelId、其次按 legacy model
- * 精确解析；功能关闭时无效值回退到同类型第一个 active 模型，功能开启时则根据 clear/throw
- * 策略清空或拒绝写入。该函数只接收调用方提供的 active 模型，不承担成员权限判断。
+ * 精确解析；无法解析时由调用方按保存、创建或发布场景选择保留、回退或校验策略。回退优先使用
+ * 有效的系统默认同类型模型，再使用第一个 active 同类型模型。该函数不承担成员权限判断。
  */
 export const formatModels = ({
   nodes,
   chatConfig,
   models = [],
-  missingModelStrategy
+  defaultModelIds = {},
+  modelReferencePolicy
 }: {
   nodes: StoreNodeItemType[] | undefined;
   chatConfig?: AppSchemaType['chatConfig'];
   models?: Array<{ modelId: string; model: string; type: ModelTypeEnum }>;
-  missingModelStrategy: 'clear' | 'throw';
+  defaultModelIds?: Partial<Record<ModelTypeEnum, string>>;
+  modelReferencePolicy: 'preserve' | 'fallback' | 'validate';
 }) => {
   const missingModels = new Set<string>();
-  const getFirstModelId = (type: ModelTypeEnum) =>
-    models.find((item) => item.type === type)?.modelId ?? '';
+  const getFallbackModelId = (type: ModelTypeEnum) => {
+    const defaultModelId = defaultModelIds[type];
+    const defaultModel = models.find(
+      (item) => item.modelId === defaultModelId && item.type === type
+    );
+    return defaultModel?.modelId ?? models.find((item) => item.type === type)?.modelId ?? '';
+  };
   const isTemplateExpression = (value: unknown) =>
     typeof value === 'string' && /^\{\{.*\}\}$/.test(value);
   const isDynamicModelValue = (value: unknown) =>
@@ -664,7 +671,13 @@ export const formatModels = ({
           ? models.find((item) => item.model === model && item.type === type)
           : undefined;
     if (matchedModel) return matchedModel.modelId;
-    if (!featureEnabled) return getFirstModelId(type);
+    // 草稿必须保留用户现场；canonical 字段存在时绝不能用 legacy 字段隐式修复。
+    if (modelReferencePolicy === 'preserve') {
+      return modelId !== undefined ? modelId : model;
+    }
+    if (modelReferencePolicy === 'fallback' || !featureEnabled) {
+      return getFallbackModelId(type);
+    }
 
     const label =
       modelId !== undefined
@@ -718,7 +731,7 @@ export const formatModels = ({
   });
 
   if (!nodes) {
-    if (missingModelStrategy === 'throw' && missingModels.size > 0) {
+    if (modelReferencePolicy === 'validate' && missingModels.size > 0) {
       throw new Error(`${Array.from(missingModels).join('、')} 模型已停用`);
     }
     return nodes;
@@ -850,7 +863,7 @@ export const formatModels = ({
     }
   });
 
-  if (missingModelStrategy === 'throw' && missingModels.size > 0) {
+  if (modelReferencePolicy === 'validate' && missingModels.size > 0) {
     throw new Error(`${Array.from(missingModels).join('、')} 模型已停用`);
   }
 

@@ -41,6 +41,7 @@ import {
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
+import { getSystemDefaultModelIds } from '@fastgpt/service/core/ai/model';
 
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
@@ -177,7 +178,8 @@ export const onCreateApp = async ({
     nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig,
     models: global.systemActiveModelList,
-    missingModelStrategy: 'clear'
+    defaultModelIds: getSystemDefaultModelIds(),
+    modelReferencePolicy: 'fallback'
   });
   await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });
   if (!AppFolderTypeList.includes(type!)) {
@@ -318,7 +320,8 @@ export const onUpdateAppWorkflow = async ({
     nodes: workflow.nodes,
     chatConfig: workflow.chatConfig,
     models: global.systemActiveModelList,
-    missingModelStrategy: 'clear'
+    defaultModelIds: getSystemDefaultModelIds(),
+    modelReferencePolicy: 'fallback'
   });
   await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });
 

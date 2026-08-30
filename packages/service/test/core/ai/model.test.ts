@@ -4,7 +4,8 @@ import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import {
   getLLMModelData,
   getOptionalLLMModelData,
-  getOptionalVlmModelData
+  getOptionalVlmModelData,
+  getSystemDefaultModelIds
 } from '../../../core/ai/model';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 
@@ -81,5 +82,11 @@ describe('getLLMModelData', () => {
     global.systemModelMap.set(`model:${modelData.model}`, disabledModel);
     expect(() => getLLMModelData({ modelId })).toThrow(ModelErrEnum.unExist);
     expect(() => getLLMModelData({ model: modelData.model })).toThrow(ModelErrEnum.unExist);
+  });
+
+  it('returns effective system default model ids by model type', () => {
+    expect(getSystemDefaultModelIds()).toMatchObject({
+      [ModelTypeEnum.llm]: modelId
+    });
   });
 });

@@ -1354,9 +1354,14 @@ describe('formatModels', () => {
     { model: 'deep-search-v1', modelId: '68ad85a7463006c963799a08', type: ModelTypeEnum.llm },
     { model: 'legacy-tts', modelId: 'existing-tts-id', type: ModelTypeEnum.tts }
   ];
+  const defaultModelIds = {
+    [ModelTypeEnum.llm]: models[2].modelId,
+    [ModelTypeEnum.rerank]: models[1].modelId,
+    [ModelTypeEnum.tts]: models[4].modelId
+  };
 
   it('returns undefined nodes unchanged', () => {
-    const result = formatModels({ nodes: undefined, models, missingModelStrategy: 'clear' });
+    const result = formatModels({ nodes: undefined, models, modelReferencePolicy: 'fallback' });
     expect(result).toBeUndefined();
   });
 
@@ -1371,7 +1376,7 @@ describe('formatModels', () => {
       }
     };
 
-    formatModels({ nodes: [], chatConfig, models, missingModelStrategy: 'clear' });
+    formatModels({ nodes: [], chatConfig, models, modelReferencePolicy: 'fallback' });
 
     expect(chatConfig.questionGuide).toEqual({
       open: true,
@@ -1384,12 +1389,12 @@ describe('formatModels', () => {
     });
   });
 
-  it('clears an unresolved legacy chat config model reference for create flows', () => {
+  it('uses an empty fallback when no same-type model is available for create flows', () => {
     const chatConfig = {
       questionGuide: { open: true, model: 'temporarily-unavailable-model' }
     };
 
-    formatModels({ nodes: [], chatConfig, models: [], missingModelStrategy: 'clear' });
+    formatModels({ nodes: [], chatConfig, models: [], modelReferencePolicy: 'fallback' });
 
     expect(chatConfig.questionGuide).toEqual({
       open: true,
@@ -1397,7 +1402,7 @@ describe('formatModels', () => {
     });
   });
 
-  it('falls back to the first same-type model when an optional chat feature is disabled', () => {
+  it('falls back to the system default model when an optional chat feature is disabled', () => {
     const chatConfig = {
       questionGuide: { open: false, modelId: 'disabled-llm' },
       ttsConfig: {
@@ -1407,10 +1412,16 @@ describe('formatModels', () => {
     };
 
     expect(() =>
-      formatModels({ nodes: [], chatConfig, models, missingModelStrategy: 'throw' })
+      formatModels({
+        nodes: [],
+        chatConfig,
+        models,
+        defaultModelIds,
+        modelReferencePolicy: 'validate'
+      })
     ).not.toThrow();
 
-    expect(chatConfig.questionGuide).toEqual({ open: false, modelId: models[0].modelId });
+    expect(chatConfig.questionGuide).toEqual({ open: false, modelId: models[2].modelId });
     expect(chatConfig.ttsConfig).toEqual({
       type: 'web',
       modelId: models[4].modelId
@@ -1423,7 +1434,7 @@ describe('formatModels', () => {
       ttsConfig: { type: 'web' as const, voice: 'alloy' }
     };
 
-    formatModels({ nodes: [], chatConfig, models, missingModelStrategy: 'throw' });
+    formatModels({ nodes: [], chatConfig, models, modelReferencePolicy: 'validate' });
 
     expect(chatConfig.questionGuide).not.toHaveProperty('modelId');
     expect(chatConfig.ttsConfig).not.toHaveProperty('modelId');
@@ -1435,7 +1446,7 @@ describe('formatModels', () => {
     };
 
     expect(() =>
-      formatModels({ nodes: [], chatConfig, models, missingModelStrategy: 'throw' })
+      formatModels({ nodes: [], chatConfig, models, modelReferencePolicy: 'validate' })
     ).toThrow('disabled-llm 模型已停用');
   });
 
@@ -1476,7 +1487,7 @@ describe('formatModels', () => {
       }
     ];
 
-    const result = formatModels({ nodes, models, missingModelStrategy: 'clear' });
+    const result = formatModels({ nodes, models, modelReferencePolicy: 'fallback' });
 
     expect(result?.[0].inputs).toHaveLength(4);
     expect(result?.[0].inputs.map((input) => input.key)).not.toEqual(
@@ -1509,7 +1520,7 @@ describe('formatModels', () => {
     );
   });
 
-  it('clears an unresolved static legacy model without arbitrary fallback', () => {
+  it('falls back an unresolved static legacy model to the system default model', () => {
     const nodes = [
       {
         nodeId: 'node1',
@@ -1528,9 +1539,11 @@ describe('formatModels', () => {
       }
     ];
 
-    expect(() => formatModels({ nodes, models, missingModelStrategy: 'clear' })).not.toThrow();
+    expect(() =>
+      formatModels({ nodes, models, defaultModelIds, modelReferencePolicy: 'fallback' })
+    ).not.toThrow();
     expect(nodes[0].inputs[0].key).toBe(NodeInputKeyEnum.aiModelId);
-    expect(nodes[0].inputs[0].value).toBe('');
+    expect(nodes[0].inputs[0].value).toBe(models[2].modelId);
     expect(nodes[0].inputs).toHaveLength(1);
   });
 
@@ -1565,10 +1578,15 @@ describe('formatModels', () => {
       }
     ];
 
-    const result = formatModels({ nodes, models, missingModelStrategy: 'clear' });
+    const result = formatModels({
+      nodes,
+      models,
+      defaultModelIds,
+      modelReferencePolicy: 'fallback'
+    });
 
     expect(result?.[0].inputs[0].value).toBe(models[0].modelId);
-    expect(result?.[0].inputs[1].value).toBe(models[0].modelId);
+    expect(result?.[0].inputs[1].value).toBe(models[2].modelId);
     expect(result?.[0].inputs).toHaveLength(2);
     expect(result?.[0].inputs.some((input) => input.key === NodeInputKeyEnum.aiModel)).toBe(false);
     expect(
@@ -1600,7 +1618,7 @@ describe('formatModels', () => {
         outputs: []
       }
     ];
-    const result = formatModels({ nodes, models, missingModelStrategy: 'clear' });
+    const result = formatModels({ nodes, models, modelReferencePolicy: 'fallback' });
     expect(result?.[0].inputs[0].key).toBe(NodeInputKeyEnum.aiModelId);
     expect(result?.[0].inputs[0].value).toBe('unauthorized-model');
     expect(result?.[0].inputs[1].key).toBe(NodeInputKeyEnum.datasetSearchRerankModelId);
@@ -1625,7 +1643,7 @@ describe('formatModels', () => {
       }
     ];
 
-    formatModels({ nodes, models, missingModelStrategy: 'clear' });
+    formatModels({ nodes, models, modelReferencePolicy: 'fallback' });
 
     expect(nodes[0].inputs).toEqual([
       expect.objectContaining({
@@ -1652,7 +1670,7 @@ describe('formatModels', () => {
         outputs: []
       }
     ];
-    const result = formatModels({ nodes, models, missingModelStrategy: 'clear' });
+    const result = formatModels({ nodes, models, modelReferencePolicy: 'fallback' });
     expect(result?.[0].inputs[0].value).toBe('some value');
   });
 
@@ -1674,7 +1692,7 @@ describe('formatModels', () => {
       }
     ];
 
-    formatModels({ nodes, models, missingModelStrategy: 'clear' });
+    formatModels({ nodes, models, modelReferencePolicy: 'fallback' });
 
     expect(nodes[0].inputs).toEqual([
       expect.objectContaining({ key: NodeInputKeyEnum.aiModel, value: 'gpt-4' })
@@ -1702,7 +1720,7 @@ describe('formatModels', () => {
     formatModels({
       nodes,
       models: models.filter((model) => model.type === ModelTypeEnum.llm),
-      missingModelStrategy: 'clear'
+      modelReferencePolicy: 'fallback'
     });
 
     expect(nodes[0].inputs).toEqual([
@@ -1713,7 +1731,7 @@ describe('formatModels', () => {
     ]);
   });
 
-  it('throws one aggregated error for unresolved models on save and publish', () => {
+  it('throws one aggregated error for unresolved models on publish', () => {
     const nodes = [
       {
         nodeId: 'node1',
@@ -1740,12 +1758,12 @@ describe('formatModels', () => {
       }
     ];
 
-    expect(() => formatModels({ nodes, models, missingModelStrategy: 'throw' })).toThrow(
+    expect(() => formatModels({ nodes, models, modelReferencePolicy: 'validate' })).toThrow(
       'disabled-model-id、disabled-rerank 模型已停用'
     );
   });
 
-  it('does not repair an invalid modelId from a valid legacy model', () => {
+  it('does not repair an invalid modelId from a valid legacy model when falling back', () => {
     const nodes = [
       {
         nodeId: 'node1',
@@ -1767,11 +1785,84 @@ describe('formatModels', () => {
       }
     ];
 
-    formatModels({ nodes, models, missingModelStrategy: 'clear' });
+    formatModels({ nodes, models, defaultModelIds, modelReferencePolicy: 'fallback' });
 
     expect(nodes[0].inputs).toEqual([
-      expect.objectContaining({ key: NodeInputKeyEnum.aiModelId, value: '' })
+      expect.objectContaining({ key: NodeInputKeyEnum.aiModelId, value: models[2].modelId })
     ]);
+  });
+
+  it('preserves unresolved draft values while removing legacy fields', () => {
+    const nodes = [
+      {
+        nodeId: 'node1',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        name: 'Chat',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            value: 'invalid-id',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.aiModel,
+            value: 'gpt-4',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          }
+        ],
+        outputs: []
+      },
+      {
+        nodeId: 'node2',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        name: 'Chat',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModel,
+            value: 'unresolved-legacy-model',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          }
+        ],
+        outputs: []
+      }
+    ];
+    const chatConfig = {
+      questionGuide: { open: true, modelId: 'invalid-question-guide', model: 'gpt-4' }
+    };
+
+    expect(() =>
+      formatModels({ nodes, chatConfig, models, modelReferencePolicy: 'preserve' })
+    ).not.toThrow();
+
+    expect(nodes[0].inputs).toEqual([
+      expect.objectContaining({ key: NodeInputKeyEnum.aiModelId, value: 'invalid-id' })
+    ]);
+    expect(nodes[1].inputs).toEqual([
+      expect.objectContaining({
+        key: NodeInputKeyEnum.aiModelId,
+        value: 'unresolved-legacy-model'
+      })
+    ]);
+    expect(chatConfig.questionGuide).toEqual({
+      open: true,
+      modelId: 'invalid-question-guide'
+    });
+  });
+
+  it('falls back to the first active same-type model when the configured default is invalid', () => {
+    const chatConfig = {
+      questionGuide: { open: false, modelId: 'disabled-llm' }
+    };
+
+    formatModels({
+      nodes: [],
+      chatConfig,
+      models,
+      defaultModelIds: { [ModelTypeEnum.llm]: 'invalid-default-id' },
+      modelReferencePolicy: 'validate'
+    });
+
+    expect(chatConfig.questionGuide).toEqual({ open: false, modelId: models[0].modelId });
   });
 
   it('does not validate a canonical reference modelId and removes the legacy input', () => {
@@ -1797,7 +1888,7 @@ describe('formatModels', () => {
       }
     ];
 
-    expect(() => formatModels({ nodes, models, missingModelStrategy: 'throw' })).not.toThrow();
+    expect(() => formatModels({ nodes, models, modelReferencePolicy: 'validate' })).not.toThrow();
     expect(nodes[0].inputs).toEqual([
       expect.objectContaining({
         key: NodeInputKeyEnum.aiModelId,
@@ -1828,7 +1919,7 @@ describe('formatModels', () => {
       }
     ];
 
-    formatModels({ nodes, models, missingModelStrategy: 'throw' });
+    formatModels({ nodes, models, defaultModelIds, modelReferencePolicy: 'validate' });
 
     expect(nodes[0].inputs[0].value).toEqual({
       usingReRank: false,
@@ -1861,7 +1952,7 @@ describe('formatModels', () => {
       }
     ];
 
-    expect(() => formatModels({ nodes, models, missingModelStrategy: 'throw' })).not.toThrow();
+    expect(() => formatModels({ nodes, models, modelReferencePolicy: 'validate' })).not.toThrow();
     expect(nodes[0].inputs[0].value).toEqual({
       usingReRank: true,
       rerankModelId: ['source-node', 'rerank-model-id'],
