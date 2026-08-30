@@ -95,6 +95,7 @@ The hard limit for HTML-to-Markdown and text-chunking Workers is the smaller of 
 10. Fixed account deletion verification mismatches caused by resolving the verification method again on the client, and added deletion reminder status tracking.
 11. Fixed legacy workflow fields in older App templates so they can be read using the current structure.
 12. Fixed fuzzy file extension matching that could show a DOC icon for a Markdown filename containing text such as DOCX. Added icon mappings for the new document formats and a dedicated EPUB icon.
+13. Fixed chat configuration validation failures when `valueType` is empty or `null` in historical App Variables. FastGPT now derives `valueType` from the Variable input type when loading or saving chat configuration, falls back to `any` when the type cannot be mapped or the value is invalid, and runs Zod validation before saving. Existing data does not require an additional cleanup script.
 
 ## 🛠️ Code Improvements
 

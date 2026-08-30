@@ -20,18 +20,14 @@ import {
   type ReferenceItemValueType
 } from './type/io';
 import type { NodeToolConfigType, StoreNodeItemType } from './type/node';
-import type {
-  VariableItemType,
-  AppTTSConfigType,
-  AppWhisperConfigType,
-  AppScheduledTriggerConfigType,
-  ChatInputGuideConfigType,
-  AppChatConfigType,
-  AppAutoExecuteConfigType,
-  AppQGConfigType,
-  AppSchemaType,
-  AppWelcomeConfigType
+import {
+  AppChatConfigTypeSchema,
+  type VariableItemType,
+  type AppChatConfigType,
+  type AppSchemaType,
+  type AppWelcomeConfigType
 } from '../app/type';
+import { normalizeAndParseVariableList } from '../app/variable/utils';
 import { type EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
 import {
   defaultAutoExecuteConfig,
@@ -109,7 +105,11 @@ export const isAppSandboxEnabledInNodes = (nodes: StoreNodeItemType[]) =>
       )
   );
 
-// Get app chat config from canonical chatConfig and per-chat overrides.
+/**
+ * 合并应用配置与会话快照，并返回通过 Zod 校验的运行时对话配置。
+ *
+ * 会话变量会在这里统一补齐 valueType；读取历史会话和保存新快照共用该边界。
+ */
 export const getAppChatConfig = ({
   chatConfig,
   storeVariables,
@@ -127,14 +127,14 @@ export const getAppChatConfig = ({
     welcomeQuestions: chatConfig?.welcomeConfig?.welcomeQuestions
   };
 
-  const config: AppChatConfigType = {
+  const config = {
     questionGuide: defaultQGConfig,
     ttsConfig: defaultTTSConfig,
     whisperConfig: defaultWhisperConfig,
     chatInputGuide: defaultChatInputGuideConfig,
     autoExecute: defaultAutoExecuteConfig,
     ...chatConfig,
-    variables: storeVariables ?? chatConfig?.variables ?? [],
+    variables: normalizeAndParseVariableList(storeVariables ?? chatConfig?.variables ?? []),
     welcomeConfig,
     welcomeText: welcomeConfig.welcomeText
   };
@@ -143,7 +143,7 @@ export const getAppChatConfig = ({
     config.scheduledTriggerConfig = undefined;
   }
 
-  return config;
+  return AppChatConfigTypeSchema.parse(config);
 };
 
 export const getOrInitModuleInputValue = (input: FlowNodeInputItemType) => {
