@@ -70,11 +70,8 @@ Follow [Milvus BM25 full-text search configuration and migration](/en/self-host/
 12. Improved tool configuration, version selection, and parsed-document views with responsive layouts, version descriptions, a two-column grid, and ellipsis tooltips for long filenames.
 13. Improved invoice submission by refreshing bill and invoice records in place instead of reloading the entire page.
 14. Stored Milvus vectors and full-text data in the same collection with full-text granularity aligned to `indexes[].text`. Image vectors do not index image URLs or object storage keys.
-15. Expanded the Workflow Nodes that can be used as ToolCall tools, including Question classification, Condition, Loop, Batch, Read files, Text concatenation, Custom feedback, and Agent. Added the missing `toolResponse` values so Agents receive the actual result or error from these Nodes.
-16. Unified Node visibility, drag-and-drop, quick-add, and connection validation across standard Workflows, tool chains, Loops, and Batches. Unsupported Nodes and nested containers can no longer be added in invalid contexts.
-17. Stabilized HTTP Node parameter editing when changing focus, validating duplicate keys, adding or deleting parameters, and inserting Variables. Unified tool parameter configuration for HTTP and Code run Nodes, and deprecated the legacy custom Variable input on HTTP Nodes.
-18. Improved memory and concurrency control for file parsing. Queued tasks now keep only a lightweight file source instead of the full Buffer. Trusted S3 files reserve resources from their known size, while external URLs update their reservation as bytes stream in and enforce both file-size and per-task memory hard limits. This reduces OOM risk during concurrent parsing.
-19. Unified external-file download and parsing across Datasets, Chat, and Workflows. Dataset template and backup files and App evaluation CSVs are uploaded to S3 before parsing, so queued work does not retain multipart temporary files.
+15. Improved memory and concurrency control for file parsing. Queued tasks now keep only a lightweight file source instead of the full Buffer. Trusted S3 files reserve resources from their known size, while external URLs update their reservation as bytes stream in and enforce both file-size and per-task memory hard limits. This reduces OOM risk during concurrent parsing.
+16. Unified external-file download and parsing across Datasets, Chat, and Workflows. Dataset template and backup files and App evaluation CSVs are uploaded to S3 before parsing, so queued work does not retain multipart temporary files.
 
 ## 🐛 Fixes
 
