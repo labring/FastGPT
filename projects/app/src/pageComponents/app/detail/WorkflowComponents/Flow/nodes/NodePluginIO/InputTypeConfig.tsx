@@ -51,6 +51,7 @@ import { FileTypeSelectorPanel } from '@fastgpt/web/components/core/app/FileType
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import { getUserFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 import { canInputBeAgentGenerated } from '@fastgpt/global/core/app/formEdit/utils';
+import { getModelInputOptions } from './InputTypeConfig.utils';
 
 const inputFormGridTemplateColumns = 'max-content minmax(0, 1fr)';
 
@@ -84,12 +85,7 @@ const InputTypeConfig = ({
   const { llmModelList } = useUserModelLists();
   const { teamPlanStatus } = useUserStore();
 
-  const availableModels = useMemoEnhance(() => {
-    return llmModelList.map((model) => ({
-      value: model.model,
-      label: model.name
-    }));
-  }, [llmModelList]);
+  const availableModels = useMemoEnhance(() => getModelInputOptions(llmModelList), [llmModelList]);
 
   const typeLabels = useMemo(() => {
     return {
@@ -757,7 +753,7 @@ const InputTypeConfig = ({
                 inputType === FlowNodeInputTypeEnum.selectLLMModel) && (
                 <Box flex={'1'}>
                   <AIModelSelector
-                    valueField="model"
+                    valueField="modelId"
                     value={defaultValue}
                     list={availableModels}
                     onChange={(model) => {
