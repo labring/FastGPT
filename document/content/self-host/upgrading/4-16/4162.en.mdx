@@ -45,6 +45,12 @@ For an existing Milvus deployment, verify that the old vector data is still avai
 
 Follow [Milvus BM25 full-text search configuration and migration](/en/self-host/milvus-bm25) for backups, the Milvus image upgrade, dry runs, resumable migration, validation, old-collection cleanup, and rollback.
 
+### 3. Remove the file parsing Worker count setting
+
+V4.16.2 removes `PARSE_FILE_WORKERS`. When upgrading, delete this variable from your `.env` file or Docker Compose `environment` section. No replacement variable is required.
+
+FastGPT now sets the file parsing Worker hard limit from the CPU parallelism detected by Node.js. This accounts for container CPU quotas and process affinity and always allows at least one Worker. The memory-aware file parsing scheduler may further reduce the number of tasks that run concurrently. `PARSE_FILE_WORKER_MEMORY_LIMIT_MB` remains supported and controls both the V8 old-generation memory limit for each file parsing Worker and the maximum total uncompressed size of an XLSX file.
+
 ## 🚀 New
 
 1. Added Korean language support.

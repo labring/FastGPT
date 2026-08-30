@@ -45,6 +45,12 @@ dry-run 中的迁移预览基于清理前的当前权限数据；如果 `cleanup
 
 备份、Milvus 镜像升级、dry-run、断点续跑、结果校验、旧表清理和回滚步骤请严格按照 [Milvus BM25 全文检索配置与迁移](/self-host/milvus-bm25) 执行。
 
+### 3. 删除文件解析 Worker 数量配置
+
+V4.16.2 移除了 `PARSE_FILE_WORKERS`。升级时请从 `.env` 或 Docker Compose 的 `environment` 中删除该变量，无需配置替代变量。
+
+文件解析 Worker 的硬上限会根据 Node.js 检测到的可用 CPU 并行度自动设置，并考虑容器 CPU 配额和进程亲和性，最少保留 1 个 Worker；实际同时运行的任务数还会受到文件解析内存调度限制。`PARSE_FILE_WORKER_MEMORY_LIMIT_MB` 仍然有效，用于设置单个文件解析 Worker 的 V8 老生代内存上限，并限制 XLSX 文件解压后的总大小。
+
 ## 🚀 新增内容
 
 1. 支持韩语。
