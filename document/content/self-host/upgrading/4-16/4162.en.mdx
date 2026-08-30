@@ -52,6 +52,7 @@ Follow [Milvus BM25 full-text search configuration and migration](/en/self-host/
 3. Added account deletion.
 4. Added an option to create Workflow Tools in the Team toolkit by selecting an existing App.
 5. Added BM25 full-text search backed by the single-table `modeldata_v2` design when Milvus is the vector store.
+6. Document parsing now supports DOC, WPS, DOCM, PPT, PPS, POT, PPTM, PPSX, PPSM, XLS, XLSM, XLSB, ODT, ODS, ODP, RTF, and EPUB files.
 
 ## ⚙️ Improvements
 
@@ -72,6 +73,8 @@ Follow [Milvus BM25 full-text search configuration and migration](/en/self-host/
 15. Expanded the Workflow Nodes that can be used as ToolCall tools, including Question classification, Condition, Loop, Batch, Read files, Text concatenation, Custom feedback, and Agent. Added the missing `toolResponse` values so Agents receive the actual result or error from these Nodes.
 16. Unified Node visibility, drag-and-drop, quick-add, and connection validation across standard Workflows, tool chains, Loops, and Batches. Unsupported Nodes and nested containers can no longer be added in invalid contexts.
 17. Stabilized HTTP Node parameter editing when changing focus, validating duplicate keys, adding or deleting parameters, and inserting Variables. Unified tool parameter configuration for HTTP and Code run Nodes, and deprecated the legacy custom Variable input on HTTP Nodes.
+18. Improved memory and concurrency control for file parsing. Queued tasks now keep only a lightweight file source instead of the full Buffer. Trusted S3 files reserve resources from their known size, while external URLs update their reservation as bytes stream in and enforce both file-size and per-task memory hard limits. This reduces OOM risk during concurrent parsing.
+19. Unified external-file download and parsing across Datasets, Chat, and Workflows. Dataset template and backup files and App evaluation CSVs are uploaded to S3 before parsing, so queued work does not retain multipart temporary files.
 
 ## 🐛 Fixes
 
@@ -86,6 +89,7 @@ Follow [Milvus BM25 full-text search configuration and migration](/en/self-host/
 9. Fixed validation of historical Dataset chunk settings stored as numeric strings and prevented sync requests before Dataset details finish loading.
 10. Fixed account deletion verification mismatches caused by resolving the verification method again on the client, and added deletion reminder status tracking.
 11. Fixed legacy workflow fields in older App templates so they can be read using the current structure.
+12. Fixed fuzzy file extension matching that could show a DOC icon for a Markdown filename containing text such as DOCX. Added icon mappings for the new document formats and a dedicated EPUB icon.
 
 ## 🛠️ Code Improvements
 
@@ -93,3 +97,7 @@ Follow [Milvus BM25 full-text search configuration and migration](/en/self-host/
 2. Materialized effective ACLs for Apps, Datasets, and Agent Skills, and centralized Collaborator permission mutations and inheritance synchronization.
 3. Required a MongoDB session when creating Dataset data and added a transaction to manual data insertion, so primary data, full-text search records, and image TTL state are committed atomically.
 4. Unified full-text search behind the `FullTextStore` abstraction: Milvus uses BM25, while other vector stores continue to use MongoDB `$text`.
+5. Standardized file parsing inputs on `FileSource` and materialized content only after a Worker acquires a slot and its initial resource reservation:
+   - Trusted S3 sources obtain the file size from object metadata and reserve the resources required for both materialization and parsing. The upload path has already enforced the business file-size limit, so parsing does not repeat that check.
+   - Untrusted external URLs declare only the parser's base reservation when queued. During download, FastGPT enforces the business file-size limit and permanent per-task memory limit, then monotonically increases the soft reservation with the actual byte count. Exhausting currently available capacity blocks subsequent tasks without interrupting a download that is already running.
+   - The wait queue has no task-count or aggregate estimated-resource limit and retains only the 30-minute queue timeout. Failures, timeouts, and Worker exits abort unfinished downloads and release all reservations.
