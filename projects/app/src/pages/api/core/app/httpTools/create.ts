@@ -41,7 +41,7 @@ async function handler(
   const httpToolsetId = await mongoSessionRun(async (session) => {
     const toolSetRuntimeNode = getHTTPToolSetRuntimeNode({
       name,
-      avatar,
+      avatar: avatar ?? undefined,
       toolList: [],
       ...(createType === HttpToolTypeEnum.batch && {
         baseUrl: '',
@@ -53,8 +53,8 @@ async function handler(
     const httpToolsetId = await onCreateApp({
       parentId,
       name,
-      avatar,
-      intro,
+      avatar: avatar ?? undefined,
+      intro: intro ?? undefined,
       teamId,
       tmbId,
       type: AppTypeEnum.httpToolSet,

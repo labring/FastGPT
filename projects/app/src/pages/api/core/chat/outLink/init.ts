@@ -91,8 +91,8 @@ async function handler(req: NextApiRequest): Promise<InitOutLinkChatResponseType
     app: {
       chatConfig: appChatConfig,
       name: app.name,
-      avatar: app.avatar,
-      intro: app.intro,
+      avatar: app.avatar ?? '',
+      intro: app.intro ?? '',
       type: app.type,
       pluginInputs
     }

@@ -1,6 +1,6 @@
 import { AppTypeEnum } from '../../../../../core/app/constants';
 import { AppFormEditFormV1TypeSchema } from '../../../../../core/app/formEdit/type';
-import { AppTemplateSchema } from '../../../../../core/app/type';
+import { AppTemplateSchema, AppTemplateStorageSchema } from '../../../../../core/app/type';
 import { StoreEdgeItemTypeSchema } from '../../../../../core/workflow/type/edge';
 import { OpenAPIAppChatConfigSchema } from '../../../../core/app/common/api';
 import {
@@ -19,7 +19,7 @@ const AdminTemplateTypeSchema = z
   .string()
   .refine((type) => adminTemplateTypes.has(type), '不支持的模板类型');
 
-const AdminTemplateBaseSchema = AppTemplateSchema.omit({
+const AdminTemplateBaseSchema = AppTemplateStorageSchema.omit({
   templateId: true,
   type: true,
   workflow: true,

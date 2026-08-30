@@ -85,8 +85,8 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
   const appId = await onCreateApp({
     parentId,
     name,
-    avatar,
-    intro,
+    avatar: avatar ?? undefined,
+    intro: intro ?? undefined,
     type,
     modules,
     allowedModels: await (async () => {

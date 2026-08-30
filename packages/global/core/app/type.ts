@@ -150,7 +150,7 @@ export const AppResourceRefsSchema = z.object({
 export type AppResourceRefsType = z.infer<typeof AppResourceRefsSchema>;
 
 // Mongo Collection
-export const AppSchemaTypeSchema = z.object({
+export const AppStorageSchemaTypeSchema = z.object({
   _id: ObjectIdSchema,
   parentId: ParentIdSchema.optional(),
   teamId: z.string(),
@@ -159,8 +159,8 @@ export const AppSchemaTypeSchema = z.object({
   version: z.enum(['v1', 'v2']).optional().meta({ description: '内容版本，folder 类型不会有' }),
 
   name: z.string(),
-  avatar: z.string(),
-  intro: z.string(),
+  avatar: z.string().nullish(),
+  intro: z.string().nullish(),
   templateId: z.string().optional(),
 
   updateTime: z.coerce.date(),
@@ -207,6 +207,17 @@ export const AppSchemaTypeSchema = z.object({
   inited: BoolSchema.optional().meta({
     deprecated: true
   })
+});
+export type AppStorageSchemaType = z.infer<typeof AppStorageSchemaTypeSchema>;
+
+/**
+ * 应用在服务端归一化后返回给客户端的结构。
+ *
+ * 历史存量数据可能缺少 avatar/intro，但客户端始终接收字符串，避免可空类型向 UI 扩散。
+ */
+export const AppSchemaTypeSchema = AppStorageSchemaTypeSchema.extend({
+  avatar: z.string(),
+  intro: z.string()
 });
 export type AppSchemaType = z.infer<typeof AppSchemaTypeSchema>;
 
@@ -268,7 +279,7 @@ export type SettingAIDataType = {
   [NodeInputKeyEnum.aiChatJsonSchema]?: string;
 };
 
-export const AppTemplateSchema = z.object({
+export const AppTemplateStorageSchema = z.object({
   templateId: z.string().meta({
     example: 'template-simple-chat',
     description: '模板 ID'
@@ -277,10 +288,10 @@ export const AppTemplateSchema = z.object({
     example: '客服助手',
     description: '模板名称'
   }),
-  intro: z.string().meta({
+  intro: z.string().nullish().meta({
     description: '模板介绍'
   }),
-  avatar: z.string().meta({
+  avatar: z.string().nullish().meta({
     description: '模板头像'
   }),
   tags: z.array(z.string()).meta({
@@ -337,6 +348,13 @@ export const AppTemplateSchema = z.object({
     .meta({
       description: '模板对应的应用编排配置；不同应用类型可能使用不同结构'
     })
+});
+export type AppTemplateStorageSchemaType = z.infer<typeof AppTemplateStorageSchema>;
+
+/** 模板返回客户端前的归一化结构。 */
+export const AppTemplateSchema = AppTemplateStorageSchema.extend({
+  avatar: z.string(),
+  intro: z.string()
 });
 export type AppTemplateSchemaType = z.infer<typeof AppTemplateSchema>;
 

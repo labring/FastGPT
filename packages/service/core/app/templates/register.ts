@@ -22,7 +22,11 @@ type PluginSystemTemplateDbConfig = Pick<AppTemplateSchemaType, 'templateId'> &
   >;
 
 const getFileTemplates = async (): Promise<AppTemplateSchemaType[]> => {
-  return (await pluginClient.listWorkflows()) as AppTemplateSchemaType[];
+  return (await pluginClient.listWorkflows()).map((template) => ({
+    ...template,
+    avatar: template.avatar ?? '',
+    intro: template.intro ?? ''
+  })) as AppTemplateSchemaType[];
 };
 
 const formatTemplateAvatar = (avatar?: string | null) => {
@@ -120,6 +124,11 @@ const getAppTemplates = async () => {
     ...communityTemplateConfig,
     ...dbTemplates.filter((t) => isCommercialTemaplte(t.templateId))
   ]
+    .map((template) => ({
+      ...template,
+      avatar: template.avatar ?? '',
+      intro: template.intro ?? ''
+    }))
     .map(migrateAppTemplateWorkflowToCurrent)
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 

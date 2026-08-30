@@ -49,7 +49,7 @@ async function handler(
 
   return plugins.map((plugin) => ({
     _id: plugin._id,
-    avatar: plugin.avatar,
+    avatar: plugin.avatar ?? '',
     name: plugin.name
   }));
 }

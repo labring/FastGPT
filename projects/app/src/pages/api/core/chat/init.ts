@@ -199,8 +199,8 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
         chatConfig: appChatConfig,
         chatModels: getChatModelNameListByModules(nodes),
         name: app.name,
-        avatar: app.avatar,
-        intro: app.intro,
+        avatar: app.avatar ?? '',
+        intro: app.intro ?? '',
         type: app.type,
         pluginInputs
       }
