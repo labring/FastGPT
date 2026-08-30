@@ -32,31 +32,57 @@ export async function readStreamToBuffer(params: {
   stream: Readable;
   maxBytes?: number;
   exceededMessage?: string;
+  signal?: AbortSignal;
+  /** 在当前累计字节写入 chunks 前同步执行，用于流式资源记账或硬限制。 */
+  onReadBytes?: (readBytes: number) => void;
 }): Promise<Buffer> {
-  const { stream, maxBytes, exceededMessage } = params;
+  const { stream, maxBytes, exceededMessage, signal, onReadBytes } = params;
 
-  if (maxBytes === undefined) {
-    return consumeStreamToBuffer(stream);
+  const createAbortError = () => {
+    const error = new Error('File stream reading was aborted');
+    error.name = 'AbortError';
+    return error;
+  };
+  if (signal?.aborted) {
+    stream.destroy();
+    throw createAbortError();
   }
+  const onAbort = () => stream.destroy(createAbortError());
+  signal?.addEventListener('abort', onAbort, { once: true });
 
-  const chunks: Buffer[] = [];
-  let totalSize = 0;
-
-  for await (const chunk of stream) {
-    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-    totalSize += buffer.length;
-
-    if (totalSize > maxBytes) {
-      stream.destroy();
-      throw new Error(
-        exceededMessage ?? `S3 object exceeds maximum allowed size (${maxBytes} bytes)`
-      );
+  try {
+    if (maxBytes === undefined && !onReadBytes) {
+      return await consumeStreamToBuffer(stream);
     }
 
-    chunks.push(buffer);
-  }
+    const chunks: Buffer[] = [];
+    let totalSize = 0;
 
-  return Buffer.concat(chunks, totalSize);
+    for await (const chunk of stream) {
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      totalSize += buffer.length;
+
+      if (maxBytes !== undefined && totalSize > maxBytes) {
+        stream.destroy();
+        throw new Error(
+          exceededMessage ?? `S3 object exceeds maximum allowed size (${maxBytes} bytes)`
+        );
+      }
+
+      try {
+        onReadBytes?.(totalSize);
+      } catch (error) {
+        stream.destroy(error instanceof Error ? error : undefined);
+        throw error;
+      }
+
+      chunks.push(buffer);
+    }
+
+    return Buffer.concat(chunks, totalSize);
+  } finally {
+    signal?.removeEventListener('abort', onAbort);
+  }
 }
 
 /**

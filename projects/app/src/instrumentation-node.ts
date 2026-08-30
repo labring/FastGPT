@@ -36,7 +36,8 @@ export async function registerNodeInstrumentation() {
       { configureRedisRuntime, registerRedisRuntimeShutdown },
       { serviceEnv },
       { InitialErrorEnum },
-      { validateAgentSandboxProxyEnv }
+      { validateAgentSandboxProxyEnv },
+      { getSystemResourceInfo }
     ] = await Promise.all([
       import('@fastgpt/service/common/mongo/init'),
       import('@fastgpt/service/common/mongo/index'),
@@ -61,8 +62,11 @@ export async function registerNodeInstrumentation() {
       import('@fastgpt/dal/redis/runtime'),
       import('@fastgpt/service/env'),
       import('@fastgpt/service/common/system/constants'),
-      import('@fastgpt/service/env.util')
+      import('@fastgpt/service/env.util'),
+      import('@fastgpt/service/common/system/resource')
     ]);
+
+    console.log('System resources detected', getSystemResourceInfo());
 
     await Promise.all([
       runInitializationStep({ step: 'configure-tracing', action: () => configureTracing() }),

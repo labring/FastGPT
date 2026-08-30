@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  estimateFileMaterializationMemoryBytes,
   estimateFileParseMemoryBytes,
   fileParseResourceConstants,
   getFileParseMaxWorkers,
   getFileParseMemoryState,
-  getFileParseSafetyReserveBytes
+  getFileParseSafetyReserveBytes,
+  getUnknownFileParseBaseMemoryBytes
 } from '@fastgpt/service/worker/fileParseResource';
 
 const MIB = 1024 * 1024;
@@ -99,5 +101,27 @@ describe('worker/fileParseResource estimateFileParseMemoryBytes', () => {
       idleWorkerTimeoutMs: 60 * 1000,
       minIdleWorkers: 1
     });
+  });
+});
+
+describe('worker/fileParseResource materialization estimate', () => {
+  it('按格式 base 加两倍输入大小估算 chunks 与最终 Buffer 共存峰值', () => {
+    expect(estimateFileMaterializationMemoryBytes({ extension: 'txt', fileSizeBytes: MIB })).toBe(
+      34 * MIB
+    );
+    expect(estimateFileMaterializationMemoryBytes({ extension: 'xlsx', fileSizeBytes: MIB })).toBe(
+      130 * MIB
+    );
+  });
+
+  it('未知外链使用当前最重解析器 base', () => {
+    expect(getUnknownFileParseBaseMemoryBytes()).toBe(128 * MIB);
+    expect(
+      estimateFileMaterializationMemoryBytes({
+        extension: '',
+        fileSizeBytes: MIB,
+        unknownUsesMaximumBase: true
+      })
+    ).toBe(130 * MIB);
   });
 });

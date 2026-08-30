@@ -434,6 +434,7 @@ export const iconPaths = {
   'file/fill/audio': () => import('./icons/file/fill/audio.svg'),
   'file/fill/csv': () => import('./icons/file/fill/csv.svg'),
   'file/fill/doc': () => import('./icons/file/fill/doc.svg'),
+  'file/fill/epub': () => import('./icons/file/fill/epub.svg'),
   'file/fill/file': () => import('./icons/file/fill/file.svg'),
   'file/fill/folder': () => import('./icons/file/fill/folder.svg'),
   'file/fill/html': () => import('./icons/file/fill/html.svg'),

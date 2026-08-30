@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Papa from 'papaparse';
 
-const mockReadRawTextByLocalFile = vi.hoisted(() => vi.fn());
+const mockReadFileContentBySource = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/common/file/read/utils', () => ({
-  readRawTextByLocalFile: mockReadRawTextByLocalFile
+  readFileContentBySource: mockReadFileContentBySource
 }));
 
 import { parseDatasetImportFile } from '@fastgpt/service/core/dataset/importFile';
@@ -12,9 +12,13 @@ import { parseDatasetImportFile } from '@fastgpt/service/core/dataset/importFile
 const defaultParams = {
   teamId: 'team-id',
   tmbId: 'tmb-id',
-  filePath: '/tmp/template.csv',
   filename: 'template.csv',
-  encoding: 'utf-8'
+  source: {
+    kind: 's3' as const,
+    sizeBytes: 10,
+    metadata: { filename: 'template.csv' },
+    materialize: vi.fn()
+  }
 };
 
 describe('parseDatasetImportFile', () => {
@@ -23,7 +27,7 @@ describe('parseDatasetImportFile', () => {
   });
 
   it('parses valid CSV content from the system readFile worker', async () => {
-    mockReadRawTextByLocalFile.mockResolvedValue({
+    mockReadFileContentBySource.mockResolvedValue({
       rawText: 'q,a,index,metadata\n"question, one","line 1\nline 2",tag,"{""rank"":1}"'
     });
 
@@ -32,11 +36,10 @@ describe('parseDatasetImportFile', () => {
       filename: 'template.CSV'
     });
 
-    expect(mockReadRawTextByLocalFile).toHaveBeenCalledWith({
+    expect(mockReadFileContentBySource).toHaveBeenCalledWith({
       teamId: defaultParams.teamId,
       tmbId: defaultParams.tmbId,
-      path: defaultParams.filePath,
-      encoding: defaultParams.encoding,
+      source: defaultParams.source,
       getFormatText: false
     });
     expect(Papa.parse(rawText).data).toEqual([
@@ -46,7 +49,7 @@ describe('parseDatasetImportFile', () => {
   });
 
   it('accepts a single-sheet Excel result without merged cells', async () => {
-    mockReadRawTextByLocalFile.mockResolvedValue({
+    mockReadFileContentBySource.mockResolvedValue({
       rawText: 'q,a,index,metadata\n"question, one","line 1\nline 2",tag,"{""source"":""excel""}"',
       tableInfo: {
         sheetCount: 1,
@@ -56,7 +59,6 @@ describe('parseDatasetImportFile', () => {
 
     const rawText = await parseDatasetImportFile({
       ...defaultParams,
-      filePath: '/tmp/template.xlsx',
       filename: 'template.xlsx'
     });
 
@@ -67,7 +69,7 @@ describe('parseDatasetImportFile', () => {
   });
 
   it('accepts legacy headers returned by the Excel worker', async () => {
-    mockReadRawTextByLocalFile.mockResolvedValue({
+    mockReadFileContentBySource.mockResolvedValue({
       rawText: 'q,a,indexes\nquestion,answer,tag',
       tableInfo: {
         sheetCount: 1,
@@ -78,7 +80,6 @@ describe('parseDatasetImportFile', () => {
     await expect(
       parseDatasetImportFile({
         ...defaultParams,
-        filePath: '/tmp/backup.xlsx',
         filename: 'backup.xlsx'
       })
     ).resolves.toContain('indexes');
@@ -88,12 +89,11 @@ describe('parseDatasetImportFile', () => {
     await expect(
       parseDatasetImportFile({
         ...defaultParams,
-        filePath: '/tmp/template.xls',
         filename: 'template.xls'
       })
     ).rejects.toThrow('extension');
 
-    expect(mockReadRawTextByLocalFile).not.toHaveBeenCalled();
+    expect(mockReadFileContentBySource).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -113,7 +113,7 @@ describe('parseDatasetImportFile', () => {
       error: 'content'
     }
   ])('rejects $name returned by the worker', async ({ result, error }) => {
-    mockReadRawTextByLocalFile.mockResolvedValue(result);
+    mockReadFileContentBySource.mockResolvedValue(result);
 
     await expect(parseDatasetImportFile(defaultParams)).rejects.toThrow(error);
   });
@@ -154,7 +154,7 @@ describe('parseDatasetImportFile', () => {
       ]
     }
   ])('normalizes $name', async ({ rawText, expectedRows }) => {
-    mockReadRawTextByLocalFile.mockResolvedValue({ rawText });
+    mockReadFileContentBySource.mockResolvedValue({ rawText });
 
     const normalizedCsv = await parseDatasetImportFile(defaultParams);
 
@@ -162,7 +162,7 @@ describe('parseDatasetImportFile', () => {
   });
 
   it('drops fully blank records while preserving rows with either q or a', async () => {
-    mockReadRawTextByLocalFile.mockResolvedValue({
+    mockReadFileContentBySource.mockResolvedValue({
       rawText: 'q,a\r\n,\r\nQ1,\r\n,A1\r\n" "," "\r\n'
     });
 
@@ -176,7 +176,7 @@ describe('parseDatasetImportFile', () => {
   });
 
   it('keeps delimiter auto-detection for typed semicolon-separated headers', async () => {
-    mockReadRawTextByLocalFile.mockResolvedValue({
+    mockReadFileContentBySource.mockResolvedValue({
       rawText: 'q;a\r\nQ1;A1\r\n'
     });
 
@@ -189,7 +189,7 @@ describe('parseDatasetImportFile', () => {
   });
 
   it('accepts a header-only Excel result with trailing blank rows', async () => {
-    mockReadRawTextByLocalFile.mockResolvedValue({
+    mockReadFileContentBySource.mockResolvedValue({
       rawText: 'q,a\r\n\r\n',
       tableInfo: {
         sheetCount: 1,
@@ -199,7 +199,6 @@ describe('parseDatasetImportFile', () => {
 
     const normalizedCsv = await parseDatasetImportFile({
       ...defaultParams,
-      filePath: '/tmp/empty-backup.xlsx',
       filename: 'empty-backup.xlsx'
     });
 
@@ -207,7 +206,7 @@ describe('parseDatasetImportFile', () => {
   });
 
   it('still rejects malformed quoted content when trailing blank lines are present', async () => {
-    mockReadRawTextByLocalFile.mockResolvedValue({
+    mockReadFileContentBySource.mockResolvedValue({
       rawText: 'q,a\r\n"question,answer\r\n\r\n'
     });
 
@@ -231,7 +230,7 @@ describe('parseDatasetImportFile', () => {
       error: 'merged cells'
     }
   ])('rejects Excel with $name', async ({ tableInfo, error }) => {
-    mockReadRawTextByLocalFile.mockResolvedValue({
+    mockReadFileContentBySource.mockResolvedValue({
       rawText: 'q,a\nquestion,answer',
       tableInfo
     });
@@ -239,7 +238,6 @@ describe('parseDatasetImportFile', () => {
     await expect(
       parseDatasetImportFile({
         ...defaultParams,
-        filePath: '/tmp/template.xlsx',
         filename: 'template.xlsx'
       })
     ).rejects.toThrow(error);

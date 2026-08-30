@@ -45,7 +45,8 @@ const shouldRunDocStress =
 const itIfDocStress = shouldRunDocStress ? it : it.skip;
 
 const { WorkerNameEnum } = await import('@fastgpt/service/worker/utils');
-const { readRawContentFromBuffer } = await import('@fastgpt/service/worker/function');
+const { readRawContentFromBuffer, readRawContentFromSource } =
+  await import('@fastgpt/service/worker/function');
 
 const describeIfEnabled = shouldRunIntegration ? describe : describe.skip;
 
@@ -189,6 +190,76 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
     const result = await parseText(text);
 
     expect(result.rawText).toBe(text);
+  });
+
+  it('获得执行额度后物化可信 S3 FileSource 并传给真实 worker', async () => {
+    const text = 'trusted s3 source';
+    const materialize = vi.fn(async () => ({
+      buffer: Buffer.from(text),
+      metadata: {
+        filename: 'trusted.txt',
+        extension: 'txt',
+        encoding: 'utf-8',
+        contentType: 'text/plain'
+      }
+    }));
+
+    const result = await readRawContentFromSource({
+      source: {
+        kind: 's3',
+        sizeBytes: Buffer.byteLength(text),
+        metadata: {
+          filename: 'trusted.txt',
+          extension: 'txt',
+          encoding: 'utf-8',
+          contentType: 'text/plain'
+        },
+        materialize
+      }
+    });
+
+    expect(materialize).toHaveBeenCalledOnce();
+    expect(result.rawText).toBe(text);
+    expect(result.sourceMetadata).toEqual(
+      expect.objectContaining({ filename: 'trusted.txt', extension: 'txt' })
+    );
+  });
+
+  it('流式物化不可信 External HTTP FileSource，更新读取进度并传播最终元数据', async () => {
+    const text = 'external http source';
+    const progress: number[] = [];
+    const materialize = vi.fn(async ({ onReadBytes }: any) => {
+      onReadBytes?.(8);
+      onReadBytes?.(Buffer.byteLength(text));
+      progress.push(8, Buffer.byteLength(text));
+      return {
+        buffer: Buffer.from(text),
+        metadata: {
+          filename: 'response-name.txt',
+          contentType: 'text/plain; charset=utf-8'
+        }
+      };
+    });
+
+    const result = await readRawContentFromSource({
+      source: {
+        kind: 'externalHttp',
+        maxSizeBytes: 1024,
+        metadata: {},
+        materialize
+      }
+    });
+
+    expect(materialize).toHaveBeenCalledOnce();
+    expect(progress).toEqual([8, Buffer.byteLength(text)]);
+    expect(result.rawText).toBe(text);
+    expect(result.sourceMetadata).toEqual(
+      expect.objectContaining({
+        filename: 'response-name.txt',
+        extension: 'txt',
+        encoding: 'utf-8'
+      })
+    );
   });
 
   it('解析 md 文本', async () => {

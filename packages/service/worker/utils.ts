@@ -14,7 +14,6 @@ type WorkerTaskOutcome =
   | 'worker_error'
   | 'message_error'
   | 'protocol_error'
-  | 'queue_limit'
   | 'dispatch_error';
 
 export enum WorkerNameEnum {
@@ -71,9 +70,12 @@ type WorkerRunTaskType<T> = WorkerTaskLogContext & {
   enqueuedAt: number;
   startedAt?: number;
   queueTimeoutId?: NodeJS.Timeout;
+  abortController?: AbortController;
+  lastLoggedResourceBytes: number;
   resolve: (e: any) => void;
   reject: (e: any) => void;
 };
+const WORKER_RESOURCE_LOG_STEP_BYTES = 16 * 1024 * 1024;
 export type WorkerUploadFileRequest = {
   name: string;
   mime: string;
@@ -81,6 +83,20 @@ export type WorkerUploadFileRequest = {
 };
 export type WorkerUploadFileResult = {
   key: string;
+};
+export type WorkerLoadFileResult = {
+  buffer: ArrayBuffer;
+  bufferSize: number;
+  metadata: {
+    filename?: string;
+    contentType?: string;
+    extension?: string;
+    encoding?: string;
+  };
+};
+export type WorkerTaskResourceController = {
+  /** 单调更新运行任务的软预留；只执行永久硬上限检查，不检查当前动态可用内存。 */
+  updateResourceBytes: (requiredBytes: number) => void;
 };
 /**
  * Worker 任务运行期间可发起的通用主线程能力。
@@ -90,6 +106,10 @@ export type WorkerUploadFileResult = {
  */
 export type WorkerRunHandlers = {
   uploadFile?: (data: WorkerUploadFileRequest) => Promise<WorkerUploadFileResult>;
+  loadFile?: (
+    controller: WorkerTaskResourceController,
+    signal: AbortSignal
+  ) => Promise<WorkerLoadFileResult>;
 };
 type WorkerQueueItem<Props = Record<string, any>> = {
   id: string;
@@ -120,7 +140,6 @@ type WorkerPoolMemoryDetails = {
 export type WorkerPoolResourceSnapshot = {
   availableResourceBytes: number;
   maximumTaskResourceBytes: number;
-  maximumQueuedResourceBytes?: number;
   memoryDetails?: WorkerPoolMemoryDetails;
 };
 
@@ -153,16 +172,6 @@ export class WorkerTaskQueueTimeoutError extends Error {
       `Worker resources remained busy for ${Math.ceil(queueTimeoutMs / 60_000)} minutes. Try again later.`
     );
     this.name = 'WorkerTaskQueueTimeoutError';
-  }
-}
-
-export class WorkerTaskQueueLimitError extends Error {
-  constructor({ requiredBytes, maximumBytes }: { requiredBytes: number; maximumBytes: number }) {
-    super(
-      `Worker queue requires an estimated ${Math.ceil(requiredBytes / 1024 / 1024)} MiB of resources, ` +
-        `which exceeds its current limit of ${Math.floor(maximumBytes / 1024 / 1024)} MiB. Try again later.`
-    );
-    this.name = 'WorkerTaskQueueLimitError';
   }
 }
 
@@ -255,16 +264,16 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     const availableResourceBytes = resourceSnapshot?.availableResourceBytes;
     const memoryDetails = resourceSnapshot?.memoryDetails;
     let oldestQueueAgeMs = 0;
-    let queuedResourceBytes = 0;
+    let queuedExecutionResourceBytes = 0;
     for (const task of this.waitQueue) {
       oldestQueueAgeMs = Math.max(oldestQueueAgeMs, now - task.enqueuedAt);
-      queuedResourceBytes += task.resourceBytes;
+      queuedExecutionResourceBytes += task.resourceBytes;
     }
 
     return {
       queueLength: this.waitQueue.length,
       oldestQueueAgeMs,
-      queuedResourceBytes,
+      queuedExecutionResourceBytes,
       runningWorkers,
       idleWorkers: this.workerQueue.length - runningWorkers,
       workerCount: this.workerQueue.length,
@@ -278,7 +287,6 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
           ? undefined
           : Math.max(0, availableResourceBytes - this.reservedResourceBytes),
       maximumTaskResourceBytes: resourceSnapshot?.maximumTaskResourceBytes,
-      maximumQueuedResourceBytes: resourceSnapshot?.maximumQueuedResourceBytes,
       memoryConstrainedBytes: memoryDetails?.constrainedMemoryBytes,
       memoryAvailableBytes: memoryDetails?.availableMemoryBytes,
       memoryUsedBytes: memoryDetails
@@ -493,6 +501,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
       workerItem.status = 'running';
       workerItem.taskTime = Date.now();
       task.startedAt = workerItem.taskTime;
+      task.abortController = new AbortController();
       workerItem.handlers = task.handlers;
       workerItem.currentTask = task;
       this.reservedResourceBytes += task.resourceBytes;
@@ -593,39 +602,6 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
         return;
       }
 
-      const queuedResourceBytes = this.waitQueue.reduce(
-        (total, task) => total + task.resourceBytes,
-        0
-      );
-      const maximumQueuedResourceBytes =
-        resourceSnapshot?.maximumQueuedResourceBytes ?? Number.MAX_SAFE_INTEGER;
-      const mustQueue =
-        !this.hasWorkerCapacity({ data }) ||
-        !this.hasResourceCapacity({ resourceBytes }, resourceSnapshot);
-      if (mustQueue && queuedResourceBytes + resourceBytes > maximumQueuedResourceBytes) {
-        const error = new WorkerTaskQueueLimitError({
-          requiredBytes: queuedResourceBytes + resourceBytes,
-          maximumBytes: maximumQueuedResourceBytes
-        });
-        logger.warn('Worker task rejected by queue resource limit', {
-          eventName: 'worker.task.queue_rejected',
-          workerName: this.name,
-          taskId,
-          taskType,
-          taskResourceBytes: resourceBytes,
-          error,
-          ...this.getPoolSnapshot(resourceSnapshot)
-        });
-        this.logTaskFinished({
-          task: taskLogContext,
-          outcome: 'queue_limit',
-          executionDurationMs: 0,
-          resourceSnapshot
-        });
-        reject(error);
-        return;
-      }
-
       const task: WorkerRunTaskType<Props> = {
         taskId,
         taskType,
@@ -633,6 +609,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
         transferList,
         handlers,
         resourceBytes,
+        lastLoggedResourceBytes: resourceBytes,
         enqueuedAt,
         resolve,
         reject
@@ -753,6 +730,11 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
         return;
       }
 
+      if (type === 'loadFile') {
+        this.handleLoadFileMessage({ item, requestId });
+        return;
+      }
+
       if (type === 'success') {
         this.completeTask(item, { type: 'success', data });
       } else if (type === 'error') {
@@ -809,6 +791,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     if (!task) return;
 
     clearTimeout(item.timeoutId);
+    task.abortController?.abort();
     item.timeoutId = undefined;
     item.currentTask = undefined;
     item.handlers = undefined;
@@ -916,6 +899,149 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
       .catch((error) => reply('uploadFileError', error));
   }
 
+  /** 处理 readFile worker 的延迟物化请求，并在主线程同步维护任务软预留。 */
+  private handleLoadFileMessage({
+    item,
+    requestId
+  }: {
+    item: WorkerQueueItem<Props>;
+    requestId?: string;
+  }) {
+    const reply = (
+      type: 'loadFileResult' | 'loadFileError',
+      data: unknown,
+      transferList?: TransferListItem[]
+    ) => {
+      if (!this.workerQueue.includes(item) || item.status !== 'running') return;
+      try {
+        item.worker.postMessage(
+          {
+            id: item.id,
+            type,
+            requestId,
+            data
+          },
+          transferList
+        );
+      } catch (error) {
+        this.logger.error('Failed to reply worker loadFile request', {
+          eventName: 'worker.task.handler_reply_error',
+          workerId: item.id,
+          workerName: this.name,
+          taskId: item.currentTask?.taskId,
+          taskType: item.currentTask?.taskType,
+          error
+        });
+        this.deleteWorker(item.id, error, 'dispatch_error');
+      }
+    };
+
+    const task = item.currentTask;
+    if (!requestId) {
+      reply('loadFileError', new Error('Missing loadFile requestId'));
+      return;
+    }
+    if (!task?.abortController) {
+      reply('loadFileError', new Error('Missing running worker task'));
+      return;
+    }
+
+    const handler = item.handlers?.loadFile;
+    if (!handler) {
+      reply('loadFileError', new Error('Missing loadFile handler'));
+      return;
+    }
+
+    const updateResourceBytes = (requiredBytes: number) => {
+      if (item.currentTask !== task || task.abortController?.signal.aborted) {
+        throw new Error('Worker task is no longer running');
+      }
+
+      const normalizedRequiredBytes = Math.max(0, requiredBytes);
+      const resourceSnapshot = this.resourcePolicy?.getResourceSnapshot();
+      const maximumResourceBytes =
+        resourceSnapshot?.maximumTaskResourceBytes ?? Number.MAX_SAFE_INTEGER;
+      if (normalizedRequiredBytes > maximumResourceBytes) {
+        const error = new WorkerTaskResourceLimitError({
+          requiredBytes: normalizedRequiredBytes,
+          maximumBytes: maximumResourceBytes
+        });
+        this.logger.warn('Worker task rejected by hard resource limit during execution', {
+          eventName: 'worker.task.hard_resource_rejected',
+          workerName: this.name,
+          workerId: item.id,
+          taskId: task.taskId,
+          taskType: task.taskType,
+          taskResourceBytes: task.resourceBytes,
+          requiredResourceBytes: normalizedRequiredBytes,
+          error,
+          ...this.getPoolSnapshot(resourceSnapshot)
+        });
+        throw error;
+      }
+      if (normalizedRequiredBytes <= task.resourceBytes) return;
+
+      const previousResourceBytes = task.resourceBytes;
+      const deltaBytes = normalizedRequiredBytes - previousResourceBytes;
+      task.resourceBytes = normalizedRequiredBytes;
+      this.reservedResourceBytes += deltaBytes;
+      if (task.resourceBytes - task.lastLoggedResourceBytes >= WORKER_RESOURCE_LOG_STEP_BYTES) {
+        task.lastLoggedResourceBytes = task.resourceBytes;
+        this.logger.debug('Worker task resource reservation updated', {
+          eventName: 'worker.task.resource_reservation_updated',
+          workerName: this.name,
+          workerId: item.id,
+          taskId: task.taskId,
+          taskType: task.taskType,
+          previousResourceBytes,
+          taskResourceBytes: task.resourceBytes,
+          deltaResourceBytes: deltaBytes,
+          ...this.getPoolSnapshot(resourceSnapshot)
+        });
+      }
+    };
+
+    const materializeStartedAt = Date.now();
+    this.logger.debug('Worker task file materialization started', {
+      eventName: 'worker.task.materialize_started',
+      workerName: this.name,
+      workerId: item.id,
+      taskId: task.taskId,
+      taskType: task.taskType,
+      taskInitialResourceBytes: task.resourceBytes
+    });
+    handler({ updateResourceBytes }, task.abortController.signal)
+      .then((result) => {
+        this.logger.debug('Worker task file materialization finished', {
+          eventName: 'worker.task.materialize_finished',
+          workerName: this.name,
+          workerId: item.id,
+          taskId: task.taskId,
+          taskType: task.taskType,
+          sourceActualBytes: result.bufferSize,
+          taskFinalResourceBytes: task.resourceBytes,
+          materializeDurationMs: Date.now() - materializeStartedAt
+        });
+        reply('loadFileResult', result, [result.buffer]);
+      })
+      .catch((error) => {
+        this.logger.warn('Worker task file source failed', {
+          eventName:
+            error instanceof Error && error.message.includes('maximum allowed size')
+              ? 'worker.task.file_size_rejected'
+              : 'worker.task.source_failed',
+          workerName: this.name,
+          workerId: item.id,
+          taskId: task.taskId,
+          taskType: task.taskType,
+          taskFinalResourceBytes: task.resourceBytes,
+          materializeDurationMs: Date.now() - materializeStartedAt,
+          error
+        });
+        reply('loadFileError', error);
+      });
+  }
+
   private deleteWorker(
     workerId: string,
     error: unknown = new Error('Worker terminated'),
@@ -928,6 +1054,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
       clearTimeout(item.idleTimeoutId);
       const task = item.currentTask as WorkerRunTaskType<Props> | undefined;
       if (task) {
+        task.abortController?.abort();
         item.currentTask = undefined;
         this.reservedResourceBytes = Math.max(0, this.reservedResourceBytes - task.resourceBytes);
         const outcome: WorkerTaskOutcome =

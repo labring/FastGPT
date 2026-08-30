@@ -45,7 +45,8 @@ vi.mock('@fastgpt/service/common/s3/utils', async (importOriginal) => {
 });
 
 // 必须在 vi.mock 之后再 import 被测模块
-const { text2Chunks, readRawContentFromBuffer } = await import('@fastgpt/service/worker/function');
+const { text2Chunks, readRawContentFromBuffer, readRawContentFromSource } =
+  await import('@fastgpt/service/worker/function');
 const { htmlToMarkdown } = await import('@fastgpt/service/common/string/utils');
 
 describe('worker/function', () => {
@@ -190,9 +191,6 @@ describe('worker/function', () => {
       expect(runArg.sharedBuffer).toBeUndefined();
       expect(poolCfg.resourcePolicy.getTaskResourceBytes(runArg)).toBe(32 * 1024 * 1024 + 17);
       const resourceSnapshot = poolCfg.resourcePolicy.getResourceSnapshot();
-      expect(resourceSnapshot.maximumQueuedResourceBytes).toBe(
-        resourceSnapshot.maximumTaskResourceBytes
-      );
       expect(resourceSnapshot.availableResourceBytes).toBe(
         resourceSnapshot.memoryDetails.currentlySchedulableMemoryBytes
       );
@@ -420,6 +418,104 @@ describe('worker/function', () => {
       expect(sab1).not.toBe(sab2);
       expect(new Uint8Array(sab1)[0]).toBe('a'.charCodeAt(0));
       expect(new Uint8Array(sab2)[0]).toBe('b'.charCodeAt(0));
+    });
+  });
+
+  describe('readRawContentFromSource', () => {
+    it('可信 S3 按 HEAD size 一次性预留物化与解析峰值的较大值', async () => {
+      mockRun.mockResolvedValueOnce({ rawText: 'ok' });
+      const materialize = vi.fn(async () => ({
+        buffer: Buffer.from('0123456789'),
+        metadata: { filename: 'a.txt', extension: 'txt', encoding: 'utf-8' }
+      }));
+
+      await readRawContentFromSource({
+        source: {
+          kind: 's3',
+          sizeBytes: 10,
+          metadata: { filename: 'a.txt', extension: 'txt' },
+          materialize
+        }
+      });
+
+      const [runArg, transferList, handlers] = mockRun.mock.calls[0];
+      expect(runArg).toMatchObject({
+        extension: 'txt',
+        bufferSize: 10,
+        sourceKind: 's3',
+        initialResourceBytes: 32 * 1024 * 1024 + 20
+      });
+      expect(runArg.buffer).toBeUndefined();
+      expect(runArg.sharedBuffer).toBeUndefined();
+      expect(transferList).toBeUndefined();
+      expect(materialize).not.toHaveBeenCalled();
+
+      const updateResourceBytes = vi.fn();
+      const loaded = await handlers.loadFile({ updateResourceBytes }, new AbortController().signal);
+      expect(materialize).toHaveBeenCalledTimes(1);
+      expect(updateResourceBytes).not.toHaveBeenCalled();
+      expect(loaded).toMatchObject({
+        bufferSize: 10,
+        metadata: { extension: 'txt', encoding: 'utf-8' }
+      });
+      expect(Buffer.from(loaded.buffer).toString()).toBe('0123456789');
+    });
+
+    it('未知 External 只按最大 base 启动，下载和最终格式只单调更新软预留', async () => {
+      mockRun.mockResolvedValueOnce({ rawText: 'ok' });
+      const materialize = vi.fn(async ({ onReadBytes }) => {
+        onReadBytes?.(4);
+        onReadBytes?.(10);
+        return {
+          buffer: Buffer.from('0123456789'),
+          metadata: { filename: 'response.xlsx', encoding: 'utf-8' }
+        };
+      });
+
+      await readRawContentFromSource({
+        source: {
+          kind: 'externalHttp',
+          maxSizeBytes: 1024,
+          metadata: {},
+          materialize
+        }
+      });
+
+      const [runArg, , handlers] = mockRun.mock.calls[0];
+      expect(runArg).toMatchObject({
+        extension: '',
+        bufferSize: 0,
+        sourceKind: 'externalHttp',
+        initialResourceBytes: 128 * 1024 * 1024
+      });
+
+      const updateResourceBytes = vi.fn();
+      const loaded = await handlers.loadFile({ updateResourceBytes }, new AbortController().signal);
+      expect(updateResourceBytes.mock.calls.map(([bytes]) => bytes)).toEqual([
+        128 * 1024 * 1024 + 8,
+        128 * 1024 * 1024 + 20,
+        128 * 1024 * 1024 + 60
+      ]);
+      expect(loaded.metadata.extension).toBe('xlsx');
+    });
+
+    it('External 物化错误原样抛出，不返回 Buffer 给 worker', async () => {
+      mockRun.mockResolvedValueOnce({ rawText: 'ok' });
+      const sourceError = new Error('download failed');
+
+      await readRawContentFromSource({
+        source: {
+          kind: 'externalHttp',
+          maxSizeBytes: 100,
+          metadata: { filename: 'a.txt' },
+          materialize: vi.fn().mockRejectedValue(sourceError)
+        }
+      });
+
+      const handlers = mockRun.mock.calls[0][2];
+      await expect(
+        handlers.loadFile({ updateResourceBytes: vi.fn() }, new AbortController().signal)
+      ).rejects.toBe(sourceError);
     });
   });
 

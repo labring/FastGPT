@@ -27,6 +27,28 @@ const { parentPort } = require('worker_threads');
 parentPort.on('message', (message) => {
   const { id } = message;
 
+  if (/^(loadFile|uploadFile)(Result|Error)$/.test(message.type || '')) return;
+
+  if (message.loadFile) {
+    parentPort.once('message', (response) => {
+      if (response.type === 'loadFileResult') {
+        parentPort.postMessage({
+          id,
+          type: 'success',
+          data: {
+            bufferSize: response.data.bufferSize,
+            firstByte: new Uint8Array(response.data.buffer)[0]
+          }
+        });
+        return;
+      }
+
+      parentPort.postMessage({ id, type: 'error', data: response.data });
+    });
+    parentPort.postMessage({ id, type: 'loadFile', requestId: 'load-1' });
+    return;
+  }
+
   if (message.simple) {
     if (message.exit) {
       process.exit(0);
@@ -308,35 +330,97 @@ describe('worker/utils WorkerPool', () => {
     );
   });
 
-  it('排队任务预估资源总量超过上限时拒绝新任务', async () => {
-    const logger = createLogger();
+  it('等待队列不设置任务数量或预估资源总量上限', async () => {
     const pool = createPool<{ resourceBytes: number }, never>({
       name: WorkerNameEnum.readFile,
       maxReservedThreads: 1,
-      logger,
       resourcePolicy: {
         getTaskResourceBytes: (data) => data.resourceBytes,
         getResourceSnapshot: () => ({
           availableResourceBytes: 0,
-          maximumTaskResourceBytes: 100,
-          maximumQueuedResourceBytes: 100
+          maximumTaskResourceBytes: 100
         }),
         queueTimeoutMs: 1000
       }
     });
 
-    void pool.run({ resourceBytes: 60 }).catch(() => undefined);
-    await expect(pool.run({ resourceBytes: 50 })).rejects.toMatchObject({
-      name: 'WorkerTaskQueueLimitError'
-    });
-    expect(logger.warn).toHaveBeenCalledWith(
-      'Worker task rejected by queue resource limit',
-      expect.objectContaining({
-        eventName: 'worker.task.queue_rejected',
-        queuedResourceBytes: 60,
-        maximumQueuedResourceBytes: 100
-      })
+    const queued = Array.from({ length: 20 }, () =>
+      pool.run({ resourceBytes: 100 }).catch(() => undefined)
     );
+    expect(pool.waitQueue).toHaveLength(20);
+    expect(
+      (pool as unknown as { getPoolSnapshot: () => Record<string, number> }).getPoolSnapshot()
+    ).toMatchObject({ queuedExecutionResourceBytes: 2000 });
+    pool.waitQueue.forEach((task) => clearTimeout(task.queueTimeoutId));
+    await Promise.race([Promise.all(queued), Promise.resolve()]);
+  });
+
+  it('运行中的外链任务可增长软预留至当前容量以上，并阻止后续任务启动', async () => {
+    type Task = { loadFile?: true; simple?: true; payload?: string; resourceBytes: number };
+    const pool = createPool<Task, { bufferSize?: number; payload?: string }>({
+      name: WorkerNameEnum.readFile,
+      maxReservedThreads: 2,
+      resourcePolicy: {
+        getTaskResourceBytes: (data) => data.resourceBytes,
+        getResourceSnapshot: () => ({
+          availableResourceBytes: 100,
+          maximumTaskResourceBytes: 200
+        }),
+        queueTimeoutMs: 1000
+      }
+    });
+    let releaseMaterialize!: () => void;
+    const materializeGate = new Promise<void>((resolve) => {
+      releaseMaterialize = resolve;
+    });
+    const loadFile = vi.fn(async (controller: { updateResourceBytes: (bytes: number) => void }) => {
+      controller.updateResourceBytes(60);
+      controller.updateResourceBytes(120);
+      await materializeGate;
+      return {
+        buffer: new Uint8Array([7]).buffer,
+        bufferSize: 1,
+        metadata: { extension: 'txt' }
+      };
+    });
+
+    const running = pool.run({ loadFile: true, resourceBytes: 20 }, undefined, { loadFile });
+    await vi.waitFor(() => expect(loadFile).toHaveBeenCalledTimes(1));
+    expect(pool.reservedResourceBytes).toBe(120);
+
+    const waiting = pool.run({ simple: true, payload: 'later', resourceBytes: 10 });
+    expect(pool.waitQueue).toHaveLength(1);
+    expect(pool.workerQueue).toHaveLength(1);
+
+    releaseMaterialize();
+    await expect(running).resolves.toEqual({ bufferSize: 1, firstByte: 7 });
+    await expect(waiting).resolves.toEqual({ payload: 'later' });
+    expect(pool.reservedResourceBytes).toBe(0);
+  });
+
+  it('运行时软预留超过永久单任务上限会拒绝并释放最终预留', async () => {
+    const pool = createPool<{ loadFile: true; resourceBytes: number }, never>({
+      name: WorkerNameEnum.readFile,
+      maxReservedThreads: 1,
+      resourcePolicy: {
+        getTaskResourceBytes: (data) => data.resourceBytes,
+        getResourceSnapshot: () => ({
+          availableResourceBytes: 100,
+          maximumTaskResourceBytes: 80
+        }),
+        queueTimeoutMs: 1000
+      }
+    });
+
+    await expect(
+      pool.run({ loadFile: true, resourceBytes: 20 }, undefined, {
+        loadFile: async (controller) => {
+          controller.updateResourceBytes(81);
+          throw new Error('unreachable');
+        }
+      })
+    ).rejects.toThrow('exceeds the current safe limit');
+    expect(pool.reservedResourceBytes).toBe(0);
   });
 
   it('为每个任务输出可关联的 debug 生命周期和资源快照', async () => {
@@ -482,6 +566,38 @@ describe('worker/utils WorkerPool', () => {
       'Worker task execution timeout',
       expect.objectContaining({ eventName: 'worker.task.execution_timeout' })
     );
+  });
+
+  it('延迟物化期间执行超时会 abort source 并释放增长后的软预留', async () => {
+    const pool = createPool<{ loadFile: true; resourceBytes: number }, never>({
+      name: WorkerNameEnum.readFile,
+      maxReservedThreads: 1,
+      taskTimeoutMs: 20,
+      resourcePolicy: {
+        getTaskResourceBytes: (data) => data.resourceBytes,
+        getResourceSnapshot: () => ({
+          availableResourceBytes: 100,
+          maximumTaskResourceBytes: 100
+        }),
+        queueTimeoutMs: 1000
+      }
+    });
+    let handlerSignal: AbortSignal | undefined;
+
+    await expect(
+      pool.run({ loadFile: true, resourceBytes: 10 }, undefined, {
+        loadFile: (controller, signal) => {
+          handlerSignal = signal;
+          controller.updateResourceBytes(60);
+          return new Promise((_, reject) => {
+            signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+          });
+        }
+      })
+    ).rejects.toMatchObject({ name: 'WorkerTaskExecutionTimeoutError' });
+    expect(handlerSignal?.aborted).toBe(true);
+    expect(pool.reservedResourceBytes).toBe(0);
+    expect(pool.workerQueue).toHaveLength(0);
   });
 
   it('worker 提前退出时立即拒绝任务并释放槽位', async () => {

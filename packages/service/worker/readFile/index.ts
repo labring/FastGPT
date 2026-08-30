@@ -27,6 +27,56 @@ type IncomingMessage = {
     };
   };
 
+type LoadFileResponse = {
+  id: string;
+  type?: 'loadFileResult' | 'loadFileError';
+  requestId?: string;
+  data?: MaterializedWorkerFile | unknown;
+};
+
+type MaterializedWorkerFile = {
+  buffer: ArrayBuffer;
+  bufferSize: number;
+  metadata?: {
+    extension?: string;
+    encoding?: string;
+  };
+};
+
+const isLoadFileResponse = (type?: string) => type === 'loadFileResult' || type === 'loadFileError';
+
+/** 当前 worker 任务向主线程请求延迟物化文件，并按 requestId 隔离回包。 */
+const requestMaterializedFile = ({ id }: { id: string }) =>
+  new Promise<MaterializedWorkerFile>((resolve, reject) => {
+    const requestId = crypto.randomUUID();
+    const onMessage = (message: LoadFileResponse) => {
+      if (
+        message.id !== id ||
+        message.requestId !== requestId ||
+        !isLoadFileResponse(message.type)
+      ) {
+        return;
+      }
+
+      parentPort?.off('message', onMessage);
+      if (message.type === 'loadFileError') {
+        reject(message.data);
+      } else if (message.data && typeof message.data === 'object' && 'buffer' in message.data) {
+        resolve(message.data as MaterializedWorkerFile);
+      } else {
+        reject(new Error('Read file worker received an empty loadFile result'));
+      }
+    };
+
+    parentPort?.on('message', onMessage);
+    try {
+      parentPort?.postMessage({ id, type: 'loadFile', requestId });
+    } catch (error) {
+      parentPort?.off('message', onMessage);
+      reject(error);
+    }
+  });
+
 const read = async (
   params: ReadRawTextByBuffer,
   options: { uploadFile?: UploadFileHandler } = {}
@@ -65,7 +115,7 @@ const read = async (
 };
 
 parentPort?.on('message', async (props: IncomingMessage) => {
-  if (isWorkerUploadFileResponse(props.type)) {
+  if (isWorkerUploadFileResponse(props.type) || isLoadFileResponse(props.type)) {
     return;
   }
 
@@ -80,13 +130,15 @@ parentPort?.on('message', async (props: IncomingMessage) => {
   } = props;
 
   try {
-    const rawBuffer = transferredBuffer ?? sharedBuffer;
-    if (!rawBuffer) {
-      throw new Error('Read file worker missing buffer');
-    }
+    const loadedFile =
+      transferredBuffer || sharedBuffer ? undefined : await requestMaterializedFile({ id });
+    const rawBuffer = transferredBuffer ?? sharedBuffer ?? loadedFile?.buffer;
+    if (!rawBuffer) throw new Error('Read file worker missing buffer');
 
     // 优先使用 transfer 进来的 ArrayBuffer；兼容旧的 SharedArrayBuffer 零拷贝路径。
-    const buffer = Buffer.from(rawBuffer, 0, bufferSize);
+    const buffer = Buffer.from(rawBuffer, 0, loadedFile?.bufferSize ?? bufferSize);
+    const finalExtension = loadedFile?.metadata?.extension ?? extension;
+    const finalEncoding = loadedFile?.metadata?.encoding ?? encoding;
 
     const uploadFileHandler = createWorkerUploadFileHandlerWithListener({
       taskId: id,
@@ -96,11 +148,15 @@ parentPort?.on('message', async (props: IncomingMessage) => {
 
     try {
       const data = await read(
-        { extension, encoding, buffer },
+        { extension: finalExtension, encoding: finalEncoding, buffer },
         { uploadFile: uploadFileHandler.uploadFile }
       );
 
-      parentPort?.postMessage({ id, type: 'success', data });
+      parentPort?.postMessage({
+        id,
+        type: 'success',
+        data: loadedFile?.metadata ? { ...data, sourceMetadata: loadedFile.metadata } : data
+      });
     } finally {
       uploadFileHandler.cleanup();
     }
