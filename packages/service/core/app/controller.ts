@@ -251,7 +251,7 @@ export const getAppBasicInfoByIds = async ({ teamId, ids }: { teamId: string; id
   return apps.map((item) => ({
     id: item._id,
     name: item.name,
-    avatar: item.avatar
+    avatar: item.avatar ?? ''
   }));
 };
 

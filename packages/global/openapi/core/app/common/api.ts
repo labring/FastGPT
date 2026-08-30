@@ -186,11 +186,11 @@ export const CreateAppBodySchema = z
       example: '新应用',
       description: '应用名称'
     }),
-    avatar: z.string().optional().meta({
+    avatar: z.string().nullish().meta({
       example: 'https://example.com/avatar.png',
       description: '应用头像'
     }),
-    intro: z.string().optional().meta({
+    intro: z.string().nullish().meta({
       example: '应用介绍',
       description: '应用介绍'
     }),
@@ -407,8 +407,8 @@ export const UpdateAppBodySchema = z
       .enum(AppTypeEnum)
       .optional()
       .meta({ example: AppTypeEnum.workflow, description: '应用类型' }),
-    avatar: z.string().optional().meta({ description: '应用头像' }),
-    intro: z.string().optional().meta({ description: '应用介绍' }),
+    avatar: z.string().nullish().meta({ description: '应用头像' }),
+    intro: z.string().nullish().meta({ description: '应用介绍' }),
     nodes: z.never().optional(),
     modules: z.never().optional(),
     edges: z.never().optional(),

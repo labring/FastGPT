@@ -215,7 +215,7 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
       return UpdateAppResponseSchema.parse(await onUpdate(session));
     });
   } else {
-    logAppUpdate({ tmbId, teamId, app, name, intro });
+    logAppUpdate({ tmbId, teamId, app, name, intro: intro ?? undefined });
 
     return UpdateAppResponseSchema.parse(await onUpdate());
   }

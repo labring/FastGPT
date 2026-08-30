@@ -37,7 +37,7 @@ async function handler(
 
   const toolSetRuntimeNode = getHTTPToolSetRuntimeNode({
     name: app.name,
-    avatar: app.avatar,
+    avatar: app.avatar ?? undefined,
     baseUrl,
     apiSchemaStr,
     toolList: formattedToolList,
