@@ -33,6 +33,7 @@ import { InitPermissionBodySchema } from '@/service/admin/4162/permissionSchema'
 const body = {
   dryRun: false,
   teamId: '68ad85a7463006c963799a05',
+  teamConcurrency: 200,
   sampleLimit: 20
 };
 
@@ -80,12 +81,16 @@ describe('POST /api/admin/4162/initPermission', () => {
   it('defaults to dry-run and does not expose the internal batch size', () => {
     expect(InitPermissionBodySchema.parse({})).toEqual({
       dryRun: true,
+      teamConcurrency: 100,
       sampleLimit: 20
     });
     expect(InitPermissionBodySchema.parse({ batchSize: 1 })).toEqual({
       dryRun: true,
+      teamConcurrency: 100,
       sampleLimit: 20
     });
+    expect(() => InitPermissionBodySchema.parse({ teamConcurrency: 0 })).toThrow();
+    expect(() => InitPermissionBodySchema.parse({ teamConcurrency: 1001 })).toThrow();
   });
 
   it('cleans invalid permissions before materializing resource permissions', async () => {
@@ -93,13 +98,16 @@ describe('POST /api/admin/4162/initPermission', () => {
 
     expect(mocks.authCert).toHaveBeenCalledWith({ req: {}, authRoot: true });
     expect(mocks.cleanupDanglingResourcePermissions).toHaveBeenCalledWith({
-      ...body,
-      batchSize: 100
+      dryRun: body.dryRun,
+      teamId: body.teamId,
+      batchSize: 1000,
+      sampleLimit: body.sampleLimit
     });
     expect(mocks.materializeResourcePermissions).toHaveBeenCalledWith({
       dryRun: body.dryRun,
       teamId: body.teamId,
-      batchSize: 100
+      batchSize: 1000,
+      teamConcurrency: body.teamConcurrency
     });
     expect(mocks.cleanupDanglingResourcePermissions.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.materializeResourcePermissions.mock.invocationCallOrder[0]

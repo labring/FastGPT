@@ -22,7 +22,6 @@ import {
 } from './permissionSchema';
 
 const logger = getLogger(LogCategories.MODULE.PERMISSION);
-const TEAM_CONCURRENCY = 10;
 
 export type MigrationResource = {
   _id: unknown;
@@ -334,7 +333,7 @@ export const materializeResourcePermissions = async (
         failedResourceTypeCount
       });
     },
-    TEAM_CONCURRENCY
+    options.teamConcurrency
   );
 
   return MaterializeResourcePermissionsResultSchema.parse(result);

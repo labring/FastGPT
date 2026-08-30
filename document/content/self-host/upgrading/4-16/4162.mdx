@@ -16,7 +16,7 @@ upgradeTags:
 curl -X POST 'https://你的域名/api/admin/4162/initPermission' \
   -H 'Content-Type: application/json' \
   -H 'rootkey: 你的ROOT_KEY' \
-  -d '{"dryRun":true}'
+  -d '{"dryRun":true,"teamConcurrency":100}'
 ```
 
 确认 `migration.errors` 为空或已完成异常资源处理后，执行正式清理和迁移：
@@ -25,10 +25,10 @@ curl -X POST 'https://你的域名/api/admin/4162/initPermission' \
 curl -X POST 'https://你的域名/api/admin/4162/initPermission' \
   -H 'Content-Type: application/json' \
   -H 'rootkey: 你的ROOT_KEY' \
-  -d '{"dryRun":false}'
+  -d '{"dryRun":false,"teamConcurrency":100}'
 ```
 
-接口不再接收 `batchSize`，权限清理和资源迁移固定每批读取 `100` 条记录。资源迁移最多并发处理 `10` 个团队；单个团队的某类资源处理失败时，会将异常写入 `migration.errors` 并继续处理其他资源类型和团队。`sampleLimit` 控制 `cleanup.samples` 返回的无效权限样本数。返回结果分为 `cleanup` 和 `migration` 两部分：`cleanup` 包含扫描、命中和删除统计；`migration.resourceCount` 是扫描资源数，`migration.updatedResourceCount` 是需要写入的资源数，`migration.skippedResourceCount` 是因父级缺失或树结构异常而跳过的目标资源数，`migration.errors` 包含异常详情。迁移保留资源自身的 owner 和子级权限，父级资源链会按需读取，继承开关缺失的历史资源按启用继承处理。
+接口不再接收 `batchSize`。权限清理固定每批读取 `1000` 条权限记录；ACL 迁移按团队和资源类型扫描，每批在一个事务中处理 `1000` 个 App、Dataset 或 Agent Skill 资源。`teamConcurrency` 控制 ACL 迁移同时处理的团队数，范围为 `1` 到 `1000`，默认值为 `100`。同一团队内的 App、Dataset 和 Agent Skill 依次处理。单个团队的某类资源处理失败时，会将异常写入 `migration.errors` 并继续处理其他资源类型和团队。`sampleLimit` 控制 `cleanup.samples` 返回的无效权限样本数。返回结果分为 `cleanup` 和 `migration` 两部分：`cleanup` 包含扫描、命中和删除统计；`migration.resourceCount` 是扫描资源数，`migration.updatedResourceCount` 是需要写入的资源数，`migration.skippedResourceCount` 是因父级缺失或树结构异常而跳过的目标资源数，`migration.errors` 包含异常详情。迁移保留资源自身的 owner 和子级权限，父级资源链会按需读取，继承开关缺失的历史资源按启用继承处理。
 
 dry-run 中的迁移预览基于清理前的当前权限数据；如果 `cleanup` 命中了无效权限，正式执行清理后的迁移统计可能与预览不同。
 

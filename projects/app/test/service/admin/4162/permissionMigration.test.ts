@@ -224,7 +224,8 @@ describe('materializeResourcePermissions', () => {
     const result = await materializeResourcePermissions({
       dryRun: false,
       teamId: String(users.owner.teamId),
-      batchSize: 1
+      batchSize: 1,
+      teamConcurrency: 10
     });
 
     expect(result.errors).toEqual([]);
@@ -281,7 +282,8 @@ describe('materializeResourcePermissions', () => {
     const result = await materializeResourcePermissions({
       dryRun: true,
       teamId: String(users.owner.teamId),
-      batchSize: 1
+      batchSize: 1,
+      teamConcurrency: 10
     });
 
     expect(result).toMatchObject({
@@ -335,7 +337,8 @@ describe('materializeResourcePermissions', () => {
     const result = await materializeResourcePermissions({
       dryRun: false,
       teamId: String(users.owner.teamId),
-      batchSize: 100
+      batchSize: 100,
+      teamConcurrency: 10
     });
 
     expect(result).toMatchObject({
@@ -424,7 +427,8 @@ describe('materializeResourcePermissions', () => {
     const result = await materializeResourcePermissions({
       dryRun: false,
       teamId: String(users.owner.teamId),
-      batchSize: 100
+      batchSize: 100,
+      teamConcurrency: 10
     });
 
     expect(result).toMatchObject({
@@ -500,7 +504,8 @@ describe('materializeResourcePermissions', () => {
     const result = await materializeResourcePermissions({
       dryRun: false,
       teamId: String(users.owner.teamId),
-      batchSize: 100
+      batchSize: 100,
+      teamConcurrency: 10
     });
 
     expect(result).toMatchObject({
