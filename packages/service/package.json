@@ -21,6 +21,7 @@
     "@fastgpt-sdk/storage": "workspace:*",
     "@fastgpt/dal": "workspace:*",
     "@fastgpt/global": "workspace:*",
+    "@fastgpt-sdk/anydoc": "catalog:",
     "@llamaindex/liteparse-wasm": "catalog:",
     "@mariozechner/pi-agent-core": "^0.67.3",
     "@mariozechner/pi-ai": "^0.67.3",

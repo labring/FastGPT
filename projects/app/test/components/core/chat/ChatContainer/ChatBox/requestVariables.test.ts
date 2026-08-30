@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { VariableItemType } from '@fastgpt/global/core/app/type';
+import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import {
   VariableInputEnum,
   WorkflowIOValueTypeEnum

@@ -1,7 +1,6 @@
 import { StoreNodeItemTypeSchema } from '../workflow/type/node';
 import { AppTypeEnum } from './constants';
-import { NodeInputKeyEnum, VariableInputEnum } from '../workflow/constants';
-import { InputComponentPropsTypeSchema } from '../workflow/type/io';
+import { NodeInputKeyEnum } from '../workflow/constants';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 import type { ReasoningEffort } from '../ai/llm/type';
 import { StoreEdgeItemTypeSchema } from '../workflow/type/edge';
@@ -13,19 +12,7 @@ import z from 'zod';
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { AppFileSelectConfigTypeSchema } from './type/config.schema';
 import { BoolSchema, NumSchema } from '../../common/zod';
-
-// variable
-export const VariableItemTypeSchema = AppFileSelectConfigTypeSchema.extend(
-  InputComponentPropsTypeSchema.shape
-).extend({
-  type: z.enum(VariableInputEnum).meta({
-    description: '变量输入组件类型'
-  }),
-  description: z.string().meta({
-    description: '变量用途说明'
-  })
-});
-export type VariableItemType = z.infer<typeof VariableItemTypeSchema>;
+import { VariableItemTypeSchema } from './variable/type';
 
 // tts
 export const AppTTSConfigTypeSchema = z.object({

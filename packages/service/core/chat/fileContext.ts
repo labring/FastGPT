@@ -9,24 +9,15 @@ import { getS3RawTextSource } from '../../common/s3/sources/rawText';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
 import { S3Buckets } from '../../common/s3/config/constants';
 import { S3Sources } from '../../common/s3/contracts/type';
-import {
-  detectFileEncoding,
-  parseContentDispositionFilename
-} from '@fastgpt/global/common/file/tools';
 import path from 'path';
 import { getFileS3Key } from '../../common/s3/utils';
 import { S3ChatSource } from '../../common/s3/sources/chat';
-import { readFileContentByBuffer } from '../../common/file/read/utils';
+import { readFileContentBySource } from '../../common/file/read/utils';
 import { addDays } from 'date-fns';
 import { replaceS3KeyToPreviewUrl } from '../dataset/utils';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { getUserFilesPrompt, injectUserQueryPrompt } from '../ai/llm/prompt';
-import {
-  DEFAULT_CONTENT_TYPE,
-  normalizeMimeType,
-  resolveMimeExtension
-} from '../../common/s3/utils/mime';
-import { isLikelyTextBuffer } from '../../common/file/read/text';
+import { normalizeMimeType } from '../../common/s3/utils/mime';
 import {
   S3_ACCESS_LINK_ROUTES,
   S3SignedDownloadAliasValueSchema,
@@ -35,9 +26,10 @@ import {
 } from '../../common/s3/accessLink';
 import { getFileMaxSize } from '../../common/file/utils';
 import { validateFileUrlDomain } from '../../common/security/fileUrlValidator';
-import { readExternalFileBuffer } from '../../common/file/read/external';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import type { FileSource } from '../../common/file/read/source';
+import { createExternalHttpFileSource, createS3FileSource } from '../../common/file/read/source';
 
 /** Workflow 等上层业务可显式注入的已授权文件读取能力。 */
 export type FileReadContext = {
@@ -53,10 +45,8 @@ export type FileReadContext = {
     | undefined;
   resolveChatFile: (url: string) => UserChatItemFileItemType | undefined;
   getIdentity: (url: string) => string | undefined;
-  read: (url: string) => Promise<{
-    buffer: Buffer;
-    filename: string;
-    contentType?: string;
+  getSource: (url: string) => Promise<{
+    source: FileSource;
     sourceKind: 'internal' | 'external';
     imageParsePrefix?: string;
   }>;
@@ -71,22 +61,6 @@ type GetFileProps = {
   tmbId: string;
   usageId?: string;
   fileContext?: FileReadContext;
-};
-
-const readableFileExtensions = new Set(['txt', 'md', 'html', 'pdf', 'docx', 'pptx', 'csv', 'xlsx']);
-
-const normalizeReadableExtension = (extension?: string) =>
-  extension?.trim().toLowerCase().replace(/^\./, '') || '';
-
-const resolveSupportedReadableExtension = (extension?: string) => {
-  const normalizedExtension = normalizeReadableExtension(extension);
-  const aliasExtension = (() => {
-    if (normalizedExtension === 'markdown') return 'md';
-    if (normalizedExtension === 'htm') return 'html';
-    return normalizedExtension;
-  })();
-
-  return readableFileExtensions.has(aliasExtension) ? aliasExtension : '';
 };
 
 const fileTypeIncludesExtension = (fileTypes: string, extension: string) =>
@@ -200,43 +174,6 @@ const resolveShortLinkMediaFilesInUserQuery = async (userQuery: UserChatItemValu
   );
 
   return changed ? normalizedUserQuery : userQuery;
-};
-
-/**
- * 解析文件读取 worker 使用的扩展名。外部 URL 可能没有后缀，例如 GitHub raw LICENSE；
- * 这时允许从响应 Content-Type 或文本内容推断为 txt，但显式存在的不支持后缀仍交给 worker 报错。
- */
-const resolveReadFileExtension = ({
-  extension,
-  contentType,
-  buffer
-}: {
-  extension: string;
-  contentType?: string;
-  buffer: Buffer;
-}) => {
-  const normalizedExtension = normalizeReadableExtension(extension);
-  const supportedExtension = resolveSupportedReadableExtension(normalizedExtension);
-  if (supportedExtension) return supportedExtension;
-
-  if (normalizedExtension) return normalizedExtension;
-
-  const normalizedContentType = normalizeMimeType(contentType, '');
-  const mimeExtension = resolveSupportedReadableExtension(
-    resolveMimeExtension(normalizedContentType)
-  );
-  if (mimeExtension) return mimeExtension;
-
-  if (normalizedContentType.startsWith('text/')) return 'txt';
-
-  if (
-    (!normalizedContentType || normalizedContentType === DEFAULT_CONTENT_TYPE) &&
-    isLikelyTextBuffer(buffer)
-  ) {
-    return 'txt';
-  }
-
-  return '';
 };
 
 /**
@@ -564,20 +501,17 @@ export const getFileInfoFromUrl = async ({
 }) => {
   const fileRef = fileContext?.resolve(url);
   if (fileRef && fileContext) {
-    const { buffer, filename, contentType, sourceKind, imageParsePrefix } =
-      await fileContext.read(url);
+    const { source, sourceKind, imageParsePrefix } = await fileContext.getSource(url);
     const isChatExternalUrl = sourceKind === 'external';
-    const resolvedFilename = filename || fileRef.name;
+    const resolvedFilename = source.metadata.filename || fileRef.name;
 
     return {
       isChatExternalUrl,
       filename: resolvedFilename,
-      extension: path.extname(resolvedFilename).replace('.', ''),
       imageParsePrefix: isChatExternalUrl
         ? getFileS3Key.temp({ teamId, filename: resolvedFilename }).fileParsedPrefix
         : imageParsePrefix || '',
-      contentType,
-      stream: buffer
+      source
     };
   }
 
@@ -590,11 +524,6 @@ export const getFileInfoFromUrl = async ({
   }
 
   const shortDownloadAccess = await resolveShortDownloadAccessFromUrl(url);
-  const { buffer, contentType, contentDisposition } = await readExternalFileBuffer({
-    url,
-    maxFileSize: fileContext?.limits?.maxBytesPerFile ?? getFileMaxSize()
-  });
-
   const urlObj = new URL(url, 'http://localhost:3000');
   const isShortChatFile =
     shortDownloadAccess?.bucketName === S3Buckets.private &&
@@ -603,7 +532,7 @@ export const getFileInfoFromUrl = async ({
     !isShortChatFile && !urlObj.pathname.startsWith(`/${S3Buckets.private}/${S3Sources.chat}/`);
 
   // Get file name
-  const { filename, extension, imageParsePrefix } = (() => {
+  const { filename, imageParsePrefix } = (() => {
     if (isShortChatFile && shortDownloadAccess) {
       const parsedChatUrl = S3ChatSource.parseChatUrl(
         new URL(
@@ -618,24 +547,19 @@ export const getFileInfoFromUrl = async ({
 
       return {
         filename,
-        extension: path.extname(filename).replace('.', '') || parsedChatUrl.extension,
         imageParsePrefix: parsedChatUrl.imageParsePrefix
       };
     }
 
     if (isChatExternalUrl) {
-      const matchFilename = parseContentDispositionFilename(contentDisposition || '');
       const filename =
         shortDownloadAccess?.filename ||
-        matchFilename ||
         (shortDownloadAccess?.objectKey ? path.basename(shortDownloadAccess.objectKey) : '') ||
         urlObj.pathname.split('/').pop() ||
         'file';
-      const extension = path.extname(filename).replace('.', '');
 
       return {
         filename,
-        extension,
         imageParsePrefix: getFileS3Key.temp({ teamId, filename }).fileParsedPrefix
       };
     }
@@ -643,13 +567,52 @@ export const getFileInfoFromUrl = async ({
     return S3ChatSource.parseChatUrl(url);
   })();
 
+  if (isShortChatFile && shortDownloadAccess) {
+    const bucket = global.s3BucketMap?.[S3Buckets.private];
+    if (!bucket) throw new Error('Private S3 bucket is not initialized');
+    const metadata = await bucket.client.getObjectMetadata({
+      key: shortDownloadAccess.objectKey
+    });
+    const sizeBytes = metadata?.contentLength;
+    if (typeof sizeBytes !== 'number' || !Number.isSafeInteger(sizeBytes) || sizeBytes < 0) {
+      throw new Error('Chat file object has invalid metadata');
+    }
+
+    return {
+      isChatExternalUrl: false,
+      filename,
+      imageParsePrefix,
+      source: createS3FileSource({
+        sizeBytes,
+        metadata: {
+          filename,
+          contentType: shortDownloadAccess.responseContentType || metadata.contentType
+        },
+        getStream: async (signal) => {
+          const response = await bucket.client.downloadObject({
+            key: shortDownloadAccess.objectKey,
+            abortSignal: signal
+          });
+          if (!response.body) throw new Error('Chat file object has no body');
+          return response.body;
+        }
+      })
+    };
+  }
+
   return {
     isChatExternalUrl,
     filename,
-    extension,
     imageParsePrefix,
-    contentType: shortDownloadAccess?.responseContentType || contentType,
-    stream: buffer
+    source: createExternalHttpFileSource({
+      url,
+      maxSizeBytes: fileContext?.limits?.maxBytesPerFile ?? getFileMaxSize(),
+      trustMetadataFilename: Boolean(shortDownloadAccess?.filename),
+      metadata: {
+        filename,
+        contentType: shortDownloadAccess?.responseContentType
+      }
+    })
   };
 };
 
@@ -692,35 +655,16 @@ export const getFileContentByUrl = async ({
     };
   }
 
-  const { isChatExternalUrl, filename, extension, imageParsePrefix, contentType, stream } =
-    await getFileInfoFromUrl({ teamId, url, fileContext });
-
-  const buffer = stream;
-  // Get encoding
-  const encoding = (() => {
-    if (contentType) {
-      const charsetRegex = /charset=([^;]*)/;
-      const matches = charsetRegex.exec(contentType);
-      if (matches != null && matches[1]) {
-        return matches[1];
-      }
-    }
-
-    return detectFileEncoding(buffer);
-  })();
-
-  const readExtension = resolveReadFileExtension({
-    extension,
-    contentType,
-    buffer
+  const { isChatExternalUrl, filename, imageParsePrefix, source } = await getFileInfoFromUrl({
+    teamId,
+    url,
+    fileContext
   });
 
-  const { rawText } = await readFileContentByBuffer({
-    extension: readExtension,
+  const { rawText, sourceMetadata } = await readFileContentBySource({
+    source,
     teamId,
     tmbId,
-    buffer,
-    encoding,
     customPdfParse,
     getFormatText: true,
     imageKeyOptions: imageParsePrefix
@@ -735,17 +679,18 @@ export const getFileContentByUrl = async ({
   });
 
   const replacedText = await replaceS3KeyToPreviewUrl(rawText, addDays(new Date(), 90));
+  const resolvedFilename = sourceMetadata?.filename || filename;
 
   // Add to buffer
   getS3RawTextSource().addRawTextBuffer({
     sourceId,
-    sourceName: filename,
+    sourceName: resolvedFilename,
     text: replacedText,
     customPdfParse
   });
 
   return {
-    name: filename,
+    name: resolvedFilename,
     url,
     content: replacedText
   };

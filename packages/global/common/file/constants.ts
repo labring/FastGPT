@@ -4,7 +4,45 @@ export enum BucketNameEnum {
   chat = 'chat'
 }
 
-export const documentFileType = '.txt, .docx, .csv, .xlsx, .pdf, .md, .html, .pptx';
+/** FastGPT 原有解析器覆盖的文档扩展名。 */
+const builtInDocumentFileExtensions = [
+  '.txt',
+  '.docx',
+  '.csv',
+  '.xlsx',
+  '.pdf',
+  '.md',
+  '.html',
+  '.pptx'
+] as const;
+
+/** 由 anydoc 补充解析的文档扩展名；不要在这里重复原有解析器格式。 */
+export const anydocDocumentFileExtensions = [
+  '.doc',
+  '.wps',
+  '.docm',
+  '.ppt',
+  '.pps',
+  '.pot',
+  '.pptm',
+  '.ppsx',
+  '.ppsm',
+  '.xls',
+  '.xlsm',
+  '.xlsb',
+  '.odt',
+  '.ods',
+  '.odp',
+  '.rtf',
+  '.epub'
+] as const;
+
+export const documentFileExtensions = [
+  ...builtInDocumentFileExtensions,
+  ...anydocDocumentFileExtensions
+] as const;
+
+export const documentFileType = documentFileExtensions.join(', ');
 
 /** S3 Multipart 和各兼容 provider 统一支持的最大分片数量。 */
 export const MAX_MULTIPART_PART_COUNT = 10_000;

@@ -5,11 +5,11 @@ import {
   AppChatConfigTypeSchema,
   AppResourceRefsSchema,
   AppScheduledTriggerConfigTypeSchema,
-  VariableItemTypeSchema,
   AppSchemaTypeSchema,
   type AppDetailType,
   type AppListItemType
 } from '../../../../core/app/type';
+import { VariableItemTypeSchema } from '../../../../core/app/variable/type';
 import { ShortUrlSchema } from '../../../../support/marketing/type';
 import { AppPermissionSchema } from '../../../../support/permission/app/controller.schema';
 import { SourceMemberSchema } from '../../../../support/user/type';

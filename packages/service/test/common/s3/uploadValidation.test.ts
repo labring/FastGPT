@@ -3,6 +3,8 @@ import {
   getUploadInspectBytes,
   validateUploadFile
 } from '@fastgpt/service/common/s3/validation/upload';
+import { datasetAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
+import { anydocTestExtensions, createAnydocFixture } from '../../worker/readFile/anydocFixtures';
 
 const pngBuffer = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
@@ -20,6 +22,11 @@ const genericZipBuffer = Buffer.from(
   'UEsDBBQAAAAAANeFbFyFEUoNCwAAAAsAAAAJAAAAaGVsbG8udHh0aGVsbG8gd29ybGRQSwECFAMUAAAAAADXhWxchRFKDQsAAAALAAAACQAAAAAAAAAAAAAAgAEAAAAAaGVsbG8udHh0UEsFBgAAAAABAAEANwAAADIAAAAAAA==',
   'base64'
 );
+const cfbBuffer = (() => {
+  const buffer = Buffer.alloc(512);
+  Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]).copy(buffer);
+  return buffer;
+})();
 
 describe('getUploadInspectBytes', () => {
   it('returns the configured inspection size', () => {
@@ -31,9 +38,33 @@ describe('getUploadInspectBytes', () => {
     expect(getUploadInspectBytes('demo.xlsx')).toBe(64 * 1024);
     expect(getUploadInspectBytes('demo.pptx')).toBe(64 * 1024);
   });
+
+  it('uses a larger inspection window for legacy Office uploads', () => {
+    expect(getUploadInspectBytes('demo.doc')).toBe(64 * 1024);
+    expect(getUploadInspectBytes('demo.wps')).toBe(64 * 1024);
+    expect(getUploadInspectBytes('demo.xls')).toBe(64 * 1024);
+    expect(getUploadInspectBytes('demo.ppt')).toBe(64 * 1024);
+  });
 });
 
 describe('validateUploadFile', () => {
+  it.each(anydocTestExtensions)('接受真实 .%s 文件内容', async (extension) => {
+    const { buffer } = await createAnydocFixture(extension);
+
+    await expect(
+      validateUploadFile({
+        buffer,
+        filename: `fixture.${extension}`,
+        uploadConstraints: {
+          allowedExtensions: datasetAllowedExtensions
+        }
+      })
+    ).resolves.toMatchObject({
+      filename: `fixture.${extension}`,
+      extension: `.${extension}`
+    });
+  });
+
   it('accepts matching png content', async () => {
     await expect(
       validateUploadFile({
@@ -357,6 +388,41 @@ describe('validateUploadFile', () => {
       })
     ).resolves.toMatchObject({
       filename: 'demo.docx',
+      contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    });
+  });
+
+  it.each(['demo.doc', 'demo.wps', 'demo.xls', 'demo.ppt'])(
+    'accepts legacy Office CFB content for %s',
+    async (filename) => {
+      await expect(
+        validateUploadFile({
+          buffer: cfbBuffer,
+          filename,
+          uploadConstraints: {
+            allowedExtensions: [`.${filename.split('.').pop()}`]
+          }
+        })
+      ).resolves.toMatchObject({
+        filename,
+        contentType: 'application/x-cfb',
+        detectionSource: 'magic'
+      });
+    }
+  );
+
+  it('accepts a Word OOXML macro variant through the same document family', async () => {
+    await expect(
+      validateUploadFile({
+        buffer: docxBuffer,
+        filename: 'demo.docm',
+        uploadConstraints: {
+          allowedExtensions: ['.docm']
+        }
+      })
+    ).resolves.toMatchObject({
+      filename: 'demo.docm',
+      extension: '.docm',
       contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     });
   });

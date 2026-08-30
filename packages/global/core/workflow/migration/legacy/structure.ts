@@ -5,6 +5,7 @@ import {
   FlowNodeTypeEnum
 } from '../../node/constant';
 import { PluginStatusEnum } from '../../../plugin/type';
+import { normalizeVariableValueType } from '../../../app/variable/utils';
 
 const inputTypes = new Set(Object.values(FlowNodeInputTypeEnum));
 const outputTypes = new Set(Object.values(FlowNodeOutputTypeEnum));
@@ -304,20 +305,24 @@ export const migrateLegacyWorkflowStructureData = ({
         if (typeof variable.key !== 'string' || !variable.key) variable.key = `variable_${index}`;
         if (typeof variable.label !== 'string') variable.label = variable.key;
         if (typeof variable.description !== 'string') variable.description = '';
-        variable.valueType = normalizeValueType(variable.valueType);
         // 兼容旧的语义类型名称，并将未知类型降级为普通输入。
-        variable.type =
-          {
-            string: VariableInputEnum.input,
-            text: VariableInputEnum.input,
-            number: VariableInputEnum.numberInput,
-            boolean: VariableInputEnum.switch,
-            multiSelect: VariableInputEnum.multipleSelect
-          }[String(variable.type)] ??
-          (typeof variable.type === 'string' &&
-          variableTypes.has(variable.type as VariableInputEnum)
-            ? variable.type
-            : VariableInputEnum.input);
+        const legacyVariableType = {
+          string: VariableInputEnum.input,
+          text: VariableInputEnum.input,
+          number: VariableInputEnum.numberInput,
+          boolean: VariableInputEnum.switch,
+          multiSelect: VariableInputEnum.multipleSelect
+        }[String(variable.type)];
+        const currentVariableType =
+          typeof variable.type === 'string' && variableTypes.has(variable.type as VariableInputEnum)
+            ? (variable.type as VariableInputEnum)
+            : undefined;
+        const mappedVariableType = legacyVariableType ?? currentVariableType;
+        variable.valueType = normalizeVariableValueType({
+          type: mappedVariableType,
+          valueType: variable.valueType
+        });
+        variable.type = mappedVariableType ?? VariableInputEnum.input;
         if (typeof variable.maxLength !== 'number' || variable.maxLength < 0) {
           // 负数或非数字长度没有有效含义，删除后使用当前默认约束。
           delete variable.maxLength;

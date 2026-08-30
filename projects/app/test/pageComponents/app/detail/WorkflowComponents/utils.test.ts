@@ -719,7 +719,7 @@ describe('WorkflowComponents utils', () => {
         edges: [],
         appDetail: {
           chatConfig: {
-            variables: [{ key: 'name', label: 'name', type: 'input' }]
+            variables: [{ key: 'name', label: 'name', description: '', type: 'input' }]
           }
         } as AppDetailType,
         t: (key: string) =>

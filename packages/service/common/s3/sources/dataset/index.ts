@@ -17,8 +17,7 @@ import {
 import { MongoS3TTL } from '../../models/ttl';
 import { addHours } from 'date-fns';
 import { getLogger, LogCategories } from '../../../logger';
-import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
-import { readFileContentByBuffer } from '../../../file/read/utils';
+import { readFileContentBySource } from '../../../file/read/utils';
 import { ensureTextContentTypeCharset, isTextLikeFile, resolveMimeType } from '../../utils/mime';
 import { createUploadConstraints, datasetAllowedExtensions } from '../../utils/uploadConstraints';
 import { getFileS3Key } from '../../utils';
@@ -27,6 +26,7 @@ import type { S3RawTextSource } from '../rawText';
 import { getS3RawTextSource } from '../rawText';
 import { getS3UploadContentDisposition, encodeS3Filename } from '../../filename';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { createS3FileSource } from '../../../file/read/source';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
@@ -103,6 +103,21 @@ export class S3DatasetSource extends S3PrivateBucket {
   }
 
   /**
+   * 清理尚未被 Collection 事务提升为永久对象的上传文件。必须先确认对象删除成功，再移除 TTL；
+   * 删除失败时保留 TTL，让生命周期任务继续兜底。
+   */
+  async cleanupPendingDatasetFile(key: string) {
+    try {
+      await this.removeObject(key);
+    } catch (error) {
+      logger.warn('Pending dataset file cleanup failed; keep TTL for retry', { key, error });
+      throw error;
+    }
+
+    await MongoS3TTL.deleteOne({ minioKey: key, bucketName: this.bucketName });
+  }
+
+  /**
    * 可以根据 datasetId 或者 prefix 删除文件
    * 如果存在 rawPrefix 则优先使用 rawPrefix 去删除文件，否则使用 datasetId 拼接前缀去删除文件
    * 比如根据被解析的文档前缀去删除解析出来的图片
@@ -143,30 +158,13 @@ export class S3DatasetSource extends S3PrivateBucket {
       };
     }
 
-    const [fileMetadata, downloadResponse] = await Promise.all([
-      this.getFileMetadata(fileId),
-      this.client.downloadObject({ key: fileId })
-    ]);
-
-    const filename = fileMetadata?.filename || '';
-    const extension = fileMetadata?.extension || '';
-
-    const start = Date.now();
-    const buffer = await streamConsumer.buffer(downloadResponse.body);
-    logger.debug('S3 dataset file downloaded', {
-      key: fileId,
-      durationMs: Date.now() - start,
-      size: buffer.length
-    });
-
-    const encoding = detectFileEncoding(buffer);
+    const source = await this.getDatasetFileSource({ fileId, datasetId });
+    const filename = source.metadata.filename || '';
     const { fileParsedPrefix } = getFileS3Key.s3Key(fileId);
-    const { rawText } = await readFileContentByBuffer({
+    const { rawText } = await readFileContentBySource({
       teamId,
       tmbId,
-      extension,
-      buffer,
-      encoding,
+      source,
       customPdfParse,
       usageId,
       getFormatText,
@@ -186,6 +184,41 @@ export class S3DatasetSource extends S3PrivateBucket {
       rawText,
       filename
     };
+  }
+
+  /**
+   * 为已鉴权的 Dataset 对象创建可信 S3 FileSource。HEAD 返回的 Content-Length 只用于解析资源准入，
+   * 不重复执行上传阶段的业务大小校验。
+   */
+  async getDatasetFileSource({ fileId, datasetId }: { fileId: string; datasetId: string }) {
+    if (!isAuthorizedDatasetFileS3Key({ key: fileId, datasetId })) {
+      throw new Error('Invalid dataset file key');
+    }
+
+    const metadata = await this.getFileMetadata(fileId);
+    const sizeBytes = metadata?.contentLength;
+    if (
+      !metadata ||
+      typeof sizeBytes !== 'number' ||
+      !Number.isSafeInteger(sizeBytes) ||
+      sizeBytes < 0
+    ) {
+      throw new Error('Invalid S3 dataset file metadata');
+    }
+
+    return createS3FileSource({
+      sizeBytes,
+      metadata: {
+        filename: metadata.filename,
+        contentType: metadata.contentType,
+        extension: metadata.extension
+      },
+      getStream: async (signal) => {
+        const stream = await this.getFileStream(fileId, { abortSignal: signal });
+        if (!stream) throw new Error('S3 dataset file stream is empty');
+        return stream;
+      }
+    });
   }
 
   // 根据文件 Buffer 上传文件

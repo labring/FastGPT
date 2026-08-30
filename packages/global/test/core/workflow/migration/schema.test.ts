@@ -5,7 +5,11 @@ import {
   migrateWorkflowToCurrent
 } from '@fastgpt/global/core/workflow/migration';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { AppChatConfigTypeSchema } from '@fastgpt/global/core/app/type';
 
 const inputWithLegacyIndex = {
@@ -234,6 +238,41 @@ describe('workflow migration boundary', () => {
     expect(result.nodes[0].flowNodeType).toBe('emptyNode');
     expect(result.nodes[0].inputs[0]).not.toHaveProperty('llmModelType');
     expect(result.chatConfig).not.toHaveProperty('_id');
+  });
+
+  it('maps empty variable value types and falls back to any for unknown variable types', () => {
+    const result = migrateWorkflowToCurrent({
+      nodes: [],
+      chatConfig: {
+        variables: [
+          {
+            key: 'query',
+            label: 'Query',
+            description: '',
+            type: VariableInputEnum.textarea,
+            valueType: null
+          },
+          {
+            key: 'count',
+            label: 'Count',
+            description: '',
+            type: VariableInputEnum.numberInput
+          },
+          {
+            key: 'unknown',
+            label: 'Unknown',
+            description: '',
+            type: 'removed-input-type'
+          }
+        ]
+      }
+    });
+
+    expect(result.chatConfig.variables).toMatchObject([
+      { type: VariableInputEnum.textarea, valueType: WorkflowIOValueTypeEnum.string },
+      { type: VariableInputEnum.numberInput, valueType: WorkflowIOValueTypeEnum.number },
+      { type: VariableInputEnum.input, valueType: WorkflowIOValueTypeEnum.any }
+    ]);
   });
 
   it('adds an empty config to available Agent tools missing config', async () => {

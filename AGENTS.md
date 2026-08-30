@@ -41,6 +41,7 @@ FastGPT 是一个 AI Agent 构建平台,通过 Flow 提供开箱即用的数据�
 项目使用 Vitest 进行测试并生成覆盖率报告。主要测试命令:
 - `pnpm test` - 运行所有测试
 - `pnpm test {file-path}` - 使用 Vitest 运行指定测试文件的指定测试
+- `pnpm test:light <file-path...>` - 顺序运行跨 workspace 的局部测试，关闭覆盖率并限制为单 worker，避免多个 Vitest/Mongo 实例争抢本地资源
 - 测试文件位于 `test/` 目录和 `projects/{{name}}/test/`，代表这`packages`和`单个 project`的测试文件目录。
 - 覆盖率报告生成在 `coverage/` 目录
 
@@ -70,6 +71,7 @@ FastGPT 是一个 AI Agent 构建平台,通过 Flow 提供开箱即用的数据�
 - **数据库**: 支持 MongoDB、带 pgvector 的 PostgreSQL 或 Milvus 向量存储
 - **AI 集成**: 通过统一接口支持多个 AI 提供商
 - **国际化**: 完整支持中文、英文和日文
+- **部署配置保护**: 修改代码过程中不得修改任何部署相关的 `.yml` 或 `.yaml` 文件；如果需求确实需要调整部署配置，必须先获得用户明确确认。
 
 ## 关键文件模式
 

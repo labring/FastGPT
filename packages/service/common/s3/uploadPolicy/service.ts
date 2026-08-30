@@ -10,7 +10,6 @@ import {
   defaultInspectBytes,
   detectOfficeDocumentMime,
   getFilenameExtension,
-  getOfficeZipFormatByExtension,
   isTextLikeMime,
   mimesMatchForUpload,
   normalizeAllowedExtensions,
@@ -18,6 +17,7 @@ import {
   normalizeUploadExtensionRules,
   officeZipInspectBytes,
   replaceFilenameExtension,
+  requiresExtendedOfficeInspection,
   resolveAllowedExtensionForMime,
   resolveAllowedMimeTypes,
   resolveExtensionForMime,
@@ -219,7 +219,7 @@ export const getUploadInspectBytes = ({
   ].filter(Boolean);
   const contentType = normalizeMimeType(hint?.contentType, '');
 
-  if (possibleExtensions.some((extension) => getOfficeZipFormatByExtension(extension))) {
+  if (possibleExtensions.some(requiresExtendedOfficeInspection)) {
     return officeZipInspectBytes;
   }
   if (

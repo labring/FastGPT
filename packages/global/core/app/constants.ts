@@ -5,6 +5,7 @@ import {
   type AppQGConfigType
 } from './type';
 import type { AppFileSelectConfigType } from './type/config.schema';
+import { documentFileExtensions } from '../../common/file/constants';
 
 export enum AppTypeEnum {
   folder = 'folder',
@@ -83,7 +84,7 @@ export enum AppTemplateTypeEnum {
 }
 
 export const defaultFileExtensionTypes = {
-  canSelectFile: ['.pdf', '.docx', '.pptx', '.xlsx', '.txt', '.md', '.html', '.csv'],
+  canSelectFile: [...documentFileExtensions],
   canSelectImg: ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'],
   canSelectVideo: ['.mp4', '.mov', '.avi', '.mpeg', '.webm'],
   canSelectAudio: ['.mp3', '.wav', '.ogg', '.m4a', '.amr', '.mpga'],

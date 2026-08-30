@@ -16,7 +16,7 @@ import {
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import type { FileSelectorValueItemType } from '@/components/core/app/FileSelector/type';
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import type { VariableItemType } from '@fastgpt/global/core/app/type';
+import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
   workflowReferenceValueIsSelectable,

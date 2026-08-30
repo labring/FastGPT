@@ -1,4 +1,4 @@
-import { serviceEnv } from '../../env';
+import { getLightweightWorkerPoolOptions } from '../../worker/lightweightResource';
 import { WorkerNameEnum, getWorkerController } from '../../worker/utils';
 import { getLogger, LogCategories } from '../logger';
 
@@ -18,7 +18,7 @@ export const htmlToMarkdown = async (html?: string | null) => {
     }
   >({
     name: WorkerNameEnum.htmlStr2Md,
-    maxReservedThreads: serviceEnv.HTML_TO_MARKDOWN_WORKERS,
+    ...getLightweightWorkerPoolOptions<{ html: string }>(),
     taskTimeoutMs: HTML_TO_MARKDOWN_TIMEOUT_MS,
     maxTasksPerWorker: 100
   });
@@ -26,7 +26,7 @@ export const htmlToMarkdown = async (html?: string | null) => {
   logger.info('HTML to markdown worker task started', {
     htmlLength: htmlContent.length,
     workerName: WorkerNameEnum.htmlStr2Md,
-    maxReservedThreads: serviceEnv.HTML_TO_MARKDOWN_WORKERS,
+    maxReservedThreads: workerController.maxReservedThreads,
     timeoutMs: HTML_TO_MARKDOWN_TIMEOUT_MS
   });
 

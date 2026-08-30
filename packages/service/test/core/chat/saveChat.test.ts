@@ -25,7 +25,10 @@ import {
   FlowNodeTypeEnum,
   FlowNodeInputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
@@ -215,6 +218,46 @@ describe('pushChatRecords', () => {
       expect(chat).toBeDefined();
       expect(chat?.title).toBe('');
       expect(String(chat?.teamId)).toBe(props.teamId);
+    });
+
+    it('should normalize and validate variableList before saving chat', async () => {
+      const props = createMockProps(
+        {
+          chatId: 'chat-variable-list-normalize',
+          appChatConfig: {
+            variables: [
+              {
+                key: 'query',
+                label: 'Query',
+                description: '',
+                type: VariableInputEnum.textarea,
+                valueType: null
+              }
+            ]
+          } as any
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      await pushChatRecords(props);
+
+      const chat = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId }).lean();
+      expect(chat?.variableList?.[0].valueType).toBe(WorkflowIOValueTypeEnum.string);
+    });
+
+    it('should prevent malformed variableList from being saved', async () => {
+      const props = createMockProps(
+        {
+          chatId: 'chat-variable-list-invalid',
+          appChatConfig: {
+            variables: [{ key: 'broken', type: VariableInputEnum.input }]
+          } as any
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      await pushChatRecords(props);
+      expect(await MongoChat.exists({ appId: testAppId, chatId: props.chatId })).toBeNull();
     });
 
     it('should persist agent loop control values in AI chat item value', async () => {

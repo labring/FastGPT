@@ -25,6 +25,7 @@ import { getWebDefaultEmbeddingModel, getWebDefaultLLMModel } from '@/web/common
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
+import { documentFileType } from '@fastgpt/global/common/file/constants';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import type { ImportSourceItemType } from '@/web/core/dataset/type';
 import FileSelector, {
@@ -263,7 +264,7 @@ const QuickCreateDatasetModal = ({
 
         <Box>
           <FileSelector
-            fileType={'.txt, .docx, .csv, .xlsx, .pdf, .md, .html, .htm, .pptx, .doc, .xls, .ppt'}
+            fileType={documentFileType}
             selectFiles={selectFiles}
             onSelectFiles={handleSelectFiles}
           />

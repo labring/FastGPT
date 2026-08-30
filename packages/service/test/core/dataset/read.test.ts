@@ -1,13 +1,11 @@
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { PassThrough, Readable } from 'node:stream';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getDatasetFileRawText: vi.fn(),
-  axios: vi.fn(),
-  axiosHead: vi.fn(),
-  readFileContentByBuffer: vi.fn(),
+  readFileContentBySource: vi.fn(),
+  getTeamFileSizeLimitBytes: vi.fn(),
   getApiFileContent: vi.fn()
 }));
 
@@ -17,18 +15,12 @@ vi.mock('@fastgpt/service/common/s3/sources/dataset', () => ({
   })
 }));
 
-vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
-  const mod = await importOriginal<typeof import('@fastgpt/service/common/api/axios')>();
-  return {
-    ...mod,
-    axios: Object.assign(mocks.axios, {
-      head: mocks.axiosHead
-    })
-  };
-});
-
 vi.mock('@fastgpt/service/common/file/read/utils', () => ({
-  readFileContentByBuffer: mocks.readFileContentByBuffer
+  readFileContentBySource: mocks.readFileContentBySource
+}));
+
+vi.mock('@fastgpt/service/support/permission/fileLimit', () => ({
+  getTeamFileSizeLimitBytes: mocks.getTeamFileSizeLimitBytes
 }));
 
 vi.mock('@fastgpt/service/core/dataset/apiDataset', () => ({
@@ -46,8 +38,8 @@ describe('readDatasetSourceRawText', () => {
       filename: 'demo.pdf',
       rawText: 'demo content'
     });
-    mocks.axiosHead.mockResolvedValue({ headers: {} });
-    mocks.readFileContentByBuffer.mockResolvedValue({ rawText: 'downloaded content' });
+    mocks.getTeamFileSizeLimitBytes.mockResolvedValue(321);
+    mocks.readFileContentBySource.mockResolvedValue({ rawText: 'downloaded content' });
     mocks.getApiFileContent.mockResolvedValue({ title: 'api.pdf', rawText: 'api content' });
   });
 
@@ -88,10 +80,6 @@ describe('readDatasetSourceRawText', () => {
   });
 
   it('passes training usageId through external file parsing', async () => {
-    mocks.axios.mockResolvedValue({
-      data: Readable.from([Buffer.from('pdf-content')])
-    });
-
     await readDatasetSourceRawText({
       teamId: 'team-a',
       tmbId: 'tmb-a',
@@ -103,10 +91,11 @@ describe('readDatasetSourceRawText', () => {
       customPdfParse: true
     });
 
-    expect(mocks.readFileContentByBuffer).toHaveBeenCalledWith(
+    expect(mocks.readFileContentBySource).toHaveBeenCalledWith(
       expect.objectContaining({
         customPdfParse: true,
-        usageId: 'usage-a'
+        usageId: 'usage-a',
+        source: expect.objectContaining({ kind: 'externalHttp', maxSizeBytes: 321 })
       })
     );
   });
@@ -134,21 +123,12 @@ describe('readDatasetSourceRawText', () => {
 
 describe('readFileRawTextByUrl', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
     vi.clearAllMocks();
-    mocks.axiosHead.mockResolvedValue({ headers: {} });
-    mocks.readFileContentByBuffer.mockResolvedValue({ rawText: 'downloaded content' });
+    mocks.getTeamFileSizeLimitBytes.mockResolvedValue(321);
+    mocks.readFileContentBySource.mockResolvedValue({ rawText: 'downloaded content' });
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('在统一下载 deadline 内保留 30 秒建连 timeout，并在流结束后解析文件内容', async () => {
-    mocks.axios.mockResolvedValue({
-      data: Readable.from([Buffer.from('pdf-content')])
-    });
-
+  it('构造未知大小 External source，不在排队前发送 HEAD 或 GET', async () => {
     await expect(
       readFileRawTextByUrl({
         teamId: 'team-a',
@@ -159,32 +139,33 @@ describe('readFileRawTextByUrl', () => {
       })
     ).resolves.toEqual({ rawText: 'downloaded content' });
 
-    expect(mocks.axios).toHaveBeenCalledWith(
+    expect(mocks.getTeamFileSizeLimitBytes).toHaveBeenCalledWith({ teamId: 'team-a' });
+    expect(mocks.readFileContentBySource).toHaveBeenCalledWith(
       expect.objectContaining({
-        responseType: 'stream',
-        timeout: 30000
+        source: expect.objectContaining({
+          kind: 'externalHttp',
+          maxSizeBytes: 321,
+          metadata: { filename: 'file.pdf' }
+        })
       })
     );
   });
 
-  it('流读取超过后端有效 timeout 时终止下载并抛出 Error', async () => {
-    const stream = new PassThrough();
-    mocks.axios.mockResolvedValue({ data: stream });
-
-    const resultPromise = readFileRawTextByUrl({
+  it('调用方已解析的字节上限优先，避免底层重复查询套餐', async () => {
+    await readFileRawTextByUrl({
       teamId: 'team-a',
       tmbId: 'tmb-a',
       url: 'https://example.com/file.pdf',
       relatedId: 'external-file-a',
-      datasetId: 'dataset-a'
+      datasetId: 'dataset-a',
+      maxSizeBytes: 999
     });
-    const resultAssertion = expect(resultPromise).rejects.toThrow(
-      'File download timeout after 600 seconds'
+
+    expect(mocks.getTeamFileSizeLimitBytes).not.toHaveBeenCalled();
+    expect(mocks.readFileContentBySource).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: expect.objectContaining({ maxSizeBytes: 999 })
+      })
     );
-
-    await vi.advanceTimersByTimeAsync(600000);
-
-    await resultAssertion;
-    expect(stream.destroyed).toBe(true);
   });
 });
