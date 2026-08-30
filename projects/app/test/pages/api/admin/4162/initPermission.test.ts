@@ -33,7 +33,6 @@ import { InitPermissionBodySchema } from '@/service/admin/4162/permissionSchema'
 const body = {
   dryRun: false,
   teamId: '68ad85a7463006c963799a05',
-  batchSize: 100,
   sampleLimit: 20
 };
 
@@ -78,10 +77,13 @@ describe('POST /api/admin/4162/initPermission', () => {
     mocks.materializeResourcePermissions.mockResolvedValue(migrationResult);
   });
 
-  it('defaults both phases to dry-run with bounded batches and samples', () => {
+  it('defaults to dry-run and does not expose the internal batch size', () => {
     expect(InitPermissionBodySchema.parse({})).toEqual({
       dryRun: true,
-      batchSize: 100,
+      sampleLimit: 20
+    });
+    expect(InitPermissionBodySchema.parse({ batchSize: 1 })).toEqual({
+      dryRun: true,
       sampleLimit: 20
     });
   });
@@ -90,11 +92,14 @@ describe('POST /api/admin/4162/initPermission', () => {
     const result = await handler({} as never);
 
     expect(mocks.authCert).toHaveBeenCalledWith({ req: {}, authRoot: true });
-    expect(mocks.cleanupDanglingResourcePermissions).toHaveBeenCalledWith(body);
+    expect(mocks.cleanupDanglingResourcePermissions).toHaveBeenCalledWith({
+      ...body,
+      batchSize: 100
+    });
     expect(mocks.materializeResourcePermissions).toHaveBeenCalledWith({
       dryRun: body.dryRun,
       teamId: body.teamId,
-      batchSize: body.batchSize
+      batchSize: 100
     });
     expect(mocks.cleanupDanglingResourcePermissions.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.materializeResourcePermissions.mock.invocationCallOrder[0]

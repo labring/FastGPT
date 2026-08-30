@@ -38,10 +38,6 @@ export const InitPermissionBodySchema = z.object({
     example: '68ad85a7463006c963799a05',
     description: '仅处理指定团队；不传时处理所有团队和权限'
   }),
-  batchSize: IntSchema.min(1).max(1000).optional().default(DEFAULT_PERMISSION_BATCH_SIZE).meta({
-    example: DEFAULT_PERMISSION_BATCH_SIZE,
-    description: '权限清理和迁移的批大小，范围 1~1000'
-  }),
   sampleLimit: IntSchema.min(0)
     .max(100)
     .optional()
