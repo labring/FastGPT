@@ -1,7 +1,7 @@
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { I18nNsType } from './i18next';
 import { I18N_NAMESPACES } from './constants';
-import { loadLocaleResource } from './resourceLoaders';
+import { loadLocaleResourceWithRetry } from './resourceLoaders';
 import {
   getLanguageStorageKind,
   getLangMapping,
@@ -79,7 +79,10 @@ const preloadResources = async (
       resources.push({
         language,
         namespace,
-        resource: (await loadLocaleResource(language, namespace)) as Record<string, unknown>,
+        resource: (await loadLocaleResourceWithRetry(language, namespace)) as Record<
+          string,
+          unknown
+        >,
         existed: i18n.hasResourceBundle(language, namespace),
         previousResource: i18n.getResourceBundle?.(language, namespace)
       });
