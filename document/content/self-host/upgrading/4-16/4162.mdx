@@ -60,7 +60,7 @@ HTML 转 Markdown 和文本切块 Worker 的硬上限为可用 CPU 并行度与 
 3. 支持账号注销。
 4. 支持在团队工具集中选择已有 App 创建 Workflow Tool。
 5. 使用 Milvus 作为向量库时，支持基于 `modeldata_v2` 单表的 BM25 全文检索。
-6. 文档解析新增支持 DOC、WPS、DOCM、PPT、PPS、POT、PPTM、PPSX、PPSM、XLS、XLSM、XLSB、ODT、ODS、ODP、RTF 和 EPUB 格式。这些新增格式目前仅解析文本内容，不支持提取或解析文件内部的图片。
+6. 文档解析新增支持 DOC、WPS、DOCM、PPT、PPS、POT、PPTM、PPSX、PPSM、XLS、XLSM、XLSB、ODT、ODS、ODP、RTF 和 EPUB 格式。解析器识别到的内嵌图片会提取并上传到对象存储，在解析结果中保留图片引用；未识别的图片形态仍会回退为可解析的文本内容。
 
 ## ⚙️ 优化
 

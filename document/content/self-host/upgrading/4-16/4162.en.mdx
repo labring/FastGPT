@@ -60,7 +60,7 @@ The hard limit for HTML-to-Markdown and text-chunking Workers is the smaller of 
 3. Added account deletion.
 4. Added an option to create Workflow Tools in the Team toolkit by selecting an existing App.
 5. Added BM25 full-text search backed by the single-table `modeldata_v2` design when Milvus is the vector store.
-6. Document parsing now supports DOC, WPS, DOCM, PPT, PPS, POT, PPTM, PPSX, PPSM, XLS, XLSM, XLSB, ODT, ODS, ODP, RTF, and EPUB files. These newly supported formats currently parse text only; embedded images are not extracted or parsed.
+6. Document parsing now supports DOC, WPS, DOCM, PPT, PPS, POT, PPTM, PPSX, PPSM, XLS, XLSM, XLSB, ODT, ODS, ODP, RTF, and EPUB files. Embedded images recognized by the parser are extracted, uploaded to object storage, and retained as image references in the parsed output. Unsupported image representations fall back to the text content that can be parsed.
 
 ## ⚙️ Improvements
 
