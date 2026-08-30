@@ -898,7 +898,7 @@
   "model.type.stt": "STT",
   "model.type.tts": "TTS",
   "model_loading": "Model loading...",
-  "model_loading_label": "Loading model",
+  "model_loading_label": "Requesting models",
   "model_not_exist": "Model does not exist",
   "model_disabled": "{{model}} model has been disabled",
   "month_text": "month",

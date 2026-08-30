@@ -124,7 +124,7 @@ const AIModelSelector = ({
 
   // 完整目录加载后自动把旧 model 值写回 modelId；其余调用方仍遵循各自的 valueField 输出契约。
   useEffect(() => {
-    if (!selection?.shouldNormalize) {
+    if (loading || !selection?.shouldNormalize) {
       normalizedSelectionRef.current = undefined;
       return;
     }
@@ -133,7 +133,7 @@ const AIModelSelector = ({
     if (normalizedSelectionRef.current === normalizationKey) return;
     normalizedSelectionRef.current = normalizationKey;
     onChange?.(selection.normalizedValue);
-  }, [currentValue, onChange, selection]);
+  }, [currentValue, loading, onChange, selection]);
 
   const providerIds = Array.from(new Set(models.map((model) => model.provider)));
   const grouped = models.length > 10;
@@ -189,7 +189,7 @@ const AIModelSelector = ({
   return (
     <MyTooltip label={disableTip}>
       <MultipleRowSelect
-        label={selectedLabel}
+        label={loading ? <>{t('common:model_loading_label')}</> : selectedLabel}
         list={selectorList}
         value={
           selectedModel
@@ -213,7 +213,12 @@ const AIModelSelector = ({
           const value = grouped ? values[1] : values[0];
           if (value !== undefined) onChange?.(value);
         }}
-        ButtonProps={{ ...props, isDisabled: !!disableTip, h: '40px', whiteSpace: 'nowrap' }}
+        ButtonProps={{
+          ...props,
+          isDisabled: !!disableTip || loading,
+          h: '40px',
+          whiteSpace: 'nowrap'
+        }}
       />
     </MyTooltip>
   );

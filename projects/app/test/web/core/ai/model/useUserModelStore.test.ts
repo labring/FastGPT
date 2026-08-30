@@ -71,12 +71,82 @@ describe('useUserModelStore catalog cache', () => {
     expect(useUserModelStore.getState().modelMap['model-id']?.model).toBe('provider-model');
   });
 
-  it('does not validate the same identity more than once during one session', async () => {
-    mocks.getUserModelCatalog.mockResolvedValueOnce({ version: 'version-1', data: catalogData });
+  it('validates the current version every time the catalog is used', async () => {
+    mocks.getUserModelCatalog
+      .mockResolvedValueOnce({ version: 'version-1', data: catalogData })
+      .mockResolvedValueOnce({
+        version: 'version-2',
+        data: {
+          ...catalogData,
+          models: [{ ...catalogData.models[0], modelId: 'updated-model-id' }],
+          defaultModelIds: { llm: 'updated-model-id' }
+        }
+      });
     await useUserModelStore.getState().loadModelCatalog({ teamId: 'team-1', tmbId: 'member-1' });
     await useUserModelStore.getState().loadModelCatalog({ teamId: 'team-1', tmbId: 'member-1' });
 
+    expect(mocks.getUserModelCatalog).toHaveBeenNthCalledWith(1, undefined);
+    expect(mocks.getUserModelCatalog).toHaveBeenNthCalledWith(2, 'version-1');
+    expect(useUserModelStore.getState().modelMap['updated-model-id']).toBeDefined();
+  });
+
+  it('deduplicates concurrent catalog validation for the same identity', async () => {
+    let resolveRequest: ((value: unknown) => void) | undefined;
+    mocks.getUserModelCatalog.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveRequest = resolve;
+      })
+    );
+
+    const firstRequest = useUserModelStore
+      .getState()
+      .loadModelCatalog({ teamId: 'team-1', tmbId: 'member-1' });
+    const secondRequest = useUserModelStore
+      .getState()
+      .loadModelCatalog({ teamId: 'team-1', tmbId: 'member-1' });
+
+    expect(secondRequest).toBe(firstRequest);
     expect(mocks.getUserModelCatalog).toHaveBeenCalledTimes(1);
+    expect(useUserModelStore.getState().loading).toBe(true);
+
+    resolveRequest?.({ version: 'version-1', data: catalogData });
+    await Promise.all([firstRequest, secondRequest]);
+    expect(useUserModelStore.getState().loading).toBe(false);
+  });
+
+  it('does not let an obsolete request overwrite a restarted request for the same identity', async () => {
+    let resolveObsoleteRequest: ((value: unknown) => void) | undefined;
+    mocks.getUserModelCatalog
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveObsoleteRequest = resolve;
+        })
+      )
+      .mockResolvedValueOnce({
+        version: 'version-2',
+        data: {
+          ...catalogData,
+          models: [{ ...catalogData.models[0], modelId: 'latest-model-id' }],
+          defaultModelIds: { llm: 'latest-model-id' }
+        }
+      });
+
+    const obsoleteRequest = useUserModelStore
+      .getState()
+      .loadModelCatalog({ teamId: 'team-1', tmbId: 'member-1' });
+    useUserModelStore.getState().clearMemory();
+    const latestRequest = useUserModelStore
+      .getState()
+      .loadModelCatalog({ teamId: 'team-1', tmbId: 'member-1' });
+
+    expect(latestRequest).not.toBe(obsoleteRequest);
+    await latestRequest;
+    resolveObsoleteRequest?.({ version: 'version-1', data: catalogData });
+    await obsoleteRequest;
+
+    expect(useUserModelStore.getState().modelMap['latest-model-id']).toBeDefined();
+    expect(useUserModelStore.getState().modelMap['model-id']).toBeUndefined();
+    expect(useUserModelStore.getState().loading).toBe(false);
   });
 
   it('discards a catalog response after the active member identity changes', async () => {

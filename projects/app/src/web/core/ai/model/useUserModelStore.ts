@@ -22,6 +22,7 @@ import {
 import { getUserModelCatalog } from '@/web/common/system/api';
 
 const MODEL_CATALOG_CACHE_PREFIX = 'fastgpt:model-catalog:v1:';
+const inflightCatalogRequests = new Map<string, { token: object; request: Promise<void> }>();
 
 type CatalogData = NonNullable<GetModelCatalogResponse['data']>;
 type CatalogCache = CatalogData & { version: string };
@@ -126,40 +127,81 @@ export const useUserModelStore = create<UserModelStoreState>()(
         defaultModels: {},
         modelProviders: emptyProviderList(),
         modelProviderMap: emptyProviderMap(),
-        async loadModelCatalog({ teamId, tmbId, force = false }) {
+        loadModelCatalog({ teamId, tmbId, force = false }) {
           const identity = `${teamId}:${tmbId}`;
-          if (!force && get().loaded && get().identity === identity) return;
-          if (get().loading && get().identity === identity) return;
+          const inflightRequest = inflightCatalogRequests.get(identity);
+          if (inflightRequest && get().identity === identity) return inflightRequest.request;
 
-          const cached = force ? undefined : readCache(teamId, tmbId);
-          if (cached && get().identity !== identity) applyCatalog({ identity, cache: cached });
-          set((state) => {
-            state.identity = identity;
-            state.loading = true;
-          });
+          const requestToken = {};
+          const request = (async () => {
+            const currentState = get();
+            const currentVersion =
+              !force && currentState.identity === identity && currentState.loaded
+                ? currentState.version
+                : undefined;
+            const cached =
+              currentVersion === undefined && !force ? readCache(teamId, tmbId) : undefined;
+            if (cached && (currentState.identity !== identity || !currentState.loaded)) {
+              applyCatalog({ identity, cache: cached });
+            }
 
-          try {
-            const response = await getUserModelCatalog(cached?.version);
-            // 身份在请求期间变化时丢弃旧响应，防止跨成员目录串写。
-            if (get().identity !== identity) return;
-            if (response.data) {
-              const nextCache = { ...response.data, version: response.version };
-              applyCatalog({ identity, cache: nextCache });
-              writeCache(teamId, tmbId, nextCache);
-            } else if (cached) {
-              applyCatalog({ identity, cache: { ...cached, version: response.version } });
-            } else {
-              throw new Error('Model catalog returned no data for an empty cache');
+            set((state) => {
+              // 身份切换且没有对应缓存时先清空旧目录，禁止暴露上一成员模型。
+              if (state.identity !== identity && !cached) {
+                state.version = undefined;
+                state.loaded = false;
+                state.modelList = [];
+                state.modelMap = {};
+                state.defaultModelIds = {};
+                state.defaultModels = {};
+                state.modelProviders = emptyProviderList();
+                state.modelProviderMap = emptyProviderMap();
+              }
+              state.identity = identity;
+              state.loading = true;
+            });
+
+            try {
+              const response = await getUserModelCatalog(currentVersion ?? cached?.version);
+              // 身份或同身份请求代次发生变化时丢弃旧响应，防止切换成员后串写或覆盖新请求。
+              if (
+                get().identity !== identity ||
+                inflightCatalogRequests.get(identity)?.token !== requestToken
+              ) {
+                return;
+              }
+              if (response.data) {
+                const nextCache = { ...response.data, version: response.version };
+                applyCatalog({ identity, cache: nextCache });
+                writeCache(teamId, tmbId, nextCache);
+              } else if (get().loaded) {
+                set((state) => {
+                  state.version = response.version;
+                });
+              } else if (cached) {
+                applyCatalog({ identity, cache: { ...cached, version: response.version } });
+              } else {
+                throw new Error('Model catalog returned no data for an empty cache');
+              }
+            } finally {
+              const isCurrentRequest =
+                inflightCatalogRequests.get(identity)?.token === requestToken;
+              if (get().identity === identity && isCurrentRequest) {
+                set((state) => {
+                  state.loading = false;
+                });
+              }
+              if (isCurrentRequest) {
+                inflightCatalogRequests.delete(identity);
+              }
             }
-          } finally {
-            if (get().identity === identity) {
-              set((state) => {
-                state.loading = false;
-              });
-            }
-          }
+          })();
+
+          inflightCatalogRequests.set(identity, { token: requestToken, request });
+          return request;
         },
         clearMemory() {
+          inflightCatalogRequests.clear();
           set((state) => {
             state.identity = undefined;
             state.version = undefined;
