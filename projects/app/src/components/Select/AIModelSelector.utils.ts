@@ -1,5 +1,36 @@
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 
+/**
+ * 同时识别稳定 modelId 与旧 model 值，并把结果归一化为选择器约定的输出字段。
+ * 优先匹配 valueField，避免某个模型的 model 与另一个模型的 modelId 撞值时产生歧义。
+ */
+export const resolveModelSelectorSelection = <
+  T extends Pick<MyModelItemType, 'modelId' | 'model'>
+>({
+  models,
+  value,
+  valueField
+}: {
+  models: T[];
+  value: string;
+  valueField: 'modelId' | 'model';
+}) => {
+  if (!value) return;
+
+  const fallbackField = valueField === 'modelId' ? 'model' : 'modelId';
+  const model =
+    models.find((item) => item[valueField] === value) ??
+    models.find((item) => item[fallbackField] === value);
+  if (!model) return;
+
+  const normalizedValue = model[valueField];
+  return {
+    model,
+    normalizedValue,
+    shouldNormalize: normalizedValue !== value
+  };
+};
+
 /** 只有明确使用 modelId 且值非空时，才可调用内部单模型接口。 */
 export const getModelSelectorModelId = (
   value: string,

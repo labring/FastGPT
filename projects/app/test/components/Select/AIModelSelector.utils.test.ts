@@ -2,6 +2,7 @@ import {
   createRestrictedModelDiscovery,
   getModelSelectorModelId,
   isModelAllowedByValues,
+  resolveModelSelectorSelection,
   resolveModelSelectorProvider
 } from '@/components/Select/AIModelSelector.utils';
 import { describe, expect, it } from 'vitest';
@@ -30,6 +31,78 @@ describe('AIModelSelector utils', () => {
     expect(getModelSelectorModelId('gpt-4o', 'modelId')).toBe('gpt-4o');
     expect(getModelSelectorModelId('', 'modelId')).toBeUndefined();
     expect(getModelSelectorModelId('68ad85a7463006c963799a07', 'model')).toBeUndefined();
+  });
+
+  it('normalizes a legacy model value to modelId for canonical selectors', () => {
+    const selected = resolveModelSelectorSelection({
+      models: [model],
+      value: 'gpt-4o',
+      valueField: 'modelId'
+    });
+
+    expect(selected).toEqual({
+      model,
+      normalizedValue: 'model-id',
+      shouldNormalize: true
+    });
+  });
+
+  it('keeps canonical modelId values unchanged', () => {
+    const selected = resolveModelSelectorSelection({
+      models: [model],
+      value: 'model-id',
+      valueField: 'modelId'
+    });
+
+    expect(selected).toEqual({
+      model,
+      normalizedValue: 'model-id',
+      shouldNormalize: false
+    });
+  });
+
+  it('recognizes modelId values without changing legacy selector output contracts', () => {
+    const selected = resolveModelSelectorSelection({
+      models: [model],
+      value: 'model-id',
+      valueField: 'model'
+    });
+
+    expect(selected).toEqual({
+      model,
+      normalizedValue: 'gpt-4o',
+      shouldNormalize: true
+    });
+  });
+
+  it('prefers the configured value field when model and modelId values collide', () => {
+    const canonicalModel = { modelId: 'shared-value', model: 'canonical-model' };
+    const legacyCollision = { modelId: 'other-id', model: 'shared-value' };
+
+    expect(
+      resolveModelSelectorSelection({
+        models: [legacyCollision, canonicalModel],
+        value: 'shared-value',
+        valueField: 'modelId'
+      })
+    ).toEqual({
+      model: canonicalModel,
+      normalizedValue: 'shared-value',
+      shouldNormalize: false
+    });
+  });
+
+  it('returns no selection for empty or unavailable values', () => {
+    expect(
+      resolveModelSelectorSelection({ models: [model], value: '', valueField: 'modelId' })
+    ).toBeUndefined();
+    expect(
+      resolveModelSelectorSelection({
+        models: [model],
+        value: 'missing-model',
+        valueField: 'modelId'
+      })
+    ).toBeUndefined();
   });
 
   it('does not select a provider for ten or fewer models', () => {

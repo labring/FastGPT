@@ -9,10 +9,10 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { Box, Flex } from '@chakra-ui/react';
 import type { ResponsiveValue } from '@chakra-ui/system';
 import { useTranslation } from 'next-i18next';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 import MultimodalTag from '@/components/core/ai/MultimodelTag';
-import { isModelAllowedByValues } from './AIModelSelector.utils';
+import { isModelAllowedByValues, resolveModelSelectorSelection } from './AIModelSelector.utils';
 import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 
@@ -105,14 +105,36 @@ const AIModelSelector = ({
     [allowedValues, modelList, modelType]
   );
   const currentValue = props.value ? String(props.value) : '';
-  const selectedModel = models.find(
-    (model) => (valueField === 'modelId' ? model.modelId : model.model) === currentValue
+  const selection = useMemo(
+    () =>
+      resolveModelSelectorSelection({
+        models,
+        value: currentValue,
+        valueField
+      }),
+    [currentValue, models, valueField]
   );
+  const selectedModel = selection?.model;
   const legacySelectedItem = restrictedList?.find((item) => String(item.value) === currentValue);
   const getValue = useCallback(
     (model: MyModelItemType) => (valueField === 'modelId' ? model.modelId : model.model),
     [valueField]
   );
+  const normalizedSelectionRef = useRef<string>();
+
+  // 完整目录加载后自动把旧 model 值写回 modelId；其余调用方仍遵循各自的 valueField 输出契约。
+  useEffect(() => {
+    if (!selection?.shouldNormalize) {
+      normalizedSelectionRef.current = undefined;
+      return;
+    }
+
+    const normalizationKey = `${currentValue}:${selection.normalizedValue}`;
+    if (normalizedSelectionRef.current === normalizationKey) return;
+    normalizedSelectionRef.current = normalizationKey;
+    onChange?.(selection.normalizedValue);
+  }, [currentValue, onChange, selection]);
+
   const providerIds = Array.from(new Set(models.map((model) => model.provider)));
   const grouped = models.length > 10;
   const selectorList: ListItemType[] = grouped
