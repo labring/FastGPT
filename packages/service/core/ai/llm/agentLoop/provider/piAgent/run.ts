@@ -83,6 +83,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     useVision: runtime.llmParams.useVision && modelData.vision,
     useAudio: runtime.llmParams.useAudio && modelData.audio,
     useVideo: runtime.llmParams.useVideo && modelData.video,
+    forceMediaToBase64: runtime.llmParams.forceMediaToBase64,
     extractFiles: runtime.llmParams.extractFiles,
     supportReason: modelData.reasoning
   });

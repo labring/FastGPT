@@ -1243,5 +1243,36 @@ describe('loadRequestMessages function tests', () => {
       const content = result[0].content as any[];
       expect(content[0].image_url.url).toBe('data:image/png;base64,converted');
     });
+
+    it('should force remote images to base64 for private upload requests', async () => {
+      serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      const imageUrl = 'http://localhost:9000/fastgpt-private/chat/image.png?X-Amz-Signature=test';
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: ChatCompletionRequestMessageRoleEnum.User,
+          content: [{ type: 'image_url', image_url: { url: imageUrl } }]
+        }
+      ];
+      mockGetImageBase64.mockResolvedValue({
+        completeBase64: 'data:image/png;base64,private-image',
+        base64: 'private-image',
+        mime: 'image/png'
+      });
+
+      const result = await loadRequestMessages({
+        messages,
+        useVision: true,
+        forceMediaToBase64: true
+      });
+
+      expect(mockGetImageBase64).toHaveBeenCalledWith(imageUrl);
+      expect(mockAxiosHead).not.toHaveBeenCalled();
+      expect(result[0].content).toEqual([
+        {
+          type: 'image_url',
+          image_url: { url: 'data:image/png;base64,private-image' }
+        }
+      ]);
+    });
   });
 });

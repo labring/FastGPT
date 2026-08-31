@@ -23,7 +23,7 @@ describe('resolveChatFileUploadMode', () => {
     ).toBe('draft');
   });
 
-  it('keeps runtime mode for regular chats, Home Chat, shares and ChatAgentHelper', () => {
+  it('keeps runtime mode for regular chats, Home Chat, shares and auxiliary generators', () => {
     expect(
       resolveChatFileUploadMode({
         chatType: ChatTypeEnum.chat,
@@ -46,6 +46,12 @@ describe('resolveChatFileUploadMode', () => {
       resolveChatFileUploadMode({
         chatType: ChatTypeEnum.test,
         sourceType: ChatSourceTypeEnum.chatAgentHelper
+      })
+    ).toBe('runtime');
+    expect(
+      resolveChatFileUploadMode({
+        chatType: ChatTypeEnum.test,
+        sourceType: ChatSourceTypeEnum.workflowBuilder
       })
     ).toBe('runtime');
   });

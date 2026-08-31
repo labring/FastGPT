@@ -1,9 +1,8 @@
+import { AppChatConfigTypeSchema, type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import {
-  AppChatConfigTypeSchema,
-  type AppChatConfigType,
   VariableItemTypeSchema,
   type VariableItemType
-} from '@fastgpt/global/core/app/type';
+} from '@fastgpt/global/core/app/variable/type';
 import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';

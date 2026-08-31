@@ -50,7 +50,16 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     saveLLMResponseRecord = true,
     teamId
   } = args;
-  const { messages, useVision, useAudio, useVideo, extractFiles, tools, toolCallMode } = body;
+  const {
+    messages,
+    useVision,
+    useAudio,
+    useVideo,
+    forceMediaToBase64,
+    extractFiles,
+    tools,
+    toolCallMode
+  } = body;
   const model = getLLMModel(body.model);
 
   // 先把 messages 中的文件/图片等 FastGPT 扩展结构加载成模型可直接消费的消息。
@@ -59,6 +68,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     useVision: useVision && model.vision,
     useAudio: useAudio && model.audio,
     useVideo: useVideo && model.video,
+    forceMediaToBase64,
     extractFiles,
     supportReason: model.reasoning
   });

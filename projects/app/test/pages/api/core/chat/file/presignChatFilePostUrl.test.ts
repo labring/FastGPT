@@ -340,7 +340,9 @@ describe('presignChatFilePostUrl', () => {
         sourceType: ChatSourceTypeEnum.workflowBuilder,
         chatId
       })
-    ).rejects.toBe(S3ErrEnum.fileUploadDisabled);
+    ).resolves.toMatchObject({
+      url: 'https://example.com/upload-token'
+    });
 
     expect(mocks.authChatTargetCrud).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -350,7 +352,14 @@ describe('presignChatFilePostUrl', () => {
       })
     );
     expect(mocks.findAppById).not.toHaveBeenCalled();
-    expect(mocks.createUploadChatFileURL).not.toHaveBeenCalled();
+    expect(mocks.createUploadChatFileURL).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        sourceId: appId,
+        uId: 'builder-user-id',
+        allowedExtensions: expect.arrayContaining(['.txt', '.png', '.mp4', '.mp3'])
+      })
+    );
   });
 
   it('uses resolved app source for shared chat upload', async () => {

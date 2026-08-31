@@ -3,7 +3,7 @@ import { ExecutionSourcePortRefSchema } from '../edge/type';
 import { VariableRefSchema } from '../reference/type';
 import { NodeTemplateRefSchema } from '../template/type';
 import { WorkflowExecutionEdgeSchema } from '../edge/type';
-import { VariableItemTypeSchema } from '@fastgpt/global/core/app/type';
+import { VariableItemTypeSchema } from '@fastgpt/global/core/app/variable/type';
 import {
   FlowNodeInputItemTypeSchema,
   FlowNodeOutputItemTypeSchema

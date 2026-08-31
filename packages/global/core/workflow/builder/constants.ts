@@ -1,4 +1,7 @@
+import { defaultAppSelectFileConfig } from '../../app/constants';
 import type { AppChatConfigType } from '../../app/type';
+
+export const WORKFLOW_BUILDER_MAX_FILE_AMOUNT = 10;
 
 /**
  * Workflow Builder 的独立对话配置。
@@ -13,13 +16,14 @@ export const WORKFLOW_BUILDER_CHAT_CONFIG = {
     autoTTSResponse: false
   },
   fileSelectConfig: {
-    maxFiles: 0,
-    canSelectFile: false,
-    canSelectImg: false,
+    ...defaultAppSelectFileConfig,
+    maxFiles: WORKFLOW_BUILDER_MAX_FILE_AMOUNT,
+    canSelectFile: true,
+    canSelectImg: true,
     customPdfParse: false,
-    canSelectVideo: false,
-    canSelectAudio: false,
-    canSelectCustomFileExtension: false,
+    canSelectVideo: true,
+    canSelectAudio: true,
+    canSelectCustomFileExtension: true,
     customFileExtensionList: []
   }
 } satisfies AppChatConfigType;
