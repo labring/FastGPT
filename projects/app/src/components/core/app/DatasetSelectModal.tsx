@@ -24,20 +24,15 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 import FolderPath from '@/components/common/folder/Path';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import QuickCreateDatasetModal from '@/pageComponents/app/detail/components/QuickCreateDatasetModal';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-
-type SelectableDatasetListItem = DatasetListItemType & {
-  vectorModel: NonNullable<DatasetListItemType['vectorModel']>;
-};
-
-/** 只有非目录且向量模型仍启用的知识库才能新增到应用配置。 */
-const isSelectableDataset = (item: DatasetListItemType): item is SelectableDatasetListItem =>
-  item.type !== DatasetTypeEnum.folder && item.vectorModel?.isActive === true;
+import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
+import { getAllDatasets } from '@/web/core/dataset/api';
 
 // Dataset selection modal component
 export const DatasetSelectModal = ({
@@ -72,8 +67,23 @@ export const DatasetSelectModal = ({
     setSearchKey,
     datasets,
     isFetching,
-    loadDatasets
+    loadDatasets,
+    ScrollData
   } = useDatasetSelect();
+
+  const { gridRef, renderVirtualGridItems } = useVirtualGridList({
+    list: datasets,
+    listKey: `dataset-select-${parentId}-${searchKey}`,
+    defaultColumnCount: 1,
+    estimatedRowHeight: 40,
+    estimatedRowGap: 6
+  });
+  const isInitialLoading = isFetching && datasets.length === 0;
+  const { runAsync: fetchAllDatasets, loading: isSelectingAll } = useRequest(
+    (data: { parentId: typeof parentId; searchKey: string }) =>
+      getAllDatasets({ parentId: data.parentId, searchKey: data.searchKey }),
+    { manual: true }
+  );
 
   // The vector model of the first selected dataset
   const activeVectorModel = availableSelectedDatasets[0]?.vectorModel?.model;
@@ -88,20 +98,23 @@ export const DatasetSelectModal = ({
 
   // Check if a dataset is disabled (vector model mismatch)
   const isDatasetDisabled = (item: DatasetListItemType) => {
-    if (!isSelectableDataset(item)) return true;
     return !!activeVectorModel && activeVectorModel !== item.vectorModel.model;
   };
 
   // Cache compatible datasets by vector model to avoid repeated filtering
   const compatibleDatasetsByModel = useMemo(() => {
-    const visibleDatasets = datasets.filter(isSelectableDataset);
+    const visibleDatasets = datasets.filter(
+      (item: DatasetListItemType) => item.type !== DatasetTypeEnum.folder
+    );
 
     const targetModel = activeVectorModel || visibleDatasets[0]?.vectorModel?.model;
     if (!targetModel) {
       return [];
     }
 
-    return visibleDatasets.filter((item) => item.vectorModel.model === targetModel);
+    return visibleDatasets.filter(
+      (item: DatasetListItemType) => item.vectorModel.model === targetModel
+    );
   }, [datasets, activeVectorModel]);
 
   // Check if all compatible datasets are selected
@@ -113,17 +126,46 @@ export const DatasetSelectModal = ({
     const selectedDatasetIds = new Set(
       availableSelectedDatasets.map((dataset) => dataset.datasetId)
     );
-    return compatibleDatasetsByModel.every((item) => selectedDatasetIds.has(item._id));
+    return compatibleDatasetsByModel.every((item: DatasetListItemType) =>
+      selectedDatasetIds.has(item._id)
+    );
   }, [availableSelectedDatasets, compatibleDatasetsByModel]);
+
+  const onSelectAll = async (checked: boolean) => {
+    try {
+      const allDatasets = await fetchAllDatasets({ parentId, searchKey });
+      const targetModel =
+        activeVectorModel ||
+        allDatasets.find((item) => item.type !== DatasetTypeEnum.folder)?.vectorModel?.model;
+      const compatibleDatasets = allDatasets.filter(
+        (item) =>
+          item.type !== DatasetTypeEnum.folder &&
+          !!targetModel &&
+          item.vectorModel.model === targetModel
+      );
+      const datasetIds = new Set(compatibleDatasets.map((item) => item._id));
+
+      if (checked) {
+        const newSelections = compatibleDatasets
+          .filter((item) => !isDatasetSelected(item._id))
+          .map((item) => ({
+            datasetId: item._id,
+            avatar: item.avatar,
+            name: item.name,
+            vectorModel: item.vectorModel,
+            isDeleted: false
+          }));
+        setSelectedDatasets((prev) => [...prev, ...newSelections]);
+      } else {
+        setSelectedDatasets((prev) => prev.filter((dataset) => !datasetIds.has(dataset.datasetId)));
+      }
+    } catch {
+      // useRequest 已负责提示请求错误，避免事件处理函数产生未处理 rejection。
+    }
+  };
 
   const onSelect = (item: DatasetListItemType, checked: boolean) => {
     if (checked) {
-      if (!isSelectableDataset(item)) {
-        return toast({
-          status: 'warning',
-          title: t('dataset:index_model_unavailable')
-        });
-      }
       if (isDatasetDisabled(item)) {
         return toast({
           status: 'warning',
@@ -167,7 +209,7 @@ export const DatasetSelectModal = ({
       h={'100%'}
       minH={'496px'}
       isCentered
-      isLoading={isFetching}
+      isLoading={isInitialLoading}
     >
       {/* Main vertical layout */}
       <Flex h="100%" direction="column" flex={1} overflow="hidden" minH={0}>
@@ -271,136 +313,108 @@ export const DatasetSelectModal = ({
                     )}
                   </Box>
                   {/* Dataset list */}
-                  <VStack
-                    align="stretch"
-                    spacing={1.5}
-                    flex={1}
-                    px={4}
-                    overflowY="auto"
-                    h={0}
-                    minH={0}
-                  >
-                    {datasets.length === 0 && !isFetching && (
-                      <EmptyTip text={t('common:folder.empty')} />
-                    )}
-                    {datasets.map((item: DatasetListItemType) => (
-                      <Box key={item._id} userSelect={'none'}>
-                        <Flex
-                          align="center"
-                          pr={2}
-                          pl={4}
-                          py={1.5}
-                          borderRadius="md"
-                          _hover={{ bg: 'myGray.50' }}
-                          cursor="pointer"
-                          onClick={() => {
-                            if (item.type === DatasetTypeEnum.folder) {
-                              if (searchKey) {
-                                setSearchKey('');
+                  <ScrollData flex={1} minH={0} isLoading={isFetching} showLoadingOverlay={false}>
+                    <Grid ref={gridRef} templateColumns="1fr" rowGap={1.5} px={4}>
+                      {datasets.length === 0 && !isFetching && (
+                        <EmptyTip text={t('common:folder.empty')} />
+                      )}
+                      {renderVirtualGridItems((item: DatasetListItemType) => (
+                        <Box key={item._id} userSelect={'none'} data-virtual-item="">
+                          <Flex
+                            align="center"
+                            pr={2}
+                            pl={4}
+                            py={1.5}
+                            borderRadius="md"
+                            _hover={{ bg: 'myGray.50' }}
+                            cursor="pointer"
+                            onClick={() => {
+                              if (item.type === DatasetTypeEnum.folder) {
+                                if (searchKey) {
+                                  setSearchKey('');
+                                }
+                                setParentId(item._id);
+                              } else {
+                                onSelect(item, !isDatasetSelected(item._id));
                               }
-                              setParentId(item._id);
-                            } else {
-                              onSelect(item, !isDatasetSelected(item._id));
-                            }
-                          }}
-                        >
-                          <Box
-                            w={'5'}
-                            onClick={(e) => e.stopPropagation()} // Prevent parent click when clicking checkbox
+                            }}
                           >
-                            {item.type !== DatasetTypeEnum.folder && (
-                              <Checkbox
-                                isChecked={isDatasetSelected(item._id)}
-                                isDisabled={isDatasetDisabled(item)}
-                                onChange={(e) => {
-                                  const checked = e.target.checked;
-                                  onSelect(item, checked);
-                                }}
-                                colorScheme="blue"
-                                size="sm"
-                              />
-                            )}
-                          </Box>
-
-                          {/* Avatar */}
-                          <Avatar
-                            src={item.avatar}
-                            w={7}
-                            h={7}
-                            borderRadius="sm"
-                            ml={3}
-                            mr={2.5}
-                            flexShrink={0}
-                          />
-
-                          {/* Name and type */}
-                          <Box flex={1} minW={0}>
-                            <MyTooltip label={item.name} showOnlyWhenOverflow>
-                              <Box
-                                fontSize="sm"
-                                color={'myGray.900'}
-                                lineHeight={1.2}
-                                className="textEllipsis"
-                              >
-                                {item.name}
-                              </Box>
-                            </MyTooltip>
-                            <Box fontSize="xs" color="myGray.500" className="textEllipsis">
-                              {item.type === DatasetTypeEnum.folder ? (
-                                <>{t('common:Folder')}</>
-                              ) : (
-                                <>
-                                  {t('app:Index')}:{' '}
-                                  {item.vectorModel?.isActive
-                                    ? item.vectorModel.name
-                                    : t('dataset:index_model_unavailable')}
-                                </>
+                            <Box
+                              w={'5'}
+                              onClick={(e) => e.stopPropagation()} // Prevent parent click when clicking checkbox
+                            >
+                              {item.type !== DatasetTypeEnum.folder && (
+                                <Checkbox
+                                  isChecked={isDatasetSelected(item._id)}
+                                  isDisabled={isDatasetDisabled(item)}
+                                  onChange={(e) => {
+                                    const checked = e.target.checked;
+                                    onSelect(item, checked);
+                                  }}
+                                  colorScheme="blue"
+                                  size="sm"
+                                />
                               )}
                             </Box>
-                          </Box>
 
-                          {/* Folder expand arrow */}
-                          {item.type === DatasetTypeEnum.folder && (
-                            <Box mr={10}>
-                              <ChevronRightIcon w={5} h={5} color="myGray.500" strokeWidth="1px" />
+                            {/* Avatar */}
+                            <Avatar
+                              src={item.avatar}
+                              w={7}
+                              h={7}
+                              borderRadius="sm"
+                              ml={3}
+                              mr={2.5}
+                              flexShrink={0}
+                            />
+
+                            {/* Name and type */}
+                            <Box flex={1} minW={0}>
+                              <MyTooltip label={item.name} showOnlyWhenOverflow>
+                                <Box
+                                  fontSize="sm"
+                                  color={'myGray.900'}
+                                  lineHeight={1.2}
+                                  className="textEllipsis"
+                                >
+                                  {item.name}
+                                </Box>
+                              </MyTooltip>
+                              <Box fontSize="xs" color="myGray.500" className="textEllipsis">
+                                {item.type === DatasetTypeEnum.folder ? (
+                                  <>{t('common:Folder')}</>
+                                ) : (
+                                  <>
+                                    {t('app:Index')}: {item.vectorModel.name}
+                                  </>
+                                )}
+                              </Box>
                             </Box>
-                          )}
-                        </Flex>
-                      </Box>
-                    ))}
-                  </VStack>
+
+                            {/* Folder expand arrow */}
+                            {item.type === DatasetTypeEnum.folder && (
+                              <Box mr={10}>
+                                <ChevronRightIcon
+                                  w={5}
+                                  h={5}
+                                  color="myGray.500"
+                                  strokeWidth="1px"
+                                />
+                              </Box>
+                            )}
+                          </Flex>
+                        </Box>
+                      ))}
+                    </Grid>
+                  </ScrollData>
 
                   {/* Select all / Deselect all */}
                   {datasets.length > 0 && (
                     <Flex mt={3} px={4} justify="space-between" align="center">
                       <Checkbox
                         isChecked={isAllSelected}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            const compatibleDatasets = compatibleDatasetsByModel.filter(
-                              (dataset) => {
-                                return !isDatasetSelected(dataset._id);
-                              }
-                            );
-                            const newSelections = compatibleDatasets.map((item) => ({
-                              datasetId: item._id,
-                              avatar: item.avatar,
-                              name: item.name,
-                              vectorModel: item.vectorModel,
-                              isDeleted: false
-                            }));
-                            setSelectedDatasets((prev) => [...prev, ...newSelections]);
-                          } else {
-                            const datasetIdsToRemove = compatibleDatasetsByModel.map(
-                              (item) => item._id
-                            );
-                            setSelectedDatasets((prev) =>
-                              prev.filter(
-                                (dataset) => !datasetIdsToRemove.includes(dataset.datasetId)
-                              )
-                            );
-                          }
-                        }}
+                        isDisabled={isSelectingAll}
+                        onChange={(e) => onSelectAll(e.target.checked)}
                         colorScheme="blue"
                         size="sm"
                       >

@@ -315,7 +315,6 @@ export const ListAppBodySchema = z
         description: '按创建者筛选。缺省不过滤；空数组表示无选中创建者，返回空列表'
       })
   })
-  .extend(PaginationSchema.shape)
   .meta({
     example: {
       parentId: '68ad85a7463006c963799a05',
@@ -326,6 +325,16 @@ export const ListAppBodySchema = z
     }
   });
 export type ListAppBodyType = z.infer<typeof ListAppBodySchema>;
+
+/* ============================================================================
+ * API: 获取应用列表 V2
+ * Route: POST /api/core/app/listV2
+ * Method: POST
+ * Description: 分页获取当前团队下当前用户可读的应用或文件夹列表。
+ * Tags: ['基础管理']
+ * ============================================================================ */
+export const ListAppV2BodySchema = ListAppBodySchema.extend(PaginationSchema.shape);
+export type ListAppV2BodyType = z.infer<typeof ListAppV2BodySchema>;
 
 export const AppListItemSchema = z
   .object({
@@ -349,10 +358,15 @@ export const AppListItemSchema = z
     description: '应用列表项'
   }) as z.ZodType<AppListItemType>;
 
-export const ListAppResponseSchema = PaginationResponseSchema(AppListItemSchema).meta({
-  description: '应用列表(分页)'
+export const ListAppResponseSchema = z.array(AppListItemSchema).meta({
+  description: '应用列表'
 });
 export type ListAppResponseType = z.infer<typeof ListAppResponseSchema>;
+
+export const ListAppV2ResponseSchema = PaginationResponseSchema(AppListItemSchema).meta({
+  description: '应用列表(分页)'
+});
+export type ListAppV2ResponseType = z.infer<typeof ListAppV2ResponseSchema>;
 
 /* ============================================================================
  * API: 获取应用详情

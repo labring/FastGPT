@@ -5,7 +5,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useMemo, useState, useCallback } from 'react';
 
-export type App = Awaited<ReturnType<typeof getMyApps>>['list'][number];
+export type App = Awaited<ReturnType<typeof getMyApps>>[number];
 
 export const TreeItem = ({
   app,

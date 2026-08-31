@@ -5,7 +5,7 @@ import React, { useCallback, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { getAllApps } from '@/web/core/app/api';
+import { getMyAppsV2 } from '@/web/core/app/api';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getFavouriteApps, updateFavouriteApps } from '@/web/core/chat/api';
 import type { App } from '@/pageComponents/chat/ChatSetting/AppTree';
@@ -16,6 +16,7 @@ import { getAppFolderPath } from '@/web/core/app/api/app';
 import { ChevronRightIcon } from '@chakra-ui/icons';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { useVirtualList } from '@fastgpt/web/hooks/useVirtualList';
 
 type Props = {
   onClose: () => void;
@@ -33,34 +34,40 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
   const searchAppNameValue = watchSearchValue('name');
 
   const [parentId, setParentId] = useState<ParentIdType>('');
-  const { data: appData = { apps: [], paths: [] }, loading: isFetching } = useRequest(
-    async () => {
-      const [apps, paths] = await Promise.all([
-        getAllApps({
-          parentId,
-          searchKey: searchAppNameValue,
-          type: [
-            AppTypeEnum.folder,
-            AppTypeEnum.simple,
-            AppTypeEnum.chatAgent,
-            AppTypeEnum.workflow,
-            AppTypeEnum.workflowTool
-          ]
-        }),
-        searchAppNameValue.trim()
-          ? Promise.resolve([])
-          : getAppFolderPath({ sourceId: parentId, type: 'current' })
-      ]);
-      return { apps, paths };
+  const {
+    scrollDataList,
+    totalData,
+    ScrollList,
+    isLoading: loadingApps
+  } = useVirtualList(getMyAppsV2, {
+    params: {
+      parentId,
+      searchKey: searchAppNameValue,
+      type: [
+        AppTypeEnum.folder,
+        AppTypeEnum.simple,
+        AppTypeEnum.chatAgent,
+        AppTypeEnum.workflow,
+        AppTypeEnum.workflowTool
+      ]
     },
+    pageSize: 50,
+    itemHeight: 40,
+    refreshDeps: [parentId, searchAppNameValue],
+    throttleWait: 500
+  });
+  const availableApps = scrollDataList.map(({ data }) => data);
+  const isFetching = loadingApps && totalData.length === 0;
+  const { data: paths = [] } = useRequest(
+    () =>
+      searchAppNameValue.trim()
+        ? Promise.resolve([])
+        : getAppFolderPath({ sourceId: parentId, type: 'current' }),
     {
       manual: false,
-      throttleWait: 500,
       refreshDeps: [parentId, searchAppNameValue]
     }
   );
-  const availableApps = appData.apps;
-  const paths = appData.paths;
 
   const [selectedApps, setSelectedApps] = useState<{ id: string; name: string; avatar: string }[]>(
     []
@@ -186,15 +193,7 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
                   )}
                 </Box>
 
-                <VStack
-                  align="stretch"
-                  spacing={1.5}
-                  flex={1}
-                  px={4}
-                  overflowY="auto"
-                  h={0}
-                  minH={0}
-                >
+                <ScrollList flex={1} px={4} minH={0}>
                   {availableApps.length === 0 && !isFetching && (
                     <EmptyTip text={t('common:folder.empty')} />
                   )}
@@ -250,7 +249,7 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
                       </Flex>
                     </Box>
                   ))}
-                </VStack>
+                </ScrollList>
               </Flex>
             </GridItem>
 

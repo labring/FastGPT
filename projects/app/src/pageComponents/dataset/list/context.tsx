@@ -3,7 +3,7 @@ import {
   getAllDatasets,
   getDatasetPaths,
   putDatasetById,
-  getDatasets,
+  getDatasetsV2,
   getDatasetById,
   delDatasetById
 } from '@/web/core/dataset/api';
@@ -133,7 +133,7 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     isLoading: isFetchingDatasets
   } = useScrollPagination(
     ({ offset = 0, pageSize = 50 }) =>
-      getDatasets({
+      getDatasetsV2({
         searchKey,
         parentId,
         offset,

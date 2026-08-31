@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import handler from '@/pages/api/core/dataset/list';
+import handlerV2 from '@/pages/api/core/dataset/listV2';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { AppListSortEnum } from '@fastgpt/global/core/app/constants';
 import type {
   GetDatasetListBody,
-  GetDatasetListResponse
+  GetDatasetListResponse,
+  GetDatasetListV2Body,
+  GetDatasetListV2Response
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
@@ -82,7 +85,7 @@ describe('POST /api/core/dataset/list', () => {
     expect(empty.data).toEqual({ list: [], total: 0 });
   });
 
-  it('returns a stable paginated result for the current directory', async () => {
+  it('keeps the original array response', async () => {
     const user = await getUser(`dataset-list-${getNanoid(6)}`);
     const updateTimes = [
       new Date('2024-01-03T00:00:00.000Z'),
@@ -99,16 +102,35 @@ describe('POST /api/core/dataset/list', () => {
         updateTime
       }))
     );
-
     const res = await Call<GetDatasetListBody, Record<string, never>, GetDatasetListResponse>(
       handler,
       {
         auth: user,
-        body: {
-          type: DatasetTypeEnum.dataset,
-          pageNum: 2,
-          pageSize: 1
-        }
+        body: { type: DatasetTypeEnum.dataset }
+      }
+    );
+
+    expect(res.code).toBe(200);
+    expect(res.data).toHaveLength(3);
+    expect(res.data[0].name).toBe('Dataset 1');
+  });
+
+  it('returns a stable paginated result from V2', async () => {
+    const user = await getUser(`dataset-list-v2-${getNanoid(6)}`);
+    await MongoDataset.create(
+      [3, 2, 1].map((index) => ({
+        name: `Dataset ${index}`,
+        type: DatasetTypeEnum.dataset,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        updateTime: new Date(`2024-01-0${index}T00:00:00.000Z`)
+      }))
+    );
+    const res = await Call<GetDatasetListV2Body, Record<string, never>, GetDatasetListV2Response>(
+      handlerV2,
+      {
+        auth: user,
+        body: { type: DatasetTypeEnum.dataset, pageNum: 2, pageSize: 1 }
       }
     );
 

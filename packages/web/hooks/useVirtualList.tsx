@@ -28,6 +28,7 @@ type UseVirtualListProps<TParams extends PaginationType> = {
   showErrorToast?: boolean;
   disabled?: boolean;
   showNoMoreTip?: boolean;
+  throttleWait?: number;
 };
 
 type VirtualListProps = {
@@ -229,7 +230,8 @@ export function useVirtualList<
     EmptyTip,
     showErrorToast = true,
     disabled = false,
-    showNoMoreTip = true
+    showNoMoreTip = true,
+    throttleWait
   }: UseVirtualListProps<TParams>
 ) {
   const { t } = useTranslation();
@@ -243,7 +245,8 @@ export function useVirtualList<
       EmptyTip,
       showErrorToast,
       disabled,
-      showNoMoreTip
+      showNoMoreTip,
+      throttleWait
     }
   );
 

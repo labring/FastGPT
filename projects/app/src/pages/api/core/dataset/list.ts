@@ -16,42 +16,23 @@ import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { desensitizeSystemModel } from '@fastgpt/service/core/ai/config/utils';
 import { findDatasetEmbeddingModel } from '@fastgpt/service/core/dataset/model';
 import { isPrivateResourceByCollaborators, sumPer } from '@fastgpt/global/support/permission/utils';
-import {
-  findResourceKeysByCollaboratorsPermission,
-  getResourcePermissionsByResourceIds
-} from '@fastgpt/service/support/permission/resourcePermissionService';
+import { getResourcePermissionsByTeam } from '@fastgpt/service/support/permission/resourcePermissionService';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetDatasetListBodySchema,
-  GetDatasetListResponseSchema,
   type GetDatasetListResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { AppListSortEnum, appListSortMongoMap } from '@fastgpt/global/core/app/constants';
 import { Types } from '@fastgpt/service/common/mongo';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
-  const {
-    parentId,
-    type,
-    searchKey,
-    sort,
-    tmbIds,
-    pageNum = 1,
-    pageSize = 50,
-    offset
-  } = parseApiInput({
+  const { parentId, type, searchKey, sort, tmbIds } = parseApiInput({
     req,
     bodySchema: GetDatasetListBodySchema
   }).body;
 
-  // Auth user permission
   const [{ tmbId, teamId, permission: teamPer }] = await Promise.all([
-    authUserPer({
-      req,
-      authToken: true,
-      authApiKey: true,
-      per: ReadPermissionVal
-    }),
+    authUserPer({ req, authToken: true, authApiKey: true, per: ReadPermissionVal }),
     ...(parentId
       ? [
           authDataset({
@@ -66,33 +47,37 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
   ]);
 
   if (Array.isArray(tmbIds) && tmbIds.length === 0) {
-    return GetDatasetListResponseSchema.parse({ list: [], total: 0 });
+    return [];
   }
 
-  const { readableResourceIds, groupIds, orgIds } = await (async () => {
-    if (teamPer.isOwner) return { readableResourceIds: [], groupIds: [], orgIds: [] };
-
-    const [groups, orgSet] = await Promise.all([
-      getGroupsByTmbId({ tmbId, teamId }),
-      getOrgIdSetWithParentByTmbId({ teamId, tmbId })
-    ]);
-    const groupIds = groups.map((item) => String(item._id));
-    const orgIds = Array.from(orgSet).map(String);
-    const readableResourceIds = await findResourceKeysByCollaboratorsPermission({
-      resourceType: PerResourceTypeEnum.dataset,
-      teamId,
-      tmbId,
-      groupIds,
-      orgIds,
-      permission: ReadPermissionVal,
-      matchLogic: 'or',
-      personalPermissionPriority: true
-    });
-
-    return { readableResourceIds, groupIds, orgIds };
-  })();
+  const [roleList, myGroupMap, myOrgSet] = await Promise.all([
+    getResourcePermissionsByTeam({ resourceType: PerResourceTypeEnum.dataset, teamId }),
+    getGroupsByTmbId({ tmbId, teamId }).then((item) => {
+      const map = new Map<string, 1>();
+      item.forEach((item) => {
+        map.set(String(item._id), 1);
+      });
+      return map;
+    }),
+    getOrgIdSetWithParentByTmbId({ teamId, tmbId })
+  ]);
+  const roleListMap = new Map<string, (typeof roleList)[number][]>();
+  roleList.forEach((item) => {
+    const resourceId = String(item.resourceId);
+    const list = roleListMap.get(resourceId) ?? [];
+    list.push(item);
+    roleListMap.set(resourceId, list);
+  });
+  const myRoles = roleList.filter(
+    (item) =>
+      String(item.tmbId) === String(tmbId) ||
+      myGroupMap.has(String(item.groupId)) ||
+      myOrgSet.has(String(item.orgId))
+  );
 
   const findDatasetQuery = (() => {
+    const idList = { _id: { $in: myRoles.map((item) => item.resourceId) } };
+    const datasetPerQuery = teamPer.isOwner ? {} : idList;
     const searchMatch = searchKey
       ? {
           $or: [
@@ -101,104 +86,71 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
           ]
         }
       : {};
-    const permissionQuery = teamPer.isOwner ? {} : { _id: { $in: readableResourceIds } };
+    const typeMatch = type ? (Array.isArray(type) ? { type: { $in: type } } : { type }) : {};
+    const creatorMatch = tmbIds ? { tmbId: { $in: tmbIds } } : {};
     const baseQuery = {
+      ...datasetPerQuery,
       teamId,
       deleteTime: null,
-      ...permissionQuery,
-      ...(type ? (Array.isArray(type) ? { type: { $in: type } } : { type }) : {}),
-      ...(tmbIds ? { tmbId: { $in: tmbIds } } : {})
+      ...typeMatch,
+      ...creatorMatch
     };
-
-    if (searchKey) {
-      return {
-        $and: [baseQuery, searchMatch]
-      };
-    }
-
+    if (searchKey) return { $and: [baseQuery, searchMatch] };
     return {
       ...baseQuery,
       ...parseParentIdInMongo(parentId)
     };
   })();
 
-  const skip = offset ?? (pageNum - 1) * pageSize;
-  const [myDatasets, total] = await Promise.all([
-    MongoDataset.find(findDatasetQuery)
-      .sort({ ...appListSortMongoMap[sort ?? AppListSortEnum.updateTimeDesc], _id: -1 })
-      .skip(skip)
-      .limit(pageSize)
-      .lean(),
-    MongoDataset.countDocuments(findDatasetQuery)
-  ]);
-
-  const pageRoleList = await getResourcePermissionsByResourceIds({
-    resourceType: PerResourceTypeEnum.dataset,
-    teamId,
-    resourceIds: myDatasets.map((dataset) => String(dataset._id))
-  });
-  const roleListMap = new Map<string, (typeof pageRoleList)[number][]>();
-  pageRoleList.forEach((item) => {
-    const resourceId = String(item.resourceId);
-    const list = roleListMap.get(resourceId) ?? [];
-    list.push(item);
-    roleListMap.set(resourceId, list);
-  });
-
-  const formatDatasets = myDatasets.map((dataset) => {
-    const { Per, privateDataset } = (() => {
-      const resourceClbs = roleListMap.get(String(dataset._id)) ?? [];
-      const getPer = () => {
-        const tmbRole = resourceClbs.find(
-          (item) => String(item.tmbId) === String(tmbId)
-        )?.permission;
-        const groupAndOrgRole = sumPer(
-          ...resourceClbs
-            .filter(
-              (item) =>
-                (item.groupId && groupIds.includes(String(item.groupId))) ||
-                (item.orgId && orgIds.includes(String(item.orgId)))
-            )
-            .map((item) => item.permission)
-        );
-        return new DatasetPermission({
-          role: tmbRole ?? groupAndOrgRole,
-          isOwner: String(dataset.tmbId) === String(tmbId) || teamPer.isOwner
-        });
-      };
+  const myDatasets = await MongoDataset.find(findDatasetQuery)
+    .sort({ ...appListSortMongoMap[sort ?? AppListSortEnum.updateTimeDesc], _id: -1 })
+    .lean();
+  const formatDatasets = myDatasets
+    .map((dataset) => {
+      const { Per, privateDataset } = (() => {
+        const getPer = (datasetId: string) => {
+          const tmbRole = myRoles.find(
+            (item) => String(item.resourceId) === datasetId && !!item.tmbId
+          )?.permission;
+          const groupAndOrgRole = sumPer(
+            ...myRoles
+              .filter(
+                (item) => String(item.resourceId) === datasetId && (!!item.groupId || !!item.orgId)
+              )
+              .map((item) => item.permission)
+          );
+          return new DatasetPermission({
+            role: tmbRole ?? groupAndOrgRole,
+            isOwner: String(dataset.tmbId) === String(tmbId) || teamPer.isOwner
+          });
+        };
+        const resourceClbs = roleListMap.get(String(dataset._id)) ?? [];
+        return {
+          Per: getPer(String(dataset._id)),
+          privateDataset: isPrivateResourceByCollaborators({ resourceClbs })
+        };
+      })();
       return {
-        Per: getPer(),
-        privateDataset: isPrivateResourceByCollaborators({
-          resourceClbs
-        })
+        _id: dataset._id,
+        avatar: dataset.avatar,
+        name: dataset.name,
+        intro: dataset.intro,
+        type: dataset.type,
+        vectorModel: (() => {
+          const vectorModel = findDatasetEmbeddingModel(dataset);
+          return vectorModel ? desensitizeSystemModel(vectorModel) : undefined;
+        })(),
+        inheritPermission: dataset.inheritPermission,
+        tmbId: dataset.tmbId,
+        createTime: dataset.createTime ?? new Types.ObjectId(String(dataset._id)).getTimestamp(),
+        updateTime: dataset.updateTime,
+        permission: Per,
+        private: privateDataset
       };
-    })();
+    })
+    .filter((app) => app.permission.hasReadPer);
 
-    return {
-      _id: dataset._id,
-      avatar: dataset.avatar,
-      name: dataset.name,
-      intro: dataset.intro,
-      type: dataset.type,
-      vectorModel: (() => {
-        const vectorModel = findDatasetEmbeddingModel(dataset);
-        return vectorModel ? desensitizeSystemModel(vectorModel) : undefined;
-      })(),
-      inheritPermission: dataset.inheritPermission,
-      tmbId: dataset.tmbId,
-      createTime: dataset.createTime ?? new Types.ObjectId(String(dataset._id)).getTimestamp(),
-      updateTime: dataset.updateTime,
-      permission: Per,
-      private: privateDataset
-    };
-  });
-
-  return {
-    list: await addSourceMember({
-      list: formatDatasets
-    }),
-    total
-  };
+  return addSourceMember({ list: formatDatasets });
 }
 
 export default NextAPI(handler);

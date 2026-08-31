@@ -145,6 +145,9 @@ describe('AI OpenAPI contracts', () => {
     expect(openAPIDocument.paths?.['/core/ai/skill/list']?.post?.tags).toEqual([
       DevApiTagsMap.skillBasic
     ]);
+    expect(openAPIDocument.paths?.['/core/ai/skill/listV2']?.post?.tags).toEqual([
+      DevApiTagsMap.skillBasic
+    ]);
     expect(openAPIDocument.paths?.['/core/ai/skill/runtime/init']?.post?.tags).toEqual([
       DevApiTagsMap.skillEdit
     ]);
