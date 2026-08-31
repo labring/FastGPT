@@ -13,10 +13,10 @@ import {
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { type PaginationResponse } from '@fastgpt/global/openapi/api';
-import type { DatasetCollectionsListItemType } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import type { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
 import { ScrollCollectionsBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
@@ -27,9 +27,7 @@ const defaultCollectionTrainingStatus = {
   slowestTrainingStatus: CollectionTrainingStatusEnum.ready
 };
 
-async function handler(
-  req: ApiRequestProps
-): Promise<PaginationResponse<DatasetCollectionsListItemType>> {
+async function handler(req: ApiRequestProps) {
   const { datasetId, parentId, searchText, selectFolder, filterTags, simple } = parseApiInput({
     req,
     bodySchema: ScrollCollectionsBodySchema
@@ -91,6 +89,10 @@ async function handler(
       list: await Promise.all(
         collections.map(async (item) => ({
           ...item,
+          tags: await collectionTagsToTagLabel({
+            datasetId,
+            tags: item.tags
+          }),
           dataAmount: 0,
           trainingAmount: 0,
           ...defaultCollectionTrainingStatus,
@@ -102,7 +104,8 @@ async function handler(
     };
   }
 
-  const [collections, total]: [DatasetCollectionsListItemType[], number] = await Promise.all([
+  // aggregate 返回原始存储数据（tags 为存储格式），由 collectionTagsToTagLabel 解析为对外格式后返回
+  const [collections, total]: [DatasetCollectionSchemaType[], number] = await Promise.all([
     MongoDatasetCollection.aggregate([
       {
         $match: match
@@ -178,6 +181,10 @@ async function handler(
   const data = await Promise.all(
     collections.map(async (item) => ({
       ...item,
+      tags: await collectionTagsToTagLabel({
+        datasetId,
+        tags: item.tags
+      }),
       permission
     }))
   );
