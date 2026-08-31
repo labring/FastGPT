@@ -2059,6 +2059,25 @@ describe('workflow check helpers', () => {
 });
 
 describe('storeNode2FlowNode', () => {
+  it('restores tool set nodes without a source handle', () => {
+    const storeNode = {
+      nodeId: 'tool-set-node',
+      flowNodeType: FlowNodeTypeEnum.toolSet,
+      position: { x: 0, y: 0 },
+      inputs: [],
+      outputs: [],
+      name: 'Tool set',
+      showSourceHandle: true
+    } as StoreNodeItemType & { showSourceHandle: true };
+
+    const result = storeNode2FlowNode({
+      item: storeNode,
+      t: ((key: string) => key) as any
+    });
+
+    expect(result.data.showSourceHandle).toBe(false);
+  });
+
   it('should materialize stored editable text when it matches an i18n key', () => {
     const storeNode: StoreNodeItemType = {
       nodeId: 'node1',

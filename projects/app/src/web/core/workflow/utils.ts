@@ -137,6 +137,8 @@ export const storeNode2FlowNode = ({
     parentNodeId,
     ...nodeTemplate,
     ...storeNode,
+    // 连接柄由当前模板控制，避免存量数据重新开启已禁用的 source。
+    showSourceHandle: nodeTemplate.showSourceHandle,
     name: t(storeNode.name as any),
     intro: storeNode.intro ? t(storeNode.intro as any) : storeNode.intro,
     avatar: nodeTemplate.avatar ?? storeNode.avatar,
