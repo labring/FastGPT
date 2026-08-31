@@ -51,6 +51,30 @@ export const isTemplateVisible = (
   return !template.isShowInContext || template.isShowInContext(ctx);
 };
 
+/** 校验节点连接的模板上下文，保证连接入口与快捷添加使用同一套白名单规则。 */
+export const isNodeConnectionAllowed = ({
+  targetTemplate,
+  sourceNode,
+  edges,
+  handleId,
+  getNodeById
+}: {
+  targetTemplate: Pick<FlowNodeTemplateType, 'isShowInContext'>;
+  sourceNode: Pick<FlowNodeItemType, 'nodeId' | 'flowNodeType' | 'isTool' | 'parentNodeId'>;
+  edges: { source?: string; target: string; targetHandle?: string | null }[];
+  handleId?: string | null;
+  getNodeById: (nodeId: string | undefined | null) => FlowNodeItemType | undefined;
+}) => {
+  const sourceContext = buildNodeTemplateContext({
+    sourceNode,
+    edges,
+    handleId,
+    getNodeById
+  });
+
+  return !sourceContext || isTemplateVisible(targetTemplate, sourceContext);
+};
+
 export type NodeContainerCheckError =
   | 'can_not_loop'
   | 'can_not_parallel'

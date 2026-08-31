@@ -175,6 +175,9 @@ export const storeNode2FlowNode = ({
             return {
               ...item,
               ...getInputComponentProps(dynamicInputTemplate),
+              ...(item.defaultToAgentGenerated === true
+                ? { canAgentGenerated: item.canAgentGenerated }
+                : {}),
               deprecated: inputTemplate?.deprecated
             };
           })
@@ -297,7 +300,8 @@ export const getInputComponentProps = (input: FlowNodeInputItemType) => {
     max: input.max,
     min: input.min,
     defaultValue: input.defaultValue,
-    customInputConfig: input.customInputConfig
+    customInputConfig: input.customInputConfig,
+    ...(input.canAgentGenerated === undefined ? {} : { canAgentGenerated: input.canAgentGenerated })
   };
 };
 

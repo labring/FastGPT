@@ -6,6 +6,7 @@ import {
   createHideInContext,
   createShowInContext,
   getNodeContainerCheckError,
+  isNodeConnectionAllowed,
   isTemplateVisible
 } from '@fastgpt/global/core/workflow/template/context';
 import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
@@ -158,6 +159,45 @@ describe('template context', () => {
     expect(isTemplateVisible(ToolParamsNode, ctx({ sourceType: FlowNodeTypeEnum.toolCall }))).toBe(
       false
     );
+  });
+
+  it('连接 ToolParams 时复用模板上下文白名单', () => {
+    const sourceNode = {
+      nodeId: 'source',
+      flowNodeType: FlowNodeTypeEnum.toolCall,
+      isTool: true,
+      parentNodeId: undefined
+    };
+    const getNodeById = (nodeId: string | undefined | null) =>
+      nodeId === sourceNode.nodeId ? sourceNode : undefined;
+
+    expect(
+      isNodeConnectionAllowed({
+        targetTemplate: ToolParamsNode,
+        sourceNode,
+        edges: [],
+        handleId: NodeOutputKeyEnum.selectedTools,
+        getNodeById
+      })
+    ).toBe(true);
+    expect(
+      isNodeConnectionAllowed({
+        targetTemplate: ToolParamsNode,
+        sourceNode,
+        edges: [],
+        handleId: '普通输出',
+        getNodeById
+      })
+    ).toBe(false);
+    expect(
+      isNodeConnectionAllowed({
+        targetTemplate: ToolParamsNode,
+        sourceNode: { ...sourceNode, flowNodeType: FlowNodeTypeEnum.aiChat },
+        edges: [],
+        handleId: NodeOutputKeyEnum.selectedTools,
+        getNodeById
+      })
+    ).toBe(false);
   });
 
   it('侧边栏按画布状态显示工具参数、工具终止和循环终止', () => {

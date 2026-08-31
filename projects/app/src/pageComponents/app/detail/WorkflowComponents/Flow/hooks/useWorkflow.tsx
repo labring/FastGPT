@@ -46,8 +46,10 @@ import { type HelperLinesController } from '../components/HelperLines';
 import {
   buildNodeTemplateContext,
   getNodeContainerCheckError,
+  isNodeConnectionAllowed,
   translateNodeContainerCheckError
 } from '@fastgpt/global/core/workflow/template/context';
+import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 
 /*
   限定容量的最大堆,根为当前最大距离。保留为通用最近邻筛选工具,
@@ -939,11 +941,31 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
         });
       }
 
+      const sourceNode = getNodeById(connect.source);
+      const targetNode = getNodeById(connect.target);
+      const targetTemplate = targetNode
+        ? moduleTemplatesFlat.find((item) => item.id === targetNode.flowNodeType)
+        : undefined;
+      if (
+        !sourceNode ||
+        !targetNode ||
+        (targetTemplate &&
+          !isNodeConnectionAllowed({
+            targetTemplate,
+            sourceNode,
+            edges,
+            handleId: connect.sourceHandle,
+            getNodeById
+          }))
+      ) {
+        return;
+      }
+
       onConnect({
         connect
       });
     },
-    [onConnect, t, toast]
+    [edges, getNodeById, onConnect, t, toast]
   );
 
   /* edge */

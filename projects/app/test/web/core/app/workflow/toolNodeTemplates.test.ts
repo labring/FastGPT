@@ -18,7 +18,11 @@ import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http4
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { CanonicalWorkflowDataSchema } from '@fastgpt/global/core/workflow/migration';
 import { PublishAppBodySchema } from '@fastgpt/global/openapi/core/app/version/api';
-import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
+import {
+  getInputComponentProps,
+  nodeTemplate2FlowNode,
+  storeNode2FlowNode
+} from '@/web/core/workflow/utils';
 import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 import { hasDynamicToolInput } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderToolInput';
 
@@ -146,8 +150,68 @@ describe('workflow tool node templates', () => {
     expect(CodeNode.hasToolInput).toBe(true);
     expect(HttpNode468.hasToolInput).toBe(true);
     expect(
+      getInputComponentProps(
+        CodeNode.inputs.find((input) => input.key === NodeInputKeyEnum.addInputParam)!
+      )
+    ).toMatchObject({ canAgentGenerated: false });
+    expect(
       CodeNode.inputs.find((input) => input.key === NodeInputKeyEnum.addInputParam)
     ).not.toHaveProperty('defaultToAgentGenerated');
+  });
+
+  it('restores code input agent-generation policy from templates', () => {
+    const result = storeNode2FlowNode({
+      item: {
+        nodeId: 'code-node',
+        flowNodeType: FlowNodeTypeEnum.code,
+        position: { x: 0, y: 0 },
+        name: 'Code',
+        inputs: [
+          {
+            key: 'data1',
+            label: 'data1',
+            renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.agentGenerated],
+            selectedType: FlowNodeInputTypeEnum.agentGenerated,
+            canAgentGenerated: true,
+            value: ['source', 'output']
+          },
+          {
+            key: 'data2',
+            label: 'data2',
+            renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.agentGenerated],
+            selectedType: FlowNodeInputTypeEnum.agentGenerated,
+            canAgentGenerated: true,
+            value: ['source', 'output']
+          },
+          {
+            key: 'customParam',
+            label: 'customParam',
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+            selectedType: FlowNodeInputTypeEnum.agentGenerated,
+            canAgentGenerated: true,
+            defaultToAgentGenerated: true,
+            value: 'generated'
+          }
+        ],
+        outputs: []
+      } as any,
+      isTool: true,
+      t: ((key: string) => key) as any
+    });
+
+    const inputs = result.data.inputs;
+    const data1 = inputs.find((input) => input.key === 'data1');
+    const data2 = inputs.find((input) => input.key === 'data2');
+    const customParam = inputs.find((input) => input.key === 'customParam');
+
+    expect(data1).toMatchObject({ canAgentGenerated: false });
+    expect(data2).toMatchObject({ canAgentGenerated: false });
+    expect(data1?.renderTypeList).not.toContain(FlowNodeInputTypeEnum.agentGenerated);
+    expect(data2?.renderTypeList).not.toContain(FlowNodeInputTypeEnum.agentGenerated);
+    expect(customParam).toMatchObject({
+      canAgentGenerated: true,
+      selectedType: FlowNodeInputTypeEnum.agentGenerated
+    });
   });
 
   it('only exposes custom tool params for HTTP and Code nodes', () => {

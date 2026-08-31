@@ -4,10 +4,7 @@ import { MySourceHandle, MyTargetHandle } from '.';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
-import {
-  buildNodeTemplateContext,
-  isTemplateVisible
-} from '@fastgpt/global/core/workflow/template/context';
+import { isNodeConnectionAllowed } from '@fastgpt/global/core/workflow/template/context';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../../context/workflowInitContext';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
@@ -143,13 +140,15 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
       ? moduleTemplatesFlat.find((item) => item.id === node.flowNodeType)
       : undefined;
     if (targetTemplate && sourceNode && connectingEdge) {
-      const sourceCtx = buildNodeTemplateContext({
-        sourceNode,
-        edges,
-        handleId: connectingEdge.handleId,
-        getNodeById
-      });
-      if (sourceCtx && !isTemplateVisible(targetTemplate, sourceCtx)) {
+      if (
+        !isNodeConnectionAllowed({
+          targetTemplate,
+          sourceNode,
+          edges,
+          handleId: connectingEdge.handleId,
+          getNodeById
+        })
+      ) {
         forbidConnect = true;
       }
     }
