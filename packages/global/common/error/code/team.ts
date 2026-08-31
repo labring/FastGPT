@@ -37,7 +37,10 @@ export enum TeamErrEnum {
   tooManyInvitations = 'tooManyInvitations',
   unPermission = 'unPermission',
   accountCancellationPending = 'accountCancellationPending',
-  teamPluginInstallDisabled = 'teamPluginInstallDisabled'
+  teamPluginInstallDisabled = 'teamPluginInstallDisabled',
+  teamOwnerOverSize = 'teamOwnerOverSize',
+  onlyWecomTeam = 'onlyWecomTeam',
+  ownerTransferConflict = 'ownerTransferConflict'
 }
 
 const teamErr = [
@@ -223,6 +226,18 @@ const teamErr = [
     statusText: TeamErrEnum.teamPluginInstallDisabled,
     message: i18nT('common:code_error.team_error.team_plugin_install_disabled'),
     httpStatus: 403
+  },
+  {
+    statusText: TeamErrEnum.teamOwnerOverSize,
+    message: i18nT('common:code_error.team_error.owner_team_over_size')
+  },
+  {
+    statusText: TeamErrEnum.onlyWecomTeam,
+    message: i18nT('common:code_error.team_error.only_wecom_team')
+  },
+  {
+    statusText: TeamErrEnum.ownerTransferConflict,
+    message: i18nT('common:code_error.team_error.owner_transfer_conflict')
   }
 ];
 
