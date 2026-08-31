@@ -6,11 +6,10 @@
 - **文件列表按权限过滤**：服务端在数据库查询/批量过滤阶段仅返回当前主体对 collection 解析为 read 及以上的文件；无权文件不得占用分页、总数、游标、排序、聚合或错误差异。
 - **文件夹权限穿透平铺**：祖先文件夹不可见时，仅当用户对目标知识库具有 read 及以上权限，才可将该知识库脱离隐藏路径平铺展示并直接访问；仅拥有知识库内某个文件权限时，不展示该知识库，也不单独展示该文件。平铺结果不得暴露完整隐藏路径。
 - **知识库权限门槛**：详情、列表、搜索、平铺和检索均先校验知识库 read；文件级 read 不能绕过知识库门槛。知识库无 read 时，知识库及其全部文件均隐藏。
-- **当前路径限定搜索**：搜索请求必须携带规范化当前路径/父资源谓词，仅查询当前路径及允许展示的子树；禁止先做全局搜索再截断。非法或无权路径返回统一空/无权结果。
 - 所有 dataset、dataset 文件夹、collection 文件夹和 collection 仅使用 `inheritPermission` 布尔字段，默认 `true`。`true` 沿父链解析权限；`false` 只使用资源自身显式配置和 owner 权限。
 - 不存在额外的权限字段、枚举或隐式传播开关。需要独立权限时，服务端将目标资源及未配置的子资源纳入显式非继承控制子集并置为 `inheritPermission=false`；已有显式配置的子资源保持自身权限。
 - 显式非继承控制子集必须在服务端计算、持久化并审计；父级后续变化不得放大该子集。
-- 文件列表、文件夹穿透平铺、当前路径搜索及 RAG 检索均必须先执行资源路径/知识库门槛，再执行文件级 read 过滤；只拥有文件权限而没有知识库 read 时，不展示知识库及其文件。
+- 文件列表、文件夹穿透平铺及 RAG 检索均必须先执行资源路径/知识库门槛，再执行文件级 read 过滤；只拥有文件权限而没有知识库 read 时，不展示知识库及其文件。
 
 > 生成时间: 2026-08-03
 > 分析维度: 功能细化 | 预期效果 | 依赖关系
@@ -98,10 +97,9 @@ FastGPT 当前权限体系以 **team 为资源绑定单位**，权限粒度仅�
 | F012 | collection 增删改查权限门槛 | 增量功能 | 接口功能 | fastgpt-app | PUT /api/core/dataset/collection/update | 是 | 否 | P0 | 中 | F001,F011 |
 | F013 | 权限数据存储与同步一致性 | 增量功能 | 后台功能 | fastgpt-service | - | 是 | 否 | P0 | 高 | F001-F009 |
 | F014 | 知识库检索（RAG 召回）按文件级权限过滤 | 增量功能 | 后台功能 | fastgpt-service | POST /api/core/dataset/searchTest | 是 | 否 | P0 | 高 | F001,F011 |
-| F015 | 文件列表权限过滤 | 增量功能 | 接口功能 | fastgpt-app | GET /api/core/dataset/collection/list | 是 | 否 | P0 | 高 | F011,F012 |
-| F016 | 隐藏路径穿透平铺展示 | 全新功能 | 接口功能 | fastgpt-app | GET /api/core/dataset/collection/list | 否 | 否 | - | - | F011,F012 | **已移出**：平铺展示从本迭代移除，待后续独立需求跟进（仅保留列表基础权限过滤 F015） |
+| F015 | 文件列表权限过滤 | 增量功能 | 接口功能 | fastgpt-app | GET /api/core/dataset/collection/listV2 | 是 | 否 | P0 | 高 | F011,F012 |
+| F016 | 隐藏路径穿透平铺展示 | 全新功能 | 接口功能 | fastgpt-app | GET /api/core/dataset/collection/listV2 | 否 | 否 | - | - | F011,F012 | **已移出**：平铺展示从本迭代移除，待后续独立需求跟进（仅保留列表基础权限过滤 F015） |
 | F017 | 知识库权限门槛 | 增量功能 | 后台功能 | fastgpt-service | - | 是 | 否 | P0 | 中 | F011 |
-| F018 | 当前路径限定搜索 | 全新功能 | 接口功能 | fastgpt-service | GET /api/core/dataset/list、GET /api/core/dataset/collection/list | 是 | 否 | P0 | 高 | F011,F017 |
 
 **说明**:
 - **类型**: 标注是"增量功能"还是"全新功能"（基于内部分析得出）
@@ -121,12 +119,12 @@ FastGPT 当前权限体系以 **team 为资源绑定单位**，权限粒度仅�
 | F007 | FR-7 | US-6 | F012 | FR-13 | - |
 | F014 | FR-11 | US-11 | F013 | FR-14 | - |
 | F015 | FR-15 | - | F016 | FR-16 | - |
-| F017 | FR-17 | - | F018 | FR-18 | - |
+| F017 | FR-17 | - | - | - | - |
 
 | 非功能 | 草稿 NFR | 规格章节 | 非功能 | 草稿 NFR | 规格章节 |
 |--------|---------|---------|--------|---------|---------|
 | 性能-列表过滤 | NFR-1 | §5.1 | 兼容性-存量迁移/检索 | NFR-4 | §3.1 存量兼容 + §5.3 升级重入 |
-| 性能-递归/批量同步 | NFR-2 | §5.1 | 安全-鉴权/越权/审计 | NFR-5 | §5.2 |
+| 性能-递归/批量物化 | NFR-2 | §5.1 | 安全-鉴权/越权/审计 | NFR-5 | §5.2 |
 | 正确性-无残留/冲突/泄漏 | NFR-3 | §5.3 | 可靠性-事务/幂等 | NFR-6 | §5.3 |
 | 性能-检索热路径过滤 | NFR-7 | §5.1 | 正确性-检索过滤 | NFR-8 | §5.3 |
 
@@ -495,7 +493,7 @@ FastGPT 当前权限体系以 **team 为资源绑定单位**，权限粒度仅�
 **【如果是增量功能】相关现有功能**:
 - 现有接口: `POST /api/proApi/core/dataset/changeOwner` - 代码位置: `pro/admin/src/pages/api/core/dataset/changeOwner.ts:20-69`（owner 鉴权，校验新 owner 同团队）
 - 现有后台: `changeOwner` - 代码位置: `pro/admin/src/service/core/changeOwner.ts:34-224`（递归子资源、clbs 冲突合并规则）
-- 增量方向: 新增 collection 版接口；`changeOwner` 支持 `changeOwnerType='collection'` 与 `MongoDatasetCollection` 模型；子资源遍历改为 collection 树。
+- 增量方向: 新增 collection 版接口；`changeOwner` 支持 `changeOwnerType='collection'` 与 `MongoDatasetCollection` 模型；子资源遍历改为 collection 树；**既有 dataset 版同步级联**——转移 dataset 后其下 collection 的 owner 一并转移（文档 `tmbId` + `transferTmbPermissions`，覆盖快照内继承的 dataset owner 记录；仅转移 owner 为旧 owner 的 collection）。
 
 **新增接口规格**:
 - **接口路径**: `POST /api/proApi/core/dataset/collection/changeOwner`
@@ -603,7 +601,7 @@ FastGPT 当前权限体系以 **team 为资源绑定单位**，权限粒度仅�
 - **接口路径**: `POST /api/proApi/core/dataset/upgradePermission`（T-3 已冻结：HTTP API 暴露，面向系统管理员或团队 owner）
 - **鉴权**: 系统管理员 或 团队 owner（任一满足即可；门槛高于普通 manage，属管理操作）。
 - **幂等键**: `idempotencyKey` **必填**（防重并发；同键串行执行并返回首次结果）。
-- **接口路径（collection 权限初始化）**: `POST /api/proApi/core/dataset/collection/initCollectionPermission`（面向系统管理员或团队 owner；将存量 collection 物化为 collection 级权限快照——根 collection 以所属 dataset 有效 clbs 为父级、folder 递归，与升级共用同一同步原语；幂等，可断点续跑）。
+- **接口路径（collection 权限初始化）**: `POST /api/admin/initCollectionPermission`（代码位置 `projects/app/src/pages/api/admin/initCollectionPermission.ts`，面向系统管理员或团队 owner；将存量 collection 物化为 collection 级权限快照——根 collection 以所属 dataset 有效 clbs 为父级、folder 递归，与升级共用同一同步原语；幂等，可断点续跑）。
 - **鉴权（初始化）**: 系统管理员 或 团队 owner。
 
 **输入定义**
@@ -637,7 +635,7 @@ FastGPT 当前权限体系以 **team 为资源绑定单位**，权限粒度仅�
 }
 ```
 
-**异步化（长任务，W-2 已冻结）**: 默认同步执行；当单次请求预计执行时长超过 NFR-2 预算（30s）时，返回 `202 Accepted` + `{ taskId, status: "running" }`，任务转入后台异步执行。异步任务经 `GET /api/proApi/core/dataset/upgradePermission/task/{taskId}` 查询状态与进度，响应含 `{ taskId, teamId, status: "pending|running|success|partial_failed|failed", progress, failedRoots, startAt, endAt }`；失败根经 `rootDatasetId` 续跑。任务记录存储于新增集合 `dataset_upgrade_tasks`（见 §3.1）。
+**异步化（长任务，W-2 已冻结）**: 默认同步执行；当单次请求预计执行时长超过 NFR-2 预算（3s）时，返回 `202 Accepted` + `{ taskId, status: "running" }`，任务转入后台异步执行。异步任务经 `GET /api/proApi/core/dataset/upgradePermission/task/{taskId}` 查询状态与进度，响应含 `{ taskId, teamId, status: "pending|running|success|partial_failed|failed", progress, failedRoots, startAt, endAt }`；失败根经 `rootDatasetId` 续跑。任务记录存储于新增集合 `dataset_upgrade_tasks`（见 §3.1）。
 
 **失败响应**:
 
@@ -692,7 +690,7 @@ FastGPT 当前权限体系以 **team 为资源绑定单位**，权限粒度仅�
 | 单个根失败重跑 | 通过 rootDatasetId 从失败根续跑 |
 | 存量数据已全部符合新语义 | 重算幂等，产生 0 净变更 |
 | 树深超过常规（10 层 dataset + 10 层 collection） | BFS + 去重，受 NFR-2 超时阈值约束 |
-| 单次执行超过 30s 预算 | 自动转异步任务（202 + taskId），经任务查询接口轮询进度（W-2 已冻结） |
+| 单次执行超过 3s 预算 | 自动转异步任务（202 + taskId），经任务查询接口轮询进度（W-2 已冻结） |
 | 升级中断 | 可重入：已重算根不受影响，未完成根从根重新执行 |
 
 ---
@@ -1186,14 +1184,6 @@ folderPer（继承态且有父级则取父级权限，否则 0；父级 owner �
 **验收测试**: 无知识库权限、仅文件权限、列表与详情鉴权一致
 **预计工作量**: 8 小时
 
-### FP-12: 当前路径限定搜索（F018）
-**类型**: 查询
-**复杂度**: 复杂
-**描述**: 服务端以规范化当前路径/父资源谓词直接约束查询范围，并叠加知识库和 collection read 过滤，禁止全局搜索后截断。
-**验收测试**: 当前路径、空路径、无权路径、非法路径、分页排序和性能
-**预计工作量**: 24 小时
-
-
 | 功能点 | 类型 | 复杂度 | 工作量 |
 |--------|------|--------|--------|
 | FP-1: schema/枚举扩展 | CRUD | 简单 | 8 小时 |
@@ -1207,8 +1197,7 @@ folderPer（继承态且有父级则取父级权限，否则 0；父级 owner �
 | FP-9: CRUD 门槛与列表过滤 | 查询 | 中等 | 24 小时 |
 | FP-10: 检索文件级过滤 | 处理 | 复杂 | 32 小时 |
 | FP-11: 隐藏路径平铺与知识库门槛 | 查询 | 复杂 | 24 小时 |
-| FP-12: 当前路径限定搜索 | 查询 | 复杂 | 24 小时 |
-| **总计** | | | **296 小时** |
+| **总计** | | | **272 小时** |
 
 ### 2.4 场景覆盖矩阵
 
@@ -1229,7 +1218,6 @@ folderPer（继承态且有父级则取父级权限，否则 0；父级 owner �
 | F015 | ✅ | 4 | 7 | 接口 |
 | F016 | ✅ | 4 | 7 | 接口 |
 | F017 | ✅ | 3 | 5 | 后台 |
-| F018 | ✅ | 4 | 6 | 接口 |
 
 ---
 
@@ -1279,7 +1267,7 @@ folderPer（继承态且有父级则取父级权限，否则 0；父级 owner �
 
 **需要新增的消息格式**: 不涉及。
 
-**说明**: 升级任务（F010）默认同步执行 + 幂等键；当单次执行超过 30s 预算时自动转异步任务，由新增任务记录集合 `dataset_upgrade_tasks` 承载（taskId/status/progress/failedRoots），经任务查询接口轮询进度、以 `rootDatasetId` 续跑失败根（W-2 已冻结）。不涉及消息队列消息格式变更。
+**说明**: 升级任务（F010）默认同步执行 + 幂等键；当单次执行超过 3s 预算时自动转异步任务，由新增任务记录集合 `dataset_upgrade_tasks` 承载（taskId/status/progress/failedRoots），经任务查询接口轮询进度、以 `rootDatasetId` 续跑失败根（W-2 已冻结）。不涉及消息队列消息格式变更。
 
 ---
 
@@ -1294,7 +1282,7 @@ folderPer（继承态且有父级则取父级权限，否则 0；父级 owner �
 | 列表响应时间 | `listV2` 在 10,000 collection、用户命中 2,000 条、pageSize=100 下 P95 ≤ 800ms；与改造前基线退化 ≤ 20% | 压测脚本统计 |
 | N+1 规避 | 权限计算单请求内 clbs 批量加载（`$in`），per-collection 内存解析；禁止逐 collection 发起 DB 查询 | 代码审查 + 慢查询监控 |
 | 批量传播 | 同步/取消继承/恢复继承使用 `bulkWrite` 批量写入，禁止逐条 await；单层子节点 ≥ 1,000 仍可完成 | 压测 + 日志统计 |
-| 同步超时 | `syncChildrenPermission` / `resumeInheritPermission` 超时阈值 30s，超时任务失败回滚并记日志 | 监控告警 |
+| 同步超时 | `syncChildrenPermission` / `resumeInheritPermission` 超时阈值 3s，超时任务失败回滚并记日志 | 监控告警 |
 | 并发列表 | `listV2` 100 并发请求下 CPU 单核可接受，不触发超时（读从库 `readFromSecondary` 沿用） | 压力测试 |
 | 递归去重 | 同步过程对同节点不重复遍历（visited 去重），避免环导致死循环 | 代码审查 + 环测试 |
 | 检索过滤解析耗时（NFR-7） | 单 dataset 10,000 collection（用户可读 20%）下「可读 collection 批量解析」P95 ≤ 200ms，单请求 DB 查询次数为常数（批量 `$in`，禁止逐 collection 查询） | 压测脚本 |
@@ -1333,8 +1321,8 @@ folderPer（继承态且有父级则取父级权限，否则 0；父级 owner �
 |---------|------|
 | 日志 | 升级任务逐根日志（进度/失败根可定位）；同步/传播过程 debug 日志（`getLogger(LogCategories.MODULE.PERMISSION.INHERIT)`） |
 | 审计 | 关键写操作审计日志（AuditEventEnum 扩展），含操作者、资源、变更前后权限摘要 |
-| 监控 | `listV2` 权限计算耗时、批量同步耗时监控 |
-| 告警 | 同步超时（30s）告警；事务失败告警 |
+| 监控 | `listV2` 权限计算耗时、批量物化耗时监控 |
+| 告警 | 同步超时（3s）告警；事务失败告警 |
 
 ### 5.5 可维护性需求
 
@@ -1359,8 +1347,8 @@ folderPer（继承态且有父级则取父级权限，否则 0；父级 owner �
 | R001 | `resourceType` 新增 `collection` 枚举对全链路（含 proApi、admin、检索）影响面未完全评估（T-1） | F001,F002,F011,F012 | 中 | 高 | 设计阶段先行枚举扩展影响扫描；全链路回归 |
 | R002 | 草稿 FR-2「非继承态子 folder 同步」表述与继承态不变量冲突（T-6） | F002,F008,F013 | 低 | 高 | **已冻结**：下发目标 = 仅 `inheritPermission=true` 子 folder（以 `syncChildrenPermission` 现有语义为准）；已删除草稿冲突措辞并补「非继承子 folder 不被覆盖」反例验收（W-1） |
 | R003 | 继承/独立状态转换矩阵复杂，事务遗漏导致脏数据 | F001-F009,F013 | 中 | 高 | 全写路径统一 `mongoSessionRun` + 不变量完整性扫描（FR-14） |
-| R004 | 升级接口与用户并发配置互相覆盖 | F010 | 中 | 低 | 幂等键必填 + 低峰执行 + 后写优先（接受并发覆盖，不做额外并发控制，N4/S-4 已解除）；单次 >30s 转异步任务并对同一资源路径写串行化（W-2） |
-| R005 | 深树传播超时/死循环 | F006,F007 | 中 | 中 | BFS + visited 去重 + 30s 超时回滚 |
+| R004 | 升级接口与用户并发配置互相覆盖 | F010 | 中 | 低 | 幂等键必填 + 低峰执行 + 后写优先（接受并发覆盖，不做额外并发控制，N4/S-4 已解除）；单次 >3s 转异步任务并对同一资源路径写串行化（W-2） |
+| R005 | 深树传播超时/死循环 | F006,F007 | 中 | 中 | BFS + visited 去重 + 3s 超时回滚 |
 | R006 | `authDatasetCollection` 由透传 dataset 权限改为 collection 维度解析，影响其全部调用方（collection/read、detail、export、update 等）及检索链路（FR-11） | F011,F012,F014 | 中 | 高 | 新增独立「可读 collection 批量解析」函数仅检索链路使用，`authDatasetCollection` 语义变更以版本化发布 + 全量回归控制（T-7 默认方案） |
 | R007 | 检索文件级过滤的挂载位置与召回计数/成本影响：pre-filter（召回前裁剪候选）vs post-filter（召回后过滤命中），涉及 embedding/fullText 召回计数、reRank token 成本、`limit` 截断（草稿 T-6 衔接策略，对应本规格 T-7） | F014 | 中 | 高 | 默认方案：召回前在 `collectionIds` 展开处预过滤；对 limit 截断与 reRank 成本设性能基线并压测（NFR-7）；pre/post 双路径回归兜底 |
 
@@ -1371,7 +1359,7 @@ folderPer（继承态且有父级则取父级权限，否则 0；父级 owner �
 | `listV2` 逐条权限查询 N+1 | 单 dataset 上万 collection | 列表超时、DB 压力 | clbs `$in` 批量加载 + 内存解析（NFR-1） |
 | folder 全量下发逐条 await | 子 folder 1000+ | 写超时、事务过长 | `bulkWrite` + BFS（NFR-2） |
 | 继承链递归深 | 10 层 dataset + 10 层 collection | 解析耗时 | visited 去重 + 缓存（NFR-1/NFR-2） |
-| 升级任务长时运行 | 全量存量重算 | 阻塞用户写 | 低峰执行 + 逐根可重入 + 单次 >30s 自动转异步任务（W-2） |
+| 升级任务长时运行 | 全量存量重算 | 阻塞用户写 | 低峰执行 + 逐根可重入 + 单次 >3s 自动转异步任务（W-2） |
 | 检索过滤引入延迟退化 / 计数偏差 | 检索热路径逐 collection 解析或 pre/post 过滤挂载不当 | 检索延迟升高、embedding/fullText 计数与 reRank token 成本偏差 | 可读集合批量解析（`$in`）+ 缓存/短路（NFR-7）；召回前在 collectionIds 展开处预过滤 + 性能基线对比（R007/T-7） |
 
 ### 6.3 依赖关系图
@@ -1409,7 +1397,7 @@ folderPer（继承态且有父级则取父级权限，否则 0；父级 owner �
 | 编号 | 问题 | 本规格默认方案 | 备注 |
 |------|------|--------------|------|
 | T-1 | collection 维度 clbs 存储方式：`resourceType` 新增 `collection` 枚举 vs 复用 `dataset` 类型以 collectionId 作 resourceId | 新增 `collection` 枚举（与 `getTmbPermission` 按 resourceType+resourceId 查询链路一致） | 需评估 proApi/admin/检索全链路影响 |
-| T-3 | 升级接口（F010）暴露方式（内部运维命令 vs API）、鉴权级别、是否幂等键 | **已冻结**：HTTP API `POST /api/proApi/core/dataset/upgradePermission`；系统管理员或团队 owner 鉴权；`idempotencyKey` 必填；单次 >30s 自动转异步任务（新增 `dataset_upgrade_tasks` + 任务查询接口 + `rootDatasetId` 续跑）。collection 权限初始化另增 `POST /api/proApi/core/dataset/collection/initCollectionPermission`（同鉴权级别，幂等） | 已冻结（对应 W-2） |
+| T-3 | 升级接口（F010）暴露方式（内部运维命令 vs API）、鉴权级别、是否幂等键 | **已冻结**：HTTP API `POST /api/proApi/core/dataset/upgradePermission`；系统管理员或团队 owner 鉴权；`idempotencyKey` 必填；单次 >3s 自动转异步任务（新增 `dataset_upgrade_tasks` + 任务查询接口 + `rootDatasetId` 续跑）。collection 权限初始化另增 `POST /api/admin/initCollectionPermission`（`projects/app/src/pages/api/admin/initCollectionPermission.ts`，同鉴权级别，幂等） | 已冻结（对应 W-2） |
 | T-4 | collection changeOwner 前端触发入口与传参；外链/OpenAPI 表在 collection 级是否需同步 | **已冻结**：入口为 collection 设置「转移所有权」（传 collectionId+ownerId）；collection 级**不同步**外链/OpenAPI 表——外链/OpenAPI 记录绑定 app（`OutLink.appId` 必填），collection 无独立外链资源形态；dataset 级沿用现有逻辑 | 已冻结（对应 W-4） |
 | T-5 | 子资源缺少知识库 read 权限时是否自动补授 | 不实现（不自动扩权，避免权限扩散）；文件级授权不能绕过知识库权限门槛 | 已冻结
 | T-6 | folder 配置时下发目标集合：草稿 FR-2「非继承态子 folder 同步」与继承态不变量冲突 | **已冻结**：仅同步 `inheritPermission=true` 子 folder（以 `syncChildrenPermission` 现有语义为准）；非继承子 folder 不被覆盖（已补反例验收）；草稿 FR-2 冲突措辞已删除 | 已冻结（对应 W-1 / R002） |
