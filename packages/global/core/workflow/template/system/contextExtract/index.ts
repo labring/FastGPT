@@ -38,10 +38,9 @@ export const ContextExtractModule: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.string,
       label: i18nT('workflow:extraction_requirements_description'),
       description: i18nT('workflow:extraction_requirements_description_detail'),
-      placeholder: i18nT('workflow:extraction_requirements_placeholder'),
-      defaultToAgentGenerated: true
+      placeholder: i18nT('workflow:extraction_requirements_placeholder')
     },
-    { ...Input_Template_History, defaultToAgentGenerated: true },
+    Input_Template_History,
     {
       key: NodeInputKeyEnum.contextExtractInput,
       renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],

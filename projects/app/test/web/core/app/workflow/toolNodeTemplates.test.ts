@@ -44,11 +44,11 @@ describe('workflow tool node templates', () => {
   });
 
   it('keeps requested AI-generated defaults explicit', () => {
-    // 用户输入/文件读取仍默认 AI 生成；问题分类的背景知识、聊天记录和工具调用的
-    // 提示词、聊天记录、文件链接不再默认 AI 生成，保留用户手动配置。
+    // 用户输入和文件链接默认 AI 生成；背景知识、提示词和聊天记录保留用户手动配置。
     (
       [
         [ClassifyQuestionModule, NodeInputKeyEnum.userChatInput],
+        [ToolCallNode, NodeInputKeyEnum.fileUrlList],
         [ToolCallNode, NodeInputKeyEnum.userChatInput],
         [ReadFilesNode, NodeInputKeyEnum.fileUrlList]
       ] as const
@@ -62,8 +62,7 @@ describe('workflow tool node templates', () => {
         [ClassifyQuestionModule, NodeInputKeyEnum.aiSystemPrompt],
         [ClassifyQuestionModule, NodeInputKeyEnum.history],
         [ToolCallNode, NodeInputKeyEnum.aiSystemPrompt],
-        [ToolCallNode, NodeInputKeyEnum.history],
-        [ToolCallNode, NodeInputKeyEnum.fileUrlList]
+        [ToolCallNode, NodeInputKeyEnum.history]
       ] as const
     ).forEach(([template, key]) => {
       expect(template.inputs.find((input) => input.key === key)).not.toHaveProperty(
@@ -73,6 +72,24 @@ describe('workflow tool node templates', () => {
     expect(
       CustomFeedbackNode.inputs.find((input) => input.key === NodeInputKeyEnum.textareaInput)
     ).toMatchObject({ defaultToAgentGenerated: false });
+  });
+
+  it('never defaults history or system prompt inputs to AI generation', () => {
+    const developerConfiguredInputs = moduleTemplatesFlat.flatMap((template) =>
+      template.inputs.filter((input) =>
+        [NodeInputKeyEnum.history, NodeInputKeyEnum.aiSystemPrompt].includes(
+          input.key as NodeInputKeyEnum
+        )
+      )
+    );
+
+    expect(developerConfiguredInputs.length).toBeGreaterThan(0);
+    developerConfiguredInputs.forEach((input) => {
+      expect(input.defaultToAgentGenerated).not.toBe(true);
+      expect(normalizeFlowNodeInputType(input, { isTool: true }).selectedType).not.toBe(
+        FlowNodeInputTypeEnum.agentGenerated
+      );
+    });
   });
 
   it('allows AI-generated mode for every requested tool input', () => {
@@ -116,8 +133,7 @@ describe('workflow tool node templates', () => {
         [ClassifyQuestionModule, NodeInputKeyEnum.aiSystemPrompt],
         [ClassifyQuestionModule, NodeInputKeyEnum.history],
         [ToolCallNode, NodeInputKeyEnum.aiSystemPrompt],
-        [ToolCallNode, NodeInputKeyEnum.history],
-        [ToolCallNode, NodeInputKeyEnum.fileUrlList]
+        [ToolCallNode, NodeInputKeyEnum.history]
       ] as const
     ).forEach(([template, key]) => {
       const input = template.inputs.find((item) => item.key === key)!;

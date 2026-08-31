@@ -153,7 +153,7 @@ export const ToolCallNode: FlowNodeTemplateType = {
       ...Input_Template_File_Link,
       toolDescription: i18nT('app:workflow.user_file_input')
     },
-    { ...Input_Template_UserChatInput, defaultToAgentGenerated: true }
+    Input_Template_UserChatInput
   ],
   outputs: [
     {
