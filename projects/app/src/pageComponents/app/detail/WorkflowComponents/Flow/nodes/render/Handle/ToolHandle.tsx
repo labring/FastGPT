@@ -38,14 +38,15 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
 
     return (
       !!sourceNode &&
-      (!targetTemplate ||
-        isNodeConnectionAllowed({
-          targetTemplate,
-          sourceNode,
-          edges,
-          handleId: connectingEdge.handleId,
-          getNodeById
-        }))
+      !!targetNode &&
+      isNodeConnectionAllowed({
+        targetTemplate,
+        targetNode,
+        sourceNode,
+        edges,
+        handleId: connectingEdge.handleId,
+        getNodeById
+      })
     );
   }, [connectingEdge, edges, getNodeById, nodeId, show]);
   // if top handle is connected, return null

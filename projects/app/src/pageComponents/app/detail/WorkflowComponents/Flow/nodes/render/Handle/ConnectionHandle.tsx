@@ -134,15 +134,16 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
       }
     }
 
-    // 目标节点模板在源节点添加上下文不可见时禁止连接（与快捷添加面板同规则）
+    // 目标节点容器或模板上下文不允许时禁止连接（与 Tool 柄及最终提交共用规则）
     const sourceNode = connectingEdge ? getNodeById(connectingEdge.nodeId) : undefined;
     const targetTemplate = node
       ? moduleTemplatesFlat.find((item) => item.id === node.flowNodeType)
       : undefined;
-    if (targetTemplate && sourceNode && connectingEdge) {
+    if (node && sourceNode && connectingEdge) {
       if (
         !isNodeConnectionAllowed({
           targetTemplate,
+          targetNode: node,
           sourceNode,
           edges,
           handleId: connectingEdge.handleId,

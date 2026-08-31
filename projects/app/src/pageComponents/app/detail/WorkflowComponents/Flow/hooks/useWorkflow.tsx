@@ -949,14 +949,14 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
       if (
         !sourceNode ||
         !targetNode ||
-        (targetTemplate &&
-          !isNodeConnectionAllowed({
-            targetTemplate,
-            sourceNode,
-            edges,
-            handleId: connect.sourceHandle,
-            getNodeById
-          }))
+        !isNodeConnectionAllowed({
+          targetTemplate,
+          targetNode,
+          sourceNode,
+          edges,
+          handleId: connect.sourceHandle,
+          getNodeById
+        })
       ) {
         return;
       }

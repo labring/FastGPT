@@ -174,6 +174,7 @@ describe('template context', () => {
     expect(
       isNodeConnectionAllowed({
         targetTemplate: ToolParamsNode,
+        targetNode: { parentNodeId: undefined },
         sourceNode,
         edges: [],
         handleId: NodeOutputKeyEnum.selectedTools,
@@ -183,6 +184,7 @@ describe('template context', () => {
     expect(
       isNodeConnectionAllowed({
         targetTemplate: ToolParamsNode,
+        targetNode: { parentNodeId: undefined },
         sourceNode,
         edges: [],
         handleId: '普通输出',
@@ -192,9 +194,48 @@ describe('template context', () => {
     expect(
       isNodeConnectionAllowed({
         targetTemplate: ToolParamsNode,
+        targetNode: { parentNodeId: undefined },
         sourceNode: { ...sourceNode, flowNodeType: FlowNodeTypeEnum.aiChat },
         edges: [],
         handleId: NodeOutputKeyEnum.selectedTools,
+        getNodeById
+      })
+    ).toBe(false);
+  });
+
+  it('连接节点必须属于同一容器并满足容器规则', () => {
+    const sourceNode = {
+      nodeId: 'source',
+      flowNodeType: FlowNodeTypeEnum.aiChat,
+      isTool: false,
+      parentNodeId: 'parallel'
+    };
+    const targetNode = { parentNodeId: 'parallel' };
+    const getNodeById = (nodeId: string | undefined | null) =>
+      nodeId === 'parallel'
+        ? ({
+            nodeId: 'parallel',
+            flowNodeType: FlowNodeTypeEnum.parallelRun
+          } as any)
+        : undefined;
+
+    expect(
+      isNodeConnectionAllowed({
+        targetTemplate: UserSelectNode,
+        targetNode,
+        sourceNode,
+        edges: [],
+        handleId: 'source',
+        getNodeById
+      })
+    ).toBe(false);
+    expect(
+      isNodeConnectionAllowed({
+        targetTemplate: UserSelectNode,
+        targetNode: { parentNodeId: 'other' },
+        sourceNode,
+        edges: [],
+        handleId: 'source',
         getNodeById
       })
     ).toBe(false);
