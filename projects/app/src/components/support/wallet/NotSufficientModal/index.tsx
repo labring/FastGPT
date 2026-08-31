@@ -116,7 +116,6 @@ export const RechargeModal = ({
   const [tab, setTab] = useState<'standard' | 'extra'>('standard');
   const [userSubMode, setUserSubMode] = useState<`${SubModeEnum}`>(SubModeEnum.month);
   const selectSubMode = subPlans?.activityExpirationTime ? SubModeEnum.year : userSubMode;
-  const isWecomTeam = !!userInfo?.team?.isWecomTeam;
 
   return (
     <MyModal
@@ -234,7 +233,7 @@ export const RechargeModal = ({
             value={tab}
             onChange={setTab}
           />
-          {tab === 'standard' && !isWecomTeam && (
+          {tab === 'standard' && (
             <Box mt={4}>
               <BillingModeSwitch value={selectSubMode} onChange={setUserSubMode} />
             </Box>

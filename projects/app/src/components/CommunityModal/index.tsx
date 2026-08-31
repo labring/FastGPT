@@ -4,13 +4,10 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import Markdown from '../Markdown';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserStore } from '@/web/support/user/useUserStore';
 
 const CommunityModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useClientTranslation();
   const { feConfigs } = useSystemStore();
-  const { userInfo } = useUserStore();
-  const isWecomTeam = !!userInfo?.team.isWecomTeam;
 
   return (
     <MyModal
@@ -20,11 +17,7 @@ const CommunityModal = ({ onClose }: { onClose: () => void }) => {
       title={t('common:system.Concat us')}
     >
       <ModalBody textAlign={'center'}>
-        {isWecomTeam ? (
-          t('common:contact_email', { email: 'archer@fastgpt.io' })
-        ) : (
-          <Markdown source={feConfigs?.concatMd || ''} />
-        )}
+        <Markdown source={feConfigs?.concatMd || ''} />
       </ModalBody>
 
       <ModalFooter>

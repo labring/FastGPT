@@ -163,14 +163,9 @@ const Standard = ({
     [PackageChangeStatusEnum.upgrade]: t('price:pay.package_tip.upgrade')
   };
 
-  // Check if it's a wecom team
-  const isWecomTeam = !!userInfo?.team?.isWecomTeam;
-
   const [packageChange, setPackageChange] = useState<PackageChangeStatusEnum>();
   const { subPlans, feConfigs } = useSystemStore();
-  const [internalSubMode, setInternalSubMode] = useState<`${SubModeEnum}`>(
-    isWecomTeam ? SubModeEnum.year : SubModeEnum.month
-  );
+  const [internalSubMode, setInternalSubMode] = useState<`${SubModeEnum}`>(SubModeEnum.month);
   const planContainerRef = useRef<HTMLDivElement>(null);
   const [responsivePlanLayout, setResponsivePlanLayout] = useState<ResponsivePlanLayout>({
     columnCount: 4,
@@ -183,13 +178,8 @@ const Standard = ({
     !!subPlans?.activityExpirationTime && selectSubMode === SubModeEnum.year;
 
   useEffect(() => {
-    // For WeCom teams, always default to yearly mode
-    if (isWecomTeam) {
-      setSelectSubMode(SubModeEnum.year);
-    } else {
-      setSelectSubMode(subPlans?.activityExpirationTime ? SubModeEnum.year : SubModeEnum.month);
-    }
-  }, [isWecomTeam, setSelectSubMode, subPlans?.activityExpirationTime]);
+    setSelectSubMode(subPlans?.activityExpirationTime ? SubModeEnum.year : SubModeEnum.month);
+  }, [setSelectSubMode, subPlans?.activityExpirationTime]);
 
   useEffect(() => {
     if (!responsiveCardLayout || !planContainerRef.current) return;
@@ -289,10 +279,7 @@ const Standard = ({
               ...standardSubLevelMap[level as `${StandardSubLevelEnum}`],
               ...(value.desc ? { desc: value.desc } : {}),
               ...(value.name ? { label: value.name } : {}),
-              price:
-                isWecomTeam && value.wecom
-                  ? value.wecom.price
-                  : value.price * (selectSubMode === SubModeEnum.month ? 1 : 10),
+              price: value.price * (selectSubMode === SubModeEnum.month ? 1 : 10),
               level: level as `${StandardSubLevelEnum}`,
               maxTeamMember: myStandardPlan?.maxTeamMember ?? value.maxTeamMember,
               maxAppAmount: myStandardPlan?.maxAppAmount ?? value.maxAppAmount,
@@ -300,10 +287,7 @@ const Standard = ({
               chatHistoryStoreDuration: value.chatHistoryStoreDuration,
               maxDatasetSize: value.maxDatasetSize,
               annualBonusPoints: selectSubMode === SubModeEnum.month ? 0 : value.annualBonusPoints,
-              totalPoints:
-                isWecomTeam && value.wecom
-                  ? value.wecom.points
-                  : value.totalPoints * (selectSubMode === SubModeEnum.month ? 1 : 12),
+              totalPoints: value.totalPoints * (selectSubMode === SubModeEnum.month ? 1 : 12),
 
               // custom plan
               priceDescription: value.priceDescription,
@@ -314,7 +298,6 @@ const Standard = ({
       : [];
   }, [
     subPlans,
-    isWecomTeam,
     selectSubMode,
     myStandardPlan?.maxTeamMember,
     myStandardPlan?.maxAppAmount,
@@ -327,7 +310,7 @@ const Standard = ({
   /* Get pay code */
   const { runAsync: onPay, loading: isLoading } = useRequest(postCreatePayBill, {
     onSuccess(res) {
-      // For WeChat Work payment, open payment URL in new tab
+      // Redirect-based payment opens in a new tab; QR-based payment uses the modal below.
       if (res.payUrl) {
         window.open(res.payUrl, '_blank');
         return;
@@ -393,7 +376,7 @@ const Standard = ({
         position={'relative'}
         w={'100%'}
       >
-        {!hideBillingToggle && !isWecomTeam && (
+        {!hideBillingToggle && (
           <BillingModeSwitch value={selectSubMode} onChange={setSelectSubMode} />
         )}
 
@@ -429,12 +412,6 @@ const Standard = ({
               item.level === StandardSubLevelEnum.basic;
 
             const isHigherLevel = packageChangeStatus === PackageChangeStatusEnum.upgrade;
-
-            // For wecom teams with advanced plan, cannot buy basic plan
-            const isWecomDowngrade =
-              isWecomTeam &&
-              myStandardPlan?.currentSubLevel === StandardSubLevelEnum.advanced &&
-              item.level === StandardSubLevelEnum.basic;
 
             return (
               <Box
@@ -547,9 +524,7 @@ const Standard = ({
                   color={'myGray.900'}
                   mt={hasActivityExpiration ? 2 : 0}
                 >
-                  {isWecomTeam && item.level === StandardSubLevelEnum.free
-                    ? t('common:support.wallet.subscription.standardSubLevel.trial')
-                    : t(item.label as any)}
+                  {t(item.label as any)}
                 </Box>
                 <Flex alignItems={'center'}>
                   {item.level === StandardSubLevelEnum.custom ? (
@@ -583,17 +558,6 @@ const Standard = ({
                             ? matchedCoupon.discount * item.price
                             : (matchedCoupon.discount * item.price).toFixed(1)
                           : item.price}
-                        {isWecomTeam && item.level !== StandardSubLevelEnum.free && (
-                          <Box
-                            h={[8, '38px']}
-                            color={'myGray.600'}
-                            fontSize={'18px'}
-                            fontWeight={'500'}
-                            whiteSpace={'nowrap'}
-                          >
-                            {t('price:support.wallet.subscription.per_year')}
-                          </Box>
-                        )}
                         {item.level !== StandardSubLevelEnum.free && matchedCoupon && (
                           <Box
                             h={[8, '38px']}
@@ -616,9 +580,7 @@ const Standard = ({
                   )}
                 </Flex>
                 <Box color={'myGray.500'} minH={'40px'} fontSize={'xs'}>
-                  {isWecomTeam && item.level === StandardSubLevelEnum.free
-                    ? t('price:support.wallet.subscription.standardSubLevel.trial_desc')
-                    : t(item.desc as any, { title: feConfigs?.systemTitle })}
+                  {t(item.desc as any, { title: feConfigs?.systemTitle })}
                 </Box>
 
                 {/* Button */}
@@ -731,24 +693,6 @@ const Standard = ({
                         }}
                       >
                         {t('price:support.wallet.subscription.Upgrade plan')}
-                      </Button>
-                    );
-                  }
-                  // For wecom teams with advanced plan, disable basic plan purchase
-                  if (isWecomDowngrade) {
-                    return (
-                      <Button
-                        mt={buttonMarginTop}
-                        mb={buttonMarginBottom}
-                        h={buttonHeight}
-                        w={'100%'}
-                        variant={'whiteBase'}
-                        isDisabled
-                        _hover={{}}
-                        _active={{}}
-                        cursor={'not-allowed'}
-                      >
-                        {t('price:bill.buy_plan')}
                       </Button>
                     );
                   }
