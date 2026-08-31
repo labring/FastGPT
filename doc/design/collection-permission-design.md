@@ -19,13 +19,13 @@ main 分支完成了权限架构重构——**物化资源权限（materialize r
 - 提供**策略层**（`resourcePermissionPolicy.ts`）：`calculateInheritedResourceCollaborators`（自旧快照剥离父级贡献、反推自身 clbs 再与新父级合并）、`mergeResourceCollaborators`、`toInheritedCollaborators`（父级 owner→manage）、`shouldInheritResourcePermission`。
 - 提供**仓储层**（`repository/resourcePermissionRepo.ts`）：`findByResource` / `replaceResource` / `patchResources` / `deleteByResource` / `findResourceKeysByCollaboratorsPermission`（批量可读资源 ID 查询）。
 
-需求要求为 collection 增加：文件级协作者配置、继承/独立态、move/恢复继承/changeOwner、统一鉴权、列表权限过滤、检索（RAG）召回过滤、当前路径限定搜索、存量迁移。
+需求要求为 collection 增加：文件级协作者配置、继承/独立态、move/恢复继承/changeOwner、统一鉴权、列表权限过滤、检索（RAG）召回过滤、存量迁移。
 
-**核心原则**：collection 权限层不做平行实现，而是**复用通用权限原语**，仅在 collection 的**跨类型父级**（根 collection 的父级是 dataset）这一唯一边界上提供适配。
+**核心原则**：collection 权限层不做平行实现/二次开发，而是**复用通用权限原语**，仅在 collection 的**跨类型父级**（根 collection 的父级是 dataset）这一唯一边界上提供适配。
 
 ### 1.2 目标
 
-- 落地 collection 文件级权限功能，满足 NFR-1（10k collections 列表 P95 ≤ 800ms）、NFR-2（批量同步 ≤ 30s）、NFR-7（检索过滤 P95 ≤ 200ms）、NFR-8（越权召回 = 0）。
+- 落地 collection 文件级权限功能，满足 NFR-1（10k collections 列表 P95 ≤ 800ms）、NFR-2（批量物化 ≤ 3s）、NFR-7（检索过滤 P95 ≤ 200ms）、NFR-8（越权召回 = 0）。
 - 兼容现有 dataset 级权限语义：dataset `read` 是门槛，collection `read` 是文件级维度，二者取 AND。
 - 复用 main 通用权限原语，将 collection 权限层收敛为薄适配层，与 main 演进同步。
 
@@ -96,12 +96,12 @@ export const PerResourceTypeEnum = {
 |---|---|---|
 | D1 | **权限存储与传播** | 复用通用 service 原语（create/update/move/resume/syncResourceTreePermissions）+ 策略层，不平行实现 |
 | D2 | **跨类型父级解析** | 给通用原语增加**可选父级覆盖参数**（`parentResourceType` / `parentResourceId` 或 `parentCollaborators`），覆盖"根 collection → dataset"边界；见 §3.2 |
-| D3 | **dataset → 根 collection 传播** | collection 侧导出**跨树 hook** `syncDatasetRootCollections`，由 dataset 写路径在同一事务内调用；见 §3.3 |
-| D4 | **列表/RAG 过滤** | 用 main `findResourceKeysByCollaboratorsPermission` 批量可读解析（新增 collection 分支）+ 分页过滤；见 §7 |
+| D3 | **dataset → collection 传播** | collection 侧导出**跨树 hook** `syncDatasetToCollections`，由 dataset 写路径在同一事务内调用；见 §3.3 |
+| D4 | **列表/RAG 过滤** | collection 侧提供 `getReadableCollectionIds`（候选集合限定：一次 `distinct`，`resourceId $in` 候选 + `$or` 协作者 + 查询端 `$bitsAnySet` 过滤），列表/检索共用；见 §7 |
 | D5 | **短路标记** | 保留 `hasSetCollectionPermissions`，纯继承态下 O(1) 跳过 O(N) 查询；定位为性能优化 |
 | D6 | **并发控制** | **不引入额外并发控制**（N4/S-4 已解除）：依赖 Mongo 事务串行化 + 全量替换幂等，并发覆盖按后写为准（NFR-6）；见 §8 |
 | D7 | **迁移** | 扩展 main 的 `permissionMigration` + 新增 `initCollectionPermission` API；见 §12 |
-| D8 | **changeOwner** | 扩展 `pro/admin` changeOwner，`changeOwnerType` 增加 `'collection'`，跳过 OutLink 同步 |
+| D8 | **changeOwner** | 扩展 `pro/admin` changeOwner，`changeOwnerType` 增加 `'collection'`，跳过 OutLink 同步；既有 dataset 版级联转移其下 collection 的 owner |
 
 ### 3.1 权限存储与传播
 
@@ -125,17 +125,17 @@ export const PerResourceTypeEnum = {
 | `resumeResourcePermissionInheritance` | 新增可选 `parentResourceType?` / `parentResourceId?` |
 | `syncResourceTreePermissions` | 无需改动：collection folder 的子节点同类型；跨类型由 collection 侧 hook 承担（§3.3） |
 
-另：`findResourceKeysByCollaboratorsPermission.getResourceKey()` 增加 `collection → 'resourceId'` 分支（当前对 collection 抛错）。
+另：collection 的**批量可读解析**不依赖通用 repo 的 `findResourceKeysByCollaboratorsPermission`——其按用户 ACL 全量 `distinct`、不支持候选集合 `$in` 限定，10k 级列表/检索下扫描面更大。由 auth.ts 提供候选集合限定的 `getReadableCollectionIds`（§7.1），列表/检索/数据鉴权复用。
 
-### 3.3 dataset → 根 collection 传播（跨树 hook）
+### 3.3 dataset → collection 传播（跨树 hook）
 
-根 collection 快照 = `merge(dataset 有效 clbs, 自身 clbs)`。dataset ACL 变更（本 dataset 或继承态祖先 dataset）必须重新物化其根 collection 快照。通用 service 无法跨类型遍历，由 collection 侧导出：
+根 collection 快照 = `merge(dataset 有效 clbs, 自身 clbs)`。dataset ACL 变更（本 dataset 或继承态祖先 dataset）必须重新物化其下全部 collection 快照（根级直接重物化、folder 递归子树）。通用 service 无法跨类型遍历，由 collection 侧导出：
 
 ```
-syncDatasetRootCollections({ teamId, datasetId, oldEffectiveClbs, newEffectiveClbs, session })
+syncDatasetToCollections({ teamId, datasetId, oldEffectiveClbs, newEffectiveClbs, session })
 ```
 
-- 将 `datasetId` 的根级继承态 collection 从 `oldEffectiveClbs` 重新物化到 `newEffectiveClbs`；folder 经 `syncResourceTreePermissions`（collection 类型）递归子树。
+- 将受影响 dataset（含继承态后代）的直接子 collection（根级）从 `oldEffectiveClbs` 重新物化到 `newEffectiveClbs`；folder 经 `syncResourceTreePermissions`（collection 类型）递归子树。
 - 由 **dataset 写路径**（update move / collaborator update / resume）在**同一事务**内调用，hook 内部自顶向下推导受影响 dataset 子树（新架构下 dataset 快照已物化，"有效 clbs"即快照）。
 - dataset 模块耦合为**一个函数调用**。
 
@@ -153,9 +153,8 @@ syncDatasetRootCollections({ teamId, datasetId, oldEffectiveClbs, newEffectiveCl
 | 协作者列表 | `POST /api/proApi/core/dataset/collection/collaborator/list` | fastgpt-pro |
 | 恢复继承 | `POST /api/core/dataset/collection/resumeInheritPermission` | fastgpt-app |
 | changeOwner | `POST /api/proApi/core/dataset/collection/changeOwner` | fastgpt-pro |
-| collection 权限初始化 | `POST /api/proApi/core/dataset/collection/initCollectionPermission` | fastgpt-pro admin |
-| 列表过滤 | `GET /api/core/dataset/collection/list`（改造） | fastgpt-app |
-| 当前路径限定搜索 | `GET /api/core/dataset/list`、`GET /api/core/dataset/collection/list`（改造） | fastgpt-app |
+| collection 权限初始化 | `POST /api/admin/initCollectionPermission` | fastgpt-app admin（`projects/app/src/pages/api/admin/initCollectionPermission.ts`） |
+| 列表过滤 | `GET /api/core/dataset/collection/listV2`（改造） | fastgpt-app |
 
 **现有 collection 接口权限升级（CRUD 门槛）：**
 
@@ -165,14 +164,16 @@ syncDatasetRootCollections({ teamId, datasetId, oldEffectiveClbs, newEffectiveCl
 | `PUT /api/core/dataset/collection/update` | collection write | 非 move：collection `write`；move：源父级 + 目标父级 `manage`（根 ↔ 目录需 `TeamDatasetCreatePermissionVal`），**不接收 `inheritPermission`** |
 | `DELETE /api/core/dataset/collection/delete` | collection write | collection `write`（folder 递归删子树） |
 | `GET /api/core/dataset/collection/detail` | collection read | dataset `read`（门槛）+ collection `read` |
+| `GET /api/core/dataset/collection/listV2` | dataset read | dataset `read`（门槛）；有 `parentId` 时校验该 folder `read`；列表按可读集合逐条过滤 |
 
 **dataset 相关 API 逻辑变更（collection 权限依赖）：**
 
 | 接口 | 变更点 |
 |---|---|
-| `PUT /api/core/dataset/update`（move） | 事务内权限传播完成后追加调用 `syncDatasetRootCollections`（§5.3） |
-| `POST /api/proApi/core/dataset/collaborator/update` | 同上，追加 `syncDatasetRootCollections` |
-| `POST /api/proApi/core/dataset/resumeInheritPermission` | 同上，追加 `syncDatasetRootCollections` |
+| `PUT /api/core/dataset/update`（move） | 保持 dataset 自身继承关系（独立态保持独立、继承态保持继承），不再强制 `inheritPermission=true`；事务内权限传播完成后追加调用 `syncDatasetToCollections`（§5.3） |
+| `POST /api/proApi/core/dataset/collaborator/update` | 同上，追加 `syncDatasetToCollections` |
+| `POST /api/proApi/core/dataset/resumeInheritPermission` | 同上，追加 `syncDatasetToCollections` |
+| `POST /api/proApi/core/dataset/changeOwner` | 转移 dataset 子树 owner 后，级联转移其下 collection 的 owner（文档 `tmbId` + `transferTmbPermissions`，§6.8） |
 | dataset schema | 新增 `hasSetCollectionPermissions` 字段；写路径按需置位（`datasetFlag.ts`） |
 
 ### 4.2 接口通用约束
@@ -190,7 +191,7 @@ collection 权限层收敛为 `packages/service/support/permission/collection/` 
 ```
 packages/service/support/permission/collection/
 ├── auth.ts          # 鉴权：authDatasetCollection + 可读 collection 批量解析（列表/检索/数据鉴权复用）
-├── controller.ts    # collection API 逻辑：跨类型父级解析、创建/move/恢复继承、syncDatasetRootCollections
+├── controller.ts    # collection API 逻辑：跨类型父级解析、创建/move/恢复继承、syncDatasetToCollections
 ├── collaborator.ts  # 协作者 API：updateCollectionCollaborators（WithAuth）、协作者列表读取
 └── datasetFlag.ts   # hasSetCollectionPermissions 短路标记读写
 ```
@@ -229,21 +230,21 @@ export const resolveCollectionParentClbs = async ({
 | 创建（根） | `resolveCollectionParentClbs(..., parentId: null)` → 父级=dataset | `createResourcePermissions`（传 `parentResourceType: dataset, parentResourceId: datasetId`） |
 | 创建（folder/非根） | parentId 有值，同类型 | `createResourcePermissions`（默认行为） |
 | 更新协作者 | `resolveCollectionParentClbs` → 作为 `parentCollaborators` | `updateResourceCollaborators`（含冲突翻转） |
-| 移动 | 目标父级 = `resolveCollectionParentClbs(targetParentId)`；源父级 = `resolveCollectionParentClbs(sourceParentId)`（根=dataset） | `moveResourcePermissions`（传 `newParentCollaborators` + `oldParentCollaborators`） |
+| 移动 | 独立态：仅更新 `parentId`（不动快照）；继承态：目标父级 = `resolveCollectionParentClbs(targetParentId)`、源父级 = `resolveCollectionParentClbs(sourceParentId)`（根=dataset） | `moveResourcePermissions`（继承态，传 `newParentCollaborators` + `oldParentCollaborators`） |
 | 恢复继承 | `resolveCollectionParentClbs` → 传父级覆盖 | `resumeResourcePermissionInheritance` |
 | folder 子树同步 | 子节点同类型 | `syncResourceTreePermissions`（默认行为） |
-| dataset → 根 collection | 跨树 | `syncDatasetRootCollections`（controller.ts，§5.3） |
+| dataset → collection | 跨树 | `syncDatasetToCollections`（controller.ts，§5.3） |
 
-### 5.3 跨树 hook：`syncDatasetRootCollections`（controller.ts）
+### 5.3 跨树 hook：`syncDatasetToCollections`（controller.ts）
 
 ```typescript
 /**
- * dataset 有效 clbs 变更后，将该 dataset 下所有根级继承态 collection 的快照
- * 从 oldEffectiveClbs 重新物化到 newEffectiveClbs；folder 递归同步子树。
+ * dataset 有效 clbs 变更后，将受影响 dataset（含继承态后代）下全部 collection 的快照重新物化：
+ * 根级继承态 collection 从 oldEffectiveClbs 物化到 newEffectiveClbs，folder 递归同步子树。
  * 由 dataset 写路径（collaborator/move/resume）在同一事务内调用。
  * 需自顶向下推导受影响 dataset 子树（继承态后代 dataset 的有效 clbs 变化）。
  */
-export async function syncDatasetRootCollections({
+export async function syncDatasetToCollections({
   teamId, datasetId, oldEffectiveClbs, newEffectiveClbs, session
 }: {
   teamId: string;
@@ -259,13 +260,13 @@ export async function syncDatasetRootCollections({
 1. 收集 `datasetId` 及其继承态后代 dataset（读 `MongoDataset` 的 `_id/parentId/inheritPermission`）；
 2. 批量加载后代 dataset 物化快照（`$in`，无 N+1）；
 3. BFS 自顶向下推导每个 dataset 的旧/新有效 clbs（`merge(父级有效 clbs, 自身 clbs)`，自身 clbs 由 `calculateInheritedResourceCollaborators` 反推）；
-4. 对每个 dataset，将其根级继承态 collection（`parentId: null, inheritPermission != false`）从旧有效 clbs 物化到新有效 clbs，folder 经 `syncResourceTreePermissions`（`resourceType: collection`）递归子树；
+4. 对每个受影响 dataset，将其直接子 collection（`parentId: null`）从旧有效 clbs 物化到新有效 clbs，folder 经 `syncResourceTreePermissions`（`resourceType: collection`）递归子树；
 5. 批量 diff `patchResources` 写入，幂等。
 
 **dataset 模块集成（最小耦合）**：dataset 写路径在事务内、权限传播完成后追加一行：
 
 ```
-await syncDatasetRootCollections({ teamId, datasetId, oldEffectiveClbs, newEffectiveClbs, session });
+await syncDatasetToCollections({ teamId, datasetId, oldEffectiveClbs, newEffectiveClbs, session });
 ```
 
 涉及：`projects/app/src/pages/api/core/dataset/update.ts`（move）、`pro/admin/.../dataset/collaborator/update.ts`、`.../dataset/resumeInheritPermission.ts`。
@@ -279,7 +280,7 @@ await syncDatasetRootCollections({ teamId, datasetId, oldEffectiveClbs, newEffec
 新架构下 dataset 快照已物化，**有效 clbs == 物化快照**。dataset 权限变更的传播：
 
 1. dataset 自身 ACL 变更（collaborator update / move / resume）→ dataset 模块用 `syncResourceTreePermissions` 传播到继承态后代 dataset；
-2. collection 侧 hook `syncDatasetRootCollections` 在同一事务内，将受影响 dataset（含后代）的根 collection 快照重新物化（§5.3）。
+2. collection 侧 hook `syncDatasetToCollections` 在同一事务内，将受影响 dataset（含后代）的全部 collection 快照重新物化（§5.3）。
 
 影响面统一为：**受影响 dataset 的根级继承态 collection 及其子树**。
 
@@ -317,7 +318,7 @@ export async function authDatasetCollection({
 }
 ```
 
-物化快照直读，无父链递归。可读 collection 批量解析（`resolveReadableCollectionIds`，供列表/检索/数据鉴权复用）也置于 auth.ts，基于 `findResourceKeysByCollaboratorsPermission`（§7）。
+物化快照直读，无父链递归。可读 collection 批量解析（`getReadableCollectionIds`，供列表/检索/数据鉴权复用）也置于 auth.ts：候选集合单次 `distinct` 限定（`resourceId $in` 候选 + `$or` 协作者 + 查询端 `$bitsAnySet`），不做 team 全量扫描（§7）。
 
 ### 6.4 协作者配置与列表（collaborator.ts）
 
@@ -385,23 +386,33 @@ await createResourcePermissions({
 
 ### 6.6 移动 collection（controller.ts）
 
-`PUT /api/core/dataset/collection/update`（`parentId` 变更即 move），**不接收 `inheritPermission`**（保持 collection 自身继承关系）。事务内：
+`PUT /api/core/dataset/collection/update`（`parentId` 变更即 move），**不接收 `inheritPermission`**——move 以 collection **自身当前继承态**为策略（读 DB 当前值，与 F006 一致）：**独立态保持独立、继承态保持继承**，不允许通过 move 改变继承关系。事务内：
 
 ```typescript
+if (collection.inheritPermission === false) {
+  // 独立态：仅更新 parentId，快照与 inheritPermission=false 保持不变（不合并目标父级）
+  await MongoDatasetCollection.updateOne(
+    { _id: collection._id },
+    { $set: { parentId: targetParentId || null, inheritPermission: false } },
+    { session }
+  );
+  await markDatasetCollectionPermissionsSet({ datasetId: collection.datasetId, session });
+  return;
+}
+
+// 继承态（含当前无父级的根 collection）：剥离源父级贡献、合并目标父级贡献，保持 inheritPermission=true
 const newParentClbs = await resolveCollectionParentClbs({
   teamId, datasetId, parentId: targetParentId, session
 });
-const oldParentClbs = collection.inheritPermission === false
-  ? [] // 此前独立 → 当前快照全为自身 clbs
-  : await resolveCollectionParentClbs({
-      teamId, datasetId, parentId: collection.parentId, session
-    });
+const oldParentClbs = await resolveCollectionParentClbs({
+  teamId, datasetId, parentId: collection.parentId, session // 根（parentId=null）→ dataset 有效 clbs
+});
 await moveResourcePermissions({
   resource: collection, newParentId: targetParentId,
   resourceModel: MongoDatasetCollection,
   resourceType: PerResourceTypeEnum.collection,
   newParentCollaborators: newParentClbs,
-  oldParentCollaborators: oldParentClbs, // "从根移动"场景
+  oldParentCollaborators: oldParentClbs, // 源父级覆盖：folder 快照 / 根→dataset 有效 clbs
   session
 });
 // folder 移动：moveResourcePermissions 内部经 syncResourceTreePermissions 递归子树
@@ -427,7 +438,7 @@ await resumeResourcePermissionInheritance({
 
 ### 6.8 changeOwner
 
-`POST /api/proApi/core/dataset/collection/changeOwner`：
+**collection 级** `POST /api/proApi/core/dataset/collection/changeOwner`：
 
 - 扩展 `pro/admin/src/service/core/changeOwner.ts`：`changeOwnerType` 增加 `'collection'`；使用 `MongoDatasetCollection` 模型；
 - 子资源遍历改为 collection 树（`parentId` 子树）；
@@ -435,31 +446,39 @@ await resumeResourcePermissionInheritance({
 - **跳过 OutLink 同步**（collection 无 OutLink）；
 - 同步更新 collection 文档 `tmbId` 字段 + `resource_permissions` owner 记录（owner 唯一不变量）。
 
+**dataset 级** `POST /api/proApi/core/dataset/changeOwner`（既有接口，逻辑变更）：
+
+- 转移 dataset 子树 owner 后，**级联转移其下 collection 的 owner**：`MongoDatasetCollection.updateMany({ teamId, datasetId: { $in: 受影响 datasetIds }, tmbId: oldOwnerId }, { tmbId: newOwnerId })` + `transferTmbPermissions({ resourceType: 'collection', resourceIds: 全部 collection ids })`；
+- 全物化快照中每个 collection 快照都含 dataset owner 的继承记录（manage 位），`transferTmbPermissions` 一并覆盖，避免换 owner 后旧 owner 权限残留；
+- 仅转移 owner 为 `oldOwnerId` 的 collection；已独立配置为其他 owner 的 collection 保持不变。
+
 ---
 
 ## 7. 可见性设计
 
 ### 7.1 文件列表按权限过滤
 
-`GET /api/core/dataset/collection/list`。本迭代不做平铺穿透（F016 移出），按**当前目录直接子节点**过滤 + 分页：
+`GET /api/core/dataset/collection/listV2`。本迭代不做平铺穿透（F016 移出），按**当前目录直接子节点**过滤 + 分页：
 
 1. **候选查询**：进入目录 `parentId`（null = dataset 根），查询该目录直接子 collection 的权限最小字段 `{ _id, parentId, type, inheritPermission, tmbId }`。
 2. **短路判定**（任选其一，降序）：
    - 团队管理员/团队所有者：全部可读；
    - `hasSetCollectionPermissions === false` 且 dataset `read` 通过：全部可读（O(1)）；
-   - 其余：`findResourceKeysByCollaboratorsPermission({ resourceType: collection, resourceId: $in 候选ids, permission: ReadPermissionVal })` → 可读 ID 集合。该原语新增 collection 分支（`getResourceKey()` 返回 `'resourceId'`），查询端 `$bitsAnySet` 过滤拒绝/无读记录。
+   - 其余：`getReadableCollectionIds({ collections: 候选, tmbId, teamId, groupIds, orgIds, datasetPermission })` → 可读 ID 集合。
 3. 过滤出可读候选 → MongoDB 排序分页（`sort(updateTime).skip(offset).limit(pageSize)`）→ 当前页完整字段 + 统计回查（`$in` 批量聚合，无 N+1）。`total` = 过滤后该目录下节点数。
+
+`getReadableCollectionIds`（auth.ts）实现：一次 `MongoResourcePermission.distinct('resourceId', { resourceType: collection, teamId, resourceId: { $in: 候选 ids }, permission: { $bitsAnySet: 0b111 }, $or: [tmbId, groupId $in, orgId $in] })`——**以候选集合限定**，查询范围与候选集合同量级；查询端 `$bitsAnySet` 过滤拒绝/无读记录（owner 全位 4294967295 自然命中），返回候选内可读 ID。**不采用**通用 `findResourceKeysByCollaboratorsPermission`：其按用户 ACL 全量 `distinct`、不支持候选 `$in` 限定，10k 级列表下扫描面为团队全量 ACL 足迹（对比见 §3.2）。
 
 > 需先校验当前用户对所属 dataset 有 `read`（§7.2 门槛）；无权限返回空列表。排序分页在过滤后的候选集合上执行（不能在过滤前 `skip/limit`，避免漏掉不可读节点占位导致的分页错位）。
 
-NFR-1（10k collections P95 ≤ 800ms）：`$in` 批量 + 短路 + 过滤后分页达成。
+NFR-1（10k collections P95 ≤ 800ms）：候选 `$in` 限定 + 短路 + 过滤后分页达成。
 
 ### 7.2 知识库权限门槛
 
 - dataset `read` 是前置门槛：详情、列表、检索均先校验；
 - collection `read` 是文件级维度；文件级 read 不能绕过知识库门槛；
 - 知识库无 `read` 时知识库及其全部文件均隐藏；
-- 列表/详情/检索共用同一"可读 collection 批量解析"函数（`resolveReadableCollectionIds`，auth.ts），避免"列表可见但点进去无权限"。
+- 列表/详情/检索共用同一"可读 collection 批量解析"函数（`getReadableCollectionIds`，auth.ts），避免"列表可见但点进去无权限"。
 
 ### 7.3 检索（RAG）召回权限过滤
 
@@ -468,21 +487,19 @@ NFR-1（10k collections P95 ≤ 800ms）：`$in` 批量 + 短路 + 过滤后分�
 流程：
 
 1. **dataset 前置鉴权**：过滤出有 `read` 的 dataset；
-2. **解析可读 collection 集合**：`resolveReadableCollectionIds` 输入 `teamId/datasetIds/tmbId` →
+2. **解析可读 collection 集合**：`resolveReadableCollectionIds`（auth.ts）输入 `teamId/datasetIds/tmbId` →
    - 团队管理员 / team owner：返回 `undefined`（无 collection 级过滤，按 dataset 召回）；
    - 全部目标 dataset `hasSetCollectionPermissions === false` 且 read 通过：返回 `undefined`（短路）；
-   - 否则：`findResourceKeysByCollaboratorsPermission({ resourceType: collection, permission: ReadPermissionVal })` → 可读 collection ID（folder 递归展开为实际文件 ID——folder 有 read 即其下文件视为可读，属权限解析，非展示平铺）；dataset read 未通过的 dataset 整体排除；
+   - 否则：加载目标 dataset 下**文件类型** collection 最小字段（`type != folder`）→ 按 `datasetId` 分组，**逐 dataset 并行**调用 `getReadableCollectionIds`（各 dataset 独立、候选 `$in` 限定，无 N+1）→ 并集为可读文件 ID；
+   - 可读并集覆盖全部文件 collection → 返回 `undefined`（不设 `collectionId IN`，避免上万 ID 长过滤条件）；
+   - 真子集 → 返回可读文件 ID 列表（folder 有 read 即其下文件视为可读，属权限解析，非展示平铺）；
    - `undefined` 语义：`decideCollectionFilter` 识别为"无需权限过滤"，不设置 `collectionId IN`，跳过全量判定比较。
 3. **合并检索条件**：可读集合 ∩ 用户元数据 collection 条件 ∩ 排除 `forbidCollectionIdList` → `effectiveCollectionIdList`；交集为空直接返回空结果；
 4. **决定是否设置 `collectionId` 过滤**：可读集合覆盖该 dataset 全部 collection 时**不设置**（避免上万 ID 的长过滤条件）；真子集时才设置并下沉到向量/全文召回；
 5. **结果回查防御**：召回返回 data 后 Mongo 回查再附加 `collectionId IN effectiveCollectionIdList`；
 6. **统一覆盖所有检索入口**：工作流 dataset 检索、Agent dataset 检索、search-test、OpenAPI。
 
-NFR-7（P95 ≤ 200ms）：批量 `$in` + 短路 + `undefined` 不设过滤语义。NFR-8（越权召回 = 0）：授权集合在召回与回查两层生效。
-
-### 7.4 当前路径限定搜索
-
-`GET /api/core/dataset/list`、`GET /api/core/dataset/collection/list` 的 `searchText` 行为：搜索时不以当前 `parentId` 限定候选，而在所属 dataset 范围内查询匹配节点 → 权限过滤 → 按真实 `parentId` 组织结果，仅返回当前目录可见的节点。
+NFR-7（P95 ≤ 200ms）：候选 `$in` 限定 + 短路 + `undefined` 不设过滤语义。NFR-8（越权召回 = 0）：授权集合在召回与回查两层生效。
 
 ---
 
@@ -515,12 +532,12 @@ NFR-7（P95 ≤ 200ms）：批量 `$in` + 短路 + `undefined` 不设过滤语�
 ### 9.3 失败回滚
 
 - 事务异常整体回滚；
-- `syncDatasetRootCollections` / 初始化产生大量 ops 时按批次 `bulkWrite`（NFR-2，≤30s）。
+- `syncDatasetToCollections` / 初始化产生大量 ops 时按批次 `bulkWrite`（NFR-2，≤3s）。
 
 ### 9.4 一致性边界
 
 - 列表、详情、检索共用同一可读解析函数；
-- `syncDatasetRootCollections` 与 dataset 写路径同事务，避免 dataset 变更成功而根 collection 快照过期。
+- `syncDatasetToCollections` 与 dataset 写路径同事务，避免 dataset 变更成功而根 collection 快照过期。
 
 ---
 
@@ -529,14 +546,14 @@ NFR-7（P95 ≤ 200ms）：批量 `$in` + 短路 + `undefined` 不设过滤语�
 ### 10.1 读性能
 
 - 物化快照：collection 鉴权/列表/检索单表读自身快照，无父链递归；
-- 列表/检索 `findResourceKeysByCollaboratorsPermission` 批量 `$in` + 查询端 `$bitsAnySet` 过滤（只加载与当前用户相关行）；
+- 列表/检索 `getReadableCollectionIds` 候选集合单次 `distinct`（`resourceId $in` 候选 + `$or` 协作者 + 查询端 `$bitsAnySet` 过滤），查询范围与候选集合同量级，不做 team 全量扫描；
 - 短路：团队管理员 / `hasSetCollectionPermissions=false` / 全继承态——O(1) 跳过 distinct 查询。
 
 ### 10.2 写性能
 
-- `syncResourceTreePermissions` / `syncDatasetRootCollections`：复杂度 O(受影响节点数 × 协作者数)，diff `patchResources` 批量写入；
+- `syncResourceTreePermissions` / `syncDatasetToCollections`：复杂度 O(受影响节点数 × 协作者数)，diff `patchResources` 批量写入；
 - folder 深度沿用 `MAX_FOLDER_DEPTH` 限制；
-- 大批量同步分批 bulkWrite（NFR-2 ≤ 30s）。
+- 大批量物化分批 bulkWrite（NFR-2 ≤ 3s）。
 
 ### 10.3 索引建议
 
@@ -552,7 +569,7 @@ NFR-7（P95 ≤ 200ms）：批量 `$in` + 短路 + `undefined` 不设过滤语�
 |---|---|
 | 循环 parentId | `checkMoveFolderDepth` / `checkCreateFolderDepth` 拦截 |
 | 移动到根目录 | 目标父级 = dataset 有效 clbs；需 `TeamDatasetCreatePermissionVal` |
-| 独立态 collection 被 move | 强制继承态：`oldParentClbs=[]`，旧快照全为自身 clbs，与目标父快照合并 |
+| 独立态 collection 被 move | 保持独立态：仅更新 `parentId`，快照与 `inheritPermission=false` 保持不变（不合并目标父级） |
 | 父级 owner 在子资源中 | `toInheritedCollaborators` 降级为 manage |
 | 根 collection 更新协作者冲突 | 传入 dataset 父级 `parentCollaborators`，通用冲突检测触发 → 翻转独立态 |
 | 恢复继承时父级无权限 | 仅保留自身 clbs（含 owner） |
@@ -569,17 +586,17 @@ NFR-7（P95 ≤ 200ms）：批量 `$in` + 短路 + `undefined` 不设过滤语�
 
 ### 12.1 `initCollectionPermission` API（新增）
 
-`POST /api/proApi/core/dataset/collection/initCollectionPermission`（fastgpt-pro admin）：
+`POST /api/admin/initCollectionPermission`（fastgpt-app admin，`projects/app/src/pages/api/admin/initCollectionPermission.ts`）：
 
 - **鉴权**：系统管理员 或 团队 owner；
 - **语义**：将存量 collection 物化为 collection 级权限快照——根 collection 以所属 dataset 有效 clbs 为父级、非根以父 collection folder 快照为父级，`merge(父级, [owner])`，folder 递归；为每个 dataset 设置 `hasSetCollectionPermissions=false`；
 - **幂等**：唯一键 + diff 写入，可断点续跑；每 dataset/批次独立事务提交进度（`permissionMigrationVersion`），失败批次记录 `datasetId/collectionId/error`；
-- **超时**：单次 >30s 转异步任务（对齐 F010 的 W-2 冻结模式）。
+- **超时**：单次 >3s 转异步任务（对齐 F010 的 W-2 冻结模式）。
 
 ### 12.2 初始化流程
 
 1. 检测异常：构建 collection 树查循环引用 / 孤儿 `parentId`（循环 folder 临时退出继承态；孤儿 folder 按根处理）；
-2. 自顶向下按 `parentId` 层级：根 collection 用 dataset 快照为父级，folder 递归（用 `syncDatasetRootCollections` 重建根、`syncResourceTreePermissions` 递归子树——**与运行时同一套原语**）；
+2. 自顶向下按 `parentId` 层级：根 collection 用 dataset 快照为父级，folder 递归（用 `syncDatasetToCollections` 重建根、`syncResourceTreePermissions` 递归子树——**与运行时同一套原语**）；
 3. 清理重复 owner 记录；校验 owner 唯一、快照符合嵌套模型；
 4. 每 dataset/批次独立事务提交进度，失败可重试。
 
@@ -587,7 +604,7 @@ NFR-7（P95 ≤ 200ms）：批量 `$in` + 短路 + `undefined` 不设过滤语�
 
 - `upgradePermission`（F010，既有）：权限继承逻辑升级后的全量重算；
 - `initCollectionPermission`（新增）：collection 权限维度启用的存量初始化——在既有 dataset 级权限基础上为 collection 物化快照；
-- 两者共用 `syncDatasetRootCollections` / `syncResourceTreePermissions` / `calculateInheritedResourceCollaborators`，实现一致性（F010 升级完成后校验结果与运行时同步一致）。
+- 两者共用 `syncDatasetToCollections` / `syncResourceTreePermissions` / `calculateInheritedResourceCollaborators`，实现一致性（F010 升级完成后校验结果与运行时同步一致）。
 
 ---
 
@@ -599,15 +616,15 @@ NFR-7（P95 ≤ 200ms）：批量 `$in` + 短路 + `undefined` 不设过滤语�
 | 创建 | 根继承态/独立态；folder 递归子树 |
 | 协作者更新 | 继承态无冲突（保留自身 clbs）；冲突翻转独立态；根 collection 冲突（dataset 父级） |
 | 协作者列表 | 物化快照读取；越权 |
-| move | 根→folder；folder→根；独立态移动；folder 移动递归子树 |
+| move | 根→folder；folder→根；独立态移动保持独立（快照与 `inheritPermission=false` 不变）；继承态移动按新父级合并；folder 移动递归子树 |
 | 恢复继承 | 保留相对父级独有位；父级无权限仅留自身 clbs |
 | 冲突检测 | 修改/删除父级协作者 → 翻转；owner 不可经协作者接口授予 |
 | 物化快照 | 各写路径后快照 = merge(父级, 自身)；owner→manage 降级 |
-| `findResourceKeysByCollaboratorsPermission` | collection 分支；`$bitsAnySet` 过滤拒绝记录 |
+| `getReadableCollectionIds` | 候选限定 `distinct`（`$in` 候选）；`$bitsAnySet` 过滤拒绝记录；短路分支 |
 | 短路 | `hasSetCollectionPermissions=false` 时列表/检索短路；团队管理员短路 |
 | 列表过滤 | 过滤后分页正确（不可读节点不占位）；无 dataset read 返回空 |
 | 初始化 | 存量 collection 物化正确；循环/孤儿处理；幂等重跑 0 变更 |
-| changeOwner | 子树 owner 更新；无 OutLink 同步 |
+| changeOwner | collection 子树 owner 更新；dataset changeOwner 级联 collection owner；无 OutLink 同步 |
 
 ## 14. 集成测试覆盖建议
 
@@ -631,8 +648,8 @@ NFR-7（P95 ≤ 200ms）：批量 `$in` + 短路 + `undefined` 不设过滤语�
 ## 16. 结论与后续计划
 
 - 本设计将 collection 权限层收敛为对 main 通用权限 service 的**薄适配层**（4 个文件），唯一核心适配点为**跨类型父级解析**（根 collection → dataset）；
-- 对通用 service 的最小扩展：`PerResourceTypeEnum` 加 collection、3 个原语的可选父级参数、`findResourceKeysByCollaboratorsPermission` 加 collection 分支；
-- 可见性（列表/门槛/检索/路径搜索）建立在物化快照直读 + 批量可读解析 + 短路之上；平铺展示（F016）移出本迭代，待独立需求；
+- 对通用 service 的最小扩展：`PerResourceTypeEnum` 加 collection、3 个原语的可选父级参数；批量可读解析由 collection 侧 `getReadableCollectionIds` 承担（候选集合限定，不扩展通用 repo 的 `findResourceKeysByCollaboratorsPermission`）；
+- 可见性（列表/门槛/检索）建立在物化快照直读 + 候选限定批量可读解析 + 短路之上；平铺展示（F016）与当前路径限定搜索已移出本迭代，待独立需求；
 - 并发控制不做额外实现（N4/S-4 已解除），依赖事务 + 幂等 + 后写为准；
 - 后续工作：按 §4.1 接口清单落地，先适配层（controller/collaborator/auth/datasetFlag）→ 鉴权升级（authDatasetCollection）→ 可见性（list/RAG）→ 初始化迁移（initCollectionPermission）。
 
