@@ -47,14 +47,12 @@ async function handler(
 
   await beforeUpdateAppFormat({ nodes: [toolSetRuntimeNode], teamId });
 
-  await beforeUpdateAppFormat({ nodes: [toolSetRuntimeNode], teamId });
-
   await mongoSessionRun(async (session) => {
     // update app and app version
     await MongoApp.updateOne(
       { _id: appId },
       {
-        modules: [toolSetRuntimeNode],
+        modules: storageNodes,
         updateTime: new Date()
       },
       { session }
@@ -64,7 +62,7 @@ async function handler(
       { appId },
       {
         $set: {
-          nodes: [toolSetRuntimeNode]
+          nodes: storageNodes
         }
       },
       { session }

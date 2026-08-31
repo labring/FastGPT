@@ -139,18 +139,42 @@ export const OpenAPIAppChatConfigSchema = AppChatConfigTypeSchema.extend({
   description: '应用对话运行配置，例如欢迎语、变量、语音和定时触发配置'
 });
 
-/* Create app */
 /**
- * Create API 只接收当前 workflow 协议。
- * 外部历史 JSON 必须在 Import 边界迁移；这里使用 strict 子 schema，避免 legacy 字段被 Zod
- * 静默剥离后再进入 onCreateApp，造成迁移器无法恢复原始语义。
+ * 在校验前迁移创建请求中的工作流。
+ *
+ * 模板市场和 JSON 新建都可能提交历史结构，因此创建 API 是 canonical 写入边界；
+ * 迁移失败时保留原始值，让后续 Schema 返回标准请求校验错误。
  */
-const CreateAppNodeSchema = OpenAPIStoreNodeItemTypeSchema.strict().extend({
-  inputs: z.array(OpenAPIFlowNodeInputItemTypeSchema.strict()),
-  outputs: z.array(OpenAPIFlowNodeOutputItemTypeSchema.strict())
+const migrateCreateAppBodyWorkflow = (value: unknown) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+
+  const body = value as Record<string, unknown>;
+  if (!Array.isArray(body.modules)) return value;
+
+  try {
+    const workflow = migrateWorkflowToCurrent({
+      nodes: body.modules,
+      edges: body.edges,
+      chatConfig: body.chatConfig
+    });
+
+    return {
+      ...body,
+      modules: workflow.nodes,
+      edges: workflow.edges,
+      chatConfig: workflow.chatConfig
+    };
+  } catch {
+    return value;
+  }
+};
+
+const CreateAppNodeSchema = OpenAPIStoreNodeItemTypeSchema.extend({
+  inputs: z.array(OpenAPIFlowNodeInputItemTypeSchema),
+  outputs: z.array(OpenAPIFlowNodeOutputItemTypeSchema)
 });
 
-const CreateAppEdgesSchema = z.array(StoreEdgeItemTypeSchema.strict());
+const CreateAppEdgesSchema = z.array(StoreEdgeItemTypeSchema);
 
 export const CreateAppBodySchema = z
   .object({
@@ -182,7 +206,7 @@ export const CreateAppBodySchema = z
       example: [],
       description: '应用连线'
     }),
-    chatConfig: OpenAPIAppChatConfigSchema.strict().optional().meta({
+    chatConfig: OpenAPIAppChatConfigSchema.optional().meta({
       description: '聊天配置'
     }),
     templateId: z.string().optional().meta({
@@ -193,7 +217,6 @@ export const CreateAppBodySchema = z
       description: 'UTM 参数'
     })
   })
-  .strict()
   .meta({
     example: {
       name: '新应用',
@@ -384,10 +407,13 @@ export const UpdateAppBodySchema = z
       .enum(AppTypeEnum)
       .optional()
       .meta({ example: AppTypeEnum.workflow, description: '应用类型' }),
-    avatar: z.string().optional().meta({ description: '应用头像' }),
-    intro: z.string().optional().meta({ description: '应用介绍' })
+    avatar: z.string().nullish().meta({ description: '应用头像' }),
+    intro: z.string().nullish().meta({ description: '应用介绍' }),
+    nodes: z.never().optional(),
+    modules: z.never().optional(),
+    edges: z.never().optional(),
+    chatConfig: z.never().optional()
   })
-  .strict()
   .meta({
     example: {
       name: '客服应用',

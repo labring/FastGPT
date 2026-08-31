@@ -1,16 +1,8 @@
-import type { CanonicalAgentToolInputConfig, CanonicalFlowNodeInputItem } from '../schema';
-import type { LegacyAgentToolInputConfig, LegacyFlowNodeInputItem } from './schema';
-import { CanonicalAgentToolInputConfigSchema } from '../schema';
-import { LegacyAgentToolInputConfigSchema } from './schema';
+import type { CanonicalFlowNodeInputItem } from '../schema';
+import type { LegacyFlowNodeInputItem } from './schema';
 import { canInputBeAgentGenerated } from '../../../app/formEdit/utils';
 import { FlowNodeInputTypeEnum } from '../../node/constant';
 import { NodeInputKeyEnum } from '../../constants';
-
-/** 将 Agent 工具的完整历史 NodeIO 或当前配置统一为 `{ key, mode }`。 */
-export const migrateAgentToolInputConfigToCurrent = (
-  input: LegacyAgentToolInputConfig
-): CanonicalAgentToolInputConfig =>
-  CanonicalAgentToolInputConfigSchema.parse(LegacyAgentToolInputConfigSchema.parse(input));
 
 type MigrateFlowNodeInputOptions = {
   isTool?: boolean;

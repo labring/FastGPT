@@ -3,17 +3,11 @@ import { MongoApp } from '../schema';
 import { MongoAppVersion } from './schema';
 import { Types } from '../../../common/mongo';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
-import { getWorkflowMigrationOptions } from '../tool/utils/client';
+import { decodeToolSetNodesFromStorage } from '../jsonSchemaStorage';
 
-export const getAppLatestVersion = async (
-  appId: string,
-  app?: AppSchemaType,
-  options?: { skipAgentToolMigration?: boolean }
-) => {
+export const getAppLatestVersion = async (appId: string, app?: AppSchemaType) => {
   const migrationApp =
-    options?.skipAgentToolMigration || app
-      ? app
-      : ((await MongoApp.findById(appId).lean()) as AppSchemaType | null | undefined);
+    app ?? ((await MongoApp.findById(appId).lean()) as AppSchemaType | null | undefined);
   const version = await MongoAppVersion.findOne({
     appId,
     isPublish: true
@@ -26,32 +20,22 @@ export const getAppLatestVersion = async (
   if (version) {
     // 历史版本只迁移该版本自身的系统配置节点，不继承当前应用 chatConfig，
     // 避免当前配置占位导致该版本中的欢迎语、定时任务等旧值被丢弃。
-    const normalizedWorkflow = await migrateWorkflowToCurrent(
-      {
-        nodes: version.nodes,
-        edges: version.edges,
-        chatConfig: version.chatConfig
-      },
-      options?.skipAgentToolMigration
-        ? { migrateAgentTools: false }
-        : getWorkflowMigrationOptions({ teamId: migrationApp?.teamId })
-    );
+    const normalizedWorkflow = migrateWorkflowToCurrent({
+      nodes: decodeToolSetNodesFromStorage(version.nodes),
+      edges: version.edges,
+      chatConfig: version.chatConfig
+    });
     return {
       versionId: String(version._id),
       versionName: version.versionName,
       ...normalizedWorkflow
     };
   }
-  const normalizedWorkflow = await migrateWorkflowToCurrent(
-    {
-      nodes: migrationApp?.modules ?? [],
-      edges: migrationApp?.edges ?? [],
-      chatConfig: migrationApp?.chatConfig
-    },
-    options?.skipAgentToolMigration
-      ? { migrateAgentTools: false }
-      : getWorkflowMigrationOptions({ teamId: migrationApp?.teamId })
-  );
+  const normalizedWorkflow = migrateWorkflowToCurrent({
+    nodes: decodeToolSetNodesFromStorage(migrationApp?.modules ?? []),
+    edges: migrationApp?.edges ?? [],
+    chatConfig: migrationApp?.chatConfig
+  });
   return {
     versionId: migrationApp?.pluginData?.nodeVersion,
     versionName: migrationApp?.name,
@@ -62,13 +46,11 @@ export const getAppLatestVersion = async (
 export const getAppVersionById = async ({
   appId,
   versionId,
-  app,
-  skipAgentToolMigration
+  app
 }: {
   appId: string;
   versionId?: string;
   app?: AppSchemaType;
-  skipAgentToolMigration?: boolean;
 }) => {
   // 检查 versionId 是否符合 ObjectId 格式
   if (versionId && Types.ObjectId.isValid(versionId)) {
@@ -78,20 +60,11 @@ export const getAppVersionById = async ({
     }).lean();
 
     if (version) {
-      const migrationApp =
-        skipAgentToolMigration || app
-          ? app
-          : ((await MongoApp.findById(appId).lean()) as AppSchemaType | null | undefined);
-      const normalizedWorkflow = await migrateWorkflowToCurrent(
-        {
-          nodes: version.nodes,
-          edges: version.edges,
-          chatConfig: version.chatConfig
-        },
-        skipAgentToolMigration
-          ? { migrateAgentTools: false }
-          : getWorkflowMigrationOptions({ teamId: migrationApp?.teamId })
-      );
+      const normalizedWorkflow = migrateWorkflowToCurrent({
+        nodes: decodeToolSetNodesFromStorage(version.nodes),
+        edges: version.edges,
+        chatConfig: version.chatConfig
+      });
       return {
         versionId: String(version._id),
         versionName: version.versionName,
@@ -101,7 +74,7 @@ export const getAppVersionById = async ({
   }
 
   // If the version does not exist, the latest version is returned
-  return getAppLatestVersion(appId, app, { skipAgentToolMigration });
+  return getAppLatestVersion(appId, app);
 };
 
 export const checkIsLatestVersion = async ({

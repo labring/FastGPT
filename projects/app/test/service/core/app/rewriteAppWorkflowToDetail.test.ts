@@ -42,7 +42,7 @@ vi.mock('@fastgpt/service/support/permission/app/auth', async (importOriginal) =
 const { rewriteAppWorkflowToDetail } = await import('@fastgpt/service/core/app/utils');
 
 describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
-  it('keeps the baseline invalid placeholder and separates unresolved inputs', async () => {
+  it('keeps the baseline invalid placeholder and error detail', async () => {
     getClientToolPreviewNodeMock.mockRejectedValue(new Error('Tool deleted'));
     const nodes = [
       {
@@ -60,7 +60,6 @@ describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
                 version: 'v1',
                 source: 'debug:tmbId:tmb-1',
                 config: { apiKey: 'saved' },
-                isUnavailable: true,
                 inputs: [{ key: 'query', mode: 'agentGenerated' }]
               }
             ]
@@ -82,18 +81,10 @@ describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
       pluginId: 'systemTool-missing',
       source: 'debug:tmbId:tmb-1',
       version: 'v1',
-      config: { apiKey: 'saved' },
-      isUnavailable: true
+      config: { apiKey: 'saved' }
     });
     expect(tool.inputs).toEqual([{ key: 'query', mode: 'agentGenerated' }]);
-    expect(nodes[0]).toMatchObject({
-      unresolvedTools: [
-        {
-          id: 'systemTool-missing',
-          inputs: [{ key: 'query', mode: 'agentGenerated' }]
-        }
-      ]
-    });
+    expect(tool.pluginData.error).toContain('Tool deleted');
   });
 
   it('普通节点不投影 customVariable 输入', async () => {
@@ -241,8 +232,7 @@ describe('rewriteAppWorkflowToDetail - workflow tool inputs', () => {
             required: true,
             value: '',
             selectedType: FlowNodeInputTypeEnum.input,
-            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-            selectedType: FlowNodeInputTypeEnum.input
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
           },
           {
             key: 'text2',
@@ -500,8 +490,7 @@ describe('rewriteAppWorkflowToDetail - workflow tool inputs', () => {
             required: true,
             value: '',
             selectedType: FlowNodeInputTypeEnum.input,
-            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-            selectedType: FlowNodeInputTypeEnum.input
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
           }
         ],
         outputs: []

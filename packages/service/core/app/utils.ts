@@ -27,7 +27,6 @@ import {
   SelectedAgentSkillItemTypeSchema,
   StoredSelectedAgentSkillItemTypeSchema,
   type AppFormEditFormType,
-  type UnresolvedAgentToolType,
   type StoredSelectedAgentSkillItemType,
   type SelectedAgentSkillItemType
 } from '@fastgpt/global/core/app/formEdit/type';
@@ -39,9 +38,7 @@ import type {
 import { formatToolInputSecrets } from './tool/secretConfig';
 import z from 'zod';
 
-type DetailWorkflowNode = StoreNodeItemType & {
-  unresolvedTools?: UnresolvedAgentToolType[];
-};
+type DetailWorkflowNode = StoreNodeItemType;
 
 /**
  * 重写应用工作流节点，填充详细的元数据信息（如工具详情、技能详情、知识库详情）。
@@ -294,7 +291,6 @@ export async function rewriteAppWorkflowToDetail({
                 return result.success ? [result.data] : [];
               })
             : [];
-          const unresolvedTools: UnresolvedAgentToolType[] = [];
           const toolNodes = await Promise.all(
             tools.map(async (tool) => {
               const result = await loadToolNode({
@@ -347,15 +343,6 @@ export async function rewriteAppWorkflowToDetail({
                   inputs: mergedInputs
                 };
               } else {
-                unresolvedTools.push({
-                  id: tool.id,
-                  version: tool.version,
-                  source: tool.source,
-                  toolConfig: tool.toolConfig,
-                  config: tool.config,
-                  ...(tool.inputs ? { inputs: tool.inputs } : {}),
-                  error: result.error
-                });
                 return {
                   id: tool.id,
                   pluginId: tool.id,
@@ -382,11 +369,6 @@ export async function rewriteAppWorkflowToDetail({
             })
           );
           toolInput.value = toolNodes.filter((tool): tool is NonNullable<typeof tool> => !!tool);
-          if (unresolvedTools.length > 0) {
-            node.unresolvedTools = unresolvedTools;
-          } else {
-            delete node.unresolvedTools;
-          }
         }
 
         // Skill load

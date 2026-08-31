@@ -6,9 +6,9 @@ import type {
   AppTTSConfigType,
   AppWelcomeConfigType,
   AppWhisperConfigType,
-  ChatInputGuideConfigType,
-  VariableItemType
+  ChatInputGuideConfigType
 } from '../../../app/type';
+import type { VariableItemType } from '../../../app/variable/type';
 import { defaultQGConfig } from '../../../app/constants';
 import { NodeInputKeyEnum } from '../../constants';
 import type { StoreEdgeItemType } from '../../type/edge';

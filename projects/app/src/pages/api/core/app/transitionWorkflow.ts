@@ -14,6 +14,7 @@ import {
   type TransitionWorkflowBodyType,
   type TransitionWorkflowResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
+import { decodeToolSetNodesFromStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
 
 async function handler(
   req: ApiRequestProps<TransitionWorkflowBodyType>
@@ -44,7 +45,7 @@ async function handler(
         name: app.name + ' Copy',
         avatar,
         type: AppTypeEnum.workflow,
-        modules: app.modules,
+        modules: decodeToolSetNodesFromStorage(app.modules),
         edges: app.edges,
         chatConfig: app.chatConfig,
         teamId: app.teamId,
@@ -64,7 +65,7 @@ async function handler(
   await mongoSessionRun(async (session) => {
     await onUpdateAppWorkflow({
       appId,
-      modules: app.modules,
+      modules: decodeToolSetNodesFromStorage(app.modules),
       edges: app.edges,
       chatConfig: app.chatConfig,
       teamId,

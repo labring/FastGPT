@@ -1,7 +1,11 @@
 import { getNodeAllSource, workflowReferenceValueIsSelectable } from '@/web/core/workflow/utils';
 import { workflowSystemVariables } from '@/web/core/app/utils';
 import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  VARIABLE_NODE_ID
+} from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
@@ -27,7 +31,6 @@ import {
 import { SelectedToolItemTypeSchema } from '@fastgpt/global/core/app/formEdit/type';
 import { type TFunction } from 'i18next';
 import { type Edge, type Node } from 'reactflow';
-import { createSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const normalizeStoreNodeInput = (input: StoreNodeItemType['inputs'][number], isTool: boolean) => {
   const inputWithSelectedType = normalizeFlowNodeInputType(input, { isTool });
@@ -233,7 +236,6 @@ export const getEditorVariables = ({
 }) => {
   const currentNode = getNodeById(nodeId);
   if (!currentNode) return [];
-  const safeT = createSafeTranslation(t);
 
   const nodeVariables = currentNode.inputs
     .filter((input) => input.canEdit)
@@ -252,7 +254,7 @@ export const getEditorVariables = ({
     getNodeById,
     edges,
     chatConfig: appDetail.chatConfig,
-    t: safeT
+    t
   });
 
   const sourceNodeVariables = !sourceNodes

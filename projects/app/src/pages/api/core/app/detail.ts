@@ -5,7 +5,6 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { rewriteAppWorkflowToDetail } from '@fastgpt/service/core/app/utils';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
-import { getWorkflowMigrationOptions } from '@fastgpt/service/core/app/tool/utils/client';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
@@ -33,14 +32,11 @@ async function handler(req: NextApiRequest): Promise<GetAppDetailResponseType> {
     per: ReadPermissionVal
   });
 
-  const workflow = await migrateWorkflowToCurrent(
-    {
-      nodes: app.modules,
-      edges: app.edges,
-      chatConfig: app.chatConfig
-    },
-    getWorkflowMigrationOptions({ teamId })
-  );
+  const workflow = migrateWorkflowToCurrent({
+    nodes: decodeToolSetNodesFromStorage(app.modules),
+    edges: app.edges,
+    chatConfig: app.chatConfig
+  });
   await rewriteAppWorkflowToDetail({
     nodes: workflow.nodes,
     teamId,
@@ -61,6 +57,8 @@ async function handler(req: NextApiRequest): Promise<GetAppDetailResponseType> {
 
   return GetAppDetailResponseSchema.parse({
     ...app,
+    avatar: app.avatar ?? '',
+    intro: app.intro ?? '',
     modules: workflow.nodes,
     edges: workflow.edges,
     chatConfig: workflow.chatConfig

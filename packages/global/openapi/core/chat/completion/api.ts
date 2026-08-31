@@ -216,14 +216,24 @@ export type AuthResponseType = z.infer<typeof AuthResponseSchema>;
 
 /* ====== Chat test ====== */
 export const ChatTestPropsSchema = z.object({
-  messages: z.array(ChatCompletionMessageParamSchema).meta({ description: '消息列表' }),
-  responseChatItemId: z
-    .string()
-    .nullish()
-    .meta({ description: '自定义响应的 assistant 的消息 ID，如果不传入，则自动生成一个' }),
-  nodes: z.array(ChatTestNodeSchema).meta({ description: '当前格式的节点列表' }),
-  edges: CanonicalWorkflowDataSchema.shape.edges.meta({ description: '当前格式的边列表' }),
+  messages: z.array(ChatCompletionMessageParamSchema).meta({
+    example: [{ role: 'user', content: '你好' }],
+    description: '消息列表，最后一条消息作为本次用户问题'
+  }),
+  responseChatItemId: z.string().nullish().meta({
+    example: 'response-chat-item-id',
+    description: '自定义响应消息 ID，不传时自动生成'
+  }),
+  nodes: z.array(ChatTestNodeSchema).meta({
+    example: [],
+    description: '临时执行的工作流节点列表'
+  }),
+  edges: CanonicalWorkflowDataSchema.shape.edges.meta({
+    example: [],
+    description: '临时执行的工作流连线列表'
+  }),
   chatConfig: CanonicalWorkflowDataSchema.shape.chatConfig.meta({
+    example: {},
     description: '当前格式的聊天配置'
   }),
   variables: nullishToUndefined(z.record(z.string(), z.any()).default({})).meta({

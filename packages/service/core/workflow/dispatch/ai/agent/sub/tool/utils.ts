@@ -2,6 +2,8 @@ import { AgentToolInputConfigSchema, type AgentToolType } from '@fastgpt/global/
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import {
   getToolNameCandidates,
+  getToolIdentityKey,
+  isSystemOrCommercialToolId,
   isDebugToolSource,
   isTeamPluginSource,
   splitCombineToolId,
@@ -580,15 +582,6 @@ export const getAgentRuntimeTools = async ({
   return Promise.all(
     tools.map<Promise<SubAppInitType[]>>(async (tool) => {
       try {
-        if (tool.isUnavailable === true) {
-          getLogger(LogCategories.MODULE.AI.AGENT).warn(`[Agent] unavailable tool skipped`, {
-            toolId: tool.id,
-            source: tool.source,
-            version: tool.version
-          });
-          return [];
-        }
-
         const { pluginId, authAppId, source: idSource } = splitCombineToolId(tool.id);
         const runtimeSource =
           tool.source ??

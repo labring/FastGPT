@@ -7,6 +7,7 @@ import {
   checkNeedsUserConfiguration,
   filterAgentGeneratedToolParams,
   filterToolConfiguredParams,
+  formatJsonEditorValue,
   getToolInputDisplayRenderTypeList,
   getToolInputManualRenderType,
   getToolConfigStatus,
@@ -15,6 +16,7 @@ import {
   isAgentGeneratedToolInput,
   migrateToolInputConfig,
   normalizeFlowNodeInputType,
+  parseJsonEditorValue,
   stripToolInputDefaultMode
 } from '@fastgpt/global/core/app/formEdit/utils';
 import {

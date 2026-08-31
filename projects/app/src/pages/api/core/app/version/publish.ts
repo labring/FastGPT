@@ -8,7 +8,6 @@ import {
   validatePublishAppAgentSkillReadPermissions
 } from '@fastgpt/service/core/app/controller';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
-import { getWorkflowMigrationOptions } from '@fastgpt/service/core/app/tool/utils/client';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { type PostPublishAppProps } from '@/global/core/app/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -43,11 +42,11 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     authToken: true
   });
 
-  const normalizedWorkflow = await migrateWorkflowToCurrent(
-    { nodes, edges, chatConfig },
-    getWorkflowMigrationOptions({ teamId })
-  );
-  await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes });
+  const normalizedWorkflow = migrateWorkflowToCurrent({ nodes, edges, chatConfig });
+  await beforeUpdateAppFormat({
+    nodes: normalizedWorkflow.nodes,
+    teamId
+  });
   if (isPublish) {
     await validatePublishAppAgentSkillReadPermissions({
       nodes: normalizedWorkflow.nodes,

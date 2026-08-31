@@ -1,5 +1,5 @@
 import { parseToolParamJsonSchema } from '@fastgpt/global/core/app/jsonschema';
-import { toolParamKeyReg } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeToolParams/utils';
+import { toolParamKeyReg } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/components/ToolParamsEditModal/utils';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { describe, expect, it } from 'vitest';
 

@@ -55,7 +55,11 @@ import type {
 } from '@fastgpt/global/core/workflow/type';
 import type { PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import type { UserTagsType } from '@fastgpt/global/support/user/type';
-import type { WorkflowMigrationOptions } from '@fastgpt/global/core/workflow/migration';
+import {
+  assertTeamPluginSourceAccess,
+  getRawPluginIdFromSystemToolId,
+  normalizeTeamPluginStatus
+} from '../../../plugin/teamPluginPolicy';
 
 type AppToolType = WorkflowTemplateType & {
   status?: PluginStatusType;
@@ -306,8 +310,7 @@ export async function getClientToolPreviewNode({
         const version = await getAppVersionById({
           appId: pluginId,
           versionId: versionId || undefined,
-          app: item,
-          skipAgentToolMigration: true
+          app: item
         });
 
         const isLatest =
@@ -366,8 +369,7 @@ export async function getClientToolPreviewNode({
         const version = await getAppVersionById({
           appId: parentId,
           versionId: versionId || undefined,
-          app: item,
-          skipAgentToolMigration: true
+          app: item
         });
         const toolConfig = version.nodes[0].toolConfig?.mcpToolSet;
         const tool = await (async () => {
@@ -418,8 +420,7 @@ export async function getClientToolPreviewNode({
         const version = await getAppVersionById({
           appId: parentId,
           versionId: versionId || undefined,
-          app: item,
-          skipAgentToolMigration: true
+          app: item
         });
         const toolConfig = version.nodes[0].toolConfig?.httpToolSet;
         const tool = await (async () => {
@@ -558,25 +559,3 @@ export async function getClientToolPreviewNode({
 
   return omitClientPreviewSchemaFields(data);
 }
-
-/**
- * 为 workflow 历史 Agent 工具补齐当前输入定义。
- * @see {migrateWorkflowToCurrent} - Workflow migration entrypoint.
- */
-export const getWorkflowMigrationOptions = ({
-  teamId
-}: { teamId?: string } = {}): WorkflowMigrationOptions => ({
-  resolveToolDefinition: async ({ id, version, source }) => {
-    try {
-      const preview = await getClientToolPreviewNode({
-        appId: id,
-        versionId: version,
-        source,
-        teamId
-      });
-      return { inputs: preview.inputs };
-    } catch {
-      return undefined;
-    }
-  }
-});

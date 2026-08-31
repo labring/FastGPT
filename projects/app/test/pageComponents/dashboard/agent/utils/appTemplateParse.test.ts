@@ -217,6 +217,28 @@ describe('parseDashboardImportConfig', () => {
     });
   });
 
+  it('should preserve legacy workflow fields for create API migration', async () => {
+    const legacyStartNode = {
+      ...createWorkflowNode('workflowStart'),
+      inputs: [{ key: 'query', llmModelType: 'chat' }]
+    };
+    const legacySystemNode = createWorkflowNode('userGuide');
+
+    const result = await parseDashboardImportConfig({
+      config: {
+        type: AppTypeEnum.workflow,
+        nodes: [legacyStartNode, legacySystemNode],
+        edges: [],
+        chatConfig: { _id: 'legacy-chat-config' }
+      },
+      scene: 'agent',
+      t
+    });
+
+    expect(result.workflow.nodes).toEqual([legacyStartNode, legacySystemNode]);
+    expect(result.workflow.chatConfig).toEqual({ _id: 'legacy-chat-config' });
+  });
+
   it('should parse workflow tool JSON in tool dashboard', async () => {
     const result = await parseDashboardImportConfig({
       config: {
