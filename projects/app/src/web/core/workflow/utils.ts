@@ -306,7 +306,7 @@ export const getRefData = ({
 }: {
   variable?: ReferenceItemValueType;
   getNodeById: WorkflowDataContextType['getNodeById'];
-  chatConfig: AppChatConfigType;
+  chatConfig?: AppChatConfigType;
 }) => {
   if (!variable)
     return {
@@ -315,13 +315,20 @@ export const getRefData = ({
     };
 
   const node = getNodeById(variable[0]);
-  const systemVariables = getWorkflowGlobalVariables({ chatConfig });
+  if (!node && variable[0] === VARIABLE_NODE_ID) {
+    const globalVariable = getWorkflowGlobalVariables({
+      chatConfig: chatConfig ?? {}
+    }).find((item) => item.key === variable[1]);
+    return {
+      valueType: globalVariable?.valueType ?? WorkflowIOValueTypeEnum.any,
+      required: !!globalVariable?.required
+    };
+  }
 
   if (!node) {
-    const globalVariable = systemVariables.find((item) => item.key === variable?.[1]);
     return {
-      valueType: globalVariable?.valueType || WorkflowIOValueTypeEnum.any,
-      required: !!globalVariable?.required
+      valueType: WorkflowIOValueTypeEnum.any,
+      required: false
     };
   }
 
@@ -435,37 +442,127 @@ export const filterSelectableWorkflowNodeOutputs = ({
   valueType?: WorkflowIOValueTypeEnum;
   catchError?: boolean;
 }) => {
-  return filterWorkflowNodeOutputsByType(outputs, valueType ?? WorkflowIOValueTypeEnum.any).filter(
-    (output) => {
-      if (output.type === FlowNodeOutputTypeEnum.error) {
-        return catchError === true;
-      }
-
-      return output.id !== NodeOutputKeyEnum.addOutputParam && output.invalid !== true;
+  const selectableOutputs = outputs.filter((output) => {
+    if (output.type === FlowNodeOutputTypeEnum.error) {
+      return catchError === true;
     }
+
+    return output.id !== NodeOutputKeyEnum.addOutputParam && output.invalid !== true;
+  });
+
+  return filterWorkflowNodeOutputsByType(
+    selectableOutputs,
+    valueType ?? WorkflowIOValueTypeEnum.any
   );
 };
 
-const referenceItemIsSelectable = ({
+const isReferenceItem = (value: unknown): value is ReferenceItemValueType =>
+  Array.isArray(value) &&
+  value.length === 2 &&
+  typeof value[0] === 'string' &&
+  typeof value[1] === 'string' &&
+  value[0].length > 0 &&
+  value[1].length > 0;
+
+/** 从 canonical 单选或多选值中按原顺序提取引用项。 */
+export const getWorkflowReferenceItems = (value: unknown): ReferenceItemValueType[] => {
+  if (isReferenceItem(value)) return [value];
+  if (!Array.isArray(value)) return [];
+
+  return value.filter(isReferenceItem);
+};
+
+export const isEmptyReferenceValue = (value: unknown) =>
+  value === undefined ||
+  value === null ||
+  value === '' ||
+  (Array.isArray(value) &&
+    (value.length === 0 ||
+      (value.length === 2 &&
+        ((value[0] === '' && value[1] === '') ||
+          (value[0] === undefined && value[1] === undefined)))));
+
+/** 空引用不参与状态检查；其他非空值统一视为已配置并报告 invalid_reference。 */
+export const isConfiguredReferenceValue = (value: unknown) => !isEmptyReferenceValue(value);
+
+export type WorkflowReferenceStatusCode =
+  | 'empty'
+  | 'valid'
+  | 'invalid_reference'
+  | 'unreachable_reference'
+  | 'invalid_reference_type';
+
+export type WorkflowReferenceStatus = {
+  code: WorkflowReferenceStatusCode;
+  sourceType?: WorkflowIOValueTypeEnum;
+};
+
+/**
+ * 判断单项引用的当前状态，统一处理来源、输出、可达范围和类型。
+ * sourceNodeIds 只表达当前消费节点允许的普通来源；global reference 单独按 chatConfig 查询。
+ */
+export const getWorkflowReferenceStatus = ({
   value,
+  valueType,
+  sourceNodeIds,
   sourceNodes,
-  valueType
+  getNodeById,
+  chatConfig
 }: {
-  value: ReferenceItemValueType;
-  sourceNodes: WorkflowReferenceSourceNode[];
+  value: unknown;
   valueType?: WorkflowIOValueTypeEnum;
-}) => {
+  sourceNodeIds?: Iterable<string>;
+  sourceNodes?: WorkflowReferenceSourceNode[];
+  getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
+  chatConfig?: AppChatConfigType;
+}): WorkflowReferenceStatus => {
+  if (!isConfiguredReferenceValue(value)) return { code: 'empty' };
+  if (!isReferenceItem(value)) return { code: 'invalid_reference' };
+
   const [sourceNodeId, outputId] = value;
-  if (!sourceNodeId || !outputId) return false;
+  const sourceNode =
+    sourceNodes?.find((node) => node.nodeId === sourceNodeId) ?? getNodeById(sourceNodeId);
+  const sourceOutput = sourceNode?.outputs.find((output) => output.id === outputId);
 
-  const sourceNode = sourceNodes.find((node) => node.nodeId === sourceNodeId);
-  if (!sourceNode) return false;
+  if (sourceNodeId === VARIABLE_NODE_ID && !sourceOutput) {
+    // 缺少 chatConfig 时无法判断全局变量是否存在，保持旧数据检查的未知可继续语义。
+    if (chatConfig === undefined) return { code: 'valid' };
 
-  return filterSelectableWorkflowNodeOutputs({
-    outputs: sourceNode.outputs,
-    valueType,
+    const globalVariable = getWorkflowGlobalVariables({
+      chatConfig
+    }).find((variable) => variable.key === outputId);
+    if (!globalVariable) return { code: 'invalid_reference' };
+    if (!workflowValueTypeIsCompatible(globalVariable.valueType, valueType)) {
+      return {
+        code: 'invalid_reference_type',
+        sourceType: globalVariable.valueType
+      };
+    }
+    return { code: 'valid', sourceType: globalVariable.valueType };
+  }
+
+  if (!sourceNode || !sourceOutput) return { code: 'invalid_reference' };
+  if (
+    sourceNodeId !== VARIABLE_NODE_ID &&
+    sourceNodeIds &&
+    !new Set(sourceNodeIds).has(sourceNodeId)
+  ) {
+    return { code: 'unreachable_reference', sourceType: sourceOutput.valueType };
+  }
+
+  const selectableOutput = filterSelectableWorkflowNodeOutputs({
+    outputs: [sourceOutput],
+    valueType: WorkflowIOValueTypeEnum.any,
     catchError: sourceNode.catchError
-  }).some((output) => output.id === outputId);
+  });
+  if (!selectableOutput.length) {
+    return { code: 'invalid_reference', sourceType: sourceOutput.valueType };
+  }
+  if (!workflowValueTypeIsCompatible(sourceOutput.valueType, valueType)) {
+    return { code: 'invalid_reference_type', sourceType: sourceOutput.valueType };
+  }
+
+  return { code: 'valid', sourceType: sourceOutput.valueType };
 };
 
 /**
@@ -481,32 +578,88 @@ export const workflowReferenceValueIsSelectable = ({
   sourceNodes: WorkflowReferenceSourceNode[];
   valueType?: WorkflowIOValueTypeEnum;
 }) => {
-  if (!Array.isArray(value)) return false;
-
-  if (typeof value[0] === 'string') {
-    return referenceItemIsSelectable({
-      value: value as ReferenceItemValueType,
-      sourceNodes,
-      valueType
-    });
-  }
-
-  return value.some((item) => {
-    if (!Array.isArray(item)) return false;
-
-    return referenceItemIsSelectable({
-      value: item as ReferenceItemValueType,
-      sourceNodes,
-      valueType
-    });
-  });
+  return getWorkflowReferenceItems(value).some(
+    (item) =>
+      getWorkflowReferenceStatus({
+        value: item,
+        valueType,
+        sourceNodes,
+        sourceNodeIds: sourceNodes.map((node) => node.nodeId),
+        getNodeById: () => undefined
+      }).code === 'valid'
+  );
 };
 
 /**
- * 获取当前节点可引用的所有上游节点。
- * 结果按工作流入边距离由近到远排列；嵌套节点先取自身入边，再取父容器入边，
- * 最后追加全局变量，保证引用选择器优先展示最近的可用输出。
+ * 获取当前节点可引用的普通来源 ID。
+ * 按当前节点到根容器的入边和 reference 输入遍历，visited 防止坏 parent 数据循环。
  */
+export const getNodeAllSourceIds = ({
+  nodeId,
+  getNodeById,
+  edges,
+  includeChildren,
+  childrenNodeIdListMap
+}: {
+  nodeId: string;
+  getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
+  edges: Edge[];
+  includeChildren?: boolean;
+  childrenNodeIdListMap?: Record<string, string[]>;
+}): string[] => {
+  const node = getNodeById(nodeId);
+  if (!node) return [];
+
+  const sourceIds = new Set<string>();
+  const searchedTargetNodeIds = new Set<string>();
+  const collectIncoming = (targetNodeIds: string[]) => {
+    const queue = targetNodeIds.filter(Boolean);
+    while (queue.length > 0) {
+      const targetNodeId = queue.shift();
+      if (!targetNodeId || searchedTargetNodeIds.has(targetNodeId)) continue;
+      searchedTargetNodeIds.add(targetNodeId);
+      edges.forEach((edge) => {
+        if (edge.target !== targetNodeId) return;
+        if (!getNodeById(edge.source)) return;
+        sourceIds.add(edge.source);
+        queue.push(edge.source);
+      });
+    }
+  };
+
+  const containerNodes = [node];
+  const visitedParentIds = new Set<string>([node.nodeId]);
+  let parentNode = node;
+  while (parentNode.parentNodeId && !visitedParentIds.has(parentNode.parentNodeId)) {
+    const nextParent = getNodeById(parentNode.parentNodeId);
+    if (!nextParent) break;
+    containerNodes.push(nextParent);
+    visitedParentIds.add(nextParent.nodeId);
+    parentNode = nextParent;
+  }
+  collectIncoming(containerNodes.map((item) => item.nodeId));
+
+  containerNodes.slice(1).forEach((container) => {
+    container.inputs.forEach((input) => {
+      if (!nodeInputIsReference(input)) return;
+      getWorkflowReferenceItems(input.value).forEach(([refNodeId]) => {
+        if (refNodeId === VARIABLE_NODE_ID || !getNodeById(refNodeId)) return;
+        sourceIds.add(refNodeId);
+        collectIncoming([refNodeId]);
+      });
+    });
+  });
+
+  if (includeChildren && childrenNodeIdListMap) {
+    (childrenNodeIdListMap[nodeId] ?? []).forEach((childId) => {
+      if (getNodeById(childId)) sourceIds.add(childId);
+    });
+  }
+
+  return [...sourceIds];
+};
+
+/** 获取当前节点可引用的来源节点，并追加 global variable 节点供 selector 展示。 */
 export const getNodeAllSource = ({
   nodeId,
   getNodeById,
@@ -524,85 +677,25 @@ export const getNodeAllSource = ({
   includeChildren?: boolean;
   childrenNodeIdListMap?: Record<string, string[]>;
 }): FlowNodeItemType[] => {
-  // get current node
-  const node = getNodeById(nodeId);
-  if (!node) {
-    return [];
-  }
+  if (!getNodeById(nodeId)) return [];
 
-  const parentId = node.parentNodeId;
-  const sourceNodes = new Map<string, FlowNodeItemType>();
-  const searchedTargetNodeIds = new Set<string>();
+  const sourceNodes = getNodeAllSourceIds({
+    nodeId,
+    getNodeById,
+    edges,
+    includeChildren,
+    childrenNodeIdListMap
+  })
+    .map((sourceNodeId) => getNodeById(sourceNodeId))
+    .filter((sourceNode): sourceNode is FlowNodeItemType => !!sourceNode);
 
-  // 按入边层级遍历，避免深度优先递归把更远的上游节点排到直接来源前面。
-  const collectSourceNodesByEdgeDistance = (targetNodeIds: string[]) => {
-    const queue = targetNodeIds.filter(Boolean);
-
-    while (queue.length > 0) {
-      const targetNodeId = queue.shift();
-      if (!targetNodeId || searchedTargetNodeIds.has(targetNodeId)) continue;
-      searchedTargetNodeIds.add(targetNodeId);
-
-      const targetEdges = edges.filter((item) => item.target === targetNodeId);
-      targetEdges.forEach((edge) => {
-        const sourceNode = getNodeById(edge.source);
-        if (!sourceNode) return;
-
-        if (!sourceNodes.has(sourceNode.nodeId)) {
-          sourceNodes.set(sourceNode.nodeId, sourceNode);
-        }
-
-        queue.push(sourceNode.nodeId);
-      });
-    }
-  };
-
-  collectSourceNodesByEdgeDistance([nodeId]);
-
-  if (parentId) {
-    collectSourceNodesByEdgeDistance([parentId]);
-  }
-
-  // 对于嵌套在容器（Loop/ParallelRun）内的节点，容器的 reference 类型输入
-  // 是通过引用选择器设置的（存在 input.value = [nodeId, outputId]），不产生 ReactFlow edge。
-  // 因此需要额外扫描父容器的 reference 输入，将被引用的外部节点补充到可选来源中。
-  if (parentId) {
-    const parentNode = getNodeById(parentId);
-    if (parentNode) {
-      parentNode.inputs.forEach((input) => {
-        if (!nodeInputIsReference(input)) return;
-        const val = input.value as ReferenceItemValueType | undefined;
-        if (!Array.isArray(val) || val.length < 2) return;
-        const [refNodeId] = val;
-        if (!refNodeId || refNodeId === VARIABLE_NODE_ID) return;
-        const refNode = getNodeById(refNodeId);
-        if (!refNode || sourceNodes.has(refNode.nodeId)) return;
-        sourceNodes.set(refNode.nodeId, refNode);
-        collectSourceNodesByEdgeDistance([refNode.nodeId]);
-      });
-    }
-  }
-
-  // Edge traversal only reaches upstream; children must be added explicitly.
-  if (includeChildren && childrenNodeIdListMap) {
-    const childIds = childrenNodeIdListMap[nodeId] ?? [];
-    childIds.forEach((childId) => {
-      if (sourceNodes.has(childId)) return;
-      const childNode = getNodeById(childId);
-      if (!childNode) return;
-      sourceNodes.set(childId, childNode);
-    });
-  }
-
-  sourceNodes.set(
-    'system_global_variable',
+  return [
+    ...sourceNodes,
     getGlobalVariableNode({
       t,
       chatConfig
     })
-  );
-
-  return Array.from(sourceNodes.values());
+  ];
 };
 
 /* ====== Variables ======= */

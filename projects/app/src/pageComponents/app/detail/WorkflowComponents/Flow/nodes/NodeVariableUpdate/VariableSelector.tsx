@@ -18,7 +18,7 @@ type Props = {
 const VariableSelector = ({ nodeId, variable, valueType, referenceSnapshots, onSelect }: Props) => {
   const { t } = useTranslation();
 
-  const { referenceList, liveReferenceList } = useReference({
+  const { referenceList, sourceNodeIds, sourceNodes } = useReference({
     nodeId,
     valueType
   });
@@ -27,7 +27,9 @@ const VariableSelector = ({ nodeId, variable, valueType, referenceSnapshots, onS
     <ReferSelector
       placeholder={t('common:select_reference_variable')}
       list={referenceList}
-      liveList={liveReferenceList}
+      sourceNodeIds={sourceNodeIds}
+      sourceNodes={sourceNodes}
+      valueType={valueType}
       referenceSnapshots={referenceSnapshots}
       value={variable}
       onSelect={onSelect}

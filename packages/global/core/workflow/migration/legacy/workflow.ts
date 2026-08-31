@@ -16,7 +16,147 @@ import {
   isValidReferenceValueFormat,
   nodeInputIsReference
 } from '../../utils';
+import type { WorkflowReferenceSnapshot } from '../../type/io';
 import type { NodeToolConfigType } from '../../type/node';
+
+const isReferenceItem = (value: unknown): value is [string, string] =>
+  Array.isArray(value) &&
+  value.length === 2 &&
+  typeof value[0] === 'string' &&
+  typeof value[1] === 'string' &&
+  value[0].length > 0 &&
+  value[1].length > 0;
+
+const isEmptyReferenceValue = (value: unknown) =>
+  value === undefined ||
+  value === null ||
+  value === '' ||
+  (Array.isArray(value) &&
+    (value.length === 0 ||
+      (value.length === 2 &&
+        ((value[0] === '' && value[1] === '') ||
+          (value[0] === undefined && value[1] === undefined)))));
+
+const cleanReferenceValue = (value: unknown, isArray: boolean) => {
+  if (isArray) {
+    if (isReferenceItem(value)) return [value];
+    if (!Array.isArray(value)) return isEmptyReferenceValue(value) ? value : [];
+    return value.filter(isReferenceItem);
+  }
+
+  if (isReferenceItem(value)) return value;
+  if (Array.isArray(value) && value.length === 1 && isReferenceItem(value[0])) {
+    return value[0];
+  }
+  return isEmptyReferenceValue(value) ? value : undefined;
+};
+
+const cleanReferenceSnapshots = (value: unknown) => {
+  if (!Array.isArray(value)) return undefined;
+
+  return value.filter((item): item is WorkflowReferenceSnapshot => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return false;
+    const snapshot = item as Record<string, unknown>;
+    return (
+      isReferenceItem(snapshot.reference) &&
+      (snapshot.sourceLabel === undefined || typeof snapshot.sourceLabel === 'string') &&
+      (snapshot.outputLabel === undefined || typeof snapshot.outputLabel === 'string')
+    );
+  });
+};
+
+const cleanReferenceFields = (node: CanonicalWorkflowData['nodes'][number]) => {
+  const cleanInput = (input: CanonicalWorkflowData['nodes'][number]['inputs'][number]) => {
+    const nextInput = { ...input };
+    if (nodeInputIsReference(input)) {
+      const value = cleanReferenceValue(input.value, input.valueType?.startsWith('array') === true);
+      if (value === undefined) delete nextInput.value;
+      else nextInput.value = value;
+    }
+
+    if (input.referenceSnapshots !== undefined) {
+      const snapshots = cleanReferenceSnapshots(input.referenceSnapshots);
+      if (snapshots?.length) nextInput.referenceSnapshots = snapshots;
+      else delete nextInput.referenceSnapshots;
+    }
+
+    if (
+      node.flowNodeType === FlowNodeTypeEnum.ifElseNode &&
+      input.key === NodeInputKeyEnum.ifElseList
+    ) {
+      nextInput.value = Array.isArray(input.value)
+        ? input.value.map((branch) => {
+            if (!branch || typeof branch !== 'object' || Array.isArray(branch)) return branch;
+            const nextBranch = { ...(branch as Record<string, unknown>) };
+            nextBranch.list = Array.isArray(nextBranch.list)
+              ? nextBranch.list.map((condition) => {
+                  if (!condition || typeof condition !== 'object' || Array.isArray(condition)) {
+                    return condition;
+                  }
+                  const nextCondition = { ...(condition as Record<string, unknown>) };
+                  const variable = cleanReferenceValue(nextCondition.variable, false);
+                  if (variable === undefined) delete nextCondition.variable;
+                  else nextCondition.variable = variable;
+                  if (nextCondition.valueType === 'reference') {
+                    const value = cleanReferenceValue(nextCondition.value, false);
+                    if (value === undefined) delete nextCondition.value;
+                    else nextCondition.value = value;
+                  }
+                  const variableSnapshot = cleanReferenceSnapshots(
+                    nextCondition.variableSnapshot ? [nextCondition.variableSnapshot] : undefined
+                  )?.[0];
+                  if (variableSnapshot) nextCondition.variableSnapshot = variableSnapshot;
+                  else delete nextCondition.variableSnapshot;
+                  const valueSnapshot = cleanReferenceSnapshots(
+                    nextCondition.valueSnapshot ? [nextCondition.valueSnapshot] : undefined
+                  )?.[0];
+                  if (valueSnapshot) nextCondition.valueSnapshot = valueSnapshot;
+                  else delete nextCondition.valueSnapshot;
+                  return nextCondition;
+                })
+              : nextBranch.list;
+            return nextBranch;
+          })
+        : input.value;
+    }
+
+    if (
+      node.flowNodeType === FlowNodeTypeEnum.variableUpdate &&
+      input.key === NodeInputKeyEnum.updateList
+    ) {
+      nextInput.value = Array.isArray(input.value)
+        ? input.value.map((item) => {
+            if (!item || typeof item !== 'object' || Array.isArray(item)) return item;
+            const nextItem = { ...(item as Record<string, unknown>) };
+            const variable = cleanReferenceValue(nextItem.variable, false);
+            if (variable === undefined) delete nextItem.variable;
+            else nextItem.variable = variable;
+            if (nextItem.renderType === FlowNodeInputTypeEnum.reference) {
+              const value = cleanReferenceValue(nextItem.value, true);
+              if (value === undefined) delete nextItem.value;
+              else nextItem.value = value;
+            }
+            const variableSnapshot = cleanReferenceSnapshots(
+              nextItem.variableSnapshot ? [nextItem.variableSnapshot] : undefined
+            )?.[0];
+            if (variableSnapshot) nextItem.variableSnapshot = variableSnapshot;
+            else delete nextItem.variableSnapshot;
+            const valueSnapshots = cleanReferenceSnapshots(nextItem.valueReferenceSnapshots);
+            if (valueSnapshots?.length) nextItem.valueReferenceSnapshots = valueSnapshots;
+            else delete nextItem.valueReferenceSnapshots;
+            return nextItem;
+          })
+        : input.value;
+    }
+
+    return nextInput;
+  };
+
+  return {
+    ...node,
+    inputs: node.inputs.map(cleanInput)
+  };
+};
 
 // 这些旧插件没有持久化 catchError，但当前运行时需要显式开启错误分支。
 const legacyCatchErrorPluginIds = new Set([
@@ -193,7 +333,7 @@ const migrateLegacyCanvasStructure = (workflow: CanonicalWorkflowData): Canonica
       });
   });
 
-  return { ...workflow, nodes, edges };
+  return { ...workflow, nodes: nodes.map(cleanReferenceFields), edges };
 };
 /**
  * 将无需资源解析的历史结构收敛为当前 workflow 结构。

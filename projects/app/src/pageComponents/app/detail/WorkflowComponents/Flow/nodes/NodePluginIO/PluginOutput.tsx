@@ -125,7 +125,7 @@ function Reference({
     [input, nodeId, onChangeNode]
   );
 
-  const { referenceList, liveReferenceList } = useReference({
+  const { referenceList, sourceNodeIds, sourceNodes } = useReference({
     nodeId,
     valueType: input.valueType
   });
@@ -207,7 +207,9 @@ function Reference({
       <ReferSelector
         placeholder={t((input.referencePlaceholder as any) || 'select_reference_variable')}
         list={referenceList}
-        liveList={liveReferenceList}
+        sourceNodeIds={sourceNodeIds}
+        sourceNodes={sourceNodes}
+        valueType={input.valueType}
         referenceSnapshots={input.referenceSnapshots}
         value={input.value}
         onSelect={onSelect}

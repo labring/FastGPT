@@ -44,7 +44,7 @@ export const CustomFieldConfigTypeSchema = z.object({
 export type CustomFieldConfigType = z.infer<typeof CustomFieldConfigTypeSchema>;
 
 /* Reference */
-export const ReferenceItemValueTypeSchema = z.tuple([z.string(), z.string().optional()]);
+export const ReferenceItemValueTypeSchema = z.tuple([z.string(), z.string()]);
 export type ReferenceItemValueType = z.infer<typeof ReferenceItemValueTypeSchema>;
 export const ReferenceArrayValueTypeSchema = z.array(ReferenceItemValueTypeSchema);
 export type ReferenceArrayValueType = z.infer<typeof ReferenceArrayValueTypeSchema>;

@@ -330,7 +330,7 @@ const VariableSelector = ({
 }) => {
   const { t } = useTranslation();
 
-  const { referenceList, liveReferenceList } = useReference({
+  const { referenceList, sourceNodeIds, sourceNodes } = useReference({
     nodeId,
     valueType: WorkflowIOValueTypeEnum.any
   });
@@ -339,7 +339,9 @@ const VariableSelector = ({
     <ReferSelector
       placeholder={t('common:select_reference_variable')}
       list={referenceList}
-      liveList={liveReferenceList}
+      sourceNodeIds={sourceNodeIds}
+      sourceNodes={sourceNodes}
+      valueType={WorkflowIOValueTypeEnum.any}
       referenceSnapshots={variableSnapshot ? [variableSnapshot] : undefined}
       value={variable}
       onSelect={onSelect}
@@ -523,7 +525,7 @@ const ConditionValueInput = ({
     return valueType;
   }, [condition, valueType, getArrayElementType]);
 
-  const { referenceList, liveReferenceList } = useReference({
+  const { referenceList, sourceNodeIds, sourceNodes } = useReference({
     nodeId,
     valueType: referenceValueType
   });
@@ -580,7 +582,9 @@ const ConditionValueInput = ({
       <ReferSelector
         placeholder={t('common:select_reference_variable')}
         list={referenceList}
-        liveList={liveReferenceList}
+        sourceNodeIds={sourceNodeIds}
+        sourceNodes={sourceNodes}
+        valueType={referenceValueType}
         referenceSnapshots={valueSnapshot ? [valueSnapshot] : undefined}
         value={isReference ? (value as ReferenceItemValueType) : undefined}
         onSelect={(e, snapshots) => {
@@ -595,7 +599,17 @@ const ConditionValueInput = ({
         }}
       />
     );
-  }, [t, referenceList, liveReferenceList, valueSnapshot, isReference, value, updateValue]);
+  }, [
+    t,
+    referenceList,
+    sourceNodeIds,
+    sourceNodes,
+    referenceValueType,
+    valueSnapshot,
+    isReference,
+    value,
+    updateValue
+  ]);
 
   const isDisabled =
     condition === VariableConditionEnum.isEmpty || condition === VariableConditionEnum.isNotEmpty;
@@ -631,7 +645,7 @@ const ConditionValueInput = ({
               if (isReference) {
                 updateValue('', 'input');
               } else {
-                updateValue(['', undefined], 'reference');
+                updateValue(['', ''], 'reference');
               }
             }}
           >

@@ -1,10 +1,7 @@
-import { getNodeAllSource } from '@/web/core/workflow/utils';
+import { filterSelectableWorkflowNodeOutputs, getNodeAllSource } from '@/web/core/workflow/utils';
 import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import {
-  FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
   type FlowNodeItemType,
@@ -168,17 +165,11 @@ export const getEditorVariables = ({
     ? []
     : sourceNodes
         .map((node) => {
-          return node.outputs
-            .filter((output) => {
-              if (output.type === FlowNodeOutputTypeEnum.error) {
-                return node.catchError === true;
-              }
-              return (
-                !!output.label &&
-                output.invalid !== true &&
-                output.id !== NodeOutputKeyEnum.addOutputParam
-              );
-            })
+          return filterSelectableWorkflowNodeOutputs({
+            outputs: node.outputs,
+            catchError: node.catchError
+          })
+            .filter((output) => !!output.label)
             .map((output) => {
               return {
                 label: safeT((output.label as any) || ''),

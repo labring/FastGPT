@@ -5,7 +5,7 @@ import {
   migrateWorkflowToCurrent
 } from '@fastgpt/global/core/workflow/migration';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { AppChatConfigTypeSchema } from '@fastgpt/global/core/app/type';
 
 const inputWithLegacyIndex = {
@@ -63,6 +63,151 @@ describe('workflow input schema boundaries', () => {
         outputLabel: 'Output label'
       }
     ]);
+  });
+
+  it('cleans malformed references at the migration boundary and preserves dead tuples', async () => {
+    const input = {
+      nodes: [
+        {
+          nodeId: 'consumer',
+          flowNodeType: 'answerNode',
+          name: 'Consumer',
+          isFolded: true,
+          inputs: [
+            {
+              key: 'single',
+              label: 'Single',
+              renderTypeList: [FlowNodeInputTypeEnum.reference],
+              valueType: WorkflowIOValueTypeEnum.string,
+              value: ['deleted-node', 'deleted-output'],
+              referenceSnapshots: [
+                {
+                  reference: ['deleted-node', 'deleted-output'],
+                  sourceLabel: 'Deleted node',
+                  outputLabel: 'Deleted output'
+                },
+                { reference: ['malformed'], sourceLabel: 1 },
+                { reference: ['deleted-node', undefined] }
+              ]
+            },
+            {
+              key: 'malformed-single',
+              label: 'Malformed single',
+              renderTypeList: [FlowNodeInputTypeEnum.reference],
+              value: ['deleted-node', undefined]
+            },
+            {
+              key: 'multiple',
+              label: 'Multiple',
+              renderTypeList: [FlowNodeInputTypeEnum.reference],
+              valueType: WorkflowIOValueTypeEnum.arrayString,
+              value: [
+                ['kept-node', 'kept-output'],
+                ['deleted-node'],
+                ['deleted-node', undefined],
+                ['', 'output']
+              ]
+            }
+          ],
+          outputs: []
+        },
+        {
+          nodeId: 'if-else',
+          flowNodeType: 'ifElseNode',
+          name: 'If Else',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.ifElseList,
+              label: 'If Else',
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              value: [
+                {
+                  condition: 'AND',
+                  list: [
+                    {
+                      variable: ['deleted-node', 'variable'],
+                      variableSnapshot: {
+                        reference: ['deleted-node', 'variable'],
+                        sourceLabel: 'Deleted node'
+                      },
+                      condition: 'isEqual',
+                      valueType: 'reference',
+                      value: ['deleted-node', 'value'],
+                      valueSnapshot: { reference: ['deleted-node', undefined] }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          outputs: []
+        },
+        {
+          nodeId: 'variable-update',
+          flowNodeType: 'variableUpdate',
+          name: 'Variable Update',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.updateList,
+              label: 'Update list',
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              value: [
+                {
+                  variable: ['deleted-node', 'target'],
+                  valueType: WorkflowIOValueTypeEnum.string,
+                  renderType: FlowNodeInputTypeEnum.reference,
+                  value: [
+                    ['deleted-node', 'value'],
+                    ['deleted-node', undefined]
+                  ],
+                  valueReferenceSnapshots: [
+                    { reference: ['deleted-node', 'value'], sourceLabel: 'Deleted node' },
+                    { reference: ['deleted-node', undefined] }
+                  ]
+                }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: []
+    } as any;
+
+    const result = await migrateWorkflowToCurrent(input);
+    const consumer = result.nodes.find((node) => node.nodeId === 'consumer')!;
+    const ifElse = result.nodes.find((node) => node.nodeId === 'if-else')!;
+    const variableUpdate = result.nodes.find((node) => node.nodeId === 'variable-update')!;
+
+    expect(consumer.isFolded).toBe(true);
+    expect(consumer.inputs[0]).toMatchObject({
+      value: ['deleted-node', 'deleted-output'],
+      referenceSnapshots: [
+        {
+          reference: ['deleted-node', 'deleted-output'],
+          sourceLabel: 'Deleted node',
+          outputLabel: 'Deleted output'
+        }
+      ]
+    });
+    expect(consumer.inputs[1]).not.toHaveProperty('value');
+    expect(consumer.inputs[2].value).toEqual([['kept-node', 'kept-output']]);
+
+    const condition = (ifElse.inputs[0].value as any)[0].list[0];
+    expect(condition.variable).toEqual(['deleted-node', 'variable']);
+    expect(condition.variableSnapshot).toMatchObject({
+      reference: ['deleted-node', 'variable']
+    });
+    expect(condition.value).toEqual(['deleted-node', 'value']);
+    expect(condition).not.toHaveProperty('valueSnapshot');
+
+    const update = (variableUpdate.inputs[0].value as any)[0];
+    expect(update.variable).toEqual(['deleted-node', 'target']);
+    expect(update.value).toEqual([['deleted-node', 'value']]);
+    expect(update.valueReferenceSnapshots).toEqual([
+      { reference: ['deleted-node', 'value'], sourceLabel: 'Deleted node' }
+    ]);
+    expect(await migrateWorkflowToCurrent(result as any)).toEqual(result);
   });
 });
 

@@ -154,7 +154,7 @@ const VariableSelector = ({
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
-  const { referenceList, liveReferenceList } = useReference({
+  const { referenceList, sourceNodeIds, sourceNodes } = useReference({
     nodeId,
     valueType: inputChildren.valueType
   });
@@ -207,7 +207,9 @@ const VariableSelector = ({
             t('common:core.module.Dataset quote.select')
         )}
         list={referenceList}
-        liveList={liveReferenceList}
+        sourceNodeIds={sourceNodeIds}
+        sourceNodes={sourceNodes}
+        valueType={inputChildren.valueType}
         referenceSnapshots={inputChildren.referenceSnapshots}
         value={inputChildren.value}
         onSelect={onSelect}
