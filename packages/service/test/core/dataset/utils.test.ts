@@ -12,7 +12,13 @@ import {
   matchDatasetDataMarkdownImageUrls,
   uniqueDatasetDataMarkdownImageUrls
 } from '@fastgpt/service/core/dataset/data/utils';
-import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
+import {
+  createOrGetCollectionTags,
+  deduplicateTagValues,
+  getTrainingModeByCollection,
+  validateAndNormalizeTagValue,
+  validateDatasetTagValue
+} from '@fastgpt/service/core/dataset/collection/utils';
 import {
   DatasetCollectionDataProcessModeEnum,
   TrainingModeEnum
@@ -22,6 +28,8 @@ import type {
   EmbeddingSystemModelDataType,
   LLMSystemModelDataType
 } from '@fastgpt/global/core/ai/model.schema';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { DatasetCollectionItemSchema } from '@fastgpt/global/core/dataset/type';
 
 const mockCreateS3DownloadAccessUrls = vi.hoisted(() =>
   vi.fn(async (params: Array<{ objectKey: string }>) =>
@@ -30,6 +38,20 @@ const mockCreateS3DownloadAccessUrls = vi.hoisted(() =>
     )
   )
 );
+
+const mockMongoDatasetCollectionTagsFind = vi.hoisted(() => vi.fn());
+const mockMongoDatasetCollectionTagsFindOne = vi.hoisted(() => vi.fn());
+const mockMongoDatasetCollectionTagsCreate = vi.hoisted(() => vi.fn());
+
+vi.mock('@fastgpt/service/core/dataset/tag/schemaV2', () => ({
+  MongoDatasetCollectionTagsV2: {
+    find: mockMongoDatasetCollectionTagsFind,
+    findOne: (...args: unknown[]) => ({
+      lean: vi.fn().mockImplementation(() => mockMongoDatasetCollectionTagsFindOne(...args))
+    }),
+    create: mockMongoDatasetCollectionTagsCreate
+  }
+}));
 
 vi.mock('@fastgpt/service/common/s3/utils', () => ({
   isS3ObjectKey: vi.fn((key: string, source: string) => {
@@ -50,6 +72,10 @@ vi.mock('@fastgpt/service/common/s3/contracts/type', () => ({
     temp: 'temp',
     rawText: 'rawText'
   }
+}));
+
+vi.mock('@fastgpt/service/core/dataset/tag/schema', () => ({
+  MongoDatasetCollectionTags: {}
 }));
 
 describe('replaceS3KeyToPreviewUrl', () => {
@@ -686,5 +712,504 @@ describe('getDatasetImageIndexCapability', () => {
     expect(result.supportImageEmbedding).toBe(true);
     expect(result.supportImageIndex).toBe(true);
     expect(result.availableVlmModel?.model).toBe('dataset-vlm-model');
+  });
+});
+
+describe('validateDatasetTagValue', () => {
+  it.each([
+    ['string', 1, DatasetErrEnum.tagValueInvalid],
+    ['string', 'a'.repeat(257), DatasetErrEnum.tagValueInvalid],
+    ['number', '1', undefined],
+    ['array', ['a'.repeat(257)], DatasetErrEnum.arrayTagValueInvalid],
+    ['datetime', Number.NaN, DatasetErrEnum.tagValueInvalid]
+  ])('returns the expected error for invalid %s values', (tagType, value, expected) => {
+    expect(validateDatasetTagValue({ tagType: tagType as any, value: value as any })).toBe(
+      expected
+    );
+  });
+
+  it('accepts numeric strings for number and datetime tags', () => {
+    expect(validateDatasetTagValue({ tagType: 'number', value: '1.25' })).toBeUndefined();
+    expect(
+      validateDatasetTagValue({ tagType: 'datetime', value: '1704067200000' })
+    ).toBeUndefined();
+  });
+
+  it.each(['', '   ', 'abc', 'Infinity'])('rejects invalid numeric string %j', (value) => {
+    expect(validateDatasetTagValue({ tagType: 'number', value })).toBe(
+      DatasetErrEnum.tagValueInvalid
+    );
+    expect(validateDatasetTagValue({ tagType: 'datetime', value })).toBe(
+      DatasetErrEnum.tagValueInvalid
+    );
+  });
+
+  it('rejects datetime date text', () => {
+    expect(validateDatasetTagValue({ tagType: 'datetime', value: '2024-01-01' })).toBe(
+      DatasetErrEnum.tagValueInvalid
+    );
+  });
+});
+
+describe('validateAndNormalizeTagValue', () => {
+  it('normalizes number and datetime string values to numbers', () => {
+    expect(validateAndNormalizeTagValue({ tagType: 'number', value: '1.25' })).toEqual({
+      value: 1.25
+    });
+    expect(validateAndNormalizeTagValue({ tagType: 'datetime', value: '1704067200000' })).toEqual({
+      value: 1704067200000
+    });
+    expect(validateAndNormalizeTagValue({ tagType: 'number', value: 42 })).toEqual({ value: 42 });
+  });
+
+  it('keeps string and array values unchanged', () => {
+    expect(validateAndNormalizeTagValue({ tagType: 'string', value: '产品' })).toEqual({
+      value: '产品'
+    });
+    expect(validateAndNormalizeTagValue({ tagType: 'array', value: ['安全', '高优'] })).toEqual({
+      value: ['安全', '高优']
+    });
+  });
+
+  it('surfaces errors for invalid number/datetime strings', () => {
+    expect(validateAndNormalizeTagValue({ tagType: 'number', value: '   ' })).toEqual({
+      value: '   ',
+      error: DatasetErrEnum.tagValueInvalid
+    });
+    expect(validateAndNormalizeTagValue({ tagType: 'number', value: 'abc' })).toEqual({
+      value: 'abc',
+      error: DatasetErrEnum.tagValueInvalid
+    });
+    expect(validateAndNormalizeTagValue({ tagType: 'datetime', value: '2024-01-01' })).toEqual({
+      value: '2024-01-01',
+      error: DatasetErrEnum.tagValueInvalid
+    });
+  });
+
+  it('surfaces errors for invalid string/array values', () => {
+    expect(validateAndNormalizeTagValue({ tagType: 'string', value: 1 as any })).toEqual({
+      value: 1,
+      error: DatasetErrEnum.tagValueInvalid
+    });
+    expect(validateAndNormalizeTagValue({ tagType: 'array', value: ['a'.repeat(257)] })).toEqual({
+      value: ['a'.repeat(257)],
+      error: DatasetErrEnum.arrayTagValueInvalid
+    });
+  });
+});
+
+describe('createOrGetCollectionTags', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([])
+    });
+    mockMongoDatasetCollectionTagsFindOne.mockResolvedValue(null);
+    mockMongoDatasetCollectionTagsCreate.mockResolvedValue([]);
+  });
+
+  it('returns undefined when tags is undefined', async () => {
+    const result = await createOrGetCollectionTags({
+      tags: undefined,
+      datasetId: 'ds-1',
+      teamId: 'team-1'
+    });
+    expect(result).toBeUndefined();
+    expect(mockMongoDatasetCollectionTagsFind).not.toHaveBeenCalled();
+  });
+
+  it('returns empty array when tags is empty', async () => {
+    const result = await createOrGetCollectionTags({
+      tags: [],
+      datasetId: 'ds-1',
+      teamId: 'team-1'
+    });
+    expect(result).toEqual([]);
+    expect(mockMongoDatasetCollectionTagsFind).not.toHaveBeenCalled();
+  });
+
+  it('resolves existing string tags to default_tag array value', async () => {
+    mockMongoDatasetCollectionTagsFindOne.mockResolvedValue({
+      _id: 'default-tag-id',
+      tag: 'default_tag',
+      tagType: 'array'
+    });
+
+    const result = await createOrGetCollectionTags({
+      tags: ['safety'],
+      datasetId: 'ds-1',
+      teamId: 'team-1'
+    });
+
+    expect(result).toEqual([{ tagId: 'default-tag-id', value: ['safety'] }]);
+  });
+
+  it('creates default_tag for unknown string names', async () => {
+    mockMongoDatasetCollectionTagsFindOne.mockResolvedValue(null);
+    mockMongoDatasetCollectionTagsCreate.mockResolvedValue([
+      {
+        _id: 'default-tag-id',
+        tag: 'default_tag',
+        tagType: 'array',
+        toObject: () => ({ _id: 'default-tag-id', tag: 'default_tag', tagType: 'array' })
+      }
+    ]);
+
+    const result = await createOrGetCollectionTags({
+      tags: ['safety'],
+      datasetId: 'ds-1',
+      teamId: 'team-1'
+    });
+
+    expect(result).toEqual([{ tagId: 'default-tag-id', value: ['safety'] }]);
+  });
+
+  it('resolves {tag,value} for existing string tag', async () => {
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([{ _id: 'tag-id-1', tag: 'safety', tagType: 'string' }])
+    });
+
+    const result = await createOrGetCollectionTags({
+      tags: [{ tag: 'safety', value: 'A' }],
+      datasetId: 'ds-1',
+      teamId: 'team-1'
+    });
+
+    expect(result).toEqual([{ tagId: 'tag-id-1', value: 'A' }]);
+  });
+
+  it('resolves {tag,value} for existing number tag with number value', async () => {
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([{ _id: 'tag-id-1', tag: 'version', tagType: 'number' }])
+    });
+
+    const result = await createOrGetCollectionTags({
+      tags: [{ tag: 'version', value: 2 }],
+      datasetId: 'ds-1',
+      teamId: 'team-1'
+    });
+
+    expect(result).toEqual([{ tagId: 'tag-id-1', value: 2 }]);
+  });
+
+  it('resolves {tag,value} for existing datetime tag with number value', async () => {
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([{ _id: 'tag-id-1', tag: 'date', tagType: 'datetime' }])
+    });
+
+    const result = await createOrGetCollectionTags({
+      tags: [{ tag: 'date', value: 1704067200000 }],
+      datasetId: 'ds-1',
+      teamId: 'team-1'
+    });
+
+    expect(result).toEqual([{ tagId: 'tag-id-1', value: 1704067200000 }]);
+  });
+
+  it('rejects when string tag gets non-string value', async () => {
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([{ _id: 'tag-id-1', tag: 'safety', tagType: 'string' }])
+    });
+
+    await expect(
+      createOrGetCollectionTags({
+        tags: [{ tag: 'safety', value: 123 }],
+        datasetId: 'ds-1',
+        teamId: 'team-1'
+      })
+    ).rejects.toBe(DatasetErrEnum.tagValueInvalid);
+  });
+
+  it('resolves existing number tag with numeric string value as number', async () => {
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([{ _id: 'tag-id-1', tag: 'version', tagType: 'number' }])
+    });
+
+    const result = await createOrGetCollectionTags({
+      tags: [{ tag: 'version', value: '2' }],
+      datasetId: 'ds-1',
+      teamId: 'team-1'
+    });
+
+    expect(result).toEqual([{ tagId: 'tag-id-1', value: 2 }]);
+  });
+
+  it('resolves existing datetime tag with numeric string value as number', async () => {
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([{ _id: 'tag-id-1', tag: 'date', tagType: 'datetime' }])
+    });
+
+    const result = await createOrGetCollectionTags({
+      tags: [{ tag: 'date', value: '1704067200000' }],
+      datasetId: 'ds-1',
+      teamId: 'team-1'
+    });
+
+    expect(result).toEqual([{ tagId: 'tag-id-1', value: 1704067200000 }]);
+  });
+
+  it.each([
+    ['number', Infinity],
+    ['number', 'Infinity'],
+    ['datetime', Infinity],
+    ['datetime', 'Infinity'],
+    ['number', ''],
+    ['number', '   '],
+    ['datetime', ''],
+    ['datetime', '   '],
+    ['number', 'abc'],
+    ['datetime', 'abc'],
+    ['datetime', Number.MAX_VALUE]
+  ])('rejects invalid %s value %j in creation chain', async (tagType, value) => {
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([{ _id: 'tag-id-1', tag: 'tag-1', tagType }])
+    });
+
+    await expect(
+      createOrGetCollectionTags({
+        tags: [{ tag: 'tag-1', value: value as string | number }],
+        datasetId: 'ds-1',
+        teamId: 'team-1'
+      })
+    ).rejects.toBe(
+      tagType === 'datetime' && value === Number.MAX_VALUE
+        ? DatasetErrEnum.tagValueDatetimeInvalid
+        : DatasetErrEnum.tagValueInvalid
+    );
+  });
+
+  it('rejects when datetime tag gets non-number value', async () => {
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([{ _id: 'tag-id-1', tag: 'date', tagType: 'datetime' }])
+    });
+
+    await expect(
+      createOrGetCollectionTags({
+        tags: [{ tag: 'date', value: '2024-01-01' }],
+        datasetId: 'ds-1',
+        teamId: 'team-1'
+      })
+    ).rejects.toBe(DatasetErrEnum.tagValueInvalid);
+  });
+
+  it('handles mixed string and {tag,value} inputs', async () => {
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([{ _id: 'tag-id-2', tag: 'version', tagType: 'number' }])
+    });
+    mockMongoDatasetCollectionTagsFindOne.mockResolvedValue({
+      _id: 'default-tag-id',
+      tag: 'default_tag',
+      tagType: 'array'
+    });
+
+    const result = await createOrGetCollectionTags({
+      tags: ['safety', { tag: 'version', value: 3 }],
+      datasetId: 'ds-1',
+      teamId: 'team-1'
+    });
+
+    expect(result).toEqual([
+      { tagId: 'default-tag-id', value: ['safety'] },
+      { tagId: 'tag-id-2', value: 3 }
+    ]);
+  });
+
+  it('passes session through to DB calls', async () => {
+    const session = { sessionId: 'sess-1' } as any;
+    mockMongoDatasetCollectionTagsFindOne.mockResolvedValue({
+      _id: 'default-tag-id',
+      tag: 'default_tag',
+      tagType: 'array'
+    });
+
+    await createOrGetCollectionTags({
+      tags: ['safety'],
+      datasetId: 'ds-1',
+      teamId: 'team-1',
+      session
+    });
+
+    expect(mockMongoDatasetCollectionTagsFindOne).toHaveBeenCalledWith(
+      expect.any(Object),
+      undefined,
+      { session }
+    );
+  });
+
+  it('deduplicates repeated string names', async () => {
+    mockMongoDatasetCollectionTagsFindOne.mockResolvedValue({
+      _id: 'default-tag-id',
+      tag: 'default_tag',
+      tagType: 'array'
+    });
+
+    const result = await createOrGetCollectionTags({
+      tags: ['safety', 'safety'],
+      datasetId: 'ds-1',
+      teamId: 'team-1'
+    });
+
+    expect(result).toEqual([{ tagId: 'default-tag-id', value: ['safety'] }]);
+  });
+
+  it('trims string names and object tag lookup keys', async () => {
+    const session = { sessionId: 'sess-1' } as any;
+    mockMongoDatasetCollectionTagsFindOne.mockResolvedValue({
+      _id: 'default-tag-id',
+      tag: 'default_tag',
+      tagType: 'array'
+    });
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([{ _id: 'tag-id-1', tag: 'safety', tagType: 'string' }])
+    });
+
+    const result = await createOrGetCollectionTags({
+      tags: [' safety ', { tag: ' safety ', value: 'A' }],
+      datasetId: 'ds-1',
+      teamId: 'team-1',
+      session
+    });
+
+    // 对象 tag 名称 trim 后按 'safety' 查询；string 名 ' safety ' trim 后进 default_tag
+    expect(mockMongoDatasetCollectionTagsFind).toHaveBeenCalledWith(
+      expect.objectContaining({ tag: { $in: ['safety'] } }),
+      undefined,
+      { session }
+    );
+    expect(result).toEqual([
+      { tagId: 'default-tag-id', value: ['safety'] },
+      { tagId: 'tag-id-1', value: 'A' }
+    ]);
+  });
+
+  it('rejects blank string names', async () => {
+    await expect(
+      createOrGetCollectionTags({
+        tags: ['   '],
+        datasetId: 'ds-1',
+        teamId: 'team-1'
+      })
+    ).rejects.toBe(DatasetErrEnum.tagNameEmpty);
+  });
+
+  it('rejects blank object tag names', async () => {
+    await expect(
+      createOrGetCollectionTags({
+        tags: [{ tag: '   ', value: 'A' }],
+        datasetId: 'ds-1',
+        teamId: 'team-1'
+      })
+    ).rejects.toBe(DatasetErrEnum.tagNameEmpty);
+  });
+
+  it('deduplicates identical {tag,value} inputs', async () => {
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([{ _id: 'tag-id-1', tag: 'safety', tagType: 'string' }])
+    });
+
+    const result = await createOrGetCollectionTags({
+      tags: [
+        { tag: 'safety', value: 'A' },
+        { tag: 'safety', value: 'A' }
+      ],
+      datasetId: 'ds-1',
+      teamId: 'team-1'
+    });
+
+    expect(result).toEqual([{ tagId: 'tag-id-1', value: 'A' }]);
+  });
+
+  it('rejects conflicting values for the same tag', async () => {
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([{ _id: 'tag-id-1', tag: 'safety', tagType: 'string' }])
+    });
+
+    await expect(
+      createOrGetCollectionTags({
+        tags: [
+          { tag: 'safety', value: 'A' },
+          { tag: 'safety', value: 'B' }
+        ],
+        datasetId: 'ds-1',
+        teamId: 'team-1'
+      })
+    ).rejects.toBe(DatasetErrEnum.tagValueInvalid);
+  });
+
+  it('merges string names with default_tag array values', async () => {
+    mockMongoDatasetCollectionTagsFindOne.mockResolvedValue({
+      _id: 'default-tag-id',
+      tag: 'default_tag',
+      tagType: 'array'
+    });
+
+    const result = await createOrGetCollectionTags({
+      tags: ['a', { tag: 'default_tag', value: ['b', 'b'] }],
+      datasetId: 'ds-1',
+      teamId: 'team-1'
+    });
+
+    expect(result).toEqual([{ tagId: 'default-tag-id', value: ['a', 'b'] }]);
+  });
+
+  it('supports array value via default_tag object input', async () => {
+    mockMongoDatasetCollectionTagsFindOne.mockResolvedValue({
+      _id: 'default-tag-id',
+      tag: 'default_tag',
+      tagType: 'array'
+    });
+
+    const result = await createOrGetCollectionTags({
+      tags: [{ tag: 'default_tag', value: ['x', 'y'] }],
+      datasetId: 'ds-1',
+      teamId: 'team-1'
+    });
+
+    expect(result).toEqual([{ tagId: 'default-tag-id', value: ['x', 'y'] }]);
+  });
+
+  it('rejects non-array value for default_tag object input', async () => {
+    await expect(
+      createOrGetCollectionTags({
+        tags: [{ tag: 'default_tag', value: 'not-array' }],
+        datasetId: 'ds-1',
+        teamId: 'team-1'
+      })
+    ).rejects.toBe(DatasetErrEnum.arrayTagValueInvalid);
+  });
+});
+
+describe('deduplicateTagValues', () => {
+  it('deduplicates identical values and keeps first occurrence', async () => {
+    const result = await deduplicateTagValues([
+      { tagId: 't1', value: ['a', 'b'] },
+      { tagId: 't1', value: ['b', 'a'] }
+    ]);
+    expect(result).toEqual([{ tagId: 't1', value: ['a', 'b'] }]);
+  });
+
+  it('rejects conflicting values for the same tagId', async () => {
+    await expect(
+      deduplicateTagValues([
+        { tagId: 't1', value: 'A' },
+        { tagId: 't1', value: 'B' }
+      ])
+    ).rejects.toBe(DatasetErrEnum.tagValueInvalid);
+  });
+});
+
+describe('DatasetCollectionItemSchema.tags array values', () => {
+  it('accepts array values in the detail response tags schema', () => {
+    const tagsSchema = DatasetCollectionItemSchema.shape.tags;
+    const result = tagsSchema.parse([
+      { tag: 'safety', value: ['a', 'b'] },
+      { tag: 'version', value: 2 },
+      'legacy'
+    ]);
+    expect(result).toEqual([
+      { tag: 'safety', value: ['a', 'b'] },
+      { tag: 'version', value: 2 },
+      'legacy'
+    ]);
   });
 });

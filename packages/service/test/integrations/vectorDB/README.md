@@ -18,6 +18,8 @@ cp test/.env.example test/.env.test.local
 | `PG_URL` | PostgreSQL + pgvector 连接串 | PgVectorCtrl |
 | `OCEANBASE_URL` | Oceanbase 连接串（后续） | ObVectorCtrl |
 | `MILVUS_ADDRESS` | Milvus 地址（后续） | MilvusCtrl |
+| `MILVUS_PERF_COLLECTION_COUNT` | Milvus 召回性能测试的 collection 数，默认 100 | MilvusCtrl |
+| `MILVUS_PERF_VECTORS_PER_COLLECTION` | Milvus 召回性能测试每个 collection 的向量数，默认 100 | MilvusCtrl |
 
 未设置对应环境变量时，该驱动的集成测试会**整体跳过**，不会报错。
 
@@ -33,7 +35,10 @@ pnpm test
 FASTGPT_TEST_MODE=integration pnpm test
 
 # 运行当前这组 vectorDB 集成测试
-FASTGPT_TEST_MODE=integration pnpm test
+pnpm test:vector
+
+# 只运行 Milvus collectionId 过滤召回性能测试
+cd packages/service && pnpm vitest run -c vitest.integration.config.ts test/integrations/vectorDB/milvus/recallFilterPerformance
 ```
 
 ## 结构说明
@@ -43,3 +48,15 @@ FASTGPT_TEST_MODE=integration pnpm test
 - `*/index.integration.test.ts`：各向量库入口，按环境变量决定是否跳过。
 
 新增向量库时：新增一个 `*/index.integration.test.ts`，复用 `testData.ts` 和 `testSuites.ts` 即可。
+
+### Milvus collectionId 过滤召回性能测试
+
+`milvus/recallFilterPerformance.integration.test.ts` 对应设计文档「端到端检索性能测试」，
+范围收窄为只测 Milvus 的向量召回：直接构造 `filterCollectionIdList`（不经过标签过滤/mongo 链路），
+对比 `embRecall` 在「不过滤 / 过滤 10 个 collection / 过滤 100 个 collection」下的召回延迟，
+断言过滤延迟与不过滤保持同一数量级（< 10x）。
+
+测试在 `beforeAll` 里向 1 个 dataset 下的 100 个 collection 插入向量（默认共 1 万条），
+`flushSync` + `loadCollectionSync` 把数据落到已索引的 sealed segment 后再测，保证延迟接近生产行为。
+数据规模可通过 `MILVUS_PERF_COLLECTION_COUNT` / `MILVUS_PERF_VECTORS_PER_COLLECTION` 覆盖
+（如在大集群上跑到设计文档目标量级）。
