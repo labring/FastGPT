@@ -128,7 +128,7 @@ const run = async (args) => {
   const testPaths = args.slice(0, separatorIndex === -1 ? undefined : separatorIndex);
   const vitestArgs = separatorIndex === -1 ? [] : args.slice(separatorIndex + 1);
   if (testPaths.length === 0) {
-    throw new Error('Usage: pnpm test:light <test-file-or-directory> [...] [-- <vitest-options>]');
+    throw new Error('Usage: pnpm test <test-file-or-directory> [...] [-- <vitest-options>]');
   }
 
   for (const configGroup of groupTestsByConfig(testPaths)) {
