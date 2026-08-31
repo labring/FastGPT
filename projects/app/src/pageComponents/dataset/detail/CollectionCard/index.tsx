@@ -59,9 +59,11 @@ import {
 import TrainingErrorModal from './TrainingErrorModal';
 import type { DatasetCollectionsListItemType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { hasDatasetTrainingError as checkDatasetTrainingError } from '@/web/core/dataset/api/training';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 const Header = dynamic(() => import('./Header'));
 const EmptyCollectionTip = dynamic(() => import('./EmptyCollectionTip'));
+const CollectionTagSetModal = dynamic(() => import('./CollectionTagSetModal'));
 
 const CollectionCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
@@ -77,6 +79,7 @@ const CollectionCard = () => {
   }>();
   const [isTrainingErrorModalOpen, setIsTrainingErrorModalOpen] = useState(false);
   const [hasDatasetTrainingError, setHasDatasetTrainingError] = useState(false);
+  const [tagSetCollection, setTagSetCollection] = useState<DatasetCollectionsListItemType>();
 
   const {
     collections,
@@ -189,6 +192,10 @@ const CollectionCard = () => {
     () => !!formatCollections.find((item) => item.trainingAmount > 0),
     [formatCollections]
   );
+  const enabledCount = useMemo(
+    () => formatCollections.filter((item) => !item.forbid).length,
+    [formatCollections]
+  );
 
   useRequest(
     async () => {
@@ -249,25 +256,60 @@ const CollectionCard = () => {
           flex={'1 0 0'}
           h={0}
         >
-          <Table variant={'simple'} draggable={false}>
+          <Table
+            variant={'simple'}
+            draggable={false}
+            sx={{
+              thead: {
+                tr: {
+                  borderBottom: 'none',
+                  th: {
+                    h: '40px',
+                    py: 0,
+                    px: 6,
+                    fontSize: 'xs',
+                    fontWeight: 'bold',
+                    letterSpacing: '0.58px',
+                    lineHeight: '16px',
+                    color: 'myGray.600',
+                    textTransform: 'none'
+                  }
+                }
+              },
+              tbody: {
+                tr: {
+                  h: '80px',
+                  td: {
+                    h: '80px',
+                    py: 0,
+                    px: 6,
+                    borderBottom: 'sm',
+                    borderLeftRadius: 0,
+                    borderRightRadius: 0
+                  }
+                }
+              }
+            }}
+          >
             <Thead draggable={false}>
               <Tr>
-                <Th py={4}>
-                  <HStack>
+                <Th>
+                  <HStack spacing={2.5}>
                     <Checkbox isChecked={isSelecteAll} onChange={selectAllTrigger} />
                     <Box>{t('common:Name')}</Box>
                   </HStack>
                 </Th>
-                <Th py={4}>{t('dataset:collection.training_type')}</Th>
-                <Th py={4}>{t('dataset:collection_data_count')}</Th>
-                <Th py={4}>{t('dataset:collection.Create update time')}</Th>
-                <Th py={4}>{t('common:Status')}</Th>
-                <Th py={4}>{t('dataset:Enable')}</Th>
-                <Th py={4} />
+                <Th>{t('dataset:collection.training_type')}</Th>
+                <Th>{t('dataset:collection_data_count')}</Th>
+                <Th>{t('dataset:collection.Create update time')}</Th>
+                <Th>{t('common:Status')}</Th>
+                <Th>
+                  {t('dataset:Enable')}({enabledCount})
+                </Th>
+                <Th>{t('common:Operation')}</Th>
               </Tr>
             </Thead>
             <Tbody>
-              <Tr h={'5px'} />
               {formatCollections.map((collection) => (
                 <Tr
                   key={collection._id}
@@ -297,8 +339,8 @@ const CollectionCard = () => {
                     }
                   }}
                 >
-                  <Td minW={'150px'} maxW={['200px', '300px']} draggable py={2}>
-                    <HStack minW={0}>
+                  <Td minW={'150px'} maxW={['200px', '300px']} draggable>
+                    <HStack minW={0} alignItems={'center'} spacing={2}>
                       <HStack onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           isChecked={isSelected(collection)}
@@ -306,17 +348,19 @@ const CollectionCard = () => {
                         />
                       </HStack>
                       <Box minW={0} flex={1}>
-                        <Flex alignItems={'center'} minW={0}>
+                        <Flex alignItems={'center'} h={'20px'} minW={0}>
                           <MyIcon
                             name={collection.icon as any}
-                            w={'1.25rem'}
+                            w={'20px'}
+                            h={'20px'}
                             mr={2}
                             flexShrink={0}
                           />
                           <MyTooltip label={collection.name} showOnlyWhenOverflow>
                             <Box
                               color={'myGray.900'}
-                              fontWeight={'500'}
+                              fontWeight={'medium'}
+                              lineHeight={'20px'}
                               className="textEllipsis"
                               minW={0}
                               flex={'0 1 auto'}
@@ -326,12 +370,21 @@ const CollectionCard = () => {
                           </MyTooltip>
                         </Flex>
                         {feConfigs?.isPlus && !!collection.tags?.length && (
-                          <TagsPopOver currentCollection={collection} hoverBg={'white'} />
+                          <Flex
+                            h={'28px'}
+                            pt={1.5}
+                            pb={0.5}
+                            w={'100%'}
+                            minW={0}
+                            overflow={'hidden'}
+                          >
+                            <TagsPopOver currentCollection={collection} />
+                          </Flex>
                         )}
                       </Box>
                     </HStack>
                   </Td>
-                  <Td py={2}>
+                  <Td>
                     {collection.trainingType
                       ? t(
                           (DatasetCollectionDataProcessModeMap[collection.trainingType]?.label ||
@@ -339,12 +392,12 @@ const CollectionCard = () => {
                         )
                       : '-'}
                   </Td>
-                  <Td py={2}>{collection.dataAmount || '-'}</Td>
-                  <Td fontSize={'xs'} py={2} color={'myGray.500'}>
+                  <Td>{collection.dataAmount || '-'}</Td>
+                  <Td fontSize={'xs'} color={'myGray.500'} lineHeight={'20px'}>
                     <Box>{formatTime2YMDHM(collection.createTime)}</Box>
                     <Box>{formatTime2YMDHM(collection.updateTime)}</Box>
                   </Td>
-                  <Td py={2}>
+                  <Td>
                     <MyTooltip label={t('common:Click_to_expand')}>
                       <MyTag
                         showDot
@@ -367,7 +420,7 @@ const CollectionCard = () => {
                       </MyTag>
                     </MyTooltip>
                   </Td>
-                  <Td py={2} onClick={(e) => e.stopPropagation()}>
+                  <Td onClick={(e) => e.stopPropagation()}>
                     <Switch
                       isChecked={!collection.forbid}
                       size={'sm'}
@@ -379,7 +432,7 @@ const CollectionCard = () => {
                       }
                     />
                   </Td>
-                  <Td py={2} onClick={(e) => e.stopPropagation()}>
+                  <Td onClick={(e) => e.stopPropagation()}>
                     {collection.permission.hasWritePer && (
                       <MyMenu
                         width={100}
@@ -459,7 +512,21 @@ const CollectionCard = () => {
                                         name: newName
                                       })
                                   })
-                              }
+                              },
+                              ...(feConfigs?.isPlus &&
+                              datasetDetail.type !== DatasetTypeEnum.websiteDataset
+                                ? [
+                                    {
+                                      label: (
+                                        <Flex alignItems={'center'}>
+                                          <MyIcon name={'core/dataset/tag'} w={'0.9rem'} mr={2} />
+                                          {t('dataset:tag.set')}
+                                        </Flex>
+                                      ),
+                                      onClick: () => setTagSetCollection(collection)
+                                    }
+                                  ]
+                                : [])
                             ]
                           },
                           {
@@ -535,6 +602,17 @@ const CollectionCard = () => {
         <ConfirmDeleteModal />
         <ConfirmSyncModal />
         <EditTitleModal />
+
+        {!!tagSetCollection && (
+          <CollectionTagSetModal
+            collection={tagSetCollection}
+            onClose={() => setTagSetCollection(undefined)}
+            onSuccess={() => {
+              getData(pageNum);
+              setTagSetCollection(undefined);
+            }}
+          />
+        )}
 
         {!!trainingStatesCollection && (
           <TrainingStates

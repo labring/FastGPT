@@ -235,11 +235,11 @@ const Header = ({
           variant={'whiteBase'}
           h={'36px'}
           px={'14px'}
-          color={'#F97066'}
-          borderColor={'#F97066'}
+          color={'red.400'}
+          borderColor={'red.400'}
           _hover={{
-            color: '#F97066',
-            borderColor: '#F97066'
+            color: 'red.400',
+            borderColor: 'red.400'
           }}
           onClick={onOpenTrainingErrorModal}
         >

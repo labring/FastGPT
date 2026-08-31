@@ -1,4 +1,4 @@
-import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
+import { GET, POST, DELETE } from '@/web/common/api/request';
 import type {
   ParentTreePathItemType,
   ParentIdType
@@ -21,6 +21,7 @@ import type {
 import type {
   AddTagsToCollectionsParams,
   CreateDatasetCollectionTagParams,
+  SetCollectionTagsParams,
   UpdateDatasetCollectionTagParams
 } from '@fastgpt/global/openapi/core/dataset/collection/tagApi';
 import type { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
@@ -148,6 +149,8 @@ export const getTagUsage = (datasetId: string) =>
   GET<TagUsageType[]>(`/proApi/core/dataset/tag/tagUsage?datasetId=${datasetId}`);
 export const getAllTags = (datasetId: string) =>
   GET<{ list: DatasetTagType[] }>(`/proApi/core/dataset/tag/getAllTags?datasetId=${datasetId}`);
+export const postSetCollectionTags = (data: SetCollectionTagsParams) =>
+  POST(`/proApi/core/dataset/tag/setCollectionTags`, data);
 
 /* ================== read source ======================== */
 export const getCollectionSource = (data: ReadCollectionSourceBodyType) =>

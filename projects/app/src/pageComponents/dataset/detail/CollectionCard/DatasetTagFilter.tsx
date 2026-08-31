@@ -4,7 +4,6 @@ import { MultiTagFilter, type TagFilterItem } from '@fastgpt/web/components/comm
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { CollectionPageContext } from './Context';
 
-/** 知识库标签筛选适配层，连接通用筛选器与知识库标签及集合 context。 */
 const DatasetTagFilter = () => {
   const { t } = useTranslation();
   const {

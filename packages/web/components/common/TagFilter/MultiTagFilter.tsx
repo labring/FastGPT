@@ -29,7 +29,6 @@ export type TagFilterProps = {
   offset?: [number, number];
 };
 
-/** 通用多标签筛选器，提供筛选触发器、搜索、标签选择和清空操作。 */
 const MultiTagFilter = ({
   tags,
   selectedTagIds,

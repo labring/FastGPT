@@ -1,7 +1,8 @@
 import z from 'zod';
 import {
   DatasetCollectionTagTypeEnum,
-  CollectionTagValueSchema
+  CollectionTagValueSchema,
+  DatasetCollectionTagOptionsSchema
 } from '../../../../core/dataset/type';
 
 /* ============================================================================
@@ -11,7 +12,7 @@ import {
 export const CreateDatasetCollectionTagBodySchema = z.object({
   datasetId: z.string().meta({ description: '数据集 ID' }),
   tag: z.string().trim().min(1).meta({ description: '标签名称' }),
-  tagType: DatasetCollectionTagTypeEnum.optional().meta({
+  tagType: z.enum(DatasetCollectionTagTypeEnum).optional().meta({
     description: '标签类型：string(默认)/number/datetime/array'
   })
 });
@@ -39,7 +40,10 @@ export type AddTagsToCollectionsParams = z.infer<typeof AddTagsToCollectionsBody
 export const UpdateDatasetCollectionTagBodySchema = z.object({
   datasetId: z.string().meta({ description: '数据集 ID' }),
   tagId: z.string().meta({ description: '标签 ID' }),
-  tag: z.string().trim().min(1).meta({ description: '新标签名称' })
+  tag: z.string().trim().min(1).meta({ description: '新标签名称' }),
+  options: DatasetCollectionTagOptionsSchema.optional().meta({
+    description: '选项类标签的预设选项，传入时覆盖原有选项'
+  })
 });
 export type UpdateDatasetCollectionTagParams = z.infer<typeof UpdateDatasetCollectionTagBodySchema>;
 
@@ -68,7 +72,7 @@ export type GetAllDatasetTagsQuery = z.infer<typeof GetAllDatasetTagsQuerySchema
  * ============================================================================ */
 export const BatchUpsertTagItemSchema = z.object({
   tag: z.string().trim().min(1).meta({ description: '标签名称' }),
-  tagType: DatasetCollectionTagTypeEnum.optional().meta({ description: '标签类型' })
+  tagType: z.enum(DatasetCollectionTagTypeEnum).optional().meta({ description: '标签类型' })
 });
 export const BatchUpsertTagsBodySchema = z.object({
   datasetId: z.string().meta({ description: '数据集 ID' }),

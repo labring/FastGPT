@@ -4,7 +4,6 @@ import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
@@ -15,127 +14,47 @@ import {
 } from '@/web/core/dataset/api/collection';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
-  type DatasetCollectionTagType,
   DatasetCollectionTagTypeEnum,
+  DatasetCollectionTagTypeMap,
   type DatasetTagType
 } from '@fastgpt/global/core/dataset/type';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import { SaveActionIcon, TagActionButton, TagTableContainer, TagTableHeader } from './TagCommon';
 
 const TAG_TABLE_COLUMNS = 'minmax(0, 1fr) 180px 100px';
-const TAG_TYPE_LABEL_KEYS: Record<DatasetTagType['tagType'], string> = {
-  string: 'dataset:core.dataset.tags.string',
-  number: 'dataset:core.dataset.tags.number',
-  datetime: 'dataset:core.dataset.tags.date',
-  array: 'dataset:core.dataset.tags.array'
-};
-const TAG_TYPE_SELECT_LABEL_KEYS: Record<Exclude<DatasetCollectionTagType, 'string'>, string> = {
-  array: 'dataset:core.dataset.tags.array',
-  number: 'dataset:core.dataset.tags.number',
-  datetime: 'dataset:core.dataset.tags.time'
-};
 
-const TAG_TOOLTIP_PROPS = {
-  placement: 'bottom' as const,
-  offset: [0, 10] as [number, number],
-  hasArrow: true,
-  arrowSize: 10,
-  px: '12px',
-  py: '8px',
-  borderRadius: '6px',
-  fontSize: '12px',
-  lineHeight: '18px',
-  color: '#24282C',
-  arrowShadowColor: 'rgba(19, 51, 107, 0.1)',
-  boxShadow: '0px 4px 5px rgba(19, 51, 107, 0.1), 0px 0px 0.5px rgba(19, 51, 107, 0.1)'
-};
-
-/** 保存图标使用设计稿提供的灰色、可保存蓝色和 hover 深蓝色资源。 */
-const SaveActionIcon = ({ isEnabled }: { isEnabled: boolean }) => {
-  if (!isEnabled) {
-    return <MyIcon name={'common/checkSquareBroken'} w={'16px'} h={'16px'} />;
-  }
-
-  return (
-    <Box position={'relative'} w={'16px'} h={'16px'}>
-      <MyIcon
-        name={'common/checkSquareBrokenPrimary'}
-        w={'16px'}
-        h={'16px'}
-        position={'absolute'}
-        inset={0}
-      />
-      <MyIcon
-        name={'common/checkSquareBrokenPrimaryHover'}
-        w={'16px'}
-        h={'16px'}
-        position={'absolute'}
-        inset={0}
-        opacity={0}
-        className={'tag-save-icon-hover'}
-      />
-    </Box>
-  );
-};
-
-type TagActionButtonProps = {
-  label: string;
-  icon: React.ReactElement;
-  onClick?: () => void;
-  isDisabled?: boolean;
-  color?: string;
-  hoverColor?: string;
-  hoverIconClassName?: string;
-};
-
-/** 标签操作按钮固定为 24px 热区和 16px 图标，并统一承载设计稿 tooltip。 */
-const TagActionButton = ({
-  label,
-  icon,
-  onClick,
-  isDisabled = false,
-  color = 'myGray.500',
-  hoverColor,
-  hoverIconClassName
-}: TagActionButtonProps) => (
-  <MyTooltip label={label} shouldWrapChildren={false} {...TAG_TOOLTIP_PROPS}>
-    <Flex
-      as={'button'}
-      type={'button'}
-      aria-label={label}
-      alignItems={'center'}
-      justifyContent={'center'}
-      w={'24px'}
-      h={'24px'}
-      borderRadius={'sm'}
-      color={color}
-      cursor={isDisabled ? 'not-allowed' : 'pointer'}
-      aria-disabled={isDisabled}
-      _hover={
-        isDisabled
-          ? undefined
-          : {
-              bg: 'myGray.05',
-              ...(hoverColor ? { color: hoverColor } : {}),
-              ...(hoverIconClassName ? { [`& .${hoverIconClassName}`]: { opacity: 1 } } : {})
-            }
-      }
-      onClick={isDisabled ? undefined : onClick}
-    >
-      {icon}
-    </Flex>
-  </MyTooltip>
-);
-
-/** 选项类标签管理 Popover：支持动态增删选项与回车快速换行编辑。 */
-const TagOptionManagePopover = ({ tag }: { tag: DatasetTagType }) => {
+const TagOptionManagePopover = ({
+  options,
+  isSaving,
+  onSave
+}: {
+  options: string[];
+  isSaving: boolean;
+  onSave: (options: string[]) => Promise<void>;
+}) => {
   const { t } = useTranslation();
-  const [options, setOptions] = useState<string[]>([]);
+  const [draftOptions, setDraftOptions] = useState(options);
+  const savedOptionsRef = useRef(options);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  const persistOptions = async (nextOptions: string[]) => {
+    const normalizedOptions = [
+      ...new Set(nextOptions.map((option) => option.trim()).filter(Boolean))
+    ];
+    setDraftOptions(nextOptions);
+
+    try {
+      await onSave(normalizedOptions);
+      savedOptionsRef.current = normalizedOptions;
+    } catch {
+      setDraftOptions(savedOptionsRef.current);
+    }
+  };
+
   const handleAddOption = () => {
-    setOptions((prev) => {
+    setDraftOptions((prev) => {
       const next = [...prev, ''];
       setTimeout(() => {
         inputRefs.current[next.length - 1]?.focus();
@@ -145,7 +64,7 @@ const TagOptionManagePopover = ({ tag }: { tag: DatasetTagType }) => {
   };
 
   const handleUpdateOption = (index: number, value: string) => {
-    setOptions((prev) => {
+    setDraftOptions((prev) => {
       const next = [...prev];
       next[index] = value;
       return next;
@@ -153,13 +72,16 @@ const TagOptionManagePopover = ({ tag }: { tag: DatasetTagType }) => {
   };
 
   const handleRemoveOption = (index: number) => {
-    setOptions((prev) => prev.filter((_, i) => i !== index));
+    void persistOptions(draftOptions.filter((_, i) => i !== index));
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (index === options.length - 1) {
+      if (draftOptions[index]?.trim() && !isSaving) {
+        void persistOptions(draftOptions);
+      }
+      if (index === draftOptions.length - 1) {
         handleAddOption();
       } else {
         inputRefs.current[index + 1]?.focus();
@@ -175,9 +97,9 @@ const TagOptionManagePopover = ({ tag }: { tag: DatasetTagType }) => {
       offset={[0, 4]}
       closeOnBlur={true}
       w={'152px'}
-      p={'6px'}
+      p={1.5}
       borderRadius={'sm'}
-      boxShadow={'0px 4px 5px rgba(19, 51, 107, 0.1), 0px 0px 0.5px rgba(19, 51, 107, 0.1)'}
+      boxShadow={'md'}
       bg={'white'}
       border={'1px solid'}
       borderColor={'myGray.200'}
@@ -188,8 +110,7 @@ const TagOptionManagePopover = ({ tag }: { tag: DatasetTagType }) => {
           aria-label={t('dataset:tag.manage_options')}
           alignItems={'center'}
           justifyContent={'center'}
-          w={'24px'}
-          h={'24px'}
+          p={1}
           borderRadius={'sm'}
           color={'myGray.600'}
           cursor={'pointer'}
@@ -206,25 +127,25 @@ const TagOptionManagePopover = ({ tag }: { tag: DatasetTagType }) => {
         <Flex direction={'column'} w={'full'}>
           <Flex
             alignItems={'center'}
-            gap={'8px'}
+            gap={2}
             h={'28px'}
-            px={'4px'}
-            py={'6px'}
+            px={1}
+            py={1.5}
             borderRadius={'xs'}
             cursor={'pointer'}
             _hover={{ bg: 'myGray.100' }}
             onClick={handleAddOption}
           >
             <MyIcon name={'common/addLight'} w={'16px'} h={'16px'} color={'primary.700'} />
-            <Box fontSize={'12px'} fontWeight={500} lineHeight={'16px'} color={'primary.700'}>
+            <Box fontSize={'xs'} fontWeight={'medium'} lineHeight={'16px'} color={'primary.700'}>
               {t('dataset:tag.add_option')}
             </Box>
           </Flex>
 
-          {options.length > 0 && (
-            <Flex maxH={'134px'} overflowY={'auto'} direction={'column'} gap={'2px'} mt={'2px'}>
-              {options.map((opt, index) => (
-                <Flex key={index} gap={'4px'} alignItems={'center'} w={'full'}>
+          {draftOptions.length > 0 && (
+            <Flex maxH={'134px'} overflowY={'auto'} direction={'column'} gap={'2px'} mt={0.5}>
+              {draftOptions.map((opt, index) => (
+                <Flex key={index} gap={1} alignItems={'center'} w={'full'}>
                   <Input
                     ref={(el) => {
                       inputRefs.current[index] = el;
@@ -233,16 +154,17 @@ const TagOptionManagePopover = ({ tag }: { tag: DatasetTagType }) => {
                     flex={1}
                     minW={0}
                     h={'32px'}
-                    px={'12px'}
-                    fontSize={'12px'}
+                    px={3}
+                    fontSize={'xs'}
                     lineHeight={'16px'}
                     borderRadius={'sm'}
                     border={'1px solid'}
                     borderColor={'myGray.200'}
                     placeholder={t('dataset:tag.enter_option')}
+                    isDisabled={isSaving}
                     _focus={{
                       borderColor: 'primary.600',
-                      boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
+                      boxShadow: 'focus'
                     }}
                     onChange={(e) => handleUpdateOption(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
@@ -250,15 +172,15 @@ const TagOptionManagePopover = ({ tag }: { tag: DatasetTagType }) => {
                   <Flex
                     as={'button'}
                     type={'button'}
-                    w={'24px'}
-                    h={'24px'}
+                    p={1}
                     flexShrink={0}
                     alignItems={'center'}
                     justifyContent={'center'}
                     borderRadius={'sm'}
-                    cursor={'pointer'}
-                    _hover={{ bg: 'myGray.05' }}
-                    onClick={() => handleRemoveOption(index)}
+                    cursor={isSaving ? 'not-allowed' : 'pointer'}
+                    aria-disabled={isSaving}
+                    _hover={isSaving ? undefined : { bg: 'myGray.05' }}
+                    onClick={() => !isSaving && handleRemoveOption(index)}
                   >
                     <MyIcon name={'close'} w={'16px'} h={'16px'} color={'myGray.500'} />
                   </Flex>
@@ -272,10 +194,6 @@ const TagOptionManagePopover = ({ tag }: { tag: DatasetTagType }) => {
   );
 };
 
-/**
- * 知识库标签管理弹窗：展示标签名称和类型，并提供新增、重命名、删除操作。
- * 标签与集合的绑定仍在集合标签控件中完成，避免在管理表格中混合两类操作。
- */
 const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { datasetDetail, allDatasetTags, loadAllDatasetTags, setSearchTagKey } = useContextSelector(
@@ -286,7 +204,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   const tagInputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
   const [newTag, setNewTag] = useState<string | undefined>(undefined);
-  const [newTagType, setNewTagType] = useState<DatasetCollectionTagType | undefined>(undefined);
+  const [newTagType, setNewTagType] = useState<DatasetCollectionTagTypeEnum | undefined>(undefined);
   const [currentEditTagContent, setCurrentEditTagContent] = useState<string | undefined>(undefined);
   const [currentEditTag, setCurrentEditTag] = useState<DatasetTagType | undefined>(undefined);
 
@@ -301,8 +219,6 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
       editInputRef.current?.focus();
     }
   }, [currentEditTag]);
-
-  const collectionTags = allDatasetTags;
 
   const { openConfirm: openDeleteConfirm, ConfirmModal: DeleteConfirmModal } = useConfirm({
     type: 'delete',
@@ -327,7 +243,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   );
 
   const { runAsync: onCreateCollectionTag } = useRequest(
-    ({ tag, tagType }: { tag: string; tagType: DatasetCollectionTagType }) =>
+    ({ tag, tagType }: { tag: string; tagType: DatasetCollectionTagTypeEnum }) =>
       postCreateDatasetCollectionTag({
         datasetId: datasetDetail._id,
         tag,
@@ -359,16 +275,32 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     }
   );
 
-  const tagTypeOptions = DatasetCollectionTagTypeEnum.exclude(['string']).options.map(
-    (tagType) => ({
-      label: t(TAG_TYPE_SELECT_LABEL_KEYS[tagType]),
-      value: tagType
-    })
+  const { runAsync: onSaveTagOptions, loading: isSavingTagOptions } = useRequest(
+    ({ tag, options }: { tag: DatasetTagType; options: string[] }) =>
+      updateDatasetCollectionTag({
+        datasetId: datasetDetail._id,
+        tagId: tag._id,
+        tag: tag.tag,
+        options
+      }),
+    {
+      onSuccess: loadAllDatasetTags,
+      errorToast: t('dataset:tag.save_failed')
+    }
   );
+
+  const tagTypeOptions = [
+    DatasetCollectionTagTypeEnum.array,
+    DatasetCollectionTagTypeEnum.number,
+    DatasetCollectionTagTypeEnum.datetime
+  ].map((tagType) => ({
+    label: t(DatasetCollectionTagTypeMap[tagType].label),
+    value: tagType
+  }));
 
   const submitNewTag = async () => {
     const tag = newTag?.trim();
-    if (!tag || !newTagType || collectionTags.some((item) => item.tag === tag)) return;
+    if (!tag || !newTagType || allDatasetTags.some((item) => item.tag === tag)) return;
 
     await onCreateCollectionTag({ tag, tagType: newTagType });
     setNewTag(undefined);
@@ -380,7 +312,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     if (
       content &&
       content !== tag.tag &&
-      !collectionTags.some((item) => item._id !== tag._id && item.tag === content)
+      !allDatasetTags.some((item) => item._id !== tag._id && item.tag === content)
     ) {
       await onUpdateCollectionTag({ ...tag, tag: content });
     }
@@ -394,7 +326,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   };
 
   const canSaveNewTag = Boolean(
-    newTag?.trim() && newTagType && !collectionTags.some((item) => item.tag === newTag.trim())
+    newTag?.trim() && newTagType && !allDatasetTags.some((item) => item.tag === newTag.trim())
   );
 
   return (
@@ -403,11 +335,11 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
       onClose={onClose}
       size={'xl'}
       w={'800px'}
-      h={'80vh'}
       minH={'400px'}
+      maxH={'80vh'}
       isCentered
       title={
-        <Flex alignItems={'center'} gap={'4px'}>
+        <Flex alignItems={'center'} gap={1}>
           <Box>{t('dataset:tag.manage')}</Box>
           <QuestionTip
             label={t('dataset:core.dataset.tags.tagType')}
@@ -419,7 +351,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
       }
       closeOnOverlayClick={false}
       bodyStyles={{
-        flex: '1 1 auto',
+        flex: 1,
         minH: 0,
         pb: 0,
         overflow: 'hidden'
@@ -427,7 +359,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
       footerStyles={{
         justifyContent: 'flex-start',
         px: 8,
-        pt: '8px',
+        pt: 2,
         pb: 8
       }}
       footer={
@@ -450,41 +382,19 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
       borderRadius={'10px'}
       sx={{
         '.chakra-modal__close-btn': {
-          top: '8px',
-          right: '8px',
+          top: 2,
+          right: 2,
           w: '36px',
           h: '36px'
         }
       }}
     >
-      <Flex
-        direction={'column'}
-        flex={'1 1 auto'}
-        minH={0}
-        border={'1px solid'}
-        borderColor={'myGray.200'}
-        borderRadius={'lg'}
-        p={'8px'}
-        overflow={'hidden'}
-      >
-        <Box
-          display={'grid'}
-          gridTemplateColumns={TAG_TABLE_COLUMNS}
-          h={'40px'}
-          flexShrink={0}
-          alignItems={'center'}
-          bg={'myGray.100'}
-          borderRadius={'sm'}
-          color={'myGray.600'}
-          fontSize={'12.8px'}
-          fontWeight={700}
-          letterSpacing={'0.58px'}
-          lineHeight={'16px'}
-        >
-          <Box px={'24px'}>{t('dataset:tag.name')}</Box>
-          <Box px={'24px'}>{t('dataset:tag.attribute')}</Box>
-          <Box px={'24px'}>{t('common:Operation')}</Box>
-        </Box>
+      <TagTableContainer>
+        <TagTableHeader columns={TAG_TABLE_COLUMNS}>
+          <Box px={6}>{t('dataset:tag.name')}</Box>
+          <Box px={6}>{t('dataset:tag.attribute')}</Box>
+          <Box px={6}>{t('common:Operation')}</Box>
+        </TagTableHeader>
 
         <Box
           flex={'1 1 auto'}
@@ -492,21 +402,21 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
           overflowY={'auto'}
           display={'flex'}
           flexDirection={'column'}
-          fontSize={'14px'}
+          fontSize={'sm'}
           lineHeight={'20px'}
           color={'myGray.600'}
         >
-          {collectionTags.length === 0 ? (
+          {allDatasetTags.length === 0 ? (
             <EmptyTip text={t('dataset:dataset.no_tags')} />
           ) : (
-            collectionTags.map((tag) => {
+            allDatasetTags.map((tag) => {
               const isEditing = currentEditTag?._id === tag._id;
-              const tagType = tag.tagType ?? 'string';
+              const tagType = tag.tagType ?? DatasetCollectionTagTypeEnum.string;
               const editedTagContent = currentEditTagContent?.trim();
               const canSaveEditedTag = Boolean(
                 editedTagContent &&
                 editedTagContent !== tag.tag &&
-                !collectionTags.some(
+                !allDatasetTags.some(
                   (item) => item._id !== tag._id && item.tag === editedTagContent
                 )
               );
@@ -522,7 +432,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                   borderBottom={'1px solid'}
                   borderColor={'myGray.150'}
                 >
-                  <Box px={'24px'} minW={0}>
+                  <Box px={6} minW={0}>
                     {isEditing ? (
                       <Input
                         ref={editInputRef}
@@ -546,11 +456,18 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                       </Box>
                     )}
                   </Box>
-                  <Flex px={'24px'} alignItems={'center'} gap={'4px'}>
-                    <Box>{t(TAG_TYPE_LABEL_KEYS[tagType])}</Box>
-                    {tagType === 'array' && <TagOptionManagePopover tag={tag} />}
+                  <Flex px={6} alignItems={'center'} gap={1}>
+                    <Box>{t(DatasetCollectionTagTypeMap[tagType].label)}</Box>
+                    {tagType === DatasetCollectionTagTypeEnum.array && (
+                      <TagOptionManagePopover
+                        key={`${tag._id}-${JSON.stringify(tag.options ?? [])}`}
+                        options={tag.options ?? []}
+                        isSaving={isSavingTagOptions}
+                        onSave={(options) => onSaveTagOptions({ tag, options })}
+                      />
+                    )}
                   </Flex>
-                  <Flex px={'24px'} gap={'4px'} alignItems={'center'}>
+                  <Flex px={6} gap={1} alignItems={'center'}>
                     {isEditing ? (
                       <>
                         <TagActionButton
@@ -609,7 +526,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
               borderBottom={'1px solid'}
               borderColor={'myGray.150'}
             >
-              <Box px={'24px'}>
+              <Box px={6}>
                 <Input
                   ref={tagInputRef}
                   value={newTag}
@@ -619,21 +536,21 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                   onChange={(e) => setNewTag(e.target.value)}
                 />
               </Box>
-              <Box px={'24px'}>
-                <MySelect<DatasetCollectionTagType>
+              <Box px={6}>
+                <MySelect<DatasetCollectionTagTypeEnum>
                   value={newTagType}
                   placeholder={t('dataset:tag.select_attribute')}
                   list={tagTypeOptions}
                   width={'100%'}
                   h={'36px'}
-                  fontSize={'14px'}
+                  fontSize={'sm'}
                   lineHeight={'20px'}
                   letterSpacing={'0.25px'}
-                  onChange={setNewTagType}
+                  onChange={(val) => setNewTagType(val)}
                   menuPlacement={'bottom-start'}
                 />
               </Box>
-              <Flex px={'24px'} gap={'4px'} alignItems={'center'}>
+              <Flex px={6} gap={1} alignItems={'center'}>
                 <TagActionButton
                   label={t('common:Save')}
                   icon={<SaveActionIcon isEnabled={canSaveNewTag} />}
@@ -651,7 +568,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
             </Box>
           )}
         </Box>
-      </Flex>
+      </TagTableContainer>
       <DeleteConfirmModal />
     </MyModal>
   );
