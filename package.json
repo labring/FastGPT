@@ -18,7 +18,7 @@
     "test:light": "node ./scripts/test/light.mjs",
     "test:all": "pnpm test:workspace && pnpm test:vector",
     "test:repo": "vitest run --config vitest.config.mts --coverage --passWithNoTests",
-    "test:workspace": "node ./scripts/test/withMongo.mjs pnpm exec turbo run test --filter=@fastgpt/app --filter=@fastgpt/admin --filter=@fastgpt/global --filter=@fastgpt/service --filter=@fastgpt/web",
+    "test:workspace": "node ./scripts/test/withMongo.mjs pnpm exec turbo run test --concurrency=1 --filter=@fastgpt/app --filter=@fastgpt/admin --filter=@fastgpt/global --filter=@fastgpt/service --filter=@fastgpt/web",
     "test:app": "turbo run test --filter=@fastgpt/app",
     "test:admin": "turbo run test --filter=@fastgpt/admin",
     "test:global": "turbo run test --filter=@fastgpt/global",
