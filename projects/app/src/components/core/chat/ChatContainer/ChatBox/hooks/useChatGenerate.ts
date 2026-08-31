@@ -84,6 +84,7 @@ type QueuedGeneratingMessage = generatingMessageProps & {
 
 type UseChatGenerateProps = {
   onStartChat?: (e: StartChatFnProps) => Promise<{ responseText: string; isNewChat?: boolean }>;
+  onStreamMessage?: (message: generatingMessageProps) => void;
   isRoundPending: boolean;
   chatControllerRef: MutableRefObject<AbortController>;
   questionGuideControllerRef: MutableRefObject<AbortController>;
@@ -128,6 +129,7 @@ const isAbortByLeave = (reason: unknown) => {
  */
 export const useChatGenerate = ({
   onStartChat,
+  onStreamMessage,
   isRoundPending,
   chatControllerRef,
   questionGuideControllerRef,
@@ -184,6 +186,7 @@ export const useChatGenerate = ({
         planStatus,
         sandboxStatus,
         skill,
+        workflowBuilderVersion,
         variables,
         nodeResponse,
         durationSeconds,
@@ -524,6 +527,12 @@ export const useChatGenerate = ({
             value: item.value.concat(val)
           };
         }
+        if (event === SseResponseEventEnum.workflowBuilderVersion && workflowBuilderVersion) {
+          return {
+            ...item,
+            value: item.value.concat({ workflowBuilderVersion })
+          };
+        }
 
         if (event === SseResponseEventEnum.workflowDuration && durationSeconds) {
           return {
@@ -594,6 +603,8 @@ export const useChatGenerate = ({
 
   const generatingMessage = useMemoizedFn(
     (message: generatingMessageProps & { autoTTSResponse?: boolean }) => {
+      onStreamMessage?.(message);
+
       if (message.event === SseResponseEventEnum.chatTitle && message.title) {
         setChatBoxData((state) =>
           state.sourceKey === sourceKey && state.chatId === chatId
@@ -646,6 +657,7 @@ export const useChatGenerate = ({
       files = [],
       history = chatRecords,
       interactive,
+      agentPlanAskResponse,
       autoTTSResponse = false,
       hideInUI = false,
       clearInput = false
@@ -759,7 +771,8 @@ export const useChatGenerate = ({
               ? rewriteHistoriesByInteractiveResponse({
                   histories: newChatList,
                   interactive,
-                  interactiveVal: text
+                  interactiveVal: text,
+                  agentPlanAskResponse
                 })
               : newChatList
           );
@@ -792,6 +805,7 @@ export const useChatGenerate = ({
               messages,
               responseChatItemId: responseChatId,
               interactive,
+              agentPlanAskResponse,
               controller: abortSignal,
               generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
               variables: requestVariables

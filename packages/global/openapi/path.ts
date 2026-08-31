@@ -1,5 +1,6 @@
 import { AIPath } from './core/ai';
 import { SkillPath } from './core/ai/skill';
+import { WorkflowBuilderPath } from './core/workflow/builder';
 import { AppPath } from './core/app';
 import { ChatPath } from './core/chat';
 import { DatasetPath } from './core/dataset';
@@ -23,7 +24,8 @@ export const openAPIPaths: NonNullable<OpenAPIPath> = {
   ...CommonPath,
   ...InvokePath,
   ...AIPath,
-  ...SkillPath
+  ...SkillPath,
+  ...WorkflowBuilderPath
 };
 
 export const openAPITagGroups = [

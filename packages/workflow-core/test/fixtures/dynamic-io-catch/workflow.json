@@ -1,0 +1,287 @@
+{
+  "schemaVersion": "fastgpt-workflow/v1",
+  "app": {},
+  "nodes": [
+    {
+      "flowNodeType": "workflowStart",
+      "avatar": "core/workflow/template/workflowStart",
+      "avatarLinear": "core/workflow/template/workflowStartLinear",
+      "colorSchema": "blue",
+      "name": "workflow:template.workflow_start",
+      "inputs": [
+        {
+          "key": "userChatInput",
+          "label": "workflow:user_question",
+          "valueType": "string",
+          "required": true,
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "toolDescription": "workflow:user_question"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "userChatInput",
+          "key": "userChatInput",
+          "type": "static",
+          "valueType": "string",
+          "label": "common:core.module.input.label.user question"
+        }
+      ],
+      "nodeId": "start"
+    },
+    {
+      "flowNodeType": "code",
+      "avatar": "core/workflow/template/codeRun",
+      "avatarLinear": "core/workflow/template/codeRunLinear",
+      "colorSchema": "lime",
+      "name": "workflow:code_execution",
+      "intro": "workflow:code_sandbox_intro",
+      "showStatus": true,
+      "catchError": true,
+      "inputs": [
+        {
+          "key": "system_addInputParam",
+          "label": "",
+          "valueType": "dynamic",
+          "required": false,
+          "customInputConfig": {
+            "selectValueTypeList": [
+              "string",
+              "number",
+              "boolean",
+              "object",
+              "arrayString",
+              "arrayNumber",
+              "arrayBoolean",
+              "arrayObject",
+              "arrayAny",
+              "any",
+              "chatHistory",
+              "datasetQuote",
+              "dynamic",
+              "selectDataset",
+              "selectApp"
+            ],
+            "showDefaultValue": true,
+            "showDescription": false
+          },
+          "renderTypeList": [
+            "addInputParam"
+          ],
+          "description": "workflow:these_variables_will_be_input_parameters_for_code_execution"
+        },
+        {
+          "key": "data1",
+          "label": "data1",
+          "valueType": "string",
+          "required": true,
+          "customInputConfig": {
+            "selectValueTypeList": [
+              "string",
+              "number",
+              "boolean",
+              "object",
+              "arrayString",
+              "arrayNumber",
+              "arrayBoolean",
+              "arrayObject",
+              "arrayAny",
+              "any",
+              "chatHistory",
+              "datasetQuote",
+              "dynamic",
+              "selectDataset",
+              "selectApp"
+            ],
+            "showDefaultValue": true,
+            "showDescription": false
+          },
+          "renderTypeList": [
+            "reference"
+          ],
+          "canEdit": true,
+          "value": [
+            "start",
+            "userChatInput"
+          ],
+          "selectedType": "reference"
+        },
+        {
+          "key": "data2",
+          "label": "data2",
+          "valueType": "string",
+          "required": true,
+          "customInputConfig": {
+            "selectValueTypeList": [
+              "string",
+              "number",
+              "boolean",
+              "object",
+              "arrayString",
+              "arrayNumber",
+              "arrayBoolean",
+              "arrayObject",
+              "arrayAny",
+              "any",
+              "chatHistory",
+              "datasetQuote",
+              "dynamic",
+              "selectDataset",
+              "selectApp"
+            ],
+            "showDefaultValue": true,
+            "showDescription": false
+          },
+          "renderTypeList": [
+            "reference"
+          ],
+          "canEdit": true,
+          "value": [
+            "start",
+            "userChatInput"
+          ],
+          "selectedType": "reference"
+        },
+        {
+          "key": "codeType",
+          "label": "",
+          "valueType": "string",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": "js"
+        },
+        {
+          "key": "code",
+          "label": "",
+          "valueType": "string",
+          "renderTypeList": [
+            "custom"
+          ],
+          "value": "function main({data1, data2}){\n  \n  return {\n      result: data1,\n      data2\n  }\n}"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "score",
+          "key": "score",
+          "type": "dynamic",
+          "valueType": "number",
+          "label": "Score"
+        },
+        {
+          "id": "system_addOutputParam",
+          "key": "system_addOutputParam",
+          "type": "dynamic",
+          "valueType": "dynamic",
+          "label": "",
+          "description": "workflow:pass_returned_object_as_output_to_next_nodes",
+          "customFieldConfig": {
+            "selectValueTypeList": [
+              "string",
+              "number",
+              "boolean",
+              "object",
+              "arrayString",
+              "arrayNumber",
+              "arrayBoolean",
+              "arrayObject",
+              "arrayAny",
+              "any",
+              "chatHistory",
+              "datasetQuote",
+              "dynamic",
+              "selectDataset",
+              "selectApp"
+            ],
+            "showDefaultValue": false,
+            "showDescription": false
+          }
+        },
+        {
+          "id": "system_rawResponse",
+          "key": "system_rawResponse",
+          "type": "static",
+          "valueType": "object",
+          "label": "workflow:full_response_data"
+        },
+        {
+          "id": "qLUQfhG0ILRX",
+          "key": "result",
+          "type": "dynamic",
+          "valueType": "string",
+          "label": "result"
+        },
+        {
+          "id": "gR0mkQpJ4Og8",
+          "key": "data2",
+          "type": "dynamic",
+          "valueType": "string",
+          "label": "data2"
+        },
+        {
+          "id": "error",
+          "key": "error",
+          "type": "error",
+          "valueType": "string",
+          "label": "workflow:error_text"
+        }
+      ],
+      "nodeId": "code"
+    },
+    {
+      "flowNodeType": "answerNode",
+      "avatar": "core/workflow/template/reply",
+      "avatarLinear": "core/workflow/template/replyLinear",
+      "colorSchema": "blue",
+      "name": "workflow:assigned_reply",
+      "intro": "workflow:intro_assigned_reply",
+      "inputs": [
+        {
+          "key": "text",
+          "label": "common:core.module.input.label.Response content",
+          "valueType": "any",
+          "required": true,
+          "isRichText": false,
+          "placeholder": "common:core.module.input.description.Response content",
+          "maxLength": 100000,
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "description": "common:core.module.input.description.Response content",
+          "value": "recover",
+          "selectedType": "textarea"
+        }
+      ],
+      "outputs": [],
+      "nodeId": "recover"
+    }
+  ],
+  "executionEdges": [
+    {
+      "source": {
+        "kind": "next",
+        "nodeId": "start"
+      },
+      "target": {
+        "kind": "target",
+        "nodeId": "code"
+      }
+    },
+    {
+      "source": {
+        "kind": "catch",
+        "nodeId": "code"
+      },
+      "target": {
+        "kind": "target",
+        "nodeId": "recover"
+      }
+    }
+  ],
+  "chatConfig": {}
+}

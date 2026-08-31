@@ -2,6 +2,7 @@ import { Box } from '@chakra-ui/react';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import React, { useEffect, useMemo, useRef } from 'react';
+import { getToolDisplayName } from './utils';
 
 const PROCESSING_PREVIEW_MAX_LENGTH = 8192;
 
@@ -67,9 +68,11 @@ const ProcessingPreviewBody = React.memo(function ProcessingPreviewBody({
   );
 });
 
-export const getProcessingPreviewLabelKey = (value: AIChatItemValueItemType) => {
+export const getProcessingPreviewLabel = (value: AIChatItemValueItemType) => {
   const tool = value.tools?.[value.tools.length - 1] || value.tool;
-  if (tool) return tool.toolName;
+  if (tool) {
+    return getToolDisplayName(tool);
+  }
   if (value.reasoning?.content && !value.hideReason) {
     return i18nT('chat:history_generating');
   }

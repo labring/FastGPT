@@ -112,8 +112,11 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
     [item.value, handleChange]
   );
 
+  const { key: inputKey, ...inputProps } = item;
+
   return (
     <InputRender
+      key={inputKey}
       inputType={inputType}
       value={item.value}
       onChange={handleChange}
@@ -122,7 +125,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
       modelList={llmModelList}
       ExtensionPopover={canOptimizePrompt ? [OptimizerPopverComponent] : undefined}
       menuPlacement={menuPlacement}
-      {...item}
+      {...inputProps}
     />
   );
 };

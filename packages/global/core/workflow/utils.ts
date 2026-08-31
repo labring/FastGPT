@@ -89,6 +89,86 @@ export const nodeInputIsReference = (input: FlowNodeInputItemType) => {
   return false;
 };
 
+const workflowReferenceSourceTypeMap: Record<WorkflowIOValueTypeEnum, WorkflowIOValueTypeEnum[]> = {
+  [WorkflowIOValueTypeEnum.string]: [WorkflowIOValueTypeEnum.string],
+  [WorkflowIOValueTypeEnum.number]: [WorkflowIOValueTypeEnum.number],
+  [WorkflowIOValueTypeEnum.boolean]: [WorkflowIOValueTypeEnum.boolean],
+  [WorkflowIOValueTypeEnum.object]: [WorkflowIOValueTypeEnum.object],
+  [WorkflowIOValueTypeEnum.arrayString]: [
+    WorkflowIOValueTypeEnum.string,
+    WorkflowIOValueTypeEnum.arrayString,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.arrayNumber]: [
+    WorkflowIOValueTypeEnum.number,
+    WorkflowIOValueTypeEnum.arrayNumber,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.arrayBoolean]: [
+    WorkflowIOValueTypeEnum.boolean,
+    WorkflowIOValueTypeEnum.arrayBoolean,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.arrayObject]: [
+    WorkflowIOValueTypeEnum.object,
+    WorkflowIOValueTypeEnum.arrayObject,
+    WorkflowIOValueTypeEnum.arrayAny,
+    WorkflowIOValueTypeEnum.chatHistory,
+    WorkflowIOValueTypeEnum.datasetQuote,
+    WorkflowIOValueTypeEnum.dynamic,
+    WorkflowIOValueTypeEnum.selectDataset,
+    WorkflowIOValueTypeEnum.selectApp
+  ],
+  [WorkflowIOValueTypeEnum.chatHistory]: [
+    WorkflowIOValueTypeEnum.chatHistory,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.datasetQuote]: [
+    WorkflowIOValueTypeEnum.datasetQuote,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.dynamic]: [
+    WorkflowIOValueTypeEnum.dynamic,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.selectDataset]: [
+    WorkflowIOValueTypeEnum.selectDataset,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.selectApp]: [
+    WorkflowIOValueTypeEnum.selectApp,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.arrayAny]: Object.values(WorkflowIOValueTypeEnum),
+  [WorkflowIOValueTypeEnum.any]: Object.values(WorkflowIOValueTypeEnum)
+};
+
+/**
+ * 返回 Web 引用选择器和 Workflow Core 共同接受的上游输出类型。
+ * 数组输入允许引用同类型数组、通用数组或一个元素类型，运行时会按目标类型完成格式化。
+ */
+export const getWorkflowReferenceSourceValueTypes = (
+  expected?: string
+): WorkflowIOValueTypeEnum[] => {
+  if (expected === undefined) return Object.values(WorkflowIOValueTypeEnum);
+  const acceptedTypes = workflowReferenceSourceTypeMap[expected as WorkflowIOValueTypeEnum] ?? [];
+  return [...new Set([...acceptedTypes, WorkflowIOValueTypeEnum.any])];
+};
+
+/** 判断一个上游输出类型能否作为目标输入的完整引用值。 */
+export const areWorkflowValueTypesCompatible = ({
+  expected,
+  actual
+}: {
+  expected?: string;
+  actual?: string;
+}) => {
+  if (expected === undefined || actual === undefined || actual === WorkflowIOValueTypeEnum.any) {
+    return true;
+  }
+  return getWorkflowReferenceSourceValueTypes(expected).includes(actual as WorkflowIOValueTypeEnum);
+};
+
 /** 判断 App 工作流是否有 Agent 或 ToolCall 节点开启 Sandbox。 */
 export const isAppSandboxEnabledInNodes = (nodes: StoreNodeItemType[]) =>
   nodes.some(

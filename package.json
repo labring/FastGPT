@@ -3,11 +3,11 @@
   "version": "4.0",
   "private": true,
   "scripts": {
-    "dev:pro": "turbo run dev:pro --filter=@fastgpt/app",
+    "dev:pro": "pnpm run build:workflow-packages && turbo run dev:pro --filter=@fastgpt/app",
     "prepare": "husky install",
     "gen:theme-typings": "chakra-cli tokens packages/web/styles/theme.ts --out node_modules/.pnpm/node_modules/@chakra-ui/styled-system/dist/theming.types.d.ts",
     "gen:deploy": "node ./deploy/init.mjs",
-    "postinstall": "pnpm gen:theme-typings && pnpm run build:sdks",
+    "postinstall": "pnpm gen:theme-typings && pnpm run build:sdks && pnpm run build:workflow-packages",
     "initIcon": "node ./scripts/icon/init.js && prettier --config \"./.prettierrc.js\" --write \"packages/web/components/common/Icon/constants.ts\"",
     "previewIcon": "node ./scripts/icon/index.js",
     "lint": "turbo run lint",
@@ -29,7 +29,8 @@
     "generate:i18n-loaders": "node scripts/generate-i18n-resource-loaders.mjs",
     "check:i18n-loaders": "node scripts/check-i18n-resource-loaders.mjs",
     "test:vector": "turbo run test:integration --filter=@fastgpt/service",
-    "build:sdks": "pnpm -r --filter @fastgpt-sdk/storage --filter @fastgpt-sdk/otel --filter @fastgpt-sdk/sandbox-adapter build"
+    "build:sdks": "pnpm -r --filter @fastgpt-sdk/storage --filter @fastgpt-sdk/otel --filter @fastgpt-sdk/sandbox-adapter build",
+    "build:workflow-packages": "pnpm --filter @fastgpt/workflow-core build && pnpm --filter @fastgpt/workflow-cli build"
   },
   "devDependencies": {
     "@chakra-ui/cli": "^2.4.1",

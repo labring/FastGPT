@@ -1,0 +1,173 @@
+{
+  "schemaVersion": "fastgpt-workflow/v1",
+  "app": {},
+  "nodes": [
+    {
+      "flowNodeType": "workflowStart",
+      "avatar": "core/workflow/template/workflowStart",
+      "avatarLinear": "core/workflow/template/workflowStartLinear",
+      "colorSchema": "blue",
+      "name": "workflow:template.workflow_start",
+      "inputs": [
+        {
+          "key": "userChatInput",
+          "label": "workflow:user_question",
+          "valueType": "string",
+          "required": true,
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "toolDescription": "workflow:user_question"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "userChatInput",
+          "key": "userChatInput",
+          "type": "static",
+          "valueType": "string",
+          "label": "common:core.module.input.label.user question"
+        }
+      ],
+      "nodeId": "start"
+    },
+    {
+      "flowNodeType": "ifElseNode",
+      "avatar": "core/workflow/template/ifelse",
+      "avatarLinear": "core/workflow/template/ifelseLinear",
+      "colorSchema": "greenLight",
+      "name": "workflow:condition_checker",
+      "intro": "workflow:execute_different_branches_based_on_conditions",
+      "showStatus": true,
+      "inputs": [
+        {
+          "key": "ifElseList",
+          "label": "",
+          "valueType": "any",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": [
+            {
+              "branchId": "positive",
+              "condition": "AND",
+              "list": [
+                {
+                  "variable": [
+                    "start",
+                    "userChatInput"
+                  ],
+                  "condition": "isNotEmpty",
+                  "valueType": "input"
+                }
+              ]
+            }
+          ],
+          "selectedType": "hidden"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "ifElseResult",
+          "key": "ifElseResult",
+          "type": "static",
+          "valueType": "string",
+          "label": "workflow:judgment_result"
+        }
+      ],
+      "nodeId": "route"
+    },
+    {
+      "flowNodeType": "answerNode",
+      "avatar": "core/workflow/template/reply",
+      "avatarLinear": "core/workflow/template/replyLinear",
+      "colorSchema": "blue",
+      "name": "workflow:assigned_reply",
+      "intro": "workflow:intro_assigned_reply",
+      "inputs": [
+        {
+          "key": "text",
+          "label": "common:core.module.input.label.Response content",
+          "valueType": "any",
+          "required": true,
+          "isRichText": false,
+          "placeholder": "common:core.module.input.description.Response content",
+          "maxLength": 100000,
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "description": "common:core.module.input.description.Response content",
+          "value": "yes",
+          "selectedType": "textarea"
+        }
+      ],
+      "outputs": [],
+      "nodeId": "yes"
+    },
+    {
+      "flowNodeType": "answerNode",
+      "avatar": "core/workflow/template/reply",
+      "avatarLinear": "core/workflow/template/replyLinear",
+      "colorSchema": "blue",
+      "name": "workflow:assigned_reply",
+      "intro": "workflow:intro_assigned_reply",
+      "inputs": [
+        {
+          "key": "text",
+          "label": "common:core.module.input.label.Response content",
+          "valueType": "any",
+          "required": true,
+          "isRichText": false,
+          "placeholder": "common:core.module.input.description.Response content",
+          "maxLength": 100000,
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "description": "common:core.module.input.description.Response content",
+          "value": "fallback",
+          "selectedType": "textarea"
+        }
+      ],
+      "outputs": [],
+      "nodeId": "fallback"
+    }
+  ],
+  "executionEdges": [
+    {
+      "source": {
+        "kind": "next",
+        "nodeId": "start"
+      },
+      "target": {
+        "kind": "target",
+        "nodeId": "route"
+      }
+    },
+    {
+      "source": {
+        "kind": "branch",
+        "nodeId": "route",
+        "branchKey": "positive"
+      },
+      "target": {
+        "kind": "target",
+        "nodeId": "yes"
+      }
+    },
+    {
+      "source": {
+        "kind": "branch",
+        "nodeId": "route",
+        "branchKey": "ELSE"
+      },
+      "target": {
+        "kind": "target",
+        "nodeId": "fallback"
+      }
+    }
+  ],
+  "chatConfig": {}
+}

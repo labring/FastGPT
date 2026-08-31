@@ -11,8 +11,10 @@ import {
   Portal
 } from '@chakra-ui/react';
 
-interface Props extends PopoverContentProps {
+type Props = PopoverContentProps & {
   Trigger: React.ReactNode;
+  /** 传入时由调用方控制显隐；省略时保持原有 useDisclosure 行为。 */
+  isOpen?: boolean;
   placement?: PlacementWithLogical;
   offset?: [number, number];
   trigger?: 'hover' | 'click';
@@ -24,10 +26,11 @@ interface Props extends PopoverContentProps {
   closeOnBlur?: boolean;
   usePortal?: boolean;
   flip?: boolean;
-}
+};
 
 const MyPopover = ({
   Trigger,
+  isOpen: controlledIsOpen,
   placement,
   offset,
   trigger,
@@ -43,7 +46,21 @@ const MyPopover = ({
 }: Props) => {
   const firstFieldRef = React.useRef(null);
 
-  const { onOpen, onClose, isOpen } = useDisclosure();
+  const {
+    onOpen: onInternalOpen,
+    onClose: onInternalClose,
+    isOpen: internalIsOpen
+  } = useDisclosure();
+  const isControlled = controlledIsOpen !== undefined;
+  const isOpen = controlledIsOpen ?? internalIsOpen;
+  const onOpen = () => {
+    if (!isControlled) onInternalOpen();
+    onOpenFunc?.();
+  };
+  const onClose = () => {
+    if (!isControlled) onInternalClose();
+    onCloseFunc?.();
+  };
 
   const popoverContent = (
     <PopoverContent zIndex={1001} {...props}>
@@ -56,14 +73,8 @@ const MyPopover = ({
     <Popover
       isOpen={isOpen}
       initialFocusRef={firstFieldRef}
-      onOpen={() => {
-        onOpen();
-        onOpenFunc?.();
-      }}
-      onClose={() => {
-        onClose();
-        onCloseFunc?.();
-      }}
+      onOpen={onOpen}
+      onClose={onClose}
       placement={placement}
       offset={offset}
       flip={flip}

@@ -30,6 +30,10 @@ import { batchRun } from '@fastgpt/global/common/system/utils';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { FileSource } from '../../common/file/read/source';
 import { createExternalHttpFileSource, createS3FileSource } from '../../common/file/read/source';
+import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { createChatFilePreviewUrlGetter } from '../../common/s3/sources/chat';
+import { isAuthorizedChatFileS3Key } from '../../common/s3/sources/chat/key';
+import type { ChatS3SourceType } from '../../common/s3/sources/chat/type';
 
 /** Workflow 等上层业务可显式注入的已授权文件读取能力。 */
 export type FileReadContext = {
@@ -63,6 +67,59 @@ type GetFileProps = {
   fileContext?: FileReadContext;
 };
 
+type AuthorizedChatFileInput = {
+  key?: string;
+  url?: string;
+};
+
+/**
+ * 校验聊天上传文件是否属于当前来源、成员和会话，并用服务端签名 URL 覆盖客户端 URL。
+ *
+ * 客户端 URL 只用于上传完成后的即时预览，不能作为运行时可信文件来源；所有正式运行入口
+ * 都必须依赖 S3 key 完成作用域校验后重新签名。
+ */
+export const resolveAuthorizedChatFiles = async <File extends AuthorizedChatFileInput>({
+  files,
+  sourceType,
+  sourceId,
+  uid,
+  chatId,
+  getPreviewUrl
+}: {
+  files: File[];
+  sourceType: ChatS3SourceType;
+  sourceId: string;
+  uid: string;
+  chatId: string;
+  getPreviewUrl?: (key: string) => Promise<string>;
+}): Promise<Array<File & { key: string; url: string }>> => {
+  if (files.length === 0) return [];
+
+  const resolvePreviewUrl = getPreviewUrl ?? createChatFilePreviewUrlGetter();
+
+  return Promise.all(
+    files.map(async (file) => {
+      if (
+        !file.key ||
+        !isAuthorizedChatFileS3Key({
+          key: file.key,
+          sourceType,
+          sourceId,
+          uid,
+          chatId
+        })
+      ) {
+        throw ChatErrEnum.unAuthChat;
+      }
+
+      return {
+        ...file,
+        key: file.key,
+        url: await resolvePreviewUrl(file.key)
+      };
+    })
+  );
+};
 const fileTypeIncludesExtension = (fileTypes: string, extension: string) =>
   !!extension && fileTypes.split(',').some((item) => item.trim() === extension);
 

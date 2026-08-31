@@ -1,14 +1,141 @@
 import type {
   AgentAskInteractive,
-  AgentPlanAskQueryInteractive
+  AgentPlanAskQueryInteractive,
+  WorkflowBuilderPreviewAction
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
+import type { AgentAskAnswerDetail } from '../../ChatContainer/ChatBox/Input/AgentAskComposer';
+import type { WorkflowBuilderVersionDisplayState } from '@fastgpt/global/core/workflow/builder/type';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
-export const onSendPrompt = (text: string) =>
-  eventBus.emit(EventNameEnum.sendQuestion, {
-    text,
-    focus: true
-  });
+export const workflowBuilderAppliedFeedbackDuration = 1200;
+
+export type WorkflowBuilderVersionButtonState = 'apply' | 'loading' | 'applied' | 'expired';
+
+/** 将版本事实状态和本次点击反馈合并为 Figma 定义的按钮视觉状态。 */
+export const getWorkflowBuilderVersionButtonState = ({
+  displayState,
+  loading,
+  showApplied
+}: {
+  displayState: WorkflowBuilderVersionDisplayState;
+  loading: boolean;
+  showApplied: boolean;
+}): WorkflowBuilderVersionButtonState => {
+  if (displayState === 'expired') return displayState;
+  if (loading) return 'loading';
+  if (showApplied) return 'applied';
+  return 'apply';
+};
+
+const workflowBuilderToolPresentationMap: Record<
+  string,
+  { nameKey: string; getName: () => string; avatar: string }
+> = {
+  workflow_cli_query: {
+    nameKey: 'workflow:workflow_builder_tool_query',
+    getName: () => i18nT('workflow:workflow_builder_tool_query'),
+    avatar: 'core/chat/workflowBuilder/query'
+  },
+  workflow_cli_stage: {
+    nameKey: 'workflow:workflow_builder_tool_stage',
+    getName: () => i18nT('workflow:workflow_builder_tool_stage'),
+    avatar: 'core/chat/workflowBuilder/stage'
+  },
+  workflow_cli_commit: {
+    nameKey: 'workflow:workflow_builder_tool_commit',
+    getName: () => i18nT('workflow:workflow_builder_tool_commit'),
+    avatar: 'core/chat/workflowBuilder/commit'
+  },
+  workflow_builder_present_preview: {
+    nameKey: 'workflow:workflow_builder_tool_preview',
+    getName: () => i18nT('workflow:workflow_builder_tool_preview'),
+    avatar: 'core/chat/workflowBuilder/preview'
+  },
+  workflow_builder_cancel: {
+    nameKey: 'workflow:workflow_builder_tool_cancel',
+    getName: () => i18nT('workflow:workflow_builder_tool_cancel'),
+    avatar: 'core/chat/workflowBuilder/cancel'
+  }
+};
+
+/** 统一 Workflow Builder 工具在聊天过程与完整响应中的本地化名称和 Figma 图标。 */
+export const getWorkflowBuilderToolPresentation = (functionName?: string) => {
+  const presentation = functionName ? workflowBuilderToolPresentationMap[functionName] : undefined;
+  if (!presentation) return;
+
+  return {
+    nameKey: presentation.nameKey,
+    avatar: presentation.avatar
+  };
+};
+
+/** 使用静态 i18n key 获取 Workflow Builder 工具名称，避免语言包清理时误删翻译。 */
+export const getWorkflowBuilderToolDisplayName = (functionName?: string) =>
+  functionName ? workflowBuilderToolPresentationMap[functionName]?.getName() : undefined;
+
+/**
+ * 获取聊天工具的当前展示名称。
+ *
+ * Workflow Builder 工具使用稳定的 functionName 按当前语言实时翻译，避免历史消息中
+ * 已持久化的其他语言 toolName 阻止语言切换；未知工具继续回退到服务端名称。
+ */
+export const getToolDisplayName = ({
+  functionName,
+  toolName
+}: {
+  functionName?: string;
+  toolName?: string;
+}) => getWorkflowBuilderToolDisplayName(functionName) ?? toolName;
+
+/**
+ * 将通用 Agent Ask Composer 的提交结果转换为 Workflow Builder 预览动作。
+ *
+ * Builder 预览复用了 Agent Ask 的完整导航 UI，其中右上角 X 会产出 `skip`；
+ * 在 Builder 语义里它应等价于「取消本次搭建」，否则 Composer 会进入 submitting
+ * 但不会真正提交任何 Builder action。
+ */
+export const resolveWorkflowBuilderPreviewAnswerAction = ({
+  actions,
+  customAction,
+  answerDetail
+}: {
+  actions: WorkflowBuilderPreviewAction[];
+  customAction?: WorkflowBuilderPreviewAction;
+  answerDetail?: AgentAskAnswerDetail;
+}):
+  | {
+      action: WorkflowBuilderPreviewAction;
+      text?: string;
+    }
+  | undefined => {
+  if (answerDetail?.kind === 'option') {
+    const action = actions.find(
+      (item) => item.inputMode !== 'text' && item.value === answerDetail.value
+    );
+    if (!action) return;
+
+    return { action };
+  }
+
+  if (answerDetail?.kind === 'custom') {
+    const text = answerDetail.value.trim();
+    if (!text || !customAction) return;
+
+    return {
+      action: customAction,
+      text
+    };
+  }
+
+  if (answerDetail?.kind === 'skip') {
+    const cancelAction = actions.find(
+      (item) => item.inputMode !== 'text' && item.value === 'cancel'
+    );
+    if (!cancelAction) return;
+
+    return { action: cancelAction };
+  }
+};
 
 /**
  * 把历史单题 ask_user 记录适配成已提交的 Agent Ask，仅用于只读展示。
@@ -24,9 +151,10 @@ export const adaptLegacyAgentPlanAskToReadonlyAgentAsk = (
     questions: [
       {
         question: interactive.params.content,
+        // AgentPlanAskOption 同时支持纯字符串与带 label/inputMode 的对象形式
         options: interactive.params.options.map((option) => ({
-          summary: option,
-          value: option
+          summary: typeof option === 'string' ? option : option.label,
+          value: typeof option === 'string' ? option : option.value
         })),
         answer: interactive.params.answer ?? ''
       }

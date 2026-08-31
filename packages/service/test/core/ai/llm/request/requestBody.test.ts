@@ -78,6 +78,7 @@ describe('llmCompletionsBodyFormat', () => {
       parallel_tool_calls: true,
       retainDatasetCite: false,
       useVision: true,
+      forceMediaToBase64: true,
       requestOrigin: 'test'
     });
 
@@ -105,6 +106,7 @@ describe('llmCompletionsBodyFormat', () => {
     expect(requestBody).not.toHaveProperty('toolCallMode');
     expect(requestBody).not.toHaveProperty('retainDatasetCite');
     expect(requestBody).not.toHaveProperty('useVision');
+    expect(requestBody).not.toHaveProperty('forceMediaToBase64');
     expect(requestBody).not.toHaveProperty('requestOrigin');
   });
 
@@ -272,6 +274,7 @@ describe('llmCompletionsBodyFormat', () => {
       stream: false,
       retainDatasetCite: false,
       useVision: true,
+      forceMediaToBase64: true,
       requestOrigin: 'test'
     });
 

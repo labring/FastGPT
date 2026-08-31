@@ -1,0 +1,985 @@
+{
+  "nodes": [
+    {
+      "flowNodeType": "answerNode",
+      "avatar": "core/workflow/template/reply",
+      "avatarLinear": "core/workflow/template/replyLinear",
+      "colorSchema": "blue",
+      "name": "Assigned Reply",
+      "intro": "This module can directly reply with a specified content. Commonly used for guidance or prompts. Non-string content will be converted to string for output.",
+      "inputs": [
+        {
+          "key": "text",
+          "label": "Response Content",
+          "valueType": "any",
+          "required": true,
+          "isRichText": false,
+          "placeholder": "You can use \\n to achieve continuous line breaks.\nYou can achieve replies through external module input, and the content filled in here will be overwritten by external module input.\nIf non-string type data is passed in, it will be automatically converted to a string",
+          "maxLength": 100000,
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "value": [
+            "call",
+            "answerText"
+          ],
+          "description": "You can use \\n to achieve continuous line breaks.\nYou can achieve replies through external module input, and the content filled in here will be overwritten by external module input.\nIf non-string type data is passed in, it will be automatically converted to a string",
+          "selectedType": "reference"
+        }
+      ],
+      "outputs": [],
+      "nodeId": "answer",
+      "position": {
+        "x": 2240,
+        "y": 0
+      }
+    },
+    {
+      "flowNodeType": "app",
+      "avatar": "core/workflow/template/runApp",
+      "name": "Application Call",
+      "intro": "You can choose another application to call",
+      "showStatus": true,
+      "inputs": [
+        {
+          "key": "app",
+          "label": "Select an Application",
+          "valueType": "selectApp",
+          "required": true,
+          "renderTypeList": [
+            "selectApp",
+            "reference"
+          ],
+          "value": {
+            "appId": "app-demo"
+          },
+          "description": "Select another application to call",
+          "selectedType": "selectApp"
+        },
+        {
+          "key": "history",
+          "label": "Chat History",
+          "valueType": "chatHistory",
+          "required": true,
+          "max": 50,
+          "min": 0,
+          "renderTypeList": [
+            "numberInput",
+            "reference"
+          ],
+          "value": 6,
+          "description": "Maximum Number of Dialog Rounds"
+        },
+        {
+          "key": "userChatInput",
+          "label": "User Question",
+          "valueType": "string",
+          "required": true,
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "value": [
+            "query",
+            "system_text"
+          ],
+          "toolDescription": "User Question",
+          "selectedType": "reference"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "history",
+          "key": "history",
+          "type": "static",
+          "valueType": "chatHistory",
+          "valueDesc": "{\n  obj: System | Human | AI;\n  value: string;\n}[]",
+          "label": "New Context",
+          "description": "Append the application's reply to the history as new context",
+          "required": true
+        },
+        {
+          "id": "answerText",
+          "key": "answerText",
+          "type": "static",
+          "valueType": "string",
+          "label": "Reply Text",
+          "description": "Will be triggered after the application is fully completed"
+        }
+      ],
+      "nodeId": "call",
+      "position": {
+        "x": 1920,
+        "y": 0
+      }
+    },
+    {
+      "flowNodeType": "code",
+      "avatar": "core/workflow/template/codeRun",
+      "avatarLinear": "core/workflow/template/codeRunLinear",
+      "colorSchema": "lime",
+      "name": "Code Sandbox",
+      "intro": "Executing a script code in the sandbox can be used to perform complex data processing, but the syntax and available dependencies will be limited.",
+      "showStatus": true,
+      "catchError": false,
+      "inputs": [
+        {
+          "key": "system_addInputParam",
+          "label": "",
+          "valueType": "dynamic",
+          "required": false,
+          "customInputConfig": {
+            "selectValueTypeList": [
+              "string",
+              "number",
+              "boolean",
+              "object",
+              "arrayString",
+              "arrayNumber",
+              "arrayBoolean",
+              "arrayObject",
+              "arrayAny",
+              "any",
+              "chatHistory",
+              "datasetQuote",
+              "dynamic",
+              "selectDataset",
+              "selectApp"
+            ],
+            "showDefaultValue": true,
+            "showDescription": false
+          },
+          "renderTypeList": [
+            "addInputParam"
+          ],
+          "description": "These variables will be input parameters for code execution"
+        },
+        {
+          "key": "data1",
+          "label": "data1",
+          "valueType": "string",
+          "required": true,
+          "customInputConfig": {
+            "selectValueTypeList": [
+              "string",
+              "number",
+              "boolean",
+              "object",
+              "arrayString",
+              "arrayNumber",
+              "arrayBoolean",
+              "arrayObject",
+              "arrayAny",
+              "any",
+              "chatHistory",
+              "datasetQuote",
+              "dynamic",
+              "selectDataset",
+              "selectApp"
+            ],
+            "showDefaultValue": true,
+            "showDescription": false
+          },
+          "renderTypeList": [
+            "reference"
+          ],
+          "value": [
+            "query",
+            "system_text"
+          ],
+          "canEdit": true,
+          "selectedType": "reference"
+        },
+        {
+          "key": "data2",
+          "label": "data2",
+          "valueType": "string",
+          "required": true,
+          "customInputConfig": {
+            "selectValueTypeList": [
+              "string",
+              "number",
+              "boolean",
+              "object",
+              "arrayString",
+              "arrayNumber",
+              "arrayBoolean",
+              "arrayObject",
+              "arrayAny",
+              "any",
+              "chatHistory",
+              "datasetQuote",
+              "dynamic",
+              "selectDataset",
+              "selectApp"
+            ],
+            "showDefaultValue": true,
+            "showDescription": false
+          },
+          "renderTypeList": [
+            "reference"
+          ],
+          "value": [
+            "extract",
+            "fields"
+          ],
+          "canEdit": true,
+          "selectedType": "reference"
+        },
+        {
+          "key": "codeType",
+          "label": "",
+          "valueType": "string",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": "js"
+        },
+        {
+          "key": "code",
+          "label": "",
+          "valueType": "string",
+          "renderTypeList": [
+            "custom"
+          ],
+          "value": "function main({data1, data2}){\n  \n  return {\n      result: data1,\n      data2\n  }\n}"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "system_addOutputParam",
+          "key": "system_addOutputParam",
+          "type": "dynamic",
+          "valueType": "dynamic",
+          "label": "",
+          "description": "Pass the object returned in the code as output to the next nodes. The variable name needs to correspond to the return key.",
+          "customFieldConfig": {
+            "selectValueTypeList": [
+              "string",
+              "number",
+              "boolean",
+              "object",
+              "arrayString",
+              "arrayNumber",
+              "arrayBoolean",
+              "arrayObject",
+              "arrayAny",
+              "any",
+              "chatHistory",
+              "datasetQuote",
+              "dynamic",
+              "selectDataset",
+              "selectApp"
+            ],
+            "showDefaultValue": false,
+            "showDescription": false
+          }
+        },
+        {
+          "id": "system_rawResponse",
+          "key": "system_rawResponse",
+          "type": "static",
+          "valueType": "object",
+          "label": "Full Response Data"
+        },
+        {
+          "id": "qLUQfhG0ILRX",
+          "key": "result",
+          "type": "dynamic",
+          "valueType": "string",
+          "label": "result"
+        },
+        {
+          "id": "gR0mkQpJ4Og8",
+          "key": "data2",
+          "type": "dynamic",
+          "valueType": "string",
+          "label": "data2"
+        },
+        {
+          "id": "error",
+          "key": "error",
+          "type": "error",
+          "valueType": "string",
+          "label": "Error text"
+        }
+      ],
+      "nodeId": "code",
+      "position": {
+        "x": 1600,
+        "y": 0
+      }
+    },
+    {
+      "flowNodeType": "contentExtract",
+      "avatar": "core/workflow/template/extractJson",
+      "avatarLinear": "core/workflow/template/extractJsonLinear",
+      "colorSchema": "teal",
+      "name": "Text Extract",
+      "intro": "Can extract specified data from text, such as SQL statements, search keywords, code, etc.",
+      "showStatus": true,
+      "version": "4.9.2",
+      "catchError": false,
+      "inputs": [
+        {
+          "key": "model",
+          "label": "AI Model",
+          "valueType": "string",
+          "required": true,
+          "renderTypeList": [
+            "selectLLMModel",
+            "reference"
+          ],
+          "value": "gpt-4.1",
+          "selectedType": "selectLLMModel"
+        },
+        {
+          "key": "description",
+          "label": "Extraction Requirements Description",
+          "valueType": "string",
+          "placeholder": "For example: 1. The current time is: {{cTime}}. \nYou are a laboratory reservation assistant. Your task is to help users make laboratory reservations and obtain the corresponding reservation information from the text.\n\n2. You are the Google Search Assistant and need to extract appropriate search terms from text.",
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "description": "Provide AI with some background knowledge or requirements to guide it in completing the task better.\\nThis input box can use global variables."
+        },
+        {
+          "key": "history",
+          "label": "Chat History",
+          "valueType": "chatHistory",
+          "required": true,
+          "max": 50,
+          "min": 0,
+          "renderTypeList": [
+            "numberInput",
+            "reference"
+          ],
+          "value": 6,
+          "description": "Maximum Number of Dialog Rounds"
+        },
+        {
+          "key": "content",
+          "label": "Text to Extract",
+          "valueType": "string",
+          "required": true,
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "value": [
+            "query",
+            "system_text"
+          ],
+          "toolDescription": "Content to Retrieve",
+          "selectedType": "reference"
+        },
+        {
+          "key": "extractKeys",
+          "label": "",
+          "valueType": "any",
+          "renderTypeList": [
+            "custom"
+          ],
+          "value": [
+            {
+              "description": "Summary",
+              "key": "summary",
+              "required": true,
+              "valueType": "string"
+            }
+          ],
+          "description": "A target field consists of 'description' and 'key'. Multiple target fields can be extracted.",
+          "selectedType": "custom"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "success",
+          "key": "success",
+          "type": "static",
+          "valueType": "boolean",
+          "label": "Full Field Extraction",
+          "description": "Returns true when all fields are fully extracted (success includes model extraction or using default values)",
+          "required": true
+        },
+        {
+          "id": "fields",
+          "key": "fields",
+          "type": "static",
+          "valueType": "string",
+          "label": "Complete Extraction Result",
+          "description": "A JSON string, e.g., {\"name\":\"YY\",\"Time\":\"2023/7/2 18:00\"}",
+          "required": true
+        },
+        {
+          "id": "system_error_text",
+          "key": "system_error_text",
+          "type": "error",
+          "valueType": "string",
+          "label": "Error text"
+        }
+      ],
+      "nodeId": "extract",
+      "position": {
+        "x": 960,
+        "y": 0
+      }
+    },
+    {
+      "flowNodeType": "httpRequest468",
+      "avatar": "core/workflow/template/httpRequest",
+      "avatarLinear": "core/workflow/template/httpRequestLinear",
+      "colorSchema": "indigo",
+      "name": "HTTP",
+      "intro": "Can send an HTTP request to perform more complex operations (network search, database query, etc.)",
+      "showStatus": true,
+      "catchError": false,
+      "inputs": [
+        {
+          "key": "system_addInputParam",
+          "label": "",
+          "valueType": "dynamic",
+          "required": false,
+          "customInputConfig": {
+            "selectValueTypeList": [
+              "string",
+              "number",
+              "boolean",
+              "object",
+              "arrayString",
+              "arrayNumber",
+              "arrayBoolean",
+              "arrayObject",
+              "arrayAny",
+              "any",
+              "chatHistory",
+              "datasetQuote",
+              "dynamic",
+              "selectDataset",
+              "selectApp"
+            ],
+            "showDefaultValue": true,
+            "showDescription": false
+          },
+          "renderTypeList": [
+            "addInputParam"
+          ],
+          "description": "Receive the output value of the previous node as a variable, which can be used by the HTTP request parameters.",
+          "deprecated": false
+        },
+        {
+          "key": "system_httpMethod",
+          "label": "",
+          "valueType": "string",
+          "required": true,
+          "renderTypeList": [
+            "custom"
+          ],
+          "value": "POST"
+        },
+        {
+          "key": "system_httpTimeout",
+          "label": "",
+          "valueType": "number",
+          "required": true,
+          "max": 600,
+          "min": 5,
+          "renderTypeList": [
+            "custom"
+          ],
+          "value": 30
+        },
+        {
+          "key": "system_httpReqUrl",
+          "label": "",
+          "valueType": "string",
+          "required": false,
+          "placeholder": "https://api.ai.com/getInventory",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": "https://example.com/api",
+          "description": "New HTTP request address. If there are two 'request addresses', you can delete this module and re-add it to pull the latest module configuration.",
+          "selectedType": "hidden"
+        },
+        {
+          "key": "system_header_secret",
+          "label": "",
+          "valueType": "object",
+          "required": false,
+          "renderTypeList": [
+            "hidden"
+          ]
+        },
+        {
+          "key": "system_httpHeader",
+          "label": "",
+          "valueType": "any",
+          "required": false,
+          "placeholder": "Custom request headers, please strictly fill in the JSON string.\n1. Ensure that the last attribute has no comma\n2. Ensure that the key contains double quotes\nFor example: {\"Authorization\":\"Bearer xxx\"}",
+          "renderTypeList": [
+            "custom"
+          ],
+          "value": [],
+          "description": "Custom request headers, please strictly fill in the JSON string.\n1. Ensure that the last attribute has no comma\n2. Ensure that the key contains double quotes\nFor example: {\"Authorization\":\"Bearer xxx\"}"
+        },
+        {
+          "key": "system_httpParams",
+          "label": "",
+          "valueType": "any",
+          "required": false,
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": []
+        },
+        {
+          "key": "system_httpJsonBody",
+          "label": "",
+          "valueType": "any",
+          "required": false,
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": ""
+        },
+        {
+          "key": "system_httpFormBody",
+          "label": "",
+          "valueType": "any",
+          "required": false,
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": []
+        },
+        {
+          "key": "system_httpContentType",
+          "label": "",
+          "valueType": "string",
+          "required": false,
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": "json"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "system_addOutputParam",
+          "key": "system_addOutputParam",
+          "type": "dynamic",
+          "valueType": "dynamic",
+          "label": "Output field extraction",
+          "description": "Specified fields in the response value can be extracted through JSONPath syntax",
+          "customFieldConfig": {
+            "selectValueTypeList": [
+              "string",
+              "number",
+              "boolean",
+              "object",
+              "arrayString",
+              "arrayNumber",
+              "arrayBoolean",
+              "arrayObject",
+              "arrayAny",
+              "any",
+              "chatHistory",
+              "datasetQuote",
+              "dynamic",
+              "selectDataset",
+              "selectApp"
+            ],
+            "showDefaultValue": false,
+            "showDescription": false
+          }
+        },
+        {
+          "id": "httpRawResponse",
+          "key": "httpRawResponse",
+          "type": "static",
+          "valueType": "any",
+          "label": "Raw Response",
+          "description": "Raw HTTP response. Only accepts string or JSON type response data.",
+          "required": true
+        },
+        {
+          "id": "system_httpRawError",
+          "key": "system_httpRawError",
+          "type": "error",
+          "valueType": "object",
+          "label": "Full error",
+          "description": "Complete error object when the HTTP request fails, including message, status, code, data, and other fields."
+        },
+        {
+          "id": "error",
+          "key": "error",
+          "type": "error",
+          "valueType": "string",
+          "label": "Error text"
+        }
+      ],
+      "nodeId": "http",
+      "position": {
+        "x": 1280,
+        "y": 0
+      }
+    },
+    {
+      "flowNodeType": "cfr",
+      "avatar": "core/workflow/template/queryExtension",
+      "avatarLinear": "core/workflow/template/queryExtensionLinear",
+      "colorSchema": "indigo",
+      "name": "Query extension",
+      "intro": "Using question optimization can improve the accuracy of Dataset searches during continuous conversations. After using this function, AI will first construct one or more new search terms based on the context, which are more conducive to Dataset searches. This module is already built into the Dataset search module. If you only perform a single Dataset search, you can directly use the built-in completion function of the Dataset.",
+      "showStatus": true,
+      "version": "481",
+      "inputs": [
+        {
+          "key": "model",
+          "label": "AI Model",
+          "valueType": "string",
+          "required": true,
+          "renderTypeList": [
+            "selectLLMModel",
+            "reference"
+          ],
+          "value": "gpt-4.1",
+          "selectedType": "selectLLMModel"
+        },
+        {
+          "key": "systemPrompt",
+          "label": "Conversation Background Description",
+          "valueType": "string",
+          "placeholder": "For example:\nQuestions about the introduction and use of Python.\nThe current conversation is related to the game 'GTA5'.",
+          "max": 300,
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "value": [
+            "VARIABLE_NODE_ID",
+            "tenantId"
+          ],
+          "description": "Describe the scope of the current conversation to help the AI complete and extend the current question. The content you fill in is usually for this assistant.",
+          "selectedType": "reference"
+        },
+        {
+          "key": "history",
+          "label": "Chat History",
+          "valueType": "chatHistory",
+          "required": true,
+          "max": 50,
+          "min": 0,
+          "renderTypeList": [
+            "numberInput",
+            "reference"
+          ],
+          "value": 6,
+          "description": "Maximum Number of Dialog Rounds"
+        },
+        {
+          "key": "userChatInput",
+          "label": "User Question",
+          "valueType": "string",
+          "required": true,
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "value": [
+            "start",
+            "userChatInput"
+          ],
+          "toolDescription": "user question",
+          "selectedType": "reference"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "system_text",
+          "key": "system_text",
+          "type": "static",
+          "valueType": "string",
+          "label": "Optimization Result",
+          "description": "Output as a string array, which can be directly connected to the 'User Question' of 'Dataset Search'. It is recommended not to connect to the 'User Question' of 'AI Chat'"
+        }
+      ],
+      "nodeId": "query",
+      "position": {
+        "x": 320,
+        "y": 0
+      }
+    },
+    {
+      "flowNodeType": "datasetSearchNode",
+      "avatar": "core/workflow/template/datasetSearch",
+      "avatarLinear": "core/workflow/template/datasetSearchLinear",
+      "colorSchema": "blueLight",
+      "name": "Dataset Search",
+      "intro": "Use 'semantic search' and 'full-text search' capabilities to find potentially relevant reference content from the 'Dataset'.",
+      "showStatus": true,
+      "version": "4.9.2",
+      "catchError": false,
+      "inputs": [
+        {
+          "key": "datasets",
+          "label": "Select Dataset",
+          "valueType": "selectDataset",
+          "required": true,
+          "renderTypeList": [
+            "selectDataset",
+            "reference"
+          ],
+          "valueDesc": "[\n  {\n    \"datasetId\": \"6693a4a6b69b7a9b0e37d9b0\"\n  }\n]",
+          "value": [
+            {
+              "avatar": "",
+              "datasetId": "dataset-demo",
+              "name": "Demo",
+              "vectorModel": {
+                "model": "text-embedding"
+              }
+            }
+          ],
+          "selectedType": "selectDataset"
+        },
+        {
+          "key": "similarity",
+          "label": "",
+          "valueType": "number",
+          "renderTypeList": [
+            "selectDatasetParamsModal"
+          ],
+          "value": 0.4
+        },
+        {
+          "key": "limit",
+          "label": "",
+          "valueType": "number",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": 5000
+        },
+        {
+          "key": "searchMode",
+          "label": "",
+          "valueType": "string",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": "embedding"
+        },
+        {
+          "key": "embeddingWeight",
+          "label": "",
+          "valueType": "number",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": 0.5
+        },
+        {
+          "key": "usingReRank",
+          "label": "",
+          "valueType": "boolean",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": false
+        },
+        {
+          "key": "rerankModel",
+          "label": "",
+          "valueType": "string",
+          "renderTypeList": [
+            "hidden"
+          ]
+        },
+        {
+          "key": "rerankWeight",
+          "label": "",
+          "valueType": "number",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": 0.5
+        },
+        {
+          "key": "datasetSearchUsingExtensionQuery",
+          "label": "",
+          "valueType": "boolean",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": true
+        },
+        {
+          "key": "datasetSearchExtensionModel",
+          "label": "",
+          "valueType": "string",
+          "renderTypeList": [
+            "hidden"
+          ]
+        },
+        {
+          "key": "datasetSearchExtensionBg",
+          "label": "",
+          "valueType": "string",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": ""
+        },
+        {
+          "key": "authTmbId",
+          "label": "",
+          "valueType": "boolean",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": false
+        },
+        {
+          "key": "datasetSearchInput",
+          "label": "Search content",
+          "valueType": "arrayString",
+          "required": true,
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "value": [
+            "hello"
+          ],
+          "toolDescription": "Search term or search statement",
+          "selectedType": "textarea"
+        },
+        {
+          "key": "collectionFilterMatch",
+          "label": "Collection Metadata Filter",
+          "valueType": "string",
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "description": "Currently supports filtering by tags, creation time, and collection IDs. Fill in the format as follows:\n{\n  \"tags\": {\n    \"$and\": [\"Tag 1\",\"Tag 2\"],\n    \"$or\": [\"When there are $and tags, and is effective, or is not effective\"]\n  },\n  \"createTime\": {\n      \"$gte\": \"YYYY-MM-DD HH:mm format, collection creation time greater than this time\",\n      \"$lte\": \"YYYY-MM-DD HH:mm format, collection creation time less than this time, can be used with $gte\"\n  },\n  \"collectionIds\": [\"collectionId1\", \"collectionId2\", \"Folder IDs are supported and will automatically expand to get all sub-collections\"]\n}",
+          "isPro": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "quoteQA",
+          "key": "quoteQA",
+          "type": "static",
+          "valueType": "datasetQuote",
+          "valueDesc": "{\n  id: string;\n  datasetId: string;\n  collectionId: string;\n  sourceName: string;\n  sourceId?: string;\n  q: string;\n  a: string\n}[]",
+          "label": "Dataset Quote",
+          "description": "Special array format, returns an empty array when the search result is empty."
+        },
+        {
+          "id": "system_error_text",
+          "key": "system_error_text",
+          "type": "error",
+          "valueType": "string",
+          "label": "Error text"
+        }
+      ],
+      "nodeId": "search",
+      "position": {
+        "x": 640,
+        "y": 0
+      }
+    },
+    {
+      "flowNodeType": "workflowStart",
+      "avatar": "core/workflow/template/workflowStart",
+      "avatarLinear": "core/workflow/template/workflowStartLinear",
+      "colorSchema": "blue",
+      "name": "Start",
+      "inputs": [
+        {
+          "key": "userChatInput",
+          "label": "User Question",
+          "valueType": "string",
+          "required": true,
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "toolDescription": "User Question"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "userChatInput",
+          "key": "userChatInput",
+          "type": "static",
+          "valueType": "string",
+          "label": "User Question"
+        }
+      ],
+      "nodeId": "start"
+    }
+  ],
+  "edges": [
+    {
+      "source": "call",
+      "sourceHandle": "call-source-right",
+      "target": "answer",
+      "targetHandle": "answer-target-left"
+    },
+    {
+      "source": "code",
+      "sourceHandle": "code-source-right",
+      "target": "call",
+      "targetHandle": "call-target-left"
+    },
+    {
+      "source": "extract",
+      "sourceHandle": "extract-source-right",
+      "target": "http",
+      "targetHandle": "http-target-left"
+    },
+    {
+      "source": "http",
+      "sourceHandle": "http-source-right",
+      "target": "code",
+      "targetHandle": "code-target-left"
+    },
+    {
+      "source": "query",
+      "sourceHandle": "query-source-right",
+      "target": "search",
+      "targetHandle": "search-target-left"
+    },
+    {
+      "source": "search",
+      "sourceHandle": "search-source-right",
+      "target": "extract",
+      "targetHandle": "extract-target-left"
+    },
+    {
+      "source": "start",
+      "sourceHandle": "start-source-right",
+      "target": "query",
+      "targetHandle": "query-target-left"
+    }
+  ],
+  "chatConfig": {
+    "welcomeText": "Welcome",
+    "variables": [
+      {
+        "key": "tenantId",
+        "label": "tenantId",
+        "valueType": "string",
+        "required": true,
+        "type": "input",
+        "description": "Tenant ID"
+      }
+    ]
+  }
+}

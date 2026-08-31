@@ -379,6 +379,15 @@ export const FlowNodeOutputItemTypeSchema = z.object({
 });
 export type FlowNodeOutputItemType = z.infer<typeof FlowNodeOutputItemTypeSchema>;
 
+/**
+ * 工作流持久化输出结构。`invalidCondition` 只用于 Web 模板的可用性计算，不能进入
+ * StoreWorkflow 或 WorkflowDocument。
+ */
+export const StoreNodeOutputItemTypeSchema = FlowNodeOutputItemTypeSchema.omit({
+  invalidCondition: true
+});
+export type StoreNodeOutputItemType = z.infer<typeof StoreNodeOutputItemTypeSchema>;
+
 /* Reference */
 export const ReferenceItemValueTypeSchema = z.tuple([z.string(), z.string().optional()]);
 export type ReferenceItemValueType = z.infer<typeof ReferenceItemValueTypeSchema>;

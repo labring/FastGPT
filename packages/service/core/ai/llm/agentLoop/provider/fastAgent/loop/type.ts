@@ -6,22 +6,26 @@ import type {
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { CreateLLMResponseProps } from '../../../../request';
-import type { SandboxClient } from '../../../../../sandbox/interface/runtime';
 import type { AgentLoopToolCatalog } from '../tools';
 import type { AgentLoopDatasetSearchExecutor } from '../../../domain/systemTool/datasetSearch';
 import type {
   AgentLoopChildrenInteractiveParams,
+  AgentLoopCompletionPolicy,
+  AgentLoopAskValidator,
   AgentLoopEvent,
   AgentLoopInteractiveToolExecuteParams,
   AgentLoopPendingMainContext,
   AgentLoopPause,
   AgentLoopReadFileExecutor,
+  AgentLoopSystemPromptBuilder,
   AgentLoopToolExecutionResult,
+  AgentLoopSandboxExecutor,
   AgentLoopUsage
 } from '../../../domain';
 
 export type {
   AgentLoopChildrenInteractiveParams,
+  AgentLoopCompletionPolicy,
   AgentLoopEvent,
   AgentLoopInteractiveToolExecuteParams,
   AgentLoopPause,
@@ -32,6 +36,7 @@ export type {
 export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   teamId: string;
   model: string;
+  systemPromptBuilder?: AgentLoopSystemPromptBuilder;
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   userKey?: CreateLLMResponseProps['userKey'];
   stream?: boolean;
@@ -44,11 +49,15 @@ export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   useVision?: boolean;
   useAudio?: boolean;
   useVideo?: boolean;
+  forceMediaToBase64?: boolean;
   extractFiles?: boolean;
   lang?: localeType;
+  hasExecutableTools: boolean;
   maxRunAgentTimes?: number;
+  completionPolicy?: AgentLoopCompletionPolicy;
   batchToolSize?: number;
   checkIsStopping?: () => boolean;
+  validateAsk?: AgentLoopAskValidator;
   toolCatalog: AgentLoopToolCatalog;
   executeTool: (e: {
     call: ChatCompletionMessageToolCall;
@@ -58,7 +67,8 @@ export type AgentLoopRuntime<TChildrenResponse = unknown> = {
     e: AgentLoopInteractiveToolExecuteParams<TChildrenResponse>
   ) => Promise<AgentLoopToolExecutionResult<TChildrenResponse>>;
   sandboxToolContext?: {
-    client: SandboxClient;
+    client?: import('../../../../../sandbox/interface/runtime').SandboxClient;
+    executor?: AgentLoopSandboxExecutor;
   };
   executeReadFileTool?: AgentLoopReadFileExecutor;
   executeDatasetSearchTool?: AgentLoopDatasetSearchExecutor;

@@ -1,5 +1,9 @@
 import { FlowNodeTypeEnum, NodeColorSchemaEnum } from '../node/constant';
-import { FlowNodeInputItemTypeSchema, FlowNodeOutputItemTypeSchema } from './io';
+import {
+  FlowNodeInputItemTypeSchema,
+  FlowNodeOutputItemTypeSchema,
+  StoreNodeOutputItemTypeSchema
+} from './io';
 import { HttpToolConfigTypeSchema } from '../../app/tool/httpTool/type';
 import { McpToolConfigSchema } from '../../app/tool/mcpTool/type';
 import { ParentIdSchema } from '../../../common/parentFolder/type';
@@ -303,6 +307,8 @@ export type FlowNodeItemType = z.infer<typeof FlowNodeItemSchema>;
 // store node type
 export const StoreNodeItemTypeSchema = FlowNodeCommonTypeSchema.extend({
   nodeId: z.string(),
+  outputs: z.array(StoreNodeOutputItemTypeSchema),
+  isFolded: BoolSchema.optional(),
   position: z
     .object({
       x: NumSchema,

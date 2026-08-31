@@ -124,6 +124,7 @@ export const iconPaths = {
     import('./icons/core/app/agent/child/contextCompress.svg'),
   'core/app/agent/child/plan': () => import('./icons/core/app/agent/child/plan.svg'),
   'core/app/aiFill': () => import('./icons/core/app/aiFill.svg'),
+  'core/app/aiGenerateFilled': () => import('./icons/core/app/aiGenerateFilled.svg'),
   'core/app/aiLight': () => import('./icons/core/app/aiLight.svg'),
   'core/app/aiLightSmall': () => import('./icons/core/app/aiLightSmall.svg'),
   'core/app/configDrawerSetting': () => import('./icons/core/app/configDrawerSetting.svg'),
@@ -135,6 +136,7 @@ export const iconPaths = {
   'core/app/markLight': () => import('./icons/core/app/markLight.svg'),
   'core/app/workflowToolbarAdd': () => import('./icons/core/app/workflowToolbarAdd.svg'),
   'core/app/workflowToolbarSearch': () => import('./icons/core/app/workflowToolbarSearch.svg'),
+  'core/app/workflowVersion': () => import('./icons/core/app/workflowVersion.svg'),
   'core/app/publish/lark': () => import('./icons/core/app/publish/lark.svg'),
   'core/app/publish/offiaccount': () => import('./icons/core/app/publish/offiaccount.svg'),
   'core/app/publish/wechat': () => import('./icons/core/app/publish/wechat.svg'),
@@ -206,6 +208,8 @@ export const iconPaths = {
   'core/chat/fileSelect': () => import('./icons/core/chat/fileSelect.svg'),
   'core/chat/monitor': () => import('./icons/core/chat/monitor.svg'),
   'core/chat/markdown': () => import('./icons/core/chat/markdown.svg'),
+  'core/chat/mermaidPreviewAdd': () => import('./icons/core/chat/mermaidPreviewAdd.svg'),
+  'core/chat/mermaidPreviewClose': () => import('./icons/core/chat/mermaidPreviewClose.svg'),
   'core/chat/quoteFill': () => import('./icons/core/chat/quoteFill.svg'),
   'core/chat/recordFill': () => import('./icons/core/chat/recordFill.svg'),
   'core/chat/sendFill': () => import('./icons/core/chat/sendFill.svg'),
@@ -222,6 +226,18 @@ export const iconPaths = {
   'core/chat/terminal': () => import('./icons/core/chat/terminal.svg'),
   'core/chat/think': () => import('./icons/core/chat/think.svg'),
   'core/chat/var': () => import('./icons/core/chat/var.svg'),
+  'core/chat/workflowBuilder/cancel': () => import('./icons/core/chat/workflowBuilder/cancel.svg'),
+  'core/chat/workflowBuilder/commercialCheck': () =>
+    import('./icons/core/chat/workflowBuilder/commercialCheck.svg'),
+  'core/chat/workflowBuilder/commercialMore': () =>
+    import('./icons/core/chat/workflowBuilder/commercialMore.svg'),
+  'core/chat/workflowBuilder/commercialStar': () =>
+    import('./icons/core/chat/workflowBuilder/commercialStar.svg'),
+  'core/chat/workflowBuilder/commit': () => import('./icons/core/chat/workflowBuilder/commit.svg'),
+  'core/chat/workflowBuilder/preview': () =>
+    import('./icons/core/chat/workflowBuilder/preview.svg'),
+  'core/chat/workflowBuilder/query': () => import('./icons/core/chat/workflowBuilder/query.svg'),
+  'core/chat/workflowBuilder/stage': () => import('./icons/core/chat/workflowBuilder/stage.svg'),
   'core/dataset/commonDatasetColor': () => import('./icons/core/dataset/commonDatasetColor.svg'),
   'core/dataset/commonDatasetOutline': () =>
     import('./icons/core/dataset/commonDatasetOutline.svg'),

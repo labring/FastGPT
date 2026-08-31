@@ -186,8 +186,9 @@ export const getLastInteractiveValue = (
             {
               question: lastValue.interactive.params.content,
               options: lastValue.interactive.params.options.map((option) => ({
-                summary: option,
-                value: option
+                // AgentPlanAskOption 同时支持纯字符串与带 label/inputMode 的对象形式
+                summary: typeof option === 'string' ? option : option.label,
+                value: typeof option === 'string' ? option : option.value
               })),
               answer: ''
             }
@@ -223,6 +224,13 @@ export const getLastInteractiveValue = (
     }
 
     if (lastValue.interactive.type === 'paymentPause' && !lastValue.interactive.params.continue) {
+      return lastValue.interactive;
+    }
+
+    if (
+      lastValue.interactive.type === 'workflowBuilderPreview' &&
+      !lastValue.interactive.params.answerValue
+    ) {
       return lastValue.interactive;
     }
   }

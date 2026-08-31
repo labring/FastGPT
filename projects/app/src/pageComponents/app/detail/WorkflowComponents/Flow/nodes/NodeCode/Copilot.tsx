@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Box, Button, CloseButton, Flex } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -68,7 +68,6 @@ const NodeCopilot = ({
   const [optimizerInput, setOptimizerInput] = useState('');
   const [codeResult, setCodeResult] = useState('');
   const [selectedModel, setSelectedModel] = useState(defaultModels.llm?.model || '');
-  const [conversationHistory, setConversationHistory] = useState<ChatCompletionMessageParam[]>([]);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
   const closePopoverRef = useRef<() => void>();
 
@@ -103,10 +102,10 @@ const NodeCopilot = ({
     };
   }, [realTimeInputs, realTimeOutputs]);
 
-  useEffect(() => {
-    if (conversationHistory.length === 0) {
-      const configMessage = {
-        role: 'user' as const,
+  const [conversationHistory, setConversationHistory] = useState<ChatCompletionMessageParam[]>(
+    () => [
+      {
+        role: 'user',
         content: t('app:copilot_config_message', {
           codeType,
           code,
@@ -120,20 +119,16 @@ const NodeCopilot = ({
             })
             .join('\n'),
           outputs: dynamicOutputs
-            .map((output) => `- ${output.label} (${output.valueType})`)
+            .map((output) => `- ${output.key} (${output.valueType})`)
             .join('\n')
         })
-      };
-
-      const confirmMessage = {
-        role: 'assistant' as const,
+      },
+      {
+        role: 'assistant',
         content: t('app:copilot_confirm_message')
-      };
-
-      const initialConversationHistory = [configMessage, confirmMessage];
-      setConversationHistory(initialConversationHistory);
-    }
-  }, [conversationHistory, codeType, code, dynamicInputs, dynamicOutputs, t]);
+      }
+    ]
+  );
 
   const modelOptions = useMemo(() => {
     return llmModelList.map((model) => ({
@@ -266,25 +261,25 @@ const NodeCopilot = ({
         });
       });
       const existingOutputIdMap = new Map(dynamicOutputs.map((output) => [output.key, output.id]));
-      const nextOutputKeys = new Set(outputs.map((output) => output.label));
+      const nextOutputKeys = new Set(outputs.map((output) => output.key));
       dynamicOutputs.forEach((output) => {
         if (!nextOutputKeys.has(output.key)) {
           onChangeNode({ nodeId, type: 'delOutput', key: output.key });
         }
       });
       outputs.forEach((output) => {
-        const existingId = existingOutputIdMap.get(output.label);
+        const existingId = existingOutputIdMap.get(output.key);
         if (existingId) {
           onChangeNode({
             nodeId,
             type: 'updateOutput',
-            key: output.label,
+            key: output.key,
             value: {
               id: existingId,
               type: FlowNodeOutputTypeEnum.dynamic,
-              key: output.label,
+              key: output.key,
               valueType: output.type as WorkflowIOValueTypeEnum,
-              label: output.label,
+              label: output.key,
               valueDesc: '',
               description: ''
             }
@@ -296,9 +291,9 @@ const NodeCopilot = ({
             value: {
               id: nanoid(),
               type: FlowNodeOutputTypeEnum.dynamic,
-              key: output.label,
+              key: output.key,
               valueType: output.type as WorkflowIOValueTypeEnum,
-              label: output.label,
+              label: output.key,
               valueDesc: '',
               description: ''
             }
@@ -311,7 +306,7 @@ const NodeCopilot = ({
         status: 'success',
         title: t('app:code_applied_successfully')
       });
-    } catch (error) {
+    } catch {
       toast({
         status: 'error',
         title: t('app:apply_code_failed')

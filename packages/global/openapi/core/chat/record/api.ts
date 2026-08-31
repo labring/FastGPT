@@ -224,7 +224,14 @@ export type GetChatSpeechBodyType = z.infer<typeof GetChatSpeechBodySchema>;
  * ============================================================================ */
 
 export const AudioTranscriptionsDataRawSchema = z.object({
-  sourceType: z.enum(ChatSourceTypeEnum).describe('会话归属资源类型'),
+  sourceType: z
+    .enum([
+      ChatSourceTypeEnum.app,
+      ChatSourceTypeEnum.skillEdit,
+      ChatSourceTypeEnum.chatAgentHelper,
+      ChatSourceTypeEnum.workflowBuilder
+    ])
+    .describe('会话归属资源类型'),
   sourceId: ObjectIdSchema.describe('会话归属资源 ID'),
   chatId: z.string().min(1).max(256).describe('会话 ID'),
   outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据'),

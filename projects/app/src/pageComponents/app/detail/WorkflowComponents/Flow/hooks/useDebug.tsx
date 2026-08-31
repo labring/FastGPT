@@ -10,6 +10,7 @@ import { getNodeAllSource } from '@/web/core/workflow/utils';
 import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/workflowCheck';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { uiWorkflow2StoreWorkflow } from '../../utils';
+import { checkWorkflowNodeAndConnection } from '../../adapters/validation';
 import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 
 import dynamic from 'next/dynamic';
@@ -105,11 +106,22 @@ export const useDebug = () => {
   const flowData2StoreDataAndCheck = useCallback(async () => {
     const nodes = getNodes();
 
-    const { issueMap, hasError, firstErrorNodeId } = checkWorkflowBeforeRunOrPublish({
+    const coreErrorNodeIds = checkWorkflowNodeAndConnection({
+      nodes,
+      edges,
+      chatConfig: appDetail.chatConfig
+    });
+    const {
+      issueMap,
+      hasError: hasWebError,
+      firstErrorNodeId: firstWebErrorNodeId
+    } = checkWorkflowBeforeRunOrPublish({
       nodes,
       edges,
       t: workflowT
     });
+    const hasError = hasWebError || !!coreErrorNodeIds?.length;
+    const firstErrorNodeId = firstWebErrorNodeId ?? coreErrorNodeIds?.[0];
 
     if (!hasError) {
       onRemoveError();
@@ -121,7 +133,6 @@ export const useDebug = () => {
 
       return JSON.stringify(storeNodes);
     }
-
     onSyncWorkflowCheckIssues(issueMap);
 
     if (firstErrorNodeId) {

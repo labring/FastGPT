@@ -7,7 +7,7 @@ import React, { useCallback, useMemo } from 'react';
 import { resolveFormInputFileValues } from '../FormInputResult';
 import { FormInputComponent } from '../Interactive/InteractiveComponents';
 import InteractiveCard from './InteractiveCard';
-import { onSendPrompt } from './utils';
+import { useChatInstanceActions } from '../../ChatContainer/context/chatInstanceActionsContext';
 
 /**
  * 从同条 AI 消息的 `responseData` 中查找某字段的 `formInputResult` 值（渲染层兜底）。
@@ -63,6 +63,7 @@ const RenderStandardUserFormInteractive = ({
   isLastChild
 }: RenderUserFormInteractiveProps) => {
   const { t } = useTranslation();
+  const { continueInteractive } = useChatInstanceActions();
 
   const defaultValues = useMemo(() => {
     return interactive.params.inputForm?.reduce((acc: Record<string, any>, item) => {
@@ -99,9 +100,9 @@ const RenderStandardUserFormInteractive = ({
         }
       });
 
-      onSendPrompt(JSON.stringify(finalData));
+      continueInteractive({ text: JSON.stringify(finalData) });
     },
-    [interactive.params.inputForm]
+    [continueInteractive, interactive.params.inputForm]
   );
 
   return (

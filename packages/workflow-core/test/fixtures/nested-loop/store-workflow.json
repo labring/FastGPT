@@ -1,0 +1,255 @@
+{
+  "nodes": [
+    {
+      "flowNodeType": "workflowStart",
+      "avatar": "core/workflow/template/workflowStart",
+      "avatarLinear": "core/workflow/template/workflowStartLinear",
+      "colorSchema": "blue",
+      "name": "workflow:template.workflow_start",
+      "inputs": [
+        {
+          "key": "userChatInput",
+          "label": "workflow:user_question",
+          "valueType": "string",
+          "required": true,
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "toolDescription": "workflow:user_question"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "userChatInput",
+          "key": "userChatInput",
+          "type": "static",
+          "valueType": "string",
+          "label": "common:core.module.input.label.user question"
+        }
+      ],
+      "nodeId": "start"
+    },
+    {
+      "flowNodeType": "loopRun",
+      "avatar": "core/workflow/template/loopRun",
+      "avatarLinear": "core/workflow/template/loopRunLinear",
+      "colorSchema": "loopRun",
+      "name": "workflow:loop_run",
+      "intro": "workflow:intro_loop_run",
+      "showStatus": true,
+      "catchError": false,
+      "inputs": [
+        {
+          "key": "loopRunMode",
+          "label": "workflow:loop_run_mode",
+          "valueType": "string",
+          "required": true,
+          "list": [
+            {
+              "label": "workflow:loop_run_mode_array",
+              "value": "array",
+              "icon": "core/workflow/inputType/array",
+              "description": "workflow:loop_run_mode_array_desc"
+            },
+            {
+              "label": "workflow:loop_run_mode_conditional",
+              "value": "conditional",
+              "icon": "core/workflow/inputType/conditional",
+              "description": "workflow:loop_run_mode_conditional_desc"
+            }
+          ],
+          "renderTypeList": [
+            "select"
+          ],
+          "value": "conditional",
+          "description": "workflow:loop_run_mode_tip",
+          "selectedType": "select"
+        },
+        {
+          "key": "loopRunInputArray",
+          "label": "workflow:loop_run_input_array",
+          "valueType": "arrayAny",
+          "required": true,
+          "renderTypeList": [
+            "reference"
+          ],
+          "value": []
+        },
+        {
+          "key": "loopCustomOutputs",
+          "label": "workflow:loop_custom_outputs",
+          "valueType": "dynamic",
+          "required": false,
+          "customInputConfig": {
+            "selectValueTypeList": [
+              "string",
+              "number",
+              "boolean",
+              "object",
+              "arrayString",
+              "arrayNumber",
+              "arrayBoolean",
+              "arrayObject",
+              "arrayAny",
+              "any",
+              "chatHistory",
+              "datasetQuote",
+              "dynamic",
+              "selectDataset",
+              "selectApp"
+            ],
+            "showDefaultValue": false,
+            "showDescription": false,
+            "hideBottomDivider": true
+          },
+          "renderTypeList": [
+            "addInputParam"
+          ],
+          "description": "workflow:loop_custom_outputs_tip"
+        },
+        {
+          "key": "childrenNodeIdList",
+          "label": "",
+          "valueType": "arrayString",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": [
+            "loop__start",
+            "break"
+          ]
+        },
+        {
+          "key": "nodeWidth",
+          "label": "",
+          "valueType": "number",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": 900
+        },
+        {
+          "key": "nodeHeight",
+          "label": "",
+          "valueType": "number",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": 500
+        },
+        {
+          "key": "loopNodeInputHeight",
+          "label": "",
+          "valueType": "number",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": 320
+        }
+      ],
+      "outputs": [
+        {
+          "id": "system_error_text",
+          "key": "system_error_text",
+          "type": "error",
+          "valueType": "string",
+          "label": "workflow:error_text"
+        }
+      ],
+      "nodeId": "loop"
+    },
+    {
+      "parentNodeId": "loop",
+      "flowNodeType": "loopRunStart",
+      "avatar": "core/workflow/template/loopRunStart",
+      "avatarLinear": "core/workflow/template/loopRunStartLinear",
+      "colorSchema": "loopRun",
+      "name": "workflow:loop_run_start",
+      "showStatus": false,
+      "inputs": [
+        {
+          "key": "loopRunMode",
+          "label": "",
+          "valueType": "string",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": "array"
+        },
+        {
+          "key": "loopStartInput",
+          "label": "",
+          "valueType": "any",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": ""
+        },
+        {
+          "key": "loopStartIndex",
+          "label": "",
+          "valueType": "number",
+          "renderTypeList": [
+            "hidden"
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "id": "currentIndex",
+          "key": "currentIndex",
+          "type": "static",
+          "valueType": "number",
+          "label": "workflow:current_index",
+          "description": "workflow:current_index_desc"
+        },
+        {
+          "id": "currentItem",
+          "key": "currentItem",
+          "type": "static",
+          "valueType": "any",
+          "label": "workflow:current_item",
+          "description": "workflow:current_item_desc"
+        },
+        {
+          "id": "currentIteration",
+          "key": "currentIteration",
+          "type": "static",
+          "valueType": "number",
+          "label": "workflow:current_iteration",
+          "description": "workflow:current_iteration_desc"
+        }
+      ],
+      "nodeId": "loop__start"
+    },
+    {
+      "parentNodeId": "loop",
+      "flowNodeType": "loopRunBreak",
+      "avatar": "core/workflow/template/loopRunBreak",
+      "avatarLinear": "core/workflow/template/loopRunBreakLinear",
+      "colorSchema": "loopRun",
+      "name": "workflow:loop_run_break",
+      "intro": "workflow:loop_run_break_tip",
+      "showStatus": false,
+      "inputs": [],
+      "outputs": [],
+      "nodeId": "break"
+    }
+  ],
+  "edges": [
+    {
+      "source": "start",
+      "sourceHandle": "start-source-right",
+      "target": "loop",
+      "targetHandle": "loop-target-left"
+    },
+    {
+      "source": "loop__start",
+      "sourceHandle": "loop__start-source-right",
+      "target": "break",
+      "targetHandle": "break-target-left"
+    }
+  ],
+  "chatConfig": {}
+}

@@ -8,7 +8,7 @@ import 'reactflow/dist/style.css';
 import { useContextSelector } from 'use-context-selector';
 import NodeTemplatesPopover from './NodeTemplatesPopover';
 import SearchButton from '../../Workflow/components/SearchButton';
-import SystemConfigDrawer from './SystemConfigDrawer';
+import SystemConfigDrawer, { SystemConfigButton } from './SystemConfigDrawer';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { WorkflowInitContext, WorkflowBufferDataContext } from '../context/workflowInitContext';
 import ContextMenu from './components/ContextMenu';
@@ -18,11 +18,13 @@ import { useWorkflow } from './hooks/useWorkflow';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { NodeProps } from 'reactflow';
 import ReactFlow, { SelectionMode, useReactFlow } from 'reactflow';
-import { Box, IconButton, useDisclosure } from '@chakra-ui/react';
+import { Box, Flex, IconButton, usePrefersReducedMotion } from '@chakra-ui/react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { WorkflowUIContext } from '../context/workflowUIContext';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
+import WorkflowBuilderEntry from '../WorkflowBuilder/WorkflowBuilderEntry';
+import { useWorkflowBuilderUI } from '../WorkflowBuilder/context';
+import WorkflowToolbarTooltip from '../WorkflowBuilder/WorkflowToolbarTooltip';
 
 const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));
 const NodeStopTool = React.memo((props: NodeProps<FlowNodeItemType>) => (
@@ -79,7 +81,7 @@ const Workflow = () => {
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
   const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
   const helperLinesRef = useRef<HelperLinesController>(null);
-  const { reactFlowWrapperCallback, workflowControlMode, menu } = useContextSelector(
+  const { reactFlowWrapperCallback, workflowControlMode } = useContextSelector(
     WorkflowUIContext,
     (v) => v
   );
@@ -97,11 +99,11 @@ const Workflow = () => {
     onPaneClick
   } = useWorkflow({ helperLinesRef });
 
-  const {
-    isOpen: isOpenTemplate,
-    onOpen: onOpenTemplate,
-    onClose: onCloseTemplate
-  } = useDisclosure();
+  const { workflowCanvasRef, activeLeftPanel, closeLeftPanel, toggleLeftPanel } =
+    useWorkflowBuilderUI();
+  const isOpenTemplate = activeLeftPanel === 'nodeTemplates';
+  const isLeftPanelOpen = Boolean(activeLeftPanel);
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   const [movingCanvas, setMovingCanvas] = useState(false);
 
@@ -130,6 +132,7 @@ const Workflow = () => {
   return (
     <>
       <Box
+        ref={workflowCanvasRef}
         flex={'1 0 0'}
         h={0}
         w={'100%'}
@@ -139,35 +142,61 @@ const Workflow = () => {
           return false;
         }}
       >
-        {/* open module template */}
+        {/* 非搜索入口打开面板时保留工具栏节点并向左退出，避免条件卸载造成图标逐个跳动。 */}
         <>
-          <Box position={'absolute'} top={20} left={6} zIndex={1}>
-            <MyTooltip shouldWrapChildren={false} label={t('workflow:to_add_node')}>
+          <Flex
+            position={'absolute'}
+            top={'50%'}
+            left={5}
+            zIndex={2}
+            transform={
+              isLeftPanelOpen ? 'translate(calc(-100% - 24px), -50%)' : 'translate(0, -50%)'
+            }
+            opacity={isLeftPanelOpen ? 0 : 1}
+            pointerEvents={isLeftPanelOpen ? 'none' : 'auto'}
+            aria-hidden={isLeftPanelOpen}
+            transition={prefersReducedMotion ? 'none' : 'transform 200ms ease, opacity 160ms ease'}
+            w={'40px'}
+            px={1}
+            py={2}
+            direction={'column'}
+            alignItems={'center'}
+            gap={2}
+            bg={'white'}
+            borderRadius={'8px'}
+            boxShadow={'0 0 1px rgba(19, 51, 107, 0.10), 0 4px 10px rgba(19, 51, 107, 0.10)'}
+          >
+            <WorkflowBuilderEntry />
+            <Box w={'20px'} h={'1px'} flexShrink={0} bg={'#E8EBF0'} />
+            <WorkflowToolbarTooltip label={t('workflow:to_add_node')}>
               <IconButton
-                icon={<MyIcon name="core/app/workflowToolbarAdd" boxSize={6} color={'white'} />}
-                w={9}
-                minW={9}
-                h={9}
-                p={1.5}
-                borderRadius={'50%'}
+                icon={
+                  <MyIcon name="core/app/workflowToolbarAdd" boxSize={'18px'} color={'white'} />
+                }
+                w={8}
+                minW={8}
+                h={8}
+                p={'7px'}
+                borderRadius={'6px'}
                 bg={'black'}
-                _hover={{ bg: 'myGray.700' }}
+                _hover={{ bg: '#1D2532' }}
                 aria-label={t('workflow:to_add_node')}
                 border={'none'}
-                boxShadow={'0 4px 5px rgba(19, 51, 107, 0.20), 0 0 0.5px rgba(19, 51, 107, 0.50)'}
                 onClick={() => {
-                  if (isOpenTemplate) {
-                    onCloseTemplate();
-                  } else {
-                    onOpenTemplate();
-                  }
+                  toggleLeftPanel('nodeTemplates');
                 }}
               />
-            </MyTooltip>
-          </Box>
-          <SearchButton />
+            </WorkflowToolbarTooltip>
+            <Box w={'20px'} h={'1px'} flexShrink={0} bg={'#E8EBF0'} />
+            <SystemConfigButton />
+            <Box w={'20px'} h={'1px'} flexShrink={0} bg={'#E8EBF0'} />
+            <SearchButton inToolbar portalContainerRef={workflowCanvasRef} />
+          </Flex>
           <SystemConfigDrawer />
-          <NodeTemplatesModal isOpen={isOpenTemplate} onClose={onCloseTemplate} />
+          <NodeTemplatesModal
+            isOpen={isOpenTemplate}
+            onClose={() => closeLeftPanel('nodeTemplates')}
+          />
           <NodeTemplatesPopover />
         </>
 
@@ -217,7 +246,7 @@ const Workflow = () => {
             setMovingCanvas(false);
           }}
         >
-          {!!menu && <ContextMenu />}
+          <ContextMenu />
           <FlowController />
           <HelperLines ref={helperLinesRef} />
         </ReactFlow>

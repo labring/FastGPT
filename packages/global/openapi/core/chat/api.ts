@@ -20,11 +20,17 @@ const ChatTargetInputShape = {
     example: '68ad85a7463006c963799a06',
     description: 'Skill Edit 调试 ID。appId、skillId 和 outLinkAuthData 必须且只能传一个。'
   }),
-  sourceType: z.enum([ChatSourceTypeEnum.app, ChatSourceTypeEnum.chatAgentHelper]).optional().meta({
-    example: ChatSourceTypeEnum.chatAgentHelper,
-    description:
-      'appId 对应的会话资源类型。缺省为 App 会话；ChatAgentHelper 会话传 chatAgentHelper。'
-  })
+  sourceType: z
+    .enum([
+      ChatSourceTypeEnum.app,
+      ChatSourceTypeEnum.chatAgentHelper,
+      ChatSourceTypeEnum.workflowBuilder
+    ])
+    .optional()
+    .meta({
+      example: ChatSourceTypeEnum.chatAgentHelper,
+      description: 'appId 对应的会话资源类型。缺省为 App 会话；辅助生成会话传对应 sourceType。'
+    })
 };
 
 type ChatTargetInput = {
@@ -60,6 +66,11 @@ export type ChatTargetInputType =
       appId: string;
       skillId?: never;
       sourceType: ChatSourceTypeEnum.chatAgentHelper;
+    }
+  | {
+      appId: string;
+      skillId?: never;
+      sourceType: ChatSourceTypeEnum.workflowBuilder;
     };
 export type ChatTargetResponseType = ChatTargetInputType;
 
@@ -87,6 +98,11 @@ const getNormalizedOutLinkAuthData = (data: ChatTargetInput): OutLinkChatAuthPro
 };
 
 export const ChatTargetResponseSchema = z.union([
+  z.object({
+    appId: ObjectIdSchema.describe('应用 ID，仅工作流辅助生成会话返回'),
+    skillId: z.undefined().optional(),
+    sourceType: z.literal(ChatSourceTypeEnum.workflowBuilder).describe('工作流辅助生成会话资源类型')
+  }),
   z.object({
     appId: ObjectIdSchema.describe('应用 ID，仅 ChatAgentHelper 会话返回'),
     skillId: z.undefined().optional(),
@@ -129,6 +145,10 @@ export const buildChatTargetResponse = ({
 
   if (sourceType === ChatSourceTypeEnum.chatAgentHelper) {
     return { appId: id, sourceType: ChatSourceTypeEnum.chatAgentHelper };
+  }
+
+  if (sourceType === ChatSourceTypeEnum.workflowBuilder) {
+    return { appId: id, sourceType: ChatSourceTypeEnum.workflowBuilder };
   }
 
   const exhaustiveCheck: never = sourceType;
@@ -176,7 +196,9 @@ const refineChatAuthTargetInput = (
 ) => {
   const hasAppTarget = !!data.appId;
   const hasSkillTarget = !!data.skillId;
-  const isChatAgentHelperTarget = data.sourceType === ChatSourceTypeEnum.chatAgentHelper;
+  const isExplicitAppSource =
+    data.sourceType === ChatSourceTypeEnum.chatAgentHelper ||
+    data.sourceType === ChatSourceTypeEnum.workflowBuilder;
   const nestedAuthData = getNestedOutLinkAuthData(data);
   const shareId = nestedAuthData.shareId;
   const outLinkUid = nestedAuthData.outLinkUid;
@@ -199,17 +221,17 @@ const refineChatAuthTargetInput = (
     });
   }
 
-  if (isChatAgentHelperTarget && !hasAppTarget) {
+  if (isExplicitAppSource && !hasAppTarget) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'sourceType=chatAgentHelper requires appId'
+      message: `sourceType=${String(data.sourceType)} requires appId`
     });
   }
 
-  if (isChatAgentHelperTarget && hasSkillTarget) {
+  if (isExplicitAppSource && hasSkillTarget) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'sourceType=chatAgentHelper cannot be used with skillId'
+      message: `sourceType=${String(data.sourceType)} cannot be used with skillId`
     });
   }
 
@@ -259,6 +281,9 @@ export const transformChatTargetInput = <T extends ChatTargetInput>(data: T) => 
       if (rawSourceType === ChatSourceTypeEnum.chatAgentHelper) {
         return ChatSourceTypeEnum.chatAgentHelper;
       }
+      if (rawSourceType === ChatSourceTypeEnum.workflowBuilder) {
+        return ChatSourceTypeEnum.workflowBuilder;
+      }
       return ChatSourceTypeEnum.app;
     })(),
     sourceId
@@ -296,6 +321,9 @@ export const transformChatAuthTargetInput = <T extends ChatTargetInput>(data: T)
       if (skillId) return ChatSourceTypeEnum.skillEdit;
       if (rawSourceType === ChatSourceTypeEnum.chatAgentHelper) {
         return ChatSourceTypeEnum.chatAgentHelper;
+      }
+      if (rawSourceType === ChatSourceTypeEnum.workflowBuilder) {
+        return ChatSourceTypeEnum.workflowBuilder;
       }
       return ChatSourceTypeEnum.app;
     })(),
@@ -336,6 +364,9 @@ export const transformOptionalChatTargetInput = <T extends ChatTargetInput>(data
             if (skillId) return ChatSourceTypeEnum.skillEdit;
             if (rawSourceType === ChatSourceTypeEnum.chatAgentHelper) {
               return ChatSourceTypeEnum.chatAgentHelper;
+            }
+            if (rawSourceType === ChatSourceTypeEnum.workflowBuilder) {
+              return ChatSourceTypeEnum.workflowBuilder;
             }
             return ChatSourceTypeEnum.app;
           })(),

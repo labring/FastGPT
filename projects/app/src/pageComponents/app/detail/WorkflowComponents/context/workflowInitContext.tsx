@@ -8,7 +8,8 @@ import React, {
   type ReactNode,
   useMemo,
   useRef,
-  useCallback
+  useCallback,
+  useState
 } from 'react';
 import {
   type Edge,
@@ -69,6 +70,12 @@ export type WorkflowDataContextType = {
   getNodeList: () => FlowNodeItemType[];
   edges: Edge<any>[];
   setEdges: Dispatch<SetStateAction<Edge<any>[]>>;
+  getEdges: () => Edge<any>[];
+  workflowDataRevision: number;
+  replaceWorkflowData: (data: {
+    nodes: Node<FlowNodeItemType, string | undefined>[];
+    edges: Edge<any>[];
+  }) => number;
   onEdgesChange: OnChange<EdgeChange>;
   forbiddenSaveSnapshot: React.MutableRefObject<boolean>;
   llmMaxQuoteContext: number;
@@ -103,6 +110,13 @@ export const WorkflowBufferDataContext = createContext<WorkflowDataContextType>(
   },
   edges: [],
   setEdges: function (value: React.SetStateAction<Edge<any>[]>): void {
+    throw new Error('Function not implemented.');
+  },
+  getEdges: function (): Edge<any>[] {
+    throw new Error('Function not implemented.');
+  },
+  workflowDataRevision: 0,
+  replaceWorkflowData: function (): number {
     throw new Error('Function not implemented.');
   },
   onEdgesChange: function (changes: EdgeChange[]): void {
@@ -295,6 +309,26 @@ const WorkflowInitContextProvider = ({
 
   // Edges
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const getEdges = useMemoizedFn(() => edges);
+  const workflowDataRevisionRef = useRef(0);
+  const [workflowDataRevision, setWorkflowDataRevision] = useState(0);
+  const replaceWorkflowData = useCallback(
+    ({
+      nodes: nextNodes,
+      edges: nextEdges
+    }: {
+      nodes: Node<FlowNodeItemType, string | undefined>[];
+      edges: Edge<any>[];
+    }) => {
+      const nextRevision = workflowDataRevisionRef.current + 1;
+      workflowDataRevisionRef.current = nextRevision;
+      setNodes(nextNodes);
+      setEdges(nextEdges);
+      setWorkflowDataRevision(nextRevision);
+      return nextRevision;
+    },
+    [setEdges, setNodes]
+  );
 
   const toolNodesMap = useMemoEnhance(() => {
     const selectedToolEdgeMap: Record<string, boolean> = {};
@@ -370,6 +404,9 @@ const WorkflowInitContextProvider = ({
       getNodeList,
       edges,
       setEdges,
+      getEdges,
+      workflowDataRevision,
+      replaceWorkflowData,
       onEdgesChange,
       forbiddenSaveSnapshot,
       llmMaxQuoteContext,
@@ -392,6 +429,9 @@ const WorkflowInitContextProvider = ({
     getNodeList,
     edges,
     setEdges,
+    getEdges,
+    workflowDataRevision,
+    replaceWorkflowData,
     onEdgesChange,
     llmMaxQuoteContext,
     nodeList.length,

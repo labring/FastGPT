@@ -13,11 +13,13 @@ import React, { useState } from 'react';
 
 const RenderProcessingCollapse = React.memo(function RenderProcessingCollapse({
   children,
+  title,
   label,
   preview,
   isProcessing = true
 }: {
   children: React.ReactNode;
+  title?: React.ReactNode;
   label?: string;
   preview?: React.ReactNode;
   isProcessing?: boolean;
@@ -50,13 +52,17 @@ const RenderProcessingCollapse = React.memo(function RenderProcessingCollapse({
           >
             <HStack h={'24px'} lineHeight={'24px'} mr={1} spacing="0">
               <Box fontSize={'16px'} lineHeight={'24px'}>
-                {isProcessing ? t('chat:processing') : t('chat:processed')}
-                {isProcessing && label && (
-                  <Box as="span">
-                    {' · '}
-                    {t(label)}
-                    {'...'}
-                  </Box>
+                {title ?? (
+                  <>
+                    {isProcessing ? t('chat:processing') : t('chat:processed')}
+                    {isProcessing && label && (
+                      <Box as="span">
+                        {' · '}
+                        {label}
+                        {'...'}
+                      </Box>
+                    )}
+                  </>
                 )}
               </Box>
             </HStack>

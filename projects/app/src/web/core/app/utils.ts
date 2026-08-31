@@ -8,20 +8,21 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
-export const SYSTEM_CONFIG_AUTO_OPEN_QUERY_KEY = 'openSystemConfig';
+export const WORKFLOW_BUILDER_AUTO_OPEN_QUERY_KEY = 'openWorkflowBuilder';
+export const WORKFLOW_BUILDER_CHAT_ID_QUERY_KEY = 'workflowBuilderChatId';
 
-/** 生成应用详情页路由，并按需携带只在首次进入时消费的系统配置展开标记。 */
+/** 生成应用详情页路由，并按需携带只在首次进入时消费的 Builder 自动开启标记。 */
 export const getAppDetailRoute = ({
   appId,
-  openSystemConfig = false
+  openWorkflowBuilder = false
 }: {
   appId: string;
-  openSystemConfig?: boolean;
+  openWorkflowBuilder?: boolean;
 }) => ({
   pathname: '/app/detail',
   query: {
     appId,
-    ...(openSystemConfig ? { [SYSTEM_CONFIG_AUTO_OPEN_QUERY_KEY]: '1' } : {})
+    ...(openWorkflowBuilder ? { [WORKFLOW_BUILDER_AUTO_OPEN_QUERY_KEY]: '1' } : {})
   }
 });
 

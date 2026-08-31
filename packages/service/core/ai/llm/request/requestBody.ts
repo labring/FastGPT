@@ -68,6 +68,7 @@ export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreatePar
   delete body.useVision;
   delete body.useAudio;
   delete body.useVideo;
+  delete body.forceMediaToBase64;
   delete body.extractFiles;
   delete body.requestOrigin;
 

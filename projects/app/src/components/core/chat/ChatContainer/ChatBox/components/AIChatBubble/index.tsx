@@ -56,6 +56,11 @@ const AIChatBubble = ({
 }: AIChatBubbleProps) => {
   const { t } = useTranslation();
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
+  const boxBodyProps = useContextSelector(ChatBoxContext, (v) => v.boxBodyProps);
+  const collapseIntermediateAgentResponses = useContextSelector(
+    ChatBoxContext,
+    (v) => v.collapseIntermediateAgentResponses ?? false
+  );
   const showWholeResponse = useContextSelector(ChatItemContext, (v) => v.showWholeResponse ?? true);
   const chatGenerateStatus = useContextSelector(
     ChatItemContext,
@@ -102,7 +107,7 @@ const AIChatBubble = ({
     <Box position={'relative'} w={'100%'} maxW={'100%'}>
       <Box
         w={'100%'}
-        maxW={ChatBoxContentMaxWidth}
+        maxW={boxBodyProps?.maxW ?? ChatBoxContentMaxWidth}
         color={'myGray.900'}
         textAlign={'left'}
         minW={isPlanCard ? ['100%', '50%'] : undefined}
@@ -115,6 +120,7 @@ const AIChatBubble = ({
           isChatting={isChatting}
           allowedCitationIds={allowedCitationIds}
           onOpenCiteModal={onOpenCiteModal}
+          collapseIntermediateAgentResponses={collapseIntermediateAgentResponses}
         />
         {placeholderText && (
           <Box

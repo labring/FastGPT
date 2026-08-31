@@ -96,7 +96,11 @@ const buildCurrentOperationFilter = (resource: SandboxResourceRef) => {
 };
 
 const buildSandboxResourceSourceQuery = ({ sourceType, sourceId, userId }: SandboxSourceParams) => {
-  if (sourceType === ChatSourceTypeEnum.app || sourceType === ChatSourceTypeEnum.skillEdit) {
+  if (
+    sourceType === ChatSourceTypeEnum.app ||
+    sourceType === ChatSourceTypeEnum.workflowBuilder ||
+    sourceType === ChatSourceTypeEnum.skillEdit
+  ) {
     return { sourceType, sourceId, ...(userId ? { userId } : {}) };
   }
   if (sourceType === ChatSourceTypeEnum.chatAgentHelper) {

@@ -8,6 +8,10 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { parseJsonArgs } from '../../../../../utils';
 import { runAgentLoop } from './base';
 import {
+  resolveAgentLoopSystemPrompt,
+  type AgentLoopSystemPromptBuilder
+} from '../../../domain/mainPrompt';
+import {
   formatAgentAskToolResponse,
   parseAgentAskToolCall,
   type AgentAskPayload
@@ -97,14 +101,44 @@ const pushAgentLoopUsages = <TChildrenResponse = unknown>(
 const stripSystemMessages = (messages: ChatCompletionMessageParam[]) =>
   messages.filter((message) => message.role !== ChatCompletionRequestMessageRoleEnum.System);
 
+/** 读取 ask_agent 所属 assistant 消息的可展示正文，供业务校验交互内容。 */
+const getAssistantMessageContent = (message?: ChatCompletionMessageParam) => {
+  if (message?.role !== ChatCompletionRequestMessageRoleEnum.Assistant || !message.content)
+    return '';
+  if (typeof message.content === 'string') return message.content;
+  return message.content
+    .map((item) => {
+      if (item.type === 'text') return item.text;
+      if (item.type === 'refusal') return item.refusal;
+      return '';
+    })
+    .join('');
+};
+
 /**
  * 构建进入主 Agent 的初始消息链。
  * systemPrompt 是调用方已经组装完成的最终提示词；messages 中的 system message 不再重复注入。
  */
-const buildInitialMessages = ({ input }: { input: FastAgentLoopInput }) => [
-  ...(input.systemPrompt ? [createSystemMessage(input.systemPrompt)] : []),
-  ...stripSystemMessages(input.messages)
-];
+const buildInitialMessages = ({
+  input,
+  hasExecutableTools,
+  systemPromptBuilder
+}: {
+  input: FastAgentLoopInput;
+  hasExecutableTools: boolean;
+  systemPromptBuilder?: AgentLoopSystemPromptBuilder;
+}): ChatCompletionMessageParam[] => {
+  const systemPrompt = resolveAgentLoopSystemPrompt({
+    systemPrompt: input.systemPrompt,
+    hasExecutableTools,
+    systemPromptBuilder
+  });
+
+  return [
+    ...(systemPrompt ? [createSystemMessage(systemPrompt)] : []),
+    ...stripSystemMessages(input.messages)
+  ];
+};
 
 /**
  * ask_user 暂停时保存恢复所需上下文。
@@ -192,7 +226,11 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
             )
           } as ChatCompletionMessageParam
         ]
-      : buildInitialMessages({ input });
+      : buildInitialMessages({
+          input,
+          hasExecutableTools: runtime.hasExecutableTools,
+          systemPromptBuilder: runtime.systemPromptBuilder
+        });
   // 普通续轮通过 input.activePlan 恢复结构化 plan；ask_user 续跑则优先使用暂停时的完整快照。
   // 历史 checkpoint 只负责给模型提供上下文，不再作为运行时状态的反序列化来源。
   let activePlan = input.pendingMainContext?.activePlan ?? input.activePlan;
@@ -223,6 +261,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
 
   const result = await runAgentLoop({
     maxRunAgentTimes: runtime.maxRunAgentTimes ?? 100,
+    completionPolicy: runtime.completionPolicy,
     batchToolSize: runtime.batchToolSize ?? 5,
     childrenInteractiveParams: input.childrenInteractiveParams,
     body: {
@@ -238,6 +277,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       useVision: runtime.useVision,
       useAudio: runtime.useAudio,
       useVideo: runtime.useVideo,
+      forceMediaToBase64: runtime.forceMediaToBase64,
       extractFiles: runtime.extractFiles,
       messages,
       tools: getToolsForFastAgentLoop({
@@ -368,6 +408,13 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
           return createToolResponse(parsed.error, { skipResponseCompress: true });
         }
 
+        const validationError = await runtime.validateAsk?.(parsed.ask, {
+          assistantContent: getAssistantMessageContent(assistantMessage)
+        });
+        if (validationError) {
+          return createToolResponse(validationError, { skipResponseCompress: true });
+        }
+
         emitAgentLoopEvent(runtime, {
           type: 'ask_start',
           ask: parsed.ask,
@@ -439,11 +486,21 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
           return createToolResponse(response, { skipResponseCompress: true });
         }
 
-        const sandboxResult = await runSandboxTools({
-          toolName: sandboxToolName,
-          args: call.function.arguments ?? '',
-          sandboxClient: runtime.sandboxToolContext.client
-        });
+        const sandboxResult = runtime.sandboxToolContext.executor
+          ? await runtime.sandboxToolContext.executor({
+              toolName: sandboxToolName,
+              args: call.function.arguments ?? ''
+            })
+          : runtime.sandboxToolContext.client
+            ? await runSandboxTools({
+                toolName: sandboxToolName,
+                args: call.function.arguments ?? '',
+                sandboxClient: runtime.sandboxToolContext.client
+              })
+            : {
+                success: false,
+                response: 'Sandbox executor is not available.'
+              };
         return createToolResponse(sandboxResult.response, {
           skipResponseCompress: true,
           errorMessage: sandboxResult.success ? undefined : sandboxResult.response

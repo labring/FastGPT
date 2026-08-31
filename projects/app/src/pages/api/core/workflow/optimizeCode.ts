@@ -38,6 +38,7 @@ const getPromptNodeCopilotSystemPrompt = () => {
     - 参数名不可以是嵌套的，例如：paramName.a.b
     - 注意参数的数据类型
 - 对返回对象的每个属性使用 @property {类型} 属性名 - 属性描述
+    - 属性名必须与 return 对象中的 key 完全一致，不得翻译、改写或使用业务描述代替
 - 数据类型严格限制为以下值，不可多选，也不可使用额外的数据类型，超出以下值的类型使用any：
     - string
     - number

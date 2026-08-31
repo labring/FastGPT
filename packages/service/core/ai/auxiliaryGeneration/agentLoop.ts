@@ -57,7 +57,9 @@ export async function runAuxiliaryGenerationAgentLoop({
         stream: true,
         useVision,
         useAudio,
-        useVideo
+        useVideo,
+        // 辅助生成只接收完成授权的聊天上传文件；转成 data URL 可避免外部模型访问私有 S3 地址失败。
+        forceMediaToBase64: true
       },
       systemTools: {
         ask: { enabled: true }

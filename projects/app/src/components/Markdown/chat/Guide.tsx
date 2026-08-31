@@ -5,8 +5,8 @@ import RemarkGfm from 'remark-gfm';
 import RemarkMath from 'remark-math';
 import RehypeKatex from 'rehype-katex';
 import RemarkBreaks from 'remark-breaks';
-import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import QuickQuestionButton from '@/components/core/chat/QuickQuestionButton';
+import { useChatInstanceActions } from '../../core/chat/ChatContainer/context/chatInstanceActionsContext';
 
 import 'katex/dist/katex.min.css';
 import styles from '../index.module.scss';
@@ -15,13 +15,14 @@ import Image from '../img/Image';
 function MyLink(e: any) {
   const href = e.href;
   const text = String(e.children);
+  const { sendMessage } = useChatInstanceActions();
 
   return !!href ? (
     <Link href={href} target={'_blank'}>
       {text}
     </Link>
   ) : (
-    <QuickQuestionButton mb={2} onClick={() => eventBus.emit(EventNameEnum.sendQuestion, { text })}>
+    <QuickQuestionButton mb={2} onClick={() => sendMessage({ text })}>
       {text}
     </QuickQuestionButton>
   );

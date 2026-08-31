@@ -434,7 +434,8 @@ export class SandboxClient {
       .then(() =>
         this.provider.execute(command, {
           timeoutMs: timeout ? timeout * 1000 : undefined,
-          ...(this.sourceType === ChatSourceTypeEnum.app
+          ...(this.sourceType === ChatSourceTypeEnum.app ||
+          this.sourceType === ChatSourceTypeEnum.workflowBuilder
             ? { workingDirectory: this.runtimePaths.sessionWorkDirectory }
             : {})
         })
