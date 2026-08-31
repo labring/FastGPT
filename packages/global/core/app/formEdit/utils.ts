@@ -18,12 +18,12 @@ const formRenderTypesMap: Record<string, boolean> = {
   [FlowNodeInputTypeEnum.select]: true,
   [FlowNodeInputTypeEnum.multipleSelect]: true,
   [FlowNodeInputTypeEnum.JSONEditor]: true,
+  [FlowNodeInputTypeEnum.fileSelect]: true,
   [FlowNodeInputTypeEnum.timePointSelect]: true,
   [FlowNodeInputTypeEnum.timeRangeSelect]: true
 };
 
 const agentGeneratedDenyRenderTypes = new Set<FlowNodeInputTypeEnum>([
-  FlowNodeInputTypeEnum.fileSelect,
   FlowNodeInputTypeEnum.password,
   FlowNodeInputTypeEnum.selectLLMModel,
   FlowNodeInputTypeEnum.settingLLMModel,
@@ -84,6 +84,7 @@ const manualInputRenderTypes = new Set<FlowNodeInputTypeEnum>([
   FlowNodeInputTypeEnum.select,
   FlowNodeInputTypeEnum.multipleSelect,
   FlowNodeInputTypeEnum.JSONEditor,
+  FlowNodeInputTypeEnum.fileSelect,
   FlowNodeInputTypeEnum.timePointSelect,
   FlowNodeInputTypeEnum.timeRangeSelect,
   FlowNodeInputTypeEnum.password

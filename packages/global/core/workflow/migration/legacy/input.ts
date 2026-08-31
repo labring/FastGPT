@@ -26,13 +26,21 @@ export const migrateLegacyFlowNodeInputToCurrent = (
     input.selectedTypeIndex === undefined
       ? undefined
       : inputRenderTypeList[input.selectedTypeIndex];
-  const defaultToAgentGenerated = input.defaultToAgentGenerated ?? input.isToolParam;
+  const legacyDefaultToAgentGenerated = input.defaultToAgentGenerated ?? input.isToolParam;
+  const isFileInput = inputRenderTypeList.includes(FlowNodeInputTypeEnum.fileSelect);
+  const shouldUseLegacyToolDescriptionFallback =
+    !isFileInput &&
+    allowLegacyToolDescriptionFallback &&
+    legacyDefaultToAgentGenerated === undefined &&
+    !!input.toolDescription &&
+    canInputBeAgentGenerated({ ...input, renderTypeList: inputRenderTypeList });
+  // 新增字段会显式保存默认模式；历史文件字段没有该字段时保持原来的手动上传行为。
+  const defaultToAgentGenerated =
+    legacyDefaultToAgentGenerated ??
+    (shouldUseLegacyToolDescriptionFallback ? true : isFileInput ? false : undefined);
   const recommendsAgentGenerated =
     defaultToAgentGenerated === true ||
-    (defaultToAgentGenerated !== false && isTool && input.key === NodeInputKeyEnum.userChatInput) ||
-    (allowLegacyToolDescriptionFallback &&
-      defaultToAgentGenerated === undefined &&
-      !!input.toolDescription);
+    (defaultToAgentGenerated !== false && isTool && input.key === NodeInputKeyEnum.userChatInput);
   const isLegacyDefaultSelection =
     input.selectedType === undefined &&
     input.selectedTypeIndex === 0 &&
@@ -105,6 +113,7 @@ export const migrateLegacyWorkflowToolInputDefaultMode = (input: LegacyFlowNodeI
   if (
     input.defaultToAgentGenerated !== undefined ||
     input.isToolParam !== undefined ||
+    input.renderTypeList?.includes(FlowNodeInputTypeEnum.fileSelect) ||
     !input.toolDescription ||
     !canInputBeAgentGenerated({ ...input, renderTypeList: input.renderTypeList ?? [] })
   ) {

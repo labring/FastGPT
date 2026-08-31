@@ -82,6 +82,32 @@ describe('workflow migration boundary', () => {
     expect(result.nodes[0].inputs[1]).not.toHaveProperty('isToolParam');
   });
 
+  it('defaults legacy file inputs to manual mode', async () => {
+    const result = await migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'plugin-input',
+          flowNodeType: 'pluginInput',
+          name: 'Plugin input',
+          inputs: [
+            {
+              key: 'files',
+              label: 'Files',
+              renderTypeList: [FlowNodeInputTypeEnum.fileSelect, FlowNodeInputTypeEnum.reference],
+              toolDescription: 'Legacy file input'
+            }
+          ],
+          outputs: []
+        }
+      ]
+    });
+
+    expect(result.nodes[0].inputs[0]).toMatchObject({
+      defaultToAgentGenerated: false,
+      renderTypeList: [FlowNodeInputTypeEnum.fileSelect, FlowNodeInputTypeEnum.reference]
+    });
+  });
+
   it('rejects V1 nodes before V2 schema parsing', async () => {
     expect(() =>
       migrateWorkflowToCurrent({
