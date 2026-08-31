@@ -1,7 +1,12 @@
 import { DatasetCollectionTypeEnum } from '../constants';
 import { type DatasetCollectionSchemaType } from '../type';
 
-export const getCollectionSourceData = (collection?: DatasetCollectionSchemaType) => {
+export const getCollectionSourceData = (
+  collection?: Pick<
+    DatasetCollectionSchemaType,
+    'fileId' | 'rawLink' | 'externalFileId' | 'externalFileUrl' | 'apiFileId' | 'name'
+  >
+) => {
   return {
     sourceId:
       collection?.fileId ||
