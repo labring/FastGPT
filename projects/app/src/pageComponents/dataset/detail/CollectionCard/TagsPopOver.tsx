@@ -32,7 +32,11 @@ const TagsPopOver = ({
     isCreateCollectionTagLoading
   } = useContextSelector(DatasetPageContext, (v) => v);
 
-  const [collectionTags, setCollectionTags] = useState<string[]>(currentCollection.tags ?? []);
+  const [collectionTags, setCollectionTags] = useState<string[]>(() =>
+    (currentCollection.tags ?? [])
+      .map((tag) => (typeof tag === 'string' ? tag : tag.tag))
+      .filter(Boolean)
+  );
   const [checkedTags, setCheckedTags] = useState<DatasetTagType[]>([]);
   const [showTagManage, setShowTagManage] = useState(false);
   const [isUpdateLoading, setIsUpdateLoading] = useState(false);
@@ -40,14 +44,8 @@ const TagsPopOver = ({
   const tagList = useMemo(
     () =>
       (collectionTags
-        ?.map((item) => {
-          const tagObject = allDatasetTags.find((tag) => tag.tag === item);
-          return tagObject ? { _id: tagObject._id, tag: tagObject.tag } : null;
-        })
-        .filter((tag) => tag !== null) as {
-        _id: string;
-        tag: string;
-      }[]) || [],
+        ?.map((item) => allDatasetTags.find((tag) => tag.tag === item) ?? null)
+        .filter((tag) => tag !== null) as DatasetTagType[]) || [],
     [collectionTags, allDatasetTags]
   );
 

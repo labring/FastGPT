@@ -4,6 +4,7 @@ import { SystemOpenApiTagMap } from '../../tag';
 import { DatasetDataPath } from './data';
 import { DatasetCollectionPath } from './collection';
 import { ApiDatasetPath } from './apiDataset';
+import { DatasetTagPath } from './tag';
 import { DatasetFilePath } from './file';
 import { DatasetTrainingPath } from './training';
 import {
@@ -329,6 +330,7 @@ export const DatasetPath: OpenAPIPath = {
   ...DatasetCollectionPath,
   ...DatasetDataPath,
   ...ApiDatasetPath,
+  ...DatasetTagPath,
   ...DatasetFilePath,
   ...DatasetTrainingPath
 };
