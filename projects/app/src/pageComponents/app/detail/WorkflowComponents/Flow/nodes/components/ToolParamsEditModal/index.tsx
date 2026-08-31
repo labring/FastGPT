@@ -8,7 +8,6 @@ import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
-import { defaultEditFormData } from '../render/RenderToolInput/EditFieldModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -16,21 +15,35 @@ import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/const
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
+import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 import { z } from 'zod';
 import { toolParamKeyReg } from './utils';
+import { defaultToolParamFormData } from './constants';
 
 const customValueType = 'custom' as const;
 
-const ToolParamsEditModal = ({
-  defaultValue = defaultEditFormData,
-  nodeId,
-  onClose
-}: {
+type ToolParamsEditModalProps = {
   defaultValue: FlowNodeInputItemType;
+  existingKeys: string[];
   nodeId: string;
   onClose: () => void;
-}) => {
+  /** 自定义工具变量节点需要同步同名 output；HTTP/Code 工具参数只维护 input。 */
+  syncOutput?: boolean;
+};
+
+/**
+ * 工作流工具参数的统一编辑弹窗。
+ *
+ * 两类节点共用参数类型、自定义 JSON Schema 和校验逻辑，仅通过 `syncOutput` 区分
+ * 提交时是否同步创建或更新对应的静态 output。
+ */
+const ToolParamsEditModal = ({
+  defaultValue = defaultToolParamFormData,
+  existingKeys,
+  syncOutput = true,
+  nodeId,
+  onClose
+}: ToolParamsEditModalProps) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
@@ -114,17 +127,19 @@ const ToolParamsEditModal = ({
           key: defaultValue.key,
           value: inputConfig
         });
-        onChangeNode({
-          nodeId,
-          type: 'replaceOutput',
-          key: defaultValue.key,
-          value: {
-            ...outputConfig,
-            id: key,
-            label: key,
-            type: FlowNodeOutputTypeEnum.static
-          }
-        });
+        if (syncOutput) {
+          onChangeNode({
+            nodeId,
+            type: 'replaceOutput',
+            key: defaultValue.key,
+            value: {
+              ...outputConfig,
+              id: key,
+              label: key,
+              type: FlowNodeOutputTypeEnum.static
+            }
+          });
+        }
       } else {
         // create
         onChangeNode({
@@ -134,18 +149,19 @@ const ToolParamsEditModal = ({
             ...inputConfig
           }
         });
-        onChangeNode({
-          nodeId,
-          type: 'addOutput',
-          value: {
-            ...outputConfig,
-            id: key,
-            label: key,
-            type: FlowNodeOutputTypeEnum.static
-          }
-        });
+        if (syncOutput) {
+          onChangeNode({
+            nodeId,
+            type: 'addOutput',
+            value: {
+              ...outputConfig,
+              id: key,
+              label: key,
+              type: FlowNodeOutputTypeEnum.static
+            }
+          });
+        }
       }
-      onClose();
     },
     {
       onSuccess: () => {
@@ -192,6 +208,8 @@ const ToolParamsEditModal = ({
   return (
     <MyModal
       isOpen
+      isCentered
+      size={'sm'}
       title={t('workflow:tool_field')}
       onClose={onClose}
       footer={
@@ -249,6 +267,14 @@ const ToolParamsEditModal = ({
               pattern: {
                 value: toolParamKeyReg,
                 message: t('workflow:tool_params.params_name_tip')
+              },
+              validate: (value) => {
+                const key = value.trim();
+                const hasDuplicateKey = existingKeys.some(
+                  (existingKey) => existingKey !== defaultValue.key && existingKey === key
+                );
+
+                return !hasDuplicateKey || t('workflow:field_name_already_exists');
               }
             })}
             placeholder={t('workflow:tool_params.params_name_placeholder')}

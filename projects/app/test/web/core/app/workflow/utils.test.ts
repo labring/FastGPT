@@ -34,7 +34,10 @@ import {
   collectWorkflowStartAutoFillRevertPatches,
   collectWorkflowStartOutputAutoFillRevertPatches
 } from '@/web/core/workflow/workflowStartAutoFill';
-import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type {
+  FlowNodeInputItemType,
+  FlowNodeOutputItemType
+} from '@fastgpt/global/core/workflow/type/io';
 import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
@@ -1833,6 +1836,43 @@ describe('checkWorkflowNodeIssues', () => {
     expect(result.extract.map((issue) => issue.code)).toContain('context_extract_empty');
   });
 
+  it('allows Agent-generated tool inputs on code nodes', () => {
+    const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall);
+    const codeNode = makeNode('code-tool', FlowNodeTypeEnum.code, {
+      inputs: [
+        {
+          key: 'query',
+          label: 'Query',
+          toolDescription: 'Search query',
+          required: true,
+          canEdit: true,
+          defaultToAgentGenerated: true,
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.reference]
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, toolCallNode, codeNode],
+      edges: [
+        { id: 'e-start-tool-call', source: 'start', target: 'tool-call', type: EDGE_TYPE },
+        {
+          id: 'e-tool-call-code',
+          source: 'tool-call',
+          sourceHandle: NodeOutputKeyEnum.selectedTools,
+          target: 'code-tool',
+          targetHandle: NodeOutputKeyEnum.selectedTools,
+          type: EDGE_TYPE
+        }
+      ]
+    });
+
+    expect(result['code-tool']?.map((issue) => issue.code) ?? []).not.toContain(
+      'code_input_incomplete'
+    );
+  });
+
   it('clears single node errors after configuration is fixed', () => {
     const requiredNode = makeNode('required', FlowNodeTypeEnum.answerNode, {
       inputs: [
@@ -2019,6 +2059,25 @@ describe('workflow check helpers', () => {
 });
 
 describe('storeNode2FlowNode', () => {
+  it('restores tool set nodes without a source handle', () => {
+    const storeNode = {
+      nodeId: 'tool-set-node',
+      flowNodeType: FlowNodeTypeEnum.toolSet,
+      position: { x: 0, y: 0 },
+      inputs: [],
+      outputs: [],
+      name: 'Tool set',
+      showSourceHandle: true
+    } as StoreNodeItemType & { showSourceHandle: true };
+
+    const result = storeNode2FlowNode({
+      item: storeNode,
+      t: ((key: string) => key) as any
+    });
+
+    expect(result.data.showSourceHandle).toBe(false);
+  });
+
   it('should materialize stored editable text when it matches an i18n key', () => {
     const storeNode: StoreNodeItemType = {
       nodeId: 'node1',

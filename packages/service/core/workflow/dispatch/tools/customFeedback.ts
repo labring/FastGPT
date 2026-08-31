@@ -17,6 +17,7 @@ export const dispatchCustomFeedback = (props: Record<string, any>): Response => 
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       textOutput: feedbackText
     },
-    [DispatchNodeResponseKeyEnum.customFeedbacks]: [feedbackText]
+    [DispatchNodeResponseKeyEnum.customFeedbacks]: [feedbackText],
+    [DispatchNodeResponseKeyEnum.toolResponse]: feedbackText
   };
 };

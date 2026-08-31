@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const mocks = vi.hoisted(() => ({
   authCert: vi.fn(),
@@ -117,11 +118,39 @@ describe('get system tool templates handler', () => {
     } as ApiRequestProps<GetSystemPluginTemplatesBody>);
 
     expect(result.map((item) => item.id)).toEqual(['weather']);
+    expect(result[0]).toMatchObject({
+      isTool: true,
+      flowNodeType: FlowNodeTypeEnum.tool
+    });
     expect(mocks.getSystemToolList).toHaveBeenCalledWith({
       lang: 'zh',
       op: 'or',
       sources: ['system', 'teamId:team-1'],
       tags: ['life']
+    });
+  });
+
+  it('marks top-level system toolsets as tools while preserving toolset type', async () => {
+    mocks.getSystemToolList.mockResolvedValue([
+      {
+        id: 'toolset',
+        name: 'Toolset',
+        intro: '',
+        toolDescription: '',
+        isToolSet: true,
+        status: PluginStatusEnum.Normal,
+        tags: []
+      }
+    ]);
+
+    const result = await handler({
+      body: {}
+    } as ApiRequestProps<GetSystemPluginTemplatesBody>);
+
+    expect(result[0]).toMatchObject({
+      id: 'toolset',
+      isTool: true,
+      flowNodeType: FlowNodeTypeEnum.toolSet
     });
   });
 
@@ -256,7 +285,9 @@ describe('get system tool templates handler', () => {
       avatar: 'plus-icon',
       currentCost: 2,
       systemKeyCost: 0.5,
-      hasTokenFee: true
+      hasTokenFee: true,
+      isTool: true,
+      flowNodeType: FlowNodeTypeEnum.tool
     });
     expect(mocks.getSystemToolDisplayInfoWithChildIcons).toHaveBeenCalledWith({
       pluginId: 'toolset',

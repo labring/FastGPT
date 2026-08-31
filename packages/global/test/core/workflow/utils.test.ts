@@ -692,14 +692,10 @@ describe('appData2FlowNodeIO', () => {
     });
     const fileLinkInput = result.inputs.find((i) => i.key === NodeInputKeyEnum.fileUrlList);
     expect(fileLinkInput).toMatchObject({
-      renderTypeList: [
-        FlowNodeInputTypeEnum.reference,
-        FlowNodeInputTypeEnum.JSONEditor,
-        FlowNodeInputTypeEnum.agentGenerated
-      ],
-      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.JSONEditor],
       defaultToAgentGenerated: true
     });
+    expect(fileLinkInput).not.toHaveProperty('selectedType');
   });
 
   it('should include file link input when fileSelectConfig allows image selection', () => {

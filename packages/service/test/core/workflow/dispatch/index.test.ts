@@ -618,6 +618,74 @@ describe('getWorkflowNodeRunParams', () => {
     expect(variableState.getToRuntimeRecordCount()).toBe(1);
   });
 
+  it('同节点引用工具参数时不读取 input value', () => {
+    const variableState = createVariableState();
+    const node = createNode('code', FlowNodeTypeEnum.code);
+    node.inputs = [
+      {
+        key: 'customParam',
+        label: '',
+        canEdit: true,
+        defaultToAgentGenerated: true,
+        renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
+        value: 'agent value',
+        valueType: WorkflowIOValueTypeEnum.string
+      },
+      {
+        key: 'codeInput',
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.reference],
+        value: ['code', 'customParam'],
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map([['code', node]]),
+      variableState: variableState.state
+    });
+
+    expect(params.codeInput).toBeUndefined();
+  });
+
+  it('跨节点引用工具参数时不读取目标节点 input value', () => {
+    const variableState = createVariableState();
+    const node = createNode('code', FlowNodeTypeEnum.code);
+    const sourceNode = createNode('source', FlowNodeTypeEnum.code);
+    node.inputs = [
+      {
+        key: 'codeInput',
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.reference],
+        value: ['source', 'customParam'],
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+    sourceNode.inputs = [
+      {
+        key: 'customParam',
+        label: '',
+        canEdit: true,
+        defaultToAgentGenerated: true,
+        renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
+        value: 'agent value',
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map([
+        ['code', node],
+        ['source', sourceNode]
+      ]),
+      variableState: variableState.state
+    });
+
+    expect(params.codeInput).toBeUndefined();
+  });
+
   it('dynamic input 保持顶层和动态参数对象同步写入', () => {
     const variableState = createVariableState({ name: 'Ada' });
     const node = createNode('node1', FlowNodeTypeEnum.textEditor);

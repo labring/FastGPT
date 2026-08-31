@@ -18,6 +18,7 @@ export const CustomFeedbackNode: FlowNodeTemplateType = {
   colorSchema: 'yellowGreen',
   name: i18nT('workflow:custom_feedback'),
   intro: i18nT('workflow:intro_custom_feedback'),
+  isTool: true,
   courseUrl: '/guide/build/workflow/nodes/custom_feedback',
   inputs: [
     {
@@ -25,7 +26,9 @@ export const CustomFeedbackNode: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.string,
       required: true,
-      label: i18nT('workflow:feedback_text')
+      label: i18nT('workflow:feedback_text'),
+      toolDescription: i18nT('workflow:feedback_text'),
+      defaultToAgentGenerated: false
     }
   ],
   outputs: []

@@ -1,3 +1,5 @@
+/* Abandoned */
+
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -20,6 +22,7 @@ type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.text]: string;
 }>;
 
+/** @deprecated 保留用于兼容已保存的问题优化节点。 */
 export const dispatchQueryExtension = async ({
   histories,
   node,

@@ -27,12 +27,15 @@ export const CodeNode: FlowNodeTemplateType = {
   name: i18nT('workflow:code_execution'),
   intro: i18nT('workflow:code_sandbox_intro'),
   showStatus: true,
+  isTool: true,
+  hasToolInput: true,
   catchError: false,
   courseUrl: '/guide/build/workflow/nodes/sandbox-v2',
   inputs: [
     {
       ...Input_Template_DynamicInput,
       description: i18nT('workflow:these_variables_will_be_input_parameters_for_code_execution'),
+      canAgentGenerated: false,
       customInputConfig: {
         selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),
         showDescription: false,
@@ -43,6 +46,7 @@ export const CodeNode: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.string,
       canEdit: true,
+      canAgentGenerated: false,
       key: 'data1',
       label: 'data1',
       customInputConfig: {
@@ -56,6 +60,7 @@ export const CodeNode: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.string,
       canEdit: true,
+      canAgentGenerated: false,
       key: 'data2',
       label: 'data2',
       customInputConfig: {

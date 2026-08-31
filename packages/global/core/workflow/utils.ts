@@ -375,23 +375,9 @@ export const appData2FlowNodeIO = ({
       chatConfig?.fileSelectConfig?.canSelectVideo ||
       chatConfig?.fileSelectConfig?.canSelectAudio ||
       chatConfig?.fileSelectConfig?.canSelectCustomFileExtension
-        ? [
-            {
-              ...Input_Template_File_Link,
-              renderTypeList: [
-                ...Input_Template_File_Link.renderTypeList,
-                FlowNodeInputTypeEnum.agentGenerated
-              ],
-              selectedType: FlowNodeInputTypeEnum.agentGenerated,
-              defaultToAgentGenerated: true
-            }
-          ]
+        ? [Input_Template_File_Link]
         : []),
-      {
-        ...Input_Template_UserChatInput,
-        // 普通工作流作为工具时，用户问题应默认由调用它的 Agent 生成。
-        defaultToAgentGenerated: true
-      },
+      Input_Template_UserChatInput,
       ...variableInput
     ],
     outputs: [

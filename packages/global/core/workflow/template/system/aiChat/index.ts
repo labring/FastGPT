@@ -154,7 +154,7 @@ export const AiChatModule: FlowNodeTemplateType = {
     Input_Template_History,
     Input_Template_Dataset_Quote,
     Input_Template_File_Link,
-    { ...Input_Template_UserChatInput, toolDescription: i18nT('workflow:user_question') }
+    Input_Template_UserChatInput
   ],
   outputs: [
     {

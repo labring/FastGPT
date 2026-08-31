@@ -1,8 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   Box,
   Button,
+  Flex,
   Table,
   Thead,
   Tbody,
@@ -15,18 +18,22 @@ import {
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';
-import { defaultEditFormData } from './EditFieldModal';
+import { defaultToolParamFormData } from '../../components/ToolParamsEditModal/constants';
 import { useContextSelector } from 'use-context-selector';
 import IOTitle from '../../../components/IOTitle';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { WorkflowUtilsContext } from '../../../../context/workflowUtilsContext';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
-const EditFieldModal = dynamic(() => import('./EditFieldModal'));
+const ToolParamsEditModal = dynamic(() => import('../../components/ToolParamsEditModal'));
 
-export const hasDynamicToolInput = (inputs: FlowNodeInputItemType[]) =>
-  inputs.some((item) => item.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam);
+/** 仅 HTTP 和 Code 节点支持用户配置工具参数；旧版插件输入中的 addInputParam 不参与判定。 */
+export const hasDynamicToolInput = (
+  source: Pick<FlowNodeItemType, 'flowNodeType' | 'hasToolInput'>
+) =>
+  source.hasToolInput === true &&
+  (source.flowNodeType === FlowNodeTypeEnum.httpRequest468 ||
+    source.flowNodeType === FlowNodeTypeEnum.code);
 
 const RenderToolInput = ({
   nodeId,
@@ -43,11 +50,7 @@ const RenderToolInput = ({
     [inputs, nodeId, splitToolInputs]
   );
 
-  const dynamicInput = useMemo(() => hasDynamicToolInput(inputs), [inputs]);
-
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
-
-  if (!dynamicInput) return null;
 
   return (
     <>
@@ -58,7 +61,7 @@ const RenderToolInput = ({
           leftIcon={<SmallAddIcon />}
           iconSpacing={1}
           size={'sm'}
-          onClick={() => setEditField(defaultEditFormData)}
+          onClick={() => setEditField(defaultToolParamFormData)}
         >
           {t('common:add_new')}
         </Button>
@@ -69,10 +72,12 @@ const RenderToolInput = ({
           <Table bg={'white'}>
             <Thead>
               <Tr>
-                <Th>{t('common:item_name')}</Th>
-                <Th>{t('common:item_description')}</Th>
-                <Th>{t('common:required')}</Th>
-                <Th></Th>
+                <Th>{t('workflow:tool_params.params_name')}</Th>
+                <Th>{t('workflow:tool_params.params_description')}</Th>
+                <Th>{t('workflow:field_required')}</Th>
+                <Th w={'100px'} minW={'100px'}>
+                  {t('common:Operation')}
+                </Th>
               </Tr>
             </Thead>
             <Tbody>
@@ -86,26 +91,28 @@ const RenderToolInput = ({
                   <Td>{item.key}</Td>
                   <Td>{item.toolDescription}</Td>
                   <Td>{item.required ? '✔' : ''}</Td>
-                  <Td whiteSpace={'nowrap'}>
-                    <MyIcon
-                      mr={3}
-                      name={'common/settingLight'}
-                      w={'16px'}
-                      cursor={'pointer'}
-                      onClick={() => setEditField(item)}
-                    />
-                    <MyIcon
-                      name={'delete'}
-                      w={'16px'}
-                      cursor={'pointer'}
-                      onClick={() => {
-                        onChangeNode({
-                          nodeId,
-                          type: 'delInput',
-                          key: item.key
-                        });
-                      }}
-                    />
+                  <Td w={'100px'} minW={'100px'} whiteSpace={'nowrap'} verticalAlign={'middle'}>
+                    <Flex h={'24px'} alignItems={'center'}>
+                      <MyIcon
+                        mr={3}
+                        name={'common/settingLight'}
+                        w={'16px'}
+                        cursor={'pointer'}
+                        onClick={() => setEditField(item)}
+                      />
+                      <MyIcon
+                        name={'delete'}
+                        w={'16px'}
+                        cursor={'pointer'}
+                        onClick={() => {
+                          onChangeNode({
+                            nodeId,
+                            type: 'delInput',
+                            key: item.key
+                          });
+                        }}
+                      />
+                    </Flex>
                   </Td>
                 </Tr>
               ))}
@@ -115,8 +122,10 @@ const RenderToolInput = ({
       </Box>
 
       {!!editField && (
-        <EditFieldModal
+        <ToolParamsEditModal
           defaultValue={editField}
+          existingKeys={inputs.map((input) => input.key)}
+          syncOutput={false}
           nodeId={nodeId}
           onClose={() => setEditField(undefined)}
         />

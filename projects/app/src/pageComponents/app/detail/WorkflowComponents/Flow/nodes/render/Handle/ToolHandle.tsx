@@ -8,6 +8,8 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../../context/workflowInitContext';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 import { WorkflowUIContext } from '../../../../context/workflowUIContext';
+import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
+import { isNodeConnectionAllowed } from '@fastgpt/global/core/workflow/template/context';
 
 const handleSize = '20px';
 const activeHandleSize = '24px';
@@ -18,15 +20,35 @@ type ToolHandleProps = BoxProps & {
   show: boolean;
 };
 export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
-  const toolConnecting = useContextSelector(
-    WorkflowActionsContext,
-    (ctx) => ctx.connectingEdge?.handleId === NodeOutputKeyEnum.selectedTools
-  );
+  const connectingEdge = useContextSelector(WorkflowActionsContext, (ctx) => ctx.connectingEdge);
+  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
+  const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
   const connected = useContextSelector(WorkflowBufferDataContext, (v) =>
     v.edges.some((edge) => edge.target === nodeId && edge.targetHandle === handleId)
   );
 
-  const active = show && toolConnecting;
+  const active = useMemo(() => {
+    if (!show || connectingEdge?.handleId !== handleId) return false;
+
+    const sourceNode = getNodeById(connectingEdge.nodeId);
+    const targetNode = getNodeById(nodeId);
+    const targetTemplate = targetNode
+      ? moduleTemplatesFlat.find((item) => item.id === targetNode.flowNodeType)
+      : undefined;
+
+    return (
+      !!sourceNode &&
+      !!targetNode &&
+      isNodeConnectionAllowed({
+        targetTemplate,
+        targetNode,
+        sourceNode,
+        edges,
+        handleId: connectingEdge.handleId,
+        getNodeById
+      })
+    );
+  }, [connectingEdge, edges, getNodeById, nodeId, show]);
   // if top handle is connected, return null
   const showHandle = active || connected;
 
@@ -52,6 +74,7 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
         id={handleId}
         position={Position.Top}
         isConnectableEnd={active}
+        isConnectableStart={false}
       >
         <Box
           className="flow-handle"

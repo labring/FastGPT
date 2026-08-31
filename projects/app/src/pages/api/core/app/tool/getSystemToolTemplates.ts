@@ -73,6 +73,7 @@ export async function handler(
         .map((child) => ({
           ...parent,
           templateType: FlowNodeTemplateTypeEnum.tools,
+          isTool: true,
           // templateType: tool.isToolSet
           //   ? FlowNodeTemplateTypeEnum.tools
           //   : FlowNodeTemplateTypeEnum.other,
@@ -122,6 +123,7 @@ export async function handler(
     .map<NodeTemplateListItemType>((tool) => ({
       ...tool,
       templateType: FlowNodeTemplateTypeEnum.tools,
+      isTool: true,
       flowNodeType: tool.isToolSet ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
       source: tool.source,
       name: tool.name,

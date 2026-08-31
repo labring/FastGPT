@@ -61,7 +61,7 @@ export const nodeTemplate2FlowNode = ({
 }): Node<FlowNodeItemType> => {
   const name = t(template.name as any);
 
-  // replace item data
+  // 用持久化节点数据覆盖模板默认值。
   const moduleItem: FlowNodeItemType = {
     ...template,
     name: formatName?.(name) ?? name,
@@ -115,88 +115,96 @@ export const storeNode2FlowNode = ({
   t
 }: StoreNode2FlowNodeProps): Node<FlowNodeItemType> => {
   // init some static data
-  const template =
+  const nodeTemplate =
     moduleTemplatesFlat.find((template) => template.flowNodeType === storeNode.flowNodeType) ||
     EmptyNode;
 
-  const templateInputs = template.inputs.filter(
-    (input) => !input.canEdit && input.deprecated !== true
+  const storedInputs = storeNode.inputs;
+  // 废弃模板输入仅在存量节点已有该字段时，按模板顺序保留。
+  const orderedTemplateInputs = nodeTemplate.inputs.filter(
+    (input) =>
+      (!input.canEdit && input.deprecated !== true) ||
+      (input.deprecated === true && storedInputs.some((item) => item.key === input.key))
   );
-  const templateOutputs = template.outputs.filter(
+  const staticTemplateOutputs = nodeTemplate.outputs.filter(
     (output) => output.type !== FlowNodeOutputTypeEnum.dynamic
   );
-  const dynamicInput = template.inputs.find(
+  const dynamicInputTemplate = nodeTemplate.inputs.find(
     (input) => input.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam
   );
-  const adaptedStoreInputs = storeNode.inputs;
-
   // replace item data
   const nodeItem: FlowNodeItemType = {
     parentNodeId,
-    ...template,
+    ...nodeTemplate,
     ...storeNode,
+    // 连接柄由当前模板控制，避免存量数据重新开启已禁用的 source。
+    showSourceHandle: nodeTemplate.showSourceHandle,
     name: t(storeNode.name as any),
     intro: storeNode.intro ? t(storeNode.intro as any) : storeNode.intro,
-    avatar: template.avatar ?? storeNode.avatar,
-    version: template.version || storeNode.version,
-    catchError: storeNode.catchError ?? template.catchError,
-    // template 中的输入必须都有
-    inputs: templateInputs
-      .map<FlowNodeInputItemType>((templateInput) => {
+    avatar: nodeTemplate.avatar ?? storeNode.avatar,
+    version: nodeTemplate.version || storeNode.version,
+    catchError: storeNode.catchError ?? nodeTemplate.catchError,
+    // 按模板顺序恢复当前输入及存量废弃输入。
+    inputs: orderedTemplateInputs
+      .map<FlowNodeInputItemType>((inputTemplate) => {
         const storeInput =
-          adaptedStoreInputs.find((item) => item.key === templateInput.key) || templateInput;
+          storedInputs.find((item) => item.key === inputTemplate.key) || inputTemplate;
+
         return {
           ...storeInput,
           // 迁移层不写入 locale 相关的展示字段；恢复画布时以当前模板为准，避免旧语言文本残留。
-          ...templateInput,
-          debugLabel: t(templateInput.debugLabel ?? (storeInput.debugLabel as any)),
-          toolDescription: t(templateInput.toolDescription ?? (storeInput.toolDescription as any)),
-          selectedType: storeInput.selectedType ?? templateInput.selectedType,
+          ...inputTemplate,
+          debugLabel: t(inputTemplate.debugLabel ?? (storeInput.debugLabel as any)),
+          toolDescription: t(inputTemplate.toolDescription ?? (storeInput.toolDescription as any)),
+          selectedType: storeInput.selectedType ?? inputTemplate.selectedType,
           value: storeInput.value
         };
       })
       .concat(
-        // 合并 store 中有，template 中没有的输入
-        adaptedStoreInputs
-          .filter((item) => !templateInputs.find((input) => input.key === item.key))
+        // 追加未按模板顺序恢复的存量输入，例如自定义动态字段。
+        storedInputs
+          .filter((item) => !orderedTemplateInputs.find((input) => input.key === item.key))
           .map((item) => {
-            const templateInput = template.inputs.find((input) => input.key === item.key);
+            const inputTemplate = nodeTemplate.inputs.find((input) => input.key === item.key);
 
-            if (!dynamicInput) {
+            if (!dynamicInputTemplate) {
               return {
                 ...item,
-                deprecated: templateInput?.deprecated
+                deprecated: inputTemplate?.deprecated
               };
             }
 
             return {
               ...item,
-              ...getInputComponentProps(dynamicInput),
-              deprecated: templateInput?.deprecated
+              ...getInputComponentProps(dynamicInputTemplate),
+              ...(item.defaultToAgentGenerated === true
+                ? { canAgentGenerated: item.canAgentGenerated }
+                : {}),
+              deprecated: inputTemplate?.deprecated
             };
           })
       ),
-    outputs: templateOutputs
-      .map<FlowNodeOutputItemType>((templateOutput) => {
+    outputs: staticTemplateOutputs
+      .map<FlowNodeOutputItemType>((outputTemplate) => {
         const storeOutput =
-          storeNode.outputs.find((item) => item.key === templateOutput.key) || templateOutput;
+          storeNode.outputs.find((item) => item.key === outputTemplate.key) || outputTemplate;
 
         return {
           ...storeOutput,
-          ...templateOutput,
-          description: t(templateOutput.description ?? (storeOutput.description as any)),
-          id: storeOutput.id ?? templateOutput.id,
-          value: storeOutput.value ?? templateOutput.value
+          ...outputTemplate,
+          description: t(outputTemplate.description ?? (storeOutput.description as any)),
+          id: storeOutput.id ?? outputTemplate.id,
+          value: storeOutput.value ?? outputTemplate.value
         };
       })
       .concat(
         storeNode.outputs
-          .filter((item) => !templateOutputs.find((output) => output.key === item.key))
+          .filter((item) => !staticTemplateOutputs.find((output) => output.key === item.key))
           .map((item) => {
-            const templateOutput = template.outputs.find((output) => output.key === item.key);
+            const outputTemplate = nodeTemplate.outputs.find((output) => output.key === item.key);
             return {
               ...item,
-              deprecated: templateOutput?.deprecated
+              deprecated: outputTemplate?.deprecated
             };
           })
       )
@@ -294,7 +302,8 @@ export const getInputComponentProps = (input: FlowNodeInputItemType) => {
     max: input.max,
     min: input.min,
     defaultValue: input.defaultValue,
-    customInputConfig: input.customInputConfig
+    customInputConfig: input.customInputConfig,
+    ...(input.canAgentGenerated === undefined ? {} : { canAgentGenerated: input.canAgentGenerated })
   };
 };
 
@@ -337,72 +346,88 @@ export const getRefData = ({
     required: !!output.required
   };
 };
-// 根据数据类型，过滤无效的节点输出
+// 根据数据类型，过滤不可引用的工作流值。
+const workflowValueTypeCompatibilityMap: Record<
+  WorkflowIOValueTypeEnum,
+  WorkflowIOValueTypeEnum[]
+> = {
+  [WorkflowIOValueTypeEnum.string]: [WorkflowIOValueTypeEnum.string],
+  [WorkflowIOValueTypeEnum.number]: [WorkflowIOValueTypeEnum.number],
+  [WorkflowIOValueTypeEnum.boolean]: [WorkflowIOValueTypeEnum.boolean],
+  [WorkflowIOValueTypeEnum.object]: [WorkflowIOValueTypeEnum.object],
+  [WorkflowIOValueTypeEnum.arrayString]: [
+    WorkflowIOValueTypeEnum.string,
+    WorkflowIOValueTypeEnum.arrayString,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.arrayNumber]: [
+    WorkflowIOValueTypeEnum.number,
+    WorkflowIOValueTypeEnum.arrayNumber,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.arrayBoolean]: [
+    WorkflowIOValueTypeEnum.boolean,
+    WorkflowIOValueTypeEnum.arrayBoolean,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.arrayObject]: [
+    WorkflowIOValueTypeEnum.object,
+    WorkflowIOValueTypeEnum.arrayObject,
+    WorkflowIOValueTypeEnum.arrayAny,
+    WorkflowIOValueTypeEnum.chatHistory,
+    WorkflowIOValueTypeEnum.datasetQuote,
+    WorkflowIOValueTypeEnum.dynamic,
+    WorkflowIOValueTypeEnum.selectDataset,
+    WorkflowIOValueTypeEnum.selectApp
+  ],
+  [WorkflowIOValueTypeEnum.chatHistory]: [
+    WorkflowIOValueTypeEnum.chatHistory,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.datasetQuote]: [
+    WorkflowIOValueTypeEnum.datasetQuote,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.dynamic]: [
+    WorkflowIOValueTypeEnum.dynamic,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.selectDataset]: [
+    WorkflowIOValueTypeEnum.selectDataset,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.selectApp]: [
+    WorkflowIOValueTypeEnum.selectApp,
+    WorkflowIOValueTypeEnum.arrayAny
+  ],
+  [WorkflowIOValueTypeEnum.arrayAny]: [WorkflowIOValueTypeEnum.arrayAny],
+  [WorkflowIOValueTypeEnum.any]: [WorkflowIOValueTypeEnum.arrayAny]
+};
+
+/** 判断工作流值是否满足目标引用类型，供输出和工具参数引用共用。 */
+const workflowValueTypeIsCompatible = ({
+  itemValueType,
+  valueType
+}: {
+  itemValueType?: WorkflowIOValueTypeEnum;
+  valueType?: WorkflowIOValueTypeEnum;
+}) => {
+  const targetValueType = valueType ?? WorkflowIOValueTypeEnum.any;
+  return (
+    targetValueType === WorkflowIOValueTypeEnum.any ||
+    targetValueType === WorkflowIOValueTypeEnum.arrayAny ||
+    !itemValueType ||
+    itemValueType === WorkflowIOValueTypeEnum.any ||
+    workflowValueTypeCompatibilityMap[targetValueType]?.includes(itemValueType) === true
+  );
+};
+
 export const filterWorkflowNodeOutputsByType = (
   outputs: FlowNodeOutputItemType[],
   valueType: WorkflowIOValueTypeEnum
 ): FlowNodeOutputItemType[] => {
-  const validTypeMap: Record<WorkflowIOValueTypeEnum, WorkflowIOValueTypeEnum[]> = {
-    [WorkflowIOValueTypeEnum.string]: [WorkflowIOValueTypeEnum.string],
-    [WorkflowIOValueTypeEnum.number]: [WorkflowIOValueTypeEnum.number],
-    [WorkflowIOValueTypeEnum.boolean]: [WorkflowIOValueTypeEnum.boolean],
-    [WorkflowIOValueTypeEnum.object]: [WorkflowIOValueTypeEnum.object],
-    [WorkflowIOValueTypeEnum.arrayString]: [
-      WorkflowIOValueTypeEnum.string,
-      WorkflowIOValueTypeEnum.arrayString,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.arrayNumber]: [
-      WorkflowIOValueTypeEnum.number,
-      WorkflowIOValueTypeEnum.arrayNumber,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.arrayBoolean]: [
-      WorkflowIOValueTypeEnum.boolean,
-      WorkflowIOValueTypeEnum.arrayBoolean,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.arrayObject]: [
-      WorkflowIOValueTypeEnum.object,
-      WorkflowIOValueTypeEnum.arrayObject,
-      WorkflowIOValueTypeEnum.arrayAny,
-      WorkflowIOValueTypeEnum.chatHistory,
-      WorkflowIOValueTypeEnum.datasetQuote,
-      WorkflowIOValueTypeEnum.dynamic,
-      WorkflowIOValueTypeEnum.selectDataset,
-      WorkflowIOValueTypeEnum.selectApp
-    ],
-    [WorkflowIOValueTypeEnum.chatHistory]: [
-      WorkflowIOValueTypeEnum.chatHistory,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.datasetQuote]: [
-      WorkflowIOValueTypeEnum.datasetQuote,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.dynamic]: [
-      WorkflowIOValueTypeEnum.dynamic,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.selectDataset]: [
-      WorkflowIOValueTypeEnum.selectDataset,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.selectApp]: [
-      WorkflowIOValueTypeEnum.selectApp,
-      WorkflowIOValueTypeEnum.arrayAny
-    ],
-    [WorkflowIOValueTypeEnum.arrayAny]: [WorkflowIOValueTypeEnum.arrayAny],
-    [WorkflowIOValueTypeEnum.any]: [WorkflowIOValueTypeEnum.arrayAny]
-  };
-
-  return outputs.filter(
-    (output) =>
-      valueType === WorkflowIOValueTypeEnum.any ||
-      valueType === WorkflowIOValueTypeEnum.arrayAny ||
-      !output.valueType ||
-      output.valueType === WorkflowIOValueTypeEnum.any ||
-      validTypeMap[valueType]?.includes(output.valueType)
+  return outputs.filter((output) =>
+    workflowValueTypeIsCompatible({ itemValueType: output.valueType, valueType })
   );
 };
 
@@ -452,11 +477,12 @@ const referenceItemIsSelectable = ({
   const sourceNode = sourceNodes.find((node) => node.nodeId === sourceNodeId);
   if (!sourceNode) return false;
 
-  return filterSelectableWorkflowNodeOutputs({
+  const outputIsSelectable = filterSelectableWorkflowNodeOutputs({
     outputs: sourceNode.outputs,
     valueType,
     catchError: sourceNode.catchError
   }).some((output) => output.id === outputId);
+  return outputIsSelectable;
 };
 
 /**

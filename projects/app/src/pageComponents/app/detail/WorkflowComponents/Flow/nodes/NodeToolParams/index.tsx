@@ -5,6 +5,7 @@ import React, { useMemo, useState } from 'react';
 import Container from '../../components/Container';
 import {
   Button,
+  Box,
   Flex,
   FormLabel,
   Table,
@@ -18,11 +19,11 @@ import {
 import { useTranslation } from 'next-i18next';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { defaultEditFormData } from '../render/RenderToolInput/EditFieldModal';
-import ToolParamsEditModal from './ToolParamsEditModal';
+import ToolParamsEditModal from '../components/ToolParamsEditModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
+import { defaultToolParamFormData } from '../components/ToolParamsEditModal/constants';
 
 const NodeToolParams = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
@@ -35,140 +36,83 @@ const NodeToolParams = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       <NodeCard selected={selected} {...data}>
         <Container>
           <Flex alignItems={'center'} justifyContent={'space-between'} mb={1.5}>
-            <FormLabel fontSize={'sm'}>{t('workflow:tool_custom_field')}</FormLabel>
+            <FormLabel fontSize={'sm'}>{t('workflow:tool_input')}</FormLabel>
             <Button
               variant={'whiteBase'}
               leftIcon={<SmallAddIcon />}
               iconSpacing={1}
               size={'sm'}
-              onClick={() => setEditField(defaultEditFormData)}
+              onClick={() => setEditField(defaultToolParamFormData)}
             >
-              {t('common:add_new_param')}
+              {t('common:add_new')}
             </Button>
             {!!editField && (
               <ToolParamsEditModal
                 defaultValue={editField}
+                existingKeys={inputs.map((input) => input.key)}
                 nodeId={nodeId}
                 onClose={() => setEditField(undefined)}
               />
             )}
           </Flex>
-          <TableContainer
-            borderRadius={'md'}
-            overflow={'hidden'}
-            border={'1px solid'}
-            borderColor={'myGray.200'}
-          >
-            <Table bg={'white'}>
-              <Thead>
-                <Tr h={8}>
-                  <Th p={0} px={4} bg={'myGray.50'} borderBottomLeftRadius={'none !important'}>
-                    {t('workflow:tool_params.params_name')}
-                  </Th>
-                  <Th p={0} px={4} bg={'myGray.50'}>
-                    {t('workflow:tool_params.params_description')}
-                  </Th>
-                  <Th p={0} px={4} bg={'myGray.50'}>
-                    {t('workflow:field_required')}
-                  </Th>
-                  <Th p={0} px={4} bg={'myGray.50'} borderBottomRightRadius={'none !important'}>
-                    {t('common:Operation')}
-                  </Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {inputs.map((item, index) => (
-                  <Tr
-                    key={index}
-                    position={'relative'}
-                    whiteSpace={'pre-wrap'}
-                    wordBreak={'break-all'}
-                    h={10}
-                  >
-                    <Td
-                      p={0}
-                      px={4}
-                      borderBottom={index === inputs.length - 1 ? 'none' : undefined}
-                    >
-                      <Flex alignItems={'center'} fontSize={'xs'}>
-                        <MyIcon name={'checkCircle'} w={'14px'} mr={1} color={'myGray.600'} />
-                        {item.key}
-                      </Flex>
-                    </Td>
-                    <Td
-                      p={0}
-                      px={4}
-                      borderBottom={index === inputs.length - 1 ? 'none' : undefined}
-                      fontSize={'xs'}
-                    >
-                      {item.toolDescription}
-                    </Td>
-                    <Td
-                      p={0}
-                      px={4}
-                      borderBottom={index === inputs.length - 1 ? 'none' : undefined}
-                      fontSize={'xs'}
-                    >
-                      {item.required ? '✔' : ''}
-                    </Td>
-                    <Td
-                      p={0}
-                      px={4}
-                      borderBottom={index === inputs.length - 1 ? 'none' : undefined}
-                      whiteSpace={'nowrap'}
-                    >
-                      <Flex alignItems={'center'}>
-                        <Flex
-                          mr={3}
-                          p={1}
-                          color={'myGray.500'}
-                          rounded={'sm'}
-                          alignItems={'center'}
-                          bg={'transparent'}
-                          transition={'background 0.1s'}
-                          cursor={'pointer'}
-                          _hover={{
-                            bg: 'myGray.05',
-                            color: 'primary.600'
-                          }}
-                          onClick={() => setEditField(item)}
-                        >
-                          <MyIcon name={'common/settingLight'} w={'16px'} />
-                        </Flex>
-                        <Flex
-                          p={1}
-                          color={'myGray.500'}
-                          rounded={'sm'}
-                          alignItems={'center'}
-                          bg={'transparent'}
-                          transition={'background 0.1s'}
-                          cursor={'pointer'}
-                          _hover={{
-                            bg: 'myGray.05',
-                            color: 'red.500'
-                          }}
-                          onClick={() => {
-                            onChangeNode({
-                              nodeId,
-                              type: 'delInput',
-                              key: item.key
-                            });
-                            onChangeNode({
-                              nodeId,
-                              type: 'delOutput',
-                              key: item.key
-                            });
-                          }}
-                        >
-                          <MyIcon name={'delete'} w={'16px'} />
-                        </Flex>
-                      </Flex>
-                    </Td>
+          <Box borderRadius={'md'} overflow={'hidden'} border={'base'}>
+            <TableContainer>
+              <Table bg={'white'}>
+                <Thead>
+                  <Tr>
+                    <Th>{t('workflow:tool_params.params_name')}</Th>
+                    <Th>{t('workflow:tool_params.params_description')}</Th>
+                    <Th>{t('workflow:field_required')}</Th>
+                    <Th w={'100px'} minW={'100px'}>
+                      {t('common:Operation')}
+                    </Th>
                   </Tr>
-                ))}
-              </Tbody>
-            </Table>
-          </TableContainer>
+                </Thead>
+                <Tbody>
+                  {inputs.map((item, index) => (
+                    <Tr
+                      key={index}
+                      position={'relative'}
+                      whiteSpace={'pre-wrap'}
+                      wordBreak={'break-all'}
+                    >
+                      <Td>{item.key}</Td>
+                      <Td>{item.toolDescription}</Td>
+                      <Td>{item.required ? '✔' : ''}</Td>
+                      <Td w={'100px'} minW={'100px'} whiteSpace={'nowrap'} verticalAlign={'middle'}>
+                        <Flex h={'24px'} alignItems={'center'}>
+                          <MyIcon
+                            mr={3}
+                            name={'common/settingLight'}
+                            w={'16px'}
+                            cursor={'pointer'}
+                            onClick={() => setEditField(item)}
+                          />
+                          <MyIcon
+                            name={'delete'}
+                            w={'16px'}
+                            cursor={'pointer'}
+                            onClick={() => {
+                              onChangeNode({
+                                nodeId,
+                                type: 'delInput',
+                                key: item.key
+                              });
+                              onChangeNode({
+                                nodeId,
+                                type: 'delOutput',
+                                key: item.key
+                              });
+                            }}
+                          />
+                        </Flex>
+                      </Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            </TableContainer>
+          </Box>
         </Container>
       </NodeCard>
     );

@@ -2,25 +2,28 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
-} from '../../node/constant';
-import { type FlowNodeTemplateType } from '../../type/node';
+} from '../../../node/constant';
+import { type FlowNodeTemplateType } from '../../../type/node';
 import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
   FlowNodeTemplateTypeEnum
-} from '../../constants';
+} from '../../../constants';
 import {
   Input_Template_History,
   Input_Template_UserChatInput,
   Input_Template_SelectAIModel
-} from '../input';
-import { i18nT } from '../../../../common/i18n/utils';
+} from '../../input';
+import { i18nT } from '../../../../../common/i18n/utils';
+import { PluginStatusEnum } from '../../../../plugin/type';
 
+/** @deprecated Retained for existing workflow compatibility; hidden from new-node templates. */
 export const AiQueryExtension: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.queryExtension,
   templateType: FlowNodeTemplateTypeEnum.other,
   flowNodeType: FlowNodeTypeEnum.queryExtension,
+  status: PluginStatusEnum.SoonOffline,
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/queryExtension',

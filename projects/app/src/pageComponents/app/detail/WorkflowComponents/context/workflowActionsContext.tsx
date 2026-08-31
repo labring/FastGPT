@@ -4,6 +4,7 @@ import { createContext, useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { migrateToolInputConfig } from '@fastgpt/global/core/app/formEdit/utils';
 import type { OnConnectStartParams } from 'reactflow';
 import { WorkflowBufferDataContext } from './workflowInitContext';
 import type {
@@ -386,19 +387,18 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       setNodes((state) =>
         state.map((item) => {
           if (item.id === id) {
+            const sourceInputMap = new Map(item.data.inputs.map((input) => [input.key, input]));
             return {
               ...item,
               data: {
                 ...item.data,
                 ...node,
-                inputs: node.inputs.map((input) => {
-                  const value =
-                    item.data.inputs.find((i) => i.key === input.key)?.value ?? input.value;
-                  return {
-                    ...input,
-                    value
-                  };
-                })
+                inputs: node.inputs.map((input) =>
+                  migrateToolInputConfig({
+                    input,
+                    sourceInput: sourceInputMap.get(input.key)
+                  })
+                )
               }
             };
           }
@@ -458,6 +458,17 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
               const existingIndex = updateObj.inputs.findIndex(
                 (item) => item.key === updateItem.key
               );
+              const hasInput = updateObj.inputs.some(
+                (item) => item.key === updateItem.value.key && item.key !== updateItem.key
+              );
+
+              if (hasInput) {
+                toast({
+                  status: 'warning',
+                  title: t('common:key_repetition')
+                });
+                return;
+              }
 
               updateObj = {
                 ...updateObj,

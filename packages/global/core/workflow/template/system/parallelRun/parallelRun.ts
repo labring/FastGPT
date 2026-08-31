@@ -10,6 +10,7 @@ import {
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '../../../constants';
+import { createHideInContext } from '../../context';
 import { i18nT } from '../../../../../common/i18n/utils';
 import {
   Input_Template_Children_Node_List,
@@ -30,12 +31,18 @@ export const ParallelRunNode: FlowNodeTemplateType = {
   name: i18nT('workflow:parallel_run'),
   intro: i18nT('workflow:intro_parallel_run'),
   showStatus: true,
+  isTool: true,
+  isShowInContext: createHideInContext([
+    { parentType: FlowNodeTypeEnum.loopRun },
+    { parentType: FlowNodeTypeEnum.parallelRun }
+  ]),
   courseUrl: '/guide/build/workflow/nodes/parallel_run',
   inputs: [
     {
       key: NodeInputKeyEnum.nestedInputArray,
       renderTypeList: [FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.arrayAny,
+      canAgentGenerated: false,
       required: true,
       label: i18nT('workflow:loop_input_array'),
       value: []
@@ -44,6 +51,7 @@ export const ParallelRunNode: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.parallelRunMaxConcurrency,
       renderTypeList: [FlowNodeInputTypeEnum.numberInput],
       valueType: WorkflowIOValueTypeEnum.number,
+      canAgentGenerated: false,
       required: true,
       label: i18nT('workflow:parallel_run_max_concurrency'),
       description: i18nT('workflow:parallel_run_max_concurrency_tip'),
@@ -54,6 +62,7 @@ export const ParallelRunNode: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.parallelRunMaxRetryTimes,
       renderTypeList: [FlowNodeInputTypeEnum.numberInput],
       valueType: WorkflowIOValueTypeEnum.number,
+      canAgentGenerated: false,
       required: true,
       label: i18nT('workflow:parallel_run_max_retry_times'),
       description: i18nT('workflow:parallel_run_max_retry_times_tip'),

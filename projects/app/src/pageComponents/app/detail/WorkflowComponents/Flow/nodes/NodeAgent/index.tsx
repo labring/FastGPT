@@ -446,7 +446,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   return (
     <NodeCard minW={'524px'} selected={selected} {...data}>
-      {isTool && hasDynamicToolInput(inputs) && (
+      {isTool && hasDynamicToolInput(data) && (
         <Container>
           <RenderToolInput nodeId={nodeId} inputs={inputs} />
         </Container>
