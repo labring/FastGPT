@@ -18,6 +18,7 @@ import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Te
 import {
   formatEditorVariablePickerIcon,
   getAppChatConfig,
+  getHandleId,
   getSelectedInputRenderType,
   nodeInputIsReference
 } from '@fastgpt/global/core/workflow/utils';
@@ -25,8 +26,7 @@ import { type TFunction } from 'next-i18next';
 import {
   type FlowNodeInputItemType,
   type FlowNodeOutputItemType,
-  type ReferenceItemValueType,
-  type ReferenceValueType
+  type ReferenceItemValueType
 } from '@fastgpt/global/core/workflow/type/io';
 import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { initNewIfElseList } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
@@ -428,6 +428,45 @@ export type WorkflowReferenceSourceNode = {
   catchError?: boolean;
 };
 
+/** 多分支节点仅允许当前配置仍存在的 source handle 参与来源计算和工作流检查。 */
+export const isWorkflowEdgeSourceHandleValid = (
+  sourceNode: FlowNodeItemType | undefined,
+  sourceHandle: string | null | undefined
+) => {
+  if (!sourceNode) return false;
+
+  const { nodeId, flowNodeType, inputs } = sourceNode;
+
+  if (flowNodeType === FlowNodeTypeEnum.userSelect) {
+    if (!sourceHandle) return false;
+
+    const options = inputs?.find((input) => input.key === NodeInputKeyEnum.userSelectOptions)
+      ?.value as Array<{ key?: string }> | undefined;
+
+    return (
+      Array.isArray(options) &&
+      options.some(
+        (option) => option.key && sourceHandle === getHandleId(nodeId, 'source', option.key)
+      )
+    );
+  }
+
+  if (flowNodeType === FlowNodeTypeEnum.classifyQuestion) {
+    if (!sourceHandle) return false;
+
+    const agents = inputs?.find((input) => input.key === NodeInputKeyEnum.agents)?.value as
+      | Array<{ key?: string }>
+      | undefined;
+
+    return (
+      Array.isArray(agents) &&
+      agents.some((agent) => agent.key && sourceHandle === getHandleId(nodeId, 'source', agent.key))
+    );
+  }
+
+  return true;
+};
+
 /**
  * 过滤引用选择器中真正可选的输出。
  * ReferenceSelector 和节点 debug 的引用有效性判断必须共用这套规则，避免已删除、类型不匹配、
@@ -443,11 +482,9 @@ export const filterSelectableWorkflowNodeOutputs = ({
   catchError?: boolean;
 }) => {
   const selectableOutputs = outputs.filter((output) => {
-    if (output.type === FlowNodeOutputTypeEnum.error) {
-      return catchError === true;
-    }
-
-    return output.id !== NodeOutputKeyEnum.addOutputParam && output.invalid !== true;
+    if (output.id === NodeOutputKeyEnum.addOutputParam || output.invalid === true) return false;
+    if (output.type === FlowNodeOutputTypeEnum.error) return catchError === true;
+    return true;
   });
 
   return filterWorkflowNodeOutputsByType(
@@ -456,7 +493,7 @@ export const filterSelectableWorkflowNodeOutputs = ({
   );
 };
 
-const isReferenceItem = (value: unknown): value is ReferenceItemValueType =>
+export const isWorkflowReferenceItem = (value: unknown): value is ReferenceItemValueType =>
   Array.isArray(value) &&
   value.length === 2 &&
   typeof value[0] === 'string' &&
@@ -466,10 +503,10 @@ const isReferenceItem = (value: unknown): value is ReferenceItemValueType =>
 
 /** 从 canonical 单选或多选值中按原顺序提取引用项。 */
 export const getWorkflowReferenceItems = (value: unknown): ReferenceItemValueType[] => {
-  if (isReferenceItem(value)) return [value];
+  if (isWorkflowReferenceItem(value)) return [value];
   if (!Array.isArray(value)) return [];
 
-  return value.filter(isReferenceItem);
+  return value.filter(isWorkflowReferenceItem);
 };
 
 export const isEmptyReferenceValue = (value: unknown) =>
@@ -484,111 +521,6 @@ export const isEmptyReferenceValue = (value: unknown) =>
 
 /** 空引用不参与状态检查；其他非空值统一视为已配置并报告 invalid_reference。 */
 export const isConfiguredReferenceValue = (value: unknown) => !isEmptyReferenceValue(value);
-
-export type WorkflowReferenceStatusCode =
-  | 'empty'
-  | 'valid'
-  | 'invalid_reference'
-  | 'unreachable_reference'
-  | 'invalid_reference_type';
-
-export type WorkflowReferenceStatus = {
-  code: WorkflowReferenceStatusCode;
-  sourceType?: WorkflowIOValueTypeEnum;
-};
-
-/**
- * 判断单项引用的当前状态，统一处理来源、输出、可达范围和类型。
- * sourceNodeIds 只表达当前消费节点允许的普通来源；global reference 单独按 chatConfig 查询。
- */
-export const getWorkflowReferenceStatus = ({
-  value,
-  valueType,
-  sourceNodeIds,
-  sourceNodes,
-  getNodeById,
-  chatConfig
-}: {
-  value: unknown;
-  valueType?: WorkflowIOValueTypeEnum;
-  sourceNodeIds?: Iterable<string>;
-  sourceNodes?: WorkflowReferenceSourceNode[];
-  getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
-  chatConfig?: AppChatConfigType;
-}): WorkflowReferenceStatus => {
-  if (!isConfiguredReferenceValue(value)) return { code: 'empty' };
-  if (!isReferenceItem(value)) return { code: 'invalid_reference' };
-
-  const [sourceNodeId, outputId] = value;
-  const sourceNode =
-    sourceNodes?.find((node) => node.nodeId === sourceNodeId) ?? getNodeById(sourceNodeId);
-  const sourceOutput = sourceNode?.outputs.find((output) => output.id === outputId);
-
-  if (sourceNodeId === VARIABLE_NODE_ID && !sourceOutput) {
-    // 缺少 chatConfig 时无法判断全局变量是否存在，保持旧数据检查的未知可继续语义。
-    if (chatConfig === undefined) return { code: 'valid' };
-
-    const globalVariable = getWorkflowGlobalVariables({
-      chatConfig
-    }).find((variable) => variable.key === outputId);
-    if (!globalVariable) return { code: 'invalid_reference' };
-    if (!workflowValueTypeIsCompatible(globalVariable.valueType, valueType)) {
-      return {
-        code: 'invalid_reference_type',
-        sourceType: globalVariable.valueType
-      };
-    }
-    return { code: 'valid', sourceType: globalVariable.valueType };
-  }
-
-  if (!sourceNode || !sourceOutput) return { code: 'invalid_reference' };
-  if (
-    sourceNodeId !== VARIABLE_NODE_ID &&
-    sourceNodeIds &&
-    !new Set(sourceNodeIds).has(sourceNodeId)
-  ) {
-    return { code: 'unreachable_reference', sourceType: sourceOutput.valueType };
-  }
-
-  const selectableOutput = filterSelectableWorkflowNodeOutputs({
-    outputs: [sourceOutput],
-    valueType: WorkflowIOValueTypeEnum.any,
-    catchError: sourceNode.catchError
-  });
-  if (!selectableOutput.length) {
-    return { code: 'invalid_reference', sourceType: sourceOutput.valueType };
-  }
-  if (!workflowValueTypeIsCompatible(sourceOutput.valueType, valueType)) {
-    return { code: 'invalid_reference_type', sourceType: sourceOutput.valueType };
-  }
-
-  return { code: 'valid', sourceType: sourceOutput.valueType };
-};
-
-/**
- * 判断引用值是否仍能被 ReferenceSelector 选中。
- * 单选引用要求当前二元组命中；多选引用只要存在一个仍可选的引用项，选择器就会展示有效值。
- */
-export const workflowReferenceValueIsSelectable = ({
-  value,
-  sourceNodes,
-  valueType
-}: {
-  value?: ReferenceValueType;
-  sourceNodes: WorkflowReferenceSourceNode[];
-  valueType?: WorkflowIOValueTypeEnum;
-}) => {
-  return getWorkflowReferenceItems(value).some(
-    (item) =>
-      getWorkflowReferenceStatus({
-        value: item,
-        valueType,
-        sourceNodes,
-        sourceNodeIds: sourceNodes.map((node) => node.nodeId),
-        getNodeById: () => undefined
-      }).code === 'valid'
-  );
-};
 
 /**
  * 获取当前节点可引用的普通来源 ID。
@@ -620,7 +552,7 @@ export const getNodeAllSourceIds = ({
       searchedTargetNodeIds.add(targetNodeId);
       edges.forEach((edge) => {
         if (edge.target !== targetNodeId) return;
-        if (!getNodeById(edge.source)) return;
+        if (!isWorkflowEdgeSourceHandleValid(getNodeById(edge.source), edge.sourceHandle)) return;
         sourceIds.add(edge.source);
         queue.push(edge.source);
       });

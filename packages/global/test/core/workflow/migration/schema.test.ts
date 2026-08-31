@@ -203,11 +203,50 @@ describe('workflow input schema boundaries', () => {
 
     const update = (variableUpdate.inputs[0].value as any)[0];
     expect(update.variable).toEqual(['deleted-node', 'target']);
-    expect(update.value).toEqual([['deleted-node', 'value']]);
+    expect(update.value).toEqual(['deleted-node', 'value']);
     expect(update.valueReferenceSnapshots).toEqual([
       { reference: ['deleted-node', 'value'], sourceLabel: 'Deleted node' }
     ]);
     expect(await migrateWorkflowToCurrent(result as any)).toEqual(result);
+  });
+
+  it('keeps scalar VariableUpdate references scalar and wraps array references', async () => {
+    const result = await migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'variable-update',
+          flowNodeType: 'variableUpdate',
+          name: 'Variable Update',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.updateList,
+              label: 'Update list',
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              value: [
+                {
+                  variable: ['deleted-node', 'scalar-target'],
+                  value: [['deleted-node', 'scalar-value']],
+                  valueType: WorkflowIOValueTypeEnum.string,
+                  renderType: FlowNodeInputTypeEnum.reference
+                },
+                {
+                  variable: ['deleted-node', 'array-target'],
+                  value: ['deleted-node', 'array-value'],
+                  valueType: WorkflowIOValueTypeEnum.arrayString,
+                  renderType: FlowNodeInputTypeEnum.reference
+                }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: []
+    } as any);
+
+    const updateList = result.nodes[0]?.inputs[0]?.value as any[];
+    expect(updateList[0].value).toEqual(['deleted-node', 'scalar-value']);
+    expect(updateList[1].value).toEqual([['deleted-node', 'array-value']]);
   });
 });
 

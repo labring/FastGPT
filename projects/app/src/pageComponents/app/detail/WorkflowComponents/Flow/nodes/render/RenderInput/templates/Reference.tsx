@@ -5,11 +5,11 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
   getNodeAllSource,
   getWorkflowReferenceItems,
-  getWorkflowReferenceStatus,
   isConfiguredReferenceValue,
   filterSelectableWorkflowNodeOutputs,
   type WorkflowReferenceSourceNode
 } from '@/web/core/workflow/utils';
+import { getWorkflowReferenceStatus } from '@/web/core/workflow/referenceCheck';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';

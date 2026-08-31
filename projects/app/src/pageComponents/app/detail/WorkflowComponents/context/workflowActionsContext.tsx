@@ -295,8 +295,8 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
     [onRefreshSingleNodeWorkflowCheckIssues]
   );
 
-  /** 连线变更后防抖全量扫描，及时更新 no_upstream 等依赖连线的错误态。 */
-  const scheduleWorkflowCheckOnEdgeChange = useCallback(() => {
+  /** 结构变化后防抖全量扫描，及时更新依赖节点关系和输出的引用错误态。 */
+  const scheduleFullWorkflowCheck = useCallback(() => {
     if (edgeCheckTimerRef.current) {
       clearTimeout(edgeCheckTimerRef.current);
     }
@@ -374,8 +374,8 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       }
     }
 
-    scheduleWorkflowCheckOnEdgeChange();
-  }, [edges, scheduleWorkflowCheckOnEdgeChange, getNodes, setNodes]);
+    scheduleFullWorkflowCheck();
+  }, [edges, scheduleFullWorkflowCheck, getNodes, setNodes]);
 
   useEffect(() => {
     const timers = singleNodeCheckTimerRef.current;
@@ -423,11 +423,13 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
                 ...item.data,
                 ...node,
                 inputs: node.inputs.map((input) => {
-                  const value =
-                    item.data.inputs.find((i) => i.key === input.key)?.value ?? input.value;
+                  const previousInput = item.data.inputs.find((i) => i.key === input.key);
                   return {
                     ...input,
-                    value
+                    value: previousInput?.value ?? input.value,
+                    ...(previousInput?.referenceSnapshots === undefined
+                      ? {}
+                      : { referenceSnapshots: previousInput.referenceSnapshots })
                   };
                 })
               }
@@ -436,8 +438,10 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
           return item;
         })
       );
+
+      scheduleFullWorkflowCheck();
     },
-    [forbiddenSaveSnapshotRef, setNodes]
+    [forbiddenSaveSnapshotRef, scheduleFullWorkflowCheck, setNodes]
   );
 
   // 使用结构共享优化的节点更改
@@ -609,7 +613,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       });
 
       if (updateData.length > 1 || shouldRunFullWorkflowCheck) {
-        scheduleWorkflowCheckOnEdgeChange();
+        scheduleFullWorkflowCheck();
       } else {
         nodeIdsToRecheck.forEach((nodeId) => scheduleSingleNodeWorkflowCheck(nodeId));
       }
@@ -621,7 +625,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       onDelEdge,
       llmModelMap,
       scheduleSingleNodeWorkflowCheck,
-      scheduleWorkflowCheckOnEdgeChange
+      scheduleFullWorkflowCheck
     ]
   );
 

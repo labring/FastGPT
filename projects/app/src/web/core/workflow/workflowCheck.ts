@@ -13,7 +13,7 @@ import {
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import { getHandleId, nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
+import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import type { TFunction } from 'next-i18next';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
@@ -36,12 +36,15 @@ import { isToolNotExistError } from '@fastgpt/global/core/app/utils';
 import {
   getNodeAllSourceIds,
   getRefData,
-  getWorkflowReferenceItems,
-  getWorkflowReferenceStatus,
   isConfiguredReferenceValue,
   isEmptyReferenceValue,
+  isWorkflowEdgeSourceHandleValid,
   workflowValueTypeIsCompatible
 } from './utils';
+import {
+  getWorkflowReferenceIssueCode as getReferenceIssueCode,
+  getWorkflowReferenceStatuses
+} from './referenceCheck';
 
 type WorkflowCheckContext = {
   nodeMap: Map<string, Node<FlowNodeItemType, string | undefined>>;
@@ -56,48 +59,6 @@ const workflowCheckSkipConnectionTypes = new Set<FlowNodeTypeEnum>([
   FlowNodeTypeEnum.globalVariable,
   FlowNodeTypeEnum.emptyNode
 ]);
-
-/**
- * 多分支节点的 sourceHandle 必须与当前 options/agents 中的 key 一致；
- * 删除分支后残留的悬空 edge 不应计入有效连线。
- */
-const isWorkflowEdgeSourceHandleValid = (
-  sourceNode: Node<FlowNodeItemType, string | undefined> | undefined,
-  sourceHandle: string | null | undefined
-) => {
-  if (!sourceNode) return false;
-
-  const { nodeId, flowNodeType, inputs } = sourceNode.data;
-
-  if (flowNodeType === FlowNodeTypeEnum.userSelect) {
-    if (!sourceHandle) return false;
-
-    const options = inputs?.find((input) => input.key === NodeInputKeyEnum.userSelectOptions)
-      ?.value as Array<{ key?: string }> | undefined;
-
-    return (
-      Array.isArray(options) &&
-      options.some(
-        (option) => option.key && sourceHandle === getHandleId(nodeId, 'source', option.key)
-      )
-    );
-  }
-
-  if (flowNodeType === FlowNodeTypeEnum.classifyQuestion) {
-    if (!sourceHandle) return false;
-
-    const agents = inputs?.find((input) => input.key === NodeInputKeyEnum.agents)?.value as
-      | Array<{ key?: string }>
-      | undefined;
-
-    return (
-      Array.isArray(agents) &&
-      agents.some((agent) => agent.key && sourceHandle === getHandleId(nodeId, 'source', agent.key))
-    );
-  }
-
-  return true;
-};
 
 const workflowCheckStartTypes = new Set<FlowNodeTypeEnum>([
   FlowNodeTypeEnum.workflowStart,
@@ -361,7 +322,7 @@ const createWorkflowCheckContext = ({
 
   edges.forEach((edge) => {
     const sourceNode = nodeMap.get(edge.source);
-    if (!isWorkflowEdgeSourceHandleValid(sourceNode, edge.sourceHandle)) {
+    if (!isWorkflowEdgeSourceHandleValid(sourceNode?.data, edge.sourceHandle)) {
       return;
     }
 
@@ -408,28 +369,16 @@ const getReferenceStatuses = ({
   sourceNodeIds: string[];
   context: WorkflowCheckContext;
 }) => {
-  const referenceItems = getWorkflowReferenceItems(value);
-  if (referenceItems.length === 0) {
-    return isConfiguredReferenceValue(value) ? [{ code: 'invalid_reference' as const }] : [];
-  }
-
   const getNodeById = (nodeId: string | null | undefined) =>
     context.nodeMap.get(nodeId ?? '')?.data;
-  return referenceItems.map((item) =>
-    getWorkflowReferenceStatus({
-      value: item,
-      valueType,
-      sourceNodeIds,
-      getNodeById,
-      chatConfig: context.chatConfig
-    })
-  );
+  return getWorkflowReferenceStatuses({
+    value,
+    valueType,
+    sourceNodeIds,
+    getNodeById,
+    chatConfig: context.chatConfig
+  });
 };
-
-const getReferenceIssueCode = (statuses: ReturnType<typeof getReferenceStatuses>) =>
-  ['invalid_reference', 'unreachable_reference', 'invalid_reference_type'].find((code) =>
-    statuses.some((status) => status.code === code)
-  );
 
 const isEmptyReferenceInputValue = (value: unknown) => isEmptyReferenceValue(value);
 
@@ -542,14 +491,21 @@ export const checkWorkflowNodeIssues = ({
           | IfElseListItemType[]
           | undefined;
         const hasIncompleteCondition = (ifElseList ?? []).some((item) =>
-          item.list.some(
-            (listItem) =>
-              listItem.variable === undefined ||
+          item.list.some((listItem) => {
+            const hasEmptyVariable =
+              listItem.variable === undefined || isEmptyReferenceValue(listItem.variable);
+            const hasEmptyValue =
+              listItem.value === undefined ||
+              (listItem.valueType === 'reference' && isEmptyReferenceValue(listItem.value));
+
+            return (
+              hasEmptyVariable ||
               listItem.condition === undefined ||
-              (listItem.value === undefined &&
+              (hasEmptyValue &&
                 listItem.condition !== VariableConditionEnum.isEmpty &&
                 listItem.condition !== VariableConditionEnum.isNotEmpty)
-          )
+            );
+          })
         );
 
         if (!ifElseList || hasIncompleteCondition) {
@@ -558,6 +514,64 @@ export const checkWorkflowNodeIssues = ({
             code: 'if_else_incomplete',
             message: getWorkflowCheckIssueMessage('if_else_incomplete', t),
             inputKey: NodeInputKeyEnum.ifElseList
+          });
+        }
+
+        if (ifElseList) {
+          ifElseList.forEach((branch, branchIndex) => {
+            branch.list.forEach((condition, conditionIndex) => {
+              const addReferenceIssue = ({
+                field,
+                code
+              }: {
+                field: 'variable' | 'value';
+                code: 'invalid_reference' | 'invalid_reference_type' | 'unreachable_reference';
+              }) => {
+                addIssue({
+                  node,
+                  code,
+                  message: getWorkflowCheckIssueMessage(code, t, {
+                    inputName: field === 'variable' ? '变量' : '值'
+                  }),
+                  inputKey: `${NodeInputKeyEnum.ifElseList}[${branchIndex}].list[${conditionIndex}].${field}`
+                });
+              };
+
+              const variableStatuses = getReferenceStatuses({
+                value: condition.variable,
+                sourceNodeIds,
+                context
+              });
+              const variableIssueCode = getReferenceIssueCode(variableStatuses);
+              if (variableIssueCode) {
+                addReferenceIssue({
+                  field: 'variable',
+                  code: variableIssueCode
+                });
+              }
+
+              const variableType = getRefData({
+                variable: condition.variable,
+                getNodeById: (sourceNodeId) => context.nodeMap.get(sourceNodeId ?? '')?.data,
+                chatConfig: context.chatConfig
+              }).valueType;
+
+              if (condition.valueType === 'reference') {
+                const valueStatuses = getReferenceStatuses({
+                  value: condition.value,
+                  valueType: variableType,
+                  sourceNodeIds,
+                  context
+                });
+                const valueIssueCode = getReferenceIssueCode(valueStatuses);
+                if (valueIssueCode) {
+                  addReferenceIssue({
+                    field: 'value',
+                    code: valueIssueCode
+                  });
+                }
+              }
+            });
           });
         }
       }

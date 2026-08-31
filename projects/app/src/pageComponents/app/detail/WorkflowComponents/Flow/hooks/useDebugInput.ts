@@ -18,10 +18,8 @@ import type { FileSelectorValueItemType } from '@/components/core/app/FileSelect
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import {
-  workflowReferenceValueIsSelectable,
-  type WorkflowReferenceSourceNode
-} from '@/web/core/workflow/utils';
+import type { WorkflowReferenceSourceNode } from '@/web/core/workflow/utils';
+import { workflowReferenceValueIsSelectable } from '@/web/core/workflow/referenceCheck';
 
 const primitiveValueTypes = new Set<WorkflowIOValueTypeEnum>([
   WorkflowIOValueTypeEnum.string,

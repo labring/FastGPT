@@ -45,8 +45,9 @@ const cleanReferenceValue = (value: unknown, isArray: boolean) => {
   }
 
   if (isReferenceItem(value)) return value;
-  if (Array.isArray(value) && value.length === 1 && isReferenceItem(value[0])) {
-    return value[0];
+  if (Array.isArray(value)) {
+    const referenceItems = value.filter(isReferenceItem);
+    if (referenceItems.length === 1) return referenceItems[0];
   }
   return isEmptyReferenceValue(value) ? value : undefined;
 };
@@ -132,7 +133,10 @@ const cleanReferenceFields = (node: CanonicalWorkflowData['nodes'][number]) => {
             if (variable === undefined) delete nextItem.variable;
             else nextItem.variable = variable;
             if (nextItem.renderType === FlowNodeInputTypeEnum.reference) {
-              const value = cleanReferenceValue(nextItem.value, true);
+              const value = cleanReferenceValue(
+                nextItem.value,
+                typeof nextItem.valueType === 'string' && nextItem.valueType.startsWith('array')
+              );
               if (value === undefined) delete nextItem.value;
               else nextItem.value = value;
             }
