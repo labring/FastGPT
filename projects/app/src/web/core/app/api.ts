@@ -12,6 +12,8 @@ import type {
   GetAppDetailResponseType,
   ListAppBodyType,
   ListAppResponseType,
+  ListAppV2BodyType,
+  ListAppV2ResponseType,
   UpdateAppQueryType,
   UpdateAppBodyType,
   UpdateAppResponseType
@@ -32,18 +34,13 @@ export const getMyApps = (data?: ListAppBodyType) =>
     maxQuantity: 1
   });
 
+export const getMyAppsV2 = (data?: ListAppV2BodyType) =>
+  POST<ListAppV2ResponseType>('/core/app/listV2', data, {
+    maxQuantity: 1
+  });
+
 /** 获取当前筛选条件下的全部应用，供需要跨页遍历资源的选择器使用。 */
-export const getAllApps = async (
-  data?: Omit<ListAppBodyType, 'offset' | 'pageNum' | 'pageSize'>
-) => {
-  const list: ListAppResponseType['list'] = [];
-  const pageSize = 50;
-  for (let offset = 0; ; offset += pageSize) {
-    const res = await getMyApps({ ...data, offset, pageSize });
-    list.push(...res.list);
-    if (list.length >= res.total || res.list.length < pageSize) return list;
-  }
-};
+export const getAllApps = (data?: ListAppBodyType) => getMyApps(data);
 
 /**
  * 创建一个应用

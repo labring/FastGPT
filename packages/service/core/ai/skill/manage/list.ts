@@ -19,13 +19,13 @@ import { addSourceMember } from '../../../../support/user/utils';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 import type { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
-import type { ListSkillsQuery } from '@fastgpt/global/core/ai/skill/api';
+import type { ListSkillsV2Query } from '@fastgpt/global/core/ai/skill/api';
 
 type TeamPermission = {
   isOwner: boolean;
 };
 
-type ListReadableAgentSkillsParams = ListSkillsQuery & {
+type ListReadableAgentSkillsParams = ListSkillsV2Query & {
   teamId: string;
   tmbId: string;
   teamPer: TeamPermission;

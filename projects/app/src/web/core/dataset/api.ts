@@ -15,6 +15,8 @@ import type {
   CreateDatasetWithFilesResponse,
   GetDatasetListBody,
   GetDatasetListResponse,
+  GetDatasetListV2Body,
+  GetDatasetListV2Response,
   UpdateDatasetBody,
   CreateDatasetFolderBody,
   SearchDatasetTestBody,
@@ -27,18 +29,11 @@ import type {
 export const getDatasets = (data: GetDatasetListBody) =>
   POST<GetDatasetListResponse>(`/core/dataset/list`, data, { maxQuantity: 1 });
 
+export const getDatasetsV2 = (data: GetDatasetListV2Body) =>
+  POST<GetDatasetListV2Response>(`/core/dataset/listV2`, data, { maxQuantity: 1 });
+
 /** 获取当前筛选条件下的全部知识库，供需要跨页遍历资源的选择器使用。 */
-export const getAllDatasets = async (
-  data: Omit<GetDatasetListBody, 'offset' | 'pageNum' | 'pageSize'> = {}
-) => {
-  const list: GetDatasetListResponse['list'] = [];
-  const pageSize = 50;
-  for (let offset = 0; ; offset += pageSize) {
-    const res = await getDatasets({ ...data, offset, pageSize });
-    list.push(...res.list);
-    if (list.length >= res.total || res.list.length < pageSize) return list;
-  }
-};
+export const getAllDatasets = (data: GetDatasetListBody = {}) => getDatasets(data);
 
 export const getDatasetsByAppIdAndDatasetIds = (data: { appId: string; datasetIdList: string[] }) =>
   POST<DatasetSimpleItemType[]>(`/core/dataset/listByAppIdAndDatasetIds`, data);

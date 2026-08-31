@@ -10,6 +10,7 @@ import { type AdminFbkType } from '@fastgpt/global/core/chat/type';
 import SelectCollections from '@/web/core/dataset/components/SelectCollections';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 
 const InputDataModal = dynamic(
   () => import('@/pageComponents/dataset/detail/components/InputDataModal')
@@ -36,7 +37,14 @@ const SelectMarkCollection = ({
 }) => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const { paths, setParentId, datasets, isFetching } = useDatasetSelect();
+  const { paths, setParentId, datasets, isFetching, ScrollData, parentId } = useDatasetSelect();
+  const { gridRef, renderVirtualGridItems } = useVirtualGridList({
+    list: datasets,
+    listKey: `mark-dataset-select-${parentId}`,
+    defaultColumnCount: 3,
+    estimatedRowHeight: 80,
+    estimatedRowGap: 12
+  });
 
   return (
     <>
@@ -47,63 +55,54 @@ const SelectMarkCollection = ({
           paths={paths}
           onClose={onClose}
           setParentId={setParentId}
-          isLoading={isFetching}
+          isLoading={isFetching && datasets.length === 0}
           tips={t('common:core.chat.Select dataset Desc')}
         >
           {datasets.length === 0 && <EmptyTip text={t('chat:empty_directory')}></EmptyTip>}
-          <Grid
-            display={'grid'}
-            gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']}
-            gridGap={3}
-            userSelect={'none'}
-          >
-            {datasets.map((item) =>
-              (() => {
-                const modelUnavailable =
-                  item.type !== DatasetTypeEnum.folder && item.vectorModel?.isActive !== true;
-                return (
-                  <Card
-                    key={item._id}
-                    p={3}
-                    border={theme.borders.base}
-                    boxShadow={'sm'}
-                    h={'80px'}
-                    cursor={modelUnavailable ? 'not-allowed' : 'pointer'}
-                    opacity={modelUnavailable ? 0.6 : 1}
-                    _hover={{
-                      boxShadow: 'md'
-                    }}
-                    onClick={() => {
-                      if (item.type === DatasetTypeEnum.folder) {
-                        setParentId(item._id);
-                      } else if (!modelUnavailable) {
-                        setAdminMarkData({ ...adminMarkData, datasetId: item._id });
-                      }
-                    }}
-                  >
-                    <Flex alignItems={'center'} h={'38px'}>
-                      <Avatar src={item.avatar} w={'2rem'} borderRadius={'sm'}></Avatar>
-                      <MyTooltip label={item.name} showOnlyWhenOverflow>
-                        <Box ml={3} className="textEllipsis">
-                          {item.name}
-                        </Box>
-                      </MyTooltip>
-                    </Flex>
-                    <Flex justifyContent={'flex-end'} alignItems={'center'} fontSize={'sm'}>
-                      <MyIcon mr={1} name="kbTest" w={'12px'} />
-                      <Box color={'myGray.500'}>
-                        {item.type === DatasetTypeEnum.folder
-                          ? t('common:Folder')
-                          : item.vectorModel?.isActive
-                            ? item.vectorModel.name
-                            : t('dataset:index_model_unavailable')}
+          <ScrollData flex={1} minH={0} isLoading={isFetching} showLoadingOverlay={false}>
+            <Grid
+              ref={gridRef}
+              display={'grid'}
+              gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']}
+              gridGap={3}
+              userSelect={'none'}
+            >
+              {renderVirtualGridItems((item) => (
+                <Card
+                  key={item._id}
+                  data-virtual-item=""
+                  p={3}
+                  border={theme.borders.base}
+                  boxShadow={'sm'}
+                  h={'80px'}
+                  cursor={'pointer'}
+                  _hover={{
+                    boxShadow: 'md'
+                  }}
+                  onClick={() => {
+                    if (item.type === DatasetTypeEnum.folder) {
+                      setParentId(item._id);
+                    } else {
+                      setAdminMarkData({ ...adminMarkData, datasetId: item._id });
+                    }
+                  }}
+                >
+                  <Flex alignItems={'center'} h={'38px'}>
+                    <Avatar src={item.avatar} w={'2rem'} borderRadius={'sm'}></Avatar>
+                    <MyTooltip label={item.name} showOnlyWhenOverflow>
+                      <Box ml={3} className="textEllipsis">
+                        {item.name}
                       </Box>
-                    </Flex>
-                  </Card>
-                );
-              })()
-            )}
-          </Grid>
+                    </MyTooltip>
+                  </Flex>
+                  <Flex justifyContent={'flex-end'} alignItems={'center'} fontSize={'sm'}>
+                    <MyIcon mr={1} name="kbTest" w={'12px'} />
+                    <Box color={'myGray.500'}>{item.vectorModel.name}</Box>
+                  </Flex>
+                </Card>
+              ))}
+            </Grid>
+          </ScrollData>
         </DatasetSelectModal>
       )}
 

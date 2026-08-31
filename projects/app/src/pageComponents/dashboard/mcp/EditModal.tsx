@@ -30,7 +30,7 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import Path from '@/components/common/folder/Path';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getAllApps, getAppBasicInfoByIds } from '@/web/core/app/api';
+import { getAppBasicInfoByIds, getMyAppsV2 } from '@/web/core/app/api';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
@@ -38,6 +38,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { postCreateMcpServer, putUpdateMcpServer } from '../../../web/support/mcp/api';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { useVirtualList } from '@fastgpt/web/hooks/useVirtualList';
 
 export type EditMcForm = {
   id?: string;
@@ -93,18 +94,18 @@ const SelectAppModal = ({
   const [searchKey, setSearchKey] = useState('');
   const [parentId, setParentId] = useState<ParentIdType>('');
 
-  const { data: apps = [], loading: loadingApps } = useRequest(
-    () =>
-      getAllApps({
-        searchKey,
-        parentId
-      }),
-    {
-      manual: false,
-      refreshDeps: [searchKey, parentId],
-      throttleWait: 200
-    }
-  );
+  const {
+    scrollDataList,
+    totalData,
+    ScrollList,
+    isLoading: loadingApps
+  } = useVirtualList(getMyAppsV2, {
+    params: { searchKey, parentId },
+    pageSize: 50,
+    itemHeight: 40,
+    EmptyTip: <EmptyTip text={t('common:folder.empty')} />,
+    refreshDeps: [searchKey, parentId]
+  });
   const { data: paths = [] } = useRequest(
     () => getAppFolderPath({ sourceId: parentId, type: 'current' }),
     {
@@ -113,7 +114,7 @@ const SelectAppModal = ({
     }
   );
 
-  const isLoading = loadingApps;
+  const isLoading = loadingApps && totalData.length === 0;
 
   return (
     <MyModal
@@ -155,8 +156,8 @@ const SelectAppModal = ({
               </Box>
             )}
 
-            <Box mt="3" overflow={'auto'} flex={'1 0 0'} h={0}>
-              {apps.map((item) => {
+            <ScrollList mt="3" flex={'1 0 0'} minH={0}>
+              {scrollDataList.map(({ data: item }) => {
                 const selected = selectedList.some((app) => app.appId === item._id);
                 const isFolder = AppFolderTypeList.includes(item.type);
 
@@ -199,7 +200,7 @@ const SelectAppModal = ({
                   </HStack>
                 );
               })}
-            </Box>
+            </ScrollList>
           </Flex>
 
           <Flex h={'100%'} p="4" flexDirection="column">

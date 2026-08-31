@@ -3,7 +3,7 @@ import { createContext } from 'use-context-selector';
 import { useRouter } from 'next/router';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination, type ScrollListType } from '@fastgpt/web/hooks/useScrollPagination';
-import { getAllApps, getAppDetailById, getMyApps, putAppById } from '@/web/core/app/api';
+import { getAllApps, getAppDetailById, getMyAppsV2, putAppById } from '@/web/core/app/api';
 import { type AppDetailType, type AppListItemType } from '@fastgpt/global/core/app/type';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import {
@@ -93,7 +93,7 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
         type
       });
 
-      return getMyApps({
+      return getMyAppsV2({
         parentId,
         type: formatType,
         searchKey,

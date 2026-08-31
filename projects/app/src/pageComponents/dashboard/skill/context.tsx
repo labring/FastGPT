@@ -2,7 +2,7 @@ import React, { type Dispatch, type ReactNode, type SetStateAction, useState } f
 import { createContext } from 'use-context-selector';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination, type ScrollListType } from '@fastgpt/web/hooks/useScrollPagination';
-import { getSkillList, getSkillFolderPath, getSkillDetail } from '@/web/core/skill/api';
+import { getSkillListV2, getSkillFolderPath, getSkillDetail } from '@/web/core/skill/api';
 import type { ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
 import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { normalizeParentId } from '@fastgpt/global/common/parentFolder/depth';
@@ -72,7 +72,7 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
     fetchData
   } = useScrollPagination(
     ({ offset = 0, pageSize = 50 }) =>
-      getSkillList({
+      getSkillListV2({
         source: 'mine',
         searchKey,
         parentId,
