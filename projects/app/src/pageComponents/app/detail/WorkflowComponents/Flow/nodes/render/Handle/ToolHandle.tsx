@@ -26,6 +26,7 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
     v.edges.some((edge) => edge.target === nodeId && edge.targetHandle === handleId)
   );
 
+  // TODO: 与普通 Handle、customOnConnect 共用连接上下文校验。
   const active = show && toolConnecting;
   // if top handle is connected, return null
   const showHandle = active || connected;

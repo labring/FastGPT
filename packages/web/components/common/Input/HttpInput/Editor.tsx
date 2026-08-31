@@ -6,7 +6,7 @@
  *
  */
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -22,7 +22,7 @@ import {
   type EditorVariablePickerType
 } from '../../Textarea/PromptEditor/type';
 import { VariableNode } from '../../Textarea/PromptEditor/plugins/VariablePlugin/node';
-import { textToEditorState } from '../../Textarea/PromptEditor/utils';
+import { editorStateToText, textToEditorState } from '../../Textarea/PromptEditor/utils';
 import { SingleLinePlugin } from '../../Textarea/PromptEditor/plugins/SingleLinePlugin';
 import OnBlurPlugin from '../../Textarea/PromptEditor/plugins/OnBlurPlugin';
 import VariablePlugin from '../../Textarea/PromptEditor/plugins/VariablePlugin';
@@ -58,6 +58,7 @@ export default function Editor({
   const [key, setKey] = useState(getNanoid(6));
   const [_, startSts] = useTransition();
   const [focus, setFocus] = useState(false);
+  const editorOutputRef = useRef(value);
 
   const initialConfig = {
     namespace: 'HttpInput',
@@ -68,7 +69,13 @@ export default function Editor({
     }
   };
 
+  // 本地失焦回写时两者已同步，外部替换值不一致时强制重建 Lexical。
   useDeepCompareEffect(() => {
+    if (value !== editorOutputRef.current) {
+      editorOutputRef.current = value;
+      setKey(getNanoid(6));
+      return;
+    }
     if (!resetOnValueChange || focus) return;
     setKey(getNanoid(6));
   }, [resetOnValueChange, value, variables.length]);
@@ -118,6 +125,7 @@ export default function Editor({
         <FocusPlugin focus={focus} setFocus={setFocus} />
         <OnChangePlugin
           onChange={(editorState: EditorState, editor: LexicalEditor) => {
+            editorOutputRef.current = editorStateToText(editor);
             if (!onChange) return;
 
             startSts(() => {
