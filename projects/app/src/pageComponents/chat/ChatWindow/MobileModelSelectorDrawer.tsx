@@ -7,6 +7,7 @@ import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { useTranslation } from 'next-i18next';
+import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
 
 type Props = {
   isOpen: boolean;
@@ -20,6 +21,10 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
   const { i18n } = useTranslation();
   const { getModelProviders, getModelProvider } = useUserModelStore();
   const availableModelList = useMemo(() => modelList, [modelList]);
+  const selectedModel = useMemo(
+    () => findClientModelByValue({ models: availableModelList, value }),
+    [availableModelList, value]
+  );
 
   const providerGroups = useMemo(() => {
     const providerList = getModelProviders(i18n.language).map((provider) => ({
@@ -157,7 +162,7 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
                 </Flex>
                 <Box pb={4} flex="0 1 auto" minH={0} overflowY="auto">
                   {activeProvider.children.map((model) => {
-                    const isSelected = model.modelId === value || model.model === value;
+                    const isSelected = model.modelId === selectedModel?.modelId;
 
                     return (
                       <Flex

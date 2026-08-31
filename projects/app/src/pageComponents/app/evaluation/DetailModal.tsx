@@ -90,7 +90,11 @@ const EvaluationDetailModal = ({
   const { llmModelList } = useUserModelLists();
 
   const modelData = useMemo(
-    () => getWebLLMModel(evalDetail.evalModelId || evalDetail.evalModel, llmModelList),
+    () =>
+      getWebLLMModel(
+        evalDetail.evalModelId !== undefined ? evalDetail.evalModelId : evalDetail.evalModel,
+        llmModelList
+      ),
     [evalDetail.evalModel, evalDetail.evalModelId, llmModelList]
   );
 

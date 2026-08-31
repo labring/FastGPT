@@ -235,7 +235,7 @@ export function form2AppWorkflow(
   };
 
   const getModelReferenceInputs = (formData: AppFormEditFormType): FlowNodeInputItemType[] => [
-    ...(formData.aiSettings.modelId || !formData.aiSettings.model
+    ...(formData.aiSettings.modelId !== undefined || !formData.aiSettings.model
       ? [
           {
             key: NodeInputKeyEnum.aiModelId,
@@ -504,7 +504,7 @@ export function form2AppWorkflow(
           valueType: WorkflowIOValueTypeEnum.boolean,
           value: formData.dataset.usingReRank
         },
-        ...(formData.dataset.rerankModelId || !formData.dataset.rerankModel
+        ...(formData.dataset.rerankModelId !== undefined || !formData.dataset.rerankModel
           ? [
               {
                 key: NodeInputKeyEnum.datasetSearchRerankModelId,
@@ -540,7 +540,7 @@ export function form2AppWorkflow(
           valueType: WorkflowIOValueTypeEnum.boolean,
           value: formData.dataset.datasetSearchUsingExtensionQuery
         },
-        ...(formData.dataset.datasetSearchExtensionModelId ||
+        ...(formData.dataset.datasetSearchExtensionModelId !== undefined ||
         !formData.dataset.datasetSearchExtensionModel
           ? [
               {

@@ -152,6 +152,44 @@ describe('useUserModelStore catalog cache', () => {
     expect(useUserModelStore.getState().loading).toBe(false);
   });
 
+  it('restarts outlink validation when outLinkUid changes and ignores the old response', async () => {
+    let resolveOldCredentialRequest: ((value: unknown) => void) | undefined;
+    mocks.getUserModelCatalog
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveOldCredentialRequest = resolve;
+        })
+      )
+      .mockResolvedValueOnce({
+        version: 'version-2',
+        data: {
+          ...catalogData,
+          models: [{ ...catalogData.models[0], modelId: 'new-credential-model' }],
+          defaultModelIds: { llm: 'new-credential-model' }
+        }
+      });
+
+    const oldCredentialRequest = useUserModelStore.getState().loadModelCatalog({
+      outLinkAuthData: { shareId: 'share-id', outLinkUid: 'old-user' }
+    });
+    const newCredentialRequest = useUserModelStore.getState().loadModelCatalog({
+      outLinkAuthData: { shareId: 'share-id', outLinkUid: 'new-user' }
+    });
+
+    expect(newCredentialRequest).not.toBe(oldCredentialRequest);
+    expect(mocks.getUserModelCatalog).toHaveBeenNthCalledWith(2, {
+      version: undefined,
+      outLinkAuthData: { shareId: 'share-id', outLinkUid: 'new-user' }
+    });
+    await newCredentialRequest;
+    resolveOldCredentialRequest?.({ version: 'version-1', data: catalogData });
+    await oldCredentialRequest;
+
+    expect(useUserModelStore.getState().modelMap['new-credential-model']).toBeDefined();
+    expect(useUserModelStore.getState().modelMap['model-id']).toBeUndefined();
+    expect(useUserModelStore.getState().loading).toBe(false);
+  });
+
   it('does not let an obsolete request overwrite a restarted request for the same identity', async () => {
     let resolveObsoleteRequest: ((value: unknown) => void) | undefined;
     mocks.getUserModelCatalog

@@ -30,6 +30,7 @@ import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import { type AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import { resolveClientModelReferenceId } from '@/web/core/ai/model/modelReference';
 
 enum SearchSettingTabEnum {
   searchMode = 'searchMode',
@@ -88,17 +89,28 @@ const DatasetParamsModal = ({
         embeddingWeight: embeddingWeight || 0.5,
         usingReRank: !!usingReRank,
         rerankModelId:
-          rerankModelId ||
-          reRankModelList.find((item) => item.model === rerankModel)?.modelId ||
-          (!rerankModel ? defaultModels?.rerank?.modelId : undefined),
+          resolveClientModelReferenceId({
+            models: reRankModelList,
+            reference: { modelId: rerankModelId, model: rerankModel }
+          }) ??
+          (rerankModelId === undefined && !rerankModel
+            ? defaultModels?.rerank?.modelId
+            : undefined),
         rerankWeight: rerankWeight || 0.5,
         limit,
         similarity,
         datasetSearchUsingExtensionQuery,
         datasetSearchExtensionModelId:
-          datasetSearchExtensionModelId ||
-          llmModelList.find((item) => item.model === datasetSearchExtensionModel)?.modelId ||
-          (!datasetSearchExtensionModel ? defaultModels.llm?.modelId : undefined),
+          resolveClientModelReferenceId({
+            models: llmModelList,
+            reference: {
+              modelId: datasetSearchExtensionModelId,
+              model: datasetSearchExtensionModel
+            }
+          }) ??
+          (datasetSearchExtensionModelId === undefined && !datasetSearchExtensionModel
+            ? defaultModels.llm?.modelId
+            : undefined),
         datasetSearchExtensionBg
       }
     });
@@ -118,11 +130,11 @@ const DatasetParamsModal = ({
   const rerankWeightWatch = watch('rerankWeight');
 
   useEffect(() => {
-    if (!reRankModelIdWatch && rerankModel) {
+    if (reRankModelIdWatch === undefined && rerankModel) {
       const legacyModel = reRankModelList.find((item) => item.model === rerankModel);
       if (legacyModel?.modelId) setValue('rerankModelId', legacyModel.modelId);
     }
-    if (!queryExtensionModelId && datasetSearchExtensionModel) {
+    if (queryExtensionModelId === undefined && datasetSearchExtensionModel) {
       const legacyModel = llmModelList.find((item) => item.model === datasetSearchExtensionModel);
       if (legacyModel?.modelId) {
         setValue('datasetSearchExtensionModelId', legacyModel.modelId);
@@ -151,11 +163,11 @@ const DatasetParamsModal = ({
 
   useEffect(() => {
     if (datasetSearchUsingCfrForm) {
-      if (!queryExtensionModelId) {
+      if (queryExtensionModelId === undefined) {
         setValue('datasetSearchExtensionModelId', defaultModels.llm?.modelId);
       }
     } else {
-      setValue('datasetSearchExtensionModelId', '');
+      setValue('datasetSearchExtensionModelId', undefined);
     }
   }, [
     queryExtensionModelList,
@@ -406,7 +418,11 @@ const DatasetParamsModal = ({
                   <Box flex={['1 0 0', '0 0 300px']}>
                     <SelectAiModel
                       width={'100%'}
-                      value={queryExtensionModelId || datasetSearchExtensionModel}
+                      value={
+                        queryExtensionModelId !== undefined
+                          ? queryExtensionModelId
+                          : datasetSearchExtensionModel
+                      }
                       list={queryExtensionModelList}
                       onChange={(modelId) => setValue('datasetSearchExtensionModelId', modelId)}
                     />

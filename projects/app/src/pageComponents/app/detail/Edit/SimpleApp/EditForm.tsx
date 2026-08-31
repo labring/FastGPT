@@ -38,6 +38,10 @@ import SandboxConfigButton from '../../components/SandboxConfigButton';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import DatasetCard from '@/components/core/app/DatasetCard';
 import { useWelcomeTextFoldState } from '@/components/core/app/useAppEditorUIState';
+import {
+  findClientModelByReference,
+  resolveClientModelReferenceId
+} from '@/web/core/ai/model/modelReference';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -117,10 +121,13 @@ const EditForm = ({
 
   const { llmModelList, reRankModelList } = useUserModelLists();
   const selectedModel =
-    llmModelList.find(
-      (model) =>
-        model.modelId === appForm.aiSettings.modelId || model.model === appForm.aiSettings.model
-    ) || llmModelList[0];
+    findClientModelByReference({
+      models: llmModelList,
+      reference: appForm.aiSettings
+    }) ??
+    (appForm.aiSettings.modelId === undefined && !appForm.aiSettings.model
+      ? llmModelList[0]
+      : undefined);
   const tokenLimit = useMemo(() => {
     return selectedModel?.config.quoteMaxToken ?? 3000;
   }, [selectedModel?.config.quoteMaxToken]);
@@ -160,25 +167,33 @@ const EditForm = ({
 
   useEffect(() => {
     setAppForm((state) => {
-      const modelId =
-        state.aiSettings.modelId ||
-        llmModelList.find((model) => model.model === state.aiSettings.model)?.modelId;
-      const legacyRerankModel = reRankModelList.find(
-        (model) => model.model === state.dataset.rerankModel
-      );
-      const legacyExtensionModel = llmModelList.find(
-        (model) => model.model === state.dataset.datasetSearchExtensionModel
-      );
+      const modelId = resolveClientModelReferenceId({
+        models: llmModelList,
+        reference: state.aiSettings
+      });
       const rerankModelId =
-        state.dataset.rerankModelId ||
-        legacyRerankModel?.modelId ||
-        (state.dataset.usingReRank && !state.dataset.rerankModel
+        resolveClientModelReferenceId({
+          models: reRankModelList,
+          reference: {
+            modelId: state.dataset.rerankModelId,
+            model: state.dataset.rerankModel
+          }
+        }) ??
+        (state.dataset.usingReRank &&
+        state.dataset.rerankModelId === undefined &&
+        !state.dataset.rerankModel
           ? defaultModels.rerank?.modelId
           : undefined);
       const datasetSearchExtensionModelId =
-        state.dataset.datasetSearchExtensionModelId ||
-        legacyExtensionModel?.modelId ||
+        resolveClientModelReferenceId({
+          models: llmModelList,
+          reference: {
+            modelId: state.dataset.datasetSearchExtensionModelId,
+            model: state.dataset.datasetSearchExtensionModel
+          }
+        }) ??
         (state.dataset.datasetSearchUsingExtensionQuery &&
+        state.dataset.datasetSearchExtensionModelId === undefined &&
         !state.dataset.datasetSearchExtensionModel
           ? defaultModels.llm?.modelId
           : undefined);
@@ -249,7 +264,10 @@ const EditForm = ({
               <SettingLLMModel
                 bg="myGray.50"
                 defaultData={{
-                  modelId: appForm.aiSettings.modelId || appForm.aiSettings.model || '',
+                  modelId:
+                    appForm.aiSettings.modelId !== undefined
+                      ? appForm.aiSettings.modelId
+                      : appForm.aiSettings.model || undefined,
                   temperature: appForm.aiSettings.temperature,
                   maxToken: appForm.aiSettings.maxToken,
                   maxHistories: appForm.aiSettings.maxHistories,

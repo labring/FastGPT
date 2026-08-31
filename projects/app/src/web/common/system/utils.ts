@@ -7,6 +7,10 @@ import type {
 import { useSystemStore } from './useSystemStore';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import {
+  findClientModelByReference,
+  findClientModelByValue
+} from '@/web/core/ai/model/modelReference';
 
 type MyLLMModelType = Extract<MyModelItemType, { type: ModelTypeEnum.llm }>;
 type MyEmbeddingModelType = Extract<MyModelItemType, { type: ModelTypeEnum.embedding }>;
@@ -85,17 +89,14 @@ export const getWebLLMModel = (model?: string, llmList: MyLLMModelType[] = []) =
   const defaultModels = useUserModelStore.getState().defaultModels;
 
   if (!model) return defaultModels.llm;
-  return llmList.find((item) => item.model === model || item.modelId === model);
+  return findClientModelByValue({ models: llmList, value: model });
 };
 export const getWebDefaultLLMModel = (llmList: MyLLMModelType[] = []) => {
   const defaultModels = useUserModelStore.getState().defaultModels;
 
   if (llmList.length === 0) return defaultModels.llm;
   return defaultModels.llm &&
-    llmList.find(
-      (item) =>
-        item.modelId === defaultModels.llm?.modelId || item.model === defaultModels.llm?.model
-    )
+    findClientModelByReference({ models: llmList, reference: defaultModels.llm })
     ? defaultModels.llm
     : llmList[0];
 };
@@ -104,11 +105,7 @@ export const getWebDefaultEmbeddingModel = (embeddingList: MyEmbeddingModelType[
 
   if (embeddingList.length === 0) return defaultModels.embedding;
   return defaultModels.embedding &&
-    embeddingList.find(
-      (item) =>
-        item.modelId === defaultModels.embedding?.modelId ||
-        item.model === defaultModels.embedding?.model
-    )
+    findClientModelByReference({ models: embeddingList, reference: defaultModels.embedding })
     ? defaultModels.embedding
     : embeddingList[0];
 };

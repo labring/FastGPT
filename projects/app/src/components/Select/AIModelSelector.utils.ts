@@ -1,4 +1,5 @@
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
+import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
 
 /**
  * 同时识别稳定 modelId 与旧 model 值，并统一归一化为 modelId。
@@ -15,8 +16,7 @@ export const resolveModelSelectorSelection = <
 }) => {
   if (!value) return;
 
-  const model =
-    models.find((item) => item.modelId === value) ?? models.find((item) => item.model === value);
+  const model = findClientModelByValue({ models, value });
   if (!model) return;
 
   const normalizedValue = model.modelId;

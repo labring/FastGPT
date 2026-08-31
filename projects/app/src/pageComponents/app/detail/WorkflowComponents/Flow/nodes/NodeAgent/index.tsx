@@ -53,6 +53,7 @@ import WorkflowSandboxConfig, {
 import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
+import { findClientModelByReference } from '@/web/core/ai/model/modelReference';
 
 const PromptEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/PromptEditor'));
 const SkillSelectModal = dynamic(
@@ -449,7 +450,10 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const currentModel = useMemo(() => {
     const modelId = inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId)?.value;
     const model = inputs.find((i) => i.key === NodeInputKeyEnum.aiModel)?.value;
-    return llmModelList.find((item) => (modelId ? item.modelId === modelId : item.model === model));
+    return findClientModelByReference({
+      models: llmModelList,
+      reference: { modelId, model }
+    });
   }, [inputs, llmModelList]);
 
   return (

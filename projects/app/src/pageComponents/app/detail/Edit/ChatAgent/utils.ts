@@ -163,7 +163,7 @@ export function agentForm2AppWorkflow(
     extractFiles: !!data.aiSettings.aiChatExtractFiles
   };
   const modelReferenceInputs: FlowNodeInputItemType[] = [
-    ...(data.aiSettings.modelId || !data.aiSettings.model
+    ...(data.aiSettings.modelId !== undefined || !data.aiSettings.model
       ? [
           {
             key: NodeInputKeyEnum.aiModelId,

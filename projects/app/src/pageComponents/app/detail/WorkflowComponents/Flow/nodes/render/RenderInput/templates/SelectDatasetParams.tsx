@@ -72,7 +72,11 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
         limit={data.limit}
         usingReRank={data.usingReRank}
         usingExtensionQuery={data.datasetSearchUsingExtensionQuery}
-        queryExtensionModel={data.datasetSearchExtensionModelId || data.datasetSearchExtensionModel}
+        queryExtensionModel={
+          data.datasetSearchExtensionModelId !== undefined
+            ? data.datasetSearchExtensionModelId
+            : data.datasetSearchExtensionModel
+        }
       />
 
       {isOpen && (

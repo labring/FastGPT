@@ -10,6 +10,7 @@ import AIModelSelector from '@/components/Select/AIModelSelector';
 import { getWebDefaultLLMModel } from '@/web/common/system/utils';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
 
 type Props = {
   defaultData: SettingAIDataType;
@@ -31,13 +32,11 @@ const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModa
     };
   }, [llmModelList]);
 
-  const selectedModelData = llmModelList.find(
-    (item) => item.modelId === modelId || item.model === modelId
-  );
+  const selectedModelData = findClientModelByValue({ models: llmModelList, value: modelId });
 
   // 只在新建场景没有 value 时设置默认模型；已有异常 value 必须保留给选择器展示错误。
   useEffect(() => {
-    if (!modelId && defaultLLMModel) {
+    if (modelId === undefined && defaultLLMModel) {
       onChange({
         ...defaultData,
         modelId: defaultLLMModel
@@ -92,7 +91,7 @@ const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModa
             onChange(e);
             onCloseAIChatSetting();
           }}
-          defaultData={{ ...defaultData, modelId: selectedModelData?.modelId || modelId }}
+          defaultData={{ ...defaultData, modelId: selectedModelData?.modelId ?? modelId }}
           llmModels={modelList}
           {...props}
         />

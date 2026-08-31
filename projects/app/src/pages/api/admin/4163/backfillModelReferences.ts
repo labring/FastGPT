@@ -569,9 +569,8 @@ export const runBackfillModelReferences = async ({
             ...inputs[datasetParamsIndex],
             value: {
               ...datasetParams,
-              ...Object.fromEntries(
-                Object.entries(result.set).map(([key, value]) => [key, String(value)])
-              )
+              // 动态引用可能是数组；静态回填值本身已经是字符串，不能在这里统一 String 化。
+              ...result.set
             }
           };
           changed = true;

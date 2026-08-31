@@ -118,6 +118,7 @@ describe('runBackfillModelReferences', () => {
       valueType: 'string'
     };
     const referenceValue = [['source-node', 'model-output']];
+    const nestedReferenceValue = [['nested-source-node', 'nested-model-output']];
     const referenceInput = {
       key: NodeInputKeyEnum.datasetDeepSearchModel,
       value: referenceValue,
@@ -127,7 +128,7 @@ describe('runBackfillModelReferences', () => {
       key: NodeInputKeyEnum.datasetParams,
       value: {
         rerankModel: 'rerank-model',
-        datasetSearchExtensionModel: '{{nestedModelId}}'
+        datasetSearchExtensionModel: nestedReferenceValue
       }
     };
 
@@ -223,8 +224,8 @@ describe('runBackfillModelReferences', () => {
           value: expect.objectContaining({
             rerankModel: 'rerank-model',
             rerankModelId: String(rerankModel._id),
-            datasetSearchExtensionModel: '{{nestedModelId}}',
-            datasetSearchExtensionModelId: '{{nestedModelId}}'
+            datasetSearchExtensionModel: nestedReferenceValue,
+            datasetSearchExtensionModelId: nestedReferenceValue
           })
         })
       ])

@@ -33,6 +33,7 @@ import ChatVariableButton from '@/pageComponents/chat/ChatWindow/ChatVariableBut
 import ProModal from '@/components/ProTip/ProModal';
 import ChatAIModelSelector from '@/pageComponents/chat/ChatWindow/ChatAIModelSelector';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
 
 type Props = {
   appForm: AppFormEditFormType;
@@ -85,9 +86,10 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
     [llmModelList]
   );
   const helperModel = useMemo(() => {
-    const selectedModelId = llmModelList.find(
-      (item) => item.modelId === helperSelectedModel || item.model === helperSelectedModel
-    )?.modelId;
+    const selectedModelId = findClientModelByValue({
+      models: llmModelList,
+      value: helperSelectedModel
+    })?.modelId;
     const defaultModelId = defaultModels.llm?.modelId || llmModelList[0]?.modelId || '';
 
     if (selectedModelId) return selectedModelId;

@@ -40,6 +40,10 @@ import DatasetCard from '@/components/core/app/DatasetCard';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useWelcomeTextFoldState } from '@/components/core/app/useAppEditorUIState';
+import {
+  findClientModelByReference,
+  resolveClientModelReferenceId
+} from '@/web/core/ai/model/modelReference';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -165,16 +169,24 @@ const EditForm = ({
 
   useEffect(() => {
     setAppForm((state) => {
-      const modelId =
-        state.aiSettings.modelId ||
-        llmModelList.find((model) => model.model === state.aiSettings.model)?.modelId;
-      const rerankModelId =
-        state.dataset.rerankModelId ||
-        reRankModelList.find((model) => model.model === state.dataset.rerankModel)?.modelId;
-      const datasetSearchExtensionModelId =
-        state.dataset.datasetSearchExtensionModelId ||
-        llmModelList.find((model) => model.model === state.dataset.datasetSearchExtensionModel)
-          ?.modelId;
+      const modelId = resolveClientModelReferenceId({
+        models: llmModelList,
+        reference: state.aiSettings
+      });
+      const rerankModelId = resolveClientModelReferenceId({
+        models: reRankModelList,
+        reference: {
+          modelId: state.dataset.rerankModelId,
+          model: state.dataset.rerankModel
+        }
+      });
+      const datasetSearchExtensionModelId = resolveClientModelReferenceId({
+        models: llmModelList,
+        reference: {
+          modelId: state.dataset.datasetSearchExtensionModelId,
+          model: state.dataset.datasetSearchExtensionModel
+        }
+      });
       if (
         modelId === state.aiSettings.modelId &&
         rerankModelId === state.dataset.rerankModelId &&
@@ -197,10 +209,13 @@ const EditForm = ({
     });
   }, [llmModelList, reRankModelList, setAppForm]);
   const selectedModel =
-    llmModelList.find(
-      (model) =>
-        model.modelId === appForm.aiSettings.modelId || model.model === appForm.aiSettings.model
-    ) || llmModelList[0];
+    findClientModelByReference({
+      models: llmModelList,
+      reference: appForm.aiSettings
+    }) ??
+    (appForm.aiSettings.modelId === undefined && !appForm.aiSettings.model
+      ? llmModelList[0]
+      : undefined);
   const promptSkillOption = useMemo(
     () => ({
       ...skillOption,
@@ -280,7 +295,10 @@ const EditForm = ({
                 <SettingLLMModel
                   bg="myGray.50"
                   defaultData={{
-                    modelId: appForm.aiSettings.modelId || appForm.aiSettings.model || '',
+                    modelId:
+                      appForm.aiSettings.modelId !== undefined
+                        ? appForm.aiSettings.modelId
+                        : appForm.aiSettings.model || undefined,
                     // temperature: appForm.aiSettings.temperature,
                     // maxToken: appForm.aiSettings.maxToken,
                     // maxHistories: appForm.aiSettings.maxHistories,
@@ -488,40 +506,42 @@ const EditForm = ({
         </Box>
 
         {/* tool choice */}
-        <Box {...BoxStyles}>
-          <ToolSelect
-            selectedModel={selectedModel}
-            selectedTools={appForm.selectedTools}
-            fileSelectConfig={appForm.chatConfig.fileSelectConfig}
-            onAddTool={(e) => {
-              setAppForm((state) => ({
-                ...state,
-                selectedTools: [e, ...(state.selectedTools || [])]
-              }));
-            }}
-            onUpdateTool={(e) => {
-              const toolKey = getToolIdentityKey(e.pluginId, e.source);
-              setAppForm((state) => ({
-                ...state,
-                selectedTools:
-                  state.selectedTools?.map((item) =>
-                    getToolIdentityKey(item.pluginId, item.source) === toolKey ? e : item
-                  ) || []
-              }));
-            }}
-            onRemoveTool={(id, source) => {
-              setAppForm((state) => ({
-                ...state,
-                selectedTools:
-                  state.selectedTools?.filter(
-                    (item) =>
-                      getToolIdentityKey(item.pluginId, item.source) !==
-                      getToolIdentityKey(id, source)
-                  ) || []
-              }));
-            }}
-          />
-        </Box>
+        {selectedModel && (
+          <Box {...BoxStyles}>
+            <ToolSelect
+              selectedModel={selectedModel}
+              selectedTools={appForm.selectedTools}
+              fileSelectConfig={appForm.chatConfig.fileSelectConfig}
+              onAddTool={(e) => {
+                setAppForm((state) => ({
+                  ...state,
+                  selectedTools: [e, ...(state.selectedTools || [])]
+                }));
+              }}
+              onUpdateTool={(e) => {
+                const toolKey = getToolIdentityKey(e.pluginId, e.source);
+                setAppForm((state) => ({
+                  ...state,
+                  selectedTools:
+                    state.selectedTools?.map((item) =>
+                      getToolIdentityKey(item.pluginId, item.source) === toolKey ? e : item
+                    ) || []
+                }));
+              }}
+              onRemoveTool={(id, source) => {
+                setAppForm((state) => ({
+                  ...state,
+                  selectedTools:
+                    state.selectedTools?.filter(
+                      (item) =>
+                        getToolIdentityKey(item.pluginId, item.source) !==
+                        getToolIdentityKey(id, source)
+                    ) || []
+                }));
+              }}
+            />
+          </Box>
+        )}
 
         {/* dataset */}
         <Box {...BoxStyles}>

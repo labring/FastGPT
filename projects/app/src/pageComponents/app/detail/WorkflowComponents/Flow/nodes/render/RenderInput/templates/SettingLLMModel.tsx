@@ -25,7 +25,9 @@ const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: Rend
     (e: SettingAIDataType) => {
       for (const key in e) {
         if (key === NodeInputKeyEnum.aiModelId) {
-          setDefaultModel(e[key]);
+          const modelId = e[key];
+          if (modelId === undefined) continue;
+          setDefaultModel(modelId);
           const modelIdInput = inputs.find((input) => input.key === NodeInputKeyEnum.aiModelId);
           if (modelIdInput) {
             const legacyInput = inputs.find((input) => input.key === NodeInputKeyEnum.aiModel);
@@ -34,7 +36,7 @@ const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: Rend
                 nodeId,
                 type: 'updateInput',
                 key: NodeInputKeyEnum.aiModelId,
-                value: { ...modelIdInput, value: e[key] }
+                value: { ...modelIdInput, value: modelId }
               },
               ...(legacyInput
                 ? [
@@ -53,7 +55,7 @@ const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: Rend
                 nodeId,
                 type: 'replaceInput',
                 key: NodeInputKeyEnum.aiModel,
-                value: { ...legacyInput, key: NodeInputKeyEnum.aiModelId, value: e[key] }
+                value: { ...legacyInput, key: NodeInputKeyEnum.aiModelId, value: modelId }
               });
             }
           }

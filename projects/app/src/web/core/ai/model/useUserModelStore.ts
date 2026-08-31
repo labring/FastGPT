@@ -23,7 +23,10 @@ import { getUserModelCatalog } from '@/web/common/system/api';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 const MODEL_CATALOG_CACHE_PREFIX = 'fastgpt:model-catalog:v1:';
-const inflightCatalogRequests = new Map<string, { token: object; request: Promise<void> }>();
+const inflightCatalogRequests = new Map<
+  string,
+  { requestKey: string; token: object; request: Promise<void> }
+>();
 
 type CatalogData = NonNullable<GetModelCatalogResponse['data']>;
 type CatalogCache = CatalogData & { version: string };
@@ -139,8 +142,13 @@ export const useUserModelStore = create<UserModelStoreState>()(
           const identity = outLinkAuthData
             ? `outlink:${outLinkAuthData.shareId}`
             : `${props.teamId}:${props.tmbId}`;
+          const requestKey = outLinkAuthData
+            ? `${identity}:${outLinkAuthData.outLinkUid}`
+            : identity;
           const inflightRequest = inflightCatalogRequests.get(identity);
-          if (inflightRequest && get().identity === identity) return inflightRequest.request;
+          if (inflightRequest?.requestKey === requestKey && get().identity === identity) {
+            return inflightRequest.request;
+          }
 
           const requestToken = {};
           const request = (async () => {
@@ -232,7 +240,8 @@ export const useUserModelStore = create<UserModelStoreState>()(
             }
           })();
 
-          inflightCatalogRequests.set(identity, { token: requestToken, request });
+          // 同一外链凭证复用请求；outLinkUid 变化时用新代次覆盖，旧响应会因 token 不匹配被丢弃。
+          inflightCatalogRequests.set(identity, { requestKey, token: requestToken, request });
           return request;
         },
         clearMemory() {

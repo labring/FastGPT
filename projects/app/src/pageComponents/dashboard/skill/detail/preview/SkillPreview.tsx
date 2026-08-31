@@ -24,6 +24,7 @@ import { getSkillEditChatSourceKey } from '@/web/core/chat/utils';
 import { defaultQGConfig, defaultWhisperConfig } from '@fastgpt/global/core/app/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getInitChatInfo } from '@/web/core/chat/api';
+import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
 
 const fileSelectConfig: AppFileSelectConfigType = {
   maxFiles: 10,
@@ -61,9 +62,10 @@ const SkillPreview = () => {
     [llmModelList]
   );
   const fallbackModel = useMemo(() => {
-    const selectedModelId = llmModelList.find(
-      (item) => item.modelId === selectedModel || item.model === selectedModel
-    )?.modelId;
+    const selectedModelId = findClientModelByValue({
+      models: llmModelList,
+      value: selectedModel
+    })?.modelId;
     if (selectedModelId) return selectedModelId;
     if (selectedModel) return selectedModel;
     if (defaultModelId) return defaultModelId;

@@ -35,6 +35,7 @@ import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
 import { reasoningEffortList } from '@fastgpt/global/core/ai/constants';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
+import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
 
 type MultimodalValue =
   | NodeInputKeyEnum.aiChatVision
@@ -142,7 +143,7 @@ const AIChatSettingsModal = ({
   const extractFiles = watch(NodeInputKeyEnum.aiChatExtractFiles);
 
   const data = useMemo(() => {
-    const modelData = llmModels.find((item) => item.modelId === modelId || item.model === modelId);
+    const modelData = findClientModelByValue({ models: llmModels, value: modelId });
     const support = getLLMSupportParams(modelData);
 
     return {

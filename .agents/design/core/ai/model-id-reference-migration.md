@@ -558,7 +558,7 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 - 任意成功的模型新增、更新、启用、停用或删除，在 active 列表重载成功后删除全部 `TmpDataEnum.MyModels` 缓存。新模型在未配置协作者权限时默认可用，如果只清理当前团队或当前成员，其他成员的旧缓存将遗漏该模型；若插件失败导致重载失败，则保留旧 active 列表和旧缓存。
 - 模型协作者权限以及影响协作者身份的团队成员、组织、用户组发生变更时，删除对应团队的全部 `TmpDataEnum.MyModels` 缓存。权限写入与缓存删除使用同一 session；删除后由下一次读取惰性重建。
 - 缓存失效后不主动遍历成员重建；用户下次请求 `getMyModels` 或 `getMyModel` 时，再按最新 active 模型和权限数据惰性计算并写回 `tmpData`。
-- Workflow 导入、创建、保存和发布阶段的 `formatModels` 只负责将可解析的旧 `model` 转换为 `modelId`，不读取 `TmpDataEnum.MyModels` 也不做服务端模型权限判断；权限缓存只服务于前端选择器使用的可用模型接口。本版本只在获取/恢复模型时返回无权限或不可用提示，后端运行和保存链不校验模型权限，因此接受缓存 TTL 内弱一致性的剩余风险。
+- Workflow 导入、创建、保存和发布阶段的 `formatModels` 只负责将可解析的旧 `model` 转换为 `modelId`，不读取 `TmpDataEnum.MyModels` 也不做服务端模型权限判断；权限缓存只服务于前端 catalog 和选择器。**已确认本版本的模型协作者权限不是服务端授权边界**：后端保存、发布和运行链只校验模型是否存在、启用且类型正确，不按当前成员权限拒绝已知 active modelId。后端权限校验留给后续独立需求，不能把它作为本 PR 的漏实现或阻塞项。
 - `ClientModelItem` 至少包含 `modelId/type/provider/model/name/avatar/isActive`、默认标记和脱敏后的 `config`，不返回 request auth、URL、默认 system prompt 和请求/存储私有配置。
 - 不在本接口夹带 Channel 数量、创建者、resourceContext 或私有模型管理字段。
 - Query/Response Schema 必须导出对应类型并补齐 API 声明、字段 meta 和 OpenAPI path。handler 使用 `parseApiInput({ querySchema })` 校验 query，并用 `GetMyModelsResponseSchema.parse(...)` 校验返回值。
@@ -673,7 +673,7 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 
 - 旧记录迁移时保留 legacy 字段，因此回滚旧镜像仍能读取这些旧记录。
 - 新版本创建的记录只写 modelId，旧镜像无法读取这部分新记录。
-- 资源引用回填在新版本部署完成后执行；普通业务引用在回填前兼容读取 legacy 字段。模型权限运行时只读 ID，但后端执行链暂不鉴权，因此迁移窗口内权限暂时失效已明确接受，不作为本 PR 阻塞项。新写入仍只写 modelId，故不能在会同时处理写请求的新旧应用实例之间长期滚动混跑。
+- 资源引用回填在新版本部署完成后执行；普通业务引用在回填前兼容读取 legacy 字段。模型协作者权限只过滤客户端目录，后端执行链暂不鉴权，这是跨越迁移窗口持续生效的已确认临时产品边界，而不是缓存 TTL 或发布窗口内的偶发弱一致性。新写入仍只写 modelId，故不能在会同时处理写请求的新旧应用实例之间长期滚动混跑。
 - FastGPT 与 Pro 滚动发布期间，新 Usage 的 modelId 可能暂时无法被旧侧展示解析；该短窗口仅影响模型归因展示，金额和 token 不受影响，已明确接受，不增加双写。
 - 如果部署要求新旧实例长期混跑，就必须临时双写 legacy 字段；这与“新保存只有 modelId”的已确认要求冲突，需要另行决策，不能隐式实现。
 
@@ -834,4 +834,7 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 - [x] 修复 Workflow 动态引用统一写入 modelId key，并清理保存结果中的 legacy model 字段。
 - [x] 从 4162 移除模型权限清理，在 4163 完成 resourceName 映射和悬空模型权限删除。
 - [x] 补齐上述规则的单元测试并在本地环境验证。
+- [x] 修复 4163 对 Agent `datasetParams` 嵌套数组模型引用的回填，禁止把动态引用字符串化。
+- [x] 将前端双字段模型引用统一为 `modelId !== undefined` 时禁止 legacy 回退，并覆盖空 ID、失效 ID 与名称冲突。
+- [x] 明确记录后端暂不直接校验模型协作者权限，消除客户端目录设计与迁移设计的权限边界冲突。
 - [ ] 新版本部署完成后执行 dry-run 和正式回填，复核并重跑并发 conflict，最终解决全部 unresolved/conflict。

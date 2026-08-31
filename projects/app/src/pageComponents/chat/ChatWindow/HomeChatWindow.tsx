@@ -38,6 +38,7 @@ import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
+import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
 import type { AppWhisperConfigType } from '@fastgpt/global/core/app/type';
 import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
@@ -129,10 +130,7 @@ const HomeChatWindow = () => {
     defaultValue: defaultModels.llm?.modelId
   });
   const selectedModelData = useMemo(
-    () =>
-      llmModelList.find(
-        (model) => model.modelId === selectedModel || model.model === selectedModel
-      ),
+    () => findClientModelByValue({ models: llmModelList, value: selectedModel }),
     [llmModelList, selectedModel]
   );
 
@@ -193,9 +191,7 @@ const HomeChatWindow = () => {
     async () => {
       if (!appId || forbidLoadChatRef.current || !feConfigs?.isPlus) return;
 
-      const modelData = llmModelList.find(
-        (item) => item.modelId === selectedModel || item.model === selectedModel
-      );
+      const modelData = findClientModelByValue({ models: llmModelList, value: selectedModel });
       const res = await getInitChatInfo({ appId, chatId });
       res.userAvatar = userInfo?.avatar ?? undefined;
 

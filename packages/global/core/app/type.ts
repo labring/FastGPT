@@ -274,7 +274,7 @@ export const AppDatasetSearchParamsTypeSchema = z.object({
 export type AppDatasetSearchParamsType = z.infer<typeof AppDatasetSearchParamsTypeSchema>;
 
 export type SettingAIDataType = {
-  modelId: string;
+  modelId?: string;
   temperature?: number;
   maxToken?: number;
   isResponseAnswerText?: boolean;
