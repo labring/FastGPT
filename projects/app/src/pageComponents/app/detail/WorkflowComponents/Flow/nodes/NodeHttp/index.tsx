@@ -588,13 +588,13 @@ const RenderForm = ({
           <Table>
             <Thead>
               <Tr>
-                <Th px={2} w={'45%'} borderBottomLeftRadius={'none !important'}>
+                <Th px={2} borderBottomLeftRadius={'none !important'}>
                   {t('common:core.module.http.Props name')}
                 </Th>
-                <Th px={2} w={'45%'} borderBottomRadius={'none !important'}>
+                <Th px={2} borderBottomRadius={'none !important'}>
                   {t('common:core.module.http.Props value')}
                 </Th>
-                <Th px={2} w={'100px'} minW={'100px'}>
+                <Th px={2} maxW={'72px'} borderBottomRadius={'none !important'}>
                   {t('common:Operation')}
                 </Th>
               </Tr>
@@ -602,7 +602,7 @@ const RenderForm = ({
             <Tbody>
               {[...list, { key: '', value: '', label: '' }].map((item, index) => (
                 <Tr key={`${input.key}-${rowKeys[index] ?? `http-param-${index}`}`}>
-                  <Td p={0} w={'45%'} borderRight={'1px solid'} borderColor={'myGray.200'}>
+                  <Td p={0} borderRight={'1px solid'} borderColor={'myGray.200'}>
                     <HttpInput
                       placeholder={t('common:textarea_variable_picker_tip')}
                       value={item.key}
@@ -613,7 +613,7 @@ const RenderForm = ({
                       onBlur={(val) => handleRowBlur(index, 'key', val)}
                     />
                   </Td>
-                  <Td p={0} w={'45%'}>
+                  <Td p={0}>
                     <HttpInput
                       placeholder={t('common:textarea_variable_picker_tip')}
                       value={item.value}
@@ -624,14 +624,7 @@ const RenderForm = ({
                       onBlur={(val) => handleRowBlur(index, 'value', val)}
                     />
                   </Td>
-                  <Td
-                    p={0}
-                    px={2}
-                    w={'100px'}
-                    minW={'100px'}
-                    whiteSpace={'nowrap'}
-                    verticalAlign={'middle'}
-                  >
+                  <Td p={0} px={2} w={'72px'} whiteSpace={'nowrap'} verticalAlign={'middle'}>
                     <Flex h={'24px'} alignItems={'center'}>
                       {index !== list.length && (
                         <IconButton
@@ -642,7 +635,7 @@ const RenderForm = ({
                           w={'24px'}
                           h={'24px'}
                           minW={'24px'}
-                          p={0}
+                          p={'5px'}
                           aria-label={t('common:Delete')}
                           tabIndex={0}
                           _hover={{ color: 'red.600' }}
