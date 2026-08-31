@@ -151,8 +151,8 @@ export const DatasetPageContextProvider = ({
       onSuccess() {
         loadAllDatasetTags();
       },
-      successToast: t('common:create_success'),
-      errorToast: t('common:create_failed')
+      successToast: t('dataset:tag.create_success'),
+      errorToast: t('dataset:tag.create_failed')
     }
   );
 

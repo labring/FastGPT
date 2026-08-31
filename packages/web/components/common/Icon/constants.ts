@@ -25,6 +25,10 @@ export const iconPaths = {
   'common/backLight': () => import('./icons/common/backLight.svg'),
   'common/billing': () => import('./icons/common/billing.svg'),
   'common/check': () => import('./icons/common/check.svg'),
+  'common/checkSquareBroken': () => import('./icons/common/checkSquareBroken.svg'),
+  'common/checkSquareBrokenPrimary': () => import('./icons/common/checkSquareBrokenPrimary.svg'),
+  'common/checkSquareBrokenPrimaryHover': () =>
+    import('./icons/common/checkSquareBrokenPrimaryHover.svg'),
   'common/clearLight': () => import('./icons/common/clearLight.svg'),
   'common/closeLight': () => import('./icons/common/closeLight.svg'),
   'common/confirm/commonTip': () => import('./icons/common/confirm/commonTip.svg'),
