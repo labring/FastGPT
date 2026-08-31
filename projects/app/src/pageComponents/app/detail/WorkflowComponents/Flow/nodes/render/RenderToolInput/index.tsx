@@ -18,14 +18,14 @@ import {
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';
-import { defaultEditFormData } from './EditFieldModal';
+import { defaultToolParamFormData } from '../../components/ToolParamsEditModal/constants';
 import { useContextSelector } from 'use-context-selector';
 import IOTitle from '../../../components/IOTitle';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { WorkflowUtilsContext } from '../../../../context/workflowUtilsContext';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
-const EditFieldModal = dynamic(() => import('./EditFieldModal'));
+const ToolParamsEditModal = dynamic(() => import('../../components/ToolParamsEditModal'));
 
 /** 仅 HTTP 和 Code 节点支持用户配置工具参数；旧版插件输入中的 addInputParam 不参与判定。 */
 export const hasDynamicToolInput = (
@@ -61,7 +61,7 @@ const RenderToolInput = ({
           leftIcon={<SmallAddIcon />}
           iconSpacing={1}
           size={'sm'}
-          onClick={() => setEditField(defaultEditFormData)}
+          onClick={() => setEditField(defaultToolParamFormData)}
         >
           {t('common:add_new')}
         </Button>
@@ -72,9 +72,9 @@ const RenderToolInput = ({
           <Table bg={'white'}>
             <Thead>
               <Tr>
-                <Th>{t('common:item_name')}</Th>
-                <Th>{t('common:item_description')}</Th>
-                <Th>{t('common:required')}</Th>
+                <Th>{t('workflow:tool_params.params_name')}</Th>
+                <Th>{t('workflow:tool_params.params_description')}</Th>
+                <Th>{t('workflow:field_required')}</Th>
                 <Th w={'100px'} minW={'100px'}>
                   {t('common:Operation')}
                 </Th>
@@ -122,8 +122,10 @@ const RenderToolInput = ({
       </Box>
 
       {!!editField && (
-        <EditFieldModal
+        <ToolParamsEditModal
           defaultValue={editField}
+          existingKeys={inputs.map((input) => input.key)}
+          syncOutput={false}
           nodeId={nodeId}
           onClose={() => setEditField(undefined)}
         />

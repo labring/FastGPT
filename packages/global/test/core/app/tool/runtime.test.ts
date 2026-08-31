@@ -45,10 +45,13 @@ describe('compileToolRuntime', () => {
         (type) => type !== FlowNodeInputTypeEnum.agentGenerated
       )
     }));
-    expect(
-      compileToolRuntime({ toolId: 'agent', name: 'Agent', inputs: manualInputs })
-        .agentGeneratedKeys
-    ).toEqual([]);
+    const manualCompiled = compileToolRuntime({
+      toolId: 'agent',
+      name: 'Agent',
+      inputs: manualInputs
+    });
+    expect(manualCompiled.agentGeneratedKeys).toEqual([]);
+    expect(manualCompiled.modelTool.function).not.toHaveProperty('parameters');
   });
 
   it('separates model parameters from configured values and defaults', () => {

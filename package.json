@@ -14,7 +14,7 @@
     "create:i18n": "node ./scripts/i18n/index.js",
     "clean:unused:pro": "node --experimental-strip-types ./pro/scripts/cleanup-unused.ts",
     "clean:unused:pro:write": "node --experimental-strip-types ./pro/scripts/cleanup-unused.ts --write",
-    "test": "pnpm test:workspace",
+    "test": "pnpm test:workspace && pnpm test:repo",
     "test:light": "node ./scripts/test/light.mjs",
     "test:all": "pnpm test:workspace && pnpm test:vector",
     "test:repo": "vitest run --config vitest.config.mts --coverage --passWithNoTests",

@@ -59,6 +59,10 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
 const HeaderAuthConfig = dynamic(() => import('@/components/common/secret/HeaderAuthConfig'));
 
+const HTTP_NODE_WIDTH = '666px';
+const HTTP_PARAM_NAME_COLUMN_WIDTH = '170px';
+const HTTP_OPERATION_COLUMN_WIDTH = '46px';
+
 const defaultFormBody = {
   key: NodeInputKeyEnum.httpFormBody,
   renderTypeList: [FlowNodeInputTypeEnum.hidden],
@@ -584,25 +588,38 @@ const RenderForm = ({
         borderBottom={'none'}
         bg={'white'}
       >
-        <TableContainer overflowY={'visible'} overflowX={'unset'}>
-          <Table>
+        <TableContainer overflowY={'visible'} overflowX={'hidden'}>
+          <Table w={'full'} style={{ tableLayout: 'fixed' }}>
+            <colgroup>
+              <col style={{ width: HTTP_PARAM_NAME_COLUMN_WIDTH }} />
+              <col />
+              <col style={{ width: HTTP_OPERATION_COLUMN_WIDTH }} />
+            </colgroup>
             <Thead>
               <Tr>
-                <Th px={2} borderBottomLeftRadius={'none !important'}>
+                <Th
+                  px={2}
+                  w={HTTP_PARAM_NAME_COLUMN_WIDTH}
+                  borderRight={'1px solid'}
+                  borderColor={'myGray.200'}
+                >
                   {t('common:core.module.http.Props name')}
                 </Th>
-                <Th px={2} borderBottomRadius={'none !important'}>
+                <Th px={2} borderRight={'1px solid'} borderColor={'myGray.200'}>
                   {t('common:core.module.http.Props value')}
                 </Th>
-                <Th px={2} maxW={'72px'} borderBottomRadius={'none !important'}>
-                  {t('common:Operation')}
-                </Th>
+                <Th px={0} w={HTTP_OPERATION_COLUMN_WIDTH} textAlign={'center'}></Th>
               </Tr>
             </Thead>
             <Tbody>
               {[...list, { key: '', value: '', label: '' }].map((item, index) => (
                 <Tr key={`${input.key}-${rowKeys[index] ?? `http-param-${index}`}`}>
-                  <Td p={0} borderRight={'1px solid'} borderColor={'myGray.200'}>
+                  <Td
+                    p={0}
+                    w={HTTP_PARAM_NAME_COLUMN_WIDTH}
+                    borderRight={'1px solid'}
+                    borderColor={'myGray.200'}
+                  >
                     <HttpInput
                       placeholder={t('common:textarea_variable_picker_tip')}
                       value={item.key}
@@ -613,7 +630,7 @@ const RenderForm = ({
                       onBlur={(val) => handleRowBlur(index, 'key', val)}
                     />
                   </Td>
-                  <Td p={0}>
+                  <Td p={0} borderRight={'1px solid'} borderColor={'myGray.200'}>
                     <HttpInput
                       placeholder={t('common:textarea_variable_picker_tip')}
                       value={item.value}
@@ -624,8 +641,14 @@ const RenderForm = ({
                       onBlur={(val) => handleRowBlur(index, 'value', val)}
                     />
                   </Td>
-                  <Td p={0} px={2} w={'72px'} whiteSpace={'nowrap'} verticalAlign={'middle'}>
-                    <Flex h={'24px'} alignItems={'center'}>
+                  <Td
+                    p={0}
+                    px={'3px'}
+                    w={HTTP_OPERATION_COLUMN_WIDTH}
+                    whiteSpace={'nowrap'}
+                    verticalAlign={'middle'}
+                  >
+                    <Flex h={'24px'} alignItems={'center'} justifyContent={'center'}>
                       {index !== list.length && (
                         <IconButton
                           icon={<MyIcon name={'delete'} w={'14px'} />}
@@ -857,7 +880,13 @@ const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   // console.log(inputs);
   return (
-    <NodeCard minW={'350px'} selected={selected} {...data}>
+    <NodeCard
+      {...data}
+      w={HTTP_NODE_WIDTH}
+      minW={HTTP_NODE_WIDTH}
+      maxW={HTTP_NODE_WIDTH}
+      selected={selected}
+    >
       {isTool && hasDynamicToolInput(data) && (
         <>
           <Container>

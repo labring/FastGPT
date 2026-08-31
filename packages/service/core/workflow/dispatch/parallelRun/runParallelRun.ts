@@ -209,7 +209,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
 
   return {
     data,
-    [DispatchNodeResponseKeyEnum.toolResponse]: data,
+    [DispatchNodeResponseKeyEnum.toolResponse]: fullResultsArray,
     [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints,

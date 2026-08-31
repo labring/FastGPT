@@ -1397,9 +1397,7 @@ describe('getAgentRuntimeTools schema loading', () => {
         })
       ])
     );
-    expect(tools[0].requestSchema.function.parameters.properties).not.toHaveProperty(
-      'externalVariable'
-    );
+    expect(tools[0].requestSchema.function).not.toHaveProperty('parameters');
     expect(tools[0].agentGeneratedInputKeys).not.toContain('externalVariable');
     expect(tools[0].params).toMatchObject({ externalVariable: 'configured value' });
   });
@@ -1542,7 +1540,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(new Set(tools.map((tool) => tool.id)).size).toBe(2);
   });
 
-  it('does not rebuild system tool params from node inputs when input schema is missing', async () => {
+  it('omits parameters for an Agent tool without agent-generated inputs', async () => {
     getSystemToolDetailMock.mockResolvedValue({
       id: 'systemTool-gpjj5s',
       name: '热榜工具',
@@ -1570,9 +1568,7 @@ describe('getAgentRuntimeTools schema loading', () => {
 
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.name).toBe('gpjj5s');
-    expect(tools[0].requestSchema.function.parameters).toEqual({
-      type: 'object',
-      properties: {}
-    });
+    expect(tools[0].requestSchema.function).not.toHaveProperty('parameters');
+    expect(tools[0].agentGeneratedInputKeys).toEqual([]);
   });
 });
