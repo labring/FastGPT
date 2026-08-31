@@ -19,10 +19,8 @@ import {
   storeNode2FlowNode,
   getNodeAllSource,
   filterWorkflowNodeOutputsByType,
-  filterWorkflowNodeInputsByType,
   filterSelectableWorkflowNodeOutputs,
-  workflowReferenceValueIsSelectable,
-  getNodeSelfReferenceToolInputs
+  workflowReferenceValueIsSelectable
 } from '@/web/core/workflow/utils';
 import {
   checkWorkflowNodeIssues,
@@ -2405,29 +2403,6 @@ describe('filterWorkflowNodeOutputsByType', () => {
   });
 });
 
-describe('filterWorkflowNodeInputsByType', () => {
-  it('filters inputs by type using the same compatibility rules as outputs', () => {
-    const inputs: FlowNodeInputItemType[] = [
-      {
-        key: 'text',
-        valueType: WorkflowIOValueTypeEnum.string,
-        renderTypeList: [FlowNodeInputTypeEnum.input]
-      },
-      {
-        key: 'count',
-        valueType: WorkflowIOValueTypeEnum.number,
-        renderTypeList: [FlowNodeInputTypeEnum.numberInput]
-      }
-    ];
-
-    expect(
-      filterWorkflowNodeInputsByType(inputs, WorkflowIOValueTypeEnum.number).map(
-        (input) => input.key
-      )
-    ).toEqual(['count']);
-  });
-});
-
 describe('filterSelectableWorkflowNodeOutputs', () => {
   const makeOutput = (
     id: string,
@@ -2573,142 +2548,6 @@ describe('workflowReferenceValueIsSelectable', () => {
         valueType: WorkflowIOValueTypeEnum.string
       })
     ).toBe(false);
-  });
-
-  it('returns true when single reference points to a source node tool input', () => {
-    expect(
-      workflowReferenceValueIsSelectable({
-        value: ['source', 'arg1'],
-        sourceNodes: [
-          {
-            nodeId: 'source',
-            outputs: [],
-            toolInputs: [
-              {
-                key: 'arg1',
-                renderTypeList: [FlowNodeInputTypeEnum.addInputParam],
-                valueType: WorkflowIOValueTypeEnum.string
-              }
-            ]
-          }
-        ],
-        valueType: WorkflowIOValueTypeEnum.any
-      })
-    ).toBe(true);
-  });
-
-  it('returns true for a compatible source node tool input type', () => {
-    expect(
-      workflowReferenceValueIsSelectable({
-        value: ['source', 'countArg'],
-        sourceNodes: [
-          {
-            nodeId: 'source',
-            outputs: [],
-            toolInputs: [
-              {
-                key: 'countArg',
-                renderTypeList: [FlowNodeInputTypeEnum.addInputParam],
-                valueType: WorkflowIOValueTypeEnum.number
-              }
-            ]
-          }
-        ],
-        valueType: WorkflowIOValueTypeEnum.number
-      })
-    ).toBe(true);
-  });
-
-  it('returns false when referenced tool input type is not selectable', () => {
-    const sourceNodes = [
-      {
-        nodeId: 'source',
-        outputs: [],
-        toolInputs: [
-          {
-            key: 'textArg',
-            renderTypeList: [FlowNodeInputTypeEnum.addInputParam],
-            valueType: WorkflowIOValueTypeEnum.string
-          }
-        ]
-      }
-    ];
-
-    expect(
-      workflowReferenceValueIsSelectable({
-        value: ['source', 'textArg'],
-        sourceNodes,
-        valueType: WorkflowIOValueTypeEnum.number
-      })
-    ).toBe(false);
-  });
-
-  it('returns false when referenced tool input no longer exists', () => {
-    expect(
-      workflowReferenceValueIsSelectable({
-        value: ['source', 'deletedArg'],
-        sourceNodes: [
-          {
-            nodeId: 'source',
-            outputs: [],
-            toolInputs: [
-              {
-                key: 'arg1',
-                renderTypeList: [FlowNodeInputTypeEnum.addInputParam],
-                valueType: WorkflowIOValueTypeEnum.string
-              }
-            ]
-          }
-        ],
-        valueType: WorkflowIOValueTypeEnum.any
-      })
-    ).toBe(false);
-  });
-});
-
-describe('getNodeSelfReferenceToolInputs', () => {
-  const makeCodeNode = (inputs: FlowNodeItemType['inputs']): FlowNodeItemType =>
-    ({
-      nodeId: 'codeNode',
-      name: 'Code',
-      flowNodeType: FlowNodeTypeEnum.code,
-      inputs,
-      outputs: []
-    }) as FlowNodeItemType;
-
-  it('returns only agent generated editable inputs for code nodes', () => {
-    const node = makeCodeNode([
-      {
-        key: 'arg1',
-        canEdit: true,
-        defaultToAgentGenerated: true,
-        renderTypeList: [FlowNodeInputTypeEnum.addInputParam],
-        valueType: WorkflowIOValueTypeEnum.string
-      },
-      {
-        key: 'customInput',
-        canEdit: true,
-        renderTypeList: [FlowNodeInputTypeEnum.reference],
-        valueType: WorkflowIOValueTypeEnum.any
-      }
-    ]);
-
-    expect(getNodeSelfReferenceToolInputs(node).map((input) => input.key)).toEqual(['arg1']);
-  });
-
-  it('returns empty for non code nodes', () => {
-    const node = makeCodeNode([
-      {
-        key: 'arg1',
-        canEdit: true,
-        defaultToAgentGenerated: true,
-        renderTypeList: [FlowNodeInputTypeEnum.addInputParam],
-        valueType: WorkflowIOValueTypeEnum.string
-      }
-    ]);
-    node.flowNodeType = FlowNodeTypeEnum.chatNode;
-
-    expect(getNodeSelfReferenceToolInputs(node)).toEqual([]);
   });
 });
 

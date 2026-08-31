@@ -429,33 +429,11 @@ export const filterWorkflowNodeOutputsByType = (
   );
 };
 
-/** 过滤代码节点自身工具参数，避免引用选择器提供不兼容的值类型。 */
-export const filterWorkflowNodeInputsByType = (
-  inputs: FlowNodeInputItemType[],
-  valueType?: WorkflowIOValueTypeEnum
-): FlowNodeInputItemType[] =>
-  inputs.filter((input) =>
-    workflowValueTypeIsCompatible({ itemValueType: input.valueType, valueType })
-  );
-
 export type WorkflowReferenceSourceNode = {
   nodeId: string;
   outputs: FlowNodeOutputItemType[];
   catchError?: boolean;
-  /** 节点自身可被引用的工具参数，执行前注入 inputs 参与引用解析。 */
-  toolInputs?: FlowNodeInputItemType[];
 };
-
-/**
- * 代码节点的工具参数（Agent 生成）允许被同节点自定义输入引用。
- * 与引用选择器展示规则保持一致；运行时解析见 getReferenceVariableValue 的 inputs 回退。
- */
-export const getNodeSelfReferenceToolInputs = (node: FlowNodeItemType) =>
-  node.flowNodeType === FlowNodeTypeEnum.code
-    ? node.inputs.filter(
-        (input) => input.canEdit === true && input.defaultToAgentGenerated === true
-      )
-    : [];
 
 /**
  * 过滤引用选择器中真正可选的输出。
@@ -502,12 +480,7 @@ const referenceItemIsSelectable = ({
     valueType,
     catchError: sourceNode.catchError
   }).some((output) => output.id === outputId);
-  if (outputIsSelectable) return true;
-
-  // 代码节点自身工具参数不是 outputs，运行时注入后按 inputs 回退解析。
-  return filterWorkflowNodeInputsByType(sourceNode.toolInputs ?? [], valueType).some(
-    (input) => input.key === outputId
-  );
+  return outputIsSelectable;
 };
 
 /**

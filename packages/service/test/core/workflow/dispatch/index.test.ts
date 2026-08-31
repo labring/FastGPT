@@ -618,7 +618,7 @@ describe('getWorkflowNodeRunParams', () => {
     expect(variableState.getToRuntimeRecordCount()).toBe(1);
   });
 
-  it('同节点引用工具参数时读取已注入的 input value', () => {
+  it('同节点引用工具参数时不读取 input value', () => {
     const variableState = createVariableState();
     const node = createNode('code', FlowNodeTypeEnum.code);
     node.inputs = [
@@ -646,7 +646,7 @@ describe('getWorkflowNodeRunParams', () => {
       variableState: variableState.state
     });
 
-    expect(params.codeInput).toBe('agent value');
+    expect(params.codeInput).toBeUndefined();
   });
 
   it('跨节点引用工具参数时不读取目标节点 input value', () => {
@@ -680,37 +680,6 @@ describe('getWorkflowNodeRunParams', () => {
         ['code', node],
         ['source', sourceNode]
       ]),
-      variableState: variableState.state
-    });
-
-    expect(params.codeInput).toBeUndefined();
-  });
-
-  it('同节点引用非 Agent 生成 input 时不读取 input value', () => {
-    const variableState = createVariableState();
-    const node = createNode('code', FlowNodeTypeEnum.code);
-    node.inputs = [
-      {
-        key: 'manualParam',
-        label: '',
-        canEdit: true,
-        defaultToAgentGenerated: false,
-        renderTypeList: [FlowNodeInputTypeEnum.reference],
-        value: 'manual value',
-        valueType: WorkflowIOValueTypeEnum.string
-      },
-      {
-        key: 'codeInput',
-        label: '',
-        renderTypeList: [FlowNodeInputTypeEnum.reference],
-        value: ['code', 'manualParam'],
-        valueType: WorkflowIOValueTypeEnum.string
-      }
-    ];
-
-    const params = getWorkflowNodeRunParams({
-      node,
-      runtimeNodesMap: new Map([['code', node]]),
       variableState: variableState.state
     });
 

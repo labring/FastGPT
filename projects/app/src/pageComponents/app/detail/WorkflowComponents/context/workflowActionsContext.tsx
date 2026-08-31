@@ -458,6 +458,17 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
               const existingIndex = updateObj.inputs.findIndex(
                 (item) => item.key === updateItem.key
               );
+              const hasInput = updateObj.inputs.some(
+                (item) => item.key === updateItem.value.key && item.key !== updateItem.key
+              );
+
+              if (hasInput) {
+                toast({
+                  status: 'warning',
+                  title: t('common:key_repetition')
+                });
+                return;
+              }
 
               updateObj = {
                 ...updateObj,

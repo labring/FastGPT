@@ -28,6 +28,19 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
     (v) => v.onRefreshSingleNodeWorkflowCheckIssues
   );
 
+  const templateContext = React.useMemo(
+    () =>
+      buildNodeTemplateContext({
+        sourceNode: undefined,
+        edges,
+        getNodeById,
+        isSidebar: true,
+        hasToolNode,
+        hasLoopRunNode
+      }),
+    [edges, getNodeById, hasToolNode, hasLoopRunNode]
+  );
+
   const {
     templateType,
     parentId,
@@ -41,20 +54,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
     selectedTagIds,
     setSelectedTagIds,
     toolTags
-  } = useNodeTemplates(
-    React.useMemo(
-      () =>
-        buildNodeTemplateContext({
-          sourceNode: undefined,
-          edges,
-          getNodeById,
-          isSidebar: true,
-          hasToolNode,
-          hasLoopRunNode
-        }),
-      [edges, getNodeById, hasToolNode, hasLoopRunNode]
-    )
-  );
+  } = useNodeTemplates(templateContext);
 
   const onAddNode = useMemoizedFn(async ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => {
     setNodes((state) => {

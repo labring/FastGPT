@@ -1,9 +1,4 @@
-import {
-  getNodeAllSource,
-  getNodeSelfReferenceToolInputs,
-  workflowReferenceValueIsSelectable,
-  type WorkflowReferenceSourceNode
-} from '@/web/core/workflow/utils';
+import { getNodeAllSource, workflowReferenceValueIsSelectable } from '@/web/core/workflow/utils';
 import { workflowSystemVariables } from '@/web/core/app/utils';
 import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -161,13 +156,10 @@ const filterUnselectableReferenceInputs = ({
   getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
   childrenNodeIdListMap: Record<string, string[]>;
 }) => {
-  // 代码节点自身工具参数也是自定义输入的可选引用来源，而 getNodeAllSource 只收集上游节点。
-  const selfToolInputs = getNodeSelfReferenceToolInputs(node);
-
   return inputs.map((input) => {
     if (!nodeInputIsReference(input)) return input;
 
-    const sourceNodes: WorkflowReferenceSourceNode[] = getNodeAllSource({
+    const sourceNodes = getNodeAllSource({
       nodeId: node.nodeId,
       getNodeById,
       edges,
@@ -176,9 +168,6 @@ const filterUnselectableReferenceInputs = ({
       includeChildren: input.canEdit === true,
       childrenNodeIdListMap
     });
-    if (selfToolInputs.length > 0) {
-      sourceNodes.push({ nodeId: node.nodeId, outputs: [], toolInputs: selfToolInputs });
-    }
 
     const value = input.value as ReferenceValueType | undefined;
     if (!Array.isArray(value)) return input;

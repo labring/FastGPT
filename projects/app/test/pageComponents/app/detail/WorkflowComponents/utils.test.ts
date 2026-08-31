@@ -495,7 +495,7 @@ describe('WorkflowComponents utils', () => {
       expect(result.nodes[0].inputs[0].value).toEqual(['childNode', 'result']);
     });
 
-    it('should keep code node custom input references to its own tool params', () => {
+    it('should remove code node custom input references to its own tool params', () => {
       const nodes = [
         {
           data: {
@@ -531,10 +531,9 @@ describe('WorkflowComponents utils', () => {
 
       const result = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
 
-      expect(result.nodes[0].inputs.find((input) => input.key === 'customInput')?.value).toEqual([
-        'codeNode',
-        'arg1'
-      ]);
+      expect(result.nodes[0].inputs.find((input) => input.key === 'customInput')?.value).toBe(
+        undefined
+      );
     });
 
     it('should preserve a canonical input selection when saving workflow', () => {

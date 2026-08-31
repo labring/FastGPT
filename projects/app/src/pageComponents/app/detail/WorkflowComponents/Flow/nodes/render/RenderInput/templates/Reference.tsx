@@ -2,12 +2,7 @@ import React, { useCallback, useEffect, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Flex, Box, type ButtonProps, Grid } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import {
-  getNodeAllSource,
-  filterSelectableWorkflowNodeOutputs,
-  filterWorkflowNodeInputsByType,
-  getNodeSelfReferenceToolInputs
-} from '@/web/core/workflow/utils';
+import { getNodeAllSource, filterSelectableWorkflowNodeOutputs } from '@/web/core/workflow/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type {
@@ -58,15 +53,12 @@ type SelectProps<T extends boolean> = CommonSelectProps & {
 export const useReference = ({
   nodeId,
   valueType = WorkflowIOValueTypeEnum.any,
-  includeChildren,
-  excludeInputKey
+  includeChildren
 }: {
   nodeId: string;
   valueType?: WorkflowIOValueTypeEnum;
   // Include the container's own children as reference sources.
   includeChildren?: boolean;
-  /** 代码自定义变量不能引用自身，避免形成直接循环。 */
-  excludeInputKey?: string;
 }) => {
   const { t } = useSafeTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
@@ -116,32 +108,7 @@ export const useReference = ({
       })
       .filter((item) => item.children.length > 0);
 
-    const currentNode = getNodeById(nodeId);
-    if (!currentNode) return list;
-
-    const toolInputs = filterWorkflowNodeInputsByType(
-      getNodeSelfReferenceToolInputs(currentNode),
-      valueType
-    ).filter((input) => input.key !== excludeInputKey);
-    if (toolInputs.length === 0) return list;
-
-    return [
-      ...list,
-      {
-        label: (
-          <Flex alignItems={'center'}>
-            <Avatar src={currentNode.avatar} w={isArray ? '1rem' : '1.05rem'} borderRadius={'xs'} />
-            <Box ml={1}>{currentNode.name}</Box>
-          </Flex>
-        ),
-        value: currentNode.nodeId,
-        children: toolInputs.map((input) => ({
-          label: t(input.label as any),
-          value: input.key,
-          valueType: input.valueType
-        }))
-      }
-    ];
+    return list;
   }, [
     nodeId,
     getNodeById,
@@ -150,7 +117,6 @@ export const useReference = ({
     t,
     valueType,
     includeChildren,
-    excludeInputKey,
     childrenNodeIdListMap
   ]);
 
