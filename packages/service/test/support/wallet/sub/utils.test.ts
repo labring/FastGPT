@@ -444,21 +444,11 @@ describe('buildStandardPlan', () => {
       expect(result.customDescriptions).toEqual(['特性A', '特性B']);
     });
 
-    it('wecom 取自 standardConstants', () => {
-      const constants: TeamStandardSubPlanItemType = {
-        ...baseConstants,
-        wecom: { price: 9.9, points: 500 }
-      };
-      const result = buildStandardPlan(baseStandard, constants);
-      expect(result.wecom).toEqual({ price: 9.9, points: 500 });
-    });
-
     it('standardConstants 展示字段为 undefined 时结果也为 undefined', () => {
       const result = buildStandardPlan(baseStandard, baseConstants);
       expect(result.priceDescription).toBeUndefined();
       expect(result.customFormUrl).toBeUndefined();
       expect(result.customDescriptions).toBeUndefined();
-      expect(result.wecom).toBeUndefined();
     });
   });
 
