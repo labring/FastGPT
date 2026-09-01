@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Flex, MenuButton, Button, Link, useDisclosure, HStack } from '@chakra-ui/react';
+import { Box, Flex, Button, Link, useDisclosure, HStack } from '@chakra-ui/react';
 import {
   getDatasetCollectionPathById,
   postDatasetCollection,
@@ -30,15 +30,32 @@ import { useContextSelector } from 'use-context-selector';
 import { CollectionPageContext } from './Context';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import HeaderTagPopOver from './HeaderTagPopOver';
+import DatasetTagFilter from './DatasetTagFilter';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import Icon from '@fastgpt/web/components/common/Icon';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import TagManageModal from './TagManageModal';
 
 const FileSourceSelector = dynamic(() => import('../Import/components/FileSourceSelector'));
 const BackupImportModal = dynamic(() => import('./BackupImportModal'));
 const TemplateImportModal = dynamic(() => import('./TemplateImportModal'));
+
+const HeaderImportButton = ({ children }: { children: React.ReactNode }) => (
+  <Button
+    h={'36px'}
+    minH={'36px'}
+    px={'14px'}
+    variant={'primary'}
+    leftIcon={<MyIcon name={'common/folderImport'} w={'18px'} h={'18px'} color={'white'} />}
+    fontSize={'sm'}
+    fontWeight={'500'}
+    borderRadius={'sm'}
+    whiteSpace={'nowrap'}
+  >
+    {children}
+  </Button>
+);
 
 const Header = ({
   hasTrainingData,
@@ -99,6 +116,11 @@ const Header = ({
     onOpen: onOpenTemplateImportModal,
     onClose: onCloseTemplateImportModal
   } = useDisclosure();
+  const {
+    isOpen: isTagManageModalOpen,
+    onOpen: onOpenTagManageModal,
+    onClose: onCloseTagManageModal
+  } = useDisclosure();
 
   const { runAsync: onCreateCollection } = useRequest(
     async ({
@@ -128,9 +150,9 @@ const Header = ({
   const isWebSite = datasetDetail?.type === DatasetTypeEnum.websiteDataset;
 
   return (
-    <MyBox display={['block', 'flex']} alignItems={'center'} gap={2}>
-      <HStack flex={1}>
-        <Box flex={1} fontWeight={'500'} color={'myGray.900'} whiteSpace={'nowrap'}>
+    <MyBox display={['block', 'flex']} alignItems={'center'} gap={3}>
+      <HStack flex={1} minW={0} gap={3}>
+        <Box flex={'0 1 auto'} minW={0} maxW={'100%'} fontWeight={'500'} color={'myGray.900'}>
           <FolderPath
             paths={paths.map((path, i) => ({
               parentId: path.parentId,
@@ -180,8 +202,10 @@ const Header = ({
         {/* search input */}
         {isPc && (
           <MyInput
+            w={'204px'}
             maxW={'250px'}
-            flex={1}
+            flex={'0 1 204px'}
+            minW={0}
             size={'sm'}
             h={'36px'}
             placeholder={t('common:Search') || ''}
@@ -203,25 +227,39 @@ const Header = ({
         {/* Tag */}
         {datasetDetail.type !== DatasetTypeEnum.websiteDataset &&
           datasetDetail.permission.hasWritePer &&
-          feConfigs?.isPlus && <HeaderTagPopOver />}
+          feConfigs?.isPlus && <DatasetTagFilter />}
+      </HStack>
 
-        {hasTrainingError && (
+      {hasTrainingError && (
+        <Button
+          variant={'whiteBase'}
+          h={'36px'}
+          px={'14px'}
+          color={'red.400'}
+          borderColor={'red.400'}
+          _hover={{
+            color: 'red.400',
+            borderColor: 'red.400'
+          }}
+          onClick={onOpenTrainingErrorModal}
+        >
+          {t('dataset:training_error_list')}
+        </Button>
+      )}
+      {datasetDetail.type !== DatasetTypeEnum.websiteDataset &&
+        datasetDetail.permission.hasWritePer &&
+        feConfigs?.isPlus && (
           <Button
-            variant={'whiteBase'}
             h={'36px'}
             px={'14px'}
-            color={'#F97066'}
-            borderColor={'#F97066'}
-            _hover={{
-              color: '#F97066',
-              borderColor: '#F97066'
-            }}
-            onClick={onOpenTrainingErrorModal}
+            variant={'primaryOutline'}
+            color={'primary.700'}
+            leftIcon={<MyIcon name={'core/dataset/tag'} w={'18px'} h={'18px'} />}
+            onClick={onOpenTagManageModal}
           >
-            {t('dataset:training_error_list')}
+            {t('dataset:tag.manage')}
           </Button>
         )}
-      </HStack>
 
       {/* diff collection button */}
       {datasetDetail.permission.hasWritePer && (
@@ -230,35 +268,9 @@ const Header = ({
             <MyMenu
               offset={[0, 5]}
               Button={
-                <MenuButton
-                  _hover={{
-                    color: 'primary.500'
-                  }}
-                  fontSize={['sm', 'md']}
-                >
-                  <Flex
-                    px={3.5}
-                    py={2}
-                    borderRadius={'sm'}
-                    cursor={'pointer'}
-                    bg={'primary.500'}
-                    overflow={'hidden'}
-                    color={'white'}
-                  >
-                    <Flex h={'20px'} alignItems={'center'}>
-                      <MyIcon
-                        name={'common/folderImport'}
-                        mr={2}
-                        w={'18px'}
-                        h={'18px'}
-                        color={'white'}
-                      />
-                    </Flex>
-                    <Box h={'20px'} fontSize={'sm'} fontWeight={'500'}>
-                      {t('common:dataset.collections.Create And Import')}
-                    </Box>
-                  </Flex>
-                </MenuButton>
+                <HeaderImportButton>
+                  {t('common:dataset.collections.Create And Import')}
+                </HeaderImportButton>
               }
               menuList={[
                 {
@@ -421,35 +433,9 @@ const Header = ({
             <MyMenu
               offset={[0, 5]}
               Button={
-                <MenuButton
-                  _hover={{
-                    color: 'primary.500'
-                  }}
-                  fontSize={['sm', 'md']}
-                >
-                  <Flex
-                    px={3.5}
-                    py={2}
-                    borderRadius={'sm'}
-                    cursor={'pointer'}
-                    bg={'primary.500'}
-                    overflow={'hidden'}
-                    color={'white'}
-                  >
-                    <Flex h={'20px'} alignItems={'center'}>
-                      <MyIcon
-                        name={'common/folderImport'}
-                        mr={2}
-                        w={'18px'}
-                        h={'18px'}
-                        color={'white'}
-                      />
-                    </Flex>
-                    <Box h={'20px'} fontSize={'sm'} fontWeight={'500'}>
-                      {t('common:dataset.collections.Create And Import')}
-                    </Box>
-                  </Flex>
-                </MenuButton>
+                <HeaderImportButton>
+                  {t('common:dataset.collections.Create And Import')}
+                </HeaderImportButton>
               }
               menuList={[
                 {
@@ -616,6 +602,14 @@ const Header = ({
             getData(1);
           }}
           onClose={onCloseTemplateImportModal}
+        />
+      )}
+      {isTagManageModalOpen && (
+        <TagManageModal
+          onClose={() => {
+            onCloseTagManageModal();
+            getData(1);
+          }}
         />
       )}
     </MyBox>

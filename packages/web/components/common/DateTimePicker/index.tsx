@@ -7,6 +7,8 @@ import 'react-day-picker/dist/style.css';
 import { zhCN } from 'date-fns/locale/zh-CN';
 import MyIcon from '../Icon';
 
+export * from './SingleDateTimePicker';
+
 const DateTimePicker = ({
   onChange,
   popPosition = 'bottom',
@@ -25,15 +27,12 @@ const DateTimePicker = ({
 } & Omit<BoxProps, 'onChange'>) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
+  const [internalSelectedDate, setInternalSelectedDate] = useState<Date | undefined>(
     selectedDateTime || defaultDate
   );
+  const selectedDate = selectedDateTime ?? internalSelectedDate;
   const [showSelected, setShowSelected] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
-
-  useEffect(() => {
-    setSelectedDate(selectedDateTime);
-  }, [selectedDateTime]);
 
   useEffect(() => {
     if (!showSelected) return;
@@ -169,7 +168,7 @@ const DateTimePicker = ({
                 selected={selectedDate}
                 disabled={disabled}
                 onSelect={(date) => {
-                  setSelectedDate(date);
+                  setInternalSelectedDate(date);
                   onChange?.(date);
                   setShowSelected(false);
                 }}

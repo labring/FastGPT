@@ -18,6 +18,7 @@
   "Delete": "Delete",
   "Documents": "Documents",
   "Done": "Done",
+  "datetime_picker.placeholder": "YYYY-MM-DD --:--",
   "Download": "Download",
   "Edit": "Edit",
   "Error": "Error",
