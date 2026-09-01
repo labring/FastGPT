@@ -44,7 +44,6 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getIsMemberSyncMode } from '@/web/common/system/utils';
 import { accountPageRootStyles, accountTitleTextStyles } from '@/pageComponents/account/styles';
 import { getAccountCancellationStatus } from '@/web/support/user/account/cancellation/api';
@@ -418,7 +417,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
 const PlanUsage = () => {
   const router = useRouter();
   const { t } = useClientTranslation('account_info');
-  const { teamPlanStatus, initTeamPlanStatus } = useUserStore();
+  const { userInfo, teamPlanStatus, initTeamPlanStatus } = useUserStore();
   const { subPlans, feConfigs } = useSystemStore();
 
   const {
