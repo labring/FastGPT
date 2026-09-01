@@ -16,11 +16,21 @@ describe('storeNode2FlowNode with deprecated inputs/outputs', () => {
             version: '1.0',
             inputs: [
               {
+                key: 'beforeInput',
+                label: 'Before Input',
+                renderTypeList: ['input']
+              },
+              {
                 key: 'deprecatedInput',
                 deprecated: true,
                 label: 'Deprecated Input',
                 renderTypeList: ['input'],
                 selectedType: 'input'
+              },
+              {
+                key: 'afterInput',
+                label: 'After Input',
+                renderTypeList: ['input']
               }
             ],
             outputs: [
@@ -50,10 +60,22 @@ describe('storeNode2FlowNode with deprecated inputs/outputs', () => {
       position: { x: 0, y: 0 },
       inputs: [
         {
+          key: 'beforeInput',
+          value: 'before',
+          renderTypeList: ['input'],
+          label: 'Before Input'
+        },
+        {
           key: 'deprecatedInput',
           value: 'old value',
           renderTypeList: ['input'],
           label: 'Deprecated Input'
+        },
+        {
+          key: 'afterInput',
+          value: 'after',
+          renderTypeList: ['input'],
+          label: 'After Input'
         }
       ],
       outputs: [
@@ -76,6 +98,11 @@ describe('storeNode2FlowNode with deprecated inputs/outputs', () => {
     const deprecatedInput = result.data.inputs.find((input) => input.key === 'deprecatedInput');
     expect(deprecatedInput).toBeDefined();
     expect(deprecatedInput?.deprecated).toBe(true);
+    expect(result.data.inputs.map((input) => input.key)).toEqual([
+      'beforeInput',
+      'deprecatedInput',
+      'afterInput'
+    ]);
 
     const deprecatedOutput = result.data.outputs.find(
       (output) => output.key === 'deprecatedOutput'

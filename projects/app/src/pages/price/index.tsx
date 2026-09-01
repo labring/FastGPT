@@ -12,10 +12,15 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import MyLoading from '@fastgpt/web/components/common/MyLoading';
 import PricePlanTabs from '@/pageComponents/price/PricePlanTabs';
 import { SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { isPriceTabType, type PriceTabType } from '@/web/support/wallet/sub/constants';
+import { getAuthLoginRedirectPath } from '@/web/support/user/loginRedirect/url';
+import {
+  consumePricePurchaseIntent,
+  savePricePurchaseIntent,
+  type PricePurchaseIntent
+} from '@/pageComponents/price/purchaseIntent';
 
 const PriceBox = () => {
   const { initUserInfo } = useUserStore();
@@ -31,15 +36,52 @@ const PriceBox = () => {
     return isPriceTabType(hash) ? hash : 'standard';
   });
   const [userSubMode, setUserSubMode] = useState<`${SubModeEnum}`>(SubModeEnum.month);
+  const [resumePurchaseIntent, setResumePurchaseIntent] = useState<PricePurchaseIntent>();
 
-  const { data: userInfo, loading: userInfoLoading } = useRequest(initUserInfo, {
-    manual: false
-  });
+  const { data: initialData, loading: isLoading } = useRequest(
+    async () => {
+      // 团队上下文由用户初始化写入，请求套餐前必须等待它完成，避免重复请求造成页面二次白屏。
+      const userInfo = await initUserInfo();
+      const teamSubPlan = await getTeamPlanStatus();
 
-  const { data: teamSubPlan, loading: teamSubPlanLoading } = useRequest(getTeamPlanStatus, {
-    manual: false,
-    refreshDeps: [userInfo]
-  });
+      return { userInfo, teamSubPlan };
+    },
+    {
+      manual: false
+    }
+  );
+  const userInfo = initialData?.userInfo;
+  const teamSubPlan = initialData?.teamSubPlan;
+  const shouldResumePurchase = router.query.resumePurchase === '1';
+
+  const handleLoginRequired = useCallback(
+    (intent: PricePurchaseIntent) => {
+      savePricePurchaseIntent(intent);
+      const tab = intent.type === 'standard' ? 'standard' : 'extra';
+      void router.push(getAuthLoginRedirectPath({ lastRoute: `/price?resumePurchase=1#${tab}` }));
+    },
+    [router]
+  );
+
+  const handleResumePurchaseIntent = useCallback(() => {
+    setResumePurchaseIntent(undefined);
+  }, []);
+
+  useEffect(() => {
+    if (isLoading || !router.isReady || !shouldResumePurchase) return;
+
+    const intent = consumePricePurchaseIntent();
+    const tab = intent?.type === 'standard' ? 'standard' : 'extra';
+    void router.replace(`/price#${tab}`, undefined, { shallow: true });
+
+    if (!userInfo || !intent) return;
+    queueMicrotask(() => {
+      if (intent.type === 'standard') {
+        setUserSubMode(intent.subMode);
+      }
+      setResumePurchaseIntent(intent);
+    });
+  }, [isLoading, router, shouldResumePurchase, userInfo]);
 
   const hashTab = useMemo(() => {
     if (!router.isReady) return undefined;
@@ -100,8 +142,6 @@ const PriceBox = () => {
   }, [router]);
 
   const isWecomTeam = useMemo(() => !!userInfo?.team?.isWecomTeam, [userInfo?.team?.isWecomTeam]);
-  const isLoading = userInfoLoading || teamSubPlanLoading;
-
   const tabList = useMemo<Array<{ label: string; value: PriceTabType }>>(
     () => [
       {
@@ -118,9 +158,7 @@ const PriceBox = () => {
 
   return (
     <>
-      {isLoading ? (
-        <MyLoading />
-      ) : (
+      {!isLoading && (
         <Flex
           h={'100%'}
           flexDir={'column'}
@@ -206,6 +244,9 @@ const PriceBox = () => {
                   onPaySuccess={onPaySuccess}
                   selectSubMode={selectSubMode}
                   onSelectSubModeChange={setUserSubMode}
+                  onLoginRequired={handleLoginRequired}
+                  resumePurchaseIntent={resumePurchaseIntent}
+                  onResumePurchaseIntentHandled={handleResumePurchaseIntent}
                   hideBillingToggle
                 />
                 <HStack mt={8} color={'blue.700'} justifyContent={'center'} w={'100%'}>
@@ -219,7 +260,12 @@ const PriceBox = () => {
 
             {activeTab !== 'standard' && (
               <Box w={'100%'} mt={'48px'}>
-                <ExtraPlan onPaySuccess={onPaySuccess} />
+                <ExtraPlan
+                  onPaySuccess={onPaySuccess}
+                  onLoginRequired={handleLoginRequired}
+                  resumePurchaseIntent={resumePurchaseIntent}
+                  onResumePurchaseIntentHandled={handleResumePurchaseIntent}
+                />
               </Box>
             )}
           </Flex>

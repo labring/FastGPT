@@ -53,7 +53,7 @@ const AgentSkillsSchema = new Schema({
     enum: Object.values(AgentSkillTypeEnum),
     default: AgentSkillTypeEnum.skill
   },
-  // 权限继承：文件夹节点可向下继承，skill 节点读取权限时会结合权限模块处理。
+  // 权限继承：每个节点都持有完整有效 ACL，关闭后形成独立子树。
   inheritPermission: {
     type: Boolean,
     default: true

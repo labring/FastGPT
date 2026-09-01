@@ -53,12 +53,12 @@ async function handler(
       url,
       toolList,
       name,
-      avatar,
+      avatar: avatar ?? undefined,
       headerSecret: formatedHeaderAuth
     });
     const mcpToolsId = await onCreateApp({
       name,
-      avatar,
+      avatar: avatar ?? undefined,
       parentId,
       teamId,
       tmbId,

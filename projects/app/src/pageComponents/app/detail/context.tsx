@@ -146,9 +146,12 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
 
   const { runAsync: updateAppDetail } = useRequest(async (data: UpdateAppBodyType) => {
     await putAppById(appId, data);
+    const { avatar, intro, ...rest } = data;
     setAppDetail((state) => ({
       ...state,
-      ...data
+      ...rest,
+      ...(avatar !== undefined && { avatar: avatar ?? '' }),
+      ...(intro !== undefined && { intro: intro ?? '' })
     }));
   });
 

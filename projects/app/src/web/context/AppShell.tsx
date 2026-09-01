@@ -13,7 +13,6 @@ import SystemStoreContextProvider from '@fastgpt/web/context/useSystem';
 import { useRouter } from 'next/router';
 import { errorLogger } from '@/web/common/utils/errorLogger';
 import { appClientEnv } from '@/web/common/system/env';
-import ClientBootLoading from './ClientBootLoading';
 import ClientI18nBoundary from '@fastgpt/web/i18n/ClientI18nBoundary';
 import ClientI18nGate from '@fastgpt/web/i18n/ClientI18nGate';
 import { LANG_KEY } from '@fastgpt/web/i18n/utils';
@@ -75,13 +74,13 @@ const AppContent = ({ Component, pageProps, renderPage }: AppPropsWithLayout) =>
   );
 };
 
-/** client-only 路由的统一 common 门禁和 namespace 错误边界。 */
+/** 完整语言包就绪后再挂载 client-only 应用，避免页面内出现 key 或二次骨架切换。 */
 const ClientI18nRoot = ({ children }: { children: ReactNode }) => {
   const { i18n } = useTranslation();
 
   return (
-    <ClientI18nGate defaultLanguage="en" storageKey={LANG_KEY} fallback={<ClientBootLoading />}>
-      <ClientI18nBoundary language={i18n.language} fallback={<ClientBootLoading />}>
+    <ClientI18nGate defaultLanguage="en" storageKey={LANG_KEY} fallback={null}>
+      <ClientI18nBoundary language={i18n.language} fallback={null}>
         {children}
       </ClientI18nBoundary>
     </ClientI18nGate>
@@ -94,7 +93,7 @@ const AppShell = (props: AppPropsWithLayout) => {
 
   return (
     <QueryClientContext>
-      <SystemStoreContextProvider waitForReady={props.clientOnly} fallback={<ClientBootLoading />}>
+      <SystemStoreContextProvider waitForReady={props.clientOnly}>
         <ChakraUIContext>
           {props.clientOnly ? <ClientI18nRoot>{content}</ClientI18nRoot> : content}
         </ChakraUIContext>

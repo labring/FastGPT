@@ -239,11 +239,13 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       };
     }
 
+    const answerText = getAgentLoopCorePersistedTextOutput(previewAssistantResponses);
+
     return {
       data: {
-        [NodeOutputKeyEnum.answerText]:
-          getAgentLoopCorePersistedTextOutput(previewAssistantResponses)
+        [NodeOutputKeyEnum.answerText]: answerText
       },
+      [DispatchNodeResponseKeyEnum.toolResponse]: answerText,
       [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
       [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
         ? previewAssistantResponses

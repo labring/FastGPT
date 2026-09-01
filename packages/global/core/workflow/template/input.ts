@@ -24,7 +24,8 @@ export const Input_Template_UserChatInput: FlowNodeInputItemType = {
   valueType: WorkflowIOValueTypeEnum.string,
   label: i18nT('workflow:user_question'),
   toolDescription: 'user question',
-  required: true
+  required: true,
+  defaultToAgentGenerated: true
 };
 
 export const Input_Template_DynamicInput: FlowNodeInputItemType = {
@@ -83,7 +84,8 @@ export const Input_Template_File_Link: FlowNodeInputItemType = {
   label: i18nT('app:workflow.user_file_input'),
   debugLabel: i18nT('app:workflow.user_file_input'),
   description: i18nT('app:workflow.user_file_input_desc'),
-  valueType: WorkflowIOValueTypeEnum.arrayString
+  valueType: WorkflowIOValueTypeEnum.arrayString,
+  defaultToAgentGenerated: true
 };
 
 export const Input_Template_Children_Node_List: FlowNodeInputItemType = {

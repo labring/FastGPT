@@ -28,6 +28,7 @@ type ParseAppImportConfigOptions = {
   resolveScene?: JsonImportModalScene;
   allowedAppTypes?: readonly SupportedImportAppType[];
   expectedAppType?: SupportedImportAppType;
+  migrateWorkflow?: boolean;
 };
 
 const supportedImportAppTypes = [
@@ -196,10 +197,12 @@ const parseSimpleImportWorkflow = ({
 const parseWorkflowLikeImportConfig = async ({
   config,
   appType,
+  migrateWorkflow,
   t
 }: {
   config: Record<string, unknown>;
   appType: Exclude<SupportedImportAppType, AppTypeEnum.simple>;
+  migrateWorkflow: boolean;
   t: any;
 }): Promise<ImportWorkflowConfig> => {
   if (!Array.isArray(config.nodes)) {
@@ -218,11 +221,13 @@ const parseWorkflowLikeImportConfig = async ({
     throw new Error(t('app:type_not_recognized'));
   }
 
-  return migrateWorkflowToCurrent({
+  const workflow = {
     nodes: config.nodes as StoreNodeItemType[],
     edges: Array.isArray(config.edges) ? (config.edges as StoreEdgeItemType[]) : [],
     chatConfig: (config.chatConfig ?? {}) as AppChatConfigType
-  });
+  };
+
+  return migrateWorkflow ? migrateWorkflowToCurrent(workflow) : workflow;
 };
 
 /**
@@ -237,7 +242,8 @@ export const parseAppImportConfig = async ({
   t,
   resolveScene,
   allowedAppTypes,
-  expectedAppType
+  expectedAppType,
+  migrateWorkflow = false
 }: ParseAppImportConfigOptions): Promise<ParsedImportConfig> => {
   const importConfig = assertImportConfigObject(config, t);
   const appType = resolveImportAppType(importConfig, resolveScene);
@@ -251,7 +257,12 @@ export const parseAppImportConfig = async ({
   const workflow =
     appType === AppTypeEnum.simple
       ? parseSimpleImportWorkflow({ config: importConfig, t })
-      : await parseWorkflowLikeImportConfig({ config: importConfig, appType, t });
+      : await parseWorkflowLikeImportConfig({
+          config: importConfig,
+          appType,
+          migrateWorkflow,
+          t
+        });
 
   return {
     workflow,
@@ -263,7 +274,8 @@ export const parseAppImportConfig = async ({
  * 解析工作台 JSON 导入配置。
  *
  * 顶层 `type` 存在时按导出元信息校验业务结构；无 `type` 时回退
- * 现有 `getAppType` 结构识别逻辑，以兼容老版本导出 JSON。
+ * 现有 `getAppType` 结构识别逻辑，以兼容老版本导出 JSON。新建应用由服务端
+ * 创建接口统一迁移，这里保留原始工作流，避免客户端和服务端重复维护写入规则。
  */
 export const parseDashboardImportConfig = async ({
   config,
@@ -278,7 +290,8 @@ export const parseDashboardImportConfig = async ({
     config,
     t,
     resolveScene: scene,
-    allowedAppTypes: dashboardImportAppTypesByScene[scene]
+    allowedAppTypes: dashboardImportAppTypesByScene[scene],
+    migrateWorkflow: false
   });
 };
 
@@ -304,7 +317,8 @@ export const parseWorkflowImportConfig = async ({
     config,
     t,
     resolveScene: scene,
-    expectedAppType
+    expectedAppType,
+    migrateWorkflow: true
   });
 
   return workflow;

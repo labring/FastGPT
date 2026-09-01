@@ -24,6 +24,7 @@ import {
 } from '@fastgpt/global/core/app/tool/utils';
 import { pluginClient } from '../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
+import { computedSystemToolUsage } from '../../../app/tool/runtime/utils';
 import { InvokeProcessor } from '../../../../support/invoke/invoke';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { authAppByTmbId } from '../../../../support/permission/app/auth';
@@ -232,15 +233,12 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         });
       }
 
-      const usagePoints = (() => {
-        if (
-          params.system_input_config?.type === SystemToolSecretInputTypeEnum.team ||
-          params.system_input_config?.type === SystemToolSecretInputTypeEnum.manual
-        ) {
-          return 0;
-        }
-        return (tool.systemKeyCost ?? 0) + (tool.currentCost ?? 0);
-      })();
+      const usagePoints = computedSystemToolUsage({
+        tool,
+        useSystemKey:
+          params.system_input_config?.type !== SystemToolSecretInputTypeEnum.team &&
+          params.system_input_config?.type !== SystemToolSecretInputTypeEnum.manual
+      });
       props.usagePush([
         {
           moduleName: name,

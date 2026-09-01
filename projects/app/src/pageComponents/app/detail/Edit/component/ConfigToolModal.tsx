@@ -35,12 +35,14 @@ import {
   canInputBeAgentGenerated,
   canInputBeConfiguredAsToolParam,
   canInputBeManuallyConfigured,
+  formatJsonEditorValue,
   getSelectedInputRenderType,
   getToolInputManualRenderType,
   getToolConfigStatus,
   initToolInputTypeByDefaultMode,
   isAgentGeneratedToolInput,
   isToolInputValueConfigured,
+  parseJsonEditorValue,
   stripToolInputDefaultMode
 } from '@fastgpt/global/core/app/formEdit/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -61,6 +63,20 @@ import { validateToolInputValue } from '@fastgpt/global/core/app/tool/runtime';
 
 const inputTypeFormKey = (key: string) => `__input_type__${key}`;
 const developerInputTypeFormKey = (key: string) => `__developer_input_type__${key}`;
+
+/** 工具配置中的 JSON Editor 保留编辑文本，校验时解析，运行边界再转换为原生 JSON 值。 */
+const parseConfigInputValue = ({
+  inputType,
+  value
+}: {
+  inputType?: FlowNodeInputTypeEnum;
+  value: unknown;
+}) =>
+  inputType === FlowNodeInputTypeEnum.JSONEditor
+    ? typeof value === 'string' && value.trim() === ''
+      ? { success: true as const, value: undefined }
+      : parseJsonEditorValue(value)
+    : { success: true as const, value };
 
 type ToolSetListItemType = {
   name: string;
@@ -168,13 +184,16 @@ const getConfigFormValues = (tool: FlowNodeTemplateType) =>
         ? getToolInputManualRenderType(normalizedInput)
         : undefined;
       const inputValue = input.value ?? input.defaultValue;
+      const jsonEditorInputValue = input.value !== undefined ? input.value : input.defaultValue;
       acc[input.key] =
         input.key === NodeInputKeyEnum.systemInputConfig
           ? getSecretInputFormValue({
               value: inputValue as ToolParamsFormType | undefined,
               hasSystemSecret: tool.hasSystemSecret === true
             })
-          : inputValue;
+          : developerInputType === FlowNodeInputTypeEnum.JSONEditor
+            ? formatJsonEditorValue(jsonEditorInputValue)
+            : inputValue;
       acc[inputTypeFormKey(input.key)] = isAgentGeneratedToolInput(normalizedInput)
         ? FlowNodeInputTypeEnum.agentGenerated
         : (developerInputType ?? getSelectedInputRenderType(normalizedInput));
@@ -203,29 +222,42 @@ const mergeConfiguredTool = ({
   formValues: Record<string, any>;
 }): SelectedToolItemType => {
   // 切换版本时，新版本新增的系统工具参数也需要按工具定义恢复默认输入方式。
+  const sourceTool = {
+    ...prevTool,
+    inputs: prevTool.inputs.map((input) => ({
+      ...input,
+      selectedType: formValues[inputTypeFormKey(input.key)] ?? input.selectedType,
+      value: formValues[input.key] ?? input.value
+    }))
+  };
   const inheritedNextTool = inheritToolInputConfig({
     tool: nextTool,
-    sourceTool: prevTool
+    sourceTool
   });
-  const prevInputMap = new Map(prevTool.inputs.map((input) => [input.key, input]));
 
   const mergedTool = {
     ...inheritedNextTool,
     configStatus: prevTool.configStatus,
     inputs: inheritedNextTool.inputs.map((input) => {
-      const prevInput = prevInputMap.get(input.key);
-      if (!prevInput) return input;
+      const selectedInputType = input.renderTypeList.includes(
+        formValues[inputTypeFormKey(input.key)]
+      )
+        ? formValues[inputTypeFormKey(input.key)]
+        : input.selectedType;
+      const formDeveloperInputType = formValues[developerInputTypeFormKey(input.key)];
+      const developerInputType = input.renderTypeList.includes(formDeveloperInputType)
+        ? formDeveloperInputType
+        : getToolInputManualRenderType(input);
 
       return {
         ...input,
-        value: formValues[input.key] ?? prevInput.value ?? input.value,
         ...buildConfigInputTypeState({
-          selectedInputType: formValues[inputTypeFormKey(input.key)] ?? input.renderTypeList[0],
-          developerInputType:
-            formValues[developerInputTypeFormKey(input.key)] ?? getToolInputManualRenderType(input),
+          selectedInputType,
+          developerInputType,
           renderTypeList: input.renderTypeList,
           canAgentGenerated: canInputBeAgentGenerated(input)
-        })
+        }),
+        value: input.value
       };
     })
   };
@@ -398,6 +430,7 @@ const ConfigValueInput = ({
   input: FlowNodeTemplateType['inputs'][number];
   control: Control<Record<string, any>>;
 }) => {
+  const { t } = useSafeTranslation();
   const selectedInputType = useWatch({
     control,
     name: inputTypeFormKey(input.key)
@@ -425,9 +458,13 @@ const ConfigValueInput = ({
           const configuredValue = value ?? input.defaultValue;
           if (configuredValue === undefined) return true;
 
+          const parsedValue = parseConfigInputValue({ inputType, value: configuredValue });
+          if (!parsedValue.success) return t('common:json_parse_error');
+          if (parsedValue.value === undefined) return !input.required;
+
           const validationResult = validateToolInputValue({
             schema: input.customJsonSchema,
-            value: configuredValue
+            value: parsedValue.value
           });
           return validationResult.success || validationResult.errors.join('; ');
         }
@@ -803,10 +840,18 @@ const ToolVersionSelect = ({
 
   const valueLabel = useMemo(
     () => (
-      <Flex alignItems={'center'} gap={0.5} minW={0} whiteSpace={'nowrap'}>
-        {!tool.version ? t('app:keep_the_latest') : tool.versionLabel}
+      <Flex alignItems={'center'} gap={0.5} minW={0} overflow={'hidden'} whiteSpace={'nowrap'}>
+        <Box minW={0} className={'textEllipsis'}>
+          {!tool.version ? t('app:keep_the_latest') : tool.versionLabel}
+        </Box>
         {tool.isLatestVersion === false && (
-          <MyTag type="fill" colorSchema={'adora'} fontSize={'mini'} borderRadius={'lg'}>
+          <MyTag
+            type="fill"
+            colorSchema={'adora'}
+            fontSize={'mini'}
+            borderRadius={'lg'}
+            flexShrink={0}
+          >
             {t('app:not_the_newest')}
           </MyTag>
         )}
@@ -839,7 +884,7 @@ const ToolVersionSelect = ({
       placeholder={tool.versionLabel}
       variant={'whitePrimaryOutline'}
       size={'sm'}
-      width={'136px'}
+      width={'180px'}
       h={'36px'}
       minH={'36px'}
       borderRadius={'6px'}
@@ -899,7 +944,17 @@ const ConfigToolModal = ({
           value:
             inputTypeState.selectedType === FlowNodeInputTypeEnum.agentGenerated
               ? undefined
-              : (data[input.key] ?? input.value)
+              : (() => {
+                  const configuredValue = data[input.key] ?? input.value;
+                  const parsedValue = parseConfigInputValue({
+                    inputType: inputTypeState.selectedType,
+                    value: configuredValue
+                  });
+                  // 编辑文本持久化以兼容历史配置；空白输入统一表示未配置。
+                  return parsedValue.success && parsedValue.value === undefined
+                    ? undefined
+                    : configuredValue;
+                })()
         });
       })
     });

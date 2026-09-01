@@ -146,6 +146,20 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     });
   };
 
+  const formatHttpProps = (items: PropsArrType[]) =>
+    items.reduce<PropsArrType[]>((acc, item) => {
+      const key = replaceStringVariables(item.key);
+      // only preserve valid key.
+      if (!key) return acc;
+
+      acc.push({
+        key,
+        type: item.type,
+        value: replaceStringVariables(item.value)
+      });
+      return acc;
+    }, []);
+
   requestUrl = replaceStringVariables(requestUrl);
 
   const publicHeaders = await (async () => {
@@ -155,9 +169,8 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         ? [{ key: 'Content-Type', value: contentType, type: 'string' }, ...httpHeader]
         : httpHeader;
 
-      return requestHeaders.reduce((acc: Record<string, string>, item) => {
-        const key = replaceStringVariables(item.key);
-        const value = replaceStringVariables(item.value);
+      return formatHttpProps(requestHeaders).reduce((acc: Record<string, string>, item) => {
+        const { key, value } = item;
         acc[key] = valueTypeFormat(value, WorkflowIOValueTypeEnum.string);
         return acc;
       }, {});
@@ -169,9 +182,8 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     storeSecret: headerSecret
   });
 
-  const params = httpParams.reduce((acc: Record<string, string>, item) => {
-    const key = replaceStringVariables(item.key);
-    const value = replaceStringVariables(item.value);
+  const params = formatHttpProps(httpParams).reduce((acc: Record<string, string>, item) => {
+    const { key, value } = item;
     acc[key] = valueTypeFormat(value, WorkflowIOValueTypeEnum.string);
     return acc;
   }, {});
@@ -181,11 +193,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     try {
       if (httpContentType === ContentTypes.formData) {
         if (!Array.isArray(httpFormBody)) return {};
-        const formBody = httpFormBody.map((item) => ({
-          key: replaceStringVariables(item.key),
-          type: item.type,
-          value: replaceStringVariables(item.value)
-        }));
+        const formBody = formatHttpProps(httpFormBody);
         const formData = new FormData();
         for (const { key, value } of formBody) {
           formData.append(key, value);
@@ -194,11 +202,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       }
       if (httpContentType === ContentTypes.xWwwFormUrlencoded) {
         if (!Array.isArray(httpFormBody)) return {};
-        const formBody = httpFormBody.map((item) => ({
-          key: replaceStringVariables(item.key),
-          type: item.type,
-          value: replaceStringVariables(item.value)
-        }));
+        const formBody = formatHttpProps(httpFormBody);
         const urlSearchParams = new URLSearchParams();
         for (const { key, value } of formBody) {
           urlSearchParams.append(key, value);

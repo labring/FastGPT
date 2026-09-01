@@ -244,18 +244,35 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
 
   await mongoSessionRun(async (session) => {
     if (isMove) {
-      const parentClbs = await getResourceOwnedClbs({
-        teamId: dataset.teamId,
-        resourceId: parentId,
-        resourceType: PerResourceTypeEnum.dataset,
-        session
-      });
+      const [parentClbs, oldParentClbs, oldResourceClbs] = await Promise.all([
+        getResourceOwnedClbs({
+          teamId: dataset.teamId,
+          resourceId: parentId,
+          resourceType: PerResourceTypeEnum.dataset,
+          session
+        }),
+        dataset.parentId
+          ? getResourceOwnedClbs({
+              teamId: dataset.teamId,
+              resourceId: dataset.parentId,
+              resourceType: PerResourceTypeEnum.dataset,
+              session
+            })
+          : Promise.resolve([]),
+        getResourceOwnedClbs({
+          teamId: dataset.teamId,
+          resourceId: id,
+          resourceType: PerResourceTypeEnum.dataset,
+          session
+        })
+      ]);
 
-      await syncCollaborators({
+      const newResourceClbs = await syncCollaborators({
         teamId: dataset.teamId,
         resourceId: id,
         resourceType: PerResourceTypeEnum.dataset,
         collaborators: parentClbs,
+        oldParentCollaborators: oldParentClbs,
         session
       });
 
@@ -264,7 +281,8 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         resourceType: PerResourceTypeEnum.dataset,
         resourceModel: MongoDataset,
         folderTypeList: [DatasetTypeEnum.folder],
-        collaborators: parentClbs,
+        oldParentCollaborators: oldResourceClbs,
+        newParentCollaborators: newResourceClbs,
         session
       });
       logDatasetMove({ tmbId, teamId, dataset, targetName });

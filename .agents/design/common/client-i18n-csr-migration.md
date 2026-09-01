@@ -1,4 +1,4 @@
-# 非分享页 CSR 与 i18n 按需加载迁移方案
+# 非分享页 CSR 与 i18n 完整语言包加载方案
 
 ## 1. 背景
 
@@ -17,9 +17,8 @@ FastGPT 主应用当前使用 Next.js Pages Router。`pages/_app.tsx` 通过
 - 历史上 `serviceSideProps` 还从 `NEXT_DEVICE_SIZE` Cookie 读取 `deviceSize`，仅用于给
   `SystemStoreContextProvider` 的 Chakra `useMediaQuery` 提供 SSR fallback；迁移前置改动已删除该链路，
   `useSystem().isPc` 统一由浏览器媒体查询计算；默认 SSR fallback 为 PC。
-- 翻译资源位于 `packages/web/i18n/{language}/{namespace}.json`，共 3 种语言、
-  25 个 namespace，原始 JSON 总量约 680 KB；一次性把全部语言和 namespace 注入首屏
-  会放大 HTML、JS 和内存开销。
+- 翻译资源位于 `packages/web/i18n/{language}/{namespace}.json`，当前共 4 种语言、
+  28 个 namespace。客户端只加载当前语言及简体中文 fallback，不把所有语言注入首屏。
 
 本方案采用“小步试点、验证后扩面”：先以 `/account/apikey` 验证客户端 i18n 基础能力，随后扩展到
 账户页面和 `/price`。当前代码已经完成这一批迁移，剩余页面仍按风险分批推进。
@@ -30,12 +29,11 @@ FastGPT 主应用当前使用 Next.js Pages Router。`pages/_app.tsx` 通过
 
 1. `/chat/share` 继续 SSR，行为、SEO Head、分享语言 Cookie 和首屏内容保持不变。
 2. 非分享页逐步移除 `getServerSideProps`，最终不再生成页面级服务端 HTML。
-3. 客户端只加载当前路由所需的翻译 namespace。
-4. 同一浏览器会话内，相同 `language + namespace` 不重复解析和注册。
+3. client-only 应用挂载前加载当前语言及简体中文 fallback 的完整 namespace 集合。
+4. 同一浏览器会话内，相同语言包不重复解析和注册。
 5. 页面刷新和后续访问尽量命中浏览器 HTTP 缓存，不自行维护翻译正文的
    `localStorage` 缓存。
-6. `common` namespace 加载完成前不渲染应用树；业务 namespace 异步加载期间允许暂时展示翻译 key，
-   避免客户端路由切换进入全页 loading。
+6. 完整语言包就绪前保持白屏，就绪后一次性挂载页面树，不展示原始翻译 key，也不在路由切换时切换骨架。
 7. 首个试点失败时可以只恢复一个页面的 SSR，不影响 `/chat/share` 和其他页面。
 
 ### 2.2 非目标
@@ -78,7 +76,7 @@ export default appWithTranslation(App, clientI18nConfig);
 配置需要满足：
 
 - `defaultNS: 'common'`
-- `fallbackLng: 'en'`，与当前默认行为一致
+- `fallbackLng: 'zh-CN'`，缺失词条统一回退到简体中文
 - `localePath: null`
 - `react.useSuspense: false` 作为全局默认值；已迁移组件也使用非 Suspense 加载
 - `partialBundledLanguages: true`，允许 SSR 注入资源与客户端 backend 增量加载并存
@@ -98,24 +96,25 @@ locale（当前通常为 `en`）。client-only 路由在进入 `appWithTranslati
 内存或 `navigator.language` 恢复。client-only boundary 仍负责在资源未就绪时阻止业务页面渲染。稳定
 config 的另一个作用是避免 SSR/CSR 路由切换时 Provider 在“存在/不存在”之间切换并导致整棵应用卸载重建。
 
-### 3.2 资源按 `language + namespace` 动态导入
+### 3.2 资源按完整语言动态导入
 
-客户端使用显式 loader map：
+生成脚本只维护一份 `language + namespace` loader map。完整语言加载器复用该映射，并行加载目标语言的
+全部 namespace：
 
 ```ts
-const localeResourceLoaders = {
-  'zh-CN': {
-    common: () => import('@fastgpt/web/i18n/zh-CN/common.json'),
-    account: () => import('@fastgpt/web/i18n/zh-CN/account.json')
-  },
-  // 其他语言和 namespace 由同一个生成脚本维护
-};
+const resources = await Promise.all(
+  I18N_NAMESPACES.map(async (namespace) => [
+    namespace,
+    (await generatedLoaders[language][namespace]()).default
+  ])
+);
 ```
 
 选择动态 import 而不是运行时读取文件系统，原因如下：
 
 - 浏览器不能访问当前 `localePath` 指向的 monorepo 文件系统目录。
-- 每个资源成为构建产物中的独立 hashed chunk，可直接使用 Next 静态资源的长期缓存。
+- 每个翻译模块成为内容 hash 的静态 chunk，可直接使用 Next 静态资源的长期缓存；完整语言加载只是
+  统一的运行时状态，不需要再生成一层聚合文件。
 - chunk URL 自动包含 `basePath`，无需额外维护 `/fastai/locales`、`/gchat/locales` 等路径。
 - 资源随应用构建版本发布，新版本产生新 hash，不需要手工实现缓存失效协议。
 - `projects/marketplace` 可以继续通过原有文件系统 `localePath` SSR，不需要复制或移动翻译源。
@@ -124,7 +123,8 @@ const localeResourceLoaders = {
 可以静态分析所有资源，也确保新增 namespace 或语言时不会漏项。生成结果需要接受
 Prettier 格式化，并由测试检查与 `I18N_NAMESPACES`、支持语言和磁盘文件一致。
 
-生成的 loader map 位于 `packages/web`，通过一个很薄的自定义 i18next backend 接入：
+语言包 loader 与原有 namespace loader 都位于 `packages/web`。client-only 启动门禁直接加载完整语言包，
+原有 i18next backend 继续保留作为 SSR 混合迁移和兼容路径：
 
 ```ts
 const dynamicImportBackend = {
@@ -138,26 +138,25 @@ const dynamicImportBackend = {
 };
 ```
 
-backend 本身不负责业务路由判断，只把 i18next 发出的 `language + namespace` 请求转给生成的 loader。
+backend 本身不负责业务路由判断，只把 i18next 发出的 `language + namespace` 请求转给生成的 namespace loader。
 资源注册、已加载判断和 backend 状态由 i18next 管理。必须设置
 `partialBundledLanguages: true`，否则实例中只要存在 SSR 注入的 `resources`，i18next 就可能把尚未加载的
 namespace 误判为 ready。
 
-选择 backend 而不是仅在页面门禁里调用 `addResourceBundle`，是因为后者无法让
-`useTranslation(namespace)` 自动触发资源加载；注册 backend 后，组件声明 namespace 就能成为实际
-加载入口。该 backend 是 `packages/web` 内的小型适配器，不引入新的 HTTP backend 依赖。翻译 JSON
+client-only 门禁加载语言包后，通过 `addResourceBundle` 一次性注册全部 namespace；此后组件调用
+`useTranslation(namespace)` 只做依赖声明和类型约束，不再产生页面级加载状态。backend 是
+`packages/web` 内的小型兼容适配器，不引入新的 HTTP backend 依赖。翻译 JSON
 本身已经由 `packages/web` 管理，因此 loader、backend、缓存和失败状态也由同一个包维护，
 `projects/app` 与 `pro/admin` 复用时不会互相依赖项目目录。
 
-页面 ready 条件覆盖“当前语言 + i18next 配置要求的 fallback 语言”。当前默认 fallback 为英文：
-英文页面只加载英文资源，中文页面加载对应中文资源和仍缺失的英文 fallback 资源。这样在保持按组件
-加载的同时，不会因为中文词条偶尔缺失而丢失现有英文回退行为。
+页面 ready 条件覆盖“当前语言 + i18next 配置要求的 fallback 语言”。当前 fallback 为简体中文：
+简体中文页面只加载简体中文完整包，其他语言页面加载目标语言完整包和简体中文完整包。
 
 如果验证发现当前构建器无法稳定拆出 JSON chunk，再回退到以下备选方案：构建前复制资源到
 `projects/app/public/locales`，并以版本化 URL 通过 HTTP backend 加载。试点期间不同时实现两套
 资源加载机制。
 
-### 3.3 组件通过 `useTranslation` 显式声明 namespace
+### 3.3 组件继续显式声明 namespace
 
 namespace 的正确性来源改为实际使用翻译的组件，而不是中央路由配置。迁移组件时，将无参调用改为
 显式声明：
@@ -168,25 +167,21 @@ const { t } = useTranslation(['apikey'] as const, {
 });
 ```
 
-这样共享组件被其他页面复用、弹窗改为懒加载或组件新增翻译依赖时，依赖仍与组件一起维护，不需要同步
-猜测并修改所有上层路由清单。类型参数继续受 `I18nNsType` 约束，写错 namespace 在 TypeScript
-阶段失败。
+这样依赖仍与组件一起维护，类型参数继续受 `I18nNsType` 约束。它不再决定资源何时加载，完整语言包
+已经在 client-only 应用挂载前注册完毕。
 
 规则：
 
 1. 每个已迁移组件必须声明自己直接调用 `t`、`Trans` 所使用的全部 namespace；不能依赖祖先组件
    “碰巧已经加载”。
-2. 页面根组件可以再次声明首屏组件需要的 namespace 合集，使资源尽早并行加载；子组件声明仍是
-   正确性来源，页面合集漏项不影响后续按需加载。
-3. 动态弹窗、抽屉和懒加载组件声明自己的 namespace，资源在组件真正挂载时加载；加载期间允许暂时
-   展示翻译 key。首屏必须可立即打开的弹窗可以同时加入页面根组件的预加载合集。
-4. `common` 由 CSR 初始化门禁先加载，保证 `NextHead`、`Layout` 和尚未迁移的公共组件不会展示 key；
+2. 动态弹窗、抽屉和懒加载组件仍声明自己的 namespace，但挂载时资源已经存在，不需要额外骨架。
+3. 完整语言包由 CSR 初始化门禁先加载，保证 `NextHead`、`Layout` 和公共组件不会展示 key；
    已迁移组件统一使用 `useClientTranslation(namespace)`，hook 内置 `common` 并关闭 Suspense。仅使用
    `common` 的组件调用 `useClientTranslation()`。
    `Layout` 根部声明 `price`，而 `serviceSideProps` 统一预加载 `price`，因此 SSR 页面无需再逐页声明该 namespace。
-5. 原 `serviceSideProps(context, namespaces)` 数组只能作为迁移扫描起点，必须检查页面实际组件树中的
+4. 原 `serviceSideProps(context, namespaces)` 数组只能作为迁移扫描起点，必须检查页面实际组件树中的
    `useTranslation`、`Trans` 和带 namespace 前缀的 key。
-6. 不允许页面自行 `fetch` 或 `import` 翻译文件，所有声明统一经过 i18next backend。
+5. 不允许页面自行 `fetch` 或 `import` 翻译文件，所有资源统一由语言门禁加载。
 
 页面根组件的首屏预加载声明为：
 
@@ -211,38 +206,35 @@ const clientOnlyRoutes = new Set([
 
 ### 3.4 缓存与并发去重
 
-缓存键是 `language + namespace`，不能只按 namespace 缓存。例如 `zh-CN/app` 与 `en/app`
-是两份独立资源。
+client-only 启动加载以 `language` 为键；单 namespace backend 的状态仍以 `language + namespace` 记录，
+便于兼容既有 SSR 路径和错误定位。
 
 两层缓存职责：
 
 | 层级 | 机制 | 作用域 | 失效方式 |
 | --- | --- | --- | --- |
 | 运行时资源缓存 | i18next resource store | 当前标签页会话 | 页面刷新或应用卸载 |
-| 静态资源缓存 | hashed JS/JSON chunk + HTTP cache | 浏览器跨刷新复用 | 新构建产生新 hash |
+| 静态资源缓存 | 内容 hash 的 namespace chunk + HTTP cache | 浏览器跨刷新复用 | 新构建产生新 hash |
 
-底层 `loadLocaleResource` 在模块级维护进行中请求：
+底层 `loadLanguageBundle` 在模块级维护进行中请求：
 
 ```ts
-const pendingLoads = new Map<string, Promise<void>>();
+const pendingLanguageBundles = new Map<localeType, Promise<LanguageBundle>>();
 ```
 
 加载过程为：
 
-1. `useTranslation` 把组件声明的 namespace 交给 i18next backend connector。
-2. backend connector 对当前语言和 fallback 语言生成 `language + namespace` 任务，并跳过 resource store
-   中已有的资源。
-3. `pendingLoads` 已存在相同 key 时复用同一个 dynamic import Promise。
-4. 否则执行生成的 loader，并把 JSON 返回给 backend connector 注册。
-5. Promise 完成后从 `pendingLoads` 删除；成功资源由 i18next store 缓存，失败项由刷新后的新实例重新加载。
+1. 门禁解析目标语言和 fallback 语言。
+2. `pendingLanguageBundles` 已存在相同语言时复用同一个 dynamic import Promise。
+3. 否则加载该语言聚合 chunk，并原子地把所有 namespace 注册到 i18next resource store。
+4. Promise 完成后从 pending map 删除；失败按 300ms、1s、3s 退避重试，最终失败进入统一错误态。
 
-同一 i18n 实例内，backend connector 本身也会合并相同资源的并发请求；`pendingLoads` 再保护底层
-dynamic import，防止初始化或实例切换边界重复执行。加载失败写入按
-`language + namespace` 记录的资源错误状态，并触发 `failedLoading`。顶层
+语言级 Promise 防止初始化或并发切换边界重复执行。加载失败同步写入该语言全部 namespace 的错误状态。
+顶层
 `ClientI18nBoundary` 将这类错误转换成独立错误态，不能仅依赖 react-i18next 的 Suspense Promise：
 该 Promise 在 backend 回调结束时会 resolve，即使底层加载失败，单独使用它可能继续渲染翻译 key。
-错误态要求用户确认刷新页面，利用整页重新初始化 i18n 和静态 chunk；当前产品不在错误态内继续重试或
-渲染不完整翻译。
+每个语言包使用有限次数的退避重试；全部尝试失败后，错误态要求用户确认刷新页面，利用整页重新初始化
+i18n 和静态 chunk，且不渲染不完整翻译。
 
 不额外把翻译正文存入 `localStorage`，原因是：
 
@@ -272,8 +264,8 @@ dynamic import，防止初始化或实例切换边界重复执行。加载失败
 
 共享组件不能读取 Next Router、`clientOnlyRoutes`、`FASTGPT_SHARE_LOCALE` 或 app/admin 的业务 store。
 它只通过 props 接收默认语言、语言偏好 key、loading/error UI，并使用当前
-`I18nextProvider` 中的实例。`common` 是内置的基础 namespace，不作为数组 prop 传入，避免调用方
-重复声明以及不稳定数组引用导致初始化 effect 重复执行。app 默认语言传 `en`，admin 后续接入时传其配置的 `zh-CN`；两者都可以
+`I18nextProvider` 中的实例。Gate 固定校验 `I18N_NAMESPACES` 的完整性，不接受页面 namespace 参数，
+避免路由配置和组件依赖形成两份清单。app 默认语言传 `en`，admin 后续接入时传其配置的 `zh-CN`；两者都可以
 复用 `NEXT_LOCALE`，但 admin 现存且未接入 i18next 的 `NEXT_LOCALE_LANG` 需要在 admin 迁移时单独
 决定兼容或删除，不能固化进共享 Gate。
 
@@ -284,24 +276,20 @@ flowchart TD
   A["解析 router.pathname"] --> B["确定普通页面或 share"]
   B -->|"/chat/share"| C["使用 SSR 注入资源并直接渲染"]
   B -->|"CSR 页面"| D["解析 Cookie、本地偏好和浏览器语言"]
-  D --> E["加载目标语言 common 并切换语言"]
-  E --> F["挂载应用树"]
-  F --> G["useTranslation 声明组件 namespace"]
-  G --> H["先渲染组件，业务 key 可暂时显示"]
-  G --> I["backend 加载缺失资源"]
-  I --> J["资源就绪后自动更新翻译"]
-  I -->|"失败"| K["展示错误态并确认刷新"]
+  D --> E["加载目标语言与简体中文 fallback 的完整语言包"]
+  E --> F["原子注册全部 namespace 并切换语言"]
+  F --> G["一次性挂载应用树"]
+  E -->|"重试后仍失败"| H["展示错误态并确认刷新"]
 ```
 
-初始化门禁先加载当前语言和 fallback 所需的 `common`，再挂载整个普通页面树，包括 `_app` 中的
-`NextHead`、`Layout` 和页面组件，保证应用壳不会先显示 `common:*` key。组件通过显式
-`useTranslation` 按需加载业务 namespace，但不触发 Suspense；资源未就绪时先展示 key，加载完成后
-由 i18next 自动更新组件。
+初始化门禁加载当前语言和 fallback 的完整资源，在此期间不挂载 `NextHead`、`Layout` 和页面组件。
+资源完整后一次性挂载应用树。这样没有页面级资源发现、隐藏挂载或骨架切换，client-only 页面之间导航时
+也不会重新进入 i18n loading。
 
-直接访问 client-only 页面时，只在 `common` 未就绪期间使用稳定的全页 loading。路由切换时：
+直接访问或切换到 client-only 页面时：
 
-- `common` 已存在时不显示额外 loading。
-- 新挂载组件声明了缺失的业务 namespace 时继续渲染页面，允许短暂显示翻译 key。
+- 所有 client-only 页面首次启动统一使用纯白加载态，资源完整后一次性展示。
+- `Layout`、页面和后续懒加载组件所需 namespace 都已经存在，不会重新触发整页 loading。
 - 已离开页面的请求可以正常写入 resource store，但不能改变当前页面错误状态；错误状态必须绑定
   `language + namespace`，而不是用单个全局 ready 布尔值。
 - 加载失败不能标记为成功；展示刷新提示并保留 `language`、`namespace` 错误上下文。
@@ -310,17 +298,14 @@ flowchart TD
 
 普通页面语言切换流程调整为：
 
-1. 读取 i18next 已登记的 namespace；它们来自已执行过的显式 `useTranslation` 声明。
-2. 预加载目标语言对应的已知 namespace 和 fallback 资源。
+1. 加载目标语言完整包及简体中文 fallback 完整包。
+2. 校验每个 `I18N_NAMESPACES` 都可用，并暂存旧语言资源和偏好。
 3. 全部成功后执行 `i18n.changeLanguage(targetLanguage)`；也可以直接使用
    `changeLanguage` 的 backend 加载阶段，但必须接管错误结果。
 4. 持久化 `NEXT_LOCALE`。
 5. 不再因为补资源而强制整页 reload。
 
-i18next 的 namespace 集合会包含当前会话访问过的组件，因此切换语言可能顺带加载少量“已访问但当前
-未挂载”的 namespace；它仍不会加载从未使用的全部 25 个 namespace，并换取语言切换时页面不会因
-子组件逐个发现资源而出现混合语言。若试点指标表明该增量明显，再增加活动 namespace 引用计数，
-不在首版维护第二份路由清单。
+语言切换会加载该语言全部 namespace，换取切换后的页面、弹窗和懒加载组件都不会出现混合语言或 key。
 
 如果加载失败，保留原语言，不写入新的语言偏好，避免页面进入“语言已切换但资源不完整”的状态；
 全局错误态要求用户确认刷新，刷新后重新读取 Cookie、本地存储和浏览器语言。
@@ -378,9 +363,8 @@ export default appWithTranslation(AppRouter, clientI18nConfig);
 ```
 
 `AppShell` 内部只在 `clientOnly` 路由包裹 `ClientI18nGate`、`ClientI18nBoundary` 和
-`SystemStoreContextProvider.waitForReady`，基础语言、`common` 和设备信息 ready 后才渲染页面内容。
-因此已迁移路由不输出页面业务 HTML；Layout 仍是常驻应用壳，且其可能打开的充值弹窗由全局 `price`
-namespace 预加载覆盖。
+`SystemStoreContextProvider.waitForReady`。完整语言包和设备信息 ready 后才挂载页面。因此已迁移路由
+不输出服务端页面业务 HTML，且不会经历页面级 namespace 门禁。
 
 当全部非分享页面迁移完成后，再切换为“除 `/chat/share` 外默认 client-only”，并删除过渡兼容分支。
 
@@ -392,8 +376,8 @@ namespace 预加载覆盖。
 2. app/admin 的 `_app` 不再向 `SystemStoreContextProvider` 传 `pageProps.deviceSize`。
 3. `SystemStoreContextProvider` 不再写设备 Cookie/localStorage，只保留
    `useMediaQuery('(min-width: 900px)')`，初始 fallback 使用 PC。
-4. client-only 页面通过 `waitForReady` 等待浏览器首次媒体查询结果，在结果确认前只显示全屏 loading，
-   不挂载依赖 `isPc` 的页面树。
+4. client-only 页面通过 `waitForReady` 等待浏览器首次媒体查询结果，在结果确认前保持白屏；结果确认后
+   才选择桌面或移动骨架，不会先显示错误尺寸的布局。
 
 仍保留 SSR 的 `/chat/share`、admin 和 marketplace 会使用 PC fallback 生成服务端 HTML，客户端 effect
 后切换到真实宽度；这不会造成 hydration mismatch，但移动端可能出现一次布局调整。普通页面进入
@@ -435,13 +419,14 @@ client-only boundary 后会等待真实宽度确认，不会把这次调整暴�
 | 位置 | 职责 |
 | --- | --- |
 | `packages/web/i18n/clientConfig.ts` | 创建可由 app/admin 覆盖 `defaultLocale` 的稳定客户端公共配置 |
-| `packages/web/i18n/resourceLoaders.generated.ts` | 由脚本生成的 `language + namespace -> dynamic import` 映射 |
+| `packages/web/i18n/resourceLoaders.generated.ts` | 唯一的 `language + namespace -> dynamic import` 生成映射，供 backend 和完整语言加载复用 |
 | `packages/web/i18n/dynamicImportBackend.ts` | 把 i18next backend `read` 接到生成的 loader map |
 | `packages/web/i18n/resourceLoaders.ts` | dynamic import、pending Promise 去重和资源错误状态 |
-| `packages/web/i18n/ClientI18nGate.tsx` | 参数化解析语言，加载初始 namespace 并完成首次语言切换 |
+| `packages/web/i18n/ClientI18nGate.tsx` | 参数化解析语言，加载完整目标语言链并完成首次语言切换 |
 | `packages/web/i18n/ClientI18nBoundary.tsx` | 捕获 namespace 加载错误并提供刷新提示 |
 | `projects/app/src/web/context/AppShell.tsx` | 从 `_app` 抽出的现有应用布局与初始化逻辑，SSR/CSR 共用 |
 | `projects/app/src/web/context/ClientOnlyPage.tsx` | 无 SSR 动态入口，给共享 Gate 注入 app 参数后挂载页面 |
+| `projects/app/src/web/context/clientOnlyRouteConfig.ts` | 通过路由前缀和少量特例识别 client-only 页面，不声明 namespace |
 | `scripts/generate-i18n-resource-loaders.mjs` | 扫描共享包支持语言和 namespace，生成 loader map |
 | `scripts/check-i18n-resource-loaders.mjs` | 校验生成结果与翻译资源一致 |
 | `projects/app/src/pages/_app.tsx` | Provider 配置、SSR/CSR 分流及整个应用壳的翻译门禁 |
@@ -450,7 +435,7 @@ client-only boundary 后会等待真实宽度确认，不会把这次调整暴�
 | `packages/web/test/i18n/*.test.ts`、`packages/service/test/common/middle/i18n.test.ts` | loader、缓存、语言映射和请求语言解析测试 |
 
 生成脚本需要接入 app/admin 的开发和构建前置步骤，且 CI 中增加“生成结果没有 diff”的检查，避免开发者
-新增 namespace 后只在本地生成但未提交。`resourceLoaders.generated.ts` 只承载机械映射，不写业务逻辑。
+新增 namespace 后只在本地生成但未提交。loader 文件只承载机械映射，不写业务逻辑。
 
 共享 i18n 模块不得使用 `@/` 别名或读取 app/admin 路由。各项目负责用自己的 `_app`、动态
 client-only boundary 和默认语言配置组合共享能力。admin 本轮不跟随试点迁移，只要求共享 API 的设计
@@ -477,10 +462,10 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 
 缓存验收：
 
-- 冷启动只加载试点所需 namespace，不加载 `dataset`、`chat`、`skill` 等无关资源。
-- 同一语言下离开再进入 `/account/apikey`，相同 namespace 不产生新的资源请求或动态 import 执行。
-- 同一 namespace 被多个组件同时需要时，只发起一次底层加载。
-- 切换到新语言时只加载目标语言及其 fallback 中仍缺失的 namespace。
+- 冷启动加载目标语言完整包；非简体中文语言同时加载简体中文 fallback 完整包。
+- 同一语言下离开再进入 `/account/apikey`，不产生新的语言 chunk 请求或动态 import 执行。
+- 同一语言包被并发需要时，只执行一次底层 loader。
+- 切换到新语言时加载目标语言完整包，已缓存的简体中文 fallback 不重复下载。
 - 刷新后静态翻译 chunk 命中 HTTP cache；发布新构建后使用新的 hashed URL。
 
 质量门槛：
@@ -496,7 +481,7 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 
 - 前端错误日志中的翻译加载失败、动态 chunk 404 和 ChunkLoadError。
 - `/account/apikey` 首次可交互时间与现有 SSR 基线的差异。
-- namespace 请求数量、传输体积和缓存命中情况。
+- 语言 chunk 请求数量、传输体积和缓存命中情况。
 - 语言切换失败率。
 - `/chat/share` SSR 请求和页面行为是否保持原有水平。
 
@@ -555,11 +540,11 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 
 1. locale loader map 覆盖所有支持语言和 `I18N_NAMESPACES`。
 2. 所有 loader 能返回合法 JSON 对象。
-3. backend 对 `useTranslation` 声明的新 namespace 发起加载，已有 resource bundle 不重复加载。
-4. 并发请求相同资源复用同一个 Promise，只执行一次 loader。
-5. 不同语言的同名 namespace 分别加载。
-6. namespace 加载失败时进入可定位的错误态，确认后刷新，不渲染原始 key。
-7. 试点组件的 namespace 参数均受类型约束，页面根预加载合集覆盖首屏直接依赖。
+3. 完整语言 loader 覆盖每种语言的全部 namespace。
+4. 并发请求相同语言复用同一个 Promise，只执行一次 loader。
+5. 不同语言分别生成独立 chunk。
+6. 语言包加载失败时退避重试，最终失败进入可定位的错误态，不渲染原始 key。
+7. 组件的 namespace 参数继续受类型约束。
 8. 语言切换在资源成功后才更新语言和存储；失败时不改变当前语言。
 
 ### 6.2 页面测试
@@ -576,7 +561,7 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 
 局部开发阶段运行试点相关测试、typecheck 和 lint。试点完成后运行应用 production build，检查：
 
-- locale JSON 被拆为可缓存的独立 chunk。
+- 完整语言加载能并行加载该语言的全部 locale JSON。
 - root 与 basePath 部署都能加载 chunk。
 - 服务端 HTML 符合 CSR/SSR 边界。
 - 浏览器 Network 面板中的冷启动、重复导航、语言切换和刷新缓存行为符合验收条件。
@@ -601,9 +586,9 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 | 删除 `serviceSideProps` 后 Provider 不创建 | 给 `appWithTranslation` 传入稳定客户端配置并测试无 `_nextI18Next` 页面 |
 | 有语言 Cookie 时仍停留在默认语言 | CSR 门禁不复用 SSR 的 Cookie 短路，始终显式加载并切换目标语言 |
 | SSR/CSR 路由切换时短暂使用 Router 默认语言 | 有 Cookie 时在 Provider 初始化前注入；无 Cookie 时接受一次闪烁并由 effect 恢复 |
-| client-only 路由切换因业务 namespace 出现全屏 loading | `common` 就绪后业务 namespace 使用非 Suspense 加载，允许短暂显示翻译 key |
+| client-only 路由切换时出现 key 或页面重新初始化 | 应用启动前加载完整语言包；路由切换不再进入 i18n 门禁 |
 | 组件漏声明 namespace | 类型约束、静态扫描、missingKey/failedLoading 监控和完整页面操作验收 |
-| 同时请求导致重复加载 | `pendingLoads` 按 `language + namespace` 复用 Promise，并补并发测试 |
+| 同时请求导致重复加载 | `pendingLanguageBundles` 按语言复用 Promise，并补并发测试 |
 | 语言切换时出现混合语言 | 先加载目标语言全部资源，成功后再 changeLanguage |
 | 动态 import 被打入公共首包 | production build 检查 chunks 和首屏资源清单 |
 | basePath 下资源 404 | 使用 Next 管理的 hashed chunk，并验证 `/fastai` 部署 |
@@ -619,7 +604,7 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 - [x] 盘点当前 SSR、i18n、deviceSize 和语言偏好实现
 - [x] 删除 `deviceSize` pageProps、`NEXT_DEVICE_SIZE` Cookie 和 Provider SSR fallback 链路
 - [x] 选择 `/account/apikey` 作为首个试点页面
-- [x] 明确按 `language + namespace` 加载与缓存模型
+- [x] 明确按完整语言 chunk 加载、按浏览器 HTTP cache 跨刷新复用
 - [x] 明确 `/chat/share` 保持 SSR
 - [x] 评审并确认本方案后开始编码
 
@@ -630,7 +615,9 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 - [x] 实现动态 import、并发去重、资源注册和失败状态底层能力
 - [x] 在 `packages/web` 实现参数化 `ClientI18nGate`，不依赖 app/admin 路由和业务状态
 - [x] 实现类型安全的 `clientOnlyRoutes`，只承担已迁移页面的 CSR 分流
-- [x] 实现 `common` 初始化门禁；业务 namespace 使用非 Suspense 加载
+- [x] 实现完整语言包初始化门禁，目标语言及简体中文 fallback 就绪后再挂载应用
+- [x] 移除页面首屏 namespace 门禁和 namespace 引用追踪
+- [x] 移除 account/config 页面骨架，所有 client-only 页面初始化时统一白屏
 - [x] 实现迁移路由限定的 client-only boundary
 - [x] 调整迁移页面初始化为“先加载、再切换、再持久化”
 - [x] client-only 路由在 Provider 初始化前只注入语言 Cookie；无 Cookie 时由 effect 恢复

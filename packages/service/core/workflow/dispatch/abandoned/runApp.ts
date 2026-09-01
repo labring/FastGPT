@@ -12,7 +12,7 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getHistories } from '../utils';
+import { getHistories, safePoints } from '../utils';
 import { getWorkflowFileVariableInputs, WorkflowVariableState } from '../utils/variables';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
@@ -73,7 +73,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   let filteredChildHistories = chatHistories;
   let filteredChildQuery = childQuery;
 
-  const { assistantResponses, system_memories, runtimeNodeResponseSummary } =
+  const { assistantResponses, system_memories, flowUsages } =
     await runWithDerivedWorkflowFileContext({
       query: childQuery,
       histories: chatHistories,
@@ -114,6 +114,15 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
       }
     });
 
+  // 子工作流本身不会落账，由当前应用节点统一归集，避免用量遗漏或重复计费。
+  const totalPoints = flowUsages.reduce((sum, usage) => sum + safePoints(usage.totalPoints), 0);
+  props.usagePush([
+    {
+      moduleName: appData.name,
+      totalPoints
+    }
+  ]);
+
   const completeMessages = filteredChildHistories.concat([
     {
       obj: ChatRoleEnum.Human,
@@ -139,7 +148,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
       moduleLogo: appData.avatar,
       query: userChatInput,
       textOutput: text,
-      totalPoints: runtimeNodeResponseSummary.totalPoints
+      totalPoints
     }
   };
 };

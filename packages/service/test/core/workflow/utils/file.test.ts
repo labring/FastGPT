@@ -2,12 +2,15 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
+import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
+import { Readable } from 'node:stream';
 
 const mockGetRawTextBuffer = vi.hoisted(() => vi.fn());
 const mockAddRawTextBuffer = vi.hoisted(() => vi.fn());
 const mockIsInternalAddress = vi.hoisted(() => vi.fn());
 const mockAxiosGet = vi.hoisted(() => vi.fn());
 const mockReadFileContentByBuffer = vi.hoisted(() => vi.fn());
+const mockReadFileContentBySource = vi.hoisted(() => vi.fn());
 const mockVerifyS3DownloadAccess = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/common/s3/sources/rawText', () => ({
@@ -54,7 +57,8 @@ vi.mock('@fastgpt/service/common/file/read/utils', async (importOriginal) => {
   const mod = await importOriginal<typeof import('@fastgpt/service/common/file/read/utils')>();
   return {
     ...mod,
-    readFileContentByBuffer: mockReadFileContentByBuffer
+    readFileContentByBuffer: mockReadFileContentByBuffer,
+    readFileContentBySource: mockReadFileContentBySource
   };
 });
 
@@ -91,6 +95,10 @@ import type {
   WorkflowFileContext,
   WorkflowFileRef
 } from '@fastgpt/service/core/workflow/utils/fileContext';
+import {
+  resolveFileSourceEncoding,
+  resolveFileSourceExtension
+} from '@fastgpt/service/common/file/read/source';
 
 const createEmptyWorkflowFileContext = (): WorkflowFileContext => ({
   limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
@@ -98,7 +106,7 @@ const createEmptyWorkflowFileContext = (): WorkflowFileContext => ({
   resolveInputFile: () => undefined,
   resolveChatFile: () => undefined,
   getIdentity: () => undefined,
-  read: vi.fn(),
+  getSource: vi.fn(),
   derive: () => createEmptyWorkflowFileContext()
 });
 
@@ -369,7 +377,34 @@ describe('parseFileContentFromUrls (external fetch)', () => {
     mockGetRawTextBuffer.mockResolvedValue(undefined);
     mockIsInternalAddress.mockResolvedValue(false);
     mockReadFileContentByBuffer.mockResolvedValue({ rawText: 'parsed text' });
+    mockReadFileContentBySource.mockImplementation(async ({ source, ...props }) => {
+      const materialized = await source.materialize({ signal: new AbortController().signal });
+      const extension = resolveFileSourceExtension(materialized);
+      const encoding = resolveFileSourceEncoding(materialized);
+      const result = await mockReadFileContentByBuffer({
+        ...props,
+        extension,
+        encoding,
+        buffer: materialized.buffer
+      });
+      return { ...result, sourceMetadata: { ...materialized.metadata, extension, encoding } };
+    });
     mockVerifyS3DownloadAccess.mockReset();
+    global.s3BucketMap = {
+      ...(global.s3BucketMap ?? {}),
+      [S3Buckets.private]: {
+        client: {
+          getObjectMetadata: vi.fn().mockResolvedValue({
+            contentLength: 64,
+            contentType: 'application/octet-stream',
+            metadata: {}
+          }),
+          downloadObject: vi.fn().mockResolvedValue({
+            body: Readable.from([Buffer.from('short-link-file')])
+          })
+        }
+      } as any
+    };
   });
 
   it('reads registered private workflow files through the workflow context without axios', async () => {
@@ -383,10 +418,16 @@ describe('parseFileContentFromUrls (external fetch)', () => {
         objectKey: 'chat/app/app-1/user-1/chat-1/private.pdf'
       }
     };
-    const read = vi.fn().mockResolvedValue({
-      buffer: Buffer.from('%PDF-1.7'),
-      filename: 'private.pdf',
-      contentType: 'application/pdf',
+    const getSource = vi.fn().mockResolvedValue({
+      source: {
+        kind: 's3',
+        sizeBytes: 8,
+        metadata: { filename: 'private.pdf', contentType: 'application/pdf' },
+        materialize: vi.fn().mockResolvedValue({
+          buffer: Buffer.from('%PDF-1.7'),
+          metadata: { filename: 'private.pdf', contentType: 'application/pdf' }
+        })
+      },
       sourceKind: 'internal',
       imageParsePrefix: 'chat/app/app-1/user-1/chat-1/private-parsed'
     });
@@ -401,7 +442,7 @@ describe('parseFileContentFromUrls (external fetch)', () => {
         url
       }),
       getIdentity: (value) => (value === url ? 'chat:private' : undefined),
-      read,
+      getSource,
       derive: () => fileContext
     };
 
@@ -413,7 +454,7 @@ describe('parseFileContentFromUrls (external fetch)', () => {
       fileContext
     });
 
-    expect(read).toHaveBeenCalledWith(url);
+    expect(getSource).toHaveBeenCalledWith(url);
     expect(mockAxiosGet).not.toHaveBeenCalled();
     expect(result[0]).toMatchObject({
       success: true,

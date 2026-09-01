@@ -9,21 +9,21 @@ import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { MongoDataset } from '../../../core/dataset/schema';
 import {
   NullPermissionVal,
-  NullRoleVal,
   PerResourceTypeEnum
 } from '@fastgpt/global/support/permission/constant';
+import { sumPer } from '@fastgpt/global/support/permission/utils';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import { getCollectionWithDataset } from '../../../core/dataset/controller';
 import { MongoDatasetData } from '../../../core/dataset/data/schema';
 import { type AuthModeType, type AuthResponseType } from '../type';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { parseHeaderCert } from '../auth/common';
-import { sumPer } from '@fastgpt/global/support/permission/utils';
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { isS3ObjectKey } from '../../../common/s3/utils';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { shouldInheritResourcePermission } from '../resourcePermissionPolicy';
 
 export const authDatasetByTmbId = async ({
   tmbId,
@@ -65,9 +65,10 @@ export const authDatasetByTmbId = async ({
 
     const isOwner = tmbPer.isOwner || String(dataset.tmbId) === String(tmbId);
     const isGetParentClb =
-      dataset.inheritPermission && dataset.type !== DatasetTypeEnum.folder && !!dataset.parentId;
-
-    const [folderPer = NullRoleVal, myPer = NullRoleVal] = await Promise.all([
+      shouldInheritResourcePermission(dataset.inheritPermission) &&
+      dataset.type !== DatasetTypeEnum.folder &&
+      !!dataset.parentId;
+    const [folderPer = 0, myPer = 0] = await Promise.all([
       isGetParentClb
         ? getTmbPermission({
             teamId,
@@ -75,7 +76,7 @@ export const authDatasetByTmbId = async ({
             resourceId: dataset.parentId!,
             resourceType: PerResourceTypeEnum.dataset
           })
-        : NullRoleVal,
+        : 0,
       getTmbPermission({
         teamId,
         tmbId,

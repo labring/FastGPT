@@ -144,7 +144,9 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       name: toolName,
       label: toolName,
       description: tool.function.description || '',
-      parameters: Type.Unsafe<any>((tool.function.parameters as Record<string, unknown>) ?? {}),
+      parameters: tool.function.parameters
+        ? Type.Unsafe<any>(tool.function.parameters as Record<string, unknown>)
+        : Type.Object({}, { additionalProperties: false }),
       execute: async (callId: string, args: unknown) => {
         const call = createToolCall({ id: callId, name: toolName, args: normalizeToolArgs(args) });
         const result = await executeOrdinaryTool({

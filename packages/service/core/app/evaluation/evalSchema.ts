@@ -8,7 +8,7 @@ import type { EvaluationSchemaType } from '@fastgpt/global/core/app/evaluation/t
 import { UsageCollectionName } from '../../../support/wallet/usage/constants';
 const { Schema } = connectionMongo;
 
-export const EvaluationCollectionName = 'eval';
+export const EvaluationCollectionName = 'evals';
 
 const EvaluationSchema = new Schema({
   teamId: {

@@ -673,6 +673,47 @@ describe('WorkflowComponents utils', () => {
       expect(result.nodes[0].inputs[0].value).toEqual(['childNode', 'result']);
     });
 
+    it('should remove code node custom input references to its own tool params', () => {
+      const nodes = [
+        {
+          data: {
+            nodeId: 'codeNode',
+            name: 'Code',
+            intro: '',
+            avatar: '',
+            flowNodeType: FlowNodeTypeEnum.code,
+            showStatus: true,
+            inputs: [
+              {
+                key: 'arg1',
+                label: 'arg1',
+                canEdit: true,
+                defaultToAgentGenerated: true,
+                renderTypeList: [FlowNodeInputTypeEnum.addInputParam],
+                valueType: WorkflowIOValueTypeEnum.string
+              },
+              {
+                key: 'customInput',
+                label: 'customInput',
+                canEdit: true,
+                renderTypeList: [FlowNodeInputTypeEnum.reference],
+                valueType: WorkflowIOValueTypeEnum.any,
+                value: ['codeNode', 'arg1']
+              }
+            ],
+            outputs: []
+          },
+          position: { x: 0, y: 0 }
+        }
+      ];
+
+      const result = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
+
+      expect(result.nodes[0].inputs.find((input) => input.key === 'customInput')?.value).toBe(
+        undefined
+      );
+    });
+
     it('should preserve a canonical input selection when saving workflow', () => {
       const nodes = [
         {
@@ -897,7 +938,7 @@ describe('WorkflowComponents utils', () => {
         edges: [],
         appDetail: {
           chatConfig: {
-            variables: [{ key: 'name', label: 'name', type: 'input' }]
+            variables: [{ key: 'name', label: 'name', description: '', type: 'input' }]
           }
         } as AppDetailType,
         t: (key: string) =>

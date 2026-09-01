@@ -90,7 +90,11 @@ export const InvoiceRecordSchema = z
     bankName: z.string().optional().meta({ description: '开户银行' }),
     bankAccount: z.string().optional().meta({ description: '银行账号' }),
     needSpecialInvoice: z.boolean().meta({ example: false, description: '是否为增值税专用发票' }),
-    contactPhone: z.string().meta({ example: '13800138000', description: '联系人电话' }),
+    contactPhone: z
+      .string()
+      .nullish()
+      .transform((value) => value ?? '-')
+      .meta({ example: '13800138000', description: '联系人电话；历史记录缺失时返回 -' }),
     emailAddress: z.string().meta({ example: 'billing@example.com', description: '发票接收邮箱' })
   })
   .meta({ description: '发票记录；文件内容不在列表接口中返回' });
@@ -103,6 +107,10 @@ export type InvoiceRecordsResponseType = z.infer<typeof InvoiceRecordsResponseSc
 
 export const UnInvoiceListItemSchema = z
   .object({
+    _id: ObjectIdSchema.meta({
+      example: '68ee0bd23d17260b7829b137',
+      description: '待开票订单 ID'
+    }),
     price: NumSchema.meta({ example: 9900, description: '订单金额' }),
     type: z
       .enum(BillTypeEnum)

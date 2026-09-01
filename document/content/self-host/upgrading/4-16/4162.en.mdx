@@ -3,12 +3,67 @@ title: 'V4.16.2'
 description: 'FastGPT V4.16.2 release notes'
 upgradeTags:
   - IN PROGRESS
+  - CONFIG
+  - MIGRATION
 ---
+
+## 📦 Upgrade Guide
+
+### 1. Remove Worker concurrency settings
+
+V4.16.2 removes `PARSE_FILE_WORKERS`, `PARSE_FILE_WORKER_MEMORY_LIMIT_MB`, `HTML_TO_MARKDOWN_WORKERS`, and `TEXT_TO_CHUNKS_WORKERS`. When upgrading, remove these variables from your `.env` file or the Docker Compose `environment` section. No replacement variables are required.
+
+The hard limit for file parsing Workers is now set automatically based on the available CPU parallelism detected by Node.js. This accounts for container CPU quotas and process affinity and always allows at least one Worker. The number of tasks that can run concurrently is further constrained by the file parsing memory scheduler.
+
+The hard limit for HTML-to-Markdown and text-chunking Workers is the smaller of the available CPU parallelism and 5. Before starting a task, FastGPT checks whether schedulable memory remains outside the system safety reserve. If no memory is available, the task stays queued. FastGPT retries immediately when another task finishes, then checks every 30 seconds if memory is still insufficient, for up to 30 minutes. Workers that remain idle for more than 60 seconds are reclaimed automatically, with at most one retained long-term.
+
+### 2. Update images
+
+### 3. Clean up and migrate resource permission data (commercial edition only)
+
+This release first removes invalid resource permissions, then materializes complete effective ACLs for Apps, Datasets, and Agent Skills. After upgrading, run a dry run first. A dry run does not delete or write permission data. It processes all teams by default, or you can pass `teamId` to target a single team.
+
+```bash
+curl -X POST 'https://你的域名/api/admin/4162/initPermission' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":true,"teamConcurrency":100}'
+```
+
+After confirming that `migration.errors` is empty or that all affected resources have been fixed, run the cleanup and migration:
+
+```bash
+curl -X POST 'https://你的域名/api/admin/4162/initPermission' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":false,"teamConcurrency":100}'
+```
+
+`teamConcurrency` controls how many teams are processed concurrently during ACL migration. It accepts values from `1` to `1000` and defaults to `100`. Apps, Datasets, and Agent Skills are processed sequentially within each team. If one resource type fails for a team, FastGPT records the error in `migration.errors` and continues processing the remaining resource types and teams. `sampleLimit` controls the number of invalid permission samples returned in `cleanup.samples`. The response contains `cleanup` and `migration`: `cleanup` reports scan, match, and deletion statistics; `migration.resourceCount` is the number of scanned resources; `migration.updatedResourceCount` is the number of resources requiring writes; `migration.skippedResourceCount` is the number of target resources skipped because of missing parents or invalid trees; and `migration.errors` contains error details. The migration preserves each resource's owner and child-specific permissions. Parent resource chains are loaded on demand, and historical resources with a missing inheritance flag are treated as inheriting permissions.
+
+During a dry run, the migration preview uses the current permission data before cleanup. If `cleanup` finds invalid permissions, the migration statistics from the apply run may differ after those permissions are removed.
+
+The cleanup and migration are safe to run repeatedly. After applying them, run another dry run and confirm that `cleanup.danglingPermissionCount`, `migration.updatedResourceCount`, and `migration.errors` are all `0`. If `migration.errors` contains entries, repair the data using the resource type, resource ID, and parent ID in the error details, then retry.
+
+### 4. Upgrade full-text search when using Milvus
+
+If Milvus is your current vector store, upgrade Milvus to **2.5.16 or later** before upgrading FastGPT. V4.16.2 automatically switches full-text search to Milvus BM25 and stores vectors and full-text data in the new `modeldata_v2` collection. FastGPT terminates during startup if the Milvus version is too old, the version cannot be identified, or the BM25 capability check fails. It does not fall back to MongoDB full-text search.
+
+For an existing Milvus deployment, verify that the old vector data is still available:
+
+- If the old Milvus `modeldata` collection exists and contains data, call `GET /api/admin/4162/milvus` to merge the old vectors with index text from MongoDB into `modeldata_v2`. This does not regenerate embeddings.
+- No action is required when using PG, OceanBase, SeekDB, or openGauss. Full-text search continues to use MongoDB `$text`.
+
+Follow [Milvus BM25 full-text search configuration and migration](/self-host/milvus-bm25) for backups, the Milvus image upgrade, dry runs, resumable migration, validation, old-collection cleanup, and rollback.
 
 ## 🚀 New
 
 1. Added Korean language support.
 2. Added an overwrite warning when switching Skill versions.
+3. Added account deletion.
+4. Added BM25 full-text search backed by the single-table `modeldata_v2` design when Milvus is the vector store.
+5. Document parsing now supports DOC, WPS, DOCM, PPT, PPS, POT, PPTM, PPSX, PPSM, XLS, XLSM, XLSB, ODT, ODS, ODP, RTF, and EPUB files. Embedded images recognized by the parser are extracted, uploaded to object storage, and retained as image citations in the parsed output. Unrecognized image representations fall back to text content that can be parsed.
+6. Added tool calling support to all Nodes and improved input and output interactions for several Nodes.
 
 ## ⚙️ Improvements
 
@@ -17,12 +72,37 @@ upgradeTags:
 3. Improved the reliability of S3 chunked uploads on unstable networks.
 4. Standardized file upload error messages.
 5. Improved Skill saving by extracting `name` and `description` as structured fields and allowing `description` to be empty.
+6. Improved repeated tool call anomaly detection. Instead of checking only the call count and number of tools, FastGPT now treats more than five consecutive calls to the same tool with the same arguments as a model hallucination.
+7. Preserved complete failed tool responses from Agent tool calls and exposed failure details in `nodeResponse`, `toolResponse`, and streaming events.
+8. Unified sub-workflow output and billing across Workflow Tool, ToolCall, and Agent runs. Commercial tool failures no longer incur call or token fees, while `pluginOutput.error` from personal Workflow Tools remains a business field.
+9. Attributed enhanced PDF parsing charges to the `read_files` tool Node and preserved page-count details. Propagated `usageId` through external-file and API-file Dataset parsing so charges are attributed correctly.
+10. Improved tool configuration, version selection, and parsed-document views with responsive layouts, version descriptions, a two-column grid, and ellipsis tooltips for long filenames.
 
 ## 🐛 Fixes
 
-1. Fixed avatar display issues in the admin Template Marketplace.
+1. Fixed avatar display issues in the Admin Template Marketplace.
 2. Fixed an issue that prevented a system tool from being reinstalled after it was uninstalled.
+3. Fixed an issue where backup CSV files exported from empty Datasets or Datasets containing only one chunk could not be imported again.
+4. Fixed compatibility issues when historical chat settings are missing favorite tags or historical member names are empty.
+5. Fixed custom Workflow Tool avatar display and added a fallback avatar for system tools.
+6. Fixed Admin plan listing failures caused by orphaned plans whose teams have been deleted.
+7. Fixed missing order IDs in the pending-invoice list, inconsistent month formats in historical bills, and validation failures when historical invoices have no contact phone number.
+8. Fixed validation of historical Dataset chunk settings stored as numeric strings and prevented sync requests before Dataset details finish loading.
+9. Fixed legacy workflow fields in older App templates so they can be read using the current structure.
+10. Fixed fuzzy file extension matching that could show a DOC icon for a Markdown filename containing text such as DOCX. Added icon mappings for the new document formats and a dedicated EPUB icon.
+11. Fixed chat configuration validation failures when `valueType` is empty or `null` in historical App Variables. FastGPT now derives `valueType` from the Variable input type when loading or saving chat configuration, falls back to `any` when the type cannot be mapped or the value is invalid, and runs Zod validation before saving. Existing data does not require an additional cleanup script.
+12. Fixed an issue where tool calls with no arguments incorrectly included empty `type: object` parameters.
 
 ## 🛠️ Code Improvements
 
 1. Standardized compatibility handling for legacy tool parameters in Workflows.
+2. Materialized effective ACLs for Apps, Datasets, and Agent Skills, and centralized Collaborator permission mutations and inheritance synchronization.
+3. Required a MongoDB session when creating Dataset data and added a transaction to manual data insertion, so primary data, full-text search data, and image TTL state are committed atomically.
+4. Added worksheet range, merged cell, and Worker memory limits to XLSX parsing to prevent malformed files from consuming excessive memory.
+5. Updated the payment modal immediately when switching payment methods.
+6. Improved Admin team, plan, payment, and user list queries, including username search and pagination performance.
+7. Improved memory and concurrency control for file parsing. Queued tasks now retain only a lightweight file source instead of the full Buffer. Trusted S3 files reserve resources based on their known size, while external URLs update their reservation as bytes stream in and enforce both file-size and per-task memory hard limits. This reduces OOM risk during concurrent parsing.
+8. Standardized file parsing input on `FileSource` and materialized file content only after a Worker acquires a run slot and its initial resource reservation:
+   - Trusted S3 sources obtain the file size from object metadata and reserve the resources required for both materialization and parsing. The upload stage has already enforced the business file-size limit, so parsing does not repeat that check.
+   - Untrusted external URLs declare only the parser's base reservation when queued. During download, FastGPT enforces the business file-size limit and permanent per-task memory limit, then monotonically increases the soft reservation with the actual byte count. Exhausting currently available capacity blocks subsequent tasks without interrupting a download that is already running.
+   - The wait queue has no task-count or aggregate estimated-resource limit and retains only the 30-minute queue timeout. Failures, timeouts, and Worker exits abort unfinished downloads and release all reservations.

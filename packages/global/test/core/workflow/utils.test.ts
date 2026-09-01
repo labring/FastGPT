@@ -283,7 +283,9 @@ describe('getAppChatConfig', () => {
     };
     const result = getAppChatConfig({ chatConfig, isPublicFetch: false });
     expect(result.welcomeText).toBe('Custom Welcome');
-    expect(result.variables).toEqual(chatConfig.variables);
+    expect(result.variables).toEqual([
+      { ...chatConfig.variables[0], valueType: WorkflowIOValueTypeEnum.string }
+    ]);
   });
 
   it('should prioritize storeVariables over chatConfig variables', () => {
@@ -298,7 +300,18 @@ describe('getAppChatConfig', () => {
       storeVariables,
       isPublicFetch: false
     });
-    expect(result.variables).toEqual(storeVariables);
+    expect(result.variables).toEqual([
+      { ...storeVariables[0], valueType: WorkflowIOValueTypeEnum.string }
+    ]);
+  });
+
+  it('rejects malformed stored variables before returning chat config', () => {
+    expect(() =>
+      getAppChatConfig({
+        storeVariables: [{ key: 'broken' }] as any,
+        isPublicFetch: false
+      })
+    ).toThrow();
   });
 
   it('should prioritize storeWelcomeText over chatConfig welcomeText', () => {
@@ -679,14 +692,10 @@ describe('appData2FlowNodeIO', () => {
     });
     const fileLinkInput = result.inputs.find((i) => i.key === NodeInputKeyEnum.fileUrlList);
     expect(fileLinkInput).toMatchObject({
-      renderTypeList: [
-        FlowNodeInputTypeEnum.reference,
-        FlowNodeInputTypeEnum.JSONEditor,
-        FlowNodeInputTypeEnum.agentGenerated
-      ],
-      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.JSONEditor],
       defaultToAgentGenerated: true
     });
+    expect(fileLinkInput).not.toHaveProperty('selectedType');
   });
 
   it('should include file link input when fileSelectConfig allows image selection', () => {

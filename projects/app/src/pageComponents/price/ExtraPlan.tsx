@@ -1,6 +1,6 @@
 import { Box, Flex, Grid, Button, VStack, HStack, type BoxProps } from '@chakra-ui/react';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useForm } from 'react-hook-form';
@@ -16,12 +16,23 @@ import { formatNumberWithUnit } from '@fastgpt/global/common/string/tools';
 import { formatActivityExpirationTime } from './utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
+import type { PricePurchaseIntent } from './purchaseIntent';
 
 const PLAN_CARD_MAX_WIDTH = '483px';
 const DUAL_CARD_GAP = '20px';
 const DUAL_CARD_CONTAINER_MAX_WIDTH = `calc(${PLAN_CARD_MAX_WIDTH} * 2 + ${DUAL_CARD_GAP})`;
 
-const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
+const ExtraPlan = ({
+  onPaySuccess,
+  onLoginRequired,
+  resumePurchaseIntent,
+  onResumePurchaseIntentHandled
+}: {
+  onPaySuccess?: () => void;
+  onLoginRequired?: (intent: PricePurchaseIntent) => void;
+  resumePurchaseIntent?: PricePurchaseIntent;
+  onResumePurchaseIntentHandled?: () => void;
+}) => {
   const { t, i18n } = useClientTranslation('price');
   const { toast } = useToast();
   const { subPlans } = useSystemStore();
@@ -117,6 +128,62 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
       refreshDeps: [extraPointsPackages]
     }
   );
+
+  const submitExtraPointsPurchase = useCallback(
+    (intent: Extract<PricePurchaseIntent, { type: 'extraPoints' }>) => {
+      if (!userInfo && onLoginRequired) {
+        onLoginRequired(intent);
+        return;
+      }
+      if (isDisabledBuy) {
+        toast({
+          status: 'warning',
+          title: t('price:support.wallet.subscription.extra_plan_disabled_tip')
+        });
+        return;
+      }
+
+      void onclickBuyExtraPoints({ points: intent.points, month: intent.month });
+    },
+    [isDisabledBuy, onLoginRequired, onclickBuyExtraPoints, t, toast, userInfo]
+  );
+
+  const submitExtraDatasetPurchase = useCallback(
+    (intent: Extract<PricePurchaseIntent, { type: 'extraDataset' }>) => {
+      if (!userInfo && onLoginRequired) {
+        onLoginRequired(intent);
+        return;
+      }
+      if (isDisabledBuy) {
+        toast({
+          status: 'warning',
+          title: t('price:support.wallet.subscription.extra_plan_disabled_tip')
+        });
+        return;
+      }
+
+      void onclickBuyDatasetSize({ datasetSize: intent.datasetSize, month: intent.month });
+    },
+    [isDisabledBuy, onLoginRequired, onclickBuyDatasetSize, t, toast, userInfo]
+  );
+
+  useEffect(() => {
+    if (!resumePurchaseIntent || resumePurchaseIntent.type === 'standard') return;
+
+    queueMicrotask(() => {
+      onResumePurchaseIntentHandled?.();
+      if (resumePurchaseIntent.type === 'extraPoints') {
+        submitExtraPointsPurchase(resumePurchaseIntent);
+      } else {
+        submitExtraDatasetPurchase(resumePurchaseIntent);
+      }
+    });
+  }, [
+    onResumePurchaseIntentHandled,
+    resumePurchaseIntent,
+    submitExtraDatasetPurchase,
+    submitExtraPointsPurchase
+  ]);
 
   // 计算活动时间
   const { text: activityExpirationTime } = formatActivityExpirationTime(
@@ -333,15 +400,10 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
               selectedPackageIndex === undefined || !extraPointsPackages[selectedPackageIndex]
             }
             onClick={() => {
-              if (isDisabledBuy) {
-                return toast({
-                  status: 'warning',
-                  title: t('price:support.wallet.subscription.extra_plan_disabled_tip')
-                });
-              }
               if (selectedPackageIndex !== undefined && extraPointsPackages[selectedPackageIndex]) {
                 const selectedPackage = extraPointsPackages[selectedPackageIndex];
-                onclickBuyExtraPoints({
+                submitExtraPointsPurchase({
+                  type: 'extraPoints',
                   points: selectedPackage.points,
                   month: selectedPackage.month
                 });
@@ -505,13 +567,9 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
               variant={'primaryGhost'}
               isLoading={isLoadingBuyDatasetSize}
               onClick={(e) => {
-                if (isDisabledBuy) {
-                  return toast({
-                    status: 'warning',
-                    title: t('price:support.wallet.subscription.extra_plan_disabled_tip')
-                  });
-                }
-                handleSubmitDatasetSize(onclickBuyDatasetSize)(e);
+                handleSubmitDatasetSize((values) =>
+                  submitExtraDatasetPurchase({ type: 'extraDataset', ...values })
+                )(e);
               }}
               color={'primary.700'}
               fontSize={['14px', '16px']}

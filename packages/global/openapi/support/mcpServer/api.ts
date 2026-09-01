@@ -197,7 +197,6 @@ export const McpAuthProxySchema = z
       description: '代理调用的团队成员 ID'
     })
   })
-  .strict()
   .refine(({ username, tmbId }) => !!username || !!tmbId, {
     message: 'authProxy.username or authProxy.tmbId is required'
   });

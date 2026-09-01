@@ -5,6 +5,7 @@ import {
   FlowNodeTypeEnum
 } from '../../node/constant';
 import { PluginStatusEnum } from '../../../plugin/type';
+import { normalizeVariableValueType } from '../../../app/variable/utils';
 
 const inputTypes = new Set(Object.values(FlowNodeInputTypeEnum));
 const outputTypes = new Set(Object.values(FlowNodeOutputTypeEnum));
@@ -102,7 +103,7 @@ const normalizeOutputType = (value: unknown) =>
     prefix: 'FlowNodeOutputTypeEnum.'
   });
 
-/** Repair deterministic storage defects before the strict V2 boundary schema runs. */
+/** Repair deterministic storage defects before the V2 boundary schema runs. */
 export const migrateLegacyWorkflowStructureData = ({
   nodes,
   edges,
@@ -231,6 +232,8 @@ export const migrateLegacyWorkflowStructureData = ({
     node.inputs = (Array.isArray(node.inputs) ? node.inputs : []).map((value, inputIndex) => {
       const input = isRecord(value) ? { ...value } : {};
       // 非对象输入降级为空对象，后续规则补齐 key、label 和类型字段。
+      // llmModelType 是旧版模型选择器的展示字段，当前输入协议不再持久化该字段。
+      delete input.llmModelType;
       optionalInputFields.forEach((key) => {
         if (input[key] === null) delete input[key];
       });
@@ -283,6 +286,8 @@ export const migrateLegacyWorkflowStructureData = ({
   });
   const normalizedChatConfig = isRecord(chatConfig) ? { ...chatConfig } : {};
   // chatConfig 缺失、非对象或包含 null 字段时，先归一为可继续迁移的对象。
+  // Mongo 子文档遗留的 _id 不属于应用对话配置，不能进入 canonical workflow。
+  delete normalizedChatConfig._id;
   Object.keys(normalizedChatConfig).forEach((key) => {
     if (normalizedChatConfig[key] === null) delete normalizedChatConfig[key];
   });
@@ -300,20 +305,24 @@ export const migrateLegacyWorkflowStructureData = ({
         if (typeof variable.key !== 'string' || !variable.key) variable.key = `variable_${index}`;
         if (typeof variable.label !== 'string') variable.label = variable.key;
         if (typeof variable.description !== 'string') variable.description = '';
-        variable.valueType = normalizeValueType(variable.valueType);
         // 兼容旧的语义类型名称，并将未知类型降级为普通输入。
-        variable.type =
-          {
-            string: VariableInputEnum.input,
-            text: VariableInputEnum.input,
-            number: VariableInputEnum.numberInput,
-            boolean: VariableInputEnum.switch,
-            multiSelect: VariableInputEnum.multipleSelect
-          }[String(variable.type)] ??
-          (typeof variable.type === 'string' &&
-          variableTypes.has(variable.type as VariableInputEnum)
-            ? variable.type
-            : VariableInputEnum.input);
+        const legacyVariableType = {
+          string: VariableInputEnum.input,
+          text: VariableInputEnum.input,
+          number: VariableInputEnum.numberInput,
+          boolean: VariableInputEnum.switch,
+          multiSelect: VariableInputEnum.multipleSelect
+        }[String(variable.type)];
+        const currentVariableType =
+          typeof variable.type === 'string' && variableTypes.has(variable.type as VariableInputEnum)
+            ? (variable.type as VariableInputEnum)
+            : undefined;
+        const mappedVariableType = legacyVariableType ?? currentVariableType;
+        variable.valueType = normalizeVariableValueType({
+          type: mappedVariableType,
+          valueType: variable.valueType
+        });
+        variable.type = mappedVariableType ?? VariableInputEnum.input;
         if (typeof variable.maxLength !== 'number' || variable.maxLength < 0) {
           // 负数或非数字长度没有有效含义，删除后使用当前默认约束。
           delete variable.maxLength;

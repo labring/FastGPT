@@ -10,8 +10,8 @@ type ClientNamespace = Exclude<keyof I18nNamespaces, 'common'>;
 type ClientNamespaceInput = ClientNamespace | readonly ClientNamespace[];
 
 /**
- * 加载客户端页面的业务 namespace，并隐式包含启动阶段已就绪的 common namespace。
- * 业务资源使用非 Suspense 加载，缺失期间允许先显示 key，避免路由切换触发全页 loading。
+ * 读取客户端页面的业务 namespace，并隐式包含启动阶段已就绪的 common namespace。
+ * client-only 应用壳会在挂载业务页面前加载完整语言包，因此这里无需再控制页面显隐。
  */
 export const useClientTranslation = (namespace?: ClientNamespaceInput) => {
   const namespaces = namespace

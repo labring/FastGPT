@@ -53,6 +53,7 @@ const ToolCard = ({
   onClickCard,
   showActionButton = true,
   showDeleteButton = false,
+  showRegistrySourceBadge = true,
   variant = 'default'
 }: {
   item: ToolCardItemType;
@@ -66,6 +67,7 @@ const ToolCard = ({
   onClickCard?: () => void;
   showActionButton?: boolean;
   showDeleteButton?: boolean;
+  showRegistrySourceBadge?: boolean;
   variant?: 'default' | 'marketplace';
 }) => {
   const { t, i18n } = useTranslation();
@@ -83,7 +85,8 @@ const ToolCard = ({
   const isMarketplaceVariant = variant === 'marketplace';
   const showOfficialBadge =
     isMarketplaceVariant && (!item.source || item.source === marketplaceOfficialSource);
-  const showRegistrySourceBadge = mode === 'team' && !!item.registrySource;
+  const shouldShowRegistrySourceBadge =
+    showRegistrySourceBadge && mode === 'team' && !!item.registrySource;
   const showMarketplaceUninstallButton =
     isMarketplaceVariant && mode === 'admin' && item.installed && !showActionButton;
   const showTeamDeleteButton =
@@ -241,7 +244,7 @@ const ToolCard = ({
           >
             {parseI18nString(item.name, i18n.language)}
           </Box>
-          {showRegistrySourceBadge && item.registrySource === 'system' && <SystemToolTag />}
+          {shouldShowRegistrySourceBadge && item.registrySource === 'system' && <SystemToolTag />}
         </Flex>
         {showOfficialBadge && (
           <Box

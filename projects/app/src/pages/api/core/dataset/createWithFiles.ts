@@ -14,7 +14,6 @@ import {
   type CreateDatasetWithFilesResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
 import {
-  OwnerRoleVal,
   PerResourceTypeEnum,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
@@ -35,7 +34,7 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
@@ -96,12 +95,11 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
       );
 
       // 2. Create permission
-      await MongoResourcePermission.insertOne({
-        teamId,
+      await createResourceDefaultCollaborators({
+        resource: dataset,
+        resourceType: PerResourceTypeEnum.dataset,
         tmbId,
-        resourceId: dataset._id,
-        permission: OwnerRoleVal,
-        resourceType: PerResourceTypeEnum.dataset
+        session
       });
 
       // 3. Refresh avatar

@@ -26,6 +26,7 @@
   "auto_align": "自动对齐",
   "can_not_loop": "该节点不支持循环嵌套",
   "can_not_parallel": "该节点不支持在并行执行节点中使用",
+  "can_not_add_inside_container": "该节点不支持添加到当前容器内部",
   "choose_another_application_to_call": "选择一个其他应用进行调用",
   "classification_result": "分类结果",
   "click_to_change_reference": "点击切换输入模式",

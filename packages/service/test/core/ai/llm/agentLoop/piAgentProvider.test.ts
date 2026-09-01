@@ -759,8 +759,7 @@ describe('runPiAgentLoop', () => {
               type: 'function',
               function: {
                 name: 'search',
-                description: 'runtime search',
-                parameters: {}
+                description: 'runtime search'
               }
             }
           ]
@@ -777,6 +776,14 @@ describe('runPiAgentLoop', () => {
     expect(toolNames.filter((name: string) => name === 'read_files')).toHaveLength(1);
     expect(toolNames.filter((name: string) => name === 'dataset_search')).toHaveLength(1);
     expect(toolNames).toContain('search');
+    expect(
+      agentConstructorArgs.at(-1).initialState.tools.find((tool: any) => tool.name === 'search')
+        ?.parameters
+    ).toMatchObject({
+      type: 'object',
+      properties: {},
+      additionalProperties: false
+    });
   });
 
   it('pauses when a runtime tool returns child interactive', async () => {

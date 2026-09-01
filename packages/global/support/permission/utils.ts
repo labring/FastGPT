@@ -123,9 +123,9 @@ export const getChangedCollaborators = ({
     }
   }
 
+  const newClbsMap = new Map(newRealClbs.map((clb) => [getCollaboratorId(clb), clb]));
   for (const oldClb of oldRealClbs) {
-    const newClb = newRealClbs.find((clb) => getCollaboratorId(clb) === getCollaboratorId(oldClb));
-    if (!newClb) {
+    if (!newClbsMap.has(getCollaboratorId(oldClb))) {
       changedClbs.push({
         ...oldClb,
         changedRole: oldClb.permission,

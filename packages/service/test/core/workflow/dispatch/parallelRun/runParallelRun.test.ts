@@ -157,6 +157,9 @@ describe('dispatchParallelRun', () => {
     const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
     expect(result.data[NodeOutputKeyEnum.parallelSuccessResults]).toEqual(['done']);
     expect(result.data[NodeOutputKeyEnum.parallelStatus]).toBe(ParallelRunStatusEnum.success);
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toEqual(
+      result.data[NodeOutputKeyEnum.parallelFullResults]
+    );
     expect(runWorkflowMock.mock.calls[0][0].nodeResponseParentId).toBe(
       'parallel-parent-response_task_0'
     );

@@ -1,17 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
 
 // Hoist all mock functions so they're available in vi.mock factories
 const {
   mockReadRawContentFromBuffer,
+  mockReadRawContentFromSource,
   mockAxiosPost,
   mockSomarkParsePDF,
   mockDoc2xParsePDF,
   mockTextinParsePDF,
   mockUploadImage2S3Bucket,
   mockGetImageBuffer,
+  mockCreatePdfParseUsage,
   mockEnv
 } = vi.hoisted(() => ({
   mockReadRawContentFromBuffer: vi.fn(async ({ extension, buffer, encoding }: any) => {
@@ -36,6 +35,10 @@ const {
       formatText: `parsed-${extension}-content`
     };
   }),
+  mockReadRawContentFromSource: vi.fn().mockResolvedValue({
+    rawText: 'source-content',
+    formatText: 'source-content'
+  }),
   mockAxiosPost: vi.fn(),
   mockSomarkParsePDF: vi.fn().mockResolvedValue({
     pages: 2,
@@ -54,13 +57,15 @@ const {
     buffer: Buffer.from('image-bytes'),
     mime: 'image/png'
   }),
+  mockCreatePdfParseUsage: vi.fn(),
   mockEnv: {
     PARSE_FILE_TIMEOUT_SECONDS: 600
   }
 }));
 
 vi.mock('@fastgpt/service/worker/function', () => ({
-  readRawContentFromBuffer: (...args: any[]) => mockReadRawContentFromBuffer(...args)
+  readRawContentFromBuffer: (...args: any[]) => mockReadRawContentFromBuffer(...args),
+  readRawContentFromSource: (...args: any[]) => mockReadRawContentFromSource(...args)
 }));
 
 vi.mock('@fastgpt/service/common/api/axios', () => ({
@@ -89,7 +94,7 @@ vi.mock('@fastgpt/service/thirdProvider/textin', () => ({
 }));
 
 vi.mock('@fastgpt/service/support/wallet/usage/controller', () => ({
-  createPdfParseUsage: vi.fn()
+  createPdfParseUsage: mockCreatePdfParseUsage
 }));
 
 vi.mock('@fastgpt/service/common/s3/utils', async (importOriginal) => {
@@ -109,53 +114,12 @@ vi.mock('@fastgpt/service/env', () => ({
 }));
 
 import {
-  readRawTextByLocalFile,
-  readFileContentByBuffer
+  readFileContentByBuffer,
+  readFileContentBySource
 } from '@fastgpt/service/common/file/read/utils';
 
 const teamId = 'test-team-id';
 const tmbId = 'test-tmb-id';
-
-describe('readRawTextByLocalFile', () => {
-  let tmpDir: string;
-
-  beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fastgpt-read-test-'));
-  });
-
-  it('should read a txt file and return its content', async () => {
-    const filePath = path.join(tmpDir, 'test.txt');
-    fs.writeFileSync(filePath, 'Hello World', 'utf-8');
-
-    const result = await readRawTextByLocalFile({
-      teamId,
-      tmbId,
-      path: filePath,
-      encoding: 'utf-8'
-    });
-
-    expect(result.rawText).toBe('Hello World');
-    expect(mockReadRawContentFromBuffer).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        extension: 'txt'
-      })
-    );
-  });
-
-  it('should extract extension from file path', async () => {
-    const filePath = path.join(tmpDir, 'document.pdf');
-    fs.writeFileSync(filePath, 'fake-pdf-content');
-
-    const result = await readRawTextByLocalFile({
-      teamId,
-      tmbId,
-      path: filePath,
-      encoding: 'utf-8'
-    });
-
-    expect(result.rawText).toBe('parsed-pdf-content');
-  });
-});
 
 describe('readFileContentByBuffer', () => {
   beforeEach(() => {
@@ -314,6 +278,39 @@ describe('readFileContentByBuffer', () => {
       expect.anything(),
       expect.objectContaining({ timeout: 1200000 })
     );
+  });
+
+  it('should report enhanced PDF usage to the caller without creating usage directly', async () => {
+    global.systemEnv = {
+      customPdfParse: {
+        url: 'http://custom-pdf-service.com/parse',
+        price: 4
+      }
+    } as any;
+    mockAxiosPost.mockResolvedValueOnce({
+      data: {
+        pages: 3,
+        markdown: 'custom-service-parsed-text'
+      }
+    });
+    const onPdfParseUsage = vi.fn();
+
+    await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'pdf',
+      buffer: Buffer.from('pdf content'),
+      encoding: 'utf-8',
+      customPdfParse: true,
+      onPdfParseUsage
+    });
+
+    expect(onPdfParseUsage).toHaveBeenCalledWith({
+      moduleName: 'account_usage:pdf_enhanced_parse',
+      totalPoints: 12,
+      pages: 3
+    });
+    expect(mockCreatePdfParseUsage).not.toHaveBeenCalled();
   });
 
   it('should upload custom URL service base64 and http markdown images with shared handler', async () => {
@@ -782,5 +779,57 @@ describe('readFileContentByBuffer', () => {
         extension: 'docx'
       })
     );
+  });
+});
+
+describe('readFileContentBySource', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    global.systemEnv = {} as any;
+    mockReadRawContentFromSource.mockResolvedValue({
+      rawText: 'source-content',
+      formatText: 'source-content'
+    });
+  });
+
+  it('系统解析直接把轻量 source 交给 worker，不在入口提前物化', async () => {
+    const source = {
+      kind: 's3' as const,
+      sizeBytes: 10,
+      metadata: { filename: 'file.txt' },
+      materialize: vi.fn()
+    };
+
+    await expect(readFileContentBySource({ teamId, tmbId, source })).resolves.toEqual({
+      rawText: 'source-content',
+      tableInfo: undefined
+    });
+    expect(source.materialize).not.toHaveBeenCalled();
+    expect(mockReadRawContentFromSource).toHaveBeenCalledWith({
+      source,
+      imageKeyOptions: undefined
+    });
+  });
+
+  it('启用自定义 PDF Provider 时只在调用 Provider 前物化 source', async () => {
+    global.systemEnv = {
+      customPdfParse: { somarkApiKey: 'key', price: 1 }
+    } as any;
+    const source = {
+      kind: 's3' as const,
+      sizeBytes: 3,
+      metadata: { filename: 'file.pdf' },
+      materialize: vi.fn().mockResolvedValue({
+        buffer: Buffer.from('pdf'),
+        metadata: { filename: 'file.pdf' }
+      })
+    };
+
+    await expect(
+      readFileContentBySource({ teamId, tmbId, source, customPdfParse: true })
+    ).resolves.toMatchObject({ rawText: 'somark-parsed-text' });
+    expect(source.materialize).toHaveBeenCalledTimes(1);
+    expect(mockReadRawContentFromSource).not.toHaveBeenCalled();
+    expect(mockSomarkParsePDF).toHaveBeenCalledWith(Buffer.from('pdf'));
   });
 });

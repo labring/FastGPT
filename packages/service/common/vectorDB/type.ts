@@ -1,4 +1,5 @@
 import z from 'zod';
+import type { ClientSession } from '../mongo';
 
 // Embedding recall item schema
 export const EmbeddingRecallItemSchema = z.object({
@@ -13,7 +14,9 @@ export const InsertVectorControllerPropsSchema = z.object({
   teamId: z.string(),
   datasetId: z.string(),
   collectionId: z.string(),
-  vectors: z.array(z.array(z.number()))
+  vectors: z.array(z.array(z.number())),
+  // 全文文本,与 vectors 一一对应(provider=milvus 时写 modeldata_v2 的 text;其他向量库忽略)
+  texts: z.array(z.string()).optional()
 });
 export type InsertVectorControllerPropsType = z.infer<typeof InsertVectorControllerPropsSchema>;
 
@@ -111,4 +114,48 @@ export interface VectorControllerType {
    * Get vector count by filters
    */
   getVectorCount(props: GetVectorCountPropsType): Promise<number>;
+}
+
+// ==================== 全文检索共享类型 ====================
+export type FullTextSearchProps = {
+  teamId: string;
+  datasetIds: string[];
+  query: string;
+  limit: number;
+  forbidCollectionIdList: string[];
+  filterCollectionIdList?: string[];
+};
+
+export type FullTextSearchItem = {
+  dataId: string; // dataset_data._id,由引擎各自归一化返回(milvus 按向量 id 反查)
+  collectionId: string;
+  score: number;
+};
+
+export type FullTextWriteProps = {
+  dataId: string;
+  teamId: string;
+  datasetId: string;
+  collectionId: string;
+  fullText: string;
+};
+
+/**
+ * 全文检索统一接口。
+ * 写/删契约:mongo 实现真实落库;milvus 实现为空(milvus 写/删由向量 insert/update/delete 通道承载,
+ * 单表方案全文行即向量行)。
+ * 写/删方法均支持可选 session,供 data 层事务内与主数据一并提交(milvus 空实现忽略 session)。
+ */
+export interface FullTextStore {
+  search(props: FullTextSearchProps): Promise<FullTextSearchItem[]>;
+  write(props: FullTextWriteProps[], session?: ClientSession): Promise<void>;
+  deleteByDataId(dataId: string, session?: ClientSession): Promise<void>;
+  deleteByDatasetIds(
+    props: { teamId: string; datasetIds: string[] },
+    session?: ClientSession
+  ): Promise<void>;
+  deleteByCollectionIds(
+    props: { teamId: string; datasetIds: string[]; collectionIds: string[] },
+    session?: ClientSession
+  ): Promise<void>;
 }

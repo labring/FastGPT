@@ -113,7 +113,8 @@ const getFallbackToolFlowResponse = ({
   toolAvatar,
   response,
   errorMessage,
-  seconds
+  seconds,
+  usages = []
 }: {
   call: ChatCompletionMessageToolCall;
   toolName?: string;
@@ -121,6 +122,7 @@ const getFallbackToolFlowResponse = ({
   response: string;
   errorMessage?: string;
   seconds: number;
+  usages?: ChatNodeUsageType[];
 }): AgentLoopCoreToolRunFlowResponse => ({
   flowResponses: [
     {
@@ -133,11 +135,11 @@ const getFallbackToolFlowResponse = ({
       toolInput: parseJsonArgs(call.function.arguments) || undefined,
       toolRes: response,
       runningTime: seconds,
-      totalPoints: 0,
+      totalPoints: usages.reduce((sum, usage) => sum + (usage.totalPoints || 0), 0),
       ...(errorMessage ? { errorText: errorMessage } : {})
     }
   ],
-  flowUsages: [],
+  flowUsages: usages,
   runTimes: 0
 });
 
@@ -218,34 +220,66 @@ export const createAgentLoopCoreToolRunResponseCollector = ({
     if (completedToolCallIds.has(call.id)) return;
     completedToolCallIds.add(call.id);
 
-    // ToolCall 的错误只用于终止/继续 agent-loop，隐藏工具自身及其子流程详情。
-    if (errorMessage) {
-      pendingToolFlowResponseMap.delete(call.id);
-      return;
-    }
-
     const pendingFlowResponse = pendingToolFlowResponseMap.get(call.id);
+    const toolNode = getToolInfo(call.function.name);
+    const fallbackFlowResponse = getFallbackToolFlowResponse({
+      call,
+      toolName: toolNode?.name,
+      toolAvatar: toolNode?.avatar,
+      response: response || '',
+      errorMessage,
+      seconds,
+      usages
+    });
+    const normalizedNodeResponse = nodeResponse
+      ? {
+          ...nodeResponse,
+          runningTime: nodeResponse.runningTime ?? seconds,
+          toolRes: nodeResponse.toolRes ?? response,
+          totalPoints:
+            nodeResponse.totalPoints ??
+            (usages || []).reduce((sum, usage) => sum + (usage.totalPoints || 0), 0),
+          ...(errorMessage ? { errorText: errorMessage } : {})
+        }
+      : fallbackFlowResponse.flowResponses[0];
+    const completedPendingFlowResponse = (() => {
+      if (!pendingFlowResponse || !errorMessage) return pendingFlowResponse;
+      if (pendingFlowResponse.flowResponses.some((item) => item.errorText)) {
+        return pendingFlowResponse;
+      }
+
+      const failedNodeIndex = pendingFlowResponse.flowResponses.length - 1;
+      if (failedNodeIndex < 0) {
+        return {
+          ...pendingFlowResponse,
+          flowResponses: [normalizedNodeResponse]
+        };
+      }
+
+      // 子流程已产生节点但未标记错误时，将失败结果落到最终节点，避免额外造一条重复计费记录。
+      return {
+        ...pendingFlowResponse,
+        flowResponses: pendingFlowResponse.flowResponses.map((item, index) =>
+          index === failedNodeIndex
+            ? {
+                ...item,
+                toolRes: item.toolRes ?? response,
+                errorText: errorMessage
+              }
+            : item
+        )
+      };
+    })();
     const baseFlowResponse =
-      pendingFlowResponse ||
-      (nodeResponse
+      completedPendingFlowResponse ||
+      (normalizedNodeResponse
         ? {
-            flowResponses: [nodeResponse],
+            flowResponses: [normalizedNodeResponse],
             flowUsages: usages || [],
             runTimes: 0
           }
         : undefined) ||
-      (() => {
-        const toolNode = getToolInfo(call.function.name);
-
-        return getFallbackToolFlowResponse({
-          call,
-          toolName: toolNode?.name,
-          toolAvatar: toolNode?.avatar,
-          response: response || '',
-          errorMessage,
-          seconds
-        });
-      })();
+      fallbackFlowResponse;
 
     const completedFlowResponse = toolResponseCompress
       ? appendToolResponseCompressRecord({

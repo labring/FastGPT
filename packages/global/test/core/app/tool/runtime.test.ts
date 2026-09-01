@@ -6,9 +6,54 @@ import {
   validateToolRuntimeParams
 } from '@fastgpt/global/core/app/tool/runtime';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
+import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
 
 describe('compileToolRuntime', () => {
+  it('uses ToolCallNode default agent-generated inputs for its model schema', () => {
+    const toolInputs = ToolCallNode.inputs
+      .filter((input) =>
+        [
+          NodeInputKeyEnum.aiSystemPrompt,
+          NodeInputKeyEnum.history,
+          NodeInputKeyEnum.fileUrlList,
+          NodeInputKeyEnum.userChatInput
+        ].includes(input.key as NodeInputKeyEnum)
+      )
+      .map((input) => normalizeFlowNodeInputType(input, { isTool: true }));
+    const compiled = compileToolRuntime({
+      toolId: 'agent',
+      name: 'Agent',
+      inputs: toolInputs
+    });
+
+    // 提示词和聊天记录由开发者配置，文件链接与用户输入默认进入模型 schema
+    expect(compiled.agentGeneratedKeys).toEqual([
+      NodeInputKeyEnum.fileUrlList,
+      NodeInputKeyEnum.userChatInput
+    ]);
+    [NodeInputKeyEnum.aiSystemPrompt, NodeInputKeyEnum.history].forEach((key) => {
+      expect(toolInputs.find((input) => input.key === key)?.selectedType).not.toBe(
+        FlowNodeInputTypeEnum.agentGenerated
+      );
+    });
+
+    const manualInputs = toolInputs.map((input) => ({
+      ...input,
+      selectedType: input.renderTypeList.find(
+        (type) => type !== FlowNodeInputTypeEnum.agentGenerated
+      )
+    }));
+    const manualCompiled = compileToolRuntime({
+      toolId: 'agent',
+      name: 'Agent',
+      inputs: manualInputs
+    });
+    expect(manualCompiled.agentGeneratedKeys).toEqual([]);
+    expect(manualCompiled.modelTool.function).not.toHaveProperty('parameters');
+  });
+
   it('separates model parameters from configured values and defaults', () => {
     const compiled = compileToolRuntime({
       toolId: 'search',
@@ -97,6 +142,32 @@ describe('compileToolRuntime', () => {
     expect(compiled.agentGeneratedKeys).toEqual(['var_ref2']);
     expect(compiled.fixedInputBindings).toEqual({
       var_ref: ['workflowStart', 'userChatInput']
+    });
+  });
+
+  it('keeps editable Code custom inputs in the model schema', () => {
+    const compiled = compileToolRuntime({
+      toolId: 'code',
+      name: 'Code',
+      inputs: [
+        {
+          key: 'customParam',
+          label: 'customParam',
+          valueType: WorkflowIOValueTypeEnum.string,
+          canEdit: true,
+          defaultToAgentGenerated: true,
+          renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.agentGenerated
+        }
+      ]
+    });
+
+    expect(compiled.agentGeneratedKeys).toEqual(['customParam']);
+    expect(compiled.modelTool.function.parameters).toEqual({
+      type: 'object',
+      properties: {
+        customParam: { type: 'string', description: 'customParam' }
+      }
     });
   });
 

@@ -1,8 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import {
   WritePermissionVal,
-  PerResourceTypeEnum,
-  OwnerRoleVal
+  PerResourceTypeEnum
 } from '@fastgpt/global/support/permission/constant';
 import { TeamSkillCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
@@ -13,7 +12,7 @@ import { createSkill, updateCurrentVersion } from '@fastgpt/service/core/ai/skil
 import { copySkillPackage, removeSkillPackageTTL } from '@fastgpt/service/core/ai/skill/package';
 import { createVersion } from '@fastgpt/service/core/ai/skill/version';
 import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { createResourcePermissions } from '@fastgpt/service/support/permission/resourcePermissionService';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
@@ -131,17 +130,17 @@ async function handler(req: ApiRequestProps<CopySkillBody>): Promise<CopySkillRe
     );
     await removeSkillPackageTTL(storageInfo.key, session);
 
-    // Write owner record to ResourcePermission
-    await MongoResourcePermission.insertOne(
-      {
+    await createResourcePermissions({
+      resource: {
+        _id: newId,
+        type: skill.type,
         teamId,
-        tmbId,
-        resourceId: newId,
-        permission: OwnerRoleVal,
-        resourceType: PerResourceTypeEnum.agentSkill
+        ...(skill.parentId ? { parentId: skill.parentId } : {})
       },
-      { session }
-    );
+      tmbId,
+      resourceType: PerResourceTypeEnum.agentSkill,
+      session
+    });
 
     // Promote temporary avatar to permanent (remove TTL)
     await getS3AvatarSource().refreshAvatar(avatar, undefined, session);

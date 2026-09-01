@@ -116,12 +116,12 @@ export const compileToolRuntime = ({
       );
     })
     .map((definition) => definition.nodeInput);
-  const parameters = buildModelVisibleToolJsonSchema({
+  const parameterSchema = buildModelVisibleToolJsonSchema({
     inputs,
     toolParams: agentGeneratedInputs,
     jsonSchema
   }) as JSONSchemaInputType;
-  const agentGeneratedKeys = Object.keys(parameters.properties ?? {});
+  const agentGeneratedKeys = Object.keys(parameterSchema.properties ?? {});
   const generatedKeySet = new Set(agentGeneratedKeys);
   const fixedInputBindings = {
     ...providedFixedInputBindings,
@@ -149,7 +149,8 @@ export const compileToolRuntime = ({
       function: {
         name: toolId,
         description: [name, description].filter(Boolean).join(': '),
-        parameters
+        // OpenAI function calling 约定省略 parameters 表示工具没有模型生成入参。
+        ...(agentGeneratedKeys.length > 0 ? { parameters: parameterSchema } : {})
       }
     },
     agentGeneratedKeys,

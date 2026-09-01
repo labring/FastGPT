@@ -239,6 +239,29 @@ describe('useToolCatalog', () => {
     });
   });
 
+  it('omits parameters when user selection has no agent-generated inputs', () => {
+    const schema = createToolSchema(
+      createToolNode({
+        name: '用户选择',
+        jsonSchema: { type: 'object' },
+        inputs: [
+          {
+            key: 'description',
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderTypeList: [FlowNodeInputTypeEnum.textarea]
+          },
+          {
+            key: 'userSelectOptions',
+            valueType: WorkflowIOValueTypeEnum.any,
+            renderTypeList: [FlowNodeInputTypeEnum.custom]
+          }
+        ]
+      })
+    );
+
+    expect(schema.function).not.toHaveProperty('parameters');
+  });
+
   it('normalizes scalar raw schemas before merging agent-generated inputs', () => {
     const schema = createToolSchema(
       createToolNode({

@@ -6,6 +6,8 @@ import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import { getImageBase64 } from '../../../common/file/image/utils';
 import { serviceEnv } from '../../../env';
 import { isS3ObjectKey } from '../../../common/s3/utils';
+import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
@@ -58,6 +60,21 @@ export const normalizeImageToBase64 = async (imageUrl: string) => {
 
   const { completeBase64 } = await getImageBase64(imageUrl);
   return completeBase64;
+};
+
+export const isImageEmbeddingIndex = (index: { type?: string | number }) =>
+  index.type === DatasetDataIndexTypeEnum.imageEmbedding;
+
+export const normalizeDatasetIndexImageToModelInput = async (imageUrl: string) => {
+  if (
+    isS3ObjectKey(imageUrl, 'dataset') ||
+    isS3ObjectKey(imageUrl, 'temp') ||
+    isS3ObjectKey(imageUrl, 'chat')
+  ) {
+    return getS3DatasetSource().getDatasetBase64Image(imageUrl);
+  }
+
+  return normalizeImageToBase64(imageUrl);
 };
 
 /**

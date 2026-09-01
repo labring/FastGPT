@@ -23,6 +23,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { pluginClient } from '../../../../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../../../../app/tool/systemTool/systemTool.repo';
+import { computedSystemToolUsage } from '../../../../../../app/tool/runtime/utils';
 import { InvokeProcessor } from '../../../../../../../support/invoke/invoke';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import { authAppByTmbId } from '../../../../../../../support/permission/app/auth';
@@ -212,15 +213,12 @@ export const dispatchTool = async ({
         return getErrResponse(res.error);
       }
 
-      const usagePoints = (() => {
-        if (
-          system_input_config?.type === SystemToolSecretInputTypeEnum.team ||
-          system_input_config?.type === SystemToolSecretInputTypeEnum.manual
-        ) {
-          return 0;
-        }
-        return (tool.systemKeyCost ?? 0) + (tool.currentCost ?? 0);
-      })();
+      const usagePoints = computedSystemToolUsage({
+        tool,
+        useSystemKey:
+          system_input_config?.type !== SystemToolSecretInputTypeEnum.team &&
+          system_input_config?.type !== SystemToolSecretInputTypeEnum.manual
+      });
       pushTrack.runSystemTool({
         teamId: runningUserInfo.teamId,
         tmbId: runningUserInfo.tmbId,

@@ -22,6 +22,7 @@ import {
 } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { appData2FlowNodeIO } from '@fastgpt/global/core/workflow/utils';
 import type { RunWorkflowProps } from '../../../../../../../core/workflow/dispatch';
+import { SystemToolRepo } from '../../../../../../app/tool/systemTool/systemTool.repo';
 import { anyValueDecrypt } from '../../../../../../../common/secret/utils';
 import {
   getWorkflowFileInputsFromValue,
@@ -31,6 +32,10 @@ import {
 import { getRuntimeNodeResponseSummary } from '../../../../utils';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { runWithDerivedWorkflowFileContext } from '../../../../../utils/context';
+import {
+  computedAppToolUsage,
+  getAppToolOutputError
+} from '../../../../../../app/tool/runtime/utils';
 
 type Props = Pick<
   RunWorkflowProps,
@@ -61,6 +66,8 @@ type Props = Pick<
     id: string;
     // Agent 工具固定版本需要与 schema 加载阶段保持一致。
     version?: string;
+    /** 系统 Workflow Tool 的 commercial id；存在时跳过用户态 App 鉴权。 */
+    systemToolId?: string;
   };
   userChatInput: string;
   customAppVariables: Record<string, any>;
@@ -212,17 +219,56 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
   // plugin 子应用不接收普通 userChatInput；这里解构只为了避免透传给 runWorkflow。
   void userChatInput;
 
-  // Auth the app by tmbId(Not the user, but the workflow user)
-  const { app: appData } = await authAppByTmbId({
-    appId: app.id,
-    tmbId: runningAppInfo.tmbId,
-    per: ReadPermissionVal
-  });
-  const { nodes, edges, chatConfig } = await getAppVersionById({
-    appId: app.id,
-    versionId: app.version,
-    app: appData
-  });
+  const { nodes, edges, chatConfig, childAppInfo, externalProviderTmbId, billingTool } =
+    await (async () => {
+      if (app.systemToolId) {
+        const systemToolRuntime = await SystemToolRepo.getInstance().getSystemToolWorkflowRuntime({
+          pluginId: app.systemToolId,
+          version: app.version
+        });
+
+        return {
+          nodes: systemToolRuntime.nodes,
+          edges: systemToolRuntime.edges,
+          chatConfig: systemToolRuntime.chatConfig ?? {},
+          childAppInfo: {
+            sourceId: systemToolRuntime.id,
+            teamId: systemToolRuntime.teamId,
+            tmbId: systemToolRuntime.tmbId,
+            name: systemToolRuntime.name
+          },
+          // 系统 Workflow 没有调用者可访问的 App 记录，沿用当前工作流的用户上下文。
+          externalProviderTmbId: systemToolRuntime.tmbId ?? runningAppInfo.tmbId,
+          billingTool: systemToolRuntime
+        };
+      }
+
+      // Personal plugin 必须以当前 workflow user 做 App 权限校验。
+      const { app: appData } = await authAppByTmbId({
+        appId: app.id,
+        tmbId: runningAppInfo.tmbId,
+        per: ReadPermissionVal
+      });
+      const appVersion = await getAppVersionById({
+        appId: app.id,
+        versionId: app.version,
+        app: appData
+      });
+
+      return {
+        nodes: appVersion.nodes,
+        edges: appVersion.edges,
+        chatConfig: appVersion.chatConfig,
+        childAppInfo: {
+          sourceId: String(appData._id),
+          teamId: appData.teamId,
+          tmbId: appData.tmbId,
+          name: appData.name
+        },
+        externalProviderTmbId: appData.tmbId,
+        billingTool: undefined
+      };
+    })();
   const pluginInputs = getWorkflowToolInputsFromStoreNodes(nodes);
   const workflowToolVariables = filterWorkflowToolInputVariables({
     inputs: pluginInputs,
@@ -230,13 +276,13 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
   });
 
   // Rewrite children app variables
-  const { externalProvider } = await getUserChatInfo(appData.tmbId);
+  const { externalProvider } = await getUserChatInfo(externalProviderTmbId);
   const childRunningAppInfo = {
     sourceType: ChatSourceTypeEnum.app,
-    sourceId: String(appData._id),
-    teamId: String(appData.teamId || runningAppInfo.teamId),
-    tmbId: String(appData.tmbId || runningAppInfo.tmbId),
-    name: appData.name,
+    sourceId: childAppInfo.sourceId,
+    teamId: String(childAppInfo.teamId || runningAppInfo.teamId),
+    tmbId: String(childAppInfo.tmbId || runningAppInfo.tmbId),
+    name: childAppInfo.name,
     isChildApp: true
   };
   const childFileInputs = [
@@ -334,11 +380,11 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
         ...data,
         runningAppInfo: {
           sourceType: ChatSourceTypeEnum.app,
-          sourceId: String(appData._id),
+          sourceId: childAppInfo.sourceId,
           // 如果系统插件有 teamId 和 tmbId，则使用系统插件的 teamId 和 tmbId（管理员指定了插件作为系统插件）
-          name: appData.name,
-          teamId: appData.teamId || runningAppInfo.teamId,
-          tmbId: appData.tmbId || runningAppInfo.tmbId,
+          name: childAppInfo.name,
+          teamId: childAppInfo.teamId || runningAppInfo.teamId,
+          tmbId: childAppInfo.tmbId || runningAppInfo.tmbId,
           isChildApp: true
         },
         runningUserInfo,
@@ -365,25 +411,48 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     runtimeNodeResponseSummary
   });
   const pluginOutput = runtimeSummary.pluginOutput;
+  const pluginOutputError = billingTool
+    ? getAppToolOutputError({ plugin: billingTool, pluginOutput })
+    : undefined;
   const { text: assistantText } = chatValue2RuntimePrompt(assistantResponses);
-  const response = pluginOutput
+  const filteredPluginOutput = pluginOutput
+    ? Object.keys(pluginOutput)
+        .filter((key) => outputFilterMap[key])
+        .reduce<Record<string, any>>((acc, key) => {
+          acc[key] = pluginOutput[key];
+          return acc;
+        }, {})
+    : undefined;
+  const response = filteredPluginOutput
     ? JSON.stringify(
-        Object.keys(pluginOutput)
-          .filter((key) => outputFilterMap[key])
-          .reduce<Record<string, any>>((acc, key) => {
-            acc[key] = pluginOutput[key];
-            return acc;
-          }, {})
+        pluginOutputError
+          ? { ...filteredPluginOutput, error: pluginOutputError }
+          : filteredPluginOutput
       )
     : workflowInteractiveResponse
       ? assistantText
       : 'Run workflow tool failed';
+  const errorMessage = runtimeSummary.hasError
+    ? runtimeSummary.errorText || 'Run workflow tool failed'
+    : !pluginOutput
+      ? 'Run workflow tool failed'
+      : pluginOutputError;
+  const usages = billingTool
+    ? [
+        {
+          moduleName: app.name,
+          totalPoints: await computedAppToolUsage({
+            plugin: billingTool,
+            childrenUsage: flowUsages,
+            error: !!errorMessage
+          })
+        }
+      ]
+    : flowUsages;
 
   return {
     response,
-    ...(runtimeSummary.hasError || !pluginOutput
-      ? { errorMessage: runtimeSummary.errorText || 'Run workflow tool failed' }
-      : {}),
+    ...(errorMessage ? { errorMessage } : {}),
     assistantMessages: chats2GPTMessages({
       messages: [
         {
@@ -394,7 +463,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
       reserveId: false,
       reserveTool: true
     }),
-    usages: flowUsages,
+    usages,
     interactive: workflowInteractiveResponse,
     nodeResponse: {
       moduleType: FlowNodeTypeEnum.pluginModule,
@@ -402,7 +471,8 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
       moduleLogo: app.avatar,
       toolInput: workflowToolVariables,
       toolRes: pluginOutput || {},
-      childResponseCount: runtimeSummary.childResponseCount
+      childResponseCount: runtimeSummary.childResponseCount,
+      ...(errorMessage ? { errorText: errorMessage } : {})
     }
   };
 };

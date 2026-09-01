@@ -177,6 +177,7 @@ export const dispatchIfElse = async (props: Props): Promise<Response> => {
       totalPoints: 0,
       ifElseResult: selectedLabel
     },
+    [DispatchNodeResponseKeyEnum.toolResponse]: selectedLabel,
     [DispatchNodeResponseKeyEnum.skipHandleId]: sourceHandleIds.filter(
       (handleId) => handleId !== selectedHandleId
     )

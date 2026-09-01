@@ -19,6 +19,8 @@ const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 async function handler(req: ApiRequestProps) {
   const filepaths: string[] = [];
+  let fileId: string | undefined;
+  let promoted = false;
 
   try {
     const result = await multer.resolveFormData({
@@ -43,22 +45,29 @@ async function handler(req: ApiRequestProps) {
       insertLen: 1
     });
 
-    const rawText = await parseDatasetImportFile({
-      teamId,
-      tmbId,
-      filePath: result.fileMetadata.path,
-      filename,
-      encoding: result.fileMetadata.encoding
-    }).catch((error) => {
-      logger.warn('Template dataset import file parse failed', { filename, error });
-      return Promise.reject(i18nT('dataset:template_file_invalid'));
-    });
-
-    const fileId = await getS3DatasetSource().upload({
+    const datasetSource = getS3DatasetSource();
+    fileId = await datasetSource.upload({
       datasetId: dataset._id,
       stream: result.getReadStream(),
       size: result.fileMetadata.size,
       filename: filename
+    });
+    // 上传完成后解析只依赖 S3 source，本地临时文件不进入等待队列。
+    multer.clearDiskTempFiles([...filepaths]);
+    filepaths.length = 0;
+
+    const source = await datasetSource.getDatasetFileSource({
+      fileId,
+      datasetId: String(dataset._id)
+    });
+    const rawText = await parseDatasetImportFile({
+      teamId,
+      tmbId,
+      source,
+      filename
+    }).catch((error) => {
+      logger.warn('Template dataset import file parse failed', { filename, error });
+      return Promise.reject(i18nT('dataset:template_file_invalid'));
     });
 
     await createCollectionAndInsertData({
@@ -76,9 +85,20 @@ async function handler(req: ApiRequestProps) {
         trainingType: DatasetCollectionDataProcessModeEnum.template
       }
     });
+    promoted = true;
 
     return {};
   } catch (error) {
+    if (fileId && !promoted) {
+      await getS3DatasetSource()
+        .cleanupPendingDatasetFile(fileId)
+        .catch((cleanupError) => {
+          logger.warn('Template pending dataset file cleanup failed', {
+            fileId,
+            error: cleanupError
+          });
+        });
+    }
     logger.error(`Template dataset collection create error: ${error}`);
     return Promise.reject(error);
   } finally {

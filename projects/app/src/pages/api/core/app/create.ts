@@ -5,12 +5,11 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppFolderTypeList, ToolTypeList, AppTypeList } from '@fastgpt/global/core/app/constants';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import {
-  CreateAppBodySchema,
+  CreateAppRequestBodySchema,
   CreateAppResponseSchema,
   type CreateAppBodyType
 } from '@fastgpt/global/openapi/core/app/common/api';
 import {
-  OwnerRoleVal,
   PerResourceTypeEnum,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
@@ -28,7 +27,7 @@ import { type ApiRequestProps } from '@fastgpt/next/type';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
 import { getMyModels } from '@fastgpt/service/support/permission/model/controller';
 import { removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
@@ -49,7 +48,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 async function handler(req: ApiRequestProps<CreateAppBodyType>) {
   const { body } = parseApiInput({
     req,
-    bodySchema: CreateAppBodySchema
+    bodySchema: CreateAppRequestBodySchema
   });
   const { parentId, name, avatar, intro, type, modules, edges, chatConfig, templateId, utmParams } =
     body;
@@ -86,8 +85,8 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
   const appId = await onCreateApp({
     parentId,
     name,
-    avatar,
-    intro,
+    avatar: avatar ?? undefined,
+    intro: intro ?? undefined,
     type,
     modules,
     allowedModels: await (async () => {
@@ -269,12 +268,11 @@ export const onCreateApp = async ({
       );
     }
 
-    await MongoResourcePermission.insertOne({
-      teamId,
+    await createResourceDefaultCollaborators({
+      resource: app,
+      resourceType: PerResourceTypeEnum.app,
       tmbId,
-      resourceId: appId,
-      permission: OwnerRoleVal,
-      resourceType: PerResourceTypeEnum.app
+      session
     });
 
     await getS3AvatarSource().refreshAvatar(_avatar, undefined, session);

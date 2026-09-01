@@ -4,10 +4,10 @@ import { BillPayWayEnum, BillStatusEnum, BillTypeEnum } from './constants';
 import type { TeamInvoiceHeaderType } from '../../user/team/type';
 import z from 'zod';
 import { ObjectIdSchema } from '../../../common/type/mongo';
+import { NumSchema } from '../../../common/zod';
 
 export const BillSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '订单 ID' }),
-  userId: ObjectIdSchema.meta({ description: '用户 ID' }),
   teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
   tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
   createTime: z.coerce.date().meta({ description: '创建时间' }),
@@ -18,13 +18,14 @@ export const BillSchema = z.object({
   couponId: ObjectIdSchema.optional().meta({
     description: '优惠券 ID'
   }),
-  hasInvoice: z.boolean().meta({ description: '是否已开发票' }),
+  hasInvoice: z.boolean().optional().meta({ description: '是否已开发票' }),
+  paidAmount: NumSchema.optional().meta({ description: '实际支付金额' }),
   metadata: z
     .object({
       payWay: z.enum(BillPayWayEnum).meta({ description: '支付方式' }),
       subMode: z.enum(SubModeEnum).optional().meta({ description: '订阅周期' }),
       standSubLevel: z.enum(StandardSubLevelEnum).optional().meta({ description: '订阅等级' }),
-      month: z.number().optional().meta({ description: '月数' }),
+      month: NumSchema.nonnegative().optional().meta({ description: '月数' }),
       datasetSize: z.number().optional().meta({ description: '数据集大小' }),
       extraPoints: z.number().optional().meta({ description: '额外积分' }),
       activitySource: z.literal('enterpriseAuth').optional().meta({ description: '活动赠送来源' }),
@@ -51,6 +52,7 @@ export type ChatNodeUsageType = {
   totalPoints: number;
   moduleName: string;
   model?: string;
+  pages?: number;
 };
 
 export type InvoiceType = {

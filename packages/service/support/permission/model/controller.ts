@@ -1,8 +1,13 @@
-import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import {
+  PerResourceTypeEnum,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
 import { getGroupsByTmbId } from '../memberGroup/controllers';
 import { getOrgsByTmbId } from '../org/controllers';
-import { MongoResourcePermission } from '../schema';
-import { getCollaboratorId } from '@fastgpt/global/support/permission/utils';
+import {
+  findResourceKeysByCollaboratorsPermission,
+  getResourcePermissionsByTeam
+} from '../resourcePermissionService';
 import { isProVersion } from '../../../common/system/constants';
 
 export const getMyModels = async ({
@@ -28,12 +33,10 @@ export const getMyModels = async ({
     })
   ]);
 
-  const myIdSet = new Set([tmbId, ...groups.map((g) => g._id), ...orgs.map((o) => o._id)]);
-
-  const rps = await MongoResourcePermission.find({
+  const rps = await getResourcePermissionsByTeam({
     teamId,
     resourceType: PerResourceTypeEnum.model
-  }).lean();
+  });
 
   // 未配置权限的，默认是有权限
   const permissionConfiguredModelSet = new Set(rps.map((rp) => rp.resourceName));
@@ -41,7 +44,17 @@ export const getMyModels = async ({
     (model) => !permissionConfiguredModelSet.has(model.model)
   );
 
-  const myModels = rps.filter((rp) => myIdSet.has(getCollaboratorId(rp)));
+  const myModels = await findResourceKeysByCollaboratorsPermission({
+    teamId,
+    resourceType: PerResourceTypeEnum.model,
+    tmbId,
+    groupIds: groups.map((group) => String(group._id)),
+    orgIds: orgs.map((org) => String(org.orgId)),
+    permission: ReadPermissionVal,
+    matchLogic: 'or',
+    // 保持 model 旧逻辑：任一匹配 collaborator 授权即可。
+    personalPermissionPriority: false
+  });
 
-  return [...unconfiguredModels.map((m) => m.model), ...myModels.map((m) => m.resourceName)];
+  return [...unconfiguredModels.map((m) => m.model), ...myModels];
 };

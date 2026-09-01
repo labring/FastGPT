@@ -6,19 +6,40 @@ import { getClbsInfo, getResourceOwnedClbs } from '@fastgpt/service/support/perm
 import { MongoMemberGroupModel } from '@fastgpt/service/support/permission/memberGroup/memberGroupSchema';
 import { MongoOrgModel } from '@fastgpt/service/support/permission/org/orgSchema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { Types } from '@fastgpt/service/common/mongo';
 import { getFakeGroups, getFakeOrgs, getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
 import type { CreateAppBodyType } from '@fastgpt/global/openapi/core/app/common/api';
 
 describe('test getClbsWithInfo', () => {
+  it('should treat a null parent resource id as an empty parent ACL', async () => {
+    await expect(
+      getResourceOwnedClbs({
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: null,
+        teamId: String(new Types.ObjectId())
+      })
+    ).resolves.toEqual([]);
+  });
+
+  it('should treat an empty parent resource id as an empty parent ACL', async () => {
+    await expect(
+      getResourceOwnedClbs({
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: '',
+        teamId: String(new Types.ObjectId())
+      })
+    ).resolves.toEqual([]);
+  });
+
   it('should get ClbsWithInfo', async () => {
     // tmb, group, avatar
     // get name, avatar, default avatar fallback
     const users = await getFakeUsers(3);
     const orgs = await getFakeOrgs();
     const groups = await getFakeGroups(3);
-    const app = await Call<CreateAppBodyType, {}, string>(createAppAPI, {
+    const app = await Call<CreateAppBodyType, null, string>(createAppAPI, {
       auth: users.owner,
       body: {
         modules: [],

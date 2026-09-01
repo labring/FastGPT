@@ -4,7 +4,7 @@ import { AppResourceRefsSkillIdsPath, buildAppSkillRefMongoQuery } from '../../.
 import { MongoAgentSkills } from '../model/schema';
 import { SkillPermission } from '@fastgpt/global/support/permission/skill/controller';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { MongoResourcePermission } from '../../../../support/permission/schema';
+import { getResourcePermissionsByTeam } from '../../../../support/permission/resourcePermissionService';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '../../../../support/permission/memberGroup/controllers';
@@ -44,7 +44,7 @@ const mergeMongoAndQuery = (...queries: Record<string, unknown>[]) => {
  * 查询当前成员可读的 Agent Skill 列表。
  *
  * 这里集中维护 Skill 列表 API 和 ChatAgentHelper 共用的权限过滤规则：
- * owner 可读团队内资源；普通成员按成员、用户组、组织授权计算，并支持目录继承权限。
+ * owner 可读团队内资源；普通成员按成员、用户组、组织授权计算，目录只负责层级过滤。
  */
 export const listReadableAgentSkills = async ({
   teamId,
@@ -67,13 +67,10 @@ export const listReadableAgentSkills = async ({
   const isSkillIdsQuery = selectedSkillIds.length > 0;
 
   const [roleList, myGroupMap, myOrgSet] = await Promise.all([
-    MongoResourcePermission.find({
+    getResourcePermissionsByTeam({
       resourceType: PerResourceTypeEnum.agentSkill,
-      teamId,
-      resourceId: {
-        $exists: true
-      }
-    }).lean(),
+      teamId
+    }),
     getGroupsByTmbId({
       tmbId,
       teamId
@@ -159,19 +156,7 @@ export const listReadableAgentSkills = async ({
             $or: [{ teamId }, { source: AgentSkillSourceEnum.system }]
           };
       const idList = { _id: { $in: myRoleResourceIds } };
-      const readPermissionQuery =
-        teamPer.isOwner || source === 'store'
-          ? {}
-          : {
-              $or: [
-                idList,
-                { tmbId },
-                {
-                  inheritPermission: true,
-                  parentId: { $in: myRoleResourceIds }
-                }
-              ]
-            };
+      const readPermissionQuery = teamPer.isOwner || source === 'store' ? {} : idList;
 
       return mergeMongoAndQuery(baseQuery, scopeQuery, readPermissionQuery, {
         _id: { $in: selectedSkillIds },
@@ -179,15 +164,9 @@ export const listReadableAgentSkills = async ({
       });
     }
 
-    // 普通列表查询需要叠加当前目录过滤；skillIds 查询已在上方按读权限过滤，但不受目录限制。
+    // 普通列表查询同时按当前目录和资源自身 ACL 过滤。
     const idList = { _id: { $in: myRoleResourceIds } };
-    const skillPerQuery = teamPer.isOwner
-      ? {}
-      : parentId
-        ? {
-            $or: [idList, parseParentIdInMongo(parentId)]
-          }
-        : { $or: [idList, { parentId: null }] };
+    const skillPerQuery = teamPer.isOwner || source === 'store' ? {} : idList;
     const teamIdQuery = source === 'store' ? {} : { teamId };
 
     if (searchKey) {
@@ -224,12 +203,6 @@ export const listReadableAgentSkills = async ({
           return roleCountByResourceId.get(skillId) ?? 0;
         };
 
-        if (skill.inheritPermission && skill.parentId && skill.type !== AgentSkillTypeEnum.folder) {
-          return {
-            Per: getPer(String(skill.parentId)).addRole(getPer(String(skill._id)).role),
-            privateSkill: getClbCount(String(skill.parentId)) <= 1
-          };
-        }
         return {
           Per: getPer(String(skill._id)),
           privateSkill: getClbCount(String(skill._id)) <= 1

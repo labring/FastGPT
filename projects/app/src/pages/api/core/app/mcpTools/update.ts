@@ -41,7 +41,7 @@ async function handler(
     toolList,
     headerSecret: formatedHeaderAuth,
     name: app.name,
-    avatar: app.avatar
+    avatar: app.avatar ?? undefined
   });
   const storageNodes = encodeMcpToolSetNodesForStorage([toolSetRuntimeNode]);
 

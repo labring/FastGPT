@@ -658,6 +658,19 @@ export const checkWorkflowNodeIssues = ({
           if (!input.canEdit) {
             return false;
           }
+
+          // 工具参数由 Agent 生成时无需填写引用值；手动模式仍按代码变量校验。
+          if (
+            isToolNode &&
+            isAgentGeneratedToolInput(
+              initToolInputTypeByDefaultMode(input, {
+                allowUserChatInputAgentGenerated: true
+              })
+            ) &&
+            canInputBeAgentGenerated(input)
+          ) {
+            return false;
+          }
           return !input.key || !input.label || isEmptyReferenceValue(input.value);
         });
         if (hasIncompleteDynamicInput) {

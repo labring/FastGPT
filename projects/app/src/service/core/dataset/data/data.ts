@@ -1,5 +1,4 @@
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
 import type {
   UpdateDatasetDataPropsType,
@@ -9,7 +8,7 @@ import type {
 import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type ClientSession } from '@fastgpt/service/common/mongo';
-import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
+import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
 import { isS3ObjectKey, removeS3TTL } from '@fastgpt/service/common/s3/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import {
@@ -101,6 +100,9 @@ export class DatasetDataOperation {
    * 2. 先写入向量库，拿到每条索引对应的 dataId
    * 3. 写入主数据和全文检索 token
    * 4. 如果图片来自 dataset S3 临时区，移除 TTL，避免被清理
+   *
+   * 调用方必须传入事务 session，确保主数据、Mongo 全文索引和图片 TTL 状态原子提交。
+   * 向量库不参与 Mongo 事务，事务失败产生的孤儿向量由一致性任务清理。
    */
   async create({
     teamId,
@@ -124,7 +126,7 @@ export class DatasetDataOperation {
     indexSize?: number;
     imageIndex?: boolean;
     imageDescMap?: Record<string, string>;
-    session?: ClientSession;
+    session: ClientSession;
   }) {
     // 纯图片数据允许没有正文；indexQ 保持为空，避免生成普通 default 文本向量索引。
     const dataQ = q || '';
@@ -176,18 +178,19 @@ export class DatasetDataOperation {
       { session, ordered: true }
     );
 
-    // 单独维护分词后的全文检索内容，避免查询时临时分词。
-    await MongoDatasetDataText.create(
+    // 全文索引为派生数据:原文随主数据写入,分词只在 Mongo 全文实现内部发生。
+    // getFullTextStore() 按 provider 分发:mongo 写 dataset_data_texts(内部 jiebaSplit);milvus 为 no-op(全文行随向量写入 modeldata_v2)。
+    await getFullTextStore().write(
       [
         {
           teamId,
           datasetId,
           collectionId,
-          dataId: _id,
-          fullTextToken: await jiebaSplit({ text: `${indexQ}\n${a}`.trim() })
+          dataId: String(_id),
+          fullText: `${indexQ}\n${a}`.trim()
         }
       ],
-      { session, ordered: true }
+      session
     );
 
     // 图片在创建成功后从临时对象转为正式引用，不再允许 TTL 自动删除。
@@ -303,11 +306,18 @@ export class DatasetDataOperation {
       mongoData.indexes = newIndexes;
       await mongoData.save({ session });
 
-      // Q/A 变化会影响全文检索结果，需要和主数据一并更新。
-      await MongoDatasetDataText.updateOne(
-        { dataId: mongoData._id },
-        { fullTextToken: await jiebaSplit({ text: `${mongoData.q}\n${mongoData.a}`.trim() }) },
-        { session }
+      // Q/A 变化会影响全文检索结果,需要和主数据一并更新(milvus 下为 no-op,全文随向量 upsert 覆盖)。
+      await getFullTextStore().write(
+        [
+          {
+            teamId: String(mongoData.teamId),
+            datasetId: String(mongoData.datasetId),
+            collectionId: String(mongoData.collectionId),
+            dataId: String(mongoData._id),
+            fullText: `${mongoData.q}\n${mongoData.a}`.trim()
+          }
+        ],
+        session
       );
 
       // Mongo 已经指向新的 dataId 后再删旧向量，降低检索命中悬空向量 id 的风险。
@@ -431,10 +441,18 @@ export class DatasetDataOperation {
         { session }
       );
 
-      await MongoDatasetDataText.updateOne(
-        { dataId: mongoData._id },
-        { fullTextToken: await jiebaSplit({ text: `${nextQ}\n${nextA}`.trim() }) },
-        { session }
+      // Q/A 变化会影响全文检索结果(milvus 下为 no-op,全文随向量 upsert 覆盖)。
+      await getFullTextStore().write(
+        [
+          {
+            teamId: String(mongoData.teamId),
+            datasetId: String(mongoData.datasetId),
+            collectionId: String(mongoData.collectionId),
+            dataId: String(mongoData._id),
+            fullText: `${nextQ}\n${nextA}`.trim()
+          }
+        ],
+        session
       );
 
       await this.indexOperation.deleteVectors({
@@ -463,7 +481,8 @@ export class DatasetDataOperation {
   async delete(data: DatasetDataItemType) {
     await mongoSessionRun(async (session) => {
       await MongoDatasetData.deleteOne({ _id: data.id }, { session });
-      await MongoDatasetDataText.deleteMany({ dataId: data.id }, { session });
+      // getFullTextStore() 按引擎分发:mongo 删除 dataset_data_texts;milvus 为 no-op(全文行随向量删除清理)。
+      await getFullTextStore().deleteByDataId(data.id, session);
 
       // 主数据删除后清理图片对象，避免孤儿文件继续占用存储。
       if (data.imageId && isS3ObjectKey(data.imageId, 'dataset')) {
@@ -487,7 +506,7 @@ export class DatasetDataOperation {
 
 /**
  * 创建 dataset data 的服务函数。
- * API 层使用该函数完成数据、全文索引、向量和图片 TTL 的一次性写入。
+ * 调用方必须通过 mongoSessionRun 传入 session；需要联动 training 等记录时复用同一事务。
  */
 export const createDatasetData = async (
   props: CreateDatasetDataPropsType & {
@@ -495,7 +514,7 @@ export const createDatasetData = async (
     indexSize?: number;
     imageIndex?: boolean;
     imageDescMap?: Record<string, string>;
-    session?: ClientSession;
+    session: ClientSession;
   }
 ) => {
   return new DatasetDataOperation(props.embeddingModel).create(props);

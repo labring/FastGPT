@@ -204,6 +204,10 @@ export const serviceEnv = createEnv({
     SEEKDB_URL: z.string().optional().meta({ description: 'SeekDB 向量库连接参数' }),
     MILVUS_ADDRESS: z.string().optional().meta({ description: 'Milvus 向量库连接参数' }),
     MILVUS_TOKEN: z.string().optional().meta({ description: 'Milvus 向量库Token' }),
+    // ==================== 全文检索 ====================
+    MILVUS_LANGUAGE_IDENTIFIER: z.enum(['lingua', 'whatlang']).default('lingua').meta({
+      description: 'Milvus 语言识别引擎(BM25 analyzer): lingua(默认) | whatlang'
+    }),
     OPENGAUSS_URL: z.string().optional().meta({ description: 'openGauss 向量库连接参数' }),
     HNSW_EF_SEARCH: IntSchema.min(1).default(100).meta({
       description: '向量检索 hnsw ef_search 参数，仅对 PG / OB / OpenGauss 生效'
@@ -320,15 +324,21 @@ export const serviceEnv = createEnv({
     WECHAT_CHANNEL_CONCURRENCY: IntSchema.min(10).default(1000).meta({
       description: '微信渠道 poll worker 并发数'
     }),
-    PARSE_FILE_WORKERS: IntSchema.min(1).max(1000).default(5).meta({
-      description: '文件解析 worker 常驻线程数'
+    XLSX_PARSE_MAX_ROWS: IntSchema.min(1).max(1_048_576).default(100_000).meta({
+      description: 'XLSX 单个工作表允许的最大行数'
     }),
-    HTML_TO_MARKDOWN_WORKERS: IntSchema.min(1).max(1000).default(10).meta({
-      description: 'HTML 转 Markdown worker 常驻线程数'
+    XLSX_PARSE_MAX_COLUMNS: IntSchema.min(1).max(16_384).default(1_000).meta({
+      description: 'XLSX 单个工作表允许的最大列数'
     }),
-    TEXT_TO_CHUNKS_WORKERS: IntSchema.min(1).max(1000).default(10).meta({
-      description: '文本切块 worker 常驻线程数'
+    XLSX_PARSE_MAX_CELLS: IntSchema.min(1).max(Number.MAX_SAFE_INTEGER).default(1_000_000).meta({
+      description: 'XLSX 工作簿允许的累计范围单元格数'
     }),
+    XLSX_PARSE_MAX_MERGED_CELLS: IntSchema.min(1)
+      .max(Number.MAX_SAFE_INTEGER)
+      .default(1_000_000)
+      .meta({
+        description: 'XLSX 工作簿允许的累计合并单元格回填量'
+      }),
     PARSE_FILE_TIMEOUT_SECONDS: IntSchema.min(60).max(6000).default(600).meta({
       description: '文件解析单任务超时时间（秒）'
     }),

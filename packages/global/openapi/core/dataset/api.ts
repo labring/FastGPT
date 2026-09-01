@@ -10,8 +10,8 @@ import {
   SearchDataResponseItemSchema
 } from '../../../core/dataset/type';
 import {
-  CollaboratorItemSchema,
-  CollaboratorListSchema
+  CollaboratorListSchema,
+  CollaboratorUpdateListSchema
 } from '../../../support/permission/collaborator.schema';
 
 /* ============================================================================
@@ -295,10 +295,9 @@ export const UpdateDatasetCollaboratorBodySchema = z
       example: '68ad85a7463006c963799a05',
       description: '知识库 ID'
     }),
-    collaborators: z
-      .array(CollaboratorItemSchema)
-      .min(1)
-      .meta({ description: '更新后的协作者权限列表，至少包含一个协作者' })
+    collaborators: CollaboratorUpdateListSchema.meta({
+      description: '更新后的协作者权限列表，至少包含一个协作者且目标不可重复'
+    })
   })
   .meta({
     example: {

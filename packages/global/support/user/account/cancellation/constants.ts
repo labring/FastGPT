@@ -27,6 +27,12 @@ export const AccountCancellationReminder = {
   today: 'today'
 } as const;
 
+export const AccountCancellationReminderBit = {
+  sevenDays: 4,
+  oneDay: 2,
+  today: 1
+} as const;
+
 export const AccountCancellationUnavailableReason = {
   featureDisabled: 'feature_disabled',
   unsupportedTeamMode: 'unsupported_team_mode',

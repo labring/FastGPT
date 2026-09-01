@@ -30,7 +30,6 @@ import { type TeamInvoiceHeaderType } from '@fastgpt/global/support/user/team/ty
 import { InvoiceHeaderSingleForm } from './InvoiceHeaderForm';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getTeamInvoiceHeader } from '@/web/support/user/team/api';
-import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
 
 type chosenBillDataType = {
@@ -38,9 +37,14 @@ type chosenBillDataType = {
   price: number;
 };
 
-const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
+const ApplyInvoiceModal = ({
+  onClose,
+  onSuccess
+}: {
+  onClose: () => void;
+  onSuccess: () => void;
+}) => {
   const { t } = useClientTranslation('account_bill');
-  const router = useRouter();
 
   const [chosenBillDataList, setChosenBillDataList] = useState<chosenBillDataType[]>([]);
   const [totalPrice, setTotalPrice] = useState(0);
@@ -80,10 +84,7 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
       manual: true,
       successToast: t('account_bill:submit_success'),
       errorToast: t('account_bill:submit_failed'),
-      onSuccess: () => {
-        onClose();
-        router.reload();
-      }
+      onSuccess
     }
   );
 

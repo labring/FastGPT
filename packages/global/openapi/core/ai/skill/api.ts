@@ -16,8 +16,8 @@ import { SkillPermissionSchema } from '../../../../support/permission/skill/cont
 import { ChatCompletionMessageParamSchema } from '../../../../core/ai/llm/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import {
-  CollaboratorItemSchema,
-  CollaboratorListSchema
+  CollaboratorListSchema,
+  CollaboratorUpdateListSchema
 } from '../../../../support/permission/collaborator.schema';
 
 const IdSchema = z.string().min(1).meta({ description: '资源 ID' });
@@ -219,10 +219,9 @@ export const UpdateSkillCollaboratorBodySchema = z
       example: '68ad85a7463006c963799a05',
       description: '技能 ID'
     }),
-    collaborators: z
-      .array(CollaboratorItemSchema)
-      .min(1)
-      .meta({ description: '更新后的协作者权限列表，至少包含一个协作者' })
+    collaborators: CollaboratorUpdateListSchema.meta({
+      description: '更新后的协作者权限列表，至少包含一个协作者且目标不可重复'
+    })
   })
   .meta({
     example: {

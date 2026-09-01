@@ -93,18 +93,16 @@ export const SandboxImageSchema = z.object({
   tag: z.string().optional()
 });
 
-export const SandboxOperationSchema = z
-  .object({
-    id: z.string().min(1),
-    type: SandboxOperationTypeSchema,
-    phase: z.string().min(1),
-    previousStatus: SandboxStableStatusSchema.optional(),
-    startedAt: z.coerce.date(),
-    heartbeatAt: z.coerce.date(),
-    failedAt: z.coerce.date().optional(),
-    error: z.string().optional()
-  })
-  .strict();
+export const SandboxOperationSchema = z.object({
+  id: z.string().min(1),
+  type: SandboxOperationTypeSchema,
+  phase: z.string().min(1),
+  previousStatus: SandboxStableStatusSchema.optional(),
+  startedAt: z.coerce.date(),
+  heartbeatAt: z.coerce.date(),
+  failedAt: z.coerce.date().optional(),
+  error: z.string().optional()
+});
 export type SandboxOperationTypeSchemaType = z.infer<typeof SandboxOperationSchema>;
 
 const expectedOperationByStatus: Partial<Record<SandboxInstanceStatusType, SandboxOperationType>> =

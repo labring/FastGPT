@@ -8,25 +8,25 @@ import { getVectors } from '../../core/ai/embedding';
 import type { GetVectorsProps } from '../../core/ai/embedding';
 import type { VectorControllerType, InsertVectorControllerPropsType } from './type';
 import { type EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
-import {
-  MILVUS_ADDRESS,
-  PG_ADDRESS,
-  OPENGAUSS_ADDRESS,
-  OCEANBASE_ADDRESS,
-  SEEKDB_ADDRESS
-} from './constants';
+import { getVectorType } from './constants';
 import { MilvusCtrl } from './milvus';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../logger';
 
 const getVectorObj = (): VectorControllerType => {
-  if (SEEKDB_ADDRESS) return new SeekVectorCtrl({ type: 'seekdb' });
-  if (OCEANBASE_ADDRESS) return new ObVectorCtrl({ type: 'oceanbase' });
-  if (PG_ADDRESS) return new PgVectorCtrl();
-  if (MILVUS_ADDRESS) return new MilvusCtrl();
-  if (OPENGAUSS_ADDRESS) return new OpenGaussVectorCtrl();
-
-  return new PgVectorCtrl();
+  switch (getVectorType()) {
+    case 'seekdb':
+      return new SeekVectorCtrl({ type: 'seekdb' });
+    case 'oceanbase':
+      return new ObVectorCtrl({ type: 'oceanbase' });
+    case 'milvus':
+      return new MilvusCtrl();
+    case 'opengauss':
+      return new OpenGaussVectorCtrl();
+    case 'pg':
+    default:
+      return new PgVectorCtrl();
+  }
 };
 
 const Vector = getVectorObj();

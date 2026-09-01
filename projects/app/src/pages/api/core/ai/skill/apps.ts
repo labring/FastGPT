@@ -1,18 +1,15 @@
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { NextAPI } from '@/service/middleware/entry';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import {
   PerResourceTypeEnum,
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
-import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import { sumPer } from '@fastgpt/global/support/permission/utils';
+import { findResourceKeysByCollaboratorsPermission } from '@fastgpt/service/support/permission/resourcePermissionService';
 import type {
   ListAppsBySkillIdQuery,
   ListAppsBySkillIdResponse
@@ -37,28 +34,27 @@ async function handler(
     per: ReadPermissionVal
   });
 
-  // Fetch all app permission records under the team, along with the user's groups and orgs
-  const [roleList, myGroupMap, myOrgSet] = await Promise.all([
-    MongoResourcePermission.find({
-      resourceType: PerResourceTypeEnum.app,
-      teamId,
-      resourceId: { $exists: true }
-    }).lean(),
-    getGroupsByTmbId({ tmbId, teamId }).then((items) => {
-      const map = new Map<string, 1>();
-      items.forEach((item) => map.set(String(item._id), 1));
-      return map;
-    }),
-    getOrgIdSetWithParentByTmbId({ teamId, tmbId })
-  ]);
+  const readableAppIds = await (async () => {
+    if (teamPer.isOwner) return;
 
-  // Compute the current user's permission list
-  const myPerList = roleList.filter(
-    (item) =>
-      String(item.tmbId) === String(tmbId) ||
-      myGroupMap.has(String(item.groupId)) ||
-      myOrgSet.has(String(item.orgId))
-  );
+    const [groupIds, orgIds] = await Promise.all([
+      getGroupsByTmbId({ tmbId, teamId }).then((items) => items.map((item) => String(item._id))),
+      getOrgIdSetWithParentByTmbId({ teamId, tmbId }).then((ids) => Array.from(ids))
+    ]);
+
+    return new Set(
+      await findResourceKeysByCollaboratorsPermission({
+        resourceType: PerResourceTypeEnum.app,
+        teamId,
+        tmbId,
+        groupIds,
+        orgIds,
+        permission: ReadPermissionVal,
+        matchLogic: 'or',
+        personalPermissionPriority: true
+      })
+    );
+  })();
 
   // 查询最新发布版本缓存引用该 skillId 的应用。
   const apps = await MongoApp.find(
@@ -72,50 +68,23 @@ async function handler(
     .sort({ updateTime: -1 })
     .lean();
 
-  // Filter apps with read permission and resolve per-app permissions
-  const appsWithPer = apps.map((app) => {
-    const getPer = (appId: string) => {
-      const tmbRole = myPerList.find(
-        (item) => String(item.resourceId) === appId && !!item.tmbId
-      )?.permission;
-      const groupAndOrgRole = sumPer(
-        ...myPerList
-          .filter((item) => String(item.resourceId) === appId && (!!item.groupId || !!item.orgId))
-          .map((item) => item.permission)
-      );
-      return new AppPermission({
-        role: tmbRole ?? groupAndOrgRole,
-        isOwner: String(app.tmbId) === String(tmbId) || teamPer.isOwner
-      });
-    };
-
-    const Per = (() => {
-      if (!AppFolderTypeList.includes(app.type) && app.parentId && app.inheritPermission) {
-        return getPer(String(app.parentId)).addRole(getPer(String(app._id)).role);
-      }
-      return getPer(String(app._id));
-    })();
-
-    return {
+  const visibleApps = apps
+    .filter(
+      (app) =>
+        teamPer.isOwner ||
+        String(app.tmbId) === String(tmbId) ||
+        readableAppIds?.has(String(app._id))
+    )
+    .map((app) => ({
       _id: String(app._id),
       name: app.name,
       avatar: app.avatar || '',
       intro: app.intro || '',
       tmbId: String(app.tmbId),
       type: app.type,
-      updateTime: app.updateTime,
-      permission: Per
-    };
-  });
-
-  const visibleApps = appsWithPer
-    .filter((app) => app.permission.hasReadPer)
-    .map((app) => {
-      const { permission, ...rest } = app;
-      void permission;
-      return rest;
-    });
-  const hiddenCount = appsWithPer.length - visibleApps.length;
+      updateTime: app.updateTime
+    }));
+  const hiddenCount = apps.length - visibleApps.length;
 
   const list = await addSourceMember({ list: visibleApps });
   return { list, hiddenCount };

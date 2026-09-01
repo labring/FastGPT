@@ -7,13 +7,16 @@ import {
   checkNeedsUserConfiguration,
   filterAgentGeneratedToolParams,
   filterToolConfiguredParams,
+  formatJsonEditorValue,
   getToolInputDisplayRenderTypeList,
   getToolInputManualRenderType,
   getToolConfigStatus,
   initAgentToolInputType,
   initToolInputTypeByDefaultMode,
   isAgentGeneratedToolInput,
+  migrateToolInputConfig,
   normalizeFlowNodeInputType,
+  parseJsonEditorValue,
   stripToolInputDefaultMode
 } from '@fastgpt/global/core/app/formEdit/utils';
 import {
@@ -44,6 +47,44 @@ const createMockToolTemplate = (inputs: FlowNodeInputItemType[] = []): FlowNodeT
     inputs,
     outputs: []
   }) as unknown as FlowNodeTemplateType;
+
+describe('parseJsonEditorValue', () => {
+  it.each([
+    ['[1,2,3]', [1, 2, 3]],
+    ['{"":""}', { '': '' }],
+    ['"text"', 'text'],
+    ['true', true],
+    ['null', null]
+  ])('parses %s into its native JSON value', (text, expected) => {
+    expect(parseJsonEditorValue(text)).toEqual({ success: true, value: expected });
+  });
+
+  it('keeps non-string values unchanged', () => {
+    const value = [1, 2, 3];
+
+    expect(parseJsonEditorValue(value)).toEqual({ success: true, value });
+  });
+
+  it('reports incomplete JSON without throwing', () => {
+    expect(parseJsonEditorValue('[1,2')).toEqual({
+      success: false,
+      value: '[1,2'
+    });
+  });
+});
+
+describe('formatJsonEditorValue', () => {
+  it.each([
+    [{ enabled: true }, '{\n  "enabled": true\n}'],
+    [[1, 2], '[\n  1,\n  2\n]'],
+    [null, 'null'],
+    [undefined, ''],
+    ['{"legacy":true}', '{"legacy":true}'],
+    ['"text"', '"text"']
+  ])('formats JSON editor value %#', (value, expected) => {
+    expect(formatJsonEditorValue(value)).toBe(expected);
+  });
+});
 
 describe('validateToolConfiguration', () => {
   describe('valid configurations', () => {
@@ -1695,5 +1736,92 @@ describe('agent generated tool input helpers', () => {
 
     expect(input.renderTypeList).toEqual([FlowNodeInputTypeEnum.custom]);
     expect(isAgentGeneratedToolInput(input)).toBe(false);
+  });
+});
+
+describe('migrateToolInputConfig', () => {
+  it('keeps selected type and value when the type remains allowed', () => {
+    const result = migrateToolInputConfig({
+      input: createMockInput({
+        label: 'New label',
+        description: 'New description',
+        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.textarea],
+        value: 'new value',
+        toolDescription: 'new tool description'
+      }),
+      sourceInput: createMockInput({
+        label: 'Saved label',
+        description: 'Saved description',
+        renderTypeList: [FlowNodeInputTypeEnum.input],
+        selectedType: FlowNodeInputTypeEnum.input,
+        value: 'saved value',
+        valueDesc: 'saved value description',
+        toolDescription: 'saved tool description'
+      })
+    });
+
+    expect(result).toMatchObject({
+      label: 'Saved label',
+      description: 'Saved description',
+      selectedType: FlowNodeInputTypeEnum.input,
+      value: 'saved value',
+      toolDescription: 'new tool description'
+    });
+    expect(result).not.toHaveProperty('valueDesc');
+  });
+
+  it('falls back to the new default type and clears value when the type is removed', () => {
+    const result = migrateToolInputConfig({
+      input: createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.textarea],
+        selectedType: FlowNodeInputTypeEnum.numberInput,
+        value: 10
+      }),
+      sourceInput: createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.input],
+        selectedType: FlowNodeInputTypeEnum.input,
+        value: 'saved value'
+      })
+    });
+
+    expect(result.selectedType).toBe(FlowNodeInputTypeEnum.numberInput);
+    expect(result.value).toBeUndefined();
+    expect(result.renderTypeList).toEqual([
+      FlowNodeInputTypeEnum.numberInput,
+      FlowNodeInputTypeEnum.textarea
+    ]);
+  });
+
+  it('filters single-select values to the new allowed options', () => {
+    const result = migrateToolInputConfig({
+      input: createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.select],
+        list: [{ value: 'new' }]
+      }),
+      sourceInput: createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.select],
+        selectedType: FlowNodeInputTypeEnum.select,
+        value: 'old'
+      })
+    });
+
+    expect(result.selectedType).toBe(FlowNodeInputTypeEnum.select);
+    expect(result.value).toBeUndefined();
+  });
+
+  it('filters multiple-select values while preserving compatible options', () => {
+    const result = migrateToolInputConfig({
+      input: createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.multipleSelect],
+        list: [{ value: 'new' }, { value: 'shared' }]
+      }),
+      sourceInput: createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.multipleSelect],
+        selectedType: FlowNodeInputTypeEnum.multipleSelect,
+        value: ['old', 'shared']
+      })
+    });
+
+    expect(result.value).toEqual(['shared']);
   });
 });

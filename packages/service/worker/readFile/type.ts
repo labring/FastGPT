@@ -39,6 +39,12 @@ export type ParsedPage = {
 export type ReadFileResponse = {
   rawText: string;
   formatText?: string;
+  sourceMetadata?: {
+    filename?: string;
+    contentType?: string;
+    extension?: string;
+    encoding?: string;
+  };
   tableInfo?: {
     sheetCount: number;
     mergedCellCount: number;

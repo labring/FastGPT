@@ -15,7 +15,7 @@ import { MongoAppVersion } from './version/schema';
 import { MongoChatInputGuide } from '../chat/inputGuide/schema';
 import { MongoChatFavouriteApp } from '../chat/favouriteApp/schema';
 import { MongoChatSetting } from '../chat/setting/schema';
-import { MongoResourcePermission } from '../../support/permission/schema';
+import { resourcePermissionRepo } from '../../support/permission/repository/resourcePermissionRepo';
 import {
   PerResourceTypeEnum,
   ReadPermissionVal
@@ -251,7 +251,7 @@ export const getAppBasicInfoByIds = async ({ teamId, ids }: { teamId: string; id
   return apps.map((item) => ({
     id: item._id,
     name: item.name,
-    avatar: item.avatar
+    avatar: item.avatar ?? ''
   }));
 };
 
@@ -303,7 +303,7 @@ export const deleteAppDataProcessor = async ({
     // 从快捷应用中移除对应应用
     await MongoChatSetting.updateMany({ teamId }, { $pull: { quickAppIds: { $in: [appId] } } });
     // 删除权限记录
-    await MongoResourcePermission.deleteMany({
+    await resourcePermissionRepo.deleteByResource({
       resourceType: PerResourceTypeEnum.app,
       teamId,
       resourceId: appId

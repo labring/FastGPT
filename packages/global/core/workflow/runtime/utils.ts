@@ -255,10 +255,7 @@ export const getWorkflowEntryNodeIds = (
     }
   }
 
-  const entryList = [
-    FlowNodeTypeEnum.workflowStart,
-    FlowNodeTypeEnum.pluginInput
-  ];
+  const entryList = [FlowNodeTypeEnum.workflowStart, FlowNodeTypeEnum.pluginInput];
   return nodes
     .filter(
       (node) =>

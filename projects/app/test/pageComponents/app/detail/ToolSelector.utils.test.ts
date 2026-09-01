@@ -51,14 +51,14 @@ describe('ToolSelector utils', () => {
 
       expect(result.inputs[0]).toMatchObject({
         key: 'query',
-        label: 'Query',
+        label: 'Old Query',
         value: 'manual value',
-        valueDesc: 'manual desc',
         renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.input],
         selectedType: FlowNodeInputTypeEnum.input,
         toolDescription: 'new description',
         required: true
       });
+      expect(result.inputs[0]).not.toHaveProperty('valueDesc');
       expect(result.inputs[0]).not.toHaveProperty('defaultToAgentGenerated');
       expect(result.inputs[1]).toMatchObject({
         key: 'limit',
@@ -88,6 +88,39 @@ describe('ToolSelector utils', () => {
         selectedType: FlowNodeInputTypeEnum.agentGenerated
       });
       expect(result.inputs[0]).not.toHaveProperty('defaultToAgentGenerated');
+    });
+
+    it('should use the new type and clear value when the saved type is unavailable', () => {
+      const result = inheritToolInputConfig({
+        tool: createTool([
+          {
+            key: 'query',
+            label: 'New Query',
+            renderTypeList: [FlowNodeInputTypeEnum.numberInput],
+            selectedType: FlowNodeInputTypeEnum.numberInput,
+            value: 10
+          }
+        ]),
+        sourceTool: createTool([
+          {
+            key: 'query',
+            label: 'Saved Query',
+            renderTypeList: [FlowNodeInputTypeEnum.input],
+            selectedType: FlowNodeInputTypeEnum.input,
+            value: 'saved value'
+          }
+        ])
+      });
+
+      expect(result.inputs[0]).toMatchObject({
+        label: 'Saved Query',
+        selectedType: FlowNodeInputTypeEnum.numberInput
+      });
+      expect(result.inputs[0].value).toBeUndefined();
+      expect(result.inputs[0].renderTypeList).toEqual([
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.numberInput
+      ]);
     });
 
     it('should use defaultToAgentGenerated instead of toolDescription for a new system tool', () => {

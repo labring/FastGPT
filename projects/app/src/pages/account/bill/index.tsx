@@ -24,6 +24,7 @@ const BillAndInvoice = () => {
   const { invoiceTab = InvoiceTabEnum.bill } = router.query as { invoiceTab: `${InvoiceTabEnum}` };
 
   const [isOpenInvoiceModal, setIsOpenInvoiceModal] = useState(false);
+  const [recordsRefreshKey, setRecordsRefreshKey] = useState(0);
 
   return (
     <AccountContainer>
@@ -99,8 +100,8 @@ const BillAndInvoice = () => {
             minH={0}
             overflow={['visible', 'hidden']}
           >
-            {invoiceTab === InvoiceTabEnum.bill && <BillTable />}
-            {invoiceTab === InvoiceTabEnum.invoice && <InvoiceTable />}
+            {invoiceTab === InvoiceTabEnum.bill && <BillTable key={recordsRefreshKey} />}
+            {invoiceTab === InvoiceTabEnum.invoice && <InvoiceTable key={recordsRefreshKey} />}
             {invoiceTab === InvoiceTabEnum.invoiceHeader && <InvoiceHeaderForm />}
           </Box>
         </Flex>
@@ -108,6 +109,10 @@ const BillAndInvoice = () => {
           <ApplyInvoiceModal
             onClose={() => {
               setIsOpenInvoiceModal(false);
+            }}
+            onSuccess={() => {
+              setIsOpenInvoiceModal(false);
+              setRecordsRefreshKey((key) => key + 1);
             }}
           />
         )}

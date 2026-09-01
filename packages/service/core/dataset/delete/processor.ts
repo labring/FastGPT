@@ -8,7 +8,7 @@ import { MongoDataset } from '../schema';
 import { removeImageByPath } from '../../../common/file/image/controller';
 import { MongoDatasetTraining } from '../training/schema';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { MongoResourcePermission } from '../../../support/permission/schema';
+import { resourcePermissionRepo } from '../../../support/permission/repository/resourcePermissionRepo';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
@@ -106,14 +106,12 @@ const deleteDatasets = async ({
     });
 
     // 权限与知识库本体同步删除，避免留下无法回收的孤立权限记录。
-    await MongoResourcePermission.deleteMany(
-      {
-        teamId,
-        resourceType: PerResourceTypeEnum.dataset,
-        resourceId: { $in: datasetIds }
-      },
-      { session }
-    );
+    await resourcePermissionRepo.deleteByResources({
+      teamId,
+      resourceType: PerResourceTypeEnum.dataset,
+      resourceIds: datasetIds,
+      session
+    });
 
     await MongoDataset.deleteMany(
       {

@@ -10,7 +10,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getLogger } from '@fastgpt/service/common/logger';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { resourcePermissionRepo } from '@fastgpt/service/support/permission/repository/resourcePermissionRepo';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { type NextApiRequest, type NextApiResponse } from 'next';
 const logger = getLogger(['initv4141']);
@@ -44,11 +44,11 @@ async function appSplitMigration(teamId: string) {
   }
 
   // get all clbs
-  const rps = await MongoResourcePermission.find({
+  const rps = await resourcePermissionRepo.findByResourceIds({
     teamId,
     resourceType: PerResourceTypeEnum.app,
-    resourceId: { $in: allFolders.map((app) => app._id) }
-  }).lean();
+    resourceIds: allFolders.map((app) => String(app._id))
+  });
 
   const appMap = new Map<string, { parentId?: ParentIdType; newId?: string }>(
     allApps.map((app) => [app._id, { parentId: app.parentId, newId: undefined }])
@@ -163,7 +163,7 @@ async function appSplitMigration(teamId: string) {
       }
 
       await MongoApp.bulkWrite(ops, { session });
-      await MongoResourcePermission.bulkWrite(rpOps, { session });
+      await resourcePermissionRepo.bulkWrite(rpOps, session);
     }
   });
 

@@ -7,6 +7,7 @@ import {
   useOutsideClick,
   MenuButton,
   type MenuItemProps,
+  type MenuListProps,
   type PlacementWithLogical,
   type AvatarProps,
   type BoxProps,
@@ -42,6 +43,7 @@ export type Props = {
   offset?: [number, number];
   Button: React.ReactNode;
   buttonBoxProps?: BoxProps;
+  menuListProps?: MenuListProps;
   trigger?: 'hover' | 'click';
   size?: MenuSizeType;
 
@@ -202,6 +204,7 @@ const MyMenu = ({
   offset,
   Button,
   buttonBoxProps,
+  menuListProps,
   menuList,
   placement = 'bottom-start'
 }: Props) => {
@@ -295,6 +298,7 @@ const MyMenu = ({
           p={'6px'}
           border={'1px solid #fff'}
           boxShadow={'3'}
+          {...menuListProps}
         >
           {menuList.map((item, i) => {
             return (

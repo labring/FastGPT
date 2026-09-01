@@ -5,7 +5,7 @@ import {
   getVectorDataByTime
 } from '@fastgpt/service/common/vectorDB/controller';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
+import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 const logger = getLogger(LogCategories.MODULE.DATASET.QUEUES);
@@ -65,10 +65,12 @@ export async function checkInvalidDatasetData(start: Date, end: Date) {
           });
 
           await Promise.all([
-            MongoDatasetDataText.deleteMany({
+            // 全文清理走统一抽象:milvus 全文在 modeldata_v2 向量行中,由 deleteDatasetDataVector
+            // 一并删除,这里为 no-op;其他向量库删除 Mongo 全文 token(互不干扰)
+            getFullTextStore().deleteByCollectionIds({
               teamId: item.teamId,
-              datasetId: item.datasetId,
-              collectionId: item.collectionId
+              datasetIds: [item.datasetId],
+              collectionIds: [item.collectionId]
             }),
             deleteDatasetDataVector({
               teamId: item.teamId,

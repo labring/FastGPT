@@ -104,7 +104,6 @@ const CreateS3MultipartUploadSessionSchema = z
     completedAt: z.never().optional(),
     abortedAt: z.never().optional()
   })
-  .strict()
   .superRefine(({ totalSize, partSize }, context) => {
     if (Math.ceil(totalSize / partSize) > MAX_MULTIPART_PART_COUNT) {
       context.addIssue({

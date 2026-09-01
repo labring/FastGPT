@@ -99,12 +99,14 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
     call,
     response,
     usages,
-    seconds
+    seconds,
+    errorMessage
   }: {
     call: ToolRunEndEvent['call'];
     response: string;
     usages?: ChatNodeUsageType[];
     seconds: number;
+    errorMessage?: string;
   }): ChatHistoryItemResType => {
     const toolInfo = getToolInfo(call.function.name);
     const parsedInput = parseJsonArgs(call.function.arguments);
@@ -118,7 +120,8 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
       runningTime: seconds,
       toolInput: parsedInput || undefined,
       toolRes: response,
-      totalPoints: getUsageTotalPoints(usages)
+      totalPoints: getUsageTotalPoints(usages),
+      ...(errorMessage ? { errorText: errorMessage } : {})
     };
   };
 
@@ -206,14 +209,16 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
 
   const createToolNodeResponse = (event: ToolRunEndEvent): ChatHistoryItemResType => {
     const pendingResult = pendingToolResultMap.get(event.call.id);
+    const usages = pendingResult?.usages || event.usages;
     const toolNodeResponse =
       (event.metadata as ChatHistoryItemResType | undefined) ||
       pendingResult?.nodeResponse ||
       createFallbackToolNodeResponse({
         call: event.call,
         response: event.response,
-        usages: pendingResult?.usages,
-        seconds: event.seconds
+        usages,
+        seconds: event.seconds,
+        errorMessage: event.errorMessage
       });
     const compressNodeResponse = event.toolResponseCompress
       ? createToolResponseCompressNodeResponse(event.toolResponseCompress)
@@ -223,7 +228,9 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
       nodeResponse: {
         ...toolNodeResponse,
         runningTime: toolNodeResponse.runningTime ?? event.seconds,
-        toolRes: toolNodeResponse.toolRes ?? event.response
+        toolRes: toolNodeResponse.toolRes ?? event.response,
+        totalPoints: toolNodeResponse.totalPoints ?? getUsageTotalPoints(usages),
+        ...(event.errorMessage ? { errorText: event.errorMessage } : {})
       },
       childrenResponses: compressNodeResponse ? [compressNodeResponse] : []
     });
@@ -232,12 +239,6 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
   const appendToolNodeResponse = (event: ToolRunEndEvent) => {
     if (appendedCallIds.has(event.call.id)) return;
     appendedCallIds.add(event.call.id);
-
-    // 工具错误只参与 agent-loop 控制，不落入 Agent 的可见运行详情。
-    if (event.errorMessage) {
-      pendingToolResultMap.delete(event.call.id);
-      return;
-    }
 
     append(createToolNodeResponse(event));
     pendingToolResultMap.delete(event.call.id);

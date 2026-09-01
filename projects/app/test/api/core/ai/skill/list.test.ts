@@ -13,6 +13,7 @@ import { onCreateApp } from '@/pages/api/core/app/create';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import {
+  OwnerRoleVal,
   PerResourceTypeEnum,
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
@@ -87,6 +88,22 @@ describe('POST /api/core/ai/skill/list', () => {
         tmbId: owner.tmbId
       }
     ]);
+    await MongoResourcePermission.create([
+      {
+        resourceType: PerResourceTypeEnum.agentSkill,
+        teamId: owner.teamId,
+        resourceId: ownedSkill._id,
+        tmbId: member.tmbId,
+        permission: OwnerRoleVal
+      },
+      {
+        resourceType: PerResourceTypeEnum.agentSkill,
+        teamId: owner.teamId,
+        resourceId: protectedSkill._id,
+        tmbId: owner.tmbId,
+        permission: OwnerRoleVal
+      }
+    ]);
 
     const res = await Call<ListSkillsQuery, Record<string, never>, ListSkillsResponse>(handler, {
       auth: member,
@@ -102,7 +119,7 @@ describe('POST /api/core/ai/skill/list', () => {
     expect(res.data.list.map((item) => String(item._id))).toEqual([String(ownedSkill._id)]);
   });
 
-  it('按 skillIds 查询时保留继承父目录读权限的 Skill', async () => {
+  it('按 skillIds 查询时读取子资源自身的完整 ACL', async () => {
     const owner = await getUser(`agent-skill-list-inherit-owner-${getNanoid(6)}`);
     const member = await getUser(`agent-skill-list-inherit-member-${getNanoid(6)}`, owner.teamId);
 
@@ -127,6 +144,20 @@ describe('POST /api/core/ai/skill/list', () => {
       resourceType: PerResourceTypeEnum.agentSkill,
       teamId: owner.teamId,
       resourceId: folder._id,
+      tmbId: member.tmbId,
+      permission: ReadPermissionVal
+    });
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.agentSkill,
+      teamId: owner.teamId,
+      resourceId: inheritedSkill._id,
+      tmbId: owner.tmbId,
+      permission: OwnerRoleVal
+    });
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.agentSkill,
+      teamId: owner.teamId,
+      resourceId: inheritedSkill._id,
       tmbId: member.tmbId,
       permission: ReadPermissionVal
     });

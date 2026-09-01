@@ -20,6 +20,7 @@ import { postDatasetSync } from '@/web/core/dataset/api';
 import dynamic from 'next/dynamic';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { type DatasetCollectionsListItemType } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { useRouter } from 'next/router';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { type WebsiteConfigFormType } from './WebsiteConfig';
@@ -109,6 +110,11 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   });
 
   const syncDataset = useCallback(async () => {
+    // 页面详情尚未加载或 query 缺失时，不发起一个必然失败的同步请求。
+    if (!datasetId || !datasetDetail._id || datasetId !== datasetDetail._id) {
+      return Promise.reject(CommonErrEnum.invalidParams);
+    }
+
     if (datasetDetail.type === DatasetTypeEnum.websiteDataset) {
       await checkTeamWebSyncLimit();
     }
@@ -117,7 +123,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     loadDatasetDetail(datasetId);
 
     getData(pageNum);
-  }, [datasetDetail.type, datasetId, getData, loadDatasetDetail, pageNum]);
+  }, [datasetDetail._id, datasetDetail.type, datasetId, getData, loadDatasetDetail, pageNum]);
   const { runAsync: onSyncDataset } = useRequest(syncDataset, {
     successToast: t('dataset:collection.sync.submit')
   });

@@ -363,6 +363,10 @@ describe('support user OpenAPI contracts', () => {
           tmbId: objectId,
           role: 'owner',
           status: 'active',
+          accountCancellation: {
+            status: 'pending',
+            scheduledCancelAt: '2026-09-01T00:00:00.000Z'
+          },
           notificationAccount: null,
           permission: {
             role: 1,
@@ -376,7 +380,15 @@ describe('support user OpenAPI contracts', () => {
           }
         }
       ])
-    ).toMatchObject([{ notificationAccount: null }]);
+    ).toMatchObject([
+      {
+        notificationAccount: null,
+        accountCancellation: {
+          status: 'pending',
+          scheduledCancelAt: '2026-09-01T00:00:00.000Z'
+        }
+      }
+    ]);
   });
 
   it('rejects missing team write parameters at the schema boundary', () => {

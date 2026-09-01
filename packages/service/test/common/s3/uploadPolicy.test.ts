@@ -70,4 +70,22 @@ describe('getUploadInspectBytes', () => {
       })
     ).toBe(64 * 1024);
   });
+
+  it.each(['document.doc', 'document.wps', 'sheet.xls', 'slides.ppt'])(
+    'uses a larger inspection window for legacy Office upload %s',
+    (filename) => {
+      expect(
+        getUploadInspectBytes({
+          hint: { filename }
+        })
+      ).toBe(64 * 1024);
+    }
+  );
+
+  it.each(['document.docm', 'sheet.xlsm', 'book.xlsb', 'slides.pptm', 'show.ppsx'])(
+    'uses a larger inspection window for OOXML variant %s',
+    (filename) => {
+      expect(getUploadInspectBytes({ hint: { filename } })).toBe(64 * 1024);
+    }
+  );
 });

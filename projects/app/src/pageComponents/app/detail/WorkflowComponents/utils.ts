@@ -1,6 +1,11 @@
 import { filterSelectableWorkflowNodeOutputs, getNodeAllSource } from '@/web/core/workflow/utils';
+import { workflowSystemVariables } from '@/web/core/app/utils';
 import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  VARIABLE_NODE_ID
+} from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
@@ -18,7 +23,6 @@ import {
 import { SelectedToolItemTypeSchema } from '@fastgpt/global/core/app/formEdit/type';
 import { type TFunction } from 'i18next';
 import { type Edge, type Node } from 'reactflow';
-import { createSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const normalizeStoreNodeInput = (input: StoreNodeItemType['inputs'][number], isTool: boolean) => {
   const inputWithSelectedType = normalizeFlowNodeInputType(input, { isTool });
@@ -139,13 +143,12 @@ export const getEditorVariables = ({
 }) => {
   const currentNode = getNodeById(nodeId);
   if (!currentNode) return [];
-  const safeT = createSafeTranslation(t);
 
   const nodeVariables = currentNode.inputs
     .filter((input) => input.canEdit)
     .map((item) => ({
       key: item.key,
-      label: item.label,
+      label: item.label ?? item.key,
       parent: {
         id: currentNode.nodeId,
         label: currentNode.name,
@@ -158,7 +161,7 @@ export const getEditorVariables = ({
     getNodeById,
     edges,
     chatConfig: appDetail.chatConfig,
-    t: safeT
+    t
   });
 
   const sourceNodeVariables = !sourceNodes
@@ -172,7 +175,11 @@ export const getEditorVariables = ({
             .filter((output) => !!output.label)
             .map((output) => {
               return {
-                label: safeT((output.label as any) || ''),
+                label:
+                  node.nodeId === VARIABLE_NODE_ID &&
+                  !workflowSystemVariables.some((item) => item.key === output.id)
+                    ? (output.label ?? output.id)
+                    : t((output.label as any) || ''),
                 key: output.id,
                 parent: {
                   id: node.nodeId,

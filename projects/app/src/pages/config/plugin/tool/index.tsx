@@ -187,6 +187,12 @@ const ToolProvider = () => {
                     {
                       label: t('app:install_from_file'),
                       onClick: onOpenImportModal
+                    },
+                    {
+                      label: t('app:toolkit_select_app'),
+                      onClick: () => {
+                        setEditingToolId('');
+                      }
                     }
                   ]
                 }

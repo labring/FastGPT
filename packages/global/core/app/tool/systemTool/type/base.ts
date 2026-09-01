@@ -30,7 +30,6 @@ export const SystemToolRuntimeSchema = z
     podTimeout: z.number().int().positive(),
     maxConcurrentRequestsPerPod: z.number().int().positive()
   })
-  .strict()
   .refine((config) => config.minPods <= config.maxPods, {
     message: 'minPods cannot be greater than maxPods',
     path: ['minPods']

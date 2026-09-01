@@ -4,7 +4,11 @@ import { AsyncLocalStorage } from 'async_hooks';
 import type { MCPClient } from '../../app/mcp';
 import { isAbsoluteHttpUrl } from './fileContext';
 import type { WorkflowFileContext, WorkflowFileInput, WorkflowFileRegistrar } from './fileContext';
-import { readExternalFileBuffer } from '../../../common/file/read/external';
+import {
+  createExternalHttpFileSource,
+  materializeFileSource
+} from '../../../common/file/read/source';
+import { getFileMaxSize } from '../../../common/file/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type {
@@ -241,12 +245,20 @@ export const runWithDerivedWorkflowFileContext = async <T>({
 export const readWorkflowFileBuffer = async ({ url }: { url: string }) => {
   const fileContext = getWorkflowFileContext();
   const ref = fileContext?.resolve(url);
-  if (fileContext && ref) return (await fileContext.read(ref)).buffer;
+  const sourceResult =
+    fileContext && ref
+      ? await fileContext.getSource(ref)
+      : {
+          source: createExternalHttpFileSource({
+            url,
+            maxSizeBytes: fileContext?.limits.maxBytesPerFile ?? getFileMaxSize(),
+            metadata: {}
+          })
+        };
 
   return (
-    await readExternalFileBuffer({
-      url,
-      maxFileSize: fileContext?.limits.maxBytesPerFile
+    await materializeFileSource(sourceResult.source, {
+      signal: new AbortController().signal
     })
   ).buffer;
 };

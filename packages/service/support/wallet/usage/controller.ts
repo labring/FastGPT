@@ -162,7 +162,8 @@ export const pushChatItemUsage = ({
       amount: item.totalPoints,
       model: item.model,
       inputTokens: item.inputTokens,
-      outputTokens: item.outputTokens
+      outputTokens: item.outputTokens,
+      pages: item.pages
     }))
   });
 };

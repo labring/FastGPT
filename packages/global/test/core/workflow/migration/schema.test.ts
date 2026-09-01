@@ -5,7 +5,11 @@ import {
   migrateWorkflowToCurrent
 } from '@fastgpt/global/core/workflow/migration';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { AppChatConfigTypeSchema } from '@fastgpt/global/core/app/type';
 
 const inputWithLegacyIndex = {
@@ -286,7 +290,7 @@ describe('workflow migration boundary', () => {
     expect(result.nodes[0].inputs[1]).not.toHaveProperty('isToolParam');
   });
 
-  it('rejects V1 nodes before strict V2 parsing', async () => {
+  it('rejects V1 nodes before V2 schema parsing', async () => {
     expect(() =>
       migrateWorkflowToCurrent({
         nodes: [
@@ -315,7 +319,7 @@ describe('workflow migration boundary', () => {
     ).toThrow();
   });
 
-  it('repairs deterministic V2 structural defects before strict parsing', async () => {
+  it('repairs deterministic V2 structural defects before schema parsing', async () => {
     const result = await migrateWorkflowToCurrent({
       nodes: [
         {
@@ -414,6 +418,69 @@ describe('workflow migration boundary', () => {
 
     expect(result.nodes[0]).not.toHaveProperty('id');
     expect(result.nodes[0].nodeId).toBe('node-1');
+  });
+
+  it('removes deprecated model input metadata and Mongo chat config ids', () => {
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'legacy-node',
+          flowNodeType: 'removedNodeType',
+          name: 'Legacy node',
+          inputs: [
+            {
+              key: 'model',
+              label: 'Model',
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              llmModelType: 'chat'
+            }
+          ],
+          outputs: []
+        }
+      ],
+      chatConfig: {
+        _id: 'legacy-mongo-subdocument-id'
+      }
+    });
+
+    expect(result.nodes[0].flowNodeType).toBe('emptyNode');
+    expect(result.nodes[0].inputs[0]).not.toHaveProperty('llmModelType');
+    expect(result.chatConfig).not.toHaveProperty('_id');
+  });
+
+  it('maps empty variable value types and falls back to any for unknown variable types', () => {
+    const result = migrateWorkflowToCurrent({
+      nodes: [],
+      chatConfig: {
+        variables: [
+          {
+            key: 'query',
+            label: 'Query',
+            description: '',
+            type: VariableInputEnum.textarea,
+            valueType: null
+          },
+          {
+            key: 'count',
+            label: 'Count',
+            description: '',
+            type: VariableInputEnum.numberInput
+          },
+          {
+            key: 'unknown',
+            label: 'Unknown',
+            description: '',
+            type: 'removed-input-type'
+          }
+        ]
+      }
+    });
+
+    expect(result.chatConfig.variables).toMatchObject([
+      { type: VariableInputEnum.textarea, valueType: WorkflowIOValueTypeEnum.string },
+      { type: VariableInputEnum.numberInput, valueType: WorkflowIOValueTypeEnum.number },
+      { type: VariableInputEnum.input, valueType: WorkflowIOValueTypeEnum.any }
+    ]);
   });
 
   it('adds an empty config to available Agent tools missing config', async () => {
@@ -770,7 +837,7 @@ describe('workflow migration boundary', () => {
     expect(input.valueDesc).toBe('');
   });
 
-  it('drops historical null input fields before strict parsing', async () => {
+  it('drops historical null input fields before schema parsing', async () => {
     const result = await migrateWorkflowToCurrent({
       nodes: [
         {

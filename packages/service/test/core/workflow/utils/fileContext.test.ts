@@ -338,7 +338,7 @@ describe('prepareWorkflowFileContext', () => {
       type: 'externalHttp',
       url: childExternalUrl
     });
-    await expect(childContext.read(fileContext.resolve(secondUrl)!)).rejects.toThrow(
+    await expect(childContext.getSource(fileContext.resolve(secondUrl)!)).rejects.toThrow(
       'not selected'
     );
     expect(getPreviewUrl).toHaveBeenCalledTimes(2);
@@ -585,7 +585,7 @@ describe('prepareWorkflowFileContext', () => {
     ).rejects.toThrow('Invalid workflow file URL');
   });
 
-  it('reads private objects through S3 with metadata and stream size limits', async () => {
+  it('returns a lazy trusted S3 source without repeating the business size limit', async () => {
     const getObjectMetadata = vi.fn().mockResolvedValue({
       contentLength: 5,
       contentType: 'application/pdf',
@@ -610,20 +610,32 @@ describe('prepareWorkflowFileContext', () => {
     });
     const ref = fileContext.resolve('https://files.example.com/signed')!;
 
-    await expect(fileContext.read(ref)).resolves.toEqual({
-      buffer: Buffer.from('hello'),
-      filename: 'report.pdf',
-      contentType: 'application/pdf',
+    const sourceResult = await fileContext.getSource(ref);
+    expect(sourceResult).toMatchObject({
+      source: {
+        kind: 's3',
+        sizeBytes: 5,
+        metadata: { filename: 'report.pdf', contentType: 'application/pdf' }
+      },
       sourceKind: 'internal',
       imageParsePrefix: 'chat/app/app-1/user-1/chat-1/report-parsed'
     });
-    expect(downloadObject).toHaveBeenCalledWith({ key: privateKey });
+    expect(downloadObject).not.toHaveBeenCalled();
+    await expect(
+      sourceResult.source.materialize({ signal: new AbortController().signal })
+    ).resolves.toMatchObject({ buffer: Buffer.from('hello') });
+    expect(downloadObject).toHaveBeenCalledWith({
+      key: privateKey,
+      abortSignal: expect.any(AbortSignal)
+    });
 
     getObjectMetadata.mockResolvedValueOnce({ contentLength: 6, metadata: {} });
-    await expect(fileContext.read(ref)).rejects.toThrow('maximum allowed size');
+    await expect(fileContext.getSource(ref)).resolves.toMatchObject({
+      source: { kind: 's3', sizeBytes: 6 }
+    });
   });
 
-  it('reads external files through the SSRF axios and enforces streamed size', async () => {
+  it('returns a lazy External source and enforces the streamed business size when materialized', async () => {
     const { fileContext } = await prepareWorkflowFileContext({
       query: [createFile({ key: undefined, url: 'https://cdn.example.com/report.pdf' })],
       histories: [],
@@ -642,11 +654,21 @@ describe('prepareWorkflowFileContext', () => {
       }
     });
 
-    await expect(fileContext.read(ref)).resolves.toEqual({
-      buffer: Buffer.from('hello'),
-      filename: 'external.pdf',
-      contentType: 'application/pdf',
+    const sourceResult = await fileContext.getSource(ref);
+    expect(sourceResult).toMatchObject({
+      source: {
+        kind: 'externalHttp',
+        maxSizeBytes: 5,
+        metadata: { filename: 'report.pdf' }
+      },
       sourceKind: 'external'
+    });
+    expect(axiosGetMock).not.toHaveBeenCalled();
+    await expect(
+      sourceResult.source.materialize({ signal: new AbortController().signal })
+    ).resolves.toEqual({
+      buffer: Buffer.from('hello'),
+      metadata: { filename: 'report.pdf', contentType: 'application/pdf' }
     });
     expect(axiosGetMock).toHaveBeenCalledWith(
       'https://cdn.example.com/report.pdf',
@@ -659,14 +681,18 @@ describe('prepareWorkflowFileContext', () => {
       data: oversizedStream,
       headers: { 'content-length': '6' }
     });
-    await expect(fileContext.read(ref)).rejects.toThrow('maximum allowed size');
+    await expect(
+      sourceResult.source.materialize({ signal: new AbortController().signal })
+    ).rejects.toThrow('maximum allowed size');
     expect(destroySpy).toHaveBeenCalled();
 
     axiosGetMock.mockResolvedValueOnce({
       data: Readable.from([Buffer.from('123'), Buffer.from('456')]),
       headers: {}
     });
-    await expect(fileContext.read(ref)).rejects.toThrow('maximum allowed size');
+    await expect(
+      sourceResult.source.materialize({ signal: new AbortController().signal })
+    ).rejects.toThrow('maximum allowed size');
   });
 
   it('rejects refs that were not created by the current context', async () => {
@@ -679,7 +705,7 @@ describe('prepareWorkflowFileContext', () => {
     });
 
     await expect(
-      fileContext.read({
+      fileContext.getSource({
         id: 'forged',
         name: 'forged.pdf',
         type: ChatFileTypeEnum.file,
@@ -713,7 +739,18 @@ describe('prepareWorkflowFileContext', () => {
   });
 
   it('uses the same workflow size limit for registered and unregistered URLs', async () => {
-    const contextRead = vi.fn().mockResolvedValue({ buffer: Buffer.from('internal') });
+    const contextGetSource = vi.fn().mockResolvedValue({
+      source: {
+        kind: 's3',
+        sizeBytes: 8,
+        metadata: { filename: 'internal.txt' },
+        materialize: vi.fn().mockResolvedValue({
+          buffer: Buffer.from('internal'),
+          metadata: { filename: 'internal.txt' }
+        })
+      },
+      sourceKind: 'internal'
+    });
     axiosGetMock.mockResolvedValueOnce({
       data: Readable.from([Buffer.from('outside')]),
       headers: {}
@@ -723,7 +760,7 @@ describe('prepareWorkflowFileContext', () => {
       resolve: vi.fn((url: string) =>
         url === 'https://files.example.com/registered' ? ({ id: 'registered' } as any) : undefined
       ),
-      read: contextRead
+      getSource: contextGetSource
     } as any;
 
     await runWithContext(
@@ -745,7 +782,7 @@ describe('prepareWorkflowFileContext', () => {
       }
     );
 
-    expect(contextRead).toHaveBeenCalledTimes(1);
+    expect(contextGetSource).toHaveBeenCalledTimes(1);
     expect(axiosGetMock).toHaveBeenCalledWith(
       'https://node.example.com/generated.pdf',
       expect.objectContaining({ maxContentLength: 7, responseType: 'stream' })

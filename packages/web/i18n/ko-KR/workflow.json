@@ -26,6 +26,7 @@
   "auto_align": "자동 정렬",
   "can_not_loop": "이 노드는 반복 실행할 수 없습니다.",
   "can_not_parallel": "이 노드는 병렬 실행 노드 내부에서 사용할 수 없습니다",
+  "can_not_add_inside_container": "이 노드는 현재 컨테이너 내부에 추가할 수 없습니다",
   "choose_another_application_to_call": "호출할 다른 앱 선택",
   "classification_result": "분류 결과",
   "click_to_change_reference": "클릭하여 입력 모드 전환",

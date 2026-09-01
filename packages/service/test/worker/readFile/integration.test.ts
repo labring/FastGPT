@@ -3,6 +3,7 @@ import JSZip from 'jszip';
 import path from 'path';
 import { existsSync, readFileSync } from 'fs';
 import XLSX from 'xlsx';
+import { anydocTestExtensions, createAnydocFixture } from './anydocFixtures';
 
 const { mockUploadImage2S3Bucket } = vi.hoisted(() => ({
   mockUploadImage2S3Bucket: vi.fn()
@@ -37,9 +38,15 @@ const shouldRunPdfStress =
   process.env.RUN_READ_FILE_WORKER_PDF_STRESS === 'true' &&
   Boolean(pdfFixturePath && existsSync(pdfFixturePath));
 const itIfPdfStress = shouldRunPdfStress ? it : it.skip;
+const docStressFixturePath = process.env.RUN_READ_FILE_WORKER_DOC_STRESS_PATH;
+const shouldRunDocStress =
+  process.env.RUN_READ_FILE_WORKER_DOC_STRESS === 'true' &&
+  Boolean(docStressFixturePath && existsSync(docStressFixturePath));
+const itIfDocStress = shouldRunDocStress ? it : it.skip;
 
 const { WorkerNameEnum } = await import('@fastgpt/service/worker/utils');
-const { readRawContentFromBuffer } = await import('@fastgpt/service/worker/function');
+const { readRawContentFromBuffer, readRawContentFromSource } =
+  await import('@fastgpt/service/worker/function');
 
 const describeIfEnabled = shouldRunIntegration ? describe : describe.skip;
 
@@ -153,6 +160,7 @@ const destroyReadFilePool = async () => {
 
 describeIfEnabled('readFile worker (real spawn integration)', () => {
   let cwdSpy: ReturnType<typeof vi.spyOn>;
+  let availableMemorySpy: ReturnType<typeof vi.spyOn>;
 
   if (process.env.RUN_READ_FILE_WORKER_INTEGRATION === 'true' && !existsSync(REAL_WORKER_PATH)) {
     console.warn(
@@ -162,6 +170,10 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
 
   beforeAll(() => {
     cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(APP_PROJECT_DIR);
+    // 该文件验证真实 worker 产物与解析链路；内存准入由 fileParseResource/utils 单测覆盖。
+    // CI/本地全量测试刚结束时系统可用内存可能短暂低于安全水位，避免解析集成用例排队 30 分钟。
+    const availableMemoryBytes = Math.max(process.availableMemory(), 2 * 1024 * 1024 * 1024);
+    availableMemorySpy = vi.spyOn(process, 'availableMemory').mockReturnValue(availableMemoryBytes);
   });
 
   afterEach(async () => {
@@ -169,6 +181,7 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
   });
 
   afterAll(() => {
+    availableMemorySpy.mockRestore();
     cwdSpy.mockRestore();
   });
 
@@ -177,6 +190,76 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
     const result = await parseText(text);
 
     expect(result.rawText).toBe(text);
+  });
+
+  it('获得执行额度后物化可信 S3 FileSource 并传给真实 worker', async () => {
+    const text = 'trusted s3 source';
+    const materialize = vi.fn(async () => ({
+      buffer: Buffer.from(text),
+      metadata: {
+        filename: 'trusted.txt',
+        extension: 'txt',
+        encoding: 'utf-8',
+        contentType: 'text/plain'
+      }
+    }));
+
+    const result = await readRawContentFromSource({
+      source: {
+        kind: 's3',
+        sizeBytes: Buffer.byteLength(text),
+        metadata: {
+          filename: 'trusted.txt',
+          extension: 'txt',
+          encoding: 'utf-8',
+          contentType: 'text/plain'
+        },
+        materialize
+      }
+    });
+
+    expect(materialize).toHaveBeenCalledOnce();
+    expect(result.rawText).toBe(text);
+    expect(result.sourceMetadata).toEqual(
+      expect.objectContaining({ filename: 'trusted.txt', extension: 'txt' })
+    );
+  });
+
+  it('流式物化不可信 External HTTP FileSource，更新读取进度并传播最终元数据', async () => {
+    const text = 'external http source';
+    const progress: number[] = [];
+    const materialize = vi.fn(async ({ onReadBytes }: any) => {
+      onReadBytes?.(8);
+      onReadBytes?.(Buffer.byteLength(text));
+      progress.push(8, Buffer.byteLength(text));
+      return {
+        buffer: Buffer.from(text),
+        metadata: {
+          filename: 'response-name.txt',
+          contentType: 'text/plain; charset=utf-8'
+        }
+      };
+    });
+
+    const result = await readRawContentFromSource({
+      source: {
+        kind: 'externalHttp',
+        maxSizeBytes: 1024,
+        metadata: {},
+        materialize
+      }
+    });
+
+    expect(materialize).toHaveBeenCalledOnce();
+    expect(progress).toEqual([8, Buffer.byteLength(text)]);
+    expect(result.rawText).toBe(text);
+    expect(result.sourceMetadata).toEqual(
+      expect.objectContaining({
+        filename: 'response-name.txt',
+        extension: 'txt',
+        encoding: 'utf-8'
+      })
+    );
   });
 
   it('解析 md 文本', async () => {
@@ -232,6 +315,31 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
     expect(result.rawText).toContain('Shanghai');
   });
 
+  it.each(anydocTestExtensions)('通过 anydoc 解析 .%s 真实文件', async (extension) => {
+    const { buffer, expected } = await createAnydocFixture(extension);
+    const result = await readRawContentFromBuffer({
+      extension,
+      encoding: 'utf-8',
+      buffer
+    });
+
+    expect(result.rawText).toContain(expected);
+  });
+
+  it('通过 anydoc 解析 WPS Office 生成的 OOXML 兼容 .wps 文件', async () => {
+    const buffer = Buffer.from(
+      readFileSync(path.join(__dirname, 'fixtures/wps-writer.base64'), 'utf8').trim(),
+      'base64'
+    );
+    const result = await readRawContentFromBuffer({
+      extension: 'wps',
+      encoding: 'utf-8',
+      buffer
+    });
+
+    expect(result.rawText).toContain('FastGPT WPS Writer parser fixture');
+  });
+
   it('解析 xlsx 时应转义 Markdown 表格分隔符', async () => {
     const worksheet = XLSX.utils.aoa_to_sheet([
       ['name|alias', 'fullwidth｜pipe'],
@@ -277,6 +385,32 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
     );
   });
 
+  it('通过 anydoc 解析带图片 docm 时并上传内嵌图片', async () => {
+    mockUploadImage2S3Bucket.mockResolvedValueOnce('dataset/test/docm-parsed/image.png');
+
+    const result = await readRawContentFromBuffer({
+      extension: 'docm',
+      encoding: 'utf-8',
+      buffer: await createDocxWithImage(),
+      imageKeyOptions: {
+        prefix: 'dataset/test/docm-parsed'
+      }
+    });
+
+    expect(result.rawText).toContain('hello docx image');
+    expect(result.rawText).toContain('dataset/test/docm-parsed/image.png');
+    expect(result.rawText).not.toContain('asset:');
+    expect(mockUploadImage2S3Bucket).toHaveBeenCalledWith(
+      'private',
+      expect.objectContaining({
+        buffer: expect.any(Buffer),
+        uploadKey: expect.stringMatching(/^dataset\/test\/docm-parsed\/.+\.png$/),
+        mimetype: 'image/png',
+        filename: 'image1.png'
+      })
+    );
+  });
+
   itIfPdfFixture(
     '解析 pdf（真实 worker + LiteParse）',
     async () => {
@@ -293,7 +427,7 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
   );
 
   itIfPdfFixture(
-    '并发 pdf 直接交给真实 worker pool，按 PARSE_FILE_WORKERS 控制并发',
+    '并发 pdf 直接交给真实资源感知 worker pool',
     async () => {
       const concurrency = 4;
       const fileBuffer = readFileSync(pdfFixturePath!);
@@ -379,6 +513,47 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
       });
     },
     120000
+  );
+
+  itIfDocStress(
+    'doc worker 压测：并发解析大型复杂文档并释放全部资源预留',
+    async () => {
+      const concurrency = getPositiveIntegerEnv('RUN_READ_FILE_WORKER_DOC_STRESS_CONCURRENCY', 3);
+      const fileBuffer = readFileSync(docStressFixturePath!);
+      const toMiB = (bytes: number) => Number((bytes / 1024 / 1024).toFixed(1));
+      const memoryBefore = process.memoryUsage();
+      const startedAt = Date.now();
+
+      const results = await Promise.all(
+        Array.from({ length: concurrency }, () =>
+          readRawContentFromBuffer({
+            extension: 'doc',
+            encoding: 'utf-8',
+            buffer: Buffer.from(fileBuffer)
+          })
+        )
+      );
+
+      const pool = getReadFilePool();
+      const memoryAfter = process.memoryUsage();
+      results.forEach((result) => {
+        expect(result.rawText).toContain('FastGPT AnyDoc performance fixture');
+      });
+      expect(pool.reservedResourceBytes).toBe(0);
+      expect(pool.waitQueue).toHaveLength(0);
+      expect(pool.workerQueue.length).toBeLessThanOrEqual(pool.maxReservedThreads);
+
+      console.info('doc worker stress summary', {
+        concurrency,
+        fileSizeMiB: toMiB(fileBuffer.length),
+        wallMs: Date.now() - startedAt,
+        workerCount: pool.workerQueue.length,
+        baselineRssMiB: toMiB(memoryBefore.rss),
+        finalRssMiB: toMiB(memoryAfter.rss),
+        outputChars: results[0]?.rawText.length
+      });
+    },
+    180000
   );
 
   it('未知扩展名应被 reject', async () => {

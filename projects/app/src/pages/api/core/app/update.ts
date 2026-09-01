@@ -170,17 +170,34 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
   if (isMove) {
     await mongoSessionRun(async (session) => {
       // Inherit folder: Sync children permission and it's clbs
-      const parentClbs = await getResourceOwnedClbs({
-        teamId: app.teamId,
-        resourceId: parentId,
-        resourceType: PerResourceTypeEnum.app,
-        session
-      });
+      const [parentClbs, oldParentClbs, oldResourceClbs] = await Promise.all([
+        getResourceOwnedClbs({
+          teamId: app.teamId,
+          resourceId: parentId,
+          resourceType: PerResourceTypeEnum.app,
+          session
+        }),
+        app.parentId
+          ? getResourceOwnedClbs({
+              teamId: app.teamId,
+              resourceId: app.parentId,
+              resourceType: PerResourceTypeEnum.app,
+              session
+            })
+          : Promise.resolve([]),
+        getResourceOwnedClbs({
+          teamId: app.teamId,
+          resourceId: app._id,
+          resourceType: PerResourceTypeEnum.app,
+          session
+        })
+      ]);
       // sync self
-      await syncCollaborators({
+      const newResourceClbs = await syncCollaborators({
         resourceId: app._id,
         resourceType: PerResourceTypeEnum.app,
         collaborators: parentClbs,
+        oldParentCollaborators: oldParentClbs,
         session,
         teamId: app.teamId
       });
@@ -190,14 +207,15 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
         resourceType: PerResourceTypeEnum.app,
         resourceModel: MongoApp,
         folderTypeList: AppFolderTypeList,
-        collaborators: parentClbs,
+        oldParentCollaborators: oldResourceClbs,
+        newParentCollaborators: newResourceClbs,
         session
       });
       logAppMove({ tmbId, teamId, app, targetName });
       return UpdateAppResponseSchema.parse(await onUpdate(session));
     });
   } else {
-    logAppUpdate({ tmbId, teamId, app, name, intro });
+    logAppUpdate({ tmbId, teamId, app, name, intro: intro ?? undefined });
 
     return UpdateAppResponseSchema.parse(await onUpdate());
   }

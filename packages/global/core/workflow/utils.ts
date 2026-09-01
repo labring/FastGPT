@@ -20,18 +20,9 @@ import {
   type ReferenceItemValueType
 } from './type/io';
 import type { NodeToolConfigType, StoreNodeItemType } from './type/node';
-import type {
-  VariableItemType,
-  AppTTSConfigType,
-  AppWhisperConfigType,
-  AppScheduledTriggerConfigType,
-  ChatInputGuideConfigType,
-  AppChatConfigType,
-  AppAutoExecuteConfigType,
-  AppQGConfigType,
-  AppSchemaType,
-  AppWelcomeConfigType
-} from '../app/type';
+import type { AppChatConfigType, AppSchemaType, AppWelcomeConfigType } from '../app/type';
+import type { VariableItemType } from '../app/variable/type';
+import { normalizeAndParseVariableList } from '../app/variable/utils';
 import { type EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
 import {
   defaultAutoExecuteConfig,
@@ -109,7 +100,11 @@ export const isAppSandboxEnabledInNodes = (nodes: StoreNodeItemType[]) =>
       )
   );
 
-// Get app chat config from canonical chatConfig and per-chat overrides.
+/**
+ * 合并应用配置与会话快照，并返回运行时对话配置。
+ *
+ * 会话变量会在这里统一补齐 valueType 并通过变量 schema 校验；读取历史会话和保存新快照共用该边界。
+ */
 export const getAppChatConfig = ({
   chatConfig,
   storeVariables,
@@ -134,7 +129,7 @@ export const getAppChatConfig = ({
     chatInputGuide: defaultChatInputGuideConfig,
     autoExecute: defaultAutoExecuteConfig,
     ...chatConfig,
-    variables: storeVariables ?? chatConfig?.variables ?? [],
+    variables: normalizeAndParseVariableList(storeVariables ?? chatConfig?.variables ?? []),
     welcomeConfig,
     welcomeText: welcomeConfig.welcomeText
   };
@@ -380,23 +375,9 @@ export const appData2FlowNodeIO = ({
       chatConfig?.fileSelectConfig?.canSelectVideo ||
       chatConfig?.fileSelectConfig?.canSelectAudio ||
       chatConfig?.fileSelectConfig?.canSelectCustomFileExtension
-        ? [
-            {
-              ...Input_Template_File_Link,
-              renderTypeList: [
-                ...Input_Template_File_Link.renderTypeList,
-                FlowNodeInputTypeEnum.agentGenerated
-              ],
-              selectedType: FlowNodeInputTypeEnum.agentGenerated,
-              defaultToAgentGenerated: true
-            }
-          ]
+        ? [Input_Template_File_Link]
         : []),
-      {
-        ...Input_Template_UserChatInput,
-        // 普通工作流作为工具时，用户问题应默认由调用它的 Agent 生成。
-        defaultToAgentGenerated: true
-      },
+      Input_Template_UserChatInput,
       ...variableInput
     ],
     outputs: [

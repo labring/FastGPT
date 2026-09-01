@@ -6,7 +6,7 @@ import type { AgentSkillSchemaType } from '@fastgpt/global/core/ai/skill/type';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { removeImageByPath } from '../../../../common/file/image/controller';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { MongoResourcePermission } from '../../../../support/permission/schema';
+import { resourcePermissionRepo } from '../../../../support/permission/repository/resourcePermissionRepo';
 import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 import { deleteSkillAllPackages } from '../package';
 import { MongoAgentSkills } from '../model/schema';
@@ -112,14 +112,12 @@ export const agentSkillDeleteProcessor: Processor<AgentSkillDeleteJobData> = asy
     await mongoSessionRun(async (session) => {
       await MongoAgentSkillsVersion.deleteMany({ skillId: { $in: skillIds } }, { session });
 
-      await MongoResourcePermission.deleteMany(
-        {
-          teamId,
-          resourceType: PerResourceTypeEnum.agentSkill,
-          resourceId: { $in: skillIds }
-        },
-        { session }
-      );
+      await resourcePermissionRepo.deleteByResources({
+        teamId,
+        resourceType: PerResourceTypeEnum.agentSkill,
+        resourceIds: skillIds,
+        session
+      });
 
       await MongoAgentSkills.deleteMany(
         {

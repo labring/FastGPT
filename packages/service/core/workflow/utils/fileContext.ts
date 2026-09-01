@@ -1,4 +1,3 @@
-import { parseContentDispositionFilename } from '@fastgpt/global/common/file/tools';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -10,20 +9,20 @@ import type {
 } from '@fastgpt/global/core/chat/type';
 import path from 'node:path';
 import { getFileMaxSize } from '../../../common/file/utils';
-import { readExternalFileBuffer } from '../../../common/file/read/external';
+import type { FileSource } from '../../../common/file/read/source';
+import { createExternalHttpFileSource, createS3FileSource } from '../../../common/file/read/source';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { S3Buckets } from '../../../common/s3/config/constants';
 import { createChatFilePreviewUrlGetter } from '../../../common/s3/sources/chat';
 import { isAuthorizedChatFileS3Key } from '../../../common/s3/sources/chat/key';
 import type { ChatS3SourceType } from '../../../common/s3/sources/chat/type';
-import { readStreamToBuffer } from '../../../common/s3/utils';
 import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator';
 import { normalizeChatFileStoreValue, type RawChatFileValue } from '../../chat/fileStoreValue';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 const WORKFLOW_FILE_URL_EXPIRED_HOURS = 2;
 
-export type WorkflowFileSource =
+export type WorkflowFileLocator =
   | {
       type: 'chatObject';
       objectKey: string;
@@ -37,7 +36,7 @@ export type WorkflowFileRef = {
   name: string;
   type: ChatFileTypeEnum;
   modelUrl: string;
-  source: WorkflowFileSource;
+  source: WorkflowFileLocator;
 };
 
 export type WorkflowFileLimits = {
@@ -45,10 +44,8 @@ export type WorkflowFileLimits = {
   maxBytesPerFile: number;
 };
 
-export type WorkflowFileReadResult = {
-  buffer: Buffer;
-  filename: string;
-  contentType?: string;
+export type WorkflowFileSourceResult = {
+  source: FileSource;
   sourceKind: 'internal' | 'external';
   imageParsePrefix?: string;
 };
@@ -59,7 +56,7 @@ export type WorkflowFileContext = {
   resolveChatFile: (url: string) => UserChatItemFileItemType | undefined;
   getIdentity: (url: string) => string | undefined;
   resolveInputFile: (file: RawChatFileValue) => WorkflowFileRef | undefined;
-  read: (target: string | WorkflowFileRef) => Promise<WorkflowFileReadResult>;
+  getSource: (target: string | WorkflowFileRef) => Promise<WorkflowFileSourceResult>;
   derive: (files: WorkflowFileInput[]) => WorkflowFileContext;
 };
 
@@ -141,12 +138,6 @@ const decodeMetadataFilename = (value?: string) => {
 const getChatImageParsePrefix = (objectKey: string) => {
   const extension = path.extname(objectKey);
   return `${objectKey.slice(0, extension ? -extension.length : undefined)}-parsed`;
-};
-
-const assertFileSize = ({ size, maxBytes }: { size: number | undefined; maxBytes: number }) => {
-  if (size !== undefined && Number.isFinite(size) && size > maxBytes) {
-    throw new UserError(`File exceeds maximum allowed size (${maxBytes} bytes)`);
-  }
 };
 
 /**
@@ -279,27 +270,25 @@ const createDerivedWorkflowFileContext = ({
       const ref = resolve(url);
       return ref ? refIdentity.get(ref) : undefined;
     },
-    read: async (target) => {
+    getSource: async (target) => {
       const ref = typeof target === 'string' ? resolve(target) : target;
       if (!ref || !refIdentity.has(ref)) {
         throw new UserError('Workflow file is not selected for the child context');
       }
-      if (inheritedRefs.has(ref)) return parent.read(ref);
+      if (inheritedRefs.has(ref)) return parent.getSource(ref);
       if (ref.source.type !== 'externalHttp') {
         throw new UserError('Child workflow private file must be inherited from parent context');
       }
 
-      const { buffer, contentType, contentDisposition } = await readExternalFileBuffer({
-        url: ref.source.url,
-        maxFileSize: parent.limits.maxBytesPerFile
-      });
       return {
-        buffer,
-        filename:
-          parseContentDispositionFilename(contentDisposition || '') ||
-          ref.name ||
-          getFileNameFromUrl(ref.source.url),
-        contentType,
+        source: createExternalHttpFileSource({
+          url: ref.source.url,
+          maxSizeBytes: parent.limits.maxBytesPerFile,
+          trustMetadataFilename: true,
+          metadata: {
+            filename: ref.name || getFileNameFromUrl(ref.source.url)
+          }
+        }),
         sourceKind: 'external'
       };
     },
@@ -480,7 +469,7 @@ export const prepareWorkflowFileContext = async ({
     return typeof file.url === 'string' ? resolve(file.url) : undefined;
   };
 
-  const read = async (target: string | WorkflowFileRef): Promise<WorkflowFileReadResult> => {
+  const getSource = async (target: string | WorkflowFileRef): Promise<WorkflowFileSourceResult> => {
     const ref = typeof target === 'string' ? resolve(target) : target;
     if (!ref || !refIdentity.has(ref)) {
       throw new UserError('Workflow file is not registered in the current context');
@@ -489,41 +478,48 @@ export const prepareWorkflowFileContext = async ({
     if (ref.source.type === 'chatObject') {
       const bucket = global.s3BucketMap?.[S3Buckets.private];
       if (!bucket) throw new Error('Private S3 bucket is not initialized');
+      const objectKey = ref.source.objectKey;
 
-      const metadata = await bucket.client.getObjectMetadata({ key: ref.source.objectKey });
-      assertFileSize({ size: metadata?.contentLength, maxBytes: limits.maxBytesPerFile });
-
-      const response = await bucket.client.downloadObject({ key: ref.source.objectKey });
-      if (!response.body) throw new Error('Workflow file object has no body');
+      const metadata = await bucket.client.getObjectMetadata({ key: objectKey });
+      const sizeBytes = metadata?.contentLength;
+      if (typeof sizeBytes !== 'number' || !Number.isSafeInteger(sizeBytes) || sizeBytes < 0) {
+        throw new Error('Workflow file object has invalid metadata');
+      }
+      const filename =
+        decodeMetadataFilename(metadata.metadata?.originFilename) ||
+        ref.name ||
+        path.basename(objectKey);
 
       return {
-        buffer: await readStreamToBuffer({
-          stream: response.body,
-          maxBytes: limits.maxBytesPerFile,
-          exceededMessage: `File exceeds maximum allowed size (${limits.maxBytesPerFile} bytes)`
+        source: createS3FileSource({
+          sizeBytes,
+          metadata: {
+            filename,
+            contentType: metadata.contentType
+          },
+          getStream: async (signal) => {
+            const response = await bucket.client.downloadObject({
+              key: objectKey,
+              abortSignal: signal
+            });
+            if (!response.body) throw new Error('Workflow file object has no body');
+            return response.body;
+          }
         }),
-        filename:
-          decodeMetadataFilename(metadata?.metadata?.originFilename) ||
-          ref.name ||
-          path.basename(ref.source.objectKey),
-        contentType: metadata?.contentType,
         sourceKind: 'internal',
-        imageParsePrefix: getChatImageParsePrefix(ref.source.objectKey)
+        imageParsePrefix: getChatImageParsePrefix(objectKey)
       };
     }
 
-    const { buffer, contentType, contentDisposition } = await readExternalFileBuffer({
-      url: ref.source.url,
-      maxFileSize: limits.maxBytesPerFile
-    });
-
     return {
-      buffer,
-      filename:
-        parseContentDispositionFilename(contentDisposition || '') ||
-        ref.name ||
-        getFileNameFromUrl(ref.source.url),
-      contentType,
+      source: createExternalHttpFileSource({
+        url: ref.source.url,
+        maxSizeBytes: limits.maxBytesPerFile,
+        trustMetadataFilename: true,
+        metadata: {
+          filename: ref.name || getFileNameFromUrl(ref.source.url)
+        }
+      }),
       sourceKind: 'external'
     };
   };
@@ -547,7 +543,7 @@ export const prepareWorkflowFileContext = async ({
       const ref = resolve(url);
       return ref ? refIdentity.get(ref) : undefined;
     },
-    read,
+    getSource,
     derive: (files) => createDerivedWorkflowFileContext({ parent: fileContext, files })
   };
 

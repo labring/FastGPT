@@ -153,7 +153,6 @@ export const getExecuteTool = ({
   uid,
   variableState,
   externalProvider,
-  streamResponseFn,
   lang,
   requestOrigin,
   mode,
@@ -235,7 +234,8 @@ export const getExecuteTool = ({
             chatId,
             uid,
             variableState,
-            workflowStreamResponse: streamResponseFn
+            // Agent 统一负责外层流输出，子工具不得绕过 Agent 直接写入响应流。
+            workflowStreamResponse: undefined
           });
 
           return {
@@ -284,15 +284,19 @@ export const getExecuteTool = ({
             errorMessage
           };
         } else if (tool.type === 'toolWorkflow' || tool.type === 'commercialTool') {
-          const id = await (async () => {
+          const { id, systemToolId } = await (async () => {
             if (tool.type === 'toolWorkflow') {
-              return tool.id;
+              return {
+                id: tool.id,
+                systemToolId: undefined
+              };
             }
 
             const systemToolRepo = SystemToolRepo.getInstance();
+            const systemToolId = `commercial-${tool.id}`;
             const trueId = (
               await systemToolRepo.getSystemToolDetail({
-                pluginId: `commercial-${tool.id}`,
+                pluginId: systemToolId,
                 version: tool.version || undefined
               })
             ).associatedPluginId;
@@ -300,7 +304,10 @@ export const getExecuteTool = ({
             if (!trueId) {
               throw new Error('No associated plugin found');
             }
-            return trueId;
+            return {
+              id: trueId,
+              systemToolId
+            };
           })();
           const customAppVariables = filterAgentWorkflowRuntimeParams(requestParams);
           const { response, usages, interactive, nodeResponse, errorMessage } =
@@ -309,7 +316,8 @@ export const getExecuteTool = ({
                 name: tool.name,
                 avatar: tool.avatar,
                 id,
-                version: tool.version
+                version: tool.version,
+                ...(systemToolId ? { systemToolId } : {})
               },
               userChatInput: '',
               customAppVariables,

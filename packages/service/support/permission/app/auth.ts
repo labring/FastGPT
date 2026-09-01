@@ -2,7 +2,6 @@
 import { MongoApp } from '../../../core/app/schema';
 import { type AppDetailType } from '@fastgpt/global/core/app/type';
 import {
-  NullRoleVal,
   PerResourceTypeEnum,
   ReadPermissionVal,
   ReadRoleVal
@@ -21,6 +20,7 @@ import {
 } from '@fastgpt/global/support/permission/app/constant';
 import { parseHeaderCert } from '../auth/common';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
+import { shouldInheritResourcePermission } from '../resourcePermissionPolicy';
 
 export const authWorkflowToolByTmbId = async ({
   tmbId,
@@ -93,9 +93,10 @@ export const authAppByTmbId = async ({
     const isOwner = tmbPer.isOwner || String(app.tmbId) === String(tmbId);
 
     const isGetParentClb =
-      app.inheritPermission && !AppFolderTypeList.includes(app.type) && !!app.parentId;
-
-    const [folderPer = NullRoleVal, myPer = NullRoleVal] = await Promise.all([
+      shouldInheritResourcePermission(app.inheritPermission) &&
+      !AppFolderTypeList.includes(app.type) &&
+      !!app.parentId;
+    const [folderPer = 0, myPer = 0] = await Promise.all([
       isGetParentClb
         ? getTmbPermission({
             teamId,
@@ -103,7 +104,7 @@ export const authAppByTmbId = async ({
             resourceId: app.parentId!,
             resourceType: PerResourceTypeEnum.app
           })
-        : NullRoleVal,
+        : 0,
       getTmbPermission({
         teamId,
         tmbId,

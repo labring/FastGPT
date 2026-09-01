@@ -63,6 +63,9 @@ export const createToolCallToolProvider = async ({
     async ({ runtimeNodes, runtimeEdges, lastInteractive }) => {
       const result = await runWorkflow({
         ...workflowProps,
+        // ToolCall（包括 SimpleApp）统一由外层模型输出流，子工作流固定非流式执行。
+        stream: false,
+        workflowStreamResponse: undefined,
         ...(lastInteractive ? { lastInteractive } : {}),
         runtimeNodes,
         runtimeEdges,
