@@ -21,6 +21,7 @@ import {
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import { getUserModelCatalog } from '@/web/common/system/api';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { resetLogoutState } from '@/web/support/user/logoutState';
 
 const MODEL_CATALOG_CACHE_PREFIX = 'fastgpt:model-catalog:v1:';
 const inflightCatalogRequests = new Map<
@@ -283,6 +284,8 @@ export const useUserModelStore = create<UserModelStoreState>()(
   )
 );
 
-/** 仅在服务端确认一次新的登录成功后调用，清除所有历史成员目录并强制重新拉取。 */
-export const resetUserModelCatalogAfterLogin = () =>
+/** 仅在服务端确认一次新的登录成功后调用，结束登出保护并强制重新拉取成员目录。 */
+export const resetUserModelCatalogAfterLogin = () => {
+  resetLogoutState();
   useUserModelStore.getState().clearAllPersistedCaches();
+};

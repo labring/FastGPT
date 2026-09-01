@@ -14,6 +14,7 @@ import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 import MultimodalTag from '@/components/core/ai/MultimodelTag';
 import {
   isModelAllowedByValues,
+  resolveModelSelectorDefault,
   resolveModelSelectorDisabled,
   resolveModelSelectorSelection
 } from './AIModelSelector.utils';
@@ -30,6 +31,8 @@ type Props = Omit<SelectProps, 'list'> & {
   canBeUnset?: boolean;
   unsetLabel?: string;
   outLinkAuthData?: OutLinkChatAuthProps;
+  /** 当前值为空时，目录加载完成后写入系统有效默认模型；不覆盖非空的历史或失效值。 */
+  autoSelectDefault?: boolean;
 };
 
 const UNSET_MODEL_VALUE = '';
@@ -86,11 +89,13 @@ const AIModelSelector = ({
   unsetLabel,
   placeholder,
   outLinkAuthData,
+  autoSelectDefault = false,
   ...props
 }: Props) => {
   const { t, i18n } = useTranslation();
   const { modelList, loading } = useUserModelLists({ outLinkAuthData });
   const getModelProvider = useUserModelStore((state) => state.getModelProvider);
+  const defaultModelId = useUserModelStore((state) => state.defaultModelIds[modelType]);
   const avatarSize = useMemo(() => getModelAvatarSize(props.size), [props.size]);
   const allowedValues = useMemo(
     () =>
@@ -120,6 +125,7 @@ const AIModelSelector = ({
   const selectedModel = selection?.model;
   const legacySelectedItem = restrictedList?.find((item) => String(item.value) === currentValue);
   const normalizedSelectionRef = useRef<string>();
+  const autoSelectedDefaultRef = useRef<string>();
 
   // 完整目录加载后自动把旧 model 值写回 modelId，选择器对外只输出稳定 ID。
   useEffect(() => {
@@ -133,6 +139,21 @@ const AIModelSelector = ({
     normalizedSelectionRef.current = normalizationKey;
     onChange?.(selection.normalizedValue);
   }, [currentValue, loading, onChange, selection]);
+
+  const defaultModel = useMemo(
+    () => resolveModelSelectorDefault({ models, defaultModelId }),
+    [defaultModelId, models]
+  );
+
+  // 仅为明确启用该能力的业务表单补齐空值；历史失效值必须保留并显示不可用状态。
+  useEffect(() => {
+    if (!autoSelectDefault || loading || currentValue || !defaultModel) return;
+
+    const defaultKey = `${modelType}:${defaultModel.modelId}`;
+    if (autoSelectedDefaultRef.current === defaultKey) return;
+    autoSelectedDefaultRef.current = defaultKey;
+    onChange?.(defaultModel.modelId);
+  }, [autoSelectDefault, currentValue, defaultModel, loading, modelType, onChange]);
 
   const providerIds = Array.from(new Set(models.map((model) => model.provider)));
   const grouped = models.length > 10;

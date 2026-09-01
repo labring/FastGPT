@@ -309,7 +309,9 @@ export const DatasetListItemSchema = z.object({
   intro: z.string().meta({ description: '简介' }),
   type: z.enum(DatasetTypeEnum).meta({ description: '数据集类型' }),
   permission: PermissionSchema,
-  vectorModel: EmbeddingSystemModelDataSchema.meta({ description: '向量模型' }),
+  vectorModel: EmbeddingSystemModelDataSchema.optional().meta({
+    description: '向量模型；目录或模型已删除时为空，已停用模型仍返回展示数据'
+  }),
   inheritPermission: z.boolean().meta({ description: '继承权限' }),
   private: z.boolean().optional().meta({ description: '是否私有' }),
   sourceMember: SourceMemberSchema.optional().meta({ description: '来源成员' })
@@ -323,8 +325,12 @@ export const DatasetItemSchema = DatasetSchema.omit({
 }).extend({
   status: z.enum(DatasetStatusEnum).meta({ description: '状态' }),
   errorMsg: z.string().optional().meta({ description: '错误信息' }),
-  vectorModel: EmbeddingSystemModelDataSchema.meta({ description: '向量模型' }),
-  agentModel: LLMSystemModelDataSchema.meta({ description: 'AI 模型' }),
+  vectorModel: EmbeddingSystemModelDataSchema.optional().meta({
+    description: '向量模型；模型已删除时为空，已停用模型仍返回展示数据'
+  }),
+  agentModel: LLMSystemModelDataSchema.optional().meta({
+    description: 'AI 模型；模型已删除时为空，已停用模型仍返回展示数据'
+  }),
   vlmModel: LLMSystemModelDataSchema.optional().meta({ description: '视觉语言模型' }),
   permission: PermissionSchema
 });

@@ -1,5 +1,6 @@
 import { loginOut } from '@/web/support/user/api';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { beginLogout } from './logoutState';
 
 const clearAdStorage = () => {
   try {
@@ -29,12 +30,13 @@ const clearAdStorage = () => {
 };
 
 export const clearToken = () => {
+  beginLogout();
   try {
     clearAdStorage();
     // 退出只清内存；持久目录保留到下一次真实登录成功后统一删除。
     useUserModelStore.getState().clearMemory();
     return loginOut();
   } catch (error) {
-    error;
+    console.error('Failed to clear token:', error);
   }
 };

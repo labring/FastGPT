@@ -8,6 +8,7 @@ import {
   resetUserModelCatalogAfterLogin,
   useUserModelStore
 } from '@/web/core/ai/model/useUserModelStore';
+import { beginLogout, isLogoutInProgress } from '@/web/support/user/logoutState';
 
 const createStorage = () => {
   const values = new Map<string, string>();
@@ -264,10 +265,13 @@ describe('useUserModelStore catalog cache', () => {
     expect(localStorage.length).toBe(3);
 
     const loginGeneration = useUserModelStore.getState().loginGeneration;
+    beginLogout();
+    expect(isLogoutInProgress()).toBe(true);
     resetUserModelCatalogAfterLogin();
     expect(localStorage.getItem('fastgpt:model-catalog:v1:team-1:member-1')).toBeNull();
     expect(localStorage.getItem('fastgpt:model-catalog:v1:team-2:member-2')).toBeNull();
     expect(localStorage.getItem('unrelated')).toBe('keep');
     expect(useUserModelStore.getState().loginGeneration).toBe(loginGeneration + 1);
+    expect(isLogoutInProgress()).toBe(false);
   });
 });

@@ -1,8 +1,3 @@
-import {
-  getLLMModelData,
-  getEmbeddingModelData,
-  getOptionalVlmModelData
-} from '@fastgpt/service/core/ai/model';
 import { desensitizeSystemModel } from '@fastgpt/service/core/ai/config/utils';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -16,6 +11,11 @@ import {
 import { getDatasetSyncDatasetStatus } from '@fastgpt/service/core/dataset/datasetSync';
 import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  findDatasetAgentModel,
+  findDatasetEmbeddingModel,
+  findDatasetVlmModel
+} from '@fastgpt/service/core/dataset/model';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> {
   const { id: datasetId } = parseApiInput({ req, querySchema: GetDatasetDetailQuerySchema }).query;
@@ -30,22 +30,17 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> 
   });
 
   const { status, errorMsg } = await getDatasetSyncDatasetStatus(datasetId);
-  const vlmModel = getOptionalVlmModelData({
-    modelId: dataset.vlmModelId,
-    model: dataset.vlmModel
-  });
+  const vectorModel = findDatasetEmbeddingModel(dataset);
+  const agentModel = findDatasetAgentModel(dataset);
+  const vlmModel = findDatasetVlmModel(dataset);
 
   return GetDatasetDetailResponseSchema.parse({
     ...dataset,
     status,
     errorMsg,
     permission,
-    vectorModel: desensitizeSystemModel(
-      getEmbeddingModelData({ modelId: dataset.vectorModelId, model: dataset.vectorModel })
-    ),
-    agentModel: desensitizeSystemModel(
-      getLLMModelData({ modelId: dataset.agentModelId, model: dataset.agentModel })
-    ),
+    vectorModel: vectorModel ? desensitizeSystemModel(vectorModel) : undefined,
+    agentModel: agentModel ? desensitizeSystemModel(agentModel) : undefined,
     vlmModel: vlmModel ? desensitizeSystemModel(vlmModel) : undefined,
     apiDatasetServer: filterApiDatasetServerPublicData(dataset.apiDatasetServer)
   });

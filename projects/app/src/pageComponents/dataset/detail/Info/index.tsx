@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, Flex, Switch, Input } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useForm } from 'react-hook-form';
@@ -70,8 +70,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     (data: DatasetItemType) => {
       return updateDataset({
         id: datasetId,
-        agentModelId: data.agentModel?.modelId,
-        vlmModelId: data.vlmModel?.modelId,
+        agentModelId: data.agentModel?.modelId ?? data.agentModelId,
+        vlmModelId: data.vlmModel?.modelId ?? data.vlmModelId,
         externalReadUrl: data.externalReadUrl
       });
     },
@@ -175,7 +175,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             <AIModelSelector
               modelType={ModelTypeEnum.embedding}
               w={'100%'}
-              value={vectorModel.modelId}
+              value={vectorModel?.modelId ?? datasetDetail.vectorModelId}
               fontSize={'mini'}
               disableTip={
                 isTraining
@@ -210,7 +210,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             <AIModelSelector
               modelType={ModelTypeEnum.llm}
               w={'100%'}
-              value={agentModel.modelId}
+              value={agentModel?.modelId ?? datasetDetail.agentModelId}
               list={llmModelList.map((item) => ({
                 label: item.name,
                 value: item.modelId
@@ -234,7 +234,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             <AIModelSelector
               modelType={ModelTypeEnum.llm}
               w={'100%'}
-              value={vlmModel?.modelId}
+              value={vlmModel?.modelId ?? datasetDetail.vlmModelId}
               list={vllmModelList.map((item) => ({
                 label: item.name,
                 value: item.modelId

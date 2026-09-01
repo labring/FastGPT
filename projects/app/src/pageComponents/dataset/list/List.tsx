@@ -152,7 +152,11 @@ function List() {
   });
 
   const renderDatasetCard = (dataset: (typeof formatDatasets)[number]) => {
-    const vectorModelAvatar = getModelProvider(dataset.vectorModel.provider)?.avatar;
+    const vectorModelAvailable = dataset.vectorModel?.isActive === true;
+    // 新接口直接返回模型头像；Provider 回退用于兼容尚未升级的服务端响应。
+    const vectorModelAvatar =
+      dataset.vectorModel?.avatar ??
+      (dataset.vectorModel ? getModelProvider(dataset.vectorModel.provider)?.avatar : undefined);
 
     return (
       <MyBox
@@ -270,9 +274,11 @@ function List() {
           <HStack>
             {isPc && dataset.type !== DatasetTypeEnum.folder && (
               <HStack spacing={1} className="time">
-                <Avatar src={vectorModelAvatar} w={'0.85rem'} />
+                {vectorModelAvailable && <Avatar src={vectorModelAvatar} w={'0.85rem'} />}
                 <Box color={'myGray.500'} fontSize={'mini'}>
-                  {dataset.vectorModel.name}
+                  {vectorModelAvailable
+                    ? dataset.vectorModel?.name
+                    : t('dataset:index_model_unavailable')}
                 </Box>
               </HStack>
             )}

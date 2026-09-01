@@ -363,6 +363,7 @@ getSTTModelData({ modelId, model }: ModelReference): STTModelData
 - 输入的 `modelId` 不存在时，直接判不存在，不再把它当 `model` 名称查找。
 - 兼容分支只能返回 `scope=system` 的模型。
 - 历史日志和管理页面若需要读取已停用模型，使用不承担执行校验的 `findModelData(ref)`，不放宽执行请求使用的类型化 getter。
+- Dataset 列表和详情属于展示态：目录不解析模型；已停用模型返回脱敏展示数据（含模型头像），已删除或类型错误的模型返回空值。训练、检索和重建仍使用严格 getter，因此展示兼容不会放宽执行边界。
 - `getDefault*ModelData()` 与 `get*ModelData(ref)` 分开，后者永远不静默回退默认值。
 - 不保留“未命中返回第一个系统模型”的兼容行为，旧数据无法解析时也必须显式暴露问题。
 
@@ -727,6 +728,7 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 - 模型能力读取统一来自 `modelData.config`，客户端拿不到 config 中的敏感服务端字段。
 - 非法或已删除模型不会调用第一个系统模型；API 统一返回“模型不存在”。
 - 模型选择器对不在 available list 的非空 value 显示红色“xxx 模型已停用”，不自动改值或选择第一项。
+- Dataset 列表遇到已停用、已删除或无法解析的向量模型时不影响其他知识库，统一展示“索引模型已下架”；详情选择器保留原始 modelId 并复用通用失效态。
 - `getMyModels` 在权限过滤后按 `provider/modelType` 稳定分页；不同选择器不会复用全局模型结果，非第一页的当前值通过 `getMyModel` 恢复。
 - 可用模型总数不超过 10 时选择器只发一次发现请求并展示单列；超过 10 时展示 Provider 双列，并按当前模型 Provider 或首个 Provider 加载右侧分页。
 - `getInitData` 所有登录/未登录分支都不返回完整模型列表，只返回允许暴露的默认模型；价格页通过公开 `getSystemModels` 获取最小列表。
@@ -837,4 +839,5 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 - [x] 修复 4163 对 Agent `datasetParams` 嵌套数组模型引用的回填，禁止把动态引用字符串化。
 - [x] 将前端双字段模型引用统一为 `modelId !== undefined` 时禁止 legacy 回退，并覆盖空 ID、失效 ID 与名称冲突。
 - [x] 明确记录后端暂不直接校验模型协作者权限，消除客户端目录设计与迁移设计的权限边界冲突。
+- [x] 将 Dataset 列表/详情模型解析改为展示态容错，返回模型头像并兼容目录和下架模型；执行链继续严格校验。
 - [ ] 新版本部署完成后执行 dry-run 和正式回填，复核并重跑并发 conflict，最终解决全部 unresolved/conflict。

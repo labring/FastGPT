@@ -203,6 +203,7 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
     minChunkSize: minChunkSizeValue,
     maxIndexSize
   } = useMemo(() => {
+    const maxAgentChunkSize = agentModel ? getMaxChunkSize(agentModel) : getLLMMaxChunkSize();
     if (trainingType === DatasetCollectionDataProcessModeEnum.qa) {
       return {
         maxChunkSize: getLLMMaxChunkSize(agentModel),
@@ -211,13 +212,13 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
       };
     } else if (autoIndexes) {
       return {
-        maxChunkSize: getMaxChunkSize(agentModel),
+        maxChunkSize: maxAgentChunkSize,
         minChunkSize: minChunkSize,
         maxIndexSize: getMaxIndexSize(vectorModel)
       };
     } else {
       return {
-        maxChunkSize: getMaxChunkSize(agentModel),
+        maxChunkSize: maxAgentChunkSize,
         minChunkSize: minChunkSize,
         maxIndexSize: getMaxIndexSize(vectorModel)
       };

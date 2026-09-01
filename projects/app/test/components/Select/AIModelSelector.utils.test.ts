@@ -1,6 +1,7 @@
 import {
   createRestrictedModelDiscovery,
   isModelAllowedByValues,
+  resolveModelSelectorDefault,
   resolveModelSelectorDisabled,
   resolveModelSelectorSelection,
   resolveModelSelectorProvider
@@ -89,6 +90,30 @@ describe('AIModelSelector utils', () => {
         value: 'missing-model'
       })
     ).toBeUndefined();
+  });
+
+  it('uses the configured default model when it is selectable', () => {
+    const fallbackModel = { modelId: 'fallback-id' };
+    const defaultModel = { modelId: 'default-id' };
+
+    expect(
+      resolveModelSelectorDefault({
+        models: [fallbackModel, defaultModel],
+        defaultModelId: 'default-id'
+      })
+    ).toBe(defaultModel);
+  });
+
+  it('falls back within the selectable range when the default is unavailable', () => {
+    const fallbackModel = { modelId: 'fallback-id' };
+
+    expect(
+      resolveModelSelectorDefault({
+        models: [fallbackModel],
+        defaultModelId: 'unavailable-id'
+      })
+    ).toBe(fallbackModel);
+    expect(resolveModelSelectorDefault({ models: [] })).toBeUndefined();
   });
 
   it('does not select a provider for ten or fewer models', () => {

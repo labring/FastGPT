@@ -113,6 +113,7 @@ const QGConfigModal = ({
               <Box flex={'1 0 0'}>
                 <AIModelSelector
                   modelType={ModelTypeEnum.llm}
+                  autoSelectDefault
                   width={'100%'}
                   value={modelId}
                   onChange={(modelId) => {
