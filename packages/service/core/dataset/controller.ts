@@ -2,6 +2,7 @@ import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetCollection } from './collection/schema';
 import { MongoDataset } from './schema';
 import { delCollectionRelatedSource } from './collection/controller';
+import { deleteCollectionPermissions } from '../../support/permission/collection/controller';
 import { type ClientSession } from '../../common/mongo';
 import { MongoDatasetTraining } from './training/schema';
 import { MongoDatasetData } from './data/schema';
@@ -110,11 +111,13 @@ export async function delDatasetRelevantData({
   // Delete vector data
   await deleteDatasetDataVector({ teamId, datasetIds });
 
-  // delete collections
+  // delete collections and their permission snapshots (same transaction)
+  const collectionIds = collections.map((item) => String(item._id));
   await MongoDatasetCollection.deleteMany({
     teamId,
     datasetId: { $in: datasetIds }
   }).session(session);
+  await deleteCollectionPermissions({ teamId, collectionIds, session });
 
   // Delete all dataset files
   for (const datasetId of datasetIds) {
