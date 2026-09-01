@@ -7,15 +7,21 @@ import {
   VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import {
   formatVariableValByType,
   getReferenceVariableValue,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  isValidReferenceValueFormat,
+  nodeInputIsReference
+} from '@fastgpt/global/core/workflow/utils';
 import json5 from 'json5';
 import { JSONPath } from 'jsonpath-plus';
 import { getSecretValue } from '../../../../common/secret/utils';
@@ -92,6 +98,76 @@ type HttpResponse = DispatchNodeResultType<
 
 const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
 
+const isHttpReferenceItem = (value: unknown): value is ReferenceItemValueType =>
+  isValidReferenceValueFormat(value) &&
+  value[0].length > 0 &&
+  typeof value[1] === 'string' &&
+  value[1].length > 0;
+
+const getHttpReferenceItems = (value: unknown): ReferenceItemValueType[] => {
+  if (isHttpReferenceItem(value)) return [value];
+  if (!Array.isArray(value)) return [];
+
+  return value.filter(isHttpReferenceItem);
+};
+
+/**
+ * HTTP 节点请求前过滤引用参数。失效引用只影响当前请求，不修改节点保存值，保证编辑器仍可展示历史快照。
+ * 多选引用保留有效项；全部引用失效时移除整个参数。非引用参数保持原值，包含 Agent 生成的普通参数。
+ */
+export const filterHttpRuntimeParams = ({
+  params,
+  node,
+  runtimeNodesMap,
+  variables
+}: {
+  params: Record<string, any>;
+  node: Pick<RuntimeNodeItemType, 'inputs'>;
+  runtimeNodesMap: Map<string, RuntimeNodeItemType>;
+  variables: Record<string, unknown>;
+}) => {
+  const inputMap = new Map(node.inputs.map((input) => [input.key, input]));
+
+  const isReferenceAvailable = ([sourceNodeId, outputId]: ReferenceItemValueType) => {
+    if (sourceNodeId === VARIABLE_NODE_ID) {
+      return (
+        Object.prototype.hasOwnProperty.call(variables, outputId) &&
+        variables[outputId] !== undefined
+      );
+    }
+
+    const sourceNode = runtimeNodesMap.get(sourceNodeId);
+    const output = sourceNode?.outputs.find((item) => item.id === outputId);
+    if (!sourceNode || !output || output.invalid === true || output.value === undefined) {
+      return false;
+    }
+
+    return output.type !== FlowNodeOutputTypeEnum.error || sourceNode.catchError === true;
+  };
+
+  return Object.fromEntries(
+    Object.entries(params).flatMap(([key, value]) => {
+      if (key === NodeInputKeyEnum.addInputParam) return [];
+
+      const input = inputMap.get(key);
+      if (!input || !nodeInputIsReference(input)) return [[key, value]];
+
+      const referenceItems = getHttpReferenceItems(input.value);
+      const validReferenceItems = referenceItems.filter(isReferenceAvailable);
+      if (validReferenceItems.length === 0) return [];
+      if (validReferenceItems.length === referenceItems.length) return [[key, value]];
+
+      const resolvedValue = getReferenceVariableValue({
+        value: validReferenceItems,
+        nodesMap: runtimeNodesMap,
+        variables
+      });
+      const formattedValue = valueTypeFormat(resolvedValue, input.valueType);
+      return formattedValue === undefined ? [] : [[key, formattedValue]];
+    })
+  );
+};
+
 export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<HttpResponse> => {
   const {
     runningAppInfo,
@@ -121,6 +197,13 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     return Promise.reject('Http url is empty');
   }
 
+  const runtimeVariables = variableState.toRuntimeRecord();
+  const filteredBody = filterHttpRuntimeParams({
+    params: body,
+    node,
+    runtimeNodesMap,
+    variables: runtimeVariables
+  });
   const systemVariables = {
     ...(appId ? { appId } : {}),
     chatId,
@@ -128,14 +211,11 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     histories: histories?.slice(-10) || []
   };
   const concatVariables = {
-    ...variableState.toRuntimeRecord(),
-    ...body,
+    ...runtimeVariables,
+    ...filteredBody,
     ...systemVariables
   };
-  const allVariables: Record<string, any> = {
-    ...concatVariables,
-    [NodeInputKeyEnum.addInputParam]: concatVariables
-  };
+  const allVariables: Record<string, any> = concatVariables;
 
   // General data for variable substitution（Exclude: json body)
   const replaceStringVariables = (text: string) => {

@@ -44,10 +44,7 @@ import {
   collectWorkflowStartAutoFillRevertPatches,
   collectWorkflowStartOutputAutoFillRevertPatches
 } from '@/web/core/workflow/workflowStartAutoFill';
-import type {
-  FlowNodeInputItemType,
-  FlowNodeOutputItemType
-} from '@fastgpt/global/core/workflow/type/io';
+import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
@@ -1540,6 +1537,52 @@ describe('checkWorkflowNodeIssues', () => {
 
       const result = runCheck(node);
       expect(result['http-ok']?.map((issue) => issue.code) ?? []).not.toContain('http_url_empty');
+    });
+
+    it('checks HTTP dynamic references against its direct child outputs', () => {
+      const child = makeNode('http-child', FlowNodeTypeEnum.answerNode, {
+        parentNodeId: 'http-with-child',
+        outputs: [
+          {
+            id: 'text',
+            key: 'text',
+            label: 'Text',
+            type: FlowNodeOutputTypeEnum.static,
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ]
+      });
+      const node = makeNodeWithTemplateInputs(
+        'http-with-child',
+        FlowNodeTypeEnum.httpRequest468,
+        HttpNode468.inputs.map((input) => {
+          if (input.key === NodeInputKeyEnum.httpReqUrl) {
+            return { ...input, value: 'https://example.com/api' };
+          }
+          if (input.key === NodeInputKeyEnum.addInputParam) {
+            return { ...input, value: {} };
+          }
+          return input;
+        })
+      );
+      node.data.inputs.push({
+        key: 'customVariable',
+        label: 'Custom variable',
+        canEdit: true,
+        renderTypeList: [FlowNodeInputTypeEnum.reference],
+        selectedType: FlowNodeInputTypeEnum.reference,
+        value: ['http-child', 'text'],
+        valueType: WorkflowIOValueTypeEnum.string
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, node, child],
+        edges: [{ id: 'e-start-http', source: 'start', target: node.data.nodeId, type: EDGE_TYPE }]
+      });
+
+      expect(
+        result['http-with-child']?.filter((issue) => issue.inputKey === 'customVariable') ?? []
+      ).toEqual([]);
     });
 
     it('loopStart hidden required any does not false-positive required_input_empty', () => {

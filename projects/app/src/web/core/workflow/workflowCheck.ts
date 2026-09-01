@@ -51,6 +51,7 @@ type WorkflowCheckContext = {
   incomingEdgesMap: Map<string, Edge<any>[]>;
   outgoingEdgesMap: Map<string, Edge<any>[]>;
   reachableNodeSet: Set<string>;
+  childrenNodeIdListMap: Record<string, string[]>;
   chatConfig?: AppChatConfigType;
 };
 
@@ -313,11 +314,19 @@ const createWorkflowCheckContext = ({
   const nodeMap = new Map<string, Node<FlowNodeItemType, string | undefined>>();
   const incomingEdgesMap = new Map<string, Edge<any>[]>();
   const outgoingEdgesMap = new Map<string, Edge<any>[]>();
+  const childrenNodeIdListMap: Record<string, string[]> = {};
 
   nodes.forEach((node) => {
     nodeMap.set(node.data.nodeId, node);
     incomingEdgesMap.set(node.data.nodeId, []);
     outgoingEdgesMap.set(node.data.nodeId, []);
+
+    if (node.data.parentNodeId) {
+      childrenNodeIdListMap[node.data.parentNodeId] = [
+        ...(childrenNodeIdListMap[node.data.parentNodeId] ?? []),
+        node.data.nodeId
+      ];
+    }
   });
 
   edges.forEach((edge) => {
@@ -354,6 +363,7 @@ const createWorkflowCheckContext = ({
     incomingEdgesMap,
     outgoingEdgesMap,
     reachableNodeSet,
+    childrenNodeIdListMap,
     chatConfig
   };
 };
@@ -448,6 +458,19 @@ export const checkWorkflowNodeIssues = ({
       getNodeById: (sourceNodeId) => context.nodeMap.get(sourceNodeId ?? '')?.data,
       edges
     });
+    const getInputSourceNodeIds = (input: FlowNodeInputItemType) => {
+      if (data.flowNodeType !== FlowNodeTypeEnum.httpRequest468 || input.canEdit !== true) {
+        return sourceNodeIds;
+      }
+
+      return getNodeAllSourceIds({
+        nodeId: data.nodeId,
+        getNodeById: (sourceNodeId) => context.nodeMap.get(sourceNodeId ?? '')?.data,
+        edges,
+        includeChildren: true,
+        childrenNodeIdListMap: context.childrenNodeIdListMap
+      });
+    };
     const isToolNode = context.incomingEdgesMap
       .get(data.nodeId)
       ?.some((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools);
@@ -879,7 +902,7 @@ export const checkWorkflowNodeIssues = ({
               getReferenceStatuses({
                 value: effectiveInputValue,
                 valueType: input.valueType,
-                sourceNodeIds,
+                sourceNodeIds: getInputSourceNodeIds(input),
                 context
               })
             )

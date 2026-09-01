@@ -318,15 +318,10 @@ export const MultipleRowArraySelect = ({
   });
   const onChange = useCallback(
     (val: any[][]) => {
-      // Filter invalid value
-      const validList = val.filter((item) => {
-        const listItem = list.find((v) => v.value === item[0]);
-        if (!listItem) return false;
-        return listItem.children?.some((v) => v.value === item[1]);
-      });
-      onSelect(validList);
+      // 保留当前列表中已失效的引用，交给上层展示并在用户删除时移除。
+      onSelect(val);
     },
-    [list, onSelect]
+    [onSelect]
   );
 
   const RenderList = useCallback(

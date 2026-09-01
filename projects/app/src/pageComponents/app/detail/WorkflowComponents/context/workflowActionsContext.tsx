@@ -604,6 +604,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       // - catchError 决定该节点的 error 输出是否可被引用；
       // - 输出的增删改直接影响下游已选引用（addOutput 本身不会让旧引用失效，
       //   但会触发 invalidCondition 重算，可能把兄弟输出置为 invalid）；
+      // - aiModel 变化会影响 aiChat 的 reasoningText 输出是否可被引用；
       // - delOutput/replaceOutput 还会删边，与 edges effect 的全量检查重复，
       //   但两者共用同一个防抖 timer，最终只会扫描一次。
       const shouldRunFullWorkflowCheck = updateData.some((item) => {
@@ -621,7 +622,9 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         }
         if (item.type === 'updateInput' || item.type === 'replaceInput') {
           return (
-            item.key === NodeInputKeyEnum.childrenNodeIdList || nodeInputIsReference(item.value)
+            item.key === NodeInputKeyEnum.aiModel ||
+            item.key === NodeInputKeyEnum.childrenNodeIdList ||
+            nodeInputIsReference(item.value)
           );
         }
         return ['updateOutput', 'replaceOutput', 'addOutput', 'delOutput'].includes(item.type);
