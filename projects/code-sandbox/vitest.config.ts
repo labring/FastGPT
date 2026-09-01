@@ -11,6 +11,7 @@ export default defineConfig({
     },
     root: '.',
     include: ['test/**/*.test.ts'],
+    setupFiles: ['test/setup.ts'],
     testTimeout: 30000,
     hookTimeout: 30000,
     // 多个 suite 会各自启动真实 JS/Python 进程池；串行文件避免原生包冷启动和资源测试互相争抢。
