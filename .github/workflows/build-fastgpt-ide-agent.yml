@@ -1,4 +1,4 @@
-name: Build fastgpt agent helper images
+name: Release IDE-Agent, Agent-sandbox-proxy
 
 on:
   workflow_dispatch:
