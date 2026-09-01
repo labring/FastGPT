@@ -29,8 +29,11 @@ import type {
 export const getDatasets = (data: GetDatasetListBody) =>
   POST<GetDatasetListResponse>(`/core/dataset/list`, data, { maxQuantity: 1 });
 
-export const getDatasetsV2 = (data: GetDatasetListV2Body) =>
-  POST<GetDatasetListV2Response>(`/core/dataset/listV2`, data, { maxQuantity: 1 });
+export const getDatasetsV2 = (data: GetDatasetListV2Body, cancelToken?: AbortController) =>
+  POST<GetDatasetListV2Response>(`/core/dataset/listV2`, data, {
+    maxQuantity: 1,
+    cancelToken
+  });
 
 /** 获取当前筛选条件下的全部知识库，供需要跨页遍历资源的选择器使用。 */
 export const getAllDatasets = (data: GetDatasetListBody = {}) => getDatasets(data);

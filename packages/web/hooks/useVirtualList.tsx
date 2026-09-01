@@ -184,7 +184,7 @@ export function useVirtualList<
   TParams extends PaginationType,
   TData extends PaginationResponseType
 >(
-  api: (data: TParams) => Promise<TData>,
+  api: (data: TParams, cancelToken?: AbortController) => Promise<TData>,
   {
     refreshDeps,
     itemHeight,
