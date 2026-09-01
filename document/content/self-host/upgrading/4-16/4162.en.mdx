@@ -19,6 +19,11 @@ The hard limit for HTML-to-Markdown and text-chunking Workers is the smaller of 
 
 ### 2. Update images
 
+- Update the fastgpt-app (FastGPT core service) image tag to `v4.16.2`
+- Update the fastgpt-pro (FastGPT commercial edition) image tag to `v4.16.2`
+- Update the fastgpt-plugin image tag to `v1.1.2`
+- Update the fastgpt-code-sandbox image tag to `v4.16.2`
+
 ### 3. Clean up and migrate resource permission data (commercial edition only)
 
 This release first removes invalid resource permissions, then materializes complete effective ACLs for Apps, Datasets, and Agent Skills. After upgrading, run a dry run first. A dry run does not delete or write permission data. It processes all teams by default, or you can pass `teamId` to target a single team.
@@ -77,6 +82,7 @@ Follow [Milvus BM25 full-text search configuration and migration](/self-host/mil
 8. Unified sub-workflow output and billing across Workflow Tool, ToolCall, and Agent runs. Commercial tool failures no longer incur call or token fees, while `pluginOutput.error` from personal Workflow Tools remains a business field.
 9. Attributed enhanced PDF parsing charges to the `read_files` tool Node and preserved page-count details. Propagated `usageId` through external-file and API-file Dataset parsing so charges are attributed correctly.
 10. Improved tool configuration, version selection, and parsed-document views with responsive layouts, version descriptions, a two-column grid, and ellipsis tooltips for long filenames.
+11. Hardened JavaScript execution security in the Code Sandbox.
 
 ## 🐛 Fixes
 
@@ -106,3 +112,4 @@ Follow [Milvus BM25 full-text search configuration and migration](/self-host/mil
    - Trusted S3 sources obtain the file size from object metadata and reserve the resources required for both materialization and parsing. The upload stage has already enforced the business file-size limit, so parsing does not repeat that check.
    - Untrusted external URLs declare only the parser's base reservation when queued. During download, FastGPT enforces the business file-size limit and permanent per-task memory limit, then monotonically increases the soft reservation with the actual byte count. Exhausting currently available capacity blocks subsequent tasks without interrupting a download that is already running.
    - The wait queue has no task-count or aggregate estimated-resource limit and retains only the 30-minute queue timeout. Failures, timeouts, and Worker exits abort unfinished downloads and release all reservations.
+9. Refactored the model selection data structure.

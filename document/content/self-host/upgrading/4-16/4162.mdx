@@ -19,6 +19,11 @@ HTML 转 Markdown 和文本切块 Worker 的硬上限为可用 CPU 并行度与 
 
 ### 2. 镜像更新
 
+- 更新 fastgpt-app（FastGPT 主服务）镜像 tag: v4.16.2
+- 更新 fastgpt-pro（FastGPT 商业版）镜像 tag: v4.16.2
+- 更新 fastgpt-plugin 镜像 tag: v1.1.2
+- 更新 fastgpt-code-sandbox 镜像 tag: v4.16.2
+
 ### 3. 清理并迁移资源权限数据(商业版执行)
 
 本版本会先清理无效资源权限，再将 App、Dataset 和 Agent Skill 的资源权限补齐为完整有效 ACL。升级后请先执行 dry-run；dry-run 不会删除或写入权限数据。默认处理所有团队，也可以通过 `teamId` 指定单个团队。
