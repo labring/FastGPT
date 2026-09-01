@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
+  ManageRoleVal,
   OwnerPermissionVal,
+  OwnerRoleVal,
   ReadPermissionVal,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
@@ -207,6 +209,74 @@ describe('authDatasetCollection', () => {
     });
 
     expect(result.collection._id).toBe(collectionId);
+  });
+
+  it('keeps owner for a dataset owner who also owns the collection in pure-inherit mode', async () => {
+    // 非团队 owner/admin，走纯继承短路分支（flag 非 true）
+    mockGetTmbInfoByTmbId.mockResolvedValue({
+      teamId: 'team-a',
+      permission: { isOwner: false }
+    });
+    // 当前用户是 dataset owner（tmbId 匹配），且 dataset 未配置 collection 权限
+    mockDatasetQuery({
+      _id: datasetId,
+      teamId: 'team-a',
+      tmbId: 'tmb-a',
+      hasSetCollectionPermissions: false
+    });
+    // 当前用户也是 collection owner
+    mockGetCollectionWithDataset.mockResolvedValue({
+      _id: collectionId,
+      teamId: 'team-a',
+      datasetId,
+      tmbId: 'tmb-a'
+    });
+    mockGetTmbPermission.mockResolvedValue(ReadPermissionVal);
+
+    const result = await authDatasetCollection({
+      req: {} as any,
+      authToken: true,
+      collectionId,
+      per: OwnerPermissionVal
+    });
+
+    // 短路分支必须与物化快照直读语义一致：collection owner 拿到 OwnerRoleVal 而非被 cap 为 manage
+    expect(result.permission.role).toBe(OwnerRoleVal);
+    expect(result.permission.checkPer(OwnerPermissionVal)).toBe(true);
+    // 短路生效：未走物化快照解析
+    expect(mockResolveCollectionPermission).not.toHaveBeenCalled();
+  });
+
+  it('caps a dataset owner who does not own the collection to manage in pure-inherit mode', async () => {
+    mockGetTmbInfoByTmbId.mockResolvedValue({
+      teamId: 'team-a',
+      permission: { isOwner: false }
+    });
+    mockDatasetQuery({
+      _id: datasetId,
+      teamId: 'team-a',
+      tmbId: 'tmb-a',
+      hasSetCollectionPermissions: false
+    });
+    // collection owner 是他人，dataset owner 仅从父级继承 manage
+    mockGetCollectionWithDataset.mockResolvedValue({
+      _id: collectionId,
+      teamId: 'team-a',
+      datasetId,
+      tmbId: 'tmb-other'
+    });
+    mockGetTmbPermission.mockResolvedValue(ReadPermissionVal);
+
+    const result = await authDatasetCollection({
+      req: {} as any,
+      authToken: true,
+      collectionId,
+      per: ReadPermissionVal
+    });
+
+    expect(result.permission.role).toBe(ManageRoleVal);
+    expect(result.permission.checkPer(OwnerPermissionVal)).toBe(false);
+    expect(mockResolveCollectionPermission).not.toHaveBeenCalled();
   });
 });
 
