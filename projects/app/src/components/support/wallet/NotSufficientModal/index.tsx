@@ -97,7 +97,7 @@ export const RechargeModal = ({
 }) => {
   const { t } = useClientTranslation();
   const router = useRouter();
-  const { userInfo, teamPlanStatus, initTeamPlanStatus } = useUserStore();
+  const { teamPlanStatus, initTeamPlanStatus } = useUserStore();
   const { subPlans } = useSystemStore();
 
   useMount(() => {
