@@ -2,7 +2,6 @@ import { FlowProducer } from 'bullmq';
 import type { RedisRuntime } from '../runtime/connection';
 import type { RedisRuntimeLogger } from '../types';
 import { closeWithTimeout, forceDisconnect } from './close';
-import type { BullMQDisconnectable } from './types';
 
 /** Manages the shared FlowProducer lifecycle for a BullMQ Runtime. */
 export class BullMQFlowProducerManager {
@@ -51,14 +50,10 @@ export class BullMQFlowProducerManager {
       timeoutMs: this.options.closeTimeoutMs
     }).catch((error) => {
       this.options.logger.warn('BullMQ flow producer close failed', { error });
-      const connection = (flowProducer as unknown as { connection?: BullMQDisconnectable })
-        .connection;
       forceDisconnect({
         name: 'flow-producer',
         resource: 'flow producer connection',
-        disconnect: connection
-          ? () => connection.disconnect(false)
-          : () => flowProducer.disconnect(),
+        disconnect: () => flowProducer.disconnect(),
         logger: this.options.logger
       });
     });

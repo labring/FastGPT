@@ -88,29 +88,6 @@ export const buildAppDeleteFlow = ({
   };
 };
 
-/** Load the marked app subtree and construct its ordered deletion Flow. */
-const loadDeleteTaskFlow = async (data: AppDeleteTaskInput) => {
-  const apps = await findAppAndAllChildren({
-    teamId: data.teamId,
-    appId: data.appId,
-    fields: '_id teamId parentId deleteTime'
-  });
-
-  const unmarkedApps = apps.filter((app) => !app.deleteTime);
-  if (unmarkedApps.length > 0) {
-    logger.warn('App delete safety check mismatch', {
-      markedCount: apps.length - unmarkedApps.length,
-      totalCount: apps.length,
-      unmarkedCount: unmarkedApps.length
-    });
-    throw new Error('App delete safety check mismatch');
-  }
-
-  return {
-    flow: buildAppDeleteFlow({ ...data, apps })
-  };
-};
-
 /**
  * Remove only a terminal task Flow before rebuilding it. Active and waiting tasks are left alone,
  * allowing multiple recovery callers to converge on the same stable task ID.
@@ -118,6 +95,28 @@ const loadDeleteTaskFlow = async (data: AppDeleteTaskInput) => {
 const prepareTaskFlow = async (data: AppDeleteTaskInput) => {
   const taskId = getTaskId(data);
   const queue = appDeleteMQService.getQueue();
+  const loadDeleteTaskFlow = async () => {
+    const apps = await findAppAndAllChildren({
+      teamId: data.teamId,
+      appId: data.appId,
+      fields: '_id teamId parentId deleteTime'
+    });
+
+    const unmarkedApps = apps.filter((app) => !app.deleteTime);
+    if (unmarkedApps.length > 0) {
+      logger.warn('App delete safety check mismatch', {
+        markedCount: apps.length - unmarkedApps.length,
+        totalCount: apps.length,
+        unmarkedCount: unmarkedApps.length
+      });
+      throw new Error('App delete safety check mismatch');
+    }
+
+    return {
+      flow: buildAppDeleteFlow({ ...data, apps })
+    };
+  };
+
   const getExistingJob = async () => {
     const job = await queue.getJob(taskId);
     if (!job) return;
@@ -209,15 +208,6 @@ const registerAppDeleteRecoveryCron = () => {
   });
 };
 
-/** Select marked apps whose parent is not also marked, producing one task root per subtree. */
-const getMarkedTaskRoots = (apps: MarkedApp[]) => {
-  const markedIds = new Set(apps.map((app) => `${String(app.teamId)}:${String(app._id)}`));
-  return apps.filter((app) => {
-    if (!app.parentId) return true;
-    return !markedIds.has(`${String(app.teamId)}:${String(app.parentId)}`);
-  });
-};
-
 /** Scan only marked tree roots and rebuild missing or failed task Flows with bounded concurrency. */
 async function resumeMarkedAppDeleteJobsInternal(): Promise<void> {
   const cursor = MongoApp.find(
@@ -246,6 +236,14 @@ async function resumeMarkedAppDeleteJobsInternal(): Promise<void> {
     totalMarked += 1;
     markedApps.push(app);
   }
+
+  const getMarkedTaskRoots = (apps: MarkedApp[]) => {
+    const markedIds = new Set(apps.map((app) => `${String(app.teamId)}:${String(app._id)}`));
+    return apps.filter((app) => {
+      if (!app.parentId) return true;
+      return !markedIds.has(`${String(app.teamId)}:${String(app.parentId)}`);
+    });
+  };
 
   const roots = getMarkedTaskRoots(markedApps);
   rootCount = roots.length;
