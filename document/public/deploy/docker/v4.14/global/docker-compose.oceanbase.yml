@@ -271,7 +271,7 @@ services:
 
       # ===== Process Pool =====
       # Number of pre-warmed worker processes (JS + Python)
-      SANDBOX_POOL_SIZE: 20
+      SANDBOX_POOL_SIZE: 5
 
       # ===== Network Request Limits =====
       # Whether to check if the request is to a private network
