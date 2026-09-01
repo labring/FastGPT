@@ -11,7 +11,10 @@ import {
   FlowNodeOutputTypeEnum,
   EDGE_TYPE
 } from '@fastgpt/global/core/workflow/node/constant';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
@@ -111,6 +114,17 @@ describe('nodeTemplate2FlowNode', () => {
 });
 
 describe('checkWorkflowNodeIssues', () => {
+  const makeChatVariable = (
+    key: string,
+    valueType: WorkflowIOValueTypeEnum = WorkflowIOValueTypeEnum.string
+  ) => ({
+    key,
+    label: key,
+    description: '',
+    type: VariableInputEnum.input,
+    valueType
+  });
+
   const makeNode = (
     nodeId: string,
     flowNodeType: FlowNodeTypeEnum,
@@ -308,7 +322,7 @@ describe('checkWorkflowNodeIssues', () => {
       nodes: [sourceNode, node],
       edges: [{ id: 'e1', source: 'source', target: 'ref', type: EDGE_TYPE }],
       chatConfig: {
-        variables: [{ key: 'kept-variable' }]
+        variables: [makeChatVariable('kept-variable')]
       } as any
     });
 
@@ -488,7 +502,7 @@ describe('checkWorkflowNodeIssues', () => {
         nodes: [typedSourceNode, node],
         edges: consumerEdge,
         chatConfig: {
-          variables: [{ key: 'num-var', valueType: WorkflowIOValueTypeEnum.number }]
+          variables: [makeChatVariable('num-var', WorkflowIOValueTypeEnum.number)]
         } as any
       });
 
@@ -566,7 +580,7 @@ describe('checkWorkflowNodeIssues', () => {
         nodes: [typedSourceNode, node],
         edges: consumerEdge,
         chatConfig: {
-          variables: [{ key: 'str-var', valueType: WorkflowIOValueTypeEnum.string }]
+          variables: [makeChatVariable('str-var')]
         } as any
       });
 
@@ -594,7 +608,7 @@ describe('checkWorkflowNodeIssues', () => {
         nodes: [typedSourceNode, node],
         edges: consumerEdge,
         chatConfig: {
-          variables: [{ key: 'str-var', valueType: WorkflowIOValueTypeEnum.string }]
+          variables: [makeChatVariable('str-var')]
         } as any
       });
 
@@ -616,7 +630,7 @@ describe('checkWorkflowNodeIssues', () => {
         nodes: [typedSourceNode, node],
         edges: consumerEdge,
         chatConfig: {
-          variables: [{ key: 'now-string', valueType: WorkflowIOValueTypeEnum.string }]
+          variables: [makeChatVariable('now-string')]
         } as any
       });
 
@@ -652,8 +666,8 @@ describe('checkWorkflowNodeIssues', () => {
         edges: consumerEdge,
         chatConfig: {
           variables: [
-            { key: 'arr-var', valueType: WorkflowIOValueTypeEnum.arrayString },
-            { key: 'any-var', valueType: WorkflowIOValueTypeEnum.any }
+            makeChatVariable('arr-var', WorkflowIOValueTypeEnum.arrayString),
+            makeChatVariable('any-var', WorkflowIOValueTypeEnum.any)
           ]
         } as any
       });
@@ -767,7 +781,7 @@ describe('checkWorkflowNodeIssues', () => {
       const result = checkWorkflowNodeIssues({
         nodes: [startNode, node],
         edges: [{ id: 'e-start-consumer', source: 'start', target: 'consumer', type: EDGE_TYPE }],
-        chatConfig: { variables: [{ key: 'var1' }] } as any
+        chatConfig: { variables: [makeChatVariable('var1')] } as any
       });
 
       expect(result.consumer?.some((issue) => issue.code.includes('reference'))).toBeFalsy();
@@ -832,7 +846,7 @@ describe('checkWorkflowNodeIssues', () => {
           { id: 'e-start-vu', source: 'start', target: 'variable-update', type: EDGE_TYPE }
         ],
         chatConfig: {
-          variables: [{ key: 'var1', valueType: WorkflowIOValueTypeEnum.string }]
+          variables: [makeChatVariable('var1')]
         } as any
       });
 
