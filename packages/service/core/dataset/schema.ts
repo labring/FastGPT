@@ -129,6 +129,11 @@ const DatasetSchema = new Schema({
     type: Boolean,
     default: true
   },
+  // collection 级权限短路标记：false 时该 dataset 下无独立配置的 collection，可读性 == dataset 可读
+  hasSetCollectionPermissions: {
+    type: Boolean,
+    default: false
+  },
 
   apiDatasetServer: Object,
 

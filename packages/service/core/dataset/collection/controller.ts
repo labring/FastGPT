@@ -33,6 +33,10 @@ import {
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { removeS3TTL, isS3ObjectKey } from '../../../common/s3/utils';
+import {
+  createCollectionPermission,
+  deleteCollectionPermissions
+} from '../../../support/permission/collection/controller';
 import type {
   CreateCollectionWithResultResponseType,
   ApiCreateDatasetCollectionParams
@@ -274,54 +278,78 @@ export type CreateOneCollectionParams = ApiCreateDatasetCollectionParams & {
   session?: ClientSession;
 };
 export async function createOneCollection({ session, ...props }: CreateOneCollectionParams) {
-  const {
-    teamId,
-    parentId,
-    datasetId,
-    tags,
+  const fn = async (s: ClientSession) => {
+    const {
+      teamId,
+      parentId,
+      datasetId,
+      tags,
 
-    fileId,
-    rawLink,
-    externalFileId,
-    externalFileUrl,
-    apiFileId,
-    apiFileParentId
-  } = props;
+      fileId,
+      rawLink,
+      externalFileId,
+      externalFileUrl,
+      apiFileId,
+      apiFileParentId
+    } = props;
 
-  const collectionTags = await createOrGetCollectionTags({
-    tags,
-    teamId,
-    datasetId,
-    session
-  });
+    const collectionTags = await createOrGetCollectionTags({
+      tags,
+      teamId,
+      datasetId,
+      session: s
+    });
 
-  // Create collection
-  const [collection] = await MongoDatasetCollection.create(
-    [
-      {
-        ...props,
-        _id: undefined,
+    // Create collection
+    const [collection] = await MongoDatasetCollection.create(
+      [
+        {
+          ...props,
+          _id: undefined,
 
-        parentId: parentId || null,
+          parentId: parentId || null,
 
-        tags: collectionTags,
+          tags: collectionTags,
 
-        ...(fileId ? { fileId } : {}),
-        ...(rawLink ? { rawLink } : {}),
-        ...(externalFileId ? { externalFileId } : {}),
-        ...(externalFileUrl ? { externalFileUrl } : {}),
-        ...(apiFileId ? { apiFileId } : {}),
-        ...(apiFileParentId ? { apiFileParentId } : {})
-      }
-    ],
-    { session, ordered: true }
-  );
+          ...(fileId ? { fileId } : {}),
+          ...(rawLink ? { rawLink } : {}),
+          ...(externalFileId ? { externalFileId } : {}),
+          ...(externalFileUrl ? { externalFileUrl } : {}),
+          ...(apiFileId ? { apiFileId } : {}),
+          ...(apiFileParentId ? { apiFileParentId } : {})
+        }
+      ],
+      { session: s, ordered: true }
+    );
 
-  if (isS3ObjectKey(fileId, 'dataset')) {
-    await removeS3TTL({ key: fileId, bucketName: 'private', session });
+    if (isS3ObjectKey(fileId, 'dataset')) {
+      await removeS3TTL({ key: fileId, bucketName: 'private', session: s });
+    }
+
+    // 创建 Collection 权限初始化（与文档创建同一事务）：
+    // 继承态写 merge(父级有效 clbs, [owner]) 完整快照（根 collection 父级 = dataset）；
+    // 独立态仅 owner 记录，并标记所属 dataset 已配置 collection 权限。
+    await createCollectionPermission({
+      resource: {
+        _id: String(collection._id),
+        teamId: String(collection.teamId),
+        type: collection.type,
+        parentId: collection.parentId ? String(collection.parentId) : null,
+        datasetId: String(collection.datasetId),
+        tmbId: String(collection.tmbId),
+        inheritPermission: props.inheritPermission
+      },
+      tmbId: String(collection.tmbId),
+      session: s
+    });
+
+    return collection;
+  };
+
+  if (session) {
+    return fn(session);
   }
-
-  return collection;
+  return mongoSessionRun(fn);
 }
 
 /* delete collection related images/files */
@@ -446,7 +474,38 @@ export async function delCollection({
       { session }
     ).lean();
 
+    // delete collection permission snapshots (same transaction)
+    await deleteCollectionPermissions({ teamId, collectionIds, session });
+
     // delete s3 images which are uploaded by users
     await s3DatasetSource.deleteDatasetFilesByKeys(imageIds);
   });
+}
+
+/** 查找 collection 及其全部子节点（parentId 子树）；返回 [根, ...子孙]。 */
+export async function findCollectionAndAllChildren({
+  teamId,
+  collectionId,
+  fields = '_id datasetId'
+}: {
+  teamId: string;
+  collectionId: string;
+  fields?: string;
+}) {
+  const find = async (id: string): Promise<any[]> => {
+    const children = await MongoDatasetCollection.find({ teamId, parentId: id }, fields).lean();
+    let list = children;
+    for (const child of children) {
+      list = list.concat(await find(String(child._id)));
+    }
+    return list;
+  };
+  const [root, children] = await Promise.all([
+    MongoDatasetCollection.findById(collectionId).lean(),
+    find(collectionId)
+  ]);
+  if (!root) {
+    throw new Error('Collection not found');
+  }
+  return [root, ...children];
 }

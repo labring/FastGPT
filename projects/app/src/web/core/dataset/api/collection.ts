@@ -26,9 +26,12 @@ import type {
 import type { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import type {
   DatasetCollectionsListItemType,
+  ChangeCollectionOwnerBody,
   DeleteCollectionBodyType,
+  GetCollectionCollaboratorListResponse,
   ReadCollectionSourceBodyType,
   ReadCollectionSourceResponseType,
+  UpdateCollectionCollaboratorBody,
   UpdateDatasetCollectionBodyType
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/global/openapi/api';
@@ -152,3 +155,15 @@ export const getAllTags = (datasetId: string) =>
 /* ================== read source ======================== */
 export const getCollectionSource = (data: ReadCollectionSourceBodyType) =>
   POST<ReadCollectionSourceResponseType>('/core/dataset/collection/read', data);
+
+/* ================== collection permission ======================== */
+export const getCollectionCollaboratorList = (collectionId: string) =>
+  GET<GetCollectionCollaboratorListResponse>(`/proApi/core/dataset/collection/collaborator/list`, {
+    collectionId
+  });
+export const postUpdateCollectionCollaborators = (body: UpdateCollectionCollaboratorBody) =>
+  POST(`/proApi/core/dataset/collection/collaborator/update`, body);
+export const putResumeCollectionInheritPermission = (collectionId: string) =>
+  PUT(`/core/dataset/collection/resumeInheritPermission`, { collectionId });
+export const postChangeCollectionOwner = (body: ChangeCollectionOwnerBody) =>
+  POST(`/proApi/core/dataset/collection/changeOwner`, body);

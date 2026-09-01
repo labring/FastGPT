@@ -1,7 +1,10 @@
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import {
+  authDataset,
+  authDatasetCollection
+} from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
@@ -28,6 +31,13 @@ import {
   ListCollectionV2ResponseSchema,
   type ListCollectionV2ResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import {
+  canShortCircuitCollectionPermission,
+  getReadableCollectionIds
+} from '@fastgpt/service/support/permission/collection/auth';
+import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
+import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 const defaultCollectionTrainingStatus = {
   trainingAmount: 0,
@@ -89,13 +99,73 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
   const searchText = rawSearchText?.replace(/'/g, '');
 
   // auth dataset and get my role
-  const { teamId, permission } = await authDataset({
+  const { teamId, tmbId, permission, dataset } = await authDataset({
     req,
     authToken: true,
     authApiKey: true,
     datasetId,
     per: ReadPermissionVal
   });
+
+  // 浏览具体目录前先校验目录本身可读；搜索模式（searchText）忽略 parentId 过滤，无需校验。
+  if (parentId && !searchText) {
+    const { collection: parentCollection } = await authDatasetCollection({
+      req,
+      authToken: true,
+      authApiKey: true,
+      collectionId: parentId,
+      per: ReadPermissionVal
+    });
+    if (String(parentCollection.datasetId) !== String(datasetId)) {
+      return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
+    }
+  }
+
+  // Collection 级可见性过滤：团队 owner/admin 或纯继承短路时跳过；
+  // 否则以当前目录候选集合 `$in` 限定批量解析可读 ID（无 N+1）。
+  let collectionIdFilter = {};
+  const shortCircuitCollectionPermission = await canShortCircuitCollectionPermission({
+    teamId,
+    datasetIds: [datasetId],
+    tmbId
+  });
+  if (!shortCircuitCollectionPermission) {
+    const candidates = await MongoDatasetCollection.find(
+      {
+        teamId: new Types.ObjectId(teamId),
+        datasetId: new Types.ObjectId(datasetId),
+        ...(selectFolder ? { type: DatasetCollectionTypeEnum.folder } : {}),
+        ...(searchText
+          ? {
+              name: new RegExp(`${replaceRegChars(searchText)}`, 'i')
+            }
+          : {
+              parentId: parentId ? new Types.ObjectId(parentId) : null
+            }),
+        ...(filterTags.length ? { tags: { $in: filterTags } } : {})
+      },
+      '_id type parentId tmbId inheritPermission',
+      { ...readFromSecondary }
+    ).lean();
+
+    const [groupIds, orgIds] = await Promise.all([
+      getGroupsByTmbId({ tmbId, teamId }).then((list) => list.map((item) => String(item._id))),
+      getOrgIdSetWithParentByTmbId({ tmbId, teamId })
+    ]);
+    const readableIds = await getReadableCollectionIds({
+      collections: candidates,
+      tmbId,
+      teamId,
+      groupIds,
+      orgIds: Array.from(orgIds),
+      datasetPermission: permission.role,
+      hasSetCollectionPermissions: dataset.hasSetCollectionPermissions
+    });
+    collectionIdFilter =
+      readableIds.length > 0
+        ? { _id: { $in: readableIds.map((id) => new Types.ObjectId(id)) } }
+        : { _id: { $in: [] } };
+  }
 
   const match = {
     teamId: new Types.ObjectId(teamId),
@@ -108,7 +178,8 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
       : {
           parentId: parentId ? new Types.ObjectId(parentId) : null
         }),
-    ...(filterTags.length ? { tags: { $in: filterTags } } : {})
+    ...(filterTags.length ? { tags: { $in: filterTags } } : {}),
+    ...collectionIdFilter
   };
 
   const selectField = {

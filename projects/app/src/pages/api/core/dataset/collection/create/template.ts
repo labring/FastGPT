@@ -1,8 +1,7 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission/dataset/auth';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import {
   DatasetCollectionDataProcessModeEnum,
@@ -31,12 +30,12 @@ async function handler(req: ApiRequestProps) {
     const filename = decodeMultipartFilename(result.fileMetadata.originalname);
     const { datasetId, parentId } = CreateTemplateCollectionFormSchema.parse(result.data);
 
-    const { teamId, tmbId, dataset } = await authDataset({
+    const { teamId, tmbId, dataset } = await authDatasetCollectionCreate({
       req,
       authToken: true,
       authApiKey: true,
-      per: WritePermissionVal,
-      datasetId
+      datasetId,
+      parentId
     });
 
     // Check dataset limit

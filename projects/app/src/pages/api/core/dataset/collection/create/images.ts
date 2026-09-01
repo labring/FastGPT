@@ -1,4 +1,4 @@
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission/dataset/auth';
 import {
   CreateImageCollectionFormSchema,
   type CreateCollectionWithResultResponseType
@@ -10,7 +10,6 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { addDays } from 'date-fns';
 import fs from 'node:fs';
@@ -38,9 +37,9 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       result.data
     );
 
-    const { dataset, teamId, tmbId } = await authDataset({
+    const { dataset, teamId, tmbId } = await authDatasetCollectionCreate({
       datasetId,
-      per: WritePermissionVal,
+      parentId,
       req,
       authToken: true,
       authApiKey: true

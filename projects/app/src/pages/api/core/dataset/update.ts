@@ -40,6 +40,7 @@ import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
 import { checkMoveFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { syncDatasetToCollections } from '@fastgpt/service/support/permission/collection/controller';
 
 // 更新知识库接口
 // 包括如下功能：
@@ -227,7 +228,6 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         ...(chunkSettings && { chunkSettings }),
         ...(intro !== undefined && { intro }),
         ...(externalReadUrl !== undefined && { externalReadUrl }),
-        ...(isMove && { inheritPermission: true }),
         ...(typeof autoSync === 'boolean' && { autoSync }),
         ...apiDatasetParams
       },
@@ -276,6 +276,14 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         session
       });
 
+      // Dataset ACL 是完整有效快照。先同步 Collection，确保还能读取后代 Dataset 的旧快照。
+      await syncDatasetToCollections({
+        teamId: dataset.teamId,
+        datasetId: String(dataset._id),
+        oldEffectiveClbs: oldResourceClbs,
+        newEffectiveClbs: newResourceClbs,
+        session
+      });
       await syncChildrenPermission({
         resource: dataset,
         resourceType: PerResourceTypeEnum.dataset,
@@ -285,8 +293,10 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         newParentCollaborators: newResourceClbs,
         session
       });
+      await onUpdate(session);
+
       logDatasetMove({ tmbId, teamId, dataset, targetName });
-      return onUpdate(session);
+      return;
     } else {
       logDatasetUpdate({ tmbId, teamId, dataset });
       return onUpdate(session);

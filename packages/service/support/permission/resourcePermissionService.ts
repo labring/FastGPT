@@ -136,19 +136,25 @@ export const createResourcePermissions = async ({
   resource,
   resourceType,
   tmbId,
+  parentResourceType,
+  parentResourceId,
   session
 }: {
   resource: SyncChildrenPermissionResourceType;
   resourceType: PerResourceTypeEnum;
   tmbId: string;
+  /** 跨类型父级覆盖（根 collection → dataset）。缺省时父级 = resource.parentId（同类型）。 */
+  parentResourceType?: PerResourceTypeEnum;
+  parentResourceId?: string;
   session: ClientSession;
 }) => {
   const parentCollaborators =
-    resource.parentId && shouldInheritResourcePermission(resource.inheritPermission)
+    (parentResourceId ?? resource.parentId) &&
+    shouldInheritResourcePermission(resource.inheritPermission)
       ? await resourcePermissionRepo.findByResource({
           teamId: resource.teamId,
-          resourceType,
-          resourceId: String(resource.parentId),
+          resourceType: parentResourceType ?? resourceType,
+          resourceId: String(parentResourceId ?? resource.parentId),
           session
         })
       : [];
@@ -381,10 +387,11 @@ export const updateResourceCollaborators = async ({
   parentCollaborators?: CollaboratorItemType[];
   session: ClientSession;
 }) => {
+  // 冲突判断放宽为「有父级」：根 collection（parentId 空）传入 dataset 父级 clbs 时同样可触发
   if (
     parentCollaborators &&
     shouldInheritResourcePermission(resource.inheritPermission) &&
-    resource.parentId &&
+    (resource.parentId || parentCollaborators.length > 0) &&
     checkRoleUpdateConflict({
       parentClbs: parentCollaborators,
       newChildClbs: newCollaborators
@@ -417,6 +424,7 @@ export const moveResourcePermissions = async ({
   resourceModel,
   resourceType,
   newParentCollaborators,
+  oldParentCollaborators: oldParentCollaboratorsOverride,
   session
 }: {
   resource: SyncChildrenPermissionResourceType;
@@ -424,17 +432,20 @@ export const moveResourcePermissions = async ({
   resourceModel: ResourceModel;
   resourceType: PerResourceTypeEnum;
   newParentCollaborators: CollaboratorItemType[];
+  /** 旧父级快照覆盖（'从根移动'：根 collection 旧父级 = dataset，缺省时内部按 resource.parentId 读取）。 */
+  oldParentCollaborators?: CollaboratorItemType[];
   session: ClientSession;
 }) => {
   const [oldParentCollaborators, oldResourceCollaborators] = await Promise.all([
-    resource.parentId
-      ? resourcePermissionRepo.findByResource({
-          teamId: resource.teamId,
-          resourceType,
-          resourceId: String(resource.parentId),
-          session
-        })
-      : [],
+    oldParentCollaboratorsOverride ??
+      (resource.parentId
+        ? resourcePermissionRepo.findByResource({
+            teamId: resource.teamId,
+            resourceType,
+            resourceId: String(resource.parentId),
+            session
+          })
+        : []),
     resourcePermissionRepo.findByResource({
       teamId: resource.teamId,
       resourceType,
@@ -473,22 +484,28 @@ export const resumeResourcePermissionInheritance = async ({
   resource,
   resourceModel,
   resourceType,
+  parentResourceType,
+  parentResourceId,
   session
 }: {
   resource: SyncChildrenPermissionResourceType;
   resourceModel: ResourceModel;
   resourceType: PerResourceTypeEnum;
+  /** 跨类型父级覆盖（根 collection → dataset）。缺省时父级 = resource.parentId（同类型）。 */
+  parentResourceType?: PerResourceTypeEnum;
+  parentResourceId?: string;
   session?: ClientSession;
 }) => {
   const fn = async (activeSession: ClientSession) => {
-    const parentCollaborators = resource.parentId
-      ? await resourcePermissionRepo.findByResource({
-          teamId: resource.teamId,
-          resourceType,
-          resourceId: String(resource.parentId),
-          session: activeSession
-        })
-      : [];
+    const parentCollaborators =
+      (parentResourceId ?? resource.parentId)
+        ? await resourcePermissionRepo.findByResource({
+            teamId: resource.teamId,
+            resourceType: parentResourceType ?? resourceType,
+            resourceId: String(parentResourceId ?? resource.parentId),
+            session: activeSession
+          })
+        : [];
     const oldResourceCollaborators = await resourcePermissionRepo.findByResource({
       teamId: resource.teamId,
       resourceType,
