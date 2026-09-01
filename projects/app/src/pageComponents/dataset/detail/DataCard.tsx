@@ -177,7 +177,9 @@ const DataCard = () => {
               )}
             </Box>
             {feConfigs?.isPlus && !!collection?.tags?.length && (
-              <TagsPopOver currentCollection={collection} />
+              <Box mt={'6px'} w={'100%'} minW={0}>
+                <TagsPopOver currentCollection={collection} />
+              </Box>
             )}
           </Box>
 

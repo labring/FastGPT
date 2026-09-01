@@ -6,6 +6,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
+import { buildCollectionListTagMatch } from '@fastgpt/service/core/dataset/collection/tagFilter';
 import { type DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
@@ -77,7 +78,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     parentId,
     searchText: rawSearchText,
     selectFolder,
-    filterTags,
+    tagFilters,
     simple,
     pageSize: rawPageSize,
     offset: rawOffset,
@@ -108,11 +109,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
       : {
           parentId: parentId ? new Types.ObjectId(parentId) : null
         }),
-    ...(filterTags.length
-      ? {
-          $or: [{ tags: { $in: filterTags } }, { 'tags.tagId': { $in: filterTags } }]
-        }
-      : {})
+    ...buildCollectionListTagMatch(tagFilters)
   };
 
   const selectField = {

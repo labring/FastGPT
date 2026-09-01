@@ -21,6 +21,7 @@ import dynamic from 'next/dynamic';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { type DatasetCollectionsListItemType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { type CollectionTagFilterItem } from '@fastgpt/global/core/dataset/type';
 import { useRouter } from 'next/router';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { type WebsiteConfigFormType } from './WebsiteConfig';
@@ -40,8 +41,8 @@ type CollectionPageContextType = {
   scrollContainerRef: RefObject<HTMLDivElement>;
   searchText: string;
   setSearchText: Dispatch<SetStateAction<string>>;
-  filterTags: string[];
-  setFilterTags: Dispatch<SetStateAction<string[]>>;
+  tagFilters: CollectionTagFilterItem[];
+  setTagFilters: Dispatch<SetStateAction<CollectionTagFilterItem[]>>;
 };
 
 export const CollectionPageContext = createContext<CollectionPageContextType>({
@@ -67,8 +68,8 @@ export const CollectionPageContext = createContext<CollectionPageContextType>({
   setSearchText: function (_value: SetStateAction<string>): void {
     throw new Error('Function not implemented.');
   },
-  filterTags: [],
-  setFilterTags: function (_value: SetStateAction<string[]>): void {
+  tagFilters: [],
+  setTagFilters: function (_value: SetStateAction<CollectionTagFilterItem[]>): void {
     throw new Error('Function not implemented.');
   }
 });
@@ -85,7 +86,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
 
   // collection list
   const [searchText, setSearchText] = useState('');
-  const [filterTags, setFilterTags] = useState<string[]>([]);
+  const [tagFilters, setTagFilters] = useState<CollectionTagFilterItem[]>([]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const {
     data: collections,
@@ -103,9 +104,9 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       datasetId,
       parentId,
       searchText,
-      filterTags
+      tagFilters
     },
-    refreshDeps: [parentId, searchText, filterTags],
+    refreshDeps: [parentId, searchText, tagFilters],
     scrollContainerRef
   });
 
@@ -161,8 +162,8 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
 
       searchText,
       setSearchText,
-      filterTags,
-      setFilterTags,
+      tagFilters,
+      setTagFilters,
       collections,
       Pagination,
       total,
@@ -175,7 +176,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     [
       Pagination,
       collections,
-      filterTags,
+      tagFilters,
       getData,
       isGetting,
       onOpenWebsiteModal,

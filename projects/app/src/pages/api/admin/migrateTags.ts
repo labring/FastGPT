@@ -3,7 +3,11 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoDatasetCollectionTags } from '@fastgpt/service/core/dataset/tag/schema';
 import { MongoDatasetCollectionTagsV2 } from '@fastgpt/service/core/dataset/tag/schemaV2';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { DEFAULT_TAG, type CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
+import {
+  DEFAULT_TAG,
+  DatasetCollectionTagTypeEnum,
+  type CollectionTagValueType
+} from '@fastgpt/global/core/dataset/type';
 import { getLogger } from '@fastgpt/service/common/logger';
 
 const logger = getLogger(['migrateTags']);
@@ -58,16 +62,20 @@ export default NextAPI(async function handler(req) {
       if (legacyDefaultTag) {
         await MongoDatasetCollectionTagsV2.updateOne(
           { _id: legacyDefaultTag._id },
-          { $set: { fromMigration: true, tagType: 'array' } }
+          { $set: { fromMigration: true, tagType: DatasetCollectionTagTypeEnum.array } }
         );
-        defaultTag = { ...legacyDefaultTag, fromMigration: true, tagType: 'array' };
+        defaultTag = {
+          ...legacyDefaultTag,
+          fromMigration: true,
+          tagType: DatasetCollectionTagTypeEnum.array
+        };
       } else {
         try {
           const createdTag = await MongoDatasetCollectionTagsV2.create({
             teamId: firstLegacyTag.teamId,
             datasetId,
             tag: DEFAULT_TAG,
-            tagType: 'array',
+            tagType: DatasetCollectionTagTypeEnum.array,
             fromMigration: true
           });
           defaultTag = createdTag.toObject();
@@ -82,6 +90,7 @@ export default NextAPI(async function handler(req) {
         }
       }
     }
+    if (!defaultTag) continue;
     const defaultTagId = String(defaultTag._id);
 
     const collections = await MongoDatasetCollection.find({ datasetId }, '_id tags').lean();

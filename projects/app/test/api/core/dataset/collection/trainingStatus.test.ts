@@ -1,5 +1,4 @@
 import listHandler from '@/pages/api/core/dataset/collection/listV2';
-import scrollListHandler from '@/pages/api/core/dataset/collection/scrollList';
 import detailHandler from '@/pages/api/core/dataset/collection/detail';
 import trainingDetailHandler from '@/pages/api/core/dataset/collection/trainingDetail';
 import {
@@ -7,7 +6,6 @@ import {
   DatasetCollectionTypeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { DatasetCollectionsListItemSchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
@@ -60,8 +58,7 @@ describe('collection training status api', () => {
       body: {
         datasetId: dataset._id,
         pageSize: 10,
-        offset: 0,
-        filterTags: []
+        offset: 0
       }
     });
 
@@ -229,51 +226,5 @@ describe('collection training status api', () => {
     expect(res.code).toBe(200);
     expect(res.data.queuedCounts.parse).toBe(1);
     expect(res.data.queuedCounts.chunk).toBe(0);
-  });
-
-  it('should keep deprecated scrollList compatible with the collection list item schema', async () => {
-    const root = await getRootUser();
-    const dataset = await MongoDataset.create({
-      name: 'test',
-      teamId: root.teamId,
-      tmbId: root.tmbId,
-      vectorModel: 'test',
-      agentModel: 'test'
-    });
-    const collection = await MongoDatasetCollection.create({
-      name: 'test',
-      type: DatasetCollectionTypeEnum.file,
-      teamId: root.teamId,
-      tmbId: root.tmbId,
-      datasetId: dataset._id
-    });
-
-    await MongoDatasetTraining.create({
-      teamId: root.teamId,
-      tmbId: root.tmbId,
-      datasetId: dataset._id,
-      collectionId: collection._id,
-      billId: 'test',
-      mode: TrainingModeEnum.chunk,
-      retryCount: 0,
-      errorMsg: 'final failed'
-    });
-
-    const res = await Call(scrollListHandler, {
-      auth: root,
-      body: {
-        datasetId: dataset._id,
-        pageSize: 10,
-        offset: 0,
-        filterTags: []
-      }
-    });
-
-    expect(res.code).toBe(200);
-    expect(() => DatasetCollectionsListItemSchema.parse(res.data.list[0])).not.toThrow();
-    expect(res.data.list[0]).toMatchObject({
-      trainingAmount: 1,
-      slowestTrainingStatus: CollectionTrainingStatusEnum.ready
-    });
   });
 });

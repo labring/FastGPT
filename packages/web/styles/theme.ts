@@ -654,6 +654,16 @@ const Checkbox = checkBoxMultiStyle({
           }
         }
       },
+      _indeterminate: {
+        bg: 'primary.50',
+        borderColor: 'primary.600',
+        borderWidth: '1px',
+        color: 'primary.600',
+        boxShadow: `${shadowLight} !important`,
+        _hover: {
+          bg: 'primary.50'
+        }
+      },
       _hover: {
         borderColor: 'primary.400'
       },

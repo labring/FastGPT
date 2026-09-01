@@ -1,7 +1,8 @@
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
-import { defineIndex, connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
+import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 import { DatasetCollectionName } from '../schema';
 import { type DatasetCollectionTagsSchemaType } from '@fastgpt/global/core/dataset/type';
+import { DatasetCollectionTagTypeEnum } from '@fastgpt/global/core/dataset/constants';
 const { Schema } = connectionMongo;
 
 export const DatasetCollectionTagsV2Name = 'dataset_collection_tags_v2';
@@ -25,8 +26,12 @@ const DatasetCollectionTagsV2Schema = new Schema({
   tagType: {
     type: String,
     default: 'string',
-    enum: ['string', 'number', 'datetime', 'array']
+    enum: Object.values(DatasetCollectionTagTypeEnum)
     // COMMENT: 标签类型。string=字符串比较, number=数值比较, datetime=时间戳比较, array=字符串数组集合比较(V2.0)
+  },
+  options: {
+    type: [String]
+    // COMMENT: array 类型标签的预设选项。集合写入选项值时合并新增项，标签管理可覆盖删除
   },
   fromMigration: {
     type: Boolean,
