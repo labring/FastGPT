@@ -42,7 +42,8 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
     vectorModel = getDefaultEmbeddingModel()?.model,
     agentModel = getDatasetModel()?.model,
     vlmModel = getDefaultVLMModel()?.model,
-    apiDatasetServer
+    apiDatasetServer,
+    inheritPermission
   } = parseApiInput({ req, bodySchema: CreateDatasetBodySchema }).body;
 
   // auth
@@ -88,7 +89,9 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
           vlmModel,
           avatar,
           type,
-          apiDatasetServer
+          apiDatasetServer,
+          // 独立态（false）仅写 owner 快照，不合并父级 dataset 权限；子树停止传播
+          inheritPermission
         }
       ],
       { session, ordered: true }

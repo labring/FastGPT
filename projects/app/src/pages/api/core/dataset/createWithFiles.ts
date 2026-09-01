@@ -52,7 +52,8 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
     avatar,
     vectorModel = getDefaultEmbeddingModel()?.model,
     agentModel = getDefaultLLMModel()?.model,
-    vlmModel = getDefaultVLMModel()?.model
+    vlmModel = getDefaultVLMModel()?.model,
+    inheritPermission
   } = datasetParams;
 
   const { teamId, tmbId, userId } = parentId
@@ -88,7 +89,9 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
             vlmModel,
             avatar,
             intro: '',
-            type: DatasetTypeEnum.dataset
+            type: DatasetTypeEnum.dataset,
+            // 独立态（false）仅写 owner 快照，不合并父级 dataset 权限；子树停止传播
+            inheritPermission
           }
         ],
         { session, ordered: true }

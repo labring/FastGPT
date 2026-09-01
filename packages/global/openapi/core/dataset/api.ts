@@ -55,6 +55,11 @@ export const CreateDatasetBodySchema = z.object({
   }),
   apiDatasetServer: ApiDatasetServerSchema.optional().meta({
     description: '第三方知识库服务器配置(API/飞书/语雀/钉钉)'
+  }),
+  inheritPermission: z.boolean().optional().meta({
+    example: true,
+    description:
+      '是否继承父级权限（默认 true）。true=继承父级 dataset 权限；false=独立配置，子树停止传播'
   })
 });
 
@@ -100,6 +105,11 @@ export const CreateDatasetWithFilesBodySchema = z.object({
       vlmModel: z.string().optional().meta({
         example: 'gpt-4o',
         description: '视觉语言模型名称'
+      }),
+      inheritPermission: z.boolean().optional().meta({
+        example: true,
+        description:
+          '是否继承父级权限（默认 true）。true=继承父级 dataset 权限；false=独立配置，子树停止传播'
       })
     })
     .meta({ description: '知识库参数' }),
@@ -427,6 +437,11 @@ export const CreateDatasetFolderBodySchema = z.object({
   intro: z.string().meta({
     example: '存放产品相关知识库',
     description: '文件夹简介'
+  }),
+  inheritPermission: z.boolean().optional().meta({
+    example: true,
+    description:
+      '是否继承父级权限（默认 true）。true=继承父级 dataset 权限；false=独立配置，子树停止传播'
   })
 });
 export type CreateDatasetFolderBody = z.infer<typeof CreateDatasetFolderBodySchema>;

@@ -248,8 +248,15 @@ export async function authDatasetCollection({
   } else if (flagSetCollectionPermissions !== true) {
     const isCollectionOwner = String(collection.tmbId) === String(tmbId);
     const datasetRole = dataset.permission.role;
-    role =
-      datasetRole === OwnerRoleVal ? ManageRoleVal : isCollectionOwner ? OwnerRoleVal : datasetRole;
+    // Collection owner 优先：owner 由创建/changeOwner 产生，owner 记录在全量快照中始终为
+    // OwnerRoleVal（merge 时与父级降级后的 manage 按位 OR 后保留全位）。短路分支必须与
+    // 物化快照直读语义一致（flag 仅作性能短路，不改变正确性），故先判 isCollectionOwner；
+    // 否则「同时是 dataset owner 与 collection owner」的用户会拿到 manage 而非 owner。
+    role = isCollectionOwner
+      ? OwnerRoleVal
+      : datasetRole === OwnerRoleVal
+        ? ManageRoleVal
+        : datasetRole;
   } else {
     role = await resolveCollectionPermission({
       collection,

@@ -9,8 +9,10 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { createCollectionPermission } from '@fastgpt/service/support/permission/collection/controller';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import {
   analyzeCollectionTree,
+  migrateCollectionPermissions,
   migrateDatasetCollections
 } from '@fastgpt/service/support/permission/collection/migrate';
 import {
@@ -290,6 +292,188 @@ describe.sequential('migrateDatasetCollections', () => {
     await expect(
       collectionClbs(String(users.owner.teamId), String(rootFile._id)).then(toPermissionMap)
     ).resolves.toEqual(new Map([[String(users.owner.tmbId), OwnerRoleVal]]));
+  });
+
+  it('removes stale ACL records before rebuilding an inheriting collection', async () => {
+    const users = await getFakeUsers(2);
+    const dataset = await createDataset({ user: users.owner });
+    const collection = await MongoDatasetCollection.create({
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      datasetId: dataset._id,
+      type: DatasetCollectionTypeEnum.file,
+      name: 'legacy-with-stale-acl'
+    });
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.collection,
+      teamId: users.owner.teamId,
+      resourceId: String(collection._id),
+      tmbId: users.members[0].tmbId,
+      permission: ReadRoleVal
+    });
+
+    await migrateDatasetCollections({
+      teamId: String(users.owner.teamId),
+      datasetId: String(dataset._id)
+    });
+
+    await expect(
+      collectionClbs(String(users.owner.teamId), String(collection._id)).then(toPermissionMap)
+    ).resolves.toEqual(new Map([[String(users.owner.tmbId), OwnerRoleVal]]));
+  });
+
+  it('preserves configured independent collections while materializing legacy collections', async () => {
+    const users = await getFakeUsers(3);
+    const dataset = await createDataset({ user: users.owner });
+    await setDatasetCollaborators({
+      user: users.owner,
+      datasetId: String(dataset._id),
+      collaborators: [
+        { tmbId: String(users.owner.tmbId), permission: OwnerRoleVal },
+        { tmbId: String(users.members[0].tmbId), permission: ReadRoleVal }
+      ]
+    });
+    const independent = await createCollection({
+      user: users.owner,
+      datasetId: String(dataset._id),
+      name: 'independent',
+      inheritPermission: false
+    });
+    await mongoSessionRun(async (session) => {
+      await updateResourceCollaborators({
+        resource: {
+          _id: String(independent._id),
+          type: independent.type,
+          teamId: String(independent.teamId),
+          parentId: null,
+          inheritPermission: false
+        },
+        resourceModel: MongoDatasetCollection,
+        resourceType: PerResourceTypeEnum.collection,
+        oldCollaborators: await getResourceOwnedClbs({
+          teamId: String(users.owner.teamId),
+          resourceId: String(independent._id),
+          resourceType: PerResourceTypeEnum.collection,
+          session
+        }),
+        newCollaborators: [
+          { tmbId: String(users.owner.tmbId), permission: OwnerRoleVal },
+          { tmbId: String(users.members[1].tmbId), permission: ReadRoleVal }
+        ],
+        session
+      });
+    });
+    const legacy = await MongoDatasetCollection.create({
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      datasetId: dataset._id,
+      type: DatasetCollectionTypeEnum.file,
+      name: 'legacy'
+    });
+
+    await migrateDatasetCollections({
+      teamId: String(users.owner.teamId),
+      datasetId: String(dataset._id)
+    });
+
+    await expect(MongoDatasetCollection.findById(independent._id).lean()).resolves.toMatchObject({
+      inheritPermission: false
+    });
+    await expect(
+      collectionClbs(String(users.owner.teamId), String(independent._id)).then(toPermissionMap)
+    ).resolves.toEqual(
+      new Map([
+        [String(users.owner.tmbId), OwnerRoleVal],
+        [String(users.members[1].tmbId), ReadRoleVal]
+      ])
+    );
+    await expect(
+      collectionClbs(String(users.owner.teamId), String(legacy._id)).then(toPermissionMap)
+    ).resolves.toEqual(
+      new Map([
+        [String(users.owner.tmbId), OwnerRoleVal],
+        [String(users.members[0].tmbId), ReadRoleVal]
+      ])
+    );
+    expect(await datasetFlag(String(dataset._id))).toBe(true);
+
+    await migrateDatasetCollections({
+      teamId: String(users.owner.teamId),
+      datasetId: String(dataset._id)
+    });
+
+    await expect(MongoDatasetCollection.findById(independent._id).lean()).resolves.toMatchObject({
+      inheritPermission: false
+    });
+    await expect(
+      collectionClbs(String(users.owner.teamId), String(independent._id)).then(toPermissionMap)
+    ).resolves.toEqual(
+      new Map([
+        [String(users.owner.tmbId), OwnerRoleVal],
+        [String(users.members[1].tmbId), ReadRoleVal]
+      ])
+    );
+  });
+
+  it('preserves an independent collection without an ACL record', async () => {
+    const users = await getFakeUsers(1);
+    const dataset = await createDataset({ user: users.owner });
+    const independent = await MongoDatasetCollection.create({
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      datasetId: dataset._id,
+      type: DatasetCollectionTypeEnum.file,
+      name: 'independent-without-acl',
+      inheritPermission: false
+    });
+    const legacy = await MongoDatasetCollection.create({
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      datasetId: dataset._id,
+      type: DatasetCollectionTypeEnum.file,
+      name: 'legacy'
+    });
+
+    await migrateDatasetCollections({
+      teamId: String(users.owner.teamId),
+      datasetId: String(dataset._id)
+    });
+
+    await expect(MongoDatasetCollection.findById(independent._id).lean()).resolves.toMatchObject({
+      inheritPermission: false
+    });
+    await expect(
+      collectionClbs(String(users.owner.teamId), String(independent._id))
+    ).resolves.toEqual([]);
+    await expect(
+      collectionClbs(String(users.owner.teamId), String(legacy._id)).then(toPermissionMap)
+    ).resolves.toEqual(new Map([[String(users.owner.tmbId), OwnerRoleVal]]));
+    expect(await datasetFlag(String(dataset._id))).toBe(true);
+  });
+
+  it('processes every dataset in the requested team', async () => {
+    const users = await getFakeUsers(1);
+    const firstDataset = await createDataset({ user: users.owner });
+    const secondDataset = await createDataset({ user: users.owner });
+    await createCollection({
+      user: users.owner,
+      datasetId: String(firstDataset._id),
+      name: 'first'
+    });
+    await createCollection({
+      user: users.owner,
+      datasetId: String(secondDataset._id),
+      name: 'second'
+    });
+
+    await expect(
+      migrateCollectionPermissions({ teamId: String(users.owner.teamId) })
+    ).resolves.toMatchObject({
+      datasetCount: 2,
+      processedDatasetCount: 2,
+      collectionCount: 2,
+      errors: []
+    });
   });
 
   it('rejects an orphan parentId instead of silently degrading', async () => {
