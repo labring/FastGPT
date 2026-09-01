@@ -1,4 +1,4 @@
-name: 'Rust-Agent-Test'
+name: 'Test IDE-Agent(Agent sandbox dependent)'
 on:
   pull_request:
     paths:

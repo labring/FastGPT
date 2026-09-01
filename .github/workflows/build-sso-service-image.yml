@@ -1,4 +1,4 @@
-name: Build fastgpt-sso-service images
+name: Release FastGPT-sso-service
 on:
   workflow_dispatch:
     inputs:
@@ -6,9 +6,6 @@ on:
         description: 'Image version tag (e.g. v1.0.0)'
         required: true
         type: string
-  push:
-    tags:
-      - 'v*'
 
 permissions:
   contents: read
@@ -25,16 +22,10 @@ jobs:
       - name: Validate release version
         id: version
         env:
-          VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
-          REF_TYPE: ${{ github.ref_type }}
-          CURRENT_REF: ${{ github.ref }}
+          VERSION: ${{ github.event.inputs.version }}
         run: |
           if [[ ! "$VERSION" =~ ^v ]]; then
             echo "::error::Image version must start with v. Current value: ${VERSION}"
-            exit 1
-          fi
-          if [[ "${{ github.event_name }}" != "workflow_dispatch" && "$REF_TYPE" != "tag" ]]; then
-            echo "::error::Release workflow must run on a tag starting with v. Current ref: ${CURRENT_REF}"
             exit 1
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
