@@ -1,4 +1,4 @@
-import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
+import { GET, POST, DELETE } from '@/web/common/api/request';
 import type {
   ParentTreePathItemType,
   ParentIdType
@@ -20,18 +20,21 @@ import type {
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import type {
   AddTagsToCollectionsParams,
+  BatchSetCollectionTagsParams,
   CreateDatasetCollectionTagParams,
+  SetCollectionTagsParams,
   UpdateDatasetCollectionTagParams
 } from '@fastgpt/global/openapi/core/dataset/collection/tagApi';
 import type { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import type {
   DatasetCollectionsListItemType,
   DeleteCollectionBodyType,
+  GetTagFilterOptionsResponseType,
   ReadCollectionSourceBodyType,
   ReadCollectionSourceResponseType,
   UpdateDatasetCollectionBodyType
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
-import type { PaginationProps, PaginationResponse } from '@fastgpt/global/openapi/api';
+import type { PaginationResponse } from '@fastgpt/global/openapi/api';
 import type { GetCollectionTrainingDetailResponseType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 
 /* ============================= collections ==================================== */
@@ -138,16 +141,18 @@ export const delDatasetCollectionTag = (data: { id: string; datasetId: string })
   DELETE(`/proApi/core/dataset/tag/delete`, data);
 export const updateDatasetCollectionTag = (data: UpdateDatasetCollectionTagParams) =>
   POST(`/proApi/core/dataset/tag/update`, data);
-export const getDatasetCollectionTags = (
-  data: PaginationProps<{
-    datasetId: string;
-    searchText?: string;
-  }>
-) => POST<PaginationResponse<DatasetTagType>>(`/proApi/core/dataset/tag/list`, data);
 export const getTagUsage = (datasetId: string) =>
   GET<TagUsageType[]>(`/proApi/core/dataset/tag/tagUsage?datasetId=${datasetId}`);
 export const getAllTags = (datasetId: string) =>
   GET<{ list: DatasetTagType[] }>(`/proApi/core/dataset/tag/getAllTags?datasetId=${datasetId}`);
+export const getDatasetTagFilterOptions = (datasetId: string) =>
+  GET<GetTagFilterOptionsResponseType>(
+    `/core/dataset/collection/tagFilterOptions?datasetId=${datasetId}`
+  );
+export const postSetCollectionTags = (data: SetCollectionTagsParams) =>
+  POST(`/proApi/core/dataset/tag/setCollectionTags`, data);
+export const postBatchSetCollectionTags = (data: BatchSetCollectionTagsParams) =>
+  POST(`/proApi/core/dataset/tag/batchSetCollectionTags`, data);
 
 /* ================== read source ======================== */
 export const getCollectionSource = (data: ReadCollectionSourceBodyType) =>

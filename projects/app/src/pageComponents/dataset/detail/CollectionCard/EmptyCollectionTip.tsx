@@ -10,7 +10,30 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 const EmptyCollectionTip = () => {
   const { t } = useTranslation();
   const onOpenWebsiteModal = useContextSelector(CollectionPageContext, (v) => v.onOpenWebsiteModal);
+  const tagFilters = useContextSelector(CollectionPageContext, (v) => v.tagFilters);
+  const setTagFilters = useContextSelector(CollectionPageContext, (v) => v.setTagFilters);
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
+
+  if (tagFilters.length > 0) {
+    return (
+      <EmptyTip
+        text={
+          <Flex>
+            <Box>{t('dataset:tag.filter_empty_prefix')}</Box>
+            <Box
+              color={'primary.700'}
+              cursor={'pointer'}
+              onClick={() => {
+                setTagFilters([]);
+              }}
+            >
+              {t('dataset:tag.filter_clear_items')}
+            </Box>
+          </Flex>
+        }
+      />
+    );
+  }
 
   return (
     <>

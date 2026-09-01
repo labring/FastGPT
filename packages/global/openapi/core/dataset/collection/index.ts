@@ -10,8 +10,9 @@ import {
   GetCollectionTrainingDetailQuerySchema,
   GetCollectionTrainingDetailResponseSchema,
   ListCollectionV2BodySchema,
+  GetTagFilterOptionsQuerySchema,
+  GetTagFilterOptionsResponseSchema,
   ReadCollectionSourceBodyRawSchema,
-  ScrollCollectionsBodySchema,
   SyncCollectionBodySchema,
   UpdateDatasetCollectionBodySchema
 } from './api';
@@ -75,22 +76,22 @@ export const DatasetCollectionPath: OpenAPIPath = {
       }
     }
   },
-  '/core/dataset/collection/scrollList': {
-    post: {
-      summary: '获取数据集集合列表（滚动分页）',
-      description: '已废弃：获取数据集集合列表（滚动分页）。请改用 /core/dataset/collection/listV2',
-      deprecated: true,
+  '/core/dataset/collection/tagFilterOptions': {
+    get: {
+      summary: '获取知识库标签筛选项',
+      description: '获取知识库下当前已被文件使用的标签值',
       tags: [DevApiTagsMap.datasetCollection],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: ScrollCollectionsBodySchema
-          }
-        }
+      requestParams: {
+        query: GetTagFilterOptionsQuerySchema
       },
       responses: {
         200: {
-          description: '成功返回集合列表'
+          description: '成功返回标签及已用值列表',
+          content: {
+            'application/json': {
+              schema: GetTagFilterOptionsResponseSchema
+            }
+          }
         }
       }
     }

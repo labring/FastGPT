@@ -121,7 +121,7 @@ export const DatasetTagPath: OpenAPIPath = {
   '/proApi/core/dataset/tag/batchSetCollectionTags': {
     post: {
       summary: '批量设置集合标签值',
-      description: '为多个集合批量设置标签值',
+      description: '为多个集合批量添加、覆盖或移除标签值；number 类型支持累加',
       tags: [DevApiTagsMap.datasetTag],
       requestBody: {
         content: {

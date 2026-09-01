@@ -3,6 +3,7 @@ import safeRegex from 'safe-regex';
 import { MongoDatasetCollection } from '../../collection/schema';
 import { MongoDatasetCollectionTagsV2 } from '../../tag/schemaV2';
 import { DEFAULT_TAG } from '@fastgpt/global/core/dataset/type';
+import { isCollectionTagValue } from '@fastgpt/global/core/dataset/tagUtils';
 import { readFromSecondary } from '../../../../common/mongo/utils';
 import { computeFilterIntersection } from '../utils';
 
@@ -284,12 +285,7 @@ export async function filterCollectionByKeyValueTags({
 
     // 5. Application-layer value comparison
     for (const col of collections) {
-      const tagsArr = (
-        (col.tags || []) as Array<{ tagId?: string; value?: string | number | string[] } | string>
-      ).filter(
-        (t): t is { tagId: string; value?: string | number | string[] } =>
-          typeof t === 'object' && t !== null && Boolean(t.tagId)
-      );
+      const tagsArr = (col.tags || []).filter(isCollectionTagValue);
 
       // AND: all must pass
       const andOk = ($and || []).every((cond) => matchCondition(cond, tagMap, tagsArr));
