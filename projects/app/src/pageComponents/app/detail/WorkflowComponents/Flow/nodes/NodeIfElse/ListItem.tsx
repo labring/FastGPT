@@ -330,7 +330,7 @@ const VariableSelector = ({
 }) => {
   const { t } = useTranslation();
 
-  const { referenceList, sourceNodeIds, sourceNodes } = useReference({
+  const { referenceList, sourceNodes } = useReference({
     nodeId,
     valueType: WorkflowIOValueTypeEnum.any
   });
@@ -339,7 +339,6 @@ const VariableSelector = ({
     <ReferSelector
       placeholder={t('common:select_reference_variable')}
       list={referenceList}
-      sourceNodeIds={sourceNodeIds}
       sourceNodes={sourceNodes}
       valueType={WorkflowIOValueTypeEnum.any}
       referenceSnapshots={variableSnapshot ? [variableSnapshot] : undefined}
@@ -525,7 +524,7 @@ const ConditionValueInput = ({
     return valueType;
   }, [condition, valueType, getArrayElementType]);
 
-  const { referenceList, sourceNodeIds, sourceNodes } = useReference({
+  const { referenceList, sourceNodes } = useReference({
     nodeId,
     valueType: referenceValueType
   });
@@ -582,7 +581,6 @@ const ConditionValueInput = ({
       <ReferSelector
         placeholder={t('common:select_reference_variable')}
         list={referenceList}
-        sourceNodeIds={sourceNodeIds}
         sourceNodes={sourceNodes}
         valueType={referenceValueType}
         referenceSnapshots={valueSnapshot ? [valueSnapshot] : undefined}
@@ -602,7 +600,6 @@ const ConditionValueInput = ({
   }, [
     t,
     referenceList,
-    sourceNodeIds,
     sourceNodes,
     referenceValueType,
     valueSnapshot,

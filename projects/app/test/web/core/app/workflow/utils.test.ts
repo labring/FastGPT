@@ -3289,6 +3289,29 @@ describe('workflow reference status', () => {
     ).toBe('invalid_reference');
   });
 
+  it('derives reachability from sourceNodes when sourceNodeIds is omitted', () => {
+    expect(
+      getWorkflowReferenceStatus({
+        value: ['source', 'text'],
+        sourceNodes: [
+          {
+            nodeId: 'source',
+            outputs: [
+              {
+                id: 'text',
+                key: 'text',
+                label: 'text',
+                type: FlowNodeOutputTypeEnum.static,
+                valueType: WorkflowIOValueTypeEnum.string
+              }
+            ]
+          }
+        ],
+        getNodeById: () => undefined
+      }).code
+    ).toBe('valid');
+  });
+
   it('reports malformed items in mixed multiple references', () => {
     const statuses = getWorkflowReferenceStatuses({
       value: [['source', 'error'], 'malformed'],

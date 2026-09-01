@@ -116,8 +116,7 @@ export const useDebug = () => {
       onRemoveError();
       const storeNodes = uiWorkflow2StoreWorkflow({
         nodes,
-        edges,
-        chatConfig: appDetail.chatConfig
+        edges
       });
 
       return JSON.stringify(storeNodes);

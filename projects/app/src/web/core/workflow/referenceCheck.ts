@@ -43,7 +43,7 @@ const isMalformedReferenceValue = (value: unknown) => {
 
 /**
  * 判断单项引用状态。输出可用性优先于来源范围，保证失效输出不会被误报为不可达。
- * 普通来源只在显式存在于 sourceNodeIds 时可用；global reference 单独按 chatConfig 查询。
+ * 普通来源按 sourceNodeIds 或 sourceNodes 判断范围；global reference 单独按 chatConfig 查询。
  */
 export const getWorkflowReferenceStatus = ({
   value,
@@ -90,10 +90,13 @@ export const getWorkflowReferenceStatus = ({
     return { code: 'invalid_reference', sourceType: sourceOutput.valueType };
   }
 
+  const availableSourceNodeIds = sourceNodeIds
+    ? new Set(sourceNodeIds)
+    : sourceNodes && new Set(sourceNodes.map((node) => node.nodeId));
   if (
     sourceNodeId !== VARIABLE_NODE_ID &&
-    sourceNodeIds &&
-    !new Set(sourceNodeIds).has(sourceNodeId)
+    availableSourceNodeIds &&
+    !availableSourceNodeIds.has(sourceNodeId)
   ) {
     return { code: 'unreachable_reference', sourceType: sourceOutput.valueType };
   }
@@ -151,7 +154,6 @@ export const workflowReferenceValueIsSelectable = ({
         value: item,
         valueType,
         sourceNodes,
-        sourceNodeIds: sourceNodes.map((node) => node.nodeId),
         getNodeById: () => undefined,
         chatConfig
       }).code === 'valid'

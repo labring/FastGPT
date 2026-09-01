@@ -136,7 +136,7 @@ const Reference = ({
   const [tempLabel, setTempLabel] = useState('');
   const [isEditing, setIsEditing] = useState(false);
 
-  const { referenceList, sourceNodeIds, sourceNodes } = useReference({
+  const { referenceList, sourceNodes } = useReference({
     nodeId,
     valueType: WorkflowIOValueTypeEnum.any,
     // Container nodes (loopRun) need to reference outputs from their sub-workflow.
@@ -235,7 +235,6 @@ const Reference = ({
         <ReferSelector
           placeholder={t('common:select_reference_variable')}
           list={referenceList}
-          sourceNodeIds={sourceNodeIds}
           sourceNodes={sourceNodes}
           valueType={WorkflowIOValueTypeEnum.any}
           referenceSnapshots={inputChildren.referenceSnapshots}
