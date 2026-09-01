@@ -1,7 +1,7 @@
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType } from '../../../types/runtime';
-import { getLLMModel } from '../../../../ai/model';
+import { getLLMModelData } from '../../../../ai/model';
 import { getAgentLoopHistories, getNodeErrResponse } from '../../utils';
 import { runToolCall } from './toolCall';
 import { type DispatchToolModuleProps } from './type';
@@ -46,6 +46,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     externalProvider,
     responseChatItemId,
     params: {
+      modelId,
       model,
       systemPrompt,
       userChatInput,
@@ -75,19 +76,19 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   const useSandbox = isAppChat ? appSandboxAvailability?.available === true : !!useAgentSandbox;
 
   try {
-    const toolModel = getLLMModel(model);
-    const useVision = aiChatVision && toolModel.vision;
-    const useAudio = aiChatAudio && toolModel.audio;
-    const useVideo = aiChatVideo && toolModel.video;
+    const toolModel = getLLMModelData({ modelId, model });
+    const useVision = aiChatVision && toolModel.config.vision;
+    const useAudio = aiChatAudio && toolModel.config.audio;
+    const useVideo = aiChatVideo && toolModel.config.video;
     const chatHistories = getAgentLoopHistories(history, histories);
     const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
     const parseHistoryFiles = !!fileUrlInput?.value?.length;
     const fileLinks = parseHistoryFiles ? rawFileLinks : undefined;
 
-    props.params.aiChatVision = aiChatVision && toolModel.vision;
+    props.params.aiChatVision = aiChatVision && toolModel.config.vision;
     props.params.aiChatAudio = useAudio;
     props.params.aiChatVideo = useVideo;
-    props.params.aiChatReasoning = aiChatReasoning && toolModel.reasoning;
+    props.params.aiChatReasoning = aiChatReasoning && toolModel.config.reasoning;
     props.params.fileUrlList = fileLinks;
     props.params.useAgentSandbox = useSandbox;
     props.params.sandboxEntrypoint = useSandbox ? sandboxEntrypoint : undefined;
@@ -102,7 +103,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     props.node.isEntry = false;
 
     const { messages, currentInputFiles } = await useToolMessages({
-      defaultSystemPrompt: toolModel.defaultSystemChatPrompt,
+      defaultSystemPrompt: toolModel.config.defaultSystemChatPrompt,
       systemPrompt,
       chatHistories,
       responseChatItemId,
@@ -159,7 +160,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       : undefined;
 
     // 未配置独立模型密钥时，沿用系统文本审核逻辑。
-    if (toolModel.censor && !externalProvider.openaiAccount?.key) {
+    if (toolModel.config.censor && !externalProvider.openaiAccount?.key) {
       await postTextCensor({
         text: `${systemPrompt}
           ${userChatInput}

@@ -12,6 +12,7 @@ import { subRoute } from '@fastgpt/web/common/system/utils';
 import { validateRedirectUrl } from '@/web/common/utils/uri';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import { useLoginRedirectAfterLogin } from '@/web/support/user/loginRedirect';
+import { resetUserModelCatalogAfterLogin } from '@/web/core/ai/model/useUserModelStore';
 
 const Login = () => {
   const router = useRouter();
@@ -56,6 +57,7 @@ const Login = () => {
           })
         : undefined;
 
+      resetUserModelCatalogAfterLogin();
       setUserInfo(res.user);
 
       if (targetRoute) {

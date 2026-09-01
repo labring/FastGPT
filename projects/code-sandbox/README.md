@@ -49,7 +49,7 @@ docker build -f projects/code-sandbox/Dockerfile -t fastgpt-code-sandbox .
 # 运行
 docker run -p 3000:3000 \
   -e SANDBOX_TOKEN=your-secret-token \
-  -e SANDBOX_POOL_SIZE=20 \
+  -e SANDBOX_POOL_SIZE=5 \
   fastgpt-code-sandbox
 ```
 
@@ -167,10 +167,10 @@ docker run -p 3000:3000 \
 
 ### 并发控制
 
-| 变量                           | 说明                                                                   | 默认值 |
-| ------------------------------ | ---------------------------------------------------------------------- | ------ |
-| `SANDBOX_POOL_SIZE`            | JS/Python 同时运行和空闲预热的进程数                                   | `20`   |
-| `SANDBOX_QUEUE_ID_CONCURRENCY` | 同一 `queueId` 同时可进入执行流程的请求数，空值表示不按 `queueId` 排队 | 空     |
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `SANDBOX_POOL_SIZE` | JS worker 进程数；也是 Python 同时运行和空闲预热的进程数 | `5` |
+| `SANDBOX_QUEUE_ID_CONCURRENCY` | 同一 `queueId` 同时可进入执行流程的请求数，空值表示不按 `queueId` 排队 | 空 |
 
 ### Python 隔离
 

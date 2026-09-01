@@ -1,31 +1,39 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import { ModelTypeEnum } from '../../../core/ai/constants';
 import {
-  EmbeddingModelItemSchema,
-  type EmbeddingModelItemType,
-  LLMModelItemSchema
-} from '../../../core/ai/model.schema';
+  MyEmbeddingModelItemSchema,
+  type MyEmbeddingModelItemType,
+  MyLLMModelItemSchema
+} from '../../../openapi/core/ai/model/api';
 import { GetSystemInitDataResponseSchema } from '../../../openapi/common/system/api';
 import { StandardSubLevelEnum } from '../../../support/wallet/sub/constants';
 
 const desensitizedEmbeddingModel = {
+  modelId: '68ad85a7463006c963799a01',
   type: ModelTypeEnum.embedding,
   provider: 'OpenAI',
   model: 'text-embedding-3-small',
   name: 'Embedding-2',
-  defaultToken: 500,
-  maxToken: 3000
+  scope: 'system' as const,
+  isCustom: false,
+  config: {
+    defaultToken: 500,
+    maxToken: 3000
+  }
 };
 
 describe('system initialization OpenAPI contract', () => {
-  it('strips sensitive fields from active and default model responses', () => {
+  it('drops all model catalog fields from system initialization', () => {
     const modelWithSecrets = {
       ...desensitizedEmbeddingModel,
       requestUrl: 'https://provider.example/v1',
       requestAuth: 'model-secret',
-      defaultConfig: { secret: 'default-config' },
-      dbConfig: { secret: 'db-config' },
-      queryConfig: { secret: 'query-config' }
+      config: {
+        ...desensitizedEmbeddingModel.config,
+        defaultConfig: { secret: 'default-config' },
+        dbConfig: { secret: 'db-config' },
+        queryConfig: { secret: 'query-config' }
+      }
     };
 
     const result = GetSystemInitDataResponseSchema.parse({
@@ -33,16 +41,8 @@ describe('system initialization OpenAPI contract', () => {
       defaultModels: { embedding: modelWithSecrets }
     });
 
-    expect(result.activeModelList?.[0]).not.toHaveProperty('requestUrl');
-    expect(result.activeModelList?.[0]).not.toHaveProperty('requestAuth');
-    expect(result.activeModelList?.[0]).not.toHaveProperty('defaultConfig');
-    expect(result.activeModelList?.[0]).not.toHaveProperty('dbConfig');
-    expect(result.activeModelList?.[0]).not.toHaveProperty('queryConfig');
-    expect(result.defaultModels?.embedding).not.toHaveProperty('requestUrl');
-    expect(result.defaultModels?.embedding).not.toHaveProperty('requestAuth');
-    expect(result.defaultModels?.embedding).not.toHaveProperty('defaultConfig');
-    expect(result.defaultModels?.embedding).not.toHaveProperty('dbConfig');
-    expect(result.defaultModels?.embedding).not.toHaveProperty('queryConfig');
+    expect(result).not.toHaveProperty('activeModelList');
+    expect(result).not.toHaveProperty('defaultModels');
     expect(JSON.stringify(result)).not.toContain('model-secret');
   });
 
@@ -113,42 +113,42 @@ describe('system initialization OpenAPI contract', () => {
     ).toThrow();
   });
 
-  it('fills the default weight for an embedding model without weight', () => {
-    expect(
-      GetSystemInitDataResponseSchema.parse({
-        activeModelList: [desensitizedEmbeddingModel]
-      })
-    ).toEqual({
-      activeModelList: [{ ...desensitizedEmbeddingModel, weight: 0 }]
-    });
-  });
-
   it('defaults missing embedding model weight to zero', () => {
-    expect(EmbeddingModelItemSchema.parse(desensitizedEmbeddingModel)).toEqual({
+    expect(MyEmbeddingModelItemSchema.parse(desensitizedEmbeddingModel)).toEqual({
       ...desensitizedEmbeddingModel,
-      weight: 0
+      config: { ...desensitizedEmbeddingModel.config, weight: 0 }
     });
-    expectTypeOf<EmbeddingModelItemType['weight']>().toEqualTypeOf<number>();
+    expectTypeOf<MyEmbeddingModelItemType['config']['weight']>().toEqualTypeOf<number>();
   });
 
   it('preserves an explicitly configured embedding model weight', () => {
-    expect(EmbeddingModelItemSchema.parse({ ...desensitizedEmbeddingModel, weight: 2 })).toEqual({
+    expect(
+      MyEmbeddingModelItemSchema.parse({
+        ...desensitizedEmbeddingModel,
+        config: { ...desensitizedEmbeddingModel.config, weight: 2 }
+      })
+    ).toEqual({
       ...desensitizedEmbeddingModel,
-      weight: 2
+      config: { ...desensitizedEmbeddingModel.config, weight: 2 }
     });
   });
 
   it('accepts an LLM model without functionCall', () => {
     expect(
-      LLMModelItemSchema.parse({
+      MyLLMModelItemSchema.parse({
+        modelId: '68ad85a7463006c963799a02',
         type: ModelTypeEnum.llm,
         provider: 'OpenAI',
         model: 'gpt-5',
         name: 'GPT-5',
-        maxContext: 128000,
-        maxResponse: 16000,
-        quoteMaxToken: 12000
+        scope: 'system',
+        isCustom: false,
+        config: {
+          maxContext: 128000,
+          maxResponse: 16000,
+          quoteMaxToken: 12000
+        }
       })
-    ).not.toHaveProperty('functionCall');
+    ).not.toHaveProperty('config.functionCall');
   });
 });

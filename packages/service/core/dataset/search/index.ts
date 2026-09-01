@@ -3,7 +3,6 @@ import type {
   DefaultSearchDatasetDataProps,
   SearchDatasetDataResponse
 } from './type';
-import { getLLMModel } from '../../ai/model';
 import { searchDatasetData } from './defaultRecall';
 import { datasetSearchQueryExtension } from './utils';
 
@@ -28,9 +27,7 @@ export const defaultSearchDatasetData = async ({
   const { searchQueries, reRankQuery, aiExtensionResult } = query
     ? await datasetSearchQueryExtension({
         query,
-        llmModel: datasetSearchUsingExtensionQuery
-          ? getLLMModel(datasetSearchExtensionModel)?.model
-          : undefined,
+        llmModel: datasetSearchUsingExtensionQuery ? datasetSearchExtensionModel : undefined,
         embeddingModel: props.model,
         extensionBg: datasetSearchExtensionBg,
         histories: props.histories,

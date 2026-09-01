@@ -2,7 +2,7 @@ import type { Readable } from 'node:stream';
 import { getAxiosConfig } from '../config';
 import { axiosWithoutSSRF } from '../../../common/api/axios';
 import FormData from 'form-data';
-import { type STTModelType } from '@fastgpt/global/core/ai/model.schema';
+import { type STTSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import { UserError } from '@fastgpt/global/common/error/utils';
 
 export const aiTranscriptions = async ({
@@ -11,7 +11,7 @@ export const aiTranscriptions = async ({
   filename,
   headers
 }: {
-  model: STTModelType;
+  model: STTSystemModelDataType;
   fileStream: Readable;
   filename: string;
   headers?: Record<string, string>;

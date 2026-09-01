@@ -12,7 +12,7 @@ export type AgentLoopUsage = {
   pages?: number;
   totalPoints: number;
   moduleName: string;
-  model?: string;
+  modelId?: string;
 };
 
 /** 过滤 provider 或工具返回的空 usage，统一 Agent Loop 内部的数组处理。 */

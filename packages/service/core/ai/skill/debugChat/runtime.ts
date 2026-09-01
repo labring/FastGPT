@@ -23,7 +23,7 @@ const AGENT_NODE_ID = 'skill-debug-agent';
  */
 export function buildDebugRuntimeNodes(
   skillId: string,
-  model: string,
+  modelId: string,
   systemPrompt: string
 ): {
   runtimeNodes: RuntimeNodeItemType[];
@@ -87,12 +87,12 @@ export function buildDebugRuntimeNodes(
           value: 20
         },
         {
-          key: NodeInputKeyEnum.aiModel,
+          key: NodeInputKeyEnum.aiModelId,
           renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
           label: 'AI Model',
           required: true,
           valueType: WorkflowIOValueTypeEnum.string,
-          value: model
+          value: modelId
         },
         {
           key: NodeInputKeyEnum.aiSystemPrompt,

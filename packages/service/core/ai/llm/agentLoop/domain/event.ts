@@ -9,6 +9,7 @@ import type { AgentLoopUsage } from './usage';
 
 export type AgentLoopToolResponseCompress = {
   response: string;
+  modelName: string;
   usage: AgentLoopUsage;
   requestIds: string[];
   seconds: number;
@@ -90,6 +91,7 @@ export type AgentLoopEvent =
     }
   | {
       type: 'after_message_compress';
+      modelName: string;
       usages?: AgentLoopUsage[];
       requestIds: string[];
       seconds: number;

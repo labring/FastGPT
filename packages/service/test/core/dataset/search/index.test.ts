@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockSearchDatasetData = vi.hoisted(() => vi.fn());
 const mockDatasetSearchQueryExtension = vi.hoisted(() => vi.fn());
-const mockGetLLMModel = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/core/dataset/search/defaultRecall', () => ({
   searchDatasetData: mockSearchDatasetData
@@ -12,11 +11,41 @@ vi.mock('@fastgpt/service/core/dataset/search/utils', () => ({
   datasetSearchQueryExtension: mockDatasetSearchQueryExtension
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getLLMModel: mockGetLLMModel
-}));
-
 import { defaultSearchDatasetData } from '../../../../core/dataset/search';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type {
+  EmbeddingSystemModelDataType,
+  LLMSystemModelDataType
+} from '@fastgpt/global/core/ai/model.schema';
+
+const embeddingModel: EmbeddingSystemModelDataType = {
+  provider: 'test',
+  model: 'embedding-model',
+  name: 'Embedding model',
+  modelId: '68ad85a7463006c963799a01',
+  scope: 'system' as const,
+  isCustom: false,
+  type: ModelTypeEnum.embedding,
+  config: {
+    defaultToken: 512,
+    maxToken: 8192,
+    weight: 0
+  }
+};
+const extensionModel: LLMSystemModelDataType = {
+  provider: 'test',
+  model: 'query-extension-model',
+  name: 'Query extension model',
+  modelId: '68ad85a7463006c963799a02',
+  scope: 'system' as const,
+  isCustom: false,
+  type: ModelTypeEnum.llm,
+  config: {
+    maxContext: 32000,
+    maxResponse: 4000,
+    quoteMaxToken: 16000
+  }
+};
 
 describe('defaultSearchDatasetData', () => {
   beforeEach(() => {
@@ -38,7 +67,7 @@ describe('defaultSearchDatasetData', () => {
       histories: [],
       teamId: 'team-1',
       datasetIds: ['dataset-1'],
-      model: 'embedding-model',
+      model: embeddingModel,
       textQueries: ['   ', '\n'],
       imageQueries: ['https://files.example.com/query.png'],
       limit: 5000,
@@ -55,9 +84,6 @@ describe('defaultSearchDatasetData', () => {
   });
 
   it('should trim text queries before query extension', async () => {
-    mockGetLLMModel.mockReturnValue({
-      model: 'query-extension-model'
-    });
     mockDatasetSearchQueryExtension.mockResolvedValue({
       searchQueries: ['first', 'second', 'expanded'],
       reRankQuery: 'first\nsecond\nexpanded',
@@ -68,18 +94,18 @@ describe('defaultSearchDatasetData', () => {
       histories: [],
       teamId: 'team-1',
       datasetIds: ['dataset-1'],
-      model: 'embedding-model',
+      model: embeddingModel,
       textQueries: [' first ', ' ', 'second'],
       imageQueries: [],
       limit: 5000,
       datasetSearchUsingExtensionQuery: true,
-      datasetSearchExtensionModel: 'query-extension-model'
+      datasetSearchExtensionModel: extensionModel
     });
 
     expect(mockDatasetSearchQueryExtension).toHaveBeenCalledWith(
       expect.objectContaining({
         query: 'first\nsecond',
-        llmModel: 'query-extension-model'
+        llmModel: extensionModel
       })
     );
     expect(mockSearchDatasetData).toHaveBeenCalledWith(

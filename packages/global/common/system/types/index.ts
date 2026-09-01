@@ -1,12 +1,5 @@
 import type { SubPlanType } from '../../../support/wallet/sub/type';
 import type { AccountCancellationVerificationCapabilities } from '../../../support/user/account/cancellation/type';
-import type {
-  LLMModelItemType,
-  EmbeddingModelItemType,
-  TTSModelType,
-  STTModelType,
-  RerankModelItemType
-} from '../../../core/ai/model.schema';
 
 export type NavbarItemType = {
   id: string;
@@ -33,13 +26,6 @@ export type FastGPTConfigFileType = {
   feConfigs: FastGPTFeConfigsType;
   systemEnv: SystemEnvType;
   subPlans?: SubPlanType;
-
-  // Abandon
-  llmModels?: LLMModelItemType[];
-  vectorModels?: EmbeddingModelItemType[];
-  reRankModels?: RerankModelItemType[];
-  audioSpeechModels?: TTSModelType[];
-  whisperModel?: STTModelType;
 };
 
 export type FastGPTFeConfigsType = {

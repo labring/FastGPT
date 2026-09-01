@@ -11,6 +11,7 @@ import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/workflowChe
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { uiWorkflow2StoreWorkflow } from '../../utils';
 import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 import dynamic from 'next/dynamic';
 import { Box, Button, Flex } from '@chakra-ui/react';
@@ -55,6 +56,8 @@ export const useDebug = () => {
   const { t } = useSafeTranslation();
   const { t: workflowT } = useTranslation();
   const { toast } = useToast();
+  const { modelList, loaded: modelsLoaded } = useUserModelLists();
+  const availableModels = modelsLoaded ? modelList : undefined;
 
   const setNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.setNodes);
   const getNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodes);
@@ -108,6 +111,7 @@ export const useDebug = () => {
     const { issueMap, hasError, firstErrorNodeId } = checkWorkflowBeforeRunOrPublish({
       nodes,
       edges,
+      models: availableModels,
       t: workflowT
     });
 
@@ -142,6 +146,7 @@ export const useDebug = () => {
     return Promise.reject();
   }, [
     appDetail.chatConfig,
+    availableModels,
     edges,
     fitView,
     getNodes,

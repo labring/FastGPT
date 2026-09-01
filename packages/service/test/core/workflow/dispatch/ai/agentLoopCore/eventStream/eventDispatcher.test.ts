@@ -66,10 +66,10 @@ describe('createAgentLoopCoreEventDispatcher', () => {
     });
     dispatcher.emitEvent({
       type: 'after_message_compress',
+      modelName: 'GPT-4',
       usages: [
         {
           moduleName: 'account_usage:compress_llm_messages',
-          model: 'GPT-4',
           totalPoints: 0.2
         }
       ],
@@ -277,10 +277,10 @@ describe('createAgentLoopCoreEventDispatcher', () => {
     });
     const event = {
       type: 'after_message_compress' as const,
+      modelName: 'GPT-4',
       usages: [
         {
           moduleName: 'account_usage:compress_llm_messages',
-          model: 'GPT-4',
           totalPoints: 0.2
         }
       ],

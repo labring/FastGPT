@@ -1,5 +1,5 @@
 /* v8 ignore file */
-import { ModelTypeEnum } from './constants';
+import { ModelScopeEnum, ModelTypeEnum } from './constants';
 import z from 'zod';
 
 export const ModelPriceTierSchema = z
@@ -18,7 +18,7 @@ export const ModelPriceTierSchema = z
   });
 export type ModelPriceTierType = z.infer<typeof ModelPriceTierSchema>;
 
-const PriceTypeSchema = z.object({
+export const PriceTypeSchema = z.object({
   charsPointsPrice: z.number().optional(), // 1k chars=n points; 60s=n points;
   // 新版的梯度价格计算字段
   priceTiers: z.array(ModelPriceTierSchema).optional().meta({
@@ -33,130 +33,151 @@ const PriceTypeSchema = z.object({
 });
 export type PriceType = z.infer<typeof PriceTypeSchema>;
 
-const BaseModelItemSchema = z.object({
-  provider: z.string().trim().min(1),
-  model: z.string().trim().min(1),
-  name: z.string().trim().min(1),
-  avatar: z.string().optional(), // model icon, from provider
-
-  isActive: z.boolean().optional(),
-  isCustom: z.boolean().optional(),
-  isDefault: z.boolean().optional(),
-
-  // If has requestUrl, it will request the model directly
-  requestUrl: z.string().optional(),
-  requestAuth: z.string().optional(),
-
-  // Test mode: when enabled, classify/extract/tool call/evaluation scenarios are disabled
-  testMode: z.boolean().optional() // test mode flag
-});
-
-export const LLMModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.shape).extend({
-  type: z.literal(ModelTypeEnum.llm),
-  // Model params
+/**
+ * 模型类型专属配置。公共业务字段保留在 ai_models 顶层，只有不同类型之间存在差异的
+ * 请求能力与默认参数进入 config，避免运行时将插件返回对象整体覆盖数据库配置。
+ */
+export const LLMModelConfigSchema = z.object({
   maxContext: z.number(),
   maxResponse: z.number(),
   quoteMaxToken: z.number(),
   maxTemperature: z.number().optional(),
-
   showTopP: z.boolean().optional(),
   responseFormatList: z.array(z.string()).optional(),
   showStopSign: z.boolean().optional(),
-
   censor: z.boolean().optional(),
   vision: z.boolean().optional(),
   audio: z.boolean().optional(),
   video: z.boolean().optional(),
   reasoning: z.boolean().optional(),
   reasoningEffort: z.boolean().optional(),
-
   functionCall: z.boolean().optional(),
   toolChoice: z.boolean().optional(),
-
   defaultSystemChatPrompt: z.string().optional(),
   defaultConfig: z.record(z.string(), z.any()).optional(),
-  fieldMap: z.record(z.string(), z.string()).optional(),
-
-  // LLM
-  isDefaultDatasetTextModel: z.boolean().optional(),
-  isDefaultDatasetImageModel: z.boolean().optional(),
-  isDefaultChatTitleModel: z.boolean().optional(),
-
-  /** @deprecated */
-  datasetProcess: z.boolean().optional(), // dataset
-  /** @deprecated */
-  usedInClassify: z.boolean().optional(),
-  /** @deprecated */
-  usedInExtractFields: z.boolean().optional(),
-  /** @deprecated */
-  usedInToolCall: z.boolean().optional(),
-  /** @deprecated */
-  useInEvaluation: z.boolean().optional()
+  fieldMap: z.record(z.string(), z.string()).optional()
 });
-export type LLMModelItemType = z.infer<typeof LLMModelItemSchema>;
+export type LLMModelConfigType = z.infer<typeof LLMModelConfigSchema>;
 
-export const EmbeddingModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.shape).extend({
-  type: z.literal(ModelTypeEnum.embedding),
-  defaultToken: z.number(), // split text default token
-  maxToken: z.number(), // model max token
-  weight: z.number().default(0), // training weight
-  hidden: z.boolean().optional(), // Disallow creation
-  vision: z.boolean().optional(), // Support image embedding
-  normalization: z.boolean().optional(), // normalization processing
-  batchSize: z.number().optional(), // batch request size
-  defaultConfig: z.record(z.string(), z.any()).optional(), // post request config
-  dbConfig: z.record(z.string(), z.any()).optional(), // Custom parameters for storage
-  queryConfig: z.record(z.string(), z.any()).optional() // Custom parameters for query
+export const EmbeddingModelConfigSchema = z.object({
+  defaultToken: z.number(),
+  maxToken: z.number(),
+  weight: z.number().default(0),
+  hidden: z.boolean().optional(),
+  vision: z.boolean().optional(),
+  normalization: z.boolean().optional(),
+  batchSize: z.number().optional(),
+  defaultConfig: z.record(z.string(), z.any()).optional(),
+  dbConfig: z.record(z.string(), z.any()).optional(),
+  queryConfig: z.record(z.string(), z.any()).optional()
 });
-export type EmbeddingModelItemType = z.infer<typeof EmbeddingModelItemSchema>;
+export type EmbeddingModelConfigType = z.infer<typeof EmbeddingModelConfigSchema>;
 
-export const RerankModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.shape).extend({
-  type: z.literal(ModelTypeEnum.rerank),
-  maxToken: z.number().optional(), // max input token for rerank query + one document
-  defaultConfig: z.record(z.string(), z.any()).optional() // post request config
+export const RerankModelConfigSchema = z.object({
+  maxToken: z.number().optional(),
+  defaultConfig: z.record(z.string(), z.any()).optional()
 });
-export type RerankModelItemType = z.infer<typeof RerankModelItemSchema>;
+export type RerankModelConfigType = z.infer<typeof RerankModelConfigSchema>;
 
-export const TTSModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.shape).extend({
-  type: z.literal(ModelTypeEnum.tts),
+export const TTSModelConfigSchema = z.object({
   voices: z.array(z.object({ label: z.string(), value: z.string() }))
 });
-export type TTSModelType = z.infer<typeof TTSModelItemSchema>;
+export type TTSModelConfigType = z.infer<typeof TTSModelConfigSchema>;
 
-export const STTModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.shape).extend({
-  type: z.literal(ModelTypeEnum.stt)
+export const STTModelConfigSchema = z.object({});
+export type STTModelConfigType = z.infer<typeof STTModelConfigSchema>;
+
+const SystemModelDocumentBaseSchema = PriceTypeSchema.extend({
+  provider: z.string().trim().min(1),
+  model: z.string().trim().min(1),
+  name: z.string().trim().min(1),
+  scope: z.literal(ModelScopeEnum.system).default(ModelScopeEnum.system),
+  isActive: z.boolean().optional(),
+  requestUrl: z.string().optional(),
+  requestAuth: z.string().optional(),
+  testMode: z.boolean().optional()
 });
-export type STTModelType = z.infer<typeof STTModelItemSchema>;
 
-export const SystemModelItemSchema = z.discriminatedUnion('type', [
-  LLMModelItemSchema,
-  EmbeddingModelItemSchema,
-  TTSModelItemSchema,
-  STTModelItemSchema,
-  RerankModelItemSchema
+export const LLMSystemModelDocumentSchema = SystemModelDocumentBaseSchema.extend({
+  type: z.literal(ModelTypeEnum.llm),
+  config: LLMModelConfigSchema
+});
+
+export const EmbeddingSystemModelDocumentSchema = SystemModelDocumentBaseSchema.extend({
+  type: z.literal(ModelTypeEnum.embedding),
+  config: EmbeddingModelConfigSchema
+});
+
+export const RerankSystemModelDocumentSchema = SystemModelDocumentBaseSchema.extend({
+  type: z.literal(ModelTypeEnum.rerank),
+  config: RerankModelConfigSchema
+});
+
+export const TTSSystemModelDocumentSchema = SystemModelDocumentBaseSchema.extend({
+  type: z.literal(ModelTypeEnum.tts),
+  config: TTSModelConfigSchema
+});
+
+export const STTSystemModelDocumentSchema = SystemModelDocumentBaseSchema.extend({
+  type: z.literal(ModelTypeEnum.stt),
+  config: STTModelConfigSchema
+});
+
+/** ai_models 持久化后的标准形态；modelId 由 MongoDB `_id` 提供，不重复存储。 */
+export const SystemModelDocumentDataSchema = z.discriminatedUnion('type', [
+  LLMSystemModelDocumentSchema,
+  EmbeddingSystemModelDocumentSchema,
+  TTSSystemModelDocumentSchema,
+  STTSystemModelDocumentSchema,
+  RerankSystemModelDocumentSchema
 ]);
-export type SystemModelItemType = z.infer<typeof SystemModelItemSchema>;
+export type SystemModelDocumentDataType = z.infer<typeof SystemModelDocumentDataSchema>;
 
-export const PersistedSystemModelItemSchema = SystemModelItemSchema.transform((metadata) => {
-  const persistedMetadata = { ...metadata } as Record<string, unknown>;
+/** 运行时模型数据。avatar 与 isCustom 都由 provider/plugin 信息派生。 */
+const RuntimeSystemModelFields = {
+  modelId: z.string(),
+  avatar: z.string().optional(),
+  isCustom: z.boolean()
+};
 
-  delete persistedMetadata.avatar;
-  delete persistedMetadata.isCustom;
-  delete persistedMetadata.datasetProcess;
-  delete persistedMetadata.usedInClassify;
-  delete persistedMetadata.usedInExtractFields;
-  delete persistedMetadata.usedInToolCall;
-  delete persistedMetadata.useInEvaluation;
+export const LLMSystemModelDataSchema =
+  LLMSystemModelDocumentSchema.extend(RuntimeSystemModelFields);
+export const EmbeddingSystemModelDataSchema =
+  EmbeddingSystemModelDocumentSchema.extend(RuntimeSystemModelFields);
+export const TTSSystemModelDataSchema =
+  TTSSystemModelDocumentSchema.extend(RuntimeSystemModelFields);
+export const STTSystemModelDataSchema =
+  STTSystemModelDocumentSchema.extend(RuntimeSystemModelFields);
+export const RerankSystemModelDataSchema =
+  RerankSystemModelDocumentSchema.extend(RuntimeSystemModelFields);
 
-  for (const [key, value] of Object.entries(persistedMetadata)) {
-    if (value === undefined) delete persistedMetadata[key];
-  }
+export const SystemModelDataSchema = z.discriminatedUnion('type', [
+  LLMSystemModelDataSchema,
+  EmbeddingSystemModelDataSchema,
+  TTSSystemModelDataSchema,
+  STTSystemModelDataSchema,
+  RerankSystemModelDataSchema
+]);
+export type SystemModelDataType = z.infer<typeof SystemModelDataSchema>;
 
-  if (Array.isArray(persistedMetadata.priceTiers)) {
-    delete persistedMetadata.charsPointsPrice;
-    delete persistedMetadata.inputPrice;
-    delete persistedMetadata.outputPrice;
-  }
+/**
+ * 模型引用只允许稳定 ID 与废弃的系统 model 标识。modelId 存在时必须优先解析，
+ * 不得因 ID 无效而降级使用 model。
+ */
+export type ModelReferenceType = {
+  modelId?: string;
+  /** @deprecated 新数据只写 modelId。 */
+  model?: string;
+};
 
-  return persistedMetadata as SystemModelItemType;
-});
+export type LLMSystemModelDataType = Extract<SystemModelDataType, { type: ModelTypeEnum.llm }>;
+export type EmbeddingSystemModelDataType = Extract<
+  SystemModelDataType,
+  { type: ModelTypeEnum.embedding }
+>;
+export type RerankSystemModelDataType = Extract<
+  SystemModelDataType,
+  { type: ModelTypeEnum.rerank }
+>;
+export type TTSSystemModelDataType = Extract<SystemModelDataType, { type: ModelTypeEnum.tts }>;
+export type STTSystemModelDataType = Extract<SystemModelDataType, { type: ModelTypeEnum.stt }>;

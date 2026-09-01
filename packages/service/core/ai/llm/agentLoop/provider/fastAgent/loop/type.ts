@@ -4,6 +4,7 @@ import type {
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
+import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { CreateLLMResponseProps } from '../../../../request';
 import type { SandboxClient } from '../../../../../sandbox/interface/runtime';
@@ -31,7 +32,7 @@ export type {
 
 export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   teamId: string;
-  model: string;
+  model: LLMSystemModelDataType;
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   userKey?: CreateLLMResponseProps['userKey'];
   stream?: boolean;

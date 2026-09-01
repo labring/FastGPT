@@ -8,7 +8,7 @@ import {
   assertMemberRateLimit,
   MemberRateLimitPolicy
 } from '@fastgpt/service/common/rateLimit/interface/member';
-import { getDefaultSTTModel } from '@fastgpt/service/core/ai/model';
+import { getDefaultSTTModelData } from '@fastgpt/service/core/ai/model';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { AudioTranscriptionsDataSchema } from '@fastgpt/global/openapi/core/chat/record/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -32,10 +32,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       bodySchema: AudioTranscriptionsDataSchema
     }).body;
 
-    if (!getDefaultSTTModel()) {
-      throw new Error('whisper model not found');
-    }
-
     if (!result.fileMetadata) {
       throw new Error('file not found');
     }
@@ -58,7 +54,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     const transcriptionsResult = await aiTranscriptions({
-      model: getDefaultSTTModel(),
+      model: getDefaultSTTModelData(),
       fileStream: result.getReadStream(),
       filename: result.fileMetadata.originalname
     });

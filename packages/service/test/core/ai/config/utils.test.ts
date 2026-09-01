@@ -1,66 +1,97 @@
 import { describe, expect, it } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import {
   desensitizeSystemModel,
-  desensitizeSystemDefaultModels,
-  normalizeRuntimeSystemModelConfig
+  desensitizeSystemDefaultModels
 } from '../../../../core/ai/config/utils';
+import { flatModelToDocumentData } from '../../../../core/ai/config/repair';
 
-describe('normalizeRuntimeSystemModelConfig', () => {
-  it('removes a null maxTemperature from the final LLM model', () => {
-    const result = normalizeRuntimeSystemModelConfig({
+describe('flatModelToDocumentData', () => {
+  it('moves type-specific fields into config and normalizes plugin maxTokens', () => {
+    const result = flatModelToDocumentData({
       type: ModelTypeEnum.llm,
-      model: 'test-llm',
-      maxTemperature: null
+      provider: 'OpenAI',
+      model: 'gpt-test',
+      name: 'GPT test',
+      maxContext: 128000,
+      maxTokens: 8192,
+      quoteMaxToken: 100000,
+      vision: true,
+      isActive: true
     });
 
-    expect(result).not.toHaveProperty('maxTemperature');
-  });
-
-  it('preserves a valid LLM maxTemperature', () => {
-    const result = normalizeRuntimeSystemModelConfig({
+    expect(result).toEqual({
       type: ModelTypeEnum.llm,
-      maxTemperature: 1.2
+      provider: 'OpenAI',
+      model: 'gpt-test',
+      name: 'GPT test',
+      scope: 'system',
+      isActive: true,
+      config: {
+        maxContext: 128000,
+        maxResponse: 8192,
+        quoteMaxToken: 100000,
+        vision: true
+      }
     });
-
-    expect(result.maxTemperature).toBe(1.2);
+    expect(result).not.toHaveProperty('maxTokens');
+    expect(result).not.toHaveProperty('vision');
   });
 
-  it('does not normalize fields on non-LLM models', () => {
-    const result = normalizeRuntimeSystemModelConfig({
+  it('lets persisted config override flat plugin defaults without dropping false and zero', () => {
+    const result = flatModelToDocumentData({
       type: ModelTypeEnum.embedding,
-      maxTemperature: null
+      provider: 'OpenAI',
+      model: 'embedding-test',
+      name: 'Embedding test',
+      defaultToken: 500,
+      maxToken: 8000,
+      weight: 100,
+      vision: true,
+      config: { weight: 0, vision: false, batchSize: 0 }
     });
 
-    expect(result.maxTemperature).toBeNull();
+    expect(result.config).toMatchObject({
+      defaultToken: 500,
+      maxToken: 8000,
+      weight: 0,
+      vision: false,
+      batchSize: 0
+    });
   });
 });
 
 describe('system model response filtering', () => {
   it('removes server-only fields from a model without mutating the source', () => {
     const model = {
+      modelId: '68ad85a7463006c963799a68',
       type: ModelTypeEnum.llm,
       provider: 'OpenAI',
       model: 'gpt-test',
       name: 'GPT test',
-      maxContext: 4096,
-      maxResponse: 1024,
-      quoteMaxToken: 1024,
+      scope: 'system' as const,
+      isCustom: false,
       requestUrl: 'https://provider.example/v1',
       requestAuth: 'model-secret',
-      defaultSystemChatPrompt: 'internal prompt',
-      defaultConfig: { secret: 'internal config' },
-      fieldMap: { messages: 'prompt' }
-    } satisfies LLMModelItemType;
+      config: {
+        maxContext: 4096,
+        maxResponse: 1024,
+        quoteMaxToken: 1024,
+        defaultSystemChatPrompt: 'internal prompt',
+        defaultConfig: { secret: 'internal config' },
+        fieldMap: { messages: 'prompt' }
+      }
+    };
 
     const result = desensitizeSystemModel(model);
 
     expect(result).toMatchObject({
       ...model,
-      defaultSystemChatPrompt: undefined,
-      defaultConfig: undefined,
-      fieldMap: undefined,
+      config: {
+        defaultSystemChatPrompt: undefined,
+        defaultConfig: undefined,
+        fieldMap: undefined
+      },
       requestUrl: undefined,
       requestAuth: undefined
     });
@@ -70,18 +101,23 @@ describe('system model response filtering', () => {
 
   it('sanitizes system defaults without changing their configured model', () => {
     const model = {
+      modelId: '68ad85a7463006c963799a68',
       type: ModelTypeEnum.llm,
       provider: 'OpenAI',
       model: 'configured-model',
       name: 'Configured model',
-      maxContext: 4096,
-      maxResponse: 1024,
-      quoteMaxToken: 1024,
+      scope: 'system' as const,
+      isCustom: false,
       requestUrl: 'https://provider.example/v1',
       requestAuth: 'configured-secret',
-      defaultConfig: { secret: 'internal config' },
-      fieldMap: { messages: 'prompt' }
-    } satisfies LLMModelItemType;
+      config: {
+        maxContext: 4096,
+        maxResponse: 1024,
+        quoteMaxToken: 1024,
+        defaultConfig: { secret: 'internal config' },
+        fieldMap: { messages: 'prompt' }
+      }
+    };
 
     const result = desensitizeSystemDefaultModels({ llm: model });
 
@@ -90,8 +126,10 @@ describe('system model response filtering', () => {
       model: 'configured-model',
       requestUrl: undefined,
       requestAuth: undefined,
-      defaultConfig: undefined,
-      fieldMap: undefined
+      config: {
+        defaultConfig: undefined,
+        fieldMap: undefined
+      }
     });
     expect(JSON.stringify(result)).not.toContain('configured-secret');
   });

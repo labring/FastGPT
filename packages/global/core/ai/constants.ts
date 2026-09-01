@@ -1,6 +1,10 @@
 import { i18nT } from '../../common/i18n/utils';
 import type { CompletionUsage, ReasoningEffort } from './llm/type';
-import type { LLMModelItemType, EmbeddingModelItemType, STTModelType } from './model.schema';
+import type {
+  EmbeddingSystemModelDataType,
+  LLMSystemModelDataType,
+  STTSystemModelDataType
+} from './model.schema';
 
 export const getLLMDefaultUsage = (): CompletionUsage => {
   return {
@@ -18,46 +22,66 @@ export enum ModelTypeEnum {
   rerank = 'rerank'
 }
 
-export const defaultQAModels: LLMModelItemType[] = [
+/** 已安装模型实例的归属作用域；插件模板不属于模型实例，不使用该枚举。 */
+export enum ModelScopeEnum {
+  system = 'system',
+  team = 'team'
+}
+
+export const defaultQAModels: LLMSystemModelDataType[] = [
   {
     type: ModelTypeEnum.llm,
     provider: 'OpenAI',
     model: 'gpt-5',
     name: 'gpt-5',
-    maxContext: 16000,
-    maxResponse: 16000,
-    quoteMaxToken: 13000,
-    maxTemperature: 1.2,
+    modelId: '',
+    scope: ModelScopeEnum.system,
+    isCustom: false,
     charsPointsPrice: 0,
-    censor: false,
-    vision: true,
-    toolChoice: true,
-    functionCall: false,
-    defaultSystemChatPrompt: '',
-    defaultConfig: {}
+    config: {
+      maxContext: 16000,
+      maxResponse: 16000,
+      quoteMaxToken: 13000,
+      maxTemperature: 1.2,
+      censor: false,
+      vision: true,
+      toolChoice: true,
+      functionCall: false,
+      defaultSystemChatPrompt: '',
+      defaultConfig: {}
+    }
   }
 ];
 
-export const defaultVectorModels: EmbeddingModelItemType[] = [
+export const defaultVectorModels: EmbeddingSystemModelDataType[] = [
   {
     type: ModelTypeEnum.embedding,
     provider: 'OpenAI',
     model: 'text-embedding-3-small',
     name: 'Embedding-2',
+    modelId: '',
+    scope: ModelScopeEnum.system,
+    isCustom: false,
     charsPointsPrice: 0,
-    defaultToken: 500,
-    maxToken: 3000,
-    weight: 100
+    config: {
+      defaultToken: 500,
+      maxToken: 3000,
+      weight: 100
+    }
   }
 ];
 
-export const defaultSTTModels: STTModelType[] = [
+export const defaultSTTModels: STTSystemModelDataType[] = [
   {
     type: ModelTypeEnum.stt,
     provider: 'OpenAI',
     model: 'whisper-1',
     name: 'whisper-1',
-    charsPointsPrice: 0
+    modelId: '',
+    scope: ModelScopeEnum.system,
+    isCustom: false,
+    charsPointsPrice: 0,
+    config: {}
   }
 ];
 

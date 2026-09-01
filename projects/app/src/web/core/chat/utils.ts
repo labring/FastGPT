@@ -6,6 +6,7 @@ import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api'
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { useMemo } from 'react';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 
 type OptionalChatTargetInput = Partial<Record<'appId' | 'skillId', string>> & {
   sourceType?: ChatSourceTypeEnum.app | ChatSourceTypeEnum.chatAgentHelper;
@@ -254,24 +255,33 @@ export const hasChatAuthTargetInput = (
 export const getAppIdFromChatTarget = (target: ChatTargetInputType) =>
   'appId' in target ? target.appId : undefined;
 
-export function checkChatSupportSelectFileByChatModels(models: string[] = []) {
+export function checkChatSupportSelectFileByChatModels(
+  models: string[] = [],
+  llmModelList: MyLLMModelItemType[] = []
+) {
   for (const model of models) {
-    const modelData = getWebLLMModel(model);
-    if (modelData?.vision) {
+    const modelData = getWebLLMModel(model, llmModelList);
+    if (modelData?.config.vision) {
       return true;
     }
   }
   return false;
 }
 
-export function checkChatSupportSelectFileByModules(modules: StoreNodeItemType[] = []) {
+export function checkChatSupportSelectFileByModules(
+  modules: StoreNodeItemType[] = [],
+  llmModelList: MyLLMModelItemType[] = []
+) {
   const chatModules = modules.filter(
     (item) =>
       item.flowNodeType === FlowNodeTypeEnum.chatNode ||
       item.flowNodeType === FlowNodeTypeEnum.toolCall
   );
   const models: string[] = chatModules.map(
-    (item) => item.inputs.find((item) => item.key === 'model')?.value || ''
+    (item) =>
+      item.inputs.find((input) => input.key === NodeInputKeyEnum.aiModelId)?.value ||
+      item.inputs.find((input) => input.key === NodeInputKeyEnum.aiModel)?.value ||
+      ''
   );
-  return checkChatSupportSelectFileByChatModels(models);
+  return checkChatSupportSelectFileByChatModels(models, llmModelList);
 }

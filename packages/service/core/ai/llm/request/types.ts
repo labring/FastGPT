@@ -11,7 +11,7 @@ import type {
   StreamResponseType,
   UnStreamResponseType
 } from '@fastgpt/global/core/ai/llm/type';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { AIApiRequestMeta } from '../../config';
 import type { ToolCallEventType } from '../toolCall/type';
@@ -36,7 +36,7 @@ export type LLMRequestBodyType<T> = Omit<
   T,
   'model' | 'stop' | 'response_format' | 'messages' | 'tools'
 > & {
-  model: string | LLMModelItemType;
+  model: LLMSystemModelDataType;
   stop?: string;
   response_format?: {
     type?: string;
@@ -119,7 +119,7 @@ export type LLMAccumulatedUsage = {
 };
 
 export type CreateChatCompletionProps = {
-  modelData: LLMModelItemType;
+  modelData: LLMSystemModelDataType;
   body: ChatCompletionCreateParamsNonStreaming | ChatCompletionCreateParamsStreaming;
   userKey?: OpenaiAccountType;
   timeout?: number;

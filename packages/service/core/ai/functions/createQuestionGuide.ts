@@ -6,7 +6,7 @@ import {
 import json5 from 'json5';
 import { createLLMResponse } from '../llm/request';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { getLLMModel } from '../model';
+import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 
 const logger = getLogger(LogCategories.MODULE.AI.FUNCTIONS);
 
@@ -17,7 +17,7 @@ export async function createQuestionGuide({
   teamId
 }: {
   messages: ChatCompletionMessageParam[];
-  model: string;
+  model: LLMSystemModelDataType;
   customPrompt?: string;
   teamId: string;
 }): Promise<{
@@ -25,7 +25,6 @@ export async function createQuestionGuide({
   inputTokens: number;
   outputTokens: number;
 }> {
-  const questionGuideModel = getLLMModel(model);
   const concatMessages: ChatCompletionMessageParam[] = [
     ...messages,
     {
@@ -44,7 +43,7 @@ export async function createQuestionGuide({
       model,
       messages: concatMessages,
       stream: true,
-      ...(questionGuideModel?.reasoning ? { reasoning_effort: 'none' as const } : {})
+      ...(model.config.reasoning ? { reasoning_effort: 'none' as const } : {})
     }
   });
 

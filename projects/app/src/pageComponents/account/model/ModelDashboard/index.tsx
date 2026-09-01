@@ -12,10 +12,10 @@ import DateRangePicker, {
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { getChannelList, getDashboardV2 } from '@/web/core/ai/channel';
-import { getSystemModelList } from '@/web/core/ai/config';
 import AreaChartComponent from '@fastgpt/web/components/common/charts/AreaChartComponent';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
 import { calculateModelPrice } from '@fastgpt/global/core/ai/pricing';
 import DataTableComponent from './DataTableComponent';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
@@ -63,7 +63,8 @@ const getDefaultDateRange = (): DateRangeType => {
 const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   const { t, i18n } = useClientTranslation('config_model');
   const theme = useTheme();
-  const { feConfigs, getModelProvider } = useSystemStore();
+  const { feConfigs } = useSystemStore();
+  const { getModelProvider, systemModelList } = useAdminModelConfig();
 
   const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
 
@@ -111,9 +112,6 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   );
 
   // Get model list filtered by selected channel
-  const { data: systemModelList = [] } = useRequest(getSystemModelList, {
-    manual: false
-  });
   const llmModelSet = useMemo(
     () =>
       new Set(

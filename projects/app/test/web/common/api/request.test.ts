@@ -24,7 +24,9 @@ import {
 } from '@fastgpt/web/i18n/utils';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { TOKEN_ERROR_CODE } from '@fastgpt/global/common/error/errorCode';
+import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 import { clearToken } from '@/web/support/user/auth';
+import { beginLogout, resetLogoutState } from '@/web/support/user/logoutState';
 
 // Mock all required dependencies
 vi.mock('@fastgpt/web/common/system/utils', () => ({
@@ -76,6 +78,7 @@ describe('request utils', () => {
     vi.clearAllMocks();
     Object.keys(maxQuantityMap).forEach((key) => delete maxQuantityMap[key]);
     deduplicatedRequestMap.clear();
+    resetLogoutState();
     mockLocation.pathname = '/test';
     dispatchEventMock.mockReturnValue(true);
   });
@@ -286,6 +289,23 @@ describe('request utils', () => {
   });
 
   describe('responseError', () => {
+    it('suppresses concurrent token errors during intentional logout', async () => {
+      mockLocation.pathname = '/dashboard';
+      beginLogout();
+      const err = {
+        response: {
+          data: {
+            code: tokenErrorCode
+          }
+        }
+      };
+
+      await expect(responseError(err)).rejects.toBeInstanceOf(ToastHandledError);
+      expect(dispatchEventMock).not.toHaveBeenCalled();
+      expect(clearToken).not.toHaveBeenCalled();
+      expect(mockLocation.replace).not.toHaveBeenCalled();
+    });
+
     it('should handle token error for non-outlink page', async () => {
       mockLocation.pathname = '/dashboard';
       const err = {

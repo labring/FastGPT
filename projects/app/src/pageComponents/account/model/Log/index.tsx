@@ -1,5 +1,4 @@
 import { getChannelList, getChannelLog, getLogDetail } from '@/web/core/ai/channel';
-import { getSystemModelList } from '@/web/core/ai/config';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {
   Table,
@@ -36,6 +35,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import type { ChannelLogListItemType } from '@/global/aiproxy/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
 import ModelTabHeader from '../ModelTabHeader';
 
 type LogDetailType = Omit<ChannelLogListItemType, 'model' | 'request_at'> & {
@@ -52,7 +52,7 @@ type LogDetailType = Omit<ChannelLogListItemType, 'model' | 'request_at'> & {
 const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
   const { t, i18n } = useClientTranslation('config_model');
   const { userInfo } = useUserStore();
-  const { getModelProvider } = useSystemStore();
+  const { getModelProvider, systemModelList } = useAdminModelConfig();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const isRoot = userInfo?.username === 'root';
@@ -100,9 +100,6 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
     }
   );
 
-  const { data: systemModelList = [] } = useRequest(getSystemModelList, {
-    manual: false
-  });
   const modelList = useMemo(() => {
     const res = systemModelList
       .map((item) => {

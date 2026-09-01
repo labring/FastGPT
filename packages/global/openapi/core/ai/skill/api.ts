@@ -342,7 +342,7 @@ export const SkillDebugChatBodySchema = z.object({
   chatId: z.string().min(1),
   responseChatItemId: z.string().optional(),
   messages: z.array(ChatCompletionMessageParamSchema),
-  model: z.string().optional(),
+  modelId: z.string().meta({ description: '调试使用的模型 ID' }),
   systemPrompt: z.string().optional()
 });
 export type SkillDebugChatBody = z.infer<typeof SkillDebugChatBodySchema>;

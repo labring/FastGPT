@@ -6,10 +6,14 @@ import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { replaceVariable } from '@fastgpt/service/common/string/replaceVariable';
 import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import type { PushDataChunkType } from '@fastgpt/global/openapi/core/dataset/data/api';
-import { getLLMModel } from '@fastgpt/service/core/ai/model';
+import {
+  getDatasetAgentModel,
+  getDatasetEmbeddingModel,
+  getDatasetVlmModel
+} from '@fastgpt/service/core/dataset/model';
 import { checkTeamAiPointsAndLock } from './utils';
 import { addMinutes } from 'date-fns';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import {
   chunkAutoChunkSize,
   getLLMMaxChunkSize
@@ -20,6 +24,7 @@ import { text2Chunks } from '@fastgpt/service/worker/function';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.QA);
 
@@ -30,7 +35,10 @@ const reduceQueue = () => {
 };
 
 type PopulateType = {
-  dataset: { vectorModel: string; agentModel: string; vlmModel: string };
+  dataset: Pick<
+    DatasetSchemaType,
+    'vectorModelId' | 'vectorModel' | 'agentModelId' | 'agentModel' | 'vlmModelId' | 'vlmModel'
+  >;
   collection: { qaPrompt?: string };
 };
 
@@ -66,7 +74,7 @@ export async function generateQA(): Promise<any> {
             .populate<PopulateType>([
               {
                 path: 'dataset',
-                select: 'agentModel vectorModel vlmModel'
+                select: 'agentModelId agentModel vectorModelId vectorModel vlmModelId vlmModel'
               },
               {
                 path: 'collection',
@@ -125,7 +133,9 @@ export async function generateQA(): Promise<any> {
       });
 
       try {
-        const modelData = getLLMModel(data.dataset.agentModel);
+        const modelData = getDatasetAgentModel(data.dataset);
+        const embeddingModelData = getDatasetEmbeddingModel(data.dataset);
+        const vlmModelData = getDatasetVlmModel(data.dataset);
         const prompt = `${data.collection.qaPrompt || Prompt_AgentQA.description}
   ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
 
@@ -144,7 +154,7 @@ export async function generateQA(): Promise<any> {
           teamId: data.teamId,
           saveLLMResponseRecord: false,
           body: {
-            model: modelData.model,
+            model: modelData,
             messages,
             stream: true
           }
@@ -164,9 +174,9 @@ export async function generateQA(): Promise<any> {
             chunkIndex: data.chunkIndex
           })),
           billId: data.billId,
-          vectorModel: data.dataset.vectorModel,
-          agentModel: data.dataset.agentModel,
-          vlmModel: data.dataset.vlmModel
+          vectorModel: embeddingModelData,
+          agentModel: modelData,
+          vlmModel: vlmModelData
         });
 
         // delete data from training
@@ -178,7 +188,7 @@ export async function generateQA(): Promise<any> {
           inputTokens,
           outputTokens,
           usageId: data.billId,
-          model: modelData.model,
+          model: modelData,
           type: UsageItemTypeEnum.training_qa
         });
 
@@ -227,7 +237,7 @@ async function formatSplitText({
 }: {
   answer: string;
   rawText: string;
-  llmModel: LLMModelItemType;
+  llmModel: LLMSystemModelDataType;
 }) {
   answer = answer.replace(/\\n/g, '\n'); // 将换行符替换为空格
   const regex = /Q\d+:(\s*)(.*)(\s*)A\d+:(\s*)([\s\S]*?)(?=Q\d|$)/g; // 匹配Q和A的正则表达式

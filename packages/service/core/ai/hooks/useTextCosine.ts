@@ -4,7 +4,7 @@
 */
 
 import { getVectors } from '../embedding';
-import { getEmbeddingModel } from '../model';
+import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 
 class PriorityQueue<T> {
   private heap: Array<{ item: T; priority: number }> = [];
@@ -26,8 +26,11 @@ class PriorityQueue<T> {
     return this.heap.length;
   }
 }
-export const useTextCosine = ({ embeddingModel }: { embeddingModel: string }) => {
-  const vectorModel = getEmbeddingModel(embeddingModel);
+export const useTextCosine = ({
+  embeddingModel
+}: {
+  embeddingModel: EmbeddingSystemModelDataType;
+}) => {
   // Calculate marginal gain
   const computeMarginalGain = (
     candidateEmbedding: number[],
@@ -93,7 +96,7 @@ export const useTextCosine = ({ embeddingModel }: { embeddingModel: string }) =>
     }
 
     const { tokens: embeddingTokens, vectors: embeddingVectors } = await getVectors({
-      model: vectorModel,
+      model: embeddingModel,
       inputs: [query, ...normalizedCandidates].map((text) => ({
         type: 'text',
         input: text
@@ -161,6 +164,6 @@ export const useTextCosine = ({ embeddingModel }: { embeddingModel: string }) =>
 
   return {
     lazyGreedyQuerySelection,
-    embeddingModel: vectorModel.model
+    embeddingModel: embeddingModel.model
   };
 };

@@ -1,5 +1,8 @@
 import { createContext } from 'use-context-selector';
-import type { FlowNodeTemplateType, FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type {
+  FlowNodeTemplateType,
+  FlowNodeItemType
+} from '@fastgpt/global/core/workflow/type/node';
 
 import { useDeepCompareEffect, useMemoizedFn } from 'ahooks';
 import React, {
@@ -22,6 +25,7 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getWebLLMModel } from '@/web/common/system/utils';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -120,6 +124,7 @@ const WorkflowInitContextProvider = ({
   children: ReactNode;
   basicNodeTemplates: FlowNodeTemplateType[];
 }) => {
+  const { llmModelList } = useUserModelLists();
   // Nodes
   const [nodes = [], setNodes, onNodesChange] = useNodesState<FlowNodeItemType>([]);
   const getNodes = useMemoizedFn(() => nodes);
@@ -197,8 +202,10 @@ const WorkflowInitContextProvider = ({
       };
       if (map[flowNodeType]) {
         const model =
-          node.data.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
-        const quoteMaxToken = getWebLLMModel(model)?.quoteMaxToken || 0;
+          node.data.inputs.find((item) => item.key === NodeInputKeyEnum.aiModelId)?.value ||
+          node.data.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value ||
+          '';
+        const quoteMaxToken = getWebLLMModel(model, llmModelList)?.config.quoteMaxToken ?? 0;
         llmMaxQuoteContext = Math.max(llmMaxQuoteContext, quoteMaxToken);
       }
 
@@ -228,7 +235,7 @@ const WorkflowInitContextProvider = ({
       foldedNodesMap,
       compareNodeList
     };
-  }, [nodes]);
+  }, [llmModelList, nodes]);
 
   // 拆解出常用的数据，避免重复计算
   const nodeIds = useMemoEnhance(() => nodeFormat.nodeIds, [nodeFormat.nodeIds]);

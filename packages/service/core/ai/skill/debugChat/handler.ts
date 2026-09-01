@@ -31,7 +31,7 @@ import { getLocale } from '../../../../common/middle/i18n';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
-import { getDefaultLLMModel } from '../../model';
+import { getLLMModelData, findModelData } from '../../model';
 import { getRunningSkillEditSandbox } from '../../sandbox/interface/skillEdit';
 import { dispatchWorkFlow } from '../../../workflow/dispatch';
 import { prepareWorkflowFileQuery } from '../../../workflow/utils/fileLimits';
@@ -96,7 +96,7 @@ export async function handleSkillDebugChat(
       chatId,
       responseChatItemId: responseChatItemIdFromBody = getNanoid(),
       messages = [],
-      model,
+      modelId,
       systemPrompt = ''
     } = body;
     skillId = parsedSkillId;
@@ -109,7 +109,6 @@ export async function handleSkillDebugChat(
       throw new UserError('messages is required');
     }
 
-    const resolvedModel = model || getDefaultLLMModel().model;
     const originIp = getIpFromRequest(req);
 
     const { teamId, tmbId, skill } = await authSkill({
@@ -119,6 +118,7 @@ export async function handleSkillDebugChat(
       skillId,
       per: WritePermissionVal
     });
+    const modelData = getLLMModelData({ modelId });
 
     if (!(await teamFrequencyLimit({ teamId, type: LimitTypeEnum.chat, res }))) {
       return ChatWorkflowSseResponseSchema.parse('');
@@ -184,7 +184,7 @@ export async function handleSkillDebugChat(
 
     const { runtimeNodes, runtimeEdges } = buildDebugRuntimeNodes(
       skillId,
-      resolvedModel,
+      modelData.modelId,
       systemPrompt
     );
 
@@ -201,7 +201,11 @@ export async function handleSkillDebugChat(
       showNodeStatus: true
     });
 
-    logger.debug('Dispatching skill debug workflow', { skillId, chatId, model });
+    logger.debug('Dispatching skill debug workflow', {
+      skillId,
+      chatId,
+      modelId: modelData.modelId
+    });
 
     const {
       flatNodeResponses,
@@ -253,8 +257,10 @@ export async function handleSkillDebugChat(
 
       if (item.model && (item.inputTokens !== undefined || item.outputTokens !== undefined)) {
         try {
+          const usageModel = findModelData({ model: item.model });
+          if (!usageModel) return item;
           const { totalPoints } = formatModelChars2Points({
-            model: item.model,
+            model: usageModel,
             inputTokens: item.inputTokens ?? 0,
             outputTokens: item.outputTokens ?? 0
           });

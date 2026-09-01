@@ -97,6 +97,7 @@ export type ToolDispatchContext = Pick<
   | 'stream'
   | 'nodeResponseSink'
 > & {
+  modelData: import('@fastgpt/global/core/ai/model.schema').LLMSystemModelDataType;
   nodeResponseParentId?: string;
   systemPrompt?: string;
   getSubAppInfo: GetSubAppInfoFnType;
@@ -128,9 +129,11 @@ export const getAgentDatasetParams = (
     searchMode: params[NodeInputKeyEnum.datasetSearchMode] || DatasetSearchModeEnum.embedding,
     embeddingWeight: params[NodeInputKeyEnum.datasetSearchEmbeddingWeight],
     usingReRank: params[NodeInputKeyEnum.datasetSearchUsingReRank],
+    rerankModelId: params[NodeInputKeyEnum.datasetSearchRerankModelId],
     rerankModel: params[NodeInputKeyEnum.datasetSearchRerankModel],
     rerankWeight: params[NodeInputKeyEnum.datasetSearchRerankWeight],
     datasetSearchUsingExtensionQuery: params[NodeInputKeyEnum.datasetSearchUsingExtensionQuery],
+    datasetSearchExtensionModelId: params[NodeInputKeyEnum.datasetSearchExtensionModelId],
     datasetSearchExtensionModel: params[NodeInputKeyEnum.datasetSearchExtensionModel],
     datasetSearchExtensionBg: params[NodeInputKeyEnum.datasetSearchExtensionBg],
     [NodeInputKeyEnum.authTmbId]: params[NodeInputKeyEnum.authTmbId]

@@ -28,6 +28,7 @@ import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/u
 import type { GetPaginationRecordsBodyType } from '@fastgpt/global/openapi/core/chat/record/api';
 import { AUTH_ERROR_EVENT_NAME } from '@/web/common/api/request';
 import { clearToken } from '@/web/support/user/auth';
+import { resetUserModelCatalogAfterLogin } from '@/web/core/ai/model/useUserModelStore';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
@@ -179,6 +180,7 @@ const ChatContent = (props: ChatPageProps) => {
   }, [currentAppId, currentChatId]);
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
+      resetUserModelCatalogAfterLogin();
       setUserInfo(res.user);
     },
     [setUserInfo]
@@ -233,6 +235,7 @@ const Render = (props: ChatPageProps) => {
 
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
+      resetUserModelCatalogAfterLogin();
       setUserInfo(res.user);
     },
     [setUserInfo]

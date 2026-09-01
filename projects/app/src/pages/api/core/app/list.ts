@@ -97,6 +97,13 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
       myGroupMap.has(String(item.groupId)) ||
       myOrgSet.has(String(item.orgId))
   );
+  const myPerListMap = new Map<string, (typeof myPerList)[number][]>();
+  myPerList.forEach((item) => {
+    const resourceId = String(item.resourceId);
+    const list = myPerListMap.get(resourceId) ?? [];
+    list.push(item);
+    myPerListMap.set(resourceId, list);
+  });
 
   const findAppsQuery = (() => {
     // Filter apps by permission, if not owner, only get apps that I have permission to access
@@ -148,7 +155,7 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
 
   const myApps = await MongoApp.find(
     { ...findAppsQuery, deleteTime: null },
-    '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission modules',
+    '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission modules.flowNodeType',
     {
       limit: limit
     }
@@ -163,14 +170,12 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
     .map((app) => {
       const { Per, privateApp } = (() => {
         const getPer = (appId: string) => {
-          const tmbRole = myPerList.find(
-            (item) => String(item.resourceId) === appId && !!item.tmbId
-          )?.permission;
+          // 权限已按资源预分组，避免列表中每个 App 都重新扫描团队全部 ACL。
+          const appPerList = myPerListMap.get(appId) ?? [];
+          const tmbRole = appPerList.find((item) => !!item.tmbId)?.permission;
           const groupAndOrgRole = sumPer(
-            ...myPerList
-              .filter(
-                (item) => String(item.resourceId) === appId && (!!item.groupId || !!item.orgId)
-              )
+            ...appPerList
+              .filter((item) => !!item.groupId || !!item.orgId)
               .map((item) => item.permission)
           );
 

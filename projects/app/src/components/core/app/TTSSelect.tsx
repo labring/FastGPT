@@ -5,7 +5,6 @@ import { useTranslation } from 'next-i18next';
 import { TTSTypeEnum } from '@/web/core/app/constants';
 import type { AppTTSConfigType } from '@fastgpt/global/core/app/type';
 import { useAudioPlay } from '@/web/common/utils/voice';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MySlider from '@/components/Slider';
 import { defaultTTSConfig } from '@fastgpt/global/core/app/constants';
@@ -17,6 +16,9 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
 import AppConfigItem, { AppConfigItemAction } from './AppConfigItem';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 type TTSSelectorItemType = {
   alias: string;
@@ -37,8 +39,9 @@ const TTSSelect = ({
   onChange: (e: AppTTSConfigType) => void;
 }) => {
   const { t, i18n } = useTranslation();
-  const { ttsModelList, getModelProvider } = useSystemStore();
+  const { getModelProvider } = useUserModelStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { ttsModelList: ttsModels } = useUserModelLists();
 
   const appId = useContextSelector(AppContext, (v) => v.appId);
 
@@ -56,7 +59,7 @@ const TTSSelect = ({
         value: TTSTypeEnum.web,
         children: []
       },
-      ...ttsModelList.map((model) => {
+      ...ttsModels.map((model) => {
         const providerData = getModelProvider(model.provider, i18n.language);
         const modelName = t(model.name as any);
         return {
@@ -70,16 +73,16 @@ const TTSSelect = ({
               </Box>
             </HStack>
           ),
-          value: model.model,
+          value: model.modelId,
           children:
-            model.voices?.map((voice) => ({
+            (model.type === ModelTypeEnum.tts ? model.config.voices : []).map((voice) => ({
               label: voice.label,
               value: voice.value
             })) || []
         };
       })
     ],
-    [getModelProvider, i18n.language, t, ttsModelList]
+    [getModelProvider, i18n.language, t, ttsModels]
   );
 
   const formatValue = useMemo(() => {
@@ -90,11 +93,23 @@ const TTSSelect = ({
       return [value.type, undefined];
     }
 
-    return [value.model, value.voice];
-  }, [value]);
+    const selectedModel =
+      value.modelId !== undefined
+        ? value.modelId
+        : (ttsModels.find((model) => model.model === value.model)?.modelId ?? value.model);
+    return [selectedModel, value.voice];
+  }, [ttsModels, value]);
   const formLabel = useMemo(() => {
-    const provider = selectorList.find((item) => item.value === formatValue[0]) || selectorList[0];
-    const voice = provider.children.find((item) => item.value === formatValue[1]);
+    const provider = selectorList.find((item) => item.value === formatValue[0]);
+    const voice = provider?.children.find((item) => item.value === formatValue[1]);
+
+    if (!provider) {
+      const modelLabel =
+        value.modelId !== undefined
+          ? value.modelId || t('common:not_model_config')
+          : value.model || t('common:not_model_config');
+      return <Box color={'red.500'}>{t('common:model_disabled', { model: modelLabel })}</Box>;
+    }
 
     return (
       <Box w={'100%'} minW={0}>
@@ -115,7 +130,7 @@ const TTSSelect = ({
         )}
       </Box>
     );
-  }, [formatValue, selectorList]);
+  }, [formatValue, selectorList, t, value.model, value.modelId]);
 
   const { playAudioByText, cancelAudio, audioLoading, audioPlaying } = useAudioPlay({
     appId,
@@ -124,14 +139,13 @@ const TTSSelect = ({
 
   const onclickChange = useCallback(
     (e: string[]) => {
-      console.log(e, '-=');
       if (e[0] === TTSTypeEnum.none || e[0] === TTSTypeEnum.web) {
         onChange({ type: e[0] });
       } else {
         onChange({
           ...value,
           type: TTSTypeEnum.model,
-          model: e[0],
+          modelId: e[0],
           voice: e[1]
         });
       }

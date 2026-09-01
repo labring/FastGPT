@@ -13,6 +13,7 @@ import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/u
 import { useLoginRedirectAfterLogin } from '@/web/support/user/loginRedirect';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { getFastGPTSem, onFastGPTLoginSuccess } from '@/web/support/marketing/utils';
+import { resetUserModelCatalogAfterLogin } from '@/web/core/ai/model/useUserModelStore';
 
 const FastLogin = ({
   code,
@@ -39,6 +40,7 @@ const FastLogin = ({
         lastTmbId
       });
 
+      resetUserModelCatalogAfterLogin();
       setUserInfo(res.user);
 
       if (targetRoute) {

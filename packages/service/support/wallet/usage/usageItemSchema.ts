@@ -37,6 +37,10 @@ const UsageItemSchema = new Schema({
   duration: Number,
   pages: Number,
   count: Number,
+  modelId: {
+    type: String
+  },
+  /** @deprecated 历史 usage 保留 model，不进行批量回填。 */
   model: String
 });
 
