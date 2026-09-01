@@ -39,12 +39,15 @@ const dnsResolve = async (hostname: string) => {
 export async function runSandboxHttpRequest({
   payload,
   limits,
-  state
+  state,
+  signal
 }: {
   payload: SandboxHttpRequestPayload;
   limits: SandboxHttpLimits;
   state: SandboxHttpState;
+  signal?: AbortSignal;
 }): Promise<any> {
+  signal?.throwIfAborted();
   if (++state.requestCount > limits.maxRequests) {
     throw new Error('Request limit exceeded');
   }
@@ -73,6 +76,7 @@ export async function runSandboxHttpRequest({
   }
 
   const ips = await dnsResolve(parsed.hostname);
+  signal?.throwIfAborted();
   if (ips.length === 0 || ips.some((ip) => isInternalResolvedIP(ip))) {
     throw new Error('Request to private network not allowed');
   }
@@ -111,6 +115,7 @@ export async function runSandboxHttpRequest({
         hostname: resolvedIP,
         port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
         path: parsed.pathname + parsed.search,
+        signal,
         ...(isIP(parsed.hostname) ? {} : { servername: parsed.hostname })
       },
       (res: any) => {

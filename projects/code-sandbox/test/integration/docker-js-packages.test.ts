@@ -196,4 +196,44 @@ async function main() {
       expect(result.data?.codeReturn.message).toMatch(/not allowed|denied|forbidden/i);
     }
   );
+
+  it('httpRequest 通过父进程代理拦截容器内网目标', async () => {
+    const result = await runJs(`
+async function main() {
+  try {
+    await SystemHelper.httpRequest('http://127.0.0.1:3000/health');
+    return { blocked: false };
+  } catch (error) {
+    return { blocked: true, message: String(error.message || error) };
+  }
+}`);
+
+    expect(result.data?.codeReturn.blocked).toBe(true);
+    expect(result.data?.codeReturn.message).toMatch(/private|internal|not allowed/i);
+  });
+
+  it('并发 one-shot 任务完成后会补回预热进程且健康检查保持 ready', async () => {
+    const results = await Promise.all(
+      Array.from({ length: 20 }, (_, index) =>
+        runJs(
+          `
+async function main(variables) {
+  await delay(10);
+  return variables.index;
+}`,
+          { index }
+        )
+      )
+    );
+
+    expect(results.map((result) => result.data?.codeReturn)).toEqual(
+      Array.from({ length: 20 }, (_, index) => index)
+    );
+
+    const health = await fetch(`${baseUrl}/health`);
+    const payload = await health.json();
+    expect(health.status).toBe(200);
+    expect(payload.status).toBe('ok');
+    expect(payload.pools.js.ready).toBe(true);
+  });
 });
