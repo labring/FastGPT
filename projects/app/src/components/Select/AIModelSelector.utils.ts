@@ -1,6 +1,17 @@
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
 
+/** 合并调用方只读态、目录加载态和业务禁用提示，任一约束存在时都禁止选择。 */
+export const resolveModelSelectorDisabled = ({
+  isDisabled,
+  loading,
+  disableTip
+}: {
+  isDisabled?: boolean;
+  loading: boolean;
+  disableTip?: string;
+}) => Boolean(isDisabled || loading || disableTip);
+
 /**
  * 同时识别稳定 modelId 与旧 model 值，并统一归一化为 modelId。
  * modelId 优先，避免某个模型的 model 与另一个模型的 modelId 撞值时产生歧义。

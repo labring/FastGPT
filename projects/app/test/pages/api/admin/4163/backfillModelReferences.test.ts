@@ -171,7 +171,7 @@ describe('runBackfillModelReferences', () => {
 
     const preview = await runBackfillModelReferences({ dryRun: true });
     expect(preview.references.datasets.wouldUpdate).toBe(1);
-    expect(preview.references.appsWorkflow.wouldUpdate).toBe(1);
+    expect(preview.references.apps.wouldUpdate).toBe(1);
     await expect(MongoDataset.collection.findOne({ name: 'Dataset' })).resolves.not.toHaveProperty(
       'vectorModelId'
     );
@@ -264,6 +264,82 @@ describe('runBackfillModelReferences', () => {
       model: 'gpt-model'
     });
     await expect(MongoUsageItem.collection.findOne({})).resolves.not.toHaveProperty('modelId');
+  });
+
+  it('scans each app collection once while backfilling chat config and workflow together', async () => {
+    const model = await createStoredModel({ model: 'single-scan-model' });
+    const createLegacyNode = () =>
+      createWorkflowNode({
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        inputs: [{ key: NodeInputKeyEnum.aiModel, value: model.model }]
+      });
+
+    await Promise.all([
+      MongoApp.collection.insertOne({
+        chatConfig: { questionGuide: { model: model.model } },
+        modules: [createLegacyNode()]
+      }),
+      MongoAppVersion.collection.insertOne({
+        chatConfig: { questionGuide: { model: model.model } },
+        nodes: [createLegacyNode()]
+      }),
+      MongoAppTemplate.collection.insertOne({
+        workflow: {
+          chatConfig: { questionGuide: { model: model.model } },
+          nodes: [createLegacyNode()]
+        }
+      })
+    ]);
+    const appFindSpy = vi.spyOn(MongoApp, 'find');
+    const appVersionFindSpy = vi.spyOn(MongoAppVersion, 'find');
+    const appTemplateFindSpy = vi.spyOn(MongoAppTemplate, 'find');
+    const appBulkWriteSpy = vi.spyOn(MongoApp, 'bulkWrite');
+    const appVersionBulkWriteSpy = vi.spyOn(MongoAppVersion, 'bulkWrite');
+    const appTemplateBulkWriteSpy = vi.spyOn(MongoAppTemplate, 'bulkWrite');
+
+    const result = await runBackfillModelReferences({ dryRun: false });
+
+    expect(appFindSpy).toHaveBeenCalledTimes(1);
+    expect(appVersionFindSpy).toHaveBeenCalledTimes(1);
+    expect(appTemplateFindSpy).toHaveBeenCalledTimes(1);
+    expect(appBulkWriteSpy).toHaveBeenCalledTimes(1);
+    expect(appVersionBulkWriteSpy).toHaveBeenCalledTimes(1);
+    expect(appTemplateBulkWriteSpy).toHaveBeenCalledTimes(1);
+    expect(result.references.apps.scanned).toBe(1);
+    expect(result.references.appVersions.scanned).toBe(1);
+    expect(result.references.appTemplates.scanned).toBe(1);
+    expect(result.groups.apps.scanned).toBe(3);
+
+    const app = await MongoApp.collection.findOne({});
+    expect(app?.chatConfig.questionGuide.modelId).toBe(String(model._id));
+    expect(app?.modules[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: NodeInputKeyEnum.aiModelId,
+          value: String(model._id)
+        })
+      ])
+    );
+    const appVersion = await MongoAppVersion.collection.findOne({});
+    expect(appVersion?.chatConfig.questionGuide.modelId).toBe(String(model._id));
+    expect(appVersion?.nodes[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: NodeInputKeyEnum.aiModelId,
+          value: String(model._id)
+        })
+      ])
+    );
+    const appTemplate = await MongoAppTemplate.collection.findOne({});
+    expect(appTemplate?.workflow.chatConfig.questionGuide.modelId).toBe(String(model._id));
+    expect(appTemplate?.workflow.nodes[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: NodeInputKeyEnum.aiModelId,
+          value: String(model._id)
+        })
+      ])
+    );
   });
 
   it('rejects an invalid workflow node before writing migrated inputs', async () => {
@@ -362,8 +438,7 @@ describe('runBackfillModelReferences', () => {
     expect(result.groups.datasets).toMatchObject({ conflicts: 0, updated: 0 });
     expect(result.references.evaluations).toMatchObject({ conflicts: 0, updated: 0 });
     expect(result.references.modelPermissions).toMatchObject({ conflicts: 0, updated: 0 });
-    expect(result.references.appsChatConfig).toMatchObject({ conflicts: 0, updated: 0 });
-    expect(result.references.appsWorkflow).toMatchObject({ conflicts: 0, updated: 0 });
+    expect(result.references.apps).toMatchObject({ conflicts: 0, updated: 0 });
     await expect(
       MongoDataset.collection.findOne({ name: 'Conflict Dataset' })
     ).resolves.toMatchObject({
@@ -442,7 +517,7 @@ describe('runBackfillModelReferences', () => {
     const result = await runBackfillModelReferences({ dryRun: false });
 
     expect(result.references.datasets).toMatchObject({ unresolved: 0, updated: 1 });
-    expect(result.references.appsChatConfig).toMatchObject({ unresolved: 0, updated: 1 });
+    expect(result.references.apps).toMatchObject({ unresolved: 0, updated: 1 });
     await expect(
       MongoDataset.collection.findOne({ name: 'Invalid modelId-only dataset' })
     ).resolves.toMatchObject({ agentModelId: String(fallbackModel?._id) });
@@ -736,7 +811,7 @@ describe('runBackfillModelReferences', () => {
 
     const result = await runBackfillModelReferences({ dryRun: false });
 
-    expect(result.references.appsWorkflow).toMatchObject({
+    expect(result.references.apps).toMatchObject({
       scanned: 3,
       unchanged: 1,
       unresolved: 0,
@@ -822,7 +897,7 @@ describe('runBackfillModelReferences', () => {
 
     const result = await runBackfillModelReferences({ dryRun: false });
 
-    expect(result.references.appsWorkflow).toMatchObject({
+    expect(result.references.apps).toMatchObject({
       scanned: 1,
       unchanged: 1,
       unresolved: 0,
@@ -877,7 +952,7 @@ describe('runBackfillModelReferences', () => {
 
     const result = await runBackfillModelReferences({ dryRun: false });
 
-    expect(result.references.appsWorkflow).toMatchObject({
+    expect(result.references.apps).toMatchObject({
       scanned: 1,
       unresolved: 0,
       updated: 1
@@ -920,7 +995,7 @@ describe('runBackfillModelReferences', () => {
     const result = await runBackfillModelReferences({ dryRun: false });
     const fallbackModel = await MongoAIModel.findOne({ model: 'installed-model' }).lean();
 
-    expect(result.references.appsWorkflow).toMatchObject({
+    expect(result.references.apps).toMatchObject({
       scanned: 1,
       unchanged: 0,
       unresolved: 0,
@@ -963,7 +1038,7 @@ describe('runBackfillModelReferences', () => {
 
     const result = await runBackfillModelReferences({ dryRun: false });
 
-    expect(result.references.appsWorkflow).toMatchObject({ updated: 0, conflicts: 1 });
+    expect(result.references.apps).toMatchObject({ updated: 0, conflicts: 1 });
     await expect(MongoApp.collection.findOne({ _id: appInsert.insertedId })).resolves.toMatchObject(
       {
         modules: concurrentlySavedModules

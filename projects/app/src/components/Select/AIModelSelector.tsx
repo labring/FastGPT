@@ -12,7 +12,11 @@ import { useTranslation } from 'next-i18next';
 import React, { useEffect, useMemo, useRef } from 'react';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 import MultimodalTag from '@/components/core/ai/MultimodelTag';
-import { isModelAllowedByValues, resolveModelSelectorSelection } from './AIModelSelector.utils';
+import {
+  isModelAllowedByValues,
+  resolveModelSelectorDisabled,
+  resolveModelSelectorSelection
+} from './AIModelSelector.utils';
 import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
@@ -210,7 +214,11 @@ const AIModelSelector = ({
         }}
         ButtonProps={{
           ...props,
-          isDisabled: !!disableTip || loading,
+          isDisabled: resolveModelSelectorDisabled({
+            isDisabled: props.isDisabled,
+            loading,
+            disableTip
+          }),
           h: '40px',
           whiteSpace: 'nowrap'
         }}

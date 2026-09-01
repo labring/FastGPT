@@ -1,6 +1,7 @@
 import {
   createRestrictedModelDiscovery,
   isModelAllowedByValues,
+  resolveModelSelectorDisabled,
   resolveModelSelectorSelection,
   resolveModelSelectorProvider
 } from '@/components/Select/AIModelSelector.utils';
@@ -8,6 +9,21 @@ import { describe, expect, it } from 'vitest';
 
 describe('AIModelSelector utils', () => {
   const model = { modelId: 'model-id', model: 'gpt-4o' };
+
+  it('keeps the selector disabled for caller, loading and disable-tip constraints', () => {
+    expect(
+      resolveModelSelectorDisabled({ isDisabled: true, loading: false, disableTip: undefined })
+    ).toBe(true);
+    expect(
+      resolveModelSelectorDisabled({ isDisabled: false, loading: true, disableTip: undefined })
+    ).toBe(true);
+    expect(
+      resolveModelSelectorDisabled({ isDisabled: false, loading: false, disableTip: 'Unavailable' })
+    ).toBe(true);
+    expect(
+      resolveModelSelectorDisabled({ isDisabled: false, loading: false, disableTip: undefined })
+    ).toBe(false);
+  });
 
   it('does not restrict models when no compatibility list is supplied', () => {
     expect(isModelAllowedByValues(model)).toBe(true);

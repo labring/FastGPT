@@ -155,10 +155,12 @@ export const runBackfillModelReferences = async ({
   const runCollectionBackfill = async ({
     name,
     model,
+    query = {},
     transform
   }: {
     name: string;
     model: any;
+    query?: Record<string, unknown>;
     transform: (record: any) => ReferenceTransformResult;
   }) => {
     const referenceStats: ReferenceStats = {
@@ -174,7 +176,7 @@ export const runBackfillModelReferences = async ({
       deleted: 0
     };
     const bulkOperations: any[] = [];
-    const referenceCursor = model.find({}).lean().cursor();
+    const referenceCursor = model.find(query).lean().cursor();
 
     const flush = async () => {
       if (bulkOperations.length === 0) return;
@@ -324,8 +326,8 @@ export const runBackfillModelReferences = async ({
   await runCollectionBackfill({
     name: 'modelPermissions',
     model: MongoResourcePermission,
+    query: { resourceType: PerResourceTypeEnum.model },
     transform: (record) => {
-      if (record.resourceType !== PerResourceTypeEnum.model) return {};
       const currentModel =
         record.resourceId !== undefined ? modelById.get(String(record.resourceId)) : undefined;
       if (currentModel) return {};
@@ -403,28 +405,6 @@ export const runBackfillModelReferences = async ({
     }
     return { set, snapshot, missing };
   };
-
-  await runCollectionBackfill({
-    name: 'appsChatConfig',
-    model: MongoApp,
-    transform: (record) =>
-      backfillChatConfig({ chatConfig: record.chatConfig, pathPrefix: 'chatConfig' })
-  });
-  await runCollectionBackfill({
-    name: 'appVersionsChatConfig',
-    model: MongoAppVersion,
-    transform: (record) =>
-      backfillChatConfig({ chatConfig: record.chatConfig, pathPrefix: 'chatConfig' })
-  });
-  await runCollectionBackfill({
-    name: 'appTemplatesChatConfig',
-    model: MongoAppTemplate,
-    transform: (record) =>
-      backfillChatConfig({
-        chatConfig: record.workflow?.chatConfig,
-        pathPrefix: 'workflow.chatConfig'
-      })
-  });
 
   const migrateWorkflowNodes = (
     nodes: unknown
@@ -584,42 +564,70 @@ export const runBackfillModelReferences = async ({
     return { nodes: parsedNodes, changed, missing };
   };
 
+  /** 合并同一文档内的模型引用变更，使 chatConfig 与 Workflow 共用一次扫描和一次 CAS 写入。 */
+  const mergeReferenceTransformResults = (
+    results: ReferenceTransformResult[]
+  ): ReferenceTransformResult => {
+    const set = Object.assign({}, ...results.map((result) => result.set ?? {}));
+    const snapshot = Object.assign({}, ...results.map((result) => result.snapshot ?? {}));
+
+    return {
+      set: Object.keys(set).length > 0 ? set : undefined,
+      snapshot: Object.keys(snapshot).length > 0 ? snapshot : undefined,
+      missing: results.reduce((sum, result) => sum + (result.missing ?? 0), 0),
+      delete: results.some((result) => result.delete)
+    };
+  };
+
   await runCollectionBackfill({
-    name: 'appsWorkflow',
+    name: 'apps',
     model: MongoApp,
     transform: (record) => {
-      const result = migrateWorkflowNodes(record.modules);
-      return {
-        set: result.changed ? { modules: result.nodes } : undefined,
-        missing: result.missing
-      };
+      const workflowResult = migrateWorkflowNodes(record.modules);
+      return mergeReferenceTransformResults([
+        backfillChatConfig({ chatConfig: record.chatConfig, pathPrefix: 'chatConfig' }),
+        {
+          set: workflowResult.changed ? { modules: workflowResult.nodes } : undefined,
+          missing: workflowResult.missing
+        }
+      ]);
     }
   });
   await runCollectionBackfill({
-    name: 'appVersionsWorkflow',
+    name: 'appVersions',
     model: MongoAppVersion,
     transform: (record) => {
-      const result = migrateWorkflowNodes(record.nodes);
-      return {
-        set: result.changed ? { nodes: result.nodes } : undefined,
-        missing: result.missing
-      };
+      const workflowResult = migrateWorkflowNodes(record.nodes);
+      return mergeReferenceTransformResults([
+        backfillChatConfig({ chatConfig: record.chatConfig, pathPrefix: 'chatConfig' }),
+        {
+          set: workflowResult.changed ? { nodes: workflowResult.nodes } : undefined,
+          missing: workflowResult.missing
+        }
+      ]);
     }
   });
   await runCollectionBackfill({
-    name: 'appTemplatesWorkflow',
+    name: 'appTemplates',
     model: MongoAppTemplate,
     transform: (record) => {
       const workflow = record.workflow ?? {};
       const nodesResult = migrateWorkflowNodes(workflow.nodes);
       const modulesResult = migrateWorkflowNodes(workflow.modules);
-      const set: Record<string, unknown> = {};
-      if (nodesResult.changed) set['workflow.nodes'] = nodesResult.nodes;
-      if (modulesResult.changed) set['workflow.modules'] = modulesResult.nodes;
-      return {
-        set,
-        missing: nodesResult.missing + modulesResult.missing
-      };
+      return mergeReferenceTransformResults([
+        backfillChatConfig({
+          chatConfig: workflow.chatConfig,
+          pathPrefix: 'workflow.chatConfig'
+        }),
+        {
+          set: nodesResult.changed ? { 'workflow.nodes': nodesResult.nodes } : undefined,
+          missing: nodesResult.missing
+        },
+        {
+          set: modulesResult.changed ? { 'workflow.modules': modulesResult.nodes } : undefined,
+          missing: modulesResult.missing
+        }
+      ]);
     }
   });
 
@@ -653,14 +661,7 @@ export const runBackfillModelReferences = async ({
 
   stats.groups = {
     datasets: aggregateReferenceStats(['datasets']),
-    apps: aggregateReferenceStats([
-      'appsChatConfig',
-      'appVersionsChatConfig',
-      'appTemplatesChatConfig',
-      'appsWorkflow',
-      'appVersionsWorkflow',
-      'appTemplatesWorkflow'
-    ]),
+    apps: aggregateReferenceStats(['apps', 'appVersions', 'appTemplates']),
     evaluations: aggregateReferenceStats(['evaluations']),
     permissions: aggregateReferenceStats(['modelPermissions'])
   };
