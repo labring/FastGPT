@@ -4,6 +4,7 @@ import { createContext, useContextSelector } from 'use-context-selector';
 import { useReactFlow } from 'reactflow';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { captureDeletedWorkflowReferenceSnapshots } from '@/web/core/workflow/referenceCheck';
 import { storeNode2FlowNode, storeEdge2RenderEdge } from '@/web/core/workflow/utils';
 import {
   checkWorkflowBeforeRunOrPublish,
@@ -33,6 +34,7 @@ import {
   canInputBeAgentGenerated,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
+import { isEqual } from 'lodash-es';
 
 // 创建 Context
 type WorkflowUtilsContextValue = {
@@ -135,6 +137,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
 
   const { appDetail, setAppDetail } = useContextSelector(AppContext, (v) => v);
+  const previousChatConfigRef = useRef(appDetail.chatConfig);
   const { edges, setEdges, setNodes, getNodes, toolNodesMap } = useContextSelector(
     WorkflowBufferDataContext,
     (v) => v
@@ -144,6 +147,24 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
     WorkflowActionsContext,
     (v) => v
   );
+
+  useEffect(() => {
+    const previousChatConfig = previousChatConfigRef.current;
+    const nextChatConfig = appDetail.chatConfig;
+    previousChatConfigRef.current = nextChatConfig;
+
+    if (isEqual(previousChatConfig?.variables, nextChatConfig?.variables)) return;
+
+    setNodes((nodes) =>
+      captureDeletedWorkflowReferenceSnapshots({
+        previousNodes: nodes,
+        nextNodes: nodes,
+        previousChatConfig,
+        nextChatConfig,
+        globalVariableSourceLabel: t('common:core.module.Variable')
+      })
+    );
+  }, [appDetail.chatConfig, setNodes, t]);
 
   // 优化为单次遍历,分类输出项
   const splitOutput = useCallback((outputs: FlowNodeOutputItemType[]) => {

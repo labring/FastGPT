@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/refs */
-import React, { useRef, useCallback, useState, useEffect } from 'react';
+import React, { useRef, useCallback, useState, useMemo, useEffect } from 'react';
 import {
   Button,
   useDisclosure,
@@ -306,10 +306,22 @@ export const MultipleRowArraySelect = ({
 
   const [navigationPath, setNavigationPath] = useState<string[]>([]);
 
+  // Make sure the value is an array of arrays
+  const formatValue = useMemo(() => {
+    return Array.isArray(value) ? value.filter((v) => Array.isArray(v)) : [];
+  }, [value]);
+
   useOutsideClick({
     ref: ref,
     handler: onClose
   });
+  const onChange = useCallback(
+    (val: any[][]) => {
+      // 保留当前列表中已失效的引用，交给上层展示并在用户删除时移除。
+      onSelect(val);
+    },
+    [onSelect]
+  );
 
   const RenderList = useCallback(
     ({ index, list }: { index: number; list: MultipleSelectProps['list'] }) => {
@@ -326,13 +338,13 @@ export const MultipleRowArraySelect = ({
           setNavigationPath(newPath);
         } else {
           const parentValue = navigationPath[0];
-          const newValues = [...value];
+          const newValues = [...formatValue];
           const newValue = [parentValue, item.value];
 
           if (newValues.some((v) => v[0] === parentValue && v[1] === item.value)) {
-            onSelect(newValues.filter((v) => !(v[0] === parentValue && v[1] === item.value)));
+            onChange(newValues.filter((v) => !(v[0] === parentValue && v[1] === item.value)));
           } else {
-            onSelect([...newValues, newValue]);
+            onChange([...newValues, newValue]);
           }
         }
       };
@@ -353,7 +365,7 @@ export const MultipleRowArraySelect = ({
               const showCheckbox = !hasChildren;
               const isChecked =
                 showCheckbox &&
-                value.some((v) => v[1] === item.value && v[0] === navigationPath[0]);
+                formatValue.some((v) => v[1] === item.value && v[0] === navigationPath[0]);
 
               return (
                 <Flex
@@ -382,7 +394,7 @@ export const MultipleRowArraySelect = ({
         </>
       );
     },
-    [navigationPath, maxH, emptyTip, t, value, onSelect]
+    [navigationPath, maxH, emptyTip, t, formatValue, onChange]
   );
 
   const onOpenSelect = useCallback(() => {

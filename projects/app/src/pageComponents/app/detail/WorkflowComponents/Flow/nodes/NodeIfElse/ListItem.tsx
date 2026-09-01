@@ -137,7 +137,7 @@ const ListItem = ({
                       nodeId={nodeId}
                       variable={item.variable}
                       variableSnapshot={item.variableSnapshot}
-                      onSelect={(e, snapshots) => {
+                      onSelect={(e) => {
                         onUpdateIfElseList(
                           ifElseList.map((ifElse, index) => {
                             if (index === conditionIndex) {
@@ -148,7 +148,6 @@ const ListItem = ({
                                     return {
                                       ...item,
                                       variable: e,
-                                      variableSnapshot: snapshots?.[0],
                                       condition: undefined
                                     };
                                   }
@@ -195,7 +194,7 @@ const ListItem = ({
                       variable={item.variable}
                       valueSnapshot={item.valueSnapshot}
                       nodeId={nodeId}
-                      updateValue={(value, valueType, snapshot) => {
+                      updateValue={(value, valueType) => {
                         onUpdateIfElseList(
                           ifElseList.map((ifElse, index) => {
                             return {
@@ -207,7 +206,6 @@ const ListItem = ({
                                         return {
                                           ...item,
                                           value,
-                                          valueSnapshot: snapshot,
                                           valueType
                                         };
                                       }
@@ -326,7 +324,7 @@ const VariableSelector = ({
   nodeId: string;
   variable?: ReferenceItemValueType;
   variableSnapshot?: WorkflowReferenceSnapshot;
-  onSelect: (e?: ReferenceItemValueType, snapshots?: WorkflowReferenceSnapshot[]) => void;
+  onSelect: (e?: ReferenceItemValueType) => void;
 }) => {
   const { t } = useTranslation();
 
@@ -443,11 +441,7 @@ const ConditionValueInput = ({
   valueType?: 'input' | 'reference';
   variable?: ReferenceItemValueType;
   condition?: VariableConditionEnum;
-  updateValue: (
-    value: string | ReferenceItemValueType,
-    valueType: 'input' | 'reference',
-    snapshot?: WorkflowReferenceSnapshot
-  ) => void;
+  updateValue: (value: string | ReferenceItemValueType, valueType: 'input' | 'reference') => void;
   nodeId: string;
   valueSnapshot?: WorkflowReferenceSnapshot;
 }) => {
@@ -585,8 +579,8 @@ const ConditionValueInput = ({
         valueType={referenceValueType}
         referenceSnapshots={valueSnapshot ? [valueSnapshot] : undefined}
         value={isReference ? (value as ReferenceItemValueType) : undefined}
-        onSelect={(e, snapshots) => {
-          updateValue(e as ReferenceItemValueType, 'reference', snapshots?.[0]);
+        onSelect={(e) => {
+          updateValue(e as ReferenceItemValueType, 'reference');
         }}
         isArray={false}
         ButtonProps={{

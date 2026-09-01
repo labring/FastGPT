@@ -65,10 +65,9 @@ const ValueRenderer: React.FC<ValueRendererProps> = (props) => {
         variable={value}
         valueType={valueType}
         referenceSnapshots={valueReferenceSnapshots}
-        onSelect={(v, snapshots) =>
+        onSelect={(v) =>
           onChange({
-            value: v,
-            valueReferenceSnapshots: snapshots?.length ? snapshots : undefined
+            value: v
           })
         }
       />

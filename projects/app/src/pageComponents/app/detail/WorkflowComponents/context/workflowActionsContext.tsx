@@ -22,6 +22,7 @@ import {
   countNewWorkflowCheckIssues
 } from '@/web/core/workflow/workflowCheck';
 import { collectWorkflowStartAutoFillRevertPatches } from '@/web/core/workflow/workflowStartAutoFill';
+import { captureDeletedWorkflowReferenceSnapshots } from '@/web/core/workflow/referenceCheck';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { AppContext } from '@/pageComponents/app/detail/context';
 
@@ -415,37 +416,38 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       // 确保重置时不阻塞快照保存
       forbiddenSaveSnapshotRef.current = false;
 
-      setNodes((state) =>
-        state.map((item) => {
-          if (item.id === id) {
-            const sourceInputMap = new Map(item.data.inputs.map((input) => [input.key, input]));
-            return {
-              ...item,
-              data: {
-                ...item.data,
-                ...node,
-                inputs: node.inputs.map((input) => {
-                  const previousInput = sourceInputMap.get(input.key);
-                  return {
-                    ...migrateToolInputConfig({
-                      input,
-                      sourceInput: previousInput
-                    }),
-                    ...(previousInput?.referenceSnapshots === undefined
-                      ? {}
-                      : { referenceSnapshots: previousInput.referenceSnapshots })
-                  };
+      setNodes((state) => {
+        const nextNodes = state.map((item) => {
+          if (item.id !== id) return item;
+
+          const sourceInputMap = new Map(item.data.inputs.map((input) => [input.key, input]));
+          return {
+            ...item,
+            data: {
+              ...item.data,
+              ...node,
+              inputs: node.inputs.map((input) =>
+                migrateToolInputConfig({
+                  input,
+                  sourceInput: sourceInputMap.get(input.key)
                 })
-              }
-            };
-          }
-          return item;
-        })
-      );
+              )
+            }
+          };
+        });
+
+        return captureDeletedWorkflowReferenceSnapshots({
+          previousNodes: state,
+          nextNodes,
+          previousChatConfig: appDetail.chatConfig,
+          nextChatConfig: appDetail.chatConfig,
+          globalVariableSourceLabel: t('common:core.module.Variable')
+        });
+      });
 
       scheduleFullWorkflowCheck();
     },
-    [forbiddenSaveSnapshotRef, scheduleFullWorkflowCheck, setNodes]
+    [appDetail.chatConfig, forbiddenSaveSnapshotRef, scheduleFullWorkflowCheck, setNodes, t]
   );
 
   // 使用结构共享优化的节点更改
@@ -469,7 +471,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       }, new Map<string, FlowNodeChangeProps[]>());
 
       setNodes((nodes) => {
-        return nodes.map((node) => {
+        const nextNodes = nodes.map((node) => {
           const updateItems = updatesByNodeId.get(node.data.nodeId);
           if (!updateItems?.length) return node;
 
@@ -598,6 +600,14 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
             data: updateObj
           };
         });
+
+        return captureDeletedWorkflowReferenceSnapshots({
+          previousNodes: nodes,
+          nextNodes,
+          previousChatConfig: appDetail.chatConfig,
+          nextChatConfig: appDetail.chatConfig,
+          globalVariableSourceLabel: t('common:core.module.Variable')
+        });
       });
 
       // 变更影响「其他节点」上的引用有效性，单节点复查覆盖不到，需要升级为全量检查：
@@ -643,7 +653,8 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       onDelEdge,
       llmModelMap,
       scheduleSingleNodeWorkflowCheck,
-      scheduleFullWorkflowCheck
+      scheduleFullWorkflowCheck,
+      appDetail.chatConfig
     ]
   );
 

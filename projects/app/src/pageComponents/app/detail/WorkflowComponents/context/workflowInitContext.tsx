@@ -1,5 +1,8 @@
-import { createContext } from 'use-context-selector';
-import type { FlowNodeTemplateType, FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { createContext, useContextSelector } from 'use-context-selector';
+import type {
+  FlowNodeTemplateType,
+  FlowNodeItemType
+} from '@fastgpt/global/core/workflow/type/node';
 
 import { useDeepCompareEffect, useMemoizedFn } from 'ahooks';
 import React, {
@@ -15,6 +18,7 @@ import {
   type EdgeChange,
   type Node,
   type NodeChange,
+  applyNodeChanges,
   useEdgesState,
   useNodesState
 } from 'reactflow';
@@ -22,6 +26,8 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getWebLLMModel } from '@/web/common/system/utils';
+import { captureDeletedWorkflowReferenceSnapshots } from '@/web/core/workflow/referenceCheck';
+import { AppContext } from '@/pageComponents/app/detail/context';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -121,7 +127,22 @@ const WorkflowInitContextProvider = ({
   basicNodeTemplates: FlowNodeTemplateType[];
 }) => {
   // Nodes
-  const [nodes = [], setNodes, onNodesChange] = useNodesState<FlowNodeItemType>([]);
+  const [nodes = [], setNodes] = useNodesState<FlowNodeItemType>([]);
+  const chatConfig = useContextSelector(AppContext, (v) => v.appDetail.chatConfig);
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      setNodes((state) => {
+        const nextNodes = applyNodeChanges(changes, state);
+        return captureDeletedWorkflowReferenceSnapshots({
+          previousNodes: state,
+          nextNodes,
+          previousChatConfig: chatConfig,
+          nextChatConfig: chatConfig
+        });
+      });
+    },
+    [chatConfig, setNodes]
+  );
   const getNodes = useMemoizedFn(() => nodes);
 
   const nodeFormat = useMemo(() => {

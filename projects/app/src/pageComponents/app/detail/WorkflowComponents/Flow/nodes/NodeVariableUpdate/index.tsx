@@ -198,7 +198,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                 referenceSnapshots={
                   updateItem.variableSnapshot ? [updateItem.variableSnapshot] : undefined
                 }
-                onSelect={(value, snapshots) => {
+                onSelect={(value) => {
                   const newValueType = getRefData({
                     variable: value as ReferenceItemValueType,
                     getNodeById,
@@ -206,8 +206,6 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                   }).valueType;
                   applyPatch({
                     variable: value as ReferenceItemValueType,
-                    variableSnapshot: snapshots?.[0],
-                    valueReferenceSnapshots: undefined,
                     ...getDefaultsForValueType(newValueType)
                   });
                 }}
@@ -237,8 +235,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                       : FlowNodeInputTypeEnum.input;
                   applyPatch({
                     renderType: nt,
-                    value: undefined,
-                    valueReferenceSnapshots: undefined
+                    value: undefined
                   });
                 }}
               />

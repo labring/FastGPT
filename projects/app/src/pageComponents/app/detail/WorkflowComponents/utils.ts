@@ -1,6 +1,6 @@
 import { filterSelectableWorkflowNodeOutputs, getNodeAllSource } from '@/web/core/workflow/utils';
 import { workflowSystemVariables } from '@/web/core/app/utils';
-import { type AppDetailType } from '@fastgpt/global/core/app/type';
+import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -40,6 +40,7 @@ export const uiWorkflow2StoreWorkflow = ({
 }: {
   nodes: Node<FlowNodeItemType, string | undefined>[];
   edges: Edge<any>[];
+  chatConfig?: AppChatConfigType;
 }) => {
   const toolNodeIds = new Set(
     edges
@@ -81,7 +82,7 @@ export const uiWorkflow2StoreWorkflow = ({
       position: item.position,
       version: item.data.version,
       inputs,
-      outputs: item.data.outputs.map(({ invalidCondition: _, ...output }) => output),
+      outputs: item.data.outputs,
       isFolded: item.data.isFolded,
       pluginId: item.data.pluginId,
       toolConfig: item.data.toolConfig,

@@ -9,12 +9,57 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  VARIABLE_NODE_ID,
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { AppDetailType } from '@fastgpt/global/core/app/type';
 import { CanonicalWorkflowDataSchema } from '@fastgpt/global/core/workflow/migration/schema';
 import { PublishAppBodySchema } from '@fastgpt/global/openapi/core/app/version/api';
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { captureDeletedWorkflowReferenceSnapshots } from '@/web/core/workflow/referenceCheck';
+
+const createReferenceInput = (key: string, value: unknown, referenceSnapshots?: unknown) => ({
+  key,
+  label: key,
+  renderTypeList: [FlowNodeInputTypeEnum.reference],
+  selectedType: FlowNodeInputTypeEnum.reference,
+  valueType: WorkflowIOValueTypeEnum.any,
+  value,
+  ...(referenceSnapshots ? { referenceSnapshots } : {})
+});
+
+const createNode = ({
+  nodeId,
+  name,
+  inputs = [],
+  outputs = []
+}: {
+  nodeId: string;
+  name: string;
+  inputs?: any[];
+  outputs?: any[];
+}) =>
+  ({
+    id: nodeId,
+    type: FlowNodeTypeEnum.userInput,
+    data: {
+      nodeId,
+      name,
+      inputs,
+      outputs
+    }
+  }) as any;
+
+const createOutput = (id: string, label: string) => ({
+  id,
+  key: id,
+  label,
+  type: FlowNodeOutputTypeEnum.static
+});
 
 describe('WorkflowComponents utils', () => {
   describe('uiWorkflow2StoreWorkflow', () => {
@@ -909,6 +954,190 @@ describe('WorkflowComponents utils', () => {
 
       expect(result.find((item) => item.key === 'name')?.label).toBe('name');
       expect(result.find((item) => item.key === 'userId')?.label).toBe('用户 ID');
+    });
+  });
+
+  describe('captureDeletedWorkflowReferenceSnapshots', () => {
+    it('captures deleted nodes and outputs, and clears a snapshot when the reference is valid', () => {
+      const source = createNode({
+        nodeId: 'source',
+        name: 'Source',
+        outputs: [createOutput('output', 'Output')]
+      });
+      const consumer = createNode({
+        nodeId: 'consumer',
+        name: 'Consumer',
+        inputs: [createReferenceInput('input', ['source', 'output'])]
+      });
+
+      const deletedNode = captureDeletedWorkflowReferenceSnapshots({
+        previousNodes: [source, consumer],
+        nextNodes: [consumer],
+        previousChatConfig: {},
+        nextChatConfig: {}
+      });
+      expect(deletedNode[0].data.inputs[0].referenceSnapshots).toEqual([
+        {
+          reference: ['source', 'output'],
+          sourceLabel: 'Source',
+          outputLabel: 'Output'
+        }
+      ]);
+
+      const deletedOutput = captureDeletedWorkflowReferenceSnapshots({
+        previousNodes: [source, consumer],
+        nextNodes: [createNode({ nodeId: 'source', name: 'Source' }), consumer],
+        previousChatConfig: {},
+        nextChatConfig: {}
+      });
+      expect(deletedOutput[1].data.inputs[0].referenceSnapshots).toEqual(
+        deletedNode[0].data.inputs[0].referenceSnapshots
+      );
+
+      const valid = captureDeletedWorkflowReferenceSnapshots({
+        previousNodes: [source, consumer],
+        nextNodes: [
+          source,
+          createNode({
+            nodeId: 'consumer',
+            name: 'Consumer',
+            inputs: [
+              createReferenceInput(
+                'input',
+                ['source', 'output'],
+                [
+                  {
+                    reference: ['source', 'output'],
+                    sourceLabel: 'Source',
+                    outputLabel: 'Output'
+                  }
+                ]
+              )
+            ]
+          })
+        ],
+        previousChatConfig: {},
+        nextChatConfig: {}
+      });
+      expect(valid[1].data.inputs[0]).not.toHaveProperty('referenceSnapshots');
+    });
+
+    it('preserves existing snapshots and captures nested references', () => {
+      const source = createNode({
+        nodeId: 'source',
+        name: 'Source',
+        outputs: [createOutput('variable', 'Variable'), createOutput('value', 'Value')]
+      });
+      const existingSnapshot = {
+        reference: ['missing', 'output'],
+        sourceLabel: 'Old source',
+        outputLabel: 'Old output'
+      };
+      const consumer = createNode({
+        nodeId: 'consumer',
+        name: 'Consumer',
+        inputs: [
+          createReferenceInput('old', ['missing', 'output'], [existingSnapshot]),
+          {
+            key: NodeInputKeyEnum.ifElseList,
+            value: [
+              {
+                condition: 'AND',
+                list: [
+                  {
+                    variable: ['source', 'variable'],
+                    value: ['source', 'value'],
+                    valueType: 'reference'
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            key: NodeInputKeyEnum.updateList,
+            value: [
+              {
+                variable: ['source', 'variable'],
+                value: [
+                  ['source', 'value'],
+                  ['source', 'variable']
+                ],
+                renderType: FlowNodeInputTypeEnum.reference
+              }
+            ]
+          }
+        ]
+      });
+
+      const result = captureDeletedWorkflowReferenceSnapshots({
+        previousNodes: [source, consumer],
+        nextNodes: [consumer],
+        previousChatConfig: {},
+        nextChatConfig: {}
+      });
+
+      expect(result[0].data.inputs[0].referenceSnapshots).toEqual([existingSnapshot]);
+      expect(result[0].data.inputs[1].value[0].list[0]).toMatchObject({
+        variableSnapshot: {
+          reference: ['source', 'variable'],
+          sourceLabel: 'Source',
+          outputLabel: 'Variable'
+        },
+        valueSnapshot: {
+          reference: ['source', 'value'],
+          sourceLabel: 'Source',
+          outputLabel: 'Value'
+        }
+      });
+      expect(result[0].data.inputs[2].value[0]).toMatchObject({
+        variableSnapshot: {
+          reference: ['source', 'variable'],
+          sourceLabel: 'Source',
+          outputLabel: 'Variable'
+        },
+        valueReferenceSnapshots: [
+          {
+            reference: ['source', 'value'],
+            sourceLabel: 'Source',
+            outputLabel: 'Value'
+          },
+          {
+            reference: ['source', 'variable'],
+            sourceLabel: 'Source',
+            outputLabel: 'Variable'
+          }
+        ]
+      });
+    });
+
+    it('captures a deleted global variable from the previous chat config', () => {
+      const consumer = createNode({
+        nodeId: 'consumer',
+        name: 'Consumer',
+        inputs: [createReferenceInput('input', [VARIABLE_NODE_ID, 'deleted'])]
+      });
+      const variable = {
+        key: 'deleted',
+        label: 'Deleted variable',
+        type: VariableInputEnum.input,
+        description: ''
+      };
+
+      const result = captureDeletedWorkflowReferenceSnapshots({
+        previousNodes: [consumer],
+        nextNodes: [consumer],
+        previousChatConfig: { variables: [variable] },
+        nextChatConfig: { variables: [] },
+        globalVariableSourceLabel: 'Variable'
+      });
+
+      expect(result[0].data.inputs[0].referenceSnapshots).toEqual([
+        {
+          reference: [VARIABLE_NODE_ID, 'deleted'],
+          sourceLabel: 'Variable',
+          outputLabel: 'Deleted variable'
+        }
+      ]);
     });
   });
 });

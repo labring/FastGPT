@@ -4,16 +4,18 @@ import { Flex, Box, type ButtonProps, Grid } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
   getNodeAllSource,
-  getWorkflowReferenceItems,
   isConfiguredReferenceValue,
   isWorkflowReferenceItem,
   filterSelectableWorkflowNodeOutputs,
   type WorkflowReferenceSourceNode
 } from '@/web/core/workflow/utils';
-import { getWorkflowReferenceStatus } from '@/web/core/workflow/referenceCheck';
+import {
+  getWorkflowReferenceSource,
+  getWorkflowReferenceStatus
+} from '@/web/core/workflow/referenceCheck';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type {
   ReferenceArrayValueType,
   ReferenceItemValueType,
@@ -81,15 +83,17 @@ const getSelectedReferenceLabels = (value: unknown, list: ReferenceSelectList) =
   return reference ? [reference.source.label, reference.output.label] : [];
 };
 
-/** 按当前选项、节点输出、历史快照顺序恢复失效引用的展示标签。 */
+/** 按当前选项或历史快照恢复失效引用的展示标签。 */
 const getReferenceSnapshot = ({
   value,
   list,
+  sourceNodes,
   referenceSnapshots,
   getNodeById
 }: {
   value?: ReferenceItemValueType;
   list: ReferenceSelectList;
+  sourceNodes?: WorkflowReferenceSourceNode[];
   referenceSnapshots?: WorkflowReferenceSnapshot[];
   getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
 }) => {
@@ -104,16 +108,17 @@ const getReferenceSnapshot = ({
     };
   }
 
-  if (value[0] !== VARIABLE_NODE_ID) {
-    const sourceNode = getNodeById(value[0]);
-    const sourceOutput = sourceNode?.outputs.find((item) => item.id === value[1]);
-    if (sourceNode && sourceOutput) {
-      return {
-        reference: value,
-        sourceLabel: sourceNode.name,
-        outputLabel: sourceOutput.label
-      };
-    }
+  const { sourceLabel, sourceOutput } = getWorkflowReferenceSource({
+    value,
+    sourceNodes,
+    getNodeById
+  });
+  if (sourceLabel && sourceOutput) {
+    return {
+      reference: value,
+      sourceLabel,
+      outputLabel: sourceOutput.label
+    };
   }
 
   return referenceSnapshots?.find((item) => {
@@ -149,28 +154,6 @@ const ReferenceOutputLabel = ({
     {outputLabel}
   </>
 );
-
-const formatReferenceSnapshots = ({
-  value,
-  list,
-  referenceSnapshots,
-  getNodeById
-}: {
-  value?: ReferenceValueType;
-  list: ReferenceSelectList;
-  referenceSnapshots?: WorkflowReferenceSnapshot[];
-  getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
-}) =>
-  getWorkflowReferenceItems(value)
-    .map((item) =>
-      getReferenceSnapshot({
-        value: item,
-        list,
-        referenceSnapshots,
-        getNodeById
-      })
-    )
-    .filter((item): item is WorkflowReferenceSnapshot => !!item);
 
 const ReferenceSnapshotLabel = ({
   snapshot,
@@ -209,10 +192,7 @@ type CommonSelectProps = {
 type SelectProps<T extends boolean> = CommonSelectProps & {
   isArray?: T;
   value?: T extends true ? ReferenceArrayValueType : ReferenceItemValueType;
-  onSelect: (
-    val?: T extends true ? ReferenceArrayValueType : ReferenceItemValueType,
-    snapshots?: WorkflowReferenceSnapshot[]
-  ) => void;
+  onSelect: (val?: T extends true ? ReferenceArrayValueType : ReferenceItemValueType) => void;
 };
 
 export const useReference = ({
@@ -281,6 +261,7 @@ export const useReference = ({
       referenceList,
       sourceNodes: sourceNodes.map((node) => ({
         nodeId: node.nodeId,
+        sourceLabel: node.name,
         outputs: node.outputs,
         catchError: node.catchError
       }))
@@ -311,15 +292,14 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
   const isArray = item.valueType?.includes('array') ?? false;
 
   const onSelect = useCallback(
-    (e?: ReferenceValueType, snapshots?: WorkflowReferenceSnapshot[]) => {
+    (e?: ReferenceValueType) => {
       onChangeNode({
         nodeId,
         type: 'updateInput',
         key: item.key,
         value: {
           ...item,
-          value: e,
-          referenceSnapshots: snapshots?.length ? snapshots : undefined
+          value: e
         }
       });
     },
@@ -385,6 +365,7 @@ const SingleReferenceSelector = ({
     ? getReferenceSnapshot({
         value: selectorVal,
         list,
+        sourceNodes,
         referenceSnapshots,
         getNodeById
       })
@@ -416,16 +397,7 @@ const SingleReferenceSelector = ({
       value={selectorVal}
       list={list}
       onSelect={(nextValue) => {
-        const snapshots = formatReferenceSnapshots({
-          value: nextValue as ReferenceValueType | undefined,
-          list,
-          referenceSnapshots,
-          getNodeById
-        });
-        onSelect(
-          nextValue as ReferenceItemValueType | undefined,
-          snapshots.length ? snapshots : undefined
-        );
+        onSelect(nextValue as ReferenceItemValueType | undefined);
       }}
       popDirection={popDirection}
       ButtonProps={
@@ -485,15 +457,9 @@ const MultipleReferenceSelector = ({
 
   const handleSelect = useCallback(
     (nextValue?: ReferenceArrayValueType) => {
-      const snapshots = formatReferenceSnapshots({
-        value: nextValue,
-        list,
-        referenceSnapshots,
-        getNodeById
-      });
-      onSelect(nextValue, snapshots.length ? snapshots : undefined);
+      onSelect(nextValue);
     },
-    [getNodeById, list, onSelect, referenceSnapshots]
+    [onSelect]
   );
 
   return (
@@ -521,6 +487,7 @@ const MultipleReferenceSelector = ({
                 ? getReferenceSnapshot({
                     value: rawValue,
                     list,
+                    sourceNodes,
                     referenceSnapshots,
                     getNodeById
                   })

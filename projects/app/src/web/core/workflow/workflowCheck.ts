@@ -35,6 +35,7 @@ import {
 import { isToolNotExistError } from '@fastgpt/global/core/app/utils';
 import {
   getNodeAllSourceIds,
+  getRefData,
   isConfiguredReferenceValue,
   isEmptyReferenceValue,
   isWorkflowEdgeSourceHandleValid,
@@ -367,6 +368,30 @@ const createWorkflowCheckContext = ({
   };
 };
 
+const getReferenceStatuses = ({
+  value,
+  valueType,
+  sourceNodes,
+  context
+}: {
+  value: unknown;
+  valueType?: WorkflowIOValueTypeEnum;
+  sourceNodes: FlowNodeItemType[];
+  context: WorkflowCheckContext;
+}) => {
+  const getNodeById = (nodeId: string | null | undefined) =>
+    context.nodeMap.get(nodeId ?? '')?.data;
+  return getWorkflowReferenceStatuses({
+    value,
+    valueType,
+    sourceNodes,
+    getNodeById,
+    chatConfig: context.chatConfig
+  });
+};
+
+const isEmptyReferenceInputValue = (value: unknown) => isEmptyReferenceValue(value);
+
 const isVariableUpdateValueEmpty = (item: TUpdateListItem) => {
   if (item.renderType === FlowNodeInputTypeEnum.reference) {
     return !isConfiguredReferenceValue(item.value);
@@ -428,55 +453,31 @@ export const checkWorkflowNodeIssues = ({
     const data = node.data;
     const inputs = data.inputs;
     const inputMap = new Map(inputs.map((input) => [input.key, input]));
-    const sourceNodeIds = getNodeAllSourceIds({
-      nodeId: data.nodeId,
-      getNodeById: (sourceNodeId) => context.nodeMap.get(sourceNodeId ?? '')?.data,
-      edges
-    });
-    const getInputSourceNodeIds = (input: FlowNodeInputItemType) => {
-      if (data.flowNodeType !== FlowNodeTypeEnum.httpRequest468 || input.canEdit !== true) {
-        return sourceNodeIds;
-      }
-
-      return getNodeAllSourceIds({
+    const getSourceNodes = (sourceIds: string[]) =>
+      sourceIds
+        .map((sourceId) => context.nodeMap.get(sourceId)?.data)
+        .filter((sourceNode): sourceNode is FlowNodeItemType => !!sourceNode);
+    const sourceNodes = getSourceNodes(
+      getNodeAllSourceIds({
         nodeId: data.nodeId,
         getNodeById: (sourceNodeId) => context.nodeMap.get(sourceNodeId ?? '')?.data,
-        edges,
-        includeChildren: true,
-        childrenNodeIdListMap: context.childrenNodeIdListMap
-      });
-    };
-    /** 统一引用状态、文案和字段路径，返回状态供后续类型校验复用。 */
-    const addReferenceIssue = ({
-      value,
-      valueType,
-      sourceNodeIds,
-      inputKey,
-      inputName
-    }: {
-      value: unknown;
-      valueType?: WorkflowIOValueTypeEnum;
-      sourceNodeIds: string[];
-      inputKey: string;
-      inputName?: string;
-    }) => {
-      const statuses = getWorkflowReferenceStatuses({
-        value,
-        valueType,
-        sourceNodeIds,
-        getNodeById: (nodeId) => context.nodeMap.get(nodeId ?? '')?.data,
-        chatConfig: context.chatConfig
-      });
-      const code = getReferenceIssueCode(statuses);
-      if (code) {
-        addIssue({
-          node,
-          code,
-          message: getWorkflowCheckIssueMessage(code, t, { inputName }),
-          inputKey
-        });
+        edges
+      })
+    );
+    const getInputSourceNodes = (input: FlowNodeInputItemType) => {
+      if (data.flowNodeType !== FlowNodeTypeEnum.httpRequest468 || input.canEdit !== true) {
+        return sourceNodes;
       }
-      return statuses;
+
+      return getSourceNodes(
+        getNodeAllSourceIds({
+          nodeId: data.nodeId,
+          getNodeById: (sourceNodeId) => context.nodeMap.get(sourceNodeId ?? '')?.data,
+          edges,
+          includeChildren: true,
+          childrenNodeIdListMap: context.childrenNodeIdListMap
+        })
+      );
     };
     const isToolNode = context.incomingEdgesMap
       .get(data.nodeId)
@@ -550,26 +551,56 @@ export const checkWorkflowNodeIssues = ({
         if (ifElseList) {
           ifElseList.forEach((branch, branchIndex) => {
             branch.list.forEach((condition, conditionIndex) => {
-              const variableInputKey = `${NodeInputKeyEnum.ifElseList}[${branchIndex}].list[${conditionIndex}].variable`;
-              const valueInputKey = `${NodeInputKeyEnum.ifElseList}[${branchIndex}].list[${conditionIndex}].value`;
-              const variableStatuses = addReferenceIssue({
+              const addReferenceIssue = ({
+                field,
+                code
+              }: {
+                field: 'variable' | 'value';
+                code: 'invalid_reference' | 'invalid_reference_type' | 'unreachable_reference';
+              }) => {
+                addIssue({
+                  node,
+                  code,
+                  message: getWorkflowCheckIssueMessage(code, t, {
+                    inputName: field === 'variable' ? '变量' : '值'
+                  }),
+                  inputKey: `${NodeInputKeyEnum.ifElseList}[${branchIndex}].list[${conditionIndex}].${field}`
+                });
+              };
+
+              const variableStatuses = getReferenceStatuses({
                 value: condition.variable,
-                inputKey: variableInputKey,
-                inputName: '变量',
-                sourceNodeIds
+                sourceNodes,
+                context
               });
-              const variableType = variableStatuses.find(
-                ({ sourceType }) => sourceType
-              )?.sourceType;
+              const variableIssueCode = getReferenceIssueCode(variableStatuses);
+              if (variableIssueCode) {
+                addReferenceIssue({
+                  field: 'variable',
+                  code: variableIssueCode
+                });
+              }
+
+              const variableType = getRefData({
+                variable: condition.variable,
+                getNodeById: (sourceNodeId) => context.nodeMap.get(sourceNodeId ?? '')?.data,
+                chatConfig: context.chatConfig
+              }).valueType;
 
               if (condition.valueType === 'reference') {
-                addReferenceIssue({
+                const valueStatuses = getReferenceStatuses({
                   value: condition.value,
-                  inputKey: valueInputKey,
-                  inputName: '值',
                   valueType: variableType,
-                  sourceNodeIds
+                  sourceNodes,
+                  context
                 });
+                const valueIssueCode = getReferenceIssueCode(valueStatuses);
+                if (valueIssueCode) {
+                  addReferenceIssue({
+                    field: 'value',
+                    code: valueIssueCode
+                  });
+                }
               }
             });
           });
@@ -763,14 +794,13 @@ export const checkWorkflowNodeIssues = ({
             | 'invalid_reference_type'
             | 'unreachable_reference';
         }) => {
-          const inputName =
-            field === 'variable'
-              ? t
-                ? t('common:core.workflow.variable' as any)
-                : '变量'
-              : t
-                ? t('common:value' as any)
-                : '值';
+          const inputName = (() => {
+            if (field === 'variable') {
+              return t ? t('common:core.workflow.variable' as any) : '变量';
+            }
+
+            return t ? t('common:value' as any) : '值';
+          })();
 
           addIssue({
             node,
@@ -790,15 +820,17 @@ export const checkWorkflowNodeIssues = ({
           addVariableUpdateIssue({ field: 'value', code: 'required_input_empty' });
         } else {
           updateList.forEach((item, index) => {
-            const targetInputKey = `${NodeInputKeyEnum.updateList}[${index}].variable`;
-            const targetStatuses = addReferenceIssue({
+            const targetStatuses = getReferenceStatuses({
               value: item.variable,
-              inputKey: targetInputKey,
-              inputName: t ? t('common:core.workflow.variable' as any) : '变量',
-              sourceNodeIds
+              sourceNodes,
+              context
             });
             const targetIssueCode = getReferenceIssueCode(targetStatuses);
-            const targetType = targetStatuses.find(({ sourceType }) => sourceType)?.sourceType;
+            const targetType = getRefData({
+              variable: item.variable,
+              getNodeById: (targetNodeId) => context.nodeMap.get(targetNodeId ?? '')?.data,
+              chatConfig: context.chatConfig
+            }).valueType;
 
             if (!isConfiguredReferenceValue(item.variable)) {
               addVariableUpdateIssue({
@@ -806,8 +838,16 @@ export const checkWorkflowNodeIssues = ({
                 index,
                 code: 'required_input_empty'
               });
+            } else if (targetIssueCode) {
+              addVariableUpdateIssue({
+                field: 'variable',
+                index,
+                code: targetIssueCode as
+                  | 'invalid_reference'
+                  | 'invalid_reference_type'
+                  | 'unreachable_reference'
+              });
             } else if (
-              !targetIssueCode &&
               item.valueType &&
               !workflowValueTypeIsCompatible(item.valueType, targetType)
             ) {
@@ -818,20 +858,30 @@ export const checkWorkflowNodeIssues = ({
               });
             }
 
-            if (item.renderType === FlowNodeInputTypeEnum.reference) {
-              addReferenceIssue({
-                value: item.value,
-                inputKey: `${NodeInputKeyEnum.updateList}[${index}].value`,
-                inputName: t ? t('common:value' as any) : '值',
-                valueType: targetType,
-                sourceNodeIds
-              });
-            }
+            const valueStatuses =
+              item.renderType === FlowNodeInputTypeEnum.reference
+                ? getReferenceStatuses({
+                    value: item.value,
+                    valueType: targetType,
+                    sourceNodes,
+                    context
+                  })
+                : [];
+            const valueIssueCode = getReferenceIssueCode(valueStatuses);
             if (isVariableUpdateValueEmpty(item)) {
               addVariableUpdateIssue({
                 field: 'value',
                 index,
                 code: 'required_input_empty'
+              });
+            } else if (valueIssueCode) {
+              addVariableUpdateIssue({
+                field: 'value',
+                index,
+                code: valueIssueCode as
+                  | 'invalid_reference'
+                  | 'invalid_reference_type'
+                  | 'unreachable_reference'
               });
             }
           });
@@ -855,13 +905,24 @@ export const checkWorkflowNodeIssues = ({
         // 节点未显式配置时，runtime 会回退 defaultValue；运行检查应与实际执行一致。
         const effectiveInputValue = input.value ?? input.defaultValue;
 
-        if (isReferenceInput) {
-          addReferenceIssue({
-            value: effectiveInputValue,
-            valueType: input.valueType,
-            sourceNodeIds: getInputSourceNodeIds(input),
-            inputKey: input.key,
-            inputName: getInputLabel(input, t)
+        const referenceIssueCode = isReferenceInput
+          ? getReferenceIssueCode(
+              getReferenceStatuses({
+                value: effectiveInputValue,
+                valueType: input.valueType,
+                sourceNodes: getInputSourceNodes(input),
+                context
+              })
+            )
+          : undefined;
+        if (referenceIssueCode) {
+          addIssue({
+            node,
+            code: referenceIssueCode,
+            message: getWorkflowCheckIssueMessage(referenceIssueCode, t, {
+              inputName: getInputLabel(input, t)
+            }),
+            inputKey: input.key
           });
         }
 
@@ -885,7 +946,7 @@ export const checkWorkflowNodeIssues = ({
         }
 
         const inputValueIsEmpty = isReferenceInput
-          ? isEmptyReferenceValue(effectiveInputValue)
+          ? isEmptyReferenceInputValue(effectiveInputValue)
           : isEmptyWorkflowInputValue(effectiveInputValue);
 
         if (

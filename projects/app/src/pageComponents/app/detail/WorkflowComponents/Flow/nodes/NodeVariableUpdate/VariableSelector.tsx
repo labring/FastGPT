@@ -12,7 +12,7 @@ type Props = {
   variable?: ReferenceValueType;
   valueType?: WorkflowIOValueTypeEnum;
   referenceSnapshots?: WorkflowReferenceSnapshot[];
-  onSelect: (e?: ReferenceValueType, snapshots?: WorkflowReferenceSnapshot[]) => void;
+  onSelect: (e?: ReferenceValueType) => void;
 };
 
 const VariableSelector = ({ nodeId, variable, valueType, referenceSnapshots, onSelect }: Props) => {

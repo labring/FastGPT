@@ -5,8 +5,7 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import {
   type FlowNodeInputItemType,
-  type ReferenceValueType,
-  type WorkflowReferenceSnapshot
+  type ReferenceValueType
 } from '@fastgpt/global/core/workflow/type/io';
 import { useContextSelector } from 'use-context-selector';
 import { getInputComponentProps } from '@/web/core/workflow/utils';
@@ -188,7 +187,7 @@ const Reference = ({
     [existsKeys, toast, t, isEmptyItem, item, onChangeNode, nodeId, inputChildren]
   );
   const onSelectReference = useCallback(
-    (e?: ReferenceValueType, snapshots?: WorkflowReferenceSnapshot[]) => {
+    (e?: ReferenceValueType) => {
       const referenceItem = e
         ? referenceList
             .find((item) => item.value === e[0])
@@ -202,7 +201,6 @@ const Reference = ({
         value: {
           ...inputChildren,
           value: e,
-          referenceSnapshots: e && snapshots?.length ? snapshots : undefined,
           valueType: referenceItem?.valueType || WorkflowIOValueTypeEnum.any
         }
       });

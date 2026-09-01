@@ -7,8 +7,7 @@ import { SmallAddIcon } from '@chakra-ui/icons';
 import Container from '../../components/Container';
 import {
   type FlowNodeInputItemType,
-  type ReferenceValueType,
-  type WorkflowReferenceSnapshot
+  type ReferenceValueType
 } from '@fastgpt/global/core/workflow/type/io';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
@@ -110,15 +109,14 @@ function Reference({
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
 
   const onSelect = useCallback(
-    (e?: ReferenceValueType, snapshots?: WorkflowReferenceSnapshot[]) => {
+    (e?: ReferenceValueType) => {
       onChangeNode({
         nodeId,
         type: 'updateInput',
         key: input.key,
         value: {
           ...input,
-          value: e,
-          referenceSnapshots: e && snapshots?.length ? snapshots : undefined
+          value: e
         }
       });
     },
