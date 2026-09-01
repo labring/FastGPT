@@ -134,6 +134,16 @@ export const adminAuditLogMap = {
     content: i18nT('account_team:log_admin_update_operational_ad'),
     typeLabel: i18nT('account_team:admin_update_operational_ad'),
     params: {}
+  },
+  [AdminAuditEventEnum.ADMIN_RETRY_BULLMQ_JOB]: {
+    content: i18nT('account_team:log_admin_bullmq_retry_job'),
+    typeLabel: i18nT('account_team:admin_bullmq_retry_job'),
+    params: {} as { name?: string; queue: string; count: number }
+  },
+  [AdminAuditEventEnum.ADMIN_REMOVE_BULLMQ_JOB]: {
+    content: i18nT('account_team:log_admin_bullmq_remove_job'),
+    typeLabel: i18nT('account_team:admin_bullmq_remove_job'),
+    params: {} as { name?: string; queue: string; count: number }
   }
 };
 

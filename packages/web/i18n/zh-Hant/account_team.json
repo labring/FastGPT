@@ -359,5 +359,9 @@
   "enterprise_auth_cancel": "取消",
   "enterprise_auth_start": "開始認證",
   "enterprise_auth_verify_with_remaining": "驗證（剩餘{{count}}次）",
-  "move_skill": "移動技能"
+  "move_skill": "移動技能",
+  "admin_bullmq_retry_job": "重試任務佇列",
+  "log_admin_bullmq_retry_job": "【{{name}}】重試了佇列【{{queue}}】的{{count}}個失敗任務",
+  "admin_bullmq_remove_job": "刪除任務記錄",
+  "log_admin_bullmq_remove_job": "【{{name}}】刪除了佇列【{{queue}}】的{{count}}條失敗任務記錄"
 }

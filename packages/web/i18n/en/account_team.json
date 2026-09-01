@@ -359,5 +359,9 @@
   "enterprise_auth_cancel": "Cancel",
   "enterprise_auth_start": "Start verification",
   "enterprise_auth_verify_with_remaining": "Verify ({{count}} attempts left)",
-  "move_skill": "Move skill"
+  "move_skill": "Move skill",
+  "admin_bullmq_retry_job": "Retry queue jobs",
+  "log_admin_bullmq_retry_job": "[{{name}}] retried {{count}} failed jobs of queue [{{queue}}]",
+  "admin_bullmq_remove_job": "Remove job records",
+  "log_admin_bullmq_remove_job": "[{{name}}] removed {{count}} failed job records of queue [{{queue}}]"
 }
