@@ -29,6 +29,7 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import {
   DatasetCollectionTypeEnum,
+  DatasetTypeEnum,
   DatasetStatusEnum,
   DatasetCollectionSyncResultMap,
   DatasetCollectionDataProcessModeMap
@@ -62,6 +63,8 @@ import { hasDatasetTrainingError as checkDatasetTrainingError } from '@/web/core
 
 const Header = dynamic(() => import('./Header'));
 const EmptyCollectionTip = dynamic(() => import('./EmptyCollectionTip'));
+const CollectionTagSetModal = dynamic(() => import('./CollectionTagSetModal'));
+const CollectionTagBatchModal = dynamic(() => import('./CollectionTagBatchModal'));
 
 const CollectionCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
@@ -77,6 +80,8 @@ const CollectionCard = () => {
   }>();
   const [isTrainingErrorModalOpen, setIsTrainingErrorModalOpen] = useState(false);
   const [hasDatasetTrainingError, setHasDatasetTrainingError] = useState(false);
+  const [tagSetCollection, setTagSetCollection] = useState<DatasetCollectionsListItemType>();
+  const [isBatchTagModalOpen, setIsBatchTagModalOpen] = useState(false);
 
   const {
     collections,
@@ -255,6 +260,13 @@ const CollectionCard = () => {
                 pt={4}
                 Controler={
                   <HStack>
+                    {datasetDetail.permission.hasWritePer &&
+                      datasetDetail.type !== DatasetTypeEnum.websiteDataset &&
+                      feConfigs?.isPlus && (
+                        <Button variant={'whiteBase'} onClick={() => setIsBatchTagModalOpen(true)}>
+                          {t('dataset:tag.batch_edit')}
+                        </Button>
+                      )}
                     <Button
                       variant={'whiteBase'}
                       onClick={() =>
@@ -494,7 +506,21 @@ const CollectionCard = () => {
                                         name: newName
                                       })
                                   })
-                              }
+                              },
+                              ...(feConfigs?.isPlus &&
+                              datasetDetail.type !== DatasetTypeEnum.websiteDataset
+                                ? [
+                                    {
+                                      label: (
+                                        <Flex alignItems={'center'}>
+                                          <MyIcon name={'core/dataset/tag'} w={'0.9rem'} mr={2} />
+                                          {t('dataset:tag.set')}
+                                        </Flex>
+                                      ),
+                                      onClick: () => setTagSetCollection(collection)
+                                    }
+                                  ]
+                                : [])
                             ]
                           },
                           {
@@ -540,6 +566,29 @@ const CollectionCard = () => {
         <ConfirmDeleteModal />
         <ConfirmSyncModal />
         <EditTitleModal />
+
+        {!!tagSetCollection && (
+          <CollectionTagSetModal
+            collection={tagSetCollection}
+            onClose={() => setTagSetCollection(undefined)}
+            onSuccess={() => {
+              getData(pageNum);
+              setTagSetCollection(undefined);
+            }}
+          />
+        )}
+
+        {isBatchTagModalOpen && (
+          <CollectionTagBatchModal
+            collections={selectedItems}
+            onClose={() => setIsBatchTagModalOpen(false)}
+            onSuccess={() => {
+              getData(pageNum);
+              setSelectedItems([]);
+              setIsBatchTagModalOpen(false);
+            }}
+          />
+        )}
 
         {!!trainingStatesCollection && (
           <TrainingStates

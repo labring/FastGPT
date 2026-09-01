@@ -17,6 +17,13 @@ export type {
   MultiSelectFilterSummary,
   MultiSelectFilterValue
 } from './multiSelectFilterUtils';
+export { default as MultiTagFilter, toggleMultiTagFilterValue } from './MultiTagFilter';
+export type {
+  MultiTagFilterGroup,
+  MultiTagFilterLabels,
+  MultiTagFilterProps,
+  MultiTagFilterValue
+} from './MultiTagFilter';
 export { FILTER_SEARCH_THRESHOLD } from './FilterSearchInput';
 export { default as FilterSearchInput } from './FilterSearchInput';
 export {
