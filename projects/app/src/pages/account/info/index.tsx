@@ -44,7 +44,6 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getIsMemberSyncMode } from '@/web/common/system/utils';
 import { accountPageRootStyles, accountTitleTextStyles } from '@/pageComponents/account/styles';
 import { getAccountCancellationStatus } from '@/web/support/user/account/cancellation/api';
@@ -421,8 +420,6 @@ const PlanUsage = () => {
   const { userInfo, teamPlanStatus, initTeamPlanStatus } = useUserStore();
   const { subPlans, feConfigs } = useSystemStore();
 
-  // Check if it's a wecom team
-  const isWecomTeam = !!userInfo?.team?.isWecomTeam;
   const {
     isOpen: isOpenStandardModal,
     onClose: onCloseStandardModal,
@@ -443,14 +440,11 @@ const PlanUsage = () => {
 
   const planName = useMemo(() => {
     if (!teamPlanStatus?.standard?.currentSubLevel) return '';
-    if (isWecomTeam && teamPlanStatus.standard.currentSubLevel === StandardSubLevelEnum.free)
-      return i18nT('common:support.wallet.subscription.standardSubLevel.trial');
-
     return (
       subPlans?.standard?.[teamPlanStatus.standard.currentSubLevel]?.name ||
       standardSubLevelMap[teamPlanStatus.standard.currentSubLevel].label
     );
-  }, [teamPlanStatus?.standard?.currentSubLevel, isWecomTeam, subPlans]);
+  }, [teamPlanStatus?.standard?.currentSubLevel, subPlans]);
   const standardPlan = teamPlanStatus?.standard;
 
   const isFreeTeam = useMemo(() => {
@@ -624,7 +618,7 @@ const PlanUsage = () => {
               {t('account_info:account_knowledge_base_cleanup_warning')}
             </Box>
           )}
-          {(standardPlan.currentSubLevel !== StandardSubLevelEnum.free || isWecomTeam) && (
+          {standardPlan.currentSubLevel !== StandardSubLevelEnum.free && (
             <Flex mt="2" color={'#485264'} fontSize="xs">
               <Box>{t('account_info:package_expiry_time')}:</Box>
               <Box ml={2}>{formatTime2YMD(standardPlan?.expiredTime)}</Box>

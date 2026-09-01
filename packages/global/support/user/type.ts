@@ -58,8 +58,7 @@ export const TeamMetaSchema = z.object({
   wecom: z
     .object({
       permanentCode: z.string(),
-      corpId: z.string(),
-      licenseCapacity: z.int().min(0).default(0)
+      corpId: z.string()
     })
     .optional()
 });

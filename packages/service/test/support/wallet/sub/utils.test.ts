@@ -22,6 +22,7 @@ import {
 } from '@fastgpt/service/support/wallet/sub/utils';
 import { MongoTeamSub } from '@fastgpt/service/support/wallet/sub/schema';
 import { redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { addMonths } from 'date-fns';
 
 // Valid ObjectId for testing
 const mockTeamId = '507f1f77bcf86cd799439011';
@@ -444,21 +445,11 @@ describe('buildStandardPlan', () => {
       expect(result.customDescriptions).toEqual(['特性A', '特性B']);
     });
 
-    it('wecom 取自 standardConstants', () => {
-      const constants: TeamStandardSubPlanItemType = {
-        ...baseConstants,
-        wecom: { price: 9.9, points: 500 }
-      };
-      const result = buildStandardPlan(baseStandard, constants);
-      expect(result.wecom).toEqual({ price: 9.9, points: 500 });
-    });
-
     it('standardConstants 展示字段为 undefined 时结果也为 undefined', () => {
       const result = buildStandardPlan(baseStandard, baseConstants);
       expect(result.priceDescription).toBeUndefined();
       expect(result.customFormUrl).toBeUndefined();
       expect(result.customDescriptions).toBeUndefined();
-      expect(result.wecom).toBeUndefined();
     });
   });
 
@@ -691,6 +682,9 @@ describe('initTeamFreePlan', () => {
 
     expect(MongoTeamSub.findOne).toHaveBeenCalled();
     expect(MongoTeamSub.create).toHaveBeenCalled();
+    const [createdPlan] = (MongoTeamSub.create as any).mock.calls[0][0];
+    expect(createdPlan.expiredTime).toEqual(addMonths(createdPlan.startTime, 1));
+    expect(createdPlan.maxTeamMember).toBeUndefined();
     expect(result).toEqual([mockCreatedPlan]);
   });
 
@@ -788,6 +782,24 @@ describe('getTeamStandPlan', () => {
     expect(MongoTeamSub.find).toHaveBeenCalled();
     expect(result[SubTypeEnum.standard]).toBeDefined();
     expect(result[SubTypeEnum.standard]?.name).toBe('Basic Plan');
+  });
+
+  it('支持强制从主库读取团队标准套餐', async () => {
+    const mockQuery = {
+      lean: vi.fn().mockResolvedValue([])
+    };
+    vi.spyOn(MongoTeamSub, 'find').mockReturnValue(mockQuery as any);
+
+    await getTeamStandPlan({ teamId: mockTeamId, readFromPrimary: true });
+
+    expect(MongoTeamSub.find).toHaveBeenCalledWith(
+      {
+        teamId: mockTeamId,
+        type: SubTypeEnum.standard
+      },
+      undefined,
+      { readPreference: 'primary' }
+    );
   });
 
   it('开启标准套餐配置但没有套餐记录时返回 undefined', async () => {

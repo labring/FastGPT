@@ -141,7 +141,6 @@ const PriceBox = () => {
     }, 1000);
   }, [router]);
 
-  const isWecomTeam = useMemo(() => !!userInfo?.team?.isWecomTeam, [userInfo?.team?.isWecomTeam]);
   const tabList = useMemo<Array<{ label: string; value: PriceTabType }>>(
     () => [
       {
@@ -214,7 +213,7 @@ const PriceBox = () => {
                 <PricePlanTabs list={tabList} value={activeTab} onChange={handleTabChange} />
               </Box>
 
-              {activeTab === 'standard' && !isWecomTeam && (
+              {activeTab === 'standard' && (
                 <Box mt={'16px'}>
                   <BillingModeSwitch value={selectSubMode} onChange={setUserSubMode} />
                 </Box>
