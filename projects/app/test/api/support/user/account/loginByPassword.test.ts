@@ -231,6 +231,77 @@ describe('loginByPassword API', () => {
     ).resolves.toBe(1);
   });
 
+  it('should keep the user lock until a fallback login consumes its verification material', async () => {
+    global.systemConfig = { teamMode: 'multi' };
+    const loginUser = await MongoUser.create({
+      username: 'concurrent-orphan-user',
+      password: 'testpassword',
+      status: UserStatusEnum.active
+    });
+    await saveLoginCode(loginUser.username);
+
+    let releaseFirstConsume!: () => void;
+    let firstConsumeReached!: () => void;
+    const firstConsume = new Promise<void>((resolve) => {
+      firstConsumeReached = resolve;
+    });
+    const consumeGate = new Promise<void>((resolve) => {
+      releaseFirstConsume = resolve;
+    });
+    const originalDeleteOne = MongoTmpData.deleteOne.bind(MongoTmpData);
+    let blockedFirstConsume = false;
+    const deleteOneSpy = vi
+      .spyOn(MongoTmpData, 'deleteOne')
+      .mockImplementation(async (...args: any[]) => {
+        if (
+          !blockedFirstConsume &&
+          args[0]?.dataId ===
+            getDataId({ scene: 'login', type: 'password', key: loginUser.username })
+        ) {
+          blockedFirstConsume = true;
+          firstConsumeReached();
+          await consumeGate;
+        }
+        return originalDeleteOne(...args);
+      });
+
+    try {
+      const firstLogin = Call<LoginByPasswordBodyType, Record<string, never>, any>(
+        loginApi.default,
+        {
+          body: {
+            username: loginUser.username,
+            password: 'testpassword',
+            code: '123456',
+            language: 'zh-CN'
+          }
+        }
+      );
+      await firstConsume;
+
+      const secondLogin = await Call<LoginByPasswordBodyType, Record<string, never>, any>(
+        loginApi.default,
+        {
+          body: {
+            username: loginUser.username,
+            password: 'testpassword',
+            code: '123456',
+            language: 'zh-CN'
+          }
+        }
+      );
+
+      expect(secondLogin.code).not.toBe(200);
+      await expect(MongoTeam.countDocuments({ ownerId: loginUser._id })).resolves.toBe(1);
+
+      releaseFirstConsume();
+      await expect(firstLogin).resolves.toMatchObject({ code: 200 });
+    } finally {
+      releaseFirstConsume();
+      deleteOneSpy.mockRestore();
+    }
+  });
+
   it('should not create a team for a pending cancellation user without a usable team', async () => {
     global.systemConfig = { teamMode: 'multi' };
     const loginUser = await MongoUser.create({

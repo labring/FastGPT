@@ -28,7 +28,6 @@ import {
   formatTeamAccountCancellationSummary,
   getActiveAccountCancellationsByTeamIds
 } from '../account/cancellation';
-import { withUserLock } from '../lock';
 
 const logger = getLogger(LogCategories.MODULE.USER.TEAM);
 
@@ -135,7 +134,8 @@ export async function getUserDefaultTeam({
 
 /**
  * 在登录事务中为没有任何可用团队的用户创建个人团队。
- * 创建前会再次检查团队，避免并发登录在同一用户下重复建队。
+ * 调用方必须在覆盖完整登录事务生命周期的用户锁中调用；函数内部再次检查团队，
+ * 避免已提交的团队被重复创建。
  */
 export async function createUserLoginTeam({
   userId,
@@ -150,52 +150,50 @@ export async function createUserLoginTeam({
   memberAvatar?: string;
   session: ClientSession;
 }) {
-  return withUserLock(userId, async () => {
-    await assertAccountCancellationUserCanOwnTeam(userId);
+  await assertAccountCancellationUserCanOwnTeam(userId);
 
-    const fallback = await getUserFallbackTeam({ userId, session });
-    if (fallback) return fallback.tmbId;
+  const fallback = await getUserFallbackTeam({ userId, session });
+  if (fallback) return fallback.tmbId;
 
-    const [team] = await MongoTeam.create(
-      [
-        {
-          ownerId: userId,
-          name: getUserDefaultTeamName(username),
-          avatar: LOGO_ICON,
-          defaultPermission: TeamDefaultPermissionVal
-        }
-      ],
-      { session, ordered: true }
-    );
-    const [tmb] = await MongoTeamMember.create(
-      [
-        {
-          teamId: team._id,
-          userId,
-          name: memberName ?? username,
-          role: TeamMemberRoleEnum.owner,
-          status: TeamMemberStatusEnum.active,
-          avatar: memberAvatar ?? LOGO_ICON
-        }
-      ],
-      { session, ordered: true }
-    );
+  const [team] = await MongoTeam.create(
+    [
+      {
+        ownerId: userId,
+        name: getUserDefaultTeamName(username),
+        avatar: LOGO_ICON,
+        defaultPermission: TeamDefaultPermissionVal
+      }
+    ],
+    { session, ordered: true }
+  );
+  const [tmb] = await MongoTeamMember.create(
+    [
+      {
+        teamId: team._id,
+        userId,
+        name: memberName ?? username,
+        role: TeamMemberRoleEnum.owner,
+        status: TeamMemberStatusEnum.active,
+        avatar: memberAvatar ?? LOGO_ICON
+      }
+    ],
+    { session, ordered: true }
+  );
 
-    await MongoMemberGroupModel.create(
-      [{ teamId: team._id, name: DefaultGroupName, avatar: LOGO_ICON }],
-      { session, ordered: true }
-    );
-    await initTeamFreePlan({ teamId: String(team._id), session });
-    await createRootOrg({ teamId: String(team._id), session });
+  await MongoMemberGroupModel.create(
+    [{ teamId: team._id, name: DefaultGroupName, avatar: LOGO_ICON }],
+    { session, ordered: true }
+  );
+  await initTeamFreePlan({ teamId: String(team._id), session });
+  await createRootOrg({ teamId: String(team._id), session });
 
-    logger.info('Login fallback team created', {
-      userId,
-      teamId: team._id,
-      tmbId: tmb._id
-    });
-
-    return String(tmb._id);
+  logger.info('Login fallback team created', {
+    userId,
+    teamId: team._id,
+    tmbId: tmb._id
   });
+
+  return String(tmb._id);
 }
 
 export async function createDefaultTeam({

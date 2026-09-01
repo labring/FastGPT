@@ -1,5 +1,7 @@
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import { createUserLoginTeam } from '@fastgpt/service/support/user/team/controller';
+import { withUserLock } from '@fastgpt/service/support/user/lock';
+import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
@@ -32,8 +34,8 @@ async function handler(
     bodySchema: LoginByPasswordBodySchema
   }).body;
 
-  const { user, userDetail, visitorIdentity } =
-    await passwordVerificationService.withVerifiedCredentials(
+  const runLogin = () =>
+    passwordVerificationService.withVerifiedCredentials(
       {
         username,
         password,
@@ -81,6 +83,10 @@ async function handler(
         return { user, userDetail, visitorIdentity };
       }
     );
+  const userForLock = await MongoUser.findOne({ username }, { _id: 1 }).lean();
+  const { user, userDetail, visitorIdentity } = userForLock
+    ? await withUserLock(String(userForLock._id), runLogin)
+    : await runLogin();
 
   const token = await createUserSession({
     userId: user._id,
