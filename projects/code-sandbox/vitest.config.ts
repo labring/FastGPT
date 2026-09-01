@@ -16,7 +16,8 @@ export default defineConfig({
     hookTimeout: 30000,
     // 多个 suite 会各自启动真实 JS/Python 进程池；串行文件避免原生包冷启动和资源测试互相争抢。
     fileParallelism: false,
-    isolate: false,
+    // ipCheck 等 suite 会重置模块并修改进程环境，文件间必须隔离模块缓存，避免策略状态互相污染。
+    isolate: true,
     env: {
       CHECK_INTERNAL_IP: 'true',
       SANDBOX_API_MAX_BODY_MB: '1',
