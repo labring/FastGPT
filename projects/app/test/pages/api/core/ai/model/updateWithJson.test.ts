@@ -2,15 +2,20 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import { Call } from '@test/utils/request';
 import { getRootUser } from '@test/datas/users';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const configMocks = vi.hoisted(() => ({
+  refreshModelTemplates: vi.fn(),
+  updatedReloadSystemModel: vi.fn()
+}));
 
 vi.mock('@fastgpt/service/core/ai/config/utils', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@fastgpt/service/core/ai/config/utils')>();
 
   return {
     ...actual,
-    refreshModelTemplates: vi.fn().mockResolvedValue([]),
-    updatedReloadSystemModel: vi.fn().mockResolvedValue(undefined)
+    refreshModelTemplates: configMocks.refreshModelTemplates,
+    updatedReloadSystemModel: configMocks.updatedReloadSystemModel
   };
 });
 
@@ -32,9 +37,15 @@ const buildLlmConfig = ({ modelId, model = 'test-llm' }: { modelId: string; mode
   isActive: true
 });
 
-const buildEmbeddingConfig = ({ modelId }: { modelId: string }) => ({
+const buildEmbeddingConfig = ({
   modelId,
-  model: 'test-embedding',
+  model = 'test-embedding'
+}: {
+  modelId: string;
+  model?: string;
+}) => ({
+  modelId,
+  model,
   type: ModelTypeEnum.embedding,
   provider: 'OpenAI',
   name: 'Test Embedding',
@@ -68,6 +79,11 @@ const callUpdateWithJson = async (config: string) => {
 };
 
 describe('admin settings model updateWithJson api', () => {
+  beforeEach(() => {
+    configMocks.refreshModelTemplates.mockReset().mockResolvedValue([]);
+    configMocks.updatedReloadSystemModel.mockReset().mockResolvedValue(undefined);
+  });
+
   it('updates matching IDs, creates external models by model and disables omitted records', async () => {
     const oldModel = await MongoAIModel.create(buildStoredLlm('old-model'));
     const existingModel = await MongoAIModel.create(buildStoredLlm('test-llm'));
@@ -133,5 +149,19 @@ describe('admin settings model updateWithJson api', () => {
 
     expect(res.error?.name).toBe('UserError');
     await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
+  });
+
+  it('rejects an imported model whose type conflicts with a same-name plugin template', async () => {
+    configMocks.refreshModelTemplates.mockResolvedValueOnce([buildStoredLlm('plugin-model')]);
+
+    const res = await callUpdateWithJson(
+      JSON.stringify([
+        buildEmbeddingConfig({ modelId: 'external-model-id', model: 'plugin-model' })
+      ])
+    );
+
+    expect(res.error?.name).toBe('UserError');
+    await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
+    expect(configMocks.updatedReloadSystemModel).not.toHaveBeenCalled();
   });
 });

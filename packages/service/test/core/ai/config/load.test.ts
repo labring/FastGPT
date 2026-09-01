@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 const pluginMocks = vi.hoisted(() => ({ listModels: vi.fn() }));
@@ -48,6 +48,7 @@ import {
   cronRefreshModels,
   loadInstalledModels,
   loadSystemModels,
+  syncPreinstalledSystemModels,
   updatedReloadSystemModel
 } from '@fastgpt/service/core/ai/config/utils';
 
@@ -60,6 +61,16 @@ const pluginLlm = {
   maxContext: 128000,
   maxTokens: 32000,
   quoteMaxToken: 100000
+};
+
+const pluginLlmDocument = {
+  type: ModelTypeEnum.llm,
+  provider: 'OpenAI',
+  model: 'plugin-llm',
+  name: 'Plugin LLM',
+  scope: 'system' as const,
+  isActive: true,
+  config: { maxContext: 128000, maxResponse: 32000, quoteMaxToken: 100000 }
 };
 
 describe('loadSystemModels', () => {
@@ -80,6 +91,10 @@ describe('loadSystemModels', () => {
     global.systemActiveModelList = undefined as never;
     global.systemModelMap = undefined as never;
     global.systemDefaultModel = undefined as never;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('refreshes plugin model templates every thirty minutes', async () => {
@@ -164,6 +179,27 @@ describe('loadSystemModels', () => {
     expect(global.systemModelList).toMatchObject([{ model: 'plugin-llm' }]);
   });
 
+  it('retries after another instance wins a preinstall duplicate-key race', async () => {
+    await MongoAIModel.create(pluginLlmDocument);
+    const bulkWrite = vi.spyOn(MongoAIModel, 'bulkWrite').mockRejectedValueOnce({ code: 11000 });
+
+    await expect(
+      syncPreinstalledSystemModels({ pluginDocuments: [pluginLlmDocument] })
+    ).resolves.toBeUndefined();
+    expect(bulkWrite).toHaveBeenCalledTimes(2);
+    await expect(MongoAIModel.countDocuments({ model: pluginLlmDocument.model })).resolves.toBe(1);
+  });
+
+  it('rethrows the last write error after three retries still fail', async () => {
+    const writeError = new Error('write failed');
+    const bulkWrite = vi.spyOn(MongoAIModel, 'bulkWrite').mockRejectedValue(writeError);
+
+    await expect(
+      syncPreinstalledSystemModels({ pluginDocuments: [pluginLlmDocument] })
+    ).rejects.toBe(writeError);
+    expect(bulkWrite).toHaveBeenCalledTimes(4);
+  });
+
   it('skips legacy migration when ai_models already contains data', async () => {
     await MongoAIModel.create({
       type: ModelTypeEnum.llm,
@@ -237,6 +273,43 @@ describe('loadSystemModels', () => {
     expect(global.systemModelList).toMatchObject([
       { modelId: String(model._id), model: 'installed-llm', isCustom: true }
     ]);
+  });
+
+  it('rejects a database model whose type conflicts with a same-name plugin template', async () => {
+    await MongoAIModel.create({
+      type: ModelTypeEnum.embedding,
+      provider: 'OpenAI',
+      model: pluginLlmDocument.model,
+      name: 'Conflicting embedding',
+      scope: 'system',
+      isActive: true,
+      config: { defaultToken: 512, maxToken: 8192, weight: 100 }
+    });
+
+    await expect(loadInstalledModels({ pluginDocuments: [pluginLlmDocument] })).rejects.toThrow(
+      'System model type does not match plugin template'
+    );
+  });
+
+  it('accepts a database model when one of multiple same-name templates matches its type', async () => {
+    await MongoAIModel.create(pluginLlmDocument);
+
+    await expect(
+      loadInstalledModels({
+        pluginDocuments: [
+          pluginLlmDocument,
+          {
+            type: ModelTypeEnum.embedding,
+            provider: 'OpenAI',
+            model: pluginLlmDocument.model,
+            name: 'Same-name embedding',
+            scope: 'system',
+            isActive: true,
+            config: { defaultToken: 512, maxToken: 8192, weight: 100 }
+          }
+        ]
+      })
+    ).resolves.toBeUndefined();
   });
 
   it('orders active built-in models by the plugin array instead of MongoDB order', async () => {

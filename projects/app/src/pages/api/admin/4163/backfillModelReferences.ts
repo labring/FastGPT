@@ -25,6 +25,7 @@ import {
 import { StoreNodeItemTypeSchema } from '@fastgpt/global/core/workflow/type/node';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.schema';
+import { clearAllMyModelsCache } from '@fastgpt/service/support/permission/model/controller';
 
 const BACKFILL_BATCH_SIZE = 100;
 
@@ -665,6 +666,9 @@ export const runBackfillModelReferences = async ({
     evaluations: aggregateReferenceStats(['evaluations']),
     permissions: aggregateReferenceStats(['modelPermissions'])
   };
+
+  // 权限回填会改变成员目录结果；正式迁移结束后统一失效迁移前生成的一小时缓存。
+  if (!dryRun) await clearAllMyModelsCache();
 
   return BackfillModelReferencesResponseSchema.parse(stats);
 };

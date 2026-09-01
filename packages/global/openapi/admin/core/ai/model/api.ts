@@ -17,10 +17,11 @@ import { IntSchema } from '../../../../../common/zod';
 import z from 'zod';
 import { ModelProviderSchema } from '../../../../core/ai/model/api';
 import { ModelDefaultIdsSchema } from '../../../../../core/ai/defaultModel';
+import { ObjectIdSchema } from '../../../../../common/type/mongo';
 
-const ModelIdSchema = z.string().trim().min(1).meta({
+const ModelIdSchema = ObjectIdSchema.meta({
   example: '68ad85a7463006c963799a05',
-  description: '模型稳定 ID 字符串'
+  description: '模型稳定 ObjectId'
 });
 
 export const AdminSystemModelReferenceSchema = z.object({
@@ -125,8 +126,12 @@ export const UpdateSystemModelBodySchema = z.object({
 });
 export type UpdateSystemModelBody = z.infer<typeof UpdateSystemModelBodySchema>;
 
+// 配置 JSON 允许来自其他实例的 ID；导入逻辑只把本实例真实 ObjectId 用作 `_id`，其余按 model 对齐。
 const ImportedModelIdField = {
-  modelId: ModelIdSchema,
+  modelId: z.string().trim().min(1).meta({
+    example: 'source-instance-model-id',
+    description: '源实例模型 ID，仅用于导入时识别记录'
+  }),
   scope: z.literal(ModelScopeEnum.system).meta({ description: '系统模型作用域' })
 };
 

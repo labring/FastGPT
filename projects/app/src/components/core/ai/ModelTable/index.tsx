@@ -56,7 +56,7 @@ const ModelTable = ({
   contentPx?: FlexProps['px'];
 }) => {
   const { t, i18n } = useClientTranslation();
-  const { getModelProviders: getMemberModelProviders, getModelProvider: getMemberModelProvider } =
+  const { modelProviders: memberModelProviders, getModelProvider: getMemberModelProvider } =
     useUserModelStore();
   const { modelList: availableModels } = useUserModelLists();
   const { data: publicCatalog } = useRequest(getPublicModelCatalog, {
@@ -66,10 +66,6 @@ const ModelTable = ({
     () => formatModelProviders(publicCatalog?.providers ?? []),
     [publicCatalog?.providers]
   );
-  const getModelProviders = permissionConfig
-    ? getMemberModelProviders
-    : (language?: string) =>
-        getModelProviderListFromCache(publicProviderCache.ModelProviderListCache, language);
   const getModelProvider = permissionConfig
     ? getMemberModelProvider
     : (provider?: string, language?: string) =>
@@ -88,10 +84,15 @@ const ModelTable = ({
   };
 
   const [provider, setProvider] = useState<string | ''>('');
-  const providerList = useMemo<{ label: React.ReactNode; value: string | '' }[]>(
-    () => [
+  const providerList = useMemo<{ label: React.ReactNode; value: string | '' }[]>(() => {
+    const providers = getModelProviderListFromCache(
+      permissionConfig ? memberModelProviders : publicProviderCache.ModelProviderListCache,
+      i18n.language
+    );
+
+    return [
       { label: t('common:All'), value: '' },
-      ...getModelProviders(i18n.language).map((item) => ({
+      ...providers.map((item) => ({
         label: (
           <HStack>
             <Avatar src={item.avatar} w={'1rem'} />
@@ -100,9 +101,8 @@ const ModelTable = ({
         ),
         value: item.id
       }))
-    ],
-    [getModelProviders, i18n.language, t]
-  );
+    ];
+  }, [i18n.language, memberModelProviders, permissionConfig, publicProviderCache, t]);
 
   const [modelType, setModelType] = useState<ModelTypeEnum | ''>('');
   const selectModelTypeList = useMemo<{ label: string; value: ModelTypeEnum | '' }[]>(

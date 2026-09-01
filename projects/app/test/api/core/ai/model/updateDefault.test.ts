@@ -45,13 +45,13 @@ describe('PUT /api/admin/settings/model/updateDefault', () => {
     mocks.updatedReloadSystemModel.mockResolvedValue(undefined);
   });
 
-  it('validates and updates string model IDs without ObjectId conversion', async () => {
+  it('validates and updates ObjectId-formatted model IDs', async () => {
     const ids = {
-      llm: 'system-llm-id',
-      embedding: 'system-embedding-id',
-      datasetText: 'dataset-text-id',
-      datasetImage: 'dataset-image-id',
-      chatTitle: 'chat-title-id'
+      llm: '68ad85a7463006c963799a01',
+      embedding: '68ad85a7463006c963799a02',
+      datasetText: '68ad85a7463006c963799a03',
+      datasetImage: '68ad85a7463006c963799a04',
+      chatTitle: '68ad85a7463006c963799a05'
     };
     mocks.findLean.mockResolvedValue([
       { _id: ids.llm, type: ModelTypeEnum.llm, isActive: true, config: {} },
@@ -92,23 +92,29 @@ describe('PUT /api/admin/settings/model/updateDefault', () => {
   it.each([
     {
       name: 'model ID does not exist in the system scope',
-      body: { [ModelTypeEnum.llm]: 'missing-model-id' },
+      body: { [ModelTypeEnum.llm]: '68ad85a7463006c963799a11' },
       models: []
     },
     {
       name: 'model type does not match the default slot',
-      body: { [ModelTypeEnum.embedding]: 'llm-model-id' },
-      models: [{ _id: 'llm-model-id', type: ModelTypeEnum.llm, isActive: true, config: {} }]
+      body: { [ModelTypeEnum.embedding]: '68ad85a7463006c963799a12' },
+      models: [
+        { _id: '68ad85a7463006c963799a12', type: ModelTypeEnum.llm, isActive: true, config: {} }
+      ]
     },
     {
       name: 'model is disabled',
-      body: { [ModelTypeEnum.llm]: 'disabled-model-id' },
-      models: [{ _id: 'disabled-model-id', type: ModelTypeEnum.llm, isActive: false, config: {} }]
+      body: { [ModelTypeEnum.llm]: '68ad85a7463006c963799a13' },
+      models: [
+        { _id: '68ad85a7463006c963799a13', type: ModelTypeEnum.llm, isActive: false, config: {} }
+      ]
     },
     {
       name: 'dataset image model does not support vision',
-      body: { datasetImageLLMModelId: 'text-only-model-id' },
-      models: [{ _id: 'text-only-model-id', type: ModelTypeEnum.llm, isActive: true, config: {} }]
+      body: { datasetImageLLMModelId: '68ad85a7463006c963799a14' },
+      models: [
+        { _id: '68ad85a7463006c963799a14', type: ModelTypeEnum.llm, isActive: true, config: {} }
+      ]
     }
   ])('rejects when $name before clearing existing defaults', async ({ body, models }) => {
     mocks.findLean.mockResolvedValue(models);

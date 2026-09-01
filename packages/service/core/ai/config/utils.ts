@@ -15,13 +15,14 @@ import {
 import { debounce } from 'lodash-es';
 import { getModelProvider } from '../../../core/app/provider/controller';
 import { findModelData } from '../model';
-import { delay } from '@fastgpt/global/common/system/utils';
+import { delay, retryFn } from '@fastgpt/global/common/system/utils';
 import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
 import { setCron } from '../../../common/system/cron';
 import { preloadModelProviders } from '../../../core/app/provider/controller';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { flatModelToDocumentData } from './repair';
 import { clearAllMyModelsCache } from '../../../support/permission/model/controller';
 import { bootstrapAIModelsFromLegacy } from './legacy';
@@ -80,6 +81,27 @@ export const refreshModelTemplates = async (): Promise<SystemModelDocumentDataTy
 };
 
 /**
+ * 校验数据库候选模型与同名插件模板的类型一致；必须在写入前调用，避免 reload 失败后留下坏数据。
+ */
+export const assertSystemModelTypesMatchPluginTemplates = ({
+  models,
+  pluginDocuments
+}: {
+  models: Array<Pick<SystemModelDocumentDataType, 'model' | 'type'>>;
+  pluginDocuments: Array<Pick<SystemModelDocumentDataType, 'model' | 'type'>>;
+}) => {
+  const pluginModelNames = new Set(pluginDocuments.map((model) => model.model));
+  const pluginModelKeys = new Set(pluginDocuments.map((model) => `${model.type}:${model.model}`));
+  for (const model of models) {
+    if (pluginModelNames.has(model.model) && !pluginModelKeys.has(`${model.type}:${model.model}`)) {
+      throw new UserError(
+        `System model type does not match plugin template: ${model.model} (${model.type})`
+      );
+    }
+  }
+};
+
+/**
  * 当前版本的自动预装兼容策略：只物化插件中存在但数据库缺失的系统模型。
  * 模板消失不会在这里删除或停用实例；PR2 可将本函数替换为显式模板安装。
  */
@@ -90,15 +112,19 @@ export const syncPreinstalledSystemModels = async ({
 }) => {
   if (pluginDocuments.length === 0) return;
 
-  await MongoAIModel.bulkWrite(
-    pluginDocuments.map((document) => ({
-      updateOne: {
-        filter: { scope: ModelScopeEnum.system, model: document.model },
-        update: { $setOnInsert: document },
-        upsert: true
-      }
-    })),
-    { ordered: false }
+  await retryFn(
+    () =>
+      MongoAIModel.bulkWrite(
+        pluginDocuments.map((document) => ({
+          updateOne: {
+            filter: { scope: ModelScopeEnum.system, model: document.model },
+            update: { $setOnInsert: document },
+            upsert: true
+          }
+        })),
+        { ordered: false }
+      ),
+    3
   );
 };
 
@@ -149,11 +175,17 @@ export const loadInstalledModels = async ({
       MongoAIModel.find({ scope: ModelScopeEnum.system }).lean(),
       findSystemDefaultModelIds()
     ]);
-    const pluginDocumentMap = new Map(pluginDocuments.map((model) => [model.model, model]));
+    const dbDocuments = dbModels.map((dbModel) => SystemModelDocumentDataSchema.parse(dbModel));
+    assertSystemModelTypesMatchPluginTemplates({ models: dbDocuments, pluginDocuments });
+    const getPluginModelKey = (model: Pick<SystemModelDocumentDataType, 'model' | 'type'>) =>
+      `${model.type}:${model.model}`;
+    const pluginDocumentMap = new Map(
+      pluginDocuments.map((model) => [getPluginModelKey(model), model])
+    );
 
-    dbModels.forEach((dbModel) => {
-      const dbDocument = SystemModelDocumentDataSchema.parse(dbModel);
-      const pluginDocument = pluginDocumentMap.get(dbDocument.model);
+    dbModels.forEach((dbModel, index) => {
+      const dbDocument = dbDocuments[index];
+      const pluginDocument = pluginDocumentMap.get(getPluginModelKey(dbDocument));
 
       const provider = getModelProvider(dbDocument.provider, language);
       const runtimeModel = SystemModelDataSchema.parse({
@@ -338,7 +370,7 @@ export const getSystemModelConfig = async (
 
   // Read file
   const modelDefaultConfig = await getPluginSystemModelDocuments().then((models) =>
-    models.find((item) => item.model === modelData.model)
+    models.find((item) => item.model === modelData.model && item.type === modelData.type)
   );
   if (!modelDefaultConfig) return Promise.reject(ModelErrEnum.unExist);
 

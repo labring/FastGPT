@@ -17,7 +17,7 @@ import {
   GridItem
 } from '@chakra-ui/react';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
@@ -272,7 +272,7 @@ const ProviderField = React.memo(function ProviderField({
 }: {
   control: Control<SystemModelDataType>;
   setValue: UseFormSetValue<SystemModelDataType>;
-  providerList: React.MutableRefObject<{ label: React.ReactNode; value: string }[]>;
+  providerList: { label: React.ReactNode; value: string }[];
   t: any;
 }) {
   const provider = useWatch({
@@ -285,7 +285,7 @@ const ProviderField = React.memo(function ProviderField({
       <MySelect
         value={provider}
         onChange={(value) => setValue('provider', value)}
-        list={providerList.current}
+        list={providerList}
         {...InputStyles}
         maxW={['100%', '360px']}
       />
@@ -794,16 +794,18 @@ export const ModelEditModal = ({
   const isSTTModel = modelData?.type === ModelTypeEnum.stt;
   const isRerankModel = modelData?.type === ModelTypeEnum.rerank;
 
-  const providerList = useRef<{ label: React.ReactNode; value: string }[]>(
-    getModelProviders(i18n.language).map((item) => ({
-      label: (
-        <HStack>
-          <Avatar src={item.avatar} w={'1rem'} />
-          <Box>{item.name}</Box>
-        </HStack>
-      ),
-      value: item.id
-    }))
+  const providerList = useMemo(
+    () =>
+      getModelProviders(i18n.language).map((item) => ({
+        label: (
+          <HStack>
+            <Avatar src={item.avatar} w={'1rem'} />
+            <Box>{item.name}</Box>
+          </HStack>
+        ),
+        value: item.id
+      })),
+    [getModelProviders, i18n.language]
   );
 
   const priceUnit = useMemo(() => {

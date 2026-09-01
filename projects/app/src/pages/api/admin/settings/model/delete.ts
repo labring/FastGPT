@@ -27,7 +27,11 @@ async function handler(
   const modelData = findModelData({ modelId });
 
   if (!modelData) return Promise.reject(ModelErrEnum.unExist);
-  if (pluginDocuments.some((model) => model.model === modelData.model)) {
+  if (
+    pluginDocuments.some(
+      (model) => model.model === modelData.model && model.type === modelData.type
+    )
+  ) {
     return Promise.reject('Plugin model cannot be deleted');
   }
 

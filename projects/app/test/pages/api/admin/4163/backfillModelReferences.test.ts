@@ -22,6 +22,9 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { getTmpData, setTmpData } from '@fastgpt/service/support/tmpData/controller';
+import { MongoTmpData } from '@fastgpt/service/support/tmpData/schema';
+import { TmpDataEnum } from '@fastgpt/global/support/tmpData/constants';
 
 let workflowNodeIndex = 0;
 
@@ -95,7 +98,8 @@ describe('runBackfillModelReferences', () => {
       MongoApp.deleteMany({}),
       MongoAppVersion.deleteMany({}),
       MongoAppTemplate.deleteMany({}),
-      MongoUsageItem.deleteMany({})
+      MongoUsageItem.deleteMany({}),
+      MongoTmpData.deleteMany({})
     ]);
     await createStoredModel({ model: 'installed-model' });
   });
@@ -1082,6 +1086,25 @@ describe('runBackfillModelReferences', () => {
         }
       }
     });
+  });
+
+  it('clears member model caches only after a formal migration', async () => {
+    const metadata = { teamId: 'team-id', tmbId: 'member-id' };
+    await setTmpData({
+      type: TmpDataEnum.MyModels,
+      metadata,
+      data: {
+        ...metadata,
+        modelIds: ['stale-model-id'],
+        version: 'stale-version'
+      }
+    });
+
+    await runBackfillModelReferences({ dryRun: true });
+    await expect(getTmpData({ type: TmpDataEnum.MyModels, metadata })).resolves.toBeTruthy();
+
+    await runBackfillModelReferences({ dryRun: false });
+    await expect(getTmpData({ type: TmpDataEnum.MyModels, metadata })).resolves.toBeNull();
   });
 
   it('rejects execution before ai_models bootstrap has produced a model', async () => {

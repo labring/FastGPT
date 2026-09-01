@@ -43,7 +43,10 @@ export const getUserModelCatalog = ({
 } = {}) =>
   GET<GetModelCatalogResponse>(
     '/core/ai/model/catalog',
-    { version, outLinkAuthData },
+    {
+      version,
+      outLinkAuthData: outLinkAuthData ? JSON.stringify(outLinkAuthData) : undefined
+    },
     { deduplicate: true }
   );
 

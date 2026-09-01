@@ -841,3 +841,28 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 - [x] 明确记录后端暂不直接校验模型协作者权限，消除客户端目录设计与迁移设计的权限边界冲突。
 - [x] 将 Dataset 列表/详情模型解析改为展示态容错，返回模型头像并兼容目录和下架模型；执行链继续严格校验。
 - [ ] 新版本部署完成后执行 dry-run 和正式回填，复核并重跑并发 conflict，最终解决全部 unresolved/conflict。
+
+## 16. PR 审查后确认的收敛修正
+
+本节记录 PR #7599 三路并行审查后由产品/开发共同确认的修正边界，作为合并前的阻塞项：
+
+1. 外链模型目录必须把 `outLinkAuthData` 序列化为单个 JSON query 字段，不能依赖 Axios 的嵌套对象 query 编码；服务端继续通过 `OutLinkChatAuthSchema` 统一解析。
+2. 4163 正式迁移模型权限后必须执行一次全量成员模型目录缓存清理。`dryRun` 不清缓存；正式执行即使只有权限删除或冲突，也在本轮迁移结束后统一清理，避免迁移前缓存继续暴露旧权限结果。
+3. FastGPT Pro 与 App 必须同时监听 `ai_models` 和 `ai_default_models`。默认模型更新只重载模型目录，不推进系统初始化 buffer。
+4. 插件模型自动物化继续使用唯一索引保证稳定身份；批量 upsert 使用 `retryFn` 执行，失败后最多重试 3 次。并发 duplicate-key 会在后续 upsert 中自然收敛，最后一次仍失败则原样抛出。
+5. 权限管理页面维持当前产品规则：普通团队管理员只能看见自己有权使用的模型；只有团队 owner 可以看见全部 active 模型。本轮不增加 manage-view 目录。
+6. Code Sandbox 的 `SANDBOX_POOL_SIZE` 默认值保持 `5`，合法上限恢复为 `100`，保证既有 `21..100` 配置升级兼容；不修改部署 YAML。
+7. 管理员模型 API 中指向 `ai_models._id` 的 `modelId` 必须复用 `ObjectIdSchema`，在 API 边界拒绝非法 ObjectId，不能把 Mongoose `CastError` 暴露为内部错误。
+8. 插件模板与数据库模型的匹配身份为 `(model, type)`。同名不同类型不能标记为内置模型，也不能用于恢复插件默认配置；管理员更新内置模型时不得把其类型改成与模板不一致的类型。
+
+### 16.1 修正 TODO
+
+- [x] 修复模型目录外链鉴权 query 序列化并补客户端请求测试。
+- [x] 4163 正式迁移结束后清理成员模型目录缓存并补 dry-run/正式执行测试。
+- [x] Pro 注册默认模型 Mongo watcher，并验证启动和 cleanup 都包含两个模型 change stream。
+- [x] 自动物化通过 `retryFn` 重试并发写入，覆盖重试成功和 3 次重试后失败场景。
+- [x] 保留“管理员只看自己的模型、owner 看全部”的既定产品规则。
+- [x] 将 `SANDBOX_POOL_SIZE` 校验上限恢复为 `100`。
+- [x] 管理员模型引用 schema 收紧为 `ObjectIdSchema`，补非法 ID API 测试。
+- [x] 插件模板按 `(model, type)` 严格匹配并补类型冲突测试。
+- [x] 运行定向测试、App/Pro 类型检查和 `git diff --check`。

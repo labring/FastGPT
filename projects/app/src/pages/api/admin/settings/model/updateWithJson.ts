@@ -4,6 +4,7 @@ import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import {
+  assertSystemModelTypesMatchPluginTemplates,
   refreshModelTemplates,
   updatedReloadSystemModel
 } from '@fastgpt/service/core/ai/config/utils';
@@ -60,6 +61,7 @@ async function handler(req: ApiRequestProps<UpdateSystemModelsWithJsonBody>): Pr
 
   // 插件不可用时不提交数据库更新，保持数据库与当前运行时 active 集合一致。
   const pluginDocuments = await refreshModelTemplates();
+  assertSystemModelTypesMatchPluginTemplates({ models: importedModels, pluginDocuments });
   await mongoSessionRun(async (session) => {
     await MongoAIModel.updateMany(
       { scope: ModelScopeEnum.system, model: { $nin: configuredModels } },

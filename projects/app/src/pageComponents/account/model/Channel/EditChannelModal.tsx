@@ -82,32 +82,27 @@ const EditChannelModal = ({
   });
 
   const providerType = watch('type');
-  const { data: providerList = [] } = useRequest(
+  const { data: channelProviderMetas = {}, loading: loadingChannelProviderMetas } = useRequest(
+    getChannelProviders,
+    { manual: false }
+  );
+  const providerList = useMemo(
     () =>
-      getChannelProviders().then((res) => {
-        return aiproxyChannels
-          .map((channel) => {
-            const mapData = res[channel.channelId];
+      aiproxyChannels.flatMap((channel) => {
+        const mapData = channelProviderMetas[channel.channelId];
+        if (!mapData) return [];
 
-            if (!mapData) {
-              return [];
-            }
-
-            return [
-              {
-                defaultBaseUrl: mapData.defaultBaseUrl,
-                keyHelp: mapData.keyHelp,
-                icon: channel.avatar,
-                label: parseI18nString(channel.name, i18n.language as localeType),
-                value: channel.channelId
-              }
-            ];
-          })
-          .flat();
+        return [
+          {
+            defaultBaseUrl: mapData.defaultBaseUrl,
+            keyHelp: mapData.keyHelp,
+            icon: channel.avatar,
+            label: parseI18nString(channel.name, i18n.language as localeType),
+            value: channel.channelId
+          }
+        ];
       }),
-    {
-      manual: false
-    }
+    [aiproxyChannels, channelProviderMetas, i18n.language]
   );
 
   const selectedProvider = useMemo(() => {
@@ -174,7 +169,7 @@ const EditChannelModal = ({
     }
   );
 
-  const isLoading = loadingModels || loadingCreate;
+  const isLoading = loadingModels || loadingChannelProviderMetas || loadingCreate;
 
   return (
     <>

@@ -60,7 +60,7 @@ async function handler(req: ApiRequestProps<UpdateDefaultModelsBody>): Promise<v
   ].filter((item): item is typeof item & { modelId: string } => typeof item.modelId === 'string');
 
   if (defaultFields.length > 0) {
-    // 全表读取后按 String(_id) 精确匹配，避免把 API 的 string modelId 提前限制为 ObjectId。
+    // 全表读取后按 String(_id) 精确匹配，统一处理 API 层已校验的 ObjectId 字符串。
     const modelMap = new Map(
       (
         await MongoAIModel.find(

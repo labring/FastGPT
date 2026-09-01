@@ -206,44 +206,52 @@ const AIModelSelector = ({
       <>{legacySelectedItem.label}</>
     ) : undefined;
 
+  const selector = (
+    <MultipleRowSelect
+      label={loading ? <>{t('common:model_loading_label')}</> : selectedLabel}
+      list={selectorList}
+      value={
+        selectedModel
+          ? grouped
+            ? [selectedModel.provider, selectedModel.modelId]
+            : [selectedModel.modelId]
+          : canBeUnset && currentValue === UNSET_MODEL_VALUE
+            ? [UNSET_MODEL_VALUE]
+            : []
+      }
+      placeholder={
+        loading ? t('common:model_loading_label') : (placeholder ?? t('common:not_model_config'))
+      }
+      changeOnEverySelect
+      rowMinWidth="160px"
+      onSelect={(values) => {
+        if (canBeUnset && values[0] === UNSET_MODEL_VALUE) {
+          onChange?.(UNSET_MODEL_VALUE);
+          return;
+        }
+        const value = grouped ? values[1] : values[0];
+        if (value !== undefined) onChange?.(value);
+      }}
+      ButtonProps={{
+        ...props,
+        isDisabled: resolveModelSelectorDisabled({
+          isDisabled: props.isDisabled,
+          loading,
+          disableTip
+        }),
+        h: '40px',
+        whiteSpace: 'nowrap'
+      }}
+    />
+  );
+
+  if (!disableTip) return selector;
+
   return (
-    <MyTooltip label={disableTip}>
-      <MultipleRowSelect
-        label={loading ? <>{t('common:model_loading_label')}</> : selectedLabel}
-        list={selectorList}
-        value={
-          selectedModel
-            ? grouped
-              ? [selectedModel.provider, selectedModel.modelId]
-              : [selectedModel.modelId]
-            : canBeUnset && currentValue === UNSET_MODEL_VALUE
-              ? [UNSET_MODEL_VALUE]
-              : []
-        }
-        placeholder={
-          loading ? t('common:model_loading_label') : (placeholder ?? t('common:not_model_config'))
-        }
-        changeOnEverySelect
-        rowMinWidth="160px"
-        onSelect={(values) => {
-          if (canBeUnset && values[0] === UNSET_MODEL_VALUE) {
-            onChange?.(UNSET_MODEL_VALUE);
-            return;
-          }
-          const value = grouped ? values[1] : values[0];
-          if (value !== undefined) onChange?.(value);
-        }}
-        ButtonProps={{
-          ...props,
-          isDisabled: resolveModelSelectorDisabled({
-            isDisabled: props.isDisabled,
-            loading,
-            disableTip
-          }),
-          h: '40px',
-          whiteSpace: 'nowrap'
-        }}
-      />
+    <MyTooltip label={disableTip} shouldWrapChildren={false}>
+      <Box w={props.w ?? props.width ?? '100%'} maxW={props.maxW ?? props.maxWidth}>
+        {selector}
+      </Box>
     </MyTooltip>
   );
 };
