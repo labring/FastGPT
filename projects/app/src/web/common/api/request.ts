@@ -94,11 +94,19 @@ function getDeduplicatedRequestKey({
   Every request generates a unique sign
   If the number of requests exceeds maxQuantity, cancel the earliest request and initiate a new request
 */
-function checkMaxQuantity({ url, maxQuantity }: { url: string; maxQuantity?: number }) {
+function checkMaxQuantity({
+  url,
+  maxQuantity,
+  cancelToken
+}: {
+  url: string;
+  maxQuantity?: number;
+  cancelToken?: AbortController;
+}) {
   if (!maxQuantity) return {};
   const item = maxQuantityMap[url];
   const id = getNanoid();
-  const sign = new AbortController();
+  const sign = cancelToken ?? new AbortController();
 
   if (item && item.length > 0) {
     if (item.length >= maxQuantity) {
@@ -264,7 +272,7 @@ function request(
     }
   }
 
-  const { id: signId, abortSignal } = checkMaxQuantity({ url, maxQuantity });
+  const { id: signId, abortSignal } = checkMaxQuantity({ url, maxQuantity, cancelToken });
   const shouldSendBody = ['POST', 'PUT'].includes(method) || dataAsBody;
   // 共享请求不接管取消语义，避免一个调用方取消所有等待者。
   const deduplicatedRequestKey =

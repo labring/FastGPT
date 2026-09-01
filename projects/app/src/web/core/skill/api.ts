@@ -44,8 +44,8 @@ import type {
 export const getSkillList = (data: ListSkillsQuery) =>
   POST<ListSkillsResponse>('/core/ai/skill/list', data);
 
-export const getSkillListV2 = (data: ListSkillsV2Query) =>
-  POST<ListSkillsResponse>('/core/ai/skill/listV2', data);
+export const getSkillListV2 = (data: ListSkillsV2Query, cancelToken?: AbortController) =>
+  POST<ListSkillsResponse>('/core/ai/skill/listV2', data, { cancelToken });
 
 /** 获取当前筛选条件下的全部 Skill，供需要跨页遍历资源的选择器使用。 */
 export const getAllSkillList = (data: Omit<ListSkillsQuery, 'page' | 'pageSize'>) =>
