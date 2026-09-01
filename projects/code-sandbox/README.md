@@ -53,6 +53,28 @@ docker run -p 3000:3000 \
   fastgpt-code-sandbox
 ```
 
+生产环境使用只读根文件系统并清空默认 capabilities 时，需要显式保留沙箱初始化、降权和进程回收所需的最小集合：
+
+```bash
+docker run -p 3000:3000 \
+  --read-only \
+  --tmpfs /tmp/fastgpt-python-sandbox/tmp:rw,noexec,nosuid,nodev,size=512m,mode=0755 \
+  --cap-drop ALL \
+  --cap-add CHOWN \
+  --cap-add DAC_OVERRIDE \
+  --cap-add FOWNER \
+  --cap-add KILL \
+  --cap-add SETGID \
+  --cap-add SETUID \
+  --cap-add SYS_CHROOT \
+  --security-opt no-new-privileges=true \
+  -e SANDBOX_TOKEN=your-secret-token \
+  -e SANDBOX_POOL_SIZE=20 \
+  fastgpt-code-sandbox
+```
+
+不要把整个 `/tmp` 挂载为 tmpfs：这会遮住镜像中预制的 `/tmp/fastgpt-js-sandbox` 和 `/tmp/fastgpt-python-sandbox` chroot。只挂载上例中的 Python 任务临时目录；容量至少应覆盖 `SANDBOX_POOL_SIZE × SANDBOX_MAX_TMP_MB`，并为并发创建与清理预留余量。Docker 默认 capability 集合已经包含上述能力，因此未使用 `--cap-drop ALL` 时无需额外添加。
+
 ## API
 
 ### `POST /sandbox/js`

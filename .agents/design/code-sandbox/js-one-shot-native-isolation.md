@@ -9,7 +9,7 @@
 1. 每个 JS worker 最多执行一个用户任务，结果返回后立即销毁；池中只预热尚未接触用户代码的干净进程。
 2. Linux 容器内固定启用 chroot、独立 UID/GID、`no_new_privs` 和 seccomp；初始化条件不满足时服务启动失败。
 3. 用户进程没有网络 syscall。兼容的 `SystemHelper.httpRequest` 通过 stdin/stdout RPC 交给父 Node 进程执行，复用统一 SSRF、DNS pinning、次数、超时和大小限制。
-4. 不要求修改 Docker 宿主机运行时，不依赖 gVisor、nsjail、特权容器或额外 capability。
+4. 不要求修改 Docker 宿主机运行时，不依赖 gVisor、nsjail 或特权容器；使用 `cap_drop: ALL` 时仅显式保留 chroot、降权、目录权限和进程回收所需的最小 capability 集合。
 5. 保持 `/sandbox/js` API、JS 代码调用方式、模块白名单和返回结构兼容。
 
 ## 2. 威胁模型与边界
@@ -66,6 +66,8 @@ worker 的 `SystemHelper.httpRequest` 不再导入和调用 `http`、`https`、`
 ### 3.4 chroot 文件布局
 
 新增 `/tmp/fastgpt-js-sandbox`，由 root 持有且不可由 JS UID 写入。内部复制 `/app/code-sandbox`（bundle、原生模块和运行时白名单包）以及 Node 运行必需的设备节点。JS 任务默认没有可写目录；这与当前 JS API 不提供文件写入能力一致。
+
+只读根文件系统部署不能把整个 `/tmp` 挂载为 tmpfs，否则会遮住镜像内预制的 JS/Python chroot。只为 `/tmp/fastgpt-python-sandbox/tmp` 提供任务临时 tmpfs。若先 `cap_drop: ALL`，父服务需要显式保留 `CHOWN`、`DAC_OVERRIDE`、`FOWNER`、`KILL`、`SETGID`、`SETUID` 和 `SYS_CHROOT`；Docker 默认 capability 集合已包含这些能力。
 
 ## 4. 验证策略
 
