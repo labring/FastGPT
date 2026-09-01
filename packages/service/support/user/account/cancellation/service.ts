@@ -1,19 +1,13 @@
 import { AccountCancellationStatus } from '@fastgpt/global/support/user/account/cancellation/constants';
 import { isAccountCancellationMethod } from '@fastgpt/global/support/user/account/cancellation/utils';
 import { deriveAccountCancellationSchedule } from '@fastgpt/global/support/user/account/cancellation/utils';
-import {
-  AccountCancellationCache,
-  LeaseCache,
-  RedisLeaseUnavailableError
-} from '@fastgpt/dal/redis/caches';
+import { AccountCancellationCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { getActiveAccountCancellationByUserId } from './read';
-import { withUserLock } from '../../lock';
+import { withTeamLock, withUserLock } from '../../lock';
 import { MongoAccountCancellation } from './schema';
 import { MongoTeam } from '../../team/teamSchema';
 
-const accountCancellationTeamLockTtlMs = 10 * 60 * 1000;
-const leaseCache = new LeaseCache({ logger: getLogger(LogCategories.INFRA.REDIS) });
 const accountCancellationCache = new AccountCancellationCache({
   logger: getLogger(LogCategories.INFRA.REDIS)
 });
@@ -126,18 +120,10 @@ export const withAccountCancellationUserLock = async <T>(userId: string, fn: () 
   }
 };
 
-/**
- * 串行化团队删除、owner 转让和注销 finalizer 的团队部分。
- * 团队锁独立于用户锁，调用方需遵循“用户锁后团队锁”的顺序避免交叉等待。
- */
+/** 注销流程使用的团队锁兼容包装，底层复用通用团队锁并保留注销场景错误语义。 */
 export const withAccountCancellationTeamLock = async <T>(teamId: string, fn: () => Promise<T>) => {
   try {
-    return await leaseCache.withLease({
-      key: `accountCancellation:team:${String(teamId)}`,
-      label: 'account-cancellation-team',
-      ttlMs: accountCancellationTeamLockTtlMs,
-      fn: () => fn()
-    });
+    return await withTeamLock(teamId, fn);
   } catch (error) {
     if (error instanceof RedisLeaseUnavailableError) {
       throw new Error('Account cancellation team operation is busy');
