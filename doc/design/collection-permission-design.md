@@ -170,6 +170,9 @@ syncDatasetToCollections({ teamId, datasetId, oldEffectiveClbs, newEffectiveClbs
 
 | 接口 | 变更点 |
 |---|---|
+| `POST /api/core/dataset/create` | body 新增 `inheritPermission`（默认 true）；`false`=独立创建：仅写 owner 快照、不合并父级 dataset 权限、子树停止传播（对齐 collection 创建 §6.5） |
+| `POST /api/core/dataset/createWithFiles` | `datasetParams` 新增 `inheritPermission`，语义同 create |
+| `POST /api/core/dataset/folder/create` | body 新增 `inheritPermission`，语义同 create |
 | `PUT /api/core/dataset/update`（move） | 保持 dataset 自身继承关系（独立态保持独立、继承态保持继承），不再强制 `inheritPermission=true`；事务内权限传播完成后追加调用 `syncDatasetToCollections`（§5.3） |
 | `POST /api/proApi/core/dataset/collaborator/update` | 同上，追加 `syncDatasetToCollections` |
 | `POST /api/proApi/core/dataset/resumeInheritPermission` | 同上，追加 `syncDatasetToCollections` |
@@ -186,14 +189,15 @@ syncDatasetToCollections({ teamId, datasetId, oldEffectiveClbs, newEffectiveClbs
 
 ## 5. 通用 service 适配层
 
-collection 权限层收敛为 `packages/service/support/permission/collection/` 薄适配层，**仅 4 个文件**：
+collection 权限层收敛为 `packages/service/support/permission/collection/` 薄适配层，**仅 5 个文件**：
 
 ```
 packages/service/support/permission/collection/
 ├── auth.ts          # 鉴权：authDatasetCollection + 可读 collection 批量解析（列表/检索/数据鉴权复用）
 ├── controller.ts    # collection API 逻辑：跨类型父级解析、创建/move/恢复继承、syncDatasetToCollections
 ├── collaborator.ts  # 协作者 API：updateCollectionCollaborators（WithAuth）、协作者列表读取
-└── datasetFlag.ts   # hasSetCollectionPermissions 短路标记读写
+├── datasetFlag.ts   # hasSetCollectionPermissions 短路标记读写
+└── migrate.ts       # 存量迁移（initCollectionPermission）：只信任继承态、独立态保留、无事务幂等收敛
 ```
 
 ### 5.1 跨类型父级解析原语（controller.ts）
@@ -590,18 +594,18 @@ NFR-7（P95 ≤ 200ms）：候选 `$in` 限定 + 短路 + `undefined` 不设过�
 
 `POST /api/admin/initCollectionPermission`（fastgpt-app admin，`projects/app/src/pages/api/admin/initCollectionPermission.ts`）：
 
-- **鉴权**：系统管理员（root）；
-- **语义**：将存量 collection 物化为 collection 级权限快照——根 collection 以所属 dataset 有效 clbs 为父级、非根以父 collection folder 快照为父级，`merge(父级, [owner])`，folder 递归；为每个 dataset 设置 `hasSetCollectionPermissions=false`；
-- **幂等**：owner 记录按唯一键 upsert、快照按 diff 写入、标志 `$ne:false` 条件重置，重复执行结果一致，无需版本号；每 dataset 独立事务，失败隔离并记录 `datasetId/error`，按 `limit` 分批可断点续跑（返回剩余数量）；
+- **鉴权**：系统管理员（root）；`dryRun` 默认 `true`（显式传 `dryRun=false` 才实际写库）；
+- **语义**：将存量 collection 物化为 collection 级权限快照——根 collection 以所属 dataset 有效 clbs 为父级、非根以父 collection folder 快照为父级，`merge(父级, [owner])`，folder 递归；**独立态（`inheritPermission=false`）的 collection 保持原 ACL 与继承态不动**，其余 collection 统一回继承态后按 dataset 语义刷新快照；**存在独立态 collection 或 dataset 已置自定义标记时置 `hasSetCollectionPermissions=true`，否则置 `false`（纯继承短路）**；
+- **幂等**：迁移只信任 collection 继承态、历史 ACL 不作为判据；待刷新 collection 先清空旧 ACL 再重建 owner 记录（owner 唯一不变量成立），快照按 diff 写入，重复执行结果一致，无需版本号；**不加事务**（迁移幂等收敛、重跑可修复中断残留的部分状态；事务受 `maxCommitTimeMS=60s` 限制，大 dataset 会超时），失败隔离并记录 `datasetId/error`；**支持 `datasetIds` 指定重跑失败/超时的 dataset**，不再按 `limit` 分批（每次处理范围内全部 dataset）；
 - **dryRun**：仅校验与统计、不写库；迁移前先分析 parentId 图，存在孤儿（父不存在 / 父不是 folder）或循环即报错，不静默降级；
 - **超时**：单次 >3s 转异步任务（对齐 F010 的 W-2 冻结模式）。
 
 ### 12.2 初始化流程
 
 1. 校验优先：构建 collection 树查循环引用 / 孤儿 `parentId`，存在即报错退出（数据损坏不应静默降级），dryRun 模式下仅校验并返回将处理数量；
-2. 自顶向下按 `parentId` 层级：根 collection 用 dataset 快照为父级，folder 递归（用 `syncRootCollections` 重建根、`syncResourceTreePermissions` 递归子树——**与运行时同一套原语**）；
-3. 清理重复 owner 记录；校验 owner 唯一、快照符合嵌套模型；
-4. 每 dataset 独立事务提交，失败可重试。
+2. 只读前置（不占事务）：加载 dataset 有效 clbs；自顶向下按 `parentId` 层级重建根 collection 快照、folder 递归子树（用 `syncRootCollections` 重建根、`syncResourceTreePermissions` 递归子树——**与运行时同一套原语**；独立态节点被自动跳过）；
+3. 待刷新 collection 清空旧 ACL 并重建 owner 记录；独立态 collection 保持原样；
+4. 每 dataset 无事务串行执行（幂等收敛、可重跑修复中断残留），失败隔离并记录 `datasetId/error`。
 
 ### 12.3 与 `upgradePermission` 的关系
 
@@ -674,4 +678,4 @@ NFR-7（P95 ≤ 200ms）：候选 `$in` 限定 + 短路 + `undefined` 不设过�
 | dataset 鉴权 | `packages/service/support/permission/dataset/auth.ts` |
 | collection schema | `packages/service/core/dataset/collection/schema.ts` |
 | 资源类型枚举 | `packages/global/support/permission/constant.ts` |
-| **新增适配层（4 文件）** | `packages/service/support/permission/collection/`（§5） |
+| **新增适配层（5 文件）** | `packages/service/support/permission/collection/`（§5，含 `migrate.ts`） |
