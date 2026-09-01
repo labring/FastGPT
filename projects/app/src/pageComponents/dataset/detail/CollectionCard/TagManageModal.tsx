@@ -196,7 +196,7 @@ const TagOptionManagePopover = ({
 
 const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
-  const { datasetDetail, allDatasetTags, loadAllDatasetTags, setSearchTagKey } = useContextSelector(
+  const { datasetDetail, allDatasetTags, loadAllDatasetTags } = useContextSelector(
     DatasetPageContext,
     (v) => v
   );
@@ -234,7 +234,6 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
       }),
     {
       onSuccess() {
-        setSearchTagKey('');
         loadAllDatasetTags();
       },
       successToast: t('dataset:tag.delete_success'),
@@ -267,7 +266,6 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
       }),
     {
       onSuccess() {
-        setSearchTagKey('');
         loadAllDatasetTags();
       },
       successToast: t('dataset:tag.save_success'),

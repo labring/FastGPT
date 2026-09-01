@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   Checkbox,
@@ -14,6 +14,12 @@ import {
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { SingleDateTimePicker } from '@fastgpt/web/components/common/DateTimePicker';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import {
+  DatasetCollectionTagTypeEnum,
+  type DatasetTagType
+} from '@fastgpt/global/core/dataset/type';
+import { OVERFLOW_CHIP_GAP_PX, useOverflowChipCount } from './TagCommon';
 
 export const tagInputBaseStyles: InputProps = {
   h: '36px',
@@ -34,7 +40,6 @@ export const tagInputBaseStyles: InputProps = {
     color: 'myGray.500'
   }
 };
-
 export const StringTagInput = ({
   value,
   onChange,
@@ -59,20 +64,43 @@ export const StringTagInput = ({
 export const NumberTagInput = ({
   value,
   onChange,
-  placeholder
+  placeholder,
+  showStepper
 }: {
   value?: number | string;
   onChange: (val: number | '') => void;
   placeholder?: string;
+  showStepper?: boolean;
 }) => {
   const { t } = useTranslation();
+  const placeholderText = placeholder || t('dataset:tag.fill_number');
+
+  if (showStepper) {
+    return (
+      <MyNumberInput
+        variant={'whiteOutline'}
+        h={'36px'}
+        w={'100%'}
+        fontSize={'sm'}
+        inputFieldProps={{
+          h: '36px',
+          bg: 'white',
+          fontSize: 'sm',
+          color: 'myGray.900'
+        }}
+        value={value === undefined || value === '' ? '' : Number(value)}
+        placeholder={placeholderText}
+        onChange={(val) => onChange(val === undefined ? '' : val)}
+      />
+    );
+  }
 
   return (
     <Input
       {...tagInputBaseStyles}
       type={'number'}
       value={value === undefined ? '' : value}
-      placeholder={placeholder || t('dataset:tag.fill_number')}
+      placeholder={placeholderText}
       onChange={(e) => {
         const val = e.target.value;
         if (val === '') {
@@ -90,12 +118,19 @@ export const NumberTagInput = ({
 
 export const DateTimeTagInput = ({
   value,
-  onChange
+  onChange,
+  placeholder
 }: {
   value?: number | string;
   onChange: (val: number) => void;
+  placeholder?: string;
 }) => (
-  <SingleDateTimePicker value={value ? Number(value) : undefined} onChange={onChange} w={'100%'} />
+  <SingleDateTimePicker
+    value={value ? Number(value) : undefined}
+    onChange={onChange}
+    placeholder={placeholder}
+    w={'100%'}
+  />
 );
 
 /** 设置标签弹窗里的标签名称下拉：搜索已有标签并单选，底部「标签管理」打开标签管理弹窗。 */
@@ -249,7 +284,6 @@ export const TagNameSelect = ({
   );
 };
 
-const ARRAY_CHIP_GAP_PX = 8;
 const ARRAY_OPTION_HOVER_BG = 'rgba(17, 24, 36, 0.05)';
 
 const ArraySelectedChip = ({
@@ -315,19 +349,22 @@ export const ArrayTagSelect = ({
   options,
   value = [],
   onChange,
-  onCreateOption
+  onCreateOption,
+  placeholder
 }: {
   options: string[];
   value?: string[];
   onChange: (val: string[]) => void;
   onCreateOption?: (option: string) => void;
+  placeholder?: string;
 }) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [search, setSearch] = useState('');
-  const containerRef = useRef<HTMLDivElement>(null);
-  const measureRef = useRef<HTMLDivElement>(null);
-  const [visibleCount, setVisibleCount] = useState(value.length);
+  const { containerRef, measureRef, visibleCount } = useOverflowChipCount({
+    itemKey: value,
+    itemCount: value.length
+  });
 
   const allOptions = useMemo(() => {
     const list = [...options];
@@ -348,51 +385,6 @@ export const ArrayTagSelect = ({
   const canCreate = Boolean(
     search.trim() && !allOptions.some((opt) => opt.toLowerCase() === search.trim().toLowerCase())
   );
-
-  useLayoutEffect(() => {
-    const container = containerRef.current;
-    const measure = measureRef.current;
-    if (!container || !measure) {
-      setVisibleCount(value.length);
-      return;
-    }
-
-    const calculateChips = () => {
-      const chipEls = Array.from(measure.querySelectorAll('[data-tag-chip]')) as HTMLElement[];
-      const overflowEl = measure.querySelector('[data-overflow-chip]') as HTMLElement | null;
-      const overflowWidth = overflowEl?.offsetWidth ?? 0;
-      const containerWidth = container.offsetWidth;
-      let usedWidth = 0;
-      let nextVisibleCount = chipEls.length;
-
-      for (let i = 0; i < chipEls.length; i++) {
-        const chipWidth = chipEls[i].offsetWidth;
-        const isLast = i === chipEls.length - 1;
-        const gap = isLast ? 0 : ARRAY_CHIP_GAP_PX;
-        const reserved = isLast ? 0 : overflowWidth;
-
-        if (usedWidth + chipWidth + gap + reserved <= containerWidth) {
-          usedWidth += chipWidth + gap;
-          continue;
-        }
-
-        nextVisibleCount = i;
-        break;
-      }
-
-      if (nextVisibleCount === 0 && chipEls.length > 0) {
-        nextVisibleCount = 1;
-      }
-
-      setVisibleCount(nextVisibleCount);
-    };
-
-    calculateChips();
-    const observer = new ResizeObserver(calculateChips);
-    observer.observe(container);
-
-    return () => observer.disconnect();
-  }, [value]);
 
   const handleCreateOption = () => {
     const trimmed = search.trim();
@@ -456,7 +448,7 @@ export const ArrayTagSelect = ({
           <Flex position={'relative'} flex={'1 1 auto'} minW={0} h={'24px'} alignItems={'center'}>
             {value.length === 0 ? (
               <Box color={'myGray.500'} fontSize={'sm'}>
-                {t('dataset:tag.select_options')}
+                {placeholder || t('dataset:tag.select_options')}
               </Box>
             ) : (
               <>
@@ -466,7 +458,7 @@ export const ArrayTagSelect = ({
                   visibility={'hidden'}
                   pointerEvents={'none'}
                   alignItems={'center'}
-                  gap={`${ARRAY_CHIP_GAP_PX}px`}
+                  gap={`${OVERFLOW_CHIP_GAP_PX}px`}
                   whiteSpace={'nowrap'}
                   h={0}
                   overflow={'hidden'}
@@ -479,7 +471,7 @@ export const ArrayTagSelect = ({
                 <Flex
                   ref={containerRef}
                   alignItems={'center'}
-                  gap={`${ARRAY_CHIP_GAP_PX}px`}
+                  gap={`${OVERFLOW_CHIP_GAP_PX}px`}
                   w={'100%'}
                   minW={0}
                   h={'24px'}
@@ -616,5 +608,72 @@ export const ArrayTagSelect = ({
         </PopoverContent>
       </Portal>
     </Popover>
+  );
+};
+
+/** 按标签类型渲染对应输入。未选标签时展示禁用占位。 */
+export const TagValueField = ({
+  tag,
+  value,
+  onChange,
+  onCreateOption,
+  disabledPlaceholder,
+  numberShowStepper,
+  numberPlaceholder,
+  arrayPlaceholder
+}: {
+  tag?: DatasetTagType;
+  value: string | number | string[];
+  onChange: (val: string | number | string[]) => void;
+  onCreateOption?: (option: string) => void;
+  disabledPlaceholder?: string;
+  numberShowStepper?: boolean;
+  numberPlaceholder?: string;
+  arrayPlaceholder?: string;
+}) => {
+  const { t } = useTranslation();
+
+  if (!tag) {
+    return (
+      <Input
+        {...tagInputBaseStyles}
+        isDisabled
+        placeholder={disabledPlaceholder || t('dataset:tag.fill_value')}
+      />
+    );
+  }
+
+  if (tag.tagType === DatasetCollectionTagTypeEnum.number) {
+    return (
+      <NumberTagInput
+        showStepper={numberShowStepper}
+        value={value as number}
+        placeholder={numberPlaceholder}
+        onChange={(val) => onChange(val)}
+      />
+    );
+  }
+
+  if (tag.tagType === DatasetCollectionTagTypeEnum.datetime) {
+    return <DateTimeTagInput value={value as number} onChange={(val) => onChange(val)} />;
+  }
+
+  if (tag.tagType === DatasetCollectionTagTypeEnum.array) {
+    return (
+      <ArrayTagSelect
+        options={tag.options ?? []}
+        placeholder={arrayPlaceholder}
+        value={Array.isArray(value) ? value : value ? [String(value)] : []}
+        onChange={(val) => onChange(val)}
+        onCreateOption={onCreateOption}
+      />
+    );
+  }
+
+  return (
+    <StringTagInput
+      value={typeof value === 'string' ? value : String(value ?? '')}
+      onChange={(val) => onChange(val)}
+    />
   );
 };

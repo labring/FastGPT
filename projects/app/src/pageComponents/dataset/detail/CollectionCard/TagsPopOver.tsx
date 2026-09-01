@@ -1,14 +1,12 @@
 import { Flex } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 import { type DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import { type DatasetCollectionsListItemType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import { formatCollectionTagChipText } from './TagCommon';
-
-const CHIP_GAP_PX = 8;
+import { formatCollectionTagChipText, useOverflowChipCount } from './TagCommon';
 
 const TAG_CHIP_PROPS = {
   colorSchema: 'cyan' as const,
@@ -33,8 +31,6 @@ const TagsPopOver = ({
   currentCollection: DatasetCollectionItemType | DatasetCollectionsListItemType;
 }) => {
   const allDatasetTags = useContextSelector(DatasetPageContext, (v) => v.allDatasetTags);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const measureRef = useRef<HTMLDivElement>(null);
 
   const chipItems = useMemo(
     () =>
@@ -47,49 +43,10 @@ const TagsPopOver = ({
     [allDatasetTags, currentCollection.tags]
   );
 
-  const [visibleCount, setVisibleCount] = useState(chipItems.length);
-
-  useLayoutEffect(() => {
-    const container = containerRef.current;
-    const measure = measureRef.current;
-    if (!container || !measure) return;
-
-    const calculateTags = () => {
-      const chipEls = Array.from(measure.querySelectorAll('[data-tag-chip]')) as HTMLElement[];
-      const overflowEl = measure.querySelector('[data-overflow-chip]') as HTMLElement | null;
-      const overflowWidth = overflowEl?.offsetWidth ?? 0;
-      const containerWidth = container.offsetWidth;
-      let usedWidth = 0;
-      let nextVisibleCount = chipEls.length;
-
-      for (let i = 0; i < chipEls.length; i++) {
-        const chipWidth = chipEls[i].offsetWidth;
-        const isLast = i === chipEls.length - 1;
-        const gap = isLast ? 0 : CHIP_GAP_PX;
-        const reserved = isLast ? 0 : overflowWidth;
-
-        if (usedWidth + chipWidth + gap + reserved <= containerWidth) {
-          usedWidth += chipWidth + gap;
-          continue;
-        }
-
-        nextVisibleCount = i;
-        break;
-      }
-
-      if (nextVisibleCount === 0 && chipEls.length > 0) {
-        nextVisibleCount = 1;
-      }
-
-      setVisibleCount(nextVisibleCount);
-    };
-
-    calculateTags();
-    const observer = new ResizeObserver(calculateTags);
-    observer.observe(container);
-
-    return () => observer.disconnect();
-  }, [chipItems]);
+  const { containerRef, measureRef, visibleCount } = useOverflowChipCount({
+    itemKey: chipItems,
+    itemCount: chipItems.length
+  });
 
   if (chipItems.length === 0) return null;
 

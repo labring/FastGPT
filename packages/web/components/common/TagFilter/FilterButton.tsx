@@ -13,12 +13,12 @@ const FilterButton = forwardRef<HTMLDivElement, FilterButtonProps>(
   ({ title, value, ...props }, ref) => (
     <Flex
       ref={ref}
-      as="button"
+      as={'button'}
       alignItems={'center'}
       gap={2}
       px={3}
       w={'fit-content'}
-      maxW={'200px'}
+      maxW={'240px'}
       minW={0}
       flexShrink={0}
       h={'36px'}
@@ -28,21 +28,27 @@ const FilterButton = forwardRef<HTMLDivElement, FilterButtonProps>(
       bg={'white'}
       color={'myGray.900'}
       cursor={'pointer'}
-      type="button"
+      type={'button'}
       fontSize={'mini'}
       lineHeight={'16px'}
       _hover={{
         boxShadow: 'focus',
         borderColor: 'primary.300'
       }}
+      sx={{
+        '&[aria-expanded="true"]': {
+          borderColor: 'primary.600',
+          boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
+        }
+      }}
       {...props}
     >
       <Flex alignItems={'center'} gap={2} minW={0} overflow={'hidden'}>
         <Box flexShrink={0}>{title}</Box>
         <Box w={'1px'} h={'16px'} flexShrink={0} bg={'myGray.200'} />
-        <Box minW={0} overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
+        <Flex minW={0} overflow={'hidden'} alignItems={'center'}>
           {value}
-        </Box>
+        </Flex>
       </Flex>
       <MyIcon
         name={'core/chat/chevronDown'}

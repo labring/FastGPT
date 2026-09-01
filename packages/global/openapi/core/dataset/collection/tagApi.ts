@@ -2,8 +2,18 @@ import z from 'zod';
 import {
   DatasetCollectionTagTypeEnum,
   CollectionTagValueSchema,
+  CollectionTagValueFieldSchema,
   DatasetCollectionTagOptionsSchema
 } from '../../../../core/dataset/type';
+
+export const BatchCollectionTagModeEnum = {
+  add: 'add',
+  remove: 'remove'
+} as const;
+export const BatchCollectionTagModeSchema = z.enum([
+  BatchCollectionTagModeEnum.add,
+  BatchCollectionTagModeEnum.remove
+]);
 
 /* ============================================================================
  * API: 创建集合标签
@@ -95,9 +105,23 @@ export type SetCollectionTagsParams = z.infer<typeof SetCollectionTagsBodySchema
  * API: 批量设置 Collection 标签值
  * Route: POST /proApi/core/dataset/tag/batchSetCollectionTags
  * ============================================================================ */
+export const BatchSetCollectionTagItemSchema = z.object({
+  tagId: z.string().meta({ description: '引用 dataset_collection_tags_v2._id' }),
+  value: CollectionTagValueFieldSchema.optional().meta({
+    description: 'add：必填标签值。remove：省略则移除整个标签；array 传入 string[] 时只移除这些选项'
+  }),
+  append: z.boolean().optional().meta({
+    description: '仅 number 类型的 add 生效：true 时把值累加到已有数字，缺省或 false 为覆盖'
+  })
+});
+export type BatchSetCollectionTagItem = z.infer<typeof BatchSetCollectionTagItemSchema>;
+
 export const BatchSetCollectionTagsBodySchema = z.object({
   datasetId: z.string().meta({ description: '数据集 ID' }),
   collectionIds: z.array(z.string()).min(1).meta({ description: '集合 ID 列表' }),
-  tags: z.array(CollectionTagValueSchema).meta({ description: '标签值列表' })
+  mode: BatchCollectionTagModeSchema.default(BatchCollectionTagModeEnum.add).meta({
+    description: 'add：批量添加/覆盖标签；remove：批量移除标签或选项值'
+  }),
+  tags: z.array(BatchSetCollectionTagItemSchema).meta({ description: '标签操作列表' })
 });
 export type BatchSetCollectionTagsParams = z.infer<typeof BatchSetCollectionTagsBodySchema>;

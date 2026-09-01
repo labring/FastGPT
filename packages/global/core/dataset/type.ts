@@ -59,6 +59,23 @@ export const CollectionTagValueSchema = z.object({
 });
 export type CollectionTagValueType = z.infer<typeof CollectionTagValueSchema>;
 
+/** 详情页按标签值筛选的单条条件。同一标签多值为 OR，不同标签由调用方做 AND。 */
+export const CollectionTagFilterItemSchema = z.object({
+  tagId: z.string().meta({
+    example: '68ad85a7463006c963799a05',
+    description: '标签 ID'
+  }),
+  values: z
+    .array(z.union([z.string(), z.number()]))
+    .min(1)
+    .meta({
+      example: ['PRD'],
+      description:
+        '选中的标签值。文本/选项为字符串，数字为数值，日期为 UTC 毫秒时间戳。同一标签多值为 OR'
+    })
+});
+export type CollectionTagFilterItem = z.infer<typeof CollectionTagFilterItemSchema>;
+
 /* ===== Chunk ===== */
 export const ChunkSettingsSchema = z.object({
   trainingType: z
