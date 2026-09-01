@@ -1,8 +1,9 @@
 /**
  * BaseProcessPool - 进程池基类
  *
- * 预热 N 个长驻 worker 进程，通过 stdin/stdout 行协议通信。
- * JS / Python 进程池继承此类，仅需提供 spawn 命令和 init 配置。
+ * 预热 N 个独立子进程，通过 stdin/stdout 行协议通信。
+ * 是否在任务后回收由具体语言池决定；JS 使用 one-shot，执行过用户代码的进程不复用。
+ * 具体语言进程池通过 spawn 命令和 init 配置复用这套生命周期管理。
  */
 import { spawn, execFile, execFileSync, type ChildProcess } from 'child_process';
 import { createInterface, type Interface } from 'readline';
@@ -12,6 +13,11 @@ import { platform } from 'os';
 import { env, RUNTIME_MEMORY_OVERHEAD_MB } from '../env';
 import type { ExecuteOptions, ExecuteResult } from '../types';
 import { getLogger, LogCategories } from '../utils/logger';
+import {
+  runSandboxHttpRequest,
+  type SandboxHttpRequestPayload,
+  type SandboxHttpState
+} from '../utils/sandbox-http';
 
 const serverLogger = getLogger(LogCategories.MODULE.SANDBOX.SERVER);
 const execFileAsync = promisify(execFile);
@@ -38,8 +44,12 @@ export type ProcessPoolOptions = {
   spawnCommand: (script: string) => string;
   /** init 消息中的模块白名单 */
   allowedModules: readonly string[];
-  /** 白名单显式放开后台执行能力时，每次任务结束后回收 worker，清理潜在子进程/线程 */
+  /** 每次任务结束后回收子进程；用于 one-shot 隔离 */
   recycleAfterTask?: boolean;
+  /** worker 启动目录；Linux native chroot 模式下指向预制 rootfs */
+  spawnCwd?: string;
+  /** 透传给 worker 的初始化配置 */
+  initPayload?: Record<string, unknown>;
 };
 
 export abstract class BaseProcessPool {
@@ -49,6 +59,9 @@ export abstract class BaseProcessPool {
   protected nextId = 0;
   protected poolSize: number;
   protected ready = false;
+  /** 正在初始化的 worker 及其取消函数，确保 shutdown 不会遗漏尚未 ready 的进程。 */
+  protected warmingWorkers = new Map<PoolWorker, (error: Error) => void>();
+  protected stopping = false;
   protected healthCheckTimer?: ReturnType<typeof setInterval>;
 
   protected static readonly HEALTH_CHECK_INTERVAL = 30_000;
@@ -72,17 +85,25 @@ export abstract class BaseProcessPool {
   // ============================================================
 
   async init(): Promise<void> {
+    this.stopping = false;
     const promises: Promise<void>[] = [];
     for (let i = 0; i < this.poolSize; i++) {
       promises.push(this.spawnWorker());
     }
-    await Promise.all(promises);
+    try {
+      await Promise.all(promises);
+    } catch (error) {
+      // 任一 worker fail-closed 时清理已经 ready 或仍在预热的同批进程，避免半初始化池泄漏。
+      await this.shutdown();
+      throw error;
+    }
     this.ready = true;
     this.startHealthCheck();
     serverLogger.info(`${this.tag}: ${this.poolSize} workers preheated`);
   }
 
   async shutdown(): Promise<void> {
+    this.stopping = true;
     this.ready = false;
     if (this.healthCheckTimer) {
       clearInterval(this.healthCheckTimer);
@@ -92,6 +113,9 @@ export abstract class BaseProcessPool {
       waiter.reject(new Error('Pool is shutting down'));
     }
     this.waitQueue = [];
+    for (const cancelSpawn of [...this.warmingWorkers.values()]) {
+      cancelSpawn(new Error(`${this.tag}: pool is shutting down`));
+    }
     for (const worker of this.workers) {
       this.cleanupWorker(worker);
     }
@@ -104,8 +128,10 @@ export abstract class BaseProcessPool {
       total: this.workers.length,
       idle: this.idleWorkers.length,
       busy: this.workers.filter((w) => w.busy).length,
+      warming: this.warmingWorkers.size,
       queued: this.waitQueue.length,
-      poolSize: this.poolSize
+      poolSize: this.poolSize,
+      ready: this.ready && (this.workers.length > 0 || this.warmingWorkers.size > 0)
     };
   }
 
@@ -114,12 +140,17 @@ export abstract class BaseProcessPool {
   // ============================================================
 
   protected spawnWorker(): Promise<void> {
+    if (this.stopping) {
+      return Promise.reject(new Error(`${this.tag}: pool is shutting down`));
+    }
+
     return new Promise<void>((resolve, reject) => {
       const id = this.nextId++;
       const cmd = this.options.spawnCommand(this.options.workerScript);
       const proc = spawn('sh', ['-c', cmd], {
         stdio: ['pipe', 'pipe', 'pipe'],
         detached: PROCESS_GROUP_SUPPORTED,
+        cwd: this.options.spawnCwd,
         env: {
           PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin',
           CHECK_INTERNAL_IP: String(env.CHECK_INTERNAL_IP)
@@ -137,13 +168,19 @@ export abstract class BaseProcessPool {
       });
 
       let settled = false;
-      const spawnTimer = setTimeout(() => {
+      const failSpawn = (error: Error) => {
         if (settled) return;
         settled = true;
-        rl.removeAllListeners('line');
-        this.killWorkerProcessTree(worker);
+        clearTimeout(spawnTimer);
+        this.warmingWorkers.delete(worker);
+        this.cleanupWorker(worker);
+        reject(error);
+      };
+      this.warmingWorkers.set(worker, failSpawn);
+
+      const spawnTimer = setTimeout(() => {
         const stderr = this.formatStderr(worker);
-        reject(
+        failSpawn(
           new Error(
             `${this.tag}: worker ${id} init timeout after ${BaseProcessPool.SPAWN_TIMEOUT}ms${stderr}`
           )
@@ -152,11 +189,16 @@ export abstract class BaseProcessPool {
 
       const onFirstLine = (line: string) => {
         if (settled) return;
-        settled = true;
-        clearTimeout(spawnTimer);
         try {
           const msg = JSON.parse(line);
           if (msg.type === 'ready') {
+            if (this.stopping) {
+              failSpawn(new Error(`${this.tag}: pool is shutting down`));
+              return;
+            }
+            settled = true;
+            clearTimeout(spawnTimer);
+            this.warmingWorkers.delete(worker);
             this.workers.push(worker);
             this.setupWorkerEvents(worker);
             const waiter = this.waitQueue.shift();
@@ -168,28 +210,22 @@ export abstract class BaseProcessPool {
             }
             resolve();
           } else {
-            reject(new Error(`${this.tag}: worker ${id} init failed: ${line}`));
+            failSpawn(new Error(`${this.tag}: worker ${id} init failed: ${line}`));
           }
         } catch {
-          reject(new Error(`${this.tag}: worker ${id} invalid init response: ${line}`));
+          failSpawn(new Error(`${this.tag}: worker ${id} invalid init response: ${line}`));
         }
       };
       rl.once('line', onFirstLine);
 
       proc.on('error', (err) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(spawnTimer);
-        reject(new Error(`${this.tag}: worker ${id} spawn error: ${err.message}`));
+        failSpawn(new Error(`${this.tag}: worker ${id} spawn error: ${err.message}`));
       });
 
       proc.on('exit', (code, signal) => {
         if (settled) return;
-        settled = true;
-        clearTimeout(spawnTimer);
-        rl.removeAllListeners('line');
         const stderr = this.formatStderr(worker);
-        reject(
+        failSpawn(
           new Error(
             `${this.tag}: worker ${id} exited during init (code: ${code}, signal: ${signal})${stderr}`
           )
@@ -197,19 +233,30 @@ export abstract class BaseProcessPool {
       });
 
       // 发送 init 消息
-      proc.stdin!.write(
-        JSON.stringify({
-          type: 'init',
-          allowedModules: this.options.allowedModules,
-          requestLimits: {
-            maxRequests: env.SANDBOX_REQUEST_MAX_COUNT,
-            timeoutMs: env.SANDBOX_REQUEST_TIMEOUT,
-            maxResponseSize: env.SANDBOX_REQUEST_MAX_RESPONSE_MB * 1024 * 1024,
-            maxRequestBodySize: env.SANDBOX_REQUEST_MAX_BODY_MB * 1024 * 1024,
-            maxOutputSize: env.SANDBOX_MAX_OUTPUT_MB * 1024 * 1024
-          }
-        }) + '\n'
-      );
+      try {
+        proc.stdin!.write(
+          JSON.stringify({
+            type: 'init',
+            allowedModules: this.options.allowedModules,
+            requestLimits: {
+              maxRequests: env.SANDBOX_REQUEST_MAX_COUNT,
+              timeoutMs: env.SANDBOX_REQUEST_TIMEOUT,
+              maxResponseSize: env.SANDBOX_REQUEST_MAX_RESPONSE_MB * 1024 * 1024,
+              maxRequestBodySize: env.SANDBOX_REQUEST_MAX_BODY_MB * 1024 * 1024,
+              maxOutputSize: env.SANDBOX_MAX_OUTPUT_MB * 1024 * 1024
+            },
+            ...this.options.initPayload
+          }) + '\n'
+        );
+      } catch (error) {
+        failSpawn(
+          new Error(
+            `${this.tag}: worker ${id} init write error: ${
+              error instanceof Error ? error.message : String(error)
+            }`
+          )
+        );
+      }
     });
   }
 
@@ -270,6 +317,9 @@ export abstract class BaseProcessPool {
     if (!code || typeof code !== 'string' || !code.trim()) {
       return { success: false, message: 'Code cannot be empty' };
     }
+    if (!this.ready) {
+      return { success: false, message: `${this.options.name} process pool is not ready` };
+    }
 
     const timeoutMs = env.SANDBOX_MAX_TIMEOUT;
     const worker = await this.acquire();
@@ -292,14 +342,17 @@ export abstract class BaseProcessPool {
   ): Promise<ExecuteResult> {
     return new Promise<ExecuteResult>((resolve) => {
       let settled = false;
-      let timer: ReturnType<typeof setTimeout>;
       let rssTimer: ReturnType<typeof setInterval> | undefined;
+      const httpState: SandboxHttpState = { requestCount: 0 };
+      const httpAbortController = new AbortController();
 
       const settle = (result: ExecuteResult, opts: { recycleWorker?: boolean } = {}) => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
         if (rssTimer) clearInterval(rssTimer);
+        // 用户代码已结束时，中止未 await 的代理请求，避免请求在 one-shot 进程销毁后继续占用资源。
+        httpAbortController.abort();
         worker.rl.removeListener('line', onLine);
         worker.proc.removeListener('exit', onExit);
         const recycleWorker = opts.recycleWorker || this.options.recycleAfterTask;
@@ -311,7 +364,22 @@ export abstract class BaseProcessPool {
 
       const onLine = (line: string) => {
         try {
-          const result = JSON.parse(line) as ExecuteResult & { workerRecycle?: string };
+          const result = JSON.parse(line) as ExecuteResult & {
+            type?: string;
+            id?: string;
+            payload?: SandboxHttpRequestPayload;
+            workerRecycle?: string;
+          };
+          if (result.type === 'http_request' && result.id && result.payload) {
+            void this.handleHttpRequestMessage(
+              worker,
+              result.id,
+              result.payload,
+              httpState,
+              httpAbortController.signal
+            );
+            return;
+          }
           const recycleReason = result.workerRecycle;
           delete result.workerRecycle;
           if (recycleReason) {
@@ -334,7 +402,7 @@ export abstract class BaseProcessPool {
       };
 
       // 超时
-      timer = setTimeout(() => {
+      const timer = setTimeout(() => {
         this.killAndRespawn(worker);
         settle({ success: false, message: `Script execution timed out after ${timeoutMs}ms` });
       }, timeoutMs + 2000);
@@ -355,7 +423,7 @@ export abstract class BaseProcessPool {
         }, RSS_POLL_INTERVAL);
       }
 
-      worker.rl.once('line', onLine);
+      worker.rl.on('line', onLine);
       worker.proc.once('exit', onExit);
 
       try {
@@ -364,6 +432,44 @@ export abstract class BaseProcessPool {
         settle({ success: false, message: `Worker communication error: ${err.message}` });
       }
     });
+  }
+
+  /** 在可信父进程中执行 worker 的受控 HTTP RPC。 */
+  protected async handleHttpRequestMessage(
+    worker: PoolWorker,
+    id: string,
+    payload: SandboxHttpRequestPayload,
+    state: SandboxHttpState,
+    signal: AbortSignal
+  ): Promise<void> {
+    const writeResponse = (response: Record<string, unknown>) => {
+      const stdin = worker.proc.stdin;
+      if (!stdin?.writable) return;
+      try {
+        // one-shot 任务结束会同时 abort HTTP 并回收 worker；忽略该正常竞态产生的 EPIPE。
+        stdin.write(JSON.stringify({ type: 'http_response', id, ...response }) + '\n', () => {});
+      } catch {}
+    };
+
+    try {
+      const data = await runSandboxHttpRequest({
+        payload,
+        state,
+        signal,
+        limits: {
+          maxRequests: env.SANDBOX_REQUEST_MAX_COUNT,
+          timeoutMs: env.SANDBOX_REQUEST_TIMEOUT,
+          maxResponseSize: env.SANDBOX_REQUEST_MAX_RESPONSE_MB * 1024 * 1024,
+          maxRequestBodySize: env.SANDBOX_REQUEST_MAX_BODY_MB * 1024 * 1024
+        }
+      });
+      writeResponse({ success: true, payload: data });
+    } catch (err) {
+      writeResponse({
+        success: false,
+        message: err instanceof Error ? err.message : 'HTTP request failed'
+      });
+    }
   }
 
   // ============================================================
@@ -464,11 +570,9 @@ export abstract class BaseProcessPool {
       }
 
       // macOS/other: 使用 ps 获取多个 PID 的 RSS（单位 kB），不经过 shell。
-      const { stdout } = await execFileAsync(
-        'ps',
-        ['-o', 'rss=', '-p', pids.join(',')],
-        { timeout: 2000 }
-      );
+      const { stdout } = await execFileAsync('ps', ['-o', 'rss=', '-p', pids.join(',')], {
+        timeout: 2000
+      });
       const totalKB = stdout
         .split('\n')
         .map((line) => parseInt(line.trim(), 10))
@@ -554,8 +658,8 @@ export abstract class BaseProcessPool {
 
   /** 从池中移除 worker，kill 进程，并在 ready 时 respawn */
   protected killAndRespawn(worker: PoolWorker): void {
-    this.removeWorker(worker);
-    if (this.ready) {
+    const removed = this.removeWorker(worker);
+    if (this.ready && removed) {
       this.spawnWorker().catch((err) => {
         serverLogger.error(`${this.tag}: failed to respawn worker ${worker.id}:`, err.message);
       });
@@ -581,7 +685,7 @@ export abstract class BaseProcessPool {
       worker.stderrBuf = [];
 
       this.killWorkerProcessTree(worker);
-    } catch (err) {
+    } catch {
       // 忽略清理错误
     }
   }
