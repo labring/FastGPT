@@ -31,6 +31,7 @@ import {
   createQueryExtensionChildNodeResponse
 } from '../../../../dataset/nodeResponse';
 import { filterDatasetsByTmbId } from '../../../../../../dataset/utils';
+import { resolveReadableCollectionIds } from '../../../../../../../support/permission/collection/auth';
 import { normalizeDatasetSearchInput } from '../../../../dataset/utils';
 import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/workflowTagFilter';
@@ -224,6 +225,15 @@ export const dispatchAgentDatasetSearch = async ({
       };
     }
 
+    // Collection 级权限可读集合仅对真实成员鉴权生效；authTmbId 未设置时不做 collection 级过滤。
+    const readableCollectionIdList = datasetParams.authTmbId
+      ? await resolveReadableCollectionIds({
+          teamId,
+          datasetIds,
+          tmbId
+        })
+      : undefined;
+
     // Get vector model
     const dataset = await MongoDataset.findById(
       datasetIds[0],
@@ -262,6 +272,7 @@ export const dispatchAgentDatasetSearch = async ({
         value: datasetParams.collectionFilterMatch
       }),
       collectionFilterMode: DatasetTagFilterVersionEnum.structured,
+      readableCollectionIdList,
       userKey
     };
     const {
