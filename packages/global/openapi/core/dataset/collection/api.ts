@@ -273,7 +273,7 @@ export type SyncCollectionResponseType = z.infer<typeof SyncCollectionResponseSc
  * Tags: ['Dataset']
  * ============================================================================ */
 export const GetTagFilterOptionsQuerySchema = z.object({
-  datasetId: z.string().meta({
+  datasetId: ObjectIdSchema.meta({
     example: '68ad85a7463006c963799a05',
     description: '数据集 ID'
   })

@@ -1,6 +1,5 @@
 import React, { useMemo, useState, type ReactNode } from 'react';
 import { Box, Button, Checkbox, Flex, Input, type PlacementWithLogical } from '@chakra-ui/react';
-import { collectionTagValueKey } from '@fastgpt/global/core/dataset/tagUtils';
 import { type CollectionTagFilterItem } from '@fastgpt/global/core/dataset/type';
 import MyIcon from '../Icon';
 import MyBox from '../MyBox';
@@ -123,7 +122,7 @@ const MultiTagFilter = ({
     const firstValue = firstSelected.values[0];
     const firstValueLabel =
       firstGroup?.values.find((item) => item.value === firstValue)?.label ?? String(firstValue);
-    const firstText = firstGroup ? `${firstGroup.label}：${firstValueLabel}` : firstValueLabel;
+    const firstText = firstGroup ? `${firstGroup.label}: ${firstValueLabel}` : firstValueLabel;
     const extraCount = selectedCount - 1;
 
     return (
@@ -300,7 +299,7 @@ const MultiTagFilter = ({
                     const checked = isValueChecked(resolvedActiveTagId, item.value);
                     return (
                       <Flex
-                        key={collectionTagValueKey(item.value)}
+                        key={String(item.value)}
                         alignItems={'center'}
                         gap={2}
                         px={1}

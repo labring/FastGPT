@@ -34,13 +34,9 @@ import { NumSchema } from '../../common/zod';
 export { DatasetCollectionTagTypeEnum, DatasetCollectionTagTypeMap };
 export type DatasetCollectionTagType = `${DatasetCollectionTagTypeEnum}`;
 
-/** 选项类标签预设 options 上限，Zod 与写入合并共用。 */
-export const DATASET_COLLECTION_TAG_OPTIONS_MAX = 64;
-
 /** 选项类标签的预设选项，空选项由前端草稿过滤后再提交。 */
 export const DatasetCollectionTagOptionsSchema = z
   .array(z.string().trim().min(1))
-  .max(DATASET_COLLECTION_TAG_OPTIONS_MAX)
   .meta({ description: '选项类标签的预设选项' });
 
 /** 迁移常量：新建 array 标签记录的 tag 字段固定值，亦是旧格式过滤改写的条件 key */
@@ -61,12 +57,12 @@ export type CollectionTagValueType = z.infer<typeof CollectionTagValueSchema>;
 
 /** 详情页按标签值筛选的单条条件。同一标签多值为 OR，不同标签由调用方做 AND。 */
 export const CollectionTagFilterItemSchema = z.object({
-  tagId: z.string().meta({
+  tagId: ObjectIdSchema.meta({
     example: '68ad85a7463006c963799a05',
     description: '标签 ID'
   }),
   values: z
-    .array(z.union([z.string(), z.number()]))
+    .array(z.union([z.string().min(1), z.number().finite()]))
     .min(1)
     .meta({
       example: ['PRD'],

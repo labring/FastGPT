@@ -126,7 +126,7 @@ export const DateTimeTagInput = ({
   placeholder?: string;
 }) => (
   <SingleDateTimePicker
-    value={value ? Number(value) : undefined}
+    value={value === undefined || value === '' ? undefined : Number(value)}
     onChange={onChange}
     placeholder={placeholder}
     w={'100%'}
