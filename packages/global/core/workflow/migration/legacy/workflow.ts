@@ -16,7 +16,6 @@ import {
   isValidReferenceValueFormat,
   nodeInputIsReference
 } from '../../utils';
-import type { WorkflowReferenceSnapshot } from '../../type/io';
 import type { NodeToolConfigType } from '../../type/node';
 
 const isReferenceItem = (value: unknown): value is [string, string] =>
@@ -52,20 +51,6 @@ const cleanReferenceValue = (value: unknown, isArray: boolean) => {
   return isEmptyReferenceValue(value) ? value : undefined;
 };
 
-const cleanReferenceSnapshots = (value: unknown) => {
-  if (!Array.isArray(value)) return undefined;
-
-  return value.filter((item): item is WorkflowReferenceSnapshot => {
-    if (!item || typeof item !== 'object' || Array.isArray(item)) return false;
-    const snapshot = item as Record<string, unknown>;
-    return (
-      isReferenceItem(snapshot.reference) &&
-      (snapshot.sourceLabel === undefined || typeof snapshot.sourceLabel === 'string') &&
-      (snapshot.outputLabel === undefined || typeof snapshot.outputLabel === 'string')
-    );
-  });
-};
-
 const cleanReferenceFields = (node: CanonicalWorkflowData['nodes'][number]) => {
   const cleanInput = (input: CanonicalWorkflowData['nodes'][number]['inputs'][number]) => {
     const nextInput = { ...input };
@@ -73,12 +58,6 @@ const cleanReferenceFields = (node: CanonicalWorkflowData['nodes'][number]) => {
       const value = cleanReferenceValue(input.value, input.valueType?.startsWith('array') === true);
       if (value === undefined) delete nextInput.value;
       else nextInput.value = value;
-    }
-
-    if (input.referenceSnapshots !== undefined) {
-      const snapshots = cleanReferenceSnapshots(input.referenceSnapshots);
-      if (snapshots?.length) nextInput.referenceSnapshots = snapshots;
-      else delete nextInput.referenceSnapshots;
     }
 
     if (
@@ -103,16 +82,6 @@ const cleanReferenceFields = (node: CanonicalWorkflowData['nodes'][number]) => {
                     if (value === undefined) delete nextCondition.value;
                     else nextCondition.value = value;
                   }
-                  const variableSnapshot = cleanReferenceSnapshots(
-                    nextCondition.variableSnapshot ? [nextCondition.variableSnapshot] : undefined
-                  )?.[0];
-                  if (variableSnapshot) nextCondition.variableSnapshot = variableSnapshot;
-                  else delete nextCondition.variableSnapshot;
-                  const valueSnapshot = cleanReferenceSnapshots(
-                    nextCondition.valueSnapshot ? [nextCondition.valueSnapshot] : undefined
-                  )?.[0];
-                  if (valueSnapshot) nextCondition.valueSnapshot = valueSnapshot;
-                  else delete nextCondition.valueSnapshot;
                   return nextCondition;
                 })
               : nextBranch.list;
@@ -140,14 +109,6 @@ const cleanReferenceFields = (node: CanonicalWorkflowData['nodes'][number]) => {
               if (value === undefined) delete nextItem.value;
               else nextItem.value = value;
             }
-            const variableSnapshot = cleanReferenceSnapshots(
-              nextItem.variableSnapshot ? [nextItem.variableSnapshot] : undefined
-            )?.[0];
-            if (variableSnapshot) nextItem.variableSnapshot = variableSnapshot;
-            else delete nextItem.variableSnapshot;
-            const valueSnapshots = cleanReferenceSnapshots(nextItem.valueReferenceSnapshots);
-            if (valueSnapshots?.length) nextItem.valueReferenceSnapshots = valueSnapshots;
-            else delete nextItem.valueReferenceSnapshots;
             return nextItem;
           })
         : input.value;

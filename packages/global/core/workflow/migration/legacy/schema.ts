@@ -14,12 +14,9 @@ const LegacyAppChatConfigSchema = AppChatConfigTypeSchema.omit({ questionGuide: 
 
 /** 历史工作流输入。旧索引只允许在外部数据迁移阶段出现。 */
 export const LegacyFlowNodeInputItemSchema = FlowNodeInputItemTypeSchema.omit({
-  renderTypeList: true,
-  referenceSnapshots: true
+  renderTypeList: true
 }).extend({
   renderTypeList: z.array(z.enum(FlowNodeInputTypeEnum)).optional(),
-  // snapshot/reference shape is cleaned after legacy structure migration.
-  referenceSnapshots: z.unknown().optional(),
   isToolParam: BoolSchema.optional().meta({
     description: '历史工具输入默认由 Agent 生成标记',
     deprecated: true

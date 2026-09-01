@@ -83,16 +83,7 @@ describe('workflow input schema boundaries', () => {
               label: 'Single',
               renderTypeList: [FlowNodeInputTypeEnum.reference],
               valueType: WorkflowIOValueTypeEnum.string,
-              value: ['deleted-node', 'deleted-output'],
-              referenceSnapshots: [
-                {
-                  reference: ['deleted-node', 'deleted-output'],
-                  sourceLabel: 'Deleted node',
-                  outputLabel: 'Deleted output'
-                },
-                { reference: ['malformed'], sourceLabel: 1 },
-                { reference: ['deleted-node', undefined] }
-              ]
+              value: ['deleted-node', 'deleted-output']
             },
             {
               key: 'malformed-single',
@@ -130,14 +121,9 @@ describe('workflow input schema boundaries', () => {
                   list: [
                     {
                       variable: ['deleted-node', 'variable'],
-                      variableSnapshot: {
-                        reference: ['deleted-node', 'variable'],
-                        sourceLabel: 'Deleted node'
-                      },
                       condition: 'isEqual',
                       valueType: 'reference',
-                      value: ['deleted-node', 'value'],
-                      valueSnapshot: { reference: ['deleted-node', undefined] }
+                      value: ['deleted-node', 'value']
                     }
                   ]
                 }
@@ -163,10 +149,6 @@ describe('workflow input schema boundaries', () => {
                   value: [
                     ['deleted-node', 'value'],
                     ['deleted-node', undefined]
-                  ],
-                  valueReferenceSnapshots: [
-                    { reference: ['deleted-node', 'value'], sourceLabel: 'Deleted node' },
-                    { reference: ['deleted-node', undefined] }
                   ]
                 }
               ]
@@ -185,32 +167,18 @@ describe('workflow input schema boundaries', () => {
 
     expect(consumer.isFolded).toBe(true);
     expect(consumer.inputs[0]).toMatchObject({
-      value: ['deleted-node', 'deleted-output'],
-      referenceSnapshots: [
-        {
-          reference: ['deleted-node', 'deleted-output'],
-          sourceLabel: 'Deleted node',
-          outputLabel: 'Deleted output'
-        }
-      ]
+      value: ['deleted-node', 'deleted-output']
     });
     expect(consumer.inputs[1]).not.toHaveProperty('value');
     expect(consumer.inputs[2].value).toEqual([['kept-node', 'kept-output']]);
 
     const condition = (ifElse.inputs[0].value as any)[0].list[0];
     expect(condition.variable).toEqual(['deleted-node', 'variable']);
-    expect(condition.variableSnapshot).toMatchObject({
-      reference: ['deleted-node', 'variable']
-    });
     expect(condition.value).toEqual(['deleted-node', 'value']);
-    expect(condition).not.toHaveProperty('valueSnapshot');
 
     const update = (variableUpdate.inputs[0].value as any)[0];
     expect(update.variable).toEqual(['deleted-node', 'target']);
     expect(update.value).toEqual(['deleted-node', 'value']);
-    expect(update.valueReferenceSnapshots).toEqual([
-      { reference: ['deleted-node', 'value'], sourceLabel: 'Deleted node' }
-    ]);
     expect(await migrateWorkflowToCurrent(result as any)).toEqual(result);
   });
 
@@ -909,7 +877,7 @@ describe('workflow migration boundary', () => {
     });
   });
 
-  it('rejects legacy tool input snapshots and invalid modes', async () => {
+  it('rejects invalid legacy tool input modes', async () => {
     expect(() =>
       migrateWorkflowToCurrent({
         nodes: [
