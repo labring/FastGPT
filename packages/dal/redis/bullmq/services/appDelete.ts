@@ -1,18 +1,15 @@
 import { bullMQ, type BullMQBinding } from '../binding';
 import { addOrRequeueFailedJob } from '../job-recovery';
 import { QueueNames } from '../names';
-import type { Processor, Queue, Worker } from '../types';
+import type { FlowJob, JobNode, Processor, Queue, Worker } from '../types';
 
 export type AppDeleteJobData = {
   teamId: string;
   appId: string;
-  /** Historical jobs without this field are treated as root jobs. */
-  jobType?: 'root' | 'app';
+  /** Distinguishes task roots, internal Flow steps, and pre-Flow jobs. */
+  jobType?: 'task' | 'step' | 'root' | 'app';
+  taskId?: string;
 };
-
-type AppDeleteAppJobInput = Omit<AppDeleteJobData, 'jobType'>;
-
-const APP_DELETE_BULK_SIZE = 200;
 
 const appDeleteQueueOptions = {
   defaultJobOptions: {
@@ -25,6 +22,22 @@ const appDeleteQueueOptions = {
     removeOnFail: { age: 30 * 24 * 60 * 60 }
   }
 };
+
+const appDeleteFlowJobOptions = appDeleteQueueOptions.defaultJobOptions;
+
+/** Apply the App deletion queue retry and retention policy to every node in a Flow tree. */
+const applyFlowJobOptions = (flow: FlowJob): FlowJob => ({
+  ...flow,
+  opts: {
+    ...appDeleteFlowJobOptions,
+    ...flow.opts
+  },
+  ...(flow.children
+    ? {
+        children: flow.children.map((child) => applyFlowJobOptions(child))
+      }
+    : {})
+});
 
 /** App 删除队列的业务合同和生命周期入口。 */
 export class AppDeleteMQService {
@@ -60,38 +73,16 @@ export class AppDeleteMQService {
     });
   }
 
-  /** Add one app deletion job with a stable ID for restart-safe idempotency. */
-  addAppJob(data: AppDeleteAppJobInput) {
-    const jobId = `app-${String(data.teamId)}-${String(data.appId)}`;
-    return addOrRequeueFailedJob({
-      queue: this.getQueue(),
-      name: 'delete_app',
-      data: { ...data, jobType: 'app' },
-      opts: {
-        jobId
-      }
-    });
+  /** Returns the FlowProducer used to atomically submit deletion task Flows. */
+  getFlowProducer() {
+    return this.binding.getFlowProducer();
   }
 
-  /** Add app deletion jobs in BullMQ batches to avoid one Redis round trip per app. */
-  async addAppJobs(data: AppDeleteAppJobInput[]) {
-    if (data.length === 0) return [];
+  /** Atomically submits task Flows; callers define step order through the dependency chain. */
+  addFlows(flows: FlowJob[]): Promise<JobNode[]> {
+    if (flows.length === 0) return Promise.resolve([]);
 
-    const queue = this.getQueue();
-    const jobs = data.map((item) => ({
-      name: 'delete_app' as const,
-      data: { ...item, jobType: 'app' as const },
-      opts: {
-        jobId: `app-${String(item.teamId)}-${String(item.appId)}`
-      }
-    }));
-    const results = [];
-
-    for (let index = 0; index < jobs.length; index += APP_DELETE_BULK_SIZE) {
-      results.push(...(await queue.addBulk(jobs.slice(index, index + APP_DELETE_BULK_SIZE))));
-    }
-
-    return results;
+    return this.getFlowProducer().addBulk(flows.map((flow) => applyFlowJobOptions(flow)));
   }
 }
 

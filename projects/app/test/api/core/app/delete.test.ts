@@ -1,6 +1,5 @@
 import { describe, expect, it, beforeEach, vi, afterEach } from 'vitest';
-import type { AppDeleteJobData } from '@fastgpt/service/core/app/delete';
-import { addAppDeleteJob } from '@fastgpt/service/core/app/delete';
+import { buildAppDeleteFlow } from '@fastgpt/service/core/app/delete';
 import { appDeleteProcessor } from '@fastgpt/service/core/app/delete/processor';
 import handler from '@/pages/api/core/app/del';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -34,29 +33,19 @@ vi.mock('@fastgpt/dal/redis/bullmq', () => {
   return {
     bullMQ,
     appDeleteMQService: {
-      addJob: (data: AppDeleteJobData) =>
-        bullMQ
-          .getQueue('appDelete', {
-            defaultJobOptions: {
-              attempts: 10,
-              backoff: {
-                type: 'exponential',
-                delay: 5000
-              },
-              removeOnComplete: true,
-              removeOnFail: { age: 30 * 24 * 60 * 60 }
-            }
-          })
-          .add(
-            'delete_app',
-            { ...data, jobType: 'root' },
-            {
-              jobId: `${data.teamId}-${data.appId}`,
-              delay: 1000
-            }
-          ),
-      addAppJobs: vi.fn().mockResolvedValue([]),
-      addAppJob: vi.fn().mockResolvedValue({ id: 'app-delete-job' })
+      getQueue: () =>
+        bullMQ.getQueue('appDelete', {
+          defaultJobOptions: {
+            attempts: 10,
+            backoff: {
+              type: 'exponential',
+              delay: 5000
+            },
+            removeOnComplete: true,
+            removeOnFail: { age: 30 * 24 * 60 * 60 }
+          }
+        }),
+      addFlows: vi.fn().mockResolvedValue([{ job: { id: 'app-delete-task' } }])
     },
     QueueNames: {
       appDelete: 'appDelete'
@@ -76,9 +65,10 @@ vi.mock('@fastgpt/service/common/file/image/controller', () => ({
 }));
 
 // Import mocked modules for type access
-import { bullMQ, QueueNames } from '@fastgpt/dal/redis/bullmq';
+import { bullMQ, QueueNames, appDeleteMQService } from '@fastgpt/dal/redis/bullmq';
 
 const mockGetQueue = vi.mocked(bullMQ.getQueue);
+const mockAddFlows = vi.mocked(appDeleteMQService.addFlows);
 
 describe('App Delete Queue', () => {
   beforeEach(() => {
@@ -89,64 +79,32 @@ describe('App Delete Queue', () => {
     vi.restoreAllMocks();
   });
 
-  describe('addAppDeleteJob', () => {
-    it('should add job to queue with correct parameters', async () => {
-      const mockQueue = {
-        add: vi.fn().mockResolvedValue({ id: 'job-123' })
-      };
-      mockGetQueue.mockReturnValue(mockQueue as any);
-
-      const jobData: AppDeleteJobData = {
-        teamId: 'team-123',
-        appId: 'app-123'
-      };
-
-      const result = await addAppDeleteJob(jobData);
-
-      expect(mockGetQueue).toHaveBeenCalledWith(QueueNames.appDelete, {
-        defaultJobOptions: {
-          attempts: 10,
-          backoff: {
-            type: 'exponential',
-            delay: 5000
-          },
-          removeOnComplete: true,
-          removeOnFail: { age: 30 * 24 * 60 * 60 }
-        }
+  describe('buildAppDeleteFlow', () => {
+    it('builds a task flow with descendants before parents', () => {
+      const flow = buildAppDeleteFlow({
+        teamId: 'team-1',
+        appId: 'root',
+        apps: [{ _id: 'root' }, { _id: 'child' }, { _id: 'grandchild' }]
       });
 
-      expect(mockQueue.add).toHaveBeenCalledWith(
-        'delete_app',
-        { ...jobData, jobType: 'root' },
-        {
-          jobId: 'team-123-app-123',
-          delay: 1000
-        }
-      );
-
-      expect(result).toEqual({ id: 'job-123' });
-    });
-
-    it('should use correct jobId format for preventing duplicates', async () => {
-      const mockQueue = {
-        add: vi.fn().mockResolvedValue({ id: 'job-456' })
-      };
-      mockGetQueue.mockReturnValue(mockQueue as any);
-
-      const jobData: AppDeleteJobData = {
-        teamId: 'team-xyz',
-        appId: 'app-abc'
-      };
-
-      await addAppDeleteJob(jobData);
-
-      expect(mockQueue.add).toHaveBeenCalledWith(
-        'delete_app',
-        { ...jobData, jobType: 'root' },
-        expect.objectContaining({
-          jobId: 'team-xyz-app-abc'
-        })
-      );
+      expect(flow).toMatchObject({
+        name: 'delete_app_task',
+        queueName: QueueNames.appDelete,
+        data: { teamId: 'team-1', appId: 'root', jobType: 'task' },
+        opts: { jobId: 'app-delete-task-team-1-root' },
+        children: [
+          {
+            opts: { failParentOnFailure: true },
+            data: { appId: 'root', jobType: 'step' },
+            children: [
+              {
+                data: { appId: 'child', jobType: 'step' },
+                children: [{ data: { appId: 'grandchild', jobType: 'step' } }]
+              }
+            ]
+          }
+        ]
+      });
     });
   });
 });
@@ -171,7 +129,7 @@ describe('App Delete API Integration', () => {
 
     // Mock the queue to avoid actual background deletion
     const mockQueue = {
-      add: vi.fn().mockResolvedValue({ id: 'job-123' })
+      getJob: vi.fn().mockResolvedValue(null)
     };
     mockGetQueue.mockReturnValue(mockQueue as any);
 
@@ -189,18 +147,16 @@ describe('App Delete API Integration', () => {
     expect(deletedApp?.deleteTime).not.toBeNull();
 
     // Verify queue job was added
-    expect(mockQueue.add).toHaveBeenCalledWith(
-      'delete_app',
-      {
-        teamId: rootUser.teamId,
-        appId: String(testApp._id),
-        jobType: 'root'
-      },
-      {
-        jobId: `${rootUser.teamId}-${testApp._id}`,
-        delay: 1000
-      }
-    );
+    expect(mockAddFlows).toHaveBeenCalledWith([
+      expect.objectContaining({
+        name: 'delete_app_task',
+        data: expect.objectContaining({
+          teamId: rootUser.teamId,
+          appId: String(testApp._id),
+          jobType: 'task'
+        })
+      })
+    ]);
 
     // Cleanup
     await MongoApp.deleteOne({ _id: testApp._id });
@@ -228,7 +184,7 @@ describe('App Delete API Integration', () => {
 
     // Mock the queue
     const mockQueue = {
-      add: vi.fn().mockResolvedValue({ id: 'job-folder' })
+      getJob: vi.fn().mockResolvedValue(null)
     };
     mockGetQueue.mockReturnValue(mockQueue as any);
 
@@ -273,7 +229,7 @@ describe('App Delete API Integration', () => {
     });
 
     const mockQueue = {
-      add: vi.fn().mockResolvedValue({ id: 'job-workflow-tool' })
+      getJob: vi.fn().mockResolvedValue(null)
     };
     mockGetQueue.mockReturnValue(mockQueue as any);
 

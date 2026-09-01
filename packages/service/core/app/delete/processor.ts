@@ -1,9 +1,9 @@
 import type { Processor } from '@fastgpt/dal/redis/bullmq';
 import type { AppDeleteJobData } from './index';
-import { appDeleteMQService } from '@fastgpt/dal/redis/bullmq';
-import { findAppAndAllChildren, deleteAppDataProcessor } from '../controller';
+import { deleteAppDataProcessor } from '../controller';
 import { MongoApp } from '../schema';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { addAppDeleteJob } from './index';
 
 const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
 
@@ -53,48 +53,29 @@ export const appDeleteProcessor: Processor<AppDeleteJobData> = async (job) => {
   logger.info('App delete started', { teamId, appId });
 
   try {
-    if (jobType === 'app') {
+    if (jobType === 'task') {
+      logger.info('App delete task completed', {
+        teamId,
+        appId,
+        taskId: job.data.taskId,
+        durationMs: Date.now() - startTime
+      });
+      return;
+    }
+
+    if (jobType === 'step' || jobType === 'app') {
       await deleteSingleApp({ teamId, appId });
       return;
     }
 
-    // 1. Find the app subtree using only fields needed to create child jobs.
-    const apps = await findAppAndAllChildren({
-      teamId,
-      appId,
-      fields: '_id teamId parentId deleteTime'
-    });
-
-    if (!apps || apps.length === 0) {
-      logger.warn('App not found for deletion', { teamId, appId });
-      return;
-    }
-
-    // 2. The root task only splits work, but the complete subtree must be soft-deleted.
-    const unmarkedApps = apps.filter((app) => !app.deleteTime);
-    if (unmarkedApps.length > 0) {
-      logger.warn('App delete safety check mismatch', {
-        markedCount: apps.length - unmarkedApps.length,
-        totalCount: apps.length,
-        unmarkedCount: unmarkedApps.length
-      });
-      throw new Error('App delete safety check mismatch');
-    }
-
-    // 3. Split the work without cleaning any app resources in this job.
-    await appDeleteMQService.addAppJobs(
-      apps.map((app) => ({
-        teamId,
-        appId: String(app._id)
-      }))
-    );
+    // Legacy root jobs become a bridge to the task Flow. New requests enqueue the Flow directly.
+    await addAppDeleteJob({ teamId, appId });
 
     logger.info('App delete completed', {
       teamId,
       appId,
-      childCount: apps.length - 1,
       durationMs: Date.now() - startTime,
-      totalApps: apps.length
+      legacy: true
     });
   } catch (error: any) {
     logger.error('App delete failed', { teamId, appId, error });
