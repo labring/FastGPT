@@ -13,7 +13,7 @@ import type {
 } from '@fastgpt/global/support/wallet/sub/type';
 import dayjs from 'dayjs';
 import { type ClientSession } from '../../../common/mongo';
-import { addMonths, addDays } from 'date-fns';
+import { addMonths } from 'date-fns';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import { TeamPointCache, teamQpmCache } from '@fastgpt/dal/redis/caches';
 import { getLogger, LogCategories } from '../../../common/logger';
@@ -138,17 +138,20 @@ export const initTeamFreePlan = async ({
 };
 
 // 获取团队标准套餐
-export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
-  const standardPlans = global.subPlans?.standard;
+export const getTeamStandPlan = async ({
+  teamId,
+  readFromPrimary = false
+}: {
+  teamId: string;
+  readFromPrimary?: boolean;
+}) => {
   const plans = await MongoTeamSub.find(
     {
       teamId,
       type: SubTypeEnum.standard
     },
     undefined,
-    {
-      ...readFromSecondary
-    }
+    readFromPrimary ? { readPreference: 'primary' } : { ...readFromSecondary }
   ).lean();
   sortStandPlans(plans);
 
