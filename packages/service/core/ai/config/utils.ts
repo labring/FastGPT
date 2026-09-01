@@ -390,7 +390,7 @@ export const updatedReloadSystemModel = async ({
   await delay(1000);
 };
 export const cronRefreshModels = async () => {
-  setCron('*/5 * * * *', async () => {
+  setCron('*/30 * * * *', async () => {
     // 模板刷新成功后才执行自动预装和运行时快照发布；失败时保留旧快照。
     await loadSystemModels(true);
   });

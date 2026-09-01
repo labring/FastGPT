@@ -7,6 +7,7 @@ const reloadMocks = vi.hoisted(() => ({
   updateFastGPTConfigBuffer: vi.fn(),
   delay: vi.fn()
 }));
+const cronMocks = vi.hoisted(() => ({ setCron: vi.fn() }));
 
 vi.mock('@fastgpt/service/core/app/provider/controller', async (importOriginal) => {
   const actual =
@@ -36,11 +37,15 @@ vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/global/common/system/utils')>()),
   delay: reloadMocks.delay
 }));
+vi.mock('@fastgpt/service/common/system/cron', () => ({
+  setCron: cronMocks.setCron
+}));
 
 import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
 import { LegacySystemModelCollectionName } from '@fastgpt/service/core/ai/config/constants';
 import {
+  cronRefreshModels,
   loadInstalledModels,
   loadSystemModels,
   updatedReloadSystemModel
@@ -65,6 +70,7 @@ describe('loadSystemModels', () => {
     reloadMocks.clearAllMyModelsCache.mockReset().mockResolvedValue(undefined);
     reloadMocks.updateFastGPTConfigBuffer.mockReset().mockResolvedValue(undefined);
     reloadMocks.delay.mockReset().mockResolvedValue(undefined);
+    cronMocks.setCron.mockReset();
     await Promise.all([
       MongoAIModel.deleteMany({}),
       MongoAIDefaultModel.deleteMany({}),
@@ -74,6 +80,17 @@ describe('loadSystemModels', () => {
     global.systemActiveModelList = undefined as never;
     global.systemModelMap = undefined as never;
     global.systemDefaultModel = undefined as never;
+  });
+
+  it('refreshes plugin model templates every thirty minutes', async () => {
+    cronRefreshModels();
+
+    expect(cronMocks.setCron).toHaveBeenCalledWith('*/30 * * * *', expect.any(Function));
+
+    const refresh = cronMocks.setCron.mock.calls[0]?.[1];
+    expect(refresh).toBeTypeOf('function');
+    await refresh?.();
+    expect(pluginMocks.listModels).toHaveBeenCalledOnce();
   });
 
   it('finishes legacy migration before startup model loading resolves', async () => {
