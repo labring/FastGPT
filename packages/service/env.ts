@@ -167,6 +167,16 @@ export const serviceEnv = createEnv({
     TEXTIN_SECRET_CODE: z.string().optional().meta({
       description: '合合信息 Textin 服务 Secret Code'
     }),
+    DOCUMENT_PARSE_PROVIDER: z.enum(['', 'sangfor']).default('').meta({
+      description:
+        '文档解析 provider，默认不启用；sangfor 表示命中的扩展名直接走 Sangfor，覆盖「增强解析」开关'
+    }),
+    SANGFOR_PARSE_EXTENSIONS: z.string().default('pdf').meta({
+      description: 'Sangfor 接管的扩展名（逗号分隔，默认 pdf）；未命中的文件继续原解析链'
+    }),
+    SANGFOR_PARSE_TIMEOUT_SECONDS: IntSchema.min(1).max(7200).default(600).meta({
+      description: 'Sangfor 文档解析请求超时时间（秒），默认 10 分钟，最大 2 小时'
+    }),
 
     // ==================== 数据库与缓存 ====================
     // Redisg
