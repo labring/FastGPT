@@ -6,7 +6,13 @@ import type { Processor, Queue, Worker } from '../types';
 export type AppDeleteJobData = {
   teamId: string;
   appId: string;
+  /** Historical jobs without this field are treated as root jobs. */
+  jobType?: 'root' | 'app';
 };
+
+type AppDeleteAppJobInput = Omit<AppDeleteJobData, 'jobType'>;
+
+const APP_DELETE_BULK_SIZE = 200;
 
 const appDeleteQueueOptions = {
   defaultJobOptions: {
@@ -40,18 +46,52 @@ export class AppDeleteMQService {
     });
   }
 
-  /** 投递幂等的 App 删除任务，并延迟一秒让请求先完成。 */
+  /** Add a root deletion job and delay it by one second for request completion. */
   addJob(data: AppDeleteJobData) {
     const jobId = `${String(data.teamId)}-${String(data.appId)}`;
     return addOrRequeueFailedJob({
       queue: this.getQueue(),
       name: 'delete_app',
-      data,
+      data: { ...data, jobType: 'root' },
       opts: {
         jobId,
         delay: 1000
       }
     });
+  }
+
+  /** Add one app deletion job with a stable ID for restart-safe idempotency. */
+  addAppJob(data: AppDeleteAppJobInput) {
+    const jobId = `app-${String(data.teamId)}-${String(data.appId)}`;
+    return addOrRequeueFailedJob({
+      queue: this.getQueue(),
+      name: 'delete_app',
+      data: { ...data, jobType: 'app' },
+      opts: {
+        jobId
+      }
+    });
+  }
+
+  /** Add app deletion jobs in BullMQ batches to avoid one Redis round trip per app. */
+  async addAppJobs(data: AppDeleteAppJobInput[]) {
+    if (data.length === 0) return [];
+
+    const queue = this.getQueue();
+    const jobs = data.map((item) => ({
+      name: 'delete_app' as const,
+      data: { ...item, jobType: 'app' as const },
+      opts: {
+        jobId: `app-${String(item.teamId)}-${String(item.appId)}`
+      }
+    }));
+    const results = [];
+
+    for (let index = 0; index < jobs.length; index += APP_DELETE_BULK_SIZE) {
+      results.push(...(await queue.addBulk(jobs.slice(index, index + APP_DELETE_BULK_SIZE))));
+    }
+
+    return results;
   }
 }
 

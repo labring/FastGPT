@@ -47,10 +47,16 @@ vi.mock('@fastgpt/dal/redis/bullmq', () => {
               removeOnFail: { age: 30 * 24 * 60 * 60 }
             }
           })
-          .add('delete_app', data, {
-            jobId: `${data.teamId}-${data.appId}`,
-            delay: 1000
-          })
+          .add(
+            'delete_app',
+            { ...data, jobType: 'root' },
+            {
+              jobId: `${data.teamId}-${data.appId}`,
+              delay: 1000
+            }
+          ),
+      addAppJobs: vi.fn().mockResolvedValue([]),
+      addAppJob: vi.fn().mockResolvedValue({ id: 'app-delete-job' })
     },
     QueueNames: {
       appDelete: 'appDelete'
@@ -109,10 +115,14 @@ describe('App Delete Queue', () => {
         }
       });
 
-      expect(mockQueue.add).toHaveBeenCalledWith('delete_app', jobData, {
-        jobId: 'team-123-app-123',
-        delay: 1000
-      });
+      expect(mockQueue.add).toHaveBeenCalledWith(
+        'delete_app',
+        { ...jobData, jobType: 'root' },
+        {
+          jobId: 'team-123-app-123',
+          delay: 1000
+        }
+      );
 
       expect(result).toEqual({ id: 'job-123' });
     });
@@ -132,7 +142,7 @@ describe('App Delete Queue', () => {
 
       expect(mockQueue.add).toHaveBeenCalledWith(
         'delete_app',
-        jobData,
+        { ...jobData, jobType: 'root' },
         expect.objectContaining({
           jobId: 'team-xyz-app-abc'
         })
@@ -183,7 +193,8 @@ describe('App Delete API Integration', () => {
       'delete_app',
       {
         teamId: rootUser.teamId,
-        appId: String(testApp._id)
+        appId: String(testApp._id),
+        jobType: 'root'
       },
       {
         jobId: `${rootUser.teamId}-${testApp._id}`,
@@ -345,7 +356,7 @@ describe('App Delete Data Cleanup Verification', () => {
 
       // 3. 执行删除处理器（模拟队列任务执行）
       const mockJob = {
-        data: { teamId, appId },
+        data: { teamId, appId, jobType: 'app' },
         id: 'test-job-id'
       };
 
@@ -387,13 +398,18 @@ describe('App Delete Data Cleanup Verification', () => {
         { deleteTime: new Date() }
       );
 
-      // 执行删除（应该级联删除子应用）
-      const mockJob = {
-        data: { teamId, appId: String(parentApp._id) },
+      // Each app is cleaned by its own queue job after the root job is split.
+      const parentJob = {
+        data: { teamId, appId: String(parentApp._id), jobType: 'app' as const },
         id: 'test-nested-job'
       };
+      const childJob = {
+        data: { teamId, appId: String(childApp._id), jobType: 'app' as const },
+        id: 'test-nested-child-job'
+      };
 
-      await appDeleteProcessor(mockJob);
+      await appDeleteProcessor(parentJob);
+      await appDeleteProcessor(childJob);
 
       // 验证父应用和子应用都被删除
       expect(await MongoApp.countDocuments({ _id: parentApp._id })).toBe(0);
@@ -409,7 +425,7 @@ describe('App Delete Data Cleanup Verification', () => {
       });
     });
 
-    it('should reject external cleanup when a nested app is not marked for deletion', async () => {
+    it('should reject external cleanup when the target app is not marked for deletion', async () => {
       const parentApp = await MongoApp.create({
         name: 'Safety Parent App',
         teamId,
@@ -425,11 +441,9 @@ describe('App Delete Data Cleanup Verification', () => {
         parentId: parentApp._id,
         modules: []
       });
-      await MongoApp.updateOne({ _id: parentApp._id }, { deleteTime: new Date() });
-
       await expect(
         appDeleteProcessor({
-          data: { teamId, appId: String(parentApp._id) },
+          data: { teamId, appId: String(parentApp._id), jobType: 'app' },
           id: 'test-delete-safety-job'
         })
       ).rejects.toThrow('App delete safety check mismatch');
@@ -457,7 +471,7 @@ describe('App Delete Data Cleanup Verification', () => {
 
       // 删除第一个应用
       const mockJob1 = {
-        data: { teamId, appId },
+        data: { teamId, appId, jobType: 'app' },
         id: 'test-batch-job-1'
       };
 
@@ -498,7 +512,7 @@ describe('App Delete Data Cleanup Verification', () => {
       await MongoApp.updateOne({ _id: workflowToolAppId }, { deleteTime: new Date() });
 
       await appDeleteProcessor({
-        data: { teamId, appId: workflowToolAppId },
+        data: { teamId, appId: workflowToolAppId, jobType: 'app' },
         id: 'test-workflow-tool-cleanup-job'
       });
 

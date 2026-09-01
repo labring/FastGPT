@@ -1,37 +1,68 @@
 import type { Processor } from '@fastgpt/dal/redis/bullmq';
 import type { AppDeleteJobData } from './index';
+import { appDeleteMQService } from '@fastgpt/dal/redis/bullmq';
 import { findAppAndAllChildren, deleteAppDataProcessor } from '../controller';
-import { batchRun } from '@fastgpt/global/common/system/utils';
-import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { MongoApp } from '../schema';
 import { getLogger, LogCategories } from '../../../common/logger';
 
 const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
 
-const deleteApps = async ({ teamId, apps }: { teamId: string; apps: AppSchemaType[] }) => {
-  // 每个 App 使用独立 Source Lease；任务内串行用于限制外部资源清理压力。
-  const results = await batchRun(
-    apps,
-    async (app) => {
-      await deleteAppDataProcessor({ app, teamId });
+/**
+ * Clean one app using only the fields required by the existing deletion processor.
+ * Missing apps are treated as an idempotent completion; live apps fail the safety check.
+ */
+const deleteSingleApp = async ({ teamId, appId }: { teamId: string; appId: string }) => {
+  const startTime = Date.now();
+  const app = await MongoApp.findOne(
+    {
+      _id: appId,
+      teamId
     },
-    1
-  );
+    '_id teamId type avatar deleteTime'
+  ).lean();
 
-  return results.flat();
+  if (!app) {
+    logger.warn('App not found for deletion', { teamId, appId });
+    return;
+  }
+
+  // Recheck the soft-delete marker so stale jobs cannot remove a live app.
+  if (!app.deleteTime) {
+    logger.warn('App delete safety check mismatch', {
+      teamId,
+      appId,
+      markedCount: 0,
+      totalCount: 1
+    });
+    throw new Error('App delete safety check mismatch');
+  }
+
+  await deleteAppDataProcessor({ app, teamId });
+
+  logger.info('App delete completed', {
+    teamId,
+    appId,
+    durationMs: Date.now() - startTime
+  });
 };
 
 export const appDeleteProcessor: Processor<AppDeleteJobData> = async (job) => {
-  const { teamId, appId } = job.data;
+  const { teamId, appId, jobType = 'root' } = job.data;
   const startTime = Date.now();
 
   logger.info('App delete started', { teamId, appId });
 
   try {
-    // 1. 查找应用及其所有子应用
+    if (jobType === 'app') {
+      await deleteSingleApp({ teamId, appId });
+      return;
+    }
+
+    // 1. Find the app subtree using only fields needed to create child jobs.
     const apps = await findAppAndAllChildren({
       teamId,
-      appId
+      appId,
+      fields: '_id teamId parentId deleteTime'
     });
 
     if (!apps || apps.length === 0) {
@@ -39,42 +70,31 @@ export const appDeleteProcessor: Processor<AppDeleteJobData> = async (job) => {
       return;
     }
 
-    // 2. 安全检查：确保所有要删除的应用都已标记为 deleteTime
-    const markedForDelete = await MongoApp.find(
-      {
-        _id: { $in: apps.map((app) => app._id) },
-        teamId,
-        deleteTime: { $ne: null }
-      },
-      { _id: 1 }
-    ).lean();
-
-    if (markedForDelete.length !== apps.length) {
+    // 2. The root task only splits work, but the complete subtree must be soft-deleted.
+    const unmarkedApps = apps.filter((app) => !app.deleteTime);
+    if (unmarkedApps.length > 0) {
       logger.warn('App delete safety check mismatch', {
-        markedCount: markedForDelete.length,
+        markedCount: apps.length - unmarkedApps.length,
         totalCount: apps.length,
-        markedAppIds: markedForDelete.map((app) => app._id),
-        totalAppIds: apps.map((app) => app._id)
+        unmarkedCount: unmarkedApps.length
       });
       throw new Error('App delete safety check mismatch');
     }
 
-    const childrenLen = apps.length - 1;
-    const appIds = apps.map((app) => app._id);
-
-    // 3. 执行真正的删除操作（只删除已经标记为 deleteTime 的数据）
-    await deleteApps({
-      teamId,
-      apps
-    });
+    // 3. Split the work without cleaning any app resources in this job.
+    await appDeleteMQService.addAppJobs(
+      apps.map((app) => ({
+        teamId,
+        appId: String(app._id)
+      }))
+    );
 
     logger.info('App delete completed', {
       teamId,
       appId,
-      childCount: childrenLen,
+      childCount: apps.length - 1,
       durationMs: Date.now() - startTime,
-      totalApps: appIds.length,
-      appIds
+      totalApps: apps.length
     });
   } catch (error: any) {
     logger.error('App delete failed', { teamId, appId, error });

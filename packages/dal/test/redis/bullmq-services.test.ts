@@ -25,6 +25,7 @@ describe('BullMQ business services', () => {
   it('allows queue binding injection while keeping queue contracts in the service class', async () => {
     const queue = {
       add: vi.fn().mockResolvedValue({ id: 'job-1' }),
+      addBulk: vi.fn().mockResolvedValue([{ id: 'job-1' }]),
       getJob: vi.fn().mockResolvedValue(null)
     };
     const binding = {
@@ -47,11 +48,71 @@ describe('BullMQ business services', () => {
         removeOnFail: { age: 30 * 24 * 60 * 60 }
       }
     });
-    expect(queue.add).toHaveBeenCalledWith('delete_app', data, {
-      jobId: 'team-1-app-1',
-      delay: 1000
-    });
+    expect(queue.add).toHaveBeenCalledWith(
+      'delete_app',
+      { ...data, jobType: 'root' },
+      {
+        jobId: 'team-1-app-1',
+        delay: 1000
+      }
+    );
     expect(queue.getJob).toHaveBeenCalledWith('team-1-app-1');
+  });
+
+  it('uses a separate stable ID for a single app deletion job', async () => {
+    const queue = {
+      add: vi.fn().mockResolvedValue({ id: 'job-app-1' }),
+      getJob: vi.fn().mockResolvedValue(null)
+    };
+    const binding = {
+      getQueue: vi.fn(() => queue),
+      getWorker: vi.fn(),
+      getLogger: vi.fn(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }))
+    } as unknown as BullMQBinding;
+    const service = new AppDeleteMQService(binding);
+
+    await expect(service.addAppJob({ teamId: 'team-1', appId: 'app-1' })).resolves.toEqual({
+      id: 'job-app-1'
+    });
+
+    expect(queue.add).toHaveBeenCalledWith(
+      'delete_app',
+      { teamId: 'team-1', appId: 'app-1', jobType: 'app' },
+      { jobId: 'app-team-1-app-1' }
+    );
+    expect(queue.getJob).toHaveBeenCalledWith('app-team-1-app-1');
+  });
+
+  it('adds app deletion jobs in chunks of 200', async () => {
+    const queue = {
+      add: vi.fn(),
+      addBulk: vi.fn().mockImplementation(async (jobs) => jobs.map((job: unknown) => job)),
+      getJob: vi.fn().mockResolvedValue(null)
+    };
+    const binding = {
+      getQueue: vi.fn(() => queue),
+      getWorker: vi.fn(),
+      getLogger: vi.fn(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }))
+    } as unknown as BullMQBinding;
+    const service = new AppDeleteMQService(binding);
+    const data = Array.from({ length: 201 }, (_, index) => ({
+      teamId: 'team-1',
+      appId: `app-${index}`
+    }));
+
+    await service.addAppJobs(data);
+
+    expect(queue.addBulk).toHaveBeenCalledTimes(2);
+    expect(queue.addBulk.mock.calls[0][0]).toHaveLength(200);
+    expect(queue.addBulk.mock.calls[1][0]).toHaveLength(1);
+    expect(queue.addBulk.mock.calls[0][0][0]).toEqual({
+      name: 'delete_app',
+      data: { teamId: 'team-1', appId: 'app-0', jobType: 'app' },
+      opts: { jobId: 'app-team-1-app-0' }
+    });
+    expect(queue.addBulk.mock.calls[1][0][0].opts).toEqual({
+      jobId: 'app-team-1-app-200'
+    });
   });
 
   it('uses failed-job recovery for Dataset deletion jobs', async () => {
