@@ -7,8 +7,8 @@
 本次改造目标：
 
 1. 每个 JS worker 最多执行一个用户任务，结果返回后立即销毁；池中只预热尚未接触用户代码的干净进程。
-2. Linux 容器内固定启用 chroot、独立 UID/GID、`no_new_privs` 和 seccomp；初始化条件不满足时服务启动失败。
-3. 用户进程没有网络 syscall。兼容的 `SystemHelper.httpRequest` 通过 stdin/stdout RPC 交给父 Node 进程执行，复用统一 SSRF、DNS pinning、次数、超时和大小限制。
+2. Linux 容器内固定启用 chroot、独立 UID/GID 和 `no_new_privs`，默认启用 seccomp；只有部署者设置 `SANDBOX_DISABLE_SECCOMP=true` 时才跳过 seccomp，初始化失败不会自动降级。
+3. 默认配置下用户进程没有网络 syscall。兼容的 `SystemHelper.httpRequest` 通过 stdin/stdout RPC 交给父 Node 进程执行，复用统一 SSRF、DNS pinning、次数、超时和大小限制。
 4. 不要求修改 Docker 宿主机运行时，不依赖 gVisor、nsjail 或特权容器；使用 `cap_drop: ALL` 时仅显式保留 chroot、降权、目录权限和进程回收所需的最小 capability 集合。
 5. 保持 `/sandbox/js` API、JS 代码调用方式、模块白名单和返回结构兼容。
 
@@ -61,7 +61,7 @@ worker 的 `SystemHelper.httpRequest` 不再导入和调用 `http`、`https`、`
 - 父进程向同一 worker stdin 返回 `http_response`；
 - worker 用请求 ID 解析 Promise。
 
-父进程按单个任务创建请求计数状态和 `AbortController`。任务完成、超时或进程异常退出时，中止尚未完成的代理请求，避免用户通过“不 await 即返回”让网络请求脱离 one-shot 生命周期。worker 直接 socket 即使通过语言层逃逸也会被 seccomp 拒绝。
+父进程按单个任务创建请求计数状态和 `AbortController`。任务完成、超时或进程异常退出时，中止尚未完成的代理请求，避免用户通过“不 await 即返回”让网络请求脱离 one-shot 生命周期。默认配置下，worker 直接 socket 即使通过语言层逃逸也会被 seccomp 拒绝。
 
 ### 3.4 chroot 文件布局
 

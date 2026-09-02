@@ -1,6 +1,6 @@
 # FastGPT Code Sandbox
 
-基于 Node + Hono 的代码执行沙盒，支持 JS 和 Python。两种语言都采用 one-shot 预热进程池，Linux/Docker 环境固定启用 chroot、seccomp、setuid/setgid 隔离。
+基于 Node + Hono 的代码执行沙盒，支持 JS 和 Python。两种语言都采用 one-shot 预热进程池，Linux/Docker 环境固定启用 chroot、setuid/setgid 隔离，并默认启用 seccomp。
 
 ## 架构
 
@@ -13,7 +13,7 @@ HTTP Request → Hono Server
 - **JS 进程池**：启动时预热 N 个干净 Node 子进程（默认 20）；每个进程只执行一个用户任务，随后销毁并异步补池
 - **JS 执行**：Node 子进程 + native seccomp/chroot/独立 UID + 安全 shim（冻结 Function 构造器、危险全局对象遮蔽、require 白名单）
 - **Python 执行**：预热 `SANDBOX_POOL_SIZE` 个干净 python3 进程，进程进入 native seccomp/chroot/降权后等待一条任务；执行用户代码后立即销毁并异步补充新的干净进程
-- **网络请求**：沙箱子进程不允许网络 syscall；统一通过父进程代理的 `SystemHelper.httpRequest()` / `system_helper.http_request()` 收口，内置 SSRF 防护
+- **网络请求**：默认由 seccomp 禁止沙箱子进程的网络 syscall；统一通过父进程代理的 `SystemHelper.httpRequest()` / `system_helper.http_request()` 收口，内置 SSRF 防护
 - **并发控制**：JS 请求超过池大小时自动排队；Python 同时运行的独立子进程数复用 `SANDBOX_POOL_SIZE`
 
 ## 性能
@@ -172,13 +172,21 @@ docker run -p 3000:3000 \
 | `SANDBOX_POOL_SIZE` | JS worker 进程数；也是 Python 同时运行和空闲预热的进程数 | `5` |
 | `SANDBOX_QUEUE_ID_CONCURRENCY` | 同一 `queueId` 同时可进入执行流程的请求数，空值表示不按 `queueId` 排队 | 空 |
 
+### OS 隔离
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `SANDBOX_DISABLE_SECCOMP` | 显式关闭 JS 和 Python 的应用内 seccomp；chroot、`no_new_privs` 和 UID/GID 降权仍保持启用 | `false` |
+
+默认配置下，任一 seccomp filter 加载失败都会使对应进程池初始化失败，不会自动降级。仅当宿主机内核不支持应用内 seccomp 且部署者接受安全能力降低时，才应将 `SANDBOX_DISABLE_SECCOMP` 设置为 `true`。关闭后不再从内核层阻断网络、创建进程、线程和执行二进制等 syscall；语言层白名单和运行时 shim 不能等价替代 seccomp。
+
 ### Python 隔离
 
-Python 隔离不再提供运行时关闭开关。Linux 环境默认启用 native seccomp/chroot/降权，chroot 根目录固定为 `/tmp/fastgpt-python-sandbox`，用户代码进程固定降权到 `65537:65537`。如果内核拒绝加载 seccomp filter，bootstrap 会记录 warning 并继续用 chroot + setuid/setgid 的降级路径。Python 子进程不允许直接网络 syscall，外部请求必须通过父进程代理的 `http_request` 能力，并受请求次数、超时、请求体和响应体大小限制。
+Python native 隔离不提供整体关闭开关。Linux 环境固定启用 chroot、`no_new_privs` 和降权，chroot 根目录固定为 `/tmp/fastgpt-python-sandbox`，用户代码进程固定降权到 `65537:65537`；seccomp 按上述配置控制。启用 seccomp 时，Python 子进程不允许直接网络 syscall，外部请求必须通过父进程代理的 `http_request` 能力，并受请求次数、超时、请求体和响应体大小限制。
 
 ### JS 隔离
 
-Linux 环境同样固定启用 native seccomp/chroot/降权，chroot 根目录为 `/tmp/fastgpt-js-sandbox`，JS 子进程使用独立的 `65538:65538`。每个预热进程最多执行一个用户任务，直接网络、创建进程和执行二进制的 syscall 均被拒绝。
+Linux 环境同样固定启用 native chroot、`no_new_privs` 和降权，chroot 根目录为 `/tmp/fastgpt-js-sandbox`，JS 子进程使用独立的 `65538:65538`；seccomp 按上述配置控制。每个预热进程最多执行一个用户任务。启用 seccomp 时，直接网络、创建进程和执行二进制的 syscall 均被拒绝。
 
 ### 资源限制
 
@@ -263,7 +271,7 @@ SANDBOX_JS_ALLOWED_MODULES=lodash,dayjs,moment,uuid,crypto-js,qs,url,querystring
 - 只添加纯计算类的包，不要添加有网络/文件系统/子进程能力的包
 - 包会被打入 Docker 镜像，注意体积
 - 网络请求统一走 `SystemHelper.httpRequest()`，不要放行 `axios`、`node-fetch` 等网络库
-- 不应放行 `child_process`、`worker_threads`、`cluster`；Linux native seccomp 也会从内核层拒绝创建进程或线程
+- 不应放行 `child_process`、`worker_threads`、`cluster`；默认启用的 Linux native seccomp 也会从内核层拒绝创建进程或线程
 
 ## 添加 Python 包
 
@@ -291,8 +299,8 @@ your-new-package
 
 - Python 的模块黑名单通过 `__import__` 拦截实现，只拦截用户代码的直接 import
 - 标准库和第三方包的内部间接 import 不受影响
-- 默认白名单不包含 `os`、`sys`、`subprocess`、`socket` 等高危模块；显式加入环境变量只会放开语言层 import，不会放开 native seccomp 已拒绝的进程、线程和网络 syscall
-- Python 固定 one-shot：无论导入哪些模块，每个进程最多执行一个用户任务；Linux 下即使通过间接引用或 CPython C 扩展绕过 import/audit 限制，chroot、独立 UID/GID 与 default-deny seccomp 仍是最终进程边界
+- 默认白名单不包含 `os`、`sys`、`subprocess`、`socket` 等高危模块；启用 seccomp 时，显式加入环境变量只会放开语言层 import，不会放开 native seccomp 已拒绝的进程、线程和网络 syscall
+- Python 固定 one-shot：无论导入哪些模块，每个进程最多执行一个用户任务；启用 seccomp 时，即使通过间接引用或 CPython C 扩展绕过 import/audit 限制，chroot、独立 UID/GID 与 default-deny seccomp 仍构成最终进程边界
 
 ## 安全机制
 
@@ -303,7 +311,7 @@ your-new-package
 - `Function` 构造器冻结，阻止 `constructor.constructor` 逃逸
 - `process.env` 清理，仅保留必要变量
 - `fetch`、`XMLHttpRequest`、`WebSocket` 禁用
-- Linux 下固定 chroot 到只读 rootfs，降权到 JS 专用 UID/GID，并以 TSYNC seccomp 拒绝网络、进程和执行类 syscall
+- Linux 下固定 chroot 到只读 rootfs，并降权到 JS 专用 UID/GID；默认以 TSYNC seccomp 拒绝网络、进程和执行类 syscall
 - 每个子进程只执行一个用户任务，任务完成后不返回 idle 池
 
 ### Python
@@ -312,7 +320,7 @@ your-new-package
 - `exec()`/`eval()` 内的 import 同样被拦截（基于调用栈帧检测）
 - `builtins.__import__` 通过代理对象保护，用户无法覆盖
 - `signal.SIGALRM` 超时保护
-- Linux 下固定 chroot、降权到 Python 专用 UID/GID，并以 native default-deny seccomp 拒绝网络、进程、线程和执行类 syscall
+- Linux 下固定 chroot、降权到 Python 专用 UID/GID；默认以 native default-deny seccomp 拒绝网络、进程、线程和执行类 syscall
 - 每个 Python 子进程也只执行一个用户任务；语言层限制被绕过时，不会继承父服务的文件系统视图和系统调用能力
 
 ### 网络

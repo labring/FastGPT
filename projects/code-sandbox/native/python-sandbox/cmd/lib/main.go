@@ -13,7 +13,6 @@ package main
 import "C"
 
 import (
-	"strings"
 	"sync"
 	"unsafe"
 
@@ -36,13 +35,15 @@ func setLastErr(err error) {
 }
 
 //export FastGPTInitPythonSandbox
-func FastGPTInitPythonSandbox(uid C.int, gid C.int, enableNetwork C.int) C.int {
-	err := sandbox.Init(int(uid), int(gid), enableNetwork != 0)
+func FastGPTInitPythonSandbox(uid C.int, gid C.int, enableNetwork C.int, enableSeccomp C.int) C.int {
+	err := sandbox.Init(sandbox.Config{
+		UID:           int(uid),
+		GID:           int(gid),
+		EnableNetwork: enableNetwork != 0,
+		EnableSeccomp: enableSeccomp != 0,
+	})
 	setLastErr(err)
 	if err != nil {
-		if strings.Contains(err.Error(), "load seccomp filter") {
-			return 2
-		}
 		return 1
 	}
 	return 0

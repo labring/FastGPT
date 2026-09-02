@@ -37,6 +37,7 @@ import {
   PYTHON_SANDBOX_UID,
   shouldEnablePythonNativeIsolation
 } from './python-isolation-config';
+import { getSeccompConfig } from './seccomp-config';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BOOTSTRAP_SCRIPT = join(__dirname, 'python-bootstrap.py');
@@ -77,7 +78,6 @@ export class PythonIsolatedRunner {
   private readonly warmingChildren = new Set<RunningChild>();
   private readonly warmIdleTarget: number;
   private ready = false;
-  private nativeIsolationDowngraded = false;
 
   constructor(private readonly maxConcurrency = env.SANDBOX_POOL_SIZE) {
     this.semaphore = new Semaphore(maxConcurrency);
@@ -87,7 +87,6 @@ export class PythonIsolatedRunner {
   async init(): Promise<void> {
     assertPythonNativeIsolationReady(NATIVE_SANDBOX_LIBRARY);
     this.ready = true;
-    this.nativeIsolationDowngraded = false;
 
     try {
       await this.replenishWarmChildren(true);
@@ -128,8 +127,7 @@ export class PythonIsolatedRunner {
       queued: semaphoreStats.queued,
       poolSize: semaphoreStats.max,
       ready:
-        this.ready && this.idleChildren.size + this.running.size + this.warmingChildren.size > 0,
-      nativeIsolationDowngraded: this.nativeIsolationDowngraded
+        this.ready && this.idleChildren.size + this.running.size + this.warmingChildren.size > 0
     };
   }
 
@@ -294,7 +292,8 @@ export class PythonIsolatedRunner {
 
   private buildIsolationPayload() {
     return {
-      enableSeccomp: shouldEnablePythonNativeIsolation(),
+      enabled: shouldEnablePythonNativeIsolation(),
+      ...getSeccompConfig(),
       enableNetwork: PYTHON_ENABLE_NETWORK_SYSCALLS,
       libraryPath: NATIVE_SANDBOX_LIBRARY,
       sandboxRoot: PYTHON_SANDBOX_ROOT,
@@ -329,10 +328,6 @@ export class PythonIsolatedRunner {
         if (errorHandler) child.proc.off('error', errorHandler);
         this.warmingChildren.delete(child);
         if (ready && this.ready) {
-          if (child.stderrBuf.length > 0) {
-            serverLogger.warn(`Python warm child startup stderr: ${child.stderrBuf.join('\n')}`);
-            child.stderrBuf.length = 0;
-          }
           this.markChildIdle(child);
         } else {
           killProcessTree(child.proc.pid);
@@ -346,13 +341,6 @@ export class PythonIsolatedRunner {
           const msg = JSON.parse(line);
           if (msg.type === 'ready') {
             settle(true);
-            return;
-          }
-          if (msg.type === 'warn') {
-            if (msg.code === 'native_seccomp_fallback') {
-              this.nativeIsolationDowngraded = true;
-            }
-            serverLogger.warn(`Python warm child warning: ${msg.message || line}`);
             return;
           }
           if (msg.type === 'result') {

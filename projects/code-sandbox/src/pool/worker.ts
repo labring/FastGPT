@@ -579,7 +579,8 @@ rl.on('line', async (line: string) => {
         addon.init({
           uid: msg.nativeIsolation.uid,
           gid: msg.nativeIsolation.gid,
-          cwd: msg.nativeIsolation.cwd
+          cwd: msg.nativeIsolation.cwd,
+          enableSeccomp: msg.nativeIsolation.enableSeccomp
         });
       }
       hardenRuntime();
