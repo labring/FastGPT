@@ -193,7 +193,7 @@ def _init_native_isolation(isolation):
     global _native_isolation_ready
     if _native_isolation_ready:
         return
-    if not isolation or not isolation.get('enableSeccomp'):
+    if not isolation or not isolation.get('enabled'):
         return
 
     lib_path = isolation.get('libraryPath') or './fastgpt_python_sandbox.so'
@@ -202,7 +202,9 @@ def _init_native_isolation(isolation):
     except Exception as e:
         raise RuntimeError(f"Failed to load native python sandbox library: {e}")
 
-    lib.FastGPTInitPythonSandbox.argtypes = [_ctypes.c_int, _ctypes.c_int, _ctypes.c_int]
+    lib.FastGPTInitPythonSandbox.argtypes = [
+        _ctypes.c_int, _ctypes.c_int, _ctypes.c_int, _ctypes.c_int
+    ]
     lib.FastGPTInitPythonSandbox.restype = _ctypes.c_int
     lib.FastGPTLastError.argtypes = []
     lib.FastGPTLastError.restype = _ctypes.c_void_p
@@ -212,7 +214,8 @@ def _init_native_isolation(isolation):
     ret = lib.FastGPTInitPythonSandbox(
         int(isolation.get('uid') or 65537),
         int(isolation.get('gid') or 65537),
-        1 if isolation.get('enableNetwork') else 0
+        1 if isolation.get('enableNetwork') else 0,
+        1 if isolation.get('enableSeccomp') else 0
     )
     if ret == 0:
         _native_isolation_ready = True
@@ -224,6 +227,7 @@ def _init_native_isolation(isolation):
     finally:
         if err_ptr:
             lib.FastGPTFreeCString(err_ptr)
+
     raise RuntimeError(err_text or f"Native python sandbox init failed: {ret}")
 
 

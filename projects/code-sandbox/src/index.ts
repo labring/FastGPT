@@ -9,6 +9,7 @@ import type { ExecuteOptions } from './types';
 import { getErrText } from './utils';
 import { configureLogger, getLogger, LogCategories } from './utils/logger';
 import { QueueIdLimiter } from './utils/queue-id-limiter';
+import { getSeccompConfig } from './isolated/seccomp-config';
 
 await configureLogger();
 
@@ -93,6 +94,12 @@ const app = new Hono();
 const jsPool = new ProcessPool(env.SANDBOX_POOL_SIZE);
 const pythonRunner = new PythonIsolatedRunner();
 const queueIdLimiter = new QueueIdLimiter(env.SANDBOX_QUEUE_ID_CONCURRENCY);
+
+if (!getSeccompConfig().enableSeccomp) {
+  serverLogger.warn(
+    'SECURITY WARNING: application seccomp is explicitly disabled for JS and Python sandboxes; chroot and UID/GID isolation remain enabled'
+  );
+}
 
 if (queueIdLimiter.enabled) {
   serverLogger.info(

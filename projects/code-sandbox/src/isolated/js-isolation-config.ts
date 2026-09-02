@@ -13,8 +13,9 @@ export function shouldEnableJsNativeIsolation(): boolean {
 /**
  * 校验 Linux JS worker 启动所需的原生隔离资产。
  *
- * chroot/seccomp/降权是 Linux 多租户边界的一部分，不能在资产缺失时静默退化。
- * 非 Linux 仅用于本地开发，不声明具备 OS 级隔离。
+ * chroot/降权是 Linux 多租户边界的一部分，不能在资产缺失时静默退化；seccomp
+ * 默认启用且失败时 fail-closed，只有部署者显式配置后才跳过。非 Linux 仅用于
+ * 本地开发，不声明具备 OS 级隔离。
  */
 export function assertJsNativeIsolationReady(addonPath: string): void {
   if (!shouldEnableJsNativeIsolation()) return;

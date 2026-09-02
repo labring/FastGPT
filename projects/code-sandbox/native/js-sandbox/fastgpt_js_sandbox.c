@@ -25,6 +25,13 @@ static bool read_int32_property(napi_env env, napi_value object, const char *nam
   return napi_get_value_int32(env, value, result) == napi_ok;
 }
 
+static bool read_bool_property(napi_env env, napi_value object, const char *name,
+                               bool *result) {
+  napi_value value;
+  if (napi_get_named_property(env, object, name, &value) != napi_ok) return false;
+  return napi_get_value_bool(env, value, result) == napi_ok;
+}
+
 static bool read_string_property(napi_env env, napi_value object, const char *name,
                                  char *result, size_t result_size) {
   napi_value value;
@@ -95,6 +102,7 @@ static napi_value init_sandbox(napi_env env, napi_callback_info info) {
   napi_value undefined;
   int32_t uid = 0;
   int32_t gid = 0;
+  bool enable_seccomp = true;
   char cwd[256] = "/app/code-sandbox";
 
   napi_get_undefined(env, &undefined);
@@ -117,6 +125,13 @@ static napi_value init_sandbox(napi_env env, napi_callback_info info) {
     napi_throw_range_error(env, NULL, "uid/gid must be positive");
     return NULL;
   }
+  bool has_enable_seccomp = false;
+  if (napi_has_named_property(env, argv[0], "enableSeccomp", &has_enable_seccomp) == napi_ok &&
+      has_enable_seccomp &&
+      !read_bool_property(env, argv[0], "enableSeccomp", &enable_seccomp)) {
+    napi_throw_type_error(env, NULL, "enableSeccomp must be a boolean");
+    return NULL;
+  }
 
   if (chroot(".") != 0) return throw_errno(env, "chroot");
   if (chdir(cwd) != 0) return throw_errno(env, "chdir");
@@ -135,7 +150,7 @@ static napi_value init_sandbox(napi_env env, napi_callback_info info) {
     napi_throw_error(env, NULL, "dumpable verification failed");
     return NULL;
   }
-  if (install_seccomp() != 0) return throw_errno(env, "seccomp");
+  if (enable_seccomp && install_seccomp() != 0) return throw_errno(env, "seccomp");
 
   return undefined;
 }

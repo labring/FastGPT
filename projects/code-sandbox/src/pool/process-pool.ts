@@ -17,6 +17,7 @@ import {
   JS_SANDBOX_UID,
   shouldEnableJsNativeIsolation
 } from '../isolated/js-isolation-config';
+import { getSeccompConfig } from '../isolated/seccomp-config';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const isCompiled = import.meta.url.endsWith('.js');
@@ -43,7 +44,8 @@ export class ProcessPool extends BaseProcessPool {
           addonPath: NATIVE_SANDBOX_ADDON,
           uid: JS_SANDBOX_UID,
           gid: JS_SANDBOX_GID,
-          cwd: '/app/code-sandbox'
+          cwd: '/app/code-sandbox',
+          ...getSeccompConfig()
         }
       }
     });
