@@ -31,8 +31,8 @@ export const ChatControllerPath: OpenAPIPath = {
   '/v2/chat/stop': {
     post: {
       summary: '停止会话',
-      description: `停止正在运行的会话, 会尝试等待当前节点结束后返回，最长 5s，超过 5s 仍未结束，则会返回成功。
-  LLM 节点，流输出时会同时被终止，但 HTTP 请求节点这种可能长时间运行的，不会被终止。`,
+      description: `为正在运行的会话写入停止标记并立即返回。客户端收到成功响应后应中断当前流式请求。
+  工作流会在后续安全检查点停止调度；HTTP 请求等无法主动中断的当前节点仍需等待其自行结束。`,
       tags: [DevApiTagsMap.chatController, SystemOpenApiTagMap.chatController],
       requestBody: {
         content: {
@@ -43,7 +43,7 @@ export const ChatControllerPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功停止工作流',
+          description: '成功写入工作流停止标记',
           content: {
             'application/json': {
               schema: StopV2ChatResponseSchema

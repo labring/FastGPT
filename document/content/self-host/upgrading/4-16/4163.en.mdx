@@ -5,6 +5,12 @@ upgradeTags:
   - IN PROGRESS
 ---
 
+## ⚙️ Improvements
+
+1. Improved chat pausing: the stop request now returns as soon as the Workflow stop marker is saved. After confirmation, the client closes the active response stream instead of waiting up to five seconds.
+2. Preserved partial reasoning when a chat is paused before answer text starts, so the reasoning remains available after a refresh.
+3. Centered citation markers below an image when the image is followed only by citations. Inline text citations keep their existing layout.
+
 ## 🛠️ Code Improvements
 
 1. Refactored storage for system model selections.

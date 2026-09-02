@@ -13,16 +13,13 @@ import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { useTranslation } from 'next-i18next';
 import type { MarkChatReadBodyType } from '@fastgpt/global/openapi/core/chat/history/api';
 import { postStopV2Chat } from '@/web/core/chat/api';
-import type { ChatBoxInputType, StopChatFnResult, ChatGenerateStatusChangeHandler } from './type';
+import type { ChatBoxInputType, ChatGenerateStatusChangeHandler } from './type';
 import type { StartChatFnProps } from '../type';
 import ChatInput from './Input/ChatInput';
 import AgentAskComposer from './Input/AgentAskComposer';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import {
-  ChatGenerateStatusEnum,
-  ChatRoleEnum,
-  ChatStatusEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { getInteractiveByHistories, isPendingAgentAsk } from './utils/interactive';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
@@ -66,6 +63,7 @@ import {
 } from '../context/quickReplyContext';
 import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
+import { requestStopAndAbortClient } from './utils/stop';
 
 const ChatHomeVariablesForm = dynamic(() => import('./components/home/ChatHomeVariablesForm'));
 const DesktopHomeLayout = dynamic(() => import('./components/home/DesktopHomeLayout'));
@@ -248,17 +246,6 @@ const ChatBox = ({
 
     return onMarkChatRead(data);
   });
-  const requestStopChat = useMemoizedFn(async (): Promise<StopChatFnResult> => {
-    const result = await postStopV2Chat({
-      ...chatAuthTarget,
-      chatId
-    });
-
-    return {
-      chatGenerateStatus: result.chatGenerateStatus ?? ChatGenerateStatusEnum.done,
-      completed: result.completed
-    };
-  });
   const finishChatGenerateStatus = useMemoizedFn(
     ({
       status,
@@ -366,6 +353,16 @@ const ChatBox = ({
     notifyChatGenerateStatusChange,
     finishChatGenerateStatus
   });
+  const requestStopChat = useMemoizedFn(async () => {
+    await requestStopAndAbortClient({
+      requestStop: () =>
+        postStopV2Chat({
+          ...chatAuthTarget,
+          chatId
+        }),
+      abortClientRequest: () => abortRequest('stop')
+    });
+  });
   const sendPromptWithDisabledGuard = useMemoizedFn((input: ChatBoxInputType) => {
     if (disabledSendTip) {
       toast({
@@ -375,20 +372,6 @@ const ChatBox = ({
       return;
     }
     sendPrompt(input);
-  });
-
-  const handleStopSettled = useMemoizedFn((status: ChatGenerateStatusEnum, completed: boolean) => {
-    const nextStatus = completed ? status : ChatGenerateStatusEnum.generating;
-    setChatBoxData((state) =>
-      state.chatId === chatId && state.sourceKey === sourceKey
-        ? {
-            ...state,
-            chatGenerateStatus: nextStatus,
-            hasBeenRead: false
-          }
-        : state
-    );
-    notifyChatGenerateStatusChange(nextStatus, { hasBeenRead: false });
   });
 
   const { isRecordActionLoading, retryInput, editInput } = useChatRecordActions({
@@ -660,7 +643,6 @@ const ChatBox = ({
         <ChatInput
           onSendMessage={sendPromptWithDisabledGuard}
           onStopChat={requestStopChat}
-          onStopSettled={handleStopSettled}
           enableInputGuide={resolvedFeatures.inputGuide}
           enableVoiceInput={resolvedFeatures.voice}
           disableSend={isRoundPending || (!isReady && !disabledSendTip)}
@@ -731,7 +713,6 @@ const ChatBox = ({
                     onSendMessage={sendPromptWithDisabledGuard}
                     lastInteractive={lastInteractive}
                     onStopChat={requestStopChat}
-                    onStopSettled={handleStopSettled}
                     enableInputGuide={resolvedFeatures.inputGuide}
                     enableVoiceInput={resolvedFeatures.voice}
                     disableSend={isRoundPending}

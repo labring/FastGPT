@@ -838,6 +838,72 @@ describe('runWorkflow catchError', () => {
   });
 });
 
+describe('runWorkflow assistant response aggregation', () => {
+  it('preserves reasoning when a stopped chat node has not produced answer text', async () => {
+    const originalChatNodeDispatch = callbackMap[FlowNodeTypeEnum.chatNode];
+    const reasoningText = 'Partial reasoning before the user stopped the workflow.';
+    const chatNode = createNode('chat', FlowNodeTypeEnum.chatNode);
+    chatNode.isEntry = true;
+
+    callbackMap[FlowNodeTypeEnum.chatNode] = vi.fn().mockResolvedValue({
+      data: {
+        answerText: '',
+        reasoningText
+      },
+      [DispatchNodeResponseKeyEnum.answerText]: '',
+      [DispatchNodeResponseKeyEnum.reasoningText]: reasoningText
+    });
+
+    try {
+      const result = await runWorkflow({
+        apiVersion: 'v2',
+        mode: 'chat',
+        runningAppInfo: {
+          id: '67e0d5535c02d1d5cdede721',
+          name: 'reasoning persistence test',
+          teamId: '654a4107c32f3bf5f998452f',
+          tmbId: '65ab7007462ada7dbb899948'
+        },
+        runningUserInfo: {
+          teamId: '654a4107c32f3bf5f998452f',
+          tmbId: '65ab7007462ada7dbb899948',
+          teamName: 'team',
+          memberName: 'member',
+          contact: '',
+          username: 'user'
+        },
+        uid: 'reasoning-persistence-test',
+        lang: 'zh-CN',
+        histories: [],
+        query: [],
+        variables: {},
+        chatConfig: {},
+        runtimeNodes: [chatNode],
+        runtimeEdges: [],
+        variableState: createWorkflowVariableState(),
+        externalProvider: {},
+        workflowDispatchDeep: 0,
+        maxRunTimes: 10,
+        stream: false,
+        responseDetail: true,
+        responseAllData: true,
+        checkIsStopping: () => false
+      } as any);
+
+      expect(callbackMap[FlowNodeTypeEnum.chatNode]).toHaveBeenCalledTimes(1);
+      expect(result[DispatchNodeResponseKeyEnum.assistantResponses]).toEqual([
+        {
+          reasoning: {
+            content: reasoningText
+          }
+        }
+      ]);
+    } finally {
+      callbackMap[FlowNodeTypeEnum.chatNode] = originalChatNodeDispatch;
+    }
+  });
+});
+
 describe('WorkflowQueue', () => {
   describe('WorkflowQueue utils', () => {
     // buildNodeEdgeGroupsMap 已经单独写了
