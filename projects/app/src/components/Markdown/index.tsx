@@ -26,6 +26,7 @@ import {
   updateStreamBlockAnimations,
   type StreamBlockRuntime
 } from './streamAnimationRuntime';
+import { rehypeImageCitations } from './rehypeImageCitations';
 
 const CodeLight = dynamic(() => import('./codeBlock/CodeLight'), { ssr: false });
 const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'), { ssr: false });
@@ -42,7 +43,8 @@ const markdownRemarkPlugins: PluggableList = [
 ];
 const markdownBaseRehypePlugins: PluggableList = [
   RehypeKatex,
-  [RehypeExternalLinks, { target: '_blank' }]
+  [RehypeExternalLinks, { target: '_blank' }],
+  rehypeImageCitations
 ];
 const markdownUrlTransform = (val: string) => val;
 

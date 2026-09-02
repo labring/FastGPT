@@ -49,11 +49,6 @@ export type SendPromptFnType = (
   }
 ) => void;
 
-export type StopChatFnResult = {
-  chatGenerateStatus: ChatGenerateStatusEnum;
-  completed: boolean;
-};
-
 export type ChatGenerateStatusChangePayload = {
   sourceTarget: ChatSourceTarget;
   chatId: string;

@@ -5,12 +5,7 @@ import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import {
-  type ChatBoxInputFormType,
-  type ChatBoxInputType,
-  type SendPromptFnType,
-  type StopChatFnResult
-} from '../type';
+import { type ChatBoxInputFormType, type ChatBoxInputType, type SendPromptFnType } from '../type';
 import { ChatInputDefaultHeight, ChatTypeEnum, textareaMinH } from '../constants';
 import { useFieldArray, useWatch, type UseFormReturn } from 'react-hook-form';
 import { ChatBoxContext } from '../Provider';
@@ -28,7 +23,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import VoiceInput, { type VoiceInputComponentRef } from './VoiceInput';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
 const PLACEHOLDER_APP_NAME_TOKEN = '__APP_NAME__';
@@ -36,8 +31,7 @@ const PLACEHOLDER_APP_NAME_TOKEN = '__APP_NAME__';
 type ChatInputProps = BoxProps & {
   lastInteractive?: WorkflowInteractiveResponseType;
   onSendMessage: SendPromptFnType;
-  onStopChat: () => Promise<StopChatFnResult>;
-  onStopSettled?: (status: ChatGenerateStatusEnum, completed: boolean) => void;
+  onStopChat: () => Promise<void>;
   enableInputGuide: boolean;
   enableVoiceInput: boolean;
   disableSend?: boolean;
@@ -50,7 +44,6 @@ const ChatInput = ({
   lastInteractive,
   onSendMessage,
   onStopChat,
-  onStopSettled,
   enableInputGuide,
   enableVoiceInput,
   disableSend,
@@ -186,11 +179,10 @@ const ChatInput = ({
   const { runAsync: handleStop, loading: isStopping } = useRequest(async () => {
     try {
       if (isChatting) {
-        const result = await onStopChat();
-        onStopSettled?.(result.chatGenerateStatus, result.completed);
+        await onStopChat();
       }
     } catch {
-      onStopSettled?.(ChatGenerateStatusEnum.generating, false);
+      return;
     }
   });
 

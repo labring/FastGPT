@@ -60,6 +60,10 @@
   margin-bottom: 0 !important;
 }
 
+.markdown :global(.image-citation-paragraph) {
+  text-align: center;
+}
+
 .markdown a.absent {
   color: #cc0000;
 }
