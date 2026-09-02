@@ -36,7 +36,6 @@ The endpoint is safe to run repeatedly. After applying the migration, run anothe
 
 1. Added LDAP member and organizational structure sync to FastGPT SSO Service, along with separate environment variable templates and configuration guides for each SSO provider.
 2. File upload fields in Workflow Tools can now be configured for Agent-generated input. Historical file fields remain manual by default to avoid behavior changes after an upgrade.
-3. Collaborator list APIs for Apps, Datasets, and Agent Skills can now return Team member login usernames on request.
 
 ## ⚙️ Improvements
 
@@ -45,9 +44,6 @@ The endpoint is safe to run repeatedly. After applying the migration, run anothe
 3. Centered citation markers below an image when the image is followed only by citations. Inline text citations keep their existing layout.
 4. Improved generation conflict recovery: when the current chat is still generating on the server, the client detects the conflict and restores the existing response stream instead of adding an empty message or showing an error state.
 5. Made collapsed processing previews interactive. You can now select a reasoning or tool-call preview to expand its matching details.
-6. Improved model list loading states. When multiple identities or pages load the model catalog concurrently, only the page waiting for validation shows a loading state.
-7. Improved model configuration startup. FastGPT refreshes member model catalog caches only when published model identities change.
-8. Simplified the WeChat Official Account publishing channel name.
 
 ## 🐛 Fixes
 
