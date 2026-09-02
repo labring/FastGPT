@@ -19,12 +19,7 @@ import {
   type ReferenceArrayValueType,
   type ReferenceItemValueType
 } from './type/io';
-import {
-  isHttpToolSetRuntimeConfig,
-  isMcpToolSetRuntimeConfig,
-  type NodeToolConfigType,
-  type StoreNodeItemType
-} from './type/node';
+import type { NodeToolConfigType, StoreNodeItemType } from './type/node';
 import type { AppChatConfigType, AppSchemaType, AppWelcomeConfigType } from '../app/type';
 import type { VariableItemType } from '../app/variable/type';
 import { normalizeAndParseVariableList } from '../app/variable/utils';
@@ -433,10 +428,7 @@ export const toolSetData2FlowNodeIO = ({
   const toolConfig: NodeToolConfigType | undefined = (() => {
     if (!toolSetNode?.toolConfig) return undefined;
 
-    if (
-      toolSetNode.toolConfig.httpToolSet &&
-      isHttpToolSetRuntimeConfig(toolSetNode.toolConfig.httpToolSet)
-    ) {
+    if (toolSetNode.toolConfig.httpToolSet && 'toolList' in toolSetNode.toolConfig.httpToolSet) {
       if (toolId ?? toolSetNode.pluginId) {
         return {
           ...toolSetNode.toolConfig,
@@ -458,10 +450,7 @@ export const toolSetData2FlowNodeIO = ({
         }
       };
     }
-    if (
-      toolSetNode.toolConfig.mcpToolSet &&
-      isMcpToolSetRuntimeConfig(toolSetNode.toolConfig.mcpToolSet)
-    ) {
+    if (toolSetNode.toolConfig.mcpToolSet && 'toolList' in toolSetNode.toolConfig.mcpToolSet) {
       if (toolId ?? toolSetNode.pluginId) {
         return {
           ...toolSetNode.toolConfig,
