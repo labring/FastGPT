@@ -119,6 +119,27 @@ describe('preflightXlsx', () => {
     });
   });
 
+  it('stops scanning a non-worksheet XML entry immediately after identifying its root', async () => {
+    const buffer = await createZip([
+      {
+        path: 'xl/sharedStrings.xml',
+        content: `<sst><si data-value="${'x'.repeat(20 * 1024)}"/></sst>`
+      },
+      {
+        path: 'xl/worksheets/sheet1.xml',
+        content: worksheetXml({
+          dimension: 'A1',
+          rows: '<row r="1"><c r="A1"/></row>'
+        })
+      }
+    ]);
+
+    await expect(preflightXlsx({ buffer, limits: defaultLimits })).resolves.toMatchObject({
+      worksheetCount: 1,
+      workbookCellCount: 1
+    });
+  });
+
   it('rejects cumulative worksheet ranges above the workbook cell limit', async () => {
     const content = worksheetXml({
       dimension: 'A1:B2',
