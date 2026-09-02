@@ -32,6 +32,13 @@ import { useTranslation } from 'next-i18next';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
+const getToolNodeIds = (edges: Edge<any>[]) =>
+  new Set(
+    edges
+      .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
+      .map((edge) => edge.target)
+  );
+
 type WorkflowNodeContextType = {
   nodes: Node<FlowNodeItemType, string | undefined>[];
   rawNodesMap: Record<string, Node<FlowNodeItemType, string | undefined>>;
@@ -340,6 +347,30 @@ const WorkflowInitContextProvider = ({
 
   // Edges
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const previousToolNodeIdsRef = useRef<Set<string>>();
+
+  useDeepCompareEffect(() => {
+    const previousToolNodeIds = previousToolNodeIdsRef.current;
+    const nextToolNodeIds = getToolNodeIds(edges);
+    previousToolNodeIdsRef.current = nextToolNodeIds;
+    if (
+      !previousToolNodeIds ||
+      (previousToolNodeIds.size === nextToolNodeIds.size &&
+        [...previousToolNodeIds].every((nodeId) => nextToolNodeIds.has(nodeId)))
+    ) {
+      return;
+    }
+
+    setNodes((state) =>
+      captureDeletedWorkflowReferenceSnapshots({
+        previousNodes: state,
+        nextNodes: state,
+        previousToolNodeIds,
+        nextToolNodeIds,
+        nodeIds: []
+      })
+    );
+  }, [edges, setNodes]);
 
   const toolNodesMap = useMemoEnhance(() => {
     const selectedToolEdgeMap: Record<string, boolean> = {};

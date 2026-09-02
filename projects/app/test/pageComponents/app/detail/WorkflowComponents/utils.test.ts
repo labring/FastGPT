@@ -1173,6 +1173,46 @@ describe('WorkflowComponents utils', () => {
       expect(result[1]).toBe(untouched);
     });
 
+    it('captures references to HTTP tool parameters when the node leaves tool mode', () => {
+      const httpTool = createNode({
+        nodeId: 'http-tool',
+        name: 'HTTP tool',
+        avatar: 'http-avatar',
+        flowNodeType: FlowNodeTypeEnum.httpRequest468,
+        inputs: [
+          {
+            key: 'toolParam',
+            label: 'Tool parameter',
+            canEdit: true,
+            defaultToAgentGenerated: true,
+            renderTypeList: [FlowNodeInputTypeEnum.input],
+            valueType: WorkflowIOValueTypeEnum.string
+          },
+          {
+            key: NodeInputKeyEnum.httpReqUrl,
+            value: 'https://example.com/{{$http-tool.toolParam$}}'
+          }
+        ]
+      });
+
+      const result = captureDeletedWorkflowReferenceSnapshots({
+        previousNodes: [httpTool],
+        nextNodes: [httpTool],
+        previousToolNodeIds: new Set(['http-tool']),
+        nextToolNodeIds: new Set(),
+        nodeIds: []
+      });
+
+      expect(result[0].data.inputs[1].referenceSnapshots).toEqual([
+        {
+          reference: ['http-tool', 'toolParam'],
+          sourceLabel: 'HTTP tool',
+          outputLabel: 'Tool parameter',
+          icon: 'http-avatar'
+        }
+      ]);
+    });
+
     it('skips hidden HTTP tool parameter reference checks', () => {
       const toolCall = createNode({
         nodeId: 'tool-call',
@@ -1217,6 +1257,64 @@ describe('WorkflowComponents utils', () => {
 
       expect(issueMap['http-tool'] ?? []).not.toContainEqual(
         expect.objectContaining({ inputKey: 'toolParam', code: 'invalid_reference' })
+      );
+    });
+
+    it('keeps HTTP tool parameter references valid only while connected as a tool', () => {
+      const toolCall = createNode({
+        nodeId: 'tool-call',
+        name: 'Tool call',
+        flowNodeType: FlowNodeTypeEnum.toolCall
+      });
+      const httpTool = createNode({
+        nodeId: 'http-tool',
+        name: 'HTTP tool',
+        flowNodeType: FlowNodeTypeEnum.httpRequest468,
+        inputs: [
+          {
+            key: 'toolParam',
+            label: 'Tool parameter',
+            canEdit: true,
+            defaultToAgentGenerated: true,
+            renderTypeList: [FlowNodeInputTypeEnum.input],
+            valueType: WorkflowIOValueTypeEnum.string
+          },
+          {
+            key: NodeInputKeyEnum.httpReqUrl,
+            label: 'URL',
+            renderTypeList: [FlowNodeInputTypeEnum.input],
+            value: 'https://example.com/{{$http-tool.toolParam$}}'
+          }
+        ]
+      });
+      const toolEdge = {
+        source: 'tool-call',
+        target: 'http-tool',
+        sourceHandle: 'tool',
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      };
+
+      expect(
+        checkWorkflowNodeIssues({
+          nodes: [toolCall, httpTool],
+          edges: [toolEdge]
+        })['http-tool'] ?? []
+      ).not.toContainEqual(
+        expect.objectContaining({
+          inputKey: NodeInputKeyEnum.httpReqUrl,
+          code: 'invalid_reference'
+        })
+      );
+      expect(
+        checkWorkflowNodeIssues({
+          nodes: [toolCall, httpTool],
+          edges: []
+        })['http-tool']
+      ).toContainEqual(
+        expect.objectContaining({
+          inputKey: NodeInputKeyEnum.httpReqUrl,
+          code: 'invalid_reference'
+        })
       );
     });
 

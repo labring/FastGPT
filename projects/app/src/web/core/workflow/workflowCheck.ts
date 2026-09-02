@@ -43,6 +43,7 @@ import {
   workflowValueTypeIsCompatible
 } from './utils';
 import {
+  getHTTPToolParamOutputs,
   getWorkflowReferenceIssueCode as getReferenceIssueCode,
   getWorkflowReferenceItemsFromValue,
   getWorkflowReferenceStatuses
@@ -466,24 +467,28 @@ export const checkWorkflowNodeIssues = ({
         edges
       })
     );
-    const getInputSourceNodes = (input: FlowNodeInputItemType) => {
-      if (data.flowNodeType !== FlowNodeTypeEnum.httpRequest468 || input.canEdit !== true) {
-        return sourceNodes;
-      }
-
-      return getSourceNodes(
-        getNodeAllSourceIds({
-          nodeId: data.nodeId,
-          getNodeById: (sourceNodeId) => context.nodeMap.get(sourceNodeId ?? '')?.data,
-          edges,
-          includeChildren: true,
-          childrenNodeIdListMap: context.childrenNodeIdListMap
-        })
-      );
-    };
     const isToolNode = context.incomingEdgesMap
       .get(data.nodeId)
       ?.some((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools);
+    const getInputSourceNodes = (input: FlowNodeInputItemType) => {
+      const inputSourceNodes =
+        data.flowNodeType === FlowNodeTypeEnum.httpRequest468 && input.canEdit === true
+          ? getSourceNodes(
+              getNodeAllSourceIds({
+                nodeId: data.nodeId,
+                getNodeById: (sourceNodeId) => context.nodeMap.get(sourceNodeId ?? '')?.data,
+                edges,
+                includeChildren: true,
+                childrenNodeIdListMap: context.childrenNodeIdListMap
+              })
+            )
+          : sourceNodes;
+      const toolParamOutputs = isToolNode ? getHTTPToolParamOutputs(data) : [];
+
+      return toolParamOutputs.length > 0
+        ? [...inputSourceNodes, { ...data, outputs: toolParamOutputs }]
+        : inputSourceNodes;
+    };
     const status = data.status ?? data.pluginData?.status;
     const isToolOffline = status === PluginStatusEnum.Offline;
 

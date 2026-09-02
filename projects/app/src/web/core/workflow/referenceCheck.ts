@@ -3,7 +3,10 @@ import {
   VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import type {
   FlowNodeInputItemType,
   ReferenceItemValueType,
@@ -16,6 +19,7 @@ import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/
 import type { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import type { Node } from 'reactflow';
 import { isEqual } from 'lodash-es';
+import { isToolParamInput } from '@fastgpt/global/core/app/formEdit/utils';
 import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import {
   filterSelectableWorkflowNodeOutputs,
@@ -40,6 +44,18 @@ export type WorkflowReferenceStatus = {
 };
 
 export type WorkflowReferenceIssueCode = Exclude<WorkflowReferenceStatusCode, 'empty' | 'valid'>;
+
+/** HTTP 作为工具时，工具参数可被该节点的其他输入引用。 */
+export const getHTTPToolParamOutputs = (node: FlowNodeItemType) =>
+  node.flowNodeType === FlowNodeTypeEnum.httpRequest468
+    ? node.inputs.filter(isToolParamInput).map((input) => ({
+        id: input.key,
+        key: input.key,
+        type: FlowNodeOutputTypeEnum.static,
+        label: input.label ?? input.key,
+        valueType: input.valueType
+      }))
+    : [];
 
 type GetWorkflowReferenceStatusProps = {
   value: unknown;
@@ -210,7 +226,9 @@ export const captureDeletedWorkflowReferenceSnapshots = ({
   previousChatConfig,
   nextChatConfig,
   globalVariableSourceLabel,
-  nodeIds
+  nodeIds,
+  previousToolNodeIds,
+  nextToolNodeIds
 }: {
   previousNodes: Node<FlowNodeItemType, string | undefined>[];
   nextNodes: Node<FlowNodeItemType, string | undefined>[];
@@ -218,16 +236,22 @@ export const captureDeletedWorkflowReferenceSnapshots = ({
   nextChatConfig?: AppChatConfigType;
   globalVariableSourceLabel?: string;
   nodeIds?: Iterable<string>;
+  previousToolNodeIds?: ReadonlySet<string>;
+  nextToolNodeIds?: ReadonlySet<string>;
 }) => {
   const buildSourceNodes = (
     nodes: Node<FlowNodeItemType, string | undefined>[],
-    chatConfig: AppChatConfigType | undefined
+    chatConfig: AppChatConfigType | undefined,
+    toolNodeIds?: ReadonlySet<string>
   ): WorkflowReferenceSourceNode[] => [
     ...nodes.map(({ data }) => ({
       nodeId: data.nodeId,
       sourceLabel: data.name,
       ...(data.avatar ? { icon: data.avatar } : {}),
-      outputs: data.outputs,
+      outputs: [
+        ...data.outputs,
+        ...(toolNodeIds?.has(data.nodeId) ? getHTTPToolParamOutputs(data) : [])
+      ],
       catchError: data.catchError
     })),
     {
@@ -244,8 +268,12 @@ export const captureDeletedWorkflowReferenceSnapshots = ({
     }
   ];
 
-  const previousSourceNodes = buildSourceNodes(previousNodes, previousChatConfig);
-  const nextSourceNodes = buildSourceNodes(nextNodes, nextChatConfig);
+  const previousSourceNodes = buildSourceNodes(
+    previousNodes,
+    previousChatConfig,
+    previousToolNodeIds
+  );
+  const nextSourceNodes = buildSourceNodes(nextNodes, nextChatConfig, nextToolNodeIds);
 
   const getReferenceKey = (reference: ReferenceItemValueType) => reference.join('\0');
   const previousSourceKeys = new Set(
