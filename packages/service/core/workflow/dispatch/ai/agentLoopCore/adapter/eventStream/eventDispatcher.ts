@@ -43,6 +43,7 @@ export const createAgentLoopCoreEventDispatcher = ({
         const [usage] = normalizeAgentLoopUsages(event.usages);
         if (!usage) return;
         toolRunCollector?.appendContextCompressNodeResponse({
+          modelName: event.modelName,
           usage,
           requestIds: event.requestIds,
           contextCheckpoint: event.contextCheckpoint,

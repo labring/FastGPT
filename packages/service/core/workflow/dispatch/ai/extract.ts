@@ -11,9 +11,9 @@ import {
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 import { sliceJsonStr } from '@fastgpt/global/common/string/tools';
-import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import { type LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import { getNodeErrResponse, getHistories } from '../utils';
-import { getLLMModel } from '../../../ai/model';
+import { getLLMModelData } from '../../../ai/model';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import json5 from 'json5';
 import { getLogger, LogCategories } from '../../../../common/logger';
@@ -30,7 +30,8 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.contextExtractInput]: string;
   [NodeInputKeyEnum.extractKeys]: ContextExtractAgentItemType[];
   [NodeInputKeyEnum.description]: string;
-  [NodeInputKeyEnum.aiModel]: string;
+  [NodeInputKeyEnum.aiModelId]?: string;
+  [NodeInputKeyEnum.aiModel]?: string;
 }>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.success]: boolean;
@@ -38,21 +39,24 @@ type Response = DispatchNodeResultType<{
   [key: string]: any;
 }>;
 
-type ActionProps = Props & { extractModel: LLMModelItemType; lastMemory?: Record<string, any> };
+type ActionProps = Props & {
+  extractModel: LLMSystemModelDataType;
+  lastMemory?: Record<string, any>;
+};
 
 export async function dispatchContentExtract(props: Props): Promise<Response> {
   const {
     runningAppInfo,
     node: { nodeId, name },
     histories,
-    params: { content, history = 6, model, description, extractKeys }
+    params: { content, history = 6, modelId, model, description, extractKeys }
   } = props;
 
   if (!content) {
     return getNodeErrResponse({ error: 'Input is empty' });
   }
 
-  const extractModel = getLLMModel(model);
+  const extractModel = getLLMModelData({ modelId, model });
   const chatHistories = getHistories(history, histories);
 
   const memoryKey = getWorkflowSourceNodeKey({ runningAppInfo, nodeId });
@@ -101,8 +105,8 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
       }
     }
 
-    const { totalPoints, modelName } = formatModelChars2Points({
-      model: extractModel.model,
+    const { totalPoints } = formatModelChars2Points({
+      model: extractModel,
       inputTokens: inputTokens,
       outputTokens: outputTokens
     });
@@ -110,7 +114,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
       {
         moduleName: name,
         totalPoints: usedUserOpenAIKey ? 0 : totalPoints,
-        model: modelName,
+        modelId: extractModel.modelId,
         inputTokens,
         outputTokens
       }
@@ -127,7 +131,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
       },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints: usedUserOpenAIKey ? 0 : totalPoints,
-        model: modelName,
+        model: extractModel.name,
         query: content,
         inputTokens,
         outputTokens,
@@ -202,7 +206,7 @@ const completions = async (props: ActionProps) => {
     usage: { inputTokens, outputTokens, usedUserOpenAIKey }
   } = await createLLMResponse({
     body: {
-      model: extractModel.model,
+      model: extractModel,
       messages: chats2GPTMessages({ messages, reserveId: false, reserveReason: false }),
       stream: true
     },

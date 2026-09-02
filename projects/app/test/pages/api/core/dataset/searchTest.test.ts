@@ -7,7 +7,10 @@ const mockDefaultSearchDatasetData = vi.hoisted(() => vi.fn());
 const mockDeepRagSearch = vi.hoisted(() => vi.fn());
 const mockPushDatasetTestUsage = vi.hoisted(() => vi.fn());
 const mockUpdateApiKeyUsage = vi.hoisted(() => vi.fn());
-const mockGetRerankModel = vi.hoisted(() => vi.fn());
+const mockGetRerankModelData = vi.hoisted(() => vi.fn());
+const mockGetEmbeddingModelData = vi.hoisted(() => vi.fn());
+const mockGetLLMModelData = vi.hoisted(() => vi.fn());
+const mockGetOptionalVlmModelData = vi.hoisted(() => vi.fn());
 const mockAddAuditLog = vi.hoisted(() => vi.fn());
 const mockCreateExternalUrl = vi.hoisted(() => vi.fn());
 const mockTeamFrequencyLimit = vi.hoisted(() => vi.fn());
@@ -34,7 +37,10 @@ vi.mock('@fastgpt/service/support/openapi/tools', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getRerankModel: mockGetRerankModel
+  getRerankModelData: mockGetRerankModelData,
+  getEmbeddingModelData: mockGetEmbeddingModelData,
+  getLLMModelData: mockGetLLMModelData,
+  getOptionalVlmModelData: mockGetOptionalVlmModelData
 }));
 
 vi.mock('@fastgpt/service/support/user/audit/util', () => ({
@@ -78,8 +84,33 @@ describe('searchTest query image auth', () => {
     });
     mockTeamFrequencyLimit.mockResolvedValue(true);
     mockCheckTeamAIPoints.mockResolvedValue(undefined);
-    mockGetRerankModel.mockReturnValue({
-      model: 'mock-rerank-model'
+    mockGetEmbeddingModelData.mockReturnValue({
+      modelId: '68ad85a7463006c963799a01',
+      model: 'mock-vector-model',
+      name: 'Mock vector model',
+      type: 'embedding',
+      config: {}
+    });
+    mockGetOptionalVlmModelData.mockReturnValue({
+      modelId: '68ad85a7463006c963799a02',
+      model: 'mock-vlm-model',
+      name: 'Mock VLM model',
+      type: 'llm',
+      config: { vision: true }
+    });
+    mockGetRerankModelData.mockReturnValue({
+      modelId: '68ad85a7463006c963799a03',
+      model: 'mock-rerank-model',
+      name: 'Mock rerank model',
+      type: 'rerank',
+      config: {}
+    });
+    mockGetLLMModelData.mockReturnValue({
+      modelId: '68ad85a7463006c963799a04',
+      model: 'mock-llm-model',
+      name: 'Mock LLM model',
+      type: 'llm',
+      config: {}
     });
     mockPushDatasetTestUsage.mockReturnValue({
       totalPoints: 0

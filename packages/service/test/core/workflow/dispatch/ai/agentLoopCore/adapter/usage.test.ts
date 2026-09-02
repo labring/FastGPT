@@ -27,7 +27,7 @@ describe('agentLoopUsagesToChatNodeUsages', () => {
         {
           moduleName: 'agent',
           totalPoints: 2,
-          model: 'gpt-4.1',
+          modelId: 'model-id',
           inputTokens: 10,
           outputTokens: 5
         }
@@ -36,7 +36,7 @@ describe('agentLoopUsagesToChatNodeUsages', () => {
       {
         moduleName: 'agent',
         totalPoints: 2,
-        model: 'gpt-4.1',
+        modelId: 'model-id',
         inputTokens: 10,
         outputTokens: 5
       }

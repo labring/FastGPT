@@ -7,7 +7,7 @@
  */
 
 import type { CSSProperties } from 'react';
-import { useMemo, useState, useTransition, useRef } from 'react';
+import { Fragment, useMemo, useState, useTransition, useRef } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
@@ -322,8 +322,8 @@ export default function Editor({
       </LexicalComposer>
 
       {onChangeText &&
-        ExtensionPopover?.map((Item, index) => (
-          <Item key={index} iconButtonStyle={iconButtonStyle} onChangeText={onChangeText} />
+        ExtensionPopover?.map((renderPopover, index) => (
+          <Fragment key={index}>{renderPopover({ iconButtonStyle, onChangeText })}</Fragment>
         ))}
       {showFullScreenIcon && (
         <Flex onClick={onOpenModal} {...iconButtonStyle} right={2}>

@@ -8,15 +8,17 @@ const createModel = (overrides: Record<string, unknown> = {}) =>
     provider: 'openai',
     model: 'gpt-5',
     name: 'GPT-5',
-    maxContext: 128000,
-    maxResponse: 4096,
-    quoteMaxToken: 4096,
-    maxTemperature: 2,
-    showTopP: true,
-    showStopSign: true,
-    responseFormatList: ['json_schema'],
-    functionCall: true,
-    toolChoice: true,
+    config: {
+      maxContext: 128000,
+      maxResponse: 4096,
+      quoteMaxToken: 4096,
+      maxTemperature: 2,
+      showTopP: true,
+      showStopSign: true,
+      responseFormatList: ['json_schema'],
+      functionCall: true,
+      toolChoice: true
+    },
     ...overrides
   }) as any;
 
@@ -69,11 +71,13 @@ describe('mergePiAgentPayload', () => {
       payload: { messages: [] },
       runtime: createRuntime(
         createModel({
-          maxResponse: 1024,
-          maxTemperature: undefined,
-          showTopP: false,
-          showStopSign: false,
-          responseFormatList: []
+          config: {
+            maxResponse: 1024,
+            maxTemperature: undefined,
+            showTopP: false,
+            showStopSign: false,
+            responseFormatList: []
+          }
         }),
         {
           maxTokens: 2048,

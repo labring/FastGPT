@@ -4,7 +4,7 @@ import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { DatasetCiteItemSchema } from '../../../../core/dataset/type';
 import { LinkedListResponseSchema, LinkedPaginationSchema, PaginationSchema } from '../../../api';
 import { ChatItemMiniSchema } from '../../../../core/chat/type';
-import { AppTTSConfigTypeSchema } from '../../../../core/app/type';
+import { AppTTSConfigInputSchema } from '../../app/common/api';
 import { ChatSourceTypeEnum, GetChatTypeEnum } from '../../../../core/chat/constants';
 import {
   createOutLinkChatTargetInputSchema,
@@ -211,7 +211,7 @@ export type GetRecordsV2ResponseType = z.infer<typeof GetRecordsV2ResponseSchema
  * ============================================================================ */
 
 export const GetChatSpeechBodySchema = createOutLinkChatTargetInputSchema({
-  ttsConfig: AppTTSConfigTypeSchema.meta({ description: 'TTS 配置' }),
+  ttsConfig: AppTTSConfigInputSchema.meta({ description: 'TTS 配置' }),
   input: z.string().meta({ example: '你好，世界', description: '要转换的文本内容' })
 }).transform(transformChatAuthTargetInput);
 export type GetChatSpeechBodyType = z.infer<typeof GetChatSpeechBodySchema>;

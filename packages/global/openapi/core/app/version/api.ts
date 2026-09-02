@@ -4,7 +4,7 @@ import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { PaginationSchema } from '../../../api';
 import { OpenAPIStoreNodeItemTypeSchema } from '../../workflow/node';
 import { AppResourceRefsSchema, AppSchemaTypeSchema } from '../../../../core/app/type';
-import { OpenAPIAppChatConfigSchema } from '../common/api';
+import { AppChatConfigInputSchema, OpenAPIAppChatConfigSchema } from '../common/api';
 import { BoolSchema, NumSchema } from '../../../../common/zod';
 
 export const PublishAppQuerySchema = z.object({
@@ -29,6 +29,9 @@ const AppVersionEdgesSchema = AppSchemaTypeSchema.shape.edges.default([]).meta({
 
 const AppVersionChatConfigSchema = OpenAPIAppChatConfigSchema.default({}).meta({
   description: '版本内保存的应用对话配置'
+});
+const AppVersionChatConfigInputSchema = AppChatConfigInputSchema.default({}).meta({
+  description: '本次写入的应用对话配置'
 });
 
 const AppVersionResourceRefsSchema = AppResourceRefsSchema.optional().meta({
@@ -69,7 +72,7 @@ export const PublishAppBodySchema = z.object({
   edges: AppVersionEdgesSchema.optional().meta({
     description: '本次保存的应用连线配置；未传时按空连线保存'
   }),
-  chatConfig: AppVersionChatConfigSchema.optional().meta({
+  chatConfig: AppVersionChatConfigInputSchema.optional().meta({
     description: '本次保存的应用对话配置'
   }),
   isPublish: BoolSchema.optional().meta({

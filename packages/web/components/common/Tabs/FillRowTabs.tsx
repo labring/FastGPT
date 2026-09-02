@@ -92,8 +92,8 @@ const FillRowTabs = (
       overflowX={'auto'}
       overflowY={'hidden'}
       overscrollBehaviorX={'contain'}
-      scrollbarWidth={'none'}
       sx={{
+        scrollbarWidth: 'none',
         '&::-webkit-scrollbar': {
           display: 'none'
         }

@@ -4,6 +4,7 @@ import { Box, useDisclosure } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { SEARCH_TEST_IMAGE_UPLOAD_ENABLED } from './constants';
 import TestInputPanel from './components/TestInputPanel';
 import TestHistories from './components/TestHistories';
@@ -14,10 +15,11 @@ import { useSearchTestImages } from './hooks/useSearchTestImages';
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
 
 const Test = ({ datasetId }: { datasetId: string }) => {
-  const { defaultModels, feConfigs } = useSystemStore();
+  const { feConfigs } = useSystemStore();
+  const { defaultModels } = useUserModelStore();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   // Image search is only meaningful when the dataset has a vision vector model or VLM configured.
-  const canUseImageSearch = !!datasetDetail.vectorModel?.vision || !!datasetDetail.vlmModel;
+  const canUseImageSearch = !!datasetDetail.vectorModel?.config.vision || !!datasetDetail.vlmModel;
 
   const {
     ImageFileSelector,
@@ -74,7 +76,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         <TestInputPanel
           canSubmit={canSubmit}
           canUseImageSearch={canUseImageSearch}
-          datasetMaxToken={datasetDetail.vectorModel?.maxToken}
+          datasetMaxToken={datasetDetail.vectorModel?.config.maxToken}
           isLoading={textTestIsLoading}
           onOpenImageSelector={onOpenImageSelector}
           onOpenSelectMode={onOpenSelectMode}

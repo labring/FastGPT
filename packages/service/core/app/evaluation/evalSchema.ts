@@ -32,8 +32,10 @@ const EvaluationSchema = new Schema({
     required: true
   },
   evalModel: {
-    type: String,
-    required: true
+    type: String
+  },
+  evalModelId: {
+    type: String
   },
   name: {
     type: String,

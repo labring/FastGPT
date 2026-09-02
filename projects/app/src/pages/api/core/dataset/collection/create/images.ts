@@ -20,6 +20,7 @@ import { multer } from '@fastgpt/service/common/file/multer';
 import { datasetImageCollectionFileType } from '@fastgpt/global/common/file/constants';
 import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { getDatasetEmbeddingModel, getDatasetVlmModel } from '@fastgpt/service/core/dataset/model';
 import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
 import { assertUploadRateLimit } from '@fastgpt/service/common/rateLimit/interface/upload';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
@@ -60,8 +61,8 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     });
 
     const { supportVlm, supportImageEmbedding } = getDatasetImageIndexCapability({
-      vectorModel: dataset.vectorModel,
-      vlmModel: dataset.vlmModel
+      vectorModel: getDatasetEmbeddingModel(dataset),
+      vlmModel: getDatasetVlmModel(dataset)
     });
 
     if (!supportVlm && !supportImageEmbedding) {

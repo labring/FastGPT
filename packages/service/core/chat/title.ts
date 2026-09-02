@@ -7,7 +7,7 @@ import type { WorkflowTypedSseEvent } from '@fastgpt/global/core/workflow/runtim
 import { withTimeout } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../common/logger';
 import { createLLMResponse } from '../ai/llm/request';
-import { getDefaultChatTitleModel } from '../ai/model';
+import { getDefaultChatTitleModelData } from '../ai/model';
 import { MongoChat } from './chatSchema';
 import { buildChatSourceQuery, type ChatSourceParams } from './source';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -96,7 +96,7 @@ const generateChatTitleFromQuestion = async ({
   question: string;
   teamId: string;
 }): Promise<string | undefined> => {
-  const titleModel = getDefaultChatTitleModel();
+  const titleModel = getDefaultChatTitleModelData();
   if (!titleModel?.model) return question.slice(0, FALLBACK_CHAT_TITLE_MAX_LENGTH);
   const questionForTitle = question.slice(0, CHAT_TITLE_QUESTION_MAX_LENGTH);
   const userPrompt = `Generate a title for the following source text. Do not answer it.
@@ -114,7 +114,7 @@ Return only the title.`;
       saveLLMResponseRecord: false,
       timeout: CHAT_TITLE_GENERATION_TIMEOUT_MS,
       body: {
-        model: titleModel.model,
+        model: titleModel,
         stream: false,
         messages: [
           {
@@ -126,7 +126,7 @@ Return only the title.`;
             content: userPrompt
           }
         ],
-        ...(titleModel.reasoning ? { reasoning_effort: 'none' as const } : {})
+        ...(titleModel.config.reasoning ? { reasoning_effort: 'none' as const } : {})
       }
     });
     answerText = response.answerText;

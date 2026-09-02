@@ -17,7 +17,7 @@ import {
   isValidArrayReferenceValue,
   getElseIFLabel,
   clientGetWorkflowToolRunUserQuery,
-  removeUnauthModels
+  formatModels
 } from '@fastgpt/global/core/workflow/utils';
 import {
   FlowNodeInputTypeEnum,
@@ -46,6 +46,7 @@ import {
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 describe('getHandleId', () => {
   it('should return correct handle id for source type', () => {
@@ -1345,45 +1346,189 @@ describe('clientGetWorkflowToolRunUserQuery', () => {
   });
 });
 
-describe('removeUnauthModels', () => {
-  it('should return modules unchanged when modules is undefined', async () => {
-    const result = await removeUnauthModels({ modules: undefined as any });
+describe('formatModels', () => {
+  const models = [
+    { model: 'gpt-4', modelId: '68ad85a7463006c963799a05', type: ModelTypeEnum.llm },
+    { model: 'rerank-v1', modelId: '68ad85a7463006c963799a06', type: ModelTypeEnum.rerank },
+    { model: 'extension-v1', modelId: '68ad85a7463006c963799a07', type: ModelTypeEnum.llm },
+    { model: 'deep-search-v1', modelId: '68ad85a7463006c963799a08', type: ModelTypeEnum.llm },
+    { model: 'legacy-tts', modelId: 'existing-tts-id', type: ModelTypeEnum.tts }
+  ];
+  const defaultModelIds = {
+    [ModelTypeEnum.llm]: models[2].modelId,
+    [ModelTypeEnum.rerank]: models[1].modelId,
+    [ModelTypeEnum.tts]: models[4].modelId
+  };
+
+  it('returns undefined nodes unchanged', () => {
+    const result = formatModels({ nodes: undefined, models, modelReferencePolicy: 'fallback' });
     expect(result).toBeUndefined();
   });
 
-  it('should not modify model value when it is in allowedModels', async () => {
-    const modules = [
+  it('converts legacy chat config models and removes deprecated fields', () => {
+    const chatConfig = {
+      questionGuide: { open: true, model: 'gpt-4' },
+      ttsConfig: {
+        type: 'model' as const,
+        modelId: 'existing-tts-id',
+        model: 'legacy-tts',
+        voice: 'alloy'
+      }
+    };
+
+    formatModels({ nodes: [], chatConfig, models, modelReferencePolicy: 'fallback' });
+
+    expect(chatConfig.questionGuide).toEqual({
+      open: true,
+      modelId: '68ad85a7463006c963799a05'
+    });
+    expect(chatConfig.ttsConfig).toEqual({
+      type: 'model',
+      modelId: 'existing-tts-id',
+      voice: 'alloy'
+    });
+  });
+
+  it('uses an empty fallback when no same-type model is available for create flows', () => {
+    const chatConfig = {
+      questionGuide: { open: true, model: 'temporarily-unavailable-model' }
+    };
+
+    formatModels({ nodes: [], chatConfig, models: [], modelReferencePolicy: 'fallback' });
+
+    expect(chatConfig.questionGuide).toEqual({
+      open: true,
+      modelId: ''
+    });
+  });
+
+  it('falls back to the system default model when an optional chat feature is disabled', () => {
+    const chatConfig = {
+      questionGuide: { open: false, modelId: 'disabled-llm' },
+      ttsConfig: {
+        type: 'web' as const,
+        model: 'disabled-tts'
+      }
+    };
+
+    expect(() =>
+      formatModels({
+        nodes: [],
+        chatConfig,
+        models,
+        defaultModelIds,
+        modelReferencePolicy: 'validate'
+      })
+    ).not.toThrow();
+
+    expect(chatConfig.questionGuide).toEqual({ open: false, modelId: models[2].modelId });
+    expect(chatConfig.ttsConfig).toEqual({
+      type: 'web',
+      modelId: models[4].modelId
+    });
+  });
+
+  it('does not synthesize optional chat model fields when no model was configured', () => {
+    const chatConfig = {
+      questionGuide: { open: false },
+      ttsConfig: { type: 'web' as const, voice: 'alloy' }
+    };
+
+    formatModels({ nodes: [], chatConfig, models, modelReferencePolicy: 'validate' });
+
+    expect(chatConfig.questionGuide).not.toHaveProperty('modelId');
+    expect(chatConfig.ttsConfig).not.toHaveProperty('modelId');
+  });
+
+  it('throws for an unresolved chat model when its feature is enabled', () => {
+    const chatConfig = {
+      questionGuide: { open: true, modelId: 'disabled-llm' }
+    };
+
+    expect(() =>
+      formatModels({ nodes: [], chatConfig, models, modelReferencePolicy: 'validate' })
+    ).toThrow('disabled-llm 模型已停用');
+  });
+
+  it('replaces every static legacy workflow model key and value with modelId', () => {
+    const nodes = [
       {
         nodeId: 'node1',
-        flowNodeType: FlowNodeTypeEnum.chatNode,
+        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
         name: 'Chat',
         inputs: [
           {
-            key: 'model',
+            key: NodeInputKeyEnum.aiModel,
             label: 'Model',
             value: 'gpt-4',
             selectedType: FlowNodeInputTypeEnum.selectLLMModel,
             renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.datasetSearchRerankModel,
+            label: 'Rerank model',
+            value: 'rerank-v1',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.datasetSearchExtensionModel,
+            label: 'Extension model',
+            value: 'extension-v1',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.datasetDeepSearchModel,
+            label: 'Deep search model',
+            value: 'deep-search-v1',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
           }
         ],
         outputs: []
       }
     ];
-    const allowedModels = new Set(['gpt-4', 'gpt-3.5-turbo']);
 
-    const result = await removeUnauthModels({ modules, allowedModels });
-    expect(result?.[0].inputs[0].value).toBe('gpt-4');
+    const result = formatModels({ nodes, models, modelReferencePolicy: 'fallback' });
+
+    expect(result?.[0].inputs).toHaveLength(4);
+    expect(result?.[0].inputs.map((input) => input.key)).not.toEqual(
+      expect.arrayContaining([
+        NodeInputKeyEnum.aiModel,
+        NodeInputKeyEnum.datasetSearchRerankModel,
+        NodeInputKeyEnum.datasetSearchExtensionModel,
+        NodeInputKeyEnum.datasetDeepSearchModel
+      ])
+    );
+    expect(result?.[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: NodeInputKeyEnum.aiModelId,
+          value: models[0].modelId
+        }),
+        expect.objectContaining({
+          key: NodeInputKeyEnum.datasetSearchRerankModelId,
+          value: models[1].modelId
+        }),
+        expect.objectContaining({
+          key: NodeInputKeyEnum.datasetSearchExtensionModelId,
+          value: models[2].modelId
+        }),
+        expect.objectContaining({
+          key: NodeInputKeyEnum.datasetDeepSearchModelId,
+          value: models[3].modelId
+        })
+      ])
+    );
   });
 
-  it('should set model value to undefined when not in allowedModels', async () => {
-    const modules = [
+  it('falls back an unresolved static legacy model to the system default model', () => {
+    const nodes = [
       {
         nodeId: 'node1',
         flowNodeType: FlowNodeTypeEnum.chatNode,
         name: 'Chat',
         inputs: [
           {
-            key: 'model',
+            key: NodeInputKeyEnum.aiModel,
             label: 'Model',
             value: 'unauthorized-model',
             selectedType: FlowNodeInputTypeEnum.selectLLMModel,
@@ -1393,46 +1538,79 @@ describe('removeUnauthModels', () => {
         outputs: []
       }
     ];
-    const allowedModels = new Set(['gpt-4']);
 
-    const result = await removeUnauthModels({ modules, allowedModels });
-    expect(result?.[0].inputs[0].value).toBeUndefined();
+    expect(() =>
+      formatModels({ nodes, models, defaultModelIds, modelReferencePolicy: 'fallback' })
+    ).not.toThrow();
+    expect(nodes[0].inputs[0].key).toBe(NodeInputKeyEnum.aiModelId);
+    expect(nodes[0].inputs[0].value).toBe(models[2].modelId);
+    expect(nodes[0].inputs).toHaveLength(1);
   });
 
-  it('should skip canonical reference type inputs', async () => {
-    const modules = [
+  it('keeps valid modelId inputs and falls back for disabled optional model inputs', () => {
+    const nodes = [
       {
         nodeId: 'node1',
-        flowNodeType: FlowNodeTypeEnum.chatNode,
+        flowNodeType: FlowNodeTypeEnum.agent,
         name: 'Chat',
         inputs: [
           {
-            key: 'model',
+            key: NodeInputKeyEnum.aiModelId,
             label: 'Model',
-            value: 'unauthorized-model',
-            selectedType: FlowNodeInputTypeEnum.reference,
-            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel, FlowNodeInputTypeEnum.reference]
+            value: models[0].modelId,
+            selectedType: FlowNodeInputTypeEnum.selectLLMModel,
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.datasetSearchExtensionModelId,
+            label: 'Extension model ID',
+            value: '68ad85a7463006c963799aff',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.datasetSearchExtensionModel,
+            label: 'Extension model',
+            value: 'extension-v1',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
           }
         ],
         outputs: []
       }
     ];
-    const allowedModels = new Set(['gpt-4']);
 
-    const result = await removeUnauthModels({ modules, allowedModels });
-    expect(result?.[0].inputs[0].value).toBe('unauthorized-model');
+    const result = formatModels({
+      nodes,
+      models,
+      defaultModelIds,
+      modelReferencePolicy: 'fallback'
+    });
+
+    expect(result?.[0].inputs[0].value).toBe(models[0].modelId);
+    expect(result?.[0].inputs[1].value).toBe(models[2].modelId);
+    expect(result?.[0].inputs).toHaveLength(2);
+    expect(result?.[0].inputs.some((input) => input.key === NodeInputKeyEnum.aiModel)).toBe(false);
+    expect(
+      result?.[0].inputs.some((input) => input.key === NodeInputKeyEnum.datasetSearchExtensionModel)
+    ).toBe(false);
   });
 
-  it('should skip array value inputs (reference type)', async () => {
-    const modules = [
+  it('renames reference model keys without changing their values', () => {
+    const nodes = [
       {
         nodeId: 'node1',
-        flowNodeType: FlowNodeTypeEnum.chatNode,
+        flowNodeType: FlowNodeTypeEnum.agent,
         name: 'Chat',
         inputs: [
           {
-            key: 'model',
+            key: NodeInputKeyEnum.aiModel,
             label: 'Model',
+            value: 'unauthorized-model',
+            selectedType: FlowNodeInputTypeEnum.reference,
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel, FlowNodeInputTypeEnum.reference]
+          },
+          {
+            key: NodeInputKeyEnum.datasetSearchRerankModel,
+            label: 'Rerank model',
             value: ['nodeId', 'outputKey'],
             renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
           }
@@ -1440,14 +1618,43 @@ describe('removeUnauthModels', () => {
         outputs: []
       }
     ];
-    const allowedModels = new Set(['gpt-4']);
-
-    const result = await removeUnauthModels({ modules, allowedModels });
-    expect(result?.[0].inputs[0].value).toEqual(['nodeId', 'outputKey']);
+    const result = formatModels({ nodes, models, modelReferencePolicy: 'fallback' });
+    expect(result?.[0].inputs[0].key).toBe(NodeInputKeyEnum.aiModelId);
+    expect(result?.[0].inputs[0].value).toBe('unauthorized-model');
+    expect(result?.[0].inputs[1].key).toBe(NodeInputKeyEnum.datasetSearchRerankModelId);
+    expect(result?.[0].inputs[1].value).toEqual(['nodeId', 'outputKey']);
+    expect(result?.[0].inputs).toHaveLength(2);
   });
 
-  it('should handle modules with no model inputs', async () => {
-    const modules = [
+  it('moves dynamic legacy model expressions to the canonical modelId key', () => {
+    const nodes = [
+      {
+        nodeId: 'node1',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        name: 'Chat',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModel,
+            value: '{{selectedModel}}',
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    formatModels({ nodes, models, modelReferencePolicy: 'fallback' });
+
+    expect(nodes[0].inputs).toEqual([
+      expect.objectContaining({
+        key: NodeInputKeyEnum.aiModelId,
+        value: '{{selectedModel}}'
+      })
+    ]);
+  });
+
+  it('leaves nodes without model inputs unchanged', () => {
+    const nodes = [
       {
         nodeId: 'node1',
         flowNodeType: FlowNodeTypeEnum.chatNode,
@@ -1463,23 +1670,46 @@ describe('removeUnauthModels', () => {
         outputs: []
       }
     ];
-    const allowedModels = new Set(['gpt-4']);
-
-    const result = await removeUnauthModels({ modules, allowedModels });
+    const result = formatModels({ nodes, models, modelReferencePolicy: 'fallback' });
     expect(result?.[0].inputs[0].value).toBe('some value');
   });
 
-  it('should use empty Set as default for allowedModels', async () => {
-    const modules = [
+  it('does not rewrite an external tool input that happens to be named model', () => {
+    const nodes = [
       {
-        nodeId: 'node1',
-        flowNodeType: FlowNodeTypeEnum.chatNode,
-        name: 'Chat',
+        nodeId: 'external-tool',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        name: 'External tool',
         inputs: [
           {
-            key: 'model',
-            label: 'Model',
-            value: 'any-model',
+            key: NodeInputKeyEnum.aiModel,
+            label: 'Business model parameter',
+            value: 'gpt-4',
+            renderTypeList: [FlowNodeInputTypeEnum.select]
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    formatModels({ nodes, models, modelReferencePolicy: 'fallback' });
+
+    expect(nodes[0].inputs).toEqual([
+      expect.objectContaining({ key: NodeInputKeyEnum.aiModel, value: 'gpt-4' })
+    ]);
+  });
+
+  it('clears an unresolved rerank model without falling back across model types', () => {
+    const nodes = [
+      {
+        nodeId: 'dataset-search',
+        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+        name: 'Dataset search',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.datasetSearchRerankModel,
+            label: 'Rerank model',
+            value: 'missing-rerank',
             renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
           }
         ],
@@ -1487,20 +1717,95 @@ describe('removeUnauthModels', () => {
       }
     ];
 
-    const result = await removeUnauthModels({ modules });
-    expect(result?.[0].inputs[0].value).toBeUndefined();
+    formatModels({
+      nodes,
+      models: models.filter((model) => model.type === ModelTypeEnum.llm),
+      modelReferencePolicy: 'fallback'
+    });
+
+    expect(nodes[0].inputs).toEqual([
+      expect.objectContaining({
+        key: NodeInputKeyEnum.datasetSearchRerankModelId,
+        value: ''
+      })
+    ]);
   });
 
-  it('should handle multiple modules with multiple model inputs', async () => {
-    const modules = [
+  it('throws one aggregated error for unresolved models on publish', () => {
+    const nodes = [
+      {
+        nodeId: 'node1',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        name: 'Agent',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            value: 'disabled-model-id',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.datasetSearchRerankModel,
+            value: 'disabled-rerank',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.datasetSearchUsingReRank,
+            value: true,
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    expect(() => formatModels({ nodes, models, modelReferencePolicy: 'validate' })).toThrow(
+      'disabled-model-id、disabled-rerank 模型已停用'
+    );
+  });
+
+  it('does not repair an invalid modelId from a valid legacy model when falling back', () => {
+    const nodes = [
       {
         nodeId: 'node1',
         flowNodeType: FlowNodeTypeEnum.chatNode,
-        name: 'Chat 1',
+        name: 'Chat',
         inputs: [
           {
-            key: 'model',
-            label: 'Model',
+            key: NodeInputKeyEnum.aiModelId,
+            value: 'invalid-id',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.aiModel,
+            value: 'gpt-4',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    formatModels({ nodes, models, defaultModelIds, modelReferencePolicy: 'fallback' });
+
+    expect(nodes[0].inputs).toEqual([
+      expect.objectContaining({ key: NodeInputKeyEnum.aiModelId, value: models[2].modelId })
+    ]);
+  });
+
+  it('preserves unresolved draft values while removing legacy fields', () => {
+    const nodes = [
+      {
+        nodeId: 'node1',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        name: 'Chat',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            value: 'invalid-id',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.aiModel,
             value: 'gpt-4',
             renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
           }
@@ -1510,22 +1815,149 @@ describe('removeUnauthModels', () => {
       {
         nodeId: 'node2',
         flowNodeType: FlowNodeTypeEnum.chatNode,
-        name: 'Chat 2',
+        name: 'Chat',
         inputs: [
           {
-            key: 'model',
-            label: 'Model',
-            value: 'unauthorized',
+            key: NodeInputKeyEnum.aiModel,
+            value: 'unresolved-legacy-model',
             renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
           }
         ],
         outputs: []
       }
     ];
-    const allowedModels = new Set(['gpt-4']);
+    const chatConfig = {
+      questionGuide: { open: true, modelId: 'invalid-question-guide', model: 'gpt-4' }
+    };
 
-    const result = await removeUnauthModels({ modules, allowedModels });
-    expect(result?.[0].inputs[0].value).toBe('gpt-4');
-    expect(result?.[1].inputs[0].value).toBeUndefined();
+    expect(() =>
+      formatModels({ nodes, chatConfig, models, modelReferencePolicy: 'preserve' })
+    ).not.toThrow();
+
+    expect(nodes[0].inputs).toEqual([
+      expect.objectContaining({ key: NodeInputKeyEnum.aiModelId, value: 'invalid-id' })
+    ]);
+    expect(nodes[1].inputs).toEqual([
+      expect.objectContaining({
+        key: NodeInputKeyEnum.aiModelId,
+        value: 'unresolved-legacy-model'
+      })
+    ]);
+    expect(chatConfig.questionGuide).toEqual({
+      open: true,
+      modelId: 'invalid-question-guide'
+    });
+  });
+
+  it('falls back to the first active same-type model when the configured default is invalid', () => {
+    const chatConfig = {
+      questionGuide: { open: false, modelId: 'disabled-llm' }
+    };
+
+    formatModels({
+      nodes: [],
+      chatConfig,
+      models,
+      defaultModelIds: { [ModelTypeEnum.llm]: 'invalid-default-id' },
+      modelReferencePolicy: 'validate'
+    });
+
+    expect(chatConfig.questionGuide).toEqual({ open: false, modelId: models[0].modelId });
+  });
+
+  it('does not validate a canonical reference modelId and removes the legacy input', () => {
+    const nodes = [
+      {
+        nodeId: 'node1',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        name: 'Chat',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            value: ['source-node', 'model-id'],
+            selectedType: FlowNodeInputTypeEnum.reference,
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel, FlowNodeInputTypeEnum.reference]
+          },
+          {
+            key: NodeInputKeyEnum.aiModel,
+            value: 'disabled-model',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    expect(() => formatModels({ nodes, models, modelReferencePolicy: 'validate' })).not.toThrow();
+    expect(nodes[0].inputs).toEqual([
+      expect.objectContaining({
+        key: NodeInputKeyEnum.aiModelId,
+        value: ['source-node', 'model-id']
+      })
+    ]);
+  });
+
+  it('normalizes nested agent dataset model fields and applies feature gates', () => {
+    const nodes = [
+      {
+        nodeId: 'agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        name: 'Agent',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.datasetParams,
+            value: {
+              usingReRank: false,
+              rerankModel: 'disabled-rerank',
+              datasetSearchUsingExtensionQuery: true,
+              datasetSearchExtensionModel: 'extension-v1'
+            },
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    formatModels({ nodes, models, defaultModelIds, modelReferencePolicy: 'validate' });
+
+    expect(nodes[0].inputs[0].value).toEqual({
+      usingReRank: false,
+      rerankModelId: models[1].modelId,
+      datasetSearchUsingExtensionQuery: true,
+      datasetSearchExtensionModelId: models[2].modelId
+    });
+  });
+
+  it('moves nested agent dataset model references to modelId fields without validation', () => {
+    const nodes = [
+      {
+        nodeId: 'agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        name: 'Agent',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.datasetParams,
+            value: {
+              usingReRank: true,
+              rerankModel: ['source-node', 'rerank-model-id'],
+              datasetSearchUsingExtensionQuery: true,
+              datasetSearchExtensionModelId: '{{extensionModelId}}',
+              datasetSearchExtensionModel: 'legacy-extension-model'
+            },
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    expect(() => formatModels({ nodes, models, modelReferencePolicy: 'validate' })).not.toThrow();
+    expect(nodes[0].inputs[0].value).toEqual({
+      usingReRank: true,
+      rerankModelId: ['source-node', 'rerank-model-id'],
+      datasetSearchUsingExtensionQuery: true,
+      datasetSearchExtensionModelId: '{{extensionModelId}}'
+    });
   });
 });

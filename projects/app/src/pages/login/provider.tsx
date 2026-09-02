@@ -23,6 +23,7 @@ import { validateRedirectUrl } from '@/web/common/utils/uri';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import { useLoginRedirectAfterLogin } from '@/web/support/user/loginRedirect';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
+import { resetUserModelCatalogAfterLogin } from '@/web/core/ai/model/useUserModelStore';
 
 const provider = () => {
   const { t, i18n } = useTranslation();
@@ -74,6 +75,7 @@ const provider = () => {
           })
         : undefined;
 
+      resetUserModelCatalogAfterLogin();
       setUserInfo(res.user);
 
       if (targetRoute) {

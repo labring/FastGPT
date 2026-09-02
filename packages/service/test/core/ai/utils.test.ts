@@ -7,10 +7,26 @@ import {
   parseReasoningContent
 } from '@fastgpt/service/core/ai/utils';
 import type { CompletionFinishReason } from '@fastgpt/global/core/ai/llm/type';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 
 const mockModel = (maxResponse: number, maxTemperature?: number) =>
-  ({ maxResponse, maxTemperature }) as LLMModelItemType;
+  ({
+    modelId: '507f1f77bcf86cd799439031',
+    provider: 'test',
+    model: 'test-llm',
+    name: 'test-llm',
+    type: ModelTypeEnum.llm,
+    scope: 'system' as const,
+    isActive: true,
+    isCustom: false,
+    config: {
+      maxContext: 8192,
+      maxResponse,
+      quoteMaxToken: 4096,
+      maxTemperature
+    }
+  }) satisfies LLMSystemModelDataType;
 
 describe('computedMaxToken', () => {
   it('should return undefined when maxToken is undefined', () => {

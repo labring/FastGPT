@@ -21,6 +21,8 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { postCreateDatasetWithFiles } from '@/web/core/dataset/api';
 import { getUploadAvatarPresignedUrl, getUploadTempFilePresignedUrl } from '@/web/common/file/api';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { getWebDefaultEmbeddingModel, getWebDefaultLLMModel } from '@/web/common/system/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
@@ -46,13 +48,14 @@ const QuickCreateDatasetModal = ({
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { defaultModels, embeddingModelList, llmModelList } = useSystemStore();
+  const { defaultModels } = useUserModelStore();
+  const { embeddingModelList, llmModelList } = useUserModelLists();
 
-  const defaultVectorModel =
-    defaultModels.embedding?.model || getWebDefaultEmbeddingModel(embeddingModelList)?.model;
-  const defaultAgentModel =
-    defaultModels.datasetTextLLM?.model || getWebDefaultLLMModel(llmModelList)?.model;
-  const defaultVLLM = defaultModels.datasetImageLLM?.model;
+  const defaultVectorModelId =
+    defaultModels.embedding?.modelId || getWebDefaultEmbeddingModel(embeddingModelList)?.modelId;
+  const defaultAgentModelId =
+    defaultModels.datasetTextLLM?.modelId || getWebDefaultLLMModel(llmModelList)?.modelId;
+  const defaultVLLMId = defaultModels.datasetImageLLM?.modelId;
 
   const [selectFiles, setSelectFiles] = useState<ImportSourceItemType[]>([]);
   const uploadControllers = useRef(new Map<string, AbortController>());
@@ -203,9 +206,9 @@ const QuickCreateDatasetModal = ({
           name: data.name.trim(),
           avatar: data.avatar,
           parentId,
-          vectorModel: defaultVectorModel,
-          agentModel: defaultAgentModel,
-          vlmModel: defaultVLLM
+          vectorModelId: defaultVectorModelId,
+          agentModelId: defaultAgentModelId,
+          vlmModelId: defaultVLLMId
         },
         files: selectFiles
           .filter((item) => item.dbFileId && !item.errorMsg)

@@ -51,14 +51,15 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
       session
     });
 
-    const modules = (() => {
+    const storageModules = (() => {
       if (app.type === AppTypeEnum.mcpToolSet) {
         return encodeMcpToolSetNodesForStorage(app.modules);
       }
       if (app.type === AppTypeEnum.httpToolSet) {
         return encodeHttpToolSetNodesForStorage(app.modules);
       }
-      return app.modules;
+      // 普通应用必须写入 onCreateApp 清洗后的 workflow，不能用原始存储数据绕过模型校验。
+      return undefined;
     })();
     const appId = await onCreateApp({
       parentId: app.parentId,
@@ -67,7 +68,7 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
       avatar,
       type: app.type,
       modules: decodeToolSetNodesFromStorage(app.modules),
-      storageModules: modules,
+      storageModules,
       edges: app.edges,
       chatConfig: app.chatConfig,
       teamId: app.teamId,

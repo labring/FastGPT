@@ -35,7 +35,7 @@ export const AccountCancellationConfirmModal = ({
         overflow: 'hidden',
         px: 0,
         pt: 0,
-        pb: 0
+        pb: 2
       }}
       footer={
         <>

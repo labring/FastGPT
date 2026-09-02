@@ -20,7 +20,6 @@ import React, { useMemo, useState } from 'react';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { modelTypeList, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import dynamic from 'next/dynamic';
@@ -28,12 +27,24 @@ import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
-import { getModelCollaborators, updateModelCollaborators } from '@/web/common/system/api';
+import {
+  getModelCollaborators,
+  getPublicModelCatalog,
+  updateModelCollaborators
+} from '@/web/common/system/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { LazyCollaboratorProvider } from '@/components/support/permission/MemberManager/context';
 import PriceTiersLabel from '../PriceTiersLabel';
 import TestModeBetaTag from '../TestModeBetaTag';
 import ModelCapabilityTags from '../ModelCapabilityTags';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
+import {
+  formatModelProviders,
+  getModelProviderFromCache,
+  getModelProviderListFromCache
+} from '@fastgpt/global/core/ai/provider';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
@@ -45,17 +56,43 @@ const ModelTable = ({
   contentPx?: FlexProps['px'];
 }) => {
   const { t, i18n } = useClientTranslation();
-  const { getModelProviders, getModelProvider } = useSystemStore();
+  const { modelProviders: memberModelProviders, getModelProvider: getMemberModelProvider } =
+    useUserModelStore();
+  const { modelList: availableModels } = useUserModelLists();
+  const { data: publicCatalog } = useRequest(getPublicModelCatalog, {
+    manual: permissionConfig
+  });
+  const publicProviderCache = useMemo(
+    () => formatModelProviders(publicCatalog?.providers ?? []),
+    [publicCatalog?.providers]
+  );
+  const getModelProvider = permissionConfig
+    ? getMemberModelProvider
+    : (provider?: string, language?: string) =>
+        getModelProviderFromCache({
+          cache: publicProviderCache.ModelProviderMapCache,
+          provider,
+          language
+        });
   const { userInfo } = useUserStore();
   const modelPermissionConfigHint = permissionConfig
     ? t('common:model.permission_config_hint')
     : '';
+  const getPermissionModelId = (modelId?: string) => {
+    if (!modelId) throw new Error('Permission model ID is missing');
+    return modelId;
+  };
 
   const [provider, setProvider] = useState<string | ''>('');
-  const providerList = useMemo<{ label: React.ReactNode; value: string | '' }[]>(
-    () => [
+  const providerList = useMemo<{ label: React.ReactNode; value: string | '' }[]>(() => {
+    const providers = getModelProviderListFromCache(
+      permissionConfig ? memberModelProviders : publicProviderCache.ModelProviderListCache,
+      i18n.language
+    );
+
+    return [
       { label: t('common:All'), value: '' },
-      ...getModelProviders(i18n.language).map((item) => ({
+      ...providers.map((item) => ({
         label: (
           <HStack>
             <Avatar src={item.avatar} w={'1rem'} />
@@ -64,9 +101,8 @@ const ModelTable = ({
         ),
         value: item.id
       }))
-    ],
-    [getModelProviders, i18n.language, t]
-  );
+    ];
+  }, [i18n.language, memberModelProviders, permissionConfig, publicProviderCache, t]);
 
   const [modelType, setModelType] = useState<ModelTypeEnum | ''>('');
   const selectModelTypeList = useMemo<{ label: string; value: ModelTypeEnum | '' }[]>(
@@ -79,8 +115,12 @@ const ModelTable = ({
 
   const [search, setSearch] = useState('');
 
-  const { llmModelList, ttsModelList, embeddingModelList, sttModelList, reRankModelList } =
-    useSystemStore();
+  const remoteModels = permissionConfig ? availableModels : (publicCatalog?.models ?? []);
+  const llmModelList = remoteModels.filter((model) => model.type === ModelTypeEnum.llm);
+  const embeddingModelList = remoteModels.filter((model) => model.type === ModelTypeEnum.embedding);
+  const ttsModelList = remoteModels.filter((model) => model.type === ModelTypeEnum.tts);
+  const sttModelList = remoteModels.filter((model) => model.type === ModelTypeEnum.stt);
+  const reRankModelList = remoteModels.filter((model) => model.type === ModelTypeEnum.rerank);
 
   const modelList = useMemo(() => {
     const formatLLMModelList = llmModelList.map((item) => ({
@@ -169,16 +209,27 @@ const ModelTable = ({
     const formatList = list.map((item) => {
       const provider = getModelProvider(item.provider, i18n.language);
       return {
-        model: item.model,
+        modelId: 'modelId' in item ? item.modelId : undefined,
         name: item.name,
         testMode: item.testMode,
         contextToken:
-          'maxContext' in item ? item.maxContext : 'maxToken' in item ? item.maxToken : undefined,
-        vision: 'vision' in item ? item.vision : undefined,
-        audio: 'audio' in item ? item.audio : undefined,
-        video: 'video' in item ? item.video : undefined,
-        reasoning: 'reasoning' in item ? item.reasoning : undefined,
-        toolChoice: 'toolChoice' in item ? item.toolChoice : undefined,
+          item.type === ModelTypeEnum.llm
+            ? item.config.maxContext
+            : item.type === ModelTypeEnum.embedding || item.type === ModelTypeEnum.rerank
+              ? item.config.maxToken
+              : undefined,
+        vision:
+          (item.type === ModelTypeEnum.llm || item.type === ModelTypeEnum.embedding) &&
+          'vision' in item.config
+            ? item.config.vision
+            : undefined,
+        audio: item.type === ModelTypeEnum.llm ? item.config.audio : undefined,
+        video: item.type === ModelTypeEnum.llm ? item.config.video : undefined,
+        reasoning: item.type === ModelTypeEnum.llm ? item.config.reasoning : undefined,
+        toolChoice:
+          item.type === ModelTypeEnum.llm && 'toolChoice' in item.config
+            ? item.config.toolChoice
+            : undefined,
         avatar: provider.avatar,
         providerId: provider.id,
         providerName: provider.name,
@@ -334,8 +385,11 @@ const ModelTable = ({
             </Tr>
           </Thead>
           <Tbody>
-            {modelList.map((item, index) => (
-              <Tr key={index} _hover={{ bg: 'myGray.50' }}>
+            {modelList.map((item) => (
+              <Tr
+                key={`${item.providerId}-${item.typeLabel}-${item.name}`}
+                _hover={{ bg: 'myGray.50' }}
+              >
                 <Td fontSize={'sm'}>
                   <HStack>
                     {permissionConfig && userInfo?.team.permission.hasManagePer && (
@@ -371,11 +425,13 @@ const ModelTable = ({
                     <LazyCollaboratorProvider
                       selectedHint={modelPermissionConfigHint}
                       defaultRole={ReadRoleVal}
-                      onGetCollaboratorList={() => getModelCollaborators(item.model)}
+                      onGetCollaboratorList={() =>
+                        getModelCollaborators(getPermissionModelId(item.modelId))
+                      }
                       onUpdateCollaborators={({ collaborators }) =>
                         updateModelCollaborators({
                           collaborators,
-                          models: [item.model]
+                          modelIds: [getPermissionModelId(item.modelId)]
                         })
                       }
                       permission={userInfo?.team.permission!}
@@ -415,7 +471,7 @@ const ModelTable = ({
             onUpdateCollaborators={({ collaborators }) =>
               updateModelCollaborators({
                 collaborators,
-                models: selectedItems.map((i) => i.model)
+                modelIds: selectedItems.map((item) => getPermissionModelId(item.modelId))
               })
             }
             permission={userInfo?.team.permission!}

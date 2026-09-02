@@ -5,7 +5,7 @@ description: FastGPT 外部成员系统接入设计与配置
 
 import { Alert } from '@/components/docs/Alert';
 
-如果你不需要用到 SSO/成员同步功能，或者是只需要用 Github、google、microsoft、公众号的快速登录，可以跳过本章节。本章适合需要接入自己的成员系统或主流 办公IM 的用户。
+如果你不需要用到 SSO/成员同步功能，或者是只需要用 Github、google、microsoft、公众号的快速登录，可以跳过本章节。本章适合需要接入自己的成员系统或主流办公 IM 的用户。
 
 ## 介绍
 
@@ -13,16 +13,16 @@ import { Alert } from '@/components/docs/Alert';
 
 通过这套标准接口，你可以可以实现：
 
-1. SSO 登录。从外部系统回调后，在  FastGPT 中创建一个用户。
+1. SSO 登录。从外部系统回调后，在 FastGPT 中创建一个用户。
 2. 成员和组织架构同步（下面都简称成员同步）。
 
 **原理**
 
-FastGPT-pro 中，有一套标准的SSO 和成员同步接口，系统会根据这套接口进行 SSO 和成员同步操作。
+FastGPT-pro 中，有一套标准的 SSO 和成员同步接口，系统会根据这套接口进行 SSO 和成员同步操作。
 
 FastGPT-SSO-Service 是为了聚合不同来源的 SSO 和成员同步接口，将他们转成 fastgpt-pro 可识别的接口。
 
-   ![](/imgs/sso2.png)
+![](/imgs/sso2.png)
 
 ## 系统配置教程
 
@@ -31,16 +31,16 @@ FastGPT-SSO-Service 是为了聚合不同来源的 SSO 和成员同步接口，�
 使用 docker-compose 部署：
 
 ```yaml
-  fastgpt-sso:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16  # 目前sso最新版本，可直接使用当前版本
-    container_name: fastgpt-sso
-    restart: always
-    networks:
-      - fastgpt
-    environment:
-      - SSO_PROVIDER=example
-      - AUTH_TOKEN=xxxxx # 鉴权信息，fastgpt-pro 会用到。
-      # 具体对接提供商的环境变量。
+fastgpt-sso:
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16 # 目前sso最新版本，可直接使用当前版本
+  container_name: fastgpt-sso
+  restart: always
+  networks:
+    - fastgpt
+  environment:
+    - SSO_PROVIDER=example
+    - AUTH_TOKEN=xxxxx # 鉴权信息，fastgpt-pro 会用到。
+    # 具体对接提供商的环境变量。
 ```
 
 根据不同的提供商，你需要配置不同的环境变量，下面是内置的通用协议/IM：
@@ -79,6 +79,11 @@ FastGPT-SSO-Service 是为了聚合不同来源的 SSO 和成员同步接口，�
       <td>是</td>
       <td>否</td>
     </tr>
+    <tr>
+      <td>LDAP</td>
+      <td>否</td>
+      <td>是</td>
+    </tr>
   </tbody>
 </table>
 
@@ -90,8 +95,8 @@ FastGPT-SSO-Service 是为了聚合不同来源的 SSO 和成员同步接口，�
 
 ```yaml
 env:
-   - EXTERNAL_USER_SYSTEM_BASE_URL=http://fastgpt-sso:3000
-   - EXTERNAL_USER_SYSTEM_AUTH_TOKEN=xxxxx
+  - EXTERNAL_USER_SYSTEM_BASE_URL=http://fastgpt-sso:3000
+  - EXTERNAL_USER_SYSTEM_AUTH_TOKEN=xxxxx
 ```
 
 #### 2. 在商业版后台配置按钮文字，图标等。
@@ -127,28 +132,28 @@ env:
 
 ```yaml
 env:
-   - "SYNC_MEMBER_CRON=0 0 * * *" # Cron 表达式，每天 0 点执行，注意需要以 UTC （0时区）为准，例如如果设置北京时间 12:00 进行同步，则此处需要配置为 "0 4 * * *" (UTC 4:00执行)
+  - 'SYNC_MEMBER_CRON=0 0 * * *' # Cron 表达式，每天 0 点执行，注意需要以 UTC （0时区）为准，例如如果设置北京时间 12:00 进行同步，则此处需要配置为 "0 4 * * *" (UTC 4:00执行)
 ```
 
-## 内置的通用协议/IM 配置示例
+## 内置 Provider 配置示例
 
 ### 飞书
 
 #### 1. 参数获取
 
-   App ID和App Secret
+App ID 和 App Secret
 
-   进入开发者后台，点击企业自建应用，在凭证与基础信息页面查看应用凭证。
+进入开发者后台，点击企业自建应用，在凭证与基础信息页面查看应用凭证。
 
-   ![](/imgs/sso3.png)
+![](/imgs/sso3.png)
 
 #### 2. 权限配置
 
-   进入开发者后台，点击企业自建应用，在开发配置的权限管理页面开通权限。
+进入开发者后台，点击企业自建应用，在开发配置的权限管理页面开通权限。
 
-   ![](/imgs/sso4.png)
+![](/imgs/sso4.png)
 
-   可以使用**批量导入/导出权限** 功能，导入如下权限配置:
+可以使用**批量导入/导出权限** 功能，导入如下权限配置:
 
 ```json
 {
@@ -170,213 +175,214 @@ env:
 
 注意：可访问的数据范围需要开启全员可见
 
-#### 3. 重定向URL
+#### 3. 重定向 URL
 
-   进入开发者后台，点击企业自建应用，在开发配置的安全设置中设置重定向URL，
-   重定向 URL 形如 `https://www.fastgpt.cn/login/provider` 前面的域名修改为部署后公开可访问的 fastgpt 的域名
-   ![](/imgs/sso5.png)
+进入开发者后台，点击企业自建应用，在开发配置的安全设置中设置重定向 URL，重定向 URL 形如 `https://www.fastgpt.cn/login/provider` 前面的域名修改为部署后公开可访问的 fastgpt 的域名
+![](/imgs/sso5.png)
 
 #### 4. yml 配置示例
 
 ```yaml
 fastgpt-sso:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16
-    container_name: fastgpt-sso
-    restart: always
-    networks:
-      - fastgpt
-    environment:
-      - SSO_PROVIDER=feishu
-      - AUTH_TOKEN=xxxxx
-      # oauth 接口（私有化部署的飞书改为私有化的地址, 下同）
-      - SSO_TARGET_URL=https://accounts.feishu.cn/open-apis/authen/v1/authorize
-      # 获取token 接口
-      - FEISHU_TOKEN_URL=https://open.feishu.cn/open-apis/authen/v2/oauth/token
-      # 获取用户信息接口
-      - FEISHU_GET_USER_INFO_URL=https://open.feishu.cn/open-apis/authen/v1/user_info
-      # 重定向地址，设置为上面第三部中一模一样的地址
-      - FEISHU_REDIRECT_URI=https://fastgpt.cn/login/provider
-      # 飞书APP的应用ID，一般以cli开头
-      - FEISHU_APP_ID=xxx
-      # 飞书APP的应用密钥
-      - FEISHU_APP_SECRET=xxx
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16
+  container_name: fastgpt-sso
+  restart: always
+  networks:
+    - fastgpt
+  environment:
+    - SSO_PROVIDER=feishu
+    - AUTH_TOKEN=xxxxx
+    # oauth 接口（私有化部署的飞书改为私有化的地址, 下同）
+    - SSO_TARGET_URL=https://accounts.feishu.cn/open-apis/authen/v1/authorize
+    # 获取token 接口
+    - FEISHU_TOKEN_URL=https://open.feishu.cn/open-apis/authen/v2/oauth/token
+    # 获取用户信息接口
+    - FEISHU_GET_USER_INFO_URL=https://open.feishu.cn/open-apis/authen/v1/user_info
+    # 重定向地址，设置为上面第三部中一模一样的地址
+    - FEISHU_REDIRECT_URI=https://fastgpt.cn/login/provider
+    # 飞书APP的应用ID，一般以cli开头
+    - FEISHU_APP_ID=xxx
+    # 飞书APP的应用密钥
+    - FEISHU_APP_SECRET=xxx
 ```
 
 ### 钉钉
 
 #### 1. 参数获取
 
-   CLIENT_ID 与 CLIENT_SECRET
+CLIENT_ID 与 CLIENT_SECRET
 
-   进入钉钉开放平台，点击应用开发，选择自己的应用进入，记录在凭证与基础信息页面下的Client ID与Client secret。
-   ![](/imgs/sso6.png)
+进入钉钉开放平台，点击应用开发，选择自己的应用进入，记录在凭证与基础信息页面下的 \`Client ID\` 与 \`Client secret\`。![](/imgs/sso6.png)
 
 #### 2. 权限配置
 
-   进入钉钉开放平台，点击应用开发，选择自己的应用进入，在开发配置的权限管理页面操作，需要开通的权限包括：
+进入钉钉开放平台，点击应用开发，选择自己的应用进入，在开发配置的权限管理页面操作，需要开通的权限包括：
 
-   1. ***个人手机号信息***
-   2. ***通讯录个人信息读权限***
-   3. ***获取钉钉开放接口用户访问凭证的基础权限***
+1.  **_个人手机号信息_**
+2.  **_通讯录个人信息读权限_**
+3.  **_获取钉钉开放接口用户访问凭证的基础权限_**
 
-#### 3. 重定向URL
+#### 3. 重定向 URL
 
-   进入钉钉开放平台，点击应用开发，选择自己的应用进入，在开发配置的安全设置页面操作
-   需要填写的内容有两个：
+进入钉钉开放平台，点击应用开发，选择自己的应用进入，在开发配置的安全设置页面操作
+需要填写的内容有两个：
 
-   1. 服务器出口IP （调用钉钉服务端API的服务器IP列表）
-   2. 重定向URL（回调域名）
+1.  服务器出口 IP（调用钉钉服务端 API 的服务器 IP 列表）
+2.  重定向 URL（回调域名）
 
 #### 4. yml 配置示例
 
 ```yaml
 fastgpt-sso:
-   image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16
-   container_name: fastgpt-sso
-   restart: always
-   networks:
-      - fastgpt
-   environment:
-      - SSO_PROVIDER=dingtalk
-      - AUTH_TOKEN=xxxxx
-      #oauth 接口
-      - SSO_TARGET_URL=https://login.dingtalk.com/oauth2/auth
-      #获取token 接口
-      - DINGTALK_TOKEN_URL=https://api.dingtalk.com/v1.0/oauth2/userAccessToken
-      #获取用户信息接口
-      - DINGTALK_GET_USER_INFO_URL=https://oapi.dingtalk.com/v1.0/contact/users/me
-      #钉钉APP的应用ID
-      - DINGTALK_CLIENT_ID=xxx
-      #钉钉APP的应用密钥
-      - DINGTALK_CLIENT_SECRET=xxx
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16
+  container_name: fastgpt-sso
+  restart: always
+  networks:
+    - fastgpt
+  environment:
+    - SSO_PROVIDER=dingtalk
+    - AUTH_TOKEN=xxxxx
+    #oauth 接口
+    - SSO_TARGET_URL=https://login.dingtalk.com/oauth2/auth
+    #获取token 接口
+    - DINGTALK_TOKEN_URL=https://api.dingtalk.com/v1.0/oauth2/userAccessToken
+    #获取用户信息接口
+    - DINGTALK_GET_USER_INFO_URL=https://oapi.dingtalk.com/v1.0/contact/users/me
+    #钉钉APP的应用ID
+    - DINGTALK_CLIENT_ID=xxx
+    #钉钉APP的应用密钥
+    - DINGTALK_CLIENT_SECRET=xxx
 ```
 
 ### 企业微信
 
 #### 1. 参数获取
 
-   1. 企业的 CorpID
+1.  企业的 CorpID
 
-      a. 使用管理员账号登陆企业微信管理后台 `https://work.weixin.qq.com/wework_admin/loginpage_wx`
+    a. 使用管理员账号登陆企业微信管理后台 `https://work.weixin.qq.com/wework_admin/loginpage_wx`
 
-      b. 点击 【我的企业】 页面，查看企业的 **企业ID**
+    b. 点击【我的企业】页面，查看企业的 **企业 ID**
 
-      ![](/imgs/sso7.png)
+    ![](/imgs/sso7.png)
 
-   2. 创建一个供 FastGPT 使用的内部应用：
+2.  创建一个供 FastGPT 使用的内部应用：
 
-      a. 获取应用的 AgentID 和 Secret
+    a. 获取应用的 AgentID 和 Secret
 
-      b. 保证这个应用的可见范围为全部（也就是根部门）
+    b. 保证这个应用的可见范围为全部（也就是根部门）
 
-      ![](/imgs/sso8.png)
+    ![](/imgs/sso8.png)
 
+    ![](/imgs/sso9.png)
 
-      ![](/imgs/sso9.png)
+3.  一个域名。并且要求：
 
-   3. 一个域名。并且要求：
+    a. 解析到可公网访问的服务器上
 
-      a. 解析到可公网访问的服务器上
+    b. 可以在该服务的根目录地址上挂载静态文件（以便进行域名归属认证，按照配置处的提示进行操作，只需要挂载一个静态文件，认证后可以删除）
 
-      b. 可以在该服务的根目录地址上挂载静态文件（以便进行域名归属认证 ，按照配置处的提示进行操作，只需要挂载一个静态文件，认证后可以删除）
+    c. 配置网页授权，JS-SDK 以及企业微信授权登陆
 
-      c. 配置网页授权，JS-SDK以及企业微信授权登陆
+    d. 可以在【企业微信授权登陆】页面下方设置"在工作台隐藏应用"
 
-      d. 可以在【企业微信授权登陆】页面下方设置"在工作台隐藏应用"
+    ![](/imgs/sso10.png)
 
-      ![](/imgs/sso10.png)
+    ![](/imgs/sso11.png)
 
-      ![](/imgs/sso11.png)
+    ![](/imgs/sso12.png)
 
-      ![](/imgs/sso12.png)
+4.  获取 "通讯录同步助手" secret
 
-   4. 获取 "通讯录同步助手" secret
+    获取通讯录，组织成员 ID 需要使用 "通讯录同步助手" secret
 
-      获取通讯录，组织成员 ID 需要使用 "通讯录同步助手" secret
+    【安全与管理】--【管理工具】--【通讯录同步】
 
-      【安全与管理】-- 【管理工具】 -- 【通讯录同步】
+    ![](/imgs/sso13.png)
 
-      ![](/imgs/sso13.png)
+5.  开启接口同步
 
-   5. 开启接口同步
+6.  获取 Secret
 
-   6. 获取 Secret
+7.  配置企业可信 IP
 
-   7. 配置企业可信 IP
-
-      ![](/imgs/sso14.png)
+    ![](/imgs/sso14.png)
 
 #### 2. yml 配置示例
 
 ```yaml
 fastgpt-sso:
-   image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16
-   container_name: fastgpt-sso
-   restart: always
-   networks:
-      - fastgpt
-   environment:
-      - AUTH_TOKEN=xxxxx
-      - SSO_PROVIDER=wecom
-      # oauth 接口，在企微终端使用
-      - WECOM_TARGET_URL_OAUTH=https://open.weixin.qq.com/connect/oauth2/authorize
-      # sso 接口，扫码
-      - WECOM_TARGET_URL_SSO=https://login.work.weixin.qq.com/wwlogin/sso/login
-      # 获取用户id（只能拿id)
-      - WECOM_GET_USER_ID_URL=https://qyapi.weixin.qq.com/cgi-bin/auth/getuserinfo
-      # 获取用户详细信息（除了名字都有）
-      - WECOM_GET_USER_INFO_URL=https://qyapi.weixin.qq.com/cgi-bin/auth/getuserdetail
-      # 获取用户信息（有名字，没其他信息）
-      - WECOM_GET_USER_NAME_URL=https://qyapi.weixin.qq.com/cgi-bin/user/get
-      # 获取组织 id 列表
-      - WECOM_GET_DEPARTMENT_LIST_URL=https://qyapi.weixin.qq.com/cgi-bin/department/list
-      # 获取用户 id 列表
-      - WECOM_GET_USER_LIST_URL=https://qyapi.weixin.qq.com/cgi-bin/user/list_id
-      # 企微 CorpId
-      - WECOM_CORPID=
-      # 企微 App 的 AgentId 一般是 1000xxx
-      - WECOM_AGENTID=
-      # 企微 App 的 Secret
-      - WECOM_APP_SECRET=
-      # 通讯录同步助手的 Secret
-      - WECOM_SYNC_SECRET=
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16
+  container_name: fastgpt-sso
+  restart: always
+  networks:
+    - fastgpt
+  environment:
+    - AUTH_TOKEN=xxxxx
+    - SSO_PROVIDER=wecom
+    # oauth 接口，在企微终端使用
+    - WECOM_TARGET_URL_OAUTH=https://open.weixin.qq.com/connect/oauth2/authorize
+    # sso 接口，扫码
+    - WECOM_TARGET_URL_SSO=https://login.work.weixin.qq.com/wwlogin/sso/login
+    # 获取用户id（只能拿id)
+    - WECOM_GET_USER_ID_URL=https://qyapi.weixin.qq.com/cgi-bin/auth/getuserinfo
+    # 获取用户详细信息（除了名字都有）
+    - WECOM_GET_USER_INFO_URL=https://qyapi.weixin.qq.com/cgi-bin/auth/getuserdetail
+    # 获取用户信息（有名字，没其他信息）
+    - WECOM_GET_USER_NAME_URL=https://qyapi.weixin.qq.com/cgi-bin/user/get
+    # 获取组织 id 列表
+    - WECOM_GET_DEPARTMENT_LIST_URL=https://qyapi.weixin.qq.com/cgi-bin/department/list
+    # 获取用户 id 列表
+    - WECOM_GET_USER_LIST_URL=https://qyapi.weixin.qq.com/cgi-bin/user/list_id
+    # 企微 CorpId
+    - WECOM_CORPID=
+    # 企微 App 的 AgentId 一般是 1000xxx
+    - WECOM_AGENTID=
+    # 企微 App 的 Secret
+    - WECOM_APP_SECRET=
+    # 通讯录同步助手的 Secret
+    - WECOM_SYNC_SECRET=
 ```
 
 ### 标准 OAuth2.0
 
-我们提供一套 RFC 6749 中鉴权码模式的 OAuth2.0 接入支持。
-参考：
+我们提供一套 RFC 6749 中鉴权码模式的 OAuth2.0 接入支持。参考：
+
 - [RFC 6749](https://datatracker.ietf.org/doc/html/rfc6749) 文档。
 - [阮一峰的网络日志](https://www.ruanyifeng.com/blog/2014/05/oauth_2_0.html)
 
 #### 参数需求
 
 ##### 三个地址
+
 我们提供一套标准的 OAuth2.0 接入流程。需要三个地址：
 
 1. 登陆鉴权地址（用户点击 SSO 按钮后将携带参数直接跳转到该地址）, 例如：`http://example.com/oauth/authorize`
-    ```bash
-    curl -X GET\
-    "http://example.com/oauth/authorize?response_type=code&client_id=s6BhdRkqt3&state=xyz&redirect_uri=https%3A%2F%2Ffastgpt.cn%2Flogin%2Fprovider"
-    ```
-      用户输入账号密码后，会跳转到 redirect_uri 中，并携带 code 参数：
-      `https://fastgpt.cn/login/provider?code=4/P7qD2qAz4&state=xyz`
+   ```bash
+   curl -X GET\
+   "http://example.com/oauth/authorize?response_type=code&client_id=s6BhdRkqt3&state=xyz&redirect_uri=https%3A%2F%2Ffastgpt.cn%2Flogin%2Fprovider"
+   ```
+   用户输入账号密码后，会跳转到 `redirect_uri` 中，并携带 `code` 参数，示例：
+   ```text
+   https://fastgpt.cn/login/provider?code=4/P7qD2qAz4&state=xyz
+   ```
 2. 获取 access_token 的地址，获取到 code 后，通过*服务器请求*该地址获取 access_token 例如：`http://example.com/oauth/access_token`
-    ```bash
-    curl -X POST\
-        -H "Content-Type: application/x-www-form-urlencoded"\
-    "http://example.com/oauth/access_token?grant_type=authorization_code&client_id=s6BhdRkqt3&client_secret=xxx&code=4/P7qD2qAz4&redirect_uri=https%3A%2F%2Ffastgpt.cn%2Flogin%2Fprovider"
-    ```
-    注意：Content-Type 必须是 application/x-www-form-urlencoded, 而不是 application/json
+   ```bash
+   curl -X POST\
+       -H "Content-Type: application/x-www-form-urlencoded"\
+   "http://example.com/oauth/access_token?grant_type=authorization_code&client_id=s6BhdRkqt3&client_secret=xxx&code=4/P7qD2qAz4&redirect_uri=https%3A%2F%2Ffastgpt.cn%2Flogin%2Fprovider"
+   ```
+   注意：Content-Type 必须是 application/x-www-form-urlencoded, 而不是 application/json
 3. 获取用户信息的地址，需要传入 access_token 例如：`http://example.com/oauth/user_info`
-    ```bash
-    curl -X GET\
-        -H "Authorization: Bearer 4/P7qD2qAz4"\
-        "http://example.com/oauth/user_info"
-    ```
-    注意： access_token 作为 Authorization 头部传入, 格式为 Bearer xxxx
+   ```bash
+   curl -X GET\
+       -H "Authorization: Bearer 4/P7qD2qAz4"\
+       "http://example.com/oauth/user_info"
+   ```
+   注意：access_token 作为 Authorization 头部传入, 格式为 Bearer xxxx
 
 ##### 参数配置
+
 - CLIENT_ID: 必须
 - CLIENT_SECRET: 非必须，如果没有可以不配置
 - SCOPE: 非必须，如果没有可以不配置
@@ -389,38 +395,217 @@ fastgpt-sso:
 
 ```yaml
 fastgpt-sso:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16
-    container_name: fastgpt-sso
-    restart: always
-    networks:
-        - fastgpt
-    environment:
-        - SSO_PROVIDER=oauth2
-        - AUTH_TOKEN=xxxxx
-        # OAuth2.0
-        # === 请求地址 ===
-        # 1. OAuth2 登陆鉴权地址 (必填)
-        - OAUTH2_AUTHORIZE_URL=
-        # 2. OAuth2 获取 AccessToken 地址 (必填)
-        - OAUTH2_TOKEN_URL=
-        # 3. OAuth2 获取用户信息地址 (必填)
-        - OAUTH2_USER_INFO_URL=
-        # === 参数 ===
-        # 1. client_id （必填）
-        - OAUTH2_CLIENT_ID=
-        # 2. client_secret (选填，如果没有则不传)
-        - OAUTH2_CLIENT_SECRET=
-        # 3. scope （选填）
-        - OAUTH2_SCOPE=
-        # === 字段映射 ===
-        # OAuth2 用户名字段映射（必填）
-        - OAUTH2_USERNAME_MAP=
-        # OAuth2 头像字段映射（选填）
-        - OAUTH2_AVATAR_MAP=
-        # OAuth2 成员名字段映射(选填)
-        - OAUTH2_MEMBER_NAME_MAP=
-        # OAuth2 联系方式字段映射(选填)
-        - OAUTH2_CONTACT_MAP=
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16
+  container_name: fastgpt-sso
+  restart: always
+  networks:
+    - fastgpt
+  environment:
+    - SSO_PROVIDER=oauth2
+    - AUTH_TOKEN=xxxxx
+    # OAuth2.0
+    # === 请求地址 ===
+    # 1. OAuth2 登陆鉴权地址 (必填)
+    - OAUTH2_AUTHORIZE_URL=
+    # 2. OAuth2 获取 AccessToken 地址 (必填)
+    - OAUTH2_TOKEN_URL=
+    # 3. OAuth2 获取用户信息地址 (必填)
+    - OAUTH2_USER_INFO_URL=
+    # === 参数 ===
+    # 1. client_id （必填）
+    - OAUTH2_CLIENT_ID=
+    # 2. client_secret (选填，如果没有则不传)
+    - OAUTH2_CLIENT_SECRET=
+    # 3. scope （选填）
+    - OAUTH2_SCOPE=
+    # === 字段映射 ===
+    # OAuth2 用户名字段映射（必填）
+    - OAUTH2_USERNAME_MAP=
+    # OAuth2 头像字段映射（选填）
+    - OAUTH2_AVATAR_MAP=
+    # OAuth2 成员名字段映射(选填)
+    - OAUTH2_MEMBER_NAME_MAP=
+    # OAuth2 联系方式字段映射(选填)
+    - OAUTH2_CONTACT_MAP=
+```
+
+### LDAP 用户和组织同步
+
+LDAP provider 只负责同步用户和组织，不提供登录能力。推荐将登录 provider 与同步 provider 分开配置：
+
+```yaml
+fastgpt-sso:
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16
+  environment:
+    - SSO_PROVIDER=oauth2
+    - SSO_SYNC_PROVIDER=ldap
+    - AUTH_TOKEN=replace-with-a-sync-token
+    - LDAP_URL=ldap://ldap.example.com:389
+    - LDAP_BASE_DN=dc=example,dc=com
+    - LDAP_BIND_DN=cn=fastgpt-sync,dc=example,dc=com
+    - LDAP_BIND_PASSWORD=replace-with-readonly-password
+    - LDAP_USER_BASE_DN=ou=people,dc=example,dc=com
+    - LDAP_USER_FILTER=(&(objectClass=inetOrgPerson)(uid=*))
+    - LDAP_USER_USERNAME_ATTRIBUTE=uid
+    - LDAP_USER_MEMBER_NAME_ATTRIBUTE=displayName
+    - LDAP_USER_CONTACT_ATTRIBUTE=mail
+    - LDAP_USERNAME_PREFIX=ldap-
+    - LDAP_MEMBERSHIP_MODE=user_attribute
+    - LDAP_USER_ATTRIBUTE_ORG_BASE_DN=ou=company,dc=example,dc=com
+    - LDAP_USER_ATTRIBUTE_ORG_FILTER=(objectClass=organizationalUnit)
+    - LDAP_USER_ATTRIBUTE_ORG_NAME_ATTRIBUTE=ou
+    - LDAP_USER_ATTRIBUTE_MEMBERSHIP_ATTRIBUTE=ou
+    - LDAP_USER_ATTRIBUTE_MEMBERSHIP_VALUE_TYPE=name_or_dn
+```
+
+SSO_PROVIDER 继续负责登录，SSO_SYNC_PROVIDER=ldap 让 /user/list 和 /org/list 使用 LDAP。LDAP 不提供登录接口；如果仍需要 SSO 登录，不要将 SSO_PROVIDER 设置为 ldap。
+
+#### FastGPT 侧配置
+
+fastgpt-pro 需要访问 SSO-service，并使用与 SSO-service.AUTH_TOKEN 相同的 Token：
+
+```yaml
+env:
+  - EXTERNAL_USER_SYSTEM_BASE_URL=http://fastgpt-sso:3000
+  - EXTERNAL_USER_SYSTEM_AUTH_TOKEN=replace-with-a-sync-token
+  - SYNC_MEMBER_CRON=0 0 * * *
+```
+
+然后在商业版后台开启成员同步。SYNC_MEMBER_CRON 使用 UTC 时区；留空表示不执行定时同步。
+
+#### LDAP 连接配置
+
+| 环境变量                        | 必填 | 默认值                                 | 说明                                          |
+| ------------------------------- | ---- | -------------------------------------- | --------------------------------------------- |
+| LDAP_URL                        | 是   | -                                      | 只支持 ldap:// 或 ldaps://，不能使用 https:// |
+| LDAP_BASE_DN                    | 是   | -                                      | 全局默认搜索基准 DN                           |
+| LDAP_BIND_DN                    | 是   | -                                      | 只读同步账号 DN                               |
+| LDAP_BIND_PASSWORD              | 是   | -                                      | 同步账号密码                                  |
+| LDAP_USER_BASE_DN               | 否   | LDAP_BASE_DN                           | 用户搜索起点                                  |
+| LDAP_USER_FILTER                | 否   | (&(objectClass=inetOrgPerson)(uid=\*)) | 用户过滤器                                    |
+| LDAP_USER_USERNAME_ATTRIBUTE    | 否   | uid                                    | 用户唯一标识属性                              |
+| LDAP_USER_MEMBER_NAME_ATTRIBUTE | 否   | displayName                            | 成员显示名属性                                |
+| LDAP_USER_CONTACT_ATTRIBUTE     | 否   | mail                                   | 联系方式属性                                  |
+| LDAP_USER_AVATAR_ATTRIBUTE      | 否   | 空                                     | 头像属性，留空则不同步                        |
+| LDAP_USERNAME_PREFIX            | 否   | ldap-                                  | 同步用户名的前缀                              |
+| LDAP_PAGE_SIZE                  | 否   | 500                                    | LDAP 分页大小                                 |
+| LDAP_TIMEOUT_MS                 | 否   | 10000                                  | LDAP 操作超时，单位毫秒                       |
+| LDAP_CONNECT_TIMEOUT_MS         | 否   | 10000                                  | LDAP 连接超时，单位毫秒                       |
+
+使用 ldaps:// 时，可以配置 LDAP_TLS_REJECT_UNAUTHORIZED、LDAP_TLS_CA_FILE、LDAP_TLS_CA、LDAP_TLS_CERT_FILE、LDAP_TLS_KEY_FILE 和 LDAP_TLS_SERVERNAME。私有 CA 建议使用 LDAP_TLS_CA_FILE；客户端证书和私钥必须同时配置。
+
+#### 成员关系模式
+
+<table>
+  <thead>
+    <tr>
+      <th>模式</th>
+      <th>用户和组织的关系</th>
+      <th>主要配置</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>user_attribute</td>
+      <td>用户属性（默认 ou）指向组织</td>
+      <td>LDAP_USER_ATTRIBUTE_*</td>
+    </tr>
+    <tr>
+      <td>group_member_dn</td>
+      <td>组属性（默认 member）记录用户 DN</td>
+      <td>LDAP_GROUP_MEMBER_DN_*</td>
+    </tr>
+    <tr>
+      <td>user_member_of</td>
+      <td>用户属性（默认 memberOf）记录组 DN</td>
+      <td>LDAP_USER_MEMBER_OF_*</td>
+    </tr>
+    <tr>
+      <td>posix_member_uid</td>
+      <td>组属性（默认 memberUid）记录用户标识</td>
+      <td>LDAP_POSIX_MEMBER_UID_*</td>
+    </tr>
+  </tbody>
+</table>
+
+**1. user_attribute：用户属性映射组织**
+
+```dotenv
+LDAP_MEMBERSHIP_MODE=user_attribute
+LDAP_USER_ATTRIBUTE_ORG_BASE_DN=ou=company,dc=example,dc=com
+LDAP_USER_ATTRIBUTE_ORG_FILTER=(objectClass=organizationalUnit)
+LDAP_USER_ATTRIBUTE_ORG_NAME_ATTRIBUTE=ou
+LDAP_USER_ATTRIBUTE_MEMBERSHIP_ATTRIBUTE=ou
+LDAP_USER_ATTRIBUTE_MEMBERSHIP_VALUE_TYPE=name_or_dn
+```
+
+name_or_dn 会先按组织 DN 匹配，匹配不到时再按组织名称匹配。
+
+**2. group_member_dn：组记录用户 DN**
+
+```text
+dn: cn=engineering,ou=groups,dc=example,dc=com
+objectClass: groupOfNames
+cn: engineering
+member: uid=alice,ou=people,dc=example,dc=com
+```
+
+```dotenv
+LDAP_MEMBERSHIP_MODE=group_member_dn
+LDAP_GROUP_MEMBER_DN_ORG_BASE_DN=ou=groups,dc=example,dc=com
+LDAP_GROUP_MEMBER_DN_ORG_FILTER=(objectClass=groupOfNames)
+LDAP_GROUP_MEMBER_DN_ORG_NAME_ATTRIBUTE=cn
+LDAP_GROUP_MEMBER_DN_MEMBER_ATTRIBUTE=member
+LDAP_GROUP_MEMBER_DN_MEMBER_VALUE_TYPE=dn
+```
+
+使用 groupOfUniqueNames 时，将过滤器改为 objectClass=groupOfUniqueNames，并通常将成员属性改为 uniqueMember。
+
+**3. user_member_of：用户记录组 DN**
+
+```dotenv
+LDAP_MEMBERSHIP_MODE=user_member_of
+LDAP_USER_MEMBER_OF_ORG_BASE_DN=ou=groups,dc=example,dc=com
+LDAP_USER_MEMBER_OF_ORG_FILTER=(objectClass=groupOfNames)
+LDAP_USER_MEMBER_OF_ORG_NAME_ATTRIBUTE=cn
+LDAP_USER_MEMBER_OF_MEMBERSHIP_ATTRIBUTE=memberOf
+LDAP_USER_MEMBER_OF_MEMBERSHIP_VALUE_TYPE=dn
+```
+
+该模式要求用户条目存在 memberOf 属性。部分 OpenLDAP 部署需要配置 memberof overlay。
+
+**4. posix_member_uid：POSIX 组记录用户 uid**
+
+```text
+dn: cn=engineering,ou=groups,dc=example,dc=com
+objectClass: posixGroup
+cn: engineering
+memberUid: alice
+```
+
+```dotenv
+LDAP_MEMBERSHIP_MODE=posix_member_uid
+LDAP_POSIX_MEMBER_UID_ORG_BASE_DN=ou=groups,dc=example,dc=com
+LDAP_POSIX_MEMBER_UID_ORG_FILTER=(objectClass=posixGroup)
+LDAP_POSIX_MEMBER_UID_ORG_NAME_ATTRIBUTE=cn
+LDAP_POSIX_MEMBER_UID_MEMBER_ATTRIBUTE=memberUid
+LDAP_POSIX_MEMBER_UID_USER_ID_ATTRIBUTE=uid
+LDAP_POSIX_MEMBER_UID_MEMBER_VALUE_TYPE=username
+```
+
+#### 同步结果和限制
+
+- 组织 ID 使用规范化后的 LDAP DN，parentId 根据 DN 层级自动推导。
+- 如果最终组织列表存在多个无父级组织，会自动插入 ID 为 ldap-virtual-root、名称为 ROOT 的虚拟根。
+- 用户结果使用 orgs 保存组织 ID；同步用户名默认为 ldap- 加 LDAP 用户标识。
+- 登录 provider 返回的用户名必须使用相同的前缀和标识规则。
+- 当前不递归展开嵌套组，也不解析动态组。
+
+#### 手动检查同步接口
+
+```bash
+curl -H 'Authorization: Bearer replace-with-a-sync-token' http://fastgpt-sso:3000/org/list
+curl -H 'Authorization: Bearer replace-with-a-sync-token' http://fastgpt-sso:3000/user/list
 ```
 
 ## 标准接口文档
@@ -438,7 +623,7 @@ FastGPT 提供如下标准接口支持：
 
 ### 获取 SSO 登录重定向地址
 
-返回一个重定向登录地址，fastgpt 会自动重定向到该地址。redirect_uri  会自动拼接到该地址的 query中。
+返回一个重定向登录地址，fastgpt 会自动重定向到该地址。redirect_uri 会自动拼接到该地址的 query 中。
 
 <Tabs items={['请求示例','响应示例']}>
   <Tab value="请求示例" >
@@ -466,15 +651,14 @@ curl -X GET "https://redict.example/login/oauth/getAuthURL?redirect_uri=xxx&stat
 
 ```json
 {
-   "success": false,
-   "message": "错误信息",
-   "authURL": ""
+  "success": false,
+  "message": "错误信息",
+  "authURL": ""
 }
 ```
 
   </Tab>
 </Tabs>
-
 
 ### SSO 获取用户信息
 
@@ -494,6 +678,7 @@ curl -X GET "https://oauth.example/login/oauth/getUserInfo?code=xxxxxx" \
   <Tab value="响应示例" >
 
 成功：
+
 ```json
 {
   "success": true,
@@ -501,11 +686,12 @@ curl -X GET "https://oauth.example/login/oauth/getUserInfo?code=xxxxxx" \
   "username": "fastgpt-123456789",
   "avatar": "https://example.webp",
   "contact": "+861234567890",
-  "memberName": "成员名（非必填）",
+  "memberName": "成员名（非必填）"
 }
 ```
 
 失败：
+
 ```json
 {
   "success": false,
@@ -538,41 +724,39 @@ curl -X GET "https://example.com/org/list" \
 
 ```ts
 type OrgListResponseType = {
-    message?: string; // 报错信息
-    success: boolean;
-    orgList: {
-        id: string; // 部门的唯一 id
-        name: string; // 名字
-        parentId: string; // parentId，如果为根部门，传空字符串。
-    }[];
-}
+  message?: string; // 报错信息
+  success: boolean;
+  orgList: {
+    id: string; // 部门的唯一 id
+    name: string; // 名字
+    parentId: string; // parentId，如果为根部门，传空字符串。
+  }[];
+};
 ```
 
 ```json
 {
   "success": true,
   "message": "",
-   "orgList": [
-      {
-         "id": "od-125151515",
-         "name": "根部门",
-         "parentId": ""
-      },
-      {
-         "id": "od-51516152",
-         "name": "子部门",
-         "parentId": "od-125151515"
-      }
-   ]
+  "orgList": [
+    {
+      "id": "od-125151515",
+      "name": "根部门",
+      "parentId": ""
+    },
+    {
+      "id": "od-51516152",
+      "name": "子部门",
+      "parentId": "od-125151515"
+    }
+  ]
 }
 ```
 
   </Tab>
 </Tabs>
 
-
 ### 获取成员
-
 
 <Tabs items={['请求示例','响应示例']}>
   <Tab value="请求示例" >
@@ -591,18 +775,19 @@ curl -X GET "https://example.com/user/list" \
 
 ```typescript
 type UserListResponseListType = {
-    message?: string; // 报错信息
-    success: boolean;
-    userList: {
-      username: string; // 唯一 id username 必须与 SSO 接口返回的用户 username 相同。并且必须携带一个前缀，例如: sync-aaaaa，和 sso 接口返回的前缀一致
-      memberName?: string; // 名字，作为 tmbname
-      avatar?: string;
-      contact?: string; // email or phone number
-      orgs?: string[]; // 人员所在组织的 ID。没有组织传 []
-    }[];
-}
+  message?: string; // 报错信息
+  success: boolean;
+  userList: {
+    username: string; // 唯一 id username 必须与 SSO 接口返回的用户 username 相同。并且必须携带一个前缀，例如: sync-aaaaa，和 sso 接口返回的前缀一致
+    memberName?: string; // 名字，作为 tmbname
+    avatar?: string;
+    contact?: string; // email or phone number
+    orgs?: string[]; // 人员所在组织的 ID。没有组织传 []
+  }[];
+};
 ```
-curl示例
+
+curl 示例
 
 ```json
 {
@@ -624,20 +809,14 @@ curl示例
       "orgs": ["od-125151515"]
     }
   ]
-
 }
 ```
 
   </Tab>
 </Tabs>
 
-
-
-
 ## 如何对接非标准系统
 
 1. 客户自己开发：按 fastgpt 提供的标准接口进行开发，并将部署后的服务地址填入 fastgpt-pro
    可以参考该模版库：[fastgpt-sso-template](https://github.com/labring/fastgpt-sso-template) 进行开发
-2. 由 fastgpt 团队定制开发：
-   a. 提供系统的 SSO 文档、获取成员和组织的文档、以及外网测试地址。
-   b. 在 fastgpt-sso-service 中，增加对应的 provider 和环境变量，并编写代码来对接。
+2. 由 fastgpt 团队定制开发：a. 提供系统的 SSO 文档、获取成员和组织的文档、以及外网测试地址。b. 在 fastgpt-sso-service 中，增加对应的 provider 和环境变量，并编写代码来对接。

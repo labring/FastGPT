@@ -1,28 +1,54 @@
 import type { GetSystemInitDataResponse } from '@fastgpt/global/openapi/common/system/api';
-import type { GetMyModelsQuery, GetMyModelsResponse } from '@/pages/api/core/ai/model/getMyModels';
+import type {
+  GetModelCatalogResponse,
+  GetSystemModelsResponse
+} from '@fastgpt/global/openapi/core/ai/model/api';
 import { GET, POST } from '@/web/common/api/request';
 import type {
   CollaboratorListType,
   UpdateClbPermissionProps
 } from '@fastgpt/global/support/permission/collaborator';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 export const getSystemInitData = (bufferId?: string) =>
   GET<GetSystemInitDataResponse>('/common/system/getInitData', {
     bufferId
   });
 
+export const getPublicModelList = () =>
+  GET<GetSystemModelsResponse>('/core/ai/model/list', undefined, {
+    deduplicate: true
+  }).then((res) => res.models);
+
+export const getPublicModelCatalog = () =>
+  GET<GetSystemModelsResponse>('/core/ai/model/list', undefined, { deduplicate: true });
+
 // model permissions
 
-export const getModelCollaborators = (model: string) =>
+export const getModelCollaborators = (modelId: string) =>
   GET<CollaboratorListType>('/proApi/system/model/collaborator/list', {
-    model
+    modelId
   });
 
-export const updateModelCollaborators = (props: UpdateClbPermissionProps & { models: string[] }) =>
-  POST('/proApi/system/model/collaborator/update', props);
+export const updateModelCollaborators = (
+  props: UpdateClbPermissionProps & { modelIds: string[] }
+) => POST('/proApi/system/model/collaborator/update', props);
 
-export const getMyModels = (props: GetMyModelsQuery) =>
-  GET<GetMyModelsResponse>('/core/ai/model/getMyModels', props, { deduplicate: true });
+export const getUserModelCatalog = ({
+  version,
+  outLinkAuthData
+}: {
+  version?: string;
+  outLinkAuthData?: OutLinkChatAuthProps;
+} = {}) =>
+  GET<GetModelCatalogResponse>(
+    '/core/ai/model/catalog',
+    {
+      version,
+      outLinkAuthData: outLinkAuthData ? JSON.stringify(outLinkAuthData) : undefined
+    },
+    { deduplicate: true }
+  );
 
 /* 活动 banner */
 export const getOperationalAd = () =>

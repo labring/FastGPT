@@ -1,4 +1,4 @@
-name: Build agent-sandbox images
+name: Release Agent-sandbox
 on:
   workflow_dispatch:
     inputs:

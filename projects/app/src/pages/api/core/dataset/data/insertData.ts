@@ -2,7 +2,6 @@
   insert one data to dataset (immediately insert)
   manual input or mark data
 */
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { hasSameValue } from '@/service/core/dataset/data/utils';
 import { createDatasetData } from '@/service/core/dataset/data/data';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
@@ -23,6 +22,7 @@ import {
   type InsertDataResponse
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { getDatasetEmbeddingModel } from '@fastgpt/service/core/dataset/model';
 
 async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
   const { collectionId, q, a, indexes, metadata } = parseApiInput({
@@ -44,15 +44,10 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
     insertLen: 1 + (indexes?.length || 0)
   });
 
-  const [
-    {
-      dataset: { _id: datasetId, vectorModel },
-      indexPrefixTitle,
-      imageIndex,
-      indexSize,
-      name
-    }
-  ] = await Promise.all([getCollectionWithDataset(collectionId)]);
+  const [{ dataset, indexPrefixTitle, imageIndex, indexSize, name }] = await Promise.all([
+    getCollectionWithDataset(collectionId)
+  ]);
+  const datasetId = dataset._id;
 
   const formatQ = simpleText(q);
   const formatA = simpleText(a);
@@ -61,7 +56,7 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
     text: simpleText(item.text)
   }));
 
-  const vectorModelData = getEmbeddingModel(vectorModel);
+  const vectorModelData = getDatasetEmbeddingModel(dataset);
 
   await hasSameValue({
     teamId,
@@ -82,7 +77,7 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
       chunkIndex: 0,
       indexSize,
       indexPrefix: indexPrefixTitle ? `# ${name}` : undefined,
-      embeddingModel: vectorModelData.model,
+      embeddingModel: vectorModelData,
       imageIndex: !!imageIndex,
       indexes: formatIndexes,
       metadata,
@@ -94,7 +89,7 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
     teamId,
     tmbId,
     inputTokens: tokens,
-    model: vectorModelData.model
+    model: vectorModelData
   });
 
   (() => {

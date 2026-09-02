@@ -14,6 +14,7 @@ import {
   OpenAPIFlowNodeInputItemTypeSchema,
   OpenAPIStoreNodeItemTypeSchema
 } from '../../workflow/node';
+import { AppChatConfigInputSchema } from '../../app/common/api';
 
 const nullishToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
   z.preprocess((v) => v ?? undefined, schema);
@@ -232,7 +233,7 @@ export const ChatTestPropsSchema = z.object({
     example: [],
     description: '临时执行的工作流连线列表'
   }),
-  chatConfig: CanonicalWorkflowDataSchema.shape.chatConfig.meta({
+  chatConfig: AppChatConfigInputSchema.meta({
     example: {},
     description: '当前格式的聊天配置'
   }),

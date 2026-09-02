@@ -4,10 +4,14 @@ import { S3Sources } from '../../common/s3/contracts/type';
 import { isS3ObjectKey } from '../../common/s3/utils';
 import { getLogger, LogCategories } from '../../common/logger';
 import { S3Buckets } from '../../common/s3/config/constants';
-import { getVlmModelList, isImageEmbeddingModel } from '../ai/model';
+import { isImageEmbeddingModel } from '../ai/model';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { S3_DOWNLOAD_URL_BATCH_MAX_SIZE } from '@fastgpt-sdk/storage/access-link';
 import { createS3DownloadAccessUrls } from '../../common/s3/accessLink';
+import type {
+  EmbeddingSystemModelDataType,
+  LLMSystemModelDataType
+} from '@fastgpt/global/core/ai/model.schema';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 const previewUrlS3Sources = ['dataset', 'chat', 'temp'] as const;
@@ -173,22 +177,14 @@ export async function replaceS3KeyToPreviewUrl(documentQuoteText: string, expire
   return content!;
 }
 
-const getAvailableDatasetVlmModel = (vlmModel?: string) => {
-  if (!vlmModel) return;
-
-  const vlmModelList = getVlmModelList();
-
-  return vlmModelList.find((item) => item.model === vlmModel || item.name === vlmModel);
-};
-
 export const getDatasetImageIndexCapability = ({
   vectorModel,
   vlmModel
 }: {
-  vectorModel?: string;
-  vlmModel?: string;
+  vectorModel?: EmbeddingSystemModelDataType;
+  vlmModel?: LLMSystemModelDataType;
 }) => {
-  const availableVlmModel = getAvailableDatasetVlmModel(vlmModel);
+  const availableVlmModel = vlmModel;
   const supportVlm = !!availableVlmModel;
   const supportImageEmbedding = isImageEmbeddingModel(vectorModel);
 

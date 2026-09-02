@@ -107,8 +107,8 @@ const resourceReferenceConfigs = [
 /**
  * 校验一批权限记录的外部引用。
  *
- * 协作者和资源引用同时校验 `_id` 与 `teamId`，跨团队引用与非法 ObjectId 均视为悬垂。
- * `team` 和 `model` 权限没有 `resourceId`；其余资源类型缺少 `resourceId` 时单独报告。
+ * 协作者和团队资源引用同时校验 `_id` 与 `teamId`；`team` 和模型权限不在 4162
+ * 校验 resourceId，模型身份迁移及悬空删除由后续 4163 统一处理。
  */
 async function findDanglingReferencePermissionsInBatch(
   permissions: PermissionReferenceDoc[]

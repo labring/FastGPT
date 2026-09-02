@@ -16,12 +16,12 @@ import type {
   FlowNodeTemplateType,
   WorkflowCheckNodeIssueMap
 } from '@fastgpt/global/core/workflow/type/node';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { checkWorkflowNodeIssues } from '@/web/core/workflow/workflowCheck';
 import { collectWorkflowStartAutoFillRevertPatches } from '@/web/core/workflow/workflowStartAutoFill';
 import { captureDeletedWorkflowReferenceSnapshots } from '@/web/core/workflow/referenceCheck';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { AppContext } from '@/pageComponents/app/detail/context';
+import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 
 type FlowNodeChangeProps = { nodeId: string } & (
   | {
@@ -146,6 +146,8 @@ export const WorkflowActionsContext = createContext<WorkflowActionsContextValue>
 export const WorkflowActionsProvider = ({ children }: { children: React.ReactNode }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { modelList, llmModelList, loaded: modelsLoaded } = useUserModelLists();
+  const availableModels = modelsLoaded ? modelList : undefined;
 
   // 获取 WorkflowBufferDataContext 的数据
   const {
@@ -253,6 +255,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       const issueMap = checkWorkflowNodeIssues({
         nodes,
         edges,
+        models: availableModels,
         nodeId,
         t,
         chatConfig: appDetail.chatConfig
@@ -279,7 +282,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         })
       );
     },
-    [appDetail.chatConfig, edges, getNodes, setNodes, t]
+    [appDetail.chatConfig, availableModels, edges, getNodes, setNodes, t]
   );
 
   /** 节点配置变更后防抖触发单节点重新校验，避免每次输入都同步扫描。 */
@@ -320,6 +323,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         const issueMap = checkWorkflowNodeIssues({
           nodes,
           edges,
+          models: availableModels,
           t,
           chatConfig: appDetail.chatConfig
         });
@@ -334,7 +338,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         }
       }, 400);
     },
-    [appDetail.chatConfig, edges, getNodes, onSyncWorkflowCheckIssues, t, toast]
+    [appDetail.chatConfig, availableModels, edges, getNodes, onSyncWorkflowCheckIssues, t, toast]
   );
 
   const onRefreshWorkflowCheckIssues = useCallback(
@@ -464,14 +468,14 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
   );
 
   // 使用结构共享优化的节点更改
-  const { llmModelList } = useSystemStore();
   const llmModelMap = useMemo(() => {
     return llmModelList.reduce(
       (acc, model) => {
         acc[model.model] = model;
+        if (model.modelId) acc[model.modelId] = model;
         return acc;
       },
-      {} as Record<string, LLMModelItemType>
+      {} as Record<string, MyLLMModelItemType>
     );
   }, [llmModelList]);
   const onChangeNode = useCallback(

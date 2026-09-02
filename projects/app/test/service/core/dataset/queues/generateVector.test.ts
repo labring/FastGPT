@@ -1,22 +1,42 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { getRebuildBaseIndexes } from '@/service/core/dataset/queues/generateVector';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import type {
+  EmbeddingSystemModelDataType,
+  LLMSystemModelDataType
+} from '@fastgpt/global/core/ai/model.schema';
 
-const visionEmbeddingModel = {
-  model: 'vision-embedding',
-  name: 'vision-embedding',
-  maxToken: 100,
-  vision: true
-} as any;
+let visionEmbeddingModel: EmbeddingSystemModelDataType;
+let vlmModel: LLMSystemModelDataType;
 
 describe('generateVector image embedding helpers', () => {
   beforeEach(() => {
-    global.embeddingModelMap.set(visionEmbeddingModel.model, visionEmbeddingModel);
-    global.llmModelMap.set('vlm-model', {
-      ...global.systemDefaultModel.llm,
+    const defaultEmbeddingModel = global.systemDefaultModel.embedding;
+    const defaultLLMModel = global.systemDefaultModel.llm;
+    visionEmbeddingModel = {
+      ...defaultEmbeddingModel,
+      modelId: '507f1f77bcf86cd799439021',
+      model: 'vision-embedding',
+      name: 'vision-embedding',
+      config: {
+        ...defaultEmbeddingModel.config,
+        vision: true
+      }
+    };
+    vlmModel = {
+      ...defaultLLMModel,
+      modelId: '507f1f77bcf86cd799439022',
       model: 'vlm-model',
       name: 'vlm-model',
-      vision: true
+      config: {
+        ...defaultLLMModel.config,
+        vision: true
+      }
+    };
+
+    [visionEmbeddingModel, vlmModel].forEach((model) => {
+      global.systemModelMap.set(`id:${model.modelId}`, model);
+      global.systemModelMap.set(`model:${model.model}`, model);
     });
   });
 
@@ -43,8 +63,8 @@ describe('generateVector image embedding helpers', () => {
       ],
       q: 'content ![markdown](dataset/team/markdown.png)',
       dataset: {
-        vectorModel: visionEmbeddingModel.model,
-        vlmModel: 'vlm-model'
+        vectorModelId: visionEmbeddingModel.modelId,
+        vlmModelId: vlmModel.modelId
       },
       collection: {
         imageIndex: true
@@ -81,8 +101,8 @@ describe('generateVector image embedding helpers', () => {
         }
       ],
       dataset: {
-        vectorModel: visionEmbeddingModel.model,
-        vlmModel: 'vlm-model'
+        vectorModelId: visionEmbeddingModel.modelId,
+        vlmModelId: vlmModel.modelId
       },
       collection: {
         imageIndex: false

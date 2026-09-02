@@ -6,7 +6,11 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
+import {
+  getDatasetAgentModel,
+  getDatasetEmbeddingModel,
+  getDatasetVlmModel
+} from '@fastgpt/service/core/dataset/model';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import path from 'node:path';
@@ -45,10 +49,13 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
       authApiKey: true
     });
     const dataset = collection.dataset;
+    const vectorModelData = getDatasetEmbeddingModel(dataset);
+    const agentModelData = getDatasetAgentModel(dataset);
+    const vlmModelData = getDatasetVlmModel(dataset);
     const { availableVlmModel, supportVlm, supportImageEmbedding } = getDatasetImageIndexCapability(
       {
-        vectorModel: dataset.vectorModel,
-        vlmModel: dataset.vlmModel
+        vectorModel: vectorModelData,
+        vlmModel: vlmModelData
       }
     );
 
@@ -85,9 +92,9 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
           tmbId,
           appName: collection.name,
           billSource: UsageSourceEnum.training,
-          vectorModel: getEmbeddingModel(dataset.vectorModel)?.name,
-          agentModel: getLLMModel(dataset.agentModel)?.name,
-          vllmModel: availableVlmModel?.name,
+          vectorModelId: vectorModelData.modelId!,
+          agentModelId: agentModelData.modelId,
+          vllmModelId: availableVlmModel?.modelId,
           session
         });
         return usageId;
@@ -98,9 +105,9 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
         tmbId,
         datasetId: dataset._id,
         collectionId,
-        agentModel: dataset.agentModel,
-        vectorModel: dataset.vectorModel,
-        vlmModel: dataset.vlmModel,
+        agentModel: agentModelData,
+        vectorModel: vectorModelData,
+        vlmModel: vlmModelData,
         mode: supportVlm ? TrainingModeEnum.imageParse : TrainingModeEnum.chunk,
         billId: traingBillId,
         data: imageIds.map((item) => ({

@@ -17,6 +17,11 @@ import {
   DatasetCollectionDataProcessModeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type {
+  EmbeddingSystemModelDataType,
+  LLMSystemModelDataType
+} from '@fastgpt/global/core/ai/model.schema';
 
 const mockCreateS3DownloadAccessUrls = vi.hoisted(() =>
   vi.fn(async (params: Array<{ objectKey: string }>) =>
@@ -627,24 +632,42 @@ describe('getTrainingModeByCollection', () => {
 });
 
 describe('getDatasetImageIndexCapability', () => {
-  beforeEach(() => {
-    global.embeddingModelMap.set('vision-embedding-model', {
-      ...global.systemDefaultModel.embedding,
-      model: 'vision-embedding-model',
-      name: 'vision-embedding-model',
+  const visionEmbeddingModel: EmbeddingSystemModelDataType = {
+    modelId: '507f1f77bcf86cd799439011',
+    provider: 'test',
+    model: 'vision-embedding-model',
+    name: 'vision-embedding-model',
+    type: ModelTypeEnum.embedding,
+    scope: 'system' as const,
+    isActive: true,
+    isCustom: false,
+    config: {
+      defaultToken: 512,
+      maxToken: 8192,
+      weight: 0,
       vision: true
-    });
-    global.llmModelMap.set('dataset-vlm-model', {
-      ...global.systemDefaultModel.llm,
-      model: 'dataset-vlm-model',
-      name: 'dataset-vlm-model',
+    }
+  };
+  const datasetVlmModel: LLMSystemModelDataType = {
+    modelId: '507f1f77bcf86cd799439012',
+    provider: 'test',
+    model: 'dataset-vlm-model',
+    name: 'dataset-vlm-model',
+    type: ModelTypeEnum.llm,
+    scope: 'system' as const,
+    isActive: true,
+    isCustom: false,
+    config: {
+      maxContext: 32000,
+      maxResponse: 4000,
+      quoteMaxToken: 16000,
       vision: true
-    });
-  });
+    }
+  };
 
   it('未配置 VLM 时不应自动回退到默认 VLM', async () => {
     const result = getDatasetImageIndexCapability({
-      vectorModel: 'vision-embedding-model'
+      vectorModel: visionEmbeddingModel
     });
 
     expect(result.supportVlm).toBe(false);
@@ -655,8 +678,8 @@ describe('getDatasetImageIndexCapability', () => {
 
   it('配置 VLM 时应同时返回 VLM 和多模态索引能力', async () => {
     const result = getDatasetImageIndexCapability({
-      vectorModel: 'vision-embedding-model',
-      vlmModel: 'dataset-vlm-model'
+      vectorModel: visionEmbeddingModel,
+      vlmModel: datasetVlmModel
     });
 
     expect(result.supportVlm).toBe(true);

@@ -486,7 +486,8 @@ describe('appWorkflow2AgentForm', () => {
     });
 
     expect(result.dataset.usingReRank).toBe(false);
-    expect(result.dataset.rerankModel).toBe('');
+    expect(result.dataset.rerankModel).toBeFalsy();
+    expect(result.dataset.rerankModelId).toBeFalsy();
     expect(result.dataset.rerankWeight).toBe(0.5);
   });
 

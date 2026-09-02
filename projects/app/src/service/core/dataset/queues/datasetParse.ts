@@ -18,7 +18,11 @@ import { checkTeamAiPointsAndLock } from './utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
-import { getLLMModel } from '@fastgpt/service/core/ai/model';
+import {
+  getDatasetAgentModel,
+  getDatasetEmbeddingModel,
+  getDatasetVlmModel
+} from '@fastgpt/service/core/dataset/model';
 import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
@@ -33,6 +37,8 @@ import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { createParseTaskLease, PARSE_QUEUE_LEASE_TIMEOUT_MINUTES } from './parseLease';
 
@@ -40,13 +46,13 @@ const logger = getLogger(LogCategories.MODULE.DATASET.FILE_PARSE);
 
 const requestLLMPargraph = async ({
   rawText,
-  model,
+  modelId,
   teamId,
   billId,
   paragraphChunkAIMode
 }: {
   rawText: string;
-  model: string;
+  modelId: string;
   teamId: string;
   billId: string;
   paragraphChunkAIMode?: ParagraphChunkAIModeEnum;
@@ -87,7 +93,7 @@ const requestLLMPargraph = async ({
     '/core/dataset/training/llmPargraph',
     {
       rawText,
-      model,
+      modelId,
       teamId,
       billId
     },
@@ -199,6 +205,9 @@ export const datasetParseQueue = async (): Promise<any> => {
         }
         continue;
       }
+      const agentModelData = getDatasetAgentModel(dataset);
+      const embeddingModelData = getDatasetEmbeddingModel(dataset);
+      const vlmModelData = getDatasetVlmModel(dataset);
 
       logger.info('Parse queue task started', {
         trainingId: data._id,
@@ -241,8 +250,8 @@ export const datasetParseQueue = async (): Promise<any> => {
           autoIndexes: collection.autoIndexes,
           imageIndex: collection.imageIndex,
           supportImageIndex: getDatasetImageIndexCapability({
-            vectorModel: dataset.vectorModel,
-            vlmModel: dataset.vlmModel
+            vectorModel: embeddingModelData,
+            vlmModel: vlmModelData
           }).supportImageIndex
         });
 
@@ -310,9 +319,10 @@ export const datasetParseQueue = async (): Promise<any> => {
         });
 
         // 3. LLM Pargraph
+        if (!agentModelData.modelId) throw new UserError(ModelErrEnum.unExist);
         const { resultText, totalInputTokens, totalOutputTokens } = await requestLLMPargraph({
           rawText,
-          model: dataset.agentModel,
+          modelId: agentModelData.modelId,
           teamId: String(data.teamId),
           billId: data.billId,
           paragraphChunkAIMode: collection.paragraphChunkAIMode
@@ -320,7 +330,7 @@ export const datasetParseQueue = async (): Promise<any> => {
         // Push usage
         pushLLMTrainingUsage({
           teamId: data.teamId,
-          model: dataset.agentModel,
+          model: agentModelData,
           inputTokens: totalInputTokens,
           outputTokens: totalOutputTokens,
           usageId: data.billId,
@@ -335,7 +345,7 @@ export const datasetParseQueue = async (): Promise<any> => {
           chunkSize: collection.chunkSize,
           paragraphChunkDeep: collection.paragraphChunkDeep,
           paragraphChunkMinSize: collection.paragraphChunkMinSize,
-          maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModel)),
+          maxSize: getLLMMaxChunkSize(agentModelData),
           overlapRatio:
             collection.trainingType === DatasetCollectionDataProcessModeEnum.chunk ? 0.2 : 0,
           customReg: collection.chunkSplitter ? [collection.chunkSplitter] : [],
@@ -377,9 +387,9 @@ export const datasetParseQueue = async (): Promise<any> => {
             tmbId: data.tmbId,
             datasetId: dataset._id,
             collectionId: collection._id,
-            agentModel: dataset.agentModel,
-            vectorModel: dataset.vectorModel,
-            vlmModel: dataset.vlmModel,
+            agentModel: agentModelData,
+            vectorModel: embeddingModelData,
+            vlmModel: vlmModelData,
             indexSize: collection.indexSize,
             mode: trainingMode,
             billId: data.billId,

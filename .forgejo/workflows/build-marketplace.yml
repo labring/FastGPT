@@ -1,4 +1,4 @@
-name: Build fastgpt-marketplace images
+name: Release FastGPT-marketplace
 on:
   workflow_dispatch:
     inputs:

@@ -15,7 +15,6 @@ import { type DatasetItemType, type DatasetTagType } from '@fastgpt/global/core/
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getWebLLMModel } from '@/web/common/system/utils';
 import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
 
 type DatasetPageContextType = {
@@ -97,13 +96,11 @@ export const DatasetPageContextProvider = ({
     await putDatasetById(data);
 
     if (datasetId === data.id) {
-      setDatasetDetail((state) => ({
-        ...state,
-        ...data,
-        agentModel: data.agentModel ? getWebLLMModel(data.agentModel) : state.agentModel,
-        vlmModel: data.vlmModel ? getWebLLMModel(data.vlmModel) : state.vlmModel,
-        apiDatasetServer: filterApiDatasetServerPublicData(data.apiDatasetServer)
-      }));
+      const detail = await getDatasetById(datasetId);
+      setDatasetDetail({
+        ...detail,
+        apiDatasetServer: filterApiDatasetServerPublicData(detail.apiDatasetServer)
+      });
     }
   };
 

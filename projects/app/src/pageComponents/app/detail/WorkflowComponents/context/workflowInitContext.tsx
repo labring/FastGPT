@@ -29,6 +29,7 @@ import { getWebLLMModel } from '@/web/common/system/utils';
 import { captureDeletedWorkflowReferenceSnapshots } from '@/web/core/workflow/referenceCheck';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useTranslation } from 'next-i18next';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -134,6 +135,7 @@ const WorkflowInitContextProvider = ({
   children: ReactNode;
   basicNodeTemplates: FlowNodeTemplateType[];
 }) => {
+  const { llmModelList } = useUserModelLists();
   // Nodes
   const [nodes = [], setNodes] = useNodesState<FlowNodeItemType>([]);
   const chatConfig = useContextSelector(AppContext, (v) => v.appDetail.chatConfig);
@@ -249,8 +251,10 @@ const WorkflowInitContextProvider = ({
       };
       if (map[flowNodeType]) {
         const model =
-          node.data.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
-        const quoteMaxToken = getWebLLMModel(model)?.quoteMaxToken || 0;
+          node.data.inputs.find((item) => item.key === NodeInputKeyEnum.aiModelId)?.value ||
+          node.data.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value ||
+          '';
+        const quoteMaxToken = getWebLLMModel(model, llmModelList)?.config.quoteMaxToken ?? 0;
         llmMaxQuoteContext = Math.max(llmMaxQuoteContext, quoteMaxToken);
       }
 
@@ -280,7 +284,7 @@ const WorkflowInitContextProvider = ({
       foldedNodesMap,
       compareNodeList
     };
-  }, [nodes]);
+  }, [llmModelList, nodes]);
 
   // 拆解出常用的数据，避免重复计算
   const nodeIds = useMemoEnhance(() => nodeFormat.nodeIds, [nodeFormat.nodeIds]);

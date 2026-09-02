@@ -12,6 +12,7 @@ import {
   PostDatasetSyncBodySchema
 } from '../../../openapi/core/dataset/api';
 import { CreateCollectionByFileIdBodySchema } from '../../../openapi/core/dataset/collection/createApi';
+import { DatasetItemSchema, DatasetListItemSchema } from '../../../core/dataset/type';
 
 const objectId = '68ad85a7463006c963799a05';
 
@@ -103,6 +104,12 @@ describe('Dataset OpenAPI contracts', () => {
       chunkSize: 512,
       indexSize: 768
     });
+  });
+
+  it('allows list and detail responses to omit unavailable display models', () => {
+    expect(DatasetListItemSchema.shape.vectorModel.safeParse(undefined).success).toBe(true);
+    expect(DatasetItemSchema.shape.vectorModel.safeParse(undefined).success).toBe(true);
+    expect(DatasetItemSchema.shape.agentModel.safeParse(undefined).success).toBe(true);
   });
 
   it('documents that Dataset collaborator updates require at least one collaborator', () => {

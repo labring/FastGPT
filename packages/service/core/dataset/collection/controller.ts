@@ -19,7 +19,7 @@ import { predictDataLimitLength } from '../../../../global/core/dataset/utils';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { createTrainingUsage } from '../../../support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getLLMModel, getEmbeddingModel, getVlmModel } from '../../ai/model';
+import { getDatasetAgentModel, getDatasetEmbeddingModel, getDatasetVlmModel } from '../model';
 import { pushDataListToTrainingQueue, pushDatasetToParseQueue } from '../training/controller';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { getFullTextStore } from '../data/textStore';
@@ -57,6 +57,10 @@ export const createCollectionAndInsertData = async ({
   billId?: string;
   session?: ClientSession;
 }): Promise<CreateCollectionWithResultResponseType> => {
+  const agentModelData = getDatasetAgentModel(dataset);
+  const embeddingModelData = getDatasetEmbeddingModel(dataset);
+  const vlmModelData = getDatasetVlmModel(dataset);
+
   // Adapter 4.9.0
   if (createCollectionParams.trainingType === DatasetCollectionDataProcessModeEnum.auto) {
     createCollectionParams.trainingType = DatasetCollectionDataProcessModeEnum.chunk;
@@ -65,8 +69,8 @@ export const createCollectionAndInsertData = async ({
 
   const formatCreateCollectionParams = computedCollectionChunkSettings({
     ...createCollectionParams,
-    llmModel: getLLMModel(dataset.agentModel),
-    vectorModel: getEmbeddingModel(dataset.vectorModel)
+    llmModel: agentModelData,
+    vectorModel: embeddingModelData
   });
 
   const teamId = formatCreateCollectionParams.teamId;
@@ -80,8 +84,8 @@ export const createCollectionAndInsertData = async ({
     autoIndexes: formatCreateCollectionParams.autoIndexes,
     imageIndex: formatCreateCollectionParams.imageIndex,
     supportImageIndex: getDatasetImageIndexCapability({
-      vectorModel: dataset.vectorModel,
-      vlmModel: dataset.vlmModel
+      vectorModel: embeddingModelData,
+      vlmModel: vlmModelData
     }).supportImageIndex
   });
 
@@ -138,7 +142,7 @@ export const createCollectionAndInsertData = async ({
         chunkSize: formatCreateCollectionParams.chunkSize,
         paragraphChunkDeep: formatCreateCollectionParams.paragraphChunkDeep,
         paragraphChunkMinSize: formatCreateCollectionParams.paragraphChunkMinSize,
-        maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModel)),
+        maxSize: getLLMMaxChunkSize(agentModelData),
         overlapRatio: trainingType === DatasetCollectionDataProcessModeEnum.chunk ? 0.2 : 0,
         customReg: formatCreateCollectionParams.chunkSplitter
           ? [formatCreateCollectionParams.chunkSplitter]
@@ -195,9 +199,9 @@ export const createCollectionAndInsertData = async ({
         tmbId,
         appName: formatCreateCollectionParams.name,
         billSource: UsageSourceEnum.training,
-        vectorModel: getEmbeddingModel(dataset.vectorModel)?.name,
-        agentModel: getLLMModel(dataset.agentModel)?.name,
-        vllmModel: getVlmModel(dataset.vlmModel)?.name,
+        vectorModelId: embeddingModelData.modelId!,
+        agentModelId: agentModelData.modelId,
+        vllmModelId: vlmModelData?.modelId,
         session
       });
       return newUsageId;
@@ -211,9 +215,9 @@ export const createCollectionAndInsertData = async ({
           tmbId,
           datasetId: dataset._id,
           collectionId,
-          agentModel: dataset.agentModel,
-          vectorModel: dataset.vectorModel,
-          vlmModel: dataset.vlmModel,
+          agentModel: agentModelData,
+          vectorModel: embeddingModelData,
+          vlmModel: vlmModelData,
           indexSize,
           mode: trainingMode,
           billId: traingUsageId,

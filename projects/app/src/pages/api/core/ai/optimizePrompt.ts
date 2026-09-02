@@ -16,6 +16,7 @@ import {
   type OptimizePromptBody
 } from '@fastgpt/global/openapi/core/ai/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { getLLMModelData } from '@fastgpt/service/core/ai/model';
 
 const getPromptOptimizerSystemPrompt = () => {
   return `# Role
@@ -71,7 +72,7 @@ ${originalPrompt}
 };
 
 async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiResponseType) {
-  const { originalPrompt, optimizerInput, model } = parseApiInput({
+  const { originalPrompt, optimizerInput, modelId } = parseApiInput({
     req,
     bodySchema: OptimizePromptBodySchema
   }).body;
@@ -82,6 +83,7 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
       authToken: true,
       authApiKey: true
     });
+    const modelData = getLLMModelData({ modelId });
 
     res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
     res.setHeader('X-Accel-Buffering', 'no');
@@ -104,7 +106,7 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
       teamId,
       saveLLMResponseRecord: false,
       body: {
-        model,
+        model: modelData,
         messages,
         stream: true
       },
@@ -133,8 +135,8 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
       data: OptimizePromptResponseSchema.parse('[DONE]')
     });
 
-    const { totalPoints, modelName } = formatModelChars2Points({
-      model,
+    const { totalPoints } = formatModelChars2Points({
+      model: modelData,
       inputTokens,
       outputTokens
     });
@@ -149,7 +151,7 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
         {
           moduleName: i18nT('common:support.wallet.usage.Optimize Prompt'),
           amount: totalPoints,
-          model: modelName,
+          modelId: modelData.modelId,
           inputTokens,
           outputTokens
         }

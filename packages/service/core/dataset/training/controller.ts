@@ -5,7 +5,11 @@ import type {
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from '../../../common/mongo';
-import { getLLMModel, getEmbeddingModel, getVlmModel, isImageEmbeddingModel } from '../../ai/model';
+import { isImageEmbeddingModel } from '../../ai/model';
+import type {
+  EmbeddingSystemModelDataType,
+  LLMSystemModelDataType
+} from '@fastgpt/global/core/ai/model.schema';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getLLMMaxChunkSize } from '../../../../global/core/dataset/training/utils';
@@ -92,30 +96,24 @@ export const pushDataListToTrainingQueue = async ({
   data: PushDataChunkType[];
   mode?: TrainingModeEnum;
 
-  agentModel: string;
-  vectorModel: string;
-  vlmModel?: string;
+  agentModel: LLMSystemModelDataType;
+  vectorModel: EmbeddingSystemModelDataType;
+  vlmModel?: LLMSystemModelDataType;
 
   indexSize?: number;
 
   billId: string;
   session?: ClientSession;
 }): Promise<PushDataResponseType> => {
-  const vectorModelData = getEmbeddingModel(vectorModel);
-  if (!vectorModelData) {
-    return Promise.reject(i18nT('common:error_embedding_not_config'));
-  }
-  const agentModelData = getLLMModel(agentModel);
-  if (!agentModelData) {
-    return Promise.reject(i18nT('common:error_llm_not_config'));
-  }
+  const vectorModelData = vectorModel;
+  const agentModelData = agentModel;
 
   const { maxToken, weight } = await (async () => {
     if (mode === TrainingModeEnum.chunk) {
       return {
         maxToken: Infinity,
         model: vectorModelData.model,
-        weight: vectorModelData.weight
+        weight: vectorModelData.config.weight
       };
     }
     if (mode === TrainingModeEnum.qa || mode === TrainingModeEnum.auto) {
@@ -126,13 +124,13 @@ export const pushDataListToTrainingQueue = async ({
       };
     }
     if (mode === TrainingModeEnum.image || mode === TrainingModeEnum.imageParse) {
-      const vllmModelData = getVlmModel(vlmModel);
+      const vllmModelData = vlmModel;
       if (!vllmModelData) {
         if (mode === TrainingModeEnum.image && isImageEmbeddingModel(vectorModelData)) {
           return {
             maxToken: Infinity,
             model: vectorModelData.model,
-            weight: vectorModelData.weight
+            weight: vectorModelData.config.weight
           };
         }
         return Promise.reject(i18nT('common:error_vlm_not_config'));

@@ -14,7 +14,14 @@ import {
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
+import {
+  getHandleId,
+  isWorkflowSystemModelInput,
+  isValidReferenceValue,
+  isValidReferenceValueFormat,
+  nodeInputIsReference,
+  workflowModelKeyMappings
+} from '@fastgpt/global/core/workflow/utils';
 import type { TFunction } from 'next-i18next';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
@@ -49,6 +56,7 @@ import {
   getWorkflowReferenceItemsFromValue,
   getWorkflowReferenceStatuses
 } from './referenceCheck';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 type WorkflowCheckContext = {
   nodeMap: Map<string, Node<FlowNodeItemType, string | undefined>>;
@@ -57,6 +65,12 @@ type WorkflowCheckContext = {
   reachableNodeSet: Set<string>;
   childrenNodeIdListMap: Record<string, string[]>;
   chatConfig?: AppChatConfigType;
+};
+
+type WorkflowCheckModel = {
+  modelId: string;
+  model: string;
+  type: ModelTypeEnum;
 };
 
 const workflowCheckSkipConnectionTypes = new Set<FlowNodeTypeEnum>([
@@ -130,7 +144,8 @@ type WorkflowCheckMessageCode =
   | 'tool_inactive'
   | 'tool_missing'
   | 'tool_load_failed'
-  | 'tool_no_permission';
+  | 'tool_no_permission'
+  | 'model_unavailable';
 
 /** issue.code -> 设计稿固定文案 code。表外 code 映射到最接近的已有文案。 */
 const WORKFLOW_CHECK_ISSUE_MESSAGE_CODE_MAP: Record<string, WorkflowCheckMessageCode> = {
@@ -156,6 +171,7 @@ const WORKFLOW_CHECK_ISSUE_MESSAGE_CODE_MAP: Record<string, WorkflowCheckMessage
   tool_missing: 'tool_missing',
   tool_load_failed: 'tool_load_failed',
   tool_no_permission: 'tool_no_permission',
+  model_unavailable: 'model_unavailable',
   tool_offline: 'tool_missing',
   loop_run_missing_break: 'if_else_incomplete',
   variable_update_incomplete: 'code_input_incomplete'
@@ -169,7 +185,8 @@ export const WORKFLOW_CHECK_PENDING_HANDLE_CODES = new Set<string>([
   'tool_missing',
   'tool_load_failed',
   'tool_no_permission',
-  'tool_offline'
+  'tool_offline',
+  'model_unavailable'
 ]);
 
 export type WorkflowCheckUIStatus = 'pending_improve' | 'pending_handle';
@@ -180,7 +197,7 @@ export const getWorkflowCheckIssueUIStatus = (code: string): WorkflowCheckUIStat
 
 const workflowCheckMessageFallback: Record<
   WorkflowCheckMessageCode,
-  (params?: { inputName?: string }) => string
+  (params?: { inputName?: string; model?: string }) => string
 > = {
   required_input_empty: ({ inputName } = {}) => `需填写必填项 ${inputName ?? ''}`.trim(),
   no_upstream: () => '未与其他节点连线',
@@ -203,7 +220,8 @@ const workflowCheckMessageFallback: Record<
   tool_inactive: () => '该工具尚未激活，请激活使用',
   tool_missing: () => '该工具不存在，请删除',
   tool_load_failed: () => '工具加载失败，请稍后重试',
-  tool_no_permission: () => '当前账号无权限访问该资源'
+  tool_no_permission: () => '当前账号无权限访问该资源',
+  model_unavailable: () => '模型已停用'
 };
 
 const PLUGIN_DATA_PERMISSION_ERROR_CODES = new Set<string>([
@@ -247,7 +265,7 @@ const resolveWorkflowCheckMessageCode = (issueCode: string): WorkflowCheckMessag
 const translateWorkflowCheckIssueMessage = (
   messageCode: WorkflowCheckMessageCode,
   t: TFunction,
-  params?: { inputName?: string }
+  params?: { inputName?: string; model?: string }
 ) => {
   switch (messageCode) {
     case 'required_input_empty':
@@ -288,6 +306,8 @@ const translateWorkflowCheckIssueMessage = (
       return t('common:core.workflow.check.tool_load_failed', params);
     case 'tool_no_permission':
       return t('common:core.workflow.check.tool_no_permission', params);
+    case 'model_unavailable':
+      return t('common:core.workflow.check.model_unavailable', params);
   }
 };
 
@@ -295,7 +315,7 @@ const translateWorkflowCheckIssueMessage = (
 export const getWorkflowCheckIssueMessage = (
   issueCode: string,
   t?: TFunction,
-  params?: { inputName?: string }
+  params?: { inputName?: string; model?: string }
 ) => {
   const messageCode = resolveWorkflowCheckMessageCode(issueCode);
   if (!messageCode) return '';
@@ -413,12 +433,14 @@ const isVariableUpdateValueEmpty = (item: TUpdateListItem) => {
 export const checkWorkflowNodeIssues = ({
   nodes,
   edges,
+  models,
   nodeId,
   t,
   chatConfig
 }: {
   nodes: Node<FlowNodeItemType, string | undefined>[];
   edges: Edge<any>[];
+  models?: WorkflowCheckModel[];
   nodeId?: string;
   t?: TFunction;
   chatConfig?: AppChatConfigType;
@@ -497,6 +519,68 @@ export const checkWorkflowNodeIssues = ({
     const status = data.status ?? data.pluginData?.status;
     const isToolOffline = status === PluginStatusEnum.Offline;
 
+    const isDynamicModelValue = (value: unknown) =>
+      Array.isArray(value) || (typeof value === 'string' && /^\{\{.*\}\}$/.test(value));
+    const addUnavailableModelIssue = ({
+      modelId,
+      model,
+      type,
+      featureEnabled,
+      inputKey,
+      allowLegacyModelFallback = false
+    }: {
+      modelId?: unknown;
+      model?: unknown;
+      type: ModelTypeEnum;
+      featureEnabled: boolean;
+      inputKey: string;
+      allowLegacyModelFallback?: boolean;
+    }) => {
+      if (!models || !featureEnabled) return;
+      const value = modelId !== undefined ? modelId : model;
+      if (isDynamicModelValue(value) || value === undefined || value === null || value === '') {
+        return;
+      }
+
+      const available =
+        modelId !== undefined
+          ? models.some(
+              (item) =>
+                item.type === type &&
+                (item.modelId === String(modelId) ||
+                  (allowLegacyModelFallback && item.model === modelId))
+            )
+          : models.some((item) => item.model === model && item.type === type);
+      if (available) return;
+
+      addIssue({
+        node,
+        code: 'model_unavailable',
+        message: getWorkflowCheckIssueMessage('model_unavailable', t, {
+          model: String(value)
+        }),
+        inputKey
+      });
+    };
+
+    inputs.forEach((input) => {
+      if (
+        getSelectedInputRenderType(input) !== FlowNodeInputTypeEnum.selectLLMModel ||
+        isWorkflowSystemModelInput({ node: data, input })
+      ) {
+        return;
+      }
+
+      addUnavailableModelIssue({
+        modelId: input.value ?? input.defaultValue,
+        type: ModelTypeEnum.llm,
+        featureEnabled: true,
+        inputKey: input.key,
+        // 旧版 WorkflowTool 默认值保存的是 model，请求期间仍需兼容识别。
+        allowLegacyModelFallback: true
+      });
+    });
+
     if (isToolOffline) {
       addIssue({
         node,
@@ -529,6 +613,66 @@ export const checkWorkflowNodeIssues = ({
     }
 
     if (!workflowCheckSkipNodeRuleTypes.has(data.flowNodeType)) {
+      for (const [legacyKey, modelIdKey] of workflowModelKeyMappings) {
+        const legacyInput = inputMap.get(legacyKey);
+        const modelIdInput = inputMap.get(modelIdKey);
+        const systemModelInput = modelIdInput ?? legacyInput;
+        if (
+          !systemModelInput ||
+          !isWorkflowSystemModelInput({ node: data, input: systemModelInput })
+        ) {
+          continue;
+        }
+
+        const type =
+          legacyKey === NodeInputKeyEnum.datasetSearchRerankModel
+            ? ModelTypeEnum.rerank
+            : ModelTypeEnum.llm;
+        const featureKey = (() => {
+          if (legacyKey === NodeInputKeyEnum.datasetSearchRerankModel) {
+            return NodeInputKeyEnum.datasetSearchUsingReRank;
+          }
+          if (legacyKey === NodeInputKeyEnum.datasetSearchExtensionModel) {
+            return NodeInputKeyEnum.datasetSearchUsingExtensionQuery;
+          }
+          if (legacyKey === NodeInputKeyEnum.datasetDeepSearchModel) {
+            return NodeInputKeyEnum.datasetDeepSearch;
+          }
+        })();
+
+        addUnavailableModelIssue({
+          modelId: modelIdInput?.value,
+          model: legacyInput?.value,
+          type,
+          featureEnabled: featureKey ? Boolean(inputMap.get(featureKey)?.value) : true,
+          inputKey: systemModelInput.key
+        });
+      }
+
+      const datasetParamsInput = inputMap.get(NodeInputKeyEnum.datasetParams);
+      if (
+        data.flowNodeType === FlowNodeTypeEnum.agent &&
+        datasetParamsInput?.value &&
+        typeof datasetParamsInput.value === 'object' &&
+        !Array.isArray(datasetParamsInput.value)
+      ) {
+        const datasetParams = datasetParamsInput.value as Record<string, unknown>;
+        addUnavailableModelIssue({
+          modelId: datasetParams[NodeInputKeyEnum.datasetSearchRerankModelId],
+          model: datasetParams[NodeInputKeyEnum.datasetSearchRerankModel],
+          type: ModelTypeEnum.rerank,
+          featureEnabled: Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingReRank]),
+          inputKey: NodeInputKeyEnum.datasetParams
+        });
+        addUnavailableModelIssue({
+          modelId: datasetParams[NodeInputKeyEnum.datasetSearchExtensionModelId],
+          model: datasetParams[NodeInputKeyEnum.datasetSearchExtensionModel],
+          type: ModelTypeEnum.llm,
+          featureEnabled: Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingExtensionQuery]),
+          inputKey: NodeInputKeyEnum.datasetParams
+        });
+      }
+
       if (data.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
         const ifElseList = inputMap.get(NodeInputKeyEnum.ifElseList)?.value as
           | IfElseListItemType[]
@@ -1062,15 +1206,17 @@ export const getWorkflowCheckErrorNodeIds = (
 export const checkWorkflowBeforeRunOrPublish = ({
   nodes,
   edges,
+  models,
   t,
   chatConfig
 }: {
   nodes: Node<FlowNodeItemType, string | undefined>[];
   edges: Edge<any>[];
+  models?: WorkflowCheckModel[];
   t?: TFunction;
   chatConfig?: AppChatConfigType;
 }) => {
-  const issueMap = checkWorkflowNodeIssues({ nodes, edges, t, chatConfig });
+  const issueMap = checkWorkflowNodeIssues({ nodes, edges, models, t, chatConfig });
   const nodeOrder = nodes.map((node) => node.data.nodeId);
   const errorNodeIds = getWorkflowCheckErrorNodeIds(issueMap, nodeOrder);
 

@@ -146,12 +146,12 @@ describe('App OpenAPI contracts', () => {
       CreateEvaluationBodySchema.parse({
         name: '客服问答评测',
         appId: objectId,
-        evalModel: 'gpt-4o-mini'
+        evalModelId: objectId
       })
     ).toEqual({
       name: '客服问答评测',
       appId: objectId,
-      evalModel: 'gpt-4o-mini'
+      evalModelId: objectId
     });
     expect(CreateEvaluationFormSchema.parse({ file: {}, data: '{}' })).toEqual({
       file: {},

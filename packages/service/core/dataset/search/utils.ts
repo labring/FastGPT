@@ -8,6 +8,10 @@ import { serviceEnv } from '../../../env';
 import { isS3ObjectKey } from '../../../common/s3/utils';
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import type {
+  EmbeddingSystemModelDataType,
+  LLMSystemModelDataType
+} from '@fastgpt/global/core/ai/model.schema';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
@@ -93,8 +97,8 @@ export const datasetSearchQueryExtension = async ({
   histories = []
 }: {
   query: string;
-  llmModel?: string;
-  embeddingModel?: string;
+  llmModel?: LLMSystemModelDataType;
+  embeddingModel?: EmbeddingSystemModelDataType;
   userKey?: OpenaiAccountType;
   teamId: string;
   extensionBg?: string;

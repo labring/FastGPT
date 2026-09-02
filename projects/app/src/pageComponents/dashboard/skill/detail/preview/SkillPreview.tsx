@@ -3,6 +3,8 @@ import { Box } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { SkillDetailContext } from '../context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import { streamSkillDebugChat } from '@/web/core/skill/api';
@@ -22,6 +24,7 @@ import { getSkillEditChatSourceKey } from '@/web/core/chat/utils';
 import { defaultQGConfig, defaultWhisperConfig } from '@fastgpt/global/core/app/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getInitChatInfo } from '@/web/core/chat/api';
+import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
 
 const fileSelectConfig: AppFileSelectConfigType = {
   maxFiles: 10,
@@ -42,23 +45,32 @@ const SkillPreview = () => {
     chatId: v.chatId
   }));
 
-  const { llmModelList, defaultModels, feConfigs } = useSystemStore();
+  const { feConfigs } = useSystemStore();
+  const { defaultModels } = useUserModelStore();
+  const { llmModelList } = useUserModelLists();
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
-  const defaultModel = defaultModels.llm?.model || llmModelList[0]?.model || '';
+  const defaultModelId = defaultModels.llm?.modelId || llmModelList[0]?.modelId || '';
   const [proModalOpen, setProModalOpen] = useState(false);
   const selectedModel = useSkillDebugChatStore((state) => state.selectedModel);
   const setSelectedModel = useSkillDebugChatStore((state) => state.setSelectedModel);
 
   const modelSelectList = useMemo(
-    () => llmModelList.map((item) => ({ label: item.name, value: item.model })),
+    () =>
+      llmModelList
+        .filter((item): item is typeof item & { modelId: string } => !!item.modelId)
+        .map((item) => ({ label: item.name, value: item.modelId })),
     [llmModelList]
   );
   const fallbackModel = useMemo(() => {
-    const modelSet = new Set(llmModelList.map((item) => item.model));
-    if (selectedModel && modelSet.has(selectedModel)) return selectedModel;
-    if (defaultModel && modelSet.has(defaultModel)) return defaultModel;
-    return llmModelList[0]?.model || '';
-  }, [defaultModel, llmModelList, selectedModel]);
+    const selectedModelId = findClientModelByValue({
+      models: llmModelList,
+      value: selectedModel
+    })?.modelId;
+    if (selectedModelId) return selectedModelId;
+    if (selectedModel) return selectedModel;
+    if (defaultModelId) return defaultModelId;
+    return llmModelList[0]?.modelId || '';
+  }, [defaultModelId, llmModelList, selectedModel]);
 
   const isReady = sandboxState === 'ready';
   const sourceKey = useMemo(() => getSkillEditChatSourceKey(skillId), [skillId]);
@@ -88,7 +100,7 @@ const SkillPreview = () => {
               questionGuide: {
                 ...defaultQGConfig,
                 open: true,
-                model: fallbackModel
+                modelId: fallbackModel
               },
               whisperConfig: {
                 ...defaultWhisperConfig,
@@ -155,7 +167,7 @@ const SkillPreview = () => {
           skillId,
           chatId,
           messages: histories,
-          model: fallbackModel,
+          modelId: fallbackModel,
           responseChatItemId
         },
         onMessage: generatingMessage,

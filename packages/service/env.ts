@@ -30,7 +30,9 @@ export const serviceEnv = createEnv({
   skipValidation: isPhaseProductionBuild,
   server: {
     // ==================== 基础配置 ====================
-    DB_MAX_LINK: IntSchema.min(1).default(5),
+    DB_MAX_LINK: NumSchema.int()
+      .default(10)
+      .transform((value) => Math.min(1000, Math.max(10, value))),
 
     // ==================== 密钥 ====================
     ROOT_KEY: z

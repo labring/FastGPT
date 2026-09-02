@@ -32,6 +32,7 @@ import {
   defaultWhisperConfig
 } from '../app/constants';
 import { IfElseResultEnum } from './template/system/ifElse/constant';
+import { ModelTypeEnum } from '../ai/constants';
 import {
   Input_Template_File_Link,
   Input_Template_History,
@@ -570,30 +571,304 @@ export const clientGetWorkflowToolRunUserQuery = ({
   };
 };
 
-export const removeUnauthModels = async ({
-  modules,
-  allowedModels = new Set()
+export const workflowModelKeyMappings = [
+  [NodeInputKeyEnum.aiModel, NodeInputKeyEnum.aiModelId],
+  [NodeInputKeyEnum.datasetSearchRerankModel, NodeInputKeyEnum.datasetSearchRerankModelId],
+  [NodeInputKeyEnum.datasetSearchExtensionModel, NodeInputKeyEnum.datasetSearchExtensionModelId],
+  [NodeInputKeyEnum.datasetDeepSearchModel, NodeInputKeyEnum.datasetDeepSearchModelId]
+] as const;
+
+const systemLLMNodeTypes = new Set<FlowNodeTypeEnum>([
+  FlowNodeTypeEnum.chatNode,
+  FlowNodeTypeEnum.classifyQuestion,
+  FlowNodeTypeEnum.contentExtract,
+  FlowNodeTypeEnum.queryExtension,
+  FlowNodeTypeEnum.agent,
+  FlowNodeTypeEnum.toolCall
+]);
+
+/**
+ * 判断模型字段是否属于 FastGPT 系统模型引用。
+ * 外部工具可以自由声明 model/rerankModel 等同名参数，因此不能只根据 key 判断。
+ */
+export const isWorkflowSystemModelInput = ({
+  node,
+  input
 }: {
-  modules: AppSchemaType['modules'];
-  allowedModels?: Set<string>;
+  node: Pick<StoreNodeItemType, 'flowNodeType'>;
+  input: FlowNodeInputItemType;
 }) => {
-  if (modules) {
-    modules.forEach((module) => {
-      module.inputs.forEach((input) => {
-        if (input.key === 'model') {
-          // 如果是引用类型或历史引用值，跳过静态模型白名单检查。
-          if (
-            getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.reference ||
-            Array.isArray(input.value)
-          ) {
-            return;
-          }
-          if (!allowedModels.has(input.value)) {
-            input.value = undefined;
-          }
-        }
-      });
-    });
+  if (input.key === NodeInputKeyEnum.aiModel || input.key === NodeInputKeyEnum.aiModelId) {
+    const renderTypeList = input.renderTypeList ?? [];
+    return (
+      renderTypeList.includes(FlowNodeInputTypeEnum.selectLLMModel) ||
+      renderTypeList.includes(FlowNodeInputTypeEnum.settingLLMModel) ||
+      systemLLMNodeTypes.has(node.flowNodeType)
+    );
   }
-  return modules;
+
+  if (
+    input.key === NodeInputKeyEnum.datasetSearchRerankModel ||
+    input.key === NodeInputKeyEnum.datasetSearchRerankModelId ||
+    input.key === NodeInputKeyEnum.datasetSearchExtensionModel ||
+    input.key === NodeInputKeyEnum.datasetSearchExtensionModelId ||
+    input.key === NodeInputKeyEnum.datasetDeepSearchModel ||
+    input.key === NodeInputKeyEnum.datasetDeepSearchModelId
+  ) {
+    return (
+      node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode ||
+      node.flowNodeType === FlowNodeTypeEnum.agent
+    );
+  }
+
+  return false;
+};
+
+/**
+ * 在 Workflow 写入边界统一格式化模型引用。
+ *
+ * 动态引用只迁移到 canonical key，不做静态校验。静态引用优先按 modelId、其次按 legacy model
+ * 精确解析；无法解析时由调用方按保存、创建或发布场景选择保留、回退或校验策略。回退优先使用
+ * 有效的系统默认同类型模型，再使用第一个 active 同类型模型。该函数不承担成员权限判断。
+ */
+export const formatModels = ({
+  nodes,
+  chatConfig,
+  models = [],
+  defaultModelIds = {},
+  modelReferencePolicy
+}: {
+  nodes: StoreNodeItemType[] | undefined;
+  chatConfig?: AppSchemaType['chatConfig'];
+  models?: Array<{ modelId: string; model: string; type: ModelTypeEnum }>;
+  defaultModelIds?: Partial<Record<ModelTypeEnum, string>>;
+  modelReferencePolicy: 'preserve' | 'fallback' | 'validate';
+}) => {
+  const missingModels = new Set<string>();
+  const getFallbackModelId = (type: ModelTypeEnum) => {
+    const defaultModelId = defaultModelIds[type];
+    const defaultModel = models.find(
+      (item) => item.modelId === defaultModelId && item.type === type
+    );
+    return defaultModel?.modelId ?? models.find((item) => item.type === type)?.modelId ?? '';
+  };
+  const isTemplateExpression = (value: unknown) =>
+    typeof value === 'string' && /^\{\{.*\}\}$/.test(value);
+  const isDynamicModelValue = (value: unknown) =>
+    Array.isArray(value) || isTemplateExpression(value);
+  const resolveModelId = ({
+    modelId,
+    model,
+    type,
+    featureEnabled
+  }: {
+    modelId?: unknown;
+    model?: unknown;
+    type: ModelTypeEnum;
+    featureEnabled: boolean;
+  }) => {
+    const matchedModel =
+      modelId !== undefined
+        ? models.find((item) => item.modelId === String(modelId) && item.type === type)
+        : typeof model === 'string'
+          ? models.find((item) => item.model === model && item.type === type)
+          : undefined;
+    if (matchedModel) return matchedModel.modelId;
+    // 草稿必须保留用户现场；canonical 字段存在时绝不能用 legacy 字段隐式修复。
+    if (modelReferencePolicy === 'preserve') {
+      return modelId !== undefined ? modelId : model;
+    }
+    if (modelReferencePolicy === 'fallback' || !featureEnabled) {
+      return getFallbackModelId(type);
+    }
+
+    const label =
+      modelId !== undefined
+        ? String(modelId).length > 0
+          ? String(modelId)
+          : '未配置'
+        : typeof model === 'string' && model.length > 0
+          ? model
+          : '未配置';
+    missingModels.add(label);
+    return '';
+  };
+  const formatChatModelReference = ({
+    config,
+    type,
+    featureEnabled
+  }: {
+    config?: { modelId?: unknown; model?: unknown };
+    type: ModelTypeEnum;
+    featureEnabled: boolean;
+  }) => {
+    if (!config) return;
+    if (config.modelId === undefined && config.model === undefined) return;
+    if (isDynamicModelValue(config.modelId)) {
+      delete config.model;
+      return;
+    }
+    if (config.modelId === undefined && isDynamicModelValue(config.model)) {
+      config.modelId = config.model;
+      delete config.model;
+      return;
+    }
+
+    config.modelId = resolveModelId({
+      modelId: config.modelId,
+      model: config.model,
+      type,
+      featureEnabled
+    });
+    delete config.model;
+  };
+  formatChatModelReference({
+    config: chatConfig?.questionGuide,
+    type: ModelTypeEnum.llm,
+    featureEnabled: chatConfig?.questionGuide?.open === true
+  });
+  formatChatModelReference({
+    config: chatConfig?.ttsConfig,
+    type: ModelTypeEnum.tts,
+    featureEnabled: chatConfig?.ttsConfig?.type === 'model'
+  });
+
+  if (!nodes) {
+    if (modelReferencePolicy === 'validate' && missingModels.size > 0) {
+      throw new Error(`${Array.from(missingModels).join('、')} 模型已停用`);
+    }
+    return nodes;
+  }
+
+  const isReferenceInput = (input: FlowNodeInputItemType) =>
+    getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.reference ||
+    Array.isArray(input.value);
+  const isDynamicModelInput = (input: FlowNodeInputItemType) =>
+    isReferenceInput(input) || isTemplateExpression(input.value);
+
+  const formatNestedModelReference = ({
+    config,
+    legacyKey,
+    modelIdKey,
+    type,
+    featureEnabled
+  }: {
+    config: Record<string, unknown>;
+    legacyKey: string;
+    modelIdKey: string;
+    type: ModelTypeEnum;
+    featureEnabled: boolean;
+  }) => {
+    const modelId = config[modelIdKey];
+    const model = config[legacyKey];
+    if (modelId === undefined && model === undefined) return;
+    if (isDynamicModelValue(modelId)) {
+      delete config[legacyKey];
+      return;
+    }
+    if (modelId === undefined && isDynamicModelValue(model)) {
+      config[modelIdKey] = model;
+      delete config[legacyKey];
+      return;
+    }
+
+    config[modelIdKey] = resolveModelId({
+      modelId,
+      model,
+      type,
+      featureEnabled
+    });
+    delete config[legacyKey];
+  };
+
+  nodes.forEach((node) => {
+    for (const [legacyKey, modelIdKey] of workflowModelKeyMappings) {
+      const legacyInput = node.inputs.find((input) => input.key === legacyKey);
+      const modelIdInput = node.inputs.find((input) => input.key === modelIdKey);
+
+      const systemModelInput = modelIdInput ?? legacyInput;
+      if (!systemModelInput || !isWorkflowSystemModelInput({ node, input: systemModelInput })) {
+        continue;
+      }
+
+      const type =
+        legacyKey === NodeInputKeyEnum.datasetSearchRerankModel
+          ? ModelTypeEnum.rerank
+          : ModelTypeEnum.llm;
+      const featureEnabled = (() => {
+        const featureKey = (() => {
+          if (legacyKey === NodeInputKeyEnum.datasetSearchRerankModel) {
+            return NodeInputKeyEnum.datasetSearchUsingReRank;
+          }
+          if (legacyKey === NodeInputKeyEnum.datasetSearchExtensionModel) {
+            return NodeInputKeyEnum.datasetSearchUsingExtensionQuery;
+          }
+          if (legacyKey === NodeInputKeyEnum.datasetDeepSearchModel) {
+            return NodeInputKeyEnum.datasetDeepSearch;
+          }
+        })();
+        if (!featureKey) return true;
+        return Boolean(node.inputs.find((input) => input.key === featureKey)?.value);
+      })();
+
+      // modelId 始终优先；存在 canonical input 时删除所有对应旧 input。
+      if (modelIdInput) {
+        if (!isDynamicModelInput(modelIdInput)) {
+          modelIdInput.value = resolveModelId({
+            modelId: modelIdInput.value,
+            model: legacyInput?.value,
+            type,
+            featureEnabled
+          });
+        }
+        node.inputs = node.inputs.filter((input) => input.key !== legacyKey);
+        continue;
+      }
+
+      if (!legacyInput) continue;
+
+      if (!isDynamicModelInput(legacyInput)) {
+        legacyInput.value = resolveModelId({
+          model: legacyInput.value,
+          type,
+          featureEnabled
+        });
+      }
+      legacyInput.key = modelIdKey;
+      // 历史异常数据可能存在重复旧 key，转换首个后一并移除。
+      node.inputs = node.inputs.filter((input) => input.key !== legacyKey);
+    }
+
+    const datasetParamsInput = node.inputs.find(
+      (input) => input.key === NodeInputKeyEnum.datasetParams
+    );
+    if (
+      node.flowNodeType === FlowNodeTypeEnum.agent &&
+      datasetParamsInput?.value &&
+      typeof datasetParamsInput.value === 'object' &&
+      !Array.isArray(datasetParamsInput.value)
+    ) {
+      const datasetParams = datasetParamsInput.value as Record<string, unknown>;
+      formatNestedModelReference({
+        config: datasetParams,
+        legacyKey: NodeInputKeyEnum.datasetSearchRerankModel,
+        modelIdKey: NodeInputKeyEnum.datasetSearchRerankModelId,
+        type: ModelTypeEnum.rerank,
+        featureEnabled: Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingReRank])
+      });
+      formatNestedModelReference({
+        config: datasetParams,
+        legacyKey: NodeInputKeyEnum.datasetSearchExtensionModel,
+        modelIdKey: NodeInputKeyEnum.datasetSearchExtensionModelId,
+        type: ModelTypeEnum.llm,
+        featureEnabled: Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingExtensionQuery])
+      });
+    }
+  });
+
+  if (modelReferencePolicy === 'validate' && missingModels.size > 0) {
+    throw new Error(`${Array.from(missingModels).join('、')} 模型已停用`);
+  }
+
+  return nodes;
 };

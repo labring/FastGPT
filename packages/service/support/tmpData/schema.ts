@@ -23,6 +23,18 @@ defineIndex(TmpDataSchema, {
 });
 defineIndex(TmpDataSchema, { key: { dataId: -1 } });
 defineIndex(TmpDataSchema, {
+  key: {
+    'data.teamId': 1,
+    'data.tmbId': 1
+  },
+  options: {
+    partialFilterExpression: {
+      'data.teamId': { $exists: true },
+      'data.tmbId': { $exists: true }
+    }
+  }
+});
+defineIndex(TmpDataSchema, {
   key: { expireAt: -1 },
   options: { expireAfterSeconds: 5 }
 });
