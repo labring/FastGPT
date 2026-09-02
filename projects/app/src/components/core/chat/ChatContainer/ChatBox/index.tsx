@@ -333,6 +333,7 @@ const ChatBox = ({
     setQuestionGuide,
     generatingScroll
   });
+  const [hasChatGeneratingConflict, setHasChatGeneratingConflict] = useState(false);
 
   const { abortRequest, flushGeneratingMessages, generatingMessage, sendPrompt } = useChatGenerate({
     onStartChat,
@@ -351,7 +352,8 @@ const ChatBox = ({
     scrollToBottom,
     generatingScroll,
     notifyChatGenerateStatusChange,
-    finishChatGenerateStatus
+    finishChatGenerateStatus,
+    onChatGeneratingConflict: () => setHasChatGeneratingConflict(true)
   });
   const requestStopChat = useMemoizedFn(async () => {
     await requestStopAndAbortClient({
@@ -437,7 +439,7 @@ const ChatBox = ({
     scrollToBottom('auto');
   }, [chatScrollTargetKey, isChatRecordsLoaded, scrollToBottom]);
 
-  useChatResume({
+  const { checkAndResumeChat } = useChatResume({
     enableAutoResume: resolvedFeatures.autoResume,
     isReady,
     resumeTargetAiDataId,
@@ -450,6 +452,21 @@ const ChatBox = ({
     scrollToBottom,
     finishChatGenerateStatus
   });
+
+  useEffect(() => {
+    if (!hasChatGeneratingConflict || isChatting) return;
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- consume the one-shot recovery signal after the failed round is rolled back
+    setHasChatGeneratingConflict(false);
+    void checkAndResumeChat().then((resumed) => {
+      if (!resumed) return;
+      toast({
+        title: t('chat:chat_generating_resumed'),
+        status: 'info',
+        duration: 5000
+      });
+    });
+  }, [checkAndResumeChat, hasChatGeneratingConflict, isChatting, t, toast]);
 
   const activeInteractive = lastInteractive
     ? extractDeepestInteractive(lastInteractive)

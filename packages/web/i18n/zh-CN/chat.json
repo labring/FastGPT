@@ -59,6 +59,7 @@
   "internal_variables_tip": "内部变量仅调试时可见",
   "invalid_share_url": "无效的分享链接",
   "is_chatting": "正在聊天中...请等待结束",
+  "chat_generating_resumed": "有正在运行的对话，已恢复。",
   "llm_request_detail": "LLM 请求详情",
   "log.error.error_prefix": "报错信息",
   "log.feedback.hide_feedback": "隐藏反馈",
