@@ -38,6 +38,8 @@ export type TeamMemberSchema = {
   _id: string;
   teamId: string;
   userId: string;
+  /** WeCom userid within the team's corp; open_userid remains the FastGPT account identity. */
+  wecomUserId?: string;
   createTime: Date;
   updateTime?: Date;
   name: string;

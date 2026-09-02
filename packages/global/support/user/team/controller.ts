@@ -12,6 +12,7 @@ export type CreateTeamProps = {
   avatar?: string;
   memberName?: string;
   memberAvatar?: string;
+  wecomUserId?: string;
   notificationAccount?: string;
   meta?: TeamMetaType;
 };

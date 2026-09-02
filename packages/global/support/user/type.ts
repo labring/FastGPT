@@ -12,9 +12,7 @@ export const UserTagsSchema = z.enum(['wecom']);
 export const UserTagsEnum = UserTagsSchema.enum;
 export type UserTagsType = z.infer<typeof UserTagsSchema>;
 
-export type UserMetaType = {
-  isActivatedWecomLicense?: boolean;
-};
+export type UserMetaType = Record<string, unknown>;
 
 export type UserModelSchema = {
   _id: string;
