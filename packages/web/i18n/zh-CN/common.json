@@ -213,6 +213,7 @@
   "code_error.team_error.org_parent_not_exist": "父部门不存在",
   "code_error.team_error.over_size": "团队成员超出限制",
   "code_error.team_error.plugin_amount_not_enough": "插件数量已达上限~",
+  "code_error.team_error.team_plugin_install_disabled": "团队插件安装能力未开启",
   "code_error.team_error.re_rank_not_enough": "免费版无法使用检索重排~",
   "code_error.team_error.sandbox_not_support": "当前团队套餐不支持使用虚拟机/沙箱功能~",
   "code_error.team_error.ticket_not_available": "当前套餐暂不支持工单服务，可以前往社区免费获取帮助～",

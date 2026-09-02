@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { TeamManagePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 
 const mocks = vi.hoisted(() => ({
   authUserPer: vi.fn(),
+  assertTeamPluginInstallEnabled: vi.fn(),
   assertTeamPluginSourceReady: vi.fn(),
   upsertTeamInstalledPluginPolicy: vi.fn(),
   confirmPlugin: vi.fn()
@@ -14,6 +16,7 @@ vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/plugin/teamPluginPolicy', () => ({
+  assertTeamPluginInstallEnabled: mocks.assertTeamPluginInstallEnabled,
   assertTeamPluginSourceReady: mocks.assertTeamPluginSourceReady,
   getRawPluginIdFromSystemToolId: (toolId: string) =>
     toolId.replace(/^systemTool-/, '').split('/')[0],
@@ -44,6 +47,7 @@ describe('confirm team plugin package handler', () => {
       ...global.feConfigs,
       enable_team_plugin_upload: true
     } as any;
+    mocks.assertTeamPluginInstallEnabled.mockImplementation(() => undefined);
     mocks.authUserPer.mockResolvedValue({ teamId: 'team-1', tmbId: 'tmb-1' });
     mocks.confirmPlugin.mockResolvedValue({
       confirmed: [{ ...tool, pluginId: 'weather' }],
@@ -96,5 +100,17 @@ describe('confirm team plugin package handler', () => {
     expect(res.code).not.toBe(200);
     expect(mocks.assertTeamPluginSourceReady).not.toHaveBeenCalled();
     expect(mocks.upsertTeamInstalledPluginPolicy).not.toHaveBeenCalled();
+  });
+
+  it('does not confirm plugins when the installation feature is disabled', async () => {
+    mocks.assertTeamPluginInstallEnabled.mockImplementationOnce(() => {
+      throw TeamErrEnum.teamPluginInstallDisabled;
+    });
+
+    const res = await Call(handler, { body: { toolIds: [tool] } });
+
+    expect(res.code).not.toBe(200);
+    expect(res.error).toBe(TeamErrEnum.teamPluginInstallDisabled);
+    expect(mocks.confirmPlugin).not.toHaveBeenCalled();
   });
 });
