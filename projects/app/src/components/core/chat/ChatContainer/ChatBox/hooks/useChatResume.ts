@@ -1,4 +1,5 @@
-import { useEffect, type MutableRefObject } from 'react';
+import { useEffect, useRef, useState, type MutableRefObject } from 'react';
+import { useDocumentVisibility, useLatest, useMemoizedFn, useUpdateEffect } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -18,6 +19,7 @@ import { ChatBoxContext } from '../Provider';
 import {
   hasMeaningfulAiOutput,
   mergeResumeCompletedChatRecords,
+  shouldCheckChatResumeStatus,
   shouldCreateResumeAiPlaceholder,
   shouldReplaceResumeAiValue,
   shouldResetResumeAiPlaceholder
@@ -26,6 +28,7 @@ import type { ChatSiteItemType } from '../type';
 import type { generatingMessageProps } from '../../type';
 import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
+import { getChatHistoryStatus } from '@/web/core/chat/history/api';
 
 type FinishChatGenerateStatus = (params: {
   status: ChatGenerateStatusEnum;
@@ -107,6 +110,7 @@ export const useChatResume = ({
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const chatAuthTarget = useChatAuthApiTarget({ sourceTarget, outLinkAuthData });
+  const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const chatBoxSourceKey = useContextSelector(ChatItemContext, (v) => v.chatBoxData.sourceKey);
   const chatBoxChatId = useContextSelector(ChatItemContext, (v) => v.chatBoxData.chatId);
   const chatGenerateStatus = useContextSelector(
@@ -116,6 +120,72 @@ export const useChatResume = ({
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
+  const isChattingRef = useLatest(isChatting);
+  const documentVisibility = useDocumentVisibility();
+  const resumeStatusCheckingRef = useRef(false);
+  const [resumeRequestVersion, setResumeRequestVersion] = useState(0);
+
+  /** 确认当前会话仍在服务端生成后，重新放开本地恢复去重并触发恢复流。 */
+  const checkAndResumeChat = useMemoizedFn(async () => {
+    if (
+      resumeStatusCheckingRef.current ||
+      !shouldCheckChatResumeStatus({
+        enableAutoResume,
+        isReady,
+        isChatRecordsLoaded,
+        sourceKey,
+        chatId,
+        isChatting,
+        isResumeRequestActive: !!resumeControllerRef.current,
+        chatBoxSourceKey,
+        chatBoxChatId
+      })
+    ) {
+      return false;
+    }
+
+    resumeStatusCheckingRef.current = true;
+
+    try {
+      const { list } = await getChatHistoryStatus({
+        ...chatAuthTarget,
+        chatIds: [chatId]
+      });
+      const currentStatus = list.find((item) => item.chatId === chatId)?.chatGenerateStatus;
+      if (currentStatus !== ChatGenerateStatusEnum.generating) return false;
+      if (
+        activeSourceKeyRef.current !== sourceKey ||
+        activeChatIdRef.current !== chatId ||
+        isChattingRef.current ||
+        resumeControllerRef.current
+      ) {
+        return false;
+      }
+
+      setChatBoxData((state) =>
+        state.sourceKey === sourceKey && state.chatId === chatId
+          ? {
+              ...state,
+              chatGenerateStatus: ChatGenerateStatusEnum.generating
+            }
+          : state
+      );
+
+      resumedChatTargetRef.current = undefined;
+      setResumeRequestVersion((version) => version + 1);
+      return true;
+    } catch {
+      // 状态确认恢复属于 best-effort，不用检查错误干扰当前聊天。
+      return false;
+    } finally {
+      resumeStatusCheckingRef.current = false;
+    }
+  });
+
+  useUpdateEffect(() => {
+    if (documentVisibility !== 'visible') return;
+    void checkAndResumeChat();
+  }, [documentVisibility]);
 
   useEffect(() => {
     if (
@@ -461,6 +531,11 @@ export const useChatResume = ({
     activeSourceKeyRef,
     activeChatIdRef,
     resumedChatTargetRef,
-    resumeControllerRef
+    resumeControllerRef,
+    resumeRequestVersion
   ]);
+
+  return {
+    checkAndResumeChat
+  };
 };

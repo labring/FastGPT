@@ -11,7 +11,7 @@ import {
   STREAM_RESUME_REQUEST_HEADER,
   STREAM_RESUME_REQUEST_HEADER_ENABLED
 } from '@fastgpt/global/core/chat/constants';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrResponse, getErrText } from '@fastgpt/global/common/error/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
@@ -38,6 +38,12 @@ export type StreamResponseType = {
   responseText: string;
   title?: string;
 };
+export type StreamFetchErrorType = {
+  message: string;
+  responseText: string;
+  statusText?: string;
+  code?: number;
+};
 export type ResumeStreamResponseType = StreamResponseType & {
   completedChat?: StreamNoNeedToBeResumeType;
   resumeUnavailable?: ResumeUnavailableType;
@@ -46,6 +52,28 @@ export type ResumeStreamErrorType = {
   message: string;
   responseText: string;
   isStreamError?: boolean;
+};
+
+/** 保留流请求错误的业务标识，供调用方区分可恢复冲突与普通生成错误。 */
+export const createStreamFetchError = ({
+  error,
+  fallbackMessage,
+  responseText
+}: {
+  error: unknown;
+  fallbackMessage: string;
+  responseText: string;
+}): StreamFetchErrorType => {
+  const errorResponse = getErrResponse(error);
+
+  return {
+    message: getErrText(error, fallbackMessage),
+    responseText,
+    ...(typeof errorResponse?.statusText === 'string'
+      ? { statusText: errorResponse.statusText }
+      : {}),
+    ...(typeof errorResponse?.code === 'number' ? { code: errorResponse.code } : {})
+  };
 };
 
 export type ResumeUnavailableType = {
@@ -96,7 +124,7 @@ type HandleEventSourceDataParams = {
   data: string;
   onmessage: StartChatFnProps['generatingMessage'];
   enqueue: (data: AnswerQueueItem) => void;
-  onerror: (err: string) => void;
+  onerror: (err: unknown) => void;
   splitAnswerTextByCharacter?: boolean;
 };
 /** 解析单条 SSE 数据；只有回答文本进入打字队列，其他事件立即派发。 */
@@ -178,8 +206,7 @@ export function handleEventSourceData(params: HandleEventSourceDataParams) {
       }
 
       case SseResponseEventEnum.error: {
-        const error = getErrText(obj, i18nT('common:stream_response_error'));
-        onerror(error);
+        onerror(obj);
         break;
       }
 
@@ -242,7 +269,7 @@ function $ssefetch(params: SSEFetchParams) {
     let responseText = '';
     let title: string | undefined;
     let responseQueue: AnswerQueueItem[] = [];
-    let error: string | undefined;
+    let streamError: unknown;
     let finished = false;
 
     const applyAnswerItem = (item: AnswerQueueItem) => {
@@ -261,15 +288,18 @@ function $ssefetch(params: SSEFetchParams) {
 
     const onfailed = (err?: any) => {
       finished = true;
-      reject({
-        message: getErrText(err, error ?? i18nT('common:response_processing_error')),
-        responseText
-      });
+      reject(
+        createStreamFetchError({
+          error: err,
+          fallbackMessage: i18nT('common:response_processing_error'),
+          responseText
+        })
+      );
     };
 
     const onfinish = () => {
-      if (error !== undefined) {
-        return onfailed();
+      if (streamError !== undefined) {
+        return onfailed(streamError);
       }
 
       return resolve({ responseText, title });
@@ -349,7 +379,7 @@ function $ssefetch(params: SSEFetchParams) {
             data,
             onmessage: dispatchNonAnswerMessage,
             enqueue,
-            onerror: (err) => void (error = err)
+            onerror: (err) => void (streamError = err)
           });
         },
         onclose() {
@@ -357,10 +387,9 @@ function $ssefetch(params: SSEFetchParams) {
         },
         onerror(err) {
           clearTimeout(timer);
-          const error = getErrText(err);
-          onfailed(error);
+          onfailed(err);
 
-          throw new Error(err);
+          throw err instanceof Error ? err : new Error(getErrText(err));
         },
         openWhenHidden: true
       };
@@ -374,8 +403,7 @@ function $ssefetch(params: SSEFetchParams) {
         return;
       }
 
-      const error = getErrText(err);
-      onfailed(error);
+      onfailed(err);
     }
   });
 }
@@ -397,7 +425,7 @@ function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: Resum
     let responseText = '';
     let title: string | undefined;
     let responseQueue: AnswerQueueItem[] = [];
-    let error: string | undefined;
+    let error: unknown;
     let finished = false;
     let resumePhase: StreamResumePhaseEnum = StreamResumePhaseEnum.catchup;
     let completedChat: StreamNoNeedToBeResumeType | undefined;
@@ -405,7 +433,7 @@ function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: Resum
 
     const onfinish = () => {
       if (error !== undefined) {
-        return onfailed();
+        return onfailed(error);
       }
       return resolve({ responseText, title, completedChat, resumeUnavailable });
     };
@@ -416,7 +444,7 @@ function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: Resum
     };
     const onfailed = (err?: any) => {
       finished = true;
-      const message = getErrText(err, error ?? i18nT('common:response_processing_error'));
+      const message = getErrText(err ?? error, i18nT('common:response_processing_error'));
       reject({
         message,
         responseText,
