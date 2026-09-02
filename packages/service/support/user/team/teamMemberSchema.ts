@@ -20,6 +20,9 @@ const TeamMemberSchema = new Schema({
     ref: userCollectionName,
     required: true
   },
+  wecomUserId: {
+    type: String
+  },
   avatar: {
     type: String,
     default: () => getRandomUserAvatar()
@@ -79,6 +82,14 @@ defineIndex(TeamMemberSchema, {
 defineIndex(TeamMemberSchema, {
   key: { userId: 1, teamId: 1 },
   options: { unique: true, background: true }
+});
+defineIndex(TeamMemberSchema, {
+  key: { teamId: 1, wecomUserId: 1 },
+  options: {
+    unique: true,
+    partialFilterExpression: { wecomUserId: { $exists: true } },
+    background: true
+  }
 });
 
 export const MongoTeamMember = getMongoModel<TeamMemberType>(
