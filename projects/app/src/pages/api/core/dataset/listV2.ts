@@ -27,7 +27,9 @@ import {
   type GetDatasetListV2Response
 } from '@fastgpt/global/openapi/core/dataset/api';
 
-async function handler(req: ApiRequestProps): Promise<GetDatasetListV2Response> {
+async function handler(
+  req: ApiRequestProps<GetDatasetListV2Body>
+): Promise<GetDatasetListV2Response> {
   const {
     parentId,
     type,
@@ -145,9 +147,9 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListV2Response> 
     })();
     return {
       _id: dataset._id,
-      avatar: dataset.avatar,
+      avatar: dataset.avatar ?? '',
       name: dataset.name,
-      intro: dataset.intro,
+      intro: dataset.intro ?? '',
       type: dataset.type,
       vectorModel: getEmbeddingModel(dataset.vectorModel),
       inheritPermission: dataset.inheritPermission,

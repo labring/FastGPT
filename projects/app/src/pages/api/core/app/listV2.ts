@@ -156,6 +156,8 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
     );
     return {
       ...rest,
+      avatar: app.avatar ?? '',
+      intro: app.intro ?? '',
       parentId: app.parentId,
       permission: Per,
       private: privateApp,

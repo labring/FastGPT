@@ -68,4 +68,32 @@ describe('POST /api/core/dataset/list', () => {
     expect(res.data.list).toHaveLength(1);
     expect(res.data.list[0].name).toBe('Dataset 2');
   });
+
+  it('normalizes nullish avatar and intro from legacy records in V2', async () => {
+    const user = await getUser(`dataset-list-v2-legacy-${getNanoid(6)}`);
+    const dataset = await MongoDataset.create({
+      name: 'Legacy Dataset',
+      type: DatasetTypeEnum.dataset,
+      teamId: user.teamId,
+      tmbId: user.tmbId,
+      updateTime: new Date('2024-01-01T00:00:00.000Z')
+    });
+    await MongoDataset.collection.updateOne(
+      { _id: dataset._id },
+      { $set: { avatar: null }, $unset: { intro: '' } }
+    );
+
+    const res = await Call<GetDatasetListV2Body, Record<string, never>, GetDatasetListV2Response>(
+      handlerV2,
+      {
+        auth: user,
+        body: { type: DatasetTypeEnum.dataset }
+      }
+    );
+
+    expect(res.code).toBe(200);
+    expect(res.data.list).toContainEqual(
+      expect.objectContaining({ name: 'Legacy Dataset', avatar: '', intro: '' })
+    );
+  });
 });

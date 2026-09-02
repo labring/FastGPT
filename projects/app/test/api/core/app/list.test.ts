@@ -162,4 +162,32 @@ describe('POST /api/core/app/list', () => {
     expect(res.data.list).toHaveLength(1);
     expect(res.data.list[0].name).toBe('App 2');
   });
+
+  it('normalizes nullish avatar and intro from legacy records in V2', async () => {
+    const user = await getUser(`app-list-v2-legacy-${getNanoid(6)}`);
+    const app = await MongoApp.create({
+      name: 'Legacy App',
+      type: AppTypeEnum.simple,
+      teamId: user.teamId,
+      tmbId: user.tmbId,
+      updateTime: new Date('2024-01-01T00:00:00.000Z')
+    });
+    await MongoApp.collection.updateOne(
+      { _id: app._id },
+      { $set: { avatar: null }, $unset: { intro: '' } }
+    );
+
+    const res = await Call<ListAppV2BodyType, Record<string, never>, ListAppV2ResponseType>(
+      handlerV2,
+      {
+        auth: user,
+        body: { type: AppTypeEnum.simple }
+      }
+    );
+
+    expect(res.code).toBe(200);
+    expect(res.data.list).toContainEqual(
+      expect.objectContaining({ name: 'Legacy App', avatar: '', intro: '' })
+    );
+  });
 });
