@@ -67,6 +67,7 @@ describe('dispatchIfElse branch handles', () => {
     );
 
     expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(`${IfElseResultEnum.ELSE_IF} 1`);
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toBe(`${IfElseResultEnum.ELSE_IF} 1`);
     expect(result[DispatchNodeResponseKeyEnum.skipHandleId]).toEqual([
       getHandleId('ifElse', 'source', IfElseResultEnum.IF),
       getHandleId('ifElse', 'source', `${IfElseResultEnum.ELSE_IF} 2`),
@@ -99,6 +100,7 @@ describe('dispatchIfElse branch handles', () => {
     );
 
     expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toBe(IfElseResultEnum.IF);
     expect(result[DispatchNodeResponseKeyEnum.skipHandleId]).toEqual([
       getHandleId('ifElse', 'source', 'stableB'),
       getHandleId('ifElse', 'source', IfElseResultEnum.ELSE)

@@ -35,7 +35,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
     let hasCount = false;
 
     usage.list.forEach((item) => {
-      if (item.model !== undefined) {
+      if (item.modelId !== undefined || item.model !== undefined) {
         hasModel = true;
       }
 

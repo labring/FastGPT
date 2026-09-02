@@ -409,25 +409,25 @@ describe('resourcePermissionRepo.findResourceKeysByCollaboratorsPermission', () 
     );
   });
 
-  it('uses resourceName for model permissions', async () => {
+  it('uses resourceId for model permissions', async () => {
     await MongoResourcePermission.collection.insertMany([
       {
         teamId,
         tmbId,
         resourceType: PerResourceTypeEnum.model,
-        resourceName: 'model-with-manage',
+        resourceId: 'model-with-manage',
         permission: ManagePermissionVal
       },
       {
         teamId,
         groupId,
         resourceType: PerResourceTypeEnum.model,
-        resourceName: 'model-with-read',
+        resourceId: 'model-with-read',
         permission: ReadPermissionVal
       }
     ]);
 
-    const modelNames = await resourcePermissionRepo.findResourceKeysByCollaboratorsPermission({
+    const modelIds = await resourcePermissionRepo.findResourceKeysByCollaboratorsPermission({
       teamId: String(teamId),
       resourceType: PerResourceTypeEnum.model,
       tmbId: String(tmbId),
@@ -438,7 +438,7 @@ describe('resourcePermissionRepo.findResourceKeysByCollaboratorsPermission', () 
       personalPermissionPriority: true
     });
 
-    expect(modelNames.toSorted()).toEqual(['model-with-manage', 'model-with-read']);
+    expect(modelIds.toSorted()).toEqual(['model-with-manage', 'model-with-read']);
   });
 
   it('rejects owner and invalid permission queries before reading Mongo', async () => {

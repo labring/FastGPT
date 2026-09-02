@@ -12,6 +12,7 @@ import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/a
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { getDatasetEmbeddingModel } from '@fastgpt/service/core/dataset/model';
 
 async function handler(req: ApiRequestProps): Promise<DatasetDataIndexResponse> {
   const { dataId, indexDataId, type, text } = parseApiInput({
@@ -27,12 +28,13 @@ async function handler(req: ApiRequestProps): Promise<DatasetDataIndexResponse> 
     per: WritePermissionVal
   });
 
+  const embeddingModel = getDatasetEmbeddingModel(collection.dataset);
   const { index, tokens } = await updateDatasetDataIndex({
     data: datasetData,
     indexDataId,
     type,
     text,
-    model: collection.dataset.vectorModel
+    model: embeddingModel
   });
 
   if (tokens > 0) {
@@ -40,7 +42,7 @@ async function handler(req: ApiRequestProps): Promise<DatasetDataIndexResponse> 
       teamId,
       tmbId,
       inputTokens: tokens,
-      model: collection.dataset.vectorModel
+      model: embeddingModel
     });
   }
 

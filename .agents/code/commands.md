@@ -25,5 +25,9 @@
 ## 工具命令
 
 - `pnpm lint` - 对所有 TypeScript 文件运行 ESLint 并自动修复
+- `pnpm test` - 顺序运行所有 workspace 单元测试，然后运行仓库根目录测试
+- `pnpm test <file-path...>` - 顺序运行指定测试，关闭覆盖率并限制为单 worker
+- `FASTGPT_TEST_SCOPE=app pnpm test` - 只运行指定 workspace；支持逗号分隔多个 scope，以及 `workspace`、`repo`
+- `FASTGPT_TEST_MODE=integration pnpm test` - 运行 service 集成测试；`sandbox` 运行沙箱集成测试，`all` 运行 workspace 单测和 service 集成测试
 - `pnpm initIcon` - 初始化图标资源
 - `pnpm gen:theme-typings` - 生成 Chakra UI 主题类型定义

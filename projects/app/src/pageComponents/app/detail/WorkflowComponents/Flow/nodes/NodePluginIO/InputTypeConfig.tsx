@@ -38,6 +38,7 @@ import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import TimeInput from '@/components/core/app/formRender/TimeInput';
 
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
@@ -50,6 +51,7 @@ import { FileTypeSelectorPanel } from '@fastgpt/web/components/core/app/FileType
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import { getUserFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 import { canInputBeAgentGenerated } from '@fastgpt/global/core/app/formEdit/utils';
+import { getModelInputOptions } from './InputTypeConfig.utils';
 
 const inputFormGridTemplateColumns = 'max-content minmax(0, 1fr)';
 
@@ -79,15 +81,11 @@ const InputTypeConfig = ({
 }) => {
   const { t } = useTranslation();
   const defaultListValue = { label: t('common:None'), value: '' };
-  const { feConfigs, llmModelList } = useSystemStore();
+  const { feConfigs } = useSystemStore();
+  const { llmModelList } = useUserModelLists();
   const { teamPlanStatus } = useUserStore();
 
-  const availableModels = useMemoEnhance(() => {
-    return llmModelList.map((model) => ({
-      value: model.model,
-      label: model.name
-    }));
-  }, [llmModelList]);
+  const availableModels = useMemoEnhance(() => getModelInputOptions(llmModelList), [llmModelList]);
 
   const typeLabels = useMemo(() => {
     return {

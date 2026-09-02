@@ -10,6 +10,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { checkTeamExportDatasetLimit } from '@/web/support/user/team/api';
 import { downloadFetch } from '@/web/common/system/utils';
@@ -36,7 +37,8 @@ import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 
 function List() {
-  const { setLoading, getModelProvider } = useSystemStore();
+  const { setLoading } = useSystemStore();
+  const { getModelProvider } = useUserModelStore();
   const { isPc } = useSystem();
   const { t } = useTranslation();
   const {
@@ -150,7 +152,11 @@ function List() {
   });
 
   const renderDatasetCard = (dataset: (typeof formatDatasets)[number]) => {
-    const vectorModelAvatar = getModelProvider(dataset.vectorModel.provider)?.avatar;
+    const vectorModelAvailable = dataset.vectorModel?.isActive === true;
+    // 新接口直接返回模型头像；Provider 回退用于兼容尚未升级的服务端响应。
+    const vectorModelAvatar =
+      dataset.vectorModel?.avatar ??
+      (dataset.vectorModel ? getModelProvider(dataset.vectorModel.provider)?.avatar : undefined);
 
     return (
       <MyBox
@@ -268,9 +274,11 @@ function List() {
           <HStack>
             {isPc && dataset.type !== DatasetTypeEnum.folder && (
               <HStack spacing={1} className="time">
-                <Avatar src={vectorModelAvatar} w={'0.85rem'} />
+                {vectorModelAvailable && <Avatar src={vectorModelAvatar} w={'0.85rem'} />}
                 <Box color={'myGray.500'} fontSize={'mini'}>
-                  {dataset.vectorModel.name}
+                  {vectorModelAvailable
+                    ? dataset.vectorModel?.name
+                    : t('dataset:index_model_unavailable')}
                 </Box>
               </HStack>
             )}

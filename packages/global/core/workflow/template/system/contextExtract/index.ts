@@ -47,7 +47,8 @@ export const ContextExtractModule: FlowNodeTemplateType = {
       label: i18nT('workflow:text_to_extract'),
       required: true,
       valueType: WorkflowIOValueTypeEnum.string,
-      toolDescription: i18nT('workflow:content_to_retrieve')
+      toolDescription: i18nT('workflow:content_to_retrieve'),
+      defaultToAgentGenerated: true
     },
     {
       key: NodeInputKeyEnum.extractKeys,

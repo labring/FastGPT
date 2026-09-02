@@ -1,4 +1,4 @@
-name: Build fastgpt-browser-sandbox images
+name: Release FastGPT-browser-sandbox
 
 on:
   workflow_dispatch:

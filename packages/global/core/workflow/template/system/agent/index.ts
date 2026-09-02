@@ -208,7 +208,7 @@ export const AgentNode: FlowNodeTemplateType = {
       value: false
     },
     {
-      key: NodeInputKeyEnum.datasetSearchRerankModel,
+      key: NodeInputKeyEnum.datasetSearchRerankModelId,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: '',
       valueType: WorkflowIOValueTypeEnum.string
@@ -228,7 +228,7 @@ export const AgentNode: FlowNodeTemplateType = {
       value: true
     },
     {
-      key: NodeInputKeyEnum.datasetSearchExtensionModel,
+      key: NodeInputKeyEnum.datasetSearchExtensionModelId,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: '',
       valueType: WorkflowIOValueTypeEnum.string

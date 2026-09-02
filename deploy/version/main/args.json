@@ -1,9 +1,8 @@
 {
   "tags": {
-    "fastgpt": "v4.16.1",
-    "fastgpt-plugin": "v1.1.1",
+    "fastgpt": "v4.16.2",
+    "fastgpt-plugin": "v1.1.2",
     "fastgpt-code-sandbox": "v4.16.0",
-    "fastgpt-mcp_server": "v4.14.23",
 
     "volume-manager": "v0.3.0",
     "agent-sandbox-image": "v0.3.0",
@@ -30,7 +29,6 @@
       "fastgpt": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt",
       "fastgpt-plugin": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin",
       "fastgpt-code-sandbox": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox",
-      "fastgpt-mcp_server": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server",
       "volume-manager": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-volume-manager",
       "agent-sandbox-image": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox",
       "agent-sandbox-proxy": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy",
@@ -53,7 +51,6 @@
       "fastgpt": "ghcr.io/labring/fastgpt",
       "fastgpt-plugin": "ghcr.io/labring/fastgpt-plugin",
       "fastgpt-code-sandbox": "ghcr.io/labring/fastgpt-code-sandbox",
-      "fastgpt-mcp_server": "ghcr.io/labring/fastgpt-mcp_server",
       "volume-manager": "ghcr.io/labring/fastgpt-agent-volume-manager",
       "agent-sandbox-image": "ghcr.io/labring/fastgpt-agent-sandbox",
       "agent-sandbox-proxy": "ghcr.io/labring/fastgpt-agent-sandbox-proxy",

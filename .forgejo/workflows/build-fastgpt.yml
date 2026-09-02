@@ -1,4 +1,4 @@
-name: Build FastGPT images
+name: Release FastGPT
 
 on:
   workflow_dispatch:

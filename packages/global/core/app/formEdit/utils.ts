@@ -285,6 +285,74 @@ export const getToolInputManualRenderType = (input: ToolInputTypeState) => {
   return candidates[0];
 };
 
+const getToolInputAllowedValues = (input: FlowNodeInputItemType) => {
+  const selectedType = getSelectedInputRenderType(input);
+  if (
+    ![FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.multipleSelect].includes(
+      selectedType as FlowNodeInputTypeEnum
+    )
+  ) {
+    return undefined;
+  }
+
+  return [
+    input.list?.map((item) => item.value),
+    input.enums?.map((item) => item.value),
+    input.enum?.split('\n').filter(Boolean)
+  ].find((values) => values && values.length > 0);
+};
+
+/**
+ * 切换工作流版本时迁移输入配置。
+ *
+ * 按新工具定义迁移同 key 输入，保留用户标题和说明；输入类型变化时清理旧值，
+ * 类型保持时仅保留新类型仍允许的枚举值，避免版本切换留下不兼容配置。
+ */
+export const migrateToolInputConfig = ({
+  input,
+  sourceInput
+}: {
+  input: FlowNodeInputItemType;
+  sourceInput?: FlowNodeInputItemType;
+}): FlowNodeInputItemType => {
+  if (!sourceInput) return input;
+
+  const getConstrainedSelectedType = (targetInput: FlowNodeInputItemType) => {
+    const selectedType = getSelectedInputRenderType(targetInput);
+    return selectedType && targetInput.renderTypeList.includes(selectedType)
+      ? selectedType
+      : targetInput.renderTypeList[0];
+  };
+  const sourceSelectedType = getConstrainedSelectedType(sourceInput);
+  const selectedType = input.renderTypeList.includes(sourceSelectedType as FlowNodeInputTypeEnum)
+    ? sourceSelectedType
+    : getConstrainedSelectedType(input);
+  const selectedTypeChanged = sourceSelectedType !== selectedType;
+
+  const value = (() => {
+    if (selectedTypeChanged) return undefined;
+
+    const allowedValues = getToolInputAllowedValues({ ...input, selectedType });
+    if (!allowedValues) return sourceInput.value;
+
+    if (selectedType === FlowNodeInputTypeEnum.multipleSelect) {
+      return Array.isArray(sourceInput.value)
+        ? sourceInput.value.filter((item) => allowedValues.includes(item))
+        : undefined;
+    }
+
+    return allowedValues.includes(sourceInput.value) ? sourceInput.value : undefined;
+  })();
+
+  return {
+    ...input,
+    label: sourceInput.label ?? input.label,
+    description: sourceInput.description ?? input.description,
+    selectedType,
+    value
+  };
+};
+
 /**
  * 构造工作流画布上的输入类型候选。
  * 工具模式只展示一个与 valueType 匹配的手动控件，避免多个底层控件显示成重复的“手动输入”。

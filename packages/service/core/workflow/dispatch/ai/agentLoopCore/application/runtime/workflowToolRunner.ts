@@ -165,9 +165,17 @@ const toToolRunResult = <TChildrenResponse = unknown>(
     ? toolRunResponse.runtimeNodeResponseSummary.errorText || 'Tool execution failed'
     : undefined;
 
+  const rawToolResponses = toolRunResponse.toolResponses;
+  const hasToolResponses =
+    rawToolResponses !== undefined && rawToolResponses !== null && rawToolResponses !== '';
+
   return {
     result: {
-      response: formatAgentLoopCoreToolResponse(toolRunResponse.toolResponses),
+      // 工具失败时把错误原因返回给模型；'none' 会掩盖失败原因。
+      response:
+        hasToolResponses || !errorMessage
+          ? formatAgentLoopCoreToolResponse(rawToolResponses)
+          : errorMessage,
       ...(errorMessage ? { errorMessage } : {}),
       assistantMessages: getAssistantMessages(toolRunResponse.assistantResponses),
       usages: toolRunResponse.flowUsages,

@@ -1,4 +1,4 @@
-import { type EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import { type EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import { getAIApi } from '../config';
 import { countPromptTokens, countPromptTokensBatch } from '../../../common/string/tiktoken/index';
 import { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';
@@ -10,7 +10,7 @@ import { truncateTextByFormattedTokenLimit } from './tokenLimit';
 const logger = getLogger(LogCategories.MODULE.AI.EMBEDDING);
 
 type GetVectorsBaseProps = {
-  model: EmbeddingModelItemType;
+  model: EmbeddingSystemModelDataType;
   type?: `${EmbeddingTypeEnm}`;
   headers?: Record<string, string>;
 };
@@ -74,7 +74,7 @@ export async function getVectors({ model, inputs: rawInputs, type, headers }: Ge
           item.type === 'text'
             ? await truncateTextByFormattedTokenLimit({
                 text: item.input,
-                maxToken: model.maxToken,
+                maxToken: model.config.maxToken,
                 currentTokens
               })
             : item.input
@@ -90,7 +90,7 @@ export async function getVectors({ model, inputs: rawInputs, type, headers }: Ge
 
   const { ai } = getAIApi();
 
-  let chunkSize = Number(model.batchSize || 1);
+  let chunkSize = Number(model.config.batchSize || 1);
   chunkSize = isNaN(chunkSize) ? 1 : chunkSize;
 
   const chunks = [];
@@ -114,9 +114,9 @@ export async function getVectors({ model, inputs: rawInputs, type, headers }: Ge
               model: model.model,
               input: requestInput,
               encoding_format: 'float',
-              ...model.defaultConfig,
-              ...(type === EmbeddingTypeEnm.db && model.dbConfig),
-              ...(type === EmbeddingTypeEnm.query && model.queryConfig)
+              ...model.config.defaultConfig,
+              ...(type === EmbeddingTypeEnm.db && model.config.dbConfig),
+              ...(type === EmbeddingTypeEnm.query && model.config.queryConfig)
             } as any,
             model.requestUrl
               ? {
@@ -160,7 +160,7 @@ export async function getVectors({ model, inputs: rawInputs, type, headers }: Ge
               })(),
               Promise.all(
                 res.data.map((item) =>
-                  formatVectors(decodeEmbedding(item.embedding), model.normalization)
+                  formatVectors(decodeEmbedding(item.embedding), model.config.normalization)
                 )
               )
             ]);

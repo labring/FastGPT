@@ -1,4 +1,4 @@
-name: Document deploy
+name: Release FastGPT-Document
 on:
   push:
     branches:

@@ -158,7 +158,7 @@ export const JsonSchemaPropertiesItemSchema = z
     // 自定义扩展（FastGPT 专用）
     'x-tool-description': z.string().optional(), // 工具描述
     toolDescription: z.string().optional(), // 工具描述 for System Tool
-    isToolParam: z.boolean().optional(), // 是否默认作为工具调用参数
+    isToolParam: z.boolean().optional(), // 工具输入默认是否由 Agent 生成
     isSecret: z.boolean().optional(), // System Tool
     [JsonSchemaNodeInputMetadataKey]: z.any().optional(),
     [JsonSchemaNodeOutputMetadataKey]: z.any().optional()
@@ -863,7 +863,7 @@ export const nodeInputs2JsonSchema = ({
   };
 };
 
-const modelSchemaIgnoredKeys = new Set(['title', 'default']);
+const modelSchemaIgnoredKeys = new Set(['title', 'default', 'isToolParam']);
 const schemaDataKeywords = new Set(['const', 'enum', 'examples']);
 
 /** 生成模型 schema 副本时移除不会参与工具调用协议的展示与默认值 annotation。 */

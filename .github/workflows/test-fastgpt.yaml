@@ -1,4 +1,4 @@
-name: 'FastGPT-Test'
+name: 'Test FastGPT'
 on:
   pull_request:
     paths:
@@ -8,6 +8,7 @@ on:
       - 'projects/app/**'
       - 'sdk/**'
       - 'test/**'
+      - 'scripts/test/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
@@ -85,6 +86,7 @@ jobs:
               'eslint.config.mjs',
               '.npmrc',
               'test',
+              'scripts/test',
               '.github/workflows/test-fastgpt.yaml'
             ]);
 
@@ -123,7 +125,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: 'Test Global'
-        run: pnpm test:global
+        env:
+          FASTGPT_TEST_SCOPE: global
+        run: pnpm test
 
       - name: 'Upload Coverage (Global)'
         if: always() && hashFiles('packages/global/coverage/coverage-summary.json') !=
@@ -157,7 +161,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: 'Test Service'
-        run: pnpm test:service
+        env:
+          FASTGPT_TEST_SCOPE: service
+        run: pnpm test
 
       - name: 'Upload Coverage (Service)'
         if: always() && hashFiles('packages/service/coverage/coverage-summary.json') !=
@@ -191,7 +197,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: 'Test App'
-        run: pnpm test:app
+        env:
+          FASTGPT_TEST_SCOPE: app
+        run: pnpm test
 
       - name: 'Upload Coverage (App)'
         if: always() && hashFiles('projects/app/coverage/coverage-summary.json') != ''
@@ -224,7 +232,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: 'Test Web'
-        run: pnpm --filter=@fastgpt/web test
+        env:
+          FASTGPT_TEST_SCOPE: web
+        run: pnpm test
 
       - name: 'Upload Coverage (Web)'
         if: always() && hashFiles('packages/web/coverage/coverage-summary.json') != ''

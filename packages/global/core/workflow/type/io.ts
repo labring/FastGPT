@@ -1,4 +1,4 @@
-import { LLMModelItemSchema } from '../../ai/model.schema';
+import type { LLMSystemModelDataType } from '../../ai/model.schema';
 import { WorkflowIOValueTypeEnum, NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
 import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../node/constant';
 import { SecretValueTypeSchema } from '../../../common/secret/type';
@@ -357,7 +357,8 @@ export const FlowNodeOutputItemTypeSchema = z.object({
       input: z.tuple([
         z.object({
           inputs: z.custom<FlowNodeInputItemType[]>(),
-          llmModelMap: z.record(z.string(), LLMModelItemSchema)
+          llmModelMap:
+            z.custom<Record<string, Pick<LLMSystemModelDataType, 'model' | 'modelId' | 'config'>>>()
         })
       ]),
       output: BoolSchema

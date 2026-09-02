@@ -411,4 +411,19 @@ def main():
     expect(result.success).toBe(true);
     expect(result.data?.codeReturn.blocked).toBe(true);
   });
+
+  it('GHSA-q6ww-4c5x-j2pg: fork_exec 在真实容器中被 seccomp 拒绝', async () => {
+    await expect(
+      runPython(`
+def main():
+    import _posixsubprocess, posix, time
+    r, w = posix.pipe()
+    argv = [b"/bin/sh", b"-c", b"id > /tmp/CANARY"]
+    pid = _posixsubprocess.fork_exec(argv, [b"/bin/sh"], True, (), None, None,
+        -1, -1, -1, -1, -1, -1, r, w, False, False, 0, -1, [], -1, 255, None)
+    time.sleep(1.0)
+    return {"child_pid": pid}
+`)
+    ).rejects.toThrow(/Operation not permitted|EPERM/);
+  });
 });

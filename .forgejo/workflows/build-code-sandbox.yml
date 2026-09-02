@@ -1,4 +1,4 @@
-name: Build fastgpt-code-sandbox images
+name: Release FastGPT-code-sandbox
 on:
   workflow_dispatch:
     inputs:
@@ -6,11 +6,6 @@ on:
         description: 'Image version tag (e.g. v4.15.0)'
         required: true
         type: string
-  push:
-    paths:
-      - 'projects/code-sandbox/**'
-    tags:
-      - 'v*'
 jobs:
   validate-version:
     runs-on: ubuntu-24.04
@@ -21,21 +16,8 @@ jobs:
         id: version
         env:
           VERSION_INPUT: ${{ github.event.inputs.version }}
-          REF_TYPE: ${{ github.ref_type }}
-          REF_NAME: ${{ github.ref_name }}
-          EVENT_NAME: ${{ github.event_name }}
-          CURRENT_REF: ${{ github.ref }}
         run: |
-          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
-            VERSION="$VERSION_INPUT"
-          else
-            VERSION="$REF_NAME"
-            if [[ "$REF_TYPE" != "tag" ]]; then
-              echo "::error::Release workflow must run on a tag starting with v. Current ref: ${CURRENT_REF}"
-              exit 1
-            fi
-          fi
-
+          VERSION="$VERSION_INPUT"
           if [[ ! "$VERSION" =~ ^v ]]; then
             echo "::error::Image version must start with v. Current value: ${VERSION}"
             exit 1

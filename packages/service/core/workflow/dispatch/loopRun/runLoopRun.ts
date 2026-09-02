@@ -327,6 +327,8 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       : undefined;
   return {
     data,
+    // 循环失败时不产出 toolResponse，交给工具运行器的 errorMessage 兜底，避免用空快照挡住错误信息
+    ...(errorText ? {} : { [DispatchNodeResponseKeyEnum.toolResponse]: data }),
     [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
     [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
       ? {

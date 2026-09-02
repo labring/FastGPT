@@ -1,28 +1,45 @@
-import { GET, PUT, DELETE, POST } from '@/web/common/api/request';
-import type { listResponse } from '@/pages/api/core/ai/model/list';
-import type { updateBody } from '@/pages/api/core/ai/model/update';
-import type { deleteQuery } from '@/pages/api/core/ai/model/delete';
-import type { SystemModelItemType } from '@fastgpt/service/core/ai/type';
-import type { updateWithJsonBody } from '@/pages/api/core/ai/model/updateWithJson';
-import type { updateDefaultBody } from '@/pages/api/core/ai/model/updateDefault';
-import type { testQuery } from '@/pages/api/core/ai/model/test';
+import { DELETE, GET, POST, PUT } from '@/web/common/api/request';
+import type {
+  SystemModelDataType,
+  SystemModelDocumentDataType
+} from '@fastgpt/global/core/ai/model.schema';
+import type {
+  AdminSystemModelReference,
+  CreateSystemModelBody,
+  CreateSystemModelResponse,
+  GetAdminSystemModelListResponse,
+  TestAdminSystemModelQuery,
+  UpdateDefaultModelsBody,
+  UpdateSystemModelBody,
+  UpdateSystemModelsWithJsonBody
+} from '@fastgpt/global/openapi/admin/core/ai/model/api';
 
-export const getSystemModelList = () => GET<listResponse>('/core/ai/model/list');
-export const getSystemModelDetail = (model: string) =>
-  GET<SystemModelItemType>('/core/ai/model/detail', { model });
+const adminModelPath = '/admin/settings/model';
 
-export const getSystemModelDefaultConfig = (model: string) =>
-  GET<SystemModelItemType>('/core/ai/model/getDefaultConfig', { model });
+export const getSystemModelList = () =>
+  GET<GetAdminSystemModelListResponse>(`${adminModelPath}/list`).then((res) => res.models);
+export const getAdminModelConfig = () =>
+  GET<GetAdminSystemModelListResponse>(`${adminModelPath}/list`);
+export const getSystemModelDetail = (modelId: string) =>
+  GET<SystemModelDataType>(`${adminModelPath}/detail`, { modelId });
 
-export const putSystemModel = (data: updateBody) => PUT('/core/ai/model/update', data);
+export const getSystemModelDefaultConfig = (modelId: string) =>
+  GET<SystemModelDocumentDataType>(`${adminModelPath}/getDefaultConfig`, { modelId });
 
-export const deleteSystemModel = (data: deleteQuery) => DELETE('/core/ai/model/delete', data);
+export const postSystemModel = (data: CreateSystemModelBody) =>
+  POST<CreateSystemModelResponse>(`${adminModelPath}/create`, data);
+export const putSystemModel = (data: UpdateSystemModelBody) =>
+  PUT(`${adminModelPath}/update`, data);
 
-export const getModelConfigJson = () => GET<string>('/core/ai/model/getConfigJson');
-export const putUpdateWithJson = (data: updateWithJsonBody) =>
-  PUT('/core/ai/model/updateWithJson', data);
+export const deleteSystemModel = (data: AdminSystemModelReference) =>
+  DELETE(`${adminModelPath}/delete`, data);
 
-export const getTestModel = (data: testQuery) => GET('/core/ai/model/test', data);
+export const getModelConfigJson = () => GET<string>(`${adminModelPath}/getConfigJson`);
+export const putUpdateWithJson = (data: UpdateSystemModelsWithJsonBody) =>
+  PUT(`${adminModelPath}/updateWithJson`, data);
 
-export const putUpdateDefaultModels = (data: updateDefaultBody) =>
-  PUT('/core/ai/model/updateDefault', data);
+export const getTestModel = (data: TestAdminSystemModelQuery) =>
+  GET(`${adminModelPath}/test`, data);
+
+export const putUpdateDefaultModels = (data: UpdateDefaultModelsBody) =>
+  PUT(`${adminModelPath}/updateDefault`, data);

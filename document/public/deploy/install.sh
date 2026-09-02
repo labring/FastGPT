@@ -482,9 +482,9 @@ randomize_compose_credentials() {
 # ========== 部署版本列表（由 deploy/init.mjs 自动生成） ==========
 # BEGIN GENERATED DEPLOY VERSIONS
 DEPLOY_VERSIONS=(
+    "main"
     "v4.15"
     "v4.14"
-    "main"
 )
 # END GENERATED DEPLOY VERSIONS
 LOCAL_DEPLOY_VERSION="local"
@@ -501,13 +501,15 @@ if [ -n "$FASTGPT_DEPLOY_BASE_URL" ]; then
     CUSTOM_DEPLOY_BASE_URL="$(normalize_deploy_base_url "$FASTGPT_DEPLOY_BASE_URL")"
 fi
 
-# 获取部署版本展示文案：main 为迭代版，其他版本均视为稳定版
+# 获取部署版本展示文案：main 对应当前稳定版，已停止维护的版本单独标记
 get_version_label() {
     local version="$1"
     if [ "$version" == "$LOCAL_DEPLOY_VERSION" ]; then
         echo "$LOCAL_DEPLOY_LABEL"
+    elif [ "$version" == "v4.14" ]; then
+        echo "稳定版 v4.14 (不再维护)"
     elif [ "$version" == "main" ]; then
-        echo "迭代版 main"
+        echo "稳定版 v4.16"
     else
         echo "稳定版 $version"
     fi
@@ -714,11 +716,7 @@ select_address() {
             return
         fi
 
-        if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
-            echo "错误: 未检测到可用 IP 地址。请设置 FASTGPT_S3_ENDPOINT 和 FASTGPT_MCP_ENDPOINT 后重试。" >&2
-        else
-            echo "错误: 未检测到可用 IP 地址。请设置 FASTGPT_MCP_ENDPOINT 后重试。" >&2
-        fi
+        echo "错误: 未检测到可用 IP 地址。请设置 FASTGPT_S3_ENDPOINT 后重试。" >&2
         exit 1
     fi
 
@@ -765,18 +763,13 @@ if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
     S3_CUSTOM=$SELECTED_CUSTOM
 fi
 
-# ========== 7. 选择 SSE MCP 访问地址 (端口 3003) ==========
-select_address "请选择 SSE MCP 访问地址 - 客户端和容器均需可访问 (↑↓ 选择, 回车确认, 通常默认第一个即可):" 3003 "$FASTGPT_MCP_ENDPOINT"
-MCP_ADDR="$SELECTED_ADDR"
-MCP_CUSTOM=$SELECTED_CUSTOM
-
-# ========== 8. 输入 FastGPT 访问地址 ==========
+# ========== 7. 输入 FastGPT 访问地址 ==========
 request_fe_domain
 
-# ========== 9. 输入 Sandbox Proxy 地址 ==========
+# ========== 8. 输入 Sandbox Proxy 地址 ==========
 request_sandbox_proxy_url
 
-# ========== 10. 输入 Sandbox 预览地址 ==========
+# ========== 9. 输入 Sandbox 预览地址 ==========
 if ! is_v415_deploy; then
     request_sandbox_preview_proxy_url
 fi
@@ -800,16 +793,6 @@ else
     S3_DISPLAY="未设置"
 fi
 
-if [ -n "$MCP_ADDR" ]; then
-    if $MCP_CUSTOM; then
-        MCP_DISPLAY="$MCP_ADDR"
-    else
-        MCP_DISPLAY="http://$MCP_ADDR:3003"
-    fi
-else
-    MCP_DISPLAY="未设置"
-fi
-
 CREDENTIALS_LABEL="自动生成"
 if [ "$AUTO_GENERATE_CREDENTIALS" = false ]; then
     CREDENTIALS_LABEL="不自动生成"
@@ -827,7 +810,6 @@ fi
 if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
     echo "  S3 地址:      $S3_DISPLAY"
 fi
-echo "  MCP 地址:     $MCP_DISPLAY"
 echo "  FastGPT 地址: $FE_DOMAIN_INPUT"
 echo "  Sandbox WebSocket 地址: $SANDBOX_PROXY_URL_INPUT"
 if ! is_v415_deploy; then
@@ -835,7 +817,7 @@ if ! is_v415_deploy; then
 fi
 echo "  密钥处理:     $CREDENTIALS_LABEL"
 echo "=============================="
-echo "请确认域名或反向代理已指向对应端口：FastGPT -> 3000，Sandbox Proxy -> 3006，MCP -> 3003。"
+echo "请确认域名或反向代理已指向对应端口：FastGPT -> 3000，Sandbox Proxy -> 3006。"
 if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
     echo "S3 地址需指向 9000 端口。"
 fi
@@ -895,10 +877,8 @@ fi
 configure_fe_domain
 configure_sandbox_proxy_urls
 
-USES_CONFIG_JSON=false
+# 旧版 Compose 仍挂载 config.json，安装时需要同步下载该文件。
 if LC_ALL=C grep -q -- "./config.json:/app/data/config.json" docker-compose.yml; then
-    USES_CONFIG_JSON=true
-
     CONFIG_FILE="config.json.tmp"
     if [ "$DEPLOY_VERSION" == "$LOCAL_DEPLOY_VERSION" ]; then
         LOCAL_CONFIG_PATH="$(dirname "$LOCAL_COMPOSE_PATH")/config.json"
@@ -1005,47 +985,6 @@ elif [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
     echo "警告: 未设置 S3 地址，请手动编辑 docker-compose.yml 中的 http://192.168.0.2:9000"
 fi
 
-# ========== 替换 MCP 访问地址 ==========
-if [ -n "$MCP_ADDR" ]; then
-    if $MCP_CUSTOM; then
-        MCP_ENDPOINT="$MCP_ADDR"
-    else
-        MCP_ENDPOINT="http://$MCP_ADDR:3003"
-    fi
-
-    if $USES_CONFIG_JSON; then
-        # 旧版本 compose 挂载 config.json，只能继续写旧字段；main 已迁移到环境变量。
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' "s|\"mcpServerProxyEndpoint\": \"\"|\"mcpServerProxyEndpoint\": \"$MCP_ENDPOINT\"|g" config.json
-        else
-            sed -i "s|\"mcpServerProxyEndpoint\": \"\"|\"mcpServerProxyEndpoint\": \"$MCP_ENDPOINT\"|g" config.json
-        fi
-    else
-        ESCAPED_MCP_ENDPOINT=$(escape_sed_replacement "$MCP_ENDPOINT")
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' "s|^\([[:space:]]*SSE_MCP_SERVER_PROXY_ENDPOINT:\).*|\1 $ESCAPED_MCP_ENDPOINT|g" docker-compose.yml
-        else
-            sed -i "s|^\([[:space:]]*SSE_MCP_SERVER_PROXY_ENDPOINT:\).*|\1 $ESCAPED_MCP_ENDPOINT|g" docker-compose.yml
-        fi
-    fi
-
-    if [ $? -eq 0 ]; then
-        echo "已更新 MCP 访问地址为: $MCP_ENDPOINT"
-    else
-        if $USES_CONFIG_JSON; then
-            echo "警告: 替换 MCP 地址失败，请手动编辑旧版 config.json 中的 mcpServerProxyEndpoint"
-        else
-            echo "警告: 替换 MCP 地址失败，请手动编辑 docker-compose.yml 中的 SSE_MCP_SERVER_PROXY_ENDPOINT"
-        fi
-    fi
-else
-    if $USES_CONFIG_JSON; then
-        echo "警告: 未设置 MCP 地址，请手动编辑旧版 config.json 中的 mcpServerProxyEndpoint"
-    else
-        echo "警告: 未设置 MCP 地址，请手动编辑 docker-compose.yml 中的 SSE_MCP_SERVER_PROXY_ENDPOINT"
-    fi
-fi
-
 if LC_ALL=C grep -q -- "- /var/run/docker.sock:/var/run/docker.sock" docker-compose.yml; then
     # ========== 检测并替换 docker.sock 路径 ==========
     # 某些发行版 / Docker Desktop / rootless 模式下，宿主机 docker.sock 不在 /var/run/docker.sock
@@ -1117,9 +1056,9 @@ if LC_ALL=C grep -q "opensandbox-agent-sandbox-image" docker-compose.yml; then
     echo "  1. 预拉取镜像: docker compose --profile prepull pull"
     echo "  2. 启动服务:   docker compose up -d"
     if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
-        echo "  3. 开放端口:   3000, 9000, 3003, 3006"
+        echo "  3. 开放端口:   3000, 9000, 3006"
     else
-        echo "  3. 开放端口:   3000, 3003, 3006"
+        echo "  3. 开放端口:   3000, 3006"
     fi
     echo "  4. 访问服务:   http://localhost:3000"
     echo "  5. 登录服务:   默认账号为 'root', 密码为: '$ROOT_LOGIN_PASSWORD'"
@@ -1128,9 +1067,9 @@ else
     echo "  1. 预拉取镜像: docker compose pull"
     echo "  2. 启动服务:   docker compose up -d"
     if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
-        echo "  3. 开放端口:   3000, 9000, 3003"
+        echo "  3. 开放端口:   3000, 9000"
     else
-        echo "  3. 开放端口:   3000, 3003"
+        echo "  3. 开放端口:   3000"
     fi
     echo "  4. 访问服务:   http://localhost:3000"
     echo "  5. 登录服务:   默认账号为 'root', 密码为: '$ROOT_LOGIN_PASSWORD'"

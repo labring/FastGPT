@@ -1,4 +1,4 @@
-name: 'Sandbox-Test'
+name: 'Test Code-sandbox'
 on:
   pull_request:
     paths:

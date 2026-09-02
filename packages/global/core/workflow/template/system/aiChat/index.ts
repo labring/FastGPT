@@ -154,7 +154,7 @@ export const AiChatModule: FlowNodeTemplateType = {
     Input_Template_History,
     Input_Template_Dataset_Quote,
     Input_Template_File_Link,
-    { ...Input_Template_UserChatInput, toolDescription: i18nT('workflow:user_question') }
+    Input_Template_UserChatInput
   ],
   outputs: [
     {
@@ -185,9 +185,11 @@ export const AiChatModule: FlowNodeTemplateType = {
       type: FlowNodeOutputTypeEnum.static,
       invalid: true,
       invalidCondition: ({ inputs, llmModelMap }) => {
-        const model = inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value;
+        const model =
+          inputs.find((item) => item.key === NodeInputKeyEnum.aiModelId)?.value ||
+          inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value;
         const modelItem = llmModelMap[model];
-        return modelItem?.reasoning !== true;
+        return modelItem?.config.reasoning !== true;
       }
     },
     Output_Template_Error_Message

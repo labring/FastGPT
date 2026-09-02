@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 const {
@@ -232,36 +231,47 @@ vi.mock('@mariozechner/pi-agent-core', () => ({
   })
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getLLMModel: vi.fn(
-    (): LLMModelItemType => ({
-      type: ModelTypeEnum.llm,
-      provider: 'openai',
-      model: 'gpt-5',
-      name: 'GPT-5',
-      maxContext: 128000,
-      maxResponse: 4096,
-      quoteMaxToken: 60000,
-      maxTemperature: 2,
-      showTopP: true,
-      showStopSign: true,
-      responseFormatList: ['json_object', 'json_schema'],
-      functionCall: true,
-      toolChoice: true,
-      vision: true,
-      reasoning: true,
-      reasoningEffort: true
-    })
-  )
-}));
-
 vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
   formatModelChars2Points: vi.fn(() => ({
     totalPoints: 1
   }))
 }));
 
-import { runPiAgentLoop } from '@fastgpt/service/core/ai/llm/agentLoop/provider/piAgent/run';
+import { runPiAgentLoop as runPiAgentLoopWithoutModelData } from '@fastgpt/service/core/ai/llm/agentLoop/provider/piAgent/run';
+
+const modelData = {
+  modelId: '68ad85a7463006c963799a67',
+  type: ModelTypeEnum.llm,
+  provider: 'openai',
+  model: 'gpt-5',
+  name: 'GPT-5',
+  config: {
+    maxContext: 128000,
+    maxResponse: 4096,
+    quoteMaxToken: 60000,
+    maxTemperature: 2,
+    showTopP: true,
+    showStopSign: true,
+    responseFormatList: ['json_object', 'json_schema'],
+    functionCall: true,
+    toolChoice: true,
+    vision: true,
+    reasoning: true,
+    reasoningEffort: true
+  }
+} as any;
+
+const runPiAgentLoop: typeof runPiAgentLoopWithoutModelData = (props) =>
+  runPiAgentLoopWithoutModelData({
+    ...props,
+    runtime: {
+      ...props.runtime,
+      llmParams: {
+        ...props.runtime.llmParams,
+        model: modelData
+      }
+    }
+  });
 
 describe('runPiAgentLoop', () => {
   beforeEach(() => {
@@ -759,8 +769,7 @@ describe('runPiAgentLoop', () => {
               type: 'function',
               function: {
                 name: 'search',
-                description: 'runtime search',
-                parameters: {}
+                description: 'runtime search'
               }
             }
           ]
@@ -777,6 +786,14 @@ describe('runPiAgentLoop', () => {
     expect(toolNames.filter((name: string) => name === 'read_files')).toHaveLength(1);
     expect(toolNames.filter((name: string) => name === 'dataset_search')).toHaveLength(1);
     expect(toolNames).toContain('search');
+    expect(
+      agentConstructorArgs.at(-1).initialState.tools.find((tool: any) => tool.name === 'search')
+        ?.parameters
+    ).toMatchObject({
+      type: 'object',
+      properties: {},
+      additionalProperties: false
+    });
   });
 
   it('pauses when a runtime tool returns child interactive', async () => {

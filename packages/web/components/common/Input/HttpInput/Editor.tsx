@@ -6,7 +6,7 @@
  *
  */
 
-import { useState, useRef, useTransition, useEffect, useMemo } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -22,7 +22,7 @@ import {
   type EditorVariablePickerType
 } from '../../Textarea/PromptEditor/type';
 import { VariableNode } from '../../Textarea/PromptEditor/plugins/VariablePlugin/node';
-import { textToEditorState } from '../../Textarea/PromptEditor/utils';
+import { editorStateToText, textToEditorState } from '../../Textarea/PromptEditor/utils';
 import { SingleLinePlugin } from '../../Textarea/PromptEditor/plugins/SingleLinePlugin';
 import OnBlurPlugin from '../../Textarea/PromptEditor/plugins/OnBlurPlugin';
 import VariablePlugin from '../../Textarea/PromptEditor/plugins/VariablePlugin';
@@ -39,9 +39,10 @@ export default function Editor({
   onChange,
   onBlur,
   value,
-  currentValue,
   placeholder = '',
-  updateTrigger
+  updateTrigger,
+  tabIndex,
+  resetOnValueChange = true
 }: {
   h?: number;
   variables: EditorVariablePickerType[];
@@ -49,13 +50,15 @@ export default function Editor({
   onChange?: (editor: LexicalEditor) => void;
   onBlur?: (editor: LexicalEditor) => void;
   value?: string;
-  currentValue?: string;
   placeholder?: string;
   updateTrigger?: boolean;
+  tabIndex?: number;
+  resetOnValueChange?: boolean;
 }) {
   const [key, setKey] = useState(getNanoid(6));
   const [_, startSts] = useTransition();
   const [focus, setFocus] = useState(false);
+  const editorOutputRef = useRef(value);
 
   const initialConfig = {
     namespace: 'HttpInput',
@@ -66,15 +69,16 @@ export default function Editor({
     }
   };
 
+  // 本地失焦回写时两者已同步，外部替换值不一致时强制重建 Lexical。
   useDeepCompareEffect(() => {
-    if (focus) return;
+    if (value !== editorOutputRef.current) {
+      editorOutputRef.current = value;
+      setKey(getNanoid(6));
+      return;
+    }
+    if (!resetOnValueChange || focus) return;
     setKey(getNanoid(6));
-  }, [value, variables.length]);
-
-  useEffect(() => {
-    setKey(getNanoid(6));
-    setFocus(false);
-  }, [updateTrigger]);
+  }, [resetOnValueChange, value, variables.length]);
 
   return (
     <Flex
@@ -86,9 +90,11 @@ export default function Editor({
       cursor={'text'}
       overflowY={'visible'}
     >
-      <LexicalComposer initialConfig={initialConfig} key={key}>
+      <LexicalComposer initialConfig={initialConfig} key={`${key}-${updateTrigger ?? ''}`}>
         <PlainTextPlugin
-          contentEditable={<ContentEditable className={styles.contentEditable} />}
+          contentEditable={
+            <ContentEditable className={styles.contentEditable} tabIndex={tabIndex} />
+          }
           placeholder={
             <Box
               position={'absolute'}
@@ -119,8 +125,11 @@ export default function Editor({
         <FocusPlugin focus={focus} setFocus={setFocus} />
         <OnChangePlugin
           onChange={(editorState: EditorState, editor: LexicalEditor) => {
+            editorOutputRef.current = editorStateToText(editor);
+            if (!onChange) return;
+
             startSts(() => {
-              onChange?.(editor);
+              onChange(editor);
             });
           }}
         />

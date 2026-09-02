@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo } from 'react';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import React, { useEffect } from 'react';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { Box, css, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import AISettingModal, { type AIChatSettingsModalProps } from '@/components/core/ai/AISettingModal';
@@ -9,6 +9,8 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { getWebDefaultLLMModel } from '@/web/common/system/utils';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
 
 type Props = {
   defaultData: SettingAIDataType;
@@ -18,35 +20,29 @@ type Props = {
 
 const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModalProps & Props) => {
   const { t } = useTranslation();
-  const { llmModelList } = useSystemStore();
+  const { llmModelList } = useUserModelLists();
 
-  const model = defaultData.model;
+  const modelId = defaultData.modelId;
 
-  const { modelSet, modelList, defaultLLMModel } = useMemoEnhance(() => {
-    const modelSet = new Set<string>(llmModelList.map((item) => item.model));
+  const { modelList, defaultLLMModel } = useMemoEnhance(() => {
+    const defaultModelData = getWebDefaultLLMModel(llmModelList);
     return {
       modelList: llmModelList,
-      modelSet,
-      defaultLLMModel: getWebDefaultLLMModel(llmModelList)?.model
+      defaultLLMModel: defaultModelData?.modelId
     };
   }, [llmModelList]);
 
-  // Reset undefined model
+  const selectedModelData = findClientModelByValue({ models: llmModelList, value: modelId });
+
+  // 只在新建场景没有 value 时设置默认模型；已有异常 value 必须保留给选择器展示错误。
   useEffect(() => {
-    if (model) {
-      if (modelSet.size > 0 && !modelSet.has(model) && defaultLLMModel) {
-        onChange({
-          ...defaultData,
-          model: defaultLLMModel
-        });
-      }
-    } else if (defaultLLMModel) {
+    if (modelId === undefined && defaultLLMModel) {
       onChange({
         ...defaultData,
-        model: defaultLLMModel
+        modelId: defaultLLMModel
       });
     }
-  }, [model, defaultData, modelSet, defaultLLMModel]);
+  }, [modelId, defaultData, defaultLLMModel]);
 
   const {
     isOpen: isOpenAIChatSetting,
@@ -67,16 +63,13 @@ const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModa
         <Box flex={'1 0 0'}>
           <AIModelSelector
             {...props}
+            modelType={ModelTypeEnum.llm}
             w={'100%'}
-            value={model}
-            list={llmModelList.map((item) => ({
-              value: item.model,
-              label: item.name
-            }))}
+            value={modelId}
             onChange={(e) => {
               onChange({
                 ...defaultData,
-                model: e
+                modelId: e
               });
             }}
           />
@@ -98,7 +91,7 @@ const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModa
             onChange(e);
             onCloseAIChatSetting();
           }}
-          defaultData={defaultData}
+          defaultData={{ ...defaultData, modelId: selectedModelData?.modelId ?? modelId }}
           llmModels={modelList}
           {...props}
         />

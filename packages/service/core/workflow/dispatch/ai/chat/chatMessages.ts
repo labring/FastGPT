@@ -6,7 +6,7 @@ import {
   runtimePrompt2ChatsValue
 } from '@fastgpt/global/core/chat/adapt';
 import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import type { ChatDispatchProps } from '../../../types/runtime';
 import {
   parseFileContentFromUrls,
@@ -31,7 +31,7 @@ export const getChatMessages = async ({
   usageId,
   runningUserInfo
 }: {
-  model: LLMModelItemType;
+  model: LLMSystemModelDataType;
   maxTokens?: number;
   histories: ChatItemMiniType[];
 
@@ -48,7 +48,7 @@ export const getChatMessages = async ({
   runningUserInfo: ChatDispatchProps['runningUserInfo'];
 }) => {
   const concatenateSystemPrompt = [
-    model.defaultSystemChatPrompt,
+    model.config.defaultSystemChatPrompt,
     systemPrompt,
     datasetCiteSystemPrompt
   ]
@@ -98,6 +98,6 @@ export const getChatMessages = async ({
 
   return await filterGPTMessageByMaxContext({
     messages: adaptMessages,
-    maxContext: model.maxContext - maxTokens // filter token. not response maxToken
+    maxContext: model.config.maxContext - maxTokens // filter token. not response maxToken
   });
 };

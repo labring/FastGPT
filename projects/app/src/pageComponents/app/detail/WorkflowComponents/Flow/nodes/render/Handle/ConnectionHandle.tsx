@@ -3,6 +3,8 @@ import { Position } from 'reactflow';
 import { MySourceHandle, MyTargetHandle } from '.';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
+import { isNodeConnectionAllowed } from '@fastgpt/global/core/workflow/template/context';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../../context/workflowInitContext';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
@@ -129,6 +131,26 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
         ) {
           forbidConnect = true;
         }
+      }
+    }
+
+    // 目标节点容器或模板上下文不允许时禁止连接（与 Tool 柄及最终提交共用规则）
+    const sourceNode = connectingEdge ? getNodeById(connectingEdge.nodeId) : undefined;
+    const targetTemplate = node
+      ? moduleTemplatesFlat.find((item) => item.id === node.flowNodeType)
+      : undefined;
+    if (node && sourceNode && connectingEdge) {
+      if (
+        !isNodeConnectionAllowed({
+          targetTemplate,
+          targetNode: node,
+          sourceNode,
+          edges,
+          handleId: connectingEdge.handleId,
+          getNodeById
+        })
+      ) {
+        forbidConnect = true;
       }
     }
 

@@ -42,7 +42,8 @@ const {
   getAgentSkillInfosMock,
   injectAgentSkillFilesToSandboxMock,
   checkTeamSandboxPermissionMock,
-  ensureAppSandboxRuntimeReadyMock
+  ensureAppSandboxRuntimeReadyMock,
+  getLLMModelDataMock
 } = vi.hoisted(() => ({
   runAgentLoopMock: vi.fn(),
   serviceEnvMock: {
@@ -68,7 +69,13 @@ const {
   getAgentSkillInfosMock: vi.fn(),
   injectAgentSkillFilesToSandboxMock: vi.fn(),
   checkTeamSandboxPermissionMock: vi.fn(),
-  ensureAppSandboxRuntimeReadyMock: vi.fn()
+  ensureAppSandboxRuntimeReadyMock: vi.fn(),
+  getLLMModelDataMock: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model')>()),
+  getLLMModelData: getLLMModelDataMock
 }));
 
 vi.mock('@fastgpt/service/env', () => ({
@@ -279,6 +286,20 @@ const getSandboxWorkDirectory = () => getSandboxRuntimeProfile().workDirectory;
 describe('dispatchRunAgent user context', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getLLMModelDataMock.mockImplementation(({ modelId, model }) => ({
+      modelId: modelId ?? '68ad85a7463006c963799a41',
+      model: model ?? 'gpt-5',
+      name: model ?? 'gpt-5',
+      config: {
+        maxContext: 128000,
+        maxResponse: 8192,
+        quoteMaxToken: 30000,
+        vision: true,
+        audio: true,
+        video: true,
+        reasoning: true
+      }
+    }));
     checkTeamSandboxPermissionMock.mockResolvedValue(undefined);
     ensureAppSandboxRuntimeReadyMock.mockResolvedValue(false);
     serviceEnvMock.AGENT_ENGINE = 'fastAgent';

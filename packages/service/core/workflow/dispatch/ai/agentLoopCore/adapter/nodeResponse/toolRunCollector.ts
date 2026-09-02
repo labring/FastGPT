@@ -24,6 +24,7 @@ export type AgentLoopCoreToolRunFlowResponsesSummary = {
 
 type ToolResponseCompress = {
   response: string;
+  modelName: string;
   usage: ChatNodeUsageType;
   requestIds: string[];
   seconds: number;
@@ -56,11 +57,13 @@ export const summarizeAgentLoopCoreToolRunFlowResponses = (
  */
 const getContextCompressNodeResponse = ({
   moduleType,
+  modelName,
   usage,
   requestIds,
   seconds
 }: {
   moduleType: FlowNodeTypeEnum;
+  modelName: string;
   usage: ChatNodeUsageType;
   requestIds: string[];
   seconds: number;
@@ -68,6 +71,7 @@ const getContextCompressNodeResponse = ({
   createAgentLoopCoreCompressNodeResponse({
     moduleName: AgentNodeResponseDisplay.contextCompress.moduleName,
     moduleType,
+    modelName,
     usage,
     requestIds,
     seconds,
@@ -81,12 +85,14 @@ const getContextCompressNodeResponse = ({
 const getToolResponseCompressRecord = ({
   moduleType,
   response,
+  modelName,
   usage,
   requestIds,
   seconds
 }: {
   moduleType: FlowNodeTypeEnum;
   response: string;
+  modelName: string;
   usage: ChatNodeUsageType;
   requestIds: string[];
   seconds: number;
@@ -94,6 +100,7 @@ const getToolResponseCompressRecord = ({
   nodeResponse: createAgentLoopCoreCompressNodeResponse({
     moduleName: AgentNodeResponseDisplay.toolResponseCompress.moduleName,
     moduleType,
+    modelName,
     usage,
     requestIds,
     seconds,
@@ -287,6 +294,7 @@ export const createAgentLoopCoreToolRunResponseCollector = ({
           compressRecord: getToolResponseCompressRecord({
             moduleType,
             response: toolResponseCompress.response,
+            modelName: toolResponseCompress.modelName,
             usage: toolResponseCompress.usage,
             requestIds: toolResponseCompress.requestIds,
             seconds: toolResponseCompress.seconds
@@ -299,11 +307,13 @@ export const createAgentLoopCoreToolRunResponseCollector = ({
   };
 
   const appendContextCompressNodeResponse = ({
+    modelName,
     usage,
     requestIds,
     contextCheckpoint,
     seconds
   }: {
+    modelName: string;
     usage: ChatNodeUsageType;
     requestIds: string[];
     contextCheckpoint?: string;
@@ -317,6 +327,7 @@ export const createAgentLoopCoreToolRunResponseCollector = ({
       flowResponses: [
         getContextCompressNodeResponse({
           moduleType,
+          modelName,
           usage,
           requestIds,
           seconds

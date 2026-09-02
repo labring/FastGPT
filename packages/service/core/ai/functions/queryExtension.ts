@@ -1,12 +1,15 @@
 import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import { getLLMModel } from '../model';
 import { filterGPTMessageByMaxContext } from '../llm/utils';
 import json5 from 'json5';
 import { createLLMResponse } from '../llm/request';
 import { useTextCosine } from '../hooks/useTextCosine';
 import { getLogger, LogCategories } from '../../../common/logger';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
+import type {
+  EmbeddingSystemModelDataType,
+  LLMSystemModelDataType
+} from '@fastgpt/global/core/ai/model.schema';
 
 const logger = getLogger(LogCategories.MODULE.AI.FUNCTIONS);
 
@@ -118,8 +121,8 @@ export const queryExtension = async ({
   chatBg?: string;
   query: string;
   histories: ChatItemMiniType[];
-  llmModel: string;
-  embeddingModel: string;
+  llmModel: LLMSystemModelDataType;
+  embeddingModel: EmbeddingSystemModelDataType;
   userKey?: OpenaiAccountType;
   teamId: string;
   generateCount?: number;
@@ -138,10 +141,9 @@ export const queryExtension = async ({
   const startTime = Date.now();
   const getSeconds = () => +((Date.now() - startTime) / 1000).toFixed(2);
   // 1. Request model
-  const modelData = getLLMModel(llmModel);
   const filterHistories = await filterGPTMessageByMaxContext({
     messages: chats2GPTMessages({ messages: histories, reserveId: false }),
-    maxContext: modelData.maxContext - 1000
+    maxContext: llmModel.config.maxContext - 1000
   });
 
   const historyFewShot = filterHistories
@@ -183,9 +185,9 @@ export const queryExtension = async ({
     teamId,
     body: {
       stream: true,
-      model: modelData.model,
+      model: llmModel,
       messages,
-      ...(modelData.reasoning ? { reasoning_effort: 'none' as const } : {})
+      ...(llmModel.config.reasoning ? { reasoning_effort: 'none' as const } : {})
     }
   });
 
@@ -193,8 +195,8 @@ export const queryExtension = async ({
     return {
       rawQuery: query,
       extensionQueries: [],
-      llmModel: modelData.model,
-      embeddingModel,
+      llmModel: llmModel.model,
+      embeddingModel: embeddingModel.model,
       requestId,
       seconds: getSeconds(),
       inputTokens: inputTokens,
@@ -214,8 +216,8 @@ export const queryExtension = async ({
     return {
       rawQuery: query,
       extensionQueries: [],
-      llmModel: modelData.model,
-      embeddingModel,
+      llmModel: llmModel.model,
+      embeddingModel: embeddingModel.model,
       requestId,
       seconds: getSeconds(),
       inputTokens: inputTokens,
@@ -238,8 +240,8 @@ export const queryExtension = async ({
       return {
         rawQuery: query,
         extensionQueries: [],
-        llmModel: modelData.model,
-        embeddingModel,
+        llmModel: llmModel.model,
+        embeddingModel: embeddingModel.model,
         requestId,
         seconds: getSeconds(),
         inputTokens,
@@ -258,8 +260,8 @@ export const queryExtension = async ({
       return {
         rawQuery: query,
         extensionQueries: [],
-        llmModel: modelData.model,
-        embeddingModel,
+        llmModel: llmModel.model,
+        embeddingModel: embeddingModel.model,
         requestId,
         seconds: getSeconds(),
         inputTokens,
@@ -279,7 +281,7 @@ export const queryExtension = async ({
     return {
       rawQuery: query,
       extensionQueries: selectedQueries,
-      llmModel: modelData.model,
+      llmModel: llmModel.model,
       embeddingModel: useEmbeddingModel,
       requestId,
       seconds: getSeconds(),
@@ -296,8 +298,8 @@ export const queryExtension = async ({
     return {
       rawQuery: query,
       extensionQueries: [],
-      llmModel: modelData.model,
-      embeddingModel,
+      llmModel: llmModel.model,
+      embeddingModel: embeddingModel.model,
       requestId,
       seconds: getSeconds(),
       inputTokens,

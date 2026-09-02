@@ -14,10 +14,7 @@ import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '@/pageComponents/app/detail/context';
-import {
-  WorkflowBufferDataContext,
-  WorkflowNodeDataContext
-} from '../../../../../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../../../../context/workflowInitContext';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 

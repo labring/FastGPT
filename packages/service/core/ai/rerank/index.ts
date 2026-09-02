@@ -1,10 +1,12 @@
 import { axiosWithoutSSRF } from '../../../common/api/axios';
-import { getDefaultRerankModel } from '../model';
+import { getDefaultRerankModelData } from '../model';
 import { getAxiosConfig } from '../config';
-import { type RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import { type RerankSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import { countPromptTokens } from '../../../common/string/tiktoken';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { text2Chunks } from '../../../worker/function';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 const logger = getLogger(LogCategories.MODULE.AI.RERANK);
 
@@ -27,18 +29,18 @@ type ReRankCallResult = {
 };
 
 export async function reRankRecall({
-  model = getDefaultRerankModel(),
+  model = getDefaultRerankModelData(),
   query,
   documents,
   headers
 }: {
-  model?: RerankModelItemType;
+  model?: RerankSystemModelDataType;
   query: string;
   documents: { id: string; text: string }[];
   headers?: Record<string, string>;
 }): Promise<ReRankCallResult> {
   if (!model) {
-    return Promise.reject(new Error('No rerank model'));
+    return Promise.reject(new UserError(ModelErrEnum.unExist));
   }
   if (documents.length === 0) {
     return Promise.resolve({
@@ -50,7 +52,7 @@ export async function reRankRecall({
   // Token budget: calculate how many tokens each document can use
   // Document max token = ModelMaxToken - QueryTokens
   const queryTokens = await countPromptTokens(query);
-  const rerankMaxToken = model.maxToken || 8000;
+  const rerankMaxToken = model.config.maxToken || 8000;
   const docBudget = rerankMaxToken - queryTokens;
   if (docBudget <= 500) {
     return Promise.reject(new Error('Rerank query too long'));
@@ -99,7 +101,7 @@ export async function reRankRecall({
     model: model.model,
     query,
     documents: documentsTextArray,
-    ...model.defaultConfig
+    ...model.config.defaultConfig
   };
 
   const apiResult = await axiosWithoutSSRF

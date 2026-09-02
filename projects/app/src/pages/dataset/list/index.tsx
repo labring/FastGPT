@@ -300,8 +300,7 @@ const Dataset = () => {
                 name,
                 intro: intro ?? ''
               });
-              loadMyDatasets();
-              refetchPaths();
+              await Promise.all([loadMyDatasets(), refetchPaths()]);
             } catch (error) {
               return Promise.reject(error);
             }

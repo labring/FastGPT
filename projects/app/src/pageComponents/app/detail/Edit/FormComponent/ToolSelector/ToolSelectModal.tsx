@@ -31,7 +31,7 @@ import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import CostTooltip from '@/components/core/app/tool/CostTooltip';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -52,7 +52,7 @@ type Props = {
   generatedSelectedTools?: SelectedToolItemType[];
   selectedTools: FlowNodeTemplateType[];
   fileSelectConfig: AppFormEditFormType['chatConfig']['fileSelectConfig'];
-  selectedModel: LLMModelItemType;
+  selectedModel: MyLLMModelItemType;
   onAddTool: (tool: SelectedToolItemType) => void;
   onRemoveTool: (tool: NodeTemplateListItemType) => void;
 };

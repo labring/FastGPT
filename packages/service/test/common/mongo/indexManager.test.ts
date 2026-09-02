@@ -151,6 +151,41 @@ describe('MongoIndexManager.syncModelIndexes', () => {
 
     expect(await getIndexNames(model)).toContain('legacy_field_1');
   });
+
+  it('replaces the legacy global model unique index with the system-model partial index', async () => {
+    const schema = new Schema({ model: String, scope: String }, { autoIndex: false });
+    defineIndex(schema, {
+      key: { scope: 1, model: 1 },
+      options: {
+        unique: true,
+        partialFilterExpression: { scope: 'system' }
+      }
+    });
+    defineIndex(schema, {
+      key: { model: 1 },
+      options: { unique: true },
+      deprecated: true
+    });
+    const model = createModel({ schema, prefix: 'SystemModelIndex' });
+    await model.collection.createIndex({ model: 1 }, { name: 'model_1', unique: true });
+
+    await MongoIndexManager.syncModelIndexes({ model, logger });
+
+    const indexes = await model.collection.indexes();
+    expect(indexes).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'model_1' })])
+    );
+    expect(indexes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'scope_1_model_1',
+          key: { scope: 1, model: 1 },
+          unique: true,
+          partialFilterExpression: { scope: 'system' }
+        })
+      ])
+    );
+  });
 });
 
 describe('MongoIndexManager.cleanupModelDeprecatedIndexes', () => {

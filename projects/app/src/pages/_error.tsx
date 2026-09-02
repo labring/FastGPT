@@ -1,6 +1,7 @@
 import { useRouter } from 'next/router';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { Box } from '@chakra-ui/react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { webPushTrack } from '@/web/common/middle/tracks/utils';
@@ -8,6 +9,7 @@ import { useTranslation } from 'next-i18next';
 import { errorLogger } from '@/web/common/utils/errorLogger';
 import { useMount } from 'ahooks';
 import type { I18nStringType } from '@fastgpt/global/common/i18n/type';
+import { useEffect } from 'react';
 
 const errorText: I18nStringType = {
   'zh-CN':
@@ -22,7 +24,8 @@ function Error() {
   const lang = i18n.language;
   const router = useRouter();
   const { toast } = useToast();
-  const { lastRoute, llmModelList, embeddingModelList } = useSystemStore();
+  const { lastRoute } = useSystemStore();
+  const { llmModelList, embeddingModelList, loaded: modelsLoaded } = useUserModelLists();
 
   useMount(() => {
     // Send track
@@ -30,6 +33,10 @@ function Error() {
       route: lastRoute,
       log: errorLogger.getLogs()
     });
+  });
+
+  useEffect(() => {
+    if (!modelsLoaded) return;
 
     let modelError = false;
     if (llmModelList.length === 0) {
@@ -47,14 +54,15 @@ function Error() {
       });
     }
 
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       if (modelError) {
         router.push('/config/model?modelTab=config');
       } else {
         router.push('/dashboard/agent');
       }
     }, 2000);
-  });
+    return () => clearTimeout(timer);
+  }, [embeddingModelList.length, llmModelList.length, modelsLoaded, router, t]);
 
   return (
     <Box whiteSpace={'pre-wrap'}>{errorText[lang as keyof typeof errorText] ?? errorText.en}</Box>

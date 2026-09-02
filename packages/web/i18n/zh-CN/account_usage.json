@@ -54,6 +54,7 @@
   "total_points_consumed": "AI 积分消耗",
   "total_usage": "总消耗",
   "usage_detail": "使用详情",
+  "model_unavailable": "模型已下架",
   "user_type": "类型",
   "wecom": "企业微信",
   "wechat": "微信个人号"

@@ -14,7 +14,7 @@ import { getAgentDatasetParams, getSubapps } from './sub/utils';
 import { useUserContext } from './adapter/userContext';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { getLogger, LogCategories } from '../../../../../common/logger';
-import { getLLMModel } from '../../../../ai/model';
+import { getLLMModelData } from '../../../../ai/model';
 import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
@@ -54,7 +54,8 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiChatReasoning]?: boolean;
   [NodeInputKeyEnum.aiChatReasoningEffort]?: ReasoningEffort;
   [NodeInputKeyEnum.fileUrlList]?: string[];
-  [NodeInputKeyEnum.aiModel]: string;
+  [NodeInputKeyEnum.aiModelId]?: string;
+  [NodeInputKeyEnum.aiModel]?: string;
   [NodeInputKeyEnum.aiSystemPrompt]: string;
 
   [NodeInputKeyEnum.selectedTools]?: AgentToolType[];
@@ -68,9 +69,13 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSearchMode]?: AppFormEditFormType['dataset']['searchMode'];
   [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
   [NodeInputKeyEnum.datasetSearchUsingReRank]?: boolean;
+  [NodeInputKeyEnum.datasetSearchRerankModelId]?: string;
+  /** @deprecated */
   [NodeInputKeyEnum.datasetSearchRerankModel]?: string;
   [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
   [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]?: boolean;
+  [NodeInputKeyEnum.datasetSearchExtensionModelId]?: string;
+  /** @deprecated */
   [NodeInputKeyEnum.datasetSearchExtensionModel]?: string;
   [NodeInputKeyEnum.datasetSearchExtensionBg]?: string;
   [NodeInputKeyEnum.authTmbId]?: boolean;
@@ -125,15 +130,18 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       editSkillId,
       useAgentSandbox = false,
       sandboxEntrypoint,
+      modelId,
       model,
       aiChatReasoning
     }
   } = props;
   const datasetParams = getAgentDatasetParams(props.params);
-  const agentModel = getLLMModel(model);
-  props.params.aiChatVision = !!(props.params.aiChatVision && agentModel.vision);
-  props.params.aiChatAudio = !!(props.params.aiChatAudio && agentModel.audio);
-  props.params.aiChatVideo = !!(props.params.aiChatVideo && agentModel.video);
+  const agentModel = getLLMModelData({ modelId, model });
+  // 旧 params.model 仅保留给兼容读取；Agent 请求链使用规范化 modelData。
+  props.params.model = agentModel.model;
+  props.params.aiChatVision = !!(props.params.aiChatVision && agentModel.config.vision);
+  props.params.aiChatAudio = !!(props.params.aiChatAudio && agentModel.config.audio);
+  props.params.aiChatVideo = !!(props.params.aiChatVideo && agentModel.config.video);
   if (props.params.aiChatExtractFiles !== undefined) {
     props.params.aiChatExtractFiles = !!(
       props.params.aiChatExtractFiles &&
@@ -253,6 +261,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const { runtime, artifacts } = createWorkflowAgentLoopRuntime({
       context: {
         ...props,
+        modelData: agentModel,
         systemPrompt: formattedUserSystemPrompt,
         getSubAppInfo,
         getSubApp,

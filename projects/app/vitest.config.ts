@@ -1,3 +1,4 @@
+import { availableParallelism } from 'node:os';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
 
@@ -8,11 +9,14 @@ import { defineConfig } from 'vitest/config';
  */
 const getTestMaxWorkers = () => {
   const raw = process.env.FASTGPT_TEST_MAX_WORKERS;
-  if (!raw) return 4;
-  if (raw.endsWith('%')) return raw as `${number}%`;
+  if (raw?.endsWith('%')) return raw as `${number}%`;
 
   const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 4;
+  if (raw && Number.isFinite(parsed) && parsed > 0) return parsed;
+
+  const cpuCount = availableParallelism();
+  const isCI = Boolean(process.env.CI && !['0', 'false'].includes(process.env.CI.toLowerCase()));
+  return Math.max(1, isCI ? cpuCount - 1 : Math.floor(cpuCount / 2));
 };
 
 export default defineConfig({

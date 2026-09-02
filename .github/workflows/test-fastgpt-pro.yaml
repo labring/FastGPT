@@ -1,4 +1,4 @@
-name: "FastGPT-Pro-Test"
+name: 'Test FastGPT-pro'
 on:
   pull_request_target:
     types: [ opened, synchronize, reopened ]
@@ -15,6 +15,7 @@ on:
       - "pnpm-workspace.yaml"
       - "tsconfig.json"
       - "vitest.config.mts"
+      - "scripts/test/**"
       - "eslint.config.mjs"
       - "turbo.json"
       - ".npmrc"
@@ -75,7 +76,8 @@ jobs:
       - name: Test
         env:
           INVOKE_TOKEN_SECRET: fastgpt_test_invoke_token_secret_32
-        run: pnpm test:admin
+          FASTGPT_TEST_SCOPE: admin
+        run: pnpm test
       - name: Upload Coverage
         if: always() && hashFiles('pro/admin/coverage/coverage-summary.json') != ''
         uses: actions/upload-artifact@v4

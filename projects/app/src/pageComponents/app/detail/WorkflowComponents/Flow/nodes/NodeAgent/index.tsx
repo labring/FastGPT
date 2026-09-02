@@ -30,8 +30,9 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { getEditorVariables } from '../../../utils';
-import { getWebLLMModel } from '@/web/common/system/utils';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 import { useAgentSkillManager } from './useAgentSkillManager';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
@@ -52,6 +53,7 @@ import WorkflowSandboxConfig, {
 import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
+import { findClientModelByReference } from '@/web/core/ai/model/modelReference';
 
 const PromptEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/PromptEditor'));
 const SkillSelectModal = dynamic(
@@ -104,7 +106,8 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     (v) => v
   );
   const { appDetail } = useContextSelector(AppContext, (v) => v);
-  const { feConfigs, defaultModels } = useSystemStore();
+  const { feConfigs } = useSystemStore();
+  const { defaultModels } = useUserModelStore();
   const externalProviderWorkflowVariables = feConfigs?.externalProviderWorkflowVariables;
   const { teamPlanStatus, isTeamAdmin } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
@@ -153,10 +156,10 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     limit: 3000,
     similarity: 0.5,
     usingReRank: true,
-    rerankModel: defaultModels.llm?.model,
+    rerankModelId: defaultModels.rerank?.modelId,
     rerankWeight: 0.6,
     datasetSearchUsingExtensionQuery: true,
-    datasetSearchExtensionModel: defaultModels.llm?.model,
+    datasetSearchExtensionModelId: defaultModels.llm?.modelId,
     datasetSearchExtensionBg: ''
   });
   const {
@@ -208,6 +211,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const manualKeys = useMemo(
     () =>
       new Set([
+        NodeInputKeyEnum.aiModelId,
         NodeInputKeyEnum.aiModel,
         NodeInputKeyEnum.aiSystemPrompt,
         NodeInputKeyEnum.skills,
@@ -218,7 +222,10 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     []
   );
   const modelInputs = useMemo(
-    () => commonInputs.filter((i) => i.key === NodeInputKeyEnum.aiModel),
+    () =>
+      commonInputs.filter(
+        (i) => i.key === NodeInputKeyEnum.aiModelId || i.key === NodeInputKeyEnum.aiModel
+      ),
     [commonInputs]
   );
   // Inputs rendered before skills/tools (fileLink, userChatInput)
@@ -439,14 +446,19 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   } = useDisclosure();
 
   // ---- Model ----
+  const { llmModelList } = useUserModelLists();
   const currentModel = useMemo(() => {
-    const modelValue = inputs.find((i) => i.key === NodeInputKeyEnum.aiModel)?.value;
-    return getWebLLMModel(modelValue);
-  }, [inputs]);
+    const modelId = inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId)?.value;
+    const model = inputs.find((i) => i.key === NodeInputKeyEnum.aiModel)?.value;
+    return findClientModelByReference({
+      models: llmModelList,
+      reference: { modelId, model }
+    });
+  }, [inputs, llmModelList]);
 
   return (
     <NodeCard minW={'524px'} selected={selected} {...data}>
-      {isTool && hasDynamicToolInput(inputs) && (
+      {isTool && hasDynamicToolInput(data) && (
         <Container>
           <RenderToolInput nodeId={nodeId} inputs={inputs} />
         </Container>
@@ -745,7 +757,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   </MyTooltip>
                 ))}
               </Grid>
-              {isOpenToolSelect && (
+              {isOpenToolSelect && currentModel && (
                 <ToolSelectModal
                   selectedTools={selectedTools}
                   selectedModel={currentModel}

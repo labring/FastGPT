@@ -80,6 +80,7 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
       moduleName: AgentNodeResponseDisplay.toolResponseCompress.moduleName,
       moduleType: node.flowNodeType,
       moduleLogo: AgentNodeResponseDisplay.toolResponseCompress.moduleLogo,
+      modelName: compress.modelName,
       usage: compress.usage,
       requestIds: compress.requestIds,
       seconds: compress.seconds,
@@ -176,6 +177,7 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
       moduleType: node.flowNodeType,
       moduleLogo: AgentNodeResponseDisplay.master.moduleLogo,
       runningTime: event.seconds,
+      modelId: usage?.modelId,
       model: event.modelName,
       llmRequestIds: [event.requestId],
       inputTokens: usage?.inputTokens,
@@ -200,6 +202,7 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
         moduleName: AgentNodeResponseDisplay.contextCompress.moduleName,
         moduleType: node.flowNodeType,
         moduleLogo: AgentNodeResponseDisplay.contextCompress.moduleLogo,
+        modelName: event.modelName,
         usage: getFirstUsage(event),
         requestIds: event.requestIds,
         seconds: event.seconds

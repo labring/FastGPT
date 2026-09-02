@@ -16,6 +16,7 @@ import {
   type OptimizeCodeBody
 } from '@fastgpt/global/openapi/core/workflow/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { getLLMModelData } from '@fastgpt/service/core/ai/model';
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.OPTIMIZE_CODE);
 
 const getPromptNodeCopilotSystemPrompt = () => {
@@ -86,7 +87,7 @@ function main({paramName, paramRefer, paramType}) {
 async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseType) {
   const {
     optimizerInput,
-    model,
+    modelId,
     conversationHistory = []
   } = parseApiInput({
     req,
@@ -99,6 +100,7 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
       authToken: true,
       authApiKey: true
     });
+    const modelData = getLLMModelData({ modelId });
 
     res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
     res.setHeader('X-Accel-Buffering', 'no');
@@ -120,7 +122,7 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
       teamId,
       saveLLMResponseRecord: false,
       body: {
-        model,
+        model: modelData,
         messages,
         stream: true,
         useVision: false
@@ -151,8 +153,8 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
       data: OptimizeCodeResponseSchema.parse('[DONE]')
     });
 
-    const { totalPoints, modelName } = formatModelChars2Points({
-      model,
+    const { totalPoints } = formatModelChars2Points({
+      model: modelData,
       inputTokens,
       outputTokens
     });
@@ -167,7 +169,7 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
         {
           moduleName: i18nT('common:support.wallet.usage.Code Copilot'),
           amount: totalPoints,
-          model: modelName,
+          modelId: modelData.modelId,
           inputTokens,
           outputTokens
         }

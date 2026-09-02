@@ -4,7 +4,7 @@ import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import { getLLMModel } from '../../../../ai/model';
+import { getLLMModelData } from '../../../../ai/model';
 import { createLLMResponse } from '../../../../ai/llm/request';
 import { computedMaxToken } from '../../../../ai/utils';
 import { postTextCensor } from '../../../../chat/postTextCensor';
@@ -33,6 +33,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     chatConfig,
     usageId,
     params: {
+      modelId,
       model,
       temperature,
       maxToken,
@@ -65,17 +66,12 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   let fileLinks = rawFileLinks;
   let userChatInput = rawUserChatInput;
 
-  const modelConstantsData = getLLMModel(model);
-  if (!modelConstantsData) {
-    return getNodeErrResponse({
-      error: `Model ${model} is undefined, you need to select a chat model.`
-    });
-  }
+  const modelConstantsData = getLLMModelData({ modelId, model });
 
   try {
-    aiChatVision = modelConstantsData.vision && aiChatVision;
-    aiChatAudio = modelConstantsData.audio && aiChatAudio;
-    aiChatVideo = modelConstantsData.video && aiChatVideo;
+    aiChatVision = modelConstantsData.config.vision && aiChatVision;
+    aiChatAudio = modelConstantsData.config.audio && aiChatAudio;
+    aiChatVideo = modelConstantsData.config.video && aiChatVideo;
     const fileContextConfig = getAIChatFileContextConfig({ inputs, rawFileLinks });
     fileLinks = fileContextConfig.fileLinks;
 
@@ -124,7 +120,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         runningUserInfo
       }),
       (() => {
-        if (modelConstantsData.censor && !externalProvider.openaiAccount?.key) {
+        if (modelConstantsData.config.censor && !externalProvider.openaiAccount?.key) {
           return postTextCensor({
             text: `${systemPrompt}
             ${userChatInput}
@@ -146,7 +142,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     } = await createLLMResponse({
       throwError: false,
       body: {
-        model: modelConstantsData.model,
+        model: modelConstantsData,
         stream,
         messages: filterMessages,
         temperature,
@@ -182,8 +178,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       return getNodeErrResponse({ error: responseEmptyTip });
     }
 
-    const { totalPoints, modelName } = formatModelChars2Points({
-      model: modelConstantsData.model,
+    const { totalPoints } = formatModelChars2Points({
+      model: modelConstantsData,
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens
     });
@@ -192,7 +188,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       {
         moduleName: name,
         totalPoints: points,
-        model: modelName,
+        modelId: modelConstantsData.modelId,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens
       }
@@ -205,7 +201,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         error,
         responseData: {
           totalPoints: points,
-          model: modelName,
+          model: modelConstantsData.name,
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens,
           query: `${userChatInput}`,
@@ -230,7 +226,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints: points,
-        model: modelName,
+        model: modelConstantsData.name,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens,
         query: `${userChatInput}`,

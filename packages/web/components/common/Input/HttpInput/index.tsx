@@ -1,5 +1,5 @@
 import React from 'react';
-import type { EditorState, LexicalEditor } from 'lexical';
+import type { LexicalEditor } from 'lexical';
 import { useCallback } from 'react';
 import {
   type EditorVariableLabelPickerType,
@@ -16,7 +16,9 @@ const HttpInput = ({
   onBlur,
   h,
   placeholder,
-  updateTrigger
+  updateTrigger,
+  tabIndex,
+  resetOnValueChange = true
 }: {
   variables?: EditorVariablePickerType[];
   variableLabels?: EditorVariableLabelPickerType[];
@@ -26,13 +28,12 @@ const HttpInput = ({
   h?: number;
   placeholder?: string;
   updateTrigger?: boolean;
+  tabIndex?: number;
+  resetOnValueChange?: boolean;
 }) => {
-  const [currentValue, setCurrentValue] = React.useState(value);
-
   const onChangeInput = useCallback(
     (editor: LexicalEditor) => {
       const text = editorStateToText(editor);
-      setCurrentValue(text);
       onChange?.(text);
     },
     [onChange]
@@ -52,11 +53,12 @@ const HttpInput = ({
         variableLabels={variableLabels}
         h={h}
         value={value}
-        currentValue={currentValue}
-        onChange={onChangeInput}
+        onChange={onChange ? onChangeInput : undefined}
         onBlur={onBlurInput}
         placeholder={placeholder}
         updateTrigger={updateTrigger}
+        tabIndex={tabIndex}
+        resetOnValueChange={resetOnValueChange}
       />
     </>
   );

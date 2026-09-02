@@ -5,7 +5,7 @@ import type {
   DatasetDataItemType,
   CreateDatasetDataPropsType
 } from '@fastgpt/global/core/dataset/type';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
@@ -22,7 +22,7 @@ import {
 
 type UpdateDatasetDataByIndexesProps = Omit<UpdateDatasetDataPropsType, 'indexes'> & {
   indexes: NonNullable<UpdateDatasetDataPropsType['indexes']>;
-  model: string;
+  model: EmbeddingSystemModelDataType;
   indexSize?: number;
   imageIndex?: boolean;
   /** 重建索引时忽略文本相同判断，确保切换 embedding model 后重新生成向量。 */
@@ -68,7 +68,7 @@ type UpdateDatasetDataSystemIndexesProps = Omit<
 export class DatasetDataOperation {
   private readonly indexOperation: DatasetDataIndexOperation;
 
-  constructor(model?: string) {
+  constructor(model?: EmbeddingSystemModelDataType) {
     this.indexOperation = new DatasetDataIndexOperation(model);
   }
 
@@ -122,7 +122,7 @@ export class DatasetDataOperation {
     metadata,
     session
   }: CreateDatasetDataPropsType & {
-    embeddingModel: string;
+    embeddingModel: EmbeddingSystemModelDataType;
     indexSize?: number;
     imageIndex?: boolean;
     imageDescMap?: Record<string, string>;
@@ -136,8 +136,8 @@ export class DatasetDataOperation {
       return Promise.reject('q, datasetId, collectionId, embeddingModel is required');
     }
 
-    const embModel = getEmbeddingModel(embeddingModel)!;
-    indexSize = Math.min(embModel.maxToken, indexSize);
+    const embModel = embeddingModel;
+    indexSize = Math.min(embModel.config.maxToken, indexSize);
 
     // 系统索引和外部索引在这里统一规范化，确保后续向量写入的输入已去重、切分。
     const newIndexes = await this.indexOperation.formatIndexes({
@@ -147,7 +147,7 @@ export class DatasetDataOperation {
       imageId,
       imageIndex,
       indexSize,
-      maxIndexSize: embModel.maxToken,
+      maxIndexSize: embModel.config.maxToken,
       indexPrefix
     });
 
@@ -229,7 +229,7 @@ export class DatasetDataOperation {
     metadata,
     forceRebuild = false
   }: UpdateDatasetDataByIndexesProps) {
-    const embModel = getEmbeddingModel(model);
+    const embModel = model;
 
     if (!embModel) {
       return Promise.reject('Embedding model not found');
@@ -252,7 +252,7 @@ export class DatasetDataOperation {
       imageId: nextImageId,
       imageIndex,
       indexSize,
-      maxIndexSize: embModel.maxToken,
+      maxIndexSize: embModel.config.maxToken,
       indexPrefix
     });
 
@@ -358,11 +358,11 @@ export class DatasetDataOperation {
     const mongoData = await MongoDatasetData.findById(dataId);
     if (!mongoData) return Promise.reject('Data not found');
 
-    const embModel = getEmbeddingModel(model)!;
+    const embModel = model;
     const nextQ = q ?? mongoData.q ?? '';
     const nextA = a ?? mongoData.a ?? '';
     const nextImageId = imageId ?? mongoData.imageId;
-    indexSize = Math.min(embModel.maxToken, indexSize);
+    indexSize = Math.min(embModel.config.maxToken, indexSize);
 
     const systemIndexes = await this.indexOperation.getSystemIndexes({
       q: nextQ,
@@ -370,7 +370,7 @@ export class DatasetDataOperation {
       imageId: nextImageId,
       imageIndex,
       indexSize,
-      maxIndexSize: embModel.maxToken,
+      maxIndexSize: embModel.config.maxToken,
       indexPrefix
     });
     // 系统索引文本没变化时复用旧 dataId，避免无意义的向量重建。
@@ -510,7 +510,7 @@ export class DatasetDataOperation {
  */
 export const createDatasetData = async (
   props: CreateDatasetDataPropsType & {
-    embeddingModel: string;
+    embeddingModel: EmbeddingSystemModelDataType;
     indexSize?: number;
     imageIndex?: boolean;
     imageDescMap?: Record<string, string>;

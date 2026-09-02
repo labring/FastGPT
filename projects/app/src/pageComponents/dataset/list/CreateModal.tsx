@@ -3,6 +3,8 @@ import { Box, Flex, Button, Input, HStack } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -12,6 +14,7 @@ import type { CreateDatasetBody } from '@fastgpt/global/openapi/core/dataset/api
 import { useTranslation } from 'next-i18next';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import AIModelSelector from '@/components/Select/AIModelSelector';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -40,11 +43,10 @@ const CreateModal = ({
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { defaultModels, embeddingModelList, llmModelList, getVlmModelList } = useSystemStore();
+  const { defaultModels } = useUserModelStore();
+  const { embeddingModelList, llmModelList, vlmModelList: vllmModelList } = useUserModelLists();
 
-  const filterNotHiddenVectorModelList = embeddingModelList.filter((item) => !item.hidden);
-
-  const vllmModelList = useMemo(() => getVlmModelList(), [getVlmModelList]);
+  const filterNotHiddenVectorModelList = embeddingModelList.filter((item) => !item.config.hidden);
 
   const form = useForm<CreateDatasetBody>({
     defaultValues: {
@@ -53,17 +55,19 @@ const CreateModal = ({
       avatar: DatasetTypeMap[type].avatar,
       name: '',
       intro: '',
-      vectorModel:
-        defaultModels.embedding?.model || getWebDefaultEmbeddingModel(embeddingModelList)?.model,
-      agentModel: defaultModels.datasetTextLLM?.model || getWebDefaultLLMModel(llmModelList)?.model,
-      vlmModel: defaultModels.datasetImageLLM?.model
+      vectorModelId:
+        defaultModels.embedding?.modelId ||
+        getWebDefaultEmbeddingModel(embeddingModelList)?.modelId,
+      agentModelId:
+        defaultModels.datasetTextLLM?.modelId || getWebDefaultLLMModel(llmModelList)?.modelId,
+      vlmModelId: defaultModels.datasetImageLLM?.modelId
     }
   });
   const { register, setValue, handleSubmit, watch } = form;
   const avatar = watch('avatar');
-  const vectorModel = watch('vectorModel');
-  const agentModel = watch('agentModel');
-  const vlmModel = watch('vlmModel');
+  const vectorModelId = watch('vectorModelId');
+  const agentModelId = watch('agentModelId');
+  const vlmModelId = watch('vlmModelId');
   const showApiDatasetForm =
     type === DatasetTypeEnum.apiDataset ||
     type === DatasetTypeEnum.feishu ||
@@ -180,14 +184,15 @@ const CreateModal = ({
             </HStack>
             <Box w={['100%', '300px']}>
               <AIModelSelector
+                modelType={ModelTypeEnum.embedding}
                 w={['100%', '300px']}
-                value={vectorModel}
+                value={vectorModelId}
                 list={filterNotHiddenVectorModelList.map((item) => ({
                   label: item.name,
-                  value: item.model
+                  value: item.modelId
                 }))}
                 onChange={(e) => {
-                  setValue('vectorModel' as const, e);
+                  setValue('vectorModelId' as const, e);
                 }}
               />
             </Box>
@@ -212,14 +217,15 @@ const CreateModal = ({
             </HStack>
             <Box w={['100%', '300px']}>
               <AIModelSelector
+                modelType={ModelTypeEnum.llm}
                 w={['100%', '300px']}
-                value={agentModel}
+                value={agentModelId}
                 list={llmModelList.map((item) => ({
                   label: item.name,
-                  value: item.model
+                  value: item.modelId
                 }))}
                 onChange={(e) => {
-                  setValue('agentModel', e);
+                  setValue('agentModelId', e);
                 }}
               />
             </Box>
@@ -245,14 +251,15 @@ const CreateModal = ({
             </HStack>
             <Box w={['100%', '300px']}>
               <AIModelSelector
+                modelType={ModelTypeEnum.llm}
                 w={['100%', '300px']}
-                value={vlmModel}
+                value={vlmModelId}
                 list={vllmModelList.map((item) => ({
                   label: item.name,
-                  value: item.model
+                  value: item.modelId
                 }))}
                 onChange={(e) => {
-                  setValue('vlmModel', e);
+                  setValue('vlmModelId', e);
                 }}
               />
             </Box>

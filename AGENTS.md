@@ -40,8 +40,9 @@ FastGPT 是一个 AI Agent 构建平台,通过 Flow 提供开箱即用的数据�
 
 项目使用 Vitest 进行测试并生成覆盖率报告。主要测试命令:
 - `pnpm test` - 运行所有测试
-- `pnpm test {file-path}` - 使用 Vitest 运行指定测试文件的指定测试
-- `pnpm test:light <file-path...>` - 顺序运行跨 workspace 的局部测试，关闭覆盖率并限制为单 worker，避免多个 Vitest/Mongo 实例争抢本地资源
+- `pnpm test <file-path...>` - 顺序运行跨 workspace 的局部测试，关闭覆盖率并限制为单 worker，避免多个 Vitest/Mongo 实例争抢本地资源
+- `FASTGPT_TEST_SCOPE=app pnpm test` - 只运行指定 workspace；支持逗号分隔多个 scope，以及 `workspace`、`repo`
+- `FASTGPT_TEST_MODE=integration pnpm test` - 运行 service 集成测试；`sandbox` 运行沙箱集成测试，`all` 运行 workspace 单测和 service 集成测试
 - 测试文件位于 `test/` 目录和 `projects/{{name}}/test/`，代表这`packages`和`单个 project`的测试文件目录。
 - 覆盖率报告生成在 `coverage/` 目录
 

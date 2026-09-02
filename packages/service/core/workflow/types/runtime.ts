@@ -160,7 +160,9 @@ export type DispatchNodeResultType<
 
 /* Single node props */
 export type AIChatNodeProps = {
-  [NodeInputKeyEnum.aiModel]: string;
+  [NodeInputKeyEnum.aiModelId]?: string;
+  /** @deprecated */
+  [NodeInputKeyEnum.aiModel]?: string;
   [NodeInputKeyEnum.aiSystemPrompt]?: string;
   [NodeInputKeyEnum.aiChatTemperature]?: number;
   [NodeInputKeyEnum.aiChatMaxToken]?: number;

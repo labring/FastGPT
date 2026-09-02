@@ -12,6 +12,8 @@ import {
 } from '@/web/core/dataset/api/data';
 import { defaultCollectionDetail } from '@/web/core/dataset/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
@@ -128,7 +130,8 @@ export const useInputDataModal = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { embeddingModelList, defaultModels } = useSystemStore();
+  const { defaultModels } = useUserModelStore();
+  const { embeddingModelList } = useUserModelLists();
 
   const [currentTab, setCurrentTab] = useState<TabEnum>();
   const [deletingIndexClientId, setDeletingIndexClientId] = useState<string>();
@@ -583,7 +586,7 @@ export const useInputDataModal = ({
       embeddingModelList.find((item) => item.model === collection.dataset.vectorModel) ||
       defaultModels.embedding;
 
-    return vectorModel?.maxToken || 2000;
+    return vectorModel?.config.maxToken ?? 2000;
   }, [collection.dataset.vectorModel, defaultModels.embedding, embeddingModelList]);
 
   const submitData = handleSubmit((data) => (dataId ? onUpdateData(data) : sureImportData(data)));

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModelData } from '@fastgpt/service/core/ai/model';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { MongoS3TTL } from '@fastgpt/service/common/s3/models/ttl';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
@@ -47,10 +47,23 @@ vi.mock('@fastgpt/service/common/string/tiktoken', () => ({
 }));
 
 const embeddingModel = {
+  modelId: '68ad85a7463006c963799a05',
   model: 'text-embedding-3-small',
   name: 'text-embedding-3-small',
-  maxToken: 100
+  provider: 'openai',
+  scope: 'system' as const,
+  isActive: true,
+  type: 'embedding',
+  config: {
+    defaultToken: 512,
+    maxToken: 100,
+    weight: 100
+  }
 } as any;
+const visionEmbeddingModel = {
+  ...embeddingModel,
+  config: { ...embeddingModel.config, vision: true }
+};
 
 const createDatasetContext = async () => {
   const root = await getRootUser();
@@ -148,7 +161,7 @@ describe('Dataset data service', () => {
     mockGetVectors.mockClear();
     mockDeleteDatasetFileByKey.mockReset();
     mockCountPromptTokens.mockClear();
-    vi.mocked(getEmbeddingModel).mockReturnValue(embeddingModel);
+    vi.mocked(getEmbeddingModelData).mockReturnValue(embeddingModel);
     mockGetVectors.mockImplementation(async ({ inputs }) =>
       createMockVectorsResponse(inputs.map((input) => input.input))
     );
@@ -185,7 +198,7 @@ describe('Dataset data service', () => {
               text: 'manual index'
             }
           ],
-          embeddingModel: 'text-embedding-3-small',
+          embeddingModel,
           indexSize: 50,
           indexPrefix: 'prefix',
           session
@@ -239,7 +252,7 @@ describe('Dataset data service', () => {
             datasetId: String(dataset._id),
             collectionId: String(collection._id),
             q: '',
-            embeddingModel: 'text-embedding-3-small',
+            embeddingModel,
             session
           } as any)
         )
@@ -249,11 +262,6 @@ describe('Dataset data service', () => {
     it('should allow empty question text for image data without creating default text index', async () => {
       const { root, dataset, collection } = await createDatasetContext();
       const imageId = `dataset/${dataset._id}/黄芪.png`;
-      vi.mocked(getEmbeddingModel).mockReturnValue({
-        ...embeddingModel,
-        vision: true
-      });
-
       const result = await mongoSessionRun((session) =>
         createDatasetData({
           teamId: String(root.teamId),
@@ -262,7 +270,7 @@ describe('Dataset data service', () => {
           collectionId: String(collection._id),
           q: '',
           imageId,
-          embeddingModel: 'text-embedding-3-small',
+          embeddingModel: visionEmbeddingModel,
           indexSize: 50,
           session
         })
@@ -325,7 +333,7 @@ describe('Dataset data service', () => {
             text: 'new custom index'
           }
         ],
-        model: 'text-embedding-3-small',
+        model: embeddingModel,
         indexSize: 50
       });
 
@@ -404,7 +412,7 @@ describe('Dataset data service', () => {
             dataId: 'custom_old'
           }
         ],
-        model: 'text-embedding-3-small',
+        model: embeddingModel,
         indexSize: 50,
         forceRebuild: true
       });
@@ -446,7 +454,7 @@ describe('Dataset data service', () => {
           dataId: String(data._id),
           q: 'question',
           indexes: undefined as any,
-          model: 'text-embedding-3-small'
+          model: embeddingModel
         })
       ).rejects.toBe('indexes is required');
 
@@ -455,16 +463,12 @@ describe('Dataset data service', () => {
           dataId: String(new Types.ObjectId()),
           q: 'question',
           indexes: [],
-          model: 'text-embedding-3-small'
+          model: embeddingModel
         })
       ).rejects.toBe('Data not found');
     });
 
     it('should rebuild image embedding indexes from data content when image index is enabled', async () => {
-      vi.mocked(getEmbeddingModel).mockReturnValue({
-        ...embeddingModel,
-        vision: true
-      });
       const mainImage = 'dataset/team/main.png';
       const oldMarkdownImage = 'dataset/team/old.png';
       const newMarkdownImage = 'dataset/team/new.png';
@@ -508,7 +512,7 @@ describe('Dataset data service', () => {
             text: 'new custom index'
           }
         ],
-        model: 'text-embedding-3-small',
+        model: visionEmbeddingModel,
         indexSize: 50
       });
 
@@ -580,7 +584,7 @@ describe('Dataset data service', () => {
         dataId: String(data._id),
         q: 'new question',
         a: '',
-        model: 'text-embedding-3-small',
+        model: embeddingModel,
         indexSize: 512
       });
 
@@ -663,7 +667,7 @@ describe('Dataset data service', () => {
         dataId: String(data._id),
         q: 'same question',
         a: 'same answer',
-        model: 'text-embedding-3-small',
+        model: embeddingModel,
         indexSize: 50
       });
 
@@ -679,7 +683,7 @@ describe('Dataset data service', () => {
         updateDatasetDataSystemIndexes({
           dataId: String(new Types.ObjectId()),
           q: 'question',
-          model: 'text-embedding-3-small'
+          model: embeddingModel
         })
       ).rejects.toBe('Data not found');
     });
@@ -687,10 +691,6 @@ describe('Dataset data service', () => {
 
   describe('updateDatasetDataSystemIndexes with image embedding', () => {
     it('should replace only default and image embedding indexes without touching manual indexes', async () => {
-      vi.mocked(getEmbeddingModel).mockReturnValue({
-        ...embeddingModel,
-        vision: true
-      });
       const { data } = await createMongoData({
         q: 'old question',
         a: '',
@@ -734,7 +734,7 @@ describe('Dataset data service', () => {
         q: `new question ![new](${nextImage})`,
         a: '',
         imageIndex: true,
-        model: 'text-embedding-3-small',
+        model: visionEmbeddingModel,
         indexSize: 50
       });
 

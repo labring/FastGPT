@@ -27,6 +27,7 @@ export type SandboxFileContent = {
 
 type ResolveSandboxWorkspacePathOptions = {
   allowAbsolutePath?: boolean;
+  allowOutsideWorkspace?: boolean;
   workspaceRoot?: string;
 };
 

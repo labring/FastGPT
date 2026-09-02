@@ -6,7 +6,6 @@
 #   - fastgpt-mongo: 27017
 #   - fastgpt-redis: 6379
 #   - fastgpt-code-sandbox: 3002
-#   - fastgpt-mcp-server: 3003
 #   - fastgpt-plugin: 3004（host network，由 PORT 指定）
 #   - fastgpt-volume-manager: 3005
 #   - fastgpt-agent-sandbox-proxy: 3006
@@ -53,8 +52,8 @@ x-log-config: &x-log-config
 # 容器运行环境可能会自动注入 HTTP_PROXY/HTTPS_PROXY。
 # 明确绕过 compose 内部服务，避免内部请求被代理劫持。
 x-no-proxy-config: &x-no-proxy-config
-  NO_PROXY: localhost,127.0.0.1,::1,fastgpt,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-pg,fastgpt-mcp-server,opensandbox-server,fastgpt-volume-manager,host.docker.internal,*.orb.internal,*.orb.local
-  no_proxy: localhost,127.0.0.1,::1,fastgpt,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-pg,fastgpt-mcp-server,opensandbox-server,fastgpt-volume-manager,host.docker.internal,*.orb.internal,*.orb.local
+  NO_PROXY: localhost,127.0.0.1,::1,fastgpt,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-pg,opensandbox-server,fastgpt-volume-manager,host.docker.internal,*.orb.internal,*.orb.local
+  no_proxy: localhost,127.0.0.1,::1,fastgpt,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-pg,opensandbox-server,fastgpt-volume-manager,host.docker.internal,*.orb.internal,*.orb.local
 
 services:
   # Vector DB
@@ -212,7 +211,7 @@ services:
 
       # ===== Process Pool =====
       # Number of pre-warmed worker processes (JS + Python)
-      SANDBOX_POOL_SIZE: 20
+      SANDBOX_POOL_SIZE: 5
 
       # ===== Network Request Limits =====
       # Whether to check if the request is to a private network
@@ -236,19 +235,8 @@ services:
       interval: 30s
       timeout: 20s
       retries: 3
-  fastgpt-mcp-server:
-    container_name: fastgpt-mcp-server
-    image: ghcr.io/labring/fastgpt-mcp_server:v4.14.23
-    ports:
-      - 3003:3000
-    networks:
-      - fastgpt
-    restart: always
-    environment:
-      <<: [*x-no-proxy-config]
-      FASTGPT_ENDPOINT: http://fastgpt:3000
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v1.1.1
+    image: ghcr.io/labring/fastgpt-plugin:v1.1.2
     container_name: fastgpt-plugin
     restart: always
     network_mode: host

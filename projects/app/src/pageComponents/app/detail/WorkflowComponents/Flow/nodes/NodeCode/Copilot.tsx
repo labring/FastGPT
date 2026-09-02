@@ -7,7 +7,8 @@ import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import Markdown from '@/components/Markdown';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { onOptimizeCode } from '@/web/common/api/fetch';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -38,7 +39,7 @@ import type {
 
 export type OnOptimizeCodeProps = {
   optimizerInput: string;
-  model: string;
+  modelId: string;
   conversationHistory?: Array<ChatCompletionMessageParam>;
   onResult: (result: string) => void;
   abortController?: AbortController;
@@ -57,17 +58,15 @@ const NodeCopilot = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { llmModelList, defaultModels } = useSystemStore();
-  const { edges, getNodeById } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
-  );
+  const { defaultModels } = useUserModelStore();
+  const { llmModelList } = useUserModelLists();
+  const { edges, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   const [optimizerInput, setOptimizerInput] = useState('');
   const [codeResult, setCodeResult] = useState('');
-  const [selectedModel, setSelectedModel] = useState(defaultModels.llm?.model || '');
+  const [selectedModel, setSelectedModel] = useState(defaultModels.llm?.modelId || '');
   const [conversationHistory, setConversationHistory] = useState<ChatCompletionMessageParam[]>([]);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
   const closePopoverRef = useRef<() => void>();
@@ -131,6 +130,8 @@ const NodeCopilot = ({
       };
 
       const initialConversationHistory = [configMessage, confirmMessage];
+      // 对话被主动清空后，需要基于最新节点配置重新建立首轮上下文。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setConversationHistory(initialConversationHistory);
     }
   }, [conversationHistory, codeType, code, dynamicInputs, dynamicOutputs, t]);
@@ -150,7 +151,7 @@ const NodeCopilot = ({
           </Box>
         </Flex>
       ),
-      value: model.model
+      value: model.modelId
     }));
   }, [llmModelList]);
 
@@ -200,7 +201,7 @@ const NodeCopilot = ({
 
     await onOptimizeCode({
       optimizerInput: processedInput,
-      model: selectedModel,
+      modelId: selectedModel,
       conversationHistory,
       onResult: (result: string) => {
         if (!controller.signal.aborted) {
