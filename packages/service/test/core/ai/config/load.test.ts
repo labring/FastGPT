@@ -179,6 +179,14 @@ describe('loadSystemModels', () => {
     expect(global.systemModelList).toMatchObject([{ model: 'plugin-llm' }]);
   });
 
+  it('does not invalidate member model caches during initial startup', async () => {
+    pluginMocks.listModels.mockResolvedValue([pluginLlm]);
+
+    await loadSystemModels();
+
+    expect(reloadMocks.clearAllMyModelsCache).not.toHaveBeenCalled();
+  });
+
   it('retries after another instance wins a preinstall duplicate-key race', async () => {
     await MongoAIModel.create(pluginLlmDocument);
     const bulkWrite = vi.spyOn(MongoAIModel, 'bulkWrite').mockRejectedValueOnce({ code: 11000 });
@@ -254,6 +262,25 @@ describe('loadSystemModels', () => {
     await loadSystemModels(true);
 
     expect(reloadMocks.clearAllMyModelsCache).not.toHaveBeenCalled();
+  });
+
+  it('invalidates member caches when a hot refresh adds an active model', async () => {
+    pluginMocks.listModels.mockResolvedValue([pluginLlm]);
+    await loadSystemModels();
+    reloadMocks.clearAllMyModelsCache.mockClear();
+
+    pluginMocks.listModels.mockResolvedValue([
+      pluginLlm,
+      {
+        ...pluginLlm,
+        model: 'plugin-llm-2',
+        name: 'Plugin LLM 2'
+      }
+    ]);
+
+    await loadSystemModels(true);
+
+    expect(reloadMocks.clearAllMyModelsCache).toHaveBeenCalledOnce();
   });
 
   it('loads installed models without requesting plugin templates', async () => {
