@@ -61,7 +61,9 @@ export type ReferenceValueType = z.infer<typeof ReferenceValueTypeSchema>;
 export const WorkflowReferenceSnapshotSchema = z.object({
   reference: ReferenceItemValueTypeSchema,
   sourceLabel: z.string().optional(),
-  outputLabel: z.string().optional()
+  outputLabel: z.string().optional(),
+  // 来源节点图标；变量自身图标不进入 snapshot。
+  icon: z.string().optional()
 });
 export type WorkflowReferenceSnapshot = z.infer<typeof WorkflowReferenceSnapshotSchema>;
 
@@ -354,6 +356,9 @@ export const FlowNodeOutputItemTypeSchema = z.object({
   }),
   valueType: z.enum(WorkflowIOValueTypeEnum).optional().meta({
     description: '节点输出值的数据类型'
+  }),
+  icon: z.string().optional().meta({
+    description: '节点输出变量图标'
   }),
   valueDesc: z.string().optional().meta({
     description: '输出值说明，通常用于展示引用值含义'

@@ -47,6 +47,7 @@ type ReferenceSelectList = {
   label: string | React.ReactNode;
   value: string;
   sourceLabel?: string;
+  icon?: string;
   children: {
     label: string;
     value: string;
@@ -65,11 +66,6 @@ const getReferenceValueTitle = (value: unknown) => {
   return typeof value === 'string' ? value : undefined;
 };
 
-const getReferenceOutputKey = (value: unknown) => {
-  if (Array.isArray(value) && typeof value[1] === 'string') return value[1];
-  return typeof value === 'string' ? value : undefined;
-};
-
 const getReferenceListItem = (value: unknown, list: ReferenceSelectList) => {
   if (!isWorkflowReferenceItem(value)) return;
 
@@ -78,9 +74,15 @@ const getReferenceListItem = (value: unknown, list: ReferenceSelectList) => {
   return source && output ? { source, output } : undefined;
 };
 
-const getSelectedReferenceLabels = (value: unknown, list: ReferenceSelectList) => {
+const getSelectedReference = (value: unknown, list: ReferenceSelectList) => {
   const reference = getReferenceListItem(value, list);
-  return reference ? [reference.source.label, reference.output.label] : [];
+  return reference
+    ? {
+        sourceLabel: reference.source.sourceLabel,
+        outputLabel: reference.output.label,
+        sourceIcon: reference.source.icon
+      }
+    : {};
 };
 
 /** 按当前选项或历史快照恢复失效引用的展示标签。 */
@@ -104,11 +106,12 @@ const getReferenceSnapshot = ({
     return {
       reference: value,
       sourceLabel: reference.source.sourceLabel,
-      outputLabel: reference.output.outputLabel
+      outputLabel: reference.output.outputLabel,
+      icon: reference.source.icon
     };
   }
 
-  const { sourceLabel, sourceOutput } = getWorkflowReferenceSource({
+  const { sourceLabel, sourceOutput, sourceIcon } = getWorkflowReferenceSource({
     value,
     sourceNodes,
     getNodeById
@@ -117,7 +120,8 @@ const getReferenceSnapshot = ({
     return {
       reference: value,
       sourceLabel,
-      outputLabel: sourceOutput.label
+      outputLabel: sourceOutput.label,
+      icon: sourceIcon
     };
   }
 
@@ -142,13 +146,16 @@ const getInvalidReferenceReason = (
 const ReferenceOutputLabel = ({
   sourceLabel,
   outputLabel,
+  sourceIcon,
   iconMargin = 0.5
 }: {
   sourceLabel: React.ReactNode;
   outputLabel: React.ReactNode;
+  sourceIcon?: string;
   iconMargin?: number;
 }) => (
   <>
+    {sourceIcon && <Avatar src={sourceIcon} w={'1rem'} mr={1} borderRadius={'xs'} />}
     {sourceLabel}
     <MyIcon name={'common/rightArrowLight'} mx={iconMargin} w={'12px'} color={'myGray.500'} />
     {outputLabel}
@@ -170,6 +177,7 @@ const ReferenceSnapshotLabel = ({
   if (sourceLabel && outputLabel) {
     return (
       <>
+        {snapshot?.icon && <Avatar src={snapshot.icon} w={'1rem'} mr={1} borderRadius={'xs'} />}
         {sourceLabel}
         <MyIcon name={'common/rightArrowLight'} mx={0.5} w={'12px'} color={'myGray.500'} />
         {outputLabel}
@@ -177,7 +185,15 @@ const ReferenceSnapshotLabel = ({
     );
   }
 
-  return <>{outputLabel || sourceLabel || fallback}</>;
+  const label = outputLabel || sourceLabel || fallback;
+  return (
+    <>
+      {label && snapshot?.icon && (
+        <Avatar src={snapshot.icon} w={'1rem'} mr={1} borderRadius={'xs'} />
+      )}
+      {label}
+    </>
+  );
 };
 
 type CommonSelectProps = {
@@ -247,6 +263,7 @@ export const useReference = ({
           label,
           value: node.nodeId,
           sourceLabel: node.name,
+          icon: node.avatar,
           children: selectableOutputs.map((output) => ({
             label: t(output.label as any),
             value: output.id,
@@ -262,6 +279,7 @@ export const useReference = ({
       sourceNodes: sourceNodes.map((node) => ({
         nodeId: node.nodeId,
         sourceLabel: node.name,
+        icon: node.avatar,
         outputs: node.outputs,
         catchError: node.catchError
       }))
@@ -349,7 +367,11 @@ const SingleReferenceSelector = ({
   const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
 
   const selectorVal = value as ReferenceItemValueType;
-  const [nodeName, outputName] = getSelectedReferenceLabels(selectorVal, list);
+  const {
+    sourceLabel: nodeName,
+    outputLabel: outputName,
+    sourceIcon
+  } = getSelectedReference(selectorVal, list);
   const status = getWorkflowReferenceStatus({
     value: selectorVal,
     valueType,
@@ -358,7 +380,6 @@ const SingleReferenceSelector = ({
   });
   const isValidSelect = status.code === 'valid' && Boolean(nodeName && outputName);
   const isInvalidReference = isConfiguredReferenceValue(selectorVal) && !isValidSelect;
-  const referenceOutputKey = getReferenceOutputKey(selectorVal);
   const referenceTitle = getReferenceValueTitle(selectorVal);
   const invalidReason = getInvalidReferenceReason(status.code, t);
   const invalidSnapshot = isInvalidReference
@@ -376,14 +397,18 @@ const SingleReferenceSelector = ({
       label={
         isValidSelect ? (
           <Flex py={1} pl={1} alignItems={'center'} fontSize={'sm'}>
-            <ReferenceOutputLabel sourceLabel={nodeName} outputLabel={outputName} />
+            <ReferenceOutputLabel
+              sourceLabel={nodeName}
+              outputLabel={outputName}
+              sourceIcon={sourceIcon}
+            />
           </Flex>
         ) : isInvalidReference ? (
           <Flex py={1} pl={1} alignItems={'center'} fontSize={'sm'}>
             <Box title={referenceTitle} color={'red.500'} display={'flex'} alignItems={'center'}>
               <ReferenceSnapshotLabel
                 snapshot={invalidSnapshot}
-                fallback={referenceOutputKey}
+                fallback={t('common:invalid_variable')}
                 t={t}
               />
             </Box>
@@ -439,7 +464,11 @@ const MultipleReferenceSelector = ({
     if (!Array.isArray(value)) return [];
 
     return value.map((item) => {
-      const [nodeName, outputName] = getSelectedReferenceLabels(item, list);
+      const {
+        sourceLabel: nodeName,
+        outputLabel: outputName,
+        sourceIcon
+      } = getSelectedReference(item, list);
       const status = getWorkflowReferenceStatus({
         value: item,
         valueType,
@@ -450,6 +479,7 @@ const MultipleReferenceSelector = ({
         rawValue: item,
         nodeName,
         outputName,
+        sourceIcon,
         status
       };
     });
@@ -477,10 +507,9 @@ const MultipleReferenceSelector = ({
               }
             }}
           >
-            {formatList.map(({ rawValue, nodeName, outputName, status }, index) => {
+            {formatList.map(({ rawValue, nodeName, outputName, sourceIcon, status }, index) => {
               const isValidReference = status.code === 'valid' && Boolean(nodeName && outputName);
               const isInvalidReference = isConfiguredReferenceValue(rawValue) && !isValidReference;
-              const referenceOutputKey = getReferenceOutputKey(rawValue);
               const referenceTitle = getReferenceValueTitle(rawValue);
               const invalidReason = getInvalidReferenceReason(status.code, t);
               const invalidSnapshot = isInvalidReference
@@ -513,12 +542,13 @@ const MultipleReferenceSelector = ({
                       <ReferenceOutputLabel
                         sourceLabel={nodeName}
                         outputLabel={outputName}
+                        sourceIcon={sourceIcon}
                         iconMargin={1}
                       />
                     ) : isInvalidReference ? (
                       <ReferenceSnapshotLabel
                         snapshot={invalidSnapshot}
-                        fallback={referenceOutputKey}
+                        fallback={t('common:invalid_variable')}
                         t={t}
                       />
                     ) : (

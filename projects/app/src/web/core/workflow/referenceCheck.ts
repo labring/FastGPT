@@ -3,10 +3,7 @@ import {
   VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeOutputTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type {
   FlowNodeInputItemType,
   ReferenceItemValueType,
@@ -52,9 +49,38 @@ type GetWorkflowReferenceStatusProps = {
   chatConfig?: AppChatConfigType;
 };
 
+const WORKFLOW_TEXT_REFERENCE_REGEXP = /\{\{\$([^$.]+)\.([^$]+)\$\}\}/g;
+
+/** 递归提取 canonical 与文本引用，覆盖 HTTP 参数、body 和普通输入嵌套值。 */
+export const getWorkflowReferenceItemsFromValue = (value: unknown) => {
+  const references: ReferenceItemValueType[] = [];
+  const visited = new WeakSet<object>();
+
+  const visit = (item: unknown) => {
+    if (isWorkflowReferenceItem(item)) {
+      references.push(item);
+      return;
+    }
+
+    if (typeof item === 'string') {
+      for (const match of item.matchAll(WORKFLOW_TEXT_REFERENCE_REGEXP)) {
+        references.push([match[1], match[2]]);
+      }
+      return;
+    }
+
+    if (!item || typeof item !== 'object' || visited.has(item)) return;
+    visited.add(item);
+    Object.values(item).forEach(visit);
+  };
+
+  visit(value);
+  return [...new Map(references.map((reference) => [reference.join('\0'), reference])).values()];
+};
+
 const isMalformedReferenceValue = (value: unknown) => {
   if (!isConfiguredReferenceValue(value) || isWorkflowReferenceItem(value)) return false;
-  if (!Array.isArray(value)) return true;
+  if (!Array.isArray(value) || !value.some(Array.isArray)) return false;
   return value.some((item) => !isWorkflowReferenceItem(item));
 };
 
@@ -78,6 +104,11 @@ export const getWorkflowReferenceSource = ({
   return {
     sourceNode,
     sourceOutput,
+    sourceIcon: sourceNode
+      ? 'name' in sourceNode
+        ? sourceNode.avatar
+        : sourceNode.icon
+      : undefined,
     sourceLabel: sourceNode
       ? 'name' in sourceNode
         ? sourceNode.name
@@ -157,7 +188,7 @@ export const getWorkflowReferenceStatuses = ({
   value,
   ...props
 }: GetWorkflowReferenceStatusProps): WorkflowReferenceStatus[] => {
-  const referenceItems = getWorkflowReferenceItems(value);
+  const referenceItems = getWorkflowReferenceItemsFromValue(value);
   const statuses = referenceItems.map((item) =>
     getWorkflowReferenceStatus({ value: item, ...props })
   );
@@ -178,13 +209,15 @@ export const captureDeletedWorkflowReferenceSnapshots = ({
   nextNodes,
   previousChatConfig,
   nextChatConfig,
-  globalVariableSourceLabel
+  globalVariableSourceLabel,
+  nodeIds
 }: {
   previousNodes: Node<FlowNodeItemType, string | undefined>[];
   nextNodes: Node<FlowNodeItemType, string | undefined>[];
   previousChatConfig?: AppChatConfigType;
   nextChatConfig?: AppChatConfigType;
   globalVariableSourceLabel?: string;
+  nodeIds?: Iterable<string>;
 }) => {
   const buildSourceNodes = (
     nodes: Node<FlowNodeItemType, string | undefined>[],
@@ -193,12 +226,14 @@ export const captureDeletedWorkflowReferenceSnapshots = ({
     ...nodes.map(({ data }) => ({
       nodeId: data.nodeId,
       sourceLabel: data.name,
+      ...(data.avatar ? { icon: data.avatar } : {}),
       outputs: data.outputs,
       catchError: data.catchError
     })),
     {
       nodeId: VARIABLE_NODE_ID,
       sourceLabel: globalVariableSourceLabel,
+      icon: 'core/workflow/template/variable',
       outputs: getWorkflowGlobalVariables({ chatConfig: chatConfig ?? {} }).map((variable) => ({
         id: variable.key,
         key: variable.key,
@@ -211,6 +246,35 @@ export const captureDeletedWorkflowReferenceSnapshots = ({
 
   const previousSourceNodes = buildSourceNodes(previousNodes, previousChatConfig);
   const nextSourceNodes = buildSourceNodes(nextNodes, nextChatConfig);
+
+  const getReferenceKey = (reference: ReferenceItemValueType) => reference.join('\0');
+  const previousSourceKeys = new Set(
+    previousSourceNodes.flatMap((node) =>
+      node.outputs.map((output) => getReferenceKey([node.nodeId, output.id]))
+    )
+  );
+  const nextSourceKeys = new Set(
+    nextSourceNodes.flatMap((node) =>
+      node.outputs.map((output) => getReferenceKey([node.nodeId, output.id]))
+    )
+  );
+  const changedSourceKeys = new Set([...previousSourceKeys, ...nextSourceKeys]);
+  previousSourceKeys.forEach((key) => {
+    if (nextSourceKeys.has(key)) changedSourceKeys.delete(key);
+  });
+  nextSourceKeys.forEach((key) => {
+    if (previousSourceKeys.has(key)) changedSourceKeys.delete(key);
+  });
+
+  const affectedNodeIds = nodeIds && new Set(nodeIds);
+  if (affectedNodeIds) {
+    nextNodes.forEach((node) => {
+      const hasChangedReference = getWorkflowReferenceItemsFromValue(node.data.inputs).some(
+        (reference) => changedSourceKeys.has(getReferenceKey(reference))
+      );
+      if (hasChangedReference) affectedNodeIds.add(node.data.nodeId);
+    });
+  }
 
   const updateOptional = (item: any, key: string, value: any) => {
     if (isEqual(item[key], value)) return item;
@@ -254,12 +318,14 @@ export const captureDeletedWorkflowReferenceSnapshots = ({
     const source = previousSource.sourceOutput
       ? {
           sourceLabel: previousSource.sourceLabel,
-          outputLabel: previousSource.sourceOutput.label
+          outputLabel: previousSource.sourceOutput.label,
+          ...(previousSource.sourceIcon ? { icon: previousSource.sourceIcon } : {})
         }
       : existingSnapshot
         ? {
             sourceLabel: existingSnapshot.sourceLabel,
-            outputLabel: existingSnapshot.outputLabel
+            outputLabel: existingSnapshot.outputLabel,
+            ...(existingSnapshot.icon ? { icon: existingSnapshot.icon } : {})
           }
         : undefined;
 
@@ -267,7 +333,7 @@ export const captureDeletedWorkflowReferenceSnapshots = ({
   };
 
   const captureSnapshots = (value: unknown, existingSnapshots?: WorkflowReferenceSnapshot[]) => {
-    const snapshots = getWorkflowReferenceItems(value)
+    const snapshots = getWorkflowReferenceItemsFromValue(value)
       .map((reference) =>
         captureSnapshot(reference, getExistingSnapshot(reference, existingSnapshots))
       )
@@ -277,13 +343,20 @@ export const captureDeletedWorkflowReferenceSnapshots = ({
   };
 
   const captureInput = (input: FlowNodeInputItemType): FlowNodeInputItemType => {
-    let nextInput: FlowNodeInputItemType = nodeInputIsReference(input)
-      ? updateOptional(
-          input,
-          'referenceSnapshots',
-          captureSnapshots(input.value, input.referenceSnapshots)
-        )
-      : updateOptional(input, 'referenceSnapshots', undefined);
+    const hasNestedReferenceSnapshots = [
+      NodeInputKeyEnum.ifElseList,
+      NodeInputKeyEnum.updateList
+    ].includes(input.key as NodeInputKeyEnum);
+    const canCaptureReferenceSnapshots =
+      !hasNestedReferenceSnapshots &&
+      (nodeInputIsReference(input) || getWorkflowReferenceItemsFromValue(input.value).length > 0);
+    let nextInput: FlowNodeInputItemType = updateOptional(
+      input,
+      'referenceSnapshots',
+      canCaptureReferenceSnapshots
+        ? captureSnapshots(input.value, input.referenceSnapshots)
+        : undefined
+    );
 
     if (input.key === NodeInputKeyEnum.ifElseList && Array.isArray(input.value)) {
       const nextValue = (input.value as IfElseListItemType[]).map((branch) => {
@@ -325,9 +398,7 @@ export const captureDeletedWorkflowReferenceSnapshots = ({
         nextItem = updateOptional(
           nextItem,
           'valueReferenceSnapshots',
-          item.renderType === FlowNodeInputTypeEnum.reference
-            ? captureSnapshots(item.value, item.valueReferenceSnapshots)
-            : undefined
+          captureSnapshots(item.value, item.valueReferenceSnapshots)
         );
         return nextItem;
       });
@@ -342,6 +413,7 @@ export const captureDeletedWorkflowReferenceSnapshots = ({
 
   let changed = false;
   const result = nextNodes.map((node) => {
+    if (affectedNodeIds && !affectedNodeIds.has(node.data.nodeId)) return node;
     const inputs = node.data.inputs.map(captureInput);
     if (inputs.every((input, index) => input === node.data.inputs[index])) return node;
 

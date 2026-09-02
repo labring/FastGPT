@@ -1093,10 +1093,10 @@ describe('formatEditorVariablePickerIcon', () => {
     expect(result[0].label).toBe('Variable 1');
   });
 
-  it('should use default input icon when type is undefined', () => {
+  it('should leave icon undefined when type is undefined', () => {
     const variables = [{ key: 'var1', label: 'Variable 1' }];
     const result = formatEditorVariablePickerIcon(variables);
-    expect(result[0].icon).toBeDefined();
+    expect(result[0].icon).toBeUndefined();
   });
 
   it('should preserve required field', () => {

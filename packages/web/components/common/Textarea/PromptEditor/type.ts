@@ -15,8 +15,8 @@ export type EditorVariableLabelPickerType = {
   key: string;
   label: string;
   required?: boolean;
-  icon?: string;
   valueType?: WorkflowIOValueTypeEnum;
+  invalidReason?: 'invalid_reference' | 'unreachable_reference' | 'invalid_reference_type';
   parent: {
     id: string;
     label: string;

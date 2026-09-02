@@ -434,6 +434,7 @@ export const filterWorkflowNodeOutputsByType = (
 export type WorkflowReferenceSourceNode = {
   nodeId: string;
   sourceLabel?: string;
+  icon?: string;
   outputs: FlowNodeOutputItemType[];
   catchError?: boolean;
 };
