@@ -155,6 +155,7 @@ const RenderList = React.memo(function RenderList({
 export const MultipleRowSelect = ({
   placeholder,
   label,
+  rightContent,
   value = [],
   list,
   emptyTip,
@@ -194,6 +195,7 @@ export const MultipleRowSelect = ({
 
   return (
     <Box
+      position={'relative'}
       css={css({
         '& div': {
           width: 'auto !important'
@@ -237,6 +239,7 @@ export const MultipleRowSelect = ({
               overflow="hidden"
               textOverflow="ellipsis"
               whiteSpace="nowrap"
+              pr={rightContent ? 5 : 0}
             >
               {label ?? placeholder}
             </Box>
@@ -285,6 +288,11 @@ export const MultipleRowSelect = ({
           />
         </MenuList>
       </Menu>
+      {rightContent && (
+        <Box position={'absolute'} top={'50%'} right={7} transform={'translateY(-50%)'} zIndex={1}>
+          {rightContent}
+        </Box>
+      )}
     </Box>
   );
 };

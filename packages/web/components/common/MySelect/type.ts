@@ -10,6 +10,7 @@ export type MultipleSelectProps = {
   label?: string | React.ReactNode;
   value?: any[];
   placeholder?: string;
+  rightContent?: React.ReactNode;
   list: ListItemType[];
   emptyTip?: string;
   maxH?: number;

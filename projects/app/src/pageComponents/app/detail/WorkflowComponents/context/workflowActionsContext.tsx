@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createContext, useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { getHandleId, nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { migrateToolInputConfig } from '@fastgpt/global/core/app/formEdit/utils';
 import type { OnConnectStartParams } from 'reactflow';
@@ -17,10 +17,7 @@ import type {
   WorkflowCheckNodeIssueMap
 } from '@fastgpt/global/core/workflow/type/node';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import {
-  checkWorkflowNodeIssues,
-  countNewWorkflowCheckIssues
-} from '@/web/core/workflow/workflowCheck';
+import { checkWorkflowNodeIssues } from '@/web/core/workflow/workflowCheck';
 import { collectWorkflowStartAutoFillRevertPatches } from '@/web/core/workflow/workflowStartAutoFill';
 import { captureDeletedWorkflowReferenceSnapshots } from '@/web/core/workflow/referenceCheck';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
@@ -83,6 +80,9 @@ type WorkflowActionsContextValue = {
   /** 单节点刷新校验问题详情，用于节点配置编辑后的局部复查 */
   onRefreshSingleNodeWorkflowCheckIssues: (nodeId: string) => void;
 
+  /** 防抖全量刷新节点校验问题详情，用于影响多个节点的配置变更 */
+  onRefreshWorkflowCheckIssues: (options?: { showReferenceIssueToast?: boolean }) => void;
+
   /** 移除所有错误状态 */
   onRemoveError: () => void;
 
@@ -114,6 +114,9 @@ export const WorkflowActionsContext = createContext<WorkflowActionsContextValue>
   },
   onRefreshSingleNodeWorkflowCheckIssues: (nodeId: string) => {
     void nodeId;
+    throw new Error('Function not implemented.');
+  },
+  onRefreshWorkflowCheckIssues: () => {
     throw new Error('Function not implemented.');
   },
   onRemoveError: () => {
@@ -156,6 +159,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
 
   const singleNodeCheckTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const edgeCheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showReferenceIssueToastRef = useRef(false);
   const isFirstEdgesEffectRef = useRef(true);
   const prevEdgesRef = useRef(edges);
 
@@ -297,40 +301,48 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
     [onRefreshSingleNodeWorkflowCheckIssues]
   );
 
-  /** 结构变化后防抖全量扫描，及时更新依赖节点关系和输出的引用错误态。 */
-  const scheduleFullWorkflowCheck = useCallback(() => {
-    if (edgeCheckTimerRef.current) {
-      clearTimeout(edgeCheckTimerRef.current);
-    }
+  /** 结构变化后防抖全量扫描，更新受影响节点的校验问题。 */
+  const scheduleFullWorkflowCheck = useCallback(
+    (showReferenceIssueToast = false) => {
+      showReferenceIssueToastRef.current ||= showReferenceIssueToast;
 
-    edgeCheckTimerRef.current = setTimeout(() => {
-      edgeCheckTimerRef.current = null;
-      const nodes = getNodes();
-      if (nodes.length === 0) return;
-
-      const issueMap = checkWorkflowNodeIssues({
-        nodes,
-        edges,
-        t,
-        chatConfig: appDetail.chatConfig
-      });
-
-      // 输出/catchError 变化产生新增类型不兼容时聚合提示一次，已有问题不重复提醒
-      const newTypeIssueCount = countNewWorkflowCheckIssues({
-        issueMap,
-        prevNodes: nodes,
-        code: 'invalid_reference_type'
-      });
-      if (newTypeIssueCount > 0) {
-        toast({
-          status: 'warning',
-          title: t('common:core.workflow.check.invalid_reference_type_toast')
-        });
+      if (edgeCheckTimerRef.current) {
+        clearTimeout(edgeCheckTimerRef.current);
       }
 
-      onSyncWorkflowCheckIssues(issueMap);
-    }, 400);
-  }, [appDetail.chatConfig, edges, getNodes, onSyncWorkflowCheckIssues, t, toast]);
+      edgeCheckTimerRef.current = setTimeout(() => {
+        edgeCheckTimerRef.current = null;
+        const shouldShowReferenceIssueToast = showReferenceIssueToastRef.current;
+        showReferenceIssueToastRef.current = false;
+        const nodes = getNodes();
+        if (nodes.length === 0) return;
+
+        const issueMap = checkWorkflowNodeIssues({
+          nodes,
+          edges,
+          t,
+          chatConfig: appDetail.chatConfig
+        });
+
+        onSyncWorkflowCheckIssues(issueMap);
+
+        if (shouldShowReferenceIssueToast) {
+          toast({
+            status: 'warning',
+            title: t('common:core.workflow.check.invalid_reference_type_toast')
+          });
+        }
+      }, 400);
+    },
+    [appDetail.chatConfig, edges, getNodes, onSyncWorkflowCheckIssues, t, toast]
+  );
+
+  const onRefreshWorkflowCheckIssues = useCallback(
+    (options?: { showReferenceIssueToast?: boolean }) => {
+      scheduleFullWorkflowCheck(options?.showReferenceIssueToast);
+    },
+    [scheduleFullWorkflowCheck]
+  );
 
   useEffect(() => {
     if (isFirstEdgesEffectRef.current) {
@@ -612,22 +624,13 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         });
       });
 
-      // 变更影响「其他节点」上的引用有效性，单节点复查覆盖不到，需要升级为全量检查：
-      // - catchError 决定该节点的 error 输出是否可被引用；
-      // - 输出的增删改直接影响下游已选引用（addOutput 本身不会让旧引用失效，
-      //   但会触发 invalidCondition 重算，可能把兄弟输出置为 invalid）；
-      // - aiModel 变化会影响 aiChat 的 reasoningText 输出是否可被引用；
-      // - delOutput/replaceOutput 还会删边，与 edges effect 的全量检查重复，
-      //   但两者共用同一个防抖 timer，最终只会扫描一次。
+      // 结构或输出变化会影响多个节点，需升级为全量检查。
       const shouldRunFullWorkflowCheck = updateData.some((item) => {
         if (item.type === 'attr') {
           return ['catchError', 'parentNodeId'].includes(item.key);
         }
         if (item.type === 'addInput') {
-          return (
-            item.value.key === NodeInputKeyEnum.childrenNodeIdList ||
-            nodeInputIsReference(item.value)
-          );
+          return item.value.key === NodeInputKeyEnum.childrenNodeIdList;
         }
         if (item.type === 'delInput') {
           return item.key === NodeInputKeyEnum.childrenNodeIdList;
@@ -635,8 +638,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         if (item.type === 'updateInput' || item.type === 'replaceInput') {
           return (
             item.key === NodeInputKeyEnum.aiModel ||
-            item.key === NodeInputKeyEnum.childrenNodeIdList ||
-            nodeInputIsReference(item.value)
+            item.key === NodeInputKeyEnum.childrenNodeIdList
           );
         }
         return ['updateOutput', 'replaceOutput', 'addOutput', 'delOutput'].includes(item.type);
@@ -666,6 +668,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       onUpdateNodeError,
       onSyncWorkflowCheckIssues,
       onRefreshSingleNodeWorkflowCheckIssues,
+      onRefreshWorkflowCheckIssues,
       onRemoveError,
       onResetNode,
       onChangeNode,
@@ -677,6 +680,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
     onUpdateNodeError,
     onSyncWorkflowCheckIssues,
     onRefreshSingleNodeWorkflowCheckIssues,
+    onRefreshWorkflowCheckIssues,
     onRemoveError,
     onResetNode,
     onChangeNode,

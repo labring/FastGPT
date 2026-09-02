@@ -743,6 +743,103 @@ describe('checkWorkflowNodeIssues', () => {
       );
     });
 
+    it('allows a loop custom output to reference a direct child output', () => {
+      const loop = makeNode('loop', FlowNodeTypeEnum.loopRun, {
+        inputs: [
+          {
+            ...makeReferenceInput('custom-output', ['loop-child', 'out']),
+            canEdit: true
+          }
+        ]
+      });
+      const child = makeOutputNode('loop-child');
+      child.data.parentNodeId = 'loop';
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, loop, child],
+        edges: [{ id: 'e-start-loop', source: 'start', target: 'loop', type: EDGE_TYPE }]
+      });
+
+      expect(result.loop?.filter((issue) => issue.inputKey === 'custom-output') ?? []).toEqual([]);
+    });
+
+    it('keeps nested loop and parallel container reference scopes aligned', () => {
+      const source = makeNode('source', FlowNodeTypeEnum.answerNode, {
+        outputs: [
+          {
+            id: 'items',
+            key: 'items',
+            label: 'items',
+            type: FlowNodeOutputTypeEnum.static,
+            valueType: WorkflowIOValueTypeEnum.arrayAny
+          }
+        ]
+      });
+      const outerLoop = makeNode('outer-loop', FlowNodeTypeEnum.loopRun);
+      const parallel = makeNode('parallel', FlowNodeTypeEnum.parallelRun, {
+        parentNodeId: 'outer-loop',
+        inputs: [
+          {
+            ...makeReferenceInput('nested-input', ['source', 'items']),
+            valueType: WorkflowIOValueTypeEnum.arrayAny
+          }
+        ]
+      });
+      const nestedLoop = makeNode('nested-loop', FlowNodeTypeEnum.loopRun, {
+        parentNodeId: 'parallel',
+        inputs: [
+          {
+            ...makeReferenceInput('custom-output', ['nested-child', 'out']),
+            canEdit: true
+          }
+        ]
+      });
+      const nestedChild = makeOutputNode('nested-child');
+      nestedChild.data.parentNodeId = 'nested-loop';
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, source, outerLoop, parallel, nestedLoop, nestedChild],
+        edges: [
+          { id: 'e-start-source', source: 'start', target: 'source', type: EDGE_TYPE },
+          { id: 'e-source-loop', source: 'source', target: 'outer-loop', type: EDGE_TYPE }
+        ]
+      });
+
+      expect(result.parallel?.filter((issue) => issue.inputKey === 'nested-input') ?? []).toEqual(
+        []
+      );
+      expect(
+        result['nested-loop']?.filter((issue) => issue.inputKey === 'custom-output') ?? []
+      ).toEqual([]);
+    });
+
+    it('keeps nested descendants outside an outer loop custom output scope', () => {
+      const outerLoop = makeNode('outer-loop', FlowNodeTypeEnum.loopRun, {
+        inputs: [
+          {
+            ...makeReferenceInput('custom-output', ['nested-child', 'out']),
+            canEdit: true
+          }
+        ]
+      });
+      const nestedLoop = makeNode('nested-loop', FlowNodeTypeEnum.loopRun, {
+        parentNodeId: 'outer-loop'
+      });
+      const nestedChild = makeOutputNode('nested-child');
+      nestedChild.data.parentNodeId = 'nested-loop';
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, outerLoop, nestedLoop, nestedChild],
+        edges: [{ id: 'e-start-loop', source: 'start', target: 'outer-loop', type: EDGE_TYPE }]
+      });
+
+      expect(result['outer-loop']).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: 'unreachable_reference', inputKey: 'custom-output' })
+        ])
+      );
+    });
+
     it('distinguishes a missing source from an out-of-scope source', () => {
       const sourceNode = makeOutputNode('source');
       const validNode = makeNode('valid', FlowNodeTypeEnum.answerNode, {
@@ -929,22 +1026,33 @@ describe('checkWorkflowNodeIssues', () => {
       ]
     });
 
+    const t = vi.fn((key: string, params?: { inputName?: string }) => {
+      if (key === 'common:core.workflow.variable') return 'Variable';
+      if (key === 'common:value') return 'Value';
+      if (key === 'common:core.workflow.check.invalid_reference') {
+        return `${params?.inputName} reference is invalid`;
+      }
+      return key;
+    });
     const result = checkWorkflowNodeIssues({
       nodes: [typedSourceNode, detachedSourceNode, ifElseNode],
       edges: [
         { id: 'e-source-if-else', source: 'typed-source', target: 'if-else', type: EDGE_TYPE }
-      ]
+      ],
+      t: t as any
     });
 
     expect(result['if-else']).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           code: 'invalid_reference',
-          inputKey: `${NodeInputKeyEnum.ifElseList}[0].list[0].variable`
+          inputKey: `${NodeInputKeyEnum.ifElseList}[0].list[0].variable`,
+          message: 'Variable reference is invalid'
         }),
         expect.objectContaining({
           code: 'invalid_reference',
-          inputKey: `${NodeInputKeyEnum.ifElseList}[0].list[1].value`
+          inputKey: `${NodeInputKeyEnum.ifElseList}[0].list[1].value`,
+          message: 'Value reference is invalid'
         }),
         expect.objectContaining({
           code: 'invalid_reference_type',

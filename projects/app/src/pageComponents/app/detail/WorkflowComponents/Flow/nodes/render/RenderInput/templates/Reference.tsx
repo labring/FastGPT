@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Flex, Box, type ButtonProps, Grid } from '@chakra-ui/react';
+import { WarningTwoIcon } from '@chakra-ui/icons';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
   getNodeAllSource,
@@ -404,8 +405,15 @@ const SingleReferenceSelector = ({
             />
           </Flex>
         ) : isInvalidReference ? (
-          <Flex py={1} pl={1} alignItems={'center'} fontSize={'sm'}>
-            <Box title={referenceTitle} color={'red.500'} display={'flex'} alignItems={'center'}>
+          <Flex py={1} pl={1} alignItems={'center'} fontSize={'sm'} minW={0}>
+            <Box
+              title={referenceTitle}
+              display={'flex'}
+              alignItems={'center'}
+              flex={'1 1 0'}
+              minW={0}
+              className="textEllipsis"
+            >
               <ReferenceSnapshotLabel
                 snapshot={invalidSnapshot}
                 fallback={t('common:invalid_variable')}
@@ -419,6 +427,23 @@ const SingleReferenceSelector = ({
           </Box>
         )
       }
+      rightContent={
+        isInvalidReference ? (
+          <MyTooltip label={invalidReason} shouldWrapChildren={false}>
+            <Box
+              display={'flex'}
+              alignItems={'center'}
+              ml={1}
+              color={'red.500'}
+              cursor={'help'}
+              aria-label={invalidReason}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <WarningTwoIcon boxSize={3.5} />
+            </Box>
+          </MyTooltip>
+        ) : undefined
+      }
       value={selectorVal}
       list={list}
       onSelect={(nextValue) => {
@@ -430,7 +455,6 @@ const SingleReferenceSelector = ({
           ? {
               ...ButtonProps,
               borderColor: 'red.500',
-              color: 'red.500',
               _hover: { borderColor: 'red.400' }
             }
           : ButtonProps
@@ -438,13 +462,7 @@ const SingleReferenceSelector = ({
     />
   );
 
-  return isInvalidReference ? (
-    <MyTooltip label={invalidReason} shouldWrapChildren={false}>
-      <Box w={'full'}>{selector}</Box>
-    </MyTooltip>
-  ) : (
-    selector
-  );
+  return selector;
 };
 const MultipleReferenceSelector = ({
   placeholder,
@@ -527,7 +545,7 @@ const MultipleReferenceSelector = ({
                   w={'100%'}
                   alignItems={'center'}
                   bg={isInvalidReference ? 'red.50' : 'primary.50'}
-                  color={isInvalidReference ? 'red.500' : 'myGray.900'}
+                  color={'myGray.900'}
                   py={1}
                   px={1.5}
                   rounded={'sm'}

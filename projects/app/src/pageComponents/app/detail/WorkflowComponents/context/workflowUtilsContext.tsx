@@ -6,11 +6,7 @@ import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { captureDeletedWorkflowReferenceSnapshots } from '@/web/core/workflow/referenceCheck';
 import { storeNode2FlowNode, storeEdge2RenderEdge } from '@/web/core/workflow/utils';
-import {
-  checkWorkflowBeforeRunOrPublish,
-  checkWorkflowNodeIssues,
-  countNewWorkflowCheckIssues
-} from '@/web/core/workflow/workflowCheck';
+import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/workflowCheck';
 import { uiWorkflow2StoreWorkflow } from '../utils';
 import {
   FlowNodeOutputTypeEnum,
@@ -124,8 +120,6 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
   const { toast } = useToast();
   const { fitView } = useReactFlow();
 
-  // 首次进入编辑页的全量扫描不对存量类型问题提示；之后的检查才聚合提示新增类型问题
-  const hasRunScheduledCheckRef = useRef(false);
   const { feConfigs } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
   const showSandbox = feConfigs?.show_agent_sandbox;
@@ -138,10 +132,12 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
     (v) => v
   );
   const { past, setPast } = useContextSelector(WorkflowSnapshotContext, (v) => v);
-  const { onRemoveError, onUpdateNodeError, onSyncWorkflowCheckIssues } = useContextSelector(
-    WorkflowActionsContext,
-    (v) => v
-  );
+  const {
+    onRemoveError,
+    onUpdateNodeError,
+    onSyncWorkflowCheckIssues,
+    onRefreshWorkflowCheckIssues
+  } = useContextSelector(WorkflowActionsContext, (v) => v);
 
   useEffect(() => {
     const previousChatConfig = previousChatConfigRef.current;
@@ -149,6 +145,18 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
     previousChatConfigRef.current = nextChatConfig;
 
     if (isEqual(previousChatConfig?.variables, nextChatConfig?.variables)) return;
+
+    const nextVariablesByKey = new Map(
+      (nextChatConfig?.variables ?? []).map((variable) => [variable.key, variable])
+    );
+    const showReferenceIssueToast = (previousChatConfig?.variables ?? []).some((variable) => {
+      const nextVariable = nextVariablesByKey.get(variable.key);
+      return (
+        !nextVariable ||
+        nextVariable.type !== variable.type ||
+        nextVariable.valueType !== variable.valueType
+      );
+    });
 
     setNodes((nodes) =>
       captureDeletedWorkflowReferenceSnapshots({
@@ -160,7 +168,8 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         nodeIds: []
       })
     );
-  }, [appDetail.chatConfig, setNodes, t]);
+    onRefreshWorkflowCheckIssues({ showReferenceIssueToast });
+  }, [appDetail.chatConfig, onRefreshWorkflowCheckIssues, setNodes, t]);
 
   // 优化为单次遍历,分类输出项
   const splitOutput = useCallback((outputs: FlowNodeOutputItemType[]) => {
@@ -296,46 +305,6 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       toast
     ]
   );
-
-  /** 编辑页定时全量扫描，主动发现新增/已修复的节点错误。 */
-  useEffect(() => {
-    const runScheduledCheck = () => {
-      const nodes = getNodes();
-      if (nodes.length === 0) return;
-
-      const issueMap = checkWorkflowNodeIssues({
-        nodes,
-        edges,
-        t,
-        chatConfig: appDetail.chatConfig
-      });
-
-      // 变量配置变化会立即重跑本检查；新增类型不兼容时聚合提示一次
-      if (hasRunScheduledCheckRef.current) {
-        const newTypeIssueCount = countNewWorkflowCheckIssues({
-          issueMap,
-          prevNodes: nodes,
-          code: 'invalid_reference_type'
-        });
-        if (newTypeIssueCount > 0) {
-          toast({
-            status: 'warning',
-            title: t('common:core.workflow.check.invalid_reference_type_toast')
-          });
-        }
-      }
-      hasRunScheduledCheckRef.current = true;
-
-      onSyncWorkflowCheckIssues(issueMap);
-    };
-
-    const timer = window.setInterval(runScheduledCheck, 10_000);
-    runScheduledCheck();
-
-    return () => {
-      window.clearInterval(timer);
-    };
-  }, [appDetail.chatConfig, edges, getNodes, onSyncWorkflowCheckIssues, t, toast]);
 
   // 4. initData - 初始化工作流数据
   const initData = useCallback(

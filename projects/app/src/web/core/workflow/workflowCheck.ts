@@ -6,7 +6,8 @@ import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { Edge, Node } from 'reactflow';
 import {
   FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum
+  FlowNodeTypeEnum,
+  isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
 import {
   NodeInputKeyEnum,
@@ -471,18 +472,22 @@ export const checkWorkflowNodeIssues = ({
       .get(data.nodeId)
       ?.some((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools);
     const getInputSourceNodes = (input: FlowNodeInputItemType) => {
-      const inputSourceNodes =
-        data.flowNodeType === FlowNodeTypeEnum.httpRequest468 && input.canEdit === true
-          ? getSourceNodes(
-              getNodeAllSourceIds({
-                nodeId: data.nodeId,
-                getNodeById: (sourceNodeId) => context.nodeMap.get(sourceNodeId ?? '')?.data,
-                edges,
-                includeChildren: true,
-                childrenNodeIdListMap: context.childrenNodeIdListMap
-              })
-            )
-          : sourceNodes;
+      // 容器输出选择器允许引用直系子节点，校验需沿用同一范围。
+      const includeChildren =
+        input.canEdit === true &&
+        (data.flowNodeType === FlowNodeTypeEnum.httpRequest468 ||
+          isNestedParentNodeType(data.flowNodeType));
+      const inputSourceNodes = includeChildren
+        ? getSourceNodes(
+            getNodeAllSourceIds({
+              nodeId: data.nodeId,
+              getNodeById: (sourceNodeId) => context.nodeMap.get(sourceNodeId ?? '')?.data,
+              edges,
+              includeChildren: true,
+              childrenNodeIdListMap: context.childrenNodeIdListMap
+            })
+          )
+        : sourceNodes;
       const toolParamOutputs = isToolNode ? getHTTPToolParamOutputs(data) : [];
 
       return toolParamOutputs.length > 0
@@ -569,7 +574,14 @@ export const checkWorkflowNodeIssues = ({
                   node,
                   code,
                   message: getWorkflowCheckIssueMessage(code, t, {
-                    inputName: field === 'variable' ? '变量' : '值'
+                    inputName:
+                      field === 'variable'
+                        ? t
+                          ? t('common:core.workflow.variable' as any)
+                          : '变量'
+                        : t
+                          ? t('common:value' as any)
+                          : '值'
                   }),
                   inputKey: `${NodeInputKeyEnum.ifElseList}[${branchIndex}].list[${conditionIndex}].${field}`
                 });
@@ -919,7 +931,10 @@ export const checkWorkflowNodeIssues = ({
         const isReferenceInput = nodeInputIsReference(input);
         // 节点未显式配置时，runtime 会回退 defaultValue；运行检查应与实际执行一致。
         const effectiveInputValue = input.value ?? input.defaultValue;
-        const hasTextReference = getWorkflowReferenceItemsFromValue(effectiveInputValue).length > 0;
+        // 容器子节点 ID 列表可能恰好形如 [nodeId, nodeId]，不能当成引用元组。
+        const hasTextReference =
+          input.key !== NodeInputKeyEnum.childrenNodeIdList &&
+          getWorkflowReferenceItemsFromValue(effectiveInputValue).length > 0;
 
         const referenceIssueCode =
           isReferenceInput || hasTextReference
@@ -1025,28 +1040,6 @@ export const checkWorkflowHasError = (nodeIssueMap: WorkflowCheckNodeIssueMap) =
  * 对比节点上一次检查结果，统计指定 code 的新增问题数量。
  * 用于类型等配置变化后聚合提示一次，不对已存在的问题重复提醒。
  */
-export const countNewWorkflowCheckIssues = ({
-  issueMap,
-  prevNodes,
-  code
-}: {
-  issueMap: WorkflowCheckNodeIssueMap;
-  prevNodes: Array<{ data: FlowNodeItemType }>;
-  code: string;
-}) => {
-  let count = 0;
-  for (const [nodeId, issues] of Object.entries(issueMap)) {
-    const prevIssues = prevNodes.find((node) => node.data.nodeId === nodeId)?.data
-      .workflowCheckIssues;
-    count += issues.filter(
-      (issue) =>
-        issue.code === code &&
-        !prevIssues?.some((prev) => prev.code === issue.code && prev.inputKey === issue.inputKey)
-    ).length;
-  }
-  return count;
-};
-
 /** 返回存在 error 的 nodeId 列表；传入 nodeOrder 时按画布节点顺序排列，便于稳定定位第一个错误节点。 */
 export const getWorkflowCheckErrorNodeIds = (
   nodeIssueMap: WorkflowCheckNodeIssueMap,
