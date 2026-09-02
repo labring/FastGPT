@@ -1,11 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  createResumeReadyNotifier,
   createStreamFetchError,
   getStreamTypingQueueConsumeCount,
   handleEventSourceData
 } from '@/web/common/api/fetch';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  SseResponseEventEnum,
+  StreamResumePhaseEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
 
 describe('handleEventSourceData', () => {
   it('should enqueue answer text for the typing effect', () => {
@@ -124,5 +128,33 @@ describe('createStreamFetchError', () => {
       message: 'Network error',
       responseText: 'partial'
     });
+  });
+
+  it('falls back safely when the error only contains a numeric code', () => {
+    expect(
+      createStreamFetchError({
+        error: { code: 500 },
+        fallbackMessage: 'Fallback',
+        responseText: ''
+      })
+    ).toEqual({
+      message: 'Fallback',
+      responseText: '',
+      code: 500
+    });
+  });
+});
+
+describe('createResumeReadyNotifier', () => {
+  it('notifies only once after the resume stream enters the live phase', () => {
+    const onResumeReady = vi.fn();
+    const notifyResumeReady = createResumeReadyNotifier(onResumeReady);
+
+    notifyResumeReady(StreamResumePhaseEnum.catchup);
+    expect(onResumeReady).not.toHaveBeenCalled();
+
+    notifyResumeReady(StreamResumePhaseEnum.live);
+    notifyResumeReady(StreamResumePhaseEnum.live);
+    expect(onResumeReady).toHaveBeenCalledTimes(1);
   });
 });

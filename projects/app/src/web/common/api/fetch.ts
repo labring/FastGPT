@@ -54,6 +54,16 @@ export type ResumeStreamErrorType = {
   isStreamError?: boolean;
 };
 
+/** 将任意流错误稳定收敛为字符串，避免畸形响应让错误处理本身再次抛错。 */
+const getSafeStreamErrorText = (error: unknown, fallbackMessage: string) => {
+  try {
+    const message = getErrText(error, fallbackMessage);
+    return typeof message === 'string' ? message : fallbackMessage;
+  } catch {
+    return fallbackMessage;
+  }
+};
+
 /** 保留流请求错误的业务标识，供调用方区分可恢复冲突与普通生成错误。 */
 export const createStreamFetchError = ({
   error,
@@ -67,7 +77,7 @@ export const createStreamFetchError = ({
   const errorResponse = getErrResponse(error);
 
   return {
-    message: getErrText(error, fallbackMessage),
+    message: getSafeStreamErrorText(error, fallbackMessage),
     responseText,
     ...(typeof errorResponse?.statusText === 'string'
       ? { statusText: errorResponse.statusText }
@@ -78,6 +88,18 @@ export const createStreamFetchError = ({
 
 export type ResumeUnavailableType = {
   reason: `${StreamResumeUnavailableReasonEnum}`;
+};
+
+/** 只有进入 live 阶段才说明历史追赶完成且服务端流已成功接管；同一连接只通知一次。 */
+export const createResumeReadyNotifier = (onResumeReady?: () => void) => {
+  let notified = false;
+
+  return (phase: string) => {
+    if (notified || phase !== StreamResumePhaseEnum.live) return;
+
+    notified = true;
+    onResumeReady?.();
+  };
 };
 
 const shouldSendStreamResumeHeader = (url: string) =>
@@ -412,9 +434,16 @@ type ResumeSSEFetchParams = {
   url: string;
   onmessage: StartChatFnProps['generatingMessage'];
   onResumeUnavailable?: (data: ResumeUnavailableType) => void;
+  onResumeReady?: () => void;
   controller: AbortController;
 };
-function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: ResumeSSEFetchParams) {
+function $resumefetch({
+  url,
+  onmessage,
+  onResumeUnavailable,
+  onResumeReady,
+  controller
+}: ResumeSSEFetchParams) {
   const signal = controller.signal;
 
   return new Promise<ResumeStreamResponseType>(async (resolve, reject) => {
@@ -430,6 +459,7 @@ function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: Resum
     let resumePhase: StreamResumePhaseEnum = StreamResumePhaseEnum.catchup;
     let completedChat: StreamNoNeedToBeResumeType | undefined;
     let resumeUnavailable: ResumeUnavailableType | undefined;
+    const notifyResumeReady = createResumeReadyNotifier(onResumeReady);
 
     const onfinish = () => {
       if (error !== undefined) {
@@ -444,7 +474,10 @@ function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: Resum
     };
     const onfailed = (err?: any) => {
       finished = true;
-      const message = getErrText(err ?? error, i18nT('common:response_processing_error'));
+      const message = getSafeStreamErrorText(
+        err ?? error,
+        i18nT('common:response_processing_error')
+      );
       reject({
         message,
         responseText,
@@ -539,6 +572,7 @@ function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: Resum
           if (event === StreamResumePhaseEvent) {
             if (data === StreamResumePhaseEnum.catchup || data === StreamResumePhaseEnum.live) {
               resumePhase = data;
+              notifyResumeReady(data);
             }
             return;
           }
@@ -593,9 +627,12 @@ function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: Resum
             return;
           }
 
-          const error = getErrText(err);
-          onfailed(error);
-          throw new Error(error);
+          const errorMessage = getSafeStreamErrorText(
+            err,
+            i18nT('common:response_processing_error')
+          );
+          onfailed(errorMessage);
+          throw new Error(errorMessage);
         },
         openWhenHidden: true
       });
@@ -654,13 +691,15 @@ type StreamResumeFetchParams = ChatAuthTargetInput & {
   chatId: string;
   onmessage: StartChatFnProps['generatingMessage'];
   onResumeUnavailable?: (data: ResumeUnavailableType) => void;
+  onResumeReady?: () => void;
   controller: AbortController;
 };
 
 let activeResumeController: AbortController | undefined;
 
 export async function streamResumeFetch(params: StreamResumeFetchParams) {
-  const { chatId, outLinkAuthData, onmessage, onResumeUnavailable, controller } = params;
+  const { chatId, outLinkAuthData, onmessage, onResumeUnavailable, onResumeReady, controller } =
+    params;
   const query = new URLSearchParams({ chatId });
   if (outLinkAuthData?.shareId && outLinkAuthData?.outLinkUid) {
     query.set('outLinkAuthData', JSON.stringify(outLinkAuthData));
@@ -680,11 +719,13 @@ export async function streamResumeFetch(params: StreamResumeFetchParams) {
   }
   activeResumeController = controller;
 
-  return $resumefetch({ url, onmessage, onResumeUnavailable, controller }).finally(() => {
-    if (activeResumeController === controller) {
-      activeResumeController = undefined;
+  return $resumefetch({ url, onmessage, onResumeUnavailable, onResumeReady, controller }).finally(
+    () => {
+      if (activeResumeController === controller) {
+        activeResumeController = undefined;
+      }
     }
-  });
+  );
 }
 
 export const onOptimizePrompt = async ({

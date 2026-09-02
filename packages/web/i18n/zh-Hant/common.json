@@ -900,6 +900,7 @@
   "model.type.tts": "語音合成",
   "model_loading": "模型加載中...",
   "model_loading_label": "模型請求中",
+  "model_catalog_load_failed": "模型目錄加載失敗，請刷新頁面後重試。",
   "model_not_exist": "模型不存在",
   "model_disabled": "{{model}} 模型已停用",
   "month_text": "個月",

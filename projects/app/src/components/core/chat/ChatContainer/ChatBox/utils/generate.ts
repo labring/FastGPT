@@ -11,3 +11,12 @@ export const isChatGeneratingError = (error: unknown) => {
     errorResponse?.message === ChatErrEnum.chatIsGenerating
   );
 };
+
+/** 仅恢复本轮发送实际消费过的输入；已有响应内容时避免重复回填。 */
+export const shouldRestoreSubmittedChatInput = ({
+  clearInput,
+  responseText
+}: {
+  clearInput: boolean;
+  responseText?: unknown;
+}) => clearInput && !responseText;

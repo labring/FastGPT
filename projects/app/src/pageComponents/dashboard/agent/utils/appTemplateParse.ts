@@ -32,6 +32,8 @@ type ParseAppImportConfigOptions = {
   expectedAppType?: SupportedImportAppType;
   migrateWorkflow?: boolean;
   models?: Array<{ modelId: string; model: string; type: ModelTypeEnum }>;
+  /** 传入 models 时必须同时确认目录已成功加载，避免失败后的空数组清空导入引用。 */
+  modelCatalogLoaded?: boolean;
 };
 
 const supportedImportAppTypes = [
@@ -247,8 +249,13 @@ export const parseAppImportConfig = async ({
   allowedAppTypes,
   expectedAppType,
   migrateWorkflow = false,
-  models
+  models,
+  modelCatalogLoaded
 }: ParseAppImportConfigOptions): Promise<ParsedImportConfig> => {
+  if (models !== undefined && modelCatalogLoaded !== true) {
+    throw new Error(t('common:model_catalog_load_failed'));
+  }
+
   const importConfig = assertImportConfigObject(config, t);
   const appType = resolveImportAppType(importConfig, resolveScene);
 
@@ -268,7 +275,8 @@ export const parseAppImportConfig = async ({
           t
         });
 
-  if (models) {
+  // 空目录无法证明导入引用无效，保留源配置，避免把暂时无法解析误判为应清空。
+  if (models?.length) {
     formatModels({
       nodes: workflow.nodes,
       chatConfig: workflow.chatConfig,
@@ -294,12 +302,14 @@ export const parseDashboardImportConfig = async ({
   config,
   scene,
   t,
-  models
+  models,
+  modelCatalogLoaded
 }: {
   config: unknown;
   scene: JsonImportModalScene;
   t: any;
   models?: Array<{ modelId: string; model: string; type: ModelTypeEnum }>;
+  modelCatalogLoaded?: boolean;
 }): Promise<ParsedImportConfig> => {
   return await parseAppImportConfig({
     config,
@@ -307,7 +317,8 @@ export const parseDashboardImportConfig = async ({
     resolveScene: scene,
     allowedAppTypes: dashboardImportAppTypesByScene[scene],
     migrateWorkflow: false,
-    models
+    models,
+    modelCatalogLoaded
   });
 };
 
@@ -322,12 +333,14 @@ export const parseWorkflowImportConfig = async ({
   config,
   appType: expectedAppType = AppTypeEnum.workflow,
   t,
-  models
+  models,
+  modelCatalogLoaded
 }: {
   config: unknown;
   appType?: AppTypeEnum.workflow | AppTypeEnum.workflowTool;
   t: any;
   models?: Array<{ modelId: string; model: string; type: ModelTypeEnum }>;
+  modelCatalogLoaded?: boolean;
 }): Promise<ImportWorkflowConfig> => {
   const scene: JsonImportModalScene =
     expectedAppType === AppTypeEnum.workflowTool ? 'tool' : 'agent';
@@ -337,7 +350,8 @@ export const parseWorkflowImportConfig = async ({
     resolveScene: scene,
     expectedAppType,
     migrateWorkflow: true,
-    models
+    models,
+    modelCatalogLoaded
   });
 
   return workflow;

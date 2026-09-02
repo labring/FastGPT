@@ -146,6 +146,24 @@ describe('chat generating conflict recovery', () => {
     ).resolves.toEqual(records);
   });
 
+  it('retries a transient record refresh failure', async () => {
+    const activeRecords = [createAiRecord({ dataId: 'active-round' })];
+    let calls = 0;
+
+    await expect(
+      waitForConflictRecoveryRecords({
+        loadRecords: async () => {
+          if (++calls === 1) throw new Error('Temporary failure');
+          return activeRecords;
+        },
+        previousAiDataId: 'old-round',
+        canReusePreviousAi: false,
+        retryIntervalMs: 0
+      })
+    ).resolves.toEqual(activeRecords);
+    expect(calls).toBe(2);
+  });
+
   it('stops after the configured attempts when the active round is not visible', async () => {
     const records = [createAiRecord({ dataId: 'old-round' })];
     let calls = 0;

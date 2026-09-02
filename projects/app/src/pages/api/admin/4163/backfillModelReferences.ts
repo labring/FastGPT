@@ -208,7 +208,7 @@ export const runBackfillModelReferences = async ({
       // 未命中意味着在线数据已偏离读取快照，保留在线写入并记录冲突。
       referenceStats.conflicts += batchConflicts;
 
-      logger.info('4163 model reference backfill batch completed', {
+      logger.debug('4163 model reference backfill batch completed', {
         stage: name,
         scanned: referenceStats.scanned,
         total,

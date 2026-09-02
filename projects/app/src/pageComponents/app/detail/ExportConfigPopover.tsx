@@ -18,6 +18,7 @@ import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { cloneDeep } from 'lodash-es';
 import { addModelNamesToWorkflow } from '@fastgpt/global/core/workflow/utils';
 import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 type ExportConfigPopoverProps = {
   appType: AppTypeEnum;
@@ -48,7 +49,8 @@ const ExportConfigPopover = ({
 }: ExportConfigPopoverProps) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
-  const { modelList } = useUserModelLists();
+  const { toast } = useToast();
+  const { modelList, loading: modelsLoading, loaded: modelsLoaded } = useUserModelLists();
 
   const [localFilterSensitiveInfo, setLocalFilterSensitiveInfo] = useState<boolean>(true);
   const filterSensitiveInfo = filterSensitiveInfoProp ?? localFilterSensitiveInfo;
@@ -66,6 +68,14 @@ const ExportConfigPopover = ({
 
   const onExportWorkflow = useCallback(
     async (mode: 'copy' | 'json') => {
+      if (!modelsLoaded) {
+        toast({
+          title: t(modelsLoading ? 'common:model_loading' : 'common:model_catalog_load_failed'),
+          status: modelsLoading ? 'info' : 'error'
+        });
+        return;
+      }
+
       let config = '';
 
       if (appForm) {
@@ -133,6 +143,9 @@ const ExportConfigPopover = ({
       copyData,
       getWorkflowData,
       modelList,
+      modelsLoading,
+      modelsLoaded,
+      toast,
       t,
       filterSensitiveInfo
     ]

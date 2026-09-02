@@ -41,12 +41,17 @@ export const waitForConflictRecoveryRecords = async ({
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     if (signal?.aborted) return;
 
-    const records = await loadRecords();
-    if (signal?.aborted) return;
+    try {
+      const records = await loadRecords();
+      if (signal?.aborted) return;
 
-    const latestAiDataId = getLastAiDataId(records);
-    if (latestAiDataId && (canReusePreviousAi || latestAiDataId !== previousAiDataId)) {
-      return records;
+      const latestAiDataId = getLastAiDataId(records);
+      if (latestAiDataId && (canReusePreviousAi || latestAiDataId !== previousAiDataId)) {
+        return records;
+      }
+    } catch (error) {
+      if (signal?.aborted) return;
+      if (attempt === maxAttempts - 1) throw error;
     }
 
     if (attempt < maxAttempts - 1) {

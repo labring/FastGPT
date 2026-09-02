@@ -48,7 +48,7 @@ import { cloneDeep } from 'lodash-es';
 import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
 import { getChatItemErrorText } from '@/global/core/chat/utils';
-import { isChatGeneratingError } from '../utils/generate';
+import { isChatGeneratingError, shouldRestoreSubmittedChatInput } from '../utils/generate';
 import { getLastAiDataId } from '../utils/resume';
 import type { ChatGeneratingConflictRecovery } from '../type';
 
@@ -880,7 +880,9 @@ export const useChatGenerate = ({
             if (isChatGeneratingError(err) && onChatGeneratingConflict) {
               // 服务端已有生成任务，本轮并未真正创建；回滚占位消息后再恢复原有流。
               setChatRecords(history);
-              resetInputVal({ text, files });
+              if (shouldRestoreSubmittedChatInput({ clearInput })) {
+                resetInputVal({ text, files });
+              }
               // 暂时解除本轮发送态；恢复 hook 会用服务端记录校准当前轮并接管后续状态。
               setChatBoxData((state) =>
                 state.sourceKey === sourceKey && state.chatId === chatId
@@ -911,7 +913,12 @@ export const useChatGenerate = ({
               })
             );
 
-            if (!err?.responseText && clearInput) {
+            if (
+              shouldRestoreSubmittedChatInput({
+                clearInput,
+                responseText: err?.responseText
+              })
+            ) {
               resetInputVal({ text, files });
             }
 

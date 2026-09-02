@@ -57,6 +57,7 @@ type UseChatResumeProps = {
   flushGeneratingMessages: () => void;
   scrollToBottom: (behavior?: 'smooth' | 'auto', delay?: number) => void;
   finishChatGenerateStatus: FinishChatGenerateStatus;
+  onChatGeneratingConflictRecovered?: () => void;
 };
 
 const isResumeLifecycleAbort = (reason: unknown) => {
@@ -104,7 +105,8 @@ export const useChatResume = ({
   generatingMessage,
   flushGeneratingMessages,
   scrollToBottom,
-  finishChatGenerateStatus
+  finishChatGenerateStatus,
+  onChatGeneratingConflictRecovered
 }: UseChatResumeProps) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -420,6 +422,19 @@ export const useChatResume = ({
           ...resumeForChatTarget,
           chatId: resumeForChatId,
           controller,
+          onResumeReady:
+            shouldRefreshRecords && recordsRefreshRequest?.conflictRecovery
+              ? () => {
+                  if (
+                    isActiveResumeTarget({
+                      sourceKey: resumeForSourceKey,
+                      chatId: resumeForChatId
+                    })
+                  ) {
+                    onChatGeneratingConflictRecovered?.();
+                  }
+                }
+              : undefined,
           onResumeUnavailable: () => {
             if (
               !isActiveResumeTarget({
@@ -571,6 +586,7 @@ export const useChatResume = ({
     setChatRecords,
     refreshChatRecords,
     finishChatGenerateStatus,
+    onChatGeneratingConflictRecovered,
     t,
     toast,
     activeSourceKeyRef,

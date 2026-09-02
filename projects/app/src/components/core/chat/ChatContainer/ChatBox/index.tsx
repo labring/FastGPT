@@ -438,6 +438,14 @@ const ChatBox = ({
     scrollToBottom('auto');
   }, [chatScrollTargetKey, isChatRecordsLoaded, scrollToBottom]);
 
+  const onChatGeneratingConflictRecovered = useMemoizedFn(() => {
+    toast({
+      title: t('chat:chat_generating_resumed'),
+      status: 'info',
+      duration: 5000
+    });
+  });
+
   const { recoverChatGeneratingConflict } = useChatResume({
     enableAutoResume: resolvedFeatures.autoResume,
     isReady,
@@ -449,7 +457,8 @@ const ChatBox = ({
     generatingMessage,
     flushGeneratingMessages,
     scrollToBottom,
-    finishChatGenerateStatus
+    finishChatGenerateStatus,
+    onChatGeneratingConflictRecovered
   });
 
   useEffect(() => {
@@ -457,13 +466,8 @@ const ChatBox = ({
 
     // eslint-disable-next-line react-hooks/set-state-in-effect -- consume the one-shot recovery signal after the failed round is rolled back
     setChatGeneratingConflict(undefined);
-    if (!recoverChatGeneratingConflict(chatGeneratingConflict)) return;
-    toast({
-      title: t('chat:chat_generating_resumed'),
-      status: 'info',
-      duration: 5000
-    });
-  }, [chatGeneratingConflict, isChatting, recoverChatGeneratingConflict, t, toast]);
+    recoverChatGeneratingConflict(chatGeneratingConflict);
+  }, [chatGeneratingConflict, isChatting, recoverChatGeneratingConflict]);
 
   const activeInteractive = lastInteractive
     ? extractDeepestInteractive(lastInteractive)

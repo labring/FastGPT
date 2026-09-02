@@ -46,7 +46,7 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
   const { t } = useTranslation();
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
   const router = useRouter();
-  const { modelList, loading: modelsLoading } = useUserModelLists();
+  const { modelList, loading: modelsLoading, loaded: modelsLoaded } = useUserModelLists();
 
   const { register, setValue, getValues, control, handleSubmit } = useForm<FormType>({
     defaultValues: {
@@ -153,7 +153,8 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
         config,
         scene,
         t,
-        models: modelList
+        models: modelList,
+        modelCatalogLoaded: modelsLoaded
       });
 
       return postCreateApp({

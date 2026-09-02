@@ -246,7 +246,10 @@ describe('parseDashboardImportConfig', () => {
       },
       scene: 'agent',
       t,
-      models: [{ modelId: 'target-environment-model-id', model: 'gpt-4o', type: ModelTypeEnum.llm }]
+      models: [
+        { modelId: 'target-environment-model-id', model: 'gpt-4o', type: ModelTypeEnum.llm }
+      ],
+      modelCatalogLoaded: true
     });
 
     expect(result.workflow.nodes[1].inputs).toEqual([
@@ -283,7 +286,10 @@ describe('parseDashboardImportConfig', () => {
       },
       scene: 'agent',
       t,
-      models: [{ modelId: 'available-model-id', model: 'available-model', type: ModelTypeEnum.llm }]
+      models: [
+        { modelId: 'available-model-id', model: 'available-model', type: ModelTypeEnum.llm }
+      ],
+      modelCatalogLoaded: true
     });
 
     expect(result.workflow.nodes[1].inputs).toHaveLength(1);
@@ -475,6 +481,51 @@ describe('isDashboardImportAppTypeAllowed', () => {
 });
 
 describe('parseAppImportConfig', () => {
+  it('should reject model normalization before the model catalog is loaded', async () => {
+    await expect(
+      parseAppImportConfig({
+        config: {
+          type: AppTypeEnum.workflow,
+          nodes: [createWorkflowNode('workflowStart')],
+          edges: []
+        },
+        t,
+        models: [],
+        modelCatalogLoaded: false
+      })
+    ).rejects.toThrow('common:model_catalog_load_failed');
+  });
+
+  it('should accept an empty catalog after it has been loaded successfully', async () => {
+    const modelInputs = [
+      {
+        key: NodeInputKeyEnum.aiModelId,
+        value: 'source-model-id',
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+      },
+      {
+        key: NodeInputKeyEnum.aiModel,
+        value: 'source-model',
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+      }
+    ];
+    const result = await parseAppImportConfig({
+      config: {
+        type: AppTypeEnum.workflow,
+        nodes: [
+          createWorkflowNode('workflowStart'),
+          { ...createWorkflowNode('chatNode'), inputs: modelInputs }
+        ],
+        edges: []
+      },
+      t,
+      models: [],
+      modelCatalogLoaded: true
+    });
+
+    expect(result.workflow.nodes[1].inputs).toEqual(modelInputs);
+  });
+
   it('should parse through the shared import entry with caller constraints', async () => {
     const result = await parseAppImportConfig({
       config: {

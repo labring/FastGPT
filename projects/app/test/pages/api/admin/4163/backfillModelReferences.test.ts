@@ -1076,7 +1076,7 @@ describe('runBackfillModelReferences', () => {
 
     expect(result.references.datasets.updated).toBe(205);
     expect(bulkWriteSpy.mock.calls.length).toBeGreaterThan(1);
-    const datasetBatchLogs = loggerMocks.info.mock.calls.filter(
+    const datasetBatchLogs = loggerMocks.debug.mock.calls.filter(
       ([message, properties]) =>
         message === '4163 model reference backfill batch completed' &&
         properties.stage === 'datasets'
