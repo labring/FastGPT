@@ -28,7 +28,9 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { AppListSortEnum, appListSortMongoMap } from '@fastgpt/global/core/app/constants';
 
-async function handler(req: ApiRequestProps): Promise<GetDatasetListV2Response> {
+async function handler(
+  req: ApiRequestProps<GetDatasetListV2Body>
+): Promise<GetDatasetListV2Response> {
   const {
     parentId,
     type,
