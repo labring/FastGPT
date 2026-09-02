@@ -172,9 +172,7 @@ export const getClbsInfo = async ({
     showUsername && userIds.length > 0
       ? await MongoUser.find({ _id: { $in: userIds } }, '_id username').lean()
       : [];
-  const userIdToUsername = new Map(
-    users.map((u) => [u._id.toString(), u.username || undefined])
-  );
+  const userIdToUsername = new Map(users.map((u) => [u._id.toString(), u.username || undefined]));
 
   return clbs.map((clb) => {
     const info = infoMap.get(getCollaboratorId(clb));

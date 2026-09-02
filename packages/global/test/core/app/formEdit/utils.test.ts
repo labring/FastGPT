@@ -1024,7 +1024,6 @@ describe('agent generated tool input helpers', () => {
 
   it.each([
     FlowNodeInputTypeEnum.hidden,
-    FlowNodeInputTypeEnum.fileSelect,
     FlowNodeInputTypeEnum.selectDataset,
     FlowNodeInputTypeEnum.selectLLMModel,
     FlowNodeInputTypeEnum.customVariable
@@ -1083,15 +1082,15 @@ describe('agent generated tool input helpers', () => {
   it('should remove agentGenerated from unsupported input types', () => {
     const input = normalizeFlowNodeInputType(
       createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.fileSelect],
+        renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.password],
         selectedType: FlowNodeInputTypeEnum.agentGenerated,
         defaultToAgentGenerated: true
       }),
       { isTool: true }
     );
 
-    expect(input.renderTypeList).toEqual([FlowNodeInputTypeEnum.fileSelect]);
-    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.fileSelect);
+    expect(input.renderTypeList).toEqual([FlowNodeInputTypeEnum.password]);
+    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.password);
   });
 
   it('should allow user chat input to be agent generated', () => {
@@ -1699,7 +1698,7 @@ describe('agent generated tool input helpers', () => {
     expect(params).toEqual({ apiKey: 'fixed secret' });
   });
 
-  it('should not initialize file fields as agent generated', () => {
+  it('should initialize file fields as agent generated', () => {
     const input = initToolInputTypeByDefaultMode(
       createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
@@ -1708,8 +1707,11 @@ describe('agent generated tool input helpers', () => {
       })
     );
 
-    expect(input.renderTypeList).toEqual([FlowNodeInputTypeEnum.fileSelect]);
-    expect(isAgentGeneratedToolInput(input)).toBe(false);
+    expect(input.renderTypeList).toEqual([
+      FlowNodeInputTypeEnum.agentGenerated,
+      FlowNodeInputTypeEnum.fileSelect
+    ]);
+    expect(isAgentGeneratedToolInput(input)).toBe(true);
   });
 
   it('should not initialize password fields as agent generated', () => {
