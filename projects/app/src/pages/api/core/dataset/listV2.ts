@@ -13,7 +13,8 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { desensitizeSystemModel } from '@fastgpt/service/core/ai/config/utils';
+import { findDatasetEmbeddingModel } from '@fastgpt/service/core/dataset/model';
 import { isPrivateResourceByCollaborators, sumPer } from '@fastgpt/global/support/permission/utils';
 import {
   findResourceKeysByCollaboratorsPermission,
@@ -151,7 +152,10 @@ async function handler(
       name: dataset.name,
       intro: dataset.intro ?? '',
       type: dataset.type,
-      vectorModel: getEmbeddingModel(dataset.vectorModel),
+      vectorModel: (() => {
+        const vectorModel = findDatasetEmbeddingModel(dataset);
+        return vectorModel ? desensitizeSystemModel(vectorModel) : undefined;
+      })(),
       inheritPermission: dataset.inheritPermission,
       tmbId: dataset.tmbId,
       updateTime: dataset.updateTime,

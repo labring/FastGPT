@@ -35,6 +35,13 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { getAllDatasets, getDatasetPaths } from '@/web/core/dataset/api';
 
+type SelectableDatasetListItem = DatasetListItemType & {
+  vectorModel: NonNullable<DatasetListItemType['vectorModel']>;
+};
+
+const isSelectableDataset = (item: DatasetListItemType): item is SelectableDatasetListItem =>
+  item.type !== DatasetTypeEnum.folder && item.vectorModel?.isActive === true;
+
 // Dataset selection modal component
 export const DatasetSelectModal = ({
   defaultSelectedDatasets = [],
@@ -101,23 +108,20 @@ export const DatasetSelectModal = ({
 
   // Check if a dataset is disabled (vector model mismatch)
   const isDatasetDisabled = (item: DatasetListItemType) => {
+    if (!isSelectableDataset(item)) return true;
     return !!activeVectorModel && activeVectorModel !== item.vectorModel.model;
   };
 
   // Cache compatible datasets by vector model to avoid repeated filtering
   const compatibleDatasetsByModel = useMemo(() => {
-    const visibleDatasets = datasets.filter(
-      (item: DatasetListItemType) => item.type !== DatasetTypeEnum.folder
-    );
+    const visibleDatasets = datasets.filter(isSelectableDataset);
 
     const targetModel = activeVectorModel || visibleDatasets[0]?.vectorModel?.model;
     if (!targetModel) {
       return [];
     }
 
-    return visibleDatasets.filter(
-      (item: DatasetListItemType) => item.vectorModel.model === targetModel
-    );
+    return visibleDatasets.filter((item) => item.vectorModel.model === targetModel);
   }, [datasets, activeVectorModel]);
 
   // Check if all compatible datasets are selected
@@ -136,6 +140,12 @@ export const DatasetSelectModal = ({
 
   const onSelect = (item: DatasetListItemType, checked: boolean) => {
     if (checked) {
+      if (!isSelectableDataset(item)) {
+        return toast({
+          status: 'warning',
+          title: t('dataset:index_model_unavailable')
+        });
+      }
       if (isDatasetDisabled(item)) {
         return toast({
           status: 'warning',
@@ -362,7 +372,8 @@ export const DatasetSelectModal = ({
                                 <>{t('common:Folder')}</>
                               ) : (
                                 <>
-                                  {t('app:Index')}: {item.vectorModel.name}
+                                  {t('app:Index')}:{' '}
+                                  {item.vectorModel?.name ?? t('dataset:index_model_unavailable')}
                                 </>
                               )}
                             </Box>
@@ -389,15 +400,13 @@ export const DatasetSelectModal = ({
                             const compatibleDatasets = compatibleDatasetsByModel.filter(
                               (dataset) => !isDatasetSelected(dataset._id)
                             );
-                            const newSelections = compatibleDatasets.map(
-                              (item: DatasetListItemType) => ({
-                                datasetId: item._id,
-                                avatar: item.avatar,
-                                name: item.name,
-                                vectorModel: item.vectorModel,
-                                isDeleted: false
-                              })
-                            );
+                            const newSelections = compatibleDatasets.map((item) => ({
+                              datasetId: item._id,
+                              avatar: item.avatar,
+                              name: item.name,
+                              vectorModel: item.vectorModel,
+                              isDeleted: false
+                            }));
                             setSelectedDatasets((prev) => [...prev, ...newSelections]);
                           } else {
                             const datasetIdsToRemove = compatibleDatasetsByModel.map(

@@ -97,7 +97,9 @@ const SelectMarkCollection = ({
                   </Flex>
                   <Flex justifyContent={'flex-end'} alignItems={'center'} fontSize={'sm'}>
                     <MyIcon mr={1} name="kbTest" w={'12px'} />
-                    <Box color={'myGray.500'}>{item.vectorModel.name}</Box>
+                    <Box color={'myGray.500'}>
+                      {item.vectorModel?.name ?? t('dataset:index_model_unavailable')}
+                    </Box>
                   </Flex>
                 </Card>
               ))}
