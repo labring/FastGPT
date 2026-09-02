@@ -11,7 +11,8 @@ import {
 } from '../../../core/dataset/type';
 import {
   CollaboratorListSchema,
-  CollaboratorUpdateListSchema
+  CollaboratorUpdateListSchema,
+  ShowUsernameQuerySchema
 } from '../../../support/permission/collaborator.schema';
 
 /* ============================================================================
@@ -275,7 +276,8 @@ export const GetDatasetCollaboratorListQuerySchema = z.object({
   datasetId: ObjectIdSchema.meta({
     example: '68ad85a7463006c963799a05',
     description: '知识库 ID'
-  })
+  }),
+  showUsername: ShowUsernameQuerySchema
 });
 export type GetDatasetCollaboratorListQuery = z.infer<typeof GetDatasetCollaboratorListQuerySchema>;
 

@@ -14,6 +14,7 @@ import type {
   CollaboratorItemType
 } from '@fastgpt/global/support/permission/collaborator';
 import { MongoTeamMember } from '../../support/user/team/teamMemberSchema';
+import { MongoUser } from '../../support/user/schema';
 import { MongoOrgModel } from './org/orgSchema';
 import { MongoMemberGroupModel } from './memberGroup/memberGroupSchema';
 import { DEFAULT_ORG_AVATAR, DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
@@ -131,11 +132,13 @@ export async function getResourceOwnedClbsByResourceIds({
 export const getClbsInfo = async ({
   clbs,
   teamId,
-  ownerTmbId
+  ownerTmbId,
+  showUsername
 }: {
   clbs: CollaboratorItemType[];
   teamId: string;
   ownerTmbId?: string;
+  showUsername?: boolean;
 }): Promise<CollaboratorItemDetailType[]> => {
   const tmbIds = [];
   const orgIds = [];
@@ -147,22 +150,39 @@ export const getClbsInfo = async ({
     if (clb.groupId) groupIds.push(clb.groupId);
   }
 
-  const infos = (
-    await Promise.all([
-      tmbIds.length > 0
-        ? MongoTeamMember.find({ _id: { $in: tmbIds }, teamId }, '_id name avatar').lean()
-        : [],
-      orgIds.length > 0
-        ? MongoOrgModel.find({ _id: { $in: orgIds }, teamId }, '_id name avatar').lean()
-        : [],
-      groupIds.length > 0
-        ? MongoMemberGroupModel.find({ _id: { $in: groupIds }, teamId }, '_id name avatar').lean()
-        : []
-    ])
-  ).flat();
+  const [tmbInfos, orgInfos, groupInfos] = await Promise.all([
+    tmbIds.length > 0
+      ? MongoTeamMember.find({ _id: { $in: tmbIds }, teamId }, '_id name avatar userId').lean()
+      : [],
+    orgIds.length > 0
+      ? MongoOrgModel.find({ _id: { $in: orgIds }, teamId }, '_id name avatar').lean()
+      : [],
+    groupIds.length > 0
+      ? MongoMemberGroupModel.find({ _id: { $in: groupIds }, teamId }, '_id name avatar').lean()
+      : []
+  ]);
+
+  const infoMap = new Map(
+    [...tmbInfos, ...orgInfos, ...groupInfos].map((info) => [info._id.toString(), info])
+  );
+
+  // userId -> username; batch query avoids N+1
+  const userIds = tmbInfos.map((info) => info.userId).filter(Boolean);
+  const users =
+    showUsername && userIds.length > 0
+      ? await MongoUser.find({ _id: { $in: userIds } }, '_id username').lean()
+      : [];
+  const userIdToUsername = new Map(
+    users.map((u) => [u._id.toString(), u.username || undefined])
+  );
 
   return clbs.map((clb) => {
-    const info = infos.find((info) => info._id === getCollaboratorId(clb));
+    const info = infoMap.get(getCollaboratorId(clb));
+    // username only exists for team members; truthiness guard covers null userId
+    const username =
+      showUsername && clb.tmbId && info && 'userId' in info && info.userId
+        ? userIdToUsername.get(info.userId.toString())
+        : undefined;
 
     return {
       ...clb,
@@ -172,7 +192,8 @@ export const getClbsInfo = async ({
         isOwner: Boolean(ownerTmbId && clb.tmbId && ownerTmbId === clb.tmbId)
       }),
       name: info?.name ?? 'Unknown name',
-      avatar: info?.avatar || (clb.orgId ? DEFAULT_ORG_AVATAR : DEFAULT_TEAM_AVATAR)
+      avatar: info?.avatar || (clb.orgId ? DEFAULT_ORG_AVATAR : DEFAULT_TEAM_AVATAR),
+      username
     };
   });
 };
