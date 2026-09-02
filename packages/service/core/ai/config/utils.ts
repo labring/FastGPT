@@ -133,10 +133,13 @@ export const syncPreinstalledSystemModels = async ({
  */
 export const loadInstalledModels = async ({
   pluginDocuments = modelTemplateSnapshot,
-  language = 'en'
+  language = 'en',
+  skipPermissionCacheInvalidation = false
 }: {
   pluginDocuments?: SystemModelDocumentDataType[];
   language?: string;
+  /** 启动阶段只发布初始快照，避免重启时删除仍然有效的成员目录缓存。 */
+  skipPermissionCacheInvalidation?: boolean;
 } = {}) => {
   if (!pluginDocuments) {
     return Promise.reject(new Error('Model template snapshot is not initialized'));
@@ -292,10 +295,11 @@ export const loadInstalledModels = async ({
 
     const nextPermissionCacheSignature = getPermissionCacheSignature(_systemActiveModelList);
     if (
-      previousPermissionCacheSignature === undefined ||
+      !skipPermissionCacheInvalidation &&
+      previousPermissionCacheSignature !== undefined &&
       previousPermissionCacheSignature !== nextPermissionCacheSignature
     ) {
-      // 只有会改变成员可用模型 ID 的变更才失效缓存，避免五分钟定时刷新退化成固定清缓存。
+      // 只有已发布快照中的模型身份发生变化才失效缓存；首次启动没有可比较的旧快照。
       await clearAllMyModelsCache();
     }
 
@@ -333,19 +337,29 @@ export const loadInstalledModels = async ({
 
 /**
  * 编排模型启动或模板热刷新。插件刷新仍是启动前置条件；首次启动会先发布 ai_models 当前快照，
- * 再同步执行旧表迁移、自动预装和最终缓存刷新。任一步失败都会向启动链路抛错并终止进程。
+ * 再同步执行旧表迁移、自动预装和最终快照刷新，但不会清理成员模型目录缓存。
+ * 任一步失败都会向启动链路抛错并终止进程。
  */
 export const loadSystemModels = async (refresh = false, language = 'en') => {
   if (!refresh && global.systemModelList) return;
 
   try {
+    const isInitialLoad = !global.systemModelList;
     await preloadModelProviders();
     const pluginDocuments = await refreshModelTemplates();
-    if (!global.systemModelList) {
-      await loadInstalledModels({ pluginDocuments, language });
+    if (isInitialLoad) {
+      await loadInstalledModels({
+        pluginDocuments,
+        language,
+        skipPermissionCacheInvalidation: isInitialLoad
+      });
       const result = await bootstrapAIModelsFromLegacy({ pluginDocuments });
       await syncPreinstalledSystemModels({ pluginDocuments });
-      await loadInstalledModels({ pluginDocuments, language });
+      await loadInstalledModels({
+        pluginDocuments,
+        language,
+        skipPermissionCacheInvalidation: isInitialLoad
+      });
       getLogger(LogCategories.MODULE.AI.CONFIG).info('AI model bootstrap completed', result);
       return;
     }
