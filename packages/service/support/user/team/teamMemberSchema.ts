@@ -20,9 +20,6 @@ const TeamMemberSchema = new Schema({
     ref: userCollectionName,
     required: true
   },
-  wecomUserId: {
-    type: String
-  },
   avatar: {
     type: String,
     default: () => getRandomUserAvatar()
@@ -89,7 +86,8 @@ defineIndex(TeamMemberSchema, {
     unique: true,
     partialFilterExpression: { wecomUserId: { $exists: true } },
     background: true
-  }
+  },
+  deprecated: true
 });
 
 export const MongoTeamMember = getMongoModel<TeamMemberType>(

@@ -94,6 +94,46 @@ describe('MongoIndexManager.syncModelIndexes', () => {
     });
   });
 
+  it('removes deprecated partial compound indexes', async () => {
+    const schema = new Schema(
+      {
+        teamId: String,
+        wecomUserId: String
+      },
+      { autoIndex: false }
+    );
+    defineDeprecatedTestIndexes(schema, [
+      {
+        indexName: 'teamId_1_wecomUserId_1',
+        key: { teamId: 1, wecomUserId: 1 },
+        options: {
+          unique: true,
+          partialFilterExpression: { wecomUserId: { $exists: true } }
+        }
+      }
+    ]);
+    const model = createModel({ schema });
+    await model.collection.createIndex(
+      { teamId: 1, wecomUserId: 1 },
+      {
+        name: 'teamId_1_wecomUserId_1',
+        unique: true,
+        partialFilterExpression: { wecomUserId: { $exists: true } }
+      }
+    );
+
+    const result = await MongoIndexManager.syncModelIndexes({ model, logger });
+
+    expect(await getIndexNames(model)).not.toContain('teamId_1_wecomUserId_1');
+    expect(result.cleanupReport.items).toEqual([
+      expect.objectContaining({
+        action: 'drop',
+        applied: true,
+        indexName: 'teamId_1_wecomUserId_1'
+      })
+    ]);
+  });
+
   it('does not delete schema-external indexes when the Schema has no deprecated declarations', async () => {
     const schema = new Schema(
       { currentField: String, customerField: String },
