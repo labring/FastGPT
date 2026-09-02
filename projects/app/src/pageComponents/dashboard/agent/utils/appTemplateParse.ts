@@ -6,6 +6,8 @@ import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge'
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { formatModels } from '@fastgpt/global/core/workflow/utils';
+import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 export type JsonImportModalScene = 'agent' | 'tool';
 
@@ -29,6 +31,7 @@ type ParseAppImportConfigOptions = {
   allowedAppTypes?: readonly SupportedImportAppType[];
   expectedAppType?: SupportedImportAppType;
   migrateWorkflow?: boolean;
+  models?: Array<{ modelId: string; model: string; type: ModelTypeEnum }>;
 };
 
 const supportedImportAppTypes = [
@@ -243,7 +246,8 @@ export const parseAppImportConfig = async ({
   resolveScene,
   allowedAppTypes,
   expectedAppType,
-  migrateWorkflow = false
+  migrateWorkflow = false,
+  models
 }: ParseAppImportConfigOptions): Promise<ParsedImportConfig> => {
   const importConfig = assertImportConfigObject(config, t);
   const appType = resolveImportAppType(importConfig, resolveScene);
@@ -264,6 +268,15 @@ export const parseAppImportConfig = async ({
           t
         });
 
+  if (models) {
+    formatModels({
+      nodes: workflow.nodes,
+      chatConfig: workflow.chatConfig,
+      models,
+      modelReferencePolicy: 'import'
+    });
+  }
+
   return {
     workflow,
     appType
@@ -280,18 +293,21 @@ export const parseAppImportConfig = async ({
 export const parseDashboardImportConfig = async ({
   config,
   scene,
-  t
+  t,
+  models
 }: {
   config: unknown;
   scene: JsonImportModalScene;
   t: any;
+  models?: Array<{ modelId: string; model: string; type: ModelTypeEnum }>;
 }): Promise<ParsedImportConfig> => {
   return await parseAppImportConfig({
     config,
     t,
     resolveScene: scene,
     allowedAppTypes: dashboardImportAppTypesByScene[scene],
-    migrateWorkflow: false
+    migrateWorkflow: false,
+    models
   });
 };
 
@@ -305,11 +321,13 @@ export const parseDashboardImportConfig = async ({
 export const parseWorkflowImportConfig = async ({
   config,
   appType: expectedAppType = AppTypeEnum.workflow,
-  t
+  t,
+  models
 }: {
   config: unknown;
   appType?: AppTypeEnum.workflow | AppTypeEnum.workflowTool;
   t: any;
+  models?: Array<{ modelId: string; model: string; type: ModelTypeEnum }>;
 }): Promise<ImportWorkflowConfig> => {
   const scene: JsonImportModalScene =
     expectedAppType === AppTypeEnum.workflowTool ? 'tool' : 'agent';
@@ -318,7 +336,8 @@ export const parseWorkflowImportConfig = async ({
     t,
     resolveScene: scene,
     expectedAppType,
-    migrateWorkflow: true
+    migrateWorkflow: true,
+    models
   });
 
   return workflow;

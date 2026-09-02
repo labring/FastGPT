@@ -55,6 +55,27 @@ export const isModelAllowedByValues = (
   allowedValues === undefined || allowedValues.has(model.modelId) || allowedValues.has(model.model);
 
 /**
+ * 按 plugin 模型供应商目录的声明顺序生成选择器分组。
+ *
+ * 模型目录中可能暂时存在 plugin 尚未声明的供应商；这类分组保留模型出现顺序并追加到末尾，
+ * 避免恢复排序的同时把可用模型从选择器中丢掉。
+ */
+export const resolveModelSelectorProviders = ({
+  models,
+  providers
+}: {
+  models: Array<Pick<MyModelItemType, 'provider'>>;
+  providers: Array<{ id: string }>;
+}) => {
+  const modelProviderIds = new Set(models.map((model) => model.provider));
+  const orderedProviderIds = providers
+    .map((provider) => provider.id)
+    .filter((providerId) => modelProviderIds.delete(providerId));
+
+  return [...orderedProviderIds, ...modelProviderIds];
+};
+
+/**
  * 将服务端全量模型收敛成调用方白名单对应的发现结果。Provider 只从命中的模型派生，避免
  * 分组选择器渲染没有任何候选项的永久 loading 分组。
  */

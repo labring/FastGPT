@@ -105,16 +105,21 @@ export function useLinkedScroll<
       } as TParams);
       if (paramsVersion !== paramsVersionRef.current) return;
 
+      if (refresh) {
+        itemRefs.current.clear();
+      }
+
       setHasMorePrev(response.hasMorePrev);
       setHasMoreNext(response.hasMoreNext);
 
       scrollSign.current = scrollWhenFinish;
       setDataList(response.list);
+      anchorRef.current = {
+        top: response.list[0] ?? null,
+        bottom: response.list.at(-1) ?? null
+      };
 
-      if (response.list.length > 0) {
-        anchorRef.current.top = response.list[0];
-        anchorRef.current.bottom = response.list[response.list.length - 1];
-      }
+      return response;
     },
     {
       refreshDeps: [currentData],

@@ -28,6 +28,7 @@ import {
   parseDashboardImportConfig,
   resolveImportAppType
 } from '@/pageComponents/dashboard/agent/utils/appTemplateParse';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 type FormType = {
   avatar: string;
@@ -45,6 +46,7 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
   const { t } = useTranslation();
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
   const router = useRouter();
+  const { modelList, loading: modelsLoading } = useUserModelLists();
 
   const { register, setValue, getValues, control, handleSubmit } = useForm<FormType>({
     defaultValues: {
@@ -150,7 +152,8 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
       const { workflow, appType } = await parseDashboardImportConfig({
         config,
         scene,
-        t
+        t,
+        models: modelList
       });
 
       return postCreateApp({
@@ -193,7 +196,7 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
             </Button>
             <Button
               size={'md'}
-              isLoading={isCreating}
+              isLoading={isCreating || modelsLoading}
               onClick={handleSubmit((data) => onSubmit(data))}
             >
               {t('common:Confirm')}

@@ -3,6 +3,7 @@ import {
   isModelAllowedByValues,
   resolveModelSelectorDefault,
   resolveModelSelectorDisabled,
+  resolveModelSelectorProviders,
   resolveModelSelectorSelection,
   resolveModelSelectorProvider
 } from '@/components/Select/AIModelSelector.utils';
@@ -38,6 +39,20 @@ describe('AIModelSelector utils', () => {
     expect(isModelAllowedByValues(model, new Set(['model-id']))).toBe(true);
     expect(isModelAllowedByValues(model, new Set(['gpt-4o']))).toBe(true);
     expect(isModelAllowedByValues(model, new Set(['other']))).toBe(false);
+  });
+
+  it('orders provider groups by the plugin provider catalog', () => {
+    expect(
+      resolveModelSelectorProviders({
+        models: [
+          { provider: 'openai' },
+          { provider: 'custom' },
+          { provider: 'anthropic' },
+          { provider: 'openai' }
+        ],
+        providers: [{ id: 'anthropic' }, { id: 'unused' }, { id: 'openai' }]
+      })
+    ).toEqual(['anthropic', 'openai', 'custom']);
   });
 
   it('normalizes a legacy model value to modelId', () => {

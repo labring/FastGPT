@@ -1,12 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import {
+  getLastAiDataId,
   hasMeaningfulAiOutput,
   mergeResumeCompletedChatRecords,
   shouldCheckChatResumeStatus,
-  shouldCreateResumeAiPlaceholder
+  shouldCreateResumeAiPlaceholder,
+  waitForConflictRecoveryRecords
 } from '@/components/core/chat/ChatContainer/ChatBox/utils/resume';
 import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -19,6 +21,16 @@ const createAiRecord = (override: Partial<ChatSiteItemType>): ChatSiteItemType =
     obj: ChatRoleEnum.AI,
     value: [],
     status: ChatStatusEnum.loading,
+    ...override
+  }) as ChatSiteItemType;
+
+const createHumanRecord = (override: Partial<ChatSiteItemType>): ChatSiteItemType =>
+  ({
+    id: 'human-1',
+    dataId: 'human-1',
+    obj: ChatRoleEnum.Human,
+    value: [],
+    status: ChatStatusEnum.finish,
     ...override
   }) as ChatSiteItemType;
 
@@ -86,6 +98,88 @@ describe('shouldCheckChatResumeStatus', () => {
         ...override
       })
     ).toBe(false);
+  });
+});
+
+describe('chat generating conflict recovery', () => {
+  it('uses the server round id after refreshing records', () => {
+    const recoveredRecords = [
+      createHumanRecord({ id: 'old-human', dataId: 'old-round' }),
+      createAiRecord({ id: 'old-ai', dataId: 'old-round', status: ChatStatusEnum.finish }),
+      createHumanRecord({ id: 'active-human', dataId: 'active-round' }),
+      createAiRecord({ id: 'active-ai', dataId: 'active-round' })
+    ];
+
+    expect(getLastAiDataId(recoveredRecords)).toBe('active-round');
+  });
+
+  it('waits until a newly pre-created round becomes visible', async () => {
+    const oldRecords = [createAiRecord({ dataId: 'old-round' })];
+    const activeRecords = [
+      ...oldRecords,
+      createHumanRecord({ dataId: 'active-round' }),
+      createAiRecord({ dataId: 'active-round' })
+    ];
+    let calls = 0;
+
+    await expect(
+      waitForConflictRecoveryRecords({
+        loadRecords: async () => (++calls === 1 ? oldRecords : activeRecords),
+        previousAiDataId: 'old-round',
+        canReusePreviousAi: false,
+        retryIntervalMs: 0
+      })
+    ).resolves.toEqual(activeRecords);
+    expect(calls).toBe(2);
+  });
+
+  it('accepts the previous AI id for an interactive continuation', async () => {
+    const records = [createAiRecord({ dataId: 'interactive-round' })];
+
+    await expect(
+      waitForConflictRecoveryRecords({
+        loadRecords: async () => records,
+        previousAiDataId: 'interactive-round',
+        canReusePreviousAi: true,
+        retryIntervalMs: 0
+      })
+    ).resolves.toEqual(records);
+  });
+
+  it('stops after the configured attempts when the active round is not visible', async () => {
+    const records = [createAiRecord({ dataId: 'old-round' })];
+    let calls = 0;
+
+    await expect(
+      waitForConflictRecoveryRecords({
+        loadRecords: async () => {
+          calls++;
+          return records;
+        },
+        previousAiDataId: 'old-round',
+        canReusePreviousAi: false,
+        maxAttempts: 3,
+        retryIntervalMs: 0
+      })
+    ).resolves.toBeUndefined();
+    expect(calls).toBe(3);
+  });
+
+  it('does not refresh records after the resume target is aborted', async () => {
+    const controller = new AbortController();
+    const loadRecords = vi.fn(async () => [createAiRecord({ dataId: 'active-round' })]);
+    controller.abort('leave');
+
+    await expect(
+      waitForConflictRecoveryRecords({
+        loadRecords,
+        previousAiDataId: 'old-round',
+        canReusePreviousAi: false,
+        signal: controller.signal,
+        retryIntervalMs: 0
+      })
+    ).resolves.toBeUndefined();
+    expect(loadRecords).not.toHaveBeenCalled();
   });
 });
 

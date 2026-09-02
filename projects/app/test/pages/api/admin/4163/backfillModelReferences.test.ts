@@ -26,6 +26,18 @@ import { getTmpData, setTmpData } from '@fastgpt/service/support/tmpData/control
 import { MongoTmpData } from '@fastgpt/service/support/tmpData/schema';
 import { TmpDataEnum } from '@fastgpt/global/support/tmpData/constants';
 
+const loggerMocks = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/common/logger', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/common/logger')>()),
+  getLogger: () => loggerMocks
+}));
+
 let workflowNodeIndex = 0;
 
 const createWorkflowNode = ({
@@ -1064,6 +1076,79 @@ describe('runBackfillModelReferences', () => {
 
     expect(result.references.datasets.updated).toBe(205);
     expect(bulkWriteSpy.mock.calls.length).toBeGreaterThan(1);
+    const datasetBatchLogs = loggerMocks.info.mock.calls.filter(
+      ([message, properties]) =>
+        message === '4163 model reference backfill batch completed' &&
+        properties.stage === 'datasets'
+    );
+    expect(datasetBatchLogs).toEqual([
+      [
+        '4163 model reference backfill batch completed',
+        expect.objectContaining({
+          stage: 'datasets',
+          scanned: 100,
+          total: 205,
+          progress: 48.78,
+          batchSize: 100,
+          batchUpdated: 100,
+          updated: 100
+        })
+      ],
+      [
+        '4163 model reference backfill batch completed',
+        expect.objectContaining({
+          stage: 'datasets',
+          scanned: 200,
+          total: 205,
+          progress: 97.56,
+          batchSize: 100,
+          batchUpdated: 100,
+          updated: 200
+        })
+      ],
+      [
+        '4163 model reference backfill batch completed',
+        expect.objectContaining({
+          stage: 'datasets',
+          scanned: 205,
+          total: 205,
+          progress: 100,
+          batchSize: 5,
+          batchUpdated: 5,
+          updated: 205
+        })
+      ]
+    ]);
+  });
+
+  it('logs the start and completion of every collection stage', async () => {
+    await runBackfillModelReferences({ dryRun: true });
+
+    const stageNames = [
+      'modelPermissions',
+      'datasets',
+      'evaluations',
+      'apps',
+      'appVersions',
+      'appTemplates'
+    ];
+    const startedStages = loggerMocks.info.mock.calls
+      .filter(([message]) => message === '4163 model reference backfill stage started')
+      .map(([, properties]) => properties.stage);
+    const completedStages = loggerMocks.info.mock.calls
+      .filter(([message]) => message === '4163 model reference backfill stage completed')
+      .map(([, properties]) => properties.stage);
+
+    expect(startedStages).toEqual(stageNames);
+    expect(completedStages).toEqual(stageNames);
+    expect(loggerMocks.info).toHaveBeenCalledWith('4163 model reference backfill started', {
+      dryRun: true,
+      batchSize: 100
+    });
+    expect(loggerMocks.info).toHaveBeenCalledWith(
+      '4163 model reference backfill completed',
+      expect.objectContaining({ dryRun: true, durationMs: expect.any(Number) })
+    );
   });
 
   it('uses root-key authentication and dry-run defaults at the API boundary', async () => {
