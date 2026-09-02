@@ -172,6 +172,7 @@ export const AppStorageSchemaTypeSchema = z.object({
   templateId: z.string().optional(),
 
   updateTime: z.coerce.date(),
+  createTime: z.coerce.date().optional(),
 
   modules: z.array(StoreNodeItemTypeSchema),
   edges: z.array(StoreEdgeItemTypeSchema),
@@ -238,6 +239,7 @@ export type AppListItemType = {
   intro: string;
   type: AppTypeEnum;
   updateTime: Date;
+  createTime?: Date;
   pluginData?: AppSchemaType['pluginData'];
   permission: AppPermission;
   inheritPermission?: boolean;

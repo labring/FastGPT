@@ -7,7 +7,11 @@ import {
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import {
+  AppListSortEnum,
+  appListSortMongoMap,
+  AppTypeEnum
+} from '@fastgpt/global/core/app/constants';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
@@ -36,7 +40,7 @@ import {
 */
 
 async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppResponseType> {
-  const { parentId, type, searchKey } = parseApiInput({
+  const { parentId, type, searchKey, sort, tmbIds } = parseApiInput({
     req,
     bodySchema: ListAppBodySchema
   }).body;
@@ -61,6 +65,11 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
         ]
       : [])
   ]);
+
+  // 空数组表示用户清空了创建者且未点「全部」，鉴权后直接返回空列表。
+  if (Array.isArray(tmbIds) && tmbIds.length === 0) {
+    return ListAppResponseSchema.parse([]);
+  }
 
   // Get team all app permissions
   const [roleList, myGroupMap, myOrgSet] = await Promise.all([
@@ -119,6 +128,9 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
         }
       : {};
 
+    const creatorMatch =
+      Array.isArray(tmbIds) && tmbIds.length > 0 ? { tmbId: { $in: tmbIds } } : {};
+
     const _type = (() => {
       if (type) {
         // 如果明确指定了类型，则按指定类型查询（包括 hidden）
@@ -133,7 +145,8 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
         ...appPerQuery,
         teamId,
         ...searchMatch,
-        type: _type
+        type: _type,
+        ...creatorMatch
       };
 
       // @ts-ignore
@@ -145,6 +158,7 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
       ...appPerQuery,
       teamId,
       type: _type,
+      ...creatorMatch,
       ...parseParentIdInMongo(parentId)
     };
   })();
@@ -160,9 +174,7 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
       limit: limit
     }
   )
-    .sort({
-      updateTime: -1
-    })
+    .sort(appListSortMongoMap[sort ?? AppListSortEnum.updateTimeDesc])
     .lean();
 
   // Add app permission and filter apps by read permission

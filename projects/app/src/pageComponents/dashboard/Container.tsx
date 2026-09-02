@@ -2,7 +2,7 @@ import { Box, Divider, Flex, useDisclosure } from '@chakra-ui/react';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useTranslation } from 'next-i18next';
 import { useEffect, useMemo } from 'react';
-import { AppTemplateTypeEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTemplateTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -53,9 +53,8 @@ const DashboardContainer = ({
   }, [router.asPath]);
 
   // Sub tab
-  const { type: currentType, appType } = router.query as {
+  const { type: currentType } = router.query as {
     type: string;
-    appType?: AppTypeEnum | 'all';
   };
 
   useEffect(() => {
@@ -87,11 +86,11 @@ const DashboardContainer = ({
   const { data: templateData, loading: isLoadingTemplates } = useRequest(
     () =>
       currentTab === TabEnum.app_templates && hasAppCreatePer
-        ? getTemplateMarketItemList({ type: appType || 'all' })
+        ? getTemplateMarketItemList({ type: 'all' })
         : Promise.resolve({ list: [], total: 0 }),
     {
       manual: false,
-      refreshDeps: [currentTab, appType, hasAppCreatePer]
+      refreshDeps: [currentTab, hasAppCreatePer]
     }
   );
   const templateList = useMemo(() => templateData?.list ?? [], [templateData?.list]);
@@ -114,26 +113,8 @@ const DashboardContainer = ({
         groupId: TabEnum.agent,
         groupAvatar: 'core/chat/sidebar/star',
         groupName: 'Agents',
-        children: [
-          {
-            isActive: !currentType,
-            typeId: 'all',
-            typeName: t('app:type.All')
-          },
-          {
-            typeId: AppTypeEnum.workflow,
-            typeName: t('app:type.Workflow bot')
-          },
-
-          {
-            typeId: AppTypeEnum.simple,
-            typeName: t('app:type.Chat_Agent')
-          },
-          {
-            typeId: AppTypeEnum.chatAgent,
-            typeName: t('app:type.Chat_Agent_v2')
-          }
-        ]
+        // 类型筛选已移到 Agent 列表工具栏，侧栏不再挂二级菜单。
+        children: []
       },
       {
         groupId: TabEnum.skill,
@@ -145,25 +126,8 @@ const DashboardContainer = ({
         groupId: TabEnum.tool,
         groupAvatar: 'core/app/type/plugin',
         groupName: t('common:navbar.Tools'),
-        children: [
-          {
-            isActive: !currentType,
-            typeId: 'all',
-            typeName: t('app:type.All')
-          },
-          {
-            typeId: 'plugin',
-            typeName: t('app:toolType_workflow')
-          },
-          {
-            typeId: 'httpToolSet',
-            typeName: t('app:toolType_http')
-          },
-          {
-            typeId: 'toolSet',
-            typeName: t('app:toolType_mcp')
-          }
-        ]
+        // 类型筛选已移到工具列表工具栏，侧栏不再挂二级菜单。
+        children: []
       },
       {
         groupId: TabEnum.system_tool,
@@ -177,35 +141,8 @@ const DashboardContainer = ({
               groupId: TabEnum.app_templates,
               groupAvatar: 'common/templateMarket',
               groupName: t('common:template_market'),
-              children: [
-                ...templateTags
-                  .map((tag) => {
-                    const templates = templateList.filter((template) =>
-                      template.tags.includes(tag.typeId)
-                    );
-                    return {
-                      ...tag,
-                      templates
-                    };
-                  })
-                  .filter((tag) => tag.templates.length > 0)
-                  .map((tag, index) => ({
-                    typeId: tag.typeId,
-                    typeName: t(tag.typeName as any),
-                    isActive: index === 0 && !currentType
-                  })),
-                ...(feConfigs?.appTemplateCourse
-                  ? [
-                      {
-                        typeId: AppTemplateTypeEnum.contribute,
-                        typeName: t('common:contribute_app_template'),
-                        onClick: () => {
-                          window.open(feConfigs.appTemplateCourse);
-                        }
-                      }
-                    ]
-                  : [])
-              ]
+              // 分类筛选已移到模板市场工具栏，侧栏不再挂二级菜单。
+              children: []
             }
           ]
         : []),
@@ -226,15 +163,7 @@ const DashboardContainer = ({
           ]
         : [])
     ];
-  }, [
-    currentType,
-    feConfigs.appTemplateCourse,
-    feConfigs.isPlus,
-    hasAppCreatePer,
-    t,
-    templateList,
-    templateTags
-  ]);
+  }, [feConfigs.isPlus, hasAppCreatePer, t]);
 
   const MenuIcon = useMemo(
     () => (
