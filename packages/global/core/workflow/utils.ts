@@ -19,7 +19,12 @@ import {
   type ReferenceArrayValueType,
   type ReferenceItemValueType
 } from './type/io';
-import type { NodeToolConfigType, StoreNodeItemType } from './type/node';
+import {
+  isHttpToolSetRuntimeConfig,
+  isMcpToolSetRuntimeConfig,
+  type NodeToolConfigType,
+  type StoreNodeItemType
+} from './type/node';
 import type { AppChatConfigType, AppSchemaType, AppWelcomeConfigType } from '../app/type';
 import type { VariableItemType } from '../app/variable/type';
 import { normalizeAndParseVariableList } from '../app/variable/utils';
@@ -415,14 +420,30 @@ export const toolData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }) =
   };
 };
 
-export const toolSetData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }) => {
+export const toolSetData2FlowNodeIO = ({
+  nodes,
+  toolId
+}: {
+  nodes: StoreNodeItemType[];
+  toolId?: string;
+}) => {
   const toolSetNode = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet);
 
-  // 加工 toolConfig, 移除一些无需返回客户端以及无需单独存储到 node 的数据。
+  // Toolset source apps keep the full config; client-side workflow references only keep the ID.
   const toolConfig: NodeToolConfigType | undefined = (() => {
     if (!toolSetNode?.toolConfig) return undefined;
 
-    if (toolSetNode.toolConfig.httpToolSet) {
+    if (
+      toolSetNode.toolConfig.httpToolSet &&
+      isHttpToolSetRuntimeConfig(toolSetNode.toolConfig.httpToolSet)
+    ) {
+      if (toolId ?? toolSetNode.pluginId) {
+        return {
+          ...toolSetNode.toolConfig,
+          httpToolSet: { toolId: toolId ?? toolSetNode.pluginId! }
+        };
+      }
+
       const toolList = toolSetNode.toolConfig.httpToolSet.toolList.map((tool) => {
         const restTool = { ...tool };
         delete restTool.requestSchema;
@@ -437,7 +458,17 @@ export const toolSetData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }
         }
       };
     }
-    if (toolSetNode.toolConfig.mcpToolSet) {
+    if (
+      toolSetNode.toolConfig.mcpToolSet &&
+      isMcpToolSetRuntimeConfig(toolSetNode.toolConfig.mcpToolSet)
+    ) {
+      if (toolId ?? toolSetNode.pluginId) {
+        return {
+          ...toolSetNode.toolConfig,
+          mcpToolSet: { toolId: toolId ?? toolSetNode.pluginId! }
+        };
+      }
+
       const formatToolList = toolSetNode.toolConfig.mcpToolSet.toolList.map((tool) => {
         const restTool = { ...tool };
         delete restTool.inputSchema;

@@ -17,6 +17,7 @@ import {
   migrateToolInputConfig,
   normalizeFlowNodeInputType,
   parseJsonEditorValue,
+  serializeAgentTool,
   stripToolInputDefaultMode
 } from '@fastgpt/global/core/app/formEdit/utils';
 import {
@@ -83,6 +84,66 @@ describe('formatJsonEditorValue', () => {
     ['"text"', '"text"']
   ])('formats JSON editor value %#', (value, expected) => {
     expect(formatJsonEditorValue(value)).toBe(expected);
+  });
+});
+
+describe('serializeAgentTool', () => {
+  it('stores only tool IDs for MCP and HTTP tool configs', () => {
+    const result = serializeAgentTool({
+      tool: {
+        id: 'mcp-toolset',
+        pluginId: 'toolset-app',
+        version: 'legacy-version',
+        name: 'Toolset',
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        inputs: [],
+        outputs: [],
+        toolConfig: {
+          mcpToolSet: {
+            url: 'https://mcp.example.com',
+            toolList: []
+          },
+          httpToolSet: {
+            baseUrl: 'https://api.example.com',
+            toolList: []
+          }
+        }
+      } as any
+    });
+
+    expect(result).toMatchObject({
+      id: 'toolset-app',
+      toolConfig: {
+        mcpToolSet: { toolId: 'toolset-app' },
+        httpToolSet: { toolId: 'toolset-app' }
+      }
+    });
+    expect(result).not.toHaveProperty('version');
+  });
+
+  it('uses the parent ID when an MCP child carries a full toolset config', () => {
+    const result = serializeAgentTool({
+      tool: {
+        id: 'mcp-mcp-app/search',
+        pluginId: 'mcp-mcp-app/search',
+        name: 'search',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        inputs: [],
+        outputs: [],
+        toolConfig: {
+          mcpTool: { toolId: 'mcp-mcp-app/search' },
+          mcpToolSet: {
+            url: 'https://mcp.example.com',
+            toolList: []
+          }
+        }
+      } as any
+    });
+
+    expect(result.toolConfig).toEqual({
+      mcpTool: { toolId: 'mcp-mcp-app/search' },
+      mcpToolSet: { toolId: 'mcp-app' }
+    });
   });
 });
 

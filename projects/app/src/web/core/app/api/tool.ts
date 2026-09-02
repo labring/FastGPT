@@ -13,6 +13,7 @@ import type {
 } from '@fastgpt/global/common/parentFolder/type';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { getMcpChildren } from './mcpTools';
+import { getHttpChildren } from './httpTools';
 import type {
   GetPreviewNodeQuery,
   GetSystemToolTemplatesBodyType,
@@ -41,13 +42,11 @@ export const getTeamAppTemplates = async (data?: {
       }));
       // handle http toolset
     } else if (app.type === AppTypeEnum.httpToolSet) {
-      const toolList = app.modules[0]?.toolConfig?.httpToolSet?.toolList;
-      if (!toolList) return [];
-      return toolList.map((item) => ({
-        id: `${AppToolSourceEnum.http}-${app._id}/${item.name}`,
-        avatar: app.avatar,
+      const children = await getHttpChildren({ id: data.parentId, searchKey: data.searchKey });
+      return children.map((item) => ({
+        ...item,
         name: item.name,
-        intro: item.description || '',
+        intro: item.description,
         flowNodeType: FlowNodeTypeEnum.tool,
         templateType: FlowNodeTemplateTypeEnum.teamApp,
         appType: app.type,

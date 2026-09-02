@@ -7,6 +7,7 @@ import { AppContext } from '../../context';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import { isMcpToolSetRuntimeConfig } from '@fastgpt/global/core/workflow/type/node';
 
 const MCPTools = () => {
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
@@ -14,7 +15,11 @@ const MCPTools = () => {
     const toolSetNode = appDetail.modules.find(
       (item) => item.flowNodeType === FlowNodeTypeEnum.toolSet
     );
-    return toolSetNode?.toolConfig?.mcpToolSet ?? toolSetNode?.inputs[0].value;
+    const toolSet = toolSetNode?.toolConfig?.mcpToolSet;
+    if (isMcpToolSetRuntimeConfig(toolSet)) return toolSet;
+
+    const legacyToolSet = toolSetNode?.inputs[0]?.value;
+    return isMcpToolSetRuntimeConfig(legacyToolSet) ? legacyToolSet : undefined;
   }, [appDetail.modules]);
 
   const [url, setUrl] = useState(toolSetData?.url || '');
@@ -22,7 +27,9 @@ const MCPTools = () => {
   const [headerSecret, setHeaderSecret] = useState<StoreSecretValueType>(
     toolSetData?.headerSecret ?? {}
   );
-  const [currentTool, setCurrentTool] = useState<McpToolConfigType>(toolSetData.toolList[0]);
+  const [currentTool, setCurrentTool] = useState<McpToolConfigType | undefined>(
+    toolSetData?.toolList?.[0]
+  );
 
   return (
     <Flex h={'100%'} flexDirection={'column'} px={[3, 0]} pr={[3, 3]} bg={'myGray.25'}>

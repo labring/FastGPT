@@ -479,11 +479,41 @@ export const serializeAgentTool = ({
     return acc;
   }, {});
 
+  const toolConfig = (() => {
+    if (!tool.toolConfig) return undefined;
+
+    const result = { ...tool.toolConfig };
+    const getToolSetId = (toolId: unknown, source: 'mcp' | 'http') => {
+      const prefix = `${source}-`;
+      if (typeof toolId !== 'string' || !toolId.startsWith(prefix)) return undefined;
+
+      const separatorIndex = toolId.indexOf('/', prefix.length);
+      return toolId.slice(prefix.length, separatorIndex === -1 ? undefined : separatorIndex);
+    };
+    const toolSetId =
+      getToolSetId(result.mcpTool?.toolId, 'mcp') ??
+      getToolSetId(result.httpTool?.toolId, 'http') ??
+      tool.pluginId ??
+      tool.id;
+    if (result.mcpToolSet) result.mcpToolSet = { toolId: toolSetId };
+    if (result.httpToolSet) result.httpToolSet = { toolId: toolSetId };
+    if (result.mcpTool) result.mcpTool = { toolId: result.mcpTool.toolId };
+    if (result.httpTool) result.httpTool = { toolId: result.httpTool.toolId };
+    return result;
+  })();
+  const isMcpOrHttpTool =
+    !!toolConfig?.mcpTool ||
+    !!toolConfig?.httpTool ||
+    !!toolConfig?.mcpToolSet ||
+    !!toolConfig?.httpToolSet ||
+    tool.id.startsWith('mcp-') ||
+    tool.id.startsWith('http-');
+
   return {
     id: tool.pluginId ?? tool.id,
-    version: tool.version,
+    ...(isMcpOrHttpTool ? {} : { version: tool.version }),
     source: tool.source,
-    toolConfig: tool.toolConfig,
+    toolConfig,
     inputs: tool.inputs.filter(canInputBeAgentGenerated).map((input) => ({
       key: input.key,
       mode: getAgentToolInputMode(input)

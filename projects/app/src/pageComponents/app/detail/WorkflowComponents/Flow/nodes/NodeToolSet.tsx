@@ -4,12 +4,12 @@ import { type NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
 import Container from '../components/Container';
 import IOTitle from '../components/IOTitle';
-import ToolSetList, { getNodeToolSetList } from './components/ToolSetList';
+import ToolSetList, { useNodeToolSetList } from './components/ToolSetList';
 import { useTranslation } from 'next-i18next';
 
 const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const toolList = getNodeToolSetList(data);
+  const toolList = useNodeToolSetList(data);
 
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>

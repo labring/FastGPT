@@ -1082,6 +1082,29 @@ describe('toolSetData2FlowNodeIO', () => {
     expect(result.showSourceHandle).toBe(false);
     expect(result.showTargetHandle).toBe(false);
   });
+
+  it('should keep only the toolset ID for client workflow references', () => {
+    const nodes: StoreNodeItemType[] = [
+      {
+        nodeId: 'toolSet1',
+        pluginId: 'toolset-app',
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        name: 'ToolSet',
+        inputs: [],
+        outputs: [],
+        toolConfig: {
+          mcpToolSet: {
+            url: 'https://mcp.example.com',
+            toolList: []
+          }
+        }
+      }
+    ];
+
+    expect(toolSetData2FlowNodeIO({ nodes, toolId: 'toolset-app' }).toolConfig).toEqual({
+      mcpToolSet: { toolId: 'toolset-app' }
+    });
+  });
 });
 
 describe('formatEditorVariablePickerIcon', () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 
 import {
   getWorkflowResponseWrite,
@@ -49,13 +49,17 @@ vi.mock('@fastgpt/service/core/app/schema', () => ({
 }));
 
 const mockGetMCPChildren = vi.fn();
+const mockGetMCPToolSet = vi.fn();
 vi.mock('@fastgpt/service/core/app/mcp', () => ({
-  getMCPChildren: (...args: any[]) => mockGetMCPChildren(...args)
+  getMCPChildren: (...args: any[]) => mockGetMCPChildren(...args),
+  getMCPToolSet: (...args: any[]) => mockGetMCPToolSet(...args)
 }));
 
 const mockGetHTTPToolList = vi.fn();
+const mockGetHTTPToolSet = vi.fn();
 vi.mock('@fastgpt/service/core/app/http', () => ({
-  getHTTPToolList: (...args: any[]) => mockGetHTTPToolList(...args)
+  getHTTPToolList: (...args: any[]) => mockGetHTTPToolList(...args),
+  getHTTPToolSet: (...args: any[]) => mockGetHTTPToolSet(...args)
 }));
 
 const mockPresignVariablesFileUrls = vi.fn();
@@ -918,6 +922,14 @@ describe('formatHttpError', () => {
 });
 
 describe('rewriteRuntimeWorkFlow', () => {
+  beforeEach(() => {
+    mockGetMCPToolSet.mockImplementation((app: any) => app.modules?.[0]?.toolConfig?.mcpToolSet);
+    mockGetHTTPToolSet.mockImplementation((app: any) => app.modules?.[0]?.toolConfig?.httpToolSet);
+    mockGetHTTPToolList.mockImplementation(
+      async (app: any) => app.modules?.[0]?.toolConfig?.httpToolSet?.toolList ?? []
+    );
+  });
+
   const makeNode = (
     nodeId: string,
     flowNodeType: string,
