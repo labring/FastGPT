@@ -1,4 +1,6 @@
-type ToolSetStorageType = 'mcp' | 'http';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+
+export type ToolSetStorageType = 'mcp' | 'http';
 
 const ToolSetConfigKey: Record<ToolSetStorageType, 'mcpToolSet' | 'httpToolSet'> = {
   mcp: 'mcpToolSet',
@@ -218,7 +220,7 @@ const compactToolSetNode = (node: Record<string, unknown>): NodeTransformResult 
 
   const inputs = Array.isArray(compactedNode.inputs) ? compactedNode.inputs : undefined;
   const selectedToolsInput = inputs?.find(
-    (input) => isRecord(input) && input.key === 'selectedTools'
+    (input) => isRecord(input) && input.key === NodeInputKeyEnum.selectedTools
   );
   if (selectedToolsInput && Array.isArray(selectedToolsInput.value)) {
     let selectedToolsChanged = false;
