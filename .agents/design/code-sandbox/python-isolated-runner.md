@@ -15,7 +15,8 @@ GHSA-5jmh-5f2m-89jg 证明该模型存在结构性缺陷：Python 反射链可�
 - 旧 `worker.py` 和 `PythonProcessPool` 已删除；
 - `/sandbox/python` 统一使用 `PythonIsolatedRunner`；
 - Python 进程最多执行一次用户代码，执行后销毁；
-- Linux/Docker 环境固定启用 `chroot`、`no_new_privs`、`seccomp`、`setgid/setuid`；
+- Linux/Docker 环境默认启用 `chroot`、`no_new_privs`、`seccomp`、`setgid/setuid`；
+- 如果 seccomp filter 无法加载，bootstrap 会记录 warning 并继续完成 chroot + setgid/setuid；
 - 网络请求统一走父进程 HTTP 代理，不允许 Python 子进程直接网络 syscall。
 
 ## 目标

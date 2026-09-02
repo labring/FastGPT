@@ -13,6 +13,7 @@ package main
 import "C"
 
 import (
+	"strings"
 	"sync"
 	"unsafe"
 
@@ -39,6 +40,9 @@ func FastGPTInitPythonSandbox(uid C.int, gid C.int, enableNetwork C.int) C.int {
 	err := sandbox.Init(int(uid), int(gid), enableNetwork != 0)
 	setLastErr(err)
 	if err != nil {
+		if strings.Contains(err.Error(), "load seccomp filter") {
+			return 2
+		}
 		return 1
 	}
 	return 0

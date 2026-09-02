@@ -86,6 +86,13 @@ def _write_result(payload):
     sys.stdout.flush()
 
 
+def _write_warn(code, message):
+    sys.stdout.write(_original_json_dumps({'type': 'warn', 'code': code, 'message': message}, ensure_ascii=False, default=str) + '\n')
+    sys.stdout.flush()
+    sys.stderr.write(message + '\n')
+    sys.stderr.flush()
+
+
 def _init_request_limits(limits):
     if not limits:
         return
@@ -224,7 +231,24 @@ def _init_native_isolation(isolation):
     finally:
         if err_ptr:
             lib.FastGPTFreeCString(err_ptr)
+
+    if ret == 2:
+        _write_warn('native_seccomp_fallback', f"Python native seccomp failed, continuing without seccomp: {err_text or ret}")
+        _finish_native_isolation_without_seccomp(isolation)
+        _native_isolation_ready = True
+        return
+
     raise RuntimeError(err_text or f"Native python sandbox init failed: {ret}")
+
+
+def _finish_native_isolation_without_seccomp(isolation):
+    try:
+        _os.chdir('/')
+        _os.setgroups([])
+        _os.setgid(int(isolation.get('gid') or 65537))
+        _os.setuid(int(isolation.get('uid') or 65537))
+    except Exception as e:
+        raise RuntimeError(f"Failed to continue native isolation without seccomp: {e}")
 
 
 def _is_stdlib_frame(filename: str):

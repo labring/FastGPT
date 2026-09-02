@@ -174,7 +174,7 @@ docker run -p 3000:3000 \
 
 ### Python 隔离
 
-Python 隔离不再提供运行时关闭开关。Linux 环境固定启用 native seccomp/chroot/降权，chroot 根目录固定为 `/tmp/fastgpt-python-sandbox`，用户代码进程固定降权到 `65537:65537`。Python 子进程不允许直接网络 syscall，外部请求必须通过父进程代理的 `http_request` 能力，并受请求次数、超时、请求体和响应体大小限制。
+Python 隔离不再提供运行时关闭开关。Linux 环境默认启用 native seccomp/chroot/降权，chroot 根目录固定为 `/tmp/fastgpt-python-sandbox`，用户代码进程固定降权到 `65537:65537`。如果内核拒绝加载 seccomp filter，bootstrap 会记录 warning 并继续用 chroot + setuid/setgid 的降级路径。Python 子进程不允许直接网络 syscall，外部请求必须通过父进程代理的 `http_request` 能力，并受请求次数、超时、请求体和响应体大小限制。
 
 ### JS 隔离
 
