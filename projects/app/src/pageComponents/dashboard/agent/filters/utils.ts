@@ -1,4 +1,5 @@
 import { AppListSortEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { toMultiSelectFilterQuery } from '@fastgpt/web/components/common/TagFilter';
 import z from 'zod';
 
 /** 创建者缺省就是「全部」：不传 tmbIds，列表不过滤创建者。 */
@@ -84,63 +85,26 @@ export const resolveSceneListType = (
 };
 
 /** 转成列表接口的 tmbIds：全部不传，已选含空数组。 */
-export const toListTmbIds = (creator?: AppListFilterType['creator']): string[] | undefined => {
-  if (creator?.mode !== 'selected') return undefined;
-  return creator.tmbIds;
-};
-
-export type CreatorFilterMember = {
-  tmbId: string;
-  memberName: string;
-};
-
-export type CreatorFilterSummary = {
-  text: string;
-  extraCount: number;
-  /** 已选具体成员时用灰色胶囊；全部 / 未选择 / 我创建的用纯文本。 */
-  chip: boolean;
-};
+export const toListTmbIds = (creator?: AppListFilterType['creator']): string[] | undefined =>
+  toMultiSelectFilterQuery(creator ? { mode: creator.mode, values: creator.tmbIds } : undefined);
 
 /**
- * 创建者触发器文案：全部、未选择、只选自己为「我创建的」，其余为名字胶囊，多人 +N。
+ * 工作台列表是否处于「筛选后可能为空」的状态。
+ * 排序不算筛选：改排序不会把列表筛空，空态仍应走首次创建。
+ * 移动端工具栏筛选项不可见时，只看搜索。
  */
-export const getCreatorFilterSummary = ({
-  mode,
-  tmbIds,
-  members,
-  currentTmbId,
-  labels
+export const hasAppListActiveFilter = ({
+  searchKey,
+  type,
+  creatorMode,
+  applyToolbarFilters
 }: {
-  mode: 'all' | 'selected';
-  tmbIds: string[];
-  members: CreatorFilterMember[];
-  currentTmbId?: string;
-  labels: {
-    all: string;
-    createdByMe: string;
-    unselected: string;
-  };
-}): CreatorFilterSummary => {
-  if (mode !== 'selected') {
-    return { text: labels.all, extraCount: 0, chip: false };
-  }
-  if (tmbIds.length === 0) {
-    return { text: labels.unselected, extraCount: 0, chip: false };
-  }
-  if (tmbIds.length === 1 && currentTmbId && tmbIds[0] === currentTmbId) {
-    return { text: labels.createdByMe, extraCount: 0, chip: false };
-  }
-
-  const firstMember = members.find((item) => item.tmbId === tmbIds[0]);
-  return {
-    text: firstMember?.memberName ?? '',
-    extraCount: Math.max(tmbIds.length - 1, 0),
-    chip: true
-  };
-};
-
-/** 去掉已离职或不在当前团队列表里的 tmbId，避免筛空。 */
-export const sanitizeCreatorTmbIds = (tmbIds: string[], validTmbIds: string[]) => {
-  const validSet = new Set(validTmbIds);
-  return tmbIds.filter((id) => validSet.has(id));
+  searchKey: string;
+  type: AppListFilterType['type'];
+  creatorMode: AppListFilterType['creator']['mode'];
+  applyToolbarFilters: boolean;
+}) => {
+  if (searchKey.trim()) return true;
+  if (!applyToolbarFilters) return false;
+  return type !== 'all' || creatorMode === 'selected';
 };

@@ -81,11 +81,12 @@ const TemplateMarket = ({
       ...tag,
       templates: templateList.filter((template) => template.tags.includes(tag.typeId))
     }));
-    if (categoryFilter.mode !== 'selected') return groups;
+    // 移动端不展示分类筛选，也不能继续按持久化 tagIds 把列表筛空。
+    if (!isPc || categoryFilter.mode !== 'selected') return groups;
     if (categoryFilter.tagIds.length === 0) return [];
     const selected = new Set(categoryFilter.tagIds);
     return groups.filter((item) => selected.has(item.typeId));
-  }, [categoryFilter, selectableTags, templateList]);
+  }, [categoryFilter, isPc, selectableTags, templateList]);
 
   const { runAsync: onUseTemplate, loading: isCreating } = useRequest(
     async (template: AppTemplateListItemType) => {
@@ -266,13 +267,13 @@ const TemplateMarket = ({
 
   const searchedTemplates = useMemo(() => {
     return templateList.filter((template) => {
-      if (categoryFilter.mode === 'selected') {
+      if (isPc && categoryFilter.mode === 'selected') {
         if (categoryFilter.tagIds.length === 0) return false;
         if (!template.tags.some((tag) => categoryFilter.tagIds.includes(tag))) return false;
       }
       return `${template.name}${template.intro}`.includes(searchKey);
     });
-  }, [categoryFilter, searchKey, templateList]);
+  }, [categoryFilter, isPc, searchKey, templateList]);
 
   return (
     <MyBox ref={containerRef} h={'100%'} isLoading={isCreating}>

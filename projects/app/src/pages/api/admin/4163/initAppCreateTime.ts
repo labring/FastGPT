@@ -49,41 +49,55 @@ export const getAppCreateTimeFromObjectId = (id: unknown): Date | undefined => {
  * 为缺少 createTime 的历史 App 用 ObjectId 时间回填。
  *
  * 可重复执行：已有 createTime 的记录不会被覆盖。默认 dry-run。
+ * batchSize 只给测试用，不暴露到管理接口。
  */
 export async function migrateAppCreateTime({
-  dryRun
-}: InitAppCreateTimeBody): Promise<InitAppCreateTimeResponse> {
-  let lastId: string | undefined;
+  dryRun,
+  batchSize = BATCH_SIZE
+}: InitAppCreateTimeBody & { batchSize?: number }): Promise<InitAppCreateTimeResponse> {
+  let lastId: unknown;
   let scannedRecords = 0;
   let updatedRecords = 0;
   let skippedInvalidId = 0;
 
+  const missingCreateTime = [{ createTime: { $exists: false } }, { createTime: null }];
+
+  /**
+   * 原生 collection 保留 BSON 游标，避免 Mongoose 把 lastId 转成字符串后 $gt CastError。
+   * 非法 _id（例如字符串）按 BSON 排在 ObjectId 前面；$gt 非法值扫不到后续 ObjectId，
+   * 所以非法游标要显式并上 ObjectId 段。
+   */
+  const buildQuery = (cursor: unknown): Record<string, unknown> => {
+    if (cursor === undefined) {
+      return { $or: missingCreateTime };
+    }
+    if (getAppCreateTimeFromObjectId(cursor)) {
+      return {
+        _id: { $gt: cursor },
+        $or: missingCreateTime
+      };
+    }
+    return {
+      $and: [
+        { $or: missingCreateTime },
+        { $or: [{ _id: { $gt: cursor } }, { _id: { $type: 'objectId' } }] }
+      ]
+    };
+  };
+
   while (true) {
-    const apps = (await MongoApp.find(
-      {
-        ...(lastId
-          ? {
-              _id: {
-                $gt: lastId
-              }
-            }
-          : {}),
-        $or: [{ createTime: { $exists: false } }, { createTime: null }]
-      },
-      {
-        _id: 1
-      }
-    )
+    const apps = (await MongoApp.collection
+      .find(buildQuery(lastId), { projection: { _id: 1 } })
       .sort({ _id: 1 })
-      .limit(BATCH_SIZE)
-      .lean()) as AppCreateTimeMigrationItem[];
+      .limit(batchSize)
+      .toArray()) as AppCreateTimeMigrationItem[];
 
     if (apps.length === 0) {
       break;
     }
 
     scannedRecords += apps.length;
-    lastId = String(apps[apps.length - 1]._id);
+    lastId = apps[apps.length - 1]._id;
 
     const ops: AnyBulkWriteOperation[] = [];
 

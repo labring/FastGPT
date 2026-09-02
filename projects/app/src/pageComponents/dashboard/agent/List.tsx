@@ -36,6 +36,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { createAppTypeMap } from '@/pageComponents/app/constants';
 import { getDashboardAppListScene } from './utils/appListTypes';
+import { hasAppListActiveFilter } from './filters/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
@@ -77,12 +78,19 @@ const List = () => {
     setMoveAppId,
     folderDetail,
     searchKey,
-    setSearchKey
+    setSearchKey,
+    listFilters
   } = useContextSelector(AppListContext, (v) => v);
 
   const hasCreatePer = folderDetail
     ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
     : userInfo?.team.permission.hasAppCreatePer;
+  const hasActiveFilter = hasAppListActiveFilter({
+    searchKey,
+    type: appType,
+    creatorMode: listFilters.creator.mode,
+    applyToolbarFilters: isPc
+  });
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
   const [editPerAppId, setEditPerAppId] = useState<string>();
@@ -426,7 +434,7 @@ const List = () => {
   return (
     <>
       {myApps.length === 0 && !folderDetail ? (
-        searchKey ? (
+        hasActiveFilter ? (
           <EmptyTip />
         ) : isPc && hasCreatePer ? (
           <CreateButton appType={appType} />

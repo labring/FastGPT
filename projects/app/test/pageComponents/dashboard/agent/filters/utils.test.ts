@@ -4,54 +4,64 @@ import {
   AppListFilterSchema,
   AppListFiltersStoreSchema,
   defaultAppListFilters,
-  getCreatorFilterSummary,
+  hasAppListActiveFilter,
   resolveSceneListType,
-  sanitizeCreatorTmbIds,
   toListTmbIds
 } from '@/pageComponents/dashboard/agent/filters/utils';
 
-const labels = { all: '全部', createdByMe: '我创建的', unselected: '未选择' };
-const members = [
-  { tmbId: 'me', memberName: '张延' },
-  { tmbId: 'u2', memberName: '一二三' }
-];
-
 describe('app list filter helpers', () => {
-  it('summarizes creator trigger text', () => {
-    const base = { members, currentTmbId: 'me', labels };
-
-    expect(getCreatorFilterSummary({ ...base, mode: 'all', tmbIds: ['me'] })).toEqual({
-      text: '全部',
-      extraCount: 0,
-      chip: false
-    });
-    expect(getCreatorFilterSummary({ ...base, mode: 'selected', tmbIds: [] })).toEqual({
-      text: '未选择',
-      extraCount: 0,
-      chip: false
-    });
-    expect(getCreatorFilterSummary({ ...base, mode: 'selected', tmbIds: ['me'] })).toEqual({
-      text: '我创建的',
-      extraCount: 0,
-      chip: false
-    });
-    expect(getCreatorFilterSummary({ ...base, mode: 'selected', tmbIds: ['me', 'u2'] })).toEqual({
-      text: '张延',
-      extraCount: 1,
-      chip: true
-    });
-  });
-
   it('maps creator filter to list tmbIds', () => {
     expect(toListTmbIds({ mode: 'all', tmbIds: ['me'] })).toBeUndefined();
     expect(toListTmbIds({ mode: 'selected', tmbIds: [] })).toEqual([]);
     expect(toListTmbIds({ mode: 'selected', tmbIds: ['me'] })).toEqual(['me']);
   });
 
-  it('drops types and members that do not belong to the current page', () => {
+  it('treats search, type and creator as active filters, but not sort', () => {
+    expect(
+      hasAppListActiveFilter({
+        searchKey: '  ',
+        type: 'all',
+        creatorMode: 'all',
+        applyToolbarFilters: true
+      })
+    ).toBe(false);
+    expect(
+      hasAppListActiveFilter({
+        searchKey: 'bot',
+        type: 'all',
+        creatorMode: 'all',
+        applyToolbarFilters: false
+      })
+    ).toBe(true);
+    expect(
+      hasAppListActiveFilter({
+        searchKey: '',
+        type: AppTypeEnum.workflow,
+        creatorMode: 'all',
+        applyToolbarFilters: true
+      })
+    ).toBe(true);
+    expect(
+      hasAppListActiveFilter({
+        searchKey: '',
+        type: 'all',
+        creatorMode: 'selected',
+        applyToolbarFilters: true
+      })
+    ).toBe(true);
+    expect(
+      hasAppListActiveFilter({
+        searchKey: '',
+        type: AppTypeEnum.workflow,
+        creatorMode: 'selected',
+        applyToolbarFilters: false
+      })
+    ).toBe(false);
+  });
+
+  it('drops types that do not belong to the current page', () => {
     expect(resolveSceneListType(AppTypeEnum.workflow, 'agent')).toBe(AppTypeEnum.workflow);
     expect(resolveSceneListType(AppTypeEnum.workflowTool, 'agent')).toBe('all');
-    expect(sanitizeCreatorTmbIds(['me', 'left'], ['me', 'u2'])).toEqual(['me']);
   });
 
   it('fills store defaults and rejects invalid persisted types', () => {

@@ -214,7 +214,7 @@ export const GetChartDataBodySchema = z.object({
     .optional()
     .meta({
       example: [ChatSourceEnum.api, ChatSourceEnum.online],
-      description: '对话来源筛选'
+      description: '对话来源筛选；省略表示全部来源，空数组表示无匹配'
     }),
   offset: NumSchema.optional().default(1).meta({
     example: 1,

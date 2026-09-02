@@ -4,6 +4,43 @@ import type { FlexProps } from '@chakra-ui/react';
 import type { ReactNode } from 'react';
 import MyIcon from '../Icon';
 
+export type FilterSummaryValueProps = {
+  text: ReactNode;
+  extraCount?: number;
+  chip?: boolean;
+};
+
+/** 多选触发器右侧：全部/未选择纯文本，已选项灰色胶囊，多人 +N。 */
+export const FilterSummaryValue = ({
+  text,
+  extraCount = 0,
+  chip = false
+}: FilterSummaryValueProps) => (
+  <Flex alignItems={'center'} gap={1} minW={0} maxW={'100%'}>
+    <Box
+      minW={0}
+      overflow={'hidden'}
+      textOverflow={'ellipsis'}
+      whiteSpace={'nowrap'}
+      {...(chip ? { px: 1, py: '2px', bg: 'myGray.100', borderRadius: 'xs' } : {})}
+    >
+      {text}
+    </Box>
+    {extraCount > 0 && (
+      <Box
+        flexShrink={0}
+        px={1}
+        py={'2px'}
+        bg={'myGray.100'}
+        borderRadius={'full'}
+        whiteSpace={'nowrap'}
+      >
+        +{extraCount}
+      </Box>
+    )}
+  </Flex>
+);
+
 export type FilterButtonProps = Omit<FlexProps, 'children' | 'title' | 'value'> & {
   title: ReactNode;
   value: ReactNode;

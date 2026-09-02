@@ -5,8 +5,17 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import {
+  FilterButton,
+  FilterSummaryValue,
+  getMultiSelectFilterSummary
+} from '@fastgpt/web/components/common/TagFilter';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 
+/**
+ * API Key 标签多选。
+ * 工具栏传入 label 时用 FilterButton 作触发器，弹层仍保留搜索、新建和管理。
+ */
 const TagMultiSelect = ({
   tags,
   value,
@@ -161,7 +170,20 @@ const TagMultiSelect = ({
     triggerButtonRef.current?.click();
   }, [openSelectorSignal]);
 
-  const defaultTrigger = (
+  const tagSummary = getMultiSelectFilterSummary({
+    mode: selectedTags.length === 0 ? 'all' : 'selected',
+    values: selectedTags.map((tag) => tag._id),
+    options: selectedTags.map((tag) => ({ value: tag._id, label: tag.name })),
+    labels: {
+      all: placeholder || t('apikey:tags'),
+      unselected: placeholder || t('apikey:tags')
+    }
+  });
+
+  // 工具栏筛选用 FilterButton 触发器；弹层仍保留搜索、新建、管理。
+  const defaultTrigger = label ? (
+    <FilterButton title={label} maxW={'200px'} value={<FilterSummaryValue {...tagSummary} />} />
+  ) : (
     <Flex
       alignItems={'center'}
       px={3}
@@ -180,14 +202,6 @@ const TagMultiSelect = ({
         borderColor: 'primary.300'
       }}
     >
-      {label && (
-        <>
-          <Box flexShrink={0} color={'myGray.600'}>
-            {label}
-          </Box>
-          <Box mx={2} w={'1px'} h={'16px'} bg={'myGray.200'} flexShrink={0} />
-        </>
-      )}
       <Flex
         ref={tagsContainerRef}
         flex={'1 1 0'}

@@ -498,4 +498,38 @@ describe('logs list API - errorFilter', () => {
     expect(res.data.list).toHaveLength(1);
     expect(res.data.list[0].chatId).toBe('chat-user-error-1');
   });
+
+  it('returns empty list when user filter is unselected', async () => {
+    const now = new Date();
+    await MongoChat.create({
+      chatId: 'chat-unselected-user',
+      appId: testAppId,
+      teamId: testTeamId,
+      tmbId: testTmbId,
+      sourceType: ChatSourceTypeEnum.app,
+      source: 'online',
+      updateTime: now,
+      title: 'Should be hidden'
+    });
+
+    const res = await Call<getAppChatLogsBody, EmptyQuery, getAppChatLogsResponseType>(
+      listApi.default,
+      {
+        auth: authUser,
+        headers: {
+          cookie: 'NEXT_LOCALE=zh-CN'
+        },
+        body: {
+          appId: testAppId,
+          dateStart: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+          dateEnd: new Date(now.getTime() + 1000).toISOString(),
+          tmbIds: [],
+          outLinkUids: []
+        }
+      }
+    );
+
+    expect(res.code).toBe(200);
+    expect(res.data).toEqual({ list: [], total: 0 });
+  });
 });

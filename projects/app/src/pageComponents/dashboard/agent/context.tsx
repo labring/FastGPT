@@ -14,10 +14,12 @@ import { type UpdateAppBodyType } from '@fastgpt/global/openapi/core/app/common/
 import dynamic from 'next/dynamic';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useTranslation } from 'next-i18next';
 import { usePersistedFilters } from '@fastgpt/web/hooks/usePersistedFilters';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { buildFilterStorageKey } from '@/web/common/filter/storageKey';
+import { getTeamMembers } from '@/web/support/user/team/api';
 import { getDashboardAppListScene, resolveDashboardAppListTypes } from './utils/appListTypes';
 import {
   AppListFiltersStoreSchema,
@@ -87,6 +89,7 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
   };
   const [searchKey, setSearchKey] = useState('');
   const { userInfo } = useUserStore();
+  const { isPc } = useSystem();
   const { feConfigs, setLastAppListRouteType } = useSystemStore();
   const listScene = getDashboardAppListScene(router.pathname);
   const isAgentPage = listScene === 'agent';
@@ -113,32 +116,49 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     [listFilterScene, setFilterStore]
   );
   // Agent / Tool 读写同一份团队筛选的二级字段；聊天页继续读 URL type。
+  // 移动端工具栏不展示类型/创建者/排序，请求也不能继续带持久化值，否则会出现看不见的空列表。
+  const applyToolbarFilters = isPc && persistListFilters;
   const appType =
     persistListFilters && listFilterScene
-      ? resolveSceneListType(listFilters.type, listFilterScene)
+      ? applyToolbarFilters
+        ? resolveSceneListType(listFilters.type, listFilterScene)
+        : 'all'
       : queryType;
-  const sort = persistListFilters ? listFilters.sort : undefined;
-  const tmbIds =
-    persistListFilters && feConfigs.isPlus ? toListTmbIds(listFilters.creator) : undefined;
+  const sort = applyToolbarFilters ? listFilters.sort : undefined;
+  const persistedTmbIds =
+    applyToolbarFilters && feConfigs.isPlus ? toListTmbIds(listFilters.creator) : undefined;
 
   const {
     data = [],
     runAsync: loadMyApps,
     loading: isFetchingApps
   } = useRequest(
-    () => {
+    async () => {
       const formatType = resolveDashboardAppListTypes({
         pathname: router.pathname,
         type: appType
       });
+      const fetchApps = (tmbIds?: string[]) =>
+        getMyApps({
+          parentId,
+          type: formatType,
+          searchKey,
+          ...(sort ? { sort } : {}),
+          ...(tmbIds !== undefined ? { tmbIds } : {})
+        });
 
-      return getMyApps({
-        parentId,
-        type: formatType,
-        searchKey,
-        ...(sort ? { sort } : {}),
-        ...(tmbIds !== undefined ? { tmbIds } : {})
+      // 已选创建者先按当前活跃成员校验，避免离职/失效 ID 把列表一直筛空。
+      if (!persistedTmbIds?.length) {
+        return fetchApps(persistedTmbIds);
+      }
+
+      const selectedMembers = await getTeamMembers({
+        tmbIds: persistedTmbIds,
+        status: 'active',
+        offset: 0,
+        pageSize: persistedTmbIds.length
       });
+      return fetchApps(selectedMembers.list.map((item) => String(item.tmbId)));
     },
     {
       manual: false,
@@ -147,9 +167,10 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
         parentId,
         appType,
         sort,
-        tmbIds === undefined ? 'none' : tmbIds.join(','),
+        persistedTmbIds === undefined ? 'none' : persistedTmbIds.join(','),
         router.pathname,
-        feConfigs.isPlus
+        feConfigs.isPlus,
+        isPc
       ],
       throttleWait: 500,
       refreshOnWindowFocus: true

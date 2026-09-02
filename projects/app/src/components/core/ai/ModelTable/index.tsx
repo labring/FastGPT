@@ -17,7 +17,7 @@ import {
 } from '@chakra-ui/react';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React, { useMemo, useState } from 'react';
-import MySelect from '@fastgpt/web/components/common/MySelect';
+import { SingleSelectFilter } from '@fastgpt/web/components/common/TagFilter';
 import { modelTypeList, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -84,7 +84,9 @@ const ModelTable = ({
   };
 
   const [provider, setProvider] = useState<string | ''>('');
-  const providerList = useMemo<{ label: React.ReactNode; value: string | '' }[]>(() => {
+  const providerList = useMemo<
+    { label: React.ReactNode; value: string | ''; searchText?: string }[]
+  >(() => {
     const providers = getModelProviderListFromCache(
       permissionConfig ? memberModelProviders : publicProviderCache.ModelProviderListCache,
       i18n.language
@@ -99,6 +101,7 @@ const ModelTable = ({
             <Box>{item.name}</Box>
           </HStack>
         ),
+        searchText: item.name,
         value: item.id
       }))
     ];
@@ -297,46 +300,19 @@ const ModelTable = ({
         gap={[3, 6]}
         alignItems={['stretch', 'flex-start']}
       >
-        <Flex flexShrink={0} w={['100%', 'auto']} alignItems={'center'} gap={2}>
-          <Box
-            w={['84px', 'auto']}
-            flexShrink={0}
-            fontSize={'sm'}
-            color={'myGray.900'}
-            textAlign={'left'}
-          >
-            {t('common:model.provider')}
-          </Box>
-          <Box flex={1} minW={0} w={['100%', '160px']}>
-            <MySelect
-              w={'100%'}
-              bg={'myGray.25'}
-              value={provider}
-              onChange={setProvider}
-              list={filterProviderList}
-            />
-          </Box>
-        </Flex>
-        <Flex flexShrink={0} w={['100%', 'auto']} alignItems={'center'} gap={2}>
-          <Box
-            w={['84px', 'auto']}
-            flexShrink={0}
-            fontSize={'sm'}
-            color={'myGray.900'}
-            textAlign={'left'}
-          >
-            {t('common:model.model_type')}
-          </Box>
-          <Box flex={1} minW={0} w={['100%', '160px']}>
-            <MySelect
-              w={'100%'}
-              bg={'myGray.25'}
-              value={modelType}
-              onChange={setModelType}
-              list={selectModelTypeList}
-            />
-          </Box>
-        </Flex>
+        <SingleSelectFilter
+          title={t('common:model.provider')}
+          value={provider}
+          options={filterProviderList}
+          onChange={setProvider}
+          showSearch
+        />
+        <SingleSelectFilter
+          title={t('common:model.model_type')}
+          value={modelType}
+          options={selectModelTypeList}
+          onChange={setModelType}
+        />
         <Box
           ml={[0, 'auto']}
           w={'100%'}

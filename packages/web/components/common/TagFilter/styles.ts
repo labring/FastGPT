@@ -17,6 +17,15 @@ export const filterListScrollSx: SystemStyleObject = {
 
 export const stopFilterListWheel = (e: WheelEvent) => e.stopPropagation();
 
+/** 选项超过阈值才锁高度并滚动，短列表跟着内容撑开。 */
+export const getFilterListBoxProps = (scrollable: boolean) => ({
+  h: 'auto' as const,
+  maxH: scrollable ? FILTER_LIST_H : undefined,
+  overflowY: scrollable ? ('auto' as const) : undefined,
+  sx: scrollable ? filterListScrollSx : undefined,
+  onWheel: scrollable ? stopFilterListWheel : undefined
+});
+
 export const filterPopoverProps = {
   placement: 'bottom-start' as PlacementWithLogical,
   hasArrow: false,

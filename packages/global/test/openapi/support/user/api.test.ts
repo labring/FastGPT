@@ -457,6 +457,22 @@ describe('support user OpenAPI contracts', () => {
     });
   });
 
+  it('accepts tmbIds member filter including an empty array', () => {
+    expect(
+      ListTeamMembersBodySchema.parse({
+        tmbIds: []
+      })
+    ).toMatchObject({
+      tmbIds: []
+    });
+    expect(
+      ListTeamMembersBodySchema.parse({
+        tmbIds: [objectId, secondObjectId]
+      }).tmbIds
+    ).toEqual([objectId, secondObjectId]);
+    expect(ListTeamMembersBodySchema.safeParse({ tmbIds: ['not-an-id'] }).success).toBe(false);
+  });
+
   it('accepts nullable contact values for historical team members', () => {
     expect(
       ListTeamMembersResponseSchema.parse({

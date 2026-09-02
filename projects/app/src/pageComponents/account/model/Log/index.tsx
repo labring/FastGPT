@@ -21,8 +21,7 @@ import DateRangePicker, {
   type DateRangeType
 } from '@fastgpt/web/components/common/DateRangePicker';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import MySelect from '@fastgpt/web/components/common/MySelect';
+import { SingleSelectFilter } from '@fastgpt/web/components/common/TagFilter';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { addDays } from 'date-fns';
@@ -81,19 +80,11 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
 
   const { data: channelList = [] } = useRequest(
     async () => {
-      const res = await getChannelList().then((res) =>
-        res.map((item) => ({
-          label: item.name,
-          value: `${item.id}`
-        }))
-      );
-      return [
-        {
-          label: t('common:All'),
-          value: ''
-        },
-        ...res
-      ];
+      const res = (await getChannelList()).map((item) => ({
+        label: item.name,
+        value: `${item.id}`
+      }));
+      return [{ label: t('common:All'), value: '' }, ...res];
     },
     {
       manual: false
@@ -104,22 +95,15 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
     const res = systemModelList
       .map((item) => {
         const provider = getModelProvider(item.provider, i18n.language);
-
         return {
           order: provider.order,
-          icon: provider.avatar,
+          avatar: provider.avatar,
           label: item.model,
           value: item.model
         };
       })
       .sort((a, b) => a.order - b.order);
-    return [
-      {
-        label: t('common:All'),
-        value: ''
-      },
-      ...res
-    ];
+    return [{ label: t('common:All'), value: '' }, ...res];
   }, [getModelProvider, i18n.language, systemModelList, t]);
 
   const { data, isLoading, total, pageSize, Pagination } = usePagination(getChannelLog, {
@@ -177,68 +161,38 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
           alignItems={['stretch', 'flex-start']}
           gap={[3, 4]}
         >
-          <Flex w={['100%', 'auto']} flexShrink={0} alignItems={'center'} gap={2}>
-            <FormLabel w={['84px', 'auto']} flexShrink={0}>
-              {t('common:user.Time')}
-            </FormLabel>
-            <Box flex={1} minW={0}>
-              <DateRangePicker
-                w={['100%', 'auto']}
-                bg={'myGray.25'}
-                defaultDate={filterProps.dateRange}
-                dateRange={filterProps.dateRange}
-                onSuccess={(e) => setFilterProps({ ...filterProps, dateRange: e })}
-              />
-            </Box>
-          </Flex>
-          <Flex w={['100%', 'auto']} flexShrink={0} alignItems={'center'} gap={2}>
-            <FormLabel w={['84px', 'auto']} flexShrink={0}>
-              {t('config_model:channel_name')}
-            </FormLabel>
-            <Box flex={['1 1 0', '0 0 160px']} minW={0} w={['auto', '160px']}>
-              <MySelect<string>
-                bg={'myGray.25'}
-                isSearch
-                list={channelList}
-                placeholder={t('config_model:select_channel')}
-                value={filterProps.channelId}
-                onChange={(val) => setFilterProps({ ...filterProps, channelId: val })}
-              />
-            </Box>
-          </Flex>
-          <Flex w={['100%', 'auto']} flexShrink={0} alignItems={'center'} gap={2}>
-            <FormLabel w={['84px', 'auto']} flexShrink={0}>
-              {t('config_model:model_name')}
-            </FormLabel>
-            <Box flex={['1 1 0', '0 0 160px']} minW={0} w={['auto', '160px']}>
-              <MySelect<string>
-                bg={'myGray.25'}
-                isSearch
-                list={modelList}
-                placeholder={t('config_model:select_model')}
-                value={filterProps.model}
-                onChange={(val) => setFilterProps({ ...filterProps, model: val })}
-              />
-            </Box>
-          </Flex>
-          <Flex w={['100%', 'auto']} flexShrink={0} alignItems={'center'} gap={2}>
-            <FormLabel w={['84px', 'auto']} flexShrink={0}>
-              {t('config_model:log_status')}
-            </FormLabel>
-            <Box flex={['1 1 0', '0 0 160px']} minW={0} w={['auto', '160px']}>
-              <MySelect<'all' | 'success' | 'error'>
-                w={'100%'}
-                bg={'myGray.25'}
-                list={[
-                  { label: t('common:All'), value: 'all' },
-                  { label: t('common:Success'), value: 'success' },
-                  { label: t('common:failed'), value: 'error' }
-                ]}
-                value={filterProps.code_type}
-                onChange={(val) => setFilterProps({ ...filterProps, code_type: val })}
-              />
-            </Box>
-          </Flex>
+          <DateRangePicker
+            formLabel={t('common:user.Time')}
+            w={'fit-content'}
+            flexShrink={0}
+            defaultDate={filterProps.dateRange}
+            dateRange={filterProps.dateRange}
+            onSuccess={(e) => setFilterProps({ ...filterProps, dateRange: e })}
+          />
+          <SingleSelectFilter
+            title={t('config_model:channel_name')}
+            value={filterProps.channelId ?? ''}
+            options={channelList}
+            onChange={(val) => setFilterProps({ ...filterProps, channelId: val || undefined })}
+            showSearch
+          />
+          <SingleSelectFilter
+            title={t('config_model:model_name')}
+            value={filterProps.model ?? ''}
+            options={modelList}
+            onChange={(val) => setFilterProps({ ...filterProps, model: val || undefined })}
+            showSearch
+          />
+          <SingleSelectFilter
+            title={t('config_model:log_status')}
+            value={filterProps.code_type}
+            options={[
+              { label: t('common:All'), value: 'all' as const },
+              { label: t('common:Success'), value: 'success' as const },
+              { label: t('common:failed'), value: 'error' as const }
+            ]}
+            onChange={(val) => setFilterProps({ ...filterProps, code_type: val })}
+          />
           <Box flex={['0 0 auto', '1 0 200px']} w={'100%'} maxW={['100%', '200px']}>
             <SearchInput
               placeholder={t('config_model:log_request_id_search')}

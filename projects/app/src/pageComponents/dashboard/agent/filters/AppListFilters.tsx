@@ -1,18 +1,15 @@
 import { useMemo } from 'react';
 import { Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { AppListSortEnum } from '@fastgpt/global/core/app/constants';
-import { SingleSelectFilter } from '@fastgpt/web/components/common/TagFilter';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { appTypeTagMap } from '@/pageComponents/dashboard/constant';
-import CreatorFilter from './CreatorFilter';
+import { AppListSortEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
-  agentListTypeValues,
-  resolveSceneListType,
-  toolListTypeValues,
-  type AppListFilterScene,
-  type AppListFilterType
-} from './utils';
+  SingleSelectFilter,
+  type SingleSelectFilterOption
+} from '@fastgpt/web/components/common/TagFilter';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import TeamMemberFilter from '@/components/support/user/TeamMemberFilter';
+import { appTypeTagMap } from '@/pageComponents/dashboard/constant';
+import { resolveSceneListType, type AppListFilterScene, type AppListFilterType } from './utils';
 
 type Props = {
   value: AppListFilterType;
@@ -21,27 +18,53 @@ type Props = {
 };
 
 /**
- * Agent / Tool 列表 PC 工具栏筛选项：类型、排序，商业版再加创建者。
+ * Agent / Tool 列表 PC 工具栏筛选项：类型、创建者、排序。
  */
 const AppListFilters = ({ value, onChange, scene }: Props) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
-  const typeValues = scene === 'tool' ? toolListTypeValues : agentListTypeValues;
 
-  const typeOptions = useMemo(
-    () => [
+  const typeOptions = useMemo((): SingleSelectFilterOption<AppListFilterType['type']>[] => {
+    if (scene === 'tool') {
+      return [
+        { value: 'all' as const, label: t('common:All') },
+        {
+          value: AppTypeEnum.workflowTool,
+          label: t('app:toolType_workflow'),
+          icon: appTypeTagMap[AppTypeEnum.workflowTool]!.icon
+        },
+        {
+          value: AppTypeEnum.httpToolSet,
+          label: t('app:toolType_http'),
+          icon: appTypeTagMap[AppTypeEnum.httpToolSet]!.icon
+        },
+        {
+          value: AppTypeEnum.mcpToolSet,
+          label: t('app:toolType_mcp'),
+          icon: appTypeTagMap[AppTypeEnum.mcpToolSet]!.icon
+        }
+      ];
+    }
+
+    return [
+      { value: 'all' as const, label: t('common:All') },
       {
-        value: 'all' as const,
-        label: scene === 'tool' ? t('app:list_filter.all_types') : t('app:type.All')
+        value: AppTypeEnum.workflow,
+        label: t('app:type.Workflow bot'),
+        icon: appTypeTagMap[AppTypeEnum.workflow]!.icon
       },
-      ...typeValues.map((type) => ({
-        value: type,
-        label: t(appTypeTagMap[type]!.label),
-        icon: appTypeTagMap[type]!.icon
-      }))
-    ],
-    [scene, t, typeValues]
-  );
+      {
+        value: AppTypeEnum.simple,
+        label: t('app:type.Chat_Agent'),
+        icon: appTypeTagMap[AppTypeEnum.simple]!.icon
+      },
+      {
+        value: AppTypeEnum.chatAgent,
+        label: t('app:type.Chat_Agent_v2'),
+        icon: appTypeTagMap[AppTypeEnum.chatAgent]!.icon
+      }
+    ];
+  }, [scene, t]);
 
   const sortOptions = useMemo(
     () => [
@@ -71,6 +94,19 @@ const AppListFilters = ({ value, onChange, scene }: Props) => {
         onChange={(type) => onChange({ ...value, type })}
         maxW={'180px'}
       />
+      {!!feConfigs.isPlus && (
+        <TeamMemberFilter
+          title={t('app:list_filter.creator')}
+          value={{ mode: value.creator.mode, values: value.creator.tmbIds }}
+          onChange={(creator) =>
+            onChange({
+              ...value,
+              creator: { mode: creator.mode, tmbIds: creator.values }
+            })
+          }
+          selectedSelf={t('app:list_filter.created_by_me')}
+        />
+      )}
       <SingleSelectFilter
         title={t('app:list_filter.sort')}
         value={value.sort}
@@ -79,12 +115,6 @@ const AppListFilters = ({ value, onChange, scene }: Props) => {
         minW={'120px'}
         maxW={'180px'}
       />
-      {!!feConfigs.isPlus && (
-        <CreatorFilter
-          value={value.creator}
-          onChange={(creator) => onChange({ ...value, creator })}
-        />
-      )}
     </Flex>
   );
 };

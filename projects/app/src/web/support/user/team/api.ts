@@ -47,6 +47,7 @@ export const getTeamMembers = (
     searchKey?: string;
     orgId?: string;
     groupId?: string;
+    tmbIds?: string[];
   }>
 ) => POST<PaginationResponse<TeamMemberItemType>>(`/proApi/support/user/team/member/list`, props);
 export const getTeamMemberCount = () =>

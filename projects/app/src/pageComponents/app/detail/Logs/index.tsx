@@ -6,14 +6,14 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import type { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
 import { addDays } from 'date-fns';
-import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { useMultipleSelect } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ProTag from '@/components/ProTip/Tag';
 import ProText from '@/components/ProTip/ProText';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useLocalStorageState } from 'ahooks';
+import { createMultiSelectFilter } from '@fastgpt/web/components/common/TagFilter';
 
 const Logs = () => {
   const { t } = useTranslation();
@@ -27,13 +27,7 @@ const Logs = () => {
     from: new Date(addDays(new Date(), -6).setHours(0, 0, 0, 0)),
     to: new Date(new Date().setHours(23, 59, 59, 999))
   });
-
-  const {
-    value: chatSources,
-    setValue: setChatSources,
-    isSelectAll: isSelectAllSource,
-    setIsSelectAll: setIsSelectAllSource
-  } = useMultipleSelect<ChatSourceEnum>(Object.values(ChatSourceEnum), true);
+  const [sourceFilter, setSourceFilter] = useState(createMultiSelectFilter<ChatSourceEnum>());
 
   return (
     <Flex flexDirection={'column'} h={'full'} rounded={'lg'} py={[4, 6]}>
@@ -101,20 +95,16 @@ const Logs = () => {
         <LogTable
           pageSizeCacheKey={'app-detail-logs'}
           appId={appId}
-          chatSources={chatSources}
-          setChatSources={setChatSources}
-          isSelectAllSource={isSelectAllSource}
-          setIsSelectAllSource={setIsSelectAllSource}
+          sourceFilter={sourceFilter}
+          setSourceFilter={setSourceFilter}
           dateRange={dateRange}
           setDateRange={setDateRange}
         />
       ) : (
         <LogChart
           appId={appId}
-          chatSources={chatSources}
-          setChatSources={setChatSources}
-          isSelectAllSource={isSelectAllSource}
-          setIsSelectAllSource={setIsSelectAllSource}
+          sourceFilter={sourceFilter}
+          setSourceFilter={setSourceFilter}
           dateRange={dateRange}
           setDateRange={setDateRange}
         />

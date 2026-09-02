@@ -1,12 +1,16 @@
-import React, { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
-import { HStack, Box } from '@chakra-ui/react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import {
+  MultiSelectFilter,
+  mergeRememberedFilterOptions,
+  useCommonFilterLabels,
+  type MultiSelectFilterOption,
+  type MultiSelectFilterValue
+} from '@fastgpt/web/components/common/TagFilter';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getLogUsers } from '@/web/core/app/api/log';
 import type { LogUserType } from '@fastgpt/global/openapi/core/app/log/api';
 import dayjs from 'dayjs';
-import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
 
 export type SelectedUserType = {
@@ -14,13 +18,13 @@ export type SelectedUserType = {
   tmbId: string | null;
 };
 
-const getUserKey = (user: { outLinkUid: string | null; tmbId: string | null }) => {
+export const getUserKey = (user: { outLinkUid: string | null; tmbId: string | null }) => {
   if (user.outLinkUid) return `out_${user.outLinkUid}`;
   if (user.tmbId) return `tmb_${user.tmbId}`;
   return '';
 };
 
-const parseUserKey = (key: string): SelectedUserType => {
+export const parseUserKey = (key: string): SelectedUserType => {
   if (key.startsWith('out_')) {
     return { outLinkUid: key.slice(4), tmbId: null };
   }
@@ -34,27 +38,22 @@ const UserFilter = ({
   appId,
   dateRange,
   sources,
-  selectedUsers,
-  setSelectedUsers,
-  isSelectAll,
-  setIsSelectAll
+  value,
+  onChange
 }: {
   appId: string;
   dateRange: DateRangeType;
   sources?: string[];
-  selectedUsers: SelectedUserType[];
-  setSelectedUsers: (users: SelectedUserType[]) => void;
-  isSelectAll: boolean;
-  setIsSelectAll: Dispatch<SetStateAction<boolean>>;
+  value: MultiSelectFilterValue<string>;
+  onChange: (next: MultiSelectFilterValue<string>) => void;
 }) => {
   const { t } = useTranslation();
+  const labels = useCommonFilterLabels();
   const [searchKey, setSearchKey] = useState('');
+  // 打开过一次后再跟 searchKey 发请求。manual + refreshDeps 不会自动 run。
+  const [menuOpened, setMenuOpened] = useState(false);
 
-  const {
-    data: usersData,
-    loading,
-    run
-  } = useRequest(
+  const { data: usersData } = useRequest(
     () =>
       getLogUsers({
         appId,
@@ -64,63 +63,69 @@ const UserFilter = ({
         sources
       }),
     {
-      manual: true,
+      ready: menuOpened,
+      manual: false,
       refreshDeps: [appId, dateRange.from, dateRange.to, searchKey, sources],
       debounceWait: 300
     }
   );
 
-  const userList = useMemo(
+  const options = useMemo(
     () =>
       (usersData?.list || [])
         .filter((item: LogUserType) => item.outLinkUid || item.tmbId)
         .map((item: LogUserType) => ({
-          label: (
-            <HStack spacing={1}>
-              {item.avatar && <Avatar src={item.avatar} w={'1.2rem'} rounded={'full'} />}
-              <Box color={'myGray.900'} className="textEllipsis" maxW={'150px'}>
-                {item.name}
-              </Box>
-            </HStack>
-          ),
-          value: getUserKey(item)
+          value: getUserKey(item),
+          label: item.name,
+          avatar: item.avatar
         })),
     [usersData?.list]
   );
+  const [rememberedOptions, setRememberedOptions] = useState<
+    Array<MultiSelectFilterOption<string>>
+  >([]);
 
-  const selectedKeys = useMemo(
-    () => selectedUsers.map((u) => getUserKey(u)).filter(Boolean),
-    [selectedUsers]
+  // 日志用户列表跟着日期/来源变，不能拿当前窗口去清已选值。记住名字只为了触发器还能显示。
+  const nextRememberedOptions = useMemo(() => {
+    if (options.length === 0) return rememberedOptions;
+    const next = new Map(rememberedOptions.map((item) => [item.value, item]));
+    let changed = false;
+    for (const item of options) {
+      const prev = next.get(item.value);
+      if (!prev || prev.label !== item.label || prev.avatar !== item.avatar) {
+        next.set(item.value, item);
+        changed = true;
+      }
+    }
+    return changed ? Array.from(next.values()) : rememberedOptions;
+  }, [options, rememberedOptions]);
+
+  if (nextRememberedOptions !== rememberedOptions) {
+    setRememberedOptions(nextRememberedOptions);
+  }
+
+  const displayOptions = useMemo(
+    () =>
+      mergeRememberedFilterOptions(
+        options,
+        value.mode === 'selected' ? value.values : [],
+        nextRememberedOptions
+      ),
+    [options, value, nextRememberedOptions]
   );
 
-  const handleSelect = (keys: string[]) => {
-    const users = keys.map(parseUserKey).filter((u) => u.outLinkUid || u.tmbId);
-    setSelectedUsers(users);
-  };
-
   return (
-    <MultipleSelect<string>
-      list={userList}
-      value={selectedKeys}
-      onSelect={(val) => handleSelect(val as string[])}
-      isSelectAll={isSelectAll}
-      setIsSelectAll={setIsSelectAll}
-      h={10}
-      w={'226px'}
-      rounded={'8px'}
-      formLabelFontSize={'sm'}
-      formLabel={t('app:logs_chat_user')}
-      tagStyle={{
-        px: 1,
-        borderRadius: 'sm',
-        bg: 'myGray.100',
-        w: '76px',
-        overflow: 'hidden'
-      }}
-      inputValue={searchKey}
-      setInputValue={setSearchKey}
-      isLoading={loading}
-      onOpenFunc={() => run()}
+    <MultiSelectFilter
+      title={t('app:logs_chat_user')}
+      value={value}
+      onChange={onChange}
+      options={displayOptions}
+      labels={labels}
+      showSearch
+      searchValue={searchKey}
+      onSearchChange={setSearchKey}
+      filterLocal={false}
+      onOpen={() => setMenuOpened(true)}
     />
   );
 };

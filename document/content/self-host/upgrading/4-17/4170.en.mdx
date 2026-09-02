@@ -10,11 +10,35 @@ upgradeTags:
 
 **Before upgrading to V4.17.0, upgrade to V4.16.x and complete all legacy upgrade scripts required by that release.** The automatic upgrade system in V4.17.0 only manages tasks registered from this release onward. It does not run historical scripts from earlier releases.
 
-Starting with V4.17.0, you no longer need to run upgrade scripts manually. FastGPT runs them automatically, uses leases to prevent concurrent execution across multiple nodes, and uses heartbeats to check whether each script is still active. You can view each upgrade script's status under **Admin > System upgrade**.
+Starting with V4.17.0, tasks registered with the system upgrade manager run automatically. FastGPT uses leases to prevent concurrent execution across multiple nodes and heartbeats to check whether each script is still active. You can view each upgrade script's status under **Admin > System upgrade**.
 
 V4.17.0 first blocks startup while migrating legacy system model settings. Business services become available only after this migration succeeds. FastGPT then backfills model permissions and model references in Datasets, evaluations, Apps, App versions, and App templates in the background. Dangling model permissions that cannot be matched against the current model catalog are removed. A failed non-blocking task does not interrupt business services; review its failed records and retry it under **Admin > System upgrade**. If the blocking task fails, the FastGPT App instance remains not ready. Fix the reported issue using the instance logs, then restart the App instance.
 
 Model reference migrations process `100` records per batch by default. For larger deployments, set `SYSTEM_MIGRATION_BATCH_SIZE` to a value from `50` to `1000`.
+
+### Backfill historical App creation times
+
+V4.17.0 adds a `createTime` field to Apps. Workbench sorting by recently created or oldest created depends on this field. Newly created, copied, or imported Apps write `createTime` automatically. Historical records require a one-time upgrade endpoint, which backfills the timestamp stored in each document `_id` (ObjectId). Existing `createTime` values are not overwritten. Records whose `_id` is not a valid ObjectId are skipped and counted in `skippedInvalidId`.
+
+Start with a dry run, which does not write any data:
+
+```bash
+curl -X POST 'https://your-domain/api/admin/4163/initAppCreateTime' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: YOUR_ROOT_KEY' \
+  -d '{"dryRun":true}'
+```
+
+After confirming `scannedRecords`, run the backfill:
+
+```bash
+curl -X POST 'https://your-domain/api/admin/4163/initAppCreateTime' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: YOUR_ROOT_KEY' \
+  -d '{"dryRun":false}'
+```
+
+In the response, `scannedRecords` is the number of records missing `createTime`, `updatedRecords` is the number actually written, and `skippedInvalidId` is the number that could not derive a time from `_id`. The endpoint is safe to run repeatedly. After applying the migration, run another dry run: `scannedRecords` should be `0` in the normal case. Remaining `skippedInvalidId` records can be ignored or inspected separately.
 
 ### Code Sandbox seccomp compatibility setting (optional)
 

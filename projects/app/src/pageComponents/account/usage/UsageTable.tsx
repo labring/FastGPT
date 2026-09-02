@@ -22,6 +22,7 @@ import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getUserUsages } from '@/web/support/wallet/usage/api';
 import dynamic from 'next/dynamic';
 import { type UsageFilterParams } from './type';
+import { toMultiSelectFilterQuery } from '@fastgpt/web/components/common/TagFilter';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
@@ -42,26 +43,17 @@ const UsageTableList = ({
 }) => {
   const { t } = useClientTranslation('account_usage');
 
-  const { dateRange, selectTmbIds, isSelectAllTmb, usageSources, isSelectAllSource, projectName } =
-    filterParams;
+  const { dateRange, memberFilter, sourceFilter, projectName } = filterParams;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const requestParams = useMemo(() => {
     return {
       dateStart: dayjs(dateRange.from || new Date()).format(),
       dateEnd: dayjs(dateRange.to || new Date()).format(),
-      sources: isSelectAllSource ? undefined : usageSources,
-      teamMemberIds: isSelectAllTmb ? undefined : selectTmbIds,
+      sources: toMultiSelectFilterQuery(sourceFilter),
+      teamMemberIds: toMultiSelectFilterQuery(memberFilter),
       projectName
     };
-  }, [
-    dateRange.from,
-    dateRange.to,
-    isSelectAllSource,
-    isSelectAllTmb,
-    projectName,
-    selectTmbIds,
-    usageSources
-  ]);
+  }, [dateRange.from, dateRange.to, memberFilter, projectName, sourceFilter]);
 
   const {
     data: usages,
