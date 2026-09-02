@@ -26,8 +26,9 @@ export const migrateLegacyFlowNodeInputToCurrent = (
     input.selectedTypeIndex === undefined
       ? undefined
       : inputRenderTypeList[input.selectedTypeIndex];
-  const legacyDefaultToAgentGenerated = input.defaultToAgentGenerated ?? input.isToolParam;
   const isFileInput = inputRenderTypeList.includes(FlowNodeInputTypeEnum.fileSelect);
+  const legacyDefaultToAgentGenerated =
+    input.defaultToAgentGenerated ?? (isFileInput ? undefined : input.isToolParam);
   const shouldUseLegacyToolDescriptionFallback =
     !isFileInput &&
     allowLegacyToolDescriptionFallback &&
@@ -99,6 +100,7 @@ export const migrateLegacyHttpToolInputDefaultMode = (input: LegacyFlowNodeInput
     !input.toolDescription ||
     input.defaultToAgentGenerated !== undefined ||
     input.isToolParam !== undefined ||
+    input.renderTypeList?.includes(FlowNodeInputTypeEnum.fileSelect) ||
     input.selectedType !== undefined ||
     !canInputBeAgentGenerated({ ...input, renderTypeList: input.renderTypeList ?? [] })
   ) {

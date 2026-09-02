@@ -223,19 +223,15 @@ export const migrateLegacyWorkflowStructureToCurrent = (
           !!node.toolConfig?.systemTool ||
           !!node.pluginId?.startsWith('systemTool-') ||
           !!node.pluginId?.startsWith('commercial-'));
-      const inputs = node.inputs.map((input) => {
-        // HTTP 468 和 pluginInput 的旧默认模式规则与普通工作流输入不同，先单独恢复。
-        const legacyInput =
+      const inputs = node.inputs.map((input) =>
+        migrateLegacyFlowNodeInputToCurrent(
+          // HTTP 468 的旧默认模式规则与普通工作流输入不同，先单独恢复再做通用归一。
           node.flowNodeType === FlowNodeTypeEnum.httpRequest468
             ? migrateLegacyHttpToolInputDefaultMode(input)
-            : node.flowNodeType === FlowNodeTypeEnum.pluginInput
-              ? migrateLegacyWorkflowToolInputDefaultMode(input)
-              : input;
-        return migrateLegacyFlowNodeInputToCurrent(legacyInput, {
-          isTool,
-          allowLegacyToolDescriptionFallback
-        });
-      });
+            : input,
+          { isTool, allowLegacyToolDescriptionFallback }
+        )
+      );
 
       const migratedInputs =
         node.flowNodeType === FlowNodeTypeEnum.agent
@@ -263,19 +259,21 @@ export const migrateLegacyWorkflowStructureToCurrent = (
       }
 
       // pluginInput 是工具定义的边界：当前只允许手动/引用模式，不把 agentGenerated 持久化回节点。
-      const normalizedInputs = migratedInputs.map((input) => {
-        const renderTypeList = (input.renderTypeList ?? []).filter(
-          (type) => type !== FlowNodeInputTypeEnum.agentGenerated
-        );
-        return {
-          ...input,
-          renderTypeList,
-          selectedType:
-            input.selectedType === FlowNodeInputTypeEnum.agentGenerated
-              ? renderTypeList[0]
-              : input.selectedType
-        };
-      });
+      const normalizedInputs = migratedInputs
+        .map(migrateLegacyWorkflowToolInputDefaultMode)
+        .map((input) => {
+          const renderTypeList = (input.renderTypeList ?? []).filter(
+            (type) => type !== FlowNodeInputTypeEnum.agentGenerated
+          );
+          return {
+            ...input,
+            renderTypeList,
+            selectedType:
+              input.selectedType === FlowNodeInputTypeEnum.agentGenerated
+                ? renderTypeList[0]
+                : input.selectedType
+          };
+        });
 
       return { ...node, inputs: normalizedInputs };
     })

@@ -35,8 +35,7 @@ export const defaultInput: FlowNodeInputItemType = {
   canSelectFile: true,
   canSelectImg: true,
   canLocalUpload: true,
-  canUrlUpload: false,
-  defaultToAgentGenerated: true
+  canUrlUpload: false
 };
 
 const FieldEditModal = ({

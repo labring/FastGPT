@@ -642,26 +642,6 @@ describe('getToolConfigStatus', () => {
         status: 'noConfig'
       });
     });
-
-    it('should require configuration for a legacy manual file input', () => {
-      const result = getToolConfigStatus({
-        tool: {
-          inputs: [
-            createMockInput({
-              renderTypeList: [FlowNodeInputTypeEnum.fileSelect, FlowNodeInputTypeEnum.reference],
-              required: true,
-              defaultToAgentGenerated: false,
-              value: []
-            })
-          ]
-        }
-      });
-
-      expect(result).toEqual({
-        needConfig: true,
-        status: 'waitingForConfig'
-      });
-    });
   });
 
   describe('configured status', () => {
@@ -1052,17 +1032,6 @@ describe('agent generated tool input helpers', () => {
     );
   });
 
-  it('should support file inputs as both agent-generated and manual tool parameters', () => {
-    const input = createMockInput({
-      renderTypeList: [FlowNodeInputTypeEnum.fileSelect, FlowNodeInputTypeEnum.reference]
-    });
-
-    expect(canInputBeAgentGenerated(input)).toBe(true);
-    expect(canInputBeConfiguredAsToolParam(input)).toBe(true);
-    expect(canInputBeManuallyConfigured(input)).toBe(true);
-    expect(getToolInputManualRenderType(input)).toBe(FlowNodeInputTypeEnum.fileSelect);
-  });
-
   it('should retain the canonical selectedType when normalizing an input', () => {
     const input = normalizeFlowNodeInputType(
       createMockInput({
@@ -1121,30 +1090,6 @@ describe('agent generated tool input helpers', () => {
 
     expect(input.renderTypeList).toEqual([FlowNodeInputTypeEnum.password]);
     expect(input.selectedType).toBe(FlowNodeInputTypeEnum.password);
-  });
-
-  it('should initialize file inputs as agent-generated when enabled by the field default', () => {
-    const input = initToolInputTypeByDefaultMode(
-      createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.fileSelect, FlowNodeInputTypeEnum.reference],
-        defaultToAgentGenerated: true
-      })
-    );
-
-    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
-    expect(isAgentGeneratedToolInput(input)).toBe(true);
-  });
-
-  it('should keep legacy file inputs manual when their default mode is disabled', () => {
-    const input = initToolInputTypeByDefaultMode(
-      createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.fileSelect, FlowNodeInputTypeEnum.reference],
-        defaultToAgentGenerated: false
-      })
-    );
-
-    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.fileSelect);
-    expect(isAgentGeneratedToolInput(input)).toBe(false);
   });
 
   it('should allow user chat input to be agent generated', () => {

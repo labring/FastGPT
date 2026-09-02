@@ -9,6 +9,35 @@ import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/consta
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 describe('compileToolRuntime', () => {
+  it('exposes generated file inputs as array<string>', () => {
+    const compiled = compileToolRuntime({
+      toolId: 'file-tool',
+      name: 'File tool',
+      inputs: [
+        {
+          key: 'files',
+          label: 'Files',
+          valueType: WorkflowIOValueTypeEnum.arrayString,
+          renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.fileSelect],
+          selectedType: FlowNodeInputTypeEnum.agentGenerated,
+          required: true
+        }
+      ]
+    });
+
+    expect(compiled.modelTool.function.parameters).toEqual({
+      type: 'object',
+      properties: {
+        files: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Files'
+        }
+      },
+      required: ['files']
+    });
+  });
+
   it('separates model parameters from configured values and defaults', () => {
     const compiled = compileToolRuntime({
       toolId: 'search',
