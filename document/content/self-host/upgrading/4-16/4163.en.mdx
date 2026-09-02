@@ -10,6 +10,9 @@ upgradeTags:
 1. Improved chat pausing: the stop request now returns as soon as the Workflow stop marker is saved. After confirmation, the client closes the active response stream instead of waiting up to five seconds.
 2. Preserved partial reasoning when a chat is paused before answer text starts, so the reasoning remains available after a refresh.
 3. Centered citation markers below an image when the image is followed only by citations. Inline text citations keep their existing layout.
+4. Improved generation conflict recovery: when the current chat is still generating on the server, the client detects the conflict and restores the existing response stream instead of adding an empty message or showing an error state.
+5. Made collapsed processing previews interactive. You can now select a reasoning or tool-call preview to expand its matching details.
+6. Improved model list loading states. When multiple identities or pages load the model catalog concurrently, only the page waiting for validation shows a loading state.
 
 ## 🛠️ Code Improvements
 
