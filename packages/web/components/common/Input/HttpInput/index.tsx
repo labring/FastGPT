@@ -7,10 +7,12 @@ import {
 } from '../../Textarea/PromptEditor/type';
 import Editor from './Editor';
 import { editorStateToText } from '../../Textarea/PromptEditor/utils';
+import type { WorkflowReferenceSnapshot } from '@fastgpt/global/core/workflow/type/io';
 
 const HttpInput = ({
   variables = [],
   variableLabels = [],
+  referenceSnapshots,
   value,
   onChange,
   onBlur,
@@ -22,6 +24,7 @@ const HttpInput = ({
 }: {
   variables?: EditorVariablePickerType[];
   variableLabels?: EditorVariableLabelPickerType[];
+  referenceSnapshots?: WorkflowReferenceSnapshot[];
   value?: string;
   onChange?: (text: string) => void;
   onBlur?: (text: string) => void;
@@ -51,6 +54,7 @@ const HttpInput = ({
       <Editor
         variables={variables}
         variableLabels={variableLabels}
+        referenceSnapshots={referenceSnapshots}
         h={h}
         value={value}
         onChange={onChange ? onChangeInput : undefined}

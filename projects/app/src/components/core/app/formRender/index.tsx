@@ -74,6 +74,7 @@ const InputRender = (props: InputRenderProps) => {
         {...commonProps}
         variables={props.variables}
         variableLabels={props.variableLabels}
+        referenceSnapshots={props.referenceSnapshots}
         title={props.title}
         maxLength={props.maxLength}
         minH={40}
@@ -90,6 +91,7 @@ const InputRender = (props: InputRenderProps) => {
         isRichText={props.isRichText}
         variables={props.variables}
         variableLabels={props.variableLabels}
+        referenceSnapshots={props.referenceSnapshots}
         title={props.title}
         maxLength={props.maxLength}
         minH={100}

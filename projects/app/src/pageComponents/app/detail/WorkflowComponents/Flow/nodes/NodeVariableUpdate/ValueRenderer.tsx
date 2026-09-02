@@ -139,6 +139,7 @@ const ValueRenderer: React.FC<ValueRendererProps> = (props) => {
       {...stringFormParams}
       variables={variables}
       variableLabels={variableLabels}
+      referenceSnapshots={valueReferenceSnapshots}
       value={value?.[1]}
       onChange={(v: unknown) => onChange({ value: ['', v] as ReferenceValueType })}
     />

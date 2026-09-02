@@ -60,18 +60,22 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
   const { t } = useTranslation();
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { edges, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { edges, getNodeById, getNodeList } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   const variables = useMemoEnhance(() => {
     return getEditorVariables({
       nodeId,
+      nodeList: getNodeList(),
       getNodeById,
       edges,
       appDetail,
       t
     });
-  }, [nodeId, getNodeById, edges, appDetail, t]);
+  }, [nodeId, getNodeById, getNodeList, edges, appDetail, t]);
   const { feConfigs } = useSystemStore();
   const externalProviderWorkflowVariables = useMemo(() => {
     return (

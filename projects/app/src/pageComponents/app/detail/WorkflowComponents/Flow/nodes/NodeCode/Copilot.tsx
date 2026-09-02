@@ -58,7 +58,7 @@ const NodeCopilot = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const { llmModelList, defaultModels } = useSystemStore();
-  const { edges, getNodeById } = useContextSelector(
+  const { edges, getNodeById, getNodeList } = useContextSelector(
     WorkflowBufferDataContext,
     (v) => v
   );
@@ -77,12 +77,13 @@ const NodeCopilot = ({
   const editorVariables = useMemoEnhance(() => {
     return getEditorVariables({
       nodeId,
+      nodeList: getNodeList(),
       getNodeById,
       edges,
       appDetail,
       t
     }).filter((item) => item.parent.id !== nodeId);
-  }, [nodeId, getNodeById, edges, appDetail, t]);
+  }, [nodeId, getNodeById, getNodeList, edges, appDetail, t]);
 
   const { codeType, code, dynamicInputs, dynamicOutputs } = useMemo(() => {
     const codeTypeInput = realTimeInputs?.find((input) => input.key === NodeInputKeyEnum.codeType);
