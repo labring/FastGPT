@@ -103,13 +103,15 @@ ${formattedResponse}`}
 
 const RenderTool = React.memo(function RenderTool({
   showAnimation,
-  tool
+  tool,
+  defaultExpanded = false
 }: {
   showAnimation: boolean;
   tool: ToolModuleResponseItemType;
+  defaultExpanded?: boolean;
 }) {
   const { t } = useSafeTranslation();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const isToolGenerating = showAnimation && tool.response === undefined;
 
   return (
