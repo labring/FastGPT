@@ -12,17 +12,24 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { getAgentRuntimeTools } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils';
 import type { NodeToolConfigType } from '@fastgpt/global/core/workflow/type/node';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 const {
   authAppByTmbIdMock,
   getAppVersionByIdMock,
   getMCPChildrenMock,
+  getMCPToolSetMock,
+  getHTTPToolSetMock,
+  getHTTPToolListMock,
   getSystemToolDetailMock,
   assertTeamPluginSourceAccessMock
 } = vi.hoisted(() => ({
   authAppByTmbIdMock: vi.fn(),
   getAppVersionByIdMock: vi.fn(),
   getMCPChildrenMock: vi.fn(),
+  getMCPToolSetMock: vi.fn(),
+  getHTTPToolSetMock: vi.fn(),
+  getHTTPToolListMock: vi.fn(),
   getSystemToolDetailMock: vi.fn(),
   assertTeamPluginSourceAccessMock: vi.fn()
 }));
@@ -36,7 +43,13 @@ vi.mock('@fastgpt/service/core/app/version/controller', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/app/mcp', () => ({
-  getMCPChildren: getMCPChildrenMock
+  getMCPChildren: getMCPChildrenMock,
+  getMCPToolSet: getMCPToolSetMock
+}));
+
+vi.mock('@fastgpt/service/core/app/http', () => ({
+  getHTTPToolSet: getHTTPToolSetMock,
+  getHTTPToolList: getHTTPToolListMock
 }));
 
 vi.mock('@fastgpt/service/support/user/team/controller', () => ({
@@ -149,17 +162,6 @@ const mcpTool = {
   name: 'search',
   description: 'Search docs',
   inputSchema: mcpInputSchema
-};
-
-const fixedVersionMcpToolSet = {
-  url: 'https://v1.example.com',
-  headerSecret: {
-    Authorization: {
-      value: 'legacy-secret',
-      secret: ''
-    }
-  },
-  toolList: [mcpTool]
 };
 
 const mcpToolWithLeadingSlash = {
@@ -281,7 +283,20 @@ const createPersonalApp = ({
 describe('getAgentRuntimeTools schema loading', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getMCPChildrenMock.mockResolvedValue([]);
+    getMCPChildrenMock.mockImplementation(async (app: any) => {
+      return app.modules?.[0]?.toolConfig?.mcpToolSet?.toolList ?? [];
+    });
+    getMCPToolSetMock.mockImplementation((app: any) => {
+      const toolSet = app.modules?.[0]?.toolConfig?.mcpToolSet;
+      return toolSet && 'toolList' in toolSet ? toolSet : undefined;
+    });
+    getHTTPToolSetMock.mockImplementation((app: any) => {
+      const toolSet = app.modules?.[0]?.toolConfig?.httpToolSet;
+      return toolSet && 'toolList' in toolSet ? toolSet : undefined;
+    });
+    getHTTPToolListMock.mockImplementation(async (app: any) => {
+      return app.modules?.[0]?.toolConfig?.httpToolSet?.toolList ?? [];
+    });
     getSystemToolDetailMock.mockReset();
 
     authAppByTmbIdMock.mockImplementation(async ({ appId }: { appId: string }) => {
@@ -301,7 +316,7 @@ describe('getAgentRuntimeTools schema loading', () => {
                   ...app.modules[0],
                   toolConfig: {
                     ...app.modules[0].toolConfig,
-                    mcpToolSet: fixedVersionMcpToolSet
+                    mcpToolSet: app.modules[0].toolConfig.mcpToolSet
                   }
                 }
               ]
@@ -421,6 +436,38 @@ describe('getAgentRuntimeTools schema loading', () => {
       type: AppTypeEnum.chatAgent
     }),
     workflow_app: createPersonalApp({ id: 'workflow_app', type: AppTypeEnum.workflow })
+  };
+
+  appMap.workflow_mcp_toolset_app = {
+    ...createPersonalApp({ id: 'workflow_mcp_toolset_app', type: AppTypeEnum.workflow }),
+    modules: [
+      {
+        nodeId: 'workflow-mcp-toolset',
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        name: 'Referenced MCP toolset',
+        inputs: [],
+        outputs: [],
+        toolConfig: {
+          mcpToolSet: { toolId: 'mcp_app' }
+        }
+      }
+    ]
+  };
+
+  appMap.workflow_http_toolset_app = {
+    ...createPersonalApp({ id: 'workflow_http_toolset_app', type: AppTypeEnum.workflow }),
+    modules: [
+      {
+        nodeId: 'workflow-http-toolset',
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        name: 'Referenced HTTP toolset',
+        inputs: [],
+        outputs: [],
+        toolConfig: {
+          httpToolSet: { toolId: 'http_app' }
+        }
+      }
+    ]
   };
 
   appMap.empty_schema_tool_app = {
@@ -599,7 +646,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(latestVersionTools[0]?.version).toBe('');
   });
 
-  it('loads MCP toolset children with their input schema', async () => {
+  it('loads MCP toolset children with their input schema without using a version', async () => {
     const tools = await getAgentRuntimeTools({
       tmbId: 'tmb_1',
       tools: [{ id: 'mcp_app', version: 'fixed-version', config: {} }]
@@ -610,16 +657,42 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.description).toBe('mcp_app name/search: Search docs');
     expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
-    expect(tools[0].version).toBe('fixed-version');
+    expect(getAppVersionByIdMock).not.toHaveBeenCalled();
+    expect(tools[0].version).toBe('');
     expect(tools[0].toolConfig?.mcpToolSet).toMatchObject({
-      url: fixedVersionMcpToolSet.url,
-      headerSecret: fixedVersionMcpToolSet.headerSecret
+      url: 'https://current.example.com',
+      headerSecret: {
+        Authorization: {
+          value: 'current-secret',
+          secret: ''
+        }
+      }
     });
     expect(tools[0].promptReference).toEqual({
       id: 'mcp_app',
       name: 'mcp_app name'
     });
   });
+
+  it.each([
+    ['workflow_mcp_toolset_app', 'mcp_app'],
+    ['workflow_http_toolset_app', 'http_app']
+  ] as const)(
+    'resolves %s toolset references from the current parent app',
+    async (appId, parentId) => {
+      const tools = await getAgentRuntimeTools({
+        tmbId: 'tmb_1',
+        tools: [{ id: appId, config: {} }]
+      });
+
+      expect(tools).toHaveLength(1);
+      expect(authAppByTmbIdMock).toHaveBeenCalledWith({
+        tmbId: 'tmb_1',
+        appId: parentId,
+        per: ReadPermissionVal
+      });
+    }
+  );
 
   it('loads a selected MCP tool with its input schema', async () => {
     const tools = await getAgentRuntimeTools({
@@ -658,24 +731,18 @@ describe('getAgentRuntimeTools schema loading', () => {
     });
   });
 
-  it('uses fixed-version MCP configuration for a selected tool', async () => {
+  it('ignores the selected MCP tool version', async () => {
     const tools = await getAgentRuntimeTools({
       tmbId: 'tmb_1',
       tools: [{ id: 'mcp-mcp_app/search', version: 'fixed-version', config: {} }]
     });
 
     expect(tools).toHaveLength(1);
-    expect(getAppVersionByIdMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        appId: 'mcp_app',
-        versionId: 'fixed-version'
-      })
-    );
-    expect(tools[0].version).toBe('fixed-version');
+    expect(getAppVersionByIdMock).not.toHaveBeenCalled();
+    expect(tools[0].version).toBe('');
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
     expect(tools[0].toolConfig?.mcpToolSet).toMatchObject({
-      url: fixedVersionMcpToolSet.url,
-      headerSecret: fixedVersionMcpToolSet.headerSecret
+      url: 'https://current.example.com'
     });
   });
 
@@ -781,7 +848,12 @@ describe('getAgentRuntimeTools schema loading', () => {
       tools: [{ id: 'mcp-stripped_mcp_app/search', config: {} }]
     });
 
-    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.stripped_mcp_app);
+    expect(getMCPChildrenMock).toHaveBeenCalledWith(
+      appMap.stripped_mcp_app,
+      expect.objectContaining({
+        toolList: expect.any(Array)
+      })
+    );
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
   });
@@ -858,7 +930,8 @@ describe('getAgentRuntimeTools schema loading', () => {
     );
     expect(tools[0].requestSchema.function.parameters).not.toEqual(httpInputSchema);
     expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_app/create');
-    expect(tools[0].version).toBe('fixed-version');
+    expect(getAppVersionByIdMock).not.toHaveBeenCalled();
+    expect(tools[0].version).toBe('');
     expect(tools[0].promptReference).toEqual({
       id: 'http_app',
       name: 'http_app name'

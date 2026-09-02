@@ -11,6 +11,11 @@ import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/sys
 const {
   authAppByTmbIdMock,
   getAppVersionByIdMock,
+  mongoAppFindByIdMock,
+  getHTTPToolSetMock,
+  getHTTPToolListMock,
+  getMCPToolSetMock,
+  getMCPChildrenMock,
   runHTTPToolMock,
   mcpToolCallMock,
   runToolStreamMock,
@@ -19,6 +24,11 @@ const {
 } = vi.hoisted(() => ({
   authAppByTmbIdMock: vi.fn(),
   getAppVersionByIdMock: vi.fn(),
+  mongoAppFindByIdMock: vi.fn(),
+  getHTTPToolSetMock: vi.fn(),
+  getHTTPToolListMock: vi.fn(),
+  getMCPToolSetMock: vi.fn(),
+  getMCPChildrenMock: vi.fn(),
   runHTTPToolMock: vi.fn(),
   mcpToolCallMock: vi.fn(),
   runToolStreamMock: vi.fn(),
@@ -35,14 +45,24 @@ vi.mock('@fastgpt/service/core/app/version/controller', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/app/http', () => ({
+  getHTTPToolSet: getHTTPToolSetMock,
+  getHTTPToolList: getHTTPToolListMock,
   runHTTPTool: runHTTPToolMock
 }));
 
 vi.mock('@fastgpt/service/core/app/mcp', () => ({
   assertMCPUrlNotInternal: vi.fn(),
+  getMCPToolSet: getMCPToolSetMock,
+  getMCPChildren: getMCPChildrenMock,
   MCPClient: vi.fn(function () {
     return { toolCall: mcpToolCallMock };
   })
+}));
+
+vi.mock('@fastgpt/service/core/app/schema', () => ({
+  MongoApp: {
+    findById: mongoAppFindByIdMock
+  }
 }));
 
 vi.mock('@fastgpt/service/common/logger', () => ({
@@ -132,6 +152,11 @@ describe('dispatchRunTool runtime toolset auth', () => {
         _id: 'victim-toolset'
       }
     });
+    mongoAppFindByIdMock.mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        _id: 'victim-toolset'
+      })
+    });
     getSystemToolRuntimeMock.mockResolvedValue({
       id: 'search',
       version: '1.0.0',
@@ -207,25 +232,17 @@ describe('dispatchRunTool runtime toolset auth', () => {
     expect(result.error?.[NodeOutputKeyEnum.errorText]).toBeTruthy();
   });
 
-  it('should authorize HTTP parent toolset before loading version and running tool', async () => {
-    getAppVersionByIdMock.mockResolvedValueOnce({
-      nodes: [
-        {
-          toolConfig: {
-            httpToolSet: {
-              baseUrl: 'https://example.com',
-              toolList: [
-                {
-                  name: 'sandbox_echo',
-                  path: '/echo',
-                  method: 'post'
-                }
-              ]
-            }
-          }
-        }
-      ]
+  it('should authorize HTTP parent toolset before loading current config and running tool', async () => {
+    getHTTPToolSetMock.mockReturnValueOnce({
+      baseUrl: 'https://example.com'
     });
+    getHTTPToolListMock.mockResolvedValueOnce([
+      {
+        name: 'sandbox_echo',
+        path: '/echo',
+        method: 'post'
+      }
+    ]);
     runHTTPToolMock.mockResolvedValueOnce({
       data: {
         ok: true
@@ -245,10 +262,10 @@ describe('dispatchRunTool runtime toolset auth', () => {
       appId: 'victim-toolset',
       per: ReadPermissionVal
     });
-    expect(getAppVersionByIdMock).toHaveBeenCalledWith({
-      appId: 'victim-toolset',
-      versionId: undefined
-    });
+    expect(mongoAppFindByIdMock).toHaveBeenCalledWith('victim-toolset');
+    expect(getHTTPToolSetMock).toHaveBeenCalled();
+    expect(getHTTPToolListMock).toHaveBeenCalled();
+    expect(getAppVersionByIdMock).not.toHaveBeenCalled();
     expect(runHTTPToolMock).toHaveBeenCalledWith(
       expect.objectContaining({
         baseUrl: 'https://example.com',
@@ -265,30 +282,21 @@ describe('dispatchRunTool runtime toolset auth', () => {
   });
 
   it('should reject invalid HTTP params before invoking the external tool', async () => {
-    getAppVersionByIdMock.mockResolvedValueOnce({
-      nodes: [
-        {
-          toolConfig: {
-            httpToolSet: {
-              baseUrl: 'https://example.com',
-              toolList: [
-                {
-                  name: 'sandbox_echo',
-                  path: '/echo',
-                  method: 'post',
-                  requestSchema: {
-                    type: 'object',
-                    properties: { keyword: { type: 'string', pattern: '^allowed$' } },
-                    required: ['keyword']
-                  }
-                }
-              ]
-            }
-          }
-        }
-      ]
+    getHTTPToolSetMock.mockReturnValueOnce({
+      baseUrl: 'https://example.com'
     });
-
+    getHTTPToolListMock.mockResolvedValueOnce([
+      {
+        name: 'sandbox_echo',
+        path: '/echo',
+        method: 'post',
+        requestSchema: {
+          type: 'object',
+          properties: { keyword: { type: 'string', pattern: '^allowed$' } },
+          required: ['keyword']
+        }
+      }
+    ]);
     const result = await dispatchRunTool(
       createRunToolProps({ httpTool: { toolId: 'http-victim-toolset/sandbox_echo' } })
     );
@@ -319,23 +327,25 @@ describe('dispatchRunTool runtime toolset auth', () => {
   });
 
   it('should reject invalid MCP params before invoking the external tool', async () => {
+    const mcpTool = {
+      name: 'search',
+      description: 'Search',
+      inputSchema: {
+        type: 'object',
+        properties: { query: { type: 'string' } },
+        required: ['query']
+      }
+    };
+    getMCPToolSetMock.mockReturnValueOnce({
+      url: 'https://mcp.example.com',
+      toolList: [mcpTool]
+    });
+    getMCPChildrenMock.mockResolvedValueOnce([mcpTool]);
+
     const result = await dispatchRunTool(
       createRunToolProps({
         mcpTool: { toolId: 'mcp-victim-toolset/search' },
-        mcpToolSet: {
-          url: 'https://mcp.example.com',
-          toolList: [
-            {
-              name: 'search',
-              description: 'Search',
-              inputSchema: {
-                type: 'object',
-                properties: { query: { type: 'string' } },
-                required: ['query']
-              }
-            }
-          ]
-        }
+        mcpToolSet: { toolId: 'victim-toolset' }
       })
     );
 

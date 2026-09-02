@@ -4,7 +4,8 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const mocks = vi.hoisted(() => ({
   getAppDetailById: vi.fn(),
-  getMcpChildren: vi.fn()
+  getMcpChildren: vi.fn(),
+  getHttpChildren: vi.fn()
 }));
 
 vi.mock('@/web/common/api/request', () => ({
@@ -19,6 +20,10 @@ vi.mock('@/web/core/app/api', () => ({
 
 vi.mock('@/web/core/app/api/mcpTools', () => ({
   getMcpChildren: mocks.getMcpChildren
+}));
+
+vi.mock('@/web/core/app/api/httpTools', () => ({
+  getHttpChildren: mocks.getHttpChildren
 }));
 
 import { getTeamAppTemplates } from '@/web/core/app/api/tool';
@@ -46,18 +51,11 @@ describe('getTeamAppTemplates', () => {
 
     mocks.getAppDetailById.mockResolvedValueOnce({
       type: AppTypeEnum.httpToolSet,
-      _id: 'http-set',
-      avatar: 'avatar',
-      modules: [
-        {
-          toolConfig: {
-            httpToolSet: {
-              toolList: [{ name: 'create', description: 'Create' }]
-            }
-          }
-        }
-      ]
+      _id: 'http-set'
     });
+    mocks.getHttpChildren.mockResolvedValueOnce([
+      { id: 'http-http-set/create', avatar: 'avatar', name: 'create', description: 'Create' }
+    ]);
 
     const httpTemplates = await getTeamAppTemplates({ parentId: 'http-set' });
     expect(httpTemplates[0]).toMatchObject({

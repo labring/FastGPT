@@ -58,8 +58,12 @@ import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { SystemToolRepo } from '../../../../../../app/tool/systemTool/systemTool.repo';
 import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
-import type { NodeToolConfigType } from '@fastgpt/global/core/workflow/type/node';
-import { getMCPChildren } from '../../../../../../app/mcp';
+import {
+  type McpToolSetRuntimeConfigType,
+  type NodeToolConfigType
+} from '@fastgpt/global/core/workflow/type/node';
+import { getMCPChildren, getMCPToolSet } from '../../../../../../app/mcp';
+import { getHTTPToolList, getHTTPToolSet } from '../../../../../../app/http';
 import { getTmbInfoByTmbId } from '../../../../../../../support/user/team/controller';
 import {
   assertTeamPluginSourceAccess,
@@ -256,6 +260,16 @@ export const getAgentRuntimeTools = async ({
     app: AppSchemaType;
     versionId?: string;
   }) => {
+    if (app.type === AppTypeEnum.mcpToolSet || app.type === AppTypeEnum.httpToolSet) {
+      return {
+        versionId: undefined,
+        versionName: undefined,
+        nodes: app.modules,
+        edges: app.edges,
+        chatConfig: app.chatConfig
+      };
+    }
+
     const version = await getAppVersionById({
       appId: String(app._id),
       versionId,
@@ -284,16 +298,23 @@ export const getAgentRuntimeTools = async ({
    */
   const getMcpToolListWithRuntimeSchema = async ({
     app,
-    toolList
+    toolList,
+    toolSet
   }: {
     app?: AppSchemaType;
     toolList?: McpToolConfigType[];
+    toolSet?: McpToolSetRuntimeConfigType;
   }): Promise<McpToolConfigType[]> => {
     const currentToolList = toolList ?? [];
     if (!app) return currentToolList;
+    const getRuntimeToolList = () => (toolSet ? getMCPChildren(app, toolSet) : getMCPChildren(app));
+
+    if (app.type === AppTypeEnum.mcpToolSet) {
+      return getRuntimeToolList();
+    }
 
     if (!currentToolList.length) {
-      return getMCPChildren(app);
+      return getRuntimeToolList();
     }
 
     const hasStrippedSchema = currentToolList.some(
@@ -301,7 +322,7 @@ export const getAgentRuntimeTools = async ({
     );
     if (!hasStrippedSchema) return currentToolList;
 
-    const runtimeToolList = await getMCPChildren(app);
+    const runtimeToolList = await getRuntimeToolList();
     if (!runtimeToolList.length) return currentToolList;
 
     return currentToolList.map((tool) => {
@@ -317,9 +338,7 @@ export const getAgentRuntimeTools = async ({
     });
   };
 
-  type RuntimeMcpToolSet = NonNullable<
-    NonNullable<RuntimeNodeItemType['toolConfig']>['mcpToolSet']
-  >;
+  type RuntimeMcpToolSet = McpToolSetRuntimeConfigType;
   type RuntimeMcpTool = McpToolConfigType & {
     url?: string;
     headerSecret?: RuntimeMcpToolSet['headerSecret'];
@@ -395,14 +414,19 @@ export const getAgentRuntimeTools = async ({
 
     const toolSetNode = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet);
     if (toolSetNode && nodes.length === 1) {
-      // MCP/HTTP toolset 的 json schema 保存在 toolConfig.toolList 上，必须保留原始 toolConfig。
       const nodeIO = getToolSetNodeIO({ nodes });
+      const toolConfig =
+        app.type === AppTypeEnum.mcpToolSet
+          ? { ...nodeIO.toolConfig, mcpToolSet: { toolId: String(app._id) } }
+          : app.type === AppTypeEnum.httpToolSet
+            ? { ...nodeIO.toolConfig, httpToolSet: { toolId: String(app._id) } }
+            : nodeIO.toolConfig;
       return {
         ...baseNode,
         flowNodeType: FlowNodeTypeEnum.toolSet,
         inputs: nodeIO.inputs,
         outputs: appendErrorOutput(nodeIO.outputs),
-        toolConfig: nodeIO.toolConfig
+        toolConfig
       };
     }
 
@@ -436,19 +460,17 @@ export const getAgentRuntimeTools = async ({
    */
   const formatMcpToolNode = async ({
     app,
-    pluginId,
-    versionId
+    pluginId
   }: {
     app: AppSchemaType;
     pluginId: string;
-    versionId?: string;
   }): Promise<AgentRuntimeNode> => {
     const { toolName } = splitToolsetToolPluginId(pluginId);
-    const version = await getVersionNodes({ app, versionId });
-    const mcpToolSet = version.nodes[0]?.toolConfig?.mcpToolSet;
+    const mcpToolSet = getMCPToolSet(app);
     const toolList = await getMcpToolListWithRuntimeSchema({
       app,
-      toolList: mcpToolSet?.toolList
+      toolList: undefined,
+      toolSet: mcpToolSet
     });
     const tool = findToolByName(toolList, toolName);
     if (!tool) return Promise.reject(PluginErrEnum.unExist);
@@ -469,7 +491,7 @@ export const getAgentRuntimeTools = async ({
     // 单独选择子工具时，模型侧展示子工具名即可，不需要带 toolset 前缀。
     return {
       ...node,
-      version: versionId ?? '',
+      version: '',
       name: tool.name,
       intro: tool.description
     };
@@ -481,16 +503,14 @@ export const getAgentRuntimeTools = async ({
    */
   const formatHttpToolNode = async ({
     app,
-    pluginId,
-    versionId
+    pluginId
   }: {
     app: AppSchemaType;
     pluginId: string;
-    versionId?: string;
   }): Promise<AgentRuntimeNode> => {
     const { toolName } = splitToolsetToolPluginId(pluginId);
-    const version = await getVersionNodes({ app, versionId });
-    const toolList = version.nodes[0]?.toolConfig?.httpToolSet?.toolList ?? [];
+    const toolSet = getHTTPToolSet(app);
+    const toolList = await getHTTPToolList(app, toolSet);
     const tool = getToolNameCandidates(toolName)
       .map((name) => toolList.find((item) => item.name === name))
       .find(Boolean);
@@ -507,7 +527,7 @@ export const getAgentRuntimeTools = async ({
     // 单独选择子工具时，模型侧展示子工具名即可，不需要带 toolset 前缀。
     return {
       ...node,
-      version: versionId ?? '',
+      version: '',
       name: tool.name,
       intro: tool.description
     };
@@ -540,10 +560,10 @@ export const getAgentRuntimeTools = async ({
     }
     if (!app) return Promise.reject(PluginErrEnum.unExist);
     if (idSource === AppToolSourceEnum.mcp) {
-      return formatMcpToolNode({ app, pluginId, versionId });
+      return formatMcpToolNode({ app, pluginId });
     }
     if (idSource === AppToolSourceEnum.http) {
-      return formatHttpToolNode({ app, pluginId, versionId });
+      return formatHttpToolNode({ app, pluginId });
     }
     return formatPersonalAppNode({ app, versionId });
   };
@@ -579,6 +599,25 @@ export const getAgentRuntimeTools = async ({
     });
   };
 
+  /** Resolve a referenced MCP/HTTP toolset and enforce the Agent member's read permission. */
+  const getRuntimeToolSetApp = async ({
+    app,
+    toolSetId
+  }: {
+    app?: AppSchemaType;
+    toolSetId?: string;
+  }) => {
+    if (!app || !toolSetId || String(app._id) === toolSetId) return app;
+
+    return (
+      await authAppByTmbId({
+        tmbId,
+        appId: toolSetId,
+        per: ReadPermissionVal
+      })
+    ).app;
+  };
+
   return Promise.all(
     tools.map<Promise<SubAppInitType[]>>(async (tool) => {
       try {
@@ -605,7 +644,11 @@ export const getAgentRuntimeTools = async ({
               pluginId,
               app: authResult?.app,
               toolId: tool.id,
-              versionId: tool.version
+              versionId:
+                authResult?.app?.type === AppTypeEnum.mcpToolSet ||
+                authResult?.app?.type === AppTypeEnum.httpToolSet
+                  ? undefined
+                  : tool.version
             })
           )
         ]);
@@ -795,22 +838,32 @@ export const getAgentRuntimeTools = async ({
 
             return children.map((child) => buildSubApp(child));
           } else if (mcpToolsetVal || isLegacyMcpToolSet) {
-            // 新版 MCP toolset 在当前版本节点保存 toolList；旧版数据只有子 App 存 toolData。
-            const finalToolList = await getMcpToolListWithRuntimeSchema({
+            const toolSetId =
+              (mcpToolsetVal && 'toolId' in mcpToolsetVal ? mcpToolsetVal.toolId : undefined) ??
+              String(authApp?._id ?? '');
+            const toolSetApp = await getRuntimeToolSetApp({
               app: authApp,
-              toolList: mcpToolsetVal?.toolList
+              toolSetId
+            });
+            // New MCP toolsets keep the current tool list in the parent app; legacy data falls
+            // back to child apps that store the individual tool metadata.
+            const runtimeMcpToolSet = toolSetApp ? getMCPToolSet(toolSetApp) : undefined;
+            const finalToolList = await getMcpToolListWithRuntimeSchema({
+              app: toolSetApp,
+              toolList: undefined,
+              toolSet: runtimeMcpToolSet
             });
 
-            const toolSetId = toolNode.pluginId || pluginId;
+            const runtimeToolSetId = toolSetId || toolNode.pluginId || pluginId;
             const children = finalToolList.map((tool, index) => {
               const newToolNode = getMCPToolRuntimeNode({
-                toolSetId,
+                toolSetId: runtimeToolSetId,
                 toolsetName: toolNode.name,
-                nodeId: `${toolSetId}${index}`,
+                nodeId: `${runtimeToolSetId}${index}`,
                 avatar: toolNode.avatar,
                 tool,
                 mcpToolSet: buildMcpRuntimeToolSet({
-                  mcpToolSet: mcpToolsetVal,
+                  mcpToolSet: runtimeMcpToolSet,
                   toolList: finalToolList as RuntimeMcpTool[],
                   selectedTool: tool as RuntimeMcpTool
                 })
@@ -820,13 +873,22 @@ export const getAgentRuntimeTools = async ({
 
             return children.map((child) => buildSubApp(child));
           } else if (httpToolsetVal) {
-            // HTTP toolset 的 requestSchema 在 getHTTPToolRuntimeNode 中写入 jsonSchema。
-            const children = httpToolsetVal.toolList.map((tool: HttpToolConfigType, index) => {
+            const toolSetId =
+              ('toolId' in httpToolsetVal ? httpToolsetVal.toolId : undefined) ??
+              String(authApp?._id ?? '');
+            const toolSetApp = await getRuntimeToolSetApp({
+              app: authApp,
+              toolSetId
+            });
+            const toolSet = toolSetApp ? getHTTPToolSet(toolSetApp) : undefined;
+            const toolList = toolSetApp ? await getHTTPToolList(toolSetApp, toolSet) : [];
+            const runtimeToolSetId = toolSetId || toolNode.pluginId || pluginId;
+            const children = toolList.map((tool: HttpToolConfigType, index) => {
               const newToolNode = getHTTPToolRuntimeNode({
                 tool,
-                nodeId: `${pluginId}${index}`,
+                nodeId: `${runtimeToolSetId}${index}`,
                 avatar: toolNode.avatar,
-                toolSetId: pluginId,
+                toolSetId: runtimeToolSetId,
                 toolsetName: toolNode.name
               });
               return newToolNode;

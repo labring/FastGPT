@@ -26,7 +26,11 @@ import {
   PublishAppQuerySchema,
   PublishAppResponseSchema
 } from '@fastgpt/global/openapi/core/app/version/api';
-import { encodeToolSetNodesForStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
+import {
+  compactAndEncodeToolSetNodesForStorage,
+  encodeToolSetNodesForStorage
+} from '@fastgpt/service/core/app/jsonSchemaStorage';
+import { ToolSetAppTypeList } from '@fastgpt/global/core/app/constants';
 
 async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   const {
@@ -57,7 +61,9 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     nodes: normalizedWorkflow.nodes,
     teamId
   });
-  const storageNodes = encodeToolSetNodesForStorage(normalizedWorkflow.nodes);
+  const storageNodes = ToolSetAppTypeList.includes(app.type)
+    ? encodeToolSetNodesForStorage(normalizedWorkflow.nodes)
+    : compactAndEncodeToolSetNodesForStorage(normalizedWorkflow.nodes);
   if (isPublish) {
     await validatePublishAppAgentSkillReadPermissions({
       nodes: normalizedWorkflow.nodes,

@@ -27,17 +27,21 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { MongoApp } from '../../../app/schema';
-import { getMCPChildren } from '../../../app/mcp';
+import { getMCPChildren, getMCPToolSet } from '../../../app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
+import {
+  isMcpToolSetRuntimeConfig,
+  type McpToolSetRuntimeConfigType
+} from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowResponseType } from '../type';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { parsetMcpToolConfig } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { getMcpToolsets } from '../../../app/tool/mcpTool/entity';
 import { getHttpToolsets } from '../../../app/tool/httpTool/entity';
-import { getHTTPToolList } from '../../../app/http';
+import { getHTTPToolList, getHTTPToolSet } from '../../../app/http';
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   getSavedToolInputSelectedType,
@@ -579,9 +583,7 @@ export const rewriteRuntimeWorkFlow = async ({
     )
   });
 
-  type RuntimeMcpToolSet = NonNullable<
-    NonNullable<RuntimeNodeItemType['toolConfig']>['mcpToolSet']
-  >;
+  type RuntimeMcpToolSet = McpToolSetRuntimeConfigType;
   type RuntimeMcpTool = McpToolConfigType & {
     url?: string;
     headerSecret?: RuntimeMcpToolSet['headerSecret'];
@@ -653,13 +655,16 @@ export const rewriteRuntimeWorkFlow = async ({
             pushEdges(runtimeNode.nodeId);
           });
         } else if (mcpToolsetVal) {
-          const app = await MongoApp.findOne({ _id: toolSetNode.pluginId }).lean();
-          if (!app) continue;
-          const toolList = (await getMCPChildren(app)) as RuntimeMcpTool[];
-          const currentToolSet = app.modules?.[0]?.toolConfig?.mcpToolSet;
-
-          const toolSetId = toolSetNode.pluginId;
+          const toolSetId =
+            (mcpToolsetVal && 'toolId' in mcpToolsetVal ? mcpToolsetVal.toolId : undefined) ??
+            toolSetNode.pluginId;
           if (!toolSetId) continue;
+
+          const app = await MongoApp.findOne({ _id: toolSetId }).lean();
+          if (!app) continue;
+          const currentToolSet = getMCPToolSet(app);
+          const toolList = (await getMCPChildren(app, currentToolSet)) as RuntimeMcpTool[];
+
           toolList.forEach((tool, index) => {
             const newToolNode = initToolSetChildNode(
               getMCPToolRuntimeNode({
@@ -679,10 +684,16 @@ export const rewriteRuntimeWorkFlow = async ({
             pushEdges(newToolNode.nodeId);
           });
         } else if (httpToolsetVal) {
-          const app = await MongoApp.findOne({ _id: toolSetNode.pluginId }).lean();
+          const toolSetId =
+            (httpToolsetVal && 'toolId' in httpToolsetVal ? httpToolsetVal.toolId : undefined) ??
+            toolSetNode.pluginId;
+          if (!toolSetId) continue;
+
+          const app = await MongoApp.findOne({ _id: toolSetId }).lean();
           if (!app) continue;
 
-          const toolList = await getHTTPToolList(app);
+          const toolSet = getHTTPToolSet(app);
+          const toolList = await getHTTPToolList(app, toolSet);
 
           toolList.forEach((tool: HttpToolConfigType, index: number) => {
             const newToolNode = initToolSetChildNode(
@@ -690,7 +701,7 @@ export const rewriteRuntimeWorkFlow = async ({
                 tool,
                 nodeId: `${toolSetNode.nodeId}${index}`,
                 avatar: toolSetNode.avatar,
-                toolSetId: toolSetNode.pluginId!,
+                toolSetId,
                 toolsetName: toolSetNode.name
               })
             );
@@ -743,9 +754,11 @@ export const rewriteRuntimeWorkFlow = async ({
     >();
     await Promise.all(
       toolsets.map(async (toolset) => {
-        const currentToolSet = toolset.modules?.[0]?.toolConfig?.mcpToolSet;
+        const toolSetConfig = toolset.modules?.[0]?.toolConfig?.mcpToolSet;
+        const currentToolSet = isMcpToolSetRuntimeConfig(toolSetConfig) ? toolSetConfig : undefined;
         const currentToolList = currentToolSet?.toolList;
-        const toolList = (currentToolList ?? (await getMCPChildren(toolset))) as RuntimeMcpTool[];
+        const toolList = (currentToolList ??
+          (await getMCPChildren(toolset, currentToolSet))) as RuntimeMcpTool[];
         toolListMap.set(String(toolset._id), { toolList, currentToolSet });
       })
     );
@@ -799,16 +812,17 @@ export const rewriteRuntimeWorkFlow = async ({
     toolsets.forEach((toolset) => {
       toolsetMap.set(String(toolset._id), toolset);
     });
-    httpToolNodes.forEach((node) => {
+    for (const node of httpToolNodes) {
       const httpTool = node.toolConfig?.httpTool;
-      if (!httpTool) return;
+      if (!httpTool) continue;
       const parseResult = parseHttpToolConfig(httpTool);
-      if (!parseResult) return;
+      if (!parseResult) continue;
       const toolset = toolsetMap.get(parseResult.toolsetId);
-      const toolList = toolset?.modules?.[0].toolConfig?.httpToolSet?.toolList;
-      if (!toolList) return;
+      const toolSet = toolset ? getHTTPToolSet(toolset) : undefined;
+      const toolList = toolset ? await getHTTPToolList(toolset, toolSet) : undefined;
+      if (!toolList) continue;
       const toolRaw = toolList.find((tool) => tool.name === parseResult.toolName);
-      if (!toolRaw) return;
+      if (!toolRaw) continue;
       const { inputSchema, requestSchema } = getHTTPToolRuntimeSchemas(toolRaw);
       node.jsonSchema = requestSchema;
       node.intro = toolRaw.description;
@@ -817,7 +831,7 @@ export const rewriteRuntimeWorkFlow = async ({
         jsonSchema: inputSchema,
         schemaType: 'http'
       });
-    });
+    }
   };
 
   await Promise.all([parseToolset(), parseMcpTool(), parseHttpTool()]);

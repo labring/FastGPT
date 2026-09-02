@@ -2,7 +2,12 @@ import { NextAPI } from '@/service/middleware/entry';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { AppFolderTypeList, ToolTypeList, AppTypeList } from '@fastgpt/global/core/app/constants';
+import {
+  AppFolderTypeList,
+  ToolSetAppTypeList,
+  ToolTypeList,
+  AppTypeList
+} from '@fastgpt/global/core/app/constants';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import {
   CreateAppRequestBodySchema,
@@ -42,7 +47,10 @@ import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migratio
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
 import { getSystemDefaultModelIds } from '@fastgpt/service/core/ai/model';
-import { encodeToolSetNodesForStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
+import {
+  compactAndEncodeToolSetNodesForStorage,
+  encodeToolSetNodesForStorage
+} from '@fastgpt/service/core/app/jsonSchemaStorage';
 
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
@@ -183,7 +191,9 @@ export const onCreateApp = async ({
     modelReferencePolicy: 'fallback'
   });
   await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });
-  const storageNodes = encodeToolSetNodesForStorage(storageModules ?? normalizedWorkflow.nodes);
+  const storageNodes = ToolSetAppTypeList.includes(type)
+    ? encodeToolSetNodesForStorage(storageModules ?? normalizedWorkflow.nodes)
+    : compactAndEncodeToolSetNodesForStorage(normalizedWorkflow.nodes);
   if (!AppFolderTypeList.includes(type!)) {
     await validatePublishAppAgentSkillReadPermissions({
       nodes: normalizedWorkflow.nodes,
@@ -326,7 +336,7 @@ export const onUpdateAppWorkflow = async ({
     modelReferencePolicy: 'fallback'
   });
   await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });
-  const storageNodes = encodeToolSetNodesForStorage(workflow.nodes);
+  const storageNodes = compactAndEncodeToolSetNodesForStorage(workflow.nodes);
 
   return await MongoApp.findByIdAndUpdate(
     appId,
