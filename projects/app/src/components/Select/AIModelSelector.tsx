@@ -16,6 +16,7 @@ import {
   isModelAllowedByValues,
   resolveModelSelectorDefault,
   resolveModelSelectorDisabled,
+  resolveModelSelectorProviders,
   resolveModelSelectorSelection
 } from './AIModelSelector.utils';
 import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
@@ -95,6 +96,7 @@ const AIModelSelector = ({
   const { t, i18n } = useTranslation();
   const { modelList, loading } = useUserModelLists({ outLinkAuthData });
   const getModelProvider = useUserModelStore((state) => state.getModelProvider);
+  const getModelProviders = useUserModelStore((state) => state.getModelProviders);
   const defaultModelId = useUserModelStore((state) => state.defaultModelIds[modelType]);
   const avatarSize = useMemo(() => getModelAvatarSize(props.size), [props.size]);
   const allowedValues = useMemo(
@@ -155,7 +157,10 @@ const AIModelSelector = ({
     onChange?.(defaultModel.modelId);
   }, [autoSelectDefault, currentValue, defaultModel, loading, modelType, onChange]);
 
-  const providerIds = Array.from(new Set(models.map((model) => model.provider)));
+  const providerIds = resolveModelSelectorProviders({
+    models,
+    providers: getModelProviders(i18n.language)
+  });
   const grouped = models.length > 10;
   const selectorList: ListItemType[] = grouped
     ? providerIds.map((providerId) => {

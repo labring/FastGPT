@@ -901,6 +901,7 @@
   "model.type.tts": "语音合成",
   "model_loading": "模型加载中...",
   "model_loading_label": "模型请求中",
+  "model_catalog_load_failed": "模型目录加载失败，请刷新页面后重试。",
   "model_not_exist": "模型不存在",
   "model_disabled": "{{model}} 模型已停用",
   "month_text": "个月",

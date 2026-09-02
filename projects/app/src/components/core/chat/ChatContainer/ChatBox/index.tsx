@@ -13,12 +13,16 @@ import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { useTranslation } from 'next-i18next';
 import type { MarkChatReadBodyType } from '@fastgpt/global/openapi/core/chat/history/api';
 import { postStopV2Chat } from '@/web/core/chat/api';
-import type { ChatBoxInputType, ChatGenerateStatusChangeHandler } from './type';
+import type {
+  ChatBoxInputType,
+  ChatGenerateStatusChangeHandler,
+  ChatGeneratingConflictRecovery
+} from './type';
 import type { StartChatFnProps } from '../type';
 import ChatInput from './Input/ChatInput';
 import AgentAskComposer from './Input/AgentAskComposer';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { getInteractiveByHistories, isPendingAgentAsk } from './utils/interactive';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -64,6 +68,7 @@ import {
 import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
 import { requestStopAndAbortClient } from './utils/stop';
+import { getLastAiDataId } from './utils/resume';
 
 const ChatHomeVariablesForm = dynamic(() => import('./components/home/ChatHomeVariablesForm'));
 const DesktopHomeLayout = dynamic(() => import('./components/home/DesktopHomeLayout'));
@@ -299,15 +304,7 @@ const ChatBox = ({
     }
   );
 
-  const resumeTargetAiDataId = useMemo(() => {
-    for (let i = chatRecords.length - 1; i >= 0; i--) {
-      const row = chatRecords[i];
-      if (row.obj === ChatRoleEnum.AI && row.dataId) {
-        return row.dataId as string;
-      }
-    }
-    return undefined;
-  }, [chatRecords]);
+  const resumeTargetAiDataId = useMemo(() => getLastAiDataId(chatRecords), [chatRecords]);
 
   // Workflow running, there are user input or selection
   const { interactive: lastInteractive, canSendQuery } = useMemo(
@@ -333,6 +330,8 @@ const ChatBox = ({
     setQuestionGuide,
     generatingScroll
   });
+  const [chatGeneratingConflict, setChatGeneratingConflict] =
+    useState<ChatGeneratingConflictRecovery>();
 
   const { abortRequest, flushGeneratingMessages, generatingMessage, sendPrompt } = useChatGenerate({
     onStartChat,
@@ -351,7 +350,8 @@ const ChatBox = ({
     scrollToBottom,
     generatingScroll,
     notifyChatGenerateStatusChange,
-    finishChatGenerateStatus
+    finishChatGenerateStatus,
+    onChatGeneratingConflict: resolvedFeatures.autoResume ? setChatGeneratingConflict : undefined
   });
   const requestStopChat = useMemoizedFn(async () => {
     await requestStopAndAbortClient({
@@ -413,6 +413,7 @@ const ChatBox = ({
     // Reset local UI state when switching chats.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset on chat switch
     setQuestionGuide([]);
+    setChatGeneratingConflict(undefined);
     setValue('chatStarted', false);
     resumedChatTargetRef.current = undefined;
     // abortRequest('leave');
@@ -437,7 +438,15 @@ const ChatBox = ({
     scrollToBottom('auto');
   }, [chatScrollTargetKey, isChatRecordsLoaded, scrollToBottom]);
 
-  useChatResume({
+  const onChatGeneratingConflictRecovered = useMemoizedFn(() => {
+    toast({
+      title: t('chat:chat_generating_resumed'),
+      status: 'info',
+      duration: 5000
+    });
+  });
+
+  const { recoverChatGeneratingConflict } = useChatResume({
     enableAutoResume: resolvedFeatures.autoResume,
     isReady,
     resumeTargetAiDataId,
@@ -448,8 +457,17 @@ const ChatBox = ({
     generatingMessage,
     flushGeneratingMessages,
     scrollToBottom,
-    finishChatGenerateStatus
+    finishChatGenerateStatus,
+    onChatGeneratingConflictRecovered
   });
+
+  useEffect(() => {
+    if (!chatGeneratingConflict || isChatting) return;
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- consume the one-shot recovery signal after the failed round is rolled back
+    setChatGeneratingConflict(undefined);
+    recoverChatGeneratingConflict(chatGeneratingConflict);
+  }, [chatGeneratingConflict, isChatting, recoverChatGeneratingConflict]);
 
   const activeInteractive = lastInteractive
     ? extractDeepestInteractive(lastInteractive)
@@ -613,7 +631,6 @@ const ChatBox = ({
       processedRecords,
       expandedDeletedGroups,
       itemRefs,
-      resolvedFeatures.voice,
       resolvedFeatures.tts,
       resolvedFeatures.mark,
       resolvedFeatures.sandbox,

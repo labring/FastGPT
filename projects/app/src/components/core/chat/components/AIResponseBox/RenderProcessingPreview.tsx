@@ -5,8 +5,35 @@ import React, { useEffect, useMemo, useRef } from 'react';
 
 const PROCESSING_PREVIEW_MAX_LENGTH = 8192;
 
+export type ProcessingPreviewTarget =
+  | {
+      type: 'reasoning';
+    }
+  | {
+      type: 'tool';
+      toolId: string;
+    };
+
 /** 限制折叠预览的 DOM 体积；完整工具参数仍由消息状态直接保存和渲染。 */
 const getProcessingPreview = (content: string) => content.slice(-PROCESSING_PREVIEW_MAX_LENGTH);
+
+/** 返回预览文本对应的详情目标，确保预览展示与点击展开使用同一套优先级。 */
+export const getProcessingPreviewTarget = (
+  value: AIChatItemValueItemType
+): ProcessingPreviewTarget | undefined => {
+  const tool = value.tools?.[value.tools.length - 1] ?? value.tool;
+  if (tool?.params) {
+    return {
+      type: 'tool',
+      toolId: tool.id
+    };
+  }
+  if (!tool && value.reasoning?.content && !value.hideReason) {
+    return {
+      type: 'reasoning'
+    };
+  }
+};
 
 const ProcessingPreviewBody = React.memo(function ProcessingPreviewBody({
   content,
@@ -68,7 +95,7 @@ const ProcessingPreviewBody = React.memo(function ProcessingPreviewBody({
 });
 
 export const getProcessingPreviewLabelKey = (value: AIChatItemValueItemType) => {
-  const tool = value.tools?.[value.tools.length - 1] || value.tool;
+  const tool = value.tools?.[value.tools.length - 1] ?? value.tool;
   if (tool) return tool.toolName;
   if (value.reasoning?.content && !value.hideReason) {
     return i18nT('chat:history_generating');
@@ -84,8 +111,8 @@ const RenderProcessingPreview = React.memo(function RenderProcessingPreview({
   value: AIChatItemValueItemType;
   showAnimation: boolean;
 }) {
-  const tool = value.tools?.[value.tools.length - 1] || value.tool;
-  const reasoningContent = value.reasoning?.content || '';
+  const tool = value.tools?.[value.tools.length - 1] ?? value.tool;
+  const reasoningContent = value.reasoning?.content ?? '';
   const previewContent = useMemo(
     () => getProcessingPreview(tool ? tool.params : reasoningContent),
     [tool, reasoningContent]

@@ -3,18 +3,49 @@ title: 'V4.16.3'
 description: 'FastGPT V4.16.3 更新说明'
 upgradeTags:
   - 进行中
+  - 升级脚本
 ---
 
+## 📦 升级指南
+
+### 1. 回填历史模型引用
+
+V4.16.3 将平台内模型引用统一迁移为稳定的 `modelId`。服务启动时会自动把旧系统模型配置迁移到 `ai_models` 和 `ai_default_models`；服务正常启动后，还需要通过升级接口回填 Dataset、App、Workflow、Evaluation 和模型权限中的历史模型引用。历史 Usage 记录不会被改写。
+
+先执行 dry-run，该操作不会写入数据：
+
+```bash
+curl -X POST 'https://你的域名/api/admin/4163/backfillModelReferences' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":true}'
+```
+
+确认各分组的 `unresolved` 和 `conflicts` 均为 `0` 后，执行正式回填：
+
+```bash
+curl -X POST 'https://你的域名/api/admin/4163/backfillModelReferences' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":false}'
+```
+
+该接口可安全重复执行。正式执行后建议再次运行 dry-run，确认 `wouldUpdate`、`wouldDelete`、`unresolved` 和 `conflicts` 均为 `0`。如果 `ai_models` 为空，请先确认服务已完成启动。
+
 ## 🚀 新增内容
+
+1. FastGPT SSO Service 新增 LDAP 成员与组织架构同步，并补充不同 SSO Provider 的独立环境变量模板和配置文档。
+2. Workflow Tool 的文件上传字段支持设置为由 Agent 生成；历史文件字段仍默认保持手动上传，避免升级后行为变化。
 
 ## ⚙️ 优化
 
 1. 优化对话暂停体验：暂停请求写入工作流停止标记后立即返回；客户端收到确认后主动中断当前流式请求，不再等待最多 5 秒。
 2. 优化暂停后的内容保留：模型仅输出思考内容、尚未生成正文时暂停，也会持久化已有思考内容，刷新后仍可查看。
 3. 优化图片引用展示：图片后仅包含引用标记时，引用标记在图片下方居中显示；正文中的行内引用保持原有布局。
+4. 优化生成冲突恢复：当前对话仍在服务端生成时，客户端会识别冲突并恢复原有生成流，避免新增空白消息或错误状态。
+5. 优化处理中内容的交互：思考或工具调用的折叠预览支持点击展开，并直接定位到对应详情。
 
 ## 🐛 修复
 
-## 🛠️ 代码优化
-
-1. 重构系统模型选择存储。
+1. 修复账号注销确认弹窗底部间距、长文本无法正确换行的问题，并优化账号注销邮件模板。
+2. 将 `DB_MAX_LINK` 限制在 `10`～`1000`，避免连接数过低影响并发或配置过大造成资源压力；官方部署模板默认使用 `20`。

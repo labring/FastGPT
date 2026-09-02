@@ -26,8 +26,10 @@ import { StoreNodeItemTypeSchema } from '@fastgpt/global/core/workflow/type/node
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.schema';
 import { clearAllMyModelsCache } from '@fastgpt/service/support/permission/model/controller';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
 const BACKFILL_BATCH_SIZE = 100;
+const logger = getLogger(LogCategories.SYSTEM.UPGRADE.V4163);
 
 const BackfillModelReferencesBodySchema = z.object({
   dryRun: BoolSchema.optional().default(true)
@@ -67,6 +69,12 @@ export type BackfillModelReferencesResponse = z.infer<typeof BackfillModelRefere
 export const runBackfillModelReferences = async ({
   dryRun
 }: BackfillModelReferencesBody): Promise<BackfillModelReferencesResponse> => {
+  const migrationStartedAt = Date.now();
+  logger.info('4163 model reference backfill started', {
+    dryRun,
+    batchSize: BACKFILL_BATCH_SIZE
+  });
+
   const stats: BackfillModelReferencesResponse = {
     dryRun,
     references: {},
@@ -164,6 +172,12 @@ export const runBackfillModelReferences = async ({
     query?: Record<string, unknown>;
     transform: (record: any) => ReferenceTransformResult;
   }) => {
+    const stageStartedAt = Date.now();
+    logger.info('4163 model reference backfill stage started', {
+      stage: name,
+      dryRun
+    });
+
     const referenceStats: ReferenceStats = {
       scanned: 0,
       unchanged: 0,
@@ -177,18 +191,36 @@ export const runBackfillModelReferences = async ({
       deleted: 0
     };
     const bulkOperations: any[] = [];
+    const total = await model.countDocuments(query);
     const referenceCursor = model.find(query).lean().cursor();
+
+    const getProgress = () =>
+      total === 0 ? 100 : Number(Math.min((referenceStats.scanned / total) * 100, 100).toFixed(2));
 
     const flush = async () => {
       if (bulkOperations.length === 0) return;
 
       const pendingOperations = bulkOperations.splice(0);
       const result = await model.bulkWrite(pendingOperations, { ordered: false });
+      const batchConflicts = pendingOperations.length - result.matchedCount - result.deletedCount;
       referenceStats.updated += result.modifiedCount;
       referenceStats.deleted += result.deletedCount;
       // 未命中意味着在线数据已偏离读取快照，保留在线写入并记录冲突。
-      referenceStats.conflicts +=
-        pendingOperations.length - result.matchedCount - result.deletedCount;
+      referenceStats.conflicts += batchConflicts;
+
+      logger.debug('4163 model reference backfill batch completed', {
+        stage: name,
+        scanned: referenceStats.scanned,
+        total,
+        progress: getProgress(),
+        batchSize: pendingOperations.length,
+        batchUpdated: result.modifiedCount,
+        batchDeleted: result.deletedCount,
+        batchConflicts,
+        updated: referenceStats.updated,
+        deleted: referenceStats.deleted,
+        conflicts: referenceStats.conflicts
+      });
     };
 
     for await (const record of referenceCursor) {
@@ -230,6 +262,15 @@ export const runBackfillModelReferences = async ({
 
     await flush();
     stats.references[name] = referenceStats;
+
+    logger.info('4163 model reference backfill stage completed', {
+      stage: name,
+      dryRun,
+      total,
+      progress: getProgress(),
+      durationMs: Date.now() - stageStartedAt,
+      ...referenceStats
+    });
   };
 
   const backfillFlatModelFields = (
@@ -291,6 +332,33 @@ export const runBackfillModelReferences = async ({
   };
 
   await runCollectionBackfill({
+    name: 'modelPermissions',
+    model: MongoResourcePermission,
+    query: { resourceType: PerResourceTypeEnum.model },
+    transform: (record) => {
+      const currentModel =
+        record.resourceId !== undefined ? modelById.get(String(record.resourceId)) : undefined;
+      if (currentModel) return {};
+
+      const permissionModel =
+        typeof record.resourceName === 'string' ? modelByName.get(record.resourceName) : undefined;
+      const resourceId = permissionModel?._id;
+      if (!resourceId) {
+        return {
+          delete: true,
+          snapshot: {
+            resourceType: record.resourceType,
+            resourceId: record.resourceId,
+            resourceName: record.resourceName
+          }
+        };
+      }
+      if (String(record.resourceId ?? '') === String(resourceId)) return {};
+
+      return { set: { resourceId }, snapshot: { resourceName: record.resourceName } };
+    }
+  });
+  await runCollectionBackfill({
     name: 'datasets',
     model: MongoDataset,
     transform: (record) =>
@@ -323,33 +391,6 @@ export const runBackfillModelReferences = async ({
           requirement: { type: ModelTypeEnum.llm }
         }
       ])
-  });
-  await runCollectionBackfill({
-    name: 'modelPermissions',
-    model: MongoResourcePermission,
-    query: { resourceType: PerResourceTypeEnum.model },
-    transform: (record) => {
-      const currentModel =
-        record.resourceId !== undefined ? modelById.get(String(record.resourceId)) : undefined;
-      if (currentModel) return {};
-
-      const permissionModel =
-        typeof record.resourceName === 'string' ? modelByName.get(record.resourceName) : undefined;
-      const resourceId = permissionModel?._id;
-      if (!resourceId) {
-        return {
-          delete: true,
-          snapshot: {
-            resourceType: record.resourceType,
-            resourceId: record.resourceId,
-            resourceName: record.resourceName
-          }
-        };
-      }
-      if (String(record.resourceId ?? '') === String(resourceId)) return {};
-
-      return { set: { resourceId }, snapshot: { resourceName: record.resourceName } };
-    }
   });
 
   const backfillChatConfig = ({
@@ -669,6 +710,12 @@ export const runBackfillModelReferences = async ({
 
   // 权限回填会改变成员目录结果；正式迁移结束后统一失效迁移前生成的一小时缓存。
   if (!dryRun) await clearAllMyModelsCache();
+
+  logger.info('4163 model reference backfill completed', {
+    dryRun,
+    durationMs: Date.now() - migrationStartedAt,
+    groups: stats.groups
+  });
 
   return BackfillModelReferencesResponseSchema.parse(stats);
 };

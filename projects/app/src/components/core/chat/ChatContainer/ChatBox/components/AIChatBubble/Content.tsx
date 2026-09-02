@@ -1,5 +1,5 @@
 import { Box, Flex } from '@chakra-ui/react';
-import React from 'react';
+import React, { useState } from 'react';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType
@@ -8,7 +8,9 @@ import type { OnOpenCiteModalProps } from '@/web/core/chat/context/chatItemConte
 import AIResponseBox from '../../../../components/AIResponseBox';
 import RenderProcessingCollapse from '../../../../components/AIResponseBox/RenderProcessingCollapse';
 import RenderProcessingPreview, {
-  getProcessingPreviewLabelKey
+  getProcessingPreviewLabelKey,
+  getProcessingPreviewTarget,
+  type ProcessingPreviewTarget
 } from '../../../../components/AIResponseBox/RenderProcessingPreview';
 import {
   hasAiAnswerContent,
@@ -28,6 +30,12 @@ type AIChatBubbleContentProps = {
   onOpenCiteModal: (e?: OnOpenCiteModalProps) => void;
 };
 
+type ExpandedProcessingPreview = {
+  groupKey: string;
+  valueIndex: number;
+  target: ProcessingPreviewTarget;
+};
+
 const AIChatBubbleContent = ({
   chatValue,
   responseData,
@@ -37,6 +45,9 @@ const AIChatBubbleContent = ({
   allowedCitationIds,
   onOpenCiteModal
 }: AIChatBubbleContentProps) => {
+  const [expandedProcessingPreview, setExpandedProcessingPreview] =
+    useState<ExpandedProcessingPreview>();
+
   const renderValue = ({
     value,
     index,
@@ -46,7 +57,8 @@ const AIChatBubbleContent = ({
     showStandaloneProcessing,
     showAnswer = true,
     showInteractive = true,
-    defaultExpandProcessing = true
+    defaultExpandProcessing = true,
+    defaultExpandedProcessingTarget
   }: {
     value: AIChatItemValueItemType;
     index: number;
@@ -57,6 +69,7 @@ const AIChatBubbleContent = ({
     showAnswer?: boolean;
     showInteractive?: boolean;
     defaultExpandProcessing?: boolean;
+    defaultExpandedProcessingTarget?: ProcessingPreviewTarget;
   }) => {
     const isLastResponse = isLastChild && index === chatValue.length - 1;
 
@@ -77,6 +90,7 @@ const AIChatBubbleContent = ({
         showAnswer={showAnswer}
         showInteractive={showInteractive}
         defaultExpandProcessing={defaultExpandProcessing}
+        defaultExpandedProcessingTarget={defaultExpandedProcessingTarget}
       />
     );
   };
@@ -90,6 +104,8 @@ const AIChatBubbleContent = ({
     const group = processingGroup;
     processingGroup = [];
     const previewItem = group[group.length - 1];
+    const groupKey = `${dataId}-processing-${group[0].index}`;
+    const previewTarget = previewItem ? getProcessingPreviewTarget(previewItem.value) : undefined;
     const hasFinishedContent = group.some(
       ({ value }) => hasAiAnswerContent(value) || hasAiInteractiveContent(value)
     );
@@ -100,7 +116,7 @@ const AIChatBubbleContent = ({
       group.some(({ index }) => index === chatValue.length - 1);
 
     contentBlocks.push(
-      <Box key={`${dataId}-processing-${group[0].index}`}>
+      <Box key={groupKey}>
         <RenderProcessingCollapse
           isProcessing={isProcessing}
           label={previewItem ? getProcessingPreviewLabelKey(previewItem.value) : undefined}
@@ -108,6 +124,17 @@ const AIChatBubbleContent = ({
             previewItem ? (
               <RenderProcessingPreview value={previewItem.value} showAnimation={isProcessing} />
             ) : undefined
+          }
+          onPreviewOpen={
+            previewItem && previewTarget
+              ? () => {
+                  setExpandedProcessingPreview({
+                    groupKey,
+                    valueIndex: previewItem.index,
+                    target: previewTarget
+                  });
+                }
+              : undefined
           }
         >
           {group.map(({ value, index }) => (
@@ -119,7 +146,12 @@ const AIChatBubbleContent = ({
                 showAnswer: false,
                 showInteractive: false,
                 showStandaloneProcessing: false,
-                defaultExpandProcessing: false
+                defaultExpandProcessing: false,
+                defaultExpandedProcessingTarget:
+                  expandedProcessingPreview?.groupKey === groupKey &&
+                  expandedProcessingPreview.valueIndex === index
+                    ? expandedProcessingPreview.target
+                    : undefined
               })}
             </Box>
           ))}

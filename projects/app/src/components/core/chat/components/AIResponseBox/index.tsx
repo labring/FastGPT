@@ -15,6 +15,7 @@ import RenderPaymentPauseInteractive from './RenderPaymentPauseInteractive';
 import RenderPlan from './RenderPlan';
 import RenderPlanStatus from './RenderPlanStatus';
 import RenderProcessingCollapse from './RenderProcessingCollapse';
+import type { ProcessingPreviewTarget } from './RenderProcessingPreview';
 import RenderReasoningContent from './RenderReasoningContent';
 import RenderSkill from './RenderSkill';
 import RenderText from './RenderText';
@@ -38,7 +39,8 @@ const AIResponseBox = ({
   showStandaloneProcessing: showStandaloneProcessingProp = true,
   showAnswer = true,
   showInteractive = true,
-  defaultExpandProcessing = true
+  defaultExpandProcessing = true,
+  defaultExpandedProcessingTarget
 }: {
   chatItemDataId: string;
   value: AIChatItemValueItemType;
@@ -55,6 +57,7 @@ const AIResponseBox = ({
   showAnswer?: boolean;
   showInteractive?: boolean;
   defaultExpandProcessing?: boolean;
+  defaultExpandedProcessingTarget?: ProcessingPreviewTarget;
 }) => {
   const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
   const showSkillReferences = useContextSelector(ChatItemContext, (v) => v.showSkillReferences);
@@ -81,7 +84,10 @@ const AIResponseBox = ({
         isLastResponseValue={isLastResponseValue && !textContent && !tools}
         content={reasoningContent}
         isDisabled={disableStreamingInteraction}
-        defaultExpanded={defaultExpandProcessing && isLastResponseValue && !textContent && !tools}
+        defaultExpanded={
+          defaultExpandedProcessingTarget?.type === 'reasoning' ||
+          (defaultExpandProcessing && isLastResponseValue && !textContent && !tools)
+        }
       />
     );
   }
@@ -91,7 +97,14 @@ const AIResponseBox = ({
       <Box key="tools">
         {tools.map((tool) => (
           <Box key={tool.id} _notLast={{ mb: 2 }}>
-            <RenderTool showAnimation={isChatting} tool={tool} />
+            <RenderTool
+              showAnimation={isChatting}
+              tool={tool}
+              defaultExpanded={
+                defaultExpandedProcessingTarget?.type === 'tool' &&
+                defaultExpandedProcessingTarget.toolId === tool.id
+              }
+            />
           </Box>
         ))}
       </Box>

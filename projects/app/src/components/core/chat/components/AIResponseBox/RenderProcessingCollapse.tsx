@@ -15,11 +15,13 @@ const RenderProcessingCollapse = React.memo(function RenderProcessingCollapse({
   children,
   label,
   preview,
+  onPreviewOpen,
   isProcessing = true
 }: {
   children: React.ReactNode;
   label?: string;
   preview?: React.ReactNode;
+  onPreviewOpen?: () => void;
   isProcessing?: boolean;
 }) {
   const { t } = useTranslation();
@@ -64,7 +66,29 @@ const RenderProcessingCollapse = React.memo(function RenderProcessingCollapse({
             <AccordionIcon ml={1} w={'16px'} h={'16px'} color={'myGray.500'} />
           </AccordionButton>
         </Box>
-        {isProcessing && !isExpanded && preview && <Box mt={2}>{preview}</Box>}
+        {isProcessing && !isExpanded && preview && (
+          <Box
+            role="button"
+            tabIndex={0}
+            cursor={'pointer'}
+            borderRadius={'sm'}
+            onClick={() => {
+              onPreviewOpen?.();
+              setIsExpanded(true);
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter' && event.key !== ' ') return;
+
+              event.preventDefault();
+              onPreviewOpen?.();
+              setIsExpanded(true);
+            }}
+            _hover={{ bg: 'myGray.50' }}
+            _focusVisible={{ boxShadow: '0 0 0 2px var(--chakra-colors-primary-300)' }}
+          >
+            {preview}
+          </Box>
+        )}
         {isExpanded && (
           <AccordionPanel py={0} pr={0} pl={0} mt={2}>
             <Flex flexDirection={'column'} gap={2}>

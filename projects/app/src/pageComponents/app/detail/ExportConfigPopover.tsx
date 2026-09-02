@@ -9,12 +9,16 @@ import { fileDownload } from '@/web/common/file/utils';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { filterSensitiveFormData } from '@/web/core/app/utils';
+import { addModelNamesToAppForm, filterSensitiveFormData } from '@/web/core/app/utils';
 import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { cloneDeep } from 'lodash-es';
+import { addModelNamesToWorkflow } from '@fastgpt/global/core/workflow/utils';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 type ExportConfigPopoverProps = {
   appType: AppTypeEnum;
@@ -45,6 +49,8 @@ const ExportConfigPopover = ({
 }: ExportConfigPopoverProps) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
+  const { toast } = useToast();
+  const { modelList, loading: modelsLoading, loaded: modelsLoaded } = useUserModelLists();
 
   const [localFilterSensitiveInfo, setLocalFilterSensitiveInfo] = useState<boolean>(true);
   const filterSensitiveInfo = filterSensitiveInfoProp ?? localFilterSensitiveInfo;
@@ -62,10 +68,21 @@ const ExportConfigPopover = ({
 
   const onExportWorkflow = useCallback(
     async (mode: 'copy' | 'json') => {
+      if (!modelsLoaded) {
+        toast({
+          title: t(modelsLoading ? 'common:model_loading' : 'common:model_catalog_load_failed'),
+          status: modelsLoading ? 'info' : 'error'
+        });
+        return;
+      }
+
       let config = '';
 
       if (appForm) {
-        const appConfig = filterSensitiveInfo ? filterSensitiveFormData(appForm) : appForm;
+        const appConfig = cloneDeep(
+          filterSensitiveInfo ? filterSensitiveFormData(appForm) : appForm
+        );
+        addModelNamesToAppForm({ appForm: appConfig, models: modelList });
         config = JSON.stringify(
           {
             ...appConfig,
@@ -79,14 +96,16 @@ const ExportConfigPopover = ({
       } else if (getWorkflowData) {
         const workflowData = getWorkflowData();
         if (!workflowData) return;
-        const nodes = filterSensitiveInfo
-          ? filterSensitiveNodesData(workflowData.nodes)
-          : workflowData.nodes;
+        const nodes = cloneDeep(
+          filterSensitiveInfo ? filterSensitiveNodesData(workflowData.nodes) : workflowData.nodes
+        );
+        const exportChatConfig = cloneDeep(chatConfig);
+        addModelNamesToWorkflow({ nodes, chatConfig: exportChatConfig, models: modelList });
         config = JSON.stringify(
           {
             nodes,
             edges: workflowData.edges,
-            chatConfig,
+            chatConfig: exportChatConfig,
             type: appType,
             name: appName,
             intro: appIntro ?? ''
@@ -123,6 +142,10 @@ const ExportConfigPopover = ({
       chatConfig,
       copyData,
       getWorkflowData,
+      modelList,
+      modelsLoading,
+      modelsLoaded,
+      toast,
       t,
       filterSensitiveInfo
     ]

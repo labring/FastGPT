@@ -9,6 +9,7 @@ import { WorkflowUtilsContext } from '../context/workflowUtilsContext';
 import { parseWorkflowImportConfig } from '@/pageComponents/dashboard/agent/utils/appTemplateParse';
 import { AppContext } from '../../context';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 const ImportAppConfigEditor = dynamic(() => import('@/pageComponents/app/ImportAppConfigEditor'), {
   ssr: false
@@ -25,6 +26,7 @@ const ImportSettings = ({ onClose }: Props) => {
   const appType = useContextSelector(AppContext, (v) => v.appDetail.type);
   const { t } = useTranslation();
   const [value, setValue] = useState('');
+  const { modelList, loading: modelsLoading, loaded: modelsLoaded } = useUserModelLists();
 
   return (
     <MyModal
@@ -41,6 +43,13 @@ const ImportSettings = ({ onClose }: Props) => {
             if (!value) {
               return onClose();
             }
+            if (!modelsLoaded) {
+              toast({
+                title: t('common:model_catalog_load_failed'),
+                status: 'error'
+              });
+              return;
+            }
             try {
               const workflowConfig = await parseWorkflowImportConfig({
                 config: JSON.parse(value),
@@ -48,7 +57,9 @@ const ImportSettings = ({ onClose }: Props) => {
                   appType === AppTypeEnum.workflowTool
                     ? AppTypeEnum.workflowTool
                     : AppTypeEnum.workflow,
-                t
+                t,
+                models: modelList,
+                modelCatalogLoaded: modelsLoaded
               });
               await initData(workflowConfig);
               toast({
@@ -63,6 +74,7 @@ const ImportSettings = ({ onClose }: Props) => {
               });
             }
           }}
+          isLoading={modelsLoading}
           fontWeight={'500'}
         >
           {t('common:Save')}

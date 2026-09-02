@@ -639,7 +639,7 @@ export const formatModels = ({
   chatConfig?: AppSchemaType['chatConfig'];
   models?: Array<{ modelId: string; model: string; type: ModelTypeEnum }>;
   defaultModelIds?: Partial<Record<ModelTypeEnum, string>>;
-  modelReferencePolicy: 'preserve' | 'fallback' | 'validate';
+  modelReferencePolicy: 'preserve' | 'fallback' | 'validate' | 'import';
 }) => {
   const missingModels = new Set<string>();
   const getFallbackModelId = (type: ModelTypeEnum) => {
@@ -664,16 +664,26 @@ export const formatModels = ({
     type: ModelTypeEnum;
     featureEnabled: boolean;
   }) => {
-    const matchedModel =
+    const matchedModelById =
       modelId !== undefined
         ? models.find((item) => item.modelId === String(modelId) && item.type === type)
-        : typeof model === 'string'
-          ? models.find((item) => item.model === model && item.type === type)
-          : undefined;
+        : undefined;
+    const matchedModelByName =
+      typeof model === 'string'
+        ? models.find((item) => item.model === model && item.type === type)
+        : undefined;
+    const matchedModel =
+      matchedModelById ??
+      (modelId === undefined || modelReferencePolicy === 'import' ? matchedModelByName : undefined);
     if (matchedModel) return matchedModel.modelId;
     // 草稿必须保留用户现场；canonical 字段存在时绝不能用 legacy 字段隐式修复。
     if (modelReferencePolicy === 'preserve') {
       return modelId !== undefined ? modelId : model;
+    }
+    // 导入配置中的 modelId 可能来自其他环境；名称也无法解析时清空值。
+    // 调用方仍保留 canonical modelId 字段或 input 结构，便于选择器回填有效模型。
+    if (modelReferencePolicy === 'import') {
+      return undefined;
     }
     if (modelReferencePolicy === 'fallback' || !featureEnabled) {
       return getFallbackModelId(type);
@@ -866,6 +876,102 @@ export const formatModels = ({
   if (modelReferencePolicy === 'validate' && missingModels.size > 0) {
     throw new Error(`${Array.from(missingModels).join('、')} 模型已停用`);
   }
+
+  return nodes;
+};
+
+/**
+ * 为 JSON 导出补充可跨环境解析的 legacy model 名称，同时保留当前环境的 modelId。
+ *
+ * 只处理 FastGPT 系统模型引用；插件自定义的同名参数不会被改写。动态引用没有可反查的
+ * 静态模型，因此不生成 legacy 字段。无法从当前模型目录解析的 ID 保持原样。
+ */
+export const addModelNamesToWorkflow = ({
+  nodes,
+  chatConfig,
+  models = []
+}: {
+  nodes?: StoreNodeItemType[];
+  chatConfig?: AppSchemaType['chatConfig'];
+  models?: Array<{ modelId: string; model: string; type: ModelTypeEnum }>;
+}) => {
+  const findModelName = ({ modelId, type }: { modelId: unknown; type: ModelTypeEnum }) => {
+    if (typeof modelId !== 'string' || /^\{\{.*\}\}$/.test(modelId)) return;
+    return models.find((item) => item.modelId === modelId && item.type === type)?.model;
+  };
+  const addConfigModelName = ({
+    config,
+    type
+  }: {
+    config?: { modelId?: unknown; model?: unknown };
+    type: ModelTypeEnum;
+  }) => {
+    if (!config) return;
+    const model = findModelName({ modelId: config.modelId, type });
+    if (model !== undefined) config.model = model;
+  };
+
+  addConfigModelName({ config: chatConfig?.questionGuide, type: ModelTypeEnum.llm });
+  addConfigModelName({ config: chatConfig?.ttsConfig, type: ModelTypeEnum.tts });
+
+  nodes?.forEach((node) => {
+    for (const [legacyKey, modelIdKey] of workflowModelKeyMappings) {
+      const modelIdInput = node.inputs.find((input) => input.key === modelIdKey);
+      if (!modelIdInput || !isWorkflowSystemModelInput({ node, input: modelIdInput })) continue;
+
+      const type =
+        legacyKey === NodeInputKeyEnum.datasetSearchRerankModel
+          ? ModelTypeEnum.rerank
+          : ModelTypeEnum.llm;
+      const model = findModelName({ modelId: modelIdInput.value, type });
+      if (model === undefined) continue;
+
+      const legacyInput = node.inputs.find(
+        (input) => input.key === legacyKey && isWorkflowSystemModelInput({ node, input })
+      );
+      if (legacyInput) {
+        legacyInput.value = model;
+      } else {
+        node.inputs.push({ ...modelIdInput, key: legacyKey, value: model });
+      }
+    }
+
+    const datasetParamsInput = node.inputs.find(
+      (input) => input.key === NodeInputKeyEnum.datasetParams
+    );
+    if (
+      node.flowNodeType !== FlowNodeTypeEnum.agent ||
+      !datasetParamsInput?.value ||
+      typeof datasetParamsInput.value !== 'object' ||
+      Array.isArray(datasetParamsInput.value)
+    ) {
+      return;
+    }
+
+    const datasetParams = datasetParamsInput.value as Record<string, unknown>;
+    const addNestedModelName = ({
+      modelIdKey,
+      legacyKey,
+      type
+    }: {
+      modelIdKey: string;
+      legacyKey: string;
+      type: ModelTypeEnum;
+    }) => {
+      const model = findModelName({ modelId: datasetParams[modelIdKey], type });
+      if (model !== undefined) datasetParams[legacyKey] = model;
+    };
+    addNestedModelName({
+      modelIdKey: NodeInputKeyEnum.datasetSearchRerankModelId,
+      legacyKey: NodeInputKeyEnum.datasetSearchRerankModel,
+      type: ModelTypeEnum.rerank
+    });
+    addNestedModelName({
+      modelIdKey: NodeInputKeyEnum.datasetSearchExtensionModelId,
+      legacyKey: NodeInputKeyEnum.datasetSearchExtensionModel,
+      type: ModelTypeEnum.llm
+    });
+  });
 
   return nodes;
 };
