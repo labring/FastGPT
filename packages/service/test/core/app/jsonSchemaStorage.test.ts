@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   cleanToolSetJsonSchemasForStorage,
   compactAndEncodeToolSetNodesForStorage,
@@ -254,7 +255,7 @@ describe('workflow JSON Schema storage codec', () => {
       {
         inputs: [
           {
-            key: 'selectedTools',
+            key: NodeInputKeyEnum.selectedTools,
             value: [
               {
                 id: 'mcp-toolset',
@@ -276,7 +277,7 @@ describe('workflow JSON Schema storage codec', () => {
       {
         inputs: [
           {
-            key: 'selectedTools',
+            key: NodeInputKeyEnum.selectedTools,
             value: [
               { id: 'mcp-toolset', toolConfig: { mcpToolSet: { toolId: 'mcp-toolset' } } },
               { id: 'http-toolset', toolConfig: { httpToolSet: { toolId: 'http-toolset' } } }
@@ -292,7 +293,7 @@ describe('workflow JSON Schema storage codec', () => {
       {
         inputs: [
           {
-            key: 'selectedTools',
+            key: NodeInputKeyEnum.selectedTools,
             value: [
               { id: 'mcp-tool', toolConfig: { mcpTool: { toolId: 'mcp-tool' } } },
               { id: 'http-tool', toolConfig: { httpTool: { toolId: 'http-tool' } } }
