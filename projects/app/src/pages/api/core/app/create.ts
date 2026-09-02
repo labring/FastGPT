@@ -42,6 +42,7 @@ import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migratio
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
 import { getSystemDefaultModelIds } from '@fastgpt/service/core/ai/model';
+import { encodeToolSetNodesForStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
 
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
@@ -182,6 +183,7 @@ export const onCreateApp = async ({
     modelReferencePolicy: 'fallback'
   });
   await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });
+  const storageNodes = encodeToolSetNodesForStorage(storageModules ?? normalizedWorkflow.nodes);
   if (!AppFolderTypeList.includes(type!)) {
     await validatePublishAppAgentSkillReadPermissions({
       nodes: normalizedWorkflow.nodes,
@@ -220,7 +222,7 @@ export const onCreateApp = async ({
           intro,
           teamId,
           tmbId,
-          modules: storageModules ?? normalizedWorkflow.nodes,
+          modules: storageNodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
           type,
@@ -241,7 +243,7 @@ export const onCreateApp = async ({
           {
             tmbId,
             appId,
-            nodes: storageModules ?? normalizedWorkflow.nodes,
+            nodes: storageNodes,
             edges: normalizedWorkflow.edges,
             chatConfig: normalizedWorkflow.chatConfig,
             versionName: name,
@@ -324,12 +326,13 @@ export const onUpdateAppWorkflow = async ({
     modelReferencePolicy: 'fallback'
   });
   await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });
+  const storageNodes = encodeToolSetNodesForStorage(workflow.nodes);
 
   return await MongoApp.findByIdAndUpdate(
     appId,
     {
       type: AppTypeEnum.workflow,
-      modules: workflow.nodes,
+      modules: storageNodes,
       edges: workflow.edges,
       chatConfig: workflow.chatConfig,
       updateTime: new Date()

@@ -26,6 +26,7 @@ import {
   PublishAppQuerySchema,
   PublishAppResponseSchema
 } from '@fastgpt/global/openapi/core/app/version/api';
+import { encodeToolSetNodesForStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
 
 async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   const {
@@ -56,6 +57,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     nodes: normalizedWorkflow.nodes,
     teamId
   });
+  const storageNodes = encodeToolSetNodesForStorage(normalizedWorkflow.nodes);
   if (isPublish) {
     await validatePublishAppAgentSkillReadPermissions({
       nodes: normalizedWorkflow.nodes,
@@ -78,7 +80,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
         {
           tmbId,
           appId,
-          nodes: normalizedWorkflow.nodes,
+          nodes: storageNodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
           versionName: i18nT('app:auto_save'),
@@ -92,7 +94,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       await MongoApp.updateOne(
         { _id: appId },
         {
-          modules: normalizedWorkflow.nodes,
+          modules: storageNodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
           updateTime: new Date()
@@ -124,7 +126,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       [
         {
           appId,
-          nodes: normalizedWorkflow.nodes,
+          nodes: storageNodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
           isPublish,
@@ -138,7 +140,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
 
     // update app
     const setUpdate = {
-      modules: normalizedWorkflow.nodes,
+      modules: storageNodes,
       edges: normalizedWorkflow.edges,
       chatConfig: normalizedWorkflow.chatConfig,
       updateTime: new Date(),

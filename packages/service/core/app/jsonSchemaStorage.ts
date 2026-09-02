@@ -89,6 +89,10 @@ export const encodeMcpToolSetNodesForStorage = <T>(nodes: T): T =>
 export const encodeHttpToolSetNodesForStorage = <T>(nodes: T): T =>
   transformToolSetNodes(nodes, 'http', encodeSchema);
 
+/** 将工作流中的 MCP/HTTP 工具 JSON Schema 编码为 Mongo 可安全存储的字符串。 */
+export const encodeToolSetNodesForStorage = <T>(nodes: T): T =>
+  encodeHttpToolSetNodesForStorage(encodeMcpToolSetNodesForStorage(nodes));
+
 /** 将 Mongo 中的 MCP 工具 JSON Schema 恢复为运行时对象。 */
 export const decodeMcpToolSetNodesFromStorage = <T>(nodes: T): T =>
   transformToolSetNodes(nodes, 'mcp', decodeSchema);
