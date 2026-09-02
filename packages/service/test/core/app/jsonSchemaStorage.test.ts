@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   decodeMcpToolSetNodesFromStorage,
+  encodeToolSetNodesForStorage,
   encodeHttpToolSetNodesForStorage,
   encodeMcpToolSetNodesForStorage
 } from '@fastgpt/service/core/app/jsonSchemaStorage';
@@ -41,6 +42,35 @@ describe('workflow JSON Schema storage codec', () => {
     expect(typeof encodedHttp[0].toolConfig.httpToolSet.toolList[0].outputSchema).toBe('string');
     expect(typeof encodedHttp[0].toolConfig.httpToolSet.toolList[0].requestSchema).toBe('string');
     expect(encodedMcp[0].toolConfig.mcpToolSet.toolList[0].inputSchema).toContain('$schema');
+  });
+
+  it('encodes both MCP and HTTP tool schemas in one workflow', () => {
+    const nodes = [
+      {
+        toolConfig: {
+          mcpToolSet: {
+            toolList: [{ inputSchema: { type: 'object' } }]
+          },
+          httpToolSet: {
+            toolList: [
+              {
+                inputSchema: { type: 'object' },
+                outputSchema: { type: 'object' },
+                requestSchema: { type: 'object' }
+              }
+            ]
+          }
+        }
+      }
+    ];
+
+    const encoded = encodeToolSetNodesForStorage(nodes) as any[];
+    const { mcpToolSet, httpToolSet } = encoded[0].toolConfig;
+
+    expect(typeof mcpToolSet.toolList[0].inputSchema).toBe('string');
+    expect(typeof httpToolSet.toolList[0].inputSchema).toBe('string');
+    expect(typeof httpToolSet.toolList[0].outputSchema).toBe('string');
+    expect(typeof httpToolSet.toolList[0].requestSchema).toBe('string');
   });
 
   it('decodes stored strings', () => {
