@@ -14,6 +14,7 @@ import {
   type TeamPluginInstallSourceEnum
 } from '@fastgpt/global/core/plugin/schema/type';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { MongoTeamInstalledPlugin } from './schema/teamInstalledPluginSchema';
 import { SystemToolRepo } from '../app/tool/systemTool/systemTool.repo';
 
@@ -37,6 +38,13 @@ export type TeamPluginListFilter = {
 
 export const normalizeTeamPluginStatus = (status?: PluginStatusType) =>
   status === PluginStatusEnum.SoonOffline ? PluginStatusEnum.Normal : status;
+
+/** Reject team plugin installation endpoints unless the feature is explicitly enabled. */
+export function assertTeamPluginInstallEnabled() {
+  if (global.feConfigs?.enable_team_plugin_upload !== true) {
+    throw TeamErrEnum.teamPluginInstallDisabled;
+  }
+}
 
 export const getRawPluginIdFromSystemToolId = (toolId: string) =>
   SystemToolCodec.getPluginIdFromDB(toolId).split('/')[0];

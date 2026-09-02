@@ -9,6 +9,7 @@ import { TeamManagePermissionVal } from '@fastgpt/global/support/permission/user
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import fs from 'node:fs';
 import { getTeamPluginSource } from '@fastgpt/global/core/app/tool/utils';
+import { assertTeamPluginInstallEnabled } from '@fastgpt/service/core/plugin/teamPluginPolicy';
 
 /* ============================================================================
  * API: 上传团队插件包
@@ -47,9 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method !== 'POST') {
       return jsonRes(res, { code: 405, error: 'Method not allowed' });
     }
-    if (global.feConfigs.enable_team_plugin_upload === false) {
-      return jsonRes(res, { code: 403, error: 'Team plugin upload is disabled' });
-    }
+    assertTeamPluginInstallEnabled();
 
     const { teamId } = await authUserPer({
       req,
@@ -92,7 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (error: unknown) {
     return jsonRes(res, {
       code: 500,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : error
     });
   } finally {
     multer.clearDiskTempFiles(filepaths);
