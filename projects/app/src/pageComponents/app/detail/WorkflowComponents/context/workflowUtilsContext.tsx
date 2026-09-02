@@ -31,7 +31,7 @@ import { AppContext } from '../../context';
 import { WorkflowSnapshotContext } from './workflowSnapshotContext';
 import { WorkflowActionsContext } from './workflowActionsContext';
 import {
-  canInputBeAgentGenerated,
+  isToolParamInput,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { isEqual } from 'lodash-es';
@@ -81,12 +81,7 @@ export const splitToolInputsByMode = (inputs: FlowNodeInputItemType[], isTool: b
   inputs.forEach((item) => {
     const normalizedInput = normalizeFlowNodeInputType(item, { isTool });
     // canEdit 仅表示该字段可在节点内编辑；代码变量不应自动成为工具参数。
-    const isToolParamInput =
-      item.canEdit === true &&
-      item.defaultToAgentGenerated === true &&
-      canInputBeAgentGenerated(item);
-
-    if (isTool && isToolParamInput) {
+    if (isTool && isToolParamInput(item)) {
       toolInputs.push(item);
       return;
     }
@@ -161,7 +156,8 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         nextNodes: nodes,
         previousChatConfig,
         nextChatConfig,
-        globalVariableSourceLabel: t('common:core.module.Variable')
+        globalVariableSourceLabel: t('common:core.module.Variable'),
+        nodeIds: []
       })
     );
   }, [appDetail.chatConfig, setNodes, t]);

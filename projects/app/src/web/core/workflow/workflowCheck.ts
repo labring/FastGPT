@@ -30,7 +30,8 @@ import {
   canInputBeAgentGenerated,
   initToolInputTypeByDefaultMode,
   isToolInputValueConfigured,
-  isAgentGeneratedToolInput
+  isAgentGeneratedToolInput,
+  isToolParamInput
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { isToolNotExistError } from '@fastgpt/global/core/app/utils';
 import {
@@ -43,6 +44,7 @@ import {
 } from './utils';
 import {
   getWorkflowReferenceIssueCode as getReferenceIssueCode,
+  getWorkflowReferenceItemsFromValue,
   getWorkflowReferenceStatuses
 } from './referenceCheck';
 
@@ -901,20 +903,30 @@ export const checkWorkflowNodeIssues = ({
           }
         }
 
+        if (
+          data.flowNodeType === FlowNodeTypeEnum.httpRequest468 &&
+          isToolNode &&
+          isToolParamInput(input)
+        ) {
+          return;
+        }
+
         const isReferenceInput = nodeInputIsReference(input);
         // 节点未显式配置时，runtime 会回退 defaultValue；运行检查应与实际执行一致。
         const effectiveInputValue = input.value ?? input.defaultValue;
+        const hasTextReference = getWorkflowReferenceItemsFromValue(effectiveInputValue).length > 0;
 
-        const referenceIssueCode = isReferenceInput
-          ? getReferenceIssueCode(
-              getReferenceStatuses({
-                value: effectiveInputValue,
-                valueType: input.valueType,
-                sourceNodes: getInputSourceNodes(input),
-                context
-              })
-            )
-          : undefined;
+        const referenceIssueCode =
+          isReferenceInput || hasTextReference
+            ? getReferenceIssueCode(
+                getReferenceStatuses({
+                  value: effectiveInputValue,
+                  valueType: input.valueType,
+                  sourceNodes: getInputSourceNodes(input),
+                  context
+                })
+              )
+            : undefined;
         if (referenceIssueCode) {
           addIssue({
             node,

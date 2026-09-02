@@ -28,6 +28,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import { captureDeletedWorkflowReferenceSnapshots } from '@/web/core/workflow/referenceCheck';
 import { AppContext } from '@/pageComponents/app/detail/context';
+import { useTranslation } from 'next-i18next';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -129,6 +130,8 @@ const WorkflowInitContextProvider = ({
   // Nodes
   const [nodes = [], setNodes] = useNodesState<FlowNodeItemType>([]);
   const chatConfig = useContextSelector(AppContext, (v) => v.appDetail.chatConfig);
+  const { t } = useTranslation();
+  const previousChatConfigRef = useRef(chatConfig);
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
       setNodes((state) => {
@@ -137,12 +140,33 @@ const WorkflowInitContextProvider = ({
           previousNodes: state,
           nextNodes,
           previousChatConfig: chatConfig,
-          nextChatConfig: chatConfig
+          nextChatConfig: chatConfig,
+          nodeIds: changes.flatMap((change) => {
+            if (change.type === 'add') return [change.item.id];
+            return 'id' in change ? [change.id] : [];
+          })
         });
       });
     },
     [chatConfig, setNodes]
   );
+
+  useDeepCompareEffect(() => {
+    const previousChatConfig = previousChatConfigRef.current;
+    previousChatConfigRef.current = chatConfig;
+    if (previousChatConfig === chatConfig) return;
+
+    setNodes((state) =>
+      captureDeletedWorkflowReferenceSnapshots({
+        previousNodes: state,
+        nextNodes: state,
+        previousChatConfig,
+        nextChatConfig: chatConfig,
+        globalVariableSourceLabel: t('common:core.module.Variable'),
+        nodeIds: []
+      })
+    );
+  }, [chatConfig, setNodes, t]);
   const getNodes = useMemoizedFn(() => nodes);
 
   const nodeFormat = useMemo(() => {

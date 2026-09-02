@@ -441,7 +441,8 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
           nextNodes,
           previousChatConfig: appDetail.chatConfig,
           nextChatConfig: appDetail.chatConfig,
-          globalVariableSourceLabel: t('common:core.module.Variable')
+          globalVariableSourceLabel: t('common:core.module.Variable'),
+          nodeIds: [id]
         });
       });
 
@@ -606,7 +607,8 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
           nextNodes,
           previousChatConfig: appDetail.chatConfig,
           nextChatConfig: appDetail.chatConfig,
-          globalVariableSourceLabel: t('common:core.module.Variable')
+          globalVariableSourceLabel: t('common:core.module.Variable'),
+          nodeIds: nodeIdsToRecheck
         });
       });
 
