@@ -39,7 +39,7 @@ export enum TeamErrEnum {
   accountCancellationPending = 'accountCancellationPending',
   teamPluginInstallDisabled = 'teamPluginInstallDisabled',
   teamOwnerOverSize = 'teamOwnerOverSize',
-  onlyWecomTeam = 'onlyWecomTeam',
+  onlyMultiTeam = 'onlyMultiTeam',
   ownerTransferConflict = 'ownerTransferConflict'
 }
 
@@ -232,8 +232,8 @@ const teamErr = [
     message: i18nT('common:code_error.team_error.owner_team_over_size')
   },
   {
-    statusText: TeamErrEnum.onlyWecomTeam,
-    message: i18nT('common:code_error.team_error.only_wecom_team')
+    statusText: TeamErrEnum.onlyMultiTeam,
+    message: i18nT('common:code_error.team_error.only_multi_team')
   },
   {
     statusText: TeamErrEnum.ownerTransferConflict,

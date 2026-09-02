@@ -213,7 +213,7 @@
   "code_error.team_error.org_parent_not_exist": "父組織不存在",
   "code_error.team_error.over_size": "團隊成員超出限制",
   "code_error.team_error.owner_team_over_size": "使用者擁有的團隊數量已達上限",
-  "code_error.team_error.only_wecom_team": "僅企業微信團隊支援轉讓所有權",
+  "code_error.team_error.only_multi_team": "僅多團隊模式支援轉讓所有權",
   "code_error.team_error.owner_transfer_conflict": "團隊所有權已變更，請重試",
   "code_error.team_error.plugin_amount_not_enough": "已達外掛程式數量上限",
   "code_error.team_error.team_plugin_install_disabled": "團隊外掛安裝功能未開啟",

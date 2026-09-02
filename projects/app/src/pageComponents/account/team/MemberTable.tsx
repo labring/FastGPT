@@ -233,19 +233,17 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               {t('account_team:user_team_invite_member')}
             </Button>
           )}
-          {userInfo?.team.permission.isOwner &&
-            !isSyncMode &&
-            (isWecomTeam || feConfigs?.teamMode !== 'single') && (
-              <Button
-                w={['100%', 'auto']}
-                variant={'whitePrimary'}
-                size="md"
-                borderRadius={'md'}
-                onClick={onOpenTransferModal}
-              >
-                {t('account_team:transfer_team_ownership')}
-              </Button>
-            )}
+          {userInfo?.team.permission.isOwner && !isSyncMode && feConfigs?.teamMode === 'multi' && (
+            <Button
+              w={['100%', 'auto']}
+              variant={'whitePrimary'}
+              size="md"
+              borderRadius={'md'}
+              onClick={onOpenTransferModal}
+            >
+              {t('account_team:transfer_team_ownership')}
+            </Button>
+          )}
           {userInfo?.team.permission.isOwner && isSyncMode && (
             <Button
               w={['100%', 'auto']}

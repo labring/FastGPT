@@ -213,7 +213,7 @@
   "code_error.team_error.org_parent_not_exist": "父部门不存在",
   "code_error.team_error.over_size": "团队成员超出限制",
   "code_error.team_error.owner_team_over_size": "用户拥有的团队数量已达上限",
-  "code_error.team_error.only_wecom_team": "仅企业微信团队支持转让所有权",
+  "code_error.team_error.only_multi_team": "仅多团队模式支持转让所有权",
   "code_error.team_error.owner_transfer_conflict": "团队所有权发生变化，请重试",
   "code_error.team_error.plugin_amount_not_enough": "插件数量已达上限~",
   "code_error.team_error.team_plugin_install_disabled": "团队插件安装能力未开启",
