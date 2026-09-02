@@ -14,6 +14,43 @@ import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workf
 import type { ChatSiteItemType } from '../type';
 
 /**
+ * 判断是否需要向服务端确认当前会话的生成状态。
+ *
+ * 状态检查只用于本地没有流请求的当前会话；普通生成流或恢复流仍在运行时跳过，
+ * 避免同一会话并发建立两条 SSE 连接。
+ */
+export const shouldCheckChatResumeStatus = ({
+  enableAutoResume,
+  isReady,
+  isChatRecordsLoaded,
+  sourceKey,
+  chatId,
+  isChatting,
+  isResumeRequestActive,
+  chatBoxSourceKey,
+  chatBoxChatId
+}: {
+  enableAutoResume: boolean;
+  isReady: boolean;
+  isChatRecordsLoaded: boolean;
+  sourceKey?: string;
+  chatId?: string;
+  isChatting: boolean;
+  isResumeRequestActive: boolean;
+  chatBoxSourceKey?: string;
+  chatBoxChatId?: string;
+}) =>
+  enableAutoResume &&
+  isReady &&
+  isChatRecordsLoaded &&
+  !!sourceKey &&
+  !!chatId &&
+  !isChatting &&
+  !isResumeRequestActive &&
+  chatBoxSourceKey === sourceKey &&
+  chatBoxChatId === chatId;
+
+/**
  * 判断恢复流中是否需要先补一个 AI placeholder。
  *
  * 恢复生成时，前端可能先拿到 SSE 增量事件，而历史记录中还没有本轮 AI 消息。

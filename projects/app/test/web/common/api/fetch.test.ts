@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { getStreamTypingQueueConsumeCount, handleEventSourceData } from '@/web/common/api/fetch';
+import {
+  createStreamFetchError,
+  getStreamTypingQueueConsumeCount,
+  handleEventSourceData
+} from '@/web/common/api/fetch';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 describe('handleEventSourceData', () => {
@@ -50,6 +54,25 @@ describe('handleEventSourceData', () => {
       params: '{"q":1}'
     });
   });
+
+  it('should preserve a structured SSE business error', () => {
+    const onerror = vi.fn();
+    const error = {
+      code: 504001,
+      statusText: 'chatIsGenerating',
+      message: 'Chat is generating'
+    };
+
+    handleEventSourceData({
+      event: SseResponseEventEnum.error,
+      data: JSON.stringify(error),
+      enqueue: vi.fn(),
+      onmessage: vi.fn(),
+      onerror
+    });
+
+    expect(onerror).toHaveBeenCalledWith(error);
+  });
 });
 
 describe('getStreamTypingQueueConsumeCount', () => {
@@ -63,5 +86,43 @@ describe('getStreamTypingQueueConsumeCount', () => {
 
   it('should not consume an empty queue', () => {
     expect(getStreamTypingQueueConsumeCount({ queueLength: 0, finished: true })).toBe(0);
+  });
+});
+
+describe('createStreamFetchError', () => {
+  it('preserves business error metadata from an HTTP response', () => {
+    expect(
+      createStreamFetchError({
+        error: {
+          response: {
+            data: {
+              message: 'Chat is generating',
+              statusText: 'chatIsGenerating',
+              code: 504001
+            }
+          }
+        },
+        fallbackMessage: 'Fallback',
+        responseText: ''
+      })
+    ).toEqual({
+      message: 'Chat is generating',
+      responseText: '',
+      statusText: 'chatIsGenerating',
+      code: 504001
+    });
+  });
+
+  it('omits invalid optional metadata', () => {
+    expect(
+      createStreamFetchError({
+        error: 'Network error',
+        fallbackMessage: 'Fallback',
+        responseText: 'partial'
+      })
+    ).toEqual({
+      message: 'Network error',
+      responseText: 'partial'
+    });
   });
 });

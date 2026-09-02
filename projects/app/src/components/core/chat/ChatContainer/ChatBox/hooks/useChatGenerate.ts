@@ -48,6 +48,7 @@ import { cloneDeep } from 'lodash-es';
 import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
 import { getChatItemErrorText } from '@/global/core/chat/utils';
+import { isChatGeneratingError } from '../utils/generate';
 
 type HumanChatSiteItemType = Extract<ChatSiteItemType, { obj: ChatRoleEnum.Human }>;
 
@@ -100,6 +101,7 @@ type UseChatGenerateProps = {
   generatingScroll: (force?: boolean) => void;
   notifyChatGenerateStatusChange: NotifyChatGenerateStatusChange;
   finishChatGenerateStatus: FinishChatGenerateStatus;
+  onChatGeneratingConflict: () => void;
 };
 
 const isAbortByLeave = (reason: unknown) => {
@@ -112,7 +114,7 @@ const isAbortByLeave = (reason: unknown) => {
  * 这个 hook 承接原 `ChatBox/index.tsx` 中最核心的运行时逻辑：
  * - `generatingMessage`：按 SSE event 增量更新最后一条 AI 消息。
  * - `sendPrompt`：校验输入、创建 human/AI placeholder、调用 `onStartChat`、处理完成和失败。
- * - `abortRequest`：统一中断 chat、question guide、plugin 和 resume 请求，仅用于页面切换、重开会话等前端生命周期清理。
+ * - `abortRequest`：统一中断 chat、question guide、plugin 和 resume 请求，用于服务端确认停止后的本地中断及页面生命周期清理。
  *
  * 输入约定：
  * - refs 仍由 ChatBox 持有，保证页面切换、恢复生成等生命周期清理共用同一组 controller。
@@ -143,7 +145,8 @@ export const useChatGenerate = ({
   scrollToBottom,
   generatingScroll,
   notifyChatGenerateStatusChange,
-  finishChatGenerateStatus
+  finishChatGenerateStatus,
+  onChatGeneratingConflict
 }: UseChatGenerateProps) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -865,6 +868,26 @@ export const useChatGenerate = ({
             }
 
             flushGeneratingMessageQueue();
+
+            if (isChatGeneratingError(err)) {
+              // 服务端已有生成任务，本轮并未真正创建；回滚占位消息后再恢复原有流。
+              setChatRecords(history);
+              resetInputVal({ text, files });
+              // 暂时解除本轮发送态；确认服务端仍 generating 后，恢复 hook 会重新同步状态。
+              setChatBoxData((state) =>
+                state.sourceKey === sourceKey && state.chatId === chatId
+                  ? {
+                      ...state,
+                      chatGenerateStatus: ChatGenerateStatusEnum.error
+                    }
+                  : state
+              );
+              onChatGeneratingConflict();
+              if (autoTTSResponse) {
+                finishSegmentedAudio();
+              }
+              return;
+            }
 
             const errorMsg = t(getErrText(err, t('common:core.chat.error.Chat error') as any));
 

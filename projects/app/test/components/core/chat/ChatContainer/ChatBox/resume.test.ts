@@ -5,6 +5,7 @@ import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryG
 import {
   hasMeaningfulAiOutput,
   mergeResumeCompletedChatRecords,
+  shouldCheckChatResumeStatus,
   shouldCreateResumeAiPlaceholder
 } from '@/components/core/chat/ChatContainer/ChatBox/utils/resume';
 import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
@@ -48,6 +49,43 @@ describe('shouldCreateResumeAiPlaceholder', () => {
   it('returns false for stream control events that do not create chat content', () => {
     expect(shouldCreateResumeAiPlaceholder(SseResponseEventEnum.error)).toBe(false);
     expect(shouldCreateResumeAiPlaceholder(SseResponseEventEnum.updateVariables)).toBe(false);
+  });
+});
+
+describe('shouldCheckChatResumeStatus', () => {
+  const validParams = {
+    enableAutoResume: true,
+    isReady: true,
+    isChatRecordsLoaded: true,
+    sourceKey: 'app:app-1',
+    chatId: 'chat-1',
+    isChatting: false,
+    isResumeRequestActive: false,
+    chatBoxSourceKey: 'app:app-1',
+    chatBoxChatId: 'chat-1'
+  };
+
+  it('checks server status when the visible chat has no local stream', () => {
+    expect(shouldCheckChatResumeStatus(validParams)).toBe(true);
+  });
+
+  it.each([
+    { enableAutoResume: false },
+    { isReady: false },
+    { isChatRecordsLoaded: false },
+    { sourceKey: undefined },
+    { chatId: undefined },
+    { isChatting: true },
+    { isResumeRequestActive: true },
+    { chatBoxSourceKey: 'app:other' },
+    { chatBoxChatId: 'chat-other' }
+  ])('skips checks for an ineligible local state: %o', (override) => {
+    expect(
+      shouldCheckChatResumeStatus({
+        ...validParams,
+        ...override
+      })
+    ).toBe(false);
   });
 });
 
