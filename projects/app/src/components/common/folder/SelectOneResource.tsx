@@ -115,16 +115,9 @@ const SelectOneResource = ({
                     ? 'myGray.900'
                     : 'myGray.500'
               }
-              bg={
-                index === 0
-                  ? selectFolder && value === null
-                    ? 'primary.50 !important'
-                    : 'myGray.100'
-                  : undefined
-              }
               fontSize={'xs'}
               cursor={'pointer'}
-              _hover={{ color: 'primary.600' }}
+              _hover={{ bg: 'myGray.100', color: 'primary.600' }}
               onClick={() => {
                 if (index === 0) {
                   selectRoot();
@@ -175,7 +168,9 @@ const SelectOneResource = ({
                   w={'20px'}
                   h={'20px'}
                   ml={2}
+                  borderRadius={'xs'}
                   cursor={disabled ? 'not-allowed' : 'pointer'}
+                  _hover={disabled ? undefined : { bg: 'myGray.100' }}
                   onClick={(e) => {
                     e.stopPropagation();
                     enterFolderFromArrow(item);
