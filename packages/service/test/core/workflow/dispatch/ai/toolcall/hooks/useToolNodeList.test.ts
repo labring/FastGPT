@@ -13,7 +13,6 @@ const createToolNode = (overrides: Record<string, any> = {}) =>
     flowNodeType: FlowNodeTypeEnum.tool,
     avatar: 'tool-avatar',
     intro: 'Search intro',
-    toolDescription: 'Search data',
     inputs: [],
     ...overrides
   }) as any;
@@ -83,7 +82,6 @@ describe('useToolNodeList', () => {
         flowNodeType: FlowNodeTypeEnum.tool,
         avatar: 'tool-avatar',
         intro: 'Search intro',
-        toolDescription: 'Search data',
         jsonSchema: inputSchema,
         inputs: expect.arrayContaining([
           expect.objectContaining({

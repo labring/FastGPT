@@ -131,6 +131,7 @@ const NodeCard = (props: Props) => {
     inputs,
     rtDoms,
     pluginId,
+    flowNodeType,
     colorSchema
   } = props;
 
@@ -450,7 +451,7 @@ const NodeCard = (props: Props) => {
                     <NodeStatusBadge status={nodeTemplate?.status} error={error} />
                   </Flex>
 
-                  <NodeIntro nodeId={nodeId} intro={intro} />
+                  <NodeIntro nodeId={nodeId} intro={intro} flowNodeType={flowNodeType} />
                 </Box>
               )}
             </Box>
@@ -697,13 +698,19 @@ NodeTitleSection.displayName = 'NodeTitleSection';
 // 节点介绍组件
 const NodeIntro = React.memo(function NodeIntro({
   nodeId,
-  intro = ''
+  intro = '',
+  flowNodeType
 }: {
   nodeId: string;
   intro?: string;
+  flowNodeType: FlowNodeTypeEnum;
 }) {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const placeholder =
+    flowNodeType === FlowNodeTypeEnum.toolSet
+      ? t('app:toolset_intro_placeholder')
+      : t('app:node_not_intro');
 
   const handleSave = useCallback(
     (newVal: string) => {
@@ -728,7 +735,7 @@ const NodeIntro = React.memo(function NodeIntro({
         onSave={handleSave}
         type={'textarea'}
         maxLength={500}
-        placeholder={t('app:node_not_intro')}
+        placeholder={placeholder}
         fontSize={'sm'}
         lineHeight={'short'}
         color={'myGray.500'}
@@ -915,7 +922,6 @@ const MenuRender = React.memo(function MenuRender({
             pluginId: node.data.pluginId
           }),
           intro: node.data.intro,
-          toolDescription: node.data.toolDescription,
           showStatus: node.data.showStatus,
 
           version: node.data.version,

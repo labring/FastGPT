@@ -412,6 +412,7 @@
   "tool_params_description_tips": "Describe what the parameter does. When used in Tool calling, this description helps the model provide the correct value.",
   "tool_run_free": "This tool runs without points consumption",
   "tool_select": "Select tool",
+  "toolset_intro_placeholder": "The toolset description does not affect tool calling. If needed, edit the tool description directly.",
   "tool_soon_offset_tips": "This tool will be offline in the future. For the sake of your business stability, please replace it as soon as possible.",
   "tool_tip": "When run as a Tool, use this field as the Tool response?",
   "tool_type_tools": "tool",

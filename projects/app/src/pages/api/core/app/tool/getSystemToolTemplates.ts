@@ -57,7 +57,7 @@ export async function handler(
         pluginId: getRawPluginIdFromSystemToolId(parentId)
       });
     }
-    const parentSource = await getQuerySource({ source, teamId, tmbId });
+    const parentSource = await getQuerySource({ source, tmbId });
     const parent = await systemToolRepo.getSystemToolDisplayInfoWithChildIcons({
       pluginId: parentId,
       lang,
@@ -71,7 +71,7 @@ export async function handler(
       parent.children
         ?.filter((child) => isSelectableToolStatus(child.status))
         .map((child) => ({
-          ...parent,
+          ...omitLegacyToolDescription(parent),
           templateType: FlowNodeTemplateTypeEnum.tools,
           isTool: true,
           // templateType: tool.isToolSet
@@ -80,7 +80,6 @@ export async function handler(
           flowNodeType: FlowNodeTypeEnum.tool,
           name: child.name,
           intro: child.description,
-          toolDescription: child.toolDescription,
           id: `${parentId}/${child.id}`,
           source: isTeamPluginSource(source) ? source : parent.source,
           avatar: child.icon ?? parent.avatar,
@@ -121,7 +120,7 @@ export async function handler(
       return true;
     })
     .map<NodeTemplateListItemType>((tool) => ({
-      ...tool,
+      ...omitLegacyToolDescription(tool),
       templateType: FlowNodeTemplateTypeEnum.tools,
       isTool: true,
       flowNodeType: tool.isToolSet ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
@@ -129,7 +128,6 @@ export async function handler(
       name: tool.name,
       intro: tool.intro,
       instructions: tool.userGuide ?? '',
-      toolDescription: tool.toolDescription,
       tags: tool.tags
     }))
     .filter((item) => filterTemplateBySearchKey(item, searchRegex));
@@ -150,15 +148,7 @@ async function getActiveDebugSource({ tmbId, source }: { tmbId: string; source?:
   }
 }
 
-async function getQuerySource({
-  source,
-  teamId,
-  tmbId
-}: {
-  source?: string;
-  teamId: string;
-  tmbId: string;
-}) {
+async function getQuerySource({ source, tmbId }: { source?: string; tmbId: string }) {
   if (isTeamPluginSource(source)) return source;
   if (isDebugToolSource(source)) {
     return getActiveDebugSource({ tmbId, source });
@@ -189,19 +179,17 @@ function filterTemplatesBySearchKey<T extends NodeTemplateListItemType>(
   return templates.filter((item) => filterTemplateBySearchKey(item, searchRegex));
 }
 
-function filterTemplateBySearchKey(
-  template: NodeTemplateListItemType & {
-    toolDescription?: string;
-  },
-  searchRegex?: RegExp
-) {
+function filterTemplateBySearchKey(template: NodeTemplateListItemType, searchRegex?: RegExp) {
   if (!searchRegex) return true;
 
-  return [
-    template.name,
-    template.intro,
-    template.instructions,
-    template.toolDescription,
-    ...(template.tags ?? [])
-  ].some((text) => searchRegex.test(String(text ?? '')));
+  return [template.name, template.intro, template.instructions, ...(template.tags ?? [])].some(
+    (text) => searchRegex.test(String(text ?? ''))
+  );
+}
+
+/** API 边界裁剪历史系统工具资源字段，兼容旧 provider 或数据库对象。 */
+function omitLegacyToolDescription<T extends object>(value: T): T {
+  const result = { ...value } as T & { toolDescription?: unknown };
+  delete result.toolDescription;
+  return result;
 }

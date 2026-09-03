@@ -3,6 +3,7 @@ import { getDefaultEmbeddingModelData } from '../ai/model';
 import { desensitizeSystemModel } from '../ai/config/utils';
 import { getDatasetEmbeddingModel } from '../dataset/model';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -247,8 +248,15 @@ export async function rewriteAppWorkflowToDetail({
           node.hasTokenFee = preview.hasTokenFee;
           node.hasSystemSecret = preview.hasSystemSecret;
 
+          const { source } = splitCombineToolId(node.pluginId);
+          if (
+            (source === AppToolSourceEnum.mcp || source === AppToolSourceEnum.http) &&
+            !node.intro?.trim()
+          ) {
+            node.intro = preview.intro;
+          }
+
           node.toolConfig = preview.toolConfig;
-          node.toolDescription = preview.toolDescription;
 
           // Latest version
           if (!node.version) {

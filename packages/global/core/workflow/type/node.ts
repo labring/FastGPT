@@ -156,7 +156,6 @@ export const FlowNodeCommonTypeSchema = z.object({
   colorSchema: z.enum(NodeColorSchemaEnum).optional(), // color schema
   name: z.string(), // name
   intro: z.string().optional(), // template list intro
-  toolDescription: z.string().optional(), // tool description
   showStatus: BoolSchema.optional(), // chatting response step status
 
   version: z.string().optional(), // version

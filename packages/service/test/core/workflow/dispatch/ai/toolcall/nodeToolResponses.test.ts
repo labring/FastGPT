@@ -222,7 +222,6 @@ describe('newly connectable nodes as tools', () => {
               avatar: '',
               flowNodeType: FlowNodeTypeEnum.code,
               intro: '',
-              toolDescription: 'run code',
               inputs: codeNode.inputs
             } as any
           ],
