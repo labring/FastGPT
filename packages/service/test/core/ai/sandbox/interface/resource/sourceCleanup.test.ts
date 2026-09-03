@@ -30,7 +30,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/resource', () => ({
 import {
   deleteAppSandboxes,
   deleteSkillEditSandboxes
-} from '@fastgpt/service/core/ai/sandbox/application/sourceCleanup';
+} from '@fastgpt/service/core/ai/sandbox/interface/resource/sourceCleanup';
 
 describe('Sandbox source cleanup', () => {
   beforeEach(() => {

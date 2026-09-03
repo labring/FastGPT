@@ -1,13 +1,13 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { batchRunSettled } from '@fastgpt/global/common/system/utils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { getLogger, LogCategories } from '../../../../common/logger';
+import { getLogger, LogCategories } from '../../../../../common/logger';
 import {
   deleteAppSandboxes as deleteCurrentAppSandboxes,
   deleteSkillEditSandboxes as deleteCurrentSkillSandboxes
-} from './resource';
-import { withSandboxSourceMutationLease } from './lease';
-import { assertSandboxSourceDeleted } from './sourceGuard';
+} from '../../application/resource';
+import { withSandboxSourceMutationLease } from '../../application/lease';
+import { assertSandboxSourceDeleted } from '../../application/sourceGuard';
 
 const SOURCE_DELETE_CONCURRENCY = 10;
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
