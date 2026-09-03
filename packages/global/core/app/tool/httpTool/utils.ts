@@ -61,6 +61,26 @@ export const jsonSchemaProperty2ManualHttpToolValueType = (
   });
 };
 
+/** Read the explicit HTTP input mode, falling back to the legacy description marker. */
+export const isHttpToolInputAgentGenerated = (
+  property: Pick<JsonSchemaPropertiesItemType, 'isToolParam' | 'x-tool-description'>
+): boolean => property.isToolParam ?? Boolean(property['x-tool-description']);
+
+/** Persist the HTTP input mode while retaining the legacy description marker. */
+export const updateHttpToolInputProperty = ({
+  key,
+  property,
+  enabled
+}: {
+  key: string;
+  property: JsonSchemaPropertiesItemType;
+  enabled: boolean;
+}): JsonSchemaPropertiesItemType => ({
+  ...property,
+  'x-tool-description': enabled ? property.description || key : '',
+  isToolParam: enabled
+});
+
 export const getHTTPToolSetRuntimeNode = ({
   name,
   avatar,

@@ -22,6 +22,10 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { putUpdateHttpTool } from '@/web/core/app/api/httpTools';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import {
+  isHttpToolInputAgentGenerated,
+  updateHttpToolInputProperty
+} from '@fastgpt/global/core/app/tool/httpTool/utils';
 import SchemaConfigModal from './SchemaConfigModal';
 import ManualToolModal from './ManualToolModal';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
@@ -320,7 +324,7 @@ const ToolDetailModal = ({
   const [enabledParams, setEnabledParams] = useState<Set<string>>(() => {
     const initial = new Set<string>();
     Object.entries(tool.inputSchema?.properties || {}).forEach(([key, value]) => {
-      if (value['x-tool-description'] !== '') {
+      if (isHttpToolInputAgentGenerated(value)) {
         initial.add(key);
       }
     });
@@ -480,10 +484,11 @@ const ToolDetailModal = ({
                   properties: Object.fromEntries(
                     Object.entries(tool.inputSchema?.properties || {}).map(([key, value]) => [
                       key,
-                      {
-                        ...value,
-                        'x-tool-description': enabledParams.has(key) ? value.description || key : ''
-                      }
+                      updateHttpToolInputProperty({
+                        key,
+                        property: value,
+                        enabled: enabledParams.has(key)
+                      })
                     ])
                   )
                 }
