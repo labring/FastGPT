@@ -31,7 +31,7 @@ import { getClientToolPreviewNode } from '@fastgpt/service/core/app/tool/utils/c
 
 describe('getClientToolPreviewNode', () => {
   beforeEach(() => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
   });
 
   it('uses explicit debug source for system tool preview without encoding appId', async () => {
@@ -78,28 +78,31 @@ describe('getClientToolPreviewNode', () => {
         type: AppTypeEnum.httpToolSet,
         name: 'HTTP Tools',
         avatar: 'http.svg',
-        intro: 'HTTP toolset',
-        modules: [
-          {
-            flowNodeType: 'toolSet',
-            inputs: [],
-            outputs: [],
-            toolConfig: {
-              httpToolSet: {
-                toolList: [
-                  {
-                    name: 'search',
-                    description: 'Search tool',
-                    requestSchema: { type: 'object', properties: { q: { type: 'string' } } },
-                    inputSchema: { type: 'object', properties: { q: { type: 'string' } } },
-                    outputSchema: { type: 'object', properties: { result: { type: 'string' } } }
-                  }
-                ]
-              }
+        intro: 'HTTP toolset'
+      })
+    });
+    mocks.getAppVersionById.mockResolvedValueOnce({
+      nodes: [
+        {
+          toolConfig: {
+            httpToolSet: {
+              toolList: [
+                {
+                  name: 'search',
+                  description: 'Search tool',
+                  requestSchema: { type: 'object', properties: { q: { type: 'string' } } },
+                  inputSchema: { type: 'object', properties: { q: { type: 'string' } } },
+                  outputSchema: { type: 'object', properties: { result: { type: 'string' } } }
+                }
+              ]
             }
           }
-        ]
-      })
+        }
+      ],
+      edges: [],
+      chatConfig: {},
+      versionId: 'version-id',
+      versionName: 'Version 1'
     });
 
     const result = await getClientToolPreviewNode({

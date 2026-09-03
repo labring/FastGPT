@@ -16,7 +16,7 @@ import {
   isValidReferenceValueFormat,
   nodeInputIsReference
 } from '../../utils';
-import type { McpToolSetRuntimeConfigType } from '../../type/node';
+import type { NodeToolConfigType } from '../../type/node';
 
 // 这些旧插件没有持久化 catchError，但当前运行时需要显式开启错误分支。
 const legacyCatchErrorPluginIds = new Set([
@@ -152,8 +152,9 @@ const migrateLegacyCanvasStructure = (workflow: CanonicalWorkflowData): Canonica
                 ...(legacyMcpToolSet.headerSecret === undefined
                   ? {}
                   : {
-                      headerSecret:
-                        legacyMcpToolSet.headerSecret as McpToolSetRuntimeConfigType['headerSecret']
+                      headerSecret: legacyMcpToolSet.headerSecret as NonNullable<
+                        NodeToolConfigType['mcpToolSet']
+                      >['headerSecret']
                     }),
                 toolList: Array.isArray(legacyMcpToolSet.toolList) ? legacyMcpToolSet.toolList : []
               }

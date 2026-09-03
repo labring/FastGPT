@@ -34,7 +34,6 @@ import {
 } from '@/components/common/secret/HeaderAuthConfig';
 import HeaderAuthForm from '@/components/common/secret/HeaderAuthForm';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import { isHttpToolSetRuntimeConfig } from '@fastgpt/global/core/workflow/type/node';
 
 export type HttpToolsType = {
   id?: string;
@@ -61,8 +60,7 @@ const SchemaConfigModal = ({ onClose }: { onClose: () => void }) => {
     const toolSetNode = appDetail.modules.find(
       (item) => item.flowNodeType === FlowNodeTypeEnum.toolSet
     );
-    const toolSet = toolSetNode?.toolConfig?.httpToolSet;
-    return isHttpToolSetRuntimeConfig(toolSet) ? toolSet : undefined;
+    return toolSetNode?.toolConfig?.httpToolSet;
   }, [appDetail.modules]);
 
   const { register, setValue, handleSubmit, watch } = useForm<HttpToolsType>({

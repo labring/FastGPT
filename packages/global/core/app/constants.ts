@@ -34,7 +34,6 @@ export const ToolTypeList = [
   AppTypeEnum.httpToolSet,
   AppTypeEnum.workflowTool
 ];
-export const ToolSetAppTypeList = [AppTypeEnum.mcpToolSet, AppTypeEnum.httpToolSet];
 export const AppTypeList = [AppTypeEnum.simple, AppTypeEnum.chatAgent, AppTypeEnum.workflow];
 
 export const defaultTTSConfig: AppTTSConfigType = { type: 'web' };

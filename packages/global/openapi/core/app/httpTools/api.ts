@@ -75,52 +75,6 @@ export const UpdateHttpToolsResponseSchema = z.undefined().meta({
 export type UpdateHttpToolsResponseType = z.infer<typeof UpdateHttpToolsResponseSchema>;
 
 /* ============================================================================
- * API: Get HTTP toolset children
- * Route: GET /core/app/httpTools/getChildren
- * ============================================================================ */
-export const GetHttpChildrenQuerySchema = z.object({
-  id: ObjectIdSchema.meta({
-    example: '68ad85a7463006c963799a05',
-    description: 'HTTP 工具集 ID'
-  }),
-  searchKey: z.string().optional().meta({
-    example: 'search',
-    description: '工具名称搜索关键词'
-  })
-});
-export type GetHttpChildrenQueryType = z.infer<typeof GetHttpChildrenQuerySchema>;
-
-export const HttpChildrenItemSchema = z
-  .object({
-    id: z.string().meta({
-      example: 'http-68ad85a7463006c963799a05/search',
-      description: '工具 ID'
-    }),
-    avatar: z.string().meta({
-      example: 'https://example.com/avatar.png',
-      description: '工具头像'
-    }),
-    name: z.string().meta({
-      example: 'search',
-      description: '工具名称'
-    }),
-    description: z.string().meta({
-      example: 'Search public documents',
-      description: '工具能力说明'
-    })
-  })
-  .meta({
-    description: 'HTTP 工具集子工具'
-  });
-export type HttpChildrenItemType = z.infer<typeof HttpChildrenItemSchema>;
-
-export const GetHttpChildrenResponseSchema = z.array(HttpChildrenItemSchema).meta({
-  example: [],
-  description: 'HTTP 工具列表'
-});
-export type GetHttpChildrenResponseType = z.infer<typeof GetHttpChildrenResponseSchema>;
-
-/* ============================================================================
  * API: 通过 URL 解析 OpenAPI Schema
  * Route: POST /core/app/httpTools/getApiSchemaByUrl
  * ============================================================================ */

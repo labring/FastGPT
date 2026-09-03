@@ -57,7 +57,7 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { isDebugToolSource, splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
-import { useNodeToolSetList } from '../../WorkflowComponents/Flow/nodes/components/ToolSetList';
+import { getNodeToolSetList } from '../../WorkflowComponents/Flow/nodes/components/ToolSetList';
 import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
 import { validateToolInputValue } from '@fastgpt/global/core/app/tool/runtime';
 
@@ -641,7 +641,7 @@ const SecretConfigSection = ({
 
 const ToolSetListCard = ({ tool }: { tool: FlowNodeTemplateType }) => {
   const { t } = useSafeTranslation();
-  const toolList = useNodeToolSetList(tool) as ToolSetListItemType[];
+  const toolList = getNodeToolSetList(tool) as ToolSetListItemType[];
 
   if (toolList.length === 0) return null;
 

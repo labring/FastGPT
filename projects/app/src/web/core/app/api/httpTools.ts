@@ -1,8 +1,6 @@
-import { GET, POST, PUT } from '@/web/common/api/request';
+import { POST, PUT } from '@/web/common/api/request';
 import type {
   CreateHttpToolsBodyType,
-  GetHttpChildrenQueryType,
-  GetHttpChildrenResponseType,
   GetApiSchemaByUrlBodyType,
   GetApiSchemaByUrlResponseType,
   RunHttpToolBodyType,
@@ -27,9 +25,6 @@ export const postCreateHttpTools = (data: CreateHttpToolsBodyType) =>
 
 export const putUpdateHttpTool = (data: UpdateHttpToolsBodyType) =>
   PUT<UpdateHttpToolsResponseType>('/core/app/httpTools/update', data);
-
-export const getHttpChildren = (data: GetHttpChildrenQueryType) =>
-  GET<GetHttpChildrenResponseType>('/core/app/httpTools/getChildren', data);
 
 export const postRunHTTPTool = (data: RunHttpToolBodyType) =>
   POST<RunHttpToolResponseType>('/core/app/httpTools/runTool', data, {

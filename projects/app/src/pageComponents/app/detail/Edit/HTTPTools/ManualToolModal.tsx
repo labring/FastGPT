@@ -50,7 +50,6 @@ import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
 import { putUpdateHttpTool } from '@/web/core/app/api/httpTools';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { isHttpToolSetRuntimeConfig } from '@fastgpt/global/core/workflow/type/node';
 import CurlImportModal from './CurlImportModal';
 import type { EditorVariableLabelPickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
@@ -198,8 +197,7 @@ const ManualToolModal = ({
       const toolSetNode = appDetail.modules.find(
         (item) => item.flowNodeType === FlowNodeTypeEnum.toolSet
       );
-      const httpToolSet = toolSetNode?.toolConfig?.httpToolSet;
-      const existingToolList = isHttpToolSetRuntimeConfig(httpToolSet) ? httpToolSet.toolList : [];
+      const existingToolList = toolSetNode?.toolConfig?.httpToolSet?.toolList || [];
 
       const updatedToolList = (() => {
         if (isEditMode) {

@@ -12,10 +12,6 @@ import { replaceEditorVariable } from '../workflow/dispatch/utils/replaceEditorV
 import FormData from 'form-data';
 import { getLogger, LogCategories } from '../../common/logger';
 import { decodeHttpToolSetNodesFromStorage } from './jsonSchemaStorage';
-import {
-  isHttpToolSetRuntimeConfig,
-  type HttpToolSetRuntimeConfigType
-} from '@fastgpt/global/core/workflow/type/node';
 
 const logger = getLogger(LogCategories.MODULE.APP.HTTP_TOOLS);
 
@@ -192,22 +188,10 @@ export const runHTTPTool = async ({
   }
 };
 
-/** Read the current HTTP toolset runtime configuration from an app. */
-export const getHTTPToolSet = (
-  app: Pick<AppSchemaType, 'modules'>
-): HttpToolSetRuntimeConfigType | undefined => {
-  const modules = decodeHttpToolSetNodesFromStorage(app.modules ?? []);
-  const toolSet = modules[0]?.toolConfig?.httpToolSet;
-  return isHttpToolSetRuntimeConfig(toolSet) ? toolSet : undefined;
-};
-
-/** Read HTTP child tools, optionally reusing a decoded current toolset config. */
-export const getHTTPToolList = async (
-  app: AppSchemaType,
-  toolSet: HttpToolSetRuntimeConfigType | undefined = getHTTPToolSet(app)
-) => {
+export const getHTTPToolList = async (app: AppSchemaType) => {
+  const modules = decodeHttpToolSetNodesFromStorage(app.modules);
   return (
-    toolSet?.toolList.map((item) => ({
+    modules[0].toolConfig?.httpToolSet?.toolList.map((item) => ({
       ...item,
       id: `${AppToolSourceEnum.http}-${String(app._id)}/${item.name}`,
       avatar: app.avatar
