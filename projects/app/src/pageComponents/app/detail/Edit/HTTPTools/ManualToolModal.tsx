@@ -197,7 +197,8 @@ const ManualToolModal = ({
       const toolSetNode = appDetail.modules.find(
         (item) => item.flowNodeType === FlowNodeTypeEnum.toolSet
       );
-      const existingToolList = toolSetNode?.toolConfig?.httpToolSet?.toolList || [];
+      const toolSet = toolSetNode?.toolConfig?.httpToolSet;
+      const existingToolList = toolSet && 'toolList' in toolSet ? toolSet.toolList : [];
 
       const updatedToolList = (() => {
         if (isEditMode) {

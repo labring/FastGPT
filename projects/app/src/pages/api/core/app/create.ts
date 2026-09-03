@@ -34,6 +34,11 @@ import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/register';
 import {
+  compactWorkflowToolConfigsForStorage,
+  encodeHttpToolSetNodesForStorage,
+  encodeMcpToolSetNodesForStorage
+} from '@fastgpt/service/core/app/jsonSchemaStorage';
+import {
   beforeUpdateAppFormat,
   validatePublishAppAgentSkillReadPermissions,
   updateParentFoldersUpdateTime
@@ -182,6 +187,13 @@ export const onCreateApp = async ({
     modelReferencePolicy: 'fallback'
   });
   await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });
+  const storageNodes =
+    storageModules ??
+    (type === AppTypeEnum.mcpToolSet
+      ? encodeMcpToolSetNodesForStorage(normalizedWorkflow.nodes)
+      : type === AppTypeEnum.httpToolSet
+        ? encodeHttpToolSetNodesForStorage(normalizedWorkflow.nodes)
+        : compactWorkflowToolConfigsForStorage(normalizedWorkflow.nodes));
   if (!AppFolderTypeList.includes(type!)) {
     await validatePublishAppAgentSkillReadPermissions({
       nodes: normalizedWorkflow.nodes,
@@ -220,7 +232,7 @@ export const onCreateApp = async ({
           intro,
           teamId,
           tmbId,
-          modules: storageModules ?? normalizedWorkflow.nodes,
+          modules: storageNodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
           type,
@@ -241,7 +253,7 @@ export const onCreateApp = async ({
           {
             tmbId,
             appId,
-            nodes: storageModules ?? normalizedWorkflow.nodes,
+            nodes: storageNodes,
             edges: normalizedWorkflow.edges,
             chatConfig: normalizedWorkflow.chatConfig,
             versionName: name,
@@ -324,12 +336,13 @@ export const onUpdateAppWorkflow = async ({
     modelReferencePolicy: 'fallback'
   });
   await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });
+  const storageNodes = compactWorkflowToolConfigsForStorage(workflow.nodes);
 
   return await MongoApp.findByIdAndUpdate(
     appId,
     {
       type: AppTypeEnum.workflow,
-      modules: workflow.nodes,
+      modules: storageNodes,
       edges: workflow.edges,
       chatConfig: workflow.chatConfig,
       updateTime: new Date()
