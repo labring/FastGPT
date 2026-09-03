@@ -190,7 +190,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       maxW={['90vw', '700px']}
       w={'700px'}
       h={['90vh', '80vh']}
-      bodyStyles={{ p: 0, overflow: 'hidden' }}
+      bodyStyles={{ p: 0, minH: 0, overflow: 'hidden' }}
     >
       {/* Header: row and search */}
       <Box px={[3, 6]} pt={4} display={'flex'} justifyContent={'space-between'} w={'full'}>
@@ -249,7 +249,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
           <FolderPath paths={paths} FirstPathDom={null} onClick={onUpdateParentId} />
         </Flex>
       )}
-      <MyBox isLoading={isLoading} mt={1} pb={3} flex={'1 0 0'} h={0}>
+      <MyBox isLoading={isLoading} mt={1} pb={3} flex={'1 0 0'} h={0} minH={0}>
         {isTeamTemplate ? (
           <TeamScrollData flex={1} minH={0} isLoading={isLoading} showLoadingOverlay={false}>
             <RenderList
@@ -548,10 +548,10 @@ const RenderList = React.memo(function RenderList({
     <Flex
       position="relative"
       direction="column"
-      minH={isPaginated ? '100%' : undefined}
+      minH={isPaginated ? 0 : undefined}
       h={isPaginated ? 'auto' : '100%'}
     >
-      <Box overflowY={isPaginated ? 'visible' : 'auto'} mb={8} w={'full'}>
+      <Box overflowY={isPaginated ? 'visible' : 'auto'} mb={isPaginated ? 0 : 8} w={'full'}>
         {PluginListRender()}
       </Box>
       {type === TemplateTypeEnum.systemTools && (
