@@ -155,6 +155,7 @@ export default function SkillPickerPlugin({
   const menuAnchorRef = useRef<HTMLElement | null>(null);
   const menuElementRef = useRef<HTMLDivElement | null>(null);
   const menuPositionFrameRef = useRef<number | null>(null);
+  const matchingStringRef = useRef<string | null>(null);
   const [hasHorizontalOverflow, setHasHorizontalOverflow] = useState(false);
 
   const updateHorizontalOverflow = useCallback(() => {
@@ -164,25 +165,52 @@ export default function SkillPickerPlugin({
     setHasHorizontalOverflow(menuElement.scrollWidth > menuElement.clientWidth);
   }, []);
 
+  const getTriggerRect = useCallback(() => {
+    const selection = window.getSelection();
+    const anchorNode = selection?.anchorNode;
+    if (
+      !selection ||
+      !selection.isCollapsed ||
+      !anchorNode ||
+      anchorNode.nodeType !== Node.TEXT_NODE
+    ) {
+      return undefined;
+    }
+
+    const triggerLength = (matchingStringRef.current?.length ?? 0) + 1;
+    const startOffset = selection.anchorOffset - triggerLength;
+    if (startOffset < 0) return undefined;
+
+    const range = document.createRange();
+    try {
+      range.setStart(anchorNode, startOffset);
+      range.setEnd(anchorNode, selection.anchorOffset);
+      return range.getBoundingClientRect();
+    } catch {
+      return undefined;
+    }
+  }, []);
+
   const updateMenuPosition = useCallback(() => {
     const anchorElement = menuAnchorRef.current;
     const menuElement = menuElementRef.current;
     if (!anchorElement || !menuElement) return;
 
     const menuRect = menuElement.getBoundingClientRect();
+    const triggerRect = getTriggerRect();
     const viewportWidth = window.innerWidth;
     const edgePadding = 8;
     const maxLeft = Math.max(edgePadding, viewportWidth - menuRect.width - edgePadding);
-    const nextLeft = Math.min(Math.max(menuRect.left, edgePadding), maxLeft);
+    const nextLeft = Math.min(Math.max(triggerRect?.left ?? menuRect.left, edgePadding), maxLeft);
     const currentAnchorLeft = Number.parseFloat(anchorElement.style.left);
 
     if (!Number.isFinite(currentAnchorLeft)) return;
 
-    const nextAnchorLeft = currentAnchorLeft + nextLeft - menuRect.left;
+    const nextAnchorLeft = nextLeft + window.pageXOffset;
     if (Math.abs(nextAnchorLeft - currentAnchorLeft) > 0.5) {
       anchorElement.style.left = `${nextAnchorLeft}px`;
     }
-  }, []);
+  }, [getTriggerRect]);
 
   const scheduleMenuPosition = useCallback(() => {
     if (menuPositionFrameRef.current !== null) {
@@ -492,8 +520,8 @@ export default function SkillPickerPlugin({
       const itemKey = getSkillItemKey(item);
       const childOption = getItemChildOption(item, option);
 
-      appendColumn(currentColumnIndex, childOption);
       if (childOption) {
+        appendColumn(currentColumnIndex, childOption);
         return;
       }
 
@@ -740,22 +768,18 @@ export default function SkillPickerPlugin({
           const columnItems = skillOptions[currentColumnIndex]?.list;
           if (!columnItems || columnItems.length === 0) return true;
 
-          // Use functional update to get the latest row index
-          setCurrentRowIndex((prevRowIndex) => {
-            const newIndex = prevRowIndex > 0 ? prevRowIndex - 1 : columnItems.length - 1;
+          // Move the highlight before resolving the next navigation column.
+          const newIndex = currentRowIndex > 0 ? currentRowIndex - 1 : columnItems.length - 1;
+          setCurrentRowIndex(newIndex);
 
-            void handleItemSelect({
-              currentColumnIndex: currentColumnIndex,
-              item: columnItems[newIndex],
-              option: skillOptions[currentColumnIndex]
-            });
+          void handleItemSelect({
+            currentColumnIndex,
+            item: columnItems[newIndex],
+            option: skillOptions[currentColumnIndex]
+          });
 
-            // Scroll into view after state update
-            requestAnimationFrame(() => {
-              scrollIntoView(currentColumnIndex, newIndex);
-            });
-
-            return newIndex;
+          requestAnimationFrame(() => {
+            scrollIntoView(currentColumnIndex, newIndex);
           });
         }
 
@@ -778,22 +802,18 @@ export default function SkillPickerPlugin({
           const columnItems = skillOptions[currentColumnIndex]?.list;
           if (!columnItems || columnItems.length === 0) return true;
 
-          // Use functional update to get the latest row index
-          setCurrentRowIndex((prevRowIndex) => {
-            const newIndex = prevRowIndex < columnItems.length - 1 ? prevRowIndex + 1 : 0;
+          // Move the highlight before resolving the next navigation column.
+          const newIndex = currentRowIndex < columnItems.length - 1 ? currentRowIndex + 1 : 0;
+          setCurrentRowIndex(newIndex);
 
-            void handleItemSelect({
-              currentColumnIndex: currentColumnIndex,
-              item: columnItems[newIndex],
-              option: skillOptions[currentColumnIndex]
-            });
+          void handleItemSelect({
+            currentColumnIndex,
+            item: columnItems[newIndex],
+            option: skillOptions[currentColumnIndex]
+          });
 
-            // Scroll into view after state update
-            requestAnimationFrame(() => {
-              scrollIntoView(currentColumnIndex, newIndex);
-            });
-
-            return newIndex;
+          requestAnimationFrame(() => {
+            scrollIntoView(currentColumnIndex, newIndex);
           });
         }
 
@@ -1259,6 +1279,7 @@ export default function SkillPickerPlugin({
   return (
     <LexicalTypeaheadMenuPlugin
       onQueryChange={(matchingString) => {
+        matchingStringRef.current = matchingString;
         // Update menu open state based on query
         updateMenuOpen(matchingString !== null);
       }}
@@ -1278,7 +1299,8 @@ export default function SkillPickerPlugin({
             }}
             visibility={shouldShow ? 'visible' : 'hidden'}
             zIndex={99999}
-            w={MENU_WIDTH}
+            w={'max-content'}
+            maxW={MENU_WIDTH}
             h={MENU_HEIGHT}
             p={2}
             bg={hasHorizontalOverflow ? '#fbfbfc' : 'transparent'}
