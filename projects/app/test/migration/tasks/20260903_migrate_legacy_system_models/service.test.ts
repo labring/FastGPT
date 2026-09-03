@@ -260,7 +260,7 @@ describe('bootstrapAIModelsFromLegacy', () => {
     });
   });
 
-  it('does not update or duplicate an existing model when the migration repeats', async () => {
+  it('reapplies the latest legacy snapshot without duplicating a model', async () => {
     const legacy = await legacyCollection.insertOne({
       ...createLegacyLlm('repeatable-model'),
       metadata: {
@@ -303,13 +303,13 @@ describe('bootstrapAIModelsFromLegacy', () => {
     });
     await expect(MongoAIModel.findById(legacy.insertedId).lean()).resolves.toMatchObject({
       model: 'repeatable-model',
-      name: 'Target changed again',
-      config: { maxContext: 32000 }
+      name: 'Legacy version 2',
+      config: { maxContext: 64000 }
     });
     await expect(MongoAIModel.countDocuments()).resolves.toBe(1);
   });
 
-  it('skips a same-name target without changing its id or configuration', async () => {
+  it('keeps a same-name target id while replacing its fields with the legacy model', async () => {
     const legacy = await legacyCollection.insertOne({
       ...createLegacyLlm('same-name-model'),
       isActive: true
@@ -338,14 +338,84 @@ describe('bootstrapAIModelsFromLegacy', () => {
 
     await expect(MongoAIModel.findById(conflictingTarget._id).lean()).resolves.toMatchObject({
       model: 'same-name-model',
-      name: 'Conflicting target',
-      config: pluginLlm.config
+      name: 'same-name-model',
+      isActive: true,
+      config: {
+        maxContext: 32000,
+        maxResponse: 16000,
+        quoteMaxToken: 24000
+      }
     });
     await expect(MongoAIModel.findById(legacy.insertedId)).resolves.toBeNull();
     await expect(MongoAIModel.findById(unrelatedTarget._id)).resolves.not.toBeNull();
     await expect(MongoAIModel.countDocuments()).resolves.toBe(2);
     await expect(MongoAIDefaultModel.findOne({ scope: 'system' }).lean()).resolves.toMatchObject({
       defaultModelIds: { llm: String(conflictingTarget._id) }
+    });
+  });
+
+  it('replaces a same-name preinstalled model with active legacy metadata', async () => {
+    const legacy = await legacyCollection.insertOne({
+      model: 'same-name-embedding',
+      metadata: {
+        type: ModelTypeEnum.embedding,
+        provider: 'OpenAI',
+        name: 'Legacy embedding',
+        isActive: true,
+        defaultToken: 500,
+        maxToken: 3000,
+        weight: 100
+      }
+    });
+    const preinstalled = await MongoAIModel.create({
+      type: ModelTypeEnum.embedding,
+      provider: 'Plugin provider',
+      model: 'same-name-embedding',
+      name: 'Preinstalled embedding',
+      scope: 'system',
+      isActive: false,
+      config: {
+        defaultToken: 1000,
+        maxToken: 8000,
+        weight: 50
+      }
+    });
+
+    await bootstrapAIModelsFromLegacy({ pluginDocuments: [] });
+
+    await expect(MongoAIModel.findById(preinstalled._id).lean()).resolves.toMatchObject({
+      model: 'same-name-embedding',
+      provider: 'OpenAI',
+      name: 'Legacy embedding',
+      isActive: true,
+      config: {
+        defaultToken: 500,
+        maxToken: 3000,
+        weight: 100
+      }
+    });
+    await expect(MongoAIModel.findById(legacy.insertedId)).resolves.toBeNull();
+    await expect(MongoAIModel.countDocuments()).resolves.toBe(1);
+  });
+
+  it('replaces an active same-name target with the inactive legacy state', async () => {
+    await legacyCollection.insertOne({
+      ...createLegacyLlm('same-name-active-target'),
+      metadata: {
+        ...createLegacyLlm('same-name-active-target').metadata,
+        isActive: false
+      }
+    });
+    const target = await MongoAIModel.create({
+      ...pluginLlm,
+      model: 'same-name-active-target'
+    });
+
+    await bootstrapAIModelsFromLegacy({ pluginDocuments: [] });
+
+    await expect(MongoAIModel.findById(target._id).lean()).resolves.toMatchObject({
+      model: 'same-name-active-target',
+      isActive: false
     });
   });
 

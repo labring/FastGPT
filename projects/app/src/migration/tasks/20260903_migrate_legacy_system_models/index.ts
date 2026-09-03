@@ -4,7 +4,7 @@ import type { SystemMigrationContext } from '../../registry';
 /**
  * 将旧 system_models 及默认模型标记迁移到新的模型集合。
  * 旧模型数据量较小，因此不保存 checkpoint；每次执行都在事务内按 model 追加缺失模型，
- * 同名模型完全跳过，并保留有效默认配置，重复执行不会更新或重复新增数据。
+ * 同名模型保留新表 ID 但其余字段以旧表为准，并保留有效默认配置，重复执行不会重复新增数据。
  */
 export const migrateLegacySystemModels = async (context: SystemMigrationContext) => {
   await context.reportProgress({

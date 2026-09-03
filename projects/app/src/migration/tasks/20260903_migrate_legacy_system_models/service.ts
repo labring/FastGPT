@@ -22,9 +22,13 @@ export type BootstrapAIModelsResult = {
 /**
  * 将旧 system_models 中尚不存在的模型确定性追加到 ai_models。
  *
- * 目标表已经存在同名 system 模型时完全跳过，不更新它的 ID 或任何配置；只有旧表独有
- * 模型才沿用旧 _id 插入。现有且有效的默认模型优先，旧表默认标记只补齐缺失或无效
- * 槽位。整个追加过程可重复执行，是否需要执行只由 Runner 的迁移状态决定。
+ * 目标表已经存在同名 system 模型时，保留它的 _id 以维持已回填的业务引用，其余
+ * canonical 字段整体以旧表转换结果覆盖。这是因为启动阶段会先自动预装插件模型，
+ * 预装值不能遮蔽升级前用户在 system_models 中的配置和激活状态。只有旧表独有模型
+ * 才沿用旧 _id 插入；ai_models 独有的预装模型不删除。
+ *
+ * 现有且有效的默认模型优先，旧表默认标记只补齐缺失或无效槽位。整个追加过程可
+ * 重复执行，是否需要执行只由 Runner 的迁移状态决定。
  */
 export const bootstrapAIModelsFromLegacy = async ({
   pluginDocuments
@@ -102,21 +106,31 @@ export const bootstrapAIModelsFromLegacy = async ({
       }
       return {
         _id: resolvedId,
-        // 同名目标是已经生效的模型实例，迁移只能复用，不能用旧快照覆盖其配置。
-        document: sameModel?.document ?? document,
+        // 同名时只复用新表 ID，其余字段以升级前的旧表数据为准。
+        document,
         defaultFlags,
-        shouldInsert: !sameModel
+        shouldInsert: !sameModel,
+        shouldReplace: Boolean(sameModel)
       };
     });
     const candidatesToInsert = resolvedCandidates.filter(({ shouldInsert }) => shouldInsert);
+    const candidatesToReplace = resolvedCandidates.filter(({ shouldReplace }) => shouldReplace);
 
-    if (candidatesToInsert.length > 0) {
+    if (candidatesToInsert.length > 0 || candidatesToReplace.length > 0) {
       await MongoAIModel.collection.bulkWrite(
-        candidatesToInsert.map(({ _id, document }) => ({
-          insertOne: {
-            document: { ...document, _id }
-          }
-        })),
+        [
+          ...candidatesToInsert.map(({ _id, document }) => ({
+            insertOne: {
+              document: { ...document, _id }
+            }
+          })),
+          ...candidatesToReplace.map(({ _id, document }) => ({
+            replaceOne: {
+              filter: { _id },
+              replacement: { ...document, _id }
+            }
+          }))
+        ],
         { ordered: true, session }
       );
     }
