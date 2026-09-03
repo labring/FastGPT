@@ -84,7 +84,6 @@ describe('get system tool templates handler', () => {
         id: 'weather',
         name: 'Weather',
         intro: 'Forecast lookup',
-        toolDescription: 'Legacy resource description',
         isToolSet: false,
         status: PluginStatusEnum.Normal,
         tags: ['life']
@@ -120,7 +119,6 @@ describe('get system tool templates handler', () => {
       isTool: true,
       flowNodeType: FlowNodeTypeEnum.tool
     });
-    expect(result[0]).not.toHaveProperty('toolDescription');
     expect(mocks.getSystemToolList).toHaveBeenCalledWith({
       lang: 'zh',
       op: 'or',
@@ -251,7 +249,6 @@ describe('get system tool templates handler', () => {
           name: 'A+B Tool',
           status: PluginStatusEnum.Normal,
           description: 'Exact plus',
-          toolDescription: 'Legacy child resource description',
           icon: 'plus-icon',
           currentCost: 2,
           systemKeyCost: 0.5
@@ -284,7 +281,6 @@ describe('get system tool templates handler', () => {
       isTool: true,
       flowNodeType: FlowNodeTypeEnum.tool
     });
-    expect(result[0]).not.toHaveProperty('toolDescription');
     expect(mocks.getSystemToolDisplayInfoWithChildIcons).toHaveBeenCalledWith({
       pluginId: 'toolset',
       lang: 'zh',

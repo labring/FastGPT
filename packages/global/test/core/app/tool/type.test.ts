@@ -13,7 +13,7 @@ describe('AgentToolSchema', () => {
     expect(result.inputs).toEqual([{ key: 'query', mode: AgentToolInputModeEnum.agentGenerated }]);
   });
 
-  it('rejects a historical workflow input snapshot', () => {
+  it('rejects a non-sparse workflow input snapshot', () => {
     expect(() =>
       AgentToolSchema.parse({
         id: 'systemTool-search',
@@ -21,8 +21,7 @@ describe('AgentToolSchema', () => {
           {
             key: 'query',
             renderTypeList: ['input', 'agentGenerated'],
-            selectedType: 'agentGenerated',
-            toolDescription: 'Search query'
+            selectedType: 'agentGenerated'
           }
         ],
         config: {}

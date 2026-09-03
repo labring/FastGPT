@@ -35,7 +35,6 @@ const createToolNode = (overrides: Record<string, any> = {}) =>
     name: 'Search',
     avatar: 'tool-avatar',
     intro: 'Search intro',
-    toolDescription: 'Search data',
     inputs: [],
     ...overrides
   }) as any;
@@ -79,7 +78,6 @@ describe('useToolCatalog', () => {
         createToolNode({
           nodeId: 'weather',
           name: 'Weather',
-          toolDescription: '',
           intro: 'Weather intro',
           inputs: [
             {
@@ -119,7 +117,7 @@ describe('useToolCatalog', () => {
         type: 'function',
         function: {
           name: 'search',
-          description: 'Search: Search data',
+          description: 'Search: Search intro',
           parameters: explicitSchema
         }
       },

@@ -33,7 +33,6 @@ describe('AdminSystemToolDetailSchema', () => {
     });
 
     expect(result.status).toBe(PluginStatusEnum.Hidden);
-    expect(result).not.toHaveProperty('toolDescription');
   });
 
   it('strips input and output schemas from admin detail response', () => {
