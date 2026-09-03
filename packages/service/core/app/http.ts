@@ -3,7 +3,11 @@ import { getSecretValue } from '../../common/secret/utils';
 import { axios } from '../../common/api/axios';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
-import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import {
+  HttpToolConfigTypeSchema,
+  type HttpToolConfigType
+} from '@fastgpt/global/core/app/tool/httpTool/type';
 import { contentTypeMap, ContentTypes } from '@fastgpt/global/core/workflow/constants';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
@@ -188,10 +192,18 @@ export const runHTTPTool = async ({
   }
 };
 
+/** Read the current HTTP tool list from a toolset app. */
 export const getHTTPToolList = async (app: AppSchemaType) => {
+  if (app.type !== AppTypeEnum.httpToolSet) return [];
+
   const modules = decodeHttpToolSetNodesFromStorage(app.modules);
+  const toolSet = modules[0]?.toolConfig?.httpToolSet;
+  const toolList = HttpToolConfigTypeSchema.array().safeParse(
+    toolSet && 'toolList' in toolSet ? toolSet.toolList : undefined
+  ).data;
+
   return (
-    modules[0].toolConfig?.httpToolSet?.toolList.map((item) => ({
+    toolList?.map((item) => ({
       ...item,
       id: `${AppToolSourceEnum.http}-${String(app._id)}/${item.name}`,
       avatar: app.avatar

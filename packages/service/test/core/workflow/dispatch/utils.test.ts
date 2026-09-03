@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 
 import {
   getWorkflowResponseWrite,
@@ -36,6 +36,11 @@ const mockGetSystemToolRunTimeNodeFromSystemToolset = vi.fn();
 vi.mock('@fastgpt/service/core/workflow/utils', () => ({
   getSystemToolRunTimeNodeFromSystemToolset: (...args: any[]) =>
     mockGetSystemToolRunTimeNodeFromSystemToolset(...args)
+}));
+
+const mockAuthAppByTmbId = vi.fn();
+vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
+  authAppByTmbId: (...args: any[]) => mockAuthAppByTmbId(...args)
 }));
 
 const mockMongoAppFindOne = vi.fn();
@@ -918,6 +923,40 @@ describe('formatHttpError', () => {
 });
 
 describe('rewriteRuntimeWorkFlow', () => {
+  beforeEach(() => {
+    mockAuthAppByTmbId.mockReset();
+    mockMongoAppFindOne.mockReset();
+    mockMongoAppFind.mockReset();
+    mockMongoAppFind.mockReturnValue({ lean: vi.fn().mockResolvedValue([]) });
+    mockAuthAppByTmbId.mockImplementation(async ({ appId }: { appId: string }) => {
+      const findOneQuery = mockMongoAppFindOne({ _id: appId });
+      if (findOneQuery) {
+        const app = await findOneQuery.lean();
+        if (app) return { app };
+      }
+
+      const findQuery = mockMongoAppFind({ _id: { $in: [appId] } });
+      const [app] = await findQuery.lean();
+      if (app) return { app };
+      throw new Error('app not found');
+    });
+    mockGetMCPChildren.mockReset();
+    mockGetHTTPToolList.mockReset();
+
+    mockGetMCPChildren.mockImplementation(
+      async (app: { modules?: Array<{ toolConfig?: any }> }) => {
+        const toolSet = app.modules?.[0]?.toolConfig?.mcpToolSet;
+        return toolSet && Array.isArray(toolSet.toolList) ? toolSet.toolList : [];
+      }
+    );
+    mockGetHTTPToolList.mockImplementation(
+      async (app: { modules?: Array<{ toolConfig?: any }> }) => {
+        const toolSet = app.modules?.[0]?.toolConfig?.httpToolSet;
+        return toolSet && Array.isArray(toolSet.toolList) ? toolSet.toolList : [];
+      }
+    );
+  });
+
   const makeNode = (
     nodeId: string,
     flowNodeType: string,
@@ -951,7 +990,7 @@ describe('rewriteRuntimeWorkFlow', () => {
     const edges = [makeEdge('n1', 'n2')];
     const originalNodesLen = nodes.length;
     const originalEdgesLen = edges.length;
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
     expect(nodes.length).toBe(originalNodesLen);
     expect(edges.length).toBe(originalEdgesLen);
   });
@@ -969,7 +1008,7 @@ describe('rewriteRuntimeWorkFlow', () => {
     const childNode = makeNode('child1', 'systemTool');
     mockGetSystemToolRunTimeNodeFromSystemToolset.mockResolvedValue([childNode]);
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(nodes.find((n) => n.nodeId === 'ts1')).toBeUndefined();
     expect(nodes.find((n) => n.nodeId === 'child1')).toBeDefined();
@@ -983,7 +1022,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       name: 'MCPTool',
       avatar: 'avatar.png',
       toolConfig: {
-        mcpToolSet: { toolId: 'mcp-tool-1' }
+        mcpToolSet: { toolId: 'mcp-app-1' }
       }
     } as any);
     const parentNode = makeNode('parent', FlowNodeTypeEnum.chatNode);
@@ -1012,13 +1051,13 @@ describe('rewriteRuntimeWorkFlow', () => {
       { name: 'tool1', description: 'desc', inputSchema: {}, url: 'https://mcp.example.com' }
     ]);
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(nodes.find((n) => n.nodeId === 'ts2')).toBeUndefined();
     expect(nodes.find((n) => n.nodeId === 'ts20')).toMatchObject({
       toolConfig: {
-        mcpToolSet: {
-          url: 'https://mcp.example.com'
+        mcpTool: {
+          toolId: 'mcp-mcp-app-1/tool1'
         }
       }
     });
@@ -1072,13 +1111,11 @@ describe('rewriteRuntimeWorkFlow', () => {
       }
     ]);
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
     const filteredEdges = filterOrphanEdges({ nodes, edges, workflowId: 'workflow-app' });
 
     expect(nodes.find((n) => n.nodeId === 'ts20')?.jsonSchema).toEqual(fullSchema);
-    expect(nodes.find((n) => n.nodeId === 'ts20')?.toolConfig?.mcpToolSet).toMatchObject({
-      url: 'https://mcp.example.com'
-    });
+    expect(nodes.find((n) => n.nodeId === 'ts20')?.toolConfig).not.toHaveProperty('mcpToolSet');
     expect(nodes.find((n) => n.nodeId === 'ts20')?.inputs[0]).toMatchObject({
       key: 'city',
       selectedType: FlowNodeInputTypeEnum.agentGenerated,
@@ -1106,7 +1143,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       lean: vi.fn().mockResolvedValue(null)
     });
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(nodes.find((n) => n.nodeId === 'ts3')).toBeUndefined();
   });
@@ -1134,7 +1171,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       { name: 'api2', description: 'desc2', url: 'http://example.com/api2' }
     ]);
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(nodes.find((n) => n.nodeId === 'ts4')).toBeUndefined();
     expect(nodes.find((n) => n.nodeId === 'ts40')).toBeDefined();
@@ -1196,7 +1233,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       }
     });
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(mcpToolNode.jsonSchema).toEqual(toolAInputSchema);
     expect(mcpToolNode.intro).toBe('tool A description');
@@ -1262,7 +1299,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       }
     });
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(httpToolNode.jsonSchema).toEqual(toolBRequestSchema);
     expect(httpToolNode.intro).toBe('tool B description');
@@ -1337,6 +1374,7 @@ describe('rewriteRuntimeWorkFlow', () => {
 
     await rewriteRuntimeWorkFlow({
       teamId: 'team1',
+      tmbId: 'tmb1',
       nodes: [mcpToolNode, httpToolNode],
       edges: []
     });
@@ -1378,7 +1416,12 @@ describe('rewriteRuntimeWorkFlow', () => {
       }
     });
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes: [httpToolNode], edges: [] });
+    await rewriteRuntimeWorkFlow({
+      teamId: 'team1',
+      tmbId: 'tmb1',
+      nodes: [httpToolNode],
+      edges: []
+    });
 
     expect(httpToolNode.jsonSchema).toEqual(inputSchema);
   });
@@ -1413,7 +1456,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       }
     });
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(httpToolNode.jsonSchema).toEqual({ type: 'object' });
     expect(httpToolNode.intro).toBe('nested tool');
@@ -1432,7 +1475,7 @@ describe('rewriteRuntimeWorkFlow', () => {
 
     setupFindByIdMap({});
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(httpToolNode.jsonSchema).toEqual({ type: 'original' });
     expect(httpToolNode.intro).toBe('original');
@@ -1451,7 +1494,7 @@ describe('rewriteRuntimeWorkFlow', () => {
 
     setupFindByIdMap({});
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(httpToolNode.jsonSchema).toEqual({ type: 'original' });
     expect(httpToolNode.intro).toBe('original');

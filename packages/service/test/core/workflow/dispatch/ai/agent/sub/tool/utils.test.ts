@@ -17,12 +17,14 @@ const {
   authAppByTmbIdMock,
   getAppVersionByIdMock,
   getMCPChildrenMock,
+  getHTTPToolListMock,
   getSystemToolDetailMock,
   assertTeamPluginSourceAccessMock
 } = vi.hoisted(() => ({
   authAppByTmbIdMock: vi.fn(),
   getAppVersionByIdMock: vi.fn(),
   getMCPChildrenMock: vi.fn(),
+  getHTTPToolListMock: vi.fn(),
   getSystemToolDetailMock: vi.fn(),
   assertTeamPluginSourceAccessMock: vi.fn()
 }));
@@ -37,6 +39,10 @@ vi.mock('@fastgpt/service/core/app/version/controller', () => ({
 
 vi.mock('@fastgpt/service/core/app/mcp', () => ({
   getMCPChildren: getMCPChildrenMock
+}));
+
+vi.mock('@fastgpt/service/core/app/http', () => ({
+  getHTTPToolList: getHTTPToolListMock
 }));
 
 vi.mock('@fastgpt/service/support/user/team/controller', () => ({
@@ -149,17 +155,6 @@ const mcpTool = {
   name: 'search',
   description: 'Search docs',
   inputSchema: mcpInputSchema
-};
-
-const fixedVersionMcpToolSet = {
-  url: 'https://v1.example.com',
-  headerSecret: {
-    Authorization: {
-      value: 'legacy-secret',
-      secret: ''
-    }
-  },
-  toolList: [mcpTool]
 };
 
 const mcpToolWithLeadingSlash = {
@@ -281,7 +276,20 @@ const createPersonalApp = ({
 describe('getAgentRuntimeTools schema loading', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getMCPChildrenMock.mockResolvedValue([]);
+    getMCPChildrenMock.mockImplementation(
+      async (app: { modules?: Array<{ toolConfig?: NodeToolConfigType }> }) =>
+        app.modules?.[0]?.toolConfig?.mcpToolSet &&
+        'toolList' in app.modules[0].toolConfig.mcpToolSet
+          ? app.modules[0].toolConfig.mcpToolSet.toolList
+          : []
+    );
+    getHTTPToolListMock.mockImplementation(
+      async (app: { modules?: Array<{ toolConfig?: NodeToolConfigType }> }) =>
+        app.modules?.[0]?.toolConfig?.httpToolSet &&
+        'toolList' in app.modules[0].toolConfig.httpToolSet
+          ? app.modules[0].toolConfig.httpToolSet.toolList
+          : []
+    );
     getSystemToolDetailMock.mockReset();
 
     authAppByTmbIdMock.mockImplementation(async ({ appId }: { appId: string }) => {
@@ -294,18 +302,7 @@ describe('getAgentRuntimeTools schema loading', () => {
       async ({ app, versionId }: { app: any; versionId?: string }) => ({
         versionId: versionId ?? '',
         versionName: app.name,
-        nodes:
-          app._id === 'mcp_app' && versionId === 'fixed-version'
-            ? [
-                {
-                  ...app.modules[0],
-                  toolConfig: {
-                    ...app.modules[0].toolConfig,
-                    mcpToolSet: fixedVersionMcpToolSet
-                  }
-                }
-              ]
-            : app.modules,
+        nodes: app.modules,
         edges: app.edges,
         chatConfig: app.chatConfig
       })
@@ -599,10 +596,10 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(latestVersionTools[0]?.version).toBe('');
   });
 
-  it('loads MCP toolset children with their input schema', async () => {
+  it('loads MCP toolset children with their input schema from the current toolset app', async () => {
     const tools = await getAgentRuntimeTools({
       tmbId: 'tmb_1',
-      tools: [{ id: 'mcp_app', version: 'fixed-version', config: {} }]
+      tools: [{ id: 'mcp_app', version: 'ignored-version', config: {} }]
     });
 
     expect(tools).toHaveLength(1);
@@ -610,11 +607,8 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.description).toBe('mcp_app name/search: Search docs');
     expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
-    expect(tools[0].version).toBe('fixed-version');
-    expect(tools[0].toolConfig?.mcpToolSet).toMatchObject({
-      url: fixedVersionMcpToolSet.url,
-      headerSecret: fixedVersionMcpToolSet.headerSecret
-    });
+    expect(tools[0].version).toBe('');
+    expect(tools[0].toolConfig).not.toHaveProperty('mcpToolSet');
     expect(tools[0].promptReference).toEqual({
       id: 'mcp_app',
       name: 'mcp_app name'
@@ -636,7 +630,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
   });
 
-  it('keeps runtime MCP connection data when an Agent toolset snapshot has no URL', async () => {
+  it('does not persist runtime MCP connection data in expanded Agent tools', async () => {
     const tools = await getAgentRuntimeTools({
       tmbId: 'tmb_1',
       tools: [
@@ -653,30 +647,20 @@ describe('getAgentRuntimeTools schema loading', () => {
     });
 
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
-    expect(tools[0].toolConfig?.mcpToolSet).toMatchObject({
-      url: 'https://current.example.com'
-    });
+    expect(tools[0].toolConfig).not.toHaveProperty('mcpToolSet');
   });
 
-  it('uses fixed-version MCP configuration for a selected tool', async () => {
+  it('uses the current MCP configuration for a selected tool', async () => {
     const tools = await getAgentRuntimeTools({
       tmbId: 'tmb_1',
-      tools: [{ id: 'mcp-mcp_app/search', version: 'fixed-version', config: {} }]
+      tools: [{ id: 'mcp-mcp_app/search', version: 'ignored-version', config: {} }]
     });
 
     expect(tools).toHaveLength(1);
-    expect(getAppVersionByIdMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        appId: 'mcp_app',
-        versionId: 'fixed-version'
-      })
-    );
-    expect(tools[0].version).toBe('fixed-version');
+    expect(getAppVersionByIdMock).not.toHaveBeenCalled();
+    expect(tools[0].version).toBe('');
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
-    expect(tools[0].toolConfig?.mcpToolSet).toMatchObject({
-      url: fixedVersionMcpToolSet.url,
-      headerSecret: fixedVersionMcpToolSet.headerSecret
-    });
+    expect(tools[0].toolConfig).not.toHaveProperty('mcpToolSet');
   });
 
   it('uses the dedicated Agent input mode at runtime', async () => {
@@ -844,10 +828,10 @@ describe('getAgentRuntimeTools schema loading', () => {
     });
   });
 
-  it('loads HTTP toolset children with their request schema', async () => {
+  it('loads HTTP toolset children with their request schema from the current toolset app', async () => {
     const tools = await getAgentRuntimeTools({
       tmbId: 'tmb_1',
-      tools: [{ id: 'http_app', version: 'fixed-version', config: {} }]
+      tools: [{ id: 'http_app', version: 'ignored-version', config: {} }]
     });
 
     expect(tools).toHaveLength(1);
@@ -858,7 +842,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     );
     expect(tools[0].requestSchema.function.parameters).not.toEqual(httpInputSchema);
     expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_app/create');
-    expect(tools[0].version).toBe('fixed-version');
+    expect(tools[0].version).toBe('');
     expect(tools[0].promptReference).toEqual({
       id: 'http_app',
       name: 'http_app name'

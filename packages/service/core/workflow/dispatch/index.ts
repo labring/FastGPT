@@ -1075,9 +1075,8 @@ export class WorkflowQueue {
             formatResponseData
           : nodeResponsesForDisplay.find((item) => item.id === formatResponseData?.id);
       const childResponsesForQueue = this.data.nodeResponseSink
-        ? childResponsesForDisplay.flatMap(
-            (item) =>
-              persistedNodeResponses.filter((persistedItem) => persistedItem.id === item.id)
+        ? childResponsesForDisplay.flatMap((item) =>
+            persistedNodeResponses.filter((persistedItem) => persistedItem.id === item.id)
           )
         : childResponsesForDisplay;
       const shouldDropPersistedNodeResponses = !!this.data.nodeResponseSink;
@@ -1630,6 +1629,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           try {
             await rewriteRuntimeWorkFlow({
               teamId: data.runningAppInfo.teamId,
+              tmbId: data.runningUserInfo.tmbId,
               nodes: data.runtimeNodes,
               edges: data.runtimeEdges,
               lang: data.lang

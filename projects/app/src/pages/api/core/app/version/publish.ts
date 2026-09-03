@@ -21,7 +21,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
 import { formatModels } from '@fastgpt/global/core/workflow/utils';
 import { getSystemDefaultModelIds } from '@fastgpt/service/core/ai/model';
-import { stripWorkflowToolSchemasForStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
+import { compactWorkflowToolConfigsForStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
 import {
   PublishAppBodySchema,
   PublishAppQuerySchema,
@@ -57,7 +57,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     nodes: normalizedWorkflow.nodes,
     teamId
   });
-  const storageNodes = stripWorkflowToolSchemasForStorage(normalizedWorkflow.nodes);
+  const storageNodes = compactWorkflowToolConfigsForStorage(normalizedWorkflow.nodes);
   if (isPublish) {
     await validatePublishAppAgentSkillReadPermissions({
       nodes: normalizedWorkflow.nodes,
