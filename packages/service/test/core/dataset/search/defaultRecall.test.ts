@@ -1,10 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DatasetSearchModeEnum, SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetSearchModeEnum,
+  RetrievalTraceBranchNameEnum,
+  RetrievalTraceStageNameEnum,
+  RetrievalTraceStageStatusEnum,
+  SearchScoreTypeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import type { FullTextSearchProps } from '@fastgpt/service/common/vectorDB/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { serviceEnv } from '@fastgpt/service/env';
 
 const mockGetVectors = vi.hoisted(() => vi.fn());
+const mockReRankRecall = vi.hoisted(() => vi.fn());
 const mockIsImageEmbeddingModel = vi.hoisted(() => vi.fn());
 const mockRecallFromVectorStore = vi.hoisted(() => vi.fn());
 const mockCreateLLMResponse = vi.hoisted(() => vi.fn());
@@ -63,6 +70,10 @@ const vlmModel = {
 
 vi.mock('@fastgpt/service/core/ai/embedding', () => ({
   getVectors: mockGetVectors
+}));
+
+vi.mock('@fastgpt/service/core/ai/rerank', () => ({
+  reRankRecall: mockReRankRecall
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
@@ -147,6 +158,7 @@ vi.mock('@fastgpt/service/core/dataset/data/textStore', async (importOriginal) =
 
 import { searchDatasetData } from '../../../../core/dataset/search/defaultRecall';
 import { fullTextRecall } from '../../../../core/dataset/search/defaultRecall/fullTextRecall';
+import { reRankSearchResults } from '../../../../core/dataset/search/defaultRecall/rerank';
 
 afterEach(() => {
   serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
@@ -493,6 +505,210 @@ describe('default recall dataset search', () => {
     expect(mockCreateS3DownloadAccessUrls.mock.calls[0][0].map((item) => item.objectKey)).toEqual([
       'dataset/team/keep.png'
     ]);
+  });
+
+  it('should report candidate counts and score ranges for each recall stage', async () => {
+    mockIsImageEmbeddingModel.mockReturnValue(false);
+    mockGetVectors.mockResolvedValueOnce({
+      tokens: 5,
+      vectors: [[0.1, 0.2]]
+    });
+    mockRecallFromVectorStore.mockResolvedValueOnce({
+      results: [
+        { id: 'index-keep', collectionId: 'collection-1', score: 0.9 },
+        { id: 'index-filtered', collectionId: 'collection-1', score: 0.1 }
+      ]
+    });
+    mockMongoDatasetCollectionFind.mockImplementation((query: Record<string, any>) => {
+      if (query?.forbid) return [];
+      return {
+        lean: vi.fn().mockResolvedValue([{ _id: 'collection-1', name: 'Source' }])
+      };
+    });
+    mockMongoDatasetDataFind.mockReturnValueOnce({
+      lean: vi.fn().mockResolvedValue([
+        {
+          _id: 'data-keep',
+          datasetId: 'dataset-1',
+          collectionId: 'collection-1',
+          updateTime: new Date('2026-01-01'),
+          q: 'Keep',
+          a: '',
+          chunkIndex: 0,
+          indexes: [{ dataId: 'index-keep' }]
+        },
+        {
+          _id: 'data-filtered',
+          datasetId: 'dataset-1',
+          collectionId: 'collection-1',
+          updateTime: new Date('2026-01-01'),
+          q: 'Filtered',
+          a: '',
+          chunkIndex: 1,
+          indexes: [{ dataId: 'index-filtered' }]
+        }
+      ])
+    });
+
+    const result = await searchDatasetData({
+      histories: [],
+      teamId: 'team-1',
+      model: embeddingModel,
+      datasetIds: ['dataset-1'],
+      reRankQuery: 'query',
+      textQueries: ['query'],
+      limit: 5000,
+      similarity: 0.5,
+      searchMode: DatasetSearchModeEnum.embedding,
+      usingReRank: false
+    });
+
+    const textBranch = result.retrievalTrace?.branches.find(
+      (branch) => branch.name === RetrievalTraceBranchNameEnum.text
+    );
+    const textStageByName = Object.fromEntries(
+      (textBranch?.stages ?? []).map((stage) => [stage.name, stage])
+    );
+    const pipelineByName = Object.fromEntries(
+      (result.retrievalTrace?.pipeline ?? []).map((stage) => [stage.name, stage])
+    );
+
+    expect(textStageByName.textEmbeddingRecall).toEqual({
+      name: RetrievalTraceStageNameEnum.textEmbeddingRecall,
+      count: 2,
+      scoreType: SearchScoreTypeEnum.embedding,
+      minScore: 0.1,
+      maxScore: 0.9
+    });
+    expect(textStageByName.rerank).toEqual({
+      name: RetrievalTraceStageNameEnum.rerank,
+      count: 2,
+      status: RetrievalTraceStageStatusEnum.skipped
+    });
+    expect(result.retrievalTrace?.branches.map((branch) => branch.name)).toEqual([
+      RetrievalTraceBranchNameEnum.text
+    ]);
+    // 相似度阈值 0.5 丢弃低分候选，链路里应能看到数量在该步下降。
+    expect(pipelineByName.mergedCandidates?.count).toBe(2);
+    expect(pipelineByName.similarityFilter).toEqual({
+      name: RetrievalTraceStageNameEnum.similarityFilter,
+      count: 1,
+      status: RetrievalTraceStageStatusEnum.applied
+    });
+    expect(pipelineByName.maxTokensFilter?.count).toBe(1);
+  });
+
+  it('should group parallel text and image recall separately from the merged pipeline', async () => {
+    mockIsImageEmbeddingModel.mockReturnValue(true);
+    mockGetVectors.mockResolvedValueOnce({
+      tokens: 5,
+      vectors: [
+        [0.1, 0.2],
+        [0.3, 0.4]
+      ]
+    });
+
+    const result = await searchDatasetData({
+      histories: [],
+      teamId: '68ad85a7463006c963799a05',
+      model: embeddingModel,
+      datasetIds: ['68ad85a7463006c963799a06'],
+      reRankQuery: 'query',
+      textQueries: ['query'],
+      imageQueries: ['data:image/png;base64,current-image'],
+      limit: 5000,
+      searchMode: DatasetSearchModeEnum.mixedRecall,
+      usingReRank: false
+    });
+
+    const textBranch = result.retrievalTrace?.branches.find(
+      (branch) => branch.name === RetrievalTraceBranchNameEnum.text
+    );
+    const imageBranch = result.retrievalTrace?.branches.find(
+      (branch) => branch.name === RetrievalTraceBranchNameEnum.image
+    );
+
+    expect(textBranch?.stages.map((stage) => stage.name)).toEqual([
+      RetrievalTraceStageNameEnum.textEmbeddingRecall,
+      RetrievalTraceStageNameEnum.textFullTextRecall,
+      RetrievalTraceStageNameEnum.textFusion,
+      RetrievalTraceStageNameEnum.rerank
+    ]);
+    expect(
+      textBranch?.stages.find(
+        (stage) => stage.name === RetrievalTraceStageNameEnum.textFullTextRecall
+      )
+    ).toEqual({ name: RetrievalTraceStageNameEnum.textFullTextRecall, count: 0 });
+    expect(imageBranch?.stages.map((stage) => stage.name)).toEqual([
+      RetrievalTraceStageNameEnum.imageVectorRecall,
+      RetrievalTraceStageNameEnum.imageFusion
+    ]);
+    expect(result.retrievalTrace?.pipeline.map((stage) => stage.name)).toEqual([
+      RetrievalTraceStageNameEnum.mergedCandidates,
+      RetrievalTraceStageNameEnum.deduplicate,
+      RetrievalTraceStageNameEnum.similarityFilter,
+      RetrievalTraceStageNameEnum.maxTokensFilter
+    ]);
+  });
+});
+
+describe('rerank trace status', () => {
+  const textRecallResults = [
+    {
+      id: 'chunk-1',
+      q: 'question',
+      a: 'answer',
+      score: [{ type: SearchScoreTypeEnum.embedding, value: 0.8, index: 0 }]
+    }
+  ] as any;
+
+  beforeEach(() => {
+    mockReRankRecall.mockReset();
+  });
+
+  it('should report applied when rerank succeeds', async () => {
+    mockReRankRecall.mockResolvedValueOnce({
+      results: [{ id: 'chunk-1', score: 0.95 }],
+      inputTokens: 12
+    });
+
+    const result = await reRankSearchResults({
+      usingReRank: true,
+      textRecallResults,
+      rerankModel: {} as any,
+      query: 'query',
+      rerankWeight: 1
+    });
+
+    expect(result.status).toBe(RetrievalTraceStageStatusEnum.applied);
+    expect(result.usingReRank).toBe(true);
+    expect(result.results[0]?.score).toEqual([
+      { type: SearchScoreTypeEnum.reRank, value: 0.95, index: 0 }
+    ]);
+  });
+
+  it('should distinguish a failed rerank fallback from a skipped rerank', async () => {
+    mockReRankRecall.mockRejectedValueOnce(new Error('rerank unavailable'));
+
+    const fallback = await reRankSearchResults({
+      usingReRank: true,
+      textRecallResults,
+      rerankModel: {} as any,
+      query: 'query',
+      rerankWeight: 1
+    });
+    const skipped = await reRankSearchResults({
+      usingReRank: false,
+      textRecallResults,
+      rerankModel: undefined,
+      query: 'query',
+      rerankWeight: 1
+    });
+
+    expect(fallback.status).toBe(RetrievalTraceStageStatusEnum.fallback);
+    expect(fallback.results).toBe(textRecallResults);
+    expect(skipped.status).toBe(RetrievalTraceStageStatusEnum.skipped);
+    expect(mockReRankRecall).toHaveBeenCalledTimes(1);
   });
 });
 

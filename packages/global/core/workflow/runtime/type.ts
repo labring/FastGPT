@@ -4,7 +4,7 @@ import { NodeOutputKeyEnum } from '../constants';
 import { ClassifyQuestionAgentItemSchema } from '../template/system/classifyQuestion/type';
 import { ReadFileNodeResponseSchema } from '../template/system/readFiles/type';
 import { CompletionFinishReasonSchema } from '../../ai/llm/type';
-import { SearchDataResponseQuoteListItemSchema } from '../../dataset/type';
+import { RetrievalTraceSchema, SearchDataResponseQuoteListItemSchema } from '../../dataset/type';
 import { DatasetSearchModeEnum } from '../../dataset/constants';
 import { ChatRoleEnum } from '../../chat/constants';
 import z from 'zod';
@@ -113,6 +113,7 @@ export const DispatchNodeResponseSchema = z
     rerankWeight: z.number().optional().meta({ description: '重排权重' }),
     reRankInputTokens: z.number().optional().meta({ description: '重排输入 token' }),
     searchUsingReRank: z.boolean().optional().meta({ description: '使用重排' }),
+    retrievalTrace: RetrievalTraceSchema.optional().meta({ description: '召回链路追踪' }),
     deepSearchResult: z
       .object({
         model: z.string().meta({ description: '模型' }),

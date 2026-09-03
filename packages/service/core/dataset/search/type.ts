@@ -4,7 +4,10 @@ import type {
   RerankSystemModelDataType
 } from '@fastgpt/global/core/ai/model.schema';
 import type { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import type {
+  RetrievalTraceType,
+  SearchDataResponseItemType
+} from '@fastgpt/global/core/dataset/type';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
@@ -58,6 +61,7 @@ export type SearchDatasetDataResponse = {
   similarity: number;
   usingReRank: boolean;
   usingSimilarityFilter: boolean;
+  retrievalTrace?: RetrievalTraceType;
 
   queryExtensionResult?: {
     llmModel: string;

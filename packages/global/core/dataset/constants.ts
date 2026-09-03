@@ -258,6 +258,33 @@ export enum DatasetSearchModeEnum {
   mixedRecall = 'mixedRecall'
 }
 
+export enum RetrievalTraceBranchNameEnum {
+  text = 'text',
+  image = 'image'
+}
+
+export enum RetrievalTraceStageNameEnum {
+  textEmbeddingRecall = 'textEmbeddingRecall',
+  textFullTextRecall = 'textFullTextRecall',
+  textFusion = 'textFusion',
+  rerank = 'rerank',
+  imageCaptionEmbeddingRecall = 'imageCaptionEmbeddingRecall',
+  imageCaptionFullTextRecall = 'imageCaptionFullTextRecall',
+  imageVectorRecall = 'imageVectorRecall',
+  imageFusion = 'imageFusion',
+  mergedCandidates = 'mergedCandidates',
+  deduplicate = 'deduplicate',
+  similarityFilter = 'similarityFilter',
+  maxTokensFilter = 'maxTokensFilter',
+  llmSelection = 'llmSelection'
+}
+
+export enum RetrievalTraceStageStatusEnum {
+  applied = 'applied',
+  skipped = 'skipped',
+  fallback = 'fallback'
+}
+
 export const DatasetSearchModeMap = {
   [DatasetSearchModeEnum.embedding]: {
     icon: 'core/dataset/modeEmbedding',

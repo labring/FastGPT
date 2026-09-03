@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DatasetSearchModeEnum, SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetSearchModeEnum,
+  RetrievalTraceBranchNameEnum,
+  RetrievalTraceStageNameEnum,
+  RetrievalTraceStageStatusEnum,
+  SearchScoreTypeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const {
@@ -91,6 +97,16 @@ const llmModelData = (model: string) =>
     config: { maxContext: 1000 }
   }) as any;
 
+const retrievalTrace = {
+  branches: [
+    {
+      name: RetrievalTraceBranchNameEnum.text,
+      stages: [{ name: RetrievalTraceStageNameEnum.textFusion, count: 2 }]
+    }
+  ],
+  pipeline: [{ name: RetrievalTraceStageNameEnum.mergedCandidates, count: 2 }]
+};
+
 describe('dispatchAgentDatasetSearch', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -149,6 +165,7 @@ describe('dispatchAgentDatasetSearch', () => {
       reRankInputTokens: 0,
       usingSimilarityFilter: true,
       usingReRank: false,
+      retrievalTrace,
       queryExtensionResult: {
         llmModel: llmModelData('gpt-query'),
         requestId: 'req_query_extension',
@@ -232,6 +249,82 @@ describe('dispatchAgentDatasetSearch', () => {
     expect(result.nodeResponse?.quoteList?.map((item: { id: string }) => item.id)).toEqual([
       'chunk_2'
     ]);
+    expect(result.nodeResponse?.retrievalTrace).toEqual({
+      ...retrievalTrace,
+      pipeline: [
+        ...retrievalTrace.pipeline,
+        {
+          name: RetrievalTraceStageNameEnum.llmSelection,
+          count: 1,
+          status: RetrievalTraceStageStatusEnum.applied
+        }
+      ]
+    });
+  });
+
+  it('records skipped and failed Agent LLM selection without dropping candidates', async () => {
+    const searchRes = [
+      {
+        id: 'chunk_1',
+        q: 'question 1',
+        a: 'answer 1',
+        score: [{ type: SearchScoreTypeEnum.embedding, value: 0.9, index: 0 }]
+      },
+      {
+        id: 'chunk_2',
+        q: 'question 2',
+        a: 'answer 2',
+        score: [{ type: SearchScoreTypeEnum.embedding, value: 0.8, index: 1 }]
+      }
+    ];
+    defaultSearchDatasetDataMock.mockResolvedValue({
+      searchRes,
+      embeddingTokens: 20,
+      reRankInputTokens: 0,
+      usingSimilarityFilter: true,
+      usingReRank: false,
+      retrievalTrace
+    });
+    countPromptTokensMock.mockResolvedValueOnce(0);
+
+    const skipped = await dispatchAgentDatasetSearch({
+      args: JSON.stringify({ query: ['origin'] }),
+      teamId: 'team_1',
+      tmbId: 'tmb_1',
+      llmModel: llmModelData('gpt-main'),
+      datasetParams: {
+        datasets: [{ datasetId: 'dataset_1' }],
+        searchMode: DatasetSearchModeEnum.embedding
+      } as any
+    });
+
+    expect(skipped.nodeResponse?.quoteList).toEqual(searchRes);
+    expect(skipped.nodeResponse?.retrievalTrace?.pipeline.at(-1)).toEqual({
+      name: RetrievalTraceStageNameEnum.llmSelection,
+      count: 2,
+      status: RetrievalTraceStageStatusEnum.skipped
+    });
+    expect(createLLMResponseMock).not.toHaveBeenCalled();
+
+    countPromptTokensMock.mockResolvedValueOnce(100);
+    createLLMResponseMock.mockRejectedValueOnce(new Error('selection unavailable'));
+    const fallback = await dispatchAgentDatasetSearch({
+      args: JSON.stringify({ query: ['origin'] }),
+      teamId: 'team_1',
+      tmbId: 'tmb_1',
+      llmModel: llmModelData('gpt-main'),
+      datasetParams: {
+        datasets: [{ datasetId: 'dataset_1' }],
+        searchMode: DatasetSearchModeEnum.embedding
+      } as any
+    });
+
+    expect(fallback.nodeResponse?.quoteList).toEqual(searchRes);
+    expect(fallback.nodeResponse?.retrievalTrace?.pipeline.at(-1)).toEqual({
+      name: RetrievalTraceStageNameEnum.llmSelection,
+      count: 2,
+      status: RetrievalTraceStageStatusEnum.fallback
+    });
   });
 
   it('sets query extension and chunk selection LLM points to zero when user OpenAI key is valid', async () => {

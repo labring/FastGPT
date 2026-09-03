@@ -1,5 +1,11 @@
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import type { SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import type { RetrievalTraceStageType } from '@fastgpt/global/core/dataset/type';
+import type {
+  RetrievalTraceStageNameEnum,
+  RetrievalTraceStageStatusEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { countPromptTokensBatch } from '../../../../common/string/tiktoken/index';
 import { getLogger, LogCategories } from '../../../../common/logger';
 
@@ -28,6 +34,43 @@ export const countRecallLimit = (searchMode: DatasetSearchModeEnum) => {
   return {
     embeddingLimit: 80,
     fullTextLimit: 60
+  };
+};
+
+/**
+ * 汇总某一阶段候选集的数量与分数区间。
+ * scoreType 缺省时只记录数量，用于 RRF 融合这类没有可比分数的阶段。
+ */
+export const buildRetrievalTraceStage = ({
+  name,
+  data,
+  scoreType,
+  status
+}: {
+  name: RetrievalTraceStageNameEnum;
+  data: SearchDataResponseItemType[];
+  scoreType?: SearchScoreTypeEnum;
+  status?: RetrievalTraceStageStatusEnum;
+}): RetrievalTraceStageType => {
+  if (!scoreType) {
+    return { name, count: data.length, status };
+  }
+
+  const scores = data
+    .map((item) => item.score.find((score) => score.type === scoreType)?.value)
+    .filter((value): value is number => value !== undefined);
+
+  if (scores.length === 0) {
+    return { name, count: data.length, status, scoreType };
+  }
+
+  return {
+    name,
+    count: data.length,
+    status,
+    scoreType,
+    minScore: Math.min(...scores),
+    maxScore: Math.max(...scores)
   };
 };
 
