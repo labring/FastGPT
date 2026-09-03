@@ -61,6 +61,7 @@ const SelectOneResource = ({
     refreshDeps: [currentParentId],
     showNoMoreTip: false
   });
+  const isAutoHeight = h === 'auto';
 
   const isItemDisabled = (item: SelectOneResourceItemType) =>
     item.disabled || disabledIds.includes(item.id);
@@ -134,7 +135,14 @@ const SelectOneResource = ({
         ))}
       </Flex>
 
-      <ScrollData flex={'1 1 0'} minH={0} maxH={maxH} pt={0.5} showLoadingOverlay>
+      <ScrollData
+        flex={isAutoHeight ? '0 1 auto' : '1 1 0'}
+        h={isAutoHeight ? 'auto' : '100%'}
+        minH={0}
+        maxH={maxH}
+        pt={0.5}
+        showLoadingOverlay
+      >
         {data.map((item) => {
           const disabled = isItemDisabled(item);
           const selected = item.id === value;
