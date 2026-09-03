@@ -5,7 +5,7 @@
 App、Dataset、Skill 列表同时存在两类前端使用场景：
 
 1. Dashboard 主页面展示资源卡片，需要避免一次性拉取整个团队资源，并支持触底加载。
-2. 选择器和工具配置弹窗中的当前目录列表可以增量加载；递归资源树和移动目录树继续使用数组协议。
+2. 选择器和移动弹窗中的当前目录列表可以增量加载，目录层级通过面包屑切换，不再在当前列表内递归展开。
 
 本次采用 V1/V2 分工：
 
@@ -36,10 +36,11 @@ Dashboard App Context
   -> useScrollPagination
   -> /core/app/listV2
 
-递归树 / 移动弹窗 / 未改造 Tool 选择
-  -> getAllApps
-  -> getMyApps
-  -> /core/app/list
+面包屑目录选择 / 移动弹窗
+  -> SelectOneResource
+  -> useScrollPagination
+  -> getMyAppsV2
+  -> /core/app/listV2
 
 扁平选择列表
   -> useVirtualList
@@ -102,8 +103,8 @@ Dashboard App Context
 
 移动文件夹：
 
-- `context.tsx` 中的 `getAppFolderList` 保持使用 `getAllApps`。
-- `MoveModal` 当前只接受文件夹数组，没有分页协议，不能直接换成 `getMyAppsV2`。
+- `context.tsx` 中的 `getAppFolderList` 使用 `getMyAppsV2`，只返回当前目录的文件夹页。
+- `MoveModal` 复用 `SelectOneResource`，支持分页、面包屑、目录选择、权限禁用和禁止移动到自身。
 
 ### 3.2 Dataset Dashboard
 
@@ -127,7 +128,7 @@ Dashboard App Context
 
 - `projects/app/src/components/core/dataset/SelectModal.tsx` 的 `useDatasetSelect` 使用 `getDatasetsV2` 和 `useScrollPagination`。
 - `projects/app/src/components/core/app/DatasetSelectModal.tsx`、`SelectMarkCollection.tsx` 使用 `ScrollData` 和 `useVirtualGridList`。
-- `projects/app/src/pageComponents/dataset/list/context.tsx` 的文件夹列表使用 `getAllDatasets`。
+- `projects/app/src/pageComponents/dataset/list/context.tsx` 的文件夹列表使用 `getDatasetsV2`。
 - `projects/app/src/web/core/dataset/store/dataset.ts` 无仓库引用，已删除。
 
 ### 3.3 Skill Dashboard
@@ -153,7 +154,7 @@ Dashboard App Context
 - `projects/app/src/pageComponents/app/detail/Edit/FormComponent/ToolSelector/hooks/useSkillSelectData.ts` 使用 `getSkillListV2` 和 `useScrollPagination`。
 - `SkillSelectModal.tsx` 使用 `ScrollData` 和 `useVirtualGridList`。
 - `projects/app/src/pageComponents/app/detail/Edit/ChatAgent/hooks/useSkillManager.tsx` 使用 `getAllSkillList` 建立 Skill 映射和目录加载结果。
-- `projects/app/src/pageComponents/dashboard/skill/List.tsx` 的移动文件夹列表使用 `getSkillFolderList`，间接使用 `getAllSkillList`。
+- `projects/app/src/pageComponents/dashboard/skill/List.tsx` 的移动文件夹列表使用 `getSkillListV2`。
 
 ## 4. 已改为分页的选择列表
 
@@ -167,6 +168,8 @@ Dashboard App Context
 - `pageComponents/chat/ChatSetting/FavouriteAppSetting/AddFavouriteAppModal.tsx`
 
 Workflow App 选择器采用面包屑加当前目录列表，保留单选和过滤应用 ID 行为。
+
+`components/Select/AppSelect.tsx` 和 `pageComponents/chat/ChatHeader.tsx` 复用 `SelectOneResource`，用于评测应用和移动端 Chat 应用切换，同样按当前目录通过 `getMyAppsV2` 分页。
 
 ### Dataset 和 Skill
 
@@ -182,8 +185,6 @@ Workflow App 选择器采用面包屑加当前目录列表，保留单选和过�
 
 | 文件 | 使用场景 | 保留原因 |
 | --- | --- | --- |
-| `components/Select/AppSelect.tsx` | 通用 App 树选择 | `SelectOneResource.server` 接受数组 |
-| `pageComponents/chat/ChatHeader.tsx` | Chat 全部应用目录 | 展开目录时一次渲染当前层级 |
 | `web/core/app/api/tool.ts` | Team Tool/Agent 模板 | 对外继续返回模板数组 |
 
 ### Dataset 直接调用点
@@ -191,7 +192,6 @@ Workflow App 选择器采用面包屑加当前目录列表，保留单选和过�
 | 文件 | 使用场景 | 保留原因 |
 | --- | --- | --- |
 | `components/core/app/DatasetSelectModal.tsx` | 全选/取消全选 | 明确操作需要当前条件下的完整候选集 |
-| `pageComponents/dataset/list/context.tsx` | 移动 Dataset 文件夹 | `MoveModal.server` 接受数组 |
 
 ### Skill 直接调用点
 
@@ -199,9 +199,8 @@ Workflow App 选择器采用面包屑加当前目录列表，保留单选和过�
 | --- | --- | --- |
 | `hooks/useSkillManager.tsx` | ChatAgent Skill 管理 | 需要完整数组构建 Skill 映射 |
 | `packages/web/components/common/Textarea/PromptEditor/plugins/SkillPickerPlugin/index.tsx` | PromptEditor Skill 树 | 插件维护递归目录和键盘索引 |
-| `dashboard/skill/List.tsx` | 移动 Skill 文件夹 | `MoveModal.server` 接受数组 |
 
-## 6. 当前保留树协议的组件
+## 6. 当前目录分页组件
 
 ### `SelectOneResource`
 
@@ -210,11 +209,13 @@ Workflow App 选择器采用面包屑加当前目录列表，保留单选和过�
 当前协议：
 
 ```ts
-server: (props: GetResourceFolderListProps) =>
-  Promise<GetResourceListItemResponse[]>
+server: (
+  props: PaginationProps<GetResourceFolderListProps>,
+  cancelToken?: AbortController
+) => Promise<PaginationResponseType<SelectOneResourceItemType>>
 ```
 
-每个目录节点展开时请求一次，并直接把返回数组写入 `children`。改为 V2 后需要额外维护每个目录的 `offset`、`total`、加载状态和追加逻辑，属于组件级改造。
+组件只维护当前目录路径和当前目录的分页列表。点击目录行进入下一级，点击右侧箭头也可下钻，点击面包屑返回上级；目录切换会取消旧请求并从 `offset=0` 加载新目录。
 
 ### `MoveModal`
 
@@ -223,15 +224,14 @@ server: (props: GetResourceFolderListProps) =>
 当前协议：
 
 ```ts
-server: (props: GetResourceFolderListProps) =>
-  Promise<GetResourceFolderListItemResponse[]>
+server: SelectOneResourceServer
 ```
 
-移动目录树同样直接渲染完整数组，没有分页游标或加载更多节点。当前继续使用旧版全量接口。
+移动弹窗通过 `selectFolder` 开启目录选择模式，根目录映射为 `null`，禁用无权限目录和当前资源，并复用同一分页列表组件。
 
 ### `ChatHeader`
 
-`ChatHeader` 当前继续使用 `SelectOneResource`。该组件的目录展开是递归 children 数组模型，后续若要分页，需要同时扩展 `SelectOneResource` 的节点级分页状态和加载更多交互。
+`ChatHeader` 和评测页的 `AppSelect` 均使用 `SelectOneResource` 的面包屑 + 单层列表模式，目录请求走 App V2 分页接口。
 
 ## 7. 验证清单
 
@@ -248,9 +248,9 @@ server: (props: GetResourceFolderListProps) =>
 - Dashboard 三个列表首次只请求一页。
 - Dashboard 继续滚动后能追加下一页，直到 `data.length >= total`。
 - 搜索和切换目录会清空旧数据并重新请求第一页。
-- 树选择器、移动弹窗和 PromptEditor Skill 树仍能获得 V1 数组。
-- 扁平选择列表首次只请求一页，继续滚动能追加下一页，直到 `data.length >= total`。
-- 扁平选择列表搜索和目录切换会重新请求第一页，跨页已选项保持有效。
+- 面包屑选择器和移动弹窗首次只请求当前目录一页，继续滚动能追加下一页，直到 `data.length >= total`。
+- 面包屑选择器切换目录会重新请求 `offset=0`，移动弹窗可选择根目录 `null`、禁用目录和当前资源。
+- PromptEditor Skill 树、Dataset 全选等仍按语义继续使用 V1 全量数组。
 
 ### 测试文件
 
@@ -267,9 +267,9 @@ pnpm --dir projects/app test test/api/core/ai/skill/list.test.ts
 pnpm --dir projects/app typecheck
 ```
 
-## 8. 后续独立改造建议
+## 8. 实现约束
 
-如果后续需要降低选择器的大数据量请求，应单独扩展资源树组件协议，例如：
+需要保留递归树语义的调用方继续使用 V1 数组 wrapper；不能把 V2 第一页直接伪装成全量数组。当前目录分页组件的通用协议如下：
 
 ```ts
 type ResourcePage = {
@@ -277,11 +277,14 @@ type ResourcePage = {
   total: number;
 };
 
-type ResourceServer = (props: {
-  parentId: ParentIdType;
-  offset: number;
-  pageSize: number;
-}) => Promise<ResourcePage>;
+type ResourceServer = (
+  props: {
+    parentId: ParentIdType;
+    offset: number;
+    pageSize: number;
+  },
+  cancelToken?: AbortController
+) => Promise<ResourcePage>;
 ```
 
-该改造需要同时处理目录级分页、搜索结果、已选项回显、加载状态和空状态，不能在本次只替换 API wrapper 的范围内完成。
+`SelectOneResource` 已完成目录级分页、面包屑切换、选中态、禁用态、加载态和空列表处理；`MoveModal` 通过 `selectFolder` 复用该组件。需要递归树语义的调用方仍应使用 V1 数组 wrapper。

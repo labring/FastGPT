@@ -1,6 +1,5 @@
 'use client';
 import {
-  getAllDatasets,
   getDatasetPaths,
   putDatasetById,
   getDatasetsV2,
@@ -8,10 +7,10 @@ import {
   delDatasetById
 } from '@/web/core/dataset/api';
 import {
-  type GetResourceFolderListProps,
   type ParentIdType,
   type ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
+import type { SelectOneResourceServer } from '@/components/common/folder/SelectOneResource';
 import { normalizeParentId } from '@fastgpt/global/common/parentFolder/depth';
 import { useRouter } from 'next/router';
 import React, { useCallback, useState } from 'react';
@@ -21,6 +20,7 @@ import { useScrollPagination, type ScrollListType } from '@fastgpt/web/hooks/use
 import { type UpdateDatasetBody } from '@fastgpt/global/openapi/core/dataset/api';
 import dynamic from 'next/dynamic';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 import { type DatasetItemType, type DatasetListItemType } from '@fastgpt/global/core/dataset/type';
 import { type EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import { useTranslation } from 'next-i18next';
@@ -142,19 +142,28 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     [moveDatasetId, onUpdateDataset]
   );
 
-  const getDatasetFolderList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
-    return (
-      await getAllDatasets({
-        parentId,
-        type: DatasetTypeEnum.folder
-      })
-    )
-      .filter((item) => item.permission.hasManagePer)
-      .map((item) => ({
-        id: item._id,
-        name: item.name
-      }));
-  }, []);
+  const getDatasetFolderList = useCallback<SelectOneResourceServer>(
+    ({ parentId, offset, pageSize }, cancelToken) =>
+      getDatasetsV2(
+        {
+          parentId,
+          type: DatasetTypeEnum.folder,
+          offset,
+          pageSize
+        },
+        cancelToken
+      ).then(({ list, total }) => ({
+        total,
+        list: list.map((item) => ({
+          id: item._id,
+          name: item.name,
+          avatar: FolderImgUrl,
+          isFolder: true,
+          disabled: item._id === moveDatasetId || !item.permission.hasManagePer
+        }))
+      })),
+    [moveDatasetId]
+  );
 
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
 

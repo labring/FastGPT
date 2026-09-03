@@ -1035,6 +1035,7 @@
   "resume_failed": "恢复失败",
   "resume_completed_data_parse_failed": "恢复完成态数据解析失败",
   "response_processing_error": "响应处理异常",
+  "current_location": "当前位置:",
   "root_folder": "根目录",
   "save_failed": "保存异常",
   "server_error": "服务器异常",

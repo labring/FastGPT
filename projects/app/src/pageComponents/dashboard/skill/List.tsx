@@ -24,7 +24,7 @@ import {
   postUpdateSkill,
   postCopySkill,
   getAppsBySkillId,
-  getSkillFolderList,
+  getSkillListV2,
   resumeInheritPer,
   postChangeSkillOwner
 } from '@/web/core/skill/api';
@@ -38,10 +38,9 @@ import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import type { ListAppsBySkillIdResponse } from '@fastgpt/global/core/ai/skill/api';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
-import type {
-  GetResourceFolderListProps,
-  ParentIdType
-} from '@fastgpt/global/common/parentFolder/type';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import type { SelectOneResourceServer } from '@/components/common/folder/SelectOneResource';
+import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
 import SkillDashboardEmptyHero from '@/pageComponents/dashboard/skill/SkillDashboardEmptyHero';
@@ -306,11 +305,29 @@ const List = ({
   );
 
   // 获取技能文件夹列表
-  const getSkillFolderListForMove = useMemo(
+  const getSkillFolderListForMove = useMemo<SelectOneResourceServer>(
     () =>
-      ({ parentId }: GetResourceFolderListProps) =>
-        getSkillFolderList({ parentId }),
-    []
+      ({ parentId, offset, pageSize }, cancelToken) =>
+        getSkillListV2(
+          {
+            source: 'mine',
+            type: AgentSkillTypeEnum.folder,
+            parentId,
+            offset,
+            pageSize
+          },
+          cancelToken
+        ).then(({ list, total }) => ({
+          total,
+          list: list.map((item) => ({
+            id: item._id,
+            name: item.name,
+            avatar: FolderImgUrl,
+            isFolder: true,
+            disabled: item._id === moveSkillId || !item.permission.hasWritePer
+          }))
+        })),
+    [moveSkillId]
   );
 
   const renderSkillCard = (skill: (typeof skills)[number]) => {

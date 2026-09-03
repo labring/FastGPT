@@ -1035,6 +1035,7 @@
   "resume_failed": "恢復失敗",
   "resume_completed_data_parse_failed": "恢復完成態資料解析失敗",
   "response_processing_error": "處理回應時發生錯誤",
+  "current_location": "目前位置:",
   "root_folder": "根目錄",
   "save_failed": "儲存失敗",
   "server_error": "伺服器錯誤",

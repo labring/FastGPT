@@ -5,18 +5,23 @@ import {
   type GetResourceListItemResponse,
   type ParentIdType
 } from '@fastgpt/global/common/parentFolder/type';
+import type { PaginationProps, PaginationResponseType } from '@fastgpt/global/openapi/api';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import Loading from '@fastgpt/web/components/common/MyLoading';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useMemoizedFn } from 'ahooks';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 import { useTranslation } from 'next-i18next';
 
-type ResourceItemType = GetResourceListItemResponse & {
-  open: boolean;
-  children?: ResourceItemType[];
+export type SelectOneResourceItemType = GetResourceListItemResponse & {
+  disabled?: boolean;
 };
+
+export type SelectOneResourceServer = (
+  data: PaginationProps<GetResourceFolderListProps>,
+  cancelToken?: AbortController
+) => Promise<PaginationResponseType<SelectOneResourceItemType>>;
+
+type ResourcePathItemType = SelectOneResourceItemType;
 
 const rootId = 'root';
 
@@ -24,144 +29,165 @@ const SelectOneResource = ({
   server,
   value,
   onSelect,
-  maxH = ['80vh', '600px']
+  maxH = ['80vh', '600px'],
+  selectFolder = false,
+  disabledIds = []
 }: {
-  server: (e: GetResourceFolderListProps) => Promise<GetResourceListItemResponse[]>;
+  server: SelectOneResourceServer;
   value?: ParentIdType;
-  onSelect: (e?: ResourceItemType) => any;
+  onSelect: (e?: SelectOneResourceItemType) => any;
   maxH?: BoxProps['maxH'];
+  selectFolder?: boolean;
+  disabledIds?: string[];
 }) => {
   const { t } = useTranslation();
-  const [dataList, setDataList] = useState<ResourceItemType[]>([]);
-  const [requestingIdList, setRequestingIdList] = useState<ParentIdType[]>([]);
-
-  const concatRoot = useMemo(() => {
-    const root: ResourceItemType = {
+  const rootItem = useMemo<ResourcePathItemType>(
+    () => ({
       id: rootId,
-      open: true,
       avatar: FolderImgUrl,
       name: t('common:root_folder'),
-      isFolder: true,
-      children: dataList
-    };
-    return [root];
-  }, [dataList, t]);
+      isFolder: true
+    }),
+    [t]
+  );
+  const [path, setPath] = useState<ResourcePathItemType[]>([rootItem]);
+  const currentParentId = path[path.length - 1]?.id === rootId ? null : path[path.length - 1]?.id;
 
-  const { runAsync: requestServer } = useRequest((e: GetResourceFolderListProps) => {
-    if (requestingIdList.includes(e.parentId)) return Promise.reject(null);
-
-    setRequestingIdList((state) => [...state, e.parentId]);
-    return server(e).finally(() =>
-      setRequestingIdList((state) => state.filter((id) => id !== e.parentId))
-    );
-  }, {});
-
-  const { loading } = useRequest(() => requestServer({ parentId: null }), {
-    manual: false,
-    onSuccess: (data) => {
-      setDataList(
-        data.map((item) => ({
-          ...item,
-          open: false
-        }))
-      );
-    }
+  const { data, ScrollData } = useScrollPagination(server, {
+    pageSize: 50,
+    params: { parentId: currentParentId },
+    refreshDeps: [currentParentId],
+    showNoMoreTip: false
   });
 
-  const Render = useMemoizedFn(
-    ({ list, index = 0 }: { list: ResourceItemType[]; index?: number }) => {
-      return (
-        <>
-          {list.map((item) => (
-            <Box key={item.id} _notLast={{ mb: 0.5 }} userSelect={'none'}>
-              <Flex
-                alignItems={'center'}
-                cursor={'pointer'}
-                py={1}
-                pl={index === 0 ? '0.5rem' : `${1.75 * (index - 1) + 0.5}rem`}
-                pr={2}
-                borderRadius={'md'}
-                _hover={{
-                  bg: 'myGray.100'
-                }}
-                {...(item.id === value
-                  ? {
-                      bg: 'primary.50 !important',
-                      onClick: () => onSelect(undefined)
-                    }
-                  : {
-                      onClick: async () => {
-                        if (item.id === rootId) return;
-                        // folder => open(request children) or close
-                        if (item.isFolder) {
-                          if (!item.children) {
-                            const data = await requestServer({ parentId: item.id });
-                            item.children = data.map((item) => ({
-                              ...item,
-                              open: false
-                            }));
-                          }
+  const isItemDisabled = (item: SelectOneResourceItemType) =>
+    item.disabled || disabledIds.includes(item.id);
 
-                          item.open = !item.open;
-                          setDataList([...dataList]);
-                        } else {
-                          onSelect(item);
-                        }
-                      }
-                    })}
-              >
-                {index !== 0 && (
-                  <Flex
-                    alignItems={'center'}
-                    justifyContent={'center'}
-                    visibility={item.isFolder ? 'visible' : 'hidden'}
-                    w={'1.25rem'}
-                    h={'1.25rem'}
-                    cursor={'pointer'}
-                    borderRadius={'xs'}
-                    _hover={{
-                      bg: 'rgba(31, 35, 41, 0.08)'
-                    }}
-                  >
-                    <MyIcon
-                      name={
-                        requestingIdList.includes(item.id)
-                          ? 'common/loading'
-                          : 'common/rightArrowFill'
-                      }
-                      w={'14px'}
-                      color={'myGray.500'}
-                      transform={item.open ? 'rotate(90deg)' : 'none'}
-                    />
-                  </Flex>
-                )}
+  const selectRoot = () => {
+    if (selectFolder) {
+      onSelect(value === null ? undefined : rootItem);
+    }
+    setPath([rootItem]);
+  };
+
+  const enterFolder = (item: ResourcePathItemType) => {
+    setPath((state) => (state[state.length - 1]?.id === item.id ? state : [...state, item]));
+  };
+
+  const onClickItem = (item: SelectOneResourceItemType) => {
+    if (isItemDisabled(item)) return;
+
+    if (item.isFolder) {
+      if (selectFolder) {
+        onSelect(item.id === value ? undefined : item);
+      } else {
+        enterFolder(item);
+      }
+      return;
+    }
+
+    onSelect(item.id === value ? undefined : item);
+  };
+
+  const enterFolderFromArrow = (item: SelectOneResourceItemType) => {
+    if (!item.isFolder || isItemDisabled(item)) return;
+    enterFolder(item);
+  };
+
+  return (
+    <Box maxH={maxH} h={'100%'} minH={0} display={'flex'} flexDirection={'column'}>
+      <Flex alignItems={'center'} gap={1} minH={'20px'} overflowX={'auto'} whiteSpace={'nowrap'}>
+        <Box flex={'0 0 auto'} fontSize={'xs'} color={'myGray.600'}>
+          {t('common:current_location')}
+        </Box>
+        {path.map((item, index) => (
+          <React.Fragment key={item.id}>
+            {index > 0 && <MyIcon name={'common/line'} w={'5px'} color={'myGray.400'} />}
+            <Box
+              flex={'0 0 auto'}
+              px={1.5}
+              py={0.5}
+              borderRadius={'sm'}
+              color={
+                selectFolder && item.id === rootId && value === null
+                  ? 'primary.600'
+                  : index === path.length - 1
+                    ? 'myGray.900'
+                    : 'myGray.500'
+              }
+              bg={
+                index === 0
+                  ? selectFolder && value === null
+                    ? 'primary.50 !important'
+                    : 'myGray.100'
+                  : undefined
+              }
+              fontSize={'xs'}
+              cursor={'pointer'}
+              _hover={{ color: 'primary.600' }}
+              onClick={() => {
+                if (index === 0) {
+                  selectRoot();
+                  return;
+                }
+                setPath((state) => state.slice(0, index + 1));
+              }}
+            >
+              {item.name}
+            </Box>
+          </React.Fragment>
+        ))}
+      </Flex>
+
+      <ScrollData flex={'1 1 0'} minH={0} maxH={maxH} pt={0.5} showLoadingOverlay>
+        {data.map((item) => {
+          const disabled = isItemDisabled(item);
+          const selected = item.id === value;
+          return (
+            <Flex
+              key={item.id}
+              alignItems={'center'}
+              h={'32px'}
+              px={2}
+              borderRadius={'md'}
+              cursor={disabled ? 'not-allowed' : 'pointer'}
+              color={disabled ? 'myGray.400' : 'myGray.900'}
+              bg={selected ? 'primary.50 !important' : undefined}
+              _hover={disabled ? undefined : { bg: 'myGray.100' }}
+              onClick={() => onClickItem(item)}
+            >
+              <Flex alignItems={'center'} justifyContent={'center'} w={'20px'} h={'20px'} mr={2}>
                 <Avatar
-                  ml={index !== 0 ? '0.5rem' : 0}
-                  src={item.avatar}
-                  w={'1.25rem'}
+                  src={item.isFolder ? FolderImgUrl : item.avatar}
+                  w={'20px'}
+                  h={'20px'}
                   borderRadius={'sm'}
                 />
-                <Box fontSize={['md', 'sm']} ml={2} className="textEllipsis">
-                  {item.name}
-                </Box>
               </Flex>
-              {item.children && item.open && (
-                <Box mt={0.5}>
-                  <Render list={item.children} index={index + 1} />
-                </Box>
+              <Box flex={'1 1 0'} minW={0} fontSize={['md', 'sm']} className={'textEllipsis'}>
+                {item.name}
+              </Box>
+              {item.isFolder && (
+                <Flex
+                  alignItems={'center'}
+                  justifyContent={'center'}
+                  flex={'0 0 auto'}
+                  w={'20px'}
+                  h={'20px'}
+                  ml={2}
+                  cursor={disabled ? 'not-allowed' : 'pointer'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    enterFolderFromArrow(item);
+                  }}
+                >
+                  <MyIcon name={'common/rightArrowFill'} w={'16px'} color={'myGray.500'} />
+                </Flex>
               )}
-            </Box>
-          ))}
-        </>
-      );
-    }
-  );
-
-  return loading ? (
-    <Loading fixed={false} />
-  ) : (
-    <Box maxH={maxH} h={'100%'} overflow={'auto'}>
-      <Render list={concatRoot} />
+            </Flex>
+          );
+        })}
+      </ScrollData>
     </Box>
   );
 };
