@@ -28,7 +28,7 @@ import { MongoMcpKey } from '../../support/mcp/schema';
 import { MongoAppRecord } from './record/schema';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../common/logger';
-import { deleteAppSandboxes } from '../ai/sandbox/interface/resource';
+import { deleteAppSandboxes } from '../ai/sandbox/application/sourceCleanup';
 import { MongoSystemTool } from '../plugin/tool/systemToolSchema';
 import {
   StoredSelectedAgentSkillItemTypeSchema,

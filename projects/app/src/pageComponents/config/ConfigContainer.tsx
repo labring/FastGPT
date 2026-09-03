@@ -8,7 +8,8 @@ import SecondaryNavigationContainer from '@/pageComponents/common/SecondaryNavig
 
 export enum ConfigTabEnum {
   plugin = 'plugin',
-  model = 'model'
+  model = 'model',
+  migration = 'migration'
 }
 
 const ConfigContainer = ({
@@ -18,7 +19,7 @@ const ConfigContainer = ({
   children: React.ReactNode;
   isLoading?: boolean;
 }) => {
-  const { t } = useClientTranslation('config');
+  const { t } = useClientTranslation(['config', 'system_migration']);
   const router = useRouter();
   const { initd } = useSystemStore();
   const { userInfo } = useUserStore();
@@ -26,11 +27,15 @@ const ConfigContainer = ({
 
   const currentTab = useMemo(
     () =>
-      router.pathname.startsWith('/config/model') ? ConfigTabEnum.model : ConfigTabEnum.plugin,
+      router.pathname.startsWith('/config/system/migrations')
+        ? ConfigTabEnum.migration
+        : router.pathname.startsWith('/config/model')
+          ? ConfigTabEnum.model
+          : ConfigTabEnum.plugin,
     [router.pathname]
   );
-  const tabList = useMemo(
-    () => [
+  const tabList = useMemo(() => {
+    const tabs = [
       {
         icon: 'common/toolkit',
         label: t('config:system_tool_management'),
@@ -40,10 +45,15 @@ const ConfigContainer = ({
         icon: 'common/model',
         label: t('config:model_provider'),
         value: ConfigTabEnum.model
+      },
+      {
+        icon: 'common/rocket',
+        label: t('system_migration:system_upgrade'),
+        value: ConfigTabEnum.migration
       }
-    ],
-    [t]
-  );
+    ];
+    return tabs;
+  }, [t]);
 
   useEffect(() => {
     if (!router.isReady || !initd || !userInfo || isRoot) return;
@@ -52,7 +62,12 @@ const ConfigContainer = ({
 
   const setCurrentTab = useCallback(
     (tab: ConfigTabEnum) => {
-      void router.replace(tab === ConfigTabEnum.plugin ? '/config/plugin/tool' : '/config/model');
+      const route = {
+        [ConfigTabEnum.plugin]: '/config/plugin/tool',
+        [ConfigTabEnum.model]: '/config/model',
+        [ConfigTabEnum.migration]: '/config/system/migrations'
+      }[tab];
+      void router.replace(route);
     },
     [router]
   );

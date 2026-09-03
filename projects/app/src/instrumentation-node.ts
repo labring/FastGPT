@@ -23,7 +23,7 @@ export async function registerNodeInstrumentation() {
       { startCron },
       { startTrainingQueue },
       { preLoadWorker },
-      { loadSystemModels },
+      { loadInstalledModels, loadSystemModels },
       { trackTimerProcess },
       { initBullMQWorkers },
       { initS3Buckets },
@@ -37,7 +37,8 @@ export async function registerNodeInstrumentation() {
       { serviceEnv },
       { InitialErrorEnum },
       { validateAgentSandboxProxyEnv },
-      { getReadableSystemResourceInfo }
+      { getReadableSystemResourceInfo },
+      { startSystemMigrationRunner }
     ] = await Promise.all([
       import('@fastgpt/service/common/mongo/init'),
       import('@fastgpt/service/common/mongo/index'),
@@ -63,7 +64,8 @@ export async function registerNodeInstrumentation() {
       import('@fastgpt/service/env'),
       import('@fastgpt/service/common/system/constants'),
       import('@fastgpt/service/env.util'),
-      import('@fastgpt/service/common/system/resource')
+      import('@fastgpt/service/common/system/resource'),
+      import('@/migration/runner')
     ]);
 
     console.log('System resources detected', getReadableSystemResourceInfo());
@@ -125,8 +127,7 @@ export async function registerNodeInstrumentation() {
         action: () =>
           connectMongo({
             db: connectionMongo,
-            url: MONGO_URL,
-            connectedCb: () => startMongoWatch()
+            url: MONGO_URL
           }),
         logger,
         getErrText,
@@ -147,13 +148,6 @@ export async function registerNodeInstrumentation() {
         meta: {
           mongoLogUrl: MONGO_LOG_URL
         }
-      }),
-      runInitializationStep({
-        step: 'init-bullmq-workers',
-        stage: InitialErrorEnum.REDIS_ERROR,
-        action: () => initBullMQWorkers(),
-        logger,
-        getErrText
       }),
       runInitializationStep({
         step: 'init-vector-store',
@@ -182,13 +176,6 @@ export async function registerNodeInstrumentation() {
       runInitializationStep({
         step: 'init-root-user',
         action: () => initRootUser(),
-        logger,
-        getErrText
-      }),
-      runInitializationStep({
-        step: 'load-system-models',
-        stage: InitialErrorEnum.PLUGIN_ERROR,
-        action: () => loadSystemModels(),
         logger,
         getErrText
       }),
@@ -226,24 +213,79 @@ export async function registerNodeInstrumentation() {
       logger,
       getErrText
     });
+
+    // 升级脚本可以依赖完整的模型 Provider、模板和运行时缓存。
     await runInitializationStep({
-      step: 'start-cron',
-      action: () => startCron(),
+      step: 'load-system-models',
+      stage: InitialErrorEnum.PLUGIN_ERROR,
+      action: () => loadSystemModels(),
       logger,
       getErrText
     });
-    await runInitializationStep({
-      step: 'start-training-queue',
-      action: () => startTrainingQueue(true),
+
+    const migrationRunner = await runInitializationStep({
+      step: 'start-system-migration-runner',
+      action: () => startSystemMigrationRunner(),
       logger,
       getErrText
     });
-    runBackgroundInitializationStep({
-      step: 'track-timer-process',
-      action: () => trackTimerProcess(),
-      logger,
-      getErrText
-    });
+
+    /**
+     * 阻塞迁移完成后才启动业务消费者并结束 instrumentation 注册。
+     * 这样不仅 HTTP readiness 被阻塞，队列、cron、watch 也不会在旧数据结构上提前消费。
+     */
+    const startBusinessServices = async () => {
+      await Promise.all([
+        runInitializationStep({
+          step: 'start-mongo-watch',
+          action: () => startMongoWatch(),
+          logger,
+          getErrText
+        }),
+        runInitializationStep({
+          step: 'init-bullmq-workers',
+          stage: InitialErrorEnum.REDIS_ERROR,
+          action: () => initBullMQWorkers(),
+          logger,
+          getErrText
+        })
+      ]);
+      await runInitializationStep({
+        step: 'start-cron',
+        action: () => startCron(),
+        logger,
+        getErrText
+      });
+      await runInitializationStep({
+        step: 'start-training-queue',
+        action: () => startTrainingQueue(true),
+        logger,
+        getErrText
+      });
+      runBackgroundInitializationStep({
+        step: 'track-timer-process',
+        action: () => trackTimerProcess(),
+        logger,
+        getErrText
+      });
+      logger.info('System business services are ready');
+    };
+
+    if (migrationRunner.hasBlockingMigrations) {
+      // 所有节点都会等待并查询状态，只有 lease owner 执行；失败时此 await 按设计不返回。
+      logger.info('App node will remain not ready until all blocking migrations succeed');
+      await migrationRunner.waitForBlockingMigrations();
+
+      // 每个节点只需重新读取迁移后的数据库模型；插件模板和自动预装已在初始加载阶段完成。
+      await runInitializationStep({
+        step: 'reload-system-models-after-blocking-migrations',
+        stage: InitialErrorEnum.PLUGIN_ERROR,
+        action: () => loadInstalledModels(),
+        logger,
+        getErrText
+      });
+    }
+    await startBusinessServices();
 
     logger.info('System initialized successfully');
   } catch (error) {

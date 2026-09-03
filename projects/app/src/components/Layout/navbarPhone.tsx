@@ -73,7 +73,12 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
               icon: 'support/config/configLight',
               activeIcon: 'support/config/configFill',
               link: '/config/plugin/tool',
-              activeLink: ['/config/plugin/tool', '/config/plugin/marketplace', '/config/model']
+              activeLink: [
+                '/config/plugin/tool',
+                '/config/plugin/marketplace',
+                '/config/model',
+                '/config/system/migrations'
+              ]
             }
           ]
         : [])

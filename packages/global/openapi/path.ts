@@ -8,6 +8,7 @@ import { WorkflowPath } from './core/workflow';
 import { SupportPath } from './support';
 import { AdminCorePath } from './admin/core';
 import { AdminSupportPath } from './admin/support';
+import { AdminSystemMigrationsPath } from './admin/common/system/migrations';
 import { DevApiTagsMap } from './tag';
 import type { OpenAPIPath } from './type';
 import { CommonPath } from './common';
@@ -23,7 +24,8 @@ export const openAPIPaths: NonNullable<OpenAPIPath> = {
   ...CommonPath,
   ...InvokePath,
   ...AIPath,
-  ...SkillPath
+  ...SkillPath,
+  ...AdminSystemMigrationsPath
 };
 
 export const openAPITagGroups = [
@@ -153,6 +155,10 @@ export const openAPITagGroups = [
   {
     name: '管理员-插件管理',
     tags: [DevApiTagsMap.pluginAdmin, DevApiTagsMap.pluginToolAdmin]
+  },
+  {
+    name: '管理员-系统接口',
+    tags: [DevApiTagsMap.adminSystemMigration]
   }
 ];
 
@@ -162,6 +168,10 @@ export const adminOpenAPIPaths: NonNullable<OpenAPIPath> = {
 };
 
 export const adminOpenAPITagGroups = [
+  {
+    name: '管理员-系统接口',
+    tags: [DevApiTagsMap.adminSystemMigration]
+  },
   {
     name: '管理员-系统概览',
     tags: [DevApiTagsMap.adminDashboard, DevApiTagsMap.adminLogs, DevApiTagsMap.adminLicense]
