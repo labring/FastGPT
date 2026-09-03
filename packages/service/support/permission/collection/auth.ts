@@ -14,6 +14,7 @@ import { getOrgIdSetWithParentByTmbId } from '../org/controllers';
 import { MongoResourcePermission } from '../schema';
 import { getTmbPermission } from '../controller';
 import type { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
+import { sumPer } from '@fastgpt/global/support/permission/utils';
 
 /**
  * The minimal fields of a `dataset_collections` document that are required to
@@ -54,16 +55,7 @@ export async function resolveCollectionPermission({
  * records for a batch of collection resourceIds.
  *
  * It filters by `resourceId: { $in }` + `$or` (tmbId / groupId / orgId), and uses
- * `permission: { $bitsAnySet: 0b111 }` on the query side so only records that hit
- * a standard role (read=0b100 / write=0b010 / manage=0b001) are kept; the owner's
- * full-bit value (4294967295) naturally matches. `permission = 0` deny-records and
- * high-bit-only custom roles are excluded here, avoiding a "record exists => readable"
- * bypass.
- *
- * NOTE (`$bitsAnySet` / owner double): the owner permission is
- * `~0 >>> 0` = 4294967295, which exceeds int32. Verified against a real MongoDB
- * (mongodb-memory-server): it is stored as a numeric value and `$bitsAnySet: 0b111`
- * matches owner records without error.
+ * `permission: { $bitsAnySet: 0b111 }` so only readable ACL rows are returned.
  */
 export function buildPermissionQuery({
   teamId,
@@ -92,12 +84,71 @@ export function buildPermissionQuery({
 }
 
 /**
+ * 批量解析成员对候选 Collection 的有效 role。
+ *
+ * 个人 ACL 优先；无个人记录时合并命中的用户组和组织 role。调用方应以分页后的
+ * Collection 作为候选集，保持一次 `$in` 查询并避免逐 Collection N+1。
+ */
+export async function getCollectionPermissionMap({
+  collections,
+  tmbId,
+  teamId,
+  groupIds,
+  orgIds
+}: {
+  collections: CollectionPermissionItemType[];
+  tmbId: string;
+  teamId: string;
+  groupIds: string[];
+  orgIds: string[];
+}): Promise<Map<string, PermissionValueType>> {
+  if (collections.length === 0) return new Map();
+
+  const permissionRows = await MongoResourcePermission.find(
+    buildPermissionQuery({
+      teamId,
+      resourceIds: collections.map((item) => String(item._id)),
+      tmbId,
+      groupIds,
+      orgIds
+    }),
+    'resourceId permission tmbId groupId orgId'
+  ).lean();
+
+  const personalPermissions = new Map<string, PermissionValueType>();
+  const inheritedPermissions = new Map<string, PermissionValueType[]>();
+  for (const row of permissionRows) {
+    const resourceId = String(row.resourceId);
+    if (String(row.tmbId ?? '') === tmbId) {
+      personalPermissions.set(resourceId, row.permission);
+      continue;
+    }
+    const permissions = inheritedPermissions.get(resourceId) ?? [];
+    permissions.push(row.permission);
+    inheritedPermissions.set(resourceId, permissions);
+  }
+
+  return new Map(
+    collections.map((collection) => {
+      const resourceId = String(collection._id);
+      const personalPermission = personalPermissions.get(resourceId);
+      const role =
+        personalPermission !== undefined
+          ? personalPermission
+          : (sumPer(...(inheritedPermissions.get(resourceId) ?? [])) ?? NullRoleVal);
+      return [resourceId, role];
+    })
+  );
+}
+
+/**
  * Batch-compute the readable (effective permission >= read) Collection IDs, shared
  * by list, detail and RAG recall.
  *
  * 全快照模型下，每个 Collection 的快照都是完整有效权限，因此可读性判定只需查询目标
- * Collection 自身的 `resource_permissions`（`buildPermissionQuery` 的 `$bitsAnySet`
- * 在查询端完成过滤），无需再加载父 Folder / Dataset 做继承判定。以候选集合 `$in` 限定，
+ * Collection 自身的 `resource_permissions`。查询通过 `$bitsAnySet` 在数据库侧筛出可读记录，
+ * 再以 `distinct resourceId` 返回可读集合，无需加载完整 ACL 或递归父 Folder / Dataset。
+ * 查询以候选集合 `$in` 限定，
  * 查询范围与候选集合同量级，不做团队全量扫描。
  *
  * `hasSetCollectionPermissions !== true`（false 或旧数据 undefined）时短路为 Dataset 级鉴权（纯继承 → 全部可读）。

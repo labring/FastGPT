@@ -6,7 +6,12 @@ import {
   authDatasetCollection
 } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import {
+  ManageRoleVal,
+  NullRoleVal,
+  OwnerRoleVal,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
 import { type DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
@@ -33,11 +38,13 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import {
   canShortCircuitCollectionPermission,
+  getCollectionPermissionMap,
   getReadableCollectionIds
 } from '@fastgpt/service/support/permission/collection/auth';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { CollectionPermission } from '@fastgpt/global/support/permission/collection/controller';
 
 const defaultCollectionTrainingStatus = {
   trainingAmount: 0,
@@ -99,7 +106,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
   const searchText = rawSearchText?.replace(/'/g, '');
 
   // auth dataset and get my role
-  const { teamId, tmbId, permission, dataset } = await authDataset({
+  const { teamId, tmbId, permission, isRoot, dataset } = await authDataset({
     req,
     authToken: true,
     authApiKey: true,
@@ -124,6 +131,8 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
   // Collection 级可见性过滤：团队 owner/admin 或纯继承短路时跳过；
   // 否则以当前目录候选集合 `$in` 限定批量解析可读 ID（无 N+1）。
   let collectionIdFilter = {};
+  let groupIds: string[] = [];
+  let orgIds: string[] = [];
   const shortCircuitCollectionPermission = await canShortCircuitCollectionPermission({
     teamId,
     datasetIds: [datasetId],
@@ -144,20 +153,20 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
             }),
         ...(filterTags.length ? { tags: { $in: filterTags } } : {})
       },
-      '_id type parentId tmbId inheritPermission',
+      '_id type parentId tmbId inheritPermission datasetId',
       { ...readFromSecondary }
     ).lean();
 
-    const [groupIds, orgIds] = await Promise.all([
+    [groupIds, orgIds] = await Promise.all([
       getGroupsByTmbId({ tmbId, teamId }).then((list) => list.map((item) => String(item._id))),
-      getOrgIdSetWithParentByTmbId({ tmbId, teamId })
+      getOrgIdSetWithParentByTmbId({ tmbId, teamId }).then((set) => Array.from(set))
     ]);
     const readableIds = await getReadableCollectionIds({
       collections: candidates,
       tmbId,
       teamId,
       groupIds,
-      orgIds: Array.from(orgIds),
+      orgIds,
       datasetPermission: permission.role,
       hasSetCollectionPermissions: dataset.hasSetCollectionPermissions
     });
@@ -198,33 +207,71 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     externalFileId: 1
   };
 
+  /** 分页后批量读取逐 Collection 权限，避免权限查询随 Dataset 集合总量增长。 */
+  const loadCollectionPermissionMap = async (collections: DatasetCollectionSchemaType[]) => {
+    if (shortCircuitCollectionPermission) return undefined;
+
+    const roleMap = await getCollectionPermissionMap({
+      collections,
+      tmbId,
+      teamId,
+      groupIds,
+      orgIds
+    });
+    return new Map(
+      collections.map((item) => [
+        String(item._id),
+        new CollectionPermission({
+          role: roleMap.get(String(item._id)) ?? NullRoleVal,
+          isOwner: String(item.tmbId) === tmbId
+        })
+      ])
+    );
+  };
+
+  /** 返回与详情鉴权一致的逐 Collection 权限；短路分支无需读取 ACL。 */
+  const getCollectionPermission = (
+    item: Pick<DatasetCollectionSchemaType, '_id' | 'tmbId'>,
+    collectionPermissionMap?: Map<string, CollectionPermission>
+  ) => {
+    if (isRoot) return new CollectionPermission({ isOwner: true });
+
+    const resolvedPermission = collectionPermissionMap?.get(String(item._id));
+    if (resolvedPermission) return resolvedPermission;
+
+    return new CollectionPermission({
+      role: permission.role === OwnerRoleVal ? ManageRoleVal : permission.role,
+      isOwner: String(item.tmbId) === tmbId
+    });
+  };
+
   // not count data amount
   if (simple) {
-    const collections = await MongoDatasetCollection.find(match, undefined, {
-      ...readFromSecondary
-    })
-      .select(selectField)
-      .sort({
-        updateTime: -1
-      })
-      .skip(offset)
-      .limit(pageSize)
-      .lean();
+    const [collections, total]: [DatasetCollectionSchemaType[], number] = await Promise.all([
+      MongoDatasetCollection.find(match, undefined, { ...readFromSecondary })
+        .select(selectField)
+        .sort({ updateTime: -1 })
+        .skip(offset)
+        .limit(pageSize)
+        .lean(),
+      MongoDatasetCollection.countDocuments(match)
+    ]);
+    const [collectionPermissionMap, tags] = await Promise.all([
+      loadCollectionPermissionMap(collections),
+      Promise.all(
+        collections.map((item) => collectionTagsToTagLabel({ datasetId, tags: item.tags }))
+      )
+    ]);
 
     return ListCollectionV2ResponseSchema.parse({
-      list: await Promise.all(
-        collections.map(async (item) => ({
-          ...item,
-          tags: await collectionTagsToTagLabel({
-            datasetId,
-            tags: item.tags
-          }),
-          dataAmount: 0,
-          ...defaultCollectionTrainingStatus,
-          permission
-        }))
-      ),
-      total: await MongoDatasetCollection.countDocuments(match)
+      list: collections.map((item, index) => ({
+        ...item,
+        tags: tags[index],
+        dataAmount: 0,
+        ...defaultCollectionTrainingStatus,
+        permission: getCollectionPermission(item, collectionPermissionMap)
+      })),
+      total
     });
   }
 
@@ -240,9 +287,11 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
   const collectionIds = collections.map((item) => new Types.ObjectId(item._id));
 
   // Compute data amount
-  const [trainingAmount, dataAmount]: [
+  const [trainingAmount, dataAmount, collectionPermissionMap, tags]: [
     TrainingAmountAggregateItem[],
-    { _id: string; count: number }[]
+    { _id: string; count: number }[],
+    Map<string, CollectionPermission> | undefined,
+    (string[] | undefined)[]
   ] = await Promise.all([
     MongoDatasetTraining.aggregate(
       [
@@ -345,23 +394,20 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
       {
         ...readFromSecondary
       }
-    )
+    ),
+    loadCollectionPermissionMap(collections),
+    Promise.all(collections.map((item) => collectionTagsToTagLabel({ datasetId, tags: item.tags })))
   ]);
 
-  const list = await Promise.all(
-    collections.map(async (item) => ({
-      ...item,
-      tags: await collectionTagsToTagLabel({
-        datasetId,
-        tags: item.tags
-      }),
-      dataAmount: dataAmount.find((amount) => String(amount._id) === String(item._id))?.count || 0,
-      ...formatTrainingStatus(
-        trainingAmount.find((amount) => String(amount._id) === String(item._id))
-      ),
-      permission
-    }))
-  );
+  const list = collections.map((item, index) => ({
+    ...item,
+    tags: tags[index],
+    dataAmount: dataAmount.find((amount) => String(amount._id) === String(item._id))?.count || 0,
+    ...formatTrainingStatus(
+      trainingAmount.find((amount) => String(amount._id) === String(item._id))
+    ),
+    permission: getCollectionPermission(item, collectionPermissionMap)
+  }));
 
   // count collections
   return ListCollectionV2ResponseSchema.parse({ list, total });
