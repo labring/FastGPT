@@ -62,9 +62,6 @@ type SandboxPhysicalResource = Pick<
   metadata?: unknown;
 };
 
-const getLegacyArchiveState = (resource: SandboxPhysicalResource) =>
-  (resource.metadata as { archive?: { state?: string } } | undefined)?.archive?.state;
-
 export class SandboxLifecycleStateError extends Error {
   constructor(
     readonly state: string,
@@ -277,49 +274,6 @@ async function restoreWorkspaceArchive(params: {
     throw error;
   });
   logger.info('Sandbox workspace restored from archive', { sandboxId });
-}
-
-/** 获取 Legacy Sandbox 的 Workspace 归档，供本分支 migration 核心流程使用。 */
-export async function getSandboxWorkspaceArchiveForMigration(resource: SandboxPhysicalResource) {
-  const archiveSource = getS3SandboxSource();
-  const archiveState = getLegacyArchiveState(resource);
-  // restoring 已经以 S3 归档为恢复源；migration 应复用该归档，不能再打包半恢复的 Workspace。
-  if (archiveState === 'archived' || archiveState === 'deleting' || archiveState === 'restoring') {
-    if (await archiveSource.isLegacyWorkspaceArchiveExists({ sandboxId: resource.sandboxId })) {
-      return archiveSource.downloadLegacyWorkspaceArchive({
-        sandboxId: resource.sandboxId,
-        maxBytes: getAgentSandboxArchiveMaxBytes()
-      });
-    }
-    throw new Error(`Archived Legacy Sandbox workspace is missing: ${resource.sandboxId}`);
-  }
-
-  let sandbox: ISandbox | undefined;
-  try {
-    const connected = await connectSandboxForArchive(resource);
-    sandbox = connected.sandbox;
-    await ensureZipAvailableInSandbox(sandbox);
-    const body = await createWorkspaceArchive({
-      sandbox,
-      workDirectory: connected.profile.workDirectory,
-      sandboxId: resource.sandboxId
-    });
-    await archiveSource.uploadLegacyWorkspaceArchive({ sandboxId: resource.sandboxId, body });
-    return body;
-  } finally {
-    if (sandbox) await disconnectSandbox(sandbox).catch(() => undefined);
-  }
-}
-
-/** 将已校验的 Workspace 归档恢复到 migration staging 目录。 */
-export async function restoreSandboxWorkspaceArchiveForMigration(params: {
-  sandbox: ISandbox;
-  workDirectory: string;
-  sandboxId: string;
-  archiveBody: Buffer;
-}) {
-  await ensureUnzipAvailableInSandbox(params.sandbox);
-  await restoreWorkspaceArchive(params);
 }
 
 async function archiveSandboxWithinLease(params: {

@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  cleanToolSetJsonSchemasForStorage,
-  decodeHttpToolSetNodesFromStorage,
   decodeMcpToolSetNodesFromStorage,
   encodeHttpToolSetNodesForStorage,
   encodeMcpToolSetNodesForStorage
@@ -91,74 +89,5 @@ describe('workflow JSON Schema storage codec', () => {
 
     expect(encoded[0].inputs[0].inputSchema).toEqual({ type: 'object' });
     expect(typeof encoded[0].toolConfig.httpToolSet.toolList[0].inputSchema).toBe('string');
-  });
-
-  it('cleans historical object schemas for upgrade scripts', () => {
-    const nodes = [
-      {
-        toolConfig: {
-          mcpToolSet: {
-            toolList: [{ inputSchema: { type: 'object' } }]
-          },
-          httpToolSet: {
-            toolList: [
-              {
-                inputSchema: { type: 'object' },
-                outputSchema: { type: 'object' },
-                requestSchema: JSON.stringify({ type: 'object' })
-              }
-            ]
-          }
-        }
-      }
-    ];
-
-    const mcpResult = cleanToolSetJsonSchemasForStorage(nodes, 'mcp');
-    const httpResult = cleanToolSetJsonSchemasForStorage(nodes, 'http');
-
-    expect(mcpResult.convertedSchemaCount).toBe(1);
-    expect(httpResult.convertedSchemaCount).toBe(2);
-    expect((httpResult.nodes as any[])[0].toolConfig.mcpToolSet.toolList[0].inputSchema).toEqual({
-      type: 'object'
-    });
-    expect((httpResult.nodes as any[])[0].toolConfig.httpToolSet.toolList[0].requestSchema).toBe(
-      JSON.stringify({ type: 'object' })
-    );
-    expect(decodeHttpToolSetNodesFromStorage(httpResult.nodes)).toEqual([
-      {
-        toolConfig: {
-          mcpToolSet: {
-            toolList: [{ inputSchema: { type: 'object' } }]
-          },
-          httpToolSet: {
-            toolList: [
-              {
-                inputSchema: { type: 'object' },
-                outputSchema: { type: 'object' },
-                requestSchema: { type: 'object' }
-              }
-            ]
-          }
-        }
-      }
-    ]);
-  });
-
-  it('preserves the nodes reference when cleanup is unnecessary', () => {
-    const nodes = [
-      {
-        toolConfig: {
-          mcpToolSet: {
-            toolList: [{ inputSchema: JSON.stringify({ type: 'object' }) }]
-          }
-        }
-      }
-    ];
-
-    expect(cleanToolSetJsonSchemasForStorage(nodes, 'mcp')).toEqual({
-      nodes,
-      changed: false,
-      convertedSchemaCount: 0
-    });
   });
 });

@@ -23,12 +23,94 @@ import { getLogger, LogCategories } from '../../../common/logger';
 import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { flatModelToDocumentData } from './repair';
 import { clearAllMyModelsCache } from '../../../support/permission/model/controller';
-import { bootstrapAIModelsFromLegacy } from './legacy';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { findSystemDefaultModelIds } from '../defaultModel/entity';
 import { MongoAIDefaultModel } from '../defaultModel/schema';
+
+/**
+ * 插件模型协议为了便于声明，将不同模型类型的能力字段平铺在顶层；数据库 canonical
+ * 结构则要求这些字段收敛到 `config`。这里按模型类型维护允许搬入 `config` 的字段，
+ * 避免把身份、连接、计费或插件返回的未知字段误当成模型能力配置。
+ */
+const configKeysMap: Record<ModelTypeEnum, string[]> = {
+  [ModelTypeEnum.llm]: [
+    'maxContext',
+    'maxResponse',
+    'quoteMaxToken',
+    'maxTemperature',
+    'showTopP',
+    'responseFormatList',
+    'showStopSign',
+    'censor',
+    'vision',
+    'audio',
+    'video',
+    'reasoning',
+    'reasoningEffort',
+    'functionCall',
+    'toolChoice',
+    'defaultSystemChatPrompt',
+    'defaultConfig',
+    'fieldMap'
+  ],
+  [ModelTypeEnum.embedding]: [
+    'defaultToken',
+    'maxToken',
+    'weight',
+    'hidden',
+    'vision',
+    'normalization',
+    'batchSize',
+    'defaultConfig',
+    'dbConfig',
+    'queryConfig'
+  ],
+  [ModelTypeEnum.rerank]: ['maxToken', 'defaultConfig'],
+  [ModelTypeEnum.tts]: ['voices'],
+  [ModelTypeEnum.stt]: []
+};
+
+/**
+ * 将运行期插件返回的扁平模型转换成可写入 `ai_models` 的 canonical 文档。
+ *
+ * 转换约定：
+ * - 模型身份、展示、连接和计费字段仍保留在顶层；
+ * - 当前模型类型支持的能力字段搬入 `config`；
+ * - 输入已经携带的 `config` 优先级更高，用于兼容逐步切换到 canonical 协议的插件；
+ * - 最后通过领域 Zod Schema 校验并剔除未知字段，禁止未定义结构进入数据库。
+ */
+export const flatModelToDocumentData = (
+  input: Record<string, any>
+): SystemModelDocumentDataType => {
+  // 复制后再做兼容转换，不能修改插件客户端持有的原始响应对象。
+  const normalized = { ...input };
+  if (normalized.type === ModelTypeEnum.llm) {
+    // 插件旧协议使用 maxTokens；数据库统一使用 maxResponse。显式的新字段优先。
+    normalized.maxResponse = normalized.maxResponse ?? normalized.maxTokens ?? 16000;
+    // null 表示插件未提供该可选能力，转换成缺省字段交由 Schema 处理。
+    if (normalized.maxTemperature === null) delete normalized.maxTemperature;
+  }
+
+  const configKeys = configKeysMap[normalized.type as ModelTypeEnum] ?? [];
+  const config = {
+    // 只过滤 undefined，确保 false、0 和空数组等有效配置不会被误删。
+    ...Object.fromEntries(
+      configKeys.filter((key) => normalized[key] !== undefined).map((key) => [key, normalized[key]])
+    ),
+    // canonical config 覆盖旧扁平字段，避免新协议值被兼容字段反向覆盖。
+    ...(normalized.config && typeof normalized.config === 'object' ? normalized.config : {})
+  };
+
+  // scope 由 FastGPT 赋值；Schema 是最终边界，负责类型校验和未知字段清理。
+  return SystemModelDocumentDataSchema.parse(
+    Object.fromEntries(
+      Object.entries({ ...normalized, scope: ModelScopeEnum.system, config }).filter(
+        ([, value]) => value !== undefined
+      )
+    )
+  );
+};
 
 /**
  * 生成可返回客户端的脱敏模型副本。系统模型对象还会被服务端请求链路复用，不能原地删除字段。
@@ -336,8 +418,8 @@ export const loadInstalledModels = async ({
 };
 
 /**
- * 编排模型启动或模板热刷新。插件刷新仍是启动前置条件；首次启动会先发布 ai_models 当前快照，
- * 再同步执行旧表迁移、自动预装和最终快照刷新，但不会清理成员模型目录缓存。
+ * 编排模型启动或模板热刷新。旧表迁移由阻塞系统升级任务负责；本函数只负责插件模板、
+ * 自动预装和运行时快照，不会以 ai_models 是否为空推断迁移状态。
  * 任一步失败都会向启动链路抛错并终止进程。
  */
 export const loadSystemModels = async (refresh = false, language = 'en') => {
@@ -348,19 +430,12 @@ export const loadSystemModels = async (refresh = false, language = 'en') => {
     await preloadModelProviders();
     const pluginDocuments = await refreshModelTemplates();
     if (isInitialLoad) {
-      await loadInstalledModels({
-        pluginDocuments,
-        language,
-        skipPermissionCacheInvalidation: isInitialLoad
-      });
-      const result = await bootstrapAIModelsFromLegacy({ pluginDocuments });
       await syncPreinstalledSystemModels({ pluginDocuments });
       await loadInstalledModels({
         pluginDocuments,
         language,
         skipPermissionCacheInvalidation: isInitialLoad
       });
-      getLogger(LogCategories.MODULE.AI.CONFIG).info('AI model bootstrap completed', result);
       return;
     }
 

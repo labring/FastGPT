@@ -1,0 +1,30 @@
+---
+title: 'V4.17.0'
+description: 'FastGPT V4.17.0 release notes'
+upgradeTags:
+  - IN PROGRESS
+---
+
+## Upgrade notes
+
+**Before upgrading to V4.17.0, upgrade to V4.16.x and complete all legacy upgrade scripts required by that release.** The automatic upgrade system in V4.17.0 only manages tasks registered from this release onward. It does not run historical scripts from earlier releases.
+
+Starting with V4.17.0, you no longer need to run upgrade scripts manually. FastGPT runs them automatically, uses leases to prevent concurrent execution across multiple nodes, and monitors active scripts through heartbeats. You can view each upgrade script's status under **Admin > System upgrade**.
+
+## 🚀 New
+
+1. Added LDAP member and organizational structure sync to FastGPT SSO Service, along with separate environment variable templates and configuration guides for each SSO provider.
+2. File upload fields in Workflow Tools can now be configured for Agent-generated input. Existing file fields remain manual by default to prevent behavior changes after an upgrade.
+
+## ⚙️ Improvements
+
+1. Improved chat pausing: the stop request now returns as soon as the Workflow stop marker is saved. After confirmation, the client closes the active response stream instead of waiting up to five seconds.
+2. Preserved partial reasoning when a chat is paused before answer text starts, so the reasoning remains available after a refresh.
+3. Centered citation markers below an image when the image is followed only by citations. Inline text citations keep their existing layout.
+4. Improved generation conflict recovery: when the current chat is still generating on the server, the client detects the conflict and restores the existing response stream instead of adding an empty message or showing an error state.
+5. Made collapsed processing previews interactive. You can now select a reasoning or tool-call preview to expand its matching details.
+
+## 🐛 Fixes
+
+1. Fixed bottom spacing in the account deletion confirmation dialog, allowed long confirmation text to wrap correctly, and improved account deletion email templates.
+2. Limited `DB_MAX_LINK` to the inclusive range `10`–`1000`, preventing low values from limiting concurrency and excessively high values from creating resource pressure. Official deployment templates use `20` by default.

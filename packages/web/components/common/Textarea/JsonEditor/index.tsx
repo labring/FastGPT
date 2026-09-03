@@ -25,6 +25,7 @@ type Props = Omit<BoxProps, 'resize' | 'onChange'> & {
   defaultHeight?: number;
   placeholder?: string;
   isDisabled?: boolean;
+  readOnly?: boolean;
   isInvalid?: boolean;
 };
 
@@ -62,6 +63,7 @@ const JSONEditor = ({
   placeholder,
   defaultHeight = 100,
   isDisabled = false,
+  readOnly = false,
   isInvalid = false,
   ...props
 }: Props) => {
@@ -179,7 +181,7 @@ const JSONEditor = ({
     const replaceValue = formatedValue?.replace(/{{(.*?)}}/g, 'true');
     try {
       JSON.parse(replaceValue);
-    } catch (error) {
+    } catch {
       toast({
         status: 'warning',
         title: t('common:json_parse_error')
@@ -282,7 +284,7 @@ const JSONEditor = ({
       <Editor
         height={'100%'}
         defaultLanguage="json"
-        options={options as any}
+        options={{ ...options, readOnly } as any}
         theme="JSONEditorTheme"
         beforeMount={beforeMount}
         value={formatedValue}

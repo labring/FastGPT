@@ -108,7 +108,7 @@ describe('loadSystemModels', () => {
     expect(pluginMocks.listModels).toHaveBeenCalledOnce();
   });
 
-  it('finishes legacy migration before startup model loading resolves', async () => {
+  it('does not run the legacy migration during startup model loading', async () => {
     const legacy = await legacyCollection.insertOne({
       model: 'legacy-llm',
       metadata: {
@@ -124,19 +124,12 @@ describe('loadSystemModels', () => {
 
     await loadSystemModels();
 
-    expect(global.systemModelList).toMatchObject([
-      { modelId: String(legacy.insertedId), model: 'legacy-llm' }
-    ]);
-    await expect(MongoAIModel.findById(legacy.insertedId).lean()).resolves.toMatchObject({
-      scope: 'system',
-      config: { maxContext: 32000 }
-    });
-    await expect(legacyCollection.findOne({ _id: legacy.insertedId })).resolves.not.toHaveProperty(
-      'scope'
-    );
+    expect(global.systemModelList).toEqual([]);
+    await expect(MongoAIModel.findById(legacy.insertedId).lean()).resolves.toBeNull();
+    await expect(legacyCollection.findOne({ _id: legacy.insertedId })).resolves.not.toBeNull();
   });
 
-  it('does not partially migrate when any legacy model is invalid', async () => {
+  it('does not inspect invalid legacy records during startup model loading', async () => {
     pluginMocks.listModels.mockResolvedValue([pluginLlm]);
     await legacyCollection.insertMany([
       {
@@ -153,11 +146,11 @@ describe('loadSystemModels', () => {
       { model: 'invalid-model', metadata: { type: 'unknown' } }
     ]);
 
-    await expect(loadSystemModels()).rejects.toThrow('Invalid legacy system model');
-    await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
-    await expect(MongoAIModel.findOne({ model: pluginLlm.model })).resolves.toBeNull();
+    await expect(loadSystemModels()).resolves.toBeUndefined();
+    await expect(MongoAIModel.countDocuments()).resolves.toBe(1);
+    await expect(MongoAIModel.findOne({ model: pluginLlm.model })).resolves.not.toBeNull();
     await expect(legacyCollection.countDocuments()).resolves.toBe(2);
-    expect(global.systemModelList).toEqual([]);
+    expect(global.systemModelList).toMatchObject([{ model: pluginLlm.model }]);
     expect(reloadMocks.updateFastGPTConfigBuffer).not.toHaveBeenCalled();
   });
 
@@ -168,7 +161,7 @@ describe('loadSystemModels', () => {
     expect(global.systemModelList).toBeUndefined();
   });
 
-  it('preinstalls templates after an empty legacy migration succeeds', async () => {
+  it('preinstalls templates during initial model loading', async () => {
     pluginMocks.listModels.mockResolvedValue([pluginLlm]);
 
     await expect(legacyCollection.countDocuments()).resolves.toBe(0);
@@ -208,7 +201,7 @@ describe('loadSystemModels', () => {
     expect(bulkWrite).toHaveBeenCalledTimes(4);
   });
 
-  it('skips legacy migration when ai_models already contains data', async () => {
+  it('leaves legacy records untouched when loading existing ai_models data', async () => {
     await MongoAIModel.create({
       type: ModelTypeEnum.llm,
       provider: 'OpenAI',
@@ -232,6 +225,7 @@ describe('loadSystemModels', () => {
     await loadSystemModels();
 
     await expect(MongoAIModel.findOne({ model: 'legacy-llm' })).resolves.toBeNull();
+    await expect(legacyCollection.countDocuments()).resolves.toBe(1);
     expect(global.systemModelList).toMatchObject([{ model: 'installed-llm' }]);
   });
 

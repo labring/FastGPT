@@ -73,16 +73,16 @@ Follow [Milvus BM25 full-text search configuration and migration](/self-host/mil
 ## ⚙️ Improvements
 
 1. Improved the overall Account page UI and mobile responsiveness.
-2. Improved routing for Admin pages and model providers.
-3. Improved the reliability of S3 chunked uploads on unstable networks.
+2. Moved model configuration from Account to Admin.
+3. Improved the resilience of S3 multipart uploads on unstable networks.
 4. Standardized file upload error messages.
-5. Improved Skill saving by extracting `name` and `description` as structured fields and allowing `description` to be empty.
+5. Improved Skill saving by extracting `name` and `description` into structured fields and allowing an empty `description`.
 6. Improved repeated tool call anomaly detection. Instead of checking only the call count and number of tools, FastGPT now treats more than five consecutive calls to the same tool with the same arguments as a model hallucination.
 7. Preserved complete failed tool responses from Agent tool calls and exposed failure details in `nodeResponse`, `toolResponse`, and streaming events.
 8. Unified sub-workflow output and billing across Workflow Tool, ToolCall, and Agent runs. Commercial tool failures no longer incur call or token fees, while `pluginOutput.error` from personal Workflow Tools remains a business field.
 9. Attributed enhanced PDF parsing charges to the `read_files` tool Node and preserved page-count details. Propagated `usageId` through external-file and API-file Dataset parsing so charges are attributed correctly.
 10. Improved tool configuration, version selection, and parsed-document views with responsive layouts, version descriptions, a two-column grid, and ellipsis tooltips for long filenames.
-11. Hardened JavaScript execution security in the Code Sandbox.
+11. Hardened JavaScript execution in the Code Sandbox.
 
 ## 🐛 Fixes
 

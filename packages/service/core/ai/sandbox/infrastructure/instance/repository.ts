@@ -14,7 +14,6 @@ import {
   type SandboxInstanceStatusType,
   type SandboxOperationType,
   type SandboxProviderType,
-  type SandboxSourceType,
   type SandboxStableStatusType
 } from '../../type';
 
@@ -466,112 +465,6 @@ export async function countRunningSandboxInstancesBySourceType(
     operation: { $exists: false }
   });
 }
-
-type ClaimSandboxMigrationTargetParams = {
-  provider: SandboxProviderType;
-  sandboxId: string;
-  sourceType: SandboxSourceType;
-  sourceId: string;
-  userId: string;
-  reclaimHeartbeatBefore?: Date;
-} & SandboxStableFields;
-
-/** 创建或接管 Legacy migration 目标；调用方必须已经持有 Source 与 Lifecycle lease。 */
-async function claimSandboxMigrationTarget(params: ClaimSandboxMigrationTargetParams) {
-  const existing = await findSandboxInstanceBySource({
-    sourceType: params.sourceType,
-    sourceId: params.sourceId,
-    userId: params.userId
-  });
-
-  if (!existing) {
-    const now = new Date();
-    try {
-      const created = await MongoSandboxInstance.create({
-        provider: params.provider,
-        sandboxId: params.sandboxId,
-        sourceType: params.sourceType,
-        sourceId: params.sourceId,
-        userId: params.userId,
-        status: SandboxInstanceStatusEnum.legacyMigrating,
-        lastActiveAt: now,
-        createdAt: now,
-        ...buildSandboxStableFieldsSet(params),
-        operation: {
-          id: randomUUID(),
-          type: SandboxOperationTypeEnum.legacyMigration,
-          phase: 'claimed',
-          startedAt: now,
-          heartbeatAt: now
-        }
-      });
-      return created.toObject() as SandboxResourceDoc;
-    } catch (error) {
-      if (!isMongoDuplicateKeyError(error)) throw error;
-      return null;
-    }
-  }
-  if (existing.sandboxId !== params.sandboxId) {
-    throw new Error('Sandbox migration target conflicts with another sandbox');
-  }
-  if (
-    !stableStatuses.has(existing.status) &&
-    existing.status !== SandboxInstanceStatusEnum.legacyMigrating
-  ) {
-    return null;
-  }
-  if (
-    existing.status === SandboxInstanceStatusEnum.legacyMigrating &&
-    params.reclaimHeartbeatBefore
-  ) {
-    const operation = existing.operation;
-    if (
-      !operation?.error &&
-      (!operation?.heartbeatAt || operation.heartbeatAt >= params.reclaimHeartbeatBefore)
-    ) {
-      return null;
-    }
-  }
-
-  const claimed = await claimSandboxOperation({
-    resource: existing,
-    status: SandboxInstanceStatusEnum.legacyMigrating,
-    type: SandboxOperationTypeEnum.legacyMigration,
-    previousStatus: stableStatuses.has(existing.status)
-      ? (existing.status as SandboxStableStatusType)
-      : existing.operation?.previousStatus
-  });
-  if (!claimed) return claimed;
-
-  return MongoSandboxInstance.findOneAndUpdate(
-    {
-      _id: claimed._id,
-      status: SandboxInstanceStatusEnum.legacyMigrating,
-      'operation.id': claimed.operation?.id
-    },
-    { $set: buildSandboxStableFieldsSet(params) },
-    { new: true }
-  ).lean<SandboxResourceDoc | null>();
-}
-
-/** 创建或接管 App 用户级 Legacy migration 目标。 */
-export const claimAppSandboxMigrationTarget = (
-  params: Omit<ClaimSandboxMigrationTargetParams, 'sourceType'>
-) =>
-  claimSandboxMigrationTarget({
-    ...params,
-    sourceType: ChatSourceTypeEnum.app
-  });
-
-/** 创建或接管使用新物理 ID 的 Skill Edit Legacy migration 目标。 */
-export const claimSkillSandboxMigrationTarget = (
-  params: Omit<ClaimSandboxMigrationTargetParams, 'sourceType' | 'userId'>
-) =>
-  claimSandboxMigrationTarget({
-    ...params,
-    sourceType: ChatSourceTypeEnum.skillEdit,
-    userId: ChatSourceTypeEnum.skillEdit
-  });
 
 /** 在 archived 稳定态内原子切换 provider，不引入无远端副作用的过渡 operation。 */
 export async function switchArchivedSandboxProvider(params: {

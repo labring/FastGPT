@@ -1,4 +1,4 @@
-export type ToolSetStorageType = 'mcp' | 'http';
+type ToolSetStorageType = 'mcp' | 'http';
 
 const ToolSetConfigKey: Record<ToolSetStorageType, 'mcpToolSet' | 'httpToolSet'> = {
   mcp: 'mcpToolSet',
@@ -100,26 +100,3 @@ export const decodeHttpToolSetNodesFromStorage = <T>(nodes: T): T =>
 /** 解码工作流中可能存在的 MCP/HTTP 工具节点，普通节点不会被修改。 */
 export const decodeToolSetNodesFromStorage = <T>(nodes: T): T =>
   decodeHttpToolSetNodesFromStorage(decodeMcpToolSetNodesFromStorage(nodes));
-
-/** 清洗指定工具类型的历史 object JSON Schema，供升级脚本批量写回原始 Mongo 数据。 */
-export const cleanToolSetJsonSchemasForStorage = <T>(
-  nodes: T,
-  type: ToolSetStorageType
-): {
-  nodes: T;
-  changed: boolean;
-  convertedSchemaCount: number;
-} => {
-  let convertedSchemaCount = 0;
-  const cleanedNodes = transformToolSetNodes(nodes, type, (schema) => {
-    if (!schema || typeof schema !== 'object') return schema;
-    convertedSchemaCount += 1;
-    return JSON.stringify(schema);
-  });
-
-  return {
-    nodes: cleanedNodes,
-    changed: convertedSchemaCount > 0,
-    convertedSchemaCount
-  };
-};

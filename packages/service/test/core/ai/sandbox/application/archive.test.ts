@@ -23,9 +23,6 @@ const mocks = vi.hoisted(() => ({
   uploadWorkspaceArchive: vi.fn(),
   downloadWorkspaceArchive: vi.fn(),
   isWorkspaceArchiveExists: vi.fn(),
-  uploadLegacyWorkspaceArchive: vi.fn(),
-  downloadLegacyWorkspaceArchive: vi.fn(),
-  isLegacyWorkspaceArchiveExists: vi.fn(),
   getSandboxAdapterConfig: vi.fn(),
   getSandboxRuntimeProfile: vi.fn()
 }));
@@ -79,10 +76,7 @@ vi.mock('@fastgpt/service/common/s3/sources/sandbox', () => ({
   getS3SandboxSource: () => ({
     uploadWorkspaceArchive: mocks.uploadWorkspaceArchive,
     downloadWorkspaceArchive: mocks.downloadWorkspaceArchive,
-    isWorkspaceArchiveExists: mocks.isWorkspaceArchiveExists,
-    uploadLegacyWorkspaceArchive: mocks.uploadLegacyWorkspaceArchive,
-    downloadLegacyWorkspaceArchive: mocks.downloadLegacyWorkspaceArchive,
-    isLegacyWorkspaceArchiveExists: mocks.isLegacyWorkspaceArchiveExists
+    isWorkspaceArchiveExists: mocks.isWorkspaceArchiveExists
   })
 }));
 
@@ -95,7 +89,6 @@ import {
   archiveInactiveSandboxes,
   archiveSandboxResource,
   archiveSandboxResourceNow,
-  getSandboxWorkspaceArchiveForMigration,
   restoreArchivedSandboxBeforeUse,
   retryStaleArchivingSandboxes
 } from '@fastgpt/service/core/ai/sandbox/application/archive';
@@ -233,9 +226,6 @@ describe('sandbox archive lifecycle', () => {
     mocks.uploadWorkspaceArchive.mockResolvedValue(undefined);
     mocks.downloadWorkspaceArchive.mockResolvedValue(EMPTY_ZIP_BUFFER);
     mocks.isWorkspaceArchiveExists.mockResolvedValue(false);
-    mocks.uploadLegacyWorkspaceArchive.mockResolvedValue(undefined);
-    mocks.downloadLegacyWorkspaceArchive.mockResolvedValue(EMPTY_ZIP_BUFFER);
-    mocks.isLegacyWorkspaceArchiveExists.mockResolvedValue(false);
     mocks.markSandboxOperationFailed.mockResolvedValue(undefined);
     mocks.advanceSandboxOperation.mockResolvedValue(createClaimed('archiving'));
     mocks.completeSandboxOperation.mockResolvedValue(createResource('archived'));
@@ -359,70 +349,6 @@ describe('sandbox archive lifecycle', () => {
     expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
       expect.objectContaining({ operationId: 'resumed-archive', status: 'archived' })
     );
-  });
-
-  it('rejects a missing Legacy deleting archive instead of creating an empty provider', async () => {
-    mocks.isLegacyWorkspaceArchiveExists.mockResolvedValueOnce(false);
-
-    await expect(
-      getSandboxWorkspaceArchiveForMigration({
-        provider: 'opensandbox',
-        sandboxId: 'legacy-sandbox',
-        status: 'stopped',
-        lastActiveAt: new Date(),
-        metadata: { archive: { state: 'deleting' } }
-      })
-    ).rejects.toThrow('Archived Legacy Sandbox workspace is missing');
-
-    expect(mocks.connectToSandbox).not.toHaveBeenCalled();
-    expect(mocks.uploadLegacyWorkspaceArchive).not.toHaveBeenCalled();
-  });
-
-  it('reuses the completed Legacy archive while the old state is deleting', async () => {
-    mocks.isLegacyWorkspaceArchiveExists.mockResolvedValueOnce(true);
-
-    await expect(
-      getSandboxWorkspaceArchiveForMigration({
-        provider: 'opensandbox',
-        sandboxId: 'legacy-sandbox',
-        status: 'stopped',
-        lastActiveAt: new Date(),
-        metadata: { archive: { state: 'deleting' } }
-      })
-    ).resolves.toEqual(EMPTY_ZIP_BUFFER);
-
-    expect(mocks.downloadLegacyWorkspaceArchive).toHaveBeenCalledWith({
-      sandboxId: 'legacy-sandbox',
-      maxBytes: 1024 * 1024
-    });
-    expect(mocks.connectToSandbox).not.toHaveBeenCalled();
-    expect(mocks.uploadLegacyWorkspaceArchive).not.toHaveBeenCalled();
-  });
-
-  it('rearchives a Legacy workspace that was left in archiving', async () => {
-    await getSandboxWorkspaceArchiveForMigration({
-      provider: 'opensandbox',
-      sandboxId: 'legacy-sandbox',
-      status: 'stopped',
-      lastActiveAt: new Date(),
-      storage: {
-        volumes: [
-          {
-            name: 'workspace',
-            claimName: 'fastgpt-session-legacy-sandbox-old',
-            mountPath: '/workspace'
-          }
-        ],
-        mountPath: '/workspace'
-      },
-      metadata: { archive: { state: 'archiving' } }
-    });
-
-    expect(mocks.connectToSandbox).toHaveBeenCalledTimes(1);
-    expect(mocks.uploadLegacyWorkspaceArchive).toHaveBeenCalledWith({
-      sandboxId: 'legacy-sandbox',
-      body: Buffer.from('workspace')
-    });
   });
 
   it('leaves provisioning recovery to the runtime client', async () => {
