@@ -48,6 +48,9 @@ import { cloneDeep } from 'lodash-es';
 import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
 import { getChatItemErrorText } from '@/global/core/chat/utils';
+import { isChatGeneratingError, shouldRestoreSubmittedChatInput } from '../utils/generate';
+import { getLastAiDataId } from '../utils/resume';
+import type { ChatGeneratingConflictRecovery } from '../type';
 
 type HumanChatSiteItemType = Extract<ChatSiteItemType, { obj: ChatRoleEnum.Human }>;
 
@@ -100,6 +103,7 @@ type UseChatGenerateProps = {
   generatingScroll: (force?: boolean) => void;
   notifyChatGenerateStatusChange: NotifyChatGenerateStatusChange;
   finishChatGenerateStatus: FinishChatGenerateStatus;
+  onChatGeneratingConflict?: (recovery: ChatGeneratingConflictRecovery) => void;
 };
 
 const isAbortByLeave = (reason: unknown) => {
@@ -112,7 +116,7 @@ const isAbortByLeave = (reason: unknown) => {
  * 这个 hook 承接原 `ChatBox/index.tsx` 中最核心的运行时逻辑：
  * - `generatingMessage`：按 SSE event 增量更新最后一条 AI 消息。
  * - `sendPrompt`：校验输入、创建 human/AI placeholder、调用 `onStartChat`、处理完成和失败。
- * - `abortRequest`：统一中断 chat、question guide、plugin 和 resume 请求，仅用于页面切换、重开会话等前端生命周期清理。
+ * - `abortRequest`：统一中断 chat、question guide、plugin 和 resume 请求，用于服务端确认停止后的本地中断及页面生命周期清理。
  *
  * 输入约定：
  * - refs 仍由 ChatBox 持有，保证页面切换、恢复生成等生命周期清理共用同一组 controller。
@@ -143,7 +147,8 @@ export const useChatGenerate = ({
   scrollToBottom,
   generatingScroll,
   notifyChatGenerateStatusChange,
-  finishChatGenerateStatus
+  finishChatGenerateStatus,
+  onChatGeneratingConflict
 }: UseChatGenerateProps) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -167,6 +172,8 @@ export const useChatGenerate = ({
   const chatAuthTarget = useChatAuthApiTarget({ sourceTarget, outLinkAuthData });
 
   const generatingMessageQueueRef = useRef<QueuedGeneratingMessage[]>([]);
+  // React 状态提交前也要同步锁住发送，避免同一渲染周期创建两条本地生成流。
+  const chatRequestActiveRef = useRef(false);
 
   const applyGeneratingMessage = useMemoizedFn(
     (
@@ -653,7 +660,7 @@ export const useChatGenerate = ({
       variablesForm.handleSubmit(
         async ({ variables = {} }) => {
           if (!onStartChat) return;
-          if (isRoundPending) {
+          if (isRoundPending || chatRequestActiveRef.current) {
             if (!hideInUI) {
               toast({
                 title: t('chat:is_chatting'),
@@ -685,10 +692,16 @@ export const useChatGenerate = ({
             interactiveVal: text,
             responseChatItemId: getNanoid(24)
           });
-
-          if (autoTTSResponse) {
-            await startSegmentedAudio();
-            setAudioPlayingChatId(responseChatId);
+          const previousAiDataId = getLastAiDataId(history);
+          chatRequestActiveRef.current = true;
+          try {
+            if (autoTTSResponse) {
+              await startSegmentedAudio();
+              setAudioPlayingChatId(responseChatId);
+            }
+          } catch (error) {
+            chatRequestActiveRef.current = false;
+            throw error;
           }
 
           const currentHumanChat: HumanChatSiteItemType = {
@@ -860,11 +873,31 @@ export const useChatGenerate = ({
                 state.sourceKey === sourceKey && state.chatId === chatId
             });
           } catch (err: any) {
-            if (isAbortByLeave(err)) {
-              return;
-            }
+            if (isAbortByLeave(err)) return;
 
             flushGeneratingMessageQueue();
+
+            if (isChatGeneratingError(err) && onChatGeneratingConflict) {
+              // 服务端已有生成任务，本轮并未真正创建；回滚占位消息后再恢复原有流。
+              setChatRecords(history);
+              if (shouldRestoreSubmittedChatInput({ clearInput })) {
+                resetInputVal({ text, files });
+              }
+              // 暂时解除本轮发送态；恢复 hook 会用服务端记录校准当前轮并接管后续状态。
+              setChatBoxData((state) =>
+                state.sourceKey === sourceKey && state.chatId === chatId
+                  ? {
+                      ...state,
+                      chatGenerateStatus: ChatGenerateStatusEnum.error
+                    }
+                  : state
+              );
+              onChatGeneratingConflict({
+                previousAiDataId,
+                canReusePreviousAi: responseChatId === previousAiDataId
+              });
+              return;
+            }
 
             const errorMsg = t(getErrText(err, t('common:core.chat.error.Chat error') as any));
 
@@ -880,7 +913,12 @@ export const useChatGenerate = ({
               })
             );
 
-            if (!err?.responseText && clearInput) {
+            if (
+              shouldRestoreSubmittedChatInput({
+                clearInput,
+                responseText: err?.responseText
+              })
+            ) {
               resetInputVal({ text, files });
             }
 
@@ -895,10 +933,11 @@ export const useChatGenerate = ({
               shouldUpdateChatBoxData: (state) =>
                 state.sourceKey === sourceKey && state.chatId === chatId
             });
-          }
-
-          if (autoTTSResponse) {
-            finishSegmentedAudio();
+          } finally {
+            chatRequestActiveRef.current = false;
+            if (autoTTSResponse) {
+              finishSegmentedAudio();
+            }
           }
         },
         () => {}

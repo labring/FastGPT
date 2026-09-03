@@ -7,6 +7,21 @@ import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/ch
 
 type MyModelByType<T extends ModelTypeEnum> = Extract<MyModelItemType, { type: T }>;
 
+/** 仅反映当前消费者是否仍在等待目录校验，避免其他消费者的请求触发全局 loading。 */
+export const getUserModelListsLoading = ({
+  enabled,
+  expectedIdentity,
+  isCurrentIdentity,
+  requestKey,
+  validatedRequestKey
+}: {
+  enabled: boolean;
+  expectedIdentity?: string;
+  isCurrentIdentity: boolean;
+  requestKey?: string;
+  validatedRequestKey?: string;
+}) => enabled && !!expectedIdentity && (validatedRequestKey !== requestKey || !isCurrentIdentity);
+
 /** 按登录成员或外链运行身份加载目录，并提供按类型划分的响应式视图。 */
 export const useUserModelLists = ({
   outLinkAuthData,
@@ -15,7 +30,7 @@ export const useUserModelLists = ({
   outLinkAuthData?: OutLinkChatAuthProps;
   enabled?: boolean;
 } = {}) => {
-  const { identity, modelList, loading, loaded, loadModelCatalog } = useUserModelStore();
+  const { identity, modelList, loaded, loadModelCatalog } = useUserModelStore();
   const teamId = useUserStore((state) => state.userInfo?.team?.teamId);
   const tmbId = useUserStore((state) => state.userInfo?.team?.tmbId);
   const outLinkShareId = outLinkAuthData?.shareId;
@@ -75,10 +90,13 @@ export const useUserModelLists = ({
     );
 
     return {
-      loading:
-        enabled &&
-        !!expectedIdentity &&
-        (validatedRequestKey !== requestKey || !isCurrentIdentity || loading),
+      loading: getUserModelListsLoading({
+        enabled,
+        expectedIdentity,
+        isCurrentIdentity,
+        requestKey,
+        validatedRequestKey
+      }),
       loaded: isCurrentIdentity && loaded,
       modelList: visibleModelList,
       llmModelList,
@@ -94,7 +112,6 @@ export const useUserModelLists = ({
     isCurrentIdentity,
     loaded,
     modelList,
-    loading,
     requestKey,
     validatedRequestKey
   ]);

@@ -1,13 +1,15 @@
-import { existsSync, mkdtempSync, writeFileSync } from 'fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { spawnSync } from 'child_process';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   PYTHON_SANDBOX_GID,
   PYTHON_SANDBOX_UID,
   shouldEnablePythonNativeIsolation
 } from '../../src/isolated/python-isolation-config';
+
+vi.unmock('../../src/isolated/python-isolation-config');
 
 const nativeLibraryPath = join(process.cwd(), 'dist', 'fastgpt_python_sandbox.so');
 const shouldRunNativeIsolation =
@@ -34,9 +36,9 @@ import os
 import sys
 
 lib = ctypes.CDLL(${JSON.stringify(nativeLibraryPath)})
-lib.FastGPTInitPythonSandbox.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
+lib.FastGPTInitPythonSandbox.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int]
 lib.FastGPTInitPythonSandbox.restype = ctypes.c_int
-ret = lib.FastGPTInitPythonSandbox(${PYTHON_SANDBOX_UID}, ${PYTHON_SANDBOX_GID}, 0)
+ret = lib.FastGPTInitPythonSandbox(${PYTHON_SANDBOX_UID}, ${PYTHON_SANDBOX_GID}, 0, 1)
 if ret != 0:
     print(json.dumps({"init": ret}))
     sys.exit(1)
@@ -53,10 +55,72 @@ print(json.dumps({"system_rc": rc}), flush=True)
       encoding: 'utf8',
       timeout: 5000
     });
+    rmSync(probeScript, { force: true });
+    rmSync(sandboxRoot, { recursive: true, force: true });
 
     expect(result.stdout).toContain(`"uid": ${PYTHON_SANDBOX_UID}`);
     expect(result.stdout).toContain(`"gid": ${PYTHON_SANDBOX_GID}`);
     expect(result.stdout).not.toContain('"system_rc": 0');
     expect(result.stdout + result.stderr).not.toMatch(/uid=\d+/);
+  });
+
+  it('显式禁用 seccomp 后仍保留 chroot 和降权', () => {
+    const sandboxRoot = mkdtempSync(join(tmpdir(), 'fastgpt-python-native-no-seccomp-'));
+    const probeScript = join(tmpdir(), `fastgpt-native-no-seccomp-${Date.now()}.py`);
+
+    writeFileSync(
+      probeScript,
+      `
+import ctypes
+import json
+import os
+import socket
+import sys
+
+lib = ctypes.CDLL(${JSON.stringify(nativeLibraryPath)})
+lib.FastGPTInitPythonSandbox.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+lib.FastGPTInitPythonSandbox.restype = ctypes.c_int
+ret = lib.FastGPTInitPythonSandbox(${PYTHON_SANDBOX_UID}, ${PYTHON_SANDBOX_GID}, 0, 0)
+if ret != 0:
+    print(json.dumps({"init": ret}))
+    sys.exit(1)
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock.bind(("127.0.0.1", 0))
+try:
+    with open('/escape.txt', 'w') as file:
+        file.write('blocked')
+    write_error = None
+except OSError as exc:
+    write_error = exc.errno
+
+print(json.dumps({
+    "uid": os.getuid(),
+    "gid": os.getgid(),
+    "passwd_visible": os.path.exists('/etc/passwd'),
+    "socket_bound": True,
+    "write_error": write_error
+}), flush=True)
+`,
+      'utf8'
+    );
+
+    const result = spawnSync('python3', ['-u', probeScript], {
+      cwd: sandboxRoot,
+      encoding: 'utf8',
+      timeout: 5000
+    });
+    rmSync(probeScript, { force: true });
+    rmSync(sandboxRoot, { recursive: true, force: true });
+
+    expect(result.status, result.stderr).toBe(0);
+    const payload = JSON.parse(result.stdout.trim());
+    expect(payload).toMatchObject({
+      uid: PYTHON_SANDBOX_UID,
+      gid: PYTHON_SANDBOX_GID,
+      passwd_visible: false,
+      socket_bound: true
+    });
+    expect(payload.write_error).toBeTypeOf('number');
   });
 });

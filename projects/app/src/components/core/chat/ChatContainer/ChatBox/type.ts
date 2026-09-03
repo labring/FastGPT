@@ -59,6 +59,11 @@ export type ChatGenerateStatusChangePayload = {
 
 export type ChatGenerateStatusChangeHandler = (data: ChatGenerateStatusChangePayload) => void;
 
+export type ChatGeneratingConflictRecovery = {
+  previousAiDataId?: string;
+  canReusePreviousAi: boolean;
+};
+
 export type ComponentRef = {
   restartChat: () => void;
   scrollToBottom: (behavior?: 'smooth' | 'auto') => void;

@@ -13,6 +13,90 @@ import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { ChatSiteItemType } from '../type';
 
+/** 获取当前记录中最后一条 AI 消息的 dataId。 */
+export const getLastAiDataId = (records: ChatSiteItemType[]) =>
+  records.findLast((record) => record.obj === ChatRoleEnum.AI && !!record.dataId)?.dataId;
+
+/**
+ * 等待服务端预创建的当前轮记录可见。
+ *
+ * 生成槽会先于 Human/AI placeholder 被占用，冲突请求可能在预创建事务提交前到达。
+ * 普通新一轮必须观察到不同于旧 AI 的 dataId；交互续跑复用上一条 AI，可直接接受旧 id。
+ */
+export const waitForConflictRecoveryRecords = async ({
+  loadRecords,
+  previousAiDataId,
+  canReusePreviousAi,
+  signal,
+  maxAttempts = 10,
+  retryIntervalMs = 100
+}: {
+  loadRecords: () => Promise<ChatSiteItemType[]>;
+  previousAiDataId?: string;
+  canReusePreviousAi: boolean;
+  signal?: AbortSignal;
+  maxAttempts?: number;
+  retryIntervalMs?: number;
+}) => {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (signal?.aborted) return;
+
+    try {
+      const records = await loadRecords();
+      if (signal?.aborted) return;
+
+      const latestAiDataId = getLastAiDataId(records);
+      if (latestAiDataId && (canReusePreviousAi || latestAiDataId !== previousAiDataId)) {
+        return records;
+      }
+    } catch (error) {
+      if (signal?.aborted) return;
+      if (attempt === maxAttempts - 1) throw error;
+    }
+
+    if (attempt < maxAttempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, retryIntervalMs));
+    }
+  }
+};
+
+/**
+ * 判断是否需要向服务端确认当前会话的生成状态。
+ *
+ * 状态检查只用于本地没有流请求的当前会话；普通生成流或恢复流仍在运行时跳过，
+ * 避免同一会话并发建立两条 SSE 连接。
+ */
+export const shouldCheckChatResumeStatus = ({
+  enableAutoResume,
+  isReady,
+  isChatRecordsLoaded,
+  sourceKey,
+  chatId,
+  isChatting,
+  isResumeRequestActive,
+  chatBoxSourceKey,
+  chatBoxChatId
+}: {
+  enableAutoResume: boolean;
+  isReady: boolean;
+  isChatRecordsLoaded: boolean;
+  sourceKey?: string;
+  chatId?: string;
+  isChatting: boolean;
+  isResumeRequestActive: boolean;
+  chatBoxSourceKey?: string;
+  chatBoxChatId?: string;
+}) =>
+  enableAutoResume &&
+  isReady &&
+  isChatRecordsLoaded &&
+  !!sourceKey &&
+  !!chatId &&
+  !isChatting &&
+  !isResumeRequestActive &&
+  chatBoxSourceKey === sourceKey &&
+  chatBoxChatId === chatId;
+
 /**
  * 判断恢复流中是否需要先补一个 AI placeholder。
  *

@@ -7,6 +7,9 @@ import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Te
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
+import { addModelNamesToWorkflow } from '@fastgpt/global/core/workflow/utils';
 
 export const SYSTEM_CONFIG_AUTO_OPEN_QUERY_KEY = 'openSystemConfig';
 
@@ -43,6 +46,45 @@ export function filterSensitiveFormData(appForm: AppFormEditFormType) {
       }))
     }))
   };
+}
+
+/** 为简易应用导出补充可跨环境匹配的模型名称，并保留原 modelId。 */
+export function addModelNamesToAppForm({
+  appForm,
+  models
+}: {
+  appForm: AppFormEditFormType;
+  models: MyModelItemType[];
+}) {
+  const getModelName = ({ modelId, type }: { modelId?: string; type: ModelTypeEnum }) => {
+    if (typeof modelId !== 'string' || /^\{\{.*\}\}$/.test(modelId)) return;
+    return models.find((item) => item.modelId === modelId && item.type === type)?.model;
+  };
+
+  const aiModel = getModelName({
+    modelId: appForm.aiSettings[NodeInputKeyEnum.aiModelId],
+    type: ModelTypeEnum.llm
+  });
+  if (aiModel !== undefined) appForm.aiSettings[NodeInputKeyEnum.aiModel] = aiModel;
+
+  const rerankModel = getModelName({
+    modelId: appForm.dataset[NodeInputKeyEnum.datasetSearchRerankModelId],
+    type: ModelTypeEnum.rerank
+  });
+  if (rerankModel !== undefined) {
+    appForm.dataset[NodeInputKeyEnum.datasetSearchRerankModel] = rerankModel;
+  }
+
+  const extensionModel = getModelName({
+    modelId: appForm.dataset[NodeInputKeyEnum.datasetSearchExtensionModelId],
+    type: ModelTypeEnum.llm
+  });
+  if (extensionModel !== undefined) {
+    appForm.dataset[NodeInputKeyEnum.datasetSearchExtensionModel] = extensionModel;
+  }
+  addModelNamesToWorkflow({ nodes: [], chatConfig: appForm.chatConfig, models });
+
+  return appForm;
 }
 
 export const workflowSystemVariables: EditorVariablePickerType[] = [

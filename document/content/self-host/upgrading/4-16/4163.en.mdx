@@ -3,14 +3,49 @@ title: 'V4.16.3'
 description: 'FastGPT V4.16.3 release notes'
 upgradeTags:
   - IN PROGRESS
+  - MIGRATION
 ---
+
+## 📦 Upgrade Guide
+
+### 1. Backfill historical model references
+
+V4.16.3 migrates internal model references to stable `modelId` values. At startup, FastGPT automatically migrates legacy system model configuration to the `ai_models` and `ai_default_models` collections. After the service starts successfully, use the upgrade endpoint to backfill historical model references in Datasets, Apps, Workflows, Evaluations, and model permissions. Historical Usage records are not rewritten.
+
+Start with a dry run, which does not write any data:
+
+```bash
+curl -X POST 'https://your-domain/api/admin/4163/backfillModelReferences' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: YOUR_ROOT_KEY' \
+  -d '{"dryRun":true}'
+```
+
+After confirming that `unresolved` and `conflicts` are `0` in every group, run the backfill:
+
+```bash
+curl -X POST 'https://your-domain/api/admin/4163/backfillModelReferences' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: YOUR_ROOT_KEY' \
+  -d '{"dryRun":false}'
+```
+
+The endpoint is safe to run repeatedly. After applying the migration, run another dry run and confirm that the `wouldUpdate` count, `wouldDelete` count, `unresolved` count, and `conflicts` count are all `0` values. If `ai_models` is empty, make sure the service has finished starting before running it.
+
+## 🚀 New
+
+1. Added LDAP member and organizational structure sync to FastGPT SSO Service, along with separate environment variable templates and configuration guides for each SSO provider.
+2. File upload fields in Workflow Tools can now be configured for Agent-generated input. Historical file fields remain manual by default to avoid behavior changes after an upgrade.
 
 ## ⚙️ Improvements
 
 1. Improved chat pausing: the stop request now returns as soon as the Workflow stop marker is saved. After confirmation, the client closes the active response stream instead of waiting up to five seconds.
 2. Preserved partial reasoning when a chat is paused before answer text starts, so the reasoning remains available after a refresh.
 3. Centered citation markers below an image when the image is followed only by citations. Inline text citations keep their existing layout.
+4. Improved generation conflict recovery: when the current chat is still generating on the server, the client detects the conflict and restores the existing response stream instead of adding an empty message or showing an error state.
+5. Made collapsed processing previews interactive. You can now select a reasoning or tool-call preview to expand its matching details.
 
-## 🛠️ Code Improvements
+## 🐛 Fixes
 
-1. Refactored storage for system model selections.
+1. Fixed bottom spacing in the account deletion confirmation dialog, allowed long confirmation text to wrap correctly, and improved account deletion email templates.
+2. Clamped `DB_MAX_LINK` to an inclusive range between `10` and `1000` values, preventing low values from limiting concurrency and excessively high values from creating resource pressure. Official deployment templates use `20` by default.

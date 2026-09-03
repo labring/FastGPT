@@ -59,6 +59,7 @@
   "internal_variables_tip": "Internal variables are visible only when debugging",
   "invalid_share_url": "Invalid sharing link",
   "is_chatting": "A response is in progress. Wait for it to finish.",
+  "chat_generating_resumed": "An in-progress response was found and restored.",
   "llm_request_detail": "LLM Request Detail",
   "log.error.error_prefix": "Error",
   "log.feedback.hide_feedback": "hide feedback",

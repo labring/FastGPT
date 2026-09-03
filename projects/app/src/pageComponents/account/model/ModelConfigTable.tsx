@@ -60,6 +60,7 @@ import {
   getModelProviderListFromCache
 } from '@fastgpt/global/core/ai/provider';
 import type { ModelDefaultIds } from '@fastgpt/global/core/ai/defaultModel';
+import { useSet } from 'ahooks';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 const ModelEditModal = dynamic(() => import('./AddModelBox').then((mod) => mod.ModelEditModal));
@@ -288,10 +289,21 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     return providerList.filter((item) => allProviderIds.includes(item.value) || item.value === '');
   }, [providerList, systemModelList]);
 
-  const { runAsync: onTestModel, loading: testingModel } = useRequest(getTestModel, {
-    manual: true,
-    successToast: t('common:Success')
-  });
+  const [testingModelIds, testingModelIdsDispatch] = useSet<string>();
+  const { runAsync: onTestModel } = useRequest(
+    async (data: Parameters<typeof getTestModel>[0]) => {
+      testingModelIdsDispatch.add(data.modelId);
+      try {
+        return await getTestModel(data);
+      } finally {
+        testingModelIdsDispatch.remove(data.modelId);
+      }
+    },
+    {
+      manual: true,
+      successToast: t('common:Success')
+    }
+  );
   const { runAsync: updateModel, loading: updatingModel } = useRequest(putSystemModel, {
     onSuccess: refreshModels
   });
@@ -352,7 +364,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     isOpen: isOpenDefaultModel
   } = useDisclosure();
 
-  const isLoading = loadingModels || loadingData || updatingModel || testingModel;
+  const isLoading = loadingModels || loadingData || updatingModel;
 
   const [showModelId, setShowModelId] = useState(true);
 
@@ -532,6 +544,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                           <MyIconButton
                             icon={'core/chat/sendLight'}
                             tip={t('config_model:model.test_model')}
+                            isLoading={testingModelIds.has(item.modelId)}
                             onClick={() => onTestModel({ modelId: item.modelId })}
                           />
                           <MyIconButton

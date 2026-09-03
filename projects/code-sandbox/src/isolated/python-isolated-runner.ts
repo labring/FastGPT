@@ -37,6 +37,7 @@ import {
   PYTHON_SANDBOX_UID,
   shouldEnablePythonNativeIsolation
 } from './python-isolation-config';
+import { getSeccompConfig } from './seccomp-config';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BOOTSTRAP_SCRIPT = join(__dirname, 'python-bootstrap.py');
@@ -291,7 +292,8 @@ export class PythonIsolatedRunner {
 
   private buildIsolationPayload() {
     return {
-      enableSeccomp: shouldEnablePythonNativeIsolation(),
+      enabled: shouldEnablePythonNativeIsolation(),
+      ...getSeccompConfig(),
       enableNetwork: PYTHON_ENABLE_NETWORK_SYSCALLS,
       libraryPath: NATIVE_SANDBOX_LIBRARY,
       sandboxRoot: PYTHON_SANDBOX_ROOT,

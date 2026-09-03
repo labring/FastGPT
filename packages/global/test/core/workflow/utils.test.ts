@@ -17,7 +17,8 @@ import {
   isValidArrayReferenceValue,
   getElseIFLabel,
   clientGetWorkflowToolRunUserQuery,
-  formatModels
+  formatModels,
+  addModelNamesToWorkflow
 } from '@fastgpt/global/core/workflow/utils';
 import {
   FlowNodeInputTypeEnum,
@@ -1792,6 +1793,132 @@ describe('formatModels', () => {
     ]);
   });
 
+  it('repairs an imported modelId by model name and removes the legacy field', () => {
+    const nodes = [
+      {
+        nodeId: 'node1',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        name: 'Chat',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            value: 'model-id-from-another-environment',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.aiModel,
+            value: 'gpt-4',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          }
+        ],
+        outputs: []
+      }
+    ];
+    const chatConfig = {
+      questionGuide: {
+        open: true,
+        modelId: 'question-guide-id-from-another-environment',
+        model: 'gpt-4'
+      }
+    };
+
+    formatModels({ nodes, chatConfig, models, modelReferencePolicy: 'import' });
+
+    expect(nodes[0].inputs).toEqual([
+      expect.objectContaining({ key: NodeInputKeyEnum.aiModelId, value: models[0].modelId })
+    ]);
+    expect(chatConfig.questionGuide).toEqual({ open: true, modelId: models[0].modelId });
+  });
+
+  it('clears unresolved imported model values while preserving canonical inputs', () => {
+    const nodes = [
+      {
+        nodeId: 'node1',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        name: 'Chat',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            value: 'invalid-id',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.aiModel,
+            value: 'invalid-model',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          }
+        ],
+        outputs: []
+      },
+      {
+        nodeId: 'node2',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        name: 'Chat',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModel,
+            value: 'invalid-legacy-model',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          }
+        ],
+        outputs: []
+      },
+      {
+        nodeId: 'agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        name: 'Agent',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.datasetParams,
+            value: {
+              usingReRank: true,
+              rerankModelId: 'invalid-rerank-id',
+              rerankModel: 'invalid-rerank-model',
+              datasetSearchUsingExtensionQuery: true,
+              datasetSearchExtensionModelId: 'invalid-extension-id',
+              datasetSearchExtensionModel: 'invalid-extension-model'
+            },
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          }
+        ],
+        outputs: []
+      }
+    ];
+    const chatConfig = {
+      questionGuide: {
+        open: true,
+        modelId: 'invalid-question-guide-id',
+        model: 'invalid-question-guide-model'
+      },
+      ttsConfig: {
+        type: 'model' as const,
+        modelId: 'invalid-tts-id',
+        model: 'invalid-tts-model',
+        voice: 'alloy'
+      }
+    };
+
+    formatModels({ nodes, chatConfig, models, modelReferencePolicy: 'import' });
+
+    expect(nodes[0].inputs).toHaveLength(1);
+    expect(nodes[0].inputs[0]).toMatchObject({ key: NodeInputKeyEnum.aiModelId });
+    expect(nodes[0].inputs[0]).toHaveProperty('value', undefined);
+    expect(nodes[1].inputs).toHaveLength(1);
+    expect(nodes[1].inputs[0]).toMatchObject({ key: NodeInputKeyEnum.aiModelId });
+    expect(nodes[1].inputs[0]).toHaveProperty('value', undefined);
+
+    const datasetParams = nodes[2].inputs[0].value as Record<string, unknown>;
+    expect(datasetParams).toHaveProperty('rerankModelId', undefined);
+    expect(datasetParams).not.toHaveProperty('rerankModel');
+    expect(datasetParams).toHaveProperty('datasetSearchExtensionModelId', undefined);
+    expect(datasetParams).not.toHaveProperty('datasetSearchExtensionModel');
+
+    expect(chatConfig.questionGuide).toHaveProperty('modelId', undefined);
+    expect(chatConfig.questionGuide).not.toHaveProperty('model');
+    expect(chatConfig.ttsConfig).toHaveProperty('modelId', undefined);
+    expect(chatConfig.ttsConfig).not.toHaveProperty('model');
+  });
+
   it('preserves unresolved draft values while removing legacy fields', () => {
     const nodes = [
       {
@@ -1958,6 +2085,74 @@ describe('formatModels', () => {
       rerankModelId: ['source-node', 'rerank-model-id'],
       datasetSearchUsingExtensionQuery: true,
       datasetSearchExtensionModelId: '{{extensionModelId}}'
+    });
+  });
+
+  it('adds portable model names for export while retaining modelIds', () => {
+    const nodes = [
+      {
+        nodeId: 'agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        name: 'Agent',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            value: models[0].modelId,
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.datasetParams,
+            value: {
+              usingReRank: true,
+              rerankModelId: models[1].modelId
+            },
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          }
+        ],
+        outputs: []
+      },
+      {
+        nodeId: 'external-tool',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        name: 'External tool',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            value: models[0].modelId,
+            renderTypeList: [FlowNodeInputTypeEnum.input]
+          }
+        ],
+        outputs: []
+      }
+    ];
+    const chatConfig = {
+      questionGuide: { open: true, modelId: models[0].modelId },
+      ttsConfig: { type: 'model' as const, modelId: models[4].modelId }
+    };
+
+    addModelNamesToWorkflow({ nodes, chatConfig, models });
+
+    expect(nodes[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: NodeInputKeyEnum.aiModelId, value: models[0].modelId }),
+        expect.objectContaining({ key: NodeInputKeyEnum.aiModel, value: models[0].model })
+      ])
+    );
+    expect(nodes[0].inputs[1].value).toEqual({
+      usingReRank: true,
+      rerankModelId: models[1].modelId,
+      rerankModel: models[1].model
+    });
+    expect(nodes[1].inputs).toHaveLength(1);
+    expect(chatConfig.questionGuide).toEqual({
+      open: true,
+      modelId: models[0].modelId,
+      model: models[0].model
+    });
+    expect(chatConfig.ttsConfig).toEqual({
+      type: 'model',
+      modelId: models[4].modelId,
+      model: models[4].model
     });
   });
 });
