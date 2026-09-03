@@ -117,8 +117,47 @@ describe('getClientToolPreviewNode', () => {
     expect(result.toolConfig?.httpTool).toEqual({
       toolId: 'http-507f1f77bcf86cd799439011/search'
     });
+    expect(result.intro).toBe('Search tool');
     expect(result.inputs[0]?.key).toBe('q');
     expect((result as any).jsonSchema).toBeUndefined();
+  });
+
+  it('uses the MCP tool description for a standalone tool preview', async () => {
+    mocks.findById.mockReturnValueOnce({
+      lean: vi.fn().mockResolvedValue({
+        _id: '507f1f77bcf86cd799439013',
+        teamId: '507f1f77bcf86cd799439014',
+        type: AppTypeEnum.mcpToolSet,
+        name: 'MCP Tools',
+        avatar: 'mcp.svg'
+      })
+    });
+    mocks.getAppVersionById.mockResolvedValueOnce({
+      nodes: [
+        {
+          toolConfig: {
+            mcpToolSet: {
+              toolList: [
+                {
+                  name: 'search',
+                  description: 'MCP search tool',
+                  inputSchema: { type: 'object', properties: {} }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      edges: [],
+      chatConfig: {}
+    });
+
+    const result = await getClientToolPreviewNode({
+      appId: 'mcp-507f1f77bcf86cd799439013/search',
+      lang: 'en'
+    });
+
+    expect(result.intro).toBe('MCP search tool');
   });
 
   it('applies defaultToAgentGenerated over a workflow plugin input selection', async () => {

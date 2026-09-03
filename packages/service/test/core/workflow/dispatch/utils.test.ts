@@ -1276,6 +1276,57 @@ describe('rewriteRuntimeWorkFlow', () => {
     });
   });
 
+  it('should preserve saved intro for standalone MCP and HTTP tool nodes', async () => {
+    const mcpToolNode = makeNode('mcp1', FlowNodeTypeEnum.tool, {
+      intro: 'Saved MCP intro',
+      toolConfig: { mcpTool: { toolId: 'mcp-toolset-1/toolA' } }
+    } as any);
+    const httpToolNode = makeNode('http1', FlowNodeTypeEnum.tool, {
+      intro: 'Saved HTTP intro',
+      toolConfig: { httpTool: { toolId: 'http-toolset-1/toolB' } }
+    } as any);
+    setupFindByIdMap({
+      'toolset-1': {
+        _id: 'toolset-1',
+        modules: [
+          {
+            toolConfig: {
+              mcpToolSet: {
+                url: 'https://mcp.example.com',
+                toolList: [
+                  {
+                    name: 'toolA',
+                    description: 'Remote MCP intro',
+                    inputSchema: { type: 'object', properties: {} }
+                  }
+                ]
+              },
+              httpToolSet: {
+                toolList: [
+                  {
+                    name: 'toolB',
+                    description: 'Remote HTTP intro',
+                    inputSchema: { type: 'object', properties: {} },
+                    requestSchema: { type: 'object', properties: {} }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    });
+
+    await rewriteRuntimeWorkFlow({
+      teamId: 'team1',
+      nodes: [mcpToolNode, httpToolNode],
+      edges: []
+    });
+
+    expect(mcpToolNode.intro).toBe('Saved MCP intro');
+    expect(httpToolNode.intro).toBe('Saved HTTP intro');
+  });
+
   it('should use the remote default only when a saved tool input has no selection', async () => {
     const mcpToolNode = makeNode('mcp1', FlowNodeTypeEnum.tool, {
       toolConfig: { mcpTool: { toolId: 'mcp-toolset-1/toolA' } },

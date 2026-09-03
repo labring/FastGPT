@@ -759,7 +759,10 @@ export const rewriteRuntimeWorkFlow = async ({
       const toolRaw = toolset.toolList.find((tool) => tool.name === parseResult.toolName);
       if (!toolRaw) return;
       node.jsonSchema = toolRaw.inputSchema;
-      node.intro = toolRaw.description;
+      // 为已存在的 MCP 工具节点提供描述回退。
+      if (!node.intro?.trim()) {
+        node.intro = toolRaw.description;
+      }
       const mcpToolSet = buildMcpRuntimeToolSet({
         currentToolSet: toolset.currentToolSet,
         toolList: toolset.toolList,
@@ -811,7 +814,10 @@ export const rewriteRuntimeWorkFlow = async ({
       if (!toolRaw) return;
       const { inputSchema, requestSchema } = getHTTPToolRuntimeSchemas(toolRaw);
       node.jsonSchema = requestSchema;
-      node.intro = toolRaw.description;
+      // 为已存在的 HTTP 工具节点提供描述回退。
+      if (!node.intro?.trim()) {
+        node.intro = toolRaw.description;
+      }
       mergeToolNodeInputs({
         node,
         jsonSchema: inputSchema,

@@ -518,6 +518,10 @@ export async function getClientToolPreviewNode({
       forceDefaultMode: true,
       allowUserChatInputAgentGenerated: true
     });
+    const intro =
+      idSource === AppToolSourceEnum.mcp || idSource === AppToolSourceEnum.http
+        ? app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.tool)?.intro
+        : app.intro;
 
     return {
       id: getNanoid(),
@@ -527,7 +531,7 @@ export async function getClientToolPreviewNode({
       flowNodeType,
       avatar: app.avatar,
       name: parseI18nString(app.name, lang),
-      intro: parseI18nString(app.intro, lang),
+      intro: parseI18nString(intro, lang),
       courseUrl: app.courseUrl,
       userGuide: app.userGuide,
       showStatus: true,
