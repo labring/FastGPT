@@ -3,6 +3,7 @@ import { SANDBOX_SHELL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AgentUsageModuleName } from '@fastgpt/service/core/ai/llm/agentLoop/interface';
+import { createToolSchema } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolCatalog';
 import { runToolCall as runToolCallWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/toolCall';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -155,6 +156,26 @@ const createLoopResult = ({
   requestIds: ['req_main']
 });
 
+describe('createToolSchema', () => {
+  it('uses node intro as the function description', () => {
+    const tool = createToolSchema({
+      nodeId: 'search',
+      name: 'Search',
+      intro: 'Search data',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      inputs: []
+    });
+
+    expect(tool).toMatchObject({
+      type: 'function',
+      function: {
+        name: 'search',
+        description: 'Search: Search data'
+      }
+    });
+  });
+});
+
 describe('runToolCall compression node responses', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -288,7 +309,7 @@ describe('runToolCall compression node responses', () => {
             name: 'Search',
             flowNodeType: FlowNodeTypeEnum.tool,
             avatar: 'tool-avatar',
-            toolDescription: 'Search data',
+            intro: 'Search data',
             inputs: []
           }
         ]

@@ -99,7 +99,6 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
 
     const pluginId = `${systemToolId}/${child.id}`;
     const intro = selectedTool.description || child.description;
-    const toolDescription = selectedTool.description || child.toolDescription || child.description;
     const childInputs = jsonSchema2NodeInput({
       jsonSchema: child.inputSchema,
       schemaType: 'systemTool'
@@ -116,7 +115,6 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
       nodeId: `${toolSetNode.nodeId}${child.id}`,
       version: runtimeVersion,
       jsonSchema: child.inputSchema,
-      toolDescription,
       toolConfig: {
         systemTool: {
           toolId: pluginId,

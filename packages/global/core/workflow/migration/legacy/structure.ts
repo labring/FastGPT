@@ -19,7 +19,6 @@ const optionalNodeFields = [
   'avatar',
   'avatarLinear',
   'intro',
-  'toolDescription',
   'version',
   'versionLabel',
   'pluginId',
