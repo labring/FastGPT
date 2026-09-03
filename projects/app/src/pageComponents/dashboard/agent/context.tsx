@@ -3,17 +3,18 @@ import { createContext } from 'use-context-selector';
 import { useRouter } from 'next/router';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination, type ScrollListType } from '@fastgpt/web/hooks/useScrollPagination';
-import { getAllApps, getAppDetailById, getMyAppsV2, putAppById } from '@/web/core/app/api';
+import { getAppDetailById, getMyAppsV2, putAppById } from '@/web/core/app/api';
+import type { SelectOneResourceServer } from '@/components/common/folder/SelectOneResource';
 import { type AppDetailType, type AppListItemType } from '@fastgpt/global/core/app/type';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import {
-  type GetResourceFolderListProps,
   type ParentIdType,
   type ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
 import { type UpdateAppBodyType } from '@fastgpt/global/openapi/core/app/common/api';
 import dynamic from 'next/dynamic';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useTranslation } from 'next-i18next';
@@ -231,23 +232,31 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     [moveAppId, onUpdateApp]
   );
 
-  const getAppFolderList = useCallback(
-    ({ parentId }: GetResourceFolderListProps) => {
+  const getAppFolderList = useCallback<SelectOneResourceServer>(
+    ({ parentId, offset, pageSize }, cancelToken) => {
       const folderType = isAgentPage ? AppTypeEnum.folder : AppTypeEnum.toolFolder;
 
-      return getAllApps({
-        parentId,
-        type: folderType
-      }).then((res) =>
-        res
-          .filter((item) => item.permission.hasWritePer)
-          .map((item) => ({
-            id: item._id,
-            name: item.name
-          }))
-      );
+      return getMyAppsV2(
+        {
+          parentId,
+          type: folderType,
+          offset,
+          pageSize,
+          excludeAppId: moveAppId
+        },
+        cancelToken
+      ).then(({ list, total }) => ({
+        total,
+        list: list.map((item) => ({
+          id: item._id,
+          name: item.name,
+          avatar: FolderImgUrl,
+          isFolder: true,
+          disabled: !item.permission.hasWritePer
+        }))
+      }));
     },
-    [isAgentPage]
+    [isAgentPage, moveAppId]
   );
 
   useEffect(() => {

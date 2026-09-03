@@ -106,35 +106,42 @@ const Dataset = () => {
   );
 
   return (
-    <MyBox flexDirection={'column'} h={'100%'} overflowY={'auto'} overflowX={'hidden'}>
-      <Flex pt={[4, 6]} pl={3} pr={folderDetail ? [3, 6] : [3, 8]}>
-        <Flex flexGrow={1} flexDirection="column">
-          <Flex alignItems={'center'} gap={3} minW={0}>
-            <Box flexShrink={0}>
-              <FolderPath
-                paths={paths}
-                FirstPathDom={
-                  <Flex alignItems={'center'}>
-                    <Box
-                      pl={2}
-                      letterSpacing={1}
-                      fontSize={'1.25rem'}
-                      fontWeight={'bold'}
-                      color={'myGray.900'}
-                    >
-                      {t('common:core.dataset.My Dataset')}
-                    </Box>
-                  </Flex>
-                }
-                onClick={(e) => {
-                  router.push({
-                    query: {
-                      parentId: e
-                    }
-                  });
-                }}
-              />
-            </Box>
+    <Flex flexDirection={'column'} h={'100%'}>
+      <Flex gap={5} flex={'1 0 0'} h={0}>
+        <Flex
+          flex={'1 0 0'}
+          flexDirection={'column'}
+          h={'100%'}
+          pr={folderDetail ? [3, 2] : [3, 6]}
+          pl={6}
+          pt={6}
+          overflowY={'hidden'}
+          overflowX={'hidden'}
+        >
+          <Flex alignItems={'center'} justifyContent={'space-between'}>
+            <FolderPath
+              paths={paths}
+              FirstPathDom={
+                <Flex flex={1} alignItems={'center'}>
+                  <Box
+                    pl={2}
+                    letterSpacing={1}
+                    fontSize={'1.25rem'}
+                    fontWeight={'bold'}
+                    color={'myGray.900'}
+                  >
+                    {t('common:core.dataset.My Dataset')}
+                  </Box>
+                </Flex>
+              }
+              onClick={(e) => {
+                router.push({
+                  query: {
+                    parentId: e
+                  }
+                });
+              }}
+            />
 
             {isPc && (
               <>
@@ -242,13 +249,13 @@ const Dataset = () => {
 
           {!isPc && <Box mt={2}>{RenderSearchInput}</Box>}
 
-          <Box flexGrow={1}>
+          <MyBox flex={'1 0 0'} minH={0}>
             <List />
-          </Box>
+          </MyBox>
         </Flex>
 
         {!!folderDetail && isPc && (
-          <Box ml="6" h={'100%'} pb={4} overflow={'auto'}>
+          <Box pt={[4, 6]} pr={[4, 6]} h={'100%'} pb={4} overflow={'auto'}>
             <FolderSlideCard
               resumeInheritPermission={() => resumeInheritPer(folderDetail._id)}
               isInheritPermission={folderDetail.inheritPermission}
@@ -332,7 +339,7 @@ const Dataset = () => {
       {!feConfigs?.isPlus && (
         <ProModal isOpen={proModalOpen} onClose={() => setProModalOpen(false)} />
       )}
-    </MyBox>
+    </Flex>
   );
 };
 export async function getServerSideProps(content: any) {
