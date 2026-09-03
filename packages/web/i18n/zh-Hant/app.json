@@ -412,6 +412,7 @@
   "tool_params_description_tips": "參數功能的描述，若作為工具調用參數，影響模型工具調用效果",
   "tool_run_free": "該工具運行無積分消耗",
   "tool_select": "選擇工具",
+  "toolset_intro_placeholder": "工具集描述不影響工具呼叫效果。如需要，請直接編輯工具描述",
   "tool_soon_offset_tips": "該工具將在後續下線，為了您的業務穩定，請盡快替換",
   "tool_tip": "作為工具執行時，該字段是否作為工具響應結果",
   "tool_type_tools": "工具",
