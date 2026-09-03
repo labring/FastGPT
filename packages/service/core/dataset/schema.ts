@@ -96,16 +96,21 @@ const DatasetSchema = new Schema({
     default: () => new Date()
   },
   vectorModel: {
-    type: String,
-    required: true,
-    default: 'text-embedding-3-small'
+    type: String
+  },
+  vectorModelId: {
+    type: String
   },
   agentModel: {
-    type: String,
-    required: true,
-    default: 'gpt-4o-mini'
+    type: String
+  },
+  agentModelId: {
+    type: String
   },
   vlmModel: String,
+  vlmModelId: {
+    type: String
+  },
   intro: {
     type: String,
     default: ''

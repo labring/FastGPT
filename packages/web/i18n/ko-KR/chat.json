@@ -59,6 +59,7 @@
   "internal_variables_tip": "내부 변수는 디버깅 시에만 표시됩니다",
   "invalid_share_url": "유효하지 않은 공유 링크입니다",
   "is_chatting": "대화가 진행 중입니다... 완료될 때까지 기다려 주세요",
+  "chat_generating_resumed": "진행 중인 대화를 찾아 복원했습니다.",
   "llm_request_detail": "LLM 요청 상세",
   "log.error.error_prefix": "오류",
   "log.feedback.hide_feedback": "피드백 숨기기",

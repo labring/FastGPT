@@ -64,7 +64,11 @@ export const CollaboratorItemDetailSchema = CollaboratorTargetSchema.safeExtend(
   teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
   permission: PermissionSchema,
   name: z.string().meta({ description: '协作者名称' }),
-  avatar: z.string().meta({ description: '协作者头像' })
+  avatar: z.string().meta({ description: '协作者头像' }),
+  username: z
+    .string()
+    .optional()
+    .meta({ description: '团队成员的登录用户名；仅团队成员协作对象存在' })
 }).meta({
   description: '协作者详情'
 }) as z.ZodType<CollaboratorItemDetailType>;
@@ -80,3 +84,8 @@ export const CollaboratorListSchema = z
   .meta({
     description: '资源协作者列表，包含当前资源和可继承的父级资源协作者'
   }) as z.ZodType<CollaboratorListType>;
+
+export const ShowUsernameQuerySchema = z.coerce.boolean().optional().meta({
+  description: '是否返回团队成员登录用户名'
+});
+export type ShowUsernameQueryType = z.infer<typeof ShowUsernameQuerySchema>;

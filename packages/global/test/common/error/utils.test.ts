@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { getErrText, ToastHandledError, UserError } from '@fastgpt/global/common/error/utils';
 import { ERROR_ENUM, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 
 describe('getErrText', () => {
+  it('maps the model domain error code to the user-facing message', () => {
+    expect(getErrText(ModelErrEnum.unExist)).toBe(ERROR_RESPONSE[ModelErrEnum.unExist].message);
+  });
+
   it('should return mapped message for error enum', () => {
     const result = getErrText(ERROR_ENUM.unAuthorization);
 

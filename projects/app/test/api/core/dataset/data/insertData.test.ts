@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   authDatasetCollection: vi.fn(),
   checkDatasetIndexLimit: vi.fn(),
   getCollectionWithDataset: vi.fn(),
-  getEmbeddingModel: vi.fn(),
+  getEmbeddingModelData: vi.fn(),
   hasSameValue: vi.fn(),
   createDatasetData: vi.fn(),
   mongoSessionRun: vi.fn(),
@@ -35,7 +35,7 @@ vi.mock('@fastgpt/service/core/dataset/controller', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getEmbeddingModel: mocks.getEmbeddingModel
+  getEmbeddingModelData: mocks.getEmbeddingModelData
 }));
 
 vi.mock('@/service/core/dataset/data/utils', () => ({
@@ -65,6 +65,10 @@ const collectionId = '68ad85a7463006c963799a06';
 const datasetId = '68ad85a7463006c963799a07';
 const insertId = '68ad85a7463006c963799a08';
 const session = { id: 'session' };
+const embeddingModelData = {
+  modelId: '68ad85a7463006c963799a09',
+  model: 'embedding-model'
+};
 
 describe('POST /api/core/dataset/data/insertData', () => {
   beforeEach(() => {
@@ -93,7 +97,7 @@ describe('POST /api/core/dataset/data/insertData', () => {
       indexSize: 512,
       name: 'Collection'
     });
-    mocks.getEmbeddingModel.mockReturnValue({ model: 'embedding-model' });
+    mocks.getEmbeddingModelData.mockReturnValue(embeddingModelData);
     mocks.mongoSessionRun.mockImplementation((fn) => fn(session));
     mocks.createDatasetData.mockResolvedValue({ insertId, tokens: 10 });
     mocks.getI18nDatasetType.mockReturnValue('Dataset');
@@ -113,7 +117,7 @@ describe('POST /api/core/dataset/data/insertData', () => {
         q: 'question',
         a: 'answer',
         indexPrefix: '# Collection',
-        embeddingModel: 'embedding-model',
+        embeddingModel: embeddingModelData,
         imageIndex: true,
         metadata: { source: 'manual' },
         session
@@ -123,7 +127,7 @@ describe('POST /api/core/dataset/data/insertData', () => {
       teamId: 'team-id',
       tmbId: 'tmb-id',
       inputTokens: 10,
-      model: 'embedding-model'
+      model: embeddingModelData
     });
   });
 

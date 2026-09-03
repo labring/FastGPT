@@ -1,4 +1,4 @@
-name: 'FastGPT-Test'
+name: 'Test FastGPT'
 on:
   pull_request:
     paths:

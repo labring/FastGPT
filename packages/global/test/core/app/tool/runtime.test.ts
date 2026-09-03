@@ -11,6 +11,35 @@ import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/tool
 import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
 
 describe('compileToolRuntime', () => {
+  it('exposes generated file inputs as array<string>', () => {
+    const compiled = compileToolRuntime({
+      toolId: 'file-tool',
+      name: 'File tool',
+      inputs: [
+        {
+          key: 'files',
+          label: 'Files',
+          valueType: WorkflowIOValueTypeEnum.arrayString,
+          renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.fileSelect],
+          selectedType: FlowNodeInputTypeEnum.agentGenerated,
+          required: true
+        }
+      ]
+    });
+
+    expect(compiled.modelTool.function.parameters).toEqual({
+      type: 'object',
+      properties: {
+        files: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Files'
+        }
+      },
+      required: ['files']
+    });
+  });
+
   it('uses ToolCallNode default agent-generated inputs for its model schema', () => {
     const toolInputs = ToolCallNode.inputs
       .filter((input) =>

@@ -1,6 +1,5 @@
 # 用于部署的 docker-compose 文件:
 # - FastGPT 端口映射为 3000:3000
-# - FastGPT-mcp-server 端口映射 3005:3000
 # - 建议修改账密后再运行
 
 # root 默认密码（重启后会强制重置该密码成环境变量值）
@@ -49,8 +48,8 @@ x-log-config: &x-log-config
 # 容器运行环境可能会自动注入 HTTP_PROXY/HTTPS_PROXY。
 # 明确绕过 compose 内部服务，避免内部请求被代理劫持。
 x-no-proxy-config: &x-no-proxy-config
-  NO_PROXY: localhost,127.0.0.1,::1,fastgpt-app,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-opensandbox-server,fastgpt-volume-manager,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-vector,fastgpt-mcp-server,host.docker.internal,*.orb.internal,*.orb.local
-  no_proxy: localhost,127.0.0.1,::1,fastgpt-app,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-opensandbox-server,fastgpt-volume-manager,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-vector,fastgpt-mcp-server,host.docker.internal,*.orb.internal,*.orb.local
+  NO_PROXY: localhost,127.0.0.1,::1,fastgpt-app,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-opensandbox-server,fastgpt-volume-manager,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-vector,host.docker.internal,*.orb.internal,*.orb.local
+  no_proxy: localhost,127.0.0.1,::1,fastgpt-app,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-opensandbox-server,fastgpt-volume-manager,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-vector,host.docker.internal,*.orb.internal,*.orb.local
 
 # FastGPT 主服务的 Agent Sandbox 配置
 x-agent-sandbox-config: &x-agent-sandbox-config
@@ -200,7 +199,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: ghcr.io/labring/fastgpt:v4.16.1
+    image: ghcr.io/labring/fastgpt:v4.16.2
     ports:
       - 3000:3000
     networks:
@@ -234,7 +233,7 @@ services:
       # root 密码，用户名为: root。如果需要修改 root 密码，直接修改这个环境变量，并重启即可。
       DEFAULT_ROOT_PSW: *x-default-root-psw
       # 数据库最大连接数
-      DB_MAX_LINK: 5
+      DB_MAX_LINK: 20
       # 自动同步索引
       SYNC_INDEX: true
       # 系统变量替换等同步字符串处理的最大字符数，单位 M，范围 1~100
@@ -260,9 +259,6 @@ services:
       # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
       AIPROXY_API_TOKEN: *x-aiproxy-token
       PASSWORD_LOGIN_MINUTE_LIMIT_COUNT:
-      # MCP Server 代理地址，用于 MCP 使用方式页拼接 SSE 地址
-      SSE_MCP_SERVER_PROXY_ENDPOINT:
-
       # ==================== 日志与监控 ====================
       # 传递给 OTLP 收集器的服务名称
       LOG_OTEL_SERVICE_NAME: fastgpt-client
@@ -317,7 +313,7 @@ services:
 
       # ===== Process Pool =====
       # Number of pre-warmed worker processes (JS + Python)
-      SANDBOX_POOL_SIZE: 20
+      SANDBOX_POOL_SIZE: 5
 
       # ===== Network Request Limits =====
       # Whether to check if the request is to a private network
@@ -346,19 +342,8 @@ services:
       interval: 30s
       timeout: 20s
       retries: 3
-  fastgpt-mcp-server:
-    container_name: fastgpt-mcp-server
-    image: ghcr.io/labring/fastgpt-mcp_server:v4.14.23
-    networks:
-      - app
-    ports:
-      - 3003:3000
-    restart: always
-    environment:
-      <<: [*x-log-config, *x-no-proxy-config]
-      FASTGPT_ENDPOINT: http://fastgpt-app:3000
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v1.1.1
+    image: ghcr.io/labring/fastgpt-plugin:v1.1.2
     container_name: fastgpt-plugin
     restart: always
     networks:

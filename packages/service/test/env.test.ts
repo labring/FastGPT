@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const validInvokeTokenSecret = 'fastgpt_test_invoke_token_secret_32';
 
 const originalEnv = {
+  DB_MAX_LINK: process.env.DB_MAX_LINK,
   SYSTEM_MAX_STRING_LENGTH_M: process.env.SYSTEM_MAX_STRING_LENGTH_M,
   XLSX_PARSE_MAX_ROWS: process.env.XLSX_PARSE_MAX_ROWS,
   XLSX_PARSE_MAX_COLUMNS: process.env.XLSX_PARSE_MAX_COLUMNS,
@@ -47,6 +48,7 @@ const importServiceEnv = async () => {
 
 describe('serviceEnv', () => {
   afterEach(() => {
+    vi.stubEnv('DB_MAX_LINK', originalEnv.DB_MAX_LINK);
     vi.stubEnv('SYSTEM_MAX_STRING_LENGTH_M', originalEnv.SYSTEM_MAX_STRING_LENGTH_M);
     vi.stubEnv('XLSX_PARSE_MAX_ROWS', originalEnv.XLSX_PARSE_MAX_ROWS);
     vi.stubEnv('XLSX_PARSE_MAX_COLUMNS', originalEnv.XLSX_PARSE_MAX_COLUMNS);
@@ -86,6 +88,37 @@ describe('serviceEnv', () => {
     vi.stubEnv('AGENT_SANDBOX_APT_MIRROR', originalEnv.AGENT_SANDBOX_APT_MIRROR);
     vi.stubEnv('MILVUS_LANGUAGE_IDENTIFIER', originalEnv.MILVUS_LANGUAGE_IDENTIFIER);
     vi.stubEnv('MILVUS_ADDRESS', originalEnv.MILVUS_ADDRESS);
+  });
+
+  it('clamps DB_MAX_LINK to the supported connection pool range', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('DB_MAX_LINK', undefined);
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { DB_MAX_LINK: 10 }
+    });
+
+    vi.stubEnv('DB_MAX_LINK', '-1');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { DB_MAX_LINK: 10 }
+    });
+
+    vi.stubEnv('DB_MAX_LINK', '5');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { DB_MAX_LINK: 10 }
+    });
+
+    vi.stubEnv('DB_MAX_LINK', '20');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { DB_MAX_LINK: 20 }
+    });
+
+    vi.stubEnv('DB_MAX_LINK', '1001');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { DB_MAX_LINK: 1000 }
+    });
   });
 
   it('enables MongoDB index synchronization by default and supports disabling it', async () => {

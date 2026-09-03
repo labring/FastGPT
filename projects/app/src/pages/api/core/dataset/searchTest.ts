@@ -9,7 +9,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import type { NextApiResponse } from 'next';
-import { getRerankModel } from '@fastgpt/service/core/ai/model';
+import { getLLMModelData, getRerankModelData } from '@fastgpt/service/core/ai/model';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
@@ -23,6 +23,7 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
+import { getDatasetEmbeddingModel, getDatasetVlmModel } from '@fastgpt/service/core/dataset/model';
 
 export async function handler(
   req: ApiRequestProps<SearchDatasetTestBody>,
@@ -38,14 +39,17 @@ export async function handler(
     embeddingWeight,
 
     usingReRank,
+    rerankModelId,
     rerankModel,
     rerankWeight,
 
     datasetSearchUsingExtensionQuery = false,
+    datasetSearchExtensionModelId,
     datasetSearchExtensionModel,
     datasetSearchExtensionBg,
 
     datasetDeepSearch = false,
+    datasetDeepSearchModelId,
     datasetDeepSearchModel,
     datasetDeepSearchMaxTimes,
     datasetDeepSearchBg
@@ -93,7 +97,20 @@ export async function handler(
     })
   );
 
-  const rerankModelData = getRerankModel(rerankModel);
+  const rerankModelData = usingReRank
+    ? getRerankModelData({ modelId: rerankModelId, model: rerankModel })
+    : undefined;
+  const extensionModelData = datasetSearchUsingExtensionQuery
+    ? getLLMModelData({
+        modelId: datasetSearchExtensionModelId,
+        model: datasetSearchExtensionModel
+      })
+    : undefined;
+  const deepSearchModelData = datasetDeepSearch
+    ? getLLMModelData({ modelId: datasetDeepSearchModelId, model: datasetDeepSearchModel })
+    : undefined;
+  const embeddingModelData = getDatasetEmbeddingModel(dataset);
+  const vlmModelData = getDatasetVlmModel(dataset);
 
   const searchData = {
     histories: [],
@@ -102,8 +119,8 @@ export async function handler(
     reRankQuery: text,
     textQueries: text ? [text] : [],
     imageQueries: validQueryImageUrls,
-    model: dataset.vectorModel,
-    vlmModel: dataset.vlmModel,
+    model: embeddingModelData,
+    vlmModel: vlmModelData,
     limit: Math.min(limit, 20000),
     similarity,
     datasetIds: [datasetId],
@@ -125,14 +142,14 @@ export async function handler(
   } = datasetDeepSearch && !!text.trim()
     ? await deepRagSearch({
         ...searchData,
-        datasetDeepSearchModel,
+        datasetDeepSearchModel: deepSearchModelData,
         datasetDeepSearchMaxTimes,
         datasetDeepSearchBg
       })
     : await defaultSearchDatasetData({
         ...searchData,
         datasetSearchUsingExtensionQuery,
-        datasetSearchExtensionModel,
+        datasetSearchExtensionModel: extensionModelData,
         datasetSearchExtensionBg
       });
 
@@ -143,31 +160,34 @@ export async function handler(
     tmbId,
     source,
     embUsage: {
-      model: dataset.vectorModel,
+      model: embeddingModelData,
       inputTokens: embeddingTokens
     },
-    rerankUsage: searchUsingReRank
-      ? {
-          model: rerankModelData.model,
-          inputTokens: reRankInputTokens
-        }
-      : undefined,
-    extensionUsage: queryExtensionResult
-      ? {
-          model: queryExtensionResult.llmModel,
-          inputTokens: queryExtensionResult.inputTokens,
-          outputTokens: queryExtensionResult.outputTokens,
-          embeddingTokens: queryExtensionResult.embeddingTokens,
-          embeddingModel: dataset.vectorModel
-        }
-      : undefined,
-    imageCaptionUsage: imageCaptionResult
-      ? {
-          model: imageCaptionResult.model,
-          inputTokens: imageCaptionResult.inputTokens,
-          outputTokens: imageCaptionResult.outputTokens
-        }
-      : undefined
+    rerankUsage:
+      searchUsingReRank && rerankModelData
+        ? {
+            model: rerankModelData,
+            inputTokens: reRankInputTokens
+          }
+        : undefined,
+    extensionUsage:
+      queryExtensionResult && extensionModelData
+        ? {
+            model: extensionModelData,
+            inputTokens: queryExtensionResult.inputTokens,
+            outputTokens: queryExtensionResult.outputTokens,
+            embeddingTokens: queryExtensionResult.embeddingTokens,
+            embeddingModel: embeddingModelData
+          }
+        : undefined,
+    imageCaptionUsage:
+      imageCaptionResult && vlmModelData
+        ? {
+            model: vlmModelData,
+            inputTokens: imageCaptionResult.inputTokens,
+            outputTokens: imageCaptionResult.outputTokens
+          }
+        : undefined
   });
 
   if (apikey) {

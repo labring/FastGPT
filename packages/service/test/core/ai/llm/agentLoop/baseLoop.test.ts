@@ -2,7 +2,7 @@ import {
   ChatCompletionRequestMessageRoleEnum,
   ModelTypeEnum
 } from '@fastgpt/global/core/ai/constants';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -22,23 +22,6 @@ const {
 
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
-}));
-
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getLLMModel: vi.fn(
-    (): LLMModelItemType => ({
-      type: ModelTypeEnum.llm,
-      provider: 'openai',
-      model: 'gpt-4',
-      name: 'GPT-4',
-      maxContext: 128000,
-      maxResponse: 4096,
-      quoteMaxToken: 60000,
-      functionCall: true,
-      toolChoice: true,
-      reasoning: false
-    })
-  )
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/compress', () => ({
@@ -61,6 +44,25 @@ vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
 }));
 
 import { runAgentLoop } from '@fastgpt/service/core/ai/llm/agentLoop/provider/fastAgent/loop/base';
+
+const modelData = {
+  modelId: '68ad85a7463006c963799a05',
+  type: ModelTypeEnum.llm,
+  provider: 'openai',
+  model: 'gpt-4',
+  name: 'GPT-4',
+  isActive: true,
+  scope: 'system' as const,
+  isCustom: false,
+  config: {
+    maxContext: 128000,
+    maxResponse: 4096,
+    quoteMaxToken: 60000,
+    functionCall: true,
+    toolChoice: true,
+    reasoning: false
+  }
+} as LLMSystemModelDataType;
 
 const searchTool: ChatCompletionTool = {
   type: 'function',
@@ -114,7 +116,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     const result = await runAgentLoop({
       maxRunAgentTimes: 5,
       body: {
-        model: 'gpt-4',
+        model: modelData,
         stream: true,
         messages: [
           {
@@ -178,7 +180,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     await runAgentLoop({
       maxRunAgentTimes: 5,
       body: {
-        model: 'gpt-4',
+        model: modelData,
         stream: true,
         messages: [
           {
@@ -206,7 +208,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     const contextCheckpoint = '<context_checkpoint>compressed history</context_checkpoint>';
     const compressedUsage = {
       moduleName: 'account_usage:compress_llm_messages',
-      model: 'GPT-4',
+      modelId: '507f1f77bcf86cd799439011',
       totalPoints: 0,
       inputTokens: 40,
       outputTokens: 10
@@ -233,7 +235,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     const result = await runAgentLoop({
       maxRunAgentTimes: 5,
       body: {
-        model: 'gpt-4',
+        model: modelData,
         stream: true,
         messages: [
           {
@@ -282,7 +284,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     const result = await runAgentLoop({
       maxRunAgentTimes: 5,
       body: {
-        model: 'gpt-4',
+        model: modelData,
         stream: true,
         messages: [
           {
@@ -344,7 +346,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     await runAgentLoop({
       maxRunAgentTimes: 5,
       body: {
-        model: 'gpt-4',
+        model: modelData,
         stream: true,
         messages: [
           {
@@ -399,7 +401,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     const result = await runAgentLoop({
       maxRunAgentTimes: 5,
       body: {
-        model: 'gpt-4',
+        model: modelData,
         stream: true,
         messages: [
           {
@@ -479,7 +481,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     await runAgentLoop({
       maxRunAgentTimes: 6,
       body: {
-        model: 'gpt-4',
+        model: modelData,
         stream: true,
         messages: [
           {
@@ -529,7 +531,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     await runAgentLoop({
       maxRunAgentTimes: 10,
       body: {
-        model: 'gpt-4',
+        model: modelData,
         stream: true,
         messages: [
           {
@@ -586,7 +588,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
       maxRunAgentTimes: 10,
       batchToolSize: 2,
       body: {
-        model: 'gpt-4',
+        model: modelData,
         stream: true,
         messages: [
           {
@@ -632,7 +634,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     await runAgentLoop({
       maxRunAgentTimes: 10,
       body: {
-        model: 'gpt-4',
+        model: modelData,
         stream: true,
         messages: [
           {
@@ -685,7 +687,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     const result = await runAgentLoop({
       maxRunAgentTimes: 5,
       body: {
-        model: 'gpt-4',
+        model: modelData,
         stream: true,
         messages: [
           {
@@ -741,7 +743,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     const result = await runAgentLoop({
       maxRunAgentTimes: 5,
       body: {
-        model: 'gpt-4',
+        model: modelData,
         stream: true,
         messages: [
           {
@@ -789,7 +791,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     const result = await runAgentLoop({
       maxRunAgentTimes: 5,
       body: {
-        model: 'gpt-4',
+        model: modelData,
         stream: true,
         messages: [
           {
@@ -841,7 +843,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     const result = await runAgentLoop({
       maxRunAgentTimes: 5,
       body: {
-        model: 'gpt-4',
+        model: modelData,
         stream: true,
         messages: [
           {
@@ -896,7 +898,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     await runAgentLoop({
       maxRunAgentTimes: 5,
       body: {
-        model: 'gpt-4',
+        model: modelData,
         reasoning_effort: 'high',
         stream: true,
         messages: [
@@ -932,7 +934,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     const result = await runAgentLoop({
       maxRunAgentTimes: 5,
       body: {
-        model: 'gpt-4',
+        model: modelData,
         stream: true,
         messages: [
           {
@@ -983,7 +985,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         compressed: `compressed:${response}`,
         usage: {
           moduleName: 'account_usage:tool_response_compress',
-          model: 'GPT-4',
+          modelId: '507f1f77bcf86cd799439011',
           totalPoints: 0.2,
           inputTokens: 40,
           outputTokens: 10
@@ -1012,7 +1014,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
       await runAgentLoop({
         maxRunAgentTimes: 5,
         body: {
-          model: 'gpt-4',
+          model: modelData,
           stream: true,
           messages: [
             {
@@ -1077,7 +1079,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     await runAgentLoop({
       maxRunAgentTimes: 5,
       body: {
-        model: 'gpt-4',
+        model: modelData,
         stream: true,
         messages: [
           {
@@ -1135,7 +1137,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
       maxRunAgentTimes: 5,
       batchToolSize: 2,
       body: {
-        model: 'gpt-4',
+        model: modelData,
         stream: true,
         messages: [
           {
@@ -1194,7 +1196,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     const result = await runAgentLoop({
       maxRunAgentTimes: 5,
       body: {
-        model: 'gpt-4',
+        model: modelData,
         stream: true,
         messages: [
           {
@@ -1235,7 +1237,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     const result = await runAgentLoop({
       maxRunAgentTimes: 5,
       body: {
-        model: 'gpt-4',
+        model: modelData,
         stream: true,
         messages: [
           {

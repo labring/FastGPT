@@ -7,7 +7,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
-import { getDefaultLLMModel } from '@fastgpt/service/core/ai/model';
+import { getDefaultLLMModelData, getLLMModelData } from '@fastgpt/service/core/ai/model';
 import {
   CreateQuestionGuideResponseSchema,
   CreateQuestionGuideV2BodySchema,
@@ -48,17 +48,14 @@ async function handler(
     outLinkAuthData
   });
 
-  // Auth app and get questionGuide config
-  const questionGuide: AppQGConfigType | undefined = await (async () => {
-    if (inputQuestionGuide) {
-      return inputQuestionGuide;
-    }
-    if (resolvedSourceType !== ChatSourceTypeEnum.app) {
-      return undefined;
-    }
+  // 未由客户端覆盖时读取持久化配置；该分支在迁移期兼容历史 model 字段。
+  const persistedQuestionGuide: AppQGConfigType | undefined = await (async () => {
+    if (inputQuestionGuide || resolvedSourceType !== ChatSourceTypeEnum.app) return undefined;
+
     const { chatConfig } = await getAppLatestVersion(resolvedSourceId);
     return chatConfig.questionGuide;
   })();
+  const questionGuide = inputQuestionGuide ?? persistedQuestionGuide;
 
   // Get histories
   const { histories } = await getChatItems({
@@ -71,17 +68,34 @@ async function handler(
   });
   const messages = chats2GPTMessages({ messages: histories, reserveId: false });
 
-  const qgModel = questionGuide?.model || getDefaultLLMModel().model;
+  const qgModelData = (() => {
+    if (inputQuestionGuide?.modelId !== undefined || inputQuestionGuide?.model !== undefined) {
+      return getLLMModelData({
+        modelId: inputQuestionGuide.modelId,
+        model: inputQuestionGuide.model
+      });
+    }
+    if (
+      persistedQuestionGuide?.modelId !== undefined ||
+      persistedQuestionGuide?.model !== undefined
+    ) {
+      return getLLMModelData({
+        modelId: persistedQuestionGuide.modelId,
+        model: persistedQuestionGuide.model
+      });
+    }
+    return getDefaultLLMModelData();
+  })();
 
   const { result, inputTokens, outputTokens } = await createQuestionGuide({
     messages,
-    model: qgModel,
+    model: qgModelData,
     customPrompt: questionGuide?.customPrompt,
     teamId
   });
 
   pushQuestionGuideUsage({
-    model: qgModel,
+    model: qgModelData,
     inputTokens,
     outputTokens,
     teamId,

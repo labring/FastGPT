@@ -2,7 +2,8 @@ import z from 'zod';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import {
   CollaboratorListSchema,
-  CollaboratorUpdateListSchema
+  CollaboratorUpdateListSchema,
+  ShowUsernameQuerySchema
 } from '../../../support/permission/collaborator.schema';
 
 const AppIdSchema = ObjectIdSchema.meta({
@@ -26,7 +27,8 @@ export const EmptyPermissionResponseSchema = z.undefined().meta({
  * ============================================================================ */
 
 export const GetAppCollaboratorListQuerySchema = z.object({
-  appId: AppIdSchema
+  appId: AppIdSchema,
+  showUsername: ShowUsernameQuerySchema
 });
 export type GetAppCollaboratorListQueryType = z.infer<typeof GetAppCollaboratorListQuerySchema>;
 

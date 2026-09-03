@@ -16,6 +16,7 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import type { WorkflowStateType } from './type';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 export type WorkflowSnapshotsType = WorkflowStateType & {
   title: string;
@@ -97,6 +98,7 @@ const snapshotDebounceTime = 1000;
 
 export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNode }) => {
   const { t } = useTranslation();
+  const { llmModelList } = useUserModelLists();
 
   // 获取 WorkflowBufferDataContext 的数据
   const {
@@ -303,7 +305,12 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
           .map((edge) => edge.target)
       );
       const nodes = appVersion.nodes.map((item) =>
-        storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
+        storeNode2FlowNode({
+          item,
+          t,
+          isTool: toolNodeIds.has(item.nodeId),
+          llmModelList
+        })
       );
 
       resetSnapshot({
@@ -319,7 +326,7 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
         customTitle: `${t('app:version_copy')}-${appVersion.versionName}`
       });
     },
-    [t, resetSnapshot, pushPastSnapshot]
+    [llmModelList, t, resetSnapshot, pushPastSnapshot]
   );
 
   const contextValue = useMemoEnhance(() => {

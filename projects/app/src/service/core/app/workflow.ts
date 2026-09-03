@@ -1,12 +1,30 @@
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { getLLMModel } from '@fastgpt/service/core/ai/model';
+import { isWorkflowSystemModelInput } from '@fastgpt/global/core/workflow/utils';
+import { getOptionalLLMModelData } from '@fastgpt/service/core/ai/model';
 
 export const getChatModelNameListByModules = (nodes: StoreNodeItemType[]): string[] => {
   const modelList = nodes
     .map((item) => {
-      const model = item.inputs.find((input) => input.key === NodeInputKeyEnum.aiModel)?.value;
-      return model ? getLLMModel(model)?.name : '';
+      const modelIdInput = item.inputs.find(
+        (input) =>
+          input.key === NodeInputKeyEnum.aiModelId &&
+          isWorkflowSystemModelInput({ node: item, input })
+      );
+      const modelInput = item.inputs.find(
+        (input) =>
+          input.key === NodeInputKeyEnum.aiModel &&
+          isWorkflowSystemModelInput({ node: item, input })
+      );
+      const modelId = modelIdInput?.value;
+      const model = modelInput?.value;
+
+      try {
+        return getOptionalLLMModelData({ modelId, model })?.name ?? '';
+      } catch {
+        // chatModels 仅用于标题栏展示。动态、缺失或已停用模型不应阻断聊天初始化。
+        return '';
+      }
     })
     .filter(Boolean);
 

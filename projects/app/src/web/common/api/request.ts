@@ -14,6 +14,8 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import dayjs from 'dayjs';
 import { getAuthLoginRedirectPath } from '@/web/support/user/loginRedirect/url';
 import { getLanguageRequestHeaders } from '@fastgpt/web/i18n/utils';
+import { ToastHandledError } from '@fastgpt/global/common/error/utils';
+import { isLogoutInProgress } from '@/web/support/user/logoutState';
 
 type ConfigType = {
   headers?: { [key: string]: string };
@@ -186,6 +188,10 @@ function responseError(err: any) {
 
   // Token error
   if (data?.code in TOKEN_ERROR_CODE) {
+    if (isLogoutInProgress()) {
+      return Promise.reject(new ToastHandledError('Ignore auth errors during logout'));
+    }
+
     const authErrorEvent = new CustomEvent<AuthErrorEventDetail>(AUTH_ERROR_EVENT_NAME, {
       detail: {
         data

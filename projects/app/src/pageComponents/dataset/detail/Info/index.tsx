@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, Flex, Switch, Input } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useForm } from 'react-hook-form';
@@ -6,10 +6,12 @@ import type { DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import AIModelSelector from '@/components/Select/AIModelSelector';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { postRebuildEmbedding } from '@/web/core/dataset/api/training';
-import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { MyEmbeddingModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import MyDivider from '@fastgpt/web/components/common/MyDivider/index';
@@ -36,7 +38,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
   const { datasetDetail, loadDatasetDetail, updateDataset, rebuildingCount, trainingCount } =
     useContextSelector(DatasetPageContext, (v) => v);
-  const { feConfigs, llmModelList, embeddingModelList, getVlmModelList } = useSystemStore();
+  const { feConfigs } = useSystemStore();
+  const { llmModelList, embeddingModelList, vlmModelList: vllmModelList } = useUserModelLists();
 
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
   const [editedAPIDataset, setEditedAPIDataset] = useState<EditAPIDatasetInfoFormType>();
@@ -51,7 +54,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const vectorModel = watch('vectorModel');
   const agentModel = watch('agentModel');
 
-  const vllmModelList = useMemo(() => getVlmModelList(), [getVlmModelList]);
   const vlmModel = watch('vlmModel');
 
   const { openConfirm: onOpenConfirmRebuild, ConfirmModal: ConfirmRebuildModal } = useConfirm({
@@ -68,8 +70,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     (data: DatasetItemType) => {
       return updateDataset({
         id: datasetId,
-        agentModel: data.agentModel?.model,
-        vlmModel: data.vlmModel?.model,
+        agentModelId: data.agentModel?.modelId ?? data.agentModelId,
+        vlmModelId: data.vlmModel?.modelId ?? data.vlmModelId,
         externalReadUrl: data.externalReadUrl
       });
     },
@@ -80,10 +82,10 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   );
 
   const { runAsync: onRebuilding } = useRequest(
-    (vectorModel: EmbeddingModelItemType) => {
+    (vectorModel: MyEmbeddingModelItemType) => {
       return postRebuildEmbedding({
         datasetId,
-        vectorModel: vectorModel.model
+        vectorModelId: vectorModel.modelId
       });
     },
     {
@@ -171,8 +173,9 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           </Flex>
           <Box pt={2} minW={0} maxW={'100%'} overflow={'hidden'}>
             <AIModelSelector
+              modelType={ModelTypeEnum.embedding}
               w={'100%'}
-              value={vectorModel.model}
+              value={vectorModel?.modelId ?? datasetDetail.vectorModelId}
               fontSize={'mini'}
               disableTip={
                 isTraining
@@ -183,10 +186,10 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               }
               list={embeddingModelList.map((item) => ({
                 label: item.name,
-                value: item.model
+                value: item.modelId
               }))}
               onChange={(e) => {
-                const vectorModel = embeddingModelList.find((item) => item.model === e);
+                const vectorModel = embeddingModelList.find((item) => item.modelId === e);
                 if (!vectorModel) return;
                 return onOpenConfirmRebuild({
                   onConfirm: async () => {
@@ -205,15 +208,16 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           </FormLabel>
           <Box pt={2} minW={0} maxW={'100%'} overflow={'hidden'}>
             <AIModelSelector
+              modelType={ModelTypeEnum.llm}
               w={'100%'}
-              value={agentModel.model}
+              value={agentModel?.modelId ?? datasetDetail.agentModelId}
               list={llmModelList.map((item) => ({
                 label: item.name,
-                value: item.model
+                value: item.modelId
               }))}
               fontSize={'mini'}
               onChange={(e) => {
-                const agentModel = llmModelList.find((item) => item.model === e);
+                const agentModel = llmModelList.find((item) => item.modelId === e);
                 if (!agentModel) return;
                 setValue('agentModel', agentModel);
                 return handleSubmit((data) => onSave({ ...data, agentModel: agentModel }))();
@@ -228,15 +232,16 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           </FormLabel>
           <Box pt={2} minW={0} maxW={'100%'} overflow={'hidden'}>
             <AIModelSelector
+              modelType={ModelTypeEnum.llm}
               w={'100%'}
-              value={vlmModel?.model}
+              value={vlmModel?.modelId ?? datasetDetail.vlmModelId}
               list={vllmModelList.map((item) => ({
                 label: item.name,
-                value: item.model
+                value: item.modelId
               }))}
               fontSize={'mini'}
               onChange={(e) => {
-                const vlmModel = vllmModelList.find((item) => item.model === e);
+                const vlmModel = vllmModelList.find((item) => item.modelId === e);
                 if (!vlmModel) return;
                 setValue('vlmModel', vlmModel);
                 return handleSubmit((data) => onSave({ ...data, vlmModel }))();

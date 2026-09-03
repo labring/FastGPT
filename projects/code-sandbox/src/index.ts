@@ -9,6 +9,7 @@ import type { ExecuteOptions } from './types';
 import { getErrText } from './utils';
 import { configureLogger, getLogger, LogCategories } from './utils/logger';
 import { QueueIdLimiter } from './utils/queue-id-limiter';
+import { getSeccompConfig } from './isolated/seccomp-config';
 
 await configureLogger();
 
@@ -94,6 +95,12 @@ const jsPool = new ProcessPool(env.SANDBOX_POOL_SIZE);
 const pythonRunner = new PythonIsolatedRunner();
 const queueIdLimiter = new QueueIdLimiter(env.SANDBOX_QUEUE_ID_CONCURRENCY);
 
+if (!getSeccompConfig().enableSeccomp) {
+  serverLogger.warn(
+    'SECURITY WARNING: application seccomp is explicitly disabled for JS and Python sandboxes; chroot and UID/GID isolation remain enabled'
+  );
+}
+
 if (queueIdLimiter.enabled) {
   serverLogger.info(
     `QueueId limiter enabled: max ${env.SANDBOX_QUEUE_ID_CONCURRENCY} concurrent requests per queueId`
@@ -113,7 +120,7 @@ const poolReady = Promise.all([jsPool.init(), pythonRunner.init()])
 app.get('/health', (c) => {
   const jsStats = jsPool.stats;
   const pythonStats = pythonRunner.stats;
-  const isReady = jsStats.total > 0 && pythonStats.ready;
+  const isReady = jsStats.ready && pythonStats.ready;
   return c.json(
     {
       status: isReady ? 'ok' : 'degraded',
@@ -137,7 +144,7 @@ app.use('/sandbox/*', async (c, next) => {
   await next();
 
   const duration = Date.now() - startTime;
-  const { method, url } = c.req;
+  const { url } = c.req;
   const { status } = c.res;
 
   // 尝试解析响应体以检查业务状态
@@ -154,7 +161,7 @@ app.use('/sandbox/*', async (c, next) => {
       businessSuccess = body.success !== false; // 如果没有 success 字段，默认为成功
       errorMessage = body.message || '';
     }
-  } catch (err) {
+  } catch {
     // 解析失败时不影响日志记录
   }
 
@@ -264,7 +271,8 @@ if (process.env.NODE_ENV !== 'test') {
 
 /** 导出 app 和 poolReady 供测试使用 */
 export { app, poolReady };
-export default {
+const serverConfig = {
   port: env.SANDBOX_PORT,
   fetch: app.fetch
 };
+export default serverConfig;

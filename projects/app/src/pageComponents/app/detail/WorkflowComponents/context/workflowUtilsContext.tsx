@@ -32,6 +32,7 @@ import {
   canInputBeAgentGenerated,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 // 创建 Context
 type WorkflowUtilsContextValue = {
@@ -123,6 +124,8 @@ export const WorkflowUtilsContext = createContext<WorkflowUtilsContextValue>({
 
 export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
+  const { modelList, llmModelList, loaded: modelsLoaded } = useUserModelLists();
+  const availableModels = modelsLoaded ? modelList : undefined;
   const { toast } = useToast();
   const { fitView } = useReactFlow();
   const { feConfigs } = useSystemStore();
@@ -227,6 +230,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       const { issueMap, hasError, firstErrorNodeId } = checkWorkflowBeforeRunOrPublish({
         nodes,
         edges,
+        models: availableModels,
         t
       });
 
@@ -272,6 +276,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       showSandbox,
       enableSandbox,
       appDetail.chatConfig,
+      availableModels,
       toast
     ]
   );
@@ -282,16 +287,17 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       const nodes = getNodes();
       if (nodes.length === 0) return;
 
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, t });
+      const issueMap = checkWorkflowNodeIssues({ nodes, edges, models: availableModels, t });
       onSyncWorkflowCheckIssues(issueMap);
     };
 
+    runScheduledCheck();
     const timer = window.setInterval(runScheduledCheck, 10_000);
 
     return () => {
       window.clearInterval(timer);
     };
-  }, [edges, getNodes, onSyncWorkflowCheckIssues, t]);
+  }, [availableModels, edges, getNodes, onSyncWorkflowCheckIssues, t]);
 
   // 4. initData - 初始化工作流数据
   const initData = useCallback(
@@ -317,7 +323,12 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       );
       const nodes =
         storeNodes?.map((item) =>
-          storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
+          storeNode2FlowNode({
+            item,
+            t,
+            isTool: toolNodeIds.has(item.nodeId),
+            llmModelList
+          })
         ) || [];
       const edges = workflow.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
 
@@ -347,7 +358,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       setEdges(edges);
       setAppDetail((state) => ({ ...state, chatConfig: workflow.chatConfig }));
     },
-    [appDetail.chatConfig, past, setAppDetail, setEdges, setNodes, setPast, t]
+    [appDetail.chatConfig, llmModelList, past, setAppDetail, setEdges, setNodes, setPast, t]
   );
 
   const contextValue = useMemo(() => {

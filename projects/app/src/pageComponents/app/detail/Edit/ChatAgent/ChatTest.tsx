@@ -25,12 +25,16 @@ import { checkAgentSkillSandboxUnavailable, loadGeneratedTools } from './utils';
 import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import ChatVariableButton from '@/pageComponents/chat/ChatWindow/ChatVariableButton';
 import ProModal from '@/components/ProTip/ProModal';
 import ChatAIModelSelector from '@/pageComponents/chat/ChatWindow/ChatAIModelSelector';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 type Props = {
   appForm: AppFormEditFormType;
@@ -42,7 +46,9 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   const { t } = useTranslation();
   const { toast } = useToast();
   const { chatId, agentChatTestTab, setAgentChatTestTab } = useChatStore();
-  const { feConfigs, llmModelList, defaultModels } = useSystemStore();
+  const { feConfigs } = useSystemStore();
+  const { defaultModels } = useUserModelStore();
+  const { llmModelList } = useUserModelLists();
   const { teamPlanStatus } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
   const showSandbox = feConfigs.show_agent_sandbox;
@@ -59,7 +65,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   const [helperSelectedModel, setHelperSelectedModel] = useLocalStorageState<string>(
     'chat_agent_helper_model',
     {
-      defaultValue: defaultModels.llm?.model
+      defaultValue: defaultModels.llm?.modelId
     }
   );
   const ChatAgentHelperRef = useRef<ChatAgentHelperRefType>(null);
@@ -74,21 +80,23 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   });
 
   const modelSelectList = useMemo(
-    () => llmModelList.map((item) => ({ label: item.name, value: item.model })),
+    () =>
+      llmModelList
+        .filter((item): item is typeof item & { modelId: string } => !!item.modelId)
+        .map((item) => ({ label: item.name, value: item.modelId })),
     [llmModelList]
   );
   const helperModel = useMemo(() => {
-    const modelSet = new Set(llmModelList.map((item) => item.model));
-    const defaultModel = defaultModels.llm?.model || llmModelList[0]?.model || '';
+    const selectedModelId = findClientModelByValue({
+      models: llmModelList,
+      value: helperSelectedModel
+    })?.modelId;
+    const defaultModelId = defaultModels.llm?.modelId || llmModelList[0]?.modelId || '';
 
-    if (helperSelectedModel && modelSet.has(helperSelectedModel)) {
-      return helperSelectedModel;
-    }
-    if (defaultModel && modelSet.has(defaultModel)) {
-      return defaultModel;
-    }
-    return llmModelList[0]?.model || '';
-  }, [defaultModels.llm?.model, helperSelectedModel, llmModelList]);
+    if (selectedModelId) return selectedModelId;
+    if (helperSelectedModel) return helperSelectedModel;
+    return defaultModelId;
+  }, [defaultModels.llm?.modelId, helperSelectedModel, llmModelList]);
   const onChangeHelperModel = useCallback(
     (model: string) => {
       setHelperSelectedModel(model);
@@ -99,6 +107,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
     () => (
       <Box w={'fit-content'} maxW={'300px'} flex={'0 1 auto'} minW={0}>
         <ChatAIModelSelector
+          modelType={ModelTypeEnum.llm}
           h={'36px'}
           w={'fit-content'}
           maxW={'300px'}
@@ -192,7 +201,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
       fileUpload: appForm.chatConfig.fileSelectConfig?.canSelectFile || false,
       enableSandbox: appForm.aiSettings.useAgentSandbox || false,
       modelConfig: {
-        model: helperModel
+        modelId: helperModel
       }
     }),
     [appForm, helperModel]

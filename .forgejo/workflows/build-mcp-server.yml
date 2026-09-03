@@ -1,4 +1,4 @@
-name: Build fastgpt-mcp-server images
+name: Release FastGPT-mcp-server
 on:
   workflow_dispatch:
     inputs:

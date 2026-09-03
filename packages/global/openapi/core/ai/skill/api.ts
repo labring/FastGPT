@@ -17,7 +17,8 @@ import { ChatCompletionMessageParamSchema } from '../../../../core/ai/llm/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import {
   CollaboratorListSchema,
-  CollaboratorUpdateListSchema
+  CollaboratorUpdateListSchema,
+  ShowUsernameQuerySchema
 } from '../../../../support/permission/collaborator.schema';
 
 const IdSchema = z.string().min(1).meta({ description: '资源 ID' });
@@ -196,7 +197,8 @@ export const GetSkillCollaboratorListQuerySchema = z.object({
   skillId: IdSchema.meta({
     example: '68ad85a7463006c963799a05',
     description: '技能 ID'
-  })
+  }),
+  showUsername: ShowUsernameQuerySchema
 });
 export type GetSkillCollaboratorListQuery = z.infer<typeof GetSkillCollaboratorListQuerySchema>;
 
@@ -342,7 +344,7 @@ export const SkillDebugChatBodySchema = z.object({
   chatId: z.string().min(1),
   responseChatItemId: z.string().optional(),
   messages: z.array(ChatCompletionMessageParamSchema),
-  model: z.string().optional(),
+  modelId: z.string().meta({ description: '调试使用的模型 ID' }),
   systemPrompt: z.string().optional()
 });
 export type SkillDebugChatBody = z.infer<typeof SkillDebugChatBodySchema>;

@@ -105,6 +105,7 @@
   "import_select_link": "Enter link",
   "index_prefix_title": "Index add title",
   "index_prefix_title_tips": "Automatically add title names to all indexes",
+  "index_model_unavailable": "The index model is no longer available",
   "index_size": "Index size",
   "index_size_tips": "During vectorization, FastGPT automatically splits content into additional chunks of this size.",
   "input_required_field_to_select_baseurl": "Please enter the required information first",

@@ -34,6 +34,8 @@ const shouldRunIntegration =
   process.env.RUN_READ_FILE_WORKER_INTEGRATION === 'true' && existsSync(REAL_WORKER_PATH);
 const pdfFixturePath = process.env.RUN_READ_FILE_WORKER_PDF_PATH;
 const itIfPdfFixture = pdfFixturePath && existsSync(pdfFixturePath) ? it : it.skip;
+const xlsxFixturePath = process.env.RUN_READ_FILE_WORKER_XLSX_PATH;
+const itIfXlsxFixture = xlsxFixturePath && existsSync(xlsxFixturePath) ? it : it.skip;
 const shouldRunPdfStress =
   process.env.RUN_READ_FILE_WORKER_PDF_STRESS === 'true' &&
   Boolean(pdfFixturePath && existsSync(pdfFixturePath));
@@ -358,6 +360,18 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
     expect(result.rawText).toContain('name|alias,fullwidth｜pipe');
     expect(result.formatText).toContain('| name\\|alias | fullwidth｜pipe |');
     expect(result.formatText).toContain('| Alice\\|A | 保留｜字符 |');
+  });
+
+  itIfXlsxFixture('通过真实 worker 解析指定的 XLSX 文件', async () => {
+    const result = await readRawContentFromBuffer({
+      extension: 'xlsx',
+      encoding: 'utf-8',
+      buffer: readFileSync(xlsxFixturePath!)
+    });
+
+    expect(result.rawText.length).toBeGreaterThan(0);
+    expect(result.formatText.length).toBeGreaterThan(0);
+    expect(result.tableInfo?.sheetCount).toBeGreaterThan(0);
   });
 
   it('解析带图片 docx 时通过主线程 uploadFile handler 上传图片', async () => {

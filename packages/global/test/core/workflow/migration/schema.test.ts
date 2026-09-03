@@ -82,6 +82,55 @@ describe('workflow migration boundary', () => {
     expect(result.nodes[0].inputs[1]).not.toHaveProperty('isToolParam');
   });
 
+  it('keeps legacy file inputs manual', async () => {
+    const result = await migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'plugin-input',
+          flowNodeType: 'pluginInput',
+          name: 'Plugin input',
+          inputs: [
+            {
+              key: 'files',
+              label: 'Files',
+              renderTypeList: [FlowNodeInputTypeEnum.fileSelect, FlowNodeInputTypeEnum.reference],
+              toolDescription: 'Legacy file input',
+              isToolParam: true
+            }
+          ],
+          outputs: []
+        },
+        {
+          nodeId: 'http-tool',
+          flowNodeType: 'httpRequest468',
+          name: 'HTTP tool',
+          inputs: [
+            {
+              key: 'files',
+              label: 'Files',
+              canEdit: true,
+              toolDescription: 'Legacy file input',
+              isToolParam: true,
+              renderTypeList: [FlowNodeInputTypeEnum.fileSelect, FlowNodeInputTypeEnum.reference]
+            }
+          ],
+          outputs: []
+        }
+      ]
+    });
+
+    expect(result.nodes.map((node) => node.inputs[0])).toEqual([
+      expect.objectContaining({
+        defaultToAgentGenerated: false,
+        selectedType: FlowNodeInputTypeEnum.fileSelect
+      }),
+      expect.objectContaining({
+        defaultToAgentGenerated: false,
+        selectedType: FlowNodeInputTypeEnum.fileSelect
+      })
+    ]);
+  });
+
   it('rejects V1 nodes before V2 schema parsing', async () => {
     expect(() =>
       migrateWorkflowToCurrent({

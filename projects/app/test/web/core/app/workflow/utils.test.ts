@@ -56,6 +56,8 @@ import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/syst
 import { ClassifyQuestionModule } from '@fastgpt/global/core/workflow/template/system/classifyQuestion';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
 import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+
 describe('nodeTemplate2FlowNode', () => {
   it('should initialize template text once before formatting the instance name', () => {
     const template: FlowNodeTemplateType = {
@@ -2058,6 +2060,168 @@ describe('workflow check helpers', () => {
   });
 });
 
+describe('workflow model validation', () => {
+  const models = [
+    { modelId: 'llm-id', model: 'gpt-4o', type: ModelTypeEnum.llm },
+    { modelId: 'rerank-id', model: 'bge-reranker', type: ModelTypeEnum.rerank }
+  ];
+  const makeModelNode = (
+    inputs: FlowNodeItemType['inputs'],
+    flowNodeType = FlowNodeTypeEnum.chatNode
+  ) =>
+    ({
+      id: 'model-node',
+      type: flowNodeType,
+      position: { x: 0, y: 0 },
+      data: {
+        nodeId: 'model-node',
+        flowNodeType,
+        name: 'Model node',
+        inputs,
+        outputs: []
+      }
+    }) as Node<FlowNodeItemType>;
+  const getModelIssueCodes = (node: Node<FlowNodeItemType>) =>
+    (checkWorkflowNodeIssues({ nodes: [node], edges: [], models })['model-node'] ?? []).map(
+      (issue) => issue.code
+    );
+
+  it('accepts available canonical and legacy model references', () => {
+    const canonicalNode = makeModelNode([
+      {
+        key: NodeInputKeyEnum.aiModelId,
+        value: 'llm-id',
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+      }
+    ]);
+    const legacyNode = makeModelNode([
+      {
+        key: NodeInputKeyEnum.aiModel,
+        value: 'gpt-4o',
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+      }
+    ]);
+
+    expect(getModelIssueCodes(canonicalNode)).not.toContain('model_unavailable');
+    expect(getModelIssueCodes(legacyNode)).not.toContain('model_unavailable');
+  });
+
+  it('reports an unavailable canonical model without repairing it from legacy model', () => {
+    const node = makeModelNode([
+      {
+        key: NodeInputKeyEnum.aiModelId,
+        value: 'missing-id',
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+      },
+      {
+        key: NodeInputKeyEnum.aiModel,
+        value: 'gpt-4o',
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+      }
+    ]);
+
+    const issues = checkWorkflowNodeIssues({ nodes: [node], edges: [], models })['model-node'];
+    expect(issues?.find((issue) => issue.code === 'model_unavailable')?.message).toBe('模型已停用');
+  });
+
+  it('does not statically validate reference and template model values', () => {
+    const referenceNode = makeModelNode([
+      {
+        key: NodeInputKeyEnum.aiModelId,
+        value: ['upstream', 'modelId'],
+        renderTypeList: [FlowNodeInputTypeEnum.reference]
+      }
+    ]);
+    const templateNode = makeModelNode([
+      {
+        key: NodeInputKeyEnum.aiModelId,
+        value: '{{modelId}}',
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+      }
+    ]);
+
+    expect(getModelIssueCodes(referenceNode)).not.toContain('model_unavailable');
+    expect(getModelIssueCodes(templateNode)).not.toContain('model_unavailable');
+  });
+
+  it('only validates optional dataset models while their feature is enabled', () => {
+    const makeRerankNode = (usingReRank: boolean) =>
+      makeModelNode(
+        [
+          {
+            key: NodeInputKeyEnum.datasetSearchUsingReRank,
+            value: usingReRank,
+            renderTypeList: [FlowNodeInputTypeEnum.switch]
+          },
+          {
+            key: NodeInputKeyEnum.datasetSearchRerankModelId,
+            value: 'missing-rerank',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          }
+        ],
+        FlowNodeTypeEnum.datasetSearchNode
+      );
+
+    expect(getModelIssueCodes(makeRerankNode(false))).not.toContain('model_unavailable');
+    expect(getModelIssueCodes(makeRerankNode(true))).toContain('model_unavailable');
+  });
+
+  it('validates enabled nested Agent dataset model references', () => {
+    const node = makeModelNode(
+      [
+        {
+          key: NodeInputKeyEnum.datasetParams,
+          value: {
+            [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]: true,
+            [NodeInputKeyEnum.datasetSearchExtensionModelId]: 'missing-extension-model'
+          },
+          renderTypeList: [FlowNodeInputTypeEnum.custom]
+        }
+      ],
+      FlowNodeTypeEnum.agent
+    );
+
+    expect(getModelIssueCodes(node)).toContain('model_unavailable');
+  });
+
+  it('validates WorkflowTool model selector defaults with arbitrary input keys', () => {
+    const availableNode = makeModelNode(
+      [
+        {
+          key: 'selectedModel',
+          defaultValue: 'llm-id',
+          renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+        }
+      ],
+      FlowNodeTypeEnum.pluginInput
+    );
+    const legacyNode = makeModelNode(
+      [
+        {
+          key: 'selectedModel',
+          defaultValue: 'gpt-4o',
+          renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+        }
+      ],
+      FlowNodeTypeEnum.pluginInput
+    );
+    const unavailableNode = makeModelNode(
+      [
+        {
+          key: 'selectedModel',
+          defaultValue: 'missing-model-id',
+          renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+        }
+      ],
+      FlowNodeTypeEnum.pluginInput
+    );
+
+    expect(getModelIssueCodes(availableNode)).not.toContain('model_unavailable');
+    expect(getModelIssueCodes(legacyNode)).not.toContain('model_unavailable');
+    expect(getModelIssueCodes(unavailableNode)).toContain('model_unavailable');
+  });
+});
+
 describe('storeNode2FlowNode', () => {
   it('restores tool set nodes without a source handle', () => {
     const storeNode = {
@@ -2260,6 +2424,114 @@ describe('storeNode2FlowNode', () => {
       ],
       selectedType: FlowNodeInputTypeEnum.JSONEditor
     });
+  });
+
+  it('keeps one canonical model input when raw data contains modelId and model', () => {
+    const result = storeNode2FlowNode({
+      item: {
+        nodeId: 'chat-node',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        position: { x: 0, y: 0 },
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModel,
+            renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
+            value: 'legacy-model'
+          },
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
+            value: ''
+          },
+          {
+            key: NodeInputKeyEnum.aiModel,
+            renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
+            value: 'duplicate-legacy-model'
+          }
+        ],
+        outputs: [],
+        name: 'Chat node',
+        version: '1.0'
+      },
+      t: ((key: string) => key) as any
+    });
+    const modelInputs = result.data.inputs.filter(
+      (input) => input.key === NodeInputKeyEnum.aiModelId || input.key === NodeInputKeyEnum.aiModel
+    );
+
+    expect(modelInputs).toEqual([
+      expect.objectContaining({ key: NodeInputKeyEnum.aiModelId, value: '' })
+    ]);
+  });
+
+  it('renders a legacy model in the canonical template slot without adding modelId', () => {
+    const result = storeNode2FlowNode({
+      item: {
+        nodeId: 'chat-node',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        position: { x: 0, y: 0 },
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModel,
+            renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
+            selectedType: FlowNodeInputTypeEnum.settingLLMModel,
+            value: 'legacy-model'
+          }
+        ],
+        outputs: [],
+        name: 'Chat node',
+        version: '1.0'
+      },
+      t: ((key: string) => key) as any
+    });
+    const modelInputs = result.data.inputs.filter(
+      (input) => input.key === NodeInputKeyEnum.aiModelId || input.key === NodeInputKeyEnum.aiModel
+    );
+
+    expect(modelInputs).toEqual([
+      expect.objectContaining({
+        key: NodeInputKeyEnum.aiModel,
+        value: 'legacy-model',
+        renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel, FlowNodeInputTypeEnum.reference]
+      })
+    ]);
+  });
+
+  it('renames a dynamic legacy model before merging the current template', () => {
+    const referenceValue = ['source-node', 'model-output'];
+    const result = storeNode2FlowNode({
+      item: {
+        nodeId: 'chat-node',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        position: { x: 0, y: 0 },
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModel,
+            renderTypeList: [
+              FlowNodeInputTypeEnum.settingLLMModel,
+              FlowNodeInputTypeEnum.reference
+            ],
+            selectedType: FlowNodeInputTypeEnum.reference,
+            value: referenceValue
+          }
+        ],
+        outputs: [],
+        name: 'Chat node',
+        version: '1.0'
+      },
+      t: ((key: string) => key) as any
+    });
+    const modelInputs = result.data.inputs.filter(
+      (input) => input.key === NodeInputKeyEnum.aiModelId || input.key === NodeInputKeyEnum.aiModel
+    );
+
+    expect(modelInputs).toEqual([
+      expect.objectContaining({
+        key: NodeInputKeyEnum.aiModelId,
+        selectedType: FlowNodeInputTypeEnum.reference,
+        value: referenceValue
+      })
+    ]);
   });
 
   it('should preserve the canonical agent mode in tool context', () => {

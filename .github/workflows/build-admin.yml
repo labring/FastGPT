@@ -1,4 +1,4 @@
-name: Build FastGPT Admin images
+name: Release FastGPT-pro
 
 on:
   workflow_dispatch:

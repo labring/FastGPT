@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { filterSensitiveFormData, getAppQGuideCustomURL } from '@/web/core/app/utils';
+import {
+  addModelNamesToAppForm,
+  filterSensitiveFormData,
+  getAppQGuideCustomURL
+} from '@/web/core/app/utils';
 import {
   appWorkflow2Form,
   form2AppWorkflow
@@ -15,6 +19,7 @@ import {
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 describe('form2AppWorkflow', () => {
   const mockT = (str: string) => str;
@@ -398,6 +403,41 @@ describe('filterSensitiveFormData', () => {
   });
 });
 
+describe('addModelNamesToAppForm', () => {
+  it('adds portable names for simple app model references', () => {
+    const appForm = getDefaultAppForm();
+    appForm.aiSettings.modelId = 'llm-id';
+    appForm.dataset.rerankModelId = 'rerank-id';
+    appForm.dataset.datasetSearchExtensionModelId = 'extension-id';
+    appForm.chatConfig.questionGuide = { open: true, modelId: 'llm-id' };
+    appForm.chatConfig.ttsConfig = { type: 'model', modelId: 'tts-id' };
+
+    addModelNamesToAppForm({
+      appForm,
+      models: [
+        { modelId: 'llm-id', model: 'gpt-4', type: ModelTypeEnum.llm },
+        { modelId: 'rerank-id', model: 'rerank-v1', type: ModelTypeEnum.rerank },
+        { modelId: 'extension-id', model: 'extension-v1', type: ModelTypeEnum.llm },
+        { modelId: 'tts-id', model: 'tts-v1', type: ModelTypeEnum.tts }
+      ] as any
+    });
+
+    expect(appForm.aiSettings.model).toBe('gpt-4');
+    expect(appForm.dataset.rerankModel).toBe('rerank-v1');
+    expect(appForm.dataset.datasetSearchExtensionModel).toBe('extension-v1');
+    expect(appForm.chatConfig.questionGuide).toEqual({
+      open: true,
+      modelId: 'llm-id',
+      model: 'gpt-4'
+    });
+    expect(appForm.chatConfig.ttsConfig).toEqual({
+      type: 'model',
+      modelId: 'tts-id',
+      model: 'tts-v1'
+    });
+  });
+});
+
 describe('getAppQGuideCustomURL', () => {
   it('should get custom URL from app detail', () => {
     const appDetail = {
@@ -486,7 +526,8 @@ describe('appWorkflow2AgentForm', () => {
     });
 
     expect(result.dataset.usingReRank).toBe(false);
-    expect(result.dataset.rerankModel).toBe('');
+    expect(result.dataset.rerankModel).toBeFalsy();
+    expect(result.dataset.rerankModelId).toBeFalsy();
     expect(result.dataset.rerankWeight).toBe(0.5);
   });
 

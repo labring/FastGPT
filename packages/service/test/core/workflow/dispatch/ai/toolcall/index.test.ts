@@ -10,14 +10,14 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
 
 const {
-  getLLMModelMock,
+  getLLMModelDataMock,
   getSandboxClientMock,
   runToolCallMock,
   useToolMessagesMock,
   useToolNodeListMock,
   ensureAppSandboxRuntimeReadyMock
 } = vi.hoisted(() => ({
-  getLLMModelMock: vi.fn(),
+  getLLMModelDataMock: vi.fn(),
   getSandboxClientMock: vi.fn(),
   runToolCallMock: vi.fn(),
   useToolMessagesMock: vi.fn(),
@@ -26,7 +26,7 @@ const {
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getLLMModel: getLLMModelMock
+  getLLMModelData: getLLMModelDataMock
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/toolcall/toolCall', () => ({
@@ -129,13 +129,15 @@ describe('dispatchRunTools file context', () => {
     global.feConfigs = { ...global.feConfigs, show_agent_sandbox: true };
     vi.mocked(checkTeamSandboxPermission).mockResolvedValue(undefined);
     ensureAppSandboxRuntimeReadyMock.mockResolvedValue(false);
-    getLLMModelMock.mockReturnValue({
+    getLLMModelDataMock.mockReturnValue({
       model: 'gpt-5',
       name: 'GPT-5',
-      defaultSystemChatPrompt: 'default system prompt',
-      vision: true,
-      reasoning: true,
-      censor: false
+      config: {
+        defaultSystemChatPrompt: 'default system prompt',
+        vision: true,
+        reasoning: true,
+        censor: false
+      }
     });
     useToolNodeListMock.mockReturnValue([]);
     useToolMessagesMock.mockResolvedValue({

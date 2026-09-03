@@ -19,7 +19,9 @@ import {
   formatEditorVariablePickerIcon,
   getAppChatConfig,
   getSelectedInputRenderType,
-  nodeInputIsReference
+  isWorkflowSystemModelInput,
+  nodeInputIsReference,
+  workflowModelKeyMappings
 } from '@fastgpt/global/core/workflow/utils';
 import { type TFunction } from 'next-i18next';
 import {
@@ -34,8 +36,7 @@ import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { cloneDeep, isEqual } from 'lodash-es';
 import { workflowSystemVariables } from '../app/utils';
 import type { WorkflowDataContextType } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
 
 /**
@@ -96,6 +97,7 @@ type StoreNode2FlowNodeProps = {
   zIndex?: number;
   parentNodeId?: string;
   isTool?: boolean;
+  llmModelList?: MyLLMModelItemType[];
   t: TFunction;
 };
 
@@ -103,8 +105,9 @@ type StoreNode2FlowNodeProps = {
  * 将持久化节点恢复为画布节点，并在加载时实体化历史 i18n 文本。
  * 名称或描述命中翻译 key 时使用当前语言文本，后续保存会写回实体文本。
  *
- * 输入数据已在统一迁移器中收敛；这里只负责用当前模板补齐展示元数据，
- * 并保留持久化输入的 value、selectedType 等用户配置。
+ * 结构迁移不会解析需要服务端模型全集才能确认的 legacy model。模板合并前先按原始 key
+ * 去重模型输入：canonical key 存在时删除 legacy key；只有 legacy key 时复用 canonical
+ * 模板槽位但保留旧 key，等待保存边界解析为真实 modelId。
  */
 export const storeNode2FlowNode = ({
   item: storeNode,
@@ -112,6 +115,7 @@ export const storeNode2FlowNode = ({
   zIndex,
   parentNodeId,
   isTool = false,
+  llmModelList = [],
   t
 }: StoreNode2FlowNodeProps): Node<FlowNodeItemType> => {
   // init some static data
@@ -132,6 +136,69 @@ export const storeNode2FlowNode = ({
   const dynamicInputTemplate = nodeTemplate.inputs.find(
     (input) => input.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam
   );
+  const removedStoreInputs = new Set<FlowNodeInputItemType>();
+  const replacedStoreInputs = new Map<FlowNodeInputItemType, FlowNodeInputItemType>();
+  const isDynamicModelInput = (input: FlowNodeInputItemType) =>
+    getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.reference ||
+    Array.isArray(input.value) ||
+    (typeof input.value === 'string' && /^\{\{.*\}\}$/.test(input.value));
+  for (const [legacyKey, modelIdKey] of workflowModelKeyMappings) {
+    const canonicalInputs = storeNode.inputs.filter(
+      (input) => input.key === modelIdKey && isWorkflowSystemModelInput({ node: storeNode, input })
+    );
+    const legacyInputs = storeNode.inputs.filter(
+      (input) => input.key === legacyKey && isWorkflowSystemModelInput({ node: storeNode, input })
+    );
+
+    if (canonicalInputs.length > 0) {
+      canonicalInputs.slice(1).forEach((input) => removedStoreInputs.add(input));
+      legacyInputs.forEach((input) => removedStoreInputs.add(input));
+    } else {
+      legacyInputs.slice(1).forEach((input) => removedStoreInputs.add(input));
+      const legacyInput = legacyInputs[0];
+      if (legacyInput && isDynamicModelInput(legacyInput)) {
+        replacedStoreInputs.set(legacyInput, { ...legacyInput, key: modelIdKey });
+      }
+    }
+  }
+  const adaptedStoreInputs = storeNode.inputs
+    .filter((input) => !removedStoreInputs.has(input))
+    .map((input) => replacedStoreInputs.get(input) ?? input);
+
+  const getStoredInputForTemplate = (templateInput: FlowNodeInputItemType) => {
+    const exactInput = adaptedStoreInputs.find((input) => input.key === templateInput.key);
+    if (exactInput) return exactInput;
+
+    const legacyKey = workflowModelKeyMappings.find(
+      ([, modelIdKey]) => modelIdKey === templateInput.key
+    )?.[0];
+    if (!legacyKey || !isWorkflowSystemModelInput({ node: storeNode, input: templateInput })) {
+      return templateInput;
+    }
+
+    return (
+      adaptedStoreInputs.find(
+        (input) => input.key === legacyKey && isWorkflowSystemModelInput({ node: storeNode, input })
+      ) ?? templateInput
+    );
+  };
+
+  const storedInputIsRepresentedByTemplate = (storeInput: FlowNodeInputItemType) => {
+    if (orderedTemplateInputs.some((templateInput) => templateInput.key === storeInput.key)) {
+      return true;
+    }
+    if (!isWorkflowSystemModelInput({ node: storeNode, input: storeInput })) return false;
+
+    const modelIdKey = workflowModelKeyMappings.find(
+      ([legacyKey]) => legacyKey === storeInput.key
+    )?.[1];
+    return orderedTemplateInputs.some(
+      (templateInput) =>
+        templateInput.key === modelIdKey &&
+        isWorkflowSystemModelInput({ node: storeNode, input: templateInput })
+    );
+  };
+
   // replace item data
   const nodeItem: FlowNodeItemType = {
     parentNodeId,
@@ -147,8 +214,7 @@ export const storeNode2FlowNode = ({
     // 按模板顺序恢复当前输入及存量废弃输入。
     inputs: orderedTemplateInputs
       .map<FlowNodeInputItemType>((inputTemplate) => {
-        const storeInput =
-          storedInputs.find((item) => item.key === inputTemplate.key) || inputTemplate;
+        const storeInput = getStoredInputForTemplate(inputTemplate);
 
         return {
           ...storeInput,
@@ -156,14 +222,15 @@ export const storeNode2FlowNode = ({
           ...inputTemplate,
           debugLabel: t(inputTemplate.debugLabel ?? (storeInput.debugLabel as any)),
           toolDescription: t(inputTemplate.toolDescription ?? (storeInput.toolDescription as any)),
+          key: storeInput.key,
           selectedType: storeInput.selectedType ?? inputTemplate.selectedType,
           value: storeInput.value
         };
       })
       .concat(
         // 追加未按模板顺序恢复的存量输入，例如自定义动态字段。
-        storedInputs
-          .filter((item) => !orderedTemplateInputs.find((input) => input.key === item.key))
+        adaptedStoreInputs
+          .filter((item) => !storedInputIsRepresentedByTemplate(item))
           .map((item) => {
             const inputTemplate = nodeTemplate.inputs.find((input) => input.key === item.key);
 
@@ -228,13 +295,13 @@ export const storeNode2FlowNode = ({
       : nodeItem.inputs.map((input) => normalizeFlowNodeInputType(input, { isTool }));
 
   // Format output invalid
-  const llmList = useSystemStore.getState().llmModelList;
-  const llmModelMap = llmList.reduce(
+  const llmModelMap = llmModelList.reduce(
     (acc, model) => {
       acc[model.model] = model;
+      if (model.modelId) acc[model.modelId] = model;
       return acc;
     },
-    {} as Record<string, LLMModelItemType>
+    {} as Record<string, MyLLMModelItemType>
   );
   nodeItem.outputs.forEach((output) => {
     if (output.invalidCondition) {

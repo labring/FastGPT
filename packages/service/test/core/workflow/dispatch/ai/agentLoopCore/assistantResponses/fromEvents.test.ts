@@ -178,6 +178,7 @@ describe('appendAgentLoopCoreAssistantResponseFromEvent', () => {
       assistantResponses,
       event: {
         type: 'after_message_compress',
+        modelName: 'GPT-4',
         requestIds: ['req_1'],
         seconds: 0.1,
         contextCheckpoint: '<context_checkpoint>compressed</context_checkpoint>'

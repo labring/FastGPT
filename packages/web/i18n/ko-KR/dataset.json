@@ -105,6 +105,7 @@
   "import_select_link": "링크 입력",
   "index_prefix_title": "인덱스 제목 추가",
   "index_prefix_title_tips": "모든 인덱스에 제목 이름을 자동으로 추가합니다",
+  "index_model_unavailable": "인덱스 모델이 더 이상 제공되지 않습니다",
   "index_size": "인덱스 크기",
   "index_size_tips": "벡터화할 콘텐츠의 길이입니다. FastGPT가 이 크기에 따라 청크를 다시 분할합니다.",
   "input_required_field_to_select_baseurl": "먼저 필수 정보를 입력해 주세요",

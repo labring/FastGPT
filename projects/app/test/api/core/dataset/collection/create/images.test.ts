@@ -15,7 +15,9 @@ const {
   mockGetFileS3Key,
   mockUploadImage2S3Bucket,
   mockCreateCollectionAndInsertData,
-  mockGetDatasetImageIndexCapability
+  mockGetDatasetImageIndexCapability,
+  mockGetDatasetEmbeddingModel,
+  mockGetDatasetVlmModel
 } = vi.hoisted(() => ({
   mockResolveMultipleFormData: vi.fn(),
   mockClearDiskTempFiles: vi.fn(),
@@ -29,7 +31,9 @@ const {
   },
   mockUploadImage2S3Bucket: vi.fn(),
   mockCreateCollectionAndInsertData: vi.fn(),
-  mockGetDatasetImageIndexCapability: vi.fn()
+  mockGetDatasetImageIndexCapability: vi.fn(),
+  mockGetDatasetEmbeddingModel: vi.fn(),
+  mockGetDatasetVlmModel: vi.fn()
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -79,6 +83,11 @@ vi.mock('@fastgpt/service/core/dataset/collection/controller', () => ({
   createCollectionAndInsertData: mockCreateCollectionAndInsertData
 }));
 
+vi.mock('@fastgpt/service/core/dataset/model', () => ({
+  getDatasetEmbeddingModel: mockGetDatasetEmbeddingModel,
+  getDatasetVlmModel: mockGetDatasetVlmModel
+}));
+
 vi.mock('@fastgpt/service/core/dataset/utils', async (importOriginal) => {
   const actual = (await importOriginal()) as any;
   return {
@@ -124,6 +133,12 @@ describe('POST /api/core/dataset/collection/create/images', () => {
       supportImageEmbedding: true,
       supportImageIndex: true
     });
+    mockGetDatasetEmbeddingModel.mockReturnValue({
+      modelId: '68ad85a7463006c963799a09',
+      name: 'vision-embedding',
+      model: 'vision-embedding'
+    });
+    mockGetDatasetVlmModel.mockReturnValue(undefined);
     mockGetTeamPlanStatus.mockResolvedValue({ standard: { maxUploadFileCount: 10 } });
     mockReadFile.mockResolvedValue(Buffer.from('image-bytes'));
     mockGetFileS3Key.dataset.mockReturnValue({ fileKey: 'dataset/team/cat.png' });

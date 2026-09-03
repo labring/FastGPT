@@ -97,8 +97,10 @@ const createProps = (overrides = {}) =>
     ],
     toolNodes: [],
     toolModel: {
+      modelId: '68ad85a7463006c963799a44',
       model: 'gpt-4',
-      name: 'GPT-4'
+      name: 'GPT-4',
+      config: {}
     },
     currentInputFiles: [],
     ...overrides
@@ -226,14 +228,14 @@ describe('runToolCall compression node responses', () => {
   it('records context compression as ToolCall child node response and tool-response compression under the tool node', async () => {
     const contextCompressUsage = {
       moduleName: 'account_usage:compress_llm_messages',
-      model: 'GPT-4',
+      modelId: '507f1f77bcf86cd799439011',
       inputTokens: 20,
       outputTokens: 4,
       totalPoints: 0.2
     };
     const toolResponseCompressUsage = {
       moduleName: 'account_usage:tool_response_compress',
-      model: 'GPT-4',
+      modelId: '507f1f77bcf86cd799439011',
       inputTokens: 30,
       outputTokens: 6,
       totalPoints: 0.3
@@ -251,6 +253,7 @@ describe('runToolCall compression node responses', () => {
 
       options.runtime.emitEvent({
         type: 'after_message_compress',
+        modelName: 'GPT-4',
         usages: [contextCompressUsage],
         requestIds: ['req_context_compress'],
         seconds: 0.12
@@ -265,6 +268,7 @@ describe('runToolCall compression node responses', () => {
         seconds: 0.56,
         toolResponseCompress: {
           response: 'compressed tool response',
+          modelName: 'GPT-4',
           usage: toolResponseCompressUsage,
           requestIds: ['req_tool_response_compress'],
           seconds: 0.34
@@ -305,7 +309,10 @@ describe('runToolCall compression node responses', () => {
             retainDatasetCite: true
           },
           llmParams: expect.objectContaining({
-            model: 'gpt-4',
+            model: expect.objectContaining({
+              modelId: '68ad85a7463006c963799a44',
+              model: 'gpt-4'
+            }),
             maxTokens: 1000,
             temperature: 0,
             topP: 0.7,
@@ -391,13 +398,13 @@ describe('runToolCall compression node responses', () => {
   it('keeps compression child node responses when compression has no requestId', async () => {
     const usage = {
       moduleName: 'account_usage:compress_llm_messages',
-      model: 'GPT-4',
       totalPoints: 0.1
     };
 
     runAgentLoopMock.mockImplementation(async (options) => {
       options.runtime.emitEvent({
         type: 'after_message_compress',
+        modelName: 'GPT-4',
         usages: [usage],
         requestIds: [],
         seconds: 0.1
@@ -429,6 +436,7 @@ describe('runToolCall compression node responses', () => {
     runAgentLoopMock.mockImplementation(async (options) => {
       options.runtime.emitEvent({
         type: 'after_message_compress',
+        modelName: 'GPT-4',
         requestIds: [],
         seconds: 0.1
       });
@@ -472,7 +480,7 @@ describe('runToolCall compression node responses', () => {
   it('records the completed tool flow response after onToolRunEnd with compression child response', async () => {
     const toolResponseCompressUsage = {
       moduleName: 'account_usage:tool_response_compress',
-      model: 'GPT-4',
+      modelId: '507f1f77bcf86cd799439011',
       inputTokens: 30,
       outputTokens: 6,
       totalPoints: 0.3
@@ -497,6 +505,7 @@ describe('runToolCall compression node responses', () => {
         seconds: 0.56,
         toolResponseCompress: {
           response: 'compressed tool response',
+          modelName: 'GPT-4',
           usage: toolResponseCompressUsage,
           requestIds: ['req_tool_response_compress'],
           seconds: 0.34

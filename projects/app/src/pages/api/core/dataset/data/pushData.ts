@@ -13,9 +13,11 @@ import {
   type PushDataResponseType
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
-import { getLLMModel } from '@fastgpt/service/core/ai/model';
-import { getVlmModel } from '@fastgpt/service/core/ai/model';
+import {
+  getDatasetAgentModel,
+  getDatasetEmbeddingModel,
+  getDatasetVlmModel
+} from '@fastgpt/service/core/dataset/model';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -35,12 +37,15 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
     collectionId,
     per: WritePermissionVal
   });
+  const vectorModelData = getDatasetEmbeddingModel(collection.dataset);
+  const agentModelData = getDatasetAgentModel(collection.dataset);
+  const vlmModelData = getDatasetVlmModel(collection.dataset);
 
   const mode = getTrainingModeByCollection({
     ...collection,
     supportImageIndex: getDatasetImageIndexCapability({
-      vectorModel: collection.dataset.vectorModel,
-      vlmModel: collection.dataset.vlmModel
+      vectorModel: vectorModelData,
+      vlmModel: vlmModelData
     }).supportImageIndex
   });
 
@@ -58,9 +63,9 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
         tmbId,
         appName: collection.name,
         billSource: UsageSourceEnum.training,
-        vectorModel: getEmbeddingModel(collection.dataset.vectorModel)?.name,
-        agentModel: getLLMModel(collection.dataset.agentModel)?.name,
-        vllmModel: getVlmModel(collection.dataset.vlmModel)?.name,
+        vectorModelId: vectorModelData.modelId!,
+        agentModelId: agentModelData.modelId,
+        vllmModelId: vlmModelData?.modelId,
         session
       });
       return newUsageId;
@@ -74,9 +79,9 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
       teamId,
       tmbId,
       datasetId: collection.datasetId,
-      vectorModel: collection.dataset.vectorModel,
-      agentModel: collection.dataset.agentModel,
-      vlmModel: collection.dataset.vlmModel
+      vectorModel: vectorModelData,
+      agentModel: agentModelData,
+      vlmModel: vlmModelData
     });
   });
 }

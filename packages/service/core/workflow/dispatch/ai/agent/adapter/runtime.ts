@@ -117,7 +117,7 @@ export const createWorkflowAgentLoopRuntime = ({
         getToolInfo
       },
       llmParams: {
-        model: context.params.model,
+        model: context.modelData,
         reasoningEffort: context.params.aiChatReasoningEffort,
         userKey: context.externalProvider.openaiAccount,
         stream: context.stream,

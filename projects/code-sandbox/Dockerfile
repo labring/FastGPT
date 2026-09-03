@@ -36,8 +36,9 @@ RUN if [ -z "$proxy" ]; then \
 # 先构建 SDK workspace 包，确保 dist 入口可被打包工具解析
 RUN pnpm --filter @fastgpt-sdk/otel --filter @fastgpt-sdk/storage build
 
-# 编译主入口文件和 Python native 隔离库
-RUN cd /app/projects/code-sandbox && SANDBOX_BUILD_NATIVE_PYTHON=true pnpm build
+# 编译主入口文件和 JS/Python native 隔离库
+RUN cd /app/projects/code-sandbox && \
+    SANDBOX_BUILD_NATIVE_JS=true SANDBOX_BUILD_NATIVE_PYTHON=true pnpm build
 
 # ===== Runner Stage =====
 FROM node:24-bookworm-slim AS runner
@@ -109,18 +110,36 @@ RUN set -eux; \
     mknod -m 666 "$root/dev/random" c 1 8 || true; \
     mknod -m 666 "$root/dev/urandom" c 1 9 || true; \
     chmod -R a+rX "$root"; \
+    chmod -R go-w "$root"; \
+    chmod 666 "$root/dev/null" "$root/dev/zero" "$root/dev/random" "$root/dev/urandom"; \
+    chmod 755 "$root/tmp"
+
+RUN set -eux; \
+    root=/tmp/fastgpt-js-sandbox; \
+    mkdir -p "$root/app/code-sandbox" "$root/dev" "$root/tmp"; \
+    cp -a /app/code-sandbox/. "$root/app/code-sandbox/"; \
+    mknod -m 666 "$root/dev/null" c 1 3 || true; \
+    mknod -m 666 "$root/dev/zero" c 1 5 || true; \
+    mknod -m 666 "$root/dev/random" c 1 8 || true; \
+    mknod -m 666 "$root/dev/urandom" c 1 9 || true; \
+    chmod -R a+rX "$root"; \
+    chmod -R go-w "$root"; \
+    chmod 666 "$root/dev/null" "$root/dev/zero" "$root/dev/random" "$root/dev/urandom"; \
     chmod 755 "$root/tmp"
 
 
 # 创建沙箱用户。code-sandbox 主进程默认保留 root，以便 Python 子进程
 # 在 native 隔离初始化阶段执行 chroot/setuid；用户代码会降权到 sandbox。
 RUN groupadd -g 65537 sandbox && useradd -u 65537 -g 65537 -M -r -s /usr/sbin/nologin sandbox && \
+    groupadd -g 65538 js-sandbox && useradd -u 65538 -g 65538 -M -r -s /usr/sbin/nologin js-sandbox && \
     mkdir -p /tmp/fastgpt-python-sandbox && \
     chown -R sandbox:sandbox /app && \
     chown root:root /tmp/fastgpt-python-sandbox && \
     chmod 755 /tmp/fastgpt-python-sandbox && \
     chown root:root /tmp/fastgpt-python-sandbox/tmp && \
-    chmod 755 /tmp/fastgpt-python-sandbox/tmp
+    chmod 755 /tmp/fastgpt-python-sandbox/tmp && \
+    chown -R root:root /tmp/fastgpt-js-sandbox && \
+    chmod 755 /tmp/fastgpt-js-sandbox /tmp/fastgpt-js-sandbox/tmp
 
 ENV NODE_ENV=production
 ENV SANDBOX_PORT=3000

@@ -1,5 +1,7 @@
 import { MongoDataset } from '../dataset/schema';
-import { getEmbeddingModel } from '../ai/model';
+import { getDefaultEmbeddingModelData } from '../ai/model';
+import { desensitizeSystemModel } from '../ai/config/utils';
+import { getDatasetEmbeddingModel } from '../dataset/model';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -184,7 +186,7 @@ export async function rewriteAppWorkflowToDetail({
           datasetId: String(dataset._id),
           avatar: dataset.avatar,
           name: dataset.name,
-          vectorModel: getEmbeddingModel(dataset.vectorModel),
+          vectorModel: getDatasetEmbeddingModel(dataset),
           isDeleted: false
         };
       }
@@ -194,7 +196,7 @@ export async function rewriteAppWorkflowToDetail({
         datasetId,
         avatar: defaultDeletedDatasetAvatar,
         name: snapshot.name || '',
-        vectorModel: snapshot.vectorModel || getEmbeddingModel(),
+        vectorModel: snapshot.vectorModel || desensitizeSystemModel(getDefaultEmbeddingModelData()),
         isDeleted: true
       };
     };

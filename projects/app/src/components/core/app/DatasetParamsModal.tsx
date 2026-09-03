@@ -16,11 +16,12 @@ import { useForm } from 'react-hook-form';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import SelectAiModel from '@/components/Select/AIModelSelector';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -30,6 +31,7 @@ import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import { type AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import { resolveClientModelReferenceId } from '@/web/core/ai/model/modelReference';
 
 enum SearchSettingTabEnum {
   searchMode = 'searchMode',
@@ -43,9 +45,11 @@ const DatasetParamsModal = ({
   similarity,
   embeddingWeight,
   usingReRank,
+  rerankModelId,
   rerankModel,
   rerankWeight,
   datasetSearchUsingExtensionQuery,
+  datasetSearchExtensionModelId,
   datasetSearchExtensionModel,
   datasetSearchExtensionBg,
   maxTokens,
@@ -57,14 +61,15 @@ const DatasetParamsModal = ({
   onSuccess: (e: AppDatasetSearchParamsType) => void;
 }) => {
   const { t } = useTranslation();
-  const { reRankModelList, llmModelList, defaultModels } = useSystemStore();
+  const { defaultModels } = useUserModelStore();
+  const { reRankModelList, llmModelList } = useUserModelLists();
   const [refresh, setRefresh] = useState(false);
   const [currentTabType, setCurrentTabType] = useState(SearchSettingTabEnum.searchMode);
 
   const queryExtensionModelList = useMemo(
     () =>
       llmModelList.map((item) => ({
-        value: item.model,
+        value: item.modelId,
         label: item.name
       })),
     [llmModelList]
@@ -72,7 +77,7 @@ const DatasetParamsModal = ({
   const reRankModelSelectList = useMemo(
     () =>
       reRankModelList.map((item) => ({
-        value: item.model,
+        value: item.modelId,
         label: item.name
       })),
     [reRankModelList]
@@ -84,12 +89,29 @@ const DatasetParamsModal = ({
         searchMode,
         embeddingWeight: embeddingWeight || 0.5,
         usingReRank: !!usingReRank,
-        rerankModel: rerankModel || defaultModels?.rerank?.model,
+        rerankModelId:
+          resolveClientModelReferenceId({
+            models: reRankModelList,
+            reference: { modelId: rerankModelId, model: rerankModel }
+          }) ??
+          (rerankModelId === undefined && !rerankModel
+            ? defaultModels?.rerank?.modelId
+            : undefined),
         rerankWeight: rerankWeight || 0.5,
         limit,
         similarity,
         datasetSearchUsingExtensionQuery,
-        datasetSearchExtensionModel: datasetSearchExtensionModel || defaultModels.llm?.model,
+        datasetSearchExtensionModelId:
+          resolveClientModelReferenceId({
+            models: llmModelList,
+            reference: {
+              modelId: datasetSearchExtensionModelId,
+              model: datasetSearchExtensionModel
+            }
+          }) ??
+          (datasetSearchExtensionModelId === undefined && !datasetSearchExtensionModel
+            ? defaultModels.llm?.modelId
+            : undefined),
         datasetSearchExtensionBg
       }
     });
@@ -102,11 +124,32 @@ const DatasetParamsModal = ({
   }, [embeddingWeightWatch]);
 
   const datasetSearchUsingCfrForm = watch('datasetSearchUsingExtensionQuery');
-  const queryExtensionModel = watch('datasetSearchExtensionModel');
+  const queryExtensionModelId = watch('datasetSearchExtensionModelId');
 
   const usingReRankWatch = watch('usingReRank');
-  const reRankModelWatch = watch('rerankModel');
+  const reRankModelIdWatch = watch('rerankModelId');
   const rerankWeightWatch = watch('rerankWeight');
+
+  useEffect(() => {
+    if (reRankModelIdWatch === undefined && rerankModel) {
+      const legacyModel = reRankModelList.find((item) => item.model === rerankModel);
+      if (legacyModel?.modelId) setValue('rerankModelId', legacyModel.modelId);
+    }
+    if (queryExtensionModelId === undefined && datasetSearchExtensionModel) {
+      const legacyModel = llmModelList.find((item) => item.model === datasetSearchExtensionModel);
+      if (legacyModel?.modelId) {
+        setValue('datasetSearchExtensionModelId', legacyModel.modelId);
+      }
+    }
+  }, [
+    datasetSearchExtensionModel,
+    llmModelList,
+    queryExtensionModelId,
+    reRankModelIdWatch,
+    reRankModelList,
+    rerankModel,
+    setValue
+  ]);
 
   const showSimilarity = useMemo(() => {
     if (similarity === undefined) return false;
@@ -121,15 +164,17 @@ const DatasetParamsModal = ({
 
   useEffect(() => {
     if (datasetSearchUsingCfrForm) {
-      !queryExtensionModel && setValue('datasetSearchExtensionModel', defaultModels.llm?.model);
+      if (queryExtensionModelId === undefined) {
+        setValue('datasetSearchExtensionModelId', defaultModels.llm?.modelId);
+      }
     } else {
-      setValue('datasetSearchExtensionModel', '');
+      setValue('datasetSearchExtensionModelId', undefined);
     }
   }, [
     queryExtensionModelList,
     datasetSearchUsingCfrForm,
-    defaultModels.llm?.model,
-    queryExtensionModel,
+    defaultModels.llm?.modelId,
+    queryExtensionModelId,
     setValue
   ]);
 
@@ -282,13 +327,14 @@ const DatasetParamsModal = ({
                     </Box>
                     <Box flex={'1 0 0'}>
                       <SelectAiModel
+                        modelType={ModelTypeEnum.rerank}
                         bg={'myGray.50'}
                         h={'36px'}
-                        value={reRankModelWatch}
+                        value={reRankModelIdWatch || rerankModel}
                         list={reRankModelSelectList}
-                        onChange={(val) => {
-                          setValue(NodeInputKeyEnum.datasetSearchRerankModel, val);
-                        }}
+                        onChange={(modelId) =>
+                          setValue(NodeInputKeyEnum.datasetSearchRerankModelId, modelId)
+                        }
                       />
                     </Box>
                   </HStack>
@@ -373,12 +419,15 @@ const DatasetParamsModal = ({
                   <FormLabel flex={['0 0 80px', '1 0 0']}>{t('common:core.ai.Model')}</FormLabel>
                   <Box flex={['1 0 0', '0 0 300px']}>
                     <SelectAiModel
+                      modelType={ModelTypeEnum.llm}
                       width={'100%'}
-                      value={queryExtensionModel}
+                      value={
+                        queryExtensionModelId !== undefined
+                          ? queryExtensionModelId
+                          : datasetSearchExtensionModel
+                      }
                       list={queryExtensionModelList}
-                      onChange={(val: any) => {
-                        setValue('datasetSearchExtensionModel', val);
-                      }}
+                      onChange={(modelId) => setValue('datasetSearchExtensionModelId', modelId)}
                     />
                   </Box>
                 </Flex>
@@ -414,7 +463,15 @@ const DatasetParamsModal = ({
         <Button
           onClick={() => {
             onClose();
-            handleSubmit(onSuccess)();
+            handleSubmit((values) => {
+              // 兼容读取旧字符串字段，但新的表单提交只保留稳定 modelId。
+              const {
+                rerankModel: _rerankModel,
+                datasetSearchExtensionModel: _extensionModel,
+                ...canonicalValues
+              } = values;
+              onSuccess(canonicalValues);
+            })();
           }}
         >
           {t('common:Done')}

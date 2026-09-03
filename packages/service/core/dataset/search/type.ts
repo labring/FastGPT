@@ -1,4 +1,8 @@
-import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type {
+  EmbeddingSystemModelDataType,
+  LLMSystemModelDataType,
+  RerankSystemModelDataType
+} from '@fastgpt/global/core/ai/model.schema';
 import type { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
@@ -10,8 +14,8 @@ export type SearchDatasetDataProps = {
   teamId: string;
   uid?: string;
   tmbId?: string;
-  model: string;
-  vlmModel?: string;
+  model: EmbeddingSystemModelDataType;
+  vlmModel?: LLMSystemModelDataType;
   datasetIds: string[];
   reRankQuery: string;
   // 工作流入口归一化后的文本 query。
@@ -27,7 +31,7 @@ export type SearchDatasetDataProps = {
   [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
 
   [NodeInputKeyEnum.datasetSearchUsingReRank]?: boolean;
-  [NodeInputKeyEnum.datasetSearchRerankModel]?: RerankModelItemType;
+  [NodeInputKeyEnum.datasetSearchRerankModel]?: RerankSystemModelDataType;
   [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
 
   /*
@@ -85,13 +89,13 @@ export type SearchDatasetDataResponse = {
 
 export type DefaultSearchDatasetDataProps = Omit<SearchDatasetDataProps, 'reRankQuery'> & {
   [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]?: boolean;
-  [NodeInputKeyEnum.datasetSearchExtensionModel]?: string;
+  [NodeInputKeyEnum.datasetSearchExtensionModel]?: LLMSystemModelDataType;
   [NodeInputKeyEnum.datasetSearchExtensionBg]?: string;
   userKey?: OpenaiAccountType;
 };
 
 export type DeepRagSearchProps = Omit<SearchDatasetDataProps, 'reRankQuery'> & {
-  [NodeInputKeyEnum.datasetDeepSearchModel]?: string;
+  [NodeInputKeyEnum.datasetDeepSearchModel]?: LLMSystemModelDataType;
   [NodeInputKeyEnum.datasetDeepSearchMaxTimes]?: number;
   [NodeInputKeyEnum.datasetDeepSearchBg]?: string;
 };

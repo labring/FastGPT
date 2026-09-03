@@ -206,7 +206,6 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           parentId={parentId}
           onClose={() => setShowCreateModal(false)}
           onSuccess={refreshSkills}
-          openDetailInNewTab
         />
       )}
 

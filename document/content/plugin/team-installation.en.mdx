@@ -22,7 +22,7 @@ Team plugins can be updated or removed and do not have a deprecation state.
 Before installing a plugin, confirm that:
 
 1. Your account is a team administrator or team owner. Regular members can use installed plugins but cannot install, update, or remove them.
-2. For local installation, the system administrator has enabled team plugin uploads. This option controls local uploads only; Marketplace installation remains available when it is disabled.
+2. The system administrator has enabled team plugin uploads. Although the configuration name refers to uploads, this option gates all team plugin installation methods; Marketplace installation, local uploads, and installation confirmation are rejected when it is disabled.
 3. The deployment can access FastGPT Marketplace when installing from Marketplace.
 4. For a local installation, you have a valid `.pkg` file or a `.zip` archive containing one or more `.pkg` files.
 
@@ -97,7 +97,7 @@ Only team administrators and team owners can manage team plugins.
 
 ### Why is Upload Plugin missing?
 
-The system administrator has disabled team plugin uploads. Marketplace installation remains available. Ask the system administrator to enable this option when you need to upload a local package.
+The system administrator has disabled team plugin uploads. Marketplace installation, local uploads, and installation confirmation are rejected while it is disabled. The page remains accessible by direct URL, but installations cannot be completed. Ask the system administrator to enable this option before installing a team plugin.
 
 ### Why is an uploaded plugin unavailable?
 

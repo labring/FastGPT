@@ -8,10 +8,11 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import type { AuxiliaryGenerationStreamWriter } from './stream';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import { createChatCompletionDeltaResponse } from '@fastgpt/global/core/ai/llm/utils';
+import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 
 type RunAuxiliaryGenerationAgentLoopParams = {
   teamId: string;
-  model: string;
+  model: LLMSystemModelDataType;
   systemPrompt: string;
   messages: ChatCompletionMessageParam[];
   useVision?: boolean;

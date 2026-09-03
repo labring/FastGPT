@@ -29,14 +29,16 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import NextHead from '@/components/common/NextHead';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import ChatAIModelSelector from './ChatAIModelSelector';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
-import { getWebLLMModel } from '@/web/common/system/utils';
 import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
+import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
 import type { AppWhisperConfigType } from '@fastgpt/global/core/app/type';
 import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
@@ -51,6 +53,7 @@ import ChatWindowHeader from './ChatWindowHeader';
 import ToolMenu from '@/pageComponents/chat/ToolMenu';
 import MobileModelSelectorDrawer from './MobileModelSelectorDrawer';
 import { mobileChatHeaderIconButtonStyle } from './headerIconButtonStyle';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 import { getDisplayHistoryTitle } from '@/web/core/chat/context/historyTitleUtils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -81,7 +84,9 @@ const HomeChatWindow = () => {
   } = useDisclosure();
 
   const { userInfo } = useUserStore();
-  const { llmModelList, defaultModels, feConfigs } = useSystemStore();
+  const { feConfigs } = useSystemStore();
+  const { defaultModels } = useUserModelStore();
+  const { llmModelList } = useUserModelLists();
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
   const forbidLoadChatRef = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
@@ -119,18 +124,18 @@ const HomeChatWindow = () => {
   });
 
   const availableModels = useMemo(
-    () => llmModelList.map((model) => ({ value: model.model, label: model.name })),
+    () => llmModelList.map((model) => ({ value: model.modelId, label: model.name })),
     [llmModelList]
   );
   const [selectedModel, setSelectedModel] = useLocalStorageState<string>('chat_home_model', {
-    defaultValue: defaultModels.llm?.model
+    defaultValue: defaultModels.llm?.modelId
   });
   const selectedModelData = useMemo(
-    () => llmModelList.find((model) => model.model === selectedModel),
+    () => findClientModelByValue({ models: llmModelList, value: selectedModel }),
     [llmModelList, selectedModel]
   );
 
-  const onChangeModel = useMemoizedFn((model: string) => {
+  const onChangeModel = useMemoizedFn((modelId: string) => {
     setChatBoxData((state) => ({
       ...state,
       app: {
@@ -139,12 +144,12 @@ const HomeChatWindow = () => {
           ...state.app.chatConfig,
           fileSelectConfig: {
             ...defaultFileSelectConfig,
-            canSelectImg: !!getWebLLMModel(model).vision
+            canSelectImg: !!llmModelList.find((item) => item.modelId === modelId)?.config.vision
           }
         }
       }
     }));
-    setSelectedModel(model);
+    setSelectedModel(modelId);
   });
 
   const availableTools = useMemo(
@@ -187,7 +192,7 @@ const HomeChatWindow = () => {
     async () => {
       if (!appId || forbidLoadChatRef.current || !feConfigs?.isPlus) return;
 
-      const modelData = getWebLLMModel(selectedModel);
+      const modelData = findClientModelByValue({ models: llmModelList, value: selectedModel });
       const res = await getInitChatInfo({ appId, chatId });
       res.userAvatar = userInfo?.avatar ?? undefined;
 
@@ -195,14 +200,14 @@ const HomeChatWindow = () => {
         res.app.chatConfig = {
           fileSelectConfig: {
             ...defaultFileSelectConfig,
-            canSelectImg: !!modelData.vision
+            canSelectImg: !!modelData?.config.vision
           },
           whisperConfig: defaultWhisperConfig
         };
       } else {
         res.app.chatConfig.fileSelectConfig = {
           ...defaultFileSelectConfig,
-          canSelectImg: !!modelData.vision
+          canSelectImg: !!modelData?.config.vision
         };
         res.app.chatConfig.whisperConfig = {
           ...defaultWhisperConfig,
@@ -290,7 +295,8 @@ const HomeChatWindow = () => {
       ).filter((tool): tool is FlowNodeTemplateType => !!tool);
 
       const formData = getDefaultAppForm();
-      formData.aiSettings.model = selectedModel;
+      formData.aiSettings.modelId = selectedModel;
+      formData.aiSettings.model = undefined;
       formData.aiSettings.aiChatReasoning = true;
       formData.selectedTools = tools;
       formData.chatConfig = chatBoxData.app.chatConfig || {};
@@ -326,7 +332,7 @@ const HomeChatWindow = () => {
         {isPc && availableModels.length > 0 && (
           <Box w={'fit-content'} maxW={'300px'} flex={'0 1 auto'} minW={0}>
             <ChatAIModelSelector
-              cacheModel={false}
+              modelType={ModelTypeEnum.llm}
               h={'36px'}
               w={'fit-content'}
               maxW={'300px'}

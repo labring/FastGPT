@@ -14,7 +14,14 @@ vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getLLMModel: getLLMModelMock
+  getLLMModelData: (...args: unknown[]) => {
+    const model = getLLMModelMock(...args);
+    return {
+      ...model,
+      modelId: '68ad85a7463006c963799a65',
+      config: model.config ?? model
+    };
+  }
 }));
 
 vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
@@ -53,7 +60,7 @@ const createProps = () =>
     params: {
       content: '张三来自杭州',
       history: 6,
-      model: 'deepseek-r1',
+      model: expect.objectContaining({ model: 'deepseek-r1' }),
       description: '提取姓名',
       extractKeys: [
         {
@@ -130,7 +137,7 @@ describe('dispatchContentExtract', () => {
     const result = await dispatchContentExtract(createProps());
 
     expect(createLLMResponseMock.mock.calls[0][0].body).toMatchObject({
-      model: 'deepseek-r1',
+      model: expect.objectContaining({ model: 'deepseek-r1' }),
       stream: true
     });
     expect(createLLMResponseMock.mock.calls[0][0].body).not.toHaveProperty('tools');
@@ -156,7 +163,7 @@ describe('dispatchContentExtract', () => {
     await dispatchContentExtract(createProps());
 
     expect(createLLMResponseMock.mock.calls[0][0].body).toMatchObject({
-      model: 'deepseek-r1'
+      model: expect.objectContaining({ model: 'deepseek-r1' })
     });
     expect(createLLMResponseMock.mock.calls[0][0].body).not.toHaveProperty('reasoning_effort');
   });

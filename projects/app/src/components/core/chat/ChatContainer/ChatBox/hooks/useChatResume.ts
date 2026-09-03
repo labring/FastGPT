@@ -1,4 +1,5 @@
-import { useEffect, type MutableRefObject } from 'react';
+import { useEffect, useRef, useState, type MutableRefObject } from 'react';
+import { useDocumentVisibility, useLatest, useMemoizedFn, useUpdateEffect } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -16,16 +17,20 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { ChatBoxContext } from '../Provider';
 import {
+  getLastAiDataId,
   hasMeaningfulAiOutput,
   mergeResumeCompletedChatRecords,
+  shouldCheckChatResumeStatus,
   shouldCreateResumeAiPlaceholder,
   shouldReplaceResumeAiValue,
-  shouldResetResumeAiPlaceholder
+  shouldResetResumeAiPlaceholder,
+  waitForConflictRecoveryRecords
 } from '../utils/resume';
-import type { ChatSiteItemType } from '../type';
+import type { ChatGeneratingConflictRecovery, ChatSiteItemType } from '../type';
 import type { generatingMessageProps } from '../../type';
 import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
+import { getChatHistoryStatus } from '@/web/core/chat/history/api';
 
 type FinishChatGenerateStatus = (params: {
   status: ChatGenerateStatusEnum;
@@ -52,10 +57,12 @@ type UseChatResumeProps = {
   flushGeneratingMessages: () => void;
   scrollToBottom: (behavior?: 'smooth' | 'auto', delay?: number) => void;
   finishChatGenerateStatus: FinishChatGenerateStatus;
+  onChatGeneratingConflictRecovered?: () => void;
 };
 
-const isAbortByLeave = (reason: unknown) => {
-  return reason === 'leave' || (reason instanceof Error && reason.message === 'leave');
+const isResumeLifecycleAbort = (reason: unknown) => {
+  const message = reason instanceof Error ? reason.message : reason;
+  return message === 'leave' || message === 'replace';
 };
 
 /**
@@ -98,7 +105,8 @@ export const useChatResume = ({
   generatingMessage,
   flushGeneratingMessages,
   scrollToBottom,
-  finishChatGenerateStatus
+  finishChatGenerateStatus,
+  onChatGeneratingConflictRecovered
 }: UseChatResumeProps) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -107,6 +115,7 @@ export const useChatResume = ({
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const chatAuthTarget = useChatAuthApiTarget({ sourceTarget, outLinkAuthData });
+  const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const chatBoxSourceKey = useContextSelector(ChatItemContext, (v) => v.chatBoxData.sourceKey);
   const chatBoxChatId = useContextSelector(ChatItemContext, (v) => v.chatBoxData.chatId);
   const chatGenerateStatus = useContextSelector(
@@ -115,7 +124,121 @@ export const useChatResume = ({
   );
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
+  const refreshChatRecords = useContextSelector(ChatRecordContext, (v) => v.refreshChatRecords);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
+  const isChattingRef = useLatest(isChatting);
+  const documentVisibility = useDocumentVisibility();
+  const resumeStatusCheckingRef = useRef(false);
+  const resumeRecordsRefreshRef = useRef<{
+    sourceKey: string;
+    chatId: string;
+    conflictRecovery?: ChatGeneratingConflictRecovery;
+  }>();
+  const [resumeRequestVersion, setResumeRequestVersion] = useState(0);
+
+  /** 判断当前前端状态是否允许发起状态确认或恢复请求。 */
+  const canRequestChatResume = useMemoizedFn(() =>
+    shouldCheckChatResumeStatus({
+      enableAutoResume,
+      isReady,
+      isChatRecordsLoaded,
+      sourceKey,
+      chatId,
+      isChatting,
+      isResumeRequestActive: !!resumeControllerRef.current,
+      chatBoxSourceKey,
+      chatBoxChatId
+    })
+  );
+
+  /**
+   * 触发同一套流恢复流程。
+   * 首次加载直接复用 provider 已加载的 records；冲突和页面重新显示时，
+   * 通过 refreshRecords 让恢复流在建立 SSE 前统一刷新最新记录窗口。
+   */
+  const requestChatResume = useMemoizedFn(
+    ({
+      refreshRecords,
+      conflictRecovery
+    }: {
+      refreshRecords: boolean;
+      conflictRecovery?: ChatGeneratingConflictRecovery;
+    }) => {
+      if (!sourceKey || !chatId) return false;
+
+      resumeRecordsRefreshRef.current = refreshRecords
+        ? {
+            sourceKey,
+            chatId,
+            conflictRecovery
+          }
+        : undefined;
+      setChatBoxData((state) =>
+        state.sourceKey === sourceKey && state.chatId === chatId
+          ? {
+              ...state,
+              chatGenerateStatus: ChatGenerateStatusEnum.generating
+            }
+          : state
+      );
+      resumedChatTargetRef.current = undefined;
+      setResumeRequestVersion((version) => version + 1);
+      return true;
+    }
+  );
+
+  /** 冲突恢复跳过状态快照，刷新记录后直接交给 resume endpoint 判断最终状态。 */
+  const recoverChatGeneratingConflict = useMemoizedFn(
+    (conflictRecovery: ChatGeneratingConflictRecovery) => {
+      if (resumeStatusCheckingRef.current || !canRequestChatResume()) {
+        return false;
+      }
+
+      return requestChatResume({ refreshRecords: true, conflictRecovery });
+    }
+  );
+
+  /** 确认当前会话仍在服务端生成后，重新放开本地恢复去重并触发恢复流。 */
+  const checkAndResumeChat = useMemoizedFn(async () => {
+    if (resumeStatusCheckingRef.current || !canRequestChatResume()) {
+      return false;
+    }
+
+    resumeStatusCheckingRef.current = true;
+
+    try {
+      const { list } = await getChatHistoryStatus({
+        ...chatAuthTarget,
+        chatIds: [chatId]
+      });
+      const currentStatus = list.find((item) => item.chatId === chatId)?.chatGenerateStatus;
+      if (currentStatus !== ChatGenerateStatusEnum.generating) return false;
+      if (
+        activeSourceKeyRef.current !== sourceKey ||
+        activeChatIdRef.current !== chatId ||
+        isChattingRef.current ||
+        resumeControllerRef.current
+      ) {
+        return false;
+      }
+
+      return requestChatResume({ refreshRecords: true });
+    } catch {
+      // 状态确认恢复属于 best-effort，不用检查错误干扰当前聊天。
+      return false;
+    } finally {
+      resumeStatusCheckingRef.current = false;
+    }
+  });
+
+  useUpdateEffect(() => {
+    if (documentVisibility !== 'visible') return;
+    void checkAndResumeChat();
+  }, [documentVisibility]);
+
+  useUpdateEffect(() => {
+    resumeRecordsRefreshRef.current = undefined;
+  }, [sourceKey, chatId]);
 
   useEffect(() => {
     if (
@@ -138,7 +261,13 @@ export const useChatResume = ({
     const resumeForSourceKey = sourceKey;
     const resumeForChatTarget = chatAuthTarget;
     const resumeForChatId = chatId;
-    const responseChatId = resumeTargetAiDataId ?? getNanoid(24);
+    const recordsRefreshRequest = resumeRecordsRefreshRef.current;
+    const shouldRefreshRecords =
+      recordsRefreshRequest?.sourceKey === sourceKey && recordsRefreshRequest.chatId === chatId;
+    if (shouldRefreshRecords) {
+      resumeRecordsRefreshRef.current = undefined;
+    }
+    let responseChatId = resumeTargetAiDataId ?? getNanoid(24);
     const controller = new AbortController();
     resumeControllerRef.current = controller;
     scrollToBottom('auto');
@@ -146,6 +275,7 @@ export const useChatResume = ({
     let resumeFinalStatus = ChatGenerateStatusEnum.done;
     let hasPreparedResumeAiRecord = false;
     let hasReceivedResumeOutput = false;
+    let hasStartedResumeStream = false;
 
     const isActiveResumeTarget = ({ sourceKey, chatId }: { sourceKey: string; chatId: string }) =>
       activeSourceKeyRef.current === sourceKey && activeChatIdRef.current === chatId;
@@ -214,12 +344,97 @@ export const useChatResume = ({
       });
     };
 
+    /** 完成恢复流对应的 AI record，并清理未产生有效输出的临时占位。 */
+    const finishResumeAiRecord = ({
+      responseText = '',
+      removablePlaceholderText,
+      mergeResponseData = true
+    }: {
+      responseText?: string;
+      removablePlaceholderText?: string;
+      mergeResponseData?: boolean;
+    }) => {
+      setChatRecords((state) => {
+        const currentLastItem = state.at(-1);
+        if (currentLastItem?.dataId !== responseChatId || currentLastItem.obj !== ChatRoleEnum.AI) {
+          return state;
+        }
+
+        const updatedLastItem = {
+          ...currentLastItem,
+          status: ChatStatusEnum.finish,
+          time: new Date(),
+          ...(mergeResponseData
+            ? {
+                responseData: mergeNodeResponseDataByIdAndParent(currentLastItem.responseData || [])
+              }
+            : {})
+        };
+        const hasOnlyRemovablePlaceholder =
+          !hasReceivedResumeOutput &&
+          removablePlaceholderText !== undefined &&
+          updatedLastItem.value.length === 1 &&
+          updatedLastItem.value[0]?.text?.content === removablePlaceholderText &&
+          !updatedLastItem.responseData?.length;
+
+        if (
+          (!hasMeaningfulAiOutput(updatedLastItem as ChatSiteItemType) ||
+            hasOnlyRemovablePlaceholder) &&
+          !responseText
+        ) {
+          return state.slice(0, -1);
+        }
+
+        return [...state.slice(0, -1), updatedLastItem];
+      });
+    };
+
     (async () => {
       try {
+        if (shouldRefreshRecords && recordsRefreshRequest) {
+          const refreshedRecords = recordsRefreshRequest.conflictRecovery
+            ? await waitForConflictRecoveryRecords({
+                ...recordsRefreshRequest.conflictRecovery,
+                loadRecords: refreshChatRecords,
+                signal: controller.signal
+              })
+            : await refreshChatRecords();
+          if (!refreshedRecords) {
+            throw new Error('Failed to load the active chat round');
+          }
+          if (!isActiveResumeTarget({ sourceKey: resumeForSourceKey, chatId: resumeForChatId })) {
+            return;
+          }
+
+          responseChatId = getLastAiDataId(refreshedRecords) ?? responseChatId;
+          setChatRecords((records) =>
+            records.map((record) =>
+              record.obj === ChatRoleEnum.AI && record.dataId === responseChatId
+                ? { ...record, status: ChatStatusEnum.loading }
+                : record
+            )
+          );
+          scrollToBottom('auto');
+        }
+
+        hasStartedResumeStream = true;
         const { responseText, completedChat, resumeUnavailable } = await streamResumeFetch({
-          ...chatAuthTarget,
-          chatId,
+          ...resumeForChatTarget,
+          chatId: resumeForChatId,
           controller,
+          onResumeReady:
+            shouldRefreshRecords && recordsRefreshRequest?.conflictRecovery
+              ? () => {
+                  if (
+                    isActiveResumeTarget({
+                      sourceKey: resumeForSourceKey,
+                      chatId: resumeForChatId
+                    })
+                  ) {
+                    onChatGeneratingConflictRecovered?.();
+                  }
+                }
+              : undefined,
           onResumeUnavailable: () => {
             if (
               !isActiveResumeTarget({
@@ -281,86 +496,21 @@ export const useChatResume = ({
 
         if (resumeUnavailable) {
           resumeFinalStatus = ChatGenerateStatusEnum.done;
-          const resumeUnavailablePlaceholderText = getResumeUnavailablePlaceholderText();
-
-          setChatRecords((state) => {
-            const currentLastItem = state[state.length - 1];
-            if (
-              currentLastItem?.dataId !== responseChatId ||
-              currentLastItem.obj !== ChatRoleEnum.AI
-            ) {
-              return state;
-            }
-
-            const next = state.map((item, index) => {
-              if (index !== state.length - 1) return item;
-              return {
-                ...item,
-                status: ChatStatusEnum.finish,
-                time: new Date(),
-                responseData: mergeNodeResponseDataByIdAndParent(item.responseData || [])
-              };
-            });
-
-            const updatedLastItem = next[next.length - 1];
-            const hasOnlyResumeUnavailablePlaceholder =
-              !hasReceivedResumeOutput &&
-              updatedLastItem?.dataId === responseChatId &&
-              updatedLastItem.value.length === 1 &&
-              updatedLastItem.value[0]?.text?.content === resumeUnavailablePlaceholderText &&
-              !updatedLastItem.responseData?.length;
-
-            if (
-              updatedLastItem?.dataId === responseChatId &&
-              (!hasMeaningfulAiOutput(updatedLastItem as ChatSiteItemType) ||
-                hasOnlyResumeUnavailablePlaceholder) &&
-              !responseText
-            ) {
-              return next.slice(0, -1);
-            }
-
-            return next;
+          finishResumeAiRecord({
+            responseText,
+            removablePlaceholderText: getResumeUnavailablePlaceholderText()
           });
           scrollToBottom('auto');
           return;
         }
 
-        setChatRecords((state) => {
-          const currentLastItem = state[state.length - 1];
-          if (
-            currentLastItem?.dataId !== responseChatId ||
-            currentLastItem.obj !== ChatRoleEnum.AI
-          ) {
-            return state;
-          }
-
-          const next = state.map((item, index) => {
-            if (index !== state.length - 1) return item;
-            return {
-              ...item,
-              status: ChatStatusEnum.finish,
-              time: new Date(),
-              responseData: mergeNodeResponseDataByIdAndParent(item.responseData || [])
-            };
-          });
-
-          const updatedLastItem = next[next.length - 1];
-          if (
-            updatedLastItem?.dataId === responseChatId &&
-            !hasMeaningfulAiOutput(updatedLastItem as ChatSiteItemType) &&
-            !responseText
-          ) {
-            return next.slice(0, -1);
-          }
-
-          return next;
-        });
+        finishResumeAiRecord({ responseText });
         scrollToBottom('auto');
       } catch (error) {
         if (controller.signal.aborted) {
-          // 离开页面时不再提交旧会话数据；用户主动停止时仍需立刻落下最后一个 buffer。
+          // 离开页面或被新恢复流替换时不再提交旧流数据；用户主动停止仍需落下最后一个 buffer。
           if (
-            !isAbortByLeave(controller.signal.reason) &&
+            !isResumeLifecycleAbort(controller.signal.reason) &&
             isActiveResumeTarget({ sourceKey: resumeForSourceKey, chatId: resumeForChatId })
           ) {
             flushGeneratingMessages();
@@ -370,6 +520,12 @@ export const useChatResume = ({
         if (!isActiveResumeTarget({ sourceKey: resumeForSourceKey, chatId: resumeForChatId }))
           return;
 
+        if (!hasStartedResumeStream) {
+          // 记录刷新失败不代表服务端生成结束，保留 generating 等待下一次可见性恢复。
+          resumeFinalStatus = ChatGenerateStatusEnum.generating;
+          return;
+        }
+
         flushGeneratingMessages();
 
         const isStreamError = (error as ResumeStreamErrorType | undefined)?.isStreamError === true;
@@ -377,34 +533,7 @@ export const useChatResume = ({
           ? ChatGenerateStatusEnum.error
           : ChatGenerateStatusEnum.done;
 
-        setChatRecords((state) => {
-          const currentLastItem = state[state.length - 1];
-          if (
-            currentLastItem?.dataId !== responseChatId ||
-            currentLastItem.obj !== ChatRoleEnum.AI
-          ) {
-            return state;
-          }
-
-          const next = state.map((item, index) => {
-            if (index !== state.length - 1) return item;
-            return {
-              ...item,
-              status: ChatStatusEnum.finish,
-              time: new Date()
-            };
-          });
-
-          const updatedLastItem = next[next.length - 1];
-          if (
-            updatedLastItem?.dataId === responseChatId &&
-            !hasMeaningfulAiOutput(updatedLastItem as ChatSiteItemType)
-          ) {
-            return next.slice(0, -1);
-          }
-
-          return next;
-        });
+        finishResumeAiRecord({ mergeResponseData: false });
         scrollToBottom('auto');
 
         if (isStreamError) {
@@ -423,10 +552,10 @@ export const useChatResume = ({
           sourceKey: resumeForSourceKey,
           chatId: resumeForChatId
         });
-        const leftWhileResuming =
-          controller.signal.aborted && isAbortByLeave(controller.signal.reason);
+        const interruptedByLifecycle =
+          controller.signal.aborted && isResumeLifecycleAbort(controller.signal.reason);
 
-        if (leftWhileResuming) {
+        if (interruptedByLifecycle) {
           return;
         }
 
@@ -455,12 +584,19 @@ export const useChatResume = ({
     resumeTargetAiDataId,
     scrollToBottom,
     setChatRecords,
+    refreshChatRecords,
     finishChatGenerateStatus,
+    onChatGeneratingConflictRecovered,
     t,
     toast,
     activeSourceKeyRef,
     activeChatIdRef,
     resumedChatTargetRef,
-    resumeControllerRef
+    resumeControllerRef,
+    resumeRequestVersion
   ]);
+
+  return {
+    recoverChatGeneratingConflict
+  };
 };

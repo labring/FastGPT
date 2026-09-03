@@ -3,6 +3,8 @@ import { createUsage, concatUsage } from '@fastgpt/service/support/wallet/usage/
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
+import type { TTSSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 
 export const pushGenerateVectorUsage = ({
   usageId,
@@ -22,52 +24,52 @@ export const pushGenerateVectorUsage = ({
   teamId: string;
   tmbId: string;
   inputTokens: number;
-  model: string;
+  model: SystemModelDataType;
   source?: UsageSourceEnum;
 
-  extensionModel?: string;
+  extensionModel?: SystemModelDataType;
   extensionInputTokens?: number;
   extensionOutputTokens?: number;
 
-  deepSearchModel?: string;
+  deepSearchModel?: SystemModelDataType;
   deepSearchInputTokens?: number;
   deepSearchOutputTokens?: number;
 }) => {
-  const { totalPoints: totalVector, modelName: vectorModelName } = formatModelChars2Points({
+  const { totalPoints: totalVector, modelId: vectorModelId } = formatModelChars2Points({
     model,
     inputTokens
   });
 
-  const { extensionTotalPoints, extensionModelName } = (() => {
+  const { extensionTotalPoints, extensionModelId } = (() => {
     if (!extensionModel || !extensionInputTokens)
       return {
         extensionTotalPoints: 0,
-        extensionModelName: ''
+        extensionModelId: undefined
       };
-    const { totalPoints, modelName } = formatModelChars2Points({
+    const { totalPoints, modelId } = formatModelChars2Points({
       model: extensionModel,
       inputTokens: extensionInputTokens,
       outputTokens: extensionOutputTokens
     });
     return {
       extensionTotalPoints: totalPoints,
-      extensionModelName: modelName
+      extensionModelId: modelId
     };
   })();
-  const { deepSearchTotalPoints, deepSearchModelName } = (() => {
+  const { deepSearchTotalPoints, deepSearchModelId } = (() => {
     if (!deepSearchModel || !deepSearchInputTokens)
       return {
         deepSearchTotalPoints: 0,
-        deepSearchModelName: ''
+        deepSearchModelId: undefined
       };
-    const { totalPoints, modelName } = formatModelChars2Points({
+    const { totalPoints, modelId } = formatModelChars2Points({
       model: deepSearchModel,
       inputTokens: deepSearchInputTokens,
       outputTokens: deepSearchOutputTokens
     });
     return {
       deepSearchTotalPoints: totalPoints,
-      deepSearchModelName: modelName
+      deepSearchModelId: modelId
     };
   })();
 
@@ -93,7 +95,7 @@ export const pushGenerateVectorUsage = ({
         {
           moduleName: i18nT('account_usage:embedding_index'),
           amount: totalVector,
-          model: vectorModelName,
+          modelId: vectorModelId,
           inputTokens
         },
         ...(extensionModel !== undefined
@@ -101,7 +103,7 @@ export const pushGenerateVectorUsage = ({
               {
                 moduleName: i18nT('common:core.module.template.Query extension'),
                 amount: extensionTotalPoints,
-                model: extensionModelName,
+                modelId: extensionModelId,
                 inputTokens: extensionInputTokens,
                 outputTokens: extensionOutputTokens
               }
@@ -112,7 +114,7 @@ export const pushGenerateVectorUsage = ({
               {
                 moduleName: i18nT('common:deep_rag_search'),
                 amount: deepSearchTotalPoints,
-                model: deepSearchModelName,
+                modelId: deepSearchModelId,
                 inputTokens: deepSearchInputTokens,
                 outputTokens: deepSearchOutputTokens
               }
@@ -131,13 +133,13 @@ export const pushQuestionGuideUsage = ({
   teamId,
   tmbId
 }: {
-  model: string;
+  model: SystemModelDataType;
   inputTokens: number;
   outputTokens: number;
   teamId: string;
   tmbId: string;
 }) => {
-  const { totalPoints, modelName } = formatModelChars2Points({
+  const { totalPoints, modelId } = formatModelChars2Points({
     inputTokens,
     outputTokens,
     model
@@ -153,7 +155,7 @@ export const pushQuestionGuideUsage = ({
       {
         moduleName: i18nT('common:core.app.Question Guide'),
         amount: totalPoints,
-        model: modelName,
+        modelId,
         inputTokens,
         outputTokens
       }
@@ -170,13 +172,13 @@ export const pushAudioSpeechUsage = ({
   source = UsageSourceEnum.fastgpt
 }: {
   appName?: string;
-  model: string;
+  model: TTSSystemModelDataType;
   charsLength: number;
   teamId: string;
   tmbId: string;
   source: UsageSourceEnum;
 }) => {
-  const { totalPoints, modelName } = formatModelChars2Points({
+  const { totalPoints } = formatModelChars2Points({
     model,
     inputTokens: charsLength
   });
@@ -191,7 +193,7 @@ export const pushAudioSpeechUsage = ({
       {
         moduleName: appName,
         amount: totalPoints,
-        model: modelName,
+        modelId: model.modelId,
         charsLength
       }
     ]
@@ -211,22 +213,22 @@ export const pushDatasetTestUsage = ({
   tmbId: string;
   source?: UsageSourceEnum;
   embUsage?: {
-    model: string;
+    model: SystemModelDataType;
     inputTokens: number;
   };
   rerankUsage?: {
-    model: string;
+    model: SystemModelDataType;
     inputTokens: number;
   };
   extensionUsage?: {
-    model: string;
+    model: SystemModelDataType;
     inputTokens: number;
     outputTokens: number;
     embeddingTokens: number;
-    embeddingModel: string;
+    embeddingModel: SystemModelDataType;
   };
   imageCaptionUsage?: {
-    model: string;
+    model: SystemModelDataType;
     inputTokens: number;
     outputTokens: number;
   };
@@ -235,7 +237,7 @@ export const pushDatasetTestUsage = ({
   let points = 0;
 
   if (extensionUsage) {
-    const { totalPoints: llmPoints, modelName: llmModelName } = formatModelChars2Points({
+    const { totalPoints: llmPoints, modelId: llmModelId } = formatModelChars2Points({
       model: extensionUsage.model,
       inputTokens: extensionUsage.inputTokens,
       outputTokens: extensionUsage.outputTokens
@@ -244,27 +246,25 @@ export const pushDatasetTestUsage = ({
     list.push({
       moduleName: i18nT('common:core.module.template.Query extension'),
       amount: llmPoints,
-      model: llmModelName,
+      modelId: llmModelId,
       inputTokens: extensionUsage.inputTokens,
       outputTokens: extensionUsage.outputTokens
     });
 
-    const { totalPoints: embeddingPoints, modelName: embeddingModelName } = formatModelChars2Points(
-      {
-        model: extensionUsage.embeddingModel,
-        inputTokens: extensionUsage.embeddingTokens
-      }
-    );
+    const { totalPoints: embeddingPoints, modelId: embeddingModelId } = formatModelChars2Points({
+      model: extensionUsage.embeddingModel,
+      inputTokens: extensionUsage.embeddingTokens
+    });
     points += embeddingPoints;
     list.push({
       moduleName: `${i18nT('account_usage:ai.query_extension_embedding')}`,
       amount: embeddingPoints,
-      model: embeddingModelName,
+      modelId: embeddingModelId,
       inputTokens: extensionUsage.embeddingTokens
     });
   }
   if (embUsage) {
-    const { totalPoints, modelName } = formatModelChars2Points({
+    const { totalPoints, modelId } = formatModelChars2Points({
       model: embUsage.model,
       inputTokens: embUsage.inputTokens
     });
@@ -272,12 +272,12 @@ export const pushDatasetTestUsage = ({
     list.push({
       moduleName: i18nT('account_usage:embedding_index'),
       amount: totalPoints,
-      model: modelName,
+      modelId,
       inputTokens: embUsage.inputTokens
     });
   }
   if (rerankUsage) {
-    const { totalPoints, modelName } = formatModelChars2Points({
+    const { totalPoints, modelId } = formatModelChars2Points({
       model: rerankUsage.model,
       inputTokens: rerankUsage.inputTokens
     });
@@ -285,12 +285,12 @@ export const pushDatasetTestUsage = ({
     list.push({
       moduleName: i18nT('account_usage:rerank'),
       amount: totalPoints,
-      model: modelName,
+      modelId,
       inputTokens: rerankUsage.inputTokens
     });
   }
   if (imageCaptionUsage) {
-    const { totalPoints, modelName } = formatModelChars2Points({
+    const { totalPoints, modelId } = formatModelChars2Points({
       model: imageCaptionUsage.model,
       inputTokens: imageCaptionUsage.inputTokens,
       outputTokens: imageCaptionUsage.outputTokens
@@ -299,7 +299,7 @@ export const pushDatasetTestUsage = ({
     list.push({
       moduleName: i18nT('account_usage:image_parse'),
       amount: totalPoints,
-      model: modelName,
+      modelId,
       inputTokens: imageCaptionUsage.inputTokens,
       outputTokens: imageCaptionUsage.outputTokens
     });

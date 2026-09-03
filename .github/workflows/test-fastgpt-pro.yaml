@@ -1,4 +1,4 @@
-name: "FastGPT-Pro-Test"
+name: 'Test FastGPT-pro'
 on:
   pull_request_target:
     types: [ opened, synchronize, reopened ]

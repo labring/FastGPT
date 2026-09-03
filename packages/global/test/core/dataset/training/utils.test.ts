@@ -1,8 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
-  LLMModelItemType,
-  EmbeddingModelItemType
+  EmbeddingModelConfigType,
+  EmbeddingSystemModelDataType,
+  LLMModelConfigType,
+  LLMSystemModelDataType
 } from '@fastgpt/global/core/ai/model.schema';
 import {
   ChunkSettingModeEnum,
@@ -10,12 +12,6 @@ import {
   DatasetCollectionDataProcessModeEnum,
   ParagraphChunkAIModeEnum
 } from '@fastgpt/global/core/dataset/constants';
-
-// Mock getEmbeddingModel
-const mockGetEmbeddingModel = vi.fn();
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getEmbeddingModel: (model?: string) => mockGetEmbeddingModel(model)
-}));
 
 import {
   minChunkSize,
@@ -32,31 +28,43 @@ import {
 import type { ChunkSettingsType } from '@fastgpt/global/core/dataset/type';
 
 // Helper: Create mock LLM model
-const createMockLLMModel = (overrides: Partial<LLMModelItemType> = {}): LLMModelItemType => ({
+const createMockLLMModel = (
+  overrides: Partial<LLMModelConfigType> = {}
+): LLMSystemModelDataType => ({
   type: ModelTypeEnum.llm,
   provider: 'test-provider',
   model: 'test-model',
   name: 'Test Model',
-  maxContext: 8000,
-  maxResponse: 2000,
-  quoteMaxToken: 4000,
-  functionCall: true,
-  toolChoice: true,
-  ...overrides
+  modelId: '68ad85a7463006c963799a01',
+  scope: 'system' as const,
+  isCustom: false,
+  config: {
+    maxContext: 8000,
+    maxResponse: 2000,
+    quoteMaxToken: 4000,
+    functionCall: true,
+    toolChoice: true,
+    ...overrides
+  }
 });
 
 // Helper: Create mock Embedding model
 const createMockEmbeddingModel = (
-  overrides: Partial<EmbeddingModelItemType> = {}
-): EmbeddingModelItemType => ({
+  overrides: Partial<EmbeddingModelConfigType> = {}
+): EmbeddingSystemModelDataType => ({
   type: ModelTypeEnum.embedding,
   provider: 'test-provider',
   model: 'test-embedding',
   name: 'Test Embedding',
-  defaultToken: 512,
-  maxToken: 1024,
-  weight: 1,
-  ...overrides
+  modelId: '68ad85a7463006c963799a02',
+  scope: 'system' as const,
+  isCustom: false,
+  config: {
+    defaultToken: 512,
+    maxToken: 1024,
+    weight: 1,
+    ...overrides
+  }
 });
 
 describe('Constants', () => {
@@ -152,67 +160,33 @@ describe('getLLMMaxChunkSize', () => {
 });
 
 describe('getMaxIndexSize', () => {
-  beforeEach(() => {
-    mockGetEmbeddingModel.mockReset();
-  });
-
   it('should return 512 when model is undefined', () => {
     expect(getMaxIndexSize(undefined)).toBe(512);
   });
 
-  it('should return maxToken from EmbeddingModelItemType object', () => {
+  it('should return maxToken from canonical embedding model', () => {
     const model = createMockEmbeddingModel({ maxToken: 2048 });
     expect(getMaxIndexSize(model)).toBe(2048);
   });
 
-  it('should call getEmbeddingModel and return maxToken when model is string', () => {
-    const embeddingModel = createMockEmbeddingModel({ maxToken: 1536 });
-    mockGetEmbeddingModel.mockReturnValue(embeddingModel);
-
-    expect(getMaxIndexSize('text-embedding-ada-002')).toBe(1536);
-    expect(mockGetEmbeddingModel).toHaveBeenCalledWith('text-embedding-ada-002');
-  });
-
-  it('should return 512 when getEmbeddingModel returns undefined', () => {
-    mockGetEmbeddingModel.mockReturnValue(undefined);
-    expect(getMaxIndexSize('unknown-model')).toBe(512);
-  });
-
   it('should return 512 when model object has no maxToken', () => {
-    const model = { ...createMockEmbeddingModel(), maxToken: undefined } as any;
+    const model = createMockEmbeddingModel({ maxToken: undefined as unknown as number });
     expect(getMaxIndexSize(model)).toBe(512);
   });
 });
 
 describe('getAutoIndexSize', () => {
-  beforeEach(() => {
-    mockGetEmbeddingModel.mockReset();
-  });
-
   it('should return 512 when model is undefined', () => {
     expect(getAutoIndexSize(undefined)).toBe(512);
   });
 
-  it('should return defaultToken from EmbeddingModelItemType object', () => {
+  it('should return defaultToken from canonical embedding model', () => {
     const model = createMockEmbeddingModel({ defaultToken: 768 });
     expect(getAutoIndexSize(model)).toBe(768);
   });
 
-  it('should call getEmbeddingModel and return defaultToken when model is string', () => {
-    const embeddingModel = createMockEmbeddingModel({ defaultToken: 256 });
-    mockGetEmbeddingModel.mockReturnValue(embeddingModel);
-
-    expect(getAutoIndexSize('text-embedding-3-small')).toBe(256);
-    expect(mockGetEmbeddingModel).toHaveBeenCalledWith('text-embedding-3-small');
-  });
-
-  it('should return 512 when getEmbeddingModel returns undefined', () => {
-    mockGetEmbeddingModel.mockReturnValue(undefined);
-    expect(getAutoIndexSize('unknown-model')).toBe(512);
-  });
-
   it('should return 512 when model object has no defaultToken', () => {
-    const model = { ...createMockEmbeddingModel(), defaultToken: undefined } as any;
+    const model = createMockEmbeddingModel({ defaultToken: undefined as unknown as number });
     expect(getAutoIndexSize(model)).toBe(512);
   });
 });

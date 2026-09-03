@@ -1,6 +1,5 @@
 import json5 from 'json5';
 import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
-import { getLLMModel } from '../../../../model';
 import { computedMaxToken, computedTemperature } from '../../../../utils';
 import type { AgentLoopRuntime } from '../../domain';
 
@@ -35,7 +34,7 @@ export const mergePiAgentPayload = <TChildrenResponse = unknown>({
 }) => {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
 
-  const modelData = getLLMModel(runtime.llmParams.model);
+  const modelData = runtime.llmParams.model;
   const supportParams = getLLMSupportParams(modelData);
   const responseFormat = supportParams.responseFormat
     ? normalizeResponseFormat(runtime.llmParams.responseFormat)

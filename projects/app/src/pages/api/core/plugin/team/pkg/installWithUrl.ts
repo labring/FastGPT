@@ -10,6 +10,7 @@ import { getTeamPluginSource } from '@fastgpt/global/core/app/tool/utils';
 import { TeamManagePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
+  assertTeamPluginInstallEnabled,
   assertTeamPluginSourceReady,
   getRawPluginIdFromSystemToolId,
   upsertTeamInstalledPluginPolicy
@@ -28,6 +29,8 @@ const getDownloadUrlHash = (url?: string) =>
 async function handler(
   req: ApiRequestProps<InstallTeamPluginFromUrlBody>
 ): Promise<InstallTeamPluginFromUrlResponse> {
+  assertTeamPluginInstallEnabled();
+
   const {
     body: { downloadUrls, plugins }
   } = parseApiInput({

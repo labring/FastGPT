@@ -112,7 +112,13 @@ const PopoverConfirm = ({
               <MyIcon name={map.icon as any} w={'24px'} h={'24px'} verticalAlign={'middle'} />
             </Box>
           )}
-          <Box fontSize={'sm'} whiteSpace={'pre-wrap'} flex={'1'} lineHeight={'20px'}>
+          <Box
+            fontSize={'sm'}
+            whiteSpace={'pre-wrap'}
+            wordBreak={'break-all'}
+            flex={'1'}
+            lineHeight={'20px'}
+          >
             {content}
           </Box>
         </HStack>

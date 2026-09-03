@@ -2,7 +2,6 @@ import {
   DatasetSearchModeEnum,
   DatasetSearchModeMap
 } from '@fastgpt/global/core/dataset/constants';
-import { getDefaultRerankModel } from '../../../ai/model';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
 import type { SearchDatasetDataProps, SearchDatasetDataResponse } from '../type';
 import { formatDatasetDataValues } from '../../data/controller';
@@ -57,7 +56,7 @@ export async function searchDatasetData(
   const searchMode = DatasetSearchModeMap[inputSearchMode]
     ? inputSearchMode
     : DatasetSearchModeEnum.embedding;
-  const usingReRank = inputUsingReRank && !!reRankQuery && !!getDefaultRerankModel();
+  const usingReRank = inputUsingReRank && !!reRankQuery && !!rerankModel;
 
   // Step 1: 图片先尝试转成文本描述。caption 会作为普通文本 query 参与后续召回，
   // 这样即使 embedding 模型不支持图片，也能通过 VLM 描述获得一条文本检索路径。

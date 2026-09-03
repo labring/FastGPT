@@ -21,10 +21,12 @@ import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permissi
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import {
-  getDefaultEmbeddingModel,
-  getDefaultLLMModel,
-  getDefaultVLMModel,
-  getEmbeddingModel
+  getDefaultEmbeddingModelData,
+  getDefaultLLMModelData,
+  getDefaultVLMModelData,
+  getOptionalEmbeddingModelData,
+  getOptionalLLMModelData,
+  getOptionalVlmModelData
 } from '@fastgpt/service/core/ai/model';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -46,15 +48,14 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
     req,
     bodySchema: CreateDatasetWithFilesBodySchema
   }).body;
-  const {
-    parentId,
-    name,
-    avatar,
-    vectorModel = getDefaultEmbeddingModel()?.model,
-    agentModel = getDefaultLLMModel()?.model,
-    vlmModel = getDefaultVLMModel()?.model,
-    inheritPermission
-  } = datasetParams;
+  const { parentId, name, avatar, vectorModelId, agentModelId, vlmModelId, inheritPermission } =
+    datasetParams;
+
+  const vectorModelData =
+    getOptionalEmbeddingModelData({ modelId: vectorModelId }) ?? getDefaultEmbeddingModelData();
+  const agentModelData =
+    getOptionalLLMModelData({ modelId: agentModelId }) ?? getDefaultLLMModelData();
+  const vlmModelData = getOptionalVlmModelData({ modelId: vlmModelId }) ?? getDefaultVLMModelData();
 
   const { teamId, tmbId, userId } = parentId
     ? await authDataset({
@@ -84,9 +85,9 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
             name,
             teamId,
             tmbId,
-            vectorModel,
-            agentModel,
-            vlmModel,
+            vectorModelId: vectorModelData.modelId,
+            agentModelId: agentModelData.modelId,
+            ...(vlmModelData?.modelId && { vlmModelId: vlmModelData.modelId }),
             avatar,
             intro: '',
             type: DatasetTypeEnum.dataset,
@@ -156,7 +157,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
         name: dataset.name,
         avatar: dataset.avatar,
         vectorModel: {
-          model: getEmbeddingModel(dataset.vectorModel)?.model || dataset.vectorModel
+          model: vectorModelData.model
         }
       };
     });

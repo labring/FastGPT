@@ -1,8 +1,9 @@
 /**
- * Worker 长驻进程 - 真正的 TS 源文件
+ * JS 沙箱子进程入口
  *
  * 启动后先从 stdin 读取第一行作为初始化配置（allowedModules 等），
- * 然后进入主循环，逐行接收任务执行。
+ * 然后接收用户任务执行。生产环境由进程池保证每个进程只执行一个用户任务；
+ * 循环协议仅保留 ping/HTTP RPC 和非 Linux 本地调试兼容。
  *
  * 协议：
  *   第 1 行：{"type":"init","allowedModules":["lodash","dayjs",...]}
@@ -11,14 +12,9 @@
  */
 import { createInterface } from 'readline';
 import { createRequire } from 'module';
-import { isIP } from 'net';
 import * as crypto from 'crypto';
-import * as http from 'http';
-import * as https from 'https';
-import * as dns from 'dns';
 import { parse } from 'acorn';
 import { simple as walk } from 'acorn-walk';
-import { isInternalAddress, isInternalResolvedIP } from '../utils/ipCheck.util';
 
 const require = createRequire(import.meta.url);
 const _OriginalFunction = Function;
@@ -29,7 +25,6 @@ const _ObjectDefineProperty = Object.defineProperty;
 const _ObjectGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
 const _ObjectKeys = Object.keys;
 const _OriginalProxy = Proxy;
-const _ReflectOwnKeys = Reflect.ownKeys;
 const _ReflectGet = Reflect.get.bind(Reflect);
 const _ReflectApply = Reflect.apply.bind(Reflect);
 const _ReflectConstruct = Reflect.construct.bind(Reflect);
@@ -70,31 +65,6 @@ function assertNoDynamicImport(code: string): void {
       throw new Error(DYNAMIC_IMPORT_ERROR_MESSAGE);
     }
   });
-}
-
-function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
-  if ((typeof value !== 'object' && typeof value !== 'function') || value === null) {
-    return value;
-  }
-
-  const obj = value as object;
-  if (seen.has(obj)) return value;
-  seen.add(obj);
-
-  for (const key of _ReflectOwnKeys(obj)) {
-    try {
-      const descriptor = _ObjectGetOwnPropertyDescriptor(obj, key);
-      if (descriptor && 'value' in descriptor) {
-        deepFreeze(descriptor.value, seen);
-      }
-    } catch {}
-  }
-
-  try {
-    _ObjectFreeze(obj);
-  } catch {}
-
-  return value;
 }
 
 const readonlyViews = new WeakMap<object, any>();
@@ -350,7 +320,6 @@ const _workerStdin = process.stdin;
 // 启动期立即删除：与 worker 自身/白名单模块无依赖关系
 const earlyDangerousMethods = [
   'binding',
-  'dlopen',
   '_linkedBinding',
   'chdir',
   'send',
@@ -370,7 +339,7 @@ const earlyDangerousMethods = [
 ];
 
 // 延迟处理：会被 https/dns/tsx/url 等内部使用，要等 hardenRuntime 预加载完白名单后再收紧。
-const lateDangerousMethods = ['kill', 'exit', 'abort'];
+const lateDangerousMethods = ['dlopen', 'kill', 'exit', 'abort'];
 
 function deleteProcessMethods(methods: readonly string[]): void {
   for (const method of methods) {
@@ -427,21 +396,6 @@ if (typeof process !== 'undefined') {
   }
 }
 
-// ===== 网络安全 =====
-function ipToLong(ip: string): number {
-  const parts = ip.split('.').map(Number);
-  return ((parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]) >>> 0;
-}
-
-function dnsResolve(hostname: string): Promise<string[]> {
-  return new Promise((resolve, reject) => {
-    dns.lookup(hostname, { all: true }, (err, addresses) => {
-      if (err) return reject(err);
-      resolve(addresses.map((a: any) => a.address));
-    });
-  });
-}
-
 const REQUEST_LIMITS = {
   maxRequests: 30,
   timeoutMs: 60000,
@@ -451,7 +405,20 @@ const REQUEST_LIMITS = {
   allowedProtocols: ['http:', 'https:']
 };
 
-let requestCount = 0;
+let httpRpcSequence = 0;
+const pendingHttpRequests = new Map<
+  string,
+  { resolve: (value: any) => void; reject: (reason: Error) => void }
+>();
+
+/** 将联网操作交给未进入 seccomp 的可信父进程执行。 */
+function callParentHttpProxy(payload: Record<string, any>): Promise<any> {
+  const id = `http-${++httpRpcSequence}`;
+  return new _OriginalPromise((resolve, reject) => {
+    pendingHttpRequests.set(id, { resolve, reject });
+    writeLine({ type: 'http_request', id, payload });
+  });
+}
 
 // ===== Legacy global functions (backward compatibility, not on SystemHelper) =====
 function countToken(text: any): number {
@@ -471,93 +438,7 @@ function createHmac(algorithm: string, secret: string) {
 // ===== SystemHelper =====
 const SystemHelper = {
   async httpRequest(url: string, opts: any = {}): Promise<any> {
-    if (++requestCount > REQUEST_LIMITS.maxRequests) {
-      throw new Error('Request limit exceeded');
-    }
-    const parsed = new URL(url);
-    if (!REQUEST_LIMITS.allowedProtocols.includes(parsed.protocol)) {
-      throw new Error('Protocol not allowed');
-    }
-    const method = (opts.method || 'GET').toUpperCase();
-    const headers = opts.headers || {};
-    const body =
-      opts.body != null
-        ? typeof opts.body === 'string'
-          ? opts.body
-          : _JSONStringify(opts.body)
-        : null;
-    if (body && body.length > REQUEST_LIMITS.maxRequestBodySize) {
-      throw new Error('Request body too large');
-    }
-    // 先完成协议和请求体大小校验，再解析网络目标，避免本地错误被外部网络状态掩盖。
-    if (await isInternalAddress(url)) {
-      throw new Error('Request to private network not allowed');
-    }
-    const ips = await dnsResolve(parsed.hostname);
-    // 防 DNS rebinding TOCTOU：对真正用于建连的 IP 再次校验
-    if (ips.length === 0 || ips.some((ip) => isInternalResolvedIP(ip))) {
-      throw new Error('Request to private network not allowed');
-    }
-    const timeout =
-      typeof opts.timeoutMs === 'number' && Number.isFinite(opts.timeoutMs) && opts.timeoutMs > 0
-        ? Math.min(Math.ceil(opts.timeoutMs), REQUEST_LIMITS.timeoutMs)
-        : Math.min(
-            Math.ceil(
-              typeof opts.timeout === 'number' && Number.isFinite(opts.timeout) && opts.timeout > 0
-                ? opts.timeout * 1000
-                : REQUEST_LIMITS.timeoutMs
-            ),
-            REQUEST_LIMITS.timeoutMs
-          );
-    if (body && !headers['Content-Type'] && !headers['content-type']) {
-      headers['Content-Type'] = 'application/json';
-    }
-    const resolvedIP = ips[0];
-    if (!headers['Host'] && !headers['host']) {
-      headers['Host'] = parsed.hostname + (parsed.port ? ':' + parsed.port : '');
-    }
-    const lib = parsed.protocol === 'https:' ? https : http;
-    return new Promise((resolve, reject) => {
-      const req = lib.request(
-        {
-          method,
-          headers,
-          timeout,
-          hostname: resolvedIP,
-          port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
-          path: parsed.pathname + parsed.search,
-          // RFC 6066 禁止把 IP 当作 SNI；hostname 是 IP 时省略 servername
-          ...(isIP(parsed.hostname) ? {} : { servername: parsed.hostname })
-        },
-        (res: any) => {
-          const chunks: Buffer[] = [];
-          let size = 0;
-          res.on('data', (chunk: Buffer) => {
-            size += chunk.length;
-            if (size > REQUEST_LIMITS.maxResponseSize) {
-              req.destroy();
-              reject(new Error('Response too large'));
-              return;
-            }
-            chunks.push(chunk);
-          });
-          res.on('end', () => {
-            const data = Buffer.concat(chunks).toString('utf-8');
-            const h: Record<string, any> = {};
-            for (const [k, v] of Object.entries(res.headers)) h[k] = v;
-            resolve({ status: res.statusCode, statusText: res.statusMessage, headers: h, data });
-          });
-          res.on('error', reject);
-        }
-      );
-      req.on('timeout', () => {
-        req.destroy();
-        reject(new Error('Request timeout'));
-      });
-      req.on('error', reject);
-      if (body) req.write(body);
-      req.end();
-    });
+    return callParentHttpProxy({ url, ...opts });
   }
 };
 _ObjectFreeze(SystemHelper);
@@ -661,6 +542,15 @@ rl.on('line', async (line: string) => {
     return;
   }
 
+  if (msg.type === 'http_response') {
+    const pending = pendingHttpRequests.get(msg.id);
+    if (!pending) return;
+    pendingHttpRequests.delete(msg.id);
+    if (msg.success) pending.resolve(msg.payload);
+    else pending.reject(new _OriginalError(msg.message || 'HTTP request failed'));
+    return;
+  }
+
   // 第一条消息：初始化配置
   if (!initialized) {
     if (msg.type === 'init') {
@@ -677,6 +567,21 @@ rl.on('line', async (line: string) => {
           REQUEST_LIMITS.maxRequestBodySize = msg.requestLimits.maxRequestBodySize;
         if (msg.requestLimits.maxOutputSize != null)
           REQUEST_LIMITS.maxOutputSize = msg.requestLimits.maxOutputSize;
+      }
+      // 先加载白名单与 native addon；进入 seccomp 后不再允许动态装载原生代码。
+      for (const moduleName of allowedModules) {
+        try {
+          origRequire(moduleName);
+        } catch {}
+      }
+      if (msg.nativeIsolation?.enabled) {
+        const addon = origRequire(msg.nativeIsolation.addonPath);
+        addon.init({
+          uid: msg.nativeIsolation.uid,
+          gid: msg.nativeIsolation.gid,
+          cwd: msg.nativeIsolation.cwd,
+          enableSeccomp: msg.nativeIsolation.enableSeccomp
+        });
       }
       hardenRuntime();
       writeLine({ type: 'ready' });
@@ -695,8 +600,6 @@ rl.on('line', async (line: string) => {
 
   // 后续消息：执行任务
   const { code, variables, timeoutMs } = msg;
-  requestCount = 0; // 每次任务重置
-
   const logs: string[] = [];
   let logSize = 0;
   const MAX_LOG_SIZE = 1024 * 1024; // 1MB

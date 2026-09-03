@@ -1,4 +1,6 @@
 import {
+  AppQuestionGuideInputSchema,
+  AppTTSConfigInputSchema,
   CreateAppBodySchema,
   CreateAppRequestBodySchema,
   UpdateAppBodySchema
@@ -38,6 +40,20 @@ describe('CreateAppBodySchema', () => {
         chatConfig: {}
       }).success
     ).toBe(true);
+  });
+
+  it('preserves legacy chat model references until the post-deploy backfill finishes', () => {
+    const result = CreateAppBodySchema.parse({
+      name: 'legacy chat config',
+      type: 'simple',
+      chatConfig: {
+        questionGuide: { open: true, model: 'legacy-llm' },
+        ttsConfig: { type: 'model', model: 'legacy-tts', voice: 'alloy' }
+      }
+    });
+
+    expect(result.chatConfig?.questionGuide?.model).toBe('legacy-llm');
+    expect(result.chatConfig?.ttsConfig?.model).toBe('legacy-tts');
   });
 
   it('migrates legacy workflow before validation', () => {
@@ -105,5 +121,25 @@ describe('PublishAppBodySchema', () => {
 
     expect(result).not.toHaveProperty('nodes.0.unsupportedNodeField');
     expect(result).not.toHaveProperty('nodes.0.inputs.0.unsupportedInputField');
+  });
+});
+
+describe('legacy chat model input schemas', () => {
+  it('preserves deprecated model references for runtime compatibility', () => {
+    expect(AppQuestionGuideInputSchema.parse({ open: true, model: 'legacy-llm' })).toMatchObject({
+      model: 'legacy-llm'
+    });
+    expect(
+      AppTTSConfigInputSchema.parse({ type: 'model', model: 'legacy-tts', voice: 'alloy' })
+    ).toMatchObject({ model: 'legacy-tts' });
+  });
+
+  it('keeps canonical modelId references unchanged', () => {
+    expect(AppQuestionGuideInputSchema.parse({ open: true, modelId: 'llm-id' })).toMatchObject({
+      modelId: 'llm-id'
+    });
+    expect(
+      AppTTSConfigInputSchema.parse({ type: 'model', modelId: 'tts-id', voice: 'alloy' })
+    ).toMatchObject({ modelId: 'tts-id' });
   });
 });
