@@ -32,7 +32,7 @@ Deploy using docker-compose:
 
 ```yaml
 fastgpt-sso:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.9.0 # This version must match the FastGPT image version
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:latest
   container_name: fastgpt-sso
   restart: always
   networks:
@@ -258,6 +258,11 @@ fastgpt-sso:
 
 ### WeCom
 
+<Alert context="warning">
+  After the WeCom member sync logic is updated, redeploy the `fastgpt-sso-service` relay service
+  using the published `latest` image.
+</Alert>
+
 #### 1. Get Parameters
 
 1.  Enterprise CorpID
@@ -272,7 +277,7 @@ fastgpt-sso:
 
     a. Get the app's AgentID and Secret
 
-    b. Ensure the app's visibility scope is set to all (i.e., root department)
+    b. The app's visibility scope determines the WeCom member sync scope. Include at least the departments that should be synchronized; to synchronize the entire enterprise, select the root department (all visible).
 
     ![](/imgs/sso8.png)
 
@@ -310,11 +315,22 @@ fastgpt-sso:
 
     ![](/imgs/sso14.png)
 
-#### 2. yml Configuration Example
+#### 2. Use the latest image to deploy the fastgpt-sso relay service
+
+WeCom SSO login uses the app Secret, while member synchronization uses the Contact Sync Assistant Secret. Pull the published `latest` image and recreate the service:
+
+```bash
+docker compose pull fastgpt-sso
+docker compose up -d --force-recreate fastgpt-sso
+```
+
+#### 3. yml Configuration Example
+
+#### 3. yml Configuration Example
 
 ```yaml
 fastgpt-sso:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.9.0
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:latest
   container_name: fastgpt-sso
   restart: always
   networks:
@@ -345,6 +361,13 @@ fastgpt-sso:
     # Contact Sync Assistant Secret
     - WECOM_SYNC_SECRET=
 ```
+
+#### 4. WeCom member sync rules
+
+- `/org/list` returns departments visible to the WeCom app.
+- `/user/list` still retrieves members through the Contact Sync Assistant, but keeps only members who belong to at least one department visible to the app.
+- A member's department list is filtered to visible departments; a member who belongs only to invisible departments is not synchronized to FastGPT.
+- After changing the app visibility scope or image version, run member synchronization again. You can also call the endpoints below to verify the result first.
 
 ### Standard OAuth 2.0
 
@@ -501,10 +524,10 @@ LDAP_MEMBERSHIP_MODE supports four modes:
 
 | Mode             | Relationship                                                    | Main configuration       |
 | ---------------- | --------------------------------------------------------------- | ------------------------ |
-| user_attribute   | A user attribute, usually ou, points to an organization         | LDAP_USER_ATTRIBUTE_*    |
-| group_member_dn  | A group attribute, usually member, contains user DNs            | LDAP_GROUP_MEMBER_DN_*   |
-| user_member_of   | A user attribute, usually memberOf, contains group DNs          | LDAP_USER_MEMBER_OF_*    |
-| posix_member_uid | A group attribute, usually memberUid, contains user identifiers | LDAP_POSIX_MEMBER_UID_*  |
+| user_attribute   | A user attribute, usually ou, points to an organization         | LDAP*USER_ATTRIBUTE*\*   |
+| group_member_dn  | A group attribute, usually member, contains user DNs            | LDAP*GROUP_MEMBER_DN*\*  |
+| user_member_of   | A user attribute, usually memberOf, contains group DNs          | LDAP*USER_MEMBER_OF*\*   |
+| posix_member_uid | A group attribute, usually memberUid, contains user identifiers | LDAP*POSIX_MEMBER_UID*\* |
 
 **1. user_attribute: user attribute points to an organization**
 
