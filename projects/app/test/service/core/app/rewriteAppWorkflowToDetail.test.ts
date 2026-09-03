@@ -710,6 +710,84 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
     });
   });
 
+  it.each([
+    ['mcp-app-1/search', 'MCP search description'],
+    ['http-app-1/search', 'HTTP search description']
+  ])('补齐 %s 工具节点的空 intro', async (pluginId, description) => {
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: pluginId,
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: 'Search Tool',
+      avatar: 'tool-avatar',
+      intro: description,
+      inputs: [],
+      outputs: [],
+      version: '',
+      isLatestVersion: true
+    });
+    authAppByTmbIdMock.mockResolvedValue({});
+
+    for (const originalIntro of [undefined, '', '  ']) {
+      const nodes = [
+        {
+          nodeId: 'tool',
+          flowNodeType: FlowNodeTypeEnum.tool,
+          pluginId,
+          intro: originalIntro,
+          inputs: [],
+          outputs: []
+        } as StoreNodeItemType
+      ];
+
+      await rewriteAppWorkflowToDetail({
+        nodes,
+        teamId: 'team-1',
+        ownerTmbId: 'tmb-1',
+        isRoot: false
+      });
+
+      expect(nodes[0].intro).toBe(description);
+    }
+  });
+
+  it.each([
+    ['mcp-app-1/search', 'Saved MCP description'],
+    ['http-app-1/search', 'Saved HTTP description']
+  ])('保留 %s 工具节点已有 intro', async (pluginId, originalIntro) => {
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: pluginId,
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: 'Search Tool',
+      avatar: 'tool-avatar',
+      intro: 'Remote description',
+      inputs: [],
+      outputs: [],
+      version: '',
+      isLatestVersion: true
+    });
+    authAppByTmbIdMock.mockResolvedValue({});
+
+    const nodes = [
+      {
+        nodeId: 'tool',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        pluginId,
+        intro: originalIntro,
+        inputs: [],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(nodes[0].intro).toBe(originalIntro);
+  });
+
   it('刷新最新工具节点时保留 agentGenerated 推荐并显式保存手动类型', async () => {
     getClientToolPreviewNodeMock.mockResolvedValue({
       id: 'mcp-app-1/search',
