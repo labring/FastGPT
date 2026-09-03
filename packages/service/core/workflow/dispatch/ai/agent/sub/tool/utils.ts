@@ -338,37 +338,6 @@ export const getAgentRuntimeTools = async ({
     });
   };
 
-  type RuntimeMcpToolSet = McpToolSetRuntimeConfigType;
-  type RuntimeMcpTool = McpToolConfigType & {
-    url?: string;
-    headerSecret?: RuntimeMcpToolSet['headerSecret'];
-    id?: string;
-    avatar?: string;
-  };
-
-  /** 将 Agent MCP 工具资源投影为执行阶段使用的 canonical ToolSet。 */
-  const buildMcpRuntimeToolSet = ({
-    mcpToolSet,
-    toolList,
-    selectedTool
-  }: {
-    mcpToolSet?: RuntimeMcpToolSet;
-    toolList: RuntimeMcpTool[];
-    selectedTool?: RuntimeMcpTool;
-  }): RuntimeMcpToolSet | undefined => {
-    const url = selectedTool?.url ?? mcpToolSet?.url;
-    if (!url) return undefined;
-
-    const headerSecret = selectedTool?.headerSecret ?? mcpToolSet?.headerSecret;
-    return {
-      url,
-      ...(headerSecret ? { headerSecret } : {}),
-      toolList: toolList.map(
-        ({ url: _url, headerSecret: _headerSecret, id: _id, avatar: _avatar, ...tool }) => tool
-      )
-    };
-  };
-
   /**
    * 普通 App 需要根据当前版本节点形态判断运行时类型：
    * - pluginInput: 插件工作流
@@ -480,12 +449,7 @@ export const getAgentRuntimeTools = async ({
       toolSetId: String(app._id),
       toolsetName: app.name,
       avatar: app.avatar,
-      tool,
-      mcpToolSet: buildMcpRuntimeToolSet({
-        mcpToolSet,
-        toolList: toolList as RuntimeMcpTool[],
-        selectedTool: tool as RuntimeMcpTool
-      })
+      tool
     });
 
     // 单独选择子工具时，模型侧展示子工具名即可，不需要带 toolset 前缀。
@@ -861,12 +825,7 @@ export const getAgentRuntimeTools = async ({
                 toolsetName: toolNode.name,
                 nodeId: `${runtimeToolSetId}${index}`,
                 avatar: toolNode.avatar,
-                tool,
-                mcpToolSet: buildMcpRuntimeToolSet({
-                  mcpToolSet: runtimeMcpToolSet,
-                  toolList: finalToolList as RuntimeMcpTool[],
-                  selectedTool: tool as RuntimeMcpTool
-                })
+                tool
               });
               return newToolNode;
             });

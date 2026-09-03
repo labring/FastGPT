@@ -659,15 +659,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
     expect(getAppVersionByIdMock).not.toHaveBeenCalled();
     expect(tools[0].version).toBe('');
-    expect(tools[0].toolConfig?.mcpToolSet).toMatchObject({
-      url: 'https://current.example.com',
-      headerSecret: {
-        Authorization: {
-          value: 'current-secret',
-          secret: ''
-        }
-      }
-    });
+    expect(tools[0].toolConfig).not.toHaveProperty('mcpToolSet');
     expect(tools[0].promptReference).toEqual({
       id: 'mcp_app',
       name: 'mcp_app name'
@@ -709,28 +701,6 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
   });
 
-  it('keeps runtime MCP connection data when an Agent toolset snapshot has no URL', async () => {
-    const tools = await getAgentRuntimeTools({
-      tmbId: 'tmb_1',
-      tools: [
-        {
-          id: 'mcp_app',
-          config: {},
-          toolConfig: {
-            mcpToolSet: {
-              toolList: [mcpTool]
-            }
-          }
-        }
-      ]
-    });
-
-    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
-    expect(tools[0].toolConfig?.mcpToolSet).toMatchObject({
-      url: 'https://current.example.com'
-    });
-  });
-
   it('ignores the selected MCP tool version', async () => {
     const tools = await getAgentRuntimeTools({
       tmbId: 'tmb_1',
@@ -741,9 +711,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(getAppVersionByIdMock).not.toHaveBeenCalled();
     expect(tools[0].version).toBe('');
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
-    expect(tools[0].toolConfig?.mcpToolSet).toMatchObject({
-      url: 'https://current.example.com'
-    });
+    expect(tools[0].toolConfig).not.toHaveProperty('mcpToolSet');
   });
 
   it('uses the dedicated Agent input mode at runtime', async () => {
