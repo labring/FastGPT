@@ -170,7 +170,7 @@ const SelectOneResource = ({
                   ml={2}
                   borderRadius={'xs'}
                   cursor={disabled ? 'not-allowed' : 'pointer'}
-                  _hover={disabled ? undefined : { bg: 'myGray.100' }}
+                  _hover={disabled ? undefined : { bg: 'rgba(31, 35, 41, 0.08)' }}
                   onClick={(e) => {
                     e.stopPropagation();
                     enterFolderFromArrow(item);
