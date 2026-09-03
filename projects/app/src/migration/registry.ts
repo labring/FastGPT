@@ -82,7 +82,7 @@ export type SystemMigration = {
 export const systemMigrations = [
   {
     id: '20260903_migrate_legacy_system_models',
-    version: '4.16.3',
+    version: '4.17.0',
     nameKey: i18nT('system_migration:migrations.20260903_migrate_legacy_system_models.name'),
     descriptionKey: i18nT(
       'system_migration:migrations.20260903_migrate_legacy_system_models.description'
@@ -114,7 +114,7 @@ export const systemMigrations = [
   },
   {
     id: '20260903_backfill_model_permissions',
-    version: '4.16.3',
+    version: '4.17.0',
     nameKey: i18nT('system_migration:migrations.20260903_backfill_model_permissions.name'),
     descriptionKey: i18nT(
       'system_migration:migrations.20260903_backfill_model_permissions.description'
@@ -134,7 +134,7 @@ export const systemMigrations = [
   },
   {
     id: '20260903_backfill_dataset_model_references',
-    version: '4.16.3',
+    version: '4.17.0',
     nameKey: i18nT('system_migration:migrations.20260903_backfill_dataset_model_references.name'),
     descriptionKey: i18nT(
       'system_migration:migrations.20260903_backfill_dataset_model_references.description'
@@ -156,7 +156,7 @@ export const systemMigrations = [
   },
   {
     id: '20260903_backfill_evaluation_model_references',
-    version: '4.16.3',
+    version: '4.17.0',
     nameKey: i18nT(
       'system_migration:migrations.20260903_backfill_evaluation_model_references.name'
     ),
@@ -180,7 +180,7 @@ export const systemMigrations = [
   },
   {
     id: '20260903_backfill_app_model_references',
-    version: '4.16.3',
+    version: '4.17.0',
     nameKey: i18nT('system_migration:migrations.20260903_backfill_app_model_references.name'),
     descriptionKey: i18nT(
       'system_migration:migrations.20260903_backfill_app_model_references.description'

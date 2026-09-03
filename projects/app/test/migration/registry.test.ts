@@ -19,7 +19,7 @@ describe('validateSystemMigrationRegistry', () => {
   it('registers the legacy model migration as the first blocking production task', () => {
     expect(systemMigrations[0]).toMatchObject({
       id: '20260903_migrate_legacy_system_models',
-      version: '4.16.3',
+      version: '4.17.0',
       blockStartup: true,
       onFailure: SystemMigrationFailurePolicyEnum.stop
     });
