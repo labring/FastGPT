@@ -203,7 +203,6 @@ describe('getClientToolPreviewNode', () => {
       intro: 'Weather query',
       author: 'FastGPT',
       tags: [],
-      toolDescription: 'Weather query',
       currentCost: 0,
       systemKeyCost: 0,
       hasTokenFee: false,

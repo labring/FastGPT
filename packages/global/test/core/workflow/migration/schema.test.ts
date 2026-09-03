@@ -82,7 +82,7 @@ describe('workflow migration boundary', () => {
     expect(result.nodes[0].inputs[1]).not.toHaveProperty('isToolParam');
   });
 
-  it('drops legacy node descriptions while keeping input descriptions', async () => {
+  it('keeps node and input descriptions', async () => {
     const result = await migrateWorkflowToCurrent({
       nodes: [
         {
@@ -90,7 +90,6 @@ describe('workflow migration boundary', () => {
           flowNodeType: 'chatNode',
           name: 'Chat',
           intro: 'Node intro',
-          toolDescription: 'Legacy node description',
           inputs: [
             {
               key: 'query',
@@ -105,7 +104,6 @@ describe('workflow migration boundary', () => {
     });
 
     expect(result.nodes[0]).toMatchObject({ intro: 'Node intro' });
-    expect(result.nodes[0]).not.toHaveProperty('toolDescription');
     expect(result.nodes[0].inputs[0].toolDescription).toBe('Input description');
   });
 

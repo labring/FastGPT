@@ -81,7 +81,6 @@ describe('WorkflowComponents utils', () => {
         flowNodeType: FlowNodeTypeEnum.userInput,
         position: { x: 100, y: 100 }
       });
-      expect(result.nodes[0]).not.toHaveProperty('toolDescription');
 
       expect(result.edges).toHaveLength(1);
       expect(result.edges[0]).toMatchObject({

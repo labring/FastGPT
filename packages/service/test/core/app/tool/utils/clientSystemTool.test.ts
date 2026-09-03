@@ -45,7 +45,6 @@ describe('getClientSystemToolPreviewNode', () => {
       intro: 'Weather query',
       author: 'FastGPT',
       tags: [],
-      toolDescription: 'Legacy resource description',
       currentCost: 0,
       systemKeyCost: 1,
       hasTokenFee: false,
@@ -94,7 +93,6 @@ describe('getClientSystemToolPreviewNode', () => {
       ]
     });
     expect(result.inputs[1]?.key).toBe('city');
-    expect(result).not.toHaveProperty('toolDescription');
     expect(result.version).toBe('1.0.0');
     expect(result.versionLabel).toBe('1.0.0');
   });

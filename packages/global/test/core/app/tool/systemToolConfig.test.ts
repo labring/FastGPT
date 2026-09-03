@@ -1,26 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { SystemToolCodec } from '@fastgpt/global/core/app/tool/systemTool/codec';
 import { UpdateSystemToolBodySchema } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
-import {
-  SystemPluginToolCollectionSchema,
-  type SystemPluginToolCollectionType
-} from '@fastgpt/global/core/plugin/tool/type';
+import { type SystemPluginToolCollectionType } from '@fastgpt/global/core/plugin/tool/type';
 
 describe('system tool config', () => {
-  it('strips legacy resource toolDescription at the config schema boundary', () => {
-    const result = SystemPluginToolCollectionSchema.parse({
-      pluginId: 'systemTool-weather',
-      customConfig: {
-        name: 'Weather',
-        intro: 'Weather intro',
-        toolDescription: 'Legacy resource description',
-        version: '1.0.0'
-      }
-    });
-
-    expect(result.customConfig).not.toHaveProperty('toolDescription');
-  });
-
   it('allows null secretsVal to explicitly disable system secret', () => {
     const result = UpdateSystemToolBodySchema.parse({
       id: 'systemTool-github',
