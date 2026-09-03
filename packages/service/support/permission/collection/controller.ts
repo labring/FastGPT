@@ -16,7 +16,11 @@ import {
   resumeResourcePermissionInheritance,
   syncResourceTreePermissions
 } from '../resourcePermissionService';
-import { calculateInheritedResourceCollaborators } from '../resourcePermissionPolicy';
+import {
+  calculateInheritedResourceCollaborators,
+  createInheritedResourceCollaboratorCalculator,
+  toInheritedCollaborators
+} from '../resourcePermissionPolicy';
 import {
   resourcePermissionRepo,
   type ResourcePermissionPatch
@@ -256,6 +260,39 @@ export const syncRootCollections = async ({
   rootClbs: CollaboratorItemType[];
   session: ClientSession;
 }): Promise<void> => {
+  // 只处理实际变化的协作者：由父级（dataset 有效 clbs）old/new 对比筛出 affected。
+  // 合并计算按 collaborator 独立，无 affected 时子级快照不变，直接短路（零 DB 读）。
+  const oldInherited = toInheritedCollaborators(oldRootClbs);
+  const newInherited = toInheritedCollaborators(rootClbs);
+  const parentCollaboratorsById = new Map(
+    [...oldInherited, ...newInherited].map((collaborator) => [
+      getCollaboratorId(collaborator),
+      collaborator
+    ])
+  );
+  const oldParentPermissions = new Map(
+    oldInherited.map((collaborator) => [getCollaboratorId(collaborator), collaborator.permission])
+  );
+  const newParentPermissions = new Map(
+    newInherited.map((collaborator) => [getCollaboratorId(collaborator), collaborator.permission])
+  );
+  const affectedCollaborators = Array.from(parentCollaboratorsById.values()).filter(
+    (collaborator) => {
+      const collaboratorId = getCollaboratorId(collaborator);
+      return oldParentPermissions.get(collaboratorId) !== newParentPermissions.get(collaboratorId);
+    }
+  );
+  const affectedIdSet = new Set(affectedCollaborators.map(getCollaboratorId));
+  if (affectedCollaborators.length === 0) {
+    return;
+  }
+  const oldAffectedRootClbs = oldRootClbs.filter((collaborator) =>
+    affectedIdSet.has(getCollaboratorId(collaborator))
+  );
+  const newAffectedRootClbs = rootClbs.filter((collaborator) =>
+    affectedIdSet.has(getCollaboratorId(collaborator))
+  );
+
   const rootChildren = await MongoDatasetCollection.find(
     { teamId, datasetId, parentId: null, inheritPermission: { $ne: false } },
     '_id type tmbId'
@@ -264,12 +301,16 @@ export const syncRootCollections = async ({
     .session(session);
   if (rootChildren.length === 0) return;
 
-  // 批量加载根级 collection 当前快照（无 N+1）
+  // 只加载受影响协作者的 ACL 行（无 N+1，也不拉全量快照）
   const childIds = rootChildren.map((child) => String(child._id));
-  const allClbs = await resourcePermissionRepo.findByResourceIds({
+  const affectedCollaboratorIds = affectedCollaborators.map(
+    ({ permission: _, ...collaborator }) => collaborator
+  );
+  const allClbs = await resourcePermissionRepo.findByResourceIdsAndCollaborators({
     teamId,
     resourceType: PerResourceTypeEnum.collection,
     resourceIds: childIds,
+    collaborators: affectedCollaboratorIds,
     session
   });
   const snapshotMap = new Map<string, CollaboratorItemType[]>();
@@ -279,6 +320,12 @@ export const syncRootCollections = async ({
     arr.push(clb);
     snapshotMap.set(rid, arr);
   }
+
+  // 预构造合并计算器（父级只含 affected），同一 dataset 下全部根级 collection 复用，避免循环内重复建 Map
+  const calculator = createInheritedResourceCollaboratorCalculator({
+    oldParentCollaborators: oldAffectedRootClbs,
+    newParentCollaborators: newAffectedRootClbs
+  });
 
   const patches: ResourcePermissionPatch[] = [];
   const folderChildren: Array<{
@@ -290,21 +337,16 @@ export const syncRootCollections = async ({
   for (const child of rootChildren) {
     const childId = String(child._id);
     const oldSnapshot = snapshotMap.get(childId) ?? [];
-    const newSnapshot = calculateInheritedResourceCollaborators({
-      oldParentCollaborators: oldRootClbs,
-      newParentCollaborators: rootClbs,
-      childCollaborators: oldSnapshot
+    const newSnapshot = calculator(oldSnapshot);
+    const childPatches = buildSnapshotPatches({
+      resourceId: childId,
+      oldCollaborators: oldSnapshot,
+      newCollaborators: newSnapshot
     });
+    patches.push(...childPatches);
 
-    patches.push(
-      ...buildSnapshotPatches({
-        resourceId: childId,
-        oldCollaborators: oldSnapshot,
-        newCollaborators: newSnapshot
-      })
-    );
-
-    if (child.type === DatasetCollectionTypeEnum.folder) {
+    // folder 自身无变化 ⇒ 其有效 clbs 不变 ⇒ 子树也无需递归
+    if (child.type === DatasetCollectionTypeEnum.folder && childPatches.length > 0) {
       folderChildren.push({ childId, oldSnapshot, newSnapshot });
     }
   }
@@ -316,7 +358,7 @@ export const syncRootCollections = async ({
     session
   });
 
-  // folder 递归：以「旧快照 → 新快照」传播子树（与运行时同一套原语）
+  // folder 递归：子树复用 syncResourceTreePermissions，其内部对旧快照再做一次 affected 过滤
   for (const { childId, oldSnapshot, newSnapshot } of folderChildren) {
     await syncResourceTreePermissions({
       resource: {
