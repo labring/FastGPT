@@ -84,7 +84,9 @@ export async function handler(
 
   await mongoSessionRun(async (session) => {
     // 构建 customConfig，保留现有配置并添加/更新 tags
-    const existingCustomConfig = plugin?.customConfig || {};
+    const existingCustomConfig = Object.fromEntries(
+      Object.entries(plugin?.customConfig || {}).filter(([key]) => key !== 'toolDescription')
+    );
     const newCustomConfig = updateFields.tags
       ? { ...existingCustomConfig, tags: updateFields.tags }
       : existingCustomConfig;

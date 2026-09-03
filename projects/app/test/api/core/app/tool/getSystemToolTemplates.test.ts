@@ -84,7 +84,7 @@ describe('get system tool templates handler', () => {
         id: 'weather',
         name: 'Weather',
         intro: 'Forecast lookup',
-        toolDescription: 'Get weather',
+        toolDescription: 'Legacy resource description',
         isToolSet: false,
         status: PluginStatusEnum.Normal,
         tags: ['life']
@@ -93,7 +93,6 @@ describe('get system tool templates handler', () => {
         id: 'math',
         name: 'Math',
         intro: 'Calculator',
-        toolDescription: 'Compute numbers',
         isToolSet: false,
         status: PluginStatusEnum.Normal,
         tags: ['calc']
@@ -102,7 +101,6 @@ describe('get system tool templates handler', () => {
         id: 'hidden-weather',
         name: 'Hidden Weather',
         intro: 'Forecast lookup',
-        toolDescription: 'Get weather',
         isToolSet: false,
         status: PluginStatusEnum.Normal,
         tags: ['life'],
@@ -122,6 +120,7 @@ describe('get system tool templates handler', () => {
       isTool: true,
       flowNodeType: FlowNodeTypeEnum.tool
     });
+    expect(result[0]).not.toHaveProperty('toolDescription');
     expect(mocks.getSystemToolList).toHaveBeenCalledWith({
       lang: 'zh',
       op: 'or',
@@ -136,7 +135,6 @@ describe('get system tool templates handler', () => {
         id: 'toolset',
         name: 'Toolset',
         intro: '',
-        toolDescription: '',
         isToolSet: true,
         status: PluginStatusEnum.Normal,
         tags: []
@@ -168,7 +166,6 @@ describe('get system tool templates handler', () => {
         source: 'debug:tmbId:tmb-1',
         name: 'Debug Tool',
         intro: '',
-        toolDescription: '',
         isToolSet: false,
         status: PluginStatusEnum.Normal,
         tags: []
@@ -178,7 +175,6 @@ describe('get system tool templates handler', () => {
         source: 'system',
         name: 'System Tool',
         intro: '',
-        toolDescription: '',
         isToolSet: false,
         status: PluginStatusEnum.Normal,
         tags: []
@@ -255,7 +251,7 @@ describe('get system tool templates handler', () => {
           name: 'A+B Tool',
           status: PluginStatusEnum.Normal,
           description: 'Exact plus',
-          toolDescription: 'Use literal plus',
+          toolDescription: 'Legacy child resource description',
           icon: 'plus-icon',
           currentCost: 2,
           systemKeyCost: 0.5
@@ -265,7 +261,6 @@ describe('get system tool templates handler', () => {
           name: 'AxxB Tool',
           status: PluginStatusEnum.Normal,
           description: 'Would match an unescaped regex',
-          toolDescription: 'No literal plus',
           currentCost: 3,
           systemKeyCost: 1
         }
@@ -289,6 +284,7 @@ describe('get system tool templates handler', () => {
       isTool: true,
       flowNodeType: FlowNodeTypeEnum.tool
     });
+    expect(result[0]).not.toHaveProperty('toolDescription');
     expect(mocks.getSystemToolDisplayInfoWithChildIcons).toHaveBeenCalledWith({
       pluginId: 'toolset',
       lang: 'zh',
@@ -348,7 +344,6 @@ describe('get system tool templates handler', () => {
         id: 'normal-tool',
         name: 'Normal Tool',
         intro: '',
-        toolDescription: '',
         isToolSet: false,
         status: PluginStatusEnum.Normal,
         tags: []
@@ -357,7 +352,6 @@ describe('get system tool templates handler', () => {
         id: 'hidden-tool',
         name: 'Hidden Tool',
         intro: '',
-        toolDescription: '',
         isToolSet: false,
         status: PluginStatusEnum.Hidden,
         tags: []
@@ -366,7 +360,6 @@ describe('get system tool templates handler', () => {
         id: 'soon-offline-tool',
         name: 'Soon Offline Tool',
         intro: '',
-        toolDescription: '',
         isToolSet: false,
         status: PluginStatusEnum.SoonOffline,
         tags: []
@@ -375,7 +368,6 @@ describe('get system tool templates handler', () => {
         id: 'offline-tool',
         name: 'Offline Tool',
         intro: '',
-        toolDescription: '',
         isToolSet: false,
         status: PluginStatusEnum.Offline,
         tags: []

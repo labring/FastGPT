@@ -183,7 +183,6 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
       id: string;
       name?: string;
       description?: string;
-      toolDescription?: string;
       inputSchema?: any;
       outputSchema?: any;
     }> = [
@@ -191,7 +190,6 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
         id: 'child-1',
         name: 'Original',
         description: 'Original Desc',
-        toolDescription: 'Original Tool Desc',
         inputSchema: childInputSchema,
         outputSchema: childOutputSchema
       }
@@ -227,7 +225,6 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
         id: 'child-1',
         name: 'Original',
         description: 'Original Desc',
-        toolDescription: 'Original Tool Desc',
         inputSchema: childInputSchema,
         outputSchema: childOutputSchema
       },
