@@ -155,6 +155,14 @@ export default function SkillPickerPlugin({
   const menuAnchorRef = useRef<HTMLElement | null>(null);
   const menuElementRef = useRef<HTMLDivElement | null>(null);
   const menuPositionFrameRef = useRef<number | null>(null);
+  const [hasHorizontalOverflow, setHasHorizontalOverflow] = useState(false);
+
+  const updateHorizontalOverflow = useCallback(() => {
+    const menuElement = menuElementRef.current;
+    if (!menuElement) return;
+
+    setHasHorizontalOverflow(menuElement.scrollWidth > menuElement.clientWidth);
+  }, []);
 
   const updateMenuPosition = useCallback(() => {
     const anchorElement = menuAnchorRef.current;
@@ -197,6 +205,7 @@ export default function SkillPickerPlugin({
     if (!anchorElement || !menuElement) return;
 
     scheduleMenuPosition();
+    updateHorizontalOverflow();
 
     const anchorObserver = new MutationObserver(scheduleMenuPosition);
     anchorObserver.observe(anchorElement, {
@@ -204,7 +213,10 @@ export default function SkillPickerPlugin({
       attributeFilter: ['style']
     });
 
-    const menuObserver = new ResizeObserver(scheduleMenuPosition);
+    const menuObserver = new ResizeObserver(() => {
+      scheduleMenuPosition();
+      updateHorizontalOverflow();
+    });
     menuObserver.observe(menuElement);
 
     window.addEventListener('resize', scheduleMenuPosition);
@@ -221,7 +233,7 @@ export default function SkillPickerPlugin({
         menuPositionFrameRef.current = null;
       }
     };
-  }, [isFocus, isMenuOpen, scheduleMenuPosition, skillOptions.length]);
+  }, [isFocus, isMenuOpen, scheduleMenuPosition, skillOptions.length, updateHorizontalOverflow]);
 
   // Scroll the selected row into view and reveal newly appended columns.
   const scrollIntoView = useCallback((columnIndex: number, rowIndex: number, retryCount = 0) => {
@@ -1269,7 +1281,7 @@ export default function SkillPickerPlugin({
             w={MENU_WIDTH}
             h={MENU_HEIGHT}
             p={2}
-            bg={'#fbfbfc'}
+            bg={hasHorizontalOverflow ? '#fbfbfc' : 'transparent'}
             borderRadius={'12px'}
             overflowX={'auto'}
             overflowY={'hidden'}
