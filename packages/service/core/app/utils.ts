@@ -248,7 +248,6 @@ export async function rewriteAppWorkflowToDetail({
           node.hasSystemSecret = preview.hasSystemSecret;
 
           node.toolConfig = preview.toolConfig;
-          node.toolDescription = preview.toolDescription;
 
           // Latest version
           if (!node.version) {

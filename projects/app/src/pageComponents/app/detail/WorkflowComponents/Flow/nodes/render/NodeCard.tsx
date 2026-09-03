@@ -915,7 +915,6 @@ const MenuRender = React.memo(function MenuRender({
             pluginId: node.data.pluginId
           }),
           intro: node.data.intro,
-          toolDescription: node.data.toolDescription,
           showStatus: node.data.showStatus,
 
           version: node.data.version,

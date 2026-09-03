@@ -255,7 +255,6 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     expect(result[0].nodeId).toBe('node-1child-1');
     expect(result[0].name).toBe('Custom Name');
     expect(result[0].intro).toBe('Custom Desc');
-    expect(result[0].toolDescription).toBe('Custom Desc');
     expect(result[0].toolConfig).toEqual({
       systemTool: { toolId: 'systemTool-toolset-1/child-1' }
     });
@@ -317,8 +316,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
       {
         id: 'child-1',
         name: 'Original Name',
-        description: 'Original Intro',
-        toolDescription: 'Original Tool Description'
+        description: 'Original Intro'
       }
     ]);
 
@@ -330,7 +328,6 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     expect(result).toHaveLength(1);
     expect(result[0].name).toBe('Original Name');
     expect(result[0].intro).toBe('Original Intro');
-    expect(result[0].toolDescription).toBe('Original Tool Description');
   });
 
   it('should pass systemInputConfig value to child tool inputs', async () => {

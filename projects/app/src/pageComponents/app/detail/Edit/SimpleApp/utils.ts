@@ -662,7 +662,6 @@ export function form2AppWorkflow(
             source: tool.source,
             name: tool.name,
             intro: tool.intro,
-            toolDescription: tool.toolDescription,
             avatar: tool.avatar,
             flowNodeType: tool.flowNodeType,
             showStatus: tool.showStatus,
