@@ -550,6 +550,7 @@ const RenderList = React.memo(function RenderList({
       direction="column"
       minH={isPaginated ? 0 : undefined}
       h={isPaginated ? 'auto' : '100%'}
+      flexShrink={isPaginated ? 0 : undefined}
     >
       <Box overflowY={isPaginated ? 'visible' : 'auto'} mb={isPaginated ? 0 : 8} w={'full'}>
         {PluginListRender()}
