@@ -240,7 +240,7 @@ describe('4163 dataset model reference migration', () => {
     expect(cacheMocks.clearAllMyModelsCache).not.toHaveBeenCalled();
   });
 
-  it('canonicalizes the complete workflow before backfilling a model ID', async () => {
+  it('preserves unrelated legacy workflow values while backfilling config and model IDs', async () => {
     const llm = await createStoredModel({ model: 'gpt-model', type: ModelTypeEnum.llm });
     const app = await MongoApp.collection.insertOne({
       modules: [
@@ -288,8 +288,8 @@ describe('4163 dataset model reference migration', () => {
       expect.objectContaining({ key: NodeInputKeyEnum.aiModelId, value: String(llm._id) })
     );
     expect(document?.modules[1]).toMatchObject({
-      flowNodeType: FlowNodeTypeEnum.emptyNode,
-      outputs: [{ type: 'static' }]
+      flowNodeType: 'removedLegacyNodeType',
+      outputs: [{ type: 'removedLegacyOutputType' }]
     });
     expect(document?.modules).toHaveLength(2);
     expect(document?.chatConfig).toMatchObject({
@@ -348,6 +348,63 @@ describe('4163 dataset model reference migration', () => {
       appTemplatesProcessedCount: 0
     });
     await expect(MongoApp.collection.findOne({ _id: app.insertedId })).resolves.toEqual(migrated);
+  });
+
+  it('preserves stored ToolSet schemas and unrelated legacy tool inputs', async () => {
+    await createStoredModel({ model: 'gpt-model', type: ModelTypeEnum.llm });
+    const storedInputSchema = JSON.stringify({
+      type: 'object',
+      properties: { query: { type: 'string' } }
+    });
+    const app = await MongoApp.collection.insertOne({
+      modules: [
+        {
+          nodeId: 'mcp-tool-set',
+          name: 'MCP tool set',
+          flowNodeType: FlowNodeTypeEnum.toolSet,
+          inputs: [],
+          outputs: [],
+          toolConfig: {
+            mcpToolSet: {
+              url: 'https://example.com/mcp',
+              toolList: [{ name: 'search', description: '', inputSchema: storedInputSchema }]
+            }
+          }
+        },
+        {
+          nodeId: 'agent',
+          name: 'Agent',
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              value: [{ id: 'tool', inputs: [{ key: 'query' }], config: {} }]
+            }
+          ],
+          outputs: []
+        },
+        {
+          nodeId: 'legacy-user-guide-without-inputs',
+          name: 'System config',
+          flowNodeType: 'userGuide',
+          outputs: []
+        }
+      ],
+      edges: []
+    });
+
+    await expect(backfillAppModelReferences(createContext().context)).resolves.toMatchObject({
+      appsProcessedCount: 1,
+      appVersionsProcessedCount: 0,
+      appTemplatesProcessedCount: 0
+    });
+
+    const migrated = await MongoApp.collection.findOne({ _id: app.insertedId });
+    expect(migrated?.modules[0].toolConfig.mcpToolSet.toolList[0].inputSchema).toBe(
+      storedInputSchema
+    );
+    expect(migrated?.modules[1].inputs[0].value[0].inputs).toEqual([{ key: 'query' }]);
+    expect(migrated?.modules).toHaveLength(2);
   });
 
   it('backfills exact model IDs and leaves legacy fields intact', async () => {
@@ -520,7 +577,7 @@ describe('4163 dataset model reference migration', () => {
     });
   });
 
-  it('writes every canonical workflow field even when nodes and edges are unchanged', async () => {
+  it('writes every migrated workflow field even when nodes and edges are unchanged', async () => {
     const firstModel = await createStoredModel({
       model: 'first-model',
       type: ModelTypeEnum.llm

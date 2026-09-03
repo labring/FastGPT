@@ -1,7 +1,7 @@
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration/migrate';
+import { migrateSystemConfigToChatConfig } from '@fastgpt/global/core/workflow/migration/legacy/systemConfig';
 import type { SystemMigrationContext } from '@/migration/registry';
 import { runIncrementalModelReferenceMigration } from '../4163_model_references/incremental';
 import { loadModelCatalog } from '../4163_model_references/modelCatalog';
@@ -15,8 +15,8 @@ export const backfillAppModelReferences = async (context: SystemMigrationContext
   const catalog = await loadModelCatalog();
 
   /**
-   * 先把历史 Workflow 收敛为 canonical 结构，再基于搬运后的 chatConfig 补模型 ID。
-   * 外层固定保存完整迁移结果，并将三个字段放进同一次 CAS，避免配置节点已删除但配置未落库。
+   * 只搬运已废弃的 userGuide/pluginConfig，再补模型 ID；不能在原始 BSON 上执行完整
+   * Workflow 迁移，因为 ToolSet JSON Schema 在数据库中按设计保存为字符串。
    */
   const migrateWorkflow = ({
     nodes,
@@ -27,10 +27,25 @@ export const backfillAppModelReferences = async (context: SystemMigrationContext
     edges: unknown;
     chatConfig: unknown;
   }) => {
-    const migratedWorkflow = migrateWorkflowToCurrent({
-      nodes: Array.isArray(nodes) ? nodes : [],
-      edges,
-      chatConfig
+    const storedNodes = Array.isArray(nodes) ? nodes : [];
+    const migratedWorkflow = migrateSystemConfigToChatConfig({
+      nodes: storedNodes.map((node) => {
+        if (
+          !node ||
+          typeof node !== 'object' ||
+          !['userGuide', 'pluginConfig'].includes((node as any).flowNodeType) ||
+          Array.isArray((node as any).inputs)
+        ) {
+          return node;
+        }
+        // 配置节点即使缺少 inputs 也应能安全删除，不能让单条历史脏数据阻断整批迁移。
+        return { ...(node as any), inputs: [] };
+      }) as any,
+      edges: (Array.isArray(edges) ? edges : []) as any,
+      chatConfig:
+        chatConfig && typeof chatConfig === 'object' && !Array.isArray(chatConfig)
+          ? (chatConfig as any)
+          : undefined
     });
     const migratedNodes = migrateWorkflowNodes({ nodes: migratedWorkflow.nodes, catalog });
     const chatConfigWithModelIds = backfillChatConfig({
