@@ -48,7 +48,7 @@ import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
 import { getSystemDefaultModelIds } from '@fastgpt/service/core/ai/model';
 import {
-  compactAndEncodeToolSetNodesForStorage,
+  compactToolSetNodesForStorage,
   encodeToolSetNodesForStorage
 } from '@fastgpt/service/core/app/jsonSchemaStorage';
 
@@ -193,7 +193,7 @@ export const onCreateApp = async ({
   await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });
   const storageNodes = ToolSetAppTypeList.includes(type)
     ? encodeToolSetNodesForStorage(storageModules ?? normalizedWorkflow.nodes)
-    : compactAndEncodeToolSetNodesForStorage(normalizedWorkflow.nodes);
+    : compactToolSetNodesForStorage(normalizedWorkflow.nodes);
   if (!AppFolderTypeList.includes(type!)) {
     await validatePublishAppAgentSkillReadPermissions({
       nodes: normalizedWorkflow.nodes,
@@ -336,7 +336,7 @@ export const onUpdateAppWorkflow = async ({
     modelReferencePolicy: 'fallback'
   });
   await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });
-  const storageNodes = compactAndEncodeToolSetNodesForStorage(workflow.nodes);
+  const storageNodes = compactToolSetNodesForStorage(workflow.nodes);
 
   return await MongoApp.findByIdAndUpdate(
     appId,

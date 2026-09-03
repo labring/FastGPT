@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   cleanToolSetJsonSchemasForStorage,
-  compactAndEncodeToolSetNodesForStorage,
   compactToolSetNodesForStorage,
   decodeHttpToolSetNodesFromStorage,
   decodeMcpToolSetNodesFromStorage,
@@ -86,13 +85,19 @@ describe('workflow JSON Schema storage codec', () => {
     expect(typeof httpToolSet.toolList[0].secretSchema).toBe('string');
   });
 
-  it('compacts references and encodes remaining schemas in one traversal', () => {
+  it('compacts MCP and HTTP references without persisting tool schemas', () => {
     const nodes = [
       {
+        pluginId: 'mcp-toolset',
         toolConfig: {
           mcpToolSet: {
             toolList: [{ inputSchema: { type: 'object' } }]
-          },
+          }
+        }
+      },
+      {
+        pluginId: 'http-toolset',
+        toolConfig: {
           httpToolSet: {
             toolList: [{ requestSchema: { type: 'object' } }]
           }
@@ -100,10 +105,18 @@ describe('workflow JSON Schema storage codec', () => {
       }
     ];
 
-    const encoded = compactAndEncodeToolSetNodesForStorage(nodes) as any[];
+    const encoded = compactToolSetNodesForStorage(nodes) as any[];
 
-    expect(typeof encoded[0].toolConfig.mcpToolSet.toolList[0].inputSchema).toBe('string');
-    expect(typeof encoded[0].toolConfig.httpToolSet.toolList[0].requestSchema).toBe('string');
+    expect(encoded).toEqual([
+      {
+        pluginId: 'mcp-toolset',
+        toolConfig: { mcpToolSet: { toolId: 'mcp-toolset' } }
+      },
+      {
+        pluginId: 'http-toolset',
+        toolConfig: { httpToolSet: { toolId: 'http-toolset' } }
+      }
+    ]);
   });
 
   it('decodes stored strings', () => {
@@ -237,7 +250,7 @@ describe('workflow JSON Schema storage codec', () => {
       }
     ];
 
-    expect(compactAndEncodeToolSetNodesForStorage(nodes)).toEqual([
+    expect(compactToolSetNodesForStorage(nodes)).toEqual([
       {
         pluginId: 'mcp-mcp-app/search',
         toolConfig: {
