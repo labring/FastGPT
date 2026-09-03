@@ -97,7 +97,7 @@ export const PerResourceTypeEnum = {
 | D1 | **权限存储与传播** | 复用通用 service 原语（create/update/move/resume/syncResourceTreePermissions）+ 策略层，不平行实现 |
 | D2 | **跨类型父级解析** | 给通用原语增加**可选父级覆盖参数**（`parentResourceType` / `parentResourceId` 或 `parentCollaborators`），覆盖"根 collection → dataset"边界；见 §3.2 |
 | D3 | **dataset → collection 传播** | collection 侧导出**跨树 hook** `syncDatasetToCollections`，由 dataset 写路径在同一事务内调用；见 §3.3 |
-| D4 | **列表/RAG 过滤** | collection 侧提供 `getReadableCollectionIds`（候选集合限定：一次 `distinct`，`resourceId $in` 候选 + `$or` 协作者 + 查询端 `$bitsAnySet` 过滤），列表/检索共用；见 §7 |
+| D4 | **列表/RAG 过滤** | collection 侧通过候选 `resourceId $in` + `$bitsAnySet` + `distinct resourceId` 在数据库侧批量筛选可读集合；列表/检索共用；列表返回权限仅对分页结果批量解析；见 §7 |
 | D5 | **短路标记** | 保留 `hasSetCollectionPermissions`，纯继承态下 O(1) 跳过 O(N) 查询；定位为性能优化 |
 | D6 | **并发控制** | **不引入额外并发控制**（N4/S-4 已解除）：依赖 Mongo 事务串行化 + 全量替换幂等，并发覆盖按后写为准（NFR-6）；见 §8 |
 | D7 | **迁移** | 扩展 main 的 `permissionMigration` + 新增 `initCollectionPermission` API；见 §12 |
@@ -153,7 +153,7 @@ syncDatasetToCollections({ teamId, datasetId, oldEffectiveClbs, newEffectiveClbs
 | 协作者列表 | `POST /api/proApi/core/dataset/collection/collaborator/list` | fastgpt-pro |
 | 恢复继承 | `POST /api/core/dataset/collection/resumeInheritPermission` | fastgpt-app |
 | changeOwner | `POST /api/proApi/core/dataset/collection/changeOwner` | fastgpt-pro |
-| collection 权限初始化 | `POST /api/admin/initCollectionPermission` | fastgpt-app admin（`projects/app/src/pages/api/admin/initCollectionPermission.ts`） |
+| collection 权限初始化 | `POST /api/admin/initCollectionPermission` | fastgpt-app admin（仅系统 root，`projects/app/src/pages/api/admin/initCollectionPermission.ts`） |
 | 列表过滤 | `GET /api/core/dataset/collection/listV2`（改造） | fastgpt-app |
 
 **现有 collection 接口权限升级（CRUD 门槛）：**
@@ -322,7 +322,7 @@ export async function authDatasetCollection({
 }
 ```
 
-物化快照直读，无父链递归。可读 collection 批量解析（`getReadableCollectionIds`，供列表/检索/数据鉴权复用）也置于 auth.ts：候选集合单次 `distinct` 限定（`resourceId $in` 候选 + `$or` 协作者 + 查询端 `$bitsAnySet`），不做 team 全量扫描（§7）。
+物化快照直读，无父链递归。collection 批量权限解析（`getCollectionPermissionMap` / `getReadableCollectionIds`，供列表/检索/数据鉴权复用）也置于 auth.ts：以 `resourceId $in` 限定候选，一次读取命中的个人/group/org ACL；存在个人记录时直接采用个人 role（包括 0），否则按位合并 group/org role，不做 team 全量扫描（§7）。
 
 ### 6.4 协作者配置与列表（collaborator.ts）
 
@@ -473,7 +473,7 @@ await resumeResourcePermissionInheritance({
    - 其余：`getReadableCollectionIds({ collections: 候选, tmbId, teamId, groupIds, orgIds, datasetPermission })` → 可读 ID 集合。
 3. 过滤出可读候选 → MongoDB 排序分页（`sort(updateTime).skip(offset).limit(pageSize)`）→ 当前页完整字段 + 统计回查（`$in` 批量聚合，无 N+1）。`total` = 过滤后该目录下节点数。
 
-`getReadableCollectionIds`（auth.ts）实现：一次 `MongoResourcePermission.distinct('resourceId', { resourceType: collection, teamId, resourceId: { $in: 候选 ids }, permission: { $bitsAnySet: 0b111 }, $or: [tmbId, groupId $in, orgId $in] })`——**以候选集合限定**，查询范围与候选集合同量级；查询端 `$bitsAnySet` 过滤拒绝/无读记录（owner 全位 4294967295 自然命中），返回候选内可读 ID。**不采用**通用 `findResourceKeysByCollaboratorsPermission`：其按用户 ACL 全量 `distinct`、不支持候选 `$in` 限定，10k 级列表下扫描面为团队全量 ACL 足迹（对比见 §3.2）。
+`getReadableCollectionIds`（auth.ts）对候选 ID 执行一次 `distinct resourceId`，并通过 `$bitsAnySet` 在数据库侧过滤不可读 ACL，避免向应用层加载候选集合的完整权限记录；该路径供列表可见性过滤与 RAG 检索共用。`listV2` 完成过滤和分页后，再通过 `getCollectionPermissionMap` 仅对当前页批量解析实际 role，并与标签转换及统计查询并行执行。所有查询均以候选集合限定，不做团队全量 ACL 扫描。
 
 > 需先校验当前用户对所属 dataset 有 `read`（§7.2 门槛）；无权限返回空列表。排序分页在过滤后的候选集合上执行（不能在过滤前 `skip/limit`，避免漏掉不可读节点占位导致的分页错位）。
 
@@ -552,7 +552,7 @@ NFR-7（P95 ≤ 200ms）：候选 `$in` 限定 + 短路 + `undefined` 不设过�
 ### 10.1 读性能
 
 - 物化快照：collection 鉴权/列表/检索单表读自身快照，无父链递归；
-- 列表/检索 `getReadableCollectionIds` 候选集合单次 `distinct`（`resourceId $in` 候选 + `$or` 协作者 + 查询端 `$bitsAnySet` 过滤），查询范围与候选集合同量级，不做 team 全量扫描；
+- 列表/检索可见性通过 `distinct resourceId` + `$bitsAnySet` 在数据库侧过滤；列表仅对分页结果通过 `getCollectionPermissionMap` 批量解析返回权限，不做 team 全量扫描；
 - 短路：团队管理员 / `hasSetCollectionPermissions` 未置 true（false 或旧数据 undefined）/ 全继承态——O(1) 跳过 distinct 查询。
 
 ### 10.2 写性能
@@ -594,7 +594,7 @@ NFR-7（P95 ≤ 200ms）：候选 `$in` 限定 + 短路 + `undefined` 不设过�
 
 `POST /api/admin/initCollectionPermission`（fastgpt-app admin，`projects/app/src/pages/api/admin/initCollectionPermission.ts`）：
 
-- **鉴权**：系统管理员（root）；`dryRun` 默认 `true`（显式传 `dryRun=false` 才实际写库）；
+- **鉴权**：仅系统管理员（root），接口支持跨团队批量迁移，不向团队 owner 开放；`dryRun` 默认 `true`（显式传 `dryRun=false` 才实际写库）；
 - **语义**：将存量 collection 物化为 collection 级权限快照——根 collection 以所属 dataset 有效 clbs 为父级、非根以父 collection folder 快照为父级，`merge(父级, [owner])`，folder 递归；**独立态（`inheritPermission=false`）的 collection 保持原 ACL 与继承态不动**，其余 collection 统一回继承态后按 dataset 语义刷新快照；**存在独立态 collection 或 dataset 已置自定义标记时置 `hasSetCollectionPermissions=true`，否则置 `false`（纯继承短路）**；
 - **幂等**：迁移只信任 collection 继承态、历史 ACL 不作为判据；待刷新 collection 先清空旧 ACL 再重建 owner 记录（owner 唯一不变量成立），快照按 diff 写入，重复执行结果一致，无需版本号；**不加事务**（迁移幂等收敛、重跑可修复中断残留的部分状态；事务受 `maxCommitTimeMS=60s` 限制，大 dataset 会超时），失败隔离并记录 `datasetId/error`；**支持 `datasetIds` 指定重跑失败/超时的 dataset**，不再按 `limit` 分批（每次处理范围内全部 dataset）；
 - **dryRun**：仅校验与统计、不写库；迁移前先分析 parentId 图，存在孤儿（父不存在 / 父不是 folder）或循环即报错，不静默降级；
@@ -627,7 +627,7 @@ NFR-7（P95 ≤ 200ms）：候选 `$in` 限定 + 短路 + `undefined` 不设过�
 | 恢复继承 | 保留相对父级独有位；父级无权限仅留自身 clbs |
 | 冲突检测 | 修改/删除父级协作者 → 翻转；owner 不可经协作者接口授予 |
 | 物化快照 | 各写路径后快照 = merge(父级, 自身)；owner→manage 降级 |
-| `getReadableCollectionIds` | 候选限定 `distinct`（`$in` 候选）；`$bitsAnySet` 过滤拒绝记录；短路分支 |
+| `getCollectionPermissionMap` / `getReadableCollectionIds` | 可见性使用候选限定的 `distinct` + `$bitsAnySet`；返回权限仅批量解析分页结果；个人 ACL 优先、无个人记录时合并 group/org；短路分支 |
 | 短路 | `hasSetCollectionPermissions=false` 时列表/检索短路；团队管理员短路 |
 | 列表过滤 | 过滤后分页正确（不可读节点不占位）；无 dataset read 返回空 |
 | 初始化 | 存量 collection 物化正确；孤儿/循环校验拒绝；幂等重跑 0 变更；dryRun 不写库 |

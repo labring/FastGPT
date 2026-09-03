@@ -171,12 +171,12 @@ FastGPT 当前权限体系以 **team 为资源绑定单位**，权限粒度仅�
 | 输入项 | 类型 | 来源 | 必填 | 约束条件 | 示例 |
 |-------|------|------|------|---------|------|
 | collectionId | String(ObjectId) | 请求参数 | 是 | 必须存在且属于请求 team；否则 `unExistCollection` / `unAuthDataset` | "660b3f..." |
-| collaborators | Array | 请求参数 | 是 | 继承态资源必须非空（清空走 F007）；独立态资源允许空数组（清空非 owner clb，保持独立态，S-8）；仅继承状态变更请求可省略；每项 `tmbId`/`groupId`/`orgId` 三选一唯一；`permission` 必须为合法角色值之一 | [{tmbId:"u1",permission:6}] |
+| collaborators | Array | 请求参数 | 是 | 完整列表必须包含当前 owner 记录，不允许空数组；清空非 owner clb 时仅提交 owner；每项 `tmbId`/`groupId`/`orgId` 三选一唯一；`permission` 必须为合法角色值之一 | [{tmbId:"u1",permission:4294967295}] |
 | collaborators[].permission | Number | 请求参数 | 是 | 枚举: 4(read) / 2(write) / 6(write角色) / 1(manage) / 7(manage角色)；**不含 owner(4294967295)**——owner 记录由资源 tmbId 派生，不可经协作者接口授予/移除，仅创建默认与 changeOwner 可变更（S-3 已冻结）；非法值报参数错误 | 6 |
 
 **输入校验规则**:
 1. `collectionId` 为空 → `CommonErrEnum.missingParams`。
-2. `collaborators` 为空数组：继承态资源 → `CommonErrEnum.missingParams`（清空请走恢复继承 F007）；独立态资源 → 合法清空操作（清空全部非 owner clb，保持独立态，仅保留自身 owner 记录，S-8 已冻结）。
+2. `collaborators` 必须提交包含当前 owner 的完整列表；空数组或遗漏 owner 均拒绝。清空非 owner clb 时仅提交当前 owner 记录。
 3. `collaborators` 项中 `tmbId`/`groupId`/`orgId` 多于一项或全缺 → `CommonErrEnum.invalidParams`。
 4. `permission` 不在合法角色值集合（4/2/6/1/7，**不含 owner**）→ `CommonErrEnum.invalidParams`。
 
@@ -195,7 +195,7 @@ FastGPT 当前权限体系以 **team 为资源绑定单位**，权限粒度仅�
 
 | 错误码 | 错误信息(statusText) | 触发条件 | 处理建议 |
 |-------|---------|---------|---------|
-| 507004 | missingParams | collectionId 缺失 / 继承态下 collaborators 为空数组 | 补齐参数后重试 |
+| 507004 | missingParams | collectionId 缺失 / collaborators 为空数组 | 补齐参数后重试 |
 | 501004 | unAuthDataset | 用户无 collection manage 及以上权限；或非 owner 提交含 manage 角色的配置 | 联系资源 owner / 需 owner 操作 |
 | 501011 | canNotEditAdminPermission | 配置列表中包含操作者自身（tmbId 等于当前操作者） | 移除自身条目 |
 | 501003 | unExistCollection | collectionId 不存在 | 确认 collectionId |
@@ -243,7 +243,7 @@ FastGPT 当前权限体系以 **team 为资源绑定单位**，权限粒度仅�
 | 边界条件 | 处理方式 |
 |---------|---------|
 | 配置列表包含资源 owner 本人（tmbId = 资源 tmbId） | owner 记录不受配置影响（由 tmbId 派生，S-3），保持 owner；其余项按正常规则写入 |
-| 配置列表为空（期望清空） | 继承态资源返回 `missingParams`（清空走恢复继承 F007）；独立态资源允许清空（清空非 owner clb，保持独立态，仅留自身 owner 记录，S-8） |
+| 期望清空非 owner 协作者 | 提交仅包含当前 owner 的完整列表；空数组或遗漏 owner 均拒绝 |
 | 同协作者同时出现在 tmbId 与 groupId | 分别落库两条记录；校验时按 `sumPer` 取最高（tmbId 优先返回，不叠加） |
 | permission 传 6 与传 2 | 均表示 write 语义；落库统一存 6（write 角色累计位），校验按位判断 |
 | folder 子节点 1000+ 个 | 继承态子 folder 全量同步走 BFS + `bulkWrite`（NFR-2），不逐条 await |
@@ -601,8 +601,8 @@ FastGPT 当前权限体系以 **team 为资源绑定单位**，权限粒度仅�
 - **接口路径**: `POST /api/proApi/core/dataset/upgradePermission`（T-3 已冻结：HTTP API 暴露，面向系统管理员或团队 owner）
 - **鉴权**: 系统管理员 或 团队 owner（任一满足即可；门槛高于普通 manage，属管理操作）。
 - **幂等键**: `idempotencyKey` **必填**（防重并发；同键串行执行并返回首次结果）。
-- **接口路径（collection 权限初始化）**: `POST /api/admin/initCollectionPermission`（代码位置 `projects/app/src/pages/api/admin/initCollectionPermission.ts`，面向系统管理员或团队 owner；将存量 collection 物化为 collection 级权限快照——根 collection 以所属 dataset 有效 clbs 为父级、folder 递归，与升级共用同一同步原语；幂等，可断点续跑）。
-- **鉴权（初始化）**: 系统管理员 或 团队 owner。
+- **接口路径（collection 权限初始化）**: `POST /api/admin/initCollectionPermission`（代码位置 `projects/app/src/pages/api/admin/initCollectionPermission.ts`，仅面向系统 root；将存量 collection 物化为 collection 级权限快照——根 collection 以所属 dataset 有效 clbs 为父级、folder 递归，与升级共用同一同步原语；幂等，可断点续跑）。
+- **鉴权（初始化）**: 仅系统管理员（root）。该接口可跨团队批量迁移，不向团队 owner 开放。
 
 **输入定义**
 

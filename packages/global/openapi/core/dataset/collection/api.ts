@@ -286,8 +286,11 @@ export type GetCollectionCollaboratorListResponse = z.infer<
  * ============================================================================ */
 export const UpdateCollectionCollaboratorBodySchema = z.object({
   collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
+  // 暂沿用共享协作者 schema：当前仅校验正整数，未收紧为 collection 的 1/2/4/6/7 枚举。
+  // owner 必须随完整列表提交，并由服务端校验只能属于 collection.tmbId。
   collaborators: CollaboratorUpdateListSchema.meta({
-    description: '更新后的协作者权限列表，至少包含一个协作者且目标不可重复'
+    description:
+      '更新后的完整协作者权限列表（必须包含 owner），至少包含一个协作者且目标不可重复；权限值枚举校验待后续统一收紧'
   })
 });
 export type UpdateCollectionCollaboratorBody = z.infer<
