@@ -31,13 +31,34 @@ const MENU_WIDTH = 'min(954px, calc(100vw - 16px))';
 const MENU_HEIGHT = '337px';
 const FIRST_COLUMN_WIDTH = '200px';
 const CHILD_COLUMN_WIDTH = '280px';
+const PAGE_SIZE = 50;
+const PAGE_LOAD_THRESHOLD = 80;
+
+export type SkillOptionPageType = {
+  list: SkillItemType[];
+  total: number;
+};
+
+export type SkillOptionPageLoader = (
+  params: { offset: number; pageSize: number },
+  cancelToken?: AbortController
+) => Promise<SkillOptionPageType>;
+
+export type SkillFolderPageLoader = (
+  id: string,
+  source: string | undefined,
+  params: { offset: number; pageSize: number },
+  cancelToken?: AbortController
+) => Promise<SkillOptionPageType>;
 
 export type SkillOptionItemType = {
   description?: string;
   list: SkillItemType[];
+  total?: number;
   onSelect?: (id: string) => Promise<SkillOptionItemType | undefined>;
   onClick?: (id: string, source?: string) => Promise<SkillClickResult | undefined>;
-  onFolderLoad?: (id: string, source?: string) => Promise<SkillItemType[]>;
+  loadPage?: SkillOptionPageLoader;
+  onFolderLoad?: SkillFolderPageLoader;
 };
 
 export type SkillClickResult = {
@@ -67,6 +88,32 @@ export type SkillItemType = {
 const getSkillItemKey = (item: Pick<SkillItemType, 'id' | 'source'>) =>
   getToolIdentityKey(item.id, item.source);
 
+const mergeSkillItems = (current: SkillItemType[], incoming: SkillItemType[]) => {
+  const keys = new Set(current.map(getSkillItemKey));
+  return current.concat(
+    incoming.filter((item) => {
+      const key = getSkillItemKey(item);
+      if (keys.has(key)) return false;
+      keys.add(key);
+      return true;
+    })
+  );
+};
+
+type ColumnPageState = {
+  option: SkillOptionItemType;
+  offset: number;
+  total: number;
+  loading: boolean;
+  error: boolean;
+  lastRequestedOffset?: number;
+  loadedOffsets: Set<number>;
+  requestId: number;
+  controller?: AbortController;
+};
+
+type ColumnPageStateView = Pick<ColumnPageState, 'offset' | 'total' | 'loading' | 'error'>;
+
 export default function SkillPickerPlugin({
   skillOption,
   isFocus,
@@ -95,8 +142,13 @@ export default function SkillPickerPlugin({
   const [interactionMode, setInteractionMode] = useState<'mouse' | 'keyboard'>('mouse');
   const selectionRequestIdRef = useRef(0);
   const folderOptionsRef = useRef<Map<string, SkillOptionItemType>>(new Map());
-  const folderRequestsRef = useRef<Map<string, Promise<SkillItemType[]>>>(new Map());
+  const folderRequestsRef = useRef<
+    Map<string, { promise: Promise<SkillOptionPageType>; controller: AbortController }>
+  >(new Map());
   const [loadingFolderIds, setLoadingFolderIds] = useState<Set<string>>(new Set());
+  const columnPageStateRef = useRef<Map<number, ColumnPageState>>(new Map());
+  const columnElementRef = useRef<Map<number, HTMLDivElement>>(new Map());
+  const [columnPageStates, setColumnPageStates] = useState<Record<number, ColumnPageStateView>>({});
 
   // Refs for scroll management
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -110,7 +162,7 @@ export default function SkillPickerPlugin({
     if (!anchorElement || !menuElement) return;
 
     const menuRect = menuElement.getBoundingClientRect();
-    const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+    const viewportWidth = window.innerWidth;
     const edgePadding = 8;
     const maxLeft = Math.max(edgePadding, viewportWidth - menuRect.width - edgePadding);
     const nextLeft = Math.min(Math.max(menuRect.left, edgePadding), maxLeft);
@@ -130,8 +182,10 @@ export default function SkillPickerPlugin({
     }
 
     menuPositionFrameRef.current = requestAnimationFrame(() => {
-      menuPositionFrameRef.current = null;
-      updateMenuPosition();
+      menuPositionFrameRef.current = requestAnimationFrame(() => {
+        menuPositionFrameRef.current = null;
+        updateMenuPosition();
+      });
     });
   }, [updateMenuPosition]);
 
@@ -219,13 +273,195 @@ export default function SkillPickerPlugin({
     return undefined;
   }, []);
 
-  const appendColumn = useCallback((columnIndex: number, option?: SkillOptionItemType) => {
-    setSkillOptions((prev) => {
-      const next = prev.slice(0, columnIndex + 1);
-      if (option) next.push(option);
-      return next;
+  const publishColumnPageState = useCallback((columnIndex: number, state: ColumnPageState) => {
+    setColumnPageStates((prev) => ({
+      ...prev,
+      [columnIndex]: {
+        offset: state.offset,
+        total: state.total,
+        loading: state.loading,
+        error: state.error
+      }
+    }));
+  }, []);
+
+  const resetColumnPageState = useCallback(
+    (columnIndex: number, option?: SkillOptionItemType) => {
+      const currentState = columnPageStateRef.current.get(columnIndex);
+      if (option && currentState?.option === option) return;
+
+      currentState?.controller?.abort();
+
+      if (!option) {
+        columnPageStateRef.current.delete(columnIndex);
+        setColumnPageStates((prev) => {
+          if (!(columnIndex in prev)) return prev;
+          const next = { ...prev };
+          delete next[columnIndex];
+          return next;
+        });
+        return;
+      }
+
+      const total = option.total ?? option.list.length;
+      const nextState: ColumnPageState = {
+        option,
+        offset: option.list.length,
+        total,
+        loading: false,
+        error: false,
+        loadedOffsets: new Set(option.list.length > 0 || total === 0 ? [0] : []),
+        requestId: 0
+      };
+      columnPageStateRef.current.set(columnIndex, nextState);
+      publishColumnPageState(columnIndex, nextState);
+    },
+    [publishColumnPageState]
+  );
+
+  const clearColumnPageStatesAfter = useCallback((columnIndex: number) => {
+    columnPageStateRef.current.forEach((state, index) => {
+      if (index < columnIndex) return;
+      state.controller?.abort();
+      columnPageStateRef.current.delete(index);
+    });
+
+    setColumnPageStates((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      Object.keys(next).forEach((key) => {
+        if (Number(key) < columnIndex) return;
+        delete next[Number(key)];
+        changed = true;
+      });
+      return changed ? next : prev;
     });
   }, []);
+
+  const appendColumn = useCallback(
+    (columnIndex: number, option?: SkillOptionItemType) => {
+      if (option) {
+        resetColumnPageState(columnIndex + 1, option);
+      } else {
+        clearColumnPageStatesAfter(columnIndex + 1);
+      }
+
+      setSkillOptions((prev) => {
+        const next = prev.slice(0, columnIndex + 1);
+        if (option) next.push(option);
+        return next;
+      });
+    },
+    [clearColumnPageStatesAfter, resetColumnPageState]
+  );
+
+  const loadColumnPage = useCallback(
+    async (columnIndex: number, option: SkillOptionItemType, offset: number) => {
+      if (!option.loadPage) return;
+
+      let state = columnPageStateRef.current.get(columnIndex);
+      if (!state || state.option !== option) {
+        resetColumnPageState(columnIndex, option);
+        state = columnPageStateRef.current.get(columnIndex);
+      }
+      if (!state || state.loading || state.loadedOffsets.has(offset) || offset >= state.total) {
+        return;
+      }
+
+      const controller = new AbortController();
+      const requestId = state.requestId + 1;
+      state.loading = true;
+      state.error = false;
+      state.lastRequestedOffset = offset;
+      state.requestId = requestId;
+      state.controller = controller;
+      publishColumnPageState(columnIndex, state);
+
+      try {
+        const page = await option.loadPage({ offset, pageSize: PAGE_SIZE }, controller);
+        const latestState = columnPageStateRef.current.get(columnIndex);
+        if (
+          controller.signal.aborted ||
+          !latestState ||
+          latestState.option !== option ||
+          latestState.requestId !== requestId
+        ) {
+          return;
+        }
+
+        const nextOption: SkillOptionItemType = {
+          ...option,
+          list: mergeSkillItems(option.list, page.list),
+          total: page.total
+        };
+        latestState.option = nextOption;
+        latestState.offset = Math.max(latestState.offset, offset + page.list.length);
+        latestState.total = page.total;
+        latestState.loadedOffsets.add(offset);
+        latestState.loading = false;
+        latestState.error = false;
+        latestState.controller = undefined;
+
+        setSkillOptions((prev) => {
+          if (prev[columnIndex] !== option) return prev;
+          const next = [...prev];
+          next[columnIndex] = nextOption;
+          return next;
+        });
+        publishColumnPageState(columnIndex, latestState);
+      } catch (error) {
+        const latestState = columnPageStateRef.current.get(columnIndex);
+        if (
+          controller.signal.aborted ||
+          !latestState ||
+          latestState.option !== option ||
+          latestState.requestId !== requestId
+        ) {
+          return;
+        }
+
+        latestState.loading = false;
+        latestState.error = true;
+        latestState.controller = undefined;
+        publishColumnPageState(columnIndex, latestState);
+        void error;
+      }
+    },
+    [publishColumnPageState, resetColumnPageState]
+  );
+
+  const handleColumnScroll = useCallback(
+    (columnIndex: number) => {
+      const option = skillOptions[columnIndex];
+      const state = columnPageStateRef.current.get(columnIndex);
+      const element = columnElementRef.current.get(columnIndex);
+      if (
+        !option?.loadPage ||
+        !state ||
+        !element ||
+        state.loading ||
+        state.error ||
+        state.offset >= state.total
+      ) {
+        return;
+      }
+
+      if (element.scrollHeight - element.scrollTop - element.clientHeight <= PAGE_LOAD_THRESHOLD) {
+        void loadColumnPage(columnIndex, option, state.offset);
+      }
+    },
+    [loadColumnPage, skillOptions]
+  );
+
+  const retryColumnPage = useCallback(
+    (columnIndex: number) => {
+      const option = skillOptions[columnIndex];
+      const state = columnPageStateRef.current.get(columnIndex);
+      if (!option?.loadPage || !state || state.loading) return;
+      void loadColumnPage(columnIndex, option, state.lastRequestedOffset ?? state.offset);
+    },
+    [loadColumnPage, skillOptions]
+  );
 
   // Resolve the hovered item into the next navigation column.
   const { runAsync: handleItemSelect, loading: isItemSelectLoading } = useRequest(
@@ -252,28 +488,35 @@ export default function SkillPickerPlugin({
       if (item.isFolder && option.onFolderLoad) {
         const cachedOption = folderOptionsRef.current.get(itemKey);
         if (cachedOption) {
-          appendColumn(currentColumnIndex, {
-            ...cachedOption,
-            description: option.description,
-            onClick: option.onClick,
-            onFolderLoad: option.onFolderLoad
-          });
+          appendColumn(currentColumnIndex, cachedOption);
           return;
         }
 
         setLoadingFolderIds((prev) => new Set(prev).add(itemKey));
         let pendingRequest = folderRequestsRef.current.get(itemKey);
         if (!pendingRequest) {
-          pendingRequest = Promise.resolve().then(() => option.onFolderLoad!(item.id, item.source));
+          const controller = new AbortController();
+          const promise = Promise.resolve().then(() =>
+            option.onFolderLoad!(
+              item.id,
+              item.source,
+              { offset: 0, pageSize: PAGE_SIZE },
+              controller
+            )
+          );
+          pendingRequest = { promise, controller };
           folderRequestsRef.current.set(itemKey, pendingRequest);
         }
         try {
-          const list = await pendingRequest;
+          const page = await pendingRequest.promise;
           if (selectionRequestIdRef.current !== requestId) return;
 
           const nextOption: SkillOptionItemType = {
             description: option.description,
-            list,
+            list: page.list,
+            total: page.total,
+            loadPage: (params, cancelToken) =>
+              option.onFolderLoad!(item.id, item.source, params, cancelToken),
             onClick: option.onClick,
             onFolderLoad: option.onFolderLoad
           };
@@ -314,9 +557,16 @@ export default function SkillPickerPlugin({
   );
 
   useEffect(() => {
+    const columnPageStates = columnPageStateRef.current;
+    const folderRequests = folderRequestsRef.current;
     const timer = window.setTimeout(() => {
       selectionRequestIdRef.current += 1;
+      columnPageStates.forEach((state) => state.controller?.abort());
+      columnPageStates.clear();
+      folderRequests.forEach(({ controller }) => controller.abort());
+      folderRequests.clear();
       folderOptionsRef.current.clear();
+      setColumnPageStates({});
       setSkillOptions([skillOption]);
       setSelectedRowIndex({ 0: 0 });
       setCurrentColumnIndex(0);
@@ -336,8 +586,38 @@ export default function SkillPickerPlugin({
     return () => {
       window.clearTimeout(timer);
       selectionRequestIdRef.current += 1;
+      columnPageStates.forEach((state) => state.controller?.abort());
+      folderRequests.forEach(({ controller }) => controller.abort());
     };
   }, [handleItemSelect, skillOption]);
+
+  // Fill short columns so the next page is available without requiring a scrollbar first.
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    const frame = requestAnimationFrame(() => {
+      skillOptions.forEach((option, columnIndex) => {
+        const state = columnPageStateRef.current.get(columnIndex);
+        const element = columnElementRef.current.get(columnIndex);
+        if (
+          !option.loadPage ||
+          !state ||
+          !element ||
+          state.loading ||
+          state.error ||
+          state.offset >= state.total
+        ) {
+          return;
+        }
+
+        if (element.scrollHeight <= element.clientHeight + PAGE_LOAD_THRESHOLD) {
+          void loadColumnPage(columnIndex, option, state.offset);
+        }
+      });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [columnPageStates, isMenuOpen, loadColumnPage, skillOptions]);
 
   const insertSkillNodeText = useCallback(
     (skillId: string, matchingString?: string | null) => {
@@ -593,6 +873,7 @@ export default function SkillPickerPlugin({
           setCurrentRowIndex(() => newRowIndex);
 
           // Only keep data up to and including the current column
+          clearColumnPageStatesAfter(newColumnIndex + 1);
           setSkillOptions((state) => {
             return state.slice(0, newColumnIndex + 1);
           });
@@ -695,7 +976,8 @@ export default function SkillPickerPlugin({
     handleItemClick,
     selectedRowIndex,
     scrollIntoView,
-    getItemChildOption
+    getItemChildOption,
+    clearColumnPageStatesAfter
   ]);
 
   const isExpandable = useCallback(
@@ -832,11 +1114,24 @@ export default function SkillPickerPlugin({
       columnIndex: number,
       onSelectOption?: (item: SkillItemType, option: SkillOptionItemType) => void
     ) => {
+      const pageState = columnPageStates[columnIndex];
+      const canLoadMore = Boolean(
+        columnData.loadPage && pageState && pageState.offset < pageState.total
+      );
+
       return (
         <MyBox
           isLoading={
-            currentColumnIndex === columnIndex && (isItemSelectLoading || isItemClickLoading)
+            (currentColumnIndex === columnIndex && (isItemSelectLoading || isItemClickLoading)) ||
+            (pageState?.loading === true && columnData.list.length === 0)
           }
+          ref={(element) => {
+            if (element) {
+              columnElementRef.current.set(columnIndex, element as HTMLDivElement);
+            } else {
+              columnElementRef.current.delete(columnIndex);
+            }
+          }}
           key={columnIndex}
           p={1.5}
           borderRadius={'6px'}
@@ -847,6 +1142,7 @@ export default function SkillPickerPlugin({
           flexShrink={0}
           overflowY={'auto'}
           overflowX={'hidden'}
+          onScroll={() => handleColumnScroll(columnIndex)}
           sx={{
             scrollbarColor: 'var(--chakra-colors-myGray-300) transparent',
             scrollbarWidth: 'thin',
@@ -863,15 +1159,48 @@ export default function SkillPickerPlugin({
             </Box>
           )}
           {renderItemList(columnData.list, columnData, columnIndex, onSelectOption)}
-          {columnData.list.length === 0 && (
+          {columnData.list.length === 0 && !pageState?.loading && !pageState?.error && (
             <Box color={'myGray.400'} fontSize={'xs'} lineHeight={'20px'} h={'20px'}>
               {t('app:empty_folder')}
+            </Box>
+          )}
+          {canLoadMore && pageState?.loading && columnData.list.length > 0 && (
+            <Box h={6} display={'flex'} alignItems={'center'} justifyContent={'center'}>
+              <MyIcon name={'common/loading'} w={4} color={'myGray.400'} />
+            </Box>
+          )}
+          {canLoadMore && pageState?.error && (
+            <Box
+              h={6}
+              display={'flex'}
+              alignItems={'center'}
+              justifyContent={'center'}
+              cursor={'pointer'}
+              title={t('common:core.chat.retry')}
+              aria-label={t('common:core.chat.retry')}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                retryColumnPage(columnIndex);
+              }}
+            >
+              <MyIcon name={'common/retryLight'} w={4} color={'myGray.500'} />
             </Box>
           )}
         </MyBox>
       );
     },
-    [currentColumnIndex, isItemClickLoading, isItemSelectLoading, renderItemList, t]
+    [
+      columnPageStates,
+      currentColumnIndex,
+      handleColumnScroll,
+      isItemClickLoading,
+      isItemSelectLoading,
+      renderItemList,
+      retryColumnPage,
+      t
+    ]
   );
 
   // For LexicalTypeaheadMenuPlugin compatibility
@@ -936,7 +1265,6 @@ export default function SkillPickerPlugin({
               menuElementRef.current = element;
             }}
             visibility={shouldShow ? 'visible' : 'hidden'}
-            position="relative"
             zIndex={99999}
             w={MENU_WIDTH}
             h={MENU_HEIGHT}

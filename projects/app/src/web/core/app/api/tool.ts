@@ -5,6 +5,10 @@ import type {
 } from '@fastgpt/global/core/workflow/type/node';
 import type { PaginationResponseType } from '@fastgpt/global/openapi/api';
 import type {
+  ListToolSetV2BodyType,
+  ListToolSetV2ResponseType
+} from '@fastgpt/global/openapi/core/app/toolSet/api';
+import type {
   ListAppV2BodyType,
   ListAppV2ResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
@@ -126,34 +130,38 @@ export const getTeamAppTemplates = async (data?: {
 
 /** Load one paginated team app template page while preserving toolset child behavior. */
 export const getTeamAppTemplatesV2 = async (
-  data: TeamAppTemplatesV2Query
+  data: TeamAppTemplatesV2Query,
+  cancelToken?: AbortController
 ): Promise<PaginationResponseType<NodeTemplateListItemType>> => {
   const { parentId, searchKey, type, excludeAppId, ...pagination } = data;
 
   if (parentId) {
     const parent = await getAppDetailById(parentId);
     if (parent.type === AppTypeEnum.mcpToolSet || parent.type === AppTypeEnum.httpToolSet) {
-      const list = await getTeamAppTemplates({ parentId, searchKey, type });
-      return {
-        list,
-        total: list.length
-      };
+      return getToolSetListV2({ parentId, searchKey, ...pagination }, cancelToken);
     }
   }
 
-  const response = await getMyAppsV2({
-    ...pagination,
-    parentId,
-    searchKey,
-    type,
-    excludeAppId
-  });
+  const response = await getMyAppsV2(
+    {
+      ...pagination,
+      parentId,
+      searchKey,
+      type,
+      excludeAppId
+    },
+    cancelToken
+  );
 
   return {
     list: response.list.map(mapAppToTeamTemplate),
     total: response.total
   };
 };
+
+/** Fetch one paginated page from an MCP or HTTP toolset. */
+export const getToolSetListV2 = (data: ListToolSetV2BodyType, cancelToken?: AbortController) =>
+  POST<ListToolSetV2ResponseType>('/core/app/toolSet/listV2', data, { cancelToken });
 
 /* ============ Tool ============== */
 export const getAppToolTemplates = (data: GetSystemToolTemplatesBodyType) =>

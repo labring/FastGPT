@@ -1,6 +1,8 @@
 import type {
   SkillOptionItemType,
-  SkillItemType
+  SkillItemType,
+  SkillOptionPageLoader,
+  SkillOptionPageType
 } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillPickerPlugin';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -23,20 +25,15 @@ import type {
 import {
   getAppToolTemplates,
   getClientToolPreviewNode,
-  getTeamAppTemplates
+  getTeamAppTemplatesV2
 } from '@/web/core/app/api/tool';
-import {
-  AppFolderTypeList,
-  AppTypeEnum,
-  AppTypeList,
-  ToolTypeList
-} from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum, AppTypeList, ToolTypeList } from '@fastgpt/global/core/app/constants';
 import { useLatest } from 'ahooks';
 import { SubAppIds, systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { AGENT_SANDBOX_TOOLSET_ID } from '@fastgpt/global/core/ai/sandbox/tools';
 import type { SkillClickResult } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillPickerPlugin';
-import { getAllSkillList } from '@/web/core/skill/api';
+import { getSkillListV2 } from '@/web/core/skill/api';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
 import { inheritToolInputConfig } from '../../FormComponent/ToolSelector/utils';
@@ -44,6 +41,8 @@ import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 
 const ConfigToolModal = dynamic(() => import('../../component/ConfigToolModal'));
 type AgentSkillListItemType = ListSkillsResponse['list'][number];
+type SkillPickerPageParams = Parameters<SkillOptionPageLoader>[0];
+const SKILL_PICKER_PAGE_SIZE = 50;
 
 const getSkillId = (id?: string, source?: string) =>
   source ? getToolIdentityKey(id, source) : id || '';
@@ -70,6 +69,21 @@ const toSkillLabelItem = (
 
 const toSystemToolItem = (item: NodeTemplateListItemType, parentId?: string): SkillItemType => {
   const isFolder = item.isFolder || item.flowNodeType === FlowNodeTypeEnum.toolSet;
+
+  return {
+    parentId: item.parentId ?? parentId,
+    id: item.id,
+    source: item.source,
+    label: item.name,
+    icon: item.avatar,
+    description: item.intro,
+    isFolder,
+    canClick: !isFolder
+  };
+};
+
+const toTeamAppItem = (item: NodeTemplateListItemType, parentId?: string): SkillItemType => {
+  const isFolder = item.isFolder ?? false;
 
   return {
     parentId: item.parentId ?? parentId,
@@ -129,10 +143,20 @@ export const useSkillManager = ({
   const { toast } = useToast();
 
   /* ===== System tool ===== */
-  const onFolderLoadSystemTools = useCallback(async (folderId: string, source?: string) => {
-    const data = await getAppToolTemplates({ parentId: folderId, source });
-    return data.map((item) => toSystemToolItem(item, folderId));
-  }, []);
+  const onFolderLoadSystemTools = useCallback(
+    async (
+      folderId: string,
+      source: string | undefined,
+      { offset, pageSize }: SkillPickerPageParams
+    ): Promise<SkillOptionPageType> => {
+      const data = await getAppToolTemplates({ parentId: folderId, source });
+      return {
+        list: data.slice(offset, offset + pageSize).map((item) => toSystemToolItem(item, folderId)),
+        total: data.length
+      };
+    },
+    []
+  );
 
   const { data: systemTools = [] } = useRequest(
     async () => {
@@ -188,29 +212,33 @@ export const useSkillManager = ({
   );
 
   /* ===== Team agents/tools ===== */
-  const onFolderLoadTeamApps = useCallback(async (folderId: string, types: AppTypeEnum[]) => {
-    const children = await getTeamAppTemplates({ parentId: folderId, type: types });
-
-    if (!children || children.length === 0) {
-      return [];
-    }
-
-    return children.map<SkillItemType>((item) => {
+  const loadTeamAppPage = useCallback(
+    async (
+      parentId: string | null,
+      types: AppTypeEnum[],
+      params: SkillPickerPageParams,
+      cancelToken?: AbortController
+    ): Promise<SkillOptionPageType> => {
+      const response = await getTeamAppTemplatesV2(
+        {
+          parentId,
+          type: types,
+          ...params
+        },
+        cancelToken
+      );
       return {
-        parentId: folderId,
-        id: item.id,
-        label: item.name,
-        icon: item.avatar,
-        isFolder: item.isFolder ?? false,
-        canClick: !AppFolderTypeList.includes(item.appType)
+        list: response.list.map((item) => toTeamAppItem(item, parentId ?? undefined)),
+        total: response.total
       };
-    });
-  }, []);
+    },
+    []
+  );
 
-  const rootListCacheRef = useRef<Map<string, SkillItemType[]>>(new Map());
-  const rootListRequestsRef = useRef<Map<string, Promise<SkillItemType[]>>>(new Map());
-  /** Cache successful root lists while sharing an in-flight request per category. */
-  const loadRootList = useCallback((key: string, loader: () => Promise<SkillItemType[]>) => {
+  const rootListCacheRef = useRef<Map<string, SkillOptionPageType>>(new Map());
+  const rootListRequestsRef = useRef<Map<string, Promise<SkillOptionPageType>>>(new Map());
+  /** Cache the first page while sharing an in-flight request per category. */
+  const loadRootPage = useCallback((key: string, loader: () => Promise<SkillOptionPageType>) => {
     if (rootListCacheRef.current.has(key)) {
       return Promise.resolve(rootListCacheRef.current.get(key)!);
     }
@@ -219,13 +247,9 @@ export const useSkillManager = ({
     if (pendingRequest) return pendingRequest;
 
     const request = loader()
-      .then((list) => {
-        rootListCacheRef.current.set(key, list);
-        return list;
-      })
-      .catch(() => {
-        // Keep failures silent and uncached so the next visit can retry.
-        return [];
+      .then((page) => {
+        rootListCacheRef.current.set(key, page);
+        return page;
       })
       .finally(() => {
         rootListRequestsRef.current.delete(key);
@@ -248,13 +272,26 @@ export const useSkillManager = ({
   }, []);
 
   const onFolderLoadAgentSkills = useCallback(
-    async (folderId: string) => {
-      const list = await getAllSkillList({
-        source: 'mine',
-        parentId: folderId,
-        withAppCount: false
-      });
-      return cacheAgentSkillList(list);
+    async (
+      folderId: string,
+      _source: string | undefined,
+      { offset, pageSize }: SkillPickerPageParams,
+      cancelToken?: AbortController
+    ): Promise<SkillOptionPageType> => {
+      const response = await getSkillListV2(
+        {
+          source: 'mine',
+          parentId: folderId,
+          offset,
+          pageSize,
+          withAppCount: false
+        },
+        cancelToken
+      );
+      return {
+        list: cacheAgentSkillList(response.list),
+        total: response.total
+      };
     },
     [cacheAgentSkillList]
   );
@@ -405,74 +442,85 @@ export const useSkillManager = ({
     ]
   );
 
-  /** Lazily load the root-level tools and preserve the folder loader contract. */
+  /** Lazily load the first page of tools and keep later pages on the same loader. */
   const loadMyTools = useCallback(async () => {
-    const list = await loadRootList('myTools', async () => {
-      const apps = await getTeamAppTemplates({
-        parentId: null,
-        type: [AppTypeEnum.toolFolder, ...ToolTypeList]
-      });
-
-      return apps.map((item) => ({
-        id: item.id,
-        label: item.name,
-        icon: item.avatar,
-        isFolder: item.isFolder ?? false,
-        canClick: !AppFolderTypeList.includes(item.appType)
-      }));
-    });
+    const types = [AppTypeEnum.toolFolder, ...ToolTypeList];
+    const firstPage = await loadRootPage('myTools', () =>
+      loadTeamAppPage(null, types, { offset: 0, pageSize: SKILL_PICKER_PAGE_SIZE })
+    );
 
     return {
       description: t('app:space_to_expand_folder'),
-      list,
-      onFolderLoad: (folderId: string) => onFolderLoadTeamApps(folderId, ToolTypeList),
+      list: firstPage.list,
+      total: firstPage.total,
+      loadPage: (params: SkillPickerPageParams, cancelToken?: AbortController) =>
+        loadTeamAppPage(null, types, params, cancelToken),
+      onFolderLoad: (
+        folderId: string,
+        _source: string | undefined,
+        params: SkillPickerPageParams,
+        cancelToken?: AbortController
+      ) => loadTeamAppPage(folderId, ToolTypeList, params, cancelToken),
       onClick: onAddAppOrTool
     };
-  }, [loadRootList, onAddAppOrTool, onFolderLoadTeamApps, t]);
+  }, [loadRootPage, loadTeamAppPage, onAddAppOrTool, t]);
 
-  /** Lazily load the root-level agents and preserve the folder loader contract. */
+  /** Lazily load the first page of agents and keep later pages on the same loader. */
   const loadMyAgents = useCallback(async () => {
-    const list = await loadRootList('agent', async () => {
-      const apps = await getTeamAppTemplates({
-        parentId: null,
-        type: [AppTypeEnum.folder, ...AppTypeList]
-      });
-
-      return apps.map((item) => ({
-        id: item.id,
-        label: item.name,
-        icon: item.avatar,
-        isFolder: item.isFolder ?? false,
-        canClick: !AppFolderTypeList.includes(item.appType)
-      }));
-    });
+    const types = [AppTypeEnum.folder, ...AppTypeList];
+    const firstPage = await loadRootPage('agent', () =>
+      loadTeamAppPage(null, types, { offset: 0, pageSize: SKILL_PICKER_PAGE_SIZE })
+    );
 
     return {
       description: t('app:space_to_expand_folder'),
-      list,
-      onFolderLoad: (folderId: string) => onFolderLoadTeamApps(folderId, AppTypeList),
+      list: firstPage.list,
+      total: firstPage.total,
+      loadPage: (params: SkillPickerPageParams, cancelToken?: AbortController) =>
+        loadTeamAppPage(null, types, params, cancelToken),
+      onFolderLoad: (
+        folderId: string,
+        _source: string | undefined,
+        params: SkillPickerPageParams,
+        cancelToken?: AbortController
+      ) => loadTeamAppPage(folderId, AppTypeList, params, cancelToken),
       onClick: onAddAppOrTool
     };
-  }, [loadRootList, onAddAppOrTool, onFolderLoadTeamApps, t]);
+  }, [loadRootPage, loadTeamAppPage, onAddAppOrTool, t]);
 
-  /** Lazily load associated skills and update the skill lookup map for selection. */
+  /** Lazily load the first page of associated skills and update the lookup map. */
   const loadAgentSkills = useCallback(async () => {
-    const list = await loadRootList('agentSkill', async () => {
-      const skills = await getAllSkillList({
-        source: 'mine',
-        parentId: '',
-        withAppCount: false
-      });
-      return cacheAgentSkillList(skills);
-    });
+    const loadPage = async (
+      params: SkillPickerPageParams,
+      cancelToken?: AbortController
+    ): Promise<SkillOptionPageType> => {
+      const response = await getSkillListV2(
+        {
+          source: 'mine',
+          parentId: null,
+          withAppCount: false,
+          ...params
+        },
+        cancelToken
+      );
+      return {
+        list: cacheAgentSkillList(response.list),
+        total: response.total
+      };
+    };
+    const firstPage = await loadRootPage('agentSkill', () =>
+      loadPage({ offset: 0, pageSize: SKILL_PICKER_PAGE_SIZE })
+    );
 
     return {
       description: t('app:space_to_expand_folder'),
-      list,
+      list: firstPage.list,
+      total: firstPage.total,
+      loadPage,
       onFolderLoad: onFolderLoadAgentSkills,
       onClick: onAddSkill
     };
-  }, [cacheAgentSkillList, loadRootList, onAddSkill, onFolderLoadAgentSkills, t]);
+  }, [cacheAgentSkillList, loadRootPage, onAddSkill, onFolderLoadAgentSkills, t]);
 
   /* ===== Skill option ===== */
   const skillOption = useMemo<SkillOptionItemType>(() => {
