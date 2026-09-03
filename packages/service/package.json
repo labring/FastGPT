@@ -60,7 +60,7 @@
     "minio": "catalog:",
     "mongoose": "catalog:",
     "multer": "2.2.0",
-    "mysql2": "^3.11.3",
+    "mysql2": "^3.23.1",
     "node-cron": "^3.0.3",
     "p-limit": "^7.2.0",
     "papaparse": "5.4.1",
