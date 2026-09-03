@@ -1,13 +1,7 @@
 import React from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { getTeamAppTemplates } from '@/web/core/app/api/tool';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import {
-  isHttpToolSetRuntimeConfig,
-  isMcpToolSetRuntimeConfig,
-  type FlowNodeTemplateType
-} from '@fastgpt/global/core/workflow/type/node';
+import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 
 type ToolSetListItemType = {
   name: string;
@@ -15,48 +9,12 @@ type ToolSetListItemType = {
 };
 
 export const getNodeToolSetList = (tool: Pick<FlowNodeTemplateType, 'toolConfig'>) => {
-  const mcpToolSet = tool.toolConfig?.mcpToolSet;
-  const httpToolSet = tool.toolConfig?.httpToolSet;
   const toolList =
-    (isMcpToolSetRuntimeConfig(mcpToolSet) ? mcpToolSet.toolList : undefined) ??
-    (isHttpToolSetRuntimeConfig(httpToolSet) ? httpToolSet.toolList : undefined) ??
+    tool.toolConfig?.mcpToolSet?.toolList ??
+    tool.toolConfig?.httpToolSet?.toolList ??
     tool.toolConfig?.systemToolSet?.toolList;
 
   return toolList ?? [];
-};
-
-const getNodeToolSetId = (tool: Pick<FlowNodeTemplateType, 'toolConfig'>) => {
-  const mcpToolSet = tool.toolConfig?.mcpToolSet;
-  if (mcpToolSet && 'toolId' in mcpToolSet) return mcpToolSet.toolId;
-
-  const httpToolSet = tool.toolConfig?.httpToolSet;
-  if (httpToolSet && 'toolId' in httpToolSet) return httpToolSet.toolId;
-
-  return undefined;
-};
-
-/** Load toolset children for workflow references that only persist the parent ID. */
-export const useNodeToolSetList = (tool: Pick<FlowNodeTemplateType, 'toolConfig'>) => {
-  const localToolList = getNodeToolSetList(tool);
-  const toolSetId = getNodeToolSetId(tool);
-  const { data: remoteToolList = [] } = useRequest(
-    async () => {
-      if (!toolSetId) return [];
-
-      const tools = await getTeamAppTemplates({ parentId: toolSetId });
-      return tools.map((item) => ({
-        name: item.name,
-        description: item.intro
-      }));
-    },
-    {
-      manual: !toolSetId,
-      refreshDeps: [toolSetId],
-      errorToast: ''
-    }
-  );
-
-  return localToolList.length > 0 || !toolSetId ? localToolList : remoteToolList;
 };
 
 const ToolSetList = ({

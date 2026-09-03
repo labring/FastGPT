@@ -1,6 +1,6 @@
 import { Box, Flex } from '@chakra-ui/react';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import styles from '../FormComponent/styles.module.scss';
 import { cardStyles } from '../../constants';
 import AppCard from './AppCard';
@@ -11,7 +11,6 @@ import { type HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../../context';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { isHttpToolSetRuntimeConfig } from '@fastgpt/global/core/workflow/type/node';
 
 const Edit = () => {
   const { isPc } = useSystem();
@@ -20,14 +19,14 @@ const Edit = () => {
     const toolSetNode = appDetail.modules.find(
       (item) => item.flowNodeType === FlowNodeTypeEnum.toolSet
     );
-    const toolSet = toolSetNode?.toolConfig?.httpToolSet;
-    return isHttpToolSetRuntimeConfig(toolSet) ? toolSet : undefined;
+    return toolSetNode?.toolConfig?.httpToolSet;
   }, [appDetail.modules]);
 
+  const [currentTool, setCurrentTool] = useState<HttpToolConfigType | undefined>(
+    toolSetData?.toolList?.[0]
+  );
   const baseUrl = toolSetData?.baseUrl ?? '';
   const toolList = toolSetData?.toolList ?? [];
-  const [currentToolName, setCurrentToolName] = useState<string | undefined>(toolList[0]?.name);
-  const currentTool = toolList.find((tool) => tool.name === currentToolName) ?? toolList[0];
   const apiSchemaStr = toolSetData?.apiSchemaStr;
   const headerSecret = toolSetData?.headerSecret ?? {};
   const customHeaders = toolSetData?.customHeaders;
@@ -38,6 +37,20 @@ const Edit = () => {
       return {};
     }
   }, [customHeaders]);
+
+  useEffect(() => {
+    if (!currentTool || toolList.length === 0) {
+      setCurrentTool(toolList[0]);
+      return;
+    }
+
+    const updatedTool = toolList.find((tool) => tool.name === currentTool.name);
+    if (updatedTool) {
+      setCurrentTool(updatedTool);
+    } else {
+      setCurrentTool(toolList[0]);
+    }
+  }, [toolSetData]);
 
   return (
     <MyBox
@@ -64,7 +77,7 @@ const Edit = () => {
         <Box mt={4} {...cardStyles} flex={'1 0 0'} overflow={'auto'} boxShadow={'2'}>
           <EditForm
             currentTool={currentTool}
-            setCurrentTool={(tool: HttpToolConfigType) => setCurrentToolName(tool.name)}
+            setCurrentTool={setCurrentTool}
             toolList={toolList}
             baseUrl={baseUrl}
             apiSchemaStr={apiSchemaStr}

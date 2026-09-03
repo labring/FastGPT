@@ -46,8 +46,6 @@ import {
 } from '@fastgpt/global/core/workflow/utils';
 import { Types } from 'mongoose';
 import { getMCPChildren } from '../../mcp';
-import { getHTTPToolList } from '../../http';
-import { decodeToolSetNodesFromStorage } from '../../jsonSchemaStorage';
 import { MongoApp } from '../../schema';
 import { getAppVersionById, checkIsLatestVersion } from '../../version/controller';
 import { SystemToolRepo } from '../systemTool/systemTool.repo';
@@ -309,24 +307,14 @@ export async function getClientToolPreviewNode({
         if (!item) return Promise.reject(PluginErrEnum.unExist);
         if (AppFolderTypeList.includes(item.type)) return Promise.reject(PluginErrEnum.unExist);
 
-        const isToolSetApp =
-          item.type === AppTypeEnum.mcpToolSet || item.type === AppTypeEnum.httpToolSet;
-        const version = isToolSetApp
-          ? {
-              versionId: undefined,
-              versionName: undefined,
-              nodes: decodeToolSetNodesFromStorage(item.modules),
-              edges: item.edges,
-              chatConfig: item.chatConfig
-            }
-          : await getAppVersionById({
-              appId: pluginId,
-              versionId: versionId || undefined,
-              app: item
-            });
+        const version = await getAppVersionById({
+          appId: pluginId,
+          versionId: versionId || undefined,
+          app: item
+        });
 
         const isLatest =
-          !isToolSetApp && version.versionId && Types.ObjectId.isValid(version.versionId)
+          version.versionId && Types.ObjectId.isValid(version.versionId)
             ? await checkIsLatestVersion({
                 appId: pluginId,
                 versionId: version.versionId
@@ -334,22 +322,18 @@ export async function getClientToolPreviewNode({
             : true;
 
         // Adapt
-        if (item.type === AppTypeEnum.mcpToolSet && !version.nodes[0]?.toolConfig) {
+        if (item.type === AppTypeEnum.mcpToolSet && !version.nodes[0].toolConfig) {
           const children = await getMCPChildren(item);
-          version.nodes[0] = {
-            ...version.nodes[0],
-            toolConfig: {
-              mcpToolSet: {
-                toolList: children,
-                url: '',
-                headerSecret: {}
-              }
+          version.nodes[0].toolConfig = {
+            mcpToolSet: {
+              toolList: children,
+              url: '',
+              headerSecret: {}
             }
           };
         }
 
-        const shouldReturnVersion =
-          !isToolSetApp && (versionId ? true : versionId === undefined && getLatestVersion);
+        const shouldReturnVersion = versionId ? true : versionId === undefined && getLatestVersion;
 
         return {
           id: String(item._id),
@@ -382,12 +366,23 @@ export async function getClientToolPreviewNode({
         const item = await MongoApp.findById(parentId).lean();
         if (!item) return Promise.reject(PluginErrEnum.unExist);
 
+        const version = await getAppVersionById({
+          appId: parentId,
+          versionId: versionId || undefined,
+          app: item
+        });
+        const toolConfig = version.nodes[0].toolConfig?.mcpToolSet;
         const tool = await (async () => {
           const matchTool = <T extends { name: string }>(tools: T[]) =>
             getToolNameCandidates(toolName)
               .map((name) => tools.find((item) => item.name === name))
               .find(Boolean);
 
+          if (toolConfig?.toolList) {
+            // new mcp toolset
+            return matchTool(toolConfig.toolList);
+          }
+          // old mcp toolset
           return matchTool(await getMCPChildren(item));
         })();
         if (!tool) return Promise.reject(PluginErrEnum.unExist);
@@ -422,10 +417,20 @@ export async function getClientToolPreviewNode({
         const item = await MongoApp.findById(parentId).lean();
         if (!item) return Promise.reject(PluginErrEnum.unExist);
 
-        const toolList = await getHTTPToolList(item);
-        const tool = getToolNameCandidates(toolName)
-          .map((name) => toolList.find((item) => item.name === name))
-          .find(Boolean);
+        const version = await getAppVersionById({
+          appId: parentId,
+          versionId: versionId || undefined,
+          app: item
+        });
+        const toolConfig = version.nodes[0].toolConfig?.httpToolSet;
+        const tool = await (async () => {
+          if (toolConfig?.toolList) {
+            return getToolNameCandidates(toolName)
+              .map((name) => toolConfig.toolList.find((item) => item.name === name))
+              .find(Boolean);
+          }
+          return undefined;
+        })();
         if (!tool) return Promise.reject(PluginErrEnum.unExist);
         return {
           avatar: item.avatar,
@@ -488,10 +493,7 @@ export async function getClientToolPreviewNode({
         // mcp tools
         return {
           flowNodeType: FlowNodeTypeEnum.toolSet,
-          nodeIOConfig: toolSetData2FlowNodeIO({
-            nodes: app.workflow.nodes,
-            toolId: app.id
-          })
+          nodeIOConfig: toolSetData2FlowNodeIO({ nodes: app.workflow.nodes })
         };
       }
 

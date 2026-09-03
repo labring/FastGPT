@@ -415,27 +415,14 @@ export const toolData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }) =
   };
 };
 
-export const toolSetData2FlowNodeIO = ({
-  nodes,
-  toolId
-}: {
-  nodes: StoreNodeItemType[];
-  toolId?: string;
-}) => {
+export const toolSetData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }) => {
   const toolSetNode = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet);
 
-  // Toolset source apps keep the full config; client-side workflow references only keep the ID.
+  // 加工 toolConfig, 移除一些无需返回客户端以及无需单独存储到 node 的数据。
   const toolConfig: NodeToolConfigType | undefined = (() => {
     if (!toolSetNode?.toolConfig) return undefined;
 
-    if (toolSetNode.toolConfig.httpToolSet && 'toolList' in toolSetNode.toolConfig.httpToolSet) {
-      if (toolId ?? toolSetNode.pluginId) {
-        return {
-          ...toolSetNode.toolConfig,
-          httpToolSet: { toolId: toolId ?? toolSetNode.pluginId! }
-        };
-      }
-
+    if (toolSetNode.toolConfig.httpToolSet) {
       const toolList = toolSetNode.toolConfig.httpToolSet.toolList.map((tool) => {
         const restTool = { ...tool };
         delete restTool.requestSchema;
@@ -450,14 +437,7 @@ export const toolSetData2FlowNodeIO = ({
         }
       };
     }
-    if (toolSetNode.toolConfig.mcpToolSet && 'toolList' in toolSetNode.toolConfig.mcpToolSet) {
-      if (toolId ?? toolSetNode.pluginId) {
-        return {
-          ...toolSetNode.toolConfig,
-          mcpToolSet: { toolId: toolId ?? toolSetNode.pluginId! }
-        };
-      }
-
+    if (toolSetNode.toolConfig.mcpToolSet) {
       const formatToolList = toolSetNode.toolConfig.mcpToolSet.toolList.map((tool) => {
         const restTool = { ...tool };
         delete restTool.inputSchema;

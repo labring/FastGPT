@@ -21,16 +21,12 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
 import { formatModels } from '@fastgpt/global/core/workflow/utils';
 import { getSystemDefaultModelIds } from '@fastgpt/service/core/ai/model';
+import { stripWorkflowToolSchemasForStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
 import {
   PublishAppBodySchema,
   PublishAppQuerySchema,
   PublishAppResponseSchema
 } from '@fastgpt/global/openapi/core/app/version/api';
-import {
-  compactToolSetNodesForStorage,
-  encodeToolSetNodesForStorage
-} from '@fastgpt/service/core/app/jsonSchemaStorage';
-import { ToolSetAppTypeList } from '@fastgpt/global/core/app/constants';
 
 async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   const {
@@ -61,9 +57,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     nodes: normalizedWorkflow.nodes,
     teamId
   });
-  const storageNodes = ToolSetAppTypeList.includes(app.type)
-    ? encodeToolSetNodesForStorage(normalizedWorkflow.nodes)
-    : compactToolSetNodesForStorage(normalizedWorkflow.nodes);
+  const storageNodes = stripWorkflowToolSchemasForStorage(normalizedWorkflow.nodes);
   if (isPublish) {
     await validatePublishAppAgentSkillReadPermissions({
       nodes: normalizedWorkflow.nodes,

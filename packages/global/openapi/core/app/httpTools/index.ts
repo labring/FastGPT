@@ -5,8 +5,6 @@ import {
   CreateHttpToolsBodySchema,
   UpdateHttpToolsBodySchema,
   UpdateHttpToolsResponseSchema,
-  GetHttpChildrenQuerySchema,
-  GetHttpChildrenResponseSchema,
   GetApiSchemaByUrlBodySchema,
   GetApiSchemaByUrlResponseSchema,
   RunHttpToolBodySchema,
@@ -56,24 +54,6 @@ export const HttpToolsPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: UpdateHttpToolsResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/app/httpTools/getChildren': {
-    get: {
-      summary: '获取 HTTP 工具集子工具',
-      description: '获取 HTTP 工具集中的子工具列表',
-      tags: [DevApiTagsMap.httpTools],
-      requestParams: { query: GetHttpChildrenQuerySchema },
-      responses: {
-        200: {
-          description: '成功获取 HTTP 工具列表',
-          content: {
-            'application/json': {
-              schema: GetHttpChildrenResponseSchema
             }
           }
         }

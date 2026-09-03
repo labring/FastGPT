@@ -5,14 +5,14 @@ import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/sys
 
 const {
   authAppByTmbIdMock,
-  mongoAppFindByIdMock,
+  getAppVersionByIdMock,
   runHTTPToolMock,
   mcpToolCallMock,
   runToolStreamMock,
   getSystemToolRuntimeMock
 } = vi.hoisted(() => ({
   authAppByTmbIdMock: vi.fn(),
-  mongoAppFindByIdMock: vi.fn(),
+  getAppVersionByIdMock: vi.fn(),
   runHTTPToolMock: vi.fn(),
   mcpToolCallMock: vi.fn(),
   runToolStreamMock: vi.fn(),
@@ -23,30 +23,13 @@ vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
   authAppByTmbId: authAppByTmbIdMock
 }));
 
-vi.mock('@fastgpt/service/core/app/schema', async () => {
-  const actual = await vi.importActual<typeof import('@fastgpt/service/core/app/schema')>(
-    '@fastgpt/service/core/app/schema'
-  );
+vi.mock('@fastgpt/service/core/app/version/controller', () => ({
+  getAppVersionById: getAppVersionByIdMock
+}));
 
-  return {
-    ...actual,
-    MongoApp: {
-      ...actual.MongoApp,
-      findById: mongoAppFindByIdMock
-    }
-  };
-});
-
-vi.mock('@fastgpt/service/core/app/http', async () => {
-  const actual = await vi.importActual<typeof import('@fastgpt/service/core/app/http')>(
-    '@fastgpt/service/core/app/http'
-  );
-
-  return {
-    ...actual,
-    runHTTPTool: runHTTPToolMock
-  };
-});
+vi.mock('@fastgpt/service/core/app/http', () => ({
+  runHTTPTool: runHTTPToolMock
+}));
 
 vi.mock('@fastgpt/service/core/app/mcp', () => ({
   assertMCPUrlNotInternal: vi.fn(),
@@ -206,31 +189,29 @@ describe('dispatchTool runtime toolset auth', () => {
       appId: 'victim-toolset',
       per: ReadPermissionVal
     });
+    expect(getAppVersionByIdMock).not.toHaveBeenCalled();
     expect(runHTTPToolMock).not.toHaveBeenCalled();
     expect(result.response).toBeTruthy();
   });
 
   it('should authorize HTTP parent toolset before agent tool execution', async () => {
-    mongoAppFindByIdMock.mockReturnValueOnce({
-      lean: vi.fn().mockResolvedValue({
-        _id: 'victim-toolset',
-        modules: [
-          {
-            toolConfig: {
-              httpToolSet: {
-                baseUrl: 'https://example.com',
-                toolList: [
-                  {
-                    name: 'sandbox_echo',
-                    path: '/echo',
-                    method: 'post'
-                  }
-                ]
-              }
+    getAppVersionByIdMock.mockResolvedValueOnce({
+      nodes: [
+        {
+          toolConfig: {
+            httpToolSet: {
+              baseUrl: 'https://example.com',
+              toolList: [
+                {
+                  name: 'sandbox_echo',
+                  path: '/echo',
+                  method: 'post'
+                }
+              ]
             }
           }
-        ]
-      })
+        }
+      ]
     });
     runHTTPToolMock.mockResolvedValueOnce({
       data: {
@@ -251,7 +232,10 @@ describe('dispatchTool runtime toolset auth', () => {
       appId: 'victim-toolset',
       per: ReadPermissionVal
     });
-    expect(mongoAppFindByIdMock).toHaveBeenCalledWith('victim-toolset');
+    expect(getAppVersionByIdMock).toHaveBeenCalledWith({
+      appId: 'victim-toolset',
+      versionId: undefined
+    });
     expect(runHTTPToolMock).toHaveBeenCalledWith(
       expect.objectContaining({
         baseUrl: 'https://example.com',
@@ -278,6 +262,7 @@ describe('dispatchTool runtime toolset auth', () => {
       appId: 'victim-toolset',
       per: ReadPermissionVal
     });
+    expect(getAppVersionByIdMock).not.toHaveBeenCalled();
     expect(mcpToolCallMock).not.toHaveBeenCalled();
     expect(result.response).toBeTruthy();
   });

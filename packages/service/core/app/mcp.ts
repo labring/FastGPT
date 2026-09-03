@@ -15,10 +15,6 @@ import $RefParser from '@apidevtools/json-schema-ref-parser';
 import { getLogger, LogCategories } from '../../common/logger';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
 import { decodeMcpToolSetNodesFromStorage } from './jsonSchemaStorage';
-import {
-  isMcpToolSetRuntimeConfig,
-  type McpToolSetRuntimeConfigType
-} from '@fastgpt/global/core/workflow/type/node';
 
 const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
 
@@ -412,25 +408,14 @@ export class MCPClient {
   }
 }
 
-/** Read the current MCP toolset runtime configuration from an app. */
-export const getMCPToolSet = (
-  app: Pick<AppSchemaType, 'modules'>
-): McpToolSetRuntimeConfigType | undefined => {
-  const modules = decodeMcpToolSetNodesFromStorage(app.modules ?? []);
-  const toolSet = modules[0]?.toolConfig?.mcpToolSet;
-  return isMcpToolSetRuntimeConfig(toolSet) ? toolSet : undefined;
-};
-
-/** Read MCP child tools, optionally reusing a decoded current toolset config. */
-export const getMCPChildren = async (
-  app: AppSchemaType,
-  toolSet: McpToolSetRuntimeConfigType | undefined = getMCPToolSet(app)
-) => {
+export const getMCPChildren = async (app: AppSchemaType) => {
+  const modules = decodeMcpToolSetNodesFromStorage(app.modules);
+  const isNewMcp = !!modules[0].toolConfig?.mcpToolSet;
   const id = String(app._id);
 
-  if (toolSet) {
+  if (isNewMcp) {
     return (
-      toolSet.toolList.map((item) => ({
+      modules[0].toolConfig?.mcpToolSet?.toolList.map((item) => ({
         ...item,
         id: `${AppToolSourceEnum.mcp}-${id}/${item.name}`,
         avatar: app.avatar

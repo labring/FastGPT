@@ -1,4 +1,4 @@
-import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 import {
   getWorkflowResponseWrite,
@@ -49,17 +49,13 @@ vi.mock('@fastgpt/service/core/app/schema', () => ({
 }));
 
 const mockGetMCPChildren = vi.fn();
-const mockGetMCPToolSet = vi.fn();
 vi.mock('@fastgpt/service/core/app/mcp', () => ({
-  getMCPChildren: (...args: any[]) => mockGetMCPChildren(...args),
-  getMCPToolSet: (...args: any[]) => mockGetMCPToolSet(...args)
+  getMCPChildren: (...args: any[]) => mockGetMCPChildren(...args)
 }));
 
 const mockGetHTTPToolList = vi.fn();
-const mockGetHTTPToolSet = vi.fn();
 vi.mock('@fastgpt/service/core/app/http', () => ({
-  getHTTPToolList: (...args: any[]) => mockGetHTTPToolList(...args),
-  getHTTPToolSet: (...args: any[]) => mockGetHTTPToolSet(...args)
+  getHTTPToolList: (...args: any[]) => mockGetHTTPToolList(...args)
 }));
 
 const mockPresignVariablesFileUrls = vi.fn();
@@ -922,14 +918,6 @@ describe('formatHttpError', () => {
 });
 
 describe('rewriteRuntimeWorkFlow', () => {
-  beforeEach(() => {
-    mockGetMCPToolSet.mockImplementation((app: any) => app.modules?.[0]?.toolConfig?.mcpToolSet);
-    mockGetHTTPToolSet.mockImplementation((app: any) => app.modules?.[0]?.toolConfig?.httpToolSet);
-    mockGetHTTPToolList.mockImplementation(
-      async (app: any) => app.modules?.[0]?.toolConfig?.httpToolSet?.toolList ?? []
-    );
-  });
-
   const makeNode = (
     nodeId: string,
     flowNodeType: string,
@@ -1027,8 +1015,12 @@ describe('rewriteRuntimeWorkFlow', () => {
     await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
 
     expect(nodes.find((n) => n.nodeId === 'ts2')).toBeUndefined();
-    expect(nodes.find((n) => n.nodeId === 'ts20')?.toolConfig).toEqual({
-      mcpTool: { toolId: 'mcp-mcp-tool-1/tool1' }
+    expect(nodes.find((n) => n.nodeId === 'ts20')).toMatchObject({
+      toolConfig: {
+        mcpToolSet: {
+          url: 'https://mcp.example.com'
+        }
+      }
     });
     expect(edges.find((e) => e.target === 'ts2')).toBeUndefined();
     expect(edges.find((e) => e.target === 'ts20')).toBeDefined();
@@ -1084,8 +1076,8 @@ describe('rewriteRuntimeWorkFlow', () => {
     const filteredEdges = filterOrphanEdges({ nodes, edges, workflowId: 'workflow-app' });
 
     expect(nodes.find((n) => n.nodeId === 'ts20')?.jsonSchema).toEqual(fullSchema);
-    expect(nodes.find((n) => n.nodeId === 'ts20')?.toolConfig).toEqual({
-      mcpTool: { toolId: 'mcp-mcp-tool-1/tool1' }
+    expect(nodes.find((n) => n.nodeId === 'ts20')?.toolConfig?.mcpToolSet).toMatchObject({
+      url: 'https://mcp.example.com'
     });
     expect(nodes.find((n) => n.nodeId === 'ts20')?.inputs[0]).toMatchObject({
       key: 'city',
