@@ -53,6 +53,7 @@ import ChatWindowHeader from './ChatWindowHeader';
 import ToolMenu from '@/pageComponents/chat/ToolMenu';
 import MobileModelSelectorDrawer from './MobileModelSelectorDrawer';
 import { mobileChatHeaderIconButtonStyle } from './headerIconButtonStyle';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 import { getDisplayHistoryTitle } from '@/web/core/chat/context/historyTitleUtils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -331,6 +332,7 @@ const HomeChatWindow = () => {
         {isPc && availableModels.length > 0 && (
           <Box w={'fit-content'} maxW={'300px'} flex={'0 1 auto'} minW={0}>
             <ChatAIModelSelector
+              modelType={ModelTypeEnum.llm}
               h={'36px'}
               w={'fit-content'}
               maxW={'300px'}

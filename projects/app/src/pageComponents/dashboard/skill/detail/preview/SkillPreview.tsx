@@ -25,6 +25,7 @@ import { defaultQGConfig, defaultWhisperConfig } from '@fastgpt/global/core/app/
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 const fileSelectConfig: AppFileSelectConfigType = {
   maxFiles: 10,
@@ -146,6 +147,7 @@ const SkillPreview = () => {
   const ModelSelectorInput = useMemo(() => {
     return (
       <ChatAIModelSelector
+        modelType={ModelTypeEnum.llm}
         h={'36px'}
         boxShadow={'none'}
         size={'sm'}

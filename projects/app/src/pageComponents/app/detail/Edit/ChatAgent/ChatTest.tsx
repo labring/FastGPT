@@ -34,6 +34,7 @@ import ProModal from '@/components/ProTip/ProModal';
 import ChatAIModelSelector from '@/pageComponents/chat/ChatWindow/ChatAIModelSelector';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 type Props = {
   appForm: AppFormEditFormType;
@@ -106,6 +107,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
     () => (
       <Box w={'fit-content'} maxW={'300px'} flex={'0 1 auto'} minW={0}>
         <ChatAIModelSelector
+          modelType={ModelTypeEnum.llm}
           h={'36px'}
           w={'fit-content'}
           maxW={'300px'}

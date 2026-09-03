@@ -52,6 +52,7 @@ import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import { getUserFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 import { canInputBeAgentGenerated } from '@fastgpt/global/core/app/formEdit/utils';
 import { getModelInputOptions } from './InputTypeConfig.utils';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 const inputFormGridTemplateColumns = 'max-content minmax(0, 1fr)';
 
@@ -753,6 +754,7 @@ const InputTypeConfig = ({
                 inputType === FlowNodeInputTypeEnum.selectLLMModel) && (
                 <Box flex={'1'}>
                   <AIModelSelector
+                    modelType={ModelTypeEnum.llm}
                     value={defaultValue}
                     list={availableModels}
                     onChange={(model) => {
