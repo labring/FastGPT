@@ -36,9 +36,8 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       allowedExtensions: parseAllowedExtensions(datasetImageCollectionFileType)
     });
     filepaths.push(...result.fileMetadata.map((item) => item.path));
-    const { parentId, datasetId, collectionName, tags } = CreateImageCollectionFormSchema.parse(
-      result.data
-    );
+    const { parentId, datasetId, collectionName, tags, inheritPermission } =
+      CreateImageCollectionFormSchema.parse(result.data);
 
     const { dataset, teamId, tmbId } = await authDatasetCollectionCreate({
       datasetId,
@@ -96,6 +95,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
         teamId,
         tmbId,
         datasetId,
+        inheritPermission,
         type: DatasetCollectionTypeEnum.images,
         name: collectionName,
         tags,
