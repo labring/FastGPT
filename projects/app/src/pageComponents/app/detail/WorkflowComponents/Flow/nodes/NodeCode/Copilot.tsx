@@ -36,6 +36,7 @@ import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 export type OnOptimizeCodeProps = {
   optimizerInput: string;
@@ -364,6 +365,7 @@ const NodeCopilot = ({
             <Flex align="center" pb={2}>
               {modelOptions.length > 0 && (
                 <AIModelSelector
+                  modelType={ModelTypeEnum.llm}
                   borderColor="transparent"
                   _hover={{ border: '1px solid', borderColor: 'primary.400' }}
                   size="sm"
