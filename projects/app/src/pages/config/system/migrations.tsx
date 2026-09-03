@@ -416,7 +416,7 @@ const FailedRecordsModal = ({
 /** Root 管理员的升级状态页：轮询轻量摘要，所有执行动作仍通过服务端 lease runner 完成。 */
 const SystemMigrationsPage = () => {
   const { t } = useClientTranslation('system_migration');
-  const { data, isLoading, isFetching, isError, refetch } = useQuery(
+  const { data, isFetching, isError, refetch } = useQuery(
     ['systemMigrationList'],
     getSystemMigrationList,
     {
@@ -455,7 +455,7 @@ const SystemMigrationsPage = () => {
   );
 
   return (
-    <ConfigContainer isLoading={isLoading && !data}>
+    <ConfigContainer>
       <Flex h={'100%'} minH={0} flexDirection={'column'} bg={'myGray.25'}>
         <Flex
           px={[4, 7]}
