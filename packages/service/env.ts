@@ -326,6 +326,9 @@ export const serviceEnv = createEnv({
     WECHAT_CHANNEL_CONCURRENCY: IntSchema.min(10).default(1000).meta({
       description: '微信渠道 poll worker 并发数'
     }),
+    SYSTEM_MIGRATION_BATCH_SIZE: IntSchema.min(50).max(1000).default(100).meta({
+      description: '系统迁移任务每批处理的记录数'
+    }),
     XLSX_PARSE_MAX_ROWS: IntSchema.min(1).max(1_048_576).default(100_000).meta({
       description: 'XLSX 单个工作表允许的最大行数'
     }),

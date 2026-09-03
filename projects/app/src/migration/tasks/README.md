@@ -7,6 +7,7 @@
 - 只能在注册表末尾追加，不得修改已有任务的 ID、顺序、`blockStartup`、`onFailure` 或执行语义；
 - 业务写入必须幂等，优先使用唯一键、`$setOnInsert`、确定性目标值或 compare-and-set；
 - 每个任务必须明确选择一种恢复策略：数据量较大或无法原子完成时使用“分批断点续跑”；数据量确定较小且整次写入可以保持原子、确定、幂等时允许使用“全量重跑”；
+- 分批任务统一从 `@/migration/constants` 导入 `systemMigrationBatchSize`，由环境变量 `SYSTEM_MIGRATION_BATCH_SIZE` 控制；允许范围为 50～1000，默认 100，任务内不得另行硬编码读取批大小；
 - 分批任务在每批开始前调用 `context.assertActive()`；业务提交后若错误快照发生变化，先通过 `context.reportFailedRecords()` 替换当前完整未解决错误快照，再保存 checkpoint。重试时先通过 `context.getFailedRecords()` 处理上次已跳过的坏数据，再从 checkpoint 继续；
 - 全量任务不保存伪 checkpoint，每次管理员重试或 lease 接管都重新读取、校验并处理完整数据集；如果需要清空目标数据，目标必须是完全由权威源重建的派生数据，且清空与重建必须位于同一事务；
 - 任务默认只追加或回填数据，不删除旧字段、旧集合或不可恢复的数据；

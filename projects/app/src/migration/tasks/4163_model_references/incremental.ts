@@ -4,10 +4,10 @@ import {
 } from '@fastgpt/global/migration/constants';
 import type { SystemMigrationFailedRecord } from '@fastgpt/global/migration/schema';
 import type { SystemMigrationContext } from '@/migration/registry';
+import { systemMigrationBatchSize } from '@/migration/constants';
 import { z } from 'zod';
 import type { ReferenceTransformResult } from './types';
 
-const BATCH_SIZE = 100;
 const WRITE_CONCURRENCY = 20;
 
 const StageCheckpointSchema = z.object({
@@ -302,7 +302,7 @@ export const runIncrementalModelReferenceMigration = async ({
       const records = (await stage.model
         .find({ ...(stage.query ?? {}), _id: idRange })
         .sort({ _id: 1 })
-        .limit(BATCH_SIZE)
+        .limit(systemMigrationBatchSize)
         .lean()) as Record<string, any>[];
       if (records.length === 0) break;
 

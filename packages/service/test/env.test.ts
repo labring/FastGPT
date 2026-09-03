@@ -4,6 +4,7 @@ const validInvokeTokenSecret = 'fastgpt_test_invoke_token_secret_32';
 
 const originalEnv = {
   DB_MAX_LINK: process.env.DB_MAX_LINK,
+  SYSTEM_MIGRATION_BATCH_SIZE: process.env.SYSTEM_MIGRATION_BATCH_SIZE,
   SYSTEM_MAX_STRING_LENGTH_M: process.env.SYSTEM_MAX_STRING_LENGTH_M,
   XLSX_PARSE_MAX_ROWS: process.env.XLSX_PARSE_MAX_ROWS,
   XLSX_PARSE_MAX_COLUMNS: process.env.XLSX_PARSE_MAX_COLUMNS,
@@ -49,6 +50,7 @@ const importServiceEnv = async () => {
 describe('serviceEnv', () => {
   afterEach(() => {
     vi.stubEnv('DB_MAX_LINK', originalEnv.DB_MAX_LINK);
+    vi.stubEnv('SYSTEM_MIGRATION_BATCH_SIZE', originalEnv.SYSTEM_MIGRATION_BATCH_SIZE);
     vi.stubEnv('SYSTEM_MAX_STRING_LENGTH_M', originalEnv.SYSTEM_MAX_STRING_LENGTH_M);
     vi.stubEnv('XLSX_PARSE_MAX_ROWS', originalEnv.XLSX_PARSE_MAX_ROWS);
     vi.stubEnv('XLSX_PARSE_MAX_COLUMNS', originalEnv.XLSX_PARSE_MAX_COLUMNS);
@@ -135,6 +137,36 @@ describe('serviceEnv', () => {
     await expect(importServiceEnv()).resolves.toMatchObject({
       serviceEnv: { SYNC_INDEX: false }
     });
+  });
+
+  it('validates the system migration batch size during service env init', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('SYSTEM_MIGRATION_BATCH_SIZE', undefined);
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { SYSTEM_MIGRATION_BATCH_SIZE: 100 }
+    });
+
+    vi.stubEnv('SYSTEM_MIGRATION_BATCH_SIZE', '50');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { SYSTEM_MIGRATION_BATCH_SIZE: 50 }
+    });
+
+    vi.stubEnv('SYSTEM_MIGRATION_BATCH_SIZE', '1000');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { SYSTEM_MIGRATION_BATCH_SIZE: 1000 }
+    });
+
+    vi.stubEnv('SYSTEM_MIGRATION_BATCH_SIZE', '49');
+    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
+
+    vi.stubEnv('SYSTEM_MIGRATION_BATCH_SIZE', '1001');
+    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
+
+    vi.stubEnv('SYSTEM_MIGRATION_BATCH_SIZE', 'not-a-number');
+    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
   });
 
   it('reads the optional SoMark API key', async () => {
