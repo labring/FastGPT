@@ -27,7 +27,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20260903_backfill_model_permissions',
       '20260903_backfill_dataset_model_references',
       '20260903_backfill_evaluation_model_references',
-      '20260903_backfill_app_model_references'
+      '20260903_backfill_app_model_references',
+      '20260903_backfill_app_create_time'
     ]);
     expect(systemMigrations.slice(1).every((migration) => !migration.blockStartup)).toBe(true);
     expect(

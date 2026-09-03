@@ -124,13 +124,14 @@ App Schema 增加显式 `createTime`（和 `updateTime` 一样，不打开 mongo
 
 现状已有 `{ teamId: 1, updateTime: -1 }`。新增当前索引 `{ teamId: 1, createTime: -1 }`。创建者筛选先不加 `{ teamId: 1, tmbId: 1 }`。
 
-管理员一次性脚本 `/api/admin/4163/initAppCreateTime`（文档豁免 OpenAPI）：
+V4.17.0 自动升级任务 `20260903_backfill_app_create_time`：
 
-- 条件：`createTime` 不存在或为 null。
-- 值：`_id.getTimestamp()`。
-- 分批、可重复执行，不覆盖已有 createTime。
-- 默认 dry-run，确认后再写。
-- `_id` 不是合法 ObjectId 的记录跳过并计数，不猜时间。
+- 位于 `projects/app/src/migration/tasks/4170/`，只在注册表末尾追加。
+- 以 `_id.getTimestamp()` 为权威创建时间，只回填 `createTime` 不存在或为 null 的记录。
+- 按固定 ObjectId 上界和 checkpoint 分批执行，写入使用 CAS，可安全重放且不覆盖已有值。
+- `_id` 不是合法 ObjectId 的记录保留原状并在最终结果计数，不猜测时间。
+- 为非阻塞任务；失败数据在管理页修复后可单独重试，不阻断后续升级任务。
+- 主快照完成后再扫描仍缺少 `createTime` 的 App，覆盖滚动升级期间旧节点的新写入。
 
 新建应用只靠 Schema default，不在每个 `MongoApp.create` 调用点手写。
 

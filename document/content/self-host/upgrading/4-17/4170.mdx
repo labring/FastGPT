@@ -18,27 +18,7 @@ V4.17.0 会先阻塞启动并迁移旧版系统模型配置，迁移完成后才
 
 ### 回填历史 App 创建时间
 
-V4.17.0 为 App 增加了 `createTime` 字段，工作台列表的「最近创建 / 最早创建」排序依赖该字段。新建、复制、导入的 App 会自动写入创建时间；历史记录需要通过一次性升级接口，用文档 `_id`（ObjectId）中的时间戳回填。已有 `createTime` 不会被覆盖。`_id` 不是合法 ObjectId 的记录会跳过并计入 `skippedInvalidId`。
-
-先执行不写入数据的 dry-run：
-
-```bash
-curl -X POST 'https://你的域名/api/admin/4163/initAppCreateTime' \
-  -H 'Content-Type: application/json' \
-  -H 'rootkey: 你的ROOT_KEY' \
-  -d '{"dryRun":true}'
-```
-
-确认 `scannedRecords` 后执行正式回填：
-
-```bash
-curl -X POST 'https://你的域名/api/admin/4163/initAppCreateTime' \
-  -H 'Content-Type: application/json' \
-  -H 'rootkey: 你的ROOT_KEY' \
-  -d '{"dryRun":false}'
-```
-
-返回结果中，`scannedRecords` 是缺少 `createTime` 的记录数，`updatedRecords` 是实际写入数，`skippedInvalidId` 是无法从 `_id` 推导时间的记录数。该接口可安全重复执行。正式执行后建议再次运行 dry-run：正常情况下 `scannedRecords` 应为 `0`；若仍有 `skippedInvalidId`，可忽略或单独排查对应记录。
+V4.17.0 为 App 增加了 `createTime` 字段，工作台列表的「最近创建 / 最早创建」排序依赖该字段。新建、复制、导入的 App 会自动写入创建时间；系统升级任务会在后台按文档 `_id`（ObjectId）中的时间戳分批回填历史记录，不会覆盖已有 `createTime`。非法 `_id` 无法可靠推导时间，任务会保留原记录并在结果中计数。可在 `管理员 > 版本升级` 中查看进度、失败数据并重试。
 
 ### Code Sandbox seccomp 兼容配置（可选）
 

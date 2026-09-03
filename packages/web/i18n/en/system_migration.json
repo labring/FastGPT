@@ -55,5 +55,9 @@
   "migrations.20260903_backfill_app_model_references.apps": "Migrating apps",
   "migrations.20260903_backfill_app_model_references.app_versions": "Migrating app versions",
   "migrations.20260903_backfill_app_model_references.app_templates": "Migrating app templates",
-  "migrations.20260903_backfill_app_model_references.result": "Checked and processed {{appsProcessedCount}} apps, {{appVersionsProcessedCount}} app versions, and {{appTemplatesProcessedCount}} app templates."
+  "migrations.20260903_backfill_app_model_references.result": "Checked and processed {{appsProcessedCount}} apps, {{appVersionsProcessedCount}} app versions, and {{appTemplatesProcessedCount}} app templates.",
+  "migrations.20260903_backfill_app_create_time.name": "Backfill app creation times",
+  "migrations.20260903_backfill_app_create_time.description": "Incrementally backfills historical creation times from app ObjectId timestamps.",
+  "migrations.20260903_backfill_app_create_time.apps": "Backfilling app creation times",
+  "migrations.20260903_backfill_app_create_time.result": "Checked and processed {{processedCount}} apps and skipped {{skippedInvalidId}} records with invalid IDs."
 }

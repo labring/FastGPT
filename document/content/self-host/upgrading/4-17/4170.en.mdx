@@ -18,27 +18,7 @@ Model reference migrations process `100` records per batch by default. For large
 
 ### Backfill historical App creation times
 
-V4.17.0 adds a `createTime` field to Apps. Workbench sorting by recently created or oldest created depends on this field. Newly created, copied, or imported Apps write `createTime` automatically. Historical records require a one-time upgrade endpoint, which backfills the timestamp stored in each document `_id` (ObjectId). Existing `createTime` values are not overwritten. Records whose `_id` is not a valid ObjectId are skipped and counted in `skippedInvalidId`.
-
-Start with a dry run, which does not write any data:
-
-```bash
-curl -X POST 'https://your-domain/api/admin/4163/initAppCreateTime' \
-  -H 'Content-Type: application/json' \
-  -H 'rootkey: YOUR_ROOT_KEY' \
-  -d '{"dryRun":true}'
-```
-
-After confirming `scannedRecords`, run the backfill:
-
-```bash
-curl -X POST 'https://your-domain/api/admin/4163/initAppCreateTime' \
-  -H 'Content-Type: application/json' \
-  -H 'rootkey: YOUR_ROOT_KEY' \
-  -d '{"dryRun":false}'
-```
-
-In the response, `scannedRecords` is the number of records missing `createTime`, `updatedRecords` is the number actually written, and `skippedInvalidId` is the number that could not derive a time from `_id`. The endpoint is safe to run repeatedly. After applying the migration, run another dry run: `scannedRecords` should be `0` in the normal case. Remaining `skippedInvalidId` records can be ignored or inspected separately.
+V4.17.0 adds a `createTime` field to Apps. Studio sorting by recently created or oldest created depends on this field. Newly created, copied, or imported Apps write `createTime` automatically. A background system upgrade task backfills historical records in batches using the timestamp stored in each document `_id` (ObjectId) without overwriting existing `createTime` values. An invalid `_id` cannot provide a reliable timestamp, so the task preserves the record and includes it in the skipped count. View progress, failed records, and retry controls under **Admin > System upgrade**.
 
 ### Code Sandbox seccomp compatibility setting (optional)
 
