@@ -157,6 +157,7 @@ describe('SystemToolRepo.getSystemToolList', () => {
       'systemTool-low-order-single-match',
       'systemTool-second-order-single-match'
     ]);
+    expect(tools.some((tool) => 'toolDescription' in tool)).toBe(false);
   });
 
   it('keeps plugin order sorting when no tags are provided', async () => {
@@ -445,6 +446,7 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
     expect(tool).not.toHaveProperty('inputs');
     expect(tool).not.toHaveProperty('outputs');
     expect(tool).not.toHaveProperty('secrets');
+    expect(tool).not.toHaveProperty('toolDescription');
   });
 
   it('uses the parent tool secret for toolset child details', async () => {
@@ -798,7 +800,6 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
       name: 'Workflow Tool',
       avatar: 'workflow.svg',
       intro: 'Workflow intro',
-      toolDescription: 'Workflow description',
       version: 'workflow-version',
       currentCost: 3,
       systemKeyCost: 4,
@@ -807,6 +808,7 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
     expect(tool).not.toHaveProperty('inputSchema');
     expect(tool).not.toHaveProperty('outputSchema');
     expect(tool).not.toHaveProperty('secretSchema');
+    expect(tool).not.toHaveProperty('toolDescription');
     expect(mocks.findAppById).not.toHaveBeenCalled();
     expect(mocks.getAppLatestVersion).not.toHaveBeenCalled();
     expect(mocks.getTool).not.toHaveBeenCalled();
@@ -875,13 +877,13 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
       name: 'Forecast',
       intro: 'Forecast intro',
       avatar: 'forecast.svg',
-      toolDescription: 'Configured forecast',
       currentCost: 2,
       systemKeyCost: 1
     });
     expect(tool).not.toHaveProperty('inputSchema');
     expect(tool).not.toHaveProperty('outputSchema');
     expect(tool).not.toHaveProperty('secretSchema');
+    expect(tool).not.toHaveProperty('toolDescription');
     expect(mocks.getTool).not.toHaveBeenCalled();
   });
 
@@ -935,9 +937,9 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
       id: 'forecast',
       name: 'Forecast',
       description: 'Forecast intro',
-      toolDescription: 'Forecast tool',
       icon: 'forecast.svg'
     });
+    expect(tool.children?.[0]).not.toHaveProperty('toolDescription');
     expect(tool.children?.[0]).not.toHaveProperty('inputSchema');
     expect(tool.children?.[0]).not.toHaveProperty('outputSchema');
     expect(mocks.getTool).not.toHaveBeenCalled();
@@ -1040,9 +1042,9 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
       source: 'debug:tmbId:tmb-1',
       status: PluginStatusEnum.Normal,
       currentCost: 3,
-      systemKeyCost: 2,
-      toolDescription: 'Configured forecast'
+      systemKeyCost: 2
     });
+    expect(tool).not.toHaveProperty('toolDescription');
   });
 
   it('keeps parent toolset display lightweight when list omits child icons', async () => {

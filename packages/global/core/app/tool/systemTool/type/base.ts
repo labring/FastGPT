@@ -48,7 +48,6 @@ export const SystemToolListItemSchema = z.object({
   intro: z.string().meta({ description: '工具的简介' }),
   author: z.string().meta({ description: '工具的作者' }),
   tags: z.array(z.string()).meta({ description: '工具的标签' }),
-  toolDescription: z.string().meta({ description: '给工具调用使用的工具的描述' }),
 
   userGuide: z.string().nullish().meta({ description: '工具的使用指南(markdown 纯文本)' }),
   readmeUrl: z.string().optional().meta({ description: '工具的 README 地址' }),
@@ -79,7 +78,6 @@ export const SystemToolChildDetailSchema = z.object({
   name: z.string(),
   status: PluginStatusSchema.meta({ description: '工具的状态' }),
   description: z.string().optional(),
-  toolDescription: z.string().optional(),
   icon: z.string().optional(),
   currentCost: z.number().meta({ description: '当前使用的费用' }),
   systemKeyCost: z.number().meta({ description: '系统密钥的费用' }),

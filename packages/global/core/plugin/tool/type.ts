@@ -22,7 +22,6 @@ export const SystemPluginToolCollectionSchema = SystemToolBasicConfigSchema.exte
       name: z.string(),
       avatar: z.string().optional(),
       intro: z.string().optional(),
-      toolDescription: z.string().optional(),
       version: z.string(),
       tags: z.array(z.string()).nullish(),
       associatedPluginId: z.string().optional(),

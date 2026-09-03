@@ -47,11 +47,7 @@ export const GetToolSetChildrenResponseSchema = z.object({
 });
 export type GetToolSetChildrenResponseType = z.infer<typeof GetToolSetChildrenResponseSchema>;
 
-const ToolNodeTemplateListItemSchema = NodeTemplateListItemTypeSchema.extend({
-  toolDescription: z.string().optional().meta({
-    description: '工具调用描述'
-  })
-}).catchall(z.any());
+const ToolNodeTemplateListItemSchema = NodeTemplateListItemTypeSchema.catchall(z.any());
 
 const ToolPreviewNodeResponseSchema = FlowNodeTemplateTypeSchema.omit({
   // Runtime-only predicate; functions cannot be represented in OpenAPI or JSON.

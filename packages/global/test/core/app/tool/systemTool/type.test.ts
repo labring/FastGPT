@@ -18,7 +18,6 @@ const createAdminToolDetail = () => ({
   intro: 'Tool intro',
   author: 'FastGPT',
   tags: [],
-  toolDescription: 'Tool description',
   currentCost: 0,
   systemKeyCost: 0,
   hasTokenFee: false,
@@ -34,6 +33,7 @@ describe('AdminSystemToolDetailSchema', () => {
     });
 
     expect(result.status).toBe(PluginStatusEnum.Hidden);
+    expect(result).not.toHaveProperty('toolDescription');
   });
 
   it('strips input and output schemas from admin detail response', () => {
