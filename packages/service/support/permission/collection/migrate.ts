@@ -308,8 +308,11 @@ export const migrateCollectionPermissions = async ({
   const allDatasets = (await MongoDataset.find(
     {
       ...(teamId ? { teamId } : {}),
-      ...(datasetIds ? { _id: { $in: datasetIds } } : {}),
-      _id: { $in: datasetIdsWithCollections }
+      _id: {
+        $in: datasetIds
+          ? datasetIdsWithCollections.filter((id) => datasetIds.includes(String(id)))
+          : datasetIdsWithCollections
+      }
     },
     '_id teamId'
   ).lean()) as Array<{ _id: unknown; teamId: unknown }>;
