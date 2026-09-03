@@ -74,10 +74,10 @@ const AppSelect = ({ value, onSelect }: { value: string; onSelect: (id: string) 
       }
     >
       {({ onClose }) => (
-        <Box h={'300px'} maxH={'60vh'} minH={'200px'}>
+        <Box maxH={'60vh'}>
           <SelectOneResource
-            h={'100%'}
-            maxH={'100%'}
+            h={'auto'}
+            maxH={'60vh'}
             value={value}
             onSelect={(item) => {
               if (!item) return;
