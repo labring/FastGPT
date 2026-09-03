@@ -1,7 +1,7 @@
 {
   "system_upgrade": "版本升級",
   "migration_page_title": "版本升級",
-  "migration_page_description": "系統會按聲明順序自動執行升級任務。阻塞任務完成前，業務功能保持維護狀態。",
+  "migration_page_description": "系統會按順序執行遷移腳本。",
   "total_tasks": "任務總數",
   "pending_tasks": "待執行",
   "running_tasks": "執行中",

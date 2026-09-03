@@ -1,7 +1,7 @@
 {
   "system_upgrade": "시스템 업그레이드",
   "migration_page_title": "시스템 업그레이드",
-  "migration_page_description": "업그레이드 작업은 선언된 순서대로 자동 실행됩니다. 차단 작업이 완료될 때까지 비즈니스 기능은 유지 관리 상태로 유지됩니다.",
+  "migration_page_description": "시스템은 마이그레이션 스크립트를 순서대로 실행합니다.",
   "total_tasks": "전체 작업",
   "pending_tasks": "대기 중",
   "running_tasks": "실행 중",

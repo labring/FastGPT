@@ -1,7 +1,7 @@
 {
   "system_upgrade": "System upgrade",
   "migration_page_title": "System upgrade",
-  "migration_page_description": "Upgrade tasks run automatically in declaration order. Business features remain in maintenance mode until blocking tasks finish.",
+  "migration_page_description": "The system runs migration scripts in order.",
   "total_tasks": "Total tasks",
   "pending_tasks": "Pending",
   "running_tasks": "Running",
