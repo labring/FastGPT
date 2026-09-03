@@ -73,34 +73,41 @@ describe('extractAppResources', () => {
       nodes: [
         createNode({
           flowNodeType: FlowNodeTypeEnum.appModule,
-          pluginId: 'agent-app',
+          pluginId: 'agent-app'
+        }),
+        createNode({
+          flowNodeType: FlowNodeTypeEnum.agent,
           inputs: [
             createInput(NodeInputKeyEnum.datasetSelectList, [
               { datasetId: 'dataset-1' },
               { datasetId: 'dataset-1' }
             ]),
             createInput(NodeInputKeyEnum.skills, [{ skillId: 'skill-1' }]),
-            createInput(NodeInputKeyEnum.aiModel, 'llm-model'),
+            createInput(NodeInputKeyEnum.aiModelId, 'llm-model-id'),
             createInput(NodeInputKeyEnum.datasetSearchUsingReRank, true),
             createInput(NodeInputKeyEnum.datasetSearchUsingExtensionQuery, true),
-            createInput(NodeInputKeyEnum.datasetSearchRerankModel, 'rerank-model'),
-            createInput(NodeInputKeyEnum.datasetSearchExtensionModel, 'llm-model')
+            createInput(NodeInputKeyEnum.datasetSearchRerankModelId, 'rerank-model-id'),
+            createInput(NodeInputKeyEnum.datasetSearchExtensionModelId, 'extension-model-id'),
+            createInput(NodeInputKeyEnum.datasetParams, {
+              datasets: [{ datasetId: 'dataset-2' }],
+              [NodeInputKeyEnum.datasetSearchUsingReRank]: true,
+              [NodeInputKeyEnum.datasetSearchRerankModelId]: 'nested-rerank-model-id',
+              [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]: true,
+              [NodeInputKeyEnum.datasetSearchExtensionModelId]: 'nested-extension-model-id'
+            })
           ]
         }),
         createNode({
           inputs: [
-            createInput(NodeInputKeyEnum.datasetParams, {
-              datasets: [{ datasetId: 'dataset-2' }]
-            }),
             createInput(NodeInputKeyEnum.skills, [{ skillId: 'skill-1' }]),
-            createInput(NodeInputKeyEnum.datasetSearchRerankModel, 'rerank-model'),
-            createInput(NodeInputKeyEnum.datasetSearchExtensionModel, 'llm-model')
+            // 外部节点可以声明同名参数，不能计入 FastGPT 系统模型资源。
+            createInput(NodeInputKeyEnum.aiModelId, 'plugin-model-id')
           ]
         })
       ],
       chatConfig: {
-        questionGuide: { open: true, model: 'guide-model' },
-        ttsConfig: { type: 'model', model: 'tts-1' }
+        questionGuide: { open: true, modelId: 'guide-model-id' },
+        ttsConfig: { type: 'model', modelId: 'tts-model-id' }
       } as any
     });
 
@@ -108,12 +115,35 @@ describe('extractAppResources', () => {
       { type: 'agent', id: 'agent-app' },
       { type: 'dataset', id: 'dataset-1' },
       { type: 'dataset', id: 'dataset-2' },
-      { type: 'model', id: 'guide-model', data: { modelType: 'llm' } },
-      { type: 'model', id: 'llm-model', data: { modelType: 'llm' } },
-      { type: 'model', id: 'rerank-model', data: { modelType: 'rerank' } },
-      { type: 'model', id: 'tts-1', data: { modelType: 'tts' } },
+      { type: 'model', id: 'extension-model-id', data: { modelType: 'llm' } },
+      { type: 'model', id: 'guide-model-id', data: { modelType: 'llm' } },
+      { type: 'model', id: 'llm-model-id', data: { modelType: 'llm' } },
+      { type: 'model', id: 'nested-extension-model-id', data: { modelType: 'llm' } },
+      { type: 'model', id: 'nested-rerank-model-id', data: { modelType: 'rerank' } },
+      { type: 'model', id: 'rerank-model-id', data: { modelType: 'rerank' } },
+      { type: 'model', id: 'tts-model-id', data: { modelType: 'tts' } },
       { type: 'skill', id: 'skill-1' }
     ]);
+  });
+
+  it('does not record dynamic canonical model references', () => {
+    const resources = extractAppResources({
+      nodes: [
+        createNode({
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            createInput(NodeInputKeyEnum.aiModelId, '{{modelId}}'),
+            createInput(NodeInputKeyEnum.datasetSearchUsingReRank, false),
+            createInput(NodeInputKeyEnum.datasetSearchRerankModelId, 'disabled-rerank-model-id')
+          ]
+        })
+      ],
+      chatConfig: {
+        questionGuide: { open: true, modelId: '{{guideModelId}}' }
+      } as any
+    });
+
+    expect(resources).toEqual([]);
   });
 
   it('records selected workflow apps as tool resources', () => {

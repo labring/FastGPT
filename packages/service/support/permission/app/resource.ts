@@ -24,6 +24,7 @@ import type { ClientSession } from '../../../common/mongo';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { getGroupsByTmbId } from '../memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '../org/controllers';
+import { shouldInheritResourcePermission } from '../resourcePermissionPolicy';
 import {
   getAppResourceKey,
   mergeAppResources,
@@ -200,7 +201,7 @@ export const getUnauthorizedAppResources = async ({
           permissions: appPermissions,
           id: resource.id,
           parentId: app.parentId ? String(app.parentId) : undefined,
-          inheritPermission: app.inheritPermission === true,
+          inheritPermission: shouldInheritResourcePermission(app.inheritPermission),
           canInherit: !AppFolderTypeList.includes(app.type)
         }),
         isOwner: tmbPermission.isOwner || String(app.tmbId) === tmbId
@@ -227,7 +228,7 @@ export const getUnauthorizedAppResources = async ({
           permissions: datasetPermissions,
           id: resource.id,
           parentId: dataset.parentId ? String(dataset.parentId) : undefined,
-          inheritPermission: dataset.inheritPermission === true,
+          inheritPermission: shouldInheritResourcePermission(dataset.inheritPermission),
           canInherit: dataset.type !== DatasetTypeEnum.folder
         }),
         isOwner: tmbPermission.isOwner || String(dataset.tmbId) === tmbId

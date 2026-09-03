@@ -613,16 +613,15 @@ export const checkWorkflowNodeIssues = ({
 
     // ACL 由保存/发布服务端按资源快照做差量校验；前端同步展示服务端返回的资源级标记，
     // 并提示已删除或不可用的实体。
-    const resourceInputKeys = [NodeInputKeyEnum.datasetSelectList, NodeInputKeyEnum.skills];
-    resourceInputKeys.forEach((key) => {
-      const value = inputMap.get(key)?.value;
+    const datasetParamsInput = inputMap.get(NodeInputKeyEnum.datasetParams);
+    const addResourceIssues = (value: unknown, inputKey: string) => {
       if (!Array.isArray(value)) return;
       if (value.some((item) => item && (item as { permissionDenied?: boolean }).permissionDenied)) {
         addIssue({
           node,
           code: 'resource_no_permission',
           message: getWorkflowCheckIssueMessage('resource_no_permission', t),
-          inputKey: key
+          inputKey
         });
       }
       if (value.some((item) => item && (item as { isDeleted?: boolean }).isDeleted)) {
@@ -630,10 +629,26 @@ export const checkWorkflowNodeIssues = ({
           node,
           code: 'resource_missing',
           message: getWorkflowCheckIssueMessage('resource_missing', t),
-          inputKey: key
+          inputKey
         });
       }
-    });
+    };
+
+    [NodeInputKeyEnum.datasetSelectList, NodeInputKeyEnum.skills].forEach((key) =>
+      addResourceIssues(inputMap.get(key)?.value, key)
+    );
+
+    if (
+      data.flowNodeType === FlowNodeTypeEnum.agent &&
+      datasetParamsInput?.value &&
+      typeof datasetParamsInput.value === 'object' &&
+      !Array.isArray(datasetParamsInput.value)
+    ) {
+      addResourceIssues(
+        (datasetParamsInput.value as { datasets?: unknown }).datasets,
+        NodeInputKeyEnum.datasetParams
+      );
+    }
 
     // 工具调用下游工具只有 systemInputConfig 未配置时才算未激活。
     // 普通必填参数为空由下面的通用必填校验单独提示，不能复用整体工具配置状态。
@@ -688,7 +703,6 @@ export const checkWorkflowNodeIssues = ({
         });
       }
 
-      const datasetParamsInput = inputMap.get(NodeInputKeyEnum.datasetParams);
       if (
         data.flowNodeType === FlowNodeTypeEnum.agent &&
         datasetParamsInput?.value &&
