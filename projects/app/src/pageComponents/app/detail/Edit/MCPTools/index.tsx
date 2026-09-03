@@ -11,11 +11,11 @@ import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 const MCPTools = () => {
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const toolSetData = useMemo(() => {
-    const toolSetNode = appDetail.modules.find(
+    const toolSetNode = appDetail.nodes.find(
       (item) => item.flowNodeType === FlowNodeTypeEnum.toolSet
     );
     return toolSetNode?.toolConfig?.mcpToolSet ?? toolSetNode?.inputs[0].value;
-  }, [appDetail.modules]);
+  }, [appDetail.nodes]);
 
   const [url, setUrl] = useState(toolSetData?.url || '');
   const [toolList, setToolList] = useState<McpToolConfigType[]>(toolSetData?.toolList || []);

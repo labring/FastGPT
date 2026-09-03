@@ -16,11 +16,11 @@ const Edit = () => {
   const { isPc } = useSystem();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const toolSetData = useMemo(() => {
-    const toolSetNode = appDetail.modules.find(
+    const toolSetNode = appDetail.nodes.find(
       (item) => item.flowNodeType === FlowNodeTypeEnum.toolSet
     );
     return toolSetNode?.toolConfig?.httpToolSet;
-  }, [appDetail.modules]);
+  }, [appDetail.nodes]);
 
   const [currentTool, setCurrentTool] = useState<HttpToolConfigType | undefined>(
     toolSetData?.toolList?.[0]
@@ -40,6 +40,8 @@ const Edit = () => {
 
   useEffect(() => {
     if (!currentTool || toolList.length === 0) {
+      // 组件加载或工具集更新后，将当前选择同步到可用工具列表。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentTool(toolList[0]);
       return;
     }

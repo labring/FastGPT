@@ -18,6 +18,7 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
 import { updateResourceCollaborators } from '@fastgpt/service/support/permission/resourcePermissionService';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
@@ -41,7 +42,7 @@ describe('Copy', () => {
       {
         auth: users.members[0],
         body: {
-          modules: [],
+          nodes: [],
           name: 'testfolder',
           type: AppTypeEnum.folder
         }
@@ -56,7 +57,7 @@ describe('Copy', () => {
       {
         auth: users.members[0],
         body: {
-          modules: [],
+          nodes: [],
           parentId: folderId,
           name: 'simple app',
           type: AppTypeEnum.simple
@@ -66,24 +67,29 @@ describe('Copy', () => {
     expect(res2.error).toBeUndefined();
     expect(res2.code).toBe(200);
     const appId = res2.data as string;
-    await MongoApp.findByIdAndUpdate(appId, {
-      modules: [
-        {
-          nodeId: 'chat-node',
-          flowNodeType: FlowNodeTypeEnum.chatNode,
-          name: 'Chat',
-          inputs: [
+    await MongoAppVersion.updateOne(
+      { appId, isPublish: true },
+      {
+        $set: {
+          nodes: [
             {
-              key: NodeInputKeyEnum.aiModel,
-              value: 'disabled-copy-model',
-              selectedType: FlowNodeInputTypeEnum.selectLLMModel,
-              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+              nodeId: 'chat-node',
+              flowNodeType: FlowNodeTypeEnum.chatNode,
+              name: 'Chat',
+              inputs: [
+                {
+                  key: NodeInputKeyEnum.aiModel,
+                  value: 'disabled-copy-model',
+                  selectedType: FlowNodeInputTypeEnum.selectLLMModel,
+                  renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+                }
+              ],
+              outputs: []
             }
-          ],
-          outputs: []
+          ]
         }
-      ]
-    });
+      }
+    );
 
     const res3 = await Call<CopyAppBodyType, Record<string, never>, CopyAppResponseType>(
       copyapi.default,
@@ -132,11 +138,14 @@ describe('Copy', () => {
     );
     expect(res4.error).toBeUndefined();
     expect(res4.code).toBe(200);
-    const copiedApp = await MongoApp.findById(res4.data?.appId).lean();
+    const copiedVersion = await MongoAppVersion.findOne({
+      appId: res4.data?.appId,
+      isPublish: true
+    }).lean();
     const expectedFallbackModelId =
       global.systemDefaultModel.llm?.modelId ??
       global.systemActiveModelList.find((model) => model.type === ModelTypeEnum.llm)?.modelId;
-    expect(copiedApp?.modules[0].inputs).toEqual([
+    expect(copiedVersion?.nodes[0].inputs).toEqual([
       expect.objectContaining({
         key: NodeInputKeyEnum.aiModelId,
         value: expectedFallbackModelId

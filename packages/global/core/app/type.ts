@@ -1,9 +1,7 @@
-import { StoreNodeItemTypeSchema } from '../workflow/type/node';
 import { AppTypeEnum } from './constants';
 import { NodeInputKeyEnum } from '../workflow/constants';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 import type { ReasoningEffort } from '../ai/llm/type';
-import { StoreEdgeItemTypeSchema } from '../workflow/type/edge';
 import type { AppPermission } from '../../support/permission/app/controller';
 import { ParentIdSchema, type ParentIdType } from '../../common/parentFolder/type';
 import type { WorkflowTemplateBasicType } from '../workflow/type';
@@ -13,6 +11,7 @@ import { ObjectIdSchema } from '../../common/type/mongo';
 import { AppFileSelectConfigTypeSchema } from './type/config.schema';
 import { BoolSchema, NumSchema } from '../../common/zod';
 import { VariableItemTypeSchema } from './variable/type';
+import type { AppVersionSchemaType } from './version/type';
 
 // tts
 export const AppTTSConfigTypeSchema = z.object({
@@ -150,12 +149,40 @@ export const AppChatConfigTypeSchema = z.object({
 });
 export type AppChatConfigType = z.infer<typeof AppChatConfigTypeSchema>;
 
-export const AppResourceRefsSchema = z.object({
-  skillIds: z.array(z.string()).default([]).meta({
-    description: '应用发布版本引用的技能 ID 列表'
+const AppResourceToolDataSchema = z.object({
+  toolNames: z.array(z.string()).optional().meta({
+    description: 'MCP/HTTP 工具集允许执行的子工具名；为空表示整个工具集'
   })
 });
-export type AppResourceRefsType = z.infer<typeof AppResourceRefsSchema>;
+
+const AppResourceModelDataSchema = z.object({
+  modelType: z.enum(['llm', 'rerank', 'tts']).meta({
+    description: '模型资源类型'
+  })
+});
+
+export const AppResourceSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('tool'),
+    id: z.string(),
+    data: AppResourceToolDataSchema.optional()
+  }),
+  z.object({
+    type: z.literal('model'),
+    id: z.string(),
+    data: AppResourceModelDataSchema
+  }),
+  z.object({
+    type: z.enum(['agent', 'dataset', 'skill']),
+    id: z.string()
+  })
+]);
+export type AppResource = z.infer<typeof AppResourceSchema>;
+export const AppResourceTypeSchema = z.enum(['tool', 'model', 'agent', 'dataset', 'skill']);
+export type AppResourceType = z.infer<typeof AppResourceTypeSchema>;
+
+export const AppResourcesSchema = z.array(AppResourceSchema);
+export type AppResourcesType = z.infer<typeof AppResourcesSchema>;
 
 // Mongo Collection
 export const AppStorageSchemaTypeSchema = z.object({
@@ -173,8 +200,6 @@ export const AppStorageSchemaTypeSchema = z.object({
 
   updateTime: z.coerce.date(),
 
-  modules: z.array(StoreNodeItemTypeSchema),
-  edges: z.array(StoreEdgeItemTypeSchema),
   pluginData: z
     .object({
       nodeVersion: z.string().optional().meta({
@@ -195,11 +220,11 @@ export const AppStorageSchemaTypeSchema = z.object({
       description: '应用扩展配置，主要用于工具集和旧版插件应用'
     }),
 
-  // App system config
-  chatConfig: AppChatConfigTypeSchema,
   scheduledTriggerConfig: AppScheduledTriggerConfigTypeSchema.optional(),
   scheduledTriggerNextTime: z.coerce.date().optional(),
-  resourceRefs: AppResourceRefsSchema.optional(),
+  publishedVersionId: ObjectIdSchema.optional().meta({
+    description: '当前最新正式发布 Version ID'
+  }),
   inheritPermission: BoolSchema.optional(),
 
   // if access the app by favourite or quick
@@ -246,7 +271,16 @@ export type AppListItemType = {
   hasInteractiveNode?: boolean;
 };
 
+/** 鉴权得到的 App 行：Mongo 元数据 + 权限。工作流图在 Version 上。 */
+export type AppWithPermissionType = AppSchemaType & {
+  permission: AppPermission;
+};
+
+/** 应用详情：元数据 + 当前草稿 Version 的 nodes/edges/chatConfig。 */
 export type AppDetailType = AppSchemaType & {
+  nodes: AppVersionSchemaType['nodes'];
+  edges: AppVersionSchemaType['edges'];
+  chatConfig: AppVersionSchemaType['chatConfig'];
   permission: AppPermission;
 };
 

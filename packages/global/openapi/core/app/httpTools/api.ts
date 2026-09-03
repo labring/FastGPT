@@ -11,7 +11,7 @@ import { HttpToolTypeEnum } from '../../../../core/app/tool/httpTool/constants';
  * ============================================================================ */
 export const CreateHttpToolsBodySchema = CreateAppBodySchema.omit({
   type: true,
-  modules: true,
+  nodes: true,
   edges: true,
   chatConfig: true
 })

@@ -626,6 +626,106 @@ describe('checkWorkflowNodeIssues', () => {
     expect(result.toolCall.map((issue) => issue.code)).toContain('tool_call_empty');
   });
 
+  it('reports deleted dataset or skill references via resource_missing', () => {
+    const datasetNode = makeNode('dataset', FlowNodeTypeEnum.answerNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.datasetSelectList,
+          label: '知识库',
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: [
+            { datasetId: 'd1', name: 'ok', isDeleted: false },
+            { datasetId: 'd2', name: 'gone', isDeleted: true }
+          ]
+        }
+      ]
+    });
+    const skillNode = makeNode('skill', FlowNodeTypeEnum.answerNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.skills,
+          label: '技能',
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: [{ skillId: 's2', name: 'gone', isDeleted: true }]
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, datasetNode, skillNode],
+      edges: [
+        { id: 'e1', source: 'start', target: 'dataset', type: EDGE_TYPE },
+        { id: 'e2', source: 'start', target: 'skill', type: EDGE_TYPE }
+      ]
+    });
+
+    expect(result.dataset.map((issue) => issue.code)).toContain('resource_missing');
+    expect(result.skill.map((issue) => issue.code)).toContain('resource_missing');
+  });
+
+  it('focuses resources with an explicit ACL denial marker', () => {
+    const datasetNode = makeNode('dataset', FlowNodeTypeEnum.answerNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.datasetSelectList,
+          label: '知识库',
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: [{ datasetId: 'd1', name: 'no-perm', permissionDenied: true }]
+        }
+      ]
+    });
+    const toolNode = makeNode('tool', FlowNodeTypeEnum.appModule, {
+      pluginData: { permissionDenied: true } as any
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, datasetNode, toolNode],
+      edges: [
+        { id: 'e1', source: 'start', target: 'dataset', type: EDGE_TYPE },
+        { id: 'e2', source: 'start', target: 'tool', type: EDGE_TYPE }
+      ]
+    });
+
+    expect((result.dataset ?? []).map((issue) => issue.code)).toContain('resource_no_permission');
+    expect((result.tool ?? []).map((issue) => issue.code)).toContain('resource_no_permission');
+  });
+
+  it('reports unavailable datasets nested in Agent datasetParams', () => {
+    const agentNode = makeNode('agent', FlowNodeTypeEnum.agent, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.datasetParams,
+          label: '知识库配置',
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: {
+            datasets: [
+              { datasetId: 'd1', name: 'no-perm', permissionDenied: true },
+              { datasetId: 'd2', name: 'gone', isDeleted: true }
+            ]
+          }
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, agentNode],
+      edges: [{ id: 'e1', source: 'start', target: 'agent', type: EDGE_TYPE }]
+    });
+
+    expect(result.agent).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'resource_no_permission',
+          inputKey: NodeInputKeyEnum.datasetParams
+        }),
+        expect.objectContaining({
+          code: 'resource_missing',
+          inputKey: NodeInputKeyEnum.datasetParams
+        })
+      ])
+    );
+  });
+
   /**
    * 使用 packages/global 真实节点模板构造 inputs，避免手写 valueType 掩盖模板默认值。
    */

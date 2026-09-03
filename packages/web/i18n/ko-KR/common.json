@@ -661,6 +661,8 @@
   "core.workflow.check.tool_missing": "이 도구는 존재하지 않습니다. 삭제하세요",
   "core.workflow.check.tool_no_permission": "현재 계정에 이 리소스에 접근할 권한이 없습니다",
   "core.workflow.check.model_unavailable": "모델이 비활성화되었습니다",
+  "core.workflow.check.resource_missing": "참조한 지식 베이스 또는 스킬이 삭제되었거나 사용할 수 없습니다. 삭제해 주세요",
+  "core.workflow.check.resource_no_permission": "이 리소스에 접근할 권한이 없습니다. 권한을 확인해 주세요",
   "core.workflow.check.user_select_empty": "옵션을 하나 이상 설정하세요",
   "core.workflow.check.user_select_value_empty": "옵션 값은 비워 둘 수 없습니다",
   "core.workflow.debug.Done": "디버깅 완료",

@@ -10,16 +10,17 @@ import {
   storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, type NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getHistories, safePoints } from '../utils';
 import { getWorkflowFileVariableInputs, WorkflowVariableState } from '../utils/variables';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { authAppByTmbId } from '../../../../support/permission/app/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { runWithDerivedWorkflowFileContext } from '../../utils/context';
+import { createWorkflowChildResourceContext, loadWorkflowAppResource } from '../../utils/resource';
+import { getAppVersionById } from '../../../app/version/controller';
+import { nodeHasDynamicInput } from '../../../app/resources';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -45,12 +46,21 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     return Promise.reject('Input is empty');
   }
 
-  // 检查该工作流的tmb是否有调用该app的权限（不是校验对话的人，是否有权限）
-  const { app: appData } = await authAppByTmbId({
+  const dynamicApp = nodeHasDynamicInput(props.node, [NodeInputKeyEnum.runAppSelectApp]);
+  const appData = await loadWorkflowAppResource({
     appId: app.id,
-    tmbId: runningAppInfo.tmbId,
-    per: ReadPermissionVal
+    tmbId: props.runningUserInfo.tmbId,
+    type: 'agent',
+    dynamic: dynamicApp
   });
+  const childVersion = await getAppVersionById({
+    appId: app.id,
+    app: appData
+  });
+  const resourceContext = await createWorkflowChildResourceContext(
+    childVersion.resources,
+    String(appData.teamId)
+  );
 
   workflowStreamResponse?.(workflowSseEvent.fastAnswerDelta('\n'));
 
@@ -78,9 +88,10 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
       query: childQuery,
       histories: chatHistories,
       files: getWorkflowFileVariableInputs({
-        variablesConfig: appData.chatConfig?.variables,
+        variablesConfig: childVersion.chatConfig.variables,
         inputVariables: childInputVariables
       }),
+      resourceContext,
       fn: async ({ resolveInputFile, query: filteredQuery, histories: filteredHistories }) => {
         filteredChildHistories = filteredHistories;
         filteredChildQuery = filteredQuery;
@@ -91,7 +102,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
           chatId: props.chatId,
           responseChatItemId: props.responseChatItemId,
           histories: filteredHistories,
-          variablesConfig: appData.chatConfig?.variables,
+          variablesConfig: childVersion.chatConfig.variables,
           inputVariables: childInputVariables,
           externalVariables: externalProvider?.externalWorkflowVariables,
           sourceVariableState: variableState,
@@ -102,12 +113,12 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
           ...props,
           runningAppInfo: childRunningAppInfo,
           runtimeNodes: storeNodes2RuntimeNodes(
-            appData.modules,
-            getWorkflowEntryNodeIds(appData.modules)
+            childVersion.nodes,
+            getWorkflowEntryNodeIds(childVersion.nodes)
           ),
-          runtimeEdges: storeEdges2RuntimeEdges(appData.edges),
+          runtimeEdges: storeEdges2RuntimeEdges(childVersion.edges),
           variableState: childVariableState,
-          chatConfig: appData.chatConfig,
+          chatConfig: childVersion.chatConfig,
           histories: filteredHistories,
           query: filteredQuery
         });

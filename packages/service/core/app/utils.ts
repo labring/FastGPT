@@ -18,6 +18,7 @@ import { getClientToolPreviewNode } from './tool/utils/client';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import {
   isSystemOrCommercialToolId,
   splitCombineToolId
@@ -33,10 +34,17 @@ import {
   type SelectedAgentSkillItemType
 } from '@fastgpt/global/core/app/formEdit/type';
 import { authSkillByTmbId } from '../../support/permission/skill/auth';
+import { MongoAgentSkills } from '../ai/skill/model/schema';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { authDatasetByTmbId } from '../../support/permission/dataset/auth';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { getAppResourceKey, normalizeAppToolResource } from './resources';
 import type {
   FlowNodeInputItemType,
   SelectedDatasetType
 } from '@fastgpt/global/core/workflow/type/io';
+import type { AppResourcesType } from '@fastgpt/global/core/app/type';
 import { formatToolInputSecrets } from './tool/secretConfig';
 import z from 'zod';
 
@@ -50,58 +58,98 @@ export async function rewriteAppWorkflowToDetail({
   teamId,
   isRoot,
   ownerTmbId,
-  lang
+  viewerTmbId,
+  lang,
+  resources = []
 }: {
   nodes: DetailWorkflowNode[];
   teamId: string;
   isRoot: boolean;
   ownerTmbId: string;
+  /** 当前请求操作者；仅对快照外新增资源做 UI 侧权限提示。 */
+  viewerTmbId?: string;
   lang?: localeType;
+  resources?: AppResourcesType;
 }) {
+  // 快照内资源属于已确认的历史基线，不使用当前操作者或应用 owner 重新鉴权。
+  const snapshotResourceKeys = new Set(resources.map(getAppResourceKey));
+  const hasSnapshotResource = (type: 'agent' | 'tool' | 'dataset' | 'skill', id: string) =>
+    snapshotResourceKeys.has(getAppResourceKey({ type, id }));
   type SelectedDatasetSnapshot = Pick<SelectedDatasetType, 'datasetId'> &
     Partial<SelectedDatasetType>;
   const defaultDeletedDatasetAvatar = DatasetTypeMap[DatasetTypeEnum.dataset].avatar;
 
+  const authSnapshotExternalTool = async ({
+    id,
+    resourceType
+  }: {
+    id: string;
+    resourceType: 'agent' | 'tool';
+  }) => {
+    const normalizedResource = normalizeAppToolResource(id);
+    const resourceInSnapshot =
+      !!normalizedResource && hasSnapshotResource(resourceType, normalizedResource.id);
+    if ((!viewerTmbId || resourceInSnapshot) && !isRoot) return false;
+
+    let authAppId: string | undefined;
+    try {
+      authAppId = splitCombineToolId(id).authAppId;
+    } catch {
+      return false;
+    }
+    if (!authAppId) return false;
+
+    try {
+      await authAppByTmbId({
+        tmbId: viewerTmbId ?? ownerTmbId,
+        appId: authAppId,
+        per: ReadPermissionVal,
+        isRoot
+      });
+      return false;
+    } catch {
+      return true;
+    }
+  };
+
   const loadToolNode = async ({
     id,
     versionId,
-    source
+    source,
+    resourceType = 'tool'
   }: {
     id: string;
     versionId?: string;
     source?: string;
+    resourceType?: 'agent' | 'tool';
   }) => {
-    const { authAppId } = splitCombineToolId(id);
+    if (await authSnapshotExternalTool({ id, resourceType })) {
+      return {
+        success: false,
+        error: AppErrEnum.unAuthApp,
+        permissionDenied: true
+      };
+    }
 
     try {
-      const [preview] = await Promise.all([
-        getClientToolPreviewNode({
-          appId: id,
-          versionId,
-          lang,
-          source,
-          teamId
-        }),
-        ...(authAppId
-          ? [
-              authAppByTmbId({
-                tmbId: ownerTmbId,
-                appId: authAppId,
-                per: ReadPermissionVal,
-                isRoot
-              })
-            ]
-          : [])
-      ]);
+      const preview = await getClientToolPreviewNode({
+        appId: id,
+        versionId,
+        lang,
+        source,
+        teamId
+      });
 
       return {
         success: true,
-        data: preview
+        data: preview,
+        permissionDenied: false
       };
     } catch (error) {
       return {
         success: false,
-        error: getErrText(error, '', lang)
+        error: getErrText(error, '', lang),
+        permissionDenied: false
       };
     }
   };
@@ -113,28 +161,44 @@ export async function rewriteAppWorkflowToDetail({
   const loadAgentSkill = async (
     selectedSkill: AgentSkillSnapshot
   ): Promise<SelectedAgentSkillItemType> => {
+    const skillId = String(selectedSkill.skillId);
+    const resourceInSnapshot = hasSnapshotResource('skill', skillId);
     try {
-      const { skill } = await authSkillByTmbId({
-        tmbId: ownerTmbId,
-        skillId: selectedSkill.skillId,
-        per: ReadPermissionVal,
-        isRoot
-      });
+      const skill =
+        viewerTmbId && !resourceInSnapshot
+          ? (
+              await authSkillByTmbId({
+                tmbId: viewerTmbId,
+                skillId,
+                per: ReadPermissionVal,
+                isRoot
+              })
+            ).skill
+          : await MongoAgentSkills.findOne({
+              _id: skillId,
+              deleteTime: null,
+              ...(isRoot ? {} : { $or: [{ teamId }, { source: AgentSkillSourceEnum.system }] })
+            }).lean();
+
+      if (!skill) throw SkillErrEnum.unExist;
 
       return {
         skillId: String(skill._id),
         name: skill.name,
         description: skill.description,
         avatar: skill.avatar,
-        isDeleted: false
+        isDeleted: false,
+        permissionDenied: false
       };
-    } catch {
+    } catch (error) {
+      const permissionDenied = error === SkillErrEnum.unAuthSkill;
       return {
         skillId: selectedSkill.skillId,
         name: selectedSkill.name ?? 'Invalid',
         description: selectedSkill.description ?? '',
         avatar: selectedSkill.avatar,
-        isDeleted: true
+        isDeleted: !permissionDenied,
+        permissionDenied
       };
     }
   };
@@ -176,10 +240,28 @@ export async function rewriteAppWorkflowToDetail({
       snapshot: SelectedDatasetSnapshot
     ): Promise<SelectedDatasetType> => {
       const datasetId = String(snapshot.datasetId);
-      const dataset = await MongoDataset.findOne({
-        _id: datasetId,
-        ...(!isRoot && teamId && { teamId })
-      }).lean();
+      const resourceInSnapshot = hasSnapshotResource('dataset', datasetId);
+      let dataset;
+      let permissionDenied = false;
+
+      try {
+        dataset =
+          viewerTmbId && !resourceInSnapshot
+            ? (
+                await authDatasetByTmbId({
+                  tmbId: viewerTmbId,
+                  datasetId,
+                  per: ReadPermissionVal,
+                  isRoot
+                })
+              ).dataset
+            : await MongoDataset.findOne({
+                _id: datasetId,
+                ...(!isRoot && teamId && { teamId })
+              }).lean();
+      } catch (error) {
+        permissionDenied = error === DatasetErrEnum.unAuthDataset;
+      }
 
       if (dataset && !dataset.deleteTime) {
         return {
@@ -187,7 +269,8 @@ export async function rewriteAppWorkflowToDetail({
           avatar: dataset.avatar,
           name: dataset.name,
           vectorModel: getDatasetEmbeddingModel(dataset),
-          isDeleted: false
+          isDeleted: false,
+          permissionDenied
         };
       }
 
@@ -197,7 +280,8 @@ export async function rewriteAppWorkflowToDetail({
         avatar: defaultDeletedDatasetAvatar,
         name: snapshot.name || '',
         vectorModel: snapshot.vectorModel || desensitizeSystemModel(getDefaultEmbeddingModelData()),
-        isDeleted: true
+        isDeleted: !permissionDenied,
+        ...(permissionDenied ? { permissionDenied: true } : {})
       };
     };
 
@@ -219,6 +303,7 @@ export async function rewriteAppWorkflowToDetail({
         const result = await loadToolNode({
           id: node.pluginId,
           versionId: node.version ?? '',
+          resourceType: node.flowNodeType === FlowNodeTypeEnum.appModule ? 'agent' : 'tool',
           source:
             node.source ??
             node.toolConfig?.systemTool?.source ??
@@ -236,7 +321,8 @@ export async function rewriteAppWorkflowToDetail({
             diagram: preview.diagram,
             userGuide: preview.userGuide,
             courseUrl: preview.courseUrl,
-            readmeUrl: preview.readmeUrl
+            readmeUrl: preview.readmeUrl,
+            ...(result.permissionDenied ? { permissionDenied: true } : {})
           };
           node.versionLabel = preview.versionLabel;
           node.isLatestVersion = preview.isLatestVersion;
@@ -271,7 +357,8 @@ export async function rewriteAppWorkflowToDetail({
           }
         } else {
           node.pluginData = {
-            error: result.error
+            error: result.error,
+            ...(result.permissionDenied ? { permissionDenied: true } : {})
           };
         }
       }
@@ -298,7 +385,8 @@ export async function rewriteAppWorkflowToDetail({
               const result = await loadToolNode({
                 id: tool.id,
                 versionId: tool.version,
-                source: tool.source
+                source: tool.source,
+                resourceType: 'tool'
               });
               if (result.success) {
                 const data = result.data!;
@@ -342,6 +430,9 @@ export async function rewriteAppWorkflowToDetail({
                   ...data,
                   source: tool.source ?? data.source,
                   toolConfig: tool.toolConfig ?? data.toolConfig,
+                  ...(result.permissionDenied
+                    ? { pluginData: { ...data.pluginData, permissionDenied: true } }
+                    : {}),
                   inputs: mergedInputs
                 };
               } else {
@@ -364,7 +455,8 @@ export async function rewriteAppWorkflowToDetail({
                   outputs: [],
                   configStatus: 'invalid' as const,
                   pluginData: {
-                    error: result.error
+                    error: result.error,
+                    ...(result.permissionDenied ? { permissionDenied: true } : {})
                   }
                 };
               }

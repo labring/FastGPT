@@ -249,6 +249,7 @@ export async function handleSkillDebugChat(
         persistToDb: true,
         retainInMemory: true
       },
+      // Skill 调试不是 App 运行，不带 Version 快照；静态资源按运行人 tmbId 鉴权。
       agentSandboxPrepareActions: options.agentSandboxPrepareActions
     });
 

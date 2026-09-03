@@ -20,7 +20,7 @@ import {
   type ReferenceItemValueType
 } from './type/io';
 import type { NodeToolConfigType, StoreNodeItemType } from './type/node';
-import type { AppChatConfigType, AppSchemaType, AppWelcomeConfigType } from '../app/type';
+import type { AppChatConfigType, AppWelcomeConfigType } from '../app/type';
 import type { VariableItemType } from '../app/variable/type';
 import { normalizeAndParseVariableList } from '../app/variable/utils';
 import { type EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
@@ -636,7 +636,7 @@ export const formatModels = ({
   modelReferencePolicy
 }: {
   nodes: StoreNodeItemType[] | undefined;
-  chatConfig?: AppSchemaType['chatConfig'];
+  chatConfig?: AppChatConfigType;
   models?: Array<{ modelId: string; model: string; type: ModelTypeEnum }>;
   defaultModelIds?: Partial<Record<ModelTypeEnum, string>>;
   modelReferencePolicy: 'preserve' | 'fallback' | 'validate' | 'import';
@@ -892,7 +892,7 @@ export const addModelNamesToWorkflow = ({
   models = []
 }: {
   nodes?: StoreNodeItemType[];
-  chatConfig?: AppSchemaType['chatConfig'];
+  chatConfig?: AppChatConfigType;
   models?: Array<{ modelId: string; model: string; type: ModelTypeEnum }>;
 }) => {
   const findModelName = ({ modelId, type }: { modelId: unknown; type: ModelTypeEnum }) => {

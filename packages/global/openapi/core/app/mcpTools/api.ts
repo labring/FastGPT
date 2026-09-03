@@ -7,7 +7,7 @@ import { McpToolConfigSchema } from '../../../../core/app/tool/mcpTool/type';
 // Create mcp tool
 export const CreateMcpToolsBodySchema = CreateAppBodySchema.omit({
   type: true,
-  modules: true,
+  nodes: true,
   edges: true,
   chatConfig: true
 })

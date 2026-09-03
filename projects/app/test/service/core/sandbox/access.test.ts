@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   createAgentSandboxPermissionDeniedError: vi.fn(),
   findAppById: vi.fn(),
   getAppLatestVersion: vi.fn(),
+  getAppDraftWorkflow: vi.fn(),
   resolveAppSandboxAvailability: vi.fn()
 }));
 
@@ -33,7 +34,8 @@ vi.mock('@fastgpt/service/core/app/schema', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/app/version/controller', () => ({
-  getAppLatestVersion: mocks.getAppLatestVersion
+  getAppLatestVersion: mocks.getAppLatestVersion,
+  getAppDraftWorkflow: mocks.getAppDraftWorkflow
 }));
 
 import {
@@ -67,6 +69,7 @@ describe('resolveSandboxSessionAvailability', () => {
       lean: vi.fn().mockResolvedValue({ _id: 'app_1', modules: [] })
     });
     mocks.getAppLatestVersion.mockResolvedValue({ nodes: [], edges: [], chatConfig: {} });
+    mocks.getAppDraftWorkflow.mockResolvedValue({ nodes: [], edges: [], chatConfig: {} });
   });
 
   it('short-circuits before App queries when the system feature is disabled', async () => {
@@ -109,8 +112,10 @@ describe('resolveSandboxSessionAvailability', () => {
   );
 
   it('falls back to current draft nodes only for legacy Chat Test sessions', async () => {
-    mocks.findAppById.mockReturnValueOnce({
-      lean: vi.fn().mockResolvedValue({ _id: 'app_1', modules: [sandboxNode(true)] })
+    mocks.getAppDraftWorkflow.mockResolvedValueOnce({
+      nodes: [sandboxNode(true)],
+      edges: [],
+      chatConfig: {}
     });
 
     await resolveSandboxSessionAvailability({
@@ -122,6 +127,7 @@ describe('resolveSandboxSessionAvailability', () => {
       appEnabled: true,
       teamId: 'team_1'
     });
+    expect(mocks.getAppDraftWorkflow).toHaveBeenCalled();
     expect(mocks.getAppLatestVersion).not.toHaveBeenCalled();
   });
 

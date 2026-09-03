@@ -427,11 +427,19 @@ const EditForm = ({
           >
             {selectedAgentSkills.map((item) => {
               const isDeleted = !!item.isDeleted;
+              const permissionDenied = !!item.permissionDenied;
+              const isUnavailable = isDeleted || permissionDenied;
 
               return (
                 <MyTooltip
                   key={item.skillId}
-                  label={isDeleted ? t('skill:skill_deleted_click_remove_tip') : item.description}
+                  label={
+                    permissionDenied
+                      ? t('common:core.workflow.check.resource_no_permission')
+                      : isDeleted
+                        ? t('skill:skill_deleted_click_remove_tip')
+                        : item.description
+                  }
                 >
                   <Flex
                     overflow={'hidden'}
@@ -441,10 +449,10 @@ const EditForm = ({
                     boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
                     borderRadius={'md'}
                     border={'base'}
-                    borderColor={isDeleted ? 'red.600' : undefined}
+                    borderColor={isUnavailable ? 'red.600' : undefined}
                     userSelect={'none'}
                     _hover={{
-                      borderColor: isDeleted ? 'red.600' : 'primary.300',
+                      borderColor: isUnavailable ? 'red.600' : 'primary.300',
                       '.delete': {
                         display: 'flex'
                       },
@@ -470,7 +478,15 @@ const EditForm = ({
                     >
                       {item.name}
                     </Box>
-                    {isDeleted && (
+                    {permissionDenied && (
+                      <MyTag colorSchema="red" type="fill" className="unHoverStyle">
+                        <MyIcon name={'common/error'} w={'14px'} mr={1} />
+                        <Box color={'red.600'} maxW={'150px'} className="textEllipsis">
+                          {t('common:core.workflow.check.resource_no_permission')}
+                        </Box>
+                      </MyTag>
+                    )}
+                    {!permissionDenied && isDeleted && (
                       <MyTag colorSchema="red" type="fill" className="unHoverStyle">
                         <MyIcon name={'common/error'} w={'14px'} mr={1} />
                         <Box color={'red.600'} maxW={'120px'} className="textEllipsis">
@@ -756,7 +772,8 @@ const EditForm = ({
             name: item.name,
             avatar: item.avatar,
             vectorModel: item.vectorModel,
-            isDeleted: item.isDeleted
+            isDeleted: item.isDeleted,
+            permissionDenied: item.permissionDenied
           }))}
           onClose={onCloseKbSelect}
           onChange={(e) => {

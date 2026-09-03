@@ -11,6 +11,7 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { getAgentRuntimeTools } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils';
+import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import type { NodeToolConfigType } from '@fastgpt/global/core/workflow/type/node';
 
 const {
@@ -56,18 +57,21 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/common/logger', () => ({
-  LogCategories: {
-    MODULE: {
-      AI: {
-        AGENT: 'agent'
-      }
+vi.mock('@fastgpt/service/common/logger', () => {
+  const logCategory = new Proxy(
+    {},
+    {
+      get: () => logCategory
     }
-  },
-  getLogger: vi.fn(() => ({
-    warn: vi.fn()
-  }))
-}));
+  );
+
+  return {
+    LogCategories: logCategory,
+    getLogger: vi.fn(() => ({
+      warn: vi.fn()
+    }))
+  };
+});
 
 const mcpInputSchema = {
   type: 'object',
@@ -781,7 +785,7 @@ describe('getAgentRuntimeTools schema loading', () => {
       tools: [{ id: 'mcp-stripped_mcp_app/search', config: {} }]
     });
 
-    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.stripped_mcp_app);
+    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.stripped_mcp_app, undefined);
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
   });
@@ -800,7 +804,7 @@ describe('getAgentRuntimeTools schema loading', () => {
       tools: [{ id: 'legacy_mcp_app', config: {} }]
     });
 
-    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.legacy_mcp_app);
+    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.legacy_mcp_app, undefined);
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.name).toBe('legacy_mcp_app0');
     expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
@@ -821,7 +825,7 @@ describe('getAgentRuntimeTools schema loading', () => {
       tools: [{ id: 'mcp-legacy_mcp_app/search', config: {} }]
     });
 
-    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.legacy_mcp_app);
+    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.legacy_mcp_app, undefined);
     expect(tools).toHaveLength(1);
     expect(tools[0].id).toBe('legacy_mcp_appsearch');
     expect(tools[0].name).toBe('search');
@@ -881,6 +885,36 @@ describe('getAgentRuntimeTools schema loading', () => {
     );
     expect(tools[0].requestSchema.function.parameters).not.toEqual(httpInputSchema);
     expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_app/create');
+  });
+
+  it('loads a dynamic MCP tool without using the parent resource snapshot', async () => {
+    const tools = await runWithContext(
+      {
+        mcpClientMemory: {},
+        resourceContext: {
+          teamId: 'team_1',
+          resources: [],
+          resourceMap: new Map(),
+          appMap: new Map(),
+          workflowMap: new Map(),
+          datasetMap: new Map(),
+          skillMap: new Map()
+        }
+      },
+      () =>
+        getAgentRuntimeTools({
+          tmbId: 'tmb_1',
+          dynamic: true,
+          tools: [{ id: 'mcp-mcp_app/search', config: {} }]
+        })
+    );
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].name).toBe('search');
+    expect(tools[0].dynamic).toBe(true);
+    expect(authAppByTmbIdMock).toHaveBeenCalledWith(
+      expect.objectContaining({ appId: 'mcp_app', tmbId: 'tmb_1' })
+    );
   });
 
   it('loads a legacy HTTP tool without isToolParam as an agent tool', async () => {

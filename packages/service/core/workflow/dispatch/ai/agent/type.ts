@@ -25,6 +25,7 @@ export const SubAppRuntimeSchema = z.object({
   avatar: z.string().optional(),
   toolDescription: z.string().optional(),
   version: z.string().optional(),
+  dynamic: z.boolean().optional(),
   toolConfig: NodeToolConfigTypeSchema.optional(),
   inputs: z.custom<RuntimeNodeItemType['inputs']>().optional(),
   agentGeneratedInputKeys: z.array(z.string()).optional(),

@@ -1,4 +1,4 @@
-import { type AppDetailType } from '@fastgpt/global/core/app/type';
+import { type AppWithPermissionType } from '@fastgpt/global/core/app/type';
 import { type OutlinkAppType, type OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import { MongoOutLink } from '../../outLink/schema';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
@@ -23,7 +23,7 @@ export async function authOutLinkCrud({
   outLinkId: string;
 }): Promise<
   AuthResponseType & {
-    app: AppDetailType;
+    app: AppWithPermissionType;
     outLink: OutLinkSchemaType;
   }
 > {

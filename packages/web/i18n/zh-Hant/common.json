@@ -663,6 +663,8 @@
   "core.workflow.check.tool_missing": "該工具不存在，請刪除",
   "core.workflow.check.tool_no_permission": "當前帳號無權限存取該資源",
   "core.workflow.check.model_unavailable": "模型已停用",
+  "core.workflow.check.resource_missing": "引用的知識庫或技能已刪除或不可用，請刪除",
+  "core.workflow.check.resource_no_permission": "無權限存取該資源，請檢查權限",
   "core.workflow.check.user_select_empty": "需配置至少一個選項",
   "core.workflow.check.user_select_value_empty": "選項不可為空",
   "core.workflow.debug.Done": "除錯完成",

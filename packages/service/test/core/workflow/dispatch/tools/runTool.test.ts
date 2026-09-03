@@ -45,21 +45,15 @@ vi.mock('@fastgpt/service/core/app/mcp', () => ({
   })
 }));
 
-vi.mock('@fastgpt/service/common/logger', () => ({
-  LogCategories: {
-    MODULE: {
-      APP: {
-        TOOL: 'tool'
-      },
-      AI: {
-        LLM: 'llm'
-      }
-    }
-  },
-  getLogger: vi.fn(() => ({
-    error: vi.fn()
-  }))
-}));
+vi.mock('@fastgpt/service/common/logger', () => {
+  const logCategories = new Proxy({}, { get: () => logCategories });
+  return {
+    LogCategories: logCategories,
+    getLogger: vi.fn(() => ({
+      error: vi.fn()
+    }))
+  };
+});
 
 vi.mock('@fastgpt/service/common/middle/tracks/utils', () => ({
   pushTrack: {
@@ -83,7 +77,8 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/workflow/utils/context', () => ({
-  getWorkflowContext: vi.fn(() => ({ mcpClientMemory: {} }))
+  getWorkflowContext: vi.fn(() => ({ mcpClientMemory: {} })),
+  getWorkflowResourceContext: vi.fn(() => undefined)
 }));
 
 const createRunToolProps = (

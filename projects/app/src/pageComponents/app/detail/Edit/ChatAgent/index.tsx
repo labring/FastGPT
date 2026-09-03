@@ -27,7 +27,7 @@ const AgentEdit = () => {
   const [appForm, setAppForm] = useState<AppFormEditFormType>(() => {
     if (past.length === 0) {
       return appWorkflow2AgentForm({
-        nodes: appDetail.modules,
+        nodes: appDetail.nodes,
         chatConfig: {
           ...appDetail.chatConfig,
           fileSelectConfig: appDetail.chatConfig.fileSelectConfig || {

@@ -57,11 +57,11 @@ const SchemaConfigModal = ({ onClose }: { onClose: () => void }) => {
   const reloadApp = useContextSelector(AppContext, (v) => v.reloadApp);
 
   const toolSetData = useMemo(() => {
-    const toolSetNode = appDetail.modules.find(
+    const toolSetNode = appDetail.nodes.find(
       (item) => item.flowNodeType === FlowNodeTypeEnum.toolSet
     );
     return toolSetNode?.toolConfig?.httpToolSet;
-  }, [appDetail.modules]);
+  }, [appDetail.nodes]);
 
   const { register, setValue, handleSubmit, watch } = useForm<HttpToolsType>({
     defaultValues: {
