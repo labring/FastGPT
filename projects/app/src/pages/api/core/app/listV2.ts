@@ -40,6 +40,7 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
     searchKey,
     sort,
     tmbIds,
+    excludeAppId,
     pageNum = 1,
     pageSize = 50,
     offset
@@ -110,8 +111,11 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
       ...permissionQuery,
       ...(tmbIds ? { tmbId: { $in: tmbIds } } : {})
     };
-    if (searchKey) return { $and: [baseQuery, searchMatch] };
-    return { ...baseQuery, ...parseParentIdInMongo(parentId) };
+    const scopedQuery = excludeAppId
+      ? { $and: [baseQuery, { _id: { $ne: excludeAppId } }] }
+      : baseQuery;
+    if (searchKey) return { $and: [scopedQuery, searchMatch] };
+    return { ...scopedQuery, ...parseParentIdInMongo(parentId) };
   })();
 
   const skip = offset ?? (pageNum - 1) * pageSize;
