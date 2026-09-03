@@ -19,7 +19,8 @@ const Edit = () => {
     const toolSetNode = appDetail.modules.find(
       (item) => item.flowNodeType === FlowNodeTypeEnum.toolSet
     );
-    return toolSetNode?.toolConfig?.httpToolSet;
+    const toolSet = toolSetNode?.toolConfig?.httpToolSet;
+    return toolSet && 'toolList' in toolSet ? toolSet : undefined;
   }, [appDetail.modules]);
 
   const [currentTool, setCurrentTool] = useState<HttpToolConfigType | undefined>(

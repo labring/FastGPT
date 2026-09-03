@@ -9,9 +9,11 @@ type ToolSetListItemType = {
 };
 
 export const getNodeToolSetList = (tool: Pick<FlowNodeTemplateType, 'toolConfig'>) => {
+  const mcpToolSet = tool.toolConfig?.mcpToolSet;
+  const httpToolSet = tool.toolConfig?.httpToolSet;
   const toolList =
-    tool.toolConfig?.mcpToolSet?.toolList ??
-    tool.toolConfig?.httpToolSet?.toolList ??
+    (mcpToolSet && 'toolList' in mcpToolSet ? mcpToolSet.toolList : undefined) ??
+    (httpToolSet && 'toolList' in httpToolSet ? httpToolSet.toolList : undefined) ??
     tool.toolConfig?.systemToolSet?.toolList;
 
   return toolList ?? [];

@@ -6,6 +6,8 @@ import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/sys
 const {
   authAppByTmbIdMock,
   getAppVersionByIdMock,
+  getHTTPToolListMock,
+  getMCPChildrenMock,
   runHTTPToolMock,
   mcpToolCallMock,
   runToolStreamMock,
@@ -13,6 +15,8 @@ const {
 } = vi.hoisted(() => ({
   authAppByTmbIdMock: vi.fn(),
   getAppVersionByIdMock: vi.fn(),
+  getHTTPToolListMock: vi.fn(),
+  getMCPChildrenMock: vi.fn(),
   runHTTPToolMock: vi.fn(),
   mcpToolCallMock: vi.fn(),
   runToolStreamMock: vi.fn(),
@@ -28,11 +32,13 @@ vi.mock('@fastgpt/service/core/app/version/controller', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/app/http', () => ({
+  getHTTPToolList: getHTTPToolListMock,
   runHTTPTool: runHTTPToolMock
 }));
 
 vi.mock('@fastgpt/service/core/app/mcp', () => ({
   assertMCPUrlNotInternal: vi.fn(),
+  getMCPChildren: getMCPChildrenMock,
   MCPClient: vi.fn().mockImplementation(() => ({
     toolCall: mcpToolCallMock
   }))
@@ -112,9 +118,12 @@ describe('dispatchTool runtime toolset auth', () => {
     vi.clearAllMocks();
     authAppByTmbIdMock.mockResolvedValue({
       app: {
-        _id: 'victim-toolset'
+        _id: 'victim-toolset',
+        modules: []
       }
     });
+    getHTTPToolListMock.mockResolvedValue([]);
+    getMCPChildrenMock.mockResolvedValue([]);
     getSystemToolRuntimeMock.mockResolvedValue({
       id: 'search',
       version: '1.0.0',
@@ -195,24 +204,35 @@ describe('dispatchTool runtime toolset auth', () => {
   });
 
   it('should authorize HTTP parent toolset before agent tool execution', async () => {
-    getAppVersionByIdMock.mockResolvedValueOnce({
-      nodes: [
-        {
-          toolConfig: {
-            httpToolSet: {
-              baseUrl: 'https://example.com',
-              toolList: [
-                {
-                  name: 'sandbox_echo',
-                  path: '/echo',
-                  method: 'post'
-                }
-              ]
+    authAppByTmbIdMock.mockResolvedValueOnce({
+      app: {
+        _id: 'victim-toolset',
+        modules: [
+          {
+            toolConfig: {
+              httpToolSet: {
+                baseUrl: 'https://example.com',
+                toolList: [
+                  {
+                    name: 'sandbox_echo',
+                    description: 'Sandbox echo',
+                    path: '/echo',
+                    method: 'post'
+                  }
+                ]
+              }
             }
           }
-        }
-      ]
+        ]
+      }
     });
+    getHTTPToolListMock.mockResolvedValueOnce([
+      {
+        name: 'sandbox_echo',
+        path: '/echo',
+        method: 'post'
+      }
+    ]);
     runHTTPToolMock.mockResolvedValueOnce({
       data: {
         ok: true
@@ -232,10 +252,7 @@ describe('dispatchTool runtime toolset auth', () => {
       appId: 'victim-toolset',
       per: ReadPermissionVal
     });
-    expect(getAppVersionByIdMock).toHaveBeenCalledWith({
-      appId: 'victim-toolset',
-      versionId: undefined
-    });
+    expect(getAppVersionByIdMock).not.toHaveBeenCalled();
     expect(runHTTPToolMock).toHaveBeenCalledWith(
       expect.objectContaining({
         baseUrl: 'https://example.com',

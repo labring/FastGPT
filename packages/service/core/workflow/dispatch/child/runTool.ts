@@ -4,7 +4,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { assertMCPUrlNotInternal, MCPClient } from '../../../app/mcp';
+import { assertMCPUrlNotInternal, getMCPChildren, MCPClient } from '../../../app/mcp';
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
@@ -13,8 +13,15 @@ import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/sys
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
 import { getNodeErrResponse } from '../utils';
-import { getAppVersionById } from '../../../../core/app/version/controller';
-import { runHTTPTool } from '../../../app/http';
+import { getHTTPToolList, runHTTPTool } from '../../../app/http';
+import {
+  decodeHttpToolSetNodesFromStorage,
+  decodeMcpToolSetNodesFromStorage
+} from '../../../app/jsonSchemaStorage';
+import {
+  HttpToolSetRuntimeConfigSchema,
+  McpToolSetRuntimeConfigSchema
+} from '@fastgpt/global/core/workflow/type/node';
 import { getWorkflowContext } from '../../utils/context';
 import {
   getToolNameCandidates,
@@ -107,11 +114,13 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
      * 重新校验父工具集权限，避免脏数据或绕过保存接口的跨用户工具集引用被执行。
      */
     const authRuntimeToolset = async (parentId: string) => {
-      await authAppByTmbId({
-        tmbId: runningAppInfo.tmbId,
-        appId: parentId,
-        per: ReadPermissionVal
-      });
+      return (
+        await authAppByTmbId({
+          tmbId: runningUserInfo.tmbId,
+          appId: parentId,
+          per: ReadPermissionVal
+        })
+      ).app;
     };
 
     // run system tool
@@ -273,15 +282,19 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       if (!parentId || !toolName) {
         throw new Error(`Invalid MCP tool id: ${toolConfig.mcpTool.toolId}`);
       }
-      await authRuntimeToolset(parentId);
-
-      const mcpToolSet = toolConfig.mcpToolSet;
-      if (!mcpToolSet) throw new Error('MCP tool set is missing from runtime node');
+      const app = await authRuntimeToolset(parentId);
+      const mcpToolSet = McpToolSetRuntimeConfigSchema.safeParse(
+        decodeMcpToolSetNodesFromStorage(app.modules)[0]?.toolConfig?.mcpToolSet
+      ).data;
+      const mcpToolList = await getMCPChildren(app);
+      if (!mcpToolSet && !mcpToolList.length) throw new Error('MCP tool set is missing');
       const mcpTool = getToolNameCandidates(toolName)
-        .map((name) => mcpToolSet.toolList.find((tool) => tool.name === name))
+        .map((name) => mcpToolList.find((tool) => tool.name === name))
         .find(Boolean);
       if (!mcpTool) throw new Error(`MCP tool ${toolName} not found`);
-      const { headerSecret, url } = mcpToolSet;
+      const url = mcpToolSet?.url ?? mcpTool.url;
+      const headerSecret = mcpToolSet?.headerSecret ?? mcpTool.headerSecret;
+      if (!url) throw new Error('MCP tool set URL is missing');
 
       await assertMCPUrlNotInternal(url);
 
@@ -314,18 +327,16 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       if (!parentId || !toolName) {
         throw new Error(`Invalid HTTP tool id: ${toolConfig.httpTool.toolId}`);
       }
-      await authRuntimeToolset(parentId);
-
-      const toolset = await getAppVersionById({
-        appId: parentId,
-        versionId: version
-      });
-      const toolSetData = toolset.nodes[0].toolConfig?.httpToolSet;
-      if (!toolSetData || typeof toolSetData !== 'object') {
+      const app = await authRuntimeToolset(parentId);
+      const toolSetData = HttpToolSetRuntimeConfigSchema.safeParse(
+        decodeHttpToolSetNodesFromStorage(app.modules)[0]?.toolConfig?.httpToolSet
+      ).data;
+      const toolList = await getHTTPToolList(app);
+      if (!toolSetData && !toolList.length) {
         throw new Error('HTTP tool set not found');
       }
 
-      const { headerSecret, baseUrl, toolList, customHeaders } = toolSetData;
+      const { headerSecret, baseUrl, customHeaders } = toolSetData ?? {};
 
       const httpTool = getToolNameCandidates(toolName)
         .map((name) => toolList?.find((tool: HttpToolConfigType) => tool.name === name))

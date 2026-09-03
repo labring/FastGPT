@@ -5,7 +5,7 @@ import {
   decodeMcpToolSetNodesFromStorage,
   encodeHttpToolSetNodesForStorage,
   encodeMcpToolSetNodesForStorage,
-  stripWorkflowToolSchemasForStorage
+  compactWorkflowToolConfigsForStorage
 } from '@fastgpt/service/core/app/jsonSchemaStorage';
 
 describe('workflow JSON Schema storage codec', () => {
@@ -76,15 +76,16 @@ describe('workflow JSON Schema storage codec', () => {
     expect(decodeMcpToolSetNodesFromStorage(nodes)).toEqual(nodes);
   });
 
-  it('removes MCP and HTTP schemas from workflow tool configurations', () => {
+  it('compacts MCP and HTTP workflow tool configurations to toolset references', () => {
     const nodes = [
       {
         jsonSchema: { type: 'object' },
+        pluginId: 'mcp-app',
         toolConfig: {
           mcpToolSet: {
             url: 'https://mcp.example.com',
             headerSecret: { Authorization: { value: 'secret', secret: '' } },
-            toolList: [{ name: 'search', inputSchema: { type: 'object' } }]
+            toolList: [{ name: 'search', description: 'Search', inputSchema: { type: 'object' } }]
           },
           httpTool: {
             toolId: 'http-app/search'
@@ -95,9 +96,10 @@ describe('workflow JSON Schema storage codec', () => {
         },
         inputs: [
           {
-            key: 'selectedTools',
+            key: 'agent_selectedTools',
             value: [
               {
+                id: 'http-app',
                 toolConfig: {
                   httpToolSet: {
                     toolList: [
@@ -116,15 +118,12 @@ describe('workflow JSON Schema storage codec', () => {
       }
     ];
 
-    expect(stripWorkflowToolSchemasForStorage(nodes)).toEqual([
+    expect(compactWorkflowToolConfigsForStorage(nodes)).toEqual([
       {
         jsonSchema: { type: 'object' },
+        pluginId: 'mcp-app',
         toolConfig: {
-          mcpToolSet: {
-            url: 'https://mcp.example.com',
-            headerSecret: { Authorization: { value: 'secret', secret: '' } },
-            toolList: [{ name: 'search' }]
-          },
+          mcpToolSet: { toolId: 'mcp-app' },
           httpTool: { toolId: 'http-app/search' },
           customConfig: {
             inputSchema: { type: 'object' }
@@ -132,13 +131,12 @@ describe('workflow JSON Schema storage codec', () => {
         },
         inputs: [
           {
-            key: 'selectedTools',
+            key: 'agent_selectedTools',
             value: [
               {
+                id: 'http-app',
                 toolConfig: {
-                  httpToolSet: {
-                    toolList: [{ name: 'search' }]
-                  }
+                  httpToolSet: { toolId: 'http-app' }
                 }
               }
             ]
@@ -148,10 +146,131 @@ describe('workflow JSON Schema storage codec', () => {
     ]);
   });
 
-  it('preserves the nodes reference when workflow schemas are absent', () => {
+  it('preserves the nodes reference when workflow tool configs are already compact', () => {
     const nodes = [{ toolConfig: { mcpTool: { toolId: 'mcp-app/search' } } }];
 
-    expect(stripWorkflowToolSchemasForStorage(nodes)).toBe(nodes);
+    expect(compactWorkflowToolConfigsForStorage(nodes)).toBe(nodes);
+  });
+
+  it('compacts Agent selected tool snapshots in the same workflow pass', () => {
+    const nodes = [
+      {
+        inputs: [
+          {
+            key: 'agent_selectedTools',
+            value: [
+              {
+                id: 'http-app',
+                version: '',
+                toolConfig: {
+                  httpToolSet: {
+                    toolList: [
+                      {
+                        name: 'search',
+                        description: 'Search',
+                        path: '/search',
+                        method: 'GET',
+                        requestSchema: { type: 'object' }
+                      }
+                    ]
+                  }
+                },
+                config: {}
+              },
+              {
+                id: 'mcp-app/search',
+                toolConfig: {
+                  mcpTool: { toolId: 'mcp-mcp-app/search' },
+                  mcpToolSet: {
+                    url: 'https://mcp.example.com',
+                    toolList: [{ name: 'search', inputSchema: { type: 'object' } }]
+                  }
+                },
+                config: {}
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    expect(compactWorkflowToolConfigsForStorage(nodes)).toEqual([
+      {
+        inputs: [
+          {
+            key: 'agent_selectedTools',
+            value: [
+              {
+                id: 'http-app',
+                toolConfig: { httpToolSet: { toolId: 'http-app' } },
+                config: {}
+              },
+              {
+                id: 'mcp-app/search',
+                toolConfig: {
+                  mcpTool: { toolId: 'mcp-mcp-app/search' },
+                  mcpToolSet: { toolId: 'mcp-app' }
+                },
+                config: {}
+              }
+            ]
+          }
+        ]
+      }
+    ]);
+  });
+
+  it('drops an unresolvable historical toolset snapshot instead of persisting it', () => {
+    const nodes = [
+      {
+        toolConfig: {
+          httpToolSet: {
+            toolList: [{ name: 'search', path: '/search', method: 'GET' }]
+          }
+        }
+      }
+    ];
+
+    expect(compactWorkflowToolConfigsForStorage(nodes)).toEqual([{ toolConfig: {} }]);
+  });
+
+  it('extracts the parent toolset id from a historical selected tool id', () => {
+    const nodes = [
+      {
+        inputs: [
+          {
+            key: 'agent_selectedTools',
+            value: [
+              {
+                id: 'mcp-mcp-app//test',
+                toolConfig: {
+                  mcpToolSet: {
+                    url: 'https://mcp.example.com',
+                    toolList: [{ name: '/test', inputSchema: { type: 'object' } }]
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    expect(compactWorkflowToolConfigsForStorage(nodes)).toEqual([
+      {
+        inputs: [
+          {
+            key: 'agent_selectedTools',
+            value: [
+              {
+                id: 'mcp-mcp-app//test',
+                toolConfig: { mcpToolSet: { toolId: 'mcp-app' } }
+              }
+            ]
+          }
+        ]
+      }
+    ]);
   });
 
   it('does not transform schema-like fields outside the selected tool set', () => {

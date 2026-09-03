@@ -33,7 +33,11 @@ import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/register';
-import { stripWorkflowToolSchemasForStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
+import {
+  compactWorkflowToolConfigsForStorage,
+  encodeHttpToolSetNodesForStorage,
+  encodeMcpToolSetNodesForStorage
+} from '@fastgpt/service/core/app/jsonSchemaStorage';
 import {
   beforeUpdateAppFormat,
   validatePublishAppAgentSkillReadPermissions,
@@ -184,7 +188,12 @@ export const onCreateApp = async ({
   });
   await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });
   const storageNodes =
-    storageModules ?? stripWorkflowToolSchemasForStorage(normalizedWorkflow.nodes);
+    storageModules ??
+    (type === AppTypeEnum.mcpToolSet
+      ? encodeMcpToolSetNodesForStorage(normalizedWorkflow.nodes)
+      : type === AppTypeEnum.httpToolSet
+        ? encodeHttpToolSetNodesForStorage(normalizedWorkflow.nodes)
+        : compactWorkflowToolConfigsForStorage(normalizedWorkflow.nodes));
   if (!AppFolderTypeList.includes(type!)) {
     await validatePublishAppAgentSkillReadPermissions({
       nodes: normalizedWorkflow.nodes,
@@ -327,7 +336,7 @@ export const onUpdateAppWorkflow = async ({
     modelReferencePolicy: 'fallback'
   });
   await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });
-  const storageNodes = stripWorkflowToolSchemasForStorage(workflow.nodes);
+  const storageNodes = compactWorkflowToolConfigsForStorage(workflow.nodes);
 
   return await MongoApp.findByIdAndUpdate(
     appId,

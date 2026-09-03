@@ -423,6 +423,13 @@ export const toolSetData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }
     if (!toolSetNode?.toolConfig) return undefined;
 
     if (toolSetNode.toolConfig.httpToolSet) {
+      if ('toolId' in toolSetNode.toolConfig.httpToolSet) {
+        return {
+          ...toolSetNode.toolConfig,
+          httpToolSet: { toolId: toolSetNode.toolConfig.httpToolSet.toolId }
+        };
+      }
+
       const toolList = toolSetNode.toolConfig.httpToolSet.toolList.map((tool) => {
         const restTool = { ...tool };
         delete restTool.requestSchema;
@@ -438,6 +445,13 @@ export const toolSetData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }
       };
     }
     if (toolSetNode.toolConfig.mcpToolSet) {
+      if ('toolId' in toolSetNode.toolConfig.mcpToolSet) {
+        return {
+          ...toolSetNode.toolConfig,
+          mcpToolSet: { toolId: toolSetNode.toolConfig.mcpToolSet.toolId }
+        };
+      }
+
       const formatToolList = toolSetNode.toolConfig.mcpToolSet.toolList.map((tool) => {
         const restTool = { ...tool };
         delete restTool.inputSchema;

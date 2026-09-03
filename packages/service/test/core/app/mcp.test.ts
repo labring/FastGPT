@@ -28,6 +28,7 @@ import {
   getMCPChildren
 } from '../../../core/app/mcp';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { PRIVATE_URL_TEXT } from '../../../common/system/utils';
 import { serviceEnv } from '../../../env';
 
@@ -690,6 +691,7 @@ describe('getMCPChildren', () => {
       _id: 'app123',
       avatar: '/icon.png',
       teamId: 'team1',
+      type: AppTypeEnum.mcpToolSet,
       modules: [
         {
           toolConfig: {
@@ -736,6 +738,7 @@ describe('getMCPChildren', () => {
       _id: 'app123',
       avatar: '/icon.png',
       teamId: 'team1',
+      type: AppTypeEnum.mcpToolSet,
       modules: [
         {
           toolConfig: {
@@ -760,6 +763,7 @@ describe('getMCPChildren', () => {
       _id: 'app456',
       avatar: '/old-icon.png',
       teamId: 'team2',
+      type: AppTypeEnum.mcpToolSet,
       modules: [
         {
           toolConfig: undefined,
@@ -806,6 +810,7 @@ describe('getMCPChildren', () => {
       _id: 'app789',
       avatar: '/icon.png',
       teamId: 'team3',
+      type: AppTypeEnum.mcpToolSet,
       modules: [{ toolConfig: undefined, inputs: [], outputs: [] }]
     } as unknown as AppSchemaType;
 
@@ -813,5 +818,31 @@ describe('getMCPChildren', () => {
 
     const result = await getMCPChildren(app);
     expect(result).toEqual([]);
+  });
+
+  it('should ignore a non-MCP app even when its modules contain an MCP config', async () => {
+    const app = {
+      _id: 'workflow-app',
+      avatar: '/icon.png',
+      teamId: 'team3',
+      type: AppTypeEnum.workflow,
+      modules: [
+        {
+          toolConfig: {
+            mcpToolSet: {
+              url: 'https://mcp.test',
+              toolList: []
+            }
+          },
+          inputs: [],
+          outputs: []
+        }
+      ]
+    } as unknown as AppSchemaType;
+
+    const result = await getMCPChildren(app);
+
+    expect(result).toEqual([]);
+    expect(mockMongoAppFind).not.toHaveBeenCalled();
   });
 });
