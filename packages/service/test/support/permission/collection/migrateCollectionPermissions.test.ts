@@ -476,6 +476,35 @@ describe.sequential('migrateDatasetCollections', () => {
     });
   });
 
+  it('limits migration to the requested dataset ids', async () => {
+    const users = await getFakeUsers(1);
+    const firstDataset = await createDataset({ user: users.owner });
+    const secondDataset = await createDataset({ user: users.owner });
+    await createCollection({
+      user: users.owner,
+      datasetId: String(firstDataset._id),
+      name: 'first'
+    });
+    await createCollection({
+      user: users.owner,
+      datasetId: String(secondDataset._id),
+      name: 'second'
+    });
+
+    await expect(
+      migrateCollectionPermissions({
+        teamId: String(users.owner.teamId),
+        datasetIds: [String(firstDataset._id)],
+        dryRun: true
+      })
+    ).resolves.toMatchObject({
+      datasetCount: 1,
+      processedDatasetCount: 1,
+      collectionCount: 1,
+      errors: []
+    });
+  });
+
   it('rejects an orphan parentId instead of silently degrading', async () => {
     const users = await getFakeUsers(1);
     const dataset = await createDataset({ user: users.owner });
