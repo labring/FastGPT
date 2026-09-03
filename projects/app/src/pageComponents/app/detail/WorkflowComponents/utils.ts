@@ -1,4 +1,5 @@
-import { getNodeAllSource, workflowReferenceValueIsSelectable } from '@/web/core/workflow/utils';
+import { filterSelectableWorkflowNodeOutputs, getNodeAllSource } from '@/web/core/workflow/utils';
+import { getWorkflowReferenceStatus } from '@/web/core/workflow/referenceCheck';
 import { workflowSystemVariables } from '@/web/core/app/utils';
 import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
 import {
@@ -6,29 +7,23 @@ import {
   NodeOutputKeyEnum,
   VARIABLE_NODE_ID
 } from '@fastgpt/global/core/workflow/constants';
-import {
-  FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
   type FlowNodeItemType,
   type StoreNodeItemType
 } from '@fastgpt/global/core/workflow/type/node';
-import type {
-  FlowNodeInputItemType,
-  ReferenceItemValueType,
-  ReferenceValueType
-} from '@fastgpt/global/core/workflow/type/io';
 import {
   getSelectedInputRenderType,
   nodeInputIsReference
 } from '@fastgpt/global/core/workflow/utils';
 import {
   normalizeFlowNodeInputType,
-  serializeAgentTool
+  serializeAgentTool,
+  isToolParamInput
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { SelectedToolItemTypeSchema } from '@fastgpt/global/core/app/formEdit/type';
+import type { EditorVariableLabelPickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import { type TFunction } from 'i18next';
 import { type Edge, type Node } from 'reactflow';
 
@@ -44,22 +39,12 @@ const normalizeStoreNodeInput = (input: StoreNodeItemType['inputs'][number], isT
 
 export const uiWorkflow2StoreWorkflow = ({
   nodes,
-  edges,
-  chatConfig
+  edges
 }: {
   nodes: Node<FlowNodeItemType, string | undefined>[];
   edges: Edge<any>[];
   chatConfig?: AppChatConfigType;
 }) => {
-  const getNodeById = (nodeId: string | null | undefined) =>
-    nodes.find((node) => node.data.nodeId === nodeId)?.data;
-  const childrenNodeIdListMap = nodes.reduce<Record<string, string[]>>((map, node) => {
-    const parentNodeId = node.data.parentNodeId;
-    if (!parentNodeId) return map;
-
-    map[parentNodeId] = [...(map[parentNodeId] ?? []), node.data.nodeId];
-    return map;
-  }, {});
   const toolNodeIds = new Set(
     edges
       .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
@@ -99,16 +84,9 @@ export const uiWorkflow2StoreWorkflow = ({
       showStatus: item.data.showStatus,
       position: item.position,
       version: item.data.version,
-      inputs: filterUnselectableReferenceInputs({
-        node: item.data,
-        inputs,
-        edges,
-        chatConfig,
-        getNodeById,
-        childrenNodeIdListMap
-      }),
-      // 仅用于画布的函数不能持久化，也不属于严格 API Schema。
-      outputs: item.data.outputs.map(({ invalidCondition: _, ...output }) => output),
+      inputs,
+      outputs: item.data.outputs,
+      isFolded: item.data.isFolded,
       pluginId: item.data.pluginId,
       toolConfig: item.data.toolConfig,
       catchError: item.data.catchError
@@ -138,74 +116,6 @@ export const uiWorkflow2StoreWorkflow = ({
   };
 };
 
-const emptyT = ((key: string) => key) as TFunction;
-
-/**
- * 保存时仅持久化当前引用选择器仍能选中的引用项。
- * 已删除来源、已删除输出、类型不再匹配的引用在 UI 上不会展示标签，也不应继续写入 JSON。
- */
-const filterUnselectableReferenceInputs = ({
-  node,
-  inputs,
-  edges,
-  chatConfig,
-  getNodeById,
-  childrenNodeIdListMap
-}: {
-  node: FlowNodeItemType;
-  inputs: FlowNodeInputItemType[];
-  edges: Edge<any>[];
-  chatConfig?: AppChatConfigType;
-  getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
-  childrenNodeIdListMap: Record<string, string[]>;
-}) => {
-  return inputs.map((input) => {
-    if (!nodeInputIsReference(input)) return input;
-
-    const sourceNodes = getNodeAllSource({
-      nodeId: node.nodeId,
-      getNodeById,
-      edges,
-      chatConfig: chatConfig ?? ({} as AppChatConfigType),
-      t: emptyT,
-      includeChildren: input.canEdit === true,
-      childrenNodeIdListMap
-    });
-
-    const value = input.value as ReferenceValueType | undefined;
-    if (!Array.isArray(value)) return input;
-
-    if (typeof value[0] === 'string') {
-      const keepValue = workflowReferenceValueIsSelectable({
-        value,
-        sourceNodes,
-        valueType: input.valueType
-      });
-      return keepValue
-        ? input
-        : {
-            ...input,
-            value: undefined
-          };
-    }
-
-    const filteredValue = (value as ReferenceItemValueType[]).filter((item) =>
-      workflowReferenceValueIsSelectable({
-        value: item,
-        sourceNodes,
-        valueType: input.valueType
-      })
-    );
-
-    if (filteredValue.length === value.length) return input;
-
-    return {
-      ...input,
-      value: filteredValue
-    };
-  });
-};
-
 export const filterExportModules = (modules: StoreNodeItemType[]) => {
   modules.forEach((module) => {
     // dataset - remove select dataset value
@@ -223,25 +133,34 @@ export const filterExportModules = (modules: StoreNodeItemType[]) => {
 
 export const getEditorVariables = ({
   nodeId,
+  nodeList,
   getNodeById,
   edges,
   appDetail,
-  t
+  t,
+  valueType
 }: {
   nodeId: string;
+  nodeList?: FlowNodeItemType[];
   getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
   edges: Edge<any>[];
   appDetail: AppDetailType;
   t: TFunction;
+  valueType?: FlowNodeItemType['inputs'][number]['valueType'];
 }) => {
   const currentNode = getNodeById(nodeId);
   if (!currentNode) return [];
 
+  const isToolNode = edges.some(
+    (edge) => edge.target === nodeId && edge.targetHandle === NodeOutputKeyEnum.selectedTools
+  );
+
   const nodeVariables = currentNode.inputs
-    .filter((input) => input.canEdit)
+    .filter((input) => input.canEdit && (isToolNode || !isToolParamInput(input)))
     .map((item) => ({
       key: item.key,
       label: item.label ?? item.key,
+      ...(item.valueType ? { valueType: item.valueType } : {}),
       parent: {
         id: currentNode.nodeId,
         label: currentNode.name,
@@ -257,38 +176,66 @@ export const getEditorVariables = ({
     t
   });
 
-  const sourceNodeVariables = !sourceNodes
-    ? []
-    : sourceNodes
-        .map((node) => {
-          return node.outputs
-            .filter((output) => {
-              if (output.type === FlowNodeOutputTypeEnum.error) {
-                return node.catchError === true;
-              }
-              return (
-                !!output.label &&
-                output.invalid !== true &&
-                output.id !== NodeOutputKeyEnum.addOutputParam
-              );
-            })
-            .map((output) => {
-              return {
-                label:
-                  node.nodeId === VARIABLE_NODE_ID &&
-                  !workflowSystemVariables.some((item) => item.key === output.id)
-                    ? (output.label ?? output.id)
-                    : t((output.label as any) || ''),
-                key: output.id,
-                parent: {
-                  id: node.nodeId,
-                  label: node.name,
-                  avatar: node.avatar
-                }
-              };
-            });
-        })
-        .flat();
+  const formatVariable = (
+    node: FlowNodeItemType,
+    output: FlowNodeItemType['outputs'][number],
+    invalidReason?: EditorVariableLabelPickerType['invalidReason']
+  ) => ({
+    label:
+      node.nodeId === VARIABLE_NODE_ID &&
+      !workflowSystemVariables.some((item) => item.key === output.id)
+        ? (output.label ?? output.id)
+        : t((output.label as any) || ''),
+    key: output.id,
+    ...(output.valueType ? { valueType: output.valueType } : {}),
+    ...(invalidReason ? { invalidReason } : {}),
+    parent: {
+      id: node.nodeId,
+      label: node.name,
+      avatar: node.avatar
+    }
+  });
 
-  return [...nodeVariables, ...sourceNodeVariables];
+  const getOutputInvalidReason = ({
+    node,
+    output
+  }: {
+    node: FlowNodeItemType;
+    output: FlowNodeItemType['outputs'][number];
+  }): EditorVariableLabelPickerType['invalidReason'] => {
+    const code = getWorkflowReferenceStatus({
+      value: [node.nodeId, output.id],
+      valueType,
+      sourceNodes,
+      getNodeById,
+      chatConfig: appDetail.chatConfig
+    }).code;
+
+    return code === 'valid' || code === 'empty' ? undefined : code;
+  };
+
+  const sourceNodeVariables = sourceNodes.flatMap((node) => {
+    const selectableOutputIds = new Set(
+      filterSelectableWorkflowNodeOutputs({
+        outputs: node.outputs,
+        catchError: node.catchError
+      }).map((output) => output.id)
+    );
+
+    return node.outputs
+      .filter((output) => selectableOutputIds.has(output.id) && !!output.label)
+      .map((output) => formatVariable(node, output, getOutputInvalidReason({ node, output })));
+  });
+
+  // 保留已存在引用的不可达来源和不可用输出，供标签显示具体失效原因。
+  const unavailableNodeVariables = (nodeList ?? []).flatMap((node) => {
+    return node.outputs
+      .filter((output) => !!output.label)
+      .flatMap((output) => {
+        const invalidReason = getOutputInvalidReason({ node, output });
+        return invalidReason ? [formatVariable(node, output, invalidReason)] : [];
+      });
+  });
+
+  return [...nodeVariables, ...sourceNodeVariables, ...unavailableNodeVariables];
 };

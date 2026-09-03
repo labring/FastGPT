@@ -24,7 +24,10 @@ import {
 const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { getNodeById, edges } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { getNodeById, getNodeList, edges } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { feConfigs } = useSystemStore();
   const { llmModelList } = useUserModelLists();
@@ -44,12 +47,14 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const editorVariables = useMemoEnhance(() => {
     return getEditorVariables({
       nodeId,
+      nodeList: getNodeList(),
       getNodeById,
       edges,
       appDetail,
-      t
+      t,
+      valueType: item.valueType
     });
-  }, [nodeId, getNodeById, edges, appDetail, t]);
+  }, [nodeId, getNodeById, getNodeList, edges, appDetail, t, item.valueType]);
 
   const externalVariables = useMemo(() => {
     return (
@@ -133,6 +138,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
       onChange={handleChange}
       variables={[...(editorVariables || []), ...(externalVariables || [])]}
       variableLabels={editorVariables}
+      referenceSnapshots={item.referenceSnapshots}
       modelList={llmModelList}
       ExtensionPopover={canOptimizePrompt ? [OptimizerPopverComponent] : undefined}
       menuPlacement={menuPlacement}

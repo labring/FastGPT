@@ -18,6 +18,7 @@ import { isValidReferenceValueFormat } from '../utils';
 import type { RuntimeNodeItemType } from './type';
 import { isSecretValue } from '../../../common/secret/utils';
 import { isChildInteractive } from '../template/system/interactive/constants';
+import { isToolParamInput } from '../../app/formEdit/utils';
 
 export const extractDeepestInteractive = (
   interactive: WorkflowInteractiveResponseType
@@ -333,7 +334,16 @@ export const getReferenceVariableValue = ({
       return value;
     }
 
-    return node.outputs.find((output) => output.id === outputId)?.value;
+    const output = node.outputs.find((item) => item.id === outputId);
+    if (output) return output.value;
+
+    // HTTP 工具参数是编辑器侧的虚拟输出，运行时值仍保存在节点输入中。
+    if (node.flowNodeType === FlowNodeTypeEnum.httpRequest468) {
+      const input = node.inputs.find((item) => item.key === outputId && isToolParamInput(item));
+      if (input) return input.value ?? input.defaultValue;
+    }
+
+    return undefined;
   };
 
   // handle single reference value

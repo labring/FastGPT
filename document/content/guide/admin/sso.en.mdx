@@ -501,10 +501,10 @@ LDAP_MEMBERSHIP_MODE supports four modes:
 
 | Mode             | Relationship                                                    | Main configuration       |
 | ---------------- | --------------------------------------------------------------- | ------------------------ |
-| user_attribute   | A user attribute, usually ou, points to an organization         | LDAP_USER_ATTRIBUTE_*    |
-| group_member_dn  | A group attribute, usually member, contains user DNs            | LDAP_GROUP_MEMBER_DN_*   |
-| user_member_of   | A user attribute, usually memberOf, contains group DNs          | LDAP_USER_MEMBER_OF_*    |
-| posix_member_uid | A group attribute, usually memberUid, contains user identifiers | LDAP_POSIX_MEMBER_UID_*  |
+| user_attribute   | A user attribute, usually ou, points to an organization         | LDAP*USER_ATTRIBUTE*\*   |
+| group_member_dn  | A group attribute, usually member, contains user DNs            | LDAP*GROUP_MEMBER_DN*\*  |
+| user_member_of   | A user attribute, usually memberOf, contains group DNs          | LDAP*USER_MEMBER_OF*\*   |
+| posix_member_uid | A group attribute, usually memberUid, contains user identifiers | LDAP*POSIX_MEMBER_UID*\* |
 
 **1. user_attribute: user attribute points to an organization**
 

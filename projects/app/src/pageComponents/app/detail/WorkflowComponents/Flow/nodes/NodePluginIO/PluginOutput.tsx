@@ -110,7 +110,6 @@ function Reference({
 
   const onSelect = useCallback(
     (e?: ReferenceValueType) => {
-      if (!e) return;
       onChangeNode({
         nodeId,
         type: 'updateInput',
@@ -124,7 +123,7 @@ function Reference({
     [input, nodeId, onChangeNode]
   );
 
-  const { referenceList } = useReference({
+  const { referenceList, sourceNodes } = useReference({
     nodeId,
     valueType: input.valueType
   });
@@ -206,6 +205,9 @@ function Reference({
       <ReferSelector
         placeholder={t((input.referencePlaceholder as any) || 'select_reference_variable')}
         list={referenceList}
+        sourceNodes={sourceNodes}
+        valueType={input.valueType}
+        referenceSnapshots={input.referenceSnapshots}
         value={input.value}
         onSelect={onSelect}
         isArray={input.valueType?.includes('array')}

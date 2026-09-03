@@ -40,7 +40,8 @@ const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         required: item.required,
         valueType: item.valueType || WorkflowIOValueTypeEnum.any,
         label: t(item.label as any),
-        valueDesc: item.valueDesc
+        valueDesc: item.valueDesc,
+        ...(item.icon ? { icon: item.icon } : {})
       };
     });
   }, [appDetail.chatConfig, t]);
@@ -54,7 +55,8 @@ const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         required: item.required,
         valueType: item.valueType || WorkflowIOValueTypeEnum.any,
         label: t(item.label as any),
-        valueDesc: item.valueDesc
+        valueDesc: item.valueDesc,
+        ...(item.icon ? { icon: item.icon } : {})
       })),
     [t]
   );

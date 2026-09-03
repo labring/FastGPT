@@ -153,15 +153,13 @@ const VariableSelector = ({
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
-  const { referenceList } = useReference({
+  const { referenceList, sourceNodes } = useReference({
     nodeId,
     valueType: inputChildren.valueType
   });
 
   const onSelect = useCallback(
     (e?: ReferenceItemValueType) => {
-      if (!e) return;
-
       onChangeNode({
         nodeId,
         type: 'replaceInput',
@@ -207,6 +205,9 @@ const VariableSelector = ({
             t('common:core.module.Dataset quote.select')
         )}
         list={referenceList}
+        sourceNodes={sourceNodes}
+        valueType={inputChildren.valueType}
+        referenceSnapshots={inputChildren.referenceSnapshots}
         value={inputChildren.value}
         onSelect={onSelect}
         isArray={false}

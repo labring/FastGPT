@@ -301,7 +301,8 @@ const Header = ({
                   nodes,
                   edges,
                   models: modelsLoaded ? modelList : undefined,
-                  t
+                  t,
+                  chatConfig: appForm.chatConfig
                 });
 
                 if (checkResults.hasError) {

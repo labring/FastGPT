@@ -1,15 +1,29 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Flex, Box, type ButtonProps, Grid } from '@chakra-ui/react';
+import { WarningTwoIcon } from '@chakra-ui/icons';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { getNodeAllSource, filterSelectableWorkflowNodeOutputs } from '@/web/core/workflow/utils';
+import {
+  getNodeAllSource,
+  isConfiguredReferenceValue,
+  isWorkflowReferenceItem,
+  filterSelectableWorkflowNodeOutputs,
+  type WorkflowReferenceSourceNode
+} from '@/web/core/workflow/utils';
+import {
+  getWorkflowReferenceSource,
+  getWorkflowReferenceStatus
+} from '@/web/core/workflow/referenceCheck';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type {
   ReferenceArrayValueType,
   ReferenceItemValueType,
-  ReferenceValueType
+  ReferenceValueType,
+  WorkflowReferenceSnapshot
 } from '@fastgpt/global/core/workflow/type/io';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
@@ -30,17 +44,226 @@ const MultipleRowArraySelect = dynamic(() =>
 );
 const Avatar = dynamic(() => import('@fastgpt/web/components/common/Avatar'));
 
+type ReferenceSelectList = {
+  label: string | React.ReactNode;
+  value: string;
+  sourceLabel?: string;
+  icon?: string;
+  children: {
+    label: string;
+    value: string;
+    outputLabel?: string;
+    valueType?: WorkflowIOValueTypeEnum;
+  }[];
+}[];
+
+const getReferenceValueTitle = (value: unknown) => {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item) => item !== undefined && item !== null)
+      .map((item) => String(item))
+      .join('.');
+  }
+  return typeof value === 'string' ? value : undefined;
+};
+
+const getReferenceListItem = (value: unknown, list: ReferenceSelectList) => {
+  if (!isWorkflowReferenceItem(value)) return;
+
+  const source = list.find((item) => item.value === value[0]);
+  const output = source?.children.find((item) => item.value === value[1]);
+  return source && output ? { source, output } : undefined;
+};
+
+const getSelectedReference = (value: unknown, list: ReferenceSelectList) => {
+  const reference = getReferenceListItem(value, list);
+  return reference
+    ? {
+        sourceLabel: reference.source.sourceLabel,
+        outputLabel: reference.output.label,
+        sourceIcon: reference.source.icon
+      }
+    : {};
+};
+
+/** 按当前选项或历史快照恢复失效引用的展示标签。 */
+const getReferenceSnapshot = ({
+  value,
+  list,
+  sourceNodes,
+  referenceSnapshots,
+  getNodeById
+}: {
+  value?: ReferenceItemValueType;
+  list: ReferenceSelectList;
+  sourceNodes?: WorkflowReferenceSourceNode[];
+  referenceSnapshots?: WorkflowReferenceSnapshot[];
+  getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
+}) => {
+  if (!isWorkflowReferenceItem(value)) return;
+
+  const reference = getReferenceListItem(value, list);
+  if (reference) {
+    return {
+      reference: value,
+      sourceLabel: reference.source.sourceLabel,
+      outputLabel: reference.output.outputLabel,
+      icon: reference.source.icon
+    };
+  }
+
+  const { sourceLabel, sourceOutput, sourceIcon } = getWorkflowReferenceSource({
+    value,
+    sourceNodes,
+    getNodeById
+  });
+  if (sourceLabel && sourceOutput) {
+    return {
+      reference: value,
+      sourceLabel,
+      outputLabel: sourceOutput.label,
+      icon: sourceIcon
+    };
+  }
+
+  return referenceSnapshots?.find((item) => {
+    const reference = item.reference;
+    return (
+      isWorkflowReferenceItem(reference) && reference[0] === value[0] && reference[1] === value[1]
+    );
+  });
+};
+
+const getInvalidReferenceReason = (
+  code: ReturnType<typeof getWorkflowReferenceStatus>['code'],
+  t: ReturnType<typeof useSafeTranslation>['t']
+) =>
+  code === 'invalid_reference_type'
+    ? t('common:core.workflow.check.reference_type_mismatch')
+    : code === 'unreachable_reference'
+      ? t('common:core.workflow.check.reference_unreachable')
+      : t('common:core.workflow.check.reference_deleted');
+
+const ReferenceOutputLabel = ({
+  sourceLabel,
+  outputLabel,
+  sourceIcon,
+  iconMargin = 0.5
+}: {
+  sourceLabel: React.ReactNode;
+  outputLabel: React.ReactNode;
+  sourceIcon?: string;
+  iconMargin?: number;
+}) => (
+  <>
+    {sourceIcon && <Avatar src={sourceIcon} w={'1rem'} mr={1} borderRadius={'xs'} />}
+    {sourceLabel}
+    <MyIcon name={'common/rightArrowLight'} mx={iconMargin} w={'12px'} color={'myGray.500'} />
+    {outputLabel}
+  </>
+);
+
+const ReferenceSnapshotLabel = ({
+  snapshot,
+  fallback,
+  t
+}: {
+  snapshot?: WorkflowReferenceSnapshot;
+  fallback?: string;
+  t: ReturnType<typeof useSafeTranslation>['t'];
+}) => {
+  const sourceLabel = snapshot?.sourceLabel;
+  const outputLabel = (() => {
+    switch (snapshot?.outputLabel) {
+      case 'workflow:Array_element_index':
+        return t('workflow:Array_element_index');
+      case 'workflow:error_text':
+        return t('workflow:error_text');
+      case 'workflow:loop_result':
+        return t('workflow:loop_result');
+      case 'common:core.module.output.label.query extension result':
+        return t('common:core.module.output.label.query extension result');
+      case 'workflow:concatenation_result':
+        return t('workflow:concatenation_result');
+      case 'common:core.module.Dataset quote.label':
+        return t('common:core.module.Dataset quote.label');
+      case 'common:core.module.output.label.Ai response content':
+        return t('common:core.module.output.label.Ai response content');
+      case 'workflow:current_index':
+        return t('workflow:current_index');
+      case 'workflow:current_item':
+        return t('workflow:current_item');
+      case 'workflow:current_iteration':
+        return t('workflow:current_iteration');
+      case 'workflow:parallel_success_results':
+        return t('workflow:parallel_success_results');
+      case 'workflow:parallel_full_results':
+        return t('workflow:parallel_full_results');
+      case 'workflow:parallel_status':
+        return t('workflow:parallel_status');
+      case 'workflow:new_context':
+        return t('workflow:new_context');
+      case 'workflow:judgment_result':
+        return t('workflow:judgment_result');
+      case 'workflow:full_field_extraction':
+        return t('workflow:full_field_extraction');
+      case 'workflow:complete_extraction_result':
+        return t('workflow:complete_extraction_result');
+      case 'workflow:classification_result':
+        return t('workflow:classification_result');
+      case 'app:workflow.select_result':
+        return t('app:workflow.select_result');
+      case 'workflow:form_input_result':
+        return t('workflow:form_input_result');
+      case 'common:core.module.output.label.New context':
+        return t('common:core.module.output.label.New context');
+      case 'workflow:http_extract_output':
+        return t('workflow:http_extract_output');
+      case 'workflow:raw_response':
+        return t('workflow:raw_response');
+      case 'workflow:http_full_error':
+        return t('workflow:http_full_error');
+      case 'app:workflow.read_files_result':
+        return t('app:workflow.read_files_result');
+      case 'workflow:full_response_data':
+        return t('workflow:full_response_data');
+      case 'workflow:reply_text':
+        return t('workflow:reply_text');
+      case 'common:core.module.input.label.user question':
+        return t('common:core.module.input.label.user question');
+      default:
+        return snapshot?.outputLabel || fallback;
+    }
+  })();
+
+  if (sourceLabel && outputLabel) {
+    return (
+      <>
+        {snapshot?.icon && <Avatar src={snapshot.icon} w={'1rem'} mr={1} borderRadius={'xs'} />}
+        {sourceLabel}
+        <MyIcon name={'common/rightArrowLight'} mx={0.5} w={'12px'} color={'myGray.500'} />
+        {outputLabel}
+      </>
+    );
+  }
+
+  const label = outputLabel || sourceLabel || fallback;
+  return (
+    <>
+      {label && snapshot?.icon && (
+        <Avatar src={snapshot.icon} w={'1rem'} mr={1} borderRadius={'xs'} />
+      )}
+      {label}
+    </>
+  );
+};
+
 type CommonSelectProps = {
   placeholder?: string;
-  list: {
-    label: string | React.ReactNode;
-    value: string;
-    children: {
-      label: string;
-      value: string;
-      valueType?: WorkflowIOValueTypeEnum;
-    }[];
-  }[];
+  list: ReferenceSelectList;
+  sourceNodes?: WorkflowReferenceSourceNode[];
+  valueType?: WorkflowIOValueTypeEnum;
+  referenceSnapshots?: WorkflowReferenceSnapshot[];
   popDirection?: 'top' | 'bottom';
   ButtonProps?: ButtonProps;
 };
@@ -69,7 +292,7 @@ export const useReference = ({
   );
 
   // 获取可选的变量列表
-  const referenceList = useMemoEnhance(() => {
+  const { referenceList, sourceNodes } = useMemoEnhance(() => {
     const sourceNodes = getNodeAllSource({
       nodeId,
       getNodeById,
@@ -82,33 +305,47 @@ export const useReference = ({
 
     const isArray = valueType?.includes('array');
 
-    // 转换为 select 的数据结构
-    const list: CommonSelectProps['list'] = sourceNodes
-      .map((node) => {
-        return {
-          label: (
-            <Flex alignItems={'center'}>
-              <Avatar src={node.avatar} w={isArray ? '1rem' : '1.05rem'} borderRadius={'xs'} />
-              <Box ml={1}>{node.name}</Box>
-            </Flex>
-          ),
-          value: node.nodeId,
-          children: filterSelectableWorkflowNodeOutputs({
-            outputs: node.outputs,
-            valueType,
-            catchError: node.catchError
-          }).map((output) => {
-            return {
-              label: t(output.label as any),
-              value: output.id,
-              valueType: output.valueType
-            };
-          })
-        };
-      })
-      .filter((item) => item.children.length > 0);
+    const referenceList: ReferenceSelectList = [];
 
-    return list;
+    sourceNodes.forEach((node) => {
+      const label = (
+        <Flex alignItems={'center'}>
+          <Avatar src={node.avatar} w={isArray ? '1rem' : '1.05rem'} borderRadius={'xs'} />
+          <Box ml={1}>{node.name}</Box>
+        </Flex>
+      );
+      // 转换为 select 的数据结构
+      const selectableOutputs = filterSelectableWorkflowNodeOutputs({
+        outputs: node.outputs,
+        valueType,
+        catchError: node.catchError
+      });
+      if (selectableOutputs.length > 0) {
+        referenceList.push({
+          label,
+          value: node.nodeId,
+          sourceLabel: node.name,
+          icon: node.avatar,
+          children: selectableOutputs.map((output) => ({
+            label: t(output.label as any),
+            value: output.id,
+            outputLabel: output.label,
+            valueType: output.valueType
+          }))
+        });
+      }
+    });
+
+    return {
+      referenceList,
+      sourceNodes: sourceNodes.map((node) => ({
+        nodeId: node.nodeId,
+        sourceLabel: node.name,
+        icon: node.avatar,
+        outputs: node.outputs,
+        catchError: node.catchError
+      }))
+    };
   }, [
     nodeId,
     getNodeById,
@@ -121,7 +358,8 @@ export const useReference = ({
   ]);
 
   return {
-    referenceList
+    referenceList,
+    sourceNodes
   };
 };
 
@@ -148,7 +386,7 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
     [item, nodeId, onChangeNode]
   );
 
-  const { referenceList } = useReference({
+  const { referenceList, sourceNodes } = useReference({
     nodeId,
     valueType: item.valueType
   });
@@ -163,6 +401,9 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
     <ReferSelector
       placeholder={t(item.referencePlaceholder as any) || t('common:select_reference_variable')}
       list={referenceList}
+      sourceNodes={sourceNodes}
+      valueType={item.valueType}
+      referenceSnapshots={item.referenceSnapshots}
       value={item.value}
       onSelect={onSelect}
       popDirection={popDirection}
@@ -177,197 +418,263 @@ const SingleReferenceSelector = ({
   placeholder,
   value,
   list = [],
+  sourceNodes,
+  valueType,
+  referenceSnapshots,
   onSelect,
   popDirection,
   ButtonProps
 }: SelectProps<false>) => {
-  const getSelectValue = useCallback(
-    (value: ReferenceValueType) => {
-      if (!value) return [];
+  const { t } = useSafeTranslation();
+  const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
 
-      const firstColumn = list.find((item) => item.value === value[0]);
-      if (!firstColumn) {
-        return [];
+  const selectorVal = value as ReferenceItemValueType;
+  const {
+    sourceLabel: nodeName,
+    outputLabel: outputName,
+    sourceIcon
+  } = getSelectedReference(selectorVal, list);
+  const status = getWorkflowReferenceStatus({
+    value: selectorVal,
+    valueType,
+    sourceNodes,
+    getNodeById
+  });
+  const isValidSelect = status.code === 'valid' && Boolean(nodeName && outputName);
+  const isInvalidReference = isConfiguredReferenceValue(selectorVal) && !isValidSelect;
+  const referenceTitle = getReferenceValueTitle(selectorVal);
+  const invalidReason = getInvalidReferenceReason(status.code, t);
+  const invalidSnapshot = isInvalidReference
+    ? getReferenceSnapshot({
+        value: selectorVal,
+        list,
+        sourceNodes,
+        referenceSnapshots,
+        getNodeById
+      })
+    : undefined;
+
+  const selector = (
+    <MultipleRowSelect
+      label={
+        isValidSelect ? (
+          <Flex py={1} pl={1} alignItems={'center'} fontSize={'sm'}>
+            <ReferenceOutputLabel
+              sourceLabel={nodeName}
+              outputLabel={outputName}
+              sourceIcon={sourceIcon}
+            />
+          </Flex>
+        ) : isInvalidReference ? (
+          <Flex py={1} pl={1} alignItems={'center'} fontSize={'sm'} minW={0}>
+            <Box
+              title={referenceTitle}
+              display={'flex'}
+              alignItems={'center'}
+              flex={'1 1 0'}
+              minW={0}
+              className="textEllipsis"
+            >
+              <ReferenceSnapshotLabel
+                snapshot={invalidSnapshot}
+                fallback={t('common:invalid_variable')}
+                t={t}
+              />
+            </Box>
+          </Flex>
+        ) : (
+          <Box fontSize={'sm'} color={'myGray.400'}>
+            {placeholder}
+          </Box>
+        )
       }
-      const secondColumn = firstColumn.children.find((item) => item.value === value[1]);
-      if (!secondColumn) {
-        return [];
+      rightContent={
+        isInvalidReference ? (
+          <MyTooltip label={invalidReason} shouldWrapChildren={false}>
+            <Box
+              display={'flex'}
+              alignItems={'center'}
+              ml={1}
+              color={'red.500'}
+              cursor={'help'}
+              aria-label={invalidReason}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <MyIcon name="common/warn" boxSize={3.5} />
+            </Box>
+          </MyTooltip>
+        ) : undefined
       }
-      return [firstColumn.label, secondColumn.label];
-    },
-    [list]
+      value={selectorVal}
+      list={list}
+      onSelect={(nextValue) => {
+        onSelect(nextValue as ReferenceItemValueType | undefined);
+      }}
+      popDirection={popDirection}
+      ButtonProps={
+        isInvalidReference
+          ? {
+              ...ButtonProps,
+              borderColor: 'red.500',
+              _hover: { borderColor: 'red.400' }
+            }
+          : ButtonProps
+      }
+    />
   );
 
-  // Adapt array type from old version
-  useEffect(() => {
-    if (
-      Array.isArray(value) &&
-      // @ts-ignore
-      value.length === 1 &&
-      Array.isArray(value[0]) &&
-      value[0].length === 2
-    ) {
-      // @ts-ignore
-      onSelect(value[0]);
-    }
-  }, [value, onSelect]);
-
-  const ItemSelector = useMemo(() => {
-    const selectorVal = value as ReferenceItemValueType;
-    const [nodeName, outputName] = getSelectValue(selectorVal);
-    const isValidSelect = nodeName && outputName;
-
-    return (
-      <MultipleRowSelect
-        label={
-          isValidSelect ? (
-            <Flex py={1} pl={1} alignItems={'center'} fontSize={'sm'}>
-              {nodeName}
-              <MyIcon name={'common/rightArrowLight'} mx={0.5} w={'12px'} color={'myGray.500'} />
-              {outputName}
-            </Flex>
-          ) : (
-            <Box fontSize={'sm'} color={'myGray.400'}>
-              {placeholder}
-            </Box>
-          )
-        }
-        value={selectorVal}
-        list={list}
-        onSelect={onSelect as any}
-        popDirection={popDirection}
-        ButtonProps={ButtonProps}
-      />
-    );
-  }, [ButtonProps, getSelectValue, list, onSelect, placeholder, popDirection, value]);
-
-  return ItemSelector;
+  return selector;
 };
 const MultipleReferenceSelector = ({
   placeholder,
   value,
   list = [],
+  sourceNodes,
+  valueType,
+  referenceSnapshots,
   onSelect,
   popDirection
 }: SelectProps<true>) => {
-  const getSelectValue = useCallback(
-    (value: ReferenceValueType) => {
-      if (!value) return [];
-
-      const firstColumn = list.find((item) => item.value === value[0]);
-      if (!firstColumn) {
-        return [];
-      }
-      const secondColumn = firstColumn.children.find((item) => item.value === value[1]);
-      if (!secondColumn) {
-        return [];
-      }
-      return [firstColumn.label, secondColumn.label];
-    },
-    [list]
-  );
+  const { t } = useSafeTranslation();
+  const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
 
   // Get valid item and remove invalid item
   const formatList = useMemo(() => {
-    if (!value || !Array.isArray(value)) return [];
+    if (!Array.isArray(value)) return [];
 
     return value.map((item) => {
-      const [nodeName, outputName] = getSelectValue(item);
+      const {
+        sourceLabel: nodeName,
+        outputLabel: outputName,
+        sourceIcon
+      } = getSelectedReference(item, list);
+      const status = getWorkflowReferenceStatus({
+        value: item,
+        valueType,
+        sourceNodes,
+        getNodeById
+      });
       return {
         rawValue: item,
         nodeName,
-        outputName
+        outputName,
+        sourceIcon,
+        status
       };
     });
-  }, [getSelectValue, value]);
+  }, [getNodeById, list, sourceNodes, value, valueType]);
 
-  const invalidList = useMemo(() => {
-    return formatList.filter((item) => item.nodeName && item.outputName);
-  }, [formatList]);
+  const handleSelect = useCallback(
+    (nextValue?: ReferenceArrayValueType) => {
+      onSelect(nextValue);
+    },
+    [onSelect]
+  );
 
-  useEffect(() => {
-    // Adapt array type from old version
-    if (Array.isArray(value) && typeof value[0] === 'string') {
-      // @ts-ignore
-      onSelect([value]);
-    }
-  }, [formatList, onSelect, value]);
-
-  const ArraySelector = useMemo(() => {
-    return (
-      <MultipleRowArraySelect
-        label={
-          invalidList.length > 0 ? (
-            <Grid
-              py={3}
-              gridTemplateColumns={'1fr 1fr'}
-              gap={2}
-              fontSize={'sm'}
-              _hover={{
-                '.delete': {
-                  visibility: 'visible'
-                }
-              }}
-            >
-              {invalidList.map(({ nodeName, outputName }, index) => {
-                return (
+  return (
+    <MultipleRowArraySelect
+      label={
+        formatList.length > 0 ? (
+          <Grid
+            py={3}
+            gridTemplateColumns={'1fr 1fr'}
+            gap={2}
+            fontSize={'sm'}
+            _hover={{
+              '.delete': {
+                visibility: 'visible'
+              }
+            }}
+          >
+            {formatList.map(({ rawValue, nodeName, outputName, sourceIcon, status }, index) => {
+              const isValidReference = status.code === 'valid' && Boolean(nodeName && outputName);
+              const isInvalidReference = isConfiguredReferenceValue(rawValue) && !isValidReference;
+              const referenceTitle = getReferenceValueTitle(rawValue);
+              const invalidReason = getInvalidReferenceReason(status.code, t);
+              const invalidSnapshot = isInvalidReference
+                ? getReferenceSnapshot({
+                    value: rawValue,
+                    list,
+                    sourceNodes,
+                    referenceSnapshots,
+                    getNodeById
+                  })
+                : undefined;
+              const row = (
+                <Flex
+                  key={index}
+                  w={'100%'}
+                  alignItems={'center'}
+                  bg={isInvalidReference ? 'red.50' : 'primary.50'}
+                  color={'myGray.900'}
+                  py={1}
+                  px={1.5}
+                  rounded={'sm'}
+                >
                   <Flex
-                    key={index}
-                    w={'100%'}
                     alignItems={'center'}
-                    bg={'primary.50'}
-                    color={'myGray.900'}
-                    py={1}
-                    px={1.5}
-                    rounded={'sm'}
+                    flex={'1 0 0'}
+                    className="textEllipsis"
+                    title={isInvalidReference ? referenceTitle : undefined}
                   >
-                    <Flex alignItems={'center'} flex={'1 0 0'} className="textEllipsis">
-                      {nodeName}
-                      <MyIcon
-                        name={'common/rightArrowLight'}
-                        mx={1}
-                        w={'12px'}
-                        color={'myGray.500'}
+                    {isValidReference ? (
+                      <ReferenceOutputLabel
+                        sourceLabel={nodeName}
+                        outputLabel={outputName}
+                        sourceIcon={sourceIcon}
+                        iconMargin={1}
                       />
-                      {outputName}
-                    </Flex>
-                    <MyIcon
-                      className="delete"
-                      visibility={'hidden'}
-                      name={'common/closeLight'}
-                      w={'1rem'}
-                      ml={1}
-                      cursor={'pointer'}
-                      color={'myGray.500'}
-                      _hover={{
-                        color: 'red.600'
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelect(value?.filter((_, i) => i !== index));
-                      }}
-                    />
+                    ) : isInvalidReference ? (
+                      <ReferenceSnapshotLabel
+                        snapshot={invalidSnapshot}
+                        fallback={t('common:invalid_variable')}
+                        t={t}
+                      />
+                    ) : (
+                      <Box color={'myGray.400'}>{placeholder}</Box>
+                    )}
                   </Flex>
-                );
-              })}
-            </Grid>
-          ) : (
-            <Box fontSize={'sm'} color={'myGray.400'}>
-              {placeholder}
-            </Box>
-          )
-        }
-        value={value as any}
-        list={list}
-        onSelect={(e) => {
-          onSelect(e as any);
-        }}
-        popDirection={popDirection}
-      />
-    );
-  }, [invalidList, list, onSelect, placeholder, popDirection, value]);
-
-  return ArraySelector;
+                  <MyIcon
+                    className="delete"
+                    visibility={'hidden'}
+                    name={'common/closeLight'}
+                    w={'1rem'}
+                    ml={1}
+                    cursor={'pointer'}
+                    color={'myGray.500'}
+                    _hover={{
+                      color: 'red.600'
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelect(value?.filter((_, i) => i !== index));
+                    }}
+                  />
+                </Flex>
+              );
+              return isInvalidReference ? (
+                <MyTooltip key={index} label={invalidReason} shouldWrapChildren={false}>
+                  {row}
+                </MyTooltip>
+              ) : (
+                row
+              );
+            })}
+          </Grid>
+        ) : (
+          <Box fontSize={'sm'} color={'myGray.400'}>
+            {placeholder}
+          </Box>
+        )
+      }
+      value={value as any}
+      list={list}
+      onSelect={(e) => {
+        handleSelect(e as ReferenceArrayValueType);
+      }}
+      popDirection={popDirection}
+    />
+  );
 };
 export const ReferSelector = <T extends boolean>(props: SelectProps<T>) => {
   return props.isArray ? (

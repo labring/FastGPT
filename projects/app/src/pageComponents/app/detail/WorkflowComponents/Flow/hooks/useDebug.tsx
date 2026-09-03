@@ -112,7 +112,8 @@ export const useDebug = () => {
       nodes,
       edges,
       models: availableModels,
-      t: workflowT
+      t: workflowT,
+      chatConfig: appDetail.chatConfig
     });
 
     if (!hasError) {

@@ -1,4 +1,4 @@
-import { createContext } from 'use-context-selector';
+import { createContext, useContextSelector } from 'use-context-selector';
 import type {
   FlowNodeTemplateType,
   FlowNodeItemType
@@ -18,6 +18,7 @@ import {
   type EdgeChange,
   type Node,
   type NodeChange,
+  applyNodeChanges,
   useEdgesState,
   useNodesState
 } from 'reactflow';
@@ -25,9 +26,19 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getWebLLMModel } from '@/web/common/system/utils';
+import { captureDeletedWorkflowReferenceSnapshots } from '@/web/core/workflow/referenceCheck';
+import { AppContext } from '@/pageComponents/app/detail/context';
+import { useTranslation } from 'next-i18next';
 import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
+
+const getToolNodeIds = (edges: Edge<any>[]) =>
+  new Set(
+    edges
+      .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
+      .map((edge) => edge.target)
+  );
 
 type WorkflowNodeContextType = {
   nodes: Node<FlowNodeItemType, string | undefined>[];
@@ -126,7 +137,45 @@ const WorkflowInitContextProvider = ({
 }) => {
   const { llmModelList } = useUserModelLists();
   // Nodes
-  const [nodes = [], setNodes, onNodesChange] = useNodesState<FlowNodeItemType>([]);
+  const [nodes = [], setNodes] = useNodesState<FlowNodeItemType>([]);
+  const chatConfig = useContextSelector(AppContext, (v) => v.appDetail.chatConfig);
+  const { t } = useTranslation();
+  const previousChatConfigRef = useRef(chatConfig);
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      setNodes((state) => {
+        const nextNodes = applyNodeChanges(changes, state);
+        return captureDeletedWorkflowReferenceSnapshots({
+          previousNodes: state,
+          nextNodes,
+          previousChatConfig: chatConfig,
+          nextChatConfig: chatConfig,
+          nodeIds: changes.flatMap((change) => {
+            if (change.type === 'add') return [change.item.id];
+            return 'id' in change ? [change.id] : [];
+          })
+        });
+      });
+    },
+    [chatConfig, setNodes]
+  );
+
+  useDeepCompareEffect(() => {
+    const previousChatConfig = previousChatConfigRef.current;
+    previousChatConfigRef.current = chatConfig;
+    if (previousChatConfig === chatConfig) return;
+
+    setNodes((state) =>
+      captureDeletedWorkflowReferenceSnapshots({
+        previousNodes: state,
+        nextNodes: state,
+        previousChatConfig,
+        nextChatConfig: chatConfig,
+        globalVariableSourceLabel: t('common:core.module.Variable'),
+        nodeIds: []
+      })
+    );
+  }, [chatConfig, setNodes, t]);
   const getNodes = useMemoizedFn(() => nodes);
 
   const nodeFormat = useMemo(() => {
@@ -302,6 +351,30 @@ const WorkflowInitContextProvider = ({
 
   // Edges
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const previousToolNodeIdsRef = useRef<Set<string>>();
+
+  useDeepCompareEffect(() => {
+    const previousToolNodeIds = previousToolNodeIdsRef.current;
+    const nextToolNodeIds = getToolNodeIds(edges);
+    previousToolNodeIdsRef.current = nextToolNodeIds;
+    if (
+      !previousToolNodeIds ||
+      (previousToolNodeIds.size === nextToolNodeIds.size &&
+        [...previousToolNodeIds].every((nodeId) => nextToolNodeIds.has(nodeId)))
+    ) {
+      return;
+    }
+
+    setNodes((state) =>
+      captureDeletedWorkflowReferenceSnapshots({
+        previousNodes: state,
+        nextNodes: state,
+        previousToolNodeIds,
+        nextToolNodeIds,
+        nodeIds: []
+      })
+    );
+  }, [edges, setNodes]);
 
   const toolNodesMap = useMemoEnhance(() => {
     const selectedToolEdgeMap: Record<string, boolean> = {};

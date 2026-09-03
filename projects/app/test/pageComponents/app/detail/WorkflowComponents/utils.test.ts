@@ -9,9 +9,70 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  VARIABLE_NODE_ID,
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { AppDetailType } from '@fastgpt/global/core/app/type';
+import { CanonicalWorkflowDataSchema } from '@fastgpt/global/core/workflow/migration/schema';
+import { PublishAppBodySchema } from '@fastgpt/global/openapi/core/app/version/api';
+import { storeNode2FlowNode } from '@/web/core/workflow/utils';
+import {
+  captureDeletedWorkflowReferenceSnapshots,
+  getWorkflowReferenceItemsFromValue,
+  getWorkflowReferenceStatuses
+} from '@/web/core/workflow/referenceCheck';
+import { checkWorkflowNodeIssues } from '@/web/core/workflow/workflowCheck';
+
+const createReferenceInput = (key: string, value: unknown, referenceSnapshots?: unknown) => ({
+  key,
+  label: key,
+  renderTypeList: [FlowNodeInputTypeEnum.reference],
+  selectedType: FlowNodeInputTypeEnum.reference,
+  valueType: WorkflowIOValueTypeEnum.any,
+  value,
+  ...(referenceSnapshots ? { referenceSnapshots } : {})
+});
+
+const createNode = ({
+  nodeId,
+  name,
+  inputs = [],
+  outputs = [],
+  flowNodeType = FlowNodeTypeEnum.userInput,
+  avatar
+}: {
+  nodeId: string;
+  name: string;
+  inputs?: any[];
+  outputs?: any[];
+  flowNodeType?: FlowNodeTypeEnum;
+  avatar?: string;
+}) =>
+  ({
+    id: nodeId,
+    type: flowNodeType,
+    data: {
+      nodeId,
+      name,
+      ...(avatar ? { avatar } : {}),
+      flowNodeType,
+      inputs,
+      outputs
+    }
+  }) as any;
+
+const createOutput = (id: string, label: string, extra: Record<string, unknown> = {}) => ({
+  id,
+  key: id,
+  label,
+  type: FlowNodeOutputTypeEnum.static,
+  ...extra
+});
 
 describe('WorkflowComponents utils', () => {
   describe('uiWorkflow2StoreWorkflow', () => {
@@ -151,6 +212,140 @@ describe('WorkflowComponents utils', () => {
           targetHandle: 'targetNode-target-left'
         }
       ]);
+    });
+
+    it('should validate and restore folded Code tool nodes', () => {
+      const nodes = [
+        {
+          data: {
+            nodeId: 'agent-node',
+            name: 'Agent',
+            flowNodeType: FlowNodeTypeEnum.toolCall,
+            inputs: [],
+            outputs: []
+          },
+          position: { x: 0, y: 0 }
+        },
+        {
+          data: {
+            nodeId: 'code-node',
+            name: 'Code',
+            flowNodeType: FlowNodeTypeEnum.code,
+            inputs: [
+              {
+                key: 'data1',
+                label: 'data1',
+                valueType: WorkflowIOValueTypeEnum.string,
+                renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+                selectedType: FlowNodeInputTypeEnum.input,
+                canEdit: true
+              }
+            ],
+            outputs: [],
+            isFolded: true
+          },
+          position: { x: 300, y: 0 }
+        }
+      ];
+      const edges = [
+        {
+          source: 'agent-node',
+          target: 'code-node',
+          sourceHandle: 'tool-output',
+          targetHandle: 'selectedTools'
+        }
+      ];
+
+      const stored = uiWorkflow2StoreWorkflow({ nodes, edges });
+      const workflow = CanonicalWorkflowDataSchema.parse({
+        ...stored,
+        chatConfig: {}
+      });
+      const published = PublishAppBodySchema.parse({
+        ...stored,
+        chatConfig: {}
+      });
+
+      expect(workflow.nodes[1]?.isFolded).toBe(true);
+      expect(published.nodes?.[1]?.isFolded).toBe(true);
+
+      const restored = storeNode2FlowNode({
+        item: workflow.nodes[1],
+        t: ((key: string) => key) as any
+      });
+      expect(restored.data.isFolded).toBe(true);
+    });
+
+    it('should preserve reference snapshots through canonical validation and restore', () => {
+      const nodes = [
+        {
+          data: {
+            nodeId: 'source-node',
+            name: 'Source node',
+            flowNodeType: FlowNodeTypeEnum.chatNode,
+            inputs: [],
+            outputs: [
+              {
+                id: 'output-key',
+                key: 'output-key',
+                label: 'Output label',
+                type: FlowNodeOutputTypeEnum.static,
+                valueType: WorkflowIOValueTypeEnum.string
+              }
+            ]
+          },
+          position: { x: 0, y: 0 }
+        },
+        {
+          data: {
+            nodeId: 'target-node',
+            name: 'Target node',
+            flowNodeType: FlowNodeTypeEnum.answerNode,
+            inputs: [
+              {
+                key: 'text',
+                label: 'Text',
+                value: ['source-node', 'output-key'],
+                referenceSnapshots: [
+                  {
+                    reference: ['source-node', 'output-key'],
+                    sourceLabel: 'Source node',
+                    outputLabel: 'Output label'
+                  }
+                ],
+                renderTypeList: [FlowNodeInputTypeEnum.reference]
+              }
+            ],
+            outputs: []
+          },
+          position: { x: 300, y: 0 }
+        }
+      ];
+
+      const stored = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
+      const workflow = CanonicalWorkflowDataSchema.parse({
+        ...stored,
+        chatConfig: {}
+      });
+      const published = PublishAppBodySchema.parse({
+        ...stored,
+        chatConfig: {}
+      });
+
+      expect(workflow.nodes[1]?.inputs[0]?.referenceSnapshots).toEqual(
+        stored.nodes[1]?.inputs[0]?.referenceSnapshots
+      );
+      expect(published.nodes?.[1]?.inputs[0]?.referenceSnapshots).toEqual(
+        stored.nodes[1]?.inputs[0]?.referenceSnapshots
+      );
+
+      const restored = storeNode2FlowNode({
+        item: workflow.nodes[1],
+        t: ((key: string) => key) as any
+      });
+      expect(restored.data.inputs[0]?.referenceSnapshots).toEqual(
+        stored.nodes[1]?.inputs[0]?.referenceSnapshots
+      );
     });
 
     it('should filter malformed edges that cannot be restored', () => {
@@ -332,7 +527,45 @@ describe('WorkflowComponents utils', () => {
       expect(result.nodes[1].inputs[0].value).toEqual(referenceValue);
     });
 
-    it('should filter only unselectable values from reference inputs', () => {
+    it('should preserve reference snapshots when saving workflow', () => {
+      const referenceSnapshots = [
+        {
+          reference: ['sourceNode', 'text'],
+          sourceLabel: 'Source before deletion',
+          outputLabel: 'Text before deletion'
+        }
+      ];
+      const nodes = [
+        {
+          data: {
+            nodeId: 'targetNode',
+            name: 'Target',
+            intro: '',
+            avatar: '',
+            flowNodeType: FlowNodeTypeEnum.chatNode,
+            showStatus: true,
+            inputs: [
+              {
+                key: 'referenceInput',
+                renderTypeList: [FlowNodeInputTypeEnum.reference],
+                selectedType: FlowNodeInputTypeEnum.reference,
+                valueType: WorkflowIOValueTypeEnum.string,
+                value: ['sourceNode', 'text'],
+                referenceSnapshots
+              }
+            ],
+            outputs: []
+          },
+          position: { x: 0, y: 0 }
+        }
+      ];
+
+      const result = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
+
+      expect(result.nodes[0].inputs[0].referenceSnapshots).toEqual(referenceSnapshots);
+    });
+
+    it('should preserve unselectable values from reference inputs', () => {
       const nodes = [
         {
           data: {
@@ -431,11 +664,14 @@ describe('WorkflowComponents utils', () => {
         'sourceNode',
         'text'
       ]);
-      expect(
-        storedInputs.find((input) => input.key === 'invalidSingleReference')?.value
-      ).toBeUndefined();
+      expect(storedInputs.find((input) => input.key === 'invalidSingleReference')?.value).toEqual([
+        'missingNode',
+        'text'
+      ]);
       expect(storedInputs.find((input) => input.key === 'multipleReferences')?.value).toEqual([
-        ['sourceNode', 'files']
+        ['sourceNode', 'files'],
+        ['sourceNode', 'count'],
+        ['missingNode', 'files']
       ]);
       expect(storedInputs.find((input) => input.key === 'textareaValue')?.value).toBe(
         '{{missingNode.text}}'
@@ -493,47 +729,6 @@ describe('WorkflowComponents utils', () => {
       const result = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
 
       expect(result.nodes[0].inputs[0].value).toEqual(['childNode', 'result']);
-    });
-
-    it('should remove code node custom input references to its own tool params', () => {
-      const nodes = [
-        {
-          data: {
-            nodeId: 'codeNode',
-            name: 'Code',
-            intro: '',
-            avatar: '',
-            flowNodeType: FlowNodeTypeEnum.code,
-            showStatus: true,
-            inputs: [
-              {
-                key: 'arg1',
-                label: 'arg1',
-                canEdit: true,
-                defaultToAgentGenerated: true,
-                renderTypeList: [FlowNodeInputTypeEnum.addInputParam],
-                valueType: WorkflowIOValueTypeEnum.string
-              },
-              {
-                key: 'customInput',
-                label: 'customInput',
-                canEdit: true,
-                renderTypeList: [FlowNodeInputTypeEnum.reference],
-                valueType: WorkflowIOValueTypeEnum.any,
-                value: ['codeNode', 'arg1']
-              }
-            ],
-            outputs: []
-          },
-          position: { x: 0, y: 0 }
-        }
-      ];
-
-      const result = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
-
-      expect(result.nodes[0].inputs.find((input) => input.key === 'customInput')?.value).toBe(
-        undefined
-      );
     });
 
     it('should preserve a canonical input selection when saving workflow', () => {
@@ -772,6 +967,689 @@ describe('WorkflowComponents utils', () => {
 
       expect(result.find((item) => item.key === 'name')?.label).toBe('name');
       expect(result.find((item) => item.key === 'userId')?.label).toBe('用户 ID');
+    });
+
+    it('should keep invalid reason and node icon for unavailable output variables', () => {
+      const source = createNode({
+        nodeId: 'source',
+        name: 'Source',
+        avatar: 'source-avatar',
+        outputs: [
+          createOutput('type-mismatch', 'Type mismatch', {
+            valueType: WorkflowIOValueTypeEnum.number,
+            icon: 'custom/type'
+          }),
+          createOutput('invalid', 'Invalid', {
+            invalid: true,
+            valueType: WorkflowIOValueTypeEnum.string
+          })
+        ]
+      });
+      const disconnected = createNode({
+        nodeId: 'disconnected',
+        name: 'Disconnected',
+        outputs: [createOutput('output', 'Output', { valueType: WorkflowIOValueTypeEnum.string })]
+      });
+      const consumer = createNode({
+        nodeId: 'consumer',
+        name: 'Consumer',
+        inputs: [
+          {
+            key: 'input',
+            label: 'Input',
+            canEdit: true,
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ]
+      });
+      const nodeList = [source.data, disconnected.data, consumer.data];
+      const result = getEditorVariables({
+        nodeId: 'consumer',
+        nodeList,
+        getNodeById: (nodeId: string) => nodeList.find((node) => node.nodeId === nodeId),
+        edges: [{ source: 'source', target: 'consumer' }],
+        appDetail: { chatConfig: {} } as AppDetailType,
+        t: (key: string) => key,
+        valueType: WorkflowIOValueTypeEnum.string
+      });
+
+      expect(result.find((item) => item.key === 'type-mismatch')).toMatchObject({
+        invalidReason: 'invalid_reference_type',
+        parent: { avatar: 'source-avatar' }
+      });
+      expect(result.find((item) => item.key === 'invalid')).toMatchObject({
+        invalidReason: 'invalid_reference'
+      });
+      expect(
+        result.find((item) => item.key === 'output' && item.parent.id === 'disconnected')
+      ).toMatchObject({
+        invalidReason: 'unreachable_reference'
+      });
+      expect(result.find((item) => item.key === 'type-mismatch')).not.toHaveProperty('icon');
+    });
+  });
+
+  describe('workflow references', () => {
+    it('extracts canonical and text references from nested values', () => {
+      expect(
+        getWorkflowReferenceItemsFromValue({
+          url: '{{$source.output$}}',
+          params: [{ key: '{{$source.key$}}', value: '{{$source.output$}}' }],
+          body: '{{$other.body$}}'
+        })
+      ).toEqual([
+        ['source', 'output'],
+        ['source', 'key'],
+        ['other', 'body']
+      ]);
+    });
+
+    it('keeps valid text references valid', () => {
+      const source = createNode({
+        nodeId: 'source',
+        name: 'Source',
+        outputs: [createOutput('output', 'Output')]
+      });
+
+      expect(
+        getWorkflowReferenceStatuses({
+          value: 'prefix {{$source.output$}}',
+          sourceNodes: [source.data],
+          getNodeById: () => undefined
+        })
+      ).toEqual([{ code: 'valid' }]);
+    });
+
+    it('captures deleted text references from normal and HTTP inputs', () => {
+      const source = createNode({
+        nodeId: 'source',
+        name: 'Source',
+        avatar: 'node-avatar',
+        outputs: [createOutput('key', 'Key'), createOutput('output', 'Output', { icon: 'input' })]
+      });
+      const consumer = createNode({
+        nodeId: 'consumer',
+        name: 'Consumer',
+        inputs: [
+          {
+            key: 'text',
+            label: 'Text',
+            renderTypeList: [FlowNodeInputTypeEnum.input],
+            value: 'prefix {{$source.output$}}'
+          },
+          {
+            key: NodeInputKeyEnum.httpParams,
+            value: [{ key: '{{$source.key$}}', type: 'string', value: '{{$source.output$}}' }]
+          },
+          {
+            key: NodeInputKeyEnum.httpJsonBody,
+            value: 'body {{$source.output$}}'
+          },
+          {
+            key: 'nestedText',
+            value: {
+              prompt: 'nested {{$source.key$}}'
+            }
+          }
+        ]
+      });
+
+      const result = captureDeletedWorkflowReferenceSnapshots({
+        previousNodes: [source, consumer],
+        nextNodes: [consumer],
+        previousChatConfig: {},
+        nextChatConfig: {},
+        nodeIds: ['source']
+      });
+
+      expect(result[0].data.inputs[0].referenceSnapshots).toEqual([
+        {
+          reference: ['source', 'output'],
+          sourceLabel: 'Source',
+          outputLabel: 'Output',
+          icon: 'node-avatar'
+        }
+      ]);
+      expect(result[0].data.inputs[1].referenceSnapshots).toEqual([
+        {
+          reference: ['source', 'key'],
+          sourceLabel: 'Source',
+          outputLabel: 'Key',
+          icon: 'node-avatar'
+        },
+        {
+          reference: ['source', 'output'],
+          sourceLabel: 'Source',
+          outputLabel: 'Output',
+          icon: 'node-avatar'
+        }
+      ]);
+      expect(result[0].data.inputs[2].referenceSnapshots).toEqual([
+        {
+          reference: ['source', 'output'],
+          sourceLabel: 'Source',
+          outputLabel: 'Output',
+          icon: 'node-avatar'
+        }
+      ]);
+      expect(result[0].data.inputs[3].referenceSnapshots).toEqual([
+        {
+          reference: ['source', 'key'],
+          sourceLabel: 'Source',
+          outputLabel: 'Key',
+          icon: 'node-avatar'
+        }
+      ]);
+    });
+
+    it('only updates nodes affected by a deleted source', () => {
+      const source = createNode({
+        nodeId: 'source',
+        name: 'Source',
+        outputs: [createOutput('output', 'Output')]
+      });
+      const consumer = createNode({
+        nodeId: 'consumer',
+        name: 'Consumer',
+        inputs: [{ key: 'text', value: '{{$source.output$}}' }]
+      });
+      const untouched = createNode({
+        nodeId: 'untouched',
+        name: 'Untouched',
+        inputs: [
+          { key: 'text', value: 'plain', referenceSnapshots: [{ reference: ['old', 'out'] }] }
+        ]
+      });
+
+      const result = captureDeletedWorkflowReferenceSnapshots({
+        previousNodes: [source, consumer, untouched],
+        nextNodes: [consumer, untouched],
+        previousChatConfig: {},
+        nextChatConfig: {},
+        nodeIds: ['source']
+      });
+
+      expect(result[0].data.inputs[0].referenceSnapshots).toHaveLength(1);
+      expect(result[1]).toBe(untouched);
+    });
+
+    it('captures references to HTTP tool parameters when the node leaves tool mode', () => {
+      const httpTool = createNode({
+        nodeId: 'http-tool',
+        name: 'HTTP tool',
+        avatar: 'http-avatar',
+        flowNodeType: FlowNodeTypeEnum.httpRequest468,
+        inputs: [
+          {
+            key: 'toolParam',
+            label: 'Tool parameter',
+            canEdit: true,
+            defaultToAgentGenerated: true,
+            renderTypeList: [FlowNodeInputTypeEnum.input],
+            valueType: WorkflowIOValueTypeEnum.string
+          },
+          {
+            key: NodeInputKeyEnum.httpReqUrl,
+            value: 'https://example.com/{{$http-tool.toolParam$}}'
+          }
+        ]
+      });
+
+      const result = captureDeletedWorkflowReferenceSnapshots({
+        previousNodes: [httpTool],
+        nextNodes: [httpTool],
+        previousToolNodeIds: new Set(['http-tool']),
+        nextToolNodeIds: new Set(),
+        nodeIds: []
+      });
+
+      expect(result[0].data.inputs[1].referenceSnapshots).toEqual([
+        {
+          reference: ['http-tool', 'toolParam'],
+          sourceLabel: 'HTTP tool',
+          outputLabel: 'Tool parameter',
+          icon: 'http-avatar'
+        }
+      ]);
+    });
+
+    it('skips hidden HTTP tool parameter reference checks', () => {
+      const toolCall = createNode({
+        nodeId: 'tool-call',
+        name: 'Tool call',
+        flowNodeType: FlowNodeTypeEnum.toolCall
+      });
+      const httpTool = createNode({
+        nodeId: 'http-tool',
+        name: 'HTTP tool',
+        flowNodeType: FlowNodeTypeEnum.httpRequest468,
+        inputs: [
+          {
+            key: 'toolParam',
+            label: 'Tool parameter',
+            canEdit: true,
+            defaultToAgentGenerated: true,
+            renderTypeList: [FlowNodeInputTypeEnum.input],
+            selectedType: FlowNodeInputTypeEnum.input,
+            value: ['deleted', 'output'],
+            valueType: WorkflowIOValueTypeEnum.string
+          },
+          {
+            key: NodeInputKeyEnum.httpReqUrl,
+            label: 'URL',
+            renderTypeList: [FlowNodeInputTypeEnum.input],
+            value: 'https://example.com'
+          }
+        ]
+      });
+
+      const issueMap = checkWorkflowNodeIssues({
+        nodes: [toolCall, httpTool],
+        edges: [
+          {
+            source: 'tool-call',
+            target: 'http-tool',
+            sourceHandle: 'tool',
+            targetHandle: NodeOutputKeyEnum.selectedTools
+          }
+        ]
+      });
+
+      expect(issueMap['http-tool'] ?? []).not.toContainEqual(
+        expect.objectContaining({ inputKey: 'toolParam', code: 'invalid_reference' })
+      );
+    });
+
+    it('keeps HTTP tool parameter references valid only while connected as a tool', () => {
+      const toolCall = createNode({
+        nodeId: 'tool-call',
+        name: 'Tool call',
+        flowNodeType: FlowNodeTypeEnum.toolCall
+      });
+      const httpTool = createNode({
+        nodeId: 'http-tool',
+        name: 'HTTP tool',
+        flowNodeType: FlowNodeTypeEnum.httpRequest468,
+        inputs: [
+          {
+            key: 'toolParam',
+            label: 'Tool parameter',
+            canEdit: true,
+            defaultToAgentGenerated: true,
+            renderTypeList: [FlowNodeInputTypeEnum.input],
+            valueType: WorkflowIOValueTypeEnum.string
+          },
+          {
+            key: NodeInputKeyEnum.httpReqUrl,
+            label: 'URL',
+            renderTypeList: [FlowNodeInputTypeEnum.input],
+            value: 'https://example.com/{{$http-tool.toolParam$}}'
+          }
+        ]
+      });
+      const toolEdge = {
+        source: 'tool-call',
+        target: 'http-tool',
+        sourceHandle: 'tool',
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      };
+
+      expect(
+        checkWorkflowNodeIssues({
+          nodes: [toolCall, httpTool],
+          edges: [toolEdge]
+        })['http-tool'] ?? []
+      ).not.toContainEqual(
+        expect.objectContaining({
+          inputKey: NodeInputKeyEnum.httpReqUrl,
+          code: 'invalid_reference'
+        })
+      );
+      expect(
+        checkWorkflowNodeIssues({
+          nodes: [toolCall, httpTool],
+          edges: []
+        })['http-tool']
+      ).toContainEqual(
+        expect.objectContaining({
+          inputKey: NodeInputKeyEnum.httpReqUrl,
+          code: 'invalid_reference'
+        })
+      );
+    });
+
+    it('marks references to hidden HTTP tool parameters as invalid elsewhere', () => {
+      const toolCall = createNode({
+        nodeId: 'tool-call',
+        name: 'Tool call',
+        flowNodeType: FlowNodeTypeEnum.toolCall
+      });
+      const httpTool = createNode({
+        nodeId: 'http-tool',
+        name: 'HTTP tool',
+        flowNodeType: FlowNodeTypeEnum.httpRequest468,
+        outputs: [createOutput('result', 'Result')]
+      });
+      const consumer = createNode({
+        nodeId: 'consumer',
+        name: 'Consumer',
+        inputs: [createReferenceInput('input', ['http-tool', 'toolParam'])]
+      });
+
+      const issueMap = checkWorkflowNodeIssues({
+        nodes: [toolCall, httpTool, consumer],
+        edges: [
+          {
+            source: 'tool-call',
+            target: 'http-tool',
+            sourceHandle: 'tool',
+            targetHandle: NodeOutputKeyEnum.selectedTools
+          },
+          {
+            source: 'http-tool',
+            target: 'consumer',
+            sourceHandle: 'result',
+            targetHandle: 'input'
+          }
+        ]
+      });
+
+      expect(issueMap.consumer).toContainEqual(
+        expect.objectContaining({ inputKey: 'input', code: 'invalid_reference' })
+      );
+    });
+  });
+
+  describe('captureDeletedWorkflowReferenceSnapshots', () => {
+    it('captures deleted nodes and outputs, and clears a snapshot when the reference is valid', () => {
+      const source = createNode({
+        nodeId: 'source',
+        name: 'Source',
+        outputs: [createOutput('output', 'Output')]
+      });
+      const consumer = createNode({
+        nodeId: 'consumer',
+        name: 'Consumer',
+        inputs: [createReferenceInput('input', ['source', 'output'])]
+      });
+
+      const deletedNode = captureDeletedWorkflowReferenceSnapshots({
+        previousNodes: [source, consumer],
+        nextNodes: [consumer],
+        previousChatConfig: {},
+        nextChatConfig: {}
+      });
+      expect(deletedNode[0].data.inputs[0].referenceSnapshots).toEqual([
+        {
+          reference: ['source', 'output'],
+          sourceLabel: 'Source',
+          outputLabel: 'Output'
+        }
+      ]);
+
+      const deletedOutput = captureDeletedWorkflowReferenceSnapshots({
+        previousNodes: [source, consumer],
+        nextNodes: [createNode({ nodeId: 'source', name: 'Source' }), consumer],
+        previousChatConfig: {},
+        nextChatConfig: {}
+      });
+      expect(deletedOutput[1].data.inputs[0].referenceSnapshots).toEqual(
+        deletedNode[0].data.inputs[0].referenceSnapshots
+      );
+
+      const valid = captureDeletedWorkflowReferenceSnapshots({
+        previousNodes: [source, consumer],
+        nextNodes: [
+          source,
+          createNode({
+            nodeId: 'consumer',
+            name: 'Consumer',
+            inputs: [
+              createReferenceInput(
+                'input',
+                ['source', 'output'],
+                [
+                  {
+                    reference: ['source', 'output'],
+                    sourceLabel: 'Source',
+                    outputLabel: 'Output'
+                  }
+                ]
+              )
+            ]
+          })
+        ],
+        previousChatConfig: {},
+        nextChatConfig: {}
+      });
+      expect(valid[1].data.inputs[0]).not.toHaveProperty('referenceSnapshots');
+    });
+
+    it('preserves existing snapshots and captures nested references', () => {
+      const source = createNode({
+        nodeId: 'source',
+        name: 'Source',
+        outputs: [createOutput('variable', 'Variable'), createOutput('value', 'Value')]
+      });
+      const existingSnapshot = {
+        reference: ['missing', 'output'],
+        sourceLabel: 'Old source',
+        outputLabel: 'Old output',
+        icon: 'old-node-avatar'
+      };
+      const consumer = createNode({
+        nodeId: 'consumer',
+        name: 'Consumer',
+        inputs: [
+          createReferenceInput('old', ['missing', 'output'], [existingSnapshot]),
+          {
+            key: NodeInputKeyEnum.ifElseList,
+            value: [
+              {
+                condition: 'AND',
+                list: [
+                  {
+                    variable: ['source', 'variable'],
+                    value: ['source', 'value'],
+                    valueType: 'reference'
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            key: NodeInputKeyEnum.updateList,
+            value: [
+              {
+                variable: ['source', 'variable'],
+                value: [
+                  ['source', 'value'],
+                  ['source', 'variable']
+                ],
+                renderType: FlowNodeInputTypeEnum.reference
+              },
+              {
+                variable: ['source', 'variable'],
+                value: ['', 'prefix {{$source.value$}}'],
+                renderType: FlowNodeInputTypeEnum.input
+              }
+            ]
+          }
+        ]
+      });
+
+      const result = captureDeletedWorkflowReferenceSnapshots({
+        previousNodes: [source, consumer],
+        nextNodes: [consumer],
+        previousChatConfig: {},
+        nextChatConfig: {}
+      });
+
+      expect(result[0].data.inputs[0].referenceSnapshots).toEqual([existingSnapshot]);
+      expect(result[0].data.inputs[1].value[0].list[0]).toMatchObject({
+        variableSnapshot: {
+          reference: ['source', 'variable'],
+          sourceLabel: 'Source',
+          outputLabel: 'Variable'
+        },
+        valueSnapshot: {
+          reference: ['source', 'value'],
+          sourceLabel: 'Source',
+          outputLabel: 'Value'
+        }
+      });
+      expect(result[0].data.inputs[2].value[0]).toMatchObject({
+        variableSnapshot: {
+          reference: ['source', 'variable'],
+          sourceLabel: 'Source',
+          outputLabel: 'Variable'
+        },
+        valueReferenceSnapshots: [
+          {
+            reference: ['source', 'value'],
+            sourceLabel: 'Source',
+            outputLabel: 'Value'
+          },
+          {
+            reference: ['source', 'variable'],
+            sourceLabel: 'Source',
+            outputLabel: 'Variable'
+          }
+        ]
+      });
+      expect(result[0].data.inputs[2].value[1]).toMatchObject({
+        valueReferenceSnapshots: [
+          {
+            reference: ['source', 'value'],
+            sourceLabel: 'Source',
+            outputLabel: 'Value'
+          }
+        ]
+      });
+    });
+
+    it('captures a deleted global variable from the previous chat config', () => {
+      const consumer = createNode({
+        nodeId: 'consumer',
+        name: 'Consumer',
+        inputs: [createReferenceInput('input', [VARIABLE_NODE_ID, 'deleted'])]
+      });
+      const variable = {
+        key: 'deleted',
+        label: 'Deleted variable',
+        type: VariableInputEnum.input,
+        description: ''
+      };
+
+      const result = captureDeletedWorkflowReferenceSnapshots({
+        previousNodes: [consumer],
+        nextNodes: [consumer],
+        previousChatConfig: { variables: [variable] },
+        nextChatConfig: { variables: [] },
+        globalVariableSourceLabel: 'Variable'
+      });
+
+      expect(result[0].data.inputs[0].referenceSnapshots).toEqual([
+        {
+          reference: [VARIABLE_NODE_ID, 'deleted'],
+          sourceLabel: 'Variable',
+          outputLabel: 'Deleted variable',
+          icon: 'core/workflow/template/variable'
+        }
+      ]);
+    });
+
+    it('captures a deleted HTTP tool parameter while the tool edge remains', () => {
+      const toolInput = {
+        key: 'query',
+        label: 'Query parameter',
+        renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
+        selectedType: FlowNodeInputTypeEnum.agentGenerated,
+        canEdit: true,
+        defaultToAgentGenerated: true,
+        valueType: WorkflowIOValueTypeEnum.string,
+        value: 'query'
+      };
+      const tool = createNode({
+        nodeId: 'http-tool',
+        name: 'HTTP tool',
+        flowNodeType: FlowNodeTypeEnum.httpRequest468,
+        inputs: [toolInput]
+      });
+      const consumer = createNode({
+        nodeId: 'consumer',
+        name: 'Consumer',
+        inputs: [createReferenceInput('input', ['http-tool', 'query'])]
+      });
+
+      const result = captureDeletedWorkflowReferenceSnapshots({
+        previousNodes: [tool, consumer],
+        nextNodes: [
+          createNode({
+            nodeId: 'http-tool',
+            name: 'HTTP tool',
+            flowNodeType: FlowNodeTypeEnum.httpRequest468
+          }),
+          consumer
+        ],
+        previousChatConfig: {},
+        nextChatConfig: {},
+        previousToolNodeIds: new Set(['http-tool']),
+        nextToolNodeIds: new Set(['http-tool'])
+      });
+
+      expect(result[1].data.inputs[0].referenceSnapshots).toEqual([
+        {
+          reference: ['http-tool', 'query'],
+          sourceLabel: 'HTTP tool',
+          outputLabel: 'Query parameter'
+        }
+      ]);
+    });
+
+    it('captures deleted global references inside VariableUpdate input values', () => {
+      const consumer = createNode({
+        nodeId: 'consumer',
+        name: 'Consumer',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.updateList,
+            value: [
+              {
+                variable: [VARIABLE_NODE_ID, 'target'],
+                value: ['', 'prefix {{$VARIABLE_NODE_ID.deleted$}}'],
+                renderType: FlowNodeInputTypeEnum.input
+              }
+            ]
+          }
+        ]
+      });
+
+      const result = captureDeletedWorkflowReferenceSnapshots({
+        previousNodes: [consumer],
+        nextNodes: [consumer],
+        previousChatConfig: {
+          variables: [
+            {
+              key: 'deleted',
+              label: 'Deleted variable',
+              type: VariableInputEnum.input,
+              description: ''
+            }
+          ]
+        },
+        nextChatConfig: { variables: [] },
+        globalVariableSourceLabel: 'Variable'
+      });
+
+      expect(result[0].data.inputs[0].value[0].valueReferenceSnapshots).toEqual([
+        {
+          reference: [VARIABLE_NODE_ID, 'deleted'],
+          sourceLabel: 'Variable',
+          outputLabel: 'Deleted variable',
+          icon: 'core/workflow/template/variable'
+        }
+      ]);
     });
   });
 });

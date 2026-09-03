@@ -11,17 +11,27 @@ import {
   FlowNodeOutputTypeEnum,
   EDGE_TYPE
 } from '@fastgpt/global/core/workflow/node/constant';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
+import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
+import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import {
   nodeTemplate2FlowNode,
   storeNode2FlowNode,
   getNodeAllSource,
   filterWorkflowNodeOutputsByType,
-  filterSelectableWorkflowNodeOutputs,
-  workflowReferenceValueIsSelectable
+  filterSelectableWorkflowNodeOutputs
 } from '@/web/core/workflow/utils';
+import { workflowReferenceValueIsSelectable } from '@/web/core/workflow/referenceCheck';
+import {
+  getWorkflowReferenceIssueCode,
+  getWorkflowReferenceStatus,
+  getWorkflowReferenceStatuses
+} from '@/web/core/workflow/referenceCheck';
 import {
   checkWorkflowNodeIssues,
   checkWorkflowHasError,
@@ -34,10 +44,7 @@ import {
   collectWorkflowStartAutoFillRevertPatches,
   collectWorkflowStartOutputAutoFillRevertPatches
 } from '@/web/core/workflow/workflowStartAutoFill';
-import type {
-  FlowNodeInputItemType,
-  FlowNodeOutputItemType
-} from '@fastgpt/global/core/workflow/type/io';
+import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
@@ -106,6 +113,17 @@ describe('nodeTemplate2FlowNode', () => {
 });
 
 describe('checkWorkflowNodeIssues', () => {
+  const makeChatVariable = (
+    key: string,
+    valueType: WorkflowIOValueTypeEnum = WorkflowIOValueTypeEnum.string
+  ) => ({
+    key,
+    label: key,
+    description: '',
+    type: VariableInputEnum.input,
+    valueType
+  });
+
   const makeNode = (
     nodeId: string,
     flowNodeType: FlowNodeTypeEnum,
@@ -212,7 +230,7 @@ describe('checkWorkflowNodeIssues', () => {
     expect(result.orphan.map((issue) => issue.code)).toContain('no_upstream');
   });
 
-  it('does not report unselectable references', () => {
+  it('reports invalid references', () => {
     const node = makeNode('ref', FlowNodeTypeEnum.answerNode, {
       inputs: [
         {
@@ -230,10 +248,827 @@ describe('checkWorkflowNodeIssues', () => {
       edges: [{ id: 'e1', source: 'start', target: 'ref', type: EDGE_TYPE }]
     });
 
-    expect(result.ref?.map((issue) => issue.code) ?? []).not.toContain('invalid_reference');
+    expect(result.ref?.map((issue) => issue.code) ?? []).toContain('invalid_reference');
   });
 
-  it('filters unselectable single and multiple references when storing workflow data', () => {
+  it('reports deleted global variables and unavailable outputs as invalid references', () => {
+    const sourceNode = makeNode('source', FlowNodeTypeEnum.workflowStart, {
+      catchError: false,
+      outputs: [
+        {
+          id: 'invalid-output',
+          key: 'invalid-output',
+          label: 'invalid output',
+          type: FlowNodeOutputTypeEnum.static,
+          invalid: true
+        },
+        {
+          id: NodeOutputKeyEnum.addOutputParam,
+          key: NodeOutputKeyEnum.addOutputParam,
+          label: 'dynamic output placeholder',
+          type: FlowNodeOutputTypeEnum.dynamic
+        },
+        {
+          id: 'error-output',
+          key: 'error-output',
+          label: 'error output',
+          type: FlowNodeOutputTypeEnum.error
+        }
+      ]
+    });
+    const node = makeNode('ref', FlowNodeTypeEnum.answerNode, {
+      inputs: [
+        {
+          key: 'deleted-variable',
+          label: 'deleted variable',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          value: [VARIABLE_NODE_ID, 'deleted-variable']
+        },
+        {
+          key: 'invalid-output',
+          label: 'invalid output',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          value: ['source', 'invalid-output']
+        },
+        {
+          key: 'dynamic-output',
+          label: 'dynamic output',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          value: ['source', NodeOutputKeyEnum.addOutputParam]
+        },
+        {
+          key: 'malformed-reference',
+          label: 'malformed reference',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          value: ['source']
+        },
+        {
+          key: 'error-output',
+          label: 'error output',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          value: ['source', 'error-output']
+        },
+        {
+          key: 'valid-variable',
+          label: 'valid variable',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          value: [VARIABLE_NODE_ID, 'kept-variable']
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [sourceNode, node],
+      edges: [{ id: 'e1', source: 'source', target: 'ref', type: EDGE_TYPE }],
+      chatConfig: {
+        variables: [makeChatVariable('kept-variable')]
+      } as any
+    });
+
+    const invalidIssues = result.ref?.filter((issue) => issue.code === 'invalid_reference') ?? [];
+    expect(invalidIssues.map((issue) => issue.inputKey)).toEqual(
+      expect.arrayContaining([
+        'deleted-variable',
+        'invalid-output',
+        'dynamic-output',
+        'malformed-reference',
+        'error-output'
+      ])
+    );
+    expect(invalidIssues.map((issue) => issue.inputKey)).not.toContain('valid-variable');
+  });
+
+  it('reports a global reference as invalid when the current chat config has no variables', () => {
+    const node = makeNode('missing-global', FlowNodeTypeEnum.answerNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.answerText,
+          label: 'answer',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          value: [VARIABLE_NODE_ID, 'missing-variable']
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, node],
+      edges: [
+        { id: 'e-start-missing-global', source: 'start', target: 'missing-global', type: EDGE_TYPE }
+      ],
+      chatConfig: {}
+    });
+
+    expect(result['missing-global']?.map((issue) => issue.code)).toContain('invalid_reference');
+  });
+
+  it('locates invalid VariableUpdate targets and values by row field', () => {
+    const node = makeNode('variable-update', FlowNodeTypeEnum.variableUpdate, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.updateList,
+          label: 'update list',
+          value: [
+            {
+              variable: ['deleted-node', 'output'],
+              value: [['deleted-node', 'output']],
+              renderType: FlowNodeInputTypeEnum.reference,
+              valueType: WorkflowIOValueTypeEnum.string
+            }
+          ]
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, node],
+      edges: [{ id: 'e1', source: 'start', target: 'variable-update', type: EDGE_TYPE }]
+    });
+
+    expect(result['variable-update']).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'invalid_reference',
+          inputKey: `${NodeInputKeyEnum.updateList}[0].variable`
+        }),
+        expect.objectContaining({
+          code: 'invalid_reference',
+          inputKey: `${NodeInputKeyEnum.updateList}[0].value`
+        })
+      ])
+    );
+  });
+
+  describe('invalid_reference_type', () => {
+    const typedSourceNode = makeNode('typed-source', FlowNodeTypeEnum.workflowStart, {
+      outputs: [
+        {
+          id: 'text',
+          key: 'text',
+          label: 'text',
+          type: FlowNodeOutputTypeEnum.static,
+          valueType: WorkflowIOValueTypeEnum.string
+        },
+        {
+          id: 'count',
+          key: 'count',
+          label: 'count',
+          type: FlowNodeOutputTypeEnum.static,
+          valueType: WorkflowIOValueTypeEnum.number
+        },
+        {
+          id: 'untyped',
+          key: 'untyped',
+          label: 'untyped',
+          type: FlowNodeOutputTypeEnum.static
+        }
+      ]
+    });
+    const consumerEdge = [
+      { id: 'e-typed', source: 'typed-source', target: 'consumer', type: EDGE_TYPE }
+    ];
+
+    const makeReferenceInput = (
+      key: string,
+      value: unknown,
+      valueType?: WorkflowIOValueTypeEnum
+    ) => ({
+      key,
+      label: key,
+      valueType,
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      value
+    });
+
+    it('keeps type-compatible references without issues', () => {
+      const node = makeNode('consumer', FlowNodeTypeEnum.answerNode, {
+        inputs: [
+          makeReferenceInput('same-type', ['typed-source', 'text'], WorkflowIOValueTypeEnum.string),
+          // arrayString 目标按 validTypeMap 接受 string 元素来源
+          makeReferenceInput(
+            'array-accepts-element',
+            ['typed-source', 'text'],
+            WorkflowIOValueTypeEnum.arrayString
+          ),
+          makeReferenceInput('any-input', ['typed-source', 'count'], WorkflowIOValueTypeEnum.any),
+          makeReferenceInput(
+            'untyped-source',
+            ['typed-source', 'untyped'],
+            WorkflowIOValueTypeEnum.number
+          ),
+          makeReferenceInput('untyped-input', ['typed-source', 'count'])
+        ]
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [typedSourceNode, node],
+        edges: consumerEdge
+      });
+
+      expect(result.consumer?.some((issue) => issue.code === 'invalid_reference_type')).toBeFalsy();
+    });
+
+    it('reports type mismatch for a single reference input', () => {
+      const node = makeNode('consumer', FlowNodeTypeEnum.answerNode, {
+        inputs: [
+          makeReferenceInput('bad-type', ['typed-source', 'count'], WorkflowIOValueTypeEnum.string)
+        ]
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [typedSourceNode, node],
+        edges: consumerEdge
+      });
+
+      expect(result.consumer).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: 'invalid_reference_type', inputKey: 'bad-type' })
+        ])
+      );
+    });
+
+    it('reports type mismatch for a global variable reference', () => {
+      const node = makeNode('consumer', FlowNodeTypeEnum.answerNode, {
+        inputs: [
+          makeReferenceInput(
+            'var-type',
+            [VARIABLE_NODE_ID, 'num-var'],
+            WorkflowIOValueTypeEnum.string
+          )
+        ]
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [typedSourceNode, node],
+        edges: consumerEdge,
+        chatConfig: {
+          variables: [makeChatVariable('num-var', WorkflowIOValueTypeEnum.number)]
+        } as any
+      });
+
+      expect(result.consumer).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: 'invalid_reference_type', inputKey: 'var-type' })
+        ])
+      );
+    });
+
+    it('reports type mismatch when any item of a multi reference is incompatible', () => {
+      const node = makeNode('consumer', FlowNodeTypeEnum.answerNode, {
+        inputs: [
+          makeReferenceInput(
+            'mixed-array',
+            [
+              ['typed-source', 'text'],
+              ['typed-source', 'count']
+            ],
+            WorkflowIOValueTypeEnum.arrayString
+          )
+        ]
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [typedSourceNode, node],
+        edges: consumerEdge
+      });
+
+      expect(result.consumer).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: 'invalid_reference_type', inputKey: 'mixed-array' })
+        ])
+      );
+    });
+
+    it('keeps invalid_reference as the only issue when the source no longer exists', () => {
+      const node = makeNode('consumer', FlowNodeTypeEnum.answerNode, {
+        inputs: [makeReferenceInput('gone', ['ghost-node', 'out'], WorkflowIOValueTypeEnum.string)]
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [typedSourceNode, node],
+        edges: consumerEdge
+      });
+
+      const codes = result.consumer?.map((issue) => issue.code) ?? [];
+      expect(codes).toContain('invalid_reference');
+      expect(codes).not.toContain('invalid_reference_type');
+    });
+
+    const makeVarUpdateNode = (updateList: any[]) =>
+      makeNode('consumer', FlowNodeTypeEnum.variableUpdate, {
+        inputs: [
+          {
+            key: NodeInputKeyEnum.updateList,
+            valueType: WorkflowIOValueTypeEnum.any,
+            renderTypeList: [FlowNodeInputTypeEnum.hidden],
+            value: updateList
+          }
+        ]
+      });
+
+    it('reports VariableUpdate value reference type mismatch against the current variable type', () => {
+      const node = makeVarUpdateNode([
+        {
+          variable: [VARIABLE_NODE_ID, 'str-var'],
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderType: FlowNodeInputTypeEnum.reference,
+          value: ['typed-source', 'count']
+        }
+      ]);
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [typedSourceNode, node],
+        edges: consumerEdge,
+        chatConfig: {
+          variables: [makeChatVariable('str-var')]
+        } as any
+      });
+
+      expect(result.consumer).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: 'invalid_reference_type',
+            inputKey: `${NodeInputKeyEnum.updateList}[0].value`
+          })
+        ])
+      );
+    });
+
+    it('keeps VariableUpdate value reference when the type is compatible', () => {
+      const node = makeVarUpdateNode([
+        {
+          variable: [VARIABLE_NODE_ID, 'str-var'],
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderType: FlowNodeInputTypeEnum.reference,
+          value: ['typed-source', 'text']
+        }
+      ]);
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [typedSourceNode, node],
+        edges: consumerEdge,
+        chatConfig: {
+          variables: [makeChatVariable('str-var')]
+        } as any
+      });
+
+      expect(result.consumer?.some((issue) => issue.code === 'invalid_reference_type')).toBeFalsy();
+    });
+
+    it('reports VariableUpdate target when cached valueType no longer matches the variable type', () => {
+      const node = makeVarUpdateNode([
+        {
+          variable: [VARIABLE_NODE_ID, 'now-string'],
+          valueType: WorkflowIOValueTypeEnum.number,
+          numberOperator: '+',
+          renderType: FlowNodeInputTypeEnum.input,
+          value: ['', '5']
+        }
+      ]);
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [typedSourceNode, node],
+        edges: consumerEdge,
+        chatConfig: {
+          variables: [makeChatVariable('now-string')]
+        } as any
+      });
+
+      expect(result.consumer).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: 'invalid_reference_type',
+            inputKey: `${NodeInputKeyEnum.updateList}[0].variable`
+          })
+        ])
+      );
+    });
+
+    it('keeps VariableUpdate target when cached valueType is still compatible', () => {
+      const node = makeVarUpdateNode([
+        {
+          // string 缓存写入 arrayString 变量：按 validTypeMap 兼容
+          variable: [VARIABLE_NODE_ID, 'arr-var'],
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderType: FlowNodeInputTypeEnum.input,
+          value: ['', 'x']
+        },
+        {
+          variable: [VARIABLE_NODE_ID, 'any-var'],
+          valueType: WorkflowIOValueTypeEnum.number,
+          renderType: FlowNodeInputTypeEnum.input,
+          value: ['', '1']
+        }
+      ]);
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [typedSourceNode, node],
+        edges: consumerEdge,
+        chatConfig: {
+          variables: [
+            makeChatVariable('arr-var', WorkflowIOValueTypeEnum.arrayString),
+            makeChatVariable('any-var', WorkflowIOValueTypeEnum.any)
+          ]
+        } as any
+      });
+
+      expect(result.consumer?.some((issue) => issue.code === 'invalid_reference_type')).toBeFalsy();
+    });
+
+    it('skips VariableUpdate type checks when chat config is absent', () => {
+      const node = makeVarUpdateNode([
+        {
+          variable: [VARIABLE_NODE_ID, 'foo'],
+          valueType: WorkflowIOValueTypeEnum.number,
+          renderType: FlowNodeInputTypeEnum.reference,
+          value: [[VARIABLE_NODE_ID, 'bar']]
+        }
+      ]);
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [typedSourceNode, node],
+        edges: consumerEdge
+      });
+
+      expect(result.consumer?.some((issue) => issue.code === 'invalid_reference_type')).toBeFalsy();
+    });
+  });
+
+  describe('unreachable_reference', () => {
+    const makeOutputNode = (nodeId: string): Node<FlowNodeItemType> =>
+      makeNode(nodeId, FlowNodeTypeEnum.answerNode, {
+        outputs: [
+          {
+            id: 'out',
+            key: 'out',
+            label: 'out',
+            type: FlowNodeOutputTypeEnum.static,
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ]
+      });
+
+    const makeReferenceInput = (key: string, value: unknown) => ({
+      key,
+      label: key,
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      valueType: WorkflowIOValueTypeEnum.string,
+      value
+    });
+
+    it('checks every node against its current source scope', () => {
+      const nodeA = makeOutputNode('A');
+      const nodeB = makeNode('B', FlowNodeTypeEnum.answerNode, {
+        inputs: [makeReferenceInput('ref-a', ['A', 'out'])]
+      });
+      const nodeC = makeNode('C', FlowNodeTypeEnum.answerNode, {
+        inputs: [makeReferenceInput('ref-a', ['A', 'out'])]
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, nodeA, nodeB, nodeC],
+        edges: [
+          { id: 'e-start-a', source: 'start', target: 'A', type: EDGE_TYPE },
+          { id: 'e-start-b', source: 'start', target: 'B', type: EDGE_TYPE },
+          { id: 'e-b-c', source: 'B', target: 'C', type: EDGE_TYPE }
+        ]
+      });
+
+      expect(result.B).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: 'unreachable_reference', inputKey: 'ref-a' })
+        ])
+      );
+      expect(result.C).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: 'unreachable_reference', inputKey: 'ref-a' })
+        ])
+      );
+    });
+
+    it('allows a loop custom output to reference a direct child output', () => {
+      const loop = makeNode('loop', FlowNodeTypeEnum.loopRun, {
+        inputs: [
+          {
+            ...makeReferenceInput('custom-output', ['loop-child', 'out']),
+            canEdit: true
+          }
+        ]
+      });
+      const child = makeOutputNode('loop-child');
+      child.data.parentNodeId = 'loop';
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, loop, child],
+        edges: [{ id: 'e-start-loop', source: 'start', target: 'loop', type: EDGE_TYPE }]
+      });
+
+      expect(result.loop?.filter((issue) => issue.inputKey === 'custom-output') ?? []).toEqual([]);
+    });
+
+    it('keeps nested loop and parallel container reference scopes aligned', () => {
+      const source = makeNode('source', FlowNodeTypeEnum.answerNode, {
+        outputs: [
+          {
+            id: 'items',
+            key: 'items',
+            label: 'items',
+            type: FlowNodeOutputTypeEnum.static,
+            valueType: WorkflowIOValueTypeEnum.arrayAny
+          }
+        ]
+      });
+      const outerLoop = makeNode('outer-loop', FlowNodeTypeEnum.loopRun);
+      const parallel = makeNode('parallel', FlowNodeTypeEnum.parallelRun, {
+        parentNodeId: 'outer-loop',
+        inputs: [
+          {
+            ...makeReferenceInput('nested-input', ['source', 'items']),
+            valueType: WorkflowIOValueTypeEnum.arrayAny
+          }
+        ]
+      });
+      const nestedLoop = makeNode('nested-loop', FlowNodeTypeEnum.loopRun, {
+        parentNodeId: 'parallel',
+        inputs: [
+          {
+            ...makeReferenceInput('custom-output', ['nested-child', 'out']),
+            canEdit: true
+          }
+        ]
+      });
+      const nestedChild = makeOutputNode('nested-child');
+      nestedChild.data.parentNodeId = 'nested-loop';
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, source, outerLoop, parallel, nestedLoop, nestedChild],
+        edges: [
+          { id: 'e-start-source', source: 'start', target: 'source', type: EDGE_TYPE },
+          { id: 'e-source-loop', source: 'source', target: 'outer-loop', type: EDGE_TYPE }
+        ]
+      });
+
+      expect(result.parallel?.filter((issue) => issue.inputKey === 'nested-input') ?? []).toEqual(
+        []
+      );
+      expect(
+        result['nested-loop']?.filter((issue) => issue.inputKey === 'custom-output') ?? []
+      ).toEqual([]);
+    });
+
+    it('keeps nested descendants outside an outer loop custom output scope', () => {
+      const outerLoop = makeNode('outer-loop', FlowNodeTypeEnum.loopRun, {
+        inputs: [
+          {
+            ...makeReferenceInput('custom-output', ['nested-child', 'out']),
+            canEdit: true
+          }
+        ]
+      });
+      const nestedLoop = makeNode('nested-loop', FlowNodeTypeEnum.loopRun, {
+        parentNodeId: 'outer-loop'
+      });
+      const nestedChild = makeOutputNode('nested-child');
+      nestedChild.data.parentNodeId = 'nested-loop';
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, outerLoop, nestedLoop, nestedChild],
+        edges: [{ id: 'e-start-loop', source: 'start', target: 'outer-loop', type: EDGE_TYPE }]
+      });
+
+      expect(result['outer-loop']).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: 'unreachable_reference', inputKey: 'custom-output' })
+        ])
+      );
+    });
+
+    it('distinguishes a missing source from an out-of-scope source', () => {
+      const sourceNode = makeOutputNode('source');
+      const validNode = makeNode('valid', FlowNodeTypeEnum.answerNode, {
+        inputs: [makeReferenceInput('ref-source', ['source', 'out'])]
+      });
+      const invalidNode = makeNode('invalid', FlowNodeTypeEnum.answerNode, {
+        inputs: [makeReferenceInput('ref-ghost', ['ghost', 'out'])]
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, sourceNode, validNode, invalidNode],
+        edges: [
+          { id: 'e-start-source', source: 'start', target: 'source', type: EDGE_TYPE },
+          { id: 'e-source-valid', source: 'source', target: 'valid', type: EDGE_TYPE },
+          { id: 'e-start-invalid', source: 'start', target: 'invalid', type: EDGE_TYPE }
+        ]
+      });
+
+      expect(result.valid?.some((issue) => issue.code.includes('reference'))).toBeFalsy();
+      expect(result.invalid).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: 'invalid_reference', inputKey: 'ref-ghost' })
+        ])
+      );
+      expect(result.invalid?.some((issue) => issue.code === 'unreachable_reference')).toBeFalsy();
+    });
+
+    it('does not treat global variable references as unreachable', () => {
+      const node = makeNode('consumer', FlowNodeTypeEnum.answerNode, {
+        inputs: [makeReferenceInput('ref-var', [VARIABLE_NODE_ID, 'var1'])]
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, node],
+        edges: [{ id: 'e-start-consumer', source: 'start', target: 'consumer', type: EDGE_TYPE }],
+        chatConfig: { variables: [makeChatVariable('var1')] } as any
+      });
+
+      expect(result.consumer?.some((issue) => issue.code.includes('reference'))).toBeFalsy();
+    });
+
+    it('reports a multi-select reference when one item is out of scope', () => {
+      const nodeB = makeOutputNode('B');
+      const nodeC = makeOutputNode('C');
+      const nodeD = makeNode('D', FlowNodeTypeEnum.answerNode, {
+        inputs: [
+          {
+            key: 'ref-list',
+            label: 'ref-list',
+            renderTypeList: [FlowNodeInputTypeEnum.reference],
+            valueType: WorkflowIOValueTypeEnum.arrayString,
+            value: [
+              ['B', 'out'],
+              ['C', 'out']
+            ]
+          }
+        ]
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, nodeB, nodeC, nodeD],
+        edges: [
+          { id: 'e-start-c', source: 'start', target: 'C', type: EDGE_TYPE },
+          { id: 'e-c-d', source: 'C', target: 'D', type: EDGE_TYPE }
+        ]
+      });
+
+      expect(result.D).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: 'unreachable_reference', inputKey: 'ref-list' })
+        ])
+      );
+    });
+
+    it('checks VariableUpdate reference values independently', () => {
+      const sourceNode = makeOutputNode('source');
+      const variableUpdateNode = makeNode('variable-update', FlowNodeTypeEnum.variableUpdate, {
+        inputs: [
+          {
+            key: NodeInputKeyEnum.updateList,
+            label: 'update list',
+            value: [
+              {
+                variable: [VARIABLE_NODE_ID, 'var1'],
+                valueType: WorkflowIOValueTypeEnum.string,
+                renderType: FlowNodeInputTypeEnum.reference,
+                value: [['source', 'out']]
+              }
+            ]
+          }
+        ]
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, sourceNode, variableUpdateNode],
+        edges: [
+          { id: 'e-start-source', source: 'start', target: 'source', type: EDGE_TYPE },
+          { id: 'e-start-vu', source: 'start', target: 'variable-update', type: EDGE_TYPE }
+        ],
+        chatConfig: {
+          variables: [makeChatVariable('var1')]
+        } as any
+      });
+
+      expect(result['variable-update']).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: 'unreachable_reference',
+            inputKey: `${NodeInputKeyEnum.updateList}[0].value`
+          })
+        ])
+      );
+    });
+  });
+
+  it('checks references nested in IfElse conditions', () => {
+    const typedSourceNode = makeNode('typed-source', FlowNodeTypeEnum.workflowStart, {
+      outputs: [
+        {
+          id: 'text',
+          key: 'text',
+          label: 'text',
+          type: FlowNodeOutputTypeEnum.static,
+          valueType: WorkflowIOValueTypeEnum.string
+        },
+        {
+          id: 'count',
+          key: 'count',
+          label: 'count',
+          type: FlowNodeOutputTypeEnum.static,
+          valueType: WorkflowIOValueTypeEnum.number
+        }
+      ]
+    });
+    const detachedSourceNode = makeNode('detached-source', FlowNodeTypeEnum.answerNode, {
+      outputs: [
+        {
+          id: 'out',
+          key: 'out',
+          label: 'out',
+          type: FlowNodeOutputTypeEnum.static,
+          valueType: WorkflowIOValueTypeEnum.string
+        }
+      ]
+    });
+    const ifElseNode = makeNode('if-else', FlowNodeTypeEnum.ifElseNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.ifElseList,
+          label: 'Conditions',
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: [
+            {
+              condition: 'AND',
+              list: [
+                {
+                  variable: ['typed-source', 'missing'],
+                  condition: VariableConditionEnum.equalTo,
+                  value: 'text',
+                  valueType: 'input'
+                },
+                {
+                  variable: ['typed-source', 'text'],
+                  condition: VariableConditionEnum.equalTo,
+                  value: ['typed-source', 'missing'],
+                  valueType: 'reference'
+                },
+                {
+                  variable: ['typed-source', 'text'],
+                  condition: VariableConditionEnum.equalTo,
+                  value: ['typed-source', 'count'],
+                  valueType: 'reference'
+                },
+                {
+                  variable: ['detached-source', 'out'],
+                  condition: VariableConditionEnum.equalTo,
+                  value: 'text',
+                  valueType: 'input'
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+
+    const t = vi.fn((key: string, params?: { inputName?: string }) => {
+      if (key === 'common:core.workflow.variable') return 'Variable';
+      if (key === 'common:value') return 'Value';
+      if (key === 'common:core.workflow.check.invalid_reference') {
+        return `${params?.inputName} reference is invalid`;
+      }
+      return key;
+    });
+    const result = checkWorkflowNodeIssues({
+      nodes: [typedSourceNode, detachedSourceNode, ifElseNode],
+      edges: [
+        { id: 'e-source-if-else', source: 'typed-source', target: 'if-else', type: EDGE_TYPE }
+      ],
+      t: t as any
+    });
+
+    expect(result['if-else']).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'invalid_reference',
+          inputKey: `${NodeInputKeyEnum.ifElseList}[0].list[0].variable`,
+          message: 'Variable reference is invalid'
+        }),
+        expect.objectContaining({
+          code: 'invalid_reference',
+          inputKey: `${NodeInputKeyEnum.ifElseList}[0].list[1].value`,
+          message: 'Value reference is invalid'
+        }),
+        expect.objectContaining({
+          code: 'invalid_reference_type',
+          inputKey: `${NodeInputKeyEnum.ifElseList}[0].list[2].value`
+        }),
+        expect.objectContaining({
+          code: 'unreachable_reference',
+          inputKey: `${NodeInputKeyEnum.ifElseList}[0].list[3].variable`
+        })
+      ])
+    );
+  });
+
+  it('preserves invalid single and multiple references when storing workflow data', () => {
     const sourceNode = makeNode('source', FlowNodeTypeEnum.workflowStart, {
       outputs: [
         {
@@ -291,14 +1126,14 @@ describe('checkWorkflowNodeIssues', () => {
 
     expect(
       storedNode?.inputs.find((input) => input.key === NodeInputKeyEnum.userChatInput)
-    ).toEqual(
-      expect.objectContaining({
-        value: undefined
-      })
-    );
+    ).toEqual(expect.objectContaining({ value: ['source', 'count'] }));
     expect(storedNode?.inputs.find((input) => input.key === NodeInputKeyEnum.fileUrlList)).toEqual(
       expect.objectContaining({
-        value: [['source', 'files']]
+        value: [
+          ['source', 'files'],
+          ['source', 'deleted'],
+          ['source', 'count']
+        ]
       })
     );
   });
@@ -814,6 +1649,52 @@ describe('checkWorkflowNodeIssues', () => {
       expect(result['http-ok']?.map((issue) => issue.code) ?? []).not.toContain('http_url_empty');
     });
 
+    it('checks HTTP dynamic references against its direct child outputs', () => {
+      const child = makeNode('http-child', FlowNodeTypeEnum.answerNode, {
+        parentNodeId: 'http-with-child',
+        outputs: [
+          {
+            id: 'text',
+            key: 'text',
+            label: 'Text',
+            type: FlowNodeOutputTypeEnum.static,
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ]
+      });
+      const node = makeNodeWithTemplateInputs(
+        'http-with-child',
+        FlowNodeTypeEnum.httpRequest468,
+        HttpNode468.inputs.map((input) => {
+          if (input.key === NodeInputKeyEnum.httpReqUrl) {
+            return { ...input, value: 'https://example.com/api' };
+          }
+          if (input.key === NodeInputKeyEnum.addInputParam) {
+            return { ...input, value: {} };
+          }
+          return input;
+        })
+      );
+      node.data.inputs.push({
+        key: 'customVariable',
+        label: 'Custom variable',
+        canEdit: true,
+        renderTypeList: [FlowNodeInputTypeEnum.reference],
+        selectedType: FlowNodeInputTypeEnum.reference,
+        value: ['http-child', 'text'],
+        valueType: WorkflowIOValueTypeEnum.string
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, node, child],
+        edges: [{ id: 'e-start-http', source: 'start', target: node.data.nodeId, type: EDGE_TYPE }]
+      });
+
+      expect(
+        result['http-with-child']?.filter((issue) => issue.inputKey === 'customVariable') ?? []
+      ).toEqual([]);
+    });
+
     it('loopStart hidden required any does not false-positive required_input_empty', () => {
       const node = makeNodeWithTemplateInputs(
         'loop-start',
@@ -846,7 +1727,7 @@ describe('checkWorkflowNodeIssues', () => {
     });
   });
 
-  it('does not return invalid reference message for unselectable references', () => {
+  it('returns invalid reference message for unselectable references', () => {
     const node = makeNode('ref', FlowNodeTypeEnum.answerNode, {
       inputs: [
         {
@@ -864,7 +1745,7 @@ describe('checkWorkflowNodeIssues', () => {
       edges: [{ id: 'e1', source: 'start', target: 'ref', type: EDGE_TYPE }]
     });
 
-    expect(result.ref?.map((issue) => issue.code) ?? []).not.toContain('invalid_reference');
+    expect(result.ref?.map((issue) => issue.code) ?? []).toContain('invalid_reference');
   });
 
   it('treats unset reference as required_input_empty instead of invalid_reference', () => {
@@ -1459,7 +2340,7 @@ describe('checkWorkflowNodeIssues', () => {
         result[nodeId]?.filter((issue) => issue.inputKey === inputKey).map((issue) => issue.code) ??
         [];
 
-    it('does not report imported tool call file link auto-fill when current workflow start has no userFiles output', () => {
+    it('reports imported tool call file link auto-fill when current workflow start has no userFiles output', () => {
       const importedToolCall = makeImportedConnectedNode({
         nodeId: 'tool-call',
         template: ToolCallNode,
@@ -1488,7 +2369,7 @@ describe('checkWorkflowNodeIssues', () => {
       expect(getInput(importedToolCall, NodeInputKeyEnum.fileUrlList).value).toEqual([
         ['start', NodeOutputKeyEnum.userFiles]
       ]);
-      expect(getIssueCodes('tool-call', NodeInputKeyEnum.fileUrlList)(result)).not.toContain(
+      expect(getIssueCodes('tool-call', NodeInputKeyEnum.fileUrlList)(result)).toContain(
         'invalid_reference'
       );
     });
@@ -1528,7 +2409,7 @@ describe('checkWorkflowNodeIssues', () => {
           ]);
         }
 
-        expect(getIssueCodes(nodeId, inputKey)(result)).not.toContain('invalid_reference');
+        expect(getIssueCodes(nodeId, inputKey)(result)).toContain('invalid_reference');
       }
     );
 
@@ -1625,9 +2506,9 @@ describe('checkWorkflowNodeIssues', () => {
         ]
       });
 
-      expect(
-        getIssueCodes('invalid-tool-call', NodeInputKeyEnum.userChatInput)(result)
-      ).not.toContain('invalid_reference');
+      expect(getIssueCodes('invalid-tool-call', NodeInputKeyEnum.userChatInput)(result)).toContain(
+        'invalid_reference'
+      );
     });
 
     it('does not report invalid references mixed into an imported file input', () => {
@@ -1657,11 +2538,11 @@ describe('checkWorkflowNodeIssues', () => {
 
       expect(
         getIssueCodes('mixed-invalid-tool-call', NodeInputKeyEnum.fileUrlList)(result)
-      ).not.toContain('invalid_reference');
+      ).toContain('invalid_reference');
     });
   });
 
-  it('does not report invalid_reference when referenced upstream node or output was deleted', () => {
+  it('reports invalid_reference when referenced upstream node or output was deleted', () => {
     const nodeWithDeletedNodeRef = makeNode('deleted-node', FlowNodeTypeEnum.chatNode, {
       inputs: [
         {
@@ -1697,13 +2578,11 @@ describe('checkWorkflowNodeIssues', () => {
       ]
     });
 
-    expect(result['deleted-node']?.map((issue) => issue.code) ?? []).not.toContain(
-      'invalid_reference'
-    );
+    expect(result['deleted-node']?.map((issue) => issue.code) ?? []).toContain('invalid_reference');
     expect(result['deleted-node']?.map((issue) => issue.code) ?? []).not.toContain(
       'required_input_empty'
     );
-    expect(result['deleted-output']?.map((issue) => issue.code) ?? []).not.toContain(
+    expect(result['deleted-output']?.map((issue) => issue.code) ?? []).toContain(
       'invalid_reference'
     );
     expect(result['deleted-output']?.map((issue) => issue.code) ?? []).not.toContain(
@@ -2714,7 +3593,11 @@ describe('filterSelectableWorkflowNodeOutputs', () => {
       makeOutput('count', WorkflowIOValueTypeEnum.number),
       makeOutput(NodeOutputKeyEnum.addOutputParam, WorkflowIOValueTypeEnum.string),
       makeOutput('invalid', WorkflowIOValueTypeEnum.string, { invalid: true }),
-      makeOutput('error', WorkflowIOValueTypeEnum.string, { type: FlowNodeOutputTypeEnum.error })
+      makeOutput('error', WorkflowIOValueTypeEnum.string, { type: FlowNodeOutputTypeEnum.error }),
+      makeOutput('invalid-error', WorkflowIOValueTypeEnum.string, {
+        type: FlowNodeOutputTypeEnum.error,
+        invalid: true
+      })
     ];
 
     const result = filterSelectableWorkflowNodeOutputs({
@@ -2739,6 +3622,65 @@ describe('filterSelectableWorkflowNodeOutputs', () => {
     });
 
     expect(result.map((output) => output.id)).toEqual(['text', 'error']);
+  });
+});
+
+describe('workflow reference status', () => {
+  const sourceNode = {
+    nodeId: 'source',
+    outputs: [
+      {
+        id: 'invalid',
+        key: 'invalid',
+        label: 'invalid',
+        type: FlowNodeOutputTypeEnum.static,
+        valueType: WorkflowIOValueTypeEnum.string,
+        invalid: true
+      },
+      {
+        id: 'error',
+        key: 'error',
+        label: 'error',
+        type: FlowNodeOutputTypeEnum.error,
+        valueType: WorkflowIOValueTypeEnum.string,
+        invalid: true
+      }
+    ],
+    catchError: true
+  };
+
+  it('reports invalid output before unreachable source', () => {
+    expect(
+      getWorkflowReferenceStatus({
+        value: ['source', 'invalid'],
+        sourceNodes: [],
+        getNodeById: (nodeId) => (nodeId === 'source' ? (sourceNode as any) : undefined)
+      }).code
+    ).toBe('invalid_reference');
+  });
+
+  it('does not make invalid error output selectable when catchError is enabled', () => {
+    expect(
+      getWorkflowReferenceStatus({
+        value: ['source', 'error'],
+        sourceNodes: [sourceNode],
+        getNodeById: (nodeId) => (nodeId === 'source' ? (sourceNode as any) : undefined)
+      }).code
+    ).toBe('invalid_reference');
+  });
+
+  it('reports malformed items in mixed multiple references', () => {
+    const statuses = getWorkflowReferenceStatuses({
+      value: [['source', 'error'], 'malformed'],
+      sourceNodes: [sourceNode],
+      getNodeById: (nodeId) => (nodeId === 'source' ? (sourceNode as any) : undefined)
+    });
+
+    expect(statuses.map((status) => status.code)).toEqual([
+      'invalid_reference',
+      'invalid_reference'
+    ]);
+    expect(getWorkflowReferenceIssueCode(statuses)).toBe('invalid_reference');
   });
 });
 
@@ -2953,7 +3895,7 @@ describe('getNodeAllSource', () => {
     ]);
   });
 
-  it('keeps same-level upstream references before parent references after filtering empty outputs', () => {
+  it('keeps source nodes unique after filtering empty outputs', () => {
     const nodes = [
       makeNode('variableUpdate', 'loop'),
       makeNodeWithoutOutputs('reply', 'loop'),
@@ -2970,11 +3912,44 @@ describe('getNodeAllSource', () => {
     ] as Edge[];
 
     expect(getSelectableSourceNodeIds({ nodeId: 'variableUpdate', nodes, edges })).toEqual([
-      'loopStart',
       'textConcat',
+      'loopStart',
       'pluginStart',
       VARIABLE_NODE_ID
     ]);
+  });
+
+  it('ignores edges from deleted UserSelect options when collecting sources', () => {
+    const source = makeNode('source');
+    const selector = {
+      ...makeNode('selector'),
+      flowNodeType: FlowNodeTypeEnum.userSelect,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userSelectOptions,
+          label: 'Options',
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: [{ key: 'kept', value: 'Kept' }]
+        }
+      ]
+    } as FlowNodeItemType;
+    const target = makeNode('target');
+
+    expect(
+      getSourceNodeIds({
+        nodeId: 'target',
+        nodes: [source, selector, target],
+        edges: [
+          {
+            id: 'deleted-option-edge',
+            source: 'selector',
+            target: 'target',
+            sourceHandle: getHandleId('selector', 'source', 'deleted'),
+            targetHandle: 'target'
+          }
+        ] as Edge[]
+      })
+    ).toEqual([VARIABLE_NODE_ID]);
   });
 });
 

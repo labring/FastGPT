@@ -11,6 +11,9 @@ import {
   type TextFormatType
 } from 'lexical';
 import VariableLabel from './components/VariableLabel';
+import type { EditorVariableLabelPickerType } from '../../type';
+
+type VariableLabelInvalidReason = EditorVariableLabelPickerType['invalidReason'];
 
 export type SerializedVariableLabelNode = Spread<
   {
@@ -27,6 +30,7 @@ export class VariableLabelNode extends DecoratorNode<JSX.Element> {
   __variableKey: string;
   __variableLabel: string;
   __nodeAvatar: string;
+  __invalidReason?: VariableLabelInvalidReason;
   static getType(): string {
     return 'variableLabel';
   }
@@ -36,7 +40,8 @@ export class VariableLabelNode extends DecoratorNode<JSX.Element> {
       node.__variableLabel,
       node.__nodeAvatar,
       node.__format,
-      node.__key
+      node.__key,
+      node.__invalidReason
     );
   }
   constructor(
@@ -44,13 +49,15 @@ export class VariableLabelNode extends DecoratorNode<JSX.Element> {
     variableLabel: string,
     nodeAvatar: string,
     format?: number | TextFormatType,
-    key?: NodeKey
+    key?: NodeKey,
+    invalidReason?: VariableLabelInvalidReason
   ) {
     super(key);
     this.__variableKey = variableKey;
     this.__format = format || 0;
     this.__variableLabel = variableLabel;
     this.__nodeAvatar = nodeAvatar;
+    this.__invalidReason = invalidReason;
   }
 
   static importJSON(serializedNode: SerializedVariableLabelNode): VariableLabelNode {
@@ -98,6 +105,18 @@ export class VariableLabelNode extends DecoratorNode<JSX.Element> {
   getVariableKey(): string {
     return this.__variableKey;
   }
+  setVariableLabel(variableLabel: string): void {
+    if (this.__variableLabel === variableLabel) return;
+    this.getWritable().__variableLabel = variableLabel;
+  }
+  setNodeAvatar(nodeAvatar: string): void {
+    if (this.__nodeAvatar === nodeAvatar) return;
+    this.getWritable().__nodeAvatar = nodeAvatar;
+  }
+  setInvalidReason(invalidReason?: VariableLabelInvalidReason): void {
+    if (this.__invalidReason === invalidReason) return;
+    this.getWritable().__invalidReason = invalidReason;
+  }
   getTextContent(
     _includeInert?: boolean | undefined,
     _includeDirectionless?: false | undefined
@@ -105,16 +124,30 @@ export class VariableLabelNode extends DecoratorNode<JSX.Element> {
     return `${this.__variableKey}`;
   }
   decorate(_editor: LexicalEditor, config: EditorConfig): JSX.Element {
-    return <VariableLabel variableLabel={this.__variableLabel} nodeAvatar={this.__nodeAvatar} />;
+    return (
+      <VariableLabel
+        variableLabel={this.__variableLabel}
+        nodeAvatar={this.__nodeAvatar}
+        invalidReason={this.__invalidReason}
+      />
+    );
   }
 }
 
 export function $createVariableLabelNode(
   variableKey: string,
   variableLabel: string,
-  nodeAvatar: string
+  nodeAvatar: string,
+  invalidReason?: VariableLabelInvalidReason
 ): VariableLabelNode {
-  return new VariableLabelNode(variableKey, variableLabel, nodeAvatar);
+  return new VariableLabelNode(
+    variableKey,
+    variableLabel,
+    nodeAvatar,
+    undefined,
+    undefined,
+    invalidReason
+  );
 }
 
 export function $isVariableLabelNode(

@@ -1,10 +1,16 @@
 import type { FlowNodeInputTypeEnum } from '../../../node/constant';
-import type { ReferenceItemValueType, ReferenceValueType } from '../../..//type/io';
+import type {
+  ReferenceItemValueType,
+  ReferenceValueType,
+  WorkflowReferenceSnapshot
+} from '../../..//type/io';
 import type { WorkflowIOValueTypeEnum } from '../../../constants';
 
 export type TUpdateListItem = {
   variable?: ReferenceItemValueType;
+  variableSnapshot?: WorkflowReferenceSnapshot;
   value?: ReferenceValueType; // input: ['',value], reference: [nodeId,outputId]
+  valueReferenceSnapshots?: WorkflowReferenceSnapshot[];
   valueType?: WorkflowIOValueTypeEnum;
   renderType: FlowNodeInputTypeEnum.input | FlowNodeInputTypeEnum.reference;
 

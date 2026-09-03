@@ -6,7 +6,10 @@ import {
 import Container from '../../components/Container';
 import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { type ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
+import {
+  type ReferenceItemValueType,
+  type WorkflowReferenceSnapshot
+} from '@fastgpt/global/core/workflow/type/io';
 import { useTranslation } from 'next-i18next';
 import { ReferSelector, useReference } from '../render/RenderInput/templates/Reference';
 import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -133,6 +136,7 @@ const ListItem = ({
                     <VariableSelector
                       nodeId={nodeId}
                       variable={item.variable}
+                      variableSnapshot={item.variableSnapshot}
                       onSelect={(e) => {
                         onUpdateIfElseList(
                           ifElseList.map((ifElse, index) => {
@@ -188,6 +192,7 @@ const ListItem = ({
                       valueType={item.valueType}
                       condition={item.condition}
                       variable={item.variable}
+                      valueSnapshot={item.valueSnapshot}
                       nodeId={nodeId}
                       updateValue={(value, valueType) => {
                         onUpdateIfElseList(
@@ -313,15 +318,17 @@ export default React.memo(ListItem);
 const VariableSelector = ({
   nodeId,
   variable,
+  variableSnapshot,
   onSelect
 }: {
   nodeId: string;
   variable?: ReferenceItemValueType;
+  variableSnapshot?: WorkflowReferenceSnapshot;
   onSelect: (e?: ReferenceItemValueType) => void;
 }) => {
   const { t } = useTranslation();
 
-  const { referenceList } = useReference({
+  const { referenceList, sourceNodes } = useReference({
     nodeId,
     valueType: WorkflowIOValueTypeEnum.any
   });
@@ -330,6 +337,9 @@ const VariableSelector = ({
     <ReferSelector
       placeholder={t('common:select_reference_variable')}
       list={referenceList}
+      sourceNodes={sourceNodes}
+      valueType={WorkflowIOValueTypeEnum.any}
+      referenceSnapshots={variableSnapshot ? [variableSnapshot] : undefined}
       value={variable}
       onSelect={onSelect}
       isArray={false}
@@ -424,7 +434,8 @@ const ConditionValueInput = ({
   variable,
   condition,
   updateValue,
-  nodeId
+  nodeId,
+  valueSnapshot
 }: {
   value?: string | ReferenceItemValueType;
   valueType?: 'input' | 'reference';
@@ -432,6 +443,7 @@ const ConditionValueInput = ({
   condition?: VariableConditionEnum;
   updateValue: (value: string | ReferenceItemValueType, valueType: 'input' | 'reference') => void;
   nodeId: string;
+  valueSnapshot?: WorkflowReferenceSnapshot;
 }) => {
   const { t } = useTranslation();
   const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
@@ -506,7 +518,7 @@ const ConditionValueInput = ({
     return valueType;
   }, [condition, valueType, getArrayElementType]);
 
-  const { referenceList } = useReference({
+  const { referenceList, sourceNodes } = useReference({
     nodeId,
     valueType: referenceValueType
   });
@@ -563,6 +575,9 @@ const ConditionValueInput = ({
       <ReferSelector
         placeholder={t('common:select_reference_variable')}
         list={referenceList}
+        sourceNodes={sourceNodes}
+        valueType={referenceValueType}
+        referenceSnapshots={valueSnapshot ? [valueSnapshot] : undefined}
         value={isReference ? (value as ReferenceItemValueType) : undefined}
         onSelect={(e) => {
           updateValue(e as ReferenceItemValueType, 'reference');
@@ -576,7 +591,16 @@ const ConditionValueInput = ({
         }}
       />
     );
-  }, [t, referenceList, isReference, value, updateValue]);
+  }, [
+    t,
+    referenceList,
+    sourceNodes,
+    referenceValueType,
+    valueSnapshot,
+    isReference,
+    value,
+    updateValue
+  ]);
 
   const isDisabled =
     condition === VariableConditionEnum.isEmpty || condition === VariableConditionEnum.isNotEmpty;
@@ -612,7 +636,7 @@ const ConditionValueInput = ({
               if (isReference) {
                 updateValue('', 'input');
               } else {
-                updateValue(['', undefined], 'reference');
+                updateValue(['', ''], 'reference');
               }
             }}
           >

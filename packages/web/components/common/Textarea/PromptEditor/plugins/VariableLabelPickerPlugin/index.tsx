@@ -16,7 +16,6 @@ interface EditorVariableItemType {
   key: string;
   label: string;
   required?: boolean;
-  icon?: string;
   valueType?: WorkflowIOValueTypeEnum;
   index: number;
 }
@@ -36,6 +35,7 @@ export default function VariableLabelPickerPlugin({
 }) {
   const { t } = useSafeTranslation();
   const [editor] = useLexicalComposerContext();
+  const selectableVariables = variables.filter((item) => !item.invalidReason);
   const [queryString, setQueryString] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const highlightedItemRef = useRef<any>(null);
@@ -81,7 +81,7 @@ export default function VariableLabelPickerPlugin({
       onQueryChange={setQueryString}
       onSelectOption={onSelectOption}
       triggerFn={checkForTriggerMatch}
-      options={variableFilter(variables, queryString || '')}
+      options={variableFilter(selectableVariables, queryString || '')}
       menuRenderFn={(anchorElementRef, { selectedIndex, selectOptionAndCleanUp }) => {
         if (anchorElementRef.current == null) {
           return null;
@@ -89,7 +89,7 @@ export default function VariableLabelPickerPlugin({
         if (currentIndex !== selectedIndex) {
           setCurrentIndex(selectedIndex || 0);
         }
-        return anchorElementRef.current && variables.length && isFocus
+        return anchorElementRef.current && selectableVariables.length && isFocus
           ? ReactDOM.createPortal(
               <Box
                 bg={'white'}
@@ -104,12 +104,13 @@ export default function VariableLabelPickerPlugin({
                 overflow={'auto'}
                 zIndex={99999}
               >
-                {variableFilter(variables, queryString || '').length === variables.length && (
+                {variableFilter(selectableVariables, queryString || '').length ===
+                  selectableVariables.length && (
                   <Box fontSize={'xs'}>{t('workflow:variable_picker_tips')}</Box>
                 )}
-                {variableFilter(variables, queryString || '').length > 0 ? (
-                  transformVariables(variableFilter(variables, queryString || '')).map((item) => {
-                    return (
+                {variableFilter(selectableVariables, queryString || '').length > 0 ? (
+                  transformVariables(variableFilter(selectableVariables, queryString || '')).map(
+                    (item) => (
                       <Flex
                         key={item.id}
                         flexDirection={'column'}
@@ -174,8 +175,8 @@ export default function VariableLabelPickerPlugin({
                           </Flex>
                         ))}
                       </Flex>
-                    );
-                  })
+                    )
+                  )
                 ) : (
                   <Box p={2} color={'myGray.400'} fontSize={'sm'}>
                     {t('common:unusable_variable')}
@@ -210,7 +211,6 @@ function transformVariables(variables: EditorVariableLabelPickerType[]): Transfo
     parentMap[parentId].children.push({
       label: item.label,
       key: item.key,
-      icon: item.icon,
       index
     });
   });

@@ -6,7 +6,7 @@ import { NodeToolConfigTypeSchema, StoreNodeItemTypeSchema } from '../type/node'
 import { StoreEdgeItemTypeSchema } from '../type/edge';
 
 /**
- * 当前工作流输入。该类型不包含任何历史字段。
+ * 当前工作流输入。引用快照是可选的历史展示字段，不参与运行时引用解析。
  */
 export const CanonicalFlowNodeInputItemSchema = FlowNodeInputItemTypeSchema;
 export type CanonicalFlowNodeInputItem = z.infer<typeof CanonicalFlowNodeInputItemSchema>;

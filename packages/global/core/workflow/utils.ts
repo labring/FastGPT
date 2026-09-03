@@ -467,10 +467,13 @@ export const toolSetData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }
 export const formatEditorVariablePickerIcon = (
   variables: { key: string; label: string; type?: `${VariableInputEnum}`; required?: boolean }[]
 ): EditorVariablePickerType[] => {
-  return variables.map((item) => ({
-    ...item,
-    icon: item.type ? variableMap[item.type]?.icon : variableMap['input'].icon
-  }));
+  return variables.map((item) => {
+    const icon = item.type ? variableMap[item.type]?.icon : undefined;
+    return {
+      ...item,
+      ...(icon ? { icon } : {})
+    };
+  });
 };
 
 // Check the value is a valid reference value format: [variableId, outputId]

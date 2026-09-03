@@ -4,8 +4,9 @@ import { createContext, useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { migrateToolInputConfig } from '@fastgpt/global/core/app/formEdit/utils';
-import type { OnConnectStartParams } from 'reactflow';
+import type { Edge, OnConnectStartParams } from 'reactflow';
 import { WorkflowBufferDataContext } from './workflowInitContext';
 import type {
   FlowNodeInputItemType,
@@ -18,6 +19,8 @@ import type {
 import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { checkWorkflowNodeIssues } from '@/web/core/workflow/workflowCheck';
 import { collectWorkflowStartAutoFillRevertPatches } from '@/web/core/workflow/workflowStartAutoFill';
+import { captureDeletedWorkflowReferenceSnapshots } from '@/web/core/workflow/referenceCheck';
+import { AppContext } from '@/pageComponents/app/detail/context';
 import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 
 type FlowNodeChangeProps = { nodeId: string } & (
@@ -66,6 +69,13 @@ type FlowNodeChangeProps = { nodeId: string } & (
     }
 );
 
+const getToolNodeIds = (edges: Edge<any>[]) =>
+  new Set(
+    edges
+      .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
+      .map((edge) => edge.target)
+  );
+
 // 创建 Context
 type WorkflowActionsContextValue = {
   /** 更新节点错误状态 */
@@ -76,6 +86,9 @@ type WorkflowActionsContextValue = {
 
   /** 单节点刷新校验问题详情，用于节点配置编辑后的局部复查 */
   onRefreshSingleNodeWorkflowCheckIssues: (nodeId: string) => void;
+
+  /** 防抖全量刷新节点校验问题详情，用于影响多个节点的配置变更 */
+  onRefreshWorkflowCheckIssues: (options?: { showReferenceIssueToast?: boolean }) => void;
 
   /** 移除所有错误状态 */
   onRemoveError: () => void;
@@ -108,6 +121,9 @@ export const WorkflowActionsContext = createContext<WorkflowActionsContextValue>
   },
   onRefreshSingleNodeWorkflowCheckIssues: (nodeId: string) => {
     void nodeId;
+    throw new Error('Function not implemented.');
+  },
+  onRefreshWorkflowCheckIssues: () => {
     throw new Error('Function not implemented.');
   },
   onRemoveError: () => {
@@ -148,9 +164,11 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
     edges,
     getNodes
   } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   const singleNodeCheckTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const edgeCheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showReferenceIssueToastRef = useRef(false);
   const isFirstEdgesEffectRef = useRef(true);
   const prevEdgesRef = useRef(edges);
 
@@ -246,7 +264,8 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         edges,
         models: availableModels,
         nodeId,
-        t
+        t,
+        chatConfig: appDetail.chatConfig
       });
 
       setNodes((state) =>
@@ -270,7 +289,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         })
       );
     },
-    [availableModels, edges, getNodes, setNodes, t]
+    [appDetail.chatConfig, availableModels, edges, getNodes, setNodes, t]
   );
 
   /** 节点配置变更后防抖触发单节点重新校验，避免每次输入都同步扫描。 */
@@ -292,21 +311,49 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
     [onRefreshSingleNodeWorkflowCheckIssues]
   );
 
-  /** 连线变更后防抖全量扫描，及时更新 no_upstream 等依赖连线的错误态。 */
-  const scheduleWorkflowCheckOnEdgeChange = useCallback(() => {
-    if (edgeCheckTimerRef.current) {
-      clearTimeout(edgeCheckTimerRef.current);
-    }
+  /** 结构变化后防抖全量扫描，更新受影响节点的校验问题。 */
+  const scheduleFullWorkflowCheck = useCallback(
+    (showReferenceIssueToast = false) => {
+      showReferenceIssueToastRef.current ||= showReferenceIssueToast;
 
-    edgeCheckTimerRef.current = setTimeout(() => {
-      edgeCheckTimerRef.current = null;
-      const nodes = getNodes();
-      if (nodes.length === 0) return;
+      if (edgeCheckTimerRef.current) {
+        clearTimeout(edgeCheckTimerRef.current);
+      }
 
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, models: availableModels, t });
-      onSyncWorkflowCheckIssues(issueMap);
-    }, 400);
-  }, [availableModels, edges, getNodes, onSyncWorkflowCheckIssues, t]);
+      edgeCheckTimerRef.current = setTimeout(() => {
+        edgeCheckTimerRef.current = null;
+        const shouldShowReferenceIssueToast = showReferenceIssueToastRef.current;
+        showReferenceIssueToastRef.current = false;
+        const nodes = getNodes();
+        if (nodes.length === 0) return;
+
+        const issueMap = checkWorkflowNodeIssues({
+          nodes,
+          edges,
+          models: availableModels,
+          t,
+          chatConfig: appDetail.chatConfig
+        });
+
+        onSyncWorkflowCheckIssues(issueMap);
+
+        if (shouldShowReferenceIssueToast) {
+          toast({
+            status: 'warning',
+            title: t('common:core.workflow.check.invalid_reference_type_toast')
+          });
+        }
+      }, 400);
+    },
+    [appDetail.chatConfig, availableModels, edges, getNodes, onSyncWorkflowCheckIssues, t, toast]
+  );
+
+  const onRefreshWorkflowCheckIssues = useCallback(
+    (options?: { showReferenceIssueToast?: boolean }) => {
+      scheduleFullWorkflowCheck(options?.showReferenceIssueToast);
+    },
+    [scheduleFullWorkflowCheck]
+  );
 
   useEffect(() => {
     if (isFirstEdgesEffectRef.current) {
@@ -352,8 +399,8 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       }
     }
 
-    scheduleWorkflowCheckOnEdgeChange();
-  }, [edges, scheduleWorkflowCheckOnEdgeChange, getNodes, setNodes]);
+    scheduleFullWorkflowCheck();
+  }, [edges, scheduleFullWorkflowCheck, getNodes, setNodes]);
 
   useEffect(() => {
     const timers = singleNodeCheckTimerRef.current;
@@ -392,29 +439,43 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       // 确保重置时不阻塞快照保存
       forbiddenSaveSnapshotRef.current = false;
 
-      setNodes((state) =>
-        state.map((item) => {
-          if (item.id === id) {
-            const sourceInputMap = new Map(item.data.inputs.map((input) => [input.key, input]));
-            return {
-              ...item,
-              data: {
-                ...item.data,
-                ...node,
-                inputs: node.inputs.map((input) =>
-                  migrateToolInputConfig({
-                    input,
-                    sourceInput: sourceInputMap.get(input.key)
-                  })
-                )
-              }
-            };
-          }
-          return item;
-        })
-      );
+      setNodes((state) => {
+        const nextNodes = state.map((item) => {
+          if (item.id !== id) return item;
+
+          const sourceInputMap = new Map(item.data.inputs.map((input) => [input.key, input]));
+          return {
+            ...item,
+            data: {
+              ...item.data,
+              ...node,
+              inputs: node.inputs.map((input) =>
+                migrateToolInputConfig({
+                  input,
+                  sourceInput: sourceInputMap.get(input.key)
+                })
+              )
+            }
+          };
+        });
+
+        const toolNodeIds = getToolNodeIds(edges);
+
+        return captureDeletedWorkflowReferenceSnapshots({
+          previousNodes: state,
+          nextNodes,
+          previousChatConfig: appDetail.chatConfig,
+          nextChatConfig: appDetail.chatConfig,
+          globalVariableSourceLabel: t('common:core.module.Variable'),
+          nodeIds: [id],
+          previousToolNodeIds: toolNodeIds,
+          nextToolNodeIds: toolNodeIds
+        });
+      });
+
+      scheduleFullWorkflowCheck();
     },
-    [forbiddenSaveSnapshotRef, setNodes]
+    [appDetail.chatConfig, edges, forbiddenSaveSnapshotRef, scheduleFullWorkflowCheck, setNodes, t]
   );
 
   // 使用结构共享优化的节点更改
@@ -438,7 +499,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       }, new Map<string, FlowNodeChangeProps[]>());
 
       setNodes((nodes) => {
-        return nodes.map((node) => {
+        const nextNodes = nodes.map((node) => {
           const updateItems = updatesByNodeId.get(node.data.nodeId);
           if (!updateItems?.length) return node;
 
@@ -567,10 +628,43 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
             data: updateObj
           };
         });
+
+        const toolNodeIds = getToolNodeIds(edges);
+
+        return captureDeletedWorkflowReferenceSnapshots({
+          previousNodes: nodes,
+          nextNodes,
+          previousChatConfig: appDetail.chatConfig,
+          nextChatConfig: appDetail.chatConfig,
+          globalVariableSourceLabel: t('common:core.module.Variable'),
+          nodeIds: nodeIdsToRecheck,
+          previousToolNodeIds: toolNodeIds,
+          nextToolNodeIds: toolNodeIds
+        });
       });
 
-      if (updateData.length > 1) {
-        scheduleWorkflowCheckOnEdgeChange();
+      // 结构或输出变化会影响多个节点，需升级为全量检查。
+      const shouldRunFullWorkflowCheck = updateData.some((item) => {
+        if (item.type === 'attr') {
+          return ['catchError', 'parentNodeId'].includes(item.key);
+        }
+        if (item.type === 'addInput') {
+          return item.value.key === NodeInputKeyEnum.childrenNodeIdList;
+        }
+        if (item.type === 'delInput') {
+          return item.key === NodeInputKeyEnum.childrenNodeIdList;
+        }
+        if (item.type === 'updateInput' || item.type === 'replaceInput') {
+          return (
+            item.key === NodeInputKeyEnum.aiModel ||
+            item.key === NodeInputKeyEnum.childrenNodeIdList
+          );
+        }
+        return ['updateOutput', 'replaceOutput', 'addOutput', 'delOutput'].includes(item.type);
+      });
+
+      if (updateData.length > 1 || shouldRunFullWorkflowCheck) {
+        scheduleFullWorkflowCheck();
       } else {
         nodeIdsToRecheck.forEach((nodeId) => scheduleSingleNodeWorkflowCheck(nodeId));
       }
@@ -581,8 +675,10 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       t,
       onDelEdge,
       llmModelMap,
+      edges,
       scheduleSingleNodeWorkflowCheck,
-      scheduleWorkflowCheckOnEdgeChange
+      scheduleFullWorkflowCheck,
+      appDetail.chatConfig
     ]
   );
 
@@ -592,6 +688,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       onUpdateNodeError,
       onSyncWorkflowCheckIssues,
       onRefreshSingleNodeWorkflowCheckIssues,
+      onRefreshWorkflowCheckIssues,
       onRemoveError,
       onResetNode,
       onChangeNode,
@@ -603,6 +700,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
     onUpdateNodeError,
     onSyncWorkflowCheckIssues,
     onRefreshSingleNodeWorkflowCheckIssues,
+    onRefreshWorkflowCheckIssues,
     onRemoveError,
     onResetNode,
     onChangeNode,

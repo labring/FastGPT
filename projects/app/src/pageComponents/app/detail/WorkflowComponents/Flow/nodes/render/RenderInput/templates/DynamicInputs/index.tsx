@@ -135,7 +135,7 @@ const Reference = ({
   const [tempLabel, setTempLabel] = useState('');
   const [isEditing, setIsEditing] = useState(false);
 
-  const { referenceList } = useReference({
+  const { referenceList, sourceNodes } = useReference({
     nodeId,
     valueType: WorkflowIOValueTypeEnum.any,
     // Container nodes (loopRun) need to reference outputs from their sub-workflow.
@@ -188,11 +188,11 @@ const Reference = ({
   );
   const onSelectReference = useCallback(
     (e?: ReferenceValueType) => {
-      if (!e) return;
-
-      const referenceItem = referenceList
-        .find((item) => item.value === e[0])
-        ?.children.find((item) => item.value === e[1]);
+      const referenceItem = e
+        ? referenceList
+            .find((item) => item.value === e[0])
+            ?.children.find((item) => item.value === e[1])
+        : undefined;
 
       onChangeNode({
         nodeId,
@@ -233,6 +233,9 @@ const Reference = ({
         <ReferSelector
           placeholder={t('common:select_reference_variable')}
           list={referenceList}
+          sourceNodes={sourceNodes}
+          valueType={WorkflowIOValueTypeEnum.any}
+          referenceSnapshots={inputChildren.referenceSnapshots}
           value={inputChildren.value}
           onSelect={onSelectReference}
           ButtonProps={{

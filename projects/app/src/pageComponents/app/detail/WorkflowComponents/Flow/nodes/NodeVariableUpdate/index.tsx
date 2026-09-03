@@ -60,7 +60,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
   const { t } = useTranslation();
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { edges, getNodeById } = useContextSelector(
+  const { edges, getNodeById, getNodeList } = useContextSelector(
     WorkflowBufferDataContext,
     (v) => v
   );
@@ -69,12 +69,13 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
   const variables = useMemoEnhance(() => {
     return getEditorVariables({
       nodeId,
+      nodeList: getNodeList(),
       getNodeById,
       edges,
       appDetail,
       t
     });
-  }, [nodeId, getNodeById, edges, appDetail, t]);
+  }, [nodeId, getNodeById, getNodeList, edges, appDetail, t]);
   const { feConfigs } = useSystemStore();
   const externalProviderWorkflowVariables = useMemo(() => {
     return (
@@ -112,21 +113,38 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
 
   const ValueRow = useMemoizedFn(
     ({ updateItem, index }: { updateItem: TUpdateListItem; index: number }) => {
+      // 目标变量缓存类型过期时，变量仍在可选列表中，选择器自身无法感知，
+      // 由行级直接消费检查结论展示提示；值引用的类型问题选择器可按列表自行判断
+      const hasTargetTypeIssue = data.workflowCheckIssues?.some(
+        (issue) =>
+          issue.code === 'invalid_reference_type' &&
+          issue.inputKey === `${NodeInputKeyEnum.updateList}[${index}].variable`
+      );
+
+      const currentRefData = getRefData({
+        variable: updateItem.variable,
+        getNodeById,
+        chatConfig: appDetail.chatConfig
+      });
+      // 目标变量暂时失效或类型变化时，继续使用保存时的类型渲染旧值；重新选择后才刷新。
+      const valueType = updateItem.valueType ?? currentRefData.valueType;
+
       // 根据目标变量推断 string 分支的 inputType 与表单参数（select options 等）
       const { inputType, formParams = {} } = (() => {
         const value = updateItem.variable;
         if (!value) {
-          return { inputType: InputTypeEnum.input };
+          return { inputType: valueTypeToInputType(updateItem.valueType) };
         }
         if (value[0] === VARIABLE_NODE_ID) {
           const variableList = appDetail.chatConfig.variables || [];
           const variable = variableList.find((item) => item.key === value[1]);
           if (variable) {
             // 文件类型在变量更新节点中使用文本框（无运行时上下文）
+            const targetValueType = updateItem.valueType ?? variable.valueType;
             const it =
               variable.type === VariableInputEnum.file
                 ? InputTypeEnum.textarea
-                : variableInputTypeToInputType(variable.type, variable.valueType);
+                : variableInputTypeToInputType(variable.type, targetValueType);
             return {
               inputType: it,
               formParams: {
@@ -150,16 +168,14 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
           }
         } else if (value[0] && value[1]) {
           const output = getNodeById(value[0])?.outputs.find((o) => o.id === value[1]);
-          if (output) return { inputType: valueTypeToInputType(output.valueType) };
+          if (output) {
+            return {
+              inputType: valueTypeToInputType(updateItem.valueType ?? output.valueType)
+            };
+          }
         }
-        return { inputType: InputTypeEnum.input };
+        return { inputType: valueTypeToInputType(updateItem.valueType) };
       })();
-
-      const { valueType } = getRefData({
-        variable: updateItem.variable,
-        getNodeById,
-        chatConfig: appDetail.chatConfig
-      });
 
       const applyPatch = (patch: Partial<TUpdateListItem>) => {
         onUpdateList(
@@ -183,6 +199,9 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
               <VariableSelector
                 nodeId={nodeId}
                 variable={updateItem.variable}
+                referenceSnapshots={
+                  updateItem.variableSnapshot ? [updateItem.variableSnapshot] : undefined
+                }
                 onSelect={(value) => {
                   const newValueType = getRefData({
                     variable: value as ReferenceItemValueType,
@@ -198,6 +217,11 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
             </Box>
             <ValueTypeLabel valueType={valueType} />
           </Flex>
+          {hasTargetTypeIssue && (
+            <Box mt={1} fontSize={'xs'} color={'red.500'}>
+              {t('common:core.workflow.check.reference_type_mismatch')}
+            </Box>
+          )}
 
           {/* 值 */}
           <Flex mt={4} className="nodrag" cursor={'default'} alignItems={'center'}>
@@ -213,7 +237,10 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                     e === FlowNodeInputTypeEnum.reference
                       ? FlowNodeInputTypeEnum.reference
                       : FlowNodeInputTypeEnum.input;
-                  applyPatch({ renderType: nt, value: undefined });
+                  applyPatch({
+                    renderType: nt,
+                    value: undefined
+                  });
                 }}
               />
             </Box>
@@ -226,6 +253,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
               stringInputType={inputType}
               stringFormParams={formParams}
               value={updateItem.value}
+              valueReferenceSnapshots={updateItem.valueReferenceSnapshots}
               renderType={updateItem.renderType}
               numberOperator={updateItem.numberOperator}
               booleanMode={updateItem.booleanMode}

@@ -43,6 +43,30 @@ export const CustomFieldConfigTypeSchema = z.object({
 });
 export type CustomFieldConfigType = z.infer<typeof CustomFieldConfigTypeSchema>;
 
+/* Reference */
+export const ReferenceItemValueTypeSchema = z.tuple([z.string(), z.string()]);
+export type ReferenceItemValueType = z.infer<typeof ReferenceItemValueTypeSchema>;
+export const ReferenceArrayValueTypeSchema = z.array(ReferenceItemValueTypeSchema);
+export type ReferenceArrayValueType = z.infer<typeof ReferenceArrayValueTypeSchema>;
+export const ReferenceValueTypeSchema = z.union([
+  ReferenceItemValueTypeSchema,
+  ReferenceArrayValueTypeSchema
+]);
+export type ReferenceValueType = z.infer<typeof ReferenceValueTypeSchema>;
+
+/**
+ * 引用来源失效后的历史展示信息。reference 用于多选和嵌套配置按稳定身份匹配快照。
+ * 状态和类型均由当前工作流实时计算，不在快照中持久化。
+ */
+export const WorkflowReferenceSnapshotSchema = z.object({
+  reference: ReferenceItemValueTypeSchema,
+  sourceLabel: z.string().optional(),
+  outputLabel: z.string().optional(),
+  // 来源节点图标；变量自身图标不进入 snapshot。
+  icon: z.string().optional()
+});
+export type WorkflowReferenceSnapshot = z.infer<typeof WorkflowReferenceSnapshotSchema>;
+
 export const InputComponentPropsTypeSchema = z.object({
   key: z.enum(NodeInputKeyEnum).or(z.string()).meta({
     description: '变量键名，用于在提示词或工作流中引用该输入'
@@ -271,6 +295,10 @@ export const FlowNodeInputItemTypeSchema = InputComponentPropsTypeSchema.extend(
     description: '节点输入当前值'
   }),
 
+  referenceSnapshots: z.array(WorkflowReferenceSnapshotSchema).optional().meta({
+    description: '节点输入引用的历史展示快照'
+  }),
+
   debugLabel: z.string().optional().meta({
     description: '调试模式下展示的输入名称'
   }),
@@ -329,6 +357,9 @@ export const FlowNodeOutputItemTypeSchema = z.object({
   valueType: z.enum(WorkflowIOValueTypeEnum).optional().meta({
     description: '节点输出值的数据类型'
   }),
+  icon: z.string().optional().meta({
+    description: '节点输出变量图标'
+  }),
   valueDesc: z.string().optional().meta({
     description: '输出值说明，通常用于展示引用值含义'
   }),
@@ -379,17 +410,6 @@ export const FlowNodeOutputItemTypeSchema = z.object({
   })
 });
 export type FlowNodeOutputItemType = z.infer<typeof FlowNodeOutputItemTypeSchema>;
-
-/* Reference */
-export const ReferenceItemValueTypeSchema = z.tuple([z.string(), z.string().optional()]);
-export type ReferenceItemValueType = z.infer<typeof ReferenceItemValueTypeSchema>;
-export const ReferenceArrayValueTypeSchema = z.array(ReferenceItemValueTypeSchema);
-export type ReferenceArrayValueType = z.infer<typeof ReferenceArrayValueTypeSchema>;
-export const ReferenceValueTypeSchema = z.union([
-  ReferenceItemValueTypeSchema,
-  ReferenceArrayValueTypeSchema
-]);
-export type ReferenceValueType = z.infer<typeof ReferenceValueTypeSchema>;
 
 /* http node */
 export const HttpParamAndHeaderItemTypeSchema = z.object({

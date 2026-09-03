@@ -1,9 +1,10 @@
 // 工作流工具函数层
-import React, { type ReactNode, useCallback, useEffect, useMemo } from 'react';
+import React, { type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { useReactFlow } from 'reactflow';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { captureDeletedWorkflowReferenceSnapshots } from '@/web/core/workflow/referenceCheck';
 import { storeNode2FlowNode, storeEdge2RenderEdge } from '@/web/core/workflow/utils';
 import {
   checkWorkflowBeforeRunOrPublish,
@@ -29,9 +30,10 @@ import { AppContext } from '../../context';
 import { WorkflowSnapshotContext } from './workflowSnapshotContext';
 import { WorkflowActionsContext } from './workflowActionsContext';
 import {
-  canInputBeAgentGenerated,
+  isToolParamInput,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
+import { isEqual } from 'lodash-es';
 import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 // 创建 Context
@@ -79,12 +81,7 @@ export const splitToolInputsByMode = (inputs: FlowNodeInputItemType[], isTool: b
   inputs.forEach((item) => {
     const normalizedInput = normalizeFlowNodeInputType(item, { isTool });
     // canEdit 仅表示该字段可在节点内编辑；代码变量不应自动成为工具参数。
-    const isToolParamInput =
-      item.canEdit === true &&
-      item.defaultToAgentGenerated === true &&
-      canInputBeAgentGenerated(item);
-
-    if (isTool && isToolParamInput) {
+    if (isTool && isToolParamInput(item)) {
       toolInputs.push(item);
       return;
     }
@@ -128,21 +125,57 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
   const availableModels = modelsLoaded ? modelList : undefined;
   const { toast } = useToast();
   const { fitView } = useReactFlow();
+
   const { feConfigs } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
   const showSandbox = feConfigs?.show_agent_sandbox;
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
 
   const { appDetail, setAppDetail } = useContextSelector(AppContext, (v) => v);
+  const previousChatConfigRef = useRef(appDetail.chatConfig);
   const { edges, setEdges, setNodes, getNodes, toolNodesMap } = useContextSelector(
     WorkflowBufferDataContext,
     (v) => v
   );
   const { past, setPast } = useContextSelector(WorkflowSnapshotContext, (v) => v);
-  const { onRemoveError, onUpdateNodeError, onSyncWorkflowCheckIssues } = useContextSelector(
-    WorkflowActionsContext,
-    (v) => v
-  );
+  const {
+    onRemoveError,
+    onUpdateNodeError,
+    onSyncWorkflowCheckIssues,
+    onRefreshWorkflowCheckIssues
+  } = useContextSelector(WorkflowActionsContext, (v) => v);
+
+  useEffect(() => {
+    const previousChatConfig = previousChatConfigRef.current;
+    const nextChatConfig = appDetail.chatConfig;
+    previousChatConfigRef.current = nextChatConfig;
+
+    if (isEqual(previousChatConfig?.variables, nextChatConfig?.variables)) return;
+
+    const nextVariablesByKey = new Map(
+      (nextChatConfig?.variables ?? []).map((variable) => [variable.key, variable])
+    );
+    const showReferenceIssueToast = (previousChatConfig?.variables ?? []).some((variable) => {
+      const nextVariable = nextVariablesByKey.get(variable.key);
+      return (
+        !nextVariable ||
+        nextVariable.type !== variable.type ||
+        nextVariable.valueType !== variable.valueType
+      );
+    });
+
+    setNodes((nodes) =>
+      captureDeletedWorkflowReferenceSnapshots({
+        previousNodes: nodes,
+        nextNodes: nodes,
+        previousChatConfig,
+        nextChatConfig,
+        globalVariableSourceLabel: t('common:core.module.Variable'),
+        nodeIds: []
+      })
+    );
+    onRefreshWorkflowCheckIssues({ showReferenceIssueToast });
+  }, [appDetail.chatConfig, onRefreshWorkflowCheckIssues, setNodes, t]);
 
   // 优化为单次遍历,分类输出项
   const splitOutput = useCallback((outputs: FlowNodeOutputItemType[]) => {
@@ -188,8 +221,8 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
   // 将 UI 流程数据转换为存储格式
   const flowData2StoreData = useCallback(() => {
     const nodes = getNodes();
-    return uiWorkflow2StoreWorkflow({ nodes, edges, chatConfig: appDetail.chatConfig });
-  }, [getNodes, edges, appDetail.chatConfig]);
+    return uiWorkflow2StoreWorkflow({ nodes, edges });
+  }, [getNodes, edges]);
 
   // 转换并验证工作流数据
   const flowData2StoreDataAndCheck = useCallback(
@@ -231,15 +264,15 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         nodes,
         edges,
         models: availableModels,
-        t
+        t,
+        chatConfig: appDetail.chatConfig
       });
 
       if (!hasError) {
         onRemoveError();
         const storeWorkflow = uiWorkflow2StoreWorkflow({
           nodes,
-          edges,
-          chatConfig: appDetail.chatConfig
+          edges
         });
 
         return storeWorkflow;
@@ -287,7 +320,13 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       const nodes = getNodes();
       if (nodes.length === 0) return;
 
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, models: availableModels, t });
+      const issueMap = checkWorkflowNodeIssues({
+        nodes,
+        edges,
+        models: availableModels,
+        t,
+        chatConfig: appDetail.chatConfig
+      });
       onSyncWorkflowCheckIssues(issueMap);
     };
 
@@ -297,8 +336,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
     return () => {
       window.clearInterval(timer);
     };
-  }, [availableModels, edges, getNodes, onSyncWorkflowCheckIssues, t]);
-
+  }, [appDetail.chatConfig, availableModels, edges, getNodes, onSyncWorkflowCheckIssues, t]);
   // 4. initData - 初始化工作流数据
   const initData = useCallback(
     async (

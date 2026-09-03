@@ -93,7 +93,10 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  const { edges, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { edges, getNodeById, getNodeList } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
@@ -172,12 +175,13 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
   const variables = useMemoEnhance(() => {
     return getEditorVariables({
       nodeId,
+      nodeList: getNodeList(),
       getNodeById,
       edges,
       appDetail,
       t
     });
-  }, [nodeId, getNodeById, edges, appDetail, t]);
+  }, [nodeId, getNodeById, getNodeList, edges, appDetail, t]);
 
   const externalProviderWorkflowVariables = useMemo(() => {
     return (
@@ -234,6 +238,7 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
             }
             value={requestUrl?.value || ''}
             variableLabels={variables}
+            referenceSnapshots={requestUrl?.referenceSnapshots}
             variables={externalProviderWorkflowVariables}
             onBlur={onBlurUrl}
             onChange={onChangeUrl}
@@ -259,7 +264,7 @@ export function RenderHttpProps({
   const [selectedTab, setSelectedTab] = useState(TabEnum.params);
 
   const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
-  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { getNodeById, getNodeList } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
@@ -290,12 +295,13 @@ export function RenderHttpProps({
   const variables = useMemoEnhance(() => {
     return getEditorVariables({
       nodeId,
+      nodeList: getNodeList(),
       getNodeById,
       edges,
       appDetail,
       t
     });
-  }, [nodeId, getNodeById, edges, appDetail, t]);
+  }, [nodeId, getNodeById, getNodeList, edges, appDetail, t]);
 
   const variableText = useMemo(() => {
     return variables
@@ -624,6 +630,7 @@ const RenderForm = ({
                       placeholder={t('common:textarea_variable_picker_tip')}
                       value={item.key}
                       variableLabels={variables}
+                      referenceSnapshots={input.referenceSnapshots}
                       variables={externalProviderWorkflowVariables}
                       tabIndex={0}
                       resetOnValueChange={false}
@@ -636,6 +643,7 @@ const RenderForm = ({
                       value={item.value}
                       variables={externalProviderWorkflowVariables}
                       variableLabels={variables}
+                      referenceSnapshots={input.referenceSnapshots}
                       tabIndex={0}
                       resetOnValueChange={false}
                       onBlur={(val) => handleRowBlur(index, 'value', val)}
@@ -680,6 +688,7 @@ const RenderForm = ({
     handleDelete,
     handleRowBlur,
     input.key,
+    input.referenceSnapshots,
     list,
     rowKeys,
     t,
@@ -787,6 +796,7 @@ const RenderBody = ({
             bg={'white'}
             showOpenModal={false}
             variableLabels={variables}
+            referenceSnapshots={jsonBody.referenceSnapshots}
             minH={200}
             value={jsonBody.value}
             placeholder={t('workflow:http_body_placeholder')}
@@ -820,6 +830,7 @@ const RenderBody = ({
             }}
             showOpenModal={false}
             variableLabels={variables}
+            referenceSnapshots={jsonBody.referenceSnapshots}
             minH={200}
           />
         )}

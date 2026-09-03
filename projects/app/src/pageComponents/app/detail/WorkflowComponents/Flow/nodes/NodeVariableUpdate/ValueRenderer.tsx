@@ -4,7 +4,10 @@ import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/consta
 import InputRender from '@/components/core/app/formRender';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import type { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
-import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
+import type {
+  ReferenceValueType,
+  WorkflowReferenceSnapshot
+} from '@fastgpt/global/core/workflow/type/io';
 import type {
   EditorVariableLabelPickerType,
   EditorVariablePickerType
@@ -25,6 +28,7 @@ export type ValueRendererProps = {
   stringFormParams?: Record<string, any>;
 
   value?: ReferenceValueType;
+  valueReferenceSnapshots?: WorkflowReferenceSnapshot[];
   renderType: TUpdateListItem['renderType'];
   numberOperator?: TUpdateListItem['numberOperator'];
   booleanMode?: TUpdateListItem['booleanMode'];
@@ -43,6 +47,7 @@ const ValueRenderer: React.FC<ValueRendererProps> = (props) => {
     stringInputType,
     stringFormParams = {},
     value,
+    valueReferenceSnapshots,
     renderType,
     numberOperator,
     booleanMode,
@@ -59,7 +64,12 @@ const ValueRenderer: React.FC<ValueRendererProps> = (props) => {
         nodeId={nodeId}
         variable={value}
         valueType={valueType}
-        onSelect={(v) => onChange({ value: v })}
+        referenceSnapshots={valueReferenceSnapshots}
+        onSelect={(v) =>
+          onChange({
+            value: v
+          })
+        }
       />
     );
   }
@@ -129,6 +139,7 @@ const ValueRenderer: React.FC<ValueRendererProps> = (props) => {
       {...stringFormParams}
       variables={variables}
       variableLabels={variableLabels}
+      referenceSnapshots={valueReferenceSnapshots}
       value={value?.[1]}
       onChange={(v: unknown) => onChange({ value: ['', v] as ReferenceValueType })}
     />

@@ -31,11 +31,13 @@ import VariableLabelPlugin from '../../Textarea/PromptEditor/plugins/VariableLab
 import { VariableLabelNode } from '../../Textarea/PromptEditor/plugins/VariableLabelPlugin/node';
 import VariableLabelPickerPlugin from '../../Textarea/PromptEditor/plugins/VariableLabelPickerPlugin';
 import { useDeepCompareEffect } from 'ahooks';
+import type { WorkflowReferenceSnapshot } from '@fastgpt/global/core/workflow/type/io';
 
 export default function Editor({
   h = 40,
   variables,
   variableLabels,
+  referenceSnapshots,
   onChange,
   onBlur,
   value,
@@ -47,6 +49,7 @@ export default function Editor({
   h?: number;
   variables: EditorVariablePickerType[];
   variableLabels: EditorVariableLabelPickerType[];
+  referenceSnapshots?: WorkflowReferenceSnapshot[];
   onChange?: (editor: LexicalEditor) => void;
   onBlur?: (editor: LexicalEditor) => void;
   value?: string;
@@ -134,7 +137,7 @@ export default function Editor({
           }}
         />
         <VariablePlugin variables={variables} />
-        <VariableLabelPlugin variables={variableLabels} />
+        <VariableLabelPlugin variables={variableLabels} referenceSnapshots={referenceSnapshots} />
         <VariableLabelPickerPlugin variables={variableLabels} isFocus={focus} />
         <OnBlurPlugin onBlur={onBlur} />
         <SingleLinePlugin />

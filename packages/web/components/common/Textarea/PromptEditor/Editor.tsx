@@ -31,6 +31,7 @@ import type { LexicalEditor } from 'lexical';
 import OnBlurPlugin from './plugins/OnBlurPlugin';
 import type { FormPropsType } from './type';
 import { type EditorVariableLabelPickerType, type EditorVariablePickerType } from './type';
+import type { WorkflowReferenceSnapshot } from '@fastgpt/global/core/workflow/type/io';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import FocusPlugin from './plugins/FocusPlugin';
 import { textToEditorState, editorStateToText } from './utils';
@@ -77,6 +78,7 @@ export type EditorProps = {
   isRichText?: boolean;
   variables?: EditorVariablePickerType[];
   variableLabels?: EditorVariableLabelPickerType[];
+  referenceSnapshots?: WorkflowReferenceSnapshot[];
   onAddToolFromEditor?: (toolKey: string) => Promise<string>;
   onRemoveToolFromEditor?: (toolId: string) => void;
   onConfigureTool?: (toolId: string) => void;
@@ -116,6 +118,7 @@ export default function Editor({
   variables = [],
   // /选择变量
   variableLabels = [],
+  referenceSnapshots,
   // @选择技能
   skillOption,
   selectedSkills,
@@ -170,7 +173,7 @@ export default function Editor({
   useDeepCompareEffect(() => {
     if (focus && value === editorOutputRef.current) return;
     setKey(getNanoid(6));
-  }, [value, variables, variableLabels]);
+  }, [referenceSnapshots, value, variables, variableLabels]);
 
   const showFullScreenIcon = useMemo(() => {
     return showOpenModal && scrollHeight > maxH;
@@ -281,7 +284,10 @@ export default function Editor({
 
           {variableLabels.length > 0 && (
             <>
-              <VariableLabelPlugin variables={variableLabels} />
+              <VariableLabelPlugin
+                variables={variableLabels}
+                referenceSnapshots={referenceSnapshots}
+              />
               <VariableLabelPickerPlugin variables={variableLabels} isFocus={focus} />
             </>
           )}
