@@ -139,6 +139,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const { toast } = useToast();
   const [autoOpenEnterpriseAuth, setAutoOpenEnterpriseAuth] = useState(false);
   const showEnterpriseAuth = feConfigs?.show_enterprise_auth;
+  const isWecomTeam = !!userInfo?.team?.isWecomTeam;
 
   const {
     isOpen: isOpenConversionModal,
@@ -200,7 +201,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     if (window.location.hash !== '#certification') return;
     if (!initd) return;
 
-    if (!showEnterpriseAuth) {
+    if (!showEnterpriseAuth || isWecomTeam) {
       clearCertificationHash();
       return;
     }
@@ -209,7 +210,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     window.setTimeout(() => {
       setAutoOpenEnterpriseAuth(true);
     }, 0);
-  }, [clearCertificationHash, initd, showEnterpriseAuth]);
+  }, [clearCertificationHash, initd, isWecomTeam, showEnterpriseAuth]);
 
   useEffect(() => {
     // 组件挂载时检查一次 hash
@@ -397,7 +398,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
           </Box>
         )}
 
-        {showEnterpriseAuth && (
+        {showEnterpriseAuth && !isWecomTeam && (
           <EnterpriseAuthStatusRow
             labelStyles={labelStyles}
             buttonProps={actionButtonStyles}
