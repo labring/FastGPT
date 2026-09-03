@@ -5,11 +5,16 @@ upgradeTags:
   - IN PROGRESS
 ---
 
+## Upgrade notes
+
+**Before upgrading to V4.17.0, upgrade to V4.16.x and complete all legacy upgrade scripts required by that release.** The automatic upgrade system in V4.17.0 only manages tasks registered from this release onward. It does not run historical scripts from earlier releases.
+
+Starting with V4.17.0, you no longer need to run upgrade scripts manually. FastGPT runs them automatically, uses leases to prevent concurrent execution across multiple nodes, and monitors active scripts through heartbeats. You can view each upgrade script's status under **Admin > System upgrade**.
+
 ## 🚀 New
 
-1. Added automatic system upgrades. On startup, FastGPT runs registered upgrade tasks in order. Nodes remain unready until blocking tasks finish, while non-blocking tasks run in the background. Admins can view task status, progress, results, and failed records on the Version upgrades page, and retry failed non-blocking tasks.
-2. Added LDAP member and organizational structure sync to FastGPT SSO Service, along with separate environment variable templates and configuration guides for each SSO provider.
-3. File upload fields in Workflow Tools can now be configured for Agent-generated input. Historical file fields remain manual by default to avoid behavior changes after an upgrade.
+1. Added LDAP member and organizational structure sync to FastGPT SSO Service, along with separate environment variable templates and configuration guides for each SSO provider.
+2. File upload fields in Workflow Tools can now be configured for Agent-generated input. Existing file fields remain manual by default to prevent behavior changes after an upgrade.
 
 ## ⚙️ Improvements
 
@@ -22,4 +27,4 @@ upgradeTags:
 ## 🐛 Fixes
 
 1. Fixed bottom spacing in the account deletion confirmation dialog, allowed long confirmation text to wrap correctly, and improved account deletion email templates.
-2. Clamped `DB_MAX_LINK` to an inclusive range between `10` and `1000` values, preventing low values from limiting concurrency and excessively high values from creating resource pressure. Official deployment templates use `20` by default.
+2. Limited `DB_MAX_LINK` to the inclusive range `10`–`1000`, preventing low values from limiting concurrency and excessively high values from creating resource pressure. Official deployment templates use `20` by default.
