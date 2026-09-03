@@ -97,6 +97,7 @@ const EnterpriseAuthStatusRow = ({
     onClose: onCloseContactBusiness
   } = useDisclosure();
   const autoOpenHandledRef = useRef(false);
+  const isWecomTeam = !!userInfo?.team?.isWecomTeam;
 
   const {
     data,
@@ -105,8 +106,8 @@ const EnterpriseAuthStatusRow = ({
     refresh: refreshStatus
   } = useRequest(getEnterpriseAuthStatus, {
     manual: false,
-    ready: !!feConfigs?.show_enterprise_auth && !!userInfo?.team?.teamId,
-    refreshDeps: [userInfo?.team?.teamId],
+    ready: !!feConfigs?.show_enterprise_auth && !!userInfo?.team?.teamId && !isWecomTeam,
+    refreshDeps: [userInfo?.team?.teamId, isWecomTeam],
     errorToast: ''
   });
 
@@ -174,6 +175,11 @@ const EnterpriseAuthStatusRow = ({
 
   useEffect(() => {
     if (!autoOpen || autoOpenHandledRef.current) return;
+    if (isWecomTeam) {
+      autoOpenHandledRef.current = true;
+      onAutoOpenFinish?.();
+      return;
+    }
     if (error) {
       autoOpenHandledRef.current = true;
       onAutoOpenFinish?.();
@@ -230,6 +236,7 @@ const EnterpriseAuthStatusRow = ({
     error,
     feConfigs?.show_enterprise_auth,
     hasOtherMemberProcessingTask,
+    isWecomTeam,
     loading,
     needContactBusiness,
     onAutoOpenFinish,
@@ -244,7 +251,7 @@ const EnterpriseAuthStatusRow = ({
     autoOpenHandledRef.current = false;
   }, [autoOpen]);
 
-  if (!feConfigs?.show_enterprise_auth || data?.enabled === false) return null;
+  if (!feConfigs?.show_enterprise_auth || isWecomTeam || data?.enabled === false) return null;
 
   if (loading && !data) {
     return <Box mt={4} h={EnterpriseAuthStatusRowHeight} {...props} />;

@@ -69,6 +69,7 @@ const EnterpriseAuthNoticeModal = () => {
     router.pathname === '/dashboard/agent' &&
     !!feConfigs?.show_enterprise_auth &&
     !!teamId &&
+    !userInfo?.team?.isWecomTeam &&
     canCheckEnterpriseAuthNotice &&
     !isAccountCancellationPending &&
     !enterpriseAuthNoticeReadTeamIds?.includes(teamId);
