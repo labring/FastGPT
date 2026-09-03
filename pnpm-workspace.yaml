@@ -92,6 +92,7 @@ catalog:
   postcss: ^8.5.12
   marked: ^18.0.9
   mermaid: ^11.16.1
+  qs: ^6.16.0
 
 catalogMode: prefer
 
