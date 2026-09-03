@@ -15,6 +15,7 @@ import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { onOptimizePrompt } from '@/web/common/api/fetch';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 export type OptimizerPromptProps = {
   onChangeText: (text: string) => void;
@@ -218,6 +219,7 @@ const OptimizerPopover = ({
                     <Box flex={1} />
                     {modelOptions && modelOptions.length > 0 && (
                       <AIModelSelector
+                        modelType={ModelTypeEnum.llm}
                         borderColor={'transparent'}
                         _hover={{
                           border: '1px solid',

@@ -18,6 +18,7 @@ import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
@@ -326,6 +327,7 @@ const DatasetParamsModal = ({
                     </Box>
                     <Box flex={'1 0 0'}>
                       <SelectAiModel
+                        modelType={ModelTypeEnum.rerank}
                         bg={'myGray.50'}
                         h={'36px'}
                         value={reRankModelIdWatch || rerankModel}
@@ -417,6 +419,7 @@ const DatasetParamsModal = ({
                   <FormLabel flex={['0 0 80px', '1 0 0']}>{t('common:core.ai.Model')}</FormLabel>
                   <Box flex={['1 0 0', '0 0 300px']}>
                     <SelectAiModel
+                      modelType={ModelTypeEnum.llm}
                       width={'100%'}
                       value={
                         queryExtensionModelId !== undefined

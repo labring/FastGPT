@@ -24,7 +24,7 @@ import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 type Props = Omit<SelectProps, 'list'> & {
-  modelType?: ModelTypeEnum;
+  modelType: ModelTypeEnum;
   /** 迁移期限制模型范围；候选模型仍来自当前成员完整目录。 */
   list?: SelectProps['list'];
   disableTip?: string;
@@ -81,7 +81,7 @@ const ModelLabel = ({
 
 /** 通过统一 loader 校验完整目录，再使用 useUserModelStore 本地筛选和选择模型。 */
 const AIModelSelector = ({
-  modelType = ModelTypeEnum.llm,
+  modelType,
   list: restrictedList,
   onChange,
   disableTip,

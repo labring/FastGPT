@@ -33,7 +33,7 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
-import { reasoningEffortList } from '@fastgpt/global/core/ai/constants';
+import { ModelTypeEnum, reasoningEffortList } from '@fastgpt/global/core/ai/constants';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
 import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
 
@@ -272,6 +272,7 @@ const AIChatSettingsModal = ({
         <SectionCard title={t('app:ai_setting_basic_config')}>
           <SettingRow label={t('common:core.ai.Model')}>
             <AIModelSelector
+              modelType={ModelTypeEnum.llm}
               width={'100%'}
               h={'36px'}
               value={modelId}
