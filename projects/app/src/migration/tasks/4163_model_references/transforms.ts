@@ -26,8 +26,6 @@ type FlatModelMapping = {
 const isDynamicModelReference = (value: unknown) =>
   Array.isArray(value) || (typeof value === 'string' && /^\{\{.*\}\}$/.test(value));
 
-const legacyUserGuideNodeType = 'userGuide';
-
 /** 为普通对象上的旧模型名称字段补齐稳定模型 ID；无法解析的历史值保持原样。 */
 export const backfillFlatModelFields = ({
   record,
@@ -80,52 +78,50 @@ export const backfillFlatModelFields = ({
   };
 };
 
-/** 补齐应用对话配置中的引导模型和 TTS 模型 ID。 */
+/** 补齐应用对话配置中的引导模型和 TTS 模型 ID，不修改输入对象。 */
 export const backfillChatConfig = ({
   chatConfig,
-  pathPrefix,
   catalog
 }: {
-  chatConfig: Record<string, any> | undefined;
-  pathPrefix: string;
+  chatConfig: Record<string, any>;
   catalog: ModelCatalog;
-}): ReferenceTransformResult => {
-  const set: Record<string, unknown> = {};
-  const snapshot: Record<string, unknown> = {};
+}): Record<string, any> => {
+  let nextChatConfig = chatConfig;
   const mappings = [
     {
-      config: chatConfig?.questionGuide,
-      configPath: `${pathPrefix}.questionGuide`,
+      key: 'questionGuide',
       requirement: { type: ModelTypeEnum.llm },
       featureEnabled: chatConfig?.questionGuide?.open === true
     },
     {
-      config: chatConfig?.ttsConfig,
-      configPath: `${pathPrefix}.ttsConfig`,
+      key: 'ttsConfig',
       requirement: { type: ModelTypeEnum.tts },
       featureEnabled: chatConfig?.ttsConfig?.type === 'model'
     }
-  ];
+  ] as const;
 
   for (const mapping of mappings) {
     if (!mapping.featureEnabled) continue;
+    const config = nextChatConfig[mapping.key];
     const modelId =
       catalog.resolveModelId({
-        legacyModel: typeof mapping.config?.model === 'string' ? mapping.config.model : undefined,
-        modelId: mapping.config?.modelId,
+        legacyModel: typeof config?.model === 'string' ? config.model : undefined,
+        modelId: config?.modelId,
         requirement: mapping.requirement
       }) ?? catalog.resolveFallbackModelId(mapping.requirement);
     if (!modelId) continue;
-    if (String(mapping.config?.modelId ?? '') === modelId) continue;
+    if (String(config?.modelId ?? '') === modelId) continue;
 
-    set[`${mapping.configPath}.modelId`] = modelId;
-    snapshot[`${mapping.configPath}.model`] = mapping.config?.model;
+    nextChatConfig = {
+      ...nextChatConfig,
+      [mapping.key]: {
+        ...config,
+        modelId
+      }
+    };
   }
 
-  return {
-    set: Object.keys(set).length > 0 ? set : undefined,
-    snapshot: Object.keys(snapshot).length > 0 ? snapshot : undefined
-  };
+  return nextChatConfig;
 };
 
 /** 补齐工作流系统模型输入；插件自定义参数和动态引用保持原样。 */
@@ -164,19 +160,9 @@ export const migrateWorkflowNodes = ({
   const nextNodes = nodes.map((node, nodeIndex) => {
     if (!node || typeof node !== 'object') return node;
 
-    /*
-     * systemConfig 已从 Workflow 节点移到 chatConfig；遗留 userGuide 节点不再参与运行。
-     * 这里只降级节点类型，不删除节点或搬运配置，确保本任务的写入仍是最小、可重放变更。
-     */
-    const isLegacyUserGuide = (node as any).flowNodeType === legacyUserGuideNodeType;
-    if (!Array.isArray((node as any).inputs)) {
-      if (!isLegacyUserGuide) return node;
-      changed = true;
-      return { ...(node as any), flowNodeType: FlowNodeTypeEnum.emptyNode };
-    }
+    if (!Array.isArray((node as any).inputs)) return node;
     const inputs = [...(node as any).inputs];
-    let nodeChanged = isLegacyUserGuide;
-    if (isLegacyUserGuide) changed = true;
+    let nodeChanged = false;
 
     for (const [legacyKey, modelIdKey] of workflowModelKeyMappings) {
       const legacyInput = inputs.find((input) => input?.key === legacyKey);
@@ -285,13 +271,7 @@ export const migrateWorkflowNodes = ({
       }
     }
 
-    return nodeChanged
-      ? {
-          ...(node as any),
-          ...(isLegacyUserGuide ? { flowNodeType: FlowNodeTypeEnum.emptyNode } : {}),
-          inputs
-        }
-      : node;
+    return nodeChanged ? { ...(node as any), inputs } : node;
   });
 
   /*
@@ -300,18 +280,4 @@ export const migrateWorkflowNodes = ({
    * 不应因为本次新增 modelId 而被误判成“模型引用迁移失败”。
    */
   return { nodes: nextNodes, changed, errors };
-};
-
-/** 合并同一文档的多个引用变更，使其只进行一次 CAS 写入。 */
-export const mergeReferenceTransformResults = (
-  results: ReferenceTransformResult[]
-): ReferenceTransformResult => {
-  const set = Object.assign({}, ...results.map((result) => result.set ?? {}));
-  const snapshot = Object.assign({}, ...results.map((result) => result.snapshot ?? {}));
-  return {
-    set: Object.keys(set).length > 0 ? set : undefined,
-    snapshot: Object.keys(snapshot).length > 0 ? snapshot : undefined,
-    delete: results.some((result) => result.delete),
-    errors: results.flatMap((result) => result.errors ?? [])
-  };
 };

@@ -132,6 +132,7 @@ export enum FlowNodeOutputTypeEnum {
 
 export enum FlowNodeTypeEnum {
   emptyNode = 'emptyNode',
+  systemConfig = 'userGuide',
   globalVariable = 'globalVariable',
   comment = 'comment',
 

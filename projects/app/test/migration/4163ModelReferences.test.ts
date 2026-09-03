@@ -151,14 +151,49 @@ describe('4163 dataset model reference migration', () => {
       ],
       outputs: []
     });
+    const createUserGuideNode = (nodeId: string, welcomeText: string) => ({
+      nodeId,
+      name: 'System config',
+      flowNodeType: 'userGuide',
+      inputs: [
+        { key: NodeInputKeyEnum.welcomeText, value: welcomeText },
+        {
+          key: NodeInputKeyEnum.questionGuide,
+          value: { open: true, model: 'gpt-model' }
+        }
+      ],
+      outputs: []
+    });
+    const createUserGuideEdge = (source: string, target: string) => ({
+      source,
+      target,
+      sourceHandle: `${source}-source-right`,
+      targetHandle: `${target}-target-left`
+    });
     const [app, version, template] = await Promise.all([
       MongoApp.collection.insertOne({
-        chatConfig: { questionGuide: { open: true, model: 'gpt-model' } },
-        modules: [createNode('app-node')]
+        chatConfig: {
+          welcomeConfig: { welcomeText: 'Current app welcome text' },
+          questionGuide: { open: true, model: 'gpt-model' }
+        },
+        modules: [createNode('app-node'), createUserGuideNode('app-user-guide', 'Legacy app text')],
+        edges: [createUserGuideEdge('app-user-guide', 'app-node')]
       }),
-      MongoAppVersion.collection.insertOne({ nodes: [createNode('version-node')] }),
+      MongoAppVersion.collection.insertOne({
+        nodes: [
+          createNode('version-node'),
+          createUserGuideNode('version-user-guide', 'Legacy version text')
+        ],
+        edges: [createUserGuideEdge('version-user-guide', 'version-node')]
+      }),
       MongoAppTemplate.collection.insertOne({
-        workflow: { nodes: [createNode('template-node')] }
+        workflow: {
+          nodes: [
+            createNode('template-node'),
+            createUserGuideNode('template-user-guide', 'Legacy template text')
+          ],
+          edges: [createUserGuideEdge('template-user-guide', 'template-node')]
+        }
       })
     ]);
     const state = createContext();
@@ -171,16 +206,31 @@ describe('4163 dataset model reference migration', () => {
 
     const appDocument = await MongoApp.collection.findOne({ _id: app.insertedId });
     expect(appDocument?.chatConfig.questionGuide.modelId).toBe(String(llm._id));
+    expect(appDocument?.chatConfig.welcomeConfig.welcomeText).toBe('Current app welcome text');
+    expect(appDocument?.modules).toHaveLength(1);
+    expect(appDocument?.edges).toEqual([]);
     expect(appDocument?.modules[0].inputs).toContainEqual(
       expect.objectContaining({ key: NodeInputKeyEnum.aiModelId, value: String(llm._id) })
     );
     const versionDocument = await MongoAppVersion.collection.findOne({ _id: version.insertedId });
+    expect(versionDocument?.chatConfig).toMatchObject({
+      welcomeConfig: { welcomeText: 'Legacy version text' },
+      questionGuide: { modelId: String(llm._id) }
+    });
+    expect(versionDocument?.nodes).toHaveLength(1);
+    expect(versionDocument?.edges).toEqual([]);
     expect(versionDocument?.nodes[0].inputs).toContainEqual(
       expect.objectContaining({ key: NodeInputKeyEnum.aiModelId, value: String(llm._id) })
     );
     const templateDocument = await MongoAppTemplate.collection.findOne({
       _id: template.insertedId
     });
+    expect(templateDocument?.workflow.chatConfig).toMatchObject({
+      welcomeConfig: { welcomeText: 'Legacy template text' },
+      questionGuide: { modelId: String(llm._id) }
+    });
+    expect(templateDocument?.workflow.nodes).toHaveLength(1);
+    expect(templateDocument?.workflow.edges).toEqual([]);
     expect(templateDocument?.workflow.nodes[0].inputs).toContainEqual(
       expect.objectContaining({ key: NodeInputKeyEnum.aiModelId, value: String(llm._id) })
     );
@@ -190,7 +240,7 @@ describe('4163 dataset model reference migration', () => {
     expect(cacheMocks.clearAllMyModelsCache).not.toHaveBeenCalled();
   });
 
-  it('preserves unrelated legacy workflow values when backfilling a model ID', async () => {
+  it('canonicalizes the complete workflow before backfilling a model ID', async () => {
     const llm = await createStoredModel({ model: 'gpt-model', type: ModelTypeEnum.llm });
     const app = await MongoApp.collection.insertOne({
       modules: [
@@ -238,25 +288,41 @@ describe('4163 dataset model reference migration', () => {
       expect.objectContaining({ key: NodeInputKeyEnum.aiModelId, value: String(llm._id) })
     );
     expect(document?.modules[1]).toMatchObject({
-      flowNodeType: 'removedLegacyNodeType',
-      outputs: [{ type: 'removedLegacyOutputType' }]
-    });
-    expect(document?.modules[2]).toMatchObject({
       flowNodeType: FlowNodeTypeEnum.emptyNode,
-      inputs: [{ key: 'welcomeText', value: 'Keep this historical value' }]
+      outputs: [{ type: 'static' }]
+    });
+    expect(document?.modules).toHaveLength(2);
+    expect(document?.chatConfig).toMatchObject({
+      welcomeConfig: { welcomeText: 'Keep this historical value' }
     });
     expect(state.getFailedRecords()).toEqual([]);
   });
 
-  it('downgrades a standalone legacy userGuide node and is idempotent', async () => {
+  it('migrates legacy userGuide and pluginConfig nodes into chatConfig and is idempotent', async () => {
     await createStoredModel({ model: 'gpt-model', type: ModelTypeEnum.llm });
     const app = await MongoApp.collection.insertOne({
       modules: [
         {
-          nodeId: 'legacy-user-guide-without-inputs',
+          nodeId: 'legacy-user-guide',
           name: 'System config',
           flowNodeType: 'userGuide',
+          inputs: [{ key: NodeInputKeyEnum.welcomeText, value: 'Legacy welcome' }],
           outputs: []
+        },
+        {
+          nodeId: 'legacy-plugin-config',
+          name: 'Plugin config',
+          flowNodeType: 'pluginConfig',
+          inputs: [{ key: NodeInputKeyEnum.instruction, value: 'Legacy instruction' }],
+          outputs: []
+        }
+      ],
+      edges: [
+        {
+          source: 'legacy-user-guide',
+          target: 'legacy-plugin-config',
+          sourceHandle: 'legacy-user-guide-source-right',
+          targetHandle: 'legacy-plugin-config-target-left'
         }
       ]
     });
@@ -267,8 +333,13 @@ describe('4163 dataset model reference migration', () => {
       appTemplatesProcessedCount: 0
     });
     const migrated = await MongoApp.collection.findOne({ _id: app.insertedId });
-    expect(migrated?.modules[0]).toMatchObject({
-      flowNodeType: FlowNodeTypeEnum.emptyNode
+    expect(migrated).toMatchObject({
+      modules: [],
+      edges: [],
+      chatConfig: {
+        welcomeConfig: { welcomeText: 'Legacy welcome' },
+        instruction: 'Legacy instruction'
+      }
     });
 
     await expect(backfillAppModelReferences(createContext().context)).resolves.toMatchObject({
@@ -447,6 +518,37 @@ describe('4163 dataset model reference migration', () => {
     await expect(MongoApp.collection.findOne({ _id: app.insertedId })).resolves.toMatchObject({
       chatConfig: { questionGuide: { modelId: String(firstModel._id) } }
     });
+  });
+
+  it('writes every canonical workflow field even when nodes and edges are unchanged', async () => {
+    const firstModel = await createStoredModel({
+      model: 'first-model',
+      type: ModelTypeEnum.llm
+    });
+    await MongoApp.collection.insertOne({
+      chatConfig: { questionGuide: { open: true, modelId: '' } },
+      modules: [],
+      edges: []
+    });
+    const updateSpy = vi.spyOn(MongoApp.collection, 'updateOne');
+
+    await expect(backfillAppModelReferences(createContext().context)).resolves.toMatchObject({
+      appsProcessedCount: 1,
+      appVersionsProcessedCount: 0,
+      appTemplatesProcessedCount: 0
+    });
+
+    expect(updateSpy).toHaveBeenCalledTimes(1);
+    expect(updateSpy.mock.calls[0]?.[1]).toEqual({
+      $set: {
+        modules: [],
+        edges: [],
+        chatConfig: {
+          questionGuide: { open: true, modelId: String(firstModel._id) }
+        }
+      }
+    });
+    updateSpy.mockRestore();
   });
 
   it('retries only failed records before continuing from the saved cursor', async () => {

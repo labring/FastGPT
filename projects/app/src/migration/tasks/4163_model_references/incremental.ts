@@ -5,6 +5,7 @@ import {
 import type { SystemMigrationFailedRecord } from '@fastgpt/global/migration/schema';
 import type { SystemMigrationContext } from '@/migration/registry';
 import { systemMigrationBatchSize } from '@/migration/constants';
+import { Types } from 'mongoose';
 import { z } from 'zod';
 import type { ReferenceTransformResult } from './types';
 
@@ -31,6 +32,8 @@ export type IncrementalMigrationStage = {
   key: string;
   collectionName: string;
   model: any;
+  /** 完整子文档迁移需以原始 BSON 做 CAS，避免 Mongoose 默认值和子文档 _id 改写快照。 */
+  useRawCollection?: boolean;
   query?: Record<string, unknown>;
   transform: (record: Record<string, any>) => ReferenceTransformResult;
 };
@@ -124,6 +127,17 @@ const getFailedRecordKey = (record: SystemMigrationFailedRecord) =>
   `${record.stageKey}:${String(record.data.recordId)}`;
 
 /**
+ * Mongoose 可能按 Schema 把旧 BSON ObjectId 转成字符串；原生回读需兼容两种存储类型，
+ * 同时优先匹配字符串，避免将合法的 24 位字符串 ID 错当成 ObjectId。
+ */
+const findRawRecord = async (stage: IncrementalMigrationStage, recordId: unknown) => {
+  const record = await stage.model.collection.findOne({ _id: recordId });
+  const normalizedRecordId = String(recordId);
+  if (record || !Types.ObjectId.isValid(normalizedRecordId)) return record;
+  return stage.model.collection.findOne({ _id: new Types.ObjectId(normalizedRecordId) });
+};
+
+/**
  * 执行单条幂等迁移。能安全写入的字段仍会落库；无法解析的字段和 CAS 冲突作为坏数据返回，
  * 因而一个坏文档不会中断当前批次或后续任务。
  */
@@ -136,16 +150,25 @@ const processRecord = async ({
 }): Promise<SystemMigrationFailedRecord | undefined> => {
   const recordId = String(record._id);
   try {
-    const result = stage.transform(record);
+    // 批次查询只提供稳定游标；需要原生 CAS 时再读一次最新 BSON 快照。
+    const sourceRecord = stage.useRawCollection ? await findRawRecord(stage, record._id) : record;
+    // 扫描后被业务删除的记录无需再迁移，不应记为可重试错误。
+    if (!sourceRecord) return;
+
+    const result = stage.transform(sourceRecord);
+    const writeTarget = stage.useRawCollection ? stage.model.collection : stage.model;
     let conflict = false;
 
     if (result.delete) {
-      const writeResult = await stage.model.deleteOne(getSnapshotFilter({ record, result }));
+      const writeResult = await writeTarget.deleteOne(
+        getSnapshotFilter({ record: sourceRecord, result })
+      );
       conflict = writeResult.deletedCount !== 1;
     } else if (result.set && Object.keys(result.set).length > 0) {
-      const writeResult = await stage.model.updateOne(getSnapshotFilter({ record, result }), {
-        $set: result.set
-      });
+      const writeResult = await writeTarget.updateOne(
+        getSnapshotFilter({ record: sourceRecord, result }),
+        { $set: result.set }
+      );
       conflict = writeResult.matchedCount !== 1;
     }
 
