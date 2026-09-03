@@ -30,6 +30,7 @@ const SelectOneResource = ({
   value,
   onSelect,
   maxH = ['80vh', '600px'],
+  h = '100%',
   selectFolder = false,
   disabledIds = []
 }: {
@@ -37,6 +38,7 @@ const SelectOneResource = ({
   value?: ParentIdType;
   onSelect: (e?: SelectOneResourceItemType) => any;
   maxH?: BoxProps['maxH'];
+  h?: BoxProps['h'];
   selectFolder?: boolean;
   disabledIds?: string[];
 }) => {
@@ -95,7 +97,7 @@ const SelectOneResource = ({
   };
 
   return (
-    <Box maxH={maxH} h={'100%'} minH={0} display={'flex'} flexDirection={'column'}>
+    <Box maxH={maxH} h={h} minH={0} display={'flex'} flexDirection={'column'}>
       <Flex alignItems={'center'} gap={1} minH={'20px'} overflowX={'auto'} whiteSpace={'nowrap'}>
         <Box flex={'0 0 auto'} fontSize={'xs'} color={'myGray.600'}>
           {t('common:current_location')}
