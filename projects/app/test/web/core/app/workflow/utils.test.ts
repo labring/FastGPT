@@ -690,6 +690,42 @@ describe('checkWorkflowNodeIssues', () => {
     expect((result.tool ?? []).map((issue) => issue.code)).toContain('resource_no_permission');
   });
 
+  it('reports unavailable datasets nested in Agent datasetParams', () => {
+    const agentNode = makeNode('agent', FlowNodeTypeEnum.agent, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.datasetParams,
+          label: '知识库配置',
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: {
+            datasets: [
+              { datasetId: 'd1', name: 'no-perm', permissionDenied: true },
+              { datasetId: 'd2', name: 'gone', isDeleted: true }
+            ]
+          }
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, agentNode],
+      edges: [{ id: 'e1', source: 'start', target: 'agent', type: EDGE_TYPE }]
+    });
+
+    expect(result.agent).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'resource_no_permission',
+          inputKey: NodeInputKeyEnum.datasetParams
+        }),
+        expect.objectContaining({
+          code: 'resource_missing',
+          inputKey: NodeInputKeyEnum.datasetParams
+        })
+      ])
+    );
+  });
+
   /**
    * 使用 packages/global 真实节点模板构造 inputs，避免手写 valueType 掩盖模板默认值。
    */

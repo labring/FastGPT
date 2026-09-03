@@ -11,7 +11,10 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
+import {
+  isWorkflowSystemModelInput,
+  nodeInputIsReference
+} from '@fastgpt/global/core/workflow/utils';
 import { getLogger, LogCategories } from '../../common/logger';
 
 const resourceLogger = getLogger(LogCategories.MODULE.APP);
@@ -19,10 +22,10 @@ const resourceLogger = getLogger(LogCategories.MODULE.APP);
 type AppResourceModelType = Extract<AppResource, { type: 'model' }>['data']['modelType'];
 
 const modelInputTypes = new Map<string, AppResourceModelType>([
-  [NodeInputKeyEnum.aiModel, 'llm'],
-  [NodeInputKeyEnum.datasetSearchRerankModel, 'rerank'],
-  [NodeInputKeyEnum.datasetSearchExtensionModel, 'llm'],
-  [NodeInputKeyEnum.datasetDeepSearchModel, 'llm']
+  [NodeInputKeyEnum.aiModelId, 'llm'],
+  [NodeInputKeyEnum.datasetSearchRerankModelId, 'rerank'],
+  [NodeInputKeyEnum.datasetSearchExtensionModelId, 'llm'],
+  [NodeInputKeyEnum.datasetDeepSearchModelId, 'llm']
 ]);
 
 const getValueList = (value: unknown) =>
@@ -41,18 +44,18 @@ const getStringValue = (value: unknown) => {
 
 /**
  * 把节点/对话配置里的模型引用收成稳定标识。
- * 旧的分类型 model map 已并入 `systemModelMap`；解析失败时保留现场值，提取器只记录不鉴权。
+ * 新写入只保留 modelId；解析失败时保留现场 ID，提取器只记录不鉴权。
  */
 const getModelId = (value: unknown, modelType: AppResourceModelType) => {
   const rawValue =
     getStringValue(value) ??
     getStringValue(getObjectValue(value, 'modelId')) ??
     getStringValue(getObjectValue(value, 'model'));
-  if (!rawValue) return;
+  if (!rawValue || /^\{\{.*\}\}$/.test(rawValue)) return;
 
   const resolved =
     global.systemModelMap?.get(`id:${rawValue}`) ?? global.systemModelMap?.get(`model:${rawValue}`);
-  if (resolved && resolved.type === modelType) return resolved.model;
+  if (resolved && resolved.type === modelType) return resolved.modelId;
   return rawValue;
 };
 
@@ -270,6 +273,14 @@ export const extractAppResources = ({
       ) {
         addDataset(input.value);
       }
+      if (input.key === NodeInputKeyEnum.datasetParams && isRecord(input.value)) {
+        if (input.value[NodeInputKeyEnum.datasetSearchUsingReRank] === true) {
+          addModels(input.value[NodeInputKeyEnum.datasetSearchRerankModelId], 'rerank');
+        }
+        if (input.value[NodeInputKeyEnum.datasetSearchUsingExtensionQuery] === true) {
+          addModels(input.value[NodeInputKeyEnum.datasetSearchExtensionModelId], 'llm');
+        }
+      }
       if (input.key === NodeInputKeyEnum.selectedTools) {
         getValueList(input.value).forEach((tool) => {
           const toolId = getObjectValue(tool, 'id') ?? getObjectValue(tool, 'toolId');
@@ -285,19 +296,21 @@ export const extractAppResources = ({
       }
       const modelType = modelInputTypes.get(input.key);
       const enabled =
-        input.key === NodeInputKeyEnum.datasetSearchRerankModel
+        input.key === NodeInputKeyEnum.datasetSearchRerankModelId
           ? isStaticInputEnabled(NodeInputKeyEnum.datasetSearchUsingReRank)
-          : input.key === NodeInputKeyEnum.datasetSearchExtensionModel
+          : input.key === NodeInputKeyEnum.datasetSearchExtensionModelId
             ? isStaticInputEnabled(NodeInputKeyEnum.datasetSearchUsingExtensionQuery)
-            : input.key === NodeInputKeyEnum.datasetDeepSearchModel
+            : input.key === NodeInputKeyEnum.datasetDeepSearchModelId
               ? isStaticInputEnabled(NodeInputKeyEnum.datasetDeepSearch)
               : true;
-      if (modelType && enabled) addModels(input.value, modelType);
+      if (modelType && enabled && isWorkflowSystemModelInput({ node, input })) {
+        addModels(input.value, modelType);
+      }
     });
   });
 
-  if (chatConfig?.questionGuide?.open) addModels(chatConfig.questionGuide.model, 'llm');
-  if (chatConfig?.ttsConfig?.type === 'model') addModels(chatConfig.ttsConfig.model, 'tts');
+  if (chatConfig?.questionGuide?.open) addModels(chatConfig.questionGuide.modelId, 'llm');
+  if (chatConfig?.ttsConfig?.type === 'model') addModels(chatConfig.ttsConfig.modelId, 'tts');
 
   return mergeAppResources(resources);
 };

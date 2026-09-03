@@ -10,7 +10,7 @@ import type {
 } from '@fastgpt/global/openapi/core/app/version/api';
 
 describe('app version detail API resources', () => {
-  it('extracts resources for a legacy version without a stored snapshot', async () => {
+  it('extracts canonical model resources for a version without a stored snapshot', async () => {
     const root = await getRootUser();
     const app = await MongoApp.create({
       name: 'legacy version detail',
@@ -25,7 +25,7 @@ describe('app version detail API resources', () => {
       chatConfig: {
         questionGuide: {
           open: true,
-          model: 'legacy-guide-model'
+          modelId: 'guide-model-id'
         }
       },
       versionName: 'legacy'
@@ -47,7 +47,7 @@ describe('app version detail API resources', () => {
 
     expect(res.code).toBe(200);
     expect(res.data.resources).toEqual([
-      { type: 'model', id: 'legacy-guide-model', data: { modelType: 'llm' } }
+      { type: 'model', id: 'guide-model-id', data: { modelType: 'llm' } }
     ]);
   });
 });

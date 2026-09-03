@@ -21,6 +21,14 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getUser } from '@test/datas/users';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import {
+  PerResourceTypeEnum,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
+import { Types } from '@fastgpt/service/common/mongo';
 
 const mocks = vi.hoisted(() => ({
   getClientToolPreviewNode: vi.fn()
@@ -481,6 +489,73 @@ describe('checkAppResourceReadPermissions', () => {
       checkAppResourceReadPermissions({
         resources: extractAppResources({ nodes }),
         tmbId: owner.tmbId
+      })
+    ).resolves.toBeUndefined();
+  });
+
+  it('缺失 inheritPermission 的历史 App 和 Dataset 继续继承父级读权限', async () => {
+    const owner = await getUser(`legacy-inherit-owner-${getNanoid(6)}`);
+    const member = await getUser(`legacy-inherit-member-${getNanoid(6)}`, owner.teamId);
+    const [appFolder, datasetFolder] = await Promise.all([
+      MongoApp.create({
+        name: 'App folder',
+        type: AppTypeEnum.folder,
+        teamId: owner.teamId,
+        tmbId: owner.tmbId
+      }),
+      MongoDataset.create({
+        name: 'Dataset folder',
+        type: DatasetTypeEnum.folder,
+        teamId: owner.teamId,
+        tmbId: owner.tmbId
+      })
+    ]);
+    const childAppId = new Types.ObjectId();
+    const childDatasetId = new Types.ObjectId();
+
+    // 绕过 Schema 默认值，模拟升级前未写 inheritPermission 的历史数据。
+    await Promise.all([
+      MongoApp.collection.insertOne({
+        _id: childAppId,
+        name: 'Legacy child app',
+        type: AppTypeEnum.workflow,
+        parentId: appFolder._id,
+        teamId: new Types.ObjectId(owner.teamId),
+        tmbId: new Types.ObjectId(owner.tmbId)
+      }),
+      MongoDataset.collection.insertOne({
+        _id: childDatasetId,
+        name: 'Legacy child dataset',
+        type: DatasetTypeEnum.dataset,
+        parentId: datasetFolder._id,
+        teamId: new Types.ObjectId(owner.teamId),
+        tmbId: new Types.ObjectId(owner.tmbId)
+      }),
+      MongoResourcePermission.create([
+        {
+          resourceType: PerResourceTypeEnum.app,
+          resourceId: appFolder._id,
+          teamId: owner.teamId,
+          tmbId: member.tmbId,
+          permission: ReadPermissionVal
+        },
+        {
+          resourceType: PerResourceTypeEnum.dataset,
+          resourceId: datasetFolder._id,
+          teamId: owner.teamId,
+          tmbId: member.tmbId,
+          permission: ReadPermissionVal
+        }
+      ])
+    ]);
+
+    await expect(
+      checkAppResourceReadPermissions({
+        resources: [
+          { type: 'agent', id: String(childAppId) },
+          { type: 'dataset', id: String(childDatasetId) }
+        ],
+        tmbId: member.tmbId
       })
     ).resolves.toBeUndefined();
   });

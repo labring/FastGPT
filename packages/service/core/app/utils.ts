@@ -18,6 +18,7 @@ import { getClientToolPreviewNode } from './tool/utils/client';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import {
   isSystemOrCommercialToolId,
   splitCombineToolId
@@ -78,6 +79,39 @@ export async function rewriteAppWorkflowToDetail({
     Partial<SelectedDatasetType>;
   const defaultDeletedDatasetAvatar = DatasetTypeMap[DatasetTypeEnum.dataset].avatar;
 
+  const authSnapshotExternalTool = async ({
+    id,
+    resourceType
+  }: {
+    id: string;
+    resourceType: 'agent' | 'tool';
+  }) => {
+    const normalizedResource = normalizeAppToolResource(id);
+    const resourceInSnapshot =
+      !!normalizedResource && hasSnapshotResource(resourceType, normalizedResource.id);
+    if ((!viewerTmbId || resourceInSnapshot) && !isRoot) return false;
+
+    let authAppId: string | undefined;
+    try {
+      authAppId = splitCombineToolId(id).authAppId;
+    } catch {
+      return false;
+    }
+    if (!authAppId) return false;
+
+    try {
+      await authAppByTmbId({
+        tmbId: viewerTmbId ?? ownerTmbId,
+        appId: authAppId,
+        per: ReadPermissionVal,
+        isRoot
+      });
+      return false;
+    } catch {
+      return true;
+    }
+  };
+
   const loadToolNode = async ({
     id,
     versionId,
@@ -89,6 +123,14 @@ export async function rewriteAppWorkflowToDetail({
     source?: string;
     resourceType?: 'agent' | 'tool';
   }) => {
+    if (await authSnapshotExternalTool({ id, resourceType })) {
+      return {
+        success: false,
+        error: AppErrEnum.unAuthApp,
+        permissionDenied: true
+      };
+    }
+
     try {
       const preview = await getClientToolPreviewNode({
         appId: id,
@@ -98,42 +140,16 @@ export async function rewriteAppWorkflowToDetail({
         teamId
       });
 
-      const normalizedResource = normalizeAppToolResource(id);
-      const resourceInSnapshot =
-        !!normalizedResource && hasSnapshotResource(resourceType, normalizedResource.id);
-      let permissionDenied = false;
-
-      // 快照外资源需要用当前操作者做一次提示性鉴权；正式发布仍由服务端差量校验兜底。
-      if ((viewerTmbId && !resourceInSnapshot) || isRoot) {
-        let authAppId: string | undefined;
-        try {
-          authAppId = splitCombineToolId(id).authAppId;
-        } catch {
-          // malformed id 交给预览加载结果处理，不能让详情接口直接失败。
-        }
-        if (authAppId) {
-          try {
-            await authAppByTmbId({
-              tmbId: viewerTmbId ?? ownerTmbId,
-              appId: authAppId,
-              per: ReadPermissionVal,
-              isRoot
-            });
-          } catch {
-            permissionDenied = true;
-          }
-        }
-      }
-
       return {
         success: true,
         data: preview,
-        permissionDenied
+        permissionDenied: false
       };
     } catch (error) {
       return {
         success: false,
-        error: getErrText(error, '', lang)
+        error: getErrText(error, '', lang),
+        permissionDenied: false
       };
     }
   };
@@ -341,7 +357,8 @@ export async function rewriteAppWorkflowToDetail({
           }
         } else {
           node.pluginData = {
-            error: result.error
+            error: result.error,
+            ...(result.permissionDenied ? { permissionDenied: true } : {})
           };
         }
       }
@@ -438,7 +455,8 @@ export async function rewriteAppWorkflowToDetail({
                   outputs: [],
                   configStatus: 'invalid' as const,
                   pluginData: {
-                    error: result.error
+                    error: result.error,
+                    ...(result.permissionDenied ? { permissionDenied: true } : {})
                   }
                 };
               }

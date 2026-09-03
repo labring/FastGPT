@@ -115,4 +115,44 @@ describe('POST /api/core/app/list', () => {
     expect(response.data.map((app) => app.name)).toEqual(['Permitted app']);
     expect(response.data[0]?.permission.hasReadPer).toBe(true);
   });
+
+  it('applies permission filtering before the search limit', async () => {
+    const { owner, members } = await getFakeUsers(2);
+    const [permittedApp] = await MongoApp.create([
+      {
+        name: 'needle permitted app',
+        type: AppTypeEnum.workflow,
+        teamId: owner.teamId,
+        tmbId: owner.tmbId
+      }
+    ]);
+    await MongoApp.create(
+      Array.from({ length: 60 }, (_, index) => ({
+        name: `needle inaccessible app ${String(index).padStart(2, '0')}`,
+        type: AppTypeEnum.workflow,
+        teamId: owner.teamId,
+        tmbId: owner.tmbId
+      }))
+    );
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.app,
+      teamId: owner.teamId,
+      resourceId: permittedApp._id,
+      tmbId: members[0].tmbId,
+      permission: ReadPermissionVal
+    });
+
+    const response = await Call<ListAppBodyType, Record<string, never>, ListAppResponseType>(
+      handler,
+      {
+        auth: members[0],
+        body: { searchKey: 'needle' }
+      }
+    );
+
+    expect(response.code).toBe(200);
+    expect(response.data).toEqual([
+      expect.objectContaining({ _id: String(permittedApp._id), name: 'needle permitted app' })
+    ]);
+  });
 });
