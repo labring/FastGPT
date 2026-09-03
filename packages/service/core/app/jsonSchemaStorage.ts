@@ -24,15 +24,14 @@ type TransformToolSetNodesProps = {
   nodes: unknown;
   types: readonly ToolSetStorageType[];
   transformSchema: (schema: unknown) => unknown;
-  transformNode?: (node: Record<string, unknown>) => NodeTransformResult;
 };
 
-const transformToolSetNodes = <T>({
-  nodes,
-  types,
-  transformSchema,
-  transformNode
-}: TransformToolSetNodesProps): T => {
+type TransformNodesProps = {
+  nodes: unknown;
+  transformNode: (node: Record<string, unknown>) => NodeTransformResult;
+};
+
+const transformNodes = <T>({ nodes, transformNode }: TransformNodesProps): T => {
   if (!Array.isArray(nodes)) return nodes as T;
 
   let changed = false;
@@ -40,63 +39,76 @@ const transformToolSetNodes = <T>({
   const transformedNodes = nodes.map((node) => {
     if (!isRecord(node)) return node;
 
-    const transformedNodeResult = transformNode?.(node);
-    let transformedNode = transformedNodeResult?.node ?? node;
-    let nodeChanged = transformedNodeResult?.changed ?? false;
+    const transformedNodeResult = transformNode(node);
+    const transformedNode = transformedNodeResult.node;
+    const nodeChanged = transformedNodeResult.changed;
     changed ||= nodeChanged;
-    if (!isRecord(transformedNode.toolConfig)) return nodeChanged ? transformedNode : node;
-
-    let transformedToolConfig: Record<string, unknown> = transformedNode.toolConfig;
-
-    for (const type of types) {
-      const toolSetKey = ToolSetConfigKey[type];
-      const schemaKeys = JsonSchemaStorageKeys[type];
-      const toolSet = transformedToolConfig[toolSetKey];
-      if (!isRecord(toolSet) || !Array.isArray(toolSet.toolList)) continue;
-
-      let toolSetChanged = false;
-      const toolList = toolSet.toolList.map((tool) => {
-        if (!isRecord(tool)) return tool;
-
-        let toolChanged = false;
-        const transformedTool = Object.fromEntries(
-          Object.entries(tool).map(([key, value]) => {
-            if (!schemaKeys.has(key)) return [key, value];
-
-            const transformedValue = transformSchema(value);
-            if (transformedValue !== value) {
-              toolChanged = true;
-              toolSetChanged = true;
-              changed = true;
-            }
-            return [key, transformedValue];
-          })
-        );
-
-        return toolChanged ? transformedTool : tool;
-      });
-
-      if (toolSetChanged) {
-        transformedToolConfig = {
-          ...transformedToolConfig,
-          [toolSetKey]: {
-            ...toolSet,
-            toolList
-          }
-        };
-        transformedNode = {
-          ...transformedNode,
-          toolConfig: transformedToolConfig
-        };
-        nodeChanged = true;
-      }
-    }
-
     return nodeChanged ? transformedNode : node;
   });
 
   return (changed ? transformedNodes : nodes) as T;
 };
+
+const transformToolSetNodes = <T>({
+  nodes,
+  types,
+  transformSchema
+}: TransformToolSetNodesProps): T =>
+  transformNodes<T>({
+    nodes,
+    transformNode: (node) => {
+      if (!isRecord(node.toolConfig)) return { node, changed: false };
+
+      let transformedToolConfig: Record<string, unknown> = node.toolConfig;
+      let transformedNode = node;
+      let nodeChanged = false;
+
+      for (const type of types) {
+        const toolSetKey = ToolSetConfigKey[type];
+        const schemaKeys = JsonSchemaStorageKeys[type];
+        const toolSet = transformedToolConfig[toolSetKey];
+        if (!isRecord(toolSet) || !Array.isArray(toolSet.toolList)) continue;
+
+        let toolSetChanged = false;
+        const toolList = toolSet.toolList.map((tool) => {
+          if (!isRecord(tool)) return tool;
+
+          let toolChanged = false;
+          const transformedTool = Object.fromEntries(
+            Object.entries(tool).map(([key, value]) => {
+              if (!schemaKeys.has(key)) return [key, value];
+
+              const transformedValue = transformSchema(value);
+              if (transformedValue !== value) {
+                toolChanged = true;
+                toolSetChanged = true;
+              }
+              return [key, transformedValue];
+            })
+          );
+
+          return toolChanged ? transformedTool : tool;
+        });
+
+        if (toolSetChanged) {
+          transformedToolConfig = {
+            ...transformedToolConfig,
+            [toolSetKey]: {
+              ...toolSet,
+              toolList
+            }
+          };
+          transformedNode = {
+            ...transformedNode,
+            toolConfig: transformedToolConfig
+          };
+          nodeChanged = true;
+        }
+      }
+
+      return { node: transformedNode, changed: nodeChanged };
+    }
+  });
 
 const encodeSchema = (schema: unknown) =>
   schema && typeof schema === 'object' ? JSON.stringify(schema) : schema;
@@ -268,21 +280,7 @@ const compactToolSetNode = (node: Record<string, unknown>): NodeTransformResult 
 
 /** Reduce MCP/HTTP workflow references to IDs and remove their obsolete versions. */
 export const compactToolSetNodesForStorage = <T>(nodes: T): T =>
-  transformToolSetNodes<T>({
-    nodes,
-    types: [],
-    transformSchema: (schema) => schema,
-    transformNode: compactToolSetNode
-  });
-
-/** Compact workflow references and encode MCP/HTTP schemas in one node traversal. */
-export const compactAndEncodeToolSetNodesForStorage = <T>(nodes: T): T =>
-  transformToolSetNodes<T>({
-    nodes,
-    types: ['mcp', 'http'],
-    transformSchema: encodeSchema,
-    transformNode: compactToolSetNode
-  });
+  transformNodes<T>({ nodes, transformNode: compactToolSetNode });
 
 /** Decode MCP tool JSON Schemas from MongoDB storage for runtime use. */
 export const decodeMcpToolSetNodesFromStorage = <T>(nodes: T): T =>
