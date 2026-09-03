@@ -34,6 +34,7 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
     parentId,
     type,
     searchKey,
+    excludeAppId,
     pageNum = 1,
     pageSize = 50,
     offset
@@ -94,8 +95,11 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
     })();
     const permissionQuery = teamPer.isOwner ? {} : { _id: { $in: readableResourceIds } };
     const baseQuery = { teamId, type: _type, deleteTime: null, ...permissionQuery };
-    if (searchKey) return { $and: [baseQuery, searchMatch] };
-    return { ...baseQuery, ...parseParentIdInMongo(parentId) };
+    const scopedQuery = excludeAppId
+      ? { $and: [baseQuery, { _id: { $ne: excludeAppId } }] }
+      : baseQuery;
+    if (searchKey) return { $and: [scopedQuery, searchMatch] };
+    return { ...scopedQuery, ...parseParentIdInMongo(parentId) };
   })();
 
   const skip = offset ?? (pageNum - 1) * pageSize;

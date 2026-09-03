@@ -305,7 +305,11 @@ export type ListAppBodyType = z.infer<typeof ListAppBodySchema>;
  * Description: 分页获取当前团队下当前用户可读的应用或文件夹列表。
  * Tags: ['基础管理']
  * ============================================================================ */
-export const ListAppV2BodySchema = ListAppBodySchema.extend(PaginationSchema.shape);
+export const ListAppV2BodySchema = ListAppBodySchema.extend({
+  excludeAppId: ObjectIdSchema.optional().meta({
+    description: '排除指定应用，适用于不允许选择当前编辑应用的场景'
+  })
+}).extend(PaginationSchema.shape);
 export type ListAppV2BodyType = z.infer<typeof ListAppV2BodySchema>;
 
 export const AppListItemSchema = z

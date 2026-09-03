@@ -163,6 +163,36 @@ describe('POST /api/core/app/list', () => {
     expect(res.data.list[0].name).toBe('App 2');
   });
 
+  it('excludes an app before applying pagination in V2', async () => {
+    const user = await getUser(`app-list-v2-exclude-${getNanoid(6)}`);
+    const [excludedApp] = await MongoApp.create(
+      [3, 2, 1].map((index) => ({
+        name: `App ${index}`,
+        type: AppTypeEnum.simple,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        updateTime: new Date(`2024-01-0${index}T00:00:00.000Z`)
+      }))
+    );
+    const res = await Call<ListAppV2BodyType, Record<string, never>, ListAppV2ResponseType>(
+      handlerV2,
+      {
+        auth: user,
+        body: {
+          type: AppTypeEnum.simple,
+          pageNum: 1,
+          pageSize: 1,
+          excludeAppId: String(excludedApp._id)
+        }
+      }
+    );
+
+    expect(res.code).toBe(200);
+    expect(res.data.total).toBe(2);
+    expect(res.data.list).toHaveLength(1);
+    expect(res.data.list[0].name).toBe('App 2');
+  });
+
   it('normalizes nullish avatar and intro from legacy records in V2', async () => {
     const user = await getUser(`app-list-v2-legacy-${getNanoid(6)}`);
     const app = await MongoApp.create({
