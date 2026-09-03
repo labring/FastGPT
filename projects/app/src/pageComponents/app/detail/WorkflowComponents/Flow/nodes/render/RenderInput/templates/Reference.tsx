@@ -173,7 +173,68 @@ const ReferenceSnapshotLabel = ({
   t: ReturnType<typeof useSafeTranslation>['t'];
 }) => {
   const sourceLabel = snapshot?.sourceLabel;
-  const outputLabel = snapshot?.outputLabel ? t(snapshot.outputLabel as any) : fallback;
+  const outputLabel = (() => {
+    switch (snapshot?.outputLabel) {
+      case 'workflow:Array_element_index':
+        return t('workflow:Array_element_index');
+      case 'workflow:error_text':
+        return t('workflow:error_text');
+      case 'workflow:loop_result':
+        return t('workflow:loop_result');
+      case 'common:core.module.output.label.query extension result':
+        return t('common:core.module.output.label.query extension result');
+      case 'workflow:concatenation_result':
+        return t('workflow:concatenation_result');
+      case 'common:core.module.Dataset quote.label':
+        return t('common:core.module.Dataset quote.label');
+      case 'common:core.module.output.label.Ai response content':
+        return t('common:core.module.output.label.Ai response content');
+      case 'workflow:current_index':
+        return t('workflow:current_index');
+      case 'workflow:current_item':
+        return t('workflow:current_item');
+      case 'workflow:current_iteration':
+        return t('workflow:current_iteration');
+      case 'workflow:parallel_success_results':
+        return t('workflow:parallel_success_results');
+      case 'workflow:parallel_full_results':
+        return t('workflow:parallel_full_results');
+      case 'workflow:parallel_status':
+        return t('workflow:parallel_status');
+      case 'workflow:new_context':
+        return t('workflow:new_context');
+      case 'workflow:judgment_result':
+        return t('workflow:judgment_result');
+      case 'workflow:full_field_extraction':
+        return t('workflow:full_field_extraction');
+      case 'workflow:complete_extraction_result':
+        return t('workflow:complete_extraction_result');
+      case 'workflow:classification_result':
+        return t('workflow:classification_result');
+      case 'app:workflow.select_result':
+        return t('app:workflow.select_result');
+      case 'workflow:form_input_result':
+        return t('workflow:form_input_result');
+      case 'common:core.module.output.label.New context':
+        return t('common:core.module.output.label.New context');
+      case 'workflow:http_extract_output':
+        return t('workflow:http_extract_output');
+      case 'workflow:raw_response':
+        return t('workflow:raw_response');
+      case 'workflow:http_full_error':
+        return t('workflow:http_full_error');
+      case 'app:workflow.read_files_result':
+        return t('app:workflow.read_files_result');
+      case 'workflow:full_response_data':
+        return t('workflow:full_response_data');
+      case 'workflow:reply_text':
+        return t('workflow:reply_text');
+      case 'common:core.module.input.label.user question':
+        return t('common:core.module.input.label.user question');
+      default:
+        return snapshot?.outputLabel || fallback;
+    }
+  })();
 
   if (sourceLabel && outputLabel) {
     return (
@@ -439,7 +500,7 @@ const SingleReferenceSelector = ({
               aria-label={invalidReason}
               onClick={(event) => event.stopPropagation()}
             >
-              <WarningTwoIcon boxSize={3.5} />
+              <MyIcon name="common/warn" boxSize={3.5} />
             </Box>
           </MyTooltip>
         ) : undefined

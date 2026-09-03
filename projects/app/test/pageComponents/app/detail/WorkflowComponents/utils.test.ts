@@ -1559,6 +1559,54 @@ describe('WorkflowComponents utils', () => {
       ]);
     });
 
+    it('captures a deleted HTTP tool parameter while the tool edge remains', () => {
+      const toolInput = {
+        key: 'query',
+        label: 'Query parameter',
+        renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
+        selectedType: FlowNodeInputTypeEnum.agentGenerated,
+        canEdit: true,
+        defaultToAgentGenerated: true,
+        valueType: WorkflowIOValueTypeEnum.string,
+        value: 'query'
+      };
+      const tool = createNode({
+        nodeId: 'http-tool',
+        name: 'HTTP tool',
+        flowNodeType: FlowNodeTypeEnum.httpRequest468,
+        inputs: [toolInput]
+      });
+      const consumer = createNode({
+        nodeId: 'consumer',
+        name: 'Consumer',
+        inputs: [createReferenceInput('input', ['http-tool', 'query'])]
+      });
+
+      const result = captureDeletedWorkflowReferenceSnapshots({
+        previousNodes: [tool, consumer],
+        nextNodes: [
+          createNode({
+            nodeId: 'http-tool',
+            name: 'HTTP tool',
+            flowNodeType: FlowNodeTypeEnum.httpRequest468
+          }),
+          consumer
+        ],
+        previousChatConfig: {},
+        nextChatConfig: {},
+        previousToolNodeIds: new Set(['http-tool']),
+        nextToolNodeIds: new Set(['http-tool'])
+      });
+
+      expect(result[1].data.inputs[0].referenceSnapshots).toEqual([
+        {
+          reference: ['http-tool', 'query'],
+          sourceLabel: 'HTTP tool',
+          outputLabel: 'Query parameter'
+        }
+      ]);
+    });
+
     it('captures deleted global references inside VariableUpdate input values', () => {
       const consumer = createNode({
         nodeId: 'consumer',

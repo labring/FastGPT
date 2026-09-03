@@ -4,9 +4,9 @@ import { createContext, useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { migrateToolInputConfig } from '@fastgpt/global/core/app/formEdit/utils';
-import type { OnConnectStartParams } from 'reactflow';
+import type { Edge, OnConnectStartParams } from 'reactflow';
 import { WorkflowBufferDataContext } from './workflowInitContext';
 import type {
   FlowNodeInputItemType,
@@ -68,6 +68,13 @@ type FlowNodeChangeProps = { nodeId: string } & (
       key: string;
     }
 );
+
+const getToolNodeIds = (edges: Edge<any>[]) =>
+  new Set(
+    edges
+      .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
+      .map((edge) => edge.target)
+  );
 
 // 创建 Context
 type WorkflowActionsContextValue = {
@@ -452,19 +459,23 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
           };
         });
 
+        const toolNodeIds = getToolNodeIds(edges);
+
         return captureDeletedWorkflowReferenceSnapshots({
           previousNodes: state,
           nextNodes,
           previousChatConfig: appDetail.chatConfig,
           nextChatConfig: appDetail.chatConfig,
           globalVariableSourceLabel: t('common:core.module.Variable'),
-          nodeIds: [id]
+          nodeIds: [id],
+          previousToolNodeIds: toolNodeIds,
+          nextToolNodeIds: toolNodeIds
         });
       });
 
       scheduleFullWorkflowCheck();
     },
-    [appDetail.chatConfig, forbiddenSaveSnapshotRef, scheduleFullWorkflowCheck, setNodes, t]
+    [appDetail.chatConfig, edges, forbiddenSaveSnapshotRef, scheduleFullWorkflowCheck, setNodes, t]
   );
 
   // 使用结构共享优化的节点更改
@@ -618,13 +629,17 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
           };
         });
 
+        const toolNodeIds = getToolNodeIds(edges);
+
         return captureDeletedWorkflowReferenceSnapshots({
           previousNodes: nodes,
           nextNodes,
           previousChatConfig: appDetail.chatConfig,
           nextChatConfig: appDetail.chatConfig,
           globalVariableSourceLabel: t('common:core.module.Variable'),
-          nodeIds: nodeIdsToRecheck
+          nodeIds: nodeIdsToRecheck,
+          previousToolNodeIds: toolNodeIds,
+          nextToolNodeIds: toolNodeIds
         });
       });
 
@@ -660,6 +675,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       t,
       onDelEdge,
       llmModelMap,
+      edges,
       scheduleSingleNodeWorkflowCheck,
       scheduleFullWorkflowCheck,
       appDetail.chatConfig

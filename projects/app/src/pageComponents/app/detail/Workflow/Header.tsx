@@ -249,7 +249,7 @@ const Header = () => {
         title={t('common:Exit')}
         w={'400px'}
       >
-        <ModalBody>
+        <ModalBody color={'myGray.600'}>
           <Box>{t('workflow:workflow.exit_tips')}</Box>
         </ModalBody>
         <ModalFooter gap={3}>

@@ -6,7 +6,10 @@ import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { captureDeletedWorkflowReferenceSnapshots } from '@/web/core/workflow/referenceCheck';
 import { storeNode2FlowNode, storeEdge2RenderEdge } from '@/web/core/workflow/utils';
-import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/workflowCheck';
+import {
+  checkWorkflowBeforeRunOrPublish,
+  checkWorkflowNodeIssues
+} from '@/web/core/workflow/workflowCheck';
 import { uiWorkflow2StoreWorkflow } from '../utils';
 import {
   FlowNodeOutputTypeEnum,

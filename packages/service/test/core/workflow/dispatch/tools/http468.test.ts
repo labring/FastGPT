@@ -8,7 +8,8 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
-  FlowNodeOutputTypeEnum
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 
 const axiosMock = vi.hoisted(() => vi.fn());
@@ -30,6 +31,7 @@ import {
   dispatchHttp468Request,
   filterHttpRuntimeParams
 } from '@fastgpt/service/core/workflow/dispatch/tools/http468';
+import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
 
 const buildProps = (httpContentType: ContentTypes) =>
   ({
@@ -91,6 +93,78 @@ describe('dispatchHttp468Request empty keys', () => {
       expect(Object.fromEntries(request.data)).toEqual({ validField: 'field' });
     }
   );
+});
+
+describe('dispatchHttp468Request HTTP tool parameter references', () => {
+  beforeEach(() => {
+    axiosMock.mockReset();
+    axiosMock.mockResolvedValue({ data: {} });
+    isInternalAddressMock.mockReset();
+    isInternalAddressMock.mockResolvedValue(false);
+  });
+
+  it('resolves a referenced HTTP tool parameter before building the request', async () => {
+    const node = {
+      flowNodeType: FlowNodeTypeEnum.httpRequest468,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.httpReqUrl,
+          value: 'https://example.com',
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.input],
+          selectedType: FlowNodeInputTypeEnum.input
+        },
+        {
+          key: NodeInputKeyEnum.httpParams,
+          value: [{ key: 'forwarded', type: 'string', value: '{{toolParam}}' }],
+          valueType: WorkflowIOValueTypeEnum.arrayString,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          selectedType: FlowNodeInputTypeEnum.hidden
+        },
+        {
+          key: 'toolParam',
+          value: ['http-tool', 'query'],
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference
+        }
+      ],
+      outputs: []
+    } as any;
+    const runtimeNodesMap = new Map([
+      [
+        'http-tool',
+        {
+          nodeId: 'http-tool',
+          flowNodeType: FlowNodeTypeEnum.httpRequest468,
+          inputs: [
+            {
+              key: 'query',
+              renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
+              selectedType: FlowNodeInputTypeEnum.agentGenerated,
+              canEdit: true,
+              defaultToAgentGenerated: true,
+              value: 'tool query',
+              valueType: WorkflowIOValueTypeEnum.string
+            }
+          ],
+          outputs: []
+        }
+      ]
+    ]) as any;
+    const variableState = { toRuntimeRecord: () => ({}) };
+    const params = getWorkflowNodeRunParams({ node, runtimeNodesMap, variableState });
+
+    await dispatchHttp468Request({
+      ...buildProps(ContentTypes.json),
+      node,
+      runtimeNodesMap,
+      variableState,
+      params
+    });
+
+    expect(axiosMock.mock.calls[0][0].params).toEqual({ forwarded: 'tool query' });
+  });
 });
 
 describe('filterHttpRuntimeParams', () => {
@@ -264,5 +338,49 @@ describe('filterHttpRuntimeParams', () => {
         variables: { existing: 'global value' }
       })
     ).toEqual({ validGlobal: 'global value' });
+  });
+
+  it('keeps HTTP tool parameter references when filtering mixed values', () => {
+    const node = {
+      inputs: [
+        {
+          key: 'mixedToolReference',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          value: [
+            ['http-tool', 'query'],
+            ['missing', 'value']
+          ],
+          valueType: WorkflowIOValueTypeEnum.arrayString
+        }
+      ]
+    } as any;
+    const httpToolNode = {
+      nodeId: 'http-tool',
+      flowNodeType: FlowNodeTypeEnum.httpRequest468,
+      inputs: [
+        {
+          key: 'query',
+          renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
+          selectedType: FlowNodeInputTypeEnum.agentGenerated,
+          canEdit: true,
+          defaultToAgentGenerated: true,
+          value: 'tool query',
+          valueType: WorkflowIOValueTypeEnum.string
+        }
+      ],
+      outputs: []
+    } as any;
+
+    expect(
+      filterHttpRuntimeParams({
+        params: {
+          mixedToolReference: ['tool query', ['missing', 'value']]
+        },
+        node,
+        runtimeNodesMap: new Map([['http-tool', httpToolNode]]),
+        variables: {}
+      })
+    ).toEqual({ mixedToolReference: ['tool query'] });
   });
 });

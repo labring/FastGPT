@@ -7,7 +7,10 @@ import {
   VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -22,6 +25,7 @@ import {
   isValidReferenceValueFormat,
   nodeInputIsReference
 } from '@fastgpt/global/core/workflow/utils';
+import { isToolParamInput } from '@fastgpt/global/core/app/formEdit/utils';
 import json5 from 'json5';
 import { JSONPath } from 'jsonpath-plus';
 import { getSecretValue } from '../../../../common/secret/utils';
@@ -138,11 +142,14 @@ export const filterHttpRuntimeParams = ({
 
     const sourceNode = runtimeNodesMap.get(sourceNodeId);
     const output = sourceNode?.outputs.find((item) => item.id === outputId);
-    if (!sourceNode || !output || output.invalid === true || output.value === undefined) {
-      return false;
+    if (output) {
+      if (output.invalid === true || output.value === undefined) return false;
+      return output.type !== FlowNodeOutputTypeEnum.error || sourceNode?.catchError === true;
     }
 
-    return output.type !== FlowNodeOutputTypeEnum.error || sourceNode.catchError === true;
+    if (sourceNode?.flowNodeType !== FlowNodeTypeEnum.httpRequest468) return false;
+    const input = sourceNode.inputs.find((item) => item.key === outputId && isToolParamInput(item));
+    return input?.value !== undefined || input?.defaultValue !== undefined;
   };
 
   return Object.fromEntries(

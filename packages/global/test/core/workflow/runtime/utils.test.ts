@@ -20,6 +20,7 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import {
+  FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
@@ -1310,6 +1311,36 @@ describe('getReferenceVariableValue', () => {
       variables: {}
     });
     expect(result).toBe('outputValue');
+  });
+
+  it('should resolve HTTP tool parameter values from node inputs', () => {
+    const nodesMap: Record<string, RuntimeNodeItemType> = {
+      httpTool: {
+        nodeId: 'httpTool',
+        name: 'HTTP tool',
+        flowNodeType: FlowNodeTypeEnum.httpRequest468,
+        inputs: [
+          {
+            key: 'query',
+            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
+            selectedType: FlowNodeInputTypeEnum.agentGenerated,
+            canEdit: true,
+            defaultToAgentGenerated: true,
+            value: 'tool query',
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ],
+        outputs: []
+      }
+    };
+
+    expect(
+      getReferenceVariableValue({
+        value: ['httpTool', 'query'],
+        nodesMap,
+        variables: {}
+      })
+    ).toBe('tool query');
   });
 
   it('should return undefined when output id not found in node', () => {
