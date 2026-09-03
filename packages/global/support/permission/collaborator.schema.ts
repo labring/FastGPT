@@ -31,7 +31,7 @@ export const CollaboratorTargetSchema = z
 export type CollaboratorTargetType = z.infer<typeof CollaboratorTargetSchema>;
 
 export const CollaboratorItemSchema = CollaboratorTargetSchema.safeExtend({
-  permission: z.number().int().nonnegative().meta({
+  permission: z.number().int().positive().meta({
     example: 4,
     description: '权限角色值'
   })

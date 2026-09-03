@@ -73,6 +73,10 @@ export const DatasetSchema = z
     tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
     updateTime: z.coerce.date().meta({ description: '更新时间' }),
     inheritPermission: z.boolean().meta({ description: '继承权限' }),
+    hasSetCollectionPermissions: z
+      .boolean()
+      .optional()
+      .meta({ description: 'collection 级权限短路标记：false=该 dataset 下无独立配置 collection' }),
 
     avatar: z.string().meta({ description: '头像' }),
     name: z.string().meta({ description: '名称' }),
@@ -139,6 +143,11 @@ export const DatasetCollectionSchema = ChunkSettingsSchema.omit({
   updateTime: z.coerce.date().meta({ description: '更新时间' }),
 
   forbid: z.boolean().optional().meta({ description: '是否禁用' }),
+
+  inheritPermission: z
+    .boolean()
+    .optional()
+    .meta({ description: '继承权限：true=快照合并父级，false=独立配置' }),
 
   fileId: z.string().optional().meta({ description: '文件 ID' }),
   rawLink: z.string().optional().meta({ description: '原始链接' }),

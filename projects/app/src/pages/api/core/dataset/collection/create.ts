@@ -1,7 +1,6 @@
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission/dataset/auth';
 import { createOneCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { NextAPI } from '@/service/middleware/entry';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
@@ -16,12 +15,12 @@ import {
 async function handler(req: ApiRequestProps): Promise<CreateCollectionResponseType> {
   const body = parseApiInput({ req, bodySchema: CreateCollectionBodySchema }).body;
 
-  const { teamId, tmbId, dataset } = await authDataset({
+  const { teamId, tmbId, dataset } = await authDatasetCollectionCreate({
     req,
     authToken: true,
     authApiKey: true,
     datasetId: body.datasetId,
-    per: WritePermissionVal
+    parentId: body.parentId
   });
 
   const { _id } = await createOneCollection({

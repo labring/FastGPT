@@ -1075,9 +1075,8 @@ export class WorkflowQueue {
             formatResponseData
           : nodeResponsesForDisplay.find((item) => item.id === formatResponseData?.id);
       const childResponsesForQueue = this.data.nodeResponseSink
-        ? childResponsesForDisplay.flatMap(
-            (item) =>
-              persistedNodeResponses.filter((persistedItem) => persistedItem.id === item.id)
+        ? childResponsesForDisplay.flatMap((item) =>
+            persistedNodeResponses.filter((persistedItem) => persistedItem.id === item.id)
           )
         : childResponsesForDisplay;
       const shouldDropPersistedNodeResponses = !!this.data.nodeResponseSink;

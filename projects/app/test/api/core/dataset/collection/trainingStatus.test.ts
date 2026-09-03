@@ -11,11 +11,90 @@ import { DatasetCollectionsListItemSchema } from '@fastgpt/global/openapi/core/d
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { getRootUser } from '@test/datas/users';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import {
+  PerResourceTypeEnum,
+  ReadRoleVal,
+  WriteRoleVal
+} from '@fastgpt/global/support/permission/constant';
+import { getFakeUsers, getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
 
 describe('collection training status api', () => {
+  it('returns each collection effective permission instead of the dataset permission', async () => {
+    const users = await getFakeUsers(1);
+    const member = users.members[0];
+    const dataset = await MongoDataset.create({
+      name: 'permission-test',
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      vectorModel: 'test',
+      agentModel: 'test',
+      hasSetCollectionPermissions: true
+    });
+    const collection = await MongoDatasetCollection.create({
+      name: 'writable-collection',
+      type: DatasetCollectionTypeEnum.file,
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      datasetId: dataset._id
+    });
+    await MongoResourcePermission.create([
+      {
+        resourceType: PerResourceTypeEnum.dataset,
+        teamId: users.owner.teamId,
+        resourceId: String(dataset._id),
+        tmbId: member.tmbId,
+        permission: ReadRoleVal
+      },
+      {
+        resourceType: PerResourceTypeEnum.collection,
+        teamId: users.owner.teamId,
+        resourceId: String(collection._id),
+        tmbId: member.tmbId,
+        permission: WriteRoleVal
+      }
+    ]);
+
+    const response = await Call(listHandler, {
+      auth: member,
+      body: {
+        datasetId: dataset._id,
+        pageSize: 10,
+        offset: 0,
+        filterTags: []
+      }
+    });
+
+    expect(response.code).toBe(200);
+    expect(response.data.list).toHaveLength(1);
+    expect(response.data.list[0].permission).toMatchObject({
+      role: WriteRoleVal,
+      hasReadPer: true,
+      hasWritePer: true,
+      hasManagePer: false
+    });
+
+    const simpleResponse = await Call(listHandler, {
+      auth: member,
+      body: {
+        datasetId: dataset._id,
+        pageSize: 10,
+        offset: 0,
+        filterTags: [],
+        simple: true
+      }
+    });
+    expect(simpleResponse.code).toBe(200);
+    expect(simpleResponse.data.list[0].permission).toMatchObject({
+      role: WriteRoleVal,
+      hasReadPer: true,
+      hasWritePer: true,
+      hasManagePer: false
+    });
+  });
+
   it('should expose unified active/final error/slowest status in list and detail', async () => {
     const root = await getRootUser();
     const dataset = await MongoDataset.create({

@@ -15,6 +15,10 @@ import {
   DatasetCollectionSchema
 } from '../../../../core/dataset/type';
 import { PermissionSchema } from '../../../../support/permission/controller';
+import {
+  CollaboratorListSchema,
+  CollaboratorUpdateListSchema
+} from '../../../../support/permission/collaborator.schema';
 import { PaginationResponseSchema, PaginationSchema } from '../../../api';
 import z from 'zod';
 import {
@@ -256,3 +260,89 @@ export const SyncCollectionResponseSchema = z.enum(DatasetCollectionSyncResultEn
   description: '同步结果'
 });
 export type SyncCollectionResponseType = z.infer<typeof SyncCollectionResponseSchema>;
+
+/* ============================================================================
+ * API: 获取集合协作者
+ * Route: GET /proApi/core/dataset/collection/collaborator/list
+ * ============================================================================ */
+export const GetCollectionCollaboratorListQuerySchema = z.object({
+  collectionId: ObjectIdSchema.meta({ description: '集合 ID' })
+});
+export type GetCollectionCollaboratorListQuery = z.infer<
+  typeof GetCollectionCollaboratorListQuerySchema
+>;
+
+export const GetCollectionCollaboratorListResponseSchema = CollaboratorListSchema;
+export type GetCollectionCollaboratorListResponse = z.infer<
+  typeof GetCollectionCollaboratorListResponseSchema
+>;
+
+/* ============================================================================
+ * API: 更新集合协作者
+ * Route: POST /proApi/core/dataset/collection/collaborator/update
+ * Method: POST
+ * Description: 覆盖更新集合的协作者权限；配置即视为已设置 collection 权限（dataset 短路失效）。
+ * Tags: ['协作者管理', '知识库权限管理']
+ * ============================================================================ */
+export const UpdateCollectionCollaboratorBodySchema = z.object({
+  collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
+  // 暂沿用共享协作者 schema：当前仅校验正整数，未收紧为 collection 的 1/2/4/6/7 枚举。
+  // owner 必须随完整列表提交，并由服务端校验只能属于 collection.tmbId。
+  collaborators: CollaboratorUpdateListSchema.meta({
+    description:
+      '更新后的完整协作者权限列表（必须包含 owner），至少包含一个协作者且目标不可重复；权限值枚举校验待后续统一收紧'
+  })
+});
+export type UpdateCollectionCollaboratorBody = z.infer<
+  typeof UpdateCollectionCollaboratorBodySchema
+>;
+
+export const UpdateCollectionCollaboratorResponseSchema = z.undefined().meta({
+  description: '操作成功'
+});
+export type UpdateCollectionCollaboratorResponse = z.infer<
+  typeof UpdateCollectionCollaboratorResponseSchema
+>;
+
+/* ============================================================================
+ * API: 恢复集合继承权限
+ * Route: PUT /core/dataset/collection/resumeInheritPermission
+ * Method: PUT
+ * Description: 将集合从独立态恢复为继承态（保留相对当前父级独有的权限位并同步子树）。
+ * Tags: ['知识库权限管理']
+ * ============================================================================ */
+export const ResumeCollectionInheritPermissionBodySchema = z.object({
+  collectionId: ObjectIdSchema.meta({ description: '集合 ID' })
+});
+export type ResumeCollectionInheritPermissionBody = z.infer<
+  typeof ResumeCollectionInheritPermissionBodySchema
+>;
+
+/* ============================================================================
+ * API: 转让集合所有权
+ * Route: POST /proApi/core/dataset/collection/changeOwner
+ * Method: POST
+ * Description: 将集合（含其 parentId 子树）所有权转让给指定团队成员。
+ * Tags: ['资源权限', '知识库权限管理']
+ * ============================================================================ */
+export const ChangeCollectionOwnerBodySchema = z
+  .object({
+    collectionId: ObjectIdSchema.meta({
+      example: '68ad85a7463006c963799a05',
+      description: '集合 ID'
+    }),
+    ownerId: ObjectIdSchema.meta({
+      example: '68ad85a7463006c963799a06',
+      description: '新的所有者团队成员 ID'
+    })
+  })
+  .meta({
+    example: {
+      collectionId: '68ad85a7463006c963799a05',
+      ownerId: '68ad85a7463006c963799a06'
+    }
+  });
+export type ChangeCollectionOwnerBody = z.infer<typeof ChangeCollectionOwnerBodySchema>;
+
+export const ChangeCollectionOwnerResponseSchema = z.undefined().meta({ description: '转让成功' });
+export type ChangeCollectionOwnerResponse = z.infer<typeof ChangeCollectionOwnerResponseSchema>;

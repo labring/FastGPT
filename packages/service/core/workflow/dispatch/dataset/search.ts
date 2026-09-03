@@ -16,6 +16,7 @@ import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import { MongoDataset } from '../../../dataset/schema';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
+import { resolveReadableCollectionIds } from '../../../../support/permission/collection/auth';
 import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
 import { getNodeErrResponse } from '../utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
@@ -137,6 +138,16 @@ export async function dispatchDatasetSearch(
       return emptyResult;
     }
 
+    // Collection 级权限可读集合仅对真实成员鉴权生效；authTmbId=false（应用内预选 dataset，
+    // 无当前用户身份）时不做 collection 级过滤，按 dataset 全量召回。
+    const readableCollectionIdList = authTmbId
+      ? await resolveReadableCollectionIds({
+          teamId,
+          datasetIds,
+          tmbId
+        })
+      : undefined;
+
     // Get vector model
     const dataset = await MongoDataset.findById(
       datasets[0].datasetId,
@@ -168,6 +179,7 @@ export async function dispatchDatasetSearch(
     const searchData = {
       histories,
       teamId,
+      tmbId,
       textQueries,
       imageQueries,
       model: vectorModel,
@@ -180,7 +192,8 @@ export async function dispatchDatasetSearch(
       usingReRank,
       rerankModel: rerankModelData,
       rerankWeight,
-      collectionFilterMatch
+      collectionFilterMatch,
+      readableCollectionIdList
     };
     const useDeepSearch = datasetDeepSearch && textQueries.length > 0;
     const {
