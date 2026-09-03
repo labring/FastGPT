@@ -31,6 +31,7 @@ describe('App OpenAPI contracts', () => {
   it('registers app ownership transfer and template type APIs', () => {
     expect(openAPIDocument.paths?.['/core/app/list']?.post).toBeDefined();
     expect(openAPIDocument.paths?.['/core/app/listV2']?.post).toBeDefined();
+    expect(openAPIDocument.paths?.['/core/app/toolSet/listV2']?.post).toBeDefined();
     expect(openAPIDocument.paths?.['/proApi/core/app/changeOwner']?.post).toBeDefined();
     expect(
       openAPIDocument.paths?.['/proApi/core/app/template/getTemplateTypes']?.get
