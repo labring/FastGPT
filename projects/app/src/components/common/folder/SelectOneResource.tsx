@@ -150,8 +150,8 @@ const SelectOneResource = ({
             <Flex
               key={item.id}
               alignItems={'center'}
-              h={'32px'}
-              px={2}
+              h={'36px'}
+              px={3}
               borderRadius={'md'}
               cursor={disabled ? 'not-allowed' : 'pointer'}
               color={disabled ? 'myGray.400' : 'myGray.900'}
