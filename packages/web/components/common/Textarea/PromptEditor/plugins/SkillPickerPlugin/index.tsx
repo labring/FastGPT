@@ -126,10 +126,20 @@ export default function SkillPickerPlugin({
   const { t } = useTranslation();
   const [skillOptions, setSkillOptions] = useState<SkillOptionItemType[]>([skillOption]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMenuPositioned, setIsMenuPositioned] = useState(false);
+  const [hasHorizontalOverflow, setHasHorizontalOverflow] = useState(false);
+  const [menuQueryVersion, setMenuQueryVersion] = useState(0);
   const isMenuOpenRef = useRef(false);
 
   const updateMenuOpen = useCallback((open: boolean) => {
+    const wasOpen = isMenuOpenRef.current;
     isMenuOpenRef.current = open;
+    if (!open || !wasOpen) {
+      setIsMenuPositioned(false);
+    }
+    if (!open) {
+      setHasHorizontalOverflow(false);
+    }
     setIsMenuOpen(open);
   }, []);
 
@@ -156,7 +166,6 @@ export default function SkillPickerPlugin({
   const menuElementRef = useRef<HTMLDivElement | null>(null);
   const menuPositionFrameRef = useRef<number | null>(null);
   const matchingStringRef = useRef<string | null>(null);
-  const [hasHorizontalOverflow, setHasHorizontalOverflow] = useState(false);
 
   const updateHorizontalOverflow = useCallback(() => {
     const menuElement = menuElementRef.current;
@@ -210,6 +219,7 @@ export default function SkillPickerPlugin({
     if (Math.abs(nextAnchorLeft - currentAnchorLeft) > 0.5) {
       anchorElement.style.left = `${nextAnchorLeft}px`;
     }
+    setIsMenuPositioned(true);
   }, [getTriggerRect]);
 
   const scheduleMenuPosition = useCallback(() => {
@@ -261,7 +271,14 @@ export default function SkillPickerPlugin({
         menuPositionFrameRef.current = null;
       }
     };
-  }, [isFocus, isMenuOpen, scheduleMenuPosition, skillOptions.length, updateHorizontalOverflow]);
+  }, [
+    isFocus,
+    isMenuOpen,
+    menuQueryVersion,
+    scheduleMenuPosition,
+    skillOptions.length,
+    updateHorizontalOverflow
+  ]);
 
   // Scroll the selected row into view and reveal newly appended columns.
   const scrollIntoView = useCallback((columnIndex: number, rowIndex: number, retryCount = 0) => {
@@ -504,7 +521,7 @@ export default function SkillPickerPlugin({
   );
 
   // Resolve the hovered item into the next navigation column.
-  const { runAsync: handleItemSelect, loading: isItemSelectLoading } = useRequest(
+  const { runAsync: handleItemSelect } = useRequest(
     async ({
       currentColumnIndex,
       item,
@@ -1154,7 +1171,7 @@ export default function SkillPickerPlugin({
       return (
         <MyBox
           isLoading={
-            (currentColumnIndex === columnIndex && (isItemSelectLoading || isItemClickLoading)) ||
+            (currentColumnIndex === columnIndex && isItemClickLoading) ||
             (pageState?.loading === true && columnData.list.length === 0)
           }
           ref={(element) => {
@@ -1228,7 +1245,6 @@ export default function SkillPickerPlugin({
       currentColumnIndex,
       handleColumnScroll,
       isItemClickLoading,
-      isItemSelectLoading,
       renderItemList,
       retryColumnPage,
       t
@@ -1280,6 +1296,9 @@ export default function SkillPickerPlugin({
     <LexicalTypeaheadMenuPlugin
       onQueryChange={(matchingString) => {
         matchingStringRef.current = matchingString;
+        if (matchingString !== null) {
+          setMenuQueryVersion((version) => version + 1);
+        }
         // Update menu open state based on query
         updateMenuOpen(matchingString !== null);
       }}
@@ -1297,7 +1316,7 @@ export default function SkillPickerPlugin({
             ref={(element) => {
               menuElementRef.current = element;
             }}
-            visibility={shouldShow ? 'visible' : 'hidden'}
+            visibility={shouldShow && isMenuPositioned ? 'visible' : 'hidden'}
             zIndex={99999}
             w={'max-content'}
             maxW={MENU_WIDTH}
