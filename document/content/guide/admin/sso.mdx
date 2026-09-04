@@ -32,7 +32,7 @@ FastGPT-SSO-Service 是为了聚合不同来源的 SSO 和成员同步接口，�
 
 ```yaml
 fastgpt-sso:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16 # 目前sso最新版本，可直接使用当前版本
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:latest
   container_name: fastgpt-sso
   restart: always
   networks:
@@ -256,6 +256,11 @@ fastgpt-sso:
 
 ### 企业微信
 
+<Alert context="warning">
+  企微成员同步逻辑更新后，必须重新部署 `fastgpt-sso-service` 中转服务，并使用已发布的 `latest`
+  镜像。
+</Alert>
+
 #### 1. 参数获取
 
 1.  企业的 CorpID
@@ -270,7 +275,7 @@ fastgpt-sso:
 
     a. 获取应用的 AgentID 和 Secret
 
-    b. 保证这个应用的可见范围为全部（也就是根部门）
+    b. 应用的可见范围决定企微成员同步范围。请至少覆盖需要同步的部门；如果需要同步整个企业，请设置为根部门（全部可见）。
 
     ![](/imgs/sso8.png)
 
@@ -308,11 +313,20 @@ fastgpt-sso:
 
     ![](/imgs/sso14.png)
 
-#### 2. yml 配置示例
+#### 2. 使用 latest 镜像部署 fastgpt-sso 中转服务
+
+企微 SSO 登录使用应用的 Secret，成员同步使用“通讯录同步助手”的 Secret。请拉取已发布的 `latest` 镜像并重新创建服务：
+
+```bash
+docker compose pull fastgpt-sso
+docker compose up -d --force-recreate fastgpt-sso
+```
+
+#### 3. yml 配置示例
 
 ```yaml
 fastgpt-sso:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:latest
   container_name: fastgpt-sso
   restart: always
   networks:
@@ -343,6 +357,13 @@ fastgpt-sso:
     # 通讯录同步助手的 Secret
     - WECOM_SYNC_SECRET=
 ```
+
+#### 4. 企微成员同步规则
+
+- `/org/list` 返回企微应用可见范围内的部门。
+- `/user/list` 仍通过“通讯录同步助手”获取成员，但只保留至少属于一个应用可见部门的成员。
+- 成员所属部门会同步过滤为应用可见部门；只属于不可见部门的成员不会同步到 FastGPT。
+- 修改企微应用可见范围或镜像版本后，请重新执行一次成员同步；也可以先调用下方接口检查返回结果。
 
 ### 标准 OAuth2.0
 
