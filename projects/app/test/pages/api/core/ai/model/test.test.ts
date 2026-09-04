@@ -126,4 +126,92 @@ describe('admin model test routing', () => {
       })
     );
   });
+
+  it('tests an embedding model through the selected channel', async () => {
+    const vectors = [{ embedding: [0.1, 0.2], index: 0 }];
+    mocks.findModelData.mockReturnValue({
+      ...installedModel,
+      type: ModelTypeEnum.embedding
+    });
+    mocks.getVectors.mockResolvedValue(vectors);
+
+    const result = await handler(
+      { query: { modelId: installedModel.modelId, channelId: 11 } } as any,
+      {} as any
+    );
+
+    expect(result).toEqual(vectors);
+    expect(mocks.getVectors).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inputs: [{ type: 'text', input: 'Hi' }],
+        headers: { 'Aiproxy-Channel': '11' },
+        model: expect.objectContaining({ requestUrl: undefined, requestAuth: undefined })
+      })
+    );
+  });
+
+  it('tests a rerank model through the selected channel', async () => {
+    mocks.findModelData.mockReturnValue({
+      ...installedModel,
+      type: ModelTypeEnum.rerank
+    });
+    mocks.reRankRecall.mockResolvedValue([{ id: '1', score: 1 }]);
+
+    await expect(
+      handler({ query: { modelId: installedModel.modelId, channelId: 12 } } as any, {} as any)
+    ).resolves.toBeUndefined();
+    expect(mocks.reRankRecall).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: 'Hi',
+        documents: [{ id: '1', text: 'Hi' }],
+        headers: { 'Aiproxy-Channel': '12' },
+        model: expect.objectContaining({ requestUrl: undefined, requestAuth: undefined })
+      })
+    );
+  });
+
+  it('tests a text-to-speech model through the selected channel', async () => {
+    const createSpeech = vi.fn().mockResolvedValue({});
+    mocks.findModelData.mockReturnValue({
+      ...installedModel,
+      type: ModelTypeEnum.tts,
+      config: { voices: [{ label: 'Alloy', value: 'alloy' }] }
+    });
+    mocks.getAIApi.mockReturnValue({
+      ai: { audio: { speech: { create: createSpeech } } }
+    });
+
+    await expect(
+      handler({ query: { modelId: installedModel.modelId, channelId: 13 } } as any, {} as any)
+    ).resolves.toBeUndefined();
+    expect(createSpeech).toHaveBeenCalledWith(
+      {
+        model: installedModel.model,
+        voice: 'alloy',
+        input: 'Hi',
+        response_format: 'mp3',
+        speed: 1
+      },
+      { headers: { 'Aiproxy-Channel': '13' } }
+    );
+  });
+
+  it('tests a speech-to-text model through the selected channel', async () => {
+    mocks.findModelData.mockReturnValue({
+      ...installedModel,
+      type: ModelTypeEnum.stt
+    });
+    mocks.aiTranscriptions.mockResolvedValue({ text: 'Hi' });
+
+    await expect(
+      handler({ query: { modelId: installedModel.modelId, channelId: 14 } } as any, {} as any)
+    ).resolves.toBeUndefined();
+    expect(mocks.aiTranscriptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filename: 'test.mp3',
+        headers: { 'Aiproxy-Channel': '14' },
+        model: expect.objectContaining({ requestUrl: undefined, requestAuth: undefined })
+      })
+    );
+  });
 });
