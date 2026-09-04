@@ -29,7 +29,7 @@ const MyApps = ({ hideMobileHeader = false, mobileSearchKey }: MyAppsProps) => {
   const { isPc } = useSystem();
   const { feConfigs } = useSystemStore();
 
-  const { paths, myApps, isFetchingApps, setSearchKey } = useContextSelector(
+  const { paths, myApps, isFetchingApps, ScrollData, setSearchKey } = useContextSelector(
     AppListContext,
     (v) => v
   );
@@ -134,7 +134,7 @@ const MyApps = ({ hideMobileHeader = false, mobileSearchKey }: MyAppsProps) => {
           flex={'1 0 0'}
           flexDirection={'column'}
           h={'100%'}
-          overflowY={'auto'}
+          overflowY={'hidden'}
           overflowX={'hidden'}
         >
           <Flex
@@ -193,8 +193,10 @@ const MyApps = ({ hideMobileHeader = false, mobileSearchKey }: MyAppsProps) => {
             )}
           </Flex>
 
-          <MyBox flex={'1 0 0'} isLoading={myApps.length === 0 && isFetchingApps}>
-            <List appType={appType} />
+          <MyBox flex={'1 0 0'} minH={0} isLoading={myApps.length === 0 && isFetchingApps}>
+            <ScrollData h={'full'} minH={0} showLoadingOverlay={false}>
+              <List appType={appType} />
+            </ScrollData>
           </MyBox>
         </Flex>
       </Flex>
