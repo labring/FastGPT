@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { createDocument } from 'zod-openapi';
 import {
   AdminSystemModelReferenceSchema,
+  CreateSystemModelBodySchema,
   DeleteSystemModelsBodySchema,
   ImportedSystemModelSchema,
+  ReplaceSystemModelChannelsBodySchema,
   TestAdminSystemModelQuerySchema,
   UpdateSystemModelBodySchema,
   UpdateSystemModelStatusBodySchema
@@ -47,6 +49,46 @@ describe('admin system model API schemas', () => {
     expect(() =>
       DeleteSystemModelsBodySchema.parse({ modelIds: [modelIds[0], modelIds[0]] })
     ).toThrow('modelIds must be unique');
+  });
+
+  it('enforces the batch model ID boundaries', () => {
+    const modelIds = Array.from({ length: 501 }, (_, index) =>
+      (index + 1).toString(16).padStart(24, '0')
+    );
+
+    expect(
+      DeleteSystemModelsBodySchema.parse({ modelIds: modelIds.slice(0, 500) }).modelIds
+    ).toHaveLength(500);
+    expect(() => DeleteSystemModelsBodySchema.parse({ modelIds })).toThrow();
+    expect(() =>
+      UpdateSystemModelStatusBodySchema.parse({ modelIds: [], isActive: true })
+    ).toThrow();
+  });
+
+  it('rejects generated model IDs and invalid channel IDs at write boundaries', () => {
+    const modelData = {
+      type: 'llm' as const,
+      provider: 'OpenAI',
+      model: 'gpt-new',
+      name: 'GPT New',
+      scope: 'system' as const,
+      isActive: false,
+      config: { maxContext: 16000, maxResponse: 8000, quoteMaxToken: 12000 }
+    };
+
+    expect(() =>
+      CreateSystemModelBodySchema.parse({
+        modelData: { ...modelData, modelId: '68ad85a7463006c963799a05' },
+        channelIds: []
+      })
+    ).toThrow('modelId is not allowed when creating a model');
+    expect(() => CreateSystemModelBodySchema.parse({ modelData, channelIds: [0] })).toThrow();
+    expect(() =>
+      ReplaceSystemModelChannelsBodySchema.parse({
+        modelId: '68ad85a7463006c963799a05',
+        channelIds: [-1]
+      })
+    ).toThrow();
   });
 
   it('does not include the immutable model identifier in update data', () => {

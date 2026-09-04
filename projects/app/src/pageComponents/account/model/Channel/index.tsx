@@ -166,7 +166,7 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                     <QuestionTip label={t('config_model:channel_priority_tip')} />
                   </HStack>
                 </Th>
-                <Th></Th>
+                <Th>{t('common:Operation')}</Th>
               </Tr>
             </Thead>
           </Table>

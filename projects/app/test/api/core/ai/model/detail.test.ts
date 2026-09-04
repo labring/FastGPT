@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 
 const mocks = vi.hoisted(() => ({
   authSystemAdmin: vi.fn(),
@@ -91,5 +92,31 @@ describe('GET /api/admin/settings/model/detail', () => {
       expect.objectContaining({ id: 1, isAssociated: true }),
       expect.objectContaining({ id: 2, isAssociated: false })
     ]);
+  });
+
+  it('rejects an invalid modelId before reading model or channel data', async () => {
+    await expect(
+      handler({ query: { modelId: 'invalid' } } as any, {} as any)
+    ).rejects.toBeDefined();
+
+    expect(mocks.findModelData).not.toHaveBeenCalled();
+    expect(mocks.getAdminAIProxyChannelItems).not.toHaveBeenCalled();
+  });
+
+  it('rejects a missing model before querying AIProxy channels', async () => {
+    mocks.findModelData.mockReturnValue(undefined);
+
+    await expect(handler({ query: { modelId } } as any, {} as any)).rejects.toBe(
+      ModelErrEnum.unExist
+    );
+
+    expect(mocks.getAdminAIProxyChannelItems).not.toHaveBeenCalled();
+  });
+
+  it('propagates channel query failures instead of returning incomplete associations', async () => {
+    const error = new Error('aiproxy unavailable');
+    mocks.getAdminAIProxyChannelItems.mockRejectedValue(error);
+
+    await expect(handler({ query: { modelId } } as any, {} as any)).rejects.toBe(error);
   });
 });
