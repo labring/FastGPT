@@ -100,4 +100,23 @@ describe('GET /api/admin/settings/model/list', () => {
       avatar: ''
     });
   });
+
+  it('returns an empty model and channel snapshot when neither is configured', async () => {
+    global.systemModelList = [];
+    mocks.getAdminAIProxyChannelItems.mockResolvedValue([]);
+
+    const result = await handler({} as never);
+
+    expect(result.models).toEqual([]);
+    expect(result.channels).toEqual([]);
+    expect(result.providers).toEqual(global.ModelProviderRawCache);
+    expect(result.aiproxyChannels).toEqual(global.aiproxyChannelsCache);
+  });
+
+  it('does not hide an AIProxy channel query failure behind a partial model list', async () => {
+    const error = new Error('aiproxy unavailable');
+    mocks.getAdminAIProxyChannelItems.mockRejectedValue(error);
+
+    await expect(handler({} as never)).rejects.toBe(error);
+  });
 });

@@ -39,6 +39,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useStaticVirtualList } from '@fastgpt/web/hooks/useVirtualList';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useSet } from 'ahooks';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -507,6 +508,20 @@ const TemplateCreateModal = ({
           model.model.toLowerCase().includes(search))
     );
   }, [availableTemplates, providerFilter, templateSearch, typeFilter]);
+  const {
+    containerRef: templateListContainerRef,
+    virtualDataList: virtualTemplates,
+    topPlaceholderHeight: templateTopPlaceholderHeight,
+    bottomPlaceholderHeight: templateBottomPlaceholderHeight,
+    scrollToTop: scrollTemplateListToTop
+  } = useStaticVirtualList({
+    data: templates,
+    itemHeight: 80,
+    overscan: 6
+  });
+  useEffect(() => {
+    scrollTemplateListToTop();
+  }, [providerFilter, scrollTemplateListToTop, templateSearch, typeFilter]);
   const selectedTemplates = availableTemplates.filter((model) =>
     selectedKeys.has(`${model.type}:${model.model}`)
   );
@@ -654,11 +669,26 @@ const TemplateCreateModal = ({
                     </Tr>
                   </Thead>
                 </Table>
-                <TableContainer flex="1 1 0" minH={0} overflowY="auto">
+                <TableContainer
+                  ref={templateListContainerRef}
+                  flex="1 1 0"
+                  minH={0}
+                  overflowY="auto"
+                >
                   <Table w="100%" size="sm" sx={{ tableLayout: 'fixed' }}>
                     <TemplateTableColumns />
                     <Tbody>
-                      {templates.map((model) => {
+                      {templateTopPlaceholderHeight > 0 && (
+                        <Tr h={`${templateTopPlaceholderHeight}px`} aria-hidden>
+                          <Td
+                            colSpan={3}
+                            h={`${templateTopPlaceholderHeight}px`}
+                            p={0}
+                            border={0}
+                          />
+                        </Tr>
+                      )}
+                      {virtualTemplates.map(({ data: model }) => {
                         const key = `${model.type}:${model.model}`;
                         const typeLabel = modelTypeList.find(
                           (item) => item.value === model.type
@@ -719,6 +749,16 @@ const TemplateCreateModal = ({
                           </Tr>
                         );
                       })}
+                      {templateBottomPlaceholderHeight > 0 && (
+                        <Tr h={`${templateBottomPlaceholderHeight}px`} aria-hidden>
+                          <Td
+                            colSpan={3}
+                            h={`${templateBottomPlaceholderHeight}px`}
+                            p={0}
+                            border={0}
+                          />
+                        </Tr>
+                      )}
                       {!loading && templates.length === 0 && (
                         <Tr>
                           <Td colSpan={3} border={0}>

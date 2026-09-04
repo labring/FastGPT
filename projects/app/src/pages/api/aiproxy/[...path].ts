@@ -31,7 +31,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const headers: Record<string, string> = {};
     for (const [key, value] of Object.entries(req.headers)) {
-      if (key === 'cookie' || key === 'host' || key === 'origin' || key === 'connection') continue;
+      const lowerKey = key.toLowerCase();
+      // 管理端凭证只能由服务端注入，避免客户端 Authorization 与 AIProxy token 合并。
+      if (
+        lowerKey === 'authorization' ||
+        lowerKey === 'cookie' ||
+        lowerKey === 'host' ||
+        lowerKey === 'origin' ||
+        lowerKey === 'connection'
+      ) {
+        continue;
+      }
       if (value) {
         headers[key] = Array.isArray(value) ? value.join(', ') : value;
       }
