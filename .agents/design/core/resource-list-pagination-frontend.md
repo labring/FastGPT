@@ -126,8 +126,9 @@ Dashboard App Context
 
 选择和移动文件夹：
 
-- `projects/app/src/components/core/dataset/SelectModal.tsx` 的 `useDatasetSelect` 使用 `getDatasetsV2` 和 `useScrollPagination`。
-- `projects/app/src/components/core/app/DatasetSelectModal.tsx`、`SelectMarkCollection.tsx` 使用 `ScrollData` 和 `useVirtualGridList`。
+- `projects/app/src/components/core/dataset/SelectModal.tsx` 的 `useDatasetSelect` 使用 `getDatasetsV2` 和 `useScrollPagination`，当前用于聊天标注的知识库选择。
+- `projects/app/src/components/core/app/DatasetSelectModal.tsx` 尚未适配 `listV2` 分页，仍通过 `getAllDatasets` 请求旧 `/core/dataset/list`，一次加载当前条件下的完整知识库列表。
+- `DatasetSelectModal.tsx` 当前被 ChatAgent、SimpleApp、NodeAgent、Workflow `selectDataset` 输入和插件 I/O 知识库选项复用，因此这些应用/工作流侧入口也尚未使用 `listV2` 分页。
 - `projects/app/src/pageComponents/dataset/list/context.tsx` 的文件夹列表使用 `getDatasetsV2`。
 - `projects/app/src/web/core/dataset/store/dataset.ts` 无仓库引用，已删除。
 
@@ -173,8 +174,9 @@ Workflow App 选择器采用面包屑加当前目录列表，保留单选和过�
 
 ### Dataset 和 Skill
 
-- Dataset 选择共享 `useDatasetSelect` 的分页状态，两个 Dataset 选择场景使用虚拟网格。
-- Dataset 选择弹窗的“全选/取消全选”在明确操作时读取当前目录或搜索条件下的完整候选，保证跨页选择语义；普通列表展示仍使用 V2 分页。
+- 聊天标注的 Dataset 选择共享 `useDatasetSelect` 的分页状态，使用 `getDatasetsV2` 和 `useScrollPagination`。
+- 应用/工作流侧的 `components/core/app/DatasetSelectModal.tsx` 仍使用 V1 全量数组接口，暂未适配 `listV2` 分页；该组件的普通列表展示和“全选/取消全选”目前都依赖完整候选集。
+- 后续若改造 `DatasetSelectModal`，需要单独保留全选/取消全选所需的完整候选集语义，不能只将展示请求替换为 V2 第一页。
 - Skill 选择共享 `useSkillSelectData` 的分页状态，保留目录、搜索、创建/导入和数量限制。
 - 搜索词、目录变化会清空已加载页并从 `offset=0` 重新请求。
 - 已选项独立维护，当前目录或搜索结果切换不会清除已选项。
@@ -191,7 +193,7 @@ Workflow App 选择器采用面包屑加当前目录列表，保留单选和过�
 
 | 文件 | 使用场景 | 保留原因 |
 | --- | --- | --- |
-| `components/core/app/DatasetSelectModal.tsx` | 全选/取消全选 | 明确操作需要当前条件下的完整候选集 |
+| `components/core/app/DatasetSelectModal.tsx` | 应用/工作流侧知识库选择、全选/取消全选 | 组件尚未适配 `listV2`；当前列表展示和全选操作都依赖旧接口返回的完整候选集 |
 
 ### Skill 直接调用点
 
@@ -249,6 +251,7 @@ server: SelectOneResourceServer
 - Dashboard 继续滚动后能追加下一页，直到 `data.length >= total`。
 - 搜索和切换目录会清空旧数据并重新请求第一页。
 - 面包屑选择器和移动弹窗首次只请求当前目录一页，继续滚动能追加下一页，直到 `data.length >= total`。
+- 聊天标注知识库选择器使用 `listV2` 分页；应用/工作流侧 `components/core/app/DatasetSelectModal.tsx` 明确仍使用旧 `/core/dataset/list` 全量接口，暂不纳入分页验证范围。
 - 面包屑选择器切换目录会重新请求 `offset=0`，移动弹窗可选择根目录 `null`、禁用目录和当前资源。
 - PromptEditor Skill 树、Dataset 全选等仍按语义继续使用 V1 全量数组。
 
