@@ -118,6 +118,14 @@ type ColumnPageState = {
 
 type ColumnPageStateView = Pick<ColumnPageState, 'offset' | 'total' | 'loading' | 'error'>;
 
+type ColumnPageLoadResult = 'loaded' | 'failed' | 'stale';
+
+type ColumnPageRequest = {
+  option: SkillOptionItemType;
+  promise: Promise<ColumnPageLoadResult>;
+  token: symbol;
+};
+
 export default function SkillPickerPlugin({
   skillOption,
   isFocus,
@@ -161,6 +169,8 @@ export default function SkillPickerPlugin({
   >(new Map());
   const [loadingFolderIds, setLoadingFolderIds] = useState<Set<string>>(new Set());
   const columnPageStateRef = useRef<Map<number, ColumnPageState>>(new Map());
+  const columnPageRequestsRef = useRef<Map<number, ColumnPageRequest>>(new Map());
+  const columnPageNavigationRef = useRef<Map<number, symbol>>(new Map());
   const columnElementRef = useRef<Map<number, HTMLDivElement>>(new Map());
   const [columnPageStates, setColumnPageStates] = useState<Record<number, ColumnPageStateView>>({});
 
@@ -374,6 +384,8 @@ export default function SkillPickerPlugin({
       if (option && currentState?.option === option) return;
 
       currentState?.controller?.abort();
+      columnPageRequestsRef.current.delete(columnIndex);
+      columnPageNavigationRef.current.delete(columnIndex);
 
       if (!option) {
         columnPageStateRef.current.delete(columnIndex);
@@ -407,6 +419,8 @@ export default function SkillPickerPlugin({
       if (index < columnIndex) return;
       state.controller?.abort();
       columnPageStateRef.current.delete(index);
+      columnPageRequestsRef.current.delete(index);
+      columnPageNavigationRef.current.delete(index);
     });
 
     setColumnPageStates((prev) => {
@@ -438,17 +452,30 @@ export default function SkillPickerPlugin({
     [clearColumnPageStatesAfter, resetColumnPageState]
   );
 
+  /**
+   * Loads one page for a navigation column and reuses an in-flight request for the same option.
+   * Returns `loaded` after applying the page, `failed` for an active request error, and `stale`
+   * when the request was cancelled or its column state was replaced before completion.
+   */
   const loadColumnPage = useCallback(
-    async (columnIndex: number, option: SkillOptionItemType, offset: number) => {
-      if (!option.loadPage) return;
+    (columnIndex: number, option: SkillOptionItemType, offset: number) => {
+      const loadPage = option.loadPage;
+      if (!loadPage) return Promise.resolve<ColumnPageLoadResult>('stale');
 
       let state = columnPageStateRef.current.get(columnIndex);
       if (!state || state.option !== option) {
         resetColumnPageState(columnIndex, option);
         state = columnPageStateRef.current.get(columnIndex);
       }
-      if (!state || state.loading || state.loadedOffsets.has(offset) || offset >= state.total) {
-        return;
+
+      const pendingRequest = columnPageRequestsRef.current.get(columnIndex);
+      if (state?.loading) {
+        return pendingRequest?.option === option
+          ? pendingRequest.promise
+          : Promise.resolve<ColumnPageLoadResult>('stale');
+      }
+      if (!state || state.loadedOffsets.has(offset) || offset >= state.total) {
+        return Promise.resolve<ColumnPageLoadResult>('stale');
       }
 
       const controller = new AbortController();
@@ -460,55 +487,72 @@ export default function SkillPickerPlugin({
       state.controller = controller;
       publishColumnPageState(columnIndex, state);
 
-      try {
-        const page = await option.loadPage({ offset, pageSize: PAGE_SIZE }, controller);
-        const latestState = columnPageStateRef.current.get(columnIndex);
-        if (
-          controller.signal.aborted ||
-          !latestState ||
-          latestState.option !== option ||
-          latestState.requestId !== requestId
-        ) {
-          return;
+      const requestToken = Symbol();
+      const promise = (async (): Promise<ColumnPageLoadResult> => {
+        try {
+          const page = await loadPage({ offset, pageSize: PAGE_SIZE }, controller);
+          const latestState = columnPageStateRef.current.get(columnIndex);
+          if (
+            controller.signal.aborted ||
+            !latestState ||
+            latestState.option !== option ||
+            latestState.requestId !== requestId
+          ) {
+            return 'stale';
+          }
+
+          const nextOption: SkillOptionItemType = {
+            ...option,
+            list: mergeSkillItems(option.list, page.list),
+            total: page.total
+          };
+          latestState.option = nextOption;
+          latestState.offset = Math.max(latestState.offset, offset + page.list.length);
+          latestState.total = page.total;
+          latestState.loadedOffsets.add(offset);
+          latestState.loading = false;
+          latestState.error = false;
+          latestState.controller = undefined;
+
+          setSkillOptions((prev) => {
+            if (prev[columnIndex] !== option) return prev;
+            const next = [...prev];
+            next[columnIndex] = nextOption;
+            return next;
+          });
+          publishColumnPageState(columnIndex, latestState);
+          return 'loaded';
+        } catch (error) {
+          const latestState = columnPageStateRef.current.get(columnIndex);
+          if (
+            controller.signal.aborted ||
+            !latestState ||
+            latestState.option !== option ||
+            latestState.requestId !== requestId
+          ) {
+            return 'stale';
+          }
+
+          latestState.loading = false;
+          latestState.error = true;
+          latestState.controller = undefined;
+          publishColumnPageState(columnIndex, latestState);
+          void error;
+          return 'failed';
+        } finally {
+          const currentRequest = columnPageRequestsRef.current.get(columnIndex);
+          if (currentRequest?.token === requestToken) {
+            columnPageRequestsRef.current.delete(columnIndex);
+          }
         }
+      })();
 
-        const nextOption: SkillOptionItemType = {
-          ...option,
-          list: mergeSkillItems(option.list, page.list),
-          total: page.total
-        };
-        latestState.option = nextOption;
-        latestState.offset = Math.max(latestState.offset, offset + page.list.length);
-        latestState.total = page.total;
-        latestState.loadedOffsets.add(offset);
-        latestState.loading = false;
-        latestState.error = false;
-        latestState.controller = undefined;
-
-        setSkillOptions((prev) => {
-          if (prev[columnIndex] !== option) return prev;
-          const next = [...prev];
-          next[columnIndex] = nextOption;
-          return next;
-        });
-        publishColumnPageState(columnIndex, latestState);
-      } catch (error) {
-        const latestState = columnPageStateRef.current.get(columnIndex);
-        if (
-          controller.signal.aborted ||
-          !latestState ||
-          latestState.option !== option ||
-          latestState.requestId !== requestId
-        ) {
-          return;
-        }
-
-        latestState.loading = false;
-        latestState.error = true;
-        latestState.controller = undefined;
-        publishColumnPageState(columnIndex, latestState);
-        void error;
-      }
+      columnPageRequestsRef.current.set(columnIndex, {
+        option,
+        promise,
+        token: requestToken
+      });
+      return promise;
     },
     [publishColumnPageState, resetColumnPageState]
   );
@@ -646,11 +690,15 @@ export default function SkillPickerPlugin({
 
   useEffect(() => {
     const columnPageStates = columnPageStateRef.current;
+    const columnPageRequests = columnPageRequestsRef.current;
+    const columnPageNavigation = columnPageNavigationRef.current;
     const folderRequests = folderRequestsRef.current;
     const timer = window.setTimeout(() => {
       selectionRequestIdRef.current += 1;
       columnPageStates.forEach((state) => state.controller?.abort());
       columnPageStates.clear();
+      columnPageRequests.clear();
+      columnPageNavigation.clear();
       folderRequests.forEach(({ controller }) => controller.abort());
       folderRequests.clear();
       folderOptionsRef.current.clear();
@@ -675,6 +723,8 @@ export default function SkillPickerPlugin({
       window.clearTimeout(timer);
       selectionRequestIdRef.current += 1;
       columnPageStates.forEach((state) => state.controller?.abort());
+      columnPageRequests.clear();
+      columnPageNavigation.clear();
       folderRequests.forEach(({ controller }) => controller.abort());
     };
   }, [handleItemSelect, skillOption]);
@@ -816,6 +866,8 @@ export default function SkillPickerPlugin({
           const columnItems = skillOptions[currentColumnIndex]?.list;
           if (!columnItems || columnItems.length === 0) return true;
 
+          columnPageNavigationRef.current.delete(currentColumnIndex);
+
           // Keep manual folders collapsed while preserving automatic expansion elsewhere.
           const newIndex = currentRowIndex > 0 ? currentRowIndex - 1 : columnItems.length - 1;
           setCurrentRowIndex(newIndex);
@@ -854,23 +906,95 @@ export default function SkillPickerPlugin({
           const columnItems = skillOptions[currentColumnIndex]?.list;
           if (!columnItems || columnItems.length === 0) return true;
 
-          // Keep manual folders collapsed while preserving automatic expansion elsewhere.
-          const newIndex = currentRowIndex < columnItems.length - 1 ? currentRowIndex + 1 : 0;
-          setCurrentRowIndex(newIndex);
-
           const currentOption = skillOptions[currentColumnIndex];
-          const nextItem = columnItems[newIndex];
-          if (currentOption && nextItem && !isManualFolder(nextItem, currentOption)) {
-            void handleItemSelect({
-              currentColumnIndex,
-              item: nextItem,
-              option: currentOption
+          const pageState = columnPageStateRef.current.get(currentColumnIndex);
+          const isLastLoadedRow = currentRowIndex >= columnItems.length - 1;
+
+          const moveToRow = ({
+            option,
+            items,
+            rowIndex
+          }: {
+            option: SkillOptionItemType;
+            items: SkillItemType[];
+            rowIndex: number;
+          }) => {
+            setCurrentRowIndex(rowIndex);
+
+            const nextItem = items[rowIndex];
+            if (nextItem && !isManualFolder(nextItem, option)) {
+              void handleItemSelect({
+                currentColumnIndex,
+                item: nextItem,
+                option
+              });
+            }
+
+            requestAnimationFrame(() => {
+              scrollIntoView(currentColumnIndex, rowIndex);
             });
+          };
+
+          if (
+            currentOption?.loadPage &&
+            isLastLoadedRow &&
+            (!pageState || pageState.offset < pageState.total)
+          ) {
+            if (columnPageNavigationRef.current.has(currentColumnIndex)) return true;
+
+            const pendingRequest = columnPageRequestsRef.current.get(currentColumnIndex);
+            if (pageState?.loading && pendingRequest?.option !== currentOption) return true;
+
+            const previousItemCount = columnItems.length;
+            const navigationToken = Symbol();
+            columnPageNavigationRef.current.set(currentColumnIndex, navigationToken);
+
+            void loadColumnPage(
+              currentColumnIndex,
+              currentOption,
+              pageState?.offset ?? columnItems.length
+            )
+              .then((result) => {
+                if (
+                  !isMenuOpenRef.current ||
+                  result !== 'loaded' ||
+                  columnPageNavigationRef.current.get(currentColumnIndex) !== navigationToken
+                ) {
+                  return;
+                }
+
+                const latestState = columnPageStateRef.current.get(currentColumnIndex);
+                if (!latestState || latestState.loading) return;
+
+                const latestOption = latestState.option;
+                const latestItems = latestOption.list;
+                if (latestItems.length > previousItemCount) {
+                  moveToRow({
+                    option: latestOption,
+                    items: latestItems,
+                    rowIndex: previousItemCount
+                  });
+                  return;
+                }
+
+                // Wrap only after the completed page confirms that no item remains.
+                if (latestState.offset < latestState.total) return;
+                moveToRow({ option: latestOption, items: latestItems, rowIndex: 0 });
+              })
+              .finally(() => {
+                if (columnPageNavigationRef.current.get(currentColumnIndex) === navigationToken) {
+                  columnPageNavigationRef.current.delete(currentColumnIndex);
+                }
+              });
+
+            return true;
           }
 
-          requestAnimationFrame(() => {
-            scrollIntoView(currentColumnIndex, newIndex);
-          });
+          const newIndex = currentRowIndex < columnItems.length - 1 ? currentRowIndex + 1 : 0;
+          if (currentOption) {
+            columnPageNavigationRef.current.delete(currentColumnIndex);
+            moveToRow({ option: currentOption, items: columnItems, rowIndex: newIndex });
+          }
         }
 
         return true;
@@ -887,6 +1011,7 @@ export default function SkillPickerPlugin({
         e.stopPropagation();
 
         setInteractionMode('keyboard');
+        columnPageNavigationRef.current.delete(currentColumnIndex);
 
         // Use functional updates to get the latest state
         setCurrentColumnIndex((prevColumnIndex) => {
@@ -1013,6 +1138,7 @@ export default function SkillPickerPlugin({
         e.stopPropagation();
 
         setInteractionMode('keyboard');
+        columnPageNavigationRef.current.delete(currentColumnIndex);
 
         const latestItem = skillOptions[currentColumnIndex]?.list[currentRowIndex];
         const latestOption = skillOptions[currentColumnIndex];
@@ -1044,6 +1170,7 @@ export default function SkillPickerPlugin({
         e.stopPropagation();
 
         setInteractionMode('keyboard');
+        columnPageNavigationRef.current.delete(currentColumnIndex);
 
         const latestItem = skillOptions[currentColumnIndex]?.list[currentRowIndex];
         const latestOption = skillOptions[currentColumnIndex];
@@ -1089,6 +1216,7 @@ export default function SkillPickerPlugin({
     skillOptions,
     handleItemSelect,
     handleItemClick,
+    loadColumnPage,
     selectedRowIndex,
     scrollIntoView,
     getItemChildOption,
@@ -1143,12 +1271,14 @@ export default function SkillPickerPlugin({
             }}
             onMouseMove={() => {
               if (interactionMode === 'keyboard') {
+                columnPageNavigationRef.current.delete(columnIndex);
                 setInteractionMode('mouse');
               }
             }}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
+              columnPageNavigationRef.current.delete(columnIndex);
 
               if (expandable || (!item.canClick && columnData.onSelect)) {
                 void handleItemSelect({
@@ -1170,6 +1300,7 @@ export default function SkillPickerPlugin({
 
               // Ignore mouse hover in keyboard mode until the pointer moves again.
               if (interactionMode === 'keyboard') return;
+              columnPageNavigationRef.current.delete(columnIndex);
 
               if (columnIndex !== currentColumnIndex) {
                 setSelectedRowIndex((state) => ({
