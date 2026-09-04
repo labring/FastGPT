@@ -125,5 +125,7 @@
   "user_account": "账号",
   "user_team_team_name": "团队",
   "you_can_convert": "您可以兑换",
-  "yuan": "元"
+  "yuan": "元",
+  "password_not_set": "未设置密码",
+  "set_password": "设置"
 }

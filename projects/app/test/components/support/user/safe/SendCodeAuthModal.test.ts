@@ -113,13 +113,13 @@ describe('SendCodeAuthModal', () => {
     expect(mocks.submit).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps the current captcha when sending fails', async () => {
+  it('handles sending failures without closing or refreshing the captcha', async () => {
     const onClose = vi.fn();
     const onSendCode = vi.fn(async () => Promise.reject(new Error('send failed')));
     renderModal({ onClose, onSendCode });
     const onSubmit = mocks.handleSubmit.mock.calls[0][0];
 
-    await expect(onSubmit({ code: 'captcha' })).rejects.toThrow('send failed');
+    await expect(onSubmit({ code: 'captcha' })).resolves.toBeUndefined();
 
     expect(mocks.refreshCaptcha).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();

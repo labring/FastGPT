@@ -1,36 +1,62 @@
 import type { OpenAPIPath } from '../../../../type';
 import { DevApiTagsMap } from '../../../../tag';
 import {
-  UpdatePasswordByOldBodySchema,
-  UpdatePasswordByOldResponseSchema,
   CheckPswExpiredResponseSchema,
-  ResetExpiredPswBodySchema,
-  ResetExpiredPswResponseSchema,
-  UpdatePasswordByCodeBodySchema
+  CreatePasswordVerificationBodySchema,
+  CreatePasswordVerificationResponseSchema,
+  PasswordAuthorizationBodySchema,
+  PasswordAuthorizationResponseSchema,
+  UpdatePasswordBodySchema,
+  UpdatePasswordByCodeBodySchema,
+  UpdatePasswordResponseSchema
 } from './api';
 import { LoginSuccessResponseSchema } from '../login/api';
 
 export const PasswordPath: OpenAPIPath = {
-  '/support/user/account/updatePasswordByOld': {
+  '/proApi/support/user/account/password/authorization': {
     post: {
-      summary: '通过旧密码修改密码',
-      description: '使用旧密码验证后修改为新密码，修改成功后其他会话将被注销',
-      tags: [DevApiTagsMap.userLogin],
+      summary: '获取修改密码授权',
+      description: '解析当前账号的唯一验证方式，或消费验证材料后创建一次性改密 Session',
+      tags: [DevApiTagsMap.userLogin, 'Account Verification'],
       requestBody: {
-        content: {
-          'application/json': {
-            schema: UpdatePasswordByOldBodySchema
-          }
-        }
+        content: { 'application/json': { schema: PasswordAuthorizationBodySchema } }
       },
       responses: {
         200: {
-          description: '密码修改成功',
-          content: {
-            'application/json': {
-              schema: UpdatePasswordByOldResponseSchema
-            }
-          }
+          description: '授权结果',
+          content: { 'application/json': { schema: PasswordAuthorizationResponseSchema } }
+        }
+      }
+    }
+  },
+  '/proApi/support/user/account/password/verification/create': {
+    post: {
+      summary: '创建修改密码验证材料',
+      description: '创建绑定当前用户和 changePassword 场景的验证材料',
+      tags: [DevApiTagsMap.userLogin, 'Account Verification'],
+      requestBody: {
+        content: { 'application/json': { schema: CreatePasswordVerificationBodySchema } }
+      },
+      responses: {
+        200: {
+          description: '验证材料已创建',
+          content: { 'application/json': { schema: CreatePasswordVerificationResponseSchema } }
+        }
+      }
+    }
+  },
+  '/support/user/account/password/update': {
+    post: {
+      summary: '设置或修改密码',
+      description: '使用当前 Session 和一次性改密 Session 设置或修改密码，并注销其他 Session',
+      tags: [DevApiTagsMap.userLogin],
+      requestBody: {
+        content: { 'application/json': { schema: UpdatePasswordBodySchema } }
+      },
+      responses: {
+        200: {
+          description: '密码设置成功',
+          content: { 'application/json': { schema: UpdatePasswordResponseSchema } }
         }
       }
     }
@@ -38,40 +64,12 @@ export const PasswordPath: OpenAPIPath = {
   '/support/user/account/checkPswExpired': {
     get: {
       summary: '检查密码是否过期',
-      description: '检查当前用户的密码是否已过期，需要强制修改',
+      description: '无密码账号和 root 返回 false；其他账号按密码更新时间规则判断',
       tags: [DevApiTagsMap.userLogin],
       responses: {
         200: {
           description: '返回密码是否过期',
-          content: {
-            'application/json': {
-              schema: CheckPswExpiredResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-  '/support/user/account/resetExpiredPsw': {
-    post: {
-      summary: '重置过期密码',
-      description: '当密码过期时，使用此接口重置密码，重置后其他会话将被注销',
-      tags: [DevApiTagsMap.userLogin],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: ResetExpiredPswBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '密码重置成功',
-          content: {
-            'application/json': {
-              schema: ResetExpiredPswResponseSchema
-            }
-          }
+          content: { 'application/json': { schema: CheckPswExpiredResponseSchema } }
         }
       }
     }
@@ -82,20 +80,12 @@ export const PasswordPath: OpenAPIPath = {
       description: '通过邮箱/手机验证码找回或修改密码',
       tags: [DevApiTagsMap.userLogin],
       requestBody: {
-        content: {
-          'application/json': {
-            schema: UpdatePasswordByCodeBodySchema
-          }
-        }
+        content: { 'application/json': { schema: UpdatePasswordByCodeBodySchema } }
       },
       responses: {
         200: {
           description: '修改成功',
-          content: {
-            'application/json': {
-              schema: LoginSuccessResponseSchema
-            }
-          }
+          content: { 'application/json': { schema: LoginSuccessResponseSchema } }
         }
       }
     }

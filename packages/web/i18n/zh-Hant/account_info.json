@@ -125,5 +125,7 @@
   "user_account": "帳號",
   "user_team_team_name": "團隊",
   "you_can_convert": "您可以兌換",
-  "yuan": "元"
+  "yuan": "元",
+  "password_not_set": "尚未設定密碼",
+  "set_password": "設定"
 }
