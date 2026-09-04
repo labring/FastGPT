@@ -125,5 +125,7 @@
   "user_account": "Account",
   "user_team_team_name": "Team",
   "you_can_convert": "You can redeem",
-  "yuan": "Yuan"
+  "yuan": "Yuan",
+  "password_not_set": "No password set",
+  "set_password": "Set"
 }
