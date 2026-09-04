@@ -19,11 +19,7 @@ import {
   type ReferenceArrayValueType,
   type ReferenceItemValueType
 } from './type/io';
-import {
-  NodeToolConfigStorageTypeSchema,
-  type NodeToolConfigType,
-  type StoreNodeItemType
-} from './type/node';
+import type { NodeToolConfigType, StoreNodeItemType } from './type/node';
 import type { AppChatConfigType, AppSchemaType, AppWelcomeConfigType } from '../app/type';
 import type { VariableItemType } from '../app/variable/type';
 import { normalizeAndParseVariableList } from '../app/variable/utils';
@@ -428,28 +424,46 @@ export const toolSetData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }
 
     if (toolSetNode.toolConfig.httpToolSet) {
       if ('toolId' in toolSetNode.toolConfig.httpToolSet) {
-        return NodeToolConfigStorageTypeSchema.parse(toolSetNode.toolConfig);
+        return {
+          ...toolSetNode.toolConfig,
+          httpToolSet: { toolId: toolSetNode.toolConfig.httpToolSet.toolId }
+        };
       }
 
-      return NodeToolConfigStorageTypeSchema.parse({
+      const toolList = toolSetNode.toolConfig.httpToolSet.toolList.map((tool) => {
+        const restTool = { ...tool };
+        delete restTool.requestSchema;
+        delete restTool.inputSchema;
+        delete restTool.outputSchema;
+        return restTool;
+      });
+      return {
         ...toolSetNode.toolConfig,
         httpToolSet: {
-          toolList: toolSetNode.toolConfig.httpToolSet.toolList
+          toolList
         }
-      });
+      };
     }
     if (toolSetNode.toolConfig.mcpToolSet) {
       if ('toolId' in toolSetNode.toolConfig.mcpToolSet) {
-        return NodeToolConfigStorageTypeSchema.parse(toolSetNode.toolConfig);
+        return {
+          ...toolSetNode.toolConfig,
+          mcpToolSet: { toolId: toolSetNode.toolConfig.mcpToolSet.toolId }
+        };
       }
 
-      return NodeToolConfigStorageTypeSchema.parse({
+      const formatToolList = toolSetNode.toolConfig.mcpToolSet.toolList.map((tool) => {
+        const restTool = { ...tool };
+        delete restTool.inputSchema;
+        return restTool;
+      });
+      return {
         ...toolSetNode.toolConfig,
         mcpToolSet: {
           url: '',
-          toolList: toolSetNode.toolConfig.mcpToolSet.toolList
+          toolList: formatToolList
         }
-      });
+      };
     }
 
     return toolSetNode.toolConfig;
