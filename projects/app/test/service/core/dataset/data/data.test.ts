@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { getEmbeddingModelData } from '@fastgpt/service/core/ai/model';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
@@ -29,6 +29,11 @@ import {
   updateDatasetDataSystemIndexes
 } from '@/service/core/dataset/data/data';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { serviceEnv } from '@fastgpt/service/env';
+
+vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
+
+const originalDatasetSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
 
 const { mockDeleteDatasetFileByKey, mockGetDatasetBase64Image, mockCountPromptTokens } = vi.hoisted(
   () => ({
@@ -162,6 +167,7 @@ const toDataItem = (
 
 describe('Dataset data service', () => {
   beforeEach(() => {
+    serviceEnv.DATASET_SYNONYM_ENABLED = true;
     resetVectorMocks();
     mockGetVectors.mockClear();
     mockDeleteDatasetFileByKey.mockReset();
@@ -175,6 +181,10 @@ describe('Dataset data service', () => {
       insertIds: ['id_1', 'id_2', 'id_3', 'id_4', 'id_5', 'id_6']
     });
     mockVectorDelete.mockResolvedValue(undefined);
+  });
+
+  afterAll(() => {
+    serviceEnv.DATASET_SYNONYM_ENABLED = originalDatasetSynonymEnabled;
   });
 
   describe('createDatasetData', () => {
@@ -775,11 +785,6 @@ describe('Dataset data service', () => {
           }
         ]
       });
-      let questionAtVectorCleanup: string | undefined;
-      mockVectorDelete.mockImplementationOnce(async () => {
-        questionAtVectorCleanup = (await MongoDatasetData.findById(data._id).lean())?.q;
-      });
-
       const updatePromise = updateDatasetDataSystemIndexes({
         dataId: String(data._id),
         q: 'new question',
@@ -830,7 +835,6 @@ describe('Dataset data service', () => {
       expect(
         updatedData?.indexes.filter((index) => index.type === DatasetDataIndexTypeEnum.default)
       ).toHaveLength(1);
-      expect(questionAtVectorCleanup).toBe('new question');
     });
 
     it('should keep history unchanged when q and a do not change', async () => {

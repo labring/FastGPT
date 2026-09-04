@@ -6,6 +6,8 @@
 
 本期接受重建期间新旧 embedding 混合和召回短暂不一致，只要求最终一致。不新增同义词任务类型、队列、job、operation saga、mutation lock、自动回退、专用重试或进度协议。
 
+能力由服务端环境变量 `DATASET_SYNONYM_ENABLED` 控制，默认关闭。关闭时管理 API 直接拒绝请求，搜索和数据写入链路不读取同义词配置、不构建 matcher，也不执行同义词转换；已存在的同义词 training 暂停领取，重新启用后继续处理。
+
 ## 2. 核心语义
 
 ### 2.1 映射规则
@@ -60,15 +62,15 @@ type DatasetSynonymConfig = {
 
 ### 3.2 dataset_synonym_mappings
 
-mapping 使用 `teamId + datasetId + fileVersion` 归属配置版本，保存标准词、规范化匹配键、同义词列表、管理检索文本、fingerprint 和 migration 来源。
+mapping 使用 `teamId + datasetId + fileVersion` 归属配置版本，保存标准词、规范化匹配键、同义词列表、管理检索文本和 fingerprint。
 
-在线更新在事务中写入下一版本并删除旧版本，因此运行时只读取配置指向的当前完整版本。保留 `datasetSynonymMongoOnly` migration 脚本以及兼容 legacy mapping 的 partial unique 索引。
+在线更新在事务中写入下一版本并删除旧版本，因此运行时只读取配置指向的当前完整版本。
 
 ### 3.3 dataset_datas 与 dataset_trainings
 
 `dataset_datas.synonymVersion` 记录当前派生索引使用的配置版本，`synonymRebuildingVersion` 是领取标记；`dataset_trainings.synonymVersion` 记录任务目标版本。不增加同义词专用 mode。
 
-规则变化后，种子任务和后续链式任务持续领取版本不一致且未被领取的 data。同义词任务使用通用 `rebuildScope=text` 并固定为 `chunk`，不重新执行 VLM 或图片 embedding；worker 保留现有图片描述和 `imageEmbedding`，只重建文本向量与全文派生数据。成功写入时更新 `synonymVersion` 并释放领取标记；失败任务保留在现有 training 重试和错误处理流程中。
+规则变化后，种子任务和后续链式任务持续领取版本不一致且未被领取的 data。同义词任务使用通用 `rebuildScope=text` 并固定为 `chunk`，不重新执行 VLM 或图片 embedding；worker 保留现有图片描述和 `imageEmbedding`，只重建文本向量与全文派生数据。成功写入时更新 `synonymVersion` 并释放领取标记；失败任务保留在现有 training 重试和错误处理流程中。同义词 rebuild training 不参与普通 training 的七天 TTL，避免 MongoDB 后台删除绕过应用层 claim 清理；用户手动删除任务时继续在事务中释放 claim。
 
 ## 4. 更新流程
 
@@ -95,11 +97,9 @@ worker 不识别任务来源。所有带 `dataId` 的 training 都走已有 rebu
 
 JSON 和 multipart 输入统一经过 Zod 业务 schema。API 使用 `parseApiInput` 校验请求并使用 response schema 校验业务返回。
 
-管理页支持上传、替换、删除、下载、搜索和分页；现有 rebuild 队列忙时禁用修改操作。状态文案使用静态 i18n key。
+本期提供上传、替换、删除、下载、搜索和分页 API，供后续管理页接入；现有 rebuild 队列忙时拒绝修改操作。
 
-## 7. Migration 与清理
-
-保留 `projects/app/scripts/migration/datasetSynonymMongoOnly.ts`，用于将 legacy 配置和 mapping 转为当前 `schemaVersion=2 + fileVersion` 结构。
+## 7. 数据清理
 
 知识库删除时按既有生命周期清理配置和 mapping。同义词不注册专用 change stream 或 worker。
 
@@ -114,8 +114,7 @@ JSON 和 multipart 输入统一经过 Zod 业务 schema。API 使用 `parseApiIn
 - 同义词与模型切换生成相同的 training mode 和字段；
 - 上传、替换和删除后 matcher 立即生效；
 - 搜索始终保留原词并追加标准词；
-- 多知识库搜索、mapping 分页和静态 i18n key；
-- migration 脚本保留且可重复执行。
+- 多知识库搜索、mapping 分页和静态 i18n key。
 
 ## 9. TODO
 
@@ -125,4 +124,6 @@ JSON 和 multipart 输入统一经过 Zod 业务 schema。API 使用 `parseApiIn
 - [x] 同义词与模型切换共用 rebuild 种子和链式任务创建。
 - [x] 管理状态复用 data/training 查询。
 - [x] 合并批量写入的配置快照读取，并只保留一次权威版本校验。
+- [x] 增加默认关闭的服务端功能开关，关闭时跳过同义词查询和转换链路。
+- [x] 将同义词 rebuild 排除出普通 training TTL，由现有重试和人工删除流程管理。
 - [x] 运行定向测试、类型检查、格式检查和差异检查。

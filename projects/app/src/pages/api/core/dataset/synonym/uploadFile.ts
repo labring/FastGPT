@@ -15,8 +15,11 @@ import { decodeMultipartFilename } from '@fastgpt/service/common/s3/filename';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { parseSynonymFile } from '@fastgpt/service/core/dataset/synonym/utils';
 import { createDatasetSynonymMutation } from '@/service/core/dataset/synonym/mutation';
+import { assertDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
 
 async function handler(req: ApiRequestProps): Promise<DatasetSynonymMutationResponse> {
+  assertDatasetSynonymEnabled();
+
   const filepaths: string[] = [];
   try {
     const result = await multer.resolveFormData({

@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import {
-  DatasetSynonymMappingSourceEnum,
   DatasetSynonymMutationTypeEnum,
   DatasetSynonymSchemaVersion,
   type NormalizedSynonymMappingType
@@ -18,6 +17,7 @@ import {
   MongoDatasetSynonym,
   MongoDatasetSynonymMapping
 } from '@fastgpt/service/core/dataset/synonym/schema';
+import { serviceEnv } from '@fastgpt/service/env';
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
@@ -63,6 +63,7 @@ const createMapping = (
 
 describe('createDatasetSynonymMutation', () => {
   beforeEach(async () => {
+    serviceEnv.DATASET_SYNONYM_ENABLED = true;
     vi.clearAllMocks();
     global.systemEnv = { ...global.systemEnv, vectorMaxProcess: 1 };
     mockAuthDataset.mockResolvedValue({
@@ -114,8 +115,7 @@ describe('createDatasetSynonymMutation', () => {
       schemaVersion: DatasetSynonymSchemaVersion
     });
     await expect(MongoDatasetSynonymMapping.findOne({ datasetId }).lean()).resolves.toMatchObject({
-      fileVersion: 1,
-      source: DatasetSynonymMappingSourceEnum.job
+      fileVersion: 1
     });
     await expect(MongoDatasetTraining.findOne({ dataId: data._id }).lean()).resolves.toMatchObject({
       mode: TrainingModeEnum.chunk,

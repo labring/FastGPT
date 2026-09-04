@@ -11,8 +11,11 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoDatasetSynonym } from '@fastgpt/service/core/dataset/synonym/schema';
 import { createDatasetSynonymMutation } from '@/service/core/dataset/synonym/mutation';
+import { assertDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
 
 async function handler(req: ApiRequestProps): Promise<DeleteDatasetSynonymResponse> {
+  assertDatasetSynonymEnabled();
+
   const { id, oldFileVersion } = parseApiInput({
     req,
     querySchema: DeleteDatasetSynonymQuerySchema

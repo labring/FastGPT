@@ -1,6 +1,7 @@
 import { MongoDatasetSynonym, MongoDatasetSynonymMapping } from './schema';
 import { MongoDatasetData } from '../data/schema';
 import { MongoDatasetTraining } from '../training/schema';
+import { assertDatasetSynonymEnabled } from './entity';
 
 /** 获取当前同义词配置及其重建进度。 */
 export const getDatasetSynonymDetail = async ({
@@ -10,6 +11,8 @@ export const getDatasetSynonymDetail = async ({
   teamId: string;
   datasetId: string;
 }) => {
+  assertDatasetSynonymEnabled();
+
   const [file, rebuildingData, training] = await Promise.all([
     MongoDatasetSynonym.findOne({ teamId, datasetId }).lean(),
     MongoDatasetData.exists({ teamId, datasetId, rebuilding: true }),
@@ -35,6 +38,8 @@ export const searchDatasetSynonymMappings = async ({
   pageNum: number;
   pageSize: number;
 }) => {
+  assertDatasetSynonymEnabled();
+
   const config = await MongoDatasetSynonym.findOne({ teamId, datasetId }).lean();
   if (!config?.enabled) return { total: 0, list: [] };
   const escapedSearch = search?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

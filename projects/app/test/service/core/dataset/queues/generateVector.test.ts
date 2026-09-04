@@ -15,11 +15,13 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { seedDatasetRebuildTasks } from '@/service/core/dataset/queues/rebuild';
+import { serviceEnv } from '@fastgpt/service/env';
 
 let visionEmbeddingModel: EmbeddingSystemModelDataType;
 let vlmModel: LLMSystemModelDataType;
 
 beforeEach(() => {
+  serviceEnv.DATASET_SYNONYM_ENABLED = true;
   const defaultEmbeddingModel = global.systemDefaultModel.embedding;
   const defaultLLMModel = global.systemDefaultModel.llm;
   visionEmbeddingModel = {
@@ -130,6 +132,44 @@ describe('generateVector image embedding helpers', () => {
 });
 
 describe('dataset rebuild queue', () => {
+  it('does not claim synonym rebuild data when the feature is disabled', async () => {
+    serviceEnv.DATASET_SYNONYM_ENABLED = false;
+    const teamId = new Types.ObjectId();
+    const tmbId = new Types.ObjectId();
+    const datasetId = new Types.ObjectId();
+    const collection = await MongoDatasetCollection.create({
+      teamId,
+      tmbId,
+      datasetId,
+      name: 'Collection',
+      type: DatasetCollectionTypeEnum.file
+    });
+    const data = await MongoDatasetData.create({
+      teamId,
+      tmbId,
+      datasetId,
+      collectionId: collection._id,
+      q: 'data',
+      indexes: []
+    });
+
+    await expect(
+      seedDatasetRebuildTasks({
+        teamId: String(teamId),
+        tmbId: String(tmbId),
+        datasetId: String(datasetId),
+        billId: 'bill-id',
+        vectorModel: visionEmbeddingModel,
+        rebuildScope: DatasetRebuildScopeEnum.text,
+        synonymVersion: 2
+      })
+    ).resolves.toBe(0);
+    await expect(MongoDatasetTraining.countDocuments({ datasetId })).resolves.toBe(0);
+    await expect(MongoDatasetData.findById(data._id).lean()).resolves.not.toHaveProperty(
+      'synonymRebuildingVersion'
+    );
+  });
+
   it('claims synonym rebuild data incrementally by target version', async () => {
     const teamId = new Types.ObjectId();
     const tmbId = new Types.ObjectId();

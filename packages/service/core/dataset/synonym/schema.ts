@@ -3,7 +3,6 @@ import {
   DatasetSynonymMappingCollectionName
 } from '@fastgpt/global/core/dataset/constants';
 import {
-  DatasetSynonymMappingSourceEnum,
   DatasetSynonymSchemaVersion,
   type DatasetSynonymConfigType,
   type DatasetSynonymMappingType
@@ -49,22 +48,6 @@ const DatasetSynonymConfigSchema = new Schema({
 defineIndex(DatasetSynonymConfigSchema, {
   key: { teamId: 1, datasetId: 1 },
   options: { unique: true }
-});
-defineIndex(DatasetSynonymConfigSchema, {
-  key: { teamId: 1, fileId: 1 },
-  options: {
-    unique: true,
-    partialFilterExpression: { fileId: { $exists: true } }
-  },
-  deprecated: true
-});
-defineIndex(DatasetSynonymConfigSchema, {
-  key: { teamId: 1, pendingFileId: 1 },
-  options: {
-    unique: true,
-    partialFilterExpression: { pendingFileId: { $exists: true } }
-  },
-  deprecated: true
 });
 
 const DatasetSynonymMappingSchema = new Schema({
@@ -115,12 +98,6 @@ const DatasetSynonymMappingSchema = new Schema({
     type: String,
     required: true
   },
-  source: {
-    type: String,
-    enum: Object.values(DatasetSynonymMappingSourceEnum),
-    default: DatasetSynonymMappingSourceEnum.job,
-    required: true
-  },
   createTime: {
     type: Date,
     default: () => new Date()
@@ -133,37 +110,11 @@ const DatasetSynonymMappingSchema = new Schema({
 
 defineIndex(DatasetSynonymMappingSchema, {
   key: { teamId: 1, datasetId: 1, fileVersion: 1, normalizedStandardizedTerm: 1 },
-  options: {
-    name: 'synonym_version_standard_unique_v2',
-    unique: true,
-    partialFilterExpression: {
-      fileVersion: { $type: 'number' },
-      normalizedStandardizedTerm: { $type: 'string' },
-      source: { $type: 'string' }
-    }
-  }
-});
-defineIndex(DatasetSynonymMappingSchema, {
-  key: { teamId: 1, datasetId: 1, fileVersion: 1, normalizedStandardizedTerm: 1 },
-  options: { unique: true },
-  deprecated: true
+  options: { unique: true }
 });
 defineIndex(DatasetSynonymMappingSchema, {
   key: { teamId: 1, datasetId: 1, fileVersion: 1, logicalMappingId: 1 },
-  options: { unique: true },
-  deprecated: true
-});
-defineIndex(DatasetSynonymMappingSchema, {
-  key: { teamId: 1, datasetId: 1, fileVersion: 1, logicalMappingId: 1 },
-  options: {
-    name: 'synonym_version_logical_unique_v2',
-    unique: true,
-    partialFilterExpression: {
-      fileVersion: { $type: 'number' },
-      logicalMappingId: { $type: 'objectId' },
-      source: { $type: 'string' }
-    }
-  }
+  options: { unique: true }
 });
 defineIndex(DatasetSynonymMappingSchema, {
   key: { teamId: 1, datasetId: 1, fileVersion: 1 }

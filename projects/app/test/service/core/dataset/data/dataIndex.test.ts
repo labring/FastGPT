@@ -62,6 +62,7 @@ const embeddingModel = {
   }
 } as any;
 const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
+const originalDatasetSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
 const tokenHeavyText = Array.from({ length: 30 }, (_, index) => `𠮷${index}`).join('');
 const largeTokenHeavyText = Array.from(
   { length: 320 },
@@ -153,6 +154,7 @@ const createData = async (
 
 describe('DatasetDataIndexOperation', () => {
   beforeEach(() => {
+    serviceEnv.DATASET_SYNONYM_ENABLED = true;
     serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
     resetVectorMocks();
     mockGetVectors.mockClear();
@@ -173,6 +175,7 @@ describe('DatasetDataIndexOperation', () => {
 
   afterEach(() => {
     serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+    serviceEnv.DATASET_SYNONYM_ENABLED = originalDatasetSynonymEnabled;
   });
 
   describe('getSystemIndexes', () => {

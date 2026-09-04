@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetSynonymMutationTypeEnum } from '@fastgpt/global/core/dataset/synonym';
+import { serviceEnv } from '@fastgpt/service/env';
 
 const {
   mockResolveFormData,
@@ -43,6 +44,7 @@ const response = {
 
 describe('dataset synonym multipart mutation API', () => {
   beforeEach(() => {
+    serviceEnv.DATASET_SYNONYM_ENABLED = true;
     vi.clearAllMocks();
     mockResolveFormData.mockResolvedValue({
       data: { datasetId },
@@ -55,6 +57,14 @@ describe('dataset synonym multipart mutation API', () => {
     });
     mockParseSynonymFile.mockReturnValue(mappings);
     mockCreateDatasetSynonymMutation.mockResolvedValue(response);
+  });
+
+  it('rejects before reading multipart files when the feature is disabled', async () => {
+    serviceEnv.DATASET_SYNONYM_ENABLED = false;
+
+    await expect(uploadFileHandler({ body: {} } as any)).rejects.toThrow('知识库同义词功能未启用');
+    expect(mockResolveFormData).not.toHaveBeenCalled();
+    expect(mockParseSynonymFile).not.toHaveBeenCalled();
   });
 
   it('parses a request-local file and always removes its temp file', async () => {

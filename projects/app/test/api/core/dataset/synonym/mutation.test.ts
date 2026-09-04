@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetSynonymMutationTypeEnum } from '@fastgpt/global/core/dataset/synonym';
+import { serviceEnv } from '@fastgpt/service/env';
 
 const { mockCreateDatasetSynonymMutation } = vi.hoisted(() => ({
   mockCreateDatasetSynonymMutation: vi.fn()
@@ -29,6 +30,7 @@ const response = {
 
 describe('dataset synonym JSON mutation APIs', () => {
   beforeEach(() => {
+    serviceEnv.DATASET_SYNONYM_ENABLED = true;
     vi.clearAllMocks();
     mockCreateDatasetSynonymMutation.mockResolvedValue(response);
   });

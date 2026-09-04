@@ -17,7 +17,6 @@
     "analyze": "next experimental-analyze",
     "start": "next start",
     "migrate:auth-code": "tsx scripts/migration/authCodeToTmpData.ts",
-    "migrate:dataset-synonym-mongo-only": "tsx scripts/migration/datasetSynonymMongoOnly.ts",
     "test": "vitest run -c vitest.config.ts",
     "test:watch": "vitest -c vitest.config.ts",
     "build:workers": "tsx scripts/build-workers.ts",

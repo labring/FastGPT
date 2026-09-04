@@ -15,12 +15,6 @@ export enum DatasetSynonymMutationTypeEnum {
   delete = 'delete'
 }
 
-/** 同义词 mapping 的来源，供历史数据迁移脚本保留来源标记。 */
-export enum DatasetSynonymMappingSourceEnum {
-  job = 'job',
-  legacyMigration = 'legacyMigration'
-}
-
 export const DatasetSynonymSchemaVersion = 2 as const;
 
 export const DatasetSynonymConfigSchema = z.object({
@@ -51,7 +45,6 @@ export const DatasetSynonymMappingSchema = z.object({
   normalizedSynonymTerms: z.array(z.string()).meta({ description: '同义词匹配键列表' }),
   allTerms: z.string().meta({ description: '用于管理检索的全部词文本' }),
   fingerprint: z.string().meta({ description: '映射内容指纹' }),
-  source: z.enum(DatasetSynonymMappingSourceEnum).default(DatasetSynonymMappingSourceEnum.job),
   createTime: z.coerce.date().meta({ description: '创建时间' }),
   updateTime: z.coerce.date().meta({ description: '更新时间' })
 });

@@ -54,19 +54,7 @@ const legacyDefinition = {
 } as const;
 
 describe('dataset synonym index declarations', () => {
-  it('declares legacy config indexes as deprecated', () => {
-    expect(getSchemaDeprecatedMongoIndexes(MongoDatasetSynonym.schema)).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ indexName: 'teamId_1_fileId_1', key: { teamId: 1, fileId: 1 } }),
-        expect.objectContaining({
-          indexName: 'teamId_1_pendingFileId_1',
-          key: { teamId: 1, pendingFileId: 1 }
-        })
-      ])
-    );
-  });
-
-  it('limits version uniqueness to migrated mapping documents', () => {
+  it('declares strict version uniqueness without legacy compatibility metadata', () => {
     const indexes = MongoDatasetSynonymMapping.schema.indexes();
     const normalizedTermIndex = indexes.find(
       ([key]) => 'normalizedStandardizedTerm' in key && 'fileVersion' in key
@@ -75,34 +63,12 @@ describe('dataset synonym index declarations', () => {
       ([key]) => 'logicalMappingId' in key && 'fileVersion' in key
     );
 
-    expect(normalizedTermIndex?.[1]).toMatchObject({
-      name: 'synonym_version_standard_unique_v2',
-      unique: true,
-      partialFilterExpression: {
-        fileVersion: { $type: 'number' },
-        normalizedStandardizedTerm: { $type: 'string' },
-        source: { $type: 'string' }
-      }
-    });
-    expect(logicalIdIndex?.[1]).toMatchObject({
-      name: 'synonym_version_logical_unique_v2',
-      unique: true,
-      partialFilterExpression: {
-        fileVersion: { $type: 'number' },
-        logicalMappingId: { $type: 'objectId' },
-        source: { $type: 'string' }
-      }
-    });
-    expect(getSchemaDeprecatedMongoIndexes(MongoDatasetSynonymMapping.schema)).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          indexName: 'teamId_1_datasetId_1_fileVersion_1_normalizedStandardizedTerm_1'
-        }),
-        expect.objectContaining({
-          indexName: 'teamId_1_datasetId_1_fileVersion_1_logicalMappingId_1'
-        })
-      ])
-    );
+    expect(normalizedTermIndex?.[1]).toMatchObject({ unique: true });
+    expect(normalizedTermIndex?.[1].partialFilterExpression).toBeUndefined();
+    expect(logicalIdIndex?.[1]).toMatchObject({ unique: true });
+    expect(logicalIdIndex?.[1].partialFilterExpression).toBeUndefined();
+    expect(getSchemaDeprecatedMongoIndexes(MongoDatasetSynonym.schema)).toEqual([]);
+    expect(getSchemaDeprecatedMongoIndexes(MongoDatasetSynonymMapping.schema)).toEqual([]);
   });
 });
 
@@ -581,32 +547,29 @@ describe('MongoIndexManager.cleanupModelDeprecatedIndexes', () => {
 });
 
 describe('dataset training TTL index migration', () => {
-  it('restores the ordinary training TTL and removes branch-only partial indexes', () => {
+  it('excludes synonym rebuild tasks from TTL and removes the obsolete index', () => {
     const ttlIndex = MongoDatasetTraining.schema
       .indexes()
       .find(
         ([key, options]) =>
-          'expireAt' in key && options.partialFilterExpression === undefined && !options.deprecated
+          'expireAt' in key &&
+          options.partialFilterExpression?.synonymVersion !== undefined &&
+          !options.deprecated
       );
 
     expect(ttlIndex).toEqual([
       { expireAt: 1 },
       expect.objectContaining({
-        expireAfterSeconds: 7 * 24 * 60 * 60
+        name: 'expireAt_1_non_synonym_rebuild',
+        expireAfterSeconds: 7 * 24 * 60 * 60,
+        partialFilterExpression: { synonymVersion: null }
       })
     ]);
     expect(getSchemaDeprecatedMongoIndexes(MongoDatasetTraining.schema)).toContainEqual({
-      indexName: 'expireAt_1_non_synonym_rebuild',
+      indexName: 'expireAt_1',
       key: { expireAt: 1 },
       options: expect.objectContaining({
-        partialFilterExpression: { rebuildMutationId: { $exists: false } }
-      })
-    });
-    expect(getSchemaDeprecatedMongoIndexes(MongoDatasetTraining.schema)).toContainEqual({
-      indexName: 'expireAt_1_non_rebuild',
-      key: { expireAt: 1 },
-      options: expect.objectContaining({
-        partialFilterExpression: { rebuildMode: { $exists: false } }
+        expireAfterSeconds: 7 * 24 * 60 * 60
       })
     });
   });

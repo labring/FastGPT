@@ -131,8 +131,7 @@ const Render = (data: Props) => (
 export default Render;
 
 export async function getServerSideProps(context: any) {
-  const queryTab = context?.query?.currentTab;
-  const currentTab = Object.values(TabEnum).includes(queryTab) ? queryTab : TabEnum.collectionCard;
+  const currentTab = context?.query?.currentTab || TabEnum.collectionCard;
   const datasetId = context?.query?.datasetId;
 
   return {

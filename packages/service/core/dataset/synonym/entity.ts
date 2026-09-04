@@ -9,6 +9,7 @@ import {
   type DatasetSynonymMatcherMapping
 } from './utils';
 import { MongoDatasetSynonym, MongoDatasetSynonymMapping } from './schema';
+import { serviceEnv } from '../../../env';
 
 const matcherCacheMaxWeight = DatasetSynonymLimits.maxTotalTermCodePoints * 2;
 const matcherCache = new Map<string, { matcher: DatasetSynonymMatcher; weight: number }>();
@@ -19,6 +20,16 @@ const transformConfigCache = new Map<
   string,
   { expiresAt: number; promise: Promise<DatasetSynonymConfigType | null> }
 >();
+
+/** 判断服务端是否启用知识库同义词能力，默认关闭。 */
+export const isDatasetSynonymEnabled = () => serviceEnv.DATASET_SYNONYM_ENABLED;
+
+/** 阻止关闭状态下的同义词管理操作进入解析、鉴权和数据访问链路。 */
+export const assertDatasetSynonymEnabled = () => {
+  if (!isDatasetSynonymEnabled()) {
+    throw new Error('知识库同义词功能未启用');
+  }
+};
 
 const getMatcherCacheKey = ({
   teamId,
@@ -177,6 +188,8 @@ export const getDatasetSynonymRuntimeConfig = async ({
   teamId: string;
   datasetId: string;
 }) => {
+  if (!isDatasetSynonymEnabled()) return null;
+
   const config = await getDatasetSynonymConfig({ teamId, datasetId });
   if (!config) return null;
 
@@ -200,6 +213,14 @@ export const getDatasetSynonymTransformContext = async ({
   teamId: string;
   datasetId: string;
 }) => {
+  if (!isDatasetSynonymEnabled()) {
+    return {
+      version: 0,
+      transformText: (text: string) => text,
+      isCurrent: async () => true
+    };
+  }
+
   const config = await getCachedDatasetSynonymConfig({ teamId, datasetId });
   const matcher = config?.enabled
     ? await getDatasetSynonymMatcher({

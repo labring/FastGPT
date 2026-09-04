@@ -12,8 +12,11 @@ import {
   serializeSynonymMappingsToCsv
 } from '@fastgpt/service/core/dataset/synonym/utils';
 import { createDatasetSynonymMutation } from '@/service/core/dataset/synonym/mutation';
+import { assertDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
 
 async function handler(req: ApiRequestProps): Promise<DatasetSynonymMutationResponse> {
+  assertDatasetSynonymEnabled();
+
   const {
     datasetId,
     mappings: inputMappings,

@@ -312,6 +312,9 @@ export const serviceEnv = createEnv({
     }),
 
     //==================== Beta features ====================
+    DATASET_SYNONYM_ENABLED: BoolSchema.default(false).meta({
+      description: '是否启用知识库同义词能力；关闭时不读取同义词配置或执行查询扩展'
+    }),
     AGENT_ENGINE: z.enum(['fastAgent', 'piAgent']).default('fastAgent').meta({
       description: 'Agent 引擎选择：fastAgent（FastGPT agent loop）| piAgent（pi-agent-core 引擎）'
     }),

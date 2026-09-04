@@ -4,7 +4,6 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import type { NormalizedSynonymMappingType } from '@fastgpt/global/core/dataset/synonym';
 import {
-  DatasetSynonymMappingSourceEnum,
   DatasetSynonymMutationTypeEnum,
   DatasetSynonymSchemaVersion
 } from '@fastgpt/global/core/dataset/synonym';
@@ -19,7 +18,10 @@ import { getDatasetEmbeddingModel } from '@fastgpt/service/core/dataset/model';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { invalidateDatasetSynonymMatcherCache } from '@fastgpt/service/core/dataset/synonym/entity';
+import {
+  assertDatasetSynonymEnabled,
+  invalidateDatasetSynonymMatcherCache
+} from '@fastgpt/service/core/dataset/synonym/entity';
 import { seedDatasetRebuildTasks } from '../queues/rebuild';
 import { DatasetRebuildScopeEnum } from '@fastgpt/global/core/dataset/constants';
 
@@ -58,6 +60,8 @@ export const createDatasetSynonymMutation = async ({
   expectedFileVersion,
   type
 }: DatasetSynonymMutationProps) => {
+  assertDatasetSynonymEnabled();
+
   const { teamId, tmbId, dataset } = await authDataset({
     req,
     authToken: true,
@@ -119,7 +123,6 @@ export const createDatasetSynonymMutation = async ({
               normalizedSynonymTerms: mapping.normalizedSynonymTerms,
               allTerms: mapping.allTerms,
               fingerprint: mapping.fingerprint,
-              source: DatasetSynonymMappingSourceEnum.job,
               createTime: now,
               updateTime: now
             }

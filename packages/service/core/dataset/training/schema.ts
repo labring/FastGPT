@@ -141,25 +141,16 @@ defineIndex(TrainingDataSchema, {
 });
 defineIndex(TrainingDataSchema, {
   key: { expireAt: 1 },
-  options: { expireAfterSeconds: 7 * 24 * 60 * 60 }
-}); // 7 days
-// 本分支早期为同义词重建增加了专用 TTL，收敛为普通 rebuild 后精确清理。
-defineIndex(TrainingDataSchema, {
-  key: { expireAt: 1 },
   options: {
     name: 'expireAt_1_non_synonym_rebuild',
     expireAfterSeconds: 7 * 24 * 60 * 60,
-    partialFilterExpression: { rebuildMutationId: { $exists: false } }
-  },
-  deprecated: true
+    partialFilterExpression: { synonymVersion: null }
+  }
 });
+// 旧全量 TTL 会绕过应用层删除逻辑，导致同义词任务的 data claim 无法释放。
 defineIndex(TrainingDataSchema, {
   key: { expireAt: 1 },
-  options: {
-    name: 'expireAt_1_non_rebuild',
-    expireAfterSeconds: 7 * 24 * 60 * 60,
-    partialFilterExpression: { rebuildMode: { $exists: false } }
-  },
+  options: { expireAfterSeconds: 7 * 24 * 60 * 60 },
   deprecated: true
 });
 export const MongoDatasetTraining = getMongoModel<DatasetTrainingSchemaType>(

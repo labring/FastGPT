@@ -19,6 +19,7 @@ import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/cons
 import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
 import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
 import { enqueueNextDatasetRebuildTask } from './rebuild';
+import { isDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
@@ -99,7 +100,10 @@ export async function generateVector(): Promise<any> {
             {
               mode: TrainingModeEnum.chunk,
               retryCount: { $gt: 0 },
-              lockTime: { $lte: addMinutes(new Date(), -3) }
+              lockTime: { $lte: addMinutes(new Date(), -3) },
+              ...(!isDatasetSynonymEnabled() && {
+                synonymVersion: { $exists: false }
+              })
             },
             {
               lockTime: new Date(),

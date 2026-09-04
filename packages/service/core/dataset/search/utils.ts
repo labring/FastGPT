@@ -12,7 +12,7 @@ import type {
   EmbeddingSystemModelDataType,
   LLMSystemModelDataType
 } from '@fastgpt/global/core/ai/model.schema';
-import { getDatasetSynonymRuntimeConfig } from '../synonym/entity';
+import { getDatasetSynonymRuntimeConfig, isDatasetSynonymEnabled } from '../synonym/entity';
 import {
   buildSynonymMatcher,
   normalizeSynonymTerm,
@@ -107,6 +107,8 @@ export const standardizeDatasetSearchQueries = async ({
   datasetIds: string[];
   queries: string[];
 }) => {
+  if (!isDatasetSynonymEnabled()) return queries;
+
   const runtimeConfigs = await Promise.all(
     datasetIds.map((datasetId) => getDatasetSynonymRuntimeConfig({ teamId, datasetId }))
   );

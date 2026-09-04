@@ -27,6 +27,16 @@ import {
 } from '../../../../core/dataset/search/utils';
 
 const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
+const originalDatasetSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
+
+beforeEach(() => {
+  serviceEnv.DATASET_SYNONYM_ENABLED = true;
+});
+
+afterEach(() => {
+  serviceEnv.DATASET_SYNONYM_ENABLED = originalDatasetSynonymEnabled;
+  serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+});
 
 describe('mergeDatasetSynonymQueryMatches', () => {
   const baseMatch = {
@@ -78,6 +88,20 @@ describe('mergeDatasetSynonymQueryMatches', () => {
 });
 
 describe('standardizeDatasetSearchQueries', () => {
+  it('returns original queries without reading synonym configs when disabled', async () => {
+    serviceEnv.DATASET_SYNONYM_ENABLED = false;
+    const findConfig = vi.spyOn(MongoDatasetSynonym, 'findOne');
+
+    await expect(
+      standardizeDatasetSearchQueries({
+        teamId: 'team-id',
+        datasetIds: ['dataset-id'],
+        queries: ['original query']
+      })
+    ).resolves.toEqual(['original query']);
+    expect(findConfig).not.toHaveBeenCalled();
+  });
+
   it('always preserves the original query for eventual-consistency rebuilds', async () => {
     const teamId = new Types.ObjectId();
     const datasetId = new Types.ObjectId();
@@ -111,14 +135,9 @@ describe('standardizeDatasetSearchQueries', () => {
   });
 });
 
-afterEach(() => {
-  serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
-});
-
 describe('normalizeImageToBase64', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
   });
 
   it('should keep image url unchanged when base64 conversion is disabled', async () => {

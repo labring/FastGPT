@@ -13,6 +13,7 @@ import type {
   EmbeddingSystemModelDataType,
   LLMSystemModelDataType
 } from '@fastgpt/global/core/ai/model.schema';
+import { isDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
 
 type DatasetRebuildContext = {
   teamId: string;
@@ -33,6 +34,8 @@ export const enqueueNextDatasetRebuildTask = async (
   context: DatasetRebuildContext,
   session?: ClientSession
 ) => {
+  if (context.synonymVersion && !isDatasetSynonymEnabled()) return false;
+
   const enqueue = async (session: ClientSession) => {
     while (true) {
       const data = await MongoDatasetData.findOneAndUpdate(

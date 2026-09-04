@@ -14,6 +14,7 @@ vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDataset: mockAuthDataset
 }));
 vi.mock('@fastgpt/service/core/dataset/synonym/entity', () => ({
+  assertDatasetSynonymEnabled: vi.fn(),
   getDatasetSynonymMappings: mockGetDatasetSynonymMappings
 }));
 

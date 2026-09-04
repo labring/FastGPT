@@ -6,10 +6,15 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { MongoDatasetSynonym } from '@fastgpt/service/core/dataset/synonym/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { getDatasetSynonymMappings } from '@fastgpt/service/core/dataset/synonym/entity';
+import {
+  assertDatasetSynonymEnabled,
+  getDatasetSynonymMappings
+} from '@fastgpt/service/core/dataset/synonym/entity';
 import { serializeSynonymMappingsToCsv } from '@fastgpt/service/core/dataset/synonym/utils';
 
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
+  assertDatasetSynonymEnabled();
+
   const { id } = parseApiInput({ req, querySchema: DownloadDatasetSynonymQuerySchema }).query;
   const config = await MongoDatasetSynonym.findById(id).lean();
   if (!config?.enabled) throw new Error('同义词配置不存在');
