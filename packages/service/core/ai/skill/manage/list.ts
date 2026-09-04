@@ -155,7 +155,7 @@ export const listReadableAgentSkills = async ({
   const paged = offset !== undefined || (page !== undefined && pageSize !== undefined);
   const skip = paged ? (offset ?? (page! - 1) * pageSize!) : 0;
   const skillQuery = MongoAgentSkills.find(findSkillQuery)
-    .sort({ type: -1, updateTime: -1, _id: -1 })
+    .sort({ updateTime: -1, _id: -1 })
     .skip(skip);
   if (paged) skillQuery.limit(pageSize!);
   const [mySkills, dbTotal] = await Promise.all([

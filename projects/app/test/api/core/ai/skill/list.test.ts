@@ -57,6 +57,42 @@ describe('POST /api/core/ai/skill/list', () => {
     expect(res.data.list[0].name).toBe('Paged Skill 2');
   });
 
+  it('V2 sorts folders and skills by update time', async () => {
+    const user = await getUser(`agent-skill-list-sort-${getNanoid(6)}`);
+    await MongoAgentSkills.create([
+      {
+        name: 'Recently Updated Folder',
+        type: AgentSkillTypeEnum.folder,
+        source: AgentSkillSourceEnum.personal,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        updateTime: new Date('2024-01-02T00:00:00.000Z')
+      },
+      {
+        name: 'Older Skill',
+        type: AgentSkillTypeEnum.skill,
+        source: AgentSkillSourceEnum.personal,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        updateTime: new Date('2024-01-01T00:00:00.000Z')
+      }
+    ]);
+
+    const res = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
+      handlerV2,
+      {
+        auth: user,
+        body: { source: 'mine', parentId: null, withAppCount: false }
+      }
+    );
+
+    expect(res.code).toBe(200);
+    expect(res.data.list.map((item) => item.name)).toEqual([
+      'Recently Updated Folder',
+      'Older Skill'
+    ]);
+  });
+
   it('按 skillIds 查询时不会被默认分页截断', async () => {
     const user = await getUser(`agent-skill-list-ids-${getNanoid(6)}`);
     const skills = await MongoAgentSkills.create(
