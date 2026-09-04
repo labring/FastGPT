@@ -3,7 +3,6 @@ export {
   AccountCancellationStatus,
   AccountCancellationUnavailableReason,
   accountCancellationActiveStatuses,
-  accountCancellationAllowedMethods,
   accountCancellationStatusMap,
   accountCancellationWaitDays
 } from './constants';

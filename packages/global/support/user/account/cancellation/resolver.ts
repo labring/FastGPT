@@ -8,10 +8,22 @@ export const resolveAccountCancellationByUsername = ({
 }: AccountCancellationResolverInput): AccountCancellationResolveResult => {
   const result = resolveAccountVerificationByUsername({
     username: username ?? '',
-    capabilities
+    capabilities,
+    // 注销不实际使用密码；这里保留 fallback 仅用于将该分类收窄为既有注销错误。
+    allowPasswordFallback: true,
+    oldPasswordAvailable: true
   });
 
-  if (result.status === 'unsupported') return result;
+  if (result.status === 'unsupported') {
+    return {
+      status: 'unsupported',
+      accountKind: result.accountKind,
+      unsupportedReason:
+        result.unsupportedReason === 'empty_username'
+          ? 'empty_username'
+          : 'verification_unavailable'
+    };
+  }
 
   if (result.method === 'oldPassword') {
     return {

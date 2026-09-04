@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import {
-  AccountCancellationAllowedMethodSchema,
-  AccountCancellationUnavailableReasonSchema
-} from '../../../../../support/user/account/cancellation/type';
+import { AccountExternalVerificationMethodSchema } from '../../../../../support/user/account/verification/type';
+import { oauthAccountVerificationMethods } from '../../../../../support/user/account/verification/constants';
+import type { OAuthAccountVerificationMethod } from '../../../../../support/user/account/verification/type';
+import { AccountCancellationUnavailableReasonSchema } from '../../../../../support/user/account/cancellation/type';
 
 /* ============================================================================
  * API: 账号注销
@@ -22,7 +22,7 @@ export const AccountCancellationStatusResponseSchema = z
         description: '是否允许发起注销申请',
         example: true
       }),
-      verificationMethod: AccountCancellationAllowedMethodSchema.optional().meta({
+      verificationMethod: AccountExternalVerificationMethodSchema.optional().meta({
         description: '当前账号可用的注销验证方式',
         example: 'code'
       }),
@@ -75,18 +75,14 @@ const OAuthCreatePayloadSchema = z.object({
   isWecomWorkTerminal: z.boolean().optional().meta({ description: '是否来自企业微信工作台' })
 });
 
-const OAuthCreateMethodSchemas = [
-  'oauth/github',
-  'oauth/google',
-  'oauth/microsoft',
-  'oauth/wecom',
-  'oauth/sso'
-] as const;
+const createOAuthVerificationSchemaTuple = <Schema extends z.ZodType>(
+  createSchema: (method: OAuthAccountVerificationMethod) => Schema
+) => oauthAccountVerificationMethods.map(createSchema) as [Schema, Schema, Schema, Schema, Schema];
 
 export const CreateAccountCancellationVerificationBodySchema = z.discriminatedUnion('method', [
   CodeVerificationCreateSchema,
   WechatVerificationCreateSchema,
-  ...OAuthCreateMethodSchemas.map((method) =>
+  ...createOAuthVerificationSchemaTuple((method) =>
     z.object({
       method: z.literal(method).meta({ description: 'OAuth 验证方式', example: method }),
       payload: OAuthCreatePayloadSchema
@@ -113,7 +109,7 @@ export const CreateAccountCancellationVerificationResponseSchema = z.discriminat
       .meta({ description: '微信二维码地址', example: 'https://mp.weixin.qq.com/...' }),
     expiredAt: DateTimeSchema.optional().meta({ description: '二维码过期时间' })
   }),
-  ...OAuthCreateMethodSchemas.map((method) =>
+  ...createOAuthVerificationSchemaTuple((method) =>
     z.object({
       method: z.literal(method),
       state: z.string().min(16).meta({ description: '一次性 OAuth state', example: 'state' }),
@@ -172,7 +168,7 @@ const OAuthSubmitPayloadSchema = z.object({
 export const SubmitAccountCancellationBodySchema = z.discriminatedUnion('method', [
   CodeSubmitSchema,
   WechatSubmitSchema,
-  ...OAuthCreateMethodSchemas.map((method) =>
+  ...createOAuthVerificationSchemaTuple((method) =>
     z.object({ method: z.literal(method), payload: OAuthSubmitPayloadSchema })
   )
 ] as [typeof CodeSubmitSchema, typeof WechatSubmitSchema, ...any[]]);
@@ -198,5 +194,3 @@ export const CancelAccountCancellationResponseSchema = z
 export type CancelAccountCancellationResponse = z.infer<
   typeof CancelAccountCancellationResponseSchema
 >;
-
-export { AccountCancellationAllowedMethodSchema };
