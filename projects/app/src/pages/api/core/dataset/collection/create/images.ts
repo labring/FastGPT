@@ -37,7 +37,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       allowedExtensions: parseAllowedExtensions(datasetImageCollectionFileType)
     });
     filepaths.push(...result.fileMetadata.map((item) => item.path));
-    const { parentId, datasetId, collectionName } = CreateImageCollectionFormSchema.parse(
+    const { parentId, datasetId, collectionName, tags } = CreateImageCollectionFormSchema.parse(
       result.data
     );
 
@@ -99,6 +99,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
         datasetId,
         type: DatasetCollectionTypeEnum.images,
         name: collectionName,
+        tags,
         trainingType: supportVlm
           ? DatasetCollectionDataProcessModeEnum.imageParse
           : DatasetCollectionDataProcessModeEnum.chunk

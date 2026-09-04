@@ -28,7 +28,7 @@ export const useAppendDatasetTagOption = () => {
       });
     },
     {
-      refreshDeps: [datasetDetail._id, allDatasetTags],
+      refreshDeps: [datasetDetail._id],
       onSuccess: loadAllDatasetTags,
       errorToast: t('dataset:tag.save_failed')
     }

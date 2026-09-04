@@ -1,14 +1,10 @@
 import type { CollectionTagValueType } from './type';
 
-/** 标签值去重/列表 key：区分 number 2 与 string "2"。 */
-export const collectionTagValueKey = (value: string | number) =>
-  typeof value === 'number' ? `n:${value}` : `s:${value}`;
-
-/** 数字按大小、其余按 zh-CN 字典序。前后端筛选项展示共用。 */
+/** 同一标签类型固定：数字按大小，其余按字典序。前后端筛选项展示共用。 */
 export const sortCollectionTagValues = <T extends string | number>(values: T[]): T[] =>
   [...values].sort((a, b) => {
     if (typeof a === 'number' && typeof b === 'number') return a - b;
-    return String(a).localeCompare(String(b), 'zh-CN');
+    return String(a).localeCompare(String(b));
   });
 
 /** 筛选项只保留非空字符串和有限数字。 */

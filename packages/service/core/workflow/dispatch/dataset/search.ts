@@ -22,6 +22,11 @@ import {
   createQueryExtensionChildNodeResponse
 } from './nodeResponse';
 import { normalizeDatasetSearchInput } from './utils';
+import type { CollectionFilterMode } from '../../../dataset/search/type';
+import {
+  resolveDatasetTagFilterVersion,
+  type DatasetTagFilterVersion
+} from '@fastgpt/global/core/dataset/workflowTagFilter';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DATASET);
 
@@ -40,6 +45,7 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
 
   [NodeInputKeyEnum.collectionFilterMatch]: string;
+  [NodeInputKeyEnum.collectionFilterVersion]?: DatasetTagFilterVersion;
   [NodeInputKeyEnum.authTmbId]?: boolean;
 
   [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]: boolean;
@@ -57,9 +63,10 @@ export type DatasetSearchResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.datasetQuoteQA]: SearchDataResponseItemType[];
 }>;
 
-export async function dispatchDatasetSearch(
+/** 根据节点保存的显式版本选择标签过滤语义；缺少版本的存量节点固定走 legacy。 */
+export const dispatchDatasetSearch = async (
   props: DatasetSearchProps
-): Promise<DatasetSearchResponse> {
+): Promise<DatasetSearchResponse> => {
   const {
     runningAppInfo: { teamId },
     runningUserInfo: { tmbId },
@@ -74,6 +81,7 @@ export async function dispatchDatasetSearch(
       datasetSearchInput = [],
       authTmbId = false,
       collectionFilterMatch,
+      collectionFilterVersion,
       searchMode,
       embeddingWeight,
       usingReRank,
@@ -97,6 +105,11 @@ export async function dispatchDatasetSearch(
   if (!Array.isArray(datasets)) {
     return Promise.reject(i18nT('chat:dataset_quote_type error'));
   }
+
+  const collectionFilterMode: CollectionFilterMode = resolveDatasetTagFilterVersion({
+    version: collectionFilterVersion,
+    filterValue: collectionFilterMatch
+  });
 
   if (datasets.length === 0) {
     return getNodeErrResponse({ error: i18nT('common:core.chat.error.Select dataset empty') });
@@ -179,7 +192,8 @@ export async function dispatchDatasetSearch(
       usingReRank,
       rerankModel: rerankModelData,
       rerankWeight,
-      collectionFilterMatch
+      collectionFilterMatch,
+      collectionFilterMode
     };
     const useDeepSearch = datasetDeepSearch && textQueries.length > 0;
     const {
@@ -360,4 +374,4 @@ export async function dispatchDatasetSearch(
     logger.error('Dataset search dispatch failed', { error });
     return getNodeErrResponse({ error });
   }
-}
+};

@@ -157,6 +157,11 @@ const NodeInputSelect = ({
         type: FlowNodeInputTypeEnum.password,
         icon: FlowNodeInputMap[FlowNodeInputTypeEnum.password].icon,
         title: t('common:core.workflow.inputType.Manual input')
+      },
+      {
+        type: FlowNodeInputTypeEnum.datasetTagFilter,
+        icon: FlowNodeInputMap[FlowNodeInputTypeEnum.datasetTagFilter].icon,
+        title: t('common:core.workflow.inputType.Manual input')
       }
     ],
     [t]
@@ -237,6 +242,7 @@ const NodeInputSelect = ({
           bg={'myGray.100'}
           minH={'28px'}
           h={'28px'}
+          w={renderType === FlowNodeInputTypeEnum.datasetTagFilter ? '90px' : undefined}
         >
           {renderTypeData.title}
         </Button>

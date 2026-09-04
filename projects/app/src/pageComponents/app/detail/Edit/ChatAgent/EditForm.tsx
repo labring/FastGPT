@@ -43,6 +43,16 @@ import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import { useInitializeQueryExtensionModel } from '../FormComponent/useInitializeQueryExtensionModel';
 import { useAgentSkillSelect } from './hooks/useAgentSkillSelect';
 import { useSkillManager } from './hooks/useSkillManager';
+import DatasetTagFilterRows, {
+  TagFilterLogicToggle
+} from '@/components/core/dataset/DatasetTagFilterRows';
+import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
+import { workflowSystemVariables } from '@/web/core/app/utils';
+import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import {
+  isDatasetTagFilterValue,
+  type DatasetTagFilterValue
+} from '@fastgpt/global/core/dataset/workflowTagFilter';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -78,6 +88,40 @@ const EditForm = ({
   const appId = useContextSelector(AppContext, (v) => v.appId);
 
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
+  const formatVariables = useMemo(
+    () =>
+      formatEditorVariablePickerIcon([
+        ...workflowSystemVariables.filter(
+          (variable) =>
+            !['appId', 'chatId', 'responseChatItemId', 'histories'].includes(variable.key)
+        ),
+        ...(appForm.chatConfig.variables ?? [])
+      ]).map((item) => ({ ...item, label: t(item.label as any) })),
+    [appForm.chatConfig.variables, t]
+  );
+  const tagFilterReferenceList = useMemo(
+    () => [
+      {
+        label: t('common:core.module.Variable'),
+        value: VARIABLE_NODE_ID,
+        children: formatVariables.map((item) => ({
+          label: item.label,
+          value: item.key,
+          valueType: item.valueType
+        }))
+      }
+    ],
+    [formatVariables, t]
+  );
+  const onCollectionFilterMatchChange = useCallback(
+    (value: DatasetTagFilterValue) => {
+      setAppForm((state) => ({
+        ...state,
+        dataset: { ...state.dataset, collectionFilterMatch: value }
+      }));
+    },
+    [setAppForm]
+  );
   const { isWelcomeTextFolded, toggleWelcomeTextFold } = useWelcomeTextFoldState(appId);
 
   const {
@@ -583,6 +627,30 @@ const EditForm = ({
               />
             ))}
           </Grid>
+          {appForm.dataset.datasets.length > 0 && feConfigs?.isPlus && (
+            <Box mt={4}>
+              <Flex alignItems={'center'} mb={2}>
+                <FormLabel color={'myGray.600'}>{t('workflow:tag_filter')}</FormLabel>
+                <QuestionTip ml={1} label={t('workflow:tag_filter_description')} />
+                <Box ml={2}>
+                  <TagFilterLogicToggle
+                    value={
+                      isDatasetTagFilterValue(appForm.dataset.collectionFilterMatch)
+                        ? appForm.dataset.collectionFilterMatch
+                        : undefined
+                    }
+                    onChange={onCollectionFilterMatchChange}
+                  />
+                </Box>
+              </Flex>
+              <DatasetTagFilterRows
+                value={appForm.dataset.collectionFilterMatch}
+                onChange={onCollectionFilterMatchChange}
+                datasetIds={appForm.dataset.datasets.map((item) => item.datasetId)}
+                referenceList={tagFilterReferenceList}
+              />
+            </Box>
+          )}
         </Box>
 
         {/* File select */}

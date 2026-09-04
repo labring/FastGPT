@@ -1,5 +1,5 @@
 export { default as FilterButton, FilterSummaryValue, useFilterTriggerWidth } from './FilterButton';
-export type { FilterButtonProps, FilterSummaryValueProps } from './FilterButton';
+export type { FilterSummaryValueProps } from './FilterButton';
 export { default as SingleSelectFilter } from './SingleSelectFilter';
 export type { SingleSelectFilterOption, SingleSelectFilterProps } from './SingleSelectFilter';
 export { default as MultiSelectFilter, useCommonFilterLabels } from './MultiSelectFilter';
@@ -17,13 +17,8 @@ export type {
   MultiSelectFilterSummary,
   MultiSelectFilterValue
 } from './multiSelectFilterUtils';
-export { default as MultiTagFilter, toggleMultiTagFilterValue } from './MultiTagFilter';
-export type {
-  MultiTagFilterGroup,
-  MultiTagFilterLabels,
-  MultiTagFilterProps,
-  MultiTagFilterValue
-} from './MultiTagFilter';
+export { default as MultiTagFilter } from './MultiTagFilter';
+export type { MultiTagFilterGroup } from './MultiTagFilter';
 export { FILTER_SEARCH_THRESHOLD } from './FilterSearchInput';
 export { default as FilterSearchInput } from './FilterSearchInput';
 export {

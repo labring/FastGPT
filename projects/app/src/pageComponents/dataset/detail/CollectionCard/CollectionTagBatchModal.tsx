@@ -154,12 +154,19 @@ const CollectionTagBatchModal = ({
         tags: body.tags
       }),
     {
-      onSuccess() {
+      onSuccess(_res, params) {
+        const requestMode = params?.[0]?.mode;
+        toast({
+          title:
+            requestMode === BatchCollectionTagModeEnum.remove
+              ? t('dataset:tag.delete_success')
+              : t('dataset:tag.setting_success'),
+          status: 'success'
+        });
         void loadAllDatasetTags();
         onSuccess?.();
         onClose();
       },
-      successToast: t('dataset:tag.setting_success'),
       errorToast: t('dataset:tag.save_failed')
     }
   );
@@ -414,7 +421,12 @@ const CollectionTagBatchModal = ({
               { label: t('dataset:tag.batch_remove'), value: BatchCollectionTagModeEnum.remove }
             ]}
             value={mode}
-            onChange={setMode}
+            onChange={(next) => {
+              setMode(next);
+              setExpandedTagIds(new Set());
+              setSelectedTagIds(new Set());
+              setSelectedValues(new Map());
+            }}
             outerHeight={'40px'}
             itemHeight={'32px'}
             px={'12px'}
@@ -498,7 +510,7 @@ const CollectionTagBatchModal = ({
                                 color={'myGray.900'}
                                 noOfLines={1}
                               >
-                                {group.tagName}（{count}）
+                                {`${group.tagName} (${count})`}
                               </Box>
                             </Flex>
                             {isArray && group.values.length > 0 && (

@@ -9,7 +9,6 @@ import {
   type DatasetTagType
 } from '@fastgpt/global/core/dataset/type';
 import {
-  collectionTagValueKey,
   isUsableCollectionTagFilterValue,
   sortCollectionTagValues
 } from '@fastgpt/global/core/dataset/tagUtils';
@@ -21,7 +20,7 @@ export const OVERFLOW_CHIP_GAP_PX = 8;
 /**
  * 根据测量宽度计算可见 chip 数量。空间不够时至少留 1 个，其余用 +n。
  */
-export const countVisibleOverflowChips = ({
+const countVisibleOverflowChips = ({
   chipWidths,
   overflowWidth,
   containerWidth,
@@ -103,7 +102,7 @@ export const formatCollectionTagValueText = (
   tagType?: DatasetTagType['tagType']
 ): string => {
   if (value == null || value === '') return '';
-  if (Array.isArray(value)) return value.filter(Boolean).join('、');
+  if (Array.isArray(value)) return value.filter(Boolean).join(', ');
   if (tagType === 'datetime') {
     const d = dayjs(value);
     return d.isValid() ? formatTime2YMDHM(d.valueOf()) : String(value);
@@ -146,7 +145,7 @@ export const buildTagFilterValues = (
   const values = new Map<string, string | number>();
   const addValue = (value: string | number) => {
     if (!isUsableCollectionTagFilterValue(value)) return;
-    values.set(collectionTagValueKey(value), value);
+    values.set(String(value), value);
   };
 
   if (tag.tagType === DatasetCollectionTagTypeEnum.array) {
@@ -166,22 +165,60 @@ export const formatCollectionTagChipText = (
 
   const tagType = tagDefs.find((def) => def.tag === item.tag)?.tagType;
   const valueText = formatCollectionTagValueText(item.value, tagType);
-  return valueText ? `${item.tag}：${valueText}` : item.tag;
+  return valueText ? `${item.tag}: ${valueText}` : item.tag;
 };
+
+export const parseCollectionTagParts = (
+  item: CollectionTagDisplayItem,
+  tagDefs: DatasetTagType[] = []
+): { name: string; value?: string } => {
+  if (typeof item === 'string') return { name: item };
+
+  const tagType = tagDefs.find((def) => def.tag === item.tag)?.tagType;
+  const valueText = formatCollectionTagValueText(item.value, tagType);
+  return {
+    name: item.tag,
+    value: valueText || undefined
+  };
+};
+
+export const TagTooltipItem = ({ name, value }: { name: string; value?: string }) => (
+  <Box
+    fontSize={'xs'}
+    lineHeight={'1.5'}
+    color={'#24282C'}
+    wordBreak={'break-all'}
+    whiteSpace={'pre-wrap'}
+  >
+    <Box as={'span'} fontWeight={'medium'}>
+      {name}
+      {value ? '：' : ''}
+    </Box>
+    {value && (
+      <Box as={'span'} fontWeight={'normal'}>
+        {value}
+      </Box>
+    )}
+  </Box>
+);
 
 export const TAG_TOOLTIP_PROPS = {
   placement: 'bottom' as const,
-  offset: [0, 10] as [number, number],
+  offset: [0, 8] as [number, number],
   hasArrow: true,
   arrowSize: 10,
   px: 3,
   py: 2,
-  borderRadius: 'sm',
+  borderRadius: '6px',
   fontSize: 'xs',
   lineHeight: '18px',
-  color: 'myGray.800',
-  arrowShadowColor: 'rgba(19, 51, 107, 0.1)',
-  boxShadow: '0px 4px 5px rgba(19, 51, 107, 0.1), 0px 0px 0.5px rgba(19, 51, 107, 0.1)'
+  color: '#24282C',
+  bg: 'white',
+  maxW: '360px',
+  whiteSpace: 'pre-wrap' as const,
+  wordBreak: 'break-all' as const,
+  arrowShadowColor: 'rgba(121, 141, 159, 0.25)',
+  boxShadow: '0px 2px 4px 0px rgba(161, 167, 179, 0.25), 0px 0px 1px 0px rgba(121, 141, 159, 0.25)'
 };
 
 export const SaveActionIcon = ({ isEnabled }: { isEnabled: boolean }) => {
@@ -211,51 +248,63 @@ export const SaveActionIcon = ({ isEnabled }: { isEnabled: boolean }) => {
   );
 };
 
-export type TagActionButtonProps = {
+type TagActionButtonProps = {
   label: string;
   icon: React.ReactElement;
-  onClick?: () => void;
+  onClick?: (e?: React.MouseEvent) => void;
   isDisabled?: boolean;
   color?: string;
   hoverColor?: string;
   hoverIconClassName?: string;
-};
+} & Omit<FlexProps, 'children'>;
 
-export const TagActionButton = ({
-  label,
-  icon,
-  onClick,
-  isDisabled = false,
-  color = 'myGray.500',
-  hoverColor,
-  hoverIconClassName
-}: TagActionButtonProps) => (
-  <MyTooltip label={label} shouldWrapChildren={false} {...TAG_TOOLTIP_PROPS}>
-    <Flex
-      as={'button'}
-      type={'button'}
-      aria-label={label}
-      alignItems={'center'}
-      justifyContent={'center'}
-      p={1}
-      borderRadius={'sm'}
-      color={color}
-      cursor={isDisabled ? 'not-allowed' : 'pointer'}
-      aria-disabled={isDisabled}
-      _hover={
-        isDisabled
-          ? undefined
-          : {
-              bg: 'myGray.05',
-              ...(hoverColor ? { color: hoverColor } : {}),
-              ...(hoverIconClassName ? { [`& .${hoverIconClassName}`]: { opacity: 1 } } : {})
-            }
-      }
-      onClick={isDisabled ? undefined : onClick}
-    >
-      {icon}
-    </Flex>
-  </MyTooltip>
+export const TagActionButton = React.forwardRef<HTMLDivElement, TagActionButtonProps>(
+  function TagActionButton(
+    {
+      label,
+      icon,
+      onClick,
+      isDisabled = false,
+      color = 'myGray.500',
+      hoverColor,
+      hoverIconClassName,
+      ...props
+    },
+    ref
+  ) {
+    return (
+      <MyTooltip label={label} shouldWrapChildren={false} {...TAG_TOOLTIP_PROPS}>
+        <Flex
+          ref={ref}
+          as={'button'}
+          type={'button'}
+          aria-label={label}
+          alignItems={'center'}
+          justifyContent={'center'}
+          w={'24px'}
+          h={'24px'}
+          p={0}
+          borderRadius={'sm'}
+          color={color}
+          cursor={isDisabled ? 'not-allowed' : 'pointer'}
+          aria-disabled={isDisabled}
+          _hover={
+            isDisabled
+              ? undefined
+              : {
+                  bg: 'myGray.05',
+                  ...(hoverColor ? { color: hoverColor } : {}),
+                  ...(hoverIconClassName ? { [`& .${hoverIconClassName}`]: { opacity: 1 } } : {})
+                }
+          }
+          {...props}
+          onClick={isDisabled ? undefined : onClick}
+        >
+          {icon}
+        </Flex>
+      </MyTooltip>
+    );
+  }
 );
 
 export const TagTableContainer = ({ children, ...props }: FlexProps) => (

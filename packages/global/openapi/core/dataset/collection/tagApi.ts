@@ -10,7 +10,7 @@ export const BatchCollectionTagModeEnum = {
   add: 'add',
   remove: 'remove'
 } as const;
-export const BatchCollectionTagModeSchema = z.enum([
+const BatchCollectionTagModeSchema = z.enum([
   BatchCollectionTagModeEnum.add,
   BatchCollectionTagModeEnum.remove
 ]);
@@ -41,7 +41,6 @@ export const AddTagsToCollectionsBodySchema = z.object({
   tag: z.string().trim().meta({ description: '标签名称' }),
   value: z.string().optional().meta({ description: '标签值（仅 string 类型标签支持）' })
 });
-export type AddTagsToCollectionsParams = z.infer<typeof AddTagsToCollectionsBodySchema>;
 
 /* ============================================================================
  * API: 更新集合标签
@@ -65,7 +64,6 @@ export const DeleteDatasetCollectionTagQuerySchema = z.object({
   datasetId: z.string().meta({ description: '数据集 ID' }),
   id: z.string().meta({ description: '标签 ID' })
 });
-export type DeleteDatasetCollectionTagQuery = z.infer<typeof DeleteDatasetCollectionTagQuerySchema>;
 
 /* ============================================================================
  * API: 获取知识库全部标签
@@ -74,13 +72,12 @@ export type DeleteDatasetCollectionTagQuery = z.infer<typeof DeleteDatasetCollec
 export const GetAllDatasetTagsQuerySchema = z.object({
   datasetId: z.string().meta({ description: '数据集 ID' })
 });
-export type GetAllDatasetTagsQuery = z.infer<typeof GetAllDatasetTagsQuerySchema>;
 
 /* ============================================================================
  * API: 批量 Upsert 标签
  * Route: POST /proApi/core/dataset/tag/batchUpsert
  * ============================================================================ */
-export const BatchUpsertTagItemSchema = z.object({
+const BatchUpsertTagItemSchema = z.object({
   tag: z.string().trim().min(1).meta({ description: '标签名称' }),
   tagType: z.enum(DatasetCollectionTagTypeEnum).optional().meta({ description: '标签类型' })
 });
@@ -88,7 +85,6 @@ export const BatchUpsertTagsBodySchema = z.object({
   datasetId: z.string().meta({ description: '数据集 ID' }),
   tags: z.array(BatchUpsertTagItemSchema).min(1).meta({ description: '标签列表' })
 });
-export type BatchUpsertTagsParams = z.infer<typeof BatchUpsertTagsBodySchema>;
 
 /* ============================================================================
  * API: 设置单个 Collection 标签值
@@ -105,7 +101,7 @@ export type SetCollectionTagsParams = z.infer<typeof SetCollectionTagsBodySchema
  * API: 批量设置 Collection 标签值
  * Route: POST /proApi/core/dataset/tag/batchSetCollectionTags
  * ============================================================================ */
-export const BatchSetCollectionTagItemSchema = z.object({
+const BatchSetCollectionTagItemSchema = z.object({
   tagId: z.string().meta({ description: '引用 dataset_collection_tags_v2._id' }),
   value: CollectionTagValueFieldSchema.optional().meta({
     description: 'add：必填标签值。remove：省略则移除整个标签；array 传入 string[] 时只移除这些选项'

@@ -81,5 +81,11 @@
   "migrations.20260905_backfill_resource_owner_acl.datasets": "檢查知識庫擁有者權限",
   "migrations.20260905_backfill_resource_owner_acl.agent_skills": "檢查 Agent Skill 擁有者權限",
   "migrations.20260905_backfill_resource_owner_acl.validation": "驗證資源擁有者權限",
-  "migrations.20260905_backfill_resource_owner_acl.result": "已檢查 {{appsProcessedCount}} 個應用、{{datasetsProcessedCount}} 個知識庫和 {{agentSkillsProcessedCount}} 個技能。補齊擁有者權限：{{appsUpdatedCount}} 個應用、{{datasetsUpdatedCount}} 個知識庫和 {{agentSkillsUpdatedCount}} 個技能。"
+  "migrations.20260905_backfill_resource_owner_acl.result": "已檢查 {{appsProcessedCount}} 個應用、{{datasetsProcessedCount}} 個知識庫和 {{agentSkillsProcessedCount}} 個技能。補齊擁有者權限：{{appsUpdatedCount}} 個應用、{{datasetsUpdatedCount}} 個知識庫和 {{agentSkillsUpdatedCount}} 個技能。",
+  "migrations.20260907_migrate_dataset_tags_v2.name": "升級知識庫標籤資料",
+  "migrations.20260907_migrate_dataset_tags_v2.description": "將歷史 Collection 標籤遷移為類型化標籤，並清理重複標籤定義。",
+  "migrations.20260907_migrate_dataset_tags_v2.result": "已檢查 {{datasetsProcessedCount}} 個知識庫，遷移 {{collectionsMigratedCount}} 個 Collection，刪除 {{duplicateDefinitionsDeletedCount}} 個重複標籤定義。",
+  "migrations.20260907_migrate_dataset_tags_v2.datasets": "整理知識庫標籤定義",
+  "migrations.20260907_migrate_dataset_tags_v2.collections": "遷移 Collection 標籤值",
+  "migrations.20260907_migrate_dataset_tags_v2.validation": "驗證標籤遷移結果"
 }

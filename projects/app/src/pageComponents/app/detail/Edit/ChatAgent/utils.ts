@@ -352,6 +352,7 @@ export function agentForm2AppWorkflow(
                 datasetSearchExtensionModelId: data.dataset.datasetSearchExtensionModelId,
                 datasetSearchExtensionModel: data.dataset.datasetSearchExtensionModel,
                 datasetSearchExtensionBg: data.dataset.datasetSearchExtensionBg,
+                collectionFilterMatch: data.dataset.collectionFilterMatch,
                 [NodeInputKeyEnum.authTmbId]: data.dataset.authTmbId
               })
             },

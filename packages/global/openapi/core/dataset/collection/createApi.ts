@@ -1,5 +1,5 @@
 import z from 'zod';
-import { ChunkSettingsSchema } from '../../../../core/dataset/type';
+import { ChunkSettingsSchema, CollectionTagLabelSchema } from '../../../../core/dataset/type';
 import { DatasetCollectionTypeEnum } from '../../../../core/dataset/constants';
 import { ParentIdSchema } from '../../../../common/parentFolder/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
@@ -16,21 +16,15 @@ const DatasetCollectionStoreDataSchema = ChunkSettingsSchema.extend({
   customPdfParse: z.boolean().optional().meta({ description: '自定义 PDF 解析' })
 });
 
+const CollectionTagsInputSchema = z.array(CollectionTagLabelSchema).optional().meta({
+  description:
+    '标签列表。字符串元素为旧格式标签名（按名称归并到 default_tag array 标签）；对象元素为 { tag: 标签名, value: 标签值 }，按标签名解析'
+});
+
 // API 创建集合通用基础 Schema
 export const ApiCreateCollectionBaseSchema = DatasetCollectionStoreDataSchema.extend({
   datasetId: z.string().meta({ description: '数据集 ID' }),
-  tags: z
-    .array(
-      z.union([
-        z.string(),
-        z.object({ tag: z.string(), value: z.union([z.string(), z.number(), z.array(z.string())]) })
-      ])
-    )
-    .optional()
-    .meta({
-      description:
-        '标签列表。字符串元素为旧格式标签名（按名称归并到 default_tag array 标签）；对象元素为 { tag: 标签名, value: 标签值 }，按标签名解析'
-    })
+  tags: CollectionTagsInputSchema
 });
 export type ApiCreateDatasetCollectionParams = z.infer<typeof ApiCreateCollectionBaseSchema>;
 
@@ -61,18 +55,7 @@ export const CreateCollectionBodySchema = z.object({
   type: z
     .enum([DatasetCollectionTypeEnum.folder, DatasetCollectionTypeEnum.virtual])
     .meta({ description: '集合类型（folder: 文件夹，virtual: 手动集合）' }),
-  tags: z
-    .array(
-      z.union([
-        z.string(),
-        z.object({ tag: z.string(), value: z.union([z.string(), z.number(), z.array(z.string())]) })
-      ])
-    )
-    .optional()
-    .meta({
-      description:
-        '标签列表。字符串元素为旧格式标签名（按名称归并到 default_tag array 标签）；对象元素为 { tag: 标签名, value: 标签值 }，按标签名解析'
-    })
+  tags: CollectionTagsInputSchema
 });
 export type CreateCollectionBodyType = z.infer<typeof CreateCollectionBodySchema>;
 
@@ -177,18 +160,7 @@ export const CreateImageCollectionDataSchema = z.object({
   datasetId: z.string().meta({ description: '数据集 ID' }),
   parentId: ParentIdSchema.optional().meta({ description: '父级目录 ID' }),
   collectionName: z.string().meta({ description: '集合名称' }),
-  tags: z
-    .array(
-      z.union([
-        z.string(),
-        z.object({ tag: z.string(), value: z.union([z.string(), z.number(), z.array(z.string())]) })
-      ])
-    )
-    .optional()
-    .meta({
-      description:
-        '标签列表。字符串元素为旧格式标签名（按名称归并到 default_tag array 标签）；对象元素为 { tag: 标签名, value: 标签值 }，按标签名解析'
-    })
+  tags: CollectionTagsInputSchema
 });
 export type CreateImageCollectionDataType = z.infer<typeof CreateImageCollectionDataSchema>;
 // handler 内 parse 用
@@ -214,18 +186,7 @@ export const CreateImageCollectionMultipartSchema = z.object({
 export const CreateBackupCollectionFormSchema = z.object({
   datasetId: z.string().meta({ description: '数据集 ID' }),
   parentId: ParentIdSchema.optional().meta({ description: '父级目录 ID' }),
-  tags: z
-    .array(
-      z.union([
-        z.string(),
-        z.object({ tag: z.string(), value: z.union([z.string(), z.number(), z.array(z.string())]) })
-      ])
-    )
-    .optional()
-    .meta({
-      description:
-        '标签列表。字符串元素为旧格式标签名（按名称归并到 default_tag array 标签）；对象元素为 { tag: 标签名, value: 标签值 }，按标签名解析'
-    })
+  tags: CollectionTagsInputSchema
 });
 export type CreateBackupCollectionFormType = z.infer<typeof CreateBackupCollectionFormSchema>;
 
@@ -248,18 +209,7 @@ export const CreateBackupCollectionMultipartSchema = z.object({
 export const CreateTemplateCollectionFormSchema = z.object({
   datasetId: z.string().meta({ description: '数据集 ID' }),
   parentId: ParentIdSchema.optional().meta({ description: '父级目录 ID' }),
-  tags: z
-    .array(
-      z.union([
-        z.string(),
-        z.object({ tag: z.string(), value: z.union([z.string(), z.number(), z.array(z.string())]) })
-      ])
-    )
-    .optional()
-    .meta({
-      description:
-        '标签列表。字符串元素为旧格式标签名（按名称归并到 default_tag array 标签）；对象元素为 { tag: 标签名, value: 标签值 }，按标签名解析'
-    })
+  tags: CollectionTagsInputSchema
 });
 export type CreateTemplateCollectionFormType = z.infer<typeof CreateTemplateCollectionFormSchema>;
 

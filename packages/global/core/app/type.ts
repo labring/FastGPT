@@ -2,6 +2,10 @@ import { StoreNodeItemTypeSchema } from '../workflow/type/node';
 import { AppTypeEnum } from './constants';
 import { NodeInputKeyEnum } from '../workflow/constants';
 import { DatasetSearchModeEnum } from '../dataset/constants';
+import {
+  DatasetTagFilterValueSchema,
+  DatasetTagFilterVersionSchema
+} from '../dataset/workflowTagFilter';
 import type { ReasoningEffort } from '../ai/llm/type';
 import { StoreEdgeItemTypeSchema } from '../workflow/type/edge';
 import type { AppPermission } from '../../support/permission/app/controller';
@@ -279,7 +283,8 @@ export const AppDatasetSearchParamsTypeSchema = z.object({
   datasetSearchExtensionBg: z.string().optional(),
   [NodeInputKeyEnum.authTmbId]: BoolSchema.optional(),
 
-  collectionFilterMatch: z.string().optional()
+  collectionFilterMatch: z.union([z.string(), DatasetTagFilterValueSchema]).optional(),
+  [NodeInputKeyEnum.collectionFilterVersion]: DatasetTagFilterVersionSchema.optional()
 });
 export type AppDatasetSearchParamsType = z.infer<typeof AppDatasetSearchParamsTypeSchema>;
 
