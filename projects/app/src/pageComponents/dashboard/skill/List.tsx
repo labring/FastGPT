@@ -201,6 +201,7 @@ const List = ({
     refreshSkills,
     isFetchingSkills,
     searchKey,
+    setSearchKey,
     folderDetail,
     ScrollData,
     listFilters,
@@ -212,6 +213,7 @@ const List = ({
     refreshSkills: v.refreshSkills,
     isFetchingSkills: v.isFetchingSkills,
     searchKey: v.searchKey,
+    setSearchKey: v.setSearchKey,
     folderDetail: v.folderDetail,
     ScrollData: v.ScrollData,
     listFilters: v.listFilters,
@@ -457,6 +459,7 @@ const List = ({
         }}
         onClick={() => {
           if (isFolder) {
+            setSearchKey('');
             router.push({ query: { ...router.query, parentId: skill._id } });
           } else {
             if (isSkillReady && !guardSkillSandboxOperation()) return;

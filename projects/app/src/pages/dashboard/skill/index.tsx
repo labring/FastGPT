@@ -70,6 +70,7 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   });
 
   const onNavigate = (targetParentId: ParentIdType) => {
+    setSearchKey('');
     router.push({
       query: {
         ...router.query,
