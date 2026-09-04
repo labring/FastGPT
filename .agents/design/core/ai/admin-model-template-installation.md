@@ -966,7 +966,7 @@ AIProxy 管理代理额外验证：
 
 ### 16.12 迁移、兼容与发布前回归
 
-- [x] 新部署 `ai_models` 为空时不从 Plugin 预装模型。
+- [x] 使用真实 `MongoMemoryReplSet` 和事务验证旧表、新表均为空：迁移结果仍为 0 个模型，不从 Plugin 预装，并生成合法的空默认模型配置。
 - [x] 启动与定时任务不再刷新或写入 Plugin 模型。
 - [x] 迁移只更新/新增旧 `system_models`：同名旧表覆盖配置但保留新表 `_id`，旧表独有新增，新表独有保留。
 - [x] 模型、默认模型合并处于同一事务；迁移失败全部回滚。
@@ -974,7 +974,7 @@ AIProxy 管理代理额外验证：
 - [x] 运行时继续使用稳定 `modelId`，无效 `modelId` 不回退到同名 `model`。
 - [x] 用户 Key、显式测试渠道、模型级 `requestUrl/requestAuth` 和全局配置的原有优先级已有回归测试。
 - [ ] 删除临时模型后重新加载页面和模型运行时缓存，确认不会因 Plugin 模板再次出现。
-- [ ] 发布前在空数据库、从 4.16.x 升级数据库各执行一次启动集成测试。
-- [x] 本 PR 受影响范围的本地测试共 26 个文件、206 个用例通过，`@fastgpt/app` TypeScript 检查、Prettier 和 `git diff --check` 通过。
+- [ ] 发布前使用完整应用进程分别对空数据库、4.16.x 数据库快照执行一次启动升级验收；当前自动化已覆盖同一迁移服务的真实 MongoDB 事务，但不替代部署级启动链路。
+- [x] 本 PR 受影响范围的本地测试共 26 个文件、207 个用例通过，`@fastgpt/app` TypeScript 检查、Prettier 和 `git diff --check` 通过。
 - [x] 本 PR 当前测试提交的 GitHub CI 全部通过，包括 FastGPT 各 workspace、FastGPT-pro、Admin/FastGPT 镜像预览构建和 CLA。
 - [ ] 用户完成最终验收后执行仓库完整测试；开发阶段继续遵循只运行受影响测试范围的仓库约束。

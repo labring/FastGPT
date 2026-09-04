@@ -50,6 +50,20 @@ describe('bootstrapAIModelsFromLegacy', () => {
     ]);
   });
 
+  it('keeps a fresh installation empty when no legacy models exist', async () => {
+    await expect(bootstrapAIModelsFromLegacy({ pluginDocuments: [] })).resolves.toEqual({
+      status: 'migrated',
+      sourceCount: 0,
+      targetCount: 0,
+      migratedCount: 0
+    });
+    await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
+    await expect(MongoAIDefaultModel.findOne({ scope: 'system' }).lean()).resolves.toMatchObject({
+      scope: 'system',
+      defaultModelIds: {}
+    });
+  });
+
   it('preserves an existing valid default while merging a legacy model', async () => {
     const existingModel = await MongoAIModel.create(pluginLlm);
     await MongoAIDefaultModel.create({
