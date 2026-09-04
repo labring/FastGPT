@@ -59,6 +59,21 @@ describe('flatModelToDocumentData', () => {
       batchSize: 0
     });
   });
+
+  it('preserves a null max temperature from the plugin as canonical data', () => {
+    const result = flatModelToDocumentData({
+      type: ModelTypeEnum.llm,
+      provider: 'OpenAI',
+      model: 'null-temperature-llm',
+      name: 'Null temperature LLM',
+      maxContext: 128000,
+      maxTokens: 8192,
+      quoteMaxToken: 100000,
+      maxTemperature: null
+    });
+
+    expect(result.config.maxTemperature).toBeNull();
+  });
 });
 
 describe('system model response filtering', () => {

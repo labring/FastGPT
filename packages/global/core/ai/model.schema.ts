@@ -41,7 +41,8 @@ export const LLMModelConfigSchema = z.object({
   maxContext: z.number(),
   maxResponse: z.number(),
   quoteMaxToken: z.number(),
-  maxTemperature: z.number().optional(),
+  // null 明确表示模型不支持或未配置温度，允许 API 与数据库保留这一语义。
+  maxTemperature: z.number().nullish(),
   showTopP: z.boolean().optional(),
   responseFormatList: z.array(z.string()).optional(),
   showStopSign: z.boolean().optional(),

@@ -88,8 +88,6 @@ export const flatModelToDocumentData = (
   if (normalized.type === ModelTypeEnum.llm) {
     // 插件旧协议使用 maxTokens；数据库统一使用 maxResponse。显式的新字段优先。
     normalized.maxResponse = normalized.maxResponse ?? normalized.maxTokens ?? 16000;
-    // null 表示插件未提供该可选能力，转换成缺省字段交由 Schema 处理。
-    if (normalized.maxTemperature === null) delete normalized.maxTemperature;
   }
 
   const configKeys = configKeysMap[normalized.type as ModelTypeEnum] ?? [];
@@ -237,7 +235,6 @@ export const loadInstalledModels = async ({
     : undefined;
 
   const _systemModelList: SystemModelDataType[] = [];
-  const _systemActiveModelList: SystemModelDataType[] = [];
   const _systemModelMap = new Map<string, SystemModelDataType>();
   const _systemDefaultModel: SystemDefaultModelType = {};
 
@@ -247,8 +244,6 @@ export const loadInstalledModels = async ({
     _systemModelMap.set(`model:${modelData.model}`, modelData);
 
     if (modelData.isActive) {
-      _systemActiveModelList.push(modelData);
-
       if (modelData.type === ModelTypeEnum.llm) {
         modelData.priceTiers = getRuntimeResolvedPriceTiers(modelData);
       }
@@ -327,15 +322,19 @@ export const loadInstalledModels = async ({
     );
 
     // Plugin 数组是内置模型展示顺序的唯一来源；MongoDB 自然顺序不具备业务语义。
-    const pluginModelOrder = new Map(pluginDocuments.map((model, index) => [model.model, index]));
-    _systemActiveModelList.sort((a, b) => {
-      const orderA = pluginModelOrder.get(a.model);
-      const orderB = pluginModelOrder.get(b.model);
+    const pluginModelOrder = new Map(
+      pluginDocuments.map((model, index) => [getPluginModelKey(model), index])
+    );
+    _systemModelList.sort((a, b) => {
+      const orderA = pluginModelOrder.get(getPluginModelKey(a));
+      const orderB = pluginModelOrder.get(getPluginModelKey(b));
       if (orderA !== undefined && orderB !== undefined) return orderA - orderB;
       if (orderA !== undefined) return -1;
       if (orderB !== undefined) return 1;
       return a.modelId.localeCompare(b.modelId);
     });
+    // Active 列表从已排序的全量缓存派生，避免管理员与成员目录维护两套顺序语义。
+    const _systemActiveModelList = _systemModelList.filter((model) => model.isActive);
 
     // Default model check
     {
