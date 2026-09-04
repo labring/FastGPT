@@ -74,18 +74,6 @@ describe('user api', () => {
     await api.postFindPassword(data);
   });
 
-  it('should update password by old password', async () => {
-    const data = {
-      oldPsw: 'oldpassword',
-      newPsw: 'newpassword'
-    };
-    await api.updatePasswordByOld(data);
-  });
-
-  it('should reset password', async () => {
-    await api.resetPassword('newpassword');
-  });
-
   it('should check password expired', async () => {
     await api.getCheckPswExpired();
   });

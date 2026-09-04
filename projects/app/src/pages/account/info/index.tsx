@@ -49,6 +49,8 @@ import { getIsMemberSyncMode } from '@/web/common/system/utils';
 import { accountPageRootStyles, accountTitleTextStyles } from '@/pageComponents/account/styles';
 import { getAccountCancellationStatus } from '@/web/support/user/account/cancellation/api';
 import { AccountCancellationConfirmModal } from '@/pageComponents/account/cancel/AccountCancellationConfirmModal';
+import { usePasswordChangeStore } from '@/web/support/user/account/password/store';
+import { canManagePasswordFromAccountInfo } from '@/pageComponents/account/info/password';
 
 const RedeemCouponModal = dynamic(() => import('@/pageComponents/account/info/RedeemCouponModal'), {
   ssr: false
@@ -132,6 +134,10 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const standardPlan = teamPlanStatus?.standard;
   const { isPc } = useSystem();
   const { toast } = useToast();
+  const canManagePassword = canManagePasswordFromAccountInfo({
+    isPlus: feConfigs?.isPlus,
+    username: userInfo?.username
+  });
   const [autoOpenEnterpriseAuth, setAutoOpenEnterpriseAuth] = useState(false);
   const showEnterpriseAuth = feConfigs?.show_enterprise_auth;
 
@@ -145,6 +151,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     onClose: onCloseUpdatePsw,
     onOpen: onOpenUpdatePsw
   } = useDisclosure();
+  const passwordChangeSession = usePasswordChangeStore((state) => state.session);
   const {
     isOpen: isOpenUpdateContact,
     onClose: onCloseUpdateContact,
@@ -216,6 +223,11 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
       window.removeEventListener('hashchange', triggerEnterpriseAuthFromHash);
     };
   }, [triggerEnterpriseAuthFromHash]);
+
+  useEffect(() => {
+    if (canManagePassword && passwordChangeSession?.required === false) onOpenUpdatePsw();
+  }, [canManagePassword, onOpenUpdatePsw, passwordChangeSession]);
+
   const { Component: AvatarUploader, handleFileSelectorOpen } = useUploadAvatar(
     getUploadAvatarPresignedUrl,
     {
@@ -254,12 +266,14 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
           <Box {...labelStyles}>{t('account_info:user_account')}&nbsp;</Box>
           <Box flex={1}>{userInfo?.username}</Box>
         </Flex>
-        {feConfigs?.isPlus && (
+        {canManagePassword && (
           <Flex mt={4} alignItems={'center'}>
             <Box {...labelStyles}>{t('account_info:password')}&nbsp;</Box>
-            <Box flex={1}>*****</Box>
+            <Box flex={1}>
+              {userInfo?.hasPassword ? '*****' : t('account_info:password_not_set')}
+            </Box>
             <Button {...actionButtonStyles} variant={'whitePrimary'} onClick={onOpenUpdatePsw}>
-              {t('account_info:change')}
+              {userInfo?.hasPassword ? t('account_info:change') : t('account_info:set_password')}
             </Button>
           </Flex>
         )}
@@ -409,7 +423,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
       {isOpenConversionModal && (
         <ConversionModal onClose={onCloseConversionModal} onOpenContact={onOpenContact} />
       )}
-      {isOpenUpdatePsw && <UpdatePswModal onClose={onCloseUpdatePsw} />}
+      {canManagePassword && isOpenUpdatePsw && <UpdatePswModal onClose={onCloseUpdatePsw} />}
       {isOpenUpdateContact && <UpdateContact onClose={onCloseUpdateContact} mode="contact" />}
     </Box>
   );
