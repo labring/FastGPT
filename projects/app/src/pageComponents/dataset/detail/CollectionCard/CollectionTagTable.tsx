@@ -112,7 +112,12 @@ export const CollectionTagTable = <T extends CollectionTagRow>({
                   )}
                 </Flex>
 
-                <Flex px={6} alignItems={hasExtraSlot ? 'flex-start' : 'center'}>
+                <Flex
+                  px={6}
+                  h={'36px'}
+                  alignItems={'center'}
+                  {...(hasExtraSlot ? { alignSelf: 'flex-start' } : {})}
+                >
                   <TagActionButton
                     label={t('common:Delete')}
                     icon={<MyIcon name={'delete'} w={'16px'} h={'16px'} />}

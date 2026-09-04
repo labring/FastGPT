@@ -227,6 +227,65 @@ describe('dispatchDatasetSearch', () => {
     expect(result.data?.quoteQA).toEqual([]);
   });
 
+  it('uses explicit versions and sends unconfigured historical nodes to structured filtering', async () => {
+    defaultSearchDatasetDataMock.mockResolvedValue({
+      searchRes: [],
+      embeddingTokens: 0,
+      reRankInputTokens: 0,
+      usingSimilarityFilter: false,
+      usingReRank: false
+    });
+    const props = {
+      runningAppInfo: { teamId: 'team_1' },
+      runningUserInfo: { tmbId: 'tmb_1' },
+      externalProvider: {},
+      histories: [],
+      node: { name: 'Dataset Search' },
+      params: {
+        datasets: [{ datasetId: 'dataset_1' }],
+        similarity: 0.4,
+        limit: 5000,
+        userChatInput: 'query',
+        searchMode: DatasetSearchModeEnum.embedding,
+        usingReRank: false,
+        datasetSearchUsingExtensionQuery: false,
+        collectionFilterMatch: '{"tags":{"$and":["legacy"]}}'
+      },
+      usagePush: usagePushMock
+    } as any;
+
+    await dispatchDatasetSearch(props);
+    await dispatchDatasetSearch({
+      ...props,
+      params: { ...props.params, collectionFilterVersion: 'structured' }
+    });
+    await dispatchDatasetSearch({
+      ...props,
+      params: { ...props.params, collectionFilterVersion: 'unknown' }
+    });
+    await dispatchDatasetSearch({
+      ...props,
+      params: {
+        ...props.params,
+        collectionFilterVersion: undefined,
+        collectionFilterMatch: undefined
+      }
+    });
+
+    expect(defaultSearchDatasetDataMock.mock.calls[0][0]).toMatchObject({
+      collectionFilterMode: 'legacy'
+    });
+    expect(defaultSearchDatasetDataMock.mock.calls[1][0]).toMatchObject({
+      collectionFilterMode: 'structured'
+    });
+    expect(defaultSearchDatasetDataMock.mock.calls[2][0]).toMatchObject({
+      collectionFilterMode: 'legacy'
+    });
+    expect(defaultSearchDatasetDataMock.mock.calls[3][0]).toMatchObject({
+      collectionFilterMode: 'structured'
+    });
+  });
+
   it('adds query extension as a child node response of dataset search', async () => {
     defaultSearchDatasetDataMock.mockResolvedValue({
       searchRes: [

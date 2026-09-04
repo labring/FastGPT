@@ -461,16 +461,8 @@ const CollectionCard = () => {
                               ...(collectionCanSync(collection.type)
                                 ? [
                                     {
-                                      label: (
-                                        <Flex alignItems={'center'}>
-                                          <MyIcon
-                                            name={'common/refreshLight'}
-                                            w={'0.9rem'}
-                                            mr={2}
-                                          />
-                                          {t('dataset:collection_sync')}
-                                        </Flex>
-                                      ),
+                                      icon: 'common/refreshLight',
+                                      label: t('dataset:collection_sync'),
                                       onClick: () =>
                                         openSyncConfirm({
                                           onConfirm: () => {
@@ -481,22 +473,14 @@ const CollectionCard = () => {
                                   ]
                                 : []),
                               {
-                                label: (
-                                  <Flex alignItems={'center'}>
-                                    <MyIcon name={'common/file/move'} w={'0.9rem'} mr={2} />
-                                    {t('common:Move')}
-                                  </Flex>
-                                ),
+                                icon: 'common/file/move',
+                                label: t('common:Move'),
                                 onClick: () =>
                                   setMoveCollectionData({ collectionId: collection._id })
                               },
                               {
-                                label: (
-                                  <Flex alignItems={'center'}>
-                                    <MyIcon name={'edit'} w={'0.9rem'} mr={2} />
-                                    {t('common:Rename')}
-                                  </Flex>
-                                ),
+                                icon: 'edit',
+                                label: t('common:Rename'),
                                 onClick: () =>
                                   onOpenEditTitleModal({
                                     defaultVal: collection.name,
@@ -511,12 +495,8 @@ const CollectionCard = () => {
                               datasetDetail.type !== DatasetTypeEnum.websiteDataset
                                 ? [
                                     {
-                                      label: (
-                                        <Flex alignItems={'center'}>
-                                          <MyIcon name={'core/dataset/tag'} w={'0.9rem'} mr={2} />
-                                          {t('dataset:tag.set')}
-                                        </Flex>
-                                      ),
+                                      icon: 'core/dataset/tag',
+                                      label: t('dataset:tag.set'),
                                       onClick: () => setTagSetCollection(collection)
                                     }
                                   ]
@@ -526,18 +506,9 @@ const CollectionCard = () => {
                           {
                             children: [
                               {
-                                label: (
-                                  <Flex alignItems={'center'}>
-                                    <MyIcon
-                                      mr={1}
-                                      name={'delete'}
-                                      w={'0.9rem'}
-                                      _hover={{ color: 'red.600' }}
-                                    />
-                                    <Box>{t('common:Delete')}</Box>
-                                  </Flex>
-                                ),
                                 type: 'danger',
+                                icon: 'delete',
+                                label: t('common:Delete'),
                                 onClick: () =>
                                   openDeleteConfirm({
                                     onConfirm: () => onDelCollection([collection._id]),

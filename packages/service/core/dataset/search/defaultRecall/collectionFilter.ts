@@ -2,10 +2,10 @@ import json5 from 'json5';
 import safeRegex from 'safe-regex';
 import { MongoDatasetCollection } from '../../collection/schema';
 import { MongoDatasetCollectionTagsV2 } from '../../tag/schemaV2';
-import { DEFAULT_TAG } from '@fastgpt/global/core/dataset/type';
 import { isCollectionTagValue } from '@fastgpt/global/core/dataset/tagUtils';
 import { readFromSecondary } from '../../../../common/mongo/utils';
-import { computeFilterIntersection } from '../utils';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { applySharedCollectionMetadataFilters } from './collectionFilterShared';
 
 /* ========== New format key-value tag filtering types ========== */
 
@@ -182,54 +182,34 @@ export async function filterCollectionByKeyValueTags({
 }): Promise<string[] | undefined> {
   const allConditions = [...$and, ...$or];
   const tagNames = new Set<string>();
-  let hasDefaultTag = false;
   for (const cond of allConditions) {
     const tagName = Object.keys(cond)[0];
     if (!tagName) continue;
-    if (tagName === DEFAULT_TAG) hasDefaultTag = true;
-    else tagNames.add(tagName);
+    tagNames.add(tagName);
   }
-  if (tagNames.size === 0 && !hasDefaultTag) return undefined;
+  if (tagNames.size === 0) return undefined;
 
-  // 普通标签按名称查询；default_tag 承载记录按 fromMigration 定位，不依赖标签名（改名后旧格式过滤仍命中）
-  const [regularTagDocs, defaultTagDocs] = await Promise.all([
-    tagNames.size
-      ? MongoDatasetCollectionTagsV2.find(
-          {
-            teamId,
-            datasetId: { $in: datasetIds },
-            tag: { $in: Array.from(tagNames) }
-          },
-          '_id datasetId tag tagType',
-          { ...readFromSecondary }
-        ).lean()
-      : [],
-    hasDefaultTag
-      ? MongoDatasetCollectionTagsV2.find(
-          { teamId, datasetId: { $in: datasetIds }, fromMigration: true },
-          '_id datasetId tag tagType',
-          { ...readFromSecondary }
-        ).lean()
-      : []
-  ]);
+  const tagDocs = await MongoDatasetCollectionTagsV2.find(
+    {
+      teamId,
+      datasetId: { $in: datasetIds },
+      tag: { $in: [...tagNames] }
+    },
+    '_id datasetId tag tagType',
+    { ...readFromSecondary }
+  ).lean();
 
   const datasetTagMap = new Map<string, Map<string, { id: string; type: string }>>();
   const addToMap = (dsId: string, tagName: string, id: string, type: string) => {
-    if (!datasetTagMap.has(dsId)) datasetTagMap.set(dsId, new Map());
-    datasetTagMap.get(dsId)!.set(tagName, { id, type });
-  };
-  for (const doc of regularTagDocs) {
-    addToMap(String(doc.datasetId), doc.tag, String(doc._id), doc.tagType || 'string');
-  }
-  // default_tag 记录同时挂 DEFAULT_TAG 键与实际标签名键；每 dataset 的 DEFAULT_TAG 键只取一条避免歧义
-  for (const doc of defaultTagDocs) {
-    const dsId = String(doc.datasetId);
-    const id = String(doc._id);
-    const type = doc.tagType || 'string';
-    addToMap(dsId, doc.tag, id, type);
-    if (!datasetTagMap.get(dsId)?.has(DEFAULT_TAG)) {
-      addToMap(dsId, DEFAULT_TAG, id, type);
+    const tagMap = datasetTagMap.get(dsId);
+    if (tagMap) {
+      tagMap.set(tagName, { id, type });
+      return;
     }
+    datasetTagMap.set(dsId, new Map([[tagName, { id, type }]]));
+  };
+  for (const doc of tagDocs) {
+    addToMap(String(doc.datasetId), doc.tag, String(doc._id), doc.tagType ?? 'string');
   }
   if (datasetTagMap.size === 0) return [];
 
@@ -255,10 +235,10 @@ export async function filterCollectionByKeyValueTags({
 
   // 4. Iterate each dataset (the same tag name may map to different tagIds per dataset)
   for (const [dsId, tagMap] of datasetTagMap) {
-    const andTagIds = ($and || [])
+    const andTagIds = $and
       .map((cond) => tagMap.get(Object.keys(cond)[0])?.id)
       .filter((id): id is string => Boolean(id));
-    const orTagIds = ($or || [])
+    const orTagIds = $or
       .map((cond) => tagMap.get(Object.keys(cond)[0])?.id)
       .filter((id): id is string => Boolean(id));
 
@@ -285,14 +265,14 @@ export async function filterCollectionByKeyValueTags({
 
     // 5. Application-layer value comparison
     for (const col of collections) {
-      const tagsArr = (col.tags || []).filter(isCollectionTagValue);
+      const tagsArr = (col.tags ?? []).filter(isCollectionTagValue);
 
       // AND: all must pass
-      const andOk = ($and || []).every((cond) => matchCondition(cond, tagMap, tagsArr));
+      const andOk = $and.every((cond) => matchCondition(cond, tagMap, tagsArr));
       if (!andOk) continue;
 
       // OR: at least one must pass
-      if ($or?.length) {
+      if ($or.length > 0) {
         const orOk = $or.some((cond) => matchCondition(cond, tagMap, tagsArr));
         if (!orOk) continue;
       }
@@ -323,12 +303,7 @@ export const getForbidCollectionIdList = async ({
   return collections.map((item) => String(item._id));
 };
 
-/**
- * 按知识库集合元数据过滤 collectionId。
- *
- * 标签过滤保持原有语义：`$and` 优先生效，且 `$and` 中字符串标签和 null 不能共存。
- * 输入 collectionIds 可以是文件夹，会递归展开为实际文件集合。
- */
+/** 新版知识库检索节点元数据过滤，只接受结构化标签条件。 */
 export const filterCollectionByMetadata = async ({
   teamId,
   datasetIds,
@@ -338,141 +313,46 @@ export const filterCollectionByMetadata = async ({
   datasetIds: string[];
   collectionFilterMatch?: string;
 }): Promise<string[] | undefined> => {
-  const getAllCollectionIds = async ({
-    parentCollectionIds
-  }: {
-    parentCollectionIds?: string[];
-  }): Promise<string[] | undefined> => {
-    if (!parentCollectionIds) return;
-    if (parentCollectionIds.length === 0) {
-      return [];
-    }
-
-    const collections = await MongoDatasetCollection.find(
-      {
-        teamId,
-        datasetId: { $in: datasetIds },
-        _id: { $in: parentCollectionIds }
-      },
-      '_id type',
-      {
-        ...readFromSecondary
-      }
-    ).lean();
-
-    const resultIds = new Set<string>();
-    collections.forEach((item) => {
-      if (item.type !== 'folder') {
-        resultIds.add(String(item._id));
-      }
-    });
-
-    const folderIds = collections
-      .filter((item) => item.type === 'folder')
-      .map((item) => String(item._id));
-
-    // Get all child collection ids
-    if (folderIds.length) {
-      const childCollections = await MongoDatasetCollection.find(
-        {
-          teamId,
-          datasetId: { $in: datasetIds },
-          parentId: { $in: folderIds }
-        },
-        '_id type',
-        {
-          ...readFromSecondary
-        }
-      ).lean();
-
-      const childIds = await getAllCollectionIds({
-        parentCollectionIds: childCollections.map((item) => String(item._id))
-      });
-
-      childIds?.forEach((id) => resultIds.add(id));
-    }
-
-    return Array.from(resultIds);
-  };
-
   if (!collectionFilterMatch || !global.feConfigs.isPlus) return;
 
-  let tagCollectionIdList: string[] | undefined = undefined;
-  let createTimeCollectionIdList: string[] | undefined = undefined;
-  let inputCollectionIdList: string[] | undefined = undefined;
-
-  try {
-    const jsonMatch = json5.parse(collectionFilterMatch);
-
-    const andTagsRaw = jsonMatch?.tags?.$and as unknown[] | undefined;
-    const orTagsRaw = jsonMatch?.tags?.$or as unknown[] | undefined;
-
-    const isConditionObject = (item: unknown): item is TagCondition =>
-      typeof item === 'object' && !Array.isArray(item) && item !== null;
-    const rewriteLegacyTags = (items: unknown[] | undefined): TagCondition[] =>
-      (items || []).map((item) => {
-        if (isConditionObject(item)) return item;
-        if (item === null) return { [DEFAULT_TAG]: { $empty: true } };
-        return { [DEFAULT_TAG]: { $contains: String(item) } };
-      });
-    const hasLegacyMixedNull = (items: unknown[] | undefined) =>
-      Boolean(
-        items?.some((item) => item === null) && items.some((item) => typeof item === 'string')
-      );
-
-    if (hasLegacyMixedNull(andTagsRaw) || hasLegacyMixedNull(orTagsRaw)) return [];
-
-    const rewrittenAnd = rewriteLegacyTags(andTagsRaw);
-    const rewrittenOr = rewriteLegacyTags(orTagsRaw);
-    if (rewrittenAnd.length > 0 || rewrittenOr.length > 0) {
-      tagCollectionIdList = await filterCollectionByKeyValueTags({
-        $and: rewrittenAnd,
-        $or: rewrittenOr,
-        teamId,
-        datasetIds
-      });
-    }
-
-    // time
-    const getCreateTime = jsonMatch?.createTime?.$gte as string | undefined;
-    const lteCreateTime = jsonMatch?.createTime?.$lte as string | undefined;
-    if (getCreateTime || lteCreateTime) {
-      const collections = await MongoDatasetCollection.find(
-        {
+  const metadataMatch = json5.parse(collectionFilterMatch) as {
+    tags?: { $and?: unknown[]; $or?: unknown[] };
+    createTime?: { $gte?: string; $lte?: string };
+    collectionIds?: string[];
+  };
+  const isConditionObject = (item: unknown): item is TagCondition => {
+    if (typeof item !== 'object' || Array.isArray(item) || item === null) return false;
+    const tagNames = Object.keys(item);
+    if (tagNames.length !== 1 || !tagNames[0]) return false;
+    const operation = Reflect.get(item, tagNames[0]);
+    return (
+      typeof operation === 'object' &&
+      !Array.isArray(operation) &&
+      operation !== null &&
+      Object.keys(operation).length === 1
+    );
+  };
+  const parseConditions = (items?: unknown[]): TagCondition[] => {
+    if (!items) return [];
+    if (!items.every(isConditionObject)) throw CommonErrEnum.invalidParams;
+    return items;
+  };
+  const andTags = parseConditions(metadataMatch.tags?.$and);
+  const orTags = parseConditions(metadataMatch.tags?.$or);
+  const tagCollectionIds =
+    andTags.length > 0 || orTags.length > 0
+      ? await filterCollectionByKeyValueTags({
+          $and: andTags,
+          $or: orTags,
           teamId,
-          datasetId: { $in: datasetIds },
-          createTime: {
-            ...(getCreateTime && { $gte: new Date(getCreateTime) }),
-            ...(lteCreateTime && {
-              $lte: new Date(lteCreateTime)
-            })
-          }
-        },
-        '_id'
-      );
-      createTimeCollectionIdList = collections.map((item) => String(item._id));
-    }
+          datasetIds
+        })
+      : undefined;
 
-    // collectionIds
-    const inputCollectionIds = jsonMatch?.collectionIds as string[] | undefined;
-    if (Array.isArray(inputCollectionIds) && inputCollectionIds.length > 0) {
-      inputCollectionIdList = await getAllCollectionIds({
-        parentCollectionIds: inputCollectionIds
-      });
-      if (inputCollectionIdList && inputCollectionIdList.length === 0) {
-        return [];
-      }
-    }
-
-    // Concat tag, time and collectionIds
-    const collectionIds = computeFilterIntersection([
-      tagCollectionIdList,
-      createTimeCollectionIdList,
-      inputCollectionIdList
-    ]);
-
-    return await getAllCollectionIds({
-      parentCollectionIds: collectionIds
-    });
-  } catch {}
+  return applySharedCollectionMetadataFilters({
+    teamId,
+    datasetIds,
+    metadataMatch,
+    tagCollectionIds
+  });
 };

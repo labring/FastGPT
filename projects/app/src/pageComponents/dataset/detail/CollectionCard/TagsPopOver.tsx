@@ -1,12 +1,19 @@
-import { Flex } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
-import { useMemo } from 'react';
+import { useLayoutEffect, useMemo, useState } from 'react';
 import { type DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import { type DatasetCollectionsListItemType } from '@fastgpt/global/openapi/core/dataset/collection/api';
-import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import { formatCollectionTagChipText, useOverflowChipCount } from './TagCommon';
+import {
+  formatCollectionTagChipText,
+  OVERFLOW_CHIP_GAP_PX,
+  parseCollectionTagParts,
+  TAG_TOOLTIP_PROPS,
+  TagTooltipItem,
+  useOverflowChipCount
+} from './TagCommon';
 
 const TAG_CHIP_PROPS = {
   colorSchema: 'cyan' as const,
@@ -19,11 +26,65 @@ const TAG_CHIP_PROPS = {
   borderRadius: 'xs' as const
 };
 
-const TagChip = ({ text }: { text: string }) => (
-  <MyTag {...TAG_CHIP_PROPS} data-tag-chip>
-    {text}
-  </MyTag>
-);
+const OVERFLOW_TAG_CHIP_PROPS = {
+  ...TAG_CHIP_PROPS,
+  borderRadius: 'full' as const
+};
+
+/** 渲染知识库列表中的标签；单个标签成为唯一可见项时允许收缩并展示完整文本。 */
+const TagChip = ({
+  text,
+  name,
+  value,
+  isFlexible = false,
+  withTooltip = false
+}: {
+  text: string;
+  name?: string;
+  value?: string;
+  isFlexible?: boolean;
+  withTooltip?: boolean;
+}) => {
+  const tagText = (
+    <Box
+      minW={0}
+      overflow={isFlexible ? 'hidden' : undefined}
+      textOverflow="ellipsis"
+      whiteSpace="nowrap"
+    >
+      {text}
+    </Box>
+  );
+
+  const tagContent = withTooltip ? (
+    <MyTooltip
+      label={<TagTooltipItem name={name || text} value={value} />}
+      shouldWrapChildren={false}
+      {...TAG_TOOLTIP_PROPS}
+    >
+      {tagText}
+    </MyTooltip>
+  ) : (
+    tagText
+  );
+
+  const chip = (
+    <MyTag
+      {...TAG_CHIP_PROPS}
+      data-tag-chip
+      flex={isFlexible ? '0 1 auto' : '0 0 auto'}
+      minW={isFlexible ? 0 : undefined}
+      maxW={isFlexible ? '100%' : undefined}
+      overflow={isFlexible ? 'hidden' : undefined}
+      cursor={withTooltip ? 'pointer' : undefined}
+      _hover={withTooltip ? { bg: '#DBF3FF' } : undefined}
+    >
+      {tagContent}
+    </MyTag>
+  );
+
+  return chip;
+};
 
 const TagsPopOver = ({
   currentCollection
@@ -35,10 +96,15 @@ const TagsPopOver = ({
   const chipItems = useMemo(
     () =>
       (currentCollection.tags ?? [])
-        .map((item, index) => ({
-          id: typeof item === 'string' ? item : `${item.tag}-${index}`,
-          text: formatCollectionTagChipText(item, allDatasetTags)
-        }))
+        .map((item, index) => {
+          const parts = parseCollectionTagParts(item, allDatasetTags);
+          return {
+            id: typeof item === 'string' ? item : `${item.tag}-${index}`,
+            text: formatCollectionTagChipText(item, allDatasetTags),
+            name: parts.name,
+            value: parts.value
+          };
+        })
         .filter((item) => item.text),
     [allDatasetTags, currentCollection.tags]
   );
@@ -47,6 +113,34 @@ const TagsPopOver = ({
     itemKey: chipItems,
     itemCount: chipItems.length
   });
+
+  const [shouldShrinkFirstTag, setShouldShrinkFirstTag] = useState(false);
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    const measure = measureRef.current;
+    if (!container || !measure) return;
+
+    const calculate = () => {
+      const firstTag = measure.querySelector('[data-tag-chip]') as HTMLElement | null;
+      const overflowChip = container.querySelector('[data-overflow-chip]') as HTMLElement | null;
+      const hasOnlyOneVisibleTag = visibleCount === 1;
+
+      if (!firstTag || !hasOnlyOneVisibleTag) {
+        setShouldShrinkFirstTag(false);
+        return;
+      }
+
+      const availableWidth =
+        container.offsetWidth -
+        (chipItems.length > 1 ? (overflowChip?.offsetWidth ?? 0) + OVERFLOW_CHIP_GAP_PX : 0);
+      setShouldShrinkFirstTag(firstTag.offsetWidth > availableWidth);
+    };
+
+    calculate();
+    const observer = new ResizeObserver(calculate);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [chipItems.length, containerRef, measureRef, visibleCount]);
 
   if (chipItems.length === 0) return null;
 
@@ -69,7 +163,7 @@ const TagsPopOver = ({
         {chipItems.map((item) => (
           <TagChip key={item.id} text={item.text} />
         ))}
-        <MyTag {...TAG_CHIP_PROPS} data-overflow-chip>
+        <MyTag {...OVERFLOW_TAG_CHIP_PROPS} data-overflow-chip>
           {`+${chipItems.length}`}
         </MyTag>
       </Flex>
@@ -83,34 +177,44 @@ const TagsPopOver = ({
         h={'20px'}
         overflow={'hidden'}
       >
-        {visibleTags.map((item) => (
-          <TagChip key={item.id} text={item.text} />
+        {visibleTags.map((item, index) => (
+          <TagChip
+            key={item.id}
+            text={item.text}
+            name={item.name}
+            value={item.value}
+            isFlexible={index === 0 && shouldShrinkFirstTag}
+            withTooltip={index === 0 && shouldShrinkFirstTag}
+          />
         ))}
         {overflowTags.length > 0 && (
-          <MyPopover
-            trigger={'hover'}
-            placement={'bottom-start'}
-            hasArrow={false}
-            offset={[0, 4]}
-            w={'auto'}
-            maxW={'320px'}
-            p={2}
-            Trigger={
-              <Flex cursor={'pointer'} flexShrink={0} onClick={(e) => e.stopPropagation()}>
-                <MyTag {...TAG_CHIP_PROPS} _hover={{ bg: '#DBF3FF' }}>
-                  {`+${overflowTags.length}`}
-                </MyTag>
-              </Flex>
-            }
-          >
-            {() => (
-              <Flex gap={2} flexWrap={'wrap'} onClick={(e) => e.stopPropagation()}>
+          <MyTooltip
+            label={
+              <Flex
+                direction={'column'}
+                alignItems={'flex-start'}
+                maxH={'240px'}
+                overflowY={'auto'}
+              >
                 {overflowTags.map((item) => (
-                  <TagChip key={item.id} text={item.text} />
+                  <TagTooltipItem key={item.id} name={item.name} value={item.value} />
                 ))}
               </Flex>
-            )}
-          </MyPopover>
+            }
+            shouldWrapChildren={false}
+            {...TAG_TOOLTIP_PROPS}
+          >
+            <Flex
+              cursor={'pointer'}
+              flexShrink={0}
+              borderRadius={'full'}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MyTag {...OVERFLOW_TAG_CHIP_PROPS} data-overflow-chip _hover={{ bg: '#DBF3FF' }}>
+                {`+${overflowTags.length}`}
+              </MyTag>
+            </Flex>
+          </MyTooltip>
         )}
       </Flex>
     </Flex>

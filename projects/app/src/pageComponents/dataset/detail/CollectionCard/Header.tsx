@@ -225,9 +225,9 @@ const Header = ({
         )}
 
         {/* Tag */}
-        {datasetDetail.type !== DatasetTypeEnum.websiteDataset &&
-          datasetDetail.permission.hasWritePer &&
-          feConfigs?.isPlus && <DatasetTagFilter />}
+        {datasetDetail.type !== DatasetTypeEnum.websiteDataset && feConfigs?.isPlus && (
+          <DatasetTagFilter />
+        )}
       </HStack>
 
       {hasTrainingError && (

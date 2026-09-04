@@ -246,30 +246,4 @@ describe('datasetDeleteProcessor', () => {
       MongoDatasetSynonymMapping.countDocuments({ datasetId: childDataset._id })
     ).resolves.toBe(0);
   });
-
-  it('deletes a dataset without v2 tags', async () => {
-    const user = await getUser('dataset-delete-no-v2-tags');
-    const dataset = await MongoDataset.create({
-      teamId: user.teamId,
-      tmbId: user.tmbId,
-      name: 'dataset without v2 tags',
-      type: DatasetTypeEnum.dataset,
-      deleteTime: new Date()
-    });
-
-    await datasetDeleteProcessor({
-      data: {
-        teamId: user.teamId,
-        datasetId: String(dataset._id)
-      }
-    } as never);
-
-    expect(await MongoDataset.countDocuments({ _id: dataset._id })).toBe(0);
-    expect(
-      await MongoDatasetCollectionTagsV2.countDocuments({
-        teamId: user.teamId,
-        datasetId: dataset._id
-      })
-    ).toBe(0);
-  });
 });

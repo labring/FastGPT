@@ -1026,7 +1026,8 @@ describe('agent generated tool input helpers', () => {
     FlowNodeInputTypeEnum.hidden,
     FlowNodeInputTypeEnum.selectDataset,
     FlowNodeInputTypeEnum.selectLLMModel,
-    FlowNodeInputTypeEnum.customVariable
+    FlowNodeInputTypeEnum.customVariable,
+    FlowNodeInputTypeEnum.datasetTagFilter
   ])('should hide unsupported parent tool configuration type %s', (renderType) => {
     expect(canInputBeConfiguredAsToolParam(createMockInput({ renderTypeList: [renderType] }))).toBe(
       false

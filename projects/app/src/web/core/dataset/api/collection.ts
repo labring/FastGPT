@@ -3,11 +3,7 @@ import type {
   ParentTreePathItemType,
   ParentIdType
 } from '@fastgpt/global/common/parentFolder/type';
-import type {
-  DatasetCollectionItemType,
-  DatasetTagType,
-  TagUsageType
-} from '@fastgpt/global/core/dataset/type';
+import type { DatasetCollectionItemType, DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq';
 import type {
   CreateApiCollectionV2BodyType,
@@ -19,7 +15,6 @@ import type {
   CreateCollectionBodyType
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import type {
-  AddTagsToCollectionsParams,
   BatchSetCollectionTagsParams,
   CreateDatasetCollectionTagParams,
   SetCollectionTagsParams,
@@ -135,14 +130,10 @@ export const postTemplateDatasetCollection = ({
 /* =============================== tag ==================================== */
 export const postCreateDatasetCollectionTag = (data: CreateDatasetCollectionTagParams) =>
   POST(`/proApi/core/dataset/tag/create`, data);
-export const postAddTagsToCollections = (data: AddTagsToCollectionsParams) =>
-  POST(`/proApi/core/dataset/tag/addToCollections`, data);
 export const delDatasetCollectionTag = (data: { id: string; datasetId: string }) =>
   DELETE(`/proApi/core/dataset/tag/delete`, data);
 export const updateDatasetCollectionTag = (data: UpdateDatasetCollectionTagParams) =>
   POST(`/proApi/core/dataset/tag/update`, data);
-export const getTagUsage = (datasetId: string) =>
-  GET<TagUsageType[]>(`/proApi/core/dataset/tag/tagUsage?datasetId=${datasetId}`);
 export const getAllTags = (datasetId: string) =>
   GET<{ list: DatasetTagType[] }>(`/proApi/core/dataset/tag/getAllTags?datasetId=${datasetId}`);
 export const getDatasetTagFilterOptions = (datasetId: string) =>

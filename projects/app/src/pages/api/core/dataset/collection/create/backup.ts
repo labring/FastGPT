@@ -29,7 +29,7 @@ async function handler(req: ApiRequestProps) {
     });
     filepaths.push(result.fileMetadata.path);
     const filename = decodeMultipartFilename(result.fileMetadata.originalname);
-    const { datasetId, parentId } = CreateBackupCollectionFormSchema.parse(result.data);
+    const { datasetId, parentId, tags } = CreateBackupCollectionFormSchema.parse(result.data);
 
     const { teamId, tmbId, dataset } = await authDataset({
       req,
@@ -82,7 +82,8 @@ async function handler(req: ApiRequestProps) {
         name: filename,
         type: DatasetCollectionTypeEnum.file,
         fileId,
-        trainingType: DatasetCollectionDataProcessModeEnum.backup
+        trainingType: DatasetCollectionDataProcessModeEnum.backup,
+        tags
       }
     });
     promoted = true;
