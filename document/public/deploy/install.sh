@@ -817,7 +817,7 @@ if ! is_v415_deploy; then
 fi
 echo "  密钥处理:     $CREDENTIALS_LABEL"
 echo "=============================="
-echo "请确认域名或反向代理已指向对应端口：FastGPT -> 3000，Sandbox Proxy -> 3006。"
+echo "请确认域名或反向代理已指向对应端口：FastGPT -> ${FASTGPT_PORT}，Sandbox Proxy -> 3006。"
 if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
     echo "S3 地址需指向 9000 端口。"
 fi
@@ -876,6 +876,21 @@ fi
 # ========== 配置 FastGPT 访问地址 ==========
 configure_fe_domain
 configure_sandbox_proxy_urls
+
+FASTGPT_PORT="${FE_DOMAIN_INPUT##*:}"
+FASTGPT_PORT="${FASTGPT_PORT##*/}"
+if [[ ! "$FASTGPT_PORT" =~ ^[0-9]+$ ]]; then
+    FASTGPT_PORT=3000
+fi
+
+if [ "$FASTGPT_PORT" != "3000" ]; then
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s|- 3000:3000|- ${FASTGPT_PORT}:3000|g" docker-compose.yml
+    else
+        sed -i "s|- 3000:3000|- ${FASTGPT_PORT}:3000|g" docker-compose.yml
+    fi
+    echo "已更新 FastGPT 端口映射为: ${FASTGPT_PORT}:3000"
+fi
 
 # 旧版 Compose 仍挂载 config.json，安装时需要同步下载该文件。
 if LC_ALL=C grep -q -- "./config.json:/app/data/config.json" docker-compose.yml; then
@@ -1056,22 +1071,22 @@ if LC_ALL=C grep -q "opensandbox-agent-sandbox-image" docker-compose.yml; then
     echo "  1. 预拉取镜像: docker compose --profile prepull pull"
     echo "  2. 启动服务:   docker compose up -d"
     if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
-        echo "  3. 开放端口:   3000, 9000, 3006"
+        echo "  3. 开放端口:   ${FASTGPT_PORT}, 9000, 3006"
     else
-        echo "  3. 开放端口:   3000, 3006"
+        echo "  3. 开放端口:   ${FASTGPT_PORT}, 3006"
     fi
-    echo "  4. 访问服务:   http://localhost:3000"
+    echo "  4. 访问服务:   http://localhost:${FASTGPT_PORT}"
     echo "  5. 登录服务:   默认账号为 'root', 密码为: '$ROOT_LOGIN_PASSWORD'"
     echo "  6. 配置模型:   在 '账号-模型提供商' 页面，进行模型配置"
 else
     echo "  1. 预拉取镜像: docker compose pull"
     echo "  2. 启动服务:   docker compose up -d"
     if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
-        echo "  3. 开放端口:   3000, 9000"
+        echo "  3. 开放端口:   ${FASTGPT_PORT}, 9000"
     else
-        echo "  3. 开放端口:   3000"
+        echo "  3. 开放端口:   ${FASTGPT_PORT}"
     fi
-    echo "  4. 访问服务:   http://localhost:3000"
+    echo "  4. 访问服务:   http://localhost:${FASTGPT_PORT}"
     echo "  5. 登录服务:   默认账号为 'root', 密码为: '$ROOT_LOGIN_PASSWORD'"
     echo "  6. 配置模型:   在 '账号-模型提供商' 页面，进行模型配置"
 fi
