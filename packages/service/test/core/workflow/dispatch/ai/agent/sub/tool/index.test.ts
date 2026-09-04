@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { dispatchTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { PluginPermissionEnum } from '@fastgpt/global/sdk/fastgpt-plugin';
+import { InvokeProcessor } from '@fastgpt/service/support/invoke/invoke';
 
 const {
   authAppByTmbIdMock,
@@ -87,7 +90,8 @@ const createDispatchToolProps = (
     },
     params,
     runningAppInfo: {
-      id: 'attacker-app',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'attacker-app',
       teamId: 'attacker-team',
       tmbId: 'attacker-tmb',
       name: 'Attacker workflow'
@@ -172,6 +176,37 @@ describe('dispatchTool runtime toolset auth', () => {
       ]);
     }
   );
+
+  it('should generate the invoke token for the current workflow user', async () => {
+    getSystemToolRuntimeMock.mockResolvedValueOnce({
+      id: 'search',
+      version: '1.0.0',
+      currentCost: 0,
+      systemKeyCost: 0,
+      permissions: [PluginPermissionEnum['userInfo:read']],
+      secretsVal: {}
+    });
+
+    const props = createDispatchToolProps({
+      systemTool: {
+        toolId: 'systemTool-search'
+      }
+    });
+    props.runningAppInfo.teamId = 'owner-team';
+    props.runningAppInfo.tmbId = 'owner-tmb';
+    props.runningUserInfo.teamId = 'visitor-team';
+    props.runningUserInfo.tmbId = 'visitor-tmb';
+
+    await dispatchTool(props);
+
+    const invokeToken = runToolStreamMock.mock.calls[0][0].systemVar.invokeToken;
+    const session = InvokeProcessor.getInstanceFromToken(invokeToken).getSessionWithPermission(
+      PluginPermissionEnum['userInfo:read']
+    );
+
+    expect(session.teamId).toBe('visitor-team');
+    expect(session.tmbId).toBe('visitor-tmb');
+  });
 
   it('should reject HTTP agent tool execution when running app tmb has no parent toolset permission', async () => {
     authAppByTmbIdMock.mockRejectedValueOnce(new Error('unAuthApp'));
