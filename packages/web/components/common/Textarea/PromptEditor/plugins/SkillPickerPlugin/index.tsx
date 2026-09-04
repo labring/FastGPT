@@ -887,10 +887,20 @@ export default function SkillPickerPlugin({
 
         // Use functional updates to get the latest state
         setCurrentColumnIndex((prevColumnIndex) => {
+          const currentOption = skillOptions[prevColumnIndex];
+          const currentItem = currentOption?.list[currentRowIndex];
+
+          if (currentItem && currentOption && isManualFolder(currentItem, currentOption)) {
+            void handleItemSelect({
+              currentColumnIndex: prevColumnIndex,
+              item: currentItem,
+              option: currentOption
+            });
+            return prevColumnIndex;
+          }
+
           if (prevColumnIndex >= skillOptions.length - 1) {
-            const currentOption = skillOptions[prevColumnIndex];
-            const currentItem = currentOption?.list[currentRowIndex];
-            if (currentItem && currentOption && !isManualFolder(currentItem, currentOption)) {
+            if (currentItem && currentOption) {
               void handleItemSelect({
                 currentColumnIndex: prevColumnIndex,
                 item: currentItem,
