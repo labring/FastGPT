@@ -189,10 +189,7 @@ export const listReadableAgentSkills = async ({
   })();
 
   const mySkills = await MongoAgentSkills.find(findSkillQuery)
-    .sort({
-      type: -1,
-      ...appListSortMongoMap[sort ?? AppListSortEnum.updateTimeDesc]
-    })
+    .sort(appListSortMongoMap[sort ?? AppListSortEnum.updateTimeDesc])
     .lean();
 
   const formatSkills = mySkills

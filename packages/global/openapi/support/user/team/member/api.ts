@@ -1,4 +1,5 @@
 import z from 'zod';
+import { BoolSchema } from '../../../../../common/zod';
 import { ObjectIdSchema } from '../../../../../common/type/mongo';
 import { GroupMemberRole } from '../../../../../support/permission/memberGroup/constant';
 import { PermissionSchema } from '../../../../../support/permission/controller';
@@ -110,6 +111,9 @@ export const ListTeamMembersBodySchema = PaginationSchema.extend({
   status: TeamMemberStatusSchema.optional(),
   tmbIds: z.array(TeamMemberIdSchema).optional().meta({
     description: '按成员 ID 精确筛选；空数组返回空列表，可与组织和成员组筛选求交'
+  }),
+  currentFirst: BoolSchema.optional().meta({
+    description: '是否将当前登录成员置于列表首位；搜索和其他筛选条件仍优先生效'
   })
 });
 export type ListTeamMembersBodyType = z.infer<typeof ListTeamMembersBodySchema>;

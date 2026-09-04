@@ -243,7 +243,8 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         ...(externalReadUrl !== undefined && { externalReadUrl }),
         ...(isMove && { inheritPermission: true }),
         ...(typeof autoSync === 'boolean' && { autoSync }),
-        ...apiDatasetParams
+        ...apiDatasetParams,
+        ...(!isMove && { updateTime: new Date() })
       },
       { session }
     );

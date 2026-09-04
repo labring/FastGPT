@@ -42,6 +42,7 @@ const ResourceListFilters = ({ value, onChange }: Props) => {
             onChange({ ...value, creator: { mode: creator.mode, tmbIds: creator.values } })
           }
           selectedSelf={t('app:list_filter.created_by_me')}
+          currentFirst
         />
       )}
       <SingleSelectFilter

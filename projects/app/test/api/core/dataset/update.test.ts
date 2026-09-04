@@ -29,7 +29,8 @@ describe('update dataset', () => {
       teamId: users.members[0].teamId,
       tmbId: users.members[0].tmbId,
       name: 'old-name',
-      type: DatasetTypeEnum.dataset
+      type: DatasetTypeEnum.dataset,
+      updateTime: new Date('2026-01-01T00:00:00.000Z')
     });
 
     const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
@@ -42,6 +43,12 @@ describe('update dataset', () => {
 
     expect(res.error).toBeUndefined();
     expect(res.code).toBe(200);
+
+    const updatedDataset = await MongoDataset.findById(dataset._id).lean();
+    expect(updatedDataset?.name).toBe('updated-name');
+    expect(updatedDataset?.updateTime.getTime()).toBeGreaterThan(
+      new Date('2026-01-01T00:00:00.000Z').getTime()
+    );
   });
 
   it('should return 200 when update dataset with API Key auth (#7006)', async () => {

@@ -105,6 +105,7 @@ const AppListFilters = ({ value, onChange, scene }: Props) => {
             })
           }
           selectedSelf={t('app:list_filter.created_by_me')}
+          currentFirst
         />
       )}
       <SingleSelectFilter

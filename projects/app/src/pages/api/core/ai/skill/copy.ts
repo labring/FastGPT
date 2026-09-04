@@ -8,7 +8,11 @@ import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { Types } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { createSkill, updateCurrentVersion } from '@fastgpt/service/core/ai/skill/manage';
+import {
+  createSkill,
+  updateCurrentVersion,
+  updateParentFoldersUpdateTime
+} from '@fastgpt/service/core/ai/skill/manage';
 import { copySkillPackage, removeSkillPackageTTL } from '@fastgpt/service/core/ai/skill/package';
 import { createVersion } from '@fastgpt/service/core/ai/skill/version';
 import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
@@ -147,6 +151,8 @@ async function handler(req: ApiRequestProps<CopySkillBody>): Promise<CopySkillRe
 
     return newId;
   });
+
+  updateParentFoldersUpdateTime({ parentId: skill.parentId ?? null });
 
   // 5. Audit log
   (async () => {

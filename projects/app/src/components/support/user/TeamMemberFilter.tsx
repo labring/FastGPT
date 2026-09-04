@@ -21,6 +21,8 @@ type Props = {
   onChange: (next: MultiSelectFilterValue<string>) => void;
   /** 只选当前用户时触发器显示的文案，例如「我创建的」。 */
   selectedSelf?: string;
+  /** 是否让后端将当前登录成员放在分页结果首位。 */
+  currentFirst?: boolean;
 };
 
 /**
@@ -29,7 +31,13 @@ type Props = {
  *
  * 已选成员用 tmbIds 单独回填/校验，不依赖候选列表滚完。候选列表仍分页搜索。
  */
-const TeamMemberFilter = ({ title, value, onChange, selectedSelf }: Props) => {
+const TeamMemberFilter = ({
+  title,
+  value,
+  onChange,
+  selectedSelf,
+  currentFirst = false
+}: Props) => {
   const { t } = useTranslation();
   const labels = useCommonFilterLabels();
   const { userInfo } = useUserStore();
@@ -45,7 +53,8 @@ const TeamMemberFilter = ({ title, value, onChange, selectedSelf }: Props) => {
     pageSize: 20,
     params: {
       searchKey,
-      status: 'active'
+      status: 'active',
+      ...(currentFirst ? { currentFirst: true } : {})
     },
     refreshDeps: [searchKey],
     throttleWait: 500,

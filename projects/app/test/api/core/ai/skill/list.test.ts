@@ -26,6 +26,48 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 describe('POST /api/core/ai/skill/list', () => {
+  it('文件夹和 Skill 统一按修改时间混排', async () => {
+    const owner = await getUser(`agent-skill-sort-owner-${getNanoid(6)}`);
+
+    await MongoAgentSkills.create([
+      {
+        name: 'Older folder',
+        type: AgentSkillTypeEnum.folder,
+        source: AgentSkillSourceEnum.personal,
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        updateTime: new Date('2026-01-01T00:00:00.000Z')
+      },
+      {
+        name: 'Newer skill',
+        type: AgentSkillTypeEnum.skill,
+        source: AgentSkillSourceEnum.personal,
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        updateTime: new Date('2026-02-01T00:00:00.000Z')
+      },
+      {
+        name: 'Newest folder',
+        type: AgentSkillTypeEnum.folder,
+        source: AgentSkillSourceEnum.personal,
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        updateTime: new Date('2026-03-01T00:00:00.000Z')
+      }
+    ]);
+
+    const result = await Call<ListSkillsQuery, Record<string, never>, ListSkillsResponse>(handler, {
+      auth: owner,
+      body: { source: 'mine', parentId: null, withAppCount: false }
+    });
+
+    expect(result.data.list.map((item) => item.name)).toEqual([
+      'Newest folder',
+      'Newer skill',
+      'Older folder'
+    ]);
+  });
+
   it('按创建者筛选并支持创建时间排序和空选择', async () => {
     const owner = await getUser(`agent-skill-filter-owner-${getNanoid(6)}`);
     const member = await getUser(`agent-skill-filter-member-${getNanoid(6)}`, owner.teamId);
