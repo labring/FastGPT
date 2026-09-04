@@ -90,7 +90,6 @@ const model: LLMSystemModelDataType = {
   name: 'GPT-4',
   scope: 'system' as const,
   isActive: true,
-  isCustom: false,
   config: {
     maxContext: 4000,
     maxResponse: 1024,

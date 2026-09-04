@@ -124,7 +124,9 @@ const MyModal = ({
         <MyBox
           isLoading={isLoading}
           overflow={props.overflow || 'overlay'}
-          h={'100%'}
+          flex={'1 1 auto'}
+          h={'auto'}
+          minH={0}
           display={'flex'}
           flexDirection={'column'}
           px={8}

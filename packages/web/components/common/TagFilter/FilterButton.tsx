@@ -81,7 +81,7 @@ const FilterButton = forwardRef<HTMLDivElement, FilterButtonProps>(
       color={'myGray.900'}
       cursor={'pointer'}
       type={'button'}
-      fontSize={'mini'}
+      fontSize={'sm'}
       lineHeight={'16px'}
       _hover={{
         boxShadow: 'focus',

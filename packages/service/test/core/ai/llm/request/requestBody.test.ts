@@ -21,7 +21,6 @@ const createModel = (overrides: Record<string, any> = {}) =>
     modelId: '68ad85a7463006c963799a05',
     isActive: true,
     scope: 'system' as const,
-    isCustom: false,
     ...overrides,
     config: {
       maxContext: 128000,

@@ -322,7 +322,6 @@ describe('debugChat handler — parameter validation', () => {
       type: ModelTypeEnum.llm,
       scope: 'system' as const,
       isActive: true,
-      isCustom: false,
       config: {
         maxContext: 32000,
         maxResponse: 4000,

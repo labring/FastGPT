@@ -176,6 +176,42 @@ const useVirtualWindow = <T,>({
 };
 
 /**
+ * 为已经一次性加载到内存的数据提供固定高度虚拟窗口。
+ *
+ * 与 `useVirtualList` 的分页版本分离：调用方仍持有完整数据，只把视口附近的项目交给 DOM
+ * 渲染。适用于模型配置等数据量较大、但后端无需分页的管理列表。
+ */
+export const useStaticVirtualList = <T,>({
+  data,
+  itemHeight,
+  overscan = defaultOverscan
+}: {
+  data: T[];
+  itemHeight: number;
+  overscan?: number;
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { list, topPlaceholderHeight, bottomPlaceholderHeight } = useVirtualWindow({
+    data,
+    containerRef,
+    itemHeight,
+    overscan
+  });
+
+  const scrollToTop = useMemoizedFn(() => {
+    if (containerRef.current) containerRef.current.scrollTop = 0;
+  });
+
+  return {
+    containerRef,
+    virtualDataList: list,
+    topPlaceholderHeight,
+    bottomPlaceholderHeight,
+    scrollToTop
+  };
+};
+
+/**
  * 提供固定滚动容器中的虚拟列表和 offset 分页加载。
  * 只渲染视口附近的数据，分页请求仍由 useScrollPagination 统一处理，支持搜索刷新和空状态。
  */

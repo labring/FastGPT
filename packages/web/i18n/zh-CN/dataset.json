@@ -192,7 +192,7 @@
   "vector_model_max_tokens_tip": "每个分块数据，最大长度为 3000 tokens",
   "vllm_model": "图片理解模型",
   "vllm_model_tip": "自动标注文档里的图片并生成文本描述，辅助文本检索",
-  "website_dataset": "Web 站点同步",
+  "website_dataset": "网站知识库",
   "website_dataset_desc": "通过爬虫，批量爬取网页数据构建知识库",
   "website_info": "网站信息",
   "yuque_dataset": "语雀知识库",

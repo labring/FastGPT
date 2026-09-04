@@ -1,10 +1,7 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
-import {
-  refreshModelTemplates,
-  updatedReloadSystemModel
-} from '@fastgpt/service/core/ai/config/utils';
+import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/config/utils';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
@@ -83,9 +80,6 @@ async function handler(req: ApiRequestProps<UpdateDefaultModelsBody>): Promise<v
     }
   }
 
-  // 插件不可用时不提交数据库更新，保持数据库与当前运行时默认模型一致。
-  const pluginDocuments = await refreshModelTemplates();
-
   const configuredDefaultModelIds = {
     [ModelTypeEnum.llm]: defaults[ModelTypeEnum.llm],
     [ModelTypeEnum.embedding]: defaults[ModelTypeEnum.embedding],
@@ -99,7 +93,7 @@ async function handler(req: ApiRequestProps<UpdateDefaultModelsBody>): Promise<v
 
   await upsertSystemDefaultModelIds(configuredDefaultModelIds);
 
-  await updatedReloadSystemModel({ pluginDocuments });
+  await updatedReloadSystemModel();
 }
 
 export default NextAPI(handler);

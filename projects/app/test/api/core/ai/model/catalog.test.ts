@@ -32,7 +32,6 @@ const model = {
   type: ModelTypeEnum.llm,
   scope: 'system' as const,
   isActive: true,
-  isCustom: false,
   requestAuth: 'secret',
   config: { maxContext: 4096, maxResponse: 1024, quoteMaxToken: 1024 }
 };

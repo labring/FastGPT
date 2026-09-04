@@ -12,7 +12,6 @@ import {
   Flex,
   Button,
   HStack,
-  ModalBody,
   Grid,
   GridItem,
   type BoxProps
@@ -29,13 +28,13 @@ import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React, { useMemo, useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import type { ChannelLogListItemType } from '@/global/aiproxy/type';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
 import ModelTabHeader from '../ModelTabHeader';
+import { useFixedTableHeader } from '@fastgpt/web/hooks/useFixedTableHeader';
 
 type LogDetailType = Omit<ChannelLogListItemType, 'model' | 'request_at'> & {
   channelName: string | number;
@@ -121,6 +120,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
     },
     scrollContainerRef
   });
+  const { headerContainerRef, headerTableWidth } = useFixedTableHeader(scrollContainerRef);
 
   const formatData = useMemo<LogDetailType[]>(() => {
     return data.map((item) => {
@@ -159,8 +159,16 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
           flexDirection={['column', 'row']}
           flexWrap={['nowrap', 'wrap']}
           alignItems={['stretch', 'flex-start']}
-          gap={[3, 4]}
+          gap={2}
         >
+          <Box flex={['0 0 auto', '0 0 200px']} w={'100%'} maxW={['100%', '200px']}>
+            <SearchInput
+              bg={'white'}
+              placeholder={t('config_model:log_request_id_search')}
+              defaultValue={filterProps.request_id}
+              onBlur={(e) => setFilterProps({ ...filterProps, request_id: e.target.value })}
+            />
+          </Box>
           <DateRangePicker
             formLabel={t('common:user.Time')}
             w={'fit-content'}
@@ -193,13 +201,6 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
             ]}
             onChange={(val) => setFilterProps({ ...filterProps, code_type: val })}
           />
-          <Box flex={['0 0 auto', '1 0 200px']} w={'100%'} maxW={['100%', '200px']}>
-            <SearchInput
-              placeholder={t('config_model:log_request_id_search')}
-              defaultValue={filterProps.request_id}
-              onBlur={(e) => setFilterProps({ ...filterProps, request_id: e.target.value })}
-            />
-          </Box>
         </Flex>
         <MyBox
           flex={'1 0 0'}
@@ -209,16 +210,23 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
           flexDirection={'column'}
           isLoading={isLoading}
         >
-          <TableContainer
-            ref={scrollContainerRef}
-            flex={['0 0 auto', '1 0 0']}
-            h={['auto', '100%']}
-            minH={0}
-            overflowY={['visible', 'auto']}
-            px={6}
-            fontSize={'sm'}
-          >
-            <Table>
+          <TableContainer ref={headerContainerRef} flexShrink={0} overflowX="hidden" px={6}>
+            <Table
+              minW="970px"
+              sx={{
+                tableLayout: 'fixed',
+                width: `${headerTableWidth} !important`
+              }}
+            >
+              <colgroup>
+                <col style={{ width: '150px' }} />
+                <col style={{ width: '200px' }} />
+                <col style={{ width: '140px' }} />
+                <col style={{ width: '100px' }} />
+                <col style={{ width: '100px' }} />
+                <col style={{ width: '180px' }} />
+                <col style={{ width: '100px' }} />
+              </colgroup>
               <Thead>
                 <Tr>
                   <Th>{t('config_model:channel_name')}</Th>
@@ -230,6 +238,27 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
                   <Th></Th>
                 </Tr>
               </Thead>
+            </Table>
+          </TableContainer>
+          <TableContainer
+            ref={scrollContainerRef}
+            flex={['0 0 auto', '1 0 0']}
+            h={['auto', '100%']}
+            minH={0}
+            overflowY={['visible', 'auto']}
+            px={6}
+            fontSize={'sm'}
+          >
+            <Table minW="970px" sx={{ tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: '150px' }} />
+                <col style={{ width: '200px' }} />
+                <col style={{ width: '140px' }} />
+                <col style={{ width: '100px' }} />
+                <col style={{ width: '100px' }} />
+                <col style={{ width: '180px' }} />
+                <col style={{ width: '100px' }} />
+              </colgroup>
               <Tbody>
                 {formatData.map((item, index) => (
                   <Tr key={index}>
@@ -320,100 +349,92 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
   return (
     <MyModal
       isOpen
-      iconSrc="support/bill/payRecordLight"
       title={t('config_model:log_detail')}
       onClose={onClose}
       maxW={['90vw', '800px']}
       w={'100%'}
     >
       {detailData && (
-        <ModalBody>
-          {/* 基本信息表格 */}
-          <Grid
-            templateColumns="repeat(2, 1fr)"
-            gap={0}
-            borderWidth="1px"
-            borderRadius="md"
-            fontSize={'sm'}
-            overflow={'hidden'}
-          >
-            {/* 第一行 */}
-            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <LogDetailTitle>RequestID</LogDetailTitle>
-              <LogDetailContainer>{detailData?.request_id}</LogDetailContainer>
+        <Grid
+          templateColumns="repeat(2, 1fr)"
+          gap={0}
+          borderWidth="1px"
+          borderRadius="md"
+          fontSize={'sm'}
+          overflow={'hidden'}
+        >
+          {/* 第一行 */}
+          <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
+            <LogDetailTitle>RequestID</LogDetailTitle>
+            <LogDetailContainer>{detailData?.request_id}</LogDetailContainer>
+          </GridItem>
+          <GridItem display={'flex'} borderBottomWidth="1px">
+            <LogDetailTitle>Request IP</LogDetailTitle>
+            <LogDetailContainer>{detailData?.ip}</LogDetailContainer>
+          </GridItem>
+          <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
+            <LogDetailTitle>{t('config_model:channel_status')}</LogDetailTitle>
+            <LogDetailContainer color={detailData.code === 200 ? 'green.600' : 'red.600'}>
+              {detailData?.code}
+            </LogDetailContainer>
+          </GridItem>
+          <GridItem display={'flex'} borderBottomWidth="1px">
+            <LogDetailTitle>Endpoint</LogDetailTitle>
+            <LogDetailContainer>{detailData?.endpoint}</LogDetailContainer>
+          </GridItem>
+          <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
+            <LogDetailTitle>{t('config_model:channel_name')}</LogDetailTitle>
+            <LogDetailContainer>{detailData?.channelName}</LogDetailContainer>
+          </GridItem>
+          <GridItem display={'flex'} borderBottomWidth="1px">
+            <LogDetailTitle>{t('config_model:model')}</LogDetailTitle>
+            <LogDetailContainer>{detailData?.model}</LogDetailContainer>
+          </GridItem>
+          <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
+            <LogDetailTitle>{t('config_model:request_at')}</LogDetailTitle>
+            <LogDetailContainer>{detailData?.request_at}</LogDetailContainer>
+          </GridItem>
+          <GridItem display={'flex'} borderBottomWidth="1px">
+            <LogDetailTitle>{t('config_model:duration')}</LogDetailTitle>
+            <LogDetailContainer>{detailData?.duration.toFixed(2)}s</LogDetailContainer>
+          </GridItem>
+          <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
+            <LogDetailTitle flex={'0 0 150px'}>{t('config_model:model_ttfb_time')}</LogDetailTitle>
+            <LogDetailContainer>
+              {detailData.ttfb_milliseconds ? `${detailData.ttfb_milliseconds}ms` : '-'}
+            </LogDetailContainer>
+          </GridItem>
+          <GridItem display={'flex'} borderBottomWidth="1px">
+            <LogDetailTitle flex={'0 0 150px'}>{t('config_model:model_tokens')}</LogDetailTitle>
+            <LogDetailContainer>
+              {detailData?.usage?.input_tokens} / {detailData?.usage?.output_tokens}
+            </LogDetailContainer>
+          </GridItem>
+          {detailData?.retry_times !== undefined && (
+            <GridItem display={'flex'} borderBottomWidth="1px" colSpan={2}>
+              <LogDetailTitle>{t('config_model:retry_times')}</LogDetailTitle>
+              <LogDetailContainer>{detailData?.retry_times}</LogDetailContainer>
             </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px">
-              <LogDetailTitle>Request IP</LogDetailTitle>
-              <LogDetailContainer>{detailData?.ip}</LogDetailContainer>
+          )}
+          {detailData?.content && (
+            <GridItem display={'flex'} borderBottomWidth="1px" colSpan={2}>
+              <LogDetailTitle>Content</LogDetailTitle>
+              <LogDetailContainer>{detailData?.content}</LogDetailContainer>
             </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <LogDetailTitle>{t('config_model:channel_status')}</LogDetailTitle>
-              <LogDetailContainer color={detailData.code === 200 ? 'green.600' : 'red.600'}>
-                {detailData?.code}
-              </LogDetailContainer>
+          )}
+          {detailData?.request_body && (
+            <GridItem display={'flex'} borderBottomWidth="1px" colSpan={2}>
+              <LogDetailTitle>Request Body</LogDetailTitle>
+              <LogDetailContainer userSelect={'all'}>{detailData?.request_body}</LogDetailContainer>
             </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px">
-              <LogDetailTitle>Endpoint</LogDetailTitle>
-              <LogDetailContainer>{detailData?.endpoint}</LogDetailContainer>
+          )}
+          {detailData?.response_body && (
+            <GridItem display={'flex'} colSpan={2}>
+              <LogDetailTitle>Response Body</LogDetailTitle>
+              <LogDetailContainer>{detailData?.response_body}</LogDetailContainer>
             </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <LogDetailTitle>{t('config_model:channel_name')}</LogDetailTitle>
-              <LogDetailContainer>{detailData?.channelName}</LogDetailContainer>
-            </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px">
-              <LogDetailTitle>{t('config_model:model')}</LogDetailTitle>
-              <LogDetailContainer>{detailData?.model}</LogDetailContainer>
-            </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <LogDetailTitle>{t('config_model:request_at')}</LogDetailTitle>
-              <LogDetailContainer>{detailData?.request_at}</LogDetailContainer>
-            </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px">
-              <LogDetailTitle>{t('config_model:duration')}</LogDetailTitle>
-              <LogDetailContainer>{detailData?.duration.toFixed(2)}s</LogDetailContainer>
-            </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <LogDetailTitle flex={'0 0 150px'}>
-                {t('config_model:model_ttfb_time')}
-              </LogDetailTitle>
-              <LogDetailContainer>
-                {detailData.ttfb_milliseconds ? `${detailData.ttfb_milliseconds}ms` : '-'}
-              </LogDetailContainer>
-            </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px">
-              <LogDetailTitle flex={'0 0 150px'}>{t('config_model:model_tokens')}</LogDetailTitle>
-              <LogDetailContainer>
-                {detailData?.usage?.input_tokens} / {detailData?.usage?.output_tokens}
-              </LogDetailContainer>
-            </GridItem>
-            {detailData?.retry_times !== undefined && (
-              <GridItem display={'flex'} borderBottomWidth="1px" colSpan={2}>
-                <LogDetailTitle>{t('config_model:retry_times')}</LogDetailTitle>
-                <LogDetailContainer>{detailData?.retry_times}</LogDetailContainer>
-              </GridItem>
-            )}
-            {detailData?.content && (
-              <GridItem display={'flex'} borderBottomWidth="1px" colSpan={2}>
-                <LogDetailTitle>Content</LogDetailTitle>
-                <LogDetailContainer>{detailData?.content}</LogDetailContainer>
-              </GridItem>
-            )}
-            {detailData?.request_body && (
-              <GridItem display={'flex'} borderBottomWidth="1px" colSpan={2}>
-                <LogDetailTitle>Request Body</LogDetailTitle>
-                <LogDetailContainer userSelect={'all'}>
-                  {detailData?.request_body}
-                </LogDetailContainer>
-              </GridItem>
-            )}
-            {detailData?.response_body && (
-              <GridItem display={'flex'} colSpan={2}>
-                <LogDetailTitle>Response Body</LogDetailTitle>
-                <LogDetailContainer>{detailData?.response_body}</LogDetailContainer>
-              </GridItem>
-            )}
-          </Grid>
-        </ModalBody>
+          )}
+        </Grid>
       )}
     </MyModal>
   );

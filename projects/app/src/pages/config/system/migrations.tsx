@@ -385,7 +385,7 @@ const FailedRecordsModal = ({
         minH: '520px',
         display: 'flex',
         flexDirection: 'column',
-        p: 5,
+        px: 5,
         overflowY: 'auto'
       }}
     >

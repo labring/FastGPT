@@ -34,7 +34,6 @@ const catalogData = {
       type: ModelTypeEnum.llm,
       scope: 'system' as const,
       isActive: true,
-      isCustom: false,
       config: { maxContext: 4096, maxResponse: 1024, quoteMaxToken: 1024 }
     }
   ],

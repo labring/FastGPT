@@ -36,7 +36,6 @@ export const defaultQAModels: LLMSystemModelDataType[] = [
     name: 'gpt-5',
     modelId: '',
     scope: ModelScopeEnum.system,
-    isCustom: false,
     charsPointsPrice: 0,
     config: {
       maxContext: 16000,
@@ -61,7 +60,6 @@ export const defaultVectorModels: EmbeddingSystemModelDataType[] = [
     name: 'Embedding-2',
     modelId: '',
     scope: ModelScopeEnum.system,
-    isCustom: false,
     charsPointsPrice: 0,
     config: {
       defaultToken: 500,
@@ -79,7 +77,6 @@ export const defaultSTTModels: STTSystemModelDataType[] = [
     name: 'whisper-1',
     modelId: '',
     scope: ModelScopeEnum.system,
-    isCustom: false,
     charsPointsPrice: 0,
     config: {}
   }

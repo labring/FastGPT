@@ -225,6 +225,7 @@ const LogTable = ({
     selectedItems,
     toggleSelect,
     isSelected,
+    getRowSelectionProps,
     FloatingActionBar,
     isSelecteAll,
     selectAllTrigger
@@ -550,14 +551,14 @@ const LogTable = ({
                 <Tr
                   key={item._id}
                   _hover={{ bg: 'myWhite.600' }}
-                  cursor={'pointer'}
-                  onClick={() =>
-                    setDetailLogData({
-                      chatId: item.chatId,
-                      feedbackUserName:
-                        item.outLinkUid || item.sourceMember?.name || item.tmbId || undefined
-                    })
-                  }
+                  {...getRowSelectionProps(item, {
+                    onClick: () =>
+                      setDetailLogData({
+                        chatId: item.chatId,
+                        feedbackUserName:
+                          item.outLinkUid || item.sourceMember?.name || item.tmbId || undefined
+                      })
+                  })}
                 >
                   <Td>
                     <HStack onClick={(e) => e.stopPropagation()}>

@@ -52,7 +52,6 @@ const buildModel = (
     type: ModelTypeEnum.rerank,
     scope: 'system' as const,
     isActive: true,
-    isCustom: false,
     ...commonOverrides,
     config: { maxToken, defaultConfig }
   };

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, type ReactNode } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import type { PlacementWithLogical } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
@@ -11,7 +11,7 @@ import FilterSearchInput, {
   FILTER_SEARCH_THRESHOLD,
   filterSelectOptionsBySearch
 } from './FilterSearchInput';
-import { getFilterListBoxProps, filterPopoverProps } from './styles';
+import { FILTER_LIST_H, getFilterListBoxProps, filterPopoverProps } from './styles';
 
 export type SingleSelectFilterOption<T> = {
   value: T;
@@ -33,6 +33,7 @@ export type SingleSelectFilterProps<T> = {
   /** 为 true 时下拉里显示搜索框。封闭短枚举不要传。 */
   showSearch?: boolean;
   searchPlaceholder?: string;
+  listMaxH?: string | number;
 };
 
 /**
@@ -57,10 +58,14 @@ function SingleSelectFilter<T>({
   minW,
   placement = 'bottom-start',
   showSearch,
-  searchPlaceholder
+  searchPlaceholder,
+  listMaxH
 }: SingleSelectFilterProps<T>) {
   const { t } = useTranslation();
   const [searchKey, setSearchKey] = useState('');
+  const [openRevision, setOpenRevision] = useState(0);
+  const listRef = useRef<HTMLDivElement>(null);
+  const selectedOptionRef = useRef<HTMLDivElement>(null);
   const selected = useMemo(() => resolveSingleSelectOption(options, value), [options, value]);
   const visibleOptions = useMemo(
     () => filterSelectOptionsBySearch(options, searchKey),
@@ -68,6 +73,18 @@ function SingleSelectFilter<T>({
   );
   const { triggerRef, triggerWidth } = useFilterTriggerWidth(selected?.label);
   const listScrollable = showSearch || visibleOptions.length > FILTER_SEARCH_THRESHOLD;
+
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    const selectedOption = selectedOptionRef.current;
+    if (!list || !selectedOption) return;
+
+    const centeredScrollTop =
+      selectedOption.offsetTop - (list.clientHeight - selectedOption.offsetHeight) / 2;
+    const maxScrollTop = Math.max(0, list.scrollHeight - list.clientHeight);
+    list.scrollTop = Math.min(Math.max(0, centeredScrollTop), maxScrollTop);
+  }, [openRevision, value, visibleOptions]);
+
   const selectedContent = selected ? (
     <Flex alignItems={'center'} gap={2} minW={0} overflow={'hidden'} whiteSpace={'nowrap'}>
       {selected.avatar && (
@@ -95,6 +112,7 @@ function SingleSelectFilter<T>({
       placement={placement}
       w={'max-content'}
       minW={triggerWidth ? `${triggerWidth}px` : minW}
+      onOpenFunc={() => setOpenRevision((revision) => revision + 1)}
       onCloseFunc={() => setSearchKey('')}
       Trigger={
         <FilterButton
@@ -117,12 +135,18 @@ function SingleSelectFilter<T>({
               />
             </Box>
           )}
-          <Box {...getFilterListBoxProps(listScrollable)}>
+          <Box
+            ref={listRef}
+            {...getFilterListBoxProps(listScrollable)}
+            maxH={listScrollable ? (listMaxH ?? FILTER_LIST_H) : undefined}
+            position={'relative'}
+          >
             {visibleOptions.map((item) => {
               const isActive = item.value === value;
               return (
                 <Flex
                   key={String(item.value)}
+                  ref={isActive ? selectedOptionRef : undefined}
                   alignItems={'center'}
                   justifyContent={'space-between'}
                   gap={2}
@@ -134,7 +158,7 @@ function SingleSelectFilter<T>({
                   borderRadius={'xs'}
                   bg={isActive ? 'primary.50' : 'transparent'}
                   color={isActive ? 'primary.600' : 'myGray.900'}
-                  fontSize={'xs'}
+                  fontSize={'sm'}
                   fontWeight={'medium'}
                   _hover={{ bg: isActive ? 'primary.50' : 'myGray.05' }}
                   _last={{ mb: 0 }}

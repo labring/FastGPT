@@ -386,13 +386,13 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
         flexWrap={['nowrap', 'wrap']}
         alignItems={['stretch', 'flex-start']}
         justifyContent={'space-between'}
-        gap={[3, 4]}
+        gap={2}
       >
         <Flex
           flexDirection={['column', 'row']}
           flexWrap={['nowrap', 'wrap']}
           alignItems={['stretch', 'flex-start']}
-          gap={[3, 4]}
+          gap={2}
         >
           <DateRangePicker
             formLabel={t('common:user.Time')}

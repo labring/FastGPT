@@ -1,22 +1,19 @@
 import { useEffect, useMemo } from 'react';
-import type React from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import ConfigContainer from '@/pageComponents/config/ConfigContainer';
-import ModelTable from '@/components/core/ai/ModelTable';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { accountPageRootStyles, accountTitleTextStyles } from '@/pageComponents/account/styles';
-import ModelTabHeader from '@/pageComponents/account/model/ModelTabHeader';
 
 const ModelConfigTable = dynamic(() => import('@/pageComponents/account/model/ModelConfigTable'));
 const ChannelTable = dynamic(() => import('@/pageComponents/account/model/Channel'));
 const ChannelLog = dynamic(() => import('@/pageComponents/account/model/Log'));
 const ModelDashboard = dynamic(() => import('@/pageComponents/account/model/ModelDashboard'));
 
-type TabType = 'model' | 'config' | 'channel' | 'channel_log' | 'account_model';
+type TabType = 'config' | 'channel' | 'channel_log' | 'account_model';
 
 const ModelProvider = () => {
   const { t } = useClientTranslation(['config_model', 'config']);
@@ -25,7 +22,6 @@ const ModelProvider = () => {
 
   const modelTabList = useMemo<{ label: string; value: TabType }[]>(
     () => [
-      { label: t('config_model:active_model'), value: 'model' },
       { label: t('config_model:config_model'), value: 'config' },
       ...(feConfigs.show_aiproxy
         ? [
@@ -38,19 +34,19 @@ const ModelProvider = () => {
     [feConfigs.show_aiproxy, t]
   );
   const queryModelTab = router.query.modelTab;
-  const modelTab = modelTabList.find((item) => item.value === queryModelTab)?.value ?? 'model';
+  const modelTab = modelTabList.find((item) => item.value === queryModelTab)?.value ?? 'config';
 
   useEffect(() => {
     if (!router.isReady || queryModelTab === undefined) return;
     if (typeof queryModelTab === 'string' && queryModelTab === modelTab) return;
 
-    // 旧书签或手动输入可能指向已关闭的 AI Proxy 页面，统一回退到可用模型。
+    // “可用模型”及已关闭的 AI Proxy 页面都统一回退到模型配置。
     void router.replace(
       {
         pathname: router.pathname,
         query: {
           ...router.query,
-          modelTab: 'model'
+          modelTab: 'config'
         }
       },
       undefined,
@@ -107,7 +103,6 @@ const ModelProvider = () => {
           gap={4}
           py={6}
         >
-          {modelTab === 'model' && <ValidModelTable Tab={Tab} />}
           {modelTab === 'config' && <ModelConfigTable Tab={Tab} />}
           {modelTab === 'channel' && <ChannelTable Tab={Tab} />}
           {modelTab === 'channel_log' && <ChannelLog Tab={Tab} />}
@@ -117,14 +112,5 @@ const ModelProvider = () => {
     </ConfigContainer>
   );
 };
-
-const ValidModelTable = ({ Tab }: { Tab: React.ReactNode }) => (
-  <>
-    <ModelTabHeader Tab={Tab} />
-    <Box flex={['0 0 auto', '1 0 0']} minH={0}>
-      <ModelTable contentPx={6} />
-    </Box>
-  </>
-);
 
 export default ModelProvider;

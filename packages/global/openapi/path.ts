@@ -170,7 +170,7 @@ export const adminOpenAPIPaths: NonNullable<OpenAPIPath> = {
 export const adminOpenAPITagGroups = [
   {
     name: '管理员-系统接口',
-    tags: [DevApiTagsMap.adminSystemMigration]
+    tags: [DevApiTagsMap.adminSystemMigration, DevApiTagsMap.adminSystemModel]
   },
   {
     name: '管理员-系统概览',
