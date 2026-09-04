@@ -55,6 +55,7 @@ export type SkillOptionItemType = {
   description?: string;
   list: SkillItemType[];
   total?: number;
+  folderExpandMode?: 'auto' | 'manual';
   onSelect?: (id: string) => Promise<SkillOptionItemType | undefined>;
   onClick?: (id: string, source?: string) => Promise<SkillClickResult | undefined>;
   loadPage?: SkillOptionPageLoader;
@@ -99,6 +100,9 @@ const mergeSkillItems = (current: SkillItemType[], incoming: SkillItemType[]) =>
     })
   );
 };
+
+const isManualFolder = (item: SkillItemType, option: SkillOptionItemType) =>
+  Boolean(item.isFolder && option.folderExpandMode === 'manual');
 
 type ColumnPageState = {
   option: SkillOptionItemType;
@@ -205,17 +209,22 @@ export default function SkillPickerPlugin({
     const menuElement = menuElementRef.current;
     if (!anchorElement || !menuElement) return;
 
+    const currentAnchorLeft = Number.parseFloat(anchorElement.style.left);
+    if (!Number.isFinite(currentAnchorLeft)) return;
+
     const menuRect = menuElement.getBoundingClientRect();
     const triggerRect = getTriggerRect();
     const viewportWidth = window.innerWidth;
     const edgePadding = 8;
     const maxLeft = Math.max(edgePadding, viewportWidth - menuRect.width - edgePadding);
     const nextLeft = Math.min(Math.max(triggerRect?.left ?? menuRect.left, edgePadding), maxLeft);
-    const currentAnchorLeft = Number.parseFloat(anchorElement.style.left);
+    const anchorRect = anchorElement.getBoundingClientRect();
+    const nextOffset = nextLeft - anchorRect.left;
+    const nextTransform = `translate3d(${nextOffset}px, 0, 0)`;
 
-    const nextAnchorLeft = nextLeft + window.pageXOffset;
-    if (!Number.isFinite(currentAnchorLeft) || Math.abs(nextAnchorLeft - currentAnchorLeft) > 0.5) {
-      anchorElement.style.left = `${nextAnchorLeft}px`;
+    // Keep Lexical as the single owner of the anchor position. The menu transform only corrects viewport overflow.
+    if (menuElement.style.transform !== nextTransform) {
+      menuElement.style.transform = nextTransform;
     }
     setIsMenuPositioned(true);
   }, [getTriggerRect]);
@@ -235,6 +244,9 @@ export default function SkillPickerPlugin({
 
   const setMenuElement = useCallback(
     (element: HTMLDivElement | null) => {
+      if (!element) {
+        menuElementRef.current?.style.removeProperty('transform');
+      }
       menuElementRef.current = element;
       if (element && isMenuOpenRef.current) {
         setIsMenuPositioned(false);
@@ -267,13 +279,11 @@ export default function SkillPickerPlugin({
     menuObserver.observe(menuElement);
 
     window.addEventListener('resize', scheduleMenuPosition);
-    document.addEventListener('scroll', scheduleMenuPosition, true);
 
     return () => {
       anchorObserver.disconnect();
       menuObserver.disconnect();
       window.removeEventListener('resize', scheduleMenuPosition);
-      document.removeEventListener('scroll', scheduleMenuPosition, true);
 
       if (menuPositionFrameRef.current !== null) {
         cancelAnimationFrame(menuPositionFrameRef.current);
@@ -318,12 +328,18 @@ export default function SkillPickerPlugin({
   }, []);
 
   const getItemChildOption = useCallback((item: SkillItemType, option: SkillOptionItemType) => {
-    if (item.children) return item.children;
+    if (item.children) {
+      const folderExpandMode = item.children.folderExpandMode ?? option.folderExpandMode;
+      return folderExpandMode === item.children.folderExpandMode
+        ? item.children
+        : { ...item.children, folderExpandMode };
+    }
 
     if (item.folderChildren) {
       return {
         description: option.description,
         list: item.folderChildren,
+        folderExpandMode: option.folderExpandMode,
         onClick: option.onClick,
         onFolderLoad: option.onFolderLoad
       };
@@ -332,6 +348,7 @@ export default function SkillPickerPlugin({
     if (item.tools?.length) {
       return {
         list: item.tools,
+        folderExpandMode: option.folderExpandMode,
         onClick: option.onClick
       };
     }
@@ -529,7 +546,7 @@ export default function SkillPickerPlugin({
     [loadColumnPage, skillOptions]
   );
 
-  // Resolve the hovered item into the next navigation column.
+  // Resolve a root category or a folder explicitly expanded by the user.
   const { runAsync: handleItemSelect } = useRequest(
     async ({
       currentColumnIndex,
@@ -581,6 +598,7 @@ export default function SkillPickerPlugin({
             description: option.description,
             list: page.list,
             total: page.total,
+            folderExpandMode: option.folderExpandMode,
             loadPage: (params, cancelToken) =>
               option.onFolderLoad!(item.id, item.source, params, cancelToken),
             onClick: option.onClick,
@@ -605,6 +623,7 @@ export default function SkillPickerPlugin({
         appendColumn(currentColumnIndex, {
           description: option.description,
           list: [],
+          folderExpandMode: option.folderExpandMode,
           onClick: option.onClick
         });
         return;
@@ -640,7 +659,7 @@ export default function SkillPickerPlugin({
       setInteractionMode('mouse');
 
       const firstItem = skillOption.list[0];
-      if (firstItem) {
+      if (firstItem && !isManualFolder(firstItem, skillOption)) {
         void handleItemSelect({
           currentColumnIndex: 0,
           item: firstItem,
@@ -794,15 +813,19 @@ export default function SkillPickerPlugin({
           const columnItems = skillOptions[currentColumnIndex]?.list;
           if (!columnItems || columnItems.length === 0) return true;
 
-          // Move the highlight before resolving the next navigation column.
+          // Keep manual folders collapsed while preserving automatic expansion elsewhere.
           const newIndex = currentRowIndex > 0 ? currentRowIndex - 1 : columnItems.length - 1;
           setCurrentRowIndex(newIndex);
 
-          void handleItemSelect({
-            currentColumnIndex,
-            item: columnItems[newIndex],
-            option: skillOptions[currentColumnIndex]
-          });
+          const currentOption = skillOptions[currentColumnIndex];
+          const nextItem = columnItems[newIndex];
+          if (currentOption && nextItem && !isManualFolder(nextItem, currentOption)) {
+            void handleItemSelect({
+              currentColumnIndex,
+              item: nextItem,
+              option: currentOption
+            });
+          }
 
           requestAnimationFrame(() => {
             scrollIntoView(currentColumnIndex, newIndex);
@@ -828,15 +851,19 @@ export default function SkillPickerPlugin({
           const columnItems = skillOptions[currentColumnIndex]?.list;
           if (!columnItems || columnItems.length === 0) return true;
 
-          // Move the highlight before resolving the next navigation column.
+          // Keep manual folders collapsed while preserving automatic expansion elsewhere.
           const newIndex = currentRowIndex < columnItems.length - 1 ? currentRowIndex + 1 : 0;
           setCurrentRowIndex(newIndex);
 
-          void handleItemSelect({
-            currentColumnIndex,
-            item: columnItems[newIndex],
-            option: skillOptions[currentColumnIndex]
-          });
+          const currentOption = skillOptions[currentColumnIndex];
+          const nextItem = columnItems[newIndex];
+          if (currentOption && nextItem && !isManualFolder(nextItem, currentOption)) {
+            void handleItemSelect({
+              currentColumnIndex,
+              item: nextItem,
+              option: currentOption
+            });
+          }
 
           requestAnimationFrame(() => {
             scrollIntoView(currentColumnIndex, newIndex);
@@ -863,7 +890,7 @@ export default function SkillPickerPlugin({
           if (prevColumnIndex >= skillOptions.length - 1) {
             const currentOption = skillOptions[prevColumnIndex];
             const currentItem = currentOption?.list[currentRowIndex];
-            if (currentItem && currentOption) {
+            if (currentItem && currentOption && !isManualFolder(currentItem, currentOption)) {
               void handleItemSelect({
                 currentColumnIndex: prevColumnIndex,
                 item: currentItem,
@@ -885,10 +912,11 @@ export default function SkillPickerPlugin({
           // Use the latest skillOptions from closure to get the new column items
           const newColumnOption = skillOptions[newColumnIndex];
           const newColumnItems = newColumnOption?.list;
-          if (newColumnItems && newColumnItems.length > 0) {
+          const newColumnItem = newColumnItems?.[0];
+          if (newColumnOption && newColumnItem && !isManualFolder(newColumnItem, newColumnOption)) {
             void handleItemSelect({
               currentColumnIndex: newColumnIndex,
-              item: newColumnItems[0],
+              item: newColumnItem,
               option: newColumnOption
             });
 
@@ -994,6 +1022,8 @@ export default function SkillPickerPlugin({
         const latestOption = skillOptions[currentColumnIndex];
 
         if (!latestItem || !latestOption) return false;
+
+        if (isManualFolder(latestItem, latestOption)) return true;
 
         if (latestItem.isFolder || getItemChildOption(latestItem, latestOption)) {
           void handleItemSelect({
@@ -1123,11 +1153,14 @@ export default function SkillPickerPlugin({
 
               setCurrentRowIndex(rowIndex);
               setCurrentColumnIndex(columnIndex);
-              void handleItemSelect({
-                currentColumnIndex: columnIndex,
-                item,
-                option: columnData
-              });
+
+              if (!isManualFolder(item, columnData)) {
+                void handleItemSelect({
+                  currentColumnIndex: columnIndex,
+                  item,
+                  option: columnData
+                });
+              }
             }}
           >
             {item.icon && (

@@ -68,7 +68,7 @@ const toSkillLabelItem = (
 });
 
 const toSystemToolItem = (item: NodeTemplateListItemType, parentId?: string): SkillItemType => {
-  const isFolder = item.isFolder || item.flowNodeType === FlowNodeTypeEnum.toolSet;
+  const isFolder = item.isFolder ?? false;
 
   return {
     parentId: item.parentId ?? parentId,
@@ -453,6 +453,7 @@ export const useSkillManager = ({
       description: t('app:space_to_expand_folder'),
       list: firstPage.list,
       total: firstPage.total,
+      folderExpandMode: 'manual' as const,
       loadPage: (params: SkillPickerPageParams, cancelToken?: AbortController) =>
         loadTeamAppPage(null, types, params, cancelToken),
       onFolderLoad: (
@@ -460,7 +461,7 @@ export const useSkillManager = ({
         _source: string | undefined,
         params: SkillPickerPageParams,
         cancelToken?: AbortController
-      ) => loadTeamAppPage(folderId, ToolTypeList, params, cancelToken),
+      ) => loadTeamAppPage(folderId, types, params, cancelToken),
       onClick: onAddAppOrTool
     };
   }, [loadRootPage, loadTeamAppPage, onAddAppOrTool, t]);
@@ -476,6 +477,7 @@ export const useSkillManager = ({
       description: t('app:space_to_expand_folder'),
       list: firstPage.list,
       total: firstPage.total,
+      folderExpandMode: 'manual' as const,
       loadPage: (params: SkillPickerPageParams, cancelToken?: AbortController) =>
         loadTeamAppPage(null, types, params, cancelToken),
       onFolderLoad: (
@@ -483,7 +485,7 @@ export const useSkillManager = ({
         _source: string | undefined,
         params: SkillPickerPageParams,
         cancelToken?: AbortController
-      ) => loadTeamAppPage(folderId, AppTypeList, params, cancelToken),
+      ) => loadTeamAppPage(folderId, types, params, cancelToken),
       onClick: onAddAppOrTool
     };
   }, [loadRootPage, loadTeamAppPage, onAddAppOrTool, t]);
