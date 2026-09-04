@@ -2,7 +2,7 @@ import z from 'zod';
 import { AppChatConfigTypeSchema } from '../../app/type';
 import { FlowNodeInputItemTypeSchema } from '../type/io';
 import { AgentToolInputModeEnum } from '../../app/tool/constants';
-import { NodeToolConfigTypeSchema, StoreNodeItemTypeSchema } from '../type/node';
+import { NodeToolConfigStorageTypeSchema, StoreNodeItemTypeSchema } from '../type/node';
 import { StoreEdgeItemTypeSchema } from '../type/edge';
 
 /**
@@ -29,7 +29,7 @@ const CanonicalAvailableAgentToolSchema = z.object({
   id: z.string(),
   version: z.string().optional(),
   source: z.string().optional(),
-  toolConfig: NodeToolConfigTypeSchema.optional(),
+  toolConfig: NodeToolConfigStorageTypeSchema.optional(),
   inputs: z.array(CanonicalAgentToolInputConfigSchema).optional(),
   config: z.record(z.string(), z.unknown())
 });

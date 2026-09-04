@@ -34,10 +34,10 @@ import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/register';
 import {
-  compactWorkflowToolConfigsForStorage,
   encodeHttpToolSetNodesForStorage,
   encodeMcpToolSetNodesForStorage
 } from '@fastgpt/service/core/app/jsonSchemaStorage';
+import { StoreWorkflowNodeItemTypeSchema } from '@fastgpt/global/core/workflow/type/node';
 import {
   beforeUpdateAppFormat,
   validatePublishAppAgentSkillReadPermissions,
@@ -193,7 +193,7 @@ export const onCreateApp = async ({
       ? encodeMcpToolSetNodesForStorage(normalizedWorkflow.nodes)
       : type === AppTypeEnum.httpToolSet
         ? encodeHttpToolSetNodesForStorage(normalizedWorkflow.nodes)
-        : compactWorkflowToolConfigsForStorage(normalizedWorkflow.nodes));
+        : StoreWorkflowNodeItemTypeSchema.array().parse(normalizedWorkflow.nodes));
   if (!AppFolderTypeList.includes(type!)) {
     await validatePublishAppAgentSkillReadPermissions({
       nodes: normalizedWorkflow.nodes,
@@ -336,7 +336,7 @@ export const onUpdateAppWorkflow = async ({
     modelReferencePolicy: 'fallback'
   });
   await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });
-  const storageNodes = compactWorkflowToolConfigsForStorage(workflow.nodes);
+  const storageNodes = StoreWorkflowNodeItemTypeSchema.array().parse(workflow.nodes);
 
   return await MongoApp.findByIdAndUpdate(
     appId,

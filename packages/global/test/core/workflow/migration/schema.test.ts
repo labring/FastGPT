@@ -11,6 +11,7 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { AppChatConfigTypeSchema } from '@fastgpt/global/core/app/type';
+import { StoreWorkflowNodeItemTypeSchema } from '@fastgpt/global/core/workflow/type/node';
 
 const inputWithLegacyIndex = {
   key: 'query',
@@ -1122,5 +1123,119 @@ describe('workflow migration boundary', () => {
     };
 
     expect(await migrateWorkflowToCurrent(input as any)).toEqual(input);
+  });
+});
+
+describe('workflow storage boundary', () => {
+  it('removes MCP and HTTP JSON Schema fields through Zod parsing', () => {
+    const node = StoreWorkflowNodeItemTypeSchema.parse({
+      nodeId: 'toolset-node',
+      flowNodeType: 'toolSet',
+      name: 'Tool set',
+      inputs: [],
+      outputs: [],
+      jsonSchema: { type: 'object' },
+      toolConfig: {
+        mcpToolSet: {
+          url: 'https://mcp.example.com',
+          toolList: [
+            {
+              name: 'mcp_search',
+              description: 'MCP search',
+              inputSchema: {
+                type: 'object',
+                properties: { $query: { type: 'string' } }
+              }
+            }
+          ]
+        },
+        httpToolSet: {
+          apiSchemaStr: '{"openapi":"3.1.0"}',
+          toolList: [
+            {
+              name: 'http_search',
+              description: 'HTTP search',
+              path: '/search',
+              method: 'POST',
+              inputSchema: { type: 'object' },
+              requestSchema: { type: 'object' },
+              outputSchema: { type: 'object' }
+            }
+          ]
+        }
+      }
+    });
+
+    expect(node).not.toHaveProperty('jsonSchema');
+    expect(node.toolConfig?.mcpToolSet).toMatchObject({
+      toolList: [{ name: 'mcp_search', description: 'MCP search' }]
+    });
+    expect(node.toolConfig?.httpToolSet).toMatchObject({
+      toolList: [
+        {
+          name: 'http_search',
+          description: 'HTTP search',
+          path: '/search',
+          method: 'POST'
+        }
+      ]
+    });
+    expect(node.toolConfig?.httpToolSet).not.toHaveProperty('apiSchemaStr');
+    expect(JSON.stringify(node.toolConfig)).not.toContain('Schema');
+  });
+
+  it('removes schema snapshots from Agent selected tools during migration parsing', () => {
+    const workflow = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'agent',
+          flowNodeType: 'agent',
+          name: 'Agent',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              label: 'Tools',
+              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+              value: [
+                {
+                  id: 'http-toolset',
+                  config: {},
+                  toolConfig: {
+                    httpToolSet: {
+                      toolList: [
+                        {
+                          name: 'search',
+                          description: 'Search',
+                          path: '/search',
+                          method: 'GET',
+                          requestSchema: {
+                            type: 'object',
+                            properties: { $query: { type: 'string' } }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ]
+    });
+
+    const selectedTools = workflow.nodes[0].inputs[0].value;
+    expect(JSON.stringify(selectedTools)).not.toContain('requestSchema');
+    expect(selectedTools).toMatchObject([
+      {
+        id: 'http-toolset',
+        toolConfig: {
+          httpToolSet: {
+            toolList: [{ name: 'search', path: '/search', method: 'GET' }]
+          }
+        }
+      }
+    ]);
   });
 });
