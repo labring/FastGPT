@@ -1297,6 +1297,9 @@ importers:
       express:
         specifier: 'catalog:'
         version: 4.22.1
+      ldapts:
+        specifier: ^9.0.0
+        version: 9.0.0
       metadata-saml2:
         specifier: ^2.0.1
         version: 2.1.2
@@ -1316,6 +1319,9 @@ importers:
       tsdown:
         specifier: 'catalog:'
         version: 0.21.10(typescript@6.0.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@26.4.0)(@vitest/coverage-v8@4.1.5)(jsdom@26.1.0(bufferutil@4.1.0)(canvas@3.2.3)(utf-8-validate@5.0.10))(vite@6.4.3(@types/node@26.4.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4))
 
   projects/app:
     dependencies:
@@ -10749,6 +10755,10 @@ packages:
     resolution: {integrity: sha512-b94GiNHQNy6JNTrt5w6zNyffMrNkXZb3KTkCZJb2V1xaEGCk093vkZ2jk3tpaeP33/OiXC+WvK9AxUebnf5nbw==}
     engines: {node: '>= 0.6.3'}
 
+  ldapts@9.0.0:
+    resolution: {integrity: sha512-OaaoYBSuan7g0Nm2e1wsRl+9xol41zY+pDlRRSsBq36iKCd2tG/K8WifevNRDjyEfhz4bvkxKdDvJ6xHXwj7+Q==}
+    engines: {node: '>=22'}
+
   levn@0.4.1:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
     engines: {node: '>= 0.8.0'}
@@ -13635,6 +13645,9 @@ packages:
 
   streamx@2.28.0:
     resolution: {integrity: sha512-1Yowhzjf0ivGMrTIkY9hav5TxobO9qIVqUE41fiCGMGgc3CLlf4MY+9AHmZqBWgDTue0fY9zWjYFVyf6Diuobw==}
+
+  strict-event-emitter-types@2.0.0:
+    resolution: {integrity: sha512-Nk/brWYpD85WlOgzw5h173aci0Teyv8YdIAEtV+N88nDB0dLlazZyJMIsN6eo1/AR61l+p6CJTG1JIyFaoNEEA==}
 
   strict-uri-encode@2.0.0:
     resolution: {integrity: sha512-QwiXZgpRcKkhTj2Scnn++4PKtWsH0kpzZ62L2R6c/LUVYv7hVnZqcg2+sMuT6R7Jusu1vviK/MFsu6kNJfWlEQ==}
@@ -21767,6 +21780,14 @@ snapshots:
     optionalDependencies:
       vite: 6.4.3(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4)
 
+  '@vitest/mocker@4.1.5(vite@6.4.3(@types/node@26.4.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4))':
+    dependencies:
+      '@vitest/spy': 4.1.5
+      estree-walker: 3.0.3
+      magic-string: 0.30.21
+    optionalDependencies:
+      vite: 6.4.3(@types/node@26.4.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4)
+
   '@vitest/pretty-format@4.1.10':
     dependencies:
       tinyrainbow: 3.1.1
@@ -26146,6 +26167,10 @@ snapshots:
     dependencies:
       readable-stream: 2.3.8
 
+  ldapts@9.0.0:
+    dependencies:
+      strict-event-emitter-types: 2.0.0
+
   levn@0.4.1:
     dependencies:
       prelude-ls: 1.2.1
@@ -29897,6 +29922,8 @@ snapshots:
       - bare-abort-controller
     optional: true
 
+  strict-event-emitter-types@2.0.0: {}
+
   strict-uri-encode@2.0.0: {}
 
   string-argv@0.3.2: {}
@@ -31122,6 +31149,24 @@ snapshots:
       tsx: 4.20.6
       yaml: 2.8.4
 
+  vite@6.4.3(@types/node@26.4.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4):
+    dependencies:
+      esbuild: 0.25.12
+      fdir: 6.5.0(picomatch@4.0.5)
+      picomatch: 4.0.5
+      postcss: 8.5.26
+      rollup: 4.62.4
+      tinyglobby: 0.2.17
+    optionalDependencies:
+      '@types/node': 26.4.0
+      fsevents: 2.3.3
+      jiti: 2.7.0
+      lightningcss: 1.32.0
+      sass: 1.85.1
+      terser: 5.39.0
+      tsx: 4.20.6
+      yaml: 2.8.4
+
   vitest@4.1.10(@opentelemetry/api@1.9.0)(@types/node@20.19.43)(@vitest/coverage-v8@4.1.10)(jsdom@26.1.0(bufferutil@4.1.0)(canvas@3.2.3)(utf-8-validate@5.0.10))(vite@6.4.3(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4)):
     dependencies:
       '@vitest/expect': 4.1.10
@@ -31207,6 +31252,36 @@ snapshots:
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
       '@types/node': 24.13.3
+      '@vitest/coverage-v8': 4.1.5(vitest@4.1.5)
+      jsdom: 26.1.0(bufferutil@4.1.0)(canvas@3.2.3)(utf-8-validate@5.0.10)
+    transitivePeerDependencies:
+      - msw
+
+  vitest@4.1.5(@opentelemetry/api@1.9.0)(@types/node@26.4.0)(@vitest/coverage-v8@4.1.5)(jsdom@26.1.0(bufferutil@4.1.0)(canvas@3.2.3)(utf-8-validate@5.0.10))(vite@6.4.3(@types/node@26.4.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4)):
+    dependencies:
+      '@vitest/expect': 4.1.5
+      '@vitest/mocker': 4.1.5(vite@6.4.3(@types/node@26.4.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4))
+      '@vitest/pretty-format': 4.1.5
+      '@vitest/runner': 4.1.5
+      '@vitest/snapshot': 4.1.5
+      '@vitest/spy': 4.1.5
+      '@vitest/utils': 4.1.5
+      es-module-lexer: 2.1.0
+      expect-type: 1.3.0
+      magic-string: 0.30.21
+      obug: 2.1.1
+      pathe: 2.0.3
+      picomatch: 4.0.3
+      std-env: 4.1.0
+      tinybench: 2.9.0
+      tinyexec: 1.0.4
+      tinyglobby: 0.2.15
+      tinyrainbow: 3.1.0
+      vite: 6.4.3(@types/node@26.4.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4)
+      why-is-node-running: 2.3.0
+    optionalDependencies:
+      '@opentelemetry/api': 1.9.0
+      '@types/node': 26.4.0
       '@vitest/coverage-v8': 4.1.5(vitest@4.1.5)
       jsdom: 26.1.0(bufferutil@4.1.0)(canvas@3.2.3)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
