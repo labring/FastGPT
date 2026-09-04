@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback } from 'react';
 import { useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { getActivityAd } from '@/web/common/system/api';
@@ -21,7 +21,13 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 const CLOSED_AD_KEY = 'logout-activity-ad';
 const CLOSED_AD_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
-const ActivityAdModal = () => {
+const ActivityAdModal = ({
+  enabled = true,
+  onFinish
+}: {
+  enabled?: boolean;
+  onFinish?: () => void;
+}) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -35,14 +41,18 @@ const ActivityAdModal = () => {
 
   const { data } = useRequest(
     async () => {
-      if (!feConfigs?.isPlus || !userInfo) return;
+      if (!enabled || !feConfigs?.isPlus || !userInfo) return;
       return getActivityAd();
     },
     {
       manual: false,
       onSuccess(res) {
         const shouldShowAd = (() => {
-          if (!res?.id) return false;
+          if (!enabled) return false;
+          if (!res?.id) {
+            onFinish?.();
+            return false;
+          }
           if (!closedData) return true;
 
           try {
@@ -62,9 +72,14 @@ const ActivityAdModal = () => {
 
         if (res?.activityAdImage && shouldShowAd) {
           onOpen();
+        } else {
+          onFinish?.();
         }
       },
-      refreshDeps: [userInfo]
+      onError() {
+        if (enabled) onFinish?.();
+      },
+      refreshDeps: [enabled, userInfo]
     }
   );
 
@@ -73,7 +88,8 @@ const ActivityAdModal = () => {
       setClosedData(JSON.stringify({ timestamp: Date.now(), adId: data.id }));
     }
     onClose();
-  }, [data?.id, onClose, setClosedData]);
+    onFinish?.();
+  }, [data, onClose, onFinish, setClosedData]);
 
   const handleJoin = useCallback(() => {
     if (data?.activityAdLink) {
@@ -82,9 +98,10 @@ const ActivityAdModal = () => {
         handleClose();
       } else {
         window.open(data.activityAdLink, '_blank');
+        handleClose();
       }
     }
-  }, [data?.activityAdLink, handleClose, router]);
+  }, [data, handleClose, router]);
 
   if (!data?.activityAdImage || !userInfo) {
     return null;

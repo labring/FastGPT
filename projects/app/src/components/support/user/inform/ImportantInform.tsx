@@ -1,33 +1,75 @@
 import { type UserInformSchema } from '@fastgpt/global/support/user/inform/type';
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { CloseIcon } from '@chakra-ui/icons';
 import { readInform } from '@/web/support/user/inform/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Markdown from '@/components/Markdown';
+import type { GetUnreadInformResponseType } from '@fastgpt/global/openapi/support/user/inform/api';
+
+type ImportantInformQueryResult = {
+  isError?: boolean;
+  data?: GetUnreadInformResponseType;
+};
+
 const ImportantInform = ({
   informs,
-  refetch
+  refetch,
+  enabled = true,
+  queryError,
+  onResolved
 }: {
   informs: UserInformSchema[];
-  refetch: () => void;
+  refetch: () => Promise<ImportantInformQueryResult>;
+  enabled?: boolean;
+  queryError: boolean;
+  onResolved?: () => void;
 }) => {
+  const [visibleInforms, setVisibleInforms] = useState(informs);
+  const dismissedIdsRef = useRef(new Set<string>());
+
   const { runAsync: onClickClose } = useRequest(
     async (id: string) => {
       await readInform(id);
+      return id;
     },
     {
-      onSuccess: () => {
-        refetch();
+      onSuccess: (id) => {
+        dismissedIdsRef.current.add(id);
+        setVisibleInforms((current) => current.filter((inform) => inform._id !== id));
+        // The local state controls the current modal; refetch only synchronizes the parent cache.
+        void refetch().catch(() => undefined);
       },
+      onError: () => undefined,
       errorToast: 'Failed to read the inform'
     }
   );
 
+  useEffect(() => {
+    if (queryError) return;
+
+    // Refetch 可能在主从延迟期间返回空列表或仍包含已读项，不能用它覆盖本地待展示队列。
+    setVisibleInforms((current) => {
+      const currentIds = new Set(current.map((inform) => inform._id));
+      const newInforms = informs.filter(
+        (inform) => !dismissedIdsRef.current.has(inform._id) && !currentIds.has(inform._id)
+      );
+      return [...current, ...newInforms];
+    });
+  }, [informs, queryError]);
+
+  useEffect(() => {
+    if (enabled && !queryError && visibleInforms.length === 0) {
+      onResolved?.();
+    }
+  }, [enabled, onResolved, queryError, visibleInforms.length]);
+
+  if (!enabled) return null;
+
   return (
     <Box position={'fixed'} top={'3%'} left={'50%'} transform={'translateX(-50%)'} zIndex={99999}>
-      {informs.map((inform) => (
+      {visibleInforms.map((inform) => (
         <Flex
           key={inform._id}
           py={4}
