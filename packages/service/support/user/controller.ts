@@ -18,17 +18,23 @@ export async function authUserExist({ userId, username }: { userId?: string; use
 
 /**
  * 加载用户及团队详情；tmb 失效时回退到用户可用团队。
+ * 只有显式传入创建回调的登录流程，才允许在没有可用团队时补建团队。
  */
 export async function getUserDetail({
   tmbId,
   userId,
   isRoot = false,
-  session
+  session,
+  createTeamIfUnavailable
 }: {
   tmbId?: string;
   userId?: string;
   isRoot?: boolean;
   session?: ClientSession;
+  createTeamIfUnavailable?: (params: {
+    userId: string;
+    session?: ClientSession;
+  }) => Promise<string | null | undefined>;
 }): Promise<UserType> {
   const tmb = await (async () => {
     if (tmbId) {
@@ -43,6 +49,13 @@ export async function getUserDetail({
         session
       });
       if (fallback) return getTmbInfoByTmbId({ tmbId: fallback.tmbId, session });
+    }
+    if (userId && createTeamIfUnavailable) {
+      const fallbackTmbId = await createTeamIfUnavailable({
+        userId: String(userId),
+        session
+      });
+      if (fallbackTmbId) return getTmbInfoByTmbId({ tmbId: fallbackTmbId, session });
     }
     return Promise.reject(ERROR_ENUM.unAuthorization);
   })();

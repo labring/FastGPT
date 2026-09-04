@@ -233,7 +233,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               {t('account_team:user_team_invite_member')}
             </Button>
           )}
-          {userInfo?.team.permission.isOwner && !isSyncMode && isWecomTeam && (
+          {userInfo?.team.permission.isOwner && !isSyncMode && feConfigs?.teamMode === 'multi' && (
             <Button
               w={['100%', 'auto']}
               variant={'whitePrimary'}
