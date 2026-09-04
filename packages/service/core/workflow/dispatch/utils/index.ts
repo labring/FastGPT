@@ -565,19 +565,26 @@ export const rewriteRuntimeWorkFlow = async ({
   };
 
   /**
-   * ToolSet 展开后的子工具统一由 Agent 生成参数。这里仅修改 runtime 临时节点，
-   * 不回写工作流配置，避免把默认模式变成用户配置字段。
+   * Expand a ToolSet into runtime-only child nodes without persisting default-mode changes.
+   * HTTP children retain their per-input mode; other ToolSet types keep the legacy forced mode.
    */
-  const initToolSetChildNode = (node: RuntimeNodeItemType): RuntimeNodeItemType => ({
-    ...node,
-    inputs: initToolInputsTypeByDefaultMode(
-      node.inputs.map((input) => ({
-        ...input,
-        defaultToAgentGenerated: true
-      })),
-      { forceDefaultMode: true, allowUserChatInputAgentGenerated: true }
-    )
-  });
+  const initToolSetChildNode = (node: RuntimeNodeItemType): RuntimeNodeItemType => {
+    const isHttpToolChild = Boolean(node.toolConfig?.httpTool);
+
+    return {
+      ...node,
+      inputs: initToolInputsTypeByDefaultMode(
+        node.inputs.map((input) => ({
+          ...input,
+          ...(isHttpToolChild ? {} : { defaultToAgentGenerated: true })
+        })),
+        {
+          forceDefaultMode: !isHttpToolChild,
+          allowUserChatInputAgentGenerated: true
+        }
+      )
+    };
+  };
 
   type RuntimeMcpToolSet = NonNullable<
     NonNullable<RuntimeNodeItemType['toolConfig']>['mcpToolSet']

@@ -110,6 +110,34 @@ const httpRequestSchema = {
   required: ['body']
 };
 
+const httpMixedInputSchema = {
+  type: 'object',
+  properties: {
+    manual: {
+      type: 'string',
+      description: 'Fixed value',
+      'x-tool-description': 'Fixed value',
+      isToolParam: false
+    },
+    generated: {
+      type: 'string',
+      description: 'Generated value',
+      'x-tool-description': 'Generated value',
+      isToolParam: true
+    }
+  },
+  required: ['manual', 'generated']
+};
+
+const httpMixedRequestSchema = {
+  type: 'object',
+  properties: {
+    manual: { type: 'string', description: 'Fixed value', isToolParam: true },
+    generated: { type: 'string', description: 'Generated value', isToolParam: true }
+  },
+  required: ['manual', 'generated']
+};
+
 const systemToolInputSchema = {
   type: 'object',
   additionalProperties: false,
@@ -198,6 +226,13 @@ const httpTool = {
 const httpToolWithLeadingSlash = {
   ...httpTool,
   name: '/test'
+};
+
+const httpMixedTool = {
+  ...httpTool,
+  name: 'mixed',
+  inputSchema: httpMixedInputSchema,
+  requestSchema: httpMixedRequestSchema
 };
 
 const legacyHttpTool = {
@@ -390,6 +425,17 @@ describe('getAgentRuntimeTools schema loading', () => {
           baseUrl: 'https://api.example.com',
           headerSecret: {},
           toolList: [httpTool]
+        }
+      }
+    }),
+    http_mixed_app: createToolsetApp({
+      id: 'http_mixed_app',
+      type: AppTypeEnum.httpToolSet,
+      toolConfig: {
+        httpToolSet: {
+          baseUrl: 'https://api.example.com',
+          headerSecret: {},
+          toolList: [httpMixedTool]
         }
       }
     }),
@@ -881,6 +927,55 @@ describe('getAgentRuntimeTools schema loading', () => {
     );
     expect(tools[0].requestSchema.function.parameters).not.toEqual(httpInputSchema);
     expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_app/create');
+  });
+
+  it('filters HTTP model schema by inputSchema mode before using requestSchema properties', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [
+        {
+          id: 'http-http_mixed_app/mixed',
+          config: { manual: 'fixed value' }
+        }
+      ]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].requestSchema.function.parameters).toMatchObject({
+      type: 'object',
+      properties: {
+        generated: expect.any(Object)
+      },
+      required: ['generated']
+    });
+    expect(tools[0].requestSchema.function.parameters.properties).not.toHaveProperty('manual');
+    expect(tools[0].agentGeneratedInputKeys).toEqual(['generated']);
+    expect(tools[0].params).toEqual({ manual: 'fixed value' });
+  });
+
+  it('preserves HTTP input modes when expanding a toolset', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'http_mixed_app', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: 'manual',
+          selectedType: FlowNodeInputTypeEnum.input
+        }),
+        expect.objectContaining({
+          key: 'generated',
+          selectedType: FlowNodeInputTypeEnum.agentGenerated
+        })
+      ])
+    );
+    expect(tools[0].requestSchema.function.parameters.properties).toEqual({
+      generated: expect.any(Object)
+    });
+    expect(tools[0].requestSchema.function.parameters.required).toEqual(['generated']);
   });
 
   it('loads a legacy HTTP tool without isToolParam as an agent tool', async () => {

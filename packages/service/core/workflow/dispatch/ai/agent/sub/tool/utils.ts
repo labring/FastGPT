@@ -740,12 +740,16 @@ export const getAgentRuntimeTools = async ({
             };
         const buildSubApp = (child: RuntimeNodeItemType, id = child.nodeId): SubAppInitType => {
           const runtimeId = getAgentRuntimeToolId({ pluginId: id, source: runtimeSource });
+          const isHttpToolChild = Boolean(child.toolConfig?.httpTool);
           const inputs = initToolInputsTypeByDefaultMode(
             child.inputs.map((input) => ({
               ...input,
-              defaultToAgentGenerated: true
+              ...(isHttpToolChild ? {} : { defaultToAgentGenerated: true })
             })),
-            { forceDefaultMode: true, allowUserChatInputAgentGenerated: true }
+            {
+              forceDefaultMode: !isHttpToolChild,
+              allowUserChatInputAgentGenerated: true
+            }
           );
           const compiledRuntime = compileRuntimeTool({
             toolId: runtimeId,
