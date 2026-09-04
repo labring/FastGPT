@@ -68,6 +68,26 @@ function SingleSelectFilter<T>({
   );
   const { triggerRef, triggerWidth } = useFilterTriggerWidth(selected?.label);
   const listScrollable = showSearch || visibleOptions.length > FILTER_SEARCH_THRESHOLD;
+  const selectedContent = selected ? (
+    <Flex alignItems={'center'} gap={2} minW={0} overflow={'hidden'} whiteSpace={'nowrap'}>
+      {selected.avatar && (
+        <Avatar src={selected.avatar} w={'1rem'} h={'1rem'} flexShrink={0} borderRadius={'full'} />
+      )}
+      {selected.icon && (
+        <MyIcon
+          name={selected.icon}
+          w={'16px'}
+          h={'16px'}
+          flexShrink={0}
+          color={'currentcolor'}
+          sx={{ '& path': { fill: 'currentColor' } }}
+        />
+      )}
+      <Box minW={0} overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
+        {selected.label}
+      </Box>
+    </Flex>
+  ) : null;
 
   return (
     <MyPopover
@@ -80,7 +100,7 @@ function SingleSelectFilter<T>({
         <FilterButton
           ref={triggerRef}
           title={title}
-          value={selected?.label}
+          value={selectedContent}
           maxW={maxW}
           minW={minW}
         />
@@ -126,7 +146,14 @@ function SingleSelectFilter<T>({
                   <Flex alignItems={'center'} gap={2} minW={0}>
                     {item.avatar && <Avatar src={item.avatar} w={'1rem'} />}
                     {item.icon && (
-                      <MyIcon name={item.icon} w={'16px'} h={'16px'} color={'currentcolor'} />
+                      <MyIcon
+                        name={item.icon}
+                        w={'16px'}
+                        h={'16px'}
+                        flexShrink={0}
+                        color={'currentcolor'}
+                        sx={{ '& path': { fill: 'currentColor' } }}
+                      />
                     )}
                     <Box whiteSpace={'nowrap'}>{item.label}</Box>
                   </Flex>

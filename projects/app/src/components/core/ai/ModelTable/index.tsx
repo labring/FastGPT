@@ -85,7 +85,7 @@ const ModelTable = ({
 
   const [provider, setProvider] = useState<string | ''>('');
   const providerList = useMemo<
-    { label: React.ReactNode; value: string | ''; searchText?: string }[]
+    { label: string; value: string | ''; searchText?: string; avatar?: string }[]
   >(() => {
     const providers = getModelProviderListFromCache(
       permissionConfig ? memberModelProviders : publicProviderCache.ModelProviderListCache,
@@ -95,12 +95,8 @@ const ModelTable = ({
     return [
       { label: t('common:All'), value: '' },
       ...providers.map((item) => ({
-        label: (
-          <HStack>
-            <Avatar src={item.avatar} w={'1rem'} />
-            <Box>{item.name}</Box>
-          </HStack>
-        ),
+        label: item.name,
+        avatar: item.avatar,
         searchText: item.name,
         value: item.id
       }))
@@ -306,6 +302,7 @@ const ModelTable = ({
           options={filterProviderList}
           onChange={setProvider}
           showSearch
+          maxW={'240px'}
         />
         <SingleSelectFilter
           title={t('common:model.model_type')}

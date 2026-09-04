@@ -74,6 +74,15 @@ describe('app list filter helpers', () => {
     ).toEqual({
       agent: { ...defaultAppListFilters, type: AppTypeEnum.workflow },
       tool: defaultAppListFilters,
+      skill: {
+        sort: 'updateTimeDesc',
+        creator: { mode: 'all', tmbIds: [] }
+      },
+      dataset: {
+        type: 'all',
+        sort: 'updateTimeDesc',
+        creator: { mode: 'all', tmbIds: [] }
+      },
       templateMarket: { mode: 'all', tagIds: [] }
     });
   });

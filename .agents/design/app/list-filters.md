@@ -35,7 +35,7 @@
 
 Figma「工作台-Agents」给列表工具栏补了类型、排序、创建者。原先类型筛在左侧栏二级菜单，列表接口写死 `updateTime: -1`，没有创建者筛选。
 
-从 **Agent 列表页** 开始，Tool 列表和模板市场分类已按同一套筛选同步。Skill 和批量管理仍不做。
+从 **Agent 列表页** 开始，Tool、Skill、知识库列表和模板市场分类按同一套筛选同步。批量管理仍不做。
 
 ### 已确认需求
 
@@ -45,7 +45,7 @@ Figma「工作台-Agents」给列表工具栏补了类型、排序、创建者�
 4. 创建者「全部」会清空下方成员多选。清空到 0 人且未点「全部」时，触发器为禁用的「未选择」，Agent 列表为空。
 5. 创建者候选项是当前团队全部**活跃**成员。离职成员的资源会转到其他人名下，下拉里不出离职成员。
 6. 不实现批量管理，包括入口按钮。
-7. Skill 列表的工具栏和侧栏不改。Agent / Tool / 模板市场写在同一份团队筛选 store 的二级字段里。
+7. Skill 补创建者和排序；知识库补类型、创建者和排序。各页面写在同一份团队筛选 store 的二级字段里。
 8. 筛选不进 URL。类型、排序、创建者走通用过滤器存储；搜索不持久化。存储不绑 dashboard，知识库、日志等以后同一套 hook。
 9. 移动端工具栏只保留搜索，三个筛选项和 PC 按钮区按现有习惯收掉。
 
@@ -176,7 +176,7 @@ usePersistedFilters<T>({
 | 场景 | name | resourceId |
 |---|---|---|
 | Agent / Tool 列表 | 无 | 无 |
-| 以后 Skill 列表 | 无（同一 store 加 `skill`） | 无 |
+| Skill / 知识库列表 | 无（同一 store 加各自二级字段） | 无 |
 | 以后知识库文件列表 | `dataset.collection.list` | datasetId |
 | 以后应用日志 | `app.logs` | appId |
 
@@ -193,6 +193,8 @@ usePersistedFilters<T>({
     }
   },
   tool: { type, sort, creator },
+  skill: { sort, creator },
+  dataset: { type, sort, creator },
   templateMarket: {
     mode: 'all' | 'selected',
     tagIds: string[]                 // selected 且空数组 = 未选择
@@ -202,7 +204,7 @@ usePersistedFilters<T>({
 
 换团队换 key。社区版不渲染创建者，也不读写 `creator`。`AppListContext` 的 `appType` 改读这份存储里当前页那一层，不再读 `router.query.type`。`loadMyApps` 带上 `sort`、`tmbIds`。
 
-左侧栏：Agents、Tools、模板市场的 `children` 都置空。Skill 的二级菜单不动。
+左侧栏：Agents、Tools、Skill、模板市场的 `children` 都置空。
 
 模板市场工具栏：搜索 + 分类多选（交互同创建者，下拉里没有搜索，选项一列）。稿面「全部类型」按「全部」实现。PC 展示分类筛选，移动端只留搜索。原来的应用类型 `MySelect` 去掉，列表始终拉全部类型。有投稿链接时放在分类下拉底部。
 

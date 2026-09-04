@@ -28,6 +28,7 @@ import { useRouter } from 'next/router';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { useSkillSandboxOperationGuard } from '@/components/core/skill/useSkillSandboxOperationGuard';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import ResourceListFilters from '@/pageComponents/dashboard/agent/filters/ResourceListFilters';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -55,7 +56,9 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     setSearchKey,
     parentId,
     paths,
-    folderDetail
+    folderDetail,
+    listFilters,
+    setListFilters
   } = useContextSelector(SkillListContext, (v) => v);
   const maxFolderDepth = feConfigs?.limit?.maxFolderDepth ?? DEFAULT_MAX_FOLDER_DEPTH;
   const canCreateFolder = canCreateSubFolder(parentId, paths, maxFolderDepth);
@@ -94,7 +97,7 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           overflowY={'auto'}
           overflowX={'hidden'}
         >
-          <Flex alignItems={'center'}>
+          <Flex alignItems={'center'} gap={3} minW={0}>
             {!isPc ? (
               MenuIcon
             ) : paths.length > 0 ? (
@@ -111,19 +114,23 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                 {t('common:navbar.Skill')}
               </Box>
             )}
+            {isPc && (
+              <>
+                <Box flexShrink={0} maxW={'250px'}>
+                  <SearchInput
+                    maxW={'250px'}
+                    value={searchKey}
+                    bg={'white'}
+                    onChange={(e) => setSearchKey(e.target.value)}
+                    placeholder={t('skill:search_skill')}
+                    maxLength={30}
+                  />
+                </Box>
+                <ResourceListFilters value={listFilters} onChange={setListFilters} />
+              </>
+            )}
             <Flex flex={1} />
             <Flex alignItems={'center'} gap={3}>
-              {isPc && (
-                <SearchInput
-                  maxW={['auto', '250px']}
-                  value={searchKey}
-                  bg={'white'}
-                  onChange={(e) => setSearchKey(e.target.value)}
-                  placeholder={t('skill:search_skill')}
-                  maxLength={30}
-                />
-              )}
-
               {hasCreatePer && (
                 <>
                   <MyTooltip label={canCreateFolder ? '' : folderDepthLimitTip}>

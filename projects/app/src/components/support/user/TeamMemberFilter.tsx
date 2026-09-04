@@ -35,7 +35,7 @@ const TeamMemberFilter = ({ title, value, onChange, selectedSelf }: Props) => {
   const { userInfo } = useUserStore();
   const currentTmbId = userInfo?.team.tmbId;
   const [searchKey, setSearchKey] = useState('');
-  const selectedIds = value.mode === 'selected' ? value.values : [];
+  const selectedIds = useMemo(() => (value.mode === 'selected' ? value.values : []), [value]);
   const selectedIdsKey = selectedIds.join(',');
 
   const { data: members = [], ScrollData } = useScrollPagination<
@@ -61,14 +61,15 @@ const TeamMemberFilter = ({ title, value, onChange, selectedSelf }: Props) => {
   const { data: selectedMembers, loading: isHydratingSelected } = useRequest(
     async () => {
       if (selectedIds.length === 0) {
-        return { list: [] as TeamMemberItemType[], total: 0 };
+        return { list: [] as TeamMemberItemType[], total: 0, requestKey: selectedIdsKey };
       }
-      return getTeamMembers({
+      const result = await getTeamMembers({
         tmbIds: selectedIds,
         status: 'active',
         offset: 0,
         pageSize: selectedIds.length
       });
+      return { ...result, requestKey: selectedIdsKey };
     },
     {
       manual: false,
@@ -79,12 +80,14 @@ const TeamMemberFilter = ({ title, value, onChange, selectedSelf }: Props) => {
   useEffect(() => {
     if (value.mode !== 'selected' || selectedIds.length === 0) return;
     if (isHydratingSelected || !selectedMembers) return;
+    // useRequest 会保留上一轮 data，旧响应不能清掉刚选中的成员。
+    if (selectedMembers.requestKey !== selectedIdsKey) return;
     const next = syncSelectedFilterValues(
       value,
       selectedMembers.list.map((item) => String(item.tmbId))
     );
     if (next) onChange(next);
-  }, [isHydratingSelected, onChange, selectedIds.length, selectedMembers, value]);
+  }, [isHydratingSelected, onChange, selectedIds.length, selectedIdsKey, selectedMembers, value]);
 
   const listOptions = useMemo(
     () =>

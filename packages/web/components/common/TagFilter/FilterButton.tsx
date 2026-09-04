@@ -98,7 +98,7 @@ const FilterButton = forwardRef<HTMLDivElement, FilterButtonProps>(
       <Flex alignItems={'center'} gap={2} minW={0} overflow={'hidden'}>
         <Box flexShrink={0}>{title}</Box>
         <Box w={'1px'} h={'16px'} flexShrink={0} bg={'myGray.200'} />
-        <Flex minW={0} overflow={'hidden'} alignItems={'center'}>
+        <Flex minW={0} overflow={'hidden'} alignItems={'center'} whiteSpace={'nowrap'}>
           {value}
         </Flex>
       </Flex>

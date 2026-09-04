@@ -1,4 +1,5 @@
 import { AppListSortEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { toMultiSelectFilterQuery } from '@fastgpt/web/components/common/TagFilter';
 import z from 'zod';
 
@@ -27,6 +28,26 @@ export const AppListFilterSchema = z.object({
 export type AppListFilterType = z.infer<typeof AppListFilterSchema>;
 export type AppListFilterScene = 'agent' | 'tool';
 
+export const ResourceListFilterSchema = z.object({
+  sort: z.enum(AppListSortEnum).default(AppListSortEnum.updateTimeDesc),
+  creator: CreatorFilterSchema
+});
+export type ResourceListFilterType = z.infer<typeof ResourceListFilterSchema>;
+
+export const defaultResourceListFilters: ResourceListFilterType = {
+  sort: AppListSortEnum.updateTimeDesc,
+  creator: defaultCreatorFilter
+};
+
+export const DatasetListFilterSchema = ResourceListFilterSchema.extend({
+  type: z.union([z.literal('all'), z.enum(DatasetTypeEnum)]).default('all')
+});
+export type DatasetListFilterType = z.infer<typeof DatasetListFilterSchema>;
+export const defaultDatasetListFilters: DatasetListFilterType = {
+  ...defaultResourceListFilters,
+  type: 'all'
+};
+
 export const defaultAppListFilters: AppListFilterType = {
   type: 'all',
   sort: AppListSortEnum.updateTimeDesc,
@@ -52,6 +73,8 @@ export type TemplateMarketFilterType = z.infer<typeof TemplateMarketFilterSchema
 export const AppListFiltersStoreSchema = z.object({
   agent: AppListFilterSchema.default(defaultAppListFilters),
   tool: AppListFilterSchema.default(defaultAppListFilters),
+  skill: ResourceListFilterSchema.default(defaultResourceListFilters),
+  dataset: DatasetListFilterSchema.default(defaultDatasetListFilters),
   templateMarket: TemplateMarketFilterSchema
 });
 
@@ -60,6 +83,8 @@ export type AppListFiltersStoreType = z.infer<typeof AppListFiltersStoreSchema>;
 export const defaultAppListFiltersStore: AppListFiltersStoreType = {
   agent: defaultAppListFilters,
   tool: defaultAppListFilters,
+  skill: defaultResourceListFilters,
+  dataset: defaultDatasetListFilters,
   templateMarket: defaultTemplateMarketFilter
 };
 

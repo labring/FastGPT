@@ -36,6 +36,7 @@ import {
 } from '@fastgpt/global/common/parentFolder/depth';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import ProModal from '@/components/ProTip/ProModal';
+import DatasetListFilters from '@/pageComponents/dataset/list/ListFilters';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -61,7 +62,9 @@ const Dataset = () => {
     onDelDataset,
     onUpdateDataset,
     searchKey,
-    setSearchKey
+    setSearchKey,
+    listFilters,
+    setListFilters
   } = useContextSelector(DatasetsContext, (v) => v);
   const { userInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
@@ -114,32 +117,41 @@ const Dataset = () => {
     >
       <Flex pt={[4, 6]} pl={3} pr={folderDetail ? [3, 6] : [3, 8]}>
         <Flex flexGrow={1} flexDirection="column">
-          <Flex alignItems={'center'} justifyContent={'space-between'}>
-            <FolderPath
-              paths={paths}
-              FirstPathDom={
-                <Flex flex={1} alignItems={'center'}>
-                  <Box
-                    pl={2}
-                    letterSpacing={1}
-                    fontSize={'1.25rem'}
-                    fontWeight={'bold'}
-                    color={'myGray.900'}
-                  >
-                    {t('common:core.dataset.My Dataset')}
-                  </Box>
-                </Flex>
-              }
-              onClick={(e) => {
-                router.push({
-                  query: {
-                    parentId: e
-                  }
-                });
-              }}
-            />
+          <Flex alignItems={'center'} gap={3} minW={0}>
+            <Box flexShrink={0}>
+              <FolderPath
+                paths={paths}
+                FirstPathDom={
+                  <Flex alignItems={'center'}>
+                    <Box
+                      pl={2}
+                      letterSpacing={1}
+                      fontSize={'1.25rem'}
+                      fontWeight={'bold'}
+                      color={'myGray.900'}
+                    >
+                      {t('common:core.dataset.My Dataset')}
+                    </Box>
+                  </Flex>
+                }
+                onClick={(e) => {
+                  router.push({
+                    query: {
+                      parentId: e
+                    }
+                  });
+                }}
+              />
+            </Box>
 
-            {isPc && RenderSearchInput}
+            {isPc && (
+              <>
+                <Box flexShrink={0}>{RenderSearchInput}</Box>
+                <DatasetListFilters value={listFilters} onChange={setListFilters} />
+              </>
+            )}
+
+            <Flex flex={1} />
 
             {(folderDetail
               ? folderDetail.permission.hasWritePer
@@ -334,7 +346,7 @@ const Dataset = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['dataset', 'user']))
+      ...(await serviceSideProps(content, ['app', 'common', 'dataset', 'user']))
     }
   };
 }

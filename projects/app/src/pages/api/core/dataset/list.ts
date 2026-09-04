@@ -23,9 +23,10 @@ import {
   GetDatasetListResponseSchema,
   type GetDatasetListResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
+import { AppListSortEnum } from '@fastgpt/global/core/app/constants';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
-  const { parentId, type, searchKey } = parseApiInput({
+  const { parentId, type, searchKey, sort, tmbIds } = parseApiInput({
     req,
     bodySchema: GetDatasetListBodySchema
   }).body;
@@ -50,6 +51,10 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
         ]
       : [])
   ]);
+
+  if (Array.isArray(tmbIds) && tmbIds.length === 0) {
+    return [];
+  }
 
   // Get team all app permissions
   const [roleList, myGroupMap, myOrgSet] = await Promise.all([
@@ -99,12 +104,17 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
           ]
         }
       : {};
+    const listFilter = {
+      ...(type ? (Array.isArray(type) ? { type: { $in: type } } : { type }) : {}),
+      ...(tmbIds ? { tmbId: { $in: tmbIds } } : {})
+    };
 
     if (searchKey) {
       const data = {
         ...datasetPerQuery,
         teamId,
         deleteTime: null, // 搜索时也要过滤已删除数据
+        ...listFilter,
         ...searchMatch
       };
       // @ts-ignore
@@ -116,16 +126,18 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
       ...datasetPerQuery,
       teamId,
       deleteTime: null, // 关键：只返回未删除的数据
-      ...(type ? (Array.isArray(type) ? { type: { $in: type } } : { type }) : {}),
+      ...listFilter,
       ...parseParentIdInMongo(parentId)
     };
   })();
 
-  const myDatasets = await MongoDataset.find(findDatasetQuery)
-    .sort({
-      updateTime: -1
-    })
-    .lean();
+  const datasetSort = ((): Record<string, 1 | -1> => {
+    if (sort === AppListSortEnum.createTimeAsc) return { _id: 1 };
+    if (sort === AppListSortEnum.createTimeDesc) return { _id: -1 };
+    return { updateTime: -1 };
+  })();
+
+  const myDatasets = await MongoDataset.find(findDatasetQuery).sort(datasetSort).lean();
 
   const formatDatasets = myDatasets
     .map((dataset) => {

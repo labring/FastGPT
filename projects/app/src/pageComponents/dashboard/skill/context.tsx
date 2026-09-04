@@ -1,4 +1,10 @@
-import React, { type Dispatch, type ReactNode, type SetStateAction, useState } from 'react';
+import React, {
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+  useCallback,
+  useState
+} from 'react';
 import { createContext } from 'use-context-selector';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getSkillList, getSkillFolderPath, getSkillDetail } from '@/web/core/skill/api';
@@ -7,6 +13,17 @@ import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder
 import { normalizeParentId } from '@fastgpt/global/common/parentFolder/depth';
 import { useRouter } from 'next/router';
 import type { SkillPermission } from '@fastgpt/global/support/permission/skill/controller';
+import { usePersistedFilters } from '@fastgpt/web/hooks/usePersistedFilters';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { buildFilterStorageKey } from '@/web/common/filter/storageKey';
+import {
+  AppListFiltersStoreSchema,
+  defaultAppListFiltersStore,
+  toListTmbIds,
+  type ResourceListFilterType
+} from '@/pageComponents/dashboard/agent/filters/utils';
 
 export type SkillListItemType = Omit<
   ListSkillsResponse['list'][number],
@@ -28,6 +45,8 @@ type SkillListContextType = {
   folderDetail?: {
     permission: SkillPermission;
   };
+  listFilters: ResourceListFilterType;
+  setListFilters: (next: ResourceListFilterType) => void;
 };
 
 export const SkillListContext = createContext<SkillListContextType>({
@@ -42,7 +61,11 @@ export const SkillListContext = createContext<SkillListContextType>({
   },
   parentId: null,
   paths: [],
-  folderDetail: undefined
+  folderDetail: undefined,
+  listFilters: defaultAppListFiltersStore.skill,
+  setListFilters: () => {
+    throw new Error('Function not implemented.');
+  }
 });
 
 const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
@@ -50,6 +73,25 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
   const parentId = normalizeParentId(router.query.parentId);
 
   const [searchKey, setSearchKey] = useState('');
+  const { userInfo } = useUserStore();
+  const { feConfigs } = useSystemStore();
+  const { isPc } = useSystem();
+  const filterKey = userInfo?.team.teamId
+    ? buildFilterStorageKey({ teamId: userInfo.team.teamId })
+    : '';
+  const [filterStore, setFilterStore] = usePersistedFilters({
+    key: filterKey,
+    schema: AppListFiltersStoreSchema,
+    defaultValue: defaultAppListFiltersStore
+  });
+  const listFilters = filterStore.skill;
+  const setListFilters = useCallback(
+    (next: ResourceListFilterType) => setFilterStore((prev) => ({ ...prev, skill: next })),
+    [setFilterStore]
+  );
+  const applyToolbarFilters = isPc;
+  const tmbIds =
+    applyToolbarFilters && feConfigs.isPlus ? toListTmbIds(listFilters.creator) : undefined;
 
   const {
     data,
@@ -57,7 +99,13 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
     loading: isFetchingSkills
   } = useRequest(
     () =>
-      getSkillList({ source: 'mine', searchKey: searchKey, parentId }).then((res) =>
+      getSkillList({
+        source: 'mine',
+        searchKey,
+        parentId,
+        ...(applyToolbarFilters ? { sort: listFilters.sort } : {}),
+        ...(tmbIds !== undefined ? { tmbIds } : {})
+      }).then((res) =>
         res.list.map((item) => ({
           ...item,
           createTime: new Date(item.createTime),
@@ -66,7 +114,14 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
       ),
     {
       manual: false,
-      refreshDeps: [searchKey, parentId],
+      refreshDeps: [
+        searchKey,
+        parentId,
+        applyToolbarFilters ? listFilters.sort : '',
+        tmbIds === undefined ? 'none' : tmbIds.join(','),
+        feConfigs.isPlus,
+        isPc
+      ],
       throttleWait: 500,
       refreshOnWindowFocus: false
     }
@@ -105,7 +160,9 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
     setSearchKey,
     parentId,
     paths,
-    folderDetail
+    folderDetail,
+    listFilters,
+    setListFilters
   };
 
   return <SkillListContext.Provider value={contextValue}>{children}</SkillListContext.Provider>;

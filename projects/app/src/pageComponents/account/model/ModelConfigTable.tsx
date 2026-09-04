@@ -105,17 +105,13 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
 
   const [provider, setProvider] = useState<string | ''>('');
   const providerList = useMemo<
-    { label: React.ReactNode; value: string | ''; searchText?: string }[]
+    { label: string; value: string | ''; searchText?: string; avatar?: string }[]
   >(
     () => [
       { label: t('common:All'), value: '' },
       ...getModelProviders(i18n.language).map((item) => ({
-        label: (
-          <HStack>
-            <Avatar src={item.avatar} w={'1rem'} />
-            <Box>{item.name}</Box>
-          </HStack>
-        ),
+        label: item.name,
+        avatar: item.avatar,
         searchText: item.name,
         value: item.id
       }))
@@ -422,6 +418,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
               options={filterProviderList}
               onChange={setProvider}
               showSearch
+              maxW={'240px'}
             />
             <SingleSelectFilter
               title={t('common:model.model_type')}

@@ -14,6 +14,7 @@ import { sumPer } from '@fastgpt/global/support/permission/utils';
 import type { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { ListSkillsQuery } from '@fastgpt/global/core/ai/skill/api';
+import { AppListSortEnum, appListSortMongoMap } from '@fastgpt/global/core/app/constants';
 
 type TeamPermission = {
   isOwner: boolean;
@@ -59,10 +60,15 @@ export const listReadableAgentSkills = async ({
   page,
   pageSize,
   withAppCount,
+  sort,
+  tmbIds,
   creationStatus,
   withSourceMember = true,
   withCurrentRuntimeSkills = false
 }: ListReadableAgentSkillsParams) => {
+  if (Array.isArray(tmbIds) && tmbIds.length === 0) {
+    return { list: [], total: 0 };
+  }
   const selectedSkillIds = skillIds?.filter(Boolean) ?? [];
   const isSkillIdsQuery = selectedSkillIds.length > 0;
 
@@ -136,6 +142,7 @@ export const listReadableAgentSkills = async ({
       deleteTime: null,
       ...sourceQuery,
       ...typeQuery,
+      ...(tmbIds ? { tmbId: { $in: tmbIds } } : {}),
       ...(creationStatus ? { creationStatus } : {})
     };
     const searchMatch = searchKey
@@ -184,7 +191,7 @@ export const listReadableAgentSkills = async ({
   const mySkills = await MongoAgentSkills.find(findSkillQuery)
     .sort({
       type: -1,
-      updateTime: -1
+      ...appListSortMongoMap[sort ?? AppListSortEnum.updateTimeDesc]
     })
     .lean();
 
