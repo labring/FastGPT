@@ -57,6 +57,7 @@ import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 import SystemToolTag from '@fastgpt/web/components/core/plugin/tool/SystemToolTag';
 import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
+import type { ScrollListType } from '@fastgpt/web/hooks/useScrollPagination';
 
 export type TemplateListProps = {
   onAddNode: ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => void;
@@ -64,6 +65,7 @@ export type TemplateListProps = {
   templates: NodeTemplateListItemType[];
   templateType: TemplateTypeEnum;
   onUpdateParentId: (parentId: string, source?: string) => void;
+  ScrollData?: ScrollListType;
 };
 
 const NodeTemplateListItem = ({
@@ -238,7 +240,8 @@ const NodeTemplateList = ({
   isPopover = false,
   templates,
   templateType,
-  onUpdateParentId
+  onUpdateParentId,
+  ScrollData
 }: TemplateListProps) => {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
@@ -584,33 +587,52 @@ const NodeTemplateList = ({
     );
   });
 
+  const listContent = (
+    <Accordion defaultIndex={[0]} allowMultiple reduceMotion>
+      {formatTemplatesArrayData.length > 1 ? (
+        <>
+          {formatTemplatesArrayData.map(({ list, label }, index) => (
+            <AccordionItem key={index} border={'none'}>
+              <AccordionButton
+                fontSize={'sm'}
+                fontWeight={'500'}
+                color={'myGray.900'}
+                justifyContent={'space-between'}
+                alignItems={'center'}
+                borderRadius={'md'}
+                px={3}
+              >
+                {t(label as any)}
+                <AccordionIcon />
+              </AccordionButton>
+              <AccordionPanel py={0}>{renderNodeList(list)}</AccordionPanel>
+            </AccordionItem>
+          ))}
+        </>
+      ) : (
+        <>{renderNodeList(formatTemplatesArrayData?.[0]?.list)}</>
+      )}
+    </Accordion>
+  );
+
+  if (ScrollData) {
+    return (
+      <ScrollData flex={1} minH={0} showLoadingOverlay={false}>
+        <Box flexShrink={0} px={formatTemplatesArrayData.length > 1 ? 2 : 5}>
+          {listContent}
+        </Box>
+      </ScrollData>
+    );
+  }
+
   return (
-    <Box flex={'1 0 0'} overflow={'overlay'} px={formatTemplatesArrayData.length > 1 ? 2 : 5}>
-      <Accordion defaultIndex={[0]} allowMultiple reduceMotion>
-        {formatTemplatesArrayData.length > 1 ? (
-          <>
-            {formatTemplatesArrayData.map(({ list, label }, index) => (
-              <AccordionItem key={index} border={'none'}>
-                <AccordionButton
-                  fontSize={'sm'}
-                  fontWeight={'500'}
-                  color={'myGray.900'}
-                  justifyContent={'space-between'}
-                  alignItems={'center'}
-                  borderRadius={'md'}
-                  px={3}
-                >
-                  {t(label as any)}
-                  <AccordionIcon />
-                </AccordionButton>
-                <AccordionPanel py={0}>{renderNodeList(list)}</AccordionPanel>
-              </AccordionItem>
-            ))}
-          </>
-        ) : (
-          <>{renderNodeList(formatTemplatesArrayData?.[0]?.list)}</>
-        )}
-      </Accordion>
+    <Box
+      flex={'1 0 0'}
+      minH={0}
+      overflow={'overlay'}
+      px={formatTemplatesArrayData.length > 1 ? 2 : 5}
+    >
+      {listContent}
     </Box>
   );
 };

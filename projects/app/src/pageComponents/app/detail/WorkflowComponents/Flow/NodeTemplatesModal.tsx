@@ -49,6 +49,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
     setSearchKey,
     templatesIsLoading,
     templates,
+    TeamScrollData,
     onUpdateTemplateType,
     onUpdateParentId,
     selectedTagIds,
@@ -119,6 +120,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         templates={templates}
         templateType={templateType}
         onUpdateParentId={onUpdateParentId}
+        ScrollData={TeamScrollData}
       />
     </AppDetailPanelModal>
   );

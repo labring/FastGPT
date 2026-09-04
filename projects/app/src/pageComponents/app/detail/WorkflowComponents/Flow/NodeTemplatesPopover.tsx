@@ -55,6 +55,7 @@ const NodeTemplatesPopover = () => {
     setSearchKey,
     templatesIsLoading,
     templates,
+    TeamScrollData,
     onUpdateTemplateType,
     onUpdateParentId,
     toolTags,
@@ -155,6 +156,7 @@ const NodeTemplatesPopover = () => {
             flexDirection={'column'}
             py={4}
             h={'full'}
+            minH={0}
             userSelect="none"
           >
             <NodeTemplateListHeader
@@ -176,6 +178,7 @@ const NodeTemplatesPopover = () => {
               templates={templates}
               templateType={templateType}
               onUpdateParentId={onUpdateParentId}
+              ScrollData={TeamScrollData}
             />
           </MyBox>
         </PopoverBody>
