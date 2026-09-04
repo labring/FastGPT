@@ -22,13 +22,7 @@ export enum DatasetErrEnum {
   tagNameEmpty = 'tagNameEmpty',
   tagNotExist = 'tagNotExist',
   tagValueInvalid = 'tagValueInvalid',
-  tagValueStringTooLong = 'tagValueStringTooLong',
-  tagValueNumberOutOfRange = 'tagValueNumberOutOfRange',
   tagValueDatetimeInvalid = 'tagValueDatetimeInvalid',
-  noDatasetForTagFilter = 'noDatasetForTagFilter',
-  noTagsInDataset = 'noTagsInDataset',
-  noPermissionForDatasetTags = 'noPermissionForDatasetTags',
-  tagNotSelectedForRef = 'tagNotSelectedForRef',
   arrayTagValueInvalid = 'arrayTagValueInvalid'
 }
 const datasetErr = [
@@ -103,32 +97,8 @@ const datasetErr = [
     message: i18nT('common:core.dataset.error.tagValueInvalid')
   },
   {
-    statusText: DatasetErrEnum.tagValueStringTooLong,
-    message: i18nT('common:core.dataset.error.tagValueStringTooLong')
-  },
-  {
-    statusText: DatasetErrEnum.tagValueNumberOutOfRange,
-    message: i18nT('common:core.dataset.error.tagValueNumberOutOfRange')
-  },
-  {
     statusText: DatasetErrEnum.tagValueDatetimeInvalid,
     message: i18nT('common:core.dataset.error.tagValueDatetimeInvalid')
-  },
-  {
-    statusText: DatasetErrEnum.noDatasetForTagFilter,
-    message: i18nT('common:core.dataset.error.noDatasetForTagFilter')
-  },
-  {
-    statusText: DatasetErrEnum.noTagsInDataset,
-    message: i18nT('common:core.dataset.error.noTagsInDataset')
-  },
-  {
-    statusText: DatasetErrEnum.noPermissionForDatasetTags,
-    message: i18nT('common:core.dataset.error.noPermissionForDatasetTags')
-  },
-  {
-    statusText: DatasetErrEnum.tagNotSelectedForRef,
-    message: i18nT('common:core.dataset.error.tagNotSelectedForRef')
   },
   {
     statusText: DatasetErrEnum.arrayTagValueInvalid,

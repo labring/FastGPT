@@ -34,12 +34,13 @@ const DATE_FNS_LOCALE_BY_LANG: Record<string, Locale> = {
   [LangEnum.ko_KR]: ko
 };
 
-export type SingleDateTimePickerProps = {
+type SingleDateTimePickerProps = {
   value?: Date | number;
   onChange?: (val: number) => void;
   placeholder?: string;
   isDisabled?: boolean;
   locale?: Locale;
+  hideCalendarIcon?: boolean;
 } & Omit<FlexProps, 'onChange' | 'value'>;
 
 /** 将时间戳或 Date 转为有效 Date；空值或非法日期返回 undefined。 */
@@ -66,6 +67,7 @@ export const SingleDateTimePicker = ({
   placeholder,
   isDisabled,
   locale,
+  hideCalendarIcon,
   ...triggerProps
 }: SingleDateTimePickerProps) => {
   const { t, i18n } = useTranslation();
@@ -139,13 +141,15 @@ export const SingleDateTimePicker = ({
           <Box color={displayText ? 'myGray.900' : 'myGray.500'} noOfLines={1}>
             {displayText || placeholder || t('common:datetime_picker.placeholder')}
           </Box>
-          <MyIcon
-            name={'common/calendar'}
-            w={'16px'}
-            h={'16px'}
-            color={'myGray.500'}
-            flexShrink={0}
-          />
+          {!hideCalendarIcon && (
+            <MyIcon
+              name={'common/calendar'}
+              w={'16px'}
+              h={'16px'}
+              color={'myGray.500'}
+              flexShrink={0}
+            />
+          )}
         </Flex>
       </PopoverTrigger>
 

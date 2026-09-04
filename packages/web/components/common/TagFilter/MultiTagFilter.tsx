@@ -6,7 +6,7 @@ import MyBox from '../MyBox';
 import MyPopover from '../MyPopover';
 import FilterButton from './FilterButton';
 
-export type MultiTagFilterValue = string | number;
+type MultiTagFilterValue = string | number;
 
 export type MultiTagFilterGroup = {
   tagId: string;
@@ -17,7 +17,7 @@ export type MultiTagFilterGroup = {
   }>;
 };
 
-export type MultiTagFilterLabels = {
+type MultiTagFilterLabels = {
   title: ReactNode;
   all: ReactNode;
   searchPlaceholder: string;
@@ -28,7 +28,7 @@ export type MultiTagFilterLabels = {
   noMatch: ReactNode;
 };
 
-export type MultiTagFilterProps = {
+type MultiTagFilterProps = {
   groups: MultiTagFilterGroup[];
   selected: CollectionTagFilterItem[];
   onSelectedChange: (next: CollectionTagFilterItem[]) => void;
@@ -56,7 +56,7 @@ const stopWheelPropagation = (e: React.WheelEvent) => e.stopPropagation();
 /**
  * 双栏标签值筛选：左侧分组、右侧勾选值即生效。同一标签多值为 OR，不同标签由调用方按 AND 解释。
  */
-export const toggleMultiTagFilterValue = (
+const toggleMultiTagFilterValue = (
   selected: CollectionTagFilterItem[],
   tagId: string,
   value: MultiTagFilterValue

@@ -4,6 +4,7 @@ import { MongoDatasetCollectionTagsV2 } from '../tag/schemaV2';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import {
   DEFAULT_TAG,
+  type CollectionTagLabelType,
   type CollectionTagValueType,
   type CollectionWithDatasetType,
   type DatasetCollectionTagType
@@ -70,28 +71,6 @@ export function getCollectionUpdateTime({ name, time }: { time?: Date; name: str
   return new Date();
 }
 
-const normalizeDatasetTagValue = ({
-  tagType,
-  value
-}: {
-  tagType: DatasetCollectionTagType;
-  value: string | number | string[];
-}): { value: string | number | string[]; error?: DatasetErrEnum } => {
-  if (tagType !== 'number' && tagType !== 'datetime') return { value };
-
-  const numericValue =
-    typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
-  if (typeof value === 'string' && value.trim() === '') {
-    return { value, error: DatasetErrEnum.tagValueInvalid };
-  }
-  if (!Number.isFinite(numericValue)) return { value, error: DatasetErrEnum.tagValueInvalid };
-  if (tagType === 'datetime' && Number.isNaN(new Date(numericValue).getTime())) {
-    return { value, error: DatasetErrEnum.tagValueDatetimeInvalid };
-  }
-
-  return { value: numericValue };
-};
-
 export const validateDatasetTagValue = ({
   tagType,
   value
@@ -99,23 +78,7 @@ export const validateDatasetTagValue = ({
   tagType?: DatasetCollectionTagType;
   value: string | number | string[];
 }): DatasetErrEnum | undefined => {
-  const type = tagType || 'string';
-
-  if (type === 'string' && (typeof value !== 'string' || value.length > 256)) {
-    return DatasetErrEnum.tagValueInvalid;
-  }
-  if (type === 'array') {
-    if (
-      !Array.isArray(value) ||
-      value.length > 64 ||
-      value.some((item) => typeof item !== 'string' || item.length > 256)
-    ) {
-      return DatasetErrEnum.arrayTagValueInvalid;
-    }
-    return undefined;
-  }
-
-  return normalizeDatasetTagValue({ tagType: type, value }).error;
+  return validateAndNormalizeTagValue({ tagType, value }).error;
 };
 
 /**
@@ -131,10 +94,33 @@ export const validateAndNormalizeTagValue = ({
   tagType?: DatasetCollectionTagType;
   value: string | number | string[];
 }): { value: string | number | string[]; error?: DatasetErrEnum } => {
-  if (tagType === 'number' || tagType === 'datetime') {
-    return normalizeDatasetTagValue({ tagType, value });
+  const type = tagType ?? 'string';
+
+  if (type === 'string') {
+    const error = typeof value !== 'string' || value.length > 256;
+    return error ? { value, error: DatasetErrEnum.tagValueInvalid } : { value };
   }
-  return { value, error: validateDatasetTagValue({ tagType, value }) };
+  if (type === 'array') {
+    const error =
+      !Array.isArray(value) ||
+      value.length > 64 ||
+      value.some((item) => typeof item !== 'string' || item.length > 256);
+    return error ? { value, error: DatasetErrEnum.arrayTagValueInvalid } : { value };
+  }
+
+  if (typeof value === 'string' && value.trim() === '') {
+    return { value, error: DatasetErrEnum.tagValueInvalid };
+  }
+  const numericValue =
+    typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
+  if (!Number.isFinite(numericValue)) {
+    return { value, error: DatasetErrEnum.tagValueInvalid };
+  }
+  if (type === 'datetime' && Number.isNaN(new Date(numericValue).getTime())) {
+    return { value, error: DatasetErrEnum.tagValueDatetimeInvalid };
+  }
+
+  return { value: numericValue };
 };
 
 const isSameTagValue = (a: string | number | string[], b: string | number | string[]): boolean => {
@@ -158,7 +144,7 @@ export const deduplicateTagValues = async (
   for (const t of tags) {
     if (seen.has(t.tagId)) {
       if (!isSameTagValue(seen.get(t.tagId)!, t.value)) {
-        return Promise.reject(DatasetErrEnum.tagValueInvalid);
+        throw DatasetErrEnum.tagValueInvalid;
       }
     } else {
       seen.set(t.tagId, t.value);
@@ -219,7 +205,7 @@ export const createOrGetCollectionTags = async ({
   teamId,
   session
 }: {
-  tags?: (string | { tag: string; value: string | number | string[] })[];
+  tags?: CollectionTagLabelType[];
   datasetId: string;
   teamId: string;
   session?: ClientSession;
@@ -233,13 +219,13 @@ export const createOrGetCollectionTags = async ({
   );
 
   const trimmedStringNames = stringNames.map((name) => name.trim());
-  if (trimmedStringNames.some((name) => !name)) return Promise.reject(DatasetErrEnum.tagNameEmpty);
+  if (trimmedStringNames.some((name) => !name)) throw DatasetErrEnum.tagNameEmpty;
 
   const defaultObjectInputs = objectInputs.filter((item) => item.tag.trim() === DEFAULT_TAG);
   const regularObjectInputs = objectInputs.filter((item) => item.tag.trim() !== DEFAULT_TAG);
 
   const regularTagNames = regularObjectInputs.map((item) => item.tag.trim());
-  if (regularTagNames.some((name) => !name)) return Promise.reject(DatasetErrEnum.tagNameEmpty);
+  if (regularTagNames.some((name) => !name)) throw DatasetErrEnum.tagNameEmpty;
 
   const regularTags = regularTagNames.length
     ? await MongoDatasetCollectionTagsV2.find(
@@ -253,9 +239,9 @@ export const createOrGetCollectionTags = async ({
   const normalizedRegularInputs = regularObjectInputs.map((input) => {
     const tagDoc = regularTagMap.get(input.tag.trim());
     if (!tagDoc) {
-      return { input, value: input.value, error: DatasetErrEnum.tagNotExist };
+      return { value: input.value, error: DatasetErrEnum.tagNotExist };
     }
-    const tagType = tagDoc.tagType || 'string';
+    const tagType = tagDoc.tagType ?? 'string';
     const { value, error } = validateAndNormalizeTagValue({ tagType, value: input.value });
     return {
       tagId: String(tagDoc._id),
@@ -265,14 +251,14 @@ export const createOrGetCollectionTags = async ({
   });
 
   for (const { error } of normalizedRegularInputs) {
-    if (error) return Promise.reject(error);
+    if (error) throw error;
   }
 
   // default_tag 承载记录：string 名与 tag=default_tag 的对象值合并为单条 array 记录
   const defaultValues: string[] = [...new Set(trimmedStringNames)];
   for (const { value } of defaultObjectInputs) {
     const error = validateDatasetTagValue({ tagType: 'array', value });
-    if (error) return Promise.reject(error);
+    if (error) throw error;
     if (Array.isArray(value)) defaultValues.push(...value);
   }
 
@@ -301,7 +287,7 @@ export const collectionTagsToTagLabel = async ({
 }: {
   datasetId: string;
   tags?: (string | CollectionTagValueType)[];
-}): Promise<(string | { tag: string; value: string | number | string[] })[] | undefined> => {
+}): Promise<CollectionTagLabelType[] | undefined> => {
   if (!tags) return undefined;
   if (tags.length === 0) return [];
 
@@ -322,9 +308,7 @@ export const collectionTagsToTagLabel = async ({
       const tagName = tagsMap.get(tag.tagId);
       return tagName ? { tag: tagName, value: tag.value } : null;
     })
-    .filter(
-      (item): item is string | { tag: string; value: string | number | string[] } => item !== null
-    );
+    .filter((item): item is CollectionTagLabelType => item !== null);
 };
 
 export const syncCollection = async (collection: CollectionWithDatasetType) => {

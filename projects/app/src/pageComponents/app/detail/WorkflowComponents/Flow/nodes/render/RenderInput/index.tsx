@@ -91,6 +91,12 @@ const RenderList: Record<
   [FlowNodeInputTypeEnum.password]: {
     Component: CommonInputForm
   },
+  [FlowNodeInputTypeEnum.datasetTagFilter]: {
+    Component: dynamic(() => import('./templates/DatasetTagFilter')),
+    LableRightComponent: dynamic(() =>
+      import('./templates/DatasetTagFilter').then((mod) => mod.DatasetTagFilterLogic)
+    )
+  },
 
   [FlowNodeInputTypeEnum.agentGenerated]: undefined,
   [FlowNodeInputTypeEnum.customVariable]: undefined,

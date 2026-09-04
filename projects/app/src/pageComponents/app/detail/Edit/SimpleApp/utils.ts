@@ -177,6 +177,10 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.authTmbId
       );
+      defaultAppForm.dataset.collectionFilterMatch = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.collectionFilterMatch
+      );
     } else if (
       node.flowNodeType === FlowNodeTypeEnum.pluginModule ||
       node.flowNodeType === FlowNodeTypeEnum.appModule ||
@@ -576,6 +580,15 @@ export function form2AppWorkflow(
           label: '',
           valueType: WorkflowIOValueTypeEnum.boolean,
           value: formData.dataset.authTmbId
+        },
+        {
+          key: NodeInputKeyEnum.collectionFilterMatch,
+          renderTypeList: [FlowNodeInputTypeEnum.datasetTagFilter, FlowNodeInputTypeEnum.reference],
+          label: i18nT('workflow:tag_filter'),
+          valueType: WorkflowIOValueTypeEnum.string,
+          isPro: true,
+          description: i18nT('workflow:tag_filter_description'),
+          value: formData.dataset.collectionFilterMatch
         },
         {
           ...Input_Template_UserChatInput,

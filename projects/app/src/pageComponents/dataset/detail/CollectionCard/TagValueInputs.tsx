@@ -40,7 +40,7 @@ export const tagInputBaseStyles: InputProps = {
     color: 'myGray.500'
   }
 };
-export const StringTagInput = ({
+const StringTagInput = ({
   value,
   onChange,
   placeholder
@@ -55,25 +55,34 @@ export const StringTagInput = ({
     <Input
       {...tagInputBaseStyles}
       value={value ?? ''}
-      placeholder={placeholder || t('dataset:tag.fill_value')}
+      placeholder={placeholder ?? t('dataset:tag.fill_value')}
       onChange={(e) => onChange(e.target.value)}
     />
   );
+};
+
+const embeddedFieldStyles = {
+  border: 'none',
+  boxShadow: 'none',
+  _hover: { border: 'none' },
+  _focus: { border: 'none', boxShadow: 'none' }
 };
 
 export const NumberTagInput = ({
   value,
   onChange,
   placeholder,
-  showStepper
+  showStepper,
+  embedded
 }: {
   value?: number | string;
   onChange: (val: number | '') => void;
   placeholder?: string;
   showStepper?: boolean;
+  embedded?: boolean;
 }) => {
   const { t } = useTranslation();
-  const placeholderText = placeholder || t('dataset:tag.fill_number');
+  const placeholderText = placeholder ?? t('dataset:tag.fill_number');
 
   if (showStepper) {
     return (
@@ -86,7 +95,8 @@ export const NumberTagInput = ({
           h: '36px',
           bg: 'white',
           fontSize: 'sm',
-          color: 'myGray.900'
+          color: 'myGray.900',
+          ...(embedded ? embeddedFieldStyles : {})
         }}
         value={value === undefined || value === '' ? '' : Number(value)}
         placeholder={placeholderText}
@@ -98,6 +108,7 @@ export const NumberTagInput = ({
   return (
     <Input
       {...tagInputBaseStyles}
+      {...(embedded ? embeddedFieldStyles : {})}
       type={'number'}
       value={value === undefined ? '' : value}
       placeholder={placeholderText}
@@ -119,17 +130,22 @@ export const NumberTagInput = ({
 export const DateTimeTagInput = ({
   value,
   onChange,
-  placeholder
+  placeholder,
+  embedded
 }: {
   value?: number | string;
   onChange: (val: number) => void;
   placeholder?: string;
+  embedded?: boolean;
 }) => (
   <SingleDateTimePicker
     value={value === undefined || value === '' ? undefined : Number(value)}
     onChange={onChange}
     placeholder={placeholder}
     w={'100%'}
+    h={embedded ? '36px' : undefined}
+    hideCalendarIcon={embedded}
+    {...(embedded ? embeddedFieldStyles : {})}
   />
 );
 
@@ -350,13 +366,17 @@ export const ArrayTagSelect = ({
   value = [],
   onChange,
   onCreateOption,
-  placeholder
+  allowCreate = true,
+  placeholder,
+  embedded
 }: {
   options: string[];
   value?: string[];
   onChange: (val: string[]) => void;
   onCreateOption?: (option: string) => void;
+  allowCreate?: boolean;
   placeholder?: string;
+  embedded?: boolean;
 }) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -383,7 +403,9 @@ export const ArrayTagSelect = ({
   }, [search, allOptions]);
 
   const canCreate = Boolean(
-    search.trim() && !allOptions.some((opt) => opt.toLowerCase() === search.trim().toLowerCase())
+    allowCreate &&
+    search.trim() &&
+    !allOptions.some((opt) => opt.toLowerCase() === search.trim().toLowerCase())
   );
 
   const handleCreateOption = () => {
@@ -444,11 +466,12 @@ export const ArrayTagSelect = ({
           overflow={'hidden'}
           borderColor={isOpen ? 'primary.600' : 'myGray.200'}
           boxShadow={isOpen ? 'focus' : 'none'}
+          {...(embedded ? embeddedFieldStyles : {})}
         >
           <Flex position={'relative'} flex={'1 1 auto'} minW={0} h={'24px'} alignItems={'center'}>
             {value.length === 0 ? (
               <Box color={'myGray.500'} fontSize={'sm'}>
-                {placeholder || t('dataset:tag.select_options')}
+                {placeholder ?? t('dataset:tag.select_options')}
               </Box>
             ) : (
               <>
@@ -497,7 +520,7 @@ export const ArrayTagSelect = ({
       </PopoverTrigger>
       <Portal>
         <PopoverContent
-          w={'370px'}
+          w={embedded ? 'full' : '370px'}
           p={1.5}
           bg={'white'}
           borderRadius={'sm'}
@@ -509,7 +532,9 @@ export const ArrayTagSelect = ({
           <Flex direction={'column'} w={'full'} gap={1}>
             <Input
               value={search}
-              placeholder={t('dataset:tag.search_or_create_option')}
+              placeholder={
+                allowCreate ? t('dataset:tag.search_or_create_option') : t('common:Search')
+              }
               h={'32px'}
               px={2}
               fontSize={'xs'}
@@ -524,7 +549,7 @@ export const ArrayTagSelect = ({
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
-                  handleCreateOption();
+                  if (allowCreate) handleCreateOption();
                 }
               }}
             />
@@ -638,7 +663,7 @@ export const TagValueField = ({
       <Input
         {...tagInputBaseStyles}
         isDisabled
-        placeholder={disabledPlaceholder || t('dataset:tag.fill_value')}
+        placeholder={disabledPlaceholder ?? t('dataset:tag.fill_value')}
       />
     );
   }

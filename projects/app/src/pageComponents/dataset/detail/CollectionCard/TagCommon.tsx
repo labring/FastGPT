@@ -20,7 +20,7 @@ export const OVERFLOW_CHIP_GAP_PX = 8;
 /**
  * 根据测量宽度计算可见 chip 数量。空间不够时至少留 1 个，其余用 +n。
  */
-export const countVisibleOverflowChips = ({
+const countVisibleOverflowChips = ({
   chipWidths,
   overflowWidth,
   containerWidth,
@@ -168,7 +168,7 @@ export const formatCollectionTagChipText = (
   return valueText ? `${item.tag}: ${valueText}` : item.tag;
 };
 
-export const TAG_TOOLTIP_PROPS = {
+const TAG_TOOLTIP_PROPS = {
   placement: 'bottom' as const,
   offset: [0, 10] as [number, number],
   hasArrow: true,
@@ -210,7 +210,7 @@ export const SaveActionIcon = ({ isEnabled }: { isEnabled: boolean }) => {
   );
 };
 
-export type TagActionButtonProps = {
+type TagActionButtonProps = {
   label: string;
   icon: React.ReactElement;
   onClick?: () => void;

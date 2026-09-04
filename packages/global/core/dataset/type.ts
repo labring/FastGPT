@@ -45,6 +45,16 @@ export const DEFAULT_TAG = 'default_tag';
 /** Collection 标签值字段：string/number 存对应值，datetime 存 UTC 毫秒时间戳，array 存 string 数组 */
 export const CollectionTagValueFieldSchema = z.union([z.string(), z.number(), z.array(z.string())]);
 
+/** Collection API 的兼容标签输入/展示格式：旧标签名或带名称和值的新格式。 */
+export const CollectionTagLabelSchema = z.union([
+  z.string(),
+  z.object({
+    tag: z.string(),
+    value: CollectionTagValueFieldSchema
+  })
+]);
+export type CollectionTagLabelType = z.infer<typeof CollectionTagLabelSchema>;
+
 /** Collection 标签值类型（新格式） */
 export const CollectionTagValueSchema = z.object({
   tagId: z.string().meta({ description: '引用 dataset_collection_tags_v2._id' }),
@@ -412,15 +422,7 @@ export type TagUsageType = z.infer<typeof TagUsageSchema>;
 export const DatasetCollectionItemSchema = CollectionWithDatasetSchema.extend({
   // 详情接口的 tags 由 collectionTagsToTagLabel 解析为标签名格式（string | { tag, value }），区别于存储格式（string | { tagId, value }）
   tags: z
-    .array(
-      z.union([
-        z.string(),
-        z.object({
-          tag: z.string(),
-          value: CollectionTagValueFieldSchema
-        })
-      ])
-    )
+    .array(CollectionTagLabelSchema)
     .optional()
     .meta({ description: '标签。string 为标签名；新格式为 { tag, value }' }),
   sourceName: z.string().meta({ description: '来源名称' }),

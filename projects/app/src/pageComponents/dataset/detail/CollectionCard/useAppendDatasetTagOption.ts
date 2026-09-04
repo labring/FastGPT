@@ -1,5 +1,4 @@
 import { useContextSelector } from 'use-context-selector';
-import { useEffect, useRef } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
@@ -11,15 +10,10 @@ export const useAppendDatasetTagOption = () => {
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const allDatasetTags = useContextSelector(DatasetPageContext, (v) => v.allDatasetTags);
   const loadAllDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadAllDatasetTags);
-  const allDatasetTagsRef = useRef(allDatasetTags);
-
-  useEffect(() => {
-    allDatasetTagsRef.current = allDatasetTags;
-  }, [allDatasetTags]);
 
   return useRequest(
     ({ tagId, option }: { tagId: string; option: string }) => {
-      const tag = allDatasetTagsRef.current.find((item) => String(item._id) === tagId);
+      const tag = allDatasetTags.find((item) => String(item._id) === tagId);
       if (!tag) return Promise.resolve();
 
       const nextOptions = [...new Set([...(tag.options ?? []), option.trim()].filter(Boolean))];

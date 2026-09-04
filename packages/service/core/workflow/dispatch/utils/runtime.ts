@@ -4,12 +4,14 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import type { WorkflowVariableStateLike } from '../../types/runtime';
 import {
   getReferenceVariableValue,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
+import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/workflowTagFilter';
 import { replaceEditorVariable } from './replaceEditorVariable';
 
 /**
@@ -95,6 +97,24 @@ export const getWorkflowNodeRunParams = ({
           isReferenceVal: true
         });
       }
+    }
+
+    if (input.key === NodeInputKeyEnum.collectionFilterMatch) {
+      const formatted = formatCollectionFilterMatchParam({
+        value,
+        resolveReference: (refValue) =>
+          getReferenceVariableValue({
+            value: refValue as ReferenceValueType,
+            nodesMap: runtimeNodesMap,
+            variables: getRuntimeVariables(),
+            isReferenceVal: true
+          })
+      });
+      if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
+        params[dynamicInput.key][input.key] = formatted;
+      }
+      params[input.key] = formatted;
+      return;
     }
 
     // Dynamic input is stored in the dynamic key

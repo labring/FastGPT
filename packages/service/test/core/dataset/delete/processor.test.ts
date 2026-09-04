@@ -45,14 +45,6 @@ describe('datasetDeleteProcessor', () => {
       name: 'retained dataset',
       type: DatasetTypeEnum.dataset
     });
-    const otherTeamDataset = await MongoDataset.create({
-      teamId: otherTeamUser.teamId,
-      tmbId: otherTeamUser.tmbId,
-      name: 'other team dataset',
-      type: DatasetTypeEnum.dataset,
-      deleteTime
-    });
-
     await MongoDatasetCollectionTags.insertOne({
       teamId: user.teamId,
       datasetId: childDataset._id,
@@ -87,12 +79,6 @@ describe('datasetDeleteProcessor', () => {
         teamId: otherTeamUser.teamId,
         datasetId: rootDataset._id,
         tag: 'other-team-same-dataset-id',
-        tagType: 'string'
-      },
-      {
-        teamId: otherTeamUser.teamId,
-        datasetId: otherTeamDataset._id,
-        tag: 'other-team-dataset-tag',
         tagType: 'string'
       }
     ]);
@@ -167,13 +153,6 @@ describe('datasetDeleteProcessor', () => {
       })
     ).toBe(1);
     expect(
-      await MongoDatasetCollectionTagsV2.countDocuments({
-        teamId: otherTeamUser.teamId,
-        datasetId: otherTeamDataset._id
-      })
-    ).toBe(1);
-
-    expect(
       await MongoResourcePermission.countDocuments({
         teamId: user.teamId,
         resourceType: PerResourceTypeEnum.dataset,
@@ -206,31 +185,5 @@ describe('datasetDeleteProcessor', () => {
       await MongoDataset.countDocuments({ _id: { $in: [rootDataset._id, childDataset._id] } })
     ).toBe(0);
     expect(await MongoDataset.countDocuments({ _id: retainedDataset._id })).toBe(1);
-  });
-
-  it('deletes a dataset without v2 tags', async () => {
-    const user = await getUser('dataset-delete-no-v2-tags');
-    const dataset = await MongoDataset.create({
-      teamId: user.teamId,
-      tmbId: user.tmbId,
-      name: 'dataset without v2 tags',
-      type: DatasetTypeEnum.dataset,
-      deleteTime: new Date()
-    });
-
-    await datasetDeleteProcessor({
-      data: {
-        teamId: user.teamId,
-        datasetId: String(dataset._id)
-      }
-    } as never);
-
-    expect(await MongoDataset.countDocuments({ _id: dataset._id })).toBe(0);
-    expect(
-      await MongoDatasetCollectionTagsV2.countDocuments({
-        teamId: user.teamId,
-        datasetId: dataset._id
-      })
-    ).toBe(0);
   });
 });

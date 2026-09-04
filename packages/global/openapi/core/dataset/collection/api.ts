@@ -11,6 +11,7 @@ import {
 } from '../../../../core/dataset/constants';
 import {
   CollectionTagFilterItemSchema,
+  CollectionTagLabelSchema,
   CollectionTrainingStatusSchema,
   DatasetCollectionItemSchema,
   DatasetCollectionSchema
@@ -30,12 +31,7 @@ export const UpdateDatasetCollectionBodySchema = z.object({
   parentId: ParentIdSchema.describe('父级目录ID'),
   name: z.string().optional().describe('集合名称'),
   tags: z
-    .array(
-      z.union([
-        z.string(),
-        z.object({ tag: z.string(), value: z.union([z.string(), z.number(), z.array(z.string())]) })
-      ])
-    )
+    .array(CollectionTagLabelSchema)
     .optional()
     .describe('标签列表（支持 String 旧格式 或 { tag, value } 新格式）'),
   forbid: z.boolean().optional().describe('是否禁用'),
@@ -169,18 +165,7 @@ export const DatasetCollectionsListItemSchema = z
     updateTime: DatasetCollectionSchema.shape.updateTime,
     forbid: DatasetCollectionSchema.shape.forbid,
     trainingType: DatasetCollectionSchema.shape.trainingType,
-    tags: z
-      .array(
-        z.union([
-          z.string(),
-          z.object({
-            tag: z.string(),
-            value: z.union([z.string(), z.number(), z.array(z.string())])
-          })
-        ])
-      )
-      .optional()
-      .meta({ description: '标签。string 为标签名；新格式为 { tag, value }' }),
+    tags: DatasetCollectionItemSchema.shape.tags,
 
     externalFileId: z.string().optional().meta({ description: '外部文件 ID' }),
 
@@ -278,9 +263,8 @@ export const GetTagFilterOptionsQuerySchema = z.object({
     description: '数据集 ID'
   })
 });
-export type GetTagFilterOptionsQueryType = z.infer<typeof GetTagFilterOptionsQuerySchema>;
 
-export const TagFilterOptionItemSchema = z.object({
+const TagFilterOptionItemSchema = z.object({
   tagId: z.string().meta({ example: '68ad85a7463006c963799a05', description: '标签 ID' }),
   values: z
     .array(z.union([z.string(), z.number()]))
