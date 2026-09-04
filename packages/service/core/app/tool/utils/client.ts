@@ -105,28 +105,45 @@ type AppToolType = WorkflowTemplateType & {
   isLatestVersion?: boolean; // Auto computed
 };
 
-const omitRuntimeJsonSchemaField = <T>(value: T): T => {
+const omitRuntimeJsonSchemaField = <T>(value: T, omitToolSchemaFields = false): T => {
   if (Array.isArray(value)) {
-    return value.map((item) => omitRuntimeJsonSchemaField(item)) as T;
+    return value.map((item) => omitRuntimeJsonSchemaField(item, omitToolSchemaFields)) as T;
   }
 
   if (!value || typeof value !== 'object') return value;
 
   const rest = { ...(value as Record<string, any>) };
   delete rest.jsonSchema;
+  if (omitToolSchemaFields) {
+    delete rest.inputSchema;
+    delete rest.outputSchema;
+    delete rest.requestSchema;
+    delete rest.responseSchema;
+    delete rest.secretSchema;
+    delete rest.customJsonSchema;
+    delete rest.apiSchemaStr;
+  }
 
   return Object.fromEntries(
-    Object.entries(rest).map(([key, item]) => [key, omitRuntimeJsonSchemaField(item)])
+    Object.entries(rest).map(([key, item]) => [
+      key,
+      omitRuntimeJsonSchemaField(item, omitToolSchemaFields)
+    ])
   ) as T;
 };
 
-const omitClientPreviewSchemaFields = <T extends Record<string, any>>(value: T): T => {
+const omitClientPreviewSchemaFields = <T extends Record<string, any>>(
+  value: T,
+  omitToolSchemaFields = false
+): T => {
   const rest = { ...value };
   delete rest.inputSchema;
   delete rest.outputSchema;
+  delete rest.requestSchema;
+  delete rest.responseSchema;
   delete rest.secretSchema;
 
-  return omitRuntimeJsonSchemaField(rest) as T;
+  return omitRuntimeJsonSchemaField(rest, omitToolSchemaFields) as T;
 };
 
 /**
@@ -550,5 +567,11 @@ export async function getClientToolPreviewNode({
     };
   })();
 
-  return omitClientPreviewSchemaFields(data);
+  const isMcpOrHttpTool =
+    idSource === AppToolSourceEnum.mcp ||
+    idSource === AppToolSourceEnum.http ||
+    !!data.toolConfig?.mcpToolSet ||
+    !!data.toolConfig?.httpToolSet;
+
+  return omitClientPreviewSchemaFields(data, isMcpOrHttpTool);
 }

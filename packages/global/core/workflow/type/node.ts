@@ -42,6 +42,26 @@ export const HttpToolSetRuntimeConfigSchema = z.object({
 });
 export type HttpToolSetRuntimeConfigType = z.infer<typeof HttpToolSetRuntimeConfigSchema>;
 
+const McpToolStorageConfigSchema = McpToolConfigSchema.omit({
+  inputSchema: true
+});
+
+const HttpToolStorageConfigSchema = HttpToolConfigTypeSchema.omit({
+  inputSchema: true,
+  outputSchema: true,
+  requestSchema: true
+});
+
+const McpToolSetStorageConfigSchema = McpToolSetRuntimeConfigSchema.extend({
+  toolList: z.array(McpToolStorageConfigSchema)
+});
+
+const HttpToolSetStorageConfigSchema = HttpToolSetRuntimeConfigSchema.omit({
+  apiSchemaStr: true
+}).extend({
+  toolList: z.array(HttpToolStorageConfigSchema)
+});
+
 const ToolSetReferenceSchema = z.object({
   toolId: z.string().meta({
     description: '工具集 ID'
@@ -118,18 +138,18 @@ const NodeToolConfigCommonSchema = z.object({
     })
 });
 
-/** Minimal MCP/HTTP references written with workflow nodes. */
+/** 工作流持久化保留工具元数据，但不保存运行时 JSON Schema 快照。 */
 export const NodeToolConfigStorageTypeSchema = NodeToolConfigCommonSchema.extend({
-  mcpToolSet: ToolSetReferenceSchema.optional().meta({
-    description: '节点绑定的 MCP 工具集引用'
+  mcpToolSet: z.union([ToolSetReferenceSchema, McpToolSetStorageConfigSchema]).optional().meta({
+    description: '节点绑定的 MCP 工具集引用或无 Schema 展示快照'
   }),
-  httpToolSet: ToolSetReferenceSchema.optional().meta({
-    description: '节点绑定的 HTTP 工具集引用'
+  httpToolSet: z.union([ToolSetReferenceSchema, HttpToolSetStorageConfigSchema]).optional().meta({
+    description: '节点绑定的 HTTP 工具集引用或无 Schema 展示快照'
   })
-}).passthrough();
+});
 export type NodeToolConfigStorageType = z.infer<typeof NodeToolConfigStorageTypeSchema>;
 
-/** Workflow data can contain either current references or historical full snapshots. */
+/** 工作流数据兼容当前引用格式与历史完整快照。 */
 export const NodeToolConfigTypeSchema = NodeToolConfigCommonSchema.extend({
   mcpToolSet: z.union([McpToolSetRuntimeConfigSchema, ToolSetReferenceSchema]).optional().meta({
     description: '兼容历史 MCP 工具集快照或当前工具集引用'
@@ -357,3 +377,9 @@ export const StoreNodeItemTypeSchema = FlowNodeCommonTypeSchema.extend({
     .optional()
 });
 export type StoreNodeItemType = z.infer<typeof StoreNodeItemTypeSchema>;
+
+/** 工作流持久化边界；工具 Schema 会在运行时重新解析。 */
+export const StoreWorkflowNodeItemTypeSchema = StoreNodeItemTypeSchema.extend({
+  toolConfig: NodeToolConfigStorageTypeSchema.optional()
+});
+export type StoreWorkflowNodeItemType = z.infer<typeof StoreWorkflowNodeItemTypeSchema>;

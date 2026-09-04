@@ -31,6 +31,29 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
 
 import { getClientToolPreviewNode } from '@fastgpt/service/core/app/tool/utils/client';
 
+const runtimeSchemaFieldNames = new Set([
+  'inputSchema',
+  'outputSchema',
+  'requestSchema',
+  'responseSchema',
+  'secretSchema',
+  'jsonSchema',
+  'customJsonSchema',
+  'apiSchemaStr'
+]);
+
+const getRuntimeSchemaFieldPaths = (value: unknown, path = '$'): string[] => {
+  if (Array.isArray(value)) {
+    return value.flatMap((item, index) => getRuntimeSchemaFieldPaths(item, `${path}[${index}]`));
+  }
+  if (!value || typeof value !== 'object') return [];
+
+  return Object.entries(value).flatMap(([key, item]) => [
+    ...(runtimeSchemaFieldNames.has(key) ? [`${path}.${key}`] : []),
+    ...getRuntimeSchemaFieldPaths(item, `${path}.${key}`)
+  ]);
+};
+
 describe('getClientToolPreviewNode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -85,6 +108,7 @@ describe('getClientToolPreviewNode', () => {
           {
             toolConfig: {
               httpToolSet: {
+                apiSchemaStr: '{"openapi":"3.1.0"}',
                 toolList: [
                   {
                     name: 'search',
@@ -112,11 +136,13 @@ describe('getClientToolPreviewNode', () => {
     expect(result).not.toHaveProperty('inputSchema');
     expect(result).not.toHaveProperty('outputSchema');
     expect(result).not.toHaveProperty('secretSchema');
+    expect(result.inputs[0]).not.toHaveProperty('customJsonSchema');
     expect(result.toolConfig?.httpTool).toEqual({
       toolId: 'http-507f1f77bcf86cd799439011/search'
     });
     expect(result.inputs[0]?.key).toBe('q');
     expect((result as any).jsonSchema).toBeUndefined();
+    expect(getRuntimeSchemaFieldPaths(result)).toEqual([]);
   });
 
   it('hydrates legacy MCP toolset data under toolConfig', async () => {
@@ -160,6 +186,8 @@ describe('getClientToolPreviewNode', () => {
       url: '',
       toolList: [{ name: 'search', description: 'Search tool' }]
     });
+    expect(JSON.stringify(result.toolConfig)).not.toContain('inputSchema');
+    expect(getRuntimeSchemaFieldPaths(result)).toEqual([]);
   });
 
   it('applies defaultToAgentGenerated over a workflow plugin input selection', async () => {

@@ -71,7 +71,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     runningAppInfo,
     variableState,
     workflowStreamResponse,
-    node: { name, avatar, toolConfig, version, catchError, jsonSchema }
+    node: { name, avatar, toolConfig, version, catchError }
   } = props;
   const cTime = String(variableState.get('cTime') ?? '');
   const logger = getLogger(LogCategories.MODULE.APP.TOOL);
@@ -347,7 +347,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
       toolInput = params;
       assertToolRuntimeParams({
-        jsonSchema: jsonSchema ?? httpTool.requestSchema,
+        jsonSchema: httpTool.requestSchema,
         params
       });
       const { data, errorMsg } = await runHTTPTool({

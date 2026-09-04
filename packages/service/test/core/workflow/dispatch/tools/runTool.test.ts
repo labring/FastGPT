@@ -281,7 +281,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
     });
   });
 
-  it('should reject invalid HTTP params before invoking the external tool', async () => {
+  it('should validate HTTP params with the latest toolset schema instead of a saved snapshot', async () => {
     authAppByTmbIdMock.mockResolvedValueOnce({
       app: {
         _id: 'victim-toolset',
@@ -321,10 +321,19 @@ describe('dispatchRunTool runtime toolset auth', () => {
         }
       }
     ]);
+    runHTTPToolMock.mockResolvedValueOnce({ data: { ok: true } });
 
-    const result = await dispatchRunTool(
-      createRunToolProps({ httpTool: { toolId: 'http-victim-toolset/sandbox_echo' } })
+    const props = createRunToolProps(
+      { httpTool: { toolId: 'http-victim-toolset/sandbox_echo' } },
+      { keyword: 'blocked' }
     );
+    props.node.jsonSchema = {
+      type: 'object',
+      properties: { keyword: { type: 'string' } },
+      required: ['keyword']
+    };
+
+    const result = await dispatchRunTool(props);
 
     expect(runHTTPToolMock).not.toHaveBeenCalled();
     expect(result.error?.[NodeOutputKeyEnum.errorText]).toContain('validation failed');
