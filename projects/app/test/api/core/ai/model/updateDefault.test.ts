@@ -7,7 +7,6 @@ const mocks = vi.hoisted(() => ({
   authSystemAdmin: vi.fn(),
   findLean: vi.fn(),
   upsertSystemDefaultModelIds: vi.fn(),
-  refreshModelTemplates: vi.fn(),
   updatedReloadSystemModel: vi.fn()
 }));
 
@@ -30,7 +29,6 @@ vi.mock('@fastgpt/service/core/ai/defaultModel/entity', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/config/utils', () => ({
-  refreshModelTemplates: mocks.refreshModelTemplates,
   updatedReloadSystemModel: mocks.updatedReloadSystemModel
 }));
 
@@ -42,7 +40,6 @@ describe('PUT /api/admin/settings/model/updateDefault', () => {
     mocks.authSystemAdmin.mockResolvedValue(undefined);
     mocks.findLean.mockResolvedValue([]);
     mocks.upsertSystemDefaultModelIds.mockResolvedValue({ acknowledged: true });
-    mocks.refreshModelTemplates.mockResolvedValue([]);
     mocks.updatedReloadSystemModel.mockResolvedValue(undefined);
   });
 
@@ -90,7 +87,7 @@ describe('PUT /api/admin/settings/model/updateDefault', () => {
       datasetImageLLM: ids.datasetImage,
       chatTitleLLM: ids.chatTitle
     });
-    expect(mocks.updatedReloadSystemModel).toHaveBeenCalledWith({ pluginDocuments: [] });
+    expect(mocks.updatedReloadSystemModel).toHaveBeenCalledWith();
   });
 
   it.each([
@@ -139,7 +136,6 @@ describe('PUT /api/admin/settings/model/updateDefault', () => {
     }
 
     expect(mocks.upsertSystemDefaultModelIds).not.toHaveBeenCalled();
-    expect(mocks.refreshModelTemplates).not.toHaveBeenCalled();
     expect(mocks.updatedReloadSystemModel).not.toHaveBeenCalled();
   });
 });

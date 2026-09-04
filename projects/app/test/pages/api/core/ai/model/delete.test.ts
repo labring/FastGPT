@@ -5,9 +5,9 @@ const modelId = '68ad85a7463006c963799a05';
 
 const mocks = vi.hoisted(() => ({
   authSystemAdmin: vi.fn(),
-  refreshModelTemplates: vi.fn(),
   findModelData: vi.fn(),
-  deleteModel: vi.fn(),
+  removeModelsFromAIProxyChannels: vi.fn(),
+  deleteModels: vi.fn(),
   deletePermissions: vi.fn(),
   updatedReloadSystemModel: vi.fn(),
   session: { id: 'session-1' }
@@ -22,7 +22,6 @@ vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/config/utils', () => ({
-  refreshModelTemplates: mocks.refreshModelTemplates,
   updatedReloadSystemModel: mocks.updatedReloadSystemModel
 }));
 
@@ -30,8 +29,12 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
   findModelData: mocks.findModelData
 }));
 
+vi.mock('@fastgpt/service/thirdProvider/aiproxy/channel', () => ({
+  removeModelsFromAIProxyChannels: mocks.removeModelsFromAIProxyChannels
+}));
+
 vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
-  MongoAIModel: { deleteOne: mocks.deleteModel }
+  MongoAIModel: { deleteMany: mocks.deleteModels }
 }));
 
 vi.mock('@fastgpt/service/support/permission/schema', () => ({
@@ -50,63 +53,101 @@ describe('DELETE /api/admin/settings/model/delete', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.authSystemAdmin.mockResolvedValue(undefined);
-    mocks.refreshModelTemplates.mockResolvedValue([]);
-    mocks.findModelData.mockReturnValue({
-      modelId,
-      model: 'custom-model',
+    mocks.findModelData.mockImplementation(({ modelId: requestedModelId }) => ({
+      modelId: requestedModelId,
+      model: `model-${requestedModelId}`,
       type: ModelTypeEnum.llm
-    });
-    mocks.deleteModel.mockResolvedValue({ deletedCount: 1 });
+    }));
+    mocks.removeModelsFromAIProxyChannels.mockResolvedValue(undefined);
+    mocks.deleteModels.mockResolvedValue({ deletedCount: 1 });
     mocks.deletePermissions.mockResolvedValue({ deletedCount: 1 });
     mocks.updatedReloadSystemModel.mockResolvedValue(undefined);
   });
 
-  it('hard deletes a model absent from plugins together with its permission resources', async () => {
+  it('hard deletes an installed model without consulting Plugin templates', async () => {
     await handler({ query: { modelId } } as any);
 
-    expect(mocks.deleteModel).toHaveBeenCalledWith(
-      { _id: modelId, scope: 'system' },
+    expect(mocks.removeModelsFromAIProxyChannels).toHaveBeenCalledWith({
+      models: [`model-${modelId}`]
+    });
+    expect(mocks.deleteModels).toHaveBeenCalledWith(
+      { _id: { $in: [modelId] }, scope: 'system' },
       { session: mocks.session }
     );
     expect(mocks.deletePermissions).toHaveBeenCalledWith(
       {
         resourceType: 'model',
-        resourceId: modelId
+        resourceId: { $in: [modelId] }
       },
       { session: mocks.session }
     );
-    expect(mocks.updatedReloadSystemModel).toHaveBeenCalledWith({ pluginDocuments: [] });
+    expect(mocks.updatedReloadSystemModel).toHaveBeenCalledWith();
   });
 
-  it('rejects deletion when the latest plugin snapshot still contains the model', async () => {
-    mocks.refreshModelTemplates.mockResolvedValue([
-      { model: 'custom-model', type: ModelTypeEnum.llm }
-    ]);
+  it('deletes the model regardless of whether Plugin is available', async () => {
+    await handler({ query: { modelId } } as any);
 
-    await expect(handler({ query: { modelId } } as any)).rejects.toBe(
-      'Plugin model cannot be deleted'
+    expect(mocks.deleteModels).toHaveBeenCalledOnce();
+  });
+
+  it('deletes multiple models and permissions in one transaction', async () => {
+    const secondModelId = '68ad85a7463006c963799a06';
+    mocks.deleteModels.mockResolvedValueOnce({ deletedCount: 2 });
+
+    await handler({ body: { modelIds: [modelId, secondModelId] } } as any);
+
+    expect(mocks.removeModelsFromAIProxyChannels).toHaveBeenCalledWith({
+      models: [`model-${modelId}`, `model-${secondModelId}`]
+    });
+    expect(mocks.deleteModels).toHaveBeenCalledWith(
+      { _id: { $in: [modelId, secondModelId] }, scope: 'system' },
+      { session: mocks.session }
+    );
+    expect(mocks.deletePermissions).toHaveBeenCalledWith(
+      {
+        resourceType: 'model',
+        resourceId: { $in: [modelId, secondModelId] }
+      },
+      { session: mocks.session }
+    );
+    expect(mocks.updatedReloadSystemModel).toHaveBeenCalledOnce();
+  });
+
+  it('does not mutate channels or MongoDB when any model does not exist', async () => {
+    const missingModelId = '68ad85a7463006c963799a06';
+    mocks.findModelData.mockImplementation(({ modelId: requestedModelId }) =>
+      requestedModelId === missingModelId
+        ? undefined
+        : {
+            modelId: requestedModelId,
+            model: `model-${requestedModelId}`,
+            type: ModelTypeEnum.llm
+          }
     );
 
-    expect(mocks.deleteModel).not.toHaveBeenCalled();
-    expect(mocks.deletePermissions).not.toHaveBeenCalled();
+    await expect(
+      handler({ body: { modelIds: [modelId, missingModelId] } } as any)
+    ).rejects.toBeDefined();
+
+    expect(mocks.removeModelsFromAIProxyChannels).not.toHaveBeenCalled();
+    expect(mocks.deleteModels).not.toHaveBeenCalled();
   });
 
-  it('does not delete data when plugin refresh fails', async () => {
-    mocks.refreshModelTemplates.mockRejectedValue(new Error('plugin unavailable'));
+  it('does not delete MongoDB records when channel unbinding fails', async () => {
+    mocks.removeModelsFromAIProxyChannels.mockRejectedValueOnce(new Error('unbind failed'));
 
-    await expect(handler({ query: { modelId } } as any)).rejects.toThrow('plugin unavailable');
+    await expect(handler({ query: { modelId } } as any)).rejects.toThrow('unbind failed');
 
-    expect(mocks.deleteModel).not.toHaveBeenCalled();
+    expect(mocks.deleteModels).not.toHaveBeenCalled();
+    expect(mocks.deletePermissions).not.toHaveBeenCalled();
     expect(mocks.updatedReloadSystemModel).not.toHaveBeenCalled();
   });
 
-  it('allows deleting a same-name model with a different type than the plugin template', async () => {
-    mocks.refreshModelTemplates.mockResolvedValue([
-      { model: 'custom-model', type: ModelTypeEnum.embedding }
-    ]);
-
+  it('unbinds channels before starting the MongoDB deletion', async () => {
     await handler({ query: { modelId } } as any);
 
-    expect(mocks.deleteModel).toHaveBeenCalledOnce();
+    expect(mocks.removeModelsFromAIProxyChannels.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.deleteModels.mock.invocationCallOrder[0]
+    );
   });
 });

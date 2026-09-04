@@ -23,6 +23,7 @@ const PopoverConfirm = ({
   type,
   Trigger,
   placement = 'auto',
+  closeOnBlur = true,
   offset,
   modifiers,
   onConfirm,
@@ -34,6 +35,7 @@ const PopoverConfirm = ({
   type?: 'info' | 'delete';
   Trigger: React.ReactNode;
   placement?: PlacementWithLogical;
+  closeOnBlur?: boolean;
   offset?: [number, number];
   modifiers?: PopoverProps['modifiers'];
   onConfirm: () => Promise<any> | any;
@@ -73,7 +75,7 @@ const PopoverConfirm = ({
       placement={placement}
       offset={offset}
       modifiers={modifiers}
-      closeOnBlur={true}
+      closeOnBlur={closeOnBlur}
       trigger={'click'}
       openDelay={100}
       closeDelay={100}

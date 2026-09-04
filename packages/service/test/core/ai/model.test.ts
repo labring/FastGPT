@@ -25,7 +25,6 @@ const modelData: LLMSystemModelDataType = {
   name: 'GPT test display name',
   scope: ModelScopeEnum.system,
   isActive: true,
-  isCustom: false,
   config: {
     maxContext: 128000,
     maxResponse: 8192,

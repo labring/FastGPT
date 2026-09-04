@@ -18,7 +18,6 @@ const activeModel = {
   name: 'GPT test',
   scope: 'system',
   isActive: true,
-  isCustom: false,
   config: {}
 } as SystemModelDataType;
 

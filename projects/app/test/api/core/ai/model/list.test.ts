@@ -16,7 +16,6 @@ describe('GET /api/core/ai/model/list', () => {
         type: ModelTypeEnum.llm,
         scope: 'system',
         isActive: true,
-        isCustom: false,
         requestAuth: 'private-secret',
         priceTiers: [{ minInputTokens: 0, inputPrice: 1, outputPrice: 2 }],
         config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 30000 }

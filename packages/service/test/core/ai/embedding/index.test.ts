@@ -419,7 +419,6 @@ describe('getVectors function test', () => {
       type: ModelTypeEnum.embedding,
       scope: 'system' as const,
       isActive: true,
-      isCustom: false,
       ...commonOverrides,
       config: {
         defaultToken,

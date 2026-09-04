@@ -37,7 +37,6 @@ const llmModel = {
   type: ModelTypeEnum.llm,
   scope: 'system' as const,
   isActive: true,
-  isCustom: false,
   config: {
     maxContext: 4000,
     maxResponse: 1000,
@@ -53,7 +52,6 @@ const embeddingModel = {
   type: ModelTypeEnum.embedding,
   scope: 'system' as const,
   isActive: true,
-  isCustom: false,
   config: {
     defaultToken: 512,
     maxToken: 8192,

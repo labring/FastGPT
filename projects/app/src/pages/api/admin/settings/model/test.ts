@@ -7,6 +7,7 @@ import {
   type LLMSystemModelDataType,
   type RerankSystemModelDataType,
   type STTSystemModelDataType,
+  type SystemModelDataType,
   type TTSSystemModelDataType
 } from '@fastgpt/global/core/ai/model.schema';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
@@ -20,7 +21,9 @@ import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   TestAdminSystemModelQuerySchema,
+  TestDraftAdminSystemModelBodySchema,
   TestAdminSystemModelResponseSchema,
+  type TestDraftAdminSystemModelBody,
   type TestAdminSystemModelQuery,
   type TestAdminSystemModelResponse
 } from '@fastgpt/global/openapi/admin/core/ai/model/api';
@@ -29,20 +32,42 @@ import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
 async function handler(
-  req: ApiRequestProps<Record<string, never>, TestAdminSystemModelQuery>
+  req: ApiRequestProps<TestDraftAdminSystemModelBody, TestAdminSystemModelQuery>
 ): Promise<TestAdminSystemModelResponse> {
   const { teamId } = await authSystemAdmin({ req });
-  const { modelId, channelId } = parseApiInput({
-    req,
-    querySchema: TestAdminSystemModelQuerySchema
-  }).query;
-  const modelData = findModelData({ modelId });
-  if (!modelData) return Promise.reject(ModelErrEnum.unExist);
+  const { modelData, channelId } = (() => {
+    if (req.method === 'POST') {
+      const { modelData: draftModelData, channelId } = parseApiInput({
+        req,
+        bodySchema: TestDraftAdminSystemModelBodySchema
+      }).body;
 
-  if (channelId) {
-    delete modelData.requestUrl;
-    delete modelData.requestAuth;
-  }
+      return {
+        modelData: {
+          ...draftModelData,
+          modelId: 'draft-model-test',
+          requestUrl: undefined,
+          requestAuth: undefined
+        } as SystemModelDataType,
+        channelId
+      };
+    }
+
+    const { modelId, channelId } = parseApiInput({
+      req,
+      querySchema: TestAdminSystemModelQuerySchema
+    }).query;
+    const installedModel = findModelData({ modelId });
+    if (!installedModel) throw ModelErrEnum.unExist;
+
+    return {
+      // 显式渠道只覆盖本次测试的连接配置，不能修改全局运行时模型缓存。
+      modelData: channelId
+        ? { ...installedModel, requestUrl: undefined, requestAuth: undefined }
+        : installedModel,
+      channelId
+    };
+  })();
 
   const headers: Record<string, string> = channelId ? { 'Aiproxy-Channel': String(channelId) } : {};
   logger.debug('Test model', modelData);

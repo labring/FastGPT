@@ -5,7 +5,6 @@ import { getRootUser } from '@test/datas/users';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const configMocks = vi.hoisted(() => ({
-  refreshModelTemplates: vi.fn(),
   updatedReloadSystemModel: vi.fn()
 }));
 
@@ -14,7 +13,6 @@ vi.mock('@fastgpt/service/core/ai/config/utils', async (importOriginal) => {
 
   return {
     ...actual,
-    refreshModelTemplates: configMocks.refreshModelTemplates,
     updatedReloadSystemModel: configMocks.updatedReloadSystemModel
   };
 });
@@ -80,7 +78,6 @@ const callUpdateWithJson = async (config: string) => {
 
 describe('admin settings model updateWithJson api', () => {
   beforeEach(() => {
-    configMocks.refreshModelTemplates.mockReset().mockResolvedValue([]);
     configMocks.updatedReloadSystemModel.mockReset().mockResolvedValue(undefined);
   });
 
@@ -107,6 +104,61 @@ describe('admin settings model updateWithJson api', () => {
     const externalModel = await MongoAIModel.findOne({ model: 'test-embedding' }).lean();
     expect(externalModel).toMatchObject({ scope: 'system', config: { weight: 0 } });
     expect(String(externalModel?._id)).not.toBe('external-system-model-id');
+  });
+
+  it('keeps the stored model identifier when a local modelId imports a different model', async () => {
+    const existingModel = await MongoAIModel.create(buildStoredLlm('stored-model'));
+
+    const res = await callUpdateWithJson(
+      JSON.stringify([
+        {
+          ...buildLlmConfig({
+            modelId: String(existingModel._id),
+            model: 'accidental-renamed-model'
+          }),
+          name: 'Updated display name'
+        }
+      ])
+    );
+
+    expect(res.code).toBe(200);
+    await expect(MongoAIModel.findById(existingModel._id).lean()).resolves.toMatchObject({
+      model: 'stored-model',
+      name: 'Updated display name',
+      isActive: true,
+      config: { maxContext: 16000 }
+    });
+    await expect(
+      MongoAIModel.findOne({ model: 'accidental-renamed-model' }).lean()
+    ).resolves.toBeNull();
+  });
+
+  it('uses the stored model identifier when a local modelId omits model', async () => {
+    const existingModel = await MongoAIModel.create(buildStoredLlm('stored-model'));
+    const { model: _model, ...configWithoutModel } = buildLlmConfig({
+      modelId: String(existingModel._id)
+    });
+
+    const res = await callUpdateWithJson(
+      JSON.stringify([{ ...configWithoutModel, name: 'Updated without model' }])
+    );
+
+    expect(res.code).toBe(200);
+    await expect(MongoAIModel.findById(existingModel._id).lean()).resolves.toMatchObject({
+      model: 'stored-model',
+      name: 'Updated without model',
+      config: { maxContext: 16000 }
+    });
+  });
+
+  it('requires model when modelId does not match a local model', async () => {
+    const { model: _model, ...configWithoutModel } = buildLlmConfig({ modelId: 'external-id' });
+
+    const res = await callUpdateWithJson(JSON.stringify([configWithoutModel]));
+
+    expect(res.error?.name).toBe('UserError');
+    await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
+    expect(configMocks.updatedReloadSystemModel).not.toHaveBeenCalled();
   });
 
   it('ignores old records without modelId and does not disable all models', async () => {
@@ -151,17 +203,18 @@ describe('admin settings model updateWithJson api', () => {
     await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
   });
 
-  it('rejects an imported model whose type conflicts with a same-name plugin template', async () => {
-    configMocks.refreshModelTemplates.mockResolvedValueOnce([buildStoredLlm('plugin-model')]);
+  it('rejects same-name models even when their types differ', async () => {
+    const llm = await MongoAIModel.create(buildStoredLlm('shared-model'));
 
     const res = await callUpdateWithJson(
       JSON.stringify([
-        buildEmbeddingConfig({ modelId: 'external-model-id', model: 'plugin-model' })
+        buildLlmConfig({ modelId: String(llm._id), model: 'shared-model' }),
+        buildEmbeddingConfig({ modelId: 'external-model-id', model: 'shared-model' })
       ])
     );
 
     expect(res.error?.name).toBe('UserError');
-    await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
+    await expect(MongoAIModel.countDocuments({ model: 'shared-model' })).resolves.toBe(1);
     expect(configMocks.updatedReloadSystemModel).not.toHaveBeenCalled();
   });
 });

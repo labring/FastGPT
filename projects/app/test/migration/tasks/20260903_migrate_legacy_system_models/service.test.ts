@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.schema';
 import { LegacySystemModelCollectionName } from '@fastgpt/service/core/ai/config/constants';
-import { bootstrapAIModelsFromLegacy } from '@/migration/tasks/20260903_migrate_legacy_system_models/service';
+import {
+  bootstrapAIModelsFromLegacy,
+  inspectLegacySystemModelMigration
+} from '@/migration/tasks/20260903_migrate_legacy_system_models/service';
 import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
 
@@ -117,7 +120,7 @@ describe('bootstrapAIModelsFromLegacy', () => {
     }
   });
 
-  it('keeps auto-preinstalled models while inserting legacy-only models', async () => {
+  it('keeps target-only models while inserting legacy-only models', async () => {
     await MongoAIModel.create(pluginLlm);
     const legacy = await legacyCollection.insertOne(createLegacyLlm('legacy-model'));
 
@@ -354,7 +357,7 @@ describe('bootstrapAIModelsFromLegacy', () => {
     });
   });
 
-  it('replaces a same-name preinstalled model with active legacy metadata', async () => {
+  it('replaces a same-name target with legacy metadata', async () => {
     const legacy = await legacyCollection.insertOne({
       model: 'same-name-embedding',
       metadata: {
@@ -481,5 +484,50 @@ describe('bootstrapAIModelsFromLegacy', () => {
     );
     await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
     await expect(MongoAIDefaultModel.exists({ scope: 'system' })).resolves.toBeNull();
+  });
+
+  it('reports only system scope target models in the migration inspection', async () => {
+    await legacyCollection.insertOne(createLegacyLlm('legacy-model'));
+    await MongoAIModel.collection.insertOne({
+      ...pluginLlm,
+      scope: 'team',
+      teamId: 'team-id'
+    });
+
+    await expect(inspectLegacySystemModelMigration()).resolves.toEqual({
+      sourceCount: 1,
+      targetCount: 0
+    });
+  });
+
+  it('reads the latest target snapshot inside the transaction and merges without deleting it', async () => {
+    await legacyCollection.insertOne(createLegacyLlm('legacy-race-model'));
+    const originalFind = legacyCollection.find.bind(legacyCollection);
+    vi.spyOn(legacyCollection, 'find').mockImplementationOnce((...args) => {
+      const cursor = originalFind(...args);
+      const originalToArray = cursor.toArray.bind(cursor);
+      vi.spyOn(cursor, 'toArray').mockImplementationOnce(async () => {
+        const records = await originalToArray();
+        await MongoAIModel.create({
+          ...pluginLlm,
+          model: 'concurrent-system-model',
+          name: 'Concurrent system model'
+        });
+        return records;
+      });
+      return cursor;
+    });
+
+    await expect(bootstrapAIModelsFromLegacy({ pluginDocuments: [] })).resolves.toEqual({
+      status: 'migrated',
+      sourceCount: 1,
+      targetCount: 2,
+      migratedCount: 1
+    });
+    await expect(
+      MongoAIModel.findOne({ model: 'concurrent-system-model' })
+    ).resolves.not.toBeNull();
+    await expect(MongoAIModel.findOne({ model: 'legacy-race-model' })).resolves.not.toBeNull();
+    await expect(MongoAIDefaultModel.exists({ scope: 'system' })).resolves.not.toBeNull();
   });
 });

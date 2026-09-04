@@ -640,7 +640,6 @@ describe('getDatasetImageIndexCapability', () => {
     type: ModelTypeEnum.embedding,
     scope: 'system' as const,
     isActive: true,
-    isCustom: false,
     config: {
       defaultToken: 512,
       maxToken: 8192,
@@ -656,7 +655,6 @@ describe('getDatasetImageIndexCapability', () => {
     type: ModelTypeEnum.llm,
     scope: 'system' as const,
     isActive: true,
-    isCustom: false,
     config: {
       maxContext: 32000,
       maxResponse: 4000,

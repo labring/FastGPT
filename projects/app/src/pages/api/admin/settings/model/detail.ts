@@ -10,6 +10,7 @@ import {
   type GetAdminSystemModelDetailResponse
 } from '@fastgpt/global/openapi/admin/core/ai/model/api';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { getAdminAIProxyChannelItems } from '@fastgpt/service/thirdProvider/aiproxy/channel';
 
 async function handler(
   req: ApiRequestProps<Record<string, never>, AdminSystemModelReference>
@@ -20,8 +21,16 @@ async function handler(
   const modelItem = findModelData(reference);
   if (!modelItem) return Promise.reject(ModelErrEnum.unExist);
 
-  // 管理员详情用于编辑完整配置；仅列表接口脱敏，避免详情 round-trip 丢失鉴权和类型配置。
-  return GetAdminSystemModelDetailResponseSchema.parse(modelItem);
+  const channelItems = await getAdminAIProxyChannelItems();
+
+  // 详情一次返回完整参数和渠道关系，避免编辑弹窗依赖列表快照或再次查询渠道。
+  return GetAdminSystemModelDetailResponseSchema.parse({
+    model: modelItem,
+    channels: channelItems.map((channel) => ({
+      ...channel.summary,
+      isAssociated: channel.models.includes(modelItem.model)
+    }))
+  });
 }
 
 export default NextAPI(handler);

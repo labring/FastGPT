@@ -111,14 +111,9 @@ export function DELETE<T = undefined>(url: string, data = {}): Promise<T> {
 export const getChannelList = () =>
   GET<ChannelListResponseType>('/channels/all', {
     page: 1,
-    perPage: 10
+    perPage: 1000
   }).then((res) => {
-    res.sort((a, b) => {
-      if (a.status !== b.status) {
-        return a.status - b.status;
-      }
-      return b.priority - a.priority;
-    });
+    res.sort((a, b) => b.created_at - a.created_at || b.id - a.id);
     return res;
   });
 
@@ -134,16 +129,24 @@ export const getChannelProviders = () =>
     >
   >('/channels/type_metas');
 
-export const postCreateChannel = (data: CreateChannelProps) =>
-  POST(`/createChannel`, {
+/** FastGPT 所有渠道创建入口的统一提交方法，创建前按展示名称检查重复。 */
+export const postCreateChannel = async (data: CreateChannelProps) => {
+  const name = data.name.trim();
+  const channels = await getChannelList();
+  if (channels.some((channel) => channel.name.trim() === name)) {
+    return Promise.reject(i18nT('config_model:channel_name_duplicate'));
+  }
+
+  return POST(`/createChannel`, {
     type: data.type,
-    name: data.name,
+    name,
     base_url: data.base_url,
     models: data.models,
     model_mapping: data.model_mapping,
     key: data.key,
     priority: 1
   });
+};
 
 export const putChannelStatus = (id: number, status: ChannelStatusEnum) =>
   POST(`/channel/${id}/status`, {
