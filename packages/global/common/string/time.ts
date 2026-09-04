@@ -84,7 +84,7 @@ export const cronParser2Fields = (cronString: string) => {
   try {
     const cronField = cronParser.parseExpression(cronString).fields;
     return cronField;
-  } catch (error) {
+  } catch {
     return null;
   }
 };

@@ -71,6 +71,7 @@
     "proxy-addr": "catalog:",
     "proxy-agent": "catalog:",
     "proxy-from-env": "^1.1.0",
+    "safe-regex": "^2.1.1",
     "turndown": "^7.1.2",
     "undici": "catalog:",
     "winston": "^3.17.0",

@@ -53,6 +53,7 @@ export const DevApiTagsMap = {
   datasetData: '数据管理',
   datasetTraining: '训练管理',
   datasetApiDataset: 'API 数据集管理',
+  datasetTag: '标签管理',
   datasetFile: '知识库文件管理',
 
   /* 核心-插件系统 */

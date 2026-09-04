@@ -175,7 +175,11 @@ describe('dispatchAgentDatasetSearch', () => {
         embeddingWeight: 0.5,
         usingReRank: false,
         rerankWeight: 0.5,
-        datasetSearchUsingExtensionQuery: true
+        datasetSearchUsingExtensionQuery: true,
+        collectionFilterMatch: {
+          logic: 'AND',
+          conditions: [{ tag: 'price', tagType: 'number', op: '$gte', value: 10 }]
+        }
       } as any
     });
 
@@ -185,7 +189,10 @@ describe('dispatchAgentDatasetSearch', () => {
     expect(result.nodeResponse?.datasetQueries).toEqual(['origin']);
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        textQueries: ['origin']
+        textQueries: ['origin'],
+        collectionFilterMatch: JSON.stringify({
+          tags: { $and: [{ price: { $gte: 10 } }] }
+        })
       })
     );
     expect(result.nodeResponse?.childrenResponses).toEqual([

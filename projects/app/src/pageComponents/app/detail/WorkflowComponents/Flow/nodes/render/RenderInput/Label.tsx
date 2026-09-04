@@ -14,6 +14,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getToolInputDisplayRenderTypeList } from '@fastgpt/global/core/app/formEdit/utils';
 import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
 
@@ -27,11 +28,25 @@ type Props = {
 const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
   const { t } = useSafeTranslation();
 
+  const isDeprecatedTagFilter =
+    input.key === NodeInputKeyEnum.collectionFilterMatch && typeof input.value === 'string';
+
+  const labelText = isDeprecatedTagFilter
+    ? t('workflow:collection_metadata_filter')
+    : t(input.label as any);
+  const descriptionText = isDeprecatedTagFilter
+    ? t('workflow:filter_description')
+    : input.description
+      ? t(input.description as any)
+      : undefined;
+
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
-  const { description, required, label, renderTypeList, valueType, valueDesc } = input;
+  const { required, renderTypeList, valueType, valueDesc } = input;
   const renderType =
     getSelectedInputRenderType(input) ?? renderTypeList?.[0] ?? FlowNodeInputTypeEnum.input;
+  const rightInline =
+    renderType === FlowNodeInputTypeEnum.datasetTagFilter && !isDeprecatedTagFilter;
   const displayRenderTypeList = useMemo(
     () =>
       getToolInputDisplayRenderTypeList({
@@ -65,9 +80,9 @@ const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
     <Box display={'flex'} alignItems={'center'} position={'relative'}>
       <Flex className="nodrag" alignItems={'center'} position={'relative'} fontWeight={'medium'}>
         <FormLabel required={required} color={'myGray.600'}>
-          {t(label as any)}
+          {labelText}
         </FormLabel>
-        {description && <QuestionTip ml={1} label={t(description as any)}></QuestionTip>}
+        {descriptionText && <QuestionTip ml={1} label={descriptionText}></QuestionTip>}
       </Flex>
       {/* value type */}
       {[FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.fileSelect].includes(renderType) && (
@@ -122,8 +137,8 @@ const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
       {/* Right Component */}
       {!input.deprecated && RightComponent && (
         <>
-          <Box flex={'1'} />
-          {RightComponent}
+          {!rightInline && <Box flex={'1'} />}
+          {rightInline ? <Box ml={2}>{RightComponent}</Box> : RightComponent}
         </>
       )}
     </Box>

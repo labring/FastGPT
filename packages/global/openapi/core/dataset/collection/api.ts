@@ -10,6 +10,8 @@ import {
   TrainingModeEnum
 } from '../../../../core/dataset/constants';
 import {
+  CollectionTagFilterItemSchema,
+  CollectionTagLabelSchema,
   CollectionTrainingStatusSchema,
   DatasetCollectionItemSchema,
   DatasetCollectionSchema
@@ -23,26 +25,15 @@ import {
   transformOptionalChatAuthTargetInput
 } from '../../chat/api';
 
-// ============= Scroll Collections =============
-/**
- * @deprecated Use ListCollectionV2BodySchema and /core/dataset/collection/listV2 instead.
- */
-export const ScrollCollectionsBodySchema = z.object({
-  datasetId: z.string(),
-  parentId: z.string().nullable().optional().default(null),
-  searchText: z.string().optional().default(''),
-  selectFolder: z.boolean().optional().default(false),
-  filterTags: z.array(z.string()).optional().default([]),
-  simple: z.boolean().optional().default(false)
-});
-export type ScrollCollectionsBodyType = z.infer<typeof ScrollCollectionsBodySchema>;
-
 // ============= Update Collection =============
 export const UpdateDatasetCollectionBodySchema = z.object({
   id: ObjectIdSchema.optional().describe('集合ID，与 datasetId+externalFileId 二选一'),
   parentId: ParentIdSchema.describe('父级目录ID'),
   name: z.string().optional().describe('集合名称'),
-  tags: z.array(z.string()).optional().describe('标签列表（标签名称，非ID）'),
+  tags: z
+    .array(CollectionTagLabelSchema)
+    .optional()
+    .describe('标签列表（支持 String 旧格式 或 { tag, value } 新格式）'),
   forbid: z.boolean().optional().describe('是否禁用'),
   createTime: z.coerce.date().optional().describe('创建时间'),
   datasetId: z.string().optional().describe('数据集ID，配合 externalFileId 使用'),
@@ -155,7 +146,9 @@ export const ListCollectionV2BodySchema = PaginationSchema.extend({
   parentId: z.string().nullable().optional().default(null).meta({ description: '父级目录 ID' }),
   searchText: z.string().max(100).optional().default('').meta({ description: '搜索文本' }),
   selectFolder: z.boolean().optional().default(false).meta({ description: '只返回文件夹' }),
-  filterTags: z.array(z.string()).optional().default([]).meta({ description: '过滤标签' }),
+  tagFilters: z.array(CollectionTagFilterItemSchema).optional().default([]).meta({
+    description: '按标签值过滤。同一标签多值为 OR，不同标签为 AND'
+  }),
   simple: z.boolean().optional().default(false).meta({ description: '简单模式（不统计数量）' })
 });
 export type ListCollectionV2BodyType = z.infer<typeof ListCollectionV2BodySchema>;
@@ -172,7 +165,7 @@ export const DatasetCollectionsListItemSchema = z
     updateTime: DatasetCollectionSchema.shape.updateTime,
     forbid: DatasetCollectionSchema.shape.forbid,
     trainingType: DatasetCollectionSchema.shape.trainingType,
-    tags: z.array(z.string()).optional().meta({ description: '标签' }),
+    tags: DatasetCollectionItemSchema.shape.tags,
 
     externalFileId: z.string().optional().meta({ description: '外部文件 ID' }),
 
@@ -256,3 +249,30 @@ export const SyncCollectionResponseSchema = z.enum(DatasetCollectionSyncResultEn
   description: '同步结果'
 });
 export type SyncCollectionResponseType = z.infer<typeof SyncCollectionResponseSchema>;
+
+/* ============================================================================
+ * API: 获取知识库标签筛选项
+ * Route: GET /api/core/dataset/collection/tagFilterOptions
+ * Method: GET
+ * Description: 获取知识库下当前已被文件使用的标签值，供详情页双栏筛选使用。标签名和类型由 getAllTags 提供。
+ * Tags: ['Dataset']
+ * ============================================================================ */
+export const GetTagFilterOptionsQuerySchema = z.object({
+  datasetId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '数据集 ID'
+  })
+});
+
+const TagFilterOptionItemSchema = z.object({
+  tagId: z.string().meta({ example: '68ad85a7463006c963799a05', description: '标签 ID' }),
+  values: z
+    .array(z.union([z.string(), z.number()]))
+    .meta({ example: ['PRD'], description: '当前已被文件使用的标签值' })
+});
+export type TagFilterOptionItemType = z.infer<typeof TagFilterOptionItemSchema>;
+
+export const GetTagFilterOptionsResponseSchema = z.object({
+  list: z.array(TagFilterOptionItemSchema).meta({ description: '已用标签值列表' })
+});
+export type GetTagFilterOptionsResponseType = z.infer<typeof GetTagFilterOptionsResponseSchema>;

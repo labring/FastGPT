@@ -223,7 +223,16 @@ export const storeNode2FlowNode = ({
           debugLabel: t(inputTemplate.debugLabel ?? (storeInput.debugLabel as any)),
           toolDescription: t(inputTemplate.toolDescription ?? (storeInput.toolDescription as any)),
           key: storeInput.key,
-          selectedType: storeInput.selectedType ?? inputTemplate.selectedType,
+          selectedType: (() => {
+            // 旧节点用 textarea 手写 JSON；切到条件行渲染类型，但保留字符串 value 以便展示升级 UI。
+            if (
+              inputTemplate.key === NodeInputKeyEnum.collectionFilterMatch &&
+              storeInput.selectedType === FlowNodeInputTypeEnum.textarea
+            ) {
+              return FlowNodeInputTypeEnum.datasetTagFilter;
+            }
+            return storeInput.selectedType ?? inputTemplate.selectedType;
+          })(),
           value: storeInput.value
         };
       })

@@ -15,7 +15,15 @@ export enum DatasetErrEnum {
   notSupportSync = 'notSupportSync',
   sameApiCollection = 'sameApiCollection',
   noApiServer = 'noApiServer',
-  canNotEditAdminPermission = 'canNotEditAdminPermission'
+  canNotEditAdminPermission = 'canNotEditAdminPermission',
+
+  // Tag errors (501013+)
+  tagNameDuplicate = 'tagNameDuplicate',
+  tagNameEmpty = 'tagNameEmpty',
+  tagNotExist = 'tagNotExist',
+  tagValueInvalid = 'tagValueInvalid',
+  tagValueDatetimeInvalid = 'tagValueDatetimeInvalid',
+  arrayTagValueInvalid = 'arrayTagValueInvalid'
 }
 const datasetErr = [
   {
@@ -69,6 +77,32 @@ const datasetErr = [
   {
     statusText: DatasetErrEnum.noApiServer,
     message: i18nT('common:core.dataset.error.noApiServer')
+  },
+
+  // Tag errors
+  {
+    statusText: DatasetErrEnum.tagNameDuplicate,
+    message: i18nT('common:core.dataset.error.tagNameDuplicate')
+  },
+  {
+    statusText: DatasetErrEnum.tagNameEmpty,
+    message: i18nT('common:core.dataset.error.tagNameEmpty')
+  },
+  {
+    statusText: DatasetErrEnum.tagNotExist,
+    message: i18nT('common:core.dataset.error.tagNotExist')
+  },
+  {
+    statusText: DatasetErrEnum.tagValueInvalid,
+    message: i18nT('common:core.dataset.error.tagValueInvalid')
+  },
+  {
+    statusText: DatasetErrEnum.tagValueDatetimeInvalid,
+    message: i18nT('common:core.dataset.error.tagValueDatetimeInvalid')
+  },
+  {
+    statusText: DatasetErrEnum.arrayTagValueInvalid,
+    message: i18nT('common:core.dataset.error.arrayTagValueInvalid')
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

@@ -2388,6 +2388,41 @@ describe('storeNode2FlowNode', () => {
     ]);
   });
 
+  it('remaps collectionFilterMatch textarea to datasetTagFilter and keeps the old JSON string', () => {
+    const oldJson = '{"tags":{"$and":["A"]}}';
+    const result = storeNode2FlowNode({
+      item: {
+        nodeId: 'dataset-search',
+        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+        position: { x: 0, y: 0 },
+        inputs: [
+          {
+            key: NodeInputKeyEnum.collectionFilterMatch,
+            label: '旧标签',
+            renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
+            selectedType: FlowNodeInputTypeEnum.textarea,
+            valueType: WorkflowIOValueTypeEnum.string,
+            value: oldJson
+          }
+        ],
+        outputs: [],
+        name: 'Dataset search',
+        version: '1.0'
+      },
+      t: ((key: string) => key) as any
+    });
+
+    const hydratedInput = result.data.inputs.find(
+      (input) => input.key === NodeInputKeyEnum.collectionFilterMatch
+    );
+
+    expect(hydratedInput).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.datasetTagFilter,
+      value: oldJson,
+      renderTypeList: [FlowNodeInputTypeEnum.datasetTagFilter, FlowNodeInputTypeEnum.reference]
+    });
+  });
+
   it('should restore an existing AI chat file link as JSON editor', () => {
     const storeNode: StoreNodeItemType = {
       nodeId: 'chat-node',
