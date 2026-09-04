@@ -1,7 +1,11 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { createSkill, updateSkillCreationFailed } from '@fastgpt/service/core/ai/skill/manage';
+import {
+  createSkill,
+  updateParentFoldersUpdateTime,
+  updateSkillCreationFailed
+} from '@fastgpt/service/core/ai/skill/manage';
 import { addAgentSkillCreateJob } from '@fastgpt/service/core/ai/skill/manage/creation';
 import {
   CreateSkillBodySchema,
@@ -108,6 +112,8 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
 
     return newSkillId;
   });
+
+  updateParentFoldersUpdateTime({ parentId });
 
   const createJobData = {
     skillId,

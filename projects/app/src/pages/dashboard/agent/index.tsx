@@ -34,6 +34,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import TemplateCreatePanel from '@/pageComponents/dashboard/agent/TemplateCreatePanel';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import AppListFilters from '@/pageComponents/dashboard/agent/filters/AppListFilters';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -55,7 +56,9 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     folderDetail,
     refetchFolderDetail,
     searchKey,
-    setSearchKey
+    setSearchKey,
+    listFilters,
+    setListFilters
   } = useContextSelector(AppListContext, (v) => v);
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
   const { userInfo } = useUserStore();
@@ -116,11 +119,11 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
         >
           {/* Only shown on pc root page */}
           {!folderDetail && isPc && hasCreatePer && <TemplateCreatePanel type={appType} />}
-          <Flex alignItems={'center'}>
+          <Flex alignItems={'center'} gap={3} minW={0}>
             {!isPc ? (
               MenuIcon
             ) : paths.length > 0 ? (
-              <Box>
+              <Box flexShrink={0}>
                 <FolderPath
                   paths={paths}
                   hoverStyle={{ bg: 'myGray.200' }}
@@ -136,47 +139,49 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                 />
               </Box>
             ) : (
-              <Box color={'myGray.900'} fontSize={'20px'} fontWeight={'medium'}>
+              <Box color={'myGray.900'} fontSize={'20px'} fontWeight={'medium'} flexShrink={0}>
                 Agent
               </Box>
             )}
+            {isPc && (
+              <>
+                <Box flexShrink={0} maxW={'250px'}>
+                  <SearchInput
+                    maxW={'250px'}
+                    value={searchKey}
+                    bg={'white'}
+                    onChange={(e) => setSearchKey(e.target.value)}
+                    placeholder={t('app:search_agent')}
+                    maxLength={30}
+                  />
+                </Box>
+                <AppListFilters scene={'agent'} value={listFilters} onChange={setListFilters} />
+              </>
+            )}
             <Flex flex={1} />
-            <Flex alignItems={'center'} gap={3}>
-              {isPc && (
-                <SearchInput
-                  maxW={['auto', '250px']}
-                  value={searchKey}
-                  bg={'white'}
-                  onChange={(e) => setSearchKey(e.target.value)}
-                  placeholder={t('app:search_agent')}
-                  maxLength={30}
-                />
-              )}
-
-              {hasCreatePer && (
-                <>
-                  <MyTooltip label={canCreateFolder ? '' : folderDepthLimitTip}>
-                    <Button
-                      variant={'grayBase'}
-                      leftIcon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
-                      onClick={() => setEditFolder({})}
-                      isDisabled={!canCreateFolder}
-                      px={5}
-                    >
-                      {t('common:Folder')}
-                    </Button>
-                  </MyTooltip>
+            {isPc && hasCreatePer && (
+              <Flex alignItems={'center'} gap={3}>
+                <MyTooltip label={canCreateFolder ? '' : folderDepthLimitTip}>
                   <Button
                     variant={'grayBase'}
-                    leftIcon={<MyIcon name={'common/importLight'} w={'14px'} />}
-                    onClick={onOpenJsonImportModal}
+                    leftIcon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
+                    onClick={() => setEditFolder({})}
+                    isDisabled={!canCreateFolder}
                     px={5}
                   >
-                    {t('common:Import')}
+                    {t('common:Folder')}
                   </Button>
-                </>
-              )}
-            </Flex>
+                </MyTooltip>
+                <Button
+                  variant={'grayBase'}
+                  leftIcon={<MyIcon name={'common/importLight'} w={'14px'} />}
+                  onClick={onOpenJsonImportModal}
+                  px={5}
+                >
+                  {t('common:Import')}
+                </Button>
+              </Flex>
+            )}
           </Flex>
           {!isPc && (
             <Box mt={2}>

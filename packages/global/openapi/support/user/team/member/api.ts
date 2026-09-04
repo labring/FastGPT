@@ -1,4 +1,5 @@
 import z from 'zod';
+import { BoolSchema } from '../../../../../common/zod';
 import { ObjectIdSchema } from '../../../../../common/type/mongo';
 import { GroupMemberRole } from '../../../../../support/permission/memberGroup/constant';
 import { PermissionSchema } from '../../../../../support/permission/controller';
@@ -81,7 +82,7 @@ export type ExportTeamMembersResponseType = z.infer<typeof ExportTeamMembersResp
  * API: 获取团队成员列表
  * Route: POST /api/proApi/support/user/team/member/list
  * Method: POST
- * Description: 分页获取当前团队成员，支持状态、关键词、组织和成员组筛选，并可选择返回权限及组织信息。
+ * Description: 分页获取当前团队成员，支持状态、关键词、组织、成员组和指定成员 ID 筛选，并可选择返回权限及组织信息。
  * Tags: ['成员管理', '团队管理', 'Read']
  * ============================================================================ */
 
@@ -107,7 +108,13 @@ export const ListTeamMembersBodySchema = PaginationSchema.extend({
       example: '68ad85a7463006c963799a08',
       description: '按组织 ID 筛选；空字符串表示根组织'
     }),
-  status: TeamMemberStatusSchema.optional()
+  status: TeamMemberStatusSchema.optional(),
+  tmbIds: z.array(TeamMemberIdSchema).optional().meta({
+    description: '按成员 ID 精确筛选；空数组返回空列表，可与组织和成员组筛选求交'
+  }),
+  currentFirst: BoolSchema.optional().meta({
+    description: '是否将当前登录成员置于列表首位；搜索和其他筛选条件仍优先生效'
+  })
 });
 export type ListTeamMembersBodyType = z.infer<typeof ListTeamMembersBodySchema>;
 export const TeamMemberListItemSchema = z

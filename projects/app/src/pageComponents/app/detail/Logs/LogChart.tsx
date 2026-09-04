@@ -12,7 +12,12 @@ import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
 import type { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
 import DateRangePicker from '@fastgpt/web/components/common/DateRangePicker';
-import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import {
+  MultiSelectFilter,
+  toMultiSelectFilterQuery,
+  type MultiSelectFilterValue,
+  useCommonFilterLabels
+} from '@fastgpt/web/components/common/TagFilter';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { AppContext } from '../context';
@@ -48,10 +53,8 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 export type HeaderControlProps = {
   appId: string;
   showSourceSelector?: boolean;
-  chatSources: ChatSourceEnum[];
-  setChatSources: (value: ChatSourceEnum[]) => void;
-  isSelectAllSource: boolean;
-  setIsSelectAllSource: React.Dispatch<React.SetStateAction<boolean>>;
+  sourceFilter: MultiSelectFilterValue<ChatSourceEnum>;
+  setSourceFilter: (value: MultiSelectFilterValue<ChatSourceEnum>) => void;
   dateRange: DateRangeType;
   setDateRange: (value: DateRangeType) => void;
   px?: [number, number];
@@ -134,10 +137,8 @@ const generateCompleteTimeSeries = (
 
 const LogChart = ({
   appId,
-  chatSources,
-  setChatSources,
-  isSelectAllSource,
-  setIsSelectAllSource,
+  sourceFilter,
+  setSourceFilter,
   dateRange,
   setDateRange,
   showSourceSelector = true,
@@ -152,6 +153,7 @@ const LogChart = ({
   const [appTimespan, setAppTimespan] = useState<AppLogTimespanEnum>(AppLogTimespanEnum.day);
 
   const [offset, setOffset] = useState<string>(offsetOptions[0].value);
+  const chartSources = useMemo(() => toMultiSelectFilterQuery(sourceFilter), [sourceFilter]);
 
   const { data: chartData, loading } = useRequest(
     async () => {
@@ -160,7 +162,7 @@ const LogChart = ({
         dateStart: dateRange.from || new Date(),
         dateEnd: addDays(dateRange.to || new Date(), 1),
         offset: parseInt(offset),
-        source: chatSources,
+        source: chartSources,
         userTimespan,
         chatTimespan,
         appTimespan
@@ -173,7 +175,7 @@ const LogChart = ({
         dateRange.from,
         dateRange.to,
         offset,
-        chatSources,
+        chartSources,
         userTimespan,
         chatTimespan,
         appTimespan
@@ -339,10 +341,8 @@ const LogChart = ({
       <HeaderControl
         px={px}
         appId={appId}
-        chatSources={chatSources}
-        setChatSources={setChatSources}
-        isSelectAllSource={isSelectAllSource}
-        setIsSelectAllSource={setIsSelectAllSource}
+        sourceFilter={sourceFilter}
+        setSourceFilter={setSourceFilter}
         dateRange={dateRange}
         setDateRange={setDateRange}
         showSourceSelector={showSourceSelector}
@@ -763,18 +763,16 @@ const LogChart = ({
 export default React.memo(LogChart);
 
 const HeaderControl = ({
-  chatSources,
-  setChatSources,
-  isSelectAllSource,
-  setIsSelectAllSource,
+  sourceFilter,
+  setSourceFilter,
   dateRange,
   setDateRange,
   showSourceSelector = true,
   px = [4, 8]
 }: HeaderControlProps) => {
   const { t } = useTranslation();
-
-  const sourceList = useMemo(
+  const labels = useCommonFilterLabels();
+  const sourceOptions = useMemo(
     () =>
       Object.entries(ChatSourceMap).map(([key, value]) => ({
         label: t(value.name as any),
@@ -786,47 +784,19 @@ const HeaderControl = ({
   return (
     <Flex flexDir={['column', 'row']} alignItems={['flex-start', 'center']} gap={3} pb={2} px={px}>
       {showSourceSelector && (
-        <Flex>
-          <MultipleSelect<ChatSourceEnum>
-            list={sourceList}
-            value={chatSources}
-            onSelect={setChatSources}
-            isSelectAll={isSelectAllSource}
-            setIsSelectAll={setIsSelectAllSource}
-            h={10}
-            w={'226px'}
-            bg={'white'}
-            rounded={'8px'}
-            tagStyle={{
-              px: 1,
-              py: 1,
-              borderRadius: 'sm',
-              bg: 'myGray.100',
-              color: 'myGray.900'
-            }}
-            borderColor={'myGray.200'}
-            formLabel={t('app:logs_source')}
-            formLabelFontSize={'sm'}
-          />
-        </Flex>
-      )}
-      <Flex>
-        <DateRangePicker
-          defaultDate={dateRange}
-          onSuccess={(date) => {
-            setDateRange(date);
-          }}
-          bg={'white'}
-          h={10}
-          w={'240px'}
-          rounded={'8px'}
-          borderColor={'myGray.200'}
-          formLabel={t('app:logs_date')}
-          _hover={{
-            borderColor: 'primary.300'
-          }}
+        <MultiSelectFilter
+          title={t('app:logs_source')}
+          value={sourceFilter}
+          onChange={setSourceFilter}
+          options={sourceOptions}
+          labels={labels}
         />
-      </Flex>
+      )}
+      <DateRangePicker
+        defaultDate={dateRange}
+        onSuccess={setDateRange}
+        formLabel={t('app:logs_date')}
+      />
     </Flex>
   );
 };

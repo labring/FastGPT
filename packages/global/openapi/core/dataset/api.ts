@@ -9,6 +9,7 @@ import {
   DatasetListItemSchema,
   SearchDataResponseItemSchema
 } from '../../../core/dataset/type';
+import { AppListSortEnum } from '../../../core/app/constants';
 import {
   CollaboratorListSchema,
   CollaboratorUpdateListSchema,
@@ -190,13 +191,23 @@ export const GetDatasetListBodySchema = z.object({
     example: '68ad85a7463006c963799a05',
     description: '父级文件夹 ID,null 或不传表示根目录'
   }),
-  type: z.enum(DatasetTypeEnum).optional().meta({
-    example: DatasetTypeEnum.dataset,
-    description: '知识库类型筛选'
-  }),
+  type: z
+    .union([z.enum(DatasetTypeEnum), z.array(z.enum(DatasetTypeEnum))])
+    .optional()
+    .meta({
+      example: DatasetTypeEnum.dataset,
+      description: '知识库类型筛选'
+    }),
   searchKey: z.string().optional().meta({
     example: '产品文档',
     description: '搜索关键词,按名称和简介模糊匹配'
+  }),
+  sort: z.enum(AppListSortEnum).optional().meta({
+    example: AppListSortEnum.updateTimeDesc,
+    description: '列表排序，缺省按最近修改倒序'
+  }),
+  tmbIds: z.array(ObjectIdSchema).optional().meta({
+    description: '按创建者筛选；空数组返回空列表'
   })
 });
 export type GetDatasetListBody = z.infer<typeof GetDatasetListBodySchema>;

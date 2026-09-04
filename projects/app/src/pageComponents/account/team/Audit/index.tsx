@@ -1,50 +1,30 @@
-import {
-  Box,
-  Flex,
-  Table,
-  TableContainer,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
-  HStack
-} from '@chakra-ui/react';
-import { useMemo, useCallback, useRef } from 'react';
+import { Box, Flex, Table, TableContainer, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
+import { useMemo, useCallback, useRef, useState } from 'react';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getOperationLogs } from '@/web/support/user/team/operantionLog/api';
 import { auditLogMap } from '@fastgpt/web/support/user/audit/constants';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import UserBox from '@fastgpt/web/components/common/UserBox';
-import MultipleSelect, {
-  useMultipleSelect
-} from '@fastgpt/web/components/common/MySelect/MultipleSelect';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import { getTeamMembers } from '@/web/support/user/team/api';
+import {
+  MultiSelectFilter,
+  createMultiSelectFilter,
+  toMultiSelectFilterQuery,
+  type MultiSelectFilterValue,
+  useCommonFilterLabels
+} from '@fastgpt/web/components/common/TagFilter';
 import { specialProcessors } from './processors';
 import { defaultMetadataProcessor } from './processors/commonProcessor';
+import TeamMemberFilter from '@/components/support/user/TeamMemberFilter';
 function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useClientTranslation(['account_team', 'user']);
+  const labels = useCommonFilterLabels();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  const { data: members, ScrollData } = useScrollPagination(getTeamMembers, {});
-  const tmbList = useMemo(
-    () =>
-      members.map((item) => ({
-        label: (
-          <HStack spacing={1} color={'myGray.500'}>
-            <Avatar src={item.avatar} w={'1.2rem'} mr={1} rounded={'full'} />
-            <Box>{item.memberName}</Box>
-          </HStack>
-        ),
-        value: item.tmbId
-      })),
-    [members]
-  );
+  const [memberFilter, setMemberFilter] = useState(createMultiSelectFilter());
+  const [eventFilter, setEventFilter] =
+    useState<MultiSelectFilterValue<AuditEventEnum>>(createMultiSelectFilter());
 
   const eventOptions = useMemo(
     () =>
@@ -64,32 +44,12 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
     [t]
   );
 
-  const {
-    value: selectedTmbIds,
-    setValue: setSelectedTmbIds,
-    isSelectAll: isSelectAllTmb,
-    setIsSelectAll: setIsSelectAllTmb
-  } = useMultipleSelect<string>(
-    tmbList.map((item) => item.value),
-    true
-  );
-
-  const {
-    value: selectedEvents,
-    setValue: setSelectedEvents,
-    isSelectAll: isSelectAllEvent,
-    setIsSelectAll: setIsSelectAllEvent
-  } = useMultipleSelect<AuditEventEnum>(
-    eventOptions.map((item) => item.value),
-    true
-  );
-
   const searchParams = useMemo(
     () => ({
-      ...(isSelectAllTmb ? {} : { tmbIds: selectedTmbIds }),
-      ...(isSelectAllEvent ? {} : { events: selectedEvents })
+      tmbIds: toMultiSelectFilterQuery(memberFilter),
+      events: toMultiSelectFilterQuery(eventFilter)
     }),
-    [isSelectAllEvent, isSelectAllTmb, selectedEvents, selectedTmbIds]
+    [eventFilter, memberFilter]
   );
 
   const {
@@ -129,45 +89,19 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
           gap={2}
           wrap={'wrap'}
         >
-          <Flex w={['100%', 'auto']} alignItems={'center'} gap={2}>
-            <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
-              {t('account_team:log_user')}
-            </Box>
-            <Box flex={['1 0 0', 'initial']}>
-              <MultipleSelect<string>
-                list={tmbList}
-                value={selectedTmbIds}
-                onSelect={(val) => {
-                  setSelectedTmbIds(val as string[]);
-                }}
-                itemWrap={false}
-                height={'32px'}
-                bg={'white'}
-                w={['100%', '160px']}
-                ScrollData={ScrollData}
-                isSelectAll={isSelectAllTmb}
-                setIsSelectAll={setIsSelectAllTmb}
-              />
-            </Box>
-          </Flex>
-          <Flex w={['100%', 'auto']} alignItems={'center'} gap={2}>
-            <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
-              {t('account_team:log_type')}
-            </Box>
-            <Box flex={['1 0 0', 'initial']}>
-              <MultipleSelect
-                list={eventOptions}
-                value={selectedEvents}
-                onSelect={setSelectedEvents}
-                isSelectAll={isSelectAllEvent}
-                setIsSelectAll={setIsSelectAllEvent}
-                itemWrap={false}
-                height={'32px'}
-                bg={'white'}
-                w={['100%', '160px']}
-              />
-            </Box>
-          </Flex>
+          <TeamMemberFilter
+            title={t('account_team:log_user')}
+            value={memberFilter}
+            onChange={setMemberFilter}
+          />
+          <MultiSelectFilter
+            title={t('account_team:log_type')}
+            value={eventFilter}
+            onChange={setEventFilter}
+            options={eventOptions}
+            labels={labels}
+            showSearch
+          />
         </Flex>
       </Flex>
 

@@ -36,6 +36,18 @@ export const ToolTypeList = [
 ];
 export const AppTypeList = [AppTypeEnum.simple, AppTypeEnum.chatAgent, AppTypeEnum.workflow];
 
+export enum AppListSortEnum {
+  updateTimeDesc = 'updateTimeDesc',
+  createTimeDesc = 'createTimeDesc',
+  createTimeAsc = 'createTimeAsc'
+}
+
+export const appListSortMongoMap: Record<AppListSortEnum, Record<string, 1 | -1>> = {
+  [AppListSortEnum.updateTimeDesc]: { updateTime: -1 },
+  [AppListSortEnum.createTimeDesc]: { createTime: -1 },
+  [AppListSortEnum.createTimeAsc]: { createTime: 1 }
+};
+
 export const defaultTTSConfig: AppTTSConfigType = { type: 'web' };
 
 export const defaultAutoExecuteConfig: AppAutoExecuteConfigType = {

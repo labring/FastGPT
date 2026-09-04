@@ -55,5 +55,9 @@
   "migrations.20260903_backfill_app_model_references.apps": "遷移應用",
   "migrations.20260903_backfill_app_model_references.app_versions": "遷移應用版本",
   "migrations.20260903_backfill_app_model_references.app_templates": "遷移應用範本",
-  "migrations.20260903_backfill_app_model_references.result": "已檢查並處理 {{appsProcessedCount}} 個應用、{{appVersionsProcessedCount}} 個應用版本、{{appTemplatesProcessedCount}} 個應用範本。"
+  "migrations.20260903_backfill_app_model_references.result": "已檢查並處理 {{appsProcessedCount}} 個應用、{{appVersionsProcessedCount}} 個應用版本、{{appTemplatesProcessedCount}} 個應用範本。",
+  "migrations.20260903_backfill_app_create_time.name": "回填應用建立時間",
+  "migrations.20260903_backfill_app_create_time.description": "使用應用 ObjectId 中的時間戳增量回填歷史建立時間。",
+  "migrations.20260903_backfill_app_create_time.apps": "回填應用建立時間",
+  "migrations.20260903_backfill_app_create_time.result": "已檢查並處理 {{processedCount}} 個應用，略過 {{skippedInvalidId}} 筆無效 ID 記錄。"
 }

@@ -27,6 +27,7 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import AppListFilters from '@/pageComponents/dashboard/agent/filters/AppListFilters';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -47,7 +48,9 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     folderDetail,
     refetchFolderDetail,
     searchKey,
-    setSearchKey
+    setSearchKey,
+    listFilters,
+    setListFilters
   } = useContextSelector(AppListContext, (v) => v);
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
   const { userInfo } = useUserStore();
@@ -86,7 +89,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   });
 
   return (
-    <Flex flexDirection={'column'} h={'100%'} pt={5}>
+    <Flex flexDirection={'column'} h={'100%'}>
       <Flex gap={5} flex={'1 0 0'} h={0}>
         <Flex
           flex={'1 0 0'}
@@ -94,14 +97,15 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           h={'100%'}
           pr={folderDetail ? [3, 2] : [3, 6]}
           pl={6}
+          pt={6}
           overflowY={'auto'}
           overflowX={'hidden'}
         >
-          <Flex alignItems={'center'}>
+          <Flex alignItems={'center'} gap={3} minW={0}>
             {!isPc ? (
               MenuIcon
             ) : paths.length > 0 ? (
-              <Box>
+              <Box flexShrink={0}>
                 <FolderPath
                   paths={paths}
                   hoverStyle={{ bg: 'myGray.200' }}
@@ -117,28 +121,32 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                 />
               </Box>
             ) : (
-              <Box color={'myGray.900'} fontSize={'20px'} fontWeight={'medium'}>
+              <Box color={'myGray.900'} fontSize={'20px'} fontWeight={'medium'} flexShrink={0}>
                 {t('common:navbar.Tools')}
               </Box>
             )}
+            {isPc && (
+              <>
+                <Box flexShrink={0} maxW={'250px'}>
+                  <SearchInput
+                    maxW={'250px'}
+                    value={searchKey}
+                    bg={'white'}
+                    onChange={(e) => setSearchKey(e.target.value)}
+                    placeholder={t('app:search_tool')}
+                    maxLength={30}
+                  />
+                </Box>
+                <AppListFilters scene={'tool'} value={listFilters} onChange={setListFilters} />
+              </>
+            )}
             <Flex flex={1} />
-            <Flex alignItems={'center'} gap={3} pt={1}>
-              {isPc && (
-                <SearchInput
-                  maxW={['auto', '250px']}
-                  value={searchKey}
-                  bg={'white'}
-                  onChange={(e) => setSearchKey(e.target.value)}
-                  placeholder={t('app:search_tool')}
-                  maxLength={30}
-                />
-              )}
-
-              {(folderDetail
+            {isPc &&
+              (folderDetail
                 ? folderDetail.permission.hasWritePer &&
                   folderDetail?.type !== AppTypeEnum.httpPlugin
                 : userInfo?.team.permission.hasAppCreatePer) && (
-                <>
+                <Flex alignItems={'center'} gap={3}>
                   <Button
                     variant={'grayBase'}
                     leftIcon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
@@ -155,9 +163,8 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   >
                     {t('common:Import')}
                   </Button>
-                </>
+                </Flex>
               )}
-            </Flex>
           </Flex>
 
           {!isPc && (
@@ -167,7 +174,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   maxW={['auto', '250px']}
                   value={searchKey}
                   onChange={(e) => setSearchKey(e.target.value)}
-                  placeholder={t('app:search_app')}
+                  placeholder={t('app:search_tool')}
                   maxLength={30}
                 />
               }

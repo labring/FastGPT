@@ -23,6 +23,7 @@ import {
 } from '@fastgpt/global/openapi/core/app/log/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { isUnselectedLogUserFilter } from '@fastgpt/global/core/app/logs/utils';
 
 const appChatSourceMatch = {
   $or: [{ sourceType: ChatSourceTypeEnum.app }, { sourceType: { $exists: false } }]
@@ -59,6 +60,10 @@ async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType
     appId,
     per: AppReadChatLogPerVal
   });
+
+  if (isUnselectedLogUserFilter(tmbIds, outLinkUids)) {
+    return GetAppChatLogsResponseSchema.parse({ list: [], total: 0 });
+  }
 
   const where = {
     appId: new Types.ObjectId(appId),

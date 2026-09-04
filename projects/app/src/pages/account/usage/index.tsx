@@ -1,21 +1,22 @@
 'use client';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Flex, Box, Button, HStack, useDisclosure } from '@chakra-ui/react';
-import { UsageSourceEnum, UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
+import { Flex, Box, Button, useDisclosure } from '@chakra-ui/react';
+import type { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
 import DateRangePicker, {
   type DateRangeType
 } from '@fastgpt/web/components/common/DateRangePicker';
 import { addDays } from 'date-fns';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import Avatar from '@fastgpt/web/components/common/Avatar';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
-import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import { getTeamMembers } from '@/web/support/user/team/api';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
-import MultipleSelect, {
-  useMultipleSelect
-} from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import {
+  MultiSelectFilter,
+  createMultiSelectFilter,
+  type MultiSelectFilterValue,
+  useCommonFilterLabels
+} from '@fastgpt/web/components/common/TagFilter';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 import {
@@ -27,6 +28,7 @@ import {
 import UsageTableList from '@/pageComponents/account/usage/UsageTable';
 import { type UnitType } from '@/pageComponents/account/usage/type';
 import UsageRechargeModal from '@/pageComponents/account/usage/UsageRechargeModal';
+import TeamMemberFilter from '@/components/support/user/TeamMemberFilter';
 const UsageDashboard = dynamic(() => import('@/pageComponents/account/usage/Dashboard'));
 
 export enum UsageTabEnum {
@@ -36,6 +38,7 @@ export enum UsageTabEnum {
 
 const UsageTable = () => {
   const { t } = useClientTranslation(['account_usage', 'account']);
+  const labels = useCommonFilterLabels();
   const { userInfo } = useUserStore();
   const router = useRouter();
   const { usageTab = UsageTabEnum.detail } = router.query as { usageTab: `${UsageTabEnum}` };
@@ -45,40 +48,16 @@ const UsageTable = () => {
     onClose: onCloseUsageRecharge
   } = useDisclosure();
 
-  const [unit, _setUnit] = useState<UnitType>('day');
+  const [unit] = useState<UnitType>('day');
   const [dateRange, setDateRange] = useState<DateRangeType>({
     from: addDays(new Date(), -7),
     to: new Date()
   });
+  const [memberFilter, setMemberFilter] = useState(createMultiSelectFilter());
+  const [sourceFilter, setSourceFilter] =
+    useState<MultiSelectFilterValue<UsageSourceEnum>>(createMultiSelectFilter());
 
-  const { data: members, ScrollData } = useScrollPagination(getTeamMembers, {});
-  const {
-    value: selectTmbIds,
-    setValue: setSelectTmbIds,
-    isSelectAll: isSelectAllTmb,
-    setIsSelectAll: setIsSelectAllTmb
-  } = useMultipleSelect<string>([], true);
-  const tmbList = useMemo(
-    () =>
-      members.map((item) => ({
-        label: (
-          <HStack spacing={1} color={'myGray.500'}>
-            <Avatar src={item.avatar} w={'1.2rem'} mr={1} rounded={'full'} />
-            <Box>{item.memberName}</Box>
-          </HStack>
-        ),
-        value: item.tmbId
-      })),
-    [members]
-  );
-
-  const {
-    value: usageSources,
-    setValue: setUsageSources,
-    isSelectAll: isSelectAllSource,
-    setIsSelectAll: setIsSelectAllSource
-  } = useMultipleSelect<UsageSourceEnum>(Object.values(UsageSourceEnum), true);
-  const sourceList = useMemo(
+  const sourceOptions = useMemo(
     () =>
       Object.entries(UsageSourceMap).map(([key, value]) => ({
         label: t(value.label as any),
@@ -88,7 +67,7 @@ const UsageTable = () => {
   );
 
   const [projectName, setProjectName] = useState<string>('');
-  const [inputValue, _setInputValue] = useState('');
+  const [inputValue] = useState('');
 
   const Tabs = useMemo(
     () => (
@@ -122,119 +101,38 @@ const UsageTable = () => {
         justifyContent={['flex-start', 'flex-end']}
         gap={3}
       >
-        <Flex alignItems={'center'} gap={2} w={['100%', 'auto']}>
-          <Box flexShrink={0} fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
-            {t('common:user.Time')}
-          </Box>
-          <Box flex={['1 1 0', '0 0 auto']} minW={0}>
-            <DateRangePicker
-              w={['100%', 'auto']}
-              bg={'myGray.25'}
-              defaultDate={dateRange}
-              dateRange={dateRange}
-              onSuccess={setDateRange}
-            />
-          </Box>
-          {/* {usageTab === UsageTabEnum.dashboard && (
-            <MySelect<UnitType>
-              bg={'myGray.50'}
-              minH={'32px'}
-              height={'32px'}
-              fontSize={'mini'}
-              ml={1}
-              list={[
-                { label: t('account_usage:every_day'), value: 'day' },
-                { label: t('account_usage:every_month'), value: 'month' }
-              ]}
-              value={unit}
-              onChange={setUnit}
-            />
-          )} */}
-        </Flex>
-        <Flex
-          alignItems={'center'}
-          justifyContent={['flex-start', 'flex-end']}
-          gap={3}
-          w={['100%', 'auto']}
-        >
-          {userInfo?.team?.permission.hasManagePer && (
-            <Flex flex={['1 1 0', '0 0 auto']} minW={0} alignItems={'center'} gap={2}>
-              <Box flexShrink={0} fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
-                {t('account_usage:member')}
-              </Box>
-              <Box flex={['1 1 0', '0 0 auto']} minW={0}>
-                <MultipleSelect<string>
-                  list={tmbList}
-                  value={selectTmbIds}
-                  onSelect={(val) => {
-                    setSelectTmbIds(val as string[]);
-                  }}
-                  itemWrap={false}
-                  h={'32px'}
-                  bg={'myGray.25'}
-                  w={['100%', '160px']}
-                  ScrollData={ScrollData}
-                  isSelectAll={isSelectAllTmb}
-                  setIsSelectAll={setIsSelectAllTmb}
-                />
-              </Box>
-            </Flex>
-          )}
-          <Flex flex={['1 1 0', '0 0 auto']} minW={0} alignItems={'center'} gap={2}>
-            <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
-              {t('account_usage:source')}
-            </Box>
-            <Box flex={['1 1 0', '0 0 auto']} minW={0}>
-              <MultipleSelect<UsageSourceEnum>
-                list={sourceList}
-                value={usageSources}
-                onSelect={setUsageSources}
-                isSelectAll={isSelectAllSource}
-                setIsSelectAll={setIsSelectAllSource}
-                itemWrap={false}
-                height={'32px'}
-                bg={'myGray.25'}
-                w={['100%', '160px']}
-              />
-            </Box>
-          </Flex>
-        </Flex>
-        {/* {usageTab === UsageTabEnum.detail && (
-          <Flex alignItems={'center'}>
-            <Box
-              fontSize={'mini'}
-              fontWeight={'medium'}
-              color={'myGray.900'}
-              mr={4}
-              whiteSpace={'nowrap'}
-            >
-              {t('common:user.Application Name')}
-            </Box>
-            <SearchInput
-              placeholder={t('common:user.Application Name')}
-              w={'160px'}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-            />
-          </Flex>
-        )} */}
+        <DateRangePicker
+          formLabel={t('common:user.Time')}
+          w={'fit-content'}
+          flexShrink={0}
+          defaultDate={dateRange}
+          dateRange={dateRange}
+          onSuccess={setDateRange}
+        />
+        {userInfo?.team?.permission.hasManagePer && (
+          <TeamMemberFilter
+            title={t('account_usage:member')}
+            value={memberFilter}
+            onChange={setMemberFilter}
+          />
+        )}
+        <MultiSelectFilter
+          title={t('account_usage:source')}
+          value={sourceFilter}
+          onChange={setSourceFilter}
+          options={sourceOptions}
+          labels={labels}
+        />
       </Flex>
     ),
     [
       t,
       dateRange,
       userInfo?.team?.permission.hasManagePer,
-      tmbList,
-      selectTmbIds,
-      ScrollData,
-      isSelectAllTmb,
-      setIsSelectAllTmb,
-      sourceList,
-      usageSources,
-      setUsageSources,
-      isSelectAllSource,
-      setIsSelectAllSource,
-      setSelectTmbIds
+      memberFilter,
+      sourceFilter,
+      sourceOptions,
+      labels
     ]
   );
 
@@ -249,14 +147,12 @@ const UsageTable = () => {
   const filterParams = useMemo(
     () => ({
       dateRange,
-      selectTmbIds,
+      memberFilter,
+      sourceFilter,
       projectName,
-      isSelectAllTmb,
-      usageSources,
-      isSelectAllSource,
       unit
     }),
-    [dateRange, isSelectAllSource, unit, isSelectAllTmb, projectName, selectTmbIds, usageSources]
+    [dateRange, memberFilter, projectName, sourceFilter, unit]
   );
 
   return (

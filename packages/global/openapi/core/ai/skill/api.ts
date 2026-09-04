@@ -20,6 +20,7 @@ import {
   CollaboratorUpdateListSchema,
   ShowUsernameQuerySchema
 } from '../../../../support/permission/collaborator.schema';
+import { AppListSortEnum } from '../../../../core/app/constants';
 
 const IdSchema = z.string().min(1).meta({ description: '资源 ID' });
 const SandboxInstanceKeySchema = z.string().min(1).describe('FastGPT sandbox instance key');
@@ -36,7 +37,9 @@ export const ListSkillsQuerySchema = z.object({
   parentId: NullableParentIdSchema,
   page: z.coerce.number().int().positive().optional().describe('页码'),
   pageSize: z.coerce.number().int().positive().optional().describe('每页数量'),
-  withAppCount: z.boolean().optional().describe('是否返回引用应用数量')
+  withAppCount: z.boolean().optional().describe('是否返回引用应用数量'),
+  sort: z.enum(AppListSortEnum).optional().describe('列表排序，缺省按最近修改倒序'),
+  tmbIds: z.array(ObjectIdSchema).optional().describe('按创建者筛选；空数组返回空列表')
 });
 export type ListSkillsQuery = z.infer<typeof ListSkillsQuerySchema>;
 

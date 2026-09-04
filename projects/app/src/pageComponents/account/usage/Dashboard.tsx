@@ -4,6 +4,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import React, { useMemo } from 'react';
 import { type UsageFilterParams } from './type';
+import { toMultiSelectFilterQuery } from '@fastgpt/web/components/common/TagFilter';
 import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
 import { accountContentScrollStyles } from '@/pageComponents/account/styles';
@@ -21,8 +22,7 @@ const UsageDashboard = ({
   Tabs: React.ReactNode;
   Selectors: React.ReactNode;
 }) => {
-  const { dateRange, selectTmbIds, usageSources, unit, isSelectAllSource, isSelectAllTmb } =
-    filterParams;
+  const { dateRange, memberFilter, sourceFilter, unit } = filterParams;
 
   const { data: totalPoints = [], loading: totalPointsLoading } = useRequest(
     () =>
@@ -31,8 +31,8 @@ const UsageDashboard = ({
           ? dayjs(dateRange.from.setHours(0, 0, 0, 0)).format()
           : dayjs(new Date().setHours(0, 0, 0, 0)).format(),
         dateEnd: dateRange.to ? dayjs(dateRange.to).format() : dayjs(new Date()).format(),
-        sources: isSelectAllSource ? undefined : usageSources,
-        teamMemberIds: isSelectAllTmb ? undefined : selectTmbIds,
+        sources: toMultiSelectFilterQuery(sourceFilter),
+        teamMemberIds: toMultiSelectFilterQuery(memberFilter),
         unit
       }).then((res) =>
         res.map((item) => ({

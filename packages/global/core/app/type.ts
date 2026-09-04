@@ -172,6 +172,7 @@ export const AppStorageSchemaTypeSchema = z.object({
   templateId: z.string().optional(),
 
   updateTime: z.coerce.date(),
+  createTime: z.coerce.date().optional(),
 
   modules: z.array(StoreNodeItemTypeSchema),
   edges: z.array(StoreEdgeItemTypeSchema),

@@ -162,13 +162,15 @@ const DateRangePicker = ({
     <Flex
       border={'base'}
       px={3}
-      pr={3}
-      py={1}
+      h={formLabel ? '36px' : undefined}
+      py={formLabel ? 0 : 1}
       borderRadius={'sm'}
       cursor={'pointer'}
       userSelect={'none'}
-      bg={'myGray.50'}
-      fontSize={'sm'}
+      bg={formLabel ? 'white' : 'myGray.50'}
+      fontSize={formLabel ? 'mini' : 'sm'}
+      lineHeight={formLabel ? '16px' : undefined}
+      _hover={formLabel ? { boxShadow: 'focus', borderColor: 'primary.300' } : undefined}
       onClick={
         !isPc
           ? () => {
@@ -187,13 +189,13 @@ const DateRangePicker = ({
     >
       {formLabel && (
         <>
-          <Box fontSize={'sm'} color={'myGray.600'}>
+          <Box flexShrink={0} color={'myGray.900'}>
             {formLabel}
           </Box>
-          <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
+          <Box w={'1px'} h={'16px'} flexShrink={0} bg={'myGray.200'} mx={2} />
         </>
       )}
-      <Box color={'myGray.600'} fontWeight={'400'} flex={1}>
+      <Box color={'myGray.900'} fontWeight={'400'} whiteSpace={'nowrap'}>
         {formatSelected}
       </Box>
       {!formLabel && <MyIcon ml={2} name={'date'} w={'16px'} color={'myGray.600'} />}

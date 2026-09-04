@@ -10,8 +10,19 @@ import { listReadableAgentSkills } from '@fastgpt/service/core/ai/skill/manage';
 export type GetSkillListBody = ListSkillsQuery;
 
 async function handler(req: ApiRequestProps<GetSkillListBody>) {
-  const { parentId, source, searchKey, category, type, skillIds, page, pageSize, withAppCount } =
-    parseApiInput({ req, bodySchema: ListSkillsQuerySchema }).body;
+  const {
+    parentId,
+    source,
+    searchKey,
+    category,
+    type,
+    skillIds,
+    page,
+    pageSize,
+    withAppCount,
+    sort,
+    tmbIds
+  } = parseApiInput({ req, bodySchema: ListSkillsQuerySchema }).body;
   const selectedSkillIds = skillIds?.filter(Boolean) ?? [];
   const isSkillIdsQuery = selectedSkillIds.length > 0;
 
@@ -48,7 +59,9 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
     skillIds: selectedSkillIds,
     page,
     pageSize,
-    withAppCount
+    withAppCount,
+    sort,
+    tmbIds
   });
 }
 

@@ -22,6 +22,17 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type DatasetItemType, type DatasetListItemType } from '@fastgpt/global/core/dataset/type';
 import { type EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import { useTranslation } from 'next-i18next';
+import { usePersistedFilters } from '@fastgpt/web/hooks/usePersistedFilters';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { buildFilterStorageKey } from '@/web/common/filter/storageKey';
+import {
+  AppListFiltersStoreSchema,
+  defaultAppListFiltersStore,
+  toListTmbIds,
+  type DatasetListFilterType
+} from '@/pageComponents/dashboard/agent/filters/utils';
 
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
@@ -40,6 +51,8 @@ export type DatasetContextType = {
   onUpdateDataset: (data: UpdateDatasetBody) => Promise<void>;
   searchKey: string;
   setSearchKey: React.Dispatch<React.SetStateAction<string>>;
+  listFilters: DatasetListFilterType;
+  setListFilters: (next: DatasetListFilterType) => void;
 };
 
 export const DatasetsContext = createContext<DatasetContextType>({
@@ -62,7 +75,11 @@ export const DatasetsContext = createContext<DatasetContextType>({
   },
   myDatasets: [],
   searchKey: '',
-  setSearchKey: function (value: React.SetStateAction<string>): void {
+  setSearchKey: function (_value: React.SetStateAction<string>): void {
+    throw new Error('Function not implemented.');
+  },
+  listFilters: defaultAppListFiltersStore.dataset,
+  setListFilters: () => {
     throw new Error('Function not implemented.');
   }
 });
@@ -73,6 +90,29 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
   const [moveDatasetId, setMoveDatasetId] = useState<string>();
   const [searchKey, setSearchKey] = useState('');
   const parentId = normalizeParentId(router.query.parentId);
+  const { userInfo } = useUserStore();
+  const { feConfigs } = useSystemStore();
+  const { isPc } = useSystem();
+  const filterKey = userInfo?.team.teamId
+    ? buildFilterStorageKey({ teamId: userInfo.team.teamId })
+    : '';
+  const [filterStore, setFilterStore] = usePersistedFilters({
+    key: filterKey,
+    schema: AppListFiltersStoreSchema,
+    defaultValue: defaultAppListFiltersStore
+  });
+  const listFilters = filterStore.dataset;
+  const setListFilters = useCallback(
+    (next: DatasetListFilterType) => setFilterStore((prev) => ({ ...prev, dataset: next })),
+    [setFilterStore]
+  );
+  const applyToolbarFilters = isPc;
+  const tmbIds =
+    applyToolbarFilters && feConfigs.isPlus ? toListTmbIds(listFilters.creator) : undefined;
+  const listType =
+    applyToolbarFilters && listFilters.type !== 'all'
+      ? [DatasetTypeEnum.folder, listFilters.type]
+      : undefined;
 
   const {
     data: myDatasets = [],
@@ -82,11 +122,22 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     () =>
       getDatasets({
         searchKey,
-        parentId
+        parentId,
+        ...(listType ? { type: listType } : {}),
+        ...(applyToolbarFilters ? { sort: listFilters.sort } : {}),
+        ...(tmbIds !== undefined ? { tmbIds } : {})
       }),
     {
       manual: false,
-      refreshDeps: [parentId, searchKey],
+      refreshDeps: [
+        parentId,
+        searchKey,
+        listType?.join(',') ?? 'all',
+        applyToolbarFilters ? listFilters.sort : '',
+        tmbIds === undefined ? 'none' : tmbIds.join(','),
+        feConfigs.isPlus,
+        isPc
+      ],
       throttleWait: 300
     }
   );
@@ -160,7 +211,9 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     myDatasets,
     loadMyDatasets,
     searchKey,
-    setSearchKey
+    setSearchKey,
+    listFilters,
+    setListFilters
   };
 
   return (

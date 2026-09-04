@@ -1,6 +1,6 @@
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { ParentIdSchema } from '../../../../common/parentFolder/type';
-import { AppTypeEnum } from '../../../../core/app/constants';
+import { AppListSortEnum, AppTypeEnum } from '../../../../core/app/constants';
 import {
   AppChatConfigTypeSchema,
   AppTTSConfigTypeSchema,
@@ -286,13 +286,26 @@ export const ListAppBodySchema = z
     searchKey: z.string().optional().meta({
       example: '客服',
       description: '应用名称或介绍搜索关键词'
-    })
+    }),
+    sort: z.enum(AppListSortEnum).optional().meta({
+      example: AppListSortEnum.updateTimeDesc,
+      description: '列表排序。缺省按最近修改倒序'
+    }),
+    tmbIds: z
+      .array(ObjectIdSchema)
+      .optional()
+      .meta({
+        example: ['68ad85a7463006c963799a06'],
+        description: '按创建者筛选。缺省不过滤；空数组表示无选中创建者，返回空列表'
+      })
   })
   .meta({
     example: {
       parentId: '68ad85a7463006c963799a05',
       type: AppTypeEnum.workflow,
-      searchKey: '客服'
+      searchKey: '客服',
+      sort: AppListSortEnum.updateTimeDesc,
+      tmbIds: ['68ad85a7463006c963799a06']
     }
   });
 export type ListAppBodyType = z.infer<typeof ListAppBodySchema>;

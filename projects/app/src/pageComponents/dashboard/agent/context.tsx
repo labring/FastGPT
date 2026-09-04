@@ -14,8 +14,22 @@ import { type UpdateAppBodyType } from '@fastgpt/global/openapi/core/app/common/
 import dynamic from 'next/dynamic';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useTranslation } from 'next-i18next';
-import { resolveDashboardAppListTypes } from './utils/appListTypes';
+import { usePersistedFilters } from '@fastgpt/web/hooks/usePersistedFilters';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { buildFilterStorageKey } from '@/web/common/filter/storageKey';
+import { getTeamMembers } from '@/web/support/user/team/api';
+import { getDashboardAppListScene, resolveDashboardAppListTypes } from './utils/appListTypes';
+import {
+  AppListFiltersStoreSchema,
+  defaultAppListFilters,
+  defaultAppListFiltersStore,
+  resolveSceneListType,
+  toListTmbIds,
+  type AppListFilterType,
+  type AppListFilterScene
+} from './filters/utils';
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
 type AppListContextType = {
@@ -31,6 +45,10 @@ type AppListContextType = {
   refetchFolderDetail: () => Promise<AppDetailType | null>;
   searchKey: string;
   setSearchKey: React.Dispatch<React.SetStateAction<string>>;
+  listFilters: AppListFilterType;
+  setListFilters: (
+    next: AppListFilterType | ((prev: AppListFilterType) => AppListFilterType)
+  ) => void;
 };
 
 export const AppListContext = createContext<AppListContextType>({
@@ -55,34 +73,105 @@ export const AppListContext = createContext<AppListContextType>({
   searchKey: '',
   setSearchKey: function (value: React.SetStateAction<string>): void {
     throw new Error('Function not implemented.');
+  },
+  listFilters: defaultAppListFilters,
+  setListFilters: function (): void {
+    throw new Error('Function not implemented.');
   }
 });
 
 const AppListContextProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { parentId = null, type = 'all' } = router.query as {
+  const { parentId = null, type: queryType = 'all' } = router.query as {
     parentId?: string | null;
-    type: AppTypeEnum;
+    type?: AppTypeEnum | 'all';
   };
   const [searchKey, setSearchKey] = useState('');
+  const { userInfo } = useUserStore();
+  const { isPc } = useSystem();
+  const { feConfigs, setLastAppListRouteType } = useSystemStore();
+  const listScene = getDashboardAppListScene(router.pathname);
+  const isAgentPage = listScene === 'agent';
+  const listFilterScene: AppListFilterScene | undefined =
+    listScene === 'agent' || listScene === 'tool' ? listScene : undefined;
+  const persistListFilters = !!listFilterScene;
+  const teamId = userInfo?.team.teamId;
+  const filterKey = persistListFilters && teamId ? buildFilterStorageKey({ teamId }) : '';
+  const [filterStore, setFilterStore] = usePersistedFilters({
+    key: filterKey,
+    schema: AppListFiltersStoreSchema,
+    defaultValue: defaultAppListFiltersStore
+  });
+  const listFilters =
+    persistListFilters && listFilterScene ? filterStore[listFilterScene] : defaultAppListFilters;
+  const setListFilters = useCallback(
+    (next: AppListFilterType | ((prev: AppListFilterType) => AppListFilterType)) => {
+      if (!listFilterScene) return;
+      setFilterStore((prev) => ({
+        ...prev,
+        [listFilterScene]: typeof next === 'function' ? next(prev[listFilterScene]) : next
+      }));
+    },
+    [listFilterScene, setFilterStore]
+  );
+  // Agent / Tool 读写同一份团队筛选的二级字段；聊天页继续读 URL type。
+  // 移动端工具栏不展示类型/创建者/排序，请求也不能继续带持久化值，否则会出现看不见的空列表。
+  const applyToolbarFilters = isPc && persistListFilters;
+  const appType =
+    persistListFilters && listFilterScene
+      ? applyToolbarFilters
+        ? resolveSceneListType(listFilters.type, listFilterScene)
+        : 'all'
+      : queryType;
+  const sort = applyToolbarFilters ? listFilters.sort : undefined;
+  const persistedTmbIds =
+    applyToolbarFilters && feConfigs.isPlus ? toListTmbIds(listFilters.creator) : undefined;
 
   const {
     data = [],
     runAsync: loadMyApps,
     loading: isFetchingApps
   } = useRequest(
-    () => {
+    async () => {
       const formatType = resolveDashboardAppListTypes({
         pathname: router.pathname,
-        type
+        type: appType
       });
+      const fetchApps = (tmbIds?: string[]) =>
+        getMyApps({
+          parentId,
+          type: formatType,
+          searchKey,
+          ...(sort ? { sort } : {}),
+          ...(tmbIds !== undefined ? { tmbIds } : {})
+        });
 
-      return getMyApps({ parentId, type: formatType, searchKey });
+      // 已选创建者先按当前活跃成员校验，避免离职/失效 ID 把列表一直筛空。
+      if (!persistedTmbIds?.length) {
+        return fetchApps(persistedTmbIds);
+      }
+
+      const selectedMembers = await getTeamMembers({
+        tmbIds: persistedTmbIds,
+        status: 'active',
+        offset: 0,
+        pageSize: persistedTmbIds.length
+      });
+      return fetchApps(selectedMembers.list.map((item) => String(item.tmbId)));
     },
     {
       manual: false,
-      refreshDeps: [searchKey, parentId, type],
+      refreshDeps: [
+        searchKey,
+        parentId,
+        appType,
+        sort,
+        persistedTmbIds === undefined ? 'none' : persistedTmbIds.join(','),
+        router.pathname,
+        feConfigs.isPlus,
+        isPc
+      ],
       throttleWait: 500,
       refreshOnWindowFocus: true
     }
@@ -125,8 +214,7 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
 
   const getAppFolderList = useCallback(
     ({ parentId }: GetResourceFolderListProps) => {
-      const isAgent = router.pathname.includes('/agent');
-      const folderType = isAgent ? AppTypeEnum.folder : AppTypeEnum.toolFolder;
+      const folderType = isAgentPage ? AppTypeEnum.folder : AppTypeEnum.toolFolder;
 
       return getMyApps({
         parentId,
@@ -140,17 +228,16 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
           }))
       );
     },
-    [router.pathname]
+    [isAgentPage]
   );
 
-  const { setLastAppListRouteType } = useSystemStore();
   useEffect(() => {
-    setLastAppListRouteType(type);
-  }, [setLastAppListRouteType, type]);
+    setLastAppListRouteType(appType);
+  }, [appType, setLastAppListRouteType]);
 
   const contextValue: AppListContextType = {
     parentId,
-    appType: type,
+    appType,
     myApps: data,
     loadMyApps,
     refetchFolderDetail,
@@ -160,7 +247,9 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     onUpdateApp,
     setMoveAppId,
     searchKey,
-    setSearchKey
+    setSearchKey,
+    listFilters,
+    setListFilters
   };
   return (
     <AppListContext.Provider value={contextValue}>

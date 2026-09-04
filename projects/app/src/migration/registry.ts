@@ -12,6 +12,7 @@ import { backfillModelPermissionReferences } from './tasks/20260903_backfill_mod
 import { backfillDatasetModelReferences } from './tasks/20260903_backfill_dataset_model_references';
 import { backfillEvaluationModelReferences } from './tasks/20260903_backfill_evaluation_model_references';
 import { backfillAppModelReferences } from './tasks/20260903_backfill_app_model_references';
+import { backfillAppCreateTime } from './tasks/4170/20260903_backfill_app_create_time';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -207,6 +208,24 @@ export const systemMigrations = [
     blockStartup: false,
     onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillAppModelReferences
+  },
+  {
+    id: '20260903_backfill_app_create_time',
+    version: '4.17.0',
+    nameKey: i18nT('system_migration:migrations.20260903_backfill_app_create_time.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20260903_backfill_app_create_time.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20260903_backfill_app_create_time.result'),
+    progressSteps: [
+      {
+        key: 'apps',
+        labelKey: i18nT('system_migration:migrations.20260903_backfill_app_create_time.apps')
+      }
+    ],
+    blockStartup: false,
+    onFailure: SystemMigrationFailurePolicyEnum.continue,
+    run: backfillAppCreateTime
   }
 ] as const satisfies readonly SystemMigration[];
 

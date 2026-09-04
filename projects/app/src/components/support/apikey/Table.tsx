@@ -42,7 +42,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import MySelect from '@fastgpt/web/components/common/MySelect';
+import { SingleSelectFilter } from '@fastgpt/web/components/common/TagFilter';
 import TagDisplayList, { type ApiKeyDisplayTag } from './TagDisplayList';
 import {
   accountContentScrollStyles,
@@ -547,33 +547,13 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
               onManage={() => setShowTagManage(true)}
               onCreateTag={onCreateTagFromSelect}
               isLoading={isGettingTags}
-              w={['100%', '220px']}
               popoverW="220px"
             />
-            <MySelect<ApiKeyListSortByType>
-              width={['100%', '200px']}
-              h={'36px'}
+            <SingleSelectFilter
+              title={t('apikey:sort_label')}
               value={effectiveSortBy}
-              list={sortOptions}
-              menuPlacement={'bottom-end'}
+              options={sortOptions}
               onChange={setSortBy}
-              valueLabel={
-                <Flex alignItems={'center'} w={'100%'} minW={0}>
-                  <Box flexShrink={0} color={'myGray.600'}>
-                    {t('apikey:sort_label')}
-                  </Box>
-                  <Box mx={3} w={'1px'} h={'16px'} bg={'myGray.200'} />
-                  <Box
-                    flex={1}
-                    color={'myGray.900'}
-                    overflow={'hidden'}
-                    textOverflow={'ellipsis'}
-                    whiteSpace={'nowrap'}
-                  >
-                    {sortOptions.find((item) => item.value === effectiveSortBy)?.label}
-                  </Box>
-                </Flex>
-              }
             />
           </Flex>
           <Flex

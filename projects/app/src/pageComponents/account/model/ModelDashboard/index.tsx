@@ -9,8 +9,7 @@ import dayjs from 'dayjs';
 import DateRangePicker, {
   type DateRangeType
 } from '@fastgpt/web/components/common/DateRangePicker';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import MySelect from '@fastgpt/web/components/common/MySelect';
+import { SingleSelectFilter } from '@fastgpt/web/components/common/TagFilter';
 import { getChannelList, getDashboardV2 } from '@/web/core/ai/channel';
 import AreaChartComponent from '@fastgpt/web/components/common/charts/AreaChartComponent';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
@@ -92,19 +91,11 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   // Fetch channel list with "All" option
   const { data: channelList = [] } = useRequest(
     async () => {
-      const res = await getChannelList().then((res) =>
-        res.map((item) => ({
-          label: item.name,
-          value: `${item.id}`
-        }))
-      );
-      return [
-        {
-          label: t('common:All'),
-          value: ''
-        },
-        ...res
-      ];
+      const res = (await getChannelList()).map((item) => ({
+        label: item.name,
+        value: `${item.id}`
+      }));
+      return [{ label: t('common:All'), value: '' }, ...res];
     },
     {
       manual: false
@@ -132,19 +123,13 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
         const provider = getModelProvider(item.provider, i18n.language);
         return {
           order: provider.order,
-          icon: provider.avatar,
+          avatar: provider.avatar,
           label: item.model,
           value: item.model
         };
       })
       .sort((a, b) => a.order - b.order);
-    return [
-      {
-        label: t('common:All'),
-        value: ''
-      },
-      ...res
-    ];
+    return [{ label: t('common:All'), value: '' }, ...res];
   }, [getModelProvider, i18n.language, systemModelList, t]);
   // Model price map
   const modelPriceMap = useMemo(() => {
@@ -409,66 +394,37 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
           alignItems={['stretch', 'flex-start']}
           gap={[3, 4]}
         >
-          <Flex w={['100%', 'auto']} flexShrink={0} alignItems={'center'} gap={2}>
-            <FormLabel w={['84px', 'auto']} flexShrink={0}>
-              {t('common:user.Time')}
-            </FormLabel>
-            <Box flex={1} minW={0}>
-              <DateRangePicker
-                w={['100%', 'auto']}
-                bg={'myGray.25'}
-                defaultDate={filterProps.dateRange}
-                dateRange={filterProps.dateRange}
-                onSuccess={handleDateRangeChange}
-              />
-            </Box>
-          </Flex>
-          <Flex w={['100%', 'auto']} flexShrink={0} alignItems={'center'} gap={2}>
-            <FormLabel w={['84px', 'auto']} flexShrink={0}>
-              {t('config_model:channel_name')}
-            </FormLabel>
-            <Box flex={['1 1 0', '0 0 160px']} minW={0} w={['auto', '160px']}>
-              <MySelect<string>
-                bg={'myGray.25'}
-                isSearch
-                list={channelList}
-                placeholder={t('config_model:select_channel')}
-                value={filterProps.channelId}
-                onChange={(val) => setFilterProps({ ...filterProps, channelId: val })}
-              />
-            </Box>
-          </Flex>
-          <Flex w={['100%', 'auto']} flexShrink={0} alignItems={'center'} gap={2}>
-            <FormLabel w={['84px', 'auto']} flexShrink={0}>
-              {t('config_model:model_name')}
-            </FormLabel>
-            <Box flex={['1 1 0', '0 0 160px']} minW={0} w={['auto', '160px']}>
-              <MySelect<string>
-                bg={'myGray.25'}
-                isSearch
-                list={modelList}
-                placeholder={t('config_model:select_model')}
-                value={filterProps.model}
-                onChange={(val) => setFilterProps({ ...filterProps, model: val })}
-              />
-            </Box>
-          </Flex>
+          <DateRangePicker
+            formLabel={t('common:user.Time')}
+            w={'fit-content'}
+            flexShrink={0}
+            defaultDate={filterProps.dateRange}
+            dateRange={filterProps.dateRange}
+            onSuccess={handleDateRangeChange}
+          />
+          <SingleSelectFilter
+            title={t('config_model:channel_name')}
+            value={filterProps.channelId ?? ''}
+            options={channelList}
+            onChange={(val) => setFilterProps({ ...filterProps, channelId: val || undefined })}
+            showSearch
+          />
+          <SingleSelectFilter
+            title={t('config_model:model_name')}
+            value={filterProps.model ?? ''}
+            options={modelList}
+            onChange={(val) => setFilterProps({ ...filterProps, model: val || undefined })}
+            showSearch
+          />
           {viewMode === 'chart' && (
-            <Flex w={['100%', 'auto']} flexShrink={0} alignItems={'center'} gap={2}>
-              <FormLabel w={['84px', 'auto']} flexShrink={0}>
-                {t('config_model:timespan_label')}
-              </FormLabel>
-              <Box flex={['1 1 0', '0 0 160px']} minW={0} w={['auto', '160px']}>
-                <MySelect<'minute' | 'hour' | 'day'>
-                  bg={'myGray.25'}
-                  list={timespanOptions}
-                  value={filterProps.timespan}
-                  onChange={(val) => {
-                    setFilterProps({ ...filterProps, timespan: val });
-                  }}
-                />
-              </Box>
-            </Flex>
+            <SingleSelectFilter
+              title={t('config_model:timespan_label')}
+              value={filterProps.timespan}
+              options={timespanOptions}
+              onChange={(val) => {
+                setFilterProps({ ...filterProps, timespan: val });
+              }}
+            />
           )}
         </Flex>
 

@@ -370,6 +370,10 @@ describe('system migration runner', () => {
         expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
           SystemMigrationStatusEnum.failed
         );
+        // 测试环境不启用 Mongo 事务，需等状态和独立错误明细都完成写入。
+        await expect(getMigrationFailedRecordCounts([migration.id])).resolves.toEqual([
+          { migrationId: migration.id, stageKey: 'migrating', count: 1 }
+        ]);
       });
 
       const state = await MongoSystemMigrationState.findById(migration.id).lean();
@@ -379,9 +383,6 @@ describe('system migration runner', () => {
       });
       expect(state?.lastError).not.toHaveProperty('key');
       expect(state?.lastError).not.toHaveProperty('params');
-      await expect(getMigrationFailedRecordCounts([migration.id])).resolves.toEqual([
-        { migrationId: migration.id, stageKey: 'migrating', count: 1 }
-      ]);
       await expect(getMigrationFailedRecords(migration.id)).resolves.toMatchObject([
         {
           stageKey: 'migrating',

@@ -35,6 +35,8 @@ import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { createAppTypeMap } from '@/pageComponents/app/constants';
+import { getDashboardAppListScene } from './utils/appListTypes';
+import { hasAppListActiveFilter } from './filters/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
@@ -42,6 +44,16 @@ import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
+
+/** 未指定类型时，Agent 页默认建工作流，其余页面默认建工作流工具。 */
+const resolveCreateAppType = (appType: AppTypeEnum | 'all', pathname: string) => {
+  if (appType !== 'all' && appType in createAppTypeMap) {
+    return createAppTypeMap[appType as keyof typeof createAppTypeMap].type;
+  }
+  return getDashboardAppListScene(pathname) === 'agent'
+    ? AppTypeEnum.workflow
+    : AppTypeEnum.workflowTool;
+};
 
 const List = () => {
   const { t } = useTranslation();
@@ -66,12 +78,19 @@ const List = () => {
     setMoveAppId,
     folderDetail,
     searchKey,
-    setSearchKey
+    setSearchKey,
+    listFilters
   } = useContextSelector(AppListContext, (v) => v);
 
   const hasCreatePer = folderDetail
     ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
     : userInfo?.team.permission.hasAppCreatePer;
+  const hasActiveFilter = hasAppListActiveFilter({
+    searchKey,
+    type: appType,
+    creatorMode: listFilters.creator.mode,
+    applyToolbarFilters: isPc
+  });
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
   const [editPerAppId, setEditPerAppId] = useState<string>();
@@ -415,7 +434,7 @@ const List = () => {
   return (
     <>
       {myApps.length === 0 && !folderDetail ? (
-        searchKey ? (
+        hasActiveFilter ? (
           <EmptyTip />
         ) : isPc && hasCreatePer ? (
           <CreateButton appType={appType} />
@@ -503,12 +522,7 @@ const CreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   const [isHoverCreateButton, setIsHoverCreateButton] = useState(false);
   const router = useRouter();
   const parentId = router.query.parentId;
-  const createAppType =
-    appType !== 'all' && appType in createAppTypeMap
-      ? createAppTypeMap[appType as keyof typeof createAppTypeMap].type
-      : router.pathname.includes('/agent')
-        ? AppTypeEnum.workflow
-        : AppTypeEnum.workflowTool;
+  const createAppType = resolveCreateAppType(appType, router.pathname);
   const isToolType = ToolTypeList.includes(createAppType);
 
   return (
@@ -577,12 +591,7 @@ const CreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
 const ListCreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   const router = useRouter();
   const parentId = router.query.parentId;
-  const createAppType =
-    appType !== 'all' && appType in createAppTypeMap
-      ? createAppTypeMap[appType as keyof typeof createAppTypeMap].type
-      : router.pathname.includes('/agent')
-        ? AppTypeEnum.workflow
-        : AppTypeEnum.workflowTool;
+  const createAppType = resolveCreateAppType(appType, router.pathname);
 
   return (
     <ListCreateCard

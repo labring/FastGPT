@@ -1,6 +1,21 @@
 import dayjs from 'dayjs';
 import { AppLogTimespanEnum } from './constants';
 
+/**
+ * 用户筛选「未选择」会同时传两个空数组。两者都省略才是不过滤。
+ */
+export const isUnselectedLogUserFilter = (tmbIds?: string[], outLinkUids?: string[]) =>
+  Array.isArray(tmbIds) &&
+  Array.isArray(outLinkUids) &&
+  tmbIds.length === 0 &&
+  outLinkUids.length === 0;
+
+/**
+ * 来源筛选「未选择」传空数组。省略才是不过滤，不能把空数组当成全部来源。
+ */
+export const isUnselectedLogSourceFilter = (source?: string[]) =>
+  Array.isArray(source) && source.length === 0;
+
 export const formatDateByTimespan = (timestamp: number, timespan: AppLogTimespanEnum) => {
   const date = new Date(timestamp);
 

@@ -32,6 +32,7 @@ import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { AppVersionCollectionName } from '@fastgpt/service/core/app/version/schema';
 import { ExportChatLogsBodySchema } from '@fastgpt/global/openapi/core/app/log/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { isUnselectedLogUserFilter } from '@fastgpt/global/core/app/logs/utils';
 const logger = getLogger(LogCategories.MODULE.APP.LOGS);
 
 const appChatSourceMatch = {
@@ -83,6 +84,28 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const variables = (chatConfig.variables || []).filter(
     (item) => item.type !== VariableInputEnum.password
   );
+  const csvHeader = `\uFEFF${title},${variables.map((variable) => formatJsonString(variable.label)).join(',')}`;
+  const logExportAudit = () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.EXPORT_APP_CHAT_LOG,
+      params: {
+        appName: app.name,
+        appType: getI18nAppType(app.type)
+      }
+    });
+  };
+
+  // 用户未选择时鉴权后直接给空 CSV，避免再跑成员聚合和聊天日志 pipeline。
+  if (isUnselectedLogUserFilter(tmbIds, outLinkUids)) {
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8;');
+    res.setHeader('Content-Disposition', 'attachment; filename=usage.csv; ');
+    res.write(csvHeader);
+    res.end();
+    logExportAudit();
+    return;
+  }
 
   // Get members
   const teamMemberWithContact = await MongoTeamMember.aggregate([
@@ -432,9 +455,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     readStream: cursor
   });
 
-  write(
-    `\uFEFF${title},${variables.map((variable) => formatJsonString(variable.label)).join(',')}`
-  );
+  write(csvHeader);
 
   cursor.on('data', (doc) => {
     const createdTime = doc.createTime
@@ -520,17 +541,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     res.end();
   });
 
-  (async () => {
-    addAuditLog({
-      tmbId,
-      teamId,
-      event: AuditEventEnum.EXPORT_APP_CHAT_LOG,
-      params: {
-        appName: app.name,
-        appType: getI18nAppType(app.type)
-      }
-    });
-  })();
+  logExportAudit();
 }
 
 export default NextAPI(handler);
