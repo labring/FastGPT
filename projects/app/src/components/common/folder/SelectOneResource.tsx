@@ -151,6 +151,7 @@ const SelectOneResource = ({
               key={item.id}
               alignItems={'center'}
               h={'36px'}
+              flexShrink={0}
               px={3}
               borderRadius={'md'}
               cursor={disabled ? 'not-allowed' : 'pointer'}
