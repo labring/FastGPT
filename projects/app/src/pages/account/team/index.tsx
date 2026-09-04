@@ -23,9 +23,6 @@ const PermissionManage = dynamic(
 const AuditLog = dynamic(() => import('@/pageComponents/account/team/Audit/index'));
 const GroupManage = dynamic(() => import('@/pageComponents/account/team/GroupManage/index'));
 const OrgManage = dynamic(() => import('@/pageComponents/account/team/OrgManage/index'));
-const HandleInviteModal = dynamic(
-  () => import('@/pageComponents/account/team/Invite/HandleInviteModal')
-);
 
 export enum TeamTabEnum {
   member = 'member',
@@ -37,15 +34,6 @@ export enum TeamTabEnum {
 
 const Team = () => {
   const router = useRouter();
-
-  const invitelinkid = useMemo(() => {
-    const _id = router.query.invitelinkid;
-    if (!_id && typeof _id !== 'string') {
-      return '';
-    } else {
-      return _id as string;
-    }
-  }, [router.query.invitelinkid]);
 
   const { teamTab = TeamTabEnum.member } = router.query as { teamTab: `${TeamTabEnum}` };
 
@@ -176,7 +164,6 @@ const Team = () => {
           {teamTab === TeamTabEnum.audit && <AuditLog Tabs={Tabs} />}
         </Box>
       </Flex>
-      {invitelinkid && <HandleInviteModal invitelinkid={invitelinkid} />}
     </AccountContainer>
   );
 };

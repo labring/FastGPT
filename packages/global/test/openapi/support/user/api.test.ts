@@ -36,7 +36,10 @@ import {
   UpdateTeamCollaboratorBodySchema,
   UpdateTeamCollaboratorOneBodySchema
 } from '@fastgpt/global/openapi/support/user/team/collaborator/api';
-import { GetInvitationLinkInfoResponseSchema } from '@fastgpt/global/openapi/support/user/team/invitationLink/api';
+import {
+  AcceptInvitationWithMemberNameBodySchema,
+  GetInvitationLinkInfoResponseSchema
+} from '@fastgpt/global/openapi/support/user/team/invitationLink/api';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { InformLevelEnum } from '@fastgpt/global/support/user/inform/constants';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
@@ -79,8 +82,12 @@ describe('support user OpenAPI contracts', () => {
       openAPIDocument.paths?.['/proApi/support/user/team/collaborator/updateOne']?.put?.tags
     ).toEqual([DevApiTagsMap.teamPermission]);
     expect(
-      openAPIDocument.paths?.['/proApi/support/user/team/invitationLink/accept']?.post?.tags
+      openAPIDocument.paths?.['/proApi/support/user/team/invitationLink/acceptWithMemberName']?.post
+        ?.tags
     ).toEqual([DevApiTagsMap.teamInvitationLink]);
+    expect(
+      openAPIDocument.paths?.['/proApi/support/user/team/invitationLink/accept']
+    ).toBeUndefined();
     expect(
       openAPIDocument.paths?.['/proApi/support/user/team/invitationLink/create']?.post?.tags
     ).toEqual([DevApiTagsMap.teamInvitationLink]);
@@ -334,8 +341,34 @@ describe('support user OpenAPI contracts', () => {
     expect(UserSyncResponseSchema.parse(undefined)).toBeUndefined();
   });
 
-  it('allows empty invitation details for existing team members', () => {
-    expect(GetInvitationLinkInfoResponseSchema.parse(undefined)).toBeUndefined();
+  it('parses invitation details and requires a valid member name when accepting', () => {
+    expect(
+      GetInvitationLinkInfoResponseSchema.parse({
+        _id: objectId,
+        linkId: 'invite-link-id',
+        teamId: secondObjectId,
+        expires: '2026-08-26T00:00:00.000Z',
+        description: '邀请加入团队',
+        creatorUsername: 'root',
+        members: [],
+        teamAvatar: null,
+        teamName: 'FastGPT 团队',
+        alreadyJoined: true
+      })
+    ).toMatchObject({ alreadyJoined: true, creatorUsername: 'root' });
+
+    expect(
+      AcceptInvitationWithMemberNameBodySchema.parse({
+        linkId: 'invite-link-id',
+        memberName: '  张三  '
+      })
+    ).toEqual({ linkId: 'invite-link-id', memberName: '张三' });
+    expect(
+      AcceptInvitationWithMemberNameBodySchema.safeParse({
+        linkId: 'invite-link-id',
+        memberName: 'a'.repeat(21)
+      }).success
+    ).toBe(false);
   });
 
   it('parses team management list and write contracts', () => {

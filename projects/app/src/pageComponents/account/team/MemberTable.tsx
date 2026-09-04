@@ -396,7 +396,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                 ))}
               </Tbody>
             </Table>
-            <EditMemberNameModal size="sm" />
+            <EditMemberNameModal size="sm" maxLength={20} />
           </TableContainer>
         </MemberScrollData>
       </MyBox>

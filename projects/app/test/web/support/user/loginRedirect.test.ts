@@ -7,6 +7,10 @@ import {
 import { restoreWorkflowLocalDraftAfterLogin } from '../../../../src/web/core/workflow/localDraft/useWorkflowLocalDraftRestore';
 import { setCurrentAuthTmbId } from '../../../../src/web/support/user/currentAuthTmbId';
 import { getAuthLoginRedirectPath } from '../../../../src/web/support/user/loginRedirect/url';
+import {
+  clearInviteLinkFromRoute,
+  getInviteLinkIdFromRoute
+} from '../../../../src/web/support/user/loginRedirect/invitation';
 import type { UserType } from '@fastgpt/global/support/user/type';
 
 vi.mock('@/web/core/app/api/version', () => ({
@@ -155,6 +159,20 @@ describe('login redirect helpers', () => {
     );
     expect(readWorkflowLocalDraft()).toBeNull();
     expect(route).toBe('/app/detail?appId=app-1');
+  });
+
+  it('should parse both invitation query spellings and clear only invitation context', () => {
+    const route = '/account/team?foo=bar&inviteLinkId=invite-1#members';
+
+    expect(getInviteLinkIdFromRoute(route)).toBe('invite-1');
+    expect(clearInviteLinkFromRoute(route)).toBe('/account/team?foo=bar#members');
+    expect(getInviteLinkIdFromRoute('/account/team?invitelinkid=invite-2')).toBe('invite-2');
+    expect(
+      getInviteLinkIdFromRoute('https://fastgpt.example.com/account/team?inviteLinkId=invite-3')
+    ).toBe('invite-3');
+    expect(
+      clearInviteLinkFromRoute('/account/team?invitelinkid=invite-2&inviteLinkId=invite-3')
+    ).toBe('/account/team');
   });
 
   it('should restore draft even when login fallback route is not the workflow detail page', async () => {

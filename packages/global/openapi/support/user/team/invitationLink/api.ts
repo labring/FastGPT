@@ -1,5 +1,6 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../../common/type/mongo';
+import { TeamMemberNameSchema } from '../../../../../support/user/team/memberName';
 
 const InvitationLinkIdSchema = z.string().min(1).meta({
   example: 'V1StGXR8_Z5jdHi6B-myT',
@@ -44,23 +45,35 @@ const InvitationLinkBaseShape = {
     example: '2026-08-26T00:00:00.000Z',
     description: '邀请链接过期时间'
   }),
-  description: z.string().meta({ description: '邀请链接描述' })
+  description: z.string().meta({ description: '邀请链接描述' }),
+  creatorUsername: z.string().optional().meta({ description: '邀请链接创建者用户名' })
 };
 
 /* ============================================================================
- * API: 接受团队邀请链接
- * Route: POST /api/proApi/support/user/team/invitationLink/accept
+ * API: 接受团队邀请链接并设置成员名
+ * Route: POST /api/proApi/support/user/team/invitationLink/acceptWithMemberName
  * Method: POST
- * Description: 当前用户接受邀请链接并加入对应团队。
+ * Description: 当前用户设置目标团队成员名并接受邀请链接。
  * Tags: ['邀请链接管理', '团队管理', 'Write']
  * ============================================================================ */
 
-export const AcceptInvitationLinkBodySchema = z
+export const AcceptInvitationWithMemberNameBodySchema = z
   .object({
-    linkId: InvitationLinkIdSchema
+    linkId: InvitationLinkIdSchema,
+    memberName: TeamMemberNameSchema.meta({ description: '目标团队成员名', example: '张三' })
   })
-  .meta({ example: { linkId: 'V1StGXR8_Z5jdHi6B-myT' } });
-export type AcceptInvitationLinkBodyType = z.infer<typeof AcceptInvitationLinkBodySchema>;
+  .meta({ example: { linkId: 'V1StGXR8_Z5jdHi6B-myT', memberName: '张三' } });
+export type AcceptInvitationWithMemberNameBodyType = z.infer<
+  typeof AcceptInvitationWithMemberNameBodySchema
+>;
+
+export const AcceptInvitationWithMemberNameResponseSchema = z.object({
+  teamId: ObjectIdSchema.meta({ description: '目标团队 ID' }),
+  tmbId: ObjectIdSchema.meta({ description: '目标团队成员 ID' })
+});
+export type AcceptInvitationWithMemberNameResponseType = z.infer<
+  typeof AcceptInvitationWithMemberNameResponseSchema
+>;
 
 /* ============================================================================
  * API: 创建团队邀请链接
@@ -115,7 +128,7 @@ export type ForbidInvitationLinkBodyType = z.infer<typeof ForbidInvitationLinkBo
  * API: 获取团队邀请链接信息
  * Route: GET /api/proApi/support/user/team/invitationLink/info
  * Method: GET
- * Description: 获取邀请链接状态、所属团队和已加入成员信息。
+ * Description: 获取有效邀请链接的状态、所属团队和当前用户加入状态。
  * Tags: ['邀请链接管理', '团队管理', 'Read']
  * ============================================================================ */
 
@@ -129,11 +142,10 @@ export const GetInvitationLinkInfoResponseSchema = z
     ...InvitationLinkBaseShape,
     members: z.array(ObjectIdSchema).meta({ description: '已通过邀请链接加入的成员 ID 列表' }),
     teamAvatar: z.string().nullish().meta({ description: '团队头像' }),
-    teamName: z.string().meta({ description: '团队名称' })
+    teamName: z.string().meta({ description: '团队名称' }),
+    alreadyJoined: z.boolean().meta({ description: '当前用户是否已经加入该团队' })
   })
-  // 当前用户已经是团队成员时，接口沿用历史行为返回空数据。
-  .optional()
-  .meta({ description: '邀请链接详情；当前用户已是团队成员时无返回数据' });
+  .meta({ description: '有效邀请链接详情' });
 export type GetInvitationLinkInfoResponseType = z.infer<typeof GetInvitationLinkInfoResponseSchema>;
 
 /* ============================================================================
