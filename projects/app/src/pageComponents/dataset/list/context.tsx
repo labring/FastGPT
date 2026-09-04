@@ -2,35 +2,39 @@
 import {
   getDatasetPaths,
   putDatasetById,
-  getDatasets,
+  getDatasetsV2,
   getDatasetById,
   delDatasetById
 } from '@/web/core/dataset/api';
 import {
-  type GetResourceFolderListProps,
   type ParentIdType,
   type ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
+import type { SelectOneResourceServer } from '@/components/common/folder/SelectOneResource';
 import { normalizeParentId } from '@fastgpt/global/common/parentFolder/depth';
 import { useRouter } from 'next/router';
 import React, { useCallback, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useScrollPagination, type ScrollListType } from '@fastgpt/web/hooks/useScrollPagination';
 import { type UpdateDatasetBody } from '@fastgpt/global/openapi/core/dataset/api';
 import dynamic from 'next/dynamic';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 import { type DatasetItemType, type DatasetListItemType } from '@fastgpt/global/core/dataset/type';
 import { type EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import { useTranslation } from 'next-i18next';
+import { useResponsiveGridPageSize } from '@fastgpt/web/hooks/useResponsiveGridPageSize';
 
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
 export type DatasetContextType = {
   myDatasets: DatasetListItemType[];
-  loadMyDatasets: () => Promise<DatasetListItemType[]>;
+  loadMyDatasets: () => Promise<void>;
   refetchPaths: () => void;
   refetchFolderDetail: () => Promise<DatasetItemType | undefined>;
   isFetchingDatasets: boolean;
+  ScrollData: ScrollListType;
   setMoveDatasetId: (id: string) => void;
   paths: ParentTreePathItemType[];
   folderDetail?: DatasetItemType;
@@ -40,10 +44,13 @@ export type DatasetContextType = {
   onUpdateDataset: (data: UpdateDatasetBody) => Promise<void>;
   searchKey: string;
   setSearchKey: React.Dispatch<React.SetStateAction<string>>;
+  columnCount: number;
+  pageSize: number;
 };
 
 export const DatasetsContext = createContext<DatasetContextType>({
   isFetchingDatasets: false,
+  ScrollData: () => <></>,
   setMoveDatasetId: () => {},
   refetchPaths: () => {},
   paths: [],
@@ -51,7 +58,7 @@ export const DatasetsContext = createContext<DatasetContextType>({
   editedDataset: {} as any,
   setEditedDataset: () => {},
   onDelDataset: () => Promise.resolve(),
-  loadMyDatasets: function (): Promise<DatasetListItemType[]> {
+  loadMyDatasets: function (): Promise<void> {
     throw new Error('Function not implemented.');
   },
   refetchFolderDetail: function (): Promise<DatasetItemType | undefined> {
@@ -64,7 +71,9 @@ export const DatasetsContext = createContext<DatasetContextType>({
   searchKey: '',
   setSearchKey: function (value: React.SetStateAction<string>): void {
     throw new Error('Function not implemented.');
-  }
+  },
+  columnCount: 1,
+  pageSize: 50
 });
 
 function DatasetContextProvider({ children }: { children: React.ReactNode }) {
@@ -73,23 +82,31 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
   const [moveDatasetId, setMoveDatasetId] = useState<string>();
   const [searchKey, setSearchKey] = useState('');
   const parentId = normalizeParentId(router.query.parentId);
+  const { columnCount, pageSize } = useResponsiveGridPageSize(
+    parentId ? { base: 1, sm: 2, md: 2, lg: 3 } : { base: 1, sm: 2, md: 3, lg: 3, xl: 4 }
+  );
 
   const {
     data: myDatasets = [],
-    runAsync: loadMyDatasets,
-    loading: isFetchingDatasets
-  } = useRequest(
-    () =>
-      getDatasets({
+    fetchData,
+    ScrollData,
+    isLoading: isFetchingDatasets
+  } = useScrollPagination(
+    ({ offset = 0, pageSize = 50 }) =>
+      getDatasetsV2({
         searchKey,
-        parentId
+        parentId,
+        offset,
+        pageSize
       }),
     {
-      manual: false,
-      refreshDeps: [parentId, searchKey],
-      throttleWait: 300
+      pageSize,
+      refreshDeps: [parentId, searchKey, pageSize],
+      throttleWait: 300,
+      refreshOnWindowFocus: false
     }
   );
+  const loadMyDatasets = useCallback(() => fetchData({ init: true }), [fetchData]);
 
   const { data: folderDetail, runAsync: refetchFolderDetail } = useRequest(
     () => (parentId ? getDatasetById(parentId) : Promise.resolve(undefined)),
@@ -125,19 +142,28 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     [moveDatasetId, onUpdateDataset]
   );
 
-  const getDatasetFolderList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
-    return (
-      await getDatasets({
-        parentId,
-        type: DatasetTypeEnum.folder
-      })
-    )
-      .filter((item) => item.permission.hasManagePer)
-      .map((item) => ({
-        id: item._id,
-        name: item.name
-      }));
-  }, []);
+  const getDatasetFolderList = useCallback<SelectOneResourceServer>(
+    ({ parentId, offset, pageSize }, cancelToken) =>
+      getDatasetsV2(
+        {
+          parentId,
+          type: DatasetTypeEnum.folder,
+          offset,
+          pageSize
+        },
+        cancelToken
+      ).then(({ list, total }) => ({
+        total,
+        list: list.map((item) => ({
+          id: item._id,
+          name: item.name,
+          avatar: FolderImgUrl,
+          isFolder: true,
+          disabled: item._id === moveDatasetId || !item.permission.hasManagePer
+        }))
+      })),
+    [moveDatasetId]
+  );
 
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
 
@@ -148,6 +174,7 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
 
   const contextValue = {
     isFetchingDatasets,
+    ScrollData,
     setMoveDatasetId,
     paths,
     refetchPaths,
@@ -160,7 +187,9 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     myDatasets,
     loadMyDatasets,
     searchKey,
-    setSearchKey
+    setSearchKey,
+    columnCount,
+    pageSize
   };
 
   return (

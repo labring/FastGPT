@@ -14,6 +14,7 @@ import {
   CollaboratorUpdateListSchema,
   ShowUsernameQuerySchema
 } from '../../../support/permission/collaborator.schema';
+import { PaginationResponseSchema, PaginationSchema } from '../../api';
 
 /* ============================================================================
  * API: 创建知识库
@@ -201,9 +202,22 @@ export const GetDatasetListBodySchema = z.object({
 });
 export type GetDatasetListBody = z.infer<typeof GetDatasetListBodySchema>;
 
+/* ============================================================================
+ * API: 获取知识库列表 V2
+ * Route: POST /api/core/dataset/listV2
+ * Method: POST
+ * Description: 分页获取当前用户有权限访问的知识库列表。
+ * Tags: ['Dataset', 'Read']
+ * ============================================================================ */
+export const GetDatasetListV2BodySchema = GetDatasetListBodySchema.extend(PaginationSchema.shape);
+export type GetDatasetListV2Body = z.infer<typeof GetDatasetListV2BodySchema>;
+
 // 出参复用 DatasetListItemSchema
 export const GetDatasetListResponseSchema = z.array(DatasetListItemSchema);
 export type GetDatasetListResponse = z.infer<typeof GetDatasetListResponseSchema>;
+
+export const GetDatasetListV2ResponseSchema = PaginationResponseSchema(DatasetListItemSchema);
+export type GetDatasetListV2Response = z.infer<typeof GetDatasetListV2ResponseSchema>;
 
 /* ============================================================================
  * API: 获取知识库路径

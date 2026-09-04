@@ -41,7 +41,6 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
     bodySchema: ListAppBodySchema
   }).body;
 
-  // Auth user permission
   const [{ tmbId, teamId, permission: teamPer }] = await Promise.all([
     authUserPer({
       req,
@@ -62,26 +61,19 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
       : [])
   ]);
 
-  // Get team all app permissions
   const [roleList, myGroupMap, myOrgSet] = await Promise.all([
     getResourcePermissionsByTeam({
       resourceType: PerResourceTypeEnum.app,
       teamId
     }),
-    getGroupsByTmbId({
-      tmbId,
-      teamId
-    }).then((item) => {
+    getGroupsByTmbId({ tmbId, teamId }).then((item) => {
       const map = new Map<string, 1>();
       item.forEach((item) => {
         map.set(String(item._id), 1);
       });
       return map;
     }),
-    getOrgIdSetWithParentByTmbId({
-      teamId,
-      tmbId
-    })
+    getOrgIdSetWithParentByTmbId({ teamId, tmbId })
   ]);
   const roleListMap = new Map<string, (typeof roleList)[number][]>();
   roleList.forEach((item) => {
@@ -90,26 +82,16 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
     list.push(item);
     roleListMap.set(resourceId, list);
   });
-  // Get my permissions
   const myPerList = roleList.filter(
     (item) =>
       String(item.tmbId) === String(tmbId) ||
       myGroupMap.has(String(item.groupId)) ||
       myOrgSet.has(String(item.orgId))
   );
-  const myPerListMap = new Map<string, (typeof myPerList)[number][]>();
-  myPerList.forEach((item) => {
-    const resourceId = String(item.resourceId);
-    const list = myPerListMap.get(resourceId) ?? [];
-    list.push(item);
-    myPerListMap.set(resourceId, list);
-  });
 
   const findAppsQuery = (() => {
-    // Filter apps by permission, if not owner, only get apps that I have permission to access
     const idList = { _id: { $in: myPerList.map((item) => item.resourceId) } };
     const appPerQuery = teamPer.isOwner ? {} : idList;
-
     const searchMatch = searchKey
       ? {
           $or: [
@@ -118,16 +100,12 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
           ]
         }
       : {};
-
     const _type = (() => {
       if (type) {
-        // 如果明确指定了类型，则按指定类型查询（包括 hidden）
         return Array.isArray(type) ? { $in: type } : type;
       }
-      // 如果没有指定类型，则排除 hidden 类型
       return { $ne: AppTypeEnum.hidden } as const;
     })();
-
     if (searchKey) {
       const data = {
         ...appPerQuery,
@@ -135,12 +113,10 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
         ...searchMatch,
         type: _type
       };
-
       // @ts-ignore
       delete data.parentId;
       return data;
     }
-
     return {
       ...appPerQuery,
       teamId,
@@ -155,51 +131,41 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
 
   const myApps = await MongoApp.find(
     { ...findAppsQuery, deleteTime: null },
-    '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission modules.flowNodeType',
-    {
-      limit: limit
-    }
+    '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission modules',
+    { limit }
   )
-    .sort({
-      updateTime: -1
-    })
+    .sort({ updateTime: -1 })
     .lean();
 
-  // Add app permission and filter apps by read permission
   const formatApps = myApps
     .map((app) => {
       const { Per, privateApp } = (() => {
         const getPer = (appId: string) => {
-          // 权限已按资源预分组，避免列表中每个 App 都重新扫描团队全部 ACL。
-          const appPerList = myPerListMap.get(appId) ?? [];
-          const tmbRole = appPerList.find((item) => !!item.tmbId)?.permission;
+          const tmbRole = myPerList.find(
+            (item) => String(item.resourceId) === appId && !!item.tmbId
+          )?.permission;
           const groupAndOrgRole = sumPer(
-            ...appPerList
-              .filter((item) => !!item.groupId || !!item.orgId)
+            ...myPerList
+              .filter(
+                (item) => String(item.resourceId) === appId && (!!item.groupId || !!item.orgId)
+              )
               .map((item) => item.permission)
           );
-
           return new AppPermission({
             role: tmbRole ?? groupAndOrgRole,
             isOwner: String(app.tmbId) === String(tmbId) || teamPer.isOwner
           });
         };
-
         const resourceClbs = roleListMap.get(String(app._id)) ?? [];
-
         return {
           Per: getPer(String(app._id)),
-          privateApp: isPrivateResourceByCollaborators({
-            resourceClbs
-          })
+          privateApp: isPrivateResourceByCollaborators({ resourceClbs })
         };
       })();
-
       const { modules, ...rest } = app;
       const hasInteractiveNode = modules?.some((item) =>
         [FlowNodeTypeEnum.formInput, FlowNodeTypeEnum.userSelect].includes(item.flowNodeType)
       );
-
       return {
         ...rest,
         avatar: app.avatar ?? '',
@@ -212,10 +178,7 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
     })
     .filter((app) => app.permission.hasReadPer);
 
-  const list = await addSourceMember({
-    list: formatApps
-  });
-
+  const list = await addSourceMember({ list: formatApps });
   return ListAppResponseSchema.parse(list);
 }
 

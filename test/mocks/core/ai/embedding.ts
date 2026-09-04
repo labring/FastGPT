@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 /**
  * Mock embedding generation utilities for testing
@@ -122,6 +123,14 @@ vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) => {
   const actual = (await importOriginal()) as any;
   return {
     ...actual,
+    getEmbeddingModel: vi.fn().mockReturnValue({
+      type: ModelTypeEnum.embedding,
+      model: 'text-embedding-ada-002',
+      name: 'text-embedding-ada-002',
+      provider: 'OpenAI',
+      defaultToken: 1,
+      maxToken: 100
+    }),
     getEmbeddingModelData: vi.fn().mockReturnValue({
       modelId: '68ad85a7463006c963799a68',
       model: 'text-embedding-ada-002',

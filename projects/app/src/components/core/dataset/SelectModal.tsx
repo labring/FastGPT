@@ -1,10 +1,11 @@
-import { getDatasets, getDatasetPaths } from '@/web/core/dataset/api';
+import { getDatasetPaths, getDatasetsV2 } from '@/web/core/dataset/api';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import React, { type Dispatch, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { Box } from '@chakra-ui/react';
 import FolderPath from '@/components/common/folder/Path';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import type {
   ParentIdType,
   ParentTreePathItemType
@@ -34,7 +35,7 @@ const DatasetSelectContainer = ({
       title={
         <Box fontWeight={'normal'}>
           <FolderPath
-            paths={paths.map((path, i) => ({
+            paths={paths.map((path) => ({
               parentId: path.parentId,
               parentName: path.parentName
             }))}
@@ -68,26 +69,27 @@ export function useDatasetSelect() {
   const [searchKey, setSearchKey] = useState('');
 
   const {
-    data = {
-      datasets: [],
-      paths: []
+    data: datasets,
+    isLoading: isLoadingDatasets,
+    total,
+    ScrollData,
+    fetchData,
+    refreshList
+  } = useScrollPagination(getDatasetsV2, {
+    params: {
+      parentId,
+      searchKey
     },
-    loading: isFetching,
-    runAsync: loadDatasets
-  } = useRequest(
-    async () => {
-      const result = await Promise.all([
-        getDatasets({ parentId, searchKey }),
-        // Only get paths when not searching
-        searchKey.trim()
-          ? Promise.resolve([])
-          : getDatasetPaths({ sourceId: parentId, type: 'current' })
-      ]);
-      return {
-        datasets: result[0],
-        paths: result[1]
-      };
-    },
+    pageSize: 50,
+    refreshDeps: [parentId, searchKey],
+    throttleWait: 300
+  });
+
+  const { data: paths = [], loading: isLoadingPaths } = useRequest(
+    () =>
+      searchKey.trim()
+        ? Promise.resolve([])
+        : getDatasetPaths({ sourceId: parentId, type: 'current' }),
     {
       manual: false,
       refreshDeps: [parentId, searchKey]
@@ -99,10 +101,14 @@ export function useDatasetSelect() {
     setParentId,
     searchKey,
     setSearchKey,
-    datasets: data.datasets,
-    paths: data.paths,
-    isFetching,
-    loadDatasets
+    datasets,
+    total,
+    paths,
+    isFetching: isLoadingDatasets || isLoadingPaths,
+    isLoadingDatasets,
+    ScrollData,
+    fetchData,
+    loadDatasets: refreshList
   };
 }
 

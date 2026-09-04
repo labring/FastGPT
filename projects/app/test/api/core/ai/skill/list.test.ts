@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import handler from '@/pages/api/core/ai/skill/list';
+import handlerV2 from '@/pages/api/core/ai/skill/listV2';
 import publishHandler from '@/pages/api/core/app/version/publish';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -8,7 +9,11 @@ import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/a
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import type { ListSkillsQuery, ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
+import type {
+  ListSkillsQuery,
+  ListSkillsResponse,
+  ListSkillsV2Query
+} from '@fastgpt/global/core/ai/skill/api';
 import { onCreateApp } from '@/pages/api/core/app/create';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
@@ -26,6 +31,58 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 describe('POST /api/core/ai/skill/list', () => {
+  it('V2 returns a paginated result', async () => {
+    const user = await getUser(`agent-skill-list-v2-${getNanoid(6)}`);
+    await MongoAgentSkills.create(
+      [3, 2, 1].map((index) => ({
+        name: `Paged Skill ${index}`,
+        type: AgentSkillTypeEnum.skill,
+        source: AgentSkillSourceEnum.personal,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        updateTime: new Date(`2024-01-0${index}T00:00:00.000Z`)
+      }))
+    );
+    const res = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
+      handlerV2,
+      {
+        auth: user,
+        body: { source: 'mine', page: 2, pageSize: 1, withAppCount: false }
+      }
+    );
+
+    expect(res.code).toBe(200);
+    expect(res.data.total).toBe(3);
+    expect(res.data.list).toHaveLength(1);
+    expect(res.data.list[0].name).toBe('Paged Skill 2');
+  });
+
+  it('按 skillIds 查询时不会被默认分页截断', async () => {
+    const user = await getUser(`agent-skill-list-ids-${getNanoid(6)}`);
+    const skills = await MongoAgentSkills.create(
+      Array.from({ length: 51 }, (_, index) => ({
+        name: `Selected Skill ${index + 1}`,
+        type: AgentSkillTypeEnum.skill,
+        source: AgentSkillSourceEnum.personal,
+        teamId: user.teamId,
+        tmbId: user.tmbId
+      }))
+    );
+
+    const res = await Call<ListSkillsQuery, Record<string, never>, ListSkillsResponse>(handler, {
+      auth: user,
+      body: {
+        source: 'mine',
+        skillIds: skills.map((skill) => String(skill._id)),
+        withAppCount: false
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.total).toBe(51);
+    expect(res.data.list).toHaveLength(51);
+  });
+
   it('按 skillIds 查询时不受父目录过滤影响，并排除已删除 Skill', async () => {
     const user = await getUser(`agent-skill-list-${getNanoid(6)}`);
 

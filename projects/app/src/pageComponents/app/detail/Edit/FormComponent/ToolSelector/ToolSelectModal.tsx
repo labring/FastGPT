@@ -17,7 +17,7 @@ import {
   getAppToolPaths
 } from '@/web/core/app/api/tool';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { getTeamAppTemplates } from '@/web/core/app/api/tool';
+import { getTeamAppTemplatesV2 } from '@/web/core/app/api/tool';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import FolderPath from '@/components/common/folder/Path';
@@ -47,6 +47,8 @@ import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 import SystemToolTag from '@fastgpt/web/components/core/plugin/tool/SystemToolTag';
 import { inheritToolInputConfig } from './utils';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 
 type Props = {
   generatedSelectedTools?: SelectedToolItemType[];
@@ -70,6 +72,15 @@ enum TemplateTypeEnum {
   'agent' = 'agent'
 }
 
+const teamToolTypes = [
+  AppTypeEnum.toolFolder,
+  AppTypeEnum.workflowTool,
+  AppTypeEnum.mcpToolSet,
+  AppTypeEnum.httpToolSet
+];
+
+const teamAgentTypes = [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow];
+
 const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void }) => {
   const { t } = useTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
@@ -80,56 +91,53 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
   const [searchKey, setSearchKey] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
+  const isTeamTemplate = templateType !== TemplateTypeEnum.systemTools;
+  const teamTemplateTypes =
+    templateType === TemplateTypeEnum.myTools ? teamToolTypes : teamAgentTypes;
+
   const {
-    data: rawTemplates = [],
-    runAsync: loadTemplates,
-    loading: isLoading
-  } = useRequest(
-    async ({
-      type = templateType,
-      parentId = '',
-      searchVal = searchKey,
-      source
-    }: {
-      type?: TemplateTypeEnum;
-      parentId?: ParentIdType;
-      searchVal?: string;
-      source?: string;
-    }) => {
-      if (type === TemplateTypeEnum.systemTools) {
-        return getAppToolTemplates({
-          parentId,
-          searchKey: searchVal,
-          source: parentId ? source : undefined
-        });
-      } else if (type === TemplateTypeEnum.myTools) {
-        return getTeamAppTemplates({
-          parentId,
-          searchKey: searchVal,
-          type: [
-            AppTypeEnum.toolFolder,
-            AppTypeEnum.workflowTool,
-            AppTypeEnum.mcpToolSet,
-            AppTypeEnum.httpToolSet
-          ]
-        }).then((res) => res.filter((app) => app.id !== appDetail._id));
-      } else if (type === TemplateTypeEnum.agent) {
-        return getTeamAppTemplates({
-          parentId,
-          searchKey: searchVal,
-          type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow]
-        }).then((res) => res.filter((app) => app.id !== appDetail._id));
-      }
+    data: teamTemplates,
+    isLoading: isTeamLoading,
+    ScrollData: TeamScrollData
+  } = useScrollPagination(getTeamAppTemplatesV2, {
+    params: {
+      parentId,
+      searchKey: searchKey || undefined,
+      type: teamTemplateTypes,
+      excludeAppId: appDetail._id
+    },
+    pageSize: 50,
+    disabled: !isTeamTemplate,
+    refreshDeps: [isTeamTemplate, templateType, parentId, searchKey, appDetail._id]
+  });
+
+  const { data: systemTemplates = [], loading: isSystemLoading } = useRequest(
+    () => {
+      if (templateType !== TemplateTypeEnum.systemTools)
+        return Promise.resolve<NodeTemplateListItemType[]>([]);
+      return getAppToolTemplates({
+        parentId,
+        searchKey,
+        source: parentId ? parentSource : undefined
+      });
     },
     {
-      onSuccess(_, [{ type = templateType, parentId = '', source }]) {
-        setTemplateType(type);
-        setParentId(parentId);
-        setParentSource(parentId ? (source ?? parentSource) : undefined);
-      },
-      refreshDeps: [templateType, searchKey, parentId]
+      manual: false,
+      throttleWait: 300,
+      refreshDeps: [templateType, parentId, parentSource, searchKey]
     }
   );
+
+  const isLoading = isTeamTemplate ? isTeamLoading : isSystemLoading;
+  const rawTemplates = isTeamTemplate ? teamTemplates : systemTemplates;
+
+  const { gridRef, renderVirtualGridItems } = useVirtualGridList({
+    list: teamTemplates,
+    listKey: `${templateType}:${parentId ?? ''}:${searchKey}`,
+    defaultColumnCount: 2,
+    estimatedRowHeight: 54,
+    estimatedRowGap: 12
+  });
 
   const templates = useMemo(() => {
     if (selectedTagIds.length === 0 || templateType !== TemplateTypeEnum.systemTools) {
@@ -158,25 +166,15 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
   });
 
   const onUpdateParentId = useCallback(
-    (parentId: ParentIdType, source?: string) => {
+    (nextParentId: ParentIdType, source?: string) => {
       if (document.activeElement instanceof HTMLElement) {
         document.activeElement.blur();
       }
-      const nextParentSource = parentId ? (source ?? parentSource) : undefined;
-
-      loadTemplates({
-        parentId,
-        source: nextParentSource
-      });
+      setParentId(nextParentId);
+      setParentSource(nextParentId ? (source ?? parentSource) : undefined);
     },
-    [loadTemplates, parentSource]
+    [parentSource]
   );
-
-  useRequest(() => loadTemplates({ searchVal: searchKey }), {
-    manual: false,
-    throttleWait: 300,
-    refreshDeps: [searchKey]
-  });
 
   return (
     <MyModal
@@ -192,7 +190,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       maxW={['90vw', '700px']}
       w={'700px'}
       h={['90vh', '80vh']}
-      bodyStyles={{ p: 0, overflow: 'hidden' }}
+      bodyStyles={{ p: 0, minH: 0, overflow: 'hidden' }}
     >
       {/* Header: row and search */}
       <Box px={[3, 6]} pt={4} display={'flex'} justifyContent={'space-between'} w={'full'}>
@@ -217,12 +215,11 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
           py={'5px'}
           px={'15px'}
           value={templateType}
-          onChange={(e) =>
-            loadTemplates({
-              type: e as TemplateTypeEnum,
-              parentId: null
-            })
-          }
+          onChange={(e) => {
+            setTemplateType(e as TemplateTypeEnum);
+            setParentId(null);
+            setParentSource(undefined);
+          }}
         />
         <Box w={200}>
           <SearchInput
@@ -252,18 +249,35 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
           <FolderPath paths={paths} FirstPathDom={null} onClick={onUpdateParentId} />
         </Flex>
       )}
-      <MyBox isLoading={isLoading} mt={1} pb={3} flex={'1 0 0'} h={0}>
-        <Box overflow={'overlay'} height={'100%'}>
-          <RenderList
-            templates={templates}
-            type={templateType}
-            parentId={parentId}
-            searchKey={searchKey}
-            selectedTagIds={selectedTagIds}
-            setParentId={onUpdateParentId}
-            {...props}
-          />
-        </Box>
+      <MyBox isLoading={isLoading} mt={1} pb={3} flex={'1 0 0'} h={0} minH={0}>
+        {isTeamTemplate ? (
+          <TeamScrollData flex={1} minH={0} isLoading={isLoading} showLoadingOverlay={false}>
+            <RenderList
+              templates={templates}
+              type={templateType}
+              parentId={parentId}
+              searchKey={searchKey}
+              selectedTagIds={selectedTagIds}
+              setParentId={onUpdateParentId}
+              isPaginated
+              gridRef={gridRef}
+              renderVirtualGridItems={renderVirtualGridItems}
+              {...props}
+            />
+          </TeamScrollData>
+        ) : (
+          <Box overflow={'overlay'} height={'100%'}>
+            <RenderList
+              templates={templates}
+              type={templateType}
+              parentId={parentId}
+              searchKey={searchKey}
+              selectedTagIds={selectedTagIds}
+              setParentId={onUpdateParentId}
+              {...props}
+            />
+          </Box>
+        )}
       </MyBox>
     </MyModal>
   );
@@ -282,7 +296,10 @@ const RenderList = React.memo(function RenderList({
   onRemoveTool,
   setParentId,
   selectedTools,
-  fileSelectConfig
+  fileSelectConfig,
+  isPaginated,
+  gridRef,
+  renderVirtualGridItems
 }: Props & {
   templates: NodeTemplateListItemType[];
   type: TemplateTypeEnum;
@@ -290,6 +307,11 @@ const RenderList = React.memo(function RenderList({
   searchKey: string;
   selectedTagIds: string[];
   setParentId: (parentId: ParentIdType, source?: string) => any;
+  isPaginated?: boolean;
+  gridRef?: React.RefObject<HTMLDivElement>;
+  renderVirtualGridItems?: (
+    renderItem: (template: NodeTemplateListItemType) => React.ReactNode
+  ) => React.ReactNode;
 }) {
   const { i18n } = useTranslation();
   const { t } = useSafeTranslation();
@@ -342,12 +364,168 @@ const RenderList = React.memo(function RenderList({
     }
   );
 
-  const PluginListRender = useMemoizedFn(() => {
+  const renderTemplate = useMemoizedFn((template: NodeTemplateListItemType) => {
     const isSystemTool = type === TemplateTypeEnum.systemTools;
+    const selected = selectedTools.some(
+      (tool) =>
+        getToolIdentityKey(tool.pluginId, tool.source) ===
+        getToolIdentityKey(template.id, template.source)
+    );
+    const name = t(parseI18nString(template.name, i18n.language));
+    const intro =
+      t(parseI18nString(template.intro || '', i18n.language)) ||
+      t('common:core.workflow.Not intro');
+    const isDebugTool = isDebugToolSource(template.source);
+    const isSystemSource = template.source === 'system';
+
+    return (
+      <MyTooltip
+        key={getToolIdentityKey(template.id, template.source)}
+        isDisabled={!isTooltipEnabled}
+        label={
+          <Box py={2} minW={['auto', '250px']}>
+            <Flex alignItems={'center'} w={'100%'}>
+              <MyAvatar
+                src={template.avatar}
+                w={'1.75rem'}
+                objectFit={'contain'}
+                borderRadius={'sm'}
+              />
+              <Box
+                fontWeight={'bold'}
+                ml={3}
+                color={'myGray.900'}
+                flex={'1 0 0'}
+                overflow={'hidden'}
+              >
+                {name}
+              </Box>
+              {isDebugTool && <DebugToolTag />}
+              {isSystemTool && (
+                <Box color={'myGray.500'}>By {template.author || feConfigs?.systemTitle}</Box>
+              )}
+            </Flex>
+            <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
+              {intro}
+            </Box>
+            {isSystemTool && (
+              <CostTooltip cost={template.currentCost} hasTokenFee={template.hasTokenFee} />
+            )}
+          </Box>
+        }
+      >
+        <Grid
+          data-virtual-item=""
+          alignItems={'center'}
+          gridTemplateColumns={'auto minmax(0, 1fr) auto'}
+          columnGap={2}
+          minW={0}
+          minH={'54px'}
+          py={3}
+          px={3}
+          _hover={{ bg: 'myWhite.600' }}
+          borderRadius={'sm'}
+          h={'100%'}
+        >
+          <MyAvatar
+            src={template.avatar}
+            w={'1.75rem'}
+            objectFit={'contain'}
+            borderRadius={'sm'}
+            flexShrink={0}
+          />
+          <Box minW={0}>
+            <Flex alignItems={'center'} gap={2} minW={0}>
+              <Box color={'myGray.900'} fontWeight={'500'} fontSize={'sm'} className="textEllipsis">
+                {name}
+              </Box>
+              {feConfigs?.enable_team_plugin_upload === true && isSystemSource && <SystemToolTag />}
+              {isDebugTool && <DebugToolTag />}
+            </Flex>
+          </Box>
+          <Flex gap={2} minW={0} justifySelf={'end'} alignItems={'center'}>
+            {selected ? (
+              <IconButton
+                aria-label={t('common:Remove')}
+                size={'xsSquare'}
+                color={'myGray.600'}
+                minW={'24px'}
+                w={'24px'}
+                h={'24px'}
+                variant={'whiteDanger'}
+                icon={<MyIcon name={'delete'} w={'13px'} />}
+                onClick={() => onRemoveTool(template)}
+              />
+            ) : template.flowNodeType === 'toolSet' ? (
+              <>
+                <Button
+                  size={'xs'}
+                  variant={'whiteBase'}
+                  h={'24px'}
+                  minW={'unset'}
+                  px={2}
+                  isLoading={isLoading}
+                  leftIcon={<MyIcon name={'common/arrowRight'} w={'14px'} />}
+                  iconSpacing={1}
+                  onClick={() => setParentId(template.id, template.source)}
+                  fontSize={'mini'}
+                  fontWeight={'500'}
+                >
+                  {t('common:Open')}
+                </Button>
+                <IconButton
+                  aria-label={t('common:Add')}
+                  size={'xsSquare'}
+                  minW={'24px'}
+                  w={'24px'}
+                  h={'24px'}
+                  variant={'whiteBase'}
+                  icon={<MyIcon name={'common/addLight'} w={'13px'} />}
+                  isLoading={isLoading}
+                  onClick={() => onClickAdd(template)}
+                />
+              </>
+            ) : template.isFolder ? (
+              <Button
+                size={'xs'}
+                variant={'whiteBase'}
+                h={'24px'}
+                minW={'unset'}
+                px={2}
+                isLoading={isLoading}
+                leftIcon={<MyIcon name={'common/arrowRight'} w={'14px'} />}
+                iconSpacing={1}
+                onClick={() => setParentId(template.id, template.source)}
+                fontSize={'mini'}
+                fontWeight={'500'}
+              >
+                {t('common:Open')}
+              </Button>
+            ) : (
+              <IconButton
+                aria-label={t('common:Add')}
+                size={'xsSquare'}
+                minW={'24px'}
+                w={'24px'}
+                h={'24px'}
+                variant={'whiteBase'}
+                icon={<MyIcon name={'common/addLight'} w={'13px'} />}
+                isLoading={isLoading}
+                onClick={() => onClickAdd(template)}
+              />
+            )}
+          </Flex>
+        </Grid>
+      </MyTooltip>
+    );
+  });
+
+  const PluginListRender = useMemoizedFn(() => {
     return (
       <>
         {templates.length > 0 ? (
           <Grid
+            ref={gridRef}
             key={listScopeKey}
             onMouseMove={() => setTooltipEnabledScopeKey(listScopeKey)}
             gridTemplateColumns={['minmax(0, 1fr)', 'repeat(2, minmax(0, 1fr))']}
@@ -355,171 +533,9 @@ const RenderList = React.memo(function RenderList({
             rowGap={3}
             px={[3, 6]}
           >
-            {templates.map((template) => {
-              const selected = selectedTools.some(
-                (tool) =>
-                  getToolIdentityKey(tool.pluginId, tool.source) ===
-                  getToolIdentityKey(template.id, template.source)
-              );
-              const name = t(parseI18nString(template.name, i18n.language));
-              const intro =
-                t(parseI18nString(template.intro || '', i18n.language)) ||
-                t('common:core.workflow.Not intro');
-              const isDebugTool = isDebugToolSource(template.source);
-              const isSystemSource = template.source === 'system';
-
-              return (
-                <MyTooltip
-                  key={getToolIdentityKey(template.id, template.source)}
-                  isDisabled={!isTooltipEnabled}
-                  label={
-                    <Box py={2} minW={['auto', '250px']}>
-                      <Flex alignItems={'center'} w={'100%'}>
-                        <MyAvatar
-                          src={template.avatar}
-                          w={'1.75rem'}
-                          objectFit={'contain'}
-                          borderRadius={'sm'}
-                        />
-                        <Box
-                          fontWeight={'bold'}
-                          ml={3}
-                          color={'myGray.900'}
-                          flex={'1 0 0'}
-                          overflow={'hidden'}
-                        >
-                          {name}
-                        </Box>
-                        {isDebugTool && <DebugToolTag />}
-                        {isSystemTool && (
-                          <Box color={'myGray.500'}>
-                            By {template.author || feConfigs?.systemTitle}
-                          </Box>
-                        )}
-                      </Flex>
-                      <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
-                        {intro}
-                      </Box>
-                      {isSystemTool && (
-                        <CostTooltip
-                          cost={template.currentCost}
-                          hasTokenFee={template.hasTokenFee}
-                        />
-                      )}
-                    </Box>
-                  }
-                >
-                  <Grid
-                    alignItems={'center'}
-                    gridTemplateColumns={'auto minmax(0, 1fr) auto'}
-                    columnGap={2}
-                    minW={0}
-                    minH={'54px'}
-                    py={3}
-                    px={3}
-                    _hover={{ bg: 'myWhite.600' }}
-                    borderRadius={'sm'}
-                    h={'100%'}
-                  >
-                    <MyAvatar
-                      src={template.avatar}
-                      w={'1.75rem'}
-                      objectFit={'contain'}
-                      borderRadius={'sm'}
-                      flexShrink={0}
-                    />
-                    <Box minW={0}>
-                      <Flex alignItems={'center'} gap={2} minW={0}>
-                        <Box
-                          color={'myGray.900'}
-                          fontWeight={'500'}
-                          fontSize={'sm'}
-                          className="textEllipsis"
-                        >
-                          {name}
-                        </Box>
-                        {feConfigs?.enable_team_plugin_upload === true && isSystemSource && (
-                          <SystemToolTag />
-                        )}
-                        {isDebugTool && <DebugToolTag />}
-                      </Flex>
-                    </Box>
-                    <Flex gap={2} minW={0} justifySelf={'end'} alignItems={'center'}>
-                      {selected ? (
-                        <IconButton
-                          aria-label={t('common:Remove')}
-                          size={'xsSquare'}
-                          color={'myGray.600'}
-                          minW={'24px'}
-                          w={'24px'}
-                          h={'24px'}
-                          variant={'whiteDanger'}
-                          icon={<MyIcon name={'delete'} w={'13px'} />}
-                          onClick={() => onRemoveTool(template)}
-                        />
-                      ) : template.flowNodeType === 'toolSet' ? (
-                        <>
-                          <Button
-                            size={'xs'}
-                            variant={'whiteBase'}
-                            h={'24px'}
-                            minW={'unset'}
-                            px={2}
-                            isLoading={isLoading}
-                            leftIcon={<MyIcon name={'common/arrowRight'} w={'14px'} />}
-                            iconSpacing={1}
-                            onClick={() => setParentId(template.id, template.source)}
-                            fontSize={'mini'}
-                            fontWeight={'500'}
-                          >
-                            {t('common:Open')}
-                          </Button>
-                          <IconButton
-                            aria-label={t('common:Add')}
-                            size={'xsSquare'}
-                            minW={'24px'}
-                            w={'24px'}
-                            h={'24px'}
-                            variant={'whiteBase'}
-                            icon={<MyIcon name={'common/addLight'} w={'13px'} />}
-                            isLoading={isLoading}
-                            onClick={() => onClickAdd(template)}
-                          />
-                        </>
-                      ) : template.isFolder ? (
-                        <Button
-                          size={'xs'}
-                          variant={'whiteBase'}
-                          h={'24px'}
-                          minW={'unset'}
-                          px={2}
-                          isLoading={isLoading}
-                          leftIcon={<MyIcon name={'common/arrowRight'} w={'14px'} />}
-                          iconSpacing={1}
-                          onClick={() => setParentId(template.id, template.source)}
-                          fontSize={'mini'}
-                          fontWeight={'500'}
-                        >
-                          {t('common:Open')}
-                        </Button>
-                      ) : (
-                        <IconButton
-                          aria-label={t('common:Add')}
-                          size={'xsSquare'}
-                          minW={'24px'}
-                          w={'24px'}
-                          h={'24px'}
-                          variant={'whiteBase'}
-                          icon={<MyIcon name={'common/addLight'} w={'13px'} />}
-                          isLoading={isLoading}
-                          onClick={() => onClickAdd(template)}
-                        />
-                      )}
-                    </Flex>
-                  </Grid>
-                </MyTooltip>
-              );
-            })}
+            {renderVirtualGridItems
+              ? renderVirtualGridItems(renderTemplate)
+              : templates.map(renderTemplate)}
           </Grid>
         ) : (
           <EmptyTip text={t('app:module.No Modules')} />
@@ -529,8 +545,14 @@ const RenderList = React.memo(function RenderList({
   });
 
   return (
-    <Flex position="relative" direction="column" h="100%">
-      <Box overflowY="auto" mb={8} w={'full'}>
+    <Flex
+      position="relative"
+      direction="column"
+      minH={isPaginated ? 0 : undefined}
+      h={isPaginated ? 'auto' : '100%'}
+      flexShrink={isPaginated ? 0 : undefined}
+    >
+      <Box overflowY={isPaginated ? 'visible' : 'auto'} mb={isPaginated ? 0 : 8} w={'full'}>
         {PluginListRender()}
       </Box>
       {type === TemplateTypeEnum.systemTools && (

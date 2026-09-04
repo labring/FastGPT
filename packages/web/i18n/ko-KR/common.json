@@ -1032,6 +1032,7 @@
   "resume_failed": "재개 실패",
   "resume_completed_data_parse_failed": "재개 중 완료된 응답을 분석하지 못했습니다",
   "response_processing_error": "응답 처리 중 오류가 발생했습니다",
+  "current_location": "현재 위치:",
   "root_folder": "루트",
   "save_failed": "저장 실패",
   "server_error": "서버 오류",

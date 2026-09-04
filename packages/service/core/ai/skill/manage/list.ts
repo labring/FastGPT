@@ -3,8 +3,14 @@ import { MongoApp } from '../../../app/schema';
 import { AppResourceRefsSkillIdsPath, buildAppSkillRefMongoQuery } from '../../../app/resourceRefs';
 import { MongoAgentSkills } from '../model/schema';
 import { SkillPermission } from '@fastgpt/global/support/permission/skill/controller';
-import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { getResourcePermissionsByTeam } from '../../../../support/permission/resourcePermissionService';
+import {
+  PerResourceTypeEnum,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
+import {
+  findResourceKeysByCollaboratorsPermission,
+  getResourcePermissionsByResourceIds
+} from '../../../../support/permission/resourcePermissionService';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '../../../../support/permission/memberGroup/controllers';
@@ -13,13 +19,13 @@ import { addSourceMember } from '../../../../support/user/utils';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 import type { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
-import type { ListSkillsQuery } from '@fastgpt/global/core/ai/skill/api';
+import type { ListSkillsV2Query } from '@fastgpt/global/core/ai/skill/api';
 
 type TeamPermission = {
   isOwner: boolean;
 };
 
-type ListReadableAgentSkillsParams = ListSkillsQuery & {
+type ListReadableAgentSkillsParams = ListSkillsV2Query & {
   teamId: string;
   tmbId: string;
   teamPer: TeamPermission;
@@ -56,6 +62,7 @@ export const listReadableAgentSkills = async ({
   category,
   type,
   skillIds,
+  offset,
   page,
   pageSize,
   withAppCount,
@@ -66,61 +73,25 @@ export const listReadableAgentSkills = async ({
   const selectedSkillIds = skillIds?.filter(Boolean) ?? [];
   const isSkillIdsQuery = selectedSkillIds.length > 0;
 
-  const [roleList, myGroupMap, myOrgSet] = await Promise.all([
-    getResourcePermissionsByTeam({
-      resourceType: PerResourceTypeEnum.agentSkill,
-      teamId
-    }),
-    getGroupsByTmbId({
-      tmbId,
-      teamId
-    }).then((item) => {
-      const map = new Map<string, 1>();
-      item.forEach((item) => {
-        map.set(String(item._id), 1);
-      });
-      return map;
-    }),
-    getOrgIdSetWithParentByTmbId({
-      teamId,
-      tmbId
-    })
+  const [groups, orgSet] = await Promise.all([
+    getGroupsByTmbId({ tmbId, teamId }),
+    getOrgIdSetWithParentByTmbId({ teamId, tmbId })
   ]);
-
-  const myRoles = roleList.filter(
-    (item) =>
-      String(item.tmbId) === String(tmbId) ||
-      myGroupMap.has(String(item.groupId)) ||
-      myOrgSet.has(String(item.orgId))
-  );
-  const myRoleResourceIds = Array.from(
-    new Map(myRoles.map((item) => [String(item.resourceId), item.resourceId])).values()
-  );
-  const roleCountByResourceId = new Map<string, number>();
-  roleList.forEach((item) => {
-    const resourceId = String(item.resourceId);
-    roleCountByResourceId.set(resourceId, (roleCountByResourceId.get(resourceId) ?? 0) + 1);
-  });
-
-  const myTmbRoleByResourceId = new Map<string, number>();
-  const myGroupOrgRoleListByResourceId = new Map<string, Parameters<typeof sumPer>>();
-  myRoles.forEach((item) => {
-    const resourceId = String(item.resourceId);
-    if (item.tmbId) {
-      myTmbRoleByResourceId.set(resourceId, item.permission);
-      return;
-    }
-
-    if (item.groupId || item.orgId) {
-      const permissionList = myGroupOrgRoleListByResourceId.get(resourceId) ?? [];
-      permissionList.push(item.permission);
-      myGroupOrgRoleListByResourceId.set(resourceId, permissionList);
-    }
-  });
-  const myGroupOrgRoleByResourceId = new Map<string, ReturnType<typeof sumPer>>();
-  myGroupOrgRoleListByResourceId.forEach((permissionList, resourceId) => {
-    myGroupOrgRoleByResourceId.set(resourceId, sumPer(...permissionList));
-  });
+  const groupIds = groups.map((item) => String(item._id));
+  const orgIds = Array.from(orgSet).map(String);
+  const readableResourceIds =
+    teamPer.isOwner || source === 'store'
+      ? []
+      : await findResourceKeysByCollaboratorsPermission({
+          resourceType: PerResourceTypeEnum.agentSkill,
+          teamId,
+          tmbId,
+          groupIds,
+          orgIds,
+          permission: ReadPermissionVal,
+          matchLogic: 'or',
+          personalPermissionPriority: true
+        });
 
   const findSkillQuery = (() => {
     const sourceQuery = (() => {
@@ -155,8 +126,8 @@ export const listReadableAgentSkills = async ({
         : {
             $or: [{ teamId }, { source: AgentSkillSourceEnum.system }]
           };
-      const idList = { _id: { $in: myRoleResourceIds } };
-      const readPermissionQuery = teamPer.isOwner || source === 'store' ? {} : idList;
+      const readPermissionQuery =
+        teamPer.isOwner || source === 'store' ? {} : { _id: { $in: readableResourceIds } };
 
       return mergeMongoAndQuery(baseQuery, scopeQuery, readPermissionQuery, {
         _id: { $in: selectedSkillIds },
@@ -165,8 +136,8 @@ export const listReadableAgentSkills = async ({
     }
 
     // 普通列表查询同时按当前目录和资源自身 ACL 过滤。
-    const idList = { _id: { $in: myRoleResourceIds } };
-    const skillPerQuery = teamPer.isOwner || source === 'store' ? {} : idList;
+    const skillPerQuery =
+      teamPer.isOwner || source === 'store' ? {} : { _id: { $in: readableResourceIds } };
     const teamIdQuery = source === 'store' ? {} : { teamId };
 
     if (searchKey) {
@@ -181,31 +152,59 @@ export const listReadableAgentSkills = async ({
     );
   })();
 
-  const mySkills = await MongoAgentSkills.find(findSkillQuery)
-    .sort({
-      type: -1,
-      updateTime: -1
-    })
-    .lean();
+  const paged = offset !== undefined || (page !== undefined && pageSize !== undefined);
+  const skip = paged ? (offset ?? (page! - 1) * pageSize!) : 0;
+  const skillQuery = MongoAgentSkills.find(findSkillQuery)
+    .sort({ type: -1, updateTime: -1, _id: -1 })
+    .skip(skip);
+  if (paged) skillQuery.limit(pageSize!);
+  const [mySkills, dbTotal] = await Promise.all([
+    skillQuery.lean(),
+    paged ? MongoAgentSkills.countDocuments(findSkillQuery) : Promise.resolve(undefined)
+  ]);
+
+  const pageRoleList = await getResourcePermissionsByResourceIds({
+    resourceType: PerResourceTypeEnum.agentSkill,
+    teamId,
+    resourceIds: mySkills.map((skill) => String(skill._id))
+  });
+  const pageRoleListMap = new Map<string, (typeof pageRoleList)[number][]>();
+  pageRoleList.forEach((item) => {
+    const resourceId = String(item.resourceId);
+    const list = pageRoleListMap.get(resourceId) ?? [];
+    list.push(item);
+    pageRoleListMap.set(resourceId, list);
+  });
 
   const formatSkills = mySkills
     .map((skill) => {
       const { Per, privateSkill } = (() => {
-        const getPer = (skillId: string) => {
-          const tmbRole = myTmbRoleByResourceId.get(skillId);
-          const groupAndOrgRole = myGroupOrgRoleByResourceId.get(skillId);
+        const resourceClbs = pageRoleListMap.get(String(skill._id)) ?? [];
+        const getPer = () => {
+          if (skill.source === AgentSkillSourceEnum.system) {
+            return new SkillPermission({ role: 0b100 });
+          }
+          const tmbRole = resourceClbs.find(
+            (item) => String(item.tmbId) === String(tmbId)
+          )?.permission;
+          const groupAndOrgRole = sumPer(
+            ...resourceClbs
+              .filter(
+                (item) =>
+                  (item.groupId && groupIds.includes(String(item.groupId))) ||
+                  (item.orgId && orgIds.includes(String(item.orgId)))
+              )
+              .map((item) => item.permission)
+          );
           return new SkillPermission({
             role: tmbRole ?? groupAndOrgRole,
             isOwner: String(skill.tmbId) === String(tmbId) || teamPer.isOwner
           });
         };
-        const getClbCount = (skillId: string) => {
-          return roleCountByResourceId.get(skillId) ?? 0;
-        };
 
         return {
-          Per: getPer(String(skill._id)),
-          privateSkill: getClbCount(String(skill._id)) <= 1
+          Per: getPer(),
+          privateSkill: resourceClbs.length <= 1
         };
       })();
 
@@ -233,14 +232,8 @@ export const listReadableAgentSkills = async ({
     })
     .filter((skill) => skill.permission.hasReadPer);
 
-  const total = formatSkills.length;
-  const pagedSkills = (() => {
-    if (page && pageSize) {
-      const skip = (page - 1) * pageSize;
-      return formatSkills.slice(skip, skip + pageSize);
-    }
-    return formatSkills;
-  })();
+  const total = dbTotal ?? formatSkills.length;
+  const pagedSkills = formatSkills;
 
   const nonFolderSkills =
     withAppCount !== false ? pagedSkills.filter((s) => s.type !== AgentSkillTypeEnum.folder) : [];

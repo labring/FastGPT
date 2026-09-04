@@ -39,6 +39,8 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
 import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
+import { getGridPageSize } from '@fastgpt/web/hooks/useResponsiveGridPageSize';
+import ResourceCardSkeleton from '@/pageComponents/dashboard/ResourceCardSkeleton';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
@@ -59,6 +61,7 @@ const List = () => {
 
   const {
     myApps,
+    ScrollData,
     appType,
     loadMyApps,
     isFetchingApps,
@@ -66,7 +69,9 @@ const List = () => {
     setMoveAppId,
     folderDetail,
     searchKey,
-    setSearchKey
+    setSearchKey,
+    columnCount,
+    pageSize
   } = useContextSelector(AppListContext, (v) => v);
 
   const hasCreatePer = folderDetail
@@ -75,12 +80,19 @@ const List = () => {
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
   const [editPerAppId, setEditPerAppId] = useState<string>();
+  const isInitialLoading = myApps.length === 0 && isFetchingApps;
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: myApps,
-    listKey: `${router.pathname}-${appType}-${parentId || ''}-${searchKey}`,
-    reservedSlotCount: 1,
+    listKey: `${router.pathname}-${appType}-${parentId || ''}-${searchKey}-${columnCount}-${pageSize}-${isInitialLoading}`,
+    reservedSlotCount: isInitialLoading ? 0 : 1,
     estimatedRowHeight: 160,
-    estimatedRowGap: 20
+    estimatedRowGap: 20,
+    loadingItemCount: isFetchingApps
+      ? isInitialLoading
+        ? getGridPageSize(columnCount)
+        : pageSize
+      : 0,
+    renderLoadingItem: () => <ResourceCardSkeleton />
   });
 
   const editPerApp = useMemo(
@@ -410,91 +422,105 @@ const List = () => {
     );
   };
 
-  if (myApps.length === 0 && isFetchingApps) return null;
-
   return (
-    <>
-      {myApps.length === 0 && !folderDetail ? (
-        searchKey ? (
-          <EmptyTip />
-        ) : isPc && hasCreatePer ? (
-          <CreateButton appType={appType} />
-        ) : (
-          <Grid
-            py={4}
-            gridTemplateColumns={
-              folderDetail
-                ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
-                : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
-            }
-            gridGap={5}
-            alignItems={'stretch'}
-          >
-            {hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />}
-          </Grid>
-        )
-      ) : (
-        <>
+    <ScrollData h={'full'} minH={0} showLoadingOverlay={false}>
+      <>
+        {isInitialLoading ? (
           <Grid
             ref={gridRef}
             py={4}
             gridTemplateColumns={
-              folderDetail
+              parentId
                 ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
                 : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
             }
             gridGap={5}
             alignItems={'stretch'}
           >
-            {hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />}
             {renderVirtualGridItems(renderAppCard)}
           </Grid>
-        </>
-      )}
-      <DeleteConfirmModal />
-      <ConfirmCopyModal />
-      {!!editedApp && (
-        <EditResourceModal
-          {...editedApp}
-          title={t('common:core.app.edit_content')}
-          onClose={() => {
-            setEditedApp(undefined);
-          }}
-          onEdit={({ id, ...data }) => onUpdateApp(id, data)}
-        />
-      )}
-      {!!editPerApp && (
-        <ConfigPerModal
-          {...(editPerApp.permission.isOwner && {
-            onChangeOwner: (tmbId: string) =>
-              changeOwner({
-                appId: editPerApp._id,
-                ownerId: tmbId
-              }).then(() => loadMyApps())
-          })}
-          refetchResource={loadMyApps}
-          hasParent={Boolean(parentId)}
-          resumeInheritPermission={onResumeInheritPermission}
-          isInheritPermission={editPerApp.inheritPermission}
-          avatar={editPerApp.avatar}
-          name={editPerApp.name}
-          managePer={{
-            defaultRole: ReadRoleVal,
-            permission: editPerApp.permission,
-            onGetCollaboratorList: () => getCollaboratorList(editPerApp._id),
-            roleList: AppRoleList,
-            onUpdateCollaborators: (props) =>
-              postUpdateAppCollaborators({
-                ...props,
-                appId: editPerApp._id
-              }),
-            refreshDeps: [editPerApp.inheritPermission]
-          }}
-          onClose={() => setEditPerAppId(undefined)}
-        />
-      )}
-      <MoveConfirmModal />
-    </>
+        ) : myApps.length === 0 && !folderDetail ? (
+          searchKey ? (
+            <EmptyTip />
+          ) : isPc && hasCreatePer ? (
+            <CreateButton appType={appType} />
+          ) : (
+            <Grid
+              py={4}
+              gridTemplateColumns={
+                parentId
+                  ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
+                  : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
+              }
+              gridGap={5}
+              alignItems={'stretch'}
+            >
+              {hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />}
+            </Grid>
+          )
+        ) : (
+          <>
+            <Grid
+              ref={gridRef}
+              py={4}
+              gridTemplateColumns={
+                parentId
+                  ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
+                  : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
+              }
+              gridGap={5}
+              alignItems={'stretch'}
+            >
+              {hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />}
+              {renderVirtualGridItems(renderAppCard)}
+            </Grid>
+          </>
+        )}
+        <DeleteConfirmModal />
+        <ConfirmCopyModal />
+        {!!editedApp && (
+          <EditResourceModal
+            {...editedApp}
+            title={t('common:core.app.edit_content')}
+            onClose={() => {
+              setEditedApp(undefined);
+            }}
+            onEdit={({ id, ...data }) => onUpdateApp(id, data)}
+          />
+        )}
+        {!!editPerApp && (
+          <ConfigPerModal
+            {...(editPerApp.permission.isOwner && {
+              onChangeOwner: (tmbId: string) =>
+                changeOwner({
+                  appId: editPerApp._id,
+                  ownerId: tmbId
+                }).then(() => loadMyApps())
+            })}
+            refetchResource={loadMyApps}
+            hasParent={Boolean(parentId)}
+            resumeInheritPermission={onResumeInheritPermission}
+            isInheritPermission={editPerApp.inheritPermission}
+            avatar={editPerApp.avatar}
+            name={editPerApp.name}
+            managePer={{
+              defaultRole: ReadRoleVal,
+              permission: editPerApp.permission,
+              onGetCollaboratorList: () => getCollaboratorList(editPerApp._id),
+              roleList: AppRoleList,
+              onUpdateCollaborators: (props) =>
+                postUpdateAppCollaborators({
+                  ...props,
+                  appId: editPerApp._id
+                }),
+              refreshDeps: [editPerApp.inheritPermission]
+            }}
+            onClose={() => setEditPerAppId(undefined)}
+          />
+        )}
+        <MoveConfirmModal />
+      </>
+    </ScrollData>
   );
 };
 

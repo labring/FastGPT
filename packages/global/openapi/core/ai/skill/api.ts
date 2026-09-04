@@ -20,6 +20,7 @@ import {
   CollaboratorUpdateListSchema,
   ShowUsernameQuerySchema
 } from '../../../../support/permission/collaborator.schema';
+import { IntSchema } from '../../../../common/zod';
 
 const IdSchema = z.string().min(1).meta({ description: '资源 ID' });
 const SandboxInstanceKeySchema = z.string().min(1).describe('FastGPT sandbox instance key');
@@ -27,18 +28,35 @@ const NullableParentIdSchema = z.string().nullable().optional().meta({
   description: '父级目录 ID'
 });
 
-export const ListSkillsQuerySchema = z.object({
-  source: z.enum(['store', 'mine']).optional().describe('技能来源: store=系统技能, mine=我的技能'),
-  searchKey: z.string().optional().describe('搜索关键词'),
-  category: AgentSkillCategorySchema.optional().describe('技能分类'),
-  type: AgentSkillTypeSchema.optional().describe('技能类型过滤'),
-  skillIds: z.array(IdSchema).optional().describe('按技能 ID 列表过滤，用于校验已关联技能状态'),
-  parentId: NullableParentIdSchema,
-  page: z.coerce.number().int().positive().optional().describe('页码'),
-  pageSize: z.coerce.number().int().positive().optional().describe('每页数量'),
-  withAppCount: z.boolean().optional().describe('是否返回引用应用数量')
-});
+const createListSkillsQuerySchema = () =>
+  z.object({
+    source: z
+      .enum(['store', 'mine'])
+      .optional()
+      .describe('技能来源: store=系统技能, mine=我的技能'),
+    searchKey: z.string().optional().describe('搜索关键词'),
+    category: AgentSkillCategorySchema.optional().describe('技能分类'),
+    type: AgentSkillTypeSchema.optional().describe('技能类型过滤'),
+    skillIds: z.array(IdSchema).optional().describe('按技能 ID 列表过滤，用于校验已关联技能状态'),
+    parentId: NullableParentIdSchema,
+    offset: IntSchema.optional().describe('偏移量'),
+    page: z.coerce.number().int().positive().optional().describe('页码'),
+    pageSize: z.coerce.number().int().positive().optional().describe('每页数量'),
+    withAppCount: z.boolean().optional().describe('是否返回引用应用数量')
+  });
+
+export const ListSkillsQuerySchema = createListSkillsQuerySchema();
 export type ListSkillsQuery = z.infer<typeof ListSkillsQuerySchema>;
+
+/* ============================================================================
+ * API: 获取技能列表 V2
+ * Route: POST /api/core/ai/skill/listV2
+ * Method: POST
+ * Description: 分页获取当前团队可见的系统技能或个人技能。
+ * Tags: ['Skill', 'Read']
+ * ============================================================================ */
+export const ListSkillsV2QuerySchema = createListSkillsQuerySchema();
+export type ListSkillsV2Query = z.infer<typeof ListSkillsV2QuerySchema>;
 
 export const ListSkillsResponseItemSchema = AgentSkillListItemSchema.omit({
   createTime: true,

@@ -1,8 +1,8 @@
-import React, { type ReactNode, type RefObject, useRef, useState } from 'react';
+import React, { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import { Box, type BoxProps } from '@chakra-ui/react';
 import { useToast } from './useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useBoolean, useLockFn, useMemoizedFn, useScroll, useThrottleEffect } from 'ahooks';
+import { useBoolean, useMemoizedFn, useScroll, useThrottleEffect } from 'ahooks';
 import MyBox from '../components/common/MyBox';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from './useRequest';
@@ -10,11 +10,24 @@ import type { PaginationType, PaginationResponseType } from '@fastgpt/global/ope
 
 const thresholdVal = 100;
 
+export type ScrollListType = ({
+  children,
+  ScrollContainerRef,
+  isLoading,
+  showLoadingOverlay,
+  ...props
+}: {
+  children: ReactNode;
+  ScrollContainerRef?: RefObject<HTMLDivElement>;
+  isLoading?: boolean;
+  showLoadingOverlay?: boolean;
+} & BoxProps) => React.JSX.Element;
+
 export function useScrollPagination<
   TParams extends PaginationType,
   TData extends PaginationResponseType
 >(
-  api: (data: TParams) => Promise<TData>,
+  api: (data: TParams, cancelToken?: AbortController) => Promise<TData>,
   {
     scrollLoadType = 'bottom',
 
@@ -44,11 +57,14 @@ export function useScrollPagination<
   const [total, setTotal] = useState(0);
   const [isLoading, { setTrue, setFalse }] = useBoolean(false);
   const requestedOffsetRef = useRef<number>();
+  const requestControllerRef = useRef<AbortController>();
+  const requestIdRef = useRef(0);
+  const isRequestingRef = useRef(false);
   const isEmpty = total === 0 && !isLoading;
 
   const noMore = data.length >= total;
 
-  const loadData = useLockFn(
+  const loadData = useMemoizedFn(
     async ({
       init = false,
       ScrollContainerRef,
@@ -58,18 +74,32 @@ export function useScrollPagination<
       ScrollContainerRef?: RefObject<HTMLDivElement>;
       silent?: boolean;
     } = {}) => {
-      if (noMore && !init) return;
+      if (!init && (noMore || isRequestingRef.current)) return;
 
       const offset = init ? 0 : data.length;
 
       // 请求完成到 React 提交列表更新之间，滚动监听可能再次读到旧 data.length。
       // 用同步游标拦截相同 offset，避免同一页在这个时间窗口被重复请求。
       if (!init && requestedOffsetRef.current === offset) return;
-      requestedOffsetRef.current = offset;
+
+      if (init) {
+        // An init request represents new filters, so cancel the old request and start immediately.
+        requestControllerRef.current?.abort();
+        requestedOffsetRef.current = undefined;
+      } else {
+        requestedOffsetRef.current = offset;
+      }
+
+      const requestController = new AbortController();
+      const requestId = ++requestIdRef.current;
+      requestControllerRef.current = requestController;
+      isRequestingRef.current = true;
 
       // 静默刷新用于后台校准数据，保留旧列表并避免整块 loading 闪烁。
       if (!silent) {
         setTrue();
+      } else if (init) {
+        setFalse();
       }
 
       if (init && !silent) {
@@ -78,11 +108,16 @@ export function useScrollPagination<
       }
 
       try {
-        const res = await api({
-          offset,
-          pageSize,
-          ...params
-        } as TParams);
+        const res = await api(
+          {
+            offset,
+            pageSize,
+            ...params
+          } as TParams,
+          requestController
+        );
+
+        if (requestController.signal.aborted || requestId !== requestIdRef.current) return;
 
         setTotal(res.total);
 
@@ -112,6 +147,8 @@ export function useScrollPagination<
           setData(newData);
         }
       } catch (error: any) {
+        if (requestController.signal.aborted || requestId !== requestIdRef.current) return;
+
         requestedOffsetRef.current = undefined;
         if (showErrorToast) {
           toast({
@@ -120,13 +157,24 @@ export function useScrollPagination<
           });
         }
         console.log(error);
-      }
-
-      if (!silent) {
-        setFalse();
+      } finally {
+        if (requestId === requestIdRef.current) {
+          requestControllerRef.current = undefined;
+          isRequestingRef.current = false;
+          if (!silent) {
+            setFalse();
+          }
+        }
       }
     }
   );
+
+  useEffect(() => {
+    return () => {
+      requestIdRef.current += 1;
+      requestControllerRef.current?.abort();
+    };
+  }, []);
 
   const ScrollRef = useRef<HTMLDivElement>(null);
   const ScrollData = useMemoizedFn(
@@ -134,9 +182,11 @@ export function useScrollPagination<
       children,
       ScrollContainerRef,
       isLoading: isLoadingProp,
+      showLoadingOverlay = true,
       ...props
     }: {
       isLoading?: boolean;
+      showLoadingOverlay?: boolean;
       children: ReactNode;
       ScrollContainerRef?: RefObject<HTMLDivElement>;
     } & BoxProps) => {
@@ -172,7 +222,9 @@ export function useScrollPagination<
           ref={ref}
           h={'100%'}
           overflow={'auto'}
-          isLoading={isLoading || isLoadingProp}
+          display={'flex'}
+          flexDirection={'column'}
+          isLoading={showLoadingOverlay && (isLoading || isLoadingProp)}
           {...props}
         >
           {scrollLoadType === 'top' && total > 0 && isLoading && (
@@ -181,21 +233,25 @@ export function useScrollPagination<
             </Box>
           )}
           {children}
-          {scrollLoadType === 'bottom' && !isEmpty && (showNoMoreTip || !noMore) && (
-            <Box
-              mt={2}
-              fontSize={'xs'}
-              color={'blackAlpha.500'}
-              textAlign={'center'}
-              cursor={loadText === t('common:request_more') ? 'pointer' : 'default'}
-              onClick={() => {
-                if (loadText !== t('common:request_more')) return;
-                loadData({ init: false });
-              }}
-            >
-              {loadText}
-            </Box>
-          )}
+          {scrollLoadType === 'bottom' &&
+            !isEmpty &&
+            !(isLoading && data.length === 0) &&
+            (showNoMoreTip || !noMore) && (
+              <Box
+                mt={'auto'}
+                pt={2}
+                fontSize={'xs'}
+                color={'blackAlpha.500'}
+                textAlign={'center'}
+                cursor={loadText === t('common:request_more') ? 'pointer' : 'default'}
+                onClick={() => {
+                  if (loadText !== t('common:request_more')) return;
+                  loadData({ init: false });
+                }}
+              >
+                {loadText}
+              </Box>
+            )}
           {isEmpty && EmptyTip}
         </MyBox>
       );

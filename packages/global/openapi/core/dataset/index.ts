@@ -12,6 +12,9 @@ import {
   DeleteDatasetQuerySchema,
   GetDatasetDetailQuerySchema,
   GetDatasetListBodySchema,
+  GetDatasetListResponseSchema,
+  GetDatasetListV2BodySchema,
+  GetDatasetListV2ResponseSchema,
   GetDatasetPathsQuerySchema,
   UpdateDatasetBodySchema,
   ResumeDatasetInheritPermissionBodySchema,
@@ -100,7 +103,36 @@ export const DatasetPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回知识库列表'
+          description: '成功返回知识库列表',
+          content: {
+            'application/json': {
+              schema: GetDatasetListResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/dataset/listV2': {
+    post: {
+      summary: '分页获取知识库列表',
+      description: '分页获取当前用户有权限访问的知识库列表',
+      tags: [DevApiTagsMap.datasetCommon, SystemOpenApiTagMap.dataset],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: GetDatasetListV2BodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功返回分页知识库列表',
+          content: {
+            'application/json': {
+              schema: GetDatasetListV2ResponseSchema
+            }
+          }
         }
       }
     }

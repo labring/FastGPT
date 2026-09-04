@@ -20,7 +20,8 @@ import {
   OpenAPIStoreNodeItemTypeSchema
 } from '../../workflow/node';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
-import { BoolSchema, NumSchema } from '../../../../common/zod';
+import { BoolSchema, IntSchema, NumSchema } from '../../../../common/zod';
+import { PaginationResponseSchema, PaginationSchema } from '../../../api';
 import { migrateWorkflowToCurrent } from '../../../../core/workflow/migration';
 import z from 'zod';
 
@@ -297,6 +298,20 @@ export const ListAppBodySchema = z
   });
 export type ListAppBodyType = z.infer<typeof ListAppBodySchema>;
 
+/* ============================================================================
+ * API: 获取应用列表 V2
+ * Route: POST /api/core/app/listV2
+ * Method: POST
+ * Description: 分页获取当前团队下当前用户可读的应用或文件夹列表。
+ * Tags: ['基础管理']
+ * ============================================================================ */
+export const ListAppV2BodySchema = ListAppBodySchema.extend({
+  excludeAppId: ObjectIdSchema.optional().meta({
+    description: '排除指定应用，适用于不允许选择当前编辑应用的场景'
+  })
+}).extend(PaginationSchema.shape);
+export type ListAppV2BodyType = z.infer<typeof ListAppV2BodySchema>;
+
 export const AppListItemSchema = z
   .object({
     _id: ObjectIdSchema.meta({ description: '应用 ID' }),
@@ -322,6 +337,11 @@ export const ListAppResponseSchema = z.array(AppListItemSchema).meta({
   description: '应用列表'
 });
 export type ListAppResponseType = z.infer<typeof ListAppResponseSchema>;
+
+export const ListAppV2ResponseSchema = PaginationResponseSchema(AppListItemSchema).meta({
+  description: '应用列表(分页)'
+});
+export type ListAppV2ResponseType = z.infer<typeof ListAppV2ResponseSchema>;
 
 /* ============================================================================
  * API: 获取应用详情

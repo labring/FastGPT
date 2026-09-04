@@ -1,12 +1,17 @@
 import React, { type Dispatch, type ReactNode, type SetStateAction, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getSkillList, getSkillFolderPath, getSkillDetail } from '@/web/core/skill/api';
+import { useScrollPagination, type ScrollListType } from '@fastgpt/web/hooks/useScrollPagination';
+import { getSkillListV2, getSkillFolderPath, getSkillDetail } from '@/web/core/skill/api';
 import type { ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
 import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { normalizeParentId } from '@fastgpt/global/common/parentFolder/depth';
 import { useRouter } from 'next/router';
 import type { SkillPermission } from '@fastgpt/global/support/permission/skill/controller';
+import {
+  getGridRequestPageSize,
+  useResponsiveGridPageSize
+} from '@fastgpt/web/hooks/useResponsiveGridPageSize';
 
 export type SkillListItemType = Omit<
   ListSkillsResponse['list'][number],
@@ -21,6 +26,7 @@ type SkillListContextType = {
   skills: SkillListItemType[];
   isFetchingSkills: boolean;
   refreshSkills: () => void;
+  ScrollData: ScrollListType;
   searchKey: string;
   setSearchKey: Dispatch<SetStateAction<string>>;
   parentId: string | null;
@@ -28,6 +34,8 @@ type SkillListContextType = {
   folderDetail?: {
     permission: SkillPermission;
   };
+  columnCount: number;
+  pageSize: number;
 };
 
 export const SkillListContext = createContext<SkillListContextType>({
@@ -36,13 +44,16 @@ export const SkillListContext = createContext<SkillListContextType>({
   refreshSkills: () => {
     throw new Error('Function not implemented.');
   },
+  ScrollData: () => <></>,
   searchKey: '',
   setSearchKey: () => {
     throw new Error('Function not implemented.');
   },
   parentId: null,
   paths: [],
-  folderDetail: undefined
+  folderDetail: undefined,
+  columnCount: 1,
+  pageSize: 50
 });
 
 const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
@@ -50,27 +61,39 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
   const parentId = normalizeParentId(router.query.parentId);
 
   const [searchKey, setSearchKey] = useState('');
+  const { columnCount, pageSize } = useResponsiveGridPageSize(
+    parentId ? { base: 1, sm: 2, md: 2, lg: 3 } : { base: 1, sm: 2, md: 2, lg: 3, xl: 4 }
+  );
 
   const {
-    data,
-    refresh: refreshSkills,
-    loading: isFetchingSkills
-  } = useRequest(
-    () =>
-      getSkillList({ source: 'mine', searchKey: searchKey, parentId }).then((res) =>
-        res.list.map((item) => ({
+    data: skills = [],
+    isLoading: isFetchingSkills,
+    ScrollData,
+    fetchData
+  } = useScrollPagination(
+    ({ offset = 0, pageSize = 50 }) =>
+      getSkillListV2({
+        source: 'mine',
+        searchKey,
+        parentId,
+        offset,
+        pageSize: getGridRequestPageSize(pageSize, offset)
+      }).then((res) => ({
+        list: res.list.map((item) => ({
           ...item,
           createTime: new Date(item.createTime),
           updateTime: new Date(item.updateTime)
-        }))
-      ),
+        })),
+        total: res.total
+      })),
     {
-      manual: false,
-      refreshDeps: [searchKey, parentId],
+      pageSize,
+      refreshDeps: [searchKey, parentId, pageSize],
       throttleWait: 500,
       refreshOnWindowFocus: false
     }
   );
+  const refreshSkills = () => fetchData({ init: true });
 
   // 加载面包屑路径（仅在文件夹内时请求）
   const { data: paths = [] } = useRequest(
@@ -98,14 +121,17 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const contextValue: SkillListContextType = {
-    skills: data || [],
+    skills,
     isFetchingSkills,
     refreshSkills,
+    ScrollData,
     searchKey,
     setSearchKey,
     parentId,
     paths,
-    folderDetail
+    folderDetail,
+    columnCount,
+    pageSize
   };
 
   return <SkillListContext.Provider value={contextValue}>{children}</SkillListContext.Provider>;

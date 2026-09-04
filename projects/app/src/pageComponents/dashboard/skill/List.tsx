@@ -24,7 +24,7 @@ import {
   postUpdateSkill,
   postCopySkill,
   getAppsBySkillId,
-  getSkillFolderList,
+  getSkillListV2,
   resumeInheritPer,
   postChangeSkillOwner
 } from '@/web/core/skill/api';
@@ -38,16 +38,17 @@ import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import type { ListAppsBySkillIdResponse } from '@fastgpt/global/core/ai/skill/api';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
-import type {
-  GetResourceFolderListProps,
-  ParentIdType
-} from '@fastgpt/global/common/parentFolder/type';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import type { SelectOneResourceServer } from '@/components/common/folder/SelectOneResource';
+import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
 import SkillDashboardEmptyHero from '@/pageComponents/dashboard/skill/SkillDashboardEmptyHero';
 import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
+import { getGridPageSize } from '@fastgpt/web/hooks/useResponsiveGridPageSize';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import ResourceCardSkeleton from '@/pageComponents/dashboard/ResourceCardSkeleton';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
@@ -193,26 +194,44 @@ const List = ({
   const router = useRouter();
   const { isPc } = useSystem();
 
-  const { skills, refreshSkills, isFetchingSkills, searchKey, folderDetail } = useContextSelector(
-    SkillListContext,
-    (v) => ({
-      skills: v.skills,
-      refreshSkills: v.refreshSkills,
-      isFetchingSkills: v.isFetchingSkills,
-      searchKey: v.searchKey,
-      folderDetail: v.folderDetail
-    })
-  );
+  const {
+    skills,
+    refreshSkills,
+    isFetchingSkills,
+    searchKey,
+    folderDetail,
+    ScrollData,
+    columnCount,
+    pageSize,
+    parentId
+  } = useContextSelector(SkillListContext, (v) => ({
+    skills: v.skills,
+    refreshSkills: v.refreshSkills,
+    isFetchingSkills: v.isFetchingSkills,
+    searchKey: v.searchKey,
+    folderDetail: v.folderDetail,
+    ScrollData: v.ScrollData,
+    columnCount: v.columnCount,
+    pageSize: v.pageSize,
+    parentId: v.parentId
+  }));
 
   const [editedSkill, setEditedSkill] = useState<EditResourceInfoFormType>();
   const [moveSkillId, setMoveSkillId] = useState<string>();
   const [editPerSkillId, setEditPerSkillId] = useState<string>();
+  const isInitialLoading = skills.length === 0 && isFetchingSkills;
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: skills,
-    listKey: `${router.pathname}-${router.query.parentId || ''}-${searchKey}`,
-    reservedSlotCount: 1,
+    listKey: `${router.pathname}-${parentId || ''}-${searchKey}-${columnCount}-${pageSize}-${isInitialLoading}`,
+    reservedSlotCount: isInitialLoading ? 0 : 1,
     estimatedRowHeight: 160,
-    estimatedRowGap: 20
+    estimatedRowGap: 20,
+    loadingItemCount: isFetchingSkills
+      ? isInitialLoading
+        ? getGridPageSize(columnCount)
+        : pageSize
+      : 0,
+    renderLoadingItem: () => <ResourceCardSkeleton />
   });
 
   const selectedSkill = useMemo(
@@ -286,11 +305,29 @@ const List = ({
   );
 
   // 获取技能文件夹列表
-  const getSkillFolderListForMove = useMemo(
+  const getSkillFolderListForMove = useMemo<SelectOneResourceServer>(
     () =>
-      ({ parentId }: GetResourceFolderListProps) =>
-        getSkillFolderList({ parentId }),
-    []
+      ({ parentId, offset, pageSize }, cancelToken) =>
+        getSkillListV2(
+          {
+            source: 'mine',
+            type: AgentSkillTypeEnum.folder,
+            parentId,
+            offset,
+            pageSize
+          },
+          cancelToken
+        ).then(({ list, total }) => ({
+          total,
+          list: list.map((item) => ({
+            id: item._id,
+            name: item.name,
+            avatar: FolderImgUrl,
+            isFolder: true,
+            disabled: item._id === moveSkillId || !item.permission.hasWritePer
+          }))
+        })),
+    [moveSkillId]
   );
 
   const renderSkillCard = (skill: (typeof skills)[number]) => {
@@ -517,101 +554,115 @@ const List = ({
     );
   };
 
-  if (skills.length === 0 && isFetchingSkills) return null;
-
   return (
-    <>
-      {skills.length === 0 && !folderDetail ? (
-        searchKey ? (
-          <EmptyTip />
-        ) : onClickCreate && onClickImport ? (
-          <SkillDashboardEmptyHero onClickImport={onClickImport} onClickCreate={onClickCreate} />
-        ) : (
+    <ScrollData h={'full'} minH={0} showLoadingOverlay={false}>
+      <>
+        {isInitialLoading ? (
           <Grid
+            ref={gridRef}
             py={4}
-            gridTemplateColumns={[
-              '1fr',
-              'repeat(2,1fr)',
-              'repeat(2,1fr)',
-              'repeat(3,1fr)',
-              'repeat(4,1fr)'
-            ]}
+            gridTemplateColumns={
+              parentId
+                ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
+                : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
+            }
             gridGap={5}
             alignItems={'stretch'}
           >
-            <ForbiddenCreateButton />
+            {renderVirtualGridItems(renderSkillCard)}
           </Grid>
-        )
-      ) : (
-        <Grid
-          ref={gridRef}
-          py={4}
-          gridTemplateColumns={
-            folderDetail
-              ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
-              : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
-          }
-          gridGap={5}
-          alignItems={'stretch'}
-        >
-          {onClickCreate ? <ListCreateCard onClick={onClickCreate} /> : <ForbiddenCreateButton />}
-          {renderVirtualGridItems(renderSkillCard)}
-        </Grid>
-      )}
-      <DeleteConfirmModal />
-      <ConfirmCopyModal />
-      {!!editedSkill && (
-        <EditResourceModal
-          {...editedSkill}
-          title={t('skill:skill_info_edit')}
-          onClose={() => {
-            setEditedSkill(undefined);
-          }}
-          onEdit={({ id, ...data }) => onUpdateSkill(id, data)}
-        />
-      )}
-      {!!moveSkillId && (
-        <MoveModal
-          moveResourceId={moveSkillId}
-          server={getSkillFolderListForMove}
-          title={t('skill:move_skill')}
-          onClose={() => setMoveSkillId(undefined)}
-          onConfirm={onMoveSkill}
-          moveHint={t('skill:move_skill_hint')}
-        />
-      )}
-      {!!selectedSkill && (
-        <ConfigPerModal
-          onChangeOwner={(tmbId: string) =>
-            postChangeSkillOwner({
-              skillId: selectedSkill._id,
-              ownerId: tmbId
-            }).then(() => refreshSkills())
-          }
-          hasParent={!!selectedSkill.parentId}
-          refetchResource={refreshSkills}
-          isInheritPermission={selectedSkill.inheritPermission}
-          resumeInheritPermission={() =>
-            resumeInheritPer(selectedSkill._id).then(() => refreshSkills())
-          }
-          avatar={selectedSkill.avatar}
-          name={selectedSkill.name}
-          managePer={{
-            defaultRole: ReadRoleVal,
-            permission: selectedSkill.permission,
-            onGetCollaboratorList: () => getSkillCollaboratorList(selectedSkill._id),
-            roleList: SkillRoleList,
-            onUpdateCollaborators: (props) =>
-              postUpdateSkillCollaborators({
-                ...props,
-                skillId: selectedSkill._id
-              }),
-            refreshDeps: [selectedSkill._id, selectedSkill.inheritPermission]
-          }}
-          onClose={() => setEditPerSkillId(undefined)}
-        />
-      )}
-    </>
+        ) : skills.length === 0 && !folderDetail ? (
+          searchKey ? (
+            <EmptyTip />
+          ) : onClickCreate && onClickImport ? (
+            <SkillDashboardEmptyHero onClickImport={onClickImport} onClickCreate={onClickCreate} />
+          ) : (
+            <Grid
+              py={4}
+              gridTemplateColumns={[
+                '1fr',
+                'repeat(2,1fr)',
+                'repeat(2,1fr)',
+                'repeat(3,1fr)',
+                'repeat(4,1fr)'
+              ]}
+              gridGap={5}
+              alignItems={'stretch'}
+            >
+              <ForbiddenCreateButton />
+            </Grid>
+          )
+        ) : (
+          <Grid
+            ref={gridRef}
+            py={4}
+            gridTemplateColumns={
+              parentId
+                ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
+                : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
+            }
+            gridGap={5}
+            alignItems={'stretch'}
+          >
+            {onClickCreate ? <ListCreateCard onClick={onClickCreate} /> : <ForbiddenCreateButton />}
+            {renderVirtualGridItems(renderSkillCard)}
+          </Grid>
+        )}
+        <DeleteConfirmModal />
+        <ConfirmCopyModal />
+        {!!editedSkill && (
+          <EditResourceModal
+            {...editedSkill}
+            title={t('skill:skill_info_edit')}
+            onClose={() => {
+              setEditedSkill(undefined);
+            }}
+            onEdit={({ id, ...data }) => onUpdateSkill(id, data)}
+          />
+        )}
+        {!!moveSkillId && (
+          <MoveModal
+            moveResourceId={moveSkillId}
+            server={getSkillFolderListForMove}
+            title={t('skill:move_skill')}
+            onClose={() => setMoveSkillId(undefined)}
+            onConfirm={onMoveSkill}
+            moveHint={t('skill:move_skill_hint')}
+          />
+        )}
+        {!!selectedSkill && (
+          <ConfigPerModal
+            onChangeOwner={(tmbId: string) =>
+              postChangeSkillOwner({
+                skillId: selectedSkill._id,
+                ownerId: tmbId
+              }).then(() => refreshSkills())
+            }
+            hasParent={!!selectedSkill.parentId}
+            refetchResource={refreshSkills}
+            isInheritPermission={selectedSkill.inheritPermission}
+            resumeInheritPermission={() =>
+              resumeInheritPer(selectedSkill._id).then(() => refreshSkills())
+            }
+            avatar={selectedSkill.avatar}
+            name={selectedSkill.name}
+            managePer={{
+              defaultRole: ReadRoleVal,
+              permission: selectedSkill.permission,
+              onGetCollaboratorList: () => getSkillCollaboratorList(selectedSkill._id),
+              roleList: SkillRoleList,
+              onUpdateCollaborators: (props) =>
+                postUpdateSkillCollaborators({
+                  ...props,
+                  skillId: selectedSkill._id
+                }),
+              refreshDeps: [selectedSkill._id, selectedSkill.inheritPermission]
+            }}
+            onClose={() => setEditPerSkillId(undefined)}
+          />
+        )}
+      </>
+    </ScrollData>
   );
 };
 

@@ -2,28 +2,35 @@ import React, { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useRouter } from 'next/router';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getAppDetailById, getMyApps, putAppById } from '@/web/core/app/api';
+import { useScrollPagination, type ScrollListType } from '@fastgpt/web/hooks/useScrollPagination';
+import { getAppDetailById, getMyAppsV2, putAppById } from '@/web/core/app/api';
+import type { SelectOneResourceServer } from '@/components/common/folder/SelectOneResource';
 import { type AppDetailType, type AppListItemType } from '@fastgpt/global/core/app/type';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import {
-  type GetResourceFolderListProps,
   type ParentIdType,
   type ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
 import { type UpdateAppBodyType } from '@fastgpt/global/openapi/core/app/common/api';
 import dynamic from 'next/dynamic';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import { resolveDashboardAppListTypes } from './utils/appListTypes';
+import {
+  getGridRequestPageSize,
+  useResponsiveGridPageSize
+} from '@fastgpt/web/hooks/useResponsiveGridPageSize';
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
 type AppListContextType = {
   parentId?: string | null;
   appType: AppTypeEnum | 'all';
   myApps: AppListItemType[];
-  loadMyApps: () => Promise<AppListItemType[]>;
+  loadMyApps: () => Promise<void>;
   isFetchingApps: boolean;
+  ScrollData: ScrollListType;
   folderDetail: AppDetailType | undefined | null;
   paths: ParentTreePathItemType[];
   onUpdateApp: (id: string, data: UpdateAppBodyType) => Promise<any>;
@@ -31,15 +38,18 @@ type AppListContextType = {
   refetchFolderDetail: () => Promise<AppDetailType | null>;
   searchKey: string;
   setSearchKey: React.Dispatch<React.SetStateAction<string>>;
+  columnCount: number;
+  pageSize: number;
 };
 
 export const AppListContext = createContext<AppListContextType>({
   parentId: undefined,
   myApps: [],
-  loadMyApps: async function (): Promise<AppListItemType[]> {
+  loadMyApps: async function (): Promise<void> {
     throw new Error('Function not implemented.');
   },
   isFetchingApps: false,
+  ScrollData: () => <></>,
   folderDetail: undefined,
   paths: [],
   onUpdateApp: function (id: string, data: UpdateAppBodyType): Promise<any> {
@@ -55,7 +65,9 @@ export const AppListContext = createContext<AppListContextType>({
   searchKey: '',
   setSearchKey: function (value: React.SetStateAction<string>): void {
     throw new Error('Function not implemented.');
-  }
+  },
+  columnCount: 1,
+  pageSize: 50
 });
 
 const AppListContextProvider = ({ children }: { children: ReactNode }) => {
@@ -66,27 +78,37 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     type: AppTypeEnum;
   };
   const [searchKey, setSearchKey] = useState('');
+  const { columnCount, pageSize } = useResponsiveGridPageSize(
+    parentId ? { base: 1, sm: 2, md: 2, lg: 3 } : { base: 1, sm: 2, md: 2, lg: 3, xl: 4 }
+  );
 
   const {
-    data = [],
-    runAsync: loadMyApps,
-    loading: isFetchingApps
-  } = useRequest(
-    () => {
+    data: myApps = [],
+    isLoading: isFetchingApps,
+    ScrollData,
+    fetchData
+  } = useScrollPagination(
+    ({ offset = 0, pageSize = 50 }) => {
       const formatType = resolveDashboardAppListTypes({
         pathname: router.pathname,
         type
       });
 
-      return getMyApps({ parentId, type: formatType, searchKey });
+      return getMyAppsV2({
+        parentId,
+        type: formatType,
+        searchKey,
+        offset,
+        pageSize: getGridRequestPageSize(pageSize, offset)
+      });
     },
     {
-      manual: false,
-      refreshDeps: [searchKey, parentId, type],
-      throttleWait: 500,
-      refreshOnWindowFocus: true
+      pageSize,
+      refreshDeps: [searchKey, parentId, type, pageSize],
+      throttleWait: 500
     }
   );
+  const loadMyApps = useCallback(() => fetchData({ init: true }), [fetchData]);
 
   const { data: paths = [], runAsync: refetchPaths } = useRequest(
     () => getAppFolderPath({ sourceId: parentId, type: 'current' }),
@@ -123,24 +145,32 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     [moveAppId, onUpdateApp]
   );
 
-  const getAppFolderList = useCallback(
-    ({ parentId }: GetResourceFolderListProps) => {
+  const getAppFolderList = useCallback<SelectOneResourceServer>(
+    ({ parentId, offset, pageSize }, cancelToken) => {
       const isAgent = router.pathname.includes('/agent');
       const folderType = isAgent ? AppTypeEnum.folder : AppTypeEnum.toolFolder;
 
-      return getMyApps({
-        parentId,
-        type: folderType
-      }).then((res) =>
-        res
-          .filter((item) => item.permission.hasWritePer)
-          .map((item) => ({
-            id: item._id,
-            name: item.name
-          }))
-      );
+      return getMyAppsV2(
+        {
+          parentId,
+          type: folderType,
+          offset,
+          pageSize,
+          excludeAppId: moveAppId
+        },
+        cancelToken
+      ).then(({ list, total }) => ({
+        total,
+        list: list.map((item) => ({
+          id: item._id,
+          name: item.name,
+          avatar: FolderImgUrl,
+          isFolder: true,
+          disabled: !item.permission.hasWritePer
+        }))
+      }));
     },
-    [router.pathname]
+    [moveAppId, router.pathname]
   );
 
   const { setLastAppListRouteType } = useSystemStore();
@@ -151,8 +181,9 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
   const contextValue: AppListContextType = {
     parentId,
     appType: type,
-    myApps: data,
+    myApps,
     loadMyApps,
+    ScrollData,
     refetchFolderDetail,
     isFetchingApps,
     folderDetail,
@@ -160,7 +191,9 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     onUpdateApp,
     setMoveAppId,
     searchKey,
-    setSearchKey
+    setSearchKey,
+    columnCount,
+    pageSize
   };
   return (
     <AppListContext.Provider value={contextValue}>

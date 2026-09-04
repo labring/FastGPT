@@ -12,6 +12,8 @@ import type {
   GetAppDetailResponseType,
   ListAppBodyType,
   ListAppResponseType,
+  ListAppV2BodyType,
+  ListAppV2ResponseType,
   UpdateAppQueryType,
   UpdateAppBodyType,
   UpdateAppResponseType
@@ -31,6 +33,15 @@ export const getMyApps = (data?: ListAppBodyType) =>
   POST<ListAppResponseType>('/core/app/list', data, {
     maxQuantity: 1
   });
+
+export const getMyAppsV2 = (data?: ListAppV2BodyType, cancelToken?: AbortController) =>
+  POST<ListAppV2ResponseType>('/core/app/listV2', data, {
+    maxQuantity: 1,
+    cancelToken
+  });
+
+/** 获取当前筛选条件下的全部应用，供需要跨页遍历资源的选择器使用。 */
+export const getAllApps = (data?: ListAppBodyType) => getMyApps(data);
 
 /**
  * 创建一个应用

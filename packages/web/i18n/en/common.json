@@ -1035,6 +1035,7 @@
   "resume_failed": "Resume Failed",
   "resume_completed_data_parse_failed": "Couldn't parse the completed response while resuming",
   "response_processing_error": "An error occurred while processing the response",
+  "current_location": "Current location:",
   "root_folder": "Root",
   "save_failed": "save_failed",
   "server_error": "Server error",
