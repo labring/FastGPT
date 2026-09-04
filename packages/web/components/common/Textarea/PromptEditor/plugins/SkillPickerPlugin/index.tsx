@@ -565,14 +565,14 @@ export default function SkillPickerPlugin({
 
       if (childOption) {
         appendColumn(currentColumnIndex, childOption);
-        return;
+        return childOption;
       }
 
       if (item.isFolder && option.onFolderLoad) {
         const cachedOption = folderOptionsRef.current.get(itemKey);
         if (cachedOption) {
           appendColumn(currentColumnIndex, cachedOption);
-          return;
+          return cachedOption;
         }
 
         setLoadingFolderIds((prev) => new Set(prev).add(itemKey));
@@ -606,6 +606,7 @@ export default function SkillPickerPlugin({
           };
           folderOptionsRef.current.set(itemKey, nextOption);
           appendColumn(currentColumnIndex, nextOption);
+          return nextOption;
         } finally {
           if (folderRequestsRef.current.get(itemKey) === pendingRequest) {
             folderRequestsRef.current.delete(itemKey);
@@ -620,13 +621,14 @@ export default function SkillPickerPlugin({
       }
 
       if (item.isFolder) {
-        appendColumn(currentColumnIndex, {
+        const emptyOption = {
           description: option.description,
           list: [],
           folderExpandMode: option.folderExpandMode,
           onClick: option.onClick
-        });
-        return;
+        } satisfies SkillOptionItemType;
+        appendColumn(currentColumnIndex, emptyOption);
+        return emptyOption;
       }
 
       if (!option.onSelect) return;
@@ -635,6 +637,7 @@ export default function SkillPickerPlugin({
       if (selectionRequestIdRef.current !== requestId) return;
 
       appendColumn(currentColumnIndex, result);
+      return result;
     },
     {
       refreshDeps: [appendColumn, getItemChildOption]
@@ -895,6 +898,20 @@ export default function SkillPickerPlugin({
               currentColumnIndex: prevColumnIndex,
               item: currentItem,
               option: currentOption
+            }).then((nextOption) => {
+              if (!nextOption || !isMenuOpenRef.current) return;
+
+              const nextColumnIndex = prevColumnIndex + 1;
+              setSelectedRowIndex((state) => ({
+                ...state,
+                [prevColumnIndex]: currentRowIndex
+              }));
+              setCurrentColumnIndex(nextColumnIndex);
+              setCurrentRowIndex(0);
+
+              requestAnimationFrame(() => {
+                scrollIntoView(nextColumnIndex, 0);
+              });
             });
             return prevColumnIndex;
           }
