@@ -213,10 +213,8 @@ export default function SkillPickerPlugin({
     const nextLeft = Math.min(Math.max(triggerRect?.left ?? menuRect.left, edgePadding), maxLeft);
     const currentAnchorLeft = Number.parseFloat(anchorElement.style.left);
 
-    if (!Number.isFinite(currentAnchorLeft)) return;
-
     const nextAnchorLeft = nextLeft + window.pageXOffset;
-    if (Math.abs(nextAnchorLeft - currentAnchorLeft) > 0.5) {
+    if (!Number.isFinite(currentAnchorLeft) || Math.abs(nextAnchorLeft - currentAnchorLeft) > 0.5) {
       anchorElement.style.left = `${nextAnchorLeft}px`;
     }
     setIsMenuPositioned(true);
@@ -234,6 +232,17 @@ export default function SkillPickerPlugin({
       });
     });
   }, [updateMenuPosition]);
+
+  const setMenuElement = useCallback(
+    (element: HTMLDivElement | null) => {
+      menuElementRef.current = element;
+      if (element && isMenuOpenRef.current) {
+        setIsMenuPositioned(false);
+        scheduleMenuPosition();
+      }
+    },
+    [scheduleMenuPosition]
+  );
 
   useEffect(() => {
     if (!isFocus || !isMenuOpen) return;
@@ -1313,9 +1322,7 @@ export default function SkillPickerPlugin({
 
         return ReactDOM.createPortal(
           <Box
-            ref={(element) => {
-              menuElementRef.current = element;
-            }}
+            ref={setMenuElement}
             visibility={shouldShow && isMenuPositioned ? 'visible' : 'hidden'}
             zIndex={99999}
             w={'max-content'}
