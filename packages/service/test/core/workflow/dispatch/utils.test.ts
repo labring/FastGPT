@@ -1130,14 +1130,45 @@ describe('rewriteRuntimeWorkFlow', () => {
       lean: vi.fn().mockResolvedValue({ _id: 'http-plugin-1', name: 'HTTPApp' })
     });
     mockGetHTTPToolList.mockResolvedValue([
-      { name: 'api1', description: 'desc1', url: 'http://example.com/api1' },
+      {
+        name: 'api1',
+        description: 'desc1',
+        url: 'http://example.com/api1',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            manual: { type: 'string', isToolParam: false },
+            generated: { type: 'string', isToolParam: true }
+          },
+          required: ['manual', 'generated']
+        },
+        requestSchema: {
+          type: 'object',
+          properties: {
+            manual: { type: 'string', isToolParam: true },
+            generated: { type: 'string', isToolParam: true }
+          },
+          required: ['manual', 'generated']
+        }
+      },
       { name: 'api2', description: 'desc2', url: 'http://example.com/api2' }
     ]);
 
     await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
 
     expect(nodes.find((n) => n.nodeId === 'ts4')).toBeUndefined();
-    expect(nodes.find((n) => n.nodeId === 'ts40')).toBeDefined();
+    expect(nodes.find((n) => n.nodeId === 'ts40')?.inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: 'manual',
+          selectedType: FlowNodeInputTypeEnum.input
+        }),
+        expect.objectContaining({
+          key: 'generated',
+          selectedType: FlowNodeInputTypeEnum.agentGenerated
+        })
+      ])
+    );
     expect(nodes.find((n) => n.nodeId === 'ts41')).toBeDefined();
     expect(edges.filter((e) => e.target === 'ts40' || e.target === 'ts41').length).toBe(2);
   });
