@@ -4,7 +4,7 @@ import type { FlexProps } from '@chakra-ui/react';
 import type { ReactNode } from 'react';
 import MyIcon from '../Icon';
 
-export type FilterButtonProps = Omit<FlexProps, 'children' | 'title' | 'value'> & {
+type FilterButtonProps = Omit<FlexProps, 'children' | 'title' | 'value'> & {
   title: ReactNode;
   value: ReactNode;
 };

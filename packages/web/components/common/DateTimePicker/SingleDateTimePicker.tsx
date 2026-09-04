@@ -14,21 +14,33 @@ import {
 } from '@chakra-ui/react';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
+import { enUS } from 'date-fns/locale/en-US';
+import { ko } from 'date-fns/locale/ko';
 import { zhCN } from 'date-fns/locale/zh-CN';
+import { zhTW } from 'date-fns/locale/zh-TW';
 import type { Locale } from 'date-fns';
 import { addMonths, format, isValid, parse } from 'date-fns';
 import { useTranslation } from 'next-i18next';
+import { LangEnum } from '@fastgpt/global/common/i18n/type';
 import MyIcon from '../Icon';
 
 const DATE_INPUT_FORMAT = 'yyyy-MM-dd';
 const TIME_INPUT_FORMAT = 'HH:mm';
 
-export type SingleDateTimePickerProps = {
+const DATE_FNS_LOCALE_BY_LANG: Record<string, Locale> = {
+  [LangEnum.zh_CN]: zhCN,
+  [LangEnum.zh_Hant]: zhTW,
+  [LangEnum.en]: enUS,
+  [LangEnum.ko_KR]: ko
+};
+
+type SingleDateTimePickerProps = {
   value?: Date | number;
   onChange?: (val: number) => void;
   placeholder?: string;
   isDisabled?: boolean;
   locale?: Locale;
+  hideCalendarIcon?: boolean;
 } & Omit<FlexProps, 'onChange' | 'value'>;
 
 /** 将时间戳或 Date 转为有效 Date；空值或非法日期返回 undefined。 */
@@ -54,10 +66,13 @@ export const SingleDateTimePicker = ({
   onChange,
   placeholder,
   isDisabled,
-  locale = zhCN,
+  locale,
+  hideCalendarIcon,
   ...triggerProps
 }: SingleDateTimePickerProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const resolvedLocale = locale ?? DATE_FNS_LOCALE_BY_LANG[i18n.language] ?? zhCN;
+  const weekStartsOn = resolvedLocale.options?.weekStartsOn ?? 0;
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const selectedDate = toValidDate(value);
@@ -126,13 +141,15 @@ export const SingleDateTimePicker = ({
           <Box color={displayText ? 'myGray.900' : 'myGray.500'} noOfLines={1}>
             {displayText || placeholder || t('common:datetime_picker.placeholder')}
           </Box>
-          <MyIcon
-            name={'common/calendar'}
-            w={'16px'}
-            h={'16px'}
-            color={'myGray.500'}
-            flexShrink={0}
-          />
+          {!hideCalendarIcon && (
+            <MyIcon
+              name={'common/calendar'}
+              w={'16px'}
+              h={'16px'}
+              color={'myGray.500'}
+              flexShrink={0}
+            />
+          )}
         </Flex>
       </PopoverTrigger>
 
@@ -182,7 +199,7 @@ export const SingleDateTimePicker = ({
             </Flex>
 
             <Box fontSize={'14px'} fontWeight={'500'} color={'#111824'} textAlign={'center'}>
-              {format(tempMonth, 'LLLL  yyyy', { locale })}
+              {format(tempMonth, 'LLLL  yyyy', { locale: resolvedLocale })}
             </Box>
 
             <Flex
@@ -280,8 +297,8 @@ export const SingleDateTimePicker = ({
             }}
           >
             <DayPicker
-              locale={locale}
-              weekStartsOn={0}
+              locale={resolvedLocale}
+              weekStartsOn={weekStartsOn}
               mode={'single'}
               month={tempMonth}
               onMonthChange={setTempMonth}
@@ -294,7 +311,7 @@ export const SingleDateTimePicker = ({
                 MonthCaption: () => <></>
               }}
               formatters={{
-                formatWeekdayName: (date) => format(date, 'EEEEEE', { locale })
+                formatWeekdayName: (date) => format(date, 'EEEEEE', { locale: resolvedLocale })
               }}
             />
           </Box>

@@ -9,7 +9,6 @@ import {
   type DatasetTagType
 } from '@fastgpt/global/core/dataset/type';
 import {
-  collectionTagValueKey,
   isUsableCollectionTagFilterValue,
   sortCollectionTagValues
 } from '@fastgpt/global/core/dataset/tagUtils';
@@ -21,7 +20,7 @@ export const OVERFLOW_CHIP_GAP_PX = 8;
 /**
  * 根据测量宽度计算可见 chip 数量。空间不够时至少留 1 个，其余用 +n。
  */
-export const countVisibleOverflowChips = ({
+const countVisibleOverflowChips = ({
   chipWidths,
   overflowWidth,
   containerWidth,
@@ -103,7 +102,7 @@ export const formatCollectionTagValueText = (
   tagType?: DatasetTagType['tagType']
 ): string => {
   if (value == null || value === '') return '';
-  if (Array.isArray(value)) return value.filter(Boolean).join('、');
+  if (Array.isArray(value)) return value.filter(Boolean).join(', ');
   if (tagType === 'datetime') {
     const d = dayjs(value);
     return d.isValid() ? formatTime2YMDHM(d.valueOf()) : String(value);
@@ -146,7 +145,7 @@ export const buildTagFilterValues = (
   const values = new Map<string, string | number>();
   const addValue = (value: string | number) => {
     if (!isUsableCollectionTagFilterValue(value)) return;
-    values.set(collectionTagValueKey(value), value);
+    values.set(String(value), value);
   };
 
   if (tag.tagType === DatasetCollectionTagTypeEnum.array) {
@@ -166,10 +165,10 @@ export const formatCollectionTagChipText = (
 
   const tagType = tagDefs.find((def) => def.tag === item.tag)?.tagType;
   const valueText = formatCollectionTagValueText(item.value, tagType);
-  return valueText ? `${item.tag}：${valueText}` : item.tag;
+  return valueText ? `${item.tag}: ${valueText}` : item.tag;
 };
 
-export const TAG_TOOLTIP_PROPS = {
+const TAG_TOOLTIP_PROPS = {
   placement: 'bottom' as const,
   offset: [0, 10] as [number, number],
   hasArrow: true,
@@ -211,7 +210,7 @@ export const SaveActionIcon = ({ isEnabled }: { isEnabled: boolean }) => {
   );
 };
 
-export type TagActionButtonProps = {
+type TagActionButtonProps = {
   label: string;
   icon: React.ReactElement;
   onClick?: () => void;

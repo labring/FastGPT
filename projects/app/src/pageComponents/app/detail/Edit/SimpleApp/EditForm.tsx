@@ -37,11 +37,22 @@ import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
 import SandboxConfigButton from '../../components/SandboxConfigButton';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import DatasetCard from '@/components/core/app/DatasetCard';
+import DatasetTagFilterRows, {
+  DatasetTagFilterDeprecated,
+  DatasetTagFilterUpgradeButton,
+  TagFilterLogicToggle
+} from '@/components/core/dataset/DatasetTagFilterRows';
 import { useWelcomeTextFoldState } from '@/components/core/app/useAppEditorUIState';
 import {
   findClientModelByReference,
   resolveClientModelReferenceId
 } from '@/web/core/ai/model/modelReference';
+import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import {
+  createEmptyTagFilterValue,
+  isDatasetTagFilterValue,
+  type DatasetTagFilterValue
+} from '@fastgpt/global/core/dataset/workflowTagFilter';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -111,12 +122,40 @@ const EditForm = ({
         ...item,
         label: t(item.label as any),
         parent: {
-          id: 'VARIABLE_NODE_ID',
+          id: VARIABLE_NODE_ID,
           label: t('common:core.module.Variable'),
           avatar: 'core/workflow/template/variable'
         }
       })),
     [appForm.chatConfig.variables, t]
+  );
+
+  const tagFilterReferenceList = useMemo(
+    () => [
+      {
+        label: t('common:core.module.Variable'),
+        value: VARIABLE_NODE_ID,
+        children: formatVariables.map((item) => ({
+          label: item.label,
+          value: item.key,
+          valueType: item.valueType
+        }))
+      }
+    ],
+    [formatVariables, t]
+  );
+
+  const onCollectionFilterMatchChange = useCallback(
+    (value: DatasetTagFilterValue | string) => {
+      setAppForm((state) => ({
+        ...state,
+        dataset: {
+          ...state.dataset,
+          collectionFilterMatch: value
+        }
+      }));
+    },
+    [setAppForm]
   );
 
   const { llmModelList, reRankModelList } = useUserModelLists();
@@ -486,6 +525,59 @@ const EditForm = ({
               />
             ))}
           </Grid>
+          {appForm.dataset.datasets?.length > 0 && feConfigs?.isPlus && (
+            <Box mt={4}>
+              <Flex alignItems={'center'} mb={2}>
+                <FormLabel color={'myGray.600'}>
+                  {typeof appForm.dataset.collectionFilterMatch === 'string'
+                    ? t('workflow:collection_metadata_filter')
+                    : t('workflow:tag_filter')}
+                </FormLabel>
+                <QuestionTip
+                  ml={1}
+                  label={
+                    typeof appForm.dataset.collectionFilterMatch === 'string'
+                      ? t('workflow:filter_description')
+                      : t('workflow:tag_filter_description')
+                  }
+                />
+                {typeof appForm.dataset.collectionFilterMatch === 'string' ? (
+                  <>
+                    <Box flex={1} />
+                    <DatasetTagFilterUpgradeButton
+                      onUpgrade={() => onCollectionFilterMatchChange(createEmptyTagFilterValue())}
+                    />
+                  </>
+                ) : (
+                  <Box ml={2}>
+                    <TagFilterLogicToggle
+                      value={
+                        isDatasetTagFilterValue(appForm.dataset.collectionFilterMatch)
+                          ? appForm.dataset.collectionFilterMatch
+                          : undefined
+                      }
+                      onChange={onCollectionFilterMatchChange}
+                    />
+                  </Box>
+                )}
+              </Flex>
+              {typeof appForm.dataset.collectionFilterMatch === 'string' ? (
+                <DatasetTagFilterDeprecated
+                  value={appForm.dataset.collectionFilterMatch}
+                  onChange={onCollectionFilterMatchChange}
+                  variables={formatVariables}
+                  variableLabels={formatVariables}
+                />
+              ) : (
+                <DatasetTagFilterRows
+                  value={appForm.dataset.collectionFilterMatch}
+                  onChange={onCollectionFilterMatchChange}
+                  datasetIds={appForm.dataset.datasets.map((item) => item.datasetId)}
+                  referenceList={tagFilterReferenceList}
+                />
+              )}
+            </Box>
+          )}
         </Box>
 
         {/* File select */}

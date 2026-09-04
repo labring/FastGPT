@@ -715,6 +715,42 @@ describe('getWorkflowNodeRunParams', () => {
     expect(params[NodeInputKeyEnum.addInputParam]).toEqual({ dynamicName: 'Ada' });
     expect(params.dynamicName).toBe('Ada');
   });
+
+  it('标签过滤条件行会解析行内引用并编成 tags JSON', () => {
+    const variableState = createVariableState({ price: 18 });
+    const node = createNode('search', FlowNodeTypeEnum.datasetSearchNode);
+    node.inputs = [
+      {
+        key: NodeInputKeyEnum.collectionFilterMatch,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.datasetTagFilter, FlowNodeInputTypeEnum.reference],
+        valueType: WorkflowIOValueTypeEnum.string,
+        value: {
+          logic: 'AND',
+          conditions: [
+            {
+              tag: 'price',
+              tagType: 'number',
+              op: '$gte',
+              valueMode: 'reference',
+              value: [VARIABLE_NODE_ID, 'price']
+            }
+          ]
+        }
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: variableState.state
+    });
+
+    expect(params[NodeInputKeyEnum.collectionFilterMatch]).toBe(
+      JSON.stringify({ tags: { $and: [{ price: { $gte: 18 } }] } })
+    );
+    expect(variableState.getToRuntimeRecordCount()).toBe(1);
+  });
 });
 
 describe('runWorkflow catchError', () => {

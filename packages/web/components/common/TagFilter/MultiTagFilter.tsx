@@ -1,13 +1,12 @@
 import React, { useMemo, useState, type ReactNode } from 'react';
 import { Box, Button, Checkbox, Flex, Input, type PlacementWithLogical } from '@chakra-ui/react';
-import { collectionTagValueKey } from '@fastgpt/global/core/dataset/tagUtils';
 import { type CollectionTagFilterItem } from '@fastgpt/global/core/dataset/type';
 import MyIcon from '../Icon';
 import MyBox from '../MyBox';
 import MyPopover from '../MyPopover';
 import FilterButton from './FilterButton';
 
-export type MultiTagFilterValue = string | number;
+type MultiTagFilterValue = string | number;
 
 export type MultiTagFilterGroup = {
   tagId: string;
@@ -18,7 +17,7 @@ export type MultiTagFilterGroup = {
   }>;
 };
 
-export type MultiTagFilterLabels = {
+type MultiTagFilterLabels = {
   title: ReactNode;
   all: ReactNode;
   searchPlaceholder: string;
@@ -29,7 +28,7 @@ export type MultiTagFilterLabels = {
   noMatch: ReactNode;
 };
 
-export type MultiTagFilterProps = {
+type MultiTagFilterProps = {
   groups: MultiTagFilterGroup[];
   selected: CollectionTagFilterItem[];
   onSelectedChange: (next: CollectionTagFilterItem[]) => void;
@@ -57,7 +56,7 @@ const stopWheelPropagation = (e: React.WheelEvent) => e.stopPropagation();
 /**
  * 双栏标签值筛选：左侧分组、右侧勾选值即生效。同一标签多值为 OR，不同标签由调用方按 AND 解释。
  */
-export const toggleMultiTagFilterValue = (
+const toggleMultiTagFilterValue = (
   selected: CollectionTagFilterItem[],
   tagId: string,
   value: MultiTagFilterValue
@@ -123,7 +122,7 @@ const MultiTagFilter = ({
     const firstValue = firstSelected.values[0];
     const firstValueLabel =
       firstGroup?.values.find((item) => item.value === firstValue)?.label ?? String(firstValue);
-    const firstText = firstGroup ? `${firstGroup.label}：${firstValueLabel}` : firstValueLabel;
+    const firstText = firstGroup ? `${firstGroup.label}: ${firstValueLabel}` : firstValueLabel;
     const extraCount = selectedCount - 1;
 
     return (
@@ -300,7 +299,7 @@ const MultiTagFilter = ({
                     const checked = isValueChecked(resolvedActiveTagId, item.value);
                     return (
                       <Flex
-                        key={collectionTagValueKey(item.value)}
+                        key={String(item.value)}
                         alignItems={'center'}
                         gap={2}
                         px={1}

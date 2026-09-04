@@ -57,6 +57,18 @@ describe('collection tag filter options and listV2 tagFilters', () => {
         tmbId: root.tmbId,
         datasetId: dataset._id,
         tags: [{ tagId: String(docType._id), value: ['spec'] }]
+      },
+      {
+        name: 'noise-file',
+        type: DatasetCollectionTypeEnum.file,
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id,
+        tags: [
+          { tagId: String(docType._id), value: [''] },
+          { tagId: String(version._id), value: 0 },
+          'legacy-id'
+        ]
       }
     ]);
 
@@ -69,7 +81,7 @@ describe('collection tag filter options and listV2 tagFilters', () => {
     const docTypeOption = optionsRes.data.list.find((item) => item.tagId === String(docType._id));
     const versionOption = optionsRes.data.list.find((item) => item.tagId === String(version._id));
     expect(docTypeOption?.values).toEqual(['PRD', 'spec']);
-    expect(versionOption?.values).toEqual([2]);
+    expect(versionOption?.values).toEqual([0, 2]);
 
     const listRes = await Call(listHandler, {
       auth: root,

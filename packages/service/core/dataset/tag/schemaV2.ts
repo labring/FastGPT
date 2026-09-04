@@ -5,7 +5,7 @@ import { type DatasetCollectionTagsSchemaType } from '@fastgpt/global/core/datas
 import { DatasetCollectionTagTypeEnum } from '@fastgpt/global/core/dataset/constants';
 const { Schema } = connectionMongo;
 
-export const DatasetCollectionTagsV2Name = 'dataset_collection_tags_v2';
+const DatasetCollectionTagsV2Name = 'dataset_collection_tags_v2';
 
 const DatasetCollectionTagsV2Schema = new Schema({
   teamId: {

@@ -24,26 +24,49 @@ import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { SaveActionIcon, TagActionButton, TagTableContainer, TagTableHeader } from './TagCommon';
 
 const TAG_TABLE_COLUMNS = 'minmax(0, 1fr) 180px 100px';
+const OPTION_ROW_HEIGHT = 32;
+const OPTION_ROW_GAP = 2;
+const OPTION_LIST_MAX_ROWS = 4;
+const OPTION_LIST_MAX_H =
+  OPTION_ROW_HEIGHT * OPTION_LIST_MAX_ROWS + OPTION_ROW_GAP * (OPTION_LIST_MAX_ROWS - 1);
 
+const normalizeTagOptions = (nextOptions: string[]) => [
+  ...new Set(nextOptions.map((option) => option.trim()).filter(Boolean))
+];
+
+const isSameTagOptions = (left: string[], right: string[]) =>
+  left.length === right.length && left.every((option, index) => option === right[index]);
+
+/**
+ * 选项类标签的预设管理。
+ * 输入框失焦、回车和关闭弹层时静默保存；Enter 跳到下一行，最后一行 Enter 追加空输入；列表固定 4 行，超出滚动。
+ * 保存成功后不要用 options 内容做 React key，否则弹层会卸载，换行新增会丢。
+ */
 const TagOptionManagePopover = ({
   options,
-  isSaving,
   onSave
 }: {
   options: string[];
-  isSaving: boolean;
   onSave: (options: string[]) => Promise<void>;
 }) => {
   const { t } = useTranslation();
   const [draftOptions, setDraftOptions] = useState(options);
   const savedOptionsRef = useRef(options);
+  const draftOptionsRef = useRef(draftOptions);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const persistOptions = async (nextOptions: string[]) => {
-    const normalizedOptions = [
-      ...new Set(nextOptions.map((option) => option.trim()).filter(Boolean))
-    ];
+  useEffect(() => {
+    draftOptionsRef.current = draftOptions;
+  }, [draftOptions]);
+
+  const resetDraft = (nextOptions: string[]) => {
     setDraftOptions(nextOptions);
+    savedOptionsRef.current = nextOptions;
+  };
+
+  const persistOptions = async (nextOptions: string[]) => {
+    const normalizedOptions = normalizeTagOptions(nextOptions);
+    if (isSameTagOptions(normalizedOptions, savedOptionsRef.current)) return;
 
     try {
       await onSave(normalizedOptions);
@@ -53,12 +76,20 @@ const TagOptionManagePopover = ({
     }
   };
 
+  const focusOption = (index: number) => {
+    setTimeout(() => {
+      inputRefs.current[index]?.focus();
+    }, 50);
+  };
+
   const handleAddOption = () => {
     setDraftOptions((prev) => {
+      if (prev.length > 0 && !prev[prev.length - 1]?.trim()) {
+        focusOption(prev.length - 1);
+        return prev;
+      }
       const next = [...prev, ''];
-      setTimeout(() => {
-        inputRefs.current[next.length - 1]?.focus();
-      }, 50);
+      focusOption(next.length - 1);
       return next;
     });
   };
@@ -72,21 +103,21 @@ const TagOptionManagePopover = ({
   };
 
   const handleRemoveOption = (index: number) => {
-    void persistOptions(draftOptions.filter((_, i) => i !== index));
+    const next = draftOptionsRef.current.filter((_, i) => i !== index);
+    setDraftOptions(next);
+    void persistOptions(next);
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      if (draftOptions[index]?.trim() && !isSaving) {
-        void persistOptions(draftOptions);
-      }
-      if (index === draftOptions.length - 1) {
-        handleAddOption();
-      } else {
-        inputRefs.current[index + 1]?.focus();
-      }
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const currentDraft = draftOptionsRef.current;
+    void persistOptions(currentDraft);
+    if (index === currentDraft.length - 1) {
+      handleAddOption();
+      return;
     }
+    inputRefs.current[index + 1]?.focus();
   };
 
   return (
@@ -103,6 +134,10 @@ const TagOptionManagePopover = ({
       bg={'white'}
       border={'1px solid'}
       borderColor={'myGray.200'}
+      onOpenFunc={() => resetDraft(options)}
+      onCloseFunc={() => {
+        void persistOptions(draftOptionsRef.current);
+      }}
       Trigger={
         <Flex
           as={'button'}
@@ -143,7 +178,13 @@ const TagOptionManagePopover = ({
           </Flex>
 
           {draftOptions.length > 0 && (
-            <Flex maxH={'134px'} overflowY={'auto'} direction={'column'} gap={'2px'} mt={0.5}>
+            <Flex
+              maxH={`${OPTION_LIST_MAX_H}px`}
+              overflowY={'auto'}
+              direction={'column'}
+              gap={`${OPTION_ROW_GAP}px`}
+              mt={0.5}
+            >
               {draftOptions.map((opt, index) => (
                 <Flex key={index} gap={1} alignItems={'center'} w={'full'}>
                   <Input
@@ -153,7 +194,7 @@ const TagOptionManagePopover = ({
                     value={opt}
                     flex={1}
                     minW={0}
-                    h={'32px'}
+                    h={`${OPTION_ROW_HEIGHT}px`}
                     px={3}
                     fontSize={'xs'}
                     lineHeight={'16px'}
@@ -161,12 +202,14 @@ const TagOptionManagePopover = ({
                     border={'1px solid'}
                     borderColor={'myGray.200'}
                     placeholder={t('dataset:tag.enter_option')}
-                    isDisabled={isSaving}
                     _focus={{
                       borderColor: 'primary.600',
                       boxShadow: 'focus'
                     }}
                     onChange={(e) => handleUpdateOption(index, e.target.value)}
+                    onBlur={() => {
+                      void persistOptions(draftOptionsRef.current);
+                    }}
                     onKeyDown={(e) => handleKeyDown(index, e)}
                   />
                   <Flex
@@ -177,10 +220,10 @@ const TagOptionManagePopover = ({
                     alignItems={'center'}
                     justifyContent={'center'}
                     borderRadius={'sm'}
-                    cursor={isSaving ? 'not-allowed' : 'pointer'}
-                    aria-disabled={isSaving}
-                    _hover={isSaving ? undefined : { bg: 'myGray.05' }}
-                    onClick={() => !isSaving && handleRemoveOption(index)}
+                    cursor={'pointer'}
+                    _hover={{ bg: 'myGray.05' }}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => handleRemoveOption(index)}
                   >
                     <MyIcon name={'close'} w={'16px'} h={'16px'} color={'myGray.500'} />
                   </Flex>
@@ -273,7 +316,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     }
   );
 
-  const { runAsync: onSaveTagOptions, loading: isSavingTagOptions } = useRequest(
+  const { runAsync: onSaveTagOptions } = useRequest(
     ({ tag, options }: { tag: DatasetTagType; options: string[] }) =>
       updateDatasetCollectionTag({
         datasetId: datasetDetail._id,
@@ -458,10 +501,8 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                     <Box>{t(DatasetCollectionTagTypeMap[tagType].label)}</Box>
                     {tagType === DatasetCollectionTagTypeEnum.array && (
                       <TagOptionManagePopover
-                        key={`${tag._id}-${JSON.stringify(tag.options ?? [])}`}
                         options={tag.options ?? []}
-                        isSaving={isSavingTagOptions}
-                        onSave={(options) => onSaveTagOptions({ tag, options })}
+                        onSave={(nextOptions) => onSaveTagOptions({ tag, options: nextOptions })}
                       />
                     )}
                   </Flex>

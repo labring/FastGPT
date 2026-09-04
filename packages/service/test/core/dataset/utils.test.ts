@@ -878,32 +878,21 @@ describe('createOrGetCollectionTags', () => {
     expect(result).toEqual([{ tagId: 'tag-id-1', value: 'A' }]);
   });
 
-  it('resolves {tag,value} for existing number tag with number value', async () => {
+  it.each([
+    ['number', 'version', 2],
+    ['datetime', 'date', 1704067200000]
+  ])('resolves an existing %s tag with a number value', async (tagType, tag, value) => {
     mockMongoDatasetCollectionTagsFind.mockReturnValue({
-      lean: vi.fn().mockResolvedValue([{ _id: 'tag-id-1', tag: 'version', tagType: 'number' }])
+      lean: vi.fn().mockResolvedValue([{ _id: 'tag-id-1', tag, tagType }])
     });
 
     const result = await createOrGetCollectionTags({
-      tags: [{ tag: 'version', value: 2 }],
+      tags: [{ tag, value }],
       datasetId: 'ds-1',
       teamId: 'team-1'
     });
 
-    expect(result).toEqual([{ tagId: 'tag-id-1', value: 2 }]);
-  });
-
-  it('resolves {tag,value} for existing datetime tag with number value', async () => {
-    mockMongoDatasetCollectionTagsFind.mockReturnValue({
-      lean: vi.fn().mockResolvedValue([{ _id: 'tag-id-1', tag: 'date', tagType: 'datetime' }])
-    });
-
-    const result = await createOrGetCollectionTags({
-      tags: [{ tag: 'date', value: 1704067200000 }],
-      datasetId: 'ds-1',
-      teamId: 'team-1'
-    });
-
-    expect(result).toEqual([{ tagId: 'tag-id-1', value: 1704067200000 }]);
+    expect(result).toEqual([{ tagId: 'tag-id-1', value }]);
   });
 
   it('rejects when string tag gets non-string value', async () => {
@@ -920,33 +909,25 @@ describe('createOrGetCollectionTags', () => {
     ).rejects.toBe(DatasetErrEnum.tagValueInvalid);
   });
 
-  it('resolves existing number tag with numeric string value as number', async () => {
-    mockMongoDatasetCollectionTagsFind.mockReturnValue({
-      lean: vi.fn().mockResolvedValue([{ _id: 'tag-id-1', tag: 'version', tagType: 'number' }])
-    });
+  it.each([
+    ['number', 'version', '2', 2],
+    ['datetime', 'date', '1704067200000', 1704067200000]
+  ])(
+    'normalizes an existing %s tag numeric string to a number',
+    async (tagType, tag, value, expected) => {
+      mockMongoDatasetCollectionTagsFind.mockReturnValue({
+        lean: vi.fn().mockResolvedValue([{ _id: 'tag-id-1', tag, tagType }])
+      });
 
-    const result = await createOrGetCollectionTags({
-      tags: [{ tag: 'version', value: '2' }],
-      datasetId: 'ds-1',
-      teamId: 'team-1'
-    });
+      const result = await createOrGetCollectionTags({
+        tags: [{ tag, value }],
+        datasetId: 'ds-1',
+        teamId: 'team-1'
+      });
 
-    expect(result).toEqual([{ tagId: 'tag-id-1', value: 2 }]);
-  });
-
-  it('resolves existing datetime tag with numeric string value as number', async () => {
-    mockMongoDatasetCollectionTagsFind.mockReturnValue({
-      lean: vi.fn().mockResolvedValue([{ _id: 'tag-id-1', tag: 'date', tagType: 'datetime' }])
-    });
-
-    const result = await createOrGetCollectionTags({
-      tags: [{ tag: 'date', value: '1704067200000' }],
-      datasetId: 'ds-1',
-      teamId: 'team-1'
-    });
-
-    expect(result).toEqual([{ tagId: 'tag-id-1', value: 1704067200000 }]);
-  });
+      expect(result).toEqual([{ tagId: 'tag-id-1', value: expected }]);
+    }
+  );
 
   it.each([
     ['number', Infinity],
@@ -959,6 +940,7 @@ describe('createOrGetCollectionTags', () => {
     ['datetime', '   '],
     ['number', 'abc'],
     ['datetime', 'abc'],
+    ['datetime', '2024-01-01'],
     ['datetime', Number.MAX_VALUE]
   ])('rejects invalid %s value %j in creation chain', async (tagType, value) => {
     mockMongoDatasetCollectionTagsFind.mockReturnValue({
@@ -976,20 +958,6 @@ describe('createOrGetCollectionTags', () => {
         ? DatasetErrEnum.tagValueDatetimeInvalid
         : DatasetErrEnum.tagValueInvalid
     );
-  });
-
-  it('rejects when datetime tag gets non-number value', async () => {
-    mockMongoDatasetCollectionTagsFind.mockReturnValue({
-      lean: vi.fn().mockResolvedValue([{ _id: 'tag-id-1', tag: 'date', tagType: 'datetime' }])
-    });
-
-    await expect(
-      createOrGetCollectionTags({
-        tags: [{ tag: 'date', value: '2024-01-01' }],
-        datasetId: 'ds-1',
-        teamId: 'team-1'
-      })
-    ).rejects.toBe(DatasetErrEnum.tagValueInvalid);
   });
 
   it('handles mixed string and {tag,value} inputs', async () => {
@@ -1082,20 +1050,10 @@ describe('createOrGetCollectionTags', () => {
     ]);
   });
 
-  it('rejects blank string names', async () => {
+  it.each([[['   ']], [[{ tag: '   ', value: 'A' }]]])('rejects blank tag names', async (tags) => {
     await expect(
       createOrGetCollectionTags({
-        tags: ['   '],
-        datasetId: 'ds-1',
-        teamId: 'team-1'
-      })
-    ).rejects.toBe(DatasetErrEnum.tagNameEmpty);
-  });
-
-  it('rejects blank object tag names', async () => {
-    await expect(
-      createOrGetCollectionTags({
-        tags: [{ tag: '   ', value: 'A' }],
+        tags,
         datasetId: 'ds-1',
         teamId: 'team-1'
       })

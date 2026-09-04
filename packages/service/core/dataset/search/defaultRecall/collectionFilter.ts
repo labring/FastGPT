@@ -215,17 +215,21 @@ export async function filterCollectionByKeyValueTags({
 
   const datasetTagMap = new Map<string, Map<string, { id: string; type: string }>>();
   const addToMap = (dsId: string, tagName: string, id: string, type: string) => {
-    if (!datasetTagMap.has(dsId)) datasetTagMap.set(dsId, new Map());
-    datasetTagMap.get(dsId)!.set(tagName, { id, type });
+    const tagMap = datasetTagMap.get(dsId);
+    if (tagMap) {
+      tagMap.set(tagName, { id, type });
+      return;
+    }
+    datasetTagMap.set(dsId, new Map([[tagName, { id, type }]]));
   };
   for (const doc of regularTagDocs) {
-    addToMap(String(doc.datasetId), doc.tag, String(doc._id), doc.tagType || 'string');
+    addToMap(String(doc.datasetId), doc.tag, String(doc._id), doc.tagType ?? 'string');
   }
   // default_tag 记录同时挂 DEFAULT_TAG 键与实际标签名键；每 dataset 的 DEFAULT_TAG 键只取一条避免歧义
   for (const doc of defaultTagDocs) {
     const dsId = String(doc.datasetId);
     const id = String(doc._id);
-    const type = doc.tagType || 'string';
+    const type = doc.tagType ?? 'string';
     addToMap(dsId, doc.tag, id, type);
     if (!datasetTagMap.get(dsId)?.has(DEFAULT_TAG)) {
       addToMap(dsId, DEFAULT_TAG, id, type);
@@ -255,10 +259,10 @@ export async function filterCollectionByKeyValueTags({
 
   // 4. Iterate each dataset (the same tag name may map to different tagIds per dataset)
   for (const [dsId, tagMap] of datasetTagMap) {
-    const andTagIds = ($and || [])
+    const andTagIds = $and
       .map((cond) => tagMap.get(Object.keys(cond)[0])?.id)
       .filter((id): id is string => Boolean(id));
-    const orTagIds = ($or || [])
+    const orTagIds = $or
       .map((cond) => tagMap.get(Object.keys(cond)[0])?.id)
       .filter((id): id is string => Boolean(id));
 
@@ -285,14 +289,14 @@ export async function filterCollectionByKeyValueTags({
 
     // 5. Application-layer value comparison
     for (const col of collections) {
-      const tagsArr = (col.tags || []).filter(isCollectionTagValue);
+      const tagsArr = (col.tags ?? []).filter(isCollectionTagValue);
 
       // AND: all must pass
-      const andOk = ($and || []).every((cond) => matchCondition(cond, tagMap, tagsArr));
+      const andOk = $and.every((cond) => matchCondition(cond, tagMap, tagsArr));
       if (!andOk) continue;
 
       // OR: at least one must pass
-      if ($or?.length) {
+      if ($or.length > 0) {
         const orOk = $or.some((cond) => matchCondition(cond, tagMap, tagsArr));
         if (!orOk) continue;
       }
@@ -397,9 +401,9 @@ export const filterCollectionByMetadata = async ({
 
   if (!collectionFilterMatch || !global.feConfigs.isPlus) return;
 
-  let tagCollectionIdList: string[] | undefined = undefined;
-  let createTimeCollectionIdList: string[] | undefined = undefined;
-  let inputCollectionIdList: string[] | undefined = undefined;
+  let tagCollectionIdList: string[] | undefined;
+  let createTimeCollectionIdList: string[] | undefined;
+  let inputCollectionIdList: string[] | undefined;
 
   try {
     const jsonMatch = json5.parse(collectionFilterMatch);
@@ -410,7 +414,7 @@ export const filterCollectionByMetadata = async ({
     const isConditionObject = (item: unknown): item is TagCondition =>
       typeof item === 'object' && !Array.isArray(item) && item !== null;
     const rewriteLegacyTags = (items: unknown[] | undefined): TagCondition[] =>
-      (items || []).map((item) => {
+      (items ?? []).map((item) => {
         if (isConditionObject(item)) return item;
         if (item === null) return { [DEFAULT_TAG]: { $empty: true } };
         return { [DEFAULT_TAG]: { $contains: String(item) } };

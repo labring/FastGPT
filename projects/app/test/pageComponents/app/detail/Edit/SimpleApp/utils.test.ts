@@ -1,6 +1,9 @@
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
+import {
+  appWorkflow2Form,
+  form2AppWorkflow
+} from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
 import { describe, expect, it } from 'vitest';
 
 const getModelInputs = ({ modelId, model }: { modelId?: string; model?: string }) => {
@@ -73,5 +76,36 @@ describe('form2AppWorkflow model reference', () => {
         })
       ])
     );
+  });
+
+  it('round-trips collectionFilterMatch through the dataset search node', () => {
+    const form = getDefaultAppForm();
+    form.dataset.datasets = [
+      {
+        datasetId: 'dataset-id',
+        avatar: 'dataset.svg',
+        name: 'Dataset',
+        vectorModel: { model: 'embedding-model' }
+      }
+    ];
+    form.dataset.collectionFilterMatch = {
+      logic: 'AND',
+      conditions: [{ tag: 'price', tagType: 'number', op: '$gte', value: 10 }]
+    };
+
+    const workflow = form2AppWorkflow(form, (key: string) => key);
+    const input = workflow.nodes
+      .flatMap((node) => node.inputs)
+      .find((item) => item.key === NodeInputKeyEnum.collectionFilterMatch);
+
+    expect(input).toMatchObject({
+      key: NodeInputKeyEnum.collectionFilterMatch,
+      renderTypeList: ['datasetTagFilter', 'reference'],
+      value: form.dataset.collectionFilterMatch
+    });
+    expect(
+      appWorkflow2Form({ nodes: workflow.nodes, chatConfig: form.chatConfig }).dataset
+        .collectionFilterMatch
+    ).toEqual(form.dataset.collectionFilterMatch);
   });
 });
