@@ -333,7 +333,7 @@ describe('loadSystemModels', () => {
     ).resolves.toBeUndefined();
   });
 
-  it('orders active built-in models by the plugin array instead of MongoDB order', async () => {
+  it('orders all cached models by the plugin array and derives the active list', async () => {
     const pluginModels = [
       {
         type: ModelTypeEnum.llm,
@@ -348,11 +348,20 @@ describe('loadSystemModels', () => {
         provider: 'OpenAI',
         model: 'plugin-second',
         name: 'Plugin second',
+        isActive: false,
+        config: { maxContext: 128000, maxResponse: 32000, quoteMaxToken: 100000 }
+      },
+      {
+        type: ModelTypeEnum.llm,
+        provider: 'OpenAI',
+        model: 'plugin-third',
+        name: 'Plugin third',
         isActive: true,
         config: { maxContext: 128000, maxResponse: 32000, quoteMaxToken: 100000 }
       }
     ];
     await MongoAIModel.create([
+      { ...pluginModels[2], scope: 'system' },
       { ...pluginModels[1], scope: 'system' },
       { ...pluginModels[0], scope: 'system' },
       {
@@ -365,9 +374,15 @@ describe('loadSystemModels', () => {
 
     await loadInstalledModels({ pluginDocuments: pluginModels });
 
-    expect(global.systemActiveModelList.map((model) => model.model)).toEqual([
+    expect(global.systemModelList.map((model) => model.model)).toEqual([
       'plugin-first',
       'plugin-second',
+      'plugin-third',
+      'custom-model'
+    ]);
+    expect(global.systemActiveModelList.map((model) => model.model)).toEqual([
+      'plugin-first',
+      'plugin-third',
       'custom-model'
     ]);
   });

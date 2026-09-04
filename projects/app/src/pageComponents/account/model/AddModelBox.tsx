@@ -818,6 +818,12 @@ export const ModelEditModal = ({
   const { runAsync: updateModel, loading: updatingModel } = useRequest(
     async (data: SystemModelDataType) => {
       if (data.type === ModelTypeEnum.llm) {
+        // 空数字输入会被 react-hook-form 解析为 NaN；显式转成协议允许的 null，
+        // 避免依赖 JSON.stringify 将 NaN 隐式转换成 null。
+        if (Number.isNaN(data.config.maxTemperature)) {
+          data.config.maxTemperature = null;
+        }
+
         const priceTiers = sanitizeModelPriceTiers(data.priceTiers);
 
         let currentLowerExclusiveBound = 0;

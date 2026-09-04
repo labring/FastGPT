@@ -104,6 +104,25 @@ describe('admin settings model create/update api', () => {
     });
   });
 
+  it('accepts and persists a null max temperature', async () => {
+    const existing = await MongoAIModel.create(buildLlmDocument());
+    const res = await callApi({
+      handler: updateModelApi,
+      body: {
+        modelId: String(existing._id),
+        modelData: {
+          ...buildLlmDocument(),
+          config: { ...buildLlmDocument().config, maxTemperature: null }
+        }
+      }
+    });
+
+    expect(res.error).toBeUndefined();
+    await expect(MongoAIModel.findById(existing._id).lean()).resolves.toMatchObject({
+      config: { maxTemperature: null }
+    });
+  });
+
   it('rejects non-canonical values instead of repairing them', async () => {
     const existing = await MongoAIModel.create(buildLlmDocument());
     const res = await callApi({
