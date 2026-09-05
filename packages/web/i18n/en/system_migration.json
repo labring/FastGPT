@@ -70,5 +70,5 @@
   "migrations.20260905_backfill_resource_owner_acl.datasets": "Checking dataset owner permissions",
   "migrations.20260905_backfill_resource_owner_acl.agent_skills": "Checking agent skill owner permissions",
   "migrations.20260905_backfill_resource_owner_acl.validation": "Validating resource owner permissions",
-  "migrations.20260905_backfill_resource_owner_acl.result": "Checked owner permissions for {{appsProcessedCount}} apps, {{datasetsProcessedCount}} datasets, and {{agentSkillsProcessedCount}} agent skills."
+  "migrations.20260905_backfill_resource_owner_acl.result": "Checked {{appsProcessedCount}} apps, {{datasetsProcessedCount}} datasets, and {{agentSkillsProcessedCount}} skills. Backfilled owner permissions for {{appsUpdatedCount}} apps, {{datasetsUpdatedCount}} datasets, and {{agentSkillsUpdatedCount}} skills."
 }

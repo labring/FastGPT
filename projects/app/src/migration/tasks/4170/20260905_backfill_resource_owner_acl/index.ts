@@ -26,6 +26,7 @@ const StageCheckpointSchema = z.object({
   endId: z.string().nullable(),
   lastId: z.string().nullable(),
   processedCount: z.number().int().nonnegative(),
+  updatedCount: z.number().int().nonnegative().default(0),
   total: z.number().int().nonnegative()
 });
 
@@ -45,6 +46,7 @@ const emptyStageCheckpoint = () => ({
   endId: null,
   lastId: null,
   processedCount: 0,
+  updatedCount: 0,
   total: 0
 });
 
@@ -164,6 +166,7 @@ export const backfillResourceOwnerAcl = async (context: SystemMigrationContext) 
   }) => {
     const result = await backfillResourceOwnerAclRecords({ config, records });
     replaceStageFailures({ config, records, failures: result.failures });
+    return result.updatedCount;
   };
   const readFailedRecord = async ({
     config,
@@ -226,8 +229,13 @@ export const backfillResourceOwnerAcl = async (context: SystemMigrationContext) 
           deleteFailedRecord(getFailedRecordKey(failedRecord));
         }
       });
-      await processRecords({ config, records: retryRecords });
+      const updatedCount = await processRecords({ config, records: retryRecords });
+      stageCheckpoint.updatedCount += updatedCount;
+      checkpoint.stages[config.stageKey] = stageCheckpoint;
       await reportFailedRecordsIfChanged();
+      if (updatedCount > 0) {
+        await context.saveCheckpoint(checkpoint);
+      }
     }
 
     while (stageCheckpoint.endId && stageCheckpoint.lastId !== stageCheckpoint.endId) {
@@ -240,9 +248,10 @@ export const backfillResourceOwnerAcl = async (context: SystemMigrationContext) 
       });
       if (records.length === 0) break;
 
-      await processRecords({ config, records });
+      const updatedCount = await processRecords({ config, records });
       stageCheckpoint.lastId = String(records.at(-1)!._id);
       stageCheckpoint.processedCount += records.length;
+      stageCheckpoint.updatedCount += updatedCount;
       checkpoint.stages[config.stageKey] = stageCheckpoint;
       await reportFailedRecordsIfChanged();
       await context.saveCheckpoint(checkpoint);
@@ -263,8 +272,13 @@ export const backfillResourceOwnerAcl = async (context: SystemMigrationContext) 
         limit: systemMigrationBatchSize
       });
       if (records.length === 0) break;
-      await processRecords({ config, records });
+      const updatedCount = await processRecords({ config, records });
+      stageCheckpoint.updatedCount += updatedCount;
+      checkpoint.stages[config.stageKey] = stageCheckpoint;
       await reportFailedRecordsIfChanged();
+      if (updatedCount > 0) {
+        await context.saveCheckpoint(checkpoint);
+      }
       tailLastId = String(records.at(-1)!._id);
     }
 
@@ -381,6 +395,9 @@ export const backfillResourceOwnerAcl = async (context: SystemMigrationContext) 
   return {
     appsProcessedCount: checkpoint.stages.apps.processedCount,
     datasetsProcessedCount: checkpoint.stages.datasets.processedCount,
-    agentSkillsProcessedCount: checkpoint.stages.agent_skills.processedCount
+    agentSkillsProcessedCount: checkpoint.stages.agent_skills.processedCount,
+    appsUpdatedCount: checkpoint.stages.apps.updatedCount,
+    datasetsUpdatedCount: checkpoint.stages.datasets.updatedCount,
+    agentSkillsUpdatedCount: checkpoint.stages.agent_skills.updatedCount
   };
 };

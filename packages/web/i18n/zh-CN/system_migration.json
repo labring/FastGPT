@@ -70,5 +70,5 @@
   "migrations.20260905_backfill_resource_owner_acl.datasets": "检查知识库所有者权限",
   "migrations.20260905_backfill_resource_owner_acl.agent_skills": "检查 Agent Skill 所有者权限",
   "migrations.20260905_backfill_resource_owner_acl.validation": "校验资源所有者权限",
-  "migrations.20260905_backfill_resource_owner_acl.result": "已检查 {{appsProcessedCount}} 个应用、{{datasetsProcessedCount}} 个知识库和 {{agentSkillsProcessedCount}} 个 Agent Skill 的所有者权限。"
+  "migrations.20260905_backfill_resource_owner_acl.result": "已检查 {{appsProcessedCount}} 个应用、{{datasetsProcessedCount}} 个知识库和 {{agentSkillsProcessedCount}} 个技能。补齐所有者权限：{{appsUpdatedCount}} 个应用、{{datasetsUpdatedCount}} 个知识库和 {{agentSkillsUpdatedCount}} 个技能。"
 }

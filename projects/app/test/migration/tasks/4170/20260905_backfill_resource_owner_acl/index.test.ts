@@ -190,7 +190,10 @@ describe('4170 resource owner ACL migration', () => {
     await expect(backfillResourceOwnerAcl(state.context)).resolves.toEqual({
       appsProcessedCount: 2,
       datasetsProcessedCount: 1,
-      agentSkillsProcessedCount: 1
+      agentSkillsProcessedCount: 1,
+      appsUpdatedCount: 2,
+      datasetsUpdatedCount: 1,
+      agentSkillsUpdatedCount: 0
     });
 
     await expect(
@@ -272,9 +275,12 @@ describe('4170 resource owner ACL migration', () => {
     const appId = new Types.ObjectId();
     await MongoApp.collection.insertOne({ _id: appId, teamId, name: 'App' });
 
-    await backfillResourceOwnerAcl(createContext().context);
     await expect(backfillResourceOwnerAcl(createContext().context)).resolves.toMatchObject({
-      appsProcessedCount: 1
+      appsUpdatedCount: 1
+    });
+    await expect(backfillResourceOwnerAcl(createContext().context)).resolves.toMatchObject({
+      appsProcessedCount: 1,
+      appsUpdatedCount: 0
     });
 
     await expect(
@@ -339,7 +345,8 @@ describe('4170 resource owner ACL migration', () => {
       name: 'Repaired owner'
     });
     await expect(backfillResourceOwnerAcl(state.context)).resolves.toMatchObject({
-      appsProcessedCount: 1
+      appsProcessedCount: 1,
+      appsUpdatedCount: 1
     });
     expect(state.getFailedRecords()).toEqual([]);
     expect(state.context.reportFailedRecords).toHaveBeenCalledTimes(2);
@@ -375,7 +382,9 @@ describe('4170 resource owner ACL migration', () => {
       }
     });
 
-    await backfillResourceOwnerAcl(state.context);
+    await expect(backfillResourceOwnerAcl(state.context)).resolves.toMatchObject({
+      appsUpdatedCount: 2
+    });
     await expect(
       MongoResourcePermission.collection.countDocuments({
         teamId,

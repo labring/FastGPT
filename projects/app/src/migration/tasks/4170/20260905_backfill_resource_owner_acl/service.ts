@@ -211,8 +211,8 @@ export const backfillResourceOwnerAclRecords = async ({
 }: {
   config: ResourceOwnerAclConfig;
   records: ResourceOwnerAclRecord[];
-}): Promise<{ failures: ResourceOwnerAclFailure[] }> => {
-  if (records.length === 0) return { failures: [] };
+}): Promise<{ failures: ResourceOwnerAclFailure[]; updatedCount: number }> => {
+  if (records.length === 0) return { failures: [], updatedCount: 0 };
 
   const validOwnerResourceIds = await findValidOwnerResourceIds({ config, records });
   const ownerlessRecords = records.filter(
@@ -259,6 +259,7 @@ export const backfillResourceOwnerAclRecords = async ({
     ownerMembers.map((member) => [String(member.teamId), member])
   );
 
+  const updatedResourceIds = new Set<string>();
   const writeActions: Array<() => Promise<void>> = [];
   for (const [teamId, teamRecords] of recordsByTeam) {
     const team = teamById.get(teamId);
@@ -278,6 +279,7 @@ export const backfillResourceOwnerAclRecords = async ({
 
     for (const record of teamRecords) {
       const resourceId = toObjectId(record._id)!;
+      const recordId = getRecordKey(record);
       writeActions.push(() =>
         MongoResourcePermission.collection
           .updateOne(
@@ -290,7 +292,11 @@ export const backfillResourceOwnerAclRecords = async ({
             { $set: { permission: OwnerRoleVal } },
             { upsert: true }
           )
-          .then(() => undefined)
+          .then((result) => {
+            if (result.modifiedCount > 0 || result.upsertedCount > 0) {
+              updatedResourceIds.add(recordId);
+            }
+          })
           .catch((error) => {
             failures.set(getRecordKey(record), {
               record,
@@ -330,5 +336,10 @@ export const backfillResourceOwnerAclRecords = async ({
     }
   }
 
-  return { failures: [...failures.values()] };
+  return {
+    failures: [...failures.values()],
+    updatedCount: [...updatedResourceIds].filter((resourceId) =>
+      verifiedOwnerResourceIds.has(resourceId)
+    ).length
+  };
 };

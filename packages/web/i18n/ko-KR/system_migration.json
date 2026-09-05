@@ -70,5 +70,5 @@
   "migrations.20260905_backfill_resource_owner_acl.datasets": "지식 베이스 소유자 권한 확인 중",
   "migrations.20260905_backfill_resource_owner_acl.agent_skills": "Agent Skill 소유자 권한 확인 중",
   "migrations.20260905_backfill_resource_owner_acl.validation": "리소스 소유자 권한 검증 중",
-  "migrations.20260905_backfill_resource_owner_acl.result": "앱 {{appsProcessedCount}}개, 지식 베이스 {{datasetsProcessedCount}}개, Agent Skill {{agentSkillsProcessedCount}}개의 소유자 권한을 확인했습니다."
+  "migrations.20260905_backfill_resource_owner_acl.result": "앱 {{appsProcessedCount}}개, 지식 베이스 {{datasetsProcessedCount}}개, 스킬 {{agentSkillsProcessedCount}}개를 확인했습니다. 소유자 권한 보완: 앱 {{appsUpdatedCount}}개, 지식 베이스 {{datasetsUpdatedCount}}개, 스킬 {{agentSkillsUpdatedCount}}개."
 }
