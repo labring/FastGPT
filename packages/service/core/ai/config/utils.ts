@@ -204,10 +204,9 @@ export const loadInstalledModels = async ({
     _systemModelMap.set(`id:${modelData.modelId}`, modelData);
     _systemModelMap.set(`model:${modelData.model}`, modelData);
 
-    if (modelData.isActive) {
-      if (modelData.type === ModelTypeEnum.llm) {
-        modelData.priceTiers = getRuntimeResolvedPriceTiers(modelData);
-      }
+    // 管理列表包含停用模型，统一解析价格可避免旧字段或单档双零在列表中显示错误。
+    if (modelData.type === ModelTypeEnum.llm) {
+      modelData.priceTiers = getRuntimeResolvedPriceTiers(modelData);
     }
   };
 

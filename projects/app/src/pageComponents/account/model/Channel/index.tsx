@@ -327,7 +327,7 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         <EditChannelModal
           defaultConfig={editChannel}
           onClose={() => setEditChannel(undefined)}
-          onSuccess={refreshChannelList}
+          onSuccess={() => refreshChannelList().catch(() => {})}
         />
       )}
       {!!modelTestData && (

@@ -269,26 +269,7 @@ export const BlankModelCreateModal = ({
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [draftModel, setDraftModel] = useState('');
   const modelFormGetValuesRef = useRef<ModelConfigFormGetValues | null>(null);
-  const channelIdsBeforeCreateRef = useRef<Set<number>>();
   const modelData = useMemo(() => createModelData(selectedType), [createModelData, selectedType]);
-
-  useEffect(() => {
-    const channelIdsBeforeCreate = channelIdsBeforeCreateRef.current;
-    if (!channelIdsBeforeCreate) return;
-
-    const createdChannelIds = channels
-      .filter((channel) => !channelIdsBeforeCreate.has(channel.id))
-      .map((channel) => channel.id);
-    if (createdChannelIds.length === 0) return;
-
-    setSelectedChannelIds((current) => new Set([...current, ...createdChannelIds]));
-    channelIdsBeforeCreateRef.current = undefined;
-  }, [channels]);
-
-  const openCreateChannel = () => {
-    channelIdsBeforeCreateRef.current = new Set(channels.map((channel) => channel.id));
-    setShowCreateChannel(true);
-  };
 
   const handleTestModelChannel = async (channelId: number) => {
     const draftModelData = modelFormGetValuesRef.current?.() ?? modelData;
@@ -396,7 +377,7 @@ export const BlankModelCreateModal = ({
                 <ModelLinkedChannels
                   channels={channels}
                   selectedIds={selectedChannelIds}
-                  onCreate={openCreateChannel}
+                  onCreate={() => setShowCreateChannel(true)}
                   onAssociate={() => setShowAssociateChannel(true)}
                   onManage={goToChannelManagement}
                   onTest={(channelId) => void handleTestModelChannel(channelId)}
@@ -457,10 +438,12 @@ export const BlankModelCreateModal = ({
             model: draftModel.trim() || t('config_model:model_pending_creation')
           }}
           allowEmptyModels
-          onSuccess={() => {
-            void Promise.resolve(onSuccess()).catch(() => {
-              channelIdsBeforeCreateRef.current = undefined;
-            });
+          onSuccess={async (createdChannelId) => {
+            if (createdChannelId !== undefined) {
+              setSelectedChannelIds((current) => new Set([...current, createdChannelId]));
+            }
+            // 渠道已经创建成功，列表刷新失败不能把写入结果误报为创建失败。
+            await Promise.resolve(onSuccess()).catch(() => {});
           }}
           onClose={() => setShowCreateChannel(false)}
         />

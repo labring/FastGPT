@@ -152,10 +152,27 @@ export type TestAdminSystemModelResponse = z.infer<typeof TestAdminSystemModelRe
  * Tags: ['系统模型管理', 'Read']
  * ============================================================================ */
 
+const TestModelPriceFields = {
+  charsPointsPrice: true,
+  priceTiers: true,
+  inputPrice: true,
+  outputPrice: true
+} as const;
+
+const TestDraftSystemModelDataSchema = z
+  .discriminatedUnion('type', [
+    LLMSystemModelDocumentSchema.omit(TestModelPriceFields),
+    EmbeddingSystemModelDocumentSchema.omit(TestModelPriceFields),
+    TTSSystemModelDocumentSchema.omit(TestModelPriceFields),
+    STTSystemModelDocumentSchema.omit(TestModelPriceFields),
+    RerankSystemModelDocumentSchema.omit(TestModelPriceFields)
+  ])
+  .meta({ description: '仅包含实际模型调用所需字段的表单草稿；计费字段会被忽略' });
+
 export const TestDraftAdminSystemModelBodySchema = z
   .object({
-    modelData: SystemModelDocumentDataSchema.meta({
-      description: '尚未持久化的完整系统模型配置'
+    modelData: TestDraftSystemModelDataSchema.meta({
+      description: '尚未持久化的模型运行参数；计费字段不参与测试'
     }),
     channelId: IntSchema.positive().meta({
       example: 1,
@@ -256,6 +273,7 @@ export const CreateSystemModelsFromTemplatesBodySchema = z
     templates: z
       .array(ModelTemplateReferenceSchema)
       .min(1)
+      .max(500)
       .superRefine((templates, ctx) => {
         const keys = new Set<string>();
         templates.forEach((template, index) => {
@@ -328,7 +346,9 @@ export const UpdateSystemModelDataSchema = z
     STTSystemModelDocumentSchema.omit({ model: true }).strict(),
     RerankSystemModelDocumentSchema.omit({ model: true }).strict()
   ])
-  .meta({ description: '不含不可变模型标识的系统模型可编辑参数' });
+  .meta({
+    description: '不含不可变模型标识的系统模型可编辑参数；type 仅用于分支校验，不参与更新'
+  });
 export type UpdateSystemModelData = z.infer<typeof UpdateSystemModelDataSchema>;
 
 export const UpdateSystemModelBodySchema = z

@@ -127,6 +127,40 @@ describe('admin model test routing', () => {
     );
   });
 
+  it('ignores incomplete price fields when testing a draft model', async () => {
+    await handler(
+      {
+        method: 'POST',
+        body: {
+          modelData: {
+            type: installedModel.type,
+            provider: installedModel.provider,
+            model: 'draft-with-empty-price',
+            name: 'Draft with empty price',
+            scope: installedModel.scope,
+            config: installedModel.config,
+            priceTiers: [
+              {
+                minInputTokens: 0,
+                inputPrice: undefined,
+                outputPrice: undefined
+              }
+            ]
+          },
+          channelId: 9
+        }
+      } as any,
+      {} as any
+    );
+
+    expect(mocks.createLLMResponse).toHaveBeenCalledWith(
+      expect.objectContaining({ custonHeaders: { 'Aiproxy-Channel': '9' } })
+    );
+    const testedModel = mocks.createLLMResponse.mock.calls[0]?.[0]?.body?.model;
+    expect(testedModel).toMatchObject({ model: 'draft-with-empty-price' });
+    expect(testedModel).not.toHaveProperty('priceTiers');
+  });
+
   it('tests a draft text-to-speech model with its configured voice', async () => {
     const createSpeech = vi.fn().mockResolvedValue({});
     mocks.getAIApi.mockReturnValue({

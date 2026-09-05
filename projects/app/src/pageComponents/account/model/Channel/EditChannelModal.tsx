@@ -41,7 +41,7 @@ const EditChannelModal = ({
   fixedModel?: { model: string; avatar?: string };
   allowEmptyModels?: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (createdChannelId?: number) => unknown | Promise<unknown>;
 }) => {
   const { t, i18n } = useClientTranslation('config_model');
   const {
@@ -106,12 +106,21 @@ const EditChannelModal = ({
       if (!allowEmptyModels && data.models.length === 0) {
         return Promise.reject(t('config_model:selected_model_empty'));
       }
-      if (isEdit) return putChannel(data);
-      return postCreateChannel({ ...data, model_mapping: data.model_mapping ?? {} });
+      if (isEdit) {
+        await putChannel(data);
+        await onSuccess();
+        return;
+      }
+
+      const createdChannel = await postCreateChannel({
+        ...data,
+        model_mapping: data.model_mapping ?? {}
+      });
+      await onSuccess(createdChannel.id);
+      return createdChannel;
     },
     {
       onSuccess() {
-        onSuccess();
         onClose();
       },
       successToast: isEdit ? t('common:update_success') : t('common:create_success'),
@@ -125,7 +134,7 @@ const EditChannelModal = ({
   return (
     <MyModal
       isLoading={isLoading}
-      title={isCompactCreate ? t('config_model:create_channel') : t('config_model:edit_channel')}
+      title={isEdit ? t('config_model:edit_channel') : t('config_model:create_channel')}
       onClose={onClose}
       size={isCompactCreate ? 'sm' : 'lg'}
       footer={
