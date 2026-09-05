@@ -23,6 +23,7 @@ import {
   formatTeamAccountCancellationSummary,
   getActiveAccountCancellationsByTeamIds
 } from '../account/cancellation';
+import { createTeamDefaultGroup } from '../../permission/memberGroup/teamDefaultGroup';
 
 const logger = getLogger(LogCategories.MODULE.USER.TEAM);
 
@@ -163,17 +164,7 @@ export async function createDefaultTeam({
       ],
       { session }
     );
-    // create default group
-    await MongoMemberGroupModel.create(
-      [
-        {
-          teamId: tmb.teamId,
-          name: DefaultGroupName,
-          avatar
-        }
-      ],
-      { session }
-    );
+    await createTeamDefaultGroup({ teamId: tmb.teamId, avatar, session });
     await createRootOrg({ teamId: tmb.teamId, session });
     logger.info('Default team created', { userId, teamId: tmb.teamId, tmbId: tmb._id });
     return tmb;

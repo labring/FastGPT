@@ -321,6 +321,9 @@ export const serviceEnv = createEnv({
     DISABLE_CACHE: BoolSchema.default(false).meta({
       description: '是否禁用系统内存缓存'
     }),
+    DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED: BoolSchema.default(false).meta({
+      description: '新建团队时是否为默认全员组授予应用、Skill 和知识库创建权限'
+    }),
 
     // ==================== 并发控制与限制 ====================
     WECHAT_CHANNEL_CONCURRENCY: IntSchema.min(10).default(1000).meta({
