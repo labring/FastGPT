@@ -18,7 +18,6 @@ const modelData: SystemModelDataType = {
   name: 'GPT test display name',
   scope: 'system' as const,
   isActive: true,
-  isCustom: false,
   config: {
     maxContext: 128000,
     maxResponse: 8192,

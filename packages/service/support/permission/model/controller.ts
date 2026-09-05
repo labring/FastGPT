@@ -8,12 +8,12 @@ import {
   findResourceKeysByCollaboratorsPermission,
   getResourcePermissionsByTeam
 } from '../resourcePermissionService';
-import { isProVersion } from '../../../common/system/constants';
 import { getTmpData, setTmpData } from '../../tmpData/controller';
 import { TmpDataEnum } from '@fastgpt/global/support/tmpData/constants';
 import { MongoTmpData } from '../../tmpData/schema';
 import type { ClientSession } from '../../../common/mongo';
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 
 const myModelsCacheFilter = {
   dataId: { $regex: new RegExp(`^${TmpDataEnum.MyModels}--`) }
@@ -44,13 +44,17 @@ export const clearAllMyModelsCache = ({ session }: { session?: ClientSession } =
 export const getMemberModelCatalogPermission = async ({
   teamId,
   tmbId,
-  isTeamOwner
+  isTeamOwner,
+  catalogSnapshot
 }: {
   teamId: string;
   tmbId: string;
   isTeamOwner: boolean;
+  /** 目录响应传入同一个不可变快照，避免权限计算期间热刷新混用两个版本。 */
+  catalogSnapshot?: { models: SystemModelDataType[]; revision: number };
 }) => {
-  const activeModels = global.systemActiveModelList;
+  const activeModels = catalogSnapshot?.models ?? global.systemActiveModelList;
+  const catalogRevision = catalogSnapshot?.revision ?? global.systemModelRevision ?? 0;
   if (isTeamOwner) {
     const modelIds = activeModels.map((model) => model.modelId);
     return { modelIds, version: hashStr([...modelIds].sort().join('\n')) };
@@ -61,7 +65,7 @@ export const getMemberModelCatalogPermission = async ({
     type: TmpDataEnum.MyModels,
     metadata: cacheMetadata
   });
-  if (cachedModels) {
+  if (cachedModels && (cachedModels.data.catalogRevision ?? 0) === catalogRevision) {
     return {
       modelIds: cachedModels.data.modelIds,
       version: cachedModels.data.version
@@ -118,7 +122,8 @@ export const getMemberModelCatalogPermission = async ({
       teamId,
       tmbId,
       modelIds,
-      version
+      version,
+      catalogRevision
     }
   }).catch(() => {});
 

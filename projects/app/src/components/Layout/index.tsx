@@ -132,6 +132,8 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   // 仅 root 使用管理员模型列表检查一次系统模型配置，不触发用户模型目录加载。
   useEffect(() => {
     if (userInfo?.username !== 'root') return;
+    // 模型配置页会自行加载同一份数据；这里跳过，避免首屏重复请求。
+    if (router.pathname === '/config/model') return;
 
     const identity = `${userInfo.team.teamId}:${userInfo.team.tmbId}:${modelLoginGeneration}`;
     if (checkedModelIdentityRef.current === identity) return;
@@ -164,7 +166,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           checkedModelIdentityRef.current = undefined;
         }
       });
-  }, [modelLoginGeneration, router, t, toast, userInfo]);
+  }, [modelLoginGeneration, router, router.pathname, t, toast, userInfo]);
 
   // Route watch
   useEffect(() => {

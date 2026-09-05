@@ -1,6 +1,8 @@
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 export default async function setupModels() {
+  // 测试静态目录对应空数据库的初始修订号；目录集成测试显式写入并刷新真实快照。
+  global.systemModelRevision = 0;
   const llmModel = {
     modelId: '68ad85a7463006c963799a68',
     type: ModelTypeEnum.llm,
@@ -10,7 +12,6 @@ export default async function setupModels() {
     isActive: true,
     isDefault: true,
     scope: 'system' as const,
-    isCustom: false,
     requestUrl: undefined,
     requestAuth: undefined,
     provider: 'OpenAI',
@@ -34,7 +35,6 @@ export default async function setupModels() {
     isActive: true,
     isDefault: true,
     scope: 'system' as const,
-    isCustom: false,
     requestUrl: undefined,
     requestAuth: undefined,
     provider: 'OpenAI',

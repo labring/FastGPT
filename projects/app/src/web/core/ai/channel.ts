@@ -109,16 +109,8 @@ export function DELETE<T = undefined>(url: string, data = {}): Promise<T> {
 
 // ====== API ======
 export const getChannelList = () =>
-  GET<ChannelListResponseType>('/channels/all', {
-    page: 1,
-    perPage: 10
-  }).then((res) => {
-    res.sort((a, b) => {
-      if (a.status !== b.status) {
-        return a.status - b.status;
-      }
-      return b.priority - a.priority;
-    });
+  GET<ChannelListResponseType>('/channels/all').then((res) => {
+    res.sort((a, b) => b.created_at - a.created_at || b.id - a.id);
     return res;
   });
 
@@ -134,32 +126,59 @@ export const getChannelProviders = () =>
     >
   >('/channels/type_metas');
 
-export const postCreateChannel = (data: CreateChannelProps) =>
-  POST(`/createChannel`, {
+/** FastGPT 所有渠道创建入口的统一提交方法，创建前按展示名称检查重复。 */
+export const postCreateChannel = async (data: CreateChannelProps) => {
+  const name = data.name.trim();
+  const channels = await getChannelList();
+  if (channels.some((channel) => channel.name.trim() === name)) {
+    return Promise.reject(i18nT('config_model:channel_name_duplicate'));
+  }
+
+  return POST<{ id: number }>(`/createChannel`, {
     type: data.type,
-    name: data.name,
+    name,
     base_url: data.base_url,
     models: data.models,
     model_mapping: data.model_mapping,
     key: data.key,
     priority: 1
   });
+};
 
 export const putChannelStatus = (id: number, status: ChannelStatusEnum) =>
   POST(`/channel/${id}/status`, {
     status
   });
-export const putChannel = (data: ChannelInfoType) =>
-  PUT(`/channel/${data.id}`, {
+/**
+ * AI Proxy v0.6.5 仅提供渠道完整更新接口，因此必须把列表快照中的高级配置原样带回。
+ * balance_threshold 无法通过该版本接口可靠往返，非零时在写入前拒绝，避免静默归零。
+ */
+export const putChannel = (data: ChannelInfoType) => {
+  if (data.balance_threshold !== undefined && data.balance_threshold !== 0) {
+    return Promise.reject(
+      new Error(`AI Proxy v0.6.5 cannot preserve balance_threshold for channel: ${data.id}`)
+    );
+  }
+
+  return PUT(`/channel/${data.id}`, {
     type: data.type,
     name: data.name,
     base_url: data.base_url,
+    proxy_url: data.proxy_url,
     models: data.models,
     model_mapping: data.model_mapping,
+    configs: data.configs,
     key: data.key,
     status: data.status,
-    priority: data.priority ? Math.max(data.priority, 1) : undefined
+    priority: Math.max(data.priority ?? 1, 1),
+    sets: data.sets,
+    enabled_auto_balance_check: data.enabled_auto_balance_check,
+    skip_tls_verify: data.skip_tls_verify,
+    enabled_no_permission_ban: data.enabled_no_permission_ban,
+    warn_error_rate: data.warn_error_rate,
+    max_error_rate: data.max_error_rate
   });
+};
 
 export const deleteChannel = (id: number) => DELETE(`/channel/${id}`);
 

@@ -3,7 +3,6 @@ import {
   Box,
   Flex,
   HStack,
-  ModalBody,
   Table,
   TableContainer,
   Tbody,
@@ -16,10 +15,8 @@ import {
   type FlexProps
 } from '@chakra-ui/react';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import React, { useMemo, useState } from 'react';
-import { SingleSelectFilter } from '@fastgpt/web/components/common/TagFilter';
-import { modelTypeList, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import React, { useCallback, useMemo, useState } from 'react';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import dynamic from 'next/dynamic';
@@ -45,8 +42,21 @@ import {
   getModelProviderFromCache,
   getModelProviderListFromCache
 } from '@fastgpt/global/core/ai/provider';
+import ModelListFilters from '../ModelListFilters';
+import { useFixedTableHeader } from '@fastgpt/web/hooks/useFixedTableHeader';
 
-const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
+const MyModal = dynamic(() => import('@fastgpt/web/components/v2/common/MyModal'));
+
+const modelTableColumnWidth = {
+  selection: '48px',
+  type: '160px',
+  billing: '250px',
+  permission: '160px'
+} as const;
+const modelTableMinWidth = {
+  default: '800px',
+  withPermission: '848px'
+} as const;
 
 const ModelTable = ({
   permissionConfig = false,
@@ -66,15 +76,23 @@ const ModelTable = ({
     () => formatModelProviders(publicCatalog?.providers ?? []),
     [publicCatalog?.providers]
   );
-  const getModelProvider = permissionConfig
-    ? getMemberModelProvider
-    : (provider?: string, language?: string) =>
-        getModelProviderFromCache({
-          cache: publicProviderCache.ModelProviderMapCache,
-          provider,
-          language
-        });
+  const getModelProvider = useCallback(
+    (provider?: string, language?: string) =>
+      permissionConfig
+        ? getMemberModelProvider(provider, language)
+        : getModelProviderFromCache({
+            cache: publicProviderCache.ModelProviderMapCache,
+            provider,
+            language
+          }),
+    [getMemberModelProvider, permissionConfig, publicProviderCache.ModelProviderMapCache]
+  );
   const { userInfo } = useUserStore();
+  const showPermissionColumn = permissionConfig && !!userInfo?.team.permission.hasManagePer;
+  const tableMinWidth = showPermissionColumn
+    ? modelTableMinWidth.withPermission
+    : modelTableMinWidth.default;
+  const { headerContainerRef, bodyContainerRef, headerTableWidth } = useFixedTableHeader();
   const modelPermissionConfigHint = permissionConfig
     ? t('common:model.permission_config_hint')
     : '';
@@ -84,34 +102,19 @@ const ModelTable = ({
   };
 
   const [provider, setProvider] = useState<string | ''>('');
-  const providerList = useMemo<
-    { label: string; value: string | ''; searchText?: string; avatar?: string }[]
-  >(() => {
-    const providers = getModelProviderListFromCache(
+  const modelProviders = useMemo(() => {
+    return getModelProviderListFromCache(
       permissionConfig ? memberModelProviders : publicProviderCache.ModelProviderListCache,
       i18n.language
     );
-
-    return [
-      { label: t('common:All'), value: '' },
-      ...providers.map((item) => ({
-        label: item.name,
-        avatar: item.avatar,
-        searchText: item.name,
-        value: item.id
-      }))
-    ];
-  }, [i18n.language, memberModelProviders, permissionConfig, publicProviderCache, t]);
+  }, [
+    i18n.language,
+    memberModelProviders,
+    permissionConfig,
+    publicProviderCache.ModelProviderListCache
+  ]);
 
   const [modelType, setModelType] = useState<ModelTypeEnum | ''>('');
-  const selectModelTypeList = useMemo<{ label: string; value: ModelTypeEnum | '' }[]>(
-    () => [
-      { label: t('common:All'), value: '' },
-      ...modelTypeList.map((item) => ({ label: t(item.label), value: item.value }))
-    ],
-    [t]
-  );
-
   const [search, setSearch] = useState('');
 
   const remoteModels = permissionConfig ? availableModels : (publicCatalog?.models ?? []);
@@ -264,18 +267,6 @@ const ModelTable = ({
     search
   ]);
 
-  const filterProviderList = useMemo(() => {
-    const allProviderIds: string[] = [
-      ...llmModelList,
-      ...embeddingModelList,
-      ...ttsModelList,
-      ...sttModelList,
-      ...reRankModelList
-    ].map((model) => model.provider);
-
-    return providerList.filter((item) => allProviderIds.includes(item.value) || item.value === '');
-  }, [ttsModelList, llmModelList, embeddingModelList, sttModelList, reRankModelList, providerList]);
-
   const {
     selectedItems,
     toggleSelect,
@@ -288,77 +279,82 @@ const ModelTable = ({
     list: modelList,
     getItemId: (e) => e.name
   });
-
   return (
     <Flex flexDirection={'column'} h={contentPx === undefined ? '100%' : ['auto', '100%']} minW={0}>
-      <Flex
+      <ModelListFilters
         px={contentPx}
-        flexDirection={['column', 'row']}
-        gap={[3, 6]}
-        alignItems={['stretch', 'flex-start']}
-      >
-        <SingleSelectFilter
-          title={t('common:model.provider')}
-          value={provider}
-          options={filterProviderList}
-          onChange={setProvider}
-          showSearch
-          maxW={'240px'}
-          listSize={'lg'}
-        />
-        <SingleSelectFilter
-          title={t('common:model.model_type')}
-          value={modelType}
-          options={selectModelTypeList}
-          onChange={setModelType}
-        />
-        <Box
-          ml={[0, 'auto']}
-          w={'100%'}
-          maxW={['100%', '200px']}
-          flex={['none', '0 0 200px']}
-          flexShrink={0}
-        >
-          <SearchInput
-            bg={'myGray.25'}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('common:model.search_name_placeholder')}
-          />
-        </Box>
-      </Flex>
+        providers={modelProviders}
+        models={remoteModels}
+        provider={provider}
+        onProviderChange={setProvider}
+        modelType={modelType}
+        onModelTypeChange={setModelType}
+        search={search}
+        onSearchChange={setSearch}
+      />
       <TableContainer
         mt={5}
         px={contentPx}
+        ref={headerContainerRef}
+        flexShrink={0}
+        w={'100%'}
+        maxW={'100%'}
+        overflowX={'hidden'}
+      >
+        <Table
+          minW={tableMinWidth}
+          sx={{
+            tableLayout: 'fixed',
+            width: `${headerTableWidth} !important`
+          }}
+        >
+          <colgroup>
+            {showPermissionColumn && <col style={{ width: modelTableColumnWidth.selection }} />}
+            <col />
+            <col style={{ width: modelTableColumnWidth.type }} />
+            <col style={{ width: modelTableColumnWidth.billing }} />
+            {showPermissionColumn && <col style={{ width: modelTableColumnWidth.permission }} />}
+          </colgroup>
+          <Thead>
+            <Tr color={'myGray.600'}>
+              {showPermissionColumn && (
+                <Th px={3}>
+                  <Checkbox
+                    isChecked={isSelecteAll}
+                    isIndeterminate={selectedItems.length > 0 && !isSelecteAll}
+                    onChange={selectAllTrigger}
+                  />
+                </Th>
+              )}
+              <Th fontSize={'xs'}>{t('common:model.name')}</Th>
+              <Th fontSize={'xs'}>{t('common:model.model_type')}</Th>
+              <Th fontSize={'xs'}>{t('common:model.billing')}</Th>
+              {showPermissionColumn && (
+                <Th fontSize={'xs'}>{t('common:permission.Permission config')}</Th>
+              )}
+            </Tr>
+          </Thead>
+        </Table>
+      </TableContainer>
+      <TableContainer
+        px={contentPx}
+        ref={bodyContainerRef}
         flex={contentPx === undefined ? '1 0 0' : ['0 0 auto', '1 0 0']}
         h={contentPx === undefined ? 0 : ['auto', 0]}
+        minH={0}
         w={'100%'}
         maxW={'100%'}
         overflowY={contentPx === undefined ? 'auto' : ['visible', 'auto']}
         overflowX={'auto'}
       >
-        <Table>
-          <Thead>
-            <Tr color={'myGray.600'}>
-              <Th fontSize={'xs'}>
-                <HStack>
-                  {permissionConfig && userInfo?.team.permission.hasManagePer && (
-                    <Checkbox
-                      mr={1}
-                      isChecked={isSelecteAll}
-                      onChange={selectAllTrigger}
-                    ></Checkbox>
-                  )}
-                  <Box>{t('common:model.name')}</Box>
-                </HStack>
-              </Th>
-              <Th fontSize={'xs'}>{t('common:model.model_type')}</Th>
-              <Th fontSize={'xs'}>{t('common:model.billing')}</Th>
-              {permissionConfig && userInfo?.team.permission.hasManagePer && (
-                <Th fontSize={'xs'}>{t('common:permission.Permission config')}</Th>
-              )}
-            </Tr>
-          </Thead>
+        <Table minW={tableMinWidth} sx={{ tableLayout: 'fixed' }}>
+          <colgroup>
+            {showPermissionColumn && <col style={{ width: modelTableColumnWidth.selection }} />}
+            <col />
+            <col style={{ width: modelTableColumnWidth.type }} />
+            <col style={{ width: modelTableColumnWidth.billing }} />
+            {showPermissionColumn && <col style={{ width: modelTableColumnWidth.permission }} />}
+          </colgroup>
           <Tbody>
             {modelList.map((item) => (
               <Tr
@@ -368,15 +364,13 @@ const ModelTable = ({
                   isDisabled: !permissionConfig || !userInfo?.team.permission.hasManagePer
                 })}
               >
+                {showPermissionColumn && (
+                  <Td w={modelTableColumnWidth.selection} px={3}>
+                    <Checkbox isChecked={isSelected(item)} onChange={() => toggleSelect(item)} />
+                  </Td>
+                )}
                 <Td fontSize={'sm'}>
                   <HStack>
-                    {permissionConfig && userInfo?.team.permission.hasManagePer && (
-                      <Checkbox
-                        mr={1}
-                        isChecked={isSelected(item)}
-                        onChange={() => toggleSelect(item)}
-                      ></Checkbox>
-                    )}
                     <Avatar src={item.avatar} w={'1.2rem'} />
                     <Flex alignItems={'center'} gap={1} minW={0}>
                       <CopyBox value={item.name} data-row-action color={'myGray.900'}>
@@ -398,7 +392,7 @@ const ModelTable = ({
                   <MyTag colorSchema={item.tagColor as any}>{item.typeLabel}</MyTag>
                 </Td>
                 <Td fontSize={'sm'}>{item.priceLabel}</Td>
-                {permissionConfig && userInfo?.team.permission.hasManagePer && (
+                {showPermissionColumn && (
                   <Td fontSize={'sm'}>
                     <LazyCollaboratorProvider
                       selectedHint={modelPermissionConfigHint}
@@ -434,10 +428,9 @@ const ModelTable = ({
       </TableContainer>
 
       <FloatingActionBar
-        activedStyles={{
-          borderRadius: 'md',
-          boxShadow: 'md'
-        }}
+        flexShrink={0}
+        borderTopWidth="1px"
+        borderColor="myGray.100"
         Controler={
           <LazyCollaboratorProvider
             selectedHint={modelPermissionConfigHint}
@@ -483,7 +476,6 @@ export const ModelPriceModal = ({
       {isOpen && (
         <MyModal
           isCentered
-          iconSrc="/imgs/modal/bill.svg"
           title={t('common:support.wallet.subscription.Ai points')}
           isOpen
           onClose={onClose}
@@ -491,10 +483,9 @@ export const ModelPriceModal = ({
           h={'100%'}
           maxW={'90vw'}
           maxH={'90vh'}
+          bodyStyles={{ flex: '1 0 0', minH: 0 }}
         >
-          <ModalBody flex={'1 0 0'}>
-            <ModelTable />
-          </ModalBody>
+          <ModelTable />
         </MyModal>
       )}
     </>

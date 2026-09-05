@@ -130,7 +130,6 @@ vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) => {
       type: 'embedding',
       scope: 'system' as const,
       isActive: true,
-      isCustom: false,
       config: { defaultToken: 100, maxToken: 100, weight: 0 }
     })
   };

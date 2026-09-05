@@ -1,17 +1,12 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
-import {
-  assertSystemModelTypesMatchPluginTemplates,
-  refreshModelTemplates,
-  updatedReloadSystemModel
-} from '@fastgpt/service/core/ai/config/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { createSystemModel } from '@/service/core/ai/model/service';
 import {
   CreateSystemModelBodySchema,
-  CreateSystemModelResponseSchema,
   type CreateSystemModelBody,
+  CreateSystemModelResponseSchema,
   type CreateSystemModelResponse
 } from '@fastgpt/global/openapi/admin/core/ai/model/api';
 
@@ -19,15 +14,12 @@ async function handler(
   req: ApiRequestProps<CreateSystemModelBody>
 ): Promise<CreateSystemModelResponse> {
   await authSystemAdmin({ req });
-  const { modelData } = parseApiInput({ req, bodySchema: CreateSystemModelBodySchema }).body;
+  const { modelData, channelIds } = parseApiInput({
+    req,
+    bodySchema: CreateSystemModelBodySchema
+  }).body;
 
-  // 插件不可用时不提交数据库更新，保持数据库与当前运行时 active 集合一致。
-  const pluginDocuments = await refreshModelTemplates();
-  assertSystemModelTypesMatchPluginTemplates({ models: [modelData], pluginDocuments });
-  const model = await MongoAIModel.create(modelData);
-  await updatedReloadSystemModel({ pluginDocuments });
-
-  return CreateSystemModelResponseSchema.parse({ modelId: String(model._id) });
+  return CreateSystemModelResponseSchema.parse(await createSystemModel({ modelData, channelIds }));
 }
 
 export default NextAPI(handler);

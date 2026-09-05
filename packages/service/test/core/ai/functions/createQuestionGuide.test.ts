@@ -21,7 +21,6 @@ describe('createQuestionGuide', () => {
     type: ModelTypeEnum.llm,
     scope: 'system' as const,
     isActive: true,
-    isCustom: false,
     config: {
       maxContext: 128000,
       maxResponse: 4096,

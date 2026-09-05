@@ -64,7 +64,6 @@
 | `model`    | provider 侧路由名称，例如 `gpt-4o` | 否；仅兼容旧引用和 provider 请求                             |
 | `name`     | 用户可见展示名                     | 否                                                           |
 | `scope`    | 模型实例作用域                     | 本轮固定为 `system`，后续可扩展 `team`                       |
-| `isCustom` | 是否不在插件模板中                 | 运行时根据模板匹配结果派生，不能表示所有权，不能参与身份判断 |
 
 核心约束：
 
@@ -107,7 +106,6 @@ type SystemModelDocument = {
 type RuntimeSystemModel = Omit<SystemModelDocument, '_id'> & {
   modelId: string;
   avatar?: string;
-  isCustom?: boolean;
 };
 ```
 
@@ -115,7 +113,7 @@ type RuntimeSystemModel = Omit<SystemModelDocument, '_id'> & {
 
 - 顶层字段回答“这是谁、由谁提供、是否启用、如何连接、如何计费”。
 - `config` 回答“这个类型的模型支持什么，以及调用时如何构造参数”。
-- `modelId`、`avatar`、`isCustom` 是派生字段，不在 MongoDB 中重复保存。
+- `modelId`、`avatar` 是派生字段，不在 MongoDB 中重复保存。
 - `metadata` 只作为迁移期 legacy 字段保留，新写入不再产生 `metadata`。
 
 不在 MongoDB 中重复保存 `modelId`；运行时和 API 返回时由 `_id` 映射得到。这样只有一个真实主键来源，避免 `_id` 与 `modelId` 不一致。
@@ -219,7 +217,7 @@ Mongoose 顶层字段应显式声明，`config` 可以使用 `Schema.Types.Mixed
 | `isActive/testMode`、默认标记、连接信息 | FastGPT 默认值或管理员配置 | 只读 DB，插件不参与                             |
 | 价格字段                                | 插件模板初始化             | DB 权威，插件更新不覆盖管理员价格               |
 | `config`                                | 插件能力配置初始化         | 只读 DB 完整快照；模板变化不隐式合并            |
-| `avatar/isCustom`                       | 不持久化                   | 分别由 provider 和是否命中插件模板派生          |
+| `avatar`                                | 不持久化                   | 由 provider 派生                                |
 
 加载时不做 `config` 合并。`defaultConfig`、`fieldMap`、`dbConfig`、`queryConfig`、数组以及 `false`、`0` 等值全部按数据库快照解释；配置不完整或非法时保留上一版运行时缓存并暴露配置错误，不能从插件或其他模型借默认值。
 
@@ -260,12 +258,12 @@ defineIndex(SystemModelSchema, {
 
 不能只建立无 partial filter 的 `{ scope, model }` 唯一索引，否则所有团队模型仍会在全平台共享一组唯一空间，与未来的“团队内唯一”冲突。
 
-### 5.6 `scope` 与 `isCustom`
+### 5.6 `scope` 与模板解绑
 
 - 本轮 `ai_models` 中的所有模型都属于平台系统模型，包括管理员自行添加、未命中插件模板的模型；创建和迁移统一写入 `scope: system`。
 - 本轮输入 Schema 将 `scope` 收紧为 literal `system`，不允许管理员 API 写入团队作用域。未来团队安装需求再扩展这一边界。
-- `isCustom = true` 的唯一含义是“该系统模型不在当前插件模板列表中”；命中模板则为 `false`。它不表示私有模型、创建者或所有权。
-- `isCustom` 只在运行时根据 `model` 是否命中插件模板派生，不持久化，也不得用于访问控制或唯一索引；命中后若 `type` 不一致，应作为模板/数据库配置错误单独报告，不能把它伪装成自定义模型。
+- 模型创建完成后即与 Plugin 模板解绑，所有已安装模型都按独立实例管理。
+- 因此不再提供 `isCustom`：当前模板是否存在是动态外部状态，既不能描述实例来源，也不能用于删除、编辑、访问控制或唯一索引。
 
 ## 6. 模型加载、缓存与查找
 
@@ -610,16 +608,15 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 
 ### 11.1 模型结构接管与资源迁移
 
-旧版 `cleanSystemModelConfigs` 不再提供。新版本不修改 `system_models`：阻塞升级任务在内存中把全部旧记录转换为 canonical 结构，并在单个事务中按 `{ scope: system, model }` 把缺失模型追加到 `ai_models`。同名目标记录保留现有 `_id`，其余字段由旧表 canonical 配置完整替换；旧表独有记录沿用旧 `_id` 新增；目标表独有记录不删除。system 默认配置以已有且仍有效的槽位为准，旧表 `isDefault*` 只补齐缺失或失效槽位。成功结果分别记录旧表原始记录数、新表最终 system 模型数，以及按名称去重后已在新表中落位的旧模型数；同名替换属于成功落位而不是新增。升级状态表是唯一执行标记。单模型新增/更新和 JSON 批量更新只接受 canonical 数据；JSON 中没有 `modelId` 的旧记录直接过滤。JSON 的未知 `modelId` 表示跨实例导入：目标端按 `model` 复用已有系统实例或创建新实例。
+旧版 `cleanSystemModelConfigs` 不再提供。新版本不修改 `system_models`：阻塞升级任务在单个事务中把旧记录转换为 canonical 结构并按 `model` 合并到 `ai_models`。同名目标保留现有 `_id`，其余配置由旧表覆盖；旧表独有模型沿用旧 `_id` 新增；新表独有模型保留。已有且有效的默认槽位优先，旧表 `isDefault*` 只补齐缺失或失效槽位。升级状态表仍是迁移 Runner 是否调度任务的唯一依据。单模型新增/更新和 JSON 批量更新只接受 canonical 数据；JSON 中没有 `modelId` 的旧记录直接过滤。JSON 的未知 `modelId` 表示跨实例导入：目标端按 `model` 复用已有系统实例或创建新实例。
 
-启动迁移、插件模板刷新、自动预装策略和数据库实例加载必须保持四个独立职责：
+启动迁移、动态模板读取和数据库实例加载必须保持三个独立职责：
 
-1. `bootstrapAIModelsFromLegacy` 只由阻塞升级任务调用；它不读取升级状态、不保存 checkpoint、不生成缓存，也不由模型加载、定时刷新或管理接口调用。它先读取并全量校验旧表与插件类型，再在单事务中读取目标模型和默认配置、解析身份冲突、批量插入旧表独有模型、按目标 `_id` 替换同名模型配置，最后合并默认槽位。目标表独有模型不更新或删除；任务因节点退出被 lease 接管后可以确定性重复调用，事务失败不会留下部分结果。
-2. `refreshModelTemplates` 只获取并校验插件模板候选快照；启动失败则阻止启动，热刷新失败则保留上一版模板和 active 缓存，不触发任何数据库变更。
-3. `syncPreinstalledSystemModels` 只负责本版本“插件模板缺失实例自动预装”的兼容策略，按 `{ scope, model }` 创建缺失实例，不更新或删除已有实例。PR2 改为模板显式安装时只替换这一层。
-4. `loadInstalledModels` 只读取并严格解析数据库实例与 system scope 默认配置，在局部构建 list/map/defaults 后原子发布；不 repair、不拉插件、不创建或删除模型。管理员提交和数据库 Change Stream 只触发这一层。
+1. `bootstrapAIModelsFromLegacy` 只由阻塞升级任务调用；它不读取升级状态、不保存 checkpoint、不生成缓存，也不由模型加载、定时刷新或管理接口调用。它先读取并全量校验旧表与插件类型，再在单事务中读取最新目标快照，按 `model` 更新同名实例、插入缺失实例并合并默认槽位。任务因节点退出被 lease 接管后可以确定性重复调用，事务失败不会留下部分结果。
+2. `refreshModelTemplates` 只在管理员打开模板列表和提交模板安装时实时获取并校验候选快照，不缓存、不触发数据库变更，也不参与启动加载。
+3. `loadInstalledModels` 只读取并严格解析数据库实例与 system scope 默认配置，在局部构建 list/map/defaults 后原子发布；不 repair、不拉插件、不创建或删除模型。管理员提交和数据库 Change Stream 只触发这一层。
 
-启动编排为：先执行正常的 `preload providers -> refresh templates -> sync preinstalled -> load installed`，让升级脚本可以使用模型缓存；随后升级 runner 获取 lease。模型迁移任务执行 `preload providers -> refresh templates -> bootstrap legacy -> sync preinstalled -> load installed`：`bootstrap legacy` 在事务中补充旧表独有模型，并保留同名目标 `_id`、用旧表 canonical 配置替换其余字段，避免启动阶段自动预装配置覆盖升级前设置；任务在返回成功前重新发布模型缓存。其他节点轮询到阻塞任务成功后即可进入 ready，无需为迁移额外重复加载一次模型，因为各节点启动阶段已经发布缓存，而模型数据库变更由既有同步机制传播。迁移失败时事务不留下部分数据，节点保持 not ready，owner 持续持有 lease 并等待修复后重启；运行期模板刷新为 `refresh templates -> sync preinstalled -> load installed`，管理员写入为 `validate/preflight -> transaction -> load installed`。
+启动只预加载 Provider 并读取已安装模型，不请求 Plugin 模板。模型迁移任务在旧表非空时读取 Plugin 模板用于兼容性修复，再执行 `bootstrap legacy -> load installed`；旧表为空时直接以空模板执行。`bootstrap legacy` 在事务内读取最新目标快照并完成覆盖、插入和默认配置合并。迁移失败时事务不留下部分数据。管理员模板安装为 `实时拉取模板 -> 校验/过滤 -> 先绑定渠道 -> MongoDB 事务批量创建 -> load installed`；跨 AIProxy 与 MongoDB 不做分布式补偿。
 
 4163 资源回填拆成模型权限、Dataset、Evaluation 和 App 四个非阻塞升级任务，其中 App 任务包含 `apps/app_versions/app_templates` 三个阶段，并在最终结果中分别展示三个阶段的处理数量，不再用一个合计数掩盖各类数据规模。四个任务分别重新读取 `ai_models`，按 `_id` 的固定 `endId/lastId` 游标增量补充 ID sibling；Usage 历史记录不回填。无法解析的历史业务引用保留原值并跳过，不视为任务异常；CAS 冲突、文档解析或数据库写入等真实执行异常进入独立失败记录表并继续当前批次和后续任务，任务最终保持 `failed`，管理员修复后通过通用页面触发断点重试。
 
@@ -658,7 +655,7 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 
 ### 11.3 迁移规则
 
-- `system_models -> ai_models + ai_default_models` 的执行资格只来自通用升级状态，不使用业务表作为初始化标记。任务执行一次旧表读取、一次事务、一次目标快照读取、一次缺失模型批量插入和一次默认配置 upsert，不分批也不保存 checkpoint；它不会清空或更新已有模型。
+- `system_models -> ai_models + ai_default_models` 的执行资格只来自通用升级状态，不使用业务表作为初始化标记。任务执行一次旧表读取、一次事务和一次目标快照读取；同名模型更新、缺失模型插入及默认配置 upsert 原子完成，不分批也不保存 checkpoint，且不会清空或删除新表独有模型。
 - 模型结构归一化优先级为 `canonical config > 旧顶层字段 > metadata`；同层冲突记入报告。
 - 根据模型 `type` 使用白名单把类型特有字段写入 `config`，未知字段不自动搬运。
 - 新代码只写 `ai_models` 的 canonical 顶层字段和 `config`；不再写 `metadata`、默认标记或顶层类型特有字段。

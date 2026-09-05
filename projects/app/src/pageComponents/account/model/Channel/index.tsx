@@ -17,17 +17,18 @@ import {
   TableContainer,
   Box,
   Button,
-  HStack
+  HStack,
+  Flex,
+  Spinner,
+  Switch
 } from '@chakra-ui/react';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { type ChannelInfoType } from '@/global/aiproxy/type';
-import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { ChannelStatusEnum, ChannelStautsMap, defaultChannel } from '@/global/aiproxy/constants';
-import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import { ChannelStatusEnum, defaultChannel } from '@/global/aiproxy/constants';
 import dynamic from 'next/dynamic';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
@@ -35,12 +36,17 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import ModelTabHeader from '../ModelTabHeader';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { useFixedTableHeader } from '@fastgpt/web/hooks/useFixedTableHeader';
+import { useLockFn, useSet } from 'ahooks';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const EditChannelModal = dynamic(() => import('./EditChannelModal'), { ssr: false });
 const ModelTest = dynamic(() => import('./ModelTest'), { ssr: false });
 
 const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   const { t, i18n } = useClientTranslation('config_model');
+  const { toast } = useToast();
   const { userInfo } = useUserStore();
   const { aiproxyChannels } = useSystemStore();
 
@@ -59,39 +65,77 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   });
 
   const [editChannel, setEditChannel] = useState<ChannelInfoType>();
+  const [channelMutationLoading, setChannelMutationLoading] = useState(false);
+  const runChannelMutation = useLockFn(async (operation: () => Promise<unknown>) => {
+    setChannelMutationLoading(true);
+    try {
+      return await operation();
+    } finally {
+      setChannelMutationLoading(false);
+    }
+  });
 
-  const { runAsync: updateChannel, loading: loadingUpdateChannel } = useRequest(putChannel, {
+  const { runAsync: updateChannelRequest, loading: loadingUpdateChannel } = useRequest(putChannel, {
     manual: true,
     onSuccess: () => {
       refreshChannelList();
     }
   });
-  const { runAsync: updateChannelStatus, loading: loadingUpdateChannelStatus } = useRequest(
-    putChannelStatus,
+  const updateChannel = (data: Parameters<typeof putChannel>[0]) =>
+    runChannelMutation(() => updateChannelRequest(data));
+  const [updatingChannelIds, updatingChannelIdsDispatch] = useSet<number>();
+  const { runAsync: updateChannelStatusRequest } = useRequest(
+    async ({
+      channelId,
+      channelName,
+      status
+    }: {
+      channelId: number;
+      channelName: string;
+      status: ChannelStatusEnum;
+    }) => {
+      updatingChannelIdsDispatch.add(channelId);
+      try {
+        await putChannelStatus(channelId, status);
+        toast({
+          status: 'success',
+          title: t(
+            status === ChannelStatusEnum.ChannelStatusEnabled
+              ? 'config_model:status_enabled'
+              : 'config_model:status_disabled',
+            { name: channelName }
+          )
+        });
+        // 状态写入已经成功；列表刷新失败由其自身提示，不能把成功操作再次报成失败。
+        await refreshChannelList().catch(() => {});
+      } finally {
+        updatingChannelIdsDispatch.remove(channelId);
+      }
+    }
+  );
+  const updateChannelStatus = (data: Parameters<typeof updateChannelStatusRequest>[0]) =>
+    runChannelMutation(() => updateChannelStatusRequest(data));
+
+  const { openConfirm, ConfirmModal } = useConfirm({
+    type: 'delete'
+  });
+  const { runAsync: deleteChannelRequest, loading: loadingDeleteChannel } = useRequest(
+    deleteChannel,
     {
+      manual: true,
       onSuccess: () => {
         refreshChannelList();
       }
     }
   );
-
-  const { openConfirm, ConfirmModal } = useConfirm({
-    type: 'delete'
-  });
-  const { runAsync: onDeleteChannel, loading: loadingDeleteChannel } = useRequest(deleteChannel, {
-    manual: true,
-    onSuccess: () => {
-      refreshChannelList();
-    }
-  });
+  const onDeleteChannel = (channelId: number) =>
+    runChannelMutation(() => deleteChannelRequest(channelId));
 
   const [modelTestData, setTestModelData] = useState<{ channelId: number; models: string[] }>();
 
   const isLoading =
-    loadingChannelList ||
-    loadingUpdateChannel ||
-    loadingDeleteChannel ||
-    loadingUpdateChannelStatus;
+    loadingChannelList || loadingUpdateChannel || loadingDeleteChannel || channelMutationLoading;
+  const { headerContainerRef, bodyContainerRef, headerTableWidth } = useFixedTableHeader();
 
   return (
     <>
@@ -100,35 +144,79 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
           <Button
             w={['100%', 'auto']}
             variant={'primary'}
+            isDisabled={channelMutationLoading}
             onClick={() => setEditChannel(defaultChannel)}
           >
             {t('config_model:create_channel')}
           </Button>
         </ModelTabHeader>
       )}
-      <MyBox flex={'1 0 0'} h={0} minH={0} isLoading={isLoading}>
+      <MyBox
+        flex={'1 0 0'}
+        h={0}
+        minH={0}
+        display="flex"
+        flexDirection="column"
+        isLoading={isLoading}
+      >
+        <TableContainer ref={headerContainerRef} flexShrink={0} overflowX="hidden" px={6}>
+          <Table
+            sx={{
+              tableLayout: 'fixed',
+              width: `${headerTableWidth} !important`
+            }}
+          >
+            <colgroup>
+              <col />
+              <col />
+              <col style={{ width: '120px' }} />
+              <col style={{ width: '120px' }} />
+              <col style={{ width: '140px' }} />
+              <col style={{ width: '120px' }} />
+            </colgroup>
+            <Thead>
+              <Tr>
+                <Th>{t('common:Name')}</Th>
+                <Th>{t('config_model:channel_type')}</Th>
+                <Th>{t('config_model:model_count')}</Th>
+                <Th>{t('config_model:model.active')}</Th>
+                <Th>
+                  <HStack spacing={1} alignItems="center">
+                    <Box>{t('config_model:channel_priority')}</Box>
+                    <QuestionTip label={t('config_model:channel_priority_tip')} />
+                  </HStack>
+                </Th>
+                <Th>{t('common:Operation')}</Th>
+              </Tr>
+            </Thead>
+          </Table>
+        </TableContainer>
         <TableContainer
+          ref={bodyContainerRef}
           h={['auto', '100%']}
+          flex={['0 0 auto', '1 1 0']}
           minH={0}
           overflowY={['visible', 'auto']}
           px={6}
           fontSize={'sm'}
         >
-          <Table>
-            <Thead>
-              <Tr>
-                <Th>ID</Th>
-                <Th>{t('config_model:channel_name')}</Th>
-                <Th>{t('config_model:channel_type')}</Th>
-                <Th>{t('config_model:channel_status')}</Th>
-                <Th>
-                  {t('config_model:channel_priority')}
-                  <QuestionTip label={t('config_model:channel_priority_tip')} />
-                </Th>
-                <Th></Th>
-              </Tr>
-            </Thead>
+          <Table sx={{ tableLayout: 'fixed' }}>
+            <colgroup>
+              <col />
+              <col />
+              <col style={{ width: '120px' }} />
+              <col style={{ width: '120px' }} />
+              <col style={{ width: '140px' }} />
+              <col style={{ width: '120px' }} />
+            </colgroup>
             <Tbody>
+              {!loadingChannelList && channelList.length === 0 && (
+                <Tr>
+                  <Td colSpan={6} borderBottom={0}>
+                    <EmptyTip text={t('config_model:channel_list_empty')} />
+                  </Td>
+                </Tr>
+              )}
               {channelList.map((item) => {
                 const providerData = aiproxyChannels.find(
                   (channel) => channel.channelId === item.type
@@ -138,7 +226,6 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                 };
                 return (
                   <Tr key={item.id} _hover={{ bg: 'myGray.100' }}>
-                    <Td>{item.id}</Td>
                     <Td>{item.name}</Td>
                     <Td>
                       <HStack>
@@ -146,14 +233,30 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                         <Box>{parseI18nString(providerData.name, i18n.language)}</Box>
                       </HStack>
                     </Td>
+                    <Td>{item.models.length}</Td>
                     <Td>
-                      <MyTag
-                        colorSchema={ChannelStautsMap[item.status]?.colorSchema as any}
-                        type="borderFill"
-                      >
-                        {t(ChannelStautsMap[item.status]?.label as any) ||
-                          t('config_model:channel_status_unknown')}
-                      </MyTag>
+                      <Flex w={'32px'} justifyContent={'center'}>
+                        {updatingChannelIds.has(item.id) ? (
+                          <Spinner size={'sm'} color={'primary.600'} />
+                        ) : (
+                          <Switch
+                            size={'sm'}
+                            cursor={'pointer'}
+                            isDisabled={channelMutationLoading}
+                            isChecked={item.status === ChannelStatusEnum.ChannelStatusEnabled}
+                            onChange={(e) =>
+                              updateChannelStatus({
+                                channelId: item.id,
+                                channelName: item.name,
+                                status: e.target.checked
+                                  ? ChannelStatusEnum.ChannelStatusEnabled
+                                  : ChannelStatusEnum.ChannelStatusDisabled
+                              })
+                            }
+                            colorScheme={'myBlue'}
+                          />
+                        )}
+                      </Flex>
                     </Td>
                     <Td>
                       <MyNumberInput
@@ -162,6 +265,7 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                         max={100}
                         h={'32px'}
                         w={'80px'}
+                        isDisabled={channelMutationLoading}
                         onBlur={(e) => {
                           const val = (() => {
                             if (!e) return 1;
@@ -175,65 +279,41 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                       />
                     </Td>
                     <Td>
-                      <MyMenu
-                        menuList={[
-                          {
-                            label: '',
-                            children: [
-                              {
-                                icon: 'core/chat/sendLight',
-                                label: t('config_model:model_test'),
-                                onClick: () =>
-                                  setTestModelData({
-                                    channelId: item.id,
-                                    models: item.models
-                                  })
-                              },
-                              ...(item.status === ChannelStatusEnum.ChannelStatusEnabled
-                                ? [
-                                    {
-                                      icon: 'common/disable',
-                                      label: t('config_model:forbid_channel'),
-                                      onClick: () =>
-                                        updateChannelStatus(
-                                          item.id,
-                                          ChannelStatusEnum.ChannelStatusDisabled
-                                        )
-                                    }
-                                  ]
-                                : [
-                                    {
-                                      icon: 'common/enable',
-                                      label: t('config_model:enable_channel'),
-                                      onClick: () =>
-                                        updateChannelStatus(
-                                          item.id,
-                                          ChannelStatusEnum.ChannelStatusEnabled
-                                        )
-                                    }
-                                  ]),
-                              {
-                                icon: 'common/settingLight',
-                                label: t('config_model:edit'),
-                                onClick: () => setEditChannel(item)
-                              },
-                              {
-                                type: 'danger',
-                                icon: 'delete',
-                                label: t('common:Delete'),
-                                onClick: () =>
-                                  openConfirm({
-                                    onConfirm: () => onDeleteChannel(item.id),
-                                    customContent: t('config_model:confirm_delete_channel', {
-                                      name: item.name
-                                    })
-                                  })()
-                              }
-                            ]
+                      <HStack spacing={2} justifyContent={'flex-end'}>
+                        <MyIconButton
+                          icon={'core/chat/sendLight'}
+                          tip={t('config_model:model_test')}
+                          onClick={() =>
+                            setTestModelData({
+                              channelId: item.id,
+                              models: item.models
+                            })
                           }
-                        ]}
-                        Button={<MyIconButton icon={'more'} />}
-                      />
+                        />
+                        <MyIconButton
+                          icon={'common/settingLight'}
+                          tip={t('config_model:edit')}
+                          pointerEvents={channelMutationLoading ? 'none' : undefined}
+                          opacity={channelMutationLoading ? 0.5 : 1}
+                          onClick={() => setEditChannel(item)}
+                        />
+                        <MyIconButton
+                          icon={'delete'}
+                          tip={t('common:Delete')}
+                          hoverColor={'red.500'}
+                          hoverBg={'red.50'}
+                          pointerEvents={channelMutationLoading ? 'none' : undefined}
+                          opacity={channelMutationLoading ? 0.5 : 1}
+                          onClick={() =>
+                            openConfirm({
+                              onConfirm: () => onDeleteChannel(item.id),
+                              customContent: t('config_model:confirm_delete_channel', {
+                                name: item.name
+                              })
+                            })()
+                          }
+                        />
+                      </HStack>
                     </Td>
                   </Tr>
                 );
@@ -247,7 +327,7 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         <EditChannelModal
           defaultConfig={editChannel}
           onClose={() => setEditChannel(undefined)}
-          onSuccess={refreshChannelList}
+          onSuccess={() => refreshChannelList().catch(() => {})}
         />
       )}
       {!!modelTestData && (

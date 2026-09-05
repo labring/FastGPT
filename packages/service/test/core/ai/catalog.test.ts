@@ -11,7 +11,6 @@ const llm = (modelId: string, vision = false): SystemModelDataType => ({
   type: ModelTypeEnum.llm,
   scope: 'system',
   isActive: true,
-  isCustom: false,
   config: { maxContext: 4096, maxResponse: 1024, quoteMaxToken: 1024, vision }
 });
 
@@ -23,7 +22,6 @@ const embedding = (modelId: string): SystemModelDataType => ({
   type: ModelTypeEnum.embedding,
   scope: 'system',
   isActive: true,
-  isCustom: false,
   config: { defaultToken: 512, maxToken: 8192, weight: 100 }
 });
 

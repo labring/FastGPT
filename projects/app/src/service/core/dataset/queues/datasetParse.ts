@@ -1,3 +1,4 @@
+import { ensureModelCatalogReady } from '@fastgpt/service/core/ai/config/runtime';
 /* Dataset collection source parse, not max size. */
 
 import { ParagraphChunkAIModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -118,6 +119,7 @@ export const datasetParseQueue = async (): Promise<any> => {
 
   try {
     while (true) {
+      await ensureModelCatalogReady();
       const startTime = Date.now();
 
       // 1. Get task and lock 10 minutes ago

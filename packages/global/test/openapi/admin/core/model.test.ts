@@ -2,10 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { createDocument } from 'zod-openapi';
 import {
   AdminSystemModelReferenceSchema,
+  CreateSystemModelBodySchema,
+  CreateSystemModelsFromTemplatesBodySchema,
+  DeleteSystemModelsBodySchema,
   ImportedSystemModelSchema,
-  TestAdminSystemModelQuerySchema
+  ReplaceSystemModelChannelsBodySchema,
+  TestAdminSystemModelQuerySchema,
+  UpdateSystemModelBodySchema,
+  UpdateSystemModelStatusBodySchema
 } from '../../../../openapi/admin/core/ai/model/api';
 import { AdminSystemModelPath } from '../../../../openapi/admin/core/ai/model';
+import { adminOpenAPITagGroups, adminOpenAPIPaths } from '../../../../openapi/path';
+import { DevApiTagsMap } from '../../../../openapi/tag';
 
 describe('admin system model API schemas', () => {
   it('only accepts modelId as a model reference', () => {
@@ -29,6 +37,112 @@ describe('admin system model API schemas', () => {
         paths: AdminSystemModelPath
       })
     ).not.toThrow();
+  });
+
+  it('validates unique model IDs for batch status and delete operations', () => {
+    const modelIds = ['68ad85a7463006c963799a05', '68ad85a7463006c963799a06'];
+
+    expect(DeleteSystemModelsBodySchema.parse({ modelIds })).toEqual({ modelIds });
+    expect(UpdateSystemModelStatusBodySchema.parse({ modelIds, isActive: false })).toEqual({
+      modelIds,
+      isActive: false
+    });
+    expect(() =>
+      DeleteSystemModelsBodySchema.parse({ modelIds: [modelIds[0], modelIds[0]] })
+    ).toThrow('modelIds must be unique');
+  });
+
+  it('enforces the batch model ID boundaries', () => {
+    const modelIds = Array.from({ length: 501 }, (_, index) =>
+      (index + 1).toString(16).padStart(24, '0')
+    );
+
+    expect(
+      DeleteSystemModelsBodySchema.parse({ modelIds: modelIds.slice(0, 500) }).modelIds
+    ).toHaveLength(500);
+    expect(() => DeleteSystemModelsBodySchema.parse({ modelIds })).toThrow();
+    expect(() =>
+      UpdateSystemModelStatusBodySchema.parse({ modelIds: [], isActive: true })
+    ).toThrow();
+  });
+
+  it('enforces the template creation batch boundary', () => {
+    const templates = Array.from({ length: 501 }, (_, index) => ({
+      type: 'llm' as const,
+      model: `model-${index}`
+    }));
+
+    expect(
+      CreateSystemModelsFromTemplatesBodySchema.parse({
+        templates: templates.slice(0, 500),
+        channelIds: []
+      }).templates
+    ).toHaveLength(500);
+    expect(() =>
+      CreateSystemModelsFromTemplatesBodySchema.parse({ templates, channelIds: [] })
+    ).toThrow();
+  });
+
+  it('rejects generated model IDs and invalid channel IDs at write boundaries', () => {
+    const modelData = {
+      type: 'llm' as const,
+      provider: 'OpenAI',
+      model: 'gpt-new',
+      name: 'GPT New',
+      scope: 'system' as const,
+      isActive: false,
+      config: { maxContext: 16000, maxResponse: 8000, quoteMaxToken: 12000 }
+    };
+
+    expect(() =>
+      CreateSystemModelBodySchema.parse({
+        modelData: { ...modelData, modelId: '68ad85a7463006c963799a05' },
+        channelIds: []
+      })
+    ).toThrow('modelId is not allowed when creating a model');
+    expect(() => CreateSystemModelBodySchema.parse({ modelData, channelIds: [0] })).toThrow();
+    expect(() =>
+      ReplaceSystemModelChannelsBodySchema.parse({
+        modelId: '68ad85a7463006c963799a05',
+        channelIds: [-1]
+      })
+    ).toThrow();
+  });
+
+  it('does not include the immutable model identifier in update data', () => {
+    const modelId = '68ad85a7463006c963799a05';
+    const modelData = {
+      type: 'llm' as const,
+      provider: 'OpenAI',
+      name: 'GPT',
+      scope: 'system' as const,
+      config: { maxContext: 16000, maxResponse: 8000, quoteMaxToken: 12000 }
+    };
+
+    expect(UpdateSystemModelBodySchema.parse({ modelId, modelData })).toEqual({
+      modelId,
+      modelData
+    });
+    expect(() =>
+      UpdateSystemModelBodySchema.parse({
+        modelId,
+        modelData: { ...modelData, model: 'renamed-model' }
+      })
+    ).toThrow();
+  });
+
+  it('places every admin model route in the system model management group', () => {
+    expect(adminOpenAPITagGroups).toContainEqual({
+      name: '管理员-系统接口',
+      tags: [DevApiTagsMap.adminSystemMigration, DevApiTagsMap.adminSystemModel]
+    });
+
+    for (const [path, operations] of Object.entries(AdminSystemModelPath)) {
+      expect(adminOpenAPIPaths[path]).toBe(operations);
+      for (const operation of Object.values(operations ?? {})) {
+        expect(operation?.tags).toEqual([DevApiTagsMap.adminSystemModel]);
+      }
+    }
   });
 
   it('keeps type-specific config fields without strict-mode import failures', () => {

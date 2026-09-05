@@ -1,3 +1,4 @@
+import { ensureModelCatalogReady } from '@fastgpt/service/core/ai/config/runtime';
 import { createDatasetData, updateDatasetDataByIndexes } from '@/service/core/dataset/data/data';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -86,6 +87,7 @@ export async function generateVector(): Promise<any> {
 
   try {
     while (true) {
+      await ensureModelCatalogReady();
       const start = Date.now();
 
       // get training data

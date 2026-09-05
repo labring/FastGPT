@@ -1,87 +1,63 @@
 import { type ChannelInfoType } from '@/global/aiproxy/type';
-import {
-  Box,
-  type BoxProps,
-  Button,
-  Flex,
-  Input,
-  type MenuItemProps,
-  ModalBody,
-  ModalFooter,
-  useDisclosure,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  HStack,
-  useOutsideClick
-} from '@chakra-ui/react';
+import { Box, type BoxProps, Button, Flex, Input, HStack } from '@chakra-ui/react';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { AddModelButton } from '../AddModelBox';
-import dynamic from 'next/dynamic';
-import { type SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { useMemo } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
-import MyTag from '@fastgpt/web/components/common/Tag/index';
-import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { getChannelProviders, postCreateChannel, putChannel } from '@/web/core/ai/channel';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import { defaultProvider } from '@fastgpt/global/core/ai/provider';
 import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
-
-const ModelEditModal = dynamic(() => import('../AddModelBox').then((mod) => mod.ModelEditModal));
+import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import { useLockFn } from 'ahooks';
 
 const LabelStyles: BoxProps = {
   fontSize: 'sm',
   color: 'myGray.900',
   flex: '0 0 70px'
 };
+
+const CompactLabelStyles: BoxProps = {
+  fontSize: 'sm',
+  color: 'myGray.900',
+  flex: '0 0 64px'
+};
+
 const EditChannelModal = ({
   defaultConfig,
+  fixedModel,
+  allowEmptyModels = false,
   onClose,
   onSuccess
 }: {
   defaultConfig: ChannelInfoType;
+  fixedModel?: { model: string; avatar?: string };
+  allowEmptyModels?: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (createdChannelId?: number) => unknown | Promise<unknown>;
 }) => {
   const { t, i18n } = useClientTranslation('config_model');
   const {
     aiproxyChannels,
-    defaultModelIds,
     getModelProvider,
     systemModelList,
-    runAsync: refreshSystemModelList,
     loading: loadingModels
   } = useAdminModelConfig();
-  const defaultModels = useMemo(
-    () =>
-      Object.fromEntries(
-        Object.entries(defaultModelIds).map(([key, modelId]) => [
-          key,
-          systemModelList.find((model) => model.modelId === modelId)
-        ])
-      ),
-    [defaultModelIds, systemModelList]
-  );
   const isEdit = defaultConfig.id !== 0;
+  const isCompactCreate = !isEdit && !!fixedModel;
 
-  const { register, handleSubmit, watch, setValue } = useForm({
+  const { register, handleSubmit, control, setValue } = useForm({
     defaultValues: defaultConfig
   });
 
-  const providerType = watch('type');
+  const providerType = useWatch({ control, name: 'type' });
   const { data: channelProviderMetas = {}, loading: loadingChannelProviderMetas } = useRequest(
     getChannelProviders,
     { manual: false }
@@ -110,82 +86,162 @@ const EditChannelModal = ({
     return res;
   }, [providerList, providerType]);
 
-  const [editModelData, setEditModelData] = useState<SystemModelDataType>();
-  const onCreateModel = (type: ModelTypeEnum) => {
-    const defaultModel = defaultModels[type];
-
-    setEditModelData({
-      ...defaultModel,
-      model: '',
-      name: '',
-      charsPointsPrice: 0,
-      inputPrice: undefined,
-      outputPrice: undefined,
-
-      isCustom: true,
-      isActive: true,
-      ...(type === ModelTypeEnum.llm
-        ? {
-            vision: false,
-            audio: false,
-            video: false
-          }
-        : {}),
-      // @ts-ignore
-      type
-    });
-  };
-
-  const models = watch('models');
+  const models = useWatch({ control, name: 'models' });
   const modelList = useMemo(() => {
     return systemModelList.map((item) => {
       const provider = getModelProvider(item.provider, i18n.language);
 
       return {
-        provider: item.provider,
         icon: provider?.avatar,
         label: item.model,
-        value: item.model
+        value: item.model,
+        searchText: item.model
       };
     });
   }, [getModelProvider, i18n.language, systemModelList]);
 
-  const modelMapping = watch('model_mapping');
-
-  const { runAsync: onSubmit, loading: loadingCreate } = useRequest(
-    (data: ChannelInfoType) => {
-      if (data.models.length === 0) {
+  const modelMapping = useWatch({ control, name: 'model_mapping' });
+  const { runAsync: submitRequest, loading: loadingCreate } = useRequest(
+    async (data: ChannelInfoType) => {
+      if (!allowEmptyModels && data.models.length === 0) {
         return Promise.reject(t('config_model:selected_model_empty'));
       }
-      return isEdit ? putChannel(data) : postCreateChannel(data);
+      if (isEdit) {
+        await putChannel(data);
+        await onSuccess();
+        return;
+      }
+
+      const createdChannel = await postCreateChannel({
+        ...data,
+        model_mapping: data.model_mapping ?? {}
+      });
+      await onSuccess(createdChannel.id);
+      return createdChannel;
     },
     {
       onSuccess() {
-        onSuccess();
         onClose();
       },
       successToast: isEdit ? t('common:update_success') : t('common:create_success'),
       manual: true
     }
   );
+  const onSubmit = useLockFn(submitRequest);
 
   const isLoading = loadingModels || loadingChannelProviderMetas || loadingCreate;
 
   return (
-    <>
-      <MyModal
-        isLoading={isLoading}
-        iconSrc={'modal/setting'}
-        title={t('config_model:edit_channel')}
-        onClose={onClose}
-        w={'100%'}
-        maxW={['90vw', '800px']}
-      >
-        <ModalBody>
+    <MyModal
+      isLoading={isLoading}
+      title={isEdit ? t('config_model:edit_channel') : t('config_model:create_channel')}
+      onClose={onClose}
+      size={isCompactCreate ? 'sm' : 'lg'}
+      footer={
+        <>
+          <Button variant={isEdit ? 'outline' : 'whiteBase'} onClick={onClose}>
+            {t('common:Cancel')}
+          </Button>
+          <Button variant={'primary'} onClick={handleSubmit(onSubmit)}>
+            {isEdit ? t('common:Update') : t('common:new_create')}
+          </Button>
+        </>
+      }
+    >
+      {isCompactCreate && fixedModel ? (
+        <Flex direction="column" gap={4}>
+          <Flex alignItems="center" gap={8}>
+            <FormLabel required {...CompactLabelStyles}>
+              {t('common:Name')}
+            </FormLabel>
+            <Input
+              h="36px"
+              {...register('name', { required: true })}
+              placeholder={t('config_model:channel_name_placeholder')}
+            />
+          </Flex>
+
+          <Flex alignItems="center" gap={8}>
+            <FormLabel required {...CompactLabelStyles}>
+              {t('config_model:channel_type')}
+            </FormLabel>
+            <Box flex="1 0 0" minW={0}>
+              <MySelect
+                h="36px"
+                list={providerList}
+                placeholder={t('config_model:select_provider_placeholder')}
+                value={providerType}
+                isSearch
+                onChange={(val) => setValue('type', val)}
+              />
+            </Box>
+          </Flex>
+
+          <Box>
+            <Flex alignItems="center" gap={1} mb={2}>
+              <FormLabel>{t('config_model:base_url')}</FormLabel>
+              <Box color="myGray.500">{t('config_model:leave_blank_use_default_url')}</Box>
+            </Flex>
+            <Input
+              h="36px"
+              {...register('base_url')}
+              placeholder={selectedProvider?.defaultBaseUrl ?? 'https://api.openai.com/v1'}
+            />
+          </Box>
+
+          <Box>
+            <FormLabel mb={2}>{t('config_model:api_key')}</FormLabel>
+            <Input
+              h="36px"
+              {...register('key')}
+              placeholder={t('config_model:api_key_placeholder')}
+            />
+          </Box>
+
+          <Flex alignItems="center" gap={8} minH="36px">
+            <HStack spacing={1} {...CompactLabelStyles}>
+              <FormLabel>{t('config_model:current_model')}</FormLabel>
+              <QuestionTip
+                label={
+                  allowEmptyModels
+                    ? t('config_model:deferred_channel_model_tip')
+                    : t('config_model:fixed_channel_model_tip')
+                }
+              />
+            </HStack>
+            <HStack spacing={1.5} minW={0}>
+              <MyAvatar src={fixedModel.avatar} w="18px" flexShrink={0} />
+              <Box noOfLines={1}>{fixedModel.model}</Box>
+            </HStack>
+          </Flex>
+
+          <Box>
+            <HStack spacing={1} mb={2}>
+              <FormLabel>{t('config_model:mapping')}</FormLabel>
+              <QuestionTip label={t('config_model:mapping_tip')} />
+            </HStack>
+            <JsonEditor
+              resize={false}
+              defaultHeight={100}
+              value={JSON.stringify(modelMapping, null, 2)}
+              onChange={(val) => {
+                if (!val) {
+                  setValue('model_mapping', {});
+                  return;
+                }
+                try {
+                  setValue('model_mapping', JSON.parse(val));
+                } catch (_error) {}
+              }}
+            />
+          </Box>
+        </Flex>
+      ) : (
+        <Box>
           {/* Chnnel name */}
           <Box>
             <FormLabel required {...LabelStyles}>
-              {t('config_model:channel_name')}
+              {t('common:Name')}
             </FormLabel>
             <Input mt={1} {...register('name', { required: true })} />
           </Box>
@@ -206,50 +262,7 @@ const EditChannelModal = ({
               />
             </Box>
           </Box>
-          {/* Model */}
-          <Box mt={4}>
-            <Flex alignItems={'center'}>
-              <FormLabel required flex={'1 0 0'}>
-                {t('config_model:model')}({models.length})
-              </FormLabel>
-
-              <AddModelButton onCreate={onCreateModel} size={'sm'} variant={'outline'} />
-              <Button ml={2} size={'sm'} variant={'outline'} onClick={() => setValue('models', [])}>
-                {t('config_model:clear_model')}
-              </Button>
-            </Flex>
-            <Box mt={2}>
-              <MultipleSelect
-                value={models}
-                list={modelList}
-                onSelect={(val) => {
-                  setValue('models', val);
-                }}
-              />
-            </Box>
-          </Box>
-          {/* Mapping */}
-          <Box mt={4}>
-            <HStack>
-              <FormLabel>{t('config_model:mapping')}</FormLabel>
-              <QuestionTip label={t('config_model:mapping_tip')} />
-            </HStack>
-            <Box mt={2}>
-              <JsonEditor
-                value={JSON.stringify(modelMapping, null, 2)}
-                onChange={(val) => {
-                  if (!val) {
-                    setValue('model_mapping', {});
-                  } else {
-                    try {
-                      setValue('model_mapping', JSON.parse(val));
-                    } catch (error) {}
-                  }
-                }}
-              />
-            </Box>
-          </Box>
-          {/* url and key */}
+          {/* Proxy URL */}
           <Box mt={4}>
             <Flex alignItems={'center'}>
               <FormLabel>{t('config_model:base_url')}</FormLabel>
@@ -270,6 +283,7 @@ const EditChannelModal = ({
               placeholder={selectedProvider?.defaultBaseUrl || 'https://api.openai.com/v1'}
             />
           </Box>
+          {/* API key */}
           <Box mt={4}>
             <Flex alignItems={'center'}>
               <FormLabel>{t('config_model:api_key')}</FormLabel>
@@ -288,220 +302,58 @@ const EditChannelModal = ({
               placeholder={selectedProvider?.keyHelp || 'sk-1234567890'}
             />
           </Box>
-        </ModalBody>
-        <ModalFooter>
-          <Button variant={'outline'} onClick={onClose} mr={4}>
-            {t('common:Cancel')}
-          </Button>
-          <Button variant={'primary'} onClick={handleSubmit(onSubmit)}>
-            {isEdit ? t('common:Update') : t('common:new_create')}
-          </Button>
-        </ModalFooter>
-      </MyModal>
-      {!!editModelData && (
-        <ModelEditModal
-          modelData={editModelData}
-          onSuccess={refreshSystemModelList}
-          onClose={() => setEditModelData(undefined)}
-        />
+          {/* Model */}
+          <Box mt={4}>
+            <Flex alignItems={'center'}>
+              <FormLabel required flex={'1 0 0'}>
+                {t('config_model:model')}({models.length})
+              </FormLabel>
+
+              <Button size={'sm'} variant={'whitePrimary'} onClick={() => setValue('models', [])}>
+                {t('config_model:clear_model')}
+              </Button>
+            </Flex>
+            <Box mt={2}>
+              <MultipleSelect
+                value={models}
+                list={modelList}
+                onSelect={(val) => {
+                  setValue('models', val);
+                }}
+                placeholder={t('config_model:select_model_placeholder')}
+                itemWrap
+                closeable
+                isSearch
+                searchPlaceholder={t('config_model:search_model')}
+                emptyText={t('config_model:model_search_empty')}
+                virtualScroll
+              />
+            </Box>
+          </Box>
+          {/* Mapping */}
+          <Box mt={4}>
+            <HStack>
+              <FormLabel>{t('config_model:mapping')}</FormLabel>
+              <QuestionTip label={t('config_model:mapping_tip')} />
+            </HStack>
+            <Box mt={2}>
+              <JsonEditor
+                value={JSON.stringify(modelMapping, null, 2)}
+                onChange={(val) => {
+                  if (!val) {
+                    setValue('model_mapping', {});
+                  } else {
+                    try {
+                      setValue('model_mapping', JSON.parse(val));
+                    } catch (_error) {}
+                  }
+                }}
+              />
+            </Box>
+          </Box>
+        </Box>
       )}
-    </>
+    </MyModal>
   );
 };
 export default EditChannelModal;
-
-type SelectProps = {
-  list: {
-    icon?: string;
-    label: string;
-    value: string;
-  }[];
-  value: string[];
-  onSelect: (val: string[]) => void;
-};
-const menuItemStyles: MenuItemProps = {
-  borderRadius: 'sm',
-  py: 2,
-  display: 'flex',
-  alignItems: 'center',
-  _hover: {
-    backgroundColor: 'myGray.100'
-  },
-  _notLast: {
-    mb: 0.5
-  }
-};
-const MultipleSelect = ({ value = [], list = [], onSelect }: SelectProps) => {
-  const ref = useRef<HTMLDivElement>(null);
-  const BoxRef = useRef<HTMLDivElement>(null);
-
-  const { t } = useClientTranslation('config_model');
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  const { copyData } = useCopyData();
-
-  const [search, setSearch] = useState('');
-
-  const onclickItem = useCallback(
-    (val: string) => {
-      if (value.includes(val)) {
-        onSelect(value.filter((i) => i !== val));
-      } else {
-        onSelect([...value, val]);
-        BoxRef.current?.scrollTo({
-          top: BoxRef.current.scrollHeight
-        });
-      }
-      setSearch('');
-    },
-    [value, onSelect]
-  );
-
-  const filterUnSelected = useMemo(() => {
-    return list
-      .filter((item) => !value.includes(item.value))
-      .filter((item) => {
-        if (!search) return true;
-        const regx = new RegExp(search, 'i');
-        return regx.test(item.label);
-      });
-  }, [list, value, search]);
-
-  useOutsideClick({
-    ref,
-    handler: () => {
-      onClose();
-    }
-  });
-
-  return (
-    <Box ref={ref}>
-      <Menu autoSelect={false} isOpen={isOpen} strategy={'fixed'} matchWidth closeOnSelect={false}>
-        <Box
-          position={'relative'}
-          py={2}
-          borderRadius={'md'}
-          border={'base'}
-          userSelect={'none'}
-          cursor={'pointer'}
-          _active={{
-            transform: 'none'
-          }}
-          _hover={{
-            borderColor: 'primary.300'
-          }}
-          {...(isOpen
-            ? {
-                boxShadow: '0px 0px 4px #A8DBFF',
-                borderColor: 'primary.500',
-                onClick: onClose
-              }
-            : {
-                onClick: () => {
-                  onOpen();
-                  setSearch('');
-                }
-              })}
-        >
-          <MenuButton zIndex={0} position={'absolute'} bottom={0} left={0} right={0} top={0} />
-          <Flex
-            ref={BoxRef}
-            position={'relative'}
-            alignItems={value.length === 0 ? 'center' : 'flex-start'}
-            gap={2}
-            px={2}
-            pb={0}
-            overflowY={'auto'}
-            maxH={'200px'}
-          >
-            {value.length === 0 ? (
-              <Box flex={'1 0 0'} color={'myGray.500'} fontSize={'xs'}>
-                {t('config_model:select_model_placeholder')}
-              </Box>
-            ) : (
-              <Flex flex={'1 0 0'} alignItems={'center'} gap={2} flexWrap={'wrap'}>
-                {value.map((item) => (
-                  <MyTag
-                    key={item}
-                    type="borderSolid"
-                    colorSchema="gray"
-                    bg={'myGray.150'}
-                    color={'myGray.900'}
-                    _hover={{
-                      bg: 'myGray.250'
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      copyData(item, t('config_model:copy_model_id_success'));
-                    }}
-                  >
-                    <Box>{item}</Box>
-                    <MyIcon
-                      ml={0.5}
-                      name={'common/closeLight'}
-                      w={'14px'}
-                      h={'14px'}
-                      _hover={{
-                        color: 'red.600'
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onclickItem(item);
-                      }}
-                    />
-                  </MyTag>
-                ))}
-                {isOpen && (
-                  <Input
-                    key={'search'}
-                    variant={'unstyled'}
-                    w={'150px'}
-                    h={'24px'}
-                    autoFocus
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder={t('config_model:search_model')}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                  />
-                )}
-              </Flex>
-            )}
-            <MyIcon name={'core/chat/chevronDown'} color={'myGray.600'} w={4} h={4} />
-          </Flex>
-        </Box>
-
-        <MenuList
-          px={'6px'}
-          py={'6px'}
-          border={'1px solid #fff'}
-          boxShadow={
-            '0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10);'
-          }
-          zIndex={99}
-          maxH={'40vh'}
-          overflowY={'auto'}
-        >
-          {filterUnSelected.map((item, i) => {
-            return (
-              <MenuItem
-                key={i}
-                color={'myGray.900'}
-                onClick={(e) => {
-                  onclickItem(item.value);
-                }}
-                whiteSpace={'pre-wrap'}
-                fontSize={'sm'}
-                gap={2}
-                {...menuItemStyles}
-              >
-                {item.icon && <MyAvatar src={item.icon} w={'1rem'} borderRadius={'0'} />}
-                <Box flex={'1 0 0'}>{item.label}</Box>
-              </MenuItem>
-            );
-          })}
-        </MenuList>
-      </Menu>
-    </Box>
-  );
-};

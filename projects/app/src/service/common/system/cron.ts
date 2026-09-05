@@ -6,7 +6,6 @@ import { checkTimerLock } from '@fastgpt/service/common/system/timerLock/utils';
 import { TimerIdEnum } from '@fastgpt/service/common/system/timerLock/constants';
 import { addHours } from 'date-fns';
 import { getScheduleTriggerApp } from '@/service/core/app/utils';
-import { cronRefreshModels } from '@fastgpt/service/core/ai/config/utils';
 import { runSandboxArchiveCron as sandboxCronJob } from '@fastgpt/service/core/ai/sandbox/interface/admin';
 import { clearExpiredS3FilesCron } from '@fastgpt/service/common/s3/lifecycle/cleanup';
 import { cleanStaleGeneratingChats } from '@fastgpt/service/core/chat/cleanStaleGeneratingChats';
@@ -84,7 +83,6 @@ export const startCron = () => {
   setClearTmpUploadFilesCron();
   clearInvalidDataCron();
   scheduleTriggerAppCron();
-  cronRefreshModels();
   clearExpiredS3FilesCron();
   sandboxCronJob();
   cleanStaleGeneratingChatCron();

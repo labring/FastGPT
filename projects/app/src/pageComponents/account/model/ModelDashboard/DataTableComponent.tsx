@@ -9,6 +9,7 @@ import type { DashboardDataItemType } from '@/global/aiproxy/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { calculateModelPrice } from '@fastgpt/global/core/ai/pricing';
 import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model.schema';
+import { useFixedTableHeader } from '@fastgpt/web/hooks/useFixedTableHeader';
 
 export type DashboardDataEntry = {
   timestamp: number;
@@ -50,8 +51,10 @@ const DataTableComponent = ({
 }: DataTableComponentProps) => {
   const { t } = useClientTranslation('config_model');
   const { feConfigs } = useSystemStore();
+  const showBilling = !!feConfigs?.isPlus;
   const [sortField, setSortField] = useState<SortFieldType>('totalCalls');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const { headerContainerRef, bodyContainerRef, headerTableWidth } = useFixedTableHeader();
 
   // Create a mapping from channel ID to channel name
   const channelIdToNameMap = useMemo(() => {
@@ -69,6 +72,13 @@ const DataTableComponent = ({
 
   // display the channel column
   const showChannelColumn = !!filterProps.model;
+  const tableMinWidth = showChannelColumn
+    ? showBilling
+      ? '1250px'
+      : '1140px'
+    : showBilling
+      ? '1110px'
+      : '1000px';
 
   const tableData = useMemo(() => {
     if (data.length === 0) {
@@ -269,9 +279,26 @@ const DataTableComponent = ({
   };
 
   return (
-    <MyBox h={'100%'}>
-      <TableContainer fontSize={'sm'}>
-        <Table>
+    <MyBox h={'100%'} minH={0} display="flex" flexDirection="column" overflow="hidden">
+      <TableContainer ref={headerContainerRef} flexShrink={0} overflowX="hidden">
+        <Table
+          minW={tableMinWidth}
+          sx={{
+            tableLayout: 'fixed',
+            width: `${headerTableWidth} !important`
+          }}
+        >
+          <colgroup>
+            <col style={{ width: '160px' }} />
+            {showChannelColumn && <col style={{ width: '140px' }} />}
+            <col style={{ width: '120px' }} />
+            <col style={{ width: '120px' }} />
+            {showBilling && <col style={{ width: '110px' }} />}
+            <col style={{ width: '160px' }} />
+            <col style={{ width: '160px' }} />
+            <col style={{ width: '120px' }} />
+            <col style={{ width: '160px' }} />
+          </colgroup>
           <Thead>
             <Tr userSelect={'none'}>
               <Th>{t('config_model:dashboard_model')}</Th>
@@ -290,7 +317,7 @@ const DataTableComponent = ({
               >
                 {t('config_model:volunme_of_failed_calls')} {getSortIcon('errorCalls')}
               </Th>
-              {feConfigs?.isPlus && (
+              {showBilling && (
                 <Th
                   cursor="pointer"
                   onClick={() => handleSort('totalCost')}
@@ -311,6 +338,21 @@ const DataTableComponent = ({
               <Th></Th>
             </Tr>
           </Thead>
+        </Table>
+      </TableContainer>
+      <TableContainer ref={bodyContainerRef} flex="1 1 0" minH={0} overflowY="auto" fontSize={'sm'}>
+        <Table minW={tableMinWidth} sx={{ tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '160px' }} />
+            {showChannelColumn && <col style={{ width: '140px' }} />}
+            <col style={{ width: '120px' }} />
+            <col style={{ width: '120px' }} />
+            {showBilling && <col style={{ width: '110px' }} />}
+            <col style={{ width: '160px' }} />
+            <col style={{ width: '160px' }} />
+            <col style={{ width: '120px' }} />
+            <col style={{ width: '160px' }} />
+          </colgroup>
           <Tbody>
             {tableData.map((item, index) => (
               <Tr key={index}>
@@ -318,7 +360,7 @@ const DataTableComponent = ({
                 {showChannelColumn && <Td>{item.channelName}</Td>}
                 <Td color={'primary.700'}>{formatNumber(item.totalCalls).toLocaleString()}</Td>
                 <Td color={'red.700'}>{formatNumber(item.errorCalls)}</Td>
-                {feConfigs?.isPlus && <Td>{formatNumber(item.totalCost).toLocaleString()}</Td>}
+                {showBilling && <Td>{formatNumber(item.totalCost).toLocaleString()}</Td>}
                 <Td color={item.avgResponseTime > 10 ? 'yellow.700' : ''}>
                   {item.avgResponseTime > 0 ? `${item.avgResponseTime.toFixed(2)}` : '-'}
                 </Td>

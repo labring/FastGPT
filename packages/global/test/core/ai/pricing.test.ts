@@ -28,11 +28,25 @@ describe('sanitizeModelPriceTiers', () => {
     ]);
   });
 
-  it('should push first tier even without prices', () => {
+  it('should normalize a single tier without prices', () => {
     // @ts-ignore
     const result = sanitizeModelPriceTiers([{ maxInputTokens: 10 }]);
     expect(result).toEqual([
       { minInputTokens: 0, maxInputTokens: 10, inputPrice: 0, outputPrice: 0 }
+    ]);
+  });
+
+  it('should normalize a single tier when both prices are zero', () => {
+    const result = sanitizeModelPriceTiers([{ maxInputTokens: 10, inputPrice: 0, outputPrice: 0 }]);
+    expect(result).toEqual([
+      { minInputTokens: 0, maxInputTokens: 10, inputPrice: 0, outputPrice: 0 }
+    ]);
+  });
+
+  it('should preserve a single tier when either price is non-zero', () => {
+    const result = sanitizeModelPriceTiers([{ inputPrice: 0, outputPrice: 2 }]);
+    expect(result).toEqual([
+      { minInputTokens: 0, maxInputTokens: undefined, inputPrice: 0, outputPrice: 2 }
     ]);
   });
 
@@ -163,6 +177,13 @@ describe('sanitizeModelPriceTiers', () => {
 });
 
 describe('getRuntimeResolvedPriceTiers', () => {
+  it('should return no tier for a single configured tier with zero prices', () => {
+    const result = getRuntimeResolvedPriceTiers({
+      priceTiers: [{ maxInputTokens: 10, inputPrice: 0, outputPrice: 0 }]
+    });
+    expect(result).toEqual([]);
+  });
+
   it('should resolve ranges from configured tiers', () => {
     const result = getRuntimeResolvedPriceTiers({
       priceTiers: [
@@ -193,6 +214,28 @@ describe('getRuntimeResolvedPriceTiers', () => {
     expect(result).toEqual([{ minInputTokens: 0, inputPrice: 2, outputPrice: 2 }]);
   });
 
+  it('should progressively fall back from empty tiers and zero legacy IO to comprehensive price', () => {
+    const result = getRuntimeResolvedPriceTiers({
+      priceTiers: [{ inputPrice: 0, outputPrice: 0 }],
+      inputPrice: 0,
+      outputPrice: 0,
+      charsPointsPrice: 2
+    });
+
+    expect(result).toEqual([{ minInputTokens: 0, inputPrice: 2, outputPrice: 2 }]);
+  });
+
+  it('should progressively fall back when the configured tiers array is empty', () => {
+    const result = getRuntimeResolvedPriceTiers({
+      priceTiers: [],
+      inputPrice: 1,
+      outputPrice: 3,
+      charsPointsPrice: 9
+    });
+
+    expect(result).toEqual([{ minInputTokens: 0, inputPrice: 1, outputPrice: 3 }]);
+  });
+
   it('should prioritize priceTiers over legacy fields', () => {
     const result = getRuntimeResolvedPriceTiers({
       charsPointsPrice: 10,
@@ -221,34 +264,27 @@ describe('getRuntimeResolvedPriceTiers', () => {
     ]);
   });
 
-  it('should return default tier for undefined config', () => {
-    // undefined config 会走 charsPointsPrice 逻辑，返回默认梯度
-    expect(getRuntimeResolvedPriceTiers(undefined)).toEqual([
-      { minInputTokens: 0, inputPrice: 0, outputPrice: 0 }
-    ]);
+  it('should return no tier for undefined config', () => {
+    expect(getRuntimeResolvedPriceTiers(undefined)).toEqual([]);
   });
 
-  it('should return default tier for empty object config', () => {
-    // 空对象 config 会走 charsPointsPrice 逻辑，返回默认梯度
-    expect(getRuntimeResolvedPriceTiers({})).toEqual([
-      { minInputTokens: 0, inputPrice: 0, outputPrice: 0 }
-    ]);
+  it('should return no tier for empty object config', () => {
+    expect(getRuntimeResolvedPriceTiers({})).toEqual([]);
   });
 
-  it('should handle inputPrice of 0 (not use legacy mode)', () => {
+  it('should preserve legacy pricing when only outputPrice is non-zero', () => {
     const result = getRuntimeResolvedPriceTiers({
       inputPrice: 0,
       outputPrice: 5
     });
-    // inputPrice 为 0，不满足 hasLegacyIOPrice 条件，走 charsPointsPrice 逻辑
-    expect(result).toEqual([{ minInputTokens: 0, inputPrice: 0, outputPrice: 0 }]);
+    expect(result).toEqual([{ minInputTokens: 0, inputPrice: 0, outputPrice: 5 }]);
   });
 
-  it('should handle charsPointsPrice of 0', () => {
+  it('should drop charsPointsPrice of 0', () => {
     const result = getRuntimeResolvedPriceTiers({
       charsPointsPrice: 0
     });
-    expect(result).toEqual([{ minInputTokens: 0, inputPrice: 0, outputPrice: 0 }]);
+    expect(result).toEqual([]);
   });
 
   it('should handle invalid price types', () => {
@@ -258,7 +294,7 @@ describe('getRuntimeResolvedPriceTiers', () => {
       // @ts-ignore
       outputPrice: NaN
     });
-    expect(result).toEqual([{ minInputTokens: 0, inputPrice: 0, outputPrice: 0 }]);
+    expect(result).toEqual([]);
   });
 
   it('should handle empty priceTiers array', () => {
@@ -466,10 +502,9 @@ describe('calculateModelPrice', () => {
       inputTokens: 1000,
       outputTokens: 500
     });
-    // undefined config 会返回默认梯度
     expect(totalPoints).toBe(0);
-    expect(matchedTier).toEqual({ minInputTokens: 0, inputPrice: 0, outputPrice: 0 });
-    expect(tiers).toEqual([{ minInputTokens: 0, inputPrice: 0, outputPrice: 0 }]);
+    expect(matchedTier).toBeUndefined();
+    expect(tiers).toEqual([]);
   });
 
   it('should handle empty config', () => {
@@ -479,8 +514,8 @@ describe('calculateModelPrice', () => {
       outputTokens: 500
     });
     expect(totalPoints).toBe(0);
-    expect(matchedTier).toBeDefined();
-    expect(tiers.length).toBeGreaterThan(0);
+    expect(matchedTier).toBeUndefined();
+    expect(tiers).toEqual([]);
   });
 
   it('should handle negative tokens gracefully', () => {
