@@ -24,10 +24,7 @@ import { CouponTypeEnum } from '../../../../support/wallet/sub/coupon/constants'
 
 const BillMetadataSchema = z
   .object({
-    payWay: z
-      .enum(BillPayWayEnum)
-      .optional()
-      .meta({ example: BillPayWayEnum.wx, description: '支付方式' }),
+    payWay: z.enum(BillPayWayEnum).meta({ example: BillPayWayEnum.wx, description: '支付方式' }),
     subMode: z
       .enum(SubModeEnum)
       .optional()
@@ -80,8 +77,7 @@ export const BillItemSchema = z
       description: '使用的优惠券 ID'
     }),
     hasInvoice: z.boolean().optional().meta({ example: false, description: '是否已开具发票' }),
-    // 2024-02 之前的历史充值订单未保存支付元数据，读取时统一兼容为空对象。
-    metadata: BillMetadataSchema.default({}),
+    metadata: BillMetadataSchema,
     paidAmount: NumSchema.optional().meta({ example: 99, description: '实际支付金额' }),
     refundData: z.record(z.string(), z.unknown()).optional().meta({
       description: '退款信息'

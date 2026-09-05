@@ -59,5 +59,9 @@
   "migrations.20260903_backfill_app_create_time.name": "앱 생성 시간 백필",
   "migrations.20260903_backfill_app_create_time.description": "앱 ObjectId의 타임스탬프를 사용해 기존 생성 시간을 점진적으로 백필합니다.",
   "migrations.20260903_backfill_app_create_time.apps": "앱 생성 시간 백필 중",
-  "migrations.20260903_backfill_app_create_time.result": "앱 {{processedCount}}개를 확인하고 처리했으며 잘못된 ID 레코드 {{skippedInvalidId}}개를 건너뛰었습니다."
+  "migrations.20260903_backfill_app_create_time.result": "앱 {{processedCount}}개를 확인하고 처리했으며 잘못된 ID 레코드 {{skippedInvalidId}}개를 건너뛰었습니다.",
+  "migrations.20260905_backfill_bill_metadata.name": "기존 주문의 누락 필드 보완",
+  "migrations.20260905_backfill_bill_metadata.description": "기존 WeChat 잔액 충전 결제의 누락된 결제 메타데이터를 보완합니다.",
+  "migrations.20260905_backfill_bill_metadata.bills": "결제 메타데이터 보완 중",
+  "migrations.20260905_backfill_bill_metadata.result": "기존 결제 {{migratedCount}}건의 결제 메타데이터를 보완했습니다."
 }

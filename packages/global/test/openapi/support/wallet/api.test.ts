@@ -100,22 +100,6 @@ describe('wallet OpenAPI contracts', () => {
     expect(bill.metadata.month).toBe(12.17);
   });
 
-  it.each([undefined, {}])('normalizes legacy bill metadata %j', (metadata) => {
-    const bill = BillItemSchema.parse({
-      _id: '68ee0bd23d17260b7829b137',
-      teamId: '68ee0bd23d17260b7829b138',
-      tmbId: '68ee0bd23d17260b7829b139',
-      createTime: '2024-02-01T00:00:00.000Z',
-      orderId: 'legacy-balance-order',
-      status: BillStatusEnum.SUCCESS,
-      type: BillTypeEnum.balance,
-      price: 100000,
-      metadata
-    });
-
-    expect(bill.metadata).toEqual({});
-  });
-
   it('preserves paid amount across the database and admin response contracts', () => {
     const bill = {
       _id: '68ee0bd23d17260b7829b137',

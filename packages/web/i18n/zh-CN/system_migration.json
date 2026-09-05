@@ -59,5 +59,9 @@
   "migrations.20260903_backfill_app_create_time.name": "回填应用创建时间",
   "migrations.20260903_backfill_app_create_time.description": "用应用 ObjectId 中的时间戳增量回填历史创建时间。",
   "migrations.20260903_backfill_app_create_time.apps": "回填应用创建时间",
-  "migrations.20260903_backfill_app_create_time.result": "已检查并处理 {{processedCount}} 个应用，跳过 {{skippedInvalidId}} 条非法 ID 记录。"
+  "migrations.20260903_backfill_app_create_time.result": "已检查并处理 {{processedCount}} 个应用，跳过 {{skippedInvalidId}} 条非法 ID 记录。",
+  "migrations.20260905_backfill_bill_metadata.name": "回填历史订单缺失字段",
+  "migrations.20260905_backfill_bill_metadata.description": "为历史微信余额充值账单回填缺失的支付元数据。",
+  "migrations.20260905_backfill_bill_metadata.bills": "回填账单支付元数据",
+  "migrations.20260905_backfill_bill_metadata.result": "已为 {{migratedCount}} 条历史账单回填支付元数据。"
 }

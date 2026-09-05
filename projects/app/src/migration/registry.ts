@@ -13,6 +13,7 @@ import { backfillDatasetModelReferences } from './tasks/20260903_backfill_datase
 import { backfillEvaluationModelReferences } from './tasks/20260903_backfill_evaluation_model_references';
 import { backfillAppModelReferences } from './tasks/20260903_backfill_app_model_references';
 import { backfillAppCreateTime } from './tasks/4170/20260903_backfill_app_create_time';
+import { backfillBillMetadata } from './tasks/4170/20260905_backfill_bill_metadata';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -226,6 +227,24 @@ export const systemMigrations = [
     blockStartup: false,
     onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillAppCreateTime
+  },
+  {
+    id: '20260905_backfill_bill_metadata',
+    version: '4.17.0',
+    nameKey: i18nT('system_migration:migrations.20260905_backfill_bill_metadata.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20260905_backfill_bill_metadata.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20260905_backfill_bill_metadata.result'),
+    progressSteps: [
+      {
+        key: 'bills',
+        labelKey: i18nT('system_migration:migrations.20260905_backfill_bill_metadata.bills')
+      }
+    ],
+    blockStartup: false,
+    onFailure: SystemMigrationFailurePolicyEnum.continue,
+    run: backfillBillMetadata
   }
 ] as const satisfies readonly SystemMigration[];
 
