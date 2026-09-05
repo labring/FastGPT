@@ -21,6 +21,7 @@ import {
   resolveFileSourceEncoding,
   resolveFileSourceExtension
 } from './source';
+import { serviceEnv } from '../../../env';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
@@ -221,7 +222,7 @@ const readFileContent = async ({
       usageId
     });
   };
-  const parsePdfFromCustomService = async (): Promise<ReadFileResponse> => {
+  const parseFromCustomService = async (): Promise<ReadFileResponse> => {
     const url = global.systemEnv.customPdfParse?.url;
     const token = global.systemEnv.customPdfParse?.key;
     if (!url) return systemParse();
@@ -352,7 +353,7 @@ const readFileContent = async ({
   // Custom read file service
   const pdfParseFn = async (): Promise<ReadFileResponse> => {
     if (!customPdfParse) return systemParse();
-    if (global.systemEnv.customPdfParse?.url) return parsePdfFromCustomService();
+    if (global.systemEnv.customPdfParse?.url) return parseFromCustomService();
     if (global.systemEnv.customPdfParse?.somarkApiKey) return parsePdfFromSomark();
     if (global.systemEnv.customPdfParse?.textinAppId) return parsePdfFromTextin();
     if (global.systemEnv.customPdfParse?.doc2xKey) return parsePdfFromDoc2x();
@@ -360,10 +361,22 @@ const readFileContent = async ({
     return systemParse();
   };
 
+  const getCustomParseExtensions = (): string[] => {
+    return (serviceEnv.CUSTOM_PARSE_EXTENSIONS?.split(',') ?? [])
+      .map((e) => e.trim().toLowerCase().replace(/^\./, ''))
+      .filter(Boolean);
+  };
+
   const start = Date.now();
   logger.debug('Start parsing file', { extension });
 
   const parseResult = await (async () => {
+    const customParseExtensions = getCustomParseExtensions();
+
+    if (customParseExtensions.includes(extension)) {
+      return await parseFromCustomService();
+    }
+
     if (extension === 'pdf') {
       return await pdfParseFn();
     }

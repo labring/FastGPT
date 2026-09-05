@@ -59,7 +59,8 @@ const {
   }),
   mockCreatePdfParseUsage: vi.fn(),
   mockEnv: {
-    PARSE_FILE_TIMEOUT_SECONDS: 600
+    PARSE_FILE_TIMEOUT_SECONDS: 600,
+    CUSTOM_PARSE_EXTENSIONS: undefined as string | undefined
   }
 }));
 
@@ -97,13 +98,9 @@ vi.mock('@fastgpt/service/support/wallet/usage/controller', () => ({
   createPdfParseUsage: mockCreatePdfParseUsage
 }));
 
-vi.mock('@fastgpt/service/common/s3/utils', async (importOriginal) => {
-  const mod = await importOriginal<typeof import('@fastgpt/service/common/s3/utils')>();
-  return {
-    ...mod,
-    uploadImage2S3Bucket: mockUploadImage2S3Bucket
-  };
-});
+vi.mock('@fastgpt/service/common/s3/utils', () => ({
+  uploadImage2S3Bucket: mockUploadImage2S3Bucket
+}));
 
 vi.mock('@fastgpt/service/common/file/image/utils', () => ({
   getImageBuffer: mockGetImageBuffer
@@ -126,6 +123,7 @@ describe('readFileContentByBuffer', () => {
     vi.clearAllMocks();
     global.systemEnv = {} as any;
     mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 600;
+    mockEnv.CUSTOM_PARSE_EXTENSIONS = undefined;
   });
 
   it('should parse a txt buffer', async () => {
@@ -278,6 +276,257 @@ describe('readFileContentByBuffer', () => {
       expect.anything(),
       expect.objectContaining({ timeout: 1200000 })
     );
+  });
+
+  it('should use custom URL service for docx when extensions list includes docx', async () => {
+    mockEnv.CUSTOM_PARSE_EXTENSIONS = 'docx';
+    global.systemEnv = {
+      customPdfParse: {
+        url: 'http://custom-pdf-service.com/parse',
+        key: 'test-key'
+      }
+    } as any;
+
+    mockAxiosPost.mockResolvedValueOnce({
+      data: {
+        pages: 2,
+        markdown: 'custom-service-docx-text'
+      }
+    });
+
+    const buffer = Buffer.from('docx content');
+
+    const result = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'docx',
+      buffer,
+      encoding: 'utf-8',
+      customPdfParse: true
+    });
+
+    expect(result.rawText).toBe('custom-service-docx-text');
+    expect(mockAxiosPost).toHaveBeenCalled();
+  });
+
+  it('should use original pdf provider chain for pdf not in extensions list', async () => {
+    mockEnv.CUSTOM_PARSE_EXTENSIONS = 'docx';
+    global.systemEnv = {
+      customPdfParse: { somarkApiKey: 'sk-test' }
+    } as any;
+
+    const buffer = Buffer.from('pdf content');
+
+    const result = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'pdf',
+      buffer,
+      encoding: 'utf-8',
+      customPdfParse: true
+    });
+
+    // pdf 不在扩展名列表中 → 不命中 URL 分支，走原 pdf Provider 链路（Somark 可用）
+    expect(result.rawText).toBe('somark-parsed-text');
+    expect(mockSomarkParsePDF).toHaveBeenCalled();
+  });
+
+  it('should normalize extensions list entries (case/dots/whitespace)', async () => {
+    mockEnv.CUSTOM_PARSE_EXTENSIONS = '.DOCX, pptx ';
+    global.systemEnv = {
+      customPdfParse: {
+        url: 'http://custom-pdf-service.com/parse',
+        key: 'test-key'
+      }
+    } as any;
+
+    mockAxiosPost.mockResolvedValueOnce({
+      data: {
+        pages: 2,
+        markdown: 'custom-service-normalized'
+      }
+    });
+
+    const buffer = Buffer.from('docx content');
+
+    const result = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'docx',
+      buffer,
+      encoding: 'utf-8',
+      customPdfParse: true
+    });
+
+    expect(result.rawText).toBe('custom-service-normalized');
+    expect(mockAxiosPost).toHaveBeenCalled();
+  });
+
+  it('should split comma-separated extensions config', async () => {
+    mockEnv.CUSTOM_PARSE_EXTENSIONS = 'docx,pdf';
+    global.systemEnv = {
+      customPdfParse: {
+        url: 'http://custom-pdf-service.com/parse',
+        key: 'test-key'
+      }
+    } as any;
+
+    mockAxiosPost.mockResolvedValueOnce({
+      data: {
+        pages: 2,
+        markdown: 'custom-service-fallback-text'
+      }
+    });
+
+    const buffer = Buffer.from('pdf content');
+
+    const result = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'pdf',
+      buffer,
+      encoding: 'utf-8',
+      customPdfParse: true
+    });
+
+    expect(result.rawText).toBe('custom-service-fallback-text');
+    expect(mockAxiosPost).toHaveBeenCalled();
+  });
+
+  it('should use URL custom service for listed extension even when customPdfParse flag is false', async () => {
+    mockEnv.CUSTOM_PARSE_EXTENSIONS = 'docx';
+    global.systemEnv = {
+      customPdfParse: {
+        url: 'http://custom-pdf-service.com/parse',
+        key: 'test-key'
+      }
+    } as any;
+
+    mockAxiosPost.mockResolvedValueOnce({
+      data: {
+        pages: 2,
+        markdown: 'custom-service-flag-override'
+      }
+    });
+
+    const buffer = Buffer.from('docx content');
+
+    const result = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'docx',
+      buffer,
+      encoding: 'utf-8',
+      customPdfParse: false
+    });
+
+    // extensions 为全局配置：列表内格式即使未勾选增强解析也走 URL 自定义服务
+    expect(result.rawText).toBe('custom-service-flag-override');
+    expect(mockAxiosPost).toHaveBeenCalled();
+  });
+
+  it('should use system parse for docx when only pdf-only provider (somark) is configured', async () => {
+    mockEnv.CUSTOM_PARSE_EXTENSIONS = 'docx';
+    global.systemEnv = {
+      customPdfParse: { somarkApiKey: 'sk-test' }
+    } as any;
+
+    const buffer = Buffer.from('docx content');
+
+    const result = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'docx',
+      buffer,
+      encoding: 'utf-8',
+      customPdfParse: true
+    });
+
+    expect(result.rawText).toBe('parsed-docx-content');
+    expect(mockSomarkParsePDF).not.toHaveBeenCalled();
+  });
+
+  it('should use system parse for pdf when extensions configured but only pdf-only provider (somark) is set', async () => {
+    mockEnv.CUSTOM_PARSE_EXTENSIONS = 'docx,pdf';
+    global.systemEnv = {
+      customPdfParse: { somarkApiKey: 'sk-test' }
+    } as any;
+
+    const result = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'pdf',
+      buffer: Buffer.from('pdf content'),
+      encoding: 'utf-8',
+      customPdfParse: true
+    });
+
+    // 显式配置 extensions 后只走 URL 自定义服务；未配 URL 时回退系统解析，PDF-only Provider 不被调用
+    expect(result.rawText).toBe('parsed-pdf-content');
+    expect(mockSomarkParsePDF).not.toHaveBeenCalled();
+  });
+
+  it('should route pdf to URL custom service when pdf in list and extensions configured', async () => {
+    mockEnv.CUSTOM_PARSE_EXTENSIONS = 'pdf';
+    global.systemEnv = {
+      customPdfParse: {
+        url: 'http://custom-pdf-service.com/parse',
+        somarkApiKey: 'sk-test'
+      }
+    } as any;
+
+    mockAxiosPost.mockResolvedValueOnce({
+      data: {
+        pages: 2,
+        markdown: 'custom-service-pdf-in-list'
+      }
+    });
+
+    const result = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'pdf',
+      buffer: Buffer.from('pdf content'),
+      encoding: 'utf-8',
+      customPdfParse: true
+    });
+
+    // extensions 模式下 pdf 也走 URL 自定义服务，而非 Somark
+    expect(result.rawText).toBe('custom-service-pdf-in-list');
+    expect(mockSomarkParsePDF).not.toHaveBeenCalled();
+    expect(mockAxiosPost).toHaveBeenCalled();
+  });
+
+  it('should prefer URL custom service over somark for docx in list', async () => {
+    mockEnv.CUSTOM_PARSE_EXTENSIONS = 'docx';
+    global.systemEnv = {
+      customPdfParse: {
+        url: 'http://custom-pdf-service.com/parse',
+        somarkApiKey: 'sk-test'
+      }
+    } as any;
+
+    mockAxiosPost.mockResolvedValueOnce({
+      data: {
+        pages: 2,
+        markdown: 'custom-service-url-priority'
+      }
+    });
+
+    const buffer = Buffer.from('docx content');
+
+    const result = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'docx',
+      buffer,
+      encoding: 'utf-8',
+      customPdfParse: true
+    });
+
+    expect(result.rawText).toBe('custom-service-url-priority');
+    expect(mockSomarkParsePDF).not.toHaveBeenCalled();
+    expect(mockAxiosPost).toHaveBeenCalled();
   });
 
   it('should report enhanced PDF usage to the caller without creating usage directly', async () => {

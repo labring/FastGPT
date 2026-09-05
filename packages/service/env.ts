@@ -169,6 +169,10 @@ export const serviceEnv = createEnv({
     TEXTIN_SECRET_CODE: z.string().optional().meta({
       description: '合合信息 Textin 服务 Secret Code'
     }),
+    CUSTOM_PARSE_EXTENSIONS: z.string().optional().meta({
+      description:
+        '自定义解析服务支持的扩展名列表（逗号分隔，不含点，如 pdf,docx,pptx）。配置后列表内格式优先走自定义解析服务；未配置时仅 pdf 走自定义解析服务。'
+    }),
 
     // ==================== 数据库与缓存 ====================
     // Redisg
