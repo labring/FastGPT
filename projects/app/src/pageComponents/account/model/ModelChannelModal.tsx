@@ -1,6 +1,5 @@
+import { useModelChannelTest } from './useModelChannelTest';
 import { ChannelStautsMap } from '@/global/aiproxy/constants';
-import { getTestModel, postTestDraftModel } from '@/web/core/ai/config';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.schema';
 import type { AdminModelChannel } from '@fastgpt/global/openapi/admin/core/ai/model/api';
@@ -25,15 +24,15 @@ import MyTag, { type ColorSchemaType } from '@fastgpt/web/components/common/Tag'
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useFixedTableHeader } from '@fastgpt/web/hooks/useFixedTableHeader';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import { useLockFn, useSet } from 'ahooks';
+import { useLockFn } from 'ahooks';
 import { useMemo, useState } from 'react';
 
 export type ModelChannelModalModel = {
   model: string;
   modelId?: string;
   modelData?: SystemModelDocumentDataType;
+  getModelData?: () => SystemModelDocumentDataType | undefined;
   avatar?: string;
 };
 
@@ -61,62 +60,26 @@ export const ModelChannelSelector = ({
   showTest?: boolean;
 }) => {
   const { t, i18n } = useClientTranslation('config_model');
-  const { toast } = useToast();
   const selectedIds = useMemo(() => new Set(selectedChannelIds), [selectedChannelIds]);
   const { headerContainerRef, bodyContainerRef, headerTableWidth } = useFixedTableHeader();
   const selectedChannelCount = channels.filter((channel) => selectedIds.has(channel.id)).length;
   const isAllSelected = channels.length > 0 && selectedChannelCount === channels.length;
   const testModel = showTest && models.length === 1 ? models[0] : undefined;
-  const [testingChannelIds, testingChannelIdsDispatch] = useSet<number>();
-
-  const testModelChannel = async (channelId: number) => {
-    if (!testModel) return;
-
-    const model = testModel.model.trim();
-    const channelName = channels.find((channel) => channel.id === channelId)?.name ?? '';
-
-    testingChannelIdsDispatch.add(channelId);
-    try {
-      if (testModel.modelId) {
-        await getTestModel({ modelId: testModel.modelId, channelId });
-      } else if (testModel.modelData) {
-        await postTestDraftModel({
-          channelId,
-          modelData: {
-            ...testModel.modelData,
-            model,
-            name: testModel.modelData.name || model
-          }
-        });
-      } else {
-        return;
+  const { testingChannelIds, testModelChannel } = useModelChannelTest({
+    target: (() => {
+      if (!testModel) return;
+      if (testModel.getModelData || testModel.modelData) {
+        return {
+          source: 'draft' as const,
+          getModelData: testModel.getModelData ?? (() => testModel.modelData)
+        };
       }
-
-      toast({
-        status: 'success',
-        title: t('config_model:model_channel_test_success', { model, channel: channelName })
-      });
-    } catch (error) {
-      toast({
-        status: 'error',
-        title: t('config_model:model_channel_test_failed', {
-          model,
-          channel: channelName,
-          reason: getErrText(error)
-        })
-      });
-    } finally {
-      testingChannelIdsDispatch.remove(channelId);
-    }
-  };
-
-  const onTestChannel = (channelId: number) => {
-    if (!testModel?.model.trim()) {
-      toast({ status: 'warning', title: t('config_model:fill_model_id_before_test') });
-      return;
-    }
-    void testModelChannel(channelId);
-  };
+      if (testModel.modelId) {
+        return { source: 'installed' as const, modelId: testModel.modelId, model: testModel.model };
+      }
+    })(),
+    channels
+  });
 
   const toggleChannel = (channelId: number) => {
     const next = new Set(selectedIds);
@@ -250,7 +213,7 @@ export const ModelChannelSelector = ({
                         type="borderFill"
                         colorSchema={(status?.colorSchema ?? 'gray') as ColorSchemaType}
                       >
-                        {status ? t(status.label as any) : t('config_model:channel_status_unknown')}
+                        {status ? t(status.label) : t('config_model:channel_status_unknown')}
                       </MyTag>
                     </Td>
                     {testModel && (
@@ -262,7 +225,7 @@ export const ModelChannelSelector = ({
                             isLoading={testingChannelIds.has(channel.id)}
                             onClick={(event) => {
                               event.stopPropagation();
-                              onTestChannel(channel.id);
+                              void testModelChannel(channel.id);
                             }}
                           />
                         </Box>

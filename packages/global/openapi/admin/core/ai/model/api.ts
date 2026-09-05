@@ -76,6 +76,37 @@ export const AdminModelChannelSchema = z.object({
 });
 export type AdminModelChannel = z.infer<typeof AdminModelChannelSchema>;
 
+/* ============================================================================
+ * API: 创建 AI Proxy 渠道
+ * Route: POST /api/aiproxy/api/createChannel
+ * Method: POST
+ * Description: 校验创建参数后使用服务端管理员凭证转发，保留 AI Proxy 响应协议
+ * Tags: ['系统模型管理', 'Write']
+ * ============================================================================ */
+export const CreateAdminAIProxyChannelBodySchema = z
+  .object({
+    name: z.string().trim().min(1).meta({ description: '渠道名称', example: 'OpenAI' }),
+    type: IntSchema.positive().meta({ description: 'AI Proxy 协议类型', example: 1 }),
+    base_url: z.string().optional().meta({ description: '渠道模型服务地址' }),
+    key: z.string().optional().meta({ description: '渠道模型服务凭证' }),
+    models: z.array(z.string().trim().min(1)).optional().meta({ description: '支持的模型标识' }),
+    model_mapping: z.record(z.string(), z.unknown()).optional().meta({ description: '模型映射' }),
+    priority: IntSchema.positive().optional().meta({ description: '渠道优先级', example: 1 })
+  })
+  .passthrough();
+export type CreateAdminAIProxyChannelBody = z.infer<typeof CreateAdminAIProxyChannelBodySchema>;
+/** 此代理保留第三方 envelope，而不是 FastGPT NextAPI 的 data 响应。 */
+export const CreateAdminAIProxyChannelResponseSchema = z
+  .object({
+    success: z.boolean(),
+    message: z.string().optional(),
+    data: z.unknown().optional()
+  })
+  .passthrough();
+export type CreateAdminAIProxyChannelResponse = z.infer<
+  typeof CreateAdminAIProxyChannelResponseSchema
+>;
+
 export const AdminSystemModelListItemSchema = SystemModelDataSchema.and(
   z.object({
     channels: z.array(AdminModelChannelSchema).meta({ description: '当前模型关联的渠道摘要' })
@@ -145,7 +176,7 @@ export const TestAdminSystemModelResponseSchema = z.unknown();
 export type TestAdminSystemModelResponse = z.infer<typeof TestAdminSystemModelResponseSchema>;
 
 /* ============================================================================
- * API: 测试尚未创建的管理员系统模型
+ * API: 测试新增或编辑中的管理员系统模型草稿
  * Route: POST /api/admin/settings/model/test
  * Method: POST
  * Description: 使用当前模型表单草稿和指定 AI Proxy 渠道发起测试，不持久化模型
@@ -172,7 +203,7 @@ const TestDraftSystemModelDataSchema = z
 export const TestDraftAdminSystemModelBodySchema = z
   .object({
     modelData: TestDraftSystemModelDataSchema.meta({
-      description: '尚未持久化的模型运行参数；计费字段不参与测试'
+      description: '新增或编辑中的当前模型运行参数；计费字段不参与测试'
     }),
     channelId: IntSchema.positive().meta({
       example: 1,
@@ -354,7 +385,10 @@ export type UpdateSystemModelData = z.infer<typeof UpdateSystemModelDataSchema>;
 export const UpdateSystemModelBodySchema = z
   .object({
     modelId: ModelIdSchema,
-    modelData: UpdateSystemModelDataSchema
+    modelData: UpdateSystemModelDataSchema,
+    channelIds: z.array(IntSchema.positive()).optional().meta({
+      description: '可选的完整渠道集合；编辑表单一并提交时，模型配置预检通过后才更新渠道'
+    })
   })
   .strict();
 export type UpdateSystemModelBody = z.infer<typeof UpdateSystemModelBodySchema>;

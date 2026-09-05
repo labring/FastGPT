@@ -80,7 +80,7 @@ const ModelTest = ({
           label: (
             <HStack>
               <MyIcon name={provider.avatar as any} w={'1rem'} />
-              <Box>{t(modelData.name as any)}</Box>
+              <Box>{modelData.name}</Box>
             </HStack>
           ),
           modelId: modelData.modelId,

@@ -55,8 +55,8 @@ export const serviceEnv = createEnv({
     CODE_SANDBOX_TOKEN: z.string().default('codesandbox'),
 
     // AI Proxy
-    AIPROXY_API_ENDPOINT: UrlSchema.optional(),
-    AIPROXY_API_TOKEN: z.string().optional(),
+    AIPROXY_API_ENDPOINT: UrlSchema,
+    AIPROXY_API_TOKEN: z.string().trim().min(1),
     OPENAI_BASE_URL: UrlSchema.default('https://api.openai.com/v1'),
     CHAT_API_KEY: z.string().optional(),
 

@@ -19,6 +19,7 @@ import {
   useForm,
   useWatch,
   type Control,
+  type FieldPath,
   type UseFormRegister,
   type UseFormSetValue
 } from 'react-hook-form';
@@ -109,7 +110,7 @@ const SwitchField = ({
 }: {
   label: string;
   tip?: string;
-  field: string;
+  field: FieldPath<SystemModelDocumentDataType>;
   register: UseFormRegister<SystemModelDocumentDataType>;
 }) => (
   <GridItem>
@@ -119,7 +120,7 @@ const SwitchField = ({
       </Box>
       {tip && <QuestionTip label={tip} />}
     </Flex>
-    <Switch size={'md'} {...register(field as any)} />
+    <Switch size={'md'} {...register(field)} />
   </GridItem>
 );
 
@@ -132,7 +133,7 @@ const ProviderField = React.memo(function ProviderField({
   control: Control<SystemModelDocumentDataType>;
   setValue: UseFormSetValue<SystemModelDocumentDataType>;
   providerList: { label: React.ReactNode; value: string }[];
-  t: any;
+  t: ReturnType<typeof useClientTranslation>['t'];
 }) {
   const provider = useWatch({
     control,
@@ -159,7 +160,7 @@ const ResponseFormatField = React.memo(function ResponseFormatField({
 }: {
   control: Control<SystemModelDocumentDataType>;
   setValue: UseFormSetValue<SystemModelDocumentDataType>;
-  t: any;
+  t: ReturnType<typeof useClientTranslation>['t'];
 }) {
   const responseFormatList = useWatch({
     control,
@@ -247,7 +248,7 @@ const VoicesField = React.memo(function VoicesField({
 }: {
   control: Control<SystemModelDocumentDataType>;
   setValue: UseFormSetValue<SystemModelDocumentDataType>;
-  t: any;
+  t: ReturnType<typeof useClientTranslation>['t'];
 }) {
   const voices = useWatch({
     control,
@@ -426,7 +427,7 @@ const ModelConfigForm = ({
           }
         }
 
-        data.priceTiers = priceTiers as any;
+        data.priceTiers = priceTiers;
       }
 
       const modelData = data as Record<string, unknown>;

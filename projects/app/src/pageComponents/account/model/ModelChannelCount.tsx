@@ -75,7 +75,7 @@ const ModelChannelCount = ({
                   <Box noOfLines={1}>{parseI18nString(channel.protocol.name, i18n.language)}</Box>
                 </HStack>
                 <MyTag type="borderFill" flexShrink={0} colorSchema={status?.colorSchema as any}>
-                  {status ? t(status.label as any) : t('config_model:channel_status_unknown')}
+                  {status ? t(status.label) : t('config_model:channel_status_unknown')}
                 </MyTag>
               </HStack>
             );

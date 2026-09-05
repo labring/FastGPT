@@ -79,6 +79,7 @@ export async function handleSkillDebugChat(
     agentSandboxPrepareActions?: AgentSandboxPrepareAction[];
   } = {}
 ): Promise<ChatWorkflowSseResponseType> {
+  await (await import('../../config/runtime')).ensureModelCatalogReady();
   let skillId = '';
   let streamResponseContext: WorkflowStreamResponseContext | undefined;
   const roundState = {

@@ -87,10 +87,14 @@ export const bootstrapAIModelsFromLegacy = async ({
   });
 
   return mongoSessionRun(async (session) => {
-    const [targetRecords, existingDefaultModel] = await Promise.all([
-      MongoAIModel.collection.find({ scope: ModelScopeEnum.system }, { session }).toArray(),
-      MongoAIDefaultModel.collection.findOne({ scope: ModelScopeEnum.system }, { session })
-    ]);
+    // 同一 MongoDB 事务 session 内串行执行，避免驱动不支持的并行事务操作。
+    const targetRecords = await MongoAIModel.collection
+      .find({ scope: ModelScopeEnum.system }, { session })
+      .toArray();
+    const existingDefaultModel = await MongoAIDefaultModel.collection.findOne(
+      { scope: ModelScopeEnum.system },
+      { session }
+    );
     const targetModels = targetRecords.map((record) => ({
       _id: record._id,
       document: SystemModelDocumentDataSchema.parse(record)

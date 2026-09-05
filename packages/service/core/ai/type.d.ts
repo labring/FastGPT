@@ -46,6 +46,8 @@ declare global {
   var systemConfiguredDefaultModelIds: ModelDefaultIds;
   /** 脱敏 active 模型、Provider 与系统默认配置共同决定的目录内容版本。 */
   var systemModelCatalogVersion: string;
+  /** 当前节点实际发布的 MongoDB 目录修订号；未加载时为 undefined。 */
+  var systemModelRevision: number | undefined;
 }
 
 export {};

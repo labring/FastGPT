@@ -239,6 +239,39 @@ describe('admin settings model create/update api', () => {
     await expect(MongoAIModel.countDocuments()).resolves.toBe(1);
   });
 
+  it('validates edited config before any channel mutation', async () => {
+    const existing = await MongoAIModel.create(buildLlmDocument());
+    const res = await callApi({
+      handler: updateModelApi,
+      body: {
+        modelId: String(existing._id),
+        channelIds: [7],
+        modelData: { ...buildLlmUpdateData(), name: '   ' }
+      }
+    });
+    expect(res.error).toBeDefined();
+    expect(channelMocks.replaceModelInAIProxyChannels).not.toHaveBeenCalled();
+    expect((await MongoAIModel.findById(existing._id).lean())?.name).toBe('Test LLM');
+  });
+
+  it('submits edited channels and model config through one validated operation', async () => {
+    const existing = await MongoAIModel.create(buildLlmDocument());
+    const res = await callApi({
+      handler: updateModelApi,
+      body: {
+        modelId: String(existing._id),
+        channelIds: [7],
+        modelData: { ...buildLlmUpdateData(), name: 'Updated alias' }
+      }
+    });
+    expect(res.error).toBeUndefined();
+    expect(channelMocks.replaceModelInAIProxyChannels).toHaveBeenCalledWith({
+      model: existing.model,
+      channelIds: [7]
+    });
+    expect((await MongoAIModel.findById(existing._id).lean())?.name).toBe('Updated alias');
+  });
+
   it('updates an existing model only by modelId', async () => {
     const existing = await MongoAIModel.create(buildLlmDocument());
     const res = await callApi({

@@ -2,11 +2,8 @@ import type {
   SystemModelDataType,
   SystemModelDocumentDataType
 } from '@fastgpt/global/core/ai/model.schema';
-import {
-  postSystemModel,
-  putReplaceSystemModelChannels,
-  putSystemModel
-} from '@/web/core/ai/config';
+import { postSystemModel, putSystemModel } from '@/web/core/ai/config';
+import { UpdateSystemModelBodySchema } from '@fastgpt/global/openapi/admin/core/ai/model/api';
 
 /** 保留完整未保存草稿，仅规范测试接口要求的模型标识和回退别名。 */
 export const prepareDraftSystemModelForTest = (
@@ -29,7 +26,7 @@ export const submitCreatedSystemModel = ({
   channelIds: number[];
 }) => postSystemModel({ modelData, channelIds });
 
-/** 编辑模型先替换渠道关联，再移除不可变模型标识并按稳定 modelId 更新参数。 */
+/** 编辑参数与渠道作为同一次请求预检，服务端统一编排外部绑定和模型写入。 */
 export const submitUpdatedSystemModel = async ({
   modelId,
   modelData,
@@ -41,9 +38,10 @@ export const submitUpdatedSystemModel = async ({
 }) => {
   const { model: _model, ...editableModelData } = modelData;
 
-  await putReplaceSystemModelChannels({
+  const input = UpdateSystemModelBodySchema.parse({
     modelId,
+    modelData: editableModelData,
     channelIds
   });
-  await putSystemModel({ modelId, modelData: editableModelData });
+  await putSystemModel(input);
 };

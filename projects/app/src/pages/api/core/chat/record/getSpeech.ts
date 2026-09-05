@@ -10,6 +10,7 @@ import { MongoTTSBuffer } from '@fastgpt/service/common/buffer/tts/schema';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { GetChatSpeechBodySchema } from '@fastgpt/global/openapi/core/chat/record/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { ensureModelCatalogReady } from '@fastgpt/service/core/ai/config/runtime';
 
 /*
 1. get tts from chatItem store
@@ -36,6 +37,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       outLinkAuthData
     });
 
+    await ensureModelCatalogReady();
     const ttsModel = getTTSModelData({ modelId: ttsConfig.modelId, model: ttsConfig.model });
     const voiceData = ttsModel.config.voices.find((item) => item.value === ttsConfig.voice);
 

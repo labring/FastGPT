@@ -7,7 +7,8 @@ const mocks = vi.hoisted(() => ({
   authSystemAdmin: vi.fn(),
   findLean: vi.fn(),
   upsertSystemDefaultModelIds: vi.fn(),
-  updatedReloadSystemModel: vi.fn()
+  updatedReloadSystemModel: vi.fn(),
+  session: { id: 'default-model-session' }
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -20,7 +21,7 @@ vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
 
 vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
   MongoAIModel: {
-    find: vi.fn(() => ({ lean: mocks.findLean }))
+    find: vi.fn(() => ({ session: () => ({ lean: mocks.findLean }) }))
   }
 }));
 
@@ -33,6 +34,9 @@ vi.mock('@fastgpt/service/core/ai/config/utils', () => ({
 }));
 
 import handler from '@/pages/api/admin/settings/model/updateDefault';
+vi.mock('@fastgpt/service/core/ai/config/entity', () => ({
+  runSystemModelTransaction: (fn: (session: unknown) => Promise<unknown>) => fn(mocks.session)
+}));
 
 describe('PUT /api/admin/settings/model/updateDefault', () => {
   beforeEach(() => {
@@ -77,16 +81,19 @@ describe('PUT /api/admin/settings/model/updateDefault', () => {
       {} as any
     );
 
-    expect(mocks.upsertSystemDefaultModelIds).toHaveBeenCalledWith({
-      llm: ids.llm,
-      embedding: ids.embedding,
-      tts: undefined,
-      stt: undefined,
-      rerank: undefined,
-      datasetTextLLM: ids.datasetText,
-      datasetImageLLM: ids.datasetImage,
-      chatTitleLLM: ids.chatTitle
-    });
+    expect(mocks.upsertSystemDefaultModelIds).toHaveBeenCalledWith(
+      {
+        llm: ids.llm,
+        embedding: ids.embedding,
+        tts: undefined,
+        stt: undefined,
+        rerank: undefined,
+        datasetTextLLM: ids.datasetText,
+        datasetImageLLM: ids.datasetImage,
+        chatTitleLLM: ids.chatTitle
+      },
+      mocks.session
+    );
     expect(mocks.updatedReloadSystemModel).toHaveBeenCalledWith();
   });
 

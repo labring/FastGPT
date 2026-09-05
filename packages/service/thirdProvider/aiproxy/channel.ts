@@ -1,3 +1,4 @@
+import { withAIProxyChannelMutation } from './lease';
 import { z } from 'zod';
 import { axiosWithoutSSRF } from '../../common/api/axios';
 import { getAIProxyAdminConfig } from './config';
@@ -139,37 +140,40 @@ export const replaceModelInAIProxyChannels = async ({
   channelIds: number[];
 }) => {
   const selectedIds = new Set(channelIds);
-  const { channels, baseUrl, headers } = await getAIProxyChannels();
-  const channelMap = new Map(channels.map((channel) => [channel.id, channel]));
+  return withAIProxyChannelMutation(async ({ signal, assertValid }) => {
+    const { channels, baseUrl, headers } = await getAIProxyChannels();
+    const channelMap = new Map(channels.map((channel) => [channel.id, channel]));
 
-  for (const channelId of selectedIds) {
-    if (!channelMap.has(channelId)) {
-      throw new Error(`AI Proxy channel does not exist: ${channelId}`);
+    for (const channelId of selectedIds) {
+      if (!channelMap.has(channelId)) {
+        throw new Error(`AI Proxy channel does not exist: ${channelId}`);
+      }
     }
-  }
 
-  // 所有可提前识别的不兼容都必须在第一次外部写入前失败。
-  for (const channel of channels) {
-    const shouldBind = selectedIds.has(channel.id);
-    if (shouldBind !== channel.models.includes(model)) assertChannelUpdateSupported(channel);
-  }
+    // 所有可提前识别的不兼容都必须在第一次外部写入前失败。
+    for (const channel of channels) {
+      const shouldBind = selectedIds.has(channel.id);
+      if (shouldBind !== channel.models.includes(model)) assertChannelUpdateSupported(channel);
+    }
 
-  for (const channel of channels) {
-    const shouldBind = selectedIds.has(channel.id);
-    const hasModel = channel.models.includes(model);
-    if (shouldBind === hasModel) continue;
+    for (const channel of channels) {
+      const shouldBind = selectedIds.has(channel.id);
+      const hasModel = channel.models.includes(model);
+      if (shouldBind === hasModel) continue;
 
-    const nextModels = shouldBind
-      ? [...new Set([...channel.models, model])]
-      : channel.models.filter((channelModel) => channelModel !== model);
+      const nextModels = shouldBind
+        ? [...new Set([...channel.models, model])]
+        : channel.models.filter((channelModel) => channelModel !== model);
 
-    const { data: updateResponse } = await axiosWithoutSSRF.put(
-      `${baseUrl}/api/channel/${channel.id}`,
-      getChannelUpdateData(channel, nextModels),
-      { headers }
-    );
-    AIProxyMutationResponseSchema.parse(updateResponse);
-  }
+      assertValid();
+      const { data: updateResponse } = await axiosWithoutSSRF.put(
+        `${baseUrl}/api/channel/${channel.id}`,
+        getChannelUpdateData(channel, nextModels),
+        { headers, signal, timeout: 30000 }
+      );
+      AIProxyMutationResponseSchema.parse(updateResponse);
+    }
+  });
 };
 
 /**
@@ -182,23 +186,27 @@ export const removeModelsFromAIProxyChannels = async ({ models }: { models: stri
   const modelSet = new Set(models);
   if (modelSet.size === 0) return;
 
-  const { channels, baseUrl, headers } = await getAIProxyChannels();
+  return withAIProxyChannelMutation(async ({ signal, assertValid }) => {
+    const { channels, baseUrl, headers } = await getAIProxyChannels();
 
-  for (const channel of channels) {
-    if (channel.models.some((model) => modelSet.has(model))) assertChannelUpdateSupported(channel);
-  }
+    for (const channel of channels) {
+      if (channel.models.some((model) => modelSet.has(model)))
+        assertChannelUpdateSupported(channel);
+    }
 
-  for (const channel of channels) {
-    const nextModels = channel.models.filter((model) => !modelSet.has(model));
-    if (nextModels.length === channel.models.length) continue;
+    for (const channel of channels) {
+      const nextModels = channel.models.filter((model) => !modelSet.has(model));
+      if (nextModels.length === channel.models.length) continue;
 
-    const { data: updateResponse } = await axiosWithoutSSRF.put(
-      `${baseUrl}/api/channel/${channel.id}`,
-      getChannelUpdateData(channel, nextModels),
-      { headers }
-    );
-    AIProxyMutationResponseSchema.parse(updateResponse);
-  }
+      assertValid();
+      const { data: updateResponse } = await axiosWithoutSSRF.put(
+        `${baseUrl}/api/channel/${channel.id}`,
+        getChannelUpdateData(channel, nextModels),
+        { headers, signal, timeout: 30000 }
+      );
+      AIProxyMutationResponseSchema.parse(updateResponse);
+    }
+  });
 };
 
 /**
@@ -218,28 +226,31 @@ export const appendModelsToAIProxyChannels = async ({
   const uniqueModels = [...new Set(models)];
   if (uniqueChannelIds.length === 0 || uniqueModels.length === 0) return;
 
-  const { channels, baseUrl, headers } = await getAIProxyChannels();
-  const channelMap = new Map(channels.map((channel) => [channel.id, channel]));
+  return withAIProxyChannelMutation(async ({ signal, assertValid }) => {
+    const { channels, baseUrl, headers } = await getAIProxyChannels();
+    const channelMap = new Map(channels.map((channel) => [channel.id, channel]));
 
-  // 先校验完整目标集合，避免后面的无效 ID 让前面渠道已被部分写入。
-  for (const channelId of uniqueChannelIds) {
-    if (!channelMap.has(channelId)) {
-      throw new Error(`AI Proxy channel does not exist: ${channelId}`);
+    // 先校验完整目标集合，避免后面的无效 ID 让前面渠道已被部分写入。
+    for (const channelId of uniqueChannelIds) {
+      if (!channelMap.has(channelId)) {
+        throw new Error(`AI Proxy channel does not exist: ${channelId}`);
+      }
     }
-  }
 
-  for (const channelId of uniqueChannelIds) {
-    assertChannelUpdateSupported(channelMap.get(channelId)!);
-  }
+    for (const channelId of uniqueChannelIds) {
+      assertChannelUpdateSupported(channelMap.get(channelId)!);
+    }
 
-  for (const channelId of uniqueChannelIds) {
-    const channel = channelMap.get(channelId)!;
+    for (const channelId of uniqueChannelIds) {
+      const channel = channelMap.get(channelId)!;
 
-    const { data: updateResponse } = await axiosWithoutSSRF.put(
-      `${baseUrl}/api/channel/${channelId}`,
-      getChannelUpdateData(channel, [...new Set([...channel.models, ...uniqueModels])]),
-      { headers }
-    );
-    AIProxyMutationResponseSchema.parse(updateResponse);
-  }
+      assertValid();
+      const { data: updateResponse } = await axiosWithoutSSRF.put(
+        `${baseUrl}/api/channel/${channelId}`,
+        getChannelUpdateData(channel, [...new Set([...channel.models, ...uniqueModels])]),
+        { headers, signal, timeout: 30000 }
+      );
+      AIProxyMutationResponseSchema.parse(updateResponse);
+    }
+  });
 };

@@ -1,6 +1,8 @@
 import type { OpenAPIPath } from '../../../../type';
 import { DevApiTagsMap } from '../../../../tag';
 import {
+  CreateAdminAIProxyChannelBodySchema,
+  CreateAdminAIProxyChannelResponseSchema,
   AdminSystemModelReferenceSchema,
   CreateSystemModelBodySchema,
   CreateSystemModelResponseSchema,
@@ -22,6 +24,21 @@ import {
 } from './api';
 
 export const AdminSystemModelPath: OpenAPIPath = {
+  '/aiproxy/api/createChannel': {
+    post: {
+      summary: '创建 AI Proxy 渠道',
+      tags: [DevApiTagsMap.adminSystemModel],
+      requestBody: {
+        content: { 'application/json': { schema: CreateAdminAIProxyChannelBodySchema } }
+      },
+      responses: {
+        200: {
+          description: 'AI Proxy 创建结果',
+          content: { 'application/json': { schema: CreateAdminAIProxyChannelResponseSchema } }
+        }
+      }
+    }
+  },
   '/admin/settings/model/list': {
     get: {
       summary: '获取管理员系统模型列表',
@@ -125,7 +142,7 @@ export const AdminSystemModelPath: OpenAPIPath = {
       }
     },
     post: {
-      summary: '测试尚未创建的系统模型配置',
+      summary: '测试新增或编辑中的系统模型草稿',
       description: '使用当前表单草稿和指定渠道发起测试，不持久化模型',
       tags: [DevApiTagsMap.adminSystemModel],
       requestBody: {

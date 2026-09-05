@@ -1,9 +1,6 @@
+import { useModelChannelTest } from './useModelChannelTest';
 import type { AdminModelChannel } from '@fastgpt/global/openapi/admin/core/ai/model/api';
-import {
-  getAdminModelTemplates,
-  postSystemModelsFromTemplates,
-  postTestDraftModel
-} from '@/web/core/ai/config';
+import { getAdminModelTemplates, postSystemModelsFromTemplates } from '@/web/core/ai/config';
 import { defaultChannel } from '@/global/aiproxy/constants';
 import {
   Box,
@@ -24,13 +21,12 @@ import {
   type ButtonProps
 } from '@chakra-ui/react';
 import { ModelScopeEnum, modelTypeList, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import type {
   SystemModelDataType,
   SystemModelDocumentDataType
 } from '@fastgpt/global/core/ai/model.schema';
 import type { ModelProviderItemType } from '@fastgpt/global/core/ai/provider';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { i18nT, parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
@@ -38,17 +34,16 @@ import MyTag, { type ColorSchemaType } from '@fastgpt/web/components/common/Tag'
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useStaticVirtualList } from '@fastgpt/web/hooks/useVirtualList';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import { useLockFn, useSet } from 'ahooks';
+import { useLockFn } from 'ahooks';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 import ModelConfigForm, { type ModelConfigFormGetValues } from './ModelConfigForm';
 import ModelChannelModal, { ModelChannelSelector } from './ModelChannelModal';
 import ModelLinkedChannels from './ModelLinkedChannels';
-import { prepareDraftSystemModelForTest, submitCreatedSystemModel } from './submit';
+import { submitCreatedSystemModel } from './submit';
 import ModelListFilters from '@/components/core/ai/ModelListFilters';
 import ModelCapabilityTags from '@/components/core/ai/ModelCapabilityTags';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
@@ -183,13 +178,13 @@ const TemplateTableColumns = () => (
   </colgroup>
 );
 
-const modelTypeDescriptionKeyMap: Record<ModelTypeEnum, string> = {
-  [ModelTypeEnum.llm]: 'config_model:model_type_description.llm',
-  [ModelTypeEnum.embedding]: 'config_model:model_type_description.embedding',
-  [ModelTypeEnum.tts]: 'config_model:model_type_description.tts',
-  [ModelTypeEnum.stt]: 'config_model:model_type_description.stt',
-  [ModelTypeEnum.rerank]: 'config_model:model_type_description.rerank'
-};
+const modelTypeDescriptionKeyMap = {
+  [ModelTypeEnum.llm]: i18nT('config_model:model_type_description.llm'),
+  [ModelTypeEnum.embedding]: i18nT('config_model:model_type_description.embedding'),
+  [ModelTypeEnum.tts]: i18nT('config_model:model_type_description.tts'),
+  [ModelTypeEnum.stt]: i18nT('config_model:model_type_description.stt'),
+  [ModelTypeEnum.rerank]: i18nT('config_model:model_type_description.rerank')
+} as const satisfies Record<ModelTypeEnum, string>;
 
 /** 模型类型选择内容不持有弹窗状态，供空白新增流程嵌入稳定的 Modal 外壳。 */
 const ModelTypeSelector = ({
@@ -227,7 +222,7 @@ const ModelTypeSelector = ({
           <Box minW={0} fontSize="xs" lineHeight="16px">
             <Box>{label}</Box>
             <Box mt={2} color="myGray.500">
-              {t(modelTypeDescriptionKeyMap[type as ModelTypeEnum] as any)}
+              {t(modelTypeDescriptionKeyMap[type as ModelTypeEnum])}
             </Box>
           </Box>
           <MyTag ml="auto" flexShrink={0} colorSchema="blue">
@@ -258,12 +253,10 @@ export const BlankModelCreateModal = ({
   onClose: () => void;
 }) => {
   const { t } = useClientTranslation('config_model');
-  const { toast } = useToast();
   const router = useRouter();
   const [step, setStep] = useState<'type' | 'config'>('type');
   const [selectedType, setSelectedType] = useState<ModelTypeEnum>(ModelTypeEnum.llm);
   const [submitting, setSubmitting] = useState(false);
-  const [testingChannelIds, testingChannelIdsDispatch] = useSet<number>();
   const [selectedChannelIds, setSelectedChannelIds] = useState<Set<number>>(new Set());
   const [showAssociateChannel, setShowAssociateChannel] = useState(false);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
@@ -271,49 +264,10 @@ export const BlankModelCreateModal = ({
   const modelFormGetValuesRef = useRef<ModelConfigFormGetValues | null>(null);
   const modelData = useMemo(() => createModelData(selectedType), [createModelData, selectedType]);
 
-  const handleTestModelChannel = async (channelId: number) => {
-    const draftModelData = modelFormGetValuesRef.current?.() ?? modelData;
-    const testModelData = prepareDraftSystemModelForTest(draftModelData);
-    const model = testModelData.model;
-    if (!model) {
-      toast({
-        status: 'warning',
-        title: t('config_model:fill_model_id_before_test')
-      });
-      return;
-    }
-    if (testModelData.type === ModelTypeEnum.tts && testModelData.config.voices.length === 0) {
-      toast({
-        status: 'warning',
-        title: t('config_model:fill_voice_before_test')
-      });
-      return;
-    }
-
-    const channelName = channels.find((channel) => channel.id === channelId)?.name ?? '';
-    testingChannelIdsDispatch.add(channelId);
-    try {
-      await postTestDraftModel({
-        channelId,
-        modelData: testModelData
-      });
-      toast({
-        status: 'success',
-        title: t('config_model:model_channel_test_success', { model, channel: channelName })
-      });
-    } catch (error) {
-      toast({
-        status: 'error',
-        title: t('config_model:model_channel_test_failed', {
-          model,
-          channel: channelName,
-          reason: getErrText(error)
-        })
-      });
-    } finally {
-      testingChannelIdsDispatch.remove(channelId);
-    }
-  };
+  const { testingChannelIds, testModelChannel: handleTestModelChannel } = useModelChannelTest({
+    target: { source: 'draft', getModelData: () => modelFormGetValuesRef.current?.() },
+    channels
+  });
 
   const goToChannelManagement = () => {
     onClose();

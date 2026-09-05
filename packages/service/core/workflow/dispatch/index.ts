@@ -187,6 +187,7 @@ export async function dispatchWorkFlow({
   concatUsage,
   ...data
 }: Props & WorkflowUsageProps): Promise<DispatchFlowResponse> {
+  await (await import('../../ai/config/runtime')).ensureModelCatalogReady();
   const {
     res,
     stream,

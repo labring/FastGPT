@@ -96,6 +96,7 @@ const generateChatTitleFromQuestion = async ({
   question: string;
   teamId: string;
 }): Promise<string | undefined> => {
+  await (await import('../ai/config/runtime')).ensureModelCatalogReady();
   const titleModel = getDefaultChatTitleModelData();
   if (!titleModel?.model) return question.slice(0, FALLBACK_CHAT_TITLE_MAX_LENGTH);
   const questionForTitle = question.slice(0, CHAT_TITLE_QUESTION_MAX_LENGTH);

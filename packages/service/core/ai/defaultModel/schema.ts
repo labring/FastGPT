@@ -11,6 +11,8 @@ export type AIDefaultModelSchemaType = {
   scope: ModelScopeEnum;
   teamId?: string;
   defaultModelIds: ModelDefaultIds;
+  /** 与模型写入事务共同提交的目录修订号；历史数据按 0 处理。 */
+  catalogRevision?: number;
 };
 
 const DefaultModelIdsSchema = new Schema(
@@ -28,6 +30,7 @@ const DefaultModelIdsSchema = new Schema(
 );
 
 const AIDefaultModelSchema = new Schema<AIDefaultModelSchemaType>({
+  catalogRevision: { type: Number, default: 0 },
   scope: {
     type: String,
     enum: Object.values(ModelScopeEnum),

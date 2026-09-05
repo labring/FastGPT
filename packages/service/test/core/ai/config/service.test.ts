@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   findOne: vi.fn(),
   updateOne: vi.fn(),
   updateMany: vi.fn(),
+  querySession: vi.fn(),
   updatedReloadSystemModel: vi.fn(),
   session: { id: 'model-update-session' }
 }));
@@ -19,8 +20,8 @@ vi.mock('../../../../core/ai/config/schema', () => ({
 vi.mock('../../../../core/ai/config/utils', () => ({
   updatedReloadSystemModel: mocks.updatedReloadSystemModel
 }));
-vi.mock('../../../../common/mongo/sessionRun', () => ({
-  mongoSessionRun: vi.fn((callback: (session: unknown) => Promise<unknown>) =>
+vi.mock('../../../../core/ai/config/entity', () => ({
+  runSystemModelTransaction: vi.fn((callback: (session: unknown) => Promise<unknown>) =>
     callback(mocks.session)
   )
 }));
@@ -42,9 +43,10 @@ const modelData = {
 describe('system model update service', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    mocks.findOne.mockReturnValue({
+    mocks.querySession.mockReturnValue({
       lean: vi.fn().mockResolvedValue({ type: ModelTypeEnum.llm })
     });
+    mocks.findOne.mockReturnValue({ session: mocks.querySession });
     mocks.updateOne.mockResolvedValue({ matchedCount: 1 });
     mocks.updateMany.mockResolvedValue({ matchedCount: 1 });
   });
@@ -74,13 +76,15 @@ describe('system model update service', () => {
           inputPrice: 1,
           outputPrice: 1
         }
-      }
+      },
+      { session: mocks.session }
     );
+    expect(mocks.querySession).toHaveBeenCalledWith(mocks.session);
     expect(mocks.updatedReloadSystemModel).toHaveBeenCalledOnce();
   });
 
   it('rejects a missing configuration target without reloading the runtime snapshot', async () => {
-    mocks.findOne.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue(null) });
+    mocks.querySession.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue(null) });
 
     await expect(updateSystemModelConfig({ modelId: 'missing-model', modelData })).rejects.toBe(
       'modelUnExist'
@@ -90,7 +94,7 @@ describe('system model update service', () => {
   });
 
   it('rejects attempts to change the persisted model type', async () => {
-    mocks.findOne.mockReturnValueOnce({
+    mocks.querySession.mockReturnValueOnce({
       lean: vi.fn().mockResolvedValue({ type: ModelTypeEnum.embedding })
     });
 
@@ -98,6 +102,15 @@ describe('system model update service', () => {
       'System model type cannot be changed'
     );
     expect(mocks.updateOne).not.toHaveBeenCalled();
+    expect(mocks.updatedReloadSystemModel).not.toHaveBeenCalled();
+  });
+
+  it('rejects a configuration update that no longer matches without reloading', async () => {
+    mocks.updateOne.mockResolvedValueOnce({ matchedCount: 0 });
+
+    await expect(updateSystemModelConfig({ modelId: 'model-1', modelData })).rejects.toBe(
+      'modelUnExist'
+    );
     expect(mocks.updatedReloadSystemModel).not.toHaveBeenCalled();
   });
 

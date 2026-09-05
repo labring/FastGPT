@@ -1,3 +1,4 @@
+import { ensureModelCatalogReady } from '@fastgpt/service/core/ai/config/runtime';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -51,6 +52,7 @@ export async function generateQA(): Promise<any> {
 
   try {
     while (true) {
+      await ensureModelCatalogReady();
       const startTime = Date.now();
       // get training data
       const {

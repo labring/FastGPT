@@ -110,13 +110,21 @@ describe('appendModelsToAIProxyChannels', () => {
       1,
       'https://aiproxy.example.com/api/channel/1',
       expect.objectContaining({ models: [] }),
-      { headers: { Authorization: 'Bearer admin-token' } }
+      expect.objectContaining({
+        headers: { Authorization: 'Bearer admin-token' },
+        signal: expect.any(AbortSignal),
+        timeout: 30000
+      })
     );
     expect(mocks.put).toHaveBeenNthCalledWith(
       2,
       'https://aiproxy.example.com/api/channel/2',
       expect.objectContaining({ models: ['existing-model'] }),
-      { headers: { Authorization: 'Bearer admin-token' } }
+      expect.objectContaining({
+        headers: { Authorization: 'Bearer admin-token' },
+        signal: expect.any(AbortSignal),
+        timeout: 30000
+      })
     );
   });
 
@@ -169,13 +177,21 @@ describe('appendModelsToAIProxyChannels', () => {
       1,
       'https://aiproxy.example.com/api/channel/1',
       expect.objectContaining({ models: ['existing-model', 'new-model'] }),
-      { headers: { Authorization: 'Bearer admin-token' } }
+      expect.objectContaining({
+        headers: { Authorization: 'Bearer admin-token' },
+        signal: expect.any(AbortSignal),
+        timeout: 30000
+      })
     );
     expect(mocks.put).toHaveBeenNthCalledWith(
       2,
       'https://aiproxy.example.com/api/channel/2',
       expect.objectContaining({ models: ['new-model'] }),
-      { headers: { Authorization: 'Bearer admin-token' } }
+      expect.objectContaining({
+        headers: { Authorization: 'Bearer admin-token' },
+        signal: expect.any(AbortSignal),
+        timeout: 30000
+      })
     );
   });
 
@@ -202,7 +218,11 @@ describe('appendModelsToAIProxyChannels', () => {
         max_error_rate: 0.5,
         models: ['existing-model', 'new-model']
       },
-      { headers: { Authorization: 'Bearer admin-token' } }
+      expect.objectContaining({
+        headers: { Authorization: 'Bearer admin-token' },
+        signal: expect.any(AbortSignal),
+        timeout: 30000
+      })
     );
   });
 
@@ -272,7 +292,11 @@ describe('removeModelsFromAIProxyChannels', () => {
     expect(mocks.put).toHaveBeenCalledWith(
       'https://aiproxy.example.com/api/channel/1',
       expect.objectContaining({ models: ['keep'] }),
-      { headers: { Authorization: 'Bearer admin-token' } }
+      expect.objectContaining({
+        headers: { Authorization: 'Bearer admin-token' },
+        signal: expect.any(AbortSignal),
+        timeout: 30000
+      })
     );
   });
 

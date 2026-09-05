@@ -276,7 +276,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         ...item,
         avatar: provider.avatar,
         providerId: provider.id,
-        providerName: t(provider.name as any),
+        providerName: provider.name,
         contextToken:
           item.type === ModelTypeEnum.llm
             ? item.config.maxContext
