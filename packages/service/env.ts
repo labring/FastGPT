@@ -117,6 +117,9 @@ export const serviceEnv = createEnv({
       description: 'OpenSandbox 使用的运行态镜像；启用 opensandbox 时必填'
     }),
     AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: BoolSchema.default(true),
+    AGENT_SANDBOX_ENABLE_VOLUME: BoolSchema.default(true).meta({
+      description: '是否为 OpenSandbox 启用 volume-manager 持久卷；关闭后跳过全部卷逻辑'
+    }),
     AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: UrlSchema.optional(),
     AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: z.string().optional(),
     AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX: SandboxVolumeNameSchema.default(

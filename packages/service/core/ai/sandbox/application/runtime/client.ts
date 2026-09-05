@@ -21,6 +21,7 @@ import {
   getSessionVolumeClaimName,
   type VolumeManagerResult
 } from '../../infrastructure/volume/service';
+import { getVolumeManagerEnvConfig } from '../../infrastructure/volume/config';
 import { buildRuntimeSandboxAdapter } from '../../infrastructure/provider/adapter';
 import { getConfiguredSandboxProvider } from '../../infrastructure/provider/config';
 import { ensureConnectedSandboxRunning } from '../../infrastructure/provider/lifecycle';
@@ -258,7 +259,7 @@ export class SandboxClient {
         throw new Error(`Sandbox belongs to provider ${current.provider}`);
       }
       let workspaceClaimName: string | undefined;
-      if (this.providerName === 'opensandbox') {
+      if (this.providerName === 'opensandbox' && getVolumeManagerEnvConfig().enable) {
         workspaceClaimName = getSessionVolumeClaimName(current.storage);
         if (!workspaceClaimName) {
           throw new Error(`OpenSandbox ${this.sandboxId} has no persisted workspace claimName`);
@@ -559,7 +560,7 @@ export const getSandboxClient = async (
         createConfig: opts.createConfig
       });
     }
-    if (!vmConfig && providerName === 'opensandbox') {
+    if (!vmConfig && providerName === 'opensandbox' && getVolumeManagerEnvConfig().enable) {
       const instance = await findSandboxInstanceBySource({
         sourceType: sandboxClientProps.sourceType,
         sourceId: sandboxClientProps.sourceId,

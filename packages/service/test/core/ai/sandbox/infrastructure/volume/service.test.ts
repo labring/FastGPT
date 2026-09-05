@@ -25,6 +25,18 @@ import {
 } from '@fastgpt/service/core/ai/sandbox/infrastructure/volume/service';
 
 describe('sandbox volume service', () => {
+  it('skips volume-manager entirely when disabled', async () => {
+    volumeConfigMock.config = { ...volumeConfigMock.config, enable: false };
+    const fetchMock = vi.fn(async () => {
+      throw new Error('volume-manager must not be called when disabled');
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(getSessionVolumeConfig('claim-1')).resolves.toBeUndefined();
+    await expect(deleteSessionVolume('claim-1')).resolves.toBeUndefined();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   beforeEach(() => {
     vi.unstubAllGlobals();
     volumeConfigMock.config = {
