@@ -1,11 +1,47 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  getRuntimeEnv,
   getAgentSandboxMissingRequiredEnvKeys,
   validateAgentSandboxPreviewProxyEnv,
   validateAgentSandboxProxyEnv,
   validateS3Env
 } from '@fastgpt/service/env.util';
+
+describe('getRuntimeEnv AI Proxy test defaults', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it.each(['vitest', 'test'])('injects isolated defaults only for %s', (mode) => {
+    vi.stubEnv('AIPROXY_API_ENDPOINT', undefined);
+    vi.stubEnv('AIPROXY_API_TOKEN', undefined);
+    vi.stubEnv('VITEST', mode === 'vitest' ? 'true' : undefined);
+    vi.stubEnv('NODE_ENV', mode === 'test' ? 'test' : 'development');
+    expect(getRuntimeEnv()).toMatchObject({
+      AIPROXY_API_ENDPOINT: 'http://127.0.0.1:3000',
+      AIPROXY_API_TOKEN: 'test-aiproxy-token'
+    });
+    expect(process.env.AIPROXY_API_TOKEN).toBeUndefined();
+  });
+
+  it('does not supply AI Proxy configuration in production', () => {
+    vi.stubEnv('AIPROXY_API_ENDPOINT', undefined);
+    vi.stubEnv('AIPROXY_API_TOKEN', undefined);
+    vi.stubEnv('VITEST', undefined);
+    vi.stubEnv('NODE_ENV', 'production');
+    expect(getRuntimeEnv().AIPROXY_API_ENDPOINT).toBeUndefined();
+    expect(getRuntimeEnv().AIPROXY_API_TOKEN).toBeUndefined();
+  });
+
+  it('preserves explicitly configured and blank values for schema validation', () => {
+    vi.stubEnv('AIPROXY_API_ENDPOINT', 'https://proxy.example.com');
+    vi.stubEnv('AIPROXY_API_TOKEN', '');
+    vi.stubEnv('VITEST', 'true');
+    expect(getRuntimeEnv()).toMatchObject({
+      AIPROXY_API_ENDPOINT: 'https://proxy.example.com',
+      AIPROXY_API_TOKEN: ''
+    });
+  });
+});
 
 describe('validateS3Env', () => {
   const baseEnv = {

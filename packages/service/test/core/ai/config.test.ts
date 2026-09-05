@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const originalEnv = {
+  NODE_ENV: process.env.NODE_ENV,
+  VITEST: process.env.VITEST,
   AIPROXY_API_ENDPOINT: process.env.AIPROXY_API_ENDPOINT,
   AIPROXY_API_TOKEN: process.env.AIPROXY_API_TOKEN,
   OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
@@ -21,6 +23,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.stubEnv('NODE_ENV', originalEnv.NODE_ENV);
+  vi.stubEnv('VITEST', originalEnv.VITEST);
   vi.stubEnv('AIPROXY_API_ENDPOINT', originalEnv.AIPROXY_API_ENDPOINT);
   vi.stubEnv('AIPROXY_API_TOKEN', originalEnv.AIPROXY_API_TOKEN);
   vi.stubEnv('OPENAI_BASE_URL', originalEnv.OPENAI_BASE_URL);
@@ -54,6 +58,8 @@ describe('AI config defaults', () => {
   it.each([undefined, '', '   ', 'not-a-url'])(
     'rejects an invalid AI Proxy endpoint (%s) without falling back to OPENAI_BASE_URL',
     async (endpoint) => {
+      vi.stubEnv('NODE_ENV', 'production');
+      vi.stubEnv('VITEST', undefined);
       vi.stubEnv('AIPROXY_API_ENDPOINT', endpoint);
 
       await expect(importConfig()).rejects.toThrow('AIPROXY_API_ENDPOINT');
@@ -63,6 +69,8 @@ describe('AI config defaults', () => {
   it.each([undefined, '', '   '])(
     'rejects a missing or blank AI Proxy token (%s) without falling back to CHAT_API_KEY',
     async (token) => {
+      vi.stubEnv('NODE_ENV', 'production');
+      vi.stubEnv('VITEST', undefined);
       vi.stubEnv('AIPROXY_API_TOKEN', token);
 
       await expect(importConfig()).rejects.toThrow('AIPROXY_API_TOKEN');
