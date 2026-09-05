@@ -182,6 +182,9 @@ describe('default recall dataset search', () => {
       };
     });
     mockMongoDatasetDataFind.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue([])
+      }),
       lean: vi.fn().mockResolvedValue([])
     });
     mockMongoDatasetDataTextAggregate.mockResolvedValue([]);

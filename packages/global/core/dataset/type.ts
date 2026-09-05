@@ -7,6 +7,7 @@ import {
   DatasetTypeEnum,
   SearchScoreTypeEnum,
   TrainingModeEnum,
+  DatasetRebuildScopeEnum,
   CollectionTrainingStatusEnum,
   ChunkSettingModeEnum,
   ChunkTriggerConfigTypeEnum,
@@ -219,6 +220,13 @@ export const DatasetDataSchema = DatasetDataFieldSchema.extend({
   fullTextToken: z.string().meta({ description: '全文 token' }),
   indexes: z.array(DatasetDataIndexItemSchema).meta({ description: '向量索引' }),
   rebuilding: z.boolean().optional().meta({ description: '重建中' }),
+  synonymVersion: z.number().int().nonnegative().optional().meta({ description: '同义词索引版本' }),
+  synonymRebuildingVersion: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .meta({ description: '正在重建的同义词版本' }),
   imageDescMap: z.record(z.string(), z.string()).optional().meta({ description: '图片描述映射' }),
   metadata: z.record(z.string(), z.any()).optional().meta({ description: '自定义元数据' })
 });
@@ -245,15 +253,22 @@ export const DatasetTrainingSchema = z.object({
   expireAt: z.coerce.date().meta({ description: '过期时间' }),
   lockTime: z.coerce.date().meta({ description: '锁定时间' }),
   mode: z.enum(TrainingModeEnum).meta({ description: '训练模式' }),
+  rebuildScope: z
+    .enum(DatasetRebuildScopeEnum)
+    .optional()
+    .meta({ description: '重建范围；缺省表示完整重建' }),
+  synonymVersion: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .meta({ description: '任务目标同义词版本' }),
   dataId: ObjectIdSchema.optional().meta({ description: '数据 ID' }),
   q: z.string().meta({ description: '问题/主文本' }),
   a: z.string().meta({ description: '回答/补充文本' }),
   imageId: z.string().optional().meta({ description: '图片 ID' }),
   imageDescMap: z.record(z.string(), z.string()).optional().meta({ description: '图片描述映射' }),
-  dataMetadata: z
-    .record(z.string(), z.any())
-    .optional()
-    .meta({ description: '自定义元数据（训练时透传）' }),
+  dataMetadata: z.record(z.string(), z.any()).optional().meta({ description: '自定义元数据' }),
   chunkIndex: z.number().meta({ description: '块索引' }),
   indexSize: z.number().optional().meta({ description: '索引大小' }),
   weight: z.number().meta({ description: '权重' }),

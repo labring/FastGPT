@@ -245,6 +245,14 @@ export enum TrainingModeEnum {
   imageParse = 'imageParse'
 }
 
+/** 限定普通 rebuild 任务需要刷新的派生数据范围；缺省表示完整重建。 */
+export enum DatasetRebuildScopeEnum {
+  text = 'text'
+}
+
+export const DatasetSynonymCollectionName = 'dataset_synonyms';
+export const DatasetSynonymMappingCollectionName = 'dataset_synonym_mappings';
+
 export enum CollectionTrainingStatusEnum {
   running = 'running',
   error = 'error',

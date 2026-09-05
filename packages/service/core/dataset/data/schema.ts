@@ -74,7 +74,6 @@ const DatasetDataSchema = new Schema({
     ],
     default: []
   },
-
   updateTime: {
     type: Date,
     default: () => new Date()
@@ -84,6 +83,8 @@ const DatasetDataSchema = new Schema({
     default: 0
   },
   rebuilding: Boolean,
+  synonymVersion: Number,
+  synonymRebuildingVersion: Number,
 
   // Abandon
   fullTextToken: String,
@@ -108,6 +109,9 @@ defineIndex(DatasetDataSchema, {
 // rebuild data
 defineIndex(DatasetDataSchema, {
   key: { rebuilding: 1, teamId: 1, datasetId: 1 }
+});
+defineIndex(DatasetDataSchema, {
+  key: { teamId: 1, datasetId: 1, synonymVersion: 1, synonymRebuildingVersion: 1 }
 });
 
 // Cron clear invalid data

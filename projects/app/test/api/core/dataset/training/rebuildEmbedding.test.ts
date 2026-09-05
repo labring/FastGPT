@@ -20,6 +20,8 @@ import type {
   EmbeddingSystemModelDataType,
   LLMSystemModelDataType
 } from '@fastgpt/global/core/ai/model.schema';
+import { connectionMongo } from '@fastgpt/service/common/mongo';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 let testRoot: Awaited<ReturnType<typeof getRootUser>>;
 let visionEmbeddingModel: EmbeddingSystemModelDataType;
@@ -234,5 +236,80 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
         retryCount: 50
       })
     );
+  });
+
+  it('should reject model rebuilding while the shared rebuild queue is busy', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'pending',
+      indexes: [],
+      rebuilding: true
+    });
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.code).toBe(500);
+    await expect(MongoDataset.findById(dataset._id).lean()).resolves.toMatchObject({
+      vectorModelId: textOnlyEmbeddingModel.modelId
+    });
+    await expect(MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).resolves.toBe(0);
+  });
+
+  it('should roll back the model switch and rebuild markers when seed creation fails', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    const data = await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'original',
+      indexes: []
+    });
+    const mongoSessionRunMock = vi.mocked(mongoSessionRun);
+    const runWithoutTransaction = mongoSessionRunMock.getMockImplementation();
+    if (!runWithoutTransaction) throw new Error('mongoSessionRun mock is not initialized');
+
+    mongoSessionRunMock
+      // createTrainingUsage 会先占用一次调用，第二次调用才是需要验证回滚的重建事务。
+      .mockImplementationOnce(runWithoutTransaction)
+      .mockImplementationOnce(async (fn) => {
+        const session = await connectionMongo.startSession();
+        try {
+          return await session.withTransaction(() => fn(session));
+        } finally {
+          await session.endSession();
+        }
+      });
+    const createTrainingSpy = vi
+      .spyOn(MongoDatasetTraining, 'create')
+      .mockRejectedValue(new Error('training insert failed'));
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+    createTrainingSpy.mockRestore();
+
+    expect(res.code).toBe(500);
+    await expect(MongoDataset.findById(dataset._id).lean()).resolves.toMatchObject({
+      vectorModelId: textOnlyEmbeddingModel.modelId
+    });
+    await expect(MongoDatasetData.findById(data._id).lean()).resolves.not.toHaveProperty(
+      'rebuilding'
+    );
+    await expect(MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).resolves.toBe(0);
   });
 });

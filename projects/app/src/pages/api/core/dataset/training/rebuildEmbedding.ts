@@ -12,12 +12,7 @@ import {
   getEmbeddingModelData,
   getOptionalVlmModelData
 } from '@fastgpt/service/core/ai/model';
-import {
-  getDatasetImageIndexCapability,
-  getDatasetImageTrainingMode
-} from '@fastgpt/service/core/dataset/utils';
-import { uniqueDatasetDataMarkdownImageUrls } from '@fastgpt/service/core/dataset/data/utils';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -26,6 +21,7 @@ import {
   RebuildEmbeddingResponseSchema,
   type RebuildEmbeddingResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
+import { seedDatasetRebuildTasks } from '@/service/core/dataset/queues/rebuild';
 
 async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> {
   const { datasetId, vectorModelId } = parseApiInput({
@@ -62,7 +58,7 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     modelId: dataset.vlmModelId ? String(dataset.vlmModelId) : undefined,
     model: dataset.vlmModel
   });
-  const { availableVlmModel, supportVlm, supportImageIndex } = getDatasetImageIndexCapability({
+  const { availableVlmModel, supportImageIndex } = getDatasetImageIndexCapability({
     vectorModel: vectorModelData,
     vlmModel: vlmModelData
   });
@@ -120,85 +116,18 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
         session
       }
     );
+    await seedDatasetRebuildTasks(
+      {
+        teamId,
+        tmbId,
+        datasetId,
+        billId: String(usageId),
+        vectorModel: vectorModelData,
+        vlmModel: vlmModelData
+      },
+      session
+    );
   });
-
-  // get 10 init dataset.data
-  const max = global.systemEnv?.vectorMaxProcess || 10;
-  const arr = new Array(max * 2).fill(0);
-
-  for (let i = 0; i < arr.length; i++) {
-    try {
-      const hasNext = await mongoSessionRun(async (session) => {
-        // get next dataset.data
-        const data = await MongoDatasetData.findOneAndUpdate(
-          {
-            rebuilding: true,
-            teamId,
-            datasetId
-          },
-          {
-            $unset: {
-              rebuilding: null
-            },
-            updateTime: new Date()
-          },
-          {
-            session
-          }
-        ).select({
-          _id: 1,
-          collectionId: 1,
-          imageId: 1,
-          q: 1,
-          indexes: 1
-        });
-
-        if (data) {
-          const collection = await MongoDatasetCollection.findById(data.collectionId)
-            .select('imageIndex')
-            .session(session);
-          const hasMarkdownImages =
-            !!collection?.imageIndex && uniqueDatasetDataMarkdownImageUrls([data.q]).length > 0;
-          const mode = getDatasetImageTrainingMode({
-            supportVlm,
-            supportImageIndex,
-            imageId: data.imageId,
-            hasMarkdownImages
-          });
-
-          await MongoDatasetTraining.create(
-            [
-              {
-                teamId,
-                tmbId,
-                datasetId,
-                collectionId: data.collectionId,
-                billId: usageId,
-                mode,
-                dataId: data._id,
-                ...(data.imageId && { imageId: data.imageId }),
-                ...(mode === TrainingModeEnum.image && {
-                  q: data.q,
-                  indexes: data.indexes
-                }),
-                retryCount: 50
-              }
-            ],
-            {
-              session,
-              ordered: true
-            }
-          );
-        }
-
-        return !!data;
-      });
-
-      if (!hasNext) {
-        break;
-      }
-    } catch {}
-  }
 
   return RebuildEmbeddingResponseSchema.parse(undefined);
 }

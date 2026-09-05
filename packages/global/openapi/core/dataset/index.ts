@@ -6,6 +6,7 @@ import { DatasetCollectionPath } from './collection';
 import { ApiDatasetPath } from './apiDataset';
 import { DatasetFilePath } from './file';
 import { DatasetTrainingPath } from './training';
+import { DatasetSynonymPath } from './synonym';
 import {
   CreateDatasetBodySchema,
   CreateDatasetWithFilesBodySchema,
@@ -330,5 +331,6 @@ export const DatasetPath: OpenAPIPath = {
   ...DatasetDataPath,
   ...ApiDatasetPath,
   ...DatasetFilePath,
-  ...DatasetTrainingPath
+  ...DatasetTrainingPath,
+  ...DatasetSynonymPath
 };
