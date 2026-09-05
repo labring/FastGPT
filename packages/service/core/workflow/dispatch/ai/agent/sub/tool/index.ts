@@ -169,8 +169,8 @@ export const dispatchTool = async ({
             chatId,
             uId: uid,
             permissions: tool.permissions ?? [],
-            teamId: runningAppInfo.teamId,
-            tmbId: runningAppInfo.tmbId
+            teamId: String(runningUserInfo.teamId),
+            tmbId: String(runningUserInfo.tmbId)
           }).generateToken()
         : undefined;
 
