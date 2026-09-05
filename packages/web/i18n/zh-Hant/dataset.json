@@ -192,7 +192,7 @@
   "vector_model_max_tokens_tip": "每個分塊資料，最大長度為 3000 tokens",
   "vllm_model": "圖片理解模型",
   "vllm_model_tip": "自動標註文件裡的圖片並生成文字描述，輔助文字檢索",
-  "website_dataset": "網站同步",
+  "website_dataset": "網站知識庫",
   "website_dataset_desc": "通過爬蟲，批量爬取網頁數據構建知識庫",
   "website_info": "網站資訊",
   "yuque_dataset": "Yuque 知識庫",

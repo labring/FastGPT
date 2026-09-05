@@ -192,7 +192,7 @@
   "vector_model_max_tokens_tip": "각 데이터 청크의 최대 길이는 3000토큰입니다",
   "vllm_model": "이미지 이해 모델",
   "vllm_model_tip": "문서 내 이미지를 자동으로 태깅하고 텍스트 설명을 생성하여 텍스트 검색을 돕습니다",
-  "website_dataset": "웹 동기화",
+  "website_dataset": "웹사이트 지식베이스",
   "website_dataset_desc": "웹 페이지 데이터를 일괄 크롤링하여 데이터셋을 구축합니다",
   "website_info": "웹사이트 정보",
   "yuque_dataset": "Yuque 데이터셋",
