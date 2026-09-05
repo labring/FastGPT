@@ -3,7 +3,13 @@ import { Box, Flex, Grid, HStack } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getChildrenResponses } from '@fastgpt/global/core/chat/utils/mergeNode';
-import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetSearchModeMap,
+  RetrievalTraceBranchNameEnum,
+  RetrievalTraceStageNameEnum,
+  RetrievalTraceStageStatusEnum
+} from '@fastgpt/global/core/dataset/constants';
+import type { RetrievalTraceStageType } from '@fastgpt/global/core/dataset/type';
 import styles from '@/components/Markdown/index.module.scss';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
@@ -215,6 +221,82 @@ export const DatasetSearchRows = ({
 }) => {
   const { t } = useSafeTranslation();
 
+  const getRetrievalBranchLabel = (name: RetrievalTraceBranchNameEnum) => {
+    switch (name) {
+      case RetrievalTraceBranchNameEnum.text:
+        return t('chat:response.retrieval_branch.text');
+      case RetrievalTraceBranchNameEnum.image:
+        return t('chat:response.retrieval_branch.image');
+    }
+  };
+
+  const getRetrievalStageLabel = (name: RetrievalTraceStageNameEnum) => {
+    switch (name) {
+      case RetrievalTraceStageNameEnum.textEmbeddingRecall:
+        return t('chat:response.retrieval_stage.textEmbeddingRecall');
+      case RetrievalTraceStageNameEnum.textFullTextRecall:
+        return t('chat:response.retrieval_stage.textFullTextRecall');
+      case RetrievalTraceStageNameEnum.textFusion:
+        return t('chat:response.retrieval_stage.textFusion');
+      case RetrievalTraceStageNameEnum.rerank:
+        return t('chat:response.retrieval_stage.rerank');
+      case RetrievalTraceStageNameEnum.imageCaptionEmbeddingRecall:
+        return t('chat:response.retrieval_stage.imageCaptionEmbeddingRecall');
+      case RetrievalTraceStageNameEnum.imageCaptionFullTextRecall:
+        return t('chat:response.retrieval_stage.imageCaptionFullTextRecall');
+      case RetrievalTraceStageNameEnum.imageVectorRecall:
+        return t('chat:response.retrieval_stage.imageVectorRecall');
+      case RetrievalTraceStageNameEnum.imageFusion:
+        return t('chat:response.retrieval_stage.imageFusion');
+      case RetrievalTraceStageNameEnum.mergedCandidates:
+        return t('chat:response.retrieval_stage.mergedCandidates');
+      case RetrievalTraceStageNameEnum.deduplicate:
+        return t('chat:response.retrieval_stage.deduplicate');
+      case RetrievalTraceStageNameEnum.similarityFilter:
+        return t('chat:response.retrieval_stage.similarityFilter');
+      case RetrievalTraceStageNameEnum.maxTokensFilter:
+        return t('chat:response.retrieval_stage.maxTokensFilter');
+      case RetrievalTraceStageNameEnum.llmSelection:
+        return t('chat:response.retrieval_stage.llmSelection');
+    }
+  };
+
+  const getRetrievalStatusLabel = (status: RetrievalTraceStageStatusEnum) => {
+    switch (status) {
+      case RetrievalTraceStageStatusEnum.applied:
+        return t('chat:response.retrieval_status.applied');
+      case RetrievalTraceStageStatusEnum.skipped:
+        return t('chat:response.retrieval_status.skipped');
+      case RetrievalTraceStageStatusEnum.fallback:
+        return t('chat:response.retrieval_status.fallback');
+    }
+  };
+
+  const renderRetrievalStage = (stage: RetrievalTraceStageType) => (
+    <Flex
+      key={stage.name}
+      justifyContent={'space-between'}
+      alignItems={'center'}
+      gap={3}
+      _notLast={{ mb: 1 }}
+    >
+      <Box color={'myGray.600'}>{getRetrievalStageLabel(stage.name)}</Box>
+      <Box flexShrink={0}>
+        {stage.count}
+        {stage.status && (
+          <Box as={'span'} ml={2} color={'myGray.500'}>
+            {getRetrievalStatusLabel(stage.status)}
+          </Box>
+        )}
+        {stage.minScore !== undefined && stage.maxScore !== undefined && (
+          <Box as={'span'} ml={2} color={'myGray.500'}>
+            {`${formatNumber(stage.minScore)} ~ ${formatNumber(stage.maxScore)}`}
+          </Box>
+        )}
+      </Box>
+    </Flex>
+  );
+
   return (
     <>
       {activeModule.searchMode && (
@@ -282,6 +364,34 @@ export const DatasetSearchRows = ({
         label={t('chat:response.query_extension_result')}
         value={`${activeModule.extensionResult}`}
       />
+      {activeModule.retrievalTrace &&
+        (activeModule.retrievalTrace.branches.length > 0 ||
+          activeModule.retrievalTrace.pipeline.length > 0) && (
+          <Row
+            label={t('chat:response.retrieval_trace')}
+            rawDomBoxProps={responseRowValueBoxStyles}
+            rawDom={
+              <Box>
+                {activeModule.retrievalTrace.branches.map((branch) => (
+                  <Box key={branch.name} _notLast={{ mb: 3 }}>
+                    <Box fontWeight={'medium'} mb={1}>
+                      {getRetrievalBranchLabel(branch.name)}
+                    </Box>
+                    {branch.stages.map(renderRetrievalStage)}
+                  </Box>
+                ))}
+                {activeModule.retrievalTrace.pipeline.length > 0 && (
+                  <Box mt={activeModule.retrievalTrace.branches.length > 0 ? 3 : 0}>
+                    <Box fontWeight={'medium'} mb={1}>
+                      {t('chat:response.retrieval_pipeline')}
+                    </Box>
+                    {activeModule.retrievalTrace.pipeline.map(renderRetrievalStage)}
+                  </Box>
+                )}
+              </Box>
+            }
+          />
+        )}
       {activeModule.quoteList && activeModule.quoteList.length > 0 && (
         <Row
           label={t('chat:response.search_results', { len: activeModule.quoteList.length })}

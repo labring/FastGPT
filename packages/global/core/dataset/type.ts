@@ -6,6 +6,9 @@ import {
   DatasetStatusEnum,
   DatasetTypeEnum,
   SearchScoreTypeEnum,
+  RetrievalTraceBranchNameEnum,
+  RetrievalTraceStageNameEnum,
+  RetrievalTraceStageStatusEnum,
   TrainingModeEnum,
   CollectionTrainingStatusEnum,
   ChunkSettingModeEnum,
@@ -489,6 +492,31 @@ export const SearchDataResponseQuoteListItemSchema = z.union([
 export type SearchDataResponseQuoteListItemType = z.infer<
   typeof SearchDataResponseQuoteListItemSchema
 >;
+
+export const RetrievalTraceStageSchema = z.object({
+  name: z.enum(RetrievalTraceStageNameEnum).meta({ description: '检索追踪阶段' }),
+  count: z.number().int().nonnegative().meta({ description: '该阶段输出的候选数量' }),
+  status: z
+    .enum(RetrievalTraceStageStatusEnum)
+    .optional()
+    .meta({ description: '可选阶段的执行状态' }),
+  scoreType: z.enum(SearchScoreTypeEnum).optional().meta({ description: '可比分数类型' }),
+  minScore: z.number().optional().meta({ description: '最低可比分数' }),
+  maxScore: z.number().optional().meta({ description: '最高可比分数' })
+});
+export type RetrievalTraceStageType = z.infer<typeof RetrievalTraceStageSchema>;
+
+export const RetrievalTraceBranchSchema = z.object({
+  name: z.enum(RetrievalTraceBranchNameEnum).meta({ description: '并行召回分支' }),
+  stages: z.array(RetrievalTraceStageSchema).meta({ description: '分支内阶段' })
+});
+export type RetrievalTraceBranchType = z.infer<typeof RetrievalTraceBranchSchema>;
+
+export const RetrievalTraceSchema = z.object({
+  branches: z.array(RetrievalTraceBranchSchema).meta({ description: '并行召回分支' }),
+  pipeline: z.array(RetrievalTraceStageSchema).meta({ description: '分支合并后的处理链路' })
+});
+export type RetrievalTraceType = z.infer<typeof RetrievalTraceSchema>;
 
 export const DatasetCiteItemSchema = z
   .object({
