@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { runHTTPTool } from '@fastgpt/service/core/app/http';
+import { getHTTPToolList, runHTTPTool } from '@fastgpt/service/core/app/http';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
 import { serviceEnv } from '@fastgpt/service/env';
 
@@ -13,6 +14,39 @@ describe('SSRF Vulnerability Fix Tests', () => {
 
   afterEach(() => {
     serviceEnv.CHECK_INTERNAL_IP = originalCheckInternalIp;
+  });
+
+  describe('getHTTPToolList', () => {
+    it('should read tools when legacy customHeaders has a non-string value', async () => {
+      const result = await getHTTPToolList({
+        _id: 'http-toolset',
+        type: AppTypeEnum.httpToolSet,
+        modules: [
+          {
+            toolConfig: {
+              httpToolSet: {
+                customHeaders: false,
+                toolList: [
+                  {
+                    name: 'search',
+                    description: 'Search',
+                    path: '/search',
+                    method: 'GET'
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      } as any);
+
+      expect(result).toMatchObject([
+        {
+          name: 'search',
+          id: 'http-http-toolset/search'
+        }
+      ]);
+    });
   });
 
   describe('AWS Metadata Endpoint Protection', () => {

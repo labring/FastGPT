@@ -215,9 +215,19 @@ export async function rewriteAppWorkflowToDetail({
       }
 
       // Tool node
-      if (node.pluginId) {
+      const toolId =
+        node.pluginId ??
+        node.toolConfig?.mcpTool?.toolId ??
+        node.toolConfig?.httpTool?.toolId ??
+        (node.toolConfig?.mcpToolSet && 'toolId' in node.toolConfig.mcpToolSet
+          ? node.toolConfig.mcpToolSet.toolId
+          : undefined) ??
+        (node.toolConfig?.httpToolSet && 'toolId' in node.toolConfig.httpToolSet
+          ? node.toolConfig.httpToolSet.toolId
+          : undefined);
+      if (toolId) {
         const result = await loadToolNode({
-          id: node.pluginId,
+          id: toolId,
           versionId: node.version ?? '',
           source:
             node.source ??
@@ -282,6 +292,7 @@ export async function rewriteAppWorkflowToDetail({
       ) {
         node.inputs = node.inputs.map(projectExternalVariableInput);
       }
+
       // Agent, parse subapp
       if (node.flowNodeType === FlowNodeTypeEnum.agent) {
         // Tool load
@@ -341,7 +352,11 @@ export async function rewriteAppWorkflowToDetail({
                 return {
                   ...data,
                   source: tool.source ?? data.source,
-                  toolConfig: tool.toolConfig ?? data.toolConfig,
+                  toolConfig:
+                    (tool.toolConfig?.mcpToolSet && 'toolId' in tool.toolConfig.mcpToolSet) ||
+                    (tool.toolConfig?.httpToolSet && 'toolId' in tool.toolConfig.httpToolSet)
+                      ? data.toolConfig
+                      : (tool.toolConfig ?? data.toolConfig),
                   inputs: mergedInputs
                 };
               } else {

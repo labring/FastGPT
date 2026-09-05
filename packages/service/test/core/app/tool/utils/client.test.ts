@@ -4,13 +4,15 @@ import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
 
 const mocks = vi.hoisted(() => ({
   findById: vi.fn(),
+  find: vi.fn(),
   getAppVersionById: vi.fn(),
   getSystemToolDetail: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/app/schema', () => ({
   MongoApp: {
-    findById: mocks.findById
+    findById: mocks.findById,
+    find: mocks.find
   }
 }));
 
@@ -28,6 +30,29 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
 }));
 
 import { getClientToolPreviewNode } from '@fastgpt/service/core/app/tool/utils/client';
+
+const runtimeSchemaFieldNames = new Set([
+  'inputSchema',
+  'outputSchema',
+  'requestSchema',
+  'responseSchema',
+  'secretSchema',
+  'jsonSchema',
+  'customJsonSchema',
+  'apiSchemaStr'
+]);
+
+const getRuntimeSchemaFieldPaths = (value: unknown, path = '$'): string[] => {
+  if (Array.isArray(value)) {
+    return value.flatMap((item, index) => getRuntimeSchemaFieldPaths(item, `${path}[${index}]`));
+  }
+  if (!value || typeof value !== 'object') return [];
+
+  return Object.entries(value).flatMap(([key, item]) => [
+    ...(runtimeSchemaFieldNames.has(key) ? [`${path}.${key}`] : []),
+    ...getRuntimeSchemaFieldPaths(item, `${path}.${key}`)
+  ]);
+};
 
 describe('getClientToolPreviewNode', () => {
   beforeEach(() => {
@@ -78,31 +103,28 @@ describe('getClientToolPreviewNode', () => {
         type: AppTypeEnum.httpToolSet,
         name: 'HTTP Tools',
         avatar: 'http.svg',
-        intro: 'HTTP toolset'
-      })
-    });
-    mocks.getAppVersionById.mockResolvedValueOnce({
-      nodes: [
-        {
-          toolConfig: {
-            httpToolSet: {
-              toolList: [
-                {
-                  name: 'search',
-                  description: 'Search tool',
-                  requestSchema: { type: 'object', properties: { q: { type: 'string' } } },
-                  inputSchema: { type: 'object', properties: { q: { type: 'string' } } },
-                  outputSchema: { type: 'object', properties: { result: { type: 'string' } } }
-                }
-              ]
+        intro: 'HTTP toolset',
+        modules: [
+          {
+            toolConfig: {
+              httpToolSet: {
+                apiSchemaStr: '{"openapi":"3.1.0"}',
+                toolList: [
+                  {
+                    name: 'search',
+                    description: 'Search tool',
+                    requestSchema: { type: 'object', properties: { q: { type: 'string' } } },
+                    inputSchema: { type: 'object', properties: { q: { type: 'string' } } },
+                    outputSchema: { type: 'object', properties: { result: { type: 'string' } } },
+                    path: '/search',
+                    method: 'GET'
+                  }
+                ]
+              }
             }
           }
-        }
-      ],
-      edges: [],
-      chatConfig: {},
-      versionId: 'version-id',
-      versionName: 'Version 1'
+        ]
+      })
     });
 
     const result = await getClientToolPreviewNode({
@@ -114,11 +136,58 @@ describe('getClientToolPreviewNode', () => {
     expect(result).not.toHaveProperty('inputSchema');
     expect(result).not.toHaveProperty('outputSchema');
     expect(result).not.toHaveProperty('secretSchema');
+    expect(result.inputs[0]).not.toHaveProperty('customJsonSchema');
     expect(result.toolConfig?.httpTool).toEqual({
       toolId: 'http-507f1f77bcf86cd799439011/search'
     });
     expect(result.inputs[0]?.key).toBe('q');
     expect((result as any).jsonSchema).toBeUndefined();
+    expect(getRuntimeSchemaFieldPaths(result)).toEqual([]);
+  });
+
+  it('hydrates legacy MCP toolset data under toolConfig', async () => {
+    const appId = '507f1f77bcf86cd799439031';
+    mocks.findById.mockReturnValueOnce({
+      lean: vi.fn().mockResolvedValue({
+        _id: appId,
+        teamId: '507f1f77bcf86cd799439032',
+        type: AppTypeEnum.mcpToolSet,
+        name: 'Legacy MCP Tools',
+        avatar: 'mcp.svg',
+        intro: 'Legacy MCP toolset',
+        modules: [{ flowNodeType: 'toolSet', inputs: [] }]
+      })
+    });
+    mocks.find.mockReturnValueOnce({
+      lean: vi.fn().mockResolvedValue([
+        {
+          name: 'search',
+          modules: [
+            {
+              inputs: [
+                {
+                  value: {
+                    name: 'search',
+                    description: 'Search tool',
+                    inputSchema: { type: 'object' },
+                    url: 'https://mcp.example.com'
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ])
+    });
+
+    const result = await getClientToolPreviewNode({ appId, lang: 'en' });
+
+    expect(result.toolConfig?.mcpToolSet).toMatchObject({
+      url: '',
+      toolList: [{ name: 'search', description: 'Search tool' }]
+    });
+    expect(JSON.stringify(result.toolConfig)).not.toContain('inputSchema');
+    expect(getRuntimeSchemaFieldPaths(result)).toEqual([]);
   });
 
   it('applies defaultToAgentGenerated over a workflow plugin input selection', async () => {

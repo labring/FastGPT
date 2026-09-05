@@ -10,13 +10,13 @@ import {
 import { migrateSystemConfigToChatConfig } from './systemConfig';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
 import { NodeInputKeyEnum, NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../../constants';
+import { StoreSecretValueTypeSchema } from '../../../../common/secret/type';
 import {
   getElseIFLabel,
   getHandleId,
   isValidReferenceValueFormat,
   nodeInputIsReference
 } from '../../utils';
-import type { NodeToolConfigType } from '../../type/node';
 
 // 这些旧插件没有持久化 catchError，但当前运行时需要显式开启错误分支。
 const legacyCatchErrorPluginIds = new Set([
@@ -48,6 +48,7 @@ const migrateLegacyCanvasStructure = (workflow: CanonicalWorkflowData): Canonica
     const legacyMcpToolSet = shouldMigrateLegacyMcpToolSet
       ? (legacyToolSetValue as Record<string, unknown>)
       : undefined;
+    const legacyHeaderSecret = StoreSecretValueTypeSchema.safeParse(legacyMcpToolSet?.headerSecret);
     const inputs = node.inputs.map((input) => {
       // 文件列表实际是 JSON 数组；旧的单行 input 控件会导致编辑和解析类型不匹配。
       if (
@@ -149,13 +150,7 @@ const migrateLegacyCanvasStructure = (workflow: CanonicalWorkflowData): Canonica
               ...node.toolConfig,
               mcpToolSet: {
                 url: typeof legacyMcpToolSet.url === 'string' ? legacyMcpToolSet.url : '',
-                ...(legacyMcpToolSet.headerSecret === undefined
-                  ? {}
-                  : {
-                      headerSecret: legacyMcpToolSet.headerSecret as NonNullable<
-                        NodeToolConfigType['mcpToolSet']
-                      >['headerSecret']
-                    }),
+                ...(legacyHeaderSecret.success ? { headerSecret: legacyHeaderSecret.data } : {}),
                 toolList: Array.isArray(legacyMcpToolSet.toolList) ? legacyMcpToolSet.toolList : []
               }
             }

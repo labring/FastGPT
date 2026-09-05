@@ -6,7 +6,9 @@ import {
 } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
+import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { MongoApp } from './schema';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
@@ -15,8 +17,16 @@ import $RefParser from '@apidevtools/json-schema-ref-parser';
 import { getLogger, LogCategories } from '../../common/logger';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
 import { decodeMcpToolSetNodesFromStorage } from './jsonSchemaStorage';
+import { McpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/type/node';
 
 const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
+
+type McpChildToolType = McpToolConfigType & {
+  id: string;
+  avatar: string;
+  url?: string;
+  headerSecret?: StoreSecretValueType;
+};
 
 const MCP_SAFE_FETCH_MAX_REDIRECTS = 5;
 const MCP_REDIRECT_STATUS_CODES = new Set([301, 302, 303, 307, 308]);
@@ -408,14 +418,17 @@ export class MCPClient {
   }
 }
 
-export const getMCPChildren = async (app: AppSchemaType) => {
-  const modules = decodeMcpToolSetNodesFromStorage(app.modules);
-  const isNewMcp = !!modules[0].toolConfig?.mcpToolSet;
-  const id = String(app._id);
+/** Read the current or legacy MCP child tools from a toolset app. */
+export const getMCPChildren = async (app: AppSchemaType): Promise<McpChildToolType[]> => {
+  if (app.type !== AppTypeEnum.mcpToolSet) return [];
 
-  if (isNewMcp) {
+  const id = String(app._id);
+  const modules = decodeMcpToolSetNodesFromStorage(app.modules);
+  const toolSet = McpToolSetRuntimeConfigSchema.safeParse(modules[0]?.toolConfig?.mcpToolSet).data;
+
+  if (toolSet) {
     return (
-      modules[0].toolConfig?.mcpToolSet?.toolList.map((item) => ({
+      toolSet.toolList.map((item) => ({
         ...item,
         id: `${AppToolSourceEnum.mcp}-${id}/${item.name}`,
         avatar: app.avatar
@@ -431,11 +444,14 @@ export const getMCPChildren = async (app: AppSchemaType) => {
     return children.map((item) => {
       const node = item.modules[0];
       const toolData: McpToolDataType = node.inputs[0].value;
+      const { headerSecret, ...toolConfig } = toolData;
 
       return {
         avatar: app.avatar,
         id: `${AppToolSourceEnum.mcp}-${id}/${item.name}`,
-        ...toolData
+        ...toolConfig,
+        // Legacy MCP child apps stored one token instead of named header secrets.
+        ...(headerSecret ? { headerSecret: { Authorization: headerSecret } } : {})
       };
     });
   }

@@ -15,9 +15,16 @@ import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { pushTrack } from '../../../../../../../common/middle/tracks/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { getAppVersionById } from '../../../../../../app/version/controller';
-import { assertMCPUrlNotInternal, MCPClient } from '../../../../../../app/mcp';
-import { runHTTPTool } from '../../../../../../app/http';
+import { assertMCPUrlNotInternal, getMCPChildren, MCPClient } from '../../../../../../app/mcp';
+import { getHTTPToolList, runHTTPTool } from '../../../../../../app/http';
+import {
+  decodeHttpToolSetNodesFromStorage,
+  decodeMcpToolSetNodesFromStorage
+} from '../../../../../../app/jsonSchemaStorage';
+import {
+  HttpToolSetRuntimeConfigSchema,
+  McpToolSetRuntimeConfigSchema
+} from '@fastgpt/global/core/workflow/type/node';
 import { isPluginAnswerType, parseToolId } from '../../../../child/runTool';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
@@ -125,13 +132,14 @@ export const dispatchTool = async ({
      * Agent 工具调用也会按持久化 toolId 解析 HTTP/MCP 父工具集。
      * 这里必须使用当前运行工作流的 tmbId 做运行时授权，防止绕过保存阶段的脏引用被模型调用执行。
      */
-    const authRuntimeToolset = async (parentId: string) => {
-      await authAppByTmbId({
-        tmbId: runningAppInfo.tmbId,
-        appId: parentId,
-        per: ReadPermissionVal
-      });
-    };
+    const authRuntimeToolset = async (parentId: string) =>
+      (
+        await authAppByTmbId({
+          tmbId: runningUserInfo.tmbId,
+          appId: parentId,
+          per: ReadPermissionVal
+        })
+      ).app;
 
     if (toolConfig?.systemTool?.toolId) {
       const toolSource = getSystemToolSource();
@@ -246,19 +254,25 @@ export const dispatchTool = async ({
       if (!parentId || !toolName) {
         return Promise.reject(`Invalid MCP tool id: ${toolConfig.mcpTool.toolId}`);
       }
-      await authRuntimeToolset(parentId);
-
-      const mcpToolSet = toolConfig.mcpToolSet;
-      if (!mcpToolSet) {
-        return Promise.reject(`MCP tool set is missing from runtime node`);
+      const app = await authRuntimeToolset(parentId);
+      const mcpToolSet = McpToolSetRuntimeConfigSchema.safeParse(
+        decodeMcpToolSetNodesFromStorage(app.modules)[0]?.toolConfig?.mcpToolSet
+      ).data;
+      const mcpToolList = await getMCPChildren(app);
+      if (!mcpToolSet && !mcpToolList.length) {
+        return Promise.reject(`MCP tool set is missing`);
       }
       const mcpTool = getToolNameCandidates(toolName)
-        .map((name) => mcpToolSet.toolList.find((tool) => tool.name === name))
+        .map((name) => mcpToolList.find((tool) => tool.name === name))
         .find(Boolean);
       if (!mcpTool) {
         return Promise.reject(`MCP tool not found: ${toolConfig.mcpTool.toolId}`);
       }
-      const { headerSecret, url } = mcpToolSet;
+      const url = mcpToolSet?.url ?? mcpTool.url;
+      const headerSecret = mcpToolSet?.headerSecret ?? mcpTool.headerSecret;
+      if (!url) {
+        return Promise.reject('MCP tool set URL is missing');
+      }
 
       await assertMCPUrlNotInternal(url);
 
@@ -284,18 +298,16 @@ export const dispatchTool = async ({
       if (!parentId || !toolName) {
         return Promise.reject(`Invalid HTTP tool id: ${toolConfig.httpTool.toolId}`);
       }
-      await authRuntimeToolset(parentId);
-
-      const toolset = await getAppVersionById({
-        appId: parentId,
-        versionId: version
-      });
-      const toolSetData = toolset.nodes[0].toolConfig?.httpToolSet;
-      if (!toolSetData || typeof toolSetData !== 'object') {
+      const app = await authRuntimeToolset(parentId);
+      const toolSetData = HttpToolSetRuntimeConfigSchema.safeParse(
+        decodeHttpToolSetNodesFromStorage(app.modules)[0]?.toolConfig?.httpToolSet
+      ).data;
+      const toolList = await getHTTPToolList(app);
+      if (!toolSetData && !toolList.length) {
         return Promise.reject(`HTTP tool set not found: ${toolConfig.httpTool.toolId}`);
       }
 
-      const { headerSecret, baseUrl, toolList, customHeaders } = toolSetData;
+      const { headerSecret, baseUrl, customHeaders } = toolSetData ?? {};
 
       const httpTool = getToolNameCandidates(toolName)
         .map((name) => toolList?.find((tool) => tool.name === name))

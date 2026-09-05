@@ -21,6 +21,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
 import { formatModels } from '@fastgpt/global/core/workflow/utils';
 import { getSystemDefaultModelIds } from '@fastgpt/service/core/ai/model';
+import { StoreWorkflowNodeItemTypeSchema } from '@fastgpt/global/core/workflow/type/node';
 import {
   PublishAppBodySchema,
   PublishAppQuerySchema,
@@ -56,6 +57,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     nodes: normalizedWorkflow.nodes,
     teamId
   });
+  const storageNodes = StoreWorkflowNodeItemTypeSchema.array().parse(normalizedWorkflow.nodes);
   if (isPublish) {
     await validatePublishAppAgentSkillReadPermissions({
       nodes: normalizedWorkflow.nodes,
@@ -78,7 +80,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
         {
           tmbId,
           appId,
-          nodes: normalizedWorkflow.nodes,
+          nodes: storageNodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
           versionName: i18nT('app:auto_save'),
@@ -92,7 +94,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       await MongoApp.updateOne(
         { _id: appId },
         {
-          modules: normalizedWorkflow.nodes,
+          modules: storageNodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
           updateTime: new Date()
@@ -124,7 +126,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       [
         {
           appId,
-          nodes: normalizedWorkflow.nodes,
+          nodes: storageNodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
           isPublish,
@@ -138,7 +140,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
 
     // update app
     const setUpdate = {
-      modules: normalizedWorkflow.nodes,
+      modules: storageNodes,
       edges: normalizedWorkflow.edges,
       chatConfig: normalizedWorkflow.chatConfig,
       updateTime: new Date(),
