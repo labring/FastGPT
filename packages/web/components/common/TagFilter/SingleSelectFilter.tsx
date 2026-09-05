@@ -6,6 +6,7 @@ import MyPopover from '../MyPopover';
 import MyIcon from '../Icon';
 import Avatar from '../Avatar';
 import type { IconNameType } from '../Icon/type';
+import MyTooltip from '../MyTooltip';
 import FilterButton, { useFilterTriggerWidth } from './FilterButton';
 import FilterSearchInput, {
   FILTER_SEARCH_THRESHOLD,
@@ -128,9 +129,11 @@ function SingleSelectFilter<T>({
           sx={{ '& path': { fill: 'currentColor' } }}
         />
       )}
-      <Box minW={0} overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
-        {selected.label}
-      </Box>
+      <MyTooltip label={selected.label} showOnlyWhenOverflow shouldWrapChildren={false}>
+        <Box minW={0} overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
+          {selected.label}
+        </Box>
+      </MyTooltip>
     </Flex>
   ) : hasLoadedOptions ? (
     <Box color={'red.600'} whiteSpace={'nowrap'}>
@@ -198,7 +201,7 @@ function SingleSelectFilter<T>({
                     onClose();
                   }}
                 >
-                  <Flex alignItems={'center'} gap={2} minW={0}>
+                  <Flex alignItems={'center'} gap={2} minW={0} overflow={'hidden'}>
                     {item.avatar && <Avatar src={item.avatar} w={'1rem'} />}
                     {item.icon && (
                       <MyIcon
@@ -210,7 +213,16 @@ function SingleSelectFilter<T>({
                         sx={{ '& path': { fill: 'currentColor' } }}
                       />
                     )}
-                    <Box whiteSpace={'nowrap'}>{item.label}</Box>
+                    <MyTooltip label={item.label} showOnlyWhenOverflow shouldWrapChildren={false}>
+                      <Box
+                        minW={0}
+                        overflow={'hidden'}
+                        textOverflow={'ellipsis'}
+                        whiteSpace={'nowrap'}
+                      >
+                        {item.label}
+                      </Box>
+                    </MyTooltip>
                   </Flex>
                   {item.extra && (
                     <Box flexShrink={0} color={'myGray.500'} fontWeight={'normal'}>

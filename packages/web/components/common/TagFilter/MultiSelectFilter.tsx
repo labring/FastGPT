@@ -5,6 +5,7 @@ import { useTranslation } from 'next-i18next';
 import MyPopover from '../MyPopover';
 import MyIcon from '../Icon';
 import Avatar from '../Avatar';
+import MyTooltip from '../MyTooltip';
 import FilterButton, { FilterSummaryValue, useFilterTriggerWidth } from './FilterButton';
 import FilterSearchInput, {
   FILTER_SEARCH_THRESHOLD,
@@ -128,7 +129,7 @@ function MultiSelectFilter<T extends string>({
         _hover={{ bg: 'myGray.05' }}
         onClick={() => onChange(toggleMultiSelectFilterValue(value, item.value))}
       >
-        <Flex alignItems={'center'} gap={2}>
+        <Flex alignItems={'center'} gap={2} minW={0} overflow={'hidden'}>
           <Checkbox
             isChecked={checked}
             pointerEvents={'none'}
@@ -140,9 +141,18 @@ function MultiSelectFilter<T extends string>({
             }}
           />
           {item.avatar && <Avatar src={item.avatar} w={'16px'} h={'16px'} borderRadius={'full'} />}
-          <Box fontWeight={'medium'} color={'myGray.600'} whiteSpace={'nowrap'}>
-            {item.label}
-          </Box>
+          <MyTooltip label={item.label} showOnlyWhenOverflow shouldWrapChildren={false}>
+            <Box
+              minW={0}
+              overflow={'hidden'}
+              textOverflow={'ellipsis'}
+              fontWeight={'medium'}
+              color={'myGray.600'}
+              whiteSpace={'nowrap'}
+            >
+              {item.label}
+            </Box>
+          </MyTooltip>
         </Flex>
         {item.extra && (
           <Box flexShrink={0} color={'myGray.500'} fontWeight={'normal'}>

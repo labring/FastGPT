@@ -61,7 +61,14 @@ const ModelLabel = ({
 }) => {
   const multimodalEmbedding = model.type === ModelTypeEnum.embedding && !!model.config.vision;
   return (
-    <Flex alignItems={'center'} justifyContent={'space-between'} py={1} w={'100%'} minW={0}>
+    <Flex
+      data-preserve-width
+      alignItems={'center'}
+      justifyContent={'space-between'}
+      py={1}
+      w={'100%'}
+      minW={0}
+    >
       <Flex alignItems={'center'} flex={'1 1 0'} minW={0}>
         <Avatar
           borderRadius={'0'}
@@ -70,9 +77,17 @@ const ModelLabel = ({
           fallbackSrc={HUGGING_FACE_ICON}
           w={avatarSize}
         />
-        <Box noOfLines={noOfLines ?? 1} minW={0} overflow={'hidden'}>
-          {model.name}
-        </Box>
+        <MyTooltip label={model.name} showOnlyWhenOverflow shouldWrapChildren={false}>
+          <Box
+            data-preserve-width
+            w={'100%'}
+            noOfLines={noOfLines ?? 1}
+            minW={0}
+            overflow={'hidden'}
+          >
+            {model.name}
+          </Box>
+        </MyTooltip>
       </Flex>
       {showTags && (model.testMode || multimodalEmbedding) && (
         <Flex alignItems={'center'} gap={1} ml={2} flexShrink={0}>
