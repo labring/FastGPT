@@ -222,9 +222,11 @@ const AIModelSelector = ({
         </Box>
       </MyTooltip>
     ) : invalidValue ? (
-      <Box color={'red.500'} noOfLines={noOfLines ?? 1}>
-        {t('common:model_disabled', { model: currentValue })}
-      </Box>
+      <MyTooltip label={t('common:model_delisted')} showOnlyWhenOverflow shouldWrapChildren={false}>
+        <Box data-preserve-width w={'100%'} color={'red.500'} noOfLines={noOfLines ?? 1}>
+          {t('common:model_delisted')}
+        </Box>
+      </MyTooltip>
     ) : legacySelectedItem ? (
       <>{legacySelectedItem.label}</>
     ) : undefined;
