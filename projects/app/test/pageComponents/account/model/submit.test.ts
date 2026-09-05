@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/web/core/ai/config', () => mocks);
 
 import {
+  prepareDraftSystemModelForTest,
   submitCreatedSystemModel,
   submitUpdatedSystemModel
 } from '@/pageComponents/account/model/submit';
@@ -39,6 +40,25 @@ describe('admin model submit controllers', () => {
     expect(mocks.putSystemModel).not.toHaveBeenCalled();
     expect(mocks.putReplaceSystemModelChannels).not.toHaveBeenCalled();
     expect(mocks.postSystemModel.mock.calls[0]?.[0].modelData).not.toHaveProperty('modelId');
+  });
+
+  it('preserves the complete current draft when preparing a channel test', () => {
+    const draft = {
+      type: ModelTypeEnum.tts,
+      provider: 'Custom provider',
+      model: '  draft-tts  ',
+      name: 'Draft alias',
+      scope: ModelScopeEnum.system,
+      isActive: false,
+      requestUrl: 'https://draft.example.com/audio',
+      requestAuth: 'draft-secret',
+      config: { voices: [{ label: 'Alloy', value: 'alloy' }] }
+    } as const;
+
+    expect(prepareDraftSystemModelForTest(draft)).toEqual({
+      ...draft,
+      model: 'draft-tts'
+    });
   });
 
   it('uses only channel replacement and PUT update for an existing model', async () => {

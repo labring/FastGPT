@@ -36,14 +36,12 @@ export type SingleSelectFilterProps<T> = {
   listMaxH?: string | number;
 };
 
-/**
- * 从选项里取出当前值对应项，找不到则回退第一项。
- */
+/** 从选项里取出当前值对应项；无效值必须显式暴露，不能静默回退。 */
 export function resolveSingleSelectOption<T>(
   options: Array<SingleSelectFilterOption<T>>,
   value: T
 ): SingleSelectFilterOption<T> | undefined {
-  return options.find((item) => item.value === value) ?? options[0];
+  return options.find((item) => item.value === value);
 }
 
 /**
@@ -71,7 +69,11 @@ function SingleSelectFilter<T>({
     () => filterSelectOptionsBySearch(options, searchKey),
     [options, searchKey]
   );
-  const { triggerRef, triggerWidth } = useFilterTriggerWidth(selected?.label);
+  const invalidValueLabel = t('common:invalid_value');
+  const hasLoadedOptions = options.length > 0;
+  const { triggerRef, triggerWidth } = useFilterTriggerWidth(
+    selected?.label ?? (hasLoadedOptions ? invalidValueLabel : undefined)
+  );
   const listScrollable = showSearch || visibleOptions.length > FILTER_SEARCH_THRESHOLD;
 
   useLayoutEffect(() => {
@@ -104,6 +106,10 @@ function SingleSelectFilter<T>({
         {selected.label}
       </Box>
     </Flex>
+  ) : hasLoadedOptions ? (
+    <Box color="red.600" whiteSpace="nowrap">
+      {invalidValueLabel}
+    </Box>
   ) : null;
 
   return (

@@ -27,7 +27,7 @@ import { useFixedTableHeader } from '@fastgpt/web/hooks/useFixedTableHeader';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import { useSet } from 'ahooks';
+import { useLockFn, useSet } from 'ahooks';
 import { useMemo, useState } from 'react';
 
 export type ModelChannelModalModel = {
@@ -306,9 +306,10 @@ const ModelChannelModal = ({
 }) => {
   const { t } = useClientTranslation('config_model');
   const [selection, setSelection] = useState(selectedChannelIds);
-  const { runAsync: confirm, loading: confirming } = useRequest(async () => {
-    await onConfirm(selection);
-  });
+  const { runAsync: confirmRequest, loading: confirming } = useRequest(async () =>
+    onConfirm(selection)
+  );
+  const confirm = useLockFn(confirmRequest);
 
   return (
     <MyModal

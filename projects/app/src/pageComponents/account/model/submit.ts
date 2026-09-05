@@ -8,6 +8,18 @@ import {
   putSystemModel
 } from '@/web/core/ai/config';
 
+/** 保留完整未保存草稿，仅规范测试接口要求的模型标识和回退别名。 */
+export const prepareDraftSystemModelForTest = (
+  modelData: SystemModelDocumentDataType
+): SystemModelDocumentDataType => {
+  const model = modelData.model.trim();
+  return {
+    ...modelData,
+    model,
+    name: modelData.name || model
+  };
+};
+
 /** 新建模型只调用创建接口，入参类型从结构上排除 modelId。 */
 export const submitCreatedSystemModel = ({
   modelData,

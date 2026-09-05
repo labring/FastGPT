@@ -905,6 +905,7 @@
   "model_loading_label": "Requesting models",
   "model_catalog_load_failed": "The model catalog failed to load. Refresh the page and try again.",
   "model_not_exist": "Model does not exist",
+  "invalid_value": "Invalid value",
   "model_disabled": "{{model}} model has been disabled",
   "month_text": "month",
   "move.confirm": "Confirm move",

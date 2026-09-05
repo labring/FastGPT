@@ -109,10 +109,7 @@ export function DELETE<T = undefined>(url: string, data = {}): Promise<T> {
 
 // ====== API ======
 export const getChannelList = () =>
-  GET<ChannelListResponseType>('/channels/all', {
-    page: 1,
-    perPage: 1000
-  }).then((res) => {
+  GET<ChannelListResponseType>('/channels/all').then((res) => {
     res.sort((a, b) => b.created_at - a.created_at || b.id - a.id);
     return res;
   });

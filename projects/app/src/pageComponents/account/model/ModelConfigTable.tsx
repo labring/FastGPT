@@ -52,7 +52,7 @@ import {
   type ModelProviderItemType
 } from '@fastgpt/global/core/ai/provider';
 import type { AdminSystemModelListItem } from '@fastgpt/global/openapi/admin/core/ai/model/api';
-import { useSet } from 'ahooks';
+import { useLockFn, useSet } from 'ahooks';
 import ModelChannelCount from './ModelChannelCount';
 import ModelChannelModal from './ModelChannelModal';
 import ModelEditModal from './ModelEditModal';
@@ -79,11 +79,13 @@ const ModelEditButton = React.memo(
   ({
     model,
     providers,
-    onSuccess
+    onSuccess,
+    isDisabled
   }: {
     model: AdminSystemModelListItem;
     providers: ModelProviderItemType[];
     onSuccess: () => Promise<void>;
+    isDisabled?: boolean;
   }) => {
     const { t } = useClientTranslation('config_model');
     const [isOpen, setIsOpen] = useState(false);
@@ -93,6 +95,8 @@ const ModelEditButton = React.memo(
         <MyIconButton
           icon={'common/settingLight'}
           tip={t('config_model:model.edit_model')}
+          pointerEvents={isDisabled ? 'none' : undefined}
+          opacity={isDisabled ? 0.5 : 1}
           onClick={() => setIsOpen(true)}
         />
         {isOpen && (
@@ -384,10 +388,22 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     }
   );
 
-  const { runAsync: deleteModel } = useRequest(deleteSystemModel, {
+  const [channelMutationLoading, setChannelMutationLoading] = useState(false);
+  const runChannelMutation = useLockFn(async (operation: () => Promise<unknown>) => {
+    setChannelMutationLoading(true);
+    try {
+      return await operation();
+    } finally {
+      setChannelMutationLoading(false);
+    }
+  });
+
+  const { runAsync: deleteModelRequest } = useRequest(deleteSystemModel, {
     onSuccess: () => void refreshModels().catch(() => {}),
     successToast: t('common:delete_success')
   });
+  const deleteModel = (data: Parameters<typeof deleteSystemModel>[0]) =>
+    runChannelMutation(() => deleteModelRequest(data));
   const clearSelection = useCallback(() => {
     setSelectedItems([]);
   }, [setSelectedItems]);
@@ -407,14 +423,19 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       await refreshModels().catch(() => {});
     }
   );
-  const { runAsync: deleteModels, loading: deletingModels } = useRequest(deleteSystemModels, {
-    manual: true,
-    onSuccess: () => {
-      clearSelection();
-      void refreshModels().catch(() => {});
-    },
-    successToast: t('common:delete_success')
-  });
+  const { runAsync: deleteModelsRequest, loading: deletingModels } = useRequest(
+    deleteSystemModels,
+    {
+      manual: true,
+      onSuccess: () => {
+        clearSelection();
+        void refreshModels().catch(() => {});
+      },
+      successToast: t('common:delete_success')
+    }
+  );
+  const deleteModels = (data: Parameters<typeof deleteSystemModels>[0]) =>
+    runChannelMutation(() => deleteModelsRequest(data));
   const { openConfirm: openBatchDeleteConfirm, ConfirmModal: BatchDeleteConfirmModal } = useConfirm(
     {
       type: 'delete'
@@ -473,6 +494,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
               providers={modelProviders}
               defaultProvider={modelProviders[0]?.id ?? 'OpenAI'}
               onSuccess={refreshModels}
+              isDisabled={channelMutationLoading}
               w={['100%', 'auto']}
               minW={0}
               px={[2, 4]}
@@ -639,10 +661,12 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                       </Td>
                       {showBilling && <Td fontSize={'sm'}>{item.priceLabel}</Td>}
                       <Td fontSize={'sm'}>
-                        <ModelChannelCount
-                          channels={item.channels}
-                          onClick={() => setChannelModel(item)}
-                        />
+                        <Box pointerEvents={channelMutationLoading ? 'none' : undefined}>
+                          <ModelChannelCount
+                            channels={item.channels}
+                            onClick={() => setChannelModel(item)}
+                          />
+                        </Box>
                       </Td>
                       <Td fontSize={'sm'}>
                         <Flex data-row-action w={'32px'} justifyContent={'center'}>
@@ -677,11 +701,16 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                             model={item}
                             providers={modelProviders}
                             onSuccess={refreshModels}
+                            isDisabled={channelMutationLoading}
                           />
                           <PopoverConfirm
                             Trigger={
-                              <Box>
-                                <MyIconButton icon={'delete'} hoverColor={'red.500'} />
+                              <Box pointerEvents={channelMutationLoading ? 'none' : undefined}>
+                                <MyIconButton
+                                  icon={'delete'}
+                                  hoverColor={'red.500'}
+                                  opacity={channelMutationLoading ? 0.5 : 1}
+                                />
                               </Box>
                             }
                             type="delete"
@@ -738,7 +767,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                   <Button
                     variant="whiteBase"
                     color="red.600"
-                    isLoading={deletingModels}
+                    isLoading={deletingModels || channelMutationLoading}
                     onClick={() =>
                       openBatchDeleteConfirm({
                         customContent: t('config_model:model.batch_delete_confirm', {
@@ -767,7 +796,9 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
           selectedChannelIds={channelModel.channels.map((channel) => channel.id)}
           onClose={() => setChannelModel(undefined)}
           onConfirm={async (channelIds) => {
-            await putReplaceSystemModelChannels({ modelId: channelModel.modelId, channelIds });
+            await runChannelMutation(() =>
+              putReplaceSystemModelChannels({ modelId: channelModel.modelId, channelIds })
+            );
             setChannelModel(undefined);
             await refreshModels().catch(() => {});
           }}

@@ -38,7 +38,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import ModelTabHeader from '../ModelTabHeader';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useFixedTableHeader } from '@fastgpt/web/hooks/useFixedTableHeader';
-import { useSet } from 'ahooks';
+import { useLockFn, useSet } from 'ahooks';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const EditChannelModal = dynamic(() => import('./EditChannelModal'), { ssr: false });
@@ -65,15 +65,26 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   });
 
   const [editChannel, setEditChannel] = useState<ChannelInfoType>();
+  const [channelMutationLoading, setChannelMutationLoading] = useState(false);
+  const runChannelMutation = useLockFn(async (operation: () => Promise<unknown>) => {
+    setChannelMutationLoading(true);
+    try {
+      return await operation();
+    } finally {
+      setChannelMutationLoading(false);
+    }
+  });
 
-  const { runAsync: updateChannel, loading: loadingUpdateChannel } = useRequest(putChannel, {
+  const { runAsync: updateChannelRequest, loading: loadingUpdateChannel } = useRequest(putChannel, {
     manual: true,
     onSuccess: () => {
       refreshChannelList();
     }
   });
+  const updateChannel = (data: Parameters<typeof putChannel>[0]) =>
+    runChannelMutation(() => updateChannelRequest(data));
   const [updatingChannelIds, updatingChannelIdsDispatch] = useSet<number>();
-  const { runAsync: updateChannelStatus } = useRequest(
+  const { runAsync: updateChannelStatusRequest } = useRequest(
     async ({
       channelId,
       channelName,
@@ -102,20 +113,28 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       }
     }
   );
+  const updateChannelStatus = (data: Parameters<typeof updateChannelStatusRequest>[0]) =>
+    runChannelMutation(() => updateChannelStatusRequest(data));
 
   const { openConfirm, ConfirmModal } = useConfirm({
     type: 'delete'
   });
-  const { runAsync: onDeleteChannel, loading: loadingDeleteChannel } = useRequest(deleteChannel, {
-    manual: true,
-    onSuccess: () => {
-      refreshChannelList();
+  const { runAsync: deleteChannelRequest, loading: loadingDeleteChannel } = useRequest(
+    deleteChannel,
+    {
+      manual: true,
+      onSuccess: () => {
+        refreshChannelList();
+      }
     }
-  });
+  );
+  const onDeleteChannel = (channelId: number) =>
+    runChannelMutation(() => deleteChannelRequest(channelId));
 
   const [modelTestData, setTestModelData] = useState<{ channelId: number; models: string[] }>();
 
-  const isLoading = loadingChannelList || loadingUpdateChannel || loadingDeleteChannel;
+  const isLoading =
+    loadingChannelList || loadingUpdateChannel || loadingDeleteChannel || channelMutationLoading;
   const { headerContainerRef, bodyContainerRef, headerTableWidth } = useFixedTableHeader();
 
   return (
@@ -125,6 +144,7 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
           <Button
             w={['100%', 'auto']}
             variant={'primary'}
+            isDisabled={channelMutationLoading}
             onClick={() => setEditChannel(defaultChannel)}
           >
             {t('config_model:create_channel')}
@@ -222,6 +242,7 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                           <Switch
                             size={'sm'}
                             cursor={'pointer'}
+                            isDisabled={channelMutationLoading}
                             isChecked={item.status === ChannelStatusEnum.ChannelStatusEnabled}
                             onChange={(e) =>
                               updateChannelStatus({
@@ -244,6 +265,7 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                         max={100}
                         h={'32px'}
                         w={'80px'}
+                        isDisabled={channelMutationLoading}
                         onBlur={(e) => {
                           const val = (() => {
                             if (!e) return 1;
@@ -271,6 +293,8 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                         <MyIconButton
                           icon={'common/settingLight'}
                           tip={t('config_model:edit')}
+                          pointerEvents={channelMutationLoading ? 'none' : undefined}
+                          opacity={channelMutationLoading ? 0.5 : 1}
                           onClick={() => setEditChannel(item)}
                         />
                         <MyIconButton
@@ -278,6 +302,8 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                           tip={t('common:Delete')}
                           hoverColor={'red.500'}
                           hoverBg={'red.50'}
+                          pointerEvents={channelMutationLoading ? 'none' : undefined}
+                          opacity={channelMutationLoading ? 0.5 : 1}
                           onClick={() =>
                             openConfirm({
                               onConfirm: () => onDeleteChannel(item.id),

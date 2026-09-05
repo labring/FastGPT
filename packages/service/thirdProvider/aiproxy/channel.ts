@@ -9,11 +9,20 @@ const AIProxyChannelSchema = z
     type: z.number().int(),
     name: z.string(),
     base_url: z.string().optional(),
+    proxy_url: z.string().nullable().optional(),
     // AI Proxy 会把未配置的模型映射返回为 null，更新时需原样透传。
     model_mapping: z.record(z.string(), z.unknown()).nullable().optional(),
+    configs: z.record(z.string(), z.unknown()).nullable().optional(),
     key: z.string().optional(),
     status: z.number().int().optional(),
     priority: z.number().optional(),
+    sets: z.array(z.string()).nullable().optional(),
+    enabled_auto_balance_check: z.boolean().optional(),
+    balance_threshold: z.number().optional(),
+    skip_tls_verify: z.boolean().optional(),
+    enabled_no_permission_ban: z.boolean().optional(),
+    warn_error_rate: z.number().optional(),
+    max_error_rate: z.number().optional(),
     created_at: z.number().optional()
   })
   .passthrough();
@@ -29,25 +38,42 @@ const AIProxyMutationResponseSchema = z.object({
 
 type AIProxyChannel = z.infer<typeof AIProxyChannelSchema>;
 
-const getChannelUpdateData = (channel: AIProxyChannel, models: string[]) => ({
-  type: channel.type,
-  name: channel.name,
-  base_url: channel.base_url,
-  model_mapping: channel.model_mapping,
-  key: channel.key,
-  status: channel.status,
-  priority: channel.priority,
-  models
-});
+/** 阻止 AI Proxy v0.6.5 的完整更新接口静默破坏无法往返的字段。 */
+const assertChannelUpdateSupported = (channel: AIProxyChannel) => {
+  if (channel.balance_threshold !== undefined && channel.balance_threshold !== 0) {
+    throw new Error(`AI Proxy v0.6.5 cannot preserve balance_threshold for channel: ${channel.id}`);
+  }
+};
+
+const getChannelUpdateData = (channel: AIProxyChannel, models: string[]) => {
+  assertChannelUpdateSupported(channel);
+
+  return {
+    type: channel.type,
+    name: channel.name,
+    base_url: channel.base_url,
+    proxy_url: channel.proxy_url,
+    model_mapping: channel.model_mapping,
+    configs: channel.configs,
+    key: channel.key,
+    status: channel.status,
+    priority: channel.priority,
+    sets: channel.sets,
+    enabled_auto_balance_check: channel.enabled_auto_balance_check,
+    skip_tls_verify: channel.skip_tls_verify,
+    enabled_no_permission_ban: channel.enabled_no_permission_ban,
+    warn_error_rate: channel.warn_error_rate,
+    max_error_rate: channel.max_error_rate,
+    models
+  };
+};
 
 /** 读取 AI Proxy 的完整渠道快照，供模型绑定查询与替换共用。 */
 const getAIProxyChannels = async () => {
   const { baseUrl, token } = getAIProxyAdminConfig();
   const headers = { Authorization: `Bearer ${token}` };
-  const { data: response } = await axiosWithoutSSRF.get(`${baseUrl}/api/channels/all`, {
-    headers,
-    params: { page: 1, perPage: 1000 }
-  });
+  // AI Proxy v0.6.5 的 /channels/all 是无分页接口，查询参数不会参与服务端处理。
+  const { data: response } = await axiosWithoutSSRF.get(`${baseUrl}/api/channels/all`, { headers });
 
   return {
     channels: AIProxyChannelListResponseSchema.parse(response).data,
@@ -122,6 +148,12 @@ export const replaceModelInAIProxyChannels = async ({
     }
   }
 
+  // 所有可提前识别的不兼容都必须在第一次外部写入前失败。
+  for (const channel of channels) {
+    const shouldBind = selectedIds.has(channel.id);
+    if (shouldBind !== channel.models.includes(model)) assertChannelUpdateSupported(channel);
+  }
+
   for (const channel of channels) {
     const shouldBind = selectedIds.has(channel.id);
     const hasModel = channel.models.includes(model);
@@ -151,6 +183,10 @@ export const removeModelsFromAIProxyChannels = async ({ models }: { models: stri
   if (modelSet.size === 0) return;
 
   const { channels, baseUrl, headers } = await getAIProxyChannels();
+
+  for (const channel of channels) {
+    if (channel.models.some((model) => modelSet.has(model))) assertChannelUpdateSupported(channel);
+  }
 
   for (const channel of channels) {
     const nextModels = channel.models.filter((model) => !modelSet.has(model));
@@ -190,6 +226,10 @@ export const appendModelsToAIProxyChannels = async ({
     if (!channelMap.has(channelId)) {
       throw new Error(`AI Proxy channel does not exist: ${channelId}`);
     }
+  }
+
+  for (const channelId of uniqueChannelIds) {
+    assertChannelUpdateSupported(channelMap.get(channelId)!);
   }
 
   for (const channelId of uniqueChannelIds) {

@@ -11,14 +11,14 @@ import {
 } from '../../../../components/common/TagFilter/multiSelectFilterUtils';
 
 describe('resolveSingleSelectOption', () => {
-  it('returns the matched option and falls back to the first', () => {
+  it('returns the matched option and exposes an invalid value', () => {
     const options = [
       { value: 'all', label: '全部' },
       { value: 'workflow', label: '工作流' }
     ];
 
     expect(resolveSingleSelectOption(options, 'workflow')?.label).toBe('工作流');
-    expect(resolveSingleSelectOption(options, 'missing')?.value).toBe('all');
+    expect(resolveSingleSelectOption(options, 'missing')).toBeUndefined();
     expect(resolveSingleSelectOption([], 'all')).toBeUndefined();
   });
 });

@@ -162,7 +162,19 @@ export const TestDraftAdminSystemModelBodySchema = z
       description: '本次测试指定的 AI Proxy 渠道 ID'
     })
   })
-  .strict();
+  .strict()
+  .superRefine(({ modelData }, ctx) => {
+    if (modelData.type === ModelTypeEnum.tts && modelData.config.voices.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.too_small,
+        minimum: 1,
+        origin: 'array',
+        inclusive: true,
+        path: ['modelData', 'config', 'voices'],
+        message: 'TTS model test requires at least one voice'
+      });
+    }
+  });
 export type TestDraftAdminSystemModelBody = z.infer<typeof TestDraftAdminSystemModelBodySchema>;
 
 const ModelTemplateReferenceSchema = z.object({

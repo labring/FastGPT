@@ -13,7 +13,8 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import React, { useEffect, useMemo } from 'react';
+import { useLockFn } from 'ahooks';
+import React, { useEffect, useMemo, type MutableRefObject } from 'react';
 import {
   useForm,
   useWatch,
@@ -274,18 +275,9 @@ const VoicesField = React.memo(function VoicesField({
   );
 });
 
-const ModelConfigForm = ({
-  modelData,
-  providers,
-  formId,
-  onSubmit,
-  channelSection,
-  isModelIdReadOnly = false,
-  onModelChange,
-  onSuccess,
-  onSubmittingChange,
-  onDirtyChange
-}: {
+export type ModelConfigFormGetValues = () => SystemModelDocumentDataType;
+
+type ModelConfigFormProps = {
   modelData: SystemModelDocumentDataType;
   providers: ModelProviderItemType[];
   formId: string;
@@ -299,7 +291,23 @@ const ModelConfigForm = ({
   onSuccess?: () => void;
   onSubmittingChange?: (loading: boolean) => void;
   onDirtyChange?: (isDirty: boolean) => void;
-}) => {
+  /** 暴露当前未保存草稿读取器，供渠道测试等不触发表单提交的动作使用。 */
+  getValuesRef?: MutableRefObject<ModelConfigFormGetValues | null>;
+};
+
+const ModelConfigForm = ({
+  modelData,
+  providers,
+  formId,
+  onSubmit,
+  channelSection,
+  isModelIdReadOnly = false,
+  onModelChange,
+  onSuccess,
+  onSubmittingChange,
+  onDirtyChange,
+  getValuesRef
+}: ModelConfigFormProps) => {
   const { t } = useClientTranslation('config_model');
   const { feConfigs } = useSystemStore();
 
@@ -332,6 +340,13 @@ const ModelConfigForm = ({
     }
   });
 
+  useEffect(() => {
+    if (!getValuesRef) return;
+    getValuesRef.current = getValues;
+    return () => {
+      getValuesRef.current = null;
+    };
+  }, [getValues, getValuesRef]);
   const reasoningEnabled = useWatch({ control, name: 'config.reasoning' });
   const model = useWatch({ control, name: 'model' });
 
@@ -373,7 +388,7 @@ const ModelConfigForm = ({
     return '';
   }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel, isRerankModel]);
 
-  const { runAsync: submitModel, loading: submittingModel } = useRequest(
+  const { runAsync: submitModelRequest, loading: submittingModel } = useRequest(
     async (data: SystemModelDocumentDataType) => {
       if (data.type === ModelTypeEnum.llm) {
         // 空数字输入会被 react-hook-form 解析为 NaN；显式转成协议允许的 null，
@@ -431,6 +446,7 @@ const ModelConfigForm = ({
       successToast: t('common:Success')
     }
   );
+  const submitModel = useLockFn(submitModelRequest);
 
   useEffect(() => {
     onSubmittingChange?.(submittingModel);

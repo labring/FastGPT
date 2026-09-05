@@ -41,14 +41,14 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useStaticVirtualList } from '@fastgpt/web/hooks/useVirtualList';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import { useSet } from 'ahooks';
+import { useLockFn, useSet } from 'ahooks';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
-import ModelConfigForm from './ModelConfigForm';
+import ModelConfigForm, { type ModelConfigFormGetValues } from './ModelConfigForm';
 import ModelChannelModal, { ModelChannelSelector } from './ModelChannelModal';
 import ModelLinkedChannels from './ModelLinkedChannels';
-import { submitCreatedSystemModel } from './submit';
+import { prepareDraftSystemModelForTest, submitCreatedSystemModel } from './submit';
 import ModelListFilters from '@/components/core/ai/ModelListFilters';
 import ModelCapabilityTags from '@/components/core/ai/ModelCapabilityTags';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
@@ -130,7 +130,10 @@ export const AddModelButton = ({
     <MyMenu
       trigger="hover"
       size="sm"
-      buttonBoxProps={buttonBoxProps}
+      buttonBoxProps={{
+        ...buttonBoxProps,
+        pointerEvents: props.isDisabled ? 'none' : buttonBoxProps?.pointerEvents
+      }}
       Button={<Button {...props}>{t('config_model:create_model')}</Button>}
       menuList={[
         {
@@ -265,6 +268,7 @@ export const BlankModelCreateModal = ({
   const [showAssociateChannel, setShowAssociateChannel] = useState(false);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [draftModel, setDraftModel] = useState('');
+  const modelFormGetValuesRef = useRef<ModelConfigFormGetValues | null>(null);
   const channelIdsBeforeCreateRef = useRef<Set<number>>();
   const modelData = useMemo(() => createModelData(selectedType), [createModelData, selectedType]);
 
@@ -287,11 +291,20 @@ export const BlankModelCreateModal = ({
   };
 
   const handleTestModelChannel = async (channelId: number) => {
-    const model = draftModel.trim();
+    const draftModelData = modelFormGetValuesRef.current?.() ?? modelData;
+    const testModelData = prepareDraftSystemModelForTest(draftModelData);
+    const model = testModelData.model;
     if (!model) {
       toast({
         status: 'warning',
         title: t('config_model:fill_model_id_before_test')
+      });
+      return;
+    }
+    if (testModelData.type === ModelTypeEnum.tts && testModelData.config.voices.length === 0) {
+      toast({
+        status: 'warning',
+        title: t('config_model:fill_voice_before_test')
       });
       return;
     }
@@ -301,11 +314,7 @@ export const BlankModelCreateModal = ({
     try {
       await postTestDraftModel({
         channelId,
-        modelData: {
-          ...modelData,
-          model,
-          name: model
-        }
+        modelData: testModelData
       });
       toast({
         status: 'success',
@@ -374,6 +383,7 @@ export const BlankModelCreateModal = ({
           <ModelTypeSelector value={selectedType} onChange={setSelectedType} />
         ) : (
           <ModelConfigForm
+            getValuesRef={modelFormGetValuesRef}
             formId={createFormId}
             modelData={modelData}
             providers={providers}
@@ -552,7 +562,7 @@ const TemplateCreateModal = ({
     });
   };
 
-  const { runAsync: createModels, loading: creatingModels } = useRequest(
+  const { runAsync: createModelsRequest, loading: creatingModels } = useRequest(
     () =>
       postSystemModelsFromTemplates({
         templates: selectedTemplates.map(({ type, model }) => ({ type, model })),
@@ -566,6 +576,7 @@ const TemplateCreateModal = ({
       successToast: t('common:Success')
     }
   );
+  const createModels = useLockFn(createModelsRequest);
 
   const toggleKey = (key: string) => {
     setSelectedKeys((previous) => {
