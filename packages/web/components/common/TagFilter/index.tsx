@@ -20,6 +20,7 @@ export type {
 export { FILTER_SEARCH_THRESHOLD } from './FilterSearchInput';
 export { default as FilterSearchInput } from './FilterSearchInput';
 export {
+  DEFAULT_FILTER_LIST_SIZE,
   FILTER_LIST_H,
   FILTER_LIST_HEIGHTS,
   filterListScrollSx,

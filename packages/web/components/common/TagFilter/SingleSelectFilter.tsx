@@ -11,7 +11,12 @@ import FilterSearchInput, {
   FILTER_SEARCH_THRESHOLD,
   filterSelectOptionsBySearch
 } from './FilterSearchInput';
-import { getFilterListBoxProps, filterPopoverProps, type FilterListSize } from './styles';
+import {
+  DEFAULT_FILTER_LIST_SIZE,
+  getFilterListBoxProps,
+  filterPopoverProps,
+  type FilterListSize
+} from './styles';
 
 export type SingleSelectFilterOption<T> = {
   value: T;
@@ -76,7 +81,7 @@ function SingleSelectFilter<T>({
   placement = 'bottom-start',
   showSearch,
   searchPlaceholder,
-  listSize = 'sm'
+  listSize = DEFAULT_FILTER_LIST_SIZE
 }: SingleSelectFilterProps<T>) {
   const { t } = useTranslation();
   const [searchKey, setSearchKey] = useState('');

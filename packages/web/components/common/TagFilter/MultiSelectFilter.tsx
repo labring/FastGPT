@@ -10,7 +10,12 @@ import FilterSearchInput, {
   FILTER_SEARCH_THRESHOLD,
   filterSelectOptionsBySearch
 } from './FilterSearchInput';
-import { getFilterListBoxProps, filterPopoverProps, type FilterListSize } from './styles';
+import {
+  DEFAULT_FILTER_LIST_SIZE,
+  getFilterListBoxProps,
+  filterPopoverProps,
+  type FilterListSize
+} from './styles';
 import {
   createMultiSelectFilter,
   getMultiSelectFilterSummary,
@@ -81,7 +86,7 @@ function MultiSelectFilter<T extends string>({
   onOpen,
   maxW = '200px',
   placement = 'bottom-start',
-  listSize = 'sm'
+  listSize = DEFAULT_FILTER_LIST_SIZE
 }: MultiSelectFilterProps<T>) {
   const { t } = useTranslation();
   const [innerSearch, setInnerSearch] = useState('');

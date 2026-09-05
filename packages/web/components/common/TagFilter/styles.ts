@@ -10,7 +10,8 @@ export const FILTER_LIST_HEIGHTS = {
 
 export type FilterListSize = keyof typeof FILTER_LIST_HEIGHTS;
 
-export const FILTER_LIST_H = FILTER_LIST_HEIGHTS.sm;
+export const DEFAULT_FILTER_LIST_SIZE: FilterListSize = 'md';
+export const FILTER_LIST_H = FILTER_LIST_HEIGHTS[DEFAULT_FILTER_LIST_SIZE];
 
 export const filterListScrollSx: SystemStyleObject = {
   overscrollBehavior: 'contain',
@@ -26,7 +27,10 @@ export const filterListScrollSx: SystemStyleObject = {
 export const stopFilterListWheel = (e: WheelEvent) => e.stopPropagation();
 
 /** 选项超过阈值才按预设尺寸锁定最大高度并滚动，短列表跟随内容撑开。 */
-export const getFilterListBoxProps = (scrollable: boolean, listSize: FilterListSize = 'sm') => ({
+export const getFilterListBoxProps = (
+  scrollable: boolean,
+  listSize: FilterListSize = DEFAULT_FILTER_LIST_SIZE
+) => ({
   h: 'auto' as const,
   maxH: scrollable ? FILTER_LIST_HEIGHTS[listSize] : undefined,
   overflowY: scrollable ? ('auto' as const) : undefined,
