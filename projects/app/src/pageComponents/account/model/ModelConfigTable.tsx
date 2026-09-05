@@ -419,6 +419,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
               onChange={setProvider}
               showSearch
               maxW={'240px'}
+              listMaxH={'240px'}
             />
             <SingleSelectFilter
               title={t('common:model.model_type')}
