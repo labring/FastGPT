@@ -230,7 +230,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           {!!userInfo && importantInforms.length > 0 && (
             <ImportantInform informs={importantInforms} refetch={refetchUnRead} />
           )}
-          <ResetExpiredPswModal />
+          {router.pathname !== '/account/cancel' && <ResetExpiredPswModal />}
           <SupportBot />
         </>
       )}

@@ -5,6 +5,8 @@ import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import type { ClientSession } from '../../common/mongo';
 import { getUserFallbackTeam } from './team/fallback';
+import { getActiveAccountCancellationByUserId } from './account/cancellation/read';
+import { formatTeamAccountCancellationSummary } from './account/cancellation/formatter';
 
 export async function authUserExist({ userId, username }: { userId?: string; username?: string }) {
   if (userId) {
@@ -54,6 +56,7 @@ export async function getUserDetail({
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
 
+  const accountCancellation = await getActiveAccountCancellationByUserId(String(user._id));
   const permission = isRoot ? new TeamPermission({ isOwner: true }) : tmb.permission;
   const team = {
     ...tmb,
@@ -69,6 +72,9 @@ export async function getUserDetail({
     permission,
     contact: user.contact,
     language: user.language,
-    tags: user.tags
+    tags: user.tags,
+    ...(accountCancellation
+      ? { accountCancellation: formatTeamAccountCancellationSummary(accountCancellation) }
+      : {})
   };
 }

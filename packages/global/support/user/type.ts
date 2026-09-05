@@ -1,3 +1,4 @@
+import { AccountCancellationSummarySchema } from './account/cancellation/type';
 import z from 'zod';
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { LanguageSchema, type LangEnum } from '../../common/i18n/type';
@@ -38,6 +39,7 @@ export const UserSchema = z.object({
   avatar: z.string().nullish(),
   timezone: z.string(),
   language: LanguageSchema.optional(),
+  accountCancellation: AccountCancellationSummarySchema.optional(),
   team: TeamTmbItemSchema,
   permission: z.instanceof(TeamPermission),
   contact: z.string().nullish(),

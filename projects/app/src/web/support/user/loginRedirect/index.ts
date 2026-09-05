@@ -52,7 +52,8 @@ export const resolveLoginRedirectAfterLogin = async ({
   lastTmbId?: string;
   restoreWorkflowLocalDraft: RestoreWorkflowLocalDraft;
 }) => {
-  const cancellationStatus = user.team?.accountCancellation?.status;
+  const cancellationStatus =
+    user.accountCancellation?.status ?? user.team?.accountCancellation?.status;
   if (
     accountCancellationActiveStatuses.includes(
       cancellationStatus as (typeof accountCancellationActiveStatuses)[number]
