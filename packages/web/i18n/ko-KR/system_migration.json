@@ -65,7 +65,7 @@
   "migrations.20260905_backfill_bill_metadata.bills": "결제 메타데이터 보완 중",
   "migrations.20260905_backfill_bill_metadata.result": "기존 결제 {{migratedCount}}건의 결제 메타데이터를 보완했습니다.",
   "migrations.20260905_backfill_resource_owner_acl.name": "리소스 소유자 권한 백필",
-  "migrations.20260905_backfill_resource_owner_acl.description": "모든 앱, 지식 베이스 및 Agent Skill을 확인하고 유효한 멤버 소유자가 없는 리소스에만 현재 팀 소유자 권한을 부여합니다.",
+  "migrations.20260905_backfill_resource_owner_acl.description": "모든 앱, 지식 베이스 및 개인 Agent Skill을 확인하고 유효한 멤버 소유자가 없는 리소스에만 현재 팀 소유자 권한을 부여합니다.",
   "migrations.20260905_backfill_resource_owner_acl.apps": "앱 소유자 권한 확인 중",
   "migrations.20260905_backfill_resource_owner_acl.datasets": "지식 베이스 소유자 권한 확인 중",
   "migrations.20260905_backfill_resource_owner_acl.agent_skills": "Agent Skill 소유자 권한 확인 중",

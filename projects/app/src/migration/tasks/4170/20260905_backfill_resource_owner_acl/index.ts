@@ -71,7 +71,7 @@ const createFailedRecord = ({
 });
 
 /**
- * 分批扫描全部 App、Dataset 和 Agent Skill，仅为没有有效成员 owner 的资源补 team owner。
+ * 分批扫描全部 App、Dataset 和 personal Agent Skill，仅为没有有效成员 owner 的资源补 team owner。
  * 固定快照负责断点恢复，尾扫与最终校验覆盖滚动升级期间的新增数据。
  */
 export const backfillResourceOwnerAcl = async (context: SystemMigrationContext) => {
@@ -106,6 +106,34 @@ export const backfillResourceOwnerAcl = async (context: SystemMigrationContext) 
   const failedRecordMap = new Map(
     (await context.getFailedRecords()).map((record) => [getFailedRecordKey(record), record])
   );
+  let failedRecordSnapshotDirty = false;
+  const deleteFailedRecord = (key: string) => {
+    if (failedRecordMap.delete(key)) {
+      failedRecordSnapshotDirty = true;
+    }
+  };
+  const setFailedRecord = (record: SystemMigrationFailedRecord) => {
+    const key = getFailedRecordKey(record);
+    const current = failedRecordMap.get(key);
+    const unchanged =
+      current?.stageKey === record.stageKey &&
+      current.reason.message === record.reason.message &&
+      current.data.collection === record.data.collection &&
+      current.data.resourceType === record.data.resourceType &&
+      current.data.resourceId === record.data.resourceId &&
+      current.data.teamId === record.data.teamId;
+    if (unchanged) return;
+
+    failedRecordMap.set(key, record);
+    failedRecordSnapshotDirty = true;
+  };
+  /** 失败记录采用完整快照替换，仅在内容变化时触发昂贵的事务性重写。 */
+  const reportFailedRecordsIfChanged = async () => {
+    if (!failedRecordSnapshotDirty) return;
+
+    await context.reportFailedRecords([...failedRecordMap.values()]);
+    failedRecordSnapshotDirty = false;
+  };
   const replaceStageFailures = ({
     config,
     records,
@@ -115,12 +143,16 @@ export const backfillResourceOwnerAcl = async (context: SystemMigrationContext) 
     records: ResourceOwnerAclRecord[];
     failures: ResourceOwnerAclFailure[];
   }) => {
+    const failuresByResourceId = new Map(
+      failures.map((failure) => [String(failure.record._id), failure])
+    );
     for (const record of records) {
-      failedRecordMap.delete(`${config.stageKey}:${String(record._id)}`);
-    }
-    for (const failure of failures) {
-      const failedRecord = createFailedRecord({ config, failure });
-      failedRecordMap.set(getFailedRecordKey(failedRecord), failedRecord);
+      const failure = failuresByResourceId.get(String(record._id));
+      if (failure) {
+        setFailedRecord(createFailedRecord({ config, failure }));
+      } else {
+        deleteFailedRecord(`${config.stageKey}:${String(record._id)}`);
+      }
     }
   };
   const processRecords = async ({
@@ -143,7 +175,7 @@ export const backfillResourceOwnerAcl = async (context: SystemMigrationContext) 
     const resourceId = String(failedRecord.data.resourceId);
     const id = Types.ObjectId.isValid(resourceId) ? new Types.ObjectId(resourceId) : resourceId;
     return config.model.collection.findOne(
-      { _id: id as never },
+      { ...config.resourceFilter, _id: id as never },
       { projection: { _id: 1, teamId: 1 } }
     );
   };
@@ -182,16 +214,20 @@ export const backfillResourceOwnerAcl = async (context: SystemMigrationContext) 
     for (let index = 0; index < stageFailedRecords.length; index += systemMigrationBatchSize) {
       await context.assertActive();
       const retryFailedRecords = stageFailedRecords.slice(index, index + systemMigrationBatchSize);
-      const retryRecords = (
-        await readFailedRecords({ config, failedRecords: retryFailedRecords })
-      ).flatMap<ResourceOwnerAclRecord>((record) =>
+      const currentRetryRecords = await readFailedRecords({
+        config,
+        failedRecords: retryFailedRecords
+      });
+      const retryRecords = currentRetryRecords.flatMap<ResourceOwnerAclRecord>((record) =>
         record ? [{ _id: record._id, teamId: record.teamId }] : []
       );
-      for (const failedRecord of retryFailedRecords) {
-        failedRecordMap.delete(getFailedRecordKey(failedRecord));
-      }
+      retryFailedRecords.forEach((failedRecord, recordIndex) => {
+        if (!currentRetryRecords[recordIndex]) {
+          deleteFailedRecord(getFailedRecordKey(failedRecord));
+        }
+      });
       await processRecords({ config, records: retryRecords });
-      await context.reportFailedRecords([...failedRecordMap.values()]);
+      await reportFailedRecordsIfChanged();
     }
 
     while (stageCheckpoint.endId && stageCheckpoint.lastId !== stageCheckpoint.endId) {
@@ -208,7 +244,7 @@ export const backfillResourceOwnerAcl = async (context: SystemMigrationContext) 
       stageCheckpoint.lastId = String(records.at(-1)!._id);
       stageCheckpoint.processedCount += records.length;
       checkpoint.stages[config.stageKey] = stageCheckpoint;
-      await context.reportFailedRecords([...failedRecordMap.values()]);
+      await reportFailedRecordsIfChanged();
       await context.saveCheckpoint(checkpoint);
       await context.reportProgress({
         key: config.stageKey,
@@ -228,7 +264,7 @@ export const backfillResourceOwnerAcl = async (context: SystemMigrationContext) 
       });
       if (records.length === 0) break;
       await processRecords({ config, records });
-      await context.reportFailedRecords([...failedRecordMap.values()]);
+      await reportFailedRecordsIfChanged();
       tailLastId = String(records.at(-1)!._id);
     }
 
@@ -249,7 +285,7 @@ export const backfillResourceOwnerAcl = async (context: SystemMigrationContext) 
           message: 'Resource _id is not an ObjectId'
         }))
       });
-      await context.reportFailedRecords([...failedRecordMap.values()]);
+      await reportFailedRecordsIfChanged();
       invalidLastId = invalidRecords.at(-1)!._id;
     }
     checkpoint.stages[config.stageKey] = stageCheckpoint;
@@ -281,16 +317,17 @@ export const backfillResourceOwnerAcl = async (context: SystemMigrationContext) 
       for (const record of records) {
         const failureKey = `${config.stageKey}:${String(record._id)}`;
         if (validOwnerResourceIds.has(String(record._id))) {
-          failedRecordMap.delete(failureKey);
+          deleteFailedRecord(failureKey);
         } else if (!failedRecordMap.has(failureKey)) {
-          const failedRecord = createFailedRecord({
-            config,
-            failure: { record, message: 'Resource still has no valid member Owner ACL' }
-          });
-          failedRecordMap.set(failureKey, failedRecord);
+          setFailedRecord(
+            createFailedRecord({
+              config,
+              failure: { record, message: 'Resource still has no valid member Owner ACL' }
+            })
+          );
         }
       }
-      await context.reportFailedRecords([...failedRecordMap.values()]);
+      await reportFailedRecordsIfChanged();
       validationLastId = String(records.at(-1)!._id);
     }
 
@@ -311,7 +348,7 @@ export const backfillResourceOwnerAcl = async (context: SystemMigrationContext) 
           message: 'Resource _id is not an ObjectId'
         }))
       });
-      await context.reportFailedRecords([...failedRecordMap.values()]);
+      await reportFailedRecordsIfChanged();
       invalidLastId = invalidRecords.at(-1)!._id;
     }
 
@@ -324,10 +361,10 @@ export const backfillResourceOwnerAcl = async (context: SystemMigrationContext) 
       const currentResources = await readFailedRecords({ config, failedRecords: records });
       records.forEach((failedRecord, recordIndex) => {
         if (!currentResources[recordIndex]) {
-          failedRecordMap.delete(getFailedRecordKey(failedRecord));
+          deleteFailedRecord(getFailedRecordKey(failedRecord));
         }
       });
-      await context.reportFailedRecords([...failedRecordMap.values()]);
+      await reportFailedRecordsIfChanged();
     }
   }
   if (failedRecordMap.size > 0) {

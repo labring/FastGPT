@@ -1,4 +1,5 @@
 import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -13,6 +14,7 @@ export type ResourceOwnerAclConfig = {
   stageKey: ResourceOwnerAclStageKey;
   resourceType: PerResourceTypeEnum;
   model: Model<any>;
+  resourceFilter?: Record<string, unknown>;
 };
 
 export type ResourceOwnerAclRecord = {
@@ -48,7 +50,8 @@ export const resourceOwnerAclConfigs: ResourceOwnerAclConfig[] = [
   {
     stageKey: 'agent_skills',
     resourceType: PerResourceTypeEnum.agentSkill,
-    model: MongoAgentSkills
+    model: MongoAgentSkills,
+    resourceFilter: { source: AgentSkillSourceEnum.personal }
   }
 ];
 
@@ -66,13 +69,14 @@ const getRecordKey = (record: ResourceOwnerAclRecord) => String(record._id);
 /** 固定单个资源集合的 ObjectId 扫描上界，避免在线新增记录让主扫描无法结束。 */
 export const initializeResourceOwnerAclSnapshot = async (config: ResourceOwnerAclConfig) => {
   const lastResource = await config.model.collection
-    .find({ _id: { $type: 'objectId' } }, { projection: { _id: 1 } })
+    .find({ ...config.resourceFilter, _id: { $type: 'objectId' } }, { projection: { _id: 1 } })
     .sort({ _id: -1 })
     .limit(1)
     .next();
   const endId = toObjectId(lastResource?._id);
   const total = endId
     ? await config.model.collection.countDocuments({
+        ...config.resourceFilter,
         _id: { $type: 'objectId', $lte: endId }
       })
     : 0;
@@ -99,6 +103,7 @@ export const readResourceOwnerAclBatch = async ({
   return config.model.collection
     .find(
       {
+        ...config.resourceFilter,
         _id: {
           $type: 'objectId',
           ...idRange
@@ -124,6 +129,7 @@ export const readInvalidResourceOwnerAclRecords = ({
   config.model.collection
     .find(
       {
+        ...config.resourceFilter,
         _id: {
           $not: { $type: 'objectId' },
           ...(lastId === undefined ? {} : { $gt: lastId })
@@ -307,9 +313,12 @@ export const backfillResourceOwnerAclRecords = async ({
 
     const resourceId = toObjectId(record._id);
     const current = resourceId
-      ? await config.model.collection.findOne({ _id: resourceId }, { projection: { _id: 1 } })
+      ? await config.model.collection.findOne(
+          { ...config.resourceFilter, _id: resourceId },
+          { projection: { _id: 1 } }
+        )
       : await config.model.collection.findOne(
-          { _id: record._id as never },
+          { ...config.resourceFilter, _id: record._id as never },
           { projection: { _id: 1 } }
         );
     if (!current) {

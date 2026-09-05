@@ -1,4 +1,4 @@
-import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
@@ -152,7 +152,8 @@ describe('4170 resource owner ACL migration', () => {
       teamId,
       tmbId: otherTmbId,
       name: 'Skill',
-      type: AgentSkillTypeEnum.skill
+      type: AgentSkillTypeEnum.skill,
+      source: AgentSkillSourceEnum.personal
     });
     await MongoResourcePermission.collection.insertMany([
       {
@@ -241,6 +242,29 @@ describe('4170 resource owner ACL migration', () => {
       'validation:running',
       'validation:succeeded'
     ]);
+    expect(state.context.reportFailedRecords).not.toHaveBeenCalled();
+  });
+
+  it('skips system skills because they do not belong to a team ACL', async () => {
+    const systemSkillId = new Types.ObjectId();
+    await MongoAgentSkills.collection.insertOne({
+      _id: systemSkillId,
+      teamId: null,
+      tmbId: null,
+      name: 'System Skill',
+      type: AgentSkillTypeEnum.skill,
+      source: AgentSkillSourceEnum.system
+    });
+
+    const state = createContext();
+    await expect(backfillResourceOwnerAcl(state.context)).resolves.toMatchObject({
+      agentSkillsProcessedCount: 0
+    });
+    await expect(
+      MongoResourcePermission.collection.countDocuments({ resourceId: systemSkillId })
+    ).resolves.toBe(0);
+    expect(state.getFailedRecords()).toEqual([]);
+    expect(state.context.reportFailedRecords).not.toHaveBeenCalled();
   });
 
   it('is idempotent when the complete migration runs again', async () => {
@@ -306,6 +330,7 @@ describe('4170 resource owner ACL migration', () => {
         reason: { message: 'Resource team owner has no team member record' }
       })
     ]);
+    expect(state.context.reportFailedRecords).toHaveBeenCalledTimes(1);
 
     await MongoTeamMember.collection.insertOne({
       _id: ownerTmbId,
@@ -317,6 +342,7 @@ describe('4170 resource owner ACL migration', () => {
       appsProcessedCount: 1
     });
     expect(state.getFailedRecords()).toEqual([]);
+    expect(state.context.reportFailedRecords).toHaveBeenCalledTimes(2);
   });
 
   it('clears a saved failure when the resource was deleted before retry', async () => {
