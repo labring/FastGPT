@@ -4,27 +4,31 @@ import type {
   SystemMigrationProgressInput
 } from '@fastgpt/global/migration/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { Types } from '@fastgpt/service/common/mongo';
-import { backfillAppCreateTime } from '@/migration/tasks/4170/20260903_backfill_app_create_time';
+import { backfillResourceCreateTime } from '@/migration/tasks/4170/20260903_backfill_resource_create_time';
 import {
   backfillAppCreateTimeRecord,
   getAppCreateTimeFromObjectId
-} from '@/migration/tasks/4170/20260903_backfill_app_create_time/service';
+} from '@/migration/tasks/4170/20260903_backfill_resource_create_time/service';
+import { getDatasetCreateTimeFromObjectId } from '@/migration/tasks/4170/20260903_backfill_resource_create_time/datasetService';
 import type { SystemMigrationContext } from '@/migration/registry';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const createContext = ({
-  beforeSaveCheckpoint
+  beforeSaveCheckpoint,
+  initialCheckpoint
 }: {
   beforeSaveCheckpoint?: (callCount: number) => Promise<void>;
+  initialCheckpoint?: Record<string, unknown>;
 } = {}) => {
-  let checkpoint: Record<string, unknown> | undefined;
+  let checkpoint: Record<string, unknown> | undefined = initialCheckpoint;
   let failedRecords: SystemMigrationFailedRecord[] = [];
   const progress: SystemMigrationProgressInput[] = [];
   let saveCheckpointCallCount = 0;
 
   const context = {
-    migrationId: '20260903_backfill_app_create_time',
+    migrationId: '20260903_backfill_resource_create_time',
     runId: 'test-run',
     signal: new AbortController().signal,
     getCheckpoint: async (schema) =>
@@ -61,10 +65,10 @@ const createContext = ({
   };
 };
 
-describe('4170 App createTime migration', () => {
+describe('4170 resource createTime migration', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
-    await MongoApp.deleteMany({});
+    await Promise.all([MongoApp.deleteMany({}), MongoDataset.deleteMany({})]);
   });
 
   it('derives timestamps only from valid ObjectIds', () => {
@@ -74,21 +78,25 @@ describe('4170 App createTime migration', () => {
     expect(getAppCreateTimeFromObjectId(String(objectId))).toEqual(objectId.getTimestamp());
     expect(getAppCreateTimeFromObjectId('invalid-app-id')).toBeUndefined();
     expect(getAppCreateTimeFromObjectId(undefined)).toBeUndefined();
+    expect(getDatasetCreateTimeFromObjectId(objectId)).toEqual(objectId.getTimestamp());
+    expect(getDatasetCreateTimeFromObjectId('invalid-dataset-id')).toBeUndefined();
   });
 
   it('backfills missing values, preserves existing values, and reports both progress states', async () => {
     const missingId = new Types.ObjectId();
     const keptId = new Types.ObjectId();
+    const datasetId = new Types.ObjectId();
     const existingTime = new Date('2024-01-01T00:00:00.000Z');
     await MongoApp.collection.insertMany([
       { _id: missingId, name: 'Missing createTime' },
       { _id: keptId, name: 'Existing createTime', createTime: existingTime }
     ]);
+    await MongoDataset.collection.insertOne({ _id: datasetId, name: 'Missing Dataset createTime' });
     const state = createContext();
 
-    await expect(backfillAppCreateTime(state.context)).resolves.toEqual({
-      processedCount: 2,
-      skippedInvalidId: 0
+    await expect(backfillResourceCreateTime(state.context)).resolves.toEqual({
+      appsProcessedCount: 2,
+      datasetsProcessedCount: 1
     });
 
     await expect(MongoApp.collection.findOne({ _id: missingId })).resolves.toMatchObject({
@@ -97,10 +105,23 @@ describe('4170 App createTime migration', () => {
     await expect(MongoApp.collection.findOne({ _id: keptId })).resolves.toMatchObject({
       createTime: existingTime
     });
+    await expect(MongoDataset.collection.findOne({ _id: datasetId })).resolves.toMatchObject({
+      createTime: datasetId.getTimestamp()
+    });
     expect(state.getCheckpoint()).toMatchObject({
-      initialized: true,
-      processedCount: 2,
-      total: 2
+      version: 2,
+      apps: {
+        initialized: true,
+        completed: true,
+        processedCount: 2,
+        total: 2
+      },
+      datasets: {
+        initialized: true,
+        completed: true,
+        processedCount: 1,
+        total: 1
+      }
     });
     expect(state.getFailedRecords()).toEqual([]);
     expect(state.getProgress().at(0)).toMatchObject({
@@ -108,27 +129,100 @@ describe('4170 App createTime migration', () => {
       status: SystemMigrationStatusEnum.running
     });
     expect(state.getProgress().at(-1)).toEqual({
-      key: 'apps',
+      key: 'datasets',
       status: SystemMigrationStatusEnum.succeeded,
-      current: 2,
-      total: 2
+      current: 1,
+      total: 1
     });
   });
 
   it('is idempotent when the full task is run again', async () => {
     const appId = new Types.ObjectId();
     await MongoApp.collection.insertOne({ _id: appId, name: 'Idempotent App' });
-    await backfillAppCreateTime(createContext().context);
+    await backfillResourceCreateTime(createContext().context);
     const updateSpy = vi.spyOn(MongoApp.collection, 'updateOne');
 
-    await expect(backfillAppCreateTime(createContext().context)).resolves.toEqual({
-      processedCount: 1,
-      skippedInvalidId: 0
+    await expect(backfillResourceCreateTime(createContext().context)).resolves.toEqual({
+      appsProcessedCount: 1,
+      datasetsProcessedCount: 0
     });
 
     expect(updateSpy).not.toHaveBeenCalled();
     await expect(MongoApp.collection.findOne({ _id: appId })).resolves.toMatchObject({
       createTime: appId.getTimestamp()
+    });
+  });
+
+  it('resumes the dataset state without rescanning a completed app state', async () => {
+    const appId = new Types.ObjectId();
+    const datasetId = new Types.ObjectId();
+    await MongoApp.collection.insertOne({
+      _id: appId,
+      name: 'Completed App',
+      createTime: appId.getTimestamp()
+    });
+    await MongoDataset.collection.insertOne({ _id: datasetId, name: 'Pending Dataset' });
+    const state = createContext({
+      initialCheckpoint: {
+        version: 2,
+        apps: {
+          initialized: true,
+          completed: true,
+          endId: String(appId),
+          lastId: String(appId),
+          processedCount: 1,
+          total: 1
+        },
+        datasets: {
+          initialized: false,
+          completed: false,
+          endId: null,
+          lastId: null,
+          processedCount: 0,
+          total: 0
+        }
+      }
+    });
+    const appUpdateSpy = vi.spyOn(MongoApp.collection, 'updateOne');
+
+    await expect(backfillResourceCreateTime(state.context)).resolves.toEqual({
+      appsProcessedCount: 1,
+      datasetsProcessedCount: 1
+    });
+
+    expect(appUpdateSpy).not.toHaveBeenCalled();
+    await expect(MongoDataset.collection.findOne({ _id: datasetId })).resolves.toMatchObject({
+      createTime: datasetId.getTimestamp()
+    });
+    expect(state.getCheckpoint()).toMatchObject({
+      apps: { completed: true, processedCount: 1 },
+      datasets: { completed: true, processedCount: 1 }
+    });
+  });
+
+  it('upgrades a legacy app-only checkpoint before running the dataset state', async () => {
+    const datasetId = new Types.ObjectId();
+    await MongoDataset.collection.insertOne({ _id: datasetId, name: 'Legacy checkpoint Dataset' });
+    const state = createContext({
+      initialCheckpoint: {
+        version: 1,
+        initialized: true,
+        endId: null,
+        lastId: null,
+        processedCount: 0,
+        total: 0
+      }
+    });
+
+    await expect(backfillResourceCreateTime(state.context)).resolves.toEqual({
+      appsProcessedCount: 0,
+      datasetsProcessedCount: 1
+    });
+
+    expect(state.getCheckpoint()).toMatchObject({
+      version: 2,
+      apps: { completed: true },
+      datasets: { completed: true, processedCount: 1 }
     });
   });
 
@@ -141,16 +235,20 @@ describe('4170 App createTime migration', () => {
       }
     });
 
-    await expect(backfillAppCreateTime(state.context)).rejects.toThrow('checkpoint unavailable');
+    await expect(backfillResourceCreateTime(state.context)).rejects.toThrow(
+      'checkpoint unavailable'
+    );
     await expect(MongoApp.collection.findOne({ _id: appId })).resolves.toMatchObject({
       createTime: appId.getTimestamp()
     });
-    expect(state.getCheckpoint()).toMatchObject({ processedCount: 0, total: 1 });
+    expect(state.getCheckpoint()).toMatchObject({
+      apps: { processedCount: 0, total: 1 }
+    });
     const updateSpy = vi.spyOn(MongoApp.collection, 'updateOne');
 
-    await expect(backfillAppCreateTime(state.context)).resolves.toEqual({
-      processedCount: 1,
-      skippedInvalidId: 0
+    await expect(backfillResourceCreateTime(state.context)).resolves.toEqual({
+      appsProcessedCount: 1,
+      datasetsProcessedCount: 0
     });
     expect(updateSpy).not.toHaveBeenCalled();
   });
@@ -167,9 +265,9 @@ describe('4170 App createTime migration', () => {
       }
     });
 
-    await expect(backfillAppCreateTime(state.context)).resolves.toEqual({
-      processedCount: 1,
-      skippedInvalidId: 0
+    await expect(backfillResourceCreateTime(state.context)).resolves.toEqual({
+      appsProcessedCount: 1,
+      datasetsProcessedCount: 0
     });
     await expect(MongoApp.collection.findOne({ _id: snapshotId })).resolves.toMatchObject({
       createTime: snapshotId.getTimestamp()
@@ -187,10 +285,12 @@ describe('4170 App createTime migration', () => {
       .spyOn(MongoApp.collection, 'updateOne')
       .mockRejectedValue(new Error('temporary write failure'));
 
-    await expect(backfillAppCreateTime(state.context)).rejects.toThrow(
+    await expect(backfillResourceCreateTime(state.context)).rejects.toThrow(
       '1 apps still lack createTime'
     );
-    expect(state.getCheckpoint()).toMatchObject({ processedCount: 1, total: 1 });
+    expect(state.getCheckpoint()).toMatchObject({
+      apps: { processedCount: 1, total: 1 }
+    });
     expect(state.getFailedRecords()).toEqual([
       expect.objectContaining({
         stageKey: 'apps',
@@ -200,9 +300,9 @@ describe('4170 App createTime migration', () => {
     ]);
 
     updateSpy.mockRestore();
-    await expect(backfillAppCreateTime(state.context)).resolves.toEqual({
-      processedCount: 1,
-      skippedInvalidId: 0
+    await expect(backfillResourceCreateTime(state.context)).resolves.toEqual({
+      appsProcessedCount: 1,
+      datasetsProcessedCount: 0
     });
     expect(state.getFailedRecords()).toEqual([]);
     await expect(MongoApp.collection.findOne({ _id: appId })).resolves.toMatchObject({
@@ -217,7 +317,7 @@ describe('4170 App createTime migration', () => {
     state.context.assertActive.mockRejectedValue(new Error('lease lost'));
     const updateSpy = vi.spyOn(MongoApp.collection, 'updateOne');
 
-    await expect(backfillAppCreateTime(state.context)).rejects.toThrow('lease lost');
+    await expect(backfillResourceCreateTime(state.context)).rejects.toThrow('lease lost');
     expect(updateSpy).not.toHaveBeenCalled();
     await expect(MongoApp.collection.findOne({ _id: appId })).resolves.not.toHaveProperty(
       'createTime'
@@ -244,9 +344,9 @@ describe('4170 App createTime migration', () => {
     const invalidId = 'invalid-create-time-id';
     await MongoApp.collection.insertOne({ _id: invalidId, name: 'Invalid id App' });
 
-    await expect(backfillAppCreateTime(createContext().context)).resolves.toEqual({
-      processedCount: 0,
-      skippedInvalidId: 1
+    await expect(backfillResourceCreateTime(createContext().context)).resolves.toEqual({
+      appsProcessedCount: 0,
+      datasetsProcessedCount: 0
     });
     await expect(MongoApp.collection.findOne({ _id: invalidId })).resolves.not.toHaveProperty(
       'createTime'

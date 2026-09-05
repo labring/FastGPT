@@ -10,7 +10,6 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { checkTeamExportDatasetLimit } from '@/web/support/user/team/api';
 import { downloadFetch } from '@/web/common/system/utils';
@@ -33,12 +32,13 @@ import SideTag from './SideTag';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
+import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
+import { getResourceListDisplayTime } from '@/pageComponents/dashboard/agent/filters/utils';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 
 function List() {
   const { setLoading } = useSystemStore();
-  const { getModelProvider } = useUserModelStore();
   const { isPc } = useSystem();
   const { t } = useTranslation();
   const {
@@ -52,7 +52,8 @@ function List() {
     myDatasets,
     folderDetail,
     searchKey,
-    setSearchKey
+    setSearchKey,
+    listFilters
   } = useContextSelector(DatasetsContext, (v) => v);
   const { userInfo } = useUserStore();
   const canCreateDataset = folderDetail
@@ -152,11 +153,11 @@ function List() {
   });
 
   const renderDatasetCard = (dataset: (typeof formatDatasets)[number]) => {
-    const vectorModelAvailable = dataset.vectorModel?.isActive === true;
-    // 新接口直接返回模型头像；Provider 回退用于兼容尚未升级的服务端响应。
-    const vectorModelAvatar =
-      dataset.vectorModel?.avatar ??
-      (dataset.vectorModel ? getModelProvider(dataset.vectorModel.provider)?.avatar : undefined);
+    const displayTime = getResourceListDisplayTime({
+      sort: listFilters.sort,
+      createTime: dataset.createTime,
+      updateTime: dataset.updateTime
+    });
 
     return (
       <MyBox
@@ -272,14 +273,10 @@ function List() {
           </HStack>
 
           <HStack>
-            {isPc && dataset.type !== DatasetTypeEnum.folder && (
-              <HStack spacing={1} className="time">
-                {vectorModelAvailable && <Avatar src={vectorModelAvatar} w={'0.85rem'} />}
-                <Box color={'myGray.500'} fontSize={'mini'}>
-                  {vectorModelAvailable
-                    ? dataset.vectorModel?.name
-                    : t('dataset:index_model_unavailable')}
-                </Box>
+            {isPc && (
+              <HStack spacing={0.5} className="time">
+                <MyIcon name={'history'} w={'0.85rem'} color={'myGray.400'} />
+                <Box color={'myGray.500'}>{t(formatTimeToChatTime(displayTime))}</Box>
               </HStack>
             )}
             {(dataset.type === DatasetTypeEnum.folder

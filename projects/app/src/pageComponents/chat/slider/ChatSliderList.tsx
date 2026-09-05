@@ -201,7 +201,7 @@ const ChatSliderList = () => {
                   >
                     {item.chatGenerateStatus === ChatGenerateStatusEnum.generating
                       ? t('chat:history_generating')
-                      : t(formatTimeToChatTime(item.updateTime) as any).replace('#', ':')}
+                      : t(formatTimeToChatTime(item.updateTime))}
                   </Box>
                 )}
                 <Box className="more" display={['block', 'none']}>

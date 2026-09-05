@@ -151,6 +151,10 @@ describe('POST /api/core/app/list', () => {
       }
     );
     expect(createDesc.data.map((app) => app.name)).toEqual(['较晚创建', '较早创建']);
+    expect(createDesc.data.map((app) => app.createTime)).toEqual([
+      newerId.getTimestamp(),
+      olderId.getTimestamp()
+    ]);
   });
 
   it('filters by creator tmbIds and returns empty list for empty tmbIds', async () => {

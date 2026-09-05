@@ -116,9 +116,7 @@ const InformTable = () => {
                   {item.title}
                 </Box>
                 <Flex mt={[1, 0]} ml={[0, 3]} flex={1} alignItems="center">
-                  <Box {...textStyles.time}>
-                    {t(formatTimeToChatTime(item.time) as any).replace('#', ':')}
-                  </Box>
+                  <Box {...textStyles.time}>{t(formatTimeToChatTime(item.time))}</Box>
                   {!item.read && <Box w={2} h={2} borderRadius="full" bg="red.600" ml={3} />}
 
                   <MyTag

@@ -4,7 +4,6 @@ import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from '@/pageComponents/dashboard/agent/context';
@@ -17,9 +16,10 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const List = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
 
@@ -137,9 +137,7 @@ const List = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
                     {isPc && (
                       <HStack spacing={0.5}>
                         <MyIcon name={'history'} w={'0.85rem'} color={'myGray.400'} />
-                        <Box color={'myGray.500'}>
-                          {t(formatTimeToChatTime(app.updateTime) as any).replace('#', ':')}
-                        </Box>
+                        <Box color={'myGray.500'}>{t(formatTimeToChatTime(app.updateTime))}</Box>
                       </HStack>
                     )}
                   </HStack>

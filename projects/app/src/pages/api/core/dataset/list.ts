@@ -24,6 +24,7 @@ import {
   type GetDatasetListResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { AppListSortEnum } from '@fastgpt/global/core/app/constants';
+import { Types } from '@fastgpt/service/common/mongo';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
   const { parentId, type, searchKey, sort, tmbIds } = parseApiInput({
@@ -132,8 +133,8 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
   })();
 
   const datasetSort = ((): Record<string, 1 | -1> => {
-    if (sort === AppListSortEnum.createTimeAsc) return { _id: 1 };
-    if (sort === AppListSortEnum.createTimeDesc) return { _id: -1 };
+    if (sort === AppListSortEnum.createTimeAsc) return { createTime: 1 };
+    if (sort === AppListSortEnum.createTimeDesc) return { createTime: -1 };
     return { updateTime: -1 };
   })();
 
@@ -178,6 +179,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
         vectorModel: vectorModel ? desensitizeSystemModel(vectorModel) : undefined,
         inheritPermission: dataset.inheritPermission,
         tmbId: dataset.tmbId,
+        createTime: dataset.createTime ?? new Types.ObjectId(String(dataset._id)).getTimestamp(),
         updateTime: dataset.updateTime,
         permission: Per,
         private: privateDataset

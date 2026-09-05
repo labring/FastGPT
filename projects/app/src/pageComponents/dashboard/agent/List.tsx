@@ -36,7 +36,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { createAppTypeMap } from '@/pageComponents/app/constants';
 import { getDashboardAppListScene } from './utils/appListTypes';
-import { hasAppListActiveFilter } from './filters/utils';
+import { getResourceListDisplayTime, hasAppListActiveFilter } from './filters/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
@@ -175,6 +175,11 @@ const List = () => {
     }
   );
   const renderAppCard = (app: (typeof myApps)[number]) => {
+    const displayTime = getResourceListDisplayTime({
+      sort: listFilters.sort,
+      createTime: app.createTime,
+      updateTime: app.updateTime
+    });
     const isAgent = AppTypeList.includes(app.type);
     const isTool = ToolTypeList.includes(app.type);
     const isFolder = AppFolderTypeList.includes(app.type);
@@ -266,9 +271,7 @@ const List = () => {
             {isPc && (
               <HStack spacing={0.5} className="time">
                 <MyIcon name={'history'} w={'0.85rem'} color={'myGray.400'} />
-                <Box color={'myGray.500'}>
-                  {t(formatTimeToChatTime(app.updateTime) as any).replace('#', ':')}
-                </Box>
+                <Box color={'myGray.500'}>{t(formatTimeToChatTime(displayTime))}</Box>
               </HStack>
             )}
             {(AppFolderTypeList.includes(app.type)

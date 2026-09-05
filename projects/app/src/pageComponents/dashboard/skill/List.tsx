@@ -48,6 +48,7 @@ import SkillDashboardEmptyHero from '@/pageComponents/dashboard/skill/SkillDashb
 import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { getResourceListDisplayTime } from '@/pageComponents/dashboard/agent/filters/utils';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
@@ -193,16 +194,15 @@ const List = ({
   const router = useRouter();
   const { isPc } = useSystem();
 
-  const { skills, refreshSkills, isFetchingSkills, searchKey, folderDetail } = useContextSelector(
-    SkillListContext,
-    (v) => ({
+  const { skills, refreshSkills, isFetchingSkills, searchKey, folderDetail, listFilters } =
+    useContextSelector(SkillListContext, (v) => ({
       skills: v.skills,
       refreshSkills: v.refreshSkills,
       isFetchingSkills: v.isFetchingSkills,
       searchKey: v.searchKey,
-      folderDetail: v.folderDetail
-    })
-  );
+      folderDetail: v.folderDetail,
+      listFilters: v.listFilters
+    }));
 
   const [editedSkill, setEditedSkill] = useState<EditResourceInfoFormType>();
   const [moveSkillId, setMoveSkillId] = useState<string>();
@@ -294,6 +294,11 @@ const List = ({
   );
 
   const renderSkillCard = (skill: (typeof skills)[number]) => {
+    const displayTime = getResourceListDisplayTime({
+      sort: listFilters.sort,
+      createTime: skill.createTime,
+      updateTime: skill.updateTime
+    });
     const isFolder = skill.type === AgentSkillTypeEnum.folder;
     const isPersonal = skill.source === AgentSkillSourceEnum.personal;
     const relatedAppsCount = skill.appCount ?? 0;
@@ -491,9 +496,7 @@ const List = ({
             {isPc && (
               <HStack className="time" spacing={0.5}>
                 <MyIcon name={'history'} w={'0.85rem'} color={'myGray.400'} />
-                <Box color={'myGray.500'}>
-                  {t(formatTimeToChatTime(skill.updateTime) as any).replace('#', ':')}
-                </Box>
+                <Box color={'myGray.500'}>{t(formatTimeToChatTime(displayTime))}</Box>
               </HStack>
             )}
             {isPersonal && (

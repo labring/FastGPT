@@ -47,7 +47,7 @@ const NotificationDetailsModal = ({ inform, onClose }: { inform: any; onClose: (
             {inform.title}
           </Box>
           <Box {...textStyles.time} ml={3} flex={1} fontFamily="PingFang SC">
-            {t(formatTimeToChatTime(inform.time) as any).replace('#', ':')}
+            {t(formatTimeToChatTime(inform.time))}
           </Box>
           <MyTag
             colorSchema={inform.teamId ? 'green' : 'blue'}
