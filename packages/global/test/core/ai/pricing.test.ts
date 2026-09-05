@@ -214,6 +214,28 @@ describe('getRuntimeResolvedPriceTiers', () => {
     expect(result).toEqual([{ minInputTokens: 0, inputPrice: 2, outputPrice: 2 }]);
   });
 
+  it('should progressively fall back from empty tiers and zero legacy IO to comprehensive price', () => {
+    const result = getRuntimeResolvedPriceTiers({
+      priceTiers: [{ inputPrice: 0, outputPrice: 0 }],
+      inputPrice: 0,
+      outputPrice: 0,
+      charsPointsPrice: 2
+    });
+
+    expect(result).toEqual([{ minInputTokens: 0, inputPrice: 2, outputPrice: 2 }]);
+  });
+
+  it('should progressively fall back when the configured tiers array is empty', () => {
+    const result = getRuntimeResolvedPriceTiers({
+      priceTiers: [],
+      inputPrice: 1,
+      outputPrice: 3,
+      charsPointsPrice: 9
+    });
+
+    expect(result).toEqual([{ minInputTokens: 0, inputPrice: 1, outputPrice: 3 }]);
+  });
+
   it('should prioritize priceTiers over legacy fields', () => {
     const result = getRuntimeResolvedPriceTiers({
       charsPointsPrice: 10,

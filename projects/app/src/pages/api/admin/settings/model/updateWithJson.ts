@@ -12,6 +12,7 @@ import {
 } from '@fastgpt/global/openapi/admin/core/ai/model/api';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { getSystemModelConfigUpdate } from '@fastgpt/service/core/ai/config/service';
 
 async function handler(req: ApiRequestProps<UpdateSystemModelsWithJsonBody>): Promise<void> {
   await authSystemAdmin({ req });
@@ -40,41 +41,62 @@ async function handler(req: ApiRequestProps<UpdateSystemModelsWithJsonBody>): Pr
 
   const existingModels = await MongoAIModel.find(
     { scope: ModelScopeEnum.system },
-    '_id model'
+    '_id model type'
   ).lean();
-  const existingModelMap = new Map(existingModels.map((model) => [String(model._id), model.model]));
+  const existingModelMap = new Map(
+    existingModels.map((model) => [
+      String(model._id),
+      { modelId: String(model._id), model: model.model, type: model.type }
+    ])
+  );
+  const existingModelNameMap = new Map(
+    existingModels.map((model) => [
+      model.model,
+      { modelId: String(model._id), model: model.model, type: model.type }
+    ])
+  );
   const importedModels = latestRecords.map(({ record, modelId }, index) => {
-    const existingModel = existingModelMap.get(modelId);
-    // 本地模型的调用标识不可变，导入时在完整校验前用持久化值覆盖输入。
+    const existingModel =
+      existingModelMap.get(modelId) ??
+      (typeof record.model === 'string' ? existingModelNameMap.get(record.model) : undefined);
+    // 本地已有模型的调用标识与类型均不可变，导入时在完整校验前使用持久化值覆盖输入。
     const parsed = ImportedSystemModelSchema.safeParse(
-      existingModel ? { ...record, modelId, model: existingModel } : { ...record, modelId }
+      existingModel
+        ? {
+            ...record,
+            modelId,
+            model: existingModel.model,
+            type: existingModel.type
+          }
+        : { ...record, modelId }
     );
     if (!parsed.success) {
       throw new UserError(`Invalid system model at index ${index}: ${parsed.error.message}`);
     }
-    return parsed.data;
+    return { data: parsed.data, existingModel };
   });
 
-  const resolvedModels = importedModels.map(({ modelId, ...modelData }) => {
-    const existingModel = existingModelMap.get(modelId);
-    if (!existingModel) {
+  const resolvedModels = importedModels.map(
+    ({ data: { modelId: importedModelId, ...modelData }, existingModel }) => {
+      if (!existingModel) {
+        return {
+          modelId: importedModelId,
+          model: modelData.model,
+          modelData,
+          isExistingModel: false
+        };
+      }
+
+      // 本实例已存在的模型按持久化 ID 更新，导入的 model/type 均不参与写入。
+      const { model: _importedModel, ...editableModelData } = modelData;
       return {
-        modelId,
-        model: modelData.model,
-        modelData,
-        isExistingId: false
+        modelId: existingModel.modelId,
+        model: existingModel.model,
+        modelData: editableModelData,
+        isExistingModel: true
       };
     }
-
-    // 本实例 ID 命中时，配置中的 model 仅用于导入记录识别，不能修改已有模型标识。
-    const { model: _importedModel, ...editableModelData } = modelData;
-    return {
-      modelId,
-      model: existingModel,
-      modelData: editableModelData,
-      isExistingId: true
-    };
-  });
+  );
 
   const modelNames = new Set<string>();
   for (const model of resolvedModels) {
@@ -92,13 +114,13 @@ async function handler(req: ApiRequestProps<UpdateSystemModelsWithJsonBody>): Pr
 
     if (importedModels.length === 0) return;
     await MongoAIModel.bulkWrite(
-      resolvedModels.map(({ modelId, model, modelData, isExistingId }) => ({
+      resolvedModels.map(({ modelId, model, modelData, isExistingModel }) => ({
         updateOne: {
-          filter: isExistingId
+          filter: isExistingModel
             ? { _id: modelId, scope: ModelScopeEnum.system }
             : { scope: ModelScopeEnum.system, model },
-          update: { $set: modelData },
-          upsert: !isExistingId
+          update: isExistingModel ? getSystemModelConfigUpdate(modelData) : { $set: modelData },
+          upsert: !isExistingModel
         }
       })),
       { session }

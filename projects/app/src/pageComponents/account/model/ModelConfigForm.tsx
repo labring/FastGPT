@@ -323,7 +323,7 @@ const ModelConfigForm = ({
       ...modelData,
       priceTiers: (() => {
         if (modelData.type !== ModelTypeEnum.llm) return undefined;
-        const tiers = modelData.priceTiers || [];
+        const tiers = getRuntimeResolvedPriceTiers(modelData);
         if (tiers.length === 0) return [emptyPriceTier];
 
         const last = tiers[tiers.length - 1];

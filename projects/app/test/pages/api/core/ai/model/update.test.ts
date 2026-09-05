@@ -258,6 +258,66 @@ describe('admin settings model create/update api', () => {
     });
   });
 
+  it('clears omitted optional model fields instead of keeping stale values', async () => {
+    const existing = await MongoAIModel.create({
+      ...buildLlmDocument(),
+      requestUrl: 'https://old.example.com/v1',
+      requestAuth: 'old-secret',
+      testMode: true,
+      charsPointsPrice: 9,
+      inputPrice: 4,
+      outputPrice: 5,
+      priceTiers: [{ minInputTokens: 0, inputPrice: 1, outputPrice: 2 }]
+    });
+
+    const res = await callApi({
+      handler: updateModelApi,
+      body: {
+        modelId: String(existing._id),
+        modelData: buildLlmUpdateData()
+      }
+    });
+
+    expect(res.error).toBeUndefined();
+    const updated = await MongoAIModel.findById(existing._id).lean();
+    expect(updated).not.toHaveProperty('requestUrl');
+    expect(updated).not.toHaveProperty('requestAuth');
+    expect(updated).not.toHaveProperty('testMode');
+    expect(updated).not.toHaveProperty('charsPointsPrice');
+    expect(updated).not.toHaveProperty('inputPrice');
+    expect(updated).not.toHaveProperty('outputPrice');
+    expect(updated).not.toHaveProperty('priceTiers');
+  });
+
+  it('rejects changing an existing model type through the update endpoint', async () => {
+    const existing = await MongoAIModel.create(buildLlmDocument());
+
+    const res = await callApi({
+      handler: updateModelApi,
+      body: {
+        modelId: String(existing._id),
+        modelData: {
+          type: ModelTypeEnum.embedding,
+          provider: 'OpenAI',
+          name: 'Changed type',
+          scope: 'system',
+          isActive: true,
+          config: { defaultToken: 512, maxToken: 8192, weight: 100 }
+        }
+      }
+    });
+
+    expect(res.error).toMatchObject({
+      name: 'UserError',
+      message: 'System model type cannot be changed'
+    });
+    await expect(MongoAIModel.findById(existing._id).lean()).resolves.toMatchObject({
+      type: ModelTypeEnum.llm,
+      config: { maxContext: 16000 }
+    });
+    expect(configMocks.updatedReloadSystemModel).not.toHaveBeenCalled();
+  });
+
   it('rejects attempts to change the immutable model identifier', async () => {
     const existing = await MongoAIModel.create(buildLlmDocument());
     const res = await callApi({

@@ -271,6 +271,30 @@ describe('loadSystemModels', () => {
     expect(global.systemModelList[0].priceTiers).toEqual([]);
   });
 
+  it('resolves inactive legacy model pricing with progressive fallback for admin display', async () => {
+    await MongoAIModel.collection.insertOne({
+      type: ModelTypeEnum.llm,
+      provider: 'OpenAI',
+      model: 'inactive-legacy-priced-llm',
+      name: 'Inactive legacy priced LLM',
+      scope: 'system',
+      isActive: false,
+      priceTiers: [],
+      inputPrice: 0,
+      outputPrice: 0,
+      charsPointsPrice: 2,
+      config: { maxContext: 32000, maxResponse: 16000, quoteMaxToken: 24000 }
+    });
+
+    await loadInstalledModels();
+
+    expect(global.systemModelList).toHaveLength(1);
+    expect(global.systemModelList[0].priceTiers).toEqual([
+      { minInputTokens: 0, inputPrice: 2, outputPrice: 2 }
+    ]);
+    expect(global.systemActiveModelList).toEqual([]);
+  });
+
   it('keeps the MongoDB newest-first order and derives the active list', async () => {
     const installedModels = [
       {

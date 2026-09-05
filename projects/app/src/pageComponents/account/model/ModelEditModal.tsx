@@ -106,24 +106,27 @@ const ModelEditModal = ({
     });
   };
 
-  /** 新建渠道会立即写入 AI Proxy；刷新详情后只合并新渠道，保留弹窗内尚未保存的选择。 */
-  const refreshAfterChannelCreated = async () => {
-    const previousChannelIds = new Set(detail?.channels.map((channel) => channel.id) ?? []);
-    const refreshedDetail = await refreshDetail();
-    const createdChannelIds = refreshedDetail.channels
-      .filter((channel) => !previousChannelIds.has(channel.id) && channel.isAssociated)
-      .map((channel) => channel.id);
+  /** 新建渠道会立即写入 AI Proxy；使用创建响应中的精确 ID 合并选择，避免列表差集误判。 */
+  const refreshAfterChannelCreated = async (createdChannelId?: number) => {
+    if (createdChannelId !== undefined) {
+      setSelectedChannelIds((current) => new Set([...current, createdChannelId]));
+    }
 
-    setPersistedChannelIds(
-      new Set(
-        refreshedDetail.channels
-          .filter((channel) => channel.isAssociated)
-          .map((channel) => channel.id)
-      )
-    );
-
-    setSelectedChannelIds((current) => new Set([...current, ...createdChannelIds]));
-    await onSuccess();
+    // 渠道已经创建成功，详情或列表刷新失败不能把写入结果误报为创建失败。
+    await Promise.all([
+      refreshDetail()
+        .then((refreshedDetail) => {
+          setPersistedChannelIds(
+            new Set(
+              refreshedDetail.channels
+                .filter((channel) => channel.isAssociated)
+                .map((channel) => channel.id)
+            )
+          );
+        })
+        .catch(() => {}),
+      Promise.resolve(onSuccess()).catch(() => {})
+    ]);
   };
 
   const navigateToChannelManagement = () => {
@@ -247,7 +250,7 @@ const ModelEditModal = ({
         <EditChannelModal
           defaultConfig={{ ...defaultChannel, models: [detail.model.model] }}
           fixedModel={{ model: detail.model.model, avatar: detail.model.avatar }}
-          onSuccess={() => void refreshAfterChannelCreated()}
+          onSuccess={refreshAfterChannelCreated}
           onClose={() => setShowCreateChannel(false)}
         />
       )}

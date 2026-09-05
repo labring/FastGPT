@@ -76,16 +76,17 @@ export const getRuntimeResolvedPriceTiers = (config?: PriceType): ModelPriceTier
       : tiers;
   };
 
-  // 格式化梯度
+  // 新梯度为空或只有一档双零时继续向旧字段回退，兼容迁移前后的混合数据。
   if (Array.isArray(config?.priceTiers)) {
-    return removeEmptySingleTier(sanitizeModelPriceTiers(config.priceTiers));
+    const priceTiers = removeEmptySingleTier(sanitizeModelPriceTiers(config.priceTiers));
+    if (priceTiers.length > 0) return priceTiers;
   }
 
   // 旧版的价格计费字段
   const hasLegacyIOPrice = isValidNumber(config?.inputPrice) || isValidNumber(config?.outputPrice);
 
   if (hasLegacyIOPrice) {
-    return removeEmptySingleTier(
+    const legacyPriceTiers = removeEmptySingleTier(
       sanitizeModelPriceTiers([
         {
           minInputTokens: 0,
@@ -94,12 +95,13 @@ export const getRuntimeResolvedPriceTiers = (config?: PriceType): ModelPriceTier
         }
       ])
     );
+    if (legacyPriceTiers.length > 0) return legacyPriceTiers;
   }
 
   if (isValidNumber(config?.charsPointsPrice)) {
     const comprehensivePrice = getSafePrice(config?.charsPointsPrice);
 
-    return removeEmptySingleTier(
+    const comprehensivePriceTiers = removeEmptySingleTier(
       sanitizeModelPriceTiers([
         {
           minInputTokens: 0,
@@ -108,6 +110,7 @@ export const getRuntimeResolvedPriceTiers = (config?: PriceType): ModelPriceTier
         }
       ])
     );
+    if (comprehensivePriceTiers.length > 0) return comprehensivePriceTiers;
   }
 
   return [];

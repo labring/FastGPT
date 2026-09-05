@@ -22,7 +22,7 @@ vi.mock('@fastgpt/global/common/i18n/utils', () => ({
   i18nT: (key: string) => key
 }));
 
-import { postCreateChannel } from '@/web/core/ai/channel';
+import { postCreateChannel, putChannel } from '@/web/core/ai/channel';
 
 const channelInput = {
   type: 1,
@@ -56,7 +56,7 @@ describe('postCreateChannel', () => {
       url: '/channels/all',
       method: 'GET',
       data: undefined,
-      params: { page: 1, perPage: 1000 }
+      params: {}
     });
   });
 
@@ -82,5 +82,75 @@ describe('postCreateChannel', () => {
       },
       params: undefined
     });
+  });
+
+  it('preserves advanced channel fields during a full channel update', async () => {
+    mocks.request.mockResolvedValueOnce({ data: { success: true } });
+
+    await putChannel({
+      id: 7,
+      type: 1,
+      name: 'Advanced channel',
+      base_url: 'https://example.com/v1',
+      proxy_url: 'https://proxy.example.com',
+      models: ['model-a'],
+      model_mapping: { alias: 'model-a' },
+      configs: { region: 'us-west' },
+      key: 'secret',
+      status: 1,
+      priority: 0,
+      sets: ['production'],
+      enabled_auto_balance_check: true,
+      balance_threshold: 0,
+      skip_tls_verify: true,
+      enabled_no_permission_ban: true,
+      warn_error_rate: 0.2,
+      max_error_rate: 0.5,
+      created_at: 1
+    });
+
+    expect(mocks.request).toHaveBeenCalledWith({
+      baseURL: '/base/api/aiproxy/api',
+      url: '/channel/7',
+      method: 'PUT',
+      data: {
+        type: 1,
+        name: 'Advanced channel',
+        base_url: 'https://example.com/v1',
+        proxy_url: 'https://proxy.example.com',
+        models: ['model-a'],
+        model_mapping: { alias: 'model-a' },
+        configs: { region: 'us-west' },
+        key: 'secret',
+        status: 1,
+        priority: 1,
+        sets: ['production'],
+        enabled_auto_balance_check: true,
+        skip_tls_verify: true,
+        enabled_no_permission_ban: true,
+        warn_error_rate: 0.2,
+        max_error_rate: 0.5
+      },
+      params: undefined
+    });
+  });
+
+  it('rejects a full update when balance threshold cannot be preserved', async () => {
+    await expect(
+      putChannel({
+        id: 8,
+        type: 1,
+        name: 'Threshold channel',
+        base_url: '',
+        models: [],
+        model_mapping: {},
+        key: '',
+        status: 1,
+        priority: 1,
+        balance_threshold: 10,
+        created_at: 1
+      })
+    ).rejects.toThrow('cannot preserve balance_threshold for channel: 8');
+    expect(mocks.request).not.toHaveBeenCalled();
   });
 });

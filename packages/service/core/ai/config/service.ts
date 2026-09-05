@@ -1,12 +1,65 @@
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.schema';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import type { ClientSession } from '../../../common/mongo';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { MongoAIModel } from './schema';
 import { updatedReloadSystemModel } from './utils';
+import type { SystemModelSchemaType } from '../type';
+import type { UpdateQuery } from 'mongoose';
 
 type EditableSystemModelData = Omit<SystemModelDocumentDataType, 'model'>;
+
+const optionalSystemModelConfigFields = [
+  'requestUrl',
+  'requestAuth',
+  'testMode',
+  'charsPointsPrice',
+  'priceTiers',
+  'inputPrice',
+  'outputPrice'
+] as const;
+
+/**
+ * 生成模型配置的替换式更新表达式。
+ *
+ * `model`、`type` 与 `scope` 都是实例身份的一部分，不参与 `$set`；已知可选字段缺失时
+ * 使用 `$unset`，避免普通 `$set` 让旧价格或旧请求配置残留。
+ */
+export const getSystemModelConfigUpdate = (
+  modelData: EditableSystemModelData
+): UpdateQuery<SystemModelSchemaType> => {
+  const mutableModelData = { ...modelData } as Record<string, unknown>;
+  delete mutableModelData.type;
+  delete mutableModelData.scope;
+
+  const fieldsToUnset = optionalSystemModelConfigFields.filter((field) => {
+    const value = mutableModelData[field];
+    const isEmptyRequestConfig =
+      (field === 'requestUrl' || field === 'requestAuth') &&
+      typeof value === 'string' &&
+      value.trim().length === 0;
+
+    if (!(field in mutableModelData) || value === undefined || isEmptyRequestConfig) {
+      delete mutableModelData[field];
+      return true;
+    }
+    return false;
+  });
+
+  return {
+    $set: mutableModelData,
+    ...(fieldsToUnset.length > 0
+      ? {
+          $unset: Object.fromEntries(fieldsToUnset.map((field) => [field, 1 as const])) as Record<
+            string,
+            1
+          >
+        }
+      : {})
+  } as UpdateQuery<SystemModelSchemaType>;
+};
 
 /**
  * 更新一组已存在的系统模型，并保证目标集合完整命中。
@@ -41,7 +94,20 @@ export const updateSystemModelConfig = async ({
   modelId: string;
   modelData: EditableSystemModelData;
 }) => {
-  await updateExistingSystemModels({ modelIds: [modelId], update: modelData });
+  const existingModel = await MongoAIModel.findOne(
+    { _id: modelId, scope: ModelScopeEnum.system },
+    { type: 1 }
+  ).lean();
+  if (!existingModel) throw ModelErrEnum.unExist;
+  if (existingModel.type !== modelData.type) {
+    throw new UserError('System model type cannot be changed');
+  }
+
+  const result = await MongoAIModel.updateOne(
+    { _id: modelId, scope: ModelScopeEnum.system, type: existingModel.type },
+    getSystemModelConfigUpdate(modelData)
+  );
+  if (result.matchedCount !== 1) throw ModelErrEnum.unExist;
   await updatedReloadSystemModel();
 };
 

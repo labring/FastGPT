@@ -3,6 +3,7 @@ import { createDocument } from 'zod-openapi';
 import {
   AdminSystemModelReferenceSchema,
   CreateSystemModelBodySchema,
+  CreateSystemModelsFromTemplatesBodySchema,
   DeleteSystemModelsBodySchema,
   ImportedSystemModelSchema,
   ReplaceSystemModelChannelsBodySchema,
@@ -62,6 +63,23 @@ describe('admin system model API schemas', () => {
     expect(() => DeleteSystemModelsBodySchema.parse({ modelIds })).toThrow();
     expect(() =>
       UpdateSystemModelStatusBodySchema.parse({ modelIds: [], isActive: true })
+    ).toThrow();
+  });
+
+  it('enforces the template creation batch boundary', () => {
+    const templates = Array.from({ length: 501 }, (_, index) => ({
+      type: 'llm' as const,
+      model: `model-${index}`
+    }));
+
+    expect(
+      CreateSystemModelsFromTemplatesBodySchema.parse({
+        templates: templates.slice(0, 500),
+        channelIds: []
+      }).templates
+    ).toHaveLength(500);
+    expect(() =>
+      CreateSystemModelsFromTemplatesBodySchema.parse({ templates, channelIds: [] })
     ).toThrow();
   });
 
