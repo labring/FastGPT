@@ -21,7 +21,7 @@ export const useClientTranslation = (namespace?: ClientNamespaceInput) => {
     : 'common';
 
   const { t: originalT, ...rest } = useTranslation(namespaces, { useSuspense: false });
-  const t = useMemo<typeof originalT>(() => createSafeTranslation(originalT), [originalT]);
+  const t = useMemo(() => createSafeTranslation<typeof originalT>(originalT), [originalT]);
   const language = getLangMapping(rest.i18n.language);
   const requiredLanguages = getRequiredI18nLanguages(language);
   const requiredNamespaces = Array.isArray(namespaces) ? namespaces : [namespaces];

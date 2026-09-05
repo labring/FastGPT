@@ -280,7 +280,7 @@ function EditLinkModal({
   onEdit: () => void;
 }) {
   const { feConfigs } = useSystemStore();
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const {
     register,
     setValue,
