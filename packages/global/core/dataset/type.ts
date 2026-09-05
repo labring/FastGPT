@@ -71,6 +71,7 @@ export const DatasetSchema = z
     userId: ObjectIdSchema.optional().meta({ description: '用户 ID', deprecated: true }),
     teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
     tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
+    createTime: z.coerce.date().meta({ description: '创建时间' }),
     updateTime: z.coerce.date().meta({ description: '更新时间' }),
     inheritPermission: z.boolean().meta({ description: '继承权限' }),
 
@@ -304,6 +305,7 @@ export const DatasetListItemSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '数据集 ID' }),
   tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
   avatar: z.string().meta({ description: '头像' }),
+  createTime: z.coerce.date().meta({ description: '创建时间' }),
   updateTime: z.coerce.date().meta({ description: '更新时间' }),
   name: z.string().meta({ description: '名称' }),
   intro: z.string().meta({ description: '简介' }),

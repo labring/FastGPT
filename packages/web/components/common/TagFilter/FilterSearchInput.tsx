@@ -46,7 +46,8 @@ const FilterSearchInput = ({ value, placeholder, onChange }: Props) => (
     }}
   >
     <Input
-      flex={1}
+      flex={'1 1 0'}
+      w={0}
       minW={0}
       h={'100%'}
       px={1}
@@ -59,7 +60,9 @@ const FilterSearchInput = ({ value, placeholder, onChange }: Props) => (
     {!!value && (
       <MyIconButton
         icon={'common/closeLight'}
-        flexShrink={0}
+        flex={'0 0 auto'}
+        position={'relative'}
+        zIndex={1}
         size={'14px'}
         hoverColor={'myGray.700'}
         onClick={() => onChange('')}

@@ -74,7 +74,8 @@ const ModelListFilters = ({
         value={provider}
         options={providerOptions}
         onChange={onProviderChange}
-        listMaxH={'240px'}
+        showSearch
+        listSize={'lg'}
         maxW={'240px'}
       />
       <SingleSelectFilter

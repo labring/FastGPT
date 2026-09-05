@@ -414,6 +414,7 @@ const ModelTable = ({
                           size="1rem"
                           hoverColor={'blue.500'}
                           w="min-content"
+                          data-row-action
                           onClick={onOpenManageModal}
                         />
                       )}

@@ -12,7 +12,9 @@ import { backfillModelPermissionReferences } from './tasks/20260903_backfill_mod
 import { backfillDatasetModelReferences } from './tasks/20260903_backfill_dataset_model_references';
 import { backfillEvaluationModelReferences } from './tasks/20260903_backfill_evaluation_model_references';
 import { backfillAppModelReferences } from './tasks/20260903_backfill_app_model_references';
-import { backfillAppCreateTime } from './tasks/4170/20260903_backfill_app_create_time';
+import { backfillResourceCreateTime } from './tasks/4170/20260903_backfill_resource_create_time';
+import { backfillBillMetadata } from './tasks/4170/20260905_backfill_bill_metadata';
+import { backfillResourceOwnerAcl } from './tasks/4170/20260905_backfill_resource_owner_acl';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -210,22 +212,80 @@ export const systemMigrations = [
     run: backfillAppModelReferences
   },
   {
-    id: '20260903_backfill_app_create_time',
+    id: '20260903_backfill_resource_create_time',
     version: '4.17.0',
-    nameKey: i18nT('system_migration:migrations.20260903_backfill_app_create_time.name'),
+    nameKey: i18nT('system_migration:migrations.20260903_backfill_resource_create_time.name'),
     descriptionKey: i18nT(
-      'system_migration:migrations.20260903_backfill_app_create_time.description'
+      'system_migration:migrations.20260903_backfill_resource_create_time.description'
     ),
-    resultKey: i18nT('system_migration:migrations.20260903_backfill_app_create_time.result'),
+    resultKey: i18nT('system_migration:migrations.20260903_backfill_resource_create_time.result'),
     progressSteps: [
       {
         key: 'apps',
-        labelKey: i18nT('system_migration:migrations.20260903_backfill_app_create_time.apps')
+        labelKey: i18nT('system_migration:migrations.20260903_backfill_resource_create_time.apps')
+      },
+      {
+        key: 'datasets',
+        labelKey: i18nT(
+          'system_migration:migrations.20260903_backfill_resource_create_time.datasets'
+        )
       }
     ],
     blockStartup: false,
     onFailure: SystemMigrationFailurePolicyEnum.continue,
-    run: backfillAppCreateTime
+    run: backfillResourceCreateTime
+  },
+  {
+    id: '20260905_backfill_bill_metadata',
+    version: '4.17.0',
+    nameKey: i18nT('system_migration:migrations.20260905_backfill_bill_metadata.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20260905_backfill_bill_metadata.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20260905_backfill_bill_metadata.result'),
+    progressSteps: [
+      {
+        key: 'bills',
+        labelKey: i18nT('system_migration:migrations.20260905_backfill_bill_metadata.bills')
+      }
+    ],
+    blockStartup: false,
+    onFailure: SystemMigrationFailurePolicyEnum.continue,
+    run: backfillBillMetadata
+  },
+  {
+    id: '20260905_backfill_resource_owner_acl',
+    version: '4.17.0',
+    nameKey: i18nT('system_migration:migrations.20260905_backfill_resource_owner_acl.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20260905_backfill_resource_owner_acl.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20260905_backfill_resource_owner_acl.result'),
+    progressSteps: [
+      {
+        key: 'apps',
+        labelKey: i18nT('system_migration:migrations.20260905_backfill_resource_owner_acl.apps')
+      },
+      {
+        key: 'datasets',
+        labelKey: i18nT('system_migration:migrations.20260905_backfill_resource_owner_acl.datasets')
+      },
+      {
+        key: 'agent_skills',
+        labelKey: i18nT(
+          'system_migration:migrations.20260905_backfill_resource_owner_acl.agent_skills'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20260905_backfill_resource_owner_acl.validation'
+        )
+      }
+    ],
+    blockStartup: false,
+    onFailure: SystemMigrationFailurePolicyEnum.continue,
+    run: backfillResourceOwnerAcl
   }
 ] as const satisfies readonly SystemMigration[];
 

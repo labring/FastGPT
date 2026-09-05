@@ -176,6 +176,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               modelType={ModelTypeEnum.embedding}
               w={'100%'}
               value={vectorModel?.modelId ?? datasetDetail.vectorModelId}
+              resolvedCurrentModel={vectorModel ?? datasetDetail.vectorModel}
               fontSize={'mini'}
               disableTip={
                 isTraining
@@ -211,6 +212,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               modelType={ModelTypeEnum.llm}
               w={'100%'}
               value={agentModel?.modelId ?? datasetDetail.agentModelId}
+              resolvedCurrentModel={agentModel ?? datasetDetail.agentModel}
               list={llmModelList.map((item) => ({
                 label: item.name,
                 value: item.modelId
@@ -235,6 +237,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               modelType={ModelTypeEnum.llm}
               w={'100%'}
               value={vlmModel?.modelId ?? datasetDetail.vlmModelId}
+              resolvedCurrentModel={vlmModel ?? datasetDetail.vlmModel}
               list={vllmModelList.map((item) => ({
                 label: item.name,
                 value: item.modelId

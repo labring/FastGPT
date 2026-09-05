@@ -28,6 +28,7 @@ import {
   type ListAppBodyType,
   type ListAppResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
+import { Types } from '@fastgpt/service/common/mongo';
 
 /*
   获取 APP 列表权限
@@ -169,7 +170,7 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
 
   const myApps = await MongoApp.find(
     { ...findAppsQuery, deleteTime: null },
-    '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission modules.flowNodeType',
+    '_id parentId avatar type name intro tmbId createTime updateTime pluginData inheritPermission modules.flowNodeType',
     {
       limit: limit
     }
@@ -214,6 +215,7 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
 
       return {
         ...rest,
+        createTime: app.createTime ?? new Types.ObjectId(String(app._id)).getTimestamp(),
         avatar: app.avatar ?? '',
         intro: app.intro ?? '',
         parentId: app.parentId,

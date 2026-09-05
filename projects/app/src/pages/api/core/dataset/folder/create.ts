@@ -49,15 +49,20 @@ async function handler(req: ApiRequestProps<CreateDatasetFolderBody>) {
   await checkCreateFolderDepth({ parentId, teamId, model: MongoDataset });
 
   await mongoSessionRun(async (session) => {
-    const dataset = await MongoDataset.create({
-      ...parseParentIdInMongo(parentId),
-      avatar: FolderImgUrl,
-      name,
-      intro,
-      teamId,
-      tmbId,
-      type: DatasetTypeEnum.folder
-    });
+    const [dataset] = await MongoDataset.create(
+      [
+        {
+          ...parseParentIdInMongo(parentId),
+          avatar: FolderImgUrl,
+          name,
+          intro,
+          teamId,
+          tmbId,
+          type: DatasetTypeEnum.folder
+        }
+      ],
+      { session }
+    );
 
     await createResourceDefaultCollaborators({
       tmbId,

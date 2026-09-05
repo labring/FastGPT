@@ -3,6 +3,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import type { FlexProps } from '@chakra-ui/react';
 import type { ReactNode } from 'react';
 import MyIcon from '../Icon';
+import MyTooltip from '../MyTooltip';
 
 export type FilterSummaryValueProps = {
   text: ReactNode;
@@ -17,15 +18,17 @@ export const FilterSummaryValue = ({
   chip = false
 }: FilterSummaryValueProps) => (
   <Flex alignItems={'center'} gap={1} minW={0} maxW={'100%'}>
-    <Box
-      minW={0}
-      overflow={'hidden'}
-      textOverflow={'ellipsis'}
-      whiteSpace={'nowrap'}
-      {...(chip ? { px: 1, py: '2px', bg: 'myGray.100', borderRadius: 'xs' } : {})}
-    >
-      {text}
-    </Box>
+    <MyTooltip label={text} showOnlyWhenOverflow shouldWrapChildren={false}>
+      <Box
+        minW={0}
+        overflow={'hidden'}
+        textOverflow={'ellipsis'}
+        whiteSpace={'nowrap'}
+        {...(chip ? { px: 1, py: '2px', bg: 'myGray.100', borderRadius: 'xs' } : {})}
+      >
+        {text}
+      </Box>
+    </MyTooltip>
     {extraCount > 0 && (
       <Box
         flexShrink={0}

@@ -378,6 +378,27 @@ describe('support user OpenAPI contracts', () => {
             hasWriteRole: true,
             hasReadRole: true
           }
+        },
+        {
+          userId: objectId,
+          teamId: objectId,
+          teamAvatar: null,
+          teamName: 'FastGPT 团队',
+          memberName: '普通成员',
+          avatar: null,
+          tmbId: objectId,
+          role: null,
+          status: 'active',
+          permission: {
+            role: 1,
+            isOwner: false,
+            hasManagePer: false,
+            hasWritePer: false,
+            hasReadPer: true,
+            hasManageRole: false,
+            hasWriteRole: false,
+            hasReadRole: true
+          }
         }
       ])
     ).toMatchObject([
@@ -387,6 +408,10 @@ describe('support user OpenAPI contracts', () => {
           status: 'pending',
           scheduledCancelAt: '2026-09-01T00:00:00.000Z'
         }
+      },
+      {
+        role: null,
+        memberName: '普通成员'
       }
     ]);
   });

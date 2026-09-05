@@ -115,6 +115,29 @@ type SelectedItemType<T> = {
   icon?: string;
   label: string | React.ReactNode;
   value: T;
+  isInvalid: boolean;
+};
+
+/**
+ * 将受控值解析为用于展示的选中项；已经不在候选列表中的值保留在结果中，
+ * 但统一标记为无效项，避免继续展示可能已经过期或不可读的原始值。
+ */
+export const resolveMultipleSelectItems = <T,>({
+  values,
+  list,
+  invalidLabel
+}: {
+  values: T[];
+  list: SelectProps<T>['list'];
+  invalidLabel: React.ReactNode;
+}): SelectedItemType<T>[] => {
+  return values.map((value) => {
+    const listItem = list.find((item) => item.value === value);
+
+    return listItem
+      ? { ...listItem, isInvalid: false }
+      : { value, label: invalidLabel, isInvalid: true };
+  });
 };
 
 /**
@@ -177,11 +200,12 @@ const MultipleSelect = <T = any,>({
   }, [initialValue]);
 
   const selectedItems = useMemo(() => {
-    return formatValue.map((val) => {
-      const listItem = list.find((item) => item.value === val);
-      return listItem || { value: val, label: String(val) };
+    return resolveMultipleSelectItems({
+      values: formatValue,
+      list,
+      invalidLabel: t('common:invalid_value')
     });
-  }, [formatValue, list]);
+  }, [formatValue, list, t]);
   const selectedTagSizeStyle = selectedTagSizeStyleMap[size];
   const tagWidth = tagStyle?.w;
   const canInferSelectAll = !ScrollData && (isSelectAll !== undefined || !!setIsSelectAll);
@@ -270,7 +294,7 @@ const MultipleSelect = <T = any,>({
       const text = String(item.label || item.value);
       const baseWidth = size === 'sm' ? 16 : size === 'md' ? 20 : 24; // 基础padding
       const charWidth = size === 'sm' ? 7.5 : 8; // 每个字符约8px
-      const closeIconWidth = closeable ? 22 : 0; // 关闭按钮宽度
+      const closeIconWidth = closeable || item.isInvalid ? 22 : 0; // 无效项始终提供删除入口
 
       return baseWidth + text.length * charWidth + closeIconWidth;
     };
@@ -472,47 +496,58 @@ const MultipleSelect = <T = any,>({
                   </Box>
                 ) : (
                   <>
-                    {(itemWrap ? selectedItems : visibleItems).map((item, i) => (
-                      <MyTag
-                        className="tag-icon"
-                        key={i}
-                        bg={'primary.100'}
-                        color={'primary.700'}
-                        type={'fill'}
-                        borderRadius={'sm'}
-                        {...selectedTagSizeStyle}
-                        flexShrink={0}
-                        {...selectedTagStyle}
-                        pr={closeable ? 1 : undefined}
-                        {...tagStyle}
-                      >
-                        {item.label}
-                        {closeable && (
-                          <MyIconButton
-                            icon={'common/closeLight'}
-                            tip={t('common:Remove')}
-                            ml={1}
-                            p={1}
-                            size={'0.8rem'}
-                            position={'relative'}
-                            zIndex={2}
-                            pointerEvents={'auto'}
-                            hoverColor={'red.500'}
-                            hoverBg={'red.50'}
-                            onPointerDown={(e) => {
-                              // 在外层 MenuButton 处理 click 前完成删除，并阻止其抢占事件。
-                              e.stopPropagation();
-                              e.preventDefault();
-                              onclickItem(item.value);
-                            }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                            }}
-                          />
-                        )}
-                      </MyTag>
-                    ))}
+                    {(itemWrap ? selectedItems : visibleItems).map((item, i) => {
+                      const showCloseButton = closeable || item.isInvalid;
+
+                      return (
+                        <MyTag
+                          className="tag-icon"
+                          key={i}
+                          bg={'primary.100'}
+                          color={'primary.700'}
+                          type={'fill'}
+                          borderRadius={'sm'}
+                          {...selectedTagSizeStyle}
+                          flexShrink={0}
+                          {...selectedTagStyle}
+                          pr={showCloseButton ? 1 : undefined}
+                          {...tagStyle}
+                          {...(item.isInvalid
+                            ? {
+                                bg: 'red.50',
+                                borderColor: 'red.200',
+                                color: 'red.600'
+                              }
+                            : {})}
+                        >
+                          {item.label}
+                          {showCloseButton && (
+                            <MyIconButton
+                              icon={'common/closeLight'}
+                              tip={t('common:Remove')}
+                              ml={1}
+                              p={1}
+                              size={'0.8rem'}
+                              position={'relative'}
+                              zIndex={2}
+                              pointerEvents={'auto'}
+                              hoverColor={'red.500'}
+                              hoverBg={'red.50'}
+                              onPointerDown={(e) => {
+                                // 在外层 MenuButton 处理 click 前完成删除，并阻止其抢占事件。
+                                e.stopPropagation();
+                                e.preventDefault();
+                                onclickItem(item.value);
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                              }}
+                            />
+                          )}
+                        </MyTag>
+                      );
+                    })}
                     {!itemWrap && overflowItems.length > 0 && (
                       <Box
                         {...selectedTagSizeStyle}

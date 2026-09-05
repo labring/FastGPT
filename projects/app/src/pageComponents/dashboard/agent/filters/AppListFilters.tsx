@@ -92,7 +92,7 @@ const AppListFilters = ({ value, onChange, scene }: Props) => {
         value={resolveSceneListType(value.type, scene)}
         options={typeOptions}
         onChange={(type) => onChange({ ...value, type })}
-        maxW={'180px'}
+        maxW={'240px'}
       />
       {!!feConfigs.isPlus && (
         <TeamMemberFilter

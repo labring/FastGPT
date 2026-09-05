@@ -53,15 +53,20 @@ async function handler(
 
   // Create app
   await mongoSessionRun(async (session) => {
-    const app = await MongoApp.create({
-      ...parseParentIdInMongo(parentId),
-      avatar: FolderImgUrl,
-      name,
-      intro,
-      teamId,
-      tmbId,
-      type
-    });
+    const [app] = await MongoApp.create(
+      [
+        {
+          ...parseParentIdInMongo(parentId),
+          avatar: FolderImgUrl,
+          name,
+          intro,
+          teamId,
+          tmbId,
+          type
+        }
+      ],
+      { session }
+    );
 
     await createResourceDefaultCollaborators({
       tmbId,

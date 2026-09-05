@@ -140,7 +140,7 @@ const AppSchema = new Schema(
 );
 
 defineIndex(AppSchema, { key: { teamId: 1, updateTime: -1 } });
-defineIndex(AppSchema, { key: { teamId: 1, createTime: -1 } });
+defineIndex(AppSchema, { key: { teamId: 1, createTime: 1 } });
 defineIndex(AppSchema, { key: { teamId: 1, type: 1 } });
 defineIndex(AppSchema, { key: { teamId: 1, parentId: 1 } });
 defineIndex(AppSchema, {

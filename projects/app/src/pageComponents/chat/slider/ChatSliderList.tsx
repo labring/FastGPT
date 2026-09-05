@@ -3,7 +3,6 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -13,10 +12,11 @@ import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { getDisplayHistoryTitle } from '@/web/core/chat/context/historyTitleUtils';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const ChatSliderList = () => {
   const { isPc } = useSystem();
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
 
   const { chatId: activeChatId, appId } = useChatStore();
 
@@ -201,7 +201,7 @@ const ChatSliderList = () => {
                   >
                     {item.chatGenerateStatus === ChatGenerateStatusEnum.generating
                       ? t('chat:history_generating')
-                      : t(formatTimeToChatTime(item.updateTime) as any).replace('#', ':')}
+                      : t(formatTimeToChatTime(item.updateTime))}
                   </Box>
                 )}
                 <Box className="more" display={['block', 'none']}>

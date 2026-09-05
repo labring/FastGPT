@@ -6,12 +6,18 @@ import MyPopover from '../MyPopover';
 import MyIcon from '../Icon';
 import Avatar from '../Avatar';
 import type { IconNameType } from '../Icon/type';
+import MyTooltip from '../MyTooltip';
 import FilterButton, { useFilterTriggerWidth } from './FilterButton';
 import FilterSearchInput, {
   FILTER_SEARCH_THRESHOLD,
   filterSelectOptionsBySearch
 } from './FilterSearchInput';
-import { FILTER_LIST_H, getFilterListBoxProps, filterPopoverProps } from './styles';
+import {
+  DEFAULT_FILTER_LIST_SIZE,
+  getFilterListBoxProps,
+  filterPopoverProps,
+  type FilterListSize
+} from './styles';
 
 export type SingleSelectFilterOption<T> = {
   value: T;
@@ -33,7 +39,8 @@ export type SingleSelectFilterProps<T> = {
   /** 为 true 时下拉里显示搜索框。封闭短枚举不要传。 */
   showSearch?: boolean;
   searchPlaceholder?: string;
-  listMaxH?: string | number;
+  /** 下拉列表高度档位，选项较多时使用 md 或 lg。 */
+  listSize?: FilterListSize;
 };
 
 /** 从选项里取出当前值对应项；无效值必须显式暴露，不能静默回退。 */
@@ -42,6 +49,24 @@ export function resolveSingleSelectOption<T>(
   value: T
 ): SingleSelectFilterOption<T> | undefined {
   return options.find((item) => item.value === value);
+}
+
+/** 计算选中项居中时的滚动位置，并限制在列表的有效滚动范围内。 */
+export function getCenteredOptionScrollTop({
+  optionOffsetTop,
+  optionHeight,
+  listHeight,
+  scrollHeight
+}: {
+  optionOffsetTop: number;
+  optionHeight: number;
+  listHeight: number;
+  scrollHeight: number;
+}) {
+  const centeredScrollTop = optionOffsetTop - (listHeight - optionHeight) / 2;
+  const maxScrollTop = Math.max(0, scrollHeight - listHeight);
+
+  return Math.min(Math.max(0, centeredScrollTop), maxScrollTop);
 }
 
 /**
@@ -57,7 +82,7 @@ function SingleSelectFilter<T>({
   placement = 'bottom-start',
   showSearch,
   searchPlaceholder,
-  listMaxH
+  listSize = DEFAULT_FILTER_LIST_SIZE
 }: SingleSelectFilterProps<T>) {
   const { t } = useTranslation();
   const [searchKey, setSearchKey] = useState('');
@@ -81,10 +106,12 @@ function SingleSelectFilter<T>({
     const selectedOption = selectedOptionRef.current;
     if (!list || !selectedOption) return;
 
-    const centeredScrollTop =
-      selectedOption.offsetTop - (list.clientHeight - selectedOption.offsetHeight) / 2;
-    const maxScrollTop = Math.max(0, list.scrollHeight - list.clientHeight);
-    list.scrollTop = Math.min(Math.max(0, centeredScrollTop), maxScrollTop);
+    list.scrollTop = getCenteredOptionScrollTop({
+      optionOffsetTop: selectedOption.offsetTop,
+      optionHeight: selectedOption.offsetHeight,
+      listHeight: list.clientHeight,
+      scrollHeight: list.scrollHeight
+    });
   }, [openRevision, value, visibleOptions]);
 
   const selectedContent = selected ? (
@@ -102,12 +129,14 @@ function SingleSelectFilter<T>({
           sx={{ '& path': { fill: 'currentColor' } }}
         />
       )}
-      <Box minW={0} overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
-        {selected.label}
-      </Box>
+      <MyTooltip label={selected.label} showOnlyWhenOverflow shouldWrapChildren={false}>
+        <Box minW={0} overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
+          {selected.label}
+        </Box>
+      </MyTooltip>
     </Flex>
   ) : hasLoadedOptions ? (
-    <Box color="red.600" whiteSpace="nowrap">
+    <Box color={'red.600'} whiteSpace={'nowrap'}>
       {invalidValueLabel}
     </Box>
   ) : null;
@@ -143,8 +172,7 @@ function SingleSelectFilter<T>({
           )}
           <Box
             ref={listRef}
-            {...getFilterListBoxProps(listScrollable)}
-            maxH={listScrollable ? (listMaxH ?? FILTER_LIST_H) : undefined}
+            {...getFilterListBoxProps(listScrollable, listSize)}
             position={'relative'}
           >
             {visibleOptions.map((item) => {
@@ -173,7 +201,7 @@ function SingleSelectFilter<T>({
                     onClose();
                   }}
                 >
-                  <Flex alignItems={'center'} gap={2} minW={0}>
+                  <Flex alignItems={'center'} gap={2} minW={0} overflow={'hidden'}>
                     {item.avatar && <Avatar src={item.avatar} w={'1rem'} />}
                     {item.icon && (
                       <MyIcon
@@ -185,7 +213,16 @@ function SingleSelectFilter<T>({
                         sx={{ '& path': { fill: 'currentColor' } }}
                       />
                     )}
-                    <Box whiteSpace={'nowrap'}>{item.label}</Box>
+                    <MyTooltip label={item.label} showOnlyWhenOverflow shouldWrapChildren={false}>
+                      <Box
+                        minW={0}
+                        overflow={'hidden'}
+                        textOverflow={'ellipsis'}
+                        whiteSpace={'nowrap'}
+                      >
+                        {item.label}
+                      </Box>
+                    </MyTooltip>
                   </Flex>
                   {item.extra && (
                     <Box flexShrink={0} color={'myGray.500'} fontWeight={'normal'}>

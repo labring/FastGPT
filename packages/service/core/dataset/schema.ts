@@ -95,6 +95,10 @@ const DatasetSchema = new Schema({
     type: Date,
     default: () => new Date()
   },
+  createTime: {
+    type: Date,
+    default: () => new Date()
+  },
   vectorModel: {
     type: String
   },
@@ -156,9 +160,12 @@ const DatasetSchema = new Schema({
   yuqueServer: Object
 });
 
-defineIndex(DatasetSchema, { key: { teamId: 1 } });
+defineIndex(DatasetSchema, { key: { teamId: 1, createTime: 1 } });
+defineIndex(DatasetSchema, { key: { teamId: 1, updateTime: -1 } });
 defineIndex(DatasetSchema, { key: { teamId: 1, parentId: 1 } });
 defineIndex(DatasetSchema, { key: { type: 1 } }); // Admin count
 defineIndex(DatasetSchema, { key: { deleteTime: 1 } }); // 添加软删除字段索引
+
+defineIndex(DatasetSchema, { key: { teamId: 1 }, deprecated: true });
 
 export const MongoDataset = getMongoModel<DatasetSchemaType>(DatasetCollectionName, DatasetSchema);

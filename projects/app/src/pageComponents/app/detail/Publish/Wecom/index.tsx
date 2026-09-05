@@ -20,7 +20,7 @@ import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { defaultOutLinkForm } from '@/web/core/app/constants';
 import type { WecomAppType, OutLinkEditType } from '@fastgpt/global/support/outLink/type';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
-import { Trans, useTranslation } from 'next-i18next';
+import { Trans } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
@@ -30,6 +30,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDocPath } from '@/web/common/system/doc';
 import { listCustomDomain } from '@/web/support/customDomain/api';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const WecomEditModal = dynamic(() => import('./WecomEditModal'));
 const ShowShareLinkModal = dynamic(() => import('../components/showShareLinkModal'));
@@ -41,7 +42,7 @@ const Wecom = ({
   appId: string;
   onRefreshOutLinkCounts: () => Promise<unknown>;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { Loading, setIsLoading } = useLoading();
   const { feConfigs } = useSystemStore();
   const [editWecomData, setEditWecomData] = useState<OutLinkEditType<WecomAppType>>();
@@ -160,9 +161,7 @@ const Wecom = ({
                   </Td>
                 )}
                 <Td>
-                  {item.lastTime
-                    ? t(formatTimeToChatTime(item.lastTime) as any).replace('#', ':')
-                    : t('common:un_used')}
+                  {item.lastTime ? t(formatTimeToChatTime(item.lastTime)) : t('common:un_used')}
                 </Td>
                 <Td display={'flex'} alignItems={'center'}>
                   <Button
