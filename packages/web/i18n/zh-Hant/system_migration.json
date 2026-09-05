@@ -63,5 +63,12 @@
   "migrations.20260905_backfill_bill_metadata.name": "回填歷史訂單缺失欄位",
   "migrations.20260905_backfill_bill_metadata.description": "為歷史微信餘額儲值帳單回填缺失的支付後設資料。",
   "migrations.20260905_backfill_bill_metadata.bills": "回填帳單支付後設資料",
-  "migrations.20260905_backfill_bill_metadata.result": "已為 {{migratedCount}} 筆歷史帳單回填支付後設資料。"
+  "migrations.20260905_backfill_bill_metadata.result": "已為 {{migratedCount}} 筆歷史帳單回填支付後設資料。",
+  "migrations.20260905_backfill_resource_owner_acl.name": "補齊資源擁有者權限",
+  "migrations.20260905_backfill_resource_owner_acl.description": "檢查全部應用、知識庫和個人 Agent Skill，僅在資源缺少有效成員擁有者時為目前團隊擁有者補齊權限。",
+  "migrations.20260905_backfill_resource_owner_acl.apps": "檢查應用擁有者權限",
+  "migrations.20260905_backfill_resource_owner_acl.datasets": "檢查知識庫擁有者權限",
+  "migrations.20260905_backfill_resource_owner_acl.agent_skills": "檢查 Agent Skill 擁有者權限",
+  "migrations.20260905_backfill_resource_owner_acl.validation": "驗證資源擁有者權限",
+  "migrations.20260905_backfill_resource_owner_acl.result": "已檢查 {{appsProcessedCount}} 個應用、{{datasetsProcessedCount}} 個知識庫和 {{agentSkillsProcessedCount}} 個技能。補齊擁有者權限：{{appsUpdatedCount}} 個應用、{{datasetsUpdatedCount}} 個知識庫和 {{agentSkillsUpdatedCount}} 個技能。"
 }

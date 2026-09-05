@@ -63,5 +63,12 @@
   "migrations.20260905_backfill_bill_metadata.name": "回填历史订单缺失字段",
   "migrations.20260905_backfill_bill_metadata.description": "为历史微信余额充值账单回填缺失的支付元数据。",
   "migrations.20260905_backfill_bill_metadata.bills": "回填账单支付元数据",
-  "migrations.20260905_backfill_bill_metadata.result": "已为 {{migratedCount}} 条历史账单回填支付元数据。"
+  "migrations.20260905_backfill_bill_metadata.result": "已为 {{migratedCount}} 条历史账单回填支付元数据。",
+  "migrations.20260905_backfill_resource_owner_acl.name": "补齐资源所有者权限",
+  "migrations.20260905_backfill_resource_owner_acl.description": "检查全部应用、知识库和个人 Agent Skill，仅在资源缺少有效成员所有者时为当前团队所有者补齐权限。",
+  "migrations.20260905_backfill_resource_owner_acl.apps": "检查应用所有者权限",
+  "migrations.20260905_backfill_resource_owner_acl.datasets": "检查知识库所有者权限",
+  "migrations.20260905_backfill_resource_owner_acl.agent_skills": "检查 Agent Skill 所有者权限",
+  "migrations.20260905_backfill_resource_owner_acl.validation": "校验资源所有者权限",
+  "migrations.20260905_backfill_resource_owner_acl.result": "已检查 {{appsProcessedCount}} 个应用、{{datasetsProcessedCount}} 个知识库和 {{agentSkillsProcessedCount}} 个技能。补齐所有者权限：{{appsUpdatedCount}} 个应用、{{datasetsUpdatedCount}} 个知识库和 {{agentSkillsUpdatedCount}} 个技能。"
 }

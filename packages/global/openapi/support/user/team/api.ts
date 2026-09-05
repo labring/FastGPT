@@ -265,7 +265,7 @@ export const TeamListItemSchema = z
       example: '68ad85a7463006c963799a07',
       description: '团队成员 ID'
     }),
-    role: z.enum(TeamMemberRoleEnum).optional().meta({
+    role: z.enum(TeamMemberRoleEnum).nullish().meta({
       example: TeamMemberRoleEnum.owner,
       description: '团队成员角色；历史数据可能未设置该废弃字段'
     }),

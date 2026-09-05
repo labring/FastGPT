@@ -63,5 +63,12 @@
   "migrations.20260905_backfill_bill_metadata.name": "Backfill missing historical bill fields",
   "migrations.20260905_backfill_bill_metadata.description": "Backfills missing payment metadata on historical WeChat balance recharge bills.",
   "migrations.20260905_backfill_bill_metadata.bills": "Backfilling bill payment metadata",
-  "migrations.20260905_backfill_bill_metadata.result": "Backfilled payment metadata for {{migratedCount}} historical bills."
+  "migrations.20260905_backfill_bill_metadata.result": "Backfilled payment metadata for {{migratedCount}} historical bills.",
+  "migrations.20260905_backfill_resource_owner_acl.name": "Backfill resource owner permissions",
+  "migrations.20260905_backfill_resource_owner_acl.description": "Checks all apps, datasets, and personal agent skills and grants the current team owner ownership only when a resource has no valid member owner.",
+  "migrations.20260905_backfill_resource_owner_acl.apps": "Checking app owner permissions",
+  "migrations.20260905_backfill_resource_owner_acl.datasets": "Checking dataset owner permissions",
+  "migrations.20260905_backfill_resource_owner_acl.agent_skills": "Checking agent skill owner permissions",
+  "migrations.20260905_backfill_resource_owner_acl.validation": "Validating resource owner permissions",
+  "migrations.20260905_backfill_resource_owner_acl.result": "Checked {{appsProcessedCount}} apps, {{datasetsProcessedCount}} datasets, and {{agentSkillsProcessedCount}} skills. Backfilled owner permissions for {{appsUpdatedCount}} apps, {{datasetsUpdatedCount}} datasets, and {{agentSkillsUpdatedCount}} skills."
 }
