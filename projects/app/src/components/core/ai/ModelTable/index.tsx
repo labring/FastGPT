@@ -304,6 +304,7 @@ const ModelTable = ({
           onChange={setProvider}
           showSearch
           maxW={'240px'}
+          listSize={'lg'}
         />
         <SingleSelectFilter
           title={t('common:model.model_type')}
