@@ -26,7 +26,6 @@ import {
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useTranslation } from 'next-i18next';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import SideTag from './SideTag';
 import UserBox from '@fastgpt/web/components/common/UserBox';
@@ -34,13 +33,14 @@ import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { getResourceListDisplayTime } from '@/pageComponents/dashboard/agent/filters/utils';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 
 function List() {
   const { setLoading } = useSystemStore();
   const { isPc } = useSystem();
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const {
     loadMyDatasets,
     setMoveDatasetId,

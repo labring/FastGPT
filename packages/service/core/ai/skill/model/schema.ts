@@ -133,13 +133,12 @@ defineIndex(AgentSkillsSchema, {
 });
 // 分类筛选。
 defineIndex(AgentSkillsSchema, { key: { category: 1 } });
+defineIndex(AgentSkillsSchema, {
+  key: { teamId: 1, parentId: 1, deleteTime: 1 }
+});
 
 defineIndex(AgentSkillsSchema, {
   key: { source: 1, teamId: 1, deleteTime: 1, createTime: -1 },
-  deprecated: true
-});
-defineIndex(AgentSkillsSchema, {
-  key: { teamId: 1, parentId: 1, deleteTime: 1 },
   deprecated: true
 });
 

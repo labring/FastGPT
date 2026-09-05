@@ -49,6 +49,7 @@ import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getResourceListDisplayTime } from '@/pageComponents/dashboard/agent/filters/utils';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
@@ -190,7 +191,7 @@ const List = ({
   onClickImport?: () => void;
   guardSkillSandboxOperation: () => boolean;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
 

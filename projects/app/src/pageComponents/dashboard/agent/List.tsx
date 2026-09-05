@@ -41,6 +41,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
 import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
@@ -56,7 +57,7 @@ const resolveCreateAppType = (appType: AppTypeEnum | 'all', pathname: string) =>
 };
 
 const List = () => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const router = useRouter();
   const { parentId = null } = router.query;
   const { isPc } = useSystem();
