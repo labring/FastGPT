@@ -3,7 +3,7 @@ import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import type { ClientSession } from '../../../common/mongo';
-import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import { runSystemModelTransaction } from './entity';
 import { MongoAIModel } from './schema';
 import { updatedReloadSystemModel } from './utils';
 import type { SystemModelSchemaType } from '../type';
@@ -94,20 +94,25 @@ export const updateSystemModelConfig = async ({
   modelId: string;
   modelData: EditableSystemModelData;
 }) => {
-  const existingModel = await MongoAIModel.findOne(
-    { _id: modelId, scope: ModelScopeEnum.system },
-    { type: 1 }
-  ).lean();
-  if (!existingModel) throw ModelErrEnum.unExist;
-  if (existingModel.type !== modelData.type) {
-    throw new UserError('System model type cannot be changed');
-  }
+  await runSystemModelTransaction(async (session) => {
+    const existingModel = await MongoAIModel.findOne(
+      { _id: modelId, scope: ModelScopeEnum.system },
+      { type: 1 }
+    )
+      .session(session)
+      .lean();
+    if (!existingModel) throw ModelErrEnum.unExist;
+    if (existingModel.type !== modelData.type) {
+      throw new UserError('System model type cannot be changed');
+    }
 
-  const result = await MongoAIModel.updateOne(
-    { _id: modelId, scope: ModelScopeEnum.system, type: existingModel.type },
-    getSystemModelConfigUpdate(modelData)
-  );
-  if (result.matchedCount !== 1) throw ModelErrEnum.unExist;
+    const result = await MongoAIModel.updateOne(
+      { _id: modelId, scope: ModelScopeEnum.system, type: existingModel.type },
+      getSystemModelConfigUpdate(modelData),
+      { session }
+    );
+    if (result.matchedCount !== 1) throw ModelErrEnum.unExist;
+  });
   await updatedReloadSystemModel();
 };
 
@@ -119,7 +124,7 @@ export const updateSystemModelStatus = async ({
   modelIds: string[];
   isActive: boolean;
 }) => {
-  await mongoSessionRun((session) =>
+  await runSystemModelTransaction((session) =>
     updateExistingSystemModels({ modelIds, update: { isActive }, session })
   );
   await updatedReloadSystemModel();

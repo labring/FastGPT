@@ -20,8 +20,8 @@ vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
 vi.mock('@fastgpt/service/core/ai/config/utils', () => ({
   updatedReloadSystemModel: mocks.updatedReloadSystemModel
 }));
-vi.mock('@fastgpt/service/common/mongo/sessionRun', () => ({
-  mongoSessionRun: vi.fn(async (callback: (session: unknown) => Promise<unknown>) =>
+vi.mock('@fastgpt/service/core/ai/config/entity', () => ({
+  runSystemModelTransaction: vi.fn(async (callback: (session: unknown) => Promise<unknown>) =>
     callback(mocks.session)
   )
 }));

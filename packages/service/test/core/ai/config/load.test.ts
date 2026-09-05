@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
+vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
+
 const pluginMocks = vi.hoisted(() => ({ listModels: vi.fn() }));
 const reloadMocks = vi.hoisted(() => ({
   clearAllMyModelsCache: vi.fn(),
@@ -38,10 +40,13 @@ vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => ({
 }));
 import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
+import * as modelEntity from '@fastgpt/service/core/ai/config/entity';
+import { preloadModelProviders } from '@fastgpt/service/core/app/provider/controller';
 import { LegacySystemModelCollectionName } from '@fastgpt/service/core/ai/config/constants';
 import {
   loadInstalledModels,
   loadSystemModels,
+  ensureSystemModelSnapshot,
   updatedReloadSystemModel
 } from '@fastgpt/service/core/ai/config/utils';
 
@@ -71,6 +76,7 @@ describe('loadSystemModels', () => {
 
   beforeEach(async () => {
     pluginMocks.listModels.mockReset().mockResolvedValue([]);
+    vi.mocked(preloadModelProviders).mockReset().mockResolvedValue(undefined);
     reloadMocks.clearAllMyModelsCache.mockReset().mockResolvedValue(undefined);
     reloadMocks.updateFastGPTConfigBuffer.mockReset().mockResolvedValue(undefined);
     reloadMocks.delay.mockReset().mockResolvedValue(undefined);
@@ -83,6 +89,7 @@ describe('loadSystemModels', () => {
     global.systemActiveModelList = undefined as never;
     global.systemModelMap = undefined as never;
     global.systemDefaultModel = undefined as never;
+    global.systemModelRevision = undefined;
   });
 
   afterEach(() => {
@@ -138,6 +145,19 @@ describe('loadSystemModels', () => {
     await expect(loadSystemModels()).resolves.toBeUndefined();
     expect(pluginMocks.listModels).not.toHaveBeenCalled();
     expect(global.systemModelList).toEqual([]);
+  });
+
+  it('rejects startup when required Plugin Provider metadata cannot be loaded', async () => {
+    const failure = new Error('Plugin Provider unavailable');
+    await MongoAIModel.create(pluginLlmDocument);
+    vi.mocked(preloadModelProviders).mockRejectedValueOnce(failure);
+
+    await expect(loadSystemModels()).rejects.toBe(failure);
+
+    expect(preloadModelProviders).toHaveBeenCalledOnce();
+    expect(pluginMocks.listModels).not.toHaveBeenCalled();
+    expect(global.systemModelRevision).toBeUndefined();
+    expect(global.systemModelList).toBeUndefined();
   });
 
   it('does not preinstall templates during initial model loading', async () => {
@@ -374,6 +394,119 @@ describe('loadSystemModels', () => {
     await updatedReloadSystemModel();
 
     expect(reloadMocks.updateFastGPTConfigBuffer).not.toHaveBeenCalled();
-    expect(reloadMocks.delay).toHaveBeenCalledWith(1000);
+    expect(reloadMocks.delay).not.toHaveBeenCalled();
+    expect(global.systemModelRevision).toBe(0);
+  });
+});
+
+describe('ensureSystemModelSnapshot', () => {
+  beforeEach(async () => {
+    await Promise.all([MongoAIModel.deleteMany({}), MongoAIDefaultModel.deleteMany({})]);
+    global.systemModelRevision = undefined;
+    global.systemActiveModelList = undefined as never;
+    reloadMocks.clearAllMyModelsCache.mockReset().mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('loads the committed revision and its model configuration before resolving', async () => {
+    await MongoAIModel.create(pluginLlmDocument);
+    await MongoAIDefaultModel.create({ scope: 'system', catalogRevision: 2 });
+    global.systemModelRevision = 1;
+
+    await ensureSystemModelSnapshot();
+
+    expect(global.systemModelRevision).toBe(2);
+    expect(global.systemModelList).toMatchObject([{ model: 'plugin-llm' }]);
+  });
+
+  it('keeps the current snapshot when its revision is already current', async () => {
+    await MongoAIModel.create(pluginLlmDocument);
+    await MongoAIDefaultModel.create({ scope: 'system', catalogRevision: 2 });
+    await loadInstalledModels();
+    const snapshot = global.systemModelList;
+
+    await ensureSystemModelSnapshot();
+
+    expect(global.systemModelList).toBe(snapshot);
+    expect(global.systemModelRevision).toBe(2);
+  });
+
+  it('reloads again when an in-flight snapshot predates the revision required by the read barrier', async () => {
+    await MongoAIModel.create(pluginLlmDocument);
+    await MongoAIDefaultModel.create({ scope: 'system', catalogRevision: 1 });
+    const oldSnapshot = await modelEntity.readSystemModelSnapshot();
+    let releaseOldSnapshot = () => {};
+    const oldSnapshotGate = new Promise<void>((resolve) => {
+      releaseOldSnapshot = resolve;
+    });
+    const snapshotReader = vi
+      .spyOn(modelEntity, 'readSystemModelSnapshot')
+      .mockImplementationOnce(async () => {
+        await oldSnapshotGate;
+        return oldSnapshot;
+      });
+    const inFlightLoad = loadInstalledModels();
+
+    await modelEntity.runSystemModelTransaction(async (session) => {
+      await MongoAIModel.updateOne(
+        { model: 'plugin-llm' },
+        { $set: { name: 'Revision two model' } },
+        { session }
+      );
+    });
+
+    const revisionReader = vi.spyOn(modelEntity, 'readSystemModelRevision');
+    let barrierFinished = false;
+    const barrier = ensureSystemModelSnapshot().then(() => {
+      barrierFinished = true;
+    });
+
+    try {
+      // 读屏障先于测试 await 注册 continuation；权威读取完成后它已加入旧的在途加载。
+      await expect(revisionReader.mock.results[0].value).resolves.toBe(2);
+      expect(snapshotReader).toHaveBeenCalledOnce();
+      expect(barrierFinished).toBe(false);
+    } finally {
+      releaseOldSnapshot();
+      await Promise.all([inFlightLoad, barrier]);
+    }
+
+    expect(snapshotReader).toHaveBeenCalledTimes(2);
+    expect(global.systemModelRevision).toBe(2);
+    expect(global.systemModelList).toMatchObject([
+      { model: 'plugin-llm', name: 'Revision two model' }
+    ]);
+  });
+
+  it('rejects stale reads after a reload failure without publishing a new revision', async () => {
+    await MongoAIModel.create(pluginLlmDocument);
+    await MongoAIDefaultModel.create({ scope: 'system', catalogRevision: 1 });
+    await loadInstalledModels();
+    const snapshot = global.systemModelList;
+    await MongoAIDefaultModel.updateOne({ scope: 'system' }, { $inc: { catalogRevision: 1 } });
+    // 持久化的不合法类型使真实目录解析失败，而不是伪造加载器的行为。
+    await MongoAIModel.updateOne({ model: 'plugin-llm' }, { $set: { type: 'invalid' } });
+
+    await expect(ensureSystemModelSnapshot()).rejects.toBeDefined();
+
+    expect(global.systemModelRevision).toBe(1);
+    expect(global.systemModelList).toBe(snapshot);
+  });
+
+  it('does not fail an already committed write and retries at the next read barrier', async () => {
+    await MongoAIDefaultModel.create({ scope: 'system', catalogRevision: 1 });
+    await MongoAIModel.create({ ...pluginLlmDocument, type: 'invalid' });
+
+    await expect(updatedReloadSystemModel()).resolves.toBeUndefined();
+    expect(global.systemModelRevision).toBeUndefined();
+
+    await MongoAIModel.updateOne({ model: 'plugin-llm' }, { $set: { type: ModelTypeEnum.llm } });
+    await ensureSystemModelSnapshot();
+
+    expect(global.systemModelRevision).toBe(1);
+    expect(global.systemModelList).toMatchObject([{ model: 'plugin-llm' }]);
   });
 });

@@ -2,13 +2,8 @@ import OpenAI from '@fastgpt/global/core/ai';
 import { type OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import { serviceEnv } from '../../env';
 
-const aiProxyBaseUrl = serviceEnv.AIPROXY_API_ENDPOINT
-  ? `${serviceEnv.AIPROXY_API_ENDPOINT}/v1`
-  : undefined;
-export const openaiBaseUrl = aiProxyBaseUrl || serviceEnv.OPENAI_BASE_URL;
-export const openaiBaseKey = aiProxyBaseUrl
-  ? serviceEnv.AIPROXY_API_TOKEN || serviceEnv.CHAT_API_KEY
-  : serviceEnv.CHAT_API_KEY;
+export const openaiBaseUrl = `${serviceEnv.AIPROXY_API_ENDPOINT}/v1`;
+export const openaiBaseKey = serviceEnv.AIPROXY_API_TOKEN;
 export const defaultUserOpenAIBaseUrl = 'https://api.openai.com/v1';
 
 export type AIApiRequestMeta = {

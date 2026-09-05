@@ -14,7 +14,6 @@ import {
 } from '@fastgpt/global/core/ai/model.schema';
 import { debounce } from 'lodash-es';
 import { getModelProvider } from '../../../core/app/provider/controller';
-import { delay } from '@fastgpt/global/common/system/utils';
 import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
 import { preloadModelProviders } from '../../../core/app/provider/controller';
 import { getLogger, LogCategories } from '../../../common/logger';
@@ -22,8 +21,8 @@ import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { clearAllMyModelsCache } from '../../../support/permission/model/controller';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { findSystemDefaultModelIds } from '../defaultModel/entity';
 import { MongoAIDefaultModel } from '../defaultModel/schema';
+import { readSystemModelSnapshot, readSystemModelRevision } from './entity';
 
 /**
  * 插件模型协议为了便于声明，将不同模型类型的能力字段平铺在顶层；数据库 canonical
@@ -178,7 +177,7 @@ export const assertSystemModelTypesMatchPluginTemplates = ({
 /**
  * 只读取数据库安装实例并原子发布运行时模型快照，不执行插件请求、历史迁移或自动预装。
  */
-export const loadInstalledModels = async ({
+const publishInstalledModels = async ({
   language = 'en',
   skipPermissionCacheInvalidation = false
 }: {
@@ -211,10 +210,11 @@ export const loadInstalledModels = async ({
   };
 
   try {
-    const [dbModels, configuredDefaultModelIds] = await Promise.all([
-      MongoAIModel.find({ scope: ModelScopeEnum.system }).sort({ _id: -1 }).lean(),
-      findSystemDefaultModelIds()
-    ]);
+    const {
+      models: dbModels,
+      defaultModelIds: configuredDefaultModelIds,
+      revision
+    } = await readSystemModelSnapshot();
     const dbDocuments = dbModels.map((dbModel) => SystemModelDocumentDataSchema.parse(dbModel));
 
     dbModels.forEach((dbModel, index) => {
@@ -331,6 +331,7 @@ export const loadInstalledModels = async ({
       global.systemModelMap = _systemModelMap;
       global.systemDefaultModel = _systemDefaultModel;
       global.systemConfiguredDefaultModelIds = configuredDefaultModelIds;
+      global.systemModelRevision = revision;
       global.systemModelCatalogVersion = hashStr(
         JSON.stringify({
           schemaVersion: 1,
@@ -355,9 +356,36 @@ export const loadInstalledModels = async ({
   }
 };
 
+let modelReload: Promise<void> | undefined;
+
+/** 同一进程只允许一个加载器发布目录，避免慢的旧加载覆盖较新的快照。 */
+export const loadInstalledModels = (options?: Parameters<typeof publishInstalledModels>[0]) => {
+  if (!modelReload) {
+    modelReload = publishInstalledModels(options).finally(() => {
+      modelReload = undefined;
+    });
+  }
+  return modelReload;
+};
+
 /**
- * 编排模型启动或运行时热刷新。旧表迁移由阻塞系统升级任务负责；这里仅加载已安装实例，
- * Plugin 模板不可用不会影响现有模型启动。
+ * 新模型消费入口的读屏障：权威修订号已提交时，必须等待本节点应用该版本。
+ * 共享在途加载可能读取了更早快照，因此等待后再次比较；失败不得沿用旧配置。
+ */
+export const ensureSystemModelSnapshot = async () => {
+  const requiredRevision = await readSystemModelRevision();
+  while (
+    !global.systemModelList ||
+    global.systemModelRevision === undefined ||
+    global.systemModelRevision < requiredRevision
+  ) {
+    await loadInstalledModels();
+  }
+};
+
+/**
+ * 启动依赖 Plugin Provider 元数据；模板 listModels 不参与已安装实例的加载和运行。
+ * 历史模型迁移由阻塞升级任务负责。
  */
 export const loadSystemModels = async (refresh = false, language = 'en') => {
   if (!refresh && global.systemModelList) return;
@@ -405,10 +433,12 @@ export const watchSystemDefaultModelUpdate = () => {
   );
 };
 
-// 更新完模型后，需要重载缓存
+/** 写入已提交后尽力刷新本节点，失败保留诊断；后续模型读屏障负责重试，不能误报写入失败。 */
 export const updatedReloadSystemModel = async () => {
-  await loadInstalledModels();
-  // 模型目录拥有独立版本，不能污染 getInitData.bufferId。
-  // 延迟1秒，等待其他节点通过 change stream 刷新。
-  await delay(1000);
+  await ensureSystemModelSnapshot().catch((error) => {
+    getLogger(LogCategories.MODULE.AI.CONFIG).warn(
+      'Model write committed; catalog refresh pending',
+      { error }
+    );
+  });
 };

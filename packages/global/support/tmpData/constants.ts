@@ -37,6 +37,7 @@ type _TmpDataType = {
     tmbId: string;
     modelIds: string[];
     version: string;
+    catalogRevision?: number;
   };
 };
 

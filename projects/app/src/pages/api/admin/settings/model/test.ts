@@ -1,3 +1,4 @@
+import { ensureModelCatalogReady } from '@fastgpt/service/core/ai/config/runtime';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
@@ -36,6 +37,7 @@ async function handler(
   req: ApiRequestProps<TestDraftAdminSystemModelBody, TestAdminSystemModelQuery>
 ): Promise<TestAdminSystemModelResponse> {
   const { teamId } = await authSystemAdmin({ req });
+  if (req.method !== 'POST') await ensureModelCatalogReady();
   const { modelData, channelId } = (() => {
     if (req.method === 'POST') {
       const { modelData: draftModelData, channelId } = parseApiInput({
@@ -71,7 +73,7 @@ async function handler(
   })();
 
   const headers: Record<string, string> = channelId ? { 'Aiproxy-Channel': String(channelId) } : {};
-  logger.debug('Test model', modelData);
+  logger.debug('Test model', { model: modelData.model, type: modelData.type, channelId });
 
   if (modelData.type === 'llm') {
     return TestAdminSystemModelResponseSchema.parse(

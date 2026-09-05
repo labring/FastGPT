@@ -6,16 +6,16 @@ import {
   UpdateSystemModelBodySchema,
   type UpdateSystemModelBody
 } from '@fastgpt/global/openapi/admin/core/ai/model/api';
-import { updateSystemModelConfig } from '@fastgpt/service/core/ai/config/service';
+import { updateSystemModel } from '@/service/core/ai/model/service';
 
 async function handler(req: ApiRequestProps<UpdateSystemModelBody>): Promise<void> {
   await authSystemAdmin({ req });
-  const { modelId, modelData } = parseApiInput({
+  const input = parseApiInput({
     req,
     bodySchema: UpdateSystemModelBodySchema
   }).body;
 
-  await updateSystemModelConfig({ modelId, modelData });
+  await updateSystemModel(input);
 }
 
 export default NextAPI(handler);

@@ -79,6 +79,21 @@ describe('GET /api/core/ai/model/catalog', () => {
     expect(result.data?.providers[0].provider).toBe('provider');
   });
 
+  it('keeps one snapshot when the catalog is published during permission resolution', async () => {
+    mocks.getMemberModelCatalogPermission.mockImplementationOnce(async () => {
+      global.systemModelCatalogVersion = 'new-catalog';
+      global.systemActiveModelList = [];
+      global.systemConfiguredDefaultModelIds = {};
+      global.ModelProviderRawCache = [];
+      return { modelIds: [model.modelId], version: 'permission-version' };
+    });
+    const result = await handler({ query: {} } as any);
+    expect(result.version).toBe('1:catalog-version:permission-version');
+    expect(result.data?.models.map((item) => item.modelId)).toEqual([model.modelId]);
+    expect(result.data?.defaultModelIds.llm).toBe(model.modelId);
+    expect(result.data?.providers[0].provider).toBe('provider');
+  });
+
   it('returns only the version when the client cache is current', async () => {
     const result = await handler({
       query: { version: '1:catalog-version:permission-version' }
@@ -100,7 +115,11 @@ describe('GET /api/core/ai/model/catalog', () => {
     expect(mocks.getMemberModelCatalogPermission).toHaveBeenCalledWith({
       teamId: 'outlink-team',
       tmbId: 'outlink-member',
-      isTeamOwner: false
+      isTeamOwner: false,
+      catalogSnapshot: {
+        models: global.systemActiveModelList,
+        revision: global.systemModelRevision ?? 0
+      }
     });
   });
 

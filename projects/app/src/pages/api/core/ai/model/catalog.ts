@@ -51,10 +51,15 @@ async function handler(
       isTeamOwner: tmb.role === TeamMemberRoleEnum.owner || isRoot
     };
   })();
+  const activeModels = global.systemActiveModelList;
+  const configuredDefaults = global.systemConfiguredDefaultModelIds;
+  const catalogVersion = global.systemModelCatalogVersion;
+  const providers = global.ModelProviderRawCache;
   const permission = await getMemberModelCatalogPermission({
-    ...catalogIdentity
+    ...catalogIdentity,
+    catalogSnapshot: { models: activeModels, revision: global.systemModelRevision ?? 0 }
   });
-  const version = `1:${global.systemModelCatalogVersion}:${permission.version}`;
+  const version = `1:${catalogVersion}:${permission.version}`;
 
   if (clientVersion === version) {
     return GetModelCatalogResponseSchema.parse({ version });
@@ -62,18 +67,16 @@ async function handler(
 
   const permittedModelIds = new Set(permission.modelIds);
   // 权限结果只决定可见性，目录顺序始终继承 plugin 排好的 active 模型列表。
-  const models = global.systemActiveModelList.filter((model) =>
-    permittedModelIds.has(model.modelId)
-  );
+  const models = activeModels.filter((model) => permittedModelIds.has(model.modelId));
 
   return GetModelCatalogResponseSchema.parse({
     version,
     data: {
       models: models.map(desensitizeSystemModel),
-      providers: global.ModelProviderRawCache,
+      providers,
       defaultModelIds: resolveEffectiveDefaultModelIds({
         models,
-        configuredDefaults: global.systemConfiguredDefaultModelIds
+        configuredDefaults
       })
     }
   });

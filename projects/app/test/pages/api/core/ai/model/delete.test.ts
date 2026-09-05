@@ -34,15 +34,22 @@ vi.mock('@fastgpt/service/thirdProvider/aiproxy/channel', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
-  MongoAIModel: { deleteMany: mocks.deleteModels }
+  MongoAIModel: {
+    deleteMany: mocks.deleteModels,
+    find: ({ _id }: { _id: { $in: string[] } }) => ({
+      select: () => ({
+        lean: async () => _id.$in.map((modelId) => mocks.findModelData({ modelId })).filter(Boolean)
+      })
+    })
+  }
 }));
 
 vi.mock('@fastgpt/service/support/permission/schema', () => ({
   MongoResourcePermission: { deleteMany: mocks.deletePermissions }
 }));
 
-vi.mock('@fastgpt/service/common/mongo/sessionRun', () => ({
-  mongoSessionRun: vi.fn(async (callback: (session: unknown) => Promise<unknown>) =>
+vi.mock('@fastgpt/service/core/ai/config/entity', () => ({
+  runSystemModelTransaction: vi.fn(async (callback: (session: unknown) => Promise<unknown>) =>
     callback(mocks.session)
   )
 }));

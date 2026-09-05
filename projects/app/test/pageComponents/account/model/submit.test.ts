@@ -61,22 +61,29 @@ describe('admin model submit controllers', () => {
     });
   });
 
-  it('uses only channel replacement and PUT update for an existing model', async () => {
+  it('submits config and channels together without a separate external mutation', async () => {
     const modelId = '68ad85a7463006c963799a05';
 
     await submitUpdatedSystemModel({ modelId, modelData, channelIds: [2, 7] });
 
     expect(mocks.postSystemModel).not.toHaveBeenCalled();
-    expect(mocks.putReplaceSystemModelChannels).toHaveBeenCalledWith({
-      modelId,
-      channelIds: [2, 7]
-    });
+    expect(mocks.putReplaceSystemModelChannels).not.toHaveBeenCalled();
     expect(mocks.putSystemModel).toHaveBeenCalledWith({
       modelId,
+      channelIds: [2, 7],
       modelData: expect.not.objectContaining({ model: expect.anything() })
     });
-    expect(mocks.putReplaceSystemModelChannels.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.putSystemModel.mock.invocationCallOrder[0]
-    );
+  });
+
+  it('rejects an invalid edited alias before sending any mutation', async () => {
+    await expect(
+      submitUpdatedSystemModel({
+        modelId: '68ad85a7463006c963799a05',
+        modelData: { ...modelData, name: '   ' },
+        channelIds: [2]
+      })
+    ).rejects.toBeDefined();
+    expect(mocks.putSystemModel).not.toHaveBeenCalled();
+    expect(mocks.putReplaceSystemModelChannels).not.toHaveBeenCalled();
   });
 });

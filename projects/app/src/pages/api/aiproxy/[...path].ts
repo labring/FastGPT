@@ -4,6 +4,7 @@ import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { buildSameOriginUrl } from '@fastgpt/service/common/security/network';
 import { Readable } from 'stream';
 import { getAIProxyAdminConfig } from '@fastgpt/service/thirdProvider/aiproxy/config';
+import { withAIProxyChannelMutation } from '@fastgpt/service/thirdProvider/aiproxy/lease';
 
 // 特殊路径映射，标记需要在末尾保留斜杠的路径
 const endPathMap: Record<string, boolean> = {
@@ -56,7 +57,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       body: req.method === 'GET' || req.method === 'HEAD' ? null : (req as any)
     });
 
-    const response = await fetch(request);
+    const mutatesChannel =
+      !['GET', 'HEAD', 'OPTIONS'].includes(req.method ?? '') &&
+      /^\/api\/channels?(?:\/|$)/.test(basePath);
+    const response = mutatesChannel
+      ? await withAIProxyChannelMutation(async ({ signal, assertValid }) => {
+          assertValid();
+          return fetch(request, { signal: AbortSignal.any([signal, AbortSignal.timeout(30000)]) });
+        })
+      : await fetch(request);
 
     response.headers.forEach((value, key) => {
       const lowerKey = key.toLowerCase();

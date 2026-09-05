@@ -38,16 +38,26 @@ describe('POST /api/aiproxy/api/createChannel', () => {
 
     expect(mocks.authSystemAdmin).toHaveBeenCalledOnce();
     expect(mocks.post).toHaveBeenCalledWith('https://aiproxy.example.com/api/channel/', body, {
-      headers: { Authorization: 'Bearer admin-token' }
+      headers: { Authorization: 'Bearer admin-token' },
+      signal: expect.any(AbortSignal),
+      timeout: 30000
     });
     expect(response.json).toHaveBeenCalledWith(upstreamResult);
+  });
+
+  it('rejects invalid channel parameters before acquiring a lease or contacting AIProxy', async () => {
+    const response = { json: vi.fn() };
+    await handler({ body: { name: '   ', type: 1 } } as any, response as any);
+    expect(mocks.getAIProxyAdminConfig).not.toHaveBeenCalled();
+    expect(mocks.post).not.toHaveBeenCalled();
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
   });
 
   it('does not call AIProxy when administrator authorization fails', async () => {
     const response = { json: vi.fn() };
     mocks.authSystemAdmin.mockRejectedValue(new Error('unAuthorization'));
 
-    await handler({ body: { name: 'channel-a' } } as any, response as any);
+    await handler({ body: { name: 'channel-a', type: 1 } } as any, response as any);
 
     expect(mocks.getAIProxyAdminConfig).not.toHaveBeenCalled();
     expect(mocks.post).not.toHaveBeenCalled();
@@ -60,7 +70,7 @@ describe('POST /api/aiproxy/api/createChannel', () => {
     const response = { json: vi.fn() };
     mocks.post.mockRejectedValue(new Error('duplicate channel'));
 
-    await handler({ body: { name: 'channel-a' } } as any, response as any);
+    await handler({ body: { name: 'channel-a', type: 1 } } as any, response as any);
 
     expect(response.json).toHaveBeenCalledWith(
       expect.objectContaining({ success: false, message: 'duplicate channel' })

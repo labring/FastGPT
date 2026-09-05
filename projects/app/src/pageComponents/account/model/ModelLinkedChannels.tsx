@@ -147,7 +147,7 @@ const ModelLinkedChannels = ({
                         type="borderFill"
                         colorSchema={(status?.colorSchema ?? 'gray') as ColorSchemaType}
                       >
-                        {status ? t(status.label as any) : t('config_model:channel_status_unknown')}
+                        {status ? t(status.label) : t('config_model:channel_status_unknown')}
                       </MyTag>
                     </Td>
                     <Td px={3}>
