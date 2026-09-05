@@ -28,7 +28,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20260903_backfill_dataset_model_references',
       '20260903_backfill_evaluation_model_references',
       '20260903_backfill_app_model_references',
-      '20260903_backfill_app_create_time'
+      '20260903_backfill_app_create_time',
+      '20260905_backfill_bill_metadata'
     ]);
     expect(systemMigrations.slice(1).every((migration) => !migration.blockStartup)).toBe(true);
     expect(

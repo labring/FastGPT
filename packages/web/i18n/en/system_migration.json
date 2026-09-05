@@ -59,5 +59,9 @@
   "migrations.20260903_backfill_app_create_time.name": "Backfill app creation times",
   "migrations.20260903_backfill_app_create_time.description": "Incrementally backfills historical creation times from app ObjectId timestamps.",
   "migrations.20260903_backfill_app_create_time.apps": "Backfilling app creation times",
-  "migrations.20260903_backfill_app_create_time.result": "Checked and processed {{processedCount}} apps and skipped {{skippedInvalidId}} records with invalid IDs."
+  "migrations.20260903_backfill_app_create_time.result": "Checked and processed {{processedCount}} apps and skipped {{skippedInvalidId}} records with invalid IDs.",
+  "migrations.20260905_backfill_bill_metadata.name": "Backfill missing historical bill fields",
+  "migrations.20260905_backfill_bill_metadata.description": "Backfills missing payment metadata on historical WeChat balance recharge bills.",
+  "migrations.20260905_backfill_bill_metadata.bills": "Backfilling bill payment metadata",
+  "migrations.20260905_backfill_bill_metadata.result": "Backfilled payment metadata for {{migratedCount}} historical bills."
 }
