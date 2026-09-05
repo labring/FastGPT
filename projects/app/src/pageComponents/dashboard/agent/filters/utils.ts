@@ -113,6 +113,17 @@ export const resolveSceneListType = (
 export const toListTmbIds = (creator?: AppListFilterType['creator']): string[] | undefined =>
   toMultiSelectFilterQuery(creator ? { mode: creator.mode, values: creator.tmbIds } : undefined);
 
+/** 卡片时间与排序依据保持一致：最近更新显示更新时间，创建时间排序显示创建时间。 */
+export const getResourceListDisplayTime = ({
+  sort,
+  createTime,
+  updateTime
+}: {
+  sort: AppListSortEnum;
+  createTime: Date;
+  updateTime: Date;
+}) => (sort === AppListSortEnum.updateTimeDesc ? updateTime : createTime);
+
 /**
  * 工作台列表是否处于「筛选后可能为空」的状态。
  * 排序不算筛选：改排序不会把列表筛空，空态仍应走首次创建。

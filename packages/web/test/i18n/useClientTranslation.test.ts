@@ -46,4 +46,23 @@ describe('useClientTranslation', () => {
       'translated:account:personal_information'
     );
   });
+
+  it('支持动态翻译 key，并原样渲染普通字符串', () => {
+    vi.mocked(useTranslation).mockReturnValue({
+      t: ((key: string) => `translated:${key}`) as never,
+      i18n: { language: 'en' } as never,
+      ready: true
+    });
+
+    function TestComponent() {
+      const { t } = useClientTranslation('account');
+      const dynamicKey: string = 'account:personal_information';
+
+      return createElement('span', null, `${t(dynamicKey)}|${t('09:30')}`);
+    }
+
+    expect(renderToStaticMarkup(createElement(TestComponent))).toContain(
+      'translated:account:personal_information|09:30'
+    );
+  });
 });

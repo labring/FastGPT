@@ -12,13 +12,7 @@ upgradeTags:
 
 Starting with V4.17.0, tasks registered with the system upgrade manager run automatically. FastGPT uses leases to prevent concurrent execution across multiple nodes and heartbeats to check whether each script is still active. You can view each upgrade script's status under **Admin > System upgrade**.
 
-V4.17.0 first blocks startup while migrating legacy system model settings. Business services become available only after this migration succeeds. FastGPT then backfills model permissions and model references in Datasets, evaluations, Apps, App versions, and App templates in the background. Dangling model permissions that cannot be matched against the current model catalog are removed. A failed non-blocking task does not interrupt business services; review its failed records and retry it under **Admin > System upgrade**. If the blocking task fails, the FastGPT App instance remains not ready. Fix the reported issue using the instance logs, then restart the App instance.
-
-Model reference migrations process `100` records per batch by default. For larger deployments, set `SYSTEM_MIGRATION_BATCH_SIZE` to a value from `50` to `1000`.
-
-### Backfill historical App creation times
-
-V4.17.0 adds a `createTime` field to Apps. Studio sorting by recently created or oldest created depends on this field. Newly created, copied, or imported Apps write `createTime` automatically. A background system upgrade task backfills historical records in batches using the timestamp stored in each document `_id` (ObjectId) without overwriting existing `createTime` values. An invalid `_id` cannot provide a reliable timestamp, so the task preserves the record and includes it in the skipped count. View progress, failed records, and retry controls under **Admin > System upgrade**.
+Migration tasks process `100` records per batch by default. For larger deployments, set `SYSTEM_MIGRATION_BATCH_SIZE` to a value from `50` to `1000`.
 
 ### Code Sandbox seccomp compatibility setting (optional)
 
@@ -35,7 +29,7 @@ This setting disables only seccomp. chroot, `no_new_privs`, and UID/GID privileg
 1. Added LDAP member and organizational structure sync to FastGPT SSO Service, along with separate environment variable templates and configuration guides for each SSO provider.
 2. Added DingTalk user and department sync to FastGPT SSO Service.
 3. File upload fields in Workflow Tools can now be configured for Agent-generated input. Existing file fields remain manual by default to prevent behavior changes after an upgrade.
-4. Added automatic system upgrade task management with status, stage progress, failed-record, and result views, plus retries for failed non-blocking tasks.
+4. Added automatic system upgrade task management. You can view task status, stage progress, failed records, and results, and retry failed non-blocking tasks.
 
 ## ⚙️ Improvements
 
@@ -44,6 +38,8 @@ This setting disables only seccomp. chroot, `no_new_privs`, and UID/GID privileg
 3. Centered citation markers below an image when the image is followed only by citations. Inline text citations keep their existing layout.
 4. Improved generation conflict recovery: when the current chat is still generating on the server, the client detects the conflict and restores the existing response stream instead of adding an empty message or showing an error state.
 5. Made collapsed processing previews interactive. You can now select a reasoning or tool-call preview to expand its matching details.
+6. Standardized list filters across Studio Apps, Skills, Datasets, the Template Marketplace, Tools, account usage, model dashboards, API keys, audit logs, and App logs. Each page provides the relevant filters for type, source, creator, member, category, date, and sort order, with search available for long option lists.
+7. Added creator and creation-time sorting filters to App, Skill, and Dataset lists. The system upgrade task automatically backfills creation times for historical Apps.
 
 ## 🐛 Fixes
 
@@ -51,8 +47,14 @@ This setting disables only seccomp. chroot, `no_new_privs`, and UID/GID privileg
 2. Limited `DB_MAX_LINK` to the inclusive range `10`–`1000`, preventing low values from limiting concurrency and excessively high values from creating resource pressure. Official deployment templates use `20` by default.
 3. Fixed upload, URL installation, and installation confirmation paths that could bypass the team plugin installation feature setting after installation was disabled.
 4. Fixed an issue where XLSX XML scanning could continue after the scan was disabled.
+5. Fixed an issue where HTTP/OpenAPI Tool inputs lost their Manual input or Agent-generated mode after saving, or were incorrectly reset when used as an Agent Tool or sub-workflow.
+6. Fixed model selection not strictly distinguishing between model types, validation failures when the maximum model temperature was left empty, and inconsistent ordering between the Admin model catalog and member model lists. Startup no longer invalidates member model caches that are still valid.
+7. FastGPT Pro now returns explicit client errors for malformed messages received through Lark, WeCom, DingTalk, and WeChat Official Account publishing channels instead of reporting them as server failures.
+8. Fixed a FastGPT Pro issue where historical team member `role` values could override current permission calculations. Deprecated roles no longer affect permissions except for the team owner role.
 
 ## 🛠️ Code improvements
 
 1. Standardized system models, model permissions, and business settings on stable `modelId` references, with automatic migrations for legacy model-name references.
 2. Added MongoDB leases, run ID fencing, and heartbeats to coordinate automatic migrations across multiple nodes and take over stalled runs. Large migrations support resumable batch processing.
+3. Collaborator APIs can optionally return team member login usernames and use batch queries to avoid per-member requests.
+4. Improved cluster image build caching in FastGPT Pro. Proxy caches and cache-enabled runners now reduce repeated pulls and build work.

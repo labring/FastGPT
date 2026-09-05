@@ -238,6 +238,7 @@ export type AppListItemType = {
   avatar: string;
   intro: string;
   type: AppTypeEnum;
+  createTime: Date;
   updateTime: Date;
   pluginData?: AppSchemaType['pluginData'];
   permission: AppPermission;

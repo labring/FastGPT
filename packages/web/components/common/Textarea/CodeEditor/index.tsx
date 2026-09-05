@@ -4,7 +4,10 @@ import { Button, useDisclosure } from '@chakra-ui/react';
 import MyModal from '../../../v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
 
-type Props = Omit<EditorProps, 'resize'> & { language?: string };
+type Props = Omit<EditorProps, 'resize'> & {
+  language?: string;
+  resize?: boolean;
+};
 function getLanguage(language: string | undefined): string {
   let fullName: string;
   switch (language) {
@@ -26,13 +29,13 @@ function getLanguage(language: string | undefined): string {
   return fullName;
 }
 
-const CodeEditor = (props: Props) => {
+const CodeEditor = ({ resize = true, ...props }: Props) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const fullName = getLanguage(props.language);
   return (
     <>
-      <MyEditor {...props} resize onOpenModal={onOpen} language={fullName} />
+      <MyEditor {...props} resize={resize} onOpenModal={onOpen} language={fullName} />
       <MyModal
         isOpen={isOpen}
         onClose={onClose}

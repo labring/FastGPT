@@ -192,7 +192,7 @@
   "vector_model_max_tokens_tip": "Each chunk of data has a maximum length of 3000 tokens",
   "vllm_model": "Image understanding model",
   "vllm_model_tip": "Uses image captioning to generate text descriptions for images in documents, improving text search",
-  "website_dataset": "Web sync",
+  "website_dataset": "Website Knowledge Base",
   "website_dataset_desc": "Build a Dataset by crawling web pages in batches",
   "website_info": "Website Information",
   "yuque_dataset": "Yuque Dataset",

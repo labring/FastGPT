@@ -33,7 +33,7 @@ import { useForm } from 'react-hook-form';
 import { defaultOutLinkForm } from '@/web/core/app/constants';
 import type { OutLinkEditType, OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -58,7 +58,7 @@ const Share = ({
   type: PublishChannelEnum;
   onRefreshOutLinkCounts: () => Promise<unknown>;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { setIsLoading } = useLoading();
   const { feConfigs } = useSystemStore();
   const { copyData } = useCopyData();
@@ -156,9 +156,7 @@ const Share = ({
                   </Td>
                 )}
                 <Td>
-                  {item.lastTime
-                    ? t(formatTimeToChatTime(item.lastTime) as any).replace('#', ':')
-                    : t('common:un_used')}
+                  {item.lastTime ? t(formatTimeToChatTime(item.lastTime)) : t('common:un_used')}
                 </Td>
                 <Td display={'flex'} alignItems={'center'}>
                   <Button
@@ -282,7 +280,7 @@ function EditLinkModal({
   onEdit: () => void;
 }) {
   const { feConfigs } = useSystemStore();
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const {
     register,
     setValue,

@@ -55,7 +55,7 @@ const DatasetListFilters = ({ value, onChange }: Props) => {
         value={value.type}
         options={typeOptions}
         onChange={(type) => onChange({ ...value, type })}
-        maxW={'180px'}
+        maxW={'240px'}
       />
       <ResourceListFilters value={value} onChange={(next) => onChange({ ...value, ...next })} />
     </Flex>

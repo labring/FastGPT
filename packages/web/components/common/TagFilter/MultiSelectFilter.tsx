@@ -5,12 +5,18 @@ import { useTranslation } from 'next-i18next';
 import MyPopover from '../MyPopover';
 import MyIcon from '../Icon';
 import Avatar from '../Avatar';
+import MyTooltip from '../MyTooltip';
 import FilterButton, { FilterSummaryValue, useFilterTriggerWidth } from './FilterButton';
 import FilterSearchInput, {
   FILTER_SEARCH_THRESHOLD,
   filterSelectOptionsBySearch
 } from './FilterSearchInput';
-import { getFilterListBoxProps, filterPopoverProps } from './styles';
+import {
+  DEFAULT_FILTER_LIST_SIZE,
+  getFilterListBoxProps,
+  filterPopoverProps,
+  type FilterListSize
+} from './styles';
 import {
   createMultiSelectFilter,
   getMultiSelectFilterSummary,
@@ -56,6 +62,8 @@ export type MultiSelectFilterProps<T extends string = string> = {
   onOpen?: () => void;
   maxW?: string | number;
   placement?: PlacementWithLogical;
+  /** 下拉列表高度档位，选项较多时使用 md 或 lg。 */
+  listSize?: FilterListSize;
 };
 
 /**
@@ -78,7 +86,8 @@ function MultiSelectFilter<T extends string>({
   footer,
   onOpen,
   maxW = '200px',
-  placement = 'bottom-start'
+  placement = 'bottom-start',
+  listSize = DEFAULT_FILTER_LIST_SIZE
 }: MultiSelectFilterProps<T>) {
   const { t } = useTranslation();
   const [innerSearch, setInnerSearch] = useState('');
@@ -102,7 +111,7 @@ function MultiSelectFilter<T extends string>({
     `${summary.text}-${summary.extraCount}`
   );
   const listScrollable = showSearch || visibleOptions.length > FILTER_SEARCH_THRESHOLD;
-  const listProps = getFilterListBoxProps(listScrollable);
+  const listProps = getFilterListBoxProps(listScrollable, listSize);
   const listItems = visibleOptions.map((item) => {
     const checked = value.mode === 'selected' && selectedSet.has(item.value);
     return (
@@ -116,11 +125,11 @@ function MultiSelectFilter<T extends string>({
         py={'6px'}
         cursor={'pointer'}
         borderRadius={'xs'}
-        fontSize={'xs'}
+        fontSize={'sm'}
         _hover={{ bg: 'myGray.05' }}
         onClick={() => onChange(toggleMultiSelectFilterValue(value, item.value))}
       >
-        <Flex alignItems={'center'} gap={2}>
+        <Flex alignItems={'center'} gap={2} minW={0} overflow={'hidden'}>
           <Checkbox
             isChecked={checked}
             pointerEvents={'none'}
@@ -132,9 +141,18 @@ function MultiSelectFilter<T extends string>({
             }}
           />
           {item.avatar && <Avatar src={item.avatar} w={'16px'} h={'16px'} borderRadius={'full'} />}
-          <Box fontWeight={'medium'} color={'myGray.600'} whiteSpace={'nowrap'}>
-            {item.label}
-          </Box>
+          <MyTooltip label={item.label} showOnlyWhenOverflow shouldWrapChildren={false}>
+            <Box
+              minW={0}
+              overflow={'hidden'}
+              textOverflow={'ellipsis'}
+              fontWeight={'medium'}
+              color={'myGray.600'}
+              whiteSpace={'nowrap'}
+            >
+              {item.label}
+            </Box>
+          </MyTooltip>
         </Flex>
         {item.extra && (
           <Box flexShrink={0} color={'myGray.500'} fontWeight={'normal'}>
@@ -172,7 +190,7 @@ function MultiSelectFilter<T extends string>({
               borderRadius={'xs'}
               bg={value.mode === 'all' ? 'myGray.05' : 'transparent'}
               color={value.mode === 'all' ? 'primary.700' : 'myGray.600'}
-              fontSize={'xs'}
+              fontSize={'sm'}
               fontWeight={'medium'}
               _hover={{ bg: 'myGray.05' }}
               onClick={() => onChange(createMultiSelectFilter<T>())}

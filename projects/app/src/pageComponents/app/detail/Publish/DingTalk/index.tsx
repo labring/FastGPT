@@ -21,7 +21,6 @@ import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { defaultDingtalkOutlinkForm } from '@/web/core/app/constants';
 import type { DingtalkAppType, OutLinkEditType } from '@fastgpt/global/support/outLink/type';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
-import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
@@ -29,6 +28,7 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDocPath } from '@/web/common/system/doc';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const DingTalkEditModal = dynamic(() => import('./DingTalkEditModal'));
 const ShowShareLinkModal = dynamic(() => import('../components/showShareLinkModal'));
@@ -40,7 +40,7 @@ const DingTalk = ({
   appId: string;
   onRefreshOutLinkCounts: () => Promise<unknown>;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { Loading, setIsLoading } = useLoading();
   const { feConfigs } = useSystemStore();
   const [editDingTalkLinkData, setEditDingTalkLinkData] =
@@ -145,9 +145,7 @@ const DingTalk = ({
                   </Td>
                 )}
                 <Td>
-                  {item.lastTime
-                    ? t(formatTimeToChatTime(item.lastTime) as any).replace('#', ':')
-                    : t('common:un_used')}
+                  {item.lastTime ? t(formatTimeToChatTime(item.lastTime)) : t('common:un_used')}
                 </Td>
                 <Td display={'flex'} alignItems={'center'}>
                   <Button

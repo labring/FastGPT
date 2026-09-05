@@ -111,6 +111,7 @@ const CollectionCard = () => {
     selectedItems,
     toggleSelect,
     isSelected,
+    getRowSelectionProps,
     setSelectedItems,
     FloatingActionBar,
     isSelecteAll,
@@ -272,30 +273,31 @@ const CollectionCard = () => {
                 <Tr
                   key={collection._id}
                   _hover={{ bg: 'myGray.50' }}
-                  cursor={'pointer'}
                   {...getBoxProps({
                     dataId: collection._id,
                     isFolder: collection.type === DatasetCollectionTypeEnum.folder
                   })}
                   draggable={false}
-                  onClick={() => {
-                    if (collection.type === DatasetCollectionTypeEnum.folder) {
-                      router.push({
-                        query: {
-                          datasetId: datasetDetail._id,
-                          parentId: collection._id
-                        }
-                      });
-                    } else {
-                      router.push({
-                        query: {
-                          datasetId: datasetDetail._id,
-                          collectionId: collection._id,
-                          currentTab: TabEnum.dataCard
-                        }
-                      });
+                  {...getRowSelectionProps(collection, {
+                    onClick: () => {
+                      if (collection.type === DatasetCollectionTypeEnum.folder) {
+                        router.push({
+                          query: {
+                            datasetId: datasetDetail._id,
+                            parentId: collection._id
+                          }
+                        });
+                      } else {
+                        router.push({
+                          query: {
+                            datasetId: datasetDetail._id,
+                            collectionId: collection._id,
+                            currentTab: TabEnum.dataCard
+                          }
+                        });
+                      }
                     }
-                  }}
+                  })}
                 >
                   <Td minW={'150px'} maxW={['200px', '300px']} draggable py={2}>
                     <HStack minW={0}>

@@ -1,6 +1,7 @@
 import React from 'react';
-import { Box, Flex, Input } from '@chakra-ui/react';
-import MyIcon from '../Icon';
+import { Flex, Input } from '@chakra-ui/react';
+import MyIconButton from '../Icon/button';
+import { shadowLight } from '../../../styles/theme';
 
 export const FILTER_SEARCH_THRESHOLD = 8;
 
@@ -29,33 +30,45 @@ type Props = {
 
 /** TagFilter 下拉里 32px 搜索框，有内容时显示清空。 */
 const FilterSearchInput = ({ value, placeholder, onChange }: Props) => (
-  <Box position={'relative'}>
+  <Flex
+    w={'100%'}
+    h={'32px'}
+    alignItems={'center'}
+    px={1}
+    border={'1px solid'}
+    borderColor={'borderColor.low'}
+    borderRadius={'sm'}
+    _hover={{ borderColor: 'primary.300' }}
+    _focusWithin={{
+      borderColor: 'primary.500',
+      boxShadow: shadowLight,
+      bg: 'white'
+    }}
+  >
     <Input
-      w={'100%'}
+      flex={'1 1 0'}
+      w={0}
       minW={0}
-      h={'32px'}
+      h={'100%'}
       px={1}
-      pr={value ? 7 : 1}
-      borderRadius={'sm'}
-      fontSize={'xs'}
+      variant={'unstyled'}
+      fontSize={'sm'}
       value={value}
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
     />
     {!!value && (
-      <Flex
-        position={'absolute'}
-        right={1}
-        top={0}
-        h={'32px'}
-        alignItems={'center'}
-        cursor={'pointer'}
+      <MyIconButton
+        icon={'common/closeLight'}
+        flex={'0 0 auto'}
+        position={'relative'}
+        zIndex={1}
+        size={'14px'}
+        hoverColor={'myGray.700'}
         onClick={() => onChange('')}
-      >
-        <MyIcon name={'common/closeLight'} w={'14px'} h={'14px'} color={'myGray.500'} />
-      </Flex>
+      />
     )}
-  </Box>
+  </Flex>
 );
 
 export default FilterSearchInput;

@@ -27,6 +27,11 @@ type Props = Omit<SelectProps, 'list'> & {
   modelType: ModelTypeEnum;
   /** 迁移期限制模型范围；候选模型仍来自当前成员完整目录。 */
   list?: SelectProps['list'];
+  /**
+   * 详情接口已解析的当前模型。当它因停用而不在可选目录中时，仅用于展示
+   * 模型名称和停用状态，不将其重新加入候选项。
+   */
+  resolvedCurrentModel?: MyModelItemType;
   disableTip?: string;
   noOfLines?: ResponsiveValue<number>;
   canBeUnset?: boolean;
@@ -56,7 +61,14 @@ const ModelLabel = ({
 }) => {
   const multimodalEmbedding = model.type === ModelTypeEnum.embedding && !!model.config.vision;
   return (
-    <Flex alignItems={'center'} justifyContent={'space-between'} py={1} w={'100%'} minW={0}>
+    <Flex
+      data-preserve-width
+      alignItems={'center'}
+      justifyContent={'space-between'}
+      py={1}
+      w={'100%'}
+      minW={0}
+    >
       <Flex alignItems={'center'} flex={'1 1 0'} minW={0}>
         <Avatar
           borderRadius={'0'}
@@ -65,9 +77,17 @@ const ModelLabel = ({
           fallbackSrc={HUGGING_FACE_ICON}
           w={avatarSize}
         />
-        <Box noOfLines={noOfLines ?? 1} minW={0} overflow={'hidden'}>
-          {model.name}
-        </Box>
+        <MyTooltip label={model.name} showOnlyWhenOverflow shouldWrapChildren={false}>
+          <Box
+            data-preserve-width
+            w={'100%'}
+            noOfLines={noOfLines ?? 1}
+            minW={0}
+            overflow={'hidden'}
+          >
+            {model.name}
+          </Box>
+        </MyTooltip>
       </Flex>
       {showTags && (model.testMode || multimodalEmbedding) && (
         <Flex alignItems={'center'} gap={1} ml={2} flexShrink={0}>
@@ -83,6 +103,7 @@ const ModelLabel = ({
 const AIModelSelector = ({
   modelType,
   list: restrictedList,
+  resolvedCurrentModel,
   onChange,
   disableTip,
   noOfLines,
@@ -125,6 +146,8 @@ const AIModelSelector = ({
     [currentValue, models]
   );
   const selectedModel = selection?.model;
+  const unavailableModel =
+    resolvedCurrentModel?.modelId === currentValue ? resolvedCurrentModel : undefined;
   const legacySelectedItem = restrictedList?.find((item) => String(item.value) === currentValue);
   const normalizedSelectionRef = useRef<string>();
   const autoSelectedDefaultRef = useRef<string>();
@@ -192,7 +215,7 @@ const AIModelSelector = ({
       children: []
     });
 
-  const invalidValue = !!currentValue && !selectedModel && !loading;
+  const invalidValue = !!currentValue && !selectedModel && !unavailableModel && !loading;
   const selectedLabel =
     canBeUnset && currentValue === UNSET_MODEL_VALUE ? (
       <>{unsetLabel ?? t('common:not_model_config')}</>
@@ -203,10 +226,22 @@ const AIModelSelector = ({
         noOfLines={noOfLines}
         showTags={false}
       />
+    ) : unavailableModel ? (
+      <MyTooltip
+        label={t('common:model_disabled', { model: unavailableModel.name })}
+        showOnlyWhenOverflow
+        shouldWrapChildren={false}
+      >
+        <Box data-preserve-width w={'100%'} color={'red.500'} noOfLines={noOfLines ?? 1}>
+          {t('common:model_disabled', { model: unavailableModel.name })}
+        </Box>
+      </MyTooltip>
     ) : invalidValue ? (
-      <Box color={'red.500'} noOfLines={noOfLines ?? 1}>
-        {t('common:model_disabled', { model: currentValue })}
-      </Box>
+      <MyTooltip label={t('common:model_delisted')} showOnlyWhenOverflow shouldWrapChildren={false}>
+        <Box data-preserve-width w={'100%'} color={'red.500'} noOfLines={noOfLines ?? 1}>
+          {t('common:model_delisted')}
+        </Box>
+      </MyTooltip>
     ) : legacySelectedItem ? (
       <>{legacySelectedItem.label}</>
     ) : undefined;

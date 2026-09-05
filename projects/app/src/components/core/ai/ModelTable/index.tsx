@@ -280,6 +280,7 @@ const ModelTable = ({
     selectedItems,
     toggleSelect,
     isSelected,
+    getRowSelectionProps,
     FloatingActionBar,
     isSelecteAll,
     selectAllTrigger
@@ -303,6 +304,7 @@ const ModelTable = ({
           onChange={setProvider}
           showSearch
           maxW={'240px'}
+          listSize={'lg'}
         />
         <SingleSelectFilter
           title={t('common:model.model_type')}
@@ -362,6 +364,9 @@ const ModelTable = ({
               <Tr
                 key={`${item.providerId}-${item.typeLabel}-${item.name}`}
                 _hover={{ bg: 'myGray.50' }}
+                {...getRowSelectionProps(item, {
+                  isDisabled: !permissionConfig || !userInfo?.team.permission.hasManagePer
+                })}
               >
                 <Td fontSize={'sm'}>
                   <HStack>
@@ -374,7 +379,7 @@ const ModelTable = ({
                     )}
                     <Avatar src={item.avatar} w={'1.2rem'} />
                     <Flex alignItems={'center'} gap={1} minW={0}>
-                      <CopyBox value={item.name} color={'myGray.900'}>
+                      <CopyBox value={item.name} data-row-action color={'myGray.900'}>
                         {item.name}
                       </CopyBox>
                       {item.testMode && <TestModeBetaTag />}
@@ -415,6 +420,7 @@ const ModelTable = ({
                           size="1rem"
                           hoverColor={'blue.500'}
                           w="min-content"
+                          data-row-action
                           onClick={onOpenManageModal}
                         />
                       )}

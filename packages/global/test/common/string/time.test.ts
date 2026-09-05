@@ -125,11 +125,11 @@ describe('formatTimeToChatTime', () => {
     expect(formatTimeToChatTime(time)).toBe('common:just_now');
   });
 
-  it('should return HH#mm format for today (more than 60 seconds)', () => {
+  it('should return HH:mm format for today (more than 60 seconds)', () => {
     const now = new Date('2024-03-15T10:30:00');
     vi.setSystemTime(now);
     const time = new Date('2024-03-15T08:15:00');
-    expect(formatTimeToChatTime(time)).toBe('08#15');
+    expect(formatTimeToChatTime(time)).toBe('08:15');
   });
 
   it('should return i18n key for yesterday', () => {

@@ -75,7 +75,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     runAsync: refreshSystemModelList,
     loading: loadingModels
   } = useRequest(getAdminModelConfig, { manual: false });
-  const systemModelList = adminConfig?.models ?? [];
+  const systemModelList = useMemo(() => adminConfig?.models ?? [], [adminConfig?.models]);
   const providerCache = useMemo(
     () => formatModelProviders(adminConfig?.providers ?? []),
     [adminConfig?.providers]
@@ -307,6 +307,28 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     onSuccess: refreshModels
   });
 
+  /**
+   * 启停接口仍接收完整模型配置，因此必须从接口原始数据构造请求。
+   * modelList 包含 priceLabel 等 React 展示节点，直接展开会因 Fiber 循环引用而无法序列化。
+   */
+  const toggleModelActive = useCallback(
+    (modelId: string, isActive: boolean) => {
+      const sourceModel = systemModelList.find((model) => model.modelId === modelId);
+      if (!sourceModel) return;
+
+      const { modelId: _modelId, avatar: _avatar, isCustom: _isCustom, ...modelData } = sourceModel;
+
+      return updateModel({
+        modelId,
+        modelData: {
+          ...modelData,
+          isActive
+        }
+      });
+    },
+    [systemModelList, updateModel]
+  );
+
   const { runAsync: deleteModel } = useRequest(deleteSystemModel, {
     onSuccess: refreshModels
   });
@@ -419,6 +441,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
               onChange={setProvider}
               showSearch
               maxW={'240px'}
+              listSize={'lg'}
             />
             <SingleSelectFilter
               title={t('common:model.model_type')}
@@ -506,21 +529,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                         <Switch
                           size={'sm'}
                           isChecked={item.isActive}
-                          onChange={(e) => {
-                            const {
-                              modelId,
-                              avatar: _avatar,
-                              isCustom: _isCustom,
-                              ...modelData
-                            } = item;
-                            updateModel({
-                              modelId,
-                              modelData: {
-                                ...modelData,
-                                isActive: e.target.checked
-                              }
-                            });
-                          }}
+                          onChange={(e) => toggleModelActive(item.modelId, e.target.checked)}
                           colorScheme={'myBlue'}
                         />
                       </Td>

@@ -10,24 +10,31 @@ import type {
 import { getUser } from '@test/datas/users';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { Call } from '@test/utils/request';
+import { Types } from '@fastgpt/service/common/mongo';
 
 describe('POST /api/core/dataset/list', () => {
   it('组合类型和创建者筛选，并支持创建顺序与空选择', async () => {
     const owner = await getUser(`dataset-filter-owner-${getNanoid(6)}`);
     const member = await getUser(`dataset-filter-member-${getNanoid(6)}`, owner.teamId);
 
+    const olderId = Types.ObjectId.createFromTime(1_700_000_000);
+    const newerId = Types.ObjectId.createFromTime(1_800_000_000);
     const [olderDataset, newerDataset] = await MongoDataset.create([
       {
+        _id: olderId,
         teamId: owner.teamId,
         tmbId: member.tmbId,
         name: 'Older website dataset',
-        type: DatasetTypeEnum.websiteDataset
+        type: DatasetTypeEnum.websiteDataset,
+        createTime: olderId.getTimestamp()
       },
       {
+        _id: newerId,
         teamId: owner.teamId,
         tmbId: member.tmbId,
         name: 'Newer website dataset',
-        type: DatasetTypeEnum.websiteDataset
+        type: DatasetTypeEnum.websiteDataset,
+        createTime: newerId.getTimestamp()
       },
       {
         teamId: owner.teamId,
@@ -59,6 +66,10 @@ describe('POST /api/core/dataset/list', () => {
     expect(filtered.data.map((item) => String(item._id))).toEqual([
       String(olderDataset._id),
       String(newerDataset._id)
+    ]);
+    expect(filtered.data.map((item) => item.createTime)).toEqual([
+      olderDataset._id.getTimestamp(),
+      newerDataset._id.getTimestamp()
     ]);
 
     const empty = await Call<GetDatasetListBody, Record<string, never>, GetDatasetListResponse>(

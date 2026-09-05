@@ -1,15 +1,43 @@
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppListSortEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { describe, expect, it } from 'vitest';
 import {
   AppListFilterSchema,
   AppListFiltersStoreSchema,
   defaultAppListFilters,
+  getResourceListDisplayTime,
   hasAppListActiveFilter,
   resolveSceneListType,
   toListTmbIds
 } from '@/pageComponents/dashboard/agent/filters/utils';
 
 describe('app list filter helpers', () => {
+  it('matches the displayed card time to the selected sort field', () => {
+    const createTime = new Date('2026-01-01T00:00:00.000Z');
+    const updateTime = new Date('2026-02-01T00:00:00.000Z');
+
+    expect(
+      getResourceListDisplayTime({
+        sort: AppListSortEnum.updateTimeDesc,
+        createTime,
+        updateTime
+      })
+    ).toBe(updateTime);
+    expect(
+      getResourceListDisplayTime({
+        sort: AppListSortEnum.createTimeDesc,
+        createTime,
+        updateTime
+      })
+    ).toBe(createTime);
+    expect(
+      getResourceListDisplayTime({
+        sort: AppListSortEnum.createTimeAsc,
+        createTime,
+        updateTime
+      })
+    ).toBe(createTime);
+  });
+
   it('maps creator filter to list tmbIds', () => {
     expect(toListTmbIds({ mode: 'all', tmbIds: ['me'] })).toBeUndefined();
     expect(toListTmbIds({ mode: 'selected', tmbIds: [] })).toEqual([]);

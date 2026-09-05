@@ -319,6 +319,7 @@ export const AppListItemSchema = z
     avatar: z.string().meta({ description: '应用头像' }),
     intro: z.string().meta({ description: '应用介绍' }),
     type: z.enum(AppTypeEnum).meta({ example: AppTypeEnum.workflow, description: '应用类型' }),
+    createTime: z.coerce.date().meta({ description: '创建时间' }),
     updateTime: z.coerce.date().meta({ description: '更新时间' }),
     pluginData: AppSchemaTypeSchema.shape.pluginData,
     permission: AppPermissionSchema,
