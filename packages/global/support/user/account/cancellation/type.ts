@@ -14,6 +14,12 @@ export const TeamAccountCancellationStatusSchema = AccountCancellationStatusSche
 ]);
 export type TeamAccountCancellationStatus = z.infer<typeof TeamAccountCancellationStatusSchema>;
 
+export const AccountCancellationSummarySchema = z.object({
+  status: TeamAccountCancellationStatusSchema,
+  scheduledCancelAt: z.union([z.date(), z.iso.datetime({ offset: true })]).optional()
+});
+export type AccountCancellationSummary = z.infer<typeof AccountCancellationSummarySchema>;
+
 export const AccountCancellationAllowedMethodSchema = z.enum(accountCancellationAllowedMethods);
 export type AccountCancellationAllowedMethod = z.infer<
   typeof AccountCancellationAllowedMethodSchema

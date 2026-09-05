@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback } from 'react';
 import { useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { getActivityAd } from '@/web/common/system/api';
@@ -17,6 +17,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useLocalStorageState } from 'ahooks';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { accountCancellationActiveStatuses } from '@fastgpt/global/support/user/account/cancellation/constants';
 
 const CLOSED_AD_KEY = 'logout-activity-ad';
 const CLOSED_AD_DURATION = 24 * 60 * 60 * 1000; // 24 hours
@@ -27,6 +28,15 @@ const ActivityAdModal = () => {
   const { feConfigs } = useSystemStore();
   const router = useRouter();
   const { userInfo } = useUserStore();
+  const isCancellationRestricted =
+    !!userInfo &&
+    (accountCancellationActiveStatuses.includes(
+      userInfo.accountCancellation?.status as (typeof accountCancellationActiveStatuses)[number]
+    ) ||
+      accountCancellationActiveStatuses.includes(
+        userInfo.team?.accountCancellation
+          ?.status as (typeof accountCancellationActiveStatuses)[number]
+      ));
 
   // Check if ad was recently closed
   const [closedData, setClosedData] = useLocalStorageState<string>(CLOSED_AD_KEY, {
@@ -35,7 +45,7 @@ const ActivityAdModal = () => {
 
   const { data } = useRequest(
     async () => {
-      if (!feConfigs?.isPlus || !userInfo) return;
+      if (!feConfigs?.isPlus || !userInfo || isCancellationRestricted) return;
       return getActivityAd();
     },
     {
@@ -64,7 +74,7 @@ const ActivityAdModal = () => {
           onOpen();
         }
       },
-      refreshDeps: [userInfo]
+      refreshDeps: [isCancellationRestricted, userInfo]
     }
   );
 
@@ -73,7 +83,7 @@ const ActivityAdModal = () => {
       setClosedData(JSON.stringify({ timestamp: Date.now(), adId: data.id }));
     }
     onClose();
-  }, [data?.id, onClose, setClosedData]);
+  }, [data, onClose, setClosedData]);
 
   const handleJoin = useCallback(() => {
     if (data?.activityAdLink) {
@@ -84,7 +94,7 @@ const ActivityAdModal = () => {
         window.open(data.activityAdLink, '_blank');
       }
     }
-  }, [data?.activityAdLink, handleClose, router]);
+  }, [data, handleClose, router]);
 
   if (!data?.activityAdImage || !userInfo) {
     return null;

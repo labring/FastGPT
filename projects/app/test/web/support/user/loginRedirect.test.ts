@@ -133,6 +133,54 @@ describe('login redirect helpers', () => {
     expect(restoreWorkflowLocalDraft).not.toHaveBeenCalled();
   });
 
+  it('redirects a user with personal cancellation to the account cancellation page', async () => {
+    const route = await resolveLoginRedirectAfterLogin({
+      user: {
+        ...user,
+        accountCancellation: {
+          status: 'pending'
+        }
+      } as UserType,
+      fallbackRoute: '/dashboard/agent',
+      restoreWorkflowLocalDraft: vi.fn()
+    });
+
+    expect(route).toBe('/account/cancel');
+  });
+
+  it('redirects a finalizing user with personal cancellation', async () => {
+    const route = await resolveLoginRedirectAfterLogin({
+      user: {
+        ...user,
+        accountCancellation: {
+          status: 'finalizing'
+        }
+      } as UserType,
+      fallbackRoute: '/dashboard/agent',
+      restoreWorkflowLocalDraft: vi.fn()
+    });
+
+    expect(route).toBe('/account/cancel');
+  });
+
+  it('redirects a cancelling member without a team cancellation summary', async () => {
+    const route = await resolveLoginRedirectAfterLogin({
+      user: {
+        ...user,
+        accountCancellation: {
+          status: 'pending'
+        },
+        team: {
+          ...user.team
+        }
+      } as UserType,
+      fallbackRoute: '/dashboard/agent',
+      restoreWorkflowLocalDraft: vi.fn()
+    });
+
+    expect(route).toBe('/account/cancel');
+  });
+
   afterEach(() => {
     vi.useRealTimers();
   });
