@@ -116,7 +116,7 @@ function MultiSelectFilter<T extends string>({
         py={'6px'}
         cursor={'pointer'}
         borderRadius={'xs'}
-        fontSize={'xs'}
+        fontSize={'sm'}
         _hover={{ bg: 'myGray.05' }}
         onClick={() => onChange(toggleMultiSelectFilterValue(value, item.value))}
       >
@@ -172,7 +172,7 @@ function MultiSelectFilter<T extends string>({
               borderRadius={'xs'}
               bg={value.mode === 'all' ? 'myGray.05' : 'transparent'}
               color={value.mode === 'all' ? 'primary.700' : 'myGray.600'}
-              fontSize={'xs'}
+              fontSize={'sm'}
               fontWeight={'medium'}
               _hover={{ bg: 'myGray.05' }}
               onClick={() => onChange(createMultiSelectFilter<T>())}

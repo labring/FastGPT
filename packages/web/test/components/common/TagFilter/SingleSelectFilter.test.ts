@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { filterSelectOptionsBySearch } from '../../../../components/common/TagFilter/FilterSearchInput';
-import { resolveSingleSelectOption } from '../../../../components/common/TagFilter/SingleSelectFilter';
+import {
+  getCenteredOptionScrollTop,
+  resolveSingleSelectOption
+} from '../../../../components/common/TagFilter/SingleSelectFilter';
 import {
   createMultiSelectFilter,
   getMultiSelectFilterSummary,
@@ -11,15 +14,47 @@ import {
 } from '../../../../components/common/TagFilter/multiSelectFilterUtils';
 
 describe('resolveSingleSelectOption', () => {
-  it('returns the matched option and falls back to the first', () => {
+  it('returns the matched option and exposes an invalid value', () => {
     const options = [
       { value: 'all', label: '全部' },
       { value: 'workflow', label: '工作流' }
     ];
 
     expect(resolveSingleSelectOption(options, 'workflow')?.label).toBe('工作流');
-    expect(resolveSingleSelectOption(options, 'missing')?.value).toBe('all');
+    expect(resolveSingleSelectOption(options, 'missing')).toBeUndefined();
     expect(resolveSingleSelectOption([], 'all')).toBeUndefined();
+  });
+});
+
+describe('getCenteredOptionScrollTop', () => {
+  it('centers the selected option in the list', () => {
+    expect(
+      getCenteredOptionScrollTop({
+        optionOffsetTop: 240,
+        optionHeight: 32,
+        listHeight: 160,
+        scrollHeight: 640
+      })
+    ).toBe(176);
+  });
+
+  it('clamps the scroll position at the top and bottom boundaries', () => {
+    expect(
+      getCenteredOptionScrollTop({
+        optionOffsetTop: 8,
+        optionHeight: 32,
+        listHeight: 160,
+        scrollHeight: 640
+      })
+    ).toBe(0);
+    expect(
+      getCenteredOptionScrollTop({
+        optionOffsetTop: 620,
+        optionHeight: 32,
+        listHeight: 160,
+        scrollHeight: 640
+      })
+    ).toBe(480);
   });
 });
 
