@@ -2,16 +2,25 @@ import z from 'zod';
 import type { ChannelStatusEnum } from './constants';
 
 export type ChannelInfoType = {
-  model_mapping: Record<string, any>;
+  model_mapping: Record<string, any> | null;
+  configs?: Record<string, any> | null;
   key: string;
   name: string;
   base_url: string;
+  proxy_url?: string | null;
   models: any[];
   id: number;
   status: ChannelStatusEnum;
   type: number;
   created_at: number;
   priority: number;
+  sets?: string[] | null;
+  enabled_auto_balance_check?: boolean;
+  balance_threshold?: number;
+  skip_tls_verify?: boolean;
+  enabled_no_permission_ban?: boolean;
+  warn_error_rate?: number;
+  max_error_rate?: number;
 };
 
 // Channel api

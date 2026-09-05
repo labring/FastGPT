@@ -167,6 +167,7 @@
   "model.vision_tip": "如果模型支持图片识别，则打开该开关。",
   "model.embedding_vision_tip": "开启后该索引模型可接收图片输入，并用于图片向量索引和图搜图。",
   "model.voices": "声音角色",
+  "fill_voice_before_test": "请先配置至少一个声音角色",
   "model.voices_tip": "通过一个数组配置多个，例如：\n[\n  {\n    \"label\": \"Alloy\",\n    \"value\": \"alloy\"\n  },\n  {\n    \"label\": \"Echo\",\n    \"value\": \"echo\"\n  }\n]",
   "create_from_template": "从模板新建",
   "create_from_blank": "从空白新建",

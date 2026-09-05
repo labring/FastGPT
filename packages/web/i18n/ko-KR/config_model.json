@@ -167,6 +167,7 @@
   "model.vision_tip": "모델이 이미지 인식을 지원하는 경우 이 스위치를 켜세요.",
   "model.embedding_vision_tip": "임베딩 모델이 이미지 벡터 인덱싱 및 이미지 검색을 위해 이미지 입력을 받을 수 있는 경우 이 옵션을 켜세요.",
   "model.voices": "음성 역할",
+  "fill_voice_before_test": "테스트하기 전에 음성 역할을 하나 이상 설정하세요",
   "model.voices_tip": "배열을 사용해 여러 음성을 설정할 수 있습니다. 예:\n[\n  {\n    \"label\": \"Alloy\",\n    \"value\": \"alloy\"\n  },\n  {\n    \"label\": \"Echo\",\n    \"value\": \"echo\"\n  }\n]",
   "create_from_template": "템플릿에서 만들기",
   "create_from_blank": "빈 모델 만들기",

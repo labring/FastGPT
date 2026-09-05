@@ -16,6 +16,7 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import { useLockFn } from 'ahooks';
 
 const LabelStyles: BoxProps = {
   fontSize: 'sm',
@@ -100,13 +101,13 @@ const EditChannelModal = ({
   }, [getModelProvider, i18n.language, systemModelList]);
 
   const modelMapping = useWatch({ control, name: 'model_mapping' });
-
-  const { runAsync: onSubmit, loading: loadingCreate } = useRequest(
-    (data: ChannelInfoType) => {
+  const { runAsync: submitRequest, loading: loadingCreate } = useRequest(
+    async (data: ChannelInfoType) => {
       if (!allowEmptyModels && data.models.length === 0) {
         return Promise.reject(t('config_model:selected_model_empty'));
       }
-      return isEdit ? putChannel(data) : postCreateChannel(data);
+      if (isEdit) return putChannel(data);
+      return postCreateChannel({ ...data, model_mapping: data.model_mapping ?? {} });
     },
     {
       onSuccess() {
@@ -117,6 +118,7 @@ const EditChannelModal = ({
       manual: true
     }
   );
+  const onSubmit = useLockFn(submitRequest);
 
   const isLoading = loadingModels || loadingChannelProviderMetas || loadingCreate;
 

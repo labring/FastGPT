@@ -226,6 +226,19 @@ describe('admin settings model create/update api', () => {
     await expect(MongoAIModel.countDocuments()).resolves.toBe(1);
   });
 
+  it('rejects an existing model before mutating any requested channel', async () => {
+    await MongoAIModel.create(buildLlmDocument());
+
+    const res = await callApi({
+      handler: createModelApi,
+      body: { modelData: buildLlmDocument(), channelIds: [7] }
+    });
+
+    expect(res.error?.name).toBe('UserError');
+    expect(channelMocks.appendModelsToAIProxyChannels).not.toHaveBeenCalled();
+    await expect(MongoAIModel.countDocuments()).resolves.toBe(1);
+  });
+
   it('updates an existing model only by modelId', async () => {
     const existing = await MongoAIModel.create(buildLlmDocument());
     const res = await callApi({

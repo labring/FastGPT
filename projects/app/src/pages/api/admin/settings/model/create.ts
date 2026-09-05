@@ -11,6 +11,8 @@ import {
   type CreateSystemModelResponse
 } from '@fastgpt/global/openapi/admin/core/ai/model/api';
 import { appendModelsToAIProxyChannels } from '@fastgpt/service/thirdProvider/aiproxy/channel';
+import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 async function handler(
   req: ApiRequestProps<CreateSystemModelBody>
@@ -20,6 +22,15 @@ async function handler(
     req,
     bodySchema: CreateSystemModelBodySchema
   }).body;
+
+  // 可提前识别的重名必须在 AI Proxy 写入前拒绝；数据库唯一索引继续作为并发兜底。
+  const existingModel = await MongoAIModel.exists({
+    scope: ModelScopeEnum.system,
+    model: modelData.model
+  });
+  if (existingModel) {
+    throw new UserError(`Model already exists: ${modelData.model}`);
+  }
 
   await appendModelsToAIProxyChannels({ channelIds, models: [modelData.model] });
 

@@ -127,6 +127,67 @@ describe('admin model test routing', () => {
     );
   });
 
+  it('tests a draft text-to-speech model with its configured voice', async () => {
+    const createSpeech = vi.fn().mockResolvedValue({});
+    mocks.getAIApi.mockReturnValue({
+      ai: { audio: { speech: { create: createSpeech } } }
+    });
+
+    await handler(
+      {
+        method: 'POST',
+        body: {
+          modelData: {
+            type: ModelTypeEnum.tts,
+            provider: 'Custom provider',
+            model: 'draft-tts',
+            name: 'Draft TTS',
+            scope: ModelScopeEnum.system,
+            isActive: false,
+            config: { voices: [{ label: 'Alloy', value: 'alloy' }] }
+          },
+          channelId: 10
+        }
+      } as any,
+      {} as any
+    );
+
+    expect(createSpeech).toHaveBeenCalledWith(
+      {
+        model: 'draft-tts',
+        voice: 'alloy',
+        input: 'Hi',
+        response_format: 'mp3',
+        speed: 1
+      },
+      { headers: { 'Aiproxy-Channel': '10' } }
+    );
+  });
+
+  it('rejects a draft text-to-speech model without a voice', async () => {
+    await expect(
+      handler(
+        {
+          method: 'POST',
+          body: {
+            modelData: {
+              type: ModelTypeEnum.tts,
+              provider: 'OpenAI',
+              model: 'draft-tts',
+              name: 'Draft TTS',
+              scope: ModelScopeEnum.system,
+              isActive: false,
+              config: { voices: [] }
+            },
+            channelId: 10
+          }
+        } as any,
+        {} as any
+      )
+    ).rejects.toMatchObject({ name: 'ApiRequestInputParseError' });
+    expect(mocks.getAIApi).not.toHaveBeenCalled();
+  });
+
   it('tests an embedding model through the selected channel', async () => {
     const vectors = [{ embedding: [0.1, 0.2], index: 0 }];
     mocks.findModelData.mockReturnValue({
@@ -194,6 +255,22 @@ describe('admin model test routing', () => {
       },
       { headers: { 'Aiproxy-Channel': '13' } }
     );
+  });
+
+  it('rejects an installed text-to-speech model without a voice', async () => {
+    mocks.findModelData.mockReturnValue({
+      ...installedModel,
+      type: ModelTypeEnum.tts,
+      config: { voices: [] }
+    });
+
+    await expect(
+      handler({ query: { modelId: installedModel.modelId, channelId: 13 } } as any, {} as any)
+    ).rejects.toMatchObject({
+      name: 'UserError',
+      message: 'TTS model test requires at least one voice'
+    });
+    expect(mocks.getAIApi).not.toHaveBeenCalled();
   });
 
   it('tests a speech-to-text model through the selected channel', async () => {

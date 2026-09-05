@@ -31,6 +31,15 @@ const channels = [
     status: 1,
     priority: 2,
     model_mapping: {},
+    proxy_url: 'https://proxy.example.com',
+    configs: { region: 'us-west' },
+    sets: ['default'],
+    enabled_auto_balance_check: true,
+    balance_threshold: 0,
+    skip_tls_verify: true,
+    enabled_no_permission_ban: true,
+    warn_error_rate: 0.2,
+    max_error_rate: 0.5,
     models: ['existing-model']
   },
   {
@@ -62,8 +71,7 @@ describe('appendModelsToAIProxyChannels', () => {
   it('returns the validated channel snapshot for server-side aggregation', async () => {
     await expect(getAIProxyChannelList()).resolves.toEqual(channels);
     expect(mocks.get).toHaveBeenCalledWith('https://aiproxy.example.com/api/channels/all', {
-      headers: { Authorization: 'Bearer admin-token' },
-      params: { page: 1, perPage: 1000 }
+      headers: { Authorization: 'Bearer admin-token' }
     });
   });
 
@@ -155,8 +163,7 @@ describe('appendModelsToAIProxyChannels', () => {
     });
 
     expect(mocks.get).toHaveBeenCalledWith('https://aiproxy.example.com/api/channels/all', {
-      headers: { Authorization: 'Bearer admin-token' },
-      params: { page: 1, perPage: 1000 }
+      headers: { Authorization: 'Bearer admin-token' }
     });
     expect(mocks.put).toHaveBeenNthCalledWith(
       1,
@@ -170,6 +177,47 @@ describe('appendModelsToAIProxyChannels', () => {
       expect.objectContaining({ models: ['new-model'] }),
       { headers: { Authorization: 'Bearer admin-token' } }
     );
+  });
+
+  it('preserves every mutable channel setting supported by the full update endpoint', async () => {
+    await appendModelsToAIProxyChannels({ channelIds: [1], models: ['new-model'] });
+
+    expect(mocks.put).toHaveBeenCalledWith(
+      'https://aiproxy.example.com/api/channel/1',
+      {
+        type: 1,
+        name: 'channel-1',
+        base_url: 'https://example.com/v1',
+        proxy_url: 'https://proxy.example.com',
+        model_mapping: {},
+        configs: { region: 'us-west' },
+        key: 'secret',
+        status: 1,
+        priority: 2,
+        sets: ['default'],
+        enabled_auto_balance_check: true,
+        skip_tls_verify: true,
+        enabled_no_permission_ban: true,
+        warn_error_rate: 0.2,
+        max_error_rate: 0.5,
+        models: ['existing-model', 'new-model']
+      },
+      { headers: { Authorization: 'Bearer admin-token' } }
+    );
+  });
+
+  it('rejects an update that would silently reset a non-zero balance threshold', async () => {
+    mocks.get.mockResolvedValue({
+      data: {
+        success: true,
+        data: [channels[0], { ...channels[1], balance_threshold: 10 }]
+      }
+    });
+
+    await expect(
+      appendModelsToAIProxyChannels({ channelIds: [1, 2], models: ['new-model'] })
+    ).rejects.toThrow('cannot preserve balance_threshold for channel: 2');
+    expect(mocks.put).not.toHaveBeenCalled();
   });
 
   it('does not require AI Proxy configuration when no association is requested', async () => {

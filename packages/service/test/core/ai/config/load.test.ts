@@ -134,9 +134,7 @@ describe('loadSystemModels', () => {
     expect(reloadMocks.updateFastGPTConfigBuffer).not.toHaveBeenCalled();
   });
 
-  it('publishes the installed-model cache even when the plugin request would fail', async () => {
-    pluginMocks.listModels.mockRejectedValue(new Error('plugin unavailable'));
-
+  it('does not request model templates while reloading installed models', async () => {
     await expect(loadSystemModels()).resolves.toBeUndefined();
     expect(pluginMocks.listModels).not.toHaveBeenCalled();
     expect(global.systemModelList).toEqual([]);

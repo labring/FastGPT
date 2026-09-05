@@ -28,6 +28,7 @@ import {
   type TestAdminSystemModelResponse
 } from '@fastgpt/global/openapi/admin/core/ai/model/api';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
@@ -147,11 +148,14 @@ const testTTSModel = async ({
   model: TTSSystemModelDataType;
   headers: Record<string, string>;
 }) => {
+  const voice = model.config.voices[0]?.value;
+  if (!voice) throw new UserError('TTS model test requires at least one voice');
+
   const { ai } = getAIApi({ timeout: 10000 });
   await ai.audio.speech.create(
     {
       model: model.model,
-      voice: model.config.voices[0]?.value as any,
+      voice: voice as any,
       input: 'Hi',
       response_format: 'mp3',
       speed: 1
