@@ -21,8 +21,10 @@ export { FILTER_SEARCH_THRESHOLD } from './FilterSearchInput';
 export { default as FilterSearchInput } from './FilterSearchInput';
 export {
   FILTER_LIST_H,
+  FILTER_LIST_HEIGHTS,
   filterListScrollSx,
   filterPopoverProps,
   getFilterListBoxProps,
   stopFilterListWheel
 } from './styles';
+export type { FilterListSize } from './styles';

@@ -11,7 +11,7 @@ import FilterSearchInput, {
   FILTER_SEARCH_THRESHOLD,
   filterSelectOptionsBySearch
 } from './FilterSearchInput';
-import { FILTER_LIST_H, getFilterListBoxProps, filterPopoverProps } from './styles';
+import { getFilterListBoxProps, filterPopoverProps, type FilterListSize } from './styles';
 
 export type SingleSelectFilterOption<T> = {
   value: T;
@@ -33,7 +33,8 @@ export type SingleSelectFilterProps<T> = {
   /** 为 true 时下拉里显示搜索框。封闭短枚举不要传。 */
   showSearch?: boolean;
   searchPlaceholder?: string;
-  listMaxH?: string | number;
+  /** 下拉列表高度档位，选项较多时使用 md 或 lg。 */
+  listSize?: FilterListSize;
 };
 
 /** 从选项里取出当前值对应项；无效值必须显式暴露，不能静默回退。 */
@@ -75,7 +76,7 @@ function SingleSelectFilter<T>({
   placement = 'bottom-start',
   showSearch,
   searchPlaceholder,
-  listMaxH
+  listSize = 'sm'
 }: SingleSelectFilterProps<T>) {
   const { t } = useTranslation();
   const [searchKey, setSearchKey] = useState('');
@@ -163,8 +164,7 @@ function SingleSelectFilter<T>({
           )}
           <Box
             ref={listRef}
-            {...getFilterListBoxProps(listScrollable)}
-            maxH={listScrollable ? (listMaxH ?? FILTER_LIST_H) : undefined}
+            {...getFilterListBoxProps(listScrollable, listSize)}
             position={'relative'}
           >
             {visibleOptions.map((item) => {

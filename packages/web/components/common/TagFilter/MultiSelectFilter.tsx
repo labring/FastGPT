@@ -10,7 +10,7 @@ import FilterSearchInput, {
   FILTER_SEARCH_THRESHOLD,
   filterSelectOptionsBySearch
 } from './FilterSearchInput';
-import { getFilterListBoxProps, filterPopoverProps } from './styles';
+import { getFilterListBoxProps, filterPopoverProps, type FilterListSize } from './styles';
 import {
   createMultiSelectFilter,
   getMultiSelectFilterSummary,
@@ -56,6 +56,8 @@ export type MultiSelectFilterProps<T extends string = string> = {
   onOpen?: () => void;
   maxW?: string | number;
   placement?: PlacementWithLogical;
+  /** 下拉列表高度档位，选项较多时使用 md 或 lg。 */
+  listSize?: FilterListSize;
 };
 
 /**
@@ -78,7 +80,8 @@ function MultiSelectFilter<T extends string>({
   footer,
   onOpen,
   maxW = '200px',
-  placement = 'bottom-start'
+  placement = 'bottom-start',
+  listSize = 'sm'
 }: MultiSelectFilterProps<T>) {
   const { t } = useTranslation();
   const [innerSearch, setInnerSearch] = useState('');
@@ -102,7 +105,7 @@ function MultiSelectFilter<T extends string>({
     `${summary.text}-${summary.extraCount}`
   );
   const listScrollable = showSearch || visibleOptions.length > FILTER_SEARCH_THRESHOLD;
-  const listProps = getFilterListBoxProps(listScrollable);
+  const listProps = getFilterListBoxProps(listScrollable, listSize);
   const listItems = visibleOptions.map((item) => {
     const checked = value.mode === 'selected' && selectedSet.has(item.value);
     return (

@@ -139,6 +139,7 @@ const TeamMemberFilter = ({
       onSearchChange={setSearchKey}
       filterLocal={false}
       ListContainer={ScrollData}
+      listSize={'md'}
     />
   );
 };

@@ -12,6 +12,16 @@ import {
   toggleMultiSelectFilterValue,
   toMultiSelectFilterQuery
 } from '../../../../components/common/TagFilter/multiSelectFilterUtils';
+import { getFilterListBoxProps } from '../../../../components/common/TagFilter/styles';
+
+describe('filter list sizes', () => {
+  it('uses preset heights only when the list is scrollable', () => {
+    expect(getFilterListBoxProps(true).maxH).toBe('168px');
+    expect(getFilterListBoxProps(true, 'md').maxH).toBe('240px');
+    expect(getFilterListBoxProps(true, 'lg').maxH).toBe('320px');
+    expect(getFilterListBoxProps(false, 'lg').maxH).toBeUndefined();
+  });
+});
 
 describe('resolveSingleSelectOption', () => {
   it('returns the matched option and exposes an invalid value', () => {
