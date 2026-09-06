@@ -33,9 +33,12 @@ import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
-import type {
-  FlowNodeTemplateType,
-  NodeToolConfigType
+import { ToolReferenceNodeInputTypeSchema } from '@fastgpt/global/core/workflow/type/io';
+import {
+  FlowNodeTemplateTypeSchema,
+  NodeToolConfigStorageTypeSchema,
+  type FlowNodeTemplateType,
+  type NodeToolConfigType
 } from '@fastgpt/global/core/workflow/type/node';
 import {
   pluginData2FlowNodeIO,
@@ -105,46 +108,10 @@ type AppToolType = WorkflowTemplateType & {
   isLatestVersion?: boolean; // Auto computed
 };
 
-const omitRuntimeJsonSchemaField = <T>(value: T, omitToolSchemaFields = false): T => {
-  if (Array.isArray(value)) {
-    return value.map((item) => omitRuntimeJsonSchemaField(item, omitToolSchemaFields)) as T;
-  }
-
-  if (!value || typeof value !== 'object') return value;
-
-  const rest = { ...(value as Record<string, any>) };
-  delete rest.jsonSchema;
-  if (omitToolSchemaFields) {
-    delete rest.inputSchema;
-    delete rest.outputSchema;
-    delete rest.requestSchema;
-    delete rest.responseSchema;
-    delete rest.secretSchema;
-    delete rest.customJsonSchema;
-    delete rest.apiSchemaStr;
-  }
-
-  return Object.fromEntries(
-    Object.entries(rest).map(([key, item]) => [
-      key,
-      omitRuntimeJsonSchemaField(item, omitToolSchemaFields)
-    ])
-  ) as T;
-};
-
-const omitClientPreviewSchemaFields = <T extends Record<string, any>>(
-  value: T,
-  omitToolSchemaFields = false
-): T => {
-  const rest = { ...value };
-  delete rest.inputSchema;
-  delete rest.outputSchema;
-  delete rest.requestSchema;
-  delete rest.responseSchema;
-  delete rest.secretSchema;
-
-  return omitRuntimeJsonSchemaField(rest, omitToolSchemaFields) as T;
-};
+/** 按节点、IO、toolConfig 的结构裁剪定义字段，不遍历业务值中的同名属性。 */
+const ClientToolPreviewNodeSchema = FlowNodeTemplateTypeSchema.extend({
+  toolConfig: NodeToolConfigStorageTypeSchema.optional()
+});
 
 /**
  * 构建返回给客户端的系统工具预览节点。
@@ -570,8 +537,16 @@ export async function getClientToolPreviewNode({
   const isMcpOrHttpTool =
     idSource === AppToolSourceEnum.mcp ||
     idSource === AppToolSourceEnum.http ||
+    !!data.toolConfig?.mcpTool ||
+    !!data.toolConfig?.httpTool ||
     !!data.toolConfig?.mcpToolSet ||
     !!data.toolConfig?.httpToolSet;
 
-  return omitClientPreviewSchemaFields(data, isMcpOrHttpTool);
+  // 普通工作流和系统工具的自定义 IO 定义仍有效，不套用外部工具的裁剪契约。
+  if (!isMcpOrHttpTool) return data;
+
+  return ClientToolPreviewNodeSchema.parse({
+    ...data,
+    inputs: ToolReferenceNodeInputTypeSchema.array().parse(data.inputs)
+  });
 }

@@ -104,7 +104,8 @@ const createDispatchToolProps = (
       memberName: 'Attacker member',
       contact: '',
       teamId: 'attacker-team',
-      tmbId: 'attacker-tmb'
+      // 工具加载和执行都必须使用应用创建者，而不是当前调用者。
+      tmbId: 'caller-without-toolset-permission'
     },
     chatId: 'chat',
     uid: 'uid',

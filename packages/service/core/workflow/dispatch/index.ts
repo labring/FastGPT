@@ -1629,7 +1629,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           try {
             await rewriteRuntimeWorkFlow({
               teamId: data.runningAppInfo.teamId,
-              tmbId: data.runningUserInfo.tmbId,
+              tmbId: data.runningAppInfo.tmbId,
               nodes: data.runtimeNodes,
               edges: data.runtimeEdges,
               lang: data.lang

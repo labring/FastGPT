@@ -135,7 +135,7 @@ export const dispatchTool = async ({
     const authRuntimeToolset = async (parentId: string) =>
       (
         await authAppByTmbId({
-          tmbId: runningUserInfo.tmbId,
+          tmbId: runningAppInfo.tmbId,
           appId: parentId,
           per: ReadPermissionVal
         })

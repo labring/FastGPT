@@ -1,5 +1,9 @@
 import { FlowNodeTypeEnum, NodeColorSchemaEnum } from '../node/constant';
-import { FlowNodeInputItemTypeSchema, FlowNodeOutputItemTypeSchema } from './io';
+import {
+  FlowNodeInputItemTypeSchema,
+  FlowNodeOutputItemTypeSchema,
+  ToolReferenceNodeInputTypeSchema
+} from './io';
 import { HttpToolConfigTypeSchema } from '../../app/tool/httpTool/type';
 import { McpToolConfigSchema } from '../../app/tool/mcpTool/type';
 import { ParentIdSchema } from '../../../common/parentFolder/type';
@@ -381,5 +385,15 @@ export type StoreNodeItemType = z.infer<typeof StoreNodeItemTypeSchema>;
 /** 工作流持久化边界；工具 Schema 会在运行时重新解析。 */
 export const StoreWorkflowNodeItemTypeSchema = StoreNodeItemTypeSchema.extend({
   toolConfig: NodeToolConfigStorageTypeSchema.optional()
+}).transform((node) => {
+  const isToolReference =
+    node.toolConfig?.mcpTool ||
+    node.toolConfig?.httpTool ||
+    node.toolConfig?.mcpToolSet ||
+    node.toolConfig?.httpToolSet;
+  if (!isToolReference) return node;
+
+  // 仅裁剪外部工具定义生成的输入快照，其他节点的自定义 Schema 仍是业务配置。
+  return { ...node, inputs: ToolReferenceNodeInputTypeSchema.array().parse(node.inputs) };
 });
 export type StoreWorkflowNodeItemType = z.infer<typeof StoreWorkflowNodeItemTypeSchema>;

@@ -1127,6 +1127,65 @@ describe('workflow migration boundary', () => {
 });
 
 describe('workflow storage boundary', () => {
+  it.each([
+    { mcpTool: { toolId: 'mcp-toolset/search' } },
+    { httpTool: { toolId: 'http-toolset/search' } },
+    { mcpToolSet: { toolId: 'toolset' } },
+    { httpToolSet: { toolId: 'toolset' } },
+    { mcpToolSet: { url: '', toolList: [] } },
+    { httpToolSet: { toolList: [] } }
+  ])('strips only input schema snapshots for tool reference %j', (toolConfig) => {
+    const businessValue = {
+      customJsonSchema: { type: 'business-value' },
+      nested: [{ requestSchema: { inputSchema: 'payload' }, jsonSchema: 'data' }]
+    };
+    const workflow = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'tool',
+          flowNodeType: 'tool',
+          name: 'Tool',
+          toolConfig,
+          inputs: [
+            {
+              key: 'payload',
+              label: 'Payload',
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              customJsonSchema: { type: 'object', properties: { payload: { type: 'string' } } },
+              value: businessValue,
+              defaultValue: businessValue
+            }
+          ],
+          outputs: []
+        }
+      ]
+    });
+    const original = structuredClone(workflow.nodes);
+    const [stored] = StoreWorkflowNodeItemTypeSchema.array().parse(workflow.nodes);
+
+    expect(stored.inputs[0]).not.toHaveProperty('customJsonSchema');
+    expect(stored.inputs[0].value).toEqual(businessValue);
+    expect(stored.inputs[0].defaultValue).toEqual(businessValue);
+    expect(stored.toolConfig).toEqual(toolConfig);
+    expect(workflow.nodes).toEqual(original);
+  });
+
+  it.each([undefined, { systemTool: { toolId: 'systemTool-search' } }])(
+    'preserves custom input definitions for non-MCP/HTTP nodes: %j',
+    (toolConfig) => {
+      const customJsonSchema = { type: 'string', pattern: '^allowed$' };
+      const stored = StoreWorkflowNodeItemTypeSchema.parse({
+        nodeId: 'custom-tool',
+        flowNodeType: 'tool',
+        name: 'Custom tool',
+        toolConfig,
+        inputs: [{ key: 'query', label: 'Query', renderTypeList: [], customJsonSchema }],
+        outputs: []
+      });
+      expect(stored.inputs[0].customJsonSchema).toEqual(customJsonSchema);
+    }
+  );
+
   it('removes MCP and HTTP JSON Schema fields through Zod parsing', () => {
     const node = StoreWorkflowNodeItemTypeSchema.parse({
       nodeId: 'toolset-node',

@@ -315,6 +315,11 @@ export const FlowNodeInputItemTypeSchema = InputComponentPropsTypeSchema.extend(
 });
 export type FlowNodeInputItemType = z.infer<typeof FlowNodeInputItemTypeSchema>;
 
+/** MCP/HTTP 引用节点只保留 IO 配置；value/defaultValue 内的业务对象不做递归裁剪。 */
+export const ToolReferenceNodeInputTypeSchema = FlowNodeInputItemTypeSchema.omit({
+  customJsonSchema: true
+});
+
 // Workflow node output
 export const FlowNodeOutputItemTypeSchema = z.object({
   id: z.string().meta({

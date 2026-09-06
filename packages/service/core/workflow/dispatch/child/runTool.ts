@@ -116,7 +116,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     const authRuntimeToolset = async (parentId: string) => {
       return (
         await authAppByTmbId({
-          tmbId: runningUserInfo.tmbId,
+          tmbId: runningAppInfo.tmbId,
           appId: parentId,
           per: ReadPermissionVal
         })

@@ -110,7 +110,8 @@ const createRunToolProps = (
       memberName: 'Attacker member',
       contact: '',
       teamId: 'attacker-team',
-      tmbId: 'attacker-tmb'
+      // 调用者与应用创建者不同；工具引用仍应按应用创建者鉴权。
+      tmbId: 'caller-without-toolset-permission'
     },
     variableState: {
       get: vi.fn()

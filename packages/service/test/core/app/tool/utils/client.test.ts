@@ -59,7 +59,135 @@ describe('getClientToolPreviewNode', () => {
     vi.clearAllMocks();
   });
 
+  it.each(['mcp', 'http'] as const)(
+    'preserves schema-named business defaults in a %s child preview',
+    async (source) => {
+      const appId = '507f1f77bcf86cd799439011';
+      const businessValue = {
+        inputSchema: { title: 'business value' },
+        nested: [{ requestSchema: 'payload', customJsonSchema: false, jsonSchema: null }],
+        outputSchema: 0,
+        responseSchema: '',
+        secretSchema: [],
+        apiSchemaStr: 'data'
+      };
+      const tool = {
+        name: 'search',
+        description: 'Search',
+        path: '/search',
+        method: 'POST',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            payload: { type: 'object', default: businessValue }
+          }
+        }
+      };
+      const app = {
+        _id: appId,
+        teamId: '507f1f77bcf86cd799439012',
+        type: source === 'mcp' ? AppTypeEnum.mcpToolSet : AppTypeEnum.httpToolSet,
+        name: 'Tools',
+        avatar: 'tools.svg',
+        intro: '',
+        modules: [
+          {
+            toolConfig: {
+              [source === 'mcp' ? 'mcpToolSet' : 'httpToolSet']: {
+                url: 'https://mcp.example.com',
+                toolList: [tool]
+              }
+            }
+          }
+        ]
+      };
+      const original = structuredClone(app);
+      mocks.findById.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue(app) });
+
+      const preview = await getClientToolPreviewNode({ appId: `${source}-${appId}/search` });
+      expect(preview.inputs[0].defaultValue).toEqual(businessValue);
+      expect(preview.inputs[0]).not.toHaveProperty('customJsonSchema');
+      expect(preview).not.toHaveProperty('jsonSchema');
+      expect(preview.toolConfig).toEqual({
+        [source === 'mcp' ? 'mcpTool' : 'httpTool']: { toolId: `${source}-${appId}/search` }
+      });
+      expect(app).toEqual(original);
+    }
+  );
+
+  it.each(['mcp', 'http'] as const)(
+    'projects %s toolset definitions without traversing IO business values',
+    async (source) => {
+      const appId = '507f1f77bcf86cd799439011';
+      const businessValue = { requestSchema: { nested: [{ customJsonSchema: 'data' }] } };
+      const toolSetKey = source === 'mcp' ? 'mcpToolSet' : 'httpToolSet';
+      mocks.findById.mockReturnValueOnce({
+        lean: vi.fn().mockResolvedValue({
+          _id: appId,
+          teamId: '507f1f77bcf86cd799439012',
+          type: source === 'mcp' ? AppTypeEnum.mcpToolSet : AppTypeEnum.httpToolSet,
+          name: 'Tools',
+          avatar: 'tools.svg',
+          intro: '',
+          modules: [
+            {
+              flowNodeType: 'toolSet',
+              inputs: [
+                {
+                  key: 'payload',
+                  label: 'Payload',
+                  renderTypeList: ['input'],
+                  value: businessValue,
+                  defaultValue: businessValue,
+                  customJsonSchema: { type: 'object' }
+                }
+              ],
+              outputs: [
+                {
+                  id: 'result',
+                  key: 'result',
+                  label: 'Result',
+                  type: 'static',
+                  value: businessValue,
+                  defaultValue: businessValue
+                }
+              ],
+              toolConfig: {
+                [toolSetKey]: {
+                  url: 'https://mcp.example.com',
+                  apiSchemaStr: 'raw-schema',
+                  toolList: [
+                    {
+                      name: 'search',
+                      description: 'Search',
+                      path: '/search',
+                      method: 'POST',
+                      inputSchema: { type: 'object' },
+                      outputSchema: { type: 'object' },
+                      requestSchema: { type: 'object' },
+                      responseSchema: { type: 'object' },
+                      customJsonSchema: { type: 'object' }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        })
+      });
+
+      const preview = await getClientToolPreviewNode({ appId });
+      expect(preview.inputs[0]).not.toHaveProperty('customJsonSchema');
+      expect(preview.inputs[0].value).toEqual(businessValue);
+      expect(preview.inputs[0].defaultValue).toEqual(businessValue);
+      expect(preview.outputs[0].value).toEqual(businessValue);
+      expect(preview.outputs[0].defaultValue).toEqual(businessValue);
+      expect(getRuntimeSchemaFieldPaths(preview.toolConfig)).toEqual([]);
+    }
+  );
+
   it('uses explicit debug source for system tool preview without encoding appId', async () => {
+    const businessValue = { requestSchema: 'payload', jsonSchema: { customJsonSchema: false } };
     mocks.getSystemToolDetail.mockResolvedValueOnce({
       id: 'systemTool-weather',
       version: '1.0.0',
@@ -75,7 +203,11 @@ describe('getClientToolPreviewNode', () => {
       currentCost: 0,
       systemKeyCost: 0,
       hasTokenFee: false,
-      hasSystemSecret: false
+      hasSystemSecret: false,
+      inputSchema: {
+        type: 'object',
+        properties: { payload: { type: 'object', default: businessValue } }
+      }
     });
 
     const result = await getClientToolPreviewNode({
@@ -93,6 +225,11 @@ describe('getClientToolPreviewNode', () => {
     });
     expect(result.pluginId).toBe('systemTool-weather');
     expect(result.source).toBe('debug:tmbId:tmb-1');
+    expect(result.inputs[0].defaultValue).toEqual(businessValue);
+    expect(result.inputs[0].customJsonSchema).toMatchObject({
+      type: 'object',
+      default: businessValue
+    });
   });
 
   it('omits runtime schema fields from client preview response', async () => {
