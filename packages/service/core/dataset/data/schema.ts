@@ -8,6 +8,7 @@ import {
 import { DatasetCollectionName } from '../schema';
 import { DatasetColCollectionName } from '../collection/schema';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { serviceEnv } from '../../../env';
 
 export const DatasetDataCollectionName = 'dataset_datas';
 
@@ -110,9 +111,11 @@ defineIndex(DatasetDataSchema, {
 defineIndex(DatasetDataSchema, {
   key: { rebuilding: 1, teamId: 1, datasetId: 1 }
 });
-defineIndex(DatasetDataSchema, {
-  key: { teamId: 1, datasetId: 1, synonymVersion: 1, synonymRebuildingVersion: 1 }
-});
+if (serviceEnv.DATASET_SYNONYM_ENABLED) {
+  defineIndex(DatasetDataSchema, {
+    key: { teamId: 1, datasetId: 1, synonymVersion: 1, synonymRebuildingVersion: 1 }
+  });
+}
 
 // Cron clear invalid data
 defineIndex(DatasetDataSchema, { key: { updateTime: 1 } });

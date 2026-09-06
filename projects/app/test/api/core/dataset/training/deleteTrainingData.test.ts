@@ -10,11 +10,18 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { serviceEnv } from '@fastgpt/service/env';
 import { getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+
+const originalDatasetSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
 
 describe('delete training data test', () => {
+  afterEach(() => {
+    serviceEnv.DATASET_SYNONYM_ENABLED = originalDatasetSynonymEnabled;
+  });
+
   it('should delete training data', async () => {
     const root = await getRootUser();
     const dataset = await MongoDataset.create({
@@ -125,6 +132,7 @@ describe('delete training data test', () => {
   });
 
   it('should allow deleting rebuild tasks through the existing training flow', async () => {
+    serviceEnv.DATASET_SYNONYM_ENABLED = true;
     const root = await getRootUser();
     const dataset = await MongoDataset.create({
       name: 'test',

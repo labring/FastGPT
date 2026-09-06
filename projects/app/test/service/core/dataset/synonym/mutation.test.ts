@@ -7,7 +7,6 @@ import {
 } from '@fastgpt/global/core/dataset/synonym';
 import {
   DatasetCollectionTypeEnum,
-  DatasetRebuildScopeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
@@ -33,11 +32,23 @@ vi.mock('@fastgpt/service/support/wallet/usage/controller', () => ({
   createTrainingUsage: mockCreateTrainingUsage
 }));
 vi.mock('@fastgpt/service/core/dataset/model', () => ({
+  getDatasetAgentModel: () => ({
+    modelId: '507f1f77bcf86cd799439023',
+    name: 'Agent',
+    model: 'agent-model',
+    config: {}
+  }),
   getDatasetEmbeddingModel: () => ({
     modelId: '507f1f77bcf86cd799439021',
     name: 'Embedding',
     model: 'embedding',
     config: { maxToken: 8192 }
+  }),
+  getDatasetVlmModel: () => ({
+    modelId: '507f1f77bcf86cd799439022',
+    name: 'VLM',
+    model: 'vlm-model',
+    config: { vision: true }
   })
 }));
 
@@ -118,8 +129,7 @@ describe('createDatasetSynonymMutation', () => {
       fileVersion: 1
     });
     await expect(MongoDatasetTraining.findOne({ dataId: data._id }).lean()).resolves.toMatchObject({
-      mode: TrainingModeEnum.chunk,
-      rebuildScope: DatasetRebuildScopeEnum.text,
+      mode: TrainingModeEnum.imageParse,
       synonymVersion: 1,
       q: '',
       a: '',
@@ -127,10 +137,11 @@ describe('createDatasetSynonymMutation', () => {
       retryCount: 50
     });
     expect(mockCreateTrainingUsage).toHaveBeenCalledWith(
-      expect.objectContaining({ vectorModelId: '507f1f77bcf86cd799439021' })
-    );
-    expect(mockCreateTrainingUsage).not.toHaveBeenCalledWith(
-      expect.objectContaining({ vllmModelId: expect.anything() })
+      expect.objectContaining({
+        vectorModelId: '507f1f77bcf86cd799439021',
+        agentModelId: '507f1f77bcf86cd799439023',
+        vllmModelId: '507f1f77bcf86cd799439022'
+      })
     );
     expect(result.affectedDataCount).toBe(1);
   });

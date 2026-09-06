@@ -547,30 +547,15 @@ describe('MongoIndexManager.cleanupModelDeprecatedIndexes', () => {
 });
 
 describe('dataset training TTL index migration', () => {
-  it('excludes synonym rebuild tasks from TTL and removes the obsolete index', () => {
-    const ttlIndex = MongoDatasetTraining.schema
-      .indexes()
-      .find(
-        ([key, options]) =>
-          'expireAt' in key &&
-          options.partialFilterExpression?.synonymVersion !== undefined &&
-          !options.deprecated
-      );
+  it('keeps the existing training TTL index unchanged', () => {
+    const ttlIndex = MongoDatasetTraining.schema.indexes().find(([key]) => 'expireAt' in key);
 
     expect(ttlIndex).toEqual([
       { expireAt: 1 },
       expect.objectContaining({
-        name: 'expireAt_1_non_synonym_rebuild',
-        expireAfterSeconds: 7 * 24 * 60 * 60,
-        partialFilterExpression: { synonymVersion: null }
-      })
-    ]);
-    expect(getSchemaDeprecatedMongoIndexes(MongoDatasetTraining.schema)).toContainEqual({
-      indexName: 'expireAt_1',
-      key: { expireAt: 1 },
-      options: expect.objectContaining({
         expireAfterSeconds: 7 * 24 * 60 * 60
       })
-    });
+    ]);
+    expect(getSchemaDeprecatedMongoIndexes(MongoDatasetTraining.schema)).toEqual([]);
   });
 });

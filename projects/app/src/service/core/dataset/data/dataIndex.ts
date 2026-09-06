@@ -22,7 +22,10 @@ import {
 import { uniqueDatasetDataMarkdownImageUrls } from '@fastgpt/service/core/dataset/data/utils';
 import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
 import { minChunkSize } from '@fastgpt/global/core/dataset/training/utils';
-import { getDatasetSynonymTransformContext } from '@fastgpt/service/core/dataset/synonym/entity';
+import {
+  getDatasetSynonymTransformContext,
+  isDatasetSynonymEnabled
+} from '@fastgpt/service/core/dataset/synonym/entity';
 
 export type DatasetDataIndexDraft = Omit<DatasetDataIndexItemType, 'dataId'> & {
   dataId?: string;
@@ -702,13 +705,23 @@ export class DatasetDataIndexOperation {
       return Promise.reject('Dataset data index text is too long');
     }
 
-    // API 中的 data 可能已是旧快照，向量生成前必须以 Mongo 当前原文和索引为准。
-    const currentData = await MongoDatasetData.findById(data.id);
-    if (!currentData) {
+    const synonymEnabled = isDatasetSynonymEnabled();
+    const currentData = synonymEnabled ? await MongoDatasetData.findById(data.id) : undefined;
+    if (synonymEnabled && !currentData) {
       return Promise.reject('Dataset data not found');
     }
+    const sourceData = currentData
+      ? {
+          id: String(currentData._id),
+          teamId: String(currentData.teamId),
+          datasetId: String(currentData.datasetId),
+          collectionId: String(currentData.collectionId),
+          updateTime: currentData.updateTime,
+          indexes: currentData.indexes
+        }
+      : data;
     const targetIndex = indexDataId
-      ? currentData.indexes.find((item) => item.dataId === indexDataId)
+      ? sourceData.indexes.find((item) => item.dataId === indexDataId)
       : undefined;
 
     // 有 indexDataId 但是找不到对应的 index，认为是错误的数据
@@ -728,11 +741,12 @@ export class DatasetDataIndexOperation {
       };
     }
 
-    const synonymContext = await getDatasetSynonymTransformContext({
-      teamId: String(currentData.teamId),
-      datasetId: String(currentData.datasetId)
-    });
-    const updateTime = currentData.updateTime;
+    const synonymContext = synonymEnabled
+      ? await getDatasetSynonymTransformContext({
+          teamId: sourceData.teamId,
+          datasetId: sourceData.datasetId
+        })
+      : undefined;
 
     let newIndex: DatasetDataIndexItemType | undefined;
     let tokens = 0;
@@ -744,17 +758,17 @@ export class DatasetDataIndexOperation {
             text: trimText
           }
         ],
-        teamId: String(currentData.teamId),
-        datasetId: String(currentData.datasetId),
-        collectionId: String(currentData.collectionId),
-        transformText: synonymContext.transformText
+        teamId: sourceData.teamId,
+        datasetId: sourceData.datasetId,
+        collectionId: sourceData.collectionId,
+        transformText: synonymContext?.transformText
       });
       newIndex = insertResult.indexes[0];
       tokens = insertResult.tokens;
       if (!newIndex) {
         throw new Error('Dataset data index vector was not created');
       }
-      if (synonymContext.isCurrent && !(await synonymContext.isCurrent())) {
+      if (synonymContext?.isCurrent && !(await synonymContext.isCurrent())) {
         throw new Error('同义词配置已变化，请重试索引更新');
       }
 
@@ -762,8 +776,8 @@ export class DatasetDataIndexOperation {
         const updateResult = targetIndex
           ? await MongoDatasetData.updateOne(
               {
-                _id: currentData._id,
-                updateTime,
+                _id: sourceData.id,
+                ...(synonymContext && { updateTime: sourceData.updateTime }),
                 'indexes.dataId': targetIndex.dataId
               },
               {
@@ -776,8 +790,8 @@ export class DatasetDataIndexOperation {
             )
           : await MongoDatasetData.updateOne(
               {
-                _id: currentData._id,
-                updateTime
+                _id: sourceData.id,
+                ...(synonymContext && { updateTime: sourceData.updateTime })
               },
               {
                 // 人工添加的索引放在前面，后续读取时优先展示用户创建的检索提示。
@@ -793,22 +807,22 @@ export class DatasetDataIndexOperation {
               },
               { session }
             );
-        if (updateResult.modifiedCount !== 1) {
+        if (synonymContext && updateResult.modifiedCount !== 1) {
           throw new Error('数据已变化，请重试索引更新');
         }
 
         if (targetIndex) {
           // 先把 Mongo 索引替换成新的向量 id，再删除旧向量，避免检索指向不存在的向量记录。
           await this.deleteVectors({
-            teamId: String(currentData.teamId),
+            teamId: sourceData.teamId,
             idList: [targetIndex.dataId]
           });
         }
       });
     } catch (error) {
-      if (newIndex) {
+      if (synonymContext && newIndex) {
         await this.deleteVectors({
-          teamId: String(currentData.teamId),
+          teamId: sourceData.teamId,
           idList: [newIndex.dataId]
         }).catch(() => {});
       }
@@ -816,9 +830,9 @@ export class DatasetDataIndexOperation {
     }
 
     pushCollectionUpdateJob({
-      collectionId: String(currentData.collectionId),
-      datasetId: String(currentData.datasetId),
-      teamId: String(currentData.teamId)
+      collectionId: sourceData.collectionId,
+      datasetId: sourceData.datasetId,
+      teamId: sourceData.teamId
     });
 
     return {

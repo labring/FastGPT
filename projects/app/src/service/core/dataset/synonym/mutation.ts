@@ -14,7 +14,11 @@ import {
   MongoDatasetSynonym,
   MongoDatasetSynonymMapping
 } from '@fastgpt/service/core/dataset/synonym/schema';
-import { getDatasetEmbeddingModel } from '@fastgpt/service/core/dataset/model';
+import {
+  getDatasetAgentModel,
+  getDatasetEmbeddingModel,
+  getDatasetVlmModel
+} from '@fastgpt/service/core/dataset/model';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
@@ -23,7 +27,6 @@ import {
   invalidateDatasetSynonymMatcherCache
 } from '@fastgpt/service/core/dataset/synonym/entity';
 import { seedDatasetRebuildTasks } from '../queues/rebuild';
-import { DatasetRebuildScopeEnum } from '@fastgpt/global/core/dataset/constants';
 
 const SYNONYM_MAPPING_BATCH_SIZE = 1000;
 
@@ -96,12 +99,16 @@ export const createDatasetSynonymMutation = async ({
   const now = new Date();
   const normalizedFileName = path.basename(fileName) || 'synonyms.csv';
   const vectorModelData = getDatasetEmbeddingModel(dataset);
+  const agentModelData = getDatasetAgentModel(dataset);
+  const vlmModelData = getDatasetVlmModel(dataset);
   const { usageId } = await createTrainingUsage({
     teamId,
     tmbId,
     appName: `${dataset.name}-同义词重建`,
     billSource: UsageSourceEnum.training,
-    vectorModelId: vectorModelData.modelId!
+    vectorModelId: vectorModelData.modelId!,
+    agentModelId: agentModelData.modelId,
+    vllmModelId: vlmModelData?.modelId
   });
 
   const affectedDataCount = await mongoSessionRun(async (session) => {
@@ -217,7 +224,7 @@ export const createDatasetSynonymMutation = async ({
           datasetId,
           billId: String(usageId),
           vectorModel: vectorModelData,
-          rebuildScope: DatasetRebuildScopeEnum.text,
+          vlmModel: vlmModelData,
           synonymVersion: fileVersion
         },
         session

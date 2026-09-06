@@ -7,7 +7,6 @@ import {
   DatasetTypeEnum,
   SearchScoreTypeEnum,
   TrainingModeEnum,
-  DatasetRebuildScopeEnum,
   CollectionTrainingStatusEnum,
   ChunkSettingModeEnum,
   ChunkTriggerConfigTypeEnum,
@@ -254,10 +253,6 @@ export const DatasetTrainingSchema = z.object({
   expireAt: z.coerce.date().meta({ description: '过期时间' }),
   lockTime: z.coerce.date().meta({ description: '锁定时间' }),
   mode: z.enum(TrainingModeEnum).meta({ description: '训练模式' }),
-  rebuildScope: z
-    .enum(DatasetRebuildScopeEnum)
-    .optional()
-    .meta({ description: '重建范围；缺省表示完整重建' }),
   synonymVersion: z
     .number()
     .int()

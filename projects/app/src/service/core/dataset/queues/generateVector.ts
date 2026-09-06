@@ -1,6 +1,6 @@
 import { createDatasetData, updateDatasetDataByIndexes } from '@/service/core/dataset/data/data';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { DatasetRebuildScopeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { checkTeamAiPointsAndLock } from './utils';
 import { addMinutes } from 'date-fns';
@@ -49,15 +49,10 @@ type TrainingDataType = DatasetTrainingSchemaType & PopulateType;
  * 重新生成；这里仅保留 custom/question/summary/image 等外部索引。其中 image 是 VLM
  * 生成的文本描述索引，只有当前集合仍开启图片索引且 VLM 可用时才保留。
  */
-export const getRebuildBaseIndexes = (
-  trainingData: TrainingDataType,
-  currentIndexes?: DatasetDataSchemaType['indexes']
-) => {
-  const sourceIndexes = (
-    currentIndexes ??
-    (trainingData.indexes?.length ? trainingData.indexes : trainingData.data?.indexes) ??
-    []
-  ).map((index) => ({ ...index }));
+export const getRebuildBaseIndexes = (trainingData: TrainingDataType) => {
+  const sourceIndexes = trainingData.indexes?.length
+    ? trainingData.indexes.map((index) => ({ ...index }))
+    : trainingData.data?.indexes || [];
   const { supportVlm } = getDatasetImageIndexCapability({
     vectorModel: getDatasetEmbeddingModel(trainingData.dataset),
     vlmModel: getDatasetVlmModel(trainingData.dataset)
@@ -75,6 +70,21 @@ export const getRebuildBaseIndexes = (
     }
     return true;
   });
+};
+
+/**
+ * 获取完整 rebuild 最终写入的数据，优先使用本轮图片和自动索引训练产物。
+ */
+export const getRebuildUpdateInput = (trainingData: TrainingDataType) => {
+  if (!trainingData.data) return;
+
+  return {
+    q: trainingData.q ? trainingData.q : trainingData.data.q,
+    a: trainingData.a ?? trainingData.data.a,
+    imageId: trainingData.data.imageId,
+    indexes: getRebuildBaseIndexes(trainingData),
+    imageDescMap: trainingData.imageDescMap
+  };
 };
 
 /* 索引生成队列。每导入一次，就是一个单独的线程 */
@@ -158,7 +168,7 @@ export async function generateVector(): Promise<any> {
           collectionId: data.collectionId,
           trainingId: data._id
         });
-        if (data.dataset && data.dataId) {
+        if (data.synonymVersion && data.dataset && data.dataId) {
           await enqueueFollowingDatasetRebuild({ trainingData: data });
         }
         await MongoDatasetTraining.deleteOne({ _id: data._id });
@@ -250,45 +260,32 @@ const enqueueFollowingDatasetRebuild = async ({
       billId: trainingData.billId,
       vectorModel: getDatasetEmbeddingModel(trainingData.dataset),
       vlmModel: getDatasetVlmModel(trainingData.dataset),
-      rebuildScope: trainingData.rebuildScope,
       synonymVersion: trainingData.synonymVersion
     })
   );
 
 const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
-  // 先挂下一条任务，当前 data 被删除或执行失败也不会截断整条重建链。
-  await enqueueFollowingDatasetRebuild({ trainingData });
+  // 同义词重建需要可靠续接；普通模型重建保持原有的尽力续接语义。
+  if (trainingData.synonymVersion) {
+    await enqueueFollowingDatasetRebuild({ trainingData });
+  } else {
+    await enqueueFollowingDatasetRebuild({ trainingData }).catch(() => {});
+  }
 
   if (!trainingData.data) {
     await MongoDatasetTraining.deleteOne({ _id: trainingData._id });
-    return { tokens: 0 };
+    if (trainingData.synonymVersion) return { tokens: 0 };
+    return Promise.reject('Not data');
   }
   const datasetData = trainingData.data;
 
   const embModel = getDatasetEmbeddingModel(trainingData.dataset);
+  const rebuildUpdateInput = getRebuildUpdateInput(trainingData);
 
   const { tokens } = await updateDatasetDataByIndexes({
     dataId: String(datasetData._id),
-    ...(trainingData.imageDescMap
-      ? {
-          ...(trainingData.q ? { q: trainingData.q } : {}),
-          a: trainingData.a,
-          imageDescMap: trainingData.imageDescMap
-        }
-      : {}),
+    ...rebuildUpdateInput,
     imageIndex: !!trainingData.collection.imageIndex,
-    preserveImageEmbedding: trainingData.rebuildScope === DatasetRebuildScopeEnum.text,
-    getCurrentIndexes: (indexes) => {
-      const currentIndexes = getRebuildBaseIndexes(trainingData, indexes);
-      if (!trainingData.imageDescMap) return currentIndexes;
-      const generatedImageIndexes = trainingData.indexes.filter(
-        (index) => index.type === DatasetDataIndexTypeEnum.image
-      );
-      return [
-        ...currentIndexes.filter((index) => index.type !== DatasetDataIndexTypeEnum.image),
-        ...generatedImageIndexes
-      ];
-    },
     model: embModel,
     indexSize: trainingData.indexSize || getMaxIndexSize(embModel),
     indexPrefix: trainingData.collection.indexPrefixTitle

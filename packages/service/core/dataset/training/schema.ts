@@ -2,7 +2,7 @@
 import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
 import { type DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
-import { DatasetRebuildScopeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetColCollectionName } from '../collection/schema';
 import { DatasetCollectionName } from '../schema';
 import {
@@ -42,10 +42,6 @@ const TrainingDataSchema = new Schema({
     type: String,
     enum: Object.values(TrainingModeEnum),
     required: true
-  },
-  rebuildScope: {
-    type: String,
-    enum: Object.values(DatasetRebuildScopeEnum)
   },
   synonymVersion: Number,
   expireAt: {
@@ -141,17 +137,7 @@ defineIndex(TrainingDataSchema, {
 });
 defineIndex(TrainingDataSchema, {
   key: { expireAt: 1 },
-  options: {
-    name: 'expireAt_1_non_synonym_rebuild',
-    expireAfterSeconds: 7 * 24 * 60 * 60,
-    partialFilterExpression: { synonymVersion: null }
-  }
-});
-// 旧全量 TTL 会绕过应用层删除逻辑，导致同义词任务的 data claim 无法释放。
-defineIndex(TrainingDataSchema, {
-  key: { expireAt: 1 },
-  options: { expireAfterSeconds: 7 * 24 * 60 * 60 },
-  deprecated: true
+  options: { expireAfterSeconds: 7 * 24 * 60 * 60 }
 });
 export const MongoDatasetTraining = getMongoModel<DatasetTrainingSchemaType>(
   DatasetTrainingCollectionName,

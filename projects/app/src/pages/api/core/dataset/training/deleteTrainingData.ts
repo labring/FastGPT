@@ -11,6 +11,7 @@ import {
   DeleteTrainingDataResponseSchema,
   type DeleteTrainingDataResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
+import { isDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
 
 async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse> {
   const { collectionId, dataId } = parseApiInput({
@@ -32,6 +33,11 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
     collectionId: collection._id,
     _id: dataId
   };
+  if (!isDatasetSynonymEnabled()) {
+    await MongoDatasetTraining.deleteOne(trainingMatch);
+    return DeleteTrainingDataResponseSchema.parse(undefined);
+  }
+
   await mongoSessionRun(async (session) => {
     const training = await MongoDatasetTraining.findOne(trainingMatch).session(session);
     if (training?.dataId && training.synonymVersion) {

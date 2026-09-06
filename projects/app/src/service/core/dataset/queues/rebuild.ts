@@ -1,4 +1,4 @@
-import { DatasetRebuildScopeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { ClientSession } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
@@ -22,7 +22,6 @@ type DatasetRebuildContext = {
   billId: string;
   vectorModel: EmbeddingSystemModelDataType;
   vlmModel?: LLMSystemModelDataType;
-  rebuildScope?: DatasetRebuildScopeEnum;
   synonymVersion?: number;
 };
 
@@ -90,26 +89,18 @@ export const enqueueNextDatasetRebuildTask = async (
         continue;
       }
 
-      const mode = (() => {
-        if (context.rebuildScope === DatasetRebuildScopeEnum.text) {
-          return TrainingModeEnum.chunk;
-        }
-
-        const { supportVlm, supportImageIndex } = getDatasetImageIndexCapability({
-          vectorModel: context.vectorModel,
-          vlmModel: context.vlmModel
-        });
-        const hasMarkdownImages =
-          !!collection?.imageIndex && uniqueDatasetDataMarkdownImageUrls([data.q]).length > 0;
-        const mode = getDatasetImageTrainingMode({
-          supportVlm,
-          supportImageIndex,
-          imageId: data.imageId,
-          hasMarkdownImages
-        });
-
-        return mode;
-      })();
+      const { supportVlm, supportImageIndex } = getDatasetImageIndexCapability({
+        vectorModel: context.vectorModel,
+        vlmModel: context.vlmModel
+      });
+      const hasMarkdownImages =
+        !!collection.imageIndex && uniqueDatasetDataMarkdownImageUrls([data.q]).length > 0;
+      const mode = getDatasetImageTrainingMode({
+        supportVlm,
+        supportImageIndex,
+        imageId: data.imageId,
+        hasMarkdownImages
+      });
 
       await MongoDatasetTraining.create(
         [
@@ -120,15 +111,14 @@ export const enqueueNextDatasetRebuildTask = async (
             collectionId: data.collectionId,
             billId: context.billId,
             mode,
-            ...(context.rebuildScope && { rebuildScope: context.rebuildScope }),
             ...(context.synonymVersion && { synonymVersion: context.synonymVersion }),
+            ...(context.synonymVersion && { expireAt: null }),
             dataId: data._id,
             ...(data.imageId && { imageId: data.imageId }),
-            ...(context.rebuildScope !== DatasetRebuildScopeEnum.text &&
-              mode === TrainingModeEnum.image && {
-                q: data.q,
-                indexes: data.indexes
-              }),
+            ...(mode === TrainingModeEnum.image && {
+              q: data.q,
+              indexes: data.indexes
+            }),
             retryCount: 50
           }
         ],
@@ -159,5 +149,15 @@ export const seedDatasetRebuildTasks = async (
     return createdCount;
   };
 
-  return session ? seed(session) : mongoSessionRun(seed);
+  if (session) return seed(session);
+
+  const seedCount = (global.systemEnv?.vectorMaxProcess ?? 10) * 2;
+  let createdCount = 0;
+  for (let i = 0; i < seedCount; i++) {
+    try {
+      if (!(await enqueueNextDatasetRebuildTask(context))) break;
+      createdCount += 1;
+    } catch {}
+  }
+  return createdCount;
 };

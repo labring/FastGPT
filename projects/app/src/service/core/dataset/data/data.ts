@@ -3,7 +3,6 @@ import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collectio
 import type {
   UpdateDatasetDataPropsType,
   DatasetDataItemType,
-  DatasetDataSchemaType,
   CreateDatasetDataPropsType
 } from '@fastgpt/global/core/dataset/type';
 import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
@@ -20,30 +19,26 @@ import {
   DatasetDataIndexOperation,
   type DatasetDataIndexDraft
 } from '@/service/core/dataset/data/dataIndex';
-import { getDatasetSynonymTransformContext } from '@fastgpt/service/core/dataset/synonym/entity';
-import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import {
+  getDatasetSynonymTransformContext,
+  isDatasetSynonymEnabled
+} from '@fastgpt/service/core/dataset/synonym/entity';
 
 type UpdateDatasetDataByIndexesProps = Omit<UpdateDatasetDataPropsType, 'indexes' | 'q'> & {
   q?: string;
   indexes?: NonNullable<UpdateDatasetDataPropsType['indexes']>;
-  /** rebuild 时基于执行瞬间的 Mongo indexes 生成输入，避免使用 training 快照。 */
-  getCurrentIndexes?: (
-    indexes: DatasetDataSchemaType['indexes']
-  ) => NonNullable<UpdateDatasetDataPropsType['indexes']>;
   /** VLM rebuild 产生的派生图片描述，与 indexes 在同一次 CAS 中写回。 */
   imageDescMap?: Record<string, string>;
   model: EmbeddingSystemModelDataType;
   indexSize?: number;
   imageIndex?: boolean;
-  /** 文本范围 rebuild 保留已有图片向量，不重新请求图片 embedding。 */
-  preserveImageEmbedding?: boolean;
   /** 重建索引时忽略文本相同判断，确保切换 embedding model 后重新生成向量。 */
   forceRebuild?: boolean;
 };
 
 type UpdateDatasetDataSystemIndexesProps = Omit<
   UpdateDatasetDataByIndexesProps,
-  'indexes' | 'q' | 'forceRebuild' | 'getCurrentIndexes' | 'imageDescMap' | 'preserveImageEmbedding'
+  'indexes' | 'q' | 'forceRebuild' | 'imageDescMap'
 > & {
   q?: string;
   imageIndex?: boolean;
@@ -163,20 +158,20 @@ export class DatasetDataOperation {
       indexPrefix
     });
 
-    const synonymContext = await getDatasetSynonymTransformContext({
-      teamId,
-      datasetId
-    });
+    const synonymContext = isDatasetSynonymEnabled()
+      ? await getDatasetSynonymTransformContext({ teamId, datasetId })
+      : undefined;
 
     const { tokens, indexes: results } = await this.indexOperation.insertVectors({
       indexes: newIndexes,
       teamId,
       datasetId,
       collectionId,
-      transformText: synonymContext.transformText
+      transformText: synonymContext?.transformText
     });
 
     const assertSynonymContextCurrent = async () => {
+      if (!synonymContext) return;
       if (await synonymContext.isCurrent()) return;
       await this.indexOperation
         .deleteVectors({ teamId, idList: results.map((index) => index.dataId) })
@@ -198,7 +193,7 @@ export class DatasetDataOperation {
           ...(metadata && { metadata }),
           chunkIndex,
           indexes: results,
-          synonymVersion: synonymContext.version
+          ...(synonymContext && { synonymVersion: synonymContext.version })
         }
       ],
       { session, ordered: true }
@@ -213,7 +208,8 @@ export class DatasetDataOperation {
           datasetId,
           collectionId,
           dataId: String(_id),
-          fullText: synonymContext.transformText(`${indexQ}\n${a}`.trim())
+          fullText:
+            synonymContext?.transformText(`${indexQ}\n${a}`.trim()) ?? `${indexQ}\n${a}`.trim()
         }
       ],
       session
@@ -255,26 +251,24 @@ export class DatasetDataOperation {
     imageIndex,
     metadata,
     forceRebuild = false,
-    getCurrentIndexes,
-    imageDescMap,
-    preserveImageEmbedding = false
+    imageDescMap
   }: UpdateDatasetDataByIndexesProps) {
     const embModel = model;
 
     if (!embModel) {
       return Promise.reject('Embedding model not found');
     }
+    if (!Array.isArray(indexes)) return Promise.reject('indexes is required');
+
     const mongoData = await MongoDatasetData.findById(dataId);
     if (!mongoData) return Promise.reject('Data not found');
-    const sourceIndexes = getCurrentIndexes?.(mongoData.indexes) ?? indexes;
-    if (!Array.isArray(sourceIndexes)) return Promise.reject('indexes is required');
 
     // 获取新的索引组合
     const nextQ = q ?? mongoData.q ?? '';
     const nextA = a ?? mongoData.a ?? '';
     const nextImageId = imageId ?? mongoData.imageId;
-    const formattedIndexes = await this.indexOperation.formatIndexes({
-      indexes: sourceIndexes,
+    const formatIndexesResult = await this.indexOperation.formatIndexes({
+      indexes,
       q: nextQ,
       a: nextA,
       imageId: nextImageId,
@@ -283,25 +277,12 @@ export class DatasetDataOperation {
       maxIndexSize: embModel.config.maxToken,
       indexPrefix
     });
-    const formatIndexesResult = preserveImageEmbedding
-      ? [
-          ...formattedIndexes.filter(
-            (index) =>
-              index.type !== DatasetDataIndexTypeEnum.image &&
-              index.type !== DatasetDataIndexTypeEnum.imageEmbedding
-          ),
-          ...mongoData.indexes
-            .filter((index) => index.type === DatasetDataIndexTypeEnum.image)
-            .map((index) => ({ type: index.type, text: index.text, dataId: index.dataId })),
-          ...mongoData.indexes
-            .filter((index) => index.type === DatasetDataIndexTypeEnum.imageEmbedding)
-            .map((index) => ({ type: index.type, text: index.text, dataId: index.dataId }))
-        ]
-      : formattedIndexes;
-    const synonymContext = await getDatasetSynonymTransformContext({
-      teamId: String(mongoData.teamId),
-      datasetId: String(mongoData.datasetId)
-    });
+    const synonymContext = isDatasetSynonymEnabled()
+      ? await getDatasetSynonymTransformContext({
+          teamId: String(mongoData.teamId),
+          datasetId: String(mongoData.datasetId)
+        })
+      : undefined;
 
     // 把旧的 dataId 加到新的索引里
     const indexesWithExistingSystemIds = this.indexOperation.mergeExistingSystemIndexIds({
@@ -313,18 +294,17 @@ export class DatasetDataOperation {
     const patchResult = this.indexOperation.buildPatch({
       currentIndexes: mongoData.indexes,
       nextIndexes: indexesWithExistingSystemIds,
-      isSameIndex: forceRebuild
-        ? (current, next) =>
-            preserveImageEmbedding &&
-            current.type === DatasetDataIndexTypeEnum.imageEmbedding &&
-            next.type === DatasetDataIndexTypeEnum.imageEmbedding &&
-            current.text === next.text
-        : undefined
+      isSameIndex: forceRebuild ? () => false : undefined
     });
     // 先保存旧向量 id；insertVectorForPatch 会原地把 update 项替换成新 dataId。
     const deleteVectorIdList = this.indexOperation.getDeleteVectorIdList(patchResult);
 
     const updateTime = mongoData.updateTime;
+    if (!synonymContext) {
+      // 关闭同义词时保持原有写入时序，让异步统计任务及时感知数据正在更新。
+      mongoData.updateTime = new Date();
+      await mongoData.save();
+    }
 
     let tokens = 0;
     let newVectorIdList: string[] = [];
@@ -334,7 +314,7 @@ export class DatasetDataOperation {
         teamId: mongoData.teamId,
         datasetId: mongoData.datasetId,
         collectionId: mongoData.collectionId,
-        transformText: synonymContext.transformText
+        transformText: synonymContext?.transformText
       });
       const newIndexes = this.indexOperation.getWritablePatchIndexes(patchResult);
       newVectorIdList = patchResult
@@ -343,12 +323,12 @@ export class DatasetDataOperation {
         .map((item) => item.index.dataId)
         .filter(Boolean) as string[];
       await mongoSessionRun(async (session) => {
-        if (synonymContext.isCurrent && !(await synonymContext.isCurrent())) {
+        if (synonymContext?.isCurrent && !(await synonymContext.isCurrent())) {
           throw new Error('同义词配置已变化，请重试索引更新');
         }
-        // CAS 失败说明 embedding 期间原文或索引被编辑，保留用户的新内容并让训练任务重试。
+        // 同义词开启时使用 CAS，避免 embedding 期间的编辑与同义词版本交叉覆盖。
         const updateResult = await MongoDatasetData.updateOne(
-          { _id: mongoData._id, updateTime },
+          { _id: mongoData._id, ...(synonymContext && { updateTime }) },
           {
             $set: {
               ...(nextQ !== mongoData.q || nextA !== mongoData.a
@@ -364,14 +344,14 @@ export class DatasetDataOperation {
               ...(metadata !== undefined ? { metadata } : {}),
               ...(imageDescMap !== undefined ? { imageDescMap } : {}),
               indexes: newIndexes,
-              synonymVersion: synonymContext.version,
+              ...(synonymContext && { synonymVersion: synonymContext.version }),
               updateTime: new Date()
             },
-            $unset: { synonymRebuildingVersion: '' }
+            ...(synonymContext && { $unset: { synonymRebuildingVersion: '' } })
           },
           { session }
         );
-        if (updateResult.modifiedCount !== 1) {
+        if (synonymContext && updateResult.modifiedCount !== 1) {
           throw new Error('数据已变化，请重试索引更新');
         }
 
@@ -383,7 +363,9 @@ export class DatasetDataOperation {
               datasetId: String(mongoData.datasetId),
               collectionId: String(mongoData.collectionId),
               dataId: String(mongoData._id),
-              fullText: synonymContext.transformText(`${nextQ}\n${nextA}`.trim())
+              fullText:
+                synonymContext?.transformText(`${nextQ}\n${nextA}`.trim()) ??
+                `${nextQ}\n${nextA}`.trim()
             }
           ],
           session
@@ -395,9 +377,11 @@ export class DatasetDataOperation {
         });
       });
     } catch (error) {
-      await this.indexOperation
-        .deleteVectors({ teamId: mongoData.teamId, idList: newVectorIdList })
-        .catch(() => {});
+      if (synonymContext) {
+        await this.indexOperation
+          .deleteVectors({ teamId: mongoData.teamId, idList: newVectorIdList })
+          .catch(() => {});
+      }
       throw error;
     }
 
@@ -436,10 +420,12 @@ export class DatasetDataOperation {
     const nextQ = q ?? mongoData.q ?? '';
     const nextA = a ?? mongoData.a ?? '';
     const nextImageId = imageId ?? mongoData.imageId;
-    const synonymContext = await getDatasetSynonymTransformContext({
-      teamId: String(mongoData.teamId),
-      datasetId: String(mongoData.datasetId)
-    });
+    const synonymContext = isDatasetSynonymEnabled()
+      ? await getDatasetSynonymTransformContext({
+          teamId: String(mongoData.teamId),
+          datasetId: String(mongoData.datasetId)
+        })
+      : undefined;
     indexSize = Math.min(embModel.config.maxToken, indexSize);
 
     const systemIndexes = await this.indexOperation.getSystemIndexes({
@@ -475,7 +461,7 @@ export class DatasetDataOperation {
         teamId: mongoData.teamId,
         datasetId: mongoData.datasetId,
         collectionId: mongoData.collectionId,
-        transformText: synonymContext.transformText
+        transformText: synonymContext?.transformText
       });
       const nextSystemIndexes = this.indexOperation.getWritablePatchIndexes(patchResult);
       newVectorIdList = patchResult
@@ -484,11 +470,11 @@ export class DatasetDataOperation {
         .map((item) => item.index.dataId)
         .filter(Boolean) as string[];
       await mongoSessionRun(async (session) => {
-        if (synonymContext.isCurrent && !(await synonymContext.isCurrent())) {
+        if (synonymContext?.isCurrent && !(await synonymContext.isCurrent())) {
           throw new Error('同义词配置已变化，请重试索引更新');
         }
         const updateResult = await MongoDatasetData.updateOne(
-          { _id: mongoData._id, updateTime },
+          { _id: mongoData._id, ...(synonymContext && { updateTime }) },
           [
             {
               $set: {
@@ -522,15 +508,17 @@ export class DatasetDataOperation {
                     { $literal: nextSystemIndexes }
                   ]
                 },
-                synonymVersion: synonymContext.version,
-                synonymRebuildingVersion: '$$REMOVE',
+                ...(synonymContext && {
+                  synonymVersion: synonymContext.version,
+                  synonymRebuildingVersion: '$$REMOVE'
+                }),
                 updateTime: { $literal: new Date() }
               }
             }
           ],
           { session }
         );
-        if (updateResult.modifiedCount !== 1) {
+        if (synonymContext && updateResult.modifiedCount !== 1) {
           throw new Error('数据已变化，请重试索引更新');
         }
 
@@ -542,7 +530,9 @@ export class DatasetDataOperation {
               datasetId: String(mongoData.datasetId),
               collectionId: String(mongoData.collectionId),
               dataId: String(mongoData._id),
-              fullText: synonymContext.transformText(`${nextQ}\n${nextA}`.trim())
+              fullText:
+                synonymContext?.transformText(`${nextQ}\n${nextA}`.trim()) ??
+                `${nextQ}\n${nextA}`.trim()
             }
           ],
           session
@@ -554,9 +544,11 @@ export class DatasetDataOperation {
         });
       });
     } catch (error) {
-      await this.indexOperation
-        .deleteVectors({ teamId: mongoData.teamId, idList: newVectorIdList })
-        .catch(() => {});
+      if (synonymContext) {
+        await this.indexOperation
+          .deleteVectors({ teamId: mongoData.teamId, idList: newVectorIdList })
+          .catch(() => {});
+      }
       throw error;
     }
 

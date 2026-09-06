@@ -96,10 +96,9 @@ export async function delDatasetRelevantData({
   await MongoDatasetTraining.deleteMany({
     teamId,
     datasetId: { $in: datasetIds }
-  }).session(session);
+  });
 
-  // 同义词配置和映射都以 dataset 为生命周期边界。
-  // MongoDB transaction 内不并行执行操作，兼容单 session 的命令约束。
+  // 同义词配置和映射属于 dataset 数据，即使功能关闭也必须随知识库删除。
   await MongoDatasetSynonymMapping.deleteMany({
     teamId,
     datasetId: { $in: datasetIds }

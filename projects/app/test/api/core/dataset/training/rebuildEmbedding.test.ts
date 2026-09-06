@@ -265,7 +265,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     await expect(MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).resolves.toBe(0);
   });
 
-  it('should roll back the model switch and rebuild markers when seed creation fails', async () => {
+  it('should keep the committed model switch and rebuild markers when seed creation fails', async () => {
     const { root, dataset, collection } = await createDatasetContext();
     const data = await MongoDatasetData.create({
       teamId: root.teamId,
@@ -280,9 +280,9 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     if (!runWithoutTransaction) throw new Error('mongoSessionRun mock is not initialized');
 
     mongoSessionRunMock
-      // createTrainingUsage 会先占用一次调用，第二次调用才是需要验证回滚的重建事务。
+      // createTrainingUsage 会先占用一次调用，后续重建事务使用真实 session。
       .mockImplementationOnce(runWithoutTransaction)
-      .mockImplementationOnce(async (fn) => {
+      .mockImplementation(async (fn) => {
         const session = await connectionMongo.startSession();
         try {
           return await session.withTransaction(() => fn(session));
@@ -302,14 +302,15 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       }
     });
     createTrainingSpy.mockRestore();
+    mongoSessionRunMock.mockImplementation(runWithoutTransaction);
 
-    expect(res.code).toBe(500);
+    expect(res.code).toBe(200);
     await expect(MongoDataset.findById(dataset._id).lean()).resolves.toMatchObject({
-      vectorModelId: textOnlyEmbeddingModel.modelId
+      vectorModelId: visionEmbeddingModel.modelId
     });
-    await expect(MongoDatasetData.findById(data._id).lean()).resolves.not.toHaveProperty(
-      'rebuilding'
-    );
+    await expect(MongoDatasetData.findById(data._id).lean()).resolves.toMatchObject({
+      rebuilding: true
+    });
     await expect(MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).resolves.toBe(0);
   });
 });

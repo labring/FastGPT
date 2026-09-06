@@ -116,17 +116,15 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
         session
       }
     );
-    await seedDatasetRebuildTasks(
-      {
-        teamId,
-        tmbId,
-        datasetId,
-        billId: String(usageId),
-        vectorModel: vectorModelData,
-        vlmModel: vlmModelData
-      },
-      session
-    );
+  });
+
+  await seedDatasetRebuildTasks({
+    teamId,
+    tmbId,
+    datasetId,
+    billId: String(usageId),
+    vectorModel: vectorModelData,
+    vlmModel: vlmModelData
   });
 
   return RebuildEmbeddingResponseSchema.parse(undefined);
