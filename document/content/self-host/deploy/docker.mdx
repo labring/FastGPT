@@ -139,7 +139,9 @@ FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.cn bash <(curl -fsSL https://doc.fas
 
 <CurrentOriginCodeBlockUpdater />
 
-非交互模式还必须通过 `FASTGPT_FE_DOMAIN` 指定用户访问 FastGPT 的完整地址，例如 `https://fastgpt.example.com`，并通过 `FASTGPT_SANDBOX_PROXY_URL` 指定沙盒 WebSocket 地址，例如 `wss://sandbox-proxy.example.com`。4.16 还需要通过 `FASTGPT_SANDBOX_PREVIEW_PROXY_URL` 指定 HTTP 预览地址。交互模式下脚本会按版本询问这些地址；4.15 只询问 WebSocket 地址。
+非交互模式还必须通过 `FASTGPT_FE_DOMAIN` 指定用户访问 FastGPT 的完整地址，例如 `https://fastgpt.example.com`。启用 Agent/Skill 沙盒的版本还需要通过 `FASTGPT_SANDBOX_PROXY_URL` 指定沙盒 WebSocket 地址，例如 `wss://sandbox-proxy.example.com`；4.16 还需要通过 `FASTGPT_SANDBOX_PREVIEW_PROXY_URL` 指定 HTTP 预览地址。v4.14 不包含该服务。交互模式下脚本会按版本询问这些地址；4.15 只询问 WebSocket 地址。
+
+访问地址和宿主机端口是独立配置。需要直连时，可通过 `FASTGPT_PORT` 设置 FastGPT 宿主机端口（默认 `3000`），通过 `FASTGPT_SANDBOX_PROXY_PORT` 设置 Sandbox Proxy 宿主机端口（默认 `3006`）；容器端口仍分别为 `3000` 和 `1006`。如果使用反向代理，`FASTGPT_FE_DOMAIN`、`FASTGPT_SANDBOX_PROXY_URL` 及预览地址中的公网端口（例如 `443`）不会被当作宿主机端口，脚本会保留 Compose 中的默认映射。
 
 脚本会自动完成以下操作：
 
@@ -217,8 +219,8 @@ FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.yml bash install.sh
 
 启用 Agent/Skill 沙盒时还必须配置：
 
-- `AGENT_SANDBOX_PROXY_URL`：浏览器访问 Sandbox Proxy 的 WebSocket 地址，使用 `ws://` 或 `wss://`，例如 `wss://sandbox-proxy.example.com`，需要指向 3006 端口。
-- 4.16 版本额外配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`：浏览器访问沙盒文件预览的 HTTP(S) 地址，例如 `https://sandbox-proxy.example.com`，同样需要指向 3006 端口。
+- `AGENT_SANDBOX_PROXY_URL`：浏览器访问 Sandbox Proxy 的 WebSocket 地址，使用 `ws://` 或 `wss://`，例如 `wss://sandbox-proxy.example.com`，需要由反向代理转发到 Sandbox Proxy 的宿主机端口（默认 `3006`）。
+- 4.16 版本额外配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`：浏览器访问沙盒文件预览的 HTTP(S) 地址，例如 `https://sandbox-proxy.example.com`，同样需要转发到该宿主机端口。
 
 使用交互式安装脚本时，脚本会在确认部署前询问这些地址。
 
@@ -226,11 +228,11 @@ FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.yml bash install.sh
 
 ### 3. 开放外网端口/配置域名
 
-以下端口必须被访问到：
+以下服务需要被访问到。直连时开放脚本最终输出的宿主机端口；使用反向代理时，公网端口由代理负责：
 
-1. 3000 端口（FastGPT 主服务）
+1. 默认 `3000` 端口（FastGPT 主服务；可通过 `FASTGPT_PORT` 修改宿主机端口）
 2. 9000 端口（S3 服务）
-3. 3006 端口（FastGPT Agent Sandbox Proxy 服务）
+3. 默认 `3006` 端口（FastGPT Agent Sandbox Proxy 服务；可通过 `FASTGPT_SANDBOX_PROXY_PORT` 修改宿主机端口）
 4. 3003 端口（FastGPT SSE MCP server 服务，不需要的话可以不开通。）
 
 ### 4. 启动容器

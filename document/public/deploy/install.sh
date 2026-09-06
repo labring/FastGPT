@@ -153,28 +153,337 @@ validate_config_file() {
     fi
 }
 
-validate_fe_domain() {
+# 端口是宿主机对外监听的端口；容器端口由 Compose 模板决定，不能被访问 URL 覆盖。
+normalize_host_port() {
     local value="$1"
-    if [[ ! "$value" =~ ^https?://[^[:space:]]+$ ]]; then
-        echo "错误: FE_DOMAIN 必须是以 http:// 或 https:// 开头的完整地址" >&2
+    local normalized
+
+    if [[ ! "$value" =~ ^[0-9]{1,5}$ ]]; then
+        echo "错误: 端口必须是 1–65535 的十进制整数" >&2
+        return 1
+    fi
+    normalized=$((10#$value))
+    if (( normalized < 1 || normalized > 65535 )); then
+        echo "错误: 端口必须是 1–65535 的十进制整数" >&2
+        return 1
+    fi
+    printf '%s\n' "$normalized"
+}
+
+# 只校验访问地址的协议、主机和可选端口；公网端口不用于推导宿主机映射。
+validate_access_url() {
+    local value="$1"
+    local protocol_pattern="$2"
+    local authority port=""
+    local url_pattern="^(${protocol_pattern})://([^/?#]+)([/?#].*)?$"
+
+    if [[ "$value" =~ [[:space:][:cntrl:]] ]] ||
+        [[ "$value" == *"'"* || "$value" == *'"'* || "$value" == *'\\'* ]]; then
+        echo "错误: 请输入有效的 ${protocol_pattern} 完整访问地址" >&2
+        return 1
+    fi
+    if ! [[ "$value" =~ $url_pattern ]]; then
+        echo "错误: 请输入有效的 ${protocol_pattern} 完整访问地址" >&2
+        return 1
+    fi
+
+    authority="${BASH_REMATCH[2]}"
+    if [[ "$authority" == \[* ]]; then
+        if ! [[ "$authority" =~ ^\[[0-9A-Fa-f:.]+\](:([0-9]+))?$ ]]; then
+            echo "错误: IPv6 地址必须使用方括号，端口必须是整数" >&2
+            return 1
+        fi
+        port="${BASH_REMATCH[2]}"
+    else
+        if [[ "$authority" == *"@"* ]]; then
+            echo "错误: 访问地址必须包含有效主机，不支持用户信息或空端口" >&2
+            return 1
+        fi
+        if [[ "$authority" =~ ^[^:@]+(:([0-9]+))?$ ]]; then
+            port="${BASH_REMATCH[2]}"
+        else
+            echo "错误: 访问地址必须包含有效主机，不支持用户信息或空端口" >&2
+            return 1
+        fi
+    fi
+    [ -z "$port" ] || normalize_host_port "$port" >/dev/null || return 1
+}
+
+validate_fe_domain() { validate_access_url "$1" 'https?'; }
+validate_sandbox_preview_proxy_url() { validate_access_url "$1" 'https?'; }
+validate_sandbox_proxy_url() { validate_access_url "$1" 'wss?'; }
+
+get_url_host() {
+    local authority="${1#*://}"
+    authority="${authority%%[/?#]*}"
+    if [[ "$authority" == \[* ]]; then
+        printf '%s\n' "${authority#\[}" | sed 's/\].*$//'
+    else
+        printf '%s\n' "${authority%%:*}"
+    fi
+}
+
+get_url_port() {
+    local authority="${1#*://}"
+    local port=""
+    authority="${authority%%[/?#]*}"
+    if [[ "$authority" == \[* ]]; then
+        authority="${authority#*\]}"
+        [[ "$authority" == :* ]] && port="${authority#:}"
+    elif [[ "$authority" == *:* ]]; then
+        port="${authority##*:}"
+    fi
+    [ -z "$port" ] || printf '%s\n' "$port"
+}
+
+is_loopback_url() {
+    case "$(get_url_host "$1")" in
+        localhost | 127.0.0.1 | ::1) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# 本机直连 URL 可继续快捷设置端口；公网/反向代理 URL（例如 :443）不改变宿主映射。
+resolve_default_host_port() {
+    local configured="$1"
+    local url="$2"
+    local default_port="$3"
+    local url_port
+
+    if [ -n "$configured" ]; then
+        normalize_host_port "$configured"
+        return
+    fi
+    url_port="$(get_url_port "$url")"
+    if [ -n "$url_port" ] && is_loopback_url "$url"; then
+        normalize_host_port "$url_port"
+    else
+        printf '%s\n' "$default_port"
+    fi
+}
+
+# 识别官方模板及常见本地 Compose 的短格式映射，不猜测复杂 YAML。
+# 第四个参数为空时输出 mapped|host|bind、unpublished、missing 或 unsupported；有值时输出修改后的文件。
+compose_service_port() {
+    local file="$1"
+    local service="$2"
+    local container_port="$3"
+    local new_host_port="${4:-}"
+    local mode=info
+    [ -n "$new_host_port" ] && mode=replace
+
+    LC_ALL=C awk -v service="$service" -v target="$container_port" -v replacement="$new_host_port" -v mode="$mode" '
+        function emit(value) { if (mode == "replace") print value }
+        function replace_token(line, token, replacement, position) {
+            position = index(line, token)
+            if (!position) return line
+            return substr(line, 1, position - 1) replacement substr(line, position + length(token))
+        }
+        function parse_port(line, token, value, quote) {
+            p_valid = 0
+            token = line
+            sub(/^[[:space:]]*-[[:space:]]*/, "", token)
+            match(token, /^[^[:space:]]+/)
+            p_token = substr(token, RSTART, RLENGTH)
+            value = p_token
+            quote = substr(value, 1, 1)
+            if (quote == "\047" || quote == "\042") {
+                if (substr(value, length(value), 1) != quote) return
+                value = substr(value, 2, length(value) - 2)
+            }
+            p_quote = quote
+            p_suffix = ""
+            if (value ~ /\/tcp$/) { p_suffix = "/tcp"; sub(/\/tcp$/, "", value) }
+            else if (value ~ /\/udp$/) { p_suffix = "/udp"; sub(/\/udp$/, "", value) }
+            if (p_suffix == "/udp" || value !~ /:[0-9]+$/) return
+            p_container = value
+            sub(/^.*:/, "", p_container)
+            p_prefix = value
+            sub(/:[0-9]+$/, "", p_prefix)
+            p_bind = ""
+            if (p_prefix ~ /^[0-9]+$/) {
+                p_host = p_prefix
+            } else if (p_prefix ~ /^[0-9.]+:[0-9]+$/ || p_prefix ~ /^\[[0-9A-Fa-f:.]+\]:[0-9]+$/) {
+                p_host = p_prefix
+                sub(/^.*:/, "", p_host)
+                p_bind = p_prefix
+                sub(/[^:]+$/, "", p_bind)
+            } else {
+                p_invalid = 1
+                return
+            }
+            if (p_host + 0 < 1 || p_host + 0 > 65535) { p_invalid = 1; return }
+            p_valid = 1
+        }
+        {
+            line = $0
+            if ($0 ~ /^  [A-Za-z0-9_.-]+:[[:space:]]*(#.*)?$/) {
+                name = $0
+                sub(/^  /, "", name)
+                sub(/:.*/, "", name)
+                in_service = (name == service)
+                if (in_service) service_found = 1
+                in_ports = 0
+                emit(line)
+                next
+            }
+            if (!in_service) { emit(line); next }
+            if ($0 !~ /^ / || $0 ~ /^  [^[:space:]]/) {
+                in_service = 0
+                in_ports = 0
+                emit(line)
+                next
+            }
+            if ($0 ~ /^    ports:[[:space:]]*(#.*)?$/) { in_ports = 1; emit(line); next }
+            if ($0 ~ /^    [^[:space:]-]/) { in_ports = 0; emit(line); next }
+            if (!in_ports || $0 !~ /^      -[[:space:]]*/) { emit(line); next }
+
+            p_invalid = 0
+            p_container = ""
+            p_host = ""
+            p_bind = ""
+            parse_port(line)
+            if (!p_valid || p_container != target) {
+                if (p_invalid && p_container == target) unsupported = 1
+                emit(line)
+                next
+            }
+            matches++
+            if (matches == 1) {
+                selected_host = p_host + 0
+                selected_bind = p_bind
+                if (mode == "replace") {
+                    new_value = p_bind replacement ":" target
+                    new_token = (p_quote == "\047" || p_quote == "\042" ? p_quote new_value p_suffix p_quote : new_value p_suffix)
+                    line = replace_token(line, p_token, new_token)
+                }
+            }
+            emit(line)
+        }
+        END {
+            if (mode == "replace") {
+                if (!service_found || unsupported || matches != 1) exit 1
+            } else if (!service_found) print "missing||"
+            else if (unsupported || matches > 1) print "unsupported||"
+            else if (matches == 1) print "mapped|" selected_host "|" selected_bind
+            else print "unpublished||"
+        }
+    ' "$file"
+}
+
+replace_compose_service_port() {
+    local file="$1"
+    local service="$2"
+    local container_port="$3"
+    local host_port="$4"
+    local info state old_host tmp
+
+    info="$(compose_service_port "$file" "$service" "$container_port")" || return 1
+    IFS='|' read -r state old_host _ <<< "$info"
+    [ "$state" = mapped ] || {
+        echo "错误: 无法唯一识别 $service 的宿主机端口映射（状态: $state）" >&2
+        return 1
+    }
+    tmp="${file}.port.tmp.$$"
+    if ! compose_service_port "$file" "$service" "$container_port" "$host_port" > "$tmp"; then
+        rm -f "$tmp"
+        echo "错误: $service 的端口映射替换失败" >&2
+        return 1
+    fi
+    if ! mv "$tmp" "$file"; then
+        rm -f "$tmp"
+        echo "错误: 无法写入 $file" >&2
         return 1
     fi
 }
 
-validate_sandbox_preview_proxy_url() {
-    local value="$1"
-    if [[ ! "$value" =~ ^https?://[^[:space:]]+$ ]]; then
-        echo "错误: FASTGPT_SANDBOX_PREVIEW_PROXY_URL 必须是以 http:// 或 https:// 开头的完整地址" >&2
+request_host_port() {
+    local env_name="$1"
+    local label="$2"
+    local url="$3"
+    local default_port="$4"
+    local compose_file="$5"
+    local service="$6"
+    local container_port="$7"
+    local configured="${!env_name}"
+    local current_port=""
+    local info state detected_port input
+
+    if [ -n "$compose_file" ] && [ -f "$compose_file" ]; then
+        info="$(compose_service_port "$compose_file" "$service" "$container_port")" || return 1
+        IFS='|' read -r state detected_port _ <<< "$info"
+        [ "$state" = mapped ] && current_port="$detected_port"
+    fi
+    current_port="$(resolve_default_host_port "$configured" "$url" "${current_port:-$default_port}")" || return 1
+    if [ -z "$configured" ] && [ "$NON_INTERACTIVE" != true ]; then
+        while true; do
+            read -r -p "$label 宿主机端口 [$current_port]（与公网访问 URL 独立）: " input
+            input="${input:-$current_port}"
+            current_port="$(normalize_host_port "$input")" && break
+        done
+    fi
+    printf '%s\n' "$current_port"
+}
+
+configure_host_port() {
+    local file="$1"
+    local service="$2"
+    local container_port="$3"
+    local host_port="$4"
+    local default_port="$5"
+    local explicit="$6"
+    local info state current
+
+    info="$(compose_service_port "$file" "$service" "$container_port")" || {
+        echo "错误: 无法读取 $file 中的端口映射" >&2
+        return 1
+    }
+    IFS='|' read -r state current _ <<< "$info"
+    case "$state" in
+        mapped)
+            [ "$current" = "$host_port" ] || replace_compose_service_port "$file" "$service" "$container_port" "$host_port" || return 1
+            ;;
+        missing)
+            if [ "$explicit" = true ] || [ "$host_port" != "$default_port" ]; then
+                echo "错误: Compose 中不存在 $service，无法设置宿主机端口 $host_port" >&2
+                return 1
+            fi
+            ;;
+        unpublished | unsupported)
+            if [ "$explicit" = true ] || [ "$host_port" != "$default_port" ]; then
+                echo "错误: $service 的端口映射格式为 $state，无法安全自动修改；请手工配置后重试" >&2
+                return 1
+            fi
+            echo "警告: $service 未使用可识别的直接端口映射，保留原 Compose 配置" >&2
+            ;;
+    esac
+
+    info="$(compose_service_port "$file" "$service" "$container_port")" || return 1
+    IFS='|' read -r state current _ <<< "$info"
+    if [ "$state" = mapped ] && [ "$current" != "$host_port" ]; then
+        echo "错误: $service 端口修改结果校验失败" >&2
         return 1
     fi
 }
 
-validate_sandbox_proxy_url() {
-    local value="$1"
-    if [[ ! "$value" =~ ^wss?://[^[:space:]]+$ ]]; then
-        echo "错误: FASTGPT_SANDBOX_PROXY_URL 必须是以 ws:// 或 wss:// 开头的完整地址" >&2
+print_host_port() {
+    local file="$1"
+    local service="$2"
+    local container_port="$3"
+    local label="$4"
+    local info state host bind
+
+    if ! info="$(compose_service_port "$file" "$service" "$container_port")"; then
+        echo "  $label: 无法读取 Compose 端口映射" >&2
         return 1
     fi
+    IFS='|' read -r state host bind <<< "$info"
+    case "$state" in
+        mapped) echo "  $label 宿主机映射: ${bind}${host} -> 容器 ${container_port}" ;;
+        missing) echo "  $label: Compose 未定义该服务" ;;
+        unpublished) echo "  $label: 未发布宿主机端口（保留原配置）" ;;
+        *) echo "  $label: 端口映射无法自动识别，请检查 Compose" ;;
+    esac
 }
 
 request_fe_domain() {
@@ -222,6 +531,13 @@ request_sandbox_proxy_url() {
 is_v415_deploy() {
     [ "$DEPLOY_VERSION" = "v4.15" ] ||
         { [ "$DEPLOY_VERSION" = "$LOCAL_DEPLOY_VERSION" ] && grep -q 'fastgpt:v4\.15' "$LOCAL_COMPOSE_PATH" 2>/dev/null; }
+}
+
+# v4.14 以及未定义该服务的本地 Compose 不需要 Sandbox Proxy 地址和端口配置。
+is_sandbox_proxy_deploy() {
+    [ "$DEPLOY_VERSION" != "v4.14" ] || return 1
+    [ "$DEPLOY_VERSION" != "$LOCAL_DEPLOY_VERSION" ] ||
+        grep -qE '^  fastgpt-agent-sandbox-proxy:[[:space:]]*(#.*)?$' "$LOCAL_COMPOSE_PATH"
 }
 
 request_sandbox_preview_proxy_url() {
@@ -494,6 +810,10 @@ if [ -n "$FASTGPT_NON_INTERACTIVE" ]; then
     NON_INTERACTIVE="$(normalize_bool_env FASTGPT_NON_INTERACTIVE "$FASTGPT_NON_INTERACTIVE")"
 fi
 
+# 可选宿主机端口覆盖：只改变 Compose 映射左侧，容器端口和容器间访问地址不变。
+# FASTGPT_PORT 对应 fastgpt-app -> 3000，FASTGPT_SANDBOX_PROXY_PORT 对应
+# fastgpt-agent-sandbox-proxy -> 1006。未设置时使用 Compose 现有映射或官方默认值。
+
 # 可选：指定部署文件下载源的站点地址，例如 https://doc.example.com 或
 # https://doc.example.com/deploy。适用于文档站使用自定义域名、内网镜像或本地调试。
 CUSTOM_DEPLOY_BASE_URL=""
@@ -763,15 +1083,34 @@ if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
     S3_CUSTOM=$SELECTED_CUSTOM
 fi
 
-# ========== 7. 输入 FastGPT 访问地址 ==========
+# ========== 7. 输入访问地址 ==========
+SANDBOX_PROXY_EXPECTED=false
+if is_sandbox_proxy_deploy; then
+    SANDBOX_PROXY_EXPECTED=true
+fi
+
 request_fe_domain
+if [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
+    request_sandbox_proxy_url
+    if ! is_v415_deploy; then
+        request_sandbox_preview_proxy_url
+    fi
+fi
 
-# ========== 8. 输入 Sandbox Proxy 地址 ==========
-request_sandbox_proxy_url
+# 访问 URL 与宿主机端口是两个独立配置。仅本机直连 URL 会提供端口作为便利默认值；
+# 公网域名（包括 :443）始终保留 Compose 默认端口，避免破坏反向代理上游。
+FASTGPT_PORT_EXPLICIT=false
+[ -n "$FASTGPT_PORT" ] && FASTGPT_PORT_EXPLICIT=true
+FASTGPT_HOST_PORT="$(request_host_port FASTGPT_PORT "FastGPT" "$FE_DOMAIN_INPUT" 3000 "$LOCAL_COMPOSE_PATH" fastgpt-app 3000)" || exit 1
 
-# ========== 9. 输入 Sandbox 预览地址 ==========
-if ! is_v415_deploy; then
-    request_sandbox_preview_proxy_url
+SANDBOX_PROXY_PORT_EXPLICIT=false
+[ -n "$FASTGPT_SANDBOX_PROXY_PORT" ] && SANDBOX_PROXY_PORT_EXPLICIT=true
+SANDBOX_PROXY_HOST_PORT=""
+if [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
+    SANDBOX_PROXY_HOST_PORT="$(request_host_port FASTGPT_SANDBOX_PROXY_PORT "Sandbox Proxy" "$SANDBOX_PROXY_URL_INPUT" 3006 "$LOCAL_COMPOSE_PATH" fastgpt-agent-sandbox-proxy 1006)" || exit 1
+elif [ "$SANDBOX_PROXY_PORT_EXPLICIT" = true ]; then
+    echo "错误: 当前 Compose 未定义 fastgpt-agent-sandbox-proxy，不能设置 FASTGPT_SANDBOX_PROXY_PORT" >&2
+    exit 1
 fi
 
 # ========== 确认配置 ==========
@@ -811,13 +1150,17 @@ if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
     echo "  S3 地址:      $S3_DISPLAY"
 fi
 echo "  FastGPT 地址: $FE_DOMAIN_INPUT"
-echo "  Sandbox WebSocket 地址: $SANDBOX_PROXY_URL_INPUT"
-if ! is_v415_deploy; then
-    echo "  Sandbox 预览地址: $SANDBOX_PREVIEW_PROXY_URL_INPUT"
+echo "  FastGPT 宿主端口: $FASTGPT_HOST_PORT -> 容器 3000"
+if [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
+    echo "  Sandbox WebSocket 地址: $SANDBOX_PROXY_URL_INPUT"
+    echo "  Sandbox Proxy 宿主端口: $SANDBOX_PROXY_HOST_PORT -> 容器 1006"
+    if ! is_v415_deploy; then
+        echo "  Sandbox 预览地址: $SANDBOX_PREVIEW_PROXY_URL_INPUT"
+    fi
 fi
 echo "  密钥处理:     $CREDENTIALS_LABEL"
 echo "=============================="
-echo "请确认域名或反向代理已指向对应端口：FastGPT -> ${FASTGPT_PORT}，Sandbox Proxy -> 3006。"
+echo "访问 URL 与宿主端口独立；请确认直连地址或反向代理指向上面的实际映射。"
 if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
     echo "S3 地址需指向 9000 端口。"
 fi
@@ -825,7 +1168,7 @@ echo ""
 if [ "$NON_INTERACTIVE" = true ]; then
     echo "非交互模式已自动确认配置"
 else
-    read -p "确认以上配置? (y/n) [y]: " confirm
+    read -r -p "确认以上配置? (y/n) [y]: " confirm
     if [ "$confirm" == "n" ]; then
         echo "已取消"
         exit 1
@@ -874,22 +1217,15 @@ else
 fi
 
 # ========== 配置 FastGPT 访问地址 ==========
-configure_fe_domain
-configure_sandbox_proxy_urls
-
-FASTGPT_PORT="${FE_DOMAIN_INPUT##*:}"
-FASTGPT_PORT="${FASTGPT_PORT##*/}"
-if [[ ! "$FASTGPT_PORT" =~ ^[0-9]+$ ]]; then
-    FASTGPT_PORT=3000
+# 端口只修改对应服务的宿主机一侧，容器间仍使用 3000/1006。
+configure_host_port docker-compose.yml fastgpt-app 3000 "$FASTGPT_HOST_PORT" 3000 "$FASTGPT_PORT_EXPLICIT" || exit 1
+if [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
+    configure_host_port docker-compose.yml fastgpt-agent-sandbox-proxy 1006 "$SANDBOX_PROXY_HOST_PORT" 3006 "$SANDBOX_PROXY_PORT_EXPLICIT" || exit 1
 fi
 
-if [ "$FASTGPT_PORT" != "3000" ]; then
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "s|- 3000:3000|- ${FASTGPT_PORT}:3000|g" docker-compose.yml
-    else
-        sed -i "s|- 3000:3000|- ${FASTGPT_PORT}:3000|g" docker-compose.yml
-    fi
-    echo "已更新 FastGPT 端口映射为: ${FASTGPT_PORT}:3000"
+configure_fe_domain
+if [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
+    configure_sandbox_proxy_urls
 fi
 
 # 旧版 Compose 仍挂载 config.json，安装时需要同步下载该文件。
@@ -1070,25 +1406,41 @@ fi
 if LC_ALL=C grep -q "opensandbox-agent-sandbox-image" docker-compose.yml; then
     echo "  1. 预拉取镜像: docker compose --profile prepull pull"
     echo "  2. 启动服务:   docker compose up -d"
-    if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
-        echo "  3. 开放端口:   ${FASTGPT_PORT}, 9000, 3006"
+    if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ] && [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
+        echo "  3. 网络配置:   FastGPT、Sandbox Proxy、S3 请按上方映射配置防火墙或反向代理"
+    elif [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
+        echo "  3. 网络配置:   FastGPT、S3 请按上方映射配置防火墙或反向代理"
+    elif [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
+        echo "  3. 网络配置:   FastGPT、Sandbox Proxy 请按上方映射配置防火墙或反向代理"
     else
-        echo "  3. 开放端口:   ${FASTGPT_PORT}, 3006"
+        echo "  3. 网络配置:   FastGPT 请按上方映射配置防火墙或反向代理"
     fi
-    echo "  4. 访问服务:   http://localhost:${FASTGPT_PORT}"
+    echo "  4. 访问服务:   $FE_DOMAIN_INPUT"
     echo "  5. 登录服务:   默认账号为 'root', 密码为: '$ROOT_LOGIN_PASSWORD'"
     echo "  6. 配置模型:   在 '账号-模型提供商' 页面，进行模型配置"
 else
     echo "  1. 预拉取镜像: docker compose pull"
     echo "  2. 启动服务:   docker compose up -d"
     if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
-        echo "  3. 开放端口:   ${FASTGPT_PORT}, 9000"
+        echo "  3. 网络配置:   FastGPT、S3 请按上方映射配置防火墙或反向代理"
     else
-        echo "  3. 开放端口:   ${FASTGPT_PORT}"
+        echo "  3. 网络配置:   FastGPT 请按上方映射配置防火墙或反向代理"
     fi
-    echo "  4. 访问服务:   http://localhost:${FASTGPT_PORT}"
+    echo "  4. 访问服务:   $FE_DOMAIN_INPUT"
     echo "  5. 登录服务:   默认账号为 'root', 密码为: '$ROOT_LOGIN_PASSWORD'"
     echo "  6. 配置模型:   在 '账号-模型提供商' 页面，进行模型配置"
 fi
+echo ""
+print_host_port docker-compose.yml fastgpt-app 3000 "FastGPT"
+if [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
+    print_host_port docker-compose.yml fastgpt-agent-sandbox-proxy 1006 "Sandbox Proxy"
+fi
+if [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
+    echo "Sandbox WebSocket 地址: $SANDBOX_PROXY_URL_INPUT"
+fi
+if [ "$SANDBOX_PROXY_EXPECTED" = true ] && ! is_v415_deploy; then
+    echo "Sandbox 预览地址: $SANDBOX_PREVIEW_PROXY_URL_INPUT"
+fi
+echo "直连时按实际宿主机映射放行端口；使用反向代理时，公网端口由代理负责。"
 echo ""
 echo "详细文档: https://doc.fastgpt.cn/self-host/deploy/docker"
