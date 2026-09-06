@@ -12,6 +12,8 @@ export type ModelCatalog = Awaited<ReturnType<typeof loadModelCatalog>>;
  * 为单个迁移任务加载一份独立的系统模型快照。
  * 普通资源只接受有效 modelId 或名称、类型完全匹配的旧模型；App 功能开启但引用为空时，
  * 还可以显式调用默认回退：优先系统默认，其次按 _id 稳定选择首个兼容模型。
+ * 空目录是新安装的合法状态；仅在实际解析引用或默认模型时要求目录可用，
+ * 由增量迁移记录逐条失败，避免空集合误报失败或历史引用被跳过后无法重试。
  */
 export const loadModelCatalog = async () => {
   const [models, defaultModelIds] = await Promise.all([
@@ -20,9 +22,13 @@ export const loadModelCatalog = async () => {
     >,
     findSystemDefaultModelIds()
   ]);
-  if (models.length === 0) {
-    throw new Error('ai_models is empty; wait for model bootstrap before running 4163 migrations');
-  }
+  /** 仅保护需要模型目录的操作，空集合和无引用资源仍可按正常流程完成迁移。 */
+  const assertAvailable = () => {
+    if (models.length === 0) {
+      throw new Error('Cannot migrate model references while ai_models is empty');
+    }
+  };
+  const hasReference = (value: unknown) => value !== undefined && value !== null && value !== '';
 
   const modelByName = new Map(models.map((model) => [model.model, model]));
   const modelById = new Map(models.map((model) => [String(model._id), model]));
@@ -32,11 +38,17 @@ export const loadModelCatalog = async () => {
     (!requirement.vision || ('vision' in model.config && model.config.vision === true));
 
   return {
+    // 权限清理必须先证明目录可用，不能把空目录中的全部 ACL 判断为悬空权限。
+    assertAvailable,
     resolveModelIdByName: (modelName: string | undefined): string | undefined => {
-      const model = modelName ? modelByName.get(modelName) : undefined;
+      if (!modelName) return;
+      assertAvailable();
+      const model = modelByName.get(modelName);
       return model ? String(model._id) : undefined;
     },
     hasMatchingModelId: (modelId: unknown, requirement: ModelRequirement) => {
+      if (!hasReference(modelId)) return false;
+      assertAvailable();
       const model = modelById.get(String(modelId));
       return !!model && matchesRequirement(model, requirement);
     },
@@ -49,6 +61,8 @@ export const loadModelCatalog = async () => {
       modelId?: unknown;
       requirement: ModelRequirement;
     }): string | undefined => {
+      if (!legacyModel && !hasReference(modelId)) return;
+      assertAvailable();
       const currentModel = modelId === undefined ? undefined : modelById.get(String(modelId));
       if (currentModel && matchesRequirement(currentModel, requirement)) {
         return String(currentModel._id);
@@ -61,6 +75,7 @@ export const loadModelCatalog = async () => {
     },
     /** App 功能开启但没有可解析引用时，优先使用系统默认，其次确定性选择首个兼容模型。 */
     resolveFallbackModelId: (requirement: ModelRequirement): string | undefined => {
+      assertAvailable();
       const configuredDefaultId = defaultModelIds[requirement.type];
       const configuredDefault = configuredDefaultId
         ? modelById.get(configuredDefaultId)
@@ -72,6 +87,10 @@ export const loadModelCatalog = async () => {
       const firstMatchingModel = models.find((model) => matchesRequirement(model, requirement));
       return firstMatchingModel ? String(firstMatchingModel._id) : undefined;
     },
-    hasModelId: (modelId: unknown) => modelById.has(String(modelId))
+    hasModelId: (modelId: unknown) => {
+      if (!hasReference(modelId)) return false;
+      assertAvailable();
+      return modelById.has(String(modelId));
+    }
   };
 };

@@ -247,6 +247,112 @@ describe('llmCompletionsBodyFormat', () => {
     expect(requestBody).toHaveProperty('max_completion_tokens', 300);
   });
 
+  it('maps the wire model identifier without exposing internal model configuration', async () => {
+    const model = createModel({
+      requestAuth: 'test-only-secret',
+      config: { fieldMap: { model: 'model_name' } }
+    });
+    const snapshot = structuredClone(model);
+    const { requestBody, modelData } = await llmCompletionsBodyFormat({
+      model,
+      messages,
+      stream: false
+    });
+
+    expect(requestBody).toHaveProperty('model_name', 'gpt-4o');
+    expect(requestBody).not.toHaveProperty('model');
+    expect(JSON.stringify(requestBody)).not.toContain('test-only-secret');
+    expect(modelData).toBe(model);
+    expect(model).toEqual(snapshot);
+  });
+
+  it('maps normalized tokens and stop values rather than raw inputs', async () => {
+    const model = createModel({
+      config: { fieldMap: { max_tokens: 'limit', stop: 'stop_sequences' } }
+    });
+    const { requestBody } = await llmCompletionsBodyFormat({
+      model,
+      messages,
+      stream: false,
+      max_tokens: 5000,
+      stop: 'END|STOP'
+    });
+    expect(requestBody).toMatchObject({ limit: 1000, stop_sequences: ['END', 'STOP'] });
+    expect(requestBody).not.toHaveProperty('max_tokens');
+    expect(requestBody).not.toHaveProperty('stop');
+  });
+
+  it('does not restore removed or absent fields through mapping', async () => {
+    const model = createModel({
+      config: {
+        showStopSign: false,
+        fieldMap: { stop: 'stop_sequences', useVision: 'vision', absent: 'model' }
+      }
+    });
+    const { requestBody } = await llmCompletionsBodyFormat({
+      model,
+      messages,
+      stream: false,
+      stop: 'END',
+      useVision: true
+    });
+    expect(requestBody).toHaveProperty('model', 'gpt-4o');
+    expect(requestBody).not.toHaveProperty('stop_sequences');
+    expect(requestBody).not.toHaveProperty('vision');
+  });
+
+  it('preserves identity mappings, zero and false values', async () => {
+    const model = createModel({
+      config: { fieldMap: { model: 'model', top_p: 'p', stream: 'streaming' } }
+    });
+    const { requestBody } = await llmCompletionsBodyFormat({
+      model,
+      messages,
+      stream: false,
+      top_p: 0
+    });
+    expect(requestBody).toMatchObject({ model: 'gpt-4o', p: 0, streaming: false });
+  });
+
+  it('applies swapped and chained mappings from a single snapshot', async () => {
+    for (const fieldMap of [
+      { model: 'stream', stream: 'model' },
+      { stream: 'model', model: 'stream' }
+    ]) {
+      const { requestBody } = await llmCompletionsBodyFormat({
+        model: createModel({ config: { fieldMap } }),
+        messages,
+        stream: false
+      });
+      expect(requestBody).toMatchObject({ stream: 'gpt-4o', model: false });
+    }
+    const { requestBody } = await llmCompletionsBodyFormat({
+      model: createModel({ config: { fieldMap: { model: 'stream', stream: 'streaming' } } }),
+      messages,
+      stream: false
+    });
+    expect(requestBody).toMatchObject({ stream: 'gpt-4o', streaming: false });
+    expect(requestBody).not.toHaveProperty('model');
+  });
+
+  it('rejects duplicate active destinations while keeping defaultConfig precedence', async () => {
+    await expect(
+      llmCompletionsBodyFormat({
+        model: createModel({ config: { fieldMap: { model: 'target', stream: 'target' } } }),
+        messages,
+        stream: false
+      })
+    ).rejects.toThrow('Duplicate model fieldMap target: target');
+    const { requestBody } = await llmCompletionsBodyFormat({
+      model: createModel({
+        config: { fieldMap: { model: 'target' }, defaultConfig: { target: 'override' } }
+      }),
+      messages,
+      stream: false
+    });
+    expect(requestBody).toHaveProperty('target', 'override');
+  });
+
   it('should throw when json schema cannot be parsed', async () => {
     const model = createModel();
 

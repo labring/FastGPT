@@ -10,6 +10,9 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { MongoEvaluation } from '@fastgpt/service/core/app/evaluation/evalSchema';
+import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
+import { backfillEvaluationModelReferences } from '@/migration/tasks/20260903_backfill_evaluation_model_references';
 import { Types } from '@fastgpt/service/common/mongo';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import {
@@ -22,6 +25,9 @@ import { backfillDatasetModelReferences } from '@/migration/tasks/20260903_backf
 import { backfillModelPermissionReferences } from '@/migration/tasks/20260903_backfill_model_permissions';
 import type { SystemMigrationContext } from '@/migration/registry';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createSystemMigrationRunner } from '@/migration/runner';
+import { systemMigrations } from '@/migration/registry';
+import { getMigrationStates } from '@/migration/entity';
 
 const cacheMocks = vi.hoisted(() => ({ clearAllMyModelsCache: vi.fn() }));
 
@@ -96,11 +102,170 @@ describe('4163 dataset model reference migration', () => {
       MongoAIModel.deleteMany({}),
       MongoAIDefaultModel.deleteMany({}),
       MongoDataset.deleteMany({}),
+      MongoEvaluation.deleteMany({}),
       MongoResourcePermission.deleteMany({ resourceType: PerResourceTypeEnum.model }),
       MongoApp.deleteMany({}),
       MongoAppVersion.deleteMany({}),
       MongoAppTemplate.deleteMany({})
     ]);
+  });
+
+  it.each([
+    { run: backfillModelPermissionReferences, stages: ['permissions'] },
+    { run: backfillDatasetModelReferences, stages: ['datasets'] },
+    { run: backfillEvaluationModelReferences, stages: ['evaluations'] },
+    { run: backfillAppModelReferences, stages: ['apps', 'app_versions', 'app_templates'] }
+  ])('completes empty $stages stages without installed models', async ({ run, stages }) => {
+    const state = createContext();
+    await run(state.context);
+    expect([...state.getProgress().keys()]).toEqual(stages);
+    for (const progress of state.getProgress().values()) {
+      expect(progress).toMatchObject({
+        status: SystemMigrationStatusEnum.succeeded,
+        current: 0,
+        total: 0
+      });
+    }
+    expect(state.getFailedRecords()).toEqual([]);
+  });
+
+  it('commits succeeded states through the runner for all four empty reference migrations', async () => {
+    const migrations = systemMigrations.filter((migration) =>
+      [
+        '20260903_backfill_model_permissions',
+        '20260903_backfill_dataset_model_references',
+        '20260903_backfill_evaluation_model_references',
+        '20260903_backfill_app_model_references'
+      ].includes(migration.id)
+    );
+    const runner = createSystemMigrationRunner({
+      migrations,
+      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+    });
+    try {
+      await runner.start();
+      await runner.tick();
+      const states = await getMigrationStates(migrations.map(({ id }) => id));
+      expect(states).toHaveLength(4);
+      for (const state of states) {
+        expect(state.status).toBe(SystemMigrationStatusEnum.succeeded);
+        expect(state.lastError).toBeUndefined();
+        expect(Object.values(state.result ?? {}).every((count) => count === 0)).toBe(true);
+      }
+    } finally {
+      runner.stop();
+    }
+  });
+
+  it('migrates resources without model references when the catalog is empty', async () => {
+    await MongoDataset.collection.insertOne({
+      _id: new Types.ObjectId(),
+      name: 'Folder',
+      type: 'folder'
+    });
+    await MongoApp.collection.insertOne({
+      _id: new Types.ObjectId(),
+      name: 'Non-AI workflow',
+      modules: [],
+      edges: []
+    });
+    await expect(backfillDatasetModelReferences(createContext().context)).resolves.toEqual({
+      processedCount: 1
+    });
+    await expect(backfillAppModelReferences(createContext().context)).resolves.toMatchObject({
+      appsProcessedCount: 1
+    });
+  });
+
+  it('preserves legacy ACLs with an empty catalog and retries them after models are installed', async () => {
+    const permissionId = new Types.ObjectId();
+    await MongoResourcePermission.collection.insertOne({
+      _id: permissionId,
+      resourceType: PerResourceTypeEnum.model,
+      resourceName: 'legacy-model'
+    });
+    const state = createContext();
+    await expect(backfillModelPermissionReferences(state.context)).rejects.toThrow('1 records');
+    expect(state.getFailedRecords()).toEqual([
+      expect.objectContaining({
+        stageKey: 'permissions',
+        data: expect.objectContaining({ recordId: String(permissionId) })
+      })
+    ]);
+    await expect(
+      MongoResourcePermission.collection.findOne({ _id: permissionId })
+    ).resolves.toMatchObject({ resourceName: 'legacy-model' });
+    const model = await createStoredModel({ model: 'legacy-model', type: ModelTypeEnum.llm });
+    await expect(backfillModelPermissionReferences(state.context)).resolves.toEqual({
+      processedCount: 1
+    });
+    expect(state.getFailedRecords()).toEqual([]);
+    await expect(
+      MongoResourcePermission.collection.findOne({ _id: permissionId })
+    ).resolves.toMatchObject({ resourceId: model._id });
+  });
+
+  it('does not delete malformed ACLs when the entire model catalog is empty', async () => {
+    const permissionId = new Types.ObjectId();
+    await MongoResourcePermission.collection.insertOne({
+      _id: permissionId,
+      resourceType: PerResourceTypeEnum.model
+    });
+    await expect(backfillModelPermissionReferences(createContext().context)).rejects.toThrow(
+      '1 records'
+    );
+    expect(await MongoResourcePermission.collection.countDocuments({ _id: permissionId })).toBe(1);
+  });
+
+  it('preserves dataset and evaluation references and recovers past their checkpoint', async () => {
+    const datasetId = new Types.ObjectId();
+    const evaluationId = new Types.ObjectId();
+    await MongoDataset.collection.insertOne({ _id: datasetId, vectorModel: 'embedding' });
+    await MongoEvaluation.collection.insertOne({ _id: evaluationId, evalModel: 'llm' });
+    const datasetState = createContext();
+    const evaluationState = createContext();
+    await expect(backfillDatasetModelReferences(datasetState.context)).rejects.toThrow('1 records');
+    await expect(backfillEvaluationModelReferences(evaluationState.context)).rejects.toThrow(
+      '1 records'
+    );
+    await expect(MongoDataset.collection.findOne({ _id: datasetId })).resolves.not.toHaveProperty(
+      'vectorModelId'
+    );
+    await expect(
+      MongoEvaluation.collection.findOne({ _id: evaluationId })
+    ).resolves.not.toHaveProperty('evalModelId');
+    const embedding = await createStoredModel({
+      model: 'embedding',
+      type: ModelTypeEnum.embedding
+    });
+    const llm = await createStoredModel({ model: 'llm', type: ModelTypeEnum.llm });
+    await backfillDatasetModelReferences(datasetState.context);
+    await backfillEvaluationModelReferences(evaluationState.context);
+    expect(datasetState.getFailedRecords()).toEqual([]);
+    expect(evaluationState.getFailedRecords()).toEqual([]);
+    await expect(MongoDataset.collection.findOne({ _id: datasetId })).resolves.toMatchObject({
+      vectorModelId: String(embedding._id)
+    });
+    await expect(MongoEvaluation.collection.findOne({ _id: evaluationId })).resolves.toMatchObject({
+      evalModelId: String(llm._id)
+    });
+  });
+
+  it('retains an app requiring a default model until the catalog becomes available', async () => {
+    const appId = new Types.ObjectId();
+    const chatConfig = { questionGuide: { open: true } };
+    await MongoApp.collection.insertOne({ _id: appId, modules: [], edges: [], chatConfig });
+    const state = createContext();
+    await expect(backfillAppModelReferences(state.context)).rejects.toThrow('1 records');
+    await expect(MongoApp.collection.findOne({ _id: appId })).resolves.toMatchObject({
+      chatConfig
+    });
+    const llm = await createStoredModel({ model: 'llm', type: ModelTypeEnum.llm });
+    await backfillAppModelReferences(state.context);
+    expect(state.getFailedRecords()).toEqual([]);
+    await expect(MongoApp.collection.findOne({ _id: appId })).resolves.toMatchObject({
+      chatConfig: { questionGuide: { open: true, modelId: String(llm._id) } }
+    });
   });
 
   it('migrates model permissions, deletes dangling entries, and clears only the permission cache', async () => {

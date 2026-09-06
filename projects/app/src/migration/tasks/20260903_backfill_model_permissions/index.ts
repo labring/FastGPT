@@ -21,6 +21,8 @@ export const backfillModelPermissionReferences = async (context: SystemMigration
           model: MongoResourcePermission,
           query: { resourceType: PerResourceTypeEnum.model },
           transform: (record) => {
+            // 空目录不代表权限已废弃；保留现场并交给增量框架记录可重试失败。
+            catalog.assertAvailable();
             if (record.resourceId && catalog.hasModelId(record.resourceId)) return {};
 
             // 权限只需确认模型身份，类型不参与匹配。
