@@ -108,7 +108,7 @@ const ChatAgentHelperChatBox = ({
     }
 
     const { responseText } = await streamFetch({
-      url: '/api/proApi/core/chat/chatAgentHelper/completions',
+      url: '/api/maxApi/core/chat/chatAgentHelper/completions',
       data: {
         chatId,
         responseChatItemId,

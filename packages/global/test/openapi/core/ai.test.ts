@@ -57,7 +57,7 @@ describe('AI OpenAPI contracts', () => {
       DevApiTagsMap.aiAuxiliary
     ]);
     expect(
-      openAPIDocument.paths?.['/proApi/core/chat/chatAgentHelper/completions']?.post?.tags
+      openAPIDocument.paths?.['/maxApi/core/chat/chatAgentHelper/completions']?.post?.tags
     ).toEqual([DevApiTagsMap.aiAuxiliary]);
     expect(openAPIDocument.paths?.['/core/workflow/optimizeCode']?.post?.tags).toEqual([
       DevApiTagsMap.workflowHelper
