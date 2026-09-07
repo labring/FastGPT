@@ -11,6 +11,8 @@ import { getWebDefaultLLMModel } from '@/web/common/system/utils';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
+import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
+import { filterModelMultimodalSettings } from './utils';
 
 type Props = {
   defaultData: SettingAIDataType;
@@ -67,8 +69,23 @@ const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModa
             w={'100%'}
             value={modelId}
             onChange={(e) => {
+              const modelData = findClientModelByValue({ models: llmModelList, value: e });
+              const settings = (() => {
+                // 只清理有显式开关的工作流配置，隐藏配置的表单交给后端判断模型能力。
+                if (
+                  props.showMultimodalConfig === false ||
+                  defaultData.aiChatVision === undefined ||
+                  !modelData
+                ) {
+                  return defaultData;
+                }
+                return filterModelMultimodalSettings({
+                  settings: defaultData,
+                  support: getLLMSupportParams(modelData)
+                });
+              })();
               onChange({
-                ...defaultData,
+                ...settings,
                 modelId: e
               });
             }}

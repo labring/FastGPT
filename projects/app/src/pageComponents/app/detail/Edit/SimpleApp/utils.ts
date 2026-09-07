@@ -228,11 +228,11 @@ export function form2AppWorkflow(
   const aiChatNodeId = '7BdojPlukIQw';
   const selectedDatasets = data.dataset.datasets;
   const modelMultimodal = {
-    // 表单只控制文件上传；图片传递不受隐藏开关影响，识图能力由运行时模型配置判断。
+    // 表单只控制文件上传；媒体传递和链接提取统一放行，实际能力由运行时模型配置判断。
     vision: true,
-    audio: !!data.aiSettings.aiChatAudio,
-    video: !!data.aiSettings.aiChatVideo,
-    extractFiles: !!data.aiSettings.aiChatExtractFiles
+    audio: true,
+    video: true,
+    extractFiles: true
   };
 
   const getModelReferenceInputs = (formData: AppFormEditFormType): FlowNodeInputItemType[] => [

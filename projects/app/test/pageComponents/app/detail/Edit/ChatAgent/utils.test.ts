@@ -23,6 +23,9 @@ describe('agentForm2AppWorkflow model reference', () => {
   it.each([undefined, false, true])('allows images independently of legacy vision=%s', (vision) => {
     const form = getDefaultAppForm();
     form.aiSettings.aiChatVision = vision;
+    form.aiSettings.aiChatAudio = vision;
+    form.aiSettings.aiChatVideo = vision;
+    form.aiSettings.aiChatExtractFiles = vision;
 
     const workflow = agentForm2AppWorkflow(form, (key: string) => key);
     const restoredForm = appWorkflow2AgentForm(workflow);
@@ -30,9 +33,16 @@ describe('agentForm2AppWorkflow model reference', () => {
 
     for (const result of [workflow, restoredWorkflow]) {
       const inputs = result.nodes.flatMap((node) => node.inputs);
-      expect(inputs.filter((input) => input.key === NodeInputKeyEnum.aiChatVision)).toEqual([
-        expect.objectContaining({ value: true })
-      ]);
+      for (const key of [
+        NodeInputKeyEnum.aiChatVision,
+        NodeInputKeyEnum.aiChatAudio,
+        NodeInputKeyEnum.aiChatVideo,
+        NodeInputKeyEnum.aiChatExtractFiles
+      ]) {
+        expect(inputs.filter((input) => input.key === key)).toEqual([
+          expect.objectContaining({ value: true })
+        ]);
+      }
       expect(inputs.find((input) => input.key === NodeInputKeyEnum.fileUrlList)?.value).toEqual(
         expect.arrayContaining([expect.any(Array)])
       );

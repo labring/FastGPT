@@ -33,6 +33,7 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
+import { filterModelMultimodalSettings } from '../SettingLLMModel/utils';
 import { ModelTypeEnum, reasoningEffortList } from '@fastgpt/global/core/ai/constants';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
 import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
@@ -214,20 +215,13 @@ const AIChatSettingsModal = ({
     if (modelData) {
       setValue('maxToken', modelData.config.maxResponse / 2);
       if (showMultimodalSetting) {
-        const support = getLLMSupportParams(modelData);
-        onChangeMultimodalValues(
-          [
-            !!getValues(NodeInputKeyEnum.aiChatVision) &&
-              support.vision &&
-              NodeInputKeyEnum.aiChatVision,
-            !!getValues(NodeInputKeyEnum.aiChatAudio) &&
-              support.audio &&
-              NodeInputKeyEnum.aiChatAudio,
-            !!getValues(NodeInputKeyEnum.aiChatVideo) &&
-              support.video &&
-              NodeInputKeyEnum.aiChatVideo
-          ].filter(Boolean) as MultimodalValue[]
-        );
+        const settings = filterModelMultimodalSettings({
+          settings: getValues(),
+          support: getLLMSupportParams(modelData)
+        });
+        setValue(NodeInputKeyEnum.aiChatVision, settings.aiChatVision);
+        setValue(NodeInputKeyEnum.aiChatAudio, settings.aiChatAudio);
+        setValue(NodeInputKeyEnum.aiChatVideo, settings.aiChatVideo);
       }
     }
 
