@@ -1,7 +1,7 @@
 import { batchRun } from '../system/utils';
 import { simpleText } from './tools';
 
-/* Delete redundant text in markdown */
+/** 清理 Markdown 冗余格式，仅移除指定特殊字符前的转义，保留普通文本中的反斜杠。 */
 export const simpleMarkdownText = (rawText: string) => {
   rawText = simpleText(rawText);
 
@@ -17,7 +17,8 @@ export const simpleMarkdownText = (rawText: string) => {
   });
 
   // replace special #\.* ……
-  const reg1 = /\\([#`!*()+-_\[\]{}\\.])/g;
+  // 连字符放在字符组末尾，避免形成包含数字和大写字母的 +-_ 范围。
+  const reg1 = /\\([#`!*()+_\[\]{}\\.-])/g;
   if (reg1.test(rawText)) {
     rawText = rawText.replace(reg1, '$1');
   }

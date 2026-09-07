@@ -29,6 +29,17 @@ describe('markdown 字符串处理函数测试', () => {
       expect(result).toBe('# * ( ) [ ]');
     });
 
+    it.each(['C:\\Users\\Alice', String.raw`\Delta + \Omega`, String.raw`\1`])(
+      '应该保留非 Markdown 转义中的反斜杠: %s',
+      (input) => {
+        expect(simpleMarkdownText(input)).toBe(input);
+      }
+    );
+
+    it('应该继续移除连字符、加号和下划线的转义', () => {
+      expect(simpleMarkdownText(String.raw`\- \+ \_`)).toBe('- + _');
+    });
+
     it('应该替换双反斜杠换行符', () => {
       const input = 'Line1\\\\nLine2';
       const result = simpleMarkdownText(input);
@@ -298,6 +309,12 @@ describe('markdown 字符串处理函数测试', () => {
   });
 
   describe('parseMarkdownBase64Images markdown 清理', () => {
+    it('应该在文件内容清理后保留 Windows 路径和公式命令', async () => {
+      const rawText = String.raw`C:\Users\Alice contains $\Delta + \Omega$`;
+
+      expect(await parseMarkdownBase64Images(rawText)).toBe(rawText);
+    });
+
     it('应该处理不带上传控制器的 Markdown', async () => {
       const rawText = '# Title\n\nSome text\n\n';
       const result = await parseMarkdownBase64Images(rawText);
