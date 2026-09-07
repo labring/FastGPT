@@ -24,6 +24,7 @@ import {
 import { buildRuntimeSandboxAdapter } from '../../infrastructure/provider/adapter';
 import { getConfiguredSandboxProvider } from '../../infrastructure/provider/config';
 import { ensureConnectedSandboxRunning } from '../../infrastructure/provider/lifecycle';
+import { getVolumeManagerEnvConfig } from '../../infrastructure/volume/config';
 import { deleteSandboxResource, stopSandboxResource } from '../resource';
 import {
   createSandboxProvisioningInstance,
@@ -559,7 +560,7 @@ export const getSandboxClient = async (
         createConfig: opts.createConfig
       });
     }
-    if (!vmConfig && providerName === 'opensandbox') {
+    if (!vmConfig && providerName === 'opensandbox' && getVolumeManagerEnvConfig().enable) {
       const instance = await findSandboxInstanceBySource({
         sourceType: sandboxClientProps.sourceType,
         sourceId: sandboxClientProps.sourceId,
