@@ -17,6 +17,8 @@ import FormData from 'form-data';
 import { getLogger, LogCategories } from '../../common/logger';
 import { decodeHttpToolSetNodesFromStorage } from './jsonSchemaStorage';
 import { buildOpenAPIHttpRequest } from './httpTool/request';
+import { str2OpenApiSchema } from '@fastgpt/global/core/app/jsonschema';
+import { completeOpenAPIRequestSchema } from '@fastgpt/global/core/app/tool/httpTool/utils';
 
 const logger = getLogger(LogCategories.MODULE.APP.HTTP_TOOLS);
 
@@ -214,12 +216,34 @@ export const getHTTPToolList = async (app: AppSchemaType) => {
   const toolList = HttpToolConfigTypeSchema.array().safeParse(
     toolSet && 'toolList' in toolSet ? toolSet.toolList : undefined
   ).data;
+  // 只有导入工具有 OpenAPI 原文；历史 Body-only Schema 只补原文明示的非 Body 参数。
+  const apiSchemaStr = toolSet && 'apiSchemaStr' in toolSet ? toolSet.apiSchemaStr : undefined;
+  const pathData =
+    toolList?.length && apiSchemaStr?.trim()
+      ? // 读取旧配置时，无法解析原文就不猜测补字段，保留存储契约供编辑修复。
+        // 真正发送请求时 buildOpenAPIHttpRequest 仍严格校验原文，不会静默发送空请求。
+        ((await str2OpenApiSchema(apiSchemaStr).catch(() => undefined))?.pathData ?? [])
+      : [];
 
   return (
-    toolList?.map((item) => ({
-      ...item,
-      id: `${AppToolSourceEnum.http}-${String(app._id)}/${item.name}`,
-      avatar: app.avatar
-    })) ?? []
+    toolList?.map((item) => {
+      const operation = pathData.find(
+        (path) => path.path === item.path && path.method.toUpperCase() === item.method.toUpperCase()
+      );
+      const bodySchema = operation?.request?.content?.['application/json']?.schema;
+      return {
+        ...item,
+        ...(bodySchema
+          ? {
+              requestSchema: completeOpenAPIRequestSchema({
+                requestSchema: item.requestSchema ?? bodySchema,
+                parameters: operation?.params
+              })
+            }
+          : {}),
+        id: `${AppToolSourceEnum.http}-${String(app._id)}/${item.name}`,
+        avatar: app.avatar
+      };
+    }) ?? []
   );
 };

@@ -147,6 +147,110 @@ describe('SSRF Vulnerability Fix Tests', () => {
   });
 
   describe('getHTTPToolList', () => {
+    it('preserves stored schemas when legacy OpenAPI text cannot be parsed', async () => {
+      const requestSchema = { type: 'object', properties: { q: { type: 'string' } } };
+      const [tool] = await getHTTPToolList({
+        _id: 'http-toolset',
+        type: AppTypeEnum.httpToolSet,
+        modules: [
+          {
+            toolConfig: {
+              httpToolSet: {
+                apiSchemaStr: '{"openapi":"3.1.0"}',
+                toolList: [
+                  {
+                    name: 'search',
+                    description: 'Search',
+                    path: '/search',
+                    method: 'GET',
+                    requestSchema
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      } as any);
+      expect(tool.requestSchema).toEqual(requestSchema);
+      expect(tool.requestSchema).not.toHaveProperty('required');
+    });
+    it('repairs historical Body-only schemas from OpenAPI rather than editor-only fields', async () => {
+      const requestSchema = {
+        type: 'object',
+        additionalProperties: false,
+        properties: { body: { type: 'object' } },
+        required: ['body']
+      };
+      const inputSchema = {
+        type: 'object',
+        properties: { editorOnly: { type: 'string' } },
+        required: ['editorOnly']
+      };
+      const apiSchemaStr = JSON.stringify({
+        openapi: '3.0.0',
+        info: { title: 'Mixed', version: '1' },
+        paths: {
+          '/echo/{id}': {
+            post: {
+              parameters: [
+                { in: 'query', name: 'q', schema: { type: 'string' } },
+                { in: 'path', name: 'id', required: true, schema: { type: 'string' } }
+              ],
+              requestBody: { content: { 'application/json': { schema: requestSchema } } },
+              responses: { '200': { description: 'OK' } }
+            }
+          }
+        }
+      });
+      const app = {
+        _id: 'http-toolset',
+        type: AppTypeEnum.httpToolSet,
+        modules: [
+          {
+            toolConfig: {
+              httpToolSet: {
+                apiSchemaStr,
+                toolList: [
+                  {
+                    name: 'echo',
+                    description: 'Echo',
+                    path: '/echo/{id}',
+                    method: 'POST',
+                    inputSchema,
+                    requestSchema
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      };
+      const [tool] = await getHTTPToolList(app as any);
+      expect(tool.requestSchema).toEqual({
+        ...requestSchema,
+        properties: { q: { type: 'string' }, id: { type: 'string' }, ...requestSchema.properties },
+        required: ['body', 'id']
+      });
+      expect(tool.inputSchema).toEqual(inputSchema);
+      expect(app.modules[0].toolConfig.httpToolSet.toolList[0].requestSchema).toEqual(
+        requestSchema
+      );
+      expect(
+        (
+          await getHTTPToolList({
+            ...app,
+            modules: [
+              {
+                toolConfig: {
+                  httpToolSet: { ...app.modules[0].toolConfig.httpToolSet, apiSchemaStr: undefined }
+                }
+              }
+            ]
+          } as any)
+        )[0].requestSchema
+      ).toEqual(requestSchema);
+    });
+
     it('should read tools when legacy customHeaders has a non-string value', async () => {
       const result = await getHTTPToolList({
         _id: 'http-toolset',

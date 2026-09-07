@@ -9,7 +9,7 @@ import {
   jsonSchema2NodeOutput
 } from '../../jsonschema';
 import { type StoreSecretValueType } from '../../../../common/secret/type';
-import { type JsonSchemaPropertiesItemType } from '../../jsonschema';
+import { type JSONSchemaInputType, type JsonSchemaPropertiesItemType } from '../../jsonschema';
 import {
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum,
@@ -188,22 +188,56 @@ export const getHTTPToolRuntimeSchemas = ({
     !!inputSchema?.properties && Object.keys(inputSchema.properties).length > 0;
 
   return {
-    // 历史导入工具的 requestSchema 可能只有 Body；补入 Query/Path/Header 的声明，
-    // 避免 additionalProperties: false 把合法的混合调用参数拒绝掉。
-    requestSchema:
-      hasRequestProperties && hasInputProperties
-        ? {
-            ...currentRequestSchema,
-            properties: { ...inputSchema?.properties, ...currentRequestSchema?.properties },
-            required: [
-              ...new Set([
-                ...(currentRequestSchema?.required ?? []),
-                ...(inputSchema?.required ?? [])
-              ])
-            ]
-          }
-        : currentRequestSchema,
+    // 有效 requestSchema 是执行契约，不能把展示用 inputSchema 的字段或必填约束合入。
+    requestSchema: currentRequestSchema,
     inputSchema: hasInputProperties ? inputSchema : currentRequestSchema
+  };
+};
+
+/**
+ * 仅依据 OpenAPI 原文的 Query/Path/Header 声明补齐 JSON Body 的调用契约。
+ * 不读取编辑器 inputSchema；保留已有属性约束，也不凭空添加 required: []。
+ * 导入和历史工具回源共用此规则，避免两种运行入口产生不同的必填参数。
+ */
+export const completeOpenAPIRequestSchema = ({
+  requestSchema,
+  parameters = []
+}: {
+  requestSchema?: JSONSchemaInputType;
+  parameters?: PathDataType['params'];
+}): JSONSchemaInputType | undefined => {
+  const declaredParameters = parameters.filter(
+    (parameter) =>
+      parameter &&
+      typeof parameter.name === 'string' &&
+      parameter.schema &&
+      ['query', 'path', 'header'].includes(parameter.in)
+  );
+  if (!requestSchema || declaredParameters.length === 0) return requestSchema;
+
+  const required = [
+    ...new Set([
+      ...(requestSchema.required ?? []),
+      ...declaredParameters
+        .filter((parameter) => parameter.required === true || parameter.in === 'path')
+        .map((parameter) => parameter.name)
+    ])
+  ];
+  return {
+    ...requestSchema,
+    properties: {
+      ...Object.fromEntries(
+        declaredParameters.map((parameter) => [
+          parameter.name,
+          {
+            ...parameter.schema,
+            ...(parameter.description ? { description: parameter.description } : {})
+          }
+        ])
+      ),
+      ...requestSchema.properties
+    },
+    ...(required.length ? { required } : {})
   };
 };
 
@@ -315,7 +349,9 @@ export const pathData2ToolList = async (
         description: pathItem.description || pathItem.name,
         path: pathItem.path,
         method: pathItem.method?.toLowerCase(),
-        requestSchema,
+        requestSchema: pathItem.request?.content?.['application/json']?.schema
+          ? completeOpenAPIRequestSchema({ requestSchema, parameters: pathItem.params })
+          : requestSchema,
         inputSchema: {
           type: 'object',
           properties: inputProperties,

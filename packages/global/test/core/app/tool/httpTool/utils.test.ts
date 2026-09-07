@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   getHTTPToolSetRuntimeNode,
   getHTTPToolRuntimeNode,
+  getHTTPToolRuntimeSchemas,
+  completeOpenAPIRequestSchema,
   isHttpToolInputAgentGenerated,
   isLegacyManualHttpToolArrayType,
   jsonSchemaProperty2ManualHttpToolValueType,
@@ -20,6 +22,100 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { HttpToolConfigType, PathDataType } from '@fastgpt/global/core/app/tool/httpTool/type';
+
+describe('HTTP request schema compatibility', () => {
+  it('preserves an explicit request schema without adding editor fields or empty required', () => {
+    const requestSchema = { type: 'object', properties: { body: { type: 'object' } } };
+    const inputSchema = {
+      type: 'object',
+      properties: { keyword: { type: 'string' } },
+      required: ['keyword']
+    };
+    expect(getHTTPToolRuntimeSchemas({ requestSchema, inputSchema }).requestSchema).toBe(
+      requestSchema
+    );
+    expect(requestSchema).not.toHaveProperty('required');
+    expect(requestSchema.properties).not.toHaveProperty('keyword');
+  });
+
+  it('adds only explicitly declared OpenAPI parameters and preserves body constraints', () => {
+    const requestSchema = {
+      type: 'object',
+      properties: { body: { type: 'object' } },
+      required: ['body'],
+      additionalProperties: false
+    };
+    const result = completeOpenAPIRequestSchema({
+      requestSchema,
+      parameters: [
+        { in: 'query', name: 'q', schema: { type: 'string' } },
+        {
+          in: 'header',
+          name: 'X-Trace',
+          required: true,
+          description: 'Trace ID',
+          schema: { type: 'string' }
+        },
+        { in: 'path', name: 'id', schema: { type: 'string' } },
+        { name: 'editorOnly', required: true, schema: { type: 'string' } }
+      ]
+    });
+    expect(result).toMatchObject({
+      additionalProperties: false,
+      properties: {
+        body: { type: 'object' },
+        q: { type: 'string' },
+        'X-Trace': { type: 'string', description: 'Trace ID' },
+        id: { type: 'string' }
+      },
+      required: ['body', 'X-Trace', 'id']
+    });
+    expect(result?.properties).not.toHaveProperty('editorOnly');
+    expect(requestSchema.required).toEqual(['body']);
+    expect(requestSchema.properties).toEqual({ body: { type: 'object' } });
+  });
+
+  it('does not create required when adding only optional query parameters', () => {
+    const result = completeOpenAPIRequestSchema({
+      requestSchema: { type: 'object', properties: {} },
+      parameters: [{ in: 'query', name: 'q', schema: { type: 'string' } }]
+    });
+    expect(result?.properties).toHaveProperty('q');
+    expect(result).not.toHaveProperty('required');
+  });
+
+  it('keeps an existing empty required list and deduplicates declared requirements', () => {
+    const parameter = { in: 'query', name: 'q', required: true, schema: { type: 'string' } };
+    expect(
+      completeOpenAPIRequestSchema({
+        requestSchema: { type: 'object', properties: {}, required: [] },
+        parameters: [{ ...parameter, required: false }]
+      })?.required
+    ).toEqual([]);
+    expect(
+      completeOpenAPIRequestSchema({
+        requestSchema: { type: 'object', properties: {}, required: ['q'] },
+        parameters: [parameter]
+      })?.required
+    ).toEqual(['q']);
+  });
+
+  it('does not alter schemas without explicit OpenAPI parameter declarations', () => {
+    const requestSchema = { type: 'object', properties: { body: { type: 'object' } } };
+    expect(completeOpenAPIRequestSchema({ requestSchema })).toBe(requestSchema);
+    expect(
+      completeOpenAPIRequestSchema({
+        requestSchema,
+        parameters: [{ in: 'body', name: 'body', schema: { type: 'object' } }]
+      })
+    ).toBe(requestSchema);
+    expect(
+      completeOpenAPIRequestSchema({
+        parameters: [{ in: 'query', name: 'q', schema: { type: 'string' } }]
+      })
+    ).toBeUndefined();
+  });
+});
 
 describe('httpTool utils', () => {
   describe('HTTP tool input mode', () => {
