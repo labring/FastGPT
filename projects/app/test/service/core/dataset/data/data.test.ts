@@ -1,6 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
-import { getEmbeddingModelData } from '@fastgpt/service/core/ai/model';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { MongoS3TTL } from '@fastgpt/service/common/s3/models/ttl';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
@@ -173,7 +172,6 @@ describe('Dataset data service', () => {
     mockDeleteDatasetFileByKey.mockReset();
     mockGetDatasetBase64Image.mockClear();
     mockCountPromptTokens.mockClear();
-    vi.mocked(getEmbeddingModelData).mockReturnValue(embeddingModel);
     mockGetVectors.mockImplementation(async ({ inputs }) =>
       createMockVectorsResponse(inputs.map((input) => input.input))
     );

@@ -1,10 +1,17 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, extname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../..');
+
+/** 开源 CI 不检出私有 Pro 子模块；主仓库始终检查，Pro 源码存在时才追加检查范围。 */
+const getSourceScopes = (hasProSources: boolean) => [
+  'packages/service',
+  'projects/app/src',
+  ...(hasProSources ? ['pro/admin/src'] : [])
+];
 const legacyFields = new Set([
   'systemModelList',
   'systemActiveModelList',
@@ -17,6 +24,15 @@ const legacyFields = new Set([
 ]);
 
 describe('model access architecture', () => {
+  it('keeps main sources mandatory and only adds the optional Pro checkout when available', () => {
+    expect(getSourceScopes(false)).toEqual(['packages/service', 'projects/app/src']);
+    expect(getSourceScopes(true)).toEqual([
+      'packages/service',
+      'projects/app/src',
+      'pro/admin/src'
+    ]);
+  });
+
   it('keeps production model reads behind getModelHandle without globals or internal cache access', () => {
     const files: string[] = [];
     const collect = (dir: string) => {
@@ -29,7 +45,7 @@ describe('model access architecture', () => {
           files.push(path);
       }
     };
-    for (const scope of ['packages/service', 'projects/app/src', 'pro/admin/src'])
+    for (const scope of getSourceScopes(existsSync(resolve(root, 'pro/admin/src'))))
       collect(resolve(root, scope));
     const violations: string[] = [];
     const allowedInternals = new Set([

@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
-import { getEmbeddingModelData } from '@fastgpt/service/core/ai/model';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -163,7 +162,6 @@ describe('DatasetDataIndexOperation', () => {
     mockCountPromptTokens.mockImplementation(async (text: string) =>
       countPromptTokensInWorker(text)
     );
-    vi.mocked(getEmbeddingModelData).mockReturnValue(embeddingModel);
     mockGetVectors.mockImplementation(async ({ inputs }) =>
       createMockVectorsResponse(inputs.map((input) => input.input))
     );
