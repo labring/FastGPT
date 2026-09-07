@@ -1,4 +1,5 @@
 import { str2OpenApiSchema } from '@fastgpt/global/core/app/jsonschema';
+import { serializeOpenAPIParameter } from './serialization';
 
 /**
  * 根据已保存的 OpenAPI 定义分配 HTTP 参数，不依赖工作流快照或手动 Body 模板。
@@ -22,16 +23,13 @@ export const buildOpenAPIHttpRequest = async ({
   );
   if (!operation) throw new Error(`OpenAPI operation not found: ${method} ${toolPath}`);
 
-  const queryEntries: [string, unknown][] = [];
+  const queryParams = new URLSearchParams();
   const headerEntries: [string, string][] = [];
   const nonBodyNames = new Set<string>();
   const pathValues = new Map<string, string>();
 
   for (const parameter of operation.params ?? []) {
     if (parameter.in === 'body') continue; // Swagger 2 的 body 已由解析器转为 request.content。
-    if (!['query', 'header', 'path'].includes(parameter.in)) {
-      throw new Error(`Unsupported OpenAPI parameter location: ${parameter.in}`);
-    }
     const name = parameter.name;
     if (typeof name !== 'string') continue;
     nonBodyNames.add(name);
@@ -42,15 +40,25 @@ export const buildOpenAPIHttpRequest = async ({
       }
       continue;
     }
-
-    if (parameter.in === 'query') queryEntries.push([name, value]);
-    if (parameter.in === 'header') {
-      headerEntries.push([name, Array.isArray(value) ? value.join(',') : String(value)]);
+    // 未使用的可选 Cookie 不影响匿名调用；需要发送时仍明确拒绝，不能静默丢参。
+    if (!['query', 'header', 'path'].includes(parameter.in)) {
+      throw new Error(`Unsupported OpenAPI parameter location: ${parameter.in}`);
     }
-    if (parameter.in === 'path') {
-      if (value === '.' || value === '..')
-        throw new Error(`Invalid OpenAPI path parameter: ${name}`);
-      pathValues.set(name, encodeURIComponent(String(value)));
+    // content / allowReserved 需要不同的编码契约，不能伪装成普通 style 参数发送。
+    if (parameter.content || parameter.allowReserved === true) {
+      throw new Error(`Unsupported OpenAPI parameter encoding: ${name}`);
+    }
+    const entries = serializeOpenAPIParameter({
+      location: parameter.in,
+      name,
+      style: parameter.style,
+      explode: parameter.explode,
+      value
+    });
+    for (const [key, serialized] of entries) {
+      if (parameter.in === 'query') queryParams.append(key, serialized);
+      if (parameter.in === 'header') headerEntries.push([key, serialized]);
+      if (parameter.in === 'path') pathValues.set(key, serialized);
     }
   }
 
@@ -89,7 +97,7 @@ export const buildOpenAPIHttpRequest = async ({
   return {
     toolPath: resolvedPath,
     body,
-    queryParams: queryEntries.length ? Object.fromEntries(queryEntries) : undefined,
+    queryParams: queryParams.size ? queryParams : undefined,
     headers: {
       ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
       ...Object.fromEntries(headerEntries)

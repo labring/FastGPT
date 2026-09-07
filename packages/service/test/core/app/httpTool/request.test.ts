@@ -6,6 +6,7 @@ import {
   pathData2ToolList
 } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { assertToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
+import { axiosWithoutSSRF } from '@fastgpt/service/common/api/axios';
 
 const makeSchema = (method = 'post') =>
   JSON.stringify({
@@ -124,8 +125,15 @@ describe('buildOpenAPIHttpRequest', () => {
       label: 'unsupported cookie parameter',
       parameters: [{ in: 'cookie', name: 'session', schema: { type: 'string' } }],
       path: '/echo',
-      params: {},
+      params: { session: 'used-cookie' },
       error: 'Unsupported OpenAPI parameter location'
+    },
+    {
+      label: 'missing required cookie',
+      parameters: [{ in: 'cookie', name: 'session', required: true, schema: { type: 'string' } }],
+      path: '/echo',
+      params: {},
+      error: 'Missing OpenAPI cookie'
     }
   ])(
     'rejects $label before sending an incomplete request',
@@ -165,7 +173,7 @@ describe('buildOpenAPIHttpRequest', () => {
       });
       expect(request).toEqual({
         toolPath: '/echo/a%2Fb%3Fc',
-        queryParams: { limit: 0 },
+        queryParams: new URLSearchParams('limit=0'),
         headers: { 'Content-Type': 'application/json', 'X-Trace': 'trace' },
         body: {
           profile: params.profile,
@@ -222,6 +230,80 @@ describe('buildOpenAPIHttpRequest', () => {
       })
     ).not.toThrow();
     expect(tool.inputSchema?.properties?.tags.items).toEqual({ type: 'string' });
+  });
+
+  it('skips unused optional cookies and sends repeated query keys without Axios array brackets', async () => {
+    const apiSchemaStr = JSON.stringify({
+      openapi: '3.0.3',
+      info: { title: 'Search', version: '1' },
+      paths: {
+        '/search/{id}': {
+          get: {
+            parameters: [
+              { in: 'cookie', name: 'session', required: false, schema: { type: 'string' } },
+              { in: 'path', name: 'id', required: true, schema: { type: 'string' } },
+              { in: 'query', name: 'tags', schema: { type: 'array', items: { type: 'string' } } },
+              { in: 'query', name: 'q', schema: { type: 'string' } },
+              {
+                in: 'header',
+                name: 'X-Flags',
+                style: 'simple',
+                explode: true,
+                schema: { type: 'object' }
+              }
+            ],
+            responses: { '200': { description: 'OK' } }
+          }
+        }
+      }
+    });
+    const request = await buildOpenAPIHttpRequest({
+      apiSchemaStr,
+      toolPath: '/search/{id}',
+      method: 'GET',
+      params: {
+        id: 'a/b',
+        tags: ['a', 'b'],
+        q: '中文 &+#%',
+        session: undefined,
+        'X-Flags': { active: false, count: 0 }
+      }
+    });
+    expect(
+      axiosWithoutSSRF.getUri({
+        baseURL: 'https://example.com',
+        url: request.toolPath,
+        params: request.queryParams
+      })
+    ).toBe('https://example.com/search/a%2Fb?tags=a&tags=b&q=%E4%B8%AD%E6%96%87+%26%2B%23%25');
+    expect(request.headers).toEqual({ 'X-Flags': 'active=false,count=0' });
+    expect(request.body).toBeUndefined();
+  });
+
+  it.each([
+    { allowReserved: true },
+    { content: { 'application/json': { schema: { type: 'object' } } } }
+  ])('rejects unsupported encoding explicitly: %j', async (encoding) => {
+    const apiSchemaStr = JSON.stringify({
+      openapi: '3.0.3',
+      info: { title: 'Encoding', version: '1' },
+      paths: {
+        '/echo': {
+          get: {
+            parameters: [{ in: 'query', name: 'q', ...encoding }],
+            responses: { '200': { description: 'OK' } }
+          }
+        }
+      }
+    });
+    await expect(
+      buildOpenAPIHttpRequest({
+        apiSchemaStr,
+        toolPath: '/echo',
+        method: 'GET',
+        params: { q: 'value' }
+      })
+    ).rejects.toThrow('Unsupported OpenAPI parameter encoding');
   });
 
   it('fails explicitly when the operation or required parameters are missing', async () => {
