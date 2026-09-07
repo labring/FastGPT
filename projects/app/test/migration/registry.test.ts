@@ -16,14 +16,15 @@ const createMigration = (id: string): SystemMigration => ({
 });
 
 describe('validateSystemMigrationRegistry', () => {
-  it('registers the legacy model migration as the first blocking production task', () => {
+  it('registers team member role cleanup as the first blocking production task', () => {
     expect(systemMigrations[0]).toMatchObject({
-      id: '20260903_migrate_legacy_system_models',
+      id: '20260907_cleanup_team_member_roles',
       version: '4.17.0',
       blockStartup: true,
-      onFailure: SystemMigrationFailurePolicyEnum.stop
+      onFailure: SystemMigrationFailurePolicyEnum.stop,
+      progressSteps: [{ key: 'members' }, { key: 'validation' }]
     });
-    expect(systemMigrations.slice(1, -1).map((migration) => migration.id)).toEqual([
+    expect(systemMigrations.slice(2).map((migration) => migration.id)).toEqual([
       '20260903_backfill_model_permissions',
       '20260903_backfill_dataset_model_references',
       '20260903_backfill_evaluation_model_references',
@@ -32,18 +33,17 @@ describe('validateSystemMigrationRegistry', () => {
       '20260905_backfill_bill_metadata',
       '20260905_backfill_resource_owner_acl'
     ]);
-    expect(systemMigrations.slice(1, -1).every((migration) => !migration.blockStartup)).toBe(true);
+    expect(systemMigrations.slice(2).every((migration) => !migration.blockStartup)).toBe(true);
     expect(
       systemMigrations
-        .slice(1, -1)
+        .slice(2)
         .every((migration) => migration.onFailure === SystemMigrationFailurePolicyEnum.continue)
     ).toBe(true);
-    expect(systemMigrations.at(-1)).toMatchObject({
-      id: '20260907_cleanup_team_member_roles',
+    expect(systemMigrations[1]).toMatchObject({
+      id: '20260903_migrate_legacy_system_models',
       version: '4.17.0',
       blockStartup: true,
-      onFailure: SystemMigrationFailurePolicyEnum.stop,
-      progressSteps: [{ key: 'members' }, { key: 'validation' }]
+      onFailure: SystemMigrationFailurePolicyEnum.stop
     });
   });
 

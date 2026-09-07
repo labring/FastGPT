@@ -85,6 +85,28 @@ export type SystemMigration = {
  */
 export const systemMigrations = [
   {
+    id: '20260907_cleanup_team_member_roles',
+    version: '4.17.0',
+    nameKey: i18nT('system_migration:migrations.20260907_cleanup_team_member_roles.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20260907_cleanup_team_member_roles.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20260907_cleanup_team_member_roles.result'),
+    progressSteps: [
+      {
+        key: 'members',
+        labelKey: i18nT('system_migration:migrations.20260907_cleanup_team_member_roles.members')
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT('system_migration:migrations.20260907_cleanup_team_member_roles.validation')
+      }
+    ],
+    blockStartup: true,
+    onFailure: SystemMigrationFailurePolicyEnum.stop,
+    run: cleanupTeamMemberRoles
+  },
+  {
     id: '20260903_migrate_legacy_system_models',
     version: '4.17.0',
     nameKey: i18nT('system_migration:migrations.20260903_migrate_legacy_system_models.name'),
@@ -287,28 +309,6 @@ export const systemMigrations = [
     blockStartup: false,
     onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillResourceOwnerAcl
-  },
-  {
-    id: '20260907_cleanup_team_member_roles',
-    version: '4.17.0',
-    nameKey: i18nT('system_migration:migrations.20260907_cleanup_team_member_roles.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20260907_cleanup_team_member_roles.description'
-    ),
-    resultKey: i18nT('system_migration:migrations.20260907_cleanup_team_member_roles.result'),
-    progressSteps: [
-      {
-        key: 'members',
-        labelKey: i18nT('system_migration:migrations.20260907_cleanup_team_member_roles.members')
-      },
-      {
-        key: 'validation',
-        labelKey: i18nT('system_migration:migrations.20260907_cleanup_team_member_roles.validation')
-      }
-    ],
-    blockStartup: true,
-    onFailure: SystemMigrationFailurePolicyEnum.stop,
-    run: cleanupTeamMemberRoles
   }
 ] as const satisfies readonly SystemMigration[];
 
