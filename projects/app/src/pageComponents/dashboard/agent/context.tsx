@@ -44,6 +44,7 @@ type AppListContextType = {
   myApps: AppListItemType[];
   loadMyApps: () => Promise<void>;
   isFetchingApps: boolean;
+  isEmpty: boolean;
   ScrollData: ScrollListType;
   folderDetail: AppDetailType | undefined | null;
   paths: ParentTreePathItemType[];
@@ -67,6 +68,7 @@ export const AppListContext = createContext<AppListContextType>({
     throw new Error('Function not implemented.');
   },
   isFetchingApps: false,
+  isEmpty: false,
   ScrollData: () => <></>,
   folderDetail: undefined,
   paths: [],
@@ -146,6 +148,7 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
   const {
     data: myApps = [],
     isLoading: isFetchingApps,
+    isEmpty,
     ScrollData,
     fetchData
   } = useScrollPagination(
@@ -271,6 +274,7 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     ScrollData,
     refetchFolderDetail,
     isFetchingApps,
+    isEmpty,
     folderDetail,
     paths,
     onUpdateApp,

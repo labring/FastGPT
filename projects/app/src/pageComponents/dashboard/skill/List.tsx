@@ -48,7 +48,10 @@ import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 import { getGridPageSize } from '@fastgpt/web/hooks/useResponsiveGridPageSize';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { getResourceListDisplayTime } from '@/pageComponents/dashboard/agent/filters/utils';
+import {
+  getResourceListDisplayTime,
+  hasResourceListActiveFilter
+} from '@/pageComponents/dashboard/agent/filters/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import ResourceCardSkeleton from '@/pageComponents/dashboard/ResourceCardSkeleton';
 
@@ -200,6 +203,7 @@ const List = ({
     skills,
     refreshSkills,
     isFetchingSkills,
+    isEmpty,
     searchKey,
     setSearchKey,
     folderDetail,
@@ -212,6 +216,7 @@ const List = ({
     skills: v.skills,
     refreshSkills: v.refreshSkills,
     isFetchingSkills: v.isFetchingSkills,
+    isEmpty: v.isEmpty,
     searchKey: v.searchKey,
     setSearchKey: v.setSearchKey,
     folderDetail: v.folderDetail,
@@ -225,10 +230,15 @@ const List = ({
   const [editedSkill, setEditedSkill] = useState<EditResourceInfoFormType>();
   const [moveSkillId, setMoveSkillId] = useState<string>();
   const [editPerSkillId, setEditPerSkillId] = useState<string>();
-  const isInitialLoading = skills.length === 0 && isFetchingSkills;
+  const hasActiveFilter = hasResourceListActiveFilter({
+    searchKey,
+    creatorMode: listFilters.creator.mode,
+    applyToolbarFilters: isPc
+  });
+  const isInitialLoading = !isEmpty && skills.length === 0 && isFetchingSkills;
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: skills,
-    listKey: `${router.pathname}-${parentId || ''}-${searchKey}-${columnCount}-${pageSize}-${isInitialLoading}`,
+    listKey: `${router.pathname}-${parentId || ''}-${searchKey}-${listFilters.creator.mode}-${listFilters.creator.tmbIds.join(',')}-${listFilters.sort}-${columnCount}-${pageSize}-${isInitialLoading}`,
     reservedSlotCount: isInitialLoading ? 0 : 1,
     estimatedRowHeight: 160,
     estimatedRowGap: 20,
@@ -582,7 +592,7 @@ const List = ({
             {renderVirtualGridItems(renderSkillCard)}
           </Grid>
         ) : skills.length === 0 && !folderDetail ? (
-          searchKey ? (
+          hasActiveFilter ? (
             <EmptyTip />
           ) : onClickCreate && onClickImport ? (
             <SkillDashboardEmptyHero onClickImport={onClickImport} onClickCreate={onClickCreate} />

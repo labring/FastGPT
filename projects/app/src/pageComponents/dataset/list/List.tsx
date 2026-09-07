@@ -32,7 +32,10 @@ import UserBox from '@fastgpt/web/components/common/UserBox';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
-import { getResourceListDisplayTime } from '@/pageComponents/dashboard/agent/filters/utils';
+import {
+  getResourceListDisplayTime,
+  hasResourceListActiveFilter
+} from '@/pageComponents/dashboard/agent/filters/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import ResourceCardSkeleton from '@/pageComponents/dashboard/ResourceCardSkeleton';
 
@@ -53,6 +56,7 @@ function List() {
     myDatasets,
     ScrollData,
     isFetchingDatasets,
+    isEmpty,
     folderDetail,
     searchKey,
     setSearchKey,
@@ -79,11 +83,17 @@ function List() {
       }),
     [myDatasets]
   );
-  const isInitialLoading = formatDatasets.length === 0 && isFetchingDatasets;
+  const hasActiveFilter = hasResourceListActiveFilter({
+    searchKey,
+    type: listFilters.type,
+    creatorMode: listFilters.creator.mode,
+    applyToolbarFilters: isPc
+  });
+  const isInitialLoading = !isEmpty && formatDatasets.length === 0 && isFetchingDatasets;
 
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: formatDatasets,
-    listKey: `${router.pathname}-${parentId || ''}-${searchKey}-${columnCount}-${pageSize}-${isInitialLoading}`,
+    listKey: `${router.pathname}-${parentId || ''}-${searchKey}-${listFilters.type}-${listFilters.creator.mode}-${listFilters.creator.tmbIds.join(',')}-${listFilters.sort}-${columnCount}-${pageSize}-${isInitialLoading}`,
     estimatedRowHeight: 160,
     estimatedRowGap: 20,
     loadingItemCount: isFetchingDatasets ? pageSize : 0,
@@ -436,16 +446,18 @@ function List() {
             </Grid>
           )
         )}
-        {myDatasets.length === 0 && (
+        {isEmpty && (
           <EmptyTip
             pt={'35vh'}
             text={
-              canCreateDataset
-                ? t('common:core.dataset.Empty Dataset Tips')
-                : t('common:core.dataset.Empty Dataset Tips No Permission')
+              hasActiveFilter
+                ? undefined
+                : canCreateDataset
+                  ? t('common:core.dataset.Empty Dataset Tips')
+                  : t('common:core.dataset.Empty Dataset Tips No Permission')
             }
             flexGrow="1"
-          ></EmptyTip>
+          />
         )}
 
         {editedDataset && (

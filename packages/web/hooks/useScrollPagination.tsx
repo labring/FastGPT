@@ -55,12 +55,13 @@ export function useScrollPagination<
 
   const [data, setData] = useState<TData['list']>([]);
   const [total, setTotal] = useState(0);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [isLoading, { setTrue, setFalse }] = useBoolean(false);
   const requestedOffsetRef = useRef<number>();
   const requestControllerRef = useRef<AbortController>();
   const requestIdRef = useRef(0);
   const isRequestingRef = useRef(false);
-  const isEmpty = total === 0 && !isLoading;
+  const isEmpty = hasLoaded && total === 0 && data.length === 0 && !isLoading;
 
   const noMore = data.length >= total;
 
@@ -106,6 +107,9 @@ export function useScrollPagination<
         setData([]);
         setTotal(0);
       }
+      if (init) {
+        setHasLoaded(false);
+      }
 
       try {
         const res = await api(
@@ -120,6 +124,9 @@ export function useScrollPagination<
         if (requestController.signal.aborted || requestId !== requestIdRef.current) return;
 
         setTotal(res.total);
+        if (offset === 0) {
+          setHasLoaded(true);
+        }
 
         if (scrollLoadType === 'top') {
           const prevHeight = ScrollContainerRef?.current?.scrollHeight || 0;
@@ -278,6 +285,7 @@ export function useScrollPagination<
     ScrollData,
     isLoading,
     total: Math.max(total, data.length),
+    isEmpty,
     data,
     setData,
     setTotal,

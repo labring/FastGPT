@@ -6,6 +6,7 @@ import {
   defaultAppListFilters,
   getResourceListDisplayTime,
   hasAppListActiveFilter,
+  hasResourceListActiveFilter,
   resolveSceneListType,
   toListTmbIds
 } from '@/pageComponents/dashboard/agent/filters/utils';
@@ -82,6 +83,32 @@ describe('app list filter helpers', () => {
         searchKey: '',
         type: AppTypeEnum.workflow,
         creatorMode: 'selected',
+        applyToolbarFilters: false
+      })
+    ).toBe(false);
+  });
+
+  it('shares active-filter semantics with dataset and skill lists', () => {
+    expect(
+      hasResourceListActiveFilter({
+        searchKey: '',
+        type: 'all',
+        creatorMode: 'selected',
+        applyToolbarFilters: true
+      })
+    ).toBe(true);
+    expect(
+      hasResourceListActiveFilter({
+        searchKey: '',
+        creatorMode: 'all',
+        applyToolbarFilters: true
+      })
+    ).toBe(false);
+    expect(
+      hasResourceListActiveFilter({
+        searchKey: '  ',
+        type: 'websiteDataset',
+        creatorMode: 'all',
         applyToolbarFilters: false
       })
     ).toBe(false);

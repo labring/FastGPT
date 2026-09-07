@@ -42,6 +42,7 @@ export type SkillListItemType = Omit<
 type SkillListContextType = {
   skills: SkillListItemType[];
   isFetchingSkills: boolean;
+  isEmpty: boolean;
   refreshSkills: () => void;
   ScrollData: ScrollListType;
   searchKey: string;
@@ -60,6 +61,7 @@ type SkillListContextType = {
 export const SkillListContext = createContext<SkillListContextType>({
   skills: [],
   isFetchingSkills: false,
+  isEmpty: false,
   refreshSkills: () => {
     throw new Error('Function not implemented.');
   },
@@ -110,6 +112,7 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
   const {
     data: skills = [],
     isLoading: isFetchingSkills,
+    isEmpty,
     ScrollData,
     fetchData
   } = useScrollPagination(
@@ -174,6 +177,7 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
   const contextValue: SkillListContextType = {
     skills,
     isFetchingSkills,
+    isEmpty,
     refreshSkills,
     ScrollData,
     searchKey,

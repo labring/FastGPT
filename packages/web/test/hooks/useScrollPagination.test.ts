@@ -92,6 +92,24 @@ const renderHarness = async (root: Root, props: HarnessProps) => {
 };
 
 describe('useScrollPagination', () => {
+  it('marks an empty result only after the current request succeeds', async () => {
+    const { api, requests } = createDeferredApi();
+    const onState = vi.fn();
+    const root = createRoot(document.createElement('div'));
+
+    await renderHarness(root, { query: 'empty', api, onState });
+
+    expect(onState.mock.lastCall?.[0].isEmpty).toBe(false);
+
+    await act(async () => {
+      requests[0].resolve({ list: [], total: 0 });
+      await Promise.resolve();
+    });
+
+    expect(onState.mock.lastCall?.[0].isEmpty).toBe(true);
+    root.unmount();
+  });
+
   it('cancels the previous init request and keeps the latest response', async () => {
     const { api, requests } = createDeferredApi();
     const onState = vi.fn();

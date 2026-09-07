@@ -45,6 +45,7 @@ export type DatasetContextType = {
   refetchPaths: () => void;
   refetchFolderDetail: () => Promise<DatasetItemType | undefined>;
   isFetchingDatasets: boolean;
+  isEmpty: boolean;
   ScrollData: ScrollListType;
   setMoveDatasetId: (id: string) => void;
   paths: ParentTreePathItemType[];
@@ -63,6 +64,7 @@ export type DatasetContextType = {
 
 export const DatasetsContext = createContext<DatasetContextType>({
   isFetchingDatasets: false,
+  isEmpty: false,
   ScrollData: () => <></>,
   setMoveDatasetId: () => {},
   refetchPaths: () => {},
@@ -130,7 +132,8 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     data: myDatasets = [],
     fetchData,
     ScrollData,
-    isLoading: isFetchingDatasets
+    isLoading: isFetchingDatasets,
+    isEmpty
   } = useScrollPagination(
     ({ offset = 0, pageSize = 50 }) =>
       getDatasetsV2({
@@ -225,6 +228,7 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
 
   const contextValue = {
     isFetchingDatasets,
+    isEmpty,
     ScrollData,
     setMoveDatasetId,
     paths,

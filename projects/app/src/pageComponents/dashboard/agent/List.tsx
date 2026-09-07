@@ -78,6 +78,7 @@ const List = () => {
     appType,
     loadMyApps,
     isFetchingApps,
+    isEmpty,
     onUpdateApp,
     setMoveAppId,
     folderDetail,
@@ -100,10 +101,10 @@ const List = () => {
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
   const [editPerAppId, setEditPerAppId] = useState<string>();
-  const isInitialLoading = myApps.length === 0 && isFetchingApps;
+  const isInitialLoading = !isEmpty && myApps.length === 0 && isFetchingApps;
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: myApps,
-    listKey: `${router.pathname}-${appType}-${parentId || ''}-${searchKey}-${columnCount}-${pageSize}-${isInitialLoading}`,
+    listKey: `${router.pathname}-${appType}-${parentId || ''}-${searchKey}-${listFilters.type}-${listFilters.creator.mode}-${listFilters.creator.tmbIds.join(',')}-${listFilters.sort}-${columnCount}-${pageSize}-${isInitialLoading}`,
     reservedSlotCount: isInitialLoading ? 0 : 1,
     estimatedRowHeight: 160,
     estimatedRowGap: 20,
@@ -462,7 +463,7 @@ const List = () => {
           >
             {renderVirtualGridItems(renderAppCard)}
           </Grid>
-        ) : myApps.length === 0 && !folderDetail ? (
+        ) : isEmpty && !folderDetail ? (
           hasActiveFilter ? (
             <EmptyTip />
           ) : isPc && hasCreatePer ? (

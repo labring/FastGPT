@@ -124,23 +124,32 @@ export const getResourceListDisplayTime = ({
   updateTime: Date;
 }) => (sort === AppListSortEnum.updateTimeDesc ? updateTime : createTime);
 
+type ResourceListActiveFilterProps = {
+  searchKey: string;
+  type?: string;
+  creatorMode: AppListFilterType['creator']['mode'];
+  applyToolbarFilters: boolean;
+};
+
 /**
- * 工作台列表是否处于「筛选后可能为空」的状态。
- * 排序不算筛选：改排序不会把列表筛空，空态仍应走首次创建。
- * 移动端工具栏筛选项不可见时，只看搜索。
+ * 判断资源列表是否存在会改变结果集的筛选条件。
+ * 排序只改变顺序，不影响空结果状态；移动端未展示的筛选条件也不参与判断。
  */
-export const hasAppListActiveFilter = ({
+export const hasResourceListActiveFilter = ({
   searchKey,
   type,
   creatorMode,
   applyToolbarFilters
-}: {
+}: ResourceListActiveFilterProps) => {
+  if (searchKey.trim()) return true;
+  if (!applyToolbarFilters) return false;
+  return type !== undefined && type !== 'all' ? true : creatorMode === 'selected';
+};
+
+/** 判断 Agent 列表是否处于可能返回空结果的筛选状态。 */
+export const hasAppListActiveFilter = (props: {
   searchKey: string;
   type: AppListFilterType['type'];
   creatorMode: AppListFilterType['creator']['mode'];
   applyToolbarFilters: boolean;
-}) => {
-  if (searchKey.trim()) return true;
-  if (!applyToolbarFilters) return false;
-  return type !== 'all' || creatorMode === 'selected';
-};
+}) => hasResourceListActiveFilter(props);

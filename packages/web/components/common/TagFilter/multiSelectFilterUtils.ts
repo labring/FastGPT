@@ -70,6 +70,27 @@ export const syncSelectedFilterValues = <T extends string>(
 };
 
 /**
+ * Sync selected values only from the current request, preserving values just selected by the user.
+ * Persisted values can still be cleared when the matching request confirms they are invalid.
+ */
+export const syncSelectedFilterValuesForRequest = <T extends string>({
+  value,
+  validValues,
+  selectedIdsKey,
+  requestKey,
+  userSelectedIdsKey
+}: {
+  value: MultiSelectFilterValue<T>;
+  validValues: T[];
+  selectedIdsKey: string;
+  requestKey: string;
+  userSelectedIdsKey?: string;
+}): MultiSelectFilterValue<T> | null => {
+  if (requestKey !== selectedIdsKey || userSelectedIdsKey === selectedIdsKey) return null;
+  return syncSelectedFilterValues(value, validValues);
+};
+
+/**
  * 把已选但不在当前列表里的项补回去，只影响展示，不改筛选值。
  * 日志用户列表随日期变化时，触发器和下拉仍能显示之前选中的人。
  */
