@@ -100,6 +100,34 @@ describe('admin settings model create/update api', () => {
     });
   });
 
+  it('saves a free LLM tier and removes persisted and submitted legacy prices', async () => {
+    const model = await MongoAIModel.create({
+      ...buildLlmDocument(),
+      inputPrice: 1,
+      outputPrice: 3,
+      charsPointsPrice: 9
+    });
+    const res = await callApi({
+      handler: updateModelApi,
+      body: {
+        modelId: String(model._id),
+        modelData: {
+          ...buildLlmUpdateData(),
+          inputPrice: 1,
+          outputPrice: 3,
+          charsPointsPrice: 9,
+          priceTiers: [{ minInputTokens: 0, inputPrice: 0, outputPrice: 0 }]
+        }
+      }
+    });
+    expect(res.error).toBeUndefined();
+    const updated = await MongoAIModel.findById(model._id).lean();
+    expect(updated).not.toHaveProperty('inputPrice');
+    expect(updated).not.toHaveProperty('outputPrice');
+    expect(updated).not.toHaveProperty('charsPointsPrice');
+    expect(updated?.priceTiers).toMatchObject([{ inputPrice: 0, outputPrice: 0 }]);
+  });
+
   it('creates an active model with no channel or connection configuration', async () => {
     const res = await callApi({
       handler: createModelApi,

@@ -26,7 +26,7 @@ vi.mock('@fastgpt/service/core/ai/config/utils', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  findModelData: mocks.findModelData
+  getModelHandle: async () => ({ findModelData: mocks.findModelData })
 }));
 
 vi.mock('@fastgpt/service/thirdProvider/aiproxy/channel', () => ({

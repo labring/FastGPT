@@ -20,7 +20,12 @@ const { dispatchWorkflowReadFilesMock, dispatchAgentDatasetSearchMock, getLLMMod
 
 vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model')>()),
-  getLLMModelData: getLLMModelDataMock
+  getModelHandle: async () => ({
+    ...(await (
+      await importOriginal<typeof import('@fastgpt/service/core/ai/model')>()
+    ).getModelHandle()),
+    getLLMModelData: getLLMModelDataMock
+  })
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/readFiles', () => ({

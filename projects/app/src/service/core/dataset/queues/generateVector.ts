@@ -1,4 +1,6 @@
-import { ensureModelCatalogReady } from '@fastgpt/service/core/ai/config/runtime';
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
+
 import { createDatasetData, updateDatasetDataByIndexes } from '@/service/core/dataset/data/data';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -6,7 +8,7 @@ import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { checkTeamAiPointsAndLock } from './utils';
 import { addMinutes } from 'date-fns';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { getDatasetEmbeddingModel, getDatasetVlmModel } from '@fastgpt/service/core/dataset/model';
+
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getMaxIndexSize } from '@fastgpt/global/core/dataset/training/utils';
@@ -50,13 +52,18 @@ type TrainingDataType = DatasetTrainingSchemaType & PopulateType;
  * 重新生成；这里仅保留 custom/question/summary/image 等外部索引。其中 image 是 VLM
  * 生成的文本描述索引，只有当前集合仍开启图片索引且 VLM 可用时才保留。
  */
-export const getRebuildBaseIndexes = (trainingData: TrainingDataType) => {
+export const getRebuildBaseIndexes = async (trainingData: TrainingDataType) => {
   const sourceIndexes = trainingData.indexes?.length
     ? trainingData.indexes.map((index) => ({ ...index }))
     : trainingData.data?.indexes || [];
+  const modelHandle = await getModelHandle();
   const { supportVlm } = getDatasetImageIndexCapability({
-    vectorModel: getDatasetEmbeddingModel(trainingData.dataset),
-    vlmModel: getDatasetVlmModel(trainingData.dataset)
+    vectorModel: modelHandle.getEmbeddingModelData(
+      getDatasetModelReference(trainingData.dataset, 'embedding')
+    ),
+    vlmModel: modelHandle.getVlmModelData(getDatasetModelReference(trainingData.dataset, 'vlm'), {
+      optional: true
+    })
   });
 
   return sourceIndexes.filter((index) => {
@@ -76,14 +83,14 @@ export const getRebuildBaseIndexes = (trainingData: TrainingDataType) => {
 /**
  * 获取完整 rebuild 最终写入的数据，优先使用本轮图片和自动索引训练产物。
  */
-export const getRebuildUpdateInput = (trainingData: TrainingDataType) => {
+export const getRebuildUpdateInput = async (trainingData: TrainingDataType) => {
   if (!trainingData.data) return;
 
   return {
     q: trainingData.q ? trainingData.q : trainingData.data.q,
     a: trainingData.a ?? trainingData.data.a,
     imageId: trainingData.data.imageId,
-    indexes: getRebuildBaseIndexes(trainingData),
+    indexes: await getRebuildBaseIndexes(trainingData),
     imageDescMap: trainingData.imageDescMap
   };
 };
@@ -98,7 +105,6 @@ export async function generateVector(): Promise<any> {
 
   try {
     while (true) {
-      await ensureModelCatalogReady();
       const start = Date.now();
 
       // get training data
@@ -201,11 +207,14 @@ export async function generateVector(): Promise<any> {
         })();
 
         // push usage
+        const modelHandle = await getModelHandle();
         pushGenerateVectorUsage({
           teamId: data.teamId,
           tmbId: data.tmbId,
           inputTokens: tokens,
-          model: getDatasetEmbeddingModel(data.dataset),
+          model: modelHandle.getEmbeddingModelData(
+            getDatasetModelReference(data.dataset, 'embedding')
+          ),
           usageId: data.billId
         });
 
@@ -253,18 +262,24 @@ const enqueueFollowingDatasetRebuild = async ({
   trainingData
 }: {
   trainingData: TrainingDataType;
-}) =>
-  retryFn(() =>
+}) => {
+  const modelHandle = await getModelHandle();
+  return retryFn(() =>
     enqueueNextDatasetRebuildTask({
       teamId: String(trainingData.teamId),
       tmbId: String(trainingData.tmbId),
       datasetId: String(trainingData.datasetId),
       billId: trainingData.billId,
-      vectorModel: getDatasetEmbeddingModel(trainingData.dataset),
-      vlmModel: getDatasetVlmModel(trainingData.dataset),
+      vectorModel: modelHandle.getEmbeddingModelData(
+        getDatasetModelReference(trainingData.dataset, 'embedding')
+      ),
+      vlmModel: modelHandle.getVlmModelData(getDatasetModelReference(trainingData.dataset, 'vlm'), {
+        optional: true
+      }),
       synonymVersion: trainingData.synonymVersion
     })
   );
+};
 
 const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
   // 同义词重建需要可靠续接；普通模型重建保持原有的尽力续接语义。
@@ -280,9 +295,11 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
     return Promise.reject('Not data');
   }
   const datasetData = trainingData.data;
-
-  const embModel = getDatasetEmbeddingModel(trainingData.dataset);
-  const rebuildUpdateInput = getRebuildUpdateInput(trainingData);
+  const modelHandle = await getModelHandle();
+  const embModel = modelHandle.getEmbeddingModelData(
+    getDatasetModelReference(trainingData.dataset, 'embedding')
+  );
+  const rebuildUpdateInput = await getRebuildUpdateInput(trainingData);
 
   const { tokens } = await updateDatasetDataByIndexes({
     dataId: String(datasetData._id),
@@ -304,8 +321,12 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
 };
 
 const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
+  // 在业务事务开始前获取目录，避免刷新等待延长持锁时间。
+  const modelHandle = await getModelHandle();
   return mongoSessionRun(async (session) => {
-    const embModel = getDatasetEmbeddingModel(trainingData.dataset);
+    const embModel = modelHandle.getEmbeddingModelData(
+      getDatasetModelReference(trainingData.dataset, 'embedding')
+    );
 
     // insert new data to dataset
     const { tokens } = await createDatasetData({

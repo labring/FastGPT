@@ -1,3 +1,4 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -16,7 +17,6 @@ import {
   type OptimizePromptBody
 } from '@fastgpt/global/openapi/core/ai/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getLLMModelData } from '@fastgpt/service/core/ai/model';
 
 const getPromptOptimizerSystemPrompt = () => {
   return `# Role
@@ -83,7 +83,8 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
       authToken: true,
       authApiKey: true
     });
-    const modelData = getLLMModelData({ modelId });
+    const modelHandle = await getModelHandle();
+    const modelData = modelHandle.getLLMModelData({ modelId });
 
     res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
     res.setHeader('X-Accel-Buffering', 'no');

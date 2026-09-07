@@ -1,3 +1,4 @@
+import { getModelProviderMetadata } from '@fastgpt/service/core/app/provider/controller';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
@@ -17,7 +18,7 @@ async function handler(req: ApiRequestProps): Promise<GetAdminModelTemplatesResp
 
   return GetAdminModelTemplatesResponseSchema.parse({
     models,
-    providers: global.ModelProviderRawCache
+    providers: getModelProviderMetadata().providers
   });
 }
 

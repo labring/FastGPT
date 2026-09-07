@@ -1,7 +1,9 @@
+import { getModelHandle } from '../ai/model';
+import { getDatasetModelReference } from '../dataset/model';
 import { MongoDataset } from '../dataset/schema';
-import { getDefaultEmbeddingModelData } from '../ai/model';
+
 import { desensitizeSystemModel } from '../ai/config/utils';
-import { getDatasetEmbeddingModel } from '../dataset/model';
+
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -180,13 +182,15 @@ export async function rewriteAppWorkflowToDetail({
         _id: datasetId,
         ...(!isRoot && teamId && { teamId })
       }).lean();
-
+      const modelHandle = await getModelHandle();
       if (dataset && !dataset.deleteTime) {
         return {
           datasetId: String(dataset._id),
           avatar: dataset.avatar,
           name: dataset.name,
-          vectorModel: getDatasetEmbeddingModel(dataset),
+          vectorModel: modelHandle.getEmbeddingModelData(
+            getDatasetModelReference(dataset, 'embedding')
+          ),
           isDeleted: false
         };
       }
@@ -196,7 +200,9 @@ export async function rewriteAppWorkflowToDetail({
         datasetId,
         avatar: defaultDeletedDatasetAvatar,
         name: snapshot.name || '',
-        vectorModel: snapshot.vectorModel || desensitizeSystemModel(getDefaultEmbeddingModelData()),
+        vectorModel:
+          snapshot.vectorModel ||
+          desensitizeSystemModel(modelHandle.getDefaultModelData('embedding')),
         isDeleted: true
       };
     };

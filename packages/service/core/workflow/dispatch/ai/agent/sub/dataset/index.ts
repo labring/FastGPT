@@ -1,7 +1,8 @@
+import { getModelHandle } from '../../../../../../ai/model';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getEmbeddingModelData } from '../../../../../../ai/model';
+
 import { createLLMResponse } from '../../../../../../ai/llm/request';
 import { countPromptTokens } from '../../../../../../../common/string/tiktoken/index';
 import { calculateCompressionThresholds } from '../../../../../../ai/llm/compress/constants';
@@ -9,8 +10,6 @@ import { formatModelChars2Points } from '../../../../../../../support/wallet/usa
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDataset } from '../../../../../../dataset/schema';
-import { getDatasetSearchVlmModel } from '../../../../../../dataset/search/vlm';
-import { getDatasetSearchAuxiliaryModels } from '../../../../../../dataset/search/auxiliaryModels';
 import {
   defaultSearchDatasetData,
   type DefaultSearchDatasetDataProps
@@ -220,12 +219,31 @@ export const dispatchAgentDatasetSearch = async ({
       datasetIds[0],
       'vectorModelId vectorModel vlmModelId vlmModel'
     ).lean();
-    const vectorModel = getEmbeddingModelData({
+    const modelHandle = await getModelHandle();
+    const vectorModel = modelHandle.getEmbeddingModelData({
       modelId: dataset?.vectorModelId,
       model: dataset?.vectorModel
     });
-    const vlmModelData = await getDatasetSearchVlmModel({ teamId, datasetIds });
-    const { rerankModelData, extensionModelData } = getDatasetSearchAuxiliaryModels(datasetParams);
+    const vlmModelData = modelHandle.getVlmModelData(
+      {
+        modelId: dataset?.vlmModelId,
+        model: dataset?.vlmModel
+      },
+      { optional: true }
+    );
+    // Get Rerank Model
+    const rerankModelData = datasetParams.usingReRank
+      ? modelHandle.getRerankModelData({
+          modelId: datasetParams.rerankModelId,
+          model: datasetParams.rerankModel
+        })
+      : undefined;
+    const extensionModelData = datasetParams.datasetSearchUsingExtensionQuery
+      ? modelHandle.getLLMModelData({
+          modelId: datasetParams.datasetSearchExtensionModelId,
+          model: datasetParams.datasetSearchExtensionModel
+        })
+      : undefined;
 
     const searchData: DefaultSearchDatasetDataProps = {
       histories: [],

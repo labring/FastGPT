@@ -1,4 +1,6 @@
-import { ensureModelCatalogReady } from '@fastgpt/service/core/ai/config/runtime';
+import { getModelProviderMetadata } from '@fastgpt/service/core/app/provider/controller';
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
+
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
@@ -11,7 +13,6 @@ import { getAdminAIProxyChannelItems } from '@fastgpt/service/thirdProvider/aipr
 
 async function handler(req: ApiRequestProps): Promise<GetAdminSystemModelListResponse> {
   await authSystemAdmin({ req });
-  await ensureModelCatalogReady();
 
   const channelItems = await getAdminAIProxyChannelItems();
   const channelsByModel = new Map<string, (typeof channelItems)[number]['summary'][]>();
@@ -23,16 +24,16 @@ async function handler(req: ApiRequestProps): Promise<GetAdminSystemModelListRes
       channelsByModel.set(model, summaries);
     }
   }
-
+  const modelHandle = await getModelHandle();
   return GetAdminSystemModelListResponseSchema.parse({
-    models: global.systemModelList.map((model) => ({
+    models: modelHandle.getAllModels().map((model) => ({
       ...desensitizeSystemModel(model),
       channels: channelsByModel.get(model.model) ?? []
     })),
     channels: channelItems.map((channel) => channel.summary),
-    providers: global.ModelProviderRawCache,
-    defaultModelIds: global.systemConfiguredDefaultModelIds,
-    aiproxyChannels: global.aiproxyChannelsCache
+    providers: getModelProviderMetadata().providers,
+    defaultModelIds: modelHandle.configuredDefaultModelIds,
+    aiproxyChannels: getModelProviderMetadata().aiproxyChannels
   });
 }
 

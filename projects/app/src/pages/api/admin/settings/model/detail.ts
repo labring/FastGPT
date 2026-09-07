@@ -1,8 +1,9 @@
-import { ensureModelCatalogReady } from '@fastgpt/service/core/ai/config/runtime';
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
+
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import { findModelData } from '@fastgpt/service/core/ai/model';
+
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   AdminSystemModelReferenceSchema,
@@ -17,10 +18,10 @@ async function handler(
   req: ApiRequestProps<Record<string, never>, AdminSystemModelReference>
 ): Promise<GetAdminSystemModelDetailResponse> {
   await authSystemAdmin({ req });
-  await ensureModelCatalogReady();
 
   const reference = parseApiInput({ req, querySchema: AdminSystemModelReferenceSchema }).query;
-  const modelItem = findModelData(reference);
+  const modelHandle = await getModelHandle();
+  const modelItem = modelHandle.findModelData(reference);
   if (!modelItem) return Promise.reject(ModelErrEnum.unExist);
 
   const channelItems = await getAdminAIProxyChannelItems();

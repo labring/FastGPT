@@ -27,6 +27,7 @@ vi.mock('../../../../core/ai/config/entity', () => ({
 }));
 
 import {
+  getSystemModelConfigUpdate,
   updateSystemModelConfig,
   updateSystemModelStatus
 } from '../../../../core/ai/config/service';
@@ -134,5 +135,33 @@ describe('system model update service', () => {
       updateSystemModelStatus({ modelIds: ['model-1', 'missing-model'], isActive: false })
     ).rejects.toBe('modelUnExist');
     expect(mocks.updatedReloadSystemModel).not.toHaveBeenCalled();
+  });
+});
+
+describe('getSystemModelConfigUpdate', () => {
+  it('unsets all legacy LLM prices even when the caller supplies them', () => {
+    const result = getSystemModelConfigUpdate({
+      ...modelData,
+      inputPrice: 2,
+      outputPrice: 3,
+      charsPointsPrice: 4,
+      priceTiers: []
+    });
+    expect(result.$set).toMatchObject({ priceTiers: [] });
+    expect(result.$set).not.toHaveProperty('inputPrice');
+    expect(result.$set).not.toHaveProperty('outputPrice');
+    expect(result.$set).not.toHaveProperty('charsPointsPrice');
+    expect(result.$unset).toMatchObject({ inputPrice: 1, outputPrice: 1, charsPointsPrice: 1 });
+  });
+
+  it('preserves the active non-LLM comprehensive price field', () => {
+    const result = getSystemModelConfigUpdate({
+      ...modelData,
+      type: ModelTypeEnum.stt,
+      config: {},
+      charsPointsPrice: 4
+    });
+    expect(result.$set).toMatchObject({ charsPointsPrice: 4 });
+    expect(result.$unset).not.toHaveProperty('charsPointsPrice');
   });
 });

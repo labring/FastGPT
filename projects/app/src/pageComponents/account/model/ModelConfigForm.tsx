@@ -4,7 +4,11 @@ import { Box, Flex, Grid, GridItem, HStack, Input, Switch } from '@chakra-ui/rea
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.schema';
 import type { ModelProviderItemType } from '@fastgpt/global/core/ai/provider';
-import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
+import {
+  getRuntimeResolvedPriceTiers,
+  normalizeModelPricingForRead,
+  normalizeModelPricingForSave
+} from '@fastgpt/global/core/ai/pricing';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -311,6 +315,7 @@ const ModelConfigForm = ({
 }: ModelConfigFormProps) => {
   const { t } = useClientTranslation('config_model');
   const { feConfigs } = useSystemStore();
+  const initialModelData = normalizeModelPricingForRead(modelData);
 
   const {
     control,
@@ -321,10 +326,10 @@ const ModelConfigForm = ({
     formState: { isDirty }
   } = useForm<SystemModelDocumentDataType>({
     defaultValues: {
-      ...modelData,
+      ...initialModelData,
       priceTiers: (() => {
         if (modelData.type !== ModelTypeEnum.llm) return undefined;
-        const tiers = getRuntimeResolvedPriceTiers(modelData);
+        const tiers = initialModelData.priceTiers ?? [];
         if (tiers.length === 0) return [emptyPriceTier];
 
         const last = tiers[tiers.length - 1];
@@ -398,7 +403,7 @@ const ModelConfigForm = ({
           data.config.maxTemperature = null;
         }
 
-        const priceTiers = getRuntimeResolvedPriceTiers(data);
+        const priceTiers = getRuntimeResolvedPriceTiers({ priceTiers: data.priceTiers });
 
         let currentLowerExclusiveBound = 0;
 
@@ -438,7 +443,7 @@ const ModelConfigForm = ({
         }
       }
 
-      return onSubmit(data);
+      return onSubmit(normalizeModelPricingForSave(data));
     },
     {
       onSuccess: () => {

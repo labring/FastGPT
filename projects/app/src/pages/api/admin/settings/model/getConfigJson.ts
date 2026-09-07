@@ -1,4 +1,3 @@
-import { ensureModelCatalogReady } from '@fastgpt/service/core/ai/config/runtime';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
@@ -13,7 +12,7 @@ import {
 
 async function handler(req: ApiRequestProps): Promise<GetSystemModelConfigJsonResponse> {
   await authSystemAdmin({ req });
-  await ensureModelCatalogReady();
+
   const models = await MongoAIModel.find({ scope: ModelScopeEnum.system }).lean();
 
   return GetSystemModelConfigJsonResponseSchema.parse(

@@ -1,6 +1,6 @@
+import { getModelProviderMetadata } from '../../app/provider/controller';
 import type { SystemDefaultModelType } from '../type';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { MongoAIModel } from './schema';
 import {
   type EmbeddingSystemModelDataType,
   type LLMSystemModelDataType,
@@ -12,7 +12,6 @@ import {
   type SystemModelDataType,
   type SystemModelDocumentDataType
 } from '@fastgpt/global/core/ai/model.schema';
-import { debounce } from 'lodash-es';
 import { getModelProvider } from '../../../core/app/provider/controller';
 import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
 import { preloadModelProviders } from '../../../core/app/provider/controller';
@@ -21,8 +20,9 @@ import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { clearAllMyModelsCache } from '../../../support/permission/model/controller';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { MongoAIDefaultModel } from '../defaultModel/schema';
 import { readSystemModelSnapshot, readSystemModelRevision } from './entity';
+import { withTimeout } from '@fastgpt/global/common/system/utils';
+import { createModelHandle, getCachedModelHandle, publishModelHandle } from './handle';
 
 /**
  * 插件模型协议为了便于声明，将不同模型类型的能力字段平铺在顶层；数据库 canonical
@@ -190,8 +190,9 @@ const publishInstalledModels = async ({
       .map((model) => `${model.modelId}:${model.model}`)
       .sort()
       .join('\n');
-  const previousPermissionCacheSignature = global.systemActiveModelList
-    ? getPermissionCacheSignature(global.systemActiveModelList)
+  const previousHandle = getCachedModelHandle();
+  const previousPermissionCacheSignature = previousHandle
+    ? getPermissionCacheSignature(previousHandle.getActiveModels())
     : undefined;
 
   const _systemModelList: SystemModelDataType[] = [];
@@ -324,21 +325,24 @@ const publishInstalledModels = async ({
       await clearAllMyModelsCache();
     }
 
-    // Set global value
+    // 完整目录与内容版本一起发布，不暴露多次赋值的半成品。
     {
-      global.systemModelList = _systemModelList;
-      global.systemActiveModelList = _systemActiveModelList;
-      global.systemModelMap = _systemModelMap;
-      global.systemDefaultModel = _systemDefaultModel;
-      global.systemConfiguredDefaultModelIds = configuredDefaultModelIds;
-      global.systemModelRevision = revision;
-      global.systemModelCatalogVersion = hashStr(
+      const version = hashStr(
         JSON.stringify({
           schemaVersion: 1,
           // 模型顺序属于目录内容；安装实例变化后必须触发客户端缓存更新。
           models: _systemActiveModelList.map(desensitizeSystemModel),
-          providers: global.ModelProviderRawCache,
+          providers: getModelProviderMetadata().providers,
           defaultModelIds: configuredDefaultModelIds
+        })
+      );
+      publishModelHandle(
+        createModelHandle({
+          models: _systemModelList,
+          defaultModels: _systemDefaultModel,
+          configuredDefaultModelIds,
+          revision,
+          version
         })
       );
     }
@@ -368,18 +372,36 @@ export const loadInstalledModels = (options?: Parameters<typeof publishInstalled
   return modelReload;
 };
 
+let modelRefresh: Promise<void> | undefined;
+
 /**
- * 新模型消费入口的读屏障：权威修订号已提交时，必须等待本节点应用该版本。
- * 共享在途加载可能读取了更早快照，因此等待后再次比较；失败不得沿用旧配置。
+ * 尽力读取最新目录，版本检查与快照加载总共最多等待 5 秒。
+ * 失败或超时沿用已成功发布的本地快照（包括空目录）；首次加载没有快照时仍报错。
+ * race 不取消底层加载，迟到的完整快照仍可正常发布，不能伪造修订号或清空旧缓存。
  */
-export const ensureSystemModelSnapshot = async () => {
-  const requiredRevision = await readSystemModelRevision();
-  while (
-    !global.systemModelList ||
-    global.systemModelRevision === undefined ||
-    global.systemModelRevision < requiredRevision
-  ) {
-    await loadInstalledModels();
+export const refreshModelHandle = async () => {
+  const refresh = async () => {
+    const requiredRevision = await readSystemModelRevision();
+    while (!getCachedModelHandle() || getCachedModelHandle()!.revision < requiredRevision) {
+      await loadInstalledModels();
+    }
+  };
+
+  try {
+    modelRefresh ??= refresh().finally(() => {
+      modelRefresh = undefined;
+    });
+    await withTimeout(modelRefresh, 5000, 'Model catalog refresh timed out');
+  } catch (error) {
+    const handle = getCachedModelHandle();
+    if (!handle) throw error;
+    getLogger(LogCategories.MODULE.AI.CONFIG).warn(
+      'Using local model catalog after refresh failure',
+      {
+        error,
+        revision: handle.revision
+      }
+    );
   }
 };
 
@@ -388,10 +410,10 @@ export const ensureSystemModelSnapshot = async () => {
  * 历史模型迁移由阻塞升级任务负责。
  */
 export const loadSystemModels = async (refresh = false, language = 'en') => {
-  if (!refresh && global.systemModelList) return;
+  if (!refresh && getCachedModelHandle()) return;
 
   try {
-    const isInitialLoad = !global.systemModelList;
+    const isInitialLoad = !getCachedModelHandle();
     await preloadModelProviders();
     await loadInstalledModels({
       language,
@@ -405,37 +427,9 @@ export const loadSystemModels = async (refresh = false, language = 'en') => {
   }
 };
 
-export const watchSystemModelUpdate = () => {
-  const changeStream = MongoAIModel.watch();
-
-  return changeStream.on(
-    'change',
-    debounce(async () => {
-      try {
-        // 数据库事件只重建安装实例快照，不触发插件请求、repair 或自动预装。
-        await loadInstalledModels();
-      } catch {}
-    }, 500)
-  );
-};
-
-/** 默认模型配置变化时只重建模型目录，不推进 getInitData 版本。 */
-export const watchSystemDefaultModelUpdate = () => {
-  const changeStream = MongoAIDefaultModel.watch();
-
-  return changeStream.on(
-    'change',
-    debounce(async () => {
-      try {
-        await loadInstalledModels();
-      } catch {}
-    }, 500)
-  );
-};
-
 /** 写入已提交后尽力刷新本节点，失败保留诊断；后续模型读屏障负责重试，不能误报写入失败。 */
 export const updatedReloadSystemModel = async () => {
-  await ensureSystemModelSnapshot().catch((error) => {
+  await refreshModelHandle().catch((error) => {
     getLogger(LogCategories.MODULE.AI.CONFIG).warn(
       'Model write committed; catalog refresh pending',
       { error }

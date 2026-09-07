@@ -1,3 +1,4 @@
+import { setModelTestSnapshot, setModelTestMap } from '@test/modelCache';
 import { buildDebugRuntimeNodes } from '@fastgpt/service/core/ai/skill/debugChat';
 import * as debugChatApi from '@/pages/api/core/ai/skill/debugChat';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
@@ -329,11 +330,13 @@ describe('debugChat handler — parameter validation', () => {
       }
     };
     const runtimeModel = { ...modelData, ...modelData.config };
-    global.systemModelMap = new Map([
-      [`id:${modelData.modelId}`, modelData],
-      [`model:${modelData.model}`, modelData]
-    ]);
-    global.systemDefaultModel = { llm: runtimeModel };
+    setModelTestMap(
+      new Map([
+        [`id:${modelData.modelId}`, modelData],
+        [`model:${modelData.model}`, modelData]
+      ])
+    );
+    setModelTestSnapshot({ defaultModels: { llm: runtimeModel } });
     debugChatMocks.preChatRound.mockResolvedValue({
       chatId: 'prepared-debug-chat-id',
       responseChatItemId: 'prepared-debug-response-id',

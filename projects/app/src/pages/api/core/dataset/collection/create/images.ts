@@ -1,3 +1,5 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import {
   CreateImageCollectionFormSchema,
@@ -20,7 +22,7 @@ import { multer } from '@fastgpt/service/common/file/multer';
 import { datasetImageCollectionFileType } from '@fastgpt/global/common/file/constants';
 import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
-import { getDatasetEmbeddingModel, getDatasetVlmModel } from '@fastgpt/service/core/dataset/model';
+
 import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
 import { assertUploadRateLimit } from '@fastgpt/service/common/rateLimit/interface/upload';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
@@ -59,10 +61,14 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       limit: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
       increment: result.fileMetadata.length
     });
-
+    const modelHandle = await getModelHandle();
     const { supportVlm, supportImageEmbedding } = getDatasetImageIndexCapability({
-      vectorModel: getDatasetEmbeddingModel(dataset),
-      vlmModel: getDatasetVlmModel(dataset)
+      vectorModel: modelHandle.getEmbeddingModelData(
+        getDatasetModelReference(dataset, 'embedding')
+      ),
+      vlmModel: modelHandle.getVlmModelData(getDatasetModelReference(dataset, 'vlm'), {
+        optional: true
+      })
     });
 
     if (!supportVlm && !supportImageEmbedding) {

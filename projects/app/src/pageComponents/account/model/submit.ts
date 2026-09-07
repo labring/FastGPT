@@ -4,6 +4,7 @@ import type {
 } from '@fastgpt/global/core/ai/model.schema';
 import { postSystemModel, putSystemModel } from '@/web/core/ai/config';
 import { UpdateSystemModelBodySchema } from '@fastgpt/global/openapi/admin/core/ai/model/api';
+import { normalizeModelPricingForSave } from '@fastgpt/global/core/ai/pricing';
 
 /** 保留完整未保存草稿，仅规范测试接口要求的模型标识和回退别名。 */
 export const prepareDraftSystemModelForTest = (
@@ -24,7 +25,7 @@ export const submitCreatedSystemModel = ({
 }: {
   modelData: SystemModelDocumentDataType;
   channelIds: number[];
-}) => postSystemModel({ modelData, channelIds });
+}) => postSystemModel({ modelData: normalizeModelPricingForSave(modelData), channelIds });
 
 /** 编辑参数与渠道作为同一次请求预检，服务端统一编排外部绑定和模型写入。 */
 export const submitUpdatedSystemModel = async ({
@@ -36,7 +37,7 @@ export const submitUpdatedSystemModel = async ({
   modelData: SystemModelDocumentDataType;
   channelIds: number[];
 }) => {
-  const { model: _model, ...editableModelData } = modelData;
+  const { model: _model, ...editableModelData } = normalizeModelPricingForSave(modelData);
 
   const input = UpdateSystemModelBodySchema.parse({
     modelId,

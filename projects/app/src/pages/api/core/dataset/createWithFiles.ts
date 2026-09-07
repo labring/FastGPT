@@ -1,3 +1,4 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import { NextAPI } from '@/service/middleware/entry';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import {
@@ -20,14 +21,7 @@ import {
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import {
-  getDefaultEmbeddingModelData,
-  getDefaultLLMModelData,
-  getDefaultVLMModelData,
-  getOptionalEmbeddingModelData,
-  getOptionalLLMModelData,
-  getOptionalVlmModelData
-} from '@fastgpt/service/core/ai/model';
+
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
@@ -49,16 +43,16 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
     bodySchema: CreateDatasetWithFilesBodySchema
   }).body;
   const { parentId, name, avatar, vectorModelId, agentModelId, vlmModelId } = datasetParams;
-
+  const modelHandle = await getModelHandle();
   const vectorModelData =
-    getOptionalEmbeddingModelData({ modelId: vectorModelId }) ?? getDefaultEmbeddingModelData();
+    modelHandle.getEmbeddingModelData({ modelId: vectorModelId }, { optional: true }) ??
+    modelHandle.getDefaultModelData('embedding');
   const agentModelData =
-    getOptionalLLMModelData({ modelId: agentModelId }) ?? getDefaultLLMModelData();
-  // 与普通创建入口一致：显式“不设置”必须保持禁用，只有省略参数才继承系统默认。
+    modelHandle.getLLMModelData({ modelId: agentModelId }, { optional: true }) ??
+    modelHandle.getDefaultModelData('llm');
   const vlmModelData =
-    vlmModelId === undefined
-      ? getDefaultVLMModelData()
-      : getOptionalVlmModelData({ modelId: vlmModelId });
+    modelHandle.getVlmModelData({ modelId: vlmModelId }, { optional: true }) ??
+    modelHandle.getDefaultModelData('datasetImageLLM');
 
   const { teamId, tmbId, userId } = parentId
     ? await authDataset({

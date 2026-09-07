@@ -18,6 +18,7 @@ vi.mock('@fastgpt/service/core/ai/config/utils', async (importOriginal) => {
 });
 
 import updateWithJsonApi from '@/pages/api/admin/settings/model/updateWithJson';
+import getConfigJsonApi from '@/pages/api/admin/settings/model/getConfigJson';
 
 const buildLlmConfig = ({ modelId, model = 'test-llm' }: { modelId: string; model?: string }) => ({
   modelId,
@@ -79,6 +80,63 @@ const callUpdateWithJson = async (config: string) => {
 describe('admin settings model updateWithJson api', () => {
   beforeEach(() => {
     configMocks.updatedReloadSystemModel.mockReset().mockResolvedValue(undefined);
+  });
+
+  it('keeps legacy prices across an export/import round trip while removing old fields on save', async () => {
+    const existingModel = await MongoAIModel.create({
+      ...buildStoredLlm('legacy-priced'),
+      inputPrice: 1,
+      outputPrice: 3
+    });
+    const root = await getRootUser();
+    const exported = await Call<string>(getConfigJsonApi, { auth: root });
+    const result = await callUpdateWithJson(exported.data);
+    expect(result.code).toBe(200);
+    const saved = await MongoAIModel.findById(existingModel._id).lean();
+    expect(saved?.priceTiers).toMatchObject([{ inputPrice: 1, outputPrice: 3 }]);
+    expect(saved).not.toHaveProperty('inputPrice');
+    expect(saved).not.toHaveProperty('outputPrice');
+  });
+
+  it('converts legacy imports like opening the editor and saves canonical free tiers without old fields', async () => {
+    const existingModel = await MongoAIModel.create(buildStoredLlm('import-priced'));
+    const input = {
+      ...buildLlmConfig({ modelId: String(existingModel._id) }),
+      inputPrice: 2,
+      outputPrice: 4
+    };
+    expect((await callUpdateWithJson(JSON.stringify([input]))).code).toBe(200);
+    expect((await MongoAIModel.findById(existingModel._id).lean())?.priceTiers).toMatchObject([
+      { inputPrice: 2, outputPrice: 4 }
+    ]);
+    // 和编辑器一样，先转换并移除旧字段；之后的新价格为空即表示免费。
+    const { inputPrice: _inputPrice, outputPrice: _outputPrice, ...newConfig } = input;
+    expect(
+      (await callUpdateWithJson(JSON.stringify([{ ...newConfig, priceTiers: [] }]))).code
+    ).toBe(200);
+    const saved = await MongoAIModel.findById(existingModel._id).lean();
+    expect(saved?.priceTiers).toEqual([]);
+    expect(saved).not.toHaveProperty('inputPrice');
+    expect(saved).not.toHaveProperty('outputPrice');
+  });
+
+  it('canonicalizes newly imported LLM prices without changing non-LLM pricing', async () => {
+    const result = await callUpdateWithJson(
+      JSON.stringify([
+        { ...buildLlmConfig({ modelId: 'external-llm', model: 'new-llm' }), charsPointsPrice: 3 },
+        {
+          ...buildEmbeddingConfig({ modelId: 'external-embedding', model: 'new-embedding' }),
+          charsPointsPrice: 4
+        }
+      ])
+    );
+    expect(result.code).toBe(200);
+    const llm = await MongoAIModel.findOne({ model: 'new-llm' }).lean();
+    expect(llm?.priceTiers).toMatchObject([{ inputPrice: 3, outputPrice: 3 }]);
+    expect(llm).not.toHaveProperty('charsPointsPrice');
+    expect(await MongoAIModel.findOne({ model: 'new-embedding' }).lean()).toMatchObject({
+      charsPointsPrice: 4
+    });
   });
 
   it('updates matching IDs, creates external models by model and disables omitted records', async () => {
@@ -180,7 +238,7 @@ describe('admin settings model updateWithJson api', () => {
     expect(updated).not.toHaveProperty('charsPointsPrice');
     expect(updated).not.toHaveProperty('inputPrice');
     expect(updated).not.toHaveProperty('outputPrice');
-    expect(updated).not.toHaveProperty('priceTiers');
+    expect(updated?.priceTiers).toEqual([]);
   });
 
   it('uses the stored model identifier when a local modelId omits model', async () => {

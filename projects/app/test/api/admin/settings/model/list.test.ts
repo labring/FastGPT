@@ -1,3 +1,4 @@
+import { setModelTestSnapshot } from '@test/modelCache';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -19,19 +20,21 @@ import handler from '@/pages/api/admin/settings/model/list';
 describe('GET /api/admin/settings/model/list', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    global.systemModelList = [
-      {
-        modelId: '68ad85a7463006c963799a05',
-        model: 'gpt-test',
-        name: 'GPT Test',
-        provider: 'OpenAI',
-        scope: ModelScopeEnum.system,
-        type: ModelTypeEnum.llm,
-        isActive: true,
-        requestAuth: 'secret',
-        config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 30000 }
-      }
-    ];
+    setModelTestSnapshot({
+      models: [
+        {
+          modelId: '68ad85a7463006c963799a05',
+          model: 'gpt-test',
+          name: 'GPT Test',
+          provider: 'OpenAI',
+          scope: ModelScopeEnum.system,
+          type: ModelTypeEnum.llm,
+          isActive: true,
+          requestAuth: 'secret',
+          config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 30000 }
+        }
+      ]
+    });
     global.ModelProviderRawCache = [
       {
         provider: 'OpenAI',
@@ -46,7 +49,7 @@ describe('GET /api/admin/settings/model/list', () => {
         avatar: 'model/openai'
       }
     ];
-    global.systemConfiguredDefaultModelIds = {};
+    setModelTestSnapshot({ configuredDefaultModelIds: {} });
     mocks.getAdminAIProxyChannelItems.mockResolvedValue([
       {
         models: ['other-model'],
@@ -102,7 +105,7 @@ describe('GET /api/admin/settings/model/list', () => {
   });
 
   it('returns an empty model and channel snapshot when neither is configured', async () => {
-    global.systemModelList = [];
+    setModelTestSnapshot({ models: [] });
     mocks.getAdminAIProxyChannelItems.mockResolvedValue([]);
 
     const result = await handler({} as never);

@@ -1,3 +1,4 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import { NextAPI } from '@/service/middleware/entry';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -16,7 +17,7 @@ import {
   type OptimizeCodeBody
 } from '@fastgpt/global/openapi/core/workflow/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getLLMModelData } from '@fastgpt/service/core/ai/model';
+
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.OPTIMIZE_CODE);
 
 const getPromptNodeCopilotSystemPrompt = () => {
@@ -100,7 +101,8 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
       authToken: true,
       authApiKey: true
     });
-    const modelData = getLLMModelData({ modelId });
+    const modelHandle = await getModelHandle();
+    const modelData = modelHandle.getLLMModelData({ modelId });
 
     res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
     res.setHeader('X-Accel-Buffering', 'no');

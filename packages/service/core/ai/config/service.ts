@@ -1,5 +1,5 @@
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.schema';
-import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import type { ClientSession } from '../../../common/mongo';
@@ -33,6 +33,14 @@ export const getSystemModelConfigUpdate = (
   const mutableModelData = { ...modelData } as Record<string, unknown>;
   delete mutableModelData.type;
   delete mutableModelData.scope;
+
+  // LLM 保存以新阶梯价格为准；即使客户端仍传旧字段，也必须从数据库清除。
+  // 非 LLM 的 charsPointsPrice 仍是当前计费字段，不能一并删除。
+  if (modelData.type === ModelTypeEnum.llm) {
+    delete mutableModelData.inputPrice;
+    delete mutableModelData.outputPrice;
+    delete mutableModelData.charsPointsPrice;
+  }
 
   const fieldsToUnset = optionalSystemModelConfigFields.filter((field) => {
     const value = mutableModelData[field];

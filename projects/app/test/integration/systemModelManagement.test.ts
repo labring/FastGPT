@@ -1,3 +1,5 @@
+import { getCachedModelHandle, publishModelHandle } from '@fastgpt/service/core/ai/config/handle';
+
 import { createServer, type Server } from 'node:http';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
@@ -18,6 +20,7 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
   pluginClient: { listModels: external.listModels }
 }));
 vi.mock('@fastgpt/service/core/app/provider/controller', () => ({
+  getModelProviderMetadata: () => ({ providers: [], aiproxyChannels: [] }),
   preloadModelProviders: vi.fn().mockResolvedValue(undefined),
   getModelProvider: (provider: string) => ({ id: provider, name: provider, avatar: '', order: 0 })
 }));
@@ -31,10 +34,7 @@ import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
 import * as catalogEntity from '@fastgpt/service/core/ai/config/entity';
-import {
-  ensureSystemModelSnapshot,
-  loadInstalledModels
-} from '@fastgpt/service/core/ai/config/utils';
+import { refreshModelHandle, loadInstalledModels } from '@fastgpt/service/core/ai/config/utils';
 import { appendModelsToAIProxyChannels } from '@fastgpt/service/thirdProvider/aiproxy/channel';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
@@ -137,7 +137,7 @@ describe('system model management integration: HTTP + MongoDB transactions + run
       MongoAIDefaultModel.deleteMany({}),
       MongoResourcePermission.deleteMany({})
     ]);
-    global.systemModelRevision = undefined;
+    publishModelHandle(undefined);
     await loadInstalledModels();
   });
 
@@ -165,8 +165,10 @@ describe('system model management integration: HTTP + MongoDB transactions + run
       isActive: true
     });
     expect(await catalogEntity.readSystemModelRevision()).toBe(1);
-    expect(global.systemModelRevision).toBe(1);
-    expect(global.systemModelList).toMatchObject([{ modelId, model: 'integration-new' }]);
+    expect(getCachedModelHandle()?.revision).toBe(1);
+    expect(getCachedModelHandle()?.getAllModels()).toMatchObject([
+      { modelId, model: 'integration-new' }
+    ]);
     expect(requests.map(({ method }) => method)).toEqual(['GET', 'PUT']);
     expect(
       requests.every(({ authorization }) => authorization === 'Bearer local-integration-token')
@@ -210,7 +212,7 @@ describe('system model management integration: HTTP + MongoDB transactions + run
     expect(await MongoAIModel.countDocuments()).toBe(0);
     expect(await MongoResourcePermission.countDocuments()).toBe(0);
     expect(channels.map(({ models }) => models)).toEqual([['unrelated'], []]);
-    expect(global.systemModelList).toEqual([]);
+    expect(getCachedModelHandle()?.getAllModels()).toEqual([]);
     expect(await catalogEntity.readSystemModelRevision()).toBe(2);
   });
 
@@ -244,7 +246,7 @@ describe('system model management integration: HTTP + MongoDB transactions + run
     expect(await catalogEntity.readSystemModelRevision()).toBe(1);
     // 已提交的外部解绑不属于 MongoDB 事务，遵守已确认的不补偿约定。
     expect(channels[0].models).toEqual(['unrelated']);
-    expect(global.systemModelRevision).toBe(1);
+    expect(getCachedModelHandle()?.revision).toBe(1);
   });
 
   it('rejects competing writers while a lease is held and preserves both changes after retry', async () => {
@@ -279,10 +281,12 @@ describe('system model management integration: HTTP + MongoDB transactions + run
 
     expect(await MongoAIModel.findById(modelId).lean()).not.toBeNull();
     expect(await catalogEntity.readSystemModelRevision()).toBe(1);
-    expect(global.systemModelRevision).toBe(0);
+    expect(getCachedModelHandle()?.revision).toBe(0);
     failure.mockRestore();
-    await ensureSystemModelSnapshot();
-    expect(global.systemModelRevision).toBe(1);
-    expect(global.systemModelList).toMatchObject([{ modelId, model: 'reload-repair' }]);
+    await refreshModelHandle();
+    expect(getCachedModelHandle()?.revision).toBe(1);
+    expect(getCachedModelHandle()?.getAllModels()).toMatchObject([
+      { modelId, model: 'reload-repair' }
+    ]);
   });
 });

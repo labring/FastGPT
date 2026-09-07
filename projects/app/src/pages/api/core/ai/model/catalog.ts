@@ -1,3 +1,5 @@
+import { getModelProviderMetadata } from '@fastgpt/service/core/app/provider/controller';
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
@@ -51,13 +53,14 @@ async function handler(
       isTeamOwner: tmb.role === TeamMemberRoleEnum.owner || isRoot
     };
   })();
-  const activeModels = global.systemActiveModelList;
-  const configuredDefaults = global.systemConfiguredDefaultModelIds;
-  const catalogVersion = global.systemModelCatalogVersion;
-  const providers = global.ModelProviderRawCache;
+  const modelHandle = await getModelHandle();
+  const activeModels = modelHandle.getActiveModels();
+  const configuredDefaults = modelHandle.configuredDefaultModelIds;
+  const catalogVersion = modelHandle.version;
+  const providers = getModelProviderMetadata().providers;
   const permission = await getMemberModelCatalogPermission({
     ...catalogIdentity,
-    catalogSnapshot: { models: activeModels, revision: global.systemModelRevision ?? 0 }
+    catalogSnapshot: { models: activeModels, revision: modelHandle.revision }
   });
   const version = `1:${catalogVersion}:${permission.version}`;
 

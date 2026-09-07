@@ -14,6 +14,10 @@ import {
   submitCreatedSystemModel,
   submitUpdatedSystemModel
 } from '@/pageComponents/account/model/submit';
+import {
+  normalizeModelPricingForRead,
+  normalizeModelPricingForSave
+} from '@fastgpt/global/core/ai/pricing';
 
 const modelData = {
   type: ModelTypeEnum.llm,
@@ -36,7 +40,10 @@ describe('admin model submit controllers', () => {
   it('uses only POST create for a new model and sends no modelId', async () => {
     await submitCreatedSystemModel({ modelData, channelIds: [] });
 
-    expect(mocks.postSystemModel).toHaveBeenCalledWith({ modelData, channelIds: [] });
+    expect(mocks.postSystemModel).toHaveBeenCalledWith({
+      modelData: { ...modelData, priceTiers: [] },
+      channelIds: []
+    });
     expect(mocks.putSystemModel).not.toHaveBeenCalled();
     expect(mocks.putReplaceSystemModelChannels).not.toHaveBeenCalled();
     expect(mocks.postSystemModel.mock.calls[0]?.[0].modelData).not.toHaveProperty('modelId');
@@ -86,4 +93,75 @@ describe('admin model submit controllers', () => {
     expect(mocks.putSystemModel).not.toHaveBeenCalled();
     expect(mocks.putReplaceSystemModelChannels).not.toHaveBeenCalled();
   });
+});
+
+describe('normalizeModelPricingForRead', () => {
+  it.each([
+    { inputPrice: 1, outputPrice: 3 },
+    { inputPrice: 0, outputPrice: 3 },
+    { charsPointsPrice: 2 }
+  ])('converts legacy LLM pricing without retaining old fields: %j', (pricing) => {
+    const original = { ...modelData, ...pricing };
+    const result = normalizeModelPricingForRead(original);
+    expect(result.priceTiers).toEqual([
+      {
+        minInputTokens: 0,
+        inputPrice: 'charsPointsPrice' in pricing ? pricing.charsPointsPrice : pricing.inputPrice,
+        outputPrice: 'charsPointsPrice' in pricing ? pricing.charsPointsPrice : pricing.outputPrice
+      }
+    ]);
+    for (const key of ['inputPrice', 'outputPrice', 'charsPointsPrice']) {
+      expect(result).not.toHaveProperty(key);
+    }
+    expect(original).toEqual({ ...modelData, ...pricing });
+  });
+
+  it('keeps current tiers ahead of legacy fields', () => {
+    const priceTiers = [{ minInputTokens: 0, inputPrice: 2, outputPrice: 4 }];
+    expect(
+      normalizeModelPricingForRead({ ...modelData, priceTiers, inputPrice: 10, outputPrice: 20 })
+        .priceTiers
+    ).toEqual(priceTiers);
+  });
+});
+
+describe('normalizeModelPricingForSave', () => {
+  it('persists a free edit without falling back to the legacy prices', async () => {
+    const form = normalizeModelPricingForRead({ ...modelData, inputPrice: 1, outputPrice: 3 });
+    form.priceTiers = [{ minInputTokens: 0, inputPrice: 0, outputPrice: 0 }];
+    const saved = normalizeModelPricingForSave(form);
+    expect(saved.priceTiers).toEqual([]);
+    expect(saved).not.toHaveProperty('inputPrice');
+    expect(saved).not.toHaveProperty('outputPrice');
+
+    await submitUpdatedSystemModel({
+      modelId: '68ad85a7463006c963799a05',
+      modelData: form,
+      channelIds: []
+    });
+    expect(mocks.putSystemModel.mock.calls.at(-1)?.[0].modelData).toMatchObject({ priceTiers: [] });
+    expect(mocks.putSystemModel.mock.calls.at(-1)?.[0].modelData).not.toHaveProperty('inputPrice');
+  });
+
+  it('ignores stale legacy fields even if a caller still includes them in the save input', () => {
+    const result = normalizeModelPricingForSave({
+      ...modelData,
+      charsPointsPrice: 9,
+      inputPrice: 1,
+      outputPrice: 3,
+      priceTiers: []
+    });
+    expect(result).toEqual({ ...modelData, priceTiers: [] });
+  });
+
+  it.each([ModelTypeEnum.embedding, ModelTypeEnum.tts, ModelTypeEnum.stt, ModelTypeEnum.rerank])(
+    'preserves the current non-LLM pricing for %s',
+    (type) => {
+      const model = { ...modelData, type, charsPointsPrice: 5, config: {} } as Parameters<
+        typeof normalizeModelPricingForRead
+      >[0];
+      expect(normalizeModelPricingForRead(model)).toBe(model);
+      expect(normalizeModelPricingForSave(model)).toBe(model);
+    }
+  );
 });

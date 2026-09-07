@@ -1,157 +1,163 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
-import {
-  getLLMModelData,
-  getOptionalLLMModelData,
-  getOptionalVlmModelData,
-  getSystemDefaultModelIds,
-  getEmbeddingModelData,
-  getDefaultLLMModelData,
-  assertModelAvailable
-} from '../../../core/ai/model';
-import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
-import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
-
-// 本文件验证真实模型校验，不能使用全局测试环境中绕过校验的 embedding stub。
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import { createModelHandle, publishModelHandle } from '../../../core/ai/config/handle';
+import * as entity from '../../../core/ai/config/entity';
 vi.unmock('@fastgpt/service/core/ai/model');
+import { getModelHandle, isImageEmbeddingModel } from '../../../core/ai/model';
 
-const modelId = '68ee0bd23d17260b7829b137';
-const modelData: LLMSystemModelDataType = {
-  modelId,
+const model: SystemModelDataType = {
+  modelId: '68ee0bd23d17260b7829b137',
   type: ModelTypeEnum.llm,
   provider: 'OpenAI',
-  model: 'gpt-test',
-  name: 'GPT test display name',
-  scope: ModelScopeEnum.system,
+  model: 'test-llm',
+  name: 'Display name',
+  scope: 'system' as const,
   isActive: true,
-  config: {
-    maxContext: 128000,
-    maxResponse: 8192,
-    quoteMaxToken: 100000
-  }
+  config: { maxContext: 128000, maxResponse: 8192, quoteMaxToken: 100000, vision: true }
 };
+const build = (models: SystemModelDataType[] = [model], revision = 0) =>
+  createModelHandle({
+    models,
+    defaultModels: { llm: models[0] as typeof model },
+    configuredDefaultModelIds: { llm: model.modelId },
+    revision,
+    version: 'v' + revision
+  });
 
-describe('getLLMModelData', () => {
-  const originalMap = global.systemModelMap;
-  const originalDefaults = global.systemDefaultModel;
-
+describe('getModelHandle', () => {
   beforeEach(() => {
-    global.systemModelMap = new Map([
-      [`id:${modelId}`, modelData],
-      [`model:${modelData.model}`, modelData]
-    ]);
-    global.systemDefaultModel = { llm: modelData };
+    publishModelHandle(build());
+    vi.spyOn(entity, 'readSystemModelRevision').mockResolvedValue(0);
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it('reuses the same handle without rebuilding an unchanged snapshot', async () => {
+    const first = await getModelHandle();
+    const second = await getModelHandle();
+    expect(second).toBe(first);
+    expect(first.getLLMModelData({ modelId: model.modelId }).config.maxContext).toBe(128000);
   });
 
-  afterEach(() => {
-    global.systemModelMap = originalMap;
-    global.systemDefaultModel = originalDefaults;
+  it('keeps issued handles bound to their original model and version', async () => {
+    const first = await getModelHandle();
+    publishModelHandle(build([{ ...model, name: 'New alias' }], 1));
+    const next = await getModelHandle();
+    expect(next).not.toBe(first);
+    expect(first.getLLMModelData({ modelId: model.modelId }).name).toBe('Display name');
+    expect(first.revision).toBe(0);
+    expect(next.getLLMModelData({ modelId: model.modelId }).name).toBe('New alias');
   });
 
-  it('resolves modelId and returns canonical modelData', () => {
-    const result = getLLMModelData({ modelId });
-
-    expect(result.config.maxContext).toBe(128000);
-    expect(result).not.toHaveProperty('maxContext');
+  it('merges concurrent version checks and does not retry an unchanged directory', async () => {
+    const read = vi.mocked(entity.readSystemModelRevision);
+    await Promise.all([getModelHandle(), getModelHandle(), getModelHandle()]);
+    expect(read).toHaveBeenCalledOnce();
   });
 
-  it('uses deprecated model only when modelId is absent', () => {
-    expect(getLLMModelData({ model: 'gpt-test' }).model).toBe('gpt-test');
-    expect(() =>
-      getLLMModelData({ modelId: '68ee0bd23d17260b7829b138', model: 'gpt-test' })
-    ).toThrow(ModelErrEnum.unExist);
-    expect(getLLMModelData({ modelId: '', model: 'gpt-test' }).model).toBe('gpt-test');
+  it('falls back to the local handle on failed version reads', async () => {
+    const first = await getModelHandle();
+    vi.mocked(entity.readSystemModelRevision).mockRejectedValue(new Error('offline'));
+    expect(await getModelHandle()).toBe(first);
   });
 
-  it('does not resolve display names or missing model identifiers', () => {
-    expect(() => getLLMModelData({})).toThrow(ModelErrEnum.unConfigured);
-    expect(() => getLLMModelData({ model: 'GPT test display name' })).toThrow(ModelErrEnum.unExist);
-    expect(() => getLLMModelData({ model: 'missing-model' })).toThrow(ModelErrEnum.unExist);
+  it('rejects initial reads when no snapshot is available', async () => {
+    publishModelHandle(undefined);
+    vi.mocked(entity.readSystemModelRevision).mockRejectedValue(new Error('offline'));
+    await expect(getModelHandle()).rejects.toThrow('offline');
   });
+});
 
-  it('returns undefined only when an optional model reference is empty', () => {
-    expect(getOptionalLLMModelData({})).toBeUndefined();
-    expect(getOptionalVlmModelData({ modelId: undefined, model: undefined })).toBeUndefined();
-    expect(getOptionalLLMModelData({ modelId: '', model: 'gpt-test' })?.model).toBe('gpt-test');
-    expect(() => getOptionalLLMModelData({ model: 'missing-model' })).toThrow(ModelErrEnum.unExist);
-    expect(() =>
-      getOptionalLLMModelData({ modelId: '68ee0bd23d17260b7829b138', model: 'gpt-test' })
-    ).toThrow(ModelErrEnum.unExist);
-  });
-
-  it('rejects disabled models for execution', () => {
-    const disabledModel = { ...modelData, isActive: false };
-    global.systemModelMap.set(`id:${modelId}`, disabledModel);
-    global.systemModelMap.set(`model:${modelData.model}`, disabledModel);
-    expect(() => getLLMModelData({ modelId })).toThrow(ModelErrEnum.unExist);
-    expect(() => getLLMModelData({ model: modelData.model })).toThrow(ModelErrEnum.unExist);
-    try {
-      getLLMModelData({ modelId });
-    } catch (error) {
-      expect(getErrText(error)).toBe('Model is disabled: GPT test display name');
-    }
-  });
-
-  it('reports type mismatch and unsupported vision with the actual model name', () => {
-    for (const run of [
-      () => getEmbeddingModelData({ modelId }),
-      () => getOptionalVlmModelData({ modelId })
+describe('model handle operations', () => {
+  it('does not fall back from invalid IDs or search display aliases', () => {
+    const handle = build();
+    expect(handle.getLLMModelData({ model: model.model }).modelId).toBe(model.modelId);
+    for (const ref of [
+      { modelId: '', model: model.model },
+      { modelId: 'missing', model: model.model },
+      { model: model.name },
+      {}
     ]) {
-      expect(run).toThrow(ModelErrEnum.unExist);
-      try {
-        run();
-      } catch (error) {
-        expect(error).toBeInstanceOf(UserError);
-        expect(getErrText(error)).toBe('Model type mismatch: GPT test display name');
-      }
+      expect(() => handle.getLLMModelData(ref)).toThrow('modelUnExist');
     }
   });
 
-  it('keeps missing references distinct from delisted models and validates default state', () => {
-    expect(() => getLLMModelData({})).toThrow(ModelErrEnum.unConfigured);
-    expect(() => getLLMModelData({ modelId: 'deleted' })).toThrow(ModelErrEnum.unExist);
-    global.systemDefaultModel = {};
-    expect(() => getDefaultLLMModelData()).toThrow(ModelErrEnum.unConfigured);
-    global.systemDefaultModel = { llm: { ...modelData, isActive: false } };
-    try {
-      getDefaultLLMModelData();
-    } catch (error) {
-      expect(getErrText(error)).toBe('Model is disabled: GPT test display name');
-    }
-    global.systemDefaultModel = { llm: modelData };
-    expect(getDefaultLLMModelData()).toBe(modelData);
+  it('optional only accepts missing references, not invalid or inactive ones', () => {
+    const handle = build([{ ...model, isActive: false }]);
+    expect(handle.getLLMModelData({}, { optional: true })).toBeUndefined();
+    expect(() => handle.getLLMModelData({ modelId: model.modelId }, { optional: true })).toThrow();
+    expect(handle.findModelData({ modelId: model.modelId })).toMatchObject({ isActive: false });
+    expect(handle.getActiveModels()).toEqual([]);
   });
 
-  it('accepts vision models and uses the model identifier when its display name is empty', () => {
-    expect(() =>
-      assertModelAvailable({
-        model: { ...modelData, config: { ...modelData.config, vision: true } },
-        type: ModelTypeEnum.llm,
-        vision: true
-      })
-    ).not.toThrow();
-    expect(() => assertModelAvailable({ type: ModelTypeEnum.llm })).toThrow(ModelErrEnum.unExist);
-    try {
-      assertModelAvailable({
-        model: { ...modelData, name: '', isActive: false },
-        type: ModelTypeEnum.llm
-      });
-    } catch (error) {
-      expect(getErrText(error)).toBe('Model is disabled: gpt-test');
-    }
+  it('keeps type and vision validation for runtime and display lookup', () => {
+    const handle = build([{ ...model, config: { ...model.config, vision: false } }]);
+    expect(() => handle.getVlmModelData({ modelId: model.modelId })).toThrow();
+    expect(() => handle.getEmbeddingModelData({ modelId: model.modelId })).toThrow();
+    expect(handle.findModelData({ modelId: model.modelId }, { type: 'embedding' })).toBeUndefined();
+    expect(
+      handle.findModelData({ modelId: model.modelId }, { type: 'llm', vision: true })
+    ).toBeUndefined();
+    expect(handle.findModelData({ modelId: 'missing' })).toBeUndefined();
   });
 
-  it.each([undefined, null, '', '   '])('treats empty references consistently (%s)', (modelId) => {
-    expect(() => getLLMModelData({ modelId })).toThrow(ModelErrEnum.unConfigured);
-    expect(getOptionalLLMModelData({ modelId })).toBeUndefined();
-    expect(getOptionalVlmModelData({ modelId })).toBeUndefined();
-    expect(getLLMModelData({ modelId, model: 'gpt-test' }).model).toBe('gpt-test');
+  it('protects shared configuration and returns editable lookup copies', () => {
+    const input = structuredClone(model);
+    const handle = build([input]);
+    input.name = 'Changed input';
+    const resolved = handle.getLLMModelData({ modelId: model.modelId });
+    expect(resolved.name).toBe('Display name');
+    expect(() => {
+      resolved.name = 'Wrong';
+    }).toThrow();
+    expect(() => {
+      resolved.config.maxContext = 1;
+    }).toThrow();
+    expect(() => handle.getAllModels().pop()).toThrow();
+    const copy = handle.findModelData({ modelId: model.modelId })!;
+    copy.name = 'Draft';
+    expect(resolved.name).toBe('Display name');
   });
 
-  it('returns effective system default model ids by model type', () => {
-    expect(getSystemDefaultModelIds()).toMatchObject({
-      [ModelTypeEnum.llm]: modelId
+  it('preserves strict defaults and optional image/title slots', () => {
+    const handle = build();
+    expect(handle.getDefaultModelData('llm').modelId).toBe(model.modelId);
+    expect(handle.getSystemDefaultModelIds().llm).toBe(model.modelId);
+    expect(handle.getDefaultModelData('datasetImageLLM')).toBeUndefined();
+    expect(handle.getDefaultModelData('chatTitleLLM')).toBeUndefined();
+    expect(() => handle.getDefaultModelData('embedding')).toThrow();
+  });
+
+  it('recognizes image embeddings without reading any cache', () => {
+    expect(isImageEmbeddingModel()).toBe(false);
+    expect(isImageEmbeddingModel({ config: { vision: true } } as never)).toBe(true);
+  });
+
+  it('rejects malformed default types and accepts configured visual/title defaults', () => {
+    const valid = createModelHandle({
+      models: [model],
+      defaultModels: { datasetImageLLM: model, chatTitleLLM: model },
+      configuredDefaultModelIds: {},
+      revision: 0,
+      version: 'defaults'
     });
+    expect(valid.getDefaultModelData('datasetImageLLM')?.modelId).toBe(model.modelId);
+    expect(valid.getDefaultModelData('chatTitleLLM')?.modelId).toBe(model.modelId);
+    const invalid = createModelHandle({
+      models: [model],
+      defaultModels: { embedding: model as never },
+      configuredDefaultModelIds: {},
+      revision: 0,
+      version: 'invalid'
+    });
+    expect(() => invalid.getDefaultModelData('embedding')).toThrow('modelUnExist');
+    const noVision = createModelHandle({
+      models: [model],
+      defaultModels: { datasetImageLLM: { ...model, config: { ...model.config, vision: false } } },
+      configuredDefaultModelIds: {},
+      revision: 0,
+      version: 'no-vision'
+    });
+    expect(() => noVision.getDefaultModelData('datasetImageLLM')).toThrow('modelUnExist');
   });
 });

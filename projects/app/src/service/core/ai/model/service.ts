@@ -20,6 +20,10 @@ import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import {
+  normalizeModelPricingForRead,
+  normalizeModelPricingForSave
+} from '@fastgpt/global/core/ai/pricing';
+import {
   ImportedSystemModelSchema,
   CreateSystemModelResponseSchema,
   CreateSystemModelsFromTemplatesResponseSchema,
@@ -223,7 +227,9 @@ export const importSystemModels = async ({
     });
 
     const resolvedModels = importedModels.map(
-      ({ data: { modelId: importedModelId, ...modelData }, existingModel }) => {
+      ({ data: { modelId: importedModelId, ...importedData }, existingModel }) => {
+        // JSON 和编辑器共用“读取时转换 -> 保存新格式”；导出本身不改写历史价格。
+        const modelData = normalizeModelPricingForSave(normalizeModelPricingForRead(importedData));
         if (!existingModel) {
           return {
             modelId: importedModelId,

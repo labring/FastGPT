@@ -1,8 +1,9 @@
-import { ensureModelCatalogReady } from '@fastgpt/service/core/ai/config/runtime';
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
+
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import { findModelData } from '@fastgpt/service/core/ai/model';
+
 import {
   type EmbeddingSystemModelDataType,
   type LLMSystemModelDataType,
@@ -37,8 +38,8 @@ async function handler(
   req: ApiRequestProps<TestDraftAdminSystemModelBody, TestAdminSystemModelQuery>
 ): Promise<TestAdminSystemModelResponse> {
   const { teamId } = await authSystemAdmin({ req });
-  if (req.method !== 'POST') await ensureModelCatalogReady();
-  const { modelData, channelId } = (() => {
+
+  const { modelData, channelId } = await (async () => {
     if (req.method === 'POST') {
       const { modelData: draftModelData, channelId } = parseApiInput({
         req,
@@ -60,7 +61,8 @@ async function handler(
       req,
       querySchema: TestAdminSystemModelQuerySchema
     }).query;
-    const installedModel = findModelData({ modelId });
+    const modelHandle = await getModelHandle();
+    const installedModel = modelHandle.findModelData({ modelId });
     if (!installedModel) throw ModelErrEnum.unExist;
 
     return {

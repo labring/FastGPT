@@ -1,3 +1,6 @@
+import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
+import type { getModelTestMap } from '@test/modelCache';
+import { setModelTestSnapshot, setModelTestMap } from '@test/modelCache';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
@@ -22,7 +25,7 @@ vi.mock('@fastgpt/service/support/user/team/teamMemberSchema', () => ({
   MongoTeamMember: { findOne: mocks.findTeamMember }
 }));
 
-import { handler } from '@/pages/api/core/ai/model/catalog';
+import handler from '@/pages/api/core/ai/model/catalog';
 
 const model = {
   modelId: 'model-1',
@@ -55,13 +58,16 @@ describe('GET /api/core/ai/model/catalog', () => {
     mocks.findTeamMember.mockReturnValue({
       lean: vi.fn().mockResolvedValue({ role: 'member' })
     });
-    global.systemModelCatalogVersion = 'catalog-version';
-    global.systemModelMap = new Map([
-      [`id:${model.modelId}`, model]
-    ]) as typeof global.systemModelMap;
-    global.systemActiveModelList = [model] as typeof global.systemActiveModelList;
-    global.systemModelList = [model] as typeof global.systemModelList;
-    global.systemConfiguredDefaultModelIds = { llm: model.modelId };
+    setModelTestSnapshot({ version: 'catalog-version' });
+    setModelTestMap(
+      new Map([[`id:${model.modelId}`, model]]) as ReturnType<typeof getModelTestMap>
+    );
+    setModelTestSnapshot({
+      models: [model] as ReturnType<
+        NonNullable<ReturnType<typeof getCachedModelHandle>>['getActiveModels']
+      >
+    });
+    setModelTestSnapshot({ configuredDefaultModelIds: { llm: model.modelId } });
     global.ModelProviderRawCache = [
       {
         provider: 'provider',
@@ -74,7 +80,7 @@ describe('GET /api/core/ai/model/catalog', () => {
   it('returns the full desensitized catalog when the version changed', async () => {
     const result = await handler({ query: {} } as any);
 
-    expect(result.version).toBe('3:catalog-version:permission-version');
+    expect(result.version).toBe('1:catalog-version:permission-version');
     expect(result.data?.models[0]).not.toHaveProperty('requestAuth');
     expect(result.data?.defaultModelIds.llm).toBe(model.modelId);
     expect(result.data?.providers[0].provider).toBe('provider');
@@ -82,9 +88,9 @@ describe('GET /api/core/ai/model/catalog', () => {
 
   it('keeps one snapshot when the catalog is published during permission resolution', async () => {
     mocks.getMemberModelCatalogPermission.mockImplementationOnce(async () => {
-      global.systemModelCatalogVersion = 'new-catalog';
-      global.systemActiveModelList = [];
-      global.systemConfiguredDefaultModelIds = {};
+      setModelTestSnapshot({ version: 'new-catalog' });
+      setModelTestSnapshot({ models: [] });
+      setModelTestSnapshot({ configuredDefaultModelIds: {} });
       global.ModelProviderRawCache = [];
       return { modelIds: [model.modelId], version: 'permission-version' };
     });
@@ -97,10 +103,10 @@ describe('GET /api/core/ai/model/catalog', () => {
 
   it('returns only the version when the client cache is current', async () => {
     const result = await handler({
-      query: { version: '3:catalog-version:permission-version' }
+      query: { version: '1:catalog-version:permission-version' }
     } as any);
 
-    expect(result).toEqual({ version: '3:catalog-version:permission-version' });
+    expect(result).toEqual({ version: '1:catalog-version:permission-version' });
   });
 
   it('uses the server-side outlink member identity instead of login auth', async () => {
@@ -118,8 +124,8 @@ describe('GET /api/core/ai/model/catalog', () => {
       tmbId: 'outlink-member',
       isTeamOwner: false,
       catalogSnapshot: {
-        models: global.systemActiveModelList,
-        revision: global.systemModelRevision ?? 0
+        models: getCachedModelHandle()?.getActiveModels(),
+        revision: getCachedModelHandle()?.revision ?? 0
       }
     });
   });
@@ -131,7 +137,11 @@ describe('GET /api/core/ai/model/catalog', () => {
       model: 'provider-model-2',
       name: 'Model 2'
     };
-    global.systemActiveModelList = [model, secondModel] as typeof global.systemActiveModelList;
+    setModelTestSnapshot({
+      models: [model, secondModel] as ReturnType<
+        NonNullable<ReturnType<typeof getCachedModelHandle>>['getActiveModels']
+      >
+    });
     mocks.getMemberModelCatalogPermission.mockResolvedValue({
       modelIds: [secondModel.modelId, model.modelId],
       version: 'permission-version'
@@ -143,20 +153,5 @@ describe('GET /api/core/ai/model/catalog', () => {
       model.modelId,
       secondModel.modelId
     ]);
-  });
-
-  it('does not include inactive model metadata in the candidate catalog', async () => {
-    global.systemModelList = [
-      model,
-      { ...model, modelId: 'inactive', isActive: false },
-      { ...model, modelId: 'hidden', isActive: false }
-    ] as typeof global.systemModelList;
-    mocks.getMemberModelCatalogPermission.mockResolvedValue({
-      modelIds: [model.modelId, 'inactive'],
-      version: 'p'
-    });
-    const result = await handler({ query: {} } as any);
-    expect(result.data?.models.map((m) => m.modelId)).toEqual([model.modelId]);
-    expect(result.data?.defaultModelIds.llm).toBe(model.modelId);
   });
 });

@@ -1,3 +1,4 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import { NextAPI } from '@/service/middleware/entry';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -13,14 +14,7 @@ import {
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import {
-  getDefaultEmbeddingModelData,
-  getDefaultLLMModelData,
-  getDefaultVLMModelData,
-  getOptionalEmbeddingModelData,
-  getOptionalLLMModelData,
-  getOptionalVlmModelData
-} from '@fastgpt/service/core/ai/model';
+
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
@@ -66,18 +60,18 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
       });
 
   // check model valid
+  const modelHandle = await getModelHandle();
   const vectorModelStore =
-    getOptionalEmbeddingModelData({ modelId: vectorModelId, model: vectorModel }) ??
-    getDefaultEmbeddingModelData();
+    modelHandle.getEmbeddingModelData(
+      { modelId: vectorModelId, model: vectorModel },
+      { optional: true }
+    ) ?? modelHandle.getDefaultModelData('embedding');
   const agentModelStore =
-    getOptionalLLMModelData({ modelId: agentModelId, model: agentModel }) ??
-    getDefaultLLMModelData();
-  // 显式空值表示“不设置”，不能再补系统默认或按旧名称恢复；仅未传引用时沿用默认。
-  const vlmModelStore = (() => {
-    if (vlmModelId !== undefined) return getOptionalVlmModelData({ modelId: vlmModelId });
-    if (vlmModel !== undefined) return getOptionalVlmModelData({ model: vlmModel });
-    return getDefaultVLMModelData();
-  })();
+    modelHandle.getLLMModelData({ modelId: agentModelId, model: agentModel }, { optional: true }) ??
+    modelHandle.getDefaultModelData('llm');
+  const vlmModelStore =
+    modelHandle.getVlmModelData({ modelId: vlmModelId, model: vlmModel }, { optional: true }) ??
+    modelHandle.getDefaultModelData('datasetImageLLM');
 
   // check limit
   await checkTeamDatasetLimit(teamId);

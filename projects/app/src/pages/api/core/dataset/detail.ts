@@ -1,3 +1,5 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { desensitizeSystemModel } from '@fastgpt/service/core/ai/config/utils';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -11,11 +13,6 @@ import {
 import { getDatasetSyncDatasetStatus } from '@fastgpt/service/core/dataset/datasetSync';
 import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import {
-  findDatasetAgentModel,
-  findDatasetEmbeddingModel,
-  findDatasetVlmModel
-} from '@fastgpt/service/core/dataset/model';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> {
   const { id: datasetId } = parseApiInput({ req, querySchema: GetDatasetDetailQuerySchema }).query;
@@ -30,9 +27,17 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> 
   });
 
   const { status, errorMsg } = await getDatasetSyncDatasetStatus(datasetId);
-  const vectorModel = findDatasetEmbeddingModel(dataset);
-  const agentModel = findDatasetAgentModel(dataset);
-  const vlmModel = findDatasetVlmModel(dataset);
+  const modelHandle = await getModelHandle();
+  const vectorModel = modelHandle.findModelData(getDatasetModelReference(dataset, 'embedding'), {
+    type: 'embedding'
+  });
+  const agentModel = modelHandle.findModelData(getDatasetModelReference(dataset, 'agent'), {
+    type: 'llm'
+  });
+  const vlmModel = modelHandle.findModelData(getDatasetModelReference(dataset, 'vlm'), {
+    type: 'llm',
+    vision: true
+  });
 
   return GetDatasetDetailResponseSchema.parse({
     ...dataset,

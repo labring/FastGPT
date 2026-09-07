@@ -1,3 +1,4 @@
+import { getModelProviderMetadata } from '../../core/app/provider/controller';
 import { withAIProxyChannelMutation } from './lease';
 import { z } from 'zod';
 import { axiosWithoutSSRF } from '../../common/api/axios';
@@ -98,7 +99,7 @@ export const getAIProxyChannelList = async () => {
 export const getAdminAIProxyChannelItems = async () => {
   const channels = await getAIProxyChannelList();
   const protocolMap = new Map(
-    global.aiproxyChannelsCache.map((protocol) => [protocol.channelId, protocol])
+    getModelProviderMetadata().aiproxyChannels.map((protocol) => [protocol.channelId, protocol])
   );
 
   return [...channels]

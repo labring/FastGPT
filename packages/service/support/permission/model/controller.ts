@@ -14,6 +14,7 @@ import { MongoTmpData } from '../../tmpData/schema';
 import type { ClientSession } from '../../../common/mongo';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import { getModelHandle } from '../../../core/ai/model';
 
 const myModelsCacheFilter = {
   dataId: { $regex: new RegExp(`^${TmpDataEnum.MyModels}--`) }
@@ -53,8 +54,14 @@ export const getMemberModelCatalogPermission = async ({
   /** 目录响应传入同一个不可变快照，避免权限计算期间热刷新混用两个版本。 */
   catalogSnapshot?: { models: SystemModelDataType[]; revision: number };
 }) => {
-  const activeModels = catalogSnapshot?.models ?? global.systemActiveModelList;
-  const catalogRevision = catalogSnapshot?.revision ?? global.systemModelRevision ?? 0;
+  const snapshot =
+    catalogSnapshot ??
+    (await (async () => {
+      const handle = await getModelHandle();
+      return { models: handle.getActiveModels(), revision: handle.revision };
+    })());
+  const activeModels = snapshot.models;
+  const catalogRevision = snapshot.revision;
   if (isTeamOwner) {
     const modelIds = activeModels.map((model) => model.modelId);
     return { modelIds, version: hashStr([...modelIds].sort().join('\n')) };

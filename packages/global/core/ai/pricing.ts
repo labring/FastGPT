@@ -1,4 +1,5 @@
-import type { ModelPriceTierType, PriceType } from './model.schema';
+import type { ModelPriceTierType, PriceType, SystemModelDocumentDataType } from './model.schema';
+import { ModelTypeEnum } from './constants';
 
 const isValidNumber = (value: unknown): value is number => {
   return typeof value === 'number' && Number.isFinite(value);
@@ -114,6 +115,24 @@ export const getRuntimeResolvedPriceTiers = (config?: PriceType): ModelPriceTier
   }
 
   return [];
+};
+
+/** 编辑打开和 JSON 导入共用：将历史 LLM 计费转换为阶梯并移除旧字段，非 LLM 保持不变。 */
+export const normalizeModelPricingForRead = (
+  modelData: SystemModelDocumentDataType
+): SystemModelDocumentDataType => {
+  if (modelData.type !== ModelTypeEnum.llm) return modelData;
+  const { inputPrice: _input, outputPrice: _output, charsPointsPrice: _chars, ...data } = modelData;
+  return { ...data, priceTiers: getRuntimeResolvedPriceTiers(modelData) };
+};
+
+/** 编辑保存和导入落库共用：只认转换/编辑后的新阶梯，免费配置不能再次回退旧字段。 */
+export const normalizeModelPricingForSave = (
+  modelData: SystemModelDocumentDataType
+): SystemModelDocumentDataType => {
+  if (modelData.type !== ModelTypeEnum.llm) return modelData;
+  const { inputPrice: _input, outputPrice: _output, charsPointsPrice: _chars, ...data } = modelData;
+  return { ...data, priceTiers: getRuntimeResolvedPriceTiers({ priceTiers: data.priceTiers }) };
 };
 
 export const calculateModelPrice = ({

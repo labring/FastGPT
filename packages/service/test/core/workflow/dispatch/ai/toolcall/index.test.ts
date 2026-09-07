@@ -26,7 +26,7 @@ const {
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getLLMModelData: getLLMModelDataMock
+  getModelHandle: async () => ({ getLLMModelData: getLLMModelDataMock })
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/toolcall/toolCall', () => ({

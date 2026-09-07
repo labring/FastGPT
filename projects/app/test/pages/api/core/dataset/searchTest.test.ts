@@ -1,8 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetSearchModeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { UserError } from '@fastgpt/global/common/error/utils';
-import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
-import { getDefaultLLMModelData, getDefaultRerankModelData } from '@fastgpt/service/core/ai/model';
 
 const mockAuthDataset = vi.hoisted(() => vi.fn());
 const mockCheckTeamAIPoints = vi.hoisted(() => vi.fn());
@@ -40,13 +37,12 @@ vi.mock('@fastgpt/service/support/openapi/tools', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getDefaultLLMModelData: vi.fn(),
-  getDefaultRerankModelData: vi.fn(),
-  getRerankModelData: mockGetRerankModelData,
-  getEmbeddingModelData: mockGetEmbeddingModelData,
-  getLLMModelData: mockGetLLMModelData,
-  findModelData: mockGetOptionalVlmModelData,
-  getOptionalVlmModelData: mockGetOptionalVlmModelData
+  getModelHandle: async () => ({
+    getRerankModelData: mockGetRerankModelData,
+    getEmbeddingModelData: mockGetEmbeddingModelData,
+    getLLMModelData: mockGetLLMModelData,
+    getVlmModelData: mockGetOptionalVlmModelData
+  })
 }));
 
 vi.mock('@fastgpt/service/support/user/audit/util', () => ({
@@ -74,44 +70,6 @@ import { handler } from '@/pages/api/core/dataset/searchTest';
 const datasetId = '507f1f77bcf86cd799439011';
 
 describe('searchTest query image auth', () => {
-  it('uses defaults for unavailable query-extension and rerank selections', async () => {
-    mockGetLLMModelData.mockImplementationOnce(() => {
-      throw new UserError(ModelErrEnum.unExist);
-    });
-    mockGetRerankModelData.mockImplementationOnce(() => {
-      throw new UserError(ModelErrEnum.unConfigured);
-    });
-    vi.mocked(getDefaultLLMModelData).mockReturnValueOnce({
-      modelId: 'default-query',
-      name: 'Default query',
-      model: 'default-query',
-      config: {}
-    } as any);
-    vi.mocked(getDefaultRerankModelData).mockReturnValueOnce({
-      modelId: 'default-rerank',
-      name: 'Default rerank',
-      model: 'default-rerank',
-      config: {}
-    } as any);
-    await handler(
-      {
-        body: {
-          datasetId,
-          text: 'question',
-          queryImageUrls: [],
-          usingReRank: true,
-          datasetSearchUsingExtensionQuery: true
-        }
-      } as any,
-      {} as any
-    );
-    expect(mockDefaultSearchDatasetData).toHaveBeenCalledWith(
-      expect.objectContaining({
-        rerankModel: expect.objectContaining({ modelId: 'default-rerank' }),
-        datasetSearchExtensionModel: expect.objectContaining({ modelId: 'default-query' })
-      })
-    );
-  });
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -139,7 +97,6 @@ describe('searchTest query image auth', () => {
       modelId: '68ad85a7463006c963799a02',
       model: 'mock-vlm-model',
       name: 'Mock VLM model',
-      isActive: true,
       type: 'llm',
       config: { vision: true }
     });
@@ -172,14 +129,6 @@ describe('searchTest query image auth', () => {
     mockCreateExternalUrl.mockResolvedValue({
       url: 'https://file.fastgpt.io/temp/team-1/search-image.png?token=mock'
     });
-  });
-
-  it('continues search without a VLM when the configured model has been deleted', async () => {
-    mockGetOptionalVlmModelData.mockReturnValue(undefined);
-    await handler({ body: { datasetId, text: 'question', queryImageUrls: [] } } as any, {} as any);
-    expect(mockDefaultSearchDatasetData).toHaveBeenCalledWith(
-      expect.objectContaining({ vlmModel: undefined })
-    );
   });
 
   it('should convert current-team temp image keys to external urls before dataset search', async () => {

@@ -1,3 +1,4 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { pushWhisperUsage } from '@fastgpt/service/support/wallet/usage/controller';
@@ -8,7 +9,7 @@ import {
   assertMemberRateLimit,
   MemberRateLimitPolicy
 } from '@fastgpt/service/common/rateLimit/interface/member';
-import { getDefaultSTTModelData } from '@fastgpt/service/core/ai/model';
+
 import { multer } from '@fastgpt/service/common/file/multer';
 import { AudioTranscriptionsDataSchema } from '@fastgpt/global/openapi/core/chat/record/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -52,14 +53,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       policy: MemberRateLimitPolicy.Transcriptions,
       memberId: String(tmbId)
     });
-
+    const modelHandle = await getModelHandle();
     const transcriptionsResult = await aiTranscriptions({
-      model: getDefaultSTTModelData(),
+      model: modelHandle.getDefaultModelData('stt'),
       fileStream: result.getReadStream(),
       filename: result.fileMetadata.originalname
     });
 
-    pushWhisperUsage({
+    await pushWhisperUsage({
       teamId,
       tmbId,
       duration: transcriptionsResult?.usage?.total_tokens || duration,

@@ -1,3 +1,5 @@
+import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
+import { setModelTestSnapshot } from '@test/modelCache';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { TmpDataEnum } from '@fastgpt/global/support/tmpData/constants';
@@ -57,7 +59,7 @@ describe('model permission cache', () => {
       MongoOrgMemberModel.deleteMany({})
     ]);
     global.feConfigs = { isPlus: true } as typeof global.feConfigs;
-    global.systemActiveModelList = [];
+    setModelTestSnapshot({ models: [] });
   });
 
   it('caches calculated model IDs for one hour and ignores expired records', async () => {
@@ -66,9 +68,11 @@ describe('model permission cache', () => {
     const firstModelId = new Types.ObjectId().toString();
     const secondModelId = new Types.ObjectId().toString();
 
-    global.systemActiveModelList = [
-      { modelId: firstModelId, model: 'first-model' }
-    ] as typeof global.systemActiveModelList;
+    setModelTestSnapshot({
+      models: [{ modelId: firstModelId, model: 'first-model' }] as ReturnType<
+        NonNullable<ReturnType<typeof getCachedModelHandle>>['getActiveModels']
+      >
+    });
 
     await expect(getMemberModelIds({ teamId, tmbId, isTeamOwner: false })).resolves.toEqual([
       firstModelId
@@ -84,9 +88,11 @@ describe('model permission cache', () => {
     });
     expect(cached?.expireAt.getTime()).toBeGreaterThan(Date.now() + 59 * 60 * 1000);
 
-    global.systemActiveModelList = [
-      { modelId: secondModelId, model: 'second-model' }
-    ] as typeof global.systemActiveModelList;
+    setModelTestSnapshot({
+      models: [{ modelId: secondModelId, model: 'second-model' }] as ReturnType<
+        NonNullable<ReturnType<typeof getCachedModelHandle>>['getActiveModels']
+      >
+    });
     await expect(getMemberModelIds({ teamId, tmbId, isTeamOwner: false })).resolves.toEqual([
       firstModelId
     ]);
@@ -104,13 +110,15 @@ describe('model permission cache', () => {
     const teamId = new Types.ObjectId().toString();
     const tmbId = new Types.ObjectId().toString();
     const modelIds = [new Types.ObjectId().toString(), new Types.ObjectId().toString()];
-    global.systemActiveModelList = modelIds.map((modelId) => ({
-      modelId,
-      model: modelId
-    })) as typeof global.systemActiveModelList;
+    setModelTestSnapshot({
+      models: modelIds.map((modelId) => ({
+        modelId,
+        model: modelId
+      })) as ReturnType<NonNullable<ReturnType<typeof getCachedModelHandle>>['getActiveModels']>
+    });
 
     const first = await getMemberModelCatalogPermission({ teamId, tmbId, isTeamOwner: true });
-    global.systemActiveModelList.reverse();
+    setModelTestSnapshot({ models: [...getCachedModelHandle()!.getActiveModels()].reverse() });
     const second = await getMemberModelCatalogPermission({ teamId, tmbId, isTeamOwner: true });
 
     expect(first.version).toBe(second.version);
@@ -121,9 +129,11 @@ describe('model permission cache', () => {
     const currentTmbId = new Types.ObjectId().toString();
     const otherTmbId = new Types.ObjectId().toString();
     const modelId = new Types.ObjectId().toString();
-    global.systemActiveModelList = [
-      { modelId, model: 'legacy-name' }
-    ] as typeof global.systemActiveModelList;
+    setModelTestSnapshot({
+      models: [{ modelId, model: 'legacy-name' }] as ReturnType<
+        NonNullable<ReturnType<typeof getCachedModelHandle>>['getActiveModels']
+      >
+    });
 
     await MongoResourcePermission.create({
       teamId,

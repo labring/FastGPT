@@ -55,6 +55,13 @@ describe('GET /api/admin/settings/model/getConfigJson', () => {
     expect(JSON.parse(response.data)[0]).not.toHaveProperty('_id');
     expect(JSON.parse(response.data)[0]).not.toHaveProperty('metadata');
     expect(JSON.parse(response.data)[0]).not.toHaveProperty('unknownTopLevel');
+    expect(JSON.parse(response.data)[0]).toMatchObject({ inputPrice: 1, outputPrice: 2 });
+    expect(JSON.parse(response.data)[0].priceTiers).toEqual([]);
+    // 导出保留数据库中的旧价格，不触发格式转换或回写。
+    expect(await MongoAIModel.findById(model._id).lean()).toMatchObject({
+      inputPrice: 1,
+      outputPrice: 2
+    });
   });
 
   it('rejects unauthenticated configuration exports', async () => {

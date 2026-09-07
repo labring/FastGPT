@@ -1,4 +1,6 @@
-import { ensureModelCatalogReady } from '@fastgpt/service/core/ai/config/runtime';
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
+
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -7,11 +9,7 @@ import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { replaceVariable } from '@fastgpt/service/common/string/replaceVariable';
 import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import type { PushDataChunkType } from '@fastgpt/global/openapi/core/dataset/data/api';
-import {
-  getDatasetAgentModel,
-  getDatasetEmbeddingModel,
-  getDatasetVlmModel
-} from '@fastgpt/service/core/dataset/model';
+
 import { checkTeamAiPointsAndLock } from './utils';
 import { addMinutes } from 'date-fns';
 import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
@@ -52,7 +50,6 @@ export async function generateQA(): Promise<any> {
 
   try {
     while (true) {
-      await ensureModelCatalogReady();
       const startTime = Date.now();
       // get training data
       const {
@@ -135,9 +132,17 @@ export async function generateQA(): Promise<any> {
       });
 
       try {
-        const modelData = getDatasetAgentModel(data.dataset);
-        const embeddingModelData = getDatasetEmbeddingModel(data.dataset);
-        const vlmModelData = getDatasetVlmModel(data.dataset);
+        const modelHandle = await getModelHandle();
+        const modelData = modelHandle.getLLMModelData(
+          getDatasetModelReference(data.dataset, 'agent')
+        );
+        const embeddingModelData = modelHandle.getEmbeddingModelData(
+          getDatasetModelReference(data.dataset, 'embedding')
+        );
+        const vlmModelData = modelHandle.getVlmModelData(
+          getDatasetModelReference(data.dataset, 'vlm'),
+          { optional: true }
+        );
         const prompt = `${data.collection.qaPrompt || Prompt_AgentQA.description}
   ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
 

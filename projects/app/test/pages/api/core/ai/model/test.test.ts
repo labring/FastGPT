@@ -16,7 +16,9 @@ vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: unknown) => ha
 vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
   authSystemAdmin: mocks.authSystemAdmin
 }));
-vi.mock('@fastgpt/service/core/ai/model', () => ({ findModelData: mocks.findModelData }));
+vi.mock('@fastgpt/service/core/ai/model', () => ({
+  getModelHandle: async () => ({ findModelData: mocks.findModelData })
+}));
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: mocks.createLLMResponse
 }));

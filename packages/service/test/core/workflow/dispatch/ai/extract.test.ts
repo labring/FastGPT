@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const { createLLMResponseMock, getLLMModelMock, formatModelChars2PointsMock } = vi.hoisted(() => ({
@@ -14,14 +14,16 @@ vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getLLMModelData: (...args: unknown[]) => {
-    const model = getLLMModelMock(...args);
-    return {
-      ...model,
-      modelId: '68ad85a7463006c963799a65',
-      config: model.config ?? model
-    };
-  }
+  getModelHandle: async () => ({
+    getLLMModelData: (...args: unknown[]) => {
+      const model = getLLMModelMock(...args);
+      return {
+        ...model,
+        modelId: '68ad85a7463006c963799a65',
+        config: model.config ?? model
+      };
+    }
+  })
 }));
 
 vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({

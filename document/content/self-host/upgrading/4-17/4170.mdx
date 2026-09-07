@@ -14,6 +14,15 @@ upgradeTags:
 
 分批迁移任务默认每批处理 `100` 条记录。数据量较大时，可通过 `SYSTEM_MIGRATION_BATCH_SIZE` 调整为 `50`～`1000`。
 
+### AI Proxy（必需）
+
+从 V4.17.0 起，必须部署或接入 AI Proxy，并在 FastGPT App 及复用 App/Service 配置的商业版 Admin 服务中设置：
+
+- `AIPROXY_API_ENDPOINT`：可访问的 AI Proxy 服务根地址，例如 `http://aiproxy:3000`，不要附加 `/v1`。
+- `AIPROXY_API_TOKEN`：与 AI Proxy 服务端配置一致的非空管理员 Token。
+
+缺少任一配置会导致启动校验失败。旧的 `OPENAI_BASE_URL`、`CHAT_API_KEY`，以及单模型的 `requestUrl/requestAuth` 都不能替代这两个必填项。升级前请确认 AI Proxy 可访问，且管理员 Token 可以访问渠道管理接口；不要把模型服务商的 API Key 当作 AI Proxy 管理员 Token。
+
 ### Code Sandbox seccomp 兼容配置（可选）
 
 Code Sandbox 默认继续启用 seccomp。若宿主机内核不支持应用内 seccomp，进程池初始化会失败；确认可以接受系统调用隔离能力降低后，可为 Code Sandbox 显式设置：

@@ -1,3 +1,5 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 /* push data to training queue */
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
@@ -13,11 +15,7 @@ import {
   type PushDataResponseType
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import {
-  getDatasetAgentModel,
-  getDatasetEmbeddingModel,
-  getDatasetVlmModel
-} from '@fastgpt/service/core/dataset/model';
+
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -37,9 +35,17 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
     collectionId,
     per: WritePermissionVal
   });
-  const vectorModelData = getDatasetEmbeddingModel(collection.dataset);
-  const agentModelData = getDatasetAgentModel(collection.dataset);
-  const vlmModelData = getDatasetVlmModel(collection.dataset);
+  const modelHandle = await getModelHandle();
+  const vectorModelData = modelHandle.getEmbeddingModelData(
+    getDatasetModelReference(collection.dataset, 'embedding')
+  );
+  const agentModelData = modelHandle.getLLMModelData(
+    getDatasetModelReference(collection.dataset, 'agent')
+  );
+  const vlmModelData = modelHandle.getVlmModelData(
+    getDatasetModelReference(collection.dataset, 'vlm'),
+    { optional: true }
+  );
 
   const mode = getTrainingModeByCollection({
     ...collection,

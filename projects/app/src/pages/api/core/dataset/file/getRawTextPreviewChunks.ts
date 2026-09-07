@@ -1,3 +1,5 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -8,10 +10,7 @@ import {
   getLLMMaxChunkSize,
   maxPreviewChunkCount
 } from '@fastgpt/global/core/dataset/training/utils';
-import {
-  getDatasetAgentModel,
-  getDatasetEmbeddingModel
-} from '@fastgpt/service/core/dataset/model';
+
 import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
 import { addDays } from 'date-fns';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -37,11 +36,11 @@ async function handler(
     datasetId,
     per: WritePermissionVal
   });
-
+  const modelHandle = await getModelHandle();
   const formatChunkSettings = computedCollectionChunkSettings({
     ...chunkSettings,
-    llmModel: getDatasetAgentModel(dataset),
-    vectorModel: getDatasetEmbeddingModel(dataset)
+    llmModel: modelHandle.getLLMModelData(getDatasetModelReference(dataset, 'agent')),
+    vectorModel: modelHandle.getEmbeddingModelData(getDatasetModelReference(dataset, 'embedding'))
   });
 
   const chunks = await rawText2Chunks({
@@ -51,7 +50,9 @@ async function handler(
     chunkSize: formatChunkSettings.chunkSize,
     paragraphChunkDeep: formatChunkSettings.paragraphChunkDeep,
     paragraphChunkMinSize: formatChunkSettings.paragraphChunkMinSize,
-    maxSize: getLLMMaxChunkSize(getDatasetAgentModel(dataset)),
+    maxSize: getLLMMaxChunkSize(
+      modelHandle.getLLMModelData(getDatasetModelReference(dataset, 'agent'))
+    ),
     overlapRatio,
     customReg: formatChunkSettings.chunkSplitter ? [formatChunkSettings.chunkSplitter] : [],
     maxChunks: maxPreviewChunkCount
