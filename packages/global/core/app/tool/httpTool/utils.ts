@@ -188,7 +188,21 @@ export const getHTTPToolRuntimeSchemas = ({
     !!inputSchema?.properties && Object.keys(inputSchema.properties).length > 0;
 
   return {
-    requestSchema: currentRequestSchema,
+    // 历史导入工具的 requestSchema 可能只有 Body；补入 Query/Path/Header 的声明，
+    // 避免 additionalProperties: false 把合法的混合调用参数拒绝掉。
+    requestSchema:
+      hasRequestProperties && hasInputProperties
+        ? {
+            ...currentRequestSchema,
+            properties: { ...inputSchema?.properties, ...currentRequestSchema?.properties },
+            required: [
+              ...new Set([
+                ...(currentRequestSchema?.required ?? []),
+                ...(inputSchema?.required ?? [])
+              ])
+            ]
+          }
+        : currentRequestSchema,
     inputSchema: hasInputProperties ? inputSchema : currentRequestSchema
   };
 };
@@ -226,7 +240,7 @@ export const pathData2ToolList = async (
 
       if (pathItem.params && Array.isArray(pathItem.params)) {
         pathItem.params.forEach((param) => {
-          if (param.name && param.schema) {
+          if (param.in !== 'body' && param.name && param.schema) {
             const description = param.description || param.schema.description || '';
             requestProperties[param.name] = {
               ...param.schema,
@@ -234,6 +248,7 @@ export const pathData2ToolList = async (
               isToolParam: true
             };
             inputProperties[param.name] = {
+              ...param.schema,
               type: param.schema.type || 'any',
               description,
               'x-tool-description': param.description || param.name,
@@ -260,6 +275,7 @@ export const pathData2ToolList = async (
         if (requestSchema.properties) {
           Object.entries(requestSchema.properties).forEach(([key, value]: [string, any]) => {
             inputProperties[key] = {
+              ...value,
               type: value.type || 'any',
               description: value.description || '',
               'x-tool-description': value.description || key,

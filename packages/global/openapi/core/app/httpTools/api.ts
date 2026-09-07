@@ -103,6 +103,10 @@ export type GetApiSchemaByUrlResponseType = z.infer<typeof GetApiSchemaByUrlResp
  * ============================================================================ */
 export const RunHttpToolBodySchema = z
   .object({
+    apiSchemaStr: z.string().optional().meta({
+      description: '导入工具的 OpenAPI 原文，用于恢复请求参数位置；手动工具不传',
+      example: '{"openapi":"3.0.0","paths":{}}'
+    }),
     params: z.record(z.string(), z.any()).meta({
       example: { query: 'hello' },
       description: '工具调用参数'

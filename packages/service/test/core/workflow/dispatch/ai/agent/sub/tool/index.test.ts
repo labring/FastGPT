@@ -140,7 +140,11 @@ describe('dispatchTool runtime toolset auth', () => {
         modules: [
           {
             toolConfig: {
-              httpToolSet: { baseUrl: 'https://example.com', toolList: [tool] }
+              httpToolSet: {
+                baseUrl: 'https://example.com',
+                toolList: [tool],
+                apiSchemaStr: '{"openapi":"3.0.0","paths":{}}'
+              }
             }
           }
         ]
@@ -156,6 +160,7 @@ describe('dispatchTool runtime toolset auth', () => {
       expect.objectContaining({
         toolPath: '/search',
         method: 'GET',
+        apiSchemaStr: '{"openapi":"3.0.0","paths":{}}',
         params: { query: 'allowed' }
       })
     );

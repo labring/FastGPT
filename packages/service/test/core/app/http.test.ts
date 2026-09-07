@@ -3,6 +3,136 @@ import { getHTTPToolList, runHTTPTool } from '@fastgpt/service/core/app/http';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
 import { serviceEnv } from '@fastgpt/service/env';
+import { ContentTypes } from '@fastgpt/global/core/workflow/constants';
+
+const { axiosMock } = vi.hoisted(() => ({ axiosMock: vi.fn() }));
+vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/common/api/axios')>()),
+  axios: axiosMock
+}));
+
+describe('runHTTPTool request routing', () => {
+  const originalCheckInternalIp = serviceEnv.CHECK_INTERNAL_IP;
+  beforeEach(() => {
+    serviceEnv.CHECK_INTERNAL_IP = false;
+    axiosMock.mockReset();
+    axiosMock.mockImplementation(async (request) => ({
+      data: { json: request.data, query: request.params }
+    }));
+  });
+  afterEach(() => {
+    serviceEnv.CHECK_INTERNAL_IP = originalCheckInternalIp;
+  });
+
+  it.each(['POST', 'PUT', 'PATCH'])(
+    'sends imported %s JSON rather than an empty object',
+    async (method) => {
+      const params = {
+        marker: 'verification',
+        profile: { name: '张三', count: 7 },
+        tags: ['alpha', 'beta'],
+        enabled: false,
+        empty: null
+      };
+      const apiSchemaStr = JSON.stringify({
+        openapi: '3.0.0',
+        info: { title: 'Echo', version: '1' },
+        paths: {
+          '/echo': {
+            [method.toLowerCase()]: {
+              requestBody: {
+                content: {
+                  'application/json': {
+                    schema: {
+                      type: 'object',
+                      properties: {
+                        marker: { type: 'string' },
+                        profile: { type: 'object' },
+                        tags: { type: 'array', items: { type: 'string' } },
+                        enabled: { type: 'boolean' },
+                        empty: {}
+                      }
+                    }
+                  }
+                }
+              },
+              responses: { '200': { description: 'OK' } }
+            }
+          }
+        }
+      });
+      expect(
+        await runHTTPTool({
+          baseUrl: 'https://example.com',
+          toolPath: '/echo',
+          method,
+          params,
+          apiSchemaStr,
+          customHeaders: { Authorization: 'Bearer synthetic-test' }
+        })
+      ).toEqual({ data: { json: params, query: undefined } });
+      expect(axiosMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: params,
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer synthetic-test'
+          })
+        })
+      );
+    }
+  );
+
+  it.each([undefined, { type: ContentTypes.none }])(
+    'preserves manual no-body behavior (%s)',
+    async (staticBody) => {
+      await runHTTPTool({
+        baseUrl: 'https://example.com',
+        toolPath: '/echo',
+        method: 'POST',
+        params: { privateValue: 'not-for-body' },
+        staticBody
+      });
+      expect(axiosMock).toHaveBeenCalledWith(
+        expect.objectContaining({ data: {}, params: undefined })
+      );
+    }
+  );
+
+  it('preserves manual JSON templates and GET query inputs', async () => {
+    await runHTTPTool({
+      baseUrl: 'https://example.com',
+      toolPath: '/echo',
+      method: 'POST',
+      params: { value: 'test', ignored: 'not-for-body' },
+      staticBody: { type: ContentTypes.json, content: '{"value":"{{value}}"}' }
+    });
+    expect(axiosMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ data: { value: 'test' } })
+    );
+    await runHTTPTool({
+      baseUrl: 'https://example.com',
+      toolPath: '/echo',
+      method: 'GET',
+      params: { value: 'test' }
+    });
+    expect(axiosMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ data: undefined, params: { value: 'test' } })
+    );
+  });
+
+  it('does not send a request when OpenAPI resolution fails', async () => {
+    const result = await runHTTPTool({
+      baseUrl: 'https://example.com',
+      toolPath: '/missing',
+      method: 'POST',
+      params: {},
+      apiSchemaStr: '{"openapi":"3.0.0","info":{"title":"Test","version":"1"},"paths":{}}'
+    });
+    expect(result.errorMsg).toContain('OpenAPI operation not found');
+    expect(axiosMock).not.toHaveBeenCalled();
+  });
+});
 
 describe('SSRF Vulnerability Fix Tests', () => {
   const originalCheckInternalIp = serviceEnv.CHECK_INTERNAL_IP;

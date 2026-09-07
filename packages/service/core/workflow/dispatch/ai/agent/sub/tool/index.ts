@@ -324,6 +324,7 @@ export const dispatchTool = async ({
       const { requestSchema } = getHTTPToolRuntimeSchemas(httpTool);
       assertToolRuntimeParams({ jsonSchema: requestSchema, params });
       const { data, errorMsg } = await runHTTPTool({
+        apiSchemaStr: toolSetData?.apiSchemaStr,
         baseUrl: baseUrl || '',
         toolPath: httpTool.path,
         method: httpTool.method,

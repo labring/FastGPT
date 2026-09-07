@@ -49,6 +49,25 @@ describe('standalone toolset debug API compatibility', () => {
     expect(mocks.runHTTPTool).toHaveBeenCalledWith({ ...body, customHeaders: { 'X-Number': '3' } });
   });
 
+  it('forwards imported OpenAPI source to the same HTTP runner', async () => {
+    const auth = await getUser('http-openapi-debug');
+    const body = {
+      baseUrl: 'https://example.com',
+      toolPath: '/echo',
+      method: 'POST',
+      apiSchemaStr: JSON.stringify({
+        openapi: '3.0.0',
+        info: { title: 'Echo', version: '1' },
+        paths: {}
+      }),
+      params: { profile: { name: 'test' }, tags: ['a'] }
+    };
+    mocks.runHTTPTool.mockResolvedValue({ data: body.params });
+    const result = await Call(runHTTP, { auth, body });
+    expect(result.code).toBe(200);
+    expect(mocks.runHTTPTool).toHaveBeenCalledWith(expect.objectContaining(body));
+  });
+
   it('retains complete MCP schemas when refreshing tools for the editor', async () => {
     const auth = await getUser('mcp-debug-refresh');
     const tool = {

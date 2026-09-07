@@ -22,11 +22,13 @@ import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 const ChatTest = ({
+  apiSchemaStr,
   currentTool,
   baseUrl,
   headerSecret,
   customHeaders
 }: {
+  apiSchemaStr?: string;
   currentTool?: HttpToolConfigType;
   baseUrl: string;
   headerSecret: StoreSecretValueType;
@@ -54,6 +56,7 @@ const ChatTest = ({
     async (data: Record<string, any>) => {
       if (!currentTool) return;
       return postRunHTTPTool({
+        apiSchemaStr,
         baseUrl,
         params: data,
         headerSecret: currentTool.headerSecret || headerSecret,
@@ -180,11 +183,13 @@ const ChatTest = ({
 };
 
 const Render = ({
+  apiSchemaStr,
   currentTool,
   baseUrl,
   headerSecret,
   customHeaders
 }: {
+  apiSchemaStr?: string;
   currentTool?: HttpToolConfigType;
   baseUrl: string;
   headerSecret: StoreSecretValueType;
@@ -213,6 +218,7 @@ const Render = ({
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>
         <ChatTest
+          apiSchemaStr={apiSchemaStr}
           currentTool={currentTool}
           baseUrl={baseUrl}
           headerSecret={headerSecret}

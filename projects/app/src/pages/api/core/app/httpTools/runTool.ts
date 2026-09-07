@@ -16,6 +16,7 @@ async function handler(
   await authCert({ req, authToken: true });
 
   const {
+    apiSchemaStr,
     params,
     baseUrl,
     toolPath,
@@ -32,6 +33,7 @@ async function handler(
 
   return RunHttpToolResponseSchema.parse(
     await runHTTPTool({
+      apiSchemaStr,
       baseUrl,
       toolPath,
       method,

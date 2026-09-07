@@ -598,13 +598,21 @@ export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema
           .map((method) => {
             const methodInfo = methodData[method];
             if (methodInfo.deprecated) return;
+            // OpenAPI 允许在路径层声明共享参数；同名同位置的操作参数覆盖路径参数。
+            const parameters = [
+              ...new Map(
+                [...(methodData.parameters ?? []), ...(methodInfo.parameters ?? [])].map(
+                  (parameter) => [`${parameter.in}:${parameter.name}`, parameter]
+                )
+              ).values()
+            ];
 
             const requestBody = (() => {
               if (methodInfo?.requestBody) {
                 return methodInfo.requestBody;
               }
-              if (methodInfo.parameters) {
-                const bodyParam = methodInfo.parameters.find(
+              if (parameters.length) {
+                const bodyParam = parameters.find(
                   (param: OpenAPIV3.ParameterObject) => param.in === 'body'
                 );
                 if (bodyParam) {
@@ -625,7 +633,7 @@ export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema
               method,
               name: methodInfo.operationId || path,
               description: methodInfo.description || methodInfo.summary,
-              params: methodInfo.parameters,
+              params: parameters,
               request: requestBody,
               response: methodInfo.responses
             };

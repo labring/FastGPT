@@ -90,6 +90,7 @@ const Edit = () => {
       {isPc && (
         <Box flex={'2 0 0'} w={0} mb={3}>
           <ChatTest
+            apiSchemaStr={apiSchemaStr}
             currentTool={currentTool}
             baseUrl={baseUrl}
             headerSecret={headerSecret}

@@ -354,6 +354,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         params
       });
       const { data, errorMsg } = await runHTTPTool({
+        apiSchemaStr: toolSetData?.apiSchemaStr,
         baseUrl: baseUrl || '',
         toolPath: httpTool.path,
         method: httpTool.method,

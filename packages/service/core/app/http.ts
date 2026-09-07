@@ -16,6 +16,7 @@ import { replaceEditorVariable } from '../workflow/dispatch/utils/replaceEditorV
 import FormData from 'form-data';
 import { getLogger, LogCategories } from '../../common/logger';
 import { decodeHttpToolSetNodesFromStorage } from './jsonSchemaStorage';
+import { buildOpenAPIHttpRequest } from './httpTool/request';
 
 const logger = getLogger(LogCategories.MODULE.APP.HTTP_TOOLS);
 
@@ -24,6 +25,7 @@ export type RunHTTPToolParams = {
   toolPath: string;
   method: string;
   params: Record<string, any>;
+  apiSchemaStr?: string;
   headerSecret?: StoreSecretValueType | null;
   customHeaders?: Record<string, string>;
   staticParams?: HttpToolConfigType['staticParams'];
@@ -36,6 +38,7 @@ export type RunHTTPToolResult = RequireOnlyOne<{
   errorMsg?: string;
 }>;
 
+/** 按手动工具模板构造请求；缺失模板仍保持原有空 Body 行为，不自动透传 params。 */
 const buildHttpRequest = ({
   method,
   params,
@@ -136,6 +139,10 @@ const buildHttpRequest = ({
   };
 };
 
+/**
+ * HTTP 工具统一执行入口。导入工具从 OpenAPI 原文恢复参数位置，手动工具使用显式模板。
+ * 鉴权配置优先于动态 Header，并在路径参数编码后验证最终 URL；失败返回 errorMsg。
+ */
 export const runHTTPTool = async ({
   baseUrl,
   toolPath,
@@ -145,9 +152,25 @@ export const runHTTPTool = async ({
   customHeaders,
   staticParams,
   staticHeaders,
-  staticBody
+  staticBody,
+  apiSchemaStr
 }: RunHTTPToolParams): Promise<RunHTTPToolResult> => {
   try {
+    // OpenAPI 与手动工具共用发送层，但参数来源不同；不能用 staticBody 缺失来猜测来源。
+    const openApiSchema = apiSchemaStr?.trim();
+    const manualRequest = buildHttpRequest({
+      method,
+      params,
+      headerSecret,
+      customHeaders,
+      staticParams,
+      staticHeaders,
+      staticBody: openApiSchema ? undefined : staticBody
+    });
+    const request = openApiSchema
+      ? await buildOpenAPIHttpRequest({ apiSchemaStr: openApiSchema, toolPath, method, params })
+      : { ...manualRequest, toolPath };
+    const headers = { ...request.headers, ...manualRequest.headers };
     // Construct full base URL
     const fullBaseUrl = !baseUrl
       ? ''
@@ -158,30 +181,20 @@ export const runHTTPTool = async ({
     // SSRF Protection: Validate URL before making request
     // When baseUrl is empty, toolPath must be a complete URL
     const fullUrl = fullBaseUrl
-      ? new URL(toolPath, fullBaseUrl).toString()
-      : new URL(toolPath).toString();
+      ? new URL(request.toolPath, fullBaseUrl).toString()
+      : new URL(request.toolPath).toString();
 
     if (await isInternalAddress(fullUrl)) {
       return { errorMsg: PRIVATE_URL_TEXT };
     }
 
-    const { headers, body, queryParams } = buildHttpRequest({
-      method,
-      params,
-      headerSecret,
-      customHeaders,
-      staticParams,
-      staticHeaders,
-      staticBody
-    });
-
     const { data } = await axios({
       method: method.toUpperCase(),
       baseURL: fullBaseUrl,
-      url: toolPath,
+      url: request.toolPath,
       headers,
-      data: body,
-      params: queryParams,
+      data: request.body,
+      params: request.queryParams,
       timeout: 300000
     });
 
