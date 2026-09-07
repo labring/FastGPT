@@ -1,4 +1,9 @@
 {
+  "migrations.20260907_cleanup_team_member_roles.name": "이전 팀 구성원 역할 정리",
+  "migrations.20260907_cleanup_team_member_roles.description": "소유자 및 기존 권한을 유지하고 owner가 아닌 사용 중단된 역할 필드를 제거합니다.",
+  "migrations.20260907_cleanup_team_member_roles.result": "구성원 기록 {{scannedCount}}개를 확인했습니다. 잘못된 역할 {{remaining}}개가 남아 있습니다.",
+  "migrations.20260907_cleanup_team_member_roles.members": "구성원 역할 정리",
+  "migrations.20260907_cleanup_team_member_roles.validation": "역할 정리 결과 검증",
   "system_upgrade": "시스템 업그레이드",
   "migration_page_title": "시스템 업그레이드",
   "migration_page_description": "시스템은 마이그레이션 스크립트를 순서대로 실행합니다.",

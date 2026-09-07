@@ -1,4 +1,9 @@
 {
+  "migrations.20260907_cleanup_team_member_roles.name": "清理历史团队成员角色",
+  "migrations.20260907_cleanup_team_member_roles.description": "移除非 owner 的废弃角色字段，保留所有者标识及现有权限。",
+  "migrations.20260907_cleanup_team_member_roles.result": "已检查 {{scannedCount}} 条成员记录，剩余非法角色 {{remaining}} 条。",
+  "migrations.20260907_cleanup_team_member_roles.members": "清理成员角色",
+  "migrations.20260907_cleanup_team_member_roles.validation": "校验角色清理结果",
   "system_upgrade": "版本升级",
   "migration_page_title": "版本升级",
   "migration_page_description": "系统会按顺序执行迁移脚本。",

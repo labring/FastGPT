@@ -15,6 +15,7 @@ import { backfillAppModelReferences } from './tasks/20260903_backfill_app_model_
 import { backfillResourceCreateTime } from './tasks/4170/20260903_backfill_resource_create_time';
 import { backfillBillMetadata } from './tasks/4170/20260905_backfill_bill_metadata';
 import { backfillResourceOwnerAcl } from './tasks/4170/20260905_backfill_resource_owner_acl';
+import { cleanupTeamMemberRoles } from './tasks/4170/20260907_cleanup_team_member_roles';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -286,6 +287,28 @@ export const systemMigrations = [
     blockStartup: false,
     onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillResourceOwnerAcl
+  },
+  {
+    id: '20260907_cleanup_team_member_roles',
+    version: '4.17.0',
+    nameKey: i18nT('system_migration:migrations.20260907_cleanup_team_member_roles.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20260907_cleanup_team_member_roles.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20260907_cleanup_team_member_roles.result'),
+    progressSteps: [
+      {
+        key: 'members',
+        labelKey: i18nT('system_migration:migrations.20260907_cleanup_team_member_roles.members')
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT('system_migration:migrations.20260907_cleanup_team_member_roles.validation')
+      }
+    ],
+    blockStartup: true,
+    onFailure: SystemMigrationFailurePolicyEnum.stop,
+    run: cleanupTeamMemberRoles
   }
 ] as const satisfies readonly SystemMigration[];
 

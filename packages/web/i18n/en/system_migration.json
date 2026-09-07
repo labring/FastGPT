@@ -1,4 +1,9 @@
 {
+  "migrations.20260907_cleanup_team_member_roles.name": "Clean up legacy team member roles",
+  "migrations.20260907_cleanup_team_member_roles.description": "Remove deprecated non-owner role fields while preserving owners and existing permissions.",
+  "migrations.20260907_cleanup_team_member_roles.result": "Checked {{scannedCount}} member records; {{remaining}} invalid roles remain.",
+  "migrations.20260907_cleanup_team_member_roles.members": "Clean up member roles",
+  "migrations.20260907_cleanup_team_member_roles.validation": "Validate role cleanup",
   "system_upgrade": "System upgrade",
   "migration_page_title": "System upgrade",
   "migration_page_description": "The system runs migration scripts in order.",
