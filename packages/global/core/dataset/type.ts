@@ -331,6 +331,8 @@ export const DatasetListItemSchema = z.object({
 export type DatasetListItemType = z.infer<typeof DatasetListItemSchema>;
 
 export const DatasetItemSchema = DatasetSchema.omit({
+  // 详情不展示创建时间，避免历史记录尚未补齐该字段时阻断详情读取；列表使用独立 Schema。
+  createTime: true,
   vectorModel: true,
   agentModel: true,
   vlmModel: true

@@ -16,7 +16,6 @@ export const defaultDatasetDetail: DatasetItemType = {
   userId: '',
   teamId: '',
   tmbId: '',
-  createTime: new Date(),
   updateTime: new Date(),
   type: DatasetTypeEnum.dataset,
   avatar: '/icon/logo.svg',

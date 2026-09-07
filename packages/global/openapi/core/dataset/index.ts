@@ -12,6 +12,7 @@ import {
   CreateDatasetWithFilesBodySchema,
   DeleteDatasetQuerySchema,
   GetDatasetDetailQuerySchema,
+  GetDatasetDetailResponseSchema,
   GetDatasetListBodySchema,
   GetDatasetPathsQuerySchema,
   UpdateDatasetBodySchema,
@@ -131,7 +132,12 @@ export const DatasetPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回知识库详情'
+          description: '成功返回知识库详情（不包含创建时间）',
+          content: {
+            'application/json': {
+              schema: GetDatasetDetailResponseSchema
+            }
+          }
         }
       }
     }

@@ -24,6 +24,25 @@ const expectedPaths = {
 } as const;
 
 describe('Dataset OpenAPI contracts', () => {
+  it('omits creation time from detail while retaining the list field', () => {
+    expect(DatasetItemSchema.shape).not.toHaveProperty('createTime');
+    expect(DatasetListItemSchema.shape).toHaveProperty('createTime');
+    const response = openAPIDocument.paths?.['/core/dataset/detail']?.get?.responses?.[200];
+    expect(response).toEqual(
+      expect.objectContaining({
+        content: expect.objectContaining({
+          'application/json': expect.objectContaining({
+            schema: expect.objectContaining({ properties: expect.any(Object) })
+          })
+        })
+      })
+    );
+    if (response && 'content' in response) {
+      const schema = response.content?.['application/json']?.schema;
+      expect(schema).not.toHaveProperty('properties.createTime');
+    }
+  });
+
   it.each(Object.entries(expectedPaths))('registers %s as %s', (path, method) => {
     expect(openAPIDocument.paths?.[path]?.[method]).toBeDefined();
   });
