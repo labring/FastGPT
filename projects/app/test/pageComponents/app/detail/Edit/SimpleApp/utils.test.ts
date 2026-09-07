@@ -1,6 +1,9 @@
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
+import {
+  appWorkflow2Form,
+  form2AppWorkflow
+} from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
 import { describe, expect, it } from 'vitest';
 
 const getModelInputs = ({ modelId, model }: { modelId?: string; model?: string }) => {
@@ -17,6 +20,33 @@ const getModelInputs = ({ modelId, model }: { modelId?: string; model?: string }
 };
 
 describe('form2AppWorkflow model reference', () => {
+  it.each([
+    [undefined, false],
+    [false, false],
+    [true, false],
+    [undefined, true],
+    [false, true],
+    [true, true]
+  ])('allows images with legacy vision=%s and sandbox=%s', (vision, useAgentSandbox) => {
+    const form = getDefaultAppForm();
+    form.aiSettings.aiChatVision = vision;
+    form.aiSettings.useAgentSandbox = useAgentSandbox;
+
+    const workflow = form2AppWorkflow(form, (key: string) => key);
+    const restoredForm = appWorkflow2Form(workflow);
+    const restoredWorkflow = form2AppWorkflow(restoredForm, (key: string) => key);
+
+    for (const result of [workflow, restoredWorkflow]) {
+      const inputs = result.nodes.flatMap((node) => node.inputs);
+      expect(inputs.filter((input) => input.key === NodeInputKeyEnum.aiChatVision)).toEqual([
+        expect.objectContaining({ value: true })
+      ]);
+      expect(inputs.find((input) => input.key === NodeInputKeyEnum.fileUrlList)?.value).toEqual(
+        expect.arrayContaining([expect.any(Array)])
+      );
+    }
+  });
+
   it('preserves an empty modelId instead of falling back to legacy model', () => {
     expect(getModelInputs({ modelId: '', model: 'legacy-model' })).toEqual(
       expect.arrayContaining([

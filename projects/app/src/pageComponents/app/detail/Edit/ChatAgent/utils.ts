@@ -157,7 +157,8 @@ export function agentForm2AppWorkflow(
   const aiChatNodeId = '7BdojPlukIQw';
   const normalizedSandboxEntrypoint = data.aiSettings.sandboxEntrypoint?.trim() || undefined;
   const modelMultimodal = {
-    vision: !!data.aiSettings.aiChatVision,
+    // 表单只控制文件上传；图片传递不受隐藏开关影响，识图能力由运行时模型配置判断。
+    vision: true,
     audio: !!data.aiSettings.aiChatAudio,
     video: !!data.aiSettings.aiChatVideo,
     extractFiles: !!data.aiSettings.aiChatExtractFiles
