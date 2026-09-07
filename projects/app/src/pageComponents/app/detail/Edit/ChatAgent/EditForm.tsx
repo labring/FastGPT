@@ -49,6 +49,7 @@ const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSe
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
 const SkillSelectModal = dynamic(() => import('../FormComponent/ToolSelector/SkillSelectModal'));
 const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'));
+const TTSSelect = dynamic(() => import('@/components/core/app/TTSSelect'));
 const WelcomeTextConfig = dynamic(() => import('@/components/core/app/WelcomeTextConfig'));
 const WelcomeQuestionsConfig = dynamic(
   () => import('@/components/core/app/WelcomeQuestionsConfig')
@@ -683,7 +684,7 @@ const EditForm = ({
         </Box>
 
         {/* tts */}
-        {/* <Box {...BoxStyles}>
+        <Box {...BoxStyles}>
           <TTSSelect
             value={appForm.chatConfig.ttsConfig}
             onChange={(e) => {
@@ -696,7 +697,7 @@ const EditForm = ({
               }));
             }}
           />
-        </Box> */}
+        </Box>
 
         {/* whisper */}
         <Box {...BoxStyles}>
