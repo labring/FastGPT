@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AppListFilterSchema,
   AppListFiltersStoreSchema,
+  buildAppListRequest,
   defaultAppListFilters,
   getResourceListDisplayTime,
   hasAppListActiveFilter,
@@ -43,6 +44,32 @@ describe('app list filter helpers', () => {
     expect(toListTmbIds({ mode: 'all', tmbIds: ['me'] })).toBeUndefined();
     expect(toListTmbIds({ mode: 'selected', tmbIds: [] })).toEqual([]);
     expect(toListTmbIds({ mode: 'selected', tmbIds: ['me'] })).toEqual(['me']);
+  });
+
+  it('preserves every selected creator when building the paginated app request', () => {
+    const tmbIds = ['member-1', 'member-2', 'member-3'];
+
+    expect(
+      buildAppListRequest({
+        parentId: '',
+        type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow],
+        searchKey: '',
+        offset: 0,
+        pageSize: 51,
+        sort: AppListSortEnum.createTimeDesc,
+        tmbIds
+      })
+    ).toMatchObject({ tmbIds });
+    expect(
+      buildAppListRequest({
+        parentId: null,
+        type: AppTypeEnum.simple,
+        searchKey: '',
+        offset: 0,
+        pageSize: 51,
+        tmbIds: []
+      }).tmbIds
+    ).toEqual([]);
   });
 
   it('treats search, type and creator as active filters, but not sort', () => {

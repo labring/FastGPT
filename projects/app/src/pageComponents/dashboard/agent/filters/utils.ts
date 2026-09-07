@@ -1,5 +1,6 @@
 import { AppListSortEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import type { ListAppV2BodyType } from '@fastgpt/global/openapi/core/app/common/api';
 import { toMultiSelectFilterQuery } from '@fastgpt/web/components/common/TagFilter';
 import z from 'zod';
 
@@ -112,6 +113,28 @@ export const resolveSceneListType = (
 /** 转成列表接口的 tmbIds：全部不传，已选含空数组。 */
 export const toListTmbIds = (creator?: AppListFilterType['creator']): string[] | undefined =>
   toMultiSelectFilterQuery(creator ? { mode: creator.mode, values: creator.tmbIds } : undefined);
+
+/** Preserve the creator selection when building the paginated app list request. */
+export const buildAppListRequest = ({
+  parentId,
+  type,
+  searchKey,
+  offset,
+  pageSize,
+  sort,
+  tmbIds
+}: Pick<
+  ListAppV2BodyType,
+  'parentId' | 'type' | 'searchKey' | 'offset' | 'pageSize' | 'sort' | 'tmbIds'
+>) => ({
+  parentId,
+  type,
+  searchKey,
+  offset,
+  pageSize,
+  ...(sort ? { sort } : {}),
+  ...(tmbIds !== undefined ? { tmbIds } : {})
+});
 
 /** 卡片时间与排序依据保持一致：最近更新显示更新时间，创建时间排序显示创建时间。 */
 export const getResourceListDisplayTime = ({

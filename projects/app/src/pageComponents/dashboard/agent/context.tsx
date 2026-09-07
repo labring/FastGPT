@@ -21,10 +21,10 @@ import { useTranslation } from 'next-i18next';
 import { usePersistedFilters } from '@fastgpt/web/hooks/usePersistedFilters';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { buildFilterStorageKey } from '@/web/common/filter/storageKey';
-import { getTeamMembers } from '@/web/support/user/team/api';
 import { getDashboardAppListScene, resolveDashboardAppListTypes } from './utils/appListTypes';
 import {
   AppListFiltersStoreSchema,
+  buildAppListRequest,
   defaultAppListFilters,
   defaultAppListFiltersStore,
   resolveSceneListType,
@@ -158,28 +158,19 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
         type: appType
       });
       const fetchApps = (tmbIds?: string[]) =>
-        getMyAppsV2({
-          parentId,
-          type: formatType,
-          searchKey,
-          offset,
-          pageSize: getGridRequestPageSize(pageSize, offset),
-          ...(sort ? { sort } : {}),
-          ...(tmbIds !== undefined ? { tmbIds } : {})
-        });
+        getMyAppsV2(
+          buildAppListRequest({
+            parentId,
+            type: formatType,
+            searchKey,
+            offset,
+            pageSize: getGridRequestPageSize(pageSize, offset),
+            sort,
+            tmbIds
+          })
+        );
 
-      // 已选创建者先按当前活跃成员校验，避免离职/失效 ID 把列表一直筛空。
-      if (!persistedTmbIds?.length) {
-        return fetchApps(persistedTmbIds);
-      }
-
-      const selectedMembers = await getTeamMembers({
-        tmbIds: persistedTmbIds,
-        status: 'active',
-        offset: 0,
-        pageSize: persistedTmbIds.length
-      });
-      return fetchApps(selectedMembers.list.map((item) => String(item.tmbId)));
+      return fetchApps(persistedTmbIds);
     },
     {
       refreshDeps: [
