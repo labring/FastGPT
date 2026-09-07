@@ -39,7 +39,8 @@ This setting disables only seccomp. chroot, `no_new_privs`, and UID/GID privileg
 4. Improved generation conflict recovery: when the current chat is still generating on the server, the client detects the conflict and restores the existing response stream instead of adding an empty message or showing an error state.
 5. Made collapsed processing previews interactive. You can now select a reasoning or tool-call preview to expand its matching details.
 6. Standardized list filters across Studio Apps, Skills, Datasets, the Template Marketplace, Tools, account usage, model dashboards, API keys, audit logs, and App logs. Each page provides the relevant filters for type, source, creator, member, category, date, and sort order, with search available for long option lists.
-7. Added creator and creation-time sorting filters to App, Skill, and Dataset lists. The system upgrade task automatically backfills creation times for historical Apps.
+7. Added creator and creation-time sorting filters to App, Skill, and Dataset lists. The system upgrade task automatically backfills creation times for historical Apps and Datasets.
+8. Standardized shared interactions for table selection, date ranges, numeric inputs, long-list scrolling, and dialogs to improve bulk actions and long-content display.
 
 ## 🐛 Fixes
 
@@ -51,6 +52,9 @@ This setting disables only seccomp. chroot, `no_new_privs`, and UID/GID privileg
 6. Fixed model selection not strictly distinguishing between model types, validation failures when the maximum model temperature was left empty, and inconsistent ordering between the Admin model catalog and member model lists. Startup no longer invalidates member model caches that are still valid.
 7. FastGPT Pro now returns explicit client errors for malformed messages received through Lark, WeCom, DingTalk, and WeChat Official Account publishing channels instead of reporting them as server failures.
 8. Fixed a FastGPT Pro issue where historical team member `role` values could override current permission calculations. Deprecated roles no longer affect permissions except for the team owner role.
+9. Fixed hidden multimodal settings preventing Simple Apps and Chat Agents from sending images, audio, or video to models. In Workflows with explicit multimodal switches, model-switching controls now consistently clear options unsupported by the new model. Switching back does not automatically restore them.
+10. Fixed model request field mapping for same-name, swapped, and chained mappings. Mappings now use normalized request data filtered by model capabilities, and duplicate target fields produce an explicit error.
+11. Fixed stale or storage-incompatible MCP / HTTP Tool definitions in Workflow snapshots. Tool definitions are now resolved at runtime, with compatibility for legacy settings and authentication data.
 
 ## 🛠️ Code improvements
 
@@ -58,3 +62,4 @@ This setting disables only seccomp. chroot, `no_new_privs`, and UID/GID privileg
 2. Added MongoDB leases, run ID fencing, and heartbeats to coordinate automatic migrations across multiple nodes and take over stalled runs. Large migrations support resumable batch processing.
 3. Collaborator APIs can optionally return team member login usernames and use batch queries to avoid per-member requests.
 4. Improved cluster image build caching in FastGPT Pro. Proxy caches and cache-enabled runners now reduce repeated pulls and build work.
+5. Fixed deployment scripts conflating access URLs with host port mappings. FastGPT and Sandbox Proxy host ports can be configured independently, without treating reverse-proxy public ports as host ports.
