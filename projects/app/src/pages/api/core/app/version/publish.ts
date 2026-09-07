@@ -21,7 +21,6 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
 import { formatModels } from '@fastgpt/global/core/workflow/utils';
 import { getSystemDefaultModelIds } from '@fastgpt/service/core/ai/model';
-import { StoreWorkflowNodeItemTypeSchema } from '@fastgpt/global/core/workflow/type/node';
 import {
   PublishAppBodySchema,
   PublishAppQuerySchema,
@@ -57,7 +56,6 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     nodes: normalizedWorkflow.nodes,
     teamId
   });
-  const storageNodes = StoreWorkflowNodeItemTypeSchema.array().parse(normalizedWorkflow.nodes);
   if (isPublish) {
     await validatePublishAppAgentSkillReadPermissions({
       nodes: normalizedWorkflow.nodes,
@@ -80,7 +78,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
         {
           tmbId,
           appId,
-          nodes: storageNodes,
+          nodes: normalizedWorkflow.nodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
           versionName: i18nT('app:auto_save'),
@@ -94,7 +92,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       await MongoApp.updateOne(
         { _id: appId },
         {
-          modules: storageNodes,
+          modules: normalizedWorkflow.nodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
           updateTime: new Date()
@@ -126,7 +124,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       [
         {
           appId,
-          nodes: storageNodes,
+          nodes: normalizedWorkflow.nodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
           isPublish,
@@ -140,7 +138,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
 
     // update app
     const setUpdate = {
-      modules: storageNodes,
+      modules: normalizedWorkflow.nodes,
       edges: normalizedWorkflow.edges,
       chatConfig: normalizedWorkflow.chatConfig,
       updateTime: new Date(),

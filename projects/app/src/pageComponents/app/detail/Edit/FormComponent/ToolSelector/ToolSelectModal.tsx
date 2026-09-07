@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useMemo } from 'react';
+import React, { useCallback, useState, useMemo, useRef } from 'react';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
@@ -77,6 +77,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.systemTools);
   const [parentId, setParentId] = useState<ParentIdType>('');
   const [parentSource, setParentSource] = useState<string>();
+  const parentTypes = useRef(new Map<string, AppTypeEnum>());
   const [searchKey, setSearchKey] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
@@ -105,6 +106,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       } else if (type === TemplateTypeEnum.myTools) {
         return getTeamAppTemplates({
           parentId,
+          parentType: parentId ? parentTypes.current.get(parentId) : undefined,
           searchKey: searchVal,
           type: [
             AppTypeEnum.toolFolder,
@@ -122,7 +124,13 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       }
     },
     {
-      onSuccess(_, [{ type = templateType, parentId = '', source }]) {
+      onSuccess(
+        list: (NodeTemplateListItemType & { appType?: AppTypeEnum })[] | undefined,
+        [{ type = templateType, parentId = '', source }]
+      ) {
+        list?.forEach(({ id, appType }) => {
+          if (appType) parentTypes.current.set(id, appType);
+        });
         setTemplateType(type);
         setParentId(parentId);
         setParentSource(parentId ? (source ?? parentSource) : undefined);

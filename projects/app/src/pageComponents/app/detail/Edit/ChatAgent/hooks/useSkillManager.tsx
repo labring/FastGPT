@@ -187,8 +187,12 @@ export const useSkillManager = ({
   );
 
   /* ===== Team agents/tools ===== */
+  const parentTypes = useRef(new Map<string, AppTypeEnum>());
   const { data: allTeamApps = [] } = useRequest(() => getTeamAppTemplates({ parentId: null }), {
-    manual: false
+    manual: false,
+    onSuccess(list) {
+      list.forEach(({ id, appType }) => parentTypes.current.set(id, appType));
+    }
   });
   const myTools = useMemo(
     () =>
@@ -218,11 +222,15 @@ export const useSkillManager = ({
   );
 
   const onFolderLoadTeamApps = useCallback(async (folderId: string, types: AppTypeEnum[]) => {
-    const children = await getTeamAppTemplates({ parentId: folderId, type: types });
-
+    const children = await getTeamAppTemplates({
+      parentId: folderId,
+      parentType: parentTypes.current.get(folderId),
+      type: types
+    });
     if (!children || children.length === 0) {
       return [];
     }
+    children.forEach(({ id, appType }) => parentTypes.current.set(id, appType));
 
     return children.map<SkillItemType>((item) => {
       return {

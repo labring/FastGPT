@@ -24,7 +24,7 @@ export const CanonicalAgentToolInputConfigSchema = z.object({
 });
 export type CanonicalAgentToolInputConfig = z.infer<typeof CanonicalAgentToolInputConfigSchema>;
 
-/** 当前版本的 Agent 工具；读取时兼容历史快照，执行配置仅在写入/调试响应边界过滤。 */
+/** 当前版本的 Agent 工具；迁移只保留持久化所需字段，工具定义由消费边界加载。 */
 const CanonicalAvailableAgentToolSchema = z.object({
   id: z.string(),
   version: z.string().optional(),

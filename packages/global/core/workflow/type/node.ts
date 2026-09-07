@@ -1,9 +1,5 @@
 import { FlowNodeTypeEnum, NodeColorSchemaEnum } from '../node/constant';
-import {
-  FlowNodeInputItemTypeSchema,
-  FlowNodeOutputItemTypeSchema,
-  ToolReferenceNodeInputTypeSchema
-} from './io';
+import { FlowNodeInputItemTypeSchema, FlowNodeOutputItemTypeSchema } from './io';
 import { HttpToolConfigTypeSchema } from '../../app/tool/httpTool/type';
 import { McpToolConfigSchema } from '../../app/tool/mcpTool/type';
 import { ToolSetToolSummarySchema } from '../../app/tool/toolSet/type';
@@ -14,7 +10,6 @@ import { PluginStatusSchema } from '../../plugin/type';
 import { SourceMemberSchema } from '../../../support/user/type';
 import z from 'zod';
 import { BoolSchema, NumSchema } from '../../../common/zod';
-import { NodeInputKeyEnum } from '../constants';
 
 export const McpToolSetRuntimeConfigSchema = z.object({
   url: z.string().meta({
@@ -56,7 +51,7 @@ const ToolSetReferenceSchema = z.object({
 
 const ToolSetPreviewReferenceSchema = ToolSetReferenceSchema.extend({
   toolList: z.array(ToolSetToolSummarySchema).optional().meta({
-    description: '仅用于展示的当前工具列表，工作流持久化时移除'
+    description: '工具集预览展示摘要，不包含执行 Schema'
   })
 });
 
@@ -130,17 +125,6 @@ const NodeToolConfigCommonSchema = z.object({
     })
 });
 
-/** 工作流只持久化 MCP/HTTP 工具集引用，不保存展示列表或执行配置。 */
-export const NodeToolConfigStorageTypeSchema = NodeToolConfigCommonSchema.extend({
-  mcpToolSet: ToolSetReferenceSchema.optional().meta({
-    description: '节点绑定的 MCP 工具集引用'
-  }),
-  httpToolSet: ToolSetReferenceSchema.optional().meta({
-    description: '节点绑定的 HTTP 工具集引用'
-  })
-});
-export type NodeToolConfigStorageType = z.infer<typeof NodeToolConfigStorageTypeSchema>;
-
 /** 工作流数据兼容当前引用格式与历史完整快照；引用分支优先，避免空 HTTP toolList 被当成完整配置而丢失 ID。 */
 export const NodeToolConfigTypeSchema = NodeToolConfigCommonSchema.extend({
   mcpToolSet: z
@@ -157,64 +141,6 @@ export const NodeToolConfigTypeSchema = NodeToolConfigCommonSchema.extend({
     })
 });
 export type NodeToolConfigType = z.infer<typeof NodeToolConfigTypeSchema>;
-
-/**
- * 将旧工具集快照收敛为引用。画布使用 pluginId，Agent 使用已选工具 id 补齐历史引用；
- * 显式 toolId 优先。缺少可用 ID 时由存储 Schema 拒绝，不能丢掉快照后保存不可执行节点。
- * 仅用于工作流引用，工具集 App 自身仍保存完整定义。
- */
-export const parseWorkflowToolConfigForStorage = ({
-  toolConfig,
-  toolId
-}: {
-  toolConfig?: NodeToolConfigType;
-  toolId?: string;
-}): NodeToolConfigStorageType | undefined => {
-  if (!toolConfig) return undefined;
-  // 历史 personal- 前缀属于选择器 ID，工具集引用必须恢复为真实 App ID。
-  const legacyToolSetId = toolId?.startsWith('personal-')
-    ? toolId.slice('personal-'.length)
-    : toolId;
-  const { mcpToolSet, httpToolSet, ...toolReferences } = toolConfig;
-  return NodeToolConfigStorageTypeSchema.parse({
-    ...toolReferences,
-    // 旧单工具节点可能附带运行时工具集快照；单工具 ID 已足够定位，不再保存第二份引用。
-    ...(mcpToolSet && !toolReferences.mcpTool
-      ? {
-          mcpToolSet: {
-            toolId:
-              'toolId' in mcpToolSet && mcpToolSet.toolId ? mcpToolSet.toolId : legacyToolSetId
-          }
-        }
-      : {}),
-    ...(httpToolSet && !toolReferences.httpTool
-      ? {
-          httpToolSet: {
-            toolId:
-              'toolId' in httpToolSet && httpToolSet.toolId ? httpToolSet.toolId : legacyToolSetId
-          }
-        }
-      : {})
-  });
-};
-
-/** 只过滤已规范化 Agent 工具的引用配置，其余输入绑定、业务值和运行态扩展原样保留。 */
-const SelectedAgentToolStorageSchema = z
-  .looseObject({
-    id: z.string(),
-    toolConfig: NodeToolConfigTypeSchema.optional()
-  })
-  .transform((tool) => ({
-    ...tool,
-    toolConfig: parseWorkflowToolConfigForStorage({ toolConfig: tool.toolConfig, toolId: tool.id })
-  }));
-
-/** Agent 工具选择的写入/响应过滤边界；变量引用不是工具列表，必须保持原样。 */
-export const SelectedAgentToolStorageValueSchema = z.union([
-  z.array(SelectedAgentToolStorageSchema),
-  z.tuple([z.string(), z.string()])
-]);
-export type SelectedAgentToolStorageValue = z.infer<typeof SelectedAgentToolStorageValueSchema>;
 
 export const ToolDataSchema = z.object({
   diagram: z.string().optional().meta({
@@ -433,36 +359,3 @@ export const StoreNodeItemTypeSchema = FlowNodeCommonTypeSchema.extend({
     .optional()
 });
 export type StoreNodeItemType = z.infer<typeof StoreNodeItemTypeSchema>;
-
-/** 工作流持久化边界；工具 Schema 会在运行时重新解析。 */
-export const StoreWorkflowNodeItemTypeSchema = StoreNodeItemTypeSchema.transform((node) => {
-  const toolConfig = parseWorkflowToolConfigForStorage({
-    toolConfig: node.toolConfig,
-    toolId: node.pluginId
-  });
-  if (node.flowNodeType === FlowNodeTypeEnum.agent) {
-    return {
-      ...node,
-      toolConfig,
-      inputs: node.inputs.map((input) =>
-        input.key === NodeInputKeyEnum.selectedTools && Array.isArray(input.value)
-          ? { ...input, value: SelectedAgentToolStorageValueSchema.parse(input.value) }
-          : input
-      )
-    };
-  }
-  const isToolReference =
-    node.toolConfig?.mcpTool ||
-    node.toolConfig?.httpTool ||
-    node.toolConfig?.mcpToolSet ||
-    node.toolConfig?.httpToolSet;
-  if (!isToolReference) return { ...node, toolConfig };
-
-  // 仅裁剪外部工具定义生成的输入快照，其他节点的自定义 Schema 仍是业务配置。
-  return {
-    ...node,
-    toolConfig,
-    inputs: ToolReferenceNodeInputTypeSchema.array().parse(node.inputs)
-  };
-});
-export type StoreWorkflowNodeItemType = z.infer<typeof StoreWorkflowNodeItemTypeSchema>;

@@ -19,13 +19,20 @@ import type {
 } from '@fastgpt/global/openapi/core/app/tool/api';
 
 /* ============ team plugin ============== */
+/** parentType 来自已加载的列表项；普通目录和 Agent 查询直接走 list，不额外探测父资源。 */
 export const getTeamAppTemplates = async (data?: {
   parentId?: ParentIdType;
+  parentType?: AppTypeEnum;
   searchKey?: string;
   type?: AppTypeEnum[];
 }) => {
-  if (data?.parentId) {
-    // handle get mcptools
+  const { parentType, ...listQuery } = data ?? {};
+  // 列表项已经提供 appType；普通目录和 Agent 不再请求接口探测父资源类型。
+  if (
+    data?.parentId &&
+    (parentType === AppTypeEnum.mcpToolSet || parentType === AppTypeEnum.httpToolSet) &&
+    (!data.type || data.type.includes(parentType))
+  ) {
     const { type, tools } = await GET<GetToolSetChildrenResponseType>(
       '/core/app/tool/getToolSetChildren',
       {
@@ -45,7 +52,7 @@ export const getTeamAppTemplates = async (data?: {
       }));
     }
   }
-  return getMyApps(data).then((res) =>
+  return getMyApps(data ? listQuery : undefined).then((res) =>
     res.map((app) => ({
       tmbId: app.tmbId,
       id: app._id,

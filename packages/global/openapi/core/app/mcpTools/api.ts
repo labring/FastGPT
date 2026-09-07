@@ -67,13 +67,7 @@ export const UpdateMcpToolsResponseSchema = z.undefined().meta({
 });
 export type UpdateMcpToolsResponseType = z.infer<typeof UpdateMcpToolsResponseSchema>;
 
-/* ============================================================================
- * API: 获取 MCP 子工具展示列表
- * Route: GET /api/core/app/mcpTools/getChildren
- * Method: GET
- * Description: 仅返回子工具 ID、名称、说明和图标，不返回输入 Schema 或执行配置
- * Tags: ['MCP 工具管理', 'Read']
- * ============================================================================ */
+// Get mcp children
 export const GetMcpChildrenQuerySchema = z.object({
   id: ObjectIdSchema.meta({
     example: '68ad85a7463006c963799a05',
@@ -86,10 +80,7 @@ export const GetMcpChildrenQuerySchema = z.object({
 });
 export type GetMcpChildrenQueryType = z.infer<typeof GetMcpChildrenQuerySchema>;
 
-export const McpChildrenItemSchema = McpToolConfigSchema.pick({
-  name: true,
-  description: true
-}).extend({
+export const McpChildrenItemSchema = McpToolConfigSchema.extend({
   id: z.string().meta({
     example: 'mcp-68ad85a7463006c963799a05/search',
     description: '工具 ID'

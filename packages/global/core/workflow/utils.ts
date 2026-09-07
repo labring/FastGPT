@@ -416,7 +416,7 @@ export const toolData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }) =
   };
 };
 
-/** 工具集预览只携带引用和展示摘要；持久化时再移除摘要列表。 */
+/** 工具集预览只携带引用和展示摘要，不携带执行 Schema。 */
 export const toolSetData2FlowNodeIO = ({
   nodes,
   toolSetId

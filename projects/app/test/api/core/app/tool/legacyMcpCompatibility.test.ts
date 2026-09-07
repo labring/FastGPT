@@ -150,7 +150,6 @@ describe('legacy MCP resource compatibility without migration', () => {
       expect(created.error).toBeUndefined();
       const stored = await MongoApp.findById(String(created.data)).lean();
       expect(JSON.stringify(stored!.modules)).not.toContain('inputSchema');
-      expect(JSON.stringify(stored!.modules)).not.toContain('toolList');
       const nodes = storeNodes2RuntimeNodes(stored!.modules, ['set-node', 'single-node']);
       await rewriteRuntimeWorkFlow({ teamId: auth.teamId, tmbId: auth.tmbId, nodes, edges: [] });
       expect(nodes).toHaveLength(2);

@@ -104,7 +104,7 @@ describe('getToolSetChildren', () => {
     expect(result.data?.tools).toBeUndefined();
   });
 
-  it('also strips schema and execution fields from the legacy MCP children response', () => {
+  it('keeps the existing MCP children API schema contract unchanged', () => {
     expect(
       GetMcpChildrenResponseSchema.parse([
         {
@@ -117,6 +117,14 @@ describe('getToolSetChildren', () => {
           headerSecret: { token: 'secret' }
         }
       ])
-    ).toEqual([{ id: `mcp-${appId}/search`, name: 'search', description: 'Search', avatar: '' }]);
+    ).toEqual([
+      {
+        id: `mcp-${appId}/search`,
+        name: 'search',
+        description: 'Search',
+        avatar: '',
+        inputSchema: { type: 'object' }
+      }
+    ]);
   });
 });

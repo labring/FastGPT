@@ -2,7 +2,6 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
-import { StoreWorkflowNodeItemTypeSchema } from '@fastgpt/global/core/workflow/type/node';
 
 const mocks = vi.hoisted(() => ({
   findById: vi.fn(),
@@ -188,9 +187,6 @@ describe('getClientToolPreviewNode', () => {
       expect(preview.toolConfig).toEqual({
         [toolSetKey]: { toolId: appId, toolList: [{ name: 'search', description: 'Search' }] }
       });
-      const stored = StoreWorkflowNodeItemTypeSchema.parse({ ...preview, nodeId: 'toolset-node' });
-      expect(stored.toolConfig).toEqual({ [toolSetKey]: { toolId: appId } });
-      expect(stored.inputs[0].value).toEqual(businessValue);
     }
   );
 
@@ -356,10 +352,7 @@ describe('getClientToolPreviewNode', () => {
         key: NodeInputKeyEnum.toolSetData,
         value: 'ordinary-value'
       });
-      const stored = StoreWorkflowNodeItemTypeSchema.parse({ ...preview, nodeId: 'added-node' });
-      expect(stored.toolConfig).toEqual({ mcpToolSet: { toolId: appId } });
-      expect(JSON.stringify(stored)).not.toContain('inputSchema');
-      expect(stored.inputs[0].value).toEqual(businessValue);
+      expect(JSON.stringify(preview)).not.toContain('inputSchema');
       expect(app).toEqual(original);
     }
   );

@@ -31,7 +31,10 @@ describe('getTeamAppTemplates', () => {
       tools: [{ id: 'mcp-mcp-set/search', name: 'search', description: 'Search' }]
     });
 
-    const mcpTemplates = await getTeamAppTemplates({ parentId: 'mcp-set' });
+    const mcpTemplates = await getTeamAppTemplates({
+      parentId: 'mcp-set',
+      parentType: AppTypeEnum.mcpToolSet
+    });
     expect(mcpTemplates[0]).toMatchObject({
       id: 'mcp-mcp-set/search',
       flowNodeType: FlowNodeTypeEnum.tool,
@@ -45,7 +48,10 @@ describe('getTeamAppTemplates', () => {
       ]
     });
 
-    const httpTemplates = await getTeamAppTemplates({ parentId: 'http-set' });
+    const httpTemplates = await getTeamAppTemplates({
+      parentId: 'http-set',
+      parentType: AppTypeEnum.httpToolSet
+    });
     expect(httpTemplates[0]).toMatchObject({
       id: 'http-http-set/create',
       flowNodeType: FlowNodeTypeEnum.tool,
@@ -63,12 +69,47 @@ describe('getTeamAppTemplates', () => {
     expect(mocks.getMyApps).not.toHaveBeenCalled();
   });
 
-  it('falls back to normal app listing for folders and preserves filters', async () => {
-    mocks.GET.mockResolvedValueOnce({ type: AppTypeEnum.toolFolder, tools: [] });
+  it('lists normal folders directly and preserves filters without sending parentType', async () => {
     mocks.getMyApps.mockResolvedValueOnce([]);
-    const query = { parentId: 'folder', searchKey: 'search', type: [AppTypeEnum.workflowTool] };
+    const query = {
+      parentId: 'folder',
+      parentType: AppTypeEnum.toolFolder,
+      searchKey: 'search',
+      type: [AppTypeEnum.workflowTool]
+    };
     expect(await getTeamAppTemplates(query)).toEqual([]);
-    expect(mocks.getMyApps).toHaveBeenCalledExactlyOnceWith(query);
+    expect(mocks.getMyApps).toHaveBeenCalledExactlyOnceWith({
+      parentId: 'folder',
+      searchKey: 'search',
+      type: [AppTypeEnum.workflowTool]
+    });
+    expect(mocks.GET).not.toHaveBeenCalled();
+    expect(mocks.getAppDetailById).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, AppTypeEnum.folder, AppTypeEnum.mcpToolSet])(
+    'keeps Agent lists on list regardless of cached parent type: %j',
+    async (parentType) => {
+      mocks.getMyApps.mockResolvedValueOnce([]);
+      const type = [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow];
+      expect(await getTeamAppTemplates({ parentId: 'agent-folder', parentType, type })).toEqual([]);
+      expect(mocks.getMyApps).toHaveBeenCalledExactlyOnceWith({ parentId: 'agent-folder', type });
+      expect(mocks.GET).not.toHaveBeenCalled();
+    }
+  );
+
+  it('preserves appType in root items so navigation can select its endpoint without detail', async () => {
+    mocks.getMyApps.mockResolvedValueOnce([
+      { _id: 'mcp-set', type: AppTypeEnum.mcpToolSet, name: 'MCP', avatar: '', intro: '' }
+    ]);
+    const [parent] = await getTeamAppTemplates();
+    mocks.GET.mockResolvedValueOnce({ type: AppTypeEnum.mcpToolSet, tools: [] });
+    await getTeamAppTemplates({ parentId: parent.id, parentType: parent.appType });
+    expect(mocks.getMyApps).toHaveBeenCalledTimes(1);
+    expect(mocks.GET).toHaveBeenCalledExactlyOnceWith('/core/app/tool/getToolSetChildren', {
+      appId: 'mcp-set',
+      searchKey: undefined
+    });
     expect(mocks.getAppDetailById).not.toHaveBeenCalled();
   });
 
@@ -80,13 +121,17 @@ describe('getTeamAppTemplates', () => {
 
   it('does not fall back to folder listing for empty toolsets', async () => {
     mocks.GET.mockResolvedValueOnce({ type: AppTypeEnum.httpToolSet, tools: [] });
-    expect(await getTeamAppTemplates({ parentId: 'empty' })).toEqual([]);
+    expect(
+      await getTeamAppTemplates({ parentId: 'empty', parentType: AppTypeEnum.httpToolSet })
+    ).toEqual([]);
     expect(mocks.getMyApps).not.toHaveBeenCalled();
   });
 
   it('propagates denied access without requesting full details', async () => {
     mocks.GET.mockRejectedValueOnce(new Error('unAuthApp'));
-    await expect(getTeamAppTemplates({ parentId: 'denied' })).rejects.toThrow('unAuthApp');
+    await expect(
+      getTeamAppTemplates({ parentId: 'denied', parentType: AppTypeEnum.mcpToolSet })
+    ).rejects.toThrow('unAuthApp');
     expect(mocks.getMyApps).not.toHaveBeenCalled();
     expect(mocks.getAppDetailById).not.toHaveBeenCalled();
   });

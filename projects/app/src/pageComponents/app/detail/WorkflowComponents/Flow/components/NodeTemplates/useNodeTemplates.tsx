@@ -25,6 +25,8 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
 
   const [parentId, setParentId] = useState<ParentIdType>('');
   const [parentSource, setParentSource] = useState<string>();
+  // 进入目录/面包屑只携带 ID，保留已加载父项类型，避免再次查询详情。
+  const parentTypes = useRef(new Map<string, AppTypeEnum>());
 
   const appId = useContextSelector(AppContext, (v) => v.appDetail._id);
   const { basicNodeTemplates, getNodeList, nodeAmount } = useContextSelector(
@@ -94,6 +96,7 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
         // app, workflow-plugin, mcp
         return getTeamAppTemplates({
           parentId,
+          parentType: parentId ? parentTypes.current.get(parentId) : undefined,
           searchKey: searchVal,
           type: [
             AppTypeEnum.toolFolder,
@@ -121,7 +124,10 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
       }
     },
     {
-      onSuccess() {
+      onSuccess(list: (NodeTemplateListItemType & { appType?: AppTypeEnum })[] | undefined) {
+        list?.forEach(({ id, appType }) => {
+          if (appType) parentTypes.current.set(id, appType);
+        });
         searchKeyLock.current = false;
       }
     }

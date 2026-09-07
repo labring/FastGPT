@@ -36,7 +36,6 @@ import type {
 import { ToolReferenceNodeInputTypeSchema } from '@fastgpt/global/core/workflow/type/io';
 import {
   FlowNodeTemplateTypeSchema,
-  NodeToolConfigTypeSchema,
   type FlowNodeTemplateType,
   type NodeToolConfigType
 } from '@fastgpt/global/core/workflow/type/node';
@@ -107,11 +106,6 @@ type AppToolType = WorkflowTemplateType & {
   versionLabel?: string; // Auto computed
   isLatestVersion?: boolean; // Auto computed
 };
-
-/** 按节点、IO、toolConfig 的结构裁剪定义字段，不遍历业务值中的同名属性。 */
-const ClientToolPreviewNodeSchema = FlowNodeTemplateTypeSchema.extend({
-  toolConfig: NodeToolConfigTypeSchema.optional()
-});
 
 /**
  * 构建返回给客户端的系统工具预览节点。
@@ -551,7 +545,7 @@ export async function getClientToolPreviewNode({
   // 普通工作流和系统工具的自定义 IO 定义仍有效，不套用外部工具的裁剪契约。
   if (!isMcpOrHttpTool) return data;
 
-  return ClientToolPreviewNodeSchema.parse({
+  return FlowNodeTemplateTypeSchema.parse({
     ...data,
     inputs: ToolReferenceNodeInputTypeSchema.array().parse(data.inputs)
   });
