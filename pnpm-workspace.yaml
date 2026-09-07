@@ -15,6 +15,8 @@ packages:
   - document/
   - scripts/icon
   - sdk/*
+  - max/apps/*
+  - max/packages/*
 
 catalog:
   '@alicloud/dysmsapi20170525': ^2.0.24
@@ -64,6 +66,7 @@ catalog:
   file-type: 21.3.0
   gpt-tokenizer: 3.4.0
   hono: 4.12.27
+  '@hono/zod-validator': ^0.9.1
   i18next: 23.16.8
   ipaddr.js: ^2.4.0
   js-yaml: ^4.1.1
@@ -103,7 +106,8 @@ catalog:
   vitest: ^4.1.5
   xml2js: ^0.6.2
   zod: ^4
-
+  oxfmt: ^0.66.0
+  oxlint: ^1.81.0
   qs: ^6.16.0
 
 catalogMode: prefer
