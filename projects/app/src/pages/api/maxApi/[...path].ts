@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { Readable } from 'stream';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { AssistedGenerationUrl } from '@fastgpt/service/common/system/constants';
+import { FastGPTMaxUrl } from '@fastgpt/service/common/system/constants';
 import { buildSameOriginUrl } from '@fastgpt/service/common/security/network';
 
 const buildRequestPath = (req: NextApiRequest): string => {
@@ -22,7 +22,7 @@ const buildRequestPath = (req: NextApiRequest): string => {
 };
 
 /**
- * 辅助生成服务（assisted-generation-service）同源反代。
+ * max 服务（max/apps/server）同源反代。
  *
  * 与 /api/proApi/[...path] 同构：客户端 cookie/headers 原样透传给独立 Hono 服务，
  * SSE 响应以流方式回传。服务内部完成鉴权与生成。
@@ -34,12 +34,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!requestPath) {
       throw new Error('url is empty');
     }
-    if (!AssistedGenerationUrl) {
-      throw new Error('未配置辅助生成服务链接: ASSISTED_GENERATION_URL');
+    if (!FastGPTMaxUrl) {
+      throw new Error('未配置 max 服务链接: MAX_URL');
     }
 
     // 防御 protocol-relative URL 覆盖主机(如 path 含空段 → `//169.254...`)
-    const targetUrl = buildSameOriginUrl(requestPath, AssistedGenerationUrl);
+    const targetUrl = buildSameOriginUrl(requestPath, FastGPTMaxUrl);
 
     const headers: Record<string, string> = {};
     for (const [key, value] of Object.entries(req.headers)) {
@@ -74,6 +74,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (lowerKey === 'content-encoding' || lowerKey === 'transfer-encoding') return;
       res.setHeader(key, value);
     });
+
+    // 仅 SSE 响应声明 no-transform，让 Next 的 compress 中间件跳过本响应
+    // （compression 对 Cache-Control 含 no-transform 的响应不压缩）：SSE 经
+    // 流式 gzip 会被缓冲成整段，浏览器端表现为"等很久然后一次性收到"。
+    // 非 SSE（JSON/错误）响应保持可压缩。与主进程 createSseResponse 的
+    // no-cache, no-transform 语义一致。
+    const contentType = response.headers.get('content-type')?.toLowerCase();
+    if (response.body && contentType?.includes('text/event-stream')) {
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
+    }
 
     res.status(response.status);
 
