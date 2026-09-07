@@ -341,7 +341,7 @@ describe('POST /api/core/app/list', () => {
       updateTime: new Date('2024-01-01T00:00:00.000Z')
     });
     await MongoApp.collection.updateOne(
-      { _id: app._id },
+      { _id: new Types.ObjectId(String(app._id)) },
       { $set: { avatar: null }, $unset: { intro: '' } }
     );
 

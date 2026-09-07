@@ -28,6 +28,7 @@ import {
   type GetDatasetListV2Response
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { AppListSortEnum } from '@fastgpt/global/core/app/constants';
+import { Types } from '@fastgpt/service/common/mongo';
 
 async function handler(
   req: ApiRequestProps<GetDatasetListV2Body>
@@ -167,6 +168,7 @@ async function handler(
       })(),
       inheritPermission: dataset.inheritPermission,
       tmbId: dataset.tmbId,
+      createTime: dataset.createTime ?? new Types.ObjectId(String(dataset._id)).getTimestamp(),
       updateTime: dataset.updateTime,
       permission: Per,
       private: privateDataset

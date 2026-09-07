@@ -71,8 +71,8 @@ describe('POST /api/core/dataset/list', () => {
       String(newerDataset._id)
     ]);
     expect(filtered.data.map((item) => item.createTime)).toEqual([
-      olderDataset._id.getTimestamp(),
-      newerDataset._id.getTimestamp()
+      olderId.getTimestamp(),
+      newerId.getTimestamp()
     ]);
 
     const empty = await Call<GetDatasetListBody, Record<string, never>, GetDatasetListResponse>(
@@ -180,7 +180,7 @@ describe('POST /api/core/dataset/list', () => {
       updateTime: new Date('2024-01-01T00:00:00.000Z')
     });
     await MongoDataset.collection.updateOne(
-      { _id: dataset._id },
+      { _id: new Types.ObjectId(String(dataset._id)) },
       { $set: { avatar: null }, $unset: { intro: '' } }
     );
 

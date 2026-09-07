@@ -9,7 +9,6 @@ import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/cons
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 import type {
   ListSkillsQuery,
-  ListSkillsV2Query,
   ListSkillsResponse,
   CreateSkillBody,
   GetSkillDetailQuery,
@@ -37,7 +36,8 @@ import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import type {
   ChangeSkillOwnerBody,
-  ChangeSkillOwnerResponse
+  ChangeSkillOwnerResponse,
+  ListSkillsV2Query
 } from '@fastgpt/global/openapi/core/ai/skill/api';
 
 /** 获取 Skill 列表（支持分页、搜索、分类、文件夹过滤） */

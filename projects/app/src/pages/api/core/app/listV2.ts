@@ -32,6 +32,7 @@ import {
   type ListAppV2BodyType,
   type ListAppV2ResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
+import { Types } from '@fastgpt/service/common/mongo';
 
 async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListAppV2ResponseType> {
   const {
@@ -122,7 +123,7 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
   const [myApps, total] = await Promise.all([
     MongoApp.find(
       findAppsQuery,
-      '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission modules'
+      '_id parentId avatar type name intro tmbId createTime updateTime pluginData inheritPermission modules'
     )
       .sort({ ...appListSortMongoMap[sort ?? AppListSortEnum.updateTimeDesc], _id: -1 })
       .skip(skip)
@@ -178,6 +179,7 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
       ...rest,
       avatar: app.avatar ?? '',
       intro: app.intro ?? '',
+      createTime: app.createTime ?? new Types.ObjectId(String(app._id)).getTimestamp(),
       parentId: app.parentId,
       permission: Per,
       private: privateApp,
