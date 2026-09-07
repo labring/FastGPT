@@ -223,15 +223,28 @@ export const migrateLegacyWorkflowStructureToCurrent = (
           !!node.toolConfig?.systemTool ||
           !!node.pluginId?.startsWith('systemTool-') ||
           !!node.pluginId?.startsWith('commercial-'));
-      const inputs = node.inputs.map((input) =>
-        migrateLegacyFlowNodeInputToCurrent(
+      const inputs = node.inputs.map((input) => {
+        const sourceInput = (() => {
+          // toolParams 的全部输入均由 Agent 工具调用生成。
+          if (node.flowNodeType === FlowNodeTypeEnum.toolParams) {
+            return {
+              ...input,
+              defaultToAgentGenerated: true,
+              selectedType: FlowNodeInputTypeEnum.agentGenerated
+            };
+          }
+
           // HTTP 468 的旧默认模式规则与普通工作流输入不同，先单独恢复再做通用归一。
-          node.flowNodeType === FlowNodeTypeEnum.httpRequest468
+          return node.flowNodeType === FlowNodeTypeEnum.httpRequest468
             ? migrateLegacyHttpToolInputDefaultMode(input)
-            : input,
-          { isTool, allowLegacyToolDescriptionFallback }
-        )
-      );
+            : input;
+        })();
+
+        return migrateLegacyFlowNodeInputToCurrent(sourceInput, {
+          isTool: isTool || node.flowNodeType === FlowNodeTypeEnum.toolParams,
+          allowLegacyToolDescriptionFallback
+        });
+      });
 
       const migratedInputs =
         node.flowNodeType === FlowNodeTypeEnum.agent

@@ -3,6 +3,10 @@ import { defaultToolParamFormData } from '@/pageComponents/app/detail/WorkflowCo
 
 describe('ToolParamsEditModal constants', () => {
   it('creates new dynamic tool params with the Agent-generated default', () => {
-    expect(defaultToolParamFormData.defaultToAgentGenerated).toBe(true);
+    expect(defaultToolParamFormData).toMatchObject({
+      defaultToAgentGenerated: true,
+      selectedType: 'agentGenerated',
+      renderTypeList: ['agentGenerated', 'reference']
+    });
   });
 });

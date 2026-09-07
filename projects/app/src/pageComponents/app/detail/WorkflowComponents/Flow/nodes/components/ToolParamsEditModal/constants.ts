@@ -7,7 +7,8 @@ import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 
 export const defaultToolParamFormData: FlowNodeInputItemType = {
   valueType: WorkflowIOValueTypeEnum.string,
-  renderTypeList: [FlowNodeInputTypeEnum.reference],
+  renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.reference],
+  selectedType: FlowNodeInputTypeEnum.agentGenerated,
   defaultToAgentGenerated: true,
   key: '',
   label: '',

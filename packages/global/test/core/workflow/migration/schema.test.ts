@@ -873,6 +873,62 @@ describe('workflow migration boundary', () => {
     expect(input.defaultToAgentGenerated).toBe(true);
   });
 
+  it('migrates every 4.15 tool parameter to Agent generation', async () => {
+    const [agentGeneratedInput, referenceInput] = (
+      await migrateWorkflowToCurrent({
+        nodes: [
+          {
+            nodeId: 'tool-params',
+            flowNodeType: 'toolParams',
+            name: 'Custom tool variables',
+            inputs: [
+              {
+                valueType: WorkflowIOValueTypeEnum.string,
+                renderTypeList: [FlowNodeInputTypeEnum.reference],
+                key: 'aaa',
+                label: 'aaa',
+                toolDescription: 'aaaaa',
+                required: true,
+                canEdit: true,
+                customInputConfig: {
+                  selectValueTypeList: [WorkflowIOValueTypeEnum.string],
+                  showDescription: true
+                },
+                enum: ''
+              },
+              {
+                valueType: WorkflowIOValueTypeEnum.string,
+                renderTypeList: [FlowNodeInputTypeEnum.reference],
+                selectedType: FlowNodeInputTypeEnum.reference,
+                value: ['source-node', 'output'],
+                key: 'reference',
+                label: 'reference',
+                toolDescription: 'Linked value',
+                required: true,
+                canEdit: true,
+                customInputConfig: {
+                  selectValueTypeList: [WorkflowIOValueTypeEnum.string],
+                  showDescription: true
+                }
+              }
+            ],
+            outputs: []
+          }
+        ]
+      } as any)
+    ).nodes[0].inputs;
+
+    expect(agentGeneratedInput).toMatchObject({
+      defaultToAgentGenerated: true,
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.reference]
+    });
+    expect(referenceInput).toMatchObject({
+      defaultToAgentGenerated: true,
+      selectedType: FlowNodeInputTypeEnum.agentGenerated
+    });
+  });
+
   it('moves a legacy MCP ToolSet input into toolConfig', async () => {
     const result = await migrateWorkflowToCurrent({
       nodes: [
