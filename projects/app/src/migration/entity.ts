@@ -206,12 +206,8 @@ export const claimMigrationLease = async (
           // 新一轮执行开始后，旧成功结果不再代表本轮状态。
           result: '$$REMOVE',
           leaseExpireAt: {
-            // 使用 Mongo 服务端时间，避免不同容器宿主机的时钟偏差影响抢占判断。
-            $dateAdd: {
-              startDate: '$$NOW',
-              unit: 'millisecond',
-              amount: leaseDurationMs
-            }
+            // 日期加毫秒使用 $add 兼容 MongoDB 4.4，并保留服务端时间避免宿主机时钟偏差。
+            $add: ['$$NOW', leaseDurationMs]
           },
           updatedAt: '$$NOW'
         }
@@ -239,11 +235,8 @@ export const renewMigrationLease = async (
         $set: {
           heartbeatAt: '$$NOW',
           leaseExpireAt: {
-            $dateAdd: {
-              startDate: '$$NOW',
-              unit: 'millisecond',
-              amount: leaseDurationMs
-            }
+            // 与抢锁使用同一服务端时间语义，避免引入 MongoDB 5.0 才支持的 $dateAdd。
+            $add: ['$$NOW', leaseDurationMs]
           },
           updatedAt: '$$NOW'
         }

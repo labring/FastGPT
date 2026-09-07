@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
 import {
   claimMigrationLease,
@@ -27,6 +27,7 @@ describe('system migration entity lease', () => {
   const migrationIdPattern = /^20260903_entity_/;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     await Promise.all([
       MongoSystemMigrationState.deleteMany({ _id: migrationIdPattern }),
       MongoSystemMigrationFailedRecord.deleteMany({ migrationId: migrationIdPattern })
@@ -65,6 +66,94 @@ describe('system migration entity lease', () => {
     );
 
     expect(claims.filter(Boolean)).toHaveLength(1);
+  });
+
+  describe('claimMigrationLease', () => {
+    it.each([1, 90_123])('adds %i milliseconds to Mongo server time', async (leaseDurationMs) => {
+      const migrationId = '20260903_entity_claim_server_time';
+      await ensureMigrationStates([migrationId]);
+      // 只观察真实数据库调用，固定兼容表达式，避免高版本测试 Mongo 掩盖兼容性回退。
+      const claim = vi.spyOn(MongoSystemMigrationState, 'findOneAndUpdate');
+
+      const state = await claimMigrationLease({
+        migrationId,
+        runId: randomUUID(),
+        leaseDurationMs
+      });
+
+      expect(claim).toHaveBeenCalledWith(
+        expect.any(Object),
+        [
+          {
+            $set: expect.objectContaining({
+              heartbeatAt: '$$NOW',
+              leaseExpireAt: { $add: ['$$NOW', leaseDurationMs] }
+            })
+          }
+        ],
+        expect.any(Object)
+      );
+      expect(state?.leaseExpireAt).toBeInstanceOf(Date);
+      expect(state?.heartbeatAt).toBeInstanceOf(Date);
+      expect(state!.leaseExpireAt!.getTime() - state!.heartbeatAt!.getTime()).toBe(leaseDurationMs);
+    });
+  });
+
+  describe('renewMigrationLease', () => {
+    it.each([SystemMigrationStatusEnum.running, SystemMigrationStatusEnum.failed])(
+      'renews a %s lease from Mongo server time without changing ownership',
+      async (status) => {
+        const migrationId = '20260903_entity_renew_server_time';
+        const runId = randomUUID();
+        const leaseDurationMs = 90_123;
+        await ensureMigrationStates([migrationId]);
+        const claimed = await claimMigrationLease({ migrationId, runId, leaseDurationMs: 60_000 });
+        await MongoSystemMigrationState.updateOne({ _id: migrationId }, { $set: { status } });
+        const renew = vi.spyOn(MongoSystemMigrationState, 'updateOne');
+
+        await expect(renewMigrationLease({ migrationId, runId, leaseDurationMs })).resolves.toBe(
+          true
+        );
+
+        expect(renew).toHaveBeenCalledWith(
+          expect.any(Object),
+          [
+            {
+              $set: expect.objectContaining({
+                heartbeatAt: '$$NOW',
+                leaseExpireAt: { $add: ['$$NOW', leaseDurationMs] }
+              })
+            }
+          ],
+          expect.any(Object)
+        );
+        const state = await MongoSystemMigrationState.findById(migrationId).lean();
+        expect(state).toMatchObject({ status, runId, lastStartedAt: claimed!.lastStartedAt });
+        expect(state!.leaseExpireAt!.getTime() - state!.heartbeatAt!.getTime()).toBe(
+          leaseDurationMs
+        );
+        expect(state!.leaseExpireAt!.getTime()).toBeGreaterThan(claimed!.leaseExpireAt!.getTime());
+      }
+    );
+
+    it('does not revive an expired lease', async () => {
+      const migrationId = '20260903_entity_expired_renew';
+      const runId = randomUUID();
+      await ensureMigrationStates([migrationId]);
+      await claimMigrationLease({ migrationId, runId, leaseDurationMs: 60_000 });
+      await MongoSystemMigrationState.updateOne(
+        { _id: migrationId },
+        { $set: { leaseExpireAt: new Date(0) } }
+      );
+      const expired = await MongoSystemMigrationState.findById(migrationId).lean();
+
+      await expect(
+        renewMigrationLease({ migrationId, runId, leaseDurationMs: 90_000 })
+      ).resolves.toBe(false);
+      await expect(MongoSystemMigrationState.findById(migrationId).lean()).resolves.toEqual(
+        expired
+      );
+    });
   });
 
   it('claims a failed task only after its holding lease expires', async () => {
