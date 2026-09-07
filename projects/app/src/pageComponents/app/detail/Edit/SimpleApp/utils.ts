@@ -32,6 +32,7 @@ import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/syst
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
   Input_Template_File_Link,
+  Input_Template_Stream_MODE,
   Input_Template_UserChatInput
 } from '@fastgpt/global/core/workflow/template/input';
 import { workflowStartNodeId } from '@/web/core/app/constants';
@@ -676,26 +677,35 @@ export function form2AppWorkflow(
             courseUrl: tool.courseUrl,
             readmeUrl: tool.readmeUrl,
             userGuide: tool.userGuide,
-            inputs: tool.inputs.map((input) => {
-              // Special key value
-              if (input.key === NodeInputKeyEnum.forbidStream) {
-                input.value = true;
-              }
-              // Special tool
-              if (
-                tool.flowNodeType === FlowNodeTypeEnum.appModule &&
-                input.key === NodeInputKeyEnum.history
-              ) {
-                return stripToolInputDefaultMode({
-                  ...input,
-                  value: formData.aiSettings.maxHistories
-                });
-              }
-              if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
-                input.value = [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]];
-              }
-              return stripToolInputDefaultMode(input);
-            }),
+            inputs: [
+              // 历史或系统工作流工具可能没有显式开关；表单生成时补齐禁流配置。
+              ...([FlowNodeTypeEnum.appModule, FlowNodeTypeEnum.pluginModule].includes(
+                tool.flowNodeType
+              ) && !tool.inputs.some((input) => input.key === NodeInputKeyEnum.forbidStream)
+                ? [{ ...Input_Template_Stream_MODE, value: true }]
+                : []),
+              ...tool.inputs.map((input) => {
+                // Special key value
+                if (input.key === NodeInputKeyEnum.forbidStream) {
+                  // 只改生成结果，避免污染共享工具模板及工作流编辑器的原始开关。
+                  return { ...input, value: true };
+                }
+                // Special tool
+                if (
+                  tool.flowNodeType === FlowNodeTypeEnum.appModule &&
+                  input.key === NodeInputKeyEnum.history
+                ) {
+                  return stripToolInputDefaultMode({
+                    ...input,
+                    value: formData.aiSettings.maxHistories
+                  });
+                }
+                if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
+                  input.value = [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]];
+                }
+                return stripToolInputDefaultMode(input);
+              })
+            ],
             outputs: tool.outputs
           }
         ],

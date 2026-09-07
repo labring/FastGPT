@@ -5,6 +5,9 @@ import {
   form2AppWorkflow
 } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
 import { describe, expect, it } from 'vitest';
+import { RunAppNode } from '@fastgpt/global/core/workflow/template/system/runApp';
+import { Input_Template_Stream_MODE } from '@fastgpt/global/core/workflow/template/input';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const getModelInputs = ({ modelId, model }: { modelId?: string; model?: string }) => {
   const form = getDefaultAppForm();
@@ -20,6 +23,37 @@ const getModelInputs = ({ modelId, model }: { modelId?: string; model?: string }
 };
 
 describe('form2AppWorkflow model reference', () => {
+  it.each([
+    { type: FlowNodeTypeEnum.appModule, hasStreamInput: true },
+    { type: FlowNodeTypeEnum.appModule, hasStreamInput: false },
+    { type: FlowNodeTypeEnum.pluginModule, hasStreamInput: true },
+    { type: FlowNodeTypeEnum.pluginModule, hasStreamInput: false }
+  ])(
+    'disables child streaming for $type (existing switch=$hasStreamInput)',
+    ({ type, hasStreamInput }) => {
+      const form = getDefaultAppForm();
+      form.selectedTools = [
+        {
+          ...RunAppNode,
+          flowNodeType: type,
+          id: 'child-app',
+          pluginId: 'child-app',
+          name: 'Child app',
+          inputs: hasStreamInput ? [{ ...Input_Template_Stream_MODE, value: false }] : [],
+          outputs: []
+        }
+      ];
+      const workflow = form2AppWorkflow(form, (key: string) => key);
+      const childNode = workflow.nodes.find((node) => node.pluginId === 'child-app');
+      expect(
+        childNode?.inputs.find((input) => input.key === NodeInputKeyEnum.forbidStream)?.value
+      ).toBe(true);
+      expect(form.selectedTools[0].inputs).toEqual(
+        hasStreamInput ? [{ ...Input_Template_Stream_MODE, value: false }] : []
+      );
+    }
+  );
+
   it.each([
     [undefined, false],
     [false, false],

@@ -63,9 +63,8 @@ export const createToolCallToolProvider = async ({
     async ({ runtimeNodes, runtimeEdges, lastInteractive }) => {
       const result = await runWorkflow({
         ...workflowProps,
-        // ToolCall（包括 SimpleApp）统一由外层模型输出流，子工作流固定非流式执行。
-        stream: false,
-        workflowStreamResponse: undefined,
+        // 继承父流程的流式能力；是否禁流由子节点的 forbidStream 控制。
+        // 简易应用在表单转换时强制禁流，不能在共用 ToolCall 层关闭所有工作流的输出。
         ...(lastInteractive ? { lastInteractive } : {}),
         runtimeNodes,
         runtimeEdges,

@@ -117,8 +117,28 @@ describe('agent sub app dispatchPlugin', () => {
       variableState: await createVariableState(),
       checkIsStopping: vi.fn(() => false),
       maxRunTimes: 20,
-      workflowDispatchDeep: 0
+      workflowDispatchDeep: 0,
+      stream: true
     } as any);
+
+  it('keeps Agent V2 child workflow execution non-streaming', async () => {
+    mocks.getSystemToolWorkflowRuntime.mockResolvedValue({
+      id: 'commercial-system-workflow',
+      name: 'System Workflow',
+      avatar: '',
+      nodes: [],
+      edges: [],
+      chatConfig: { variables: [] },
+      currentCost: 0
+    });
+    await dispatchSystemWorkflow();
+    expect(mocks.runWorkflow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stream: false,
+        workflowStreamResponse: undefined
+      })
+    );
+  });
 
   it('initializes workflow tool variables from child chatConfig', async () => {
     mocks.authAppByTmbId.mockResolvedValue({

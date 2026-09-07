@@ -5,6 +5,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
+  NodeInputKeyEnum,
   NodeOutputKeyEnum,
   VariableInputEnum,
   WorkflowIOValueTypeEnum
@@ -48,6 +49,7 @@ vi.mock('@fastgpt/service/core/app/tool/workflowTool/utils', () => ({
 }));
 
 import { dispatchRunPlugin } from '@fastgpt/service/core/workflow/dispatch/plugin/run';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 
 const createVariableState = () =>
   WorkflowVariableState.create({
@@ -71,6 +73,70 @@ describe('dispatchRunPlugin', () => {
     getSystemToolWorkflowRuntimeMock.mockReset();
     computedAppToolUsageMock.mockReset().mockResolvedValue(1);
   });
+
+  it.each([
+    { stream: true, forbidStream: false, expectedStream: true },
+    { stream: true, forbidStream: true, expectedStream: false },
+    { stream: false, forbidStream: false, expectedStream: false }
+  ])(
+    'honors parent stream=$stream and child forbidStream=$forbidStream',
+    async ({ stream, forbidStream, expectedStream }) => {
+      const workflowStreamResponse = vi.fn();
+      const event = workflowSseEvent.answerDelta('child chunk');
+      getSystemToolWorkflowRuntimeMock.mockResolvedValue({
+        id: 'commercial-system-workflow',
+        name: 'Stream test',
+        avatar: '',
+        nodes: [],
+        edges: [],
+        chatConfig: { variables: [] },
+        currentCost: 0
+      });
+      runWorkflowMock.mockImplementation(async (props) => {
+        if (props.stream) props.workflowStreamResponse?.(event);
+        return {
+          flowUsages: [],
+          assistantResponses: [{ text: { content: 'child chunk' } }],
+          runTimes: 1,
+          runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [])
+        };
+      });
+      await dispatchRunPlugin({
+        node: {
+          nodeId: 'toolNode',
+          name: 'Tool',
+          avatar: '',
+          flowNodeType: FlowNodeTypeEnum.pluginModule,
+          pluginId: 'commercial-system-workflow',
+          inputs: [],
+          outputs: []
+        },
+        runningAppInfo: { id: 'app', name: 'app', teamId: 'team', tmbId: 'member' },
+        query: [],
+        params: { [NodeInputKeyEnum.forbidStream]: forbidStream },
+        histories: [],
+        timezone: 'Asia/Shanghai',
+        uid: 'user',
+        chatId: 'chat',
+        responseChatItemId: 'response',
+        variableState: await createVariableState(),
+        usagePush: vi.fn(),
+        runtimeNodes: [],
+        runtimeNodesMap: new Map(),
+        runtimeEdges: [],
+        stream,
+        workflowStreamResponse: stream ? workflowStreamResponse : undefined
+      } as any);
+      expect(runWorkflowMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          stream: expectedStream,
+          workflowStreamResponse: expectedStream ? workflowStreamResponse : undefined
+        })
+      );
+      if (expectedStream) expect(workflowStreamResponse).toHaveBeenCalledWith(event);
+      else expect(workflowStreamResponse).not.toHaveBeenCalled();
+    }
+  );
 
   it('marks a failed child workflow as a billing error', async () => {
     getSystemToolWorkflowRuntimeMock.mockResolvedValue({
