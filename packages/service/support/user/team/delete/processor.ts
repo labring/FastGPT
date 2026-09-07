@@ -22,13 +22,13 @@ import { onDelAllApp } from './utils';
 import { deleteEvaluationsByTeamId } from '../../../../core/app/evaluation/delete';
 import { MongoTeamSub } from '../../../../support/wallet/sub/schema';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { withAccountCancellationTeamLock } from '../../account/cancellation';
+import { withTeamLock } from '../../lock';
 import { MongoOutLink } from '../../../outLink/schema';
 
 const logger = getLogger(LogCategories.MODULE.USER.TEAM);
 
 export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) =>
-  withAccountCancellationTeamLock(job.data.teamId, async () => {
+  withTeamLock(job.data.teamId, async () => {
     const { teamId } = job.data;
     const startTime = Date.now();
 

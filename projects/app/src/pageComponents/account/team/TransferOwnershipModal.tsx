@@ -7,16 +7,14 @@ import {
   ModalBody,
   ModalFooter,
   Button,
-  useDisclosure,
-  Alert,
-  AlertIcon,
-  AlertDescription
+  useDisclosure
 } from '@chakra-ui/react';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { getTeamMembers, putTransferTeamOwnership } from '@/web/support/user/team/api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { type PaginationResponse } from '@fastgpt/global/openapi/api';
@@ -61,6 +59,12 @@ export function TransferOwnershipModal({
     onOpen: onOpenMemberListMenu
   } = useDisclosure();
 
+  const { ConfirmModal: TransferConfirmModal, openConfirm: openTransferConfirm } = useConfirm({
+    type: 'delete',
+    title: t('account_team:transfer_confirm_title'),
+    inputConfirmText: t('account_team:transfer_confirm_input')
+  });
+
   const { runAsync: onTransfer, loading } = useRequest(
     async () => {
       if (!selectedMember) return;
@@ -95,11 +99,6 @@ export function TransferOwnershipModal({
           <Avatar src={userInfo?.team.teamAvatar} w={'1.75rem'} borderRadius={'md'} />
           <Box>{userInfo?.team.teamName}</Box>
         </HStack>
-
-        <Alert status="warning" mb={4} borderRadius="md">
-          <AlertIcon />
-          <AlertDescription fontSize="sm">{t('account_team:transfer_warning')}</AlertDescription>
-        </Alert>
 
         <Flex flexDirection="column">
           <Box fontSize="14px" fontWeight="500" color="myGray.900" mb={2}>
@@ -178,13 +177,27 @@ export function TransferOwnershipModal({
           <Button
             isLoading={loading}
             isDisabled={!selectedMember}
-            onClick={onTransfer}
+            onClick={() => {
+              if (!selectedMember) return;
+
+              openTransferConfirm({
+                customContent: t(
+                  `account_team:${userInfo?.team?.isWecomTeam ? 'transfer_confirm_content_wecom' : 'transfer_confirm_content_multi'}`,
+                  {
+                    teamName: userInfo?.team?.teamName,
+                    memberName: selectedMember.memberName
+                  }
+                ),
+                onConfirm: onTransfer
+              })();
+            }}
             colorScheme="red"
           >
             {t('account_team:confirm_transfer')}
           </Button>
         </HStack>
       </ModalFooter>
+      <TransferConfirmModal isLoading={loading} />
     </MyModal>
   );
 }
