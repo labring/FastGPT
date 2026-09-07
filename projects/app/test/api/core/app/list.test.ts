@@ -252,6 +252,55 @@ describe('POST /api/core/app/list', () => {
     expect(emptied.data).toEqual([]);
   });
 
+  it('applies shared filters in V2', async () => {
+    const { owner, members } = await getFakeUsers(2);
+    const [olderApp, newerApp] = await MongoApp.create([
+      {
+        name: 'Older member app',
+        type: AppTypeEnum.workflow,
+        teamId: owner.teamId,
+        tmbId: members[0].tmbId,
+        createTime: new Date('2026-01-01T00:00:00.000Z'),
+        modules: []
+      },
+      {
+        name: 'Newer member app',
+        type: AppTypeEnum.workflow,
+        teamId: owner.teamId,
+        tmbId: members[0].tmbId,
+        createTime: new Date('2026-02-01T00:00:00.000Z'),
+        modules: []
+      }
+    ]);
+
+    const filtered = await Call<ListAppV2BodyType, Record<string, never>, ListAppV2ResponseType>(
+      handlerV2,
+      {
+        auth: owner,
+        body: {
+          type: AppTypeEnum.workflow,
+          tmbIds: [String(members[0].tmbId)],
+          sort: AppListSortEnum.createTimeAsc
+        }
+      }
+    );
+    expect(filtered.code).toBe(200);
+    expect(filtered.data.total).toBe(2);
+    expect(filtered.data.list.map((app) => String(app._id))).toEqual([
+      String(olderApp._id),
+      String(newerApp._id)
+    ]);
+
+    const empty = await Call<ListAppV2BodyType, Record<string, never>, ListAppV2ResponseType>(
+      handlerV2,
+      {
+        auth: owner,
+        body: { type: AppTypeEnum.workflow, tmbIds: [] }
+      }
+    );
+    expect(empty.data).toEqual({ list: [], total: 0 });
+  });
+
   it('excludes an app before applying pagination in V2', async () => {
     const user = await getUser(`app-list-v2-exclude-${getNanoid(6)}`);
     const [excludedApp] = await MongoApp.create(

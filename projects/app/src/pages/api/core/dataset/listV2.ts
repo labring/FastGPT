@@ -27,7 +27,7 @@ import {
   type GetDatasetListV2Body,
   type GetDatasetListV2Response
 } from '@fastgpt/global/openapi/core/dataset/api';
-import { AppListSortEnum, appListSortMongoMap } from '@fastgpt/global/core/app/constants';
+import { AppListSortEnum } from '@fastgpt/global/core/app/constants';
 
 async function handler(
   req: ApiRequestProps<GetDatasetListV2Body>
@@ -107,12 +107,13 @@ async function handler(
   })();
 
   const skip = offset ?? (pageNum - 1) * pageSize;
+  const datasetSort = ((): Record<string, 1 | -1> => {
+    if (sort === AppListSortEnum.createTimeAsc) return { _id: 1 };
+    if (sort === AppListSortEnum.createTimeDesc) return { _id: -1 };
+    return { updateTime: -1, _id: -1 };
+  })();
   const [myDatasets, total] = await Promise.all([
-    MongoDataset.find(findDatasetQuery)
-      .sort({ ...appListSortMongoMap[sort ?? AppListSortEnum.updateTimeDesc], _id: -1 })
-      .skip(skip)
-      .limit(pageSize)
-      .lean(),
+    MongoDataset.find(findDatasetQuery).sort(datasetSort).skip(skip).limit(pageSize).lean(),
     MongoDataset.countDocuments(findDatasetQuery)
   ]);
   const pageRoleList = await getResourcePermissionsByResourceIds({

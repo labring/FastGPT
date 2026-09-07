@@ -191,6 +191,58 @@ describe('POST /api/core/ai/skill/list', () => {
     ]);
   });
 
+  it('V2 applies creator and sort filters', async () => {
+    const owner = await getUser(`agent-skill-v2-filter-owner-${getNanoid(6)}`);
+    const member = await getUser(`agent-skill-v2-filter-member-${getNanoid(6)}`, owner.teamId);
+    const [olderSkill, newerSkill] = await MongoAgentSkills.create([
+      {
+        name: 'Older V2 member skill',
+        type: AgentSkillTypeEnum.skill,
+        source: AgentSkillSourceEnum.personal,
+        teamId: owner.teamId,
+        tmbId: member.tmbId,
+        createTime: new Date('2026-01-01T00:00:00.000Z')
+      },
+      {
+        name: 'Newer V2 member skill',
+        type: AgentSkillTypeEnum.skill,
+        source: AgentSkillSourceEnum.personal,
+        teamId: owner.teamId,
+        tmbId: member.tmbId,
+        createTime: new Date('2026-02-01T00:00:00.000Z')
+      }
+    ]);
+
+    const filtered = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
+      handlerV2,
+      {
+        auth: owner,
+        body: {
+          source: 'mine',
+          parentId: null,
+          withAppCount: false,
+          tmbIds: [String(member.tmbId)],
+          sort: AppListSortEnum.createTimeAsc
+        }
+      }
+    );
+    expect(filtered.code).toBe(200);
+    expect(filtered.data.total).toBe(2);
+    expect(filtered.data.list.map((item) => String(item._id))).toEqual([
+      String(olderSkill._id),
+      String(newerSkill._id)
+    ]);
+
+    const empty = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
+      handlerV2,
+      {
+        auth: owner,
+        body: { source: 'mine', parentId: null, tmbIds: [] }
+      }
+    );
+    expect(empty.data).toEqual({ list: [], total: 0 });
+  });
+
   it('按 skillIds 查询时不会被默认分页截断', async () => {
     const user = await getUser(`agent-skill-list-ids-${getNanoid(6)}`);
     const skills = await MongoAgentSkills.create(

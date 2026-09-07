@@ -22,7 +22,7 @@ import {
   GetDatasetListBodySchema,
   type GetDatasetListResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
-import { AppListSortEnum, appListSortMongoMap } from '@fastgpt/global/core/app/constants';
+import { AppListSortEnum } from '@fastgpt/global/core/app/constants';
 import { Types } from '@fastgpt/service/common/mongo';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
@@ -102,9 +102,12 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
     };
   })();
 
-  const myDatasets = await MongoDataset.find(findDatasetQuery)
-    .sort({ ...appListSortMongoMap[sort ?? AppListSortEnum.updateTimeDesc], _id: -1 })
-    .lean();
+  const datasetSort = ((): Record<string, 1 | -1> => {
+    if (sort === AppListSortEnum.createTimeAsc) return { _id: 1 };
+    if (sort === AppListSortEnum.createTimeDesc) return { _id: -1 };
+    return { updateTime: -1, _id: -1 };
+  })();
+  const myDatasets = await MongoDataset.find(findDatasetQuery).sort(datasetSort).lean();
   const formatDatasets = myDatasets
     .map((dataset) => {
       const { Per, privateDataset } = (() => {

@@ -66,7 +66,7 @@ describe('POST /api/core/dataset/list', () => {
       }
     );
     expect(filtered.code).toBe(200);
-    expect(filtered.data.list.map((item) => String(item._id))).toEqual([
+    expect(filtered.data.map((item) => String(item._id))).toEqual([
       String(olderDataset._id),
       String(newerDataset._id)
     ]);
@@ -82,7 +82,37 @@ describe('POST /api/core/dataset/list', () => {
         body: { parentId: null, tmbIds: [] }
       }
     );
-    expect(empty.data).toEqual({ list: [], total: 0 });
+    expect(empty.data).toEqual([]);
+
+    const filteredV2 = await Call<
+      GetDatasetListV2Body,
+      Record<string, never>,
+      GetDatasetListV2Response
+    >(handlerV2, {
+      auth: owner,
+      body: {
+        parentId: null,
+        type: [DatasetTypeEnum.folder, DatasetTypeEnum.websiteDataset],
+        tmbIds: [String(member.tmbId)],
+        sort: AppListSortEnum.createTimeAsc
+      }
+    });
+    expect(filteredV2.code).toBe(200);
+    expect(filteredV2.data.total).toBe(2);
+    expect(filteredV2.data.list.map((item) => String(item._id))).toEqual([
+      String(olderDataset._id),
+      String(newerDataset._id)
+    ]);
+
+    const emptyV2 = await Call<
+      GetDatasetListV2Body,
+      Record<string, never>,
+      GetDatasetListV2Response
+    >(handlerV2, {
+      auth: owner,
+      body: { parentId: null, tmbIds: [] }
+    });
+    expect(emptyV2.data).toEqual({ list: [], total: 0 });
   });
 
   it('keeps the original array response', async () => {
