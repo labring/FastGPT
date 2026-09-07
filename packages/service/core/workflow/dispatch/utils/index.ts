@@ -647,8 +647,9 @@ export const rewriteRuntimeWorkFlow = async ({
             pushEdges(runtimeNode.nodeId);
           });
         } else if (mcpToolsetVal) {
+          // 旧调试状态可能仍携带空 toolId，占位值不能阻止按 pluginId 加载资源。
           const toolSetId =
-            ('toolId' in mcpToolsetVal ? mcpToolsetVal.toolId : undefined) ?? toolSetNode.pluginId;
+            ('toolId' in mcpToolsetVal ? mcpToolsetVal.toolId : undefined) || toolSetNode.pluginId;
           if (!toolSetId) continue;
 
           const app = await getAuthorizedToolSet(toolSetId);
@@ -670,7 +671,7 @@ export const rewriteRuntimeWorkFlow = async ({
           });
         } else if (httpToolsetVal) {
           const toolSetId =
-            ('toolId' in httpToolsetVal ? httpToolsetVal.toolId : undefined) ??
+            ('toolId' in httpToolsetVal ? httpToolsetVal.toolId : undefined) ||
             toolSetNode.pluginId;
           if (!toolSetId) continue;
 

@@ -2,7 +2,7 @@ import z from 'zod';
 import { AppChatConfigTypeSchema } from '../../app/type';
 import { FlowNodeInputItemTypeSchema } from '../type/io';
 import { AgentToolInputModeEnum } from '../../app/tool/constants';
-import { NodeToolConfigStorageTypeSchema, StoreNodeItemTypeSchema } from '../type/node';
+import { NodeToolConfigTypeSchema, StoreNodeItemTypeSchema } from '../type/node';
 import { StoreEdgeItemTypeSchema } from '../type/edge';
 
 /**
@@ -24,12 +24,12 @@ export const CanonicalAgentToolInputConfigSchema = z.object({
 });
 export type CanonicalAgentToolInputConfig = z.infer<typeof CanonicalAgentToolInputConfigSchema>;
 
-/** 当前版本的 Agent 工具；迁移只保留持久化所需字段，工具定义由消费边界加载。 */
+/** 当前版本的 Agent 工具；读取时兼容历史快照，执行配置仅在写入/调试响应边界过滤。 */
 const CanonicalAvailableAgentToolSchema = z.object({
   id: z.string(),
   version: z.string().optional(),
   source: z.string().optional(),
-  toolConfig: NodeToolConfigStorageTypeSchema.optional(),
+  toolConfig: NodeToolConfigTypeSchema.optional(),
   inputs: z.array(CanonicalAgentToolInputConfigSchema).optional(),
   config: z.record(z.string(), z.unknown())
 });

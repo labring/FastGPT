@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 const mocks = vi.hoisted(() => ({
   authApp: vi.fn(),
@@ -66,6 +67,188 @@ const app = {
 };
 
 describe('workflow debug API chatId', () => {
+  it('preserves Agent variable references in the debug response', async () => {
+    const node = {
+      nodeId: 'agent',
+      name: 'Agent',
+      flowNodeType: 'agent',
+      isEntry: true,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.selectedTools,
+          label: 'Tools',
+          renderTypeList: ['reference'],
+          value: ['source-node', 'tools']
+        }
+      ],
+      outputs: []
+    };
+    mocks.dispatchWorkFlow.mockResolvedValue({
+      debugResponse: { memoryNodes: [node], memoryEdges: [], entryNodeIds: [], nodeResponses: {} },
+      newVariables: {},
+      flatNodeResponses: []
+    });
+    const response = await handler(
+      { body: { appId, usageId: 'usage-id', nodes: [node] }, headers: {} } as any,
+      {} as any
+    );
+    expect(response.memoryNodes[0]).toEqual(node);
+    expect(mocks.dispatchWorkFlow.mock.calls[0][0].runtimeNodes[0]).toEqual(node);
+  });
+
+  it('preserves non-tool runtime extensions', async () => {
+    const node = {
+      nodeId: 'code',
+      name: 'Code',
+      flowNodeType: 'code',
+      inputs: [],
+      outputs: [],
+      isEntry: true,
+      opaqueRuntimeState: { index: 2 }
+    };
+    mocks.dispatchWorkFlow.mockResolvedValue({
+      debugResponse: {
+        memoryNodes: [node],
+        memoryEdges: [],
+        entryNodeIds: ['code'],
+        nodeResponses: {}
+      },
+      newVariables: {},
+      flatNodeResponses: []
+    });
+    const response = await handler(
+      { body: { appId, usageId: 'usage-id', nodes: [node] }, headers: {} } as any,
+      {} as any
+    );
+    expect(response.memoryNodes[0]).toEqual(node);
+    expect(mocks.dispatchWorkFlow.mock.calls[0][0].runtimeNodes[0]).toEqual(node);
+  });
+
+  it.each([
+    ['mcp', false],
+    ['http', false],
+    ['mcp', true],
+    ['http', true]
+  ] as const)(
+    'keeps %s single-step state (toolset: %s) without round-tripping execution schemas',
+    async (source, isToolSet) => {
+      const toolId = `${source}-507f1f77bcf86cd799439011/search`;
+      const toolKey = source === 'mcp' ? 'mcpTool' : 'httpTool';
+      const setKey = source === 'mcp' ? 'mcpToolSet' : 'httpToolSet';
+      const businessValue = { requestSchema: 'business-data' };
+      const node = {
+        nodeId: 'tool',
+        name: 'Search',
+        flowNodeType: isToolSet ? 'toolSet' : 'tool',
+        pluginId: isToolSet ? '507f1f77bcf86cd799439011' : undefined,
+        isEntry: true,
+        catchError: true,
+        jsonSchema: { type: 'object', properties: { query: { type: 'string' } } },
+        toolConfig: {
+          ...(!isToolSet ? { [toolKey]: { toolId } } : {}),
+          [setKey]: {
+            url: 'https://private.example.com',
+            toolList: [],
+            ...(isToolSet ? { toolId: '' } : {})
+          }
+        },
+        inputs: [
+          {
+            key: 'query',
+            label: 'Query',
+            renderTypeList: ['input'],
+            value: businessValue,
+            customJsonSchema: { type: 'object' }
+          }
+        ],
+        outputs: [
+          { id: 'result', key: 'result', label: 'Result', type: 'static', value: businessValue }
+        ],
+        opaqueRuntimeState: { step: 3 }
+      };
+      const agent = {
+        nodeId: 'agent',
+        name: 'Agent',
+        flowNodeType: 'agent',
+        isEntry: false,
+        outputs: [],
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            label: 'Tools',
+            renderTypeList: ['selectTool'],
+            value: [
+              {
+                id: '507f1f77bcf86cd799439011',
+                config: { payload: businessValue },
+                toolConfig: { [setKey]: { url: 'https://private.example.com', toolList: [] } }
+              }
+            ]
+          }
+        ]
+      };
+      const original = structuredClone([node, agent]);
+      mocks.dispatchWorkFlow.mockResolvedValue({
+        debugResponse: {
+          memoryNodes: [node, agent],
+          memoryEdges: [],
+          entryNodeIds: ['tool'],
+          nodeResponses: {},
+          skipNodeQueue: [{ id: 'skip', skippedNodeIdList: ['tool'] }]
+        },
+        newVariables: { saved: businessValue },
+        flatNodeResponses: []
+      });
+      const response = await handler(
+        {
+          body: { appId, usageId: 'usage-id', chatId: 'debug-chat', nodes: [node, agent] },
+          headers: {}
+        } as any,
+        {} as any
+      );
+      const assertProjection = (projected: any[]) => {
+        expect(projected[0]).not.toHaveProperty('jsonSchema');
+        expect(projected[0].inputs[0]).not.toHaveProperty('customJsonSchema');
+        expect(projected[0].inputs[0].value).toEqual(businessValue);
+        expect(projected[0].outputs[0].value).toEqual(businessValue);
+        expect(projected[0].toolConfig).toEqual(
+          isToolSet
+            ? { [setKey]: { toolId: '507f1f77bcf86cd799439011' } }
+            : { [toolKey]: { toolId } }
+        );
+        expect(projected[0]).toMatchObject({
+          isEntry: true,
+          catchError: true,
+          opaqueRuntimeState: { step: 3 }
+        });
+        expect(projected[1].inputs[0].value[0]).toMatchObject({
+          toolConfig: { [setKey]: { toolId: '507f1f77bcf86cd799439011' } },
+          config: { payload: businessValue }
+        });
+      };
+      // 首次请求不另做清理；引擎按 toolId 重新加载定义，仅响应出口生成过滤后的副本。
+      expect(mocks.dispatchWorkFlow.mock.calls[0][0].runtimeNodes).toEqual(original);
+      assertProjection(response.memoryNodes);
+      expect(response.skipNodeQueue).toEqual([{ id: 'skip', skippedNodeIdList: ['tool'] }]);
+      expect(response.newVariables).toEqual({ saved: businessValue });
+      expect([node, agent]).toEqual(original);
+      await handler(
+        {
+          body: {
+            appId,
+            usageId: 'usage-id',
+            chatId: 'debug-chat',
+            nodes: response.memoryNodes,
+            skipNodeQueue: response.skipNodeQueue
+          },
+          headers: {}
+        } as any,
+        {} as any
+      );
+      assertProjection(mocks.dispatchWorkFlow.mock.calls[1][0].runtimeNodes);
+    }
+  );
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.authCert.mockResolvedValue({ tmbId: 'member-id' });

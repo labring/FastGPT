@@ -1148,67 +1148,70 @@ describe('rewriteRuntimeWorkFlow', () => {
     expect(nodes.find((n) => n.nodeId === 'ts3')).toBeUndefined();
   });
 
-  it('should handle HTTP toolSet nodes', async () => {
-    const toolSetNode = makeNode('ts4', FlowNodeTypeEnum.toolSet, {
-      pluginId: 'http-plugin-1',
-      name: 'HTTPTool',
-      avatar: 'avatar.png',
-      toolConfig: {
-        httpToolSet: {}
-      }
-    } as any);
-    const parentNode = makeNode('parent', FlowNodeTypeEnum.chatNode);
-    const nodes = [parentNode, toolSetNode];
-    const edges = [
-      makeEdge('parent', 'ts4', { sourceHandle: 'out', targetHandle: 'selectedTools' })
-    ];
-
-    mockMongoAppFindOne.mockReturnValue({
-      lean: vi.fn().mockResolvedValue({ _id: 'http-plugin-1', name: 'HTTPApp' })
-    });
-    mockGetHTTPToolList.mockResolvedValue([
-      {
-        name: 'api1',
-        description: 'desc1',
-        url: 'http://example.com/api1',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            manual: { type: 'string', isToolParam: false },
-            generated: { type: 'string', isToolParam: true }
-          },
-          required: ['manual', 'generated']
-        },
-        requestSchema: {
-          type: 'object',
-          properties: {
-            manual: { type: 'string', isToolParam: true },
-            generated: { type: 'string', isToolParam: true }
-          },
-          required: ['manual', 'generated']
+  it.each([undefined, '', 'http-plugin-1'])(
+    'should handle HTTP toolSet nodes with legacy id %j',
+    async (toolId) => {
+      const toolSetNode = makeNode('ts4', FlowNodeTypeEnum.toolSet, {
+        pluginId: 'http-plugin-1',
+        name: 'HTTPTool',
+        avatar: 'avatar.png',
+        toolConfig: {
+          httpToolSet: { toolId }
         }
-      },
-      { name: 'api2', description: 'desc2', url: 'http://example.com/api2' }
-    ]);
+      } as any);
+      const parentNode = makeNode('parent', FlowNodeTypeEnum.chatNode);
+      const nodes = [parentNode, toolSetNode];
+      const edges = [
+        makeEdge('parent', 'ts4', { sourceHandle: 'out', targetHandle: 'selectedTools' })
+      ];
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
+      mockMongoAppFindOne.mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ _id: 'http-plugin-1', name: 'HTTPApp' })
+      });
+      mockGetHTTPToolList.mockResolvedValue([
+        {
+          name: 'api1',
+          description: 'desc1',
+          url: 'http://example.com/api1',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              manual: { type: 'string', isToolParam: false },
+              generated: { type: 'string', isToolParam: true }
+            },
+            required: ['manual', 'generated']
+          },
+          requestSchema: {
+            type: 'object',
+            properties: {
+              manual: { type: 'string', isToolParam: true },
+              generated: { type: 'string', isToolParam: true }
+            },
+            required: ['manual', 'generated']
+          }
+        },
+        { name: 'api2', description: 'desc2', url: 'http://example.com/api2' }
+      ]);
 
-    expect(nodes.find((n) => n.nodeId === 'ts4')).toBeUndefined();
-    expect(nodes.find((n) => n.nodeId === 'ts40')?.inputs).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          key: 'manual',
-          selectedType: FlowNodeInputTypeEnum.input
-        }),
-        expect.objectContaining({
-          key: 'generated',
-          selectedType: FlowNodeInputTypeEnum.agentGenerated
-        })
-      ])
-    );
-    expect(nodes.find((n) => n.nodeId === 'ts41')).toBeDefined();
-    expect(edges.filter((e) => e.target === 'ts40' || e.target === 'ts41').length).toBe(2);
-  });
+      await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
+
+      expect(nodes.find((n) => n.nodeId === 'ts4')).toBeUndefined();
+      expect(nodes.find((n) => n.nodeId === 'ts40')?.inputs).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            key: 'manual',
+            selectedType: FlowNodeInputTypeEnum.input
+          }),
+          expect.objectContaining({
+            key: 'generated',
+            selectedType: FlowNodeInputTypeEnum.agentGenerated
+          })
+        ])
+      );
+      expect(nodes.find((n) => n.nodeId === 'ts41')).toBeDefined();
+      expect(edges.filter((e) => e.target === 'ts40' || e.target === 'ts41').length).toBe(2);
+    }
+  );
 
   // Helper: route MongoApp.find responses by the toolsetId it queries, since
   // parseMcpTool and parseHttpTool may both hit MongoApp.find in parallel.

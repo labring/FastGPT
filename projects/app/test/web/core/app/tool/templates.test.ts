@@ -4,21 +4,18 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const mocks = vi.hoisted(() => ({
   getAppDetailById: vi.fn(),
-  getMcpChildren: vi.fn()
+  GET: vi.fn(),
+  getMyApps: vi.fn()
 }));
 
 vi.mock('@/web/common/api/request', () => ({
-  GET: vi.fn(),
+  GET: mocks.GET,
   POST: vi.fn()
 }));
 
 vi.mock('@/web/core/app/api', () => ({
   getAppDetailById: mocks.getAppDetailById,
-  getMyApps: vi.fn()
-}));
-
-vi.mock('@/web/core/app/api/mcpTools', () => ({
-  getMcpChildren: mocks.getMcpChildren
+  getMyApps: mocks.getMyApps
 }));
 
 import { getTeamAppTemplates } from '@/web/core/app/api/tool';
@@ -29,33 +26,22 @@ describe('getTeamAppTemplates', () => {
   });
 
   it('marks MCP and HTTP toolset children as selectable tools', async () => {
-    mocks.getAppDetailById.mockResolvedValueOnce({
+    mocks.GET.mockResolvedValueOnce({
       type: AppTypeEnum.mcpToolSet,
-      _id: 'mcp-set'
+      tools: [{ id: 'mcp-mcp-set/search', name: 'search', description: 'Search' }]
     });
-    mocks.getMcpChildren.mockResolvedValueOnce([
-      { id: 'mcp-set/search', name: 'search', description: 'Search' }
-    ]);
 
     const mcpTemplates = await getTeamAppTemplates({ parentId: 'mcp-set' });
     expect(mcpTemplates[0]).toMatchObject({
-      id: 'mcp-set/search',
+      id: 'mcp-mcp-set/search',
       flowNodeType: FlowNodeTypeEnum.tool,
       isTool: true
     });
 
-    mocks.getAppDetailById.mockResolvedValueOnce({
+    mocks.GET.mockResolvedValueOnce({
       type: AppTypeEnum.httpToolSet,
-      _id: 'http-set',
-      avatar: 'avatar',
-      modules: [
-        {
-          toolConfig: {
-            httpToolSet: {
-              toolList: [{ name: 'create', description: 'Create' }]
-            }
-          }
-        }
+      tools: [
+        { id: 'http-http-set/create', name: 'create', description: 'Create', avatar: 'avatar' }
       ]
     });
 
@@ -65,5 +51,43 @@ describe('getTeamAppTemplates', () => {
       flowNodeType: FlowNodeTypeEnum.tool,
       isTool: true
     });
+    expect(mocks.GET).toHaveBeenNthCalledWith(1, '/core/app/tool/getToolSetChildren', {
+      appId: 'mcp-set',
+      searchKey: undefined
+    });
+    expect(mocks.GET).toHaveBeenNthCalledWith(2, '/core/app/tool/getToolSetChildren', {
+      appId: 'http-set',
+      searchKey: undefined
+    });
+    expect(mocks.getAppDetailById).not.toHaveBeenCalled();
+    expect(mocks.getMyApps).not.toHaveBeenCalled();
+  });
+
+  it('falls back to normal app listing for folders and preserves filters', async () => {
+    mocks.GET.mockResolvedValueOnce({ type: AppTypeEnum.toolFolder, tools: [] });
+    mocks.getMyApps.mockResolvedValueOnce([]);
+    const query = { parentId: 'folder', searchKey: 'search', type: [AppTypeEnum.workflowTool] };
+    expect(await getTeamAppTemplates(query)).toEqual([]);
+    expect(mocks.getMyApps).toHaveBeenCalledExactlyOnceWith(query);
+    expect(mocks.getAppDetailById).not.toHaveBeenCalled();
+  });
+
+  it('loads root without fetching a parent resource', async () => {
+    mocks.getMyApps.mockResolvedValueOnce([]);
+    expect(await getTeamAppTemplates()).toEqual([]);
+    expect(mocks.GET).not.toHaveBeenCalled();
+  });
+
+  it('does not fall back to folder listing for empty toolsets', async () => {
+    mocks.GET.mockResolvedValueOnce({ type: AppTypeEnum.httpToolSet, tools: [] });
+    expect(await getTeamAppTemplates({ parentId: 'empty' })).toEqual([]);
+    expect(mocks.getMyApps).not.toHaveBeenCalled();
+  });
+
+  it('propagates denied access without requesting full details', async () => {
+    mocks.GET.mockRejectedValueOnce(new Error('unAuthApp'));
+    await expect(getTeamAppTemplates({ parentId: 'denied' })).rejects.toThrow('unAuthApp');
+    expect(mocks.getMyApps).not.toHaveBeenCalled();
+    expect(mocks.getAppDetailById).not.toHaveBeenCalled();
   });
 });

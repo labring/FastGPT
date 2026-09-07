@@ -6,7 +6,11 @@ import {
 } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
-import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import {
+  SecretValueTypeSchema,
+  StoreSecretValueTypeSchema,
+  type StoreSecretValueType
+} from '@fastgpt/global/common/secret/type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
@@ -445,13 +449,19 @@ export const getMCPChildren = async (app: AppSchemaType): Promise<McpChildToolTy
       const node = item.modules[0];
       const toolData: McpToolDataType = node.inputs[0].value;
       const { headerSecret, ...toolConfig } = toolData;
+      const normalizedHeaders = (() => {
+        if (!headerSecret) return undefined;
+        // 旧版本同时存在命名请求头映射和单个密钥；映射优先，避免重复包装 Authorization。
+        const headerMap = StoreSecretValueTypeSchema.safeParse(headerSecret);
+        if (headerMap.success) return headerMap.data;
+        return { Authorization: SecretValueTypeSchema.parse(headerSecret) };
+      })();
 
       return {
         avatar: app.avatar,
         id: `${AppToolSourceEnum.mcp}-${id}/${item.name}`,
         ...toolConfig,
-        // Legacy MCP child apps stored one token instead of named header secrets.
-        ...(headerSecret ? { headerSecret: { Authorization: headerSecret } } : {})
+        ...(normalizedHeaders ? { headerSecret: normalizedHeaders } : {})
       };
     });
   }

@@ -1,6 +1,8 @@
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import {
+  GetToolSetChildrenQuerySchema,
+  GetToolSetChildrenResponseSchema,
   GetPreviewNodeQueryOpenAPISchema,
   GetPreviewNodeResponseSchema,
   GetSystemToolTemplatesBodySchema,
@@ -10,6 +12,21 @@ import {
 } from './api';
 
 export const ToolPath: OpenAPIPath = {
+  '/core/app/tool/getToolSetChildren': {
+    get: {
+      summary: '获取工具集子工具摘要',
+      description:
+        '供工具选择列表展开 MCP/HTTP 工具集使用，仅返回展示字段；普通目录返回目录类型和空列表。',
+      tags: [DevApiTagsMap.toolPreview, DevApiTagsMap.httpTools, DevApiTagsMap.mcpTools],
+      requestParams: { query: GetToolSetChildrenQuerySchema },
+      responses: {
+        200: {
+          description: '成功获取工具摘要',
+          content: { 'application/json': { schema: GetToolSetChildrenResponseSchema } }
+        }
+      }
+    }
+  },
   '/core/app/tool/getSystemToolTemplates': {
     post: {
       summary: '获取系统工具模板列表',

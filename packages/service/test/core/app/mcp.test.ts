@@ -31,6 +31,7 @@ import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { PRIVATE_URL_TEXT } from '../../../common/system/utils';
 import { serviceEnv } from '../../../env';
+import { getSecretValue, storeSecretValue } from '../../../common/secret/utils';
 
 // Access private client via prototype for spying
 const getPrivateClient = (mcpClient: MCPClient) =>
@@ -757,6 +758,110 @@ describe('getMCPChildren', () => {
     const result = await getMCPChildren(app);
     expect(result).toEqual([]);
   });
+
+  it.each([
+    { headerSecret: undefined, expected: undefined, headers: {} },
+    { headerSecret: null, expected: undefined, headers: {} },
+    { headerSecret: {}, expected: {}, headers: {} },
+    {
+      headerSecret: { value: 'legacy-token' },
+      expected: { Authorization: { value: 'legacy-token' } },
+      headers: { Authorization: 'legacy-token' }
+    },
+    {
+      headerSecret: { Authorization: { value: 'legacy-token' }, 'X-Key': { value: 'api-key' } },
+      expected: { Authorization: { value: 'legacy-token' }, 'X-Key': { value: 'api-key' } },
+      headers: { Authorization: 'legacy-token', 'X-Key': 'api-key' }
+    },
+    {
+      headerSecret: { value: { value: 'header-named-value' } },
+      expected: { value: { value: 'header-named-value' } },
+      headers: { value: 'header-named-value' }
+    }
+  ])(
+    'normalizes legacy child headers without wrapping an existing map: %j',
+    async ({ headerSecret, expected, headers }) => {
+      const children = [
+        {
+          name: 'search',
+          modules: [
+            {
+              inputs: [
+                {
+                  value: {
+                    name: 'search',
+                    description: 'Search',
+                    url: 'https://mcp.example.com',
+                    headerSecret,
+                    inputSchema: { type: 'object' }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ];
+      const original = structuredClone(children);
+      mockMongoAppFind.mockReturnValueOnce({ lean: async () => children });
+      const [tool] = await getMCPChildren({
+        _id: 'legacy-set',
+        teamId: 'team',
+        type: AppTypeEnum.mcpToolSet,
+        avatar: '',
+        modules: [{ inputs: [] }]
+      } as unknown as AppSchemaType);
+      expect(tool.headerSecret).toEqual(expected);
+      expect(getSecretValue({ storeSecret: tool.headerSecret })).toEqual(headers);
+      expect(children).toEqual(original);
+    }
+  );
+
+  it.each(['map', 'single'] as const)(
+    'keeps encrypted legacy %s headers decryptable',
+    async (shape) => {
+      const encrypted = storeSecretValue({
+        Authorization: { value: 'legacy-token' },
+        'X-Key': { value: 'api-key' }
+      });
+      const headerSecret = shape === 'map' ? encrypted : encrypted.Authorization;
+      mockMongoAppFind.mockReturnValueOnce({
+        lean: async () => [
+          {
+            name: 'search',
+            modules: [
+              {
+                inputs: [
+                  {
+                    value: {
+                      name: 'search',
+                      description: 'Search',
+                      url: 'https://mcp.example.com',
+                      headerSecret
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      });
+      const [tool] = await getMCPChildren({
+        _id: 'legacy-set',
+        teamId: 'team',
+        type: AppTypeEnum.mcpToolSet,
+        avatar: '',
+        modules: [{ inputs: [] }]
+      } as unknown as AppSchemaType);
+      expect(tool.headerSecret).toEqual(
+        shape === 'map' ? encrypted : { Authorization: encrypted.Authorization }
+      );
+      expect(getSecretValue({ storeSecret: tool.headerSecret })).toEqual(
+        shape === 'map'
+          ? { Authorization: 'legacy-token', 'X-Key': 'api-key' }
+          : { Authorization: 'legacy-token' }
+      );
+    }
+  );
 
   it('should query MongoApp for old MCP format', async () => {
     const app = {

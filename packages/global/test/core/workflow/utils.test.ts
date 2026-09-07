@@ -1041,6 +1041,30 @@ describe('toolData2FlowNodeIO', () => {
 });
 
 describe('toolSetData2FlowNodeIO', () => {
+  it.each(['mcpToolSet', 'httpToolSet'] as const)(
+    'uses the App id for an empty legacy %s id and preserves explicit ids',
+    (key) => {
+      const node = {
+        nodeId: 'set',
+        name: 'Legacy',
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        inputs: [],
+        outputs: [],
+        toolConfig: { [key]: { toolId: '', url: 'https://example.com', toolList: [] } }
+      };
+      const original = structuredClone(node);
+      const preview = toolSetData2FlowNodeIO({ nodes: [node] as any, toolSetId: 'actual-app-id' });
+      expect(preview.toolConfig?.[key]).toEqual({ toolId: 'actual-app-id', toolList: [] });
+      expect(node).toEqual(original);
+      node.toolConfig[key].toolId = 'explicit-app-id';
+      expect(
+        toolSetData2FlowNodeIO({ nodes: [node] as any, toolSetId: 'actual-app-id' }).toolConfig?.[
+          key
+        ]
+      ).toEqual({ toolId: 'explicit-app-id', toolList: [] });
+    }
+  );
+
   it('should return empty arrays when no toolSet node exists', () => {
     const nodes: StoreNodeItemType[] = [
       {
@@ -1051,7 +1075,7 @@ describe('toolSetData2FlowNodeIO', () => {
         outputs: []
       }
     ];
-    const result = toolSetData2FlowNodeIO({ nodes });
+    const result = toolSetData2FlowNodeIO({ nodes, toolSetId: 'test' });
     expect(result.inputs).toEqual([]);
     expect(result.outputs).toEqual([]);
     expect(result.toolConfig).toBeUndefined();
@@ -1077,7 +1101,7 @@ describe('toolSetData2FlowNodeIO', () => {
         toolConfig: { mcpToolSet: { toolId: 'test', url: 'http://test', toolList: [] } }
       }
     ];
-    const result = toolSetData2FlowNodeIO({ nodes });
+    const result = toolSetData2FlowNodeIO({ nodes, toolSetId: 'test' });
     expect(result.inputs).toEqual(toolSetInputs);
     expect(result.showSourceHandle).toBe(false);
     expect(result.showTargetHandle).toBe(false);

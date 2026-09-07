@@ -1127,6 +1127,123 @@ describe('workflow migration boundary', () => {
 });
 
 describe('workflow storage boundary', () => {
+  it('preserves variable-selected Agent tools at the storage boundary', () => {
+    const stored = StoreWorkflowNodeItemTypeSchema.parse({
+      nodeId: 'agent',
+      name: 'Agent',
+      flowNodeType: 'agent',
+      inputs: [
+        {
+          key: NodeInputKeyEnum.selectedTools,
+          label: 'Tools',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          value: ['source-node', 'tools']
+        }
+      ],
+      outputs: []
+    });
+    expect(stored.inputs[0].value).toEqual(['source-node', 'tools']);
+  });
+
+  it.each(['mcp', 'http'] as const)(
+    'drops redundant %s toolset snapshots attached to a single tool node',
+    (source) => {
+      const reference = { toolId: `${source}-507f1f77bcf86cd799439011/search` };
+      const toolKey = source === 'mcp' ? 'mcpTool' : 'httpTool';
+      const setKey = source === 'mcp' ? 'mcpToolSet' : 'httpToolSet';
+      const stored = StoreWorkflowNodeItemTypeSchema.parse({
+        nodeId: 'tool',
+        flowNodeType: 'tool',
+        name: 'Search',
+        inputs: [],
+        outputs: [],
+        toolConfig: {
+          [toolKey]: reference,
+          [setKey]: { url: 'https://mcp.example.com', toolList: [] }
+        }
+      });
+      expect(stored.toolConfig).toEqual({ [toolKey]: reference });
+    }
+  );
+
+  it.each(['mcpToolSet', 'httpToolSet'] as const)(
+    'preserves an explicit %s reference and removes an empty display list',
+    (key) => {
+      const stored = StoreWorkflowNodeItemTypeSchema.parse({
+        nodeId: 'toolset',
+        pluginId: 'old-app',
+        flowNodeType: 'toolSet',
+        name: 'Tools',
+        inputs: [],
+        outputs: [],
+        toolConfig: { [key]: { toolId: 'current-app', toolList: [] } }
+      });
+      expect(stored.toolConfig).toEqual({ [key]: { toolId: 'current-app' } });
+      expect(StoreWorkflowNodeItemTypeSchema.parse(stored)).toEqual(stored);
+    }
+  );
+
+  it.each(['mcpToolSet', 'httpToolSet'] as const)(
+    'filters personal-prefixed Agent %s references only at the storage boundary',
+    (key) => {
+      const config = { payload: { requestSchema: 'business-value' } };
+      const workflow = migrateWorkflowToCurrent({
+        nodes: [
+          {
+            nodeId: 'agent',
+            flowNodeType: 'agent',
+            name: 'Agent',
+            outputs: [],
+            inputs: [
+              {
+                key: NodeInputKeyEnum.selectedTools,
+                label: 'Tools',
+                renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+                value: [
+                  {
+                    id: 'personal-507f1f77bcf86cd799439011',
+                    config,
+                    toolConfig: {
+                      [key]: {
+                        url: 'https://mcp.example.com',
+                        baseUrl: 'https://http.example.com',
+                        toolList: []
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      });
+      expect(workflow.nodes[0].inputs[0].value[0].toolConfig[key]).toHaveProperty('toolList');
+      const storedNodes = StoreWorkflowNodeItemTypeSchema.array().parse(workflow.nodes);
+      expect(storedNodes[0].inputs[0].value[0]).toMatchObject({
+        config,
+        toolConfig: { [key]: { toolId: '507f1f77bcf86cd799439011' } }
+      });
+      expect(migrateWorkflowToCurrent(workflow)).toEqual(workflow);
+    }
+  );
+
+  it.each([undefined, ''])(
+    'rejects a legacy snapshot without a usable toolset id: %j',
+    (pluginId) => {
+      expect(() =>
+        StoreWorkflowNodeItemTypeSchema.parse({
+          nodeId: 'toolset',
+          pluginId,
+          name: 'Tools',
+          flowNodeType: 'toolSet',
+          inputs: [],
+          outputs: [],
+          toolConfig: { httpToolSet: { toolList: [] } }
+        })
+      ).toThrow();
+    }
+  );
+
   it.each([
     { mcpTool: { toolId: 'mcp-toolset/search' } },
     { httpTool: { toolId: 'http-toolset/search' } },
@@ -1145,6 +1262,7 @@ describe('workflow storage boundary', () => {
           nodeId: 'tool',
           flowNodeType: 'tool',
           name: 'Tool',
+          pluginId: 'toolset',
           toolConfig,
           inputs: [
             {
@@ -1166,7 +1284,13 @@ describe('workflow storage boundary', () => {
     expect(stored.inputs[0]).not.toHaveProperty('customJsonSchema');
     expect(stored.inputs[0].value).toEqual(businessValue);
     expect(stored.inputs[0].defaultValue).toEqual(businessValue);
-    expect(stored.toolConfig).toEqual(toolConfig);
+    expect(stored.toolConfig).toEqual(
+      'mcpToolSet' in toolConfig
+        ? { mcpToolSet: { toolId: 'toolset' } }
+        : 'httpToolSet' in toolConfig
+          ? { httpToolSet: { toolId: 'toolset' } }
+          : toolConfig
+    );
     expect(workflow.nodes).toEqual(original);
   });
 
@@ -1189,6 +1313,7 @@ describe('workflow storage boundary', () => {
   it('removes MCP and HTTP JSON Schema fields through Zod parsing', () => {
     const node = StoreWorkflowNodeItemTypeSchema.parse({
       nodeId: 'toolset-node',
+      pluginId: 'toolset-app',
       flowNodeType: 'toolSet',
       name: 'Tool set',
       inputs: [],
@@ -1226,24 +1351,13 @@ describe('workflow storage boundary', () => {
     });
 
     expect(node).not.toHaveProperty('jsonSchema');
-    expect(node.toolConfig?.mcpToolSet).toMatchObject({
-      toolList: [{ name: 'mcp_search', description: 'MCP search' }]
-    });
-    expect(node.toolConfig?.httpToolSet).toMatchObject({
-      toolList: [
-        {
-          name: 'http_search',
-          description: 'HTTP search',
-          path: '/search',
-          method: 'POST'
-        }
-      ]
-    });
+    expect(node.toolConfig?.mcpToolSet).toEqual({ toolId: 'toolset-app' });
+    expect(node.toolConfig?.httpToolSet).toEqual({ toolId: 'toolset-app' });
     expect(node.toolConfig?.httpToolSet).not.toHaveProperty('apiSchemaStr');
     expect(JSON.stringify(node.toolConfig)).not.toContain('Schema');
   });
 
-  it('removes schema snapshots from Agent selected tools during migration parsing', () => {
+  it('preserves Agent snapshots on read and filters them only when storing', () => {
     const workflow = migrateWorkflowToCurrent({
       nodes: [
         {
@@ -1284,14 +1398,16 @@ describe('workflow storage boundary', () => {
       ]
     });
 
-    const selectedTools = workflow.nodes[0].inputs[0].value;
+    expect(JSON.stringify(workflow.nodes[0].inputs[0].value)).toContain('requestSchema');
+    const storedNodes = StoreWorkflowNodeItemTypeSchema.array().parse(workflow.nodes);
+    const selectedTools = storedNodes[0].inputs[0].value;
     expect(JSON.stringify(selectedTools)).not.toContain('requestSchema');
     expect(selectedTools).toMatchObject([
       {
         id: 'http-toolset',
         toolConfig: {
           httpToolSet: {
-            toolList: [{ name: 'search', path: '/search', method: 'GET' }]
+            toolId: 'http-toolset'
           }
         }
       }

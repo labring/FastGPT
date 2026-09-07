@@ -10,6 +10,13 @@ import { AppChatConfigInputSchema } from '../app/common/api';
 import { RuntimeEdgeItemTypeSchema } from '../../../core/workflow/type/edge';
 import type { RuntimeNodeItemType } from '../../../core/workflow/runtime/type';
 import type { InteractiveNodeResponseType } from '../../../core/workflow/template/system/interactive/type';
+import {
+  parseWorkflowToolConfigForStorage,
+  SelectedAgentToolStorageValueSchema
+} from '../../../core/workflow/type/node';
+import { ToolReferenceNodeInputTypeSchema } from '../../../core/workflow/type/io';
+import { FlowNodeTypeEnum } from '../../../core/workflow/node/constant';
+import { NodeInputKeyEnum } from '../../../core/workflow/constants';
 
 /* ============================================================================
  * API: 调试工作流
@@ -43,6 +50,40 @@ const DynamicObjectOpenApiMeta = {
 const WorkflowDebugRuntimeNodeSchema = z
   .custom<RuntimeNodeItemType>()
   .meta(DynamicObjectOpenApiMeta);
+
+/**
+ * 单步调试只在响应出口过滤执行定义；不能套用 StoreNode Schema，否则会丢失调度状态。
+ * 保留动态扩展和 IO 业务值，返回新对象，不修改引擎里的完整运行节点。
+ */
+const WorkflowDebugRuntimeNodeResponseSchema = WorkflowDebugRuntimeNodeSchema.transform((node) => {
+  if (
+    node.toolConfig?.mcpTool ||
+    node.toolConfig?.httpTool ||
+    node.toolConfig?.mcpToolSet ||
+    node.toolConfig?.httpToolSet
+  ) {
+    const { jsonSchema: _jsonSchema, ...state } = node;
+    return {
+      ...state,
+      toolConfig: parseWorkflowToolConfigForStorage({
+        toolConfig: node.toolConfig,
+        toolId: node.pluginId
+      }),
+      inputs: ToolReferenceNodeInputTypeSchema.array().parse(node.inputs)
+    };
+  }
+  if (node.flowNodeType === FlowNodeTypeEnum.agent) {
+    return {
+      ...node,
+      inputs: node.inputs.map((input) =>
+        input.key === NodeInputKeyEnum.selectedTools && Array.isArray(input.value)
+          ? { ...input, value: SelectedAgentToolStorageValueSchema.parse(input.value) }
+          : input
+      )
+    };
+  }
+  return node;
+}).meta(DynamicObjectOpenApiMeta);
 const WorkflowDebugNodeResponseDataSchema = z
   .custom<ChatHistoryItemResType>()
   .meta(DynamicObjectOpenApiMeta);
@@ -112,8 +153,9 @@ export const WorkflowDebugResponseSchema = z.object({
   memoryEdges: z.array(WorkflowDebugRuntimeEdgeSchema).meta({
     description: '本轮执行完成后的运行时连线状态'
   }),
-  memoryNodes: z.array(WorkflowDebugRuntimeNodeSchema).meta({
-    description: '本轮执行完成后的运行时节点状态'
+  memoryNodes: z.array(WorkflowDebugRuntimeNodeResponseSchema).meta({
+    description:
+      '本轮执行完成后的运行时节点状态；MCP/HTTP 仅返回工具引用与 IO 值，执行 Schema 在续跑时重新加载'
   }),
   entryNodeIds: z.array(z.string()).meta({
     example: ['node-2'],

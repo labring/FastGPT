@@ -1,6 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
+import { StoreWorkflowNodeItemTypeSchema } from '@fastgpt/global/core/workflow/type/node';
 
 const mocks = vi.hoisted(() => ({
   findById: vi.fn(),
@@ -183,6 +185,12 @@ describe('getClientToolPreviewNode', () => {
       expect(preview.outputs[0].value).toEqual(businessValue);
       expect(preview.outputs[0].defaultValue).toEqual(businessValue);
       expect(getRuntimeSchemaFieldPaths(preview.toolConfig)).toEqual([]);
+      expect(preview.toolConfig).toEqual({
+        [toolSetKey]: { toolId: appId, toolList: [{ name: 'search', description: 'Search' }] }
+      });
+      const stored = StoreWorkflowNodeItemTypeSchema.parse({ ...preview, nodeId: 'toolset-node' });
+      expect(stored.toolConfig).toEqual({ [toolSetKey]: { toolId: appId } });
+      expect(stored.inputs[0].value).toEqual(businessValue);
     }
   );
 
@@ -282,6 +290,108 @@ describe('getClientToolPreviewNode', () => {
     expect(getRuntimeSchemaFieldPaths(result)).toEqual([]);
   });
 
+  it.each([undefined, {}])(
+    'removes only legacy MCP hidden configuration when adding a node (toolConfig: %j)',
+    async (toolConfig) => {
+      const appId = '507f1f77bcf86cd799439031';
+      const tool = {
+        name: 'search',
+        description: 'Search',
+        inputSchema: { type: 'object', properties: { query: { type: 'string' } } }
+      };
+      const headers = { Authorization: { value: 'legacy-token' } };
+      const businessValue = { requestSchema: 'business-data' };
+      const app = {
+        _id: appId,
+        teamId: '507f1f77bcf86cd799439032',
+        type: AppTypeEnum.mcpToolSet,
+        name: 'Legacy',
+        avatar: 'mcp.svg',
+        modules: [
+          {
+            flowNodeType: 'toolSet',
+            toolConfig,
+            inputs: [
+              {
+                key: NodeInputKeyEnum.toolSetData,
+                label: 'Old config',
+                renderTypeList: ['hidden'],
+                value: { url: 'https://example.com/mcp', headerSecret: headers, toolList: [tool] }
+              },
+              { key: 'options', label: 'Options', renderTypeList: ['input'], value: businessValue },
+              {
+                key: NodeInputKeyEnum.toolSetData,
+                label: 'User field',
+                renderTypeList: ['input'],
+                value: 'ordinary-value'
+              }
+            ],
+            outputs: []
+          }
+        ]
+      };
+      const original = structuredClone(app);
+      mocks.findById.mockReturnValueOnce({ lean: async () => app });
+      mocks.find.mockReturnValueOnce({
+        lean: async () => [
+          {
+            name: tool.name,
+            modules: [
+              {
+                inputs: [
+                  { value: { ...tool, url: 'https://example.com/mcp', headerSecret: headers } }
+                ]
+              }
+            ]
+          }
+        ]
+      });
+      const preview = await getClientToolPreviewNode({ appId, versionId: '' });
+      expect(preview.toolConfig).toEqual({
+        mcpToolSet: { toolId: appId, toolList: [{ name: 'search', description: 'Search' }] }
+      });
+      expect(preview.inputs).toHaveLength(2);
+      expect(preview.inputs[0]).toMatchObject({ key: 'options', value: businessValue });
+      expect(preview.inputs[1]).toMatchObject({
+        key: NodeInputKeyEnum.toolSetData,
+        value: 'ordinary-value'
+      });
+      const stored = StoreWorkflowNodeItemTypeSchema.parse({ ...preview, nodeId: 'added-node' });
+      expect(stored.toolConfig).toEqual({ mcpToolSet: { toolId: appId } });
+      expect(JSON.stringify(stored)).not.toContain('inputSchema');
+      expect(stored.inputs[0].value).toEqual(businessValue);
+      expect(app).toEqual(original);
+    }
+  );
+
+  it.each([
+    { toolList: [] },
+    { toolList: [{ name: 'search', description: 'Search', inputSchema: { type: 'object' } }] }
+  ])('adds an inline MCP toolset with an empty legacy id: %j', async ({ toolList }) => {
+    const appId = '507f1f77bcf86cd799439031';
+    const app = {
+      _id: appId,
+      teamId: '507f1f77bcf86cd799439032',
+      type: AppTypeEnum.mcpToolSet,
+      name: 'Legacy',
+      avatar: 'mcp.svg',
+      modules: [
+        {
+          flowNodeType: 'toolSet',
+          toolConfig: { mcpToolSet: { toolId: '', url: 'https://example.com/mcp', toolList } },
+          inputs: [],
+          outputs: []
+        }
+      ]
+    };
+    const original = structuredClone(app);
+    mocks.findById.mockReturnValueOnce({ lean: async () => app });
+    const preview = await getClientToolPreviewNode({ appId, versionId: '' });
+    expect(preview.toolConfig?.mcpToolSet).toMatchObject({ toolId: appId });
+    expect(getRuntimeSchemaFieldPaths(preview)).toEqual([]);
+    expect(app).toEqual(original);
+  });
+
   it('hydrates legacy MCP toolset data under toolConfig', async () => {
     const appId = '507f1f77bcf86cd799439031';
     mocks.findById.mockReturnValueOnce({
@@ -320,7 +430,7 @@ describe('getClientToolPreviewNode', () => {
     const result = await getClientToolPreviewNode({ appId, lang: 'en' });
 
     expect(result.toolConfig?.mcpToolSet).toMatchObject({
-      url: '',
+      toolId: appId,
       toolList: [{ name: 'search', description: 'Search tool' }]
     });
     expect(JSON.stringify(result.toolConfig)).not.toContain('inputSchema');

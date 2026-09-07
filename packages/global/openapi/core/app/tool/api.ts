@@ -8,6 +8,44 @@ import {
   OpenAPIFlowNodeOutputItemTypeSchema
 } from '../../workflow/node';
 import { BoolSchema } from '../../../../common/zod';
+import { ObjectIdSchema } from '../../../../common/type/mongo';
+import { AppTypeEnum } from '../../../../core/app/constants';
+import { ToolSetToolSummarySchema } from '../../../../core/app/tool/toolSet/type';
+
+/* ============================================================================
+ * API: 获取工具集子工具摘要
+ * Route: GET /api/core/app/tool/getToolSetChildren
+ * Method: GET
+ * Description: 工具选择列表使用的精简接口，普通目录返回空工具列表及目录类型，不返回执行配置
+ * Tags: ['工具节点预览', 'HTTP 工具管理', 'MCP 工具管理', 'Read']
+ * ============================================================================ */
+export const GetToolSetChildrenQuerySchema = z.object({
+  appId: ObjectIdSchema.meta({
+    description: '待展开的工具集或目录 ID',
+    example: '507f1f77bcf86cd799439011'
+  }),
+  searchKey: z.string().optional().meta({ description: '按工具名搜索的关键字', example: 'search' })
+});
+export type GetToolSetChildrenQueryType = z.infer<typeof GetToolSetChildrenQuerySchema>;
+
+export const GetToolSetChildrenResponseSchema = z.object({
+  type: z.enum(AppTypeEnum).meta({
+    description: '资源类型；非 MCP/HTTP 工具集时由客户端继续加载普通目录',
+    example: AppTypeEnum.httpToolSet
+  }),
+  tools: z
+    .array(
+      ToolSetToolSummarySchema.extend({
+        id: z.string().meta({
+          description: '可供预览和执行的子工具 ID',
+          example: 'http-507f1f77bcf86cd799439011/search'
+        }),
+        avatar: z.string().meta({ description: '工具图标', example: 'core/app/type/httpToolsFill' })
+      })
+    )
+    .meta({ description: '只含 ID、名称、说明和图标的子工具摘要' })
+});
+export type GetToolSetChildrenResponseType = z.infer<typeof GetToolSetChildrenResponseSchema>;
 
 const ToolNodeTemplateListItemSchema = NodeTemplateListItemTypeSchema.extend({
   toolDescription: z.string().optional().meta({

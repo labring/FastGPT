@@ -36,7 +36,7 @@ import type {
 import { ToolReferenceNodeInputTypeSchema } from '@fastgpt/global/core/workflow/type/io';
 import {
   FlowNodeTemplateTypeSchema,
-  NodeToolConfigStorageTypeSchema,
+  NodeToolConfigTypeSchema,
   type FlowNodeTemplateType,
   type NodeToolConfigType
 } from '@fastgpt/global/core/workflow/type/node';
@@ -110,7 +110,7 @@ type AppToolType = WorkflowTemplateType & {
 
 /** 按节点、IO、toolConfig 的结构裁剪定义字段，不遍历业务值中的同名属性。 */
 const ClientToolPreviewNodeSchema = FlowNodeTemplateTypeSchema.extend({
-  toolConfig: NodeToolConfigStorageTypeSchema.optional()
+  toolConfig: NodeToolConfigTypeSchema.optional()
 });
 
 /**
@@ -296,7 +296,7 @@ export async function getClientToolPreviewNode({
           ? {
               versionId: undefined,
               versionName: undefined,
-              nodes: decodeToolSetNodesFromStorage(item.modules),
+              nodes: [...decodeToolSetNodesFromStorage(item.modules)],
               edges: item.edges,
               chatConfig: item.chatConfig
             }
@@ -315,10 +315,16 @@ export async function getClientToolPreviewNode({
             : true;
 
         // Adapt
-        if (item.type === AppTypeEnum.mcpToolSet && !version.nodes[0]?.toolConfig) {
+        if (item.type === AppTypeEnum.mcpToolSet && !version.nodes[0]?.toolConfig?.mcpToolSet) {
           const children = await getMCPChildren(item);
           version.nodes[0] = {
             ...version.nodes[0],
+            // 仅在生成新预览时去掉已知旧配置槽，保留普通 IO；不能回写或截断存量节点输入。
+            inputs: (version.nodes[0]?.inputs ?? []).filter(
+              (input) =>
+                input.key !== NodeInputKeyEnum.toolSetData ||
+                !input.renderTypeList.includes(FlowNodeInputTypeEnum.hidden)
+            ),
             toolConfig: {
               ...version.nodes[0]?.toolConfig,
               mcpToolSet: {
@@ -470,7 +476,7 @@ export async function getClientToolPreviewNode({
         // mcp tools
         return {
           flowNodeType: FlowNodeTypeEnum.toolSet,
-          nodeIOConfig: toolSetData2FlowNodeIO({ nodes: app.workflow.nodes })
+          nodeIOConfig: toolSetData2FlowNodeIO({ nodes: app.workflow.nodes, toolSetId: app.id })
         };
       }
 

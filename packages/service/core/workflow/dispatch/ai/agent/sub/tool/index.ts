@@ -15,6 +15,7 @@ import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { pushTrack } from '../../../../../../../common/middle/tracks/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { assertToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
 import { assertMCPUrlNotInternal, getMCPChildren, MCPClient } from '../../../../../../app/mcp';
 import { getHTTPToolList, runHTTPTool } from '../../../../../../app/http';
 import {
@@ -283,6 +284,8 @@ export const dispatchTool = async ({
         })
       });
 
+      // 工具定义可能在 Agent 生成参数后更新；执行前必须使用本次读取的完整约束校验。
+      assertToolRuntimeParams({ jsonSchema: mcpTool.inputSchema, params });
       const result = await mcpClient.toolCall({
         toolName,
         params
@@ -316,6 +319,7 @@ export const dispatchTool = async ({
         return Promise.reject(`HTTP tool ${toolName} not found`);
       }
 
+      assertToolRuntimeParams({ jsonSchema: httpTool.requestSchema, params });
       const { data, errorMsg } = await runHTTPTool({
         baseUrl: baseUrl || '',
         toolPath: httpTool.path,

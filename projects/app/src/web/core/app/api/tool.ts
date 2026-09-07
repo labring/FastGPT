@@ -3,7 +3,7 @@ import type {
   FlowNodeTemplateType,
   NodeTemplateListItemType
 } from '@fastgpt/global/core/workflow/type/node';
-import { getAppDetailById, getMyApps } from '../api';
+import { getMyApps } from '../api';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -11,10 +11,9 @@ import type {
   ParentIdType,
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
-import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
-import { getMcpChildren } from './mcpTools';
 import type {
   GetPreviewNodeQuery,
+  GetToolSetChildrenResponseType,
   GetSystemToolTemplatesBodyType,
   GetToolPathQueryType
 } from '@fastgpt/global/openapi/core/app/tool/api';
@@ -27,31 +26,20 @@ export const getTeamAppTemplates = async (data?: {
 }) => {
   if (data?.parentId) {
     // handle get mcptools
-    const app = await getAppDetailById(data.parentId);
-    if (app.type === AppTypeEnum.mcpToolSet) {
-      const children = await getMcpChildren({ id: data.parentId, searchKey: data.searchKey });
-      return children.map((item) => ({
+    const { type, tools } = await GET<GetToolSetChildrenResponseType>(
+      '/core/app/tool/getToolSetChildren',
+      {
+        appId: data.parentId,
+        searchKey: data.searchKey
+      }
+    );
+    if (type === AppTypeEnum.mcpToolSet || type === AppTypeEnum.httpToolSet) {
+      return tools.map((item) => ({
         ...item,
         intro: item.description || '',
         flowNodeType: FlowNodeTypeEnum.tool,
         templateType: FlowNodeTemplateTypeEnum.teamApp,
-        appType: app.type,
-        isTool: true,
-        isFolder: false
-      }));
-      // handle http toolset
-    } else if (app.type === AppTypeEnum.httpToolSet) {
-      const toolSet = app.modules[0]?.toolConfig?.httpToolSet;
-      const toolList = toolSet && 'toolList' in toolSet ? toolSet.toolList : undefined;
-      if (!toolList) return [];
-      return toolList.map((item) => ({
-        id: `${AppToolSourceEnum.http}-${app._id}/${item.name}`,
-        avatar: app.avatar,
-        name: item.name,
-        intro: item.description || '',
-        flowNodeType: FlowNodeTypeEnum.tool,
-        templateType: FlowNodeTemplateTypeEnum.teamApp,
-        appType: app.type,
+        appType: type,
         isTool: true,
         isFolder: false
       }));

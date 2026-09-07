@@ -39,9 +39,9 @@ vi.mock('@fastgpt/service/core/app/http', () => ({
 vi.mock('@fastgpt/service/core/app/mcp', () => ({
   assertMCPUrlNotInternal: vi.fn(),
   getMCPChildren: getMCPChildrenMock,
-  MCPClient: vi.fn().mockImplementation(() => ({
-    toolCall: mcpToolCallMock
-  }))
+  MCPClient: vi.fn(function () {
+    return { toolCall: mcpToolCallMock };
+  })
 }));
 
 vi.mock('@fastgpt/service/common/logger', async () => {
@@ -115,6 +115,83 @@ const createDispatchToolProps = (
   }) as any;
 
 describe('dispatchTool runtime toolset auth', () => {
+  it.each(['mcp', 'http'] as const)(
+    'validates %s Agent params against freshly loaded definitions instead of stale snapshots',
+    async (source) => {
+      const latestSchema = {
+        type: 'object',
+        properties: { query: { type: 'string', pattern: '^latest$' } },
+        required: ['query']
+      };
+      const tool = {
+        name: 'search',
+        description: 'Search',
+        path: '/latest',
+        method: 'POST',
+        inputSchema: latestSchema,
+        requestSchema: latestSchema,
+        staticHeaders: [{ key: 'X-Version', value: 'latest' }]
+      };
+      const key = source === 'mcp' ? 'mcpToolSet' : 'httpToolSet';
+      authAppByTmbIdMock.mockResolvedValue({
+        app: {
+          _id: 'victim-toolset',
+          modules: [
+            {
+              toolConfig: {
+                [key]: {
+                  url: 'https://latest.example.com/mcp',
+                  baseUrl: 'https://latest.example.com',
+                  toolList: [tool]
+                }
+              }
+            }
+          ]
+        }
+      });
+      getMCPChildrenMock.mockResolvedValue([tool]);
+      getHTTPToolListMock.mockResolvedValue([tool]);
+      mcpToolCallMock.mockResolvedValue({ ok: true });
+      runHTTPToolMock.mockResolvedValue({ data: { ok: true } });
+      const config = {
+        [source === 'mcp' ? 'mcpTool' : 'httpTool']: { toolId: `${source}-victim-toolset/search` },
+        [key]: {
+          url: 'https://stale.example.com',
+          toolList: [
+            { ...tool, inputSchema: { type: 'object' }, requestSchema: { type: 'object' } }
+          ]
+        }
+      };
+      const rejected = await dispatchTool(createDispatchToolProps(config, { query: 'stale' }));
+      expect(rejected.errorMessage).toContain('validation failed');
+      expect(mcpToolCallMock).not.toHaveBeenCalled();
+      expect(runHTTPToolMock).not.toHaveBeenCalled();
+      const accepted = await dispatchTool(createDispatchToolProps(config, { query: 'latest' }));
+      expect(accepted.errorMessage).toBeUndefined();
+      if (source === 'http') {
+        expect(runHTTPToolMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            baseUrl: 'https://latest.example.com',
+            toolPath: '/latest',
+            staticHeaders: tool.staticHeaders,
+            params: { query: 'latest' }
+          })
+        );
+      } else {
+        expect(mcpToolCallMock).toHaveBeenCalledWith({
+          toolName: 'search',
+          params: { query: 'latest' }
+        });
+      }
+      expect(getAppVersionByIdMock).not.toHaveBeenCalled();
+      expect(authAppByTmbIdMock).toHaveBeenCalledWith({
+        tmbId: 'attacker-tmb',
+        appId: 'victim-toolset',
+        per: ReadPermissionVal
+      });
+    }
+  );
+
   beforeEach(() => {
     vi.clearAllMocks();
     authAppByTmbIdMock.mockResolvedValue({

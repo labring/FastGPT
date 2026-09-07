@@ -61,7 +61,7 @@ const SchemaConfigModal = ({ onClose }: { onClose: () => void }) => {
       (item) => item.flowNodeType === FlowNodeTypeEnum.toolSet
     );
     const toolSet = toolSetNode?.toolConfig?.httpToolSet;
-    return toolSet && 'toolList' in toolSet ? toolSet : undefined;
+    return toolSet && !('toolId' in toolSet) ? toolSet : undefined;
   }, [appDetail.modules]);
 
   const { register, setValue, handleSubmit, watch } = useForm<HttpToolsType>({

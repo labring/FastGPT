@@ -7,6 +7,7 @@ import {
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
+import { MCPClient } from '@fastgpt/service/core/app/mcp';
 
 const {
   authAppByTmbIdMock,
@@ -418,6 +419,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
         [legacyKey]: {
           name: 'search',
           url: 'https://mcp.example.com',
+          headerSecret: { Authorization: { value: 'legacy-token' }, 'X-Key': { value: 'api-key' } },
           inputSchema: {
             type: 'object',
             properties: { query: { type: 'string' } },
@@ -430,6 +432,10 @@ describe('dispatchRunTool runtime toolset auth', () => {
       const result = await dispatchRunTool(props);
 
       expect(result.error).toBeUndefined();
+      expect(MCPClient).toHaveBeenCalledWith({
+        url: 'https://mcp.example.com',
+        headers: { Authorization: 'legacy-token', 'X-Key': 'api-key' }
+      });
       expect(mcpToolCallMock).toHaveBeenCalledWith({
         toolName: 'search',
         params: { query: 'fastgpt' }

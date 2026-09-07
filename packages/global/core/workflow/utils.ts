@@ -20,6 +20,7 @@ import {
   type ReferenceItemValueType
 } from './type/io';
 import type { NodeToolConfigType, StoreNodeItemType } from './type/node';
+import { ToolSetToolSummarySchema } from '../app/tool/toolSet/type';
 import type { AppChatConfigType, AppSchemaType, AppWelcomeConfigType } from '../app/type';
 import type { VariableItemType } from '../app/variable/type';
 import { normalizeAndParseVariableList } from '../app/variable/utils';
@@ -415,7 +416,14 @@ export const toolData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }) =
   };
 };
 
-export const toolSetData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }) => {
+/** 工具集预览只携带引用和展示摘要；持久化时再移除摘要列表。 */
+export const toolSetData2FlowNodeIO = ({
+  nodes,
+  toolSetId
+}: {
+  nodes: StoreNodeItemType[];
+  toolSetId: string;
+}) => {
   const toolSetNode = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet);
 
   // 加工 toolConfig, 移除一些无需返回客户端以及无需单独存储到 node 的数据。
@@ -423,45 +431,21 @@ export const toolSetData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }
     if (!toolSetNode?.toolConfig) return undefined;
 
     if (toolSetNode.toolConfig.httpToolSet) {
-      if ('toolId' in toolSetNode.toolConfig.httpToolSet) {
-        return {
-          ...toolSetNode.toolConfig,
-          httpToolSet: { toolId: toolSetNode.toolConfig.httpToolSet.toolId }
-        };
-      }
-
-      const toolList = toolSetNode.toolConfig.httpToolSet.toolList.map((tool) => {
-        const restTool = { ...tool };
-        delete restTool.requestSchema;
-        delete restTool.inputSchema;
-        delete restTool.outputSchema;
-        return restTool;
-      });
+      const toolSet = toolSetNode.toolConfig.httpToolSet;
       return {
-        ...toolSetNode.toolConfig,
         httpToolSet: {
-          toolList
+          toolId: 'toolId' in toolSet && toolSet.toolId ? toolSet.toolId : toolSetId,
+          toolList: ToolSetToolSummarySchema.array().parse(toolSet.toolList ?? [])
         }
       };
     }
     if (toolSetNode.toolConfig.mcpToolSet) {
-      if ('toolId' in toolSetNode.toolConfig.mcpToolSet) {
-        return {
-          ...toolSetNode.toolConfig,
-          mcpToolSet: { toolId: toolSetNode.toolConfig.mcpToolSet.toolId }
-        };
-      }
-
-      const formatToolList = toolSetNode.toolConfig.mcpToolSet.toolList.map((tool) => {
-        const restTool = { ...tool };
-        delete restTool.inputSchema;
-        return restTool;
-      });
+      const toolSet = toolSetNode.toolConfig.mcpToolSet;
       return {
-        ...toolSetNode.toolConfig,
         mcpToolSet: {
-          url: '',
-          toolList: formatToolList
+          // 旧工具集 App 用空 toolId 占位；生成新节点时必须使用真实 App ID。
+          toolId: 'toolId' in toolSet && toolSet.toolId ? toolSet.toolId : toolSetId,
+          toolList: ToolSetToolSummarySchema.array().parse(toolSet.toolList ?? [])
         }
       };
     }
