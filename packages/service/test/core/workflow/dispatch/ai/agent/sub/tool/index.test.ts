@@ -115,6 +115,61 @@ const createDispatchToolProps = (
   }) as any;
 
 describe('dispatchTool runtime toolset auth', () => {
+  it.each([
+    { name: 'scalar string', requestSchema: { type: 'string' } },
+    { name: 'scalar number', requestSchema: { type: 'number' } },
+    { name: 'missing', requestSchema: undefined },
+    { name: 'empty object', requestSchema: { type: 'object', properties: {} } }
+  ])('normalizes a $name HTTP requestSchema before final execution', async ({ requestSchema }) => {
+    const tool = {
+      name: 'legacy_search',
+      description: 'Legacy search',
+      path: '/search',
+      method: 'GET',
+      inputSchema: {
+        type: 'object',
+        properties: { query: { type: 'string', pattern: '^allowed$' } },
+        required: ['query']
+      },
+      requestSchema
+    };
+    const original = structuredClone(tool);
+    authAppByTmbIdMock.mockResolvedValue({
+      app: {
+        _id: 'victim-toolset',
+        modules: [
+          {
+            toolConfig: {
+              httpToolSet: { baseUrl: 'https://example.com', toolList: [tool] }
+            }
+          }
+        ]
+      }
+    });
+    getHTTPToolListMock.mockResolvedValue([tool]);
+    runHTTPToolMock.mockResolvedValue({ data: { ok: true } });
+    const toolConfig = { httpTool: { toolId: 'http-victim-toolset/legacy_search' } };
+
+    const accepted = await dispatchTool(createDispatchToolProps(toolConfig, { query: 'allowed' }));
+    expect(accepted.errorMessage).toBeUndefined();
+    expect(runHTTPToolMock).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        toolPath: '/search',
+        method: 'GET',
+        params: { query: 'allowed' }
+      })
+    );
+
+    runHTTPToolMock.mockClear();
+    for (const params of [{}, { query: 123 }, { query: 'blocked' }]) {
+      const rejected = await dispatchTool(createDispatchToolProps(toolConfig, params));
+      expect(rejected.errorMessage).toContain('validation failed');
+    }
+    expect(runHTTPToolMock).not.toHaveBeenCalled();
+    expect(getAppVersionByIdMock).not.toHaveBeenCalled();
+    expect(tool).toEqual(original);
+  });
+
   it.each(['mcp', 'http'] as const)(
     'validates %s Agent params against freshly loaded definitions instead of stale snapshots',
     async (source) => {

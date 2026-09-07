@@ -8,6 +8,7 @@ import { assertMCPUrlNotInternal, getMCPChildren, MCPClient } from '../../../app
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
+import { getHTTPToolRuntimeSchemas } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { assertToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
@@ -346,8 +347,10 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       }
 
       toolInput = params;
+      // 最新定义先兼容旧标量/缺失 requestSchema，与运行节点构建使用同一套解析逻辑。
+      const { requestSchema } = getHTTPToolRuntimeSchemas(httpTool);
       assertToolRuntimeParams({
-        jsonSchema: httpTool.requestSchema,
+        jsonSchema: requestSchema,
         params
       });
       const { data, errorMsg } = await runHTTPTool({
