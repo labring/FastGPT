@@ -18,7 +18,7 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useLatest } from 'ahooks';
+import { useLatest, useMemoizedFn } from 'ahooks';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { TreeNode } from './components/FileTree';
@@ -463,7 +463,6 @@ export const useSandboxFileStore = ({
   const openedFilesRef = useLatest(openedFiles);
   const fileTreeRef = useLatest(fileTree);
   const expandedDirsRef = useLatest(expandedDirs);
-  const onErrorRef = useLatest(onError);
   const loadingFilePathsRef = useRef<Set<string>>(new Set());
   const isRefreshingWorkspaceRef = useRef(false);
   const hasPendingWorkspaceRefreshRef = useRef(false);
@@ -489,6 +488,30 @@ export const useSandboxFileStore = ({
     void promise.catch(() => undefined);
     connectPromiseRef.current = promise;
   }, []);
+
+  // 连接生命周期只响应连接参数；提示文案和错误回调始终读取最新 render 值。
+  const handleConnectAttemptsExhausted = useMemoizedFn(() => {
+    const errMsg = t('chat:sandbox_connect_failed_max_attempts');
+    if (!onError) {
+      toast({
+        title: errMsg,
+        description: t('chat:sandbox_refresh_page_to_retry'),
+        status: 'error',
+        duration: 5000,
+        isClosable: true
+      });
+    }
+    setIsWsConnected(false);
+    const error = new Error(errMsg);
+    stoppedConnectErrorRef.current = error;
+    rejectConnectRef.current?.(error);
+    onError?.(error);
+  });
+
+  const getWsCloseMessage = useMemoizedFn(
+    (event: CloseEvent) =>
+      event.reason || `${t('chat:sandbox_connection_closed')} (code: ${event.code})`
+  );
 
   const closeOpenedFileByPath = useCallback((filePath: string) => {
     setOpenedFiles((prev) => {
@@ -796,24 +819,7 @@ export const useSandboxFileStore = ({
 
     const connect = async () => {
       if (reconnectAttemptsRef.current >= 5) {
-        const errMsg = t(
-          'chat:sandbox_connect_failed_max_attempts',
-          '连接沙盒失败次数过多，已停止尝试。'
-        );
-        if (!onErrorRef.current) {
-          toast({
-            title: errMsg,
-            description: t('chat:sandbox_refresh_page_to_retry', '请刷新页面重试。'),
-            status: 'error',
-            duration: 5000,
-            isClosable: true
-          });
-        }
-        setIsWsConnected(false);
-        const error = new Error(errMsg);
-        stoppedConnectErrorRef.current = error;
-        rejectConnectRef.current?.(error);
-        onErrorRef.current?.(error);
+        handleConnectAttemptsExhausted();
         return;
       }
 
@@ -889,9 +895,7 @@ export const useSandboxFileStore = ({
         ws.onclose = (e) => {
           if (wsRef.current !== ws) return;
 
-          const closeMessage =
-            e.reason ||
-            `${t('chat:sandbox_connection_closed', '沙盒连接已断开')} (code: ${e.code})`;
+          const closeMessage = getWsCloseMessage(e);
 
           wsRef.current = null;
           setIsWsConnected(false);
@@ -957,9 +961,7 @@ export const useSandboxFileStore = ({
     isPreparing,
     canWrite,
     refreshWorkspaceRef,
-    resetConnectPromise,
-    t,
-    toast
+    resetConnectPromise
   ]);
   // =========================================================================
 
@@ -1028,7 +1030,7 @@ export const useSandboxFileStore = ({
         return sortedNodes;
       } catch (error) {
         toast({
-          title: t('chat:sandbox_load_failed', '加载目录失败'),
+          title: t('chat:sandbox_load_failed'),
           description: getErrText(error),
           status: 'error'
         });
@@ -1139,7 +1141,7 @@ export const useSandboxFileStore = ({
       } catch (err) {
         console.error('Failed to save file:', err);
         toast({
-          title: t('chat:sandbox_save_failed', '保存文件失败'),
+          title: t('chat:sandbox_save_failed'),
           description: getErrText(err),
           status: 'error'
         });
@@ -1164,7 +1166,7 @@ export const useSandboxFileStore = ({
     if (failedResult?.status === 'rejected') {
       console.error('Failed to save all files:', failedResult.reason);
       toast({
-        title: t('chat:sandbox_save_failed', '保存文件失败'),
+        title: t('chat:sandbox_save_failed'),
         description: getErrText(failedResult.reason),
         status: 'error'
       });
@@ -1349,7 +1351,7 @@ export const useSandboxFileStore = ({
       if (!isValidPathSegment(name)) {
         toast({
           title: t('chat:sandbox_create_failed'),
-          description: t('chat:sandbox_invalid_file_name', '文件名不能包含路径分隔符或使用 . / ..'),
+          description: t('chat:sandbox_invalid_file_name'),
           status: 'warning'
         });
         return;
@@ -1424,7 +1426,7 @@ export const useSandboxFileStore = ({
       } catch (error) {
         console.error('Failed to create node:', error);
         toast({
-          title: t('chat:sandbox_create_failed', '创建失败'),
+          title: t('chat:sandbox_create_failed'),
           description: getErrText(error),
           status: 'error'
         });
@@ -1442,7 +1444,7 @@ export const useSandboxFileStore = ({
       if (!isValidPathSegment(newName)) {
         toast({
           title: t('chat:sandbox_rename_failed'),
-          description: t('chat:sandbox_invalid_file_name', '文件名不能包含路径分隔符或使用 . / ..'),
+          description: t('chat:sandbox_invalid_file_name'),
           status: 'warning'
         });
         return;
@@ -1477,7 +1479,7 @@ export const useSandboxFileStore = ({
       } catch (error) {
         console.error('Failed to rename node:', error);
         toast({
-          title: t('chat:sandbox_rename_failed', '重命名失败'),
+          title: t('chat:sandbox_rename_failed'),
           description: getErrText(error),
           status: 'error'
         });
@@ -1521,7 +1523,7 @@ export const useSandboxFileStore = ({
       } catch (error) {
         console.error('Failed to move file:', error);
         toast({
-          title: t('chat:sandbox_move_failed', '移动失败'),
+          title: t('chat:sandbox_move_failed'),
           description: getErrText(error),
           status: 'error'
         });
@@ -1593,7 +1595,7 @@ export const useSandboxFileStore = ({
       } catch (error) {
         console.error('Failed to delete file:', error);
         toast({
-          title: t('chat:sandbox_delete_failed', '删除失败'),
+          title: t('chat:sandbox_delete_failed'),
           description: getErrText(error),
           status: 'error'
         });
@@ -1626,22 +1628,18 @@ export const useSandboxFileStore = ({
         const file = files[i];
         if (!isValidPathSegment(file.name)) {
           toast({
-            title: t('chat:sandbox_upload_failed', '上传失败'),
-            description: t(
-              'chat:sandbox_invalid_file_name',
-              '文件名不能包含路径分隔符或使用 . / ..'
-            ),
+            title: t('chat:sandbox_upload_failed'),
+            description: t('chat:sandbox_invalid_file_name'),
             status: 'warning'
           });
           return;
         }
         if (file.size > maxFileBytes) {
           toast({
-            title: t('chat:sandbox_upload_too_large', '文件过大'),
+            title: t('chat:sandbox_upload_too_large'),
             description: t('chat:sandbox_upload_too_large_desc', {
               name: file.name,
-              size: maxFileSizeMB,
-              defaultValue: '单个文件不能超过 {{size}}MB，超大文件推荐通过沙盒内命令拉取。'
+              size: maxFileSizeMB
             }),
             status: 'warning'
           });
@@ -1650,7 +1648,7 @@ export const useSandboxFileStore = ({
         const path = targetDirPath === '.' ? file.name : `${targetDirPath}/${file.name}`;
         if (pendingPaths.has(path) || findNodeByPath(fileTree, path)) {
           toast({
-            title: t('chat:sandbox_upload_failed', '上传失败'),
+            title: t('chat:sandbox_upload_failed'),
             description: t('chat:sandbox_file_already_exists'),
             status: 'warning'
           });
@@ -1675,7 +1673,7 @@ export const useSandboxFileStore = ({
       } catch (error) {
         console.error('Failed to upload files:', error);
         toast({
-          title: t('chat:sandbox_upload_failed', '上传失败'),
+          title: t('chat:sandbox_upload_failed'),
           description: getErrText(error),
           status: 'error'
         });
