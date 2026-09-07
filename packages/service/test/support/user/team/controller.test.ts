@@ -6,7 +6,8 @@ import {
   TeamManageRoleVal
 } from '@fastgpt/global/support/permission/user/constant';
 import { replaceTeamCollaborators } from '@fastgpt/service/support/permission/resourcePermissionService';
-import { Types } from '@fastgpt/service/common/mongo';
+import { Types, connectionMongo } from '@fastgpt/service/common/mongo';
+import { cleanupTeamMemberRole } from '../../../../../../scripts/cleanup-team-member-role.mjs';
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { getTmbInfoByTmbId } from '@fastgpt/service/support/user/team/controller';
@@ -19,7 +20,7 @@ describe('getTmbInfoByTmbId', () => {
       [undefined, TeamManageRoleVal].map((permission) => ({ role, permission }))
     )
   )(
-    'normalizes stored role $role with permission $permission for token login',
+    'returns cleaned role $role with unchanged permission $permission for token login',
     async ({ role, permission }) => {
       const user = await MongoUser.create({ username: 'legacy-role-user', password: 'test' });
       const team = await MongoTeam.create({ name: 'Legacy role team', ownerId: user._id });
@@ -40,6 +41,28 @@ describe('getTmbInfoByTmbId', () => {
         });
       }
 
+      const original = await MongoTeamMember.collection.findOne({ _id: insertedId });
+      const needsCleanup = role !== undefined && !isOwner;
+      expect(await cleanupTeamMemberRole(connectionMongo.connection.db)).toEqual({
+        dryRun: true,
+        before: needsCleanup ? 1 : 0,
+        modified: 0,
+        remaining: needsCleanup ? 1 : 0
+      });
+      expect(await MongoTeamMember.collection.findOne({ _id: insertedId })).toEqual(original);
+      expect(await cleanupTeamMemberRole(connectionMongo.connection.db, { apply: true })).toEqual({
+        dryRun: false,
+        before: needsCleanup ? 1 : 0,
+        modified: needsCleanup ? 1 : 0,
+        remaining: 0
+      });
+      expect(await cleanupTeamMemberRole(connectionMongo.connection.db, { apply: true })).toEqual({
+        dryRun: false,
+        before: 0,
+        modified: 0,
+        remaining: 0
+      });
+
       const member = await getTmbInfoByTmbId({ tmbId });
 
       expect(member.role).toBe(isOwner ? TeamMemberRoleEnum.owner : undefined);
@@ -52,7 +75,9 @@ describe('getTmbInfoByTmbId', () => {
       const detail = await getUserDetail({ tmbId });
       expect(OpenAPIUserSchema.safeParse(detail).success).toBe(true);
       const stored = await MongoTeamMember.collection.findOne({ _id: insertedId });
-      expect(stored?.role).toBe(role);
+      const expectedStored = { ...original };
+      if (needsCleanup) delete expectedStored.role;
+      expect(stored).toEqual(expectedStored);
     }
   );
 

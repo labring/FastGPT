@@ -26,7 +26,6 @@ import {
 
 const logger = getLogger(LogCategories.MODULE.USER.TEAM);
 
-/** 加载成员及团队信息；旧 role 仅保留 owner 标识，其他历史值不影响独立计算的权限。 */
 async function getTeamMember(
   match: Record<string, any>,
   session?: ClientSession
@@ -56,7 +55,7 @@ async function getTeamMember(
     avatar: tmb.avatar,
     balance: tmb.team.balance,
     tmbId: String(tmb._id),
-    role: tmb.role === TeamMemberRoleEnum.owner ? TeamMemberRoleEnum.owner : undefined,
+    role: tmb.role,
     status: tmb.status,
     permission: new TeamPermission({
       role,
