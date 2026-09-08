@@ -225,6 +225,7 @@
   "code_error.team_error.too_many_invitations": "您的有效邀請連結數已達上限，請先清理連結",
   "code_error.team_error.un_auth": "無權操作此團隊",
   "code_error.team_error.user_not_active": "使用者未接受或已離開團隊",
+  "code_error.team_error.user_forbidden": "該成員已被停用，無法轉移",
   "code_error.team_error.website_sync_not_enough": "免費版無法使用 Web 站點同步~",
   "code_error.team_error.you_have_been_in_the_team": "你已經在該團隊中",
   "code_error.token_error_code.403": "登入狀態無效，請重新登入",

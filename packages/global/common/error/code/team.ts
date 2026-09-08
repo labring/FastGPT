@@ -32,6 +32,7 @@ export enum TeamErrEnum {
   cannotDeleteNonEmptyOrg = 'cannotDeleteNonEmptyOrg',
   cannotDeleteDefaultGroup = 'cannotDeleteDefaultGroup',
   userNotActive = 'userNotActive',
+  userForbidden = 'userForbidden',
   invitationLinkInvalid = 'invitationLinkInvalid',
   youHaveBeenInTheTeam = 'youHaveBeenInTheTeam',
   tooManyInvitations = 'tooManyInvitations',
@@ -117,6 +118,10 @@ const teamErr = [
   {
     statusText: TeamErrEnum.userNotActive,
     message: i18nT('common:code_error.team_error.user_not_active')
+  },
+  {
+    statusText: TeamErrEnum.userForbidden,
+    message: i18nT('common:code_error.team_error.user_forbidden')
   },
   {
     statusText: TeamErrEnum.orgMemberNotExist,
