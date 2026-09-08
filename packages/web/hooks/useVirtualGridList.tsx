@@ -412,6 +412,21 @@ export function useVirtualGridList<T>({
         nextEndRow = Math.min(centeredStartRow + resolvedMaxRenderRows, totalVirtualRows);
       }
 
+      const currentWindowRows = windowRowsStateRef.current;
+      const willUpdateWindow =
+        currentWindowRows.key !== listKey ||
+        currentWindowRows.startRow !== nextStartRow ||
+        currentWindowRows.endRow !== nextEndRow;
+
+      if (willUpdateWindow) {
+        const activeElement = document.activeElement;
+
+        // Chrome 会在虚拟窗口卸载焦点节点时尝试恢复其可见位置，导致滚动位置回跳。
+        if (activeElement instanceof HTMLElement && grid.contains(activeElement)) {
+          activeElement.blur();
+        }
+      }
+
       // 更新状态，仅在值变化时触发重渲染
       setWindowRowsState((state) => {
         if (

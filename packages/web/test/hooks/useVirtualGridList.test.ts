@@ -137,7 +137,7 @@ const Harness = ({ list, itemHeight = 40, selectedId }: HarnessProps) => {
             'data-selected': item.id === selectedId ? 'true' : 'false',
             'data-virtual-item': ''
           },
-          item.id
+          React.createElement('button', { 'data-item-action': item.id }, item.id)
         )
       )
     )
@@ -308,6 +308,14 @@ describe('useVirtualGridList', () => {
       scrollContainer.dispatchEvent(new Event('scroll'));
       flushAnimationFrames();
       await Promise.resolve();
+    });
+
+    const itemAction = scrollContainer.querySelector('[data-item-action="20"]');
+    expect(itemAction).toBeInstanceOf(HTMLButtonElement);
+    if (!(itemAction instanceof HTMLButtonElement)) return;
+    itemAction.focus();
+
+    await act(async () => {
       root.render(
         React.createElement(Harness, {
           list: createItems(100),
@@ -319,7 +327,70 @@ describe('useVirtualGridList', () => {
 
     expect(scrollContainer.scrollTop).toBe(500);
     expect(scrollContainer.querySelector('[data-selected="true"]')).not.toBeNull();
+    expect(document.activeElement).toBe(itemAction);
     expect(scrollContainer.style.overflowAnchor).toBe('none');
+    root.unmount();
+    host.remove();
+  });
+
+  it('blurs a focused grid action before changing the virtual window', async () => {
+    const { host, root } = createTestRoot();
+    await renderHarness(root);
+    await act(async () => {
+      flushAnimationFrames();
+      await Promise.resolve();
+    });
+
+    const scrollContainer = host.querySelector('[data-testid="scroll-container"]');
+    const itemAction = scrollContainer?.querySelector('[data-item-action="0"]');
+    expect(scrollContainer).toBeInstanceOf(HTMLDivElement);
+    expect(itemAction).toBeInstanceOf(HTMLButtonElement);
+    if (
+      !(scrollContainer instanceof HTMLDivElement) ||
+      !(itemAction instanceof HTMLButtonElement)
+    ) {
+      return;
+    }
+    itemAction.focus();
+
+    await act(async () => {
+      scrollContainer.scrollTop = 500;
+      scrollContainer.dispatchEvent(new Event('scroll'));
+      flushAnimationFrames();
+      await Promise.resolve();
+    });
+
+    expect(document.activeElement).not.toBe(itemAction);
+    expect(scrollContainer.scrollTop).toBe(500);
+    root.unmount();
+    host.remove();
+  });
+
+  it('keeps focus outside the grid when changing the virtual window', async () => {
+    const { host, root } = createTestRoot();
+    await renderHarness(root);
+    await act(async () => {
+      flushAnimationFrames();
+      await Promise.resolve();
+    });
+
+    const scrollContainer = host.querySelector('[data-testid="scroll-container"]');
+    expect(scrollContainer).toBeInstanceOf(HTMLDivElement);
+    if (!(scrollContainer instanceof HTMLDivElement)) return;
+
+    const externalAction = document.createElement('button');
+    document.body.appendChild(externalAction);
+    externalAction.focus();
+
+    await act(async () => {
+      scrollContainer.scrollTop = 500;
+      scrollContainer.dispatchEvent(new Event('scroll'));
+      flushAnimationFrames();
+      await Promise.resolve();
+    });
+
+    expect(document.activeElement).toBe(externalAction);
+    externalAction.remove();
     root.unmount();
     host.remove();
   });
