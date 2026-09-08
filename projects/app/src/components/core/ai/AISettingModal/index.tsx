@@ -1,42 +1,42 @@
-import React, { useMemo, useState } from 'react';
-import MyModal from '@fastgpt/web/components/v2/common/MyModal';
-import { useTranslation } from 'next-i18next';
-import { useForm } from 'react-hook-form';
+import AIModelSelector from '@/components/Select/AIModelSelector';
+import { getDocPath } from '@/web/common/system/doc';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getModelDetail } from '@/web/core/ai/model/modelData';
+import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
 import {
   Box,
   Button,
   Flex,
   HStack,
+  Input,
   Switch,
+  Table,
   TableContainer,
   Tbody,
   Td,
   Th,
   Thead,
   Tr,
-  Table,
-  Input,
   VStack
 } from '@chakra-ui/react';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
-import { getDocPath } from '@/web/common/system/doc';
-import AIModelSelector from '@/components/Select/AIModelSelector';
-import { type MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { PriceLine } from '../PriceTiersLabel';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import dynamic from 'next/dynamic';
-import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
-import MySelect from '@fastgpt/web/components/common/MySelect';
-import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
-import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
-import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
-import { filterModelMultimodalSettings } from '../SettingLLMModel/utils';
 import { ModelTypeEnum, reasoningEffortList } from '@fastgpt/global/core/ai/constants';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
-import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
+import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
+import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MySelect from '@fastgpt/web/components/common/MySelect';
+import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
+import { useTranslation } from 'next-i18next';
+import dynamic from 'next/dynamic';
+import React, { useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { PriceLine } from '../PriceTiersLabel';
+import { filterModelMultimodalSettings } from '../SettingLLMModel/utils';
 
 type MultimodalValue =
   | NodeInputKeyEnum.aiChatVision
@@ -107,7 +107,6 @@ const AIChatSettingsModal = ({
   onClose,
   onSuccess,
   defaultData,
-  llmModels = [],
   showMaxToken = true,
   showTemperature = true,
   showTopP = true,
@@ -119,7 +118,6 @@ const AIChatSettingsModal = ({
   onClose: () => void;
   onSuccess: (e: SettingAIDataType) => void;
   defaultData: SettingAIDataType;
-  llmModels: MyLLMModelItemType[];
 }) => {
   const { t } = useTranslation();
   const [refresh, setRefresh] = useState(false);
@@ -143,15 +141,20 @@ const AIChatSettingsModal = ({
   const useVideo = watch(NodeInputKeyEnum.aiChatVideo);
   const extractFiles = watch(NodeInputKeyEnum.aiChatExtractFiles);
 
+  const {
+    model: modelData,
+    loading: modelLoading,
+    error: modelError,
+    refresh: retryModel
+  } = useModelDetail({ modelId, modelType: ModelTypeEnum.llm });
   const data = useMemo(() => {
-    const modelData = findClientModelByValue({ models: llmModels, value: modelId });
     const support = getLLMSupportParams(modelData);
 
     return {
       selectedModel: modelData,
       supportParams: support
     };
-  }, [llmModels, modelId]);
+  }, [modelData]);
   const selectedModel = data.selectedModel;
   const supportParams = data.supportParams;
   const multimodalOptions = useMemo(
@@ -205,13 +208,17 @@ const AIChatSettingsModal = ({
   const jsonSchema = watch(NodeInputKeyEnum.aiChatJsonSchema);
 
   const tokenLimit = useMemo(() => {
-    return selectedModel?.config.maxResponse ?? 4096;
+    return selectedModel?.config.maxResponse ?? 1_000_000;
   }, [selectedModel?.config.maxResponse]);
 
-  const onChangeModel = (e: string) => {
+  const onChangeModel = async (e: string) => {
     setValue('modelId', e);
 
-    const modelData = llmModels.find((item) => item.modelId === e);
+    // 同一 ID 的 hook 会展示加载失败和重试入口，事件处理不再抛出未捕获异常。
+    const modelData = await getModelDetail({ modelId: e, modelType: ModelTypeEnum.llm }).catch(
+      () => undefined
+    );
+    if (getValues('modelId') !== e) return;
     if (modelData) {
       setValue('maxToken', modelData.config.maxResponse / 2);
       if (showMultimodalSetting) {
@@ -257,11 +264,21 @@ const AIChatSettingsModal = ({
           <Button variant={'whiteBase'} onClick={onClose}>
             {t('common:Close')}
           </Button>
-          <Button onClick={handleSubmit(onSuccess)}>{t('common:Confirm')}</Button>
+          <Button
+            isLoading={modelLoading}
+            isDisabled={!!modelError}
+            onClick={handleSubmit(onSuccess)}
+          >
+            {t('common:Confirm')}
+          </Button>
         </>
       }
     >
       <VStack spacing={4} align="stretch">
+        {modelLoading && <Box color="myGray.500">{t('common:model_loading')}</Box>}
+        {!!modelError && (
+          <Button onClick={retryModel}>{t('common:model_detail_load_failed')}</Button>
+        )}
         {/* 基础配置 */}
         <SectionCard title={t('app:ai_setting_basic_config')}>
           <SettingRow label={t('common:core.ai.Model')}>
@@ -270,10 +287,6 @@ const AIChatSettingsModal = ({
               width={'100%'}
               h={'36px'}
               value={modelId}
-              list={llmModels.map((item) => ({
-                value: item.modelId,
-                label: item.name
-              }))}
               onChange={onChangeModel}
             />
           </SettingRow>
@@ -314,7 +327,7 @@ const AIChatSettingsModal = ({
                     )}
                   </Td>
                   <Td rowSpan={2}>
-                    {Math.round((selectedModel?.config.maxContext ?? 4096) / 1000)}K
+                    {selectedModel ? `${Math.round(selectedModel.config.maxContext / 1000)}K` : '—'}
                   </Td>
                   <Td rowSpan={2}>
                     {selectedModel?.config.toolChoice || selectedModel?.config.functionCall

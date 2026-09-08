@@ -1,23 +1,24 @@
-import React, { useMemo, useState } from 'react';
-import { Box, Input, Switch, Flex, IconButton } from '@chakra-ui/react';
+import React from 'react';
+import { Box, Flex, IconButton, Input, Switch } from '@chakra-ui/react';
+import { isSecretValue } from '@fastgpt/global/common/secret/utils';
+import { formatTime2YMDHMS, formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import type { InputRenderProps } from './type';
-import { InputTypeEnum } from './constant';
-import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import JSONEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
-import AIModelSelector from '../../../Select/AIModelSelector';
-import TimeInput from './TimeInput';
-import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { isSecretValue } from '@fastgpt/global/common/secret/utils';
-import FileSelector from '../FileSelector/index';
-import { formatTime2YMDHMS, formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
+import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { useMemo, useState } from 'react';
+import AIModelSelector from '../../../Select/AIModelSelector';
+import FileSelector from '../FileSelector/index';
+import { InputTypeEnum } from './constant';
+import TimeInput from './TimeInput';
+import type { InputRenderProps } from './type';
 import { getFileSelectRenderProps } from './utils';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 const InputRender = (props: InputRenderProps) => {
   const {
@@ -28,8 +29,7 @@ const InputRender = (props: InputRenderProps) => {
     isDisabled,
     isInvalid,
     placeholder,
-    bg = 'white',
-    modelList
+    bg = 'white'
   } = props;
 
   const { t } = useSafeTranslation();
@@ -212,14 +212,6 @@ const InputRender = (props: InputRenderProps) => {
         {...commonProps}
         modelType={ModelTypeEnum.llm}
         outLinkAuthData={props.outLinkAuthData}
-        {...(modelList
-          ? {
-              list: modelList.map((item) => ({
-                value: item.modelId ?? item.model,
-                label: item.name
-              }))
-            }
-          : {})}
       />
     );
   }

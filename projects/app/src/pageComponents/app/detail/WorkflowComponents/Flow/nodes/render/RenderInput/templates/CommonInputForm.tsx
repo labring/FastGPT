@@ -1,25 +1,24 @@
-import React, { useCallback, useMemo } from 'react';
-import type { RenderInputProps } from '../type';
-import { useTranslation } from 'next-i18next';
-import { useContextSelector } from 'use-context-selector';
+import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import InputRender from '@/components/core/app/formRender';
+import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
+import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 import { WorkflowBufferDataContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
+import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
-import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponents/utils';
-import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
-import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
-import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
-import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { useLocalStorageState } from 'ahooks';
 import {
   getSelectedInputRenderType,
   workflowModelKeyMappings
 } from '@fastgpt/global/core/workflow/utils';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { useLocalStorageState } from 'ahooks';
+import { useTranslation } from 'next-i18next';
+import React, { useCallback, useMemo } from 'react';
+import { useContextSelector } from 'use-context-selector';
+import type { RenderInputProps } from '../type';
 
 const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
@@ -27,7 +26,6 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const { getNodeById, edges } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { feConfigs } = useSystemStore();
-  const { llmModelList } = useUserModelLists();
 
   const [, setDefaultModel] = useLocalStorageState<string>('workflow_default_llm_model', {
     defaultValue: ''
@@ -123,7 +121,6 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
       onChange={handleChange}
       variables={[...(editorVariables || []), ...(externalVariables || [])]}
       variableLabels={editorVariables}
-      modelList={llmModelList}
       ExtensionPopover={canOptimizePrompt ? [OptimizerPopverComponent] : undefined}
       menuPlacement={menuPlacement}
       {...item}

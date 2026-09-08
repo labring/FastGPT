@@ -1,46 +1,43 @@
+import React from 'react';
+import MultimodalTag from '@/components/core/ai/MultimodelTag';
+import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
+import { useModelList } from '@/web/core/ai/model/useModelList';
+import { useModelSummary } from '@/web/core/ai/model/useModelSummary';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { Box, Flex } from '@chakra-ui/react';
+import type { ResponsiveValue } from '@chakra-ui/system';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { SelectProps } from '@fastgpt/web/components/common/MySelect';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
 import type { ListItemType } from '@fastgpt/web/components/common/MySelect/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { Box, Flex } from '@chakra-ui/react';
-import type { ResponsiveValue } from '@chakra-ui/system';
 import { useTranslation } from 'next-i18next';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
-import MultimodalTag from '@/components/core/ai/MultimodelTag';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   isModelAllowedByValues,
   resolveModelSelectorDisabled,
   resolveModelSelectorProviders,
   resolveModelSelectorSelection
 } from './AIModelSelector.utils';
-import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
 import { ModelStatusLabel } from './ModelStatusLabel';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
-import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { getDefaultModelSelection } from '@/web/core/ai/model/selection';
-import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
 
 type Props = Omit<SelectProps, 'list'> & {
   modelType: ModelTypeEnum;
   /** 迁移期限制模型范围；候选模型仍来自当前成员完整目录。 */
   list?: SelectProps['list'];
-  /**
-   * 兼容现有调用方；当前状态统一由展示详情接口提供，避免绕过成员权限判断。
-   */
-  resolvedCurrentModel?: MyModelItemType;
   disableTip?: string;
   noOfLines?: ResponsiveValue<number>;
   canBeUnset?: boolean;
   unsetLabel?: string;
   outLinkAuthData?: OutLinkChatAuthProps;
-  /** 当前值为空时，目录加载完成后写入系统有效默认模型；不覆盖非空的历史或失效值。 */
-  autoSelectDefault?: boolean;
+  /** 只展示具备视觉能力的候选，不要求父组件预加载模型列表。 */
+  vision?: boolean;
+  excludeHidden?: boolean;
 };
 
 const UNSET_MODEL_VALUE = '';
@@ -105,7 +102,6 @@ const ModelLabel = ({
 const AIModelSelector = ({
   modelType,
   list: restrictedList,
-  resolvedCurrentModel: _resolvedCurrentModel,
   onChange,
   disableTip,
   noOfLines,
@@ -113,7 +109,8 @@ const AIModelSelector = ({
   unsetLabel,
   placeholder,
   outLinkAuthData,
-  autoSelectDefault = false,
+  vision,
+  excludeHidden,
   ...props
 }: Props) => {
   const { t, i18n } = useTranslation();
@@ -122,10 +119,9 @@ const AIModelSelector = ({
     modelList,
     loading,
     error: catalogError
-  } = useUserModelLists({ outLinkAuthData, autoLoadCatalog: isOpen });
+  } = useModelList({ outLinkAuthData, enabled: isOpen, modelType, vision, excludeHidden });
   const getModelProvider = useUserModelStore((state) => state.getModelProvider);
   const getModelProviders = useUserModelStore((state) => state.getModelProviders);
-  const defaultModelId = useUserModelStore((state) => state.defaultModelIds[modelType]);
   const catalogVersion = useUserModelStore((state) => state.version);
   const avatarSize = useMemo(() => getModelAvatarSize(props.size), [props.size]);
   const allowedValues = useMemo(
@@ -154,10 +150,9 @@ const AIModelSelector = ({
     [currentValue, models]
   );
   const selectedModel = selection?.model;
-  const detailState = useModelDetail({ modelId: currentValue, outLinkAuthData });
+  const detailState = useModelSummary({ modelId: currentValue, outLinkAuthData });
   const { refresh: refreshDetail, setFromCatalog } = detailState;
   const normalizedSelectionRef = useRef<string>();
-  const autoSelectionCheckedRef = useRef(false);
   const checkedCatalogRef = useRef<string>();
 
   // 目录已确认当前模型时直接复用；只有目录缺少当前 ID 时才查询详情区分异常状态。
@@ -197,35 +192,6 @@ const AIModelSelector = ({
     setFromCatalog(selection.model);
     onChange?.(selection.normalizedValue);
   }, [catalogError, currentValue, setFromCatalog, isOpen, loading, onChange, selection]);
-
-  const defaultModel = useMemo(
-    () => getDefaultModelSelection({ models, defaultModelId }),
-    [defaultModelId, models]
-  );
-
-  // 仅为明确启用该能力的业务表单补齐空值；历史失效值必须保留并显示不可用状态。
-  useEffect(() => {
-    if (!isOpen) {
-      autoSelectionCheckedRef.current = false;
-      return;
-    }
-    // 每次关→开只检查一次；等待这次目录加载完成，但不因面板内值/默认模型变化重复补齐。
-    if (!autoSelectDefault || loading || catalogError || autoSelectionCheckedRef.current) return;
-    autoSelectionCheckedRef.current = true;
-    if (currentValue || !defaultModel) return;
-    setFromCatalog(defaultModel);
-    onChange?.(defaultModel.modelId);
-  }, [
-    autoSelectDefault,
-    catalogError,
-    currentValue,
-    defaultModel,
-    setFromCatalog,
-    isOpen,
-    loading,
-    modelType,
-    onChange
-  ]);
 
   const providerIds = resolveModelSelectorProviders({
     models,

@@ -1,10 +1,10 @@
 import React from 'react';
 import { Box, Flex } from '@chakra-ui/react';
-import Avatar from '@fastgpt/web/components/common/Avatar';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
-import { useTranslation } from 'next-i18next';
-import type { ModelDisplayDetail } from '@fastgpt/global/openapi/core/ai/model/detail';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
+import type { ModelSummary } from '@fastgpt/global/openapi/core/ai/model/summary';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import { useTranslation } from 'next-i18next';
 
 /** 选择器与摘要共用状态展示；只消费详情，不推断默认模型或把网络错误当作下架。 */
 export const ModelStatusLabel = ({
@@ -16,7 +16,7 @@ export const ModelStatusLabel = ({
   avatarSize = '1rem'
 }: {
   modelId?: string;
-  detail?: ModelDisplayDetail;
+  detail?: ModelSummary;
   loading?: boolean;
   error?: boolean;
   emptyLabel?: string;

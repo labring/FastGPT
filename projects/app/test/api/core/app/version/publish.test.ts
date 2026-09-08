@@ -1,21 +1,26 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import handler from '@/pages/api/core/app/version/publish';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
   RerankSystemModelDataType,
   TTSSystemModelDataType
 } from '@fastgpt/global/core/ai/model.schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { PublishAppBodyType } from '@fastgpt/global/openapi/core/app/version/api';
-import { getRootUser } from '@test/datas/users';
+import {
+  PerResourceTypeEnum,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { getRootUser, getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 describe('publish optional model defaults', () => {
   let previousModels: typeof global.systemActiveModelList;
@@ -88,6 +93,98 @@ describe('publish optional model defaults', () => {
       questionGuide: { open: enabled, modelId: value ?? undefined },
       ttsConfig: { type: enabled ? 'model' : 'none', modelId: value ?? undefined }
     }
+  });
+
+  /** 应用属于发布成员，但系统默认模型仅授权给另一成员，验证应用权限不能替代模型权限。 */
+  const createRestrictedModelScenario = async () => {
+    const owner = await getUser('model-owner');
+    const member = await getUser('model-publisher', owner.teamId);
+    const restrictedModel = {
+      ...previousDefaults.llm!,
+      modelId: '68ad85a7463006c963799a01',
+      model: 'restricted-model'
+    };
+    const availableModel = {
+      ...restrictedModel,
+      modelId: '68ad85a7463006c963799a02',
+      model: 'available-model'
+    };
+    global.systemActiveModelList = [restrictedModel, availableModel];
+    global.systemDefaultModel = { llm: restrictedModel };
+    await MongoResourcePermission.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      resourceType: PerResourceTypeEnum.model,
+      resourceId: restrictedModel.modelId,
+      permission: ReadPermissionVal
+    });
+    const app = await MongoApp.create({
+      name: 'member-model-permissions',
+      type: AppTypeEnum.workflow,
+      teamId: member.teamId,
+      tmbId: member.tmbId
+    });
+    return { owner, member, app, restrictedModel, availableModel };
+  };
+
+  it('rejects an active model outside the publishing member permissions without writing a version', async () => {
+    const { member, app, restrictedModel } = await createRestrictedModelScenario();
+    const result = await Call(handler, {
+      auth: member,
+      query: { appId: String(app._id) },
+      body: {
+        isPublish: true,
+        nodes: [],
+        chatConfig: { questionGuide: { open: true, modelId: restrictedModel.modelId } }
+      }
+    });
+    expect(result.code).not.toBe(200);
+    expect(await MongoAppVersion.countDocuments({ appId: app._id })).toBe(0);
+    expect((await MongoApp.findById(app._id).lean())?.chatConfig?.questionGuide).toBeUndefined();
+  });
+
+  it('fills an empty enabled model only from the publishing member available candidates', async () => {
+    const { member, app, availableModel } = await createRestrictedModelScenario();
+    const result = await Call(handler, {
+      auth: member,
+      query: { appId: String(app._id) },
+      body: { isPublish: true, nodes: [], chatConfig: { questionGuide: { open: true } } }
+    });
+    expect(result.code).toBe(200);
+    const saved = await MongoApp.findById(app._id).lean();
+    const version = await MongoAppVersion.findOne({ appId: app._id, isPublish: true }).lean();
+    expect(saved?.chatConfig?.questionGuide?.modelId).toBe(availableModel.modelId);
+    expect(version?.chatConfig?.questionGuide?.modelId).toBe(availableModel.modelId);
+  });
+
+  it('rejects publishing when no permitted fallback exists', async () => {
+    const { member, app, restrictedModel } = await createRestrictedModelScenario();
+    global.systemActiveModelList = [restrictedModel];
+    const result = await Call(handler, {
+      auth: member,
+      query: { appId: String(app._id) },
+      body: { isPublish: true, nodes: [], chatConfig: { questionGuide: { open: true } } }
+    });
+    expect(result.code).not.toBe(200);
+    expect(await MongoAppVersion.countDocuments({ appId: app._id })).toBe(0);
+  });
+
+  it('preserves restricted model references when saving a draft', async () => {
+    const { member, app, restrictedModel } = await createRestrictedModelScenario();
+    const result = await Call(handler, {
+      auth: member,
+      query: { appId: String(app._id) },
+      body: {
+        isPublish: false,
+        autoSave: true,
+        nodes: [],
+        chatConfig: { questionGuide: { open: true, modelId: restrictedModel.modelId } }
+      }
+    });
+    expect(result.code).toBe(200);
+    expect((await MongoApp.findById(app._id).lean())?.chatConfig?.questionGuide?.modelId).toBe(
+      restrictedModel.modelId
+    );
   });
 
   it.each([undefined, null, '', '   '])(

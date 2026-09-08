@@ -1,37 +1,38 @@
+import React from 'react';
+import { getWorkflowModelDetails } from '@/web/core/workflow/modelData';
+import { getNodeAllSource } from '@/web/core/workflow/utils';
+import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/workflowCheck';
+import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/utils';
-import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
   type RuntimeEdgeItemType,
   type StoreEdgeItemType
 } from '@fastgpt/global/core/workflow/type/edge';
-import { useCallback, useState, useMemo } from 'react';
-import { useReactFlow } from 'reactflow';
-import { getNodeAllSource } from '@/web/core/workflow/utils';
-import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/workflowCheck';
+import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useCallback, useMemo, useState } from 'react';
+import { useReactFlow } from 'reactflow';
 import { uiWorkflow2StoreWorkflow } from '../../utils';
-import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
-import dynamic from 'next/dynamic';
-import { Box, Button, Flex } from '@chakra-ui/react';
-import { type FieldErrors, useForm } from 'react-hook-form';
-import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '../../../context';
-import { useTranslation } from 'next-i18next';
-import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
-import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import {
   nodeInputTypeToInputType,
   variableInputTypeToInputType
 } from '@/components/core/app/formRender/utils';
+import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
+import { Box, Button, Flex } from '@chakra-ui/react';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { useTranslation } from 'next-i18next';
+import dynamic from 'next/dynamic';
+import { type FieldErrors, useForm } from 'react-hook-form';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '../../../context';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
+import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import {
   checkInputShouldRenderInDebug,
   debugNodeShouldShowAllInputs,
@@ -56,8 +57,6 @@ export const useDebug = () => {
   const { t } = useSafeTranslation();
   const { t: workflowT } = useTranslation();
   const { toast } = useToast();
-  const { modelList, loaded: modelsLoaded } = useUserModelLists();
-  const availableModels = modelsLoaded ? modelList : undefined;
 
   const setNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.setNodes);
   const getNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodes);
@@ -111,7 +110,7 @@ export const useDebug = () => {
     const { issueMap, hasError, firstErrorNodeId } = checkWorkflowBeforeRunOrPublish({
       nodes,
       edges,
-      models: availableModels,
+      models: await getWorkflowModelDetails(nodes),
       t: workflowT
     });
 
@@ -146,7 +145,6 @@ export const useDebug = () => {
     return Promise.reject();
   }, [
     appDetail.chatConfig,
-    availableModels,
     edges,
     fitView,
     getNodes,

@@ -1,49 +1,45 @@
-import React, { useCallback, useEffect, useMemo, useTransition } from 'react';
+import { getModelQuoteTokenLimit } from '@/web/core/ai/model/selection';
 import {
   Box,
+  Button,
   Flex,
   Grid,
-  type BoxProps,
-  useDisclosure,
-  Button,
   HStack,
-  Switch
+  Switch,
+  useDisclosure,
+  type BoxProps
 } from '@chakra-ui/react';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import { getModelQuoteTokenLimit } from '@/web/core/ai/model/selection';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import React, { useCallback, useMemo, useTransition } from 'react';
 
-import dynamic from 'next/dynamic';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import VariableEdit from '@/components/core/app/VariableEdit';
-import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
-import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
-import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
-import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
-import { TTSTypeEnum } from '@/web/core/app/constants';
-import { workflowSystemVariables } from '@/web/core/app/utils';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '@/pageComponents/app/detail/context';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
-import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
-import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
-import { SmallAddIcon } from '@chakra-ui/icons';
-import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
-import SandboxConfigButton from '../../components/SandboxConfigButton';
-import { useUserStore } from '@/web/support/user/useUserStore';
+import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
+import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
 import DatasetCard from '@/components/core/app/DatasetCard';
 import { useWelcomeTextFoldState } from '@/components/core/app/useAppEditorUIState';
+import VariableEdit from '@/components/core/app/VariableEdit';
+import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
+import { AppContext } from '@/pageComponents/app/detail/context';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
+import { TTSTypeEnum } from '@/web/core/app/constants';
+import { workflowSystemVariables } from '@/web/core/app/utils';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { SmallAddIcon } from '@chakra-ui/icons';
+import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
+import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
+import dynamic from 'next/dynamic';
+import { useContextSelector } from 'use-context-selector';
+import SandboxConfigButton from '../../components/SandboxConfigButton';
+import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import { useInitializeQueryExtensionModel } from '../FormComponent/useInitializeQueryExtensionModel';
-import {
-  findClientModelByReference,
-  resolveClientModelReferenceId
-} from '@/web/core/ai/model/modelReference';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -80,7 +76,6 @@ const EditForm = ({
 }) => {
   const { t } = useSafeTranslation();
   const { feConfigs } = useSystemStore();
-  const { defaultModels } = useUserModelStore();
   const showSandbox = feConfigs.show_agent_sandbox;
   const { teamPlanStatus } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
@@ -121,21 +116,11 @@ const EditForm = ({
     [appForm.chatConfig.variables, t]
   );
 
-  const {
-    llmModelList,
-    reRankModelList,
-    loaded: modelsLoaded,
-    loading: modelsLoading,
-    error: modelLoadError
-  } = useUserModelLists();
-  const configuredModel = llmModelList.find(
-    (model) => model.modelId === appForm.aiSettings.modelId
-  );
-  const selectedModel =
-    findClientModelByReference({ models: llmModelList, reference: appForm.aiSettings }) ??
-    (appForm.aiSettings.modelId === undefined && !appForm.aiSettings.model
-      ? llmModelList[0]
-      : undefined);
+  const { model: configuredModel } = useModelDetail({
+    ...appForm.aiSettings,
+    modelType: ModelTypeEnum.llm
+  });
+  const selectedModel = configuredModel;
   const tokenLimit = useMemo(() => {
     return getModelQuoteTokenLimit(configuredModel);
   }, [configuredModel]);
@@ -173,67 +158,7 @@ const EditForm = ({
     [setAppForm]
   );
 
-  useEffect(() => {
-    setAppForm((state) => {
-      const modelId = resolveClientModelReferenceId({
-        models: llmModelList,
-        reference: state.aiSettings
-      });
-      const rerankModelId =
-        resolveClientModelReferenceId({
-          models: reRankModelList,
-          reference: {
-            modelId: state.dataset.rerankModelId,
-            model: state.dataset.rerankModel
-          }
-        }) ??
-        (state.dataset.usingReRank &&
-        state.dataset.rerankModelId === undefined &&
-        !state.dataset.rerankModel
-          ? defaultModels.rerank?.modelId
-          : undefined);
-      const datasetSearchExtensionModelId = resolveClientModelReferenceId({
-        models: llmModelList,
-        reference: {
-          modelId: state.dataset.datasetSearchExtensionModelId,
-          model: state.dataset.datasetSearchExtensionModel
-        }
-      });
-
-      if (
-        modelId === state.aiSettings.modelId &&
-        rerankModelId === state.dataset.rerankModelId &&
-        datasetSearchExtensionModelId === state.dataset.datasetSearchExtensionModelId
-      ) {
-        return state;
-      }
-      return {
-        ...state,
-        aiSettings: {
-          ...state.aiSettings,
-          modelId
-        },
-        dataset: {
-          ...state.dataset,
-          rerankModelId,
-          datasetSearchExtensionModelId
-        }
-      };
-    });
-  }, [
-    defaultModels.llm?.modelId,
-    defaultModels.rerank?.modelId,
-    llmModelList,
-    reRankModelList,
-    setAppForm
-  ]);
-
-  useInitializeQueryExtensionModel({
-    appId: appDetail._id,
-    ready: modelsLoaded && !modelsLoading && !modelLoadError,
-    defaultModelId: defaultModels.llm?.modelId,
-    setAppForm
-  });
+  useInitializeQueryExtensionModel({ appId: appDetail._id, appForm, setAppForm });
 
   const OptimizerPopverComponent = useCallback(
     ({ iconButtonStyle }: { iconButtonStyle: Record<string, any> }) => {

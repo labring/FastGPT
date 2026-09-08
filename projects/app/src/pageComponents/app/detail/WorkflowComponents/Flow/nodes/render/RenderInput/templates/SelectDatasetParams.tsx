@@ -1,21 +1,18 @@
-import React, { useMemo } from 'react';
-import type { RenderInputProps } from '../type';
-import { Flex, useDisclosure } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import DatasetParamsModal from '@/components/core/app/DatasetParamsModal';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowBufferDataContext } from '../../../../../context/workflowInitContext';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
+import { Flex, useDisclosure } from '@chakra-ui/react';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useTranslation } from 'next-i18next';
+import React, { useMemo } from 'react';
+import { useContextSelector } from 'use-context-selector';
+import { useWorkflowQuoteLimit } from '../../../../hooks/useWorkflowQuoteLimit';
+import type { RenderInputProps } from '../type';
 import { getDatasetSearchParamInputs, getDatasetSearchParams } from './SelectDatasetParams.utils';
 
 const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const llmMaxQuoteContext = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v.llmMaxQuoteContext
-  );
+  const llmMaxQuoteContext = useWorkflowQuoteLimit();
   const { t } = useTranslation();
   const data = useMemo(() => getDatasetSearchParams(inputs), [inputs]);
 

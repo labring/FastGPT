@@ -1,31 +1,32 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Box } from '@chakra-ui/react';
-import { useContextSelector } from 'use-context-selector';
-import { SkillDetailContext } from '../context';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
-import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
-import { streamSkillDebugChat } from '@/web/core/skill/api';
-import type { GetPaginationRecordsBodyType } from '@fastgpt/global/openapi/core/chat/record/api';
-import ChatAIModelSelector from '@/pageComponents/chat/ChatWindow/ChatAIModelSelector';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
-import { useTranslation } from 'next-i18next';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
-import { useMemoizedFn } from 'ahooks';
 import ProModal from '@/components/ProTip/ProModal';
-import { useSkillDebugChatStore } from '../useSkillDebugChatStore';
-import { getSkillEditChatSourceKey } from '@/web/core/chat/utils';
-import { defaultQGConfig, defaultWhisperConfig } from '@fastgpt/global/core/app/constants';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import ChatAIModelSelector from '@/pageComponents/chat/ChatWindow/ChatAIModelSelector';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useModelDefault } from '@/web/core/ai/model/useModelDefault';
 import { getInitChatInfo } from '@/web/core/chat/api';
-import { getModelInitializationValue } from '@/web/core/ai/model/selection';
+import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
+import { getSkillEditChatSourceKey } from '@/web/core/chat/utils';
+import { streamSkillDebugChat } from '@/web/core/skill/api';
+import { Box } from '@chakra-ui/react';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import {
+  AppTypeEnum,
+  defaultQGConfig,
+  defaultWhisperConfig
+} from '@fastgpt/global/core/app/constants';
+import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import type { GetPaginationRecordsBodyType } from '@fastgpt/global/openapi/core/chat/record/api';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useMemoizedFn } from 'ahooks';
+import { useTranslation } from 'next-i18next';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useContextSelector } from 'use-context-selector';
+import { SkillDetailContext } from '../context';
+import { useSkillDebugChatStore } from '../useSkillDebugChatStore';
 
 const fileSelectConfig: AppFileSelectConfigType = {
   maxFiles: 10,
@@ -47,30 +48,20 @@ const SkillPreview = () => {
   }));
 
   const { feConfigs } = useSystemStore();
-  const { defaultModels } = useUserModelStore();
-  const { llmModelList } = useUserModelLists();
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const [proModalOpen, setProModalOpen] = useState(false);
   const selectedModel = useSkillDebugChatStore((state) => state.selectedModel);
   const setSelectedModel = useSkillDebugChatStore((state) => state.setSelectedModel);
 
-  const modelSelectList = useMemo(
-    () =>
-      llmModelList
-        .filter((item): item is typeof item & { modelId: string } => !!item.modelId)
-        .map((item) => ({ label: item.name, value: item.modelId })),
-    [llmModelList]
-  );
+  const { model: defaultModel } = useModelDefault({
+    modelType: ModelTypeEnum.llm,
+    enabled: !!skillId && !!chatId && !selectedModel
+  });
   useEffect(() => {
     // 父级尚未绑定当前 Skill 的调试会话时，不把默认值写到上一个 Skill 的偏好中。
     if (!skillId || !chatId) return;
-    const modelId = getModelInitializationValue({
-      value: selectedModel,
-      models: llmModelList,
-      defaultModelId: defaultModels.llm?.modelId
-    });
-    if (modelId && modelId !== selectedModel) setSelectedModel(modelId);
-  }, [chatId, defaultModels.llm?.modelId, llmModelList, selectedModel, setSelectedModel, skillId]);
+    if (!selectedModel && defaultModel) setSelectedModel(defaultModel.modelId);
+  }, [chatId, defaultModel, selectedModel, setSelectedModel, skillId]);
 
   const isReady = sandboxState === 'ready';
   const sourceKey = useMemo(() => getSkillEditChatSourceKey(skillId), [skillId]);
@@ -153,11 +144,10 @@ const SkillPreview = () => {
         bg={'myGray.50'}
         rounded={'10px'}
         value={selectedModel}
-        list={modelSelectList}
         onChange={setSelectedModel}
       />
     );
-  }, [selectedModel, modelSelectList, setSelectedModel]);
+  }, [selectedModel, setSelectedModel]);
 
   const onStartChat = useMemoizedFn(
     async ({ messages, responseChatItemId, controller, generatingMessage }: StartChatFnProps) => {

@@ -1,35 +1,35 @@
-import React, { useEffect, useState } from 'react';
-import { Box, Flex, Switch, Input } from '@chakra-ui/react';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { useForm } from 'react-hook-form';
-import type { DatasetItemType } from '@fastgpt/global/core/dataset/type';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import { useTranslation } from 'next-i18next';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { type EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
+import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { postRebuildEmbedding } from '@/web/core/dataset/api/training';
-import type { MyEmbeddingModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
-import { useContextSelector } from 'use-context-selector';
-import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
-import MyDivider from '@fastgpt/web/components/common/MyDivider/index';
-import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
-import MemberManager from '../../MemberManager';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getModelDetail } from '@/web/core/ai/model/modelData';
 import {
   getCollaboratorList,
   postUpdateDatasetCollaborators
 } from '@/web/core/dataset/api/collaborator';
-import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
-import dynamic from 'next/dynamic';
-import type { EditAPIDatasetInfoFormType } from './components/EditApiServiceModal';
-import { type EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
+import { postRebuildEmbedding } from '@/web/core/dataset/api/training';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { Box, Flex, Input, Switch } from '@chakra-ui/react';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
+import type { DatasetItemType } from '@fastgpt/global/core/dataset/type';
+import type { MyEmbeddingModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import MyDivider from '@fastgpt/web/components/common/MyDivider/index';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useTranslation } from 'next-i18next';
+import dynamic from 'next/dynamic';
+import React, { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { useContextSelector } from 'use-context-selector';
+import MemberManager from '../../MemberManager';
+import type { EditAPIDatasetInfoFormType } from './components/EditApiServiceModal';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const EditAPIDatasetInfoModal = dynamic(() => import('./components/EditApiServiceModal'));
@@ -39,11 +39,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const { datasetDetail, loadDatasetDetail, updateDataset, rebuildingCount, trainingCount } =
     useContextSelector(DatasetPageContext, (v) => v);
   const { feConfigs } = useSystemStore();
-  const {
-    llmModelList,
-    embeddingModelList,
-    vlmModelList: vllmModelList
-  } = useUserModelLists({ autoLoadCatalog: false });
 
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
   const [editedAPIDataset, setEditedAPIDataset] = useState<EditAPIDatasetInfoFormType>();
@@ -181,7 +176,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               modelType={ModelTypeEnum.embedding}
               w={'100%'}
               value={vectorModel?.modelId ?? datasetDetail.vectorModelId}
-              resolvedCurrentModel={vectorModel ?? datasetDetail.vectorModel}
               fontSize={'mini'}
               disableTip={
                 isTraining
@@ -190,12 +184,11 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                     )
                   : undefined
               }
-              list={embeddingModelList.map((item) => ({
-                label: item.name,
-                value: item.modelId
-              }))}
-              onChange={(e) => {
-                const vectorModel = embeddingModelList.find((item) => item.modelId === e);
+              onChange={async (e) => {
+                const vectorModel = await getModelDetail({
+                  modelId: e,
+                  modelType: ModelTypeEnum.embedding
+                });
                 if (!vectorModel) return;
                 return onOpenConfirmRebuild({
                   onConfirm: async () => {
@@ -217,14 +210,12 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               modelType={ModelTypeEnum.llm}
               w={'100%'}
               value={agentModel?.modelId ?? datasetDetail.agentModelId}
-              resolvedCurrentModel={agentModel ?? datasetDetail.agentModel}
-              list={llmModelList.map((item) => ({
-                label: item.name,
-                value: item.modelId
-              }))}
               fontSize={'mini'}
-              onChange={(e) => {
-                const agentModel = llmModelList.find((item) => item.modelId === e);
+              onChange={async (e) => {
+                const agentModel = await getModelDetail({
+                  modelId: e,
+                  modelType: ModelTypeEnum.llm
+                });
                 if (!agentModel) return;
                 setValue('agentModel', agentModel);
                 return handleSubmit((data) => onSave({ ...data, agentModel: agentModel }))();
@@ -244,13 +235,9 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               value={vlmModel?.modelId ?? datasetDetail.vlmModelId}
               canBeUnset
               unsetLabel={t('common:not_set')}
-              resolvedCurrentModel={vlmModel ?? datasetDetail.vlmModel}
-              list={vllmModelList.map((item) => ({
-                label: item.name,
-                value: item.modelId
-              }))}
+              vision
               fontSize={'mini'}
-              onChange={(e) => {
+              onChange={async (e) => {
                 if (e === '') {
                   return handleSubmit(async (data) => {
                     await onSave(data, true);
@@ -258,7 +245,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                     setValue('vlmModelId', undefined);
                   })();
                 }
-                const vlmModel = vllmModelList.find((item) => item.modelId === e);
+                const vlmModel = await getModelDetail({ modelId: e, modelType: ModelTypeEnum.llm });
                 if (!vlmModel) return;
                 setValue('vlmModel', vlmModel);
                 return handleSubmit((data) => onSave({ ...data, vlmModel }))();
@@ -276,7 +263,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             <Box flex={1} />
             <Switch
               isChecked={!!datasetDetail.autoSync}
-              onChange={(e) => {
+              onChange={async (e) => {
                 e.preventDefault();
                 const autoSync = e.target.checked;
                 const text = autoSync ? t('dataset:open_auto_sync') : t('dataset:close_auto_sync');

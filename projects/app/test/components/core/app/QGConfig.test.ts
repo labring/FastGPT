@@ -20,10 +20,10 @@ vi.mock('@/web/core/ai/model/useUserModelStore', () => ({
   useUserModelStore: (select: (state: unknown) => unknown) =>
     select({ defaultModelIds: { llm: 'default-id' } })
 }));
-vi.mock('@/web/core/ai/model/useUserModelLists', () => ({
-  useUserModelLists: () => ({ llmModelList: mocks.models })
+vi.mock('@/web/core/ai/model/modelData', () => ({
+  getModelDefault: vi.fn(async () => mocks.models[0])
 }));
-vi.mock('@chakra-ui/react', () => {
+vi.mock('@chakra-ui/react', async () => {
   const Element = ({ children }: { children: React.ReactNode }) =>
     React.createElement('div', {}, children);
   return {
@@ -58,7 +58,7 @@ vi.mock('@/components/Select/AIModelSelector', () => ({
 }));
 import QGConfig from '@/components/core/app/QGConfig';
 
-describe('QGConfig toggle-time model initialization', () => {
+describe('QGConfig toggle-time model initialization', async () => {
   beforeEach(() => {
     mocks.effects = [];
     mocks.toggle = undefined;
@@ -79,35 +79,35 @@ describe('QGConfig toggle-time model initialization', () => {
         expect(mocks.select).toHaveBeenCalledWith(expect.objectContaining({ value: undefined }));
     }
   );
-  it('writes the default with the off-to-on toggle and displays the saved value', () => {
+  it('writes the default with the off-to-on toggle and displays the saved value', async () => {
     const onChange = render({ open: false });
-    mocks.toggle?.({ target: { checked: true } });
-    expect(onChange).toHaveBeenCalledExactlyOnceWith({
+    await mocks.toggle?.({ target: { checked: true } });
+    expect(onChange).toHaveBeenLastCalledWith({
       open: true,
       modelId: 'default-id',
       model: undefined
     });
     mocks.select.mockClear();
-    render(onChange.mock.calls[0][0]);
+    render(onChange.mock.calls.at(-1)![0]);
     expect(mocks.select).toHaveBeenCalledWith(expect.objectContaining({ value: 'default-id' }));
   });
-  it('keeps the selected model when enabling and disabling the feature', () => {
+  it('keeps the selected model when enabling and disabling the feature', async () => {
     const onChange = render({ open: false, modelId: 'saved-id' });
-    mocks.toggle?.({ target: { checked: true } });
+    await mocks.toggle?.({ target: { checked: true } });
     expect(onChange).toHaveBeenLastCalledWith({ open: true, modelId: 'saved-id' });
     const disabled = render({ open: true, modelId: 'saved-id' });
-    mocks.toggle?.({ target: { checked: false } });
+    await mocks.toggle?.({ target: { checked: false } });
     expect(disabled).toHaveBeenLastCalledWith({ open: false, modelId: 'saved-id' });
   });
-  it('does not invent a default when no usable model is cached', () => {
+  it('does not invent a default when no usable model is cached', async () => {
     mocks.models = [];
     const onChange = render({ open: false });
-    mocks.toggle?.({ target: { checked: true } });
+    await mocks.toggle?.({ target: { checked: true } });
     expect(onChange).toHaveBeenCalledExactlyOnceWith({ open: true });
   });
-  it('does not initialize an already-on switch again', () => {
+  it('does not initialize an already-on switch again', async () => {
     const onChange = render({ open: true });
-    mocks.toggle?.({ target: { checked: true } });
+    await mocks.toggle?.({ target: { checked: true } });
     expect(onChange).toHaveBeenCalledExactlyOnceWith({ open: true });
   });
 });

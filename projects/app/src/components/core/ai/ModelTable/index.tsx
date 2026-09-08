@@ -1,6 +1,16 @@
+import { LazyCollaboratorProvider } from '@/components/support/permission/MemberManager/context';
 import {
-  Button,
+  getModelCollaborators,
+  getPublicModelCatalog,
+  updateModelCollaborators
+} from '@/web/common/system/api';
+import { useModelList } from '@/web/core/ai/model/useModelList';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import {
   Box,
+  Button,
+  Checkbox,
   Flex,
   HStack,
   ModalBody,
@@ -12,39 +22,29 @@ import {
   Thead,
   Tr,
   useDisclosure,
-  Checkbox,
   type FlexProps
 } from '@chakra-ui/react';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import React, { useMemo, useState } from 'react';
-import { SingleSelectFilter } from '@fastgpt/web/components/common/TagFilter';
-import { modelTypeList, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyTag from '@fastgpt/web/components/common/Tag/index';
-import dynamic from 'next/dynamic';
-import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
-import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
-import {
-  getModelCollaborators,
-  getPublicModelCatalog,
-  updateModelCollaborators
-} from '@/web/common/system/api';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import { LazyCollaboratorProvider } from '@/components/support/permission/MemberManager/context';
-import PriceTiersLabel from '../PriceTiersLabel';
-import TestModeBetaTag from '../TestModeBetaTag';
-import ModelCapabilityTags from '../ModelCapabilityTags';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
+import { ModelTypeEnum, modelTypeList } from '@fastgpt/global/core/ai/constants';
 import {
   formatModelProviders,
   getModelProviderFromCache,
   getModelProviderListFromCache
 } from '@fastgpt/global/core/ai/provider';
+import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
+import { SingleSelectFilter } from '@fastgpt/web/components/common/TagFilter';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import dynamic from 'next/dynamic';
+import React, { useMemo, useState } from 'react';
+import ModelCapabilityTags from '../ModelCapabilityTags';
+import PriceTiersLabel from '../PriceTiersLabel';
+import TestModeBetaTag from '../TestModeBetaTag';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
@@ -58,7 +58,7 @@ const ModelTable = ({
   const { t, i18n } = useClientTranslation();
   const { modelProviders: memberModelProviders, getModelProvider: getMemberModelProvider } =
     useUserModelStore();
-  const { modelList: availableModels } = useUserModelLists();
+  const { modelList: availableModels } = useModelList({ enabled: permissionConfig });
   const { data: publicCatalog } = useRequest(getPublicModelCatalog, {
     manual: permissionConfig
   });

@@ -1,22 +1,21 @@
 // 工作流快照管理层
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { createContext, useContextSelector } from 'use-context-selector';
-import { useTranslation } from 'next-i18next';
-import type { Node, Edge } from 'reactflow';
-import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
+import { AppContext } from '@/pageComponents/app/detail/context';
 import {
   compareSnapshot,
-  storeNode2FlowNode,
-  storeEdge2RenderEdge
+  storeEdge2RenderEdge,
+  storeNode2FlowNode
 } from '@/web/core/workflow/utils';
+import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
-import { WorkflowBufferDataContext } from './workflowInitContext';
-import { AppContext } from '@/pageComponents/app/detail/context';
-import type { WorkflowStateType } from './type';
-import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { useTranslation } from 'next-i18next';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import type { Edge, Node } from 'reactflow';
+import { createContext, useContextSelector } from 'use-context-selector';
+import type { WorkflowStateType } from './type';
+import { WorkflowBufferDataContext } from './workflowInitContext';
 
 export type WorkflowSnapshotsType = WorkflowStateType & {
   title: string;
@@ -98,7 +97,6 @@ const snapshotDebounceTime = 1000;
 
 export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNode }) => {
   const { t } = useTranslation();
-  const { llmModelList } = useUserModelLists();
 
   // 获取 WorkflowBufferDataContext 的数据
   const {
@@ -308,8 +306,7 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
         storeNode2FlowNode({
           item,
           t,
-          isTool: toolNodeIds.has(item.nodeId),
-          llmModelList
+          isTool: toolNodeIds.has(item.nodeId)
         })
       );
 
@@ -326,7 +323,7 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
         customTitle: `${t('app:version_copy')}-${appVersion.versionName}`
       });
     },
-    [llmModelList, t, resetSnapshot, pushPastSnapshot]
+    [t, resetSnapshot, pushPastSnapshot]
   );
 
   const contextValue = useMemoEnhance(() => {

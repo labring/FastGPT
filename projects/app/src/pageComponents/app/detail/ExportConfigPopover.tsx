@@ -1,24 +1,24 @@
-import React, { useCallback, useState } from 'react';
-import { Box, Checkbox, Divider, Flex } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import { filterSensitiveNodesData } from '@/web/core/workflow/utils';
-import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
-import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { fileDownload } from '@/web/common/file/utils';
-import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
-import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import MyBox from '@fastgpt/web/components/common/MyBox';
+import { getModelList } from '@/web/core/ai/model/modelData';
 import { addModelNamesToAppForm, filterSensitiveFormData } from '@/web/core/app/utils';
+import { filterSensitiveNodesData } from '@/web/core/workflow/utils';
+import { Box, Checkbox, Divider, Flex } from '@chakra-ui/react';
 import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
-import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { cloneDeep } from 'lodash-es';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { addModelNamesToWorkflow } from '@fastgpt/global/core/workflow/utils';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { cloneDeep } from 'lodash-es';
+import { useTranslation } from 'next-i18next';
+import React, { useCallback, useState } from 'react';
 
 type ExportConfigPopoverProps = {
   appType: AppTypeEnum;
@@ -50,7 +50,6 @@ const ExportConfigPopover = ({
   const { t } = useTranslation();
   const { copyData } = useCopyData();
   const { toast } = useToast();
-  const { modelList, loading: modelsLoading, loaded: modelsLoaded } = useUserModelLists();
 
   const [localFilterSensitiveInfo, setLocalFilterSensitiveInfo] = useState<boolean>(true);
   const filterSensitiveInfo = filterSensitiveInfoProp ?? localFilterSensitiveInfo;
@@ -68,13 +67,7 @@ const ExportConfigPopover = ({
 
   const onExportWorkflow = useCallback(
     async (mode: 'copy' | 'json') => {
-      if (!modelsLoaded) {
-        toast({
-          title: t(modelsLoading ? 'common:model_loading' : 'common:model_catalog_load_failed'),
-          status: modelsLoading ? 'info' : 'error'
-        });
-        return;
-      }
+      const modelList = await getModelList();
 
       let config = '';
 
@@ -142,9 +135,6 @@ const ExportConfigPopover = ({
       chatConfig,
       copyData,
       getWorkflowData,
-      modelList,
-      modelsLoading,
-      modelsLoaded,
       toast,
       t,
       filterSensitiveInfo

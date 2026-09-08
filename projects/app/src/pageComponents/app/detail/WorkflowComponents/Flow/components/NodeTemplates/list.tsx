@@ -1,4 +1,9 @@
-import React, { useCallback, useMemo } from 'react';
+import CostTooltip from '@/components/core/app/tool/CostTooltip';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getModelDefault } from '@/web/core/ai/model/modelData';
+import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
+import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
+import { applyWorkflowStartInputAutoFill } from '@/web/core/workflow/workflowStartAutoFill';
 import {
   Accordion,
   AccordionButton,
@@ -6,62 +11,57 @@ import {
   AccordionItem,
   AccordionPanel,
   Box,
-  Grid,
   Flex,
+  Grid,
   HStack,
   css
 } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
-import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
-import type {
-  FlowNodeItemType,
-  NodeTemplateListItemType,
-  NodeTemplateListType
-} from '@fastgpt/global/core/workflow/type/node';
-import { TemplateTypeEnum } from './header';
-import { useLocalStorageState, useMemoizedFn } from 'ahooks';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyAvatar from '@fastgpt/web/components/common/Avatar';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import CostTooltip from '@/components/core/app/tool/CostTooltip';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
+import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
+import { getToolIdentityKey, isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum,
   isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
-import { getColorSchemaByFlowNodeType } from '@fastgpt/web/core/workflow/utils';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
-import { workflowSystemNodeTemplateList } from '@fastgpt/web/core/workflow/constants';
-import { sliderWidth } from '../../NodeTemplatesModal';
-import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useWorkflowUtils } from '../../hooks/useUtils';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import {
   buildNodeTemplateContext,
   getNodeContainerCheckError,
   translateNodeContainerCheckError
 } from '@fastgpt/global/core/workflow/template/context';
-import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
 import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/loopEnd';
+import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
 import { LoopRunStartNode } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRunStart';
-import { useReactFlow } from 'reactflow';
-import type { Node } from 'reactflow';
-import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
-import { applyWorkflowStartInputAutoFill } from '@/web/core/workflow/workflowStartAutoFill';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { WorkflowModalContext } from '../../../context/workflowModalContext';
-import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import type {
+  FlowNodeItemType,
+  NodeTemplateListItemType,
+  NodeTemplateListType
+} from '@fastgpt/global/core/workflow/type/node';
+import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
+import MyAvatar from '@fastgpt/web/components/common/Avatar';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 import SystemToolTag from '@fastgpt/web/components/core/plugin/tool/SystemToolTag';
-import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
-import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
-import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
+import { workflowSystemNodeTemplateList } from '@fastgpt/web/core/workflow/constants';
+import { getColorSchemaByFlowNodeType } from '@fastgpt/web/core/workflow/utils';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useLocalStorageState, useMemoizedFn } from 'ahooks';
+import { useTranslation } from 'next-i18next';
+import React, { useCallback, useMemo } from 'react';
+import type { Node } from 'reactflow';
+import { useReactFlow } from 'reactflow';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
+import { WorkflowModalContext } from '../../../context/workflowModalContext';
+import { useWorkflowUtils } from '../../hooks/useUtils';
+import { sliderWidth } from '../../NodeTemplatesModal';
+import { TemplateTypeEnum } from './header';
 
 export type TemplateListProps = {
   onAddNode: ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => void;
@@ -385,7 +385,6 @@ const NodeTemplateList = ({
               })
             : preparedInputs;
 
-        const modelCatalog = useUserModelStore.getState();
         const needsInitialModel =
           templateNode.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode &&
           inputsWithAutoFill.some((input) => {
@@ -396,15 +395,14 @@ const NodeTemplateList = ({
                 type === FlowNodeInputTypeEnum.settingLLMModel)
             );
           });
-        // 复用页面已发起的目录加载，不在新增操作中重复获取，也不把未加载误当作空目录。
-        if (needsInitialModel && !modelCatalog.loaded) {
-          toast({ status: 'info', title: t('common:model_loading_label') });
-          return;
-        }
+        const initialModel = needsInitialModel
+          ? await getModelDefault({
+              modelType: ModelTypeEnum.llm,
+              businessDefaultModelId: lastSelectedModelId
+            })
+          : undefined;
         const newNode = nodeTemplate2FlowNode({
-          defaultModelIds: modelCatalog.defaultModelIds,
-          llmModelList: modelCatalog.modelList.filter((model) => model.type === ModelTypeEnum.llm),
-          lastSelectedModelId,
+          initialModelId: initialModel?.modelId,
           template: {
             ...templateNode,
             name: computedNewNodeName({

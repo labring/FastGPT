@@ -27,12 +27,6 @@ vi.mock('use-context-selector', () => ({
 vi.mock('@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext', () => ({
   WorkflowActionsContext: {}
 }));
-vi.mock('@/web/core/ai/model/useUserModelLists', () => ({
-  useUserModelLists: () => ({ llmModelList: mocks.models })
-}));
-vi.mock('@/web/common/system/utils', () => ({
-  getWebDefaultLLMModel: () => mocks.models.find((m) => m.modelId === 'system-default')
-}));
 vi.mock('@/components/core/ai/SettingLLMModel', () => ({ default: 'model-settings' }));
 import Wrapper from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderInput/templates/SettingLLMModel';
 
@@ -56,7 +50,7 @@ describe('workflow model initialization', () => {
       const input = { ...Input_Template_SettingAiModel, value };
       const props = render([input]);
       expect(props.defaultData.modelId).toBe(value);
-      expect(props.autoInitializeModel).toBe(false);
+      expect(props).not.toHaveProperty('autoInitializeModel');
       expect(mocks.change).not.toHaveBeenCalled();
       mocks.effects.forEach((effect) => effect());
       expect(mocks.change).not.toHaveBeenCalled();

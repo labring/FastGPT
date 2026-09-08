@@ -1,64 +1,38 @@
-import React, { useEffect } from 'react';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
-import { Box, css, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
-import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import AISettingModal, { type AIChatSettingsModalProps } from '@/components/core/ai/AISettingModal';
+import AIModelSelector from '@/components/Select/AIModelSelector';
+import { getModelDetail } from '@/web/core/ai/model/modelData';
+import { Box, css, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
+import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import AIModelSelector from '@/components/Select/AIModelSelector';
-import { getWebDefaultLLMModel } from '@/web/common/system/utils';
-import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
-import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
+import React, { useEffect, useRef } from 'react';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { filterModelMultimodalSettings } from './utils';
-import { getModelInitializationValue } from '@/web/core/ai/model/selection';
 
 type Props = {
   defaultData: SettingAIDataType;
   onChange: (e: SettingAIDataType) => void;
   bg?: string;
-  /** 工作流包装器自行写入节点默认值时关闭，避免两个 effect 竞争初始化。 */
-  autoInitializeModel?: boolean;
 };
 
-const SettingLLMModel = ({
-  defaultData,
-  onChange,
-  autoInitializeModel = true,
-  ...props
-}: AIChatSettingsModalProps & Props) => {
+const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModalProps & Props) => {
   const { t } = useTranslation();
-  const { llmModelList } = useUserModelLists();
-
   const modelId = defaultData.modelId;
-
-  const { modelList, defaultLLMModel } = useMemoEnhance(() => {
-    const defaultModelData = getWebDefaultLLMModel(llmModelList);
-    return {
-      modelList: llmModelList,
-      defaultLLMModel: defaultModelData?.modelId
-    };
-  }, [llmModelList]);
-
-  const selectedModelData = findClientModelByValue({ models: llmModelList, value: modelId });
-
-  // 默认值必须写入表单；展示只读取当前值，不把临时计算结果传给选择器。
+  const { toast } = useToast();
+  const latestData = useRef(defaultData);
+  const selectionRevision = useRef(0);
   useEffect(() => {
-    if (!autoInitializeModel) return;
-    const nextModelId = getModelInitializationValue({
-      value: modelId,
-      models: llmModelList,
-      defaultModelId: defaultLLMModel
-    });
-    if (nextModelId && nextModelId !== modelId) {
-      onChange({
-        ...defaultData,
-        modelId: nextModelId
-      });
-    }
-  }, [autoInitializeModel, modelId, defaultData, defaultLLMModel, llmModelList, onChange]);
+    latestData.current = defaultData;
+  }, [defaultData]);
+  useEffect(
+    () => () => {
+      selectionRevision.current++;
+    },
+    []
+  );
 
   const {
     isOpen: isOpenAIChatSetting,
@@ -82,19 +56,36 @@ const SettingLLMModel = ({
             modelType={ModelTypeEnum.llm}
             w={'100%'}
             value={modelId}
-            onChange={(e) => {
-              const modelData = findClientModelByValue({ models: llmModelList, value: e });
+            onChange={async (e) => {
+              const revision = ++selectionRevision.current;
+              const next = { ...defaultData, modelId: e };
+              latestData.current = next;
+              onChange(next);
+              const modelData = await getModelDetail({
+                modelId: e,
+                modelType: ModelTypeEnum.llm
+              }).catch(() => {
+                if (selectionRevision.current === revision)
+                  toast({ status: 'error', title: t('common:model_detail_load_failed') });
+              });
+              if (
+                !modelData ||
+                selectionRevision.current !== revision ||
+                latestData.current.modelId !== e
+              )
+                return;
+              const currentData = latestData.current;
               const settings = (() => {
                 // 只清理有显式开关的工作流配置，隐藏配置的表单交给后端判断模型能力。
                 if (
                   props.showMultimodalConfig === false ||
-                  defaultData.aiChatVision === undefined ||
+                  currentData.aiChatVision === undefined ||
                   !modelData
                 ) {
-                  return defaultData;
+                  return currentData;
                 }
                 return filterModelMultimodalSettings({
-                  settings: defaultData,
+                  settings: currentData,
                   support: getLLMSupportParams(modelData)
                 });
               })();
@@ -122,8 +113,7 @@ const SettingLLMModel = ({
             onChange(e);
             onCloseAIChatSetting();
           }}
-          defaultData={{ ...defaultData, modelId: selectedModelData?.modelId ?? modelId }}
-          llmModels={modelList}
+          defaultData={defaultData}
           {...props}
         />
       )}

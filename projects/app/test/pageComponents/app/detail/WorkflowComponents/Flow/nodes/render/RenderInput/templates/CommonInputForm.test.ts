@@ -37,9 +37,6 @@ vi.mock('@/pageComponents/app/detail/WorkflowComponents/utils', () => ({
 vi.mock('@/web/common/system/useSystemStore', () => ({
   useSystemStore: () => ({ feConfigs: {} })
 }));
-vi.mock('@/web/core/ai/model/useUserModelLists', () => ({
-  useUserModelLists: () => ({ llmModelList: [] })
-}));
 vi.mock('@/components/core/app/formRender', () => ({ default: 'input-render' }));
 vi.mock('@/components/common/PromptEditor/OptimizerPopover', () => ({ default: () => null }));
 import CommonInputForm from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderInput/templates/CommonInputForm';

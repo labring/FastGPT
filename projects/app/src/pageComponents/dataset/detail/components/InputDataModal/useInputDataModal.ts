@@ -1,25 +1,24 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useFieldArray, useForm, useWatch } from 'react-hook-form';
-import { useTranslation } from 'next-i18next';
+import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
 import { getDatasetCollectionById } from '@/web/core/dataset/api/collection';
 import {
-  postInsertData2Dataset,
-  getDatasetDataItemById,
   createDatasetDataIndex,
   deleteDatasetDataIndex,
+  getDatasetDataItemById,
+  postInsertData2Dataset,
   putDatasetDataById,
   updateDatasetDataIndex
 } from '@/web/core/dataset/api/data';
 import { defaultCollectionDetail } from '@/web/core/dataset/constants';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import type { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import type { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useTranslation } from 'next-i18next';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 
 export type InputDataType = {
   q: string;
@@ -130,8 +129,6 @@ export const useInputDataModal = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { defaultModels } = useUserModelStore();
-  const { embeddingModelList } = useUserModelLists();
 
   const [currentTab, setCurrentTab] = useState<TabEnum>();
   const [deletingIndexClientId, setDeletingIndexClientId] = useState<string>();
@@ -581,13 +578,12 @@ export const useInputDataModal = ({
     deleteIndexRunnerRef.current = onDeleteIndex;
   }, [onDeleteIndex]);
 
-  const maxToken = useMemo(() => {
-    const vectorModel =
-      embeddingModelList.find((item) => item.model === collection.dataset.vectorModel) ||
-      defaultModels.embedding;
-
-    return vectorModel?.config.maxToken ?? 2000;
-  }, [collection.dataset.vectorModel, defaultModels.embedding, embeddingModelList]);
+  const { model: vectorModel } = useModelDetail({
+    modelId: collection.dataset.vectorModelId,
+    model: collection.dataset.vectorModel,
+    modelType: ModelTypeEnum.embedding
+  });
+  const maxToken = vectorModel?.config.maxToken ?? 2000;
 
   const submitData = handleSubmit((data) => (dataId ? onUpdateData(data) : sureImportData(data)));
   const showTabs = currentTab === TabEnum.chunk || currentTab === TabEnum.qa;

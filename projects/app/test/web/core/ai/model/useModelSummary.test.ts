@@ -1,3 +1,4 @@
+import { useModelSummary } from '@/web/core/ai/model/useModelSummary';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   states: [] as unknown[],
@@ -25,18 +26,26 @@ vi.mock('react', async (importOriginal) => ({
     mocks.effect = fn;
   }
 }));
-vi.mock('@/web/common/system/api', () => ({ getUserModelDetails: mocks.request }));
-vi.mock('@/web/support/user/useUserStore', () => ({
-  useUserStore: (selector: (state: unknown) => unknown) =>
-    selector({ userInfo: { team: { teamId: 'team', tmbId: mocks.member } } })
-}));
-vi.mock('@/web/core/ai/model/useUserModelStore', () => ({
-  useUserModelStore: (selector: (state: unknown) => unknown) =>
-    selector({ loginGeneration: mocks.generation })
-}));
-import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
+vi.mock('@/web/common/system/api', () => ({ getUserModelSummaries: mocks.request }));
+vi.mock('@/web/support/user/useUserStore', () => {
+  const getState = () => ({ userInfo: { team: { teamId: 'team', tmbId: mocks.member } } });
+  return {
+    useUserStore: Object.assign((selector: (state: unknown) => unknown) => selector(getState()), {
+      getState
+    })
+  };
+});
+vi.mock('@/web/core/ai/model/useUserModelStore', () => {
+  const getState = () => ({ loginGeneration: mocks.generation, modelMap: {} });
+  return {
+    useUserModelStore: Object.assign(
+      (selector: (state: unknown) => unknown) => selector(getState()),
+      { getState }
+    )
+  };
+});
 
-describe('useModelDetail request lifecycle', () => {
+describe('useModelSummary request lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.states = [];
@@ -48,10 +57,10 @@ describe('useModelDetail request lifecycle', () => {
   });
   const render = (modelId?: string, outLinkAuthData?: { shareId: string; outLinkUid: string }) => {
     mocks.index = 0;
-    return useModelDetail({ modelId, outLinkAuthData });
+    return useModelSummary({ modelId, outLinkAuthData });
   };
   const flush = async () => {
-    for (let i = 0; i < 5; i++) await Promise.resolve();
+    for (let i = 0; i < 12; i++) await Promise.resolve();
   };
 
   it('does not request unset values and loads only the selected ID', async () => {

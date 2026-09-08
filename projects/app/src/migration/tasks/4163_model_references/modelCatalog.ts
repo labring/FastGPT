@@ -1,5 +1,6 @@
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.schema';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
 import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import { findSystemDefaultModelIds } from '@fastgpt/service/core/ai/defaultModel/entity';
 import type { ModelRequirement } from './types';
@@ -39,9 +40,10 @@ export const loadModelCatalog = async () => {
 
   return {
     /**
-     * 知识库理解模型：旧名称为空时不补 ID；有效 ID、精确旧名称依次优先。
-     * 引用失效时优先使用对应知识库槽位的启用默认模型，再按 _id 升序回退；图片理解要求视觉能力。
-     * 原模型仅停用时保留原选择；目录为空或无同类型候选时不生成 ID。
+     * 知识库理解模型依次检查有效 ID、精确旧名称；图片理解要求视觉能力。
+     * 文本理解未配置旧名称也补默认，图片理解旧名称为空则不补默认，但仍优先保留有效 ID。
+     * 已配置默认模型不检查启用状态；仅未配置默认时按 _id 升序选择首个启用的兼容模型。
+     * 原模型仅停用时保留原选择；无法解析配置的默认模型或没有兼容候选时不生成 ID。
      */
     resolveDatasetUnderstandingModelId: ({
       legacyModel,
@@ -52,16 +54,19 @@ export const loadModelCatalog = async () => {
       modelId: unknown;
       vision: boolean;
     }): string | undefined => {
-      if (typeof legacyModel !== 'string' || !legacyModel.trim()) return;
       const requirement = { type: ModelTypeEnum.llm, vision };
       const current = modelById.get(String(modelId ?? ''));
       if (current && matchesRequirement(current, requirement)) return String(current._id);
-      const named = modelByName.get(legacyModel);
+      // 图片模型未配置时不新增图片理解配置；文本模型即使未配置也需要默认回填。
+      if (vision && isEmptyModelValue(legacyModel)) return;
+      const named = typeof legacyModel === 'string' ? modelByName.get(legacyModel) : undefined;
       if (named && matchesRequirement(named, requirement)) return String(named._id);
       const defaultId = defaultModelIds[vision ? 'datasetImageLLM' : 'datasetTextLLM'];
-      const defaultModel = defaultId ? modelById.get(defaultId) : undefined;
-      if (defaultModel?.isActive && matchesRequirement(defaultModel, requirement)) {
-        return String(defaultModel._id);
+      if (!isEmptyModelValue(defaultId)) {
+        const defaultModel = modelById.get(String(defaultId));
+        return defaultModel && matchesRequirement(defaultModel, requirement)
+          ? String(defaultModel._id)
+          : undefined;
       }
       const fallback = models.find(
         (model) => model.isActive && matchesRequirement(model, requirement)

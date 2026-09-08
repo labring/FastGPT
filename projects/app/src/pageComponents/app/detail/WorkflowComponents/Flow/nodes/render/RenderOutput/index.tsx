@@ -1,11 +1,11 @@
-import React, { useMemo } from 'react';
-import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import OutputLabel from './Label';
+import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import DynamicOutputs from './DynamicOutputs';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import React, { useMemo } from 'react';
+import DynamicOutputs from './DynamicOutputs';
+import OutputLabel from './Label';
 
 const RenderOutput = ({
   nodeId,

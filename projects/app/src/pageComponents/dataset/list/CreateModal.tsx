@@ -1,28 +1,27 @@
 import React from 'react';
-import { Box, Flex, Button, Input, HStack } from '@chakra-ui/react';
-import { useForm } from 'react-hook-form';
-import { useRouter } from 'next/router';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import MyModal from '@fastgpt/web/components/v2/common/MyModal';
-import { postCreateDataset } from '@/web/core/dataset/api';
-import type { CreateDatasetBody } from '@fastgpt/global/openapi/core/dataset/api';
-import { useTranslation } from 'next-i18next';
-import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
-import AIModelSelector from '@/components/Select/AIModelSelector';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import { getDocPath } from '@/web/common/system/doc';
-import ApiDatasetForm from '../ApiDatasetForm';
-import { getWebDefaultEmbeddingModel, getWebDefaultLLMModel } from '@/web/common/system/utils';
-import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
+import AIModelSelector from '@/components/Select/AIModelSelector';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
+import { getDocPath } from '@/web/common/system/doc';
+import { getModelDefault } from '@/web/core/ai/model/modelData';
+import { postCreateDataset } from '@/web/core/dataset/api';
+import { Box, Button, Flex, HStack, Input } from '@chakra-ui/react';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
+import type { CreateDatasetBody } from '@fastgpt/global/openapi/core/dataset/api';
+import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
+import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import ApiDatasetForm from '../ApiDatasetForm';
 
 export type CreateDatasetType =
   | DatasetTypeEnum.dataset
@@ -43,10 +42,6 @@ const CreateModal = ({
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { defaultModels } = useUserModelStore();
-  const { embeddingModelList, llmModelList, vlmModelList: vllmModelList } = useUserModelLists();
-
-  const filterNotHiddenVectorModelList = embeddingModelList.filter((item) => !item.config.hidden);
 
   const form = useForm<CreateDatasetBody>({
     defaultValues: {
@@ -55,15 +50,31 @@ const CreateModal = ({
       avatar: DatasetTypeMap[type].avatar,
       name: '',
       intro: '',
-      vectorModelId:
-        defaultModels.embedding?.modelId ||
-        getWebDefaultEmbeddingModel(embeddingModelList)?.modelId,
-      agentModelId:
-        defaultModels.datasetTextLLM?.modelId || getWebDefaultLLMModel(llmModelList)?.modelId,
-      vlmModelId: defaultModels.datasetImageLLM?.modelId ?? ''
+      vectorModelId: '',
+      agentModelId: '',
+      vlmModelId: ''
     }
   });
   const { register, setValue, handleSubmit, watch } = form;
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      getModelDefault({ modelType: ModelTypeEnum.embedding, excludeHidden: true }),
+      getModelDefault({ modelType: ModelTypeEnum.llm, defaultKey: 'datasetTextLLM' }),
+      getModelDefault({ modelType: ModelTypeEnum.llm, defaultKey: 'datasetImageLLM', vision: true })
+    ])
+      .then((models) => {
+        if (!active) return;
+        (['vectorModelId', 'agentModelId', 'vlmModelId'] as const).forEach((key, index) => {
+          if (!form.getFieldState(key).isDirty && !form.getValues(key) && models[index])
+            setValue(key, models[index].modelId);
+        });
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [form, setValue]);
   const avatar = watch('avatar');
   const vectorModelId = watch('vectorModelId');
   const agentModelId = watch('agentModelId');
@@ -185,14 +196,11 @@ const CreateModal = ({
             <Box w={['100%', '300px']}>
               <AIModelSelector
                 modelType={ModelTypeEnum.embedding}
+                excludeHidden
                 w={['100%', '300px']}
                 value={vectorModelId}
-                list={filterNotHiddenVectorModelList.map((item) => ({
-                  label: item.name,
-                  value: item.modelId
-                }))}
                 onChange={(e) => {
-                  setValue('vectorModelId' as const, e);
+                  setValue('vectorModelId' as const, e, { shouldDirty: true });
                 }}
               />
             </Box>
@@ -220,12 +228,8 @@ const CreateModal = ({
                 modelType={ModelTypeEnum.llm}
                 w={['100%', '300px']}
                 value={agentModelId}
-                list={llmModelList.map((item) => ({
-                  label: item.name,
-                  value: item.modelId
-                }))}
                 onChange={(e) => {
-                  setValue('agentModelId', e);
+                  setValue('agentModelId', e, { shouldDirty: true });
                 }}
               />
             </Box>
@@ -256,12 +260,9 @@ const CreateModal = ({
                 value={vlmModelId ?? ''}
                 canBeUnset
                 unsetLabel={t('common:not_set')}
-                list={vllmModelList.map((item) => ({
-                  label: item.name,
-                  value: item.modelId
-                }))}
+                vision
                 onChange={(e) => {
-                  setValue('vlmModelId', e);
+                  setValue('vlmModelId', e, { shouldDirty: true });
                 }}
               />
             </Box>

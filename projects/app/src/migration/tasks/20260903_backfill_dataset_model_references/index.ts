@@ -7,8 +7,8 @@ import { backfillFlatModelFields } from '../4163_model_references/transforms';
 
 /**
  * 按固定 endId 和 _id checkpoint 增量回填 Dataset 模型 ID，使用字段快照 CAS 保证安全重放。
- * 向量模型只做精确迁移；理解模型失效时优先对应系统默认模型，再按 _id 升序回退启用的兼容模型。
- * 未配置旧名称、或目录无兼容候选时不补理解模型 ID，保留正常的 ID-only 数据。
+ * 各字段优先保留有效 ID，再精确匹配旧名称；向量模型不回填默认值。
+ * 文本理解总是允许默认回填，图片理解仅旧名称非空时允许；未配置默认才按 _id 回退启用的兼容模型。
  */
 export const backfillDatasetModelReferences = async (context: SystemMigrationContext) => {
   const catalog = await loadModelCatalog();

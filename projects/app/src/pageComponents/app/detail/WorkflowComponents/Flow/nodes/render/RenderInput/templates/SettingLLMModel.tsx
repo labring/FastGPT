@@ -124,7 +124,6 @@ const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: Rend
       defaultData={llmModelData}
       onChange={onChangeModel}
       {...settingLLMModelProps}
-      autoInitializeModel={false}
     />
   );
 };

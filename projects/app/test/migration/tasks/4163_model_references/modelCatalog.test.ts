@@ -116,7 +116,7 @@ describe('loadModelCatalog', () => {
   });
 
   it.each([false, true])(
-    'prefers the dataset slot default and falls back by ID when it is unavailable (vision=%s)',
+    'uses the dataset slot default and falls back only when unconfigured (vision=%s)',
     async (vision) => {
       const ids = Array.from({ length: 5 }, () => new Types.ObjectId());
       await MongoAIModel.collection.insertMany([
@@ -165,6 +165,8 @@ describe('loadModelCatalog', () => {
       for (const defaultId of [
         String(ids[4]),
         undefined,
+        '',
+        ' \t ',
         'missing-id',
         String(ids[2]),
         String(ids[3]),
@@ -180,10 +182,18 @@ describe('loadModelCatalog', () => {
           { upsert: true }
         );
         const catalog = await loadModelCatalog();
-        const expectedId =
-          defaultId === String(ids[4]) || (!vision && defaultId === String(ids[1]))
-            ? defaultId
-            : String(ids[0]);
+        const expectedId = (() => {
+          if (defaultId === undefined || defaultId === '' || defaultId === ' \t ') {
+            return String(ids[0]);
+          }
+          if (
+            defaultId === String(ids[4]) ||
+            defaultId === String(ids[2]) ||
+            (!vision && defaultId === String(ids[1]))
+          ) {
+            return defaultId;
+          }
+        })();
         expect(
           catalog.resolveDatasetUnderstandingModelId({
             legacyModel: 'deleted',
@@ -191,7 +201,7 @@ describe('loadModelCatalog', () => {
             vision
           })
         ).toBe(expectedId);
-        // 默认模型不能覆盖能精确恢复的原引用，也不能给未配置字段新增 ID。
+        // 默认模型不能覆盖原引用；文本缺省补默认，图片缺省保持未配置。
         expect(
           catalog.resolveDatasetUnderstandingModelId({
             legacyModel: 'first',
@@ -212,12 +222,12 @@ describe('loadModelCatalog', () => {
             modelId: undefined,
             vision
           })
-        ).toBeUndefined();
+        ).toBe(vision ? undefined : expectedId);
       }
     }
   );
 
-  it('falls back only configured dataset understanding models to the first active compatible model', async () => {
+  it('checks IDs before empty legacy names and only skips defaulting for unconfigured images', async () => {
     const ids = Array.from({ length: 4 }, () => new Types.ObjectId());
     await MongoAIModel.collection.insertMany([
       {
@@ -263,10 +273,17 @@ describe('loadModelCatalog', () => {
       String(ids[2])
     );
     expect(resolve({ legacyModel: 'text', modelId: ids[3], vision: true })).toBe(String(ids[2]));
-    for (const legacyModel of [undefined, null, '', '  ', 123]) {
+    for (const legacyModel of [undefined, null, '', '  ', '\t\n']) {
       expect(resolve({ legacyModel, modelId: undefined, vision: true })).toBeUndefined();
-      expect(resolve({ legacyModel, modelId: ids[2], vision: true })).toBeUndefined();
+      expect(resolve({ legacyModel, modelId: 'missing', vision: true })).toBeUndefined();
+      expect(resolve({ legacyModel, modelId: ids[2], vision: true })).toBe(String(ids[2]));
+      expect(resolve({ legacyModel, modelId: ids[1], vision: true })).toBeUndefined();
+      expect(resolve({ legacyModel, modelId: undefined, vision: false })).toBe(String(ids[1]));
+      expect(resolve({ legacyModel, modelId: 'missing', vision: false })).toBe(String(ids[1]));
+      expect(resolve({ legacyModel, modelId: ids[2], vision: false })).toBe(String(ids[2]));
     }
+    // 非字符串是无效配置而非空值，仍允许按引用失效规则回退。
+    expect(resolve({ legacyModel: 123, modelId: undefined, vision: true })).toBe(String(ids[2]));
     await MongoAIModel.deleteMany({ isActive: true });
     const noActive = await loadModelCatalog();
     expect(

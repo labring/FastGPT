@@ -1,71 +1,74 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import UseGuideModal from '@/components/common/Modal/UseGuideModal';
+import SecretInputModal from '@/pageComponents/app/tool/SecretInputModal';
+import { getAppPermission } from '@/web/core/app/api';
+import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
+import { getAppVersionList } from '@/web/core/app/api/version';
+import { getTeamToolVersions } from '@/web/core/plugin/team/api';
+import { storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { getWorkflowCheckIssueUIStatus } from '@/web/core/workflow/workflowCheck';
 import { Box, Button, Flex, type FlexProps } from '@chakra-ui/react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import InlineEdit from './InlineEdit';
-import type { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { useTranslation } from 'next-i18next';
-import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
+import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import type { SystemToolVersionType } from '@fastgpt/global/core/app/tool/systemTool/type/base';
+import {
+  getToolRawId,
+  isDebugToolSource,
+  splitCombineToolId
+} from '@fastgpt/global/core/app/tool/utils';
+import { formatToolError } from '@fastgpt/global/core/app/utils';
+import {
+  PluginStatusEnum,
+  PluginStatusMap,
+  type PluginStatusType
+} from '@fastgpt/global/core/plugin/type';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { NodeGradients } from '@fastgpt/global/core/workflow/node/constant';
 import {
   AppNodeFlowNodeTypeMap,
   FlowNodeTypeEnum,
   isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
-import {
-  getGradientByColorSchema,
-  getBorderColorByColorSchema,
-  getColorSchemaByFlowNodeType
-} from '@fastgpt/web/core/workflow/utils';
-import { useReactFlow } from 'reactflow';
-import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
-import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
-import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
-import { useDebug } from '../../hooks/useDebug';
-import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
-import { getAppVersionList } from '@/web/core/app/api/version';
-import { getTeamToolVersions } from '@/web/core/plugin/team/api';
-import { storeNode2FlowNode } from '@/web/core/workflow/utils';
-import { getWorkflowCheckIssueUIStatus } from '@/web/core/workflow/workflowCheck';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { useContextSelector } from 'use-context-selector';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useWorkflowUtils } from '../../hooks/useUtils';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
-import MyImage from '@fastgpt/web/components/common/Image/MyImage';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import UseGuideModal from '@/components/common/Modal/UseGuideModal';
-import NodeDebugResponse from './RenderDebug/NodeDebugResponse';
-import MyTag from '@fastgpt/web/components/common/Tag/index';
-import MySelect from '@fastgpt/web/components/common/MySelect';
-import { useBoolean, useCreation } from 'ahooks';
-import { formatToolError } from '@fastgpt/global/core/app/utils';
-import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import SecretInputModal from '@/pageComponents/app/tool/SecretInputModal';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
-import { WorkflowUIContext } from '../../../context/workflowUIContext';
-import {
-  PluginStatusEnum,
-  PluginStatusMap,
-  type PluginStatusType
-} from '@fastgpt/global/core/plugin/type';
-import {
-  splitCombineToolId,
-  getToolRawId,
-  isDebugToolSource
-} from '@fastgpt/global/core/app/tool/utils';
-import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
-import { getAppPermission } from '@/web/core/app/api';
-import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import type { SystemToolVersionType } from '@fastgpt/global/core/app/tool/systemTool/type/base';
+import type {
+  FlowNodeItemType,
+  StoreNodeItemType,
+  WorkflowCheckIssue
+} from '@fastgpt/global/core/workflow/type/node';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import MyImage from '@fastgpt/web/components/common/Image/MyImage';
+import MySelect from '@fastgpt/web/components/common/MySelect';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
-import type { WorkflowCheckIssue } from '@fastgpt/global/core/workflow/type/node';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
+import {
+  getBorderColorByColorSchema,
+  getColorSchemaByFlowNodeType,
+  getGradientByColorSchema
+} from '@fastgpt/web/core/workflow/utils';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useBoolean, useCreation } from 'ahooks';
+import { useTranslation } from 'next-i18next';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useReactFlow } from 'reactflow';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
+import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
+import { WorkflowUIContext } from '../../../context/workflowUIContext';
+import { useDebug } from '../../hooks/useDebug';
+import { useNodeOutputValidity } from '../../hooks/useNodeOutputValidity';
+import { useWorkflowUtils } from '../../hooks/useUtils';
+import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
+import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
+import InlineEdit from './InlineEdit';
+import NodeDebugResponse from './RenderDebug/NodeDebugResponse';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -133,6 +136,8 @@ const NodeCard = (props: Props) => {
     pluginId,
     colorSchema
   } = props;
+
+  useNodeOutputValidity(nodeId);
 
   const { hasToolNode, getNodeById, foldedNodesMap } = useContextSelector(
     WorkflowBufferDataContext,
@@ -886,7 +891,6 @@ const MenuRender = React.memo(function MenuRender({
   menuForbid?: Props['menuForbid'];
 }) {
   const { t } = useTranslation();
-  const { llmModelList } = useUserModelLists();
   const { openDebugNode, DebugInputModal } = useDebug();
   const { setNodes, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
@@ -968,13 +972,12 @@ const MenuRender = React.memo(function MenuRender({
             },
             selected: true,
             parentNodeId: template.parentNodeId,
-            llmModelList,
             t
           })
         ];
       });
     },
-    [computedNewNodeName, llmModelList, setNodes, t]
+    [computedNewNodeName, setNodes, t]
   );
   const Render = useMemo(() => {
     const menuList = [

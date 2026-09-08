@@ -666,7 +666,9 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 - 任一旧记录无法转换或出现重复 `_id` 时，在开启写事务前失败，目标表不发生变更；重复 `model` 按 `_id` 升序读取，后一个记录覆盖前一个记录并保留其 `_id` 与配置。
 - 多实例并发由通用升级 runner 的 lease 保证同一时刻只有一个 owner 执行；owner 异常退出后由 lease 接管。事务保证模型与默认配置原子合并，接管后的全量重算会得到相同结果。
 - 4163 先检查已有静态 `modelId`：只要它指向符合类型要求的系统模型就保持不变，不按启停状态过滤，也不能被 legacy 名称覆盖，确保重复执行幂等。动态 `modelId` 不做校验，直接保留。
-- 4163 已有静态 ID 有效时原样保留；ID 缺失或无效时尝试按 legacy 名称、类型和能力精确匹配，仍无法解析则保留现场并跳过，不写失败记录。Dataset 和 Evaluation 不主动补默认模型；其中 Dataset 的 VLM 是可选项，没有可解析来源时不写 `vlmModelId`。App、AppVersion 和 AppTemplate 只处理已经开启的可选功能：优先有效 ID，其次 legacy 名称，再使用有效系统默认模型，默认无效时按 `_id` 稳定选择首个兼容模型；功能关闭、动态引用或不存在兼容模型时保持原样。扫描工作流时同时把已废弃的 `flowNodeType: userGuide` 降级为 `emptyNode`，但保留节点其余字段。迁移 CAS 对所有 `*Id` 快照在 Mongo 内统一转成字符串比较，兼容历史字段以 BSON ObjectId 保存、当前 Schema 已改成 String 的情况。迁移不使用当前完整 Workflow Schema 重新解析历史快照，避免其他无关的废弃节点或 IO 枚举被误报为模型迁移失败。运行时和普通写入链仍遵守各自更严格的校验策略，不复用迁移容错语义。
+- 4163 已有静态 ID 有效时原样保留；ID 缺失或无效时尝试按 legacy 名称、类型和能力精确匹配。Evaluation 和 Dataset 向量模型不补默认，无法解析时保留现场并跳过，不写失败记录。
+- Dataset 理解模型同样先检查有效 ID，再检查 legacy 名称。文本理解无法解析时使用 `datasetTextLLM`，旧名称为空也补默认；图片理解在 ID 无效且旧名称为空时结束，否则无法解析时使用 `datasetImageLLM`。空值统一使用 `isEmptyModelValue` 判断。已配置的默认模型只校验类型和能力，不校验启用状态；仅未配置默认模型时，按 `_id` 升序选择首个启用的兼容模型。默认配置失效或没有兼容候选时保留现场，不生成 ID。
+- App、AppVersion 和 AppTemplate 只处理已经开启的可选功能：优先有效 ID，其次 legacy 名称，再使用有效系统默认模型，默认无效时按 `_id` 稳定选择首个兼容模型；功能关闭、动态引用或不存在兼容模型时保持原样。扫描工作流时同时把已废弃的 `flowNodeType: userGuide` 降级为 `emptyNode`，但保留节点其余字段。迁移 CAS 对所有 `*Id` 快照在 Mongo 内统一转成字符串比较，兼容历史字段以 BSON ObjectId 保存、当前 Schema 已改成 String 的情况。迁移不使用当前完整 Workflow Schema 重新解析历史快照，避免其他无关的废弃节点或 IO 枚举被误报为模型迁移失败。运行时和普通写入链仍遵守各自更严格的校验策略，不复用迁移容错语义。
 - Workflow 的 legacy `model` input 如果是引用类型、数组引用或模板表达式，原值复制到 `modelId` sibling，不做静态模型校验；4163 保留旧 input 便于回滚，普通保存则只保留 canonical ID key。
 - 模型权限单独遵循身份映射规则：有效 `resourceId` 保留；否则按 `resourceName` 精确映射任意现存系统模型；仍无法映射则作为悬空权限删除。权限不允许使用同类型候选回退。
 - 所有集合的回填写入都对读取过的 legacy 源字段和待写目标字段做快照 CAS；Workflow 整体数组按读取快照匹配。并发保存导致的未命中记为 conflict，可通过重跑收敛，不能覆盖用户刚保存的数据。

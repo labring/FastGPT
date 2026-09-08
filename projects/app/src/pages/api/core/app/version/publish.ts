@@ -1,32 +1,34 @@
-import { NextAPI } from '@/service/middleware/entry';
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
-import {
-  beforeUpdateAppFormat,
-  validatePublishAppAgentSkillReadPermissions
-} from '@fastgpt/service/core/app/controller';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
-import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { type PostPublishAppProps } from '@/global/core/app/api';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { type ApiRequestProps } from '@fastgpt/next/type';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { authModelViewer } from '@/service/core/ai/model/auth';
+import { NextAPI } from '@/service/middleware/entry';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
+import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 import { formatModels } from '@fastgpt/global/core/workflow/utils';
-import { getSystemDefaultModelIds } from '@fastgpt/service/core/ai/model';
 import {
   PublishAppBodySchema,
   PublishAppQuerySchema,
   PublishAppResponseSchema
 } from '@fastgpt/global/openapi/core/app/version/api';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { type ApiRequestProps } from '@fastgpt/next/type';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { getSystemDefaultModelIds } from '@fastgpt/service/core/ai/model';
+import {
+  beforeUpdateAppFormat,
+  updateParentFoldersUpdateTime,
+  validatePublishAppAgentSkillReadPermissions
+} from '@fastgpt/service/core/app/controller';
+import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { getMemberModelIds } from '@fastgpt/service/support/permission/model/controller';
+import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 
+/** 发布仅校验当前成员可用模型，默认回填也限于该范围；草稿保留原引用供继续编辑。 */
 async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   const {
     query: { appId },
@@ -45,10 +47,17 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   });
 
   const normalizedWorkflow = migrateWorkflowToCurrent({ nodes, edges, chatConfig });
+  const models = await (async () => {
+    if (!isPublish) return global.systemActiveModelList;
+    // 与客户端 catalog 使用相同身份和权限规则，不能用应用所有者替代当前发布者。
+    const identity = await authModelViewer({ req });
+    const permittedIds = new Set(await getMemberModelIds(identity));
+    return global.systemActiveModelList.filter((model) => permittedIds.has(model.modelId));
+  })();
   formatModels({
     nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig,
-    models: global.systemActiveModelList,
+    models,
     defaultModelIds: getSystemDefaultModelIds(),
     modelReferencePolicy: isPublish ? 'validate' : 'preserve'
   });

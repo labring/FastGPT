@@ -1,14 +1,16 @@
-import { useRouter } from 'next/router';
+import React from 'react';
 import { serviceSideProps } from '@/web/common/i18n/utils';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
-import { Box } from '@chakra-ui/react';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { webPushTrack } from '@/web/common/middle/tracks/utils';
-import { useTranslation } from 'next-i18next';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { errorLogger } from '@/web/common/utils/errorLogger';
-import { useMount } from 'ahooks';
+import { useModelDefault } from '@/web/core/ai/model/useModelDefault';
+import { Box } from '@chakra-ui/react';
 import type { I18nStringType } from '@fastgpt/global/common/i18n/type';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useMount } from 'ahooks';
+import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 
 const errorText: I18nStringType = {
@@ -25,7 +27,9 @@ function Error() {
   const router = useRouter();
   const { toast } = useToast();
   const { lastRoute } = useSystemStore();
-  const { llmModelList, embeddingModelList, loaded: modelsLoaded } = useUserModelLists();
+  const llm = useModelDefault({ enabled: true, modelType: ModelTypeEnum.llm });
+  const embedding = useModelDefault({ enabled: true, modelType: ModelTypeEnum.embedding });
+  const modelsLoaded = llm.loaded && embedding.loaded;
 
   useMount(() => {
     // Send track
@@ -39,14 +43,14 @@ function Error() {
     if (!modelsLoaded) return;
 
     let modelError = false;
-    if (llmModelList.length === 0) {
+    if (!llm.model) {
       modelError = true;
       toast({
         title: t('common:llm_model_not_config'),
         status: 'error'
       });
     }
-    if (embeddingModelList.length === 0) {
+    if (!embedding.model) {
       modelError = true;
       toast({
         title: t('common:error_embedding_not_config'),
@@ -62,7 +66,7 @@ function Error() {
       }
     }, 2000);
     return () => clearTimeout(timer);
-  }, [embeddingModelList.length, llmModelList.length, modelsLoaded, router, t]);
+  }, [embedding.model, llm.model, modelsLoaded, router, t]);
 
   return (
     <Box whiteSpace={'pre-wrap'}>{errorText[lang as keyof typeof errorText] ?? errorText.en}</Box>

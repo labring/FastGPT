@@ -4,27 +4,38 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 const mocks = vi.hoisted(() => ({
+  effects: [] as (() => void | (() => void))[],
+  defaults: vi.fn(),
+  values: undefined as Record<string, unknown> | undefined,
+  dirty: new Set<string>(),
   select: vi.fn(),
   defaultVlmId: undefined as string | undefined
 }));
+vi.mock('react', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('react')>()),
+  useEffect: (fn: () => void | (() => void)) => {
+    mocks.effects.push(fn);
+  }
+}));
+vi.mock('@/web/core/ai/model/modelData', () => ({ getModelDefault: mocks.defaults }));
+vi.mock('react-hook-form', () => ({
+  useForm: ({ defaultValues }) => {
+    mocks.values ??= { ...defaultValues };
+    return {
+      register: () => ({}),
+      watch: (key: string) => mocks.values?.[key],
+      getValues: (key: string) => mocks.values?.[key],
+      getFieldState: (key: string) => ({ isDirty: mocks.dirty.has(key) }),
+      setValue: (key: string, value: unknown, options?: { shouldDirty?: boolean }) => {
+        mocks.values![key] = value;
+        if (options?.shouldDirty) mocks.dirty.add(key);
+      },
+      handleSubmit: (fn: (value: unknown) => unknown) => () => fn(mocks.values)
+    };
+  }
+}));
 vi.mock('next/router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
-vi.mock('@/web/core/ai/model/useUserModelStore', () => ({
-  useUserModelStore: () => ({ defaultModels: { datasetImageLLM: { modelId: mocks.defaultVlmId } } })
-}));
-vi.mock('@/web/core/ai/model/useUserModelLists', () => ({
-  useUserModelLists: () => ({
-    embeddingModelList: [
-      { modelId: 'embedding', model: 'embedding', name: 'Embedding', config: {} }
-    ],
-    llmModelList: [{ modelId: 'llm', model: 'llm', name: 'LLM' }],
-    vlmModelList: []
-  })
-}));
-vi.mock('@/web/common/system/utils', () => ({
-  getWebDefaultEmbeddingModel: (list: unknown[]) => list[0],
-  getWebDefaultLLMModel: (list: unknown[]) => list[0]
-}));
 vi.mock('@fastgpt/web/hooks/useRequest', () => ({
   useRequest: () => ({ runAsync: vi.fn(), loading: false })
 }));
@@ -46,6 +57,7 @@ vi.mock('@/components/Select/AIModelSelector', () => ({
 }));
 vi.mock('@/pageComponents/dataset/ApiDatasetForm', () => ({ default: () => null }));
 vi.mock('@/components/common/ComplianceTip/index', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/MyTooltip/QuestionTip', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/MyTooltip', () => ({
   default: ({ children }: { children: React.ReactNode }) => children
@@ -55,6 +67,12 @@ import CreateModal from '@/pageComponents/dataset/list/CreateModal';
 describe('dataset CreateModal model settings', () => {
   beforeEach(() => {
     mocks.select.mockClear();
+    mocks.effects = [];
+    mocks.values = undefined;
+    mocks.dirty.clear();
+    mocks.defaults.mockReset().mockImplementation(async ({ modelType, defaultKey }) => ({
+      modelId: defaultKey === 'datasetImageLLM' ? mocks.defaultVlmId : modelType + '-default'
+    }));
     mocks.defaultVlmId = undefined;
   });
   it('marks the two required models and offers an explicit unset VLM selection', () => {
@@ -72,8 +90,14 @@ describe('dataset CreateModal model settings', () => {
       value: ''
     });
   });
-  it('retains the configured default VLM while allowing users to opt out', () => {
+  it('loads the default VLM asynchronously without a parent catalog', async () => {
     mocks.defaultVlmId = 'default-vision';
+    renderToStaticMarkup(
+      React.createElement(CreateModal, { type: DatasetTypeEnum.dataset, onClose: vi.fn() })
+    );
+    mocks.effects.forEach((effect) => effect());
+    await vi.waitFor(() => expect(mocks.values?.vlmModelId).toBe('default-vision'));
+    mocks.select.mockClear();
     renderToStaticMarkup(
       React.createElement(CreateModal, { type: DatasetTypeEnum.dataset, onClose: vi.fn() })
     );

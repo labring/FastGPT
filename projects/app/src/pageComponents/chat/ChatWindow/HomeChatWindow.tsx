@@ -1,67 +1,69 @@
-import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
-import {
-  Flex,
-  Box,
-  Button,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  Checkbox,
-  IconButton,
-  useDisclosure
-} from '@chakra-ui/react';
-import { useTranslation } from 'react-i18next';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import React from 'react';
 import SideBar from '@/components/SideBar';
-import { ChatContext } from '@/web/core/chat/context/chatContext';
-import { useContextSelector } from 'use-context-selector';
-import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
-import React, { useMemo, useEffect } from 'react';
-import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
-import { streamFetch } from '@/web/common/api/fetch';
-import { useLocalStorageState, useMemoizedFn, useMount } from 'ahooks';
-import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getInitChatInfo } from '@/web/core/chat/api';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import NextHead from '@/components/common/NextHead';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
-import ChatAIModelSelector from './ChatAIModelSelector';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
-import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
-import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
-import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
-import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
-import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
-import type { AppWhisperConfigType } from '@fastgpt/global/core/app/type';
-import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
-import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
-import { ChatSidebarPaneEnum } from '../constants';
+import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
+import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
+import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
+import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
+import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
+import ToolMenu from '@/pageComponents/chat/ToolMenu';
+import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import ChatHistorySidebar, {
   CHAT_HISTORY_SLIDER_PC_WIDTH
 } from '@/pageComponents/chat/slider/ChatSliderSidebar';
-import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
+import { streamFetch } from '@/web/common/api/fetch';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getModelDetail } from '@/web/core/ai/model/modelData';
+import { useModelDefault } from '@/web/core/ai/model/useModelDefault';
+import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
+import { useModelSummary } from '@/web/core/ai/model/useModelSummary';
+import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
+import { getInitChatInfo } from '@/web/core/chat/api';
+import { ChatContext } from '@/web/core/chat/context/chatContext';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
+import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
+import { getDisplayHistoryTitle } from '@/web/core/chat/context/historyTitleUtils';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
+import { postMarkChatRead } from '@/web/core/chat/history/api';
+import { getAppChatSourceKey } from '@/web/core/chat/utils';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import {
+  Box,
+  Button,
+  Checkbox,
+  Flex,
+  IconButton,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuList,
+  useDisclosure
+} from '@chakra-ui/react';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import type { AppWhisperConfigType } from '@fastgpt/global/core/app/type';
+import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
+import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { homeChatFileSelectConfig } from '@fastgpt/global/core/chat/setting/constants';
+import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
-import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { useLocalStorageState, useMemoizedFn, useMount } from 'ahooks';
+import { useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useContextSelector } from 'use-context-selector';
+import { ChatSidebarPaneEnum } from '../constants';
+import ChatAIModelSelector from './ChatAIModelSelector';
 import ChatWindowHeader from './ChatWindowHeader';
-import ToolMenu from '@/pageComponents/chat/ToolMenu';
 import MobileModelSelectorDrawer from './MobileModelSelectorDrawer';
 import { mobileChatHeaderIconButtonStyle } from './headerIconButtonStyle';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
-import { getDisplayHistoryTitle } from '@/web/core/chat/context/historyTitleUtils';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { getAppChatSourceKey } from '@/web/core/chat/utils';
 import { useAppChatGenerateStatusSync } from './useAppChatGenerateStatusSync';
-import { postMarkChatRead } from '@/web/core/chat/history/api';
-import { homeChatFileSelectConfig } from '@fastgpt/global/core/chat/setting/constants';
-import { UserError } from '@fastgpt/global/common/error/utils';
 
 const defaultFileSelectConfig: AppFileSelectConfigType = {
   ...homeChatFileSelectConfig,
@@ -85,8 +87,6 @@ const HomeChatWindow = () => {
 
   const { userInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
-  const { defaultModels } = useUserModelStore();
-  const { llmModelList } = useUserModelLists();
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
   const forbidLoadChatRef = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
@@ -123,19 +123,22 @@ const HomeChatWindow = () => {
     outLinkAuthData
   });
 
-  const availableModels = useMemo(
-    () => llmModelList.map((model) => ({ value: model.modelId, label: model.name })),
-    [llmModelList]
-  );
   const [selectedModel, setSelectedModel] = useLocalStorageState<string>('chat_home_model', {
-    defaultValue: defaultModels.llm?.modelId
+    defaultValue: ''
   });
-  const selectedModelData = useMemo(
-    () => findClientModelByValue({ models: llmModelList, value: selectedModel }),
-    [llmModelList, selectedModel]
-  );
-
-  const onChangeModel = useMemoizedFn((modelId: string) => {
+  const { model: defaultModel } = useModelDefault({
+    modelType: ModelTypeEnum.llm,
+    enabled: !selectedModel
+  });
+  const { model: selectedModelData } = useModelDetail({
+    modelType: ModelTypeEnum.llm,
+    modelId: selectedModel
+  });
+  const { detail: selectedSummary } = useModelSummary({ modelId: selectedModel });
+  useEffect(() => {
+    if (!selectedModel && defaultModel) setSelectedModel(defaultModel.modelId);
+  }, [selectedModel, defaultModel, setSelectedModel]);
+  useEffect(() => {
     setChatBoxData((state) => ({
       ...state,
       app: {
@@ -144,11 +147,13 @@ const HomeChatWindow = () => {
           ...state.app.chatConfig,
           fileSelectConfig: {
             ...defaultFileSelectConfig,
-            canSelectImg: !!llmModelList.find((item) => item.modelId === modelId)?.config.vision
+            canSelectImg: !!selectedModelData?.config.vision
           }
         }
       }
     }));
+  }, [selectedModelData, setChatBoxData]);
+  const onChangeModel = useMemoizedFn((modelId: string) => {
     setSelectedModel(modelId);
   });
 
@@ -192,7 +197,10 @@ const HomeChatWindow = () => {
     async () => {
       if (!appId || forbidLoadChatRef.current || !feConfigs?.isPlus) return;
 
-      const modelData = findClientModelByValue({ models: llmModelList, value: selectedModel });
+      const modelData = await getModelDetail({
+        modelId: selectedModel,
+        modelType: ModelTypeEnum.llm
+      });
       const res = await getInitChatInfo({ appId, chatId });
       res.userAvatar = userInfo?.avatar ?? undefined;
 
@@ -329,7 +337,7 @@ const HomeChatWindow = () => {
     () => (
       <>
         {/* 模型选择 */}
-        {isPc && availableModels.length > 0 && (
+        {isPc && (
           <Box w={'fit-content'} maxW={'300px'} flex={'0 1 auto'} minW={0}>
             <ChatAIModelSelector
               modelType={ModelTypeEnum.llm}
@@ -340,7 +348,6 @@ const HomeChatWindow = () => {
               size="sm"
               bg={'myGray.50'}
               rounded="10px"
-              list={availableModels}
               value={selectedModel}
               onChange={onChangeModel}
             />
@@ -415,7 +422,6 @@ const HomeChatWindow = () => {
       </>
     ),
     [
-      availableModels,
       selectedModel,
       availableTools,
       selectedTools,
@@ -491,7 +497,9 @@ const HomeChatWindow = () => {
                 className="textEllipsis"
                 maxW="200px"
               >
-                {selectedModelData?.name || selectedModel}
+                {selectedSummary && 'name' in selectedSummary
+                  ? selectedSummary.name
+                  : selectedModel}
               </Box>
               <MyIcon name="core/chat/chevronDown" w="16px" h="16px" color="myGray.500" />
             </Flex>
@@ -503,7 +511,6 @@ const HomeChatWindow = () => {
 
         <MobileModelSelectorDrawer
           isOpen={isModelDrawerOpen}
-          modelList={llmModelList}
           value={selectedModel}
           onChange={onChangeModel}
           onClose={onCloseModelDrawer}

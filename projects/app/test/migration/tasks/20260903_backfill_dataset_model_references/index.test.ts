@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
+import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import type { SystemMigrationContext } from '@/migration/registry';
 import type { SystemMigrationFailedRecord } from '@fastgpt/global/migration/schema';
@@ -40,6 +41,7 @@ describe('backfillDatasetModelReferences', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
     await MongoAIModel.deleteMany({});
+    await MongoAIDefaultModel.deleteMany({});
     await MongoDataset.deleteMany({});
     await MongoAIModel.collection.insertMany([
       { _id: textId, scope: 'system', model: 'text', type: 'llm', isActive: true, config: {} },
@@ -54,7 +56,7 @@ describe('backfillDatasetModelReferences', () => {
     ]);
   });
 
-  it('repairs legacy models, leaves unconfigured and embedding fields intact, and is idempotent', async () => {
+  it('repairs legacy models, defaults missing text only, preserves vectors, and is idempotent', async () => {
     const brokenId = new Types.ObjectId();
     const emptyId = new Types.ObjectId();
     await MongoDataset.collection.insertMany([
@@ -77,13 +79,87 @@ describe('backfillDatasetModelReferences', () => {
       vlmModel: 'deleted-vision'
     });
     const empty = await MongoDataset.collection.findOne({ _id: emptyId });
-    expect(empty).not.toHaveProperty('agentModelId');
+    expect(empty).toHaveProperty('agentModelId', String(textId));
     expect(empty).not.toHaveProperty('vlmModelId');
     await backfillDatasetModelReferences(createContext().context);
     expect(await MongoDataset.collection.findOne({ _id: brokenId })).toEqual(repaired);
     expect(state.getFailures()).toEqual([]);
     expect(state.context.reportProgress).toHaveBeenLastCalledWith(
       expect.objectContaining({ key: 'datasets', status: 'succeeded' })
+    );
+  });
+
+  it.each([null, '', '  ', '\t\n'])(
+    'uses shared empty semantics for old model values %j without replacing valid IDs',
+    async (model) => {
+      const missingId = new Types.ObjectId();
+      const validId = new Types.ObjectId();
+      const invalidId = new Types.ObjectId();
+      await MongoDataset.collection.insertMany([
+        { _id: missingId, agentModel: model, vlmModel: model },
+        {
+          _id: validId,
+          agentModel: model,
+          vlmModel: model,
+          agentModelId: String(visionId),
+          vlmModelId: String(visionId)
+        },
+        {
+          _id: invalidId,
+          agentModel: model,
+          vlmModel: model,
+          agentModelId: 'missing',
+          vlmModelId: 'missing'
+        }
+      ]);
+      await backfillDatasetModelReferences(createContext().context);
+      const missing = await MongoDataset.collection.findOne({ _id: missingId });
+      expect(missing).toHaveProperty('agentModelId', String(textId));
+      expect(missing).not.toHaveProperty('vlmModelId');
+      expect(await MongoDataset.collection.findOne({ _id: validId })).toMatchObject({
+        agentModelId: String(visionId),
+        vlmModelId: String(visionId)
+      });
+      expect(await MongoDataset.collection.findOne({ _id: invalidId })).toMatchObject({
+        agentModelId: String(textId),
+        vlmModelId: 'missing'
+      });
+    }
+  );
+
+  it('preserves valid vector IDs, repairs exact names, and never defaults unresolved vectors', async () => {
+    const embeddingId = new Types.ObjectId();
+    await MongoAIModel.collection.insertOne({
+      _id: embeddingId,
+      scope: 'system',
+      model: 'embedding',
+      type: 'embedding',
+      isActive: true,
+      config: {}
+    });
+    await MongoAIDefaultModel.collection.insertOne({
+      scope: 'system',
+      defaultModelIds: { embedding: String(embeddingId) }
+    });
+    const ids = Array.from({ length: 4 }, () => new Types.ObjectId());
+    await MongoDataset.collection.insertMany([
+      { _id: ids[0], vectorModelId: embeddingId, vectorModel: 'deleted' },
+      { _id: ids[1], vectorModelId: String(textId), vectorModel: 'embedding' },
+      { _id: ids[2], vectorModelId: 'missing', vectorModel: 'deleted' },
+      { _id: ids[3] }
+    ]);
+    await backfillDatasetModelReferences(createContext().context);
+    expect(await MongoDataset.collection.findOne({ _id: ids[0] })).toMatchObject({
+      vectorModelId: embeddingId
+    });
+    expect(await MongoDataset.collection.findOne({ _id: ids[1] })).toMatchObject({
+      vectorModelId: String(embeddingId)
+    });
+    expect(await MongoDataset.collection.findOne({ _id: ids[2] })).toMatchObject({
+      vectorModelId: 'missing'
+    });
+    expect(await MongoDataset.collection.findOne({ _id: ids[3] })).not.toHaveProperty(
+      'vectorModelId'
     );
   });
 

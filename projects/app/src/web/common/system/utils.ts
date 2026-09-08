@@ -1,17 +1,8 @@
-import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
-import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import type {
   FastGPTFeConfigsType,
   FastGPTRegisterMethodType
 } from '@fastgpt/global/common/system/types';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
-import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
-import { getDefaultModelSelection } from '@/web/core/ai/model/selection';
-
-type MyLLMModelType = Extract<MyModelItemType, { type: ModelTypeEnum.llm }>;
-type MyEmbeddingModelType = Extract<MyModelItemType, { type: ModelTypeEnum.embedding }>;
 
 /**
  * 获取真实支持的自助注册方式，兼容过滤旧配置中被混入的 sync 团队模式。
@@ -81,24 +72,4 @@ export const downloadFetch = async ({
     a.click();
     document.body.removeChild(a);
   }
-};
-
-export const getWebLLMModel = (model?: string, llmList: MyLLMModelType[] = []) => {
-  const defaultModels = useUserModelStore.getState().defaultModels;
-
-  if (isEmptyModelValue(model)) return defaultModels.llm;
-  return findClientModelByValue({ models: llmList, value: model });
-};
-export const getWebDefaultLLMModel = (llmList: MyLLMModelType[] = []) => {
-  const defaultModels = useUserModelStore.getState().defaultModels;
-
-  return getDefaultModelSelection({ models: llmList, defaultModelId: defaultModels.llm?.modelId });
-};
-export const getWebDefaultEmbeddingModel = (embeddingList: MyEmbeddingModelType[] = []) => {
-  const defaultModels = useUserModelStore.getState().defaultModels;
-
-  return getDefaultModelSelection({
-    models: embeddingList,
-    defaultModelId: defaultModels.embedding?.modelId
-  });
 };

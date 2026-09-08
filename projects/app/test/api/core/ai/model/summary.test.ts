@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { handler } from '@/pages/api/core/ai/model/summary';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   authUserPer: vi.fn(),
   authOutLink: vi.fn(),
@@ -17,9 +18,8 @@ vi.mock('@fastgpt/service/support/user/team/teamMemberSchema', () => ({
 vi.mock('@fastgpt/service/support/permission/model/controller', () => ({
   getMemberModelCatalogPermission: mocks.permission
 }));
-import { handler } from '@/pages/api/core/ai/model/detail';
 
-describe('POST /api/core/ai/model/detail', () => {
+describe('POST /api/core/ai/model/summary', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.authUserPer.mockResolvedValue({

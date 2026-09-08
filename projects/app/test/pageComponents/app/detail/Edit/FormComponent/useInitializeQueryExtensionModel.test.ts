@@ -3,8 +3,16 @@ import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 
 const mocks = vi.hoisted(() => ({
+  ready: true,
+  defaultModelId: undefined as string | undefined,
   initialized: { current: undefined as string | undefined },
   effect: undefined as (() => void) | undefined
+}));
+vi.mock('@/web/core/ai/model/useModelDefault', () => ({
+  useModelDefault: () => ({
+    loaded: mocks.ready,
+    model: mocks.defaultModelId ? { modelId: mocks.defaultModelId } : undefined
+  })
 }));
 vi.mock('react', async (importOriginal) => ({
   ...(await importOriginal<typeof import('react')>()),
@@ -22,12 +30,16 @@ describe('useInitializeQueryExtensionModel', () => {
     form = typeof update === 'function' ? update(form) : update;
   });
   const render = (
-    overrides: Partial<Parameters<typeof useInitializeQueryExtensionModel>[0]> = {}
+    overrides: Partial<Parameters<typeof useInitializeQueryExtensionModel>[0]> & {
+      ready?: boolean;
+      defaultModelId?: string;
+    } = {}
   ) => {
+    mocks.ready = overrides.ready ?? true;
+    mocks.defaultModelId = 'defaultModelId' in overrides ? overrides.defaultModelId : 'default-llm';
     useInitializeQueryExtensionModel({
       appId: 'app',
-      ready: true,
-      defaultModelId: 'default-llm',
+      appForm: form,
       setAppForm,
       ...overrides
     });
@@ -70,7 +82,7 @@ describe('useInitializeQueryExtensionModel', () => {
     form = { ...form, dataset: { ...form.dataset, datasetSearchUsingExtensionQuery: true } };
     render();
     expect(form.dataset.datasetSearchExtensionModelId).toBeUndefined();
-    expect(setAppForm).toHaveBeenCalledTimes(1);
+    expect(setAppForm).not.toHaveBeenCalled();
   });
 
   it('does not overwrite an existing or unavailable nonempty ID', () => {

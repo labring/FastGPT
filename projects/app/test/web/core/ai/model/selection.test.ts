@@ -1,50 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  getModelInitializationValue,
   getModelQuoteTokenLimit,
   UNAVAILABLE_MODEL_TOKEN_LIMIT
 } from '@/web/core/ai/model/selection';
-import { getDefaultModelSelection } from '@/web/core/ai/model/selection';
-
-describe('getDefaultModelSelection', () => {
-  it('shares one default-first policy while excluding disabled and empty-ID candidates', () => {
-    const disabled = { modelId: 'disabled', isActive: false };
-    const empty = { modelId: '  ', isActive: true };
-    const first = { modelId: 'first', isActive: true };
-    const preferred = { modelId: 'preferred', isActive: true };
-    const models = [disabled, empty, first, preferred];
-    expect(getDefaultModelSelection({ models, defaultModelId: 'preferred' })).toBe(preferred);
-    expect(getDefaultModelSelection({ models, defaultModelId: 'disabled' })).toBe(first);
-    expect(getDefaultModelSelection({ models, defaultModelId: 'missing' })).toBe(first);
-    expect(getDefaultModelSelection({ models: [disabled, empty] })).toBeUndefined();
-  });
-});
-
-describe('getModelInitializationValue', () => {
-  const models = [
-    { modelId: 'disabled', model: 'disabled-name', isActive: false },
-    { modelId: 'first', model: 'first-name', isActive: true },
-    { modelId: 'default', model: 'default-name', isActive: true }
-  ];
-  it.each([undefined, null, '', '  '])(
-    'initializes empty values from available choices (%s)',
-    (value) => {
-      expect(getModelInitializationValue({ value, models, defaultModelId: 'default' })).toBe(
-        'default'
-      );
-      expect(getModelInitializationValue({ value, models, defaultModelId: 'disabled' })).toBe(
-        'first'
-      );
-      expect(getModelInitializationValue({ value, models: [] })).toBeUndefined();
-    }
-  );
-  it('does not replace existing invalid choices, but supports explicit legacy normalization', () => {
-    expect(getModelInitializationValue({ value: 'missing', models })).toBeUndefined();
-    expect(getModelInitializationValue({ value: 'disabled', models })).toBeUndefined();
-    expect(getModelInitializationValue({ value: 'first', models })).toBe('first');
-    expect(getModelInitializationValue({ value: 'first-name', models })).toBe('first');
-  });
-});
 
 describe('getModelQuoteTokenLimit', () => {
   const model = {

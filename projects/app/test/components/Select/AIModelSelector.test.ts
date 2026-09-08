@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import AIModelSelector from '@/components/Select/AIModelSelector';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   open: false,
   loading: false,
@@ -32,8 +33,8 @@ vi.mock('react', async (importOriginal) => ({
 vi.mock('next-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } })
 }));
-vi.mock('@/web/core/ai/model/useUserModelLists', () => ({ useUserModelLists: mocks.lists }));
-vi.mock('@/web/core/ai/model/useModelDetail', () => ({ useModelDetail: mocks.detail }));
+vi.mock('@/web/core/ai/model/useModelList', () => ({ useModelList: mocks.lists }));
+vi.mock('@/web/core/ai/model/useModelSummary', () => ({ useModelSummary: mocks.detail }));
 vi.mock('@/web/core/ai/model/useUserModelStore', () => ({
   useUserModelStore: (selector: (state: unknown) => unknown) =>
     selector({
@@ -42,7 +43,6 @@ vi.mock('@/web/core/ai/model/useUserModelStore', () => ({
       getModelProviders: () => []
     })
 }));
-import AIModelSelector from '@/components/Select/AIModelSelector';
 
 describe('AIModelSelector lazy directory', () => {
   beforeEach(() => {
@@ -80,7 +80,10 @@ describe('AIModelSelector lazy directory', () => {
     let selector = AIModelSelector(props);
     expect(mocks.lists).toHaveBeenLastCalledWith({
       outLinkAuthData: undefined,
-      autoLoadCatalog: false
+      modelType: ModelTypeEnum.llm,
+      vision: undefined,
+      excludeHidden: undefined,
+      enabled: false
     });
     expect(mocks.detail).toHaveBeenLastCalledWith({
       modelId: 'chosen',
@@ -92,7 +95,10 @@ describe('AIModelSelector lazy directory', () => {
     selector = AIModelSelector(props);
     expect(mocks.lists).toHaveBeenLastCalledWith({
       outLinkAuthData: undefined,
-      autoLoadCatalog: true
+      modelType: ModelTypeEnum.llm,
+      vision: undefined,
+      excludeHidden: undefined,
+      enabled: true
     });
     expect(selector.props.isLoading).toBe(true);
     expect(selector.props.ButtonProps.isLoading).toBeUndefined();
@@ -105,12 +111,15 @@ describe('AIModelSelector lazy directory', () => {
     AIModelSelector(props);
     expect(mocks.lists).toHaveBeenLastCalledWith({
       outLinkAuthData: undefined,
-      autoLoadCatalog: false
+      modelType: ModelTypeEnum.llm,
+      vision: undefined,
+      excludeHidden: undefined,
+      enabled: false
     });
   });
-  it('does not auto-select from cached data while closed and writes a selection only after open validation', () => {
+  it('does not assign a default while closed or after opening', () => {
     const onChange = vi.fn();
-    const props = { modelType: ModelTypeEnum.llm, value: '', autoSelectDefault: true, onChange };
+    const props = { modelType: ModelTypeEnum.llm, value: '', onChange };
     AIModelSelector(props);
     mocks.effects.forEach((fn) => fn());
     expect(onChange).not.toHaveBeenCalled();
@@ -118,7 +127,7 @@ describe('AIModelSelector lazy directory', () => {
     mocks.open = true;
     AIModelSelector(props);
     mocks.effects.forEach((fn) => fn());
-    expect(onChange).toHaveBeenCalledWith('chosen');
+    expect(onChange).not.toHaveBeenCalled();
   });
   it('shows a retryable catalog error without selecting a model or exposing stale choices', () => {
     mocks.open = true;
@@ -127,7 +136,6 @@ describe('AIModelSelector lazy directory', () => {
     const selector = AIModelSelector({
       modelType: ModelTypeEnum.llm,
       value: '',
-      autoSelectDefault: true,
       onChange
     });
     mocks.effects.forEach((fn) => fn());
@@ -136,13 +144,13 @@ describe('AIModelSelector lazy directory', () => {
     expect(selector.props.emptyTip).toBe('common:model_detail_load_failed');
   });
 
-  it('checks automatic selection once per open cycle, not when the value changes while open', () => {
+  it('never fills a cleared selection across repeated open cycles', () => {
     const onChange = vi.fn();
     const render = (value: string, open: boolean) => {
       mocks.refIndex = 0;
       mocks.effects = [];
       mocks.open = open;
-      AIModelSelector({ modelType: ModelTypeEnum.llm, value, autoSelectDefault: true, onChange });
+      AIModelSelector({ modelType: ModelTypeEnum.llm, value, onChange });
       mocks.effects.forEach((effect) => effect());
     };
     render('chosen', true);
@@ -150,12 +158,12 @@ describe('AIModelSelector lazy directory', () => {
     expect(onChange).not.toHaveBeenCalled();
     render('', false);
     render('', true);
-    expect(onChange).toHaveBeenCalledExactlyOnceWith('chosen');
+    expect(onChange).not.toHaveBeenCalled();
     render('', true);
-    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).not.toHaveBeenCalled();
     render('', false);
     render('', true);
-    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it('reuses the loaded catalog for the current model and primes it before selection', () => {

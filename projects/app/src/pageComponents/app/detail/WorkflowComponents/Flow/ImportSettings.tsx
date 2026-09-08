@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
+import { parseWorkflowImportConfig } from '@/pageComponents/dashboard/agent/utils/appTemplateParse';
+import { getModelList } from '@/web/core/ai/model/modelData';
 import { Button } from '@chakra-ui/react';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
-import { WorkflowUtilsContext } from '../context/workflowUtilsContext';
-import { parseWorkflowImportConfig } from '@/pageComponents/dashboard/agent/utils/appTemplateParse';
+import React, { useState } from 'react';
+import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../../context';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
+import { WorkflowUtilsContext } from '../context/workflowUtilsContext';
 
 const ImportAppConfigEditor = dynamic(() => import('@/pageComponents/app/ImportAppConfigEditor'), {
   ssr: false
@@ -26,7 +26,7 @@ const ImportSettings = ({ onClose }: Props) => {
   const appType = useContextSelector(AppContext, (v) => v.appDetail.type);
   const { t } = useTranslation();
   const [value, setValue] = useState('');
-  const { modelList, loading: modelsLoading, loaded: modelsLoaded } = useUserModelLists();
+  const [modelsLoading, setModelsLoading] = useState(false);
 
   return (
     <MyModal
@@ -43,14 +43,9 @@ const ImportSettings = ({ onClose }: Props) => {
             if (!value) {
               return onClose();
             }
-            if (!modelsLoaded) {
-              toast({
-                title: t('common:model_catalog_load_failed'),
-                status: 'error'
-              });
-              return;
-            }
+            setModelsLoading(true);
             try {
+              const modelList = await getModelList();
               const workflowConfig = await parseWorkflowImportConfig({
                 config: JSON.parse(value),
                 appType:
@@ -59,7 +54,7 @@ const ImportSettings = ({ onClose }: Props) => {
                     : AppTypeEnum.workflow,
                 t,
                 models: modelList,
-                modelCatalogLoaded: modelsLoaded
+                modelCatalogLoaded: true
               });
               await initData(workflowConfig);
               toast({
@@ -72,6 +67,8 @@ const ImportSettings = ({ onClose }: Props) => {
                 title: t('app:import_configs_failed'),
                 status: 'error'
               });
+            } finally {
+              setModelsLoading(false);
             }
           }}
           isLoading={modelsLoading}

@@ -1,14 +1,13 @@
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
-import { Flex, Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
+import { ModelStatusLabel } from '@/components/Select/ModelStatusLabel';
+import { useModelSummary } from '@/web/core/ai/model/useModelSummary';
+import { Flex, Table, TableContainer, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import {
   DatasetSearchModeEnum,
   DatasetSearchModeMap
 } from '@fastgpt/global/core/dataset/constants';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import React from 'react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
-import { ModelStatusLabel } from '@/components/Select/ModelStatusLabel';
 
 const SearchParamsTip = ({
   searchMode,
@@ -28,12 +27,11 @@ const SearchParamsTip = ({
   queryExtensionModel?: string;
 }) => {
   const { t } = useTranslation();
-  const { reRankModelList } = useUserModelLists({ autoLoadCatalog: false });
-  const detailState = useModelDetail({
+  const detailState = useModelSummary({
     modelId: usingExtensionQuery ? queryExtensionModel : undefined
   });
 
-  const hasReRankModel = reRankModelList.length > 0 || usingReRank;
+  const hasReRankModel = true;
   const hasEmptyResponseMode = responseEmptyText !== undefined;
   const hasSimilarityMode = usingReRank || searchMode === DatasetSearchModeEnum.embedding;
 

@@ -1,11 +1,12 @@
+import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 
 const mocks = vi.hoisted(() => ({ loading: false, error: false }));
-vi.mock('@/web/core/ai/model/useModelDetail', () => ({
-  useModelDetail: ({ modelId }: { modelId?: string }) => ({
+vi.mock('@/web/core/ai/model/useModelSummary', () => ({
+  useModelSummary: ({ modelId }: { modelId?: string }) => ({
     loading: mocks.loading,
     error: mocks.error,
     detail: !modelId
@@ -17,13 +18,6 @@ vi.mock('@/web/core/ai/model/useModelDetail', () => ({
           : modelId === 'forbidden'
             ? { modelId, status: 'forbidden', name: 'Restricted model' }
             : { modelId, status: 'deleted' }
-  })
-}));
-vi.mock('@/web/core/ai/model/useUserModelLists', () => ({
-  useUserModelLists: () => ({
-    loading: mocks.loading,
-    reRankModelList: [],
-    llmModelList: []
   })
 }));
 vi.mock('next-i18next', () => ({
@@ -56,7 +50,6 @@ vi.mock('@chakra-ui/react', () => {
 });
 vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/Avatar', () => ({ default: () => null }));
-import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 
 describe('SearchParamsTip', () => {
   beforeEach(() => {

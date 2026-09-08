@@ -1,14 +1,13 @@
-import React from 'react';
-import dynamic from 'next/dynamic';
-import { Box, useDisclosure } from '@chakra-ui/react';
-import { useContextSelector } from 'use-context-selector';
-import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
-import { SEARCH_TEST_IMAGE_UPLOAD_ENABLED } from './constants';
-import TestInputPanel from './components/TestInputPanel';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { Box, useDisclosure } from '@chakra-ui/react';
+import dynamic from 'next/dynamic';
+import React from 'react';
+import { useContextSelector } from 'use-context-selector';
 import TestHistories from './components/TestHistories';
+import TestInputPanel from './components/TestInputPanel';
 import TestResults from './components/TestResults';
+import { SEARCH_TEST_IMAGE_UPLOAD_ENABLED } from './constants';
 import { useDatasetSearchTest } from './hooks/useDatasetSearchTest';
 import { useSearchTestImages } from './hooks/useSearchTestImages';
 
@@ -16,7 +15,6 @@ const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetPa
 
 const Test = ({ datasetId }: { datasetId: string }) => {
   const { feConfigs } = useSystemStore();
-  const { defaultModels } = useUserModelStore();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   // Image search is only meaningful when the dataset has a vision vector model or VLM configured.
   const canUseImageSearch = !!datasetDetail.vectorModel?.config.vision || !!datasetDetail.vlmModel;
@@ -46,8 +44,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
     setDatasetTestItem
   } = useDatasetSearchTest({
     datasetId,
-    queryImageRefs: showSearchTestImageEntry ? queryImageRefs : [],
-    defaultModels
+    queryImageRefs: showSearchTestImageEntry ? queryImageRefs : []
   });
 
   const {

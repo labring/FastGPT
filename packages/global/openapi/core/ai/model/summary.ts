@@ -3,13 +3,13 @@ import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 
 /* ============================================================================
  * API: 批量获取模型展示详情
- * Route: POST /api/core/ai/model/detail
+ * Route: POST /api/core/ai/model/summary
  * Method: POST
  * Description: 返回当前身份对应模型名称、图标和可用状态，不返回执行配置或凭据
  * Tags: ['AI 通用', 'Read']
  * ============================================================================ */
 
-export const GetModelDetailsBodySchema = z.object({
+export const GetModelSummariesBodySchema = z.object({
   modelIds: z
     .array(z.string().trim().min(1).max(200))
     .min(1)
@@ -23,13 +23,13 @@ export const GetModelDetailsBodySchema = z.object({
     example: { shareId: 'share-id', outLinkUid: 'out-link-user-id' }
   })
 });
-export type GetModelDetailsBody = z.infer<typeof GetModelDetailsBodySchema>;
+export type GetModelSummariesBody = z.infer<typeof GetModelSummariesBodySchema>;
 
 const DisplayModelIdentitySchema = z.object({
   modelId: z.string().meta({ description: '模型稳定 ID', example: '68ad85a7463006c963799a01' })
 });
 
-export const ModelDisplayDetailSchema = z.discriminatedUnion('status', [
+export const ModelSummarySchema = z.discriminatedUnion('status', [
   DisplayModelIdentitySchema.extend({
     status: z.literal('deleted').meta({ description: '模型不存在' })
   }),
@@ -45,9 +45,9 @@ export const ModelDisplayDetailSchema = z.discriminatedUnion('status', [
     })
   })
 ]);
-export type ModelDisplayDetail = z.infer<typeof ModelDisplayDetailSchema>;
+export type ModelSummary = z.infer<typeof ModelSummarySchema>;
 
-export const GetModelDetailsResponseSchema = z.object({
-  models: z.array(ModelDisplayDetailSchema).meta({ description: '按请求顺序返回的模型展示详情' })
+export const GetModelSummariesResponseSchema = z.object({
+  models: z.array(ModelSummarySchema).meta({ description: '按请求顺序返回的模型展示详情' })
 });
-export type GetModelDetailsResponse = z.infer<typeof GetModelDetailsResponseSchema>;
+export type GetModelSummariesResponse = z.infer<typeof GetModelSummariesResponseSchema>;

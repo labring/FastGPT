@@ -1,42 +1,39 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Button, CloseButton, Flex } from '@chakra-ui/react';
-import { useContextSelector } from 'use-context-selector';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyPopover from '@fastgpt/web/components/common/MyPopover';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import AIModelSelector from '@/components/Select/AIModelSelector';
 import Markdown from '@/components/Markdown';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
+import AIModelSelector from '@/components/Select/AIModelSelector';
 import { onOptimizeCode } from '@/web/common/api/fetch';
-import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
+import { getModelDefault } from '@/web/core/ai/model/modelData';
+import { Box, Button, CloseButton, Flex } from '@chakra-ui/react';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { ArrayTypeMap, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { AppContext } from '../../../../context';
-import { useTranslation } from 'next-i18next';
-import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { nanoid } from 'nanoid';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import {
   JS_TEMPLATE,
   SandboxCodeTypeEnum
 } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
-import { getEditorVariables } from '../../../utils';
-import { extractCodeFromMarkdown } from './parser';
-import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
-import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { nanoid } from 'nanoid';
+import { useTranslation } from 'next-i18next';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '../../../../context';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
+import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
+import { getEditorVariables } from '../../../utils';
+import { extractCodeFromMarkdown } from './parser';
 
 export type OnOptimizeCodeProps = {
   optimizerInput: string;
@@ -59,15 +56,13 @@ const NodeCopilot = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { defaultModels } = useUserModelStore();
-  const { llmModelList } = useUserModelLists();
   const { edges, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   const [optimizerInput, setOptimizerInput] = useState('');
   const [codeResult, setCodeResult] = useState('');
-  const [selectedModel, setSelectedModel] = useState(defaultModels.llm?.modelId || '');
+  const [selectedModel, setSelectedModel] = useState('');
   const [conversationHistory, setConversationHistory] = useState<ChatCompletionMessageParam[]>([]);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
   const closePopoverRef = useRef<() => void>();
@@ -136,25 +131,6 @@ const NodeCopilot = ({
       setConversationHistory(initialConversationHistory);
     }
   }, [conversationHistory, codeType, code, dynamicInputs, dynamicOutputs, t]);
-
-  const modelOptions = useMemo(() => {
-    return llmModelList.map((model) => ({
-      label: (
-        <Flex alignItems="center">
-          <Avatar
-            src={model.avatar || HUGGING_FACE_ICON}
-            fallbackSrc={HUGGING_FACE_ICON}
-            mr={1.5}
-            w={5}
-          />
-          <Box fontWeight="normal" fontSize="14px" color="myGray.900">
-            {model.name}
-          </Box>
-        </Flex>
-      ),
-      value: model.modelId
-    }));
-  }, [llmModelList]);
 
   const replaceVariables = (text: string): string => {
     const variableRegex = /(\{\{([^}]+)\}\}|\$([^$]+)\$)/g;
@@ -352,6 +328,14 @@ const NodeCopilot = ({
 
   return (
     <MyPopover
+      onOpenFunc={() => {
+        if (!selectedModel)
+          getModelDefault({ modelType: ModelTypeEnum.llm })
+            .then((model) => {
+              if (model) setSelectedModel((current) => current || model.modelId);
+            })
+            .catch(() => {});
+      }}
       Trigger={trigger}
       trigger="click"
       placement="right-start"
@@ -363,17 +347,16 @@ const NodeCopilot = ({
         return (
           <Box p={4}>
             <Flex align="center" pb={2}>
-              {modelOptions.length > 0 && (
+              {
                 <AIModelSelector
                   modelType={ModelTypeEnum.llm}
                   borderColor="transparent"
                   _hover={{ border: '1px solid', borderColor: 'primary.400' }}
                   size="sm"
                   value={selectedModel}
-                  list={modelOptions}
                   onChange={setSelectedModel}
                 />
-              )}
+              }
               <Box flex={1} />
               <CloseButton
                 onClick={() => {

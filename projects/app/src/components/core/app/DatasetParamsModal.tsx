@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React from 'react';
+import { getModelDefault } from '@/web/core/ai/model/modelData';
 import {
   Box,
   Button,
@@ -6,35 +7,31 @@ import {
   HStack,
   ModalBody,
   ModalFooter,
-  Switch,
   Slider,
-  SliderTrack,
   SliderFilledTrack,
-  SliderThumb
+  SliderThumb,
+  SliderTrack,
+  Switch
 } from '@chakra-ui/react';
-import { useForm } from 'react-hook-form';
-import MyModal from '@fastgpt/web/components/common/MyModal';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { useTranslation } from 'next-i18next';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import MyModal from '@fastgpt/web/components/common/MyModal';
+import { useTranslation } from 'next-i18next';
+import { useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
-import SelectAiModel from '@/components/Select/AIModelSelector';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
-import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
-import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
+import SelectAiModel from '@/components/Select/AIModelSelector';
 import { type AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
-import { getModelInitializationValue } from '@/web/core/ai/model/selection';
-import { resolveClientModelReferenceId } from '@/web/core/ai/model/modelReference';
-import { resolveQueryExtensionModelId } from './DatasetParamsModal.utils';
-import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
+import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
 enum SearchSettingTabEnum {
@@ -66,27 +63,8 @@ const DatasetParamsModal = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { defaultModels } = useUserModelStore();
-  const { reRankModelList, llmModelList } = useUserModelLists({ autoLoadCatalog: false });
   const [refresh, setRefresh] = useState(false);
   const [currentTabType, setCurrentTabType] = useState(SearchSettingTabEnum.searchMode);
-
-  const queryExtensionModelList = useMemo(
-    () =>
-      llmModelList.map((item) => ({
-        value: item.modelId,
-        label: item.name
-      })),
-    [llmModelList]
-  );
-  const reRankModelSelectList = useMemo(
-    () =>
-      reRankModelList.map((item) => ({
-        value: item.modelId,
-        label: item.name
-      })),
-    [reRankModelList]
-  );
 
   const { register, setValue, getValues, handleSubmit, watch } =
     useForm<AppDatasetSearchParamsType>({
@@ -95,20 +73,14 @@ const DatasetParamsModal = ({
         embeddingWeight: embeddingWeight || 0.5,
         usingReRank: !!usingReRank,
         // 只恢复已保存的引用，不在初始化阶段选择默认模型。
-        rerankModelId: resolveClientModelReferenceId({
-          models: reRankModelList,
-          reference: { modelId: rerankModelId, model: rerankModel }
-        }),
+        rerankModelId,
+        rerankModel,
         rerankWeight: rerankWeight || 0.5,
         limit,
         similarity,
         datasetSearchUsingExtensionQuery,
-        datasetSearchExtensionModelId: resolveQueryExtensionModelId({
-          enabled: datasetSearchUsingExtensionQuery,
-          modelId: datasetSearchExtensionModelId,
-          legacyModel: datasetSearchExtensionModel,
-          models: llmModelList
-        }),
+        datasetSearchExtensionModelId,
+        datasetSearchExtensionModel,
         datasetSearchExtensionBg
       }
     });
@@ -134,27 +106,7 @@ const DatasetParamsModal = ({
     return false;
   }, [searchModeWatch, similarity, usingReRankWatch]);
 
-  const showReRank = useMemo(() => {
-    return usingReRank !== undefined && reRankModelList.length > 0;
-  }, [reRankModelList.length, usingReRank]);
-
-  useEffect(() => {
-    const modelId = resolveQueryExtensionModelId({
-      enabled: datasetSearchUsingCfrForm,
-      modelId: queryExtensionModelId,
-      legacyModel: datasetSearchExtensionModel,
-      models: llmModelList
-    });
-    if (modelId !== queryExtensionModelId) {
-      setValue('datasetSearchExtensionModelId', modelId);
-    }
-  }, [
-    llmModelList,
-    datasetSearchExtensionModel,
-    datasetSearchUsingCfrForm,
-    queryExtensionModelId,
-    setValue
-  ]);
+  const showReRank = usingReRank !== undefined;
 
   // 保证只有 80 左右个刻度。
   const maxTokenStep = useMemo(() => {
@@ -277,20 +229,21 @@ const DatasetParamsModal = ({
                 ) : (
                   <Switch
                     {...register('usingReRank')}
-                    onChange={(event) => {
+                    onChange={async (event) => {
                       const enabled = event.target.checked;
                       const wasEnabled = getValues('usingReRank');
                       setValue('usingReRank', enabled, { shouldDirty: true });
                       // 只在关闭→开启的用户操作中初始化，打开弹窗和目录更新均不改模型值。
                       if (!enabled || wasEnabled) return;
                       const currentModelId = getValues('rerankModelId');
-                      const modelId = getModelInitializationValue({
-                        value: currentModelId ?? rerankModel,
-                        models: reRankModelList,
-                        defaultModelId: defaultModels.rerank?.modelId
-                      });
-                      if (modelId && modelId !== currentModelId) {
-                        setValue('rerankModelId', modelId, { shouldDirty: true });
+                      if (!isEmptyModelValue(currentModelId ?? rerankModel)) return;
+                      const model = await getModelDefault({ modelType: ModelTypeEnum.rerank });
+                      if (
+                        model &&
+                        getValues('usingReRank') &&
+                        getValues('rerankModelId') === currentModelId
+                      ) {
+                        setValue('rerankModelId', model.modelId, { shouldDirty: true });
                       }
                     }}
                   />
@@ -327,7 +280,6 @@ const DatasetParamsModal = ({
                         bg={'myGray.50'}
                         h={'36px'}
                         value={reRankModelIdWatch || rerankModel}
-                        list={reRankModelSelectList}
                         onChange={(modelId) =>
                           setValue(NodeInputKeyEnum.datasetSearchRerankModelId, modelId)
                         }
@@ -409,20 +361,21 @@ const DatasetParamsModal = ({
               </FormLabel>
               <Switch
                 {...register('datasetSearchUsingExtensionQuery')}
-                onChange={(event) => {
+                onChange={async (event) => {
                   const enabled = event.target.checked;
                   const wasEnabled = getValues('datasetSearchUsingExtensionQuery');
                   setValue('datasetSearchUsingExtensionQuery', enabled, { shouldDirty: true });
                   // 与重排、猜你想问一致：只在关→开时按默认模型、首项的顺序补齐。
                   if (!enabled || wasEnabled) return;
                   const currentModelId = getValues('datasetSearchExtensionModelId');
-                  const modelId = getModelInitializationValue({
-                    value: currentModelId ?? datasetSearchExtensionModel,
-                    models: llmModelList,
-                    defaultModelId: defaultModels.llm?.modelId
-                  });
-                  if (modelId && modelId !== currentModelId) {
-                    setValue('datasetSearchExtensionModelId', modelId, {
+                  if (!isEmptyModelValue(currentModelId ?? datasetSearchExtensionModel)) return;
+                  const model = await getModelDefault({ modelType: ModelTypeEnum.llm });
+                  if (
+                    model &&
+                    getValues('datasetSearchUsingExtensionQuery') &&
+                    getValues('datasetSearchExtensionModelId') === currentModelId
+                  ) {
+                    setValue('datasetSearchExtensionModelId', model.modelId, {
                       shouldDirty: true
                     });
                   }
@@ -442,7 +395,6 @@ const DatasetParamsModal = ({
                           ? queryExtensionModelId
                           : datasetSearchExtensionModel
                       }
-                      list={queryExtensionModelList}
                       onChange={(modelId) => setValue('datasetSearchExtensionModelId', modelId)}
                     />
                   </Box>

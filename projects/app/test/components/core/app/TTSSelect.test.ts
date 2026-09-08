@@ -1,8 +1,9 @@
+import TTSSelect from '@/components/core/app/TTSSelect';
+import { TTSTypeEnum } from '@/web/core/app/constants';
+import type { AppTTSConfigType } from '@fastgpt/global/core/app/type';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { TTSTypeEnum } from '@/web/core/app/constants';
-import type { AppTTSConfigType } from '@fastgpt/global/core/app/type';
 
 const mocks = vi.hoisted(() => ({
   effects: [] as (() => void)[],
@@ -28,9 +29,9 @@ vi.mock('@/web/core/ai/model/useUserModelStore', () => ({
     getModelProvider: () => ({ avatar: '' })
   })
 }));
-vi.mock('@/web/core/ai/model/useUserModelLists', () => ({
-  useUserModelLists: () => ({
-    ttsModelList: [
+vi.mock('@/web/core/ai/model/useModelList', () => ({
+  useModelList: () => ({
+    modelList: [
       {
         modelId: 'tts',
         model: 'tts-name',
@@ -44,7 +45,12 @@ vi.mock('@/web/core/ai/model/useUserModelLists', () => ({
   })
 }));
 vi.mock('@/web/core/ai/model/useModelDetail', () => ({
-  useModelDetail: ({ modelId }: { modelId?: string }) => ({
+  useModelDetail: () => ({
+    model: { config: { voices: [{ label: 'First voice', value: 'first' }] } }
+  })
+}));
+vi.mock('@/web/core/ai/model/useModelSummary', () => ({
+  useModelSummary: ({ modelId }: { modelId?: string }) => ({
     detail: modelId ? { modelId, name: 'Default TTS', status: mocks.status } : undefined,
     loading: false,
     error: false,
@@ -90,7 +96,6 @@ vi.mock('@fastgpt/web/components/common/Avatar', () => ({ default: () => null })
 vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/Image/MyImage', () => ({ default: () => null }));
 vi.mock('@/components/Slider', () => ({ default: () => null }));
-import TTSSelect from '@/components/core/app/TTSSelect';
 
 describe('TTSSelect actual selection and display', () => {
   beforeEach(() => {
@@ -98,21 +103,17 @@ describe('TTSSelect actual selection and display', () => {
     mocks.status = 'active';
     mocks.prime.mockClear();
   });
-  it('writes the default selection before it can appear as the current model', () => {
+  it('does not assign a model or switch modes merely by mounting', () => {
     const onChange = vi.fn();
     const html = renderToStaticMarkup(
       React.createElement(TTSSelect, { value: { type: TTSTypeEnum.model, modelId: '' }, onChange })
     );
     expect(html).toContain('common:not_model_config');
-    expect(html).not.toContain('Default TTS');
     mocks.effects.forEach((effect) => effect());
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ modelId: 'tts', voice: 'first' })
-    );
-    const selected = onChange.mock.calls[0][0] as AppTTSConfigType;
-    expect(
-      renderToStaticMarkup(React.createElement(TTSSelect, { value: selected, onChange }))
-    ).toContain('Default TTS');
+    expect(onChange).not.toHaveBeenCalled();
+    renderToStaticMarkup(React.createElement(TTSSelect, { onChange }));
+    mocks.effects.forEach((effect) => effect());
+    expect(onChange).not.toHaveBeenCalled();
   });
   it.each(['disabled', 'deleted'] as const)(
     'displays %s in red without replacing the selection',

@@ -1,40 +1,38 @@
 import { Box, Flex, IconButton } from '@chakra-ui/react';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 
-import { useLocalStorageState, useSafeState } from 'ahooks';
-import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '../../context';
-import { useChatTest } from '../../useChatTest';
+import type { ChatAgentHelperRefType } from '@/components/core/chat/ChatAgentHelper';
+import ChatAgentHelper from '@/components/core/chat/ChatAgentHelper';
+import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
+import ProModal from '@/components/ProTip/ProModal';
+import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
+import ChatAIModelSelector from '@/pageComponents/chat/ChatWindow/ChatAIModelSelector';
+import ChatVariableButton from '@/pageComponents/chat/ChatWindow/ChatVariableButton';
+import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useModelDefault } from '@/web/core/ai/model/useModelDefault';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import { AgentChatTestTabEnum, useChatStore } from '@/web/core/chat/context/useChatStore';
-import MyBox from '@fastgpt/web/components/common/MyBox';
-import { cardStyles } from '../../constants';
-import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
-import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
-import type { Form2WorkflowFnType } from '../FormComponent/type';
-import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
-import ChatAgentHelper from '@/components/core/chat/ChatAgentHelper';
-import type { ChatAgentHelperRefType } from '@/components/core/chat/ChatAgentHelper';
-import { ChatAgentHelperTypeEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
-import { checkAgentSkillSandboxUnavailable, loadGeneratedTools } from './utils';
-import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
-import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import ChatVariableButton from '@/pageComponents/chat/ChatWindow/ChatVariableButton';
-import ProModal from '@/components/ProTip/ProModal';
-import ChatAIModelSelector from '@/pageComponents/chat/ChatWindow/ChatAIModelSelector';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { getModelInitializationValue } from '@/web/core/ai/model/selection';
+import { ChatAgentHelperTypeEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useLocalStorageState, useSafeState } from 'ahooks';
+import { useContextSelector } from 'use-context-selector';
+import { cardStyles } from '../../constants';
+import { AppContext } from '../../context';
+import { useChatTest } from '../../useChatTest';
+import type { Form2WorkflowFnType } from '../FormComponent/type';
+import { checkAgentSkillSandboxUnavailable, loadGeneratedTools } from './utils';
 
 type Props = {
   appForm: AppFormEditFormType;
@@ -47,8 +45,6 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   const { toast } = useToast();
   const { chatId, agentChatTestTab, setAgentChatTestTab } = useChatStore();
   const { feConfigs } = useSystemStore();
-  const { defaultModels } = useUserModelStore();
-  const { llmModelList } = useUserModelLists();
   const { teamPlanStatus } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
   const showSandbox = feConfigs.show_agent_sandbox;
@@ -65,7 +61,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   const [helperSelectedModel = '', setHelperSelectedModel] = useLocalStorageState<string>(
     'chat_agent_helper_model',
     {
-      defaultValue: defaultModels.llm?.modelId
+      defaultValue: ''
     }
   );
   const ChatAgentHelperRef = useRef<ChatAgentHelperRefType>(null);
@@ -79,21 +75,13 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
     edges: appDetail.edges || []
   });
 
-  const modelSelectList = useMemo(
-    () =>
-      llmModelList
-        .filter((item): item is typeof item & { modelId: string } => !!item.modelId)
-        .map((item) => ({ label: item.name, value: item.modelId })),
-    [llmModelList]
-  );
+  const { model: defaultModel } = useModelDefault({
+    modelType: ModelTypeEnum.llm,
+    enabled: activeTab === AgentChatTestTabEnum.helper && !helperSelectedModel
+  });
   useEffect(() => {
-    const modelId = getModelInitializationValue({
-      value: helperSelectedModel,
-      models: llmModelList,
-      defaultModelId: defaultModels.llm?.modelId
-    });
-    if (modelId && modelId !== helperSelectedModel) setHelperSelectedModel(modelId);
-  }, [defaultModels.llm?.modelId, helperSelectedModel, llmModelList, setHelperSelectedModel]);
+    if (!helperSelectedModel && defaultModel) setHelperSelectedModel(defaultModel.modelId);
+  }, [defaultModel, helperSelectedModel, setHelperSelectedModel]);
   const onChangeHelperModel = useCallback(
     (model: string) => {
       setHelperSelectedModel(model);
@@ -113,12 +101,11 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
           bg={'myGray.50'}
           rounded={'10px'}
           value={helperSelectedModel}
-          list={modelSelectList}
           onChange={onChangeHelperModel}
         />
       </Box>
     ),
-    [helperSelectedModel, modelSelectList, onChangeHelperModel]
+    [helperSelectedModel, onChangeHelperModel]
   );
 
   // Sandbox: Status Hook 负责网络同步，UI Hook 负责弹窗渲染

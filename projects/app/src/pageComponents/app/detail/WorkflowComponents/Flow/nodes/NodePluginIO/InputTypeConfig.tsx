@@ -1,3 +1,6 @@
+import React from 'react';
+import MyTextarea from '@/components/common/Textarea/MyTextarea';
+import TimeInput from '@/components/core/app/formRender/TimeInput';
 import {
   Box,
   Button,
@@ -21,38 +24,33 @@ import {
   FlowNodeInputTypeEnum,
   FlowValueTypeMap
 } from '@fastgpt/global/core/workflow/node/constant';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MultipleSelect, {
   useMultipleSelect
 } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
-import React, { useCallback, useMemo } from 'react';
-import { useFieldArray, type UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
-import MyTextarea from '@/components/common/Textarea/MyTextarea';
-import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
-import TimeInput from '@/components/core/app/formRender/TimeInput';
+import { useCallback, useMemo } from 'react';
+import { useFieldArray, type UseFormReturn } from 'react-hook-form';
 
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
 import { DatasetSelectModal } from '@/components/core/app/DatasetSelectModal';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
-import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
-import { FileTypeSelectorPanel } from '@fastgpt/web/components/core/app/FileTypeSelector';
-import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
-import { getUserFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
-import { canInputBeAgentGenerated } from '@fastgpt/global/core/app/formEdit/utils';
-import { getModelInputOptions } from './InputTypeConfig.utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { canInputBeAgentGenerated } from '@fastgpt/global/core/app/formEdit/utils';
+import { getUserFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
+import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
+import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
+import { FileTypeSelectorPanel } from '@fastgpt/web/components/core/app/FileTypeSelector';
 
 const inputFormGridTemplateColumns = 'max-content minmax(0, 1fr)';
 
@@ -83,10 +81,7 @@ const InputTypeConfig = ({
   const { t } = useTranslation();
   const defaultListValue = { label: t('common:None'), value: '' };
   const { feConfigs } = useSystemStore();
-  const { llmModelList } = useUserModelLists();
   const { teamPlanStatus } = useUserStore();
-
-  const availableModels = useMemoEnhance(() => getModelInputOptions(llmModelList), [llmModelList]);
 
   const typeLabels = useMemo(() => {
     return {
@@ -756,7 +751,6 @@ const InputTypeConfig = ({
                   <AIModelSelector
                     modelType={ModelTypeEnum.llm}
                     value={defaultValue}
-                    list={availableModels}
                     onChange={(model) => {
                       setValue('defaultValue', model);
                     }}

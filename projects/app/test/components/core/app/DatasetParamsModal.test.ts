@@ -27,6 +27,18 @@ vi.mock('react', async (importOriginal) => {
   };
 });
 vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
+vi.mock('react-hook-form', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-hook-form')>();
+  return {
+    ...actual,
+    useForm: (...args: Parameters<typeof actual.useForm>) => {
+      const form = actual.useForm(...args);
+      // SSR harness 不执行挂载 effect；模拟已挂载表单，异步 handler 的 getValues 才读取最新字段。
+      form.control._stateFlags.mount = true;
+      return form;
+    }
+  };
+});
 
 vi.mock('next-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key })
@@ -39,10 +51,12 @@ vi.mock('@/web/core/ai/model/useUserModelStore', () => ({
     }
   })
 }));
-vi.mock('@/web/core/ai/model/useUserModelLists', () => ({
-  useUserModelLists: () => ({
-    llmModelList: mocks.llmModels,
-    reRankModelList: [{ modelId: 'rerank-id', model: 'rerank-model', name: 'Rerank model' }]
+vi.mock('@/web/core/ai/model/modelData', () => ({
+  getModelDefault: vi.fn(async ({ modelType }) => {
+    if (modelType === 'rerank') return { modelId: mocks.defaultRerankId ?? 'rerank-id' };
+    return (
+      mocks.llmModels.find((model) => model.modelId === mocks.defaultModelId) ?? mocks.llmModels[0]
+    );
   })
 }));
 vi.mock('@/components/Select/AIModelSelector', () => ({
@@ -152,7 +166,7 @@ describe('DatasetParamsModal', () => {
       })
     );
     expect(mocks.toggle).toBeDefined();
-    mocks.toggle?.({ target: { checked: true } });
+    await mocks.toggle?.({ target: { checked: true } });
     mocks.complete?.();
     await vi.waitFor(() =>
       expect(onSuccess).toHaveBeenCalledWith(
@@ -179,7 +193,7 @@ describe('DatasetParamsModal', () => {
         onSuccess
       })
     );
-    mocks.toggle?.({ target: { checked: true } });
+    await mocks.toggle?.({ target: { checked: true } });
     mocks.complete?.();
     await vi.waitFor(() =>
       expect(onSuccess).toHaveBeenCalledWith(
@@ -205,7 +219,7 @@ describe('DatasetParamsModal', () => {
           onSuccess
         })
       );
-      mocks.toggle?.({ target: { checked: true } });
+      await mocks.toggle?.({ target: { checked: true } });
       mocks.complete?.();
       await vi.waitFor(() =>
         expect(onSuccess).toHaveBeenCalledWith(
@@ -231,7 +245,7 @@ describe('DatasetParamsModal', () => {
         onSuccess
       })
     );
-    mocks.toggle?.({ target: { checked: true } });
+    await mocks.toggle?.({ target: { checked: true } });
     mocks.complete?.();
     await vi.waitFor(() => expect(mocks.toast).toHaveBeenCalled());
     expect(onSuccess).not.toHaveBeenCalled();
@@ -249,7 +263,7 @@ describe('DatasetParamsModal', () => {
         onSuccess
       })
     );
-    mocks.toggle?.({ target: { checked: true } });
+    await mocks.toggle?.({ target: { checked: true } });
     mocks.complete?.();
     await vi.waitFor(() => expect(mocks.toast).toHaveBeenCalledOnce());
     expect(onSuccess).not.toHaveBeenCalled();
@@ -267,7 +281,7 @@ describe('DatasetParamsModal', () => {
         onSuccess
       })
     );
-    mocks.toggle?.({ target: { checked: false } });
+    await mocks.toggle?.({ target: { checked: false } });
     mocks.complete?.();
     await vi.waitFor(() =>
       expect(onSuccess).toHaveBeenCalledWith(
@@ -294,8 +308,7 @@ describe('DatasetParamsModal', () => {
     expect(mocks.selectAiModel).toHaveBeenCalledWith(
       expect.objectContaining({
         modelType: ModelTypeEnum.rerank,
-        value: 'rerank-id',
-        list: [{ value: 'rerank-id', label: 'Rerank model' }]
+        value: 'rerank-id'
       })
     );
   });
@@ -332,7 +345,7 @@ describe('DatasetParamsModal', () => {
     expect(mocks.selectAiModel).toHaveBeenCalledWith(
       expect.objectContaining({
         modelType: ModelTypeEnum.rerank,
-        value: 'rerank-id'
+        value: 'rerank-model'
       })
     );
   });
@@ -355,7 +368,7 @@ describe('DatasetParamsModal', () => {
       )
     );
     onSuccess.mockClear();
-    mocks.rerankToggle?.({ target: { checked: true } });
+    await mocks.rerankToggle?.({ target: { checked: true } });
     mocks.complete?.();
     await vi.waitFor(() =>
       expect(onSuccess).toHaveBeenCalledWith(
@@ -376,7 +389,7 @@ describe('DatasetParamsModal', () => {
         onSuccess
       })
     );
-    mocks.rerankToggle?.({ target: { checked: true } });
+    await mocks.rerankToggle?.({ target: { checked: true } });
     mocks.complete?.();
     await vi.waitFor(() =>
       expect(onSuccess).toHaveBeenCalledWith(

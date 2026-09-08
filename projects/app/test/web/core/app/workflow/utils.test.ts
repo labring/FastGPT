@@ -113,9 +113,7 @@ describe('nodeTemplate2FlowNode', () => {
           template,
           position: { x: 0, y: 0 },
           t: ((key: string) => key) as any,
-          llmModelList,
-          lastSelectedModelId,
-          defaultModelIds: { llm: 'system' }
+          initialModelId: expected
         });
         const stored = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [] });
         expect(
@@ -128,7 +126,7 @@ describe('nodeTemplate2FlowNode', () => {
     }
   );
 
-  it('ignores disabled remembered models and leaves existing values or references unchanged', () => {
+  it('uses the business-resolved default and leaves existing values or references unchanged', () => {
     const llmModelList = [
       { modelId: 'disabled', model: 'disabled', isActive: false },
       { modelId: 'first', model: 'first', isActive: true }
@@ -149,9 +147,7 @@ describe('nodeTemplate2FlowNode', () => {
         },
         position: { x: 0, y: 0 },
         t: ((key: string) => key) as any,
-        llmModelList,
-        lastSelectedModelId: 'disabled',
-        defaultModelIds: { llm: 'missing' }
+        initialModelId: 'first'
       }).data.inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId)?.value;
     expect(create(undefined)).toBe('first');
     expect(create(null)).toBe('first');

@@ -1,20 +1,20 @@
 import type {
-  GetModelDetailsBody,
-  GetModelDetailsResponse,
-  ModelDisplayDetail
-} from '@fastgpt/global/openapi/core/ai/model/detail';
+  GetModelSummariesBody,
+  GetModelSummariesResponse,
+  ModelSummary
+} from '@fastgpt/global/openapi/core/ai/model/summary';
 
 /**
  * 每次只请求一个模型；相同身份和 ID 复用在途请求及 30 秒内存缓存，不合并不同 ID。
  * 身份键由调用方包含团队、成员或外链凭证及登录代次；失败不缓存，容量有界。
  */
-export const createModelDetailLoader = (
-  request: (body: GetModelDetailsBody) => Promise<GetModelDetailsResponse>
+export const createModelSummaryLoader = (
+  request: (body: GetModelSummariesBody) => Promise<GetModelSummariesResponse>
 ) => {
   type Entry = {
-    promise: Promise<ModelDisplayDetail>;
+    promise: Promise<ModelSummary>;
     expiresAt: number;
-    detail?: ModelDisplayDetail;
+    detail?: ModelSummary;
   };
   type Key = { identity: string; modelId: string };
   const cache = new Map<string, Entry>();
@@ -31,7 +31,7 @@ export const createModelDetailLoader = (
   }: {
     identity: string;
     modelId: string;
-    outLinkAuthData?: GetModelDetailsBody['outLinkAuthData'];
+    outLinkAuthData?: GetModelSummariesBody['outLinkAuthData'];
     force?: boolean;
   }) => {
     const key = getKey({ identity, modelId });
@@ -69,7 +69,7 @@ export const createModelDetailLoader = (
       return entry && entry.expiresAt > Date.now() ? entry.detail : undefined;
     },
     /** 将刚校验的 catalog 展示数据写入同身份详情缓存，不发请求。 */
-    prime: ({ identity, detail }: { identity: string; detail: ModelDisplayDetail }) => {
+    prime: ({ identity, detail }: { identity: string; detail: ModelSummary }) => {
       save(getKey({ identity, modelId: detail.modelId }), {
         promise: Promise.resolve(detail),
         detail,

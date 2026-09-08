@@ -1,27 +1,27 @@
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import { Box, Button, Flex, useDisclosure, HStack } from '@chakra-ui/react';
-import React, { useCallback, useEffect, useMemo } from 'react';
-import { useTranslation } from 'next-i18next';
-import { TTSTypeEnum } from '@/web/core/app/constants';
-import type { AppTTSConfigType } from '@fastgpt/global/core/app/type';
-import { useAudioPlay } from '@/web/common/utils/voice';
-import MyModal from '@fastgpt/web/components/v2/common/MyModal';
-import MySlider from '@/components/Slider';
-import { defaultTTSConfig } from '@fastgpt/global/core/app/constants';
-import ChatFunctionTip from './Tip';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import MyImage from '@fastgpt/web/components/common/Image/MyImage';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '@/pageComponents/app/detail/context';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
-import AppConfigItem, { AppConfigItemAction } from './AppConfigItem';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
-import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
 import { ModelStatusLabel } from '@/components/Select/ModelStatusLabel';
-import { getTtsInitialization } from './TTSSelect.utils';
+import MySlider from '@/components/Slider';
+import { AppContext } from '@/pageComponents/app/detail/context';
+import { useAudioPlay } from '@/web/common/utils/voice';
+import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
+import { useModelList } from '@/web/core/ai/model/useModelList';
+import { useModelSummary } from '@/web/core/ai/model/useModelSummary';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { TTSTypeEnum } from '@/web/core/app/constants';
+import { Box, Button, Flex, HStack, useDisclosure } from '@chakra-ui/react';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { defaultTTSConfig } from '@fastgpt/global/core/app/constants';
+import type { AppTTSConfigType } from '@fastgpt/global/core/app/type';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyImage from '@fastgpt/web/components/common/Image/MyImage';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
+import { useTranslation } from 'next-i18next';
+import React, { useCallback, useMemo } from 'react';
+import { useContextSelector } from 'use-context-selector';
+import AppConfigItem, { AppConfigItemAction } from './AppConfigItem';
+import ChatFunctionTip from './Tip';
 
 type TTSSelectorItemType = {
   alias: string;
@@ -43,24 +43,14 @@ const TTSSelect = ({
 }) => {
   const { t, i18n } = useTranslation();
   const value = inputValue ?? defaultTTSConfig;
-  const { getModelProvider, defaultModelIds } = useUserModelStore();
+  const { getModelProvider } = useUserModelStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const { ttsModelList: ttsModels } = useUserModelLists();
-  const isBuiltin = inputValue?.type === TTSTypeEnum.none || inputValue?.type === TTSTypeEnum.web;
+  const { modelList: ttsModels } = useModelList({ enabled: isOpen, modelType: ModelTypeEnum.tts });
+  const isBuiltin = value.type === TTSTypeEnum.none || value.type === TTSTypeEnum.web;
   const modelId = isBuiltin ? undefined : (value.modelId ?? value.model);
-  const detailState = useModelDetail({ modelId });
+  const detailState = useModelSummary({ modelId });
   const { setFromCatalog } = detailState;
-  useEffect(() => {
-    const next = getTtsInitialization({
-      value: inputValue,
-      models: ttsModels,
-      defaultModelId: defaultModelIds.tts
-    });
-    if (!next) return;
-    const selected = ttsModels.find((model) => model.modelId === next.modelId);
-    if (selected) setFromCatalog(selected);
-    onChange(next);
-  }, [defaultModelIds.tts, inputValue, onChange, setFromCatalog, ttsModels]);
+  const { model: selectedTtsModel } = useModelDetail({ modelId, modelType: ModelTypeEnum.tts });
 
   const appId = useContextSelector(AppContext, (v) => v.appId);
 
@@ -112,7 +102,7 @@ const TTSSelect = ({
   }, [isBuiltin, modelId, value.type, value.voice]);
   const formLabel = useMemo(() => {
     const provider = selectorList.find((item) => item.value === formatValue[0]);
-    const voice = provider?.children.find((item) => item.value === formatValue[1]);
+    const voice = selectedTtsModel?.config.voices.find((item) => item.value === formatValue[1]);
     if (isBuiltin) return provider?.label;
     return (
       <Flex maxW={['180px', '250px']} minW={0} overflow="hidden" alignItems="center" gap={1}>
@@ -122,7 +112,7 @@ const TTSSelect = ({
         )}
       </Flex>
     );
-  }, [detailState, formatValue, isBuiltin, modelId, selectorList]);
+  }, [detailState, formatValue, isBuiltin, modelId, selectorList, selectedTtsModel]);
 
   const { playAudioByText, cancelAudio, audioLoading, audioPlaying } = useAudioPlay({
     appId,

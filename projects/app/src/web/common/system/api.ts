@@ -1,22 +1,22 @@
+import { GET, POST } from '@/web/common/api/request';
 import type { GetSystemInitDataResponse } from '@fastgpt/global/openapi/common/system/api';
 import type {
   GetModelCatalogResponse,
   GetSystemModelsResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
-import { GET, POST } from '@/web/common/api/request';
 import type {
-  GetModelDetailsBody,
-  GetModelDetailsResponse
-} from '@fastgpt/global/openapi/core/ai/model/detail';
-
-/** 批量详情接口；选择器调用时只提交当前一个模型 ID。 */
-export const getUserModelDetails = (body: GetModelDetailsBody) =>
-  POST<GetModelDetailsResponse>('/core/ai/model/detail', body);
+  GetModelSummariesBody,
+  GetModelSummariesResponse
+} from '@fastgpt/global/openapi/core/ai/model/summary';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import type {
   CollaboratorListType,
   UpdateClbPermissionProps
 } from '@fastgpt/global/support/permission/collaborator';
-import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+
+/** 批量详情接口；选择器调用时只提交当前一个模型 ID。 */
+export const getUserModelSummaries = (body: GetModelSummariesBody) =>
+  POST<GetModelSummariesResponse>('/core/ai/model/summary', body);
 
 export const getSystemInitData = (bufferId?: string) =>
   GET<GetSystemInitDataResponse>('/common/system/getInitData', {

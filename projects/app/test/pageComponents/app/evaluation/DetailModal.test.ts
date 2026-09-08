@@ -1,9 +1,10 @@
+import DetailModal from '@/pageComponents/app/evaluation/DetailModal';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ detail: vi.fn() }));
-vi.mock('@/web/core/ai/model/useModelDetail', () => ({ useModelDetail: mocks.detail }));
+vi.mock('@/web/core/ai/model/useModelSummary', () => ({ useModelSummary: mocks.detail }));
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('@fastgpt/web/hooks/useRequest', () => ({
   useRequest: () => ({ runAsync: vi.fn(), loading: false })
@@ -26,7 +27,6 @@ vi.mock('@chakra-ui/react', async (importOriginal) => ({
 }));
 vi.mock('@fastgpt/web/components/common/Avatar', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: () => null }));
-import DetailModal from '@/pageComponents/app/evaluation/DetailModal';
 
 describe('evaluation model display', () => {
   beforeEach(() => {

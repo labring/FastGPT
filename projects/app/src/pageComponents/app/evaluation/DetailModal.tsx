@@ -1,44 +1,45 @@
-import {
-  Box,
-  Button,
-  Flex,
-  IconButton,
-  ModalBody,
-  Textarea,
-  Accordion,
-  AccordionItem,
-  AccordionButton,
-  AccordionPanel,
-  AccordionIcon,
-  Input
-} from '@chakra-ui/react';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useTranslation } from 'next-i18next';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
+import React from 'react';
+import { ModelStatusLabel } from '@/components/Select/ModelStatusLabel';
+import { downloadFetch } from '@/web/common/system/utils';
+import { useModelSummary } from '@/web/core/ai/model/useModelSummary';
 import {
   deleteEvalItem,
   getEvalItemsList,
   retryEvalItem,
   updateEvalItem
 } from '@/web/core/app/api/evaluation';
-import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import { downloadFetch } from '@/web/common/system/utils';
-import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
-import { type TFunction } from 'i18next';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { useForm } from 'react-hook-form';
 import {
-  EvaluationStatusMap,
-  EvaluationStatusEnum
+  Accordion,
+  AccordionButton,
+  AccordionIcon,
+  AccordionItem,
+  AccordionPanel,
+  Box,
+  Button,
+  Flex,
+  IconButton,
+  Input,
+  ModalBody,
+  Textarea
+} from '@chakra-ui/react';
+import type { updateEvalItemBody } from '@fastgpt/global/core/app/evaluation/api';
+import {
+  EvaluationStatusEnum,
+  EvaluationStatusMap
 } from '@fastgpt/global/core/app/evaluation/constants';
 import type { evaluationType, listEvalItemsItem } from '@fastgpt/global/core/app/evaluation/type';
-import type { updateEvalItemBody } from '@fastgpt/global/core/app/evaluation/api';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyModal from '@fastgpt/web/components/common/MyModal';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
-import { ModelStatusLabel } from '@/components/Select/ModelStatusLabel';
+import { usePagination } from '@fastgpt/web/hooks/usePagination';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { type TFunction } from 'i18next';
+import { useTranslation } from 'next-i18next';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useForm } from 'react-hook-form';
 
 const formatEvaluationStatus = (item: { status: number; errorMessage?: string }, t: TFunction) => {
   if (item.errorMessage) {
@@ -88,7 +89,7 @@ const EvaluationDetailModal = ({
   const [editing, setEditing] = useState(false);
   const [pollingInterval, setPollingInterval] = useState(10000);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const modelDetail = useModelDetail({ modelId: evalDetail.evalModelId });
+  const modelDetail = useModelSummary({ modelId: evalDetail.evalModelId });
 
   const {
     data: evalItemsList,

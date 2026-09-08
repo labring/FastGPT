@@ -1,23 +1,24 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
+import { useModelList } from '@/web/core/ai/model/useModelList';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
+import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { Drawer } from 'vaul';
-import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
-import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { useTranslation } from 'next-i18next';
-import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Drawer } from 'vaul';
 
 type Props = {
   isOpen: boolean;
-  modelList: MyLLMModelItemType[];
   value?: string;
   onChange: (model: string) => void;
   onClose: () => void;
 };
 
-const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose }: Props) => {
+const MobileModelSelectorDrawer = ({ isOpen, value, onChange, onClose }: Props) => {
+  const { modelList } = useModelList({ enabled: isOpen, modelType: ModelTypeEnum.llm });
   const { i18n } = useTranslation();
   const { getModelProviders, getModelProvider } = useUserModelStore();
   const availableModelList = useMemo(() => modelList, [modelList]);

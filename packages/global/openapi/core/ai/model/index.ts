@@ -1,26 +1,26 @@
-import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
-import { GetModelDetailsBodySchema, GetModelDetailsResponseSchema } from './detail';
+import type { OpenAPIPath } from '../../../type';
 import {
-  GetSystemModelsResponseSchema,
   GetModelCatalogQuerySchema,
   GetModelCatalogResponseSchema,
+  GetSystemModelsResponseSchema,
   ModelCollaboratorListQuerySchema,
   ModelCollaboratorListResponseSchema,
   ModelCollaboratorUpdateBodySchema
 } from './api';
+import { GetModelSummariesBodySchema, GetModelSummariesResponseSchema } from './summary';
 
 export const AIModelPath: OpenAPIPath = {
-  '/core/ai/model/detail': {
+  '/core/ai/model/summary': {
     post: {
       summary: '批量获取模型展示详情',
       description: '返回模型名称、图标及当前身份的可用状态，不返回执行配置',
       tags: [DevApiTagsMap.aiCommon],
-      requestBody: { content: { 'application/json': { schema: GetModelDetailsBodySchema } } },
+      requestBody: { content: { 'application/json': { schema: GetModelSummariesBodySchema } } },
       responses: {
         200: {
           description: '正常、停用、已下架或无权限的展示详情',
-          content: { 'application/json': { schema: GetModelDetailsResponseSchema } }
+          content: { 'application/json': { schema: GetModelSummariesResponseSchema } }
         }
       }
     }

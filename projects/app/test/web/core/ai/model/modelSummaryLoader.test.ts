@@ -1,18 +1,18 @@
+import { createModelSummaryLoader } from '@/web/core/ai/model/modelSummaryLoader';
+import type { GetModelSummariesBody } from '@fastgpt/global/openapi/core/ai/model/summary';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createModelDetailLoader } from '@/web/core/ai/model/modelDetailLoader';
-import type { GetModelDetailsBody } from '@fastgpt/global/openapi/core/ai/model/detail';
 
-describe('createModelDetailLoader', () => {
+describe('createModelSummaryLoader', () => {
   afterEach(() => {
     vi.useRealTimers();
   });
   const createRequest = () =>
-    vi.fn(async ({ modelIds }: GetModelDetailsBody) => ({
+    vi.fn(async ({ modelIds }: GetModelSummariesBody) => ({
       models: modelIds.map((modelId) => ({ modelId, status: 'active' as const, name: modelId }))
     }));
   it('requests different IDs separately and deduplicates the same ID and identity', async () => {
     const request = createRequest();
-    const load = createModelDetailLoader(request);
+    const load = createModelSummaryLoader(request);
     const args = { identity: 'team/member', modelId: 'a' };
     const first = load(args);
     expect(load(args)).toBe(first);
@@ -25,7 +25,7 @@ describe('createModelDetailLoader', () => {
   it('refreshes on expiry or explicit force and does not cache failures', async () => {
     vi.useFakeTimers();
     const request = createRequest();
-    const load = createModelDetailLoader(request);
+    const load = createModelSummaryLoader(request);
     const args = { identity: 'member', modelId: 'a' };
     await load(args);
     await load({ ...args, force: true });
@@ -42,7 +42,7 @@ describe('createModelDetailLoader', () => {
       .fn()
       .mockResolvedValueOnce({ models: [] })
       .mockResolvedValue({ models: [{ modelId: 'a', status: 'deleted' }] });
-    const load = createModelDetailLoader(request);
+    const load = createModelSummaryLoader(request);
     await expect(load({ identity: 'member', modelId: 'a' })).rejects.toThrow('Missing model');
     await expect(load({ identity: 'member', modelId: 'a' })).resolves.toEqual({
       modelId: 'a',
@@ -51,7 +51,7 @@ describe('createModelDetailLoader', () => {
   });
   it('bounds the cache and forwards outlink credentials only to its individual request', async () => {
     const request = createRequest();
-    const load = createModelDetailLoader(request);
+    const load = createModelSummaryLoader(request);
     for (let index = 0; index < 257; index++)
       await load({ identity: 'member', modelId: String(index) });
     await load({
@@ -68,7 +68,7 @@ describe('createModelDetailLoader', () => {
   it('primes synchronous display data from catalog without a detail request', async () => {
     vi.useFakeTimers();
     const request = createRequest();
-    const load = createModelDetailLoader(request);
+    const load = createModelSummaryLoader(request);
     const key = { identity: 'member', modelId: 'a' };
     const detail = { modelId: 'a', name: 'Catalog A', status: 'active' as const };
     load.prime({ identity: key.identity, detail });
@@ -93,7 +93,7 @@ describe('createModelDetailLoader', () => {
             reject = fail;
           })
       );
-      const load = createModelDetailLoader(request);
+      const load = createModelSummaryLoader(request);
       const key = { identity: 'member', modelId: 'a' };
       const pending = load(key);
       load.invalidate(key);
@@ -109,7 +109,7 @@ describe('createModelDetailLoader', () => {
   );
   it('invalidates only the requested completed entry', async () => {
     const request = createRequest();
-    const load = createModelDetailLoader(request);
+    const load = createModelSummaryLoader(request);
     await load({ identity: 'member', modelId: 'a' });
     await load({ identity: 'member', modelId: 'b' });
     load.invalidate({ identity: 'member', modelId: 'a' });

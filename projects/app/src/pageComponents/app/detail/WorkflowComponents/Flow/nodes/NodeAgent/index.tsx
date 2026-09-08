@@ -1,59 +1,59 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Box, Button, Flex, Grid, HStack, Switch, useDisclosure } from '@chakra-ui/react';
-import { type NodeProps } from 'reactflow';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { useTranslation } from 'next-i18next';
-import { useContextSelector } from 'use-context-selector';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import dynamic from 'next/dynamic';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { useTranslation } from 'next-i18next';
+import dynamic from 'next/dynamic';
+import React, { useCallback, useMemo } from 'react';
+import { type NodeProps } from 'reactflow';
+import { useContextSelector } from 'use-context-selector';
 
-import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
-import RenderInput from '../render/RenderInput';
-import RenderOutput from '../render/RenderOutput';
-import RenderToolInput, { hasDynamicToolInput } from '../render/RenderToolInput';
 import IOTitle from '../../components/IOTitle';
+import NodeCard from '../render/NodeCard';
+import RenderInput from '../render/RenderInput';
 import InputLabel from '../render/RenderInput/Label';
+import RenderOutput from '../render/RenderOutput';
 import CatchError from '../render/RenderOutput/CatchError';
+import RenderToolInput, { hasDynamicToolInput } from '../render/RenderToolInput';
 
-import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
-import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import { AppContext } from '@/pageComponents/app/detail/context';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
+import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
+import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
 
-import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { getEditorVariables } from '../../../utils';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
+import { useWorkflowQuoteLimit } from '../../hooks/useWorkflowQuoteLimit';
 
-import { useAgentSkillManager } from './useAgentSkillManager';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
+import { useAgentSkillManager } from './useAgentSkillManager';
+import { restoreDatasetParams } from './utils';
 
-import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import type { AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import MyTag from '@fastgpt/web/components/common/Tag/index';
 import DatasetCard from '@/components/core/app/DatasetCard';
+import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
+import { getToolIdentityKey, isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
+import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import WorkflowSandboxConfig, {
   createSandboxEntrypointInput
 } from '../components/WorkflowSandboxConfig';
-import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
-import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
-import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
-import { findClientModelByReference } from '@/web/core/ai/model/modelReference';
 
 const PromptEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/PromptEditor'));
 const SkillSelectModal = dynamic(
@@ -101,13 +101,10 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const { splitToolInputs, splitOutput } = useContextSelector(WorkflowUtilsContext, (ctx) => ctx);
-  const { getNodeById, edges, llmMaxQuoteContext } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
-  );
+  const { getNodeById, edges } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { feConfigs } = useSystemStore();
-  const { defaultModels } = useUserModelStore();
+  const llmMaxQuoteContext = useWorkflowQuoteLimit();
   const externalProviderWorkflowVariables = feConfigs?.externalProviderWorkflowVariables;
   const { teamPlanStatus, isTeamAdmin } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
@@ -149,19 +146,26 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     [editorVariables, externalVariables]
   );
 
-  // ---- Dataset params state (for Agent node inline settings button) ----
-  const [datasetParamsData, setDatasetParamsData] = useState<AppDatasetSearchParamsType>({
-    searchMode: DatasetSearchModeEnum.embedding,
-    embeddingWeight: 0.5,
-    limit: 3000,
-    similarity: 0.5,
-    usingReRank: true,
-    rerankModelId: defaultModels.rerank?.modelId,
-    rerankWeight: 0.6,
-    datasetSearchUsingExtensionQuery: true,
-    datasetSearchExtensionModelId: defaultModels.llm?.modelId,
-    datasetSearchExtensionBg: ''
-  });
+  // 节点 inputs 是已保存参数的唯一来源；弹窗自行维护草稿，避免本地副本遗漏模型 ID。
+  const datasetParamsData = useMemo(
+    () =>
+      restoreDatasetParams({
+        state: {
+          searchMode: DatasetSearchModeEnum.embedding,
+          embeddingWeight: 0.5,
+          limit: 3000,
+          similarity: 0.5,
+          usingReRank: true,
+          rerankModelId: undefined,
+          rerankWeight: 0.6,
+          datasetSearchUsingExtensionQuery: true,
+          datasetSearchExtensionModelId: undefined,
+          datasetSearchExtensionBg: ''
+        },
+        inputs
+      }),
+    [inputs]
+  );
   const {
     isOpen: isOpenDatasetParams,
     onOpen: onOpenDatasetParams,
@@ -172,18 +176,6 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     onOpen: onOpenDatasetSelect,
     onClose: onCloseDatasetSelect
   } = useDisclosure();
-
-  useEffect(() => {
-    inputs.forEach((input) => {
-      if ((datasetParamsData as any)[input.key] !== undefined) {
-        setDatasetParamsData((state) => ({
-          ...state,
-          [input.key]: input.value ?? (state as any)[input.key]
-        }));
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inputs]);
 
   // ---- Prompt ----
   const promptInput = useMemo(
@@ -446,15 +438,11 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   } = useDisclosure();
 
   // ---- Model ----
-  const { llmModelList } = useUserModelLists();
-  const currentModel = useMemo(() => {
-    const modelId = inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId)?.value;
-    const model = inputs.find((i) => i.key === NodeInputKeyEnum.aiModel)?.value;
-    return findClientModelByReference({
-      models: llmModelList,
-      reference: { modelId, model }
-    });
-  }, [inputs, llmModelList]);
+  const { model: currentModel } = useModelDetail({
+    modelType: ModelTypeEnum.llm,
+    modelId: inputs.find((input) => input.key === NodeInputKeyEnum.aiModelId)?.value,
+    model: inputs.find((input) => input.key === NodeInputKeyEnum.aiModel)?.value
+  });
 
   return (
     <NodeCard minW={'524px'} selected={selected} {...data}>
@@ -877,7 +865,6 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           maxTokens={llmMaxQuoteContext}
           onClose={onCloseDatasetParams}
           onSuccess={(e) => {
-            setDatasetParamsData(e);
             for (const key in e) {
               const item = inputs.find((input) => input.key === key);
               if (!item) continue;

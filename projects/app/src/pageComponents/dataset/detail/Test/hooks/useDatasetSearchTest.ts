@@ -1,33 +1,24 @@
-import { useState } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
-import { useTranslation } from 'next-i18next';
 import { postSearchText } from '@/web/core/dataset/api';
 import {
   useSearchTestStore,
   type SearchTestStoreItemType
 } from '@/web/core/dataset/store/searchTest';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { SearchDatasetTestResponse } from '@fastgpt/global/openapi/core/dataset/api';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useTranslation } from 'next-i18next';
+import { useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import type { SearchTestFormType, SearchTestImageRef } from '../type';
 
 export const useDatasetSearchTest = ({
   datasetId,
-  queryImageRefs,
-  defaultModels
+  queryImageRefs
 }: {
   datasetId: string;
   queryImageRefs: SearchTestImageRef[];
-  defaultModels: {
-    rerank?: {
-      model?: string;
-    };
-    llm?: {
-      model?: string;
-    };
-  };
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -41,12 +32,10 @@ export const useDatasetSearchTest = ({
         searchMode: DatasetSearchModeEnum.embedding,
         embeddingWeight: 0.5,
         usingReRank: false,
-        rerankModel: defaultModels?.rerank?.model,
         rerankWeight: 0.5,
         limit: 5000,
         similarity: 0,
         datasetSearchUsingExtensionQuery: false,
-        datasetSearchExtensionModel: defaultModels.llm?.model,
         datasetSearchExtensionBg: ''
       }
     }
