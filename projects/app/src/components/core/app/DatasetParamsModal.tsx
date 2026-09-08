@@ -31,8 +31,11 @@ import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import { type AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import { getModelInitializationValue } from '@/web/core/ai/model/selection';
 import { resolveClientModelReferenceId } from '@/web/core/ai/model/modelReference';
 import { resolveQueryExtensionModelId } from './DatasetParamsModal.utils';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 enum SearchSettingTabEnum {
   searchMode = 'searchMode',
@@ -62,8 +65,9 @@ const DatasetParamsModal = ({
   onSuccess: (e: AppDatasetSearchParamsType) => void;
 }) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const { defaultModels } = useUserModelStore();
-  const { reRankModelList, llmModelList } = useUserModelLists({ enabled: false });
+  const { reRankModelList, llmModelList } = useUserModelLists({ autoLoadCatalog: false });
   const [refresh, setRefresh] = useState(false);
   const [currentTabType, setCurrentTabType] = useState(SearchSettingTabEnum.searchMode);
 
@@ -90,14 +94,11 @@ const DatasetParamsModal = ({
         searchMode,
         embeddingWeight: embeddingWeight || 0.5,
         usingReRank: !!usingReRank,
-        rerankModelId:
-          resolveClientModelReferenceId({
-            models: reRankModelList,
-            reference: { modelId: rerankModelId, model: rerankModel }
-          }) ??
-          (rerankModelId === undefined && !rerankModel
-            ? defaultModels?.rerank?.modelId
-            : undefined),
+        // 只恢复已保存的引用，不在初始化阶段选择默认模型。
+        rerankModelId: resolveClientModelReferenceId({
+          models: reRankModelList,
+          reference: { modelId: rerankModelId, model: rerankModel }
+        }),
         rerankWeight: rerankWeight || 0.5,
         limit,
         similarity,
@@ -106,8 +107,7 @@ const DatasetParamsModal = ({
           enabled: datasetSearchUsingExtensionQuery,
           modelId: datasetSearchExtensionModelId,
           legacyModel: datasetSearchExtensionModel,
-          models: llmModelList,
-          defaultModelId: defaultModels.llm?.modelId
+          models: llmModelList
         }),
         datasetSearchExtensionBg
       }
@@ -127,13 +127,6 @@ const DatasetParamsModal = ({
   const reRankModelIdWatch = watch('rerankModelId');
   const rerankWeightWatch = watch('rerankWeight');
 
-  useEffect(() => {
-    if (reRankModelIdWatch === undefined && rerankModel) {
-      const legacyModel = reRankModelList.find((item) => item.model === rerankModel);
-      if (legacyModel?.modelId) setValue('rerankModelId', legacyModel.modelId);
-    }
-  }, [reRankModelIdWatch, reRankModelList, rerankModel, setValue]);
-
   const showSimilarity = useMemo(() => {
     if (similarity === undefined) return false;
     if (usingReRankWatch) return true;
@@ -150,8 +143,7 @@ const DatasetParamsModal = ({
       enabled: datasetSearchUsingCfrForm,
       modelId: queryExtensionModelId,
       legacyModel: datasetSearchExtensionModel,
-      models: llmModelList,
-      defaultModelId: defaultModels.llm?.modelId
+      models: llmModelList
     });
     if (modelId !== queryExtensionModelId) {
       setValue('datasetSearchExtensionModelId', modelId);
@@ -160,7 +152,6 @@ const DatasetParamsModal = ({
     llmModelList,
     datasetSearchExtensionModel,
     datasetSearchUsingCfrForm,
-    defaultModels.llm?.modelId,
     queryExtensionModelId,
     setValue
   ]);
@@ -284,7 +275,25 @@ const DatasetParamsModal = ({
                     {t('common:core.ai.Not deploy rerank model')}
                   </Box>
                 ) : (
-                  <Switch {...register('usingReRank')} />
+                  <Switch
+                    {...register('usingReRank')}
+                    onChange={(event) => {
+                      const enabled = event.target.checked;
+                      const wasEnabled = getValues('usingReRank');
+                      setValue('usingReRank', enabled, { shouldDirty: true });
+                      // 只在关闭→开启的用户操作中初始化，打开弹窗和目录更新均不改模型值。
+                      if (!enabled || wasEnabled) return;
+                      const currentModelId = getValues('rerankModelId');
+                      const modelId = getModelInitializationValue({
+                        value: currentModelId ?? rerankModel,
+                        models: reRankModelList,
+                        defaultModelId: defaultModels.rerank?.modelId
+                      });
+                      if (modelId && modelId !== currentModelId) {
+                        setValue('rerankModelId', modelId, { shouldDirty: true });
+                      }
+                    }}
+                  />
                 )}
               </HStack>
               {usingReRankWatch && (
@@ -398,7 +407,27 @@ const DatasetParamsModal = ({
               <FormLabel flex={'1 0 0'}>
                 {t('common:core.dataset.search.Using query extension')}
               </FormLabel>
-              <Switch {...register('datasetSearchUsingExtensionQuery')} />
+              <Switch
+                {...register('datasetSearchUsingExtensionQuery')}
+                onChange={(event) => {
+                  const enabled = event.target.checked;
+                  const wasEnabled = getValues('datasetSearchUsingExtensionQuery');
+                  setValue('datasetSearchUsingExtensionQuery', enabled, { shouldDirty: true });
+                  // 与重排、猜你想问一致：只在关→开时按默认模型、首项的顺序补齐。
+                  if (!enabled || wasEnabled) return;
+                  const currentModelId = getValues('datasetSearchExtensionModelId');
+                  const modelId = getModelInitializationValue({
+                    value: currentModelId ?? datasetSearchExtensionModel,
+                    models: llmModelList,
+                    defaultModelId: defaultModels.llm?.modelId
+                  });
+                  if (modelId && modelId !== currentModelId) {
+                    setValue('datasetSearchExtensionModelId', modelId, {
+                      shouldDirty: true
+                    });
+                  }
+                }}
+              />
             </Flex>
             {datasetSearchUsingCfrForm === true && (
               <>
@@ -448,9 +477,21 @@ const DatasetParamsModal = ({
           {t('common:Close')}
         </Button>
         <Button
-          isDisabled={!!datasetSearchUsingCfrForm && !queryExtensionModelId}
           onClick={() => {
             handleSubmit((values) => {
+              if (
+                values.datasetSearchUsingExtensionQuery &&
+                isEmptyModelValue(values.datasetSearchExtensionModelId)
+              ) {
+                toast({
+                  status: 'warning',
+                  title: t('common:core.workflow.check.model_required_short', {
+                    inputName: t('common:core.module.template.Query extension')
+                  })
+                });
+                setCurrentTabType(SearchSettingTabEnum.queryExtension);
+                return;
+              }
               // 兼容读取旧字符串字段，但新的表单提交只保留稳定 modelId。
               const {
                 rerankModel: _rerankModel,

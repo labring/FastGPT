@@ -1,9 +1,10 @@
 import React from 'react';
-import { Box, Flex, Spinner } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import { useTranslation } from 'next-i18next';
 import type { ModelDisplayDetail } from '@fastgpt/global/openapi/core/ai/model/detail';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
 
 /** 选择器与摘要共用状态展示；只消费详情，不推断默认模型或把网络错误当作下架。 */
 export const ModelStatusLabel = ({
@@ -22,15 +23,9 @@ export const ModelStatusLabel = ({
   avatarSize?: string;
 }) => {
   const { t } = useTranslation();
-  if (!modelId) return <>{emptyLabel ?? t('common:not_model_config')}</>;
+  if (isEmptyModelValue(modelId)) return <>{emptyLabel ?? t('common:not_model_config')}</>;
   if (error) return <Box color="red.500">{t('common:model_detail_load_failed')}</Box>;
-  if (loading || !detail)
-    return (
-      <Flex alignItems="center" gap={2}>
-        <Spinner size="xs" />
-        {t('common:model_loading_label')}
-      </Flex>
-    );
+  if (loading || !detail) return <>{t('common:model_loading_label')}</>;
   if (detail.status === 'deleted') return <Box color="red.500">{t('common:model_delisted')}</Box>;
   const text =
     detail.status === 'forbidden'

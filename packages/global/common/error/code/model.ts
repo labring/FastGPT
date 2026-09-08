@@ -3,13 +3,18 @@ import { i18nT } from '../../i18n/utils';
 
 /* model: 513000 */
 export enum ModelErrEnum {
-  unExist = 'modelUnExist'
+  unExist = 'modelUnExist',
+  unConfigured = 'modelUnConfigured'
 }
 
 const modelErrList = [
   {
     statusText: ModelErrEnum.unExist,
-    message: i18nT('common:model_not_exist')
+    message: i18nT('common:model_delisted')
+  },
+  {
+    statusText: ModelErrEnum.unConfigured,
+    message: i18nT('common:not_model_config')
   }
 ];
 

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Box } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { SkillDetailContext } from '../context';
@@ -24,7 +24,7 @@ import { getSkillEditChatSourceKey } from '@/web/core/chat/utils';
 import { defaultQGConfig, defaultWhisperConfig } from '@fastgpt/global/core/app/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getInitChatInfo } from '@/web/core/chat/api';
-import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
+import { getModelInitializationValue } from '@/web/core/ai/model/selection';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 const fileSelectConfig: AppFileSelectConfigType = {
@@ -50,7 +50,6 @@ const SkillPreview = () => {
   const { defaultModels } = useUserModelStore();
   const { llmModelList } = useUserModelLists();
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
-  const defaultModelId = defaultModels.llm?.modelId || llmModelList[0]?.modelId || '';
   const [proModalOpen, setProModalOpen] = useState(false);
   const selectedModel = useSkillDebugChatStore((state) => state.selectedModel);
   const setSelectedModel = useSkillDebugChatStore((state) => state.setSelectedModel);
@@ -62,16 +61,16 @@ const SkillPreview = () => {
         .map((item) => ({ label: item.name, value: item.modelId })),
     [llmModelList]
   );
-  const fallbackModel = useMemo(() => {
-    const selectedModelId = findClientModelByValue({
+  useEffect(() => {
+    // 父级尚未绑定当前 Skill 的调试会话时，不把默认值写到上一个 Skill 的偏好中。
+    if (!skillId || !chatId) return;
+    const modelId = getModelInitializationValue({
+      value: selectedModel,
       models: llmModelList,
-      value: selectedModel
-    })?.modelId;
-    if (selectedModelId) return selectedModelId;
-    if (selectedModel) return selectedModel;
-    if (defaultModelId) return defaultModelId;
-    return llmModelList[0]?.modelId || '';
-  }, [defaultModelId, llmModelList, selectedModel]);
+      defaultModelId: defaultModels.llm?.modelId
+    });
+    if (modelId && modelId !== selectedModel) setSelectedModel(modelId);
+  }, [chatId, defaultModels.llm?.modelId, llmModelList, selectedModel, setSelectedModel, skillId]);
 
   const isReady = sandboxState === 'ready';
   const sourceKey = useMemo(() => getSkillEditChatSourceKey(skillId), [skillId]);
@@ -101,7 +100,7 @@ const SkillPreview = () => {
               questionGuide: {
                 ...defaultQGConfig,
                 open: true,
-                modelId: fallbackModel
+                modelId: selectedModel
               },
               whisperConfig: {
                 ...defaultWhisperConfig,
@@ -139,7 +138,7 @@ const SkillPreview = () => {
     },
     {
       manual: false,
-      refreshDeps: [skillId, chatId, sourceKey, fallbackModel],
+      refreshDeps: [skillId, chatId, sourceKey, selectedModel],
       errorToast: ''
     }
   );
@@ -153,12 +152,12 @@ const SkillPreview = () => {
         size={'sm'}
         bg={'myGray.50'}
         rounded={'10px'}
-        value={fallbackModel}
+        value={selectedModel}
         list={modelSelectList}
         onChange={setSelectedModel}
       />
     );
-  }, [fallbackModel, modelSelectList, setSelectedModel]);
+  }, [selectedModel, modelSelectList, setSelectedModel]);
 
   const onStartChat = useMemoizedFn(
     async ({ messages, responseChatItemId, controller, generatingMessage }: StartChatFnProps) => {
@@ -169,7 +168,7 @@ const SkillPreview = () => {
           skillId,
           chatId,
           messages: histories,
-          modelId: fallbackModel,
+          modelId: selectedModel,
           responseChatItemId
         },
         onMessage: generatingMessage,

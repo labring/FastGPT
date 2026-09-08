@@ -59,8 +59,9 @@ export const CreateDatasetBodySchema = z.object({
     description: '知识库 Agent 模型标识，不传则使用默认模型',
     deprecated: true
   }),
-  vlmModelId: z.string().optional().meta({
-    description: '视觉语言模型 ID'
+  vlmModelId: z.string().nullable().optional().meta({
+    description: '视觉语言模型 ID；未传沿用默认，null 或空字符串表示不设置',
+    example: ''
   }),
   vlmModel: z.string().optional().meta({
     example: 'gpt-4o',
@@ -105,7 +106,10 @@ export const CreateDatasetWithFilesBodySchema = z.object({
       }),
       vectorModelId: z.string().optional().meta({ description: '向量模型 ID' }),
       agentModelId: z.string().optional().meta({ description: 'Agent 模型 ID' }),
-      vlmModelId: z.string().optional().meta({ description: '视觉语言模型 ID' })
+      vlmModelId: z.string().nullable().optional().meta({
+        description: '视觉语言模型 ID；未传沿用默认，null 或空字符串表示不设置',
+        example: ''
+      })
     })
     .meta({ description: '知识库参数' }),
   files: z
@@ -381,11 +385,12 @@ export const UpdateDatasetBodySchema = z.object({
     example: '这是一个用于存储产品文档的知识库',
     description: '知识库简介'
   }),
-  agentModelId: z.string().optional().meta({
-    description: '知识库 Agent 模型 ID'
+  agentModelId: z.string().trim().min(1, '文本理解模型不可清空').optional().meta({
+    description: '知识库 Agent 模型 ID；未传不修改，不允许清空'
   }),
-  vlmModelId: z.string().optional().meta({
-    description: '视觉语言模型 ID'
+  vlmModelId: z.string().trim().nullable().optional().meta({
+    description: '视觉语言模型 ID；未传不修改，null 或空字符串表示清空',
+    example: null
   }),
   websiteConfig: z
     .object({

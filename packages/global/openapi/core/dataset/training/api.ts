@@ -66,7 +66,7 @@ export const RebuildEmbeddingBodySchema = z.object({
     example: '68ad85a7463006c963799a05',
     description: '知识库 ID'
   }),
-  vectorModelId: z.string().meta({
+  vectorModelId: z.string().trim().min(1, '索引模型不可清空').meta({
     description: '新的向量模型 ID，不能与当前模型相同'
   })
 });

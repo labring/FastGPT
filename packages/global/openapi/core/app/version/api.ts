@@ -77,7 +77,8 @@ export const PublishAppBodySchema = z.object({
   }),
   isPublish: BoolSchema.optional().meta({
     example: true,
-    description: '是否将该版本发布为线上运行版本'
+    description:
+      '是否发布为线上运行版本；重排、问题优化、猜你想问和模型语音播放关闭时不校验模型，开启且未填模型时补默认值，已填模型不可用时拒绝发布'
   }),
   versionName: z.string().optional().meta({
     example: '正式发布版',

@@ -10,6 +10,7 @@ import {
   Switch
 } from '@chakra-ui/react';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import { getModelQuoteTokenLimit } from '@/web/core/ai/model/selection';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 import dynamic from 'next/dynamic';
@@ -38,6 +39,7 @@ import SandboxConfigButton from '../../components/SandboxConfigButton';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import DatasetCard from '@/components/core/app/DatasetCard';
 import { useWelcomeTextFoldState } from '@/components/core/app/useAppEditorUIState';
+import { useInitializeQueryExtensionModel } from '../FormComponent/useInitializeQueryExtensionModel';
 import {
   findClientModelByReference,
   resolveClientModelReferenceId
@@ -119,18 +121,24 @@ const EditForm = ({
     [appForm.chatConfig.variables, t]
   );
 
-  const { llmModelList, reRankModelList } = useUserModelLists();
+  const {
+    llmModelList,
+    reRankModelList,
+    loaded: modelsLoaded,
+    loading: modelsLoading,
+    error: modelLoadError
+  } = useUserModelLists();
+  const configuredModel = llmModelList.find(
+    (model) => model.modelId === appForm.aiSettings.modelId
+  );
   const selectedModel =
-    findClientModelByReference({
-      models: llmModelList,
-      reference: appForm.aiSettings
-    }) ??
+    findClientModelByReference({ models: llmModelList, reference: appForm.aiSettings }) ??
     (appForm.aiSettings.modelId === undefined && !appForm.aiSettings.model
       ? llmModelList[0]
       : undefined);
   const tokenLimit = useMemo(() => {
-    return selectedModel?.config.quoteMaxToken ?? 3000;
-  }, [selectedModel?.config.quoteMaxToken]);
+    return getModelQuoteTokenLimit(configuredModel);
+  }, [configuredModel]);
 
   const updateWelcomeText = useCallback(
     (value: string) => {
@@ -184,19 +192,13 @@ const EditForm = ({
         !state.dataset.rerankModel
           ? defaultModels.rerank?.modelId
           : undefined);
-      const datasetSearchExtensionModelId =
-        resolveClientModelReferenceId({
-          models: llmModelList,
-          reference: {
-            modelId: state.dataset.datasetSearchExtensionModelId,
-            model: state.dataset.datasetSearchExtensionModel
-          }
-        }) ??
-        (state.dataset.datasetSearchUsingExtensionQuery &&
-        state.dataset.datasetSearchExtensionModelId === undefined &&
-        !state.dataset.datasetSearchExtensionModel
-          ? defaultModels.llm?.modelId
-          : undefined);
+      const datasetSearchExtensionModelId = resolveClientModelReferenceId({
+        models: llmModelList,
+        reference: {
+          modelId: state.dataset.datasetSearchExtensionModelId,
+          model: state.dataset.datasetSearchExtensionModel
+        }
+      });
 
       if (
         modelId === state.aiSettings.modelId &&
@@ -225,6 +227,13 @@ const EditForm = ({
     reRankModelList,
     setAppForm
   ]);
+
+  useInitializeQueryExtensionModel({
+    appId: appDetail._id,
+    ready: modelsLoaded && !modelsLoading && !modelLoadError,
+    defaultModelId: defaultModels.llm?.modelId,
+    setAppForm
+  });
 
   const OptimizerPopverComponent = useCallback(
     ({ iconButtonStyle }: { iconButtonStyle: Record<string, any> }) => {

@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import * as modelGetters from '../../../../../core/ai/model';
 
 const {
   defaultSearchDatasetDataMock,
@@ -40,6 +43,8 @@ vi.mock('@fastgpt/service/core/dataset/utils', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
+  getDefaultLLMModelData: vi.fn(),
+  getDefaultRerankModelData: vi.fn(),
   getEmbeddingModelData: vi.fn(() => ({
     modelId: '68ad85a7463006c963799a01',
     model: 'embedding-model',
@@ -82,6 +87,81 @@ vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
 import { dispatchDatasetSearch } from '../../../../../core/workflow/dispatch/dataset/search';
 
 describe('dispatchDatasetSearch', () => {
+  const runSearch = (params: Record<string, unknown> = {}) =>
+    dispatchDatasetSearch({
+      runningAppInfo: { teamId: 'team_1' },
+      runningUserInfo: { tmbId: 'tmb_1' },
+      externalProvider: {},
+      histories: [],
+      node: { name: 'Dataset Search' },
+      params: { datasets: [{ datasetId: 'dataset_1' }], userChatInput: 'question', ...params },
+      usagePush: usagePushMock
+    } as any);
+
+  it('executes and bills the fallback auxiliary models when configured models are unavailable', async () => {
+    vi.mocked(modelGetters.getLLMModelData).mockImplementationOnce(() => {
+      throw new UserError(ModelErrEnum.unExist);
+    });
+    vi.mocked(modelGetters.getRerankModelData).mockImplementationOnce(() => {
+      throw new UserError(ModelErrEnum.unConfigured);
+    });
+    vi.mocked(modelGetters.getDefaultLLMModelData).mockReturnValueOnce({
+      modelId: 'fallback-llm',
+      model: 'fallback-llm',
+      name: 'Fallback LLM',
+      type: 'llm',
+      config: {}
+    } as any);
+    vi.mocked(modelGetters.getDefaultRerankModelData).mockReturnValueOnce({
+      modelId: 'fallback-rerank',
+      model: 'fallback-rerank',
+      name: 'Fallback Rerank',
+      type: 'rerank',
+      config: {}
+    } as any);
+    defaultSearchDatasetDataMock.mockResolvedValue({
+      searchRes: [],
+      embeddingTokens: 0,
+      reRankInputTokens: 10,
+      usingReRank: true,
+      queryExtensionResult: {
+        inputTokens: 3,
+        outputTokens: 2,
+        embeddingTokens: 0,
+        requestId: 'fallback-request',
+        seconds: 0,
+        query: 'expanded'
+      }
+    });
+    const result = await runSearch({
+      usingReRank: true,
+      datasetSearchUsingExtensionQuery: true,
+      datasetSearchExtensionModelId: 'deleted'
+    });
+    expect(result.error).toBeUndefined();
+    expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rerankModel: expect.objectContaining({ modelId: 'fallback-rerank' }),
+        datasetSearchExtensionModel: expect.objectContaining({ modelId: 'fallback-llm' })
+      })
+    );
+    expect(usagePushMock).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ modelId: 'fallback-rerank' }),
+        expect.objectContaining({ modelId: 'fallback-llm' })
+      ])
+    );
+  });
+
+  it('still fails immediately when the embedding model is unavailable', async () => {
+    vi.mocked(modelGetters.getEmbeddingModelData).mockImplementationOnce(() => {
+      throw new UserError(ModelErrEnum.unExist);
+    });
+    const result = await runSearch({ usingReRank: true, datasetSearchUsingExtensionQuery: true });
+    expect(result.error).toBeDefined();
+    expect(defaultSearchDatasetDataMock).not.toHaveBeenCalled();
+    expect(modelGetters.getDefaultLLMModelData).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     getDatasetSearchVlmModelMock.mockResolvedValue({

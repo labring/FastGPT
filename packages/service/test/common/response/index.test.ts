@@ -6,6 +6,7 @@ import { ERROR_ENUM, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCo
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 
 vi.unmock('@fastgpt/service/common/response');
 
@@ -89,6 +90,47 @@ describe('processError zod logging', () => {
 });
 
 describe('processError HTTP status mapping', () => {
+  it('keeps model codes stable while returning specific messages in JSON and SSE', () => {
+    const error = new UserError(ModelErrEnum.unExist, 'Model is disabled: GPT-5');
+    const processed = processError({ error });
+    expect(processed).toMatchObject({
+      code: 513000,
+      statusText: ModelErrEnum.unExist,
+      message: 'Model is disabled: GPT-5'
+    });
+    expect(JSON.parse(getSseErrorResponse(error).data)).toMatchObject({
+      code: 513000,
+      statusText: ModelErrEnum.unExist,
+      message: 'Model is disabled: GPT-5'
+    });
+    const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Parameters<
+      typeof jsonRes
+    >[0];
+    jsonRes(res, { error });
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 513000,
+        message: 'Model is disabled: GPT-5',
+        errorType: 'UserError'
+      })
+    );
+  });
+  it('does not trust custom display fields on non-business errors and masks trusted messages', () => {
+    expect(
+      processError({
+        error: Object.assign(new Error(ModelErrEnum.unExist), { displayMessage: 'override' })
+      }).message
+    ).toBe(ERROR_RESPONSE[ModelErrEnum.unExist].message);
+    expect(
+      processError({
+        error: new UserError(
+          ModelErrEnum.unExist,
+          'Model type mismatch: https://private.example/model'
+        )
+      }).message
+    ).toBe('Model type mismatch: https://xxx');
+    expect(processError({ error: new UserError('custom', '具体提示') }).message).toBe('具体提示');
+  });
   it('maps a missing file to HTTP 404', () => {
     const processed = processError({
       error: CommonErrEnum.fileNotFound

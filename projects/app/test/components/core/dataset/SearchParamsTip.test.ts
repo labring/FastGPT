@@ -44,7 +44,7 @@ vi.mock('@chakra-ui/react', () => {
   return {
     Flex: Element,
     Box: Element,
-    Spinner: () => null,
+    Spinner: () => React.createElement('span', { 'data-spinner': true }),
     Table: Element,
     Thead: Element,
     Tbody: Element,
@@ -87,6 +87,7 @@ describe('SearchParamsTip', () => {
   it('does not confuse loading or a disabled feature with delisted state', () => {
     mocks.loading = true;
     expect(render('active')).toContain('common:model_loading_label');
+    expect(render('active')).not.toContain('data-spinner');
     expect(render('active')).not.toContain('该模型已下架');
     expect(render('active', false)).toContain('❌');
   });

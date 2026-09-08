@@ -11,18 +11,48 @@ import type {
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
 
 const modelNotFound = () => new UserError(ModelErrEnum.unExist);
 
 /**
- * 按稳定 ID 或旧 model 标识解析模型。只要传入 modelId 就禁止降级到 model，避免错误 ID
+ * 校验模型状态、类型及可选视觉能力。保留 modelUnExist 机器码兼容队列降级，
+ * 通过独立展示消息区分停用与类型错误；名称来自实际模型记录，不使用用户输入猜测。
+ */
+export const assertModelAvailable = ({
+  model,
+  type,
+  vision = false
+}: {
+  model?: Pick<SystemModelDataType, 'name' | 'model' | 'type' | 'isActive' | 'config'>;
+  type: ModelTypeEnum;
+  vision?: boolean;
+}) => {
+  if (!model) throw modelNotFound();
+  const name = model.name || model.model;
+  if (model.type !== type) {
+    throw new UserError(ModelErrEnum.unExist, `Model type mismatch: ${name}`);
+  }
+  if (!model.isActive) {
+    throw new UserError(ModelErrEnum.unExist, `Model is disabled: ${name}`);
+  }
+  if (
+    vision &&
+    !(model.type === ModelTypeEnum.llm && 'vision' in model.config && model.config.vision)
+  ) {
+    throw new UserError(ModelErrEnum.unExist, `Model type mismatch: ${name}`);
+  }
+};
+
+/**
+ * 按稳定 ID 或旧 model 标识解析模型。非空 modelId 禁止降级到 model，避免错误 ID
  * 静默命中另一个模型；不兼容裸字符串或展示名称 name。
  */
 const resolveModelReference = (reference: ModelReferenceType): SystemModelDataType | undefined => {
-  if (reference.modelId !== undefined) {
+  if (!isEmptyModelValue(reference.modelId)) {
     return global.systemModelMap?.get(`id:${reference.modelId}`);
   }
-  if (reference.model) {
+  if (!isEmptyModelValue(reference.model)) {
     return global.systemModelMap?.get(`model:${reference.model}`);
   }
 };
@@ -31,20 +61,23 @@ const getTypedModelData = <T extends SystemModelDataType>(
   reference: ModelReferenceType,
   type: T['type']
 ): T => {
+  if (isEmptyModelValue(getModelReferenceValue(reference))) {
+    throw new UserError(ModelErrEnum.unConfigured);
+  }
   const model = resolveModelReference(reference);
-  if (!model || model.type !== type || !model.isActive) throw modelNotFound();
+  assertModelAvailable({ model, type });
   return model as T;
 };
 
 /**
- * 解析允许缺省的模型引用。只有 modelId 与旧 model 同时为空时返回 undefined；一旦提供
+ * 解析允许缺省的模型引用。modelId 与旧 model 同时为空时返回 undefined；一旦提供
  * 任一引用，仍交给严格 getter 校验模型是否存在、启用且类型正确。
  */
 const getOptionalModelData = <T extends SystemModelDataType>(
   reference: ModelReferenceType,
   getter: (reference: ModelReferenceType) => T
 ): T | undefined => {
-  if (reference.modelId === undefined && reference.model === undefined) return;
+  if (isEmptyModelValue(getModelReferenceValue(reference))) return;
   return getter(reference);
 };
 
@@ -74,7 +107,8 @@ const getDefaultModelData = <T extends SystemModelDataType>(
   model: SystemModelDataType | undefined,
   type: T['type']
 ): T => {
-  if (!model || model.type !== type || !model.isActive) throw modelNotFound();
+  if (!model) throw new UserError(ModelErrEnum.unConfigured);
+  assertModelAvailable({ model, type });
   return model as T;
 };
 
@@ -106,7 +140,7 @@ export const getSystemDefaultModelIds = (): Partial<Record<ModelTypeEnum, string
 /** 解析可用于视觉请求的规范化 LLM 配置。 */
 export const getVlmModelData = (reference: ModelReferenceType): LLMSystemModelDataType => {
   const result = getLLMModelData(reference);
-  if (!result.config.vision) throw modelNotFound();
+  assertModelAvailable({ model: result, type: ModelTypeEnum.llm, vision: true });
   return result;
 };
 

@@ -14,7 +14,6 @@ import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 import MultimodalTag from '@/components/core/ai/MultimodelTag';
 import {
   isModelAllowedByValues,
-  resolveModelSelectorDefault,
   resolveModelSelectorDisabled,
   resolveModelSelectorProviders,
   resolveModelSelectorSelection
@@ -24,6 +23,8 @@ import { ModelStatusLabel } from './ModelStatusLabel';
 import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { getDefaultModelSelection } from '@/web/core/ai/model/selection';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
 
 type Props = Omit<SelectProps, 'list'> & {
   modelType: ModelTypeEnum;
@@ -121,10 +122,11 @@ const AIModelSelector = ({
     modelList,
     loading,
     error: catalogError
-  } = useUserModelLists({ outLinkAuthData, enabled: isOpen });
+  } = useUserModelLists({ outLinkAuthData, autoLoadCatalog: isOpen });
   const getModelProvider = useUserModelStore((state) => state.getModelProvider);
   const getModelProviders = useUserModelStore((state) => state.getModelProviders);
   const defaultModelId = useUserModelStore((state) => state.defaultModelIds[modelType]);
+  const catalogVersion = useUserModelStore((state) => state.version);
   const avatarSize = useMemo(() => getModelAvatarSize(props.size), [props.size]);
   const allowedValues = useMemo(
     () =>
@@ -142,7 +144,7 @@ const AIModelSelector = ({
       ),
     [allowedValues, modelList, modelType]
   );
-  const currentValue = props.value ? String(props.value) : '';
+  const currentValue = isEmptyModelValue(props.value) ? '' : String(props.value);
   const selection = useMemo(
     () =>
       resolveModelSelectorSelection({
@@ -153,8 +155,34 @@ const AIModelSelector = ({
   );
   const selectedModel = selection?.model;
   const detailState = useModelDetail({ modelId: currentValue, outLinkAuthData });
+  const { refresh: refreshDetail, setFromCatalog } = detailState;
   const normalizedSelectionRef = useRef<string>();
-  const autoSelectedDefaultRef = useRef<string>();
+  const autoSelectionCheckedRef = useRef(false);
+  const checkedCatalogRef = useRef<string>();
+
+  // 目录已确认当前模型时直接复用；只有目录缺少当前 ID 时才查询详情区分异常状态。
+  useEffect(() => {
+    if (!isOpen || loading || catalogError) {
+      checkedCatalogRef.current = undefined;
+      return;
+    }
+    if (!currentValue) return;
+    const key = JSON.stringify([catalogVersion, currentValue]);
+    if (checkedCatalogRef.current === key) return;
+    checkedCatalogRef.current = key;
+    const currentModel = modelList.find((model) => model.modelId === currentValue);
+    if (currentModel) setFromCatalog(currentModel);
+    else refreshDetail();
+  }, [
+    catalogError,
+    catalogVersion,
+    currentValue,
+    refreshDetail,
+    setFromCatalog,
+    isOpen,
+    loading,
+    modelList
+  ]);
 
   // 完整目录加载后自动把旧 model 值写回 modelId，选择器对外只输出稳定 ID。
   useEffect(() => {
@@ -166,28 +194,33 @@ const AIModelSelector = ({
     const normalizationKey = `${currentValue}:${selection.normalizedValue}`;
     if (normalizedSelectionRef.current === normalizationKey) return;
     normalizedSelectionRef.current = normalizationKey;
+    setFromCatalog(selection.model);
     onChange?.(selection.normalizedValue);
-  }, [catalogError, currentValue, isOpen, loading, onChange, selection]);
+  }, [catalogError, currentValue, setFromCatalog, isOpen, loading, onChange, selection]);
 
   const defaultModel = useMemo(
-    () => resolveModelSelectorDefault({ models, defaultModelId }),
+    () => getDefaultModelSelection({ models, defaultModelId }),
     [defaultModelId, models]
   );
 
   // 仅为明确启用该能力的业务表单补齐空值；历史失效值必须保留并显示不可用状态。
   useEffect(() => {
-    if (!isOpen || !autoSelectDefault || loading || catalogError || currentValue || !defaultModel)
+    if (!isOpen) {
+      autoSelectionCheckedRef.current = false;
       return;
-
-    const defaultKey = `${modelType}:${defaultModel.modelId}`;
-    if (autoSelectedDefaultRef.current === defaultKey) return;
-    autoSelectedDefaultRef.current = defaultKey;
+    }
+    // 每次关→开只检查一次；等待这次目录加载完成，但不因面板内值/默认模型变化重复补齐。
+    if (!autoSelectDefault || loading || catalogError || autoSelectionCheckedRef.current) return;
+    autoSelectionCheckedRef.current = true;
+    if (currentValue || !defaultModel) return;
+    setFromCatalog(defaultModel);
     onChange?.(defaultModel.modelId);
   }, [
     autoSelectDefault,
     catalogError,
     currentValue,
     defaultModel,
+    setFromCatalog,
     isOpen,
     loading,
     modelType,
@@ -242,6 +275,7 @@ const AIModelSelector = ({
         />
       }
       list={loading || catalogError ? [] : selectorList}
+      isLoading={isOpen && loading}
       emptyTip={
         loading
           ? t('common:model_loading_label')
@@ -251,7 +285,6 @@ const AIModelSelector = ({
       }
       onOpenFunc={() => {
         setIsOpen(true);
-        detailState.refresh();
       }}
       onCloseFunc={() => setIsOpen(false)}
       value={
@@ -263,9 +296,7 @@ const AIModelSelector = ({
             ? [UNSET_MODEL_VALUE]
             : []
       }
-      placeholder={
-        loading ? t('common:model_loading_label') : (placeholder ?? t('common:not_model_config'))
-      }
+      placeholder={placeholder ?? t('common:not_model_config')}
       changeOnEverySelect
       rowMinWidth="160px"
       onSelect={(values) => {
@@ -274,15 +305,15 @@ const AIModelSelector = ({
           return;
         }
         const value = grouped ? values[1] : values[0];
-        if (value !== undefined) onChange?.(value);
+        if (value === undefined) return;
+        const model = models.find((item) => item.modelId === value);
+        if (model) setFromCatalog(model);
+        onChange?.(value);
       }}
       ButtonProps={{
         ...props,
-        isLoading: isOpen && loading,
-        loadingText: t('common:model_loading_label'),
         isDisabled: resolveModelSelectorDisabled({
           isDisabled: props.isDisabled,
-          loading,
           disableTip
         }),
         h: '40px',

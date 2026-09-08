@@ -18,6 +18,7 @@ export const getErrText = (err: any, def = '', lang?: localeType): any => {
     return (
       e.system_error_text ||
       e.errorText ||
+      (typeof e.displayMessage === 'string' ? e.displayMessage : undefined) ||
       parseI18nError(e.response?.data?.error?.reason) ||
       parseI18nError(e.response?.error?.reason) ||
       parseI18nError(e.error?.reason) ||
@@ -56,7 +57,11 @@ export const getErrResponse = (err: any): any => {
 };
 
 export class UserError extends Error {
-  constructor(message: string) {
+  /** message 保留业务机器码供旧调用方判断；displayMessage 可携带含资源名称的具体提示。 */
+  constructor(
+    message: string,
+    readonly displayMessage?: string
+  ) {
     super(message);
     this.name = 'UserError';
   }

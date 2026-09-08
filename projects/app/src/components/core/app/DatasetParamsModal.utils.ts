@@ -1,28 +1,25 @@
 import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { resolveClientModelReferenceId } from '@/web/core/ai/model/modelReference';
-import { resolveModelSelectorDefault } from '@/components/Select/AIModelSelector.utils';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
 
 /**
- * 问题优化开启时为真正的空配置选择可用默认模型，否则取列表首项；返回值必须写入表单。
- * 保留非空失效 ID，旧名称只做精确转换，不静默替换用户原有模型；关闭时清空 ID。
+ * 问题优化开启时保留实际选择；空配置保持未配置，不因打开弹窗或目录加载而补默认值。
+ * 保留非空失效 ID，旧名称只做精确转换；关闭时清空 ID，由节点校验检查未完成配置。
  */
 export const resolveQueryExtensionModelId = ({
   enabled,
   modelId,
   legacyModel,
-  models,
-  defaultModelId
+  models
 }: {
   enabled?: boolean;
   modelId?: string | null;
   legacyModel?: string;
   models: Pick<MyLLMModelItemType, 'modelId' | 'model'>[];
-  defaultModelId?: string;
 }) => {
   if (!enabled) return;
-  if (modelId) return modelId;
-  if (legacyModel) {
+  if (!isEmptyModelValue(modelId)) return modelId ?? undefined;
+  if (!isEmptyModelValue(legacyModel)) {
     return resolveClientModelReferenceId({ models, reference: { model: legacyModel } });
   }
-  return resolveModelSelectorDefault({ models, defaultModelId })?.modelId;
 };

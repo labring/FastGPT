@@ -83,8 +83,21 @@ const OpenAPIAppQGConfigSchema = z.object({
 });
 
 // 上线回填完成前，客户端仍可能携带旧 model；接口接收后由业务层按 modelId 优先解析。
-export const AppQuestionGuideInputSchema = OpenAPIAppQGConfigSchema.strict();
-export const AppTTSConfigInputSchema = AppTTSConfigTypeSchema.strict();
+// 可选模型的 null 表示未填写；在请求边界归一化，存储结构仍只保存 string/undefined。
+const OptionalAppModelIdInputSchema = z
+  .string()
+  .nullish()
+  .transform((value) => value ?? undefined);
+export const AppQuestionGuideInputSchema = OpenAPIAppQGConfigSchema.extend({
+  modelId: OptionalAppModelIdInputSchema.meta({
+    description: '猜你想问模型 ID；开启但未填写时，发布使用默认 LLM'
+  })
+}).strict();
+export const AppTTSConfigInputSchema = AppTTSConfigTypeSchema.extend({
+  modelId: OptionalAppModelIdInputSchema.meta({
+    description: '语音播放模型 ID；模型播报开启但未填写时，发布使用默认 TTS'
+  })
+}).strict();
 
 const OpenAPIVariableItemSchema = VariableItemTypeSchema.omit({
   list: true,

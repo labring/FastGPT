@@ -6,6 +6,17 @@ import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 describe('getErrText', () => {
   it('maps the model domain error code to the user-facing message', () => {
     expect(getErrText(ModelErrEnum.unExist)).toBe(ERROR_RESPONSE[ModelErrEnum.unExist].message);
+    expect(getErrText(ModelErrEnum.unExist)).toBe('common:model_delisted');
+  });
+  it('preserves the machine code while exposing and sanitizing a specific model message', () => {
+    const error = new UserError(ModelErrEnum.unExist, 'Model is disabled: GPT-5');
+    expect(error.message).toBe(ModelErrEnum.unExist);
+    expect(getErrText(error)).toBe('Model is disabled: GPT-5');
+    expect(
+      getErrText(
+        new UserError(ModelErrEnum.unExist, 'Model type mismatch: https://private.example/model')
+      )
+    ).toBe('Model type mismatch: https://xxx');
   });
 
   it('should return mapped message for error enum', () => {

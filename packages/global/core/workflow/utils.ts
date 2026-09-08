@@ -20,6 +20,7 @@ import {
   type ReferenceItemValueType
 } from './type/io';
 import type { NodeToolConfigType, StoreNodeItemType } from './type/node';
+import { getModelReferenceValue, isEmptyModelValue } from '../ai/modelReference';
 import { ToolSetToolSummarySchema } from '../app/tool/toolSet/type';
 import type { AppChatConfigType, AppSchemaType, AppWelcomeConfigType } from '../app/type';
 import type { VariableItemType } from '../app/variable/type';
@@ -625,6 +626,7 @@ export const isWorkflowSystemModelInput = ({
  * 动态引用只迁移到 canonical key，不做静态校验。静态引用优先按 modelId、其次按 legacy model
  * 精确解析；无法解析时由调用方按保存、创建或发布场景选择保留、回退或校验策略。回退优先使用
  * 有效的系统默认同类型模型，再使用第一个 active 同类型模型。该函数不承担成员权限判断。
+ * 发布时，重排、问题优化、猜你想问和模型播报关闭则原样跳过；开启且为空才补默认 ID。
  */
 export const formatModels = ({
   nodes,
@@ -640,6 +642,16 @@ export const formatModels = ({
   modelReferencePolicy: 'preserve' | 'fallback' | 'validate' | 'import';
 }) => {
   const missingModels = new Set<string>();
+  let hasUnconfiguredModels = false;
+  /** 空模型和不可用模型分开提示，避免生成“未配置 模型已停用”。 */
+  const throwModelValidationErrors = () => {
+    const messages = [
+      ...(hasUnconfiguredModels ? ['存在未配置的模型，请选择模型'] : []),
+      ...(missingModels.size ? [`${Array.from(missingModels).join('、')} 模型不可用`] : [])
+    ];
+    if (modelReferencePolicy === 'validate' && messages.length)
+      throw new Error(messages.join('；'));
+  };
   const getFallbackModelId = (type: ModelTypeEnum) => {
     const defaultModelId = defaultModelIds[type];
     const defaultModel = models.find(
@@ -655,28 +667,31 @@ export const formatModels = ({
     modelId,
     model,
     type,
-    featureEnabled
+    featureEnabled,
+    defaultWhenEmpty = false
   }: {
     modelId?: unknown;
     model?: unknown;
     type: ModelTypeEnum;
     featureEnabled: boolean;
+    defaultWhenEmpty?: boolean;
   }) => {
-    const matchedModelById =
-      modelId !== undefined
-        ? models.find((item) => item.modelId === String(modelId) && item.type === type)
-        : undefined;
+    const matchedModelById = !isEmptyModelValue(modelId)
+      ? models.find((item) => item.modelId === String(modelId) && item.type === type)
+      : undefined;
     const matchedModelByName =
       typeof model === 'string'
         ? models.find((item) => item.model === model && item.type === type)
         : undefined;
     const matchedModel =
       matchedModelById ??
-      (modelId === undefined || modelReferencePolicy === 'import' ? matchedModelByName : undefined);
+      (isEmptyModelValue(modelId) || modelReferencePolicy === 'import'
+        ? matchedModelByName
+        : undefined);
     if (matchedModel) return matchedModel.modelId;
-    // 草稿必须保留用户现场；canonical 字段存在时绝不能用 legacy 字段隐式修复。
+    // 草稿保留非空 canonical 引用，失效 ID 不得用 legacy 字段隐式修复。
     if (modelReferencePolicy === 'preserve') {
-      return modelId !== undefined ? modelId : model;
+      return getModelReferenceValue({ modelId, model });
     }
     // 导入配置中的 modelId 可能来自其他环境；名称也无法解析时清空值。
     // 调用方仍保留 canonical modelId 字段或 input 结构，便于选择器回填有效模型。
@@ -687,15 +702,14 @@ export const formatModels = ({
       return getFallbackModelId(type);
     }
 
-    const label =
-      modelId !== undefined
-        ? String(modelId).length > 0
-          ? String(modelId)
-          : '未配置'
-        : typeof model === 'string' && model.length > 0
-          ? model
-          : '未配置';
-    missingModels.add(label);
+    const value = getModelReferenceValue({ modelId, model });
+    // 发布时只有明确允许默认值的可选功能可以补空值，失效的非空引用仍必须报错。
+    if (defaultWhenEmpty && isEmptyModelValue(value)) {
+      const fallbackModelId = getFallbackModelId(type);
+      if (fallbackModelId) return fallbackModelId;
+    }
+    if (isEmptyModelValue(value)) hasUnconfiguredModels = true;
+    else missingModels.add(String(value));
     return '';
   };
   const formatChatModelReference = ({
@@ -708,7 +722,13 @@ export const formatModels = ({
     featureEnabled: boolean;
   }) => {
     if (!config) return;
-    if (config.modelId === undefined && config.model === undefined) return;
+    if (modelReferencePolicy === 'validate' && !featureEnabled) return;
+    if (
+      config.modelId === undefined &&
+      config.model === undefined &&
+      modelReferencePolicy !== 'validate'
+    )
+      return;
     if (isDynamicModelValue(config.modelId)) {
       delete config.model;
       return;
@@ -723,7 +743,8 @@ export const formatModels = ({
       modelId: config.modelId,
       model: config.model,
       type,
-      featureEnabled
+      featureEnabled,
+      defaultWhenEmpty: true
     });
     delete config.model;
   };
@@ -739,9 +760,7 @@ export const formatModels = ({
   });
 
   if (!nodes) {
-    if (modelReferencePolicy === 'validate' && missingModels.size > 0) {
-      throw new Error(`${Array.from(missingModels).join('、')} 模型已停用`);
-    }
+    throwModelValidationErrors();
     return nodes;
   }
 
@@ -766,7 +785,8 @@ export const formatModels = ({
   }) => {
     const modelId = config[modelIdKey];
     const model = config[legacyKey];
-    if (modelId === undefined && model === undefined) return;
+    if (modelReferencePolicy === 'validate' && !featureEnabled) return;
+    if (modelId === undefined && model === undefined && modelReferencePolicy !== 'validate') return;
     if (isDynamicModelValue(modelId)) {
       delete config[legacyKey];
       return;
@@ -781,7 +801,8 @@ export const formatModels = ({
       modelId,
       model,
       type,
-      featureEnabled
+      featureEnabled,
+      defaultWhenEmpty: true
     });
     delete config[legacyKey];
   };
@@ -791,10 +812,10 @@ export const formatModels = ({
       const legacyInput = node.inputs.find((input) => input.key === legacyKey);
       const modelIdInput = node.inputs.find((input) => input.key === modelIdKey);
 
-      const systemModelInput = modelIdInput ?? legacyInput;
-      if (!systemModelInput || !isWorkflowSystemModelInput({ node, input: systemModelInput })) {
-        continue;
-      }
+      let systemModelInput = modelIdInput ?? legacyInput;
+      const defaultWhenEmpty =
+        legacyKey === NodeInputKeyEnum.datasetSearchRerankModel ||
+        legacyKey === NodeInputKeyEnum.datasetSearchExtensionModel;
 
       const type =
         legacyKey === NodeInputKeyEnum.datasetSearchRerankModel
@@ -816,6 +837,19 @@ export const formatModels = ({
         return Boolean(node.inputs.find((input) => input.key === featureKey)?.value);
       })();
 
+      if (modelReferencePolicy === 'validate' && !featureEnabled) continue;
+      // 旧节点可能连模型 input 都没有；发布时也应把默认 ID 实体化，而非只允许空值通过。
+      if (!systemModelInput && modelReferencePolicy === 'validate' && defaultWhenEmpty) {
+        systemModelInput = {
+          key: modelIdKey,
+          label: '',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          valueType: WorkflowIOValueTypeEnum.string
+        };
+      }
+      if (!systemModelInput || !isWorkflowSystemModelInput({ node, input: systemModelInput }))
+        continue;
+
       // modelId 始终优先；存在 canonical input 时删除所有对应旧 input。
       if (modelIdInput) {
         if (!isDynamicModelInput(modelIdInput)) {
@@ -823,20 +857,28 @@ export const formatModels = ({
             modelId: modelIdInput.value,
             model: legacyInput?.value,
             type,
-            featureEnabled
+            featureEnabled,
+            defaultWhenEmpty
           });
         }
         node.inputs = node.inputs.filter((input) => input.key !== legacyKey);
         continue;
       }
 
-      if (!legacyInput) continue;
+      if (!legacyInput) {
+        node.inputs.push({
+          ...systemModelInput,
+          value: resolveModelId({ type, featureEnabled, defaultWhenEmpty })
+        });
+        continue;
+      }
 
       if (!isDynamicModelInput(legacyInput)) {
         legacyInput.value = resolveModelId({
           model: legacyInput.value,
           type,
-          featureEnabled
+          featureEnabled,
+          defaultWhenEmpty
         });
       }
       legacyInput.key = modelIdKey;
@@ -871,9 +913,7 @@ export const formatModels = ({
     }
   });
 
-  if (modelReferencePolicy === 'validate' && missingModels.size > 0) {
-    throw new Error(`${Array.from(missingModels).join('、')} 模型已停用`);
-  }
+  throwModelValidationErrors();
 
   return nodes;
 };

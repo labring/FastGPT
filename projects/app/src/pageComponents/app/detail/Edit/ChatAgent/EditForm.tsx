@@ -10,6 +10,7 @@ import {
   Switch
 } from '@chakra-ui/react';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import { getModelQuoteTokenLimit } from '@/web/core/ai/model/selection';
 import { useTranslation } from 'next-i18next';
 
 import dynamic from 'next/dynamic';
@@ -40,6 +41,8 @@ import DatasetCard from '@/components/core/app/DatasetCard';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useWelcomeTextFoldState } from '@/components/core/app/useAppEditorUIState';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useInitializeQueryExtensionModel } from '../FormComponent/useInitializeQueryExtensionModel';
 import {
   findClientModelByReference,
   resolveClientModelReferenceId
@@ -166,7 +169,14 @@ const EditForm = ({
     onClose: onCloseDatasetParams
   } = useDisclosure();
 
-  const { llmModelList, reRankModelList } = useUserModelLists();
+  const {
+    llmModelList,
+    reRankModelList,
+    loaded: modelsLoaded,
+    loading: modelsLoading,
+    error: modelLoadError
+  } = useUserModelLists();
+  const defaultQueryModelId = useUserModelStore((state) => state.defaultModels.llm?.modelId);
 
   useEffect(() => {
     setAppForm((state) => {
@@ -209,11 +219,17 @@ const EditForm = ({
       };
     });
   }, [llmModelList, reRankModelList, setAppForm]);
+  useInitializeQueryExtensionModel({
+    appId,
+    ready: modelsLoaded && !modelsLoading && !modelLoadError,
+    defaultModelId: defaultQueryModelId,
+    setAppForm
+  });
+  const configuredModel = llmModelList.find(
+    (model) => model.modelId === appForm.aiSettings.modelId
+  );
   const selectedModel =
-    findClientModelByReference({
-      models: llmModelList,
-      reference: appForm.aiSettings
-    }) ??
+    findClientModelByReference({ models: llmModelList, reference: appForm.aiSettings }) ??
     (appForm.aiSettings.modelId === undefined && !appForm.aiSettings.model
       ? llmModelList[0]
       : undefined);
@@ -242,8 +258,8 @@ const EditForm = ({
     [appForm.aiSettings.useAgentSandbox, onChangeAgentSandbox, skillOption]
   );
   const tokenLimit = useMemo(() => {
-    return selectedModel?.config.quoteMaxToken ?? 3000;
-  }, [selectedModel?.config.quoteMaxToken]);
+    return getModelQuoteTokenLimit(configuredModel);
+  }, [configuredModel]);
 
   const updateWelcomeText = useCallback(
     (value: string) => {

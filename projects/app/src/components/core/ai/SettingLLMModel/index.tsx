@@ -13,14 +13,22 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
 import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
 import { filterModelMultimodalSettings } from './utils';
+import { getModelInitializationValue } from '@/web/core/ai/model/selection';
 
 type Props = {
   defaultData: SettingAIDataType;
   onChange: (e: SettingAIDataType) => void;
   bg?: string;
+  /** 工作流包装器自行写入节点默认值时关闭，避免两个 effect 竞争初始化。 */
+  autoInitializeModel?: boolean;
 };
 
-const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModalProps & Props) => {
+const SettingLLMModel = ({
+  defaultData,
+  onChange,
+  autoInitializeModel = true,
+  ...props
+}: AIChatSettingsModalProps & Props) => {
   const { t } = useTranslation();
   const { llmModelList } = useUserModelLists();
 
@@ -36,15 +44,21 @@ const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModa
 
   const selectedModelData = findClientModelByValue({ models: llmModelList, value: modelId });
 
-  // 只在新建场景没有 value 时设置默认模型；已有异常 value 必须保留给选择器展示错误。
+  // 默认值必须写入表单；展示只读取当前值，不把临时计算结果传给选择器。
   useEffect(() => {
-    if (modelId === undefined && defaultLLMModel) {
+    if (!autoInitializeModel) return;
+    const nextModelId = getModelInitializationValue({
+      value: modelId,
+      models: llmModelList,
+      defaultModelId: defaultLLMModel
+    });
+    if (nextModelId && nextModelId !== modelId) {
       onChange({
         ...defaultData,
-        modelId: defaultLLMModel
+        modelId: nextModelId
       });
     }
-  }, [modelId, defaultData, defaultLLMModel]);
+  }, [autoInitializeModel, modelId, defaultData, defaultLLMModel, llmModelList, onChange]);
 
   const {
     isOpen: isOpenAIChatSetting,

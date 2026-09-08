@@ -28,7 +28,7 @@ const SearchParamsTip = ({
   queryExtensionModel?: string;
 }) => {
   const { t } = useTranslation();
-  const { reRankModelList } = useUserModelLists({ enabled: false });
+  const { reRankModelList } = useUserModelLists({ autoLoadCatalog: false });
   const detailState = useModelDetail({
     modelId: usingExtensionQuery ? queryExtensionModel : undefined
   });

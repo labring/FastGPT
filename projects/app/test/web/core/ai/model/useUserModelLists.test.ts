@@ -7,7 +7,7 @@ describe('getUserModelListsLoading', () => {
   it('only marks the consumer waiting for catalog validation as loading', () => {
     expect(
       getUserModelListsLoading({
-        enabled: true,
+        autoLoadCatalog: true,
         expectedIdentity: identity,
         isCurrentIdentity: true,
         requestKey: identity,
@@ -17,7 +17,7 @@ describe('getUserModelListsLoading', () => {
 
     expect(
       getUserModelListsLoading({
-        enabled: true,
+        autoLoadCatalog: true,
         expectedIdentity: identity,
         isCurrentIdentity: true,
         requestKey: identity,
@@ -29,7 +29,7 @@ describe('getUserModelListsLoading', () => {
   it('keeps loading while the store is switching to the expected identity', () => {
     expect(
       getUserModelListsLoading({
-        enabled: true,
+        autoLoadCatalog: true,
         expectedIdentity: identity,
         isCurrentIdentity: false,
         requestKey: identity,
@@ -38,10 +38,10 @@ describe('getUserModelListsLoading', () => {
     ).toBe(true);
   });
 
-  it('does not load when the consumer is disabled or has no identity', () => {
+  it('does not load when automatic catalog loading is disabled or has no identity', () => {
     expect(
       getUserModelListsLoading({
-        enabled: false,
+        autoLoadCatalog: false,
         expectedIdentity: identity,
         isCurrentIdentity: true,
         requestKey: identity,
@@ -50,7 +50,7 @@ describe('getUserModelListsLoading', () => {
     ).toBe(false);
     expect(
       getUserModelListsLoading({
-        enabled: true,
+        autoLoadCatalog: true,
         expectedIdentity: undefined,
         isCurrentIdentity: false,
         requestKey: undefined,

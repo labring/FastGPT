@@ -44,6 +44,22 @@ describe('agentForm2AppWorkflow TTS configuration', () => {
 });
 
 describe('agentForm2AppWorkflow model reference', () => {
+  it('defaults search enhancements off and preserves explicitly enabled saved settings', () => {
+    const empty = appWorkflow2AgentForm({ nodes: [], chatConfig: {} });
+    expect(empty.dataset).toMatchObject({
+      usingReRank: false,
+      datasetSearchUsingExtensionQuery: false
+    });
+    const form = getDefaultAppForm();
+    form.dataset.usingReRank = true;
+    form.dataset.datasetSearchUsingExtensionQuery = true;
+    const restored = appWorkflow2AgentForm(agentForm2AppWorkflow(form, (key: string) => key));
+    expect(restored.dataset).toMatchObject({
+      usingReRank: true,
+      datasetSearchUsingExtensionQuery: true
+    });
+  });
+
   it.each([undefined, false, true])('allows images independently of legacy vision=%s', (vision) => {
     const form = getDefaultAppForm();
     form.aiSettings.aiChatVision = vision;

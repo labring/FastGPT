@@ -1,30 +1,23 @@
 import {
   createRestrictedModelDiscovery,
   isModelAllowedByValues,
-  resolveModelSelectorDefault,
   resolveModelSelectorDisabled,
   resolveModelSelectorProviders,
   resolveModelSelectorSelection,
   resolveModelSelectorProvider
 } from '@/components/Select/AIModelSelector.utils';
 import { describe, expect, it } from 'vitest';
+import { getDefaultModelSelection } from '@/web/core/ai/model/selection';
 
 describe('AIModelSelector utils', () => {
   const model = { modelId: 'model-id', model: 'gpt-4o' };
 
-  it('keeps the selector disabled for caller, loading and disable-tip constraints', () => {
-    expect(
-      resolveModelSelectorDisabled({ isDisabled: true, loading: false, disableTip: undefined })
-    ).toBe(true);
-    expect(
-      resolveModelSelectorDisabled({ isDisabled: false, loading: true, disableTip: undefined })
-    ).toBe(true);
-    expect(
-      resolveModelSelectorDisabled({ isDisabled: false, loading: false, disableTip: 'Unavailable' })
-    ).toBe(true);
-    expect(
-      resolveModelSelectorDisabled({ isDisabled: false, loading: false, disableTip: undefined })
-    ).toBe(false);
+  it('disables the selector only for caller and business constraints', () => {
+    expect(resolveModelSelectorDisabled({ isDisabled: true, disableTip: undefined })).toBe(true);
+    expect(resolveModelSelectorDisabled({ isDisabled: false, disableTip: 'Unavailable' })).toBe(
+      true
+    );
+    expect(resolveModelSelectorDisabled({ isDisabled: false, disableTip: undefined })).toBe(false);
   });
 
   it('does not restrict models when no compatibility list is supplied', () => {
@@ -112,7 +105,7 @@ describe('AIModelSelector utils', () => {
     const defaultModel = { modelId: 'default-id' };
 
     expect(
-      resolveModelSelectorDefault({
+      getDefaultModelSelection({
         models: [fallbackModel, defaultModel],
         defaultModelId: 'default-id'
       })
@@ -123,12 +116,12 @@ describe('AIModelSelector utils', () => {
     const fallbackModel = { modelId: 'fallback-id' };
 
     expect(
-      resolveModelSelectorDefault({
+      getDefaultModelSelection({
         models: [fallbackModel],
         defaultModelId: 'unavailable-id'
       })
     ).toBe(fallbackModel);
-    expect(resolveModelSelectorDefault({ models: [] })).toBeUndefined();
+    expect(getDefaultModelSelection({ models: [] })).toBeUndefined();
   });
 
   it('does not select a provider for ten or fewer models', () => {

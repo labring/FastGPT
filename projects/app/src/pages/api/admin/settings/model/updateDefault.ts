@@ -12,8 +12,7 @@ import {
   type UpdateDefaultModelsBody
 } from '@fastgpt/global/openapi/admin/core/ai/model/api';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { UserError } from '@fastgpt/global/common/error/utils';
-import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { assertModelAvailable } from '@fastgpt/service/core/ai/model';
 import { upsertSystemDefaultModelIds } from '@fastgpt/service/core/ai/defaultModel/entity';
 
 /**
@@ -65,21 +64,17 @@ async function handler(req: ApiRequestProps<UpdateDefaultModelsBody>): Promise<v
       (
         await MongoAIModel.find(
           { scope: ModelScopeEnum.system },
-          '_id type isActive config.vision'
+          '_id name model type isActive config.vision'
         ).lean()
       ).map((model) => [String(model._id), model])
     );
 
     for (const { modelId, expectedType, requiresVision } of defaultFields) {
-      const model = modelMap.get(modelId);
-      if (
-        !model ||
-        !model.isActive ||
-        model.type !== expectedType ||
-        (requiresVision && !('vision' in model.config && model.config.vision))
-      ) {
-        throw new UserError(ModelErrEnum.unExist);
-      }
+      assertModelAvailable({
+        model: modelMap.get(modelId),
+        type: expectedType,
+        vision: requiresVision
+      });
     }
   }
 

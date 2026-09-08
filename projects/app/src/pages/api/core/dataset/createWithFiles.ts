@@ -54,7 +54,11 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
     getOptionalEmbeddingModelData({ modelId: vectorModelId }) ?? getDefaultEmbeddingModelData();
   const agentModelData =
     getOptionalLLMModelData({ modelId: agentModelId }) ?? getDefaultLLMModelData();
-  const vlmModelData = getOptionalVlmModelData({ modelId: vlmModelId }) ?? getDefaultVLMModelData();
+  // 与普通创建入口一致：显式“不设置”必须保持禁用，只有省略参数才继承系统默认。
+  const vlmModelData =
+    vlmModelId === undefined
+      ? getDefaultVLMModelData()
+      : getOptionalVlmModelData({ modelId: vlmModelId });
 
   const { teamId, tmbId, userId } = parentId
     ? await authDataset({

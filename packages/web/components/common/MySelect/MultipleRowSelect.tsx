@@ -14,6 +14,7 @@ import {
 } from '@chakra-ui/react';
 import { type ListItemType, type MultipleArraySelectProps, type MultipleSelectProps } from './type';
 import EmptyTip from '../EmptyTip';
+import MyLoading from '../MyLoading';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../../common/Icon';
 
@@ -158,6 +159,7 @@ export const MultipleRowSelect = ({
   value = [],
   list,
   emptyTip,
+  isLoading = false,
   maxH = 300,
   onSelect,
   ButtonProps,
@@ -279,21 +281,34 @@ export const MultipleRowSelect = ({
           display={'flex'}
           userSelect={'none'}
         >
-          <RenderList
-            list={list}
-            index={0}
-            cloneValue={resolvedCloneValue}
-            setCloneValue={setCloneValue}
-            onSelect={onSelect}
-            onClose={onClose}
-            changeOnEverySelect={changeOnEverySelect}
-            emptyTip={emptyTip}
-            maxH={maxH}
-            minWidth={minWidth}
-            rowMinWidth={rowMinWidth}
-            MenuRef={MenuRef}
-            SelectedItemRef={SelectedItemRef}
-          />
+          {isLoading ? (
+            <Box
+              data-preserve-width
+              role="status"
+              position="relative"
+              minH="96px"
+              minW={rowMinWidth}
+              flex={1}
+            >
+              <MyLoading fixed={false} size="md" bg="transparent" />
+            </Box>
+          ) : (
+            <RenderList
+              list={list}
+              index={0}
+              cloneValue={resolvedCloneValue}
+              setCloneValue={setCloneValue}
+              onSelect={onSelect}
+              onClose={onClose}
+              changeOnEverySelect={changeOnEverySelect}
+              emptyTip={emptyTip}
+              maxH={maxH}
+              minWidth={minWidth}
+              rowMinWidth={rowMinWidth}
+              MenuRef={MenuRef}
+              SelectedItemRef={SelectedItemRef}
+            />
+          )}
         </MenuList>
       </Menu>
     </Box>

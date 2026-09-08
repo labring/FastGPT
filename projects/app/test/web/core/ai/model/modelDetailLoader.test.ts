@@ -65,4 +65,57 @@ describe('createModelDetailLoader', () => {
       outLinkAuthData: { shareId: 's', outLinkUid: 'u' }
     });
   });
+  it('primes synchronous display data from catalog without a detail request', async () => {
+    vi.useFakeTimers();
+    const request = createRequest();
+    const load = createModelDetailLoader(request);
+    const key = { identity: 'member', modelId: 'a' };
+    const detail = { modelId: 'a', name: 'Catalog A', status: 'active' as const };
+    load.prime({ identity: key.identity, detail });
+    expect(load.peek(key)).toEqual(detail);
+    await expect(load(key)).resolves.toEqual(detail);
+    expect(request).not.toHaveBeenCalled();
+    expect(load.peek({ ...key, identity: 'other' })).toBeUndefined();
+    vi.advanceTimersByTime(30_001);
+    expect(load.peek(key)).toBeUndefined();
+    await load(key);
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+  it.each([false, true])(
+    'keeps newer catalog data when an older request completes (failed=%s)',
+    async (failed) => {
+      let resolve!: (value: unknown) => void;
+      let reject!: (error: Error) => void;
+      const request = vi.fn(
+        () =>
+          new Promise<any>((ok, fail) => {
+            resolve = ok;
+            reject = fail;
+          })
+      );
+      const load = createModelDetailLoader(request);
+      const key = { identity: 'member', modelId: 'a' };
+      const pending = load(key);
+      load.invalidate(key);
+      expect(load(key)).toBe(pending);
+      const detail = { modelId: 'a', name: 'New A', status: 'active' as const };
+      load.prime({ identity: key.identity, detail });
+      if (failed) reject(new Error('old network failure'));
+      else resolve({ models: [{ modelId: 'a', status: 'deleted' }] });
+      await expect(pending).resolves.toEqual(detail);
+      expect(load.peek(key)).toEqual(detail);
+      expect(request).toHaveBeenCalledTimes(1);
+    }
+  );
+  it('invalidates only the requested completed entry', async () => {
+    const request = createRequest();
+    const load = createModelDetailLoader(request);
+    await load({ identity: 'member', modelId: 'a' });
+    await load({ identity: 'member', modelId: 'b' });
+    load.invalidate({ identity: 'member', modelId: 'a' });
+    await load({ identity: 'member', modelId: 'b' });
+    expect(request).toHaveBeenCalledTimes(2);
+    await load({ identity: 'member', modelId: 'a' });
+    expect(request).toHaveBeenCalledTimes(3);
+  });
 });

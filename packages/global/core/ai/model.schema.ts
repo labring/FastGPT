@@ -162,13 +162,13 @@ export const SystemModelDataSchema = z.discriminatedUnion('type', [
 export type SystemModelDataType = z.infer<typeof SystemModelDataSchema>;
 
 /**
- * 模型引用只允许稳定 ID 与废弃的系统 model 标识。modelId 存在时必须优先解析，
+ * 模型引用只允许稳定 ID 与废弃的系统 model 标识。非空 modelId 必须优先解析，
  * 不得因 ID 无效而降级使用 model。
  */
 export type ModelReferenceType = {
-  modelId?: string;
+  modelId?: string | null;
   /** @deprecated 新数据只写 modelId。 */
-  model?: string;
+  model?: string | null;
 };
 
 export type LLMSystemModelDataType = Extract<SystemModelDataType, { type: ModelTypeEnum.llm }>;

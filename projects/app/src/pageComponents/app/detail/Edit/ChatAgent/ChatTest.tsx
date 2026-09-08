@@ -33,7 +33,7 @@ import ChatVariableButton from '@/pageComponents/chat/ChatWindow/ChatVariableBut
 import ProModal from '@/components/ProTip/ProModal';
 import ChatAIModelSelector from '@/pageComponents/chat/ChatWindow/ChatAIModelSelector';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
+import { getModelInitializationValue } from '@/web/core/ai/model/selection';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 type Props = {
@@ -62,7 +62,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   const activeTab = canUseHelper ? agentChatTestTab : AgentChatTestTabEnum.chatDebug;
   const [hasRenderedHelper, setHasRenderedHelper] = useSafeState(false);
   const [proModalOpen, setProModalOpen] = useSafeState(false);
-  const [helperSelectedModel, setHelperSelectedModel] = useLocalStorageState<string>(
+  const [helperSelectedModel = '', setHelperSelectedModel] = useLocalStorageState<string>(
     'chat_agent_helper_model',
     {
       defaultValue: defaultModels.llm?.modelId
@@ -86,17 +86,14 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
         .map((item) => ({ label: item.name, value: item.modelId })),
     [llmModelList]
   );
-  const helperModel = useMemo(() => {
-    const selectedModelId = findClientModelByValue({
+  useEffect(() => {
+    const modelId = getModelInitializationValue({
+      value: helperSelectedModel,
       models: llmModelList,
-      value: helperSelectedModel
-    })?.modelId;
-    const defaultModelId = defaultModels.llm?.modelId || llmModelList[0]?.modelId || '';
-
-    if (selectedModelId) return selectedModelId;
-    if (helperSelectedModel) return helperSelectedModel;
-    return defaultModelId;
-  }, [defaultModels.llm?.modelId, helperSelectedModel, llmModelList]);
+      defaultModelId: defaultModels.llm?.modelId
+    });
+    if (modelId && modelId !== helperSelectedModel) setHelperSelectedModel(modelId);
+  }, [defaultModels.llm?.modelId, helperSelectedModel, llmModelList, setHelperSelectedModel]);
   const onChangeHelperModel = useCallback(
     (model: string) => {
       setHelperSelectedModel(model);
@@ -115,13 +112,13 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
           size={'sm'}
           bg={'myGray.50'}
           rounded={'10px'}
-          value={helperModel}
+          value={helperSelectedModel}
           list={modelSelectList}
           onChange={onChangeHelperModel}
         />
       </Box>
     ),
-    [helperModel, modelSelectList, onChangeHelperModel]
+    [helperSelectedModel, modelSelectList, onChangeHelperModel]
   );
 
   // Sandbox: Status Hook 负责网络同步，UI Hook 负责弹窗渲染
@@ -201,10 +198,10 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
       fileUpload: appForm.chatConfig.fileSelectConfig?.canSelectFile || false,
       enableSandbox: appForm.aiSettings.useAgentSandbox || false,
       modelConfig: {
-        modelId: helperModel
+        modelId: helperSelectedModel
       }
     }),
-    [appForm, helperModel]
+    [appForm, helperSelectedModel]
   );
 
   return (

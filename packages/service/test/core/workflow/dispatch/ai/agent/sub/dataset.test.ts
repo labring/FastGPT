@@ -40,6 +40,8 @@ vi.mock('@fastgpt/service/core/dataset/utils', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
+  getDefaultLLMModelData: vi.fn(),
+  getDefaultRerankModelData: vi.fn(),
   getEmbeddingModelData: vi.fn(() => ({
     model: 'embedding-model',
     name: 'Embedding Model',

@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { lockTrainingDataByTeamId } from '@fastgpt/service/core/dataset/training/controller';
+import {
+  lockTrainingDataByTeamId,
+  pushDataListToTrainingQueue
+} from '@fastgpt/service/core/dataset/training/controller';
 import {
   BLOCKED_LOCK_TIME,
   finalErrorTrainingMatch,
@@ -11,6 +14,42 @@ import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getRootUser } from '@test/datas/users';
 
 describe('dataset training controller', () => {
+  it.each([TrainingModeEnum.auto, TrainingModeEnum.imageParse])(
+    'does not drop parsed content when %s model metadata is unavailable',
+    async (mode) => {
+      const root = await getRootUser();
+      const q = 'x'.repeat(9000);
+      const result = await pushDataListToTrainingQueue({
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: '507f1f77bcf86cd799439011',
+        collectionId: '507f1f77bcf86cd799439012',
+        vectorModel: global.systemDefaultModel.embedding!,
+        vlmModelConfigured: true,
+        billId: 'test',
+        mode,
+        data: [{ q }]
+      });
+      expect(result.insertLen).toBe(1);
+      expect(await MongoDatasetTraining.findOne({ mode }).lean()).toMatchObject({ q });
+    }
+  );
+  it('keeps missing VLM checks for callers that do not defer validation', async () => {
+    const root = await getRootUser();
+    await expect(
+      pushDataListToTrainingQueue({
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: '507f1f77bcf86cd799439011',
+        collectionId: '507f1f77bcf86cd799439012',
+        vectorModel: global.systemDefaultModel.embedding!,
+        mode: TrainingModeEnum.imageParse,
+        billId: 'test',
+        data: [{ q: 'source text' }]
+      })
+    ).rejects.toBe(i18nT('common:error_vlm_not_config'));
+  });
+
   it('should lock retryable team trainings with AI points error message', async () => {
     const root = await getRootUser();
     const otherRoot = await getRootUser();

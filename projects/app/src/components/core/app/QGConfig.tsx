@@ -17,6 +17,9 @@ import {
   QuestionGuidePrompt
 } from '@fastgpt/global/core/ai/prompt/agent';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { getModelInitializationValue } from '@/web/core/ai/model/selection';
 
 // question generator config
 const QGConfig = ({
@@ -75,6 +78,8 @@ const QGConfigModal = ({
   const customPrompt = value.customPrompt;
   const isOpenQG = value.open;
   const modelId = value.modelId ?? value.model;
+  const { llmModelList } = useUserModelLists({ autoLoadCatalog: false });
+  const defaultModelId = useUserModelStore((state) => state.defaultModelIds.llm);
 
   const {
     isOpen: isOpenCustomPrompt,
@@ -97,9 +102,22 @@ const QGConfigModal = ({
           <Switch
             isChecked={isOpenQG}
             onChange={(e) => {
+              const enabled = e.target.checked;
+              // 开关开启时一次性写入真实选择，初始化和重新打开弹窗不补默认值。
+              const nextModelId =
+                enabled && !isOpenQG
+                  ? getModelInitializationValue({
+                      value: modelId,
+                      models: llmModelList,
+                      defaultModelId
+                    })
+                  : undefined;
               onChange({
                 ...value,
-                open: e.target.checked
+                open: enabled,
+                ...(nextModelId && nextModelId !== value.modelId
+                  ? { modelId: nextModelId, model: undefined }
+                  : {})
               });
             }}
           />
@@ -113,7 +131,6 @@ const QGConfigModal = ({
               <Box flex={'1 0 0'}>
                 <AIModelSelector
                   modelType={ModelTypeEnum.llm}
-                  autoSelectDefault
                   width={'100%'}
                   value={modelId}
                   onChange={(modelId) => {

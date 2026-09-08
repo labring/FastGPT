@@ -102,6 +102,32 @@ describe('useModelDetail request lifecycle', () => {
     await flush();
     expect(render('a')).toMatchObject({ error: false, detail: { status: 'active' } });
   });
+  it('uses catalog selection immediately and refresh does not keep bypassing other model caches', async () => {
+    render('a');
+    mocks.effect?.();
+    await flush();
+    render('a').setFromCatalog({ modelId: 'b', name: 'Catalog B', avatar: 'b.svg' });
+    expect(render('b')).toMatchObject({
+      loading: false,
+      detail: { modelId: 'b', name: 'Catalog B' }
+    });
+    mocks.effect?.();
+    await flush();
+    expect(mocks.request).toHaveBeenCalledTimes(1);
+    render('b').setFromCatalog({ modelId: 'a', name: 'Catalog A' });
+    expect(render('a')).toMatchObject({ loading: false, detail: { name: 'Catalog A' } });
+    mocks.effect?.();
+    await flush();
+    render('a').refresh();
+    render('a');
+    mocks.effect?.();
+    await flush();
+    expect(mocks.request).toHaveBeenCalledTimes(2);
+    expect(render('b').loading).toBe(false);
+    mocks.effect?.();
+    await flush();
+    expect(mocks.request).toHaveBeenCalledTimes(2);
+  });
   it('does not reuse detail cache across outlink credentials', async () => {
     const firstAuth = { shareId: 'share', outLinkUid: 'first' };
     render('a', firstAuth);

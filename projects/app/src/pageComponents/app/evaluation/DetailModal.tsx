@@ -16,7 +16,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
   deleteEvalItem,
@@ -25,7 +25,7 @@ import {
   updateEvalItem
 } from '@/web/core/app/api/evaluation';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import { downloadFetch, getWebLLMModel } from '@/web/common/system/utils';
+import { downloadFetch } from '@/web/common/system/utils';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { type TFunction } from 'i18next';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -37,7 +37,8 @@ import {
 import type { evaluationType, listEvalItemsItem } from '@fastgpt/global/core/app/evaluation/type';
 import type { updateEvalItemBody } from '@fastgpt/global/core/app/evaluation/api';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
+import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
+import { ModelStatusLabel } from '@/components/Select/ModelStatusLabel';
 
 const formatEvaluationStatus = (item: { status: number; errorMessage?: string }, t: TFunction) => {
   if (item.errorMessage) {
@@ -87,16 +88,7 @@ const EvaluationDetailModal = ({
   const [editing, setEditing] = useState(false);
   const [pollingInterval, setPollingInterval] = useState(10000);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const { llmModelList } = useUserModelLists();
-
-  const modelData = useMemo(
-    () =>
-      getWebLLMModel(
-        evalDetail.evalModelId !== undefined ? evalDetail.evalModelId : evalDetail.evalModel,
-        llmModelList
-      ),
-    [evalDetail.evalModel, evalDetail.evalModelId, llmModelList]
-  );
+  const modelDetail = useModelDetail({ modelId: evalDetail.evalModelId });
 
   const {
     data: evalItemsList,
@@ -220,10 +212,11 @@ const EvaluationDetailModal = ({
                 {t('dashboard_evaluation:Evaluation_model')}
               </Box>
               <Flex gap={1.5}>
-                <Avatar src={modelData?.avatar} w={5} />
-                <Box color={'myGray.900'} fontWeight={'medium'}>
-                  {modelData?.name}
-                </Box>
+                <ModelStatusLabel
+                  modelId={evalDetail.evalModelId}
+                  {...modelDetail}
+                  avatarSize="1.25rem"
+                />
               </Flex>
             </Box>
             <Box>

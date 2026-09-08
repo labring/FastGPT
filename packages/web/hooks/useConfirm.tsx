@@ -223,7 +223,6 @@ export const useConfirm = (props?: {
                 <DeleteConfirmInput
                   value={inputValue}
                   confirmText={customContentInputConfirmText}
-                  placeholder={customContentInputConfirmText}
                   onChange={setInputValue}
                 />
               )}

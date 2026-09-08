@@ -19,12 +19,14 @@ import type {
   NodeTemplateListType
 } from '@fastgpt/global/core/workflow/type/node';
 import { TemplateTypeEnum } from './header';
-import { useMemoizedFn } from 'ahooks';
+import { useLocalStorageState, useMemoizedFn } from 'ahooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import CostTooltip from '@/components/core/app/tool/CostTooltip';
 import {
+  FlowNodeInputTypeEnum,
   FlowNodeTypeEnum,
   isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
@@ -58,6 +60,8 @@ import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 import SystemToolTag from '@fastgpt/web/components/core/plugin/tool/SystemToolTag';
 import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
+import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
 
 export type TemplateListProps = {
   onAddNode: ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => void;
@@ -248,6 +252,9 @@ const NodeTemplateList = ({
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
   const isToolSelector = handleParams?.handleId === NodeOutputKeyEnum.selectedTools;
   const { getIntersectingNodes } = useReactFlow();
+  const [lastSelectedModelId] = useLocalStorageState<string>('workflow_default_llm_model', {
+    defaultValue: ''
+  });
 
   const handleAddNode = useCallback(
     async ({
@@ -378,8 +385,26 @@ const NodeTemplateList = ({
               })
             : preparedInputs;
 
+        const modelCatalog = useUserModelStore.getState();
+        const needsInitialModel =
+          templateNode.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode &&
+          inputsWithAutoFill.some((input) => {
+            const type = getSelectedInputRenderType(input);
+            return (
+              isEmptyModelValue(input.value) &&
+              (type === FlowNodeInputTypeEnum.selectLLMModel ||
+                type === FlowNodeInputTypeEnum.settingLLMModel)
+            );
+          });
+        // 复用页面已发起的目录加载，不在新增操作中重复获取，也不把未加载误当作空目录。
+        if (needsInitialModel && !modelCatalog.loaded) {
+          toast({ status: 'info', title: t('common:model_loading_label') });
+          return;
+        }
         const newNode = nodeTemplate2FlowNode({
-          defaultModelIds: useUserModelStore.getState().defaultModelIds,
+          defaultModelIds: modelCatalog.defaultModelIds,
+          llmModelList: modelCatalog.modelList.filter((model) => model.type === ModelTypeEnum.llm),
+          lastSelectedModelId,
           template: {
             ...templateNode,
             name: computedNewNodeName({
@@ -463,6 +488,7 @@ const NodeTemplateList = ({
       isToolSelector,
       getIntersectingNodes,
       onAddNode,
+      lastSelectedModelId,
       t,
       toast
     ]

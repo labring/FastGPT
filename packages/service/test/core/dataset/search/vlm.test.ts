@@ -70,11 +70,11 @@ describe('dataset search VLM selection', () => {
 
   it('does not fall back to a legacy name when an explicit ID is stale', () => {
     expect(
-      findFirstDatasetSearchVlmModel([
-        { vlmModelId: 'deleted-id', vlmModel: 'active-vision' },
-        { vlmModelId: '', vlmModel: 'active-vision' }
-      ])
+      findFirstDatasetSearchVlmModel([{ vlmModelId: 'deleted-id', vlmModel: 'active-vision' }])
     ).toBeUndefined();
+    expect(findFirstDatasetSearchVlmModel([{ vlmModelId: '', vlmModel: 'active-vision' }])).toEqual(
+      activeModel
+    );
   });
 
   it('supports legacy names and returns no VLM when every candidate is unusable', () => {

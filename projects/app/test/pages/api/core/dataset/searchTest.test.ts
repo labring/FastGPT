@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetSearchModeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { getDefaultLLMModelData, getDefaultRerankModelData } from '@fastgpt/service/core/ai/model';
 
 const mockAuthDataset = vi.hoisted(() => vi.fn());
 const mockCheckTeamAIPoints = vi.hoisted(() => vi.fn());
@@ -37,6 +40,8 @@ vi.mock('@fastgpt/service/support/openapi/tools', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
+  getDefaultLLMModelData: vi.fn(),
+  getDefaultRerankModelData: vi.fn(),
   getRerankModelData: mockGetRerankModelData,
   getEmbeddingModelData: mockGetEmbeddingModelData,
   getLLMModelData: mockGetLLMModelData,
@@ -69,6 +74,44 @@ import { handler } from '@/pages/api/core/dataset/searchTest';
 const datasetId = '507f1f77bcf86cd799439011';
 
 describe('searchTest query image auth', () => {
+  it('uses defaults for unavailable query-extension and rerank selections', async () => {
+    mockGetLLMModelData.mockImplementationOnce(() => {
+      throw new UserError(ModelErrEnum.unExist);
+    });
+    mockGetRerankModelData.mockImplementationOnce(() => {
+      throw new UserError(ModelErrEnum.unConfigured);
+    });
+    vi.mocked(getDefaultLLMModelData).mockReturnValueOnce({
+      modelId: 'default-query',
+      name: 'Default query',
+      model: 'default-query',
+      config: {}
+    } as any);
+    vi.mocked(getDefaultRerankModelData).mockReturnValueOnce({
+      modelId: 'default-rerank',
+      name: 'Default rerank',
+      model: 'default-rerank',
+      config: {}
+    } as any);
+    await handler(
+      {
+        body: {
+          datasetId,
+          text: 'question',
+          queryImageUrls: [],
+          usingReRank: true,
+          datasetSearchUsingExtensionQuery: true
+        }
+      } as any,
+      {} as any
+    );
+    expect(mockDefaultSearchDatasetData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rerankModel: expect.objectContaining({ modelId: 'default-rerank' }),
+        datasetSearchExtensionModel: expect.objectContaining({ modelId: 'default-query' })
+      })
+    );
+  });
   beforeEach(() => {
     vi.clearAllMocks();
 

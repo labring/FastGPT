@@ -1,16 +1,14 @@
 import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import type {
   FastGPTFeConfigsType,
   FastGPTRegisterMethodType
 } from '@fastgpt/global/common/system/types';
-import { useSystemStore } from './useSystemStore';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
-import {
-  findClientModelByReference,
-  findClientModelByValue
-} from '@/web/core/ai/model/modelReference';
+import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
+import { getDefaultModelSelection } from '@/web/core/ai/model/selection';
 
 type MyLLMModelType = Extract<MyModelItemType, { type: ModelTypeEnum.llm }>;
 type MyEmbeddingModelType = Extract<MyModelItemType, { type: ModelTypeEnum.embedding }>;
@@ -88,24 +86,19 @@ export const downloadFetch = async ({
 export const getWebLLMModel = (model?: string, llmList: MyLLMModelType[] = []) => {
   const defaultModels = useUserModelStore.getState().defaultModels;
 
-  if (!model) return defaultModels.llm;
+  if (isEmptyModelValue(model)) return defaultModels.llm;
   return findClientModelByValue({ models: llmList, value: model });
 };
 export const getWebDefaultLLMModel = (llmList: MyLLMModelType[] = []) => {
   const defaultModels = useUserModelStore.getState().defaultModels;
 
-  if (llmList.length === 0) return defaultModels.llm;
-  return defaultModels.llm &&
-    findClientModelByReference({ models: llmList, reference: defaultModels.llm })
-    ? defaultModels.llm
-    : llmList[0];
+  return getDefaultModelSelection({ models: llmList, defaultModelId: defaultModels.llm?.modelId });
 };
 export const getWebDefaultEmbeddingModel = (embeddingList: MyEmbeddingModelType[] = []) => {
   const defaultModels = useUserModelStore.getState().defaultModels;
 
-  if (embeddingList.length === 0) return defaultModels.embedding;
-  return defaultModels.embedding &&
-    findClientModelByReference({ models: embeddingList, reference: defaultModels.embedding })
-    ? defaultModels.embedding
-    : embeddingList[0];
+  return getDefaultModelSelection({
+    models: embeddingList,
+    defaultModelId: defaultModels.embedding?.modelId
+  });
 };

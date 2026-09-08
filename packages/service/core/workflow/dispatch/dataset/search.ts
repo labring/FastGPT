@@ -2,7 +2,7 @@ import { formatModelChars2Points } from '../../../../support/wallet/usage/utils'
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { getEmbeddingModelData, getLLMModelData, getRerankModelData } from '../../../ai/model';
+import { getEmbeddingModelData, getLLMModelData } from '../../../ai/model';
 import { deepRagSearch, defaultSearchDatasetData } from '../../../dataset/search';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -10,6 +10,7 @@ import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { MongoDataset } from '../../../dataset/schema';
 import { getDatasetSearchVlmModel } from '../../../dataset/search/vlm';
+import { getDatasetSearchAuxiliaryModels } from '../../../dataset/search/auxiliaryModels';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
 import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
@@ -143,16 +144,14 @@ export async function dispatchDatasetSearch(
       model: dataset?.vectorModel
     });
     const vlmModel = await getDatasetSearchVlmModel({ teamId, datasetIds });
-    // Get Rerank Model
-    const rerankModelData = usingReRank
-      ? getRerankModelData({ modelId: rerankModelId, model: rerankModel })
-      : undefined;
-    const extensionModelData = datasetSearchUsingExtensionQuery
-      ? getLLMModelData({
-          modelId: datasetSearchExtensionModelId,
-          model: datasetSearchExtensionModel
-        })
-      : undefined;
+    const { rerankModelData, extensionModelData } = getDatasetSearchAuxiliaryModels({
+      usingReRank,
+      rerankModelId,
+      rerankModel,
+      datasetSearchUsingExtensionQuery,
+      datasetSearchExtensionModelId,
+      datasetSearchExtensionModel
+    });
     const deepSearchModelData = datasetDeepSearch
       ? getLLMModelData({ modelId: datasetDeepSearchModelId, model: datasetDeepSearchModel })
       : undefined;

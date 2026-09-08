@@ -24,7 +24,10 @@ import {
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getWebLLMModel } from '@/web/common/system/utils';
+import {
+  getModelQuoteTokenLimit,
+  UNAVAILABLE_MODEL_TOKEN_LIMIT
+} from '@/web/core/ai/model/selection';
 import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
@@ -141,7 +144,7 @@ const WorkflowInitContextProvider = ({
     let allNodeFolded = true;
     let hasToolNode = false;
     let hasLoopRunNode = false;
-    let llmMaxQuoteContext = 0;
+    let llmMaxQuoteContext: number | undefined;
 
     nodes.forEach((node) => {
       const flowNodeType = node.data.flowNodeType;
@@ -201,12 +204,13 @@ const WorkflowInitContextProvider = ({
         [FlowNodeTypeEnum.agent]: true
       };
       if (map[flowNodeType]) {
-        const model =
-          node.data.inputs.find((item) => item.key === NodeInputKeyEnum.aiModelId)?.value ||
-          node.data.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value ||
-          '';
-        const quoteMaxToken = getWebLLMModel(model, llmModelList)?.config.quoteMaxToken ?? 0;
-        llmMaxQuoteContext = Math.max(llmMaxQuoteContext, quoteMaxToken);
+        const modelId = node.data.inputs.find(
+          (item) => item.key === NodeInputKeyEnum.aiModelId
+        )?.value;
+        const quoteMaxToken = getModelQuoteTokenLimit(
+          llmModelList.find((model) => model.modelId === modelId)
+        );
+        llmMaxQuoteContext = Math.max(llmMaxQuoteContext ?? 0, quoteMaxToken);
       }
 
       if (!node.data.isFolded && flowNodeType !== FlowNodeTypeEnum.comment) {
@@ -231,7 +235,7 @@ const WorkflowInitContextProvider = ({
       allNodeFolded,
       hasToolNode,
       hasLoopRunNode,
-      llmMaxQuoteContext,
+      llmMaxQuoteContext: llmMaxQuoteContext ?? UNAVAILABLE_MODEL_TOKEN_LIMIT,
       foldedNodesMap,
       compareNodeList
     };

@@ -23,6 +23,30 @@ const getModelInputs = ({ modelId, model }: { modelId?: string; model?: string }
 };
 
 describe('form2AppWorkflow model reference', () => {
+  it('defaults search enhancements off and preserves explicitly enabled saved settings', () => {
+    const empty = appWorkflow2Form({ nodes: [], chatConfig: {} });
+    expect(empty.dataset).toMatchObject({
+      usingReRank: false,
+      datasetSearchUsingExtensionQuery: false
+    });
+    const form = getDefaultAppForm();
+    form.dataset.datasets = [
+      {
+        datasetId: 'dataset-id',
+        avatar: 'dataset.svg',
+        name: 'Dataset',
+        vectorModel: { model: 'embedding-model' }
+      }
+    ];
+    form.dataset.usingReRank = true;
+    form.dataset.datasetSearchUsingExtensionQuery = true;
+    const restored = appWorkflow2Form(form2AppWorkflow(form, (key: string) => key));
+    expect(restored.dataset).toMatchObject({
+      usingReRank: true,
+      datasetSearchUsingExtensionQuery: true
+    });
+  });
+
   it.each([
     { type: FlowNodeTypeEnum.appModule, hasStreamInput: true },
     { type: FlowNodeTypeEnum.appModule, hasStreamInput: false },

@@ -1,22 +1,29 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import {
   getLLMModelData,
   getOptionalLLMModelData,
   getOptionalVlmModelData,
-  getSystemDefaultModelIds
+  getSystemDefaultModelIds,
+  getEmbeddingModelData,
+  getDefaultLLMModelData,
+  assertModelAvailable
 } from '../../../core/ai/model';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+
+// 本文件验证真实模型校验，不能使用全局测试环境中绕过校验的 embedding stub。
+vi.unmock('@fastgpt/service/core/ai/model');
 
 const modelId = '68ee0bd23d17260b7829b137';
-const modelData: SystemModelDataType = {
+const modelData: LLMSystemModelDataType = {
   modelId,
   type: ModelTypeEnum.llm,
   provider: 'OpenAI',
   model: 'gpt-test',
   name: 'GPT test display name',
-  scope: 'system' as const,
+  scope: ModelScopeEnum.system,
   isActive: true,
   isCustom: false,
   config: {
@@ -55,11 +62,11 @@ describe('getLLMModelData', () => {
     expect(() =>
       getLLMModelData({ modelId: '68ee0bd23d17260b7829b138', model: 'gpt-test' })
     ).toThrow(ModelErrEnum.unExist);
-    expect(() => getLLMModelData({ modelId: '', model: 'gpt-test' })).toThrow(ModelErrEnum.unExist);
+    expect(getLLMModelData({ modelId: '', model: 'gpt-test' }).model).toBe('gpt-test');
   });
 
   it('does not resolve display names or missing model identifiers', () => {
-    expect(() => getLLMModelData({})).toThrow(ModelErrEnum.unExist);
+    expect(() => getLLMModelData({})).toThrow(ModelErrEnum.unConfigured);
     expect(() => getLLMModelData({ model: 'GPT test display name' })).toThrow(ModelErrEnum.unExist);
     expect(() => getLLMModelData({ model: 'missing-model' })).toThrow(ModelErrEnum.unExist);
   });
@@ -67,9 +74,7 @@ describe('getLLMModelData', () => {
   it('returns undefined only when an optional model reference is empty', () => {
     expect(getOptionalLLMModelData({})).toBeUndefined();
     expect(getOptionalVlmModelData({ modelId: undefined, model: undefined })).toBeUndefined();
-    expect(() => getOptionalLLMModelData({ modelId: '', model: 'gpt-test' })).toThrow(
-      ModelErrEnum.unExist
-    );
+    expect(getOptionalLLMModelData({ modelId: '', model: 'gpt-test' })?.model).toBe('gpt-test');
     expect(() => getOptionalLLMModelData({ model: 'missing-model' })).toThrow(ModelErrEnum.unExist);
     expect(() =>
       getOptionalLLMModelData({ modelId: '68ee0bd23d17260b7829b138', model: 'gpt-test' })
@@ -82,6 +87,67 @@ describe('getLLMModelData', () => {
     global.systemModelMap.set(`model:${modelData.model}`, disabledModel);
     expect(() => getLLMModelData({ modelId })).toThrow(ModelErrEnum.unExist);
     expect(() => getLLMModelData({ model: modelData.model })).toThrow(ModelErrEnum.unExist);
+    try {
+      getLLMModelData({ modelId });
+    } catch (error) {
+      expect(getErrText(error)).toBe('Model is disabled: GPT test display name');
+    }
+  });
+
+  it('reports type mismatch and unsupported vision with the actual model name', () => {
+    for (const run of [
+      () => getEmbeddingModelData({ modelId }),
+      () => getOptionalVlmModelData({ modelId })
+    ]) {
+      expect(run).toThrow(ModelErrEnum.unExist);
+      try {
+        run();
+      } catch (error) {
+        expect(error).toBeInstanceOf(UserError);
+        expect(getErrText(error)).toBe('Model type mismatch: GPT test display name');
+      }
+    }
+  });
+
+  it('keeps missing references distinct from delisted models and validates default state', () => {
+    expect(() => getLLMModelData({})).toThrow(ModelErrEnum.unConfigured);
+    expect(() => getLLMModelData({ modelId: 'deleted' })).toThrow(ModelErrEnum.unExist);
+    global.systemDefaultModel = {};
+    expect(() => getDefaultLLMModelData()).toThrow(ModelErrEnum.unConfigured);
+    global.systemDefaultModel = { llm: { ...modelData, isActive: false } };
+    try {
+      getDefaultLLMModelData();
+    } catch (error) {
+      expect(getErrText(error)).toBe('Model is disabled: GPT test display name');
+    }
+    global.systemDefaultModel = { llm: modelData };
+    expect(getDefaultLLMModelData()).toBe(modelData);
+  });
+
+  it('accepts vision models and uses the model identifier when its display name is empty', () => {
+    expect(() =>
+      assertModelAvailable({
+        model: { ...modelData, config: { ...modelData.config, vision: true } },
+        type: ModelTypeEnum.llm,
+        vision: true
+      })
+    ).not.toThrow();
+    expect(() => assertModelAvailable({ type: ModelTypeEnum.llm })).toThrow(ModelErrEnum.unExist);
+    try {
+      assertModelAvailable({
+        model: { ...modelData, name: '', isActive: false },
+        type: ModelTypeEnum.llm
+      });
+    } catch (error) {
+      expect(getErrText(error)).toBe('Model is disabled: gpt-test');
+    }
+  });
+
+  it.each([undefined, null, '', '   '])('treats empty references consistently (%s)', (modelId) => {
+    expect(() => getLLMModelData({ modelId })).toThrow(ModelErrEnum.unConfigured);
+    expect(getOptionalLLMModelData({ modelId })).toBeUndefined();
+    expect(getOptionalVlmModelData({ modelId })).toBeUndefined();
+    expect(getLLMModelData({ modelId, model: 'gpt-test' }).model).toBe('gpt-test');
   });
 
   it('returns effective system default model ids by model type', () => {

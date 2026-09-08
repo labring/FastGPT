@@ -74,6 +74,10 @@ export const lockTrainingDataByTeamId = async (
   }
 };
 
+/**
+ * 按训练阶段写入待处理数据。辅助模型对象只用于分块上限，缺失时不额外丢弃上游已分块的数据。
+ * 解析队列可显式传入 VLM 配置状态，将可用性校验留给实际图片处理阶段；其他调用方保持原有检查。
+ */
 export const pushDataListToTrainingQueue = async ({
   teamId,
   tmbId,
@@ -82,6 +86,7 @@ export const pushDataListToTrainingQueue = async ({
   agentModel,
   vectorModel,
   vlmModel,
+  vlmModelConfigured = !!vlmModel,
   data,
   billId,
   mode = TrainingModeEnum.chunk,
@@ -96,9 +101,11 @@ export const pushDataListToTrainingQueue = async ({
   data: PushDataChunkType[];
   mode?: TrainingModeEnum;
 
-  agentModel: LLMSystemModelDataType;
+  agentModel?: LLMSystemModelDataType;
   vectorModel: EmbeddingSystemModelDataType;
   vlmModel?: LLMSystemModelDataType;
+  /** 是否配置了 VLM 引用，不代表模型当前可用；未传时沿用模型对象是否存在的判断。 */
+  vlmModelConfigured?: boolean;
 
   indexSize?: number;
 
@@ -112,32 +119,28 @@ export const pushDataListToTrainingQueue = async ({
     if (mode === TrainingModeEnum.chunk) {
       return {
         maxToken: Infinity,
-        model: vectorModelData.model,
         weight: vectorModelData.config.weight
       };
     }
     if (mode === TrainingModeEnum.qa || mode === TrainingModeEnum.auto) {
       return {
-        maxToken: getLLMMaxChunkSize(agentModelData),
-        model: agentModelData.model,
+        maxToken: agentModelData ? getLLMMaxChunkSize(agentModelData) : Infinity,
         weight: 0
       };
     }
     if (mode === TrainingModeEnum.image || mode === TrainingModeEnum.imageParse) {
       const vllmModelData = vlmModel;
-      if (!vllmModelData) {
+      if (!vlmModelConfigured) {
         if (mode === TrainingModeEnum.image && isImageEmbeddingModel(vectorModelData)) {
           return {
             maxToken: Infinity,
-            model: vectorModelData.model,
             weight: vectorModelData.config.weight
           };
         }
         return Promise.reject(i18nT('common:error_vlm_not_config'));
       }
       return {
-        maxToken: getLLMMaxChunkSize(vllmModelData),
-        model: vllmModelData.model,
+        maxToken: vllmModelData ? getLLMMaxChunkSize(vllmModelData) : Infinity,
         weight: 0
       };
     }

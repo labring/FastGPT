@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
@@ -29,12 +29,9 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const { feConfigs } = useSystemStore();
   const { llmModelList } = useUserModelLists();
 
-  const [defaultModel, setDefaultModel] = useLocalStorageState<string>(
-    'workflow_default_llm_model',
-    {
-      defaultValue: ''
-    }
-  );
+  const [, setDefaultModel] = useLocalStorageState<string>('workflow_default_llm_model', {
+    defaultValue: ''
+  });
 
   const selectedRenderType = getSelectedInputRenderType(item);
   const inputType = nodeInputTypeToInputType(
@@ -102,13 +99,6 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
     if (!node) return undefined;
     return isNestedParentNodeType(node.flowNodeType) ? ('top-start' as const) : undefined;
   }, [getNodeById, nodeId]);
-
-  // 添加默认值处理的效果
-  useEffect(() => {
-    if (inputType === InputTypeEnum.selectLLMModel && item.value === undefined && defaultModel) {
-      handleChange(defaultModel);
-    }
-  }, [defaultModel, handleChange, inputType, item.value]);
 
   const canOptimizePrompt = item.key === NodeInputKeyEnum.aiSystemPrompt;
   const OptimizerPopverComponent = useCallback(

@@ -1,8 +1,9 @@
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
 
 type ClientModelReference = {
-  modelId?: string;
-  model?: string;
+  modelId?: string | null;
+  model?: string | null;
 };
 
 /**
@@ -16,15 +17,14 @@ export const findClientModelByValue = <T extends Pick<MyModelItemType, 'modelId'
   models: T[];
   value?: string;
 }) => {
-  if (value === undefined) return;
+  if (isEmptyModelValue(value)) return;
   return (
     models.find((item) => item.modelId === value) ?? models.find((item) => item.model === value)
   );
 };
 
 /**
- * 按双字段模型引用查找客户端模型。只要 modelId 字段存在就禁止降级到旧 model，确保前端
- * 与服务端对空字符串、失效 ID 和 ID/name 冲突采用完全一致的优先级。
+ * 按双字段模型引用查找客户端模型。非空 ID 不降级到旧 model，空值规则与服务端一致。
  */
 export const findClientModelByReference = <T extends Pick<MyModelItemType, 'modelId' | 'model'>>({
   models,
@@ -33,16 +33,15 @@ export const findClientModelByReference = <T extends Pick<MyModelItemType, 'mode
   models: T[];
   reference: ClientModelReference;
 }) => {
-  if (reference.modelId !== undefined) {
+  if (!isEmptyModelValue(reference.modelId)) {
     return models.find((item) => item.modelId === reference.modelId);
   }
-  if (reference.model === undefined) return;
+  if (isEmptyModelValue(reference.model)) return;
   return models.find((item) => item.model === reference.model);
 };
 
 /**
- * 将双字段引用规范化为 modelId。已有 modelId（包括空字符串或失效值）原样保留；只有字段
- * 完全缺失时才允许按旧 model 精确恢复稳定 ID。
+ * 将双字段引用规范化为 modelId。非空 ID（包括失效值）原样保留，未填写时精确解析旧名称。
  */
 export const resolveClientModelReferenceId = <
   T extends Pick<MyModelItemType, 'modelId' | 'model'>
@@ -53,7 +52,7 @@ export const resolveClientModelReferenceId = <
   models: T[];
   reference: ClientModelReference;
 }) => {
-  if (reference.modelId !== undefined) return reference.modelId;
-  if (reference.model === undefined) return;
+  if (!isEmptyModelValue(reference.modelId)) return reference.modelId ?? undefined;
+  if (isEmptyModelValue(reference.model)) return;
   return models.find((item) => item.model === reference.model)?.modelId;
 };

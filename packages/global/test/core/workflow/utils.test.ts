@@ -1372,6 +1372,30 @@ describe('clientGetWorkflowToolRunUserQuery', () => {
 });
 
 describe('formatModels', () => {
+  it.each([undefined, null, '', '   '])(
+    'reports unconfigured models distinctly on publish (%s)',
+    (value) => {
+      const nodes = [
+        {
+          nodeId: 'chat',
+          name: 'Chat',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModelId,
+              label: 'Model',
+              value,
+              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+            }
+          ],
+          outputs: []
+        }
+      ];
+      expect(() => formatModels({ nodes, models: [], modelReferencePolicy: 'validate' })).toThrow(
+        '存在未配置的模型，请选择模型'
+      );
+    }
+  );
   const models = [
     { model: 'gpt-4', modelId: '68ad85a7463006c963799a05', type: ModelTypeEnum.llm },
     { model: 'rerank-v1', modelId: '68ad85a7463006c963799a06', type: ModelTypeEnum.rerank },
@@ -1427,7 +1451,7 @@ describe('formatModels', () => {
     });
   });
 
-  it('falls back to the system default model when an optional chat feature is disabled', () => {
+  it('does not check or replace models when an optional chat feature is disabled', () => {
     const chatConfig = {
       questionGuide: { open: false, modelId: 'disabled-llm' },
       ttsConfig: {
@@ -1446,10 +1470,10 @@ describe('formatModels', () => {
       })
     ).not.toThrow();
 
-    expect(chatConfig.questionGuide).toEqual({ open: false, modelId: models[2].modelId });
+    expect(chatConfig.questionGuide).toEqual({ open: false, modelId: 'disabled-llm' });
     expect(chatConfig.ttsConfig).toEqual({
       type: 'web',
-      modelId: models[4].modelId
+      model: 'disabled-tts'
     });
   });
 
@@ -1472,7 +1496,7 @@ describe('formatModels', () => {
 
     expect(() =>
       formatModels({ nodes: [], chatConfig, models, modelReferencePolicy: 'validate' })
-    ).toThrow('disabled-llm 模型已停用');
+    ).toThrow('disabled-llm 模型不可用');
   });
 
   it('replaces every static legacy workflow model key and value with modelId', () => {
@@ -1784,7 +1808,7 @@ describe('formatModels', () => {
     ];
 
     expect(() => formatModels({ nodes, models, modelReferencePolicy: 'validate' })).toThrow(
-      'disabled-model-id、disabled-rerank 模型已停用'
+      'disabled-model-id、disabled-rerank 模型不可用'
     );
   });
 
@@ -2013,7 +2037,7 @@ describe('formatModels', () => {
       modelReferencePolicy: 'validate'
     });
 
-    expect(chatConfig.questionGuide).toEqual({ open: false, modelId: models[0].modelId });
+    expect(chatConfig.questionGuide).toEqual({ open: false, modelId: 'disabled-llm' });
   });
 
   it('does not validate a canonical reference modelId and removes the legacy input', () => {
@@ -2074,7 +2098,7 @@ describe('formatModels', () => {
 
     expect(nodes[0].inputs[0].value).toEqual({
       usingReRank: false,
-      rerankModelId: models[1].modelId,
+      rerankModel: 'disabled-rerank',
       datasetSearchUsingExtensionQuery: true,
       datasetSearchExtensionModelId: models[2].modelId
     });

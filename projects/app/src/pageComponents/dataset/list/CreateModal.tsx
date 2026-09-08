@@ -1,8 +1,7 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Box, Flex, Button, Input, HStack } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -14,6 +13,7 @@ import type { CreateDatasetBody } from '@fastgpt/global/openapi/core/dataset/api
 import { useTranslation } from 'next-i18next';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import AIModelSelector from '@/components/Select/AIModelSelector';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
@@ -60,7 +60,7 @@ const CreateModal = ({
         getWebDefaultEmbeddingModel(embeddingModelList)?.modelId,
       agentModelId:
         defaultModels.datasetTextLLM?.modelId || getWebDefaultLLMModel(llmModelList)?.modelId,
-      vlmModelId: defaultModels.datasetImageLLM?.modelId
+      vlmModelId: defaultModels.datasetImageLLM?.modelId ?? ''
     }
   });
   const { register, setValue, handleSubmit, watch } = form;
@@ -179,7 +179,7 @@ const CreateModal = ({
               fontWeight={500}
               pb={['12px', '0']}
             >
-              <Box>{t('common:core.ai.model.Vector Model')}</Box>
+              <FormLabel required>{t('common:core.ai.model.Vector Model')}</FormLabel>
               <QuestionTip label={t('common:core.dataset.embedding model tip')} />
             </HStack>
             <Box w={['100%', '300px']}>
@@ -212,7 +212,7 @@ const CreateModal = ({
               fontWeight={500}
               pb={['12px', '0']}
             >
-              <Box>{t('common:core.ai.model.Dataset Agent Model')}</Box>
+              <FormLabel required>{t('common:core.ai.model.Dataset Agent Model')}</FormLabel>
               <QuestionTip label={t('dataset:file_model_function_tip')} />
             </HStack>
             <Box w={['100%', '300px']}>
@@ -253,7 +253,9 @@ const CreateModal = ({
               <AIModelSelector
                 modelType={ModelTypeEnum.llm}
                 w={['100%', '300px']}
-                value={vlmModelId}
+                value={vlmModelId ?? ''}
+                canBeUnset
+                unsetLabel={t('common:not_set')}
                 list={vllmModelList.map((item) => ({
                   label: item.name,
                   value: item.modelId

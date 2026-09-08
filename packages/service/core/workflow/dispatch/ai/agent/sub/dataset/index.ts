@@ -1,11 +1,7 @@
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import {
-  getEmbeddingModelData,
-  getLLMModelData,
-  getRerankModelData
-} from '../../../../../../ai/model';
+import { getEmbeddingModelData } from '../../../../../../ai/model';
 import { createLLMResponse } from '../../../../../../ai/llm/request';
 import { countPromptTokens } from '../../../../../../../common/string/tiktoken/index';
 import { calculateCompressionThresholds } from '../../../../../../ai/llm/compress/constants';
@@ -14,6 +10,7 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDataset } from '../../../../../../dataset/schema';
 import { getDatasetSearchVlmModel } from '../../../../../../dataset/search/vlm';
+import { getDatasetSearchAuxiliaryModels } from '../../../../../../dataset/search/auxiliaryModels';
 import {
   defaultSearchDatasetData,
   type DefaultSearchDatasetDataProps
@@ -228,19 +225,7 @@ export const dispatchAgentDatasetSearch = async ({
       model: dataset?.vectorModel
     });
     const vlmModelData = await getDatasetSearchVlmModel({ teamId, datasetIds });
-    // Get Rerank Model
-    const rerankModelData = datasetParams.usingReRank
-      ? getRerankModelData({
-          modelId: datasetParams.rerankModelId,
-          model: datasetParams.rerankModel
-        })
-      : undefined;
-    const extensionModelData = datasetParams.datasetSearchUsingExtensionQuery
-      ? getLLMModelData({
-          modelId: datasetParams.datasetSearchExtensionModelId,
-          model: datasetParams.datasetSearchExtensionModel
-        })
-      : undefined;
+    const { rerankModelData, extensionModelData } = getDatasetSearchAuxiliaryModels(datasetParams);
 
     const searchData: DefaultSearchDatasetDataProps = {
       histories: [],

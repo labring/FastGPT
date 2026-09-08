@@ -45,6 +45,7 @@ import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
 import { checkMoveFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
 
 // 更新知识库接口
 // 包括如下功能：
@@ -111,6 +112,9 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     : undefined;
 
   const agentModelData = getOptionalLLMModelData({ modelId: agentModelId });
+  // undefined 表示不修改；显式 null/空字符串才是清空请求。
+  const clearVlmModel = vlmModelId !== undefined && isEmptyModelValue(vlmModelId);
+  if (clearVlmModel && !permission.hasWritePer) return Promise.reject(DatasetErrEnum.unAuthDataset);
   const vlmModelData = getOptionalVlmModelData({ modelId: vlmModelId });
 
   if (isMove) {
@@ -237,6 +241,8 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         ...(avatar && { avatar }),
         ...(agentModelData && { agentModelId: agentModelData.modelId }),
         ...(vlmModelData && { vlmModelId: vlmModelData.modelId }),
+        // 旧名称也必须删除，否则兼容读取或旧版本会重新恢复已清空的视觉配置。
+        ...(clearVlmModel && { $unset: { vlmModelId: '', vlmModel: '' } }),
         ...(websiteConfig && { websiteConfig }),
         ...(chunkSettings && { chunkSettings }),
         ...(intro !== undefined && { intro }),

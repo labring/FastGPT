@@ -47,6 +47,7 @@ const ImageQuery = ({
       minH={'32px'}
       px={3}
       py={2}
+      bg={'myGray.50'}
     >
       {!!query && (
         <Box whiteSpace={'pre-wrap'} mb={queryImages.length > 0 ? 2 : 0}>

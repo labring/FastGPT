@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const mocks = vi.hoisted(() => ({
   authSystemAdmin: vi.fn(),
@@ -66,15 +67,18 @@ describe('PUT /api/admin/settings/model/updateDefault', () => {
       { _id: ids.chatTitle, type: ModelTypeEnum.llm, isActive: true, config: {} }
     ]);
 
-    await handler({
-      body: {
-        [ModelTypeEnum.llm]: ids.llm,
-        [ModelTypeEnum.embedding]: ids.embedding,
-        datasetTextLLMModelId: ids.datasetText,
-        datasetImageLLMModelId: ids.datasetImage,
-        chatTitleLLMModelId: ids.chatTitle
-      }
-    } as any);
+    await handler(
+      {
+        body: {
+          [ModelTypeEnum.llm]: ids.llm,
+          [ModelTypeEnum.embedding]: ids.embedding,
+          datasetTextLLMModelId: ids.datasetText,
+          datasetImageLLMModelId: ids.datasetImage,
+          chatTitleLLMModelId: ids.chatTitle
+        }
+      } as any,
+      {} as any
+    );
 
     expect(mocks.upsertSystemDefaultModelIds).toHaveBeenCalledWith({
       llm: ids.llm,
@@ -117,9 +121,22 @@ describe('PUT /api/admin/settings/model/updateDefault', () => {
       ]
     }
   ])('rejects when $name before clearing existing defaults', async ({ body, models }) => {
-    mocks.findLean.mockResolvedValue(models);
+    mocks.findLean.mockResolvedValue(
+      models.map((model) => ({ ...model, name: 'Test model', model: 'test-model' }))
+    );
 
-    await expect(handler({ body } as any)).rejects.toThrow(ModelErrEnum.unExist);
+    await expect(handler({ body } as any, {} as any)).rejects.toThrow(ModelErrEnum.unExist);
+    try {
+      await handler({ body } as any, {} as any);
+    } catch (error) {
+      const expected =
+        models.length === 0
+          ? 'common:model_delisted'
+          : models[0].isActive
+            ? 'Model type mismatch: Test model'
+            : 'Model is disabled: Test model';
+      expect(getErrText(error)).toBe(expected);
+    }
 
     expect(mocks.upsertSystemDefaultModelIds).not.toHaveBeenCalled();
     expect(mocks.refreshModelTemplates).not.toHaveBeenCalled();

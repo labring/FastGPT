@@ -72,8 +72,12 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
   const agentModelStore =
     getOptionalLLMModelData({ modelId: agentModelId, model: agentModel }) ??
     getDefaultLLMModelData();
-  const vlmModelStore =
-    getOptionalVlmModelData({ modelId: vlmModelId, model: vlmModel }) ?? getDefaultVLMModelData();
+  // 显式空值表示“不设置”，不能再补系统默认或按旧名称恢复；仅未传引用时沿用默认。
+  const vlmModelStore = (() => {
+    if (vlmModelId !== undefined) return getOptionalVlmModelData({ modelId: vlmModelId });
+    if (vlmModel !== undefined) return getOptionalVlmModelData({ model: vlmModel });
+    return getDefaultVLMModelData();
+  })();
 
   // check limit
   await checkTeamDatasetLimit(teamId);

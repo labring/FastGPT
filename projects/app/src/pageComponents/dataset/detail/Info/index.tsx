@@ -43,7 +43,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     llmModelList,
     embeddingModelList,
     vlmModelList: vllmModelList
-  } = useUserModelLists({ enabled: false });
+  } = useUserModelLists({ autoLoadCatalog: false });
 
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
   const [editedAPIDataset, setEditedAPIDataset] = useState<EditAPIDatasetInfoFormType>();
@@ -71,7 +71,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     });
 
   const { runAsync: onSave } = useRequest(
-    (data: DatasetItemType) => {
+    (data: DatasetItemType, clearVlmModel = false) => {
+      if (clearVlmModel) return updateDataset({ id: datasetId, vlmModelId: null });
       return updateDataset({
         id: datasetId,
         agentModelId: data.agentModel?.modelId ?? data.agentModelId,
@@ -241,6 +242,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               modelType={ModelTypeEnum.llm}
               w={'100%'}
               value={vlmModel?.modelId ?? datasetDetail.vlmModelId}
+              canBeUnset
+              unsetLabel={t('common:not_set')}
               resolvedCurrentModel={vlmModel ?? datasetDetail.vlmModel}
               list={vllmModelList.map((item) => ({
                 label: item.name,
@@ -248,6 +251,13 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               }))}
               fontSize={'mini'}
               onChange={(e) => {
+                if (e === '') {
+                  return handleSubmit(async (data) => {
+                    await onSave(data, true);
+                    setValue('vlmModel', undefined);
+                    setValue('vlmModelId', undefined);
+                  })();
+                }
                 const vlmModel = vllmModelList.find((item) => item.modelId === e);
                 if (!vlmModel) return;
                 setValue('vlmModel', vlmModel);

@@ -26,6 +26,7 @@ import {
   checkWorkflowNodeIssues,
   checkWorkflowHasError,
   checkWorkflowBeforeRunOrPublish,
+  getWorkflowCheckIssueMessage,
   getWorkflowCheckErrorNodeIds
 } from '@/web/core/workflow/workflowCheck';
 import {
@@ -57,9 +58,10 @@ import { ClassifyQuestionModule } from '@fastgpt/global/core/workflow/template/s
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
 import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import commonZh from '@fastgpt/web/i18n/zh-CN/common.json';
 
 describe('nodeTemplate2FlowNode', () => {
-  it('persists default model IDs when creating a dataset search node without mutating its template', () => {
+  it('does not prefill either auxiliary model when creating dataset search', () => {
     const node = nodeTemplate2FlowNode({
       template: DatasetSearchModule,
       position: { x: 0, y: 0 },
@@ -70,19 +72,100 @@ describe('nodeTemplate2FlowNode', () => {
     expect(stored.nodes[0].inputs).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          key: NodeInputKeyEnum.datasetSearchExtensionModelId,
-          value: 'default-llm'
+          key: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,
+          value: false
         }),
         expect.objectContaining({
-          key: NodeInputKeyEnum.datasetSearchRerankModelId,
-          value: 'default-rerank'
+          key: NodeInputKeyEnum.datasetSearchRerankModelId
         })
       ])
     );
     expect(
+      stored.nodes[0].inputs.find(
+        (input) => input.key === NodeInputKeyEnum.datasetSearchRerankModelId
+      )?.value
+    ).toBeUndefined();
+    expect(
+      stored.nodes[0].inputs.find(
+        (input) => input.key === NodeInputKeyEnum.datasetSearchExtensionModelId
+      )?.value
+    ).toBeUndefined();
+    expect(
       DatasetSearchModule.inputs.find(
         (i) => i.key === NodeInputKeyEnum.datasetSearchExtensionModelId
       )?.value
+    ).toBeUndefined();
+  });
+
+  it.each([AiChatModule, ToolCallNode, ClassifyQuestionModule])(
+    'initializes $flowNodeType models once at node creation',
+    (template) => {
+      const llmModelList = [
+        { modelId: 'first', model: 'first', isActive: true },
+        { modelId: 'system', model: 'system', isActive: true },
+        { modelId: 'remembered', model: 'remembered', isActive: true }
+      ];
+      for (const [lastSelectedModelId, expected] of [
+        ['remembered', 'remembered'],
+        ['deleted', 'system']
+      ]) {
+        const node = nodeTemplate2FlowNode({
+          template,
+          position: { x: 0, y: 0 },
+          t: ((key: string) => key) as any,
+          llmModelList,
+          lastSelectedModelId,
+          defaultModelIds: { llm: 'system' }
+        });
+        const stored = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [] });
+        expect(
+          stored.nodes[0].inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId)?.value
+        ).toBe(expected);
+      }
+      expect(
+        template.inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId)?.value
+      ).toBeUndefined();
+    }
+  );
+
+  it('ignores disabled remembered models and leaves existing values or references unchanged', () => {
+    const llmModelList = [
+      { modelId: 'disabled', model: 'disabled', isActive: false },
+      { modelId: 'first', model: 'first', isActive: true }
+    ];
+    const create = (value: unknown, reference = false) =>
+      nodeTemplate2FlowNode({
+        template: {
+          ...AiChatModule,
+          inputs: AiChatModule.inputs.map((input) =>
+            input.key === NodeInputKeyEnum.aiModelId
+              ? {
+                  ...input,
+                  value,
+                  ...(reference ? { selectedType: FlowNodeInputTypeEnum.reference } : {})
+                }
+              : input
+          )
+        },
+        position: { x: 0, y: 0 },
+        t: ((key: string) => key) as any,
+        llmModelList,
+        lastSelectedModelId: 'disabled',
+        defaultModelIds: { llm: 'missing' }
+      }).data.inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId)?.value;
+    expect(create(undefined)).toBe('first');
+    expect(create(null)).toBe('first');
+    expect(create('')).toBe('first');
+    expect(create('existing-unavailable')).toBe('existing-unavailable');
+    expect(create(undefined, true)).toBeUndefined();
+    expect(create(['node', 'modelId'], true)).toEqual(['node', 'modelId']);
+    const empty = nodeTemplate2FlowNode({
+      template: AiChatModule,
+      position: { x: 0, y: 0 },
+      t: ((key: string) => key) as any
+    });
+    expect(
+      empty.data.inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId)?.value
     ).toBeUndefined();
   });
 
@@ -480,6 +563,12 @@ describe('checkWorkflowNodeIssues', () => {
     const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall);
     const aiToolNode = makeNode('ai-tool', FlowNodeTypeEnum.chatNode, {
       inputs: [
+        {
+          key: NodeInputKeyEnum.aiModelId,
+          label: '模型',
+          value: 'configured-model',
+          renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel]
+        },
         {
           key: NodeInputKeyEnum.userChatInput,
           label: '用户问题',
@@ -2108,6 +2197,43 @@ describe('workflow check helpers', () => {
 });
 
 describe('workflow model validation', () => {
+  it('does not reuse the old node-prefixed translation when cached locale resources are stale', () => {
+    const t = ((key: string, params: { inputName?: string; defaultValue?: string }) => {
+      if (key === 'common:core.workflow.check.model_required')
+        return '节点「知识库搜索」未配置「问题优化」，请选择模型';
+      return params.defaultValue ?? key;
+    }) as any;
+    expect(
+      getWorkflowCheckIssueMessage('model_required', t, {
+        nodeName: '知识库搜索',
+        inputName: '问题优化'
+      })
+    ).toBe('未配置[问题优化]模型');
+  });
+  it('formats missing models in one translated sentence without node names or a separate model-label key', () => {
+    const t = ((key: string, params?: { inputName?: string }) => {
+      const text = (commonZh as Record<string, string>)[key.replace('common:', '')] ?? key;
+      return text.replace('{{inputName}}', params?.inputName ?? '');
+    }) as any;
+    expect(
+      getWorkflowCheckIssueMessage('model_required', t, {
+        nodeName: '知识库搜索',
+        inputName: '问题优化'
+      })
+    ).toBe('未配置[问题优化]模型');
+    expect(
+      getWorkflowCheckIssueMessage('model_required', undefined, {
+        nodeName: '知识库搜索',
+        inputName: '问题优化'
+      })
+    ).toBe('未配置[问题优化]模型');
+    expect(
+      getWorkflowCheckIssueMessage('model_required', undefined, {
+        nodeName: '知识库搜索',
+        inputName: '问题优化模型'
+      })
+    ).toBe('未配置[问题优化模型]模型');
+  });
   const models = [
     { modelId: 'llm-id', model: 'gpt-4o', type: ModelTypeEnum.llm },
     { modelId: 'rerank-id', model: 'bge-reranker', type: ModelTypeEnum.rerank }
@@ -2168,7 +2294,12 @@ describe('workflow model validation', () => {
     ]);
 
     const issues = checkWorkflowNodeIssues({ nodes: [node], edges: [], models })['model-node'];
-    expect(issues?.find((issue) => issue.code === 'model_unavailable')?.message).toBe('模型已停用');
+    expect(issues?.find((issue) => issue.code === 'model_unavailable')?.message).toContain(
+      'Model node'
+    );
+    expect(issues?.find((issue) => issue.code === 'model_unavailable')?.message).toContain(
+      '模型不可用'
+    );
   });
 
   it('does not statically validate reference and template model values', () => {
@@ -2189,6 +2320,161 @@ describe('workflow model validation', () => {
 
     expect(getModelIssueCodes(referenceNode)).not.toContain('model_unavailable');
     expect(getModelIssueCodes(templateNode)).not.toContain('model_unavailable');
+  });
+
+  it.each([undefined, null, '', '   '])(
+    'keeps strict model checks for deep search with the exact input label (%s)',
+    (value) => {
+      const node = makeModelNode(
+        [
+          {
+            key: NodeInputKeyEnum.datasetDeepSearch,
+            label: '深度搜索开关',
+            value: true,
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          },
+          {
+            key: NodeInputKeyEnum.datasetDeepSearchModelId,
+            label: '深度搜索模型',
+            value,
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          }
+        ],
+        FlowNodeTypeEnum.datasetSearchNode
+      );
+      node.data.name = '知识库搜索#2';
+      const issues = checkWorkflowNodeIssues({ nodes: [node], edges: [], models })['model-node'];
+      expect(issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: 'model_required',
+            nodeId: 'model-node',
+            inputKey: NodeInputKeyEnum.datasetDeepSearchModelId,
+            message: '未配置[深度搜索模型]模型'
+          })
+        ])
+      );
+      expect(issues?.some((issue) => issue.code === 'model_unavailable')).toBe(false);
+    }
+  );
+
+  it('ignores disabled optional model features and reports a missing canonical model slot', () => {
+    const disabledNode = makeModelNode(
+      [
+        {
+          key: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,
+          label: '',
+          value: false,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        }
+      ],
+      FlowNodeTypeEnum.datasetSearchNode
+    );
+    expect(getModelIssueCodes(disabledNode)).not.toContain('model_required');
+    const missingSlot = makeModelNode([]);
+    expect(getModelIssueCodes(missingSlot)).toContain('model_required');
+  });
+
+  it.each([undefined, null, '', '   '])(
+    'does not let a legacy model hide an unconfigured dataset search model ID (%s)',
+    (value) => {
+      const node = makeModelNode(
+        [
+          {
+            key: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,
+            label: '',
+            value: true,
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          },
+          {
+            key: NodeInputKeyEnum.datasetSearchExtensionModelId,
+            label: '问题优化模型',
+            value,
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          },
+          {
+            key: NodeInputKeyEnum.datasetSearchExtensionModel,
+            label: '',
+            value: 'gpt-4o',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          }
+        ],
+        FlowNodeTypeEnum.datasetSearchNode
+      );
+      const result = checkWorkflowBeforeRunOrPublish({ nodes: [node], edges: [], models });
+      expect(result.issueMap['model-node']?.some((issue) => issue.code === 'model_required')).toBe(
+        false
+      );
+      expect(
+        node.data.inputs.find(
+          (input) => input.key === NodeInputKeyEnum.datasetSearchExtensionModelId
+        )?.value
+      ).toBe(value);
+    }
+  );
+
+  it.each([undefined, null, false])(
+    'does not require a query extension model when its switch is absent or disabled (%s)',
+    (value) => {
+      const node = makeModelNode(
+        [
+          {
+            key: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,
+            label: '',
+            value,
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          },
+          {
+            key: NodeInputKeyEnum.datasetSearchExtensionModelId,
+            label: '问题优化模型',
+            value: '',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          }
+        ],
+        FlowNodeTypeEnum.datasetSearchNode
+      );
+      expect(getModelIssueCodes(node)).not.toContain('model_required');
+    }
+  );
+
+  it('does not enable query extension from template defaults when its switch input is missing', () => {
+    const node = makeModelNode(
+      [
+        {
+          key: NodeInputKeyEnum.datasetSearchExtensionModelId,
+          label: '问题优化模型',
+          value: '',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        }
+      ],
+      FlowNodeTypeEnum.datasetSearchNode
+    );
+    expect(getModelIssueCodes(node)).not.toContain('model_required');
+  });
+
+  it('does not treat a hidden defaultValue as an actual query extension model selection', () => {
+    const node = makeModelNode(
+      [
+        {
+          key: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,
+          label: '',
+          value: true,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        },
+        {
+          key: NodeInputKeyEnum.datasetSearchExtensionModelId,
+          label: '问题优化模型',
+          defaultValue: 'llm-id',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        }
+      ],
+      FlowNodeTypeEnum.datasetSearchNode
+    );
+    expect(getModelIssueCodes(node)).not.toContain('model_required');
+    expect(
+      node.data.inputs.find((input) => input.key === NodeInputKeyEnum.datasetSearchExtensionModelId)
+        ?.value
+    ).toBeUndefined();
   });
 
   it('only validates optional dataset models while their feature is enabled', () => {
@@ -2270,6 +2556,32 @@ describe('workflow model validation', () => {
 });
 
 describe('storeNode2FlowNode', () => {
+  it('preserves saved query extension settings despite the new disabled template default', () => {
+    const node = storeNode2FlowNode({
+      item: {
+        ...DatasetSearchModule,
+        nodeId: 'saved-search',
+        inputs: DatasetSearchModule.inputs.map((input) => {
+          if (input.key === NodeInputKeyEnum.datasetSearchUsingExtensionQuery)
+            return { ...input, value: true };
+          if (input.key === NodeInputKeyEnum.datasetSearchExtensionModelId)
+            return { ...input, value: 'saved-model' };
+          return input;
+        })
+      },
+      t: ((key: string) => key) as any
+    });
+    expect(
+      node.data.inputs.find(
+        (input) => input.key === NodeInputKeyEnum.datasetSearchUsingExtensionQuery
+      )?.value
+    ).toBe(true);
+    expect(
+      node.data.inputs.find((input) => input.key === NodeInputKeyEnum.datasetSearchExtensionModelId)
+        ?.value
+    ).toBe('saved-model');
+  });
+
   it('restores tool set nodes without a source handle', () => {
     const storeNode = {
       nodeId: 'tool-set-node',

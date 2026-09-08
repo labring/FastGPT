@@ -23,6 +23,8 @@ import {
   workflowModelKeyMappings
 } from '@fastgpt/global/core/workflow/utils';
 import type { TFunction } from 'next-i18next';
+import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
+import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import type {
   FlowNodeInputItemType,
   ReferenceItemValueType
@@ -140,9 +142,20 @@ const shouldSkipGenericRequiredInputCheck = (input: FlowNodeInputItemType) => {
 
 /** 优先取 label，空则取 debugLabel，并走 i18n 翻译，避免展示 quoteQA 等内部 key。 */
 const getInputLabel = (input: FlowNodeInputItemType, t?: TFunction) => {
+  const modelLabels: Record<string, string> = {
+    [NodeInputKeyEnum.aiModelId]: 'common:core.ai.Model',
+    [NodeInputKeyEnum.aiModel]: 'common:core.ai.Model',
+    [NodeInputKeyEnum.datasetSearchRerankModelId]: 'common:core.dataset.search.ReRank',
+    [NodeInputKeyEnum.datasetSearchRerankModel]: 'common:core.dataset.search.ReRank',
+    [NodeInputKeyEnum.datasetSearchExtensionModelId]: 'common:core.module.template.Query extension',
+    [NodeInputKeyEnum.datasetSearchExtensionModel]: 'common:core.module.template.Query extension',
+    [NodeInputKeyEnum.datasetDeepSearchModelId]: 'common:deep_rag_search',
+    [NodeInputKeyEnum.datasetDeepSearchModel]: 'common:deep_rag_search'
+  };
   const rawLabel =
     (typeof input.label === 'string' && input.label ? input.label : undefined) ||
     (typeof input.debugLabel === 'string' && input.debugLabel ? input.debugLabel : undefined) ||
+    modelLabels[input.key] ||
     input.key;
 
   if (t && rawLabel) {
@@ -171,7 +184,8 @@ type WorkflowCheckMessageCode =
   | 'tool_missing'
   | 'tool_load_failed'
   | 'tool_no_permission'
-  | 'model_unavailable';
+  | 'model_unavailable'
+  | 'model_required';
 
 /** issue.code -> 设计稿固定文案 code。表外 code 映射到最接近的已有文案。 */
 const WORKFLOW_CHECK_ISSUE_MESSAGE_CODE_MAP: Record<string, WorkflowCheckMessageCode> = {
@@ -196,6 +210,7 @@ const WORKFLOW_CHECK_ISSUE_MESSAGE_CODE_MAP: Record<string, WorkflowCheckMessage
   tool_load_failed: 'tool_load_failed',
   tool_no_permission: 'tool_no_permission',
   model_unavailable: 'model_unavailable',
+  model_required: 'model_required',
   tool_offline: 'tool_missing',
   loop_run_missing_break: 'if_else_incomplete',
   variable_update_incomplete: 'code_input_incomplete'
@@ -219,7 +234,7 @@ export const getWorkflowCheckIssueUIStatus = (code: string): WorkflowCheckUIStat
 
 const workflowCheckMessageFallback: Record<
   WorkflowCheckMessageCode,
-  (params?: { inputName?: string; model?: string }) => string
+  (params?: { inputName?: string; model?: string; nodeName?: string }) => string
 > = {
   required_input_empty: ({ inputName } = {}) => `需填写必填项 ${inputName ?? ''}`.trim(),
   no_upstream: () => '未与其他节点连线',
@@ -238,7 +253,9 @@ const workflowCheckMessageFallback: Record<
   tool_missing: () => '该工具不存在，请删除',
   tool_load_failed: () => '工具加载失败，请稍后重试',
   tool_no_permission: () => '当前账号无权限访问该资源',
-  model_unavailable: () => '模型已停用'
+  model_unavailable: ({ nodeName, inputName } = {}) =>
+    `节点「${nodeName ?? ''}」的「${inputName ?? ''}」模型不可用`,
+  model_required: ({ inputName } = {}) => `未配置[${inputName ?? ''}]模型`
 };
 
 const PLUGIN_DATA_PERMISSION_ERROR_CODES = new Set<string>([
@@ -282,7 +299,7 @@ const resolveWorkflowCheckMessageCode = (issueCode: string): WorkflowCheckMessag
 const translateWorkflowCheckIssueMessage = (
   messageCode: WorkflowCheckMessageCode,
   t: TFunction,
-  params?: { inputName?: string; model?: string }
+  params?: { inputName?: string; model?: string; nodeName?: string }
 ) => {
   switch (messageCode) {
     case 'required_input_empty':
@@ -321,6 +338,12 @@ const translateWorkflowCheckIssueMessage = (
       return t('common:core.workflow.check.tool_no_permission', params);
     case 'model_unavailable':
       return t('common:core.workflow.check.model_unavailable', params);
+    case 'model_required':
+      // 短提示使用独立 key；开发热更新或旧语言资源尚未刷新时也不能沿用带节点名的旧模板。
+      return t('common:core.workflow.check.model_required_short', {
+        ...params,
+        defaultValue: workflowCheckMessageFallback.model_required(params)
+      });
   }
 };
 
@@ -328,7 +351,7 @@ const translateWorkflowCheckIssueMessage = (
 export const getWorkflowCheckIssueMessage = (
   issueCode: string,
   t?: TFunction,
-  params?: { inputName?: string; model?: string }
+  params?: { inputName?: string; model?: string; nodeName?: string }
 ) => {
   const messageCode = resolveWorkflowCheckMessageCode(issueCode);
   if (!messageCode) return '';
@@ -520,6 +543,8 @@ export const checkWorkflowNodeIssues = ({
       type,
       featureEnabled,
       inputKey,
+      modelInput,
+      defaultWhenEmpty = false,
       allowLegacyModelFallback = false
     }: {
       modelId?: unknown;
@@ -527,30 +552,55 @@ export const checkWorkflowNodeIssues = ({
       type: ModelTypeEnum;
       featureEnabled: boolean;
       inputKey: string;
+      modelInput?: FlowNodeInputItemType;
+      defaultWhenEmpty?: boolean;
       allowLegacyModelFallback?: boolean;
     }) => {
-      if (!models || !featureEnabled) return;
-      const value = modelId !== undefined ? modelId : model;
-      if (isDynamicModelValue(value) || value === undefined || value === null || value === '') {
+      if (!featureEnabled) return;
+      const value = getModelReferenceValue({ modelId, model });
+      if (isDynamicModelValue(value)) return;
+      const inputName = getInputLabel(
+        modelInput ??
+          inputMap.get(inputKey) ?? {
+            key: inputKey,
+            label: '',
+            renderTypeList: []
+          },
+        t
+      );
+      if (isEmptyModelValue(value)) {
+        // 发布接口会为这些辅助功能写入默认模型；非空失效引用仍走下方严格校验。
+        if (defaultWhenEmpty) return;
+        addIssue({
+          node,
+          code: 'model_required',
+          inputKey,
+          message: getWorkflowCheckIssueMessage('model_required', t, {
+            nodeName: data.name,
+            inputName
+          })
+        });
         return;
       }
+      if (!models) return;
 
-      const available =
-        modelId !== undefined
-          ? models.some(
-              (item) =>
-                item.type === type &&
-                (item.modelId === String(modelId) ||
-                  (allowLegacyModelFallback && item.model === modelId))
-            )
-          : models.some((item) => item.model === model && item.type === type);
+      const available = !isEmptyModelValue(modelId)
+        ? models.some(
+            (item) =>
+              item.type === type &&
+              (item.modelId === String(modelId) ||
+                (allowLegacyModelFallback && item.model === modelId))
+          )
+        : models.some((item) => item.model === model && item.type === type);
       if (available) return;
 
       addIssue({
         node,
         code: 'model_unavailable',
         message: getWorkflowCheckIssueMessage('model_unavailable', t, {
-          model: String(value)
+          model: String(value),
+          nodeName: data.name,
+          inputName
         }),
         inputKey
       });
@@ -567,7 +617,7 @@ export const checkWorkflowNodeIssues = ({
       addUnavailableModelIssue({
         modelId: input.value ?? input.defaultValue,
         type: ModelTypeEnum.llm,
-        featureEnabled: true,
+        featureEnabled: !!input.required || !isEmptyModelValue(input.value ?? input.defaultValue),
         inputKey: input.key,
         // 旧版 WorkflowTool 默认值保存的是 model，请求期间仍需兼容识别。
         allowLegacyModelFallback: true
@@ -609,7 +659,12 @@ export const checkWorkflowNodeIssues = ({
       for (const [legacyKey, modelIdKey] of workflowModelKeyMappings) {
         const legacyInput = inputMap.get(legacyKey);
         const modelIdInput = inputMap.get(modelIdKey);
-        const systemModelInput = modelIdInput ?? legacyInput;
+        const systemModelInput =
+          modelIdInput ??
+          legacyInput ??
+          moduleTemplatesFlat
+            .find((template) => template.flowNodeType === data.flowNodeType)
+            ?.inputs.find((input) => input.key === modelIdKey);
         if (
           !systemModelInput ||
           !isWorkflowSystemModelInput({ node: data, input: systemModelInput })
@@ -633,12 +688,26 @@ export const checkWorkflowNodeIssues = ({
           }
         })();
 
+        const isDatasetQueryExtension =
+          data.flowNodeType === FlowNodeTypeEnum.datasetSearchNode &&
+          modelIdKey === NodeInputKeyEnum.datasetSearchExtensionModelId;
+        // 问题优化摘要只展示实际 ID；旧名称或 defaultValue 不能掩盖尚未选择模型的状态。
+        // 可选功能的开关缺省表示未开启，不借用模板默认值。
+        const featureValue = featureKey ? inputMap.get(featureKey)?.value : true;
         addUnavailableModelIssue({
-          modelId: modelIdInput?.value,
-          model: legacyInput?.value,
+          modelId: isDatasetQueryExtension
+            ? modelIdInput?.value
+            : (modelIdInput?.value ?? modelIdInput?.defaultValue),
+          model: isDatasetQueryExtension
+            ? undefined
+            : (legacyInput?.value ?? legacyInput?.defaultValue),
           type,
-          featureEnabled: featureKey ? Boolean(inputMap.get(featureKey)?.value) : true,
-          inputKey: systemModelInput.key
+          featureEnabled: Boolean(featureValue),
+          defaultWhenEmpty:
+            modelIdKey === NodeInputKeyEnum.datasetSearchRerankModelId ||
+            modelIdKey === NodeInputKeyEnum.datasetSearchExtensionModelId,
+          inputKey: isDatasetQueryExtension ? modelIdKey : systemModelInput.key,
+          modelInput: systemModelInput
         });
       }
 
@@ -655,14 +724,26 @@ export const checkWorkflowNodeIssues = ({
           model: datasetParams[NodeInputKeyEnum.datasetSearchRerankModel],
           type: ModelTypeEnum.rerank,
           featureEnabled: Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingReRank]),
-          inputKey: NodeInputKeyEnum.datasetParams
+          defaultWhenEmpty: true,
+          inputKey: NodeInputKeyEnum.datasetParams,
+          modelInput: {
+            key: NodeInputKeyEnum.datasetSearchRerankModelId,
+            label: '',
+            renderTypeList: []
+          }
         });
         addUnavailableModelIssue({
           modelId: datasetParams[NodeInputKeyEnum.datasetSearchExtensionModelId],
           model: datasetParams[NodeInputKeyEnum.datasetSearchExtensionModel],
           type: ModelTypeEnum.llm,
           featureEnabled: Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingExtensionQuery]),
-          inputKey: NodeInputKeyEnum.datasetParams
+          defaultWhenEmpty: true,
+          inputKey: NodeInputKeyEnum.datasetParams,
+          modelInput: {
+            key: NodeInputKeyEnum.datasetSearchExtensionModelId,
+            label: '',
+            renderTypeList: []
+          }
         });
       }
 
@@ -914,6 +995,18 @@ export const checkWorkflowNodeIssues = ({
         if (shouldSkipGenericRequiredInputCheck(input)) {
           return;
         }
+        // 搜索辅助模型的空值由发布接口补默认，不能再被通用 required 规则重复拦截。
+        if (
+          isWorkflowSystemModelInput({ node: data, input }) &&
+          !nodeInputIsReference(input) &&
+          [
+            NodeInputKeyEnum.datasetSearchRerankModelId,
+            NodeInputKeyEnum.datasetSearchRerankModel,
+            NodeInputKeyEnum.datasetSearchExtensionModelId,
+            NodeInputKeyEnum.datasetSearchExtensionModel
+          ].includes(input.key as NodeInputKeyEnum)
+        )
+          return;
 
         // Agent 生成字段运行时由模型填写，不需要开发者预填。
         const normalizedInput =
@@ -941,6 +1034,9 @@ export const checkWorkflowNodeIssues = ({
         if (
           input.required &&
           inputValueIsEmpty &&
+          !issueMap[data.nodeId]?.some(
+            (issue) => issue.code === 'model_required' && issue.inputKey === input.key
+          ) &&
           !(data.flowNodeType === FlowNodeTypeEnum.code && input.canEdit)
         ) {
           addIssue({

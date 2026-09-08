@@ -1,16 +1,14 @@
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
 
-/** 合并调用方只读态、目录加载态和业务禁用提示，任一约束存在时都禁止选择。 */
+/** 仅业务只读态和禁用提示锁定选择器；目录加载由下拉面板处理，不影响触发按钮。 */
 export const resolveModelSelectorDisabled = ({
   isDisabled,
-  loading,
   disableTip
 }: {
   isDisabled?: boolean;
-  loading: boolean;
   disableTip?: string;
-}) => Boolean(isDisabled || loading || disableTip);
+}) => Boolean(isDisabled || disableTip);
 
 /**
  * 同时识别稳定 modelId 与旧 model 值，并统一归一化为 modelId。
@@ -37,15 +35,6 @@ export const resolveModelSelectorSelection = <
     shouldNormalize: normalizedValue !== value
   };
 };
-
-/** 从当前可选范围中优先选择系统有效默认模型；默认模型不在范围内时回退第一个候选项。 */
-export const resolveModelSelectorDefault = <T extends Pick<MyModelItemType, 'modelId'>>({
-  models,
-  defaultModelId
-}: {
-  models: T[];
-  defaultModelId?: string;
-}) => models.find((model) => model.modelId === defaultModelId) ?? models[0];
 
 /** 判断模型是否落在调用方传入的兼容白名单中；兼容白名单可同时使用 modelId 或旧 model。 */
 export const isModelAllowedByValues = (

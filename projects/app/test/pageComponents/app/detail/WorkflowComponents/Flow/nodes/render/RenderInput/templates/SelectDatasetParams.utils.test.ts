@@ -6,6 +6,24 @@ import {
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 
 describe('getDatasetSearchParams', () => {
+  it.each([undefined, null, false])(
+    'keeps absent or disabled feature switches off in the summary (%s)',
+    (value) => {
+      const empty = getDatasetSearchParams([]);
+      expect(empty.datasetSearchUsingExtensionQuery).toBe(false);
+      expect(empty.usingReRank).toBe(false);
+      const params = getDatasetSearchParams([
+        { key: 'datasetSearchUsingExtensionQuery', value },
+        { key: 'usingReRank', value }
+      ]);
+      expect(params.datasetSearchUsingExtensionQuery).toBe(false);
+      expect(params.usingReRank).toBe(false);
+      expect(
+        getDatasetSearchParams([{ key: 'datasetSearchUsingExtensionQuery', value: true }])
+          .datasetSearchUsingExtensionQuery
+      ).toBe(true);
+    }
+  );
   it('shows only persisted model choices and can read initially empty keys', () => {
     expect(getDatasetSearchParams([]).datasetSearchExtensionModelId).toBeUndefined();
     const input = { key: 'datasetSearchExtensionModelId', value: 'chosen' };

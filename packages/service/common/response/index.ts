@@ -96,12 +96,16 @@ export function processError(params: {
   // 1. 处理特定的业务错误（ERROR_RESPONSE）
   if (ERROR_RESPONSE[errResponseKey]) {
     const shouldClearCookie = errResponseKey === ERROR_ENUM.unAuthorization;
+    const message =
+      error instanceof UserError && error.displayMessage
+        ? replaceSensitiveText(error.displayMessage)
+        : ERROR_RESPONSE[errResponseKey].message;
 
     // 记录业务侧错误日志
     logger.info('API response error', {
       url,
       code: ERROR_RESPONSE[errResponseKey].code,
-      message: ERROR_RESPONSE[errResponseKey].message,
+      message,
       statusText: ERROR_RESPONSE[errResponseKey].statusText,
       data: ERROR_RESPONSE[errResponseKey].data
     });
@@ -109,7 +113,7 @@ export function processError(params: {
     return {
       code: ERROR_RESPONSE[errResponseKey].code || defaultCode,
       statusText: ERROR_RESPONSE[errResponseKey].statusText || 'error',
-      message: ERROR_RESPONSE[errResponseKey].message,
+      message,
       data: ERROR_RESPONSE[errResponseKey].data,
       httpStatus: ERROR_RESPONSE[errResponseKey].httpStatus ?? 500,
       shouldClearCookie
@@ -130,6 +134,7 @@ export function processError(params: {
 
   // 3. 根据错误类型记录不同级别的日志
   if (error instanceof UserError) {
+    msg = error.displayMessage || msg;
     logger.info('Request error', { url, message: msg });
   } else if (error instanceof ZodError || error instanceof ApiRequestInputParseError) {
     zodError = parseZodErrorMessage(error);
@@ -223,7 +228,7 @@ export const getSseErrorResponse = (
   if (ERROR_RESPONSE[errResponseKey]) {
     return {
       event: SseResponseEventEnum.error,
-      data: JSON.stringify(ERROR_RESPONSE[errResponseKey]),
+      data: JSON.stringify({ ...ERROR_RESPONSE[errResponseKey], message: processedError.message }),
       shouldClearCookie: processedError.shouldClearCookie
     };
   }

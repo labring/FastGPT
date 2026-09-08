@@ -30,9 +30,9 @@ describe('getDefaultAppForm', () => {
       similarity: 0.4,
       limit: 3000,
       searchMode: DatasetSearchModeEnum.embedding,
-      usingReRank: true,
+      usingReRank: false,
       rerankWeight: 0.5,
-      datasetSearchUsingExtensionQuery: true,
+      datasetSearchUsingExtensionQuery: false,
       datasetSearchExtensionBg: '',
       authTmbId: false
     });

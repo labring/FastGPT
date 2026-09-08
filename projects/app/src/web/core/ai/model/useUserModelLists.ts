@@ -9,26 +9,30 @@ type MyModelByType<T extends ModelTypeEnum> = Extract<MyModelItemType, { type: T
 
 /** 仅反映当前消费者是否仍在等待目录校验，避免其他消费者的请求触发全局 loading。 */
 export const getUserModelListsLoading = ({
-  enabled,
+  autoLoadCatalog,
   expectedIdentity,
   isCurrentIdentity,
   requestKey,
   validatedRequestKey
 }: {
-  enabled: boolean;
+  autoLoadCatalog: boolean;
   expectedIdentity?: string;
   isCurrentIdentity: boolean;
   requestKey?: string;
   validatedRequestKey?: string;
-}) => enabled && !!expectedIdentity && (validatedRequestKey !== requestKey || !isCurrentIdentity);
+}) =>
+  autoLoadCatalog &&
+  !!expectedIdentity &&
+  (validatedRequestKey !== requestKey || !isCurrentIdentity);
 
 /** 按登录成员或外链运行身份加载目录，并提供按类型划分的响应式视图。 */
 export const useUserModelLists = ({
   outLinkAuthData,
-  enabled = true
+  autoLoadCatalog = true
 }: {
   outLinkAuthData?: OutLinkChatAuthProps;
-  enabled?: boolean;
+  /** 是否主动加载/校验 catalog；false 时只订阅当前身份的缓存数据。默认 true。 */
+  autoLoadCatalog?: boolean;
 } = {}) => {
   const { identity, modelList, loaded, loadModelCatalog } = useUserModelStore();
   const teamId = useUserStore((state) => state.userInfo?.team?.teamId);
@@ -48,7 +52,7 @@ export const useUserModelLists = ({
   const requestKey = validOutLinkAuthData
     ? `${expectedIdentity}:${validOutLinkAuthData.outLinkUid}`
     : expectedIdentity;
-  const activeRequestKey = enabled ? requestKey : undefined;
+  const activeRequestKey = autoLoadCatalog ? requestKey : undefined;
   const [requestState, setRequestState] = useState<{
     key?: string;
     validatedRequestKey?: string;
@@ -60,7 +64,7 @@ export const useUserModelLists = ({
   }
 
   useEffect(() => {
-    if (!enabled || !requestKey) return;
+    if (!autoLoadCatalog || !requestKey) return;
     let active = true;
     let error = false;
 
@@ -81,7 +85,7 @@ export const useUserModelLists = ({
     return () => {
       active = false;
     };
-  }, [enabled, loadModelCatalog, requestKey, teamId, tmbId, validOutLinkAuthData]);
+  }, [autoLoadCatalog, loadModelCatalog, requestKey, teamId, tmbId, validOutLinkAuthData]);
 
   return useMemo(() => {
     // 身份变化到 effect 开始加载之间不暴露上一成员目录，避免一次渲染中的跨成员数据闪现。
@@ -105,7 +109,7 @@ export const useUserModelLists = ({
 
     return {
       loading: getUserModelListsLoading({
-        enabled,
+        autoLoadCatalog,
         expectedIdentity,
         isCurrentIdentity,
         requestKey,
@@ -113,7 +117,7 @@ export const useUserModelLists = ({
       }),
       loaded: isCurrentIdentity && loaded,
       modelList: visibleModelList,
-      error: enabled && requestState.error,
+      error: autoLoadCatalog && requestState.error,
       llmModelList,
       embeddingModelList,
       ttsModelList,
@@ -121,5 +125,13 @@ export const useUserModelLists = ({
       reRankModelList,
       vlmModelList: llmModelList.filter((model) => !!model.config.vision)
     };
-  }, [enabled, expectedIdentity, isCurrentIdentity, loaded, modelList, requestState, requestKey]);
+  }, [
+    autoLoadCatalog,
+    expectedIdentity,
+    isCurrentIdentity,
+    loaded,
+    modelList,
+    requestState,
+    requestKey
+  ]);
 };

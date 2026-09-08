@@ -19,9 +19,9 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
 import {
-  getDatasetAgentModel,
+  findDatasetAgentModel,
   getDatasetEmbeddingModel,
-  getDatasetVlmModel
+  findDatasetVlmModel
 } from '@fastgpt/service/core/dataset/model';
 import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
@@ -37,13 +37,13 @@ import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { createParseTaskLease, PARSE_QUEUE_LEASE_TIMEOUT_MINUTES } from './parseLease';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE_PARSE);
 
+/** 只有实际启用 AI 分段时才调用接口；模型 ID 原样交给该接口校验，异常由解析任务重试。 */
 const requestLLMPargraph = async ({
   rawText,
   modelId,
@@ -52,7 +52,7 @@ const requestLLMPargraph = async ({
   paragraphChunkAIMode
 }: {
   rawText: string;
-  modelId: string;
+  modelId?: string;
   teamId: string;
   billId: string;
   paragraphChunkAIMode?: ParagraphChunkAIModeEnum;
@@ -110,6 +110,7 @@ const reduceQueue = () => {
   return global.datasetParseQueueLen === 0;
 };
 
+/** 读取并分块原文，仅前置校验向量模型；AI 分段调用失败按当前任务 lease 记录错误并重试。 */
 export const datasetParseQueue = async (): Promise<any> => {
   const max = global.systemEnv?.datasetParseMaxProcess || 10;
   logger.debug('Parse queue size check', { queueSize: global.datasetParseQueueLen, max });
@@ -205,10 +206,6 @@ export const datasetParseQueue = async (): Promise<any> => {
         }
         continue;
       }
-      const agentModelData = getDatasetAgentModel(dataset);
-      const embeddingModelData = getDatasetEmbeddingModel(dataset);
-      const vlmModelData = getDatasetVlmModel(dataset);
-
       logger.info('Parse queue task started', {
         trainingId: data._id,
         datasetId: data.datasetId,
@@ -245,14 +242,20 @@ export const datasetParseQueue = async (): Promise<any> => {
       taskLease.start();
 
       try {
+        // 解析阶段只严格校验向量模型；辅助模型仅取分块元数据，不校验启用或可调用状态。
+        const embeddingModelData = getDatasetEmbeddingModel(dataset);
+        const agentModelData = findDatasetAgentModel(dataset);
+        const vlmModelData = findDatasetVlmModel(dataset);
+        const vlmModelConfigured = !isEmptyModelValue(
+          getModelReferenceValue({ modelId: dataset.vlmModelId, model: dataset.vlmModel })
+        );
         const trainingMode = getTrainingModeByCollection({
           trainingType: collection.trainingType ?? DatasetCollectionDataProcessModeEnum.chunk,
           autoIndexes: collection.autoIndexes,
           imageIndex: collection.imageIndex,
-          supportImageIndex: getDatasetImageIndexCapability({
-            vectorModel: embeddingModelData,
-            vlmModel: vlmModelData
-          }).supportImageIndex
+          supportImageIndex:
+            vlmModelConfigured ||
+            getDatasetImageIndexCapability({ vectorModel: embeddingModelData }).supportImageIndex
         });
 
         // 1. Parse rawtext
@@ -319,23 +322,26 @@ export const datasetParseQueue = async (): Promise<any> => {
         });
 
         // 3. LLM Pargraph
-        if (!agentModelData.modelId) throw new UserError(ModelErrEnum.unExist);
         const { resultText, totalInputTokens, totalOutputTokens } = await requestLLMPargraph({
           rawText,
-          modelId: agentModelData.modelId,
+          modelId: agentModelData?.modelId ?? dataset.agentModelId,
           teamId: String(data.teamId),
           billId: data.billId,
           paragraphChunkAIMode: collection.paragraphChunkAIMode
         });
-        // Push usage
-        pushLLMTrainingUsage({
-          teamId: data.teamId,
-          model: agentModelData,
-          inputTokens: totalInputTokens,
-          outputTokens: totalOutputTokens,
-          usageId: data.billId,
-          type: UsageItemTypeEnum.training_paragraph
-        });
+        // 跳过 AI 分段时没有用量，不要求文本模型存在；实际消耗不能在缺少计费元数据时静默漏记。
+        if (totalInputTokens > 0 || totalOutputTokens > 0) {
+          if (!agentModelData)
+            throw new Error('AI paragraph model metadata unavailable for billing');
+          pushLLMTrainingUsage({
+            teamId: data.teamId,
+            model: agentModelData,
+            inputTokens: totalInputTokens,
+            outputTokens: totalOutputTokens,
+            usageId: data.billId,
+            type: UsageItemTypeEnum.training_paragraph
+          });
+        }
 
         // 4. Chunk split
         const chunks = await rawText2Chunks({
@@ -390,6 +396,7 @@ export const datasetParseQueue = async (): Promise<any> => {
             agentModel: agentModelData,
             vectorModel: embeddingModelData,
             vlmModel: vlmModelData,
+            vlmModelConfigured,
             indexSize: collection.indexSize,
             mode: trainingMode,
             billId: data.billId,

@@ -10,11 +10,11 @@ export const getDatasetSearchParams = (inputs: Pick<FlowNodeInputItemType, 'key'
     embeddingWeight: 0.5,
     limit: 3000,
     similarity: 0.5,
-    usingReRank: true,
+    usingReRank: false,
     rerankModelId: undefined,
     rerankModel: undefined,
     rerankWeight: 0.6,
-    datasetSearchUsingExtensionQuery: true,
+    datasetSearchUsingExtensionQuery: false,
     datasetSearchExtensionModelId: undefined,
     datasetSearchExtensionModel: undefined,
     datasetSearchExtensionBg: ''

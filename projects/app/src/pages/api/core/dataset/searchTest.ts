@@ -8,7 +8,8 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import type { NextApiResponse } from 'next';
-import { getLLMModelData, getRerankModelData } from '@fastgpt/service/core/ai/model';
+import { getLLMModelData } from '@fastgpt/service/core/ai/model';
+import { getDatasetSearchAuxiliaryModels } from '@fastgpt/service/core/dataset/search/auxiliaryModels';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
@@ -90,15 +91,14 @@ export async function handler(
     })
   );
 
-  const rerankModelData = usingReRank
-    ? getRerankModelData({ modelId: rerankModelId, model: rerankModel })
-    : undefined;
-  const extensionModelData = datasetSearchUsingExtensionQuery
-    ? getLLMModelData({
-        modelId: datasetSearchExtensionModelId,
-        model: datasetSearchExtensionModel
-      })
-    : undefined;
+  const { rerankModelData, extensionModelData } = getDatasetSearchAuxiliaryModels({
+    usingReRank,
+    rerankModelId,
+    rerankModel,
+    datasetSearchUsingExtensionQuery,
+    datasetSearchExtensionModelId,
+    datasetSearchExtensionModel
+  });
   const deepSearchModelData = datasetDeepSearch
     ? getLLMModelData({ modelId: datasetDeepSearchModelId, model: datasetDeepSearchModel })
     : undefined;

@@ -27,13 +27,13 @@ describe('findClientModelByValue', () => {
 });
 
 describe('findClientModelByReference', () => {
-  it('does not fall back to legacy model when modelId is empty or invalid', () => {
+  it('uses a legacy name for empty IDs but never for invalid nonempty IDs', () => {
     expect(
       findClientModelByReference({
         models: [canonicalModel],
         reference: { modelId: '', model: 'canonical-model' }
       })
-    ).toBeUndefined();
+    ).toBe(canonicalModel);
     expect(
       findClientModelByReference({
         models: [canonicalModel],
@@ -60,7 +60,7 @@ describe('resolveClientModelReferenceId', () => {
         models: [canonicalModel],
         reference: { modelId: '', model: 'canonical-model' }
       })
-    ).toBe('');
+    ).toBe('shared-value');
     expect(
       resolveClientModelReferenceId({
         models: [canonicalModel],

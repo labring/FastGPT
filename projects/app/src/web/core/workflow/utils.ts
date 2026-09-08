@@ -39,6 +39,8 @@ import type { WorkflowDataContextType } from '@/pageComponents/app/detail/Workfl
 import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
 import type { ModelDefaultIds } from '@fastgpt/global/core/ai/defaultModel';
+import { getModelInitializationValue } from '@/web/core/ai/model/selection';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
 
 /**
  * 将节点模板转换为画布节点，并按创建时语言初始化可编辑文本。
@@ -52,7 +54,9 @@ export const nodeTemplate2FlowNode = ({
   zIndex,
   t,
   formatName,
-  defaultModelIds = {}
+  defaultModelIds = {},
+  llmModelList = [],
+  lastSelectedModelId
 }: {
   template: FlowNodeTemplateType;
   position: XYPosition;
@@ -63,6 +67,8 @@ export const nodeTemplate2FlowNode = ({
   formatName?: (name: string) => string;
   /** 仅新增节点时传入已加载的成员有效默认模型，不用于恢复历史节点。 */
   defaultModelIds?: ModelDefaultIds;
+  llmModelList?: Pick<MyLLMModelItemType, 'modelId' | 'model' | 'isActive'>[];
+  lastSelectedModelId?: string;
 }): Node<FlowNodeItemType> => {
   const name = t(template.name as any);
 
@@ -74,19 +80,27 @@ export const nodeTemplate2FlowNode = ({
     nodeId: getNanoid(),
     parentNodeId
   };
-  // 默认选择在创建边界实体化到节点输入，摘要和运行时读取同一份持久化值。
-  if (moduleItem.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
-    moduleItem.inputs = moduleItem.inputs.map((input) => {
-      if (input.value) return input;
-      if (input.key === NodeInputKeyEnum.datasetSearchExtensionModelId) {
-        return { ...input, value: defaultModelIds.llm };
-      }
-      if (input.key === NodeInputKeyEnum.datasetSearchRerankModelId) {
-        return { ...input, value: defaultModelIds.rerank };
-      }
+  // 仅创建时初始化主模型；已有值和引用模式原样保留，不读写“上次选择”的持久化记录。
+  // 知识库搜索的辅助模型由参数弹窗负责，不在这里预填。
+  const rememberedModel = llmModelList.find(
+    (model) => model.modelId === lastSelectedModelId && model.isActive !== false
+  );
+  const initialModelId = getModelInitializationValue({
+    models: llmModelList,
+    defaultModelId: rememberedModel?.modelId ?? defaultModelIds.llm
+  });
+  moduleItem.inputs = moduleItem.inputs.map((input) => {
+    const renderType = getSelectedInputRenderType(input);
+    if (
+      moduleItem.flowNodeType === FlowNodeTypeEnum.datasetSearchNode ||
+      !initialModelId ||
+      !isEmptyModelValue(input.value) ||
+      (renderType !== FlowNodeInputTypeEnum.selectLLMModel &&
+        renderType !== FlowNodeInputTypeEnum.settingLLMModel)
+    )
       return input;
-    });
-  }
+    return { ...input, value: initialModelId };
+  });
   if (moduleItem.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
     moduleItem.inputs = moduleItem.inputs.map((input) => {
       if (input.key !== NodeInputKeyEnum.ifElseList) return input;

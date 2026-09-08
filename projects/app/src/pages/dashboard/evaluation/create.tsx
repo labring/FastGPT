@@ -19,7 +19,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { fileDownload } from '@/web/common/file/utils';
 import { postCreateEvaluation } from '@/web/core/app/api/evaluation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Markdown from '@/components/Markdown';
 import { getEvaluationFileHeader } from '@fastgpt/global/core/app/evaluation/utils';
 import { evaluationFileErrors } from '@fastgpt/global/core/app/evaluation/constants';
@@ -27,6 +27,9 @@ import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { getModelInitializationValue } from '@/web/core/ai/model/selection';
 
 type EvaluationFormType = {
   name: string;
@@ -56,6 +59,16 @@ const EvaluationCreating = () => {
   const evalModelId = useWatch({ control, name: 'evalModelId' });
   const appId = useWatch({ control, name: 'appId' });
   const evaluationFiles = useWatch({ control, name: 'evaluationFiles' });
+  const { llmModelList } = useUserModelLists();
+  const defaultModelId = useUserModelStore((state) => state.defaultModelIds.llm);
+  useEffect(() => {
+    const modelId = getModelInitializationValue({
+      value: evalModelId,
+      models: llmModelList,
+      defaultModelId
+    });
+    if (modelId && modelId !== evalModelId) setValue('evalModelId', modelId);
+  }, [defaultModelId, evalModelId, llmModelList, setValue]);
 
   const { runAsync: getAppDetail, loading: isLoadingAppDetail } = useRequest(() => {
     if (appId) return getAppDetailById(appId);
@@ -177,7 +190,6 @@ const EvaluationCreating = () => {
               </FormLabel>
               <AIModelSelector
                 modelType={ModelTypeEnum.llm}
-                autoSelectDefault
                 w={'406px'}
                 bg={'myGray.50'}
                 value={evalModelId}

@@ -6,20 +6,11 @@ describe('resolveQueryExtensionModelId', () => {
     { modelId: 'first', model: 'first-model' },
     { modelId: 'default', model: 'default-model' }
   ];
-  it.each([undefined, null, ''])(
-    'fills empty enabled values (%s) with the usable default or first model',
+  it.each([undefined, null, '', '   '])(
+    'keeps empty enabled values unconfigured even when candidates are available (%s)',
     (modelId) => {
-      expect(
-        resolveQueryExtensionModelId({ enabled: true, modelId, models, defaultModelId: 'default' })
-      ).toBe('default');
-      expect(
-        resolveQueryExtensionModelId({
-          enabled: true,
-          modelId,
-          models,
-          defaultModelId: 'unavailable'
-        })
-      ).toBe('first');
+      expect(resolveQueryExtensionModelId({ enabled: true, modelId, models: [] })).toBeUndefined();
+      expect(resolveQueryExtensionModelId({ enabled: true, modelId, models })).toBeUndefined();
     }
   );
   it('does not invent IDs before candidates arrive and preserves nonempty choices', () => {
