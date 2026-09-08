@@ -170,6 +170,10 @@ export function useVirtualGridList<T>({
     scrollTop: number;
     topPlaceholderHeight: number;
   }>();
+  const overflowAnchorStateRef = useRef<{
+    element: HTMLElement;
+    value: string;
+  }>();
 
   // 计算最大渲染行数，至少为 batchRows，默认不超过 batchRows * 2 或 30
   const resolvedMaxRenderRows = Math.max(maxRenderRows ?? Math.max(batchRows * 2, 30), batchRows);
@@ -458,13 +462,34 @@ export function useVirtualGridList<T>({
   ]);
 
   useLayoutEffect(() => {
-    const scrollContainer = scrollContainerRef.current;
-    if (!scrollContainer) return;
+    const nextScrollContainer = scrollContainerRef.current;
+    const currentState = overflowAnchorStateRef.current;
 
-    const originalOverflowAnchor = scrollContainer.style.overflowAnchor;
-    scrollContainer.style.overflowAnchor = 'none';
+    if (currentState?.element === nextScrollContainer) return;
+
+    if (currentState) {
+      currentState.element.style.overflowAnchor = currentState.value;
+    }
+
+    if (!nextScrollContainer) {
+      overflowAnchorStateRef.current = undefined;
+      return;
+    }
+
+    overflowAnchorStateRef.current = {
+      element: nextScrollContainer,
+      value: nextScrollContainer.style.overflowAnchor
+    };
+    nextScrollContainer.style.overflowAnchor = 'none';
+  });
+
+  useLayoutEffect(() => {
     return () => {
-      scrollContainer.style.overflowAnchor = originalOverflowAnchor;
+      const currentState = overflowAnchorStateRef.current;
+      if (!currentState) return;
+
+      currentState.element.style.overflowAnchor = currentState.value;
+      overflowAnchorStateRef.current = undefined;
     };
   }, [scrollContainerRef]);
 

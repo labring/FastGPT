@@ -60,6 +60,12 @@ type HarnessProps = {
   selectedId?: number;
 };
 
+type DelayedScrollContainerHarnessProps = {
+  list: TestItem[];
+  mountScrollContainer: boolean;
+  scrollContainerKey: string;
+};
+
 const Harness = ({ list, itemHeight = 40, selectedId }: HarnessProps) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
@@ -131,6 +137,47 @@ const Harness = ({ list, itemHeight = 40, selectedId }: HarnessProps) => {
             'data-selected': item.id === selectedId ? 'true' : 'false',
             'data-virtual-item': ''
           },
+          item.id
+        )
+      )
+    )
+  );
+};
+
+const DelayedScrollContainerHarness = ({
+  list,
+  mountScrollContainer,
+  scrollContainerKey
+}: DelayedScrollContainerHarnessProps) => {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { gridRef, renderVirtualGridItems } = useVirtualGridList({
+    list,
+    listKey: 'delayed-list',
+    scrollContainerRef,
+    batchRows: 2,
+    defaultColumnCount: 2,
+    estimatedRowHeight: 40,
+    estimatedRowGap: 10,
+    overscanRows: 0
+  });
+
+  if (!mountScrollContainer) return null;
+
+  return React.createElement(
+    'div',
+    {
+      key: scrollContainerKey,
+      ref: scrollContainerRef,
+      'data-testid': 'scroll-container',
+      style: { overflowAnchor: 'auto' }
+    },
+    React.createElement(
+      'div',
+      { ref: gridRef },
+      renderVirtualGridItems((item) =>
+        React.createElement(
+          'div',
+          { key: item.id, 'data-item-id': item.id, 'data-virtual-item': '' },
           item.id
         )
       )
@@ -272,7 +319,80 @@ describe('useVirtualGridList', () => {
 
     expect(scrollContainer.scrollTop).toBe(500);
     expect(scrollContainer.querySelector('[data-selected="true"]')).not.toBeNull();
+    expect(scrollContainer.style.overflowAnchor).toBe('none');
     root.unmount();
+    host.remove();
+  });
+
+  it('binds overflow anchoring when the scroll container mounts later', async () => {
+    const { host, root } = createTestRoot();
+    await act(async () => {
+      root.render(
+        React.createElement(DelayedScrollContainerHarness, {
+          list: createItems(100),
+          mountScrollContainer: false,
+          scrollContainerKey: 'first'
+        })
+      );
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      root.render(
+        React.createElement(DelayedScrollContainerHarness, {
+          list: createItems(100),
+          mountScrollContainer: true,
+          scrollContainerKey: 'first'
+        })
+      );
+      await Promise.resolve();
+    });
+
+    const scrollContainer = host.querySelector('[data-testid="scroll-container"]');
+    expect(scrollContainer).toBeInstanceOf(HTMLDivElement);
+    if (!(scrollContainer instanceof HTMLDivElement)) return;
+    expect(scrollContainer.style.overflowAnchor).toBe('none');
+
+    root.unmount();
+    host.remove();
+  });
+
+  it('restores the old node when the scroll container is replaced and unmounts', async () => {
+    const { host, root } = createTestRoot();
+    await act(async () => {
+      root.render(
+        React.createElement(DelayedScrollContainerHarness, {
+          list: createItems(100),
+          mountScrollContainer: true,
+          scrollContainerKey: 'first'
+        })
+      );
+      await Promise.resolve();
+    });
+
+    const oldScrollContainer = host.querySelector('[data-testid="scroll-container"]');
+    expect(oldScrollContainer).toBeInstanceOf(HTMLDivElement);
+    if (!(oldScrollContainer instanceof HTMLDivElement)) return;
+
+    await act(async () => {
+      root.render(
+        React.createElement(DelayedScrollContainerHarness, {
+          list: createItems(100),
+          mountScrollContainer: true,
+          scrollContainerKey: 'second'
+        })
+      );
+      await Promise.resolve();
+    });
+
+    const newScrollContainer = host.querySelector('[data-testid="scroll-container"]');
+    expect(newScrollContainer).toBeInstanceOf(HTMLDivElement);
+    if (!(newScrollContainer instanceof HTMLDivElement)) return;
+    expect(oldScrollContainer.style.overflowAnchor).toBe('auto');
+    expect(newScrollContainer.style.overflowAnchor).toBe('none');
+
+    root.unmount();
+    expect(newScrollContainer.style.overflowAnchor).toBe('auto');
     host.remove();
   });
 });
