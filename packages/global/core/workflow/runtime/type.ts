@@ -47,6 +47,7 @@ export const DispatchNodeResponseSchema = z
       .optional()
       .meta({ description: '模块名 i18n 插值参数' }),
     runningTime: z.number().optional().meta({ description: '运行时间: 秒' }),
+    firstTokenTime: z.number().optional().meta({ description: '首 token 响应时间: 秒' }),
     query: z.string().optional().meta({ description: '查询语句' }),
     textOutput: z.string().optional().meta({ description: '文本输出' }),
 

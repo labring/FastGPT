@@ -107,6 +107,7 @@
   "response.extension_model": "问题优化模型",
   "response.extract_description": "提取背景描述",
   "response.extract_result": "提取结果",
+  "response.first_token_time": "首 token 响应时间",
   "response.form_input_result": "表单输入结果",
   "response.headers": "请求头",
   "response.history_preview": "记录预览(仅展示部分内容)",

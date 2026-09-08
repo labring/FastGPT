@@ -165,6 +165,13 @@ export const AiChatRows = ({
           />
         </>
       )}
+      {activeModule.firstTokenTime !== undefined && (
+        <Row
+          label={t('chat:response.first_token_time')}
+          value={`${activeModule.firstTokenTime}s`}
+          renderStringAsMarkdown={false}
+        />
+      )}
       <LlmRequestIdsRow
         requestIds={activeModule.llmRequestIds}
         onOpenRequestIdDetail={onOpenRequestIdDetail}

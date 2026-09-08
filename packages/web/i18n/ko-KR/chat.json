@@ -107,6 +107,7 @@
   "response.extension_model": "쿼리 재작성 모델",
   "response.extract_description": "배경 설명 추출",
   "response.extract_result": "추출 결과",
+  "response.first_token_time": "첫 토큰 응답 시간",
   "response.form_input_result": "폼 입력 결과",
   "response.headers": "헤더",
   "response.history_preview": "이력 미리보기(일부 내용만 표시)",

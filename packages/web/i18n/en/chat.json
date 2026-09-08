@@ -107,6 +107,7 @@
   "response.extension_model": "Query rewriting Model",
   "response.extract_description": "Extract Background Description",
   "response.extract_result": "Extraction Result",
+  "response.first_token_time": "First token response time",
   "response.form_input_result": "Form Input Result",
   "response.headers": "Headers",
   "response.history_preview": "History Preview (Only Partial Content Displayed)",

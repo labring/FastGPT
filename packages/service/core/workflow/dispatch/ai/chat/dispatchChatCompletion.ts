@@ -130,6 +130,9 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       })()
     ]);
 
+    const requestStartTime = Date.now();
+    let firstTokenTime: number | undefined; // 首个模型输出 token 到达时刻(含思考)
+
     const {
       completeMessages,
       reasoningText,
@@ -165,10 +168,12 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       teamId: runningUserInfo.teamId,
       isAborted: checkIsStopping,
       onReasoning({ text }) {
+        firstTokenTime ??= Date.now();
         if (!aiChatReasoning) return;
         workflowStreamResponse?.(workflowSseEvent.reasoningDelta(text));
       },
       onStreaming({ text }) {
+        firstTokenTime ??= Date.now();
         if (!isResponseAnswerText) return;
         workflowStreamResponse?.(workflowSseEvent.answerDelta(text));
       }
@@ -177,6 +182,11 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     if (responseEmptyTip) {
       return getNodeErrResponse({ error: responseEmptyTip });
     }
+
+    const firstTokenTimeSec =
+      firstTokenTime === undefined
+        ? undefined
+        : +((firstTokenTime - requestStartTime) / 1000).toFixed(2);
 
     const { totalPoints } = formatModelChars2Points({
       model: modelConstantsData,
@@ -210,7 +220,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
           historyPreview: getHistoryPreview(chatCompleteMessages, 10000, aiChatVision),
           contextTotalLen: completeMessages.length,
           finishReason: finish_reason,
-          llmRequestIds: [requestId] // 记录 LLM 请求追踪 ID
+          llmRequestIds: [requestId], // 记录 LLM 请求追踪 ID
+          firstTokenTime: firstTokenTimeSec
         }
       });
     }
@@ -235,7 +246,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         historyPreview: getHistoryPreview(chatCompleteMessages, 10000, aiChatVision),
         contextTotalLen: completeMessages.length,
         finishReason: finish_reason,
-        llmRequestIds: [requestId] // 记录 LLM 请求追踪 ID
+        llmRequestIds: [requestId], // 记录 LLM 请求追踪 ID
+        firstTokenTime: firstTokenTimeSec
       },
       [DispatchNodeResponseKeyEnum.toolResponse]: answerText
     };
