@@ -100,9 +100,7 @@ catalog:
   vitest: ^4.1.5
   xml2js: ^0.6.2
   zod: ^4
-  postcss: ^8.5.12
-  marked: ^18.0.9
-  mermaid: ^11.16.1
+
   qs: ^6.16.0
 
 catalogMode: prefer
