@@ -259,23 +259,32 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
 
   await mongoSessionRun(async (session) => {
     if (isMove) {
+      // 事务重试时重新读取当前父级，避免用事务外的旧快照错误计算继承权限。
+      const currentDataset = await MongoDataset.findOne({
+        _id: id,
+        teamId: dataset.teamId
+      })
+        .session(session)
+        .lean();
+      if (!currentDataset) return Promise.reject(DatasetErrEnum.unExist);
+
       const [parentClbs, oldParentClbs, oldResourceClbs] = await Promise.all([
         getResourceOwnedClbs({
-          teamId: dataset.teamId,
+          teamId: currentDataset.teamId,
           resourceId: parentId,
           resourceType: PerResourceTypeEnum.dataset,
           session
         }),
-        dataset.parentId
+        currentDataset.parentId
           ? getResourceOwnedClbs({
-              teamId: dataset.teamId,
-              resourceId: dataset.parentId,
+              teamId: currentDataset.teamId,
+              resourceId: currentDataset.parentId,
               resourceType: PerResourceTypeEnum.dataset,
               session
             })
           : Promise.resolve([]),
         getResourceOwnedClbs({
-          teamId: dataset.teamId,
+          teamId: currentDataset.teamId,
           resourceId: id,
           resourceType: PerResourceTypeEnum.dataset,
           session
@@ -283,7 +292,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       ]);
 
       const newResourceClbs = await syncCollaborators({
-        teamId: dataset.teamId,
+        teamId: currentDataset.teamId,
         resourceId: id,
         resourceType: PerResourceTypeEnum.dataset,
         collaborators: parentClbs,
@@ -292,7 +301,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       });
 
       await syncChildrenPermission({
-        resource: dataset,
+        resource: currentDataset,
         resourceType: PerResourceTypeEnum.dataset,
         resourceModel: MongoDataset,
         folderTypeList: [DatasetTypeEnum.folder],
